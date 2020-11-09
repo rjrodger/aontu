@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "dist/aontu.js",
   "browser": "dist/aontu.min.js",
   "types": "dist/aontu.d.ts",
