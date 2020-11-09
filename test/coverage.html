@@ -1,0 +1,2165 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Tests &amp; Coverage</title>
+    <script>
+      headings = [];
+    
+      onload = function () {
+          headings = document.querySelectorAll('h2');
+          reset();
+      };
+    
+      onscroll = function (e) {
+          var heading = find(window.scrollY);
+          if (!heading) {
+            var current = document.querySelector('#menu a.active');
+            if (current) {
+              current.className = '';
+            }
+            return;
+          }
+          var links = document.querySelectorAll('#menu a')
+                  , link;
+    
+          for (var i = 0, len = links.length; i < len; ++i) {
+              link = links[i];
+              link.className = link.getAttribute('href') == '#' + heading.id ? 'active' : '';
+          }
+      };
+    
+      function find (y) {
+          var i = headings.length
+                  , heading;
+    
+          while (i--) {
+              heading = headings[i];
+              if (y >= heading.offsetTop) {
+                  return heading;
+              }
+          }
+      }
+    
+      function toggle (className) {
+    
+          var elements = document.getElementsByClassName(className);
+    
+          for (var i = 0, il = elements.length; i < il; ++i) {
+              var element = elements[i];
+    
+              if (element.classList.contains('hide')) {
+                  element.classList.remove('hide');
+                  element.classList.add('show');
+              }
+              else {
+                  element.classList.remove('show');
+                  element.classList.add('hide');
+              }
+          };
+      }
+    
+      function reset () {
+    
+          var shownElements = document.getElementsByClassName('show');
+          var filterElements = document.querySelectorAll('input[type=checkbox]');
+    
+          for (var i = 0, il = filterElements.length; i < il; ++i) {
+              filterElements[i].checked = false;
+          }
+    
+          // Check any filters with visible elements
+          for (i = 0, il = shownElements.length; i < il; ++i) {
+              var shownElement = shownElements[i];
+              var classNames = shownElement.className.split(' ');
+              for (var ci = 0, cl = classNames.length; ci < cl; ++ci){
+                  var element = document.getElementById('show-' + classNames[ci]);
+                  if (element) {
+                      element.checked = true;
+                  }
+              }
+          }
+      };
+    
+      function filter (element) {
+    
+          toggle(element.value);
+          reset();
+      }
+    </script>
+    <style>
+        body {
+            font: 14px/1.6 Helvetica, Arial, sans-serif;
+            margin: 0;
+            color: #2c2c2c;
+        }
+    
+        #tests, #coverage, #linting {
+            padding: 60px;
+        }
+    
+        h1 a:hover {
+            text-decoration: none;
+        }
+    
+        a[href^="#"],
+        a[href^="#"]:visited {
+            color: inherit;
+            text-decoration: none;
+        }
+    
+        h2 {
+            width: 80%;
+            margin-top: 80px;
+            margin-bottom: 0;
+            font-weight: 100;
+            letter-spacing: 1px;
+        }
+    
+        ul {
+            margin-top: 20px;
+            padding: 0 15px;
+            width: 100%;
+        }
+    
+        ul li {
+            float: left;
+            width: 40%;
+            margin-top: 5px;
+            margin-right: 60px;
+            list-style: none;
+            padding: 5px 0;
+            font-size: 12px;
+        }
+    
+        #menu {
+            position: fixed;
+            font-size: 12px;
+            overflow-y: auto;
+            top: 0;
+            right: 0;
+            margin: 0;
+            height: 100%;
+            padding: 15px 15px;
+            border-left: 1px solid #eee;
+            background-color: #666;
+            z-index: 1;
+        }
+    
+        #menu::after {
+            display: block;
+            content: '';
+            padding-top: 80px;
+        }
+    
+        #menu li a {
+            display: block;
+            color: white;
+            padding: 0 5px 0 35px;
+            transition: background 300ms;
+            text-decoration: none;
+        }
+    
+        #menu li {
+            position: relative;
+            list-style: none;
+        }
+    
+        #menu a:hover,
+        #menu a.active {
+            text-decoration: none;
+            background: rgba(255, 255, 255, .4);
+        }
+    
+        #menu li:hover .cov {
+            opacity: 1;
+        }
+    
+        #menu li .dirname {
+            opacity: .60;
+            padding-right: 2px;
+        }
+    
+        #menu li .basename {
+            opacity: 1;
+        }
+    
+        #menu .cov, #menu .lint {
+            background: rgba(0, 0, 0, .3);
+            position: absolute;
+            top: 0;
+            font-size: 9px;
+            text-align: center;
+            opacity: .8;
+            width: 22px;
+            border-radius: 10px;
+            padding: 2px 3px;
+        }
+    
+        #files .stats:nth-child(2n):not(.hide) {
+            display: inline-block;
+            margin-top: 15px;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    
+        .stats div {
+            float: left;
+            padding: 0 5px;
+        }
+    
+        .stats::after {
+            display: block;
+            content: '';
+            clear: both;
+        }
+    
+        .stats .sloc::after {
+            content: ' SLOC';
+            color: #b6b6b6;
+        }
+    
+        .stats .percentage::after {
+            content: ' coverage';
+            color: #b6b6b6;
+        }
+    
+        .stats .hits::before {
+            content: '(';
+            color: #b6b6b6;
+        }
+    
+        .stats .hits::after {
+            content: ' Covered';
+            color: #b6b6b6;
+        }
+    
+        .stats .misses::after {
+            content: ' Not Covered)';
+            color: #b6b6b6;
+        }
+    
+        .stats .failures::after {
+            content: ' Failures';
+            color: #b6b6b6;
+        }
+    
+        .stats .skipped::after {
+            content: ' Skipped';
+            color: #b6b6b6;
+        }
+    
+        .stats .test-count::after {
+            content: ' Tests';
+            color: #b6b6b6;
+        }
+    
+        .stats .duration::before {
+            content: '(';
+            color: #b6b6b6;
+        }
+    
+        .stats .duration::after {
+            content: ' ms)';
+            color: #b6b6b6;
+        }
+    
+        .high {
+            color: #00d4b4;
+        }
+    
+        .medium {
+            color: #e87d0d;
+        }
+    
+        .low {
+            color: #d4081a;
+        }
+    
+        .terrible {
+            color: #d4081a;
+            font-weight: bold;
+        }
+    
+        #files table {
+            width: 80%;
+            margin-top: 10px;
+            border-collapse: collapse;
+            border: 1px solid #cbcbcb;
+            color: #363636;
+            border-radius: 3px;
+        }
+    
+        #files thead {
+            display: none;
+        }
+    
+        table td.line,
+        table td.lint,
+        table td.hits,
+        table td.original-line {
+            width: 20px;
+            background: #eaeaea;
+            text-align: right;
+            font-size: 11px;
+            padding: 0 10px;
+            color: #949494;
+            white-space: nowrap;
+        }
+    
+        table td.hits {
+            width: 10px;
+            padding: 2px 5px;
+            color: rgba(0, 0, 0, .2);
+            background: #f0f0f0;
+        }
+    
+        table td.lint.empty {
+            width: 0;
+            padding: 0;
+        }
+    
+        table td.lint > span {
+            border-radius: 50%;
+            width: 8px;
+            height: 8px;
+            display: inline-block;
+            vertical-align: baseline;
+        }
+    
+        table td.lint .errors {
+            background-color: red;
+        }
+    
+        table td.lint .warnings {
+            background-color: orange;
+        }
+    
+        tr.miss td.line,
+        tr.miss td.hits {
+            background: #e6c3c7;
+        }
+    
+        tr.miss td {
+            background: #f8d5d8;
+        }
+    
+        td.source {
+            padding-left: 15px;
+            line-height: 15px;
+            white-space: pre;
+            font: 12px monaco, monospace;
+        }
+    
+        td.source div {
+            display: inline-block;
+        }
+    
+        td.source div.true {
+            background: #bae8bf;
+        }
+    
+        td.source div.false {
+            background: #e8e5ba;
+        }
+    
+        td.source div.never {
+            background: #f8d5d8;
+        }
+    
+        #tests table {
+            width: 80%;
+            margin-top: 10px;
+            border-collapse: collapse;
+            border: 1px solid #cbcbcb;
+            color: #363636;
+            border-radius: 3px;
+        }
+    
+        #tests thead {
+            background: #F5F5F5;
+        }
+    
+        #tests tr {
+            border: 1px solid #ccc;
+        }
+    
+        #tests td {
+            padding-left: 8px;
+            vertical-align: top;
+        }
+    
+        #tests .success:nth-child(2n) {
+            background: #F5F5F5;
+        }
+    
+        #tests .failure {
+            background: #FF9E9E;
+        }
+    
+        #tests table .skipped {
+            background: #AA82FF;
+        }
+    
+        #tests .success {
+            color: #949494;
+        }
+    
+        #tests .failure .test-title {
+            font-weight: bold;
+            margin-top: 5px;
+        }
+    
+        #tests .stack {
+            margin-top: 4px;
+            padding-left: 15px;
+            margin-bottom: 12px;
+            font: 12px monaco, monospace;
+            white-space: pre;
+            line-height: 15px;
+        }
+    
+        .hide {
+            display: none;
+        }
+    
+        .show {
+            display: inherit;
+        }
+    
+        #tests table .show {
+            display: table-row;
+        }
+    
+        [data-tooltip] {
+            position: relative;
+        }
+    
+        [data-tooltip]:hover:before {
+            border: solid;
+            border-color: #333 transparent;
+            border-width: 6px 6px 0 6px;
+            bottom: 20px;
+            content: "";
+            left: 0;
+            position: absolute;
+            z-index: 99;
+        }
+    
+        [data-tooltip]:hover:after {
+            background: #333;
+            background: rgba(0, 0, 0, .8);
+            border-radius: 5px;
+            bottom: 26px;
+            color: #fff;
+            left: -10px;
+            padding: 5px 15px;
+            position: absolute;
+            z-index: 98;
+            content: attr(data-tooltip);
+            white-space: pre;
+            text-align: left;
+        }
+    
+        .line[data-tooltip]:hover:after {
+            content: "Line number";
+        }
+    
+        .hits[data-tooltip]:hover:after {
+            content: "Number of hits";
+        }
+    
+        .miss .source[data-tooltip]:hover:after {
+            content: "Missed line";
+        }
+    
+        .miss.true[data-tooltip]:hover:after {
+            content: "Condition always true";
+        }
+    
+        .miss.false[data-tooltip]:hover:after {
+            content: "Condition always false";
+        }
+    
+        .miss.never[data-tooltip]:hover:after {
+            content: "Statement never reached";
+        }
+    
+        .lint .errors[data-tooltip]:hover:after {
+            content: "Linting errors:\A" attr(data-tooltip);
+        }
+    
+        .lint .warnings[data-tooltip]:hover:after {
+            content: "Linting warnings:\A" attr(data-tooltip);
+        }
+    
+        .original-line[data-tooltip]:hover:after {
+            content: "Original line in file " attr(data-tooltip);
+        }
+    
+        #filters {
+            width: 75%;
+            margin-top: 25px;
+        }
+    
+        #filters label {
+            margin-right: 10px;
+        }
+    
+        .lint-stats .lint-errors::after {
+            content: ' linting errors';
+            color: #b6b6b6;
+        }
+    
+        .lint-stats .lint-warnings::after {
+            content: ' linting warnings';
+            color: #b6b6b6;
+        }
+    
+        .lint-entry {
+            color: #b6b6b6;
+            float: none;
+            padding: 0;
+        }
+    
+        .lint-entry .level-ERROR {
+            color: #d4081a;
+        }
+    
+        .lint-entry .level-WARNING {
+            color: #e87d0d;
+        }
+    </style>
+  </head>
+  <body>
+    <div id="menu">
+        <li><a href="#tests">Test Report</a></li>
+        <li><a href="#coverage">Coverage Report</a></li>
+        <li class="generated">
+            <span class="cov high">90.76</span>
+            <a href="#dist/aontu.js"><span class="dirname">dist/</span><span class="basename">aontu.js</span></a>
+        </li>
+        <li><a href="#linting">Linting Report</a></li>
+    </div>
+    <div id="tests">
+      <h1>Test Report</h1>
+      <div class="stats high">
+          <div class="failures">0</div>
+          <div class="skipped">0</div>
+          <div class="test-count">5</div>
+          <div class="duration">64</div>
+      </div>
+      <div id="filters">
+          <input type="checkbox" checked="" onchange="filter(this)" value="success" id="show-success">
+          <label for="show-success">Show Success</label>
+          <input type="checkbox" checked="" onchange="filter(this)" value="failure" id="show-failure">
+          <label for="show-failure">Show Failure</label>
+          <br>
+          <input type="checkbox" checked="" onchange="filter(this)" value="aontu" id="show-aontu">
+          <label for="show-aontu">aontu</label>
+      </div>
+      <table>
+          <thead>
+          <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Duration (ms)</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr class="show aontu success">
+              <td class="test-id">1</td>
+              <td class="test-title">aontu happy
+                  
+              </td>
+              <td class="test-duration">10</td>
+          </tr>
+          <tr class="show aontu success">
+              <td class="test-id">2</td>
+              <td class="test-title">aontu unify-int
+                  
+              </td>
+              <td class="test-duration">6</td>
+          </tr>
+          <tr class="show aontu success">
+              <td class="test-id">3</td>
+              <td class="test-title">aontu node-unify-ints
+                  
+              </td>
+              <td class="test-duration">9</td>
+          </tr>
+          <tr class="show aontu success">
+              <td class="test-id">4</td>
+              <td class="test-title">aontu unify-ints
+                  
+              </td>
+              <td class="test-duration">5</td>
+          </tr>
+          <tr class="show aontu success">
+              <td class="test-id">5</td>
+              <td class="test-title">aontu ref-ints
+                  
+              </td>
+              <td class="test-duration">9</td>
+          </tr>
+          </tbody>
+      </table>
+    
+    </div>    <div id="coverage">
+        <h1>Code Coverage Report</h1>
+        <div class="stats high">
+            <div class="percentage">90.76%</div>
+            <div class="sloc">238</div>
+            <div class="hits">216</div>
+            <div class="misses">22</div>
+        </div>
+        <div id="filters">
+          <input type="checkbox" checked="" onchange="filter(this)" value="generated" id="show-generated">
+          <label for="show-generated">Show generated files</label>
+        </div>
+        <div id="files">
+            <div class="file show generated">
+                <h2 id="dist/aontu.js">dist/aontu.js </h2>
+                <div class="stats high">
+                    <div class="percentage">90.76%</div>
+                    <div class="sloc">238</div>
+                    <div class="hits">216</div>
+                    <div class="misses">22</div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Line</th>
+                            <th>Lint</th>
+                            <th>Hits</th>
+                            <th>Source</th>
+                            <th>Original line</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="dist/aontu.js__1" class="hit">
+                          <td class="line" data-tooltip>1</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">&quot;use strict&quot;;</td>
+                          
+                        </tr>            <tr id="dist/aontu.js__2" class="hit">
+                          <td class="line" data-tooltip>2</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">/* Copyright (c) 2020 Richard Rodger, MIT License */</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__1">1</a></td>
+                        </tr>            <tr id="dist/aontu.js__3" class="hit">
+                          <td class="line" data-tooltip>3</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">Object.defineProperty(exports, &quot;__esModule&quot;, { value: true });</td>
+                          
+                        </tr>            <tr id="dist/aontu.js__4" class="hit">
+                          <td class="line" data-tooltip>4</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.parseVal &#x3D; exports.bottom &#x3D; exports.RefVal &#x3D; exports.IntScalarVal &#x3D; exports.IntTypeVal &#x3D; exports.BottomVal &#x3D; exports.Path &#x3D; exports.Node &#x3D; exports.reify &#x3D; exports.unify &#x3D; void 0;</td>
+                          
+                        </tr>            <tr id="dist/aontu.js__5" class="hit">
+                          <td class="line" data-tooltip>5</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// NOTE: when implementing objects and arrays, preserve exploded path style</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__3">3</a></td>
+                        </tr>            <tr id="dist/aontu.js__6" class="hit">
+                          <td class="line" data-tooltip>6</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// adding unifier vals referencing schema &quot;types&quot; should suffice</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__4">4</a></td>
+                        </tr>            <tr id="dist/aontu.js__7" class="hit">
+                          <td class="line" data-tooltip>7</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.a: object</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__6">6</a></td>
+                        </tr>            <tr id="dist/aontu.js__8" class="hit">
+                          <td class="line" data-tooltip>8</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.a.b: int</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__7">7</a></td>
+                        </tr>            <tr id="dist/aontu.js__9" class="hit">
+                          <td class="line" data-tooltip>9</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.z.k: $.a # marks this as an object</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__8">8</a></td>
+                        </tr>            <tr id="dist/aontu.js__10" class="hit">
+                          <td class="line" data-tooltip>10</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.z.k.b: 1 # append val($.a.b)&#x3D;int</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__9">9</a></td>
+                        </tr>            <tr id="dist/aontu.js__11" class="hit">
+                          <td class="line" data-tooltip>11</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.z.k.c: 2 # append nothing as val($.a.c) undefined</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__10">10</a></td>
+                        </tr>            <tr id="dist/aontu.js__12" class="hit">
+                          <td class="line" data-tooltip>12</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.a.*: int // all children must unify with this</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__12">12</a></td>
+                        </tr>            <tr id="dist/aontu.js__13" class="hit">
+                          <td class="line" data-tooltip>13</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.b: $.a // array of int</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__13">13</a></td>
+                        </tr>            <tr id="dist/aontu.js__14" class="hit">
+                          <td class="line" data-tooltip>14</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.b.0: 1</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__14">14</a></td>
+                        </tr>            <tr id="dist/aontu.js__15" class="hit">
+                          <td class="line" data-tooltip>15</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// $.b.1: 2</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__15">15</a></td>
+                        </tr>            <tr id="dist/aontu.js__16" class="hit">
+                          <td class="line" data-tooltip>16</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">// TODO: parse traditional JSON into exploded style as above</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__17">17</a></td>
+                        </tr>            <tr id="dist/aontu.js__17" class="hit">
+                          <td class="line" data-tooltip>17</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function unify(orignodes) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__19">19</a></td>
+                        </tr>            <tr id="dist/aontu.js__18" class="hit">
+                          <td class="line" data-tooltip>18</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    let meta &#x3D; { s: Date.now(), d: 0 };</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__20">20</a></td>
+                        </tr>            <tr id="dist/aontu.js__19" class="hit">
+                          <td class="line" data-tooltip>19</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    let nodes &#x3D; orignodes</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__21">21</a></td>
+                        </tr>            <tr id="dist/aontu.js__20" class="hit">
+                          <td class="line" data-tooltip>20</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        .map((n) &#x3D;&gt; {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__22">22</a></td>
+                        </tr>            <tr id="dist/aontu.js__21" class="chunks">
+                          <td class="line" data-tooltip>21</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        if (</div><div class="miss true" data-tooltip>&#x27;string&#x27; &#x3D;&#x3D;&#x3D; typeof n</div><div>) {</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__23">23</a></td>
+                        </tr>            <tr id="dist/aontu.js__22" class="hit">
+                          <td class="line" data-tooltip>22</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>15</td>
+                          <td class="source">            return parseNode(n);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__24">24</a></td>
+                        </tr>            <tr id="dist/aontu.js__23" class="hit">
+                          <td class="line" data-tooltip>23</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__25">25</a></td>
+                        </tr>            <tr id="dist/aontu.js__24" class="hit">
+                          <td class="line" data-tooltip>24</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        else {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__25">25</a></td>
+                        </tr>            <tr id="dist/aontu.js__25" class="miss">
+                          <td class="line" data-tooltip>25</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source" data-tooltip>            return Node.clone(n);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__26">26</a></td>
+                        </tr>            <tr id="dist/aontu.js__26" class="hit">
+                          <td class="line" data-tooltip>26</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__27">27</a></td>
+                        </tr>            <tr id="dist/aontu.js__27" class="hit">
+                          <td class="line" data-tooltip>27</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    })</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__28">28</a></td>
+                        </tr>            <tr id="dist/aontu.js__28" class="hit">
+                          <td class="line" data-tooltip>28</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        .sort((a, b) &#x3D;&gt; {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__29">29</a></td>
+                        </tr>            <tr id="dist/aontu.js__29" class="hit">
+                          <td class="line" data-tooltip>29</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        let plen &#x3D; a.path.parts.length - b.path.parts.length;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__30">30</a></td>
+                        </tr>            <tr id="dist/aontu.js__30" class="hit">
+                          <td class="line" data-tooltip>30</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>10</td>
+                          <td class="source">        return 0 &#x3D;&#x3D;&#x3D; plen</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__31">31</a></td>
+                        </tr>            <tr id="dist/aontu.js__31" class="chunks">
+                          <td class="line" data-tooltip>31</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>            ? </div><div class="miss false" data-tooltip>a.path.parts_str &lt; b.path.parts_str</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__32">32</a></td>
+                        </tr>            <tr id="dist/aontu.js__32" class="chunks">
+                          <td class="line" data-tooltip>32</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>                ? </div><div class="miss never" data-tooltip>-1</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__33">33</a></td>
+                        </tr>            <tr id="dist/aontu.js__33" class="hit">
+                          <td class="line" data-tooltip>33</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                : a.path.parts_str &gt; b.path.parts_str</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__34">34</a></td>
+                        </tr>            <tr id="dist/aontu.js__34" class="hit">
+                          <td class="line" data-tooltip>34</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    ? 1</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__35">35</a></td>
+                        </tr>            <tr id="dist/aontu.js__35" class="hit">
+                          <td class="line" data-tooltip>35</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    : 0</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__36">36</a></td>
+                        </tr>            <tr id="dist/aontu.js__36" class="hit">
+                          <td class="line" data-tooltip>36</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">            : plen;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__37">37</a></td>
+                        </tr>            <tr id="dist/aontu.js__37" class="hit">
+                          <td class="line" data-tooltip>37</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    });</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__38">38</a></td>
+                        </tr>            <tr id="dist/aontu.js__38" class="hit">
+                          <td class="line" data-tooltip>38</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    nodes &#x3D; nodes.reduce((out, n, i, nodes) &#x3D;&gt; {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__40">40</a></td>
+                        </tr>            <tr id="dist/aontu.js__39" class="hit">
+                          <td class="line" data-tooltip>39</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        let prev &#x3D; nodes[i - 1];</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__41">41</a></td>
+                        </tr>            <tr id="dist/aontu.js__40" class="hit">
+                          <td class="line" data-tooltip>40</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>15</td>
+                          <td class="source">        if (prev &amp;&amp; n.path.equals(prev.path)) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__42">42</a></td>
+                        </tr>            <tr id="dist/aontu.js__41" class="hit">
+                          <td class="line" data-tooltip>41</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>3</td>
+                          <td class="source">            prev.vals.splice(prev.vals.length, 0, ...n.vals);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__43">43</a></td>
+                        </tr>            <tr id="dist/aontu.js__42" class="hit">
+                          <td class="line" data-tooltip>42</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__44">44</a></td>
+                        </tr>            <tr id="dist/aontu.js__43" class="hit">
+                          <td class="line" data-tooltip>43</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        else {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__44">44</a></td>
+                        </tr>            <tr id="dist/aontu.js__44" class="hit">
+                          <td class="line" data-tooltip>44</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>12</td>
+                          <td class="source">            out.push(n);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__45">45</a></td>
+                        </tr>            <tr id="dist/aontu.js__45" class="hit">
+                          <td class="line" data-tooltip>45</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__46">46</a></td>
+                        </tr>            <tr id="dist/aontu.js__46" class="hit">
+                          <td class="line" data-tooltip>46</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>15</td>
+                          <td class="source">        return out;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__47">47</a></td>
+                        </tr>            <tr id="dist/aontu.js__47" class="hit">
+                          <td class="line" data-tooltip>47</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }, []);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__48">48</a></td>
+                        </tr>            <tr id="dist/aontu.js__48" class="hit">
+                          <td class="line" data-tooltip>48</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    let root_ctx &#x3D; {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__50">50</a></td>
+                        </tr>            <tr id="dist/aontu.js__49" class="hit">
+                          <td class="line" data-tooltip>49</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        path: new Path([]),</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__51">51</a></td>
+                        </tr>            <tr id="dist/aontu.js__50" class="hit">
+                          <td class="line" data-tooltip>50</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        nodes: nodes,</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__52">52</a></td>
+                        </tr>            <tr id="dist/aontu.js__51" class="hit">
+                          <td class="line" data-tooltip>51</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    };</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__53">53</a></td>
+                        </tr>            <tr id="dist/aontu.js__52" class="hit">
+                          <td class="line" data-tooltip>52</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    let origlen &#x3D; nodes.length;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__55">55</a></td>
+                        </tr>            <tr id="dist/aontu.js__53" class="hit">
+                          <td class="line" data-tooltip>53</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    for (let nI &#x3D; 0; nI &lt; nodes.length &amp;&amp; nI &lt; 11 * origlen; nI++) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__56">56</a></td>
+                        </tr>            <tr id="dist/aontu.js__54" class="hit">
+                          <td class="line" data-tooltip>54</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>13</td>
+                          <td class="source">        let node &#x3D; nodes[nI];</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__57">57</a></td>
+                        </tr>            <tr id="dist/aontu.js__55" class="chunks">
+                          <td class="line" data-tooltip>55</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        if (</div><div class="miss false" data-tooltip>!node</div><div>) {</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__58">58</a></td>
+                        </tr>            <tr id="dist/aontu.js__56" class="miss">
+                          <td class="line" data-tooltip>56</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source" data-tooltip>            break;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__59">59</a></td>
+                        </tr>            <tr id="dist/aontu.js__57" class="hit">
+                          <td class="line" data-tooltip>57</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__60">60</a></td>
+                        </tr>            <tr id="dist/aontu.js__58" class="hit">
+                          <td class="line" data-tooltip>58</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>13</td>
+                          <td class="source">        let val &#x3D; node.unify(root_ctx);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__62">62</a></td>
+                        </tr>            <tr id="dist/aontu.js__59" class="hit">
+                          <td class="line" data-tooltip>59</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>13</td>
+                          <td class="source">        if (undefined &#x3D;&#x3D;&#x3D; val) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__64">64</a></td>
+                        </tr>            <tr id="dist/aontu.js__60" class="hit">
+                          <td class="line" data-tooltip>60</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">            nodes.push(node);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__65">65</a></td>
+                        </tr>            <tr id="dist/aontu.js__61" class="hit">
+                          <td class="line" data-tooltip>61</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__66">66</a></td>
+                        </tr>            <tr id="dist/aontu.js__62" class="hit">
+                          <td class="line" data-tooltip>62</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__67">67</a></td>
+                        </tr>            <tr id="dist/aontu.js__63" class="hit">
+                          <td class="line" data-tooltip>63</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    meta.d &#x3D; Date.now() - meta.s;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__70">70</a></td>
+                        </tr>            <tr id="dist/aontu.js__64" class="hit">
+                          <td class="line" data-tooltip>64</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    nodes.$meta &#x3D; meta;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__70">70</a></td>
+                        </tr>            <tr id="dist/aontu.js__65" class="hit">
+                          <td class="line" data-tooltip>65</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">    return nodes.slice(0, origlen);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__72">72</a></td>
+                        </tr>            <tr id="dist/aontu.js__66" class="hit">
+                          <td class="line" data-tooltip>66</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__73">73</a></td>
+                        </tr>            <tr id="dist/aontu.js__67" class="hit">
+                          <td class="line" data-tooltip>67</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.unify &#x3D; unify;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__309">309</a></td>
+                        </tr>            <tr id="dist/aontu.js__68" class="hit">
+                          <td class="line" data-tooltip>68</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function reify(nodes) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__75">75</a></td>
+                        </tr>            <tr id="dist/aontu.js__69" class="hit">
+                          <td class="line" data-tooltip>69</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>4</td>
+                          <td class="source">    let out &#x3D; {};</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__76">76</a></td>
+                        </tr>            <tr id="dist/aontu.js__70" class="hit">
+                          <td class="line" data-tooltip>70</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>4</td>
+                          <td class="source">    for (let nI &#x3D; 0; nI &lt; nodes.length; nI++) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__78">78</a></td>
+                        </tr>            <tr id="dist/aontu.js__71" class="hit">
+                          <td class="line" data-tooltip>71</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>11</td>
+                          <td class="source">        let node &#x3D; nodes[nI];</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__79">79</a></td>
+                        </tr>            <tr id="dist/aontu.js__72" class="hit">
+                          <td class="line" data-tooltip>72</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>11</td>
+                          <td class="source">        inject(out, node.path.parts, node.val);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__80">80</a></td>
+                        </tr>            <tr id="dist/aontu.js__73" class="hit">
+                          <td class="line" data-tooltip>73</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__81">81</a></td>
+                        </tr>            <tr id="dist/aontu.js__74" class="hit">
+                          <td class="line" data-tooltip>74</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>4</td>
+                          <td class="source">    return out;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__83">83</a></td>
+                        </tr>            <tr id="dist/aontu.js__75" class="hit">
+                          <td class="line" data-tooltip>75</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__84">84</a></td>
+                        </tr>            <tr id="dist/aontu.js__76" class="hit">
+                          <td class="line" data-tooltip>76</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.reify &#x3D; reify;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__310">310</a></td>
+                        </tr>            <tr id="dist/aontu.js__77" class="hit">
+                          <td class="line" data-tooltip>77</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function inject(obj, parts, val) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__86">86</a></td>
+                        </tr>            <tr id="dist/aontu.js__78" class="hit">
+                          <td class="line" data-tooltip>78</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>11</td>
+                          <td class="source">    let cur &#x3D; obj;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__87">87</a></td>
+                        </tr>            <tr id="dist/aontu.js__79" class="hit">
+                          <td class="line" data-tooltip>79</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>11</td>
+                          <td class="source">    for (let pI &#x3D; 0; pI &lt; parts.length; pI++) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__88">88</a></td>
+                        </tr>            <tr id="dist/aontu.js__80" class="hit">
+                          <td class="line" data-tooltip>80</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>30</td>
+                          <td class="source">        cur &#x3D; cur[parts[pI]] &#x3D;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__89">89</a></td>
+                        </tr>            <tr id="dist/aontu.js__81" class="hit">
+                          <td class="line" data-tooltip>81</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">            cur[parts[pI]] ||</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__90">90</a></td>
+                        </tr>            <tr id="dist/aontu.js__82" class="hit">
+                          <td class="line" data-tooltip>82</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                (pI &lt; parts.length - 1</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__91">91</a></td>
+                        </tr>            <tr id="dist/aontu.js__83" class="hit">
+                          <td class="line" data-tooltip>83</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    ? {}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__92">92</a></td>
+                        </tr>            <tr id="dist/aontu.js__84" class="hit">
+                          <td class="line" data-tooltip>84</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    : // TODO: should be Val.reify()</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__93">93</a></td>
+                        </tr>            <tr id="dist/aontu.js__85" class="hit">
+                          <td class="line" data-tooltip>85</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                        val.scalar);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__94">94</a></td>
+                        </tr>            <tr id="dist/aontu.js__86" class="hit">
+                          <td class="line" data-tooltip>86</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__95">95</a></td>
+                        </tr>            <tr id="dist/aontu.js__87" class="hit">
+                          <td class="line" data-tooltip>87</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__96">96</a></td>
+                        </tr>            <tr id="dist/aontu.js__88" class="hit">
+                          <td class="line" data-tooltip>88</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function resolve(path, nodes) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__98">98</a></td>
+                        </tr>            <tr id="dist/aontu.js__89" class="hit">
+                          <td class="line" data-tooltip>89</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">    let node &#x3D; nodes.find((n) &#x3D;&gt; path.equals(n.path));</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__99">99</a></td>
+                        </tr>            <tr id="dist/aontu.js__90" class="chunks">
+                          <td class="line" data-tooltip>90</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>    return </div><div class="miss true" data-tooltip>node</div><div> ? node.val : </div><div class="miss never" data-tooltip>undefined</div><div>;</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__100">100</a></td>
+                        </tr>            <tr id="dist/aontu.js__91" class="hit">
+                          <td class="line" data-tooltip>91</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__101">101</a></td>
+                        </tr>            <tr id="dist/aontu.js__92" class="hit">
+                          <td class="line" data-tooltip>92</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class Node {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__103">103</a></td>
+                        </tr>            <tr id="dist/aontu.js__93" class="hit">
+                          <td class="line" data-tooltip>93</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    constructor(path, vals) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__112">112</a></td>
+                        </tr>            <tr id="dist/aontu.js__94" class="hit">
+                          <td class="line" data-tooltip>94</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        this.path &#x3D; new Path(path);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__113">113</a></td>
+                        </tr>            <tr id="dist/aontu.js__95" class="hit">
+                          <td class="line" data-tooltip>95</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>18</td>
+                          <td class="source">        this.vals &#x3D;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__115">115</a></td>
+                        </tr>            <tr id="dist/aontu.js__96" class="hit">
+                          <td class="line" data-tooltip>96</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">            &#x27;string&#x27; &#x3D;&#x3D;&#x3D; typeof vals</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__116">116</a></td>
+                        </tr>            <tr id="dist/aontu.js__97" class="hit">
+                          <td class="line" data-tooltip>97</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                ? parseVals(vals)</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__117">117</a></td>
+                        </tr>            <tr id="dist/aontu.js__98" class="hit">
+                          <td class="line" data-tooltip>98</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                : vals.map((v) &#x3D;&gt; {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__118">118</a></td>
+                        </tr>            <tr id="dist/aontu.js__99" class="hit">
+                          <td class="line" data-tooltip>99</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    if (&#x27;string&#x27; &#x3D;&#x3D;&#x3D; typeof v) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__119">119</a></td>
+                        </tr>            <tr id="dist/aontu.js__100" class="hit">
+                          <td class="line" data-tooltip>100</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>2</td>
+                          <td class="source">                        return parseVal(v);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__120">120</a></td>
+                        </tr>            <tr id="dist/aontu.js__101" class="hit">
+                          <td class="line" data-tooltip>101</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__121">121</a></td>
+                        </tr>            <tr id="dist/aontu.js__102" class="hit">
+                          <td class="line" data-tooltip>102</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    else {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__121">121</a></td>
+                        </tr>            <tr id="dist/aontu.js__103" class="hit">
+                          <td class="line" data-tooltip>103</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>2</td>
+                          <td class="source">                        return v;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__122">122</a></td>
+                        </tr>            <tr id="dist/aontu.js__104" class="hit">
+                          <td class="line" data-tooltip>104</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__123">123</a></td>
+                        </tr>            <tr id="dist/aontu.js__105" class="hit">
+                          <td class="line" data-tooltip>105</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">                });</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__124">124</a></td>
+                        </tr>            <tr id="dist/aontu.js__106" class="hit">
+                          <td class="line" data-tooltip>106</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__125">125</a></td>
+                        </tr>            <tr id="dist/aontu.js__107" class="hit">
+                          <td class="line" data-tooltip>107</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    static clone(node) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__108">108</a></td>
+                        </tr>            <tr id="dist/aontu.js__108" class="chunks">
+                          <td class="line" data-tooltip>108</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        </div><div class="miss never" data-tooltip>return new Node(node.path, node.vals);</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__109">109</a></td>
+                        </tr>            <tr id="dist/aontu.js__109" class="hit">
+                          <td class="line" data-tooltip>109</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__110">110</a></td>
+                        </tr>            <tr id="dist/aontu.js__110" class="hit">
+                          <td class="line" data-tooltip>110</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    unify(root_ctx) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__127">127</a></td>
+                        </tr>            <tr id="dist/aontu.js__111" class="chunks">
+                          <td class="line" data-tooltip>111</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        if (</div><div class="miss false" data-tooltip>this.val</div><div>)</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__128">128</a></td>
+                        </tr>            <tr id="dist/aontu.js__112" class="miss">
+                          <td class="line" data-tooltip>112</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source" data-tooltip>            return this.val;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__128">128</a></td>
+                        </tr>            <tr id="dist/aontu.js__113" class="hit">
+                          <td class="line" data-tooltip>113</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>16</td>
+                          <td class="source">        let ctx &#x3D; Object.assign(Object.assign({}, root_ctx), { path: this.path });</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__133">133</a></td>
+                        </tr>            <tr id="dist/aontu.js__114" class="hit">
+                          <td class="line" data-tooltip>114</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>16</td>
+                          <td class="source">        let val &#x3D; top;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__135">135</a></td>
+                        </tr>            <tr id="dist/aontu.js__115" class="hit">
+                          <td class="line" data-tooltip>115</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>16</td>
+                          <td class="source">        for (let vI &#x3D; 0; vI &lt; this.vals.length; vI++) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__136">136</a></td>
+                        </tr>            <tr id="dist/aontu.js__116" class="hit">
+                          <td class="line" data-tooltip>116</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>26</td>
+                          <td class="source">            val &#x3D; val.unify(this.vals[vI], ctx);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__137">137</a></td>
+                        </tr>            <tr id="dist/aontu.js__117" class="hit">
+                          <td class="line" data-tooltip>117</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>26</td>
+                          <td class="source">            if (!val) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__139">139</a></td>
+                        </tr>            <tr id="dist/aontu.js__118" class="hit">
+                          <td class="line" data-tooltip>118</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">                break;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__140">140</a></td>
+                        </tr>            <tr id="dist/aontu.js__119" class="hit">
+                          <td class="line" data-tooltip>119</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">            }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__141">141</a></td>
+                        </tr>            <tr id="dist/aontu.js__120" class="hit">
+                          <td class="line" data-tooltip>120</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__142">142</a></td>
+                        </tr>            <tr id="dist/aontu.js__121" class="hit">
+                          <td class="line" data-tooltip>121</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>16</td>
+                          <td class="source">        if (val) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__144">144</a></td>
+                        </tr>            <tr id="dist/aontu.js__122" class="hit">
+                          <td class="line" data-tooltip>122</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>15</td>
+                          <td class="source">            this.val &#x3D; val;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__145">145</a></td>
+                        </tr>            <tr id="dist/aontu.js__123" class="hit">
+                          <td class="line" data-tooltip>123</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__146">146</a></td>
+                        </tr>            <tr id="dist/aontu.js__124" class="hit">
+                          <td class="line" data-tooltip>124</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>16</td>
+                          <td class="source">        return this.val;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__148">148</a></td>
+                        </tr>            <tr id="dist/aontu.js__125" class="hit">
+                          <td class="line" data-tooltip>125</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__149">149</a></td>
+                        </tr>            <tr id="dist/aontu.js__126" class="hit">
+                          <td class="line" data-tooltip>126</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    toString() {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__151">151</a></td>
+                        </tr>            <tr id="dist/aontu.js__127" class="hit">
+                          <td class="line" data-tooltip>127</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        return this.path.parts_str + &#x27;: &#x27; + this.val + &#x27; # &#x27; + this.vals;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__152">152</a></td>
+                        </tr>            <tr id="dist/aontu.js__128" class="hit">
+                          <td class="line" data-tooltip>128</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__153">153</a></td>
+                        </tr>            <tr id="dist/aontu.js__129" class="hit">
+                          <td class="line" data-tooltip>129</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__154">154</a></td>
+                        </tr>            <tr id="dist/aontu.js__130" class="hit">
+                          <td class="line" data-tooltip>130</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.Node &#x3D; Node;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__311">311</a></td>
+                        </tr>            <tr id="dist/aontu.js__131" class="hit">
+                          <td class="line" data-tooltip>131</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class Path {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__156">156</a></td>
+                        </tr>            <tr id="dist/aontu.js__132" class="hit">
+                          <td class="line" data-tooltip>132</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    constructor(parts) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__160">160</a></td>
+                        </tr>            <tr id="dist/aontu.js__133" class="hit">
+                          <td class="line" data-tooltip>133</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        this.parts &#x3D; [];</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__157">157</a></td>
+                        </tr>            <tr id="dist/aontu.js__134" class="hit">
+                          <td class="line" data-tooltip>134</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>31</td>
+                          <td class="source">        this.parts_str &#x3D; &#x27;&#x27;;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__158">158</a></td>
+                        </tr>            <tr id="dist/aontu.js__135" class="hit">
+                          <td class="line" data-tooltip>135</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>31</td>
+                          <td class="source">        parts &#x3D; parts instanceof Path ? parts.parts : parts;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__161">161</a></td>
+                        </tr>            <tr id="dist/aontu.js__136" class="hit">
+                          <td class="line" data-tooltip>136</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>31</td>
+                          <td class="source">        this.parts &#x3D; &#x27;string&#x27; &#x3D;&#x3D;&#x3D; typeof parts ? parts.split(/\./) : [...parts];</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__162">162</a></td>
+                        </tr>            <tr id="dist/aontu.js__137" class="hit">
+                          <td class="line" data-tooltip>137</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>31</td>
+                          <td class="source">        this.parts_str &#x3D; this.parts.join(&#x27;.&#x27;);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__163">163</a></td>
+                        </tr>            <tr id="dist/aontu.js__138" class="hit">
+                          <td class="line" data-tooltip>138</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__164">164</a></td>
+                        </tr>            <tr id="dist/aontu.js__139" class="hit">
+                          <td class="line" data-tooltip>139</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    equals(other) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__166">166</a></td>
+                        </tr>            <tr id="dist/aontu.js__140" class="hit">
+                          <td class="line" data-tooltip>140</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        return this.parts_str &#x3D;&#x3D;&#x3D; other.parts_str;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__167">167</a></td>
+                        </tr>            <tr id="dist/aontu.js__141" class="hit">
+                          <td class="line" data-tooltip>141</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__168">168</a></td>
+                        </tr>            <tr id="dist/aontu.js__142" class="hit">
+                          <td class="line" data-tooltip>142</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    deeper(other) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__170">170</a></td>
+                        </tr>            <tr id="dist/aontu.js__143" class="chunks">
+                          <td class="line" data-tooltip>143</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        </div><div class="miss never" data-tooltip>return this.parts.length &gt; other.parts.length;</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__171">171</a></td>
+                        </tr>            <tr id="dist/aontu.js__144" class="hit">
+                          <td class="line" data-tooltip>144</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__172">172</a></td>
+                        </tr>            <tr id="dist/aontu.js__145" class="hit">
+                          <td class="line" data-tooltip>145</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__173">173</a></td>
+                        </tr>            <tr id="dist/aontu.js__146" class="hit">
+                          <td class="line" data-tooltip>146</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.Path &#x3D; Path;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__312">312</a></td>
+                        </tr>            <tr id="dist/aontu.js__147" class="hit">
+                          <td class="line" data-tooltip>147</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function parseNode(s) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__175">175</a></td>
+                        </tr>            <tr id="dist/aontu.js__148" class="hit">
+                          <td class="line" data-tooltip>148</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>15</td>
+                          <td class="source">    let [pathstr, valstr] &#x3D; s.split(&#x27;:&#x27;);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__176">176</a></td>
+                        </tr>            <tr id="dist/aontu.js__149" class="hit">
+                          <td class="line" data-tooltip>149</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>15</td>
+                          <td class="source">    return new Node(pathstr, valstr);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__177">177</a></td>
+                        </tr>            <tr id="dist/aontu.js__150" class="hit">
+                          <td class="line" data-tooltip>150</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__178">178</a></td>
+                        </tr>            <tr id="dist/aontu.js__151" class="hit">
+                          <td class="line" data-tooltip>151</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function parseVal(s) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__180">180</a></td>
+                        </tr>            <tr id="dist/aontu.js__152" class="hit">
+                          <td class="line" data-tooltip>152</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>24</td>
+                          <td class="source">    let val &#x3D; bottom;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__181">181</a></td>
+                        </tr>            <tr id="dist/aontu.js__153" class="hit">
+                          <td class="line" data-tooltip>153</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>24</td>
+                          <td class="source">    s &#x3D; s.trim();</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__183">183</a></td>
+                        </tr>            <tr id="dist/aontu.js__154" class="hit">
+                          <td class="line" data-tooltip>154</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>24</td>
+                          <td class="source">    let n &#x3D; parseInt(s);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__185">185</a></td>
+                        </tr>            <tr id="dist/aontu.js__155" class="hit">
+                          <td class="line" data-tooltip>155</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>24</td>
+                          <td class="source">    if (!isNaN(n)) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__186">186</a></td>
+                        </tr>            <tr id="dist/aontu.js__156" class="hit">
+                          <td class="line" data-tooltip>156</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>12</td>
+                          <td class="source">        return new IntScalarVal(n);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__187">187</a></td>
+                        </tr>            <tr id="dist/aontu.js__157" class="hit">
+                          <td class="line" data-tooltip>157</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__188">188</a></td>
+                        </tr>            <tr id="dist/aontu.js__158" class="hit">
+                          <td class="line" data-tooltip>158</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>12</td>
+                          <td class="source">    if (&#x27;int&#x27; &#x3D;&#x3D;&#x3D; s) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__190">190</a></td>
+                        </tr>            <tr id="dist/aontu.js__159" class="hit">
+                          <td class="line" data-tooltip>159</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        return new IntTypeVal();</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__191">191</a></td>
+                        </tr>            <tr id="dist/aontu.js__160" class="hit">
+                          <td class="line" data-tooltip>160</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__192">192</a></td>
+                        </tr>            <tr id="dist/aontu.js__161" class="chunks">
+                          <td class="line" data-tooltip>161</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>    if (</div><div class="miss true" data-tooltip>s.startsWith(&#x27;$&#x27;)</div><div>) {</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__194">194</a></td>
+                        </tr>            <tr id="dist/aontu.js__162" class="hit">
+                          <td class="line" data-tooltip>162</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        return new RefVal(new Path(s));</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__195">195</a></td>
+                        </tr>            <tr id="dist/aontu.js__163" class="hit">
+                          <td class="line" data-tooltip>163</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__196">196</a></td>
+                        </tr>            <tr id="dist/aontu.js__164" class="miss">
+                          <td class="line" data-tooltip>164</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source" data-tooltip>    return val;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__198">198</a></td>
+                        </tr>            <tr id="dist/aontu.js__165" class="hit">
+                          <td class="line" data-tooltip>165</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__199">199</a></td>
+                        </tr>            <tr id="dist/aontu.js__166" class="hit">
+                          <td class="line" data-tooltip>166</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.parseVal &#x3D; parseVal;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__319">319</a></td>
+                        </tr>            <tr id="dist/aontu.js__167" class="hit">
+                          <td class="line" data-tooltip>167</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function parseVals(s) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__201">201</a></td>
+                        </tr>            <tr id="dist/aontu.js__168" class="hit">
+                          <td class="line" data-tooltip>168</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>16</td>
+                          <td class="source">    return s</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__202">202</a></td>
+                        </tr>            <tr id="dist/aontu.js__169" class="hit">
+                          <td class="line" data-tooltip>169</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        .split(/\s*,\s*/)</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__203">203</a></td>
+                        </tr>            <tr id="dist/aontu.js__170" class="hit">
+                          <td class="line" data-tooltip>170</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        .filter((vs) &#x3D;&gt; &#x27;&#x27; !&#x3D;&#x3D; vs)</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__204">204</a></td>
+                        </tr>            <tr id="dist/aontu.js__171" class="hit">
+                          <td class="line" data-tooltip>171</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        .map((vs) &#x3D;&gt; parseVal(vs));</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__205">205</a></td>
+                        </tr>            <tr id="dist/aontu.js__172" class="hit">
+                          <td class="line" data-tooltip>172</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__206">206</a></td>
+                        </tr>            <tr id="dist/aontu.js__173" class="hit">
+                          <td class="line" data-tooltip>173</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class TopVal {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__218">218</a></td>
+                        </tr>            <tr id="dist/aontu.js__174" class="hit">
+                          <td class="line" data-tooltip>174</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    unify(other, ctx) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__219">219</a></td>
+                        </tr>            <tr id="dist/aontu.js__175" class="hit">
+                          <td class="line" data-tooltip>175</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        return other.unify(this, ctx);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__220">220</a></td>
+                        </tr>            <tr id="dist/aontu.js__176" class="hit">
+                          <td class="line" data-tooltip>176</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__221">221</a></td>
+                        </tr>            <tr id="dist/aontu.js__177" class="hit">
+                          <td class="line" data-tooltip>177</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    toString() {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__222">222</a></td>
+                        </tr>            <tr id="dist/aontu.js__178" class="chunks">
+                          <td class="line" data-tooltip>178</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        </div><div class="miss never" data-tooltip>return &#x27;top&#x27;;</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__223">223</a></td>
+                        </tr>            <tr id="dist/aontu.js__179" class="hit">
+                          <td class="line" data-tooltip>179</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__224">224</a></td>
+                        </tr>            <tr id="dist/aontu.js__180" class="hit">
+                          <td class="line" data-tooltip>180</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__225">225</a></td>
+                        </tr>            <tr id="dist/aontu.js__181" class="hit">
+                          <td class="line" data-tooltip>181</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">const top &#x3D; new TopVal();</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__226">226</a></td>
+                        </tr>            <tr id="dist/aontu.js__182" class="hit">
+                          <td class="line" data-tooltip>182</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class BottomVal {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__228">228</a></td>
+                        </tr>            <tr id="dist/aontu.js__183" class="hit">
+                          <td class="line" data-tooltip>183</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    unify() {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__229">229</a></td>
+                        </tr>            <tr id="dist/aontu.js__184" class="chunks">
+                          <td class="line" data-tooltip>184</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        </div><div class="miss never" data-tooltip>return this;</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__230">230</a></td>
+                        </tr>            <tr id="dist/aontu.js__185" class="hit">
+                          <td class="line" data-tooltip>185</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__231">231</a></td>
+                        </tr>            <tr id="dist/aontu.js__186" class="hit">
+                          <td class="line" data-tooltip>186</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    toString() {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__232">232</a></td>
+                        </tr>            <tr id="dist/aontu.js__187" class="chunks">
+                          <td class="line" data-tooltip>187</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        </div><div class="miss never" data-tooltip>return &#x27;bottom&#x27;;</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__233">233</a></td>
+                        </tr>            <tr id="dist/aontu.js__188" class="hit">
+                          <td class="line" data-tooltip>188</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__234">234</a></td>
+                        </tr>            <tr id="dist/aontu.js__189" class="hit">
+                          <td class="line" data-tooltip>189</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__235">235</a></td>
+                        </tr>            <tr id="dist/aontu.js__190" class="hit">
+                          <td class="line" data-tooltip>190</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.BottomVal &#x3D; BottomVal;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__314">314</a></td>
+                        </tr>            <tr id="dist/aontu.js__191" class="hit">
+                          <td class="line" data-tooltip>191</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">const bottom &#x3D; new BottomVal();</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__236">236</a></td>
+                        </tr>            <tr id="dist/aontu.js__192" class="hit">
+                          <td class="line" data-tooltip>192</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.bottom &#x3D; bottom;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__318">318</a></td>
+                        </tr>            <tr id="dist/aontu.js__193" class="hit">
+                          <td class="line" data-tooltip>193</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class IntTypeVal {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__238">238</a></td>
+                        </tr>            <tr id="dist/aontu.js__194" class="hit">
+                          <td class="line" data-tooltip>194</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    unify(other) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__239">239</a></td>
+                        </tr>            <tr id="dist/aontu.js__195" class="hit">
+                          <td class="line" data-tooltip>195</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        let out &#x3D; bottom;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__240">240</a></td>
+                        </tr>            <tr id="dist/aontu.js__196" class="hit">
+                          <td class="line" data-tooltip>196</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>11</td>
+                          <td class="source">        if (other instanceof TopVal) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__242">242</a></td>
+                        </tr>            <tr id="dist/aontu.js__197" class="hit">
+                          <td class="line" data-tooltip>197</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">            return this;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__243">243</a></td>
+                        </tr>            <tr id="dist/aontu.js__198" class="hit">
+                          <td class="line" data-tooltip>198</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__244">244</a></td>
+                        </tr>            <tr id="dist/aontu.js__199" class="chunks">
+                          <td class="line" data-tooltip>199</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        else if (</div><div class="miss true" data-tooltip>other instanceof IntScalarVal</div><div>) {</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__244">244</a></td>
+                        </tr>            <tr id="dist/aontu.js__200" class="hit">
+                          <td class="line" data-tooltip>200</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">            out &#x3D; other;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__245">245</a></td>
+                        </tr>            <tr id="dist/aontu.js__201" class="hit">
+                          <td class="line" data-tooltip>201</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__246">246</a></td>
+                        </tr>            <tr id="dist/aontu.js__202" class="miss">
+                          <td class="line" data-tooltip>202</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source" data-tooltip>        else if (other instanceof IntTypeVal) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__246">246</a></td>
+                        </tr>            <tr id="dist/aontu.js__203" class="miss">
+                          <td class="line" data-tooltip>203</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source" data-tooltip>            out &#x3D; other;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__247">247</a></td>
+                        </tr>            <tr id="dist/aontu.js__204" class="hit">
+                          <td class="line" data-tooltip>204</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__248">248</a></td>
+                        </tr>            <tr id="dist/aontu.js__205" class="hit">
+                          <td class="line" data-tooltip>205</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        return out;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__250">250</a></td>
+                        </tr>            <tr id="dist/aontu.js__206" class="hit">
+                          <td class="line" data-tooltip>206</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__251">251</a></td>
+                        </tr>            <tr id="dist/aontu.js__207" class="hit">
+                          <td class="line" data-tooltip>207</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    toString() {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__252">252</a></td>
+                        </tr>            <tr id="dist/aontu.js__208" class="hit">
+                          <td class="line" data-tooltip>208</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        return &#x27;int&#x27;;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__253">253</a></td>
+                        </tr>            <tr id="dist/aontu.js__209" class="hit">
+                          <td class="line" data-tooltip>209</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__254">254</a></td>
+                        </tr>            <tr id="dist/aontu.js__210" class="hit">
+                          <td class="line" data-tooltip>210</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__255">255</a></td>
+                        </tr>            <tr id="dist/aontu.js__211" class="hit">
+                          <td class="line" data-tooltip>211</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.IntTypeVal &#x3D; IntTypeVal;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__315">315</a></td>
+                        </tr>            <tr id="dist/aontu.js__212" class="hit">
+                          <td class="line" data-tooltip>212</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class IntScalarVal {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__257">257</a></td>
+                        </tr>            <tr id="dist/aontu.js__213" class="hit">
+                          <td class="line" data-tooltip>213</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    constructor(val) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__260">260</a></td>
+                        </tr>            <tr id="dist/aontu.js__214" class="hit">
+                          <td class="line" data-tooltip>214</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        this.scalar &#x3D; val;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__261">261</a></td>
+                        </tr>            <tr id="dist/aontu.js__215" class="hit">
+                          <td class="line" data-tooltip>215</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__262">262</a></td>
+                        </tr>            <tr id="dist/aontu.js__216" class="hit">
+                          <td class="line" data-tooltip>216</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    unify(other, ctx) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__264">264</a></td>
+                        </tr>            <tr id="dist/aontu.js__217" class="hit">
+                          <td class="line" data-tooltip>217</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        let out &#x3D; bottom;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__265">265</a></td>
+                        </tr>            <tr id="dist/aontu.js__218" class="hit">
+                          <td class="line" data-tooltip>218</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>16</td>
+                          <td class="source">        if (other instanceof TopVal) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__267">267</a></td>
+                        </tr>            <tr id="dist/aontu.js__219" class="hit">
+                          <td class="line" data-tooltip>219</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>10</td>
+                          <td class="source">            return this;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__268">268</a></td>
+                        </tr>            <tr id="dist/aontu.js__220" class="hit">
+                          <td class="line" data-tooltip>220</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__269">269</a></td>
+                        </tr>            <tr id="dist/aontu.js__221" class="hit">
+                          <td class="line" data-tooltip>221</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        else if (other instanceof IntScalarVal) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__269">269</a></td>
+                        </tr>            <tr id="dist/aontu.js__222" class="chunks">
+                          <td class="line" data-tooltip>222</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>            return </div><div class="miss true" data-tooltip>other.scalar &#x3D;&#x3D;&#x3D; this.scalar</div><div> ? other : </div><div class="miss never" data-tooltip>bottom</div><div>;</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__270">270</a></td>
+                        </tr>            <tr id="dist/aontu.js__223" class="hit">
+                          <td class="line" data-tooltip>223</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__271">271</a></td>
+                        </tr>            <tr id="dist/aontu.js__224" class="chunks">
+                          <td class="line" data-tooltip>224</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source"><div>        else if (</div><div class="miss true" data-tooltip>other instanceof IntTypeVal</div><div>) {</div></td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__271">271</a></td>
+                        </tr>            <tr id="dist/aontu.js__225" class="hit">
+                          <td class="line" data-tooltip>225</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>3</td>
+                          <td class="source">            return this;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__272">272</a></td>
+                        </tr>            <tr id="dist/aontu.js__226" class="hit">
+                          <td class="line" data-tooltip>226</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__273">273</a></td>
+                        </tr>            <tr id="dist/aontu.js__227" class="miss">
+                          <td class="line" data-tooltip>227</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source" data-tooltip>        return out;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__275">275</a></td>
+                        </tr>            <tr id="dist/aontu.js__228" class="hit">
+                          <td class="line" data-tooltip>228</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__276">276</a></td>
+                        </tr>            <tr id="dist/aontu.js__229" class="hit">
+                          <td class="line" data-tooltip>229</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    toString() {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__278">278</a></td>
+                        </tr>            <tr id="dist/aontu.js__230" class="hit">
+                          <td class="line" data-tooltip>230</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        return &#x27;int&#x3D;&#x27; + this.scalar;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__279">279</a></td>
+                        </tr>            <tr id="dist/aontu.js__231" class="hit">
+                          <td class="line" data-tooltip>231</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__280">280</a></td>
+                        </tr>            <tr id="dist/aontu.js__232" class="hit">
+                          <td class="line" data-tooltip>232</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__281">281</a></td>
+                        </tr>            <tr id="dist/aontu.js__233" class="hit">
+                          <td class="line" data-tooltip>233</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.IntScalarVal &#x3D; IntScalarVal;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__316">316</a></td>
+                        </tr>            <tr id="dist/aontu.js__234" class="hit">
+                          <td class="line" data-tooltip>234</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class RefVal {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__283">283</a></td>
+                        </tr>            <tr id="dist/aontu.js__235" class="hit">
+                          <td class="line" data-tooltip>235</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    constructor(path) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__287">287</a></td>
+                        </tr>            <tr id="dist/aontu.js__236" class="hit">
+                          <td class="line" data-tooltip>236</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        this.val &#x3D; undefined;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__284">284</a></td>
+                        </tr>            <tr id="dist/aontu.js__237" class="hit">
+                          <td class="line" data-tooltip>237</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        this.path &#x3D; path;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__288">288</a></td>
+                        </tr>            <tr id="dist/aontu.js__238" class="hit">
+                          <td class="line" data-tooltip>238</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__289">289</a></td>
+                        </tr>            <tr id="dist/aontu.js__239" class="hit">
+                          <td class="line" data-tooltip>239</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    unify(other, ctx) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__291">291</a></td>
+                        </tr>            <tr id="dist/aontu.js__240" class="hit">
+                          <td class="line" data-tooltip>240</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        let out &#x3D; undefined;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__292">292</a></td>
+                        </tr>            <tr id="dist/aontu.js__241" class="hit">
+                          <td class="line" data-tooltip>241</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        this.val &#x3D; resolve(this.path, ctx.nodes);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__294">294</a></td>
+                        </tr>            <tr id="dist/aontu.js__242" class="hit">
+                          <td class="line" data-tooltip>242</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        if (this.val) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__296">296</a></td>
+                        </tr>            <tr id="dist/aontu.js__243" class="hit">
+                          <td class="line" data-tooltip>243</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>5</td>
+                          <td class="source">            out &#x3D; this.val &#x3D; this.val.unify(other, ctx);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__297">297</a></td>
+                        </tr>            <tr id="dist/aontu.js__244" class="hit">
+                          <td class="line" data-tooltip>244</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__298">298</a></td>
+                        </tr>            <tr id="dist/aontu.js__245" class="hit">
+                          <td class="line" data-tooltip>245</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>6</td>
+                          <td class="source">        return out;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__300">300</a></td>
+                        </tr>            <tr id="dist/aontu.js__246" class="hit">
+                          <td class="line" data-tooltip>246</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__301">301</a></td>
+                        </tr>            <tr id="dist/aontu.js__247" class="hit">
+                          <td class="line" data-tooltip>247</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    toString() {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__303">303</a></td>
+                        </tr>            <tr id="dist/aontu.js__248" class="hit">
+                          <td class="line" data-tooltip>248</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">        return this.path.parts_str;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__304">304</a></td>
+                        </tr>            <tr id="dist/aontu.js__249" class="hit">
+                          <td class="line" data-tooltip>249</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__305">305</a></td>
+                        </tr>            <tr id="dist/aontu.js__250" class="hit">
+                          <td class="line" data-tooltip>250</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__306">306</a></td>
+                        </tr>            <tr id="dist/aontu.js__251" class="hit">
+                          <td class="line" data-tooltip>251</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.RefVal &#x3D; RefVal;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__317">317</a></td>
+                        </tr>            <tr id="dist/aontu.js__252" class="hit">
+                          <td class="line" data-tooltip>252</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">//# sourceMappingURL&#x3D;aontu.js.map</td>
+                          
+                        </tr>        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>    <div id="linting">
+        <h1>Linting Report</h1>
+            <div class="lint-stats">
+                <span class="lint-errors high">0</span>
+                <span class="lint-warnings high">0</span>
+            </div>
+            <div class="lint-files">
+            </div>
+    </div>  </body>
+</html>
