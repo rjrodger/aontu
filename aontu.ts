@@ -23,26 +23,36 @@ function unify(orignodes: (Node | string)[]): Node[] {
       if ('string' === typeof n) {
         return parseNode(n)
       } else {
-        return Node.clone(n)
+        return n.clone()
       }
     })
+
+  /*
+    // sort so that same paths end up contiguous
     .sort((a: Node, b: Node) => {
       let plen = a.path.parts.length - b.path.parts.length
       return 0 === plen
         ? a.path.parts_str < b.path.parts_str
           ? -1
           : a.path.parts_str > b.path.parts_str
-          ? 1
-          : 0
+            ? 1
+            : 0
         : plen
     })
+  */
 
+  let pathmap: any = {}
+
+  // merge same path values
   nodes = nodes.reduce((out: Node[], n, i, nodes) => {
-    let prev = nodes[i - 1]
-    if (prev && n.path.equals(prev.path)) {
+    //let prev = nodes[i - 1]
+    //if (prev && n.path.equals(prev.path)) {
+    let prev = pathmap[n.path.parts_str]
+    if (prev) {
       prev.vals.splice(prev.vals.length, 0, ...n.vals)
     } else {
       out.push(n)
+      pathmap[n.path.parts_str] = n
     }
     return out
   }, [])
@@ -50,26 +60,30 @@ function unify(orignodes: (Node | string)[]): Node[] {
   let root_ctx = {
     path: new Path([]),
     nodes: nodes,
+    index: 0
   }
 
   let origlen = nodes.length
+
+  // FIX: max val is just a hack to stop infinit loops
   for (let nI = 0; nI < nodes.length && nI < 11 * origlen; nI++) {
     let node = nodes[nI]
     if (!node) {
       break
     }
 
-    let val = node.unify(root_ctx)
+    root_ctx.index = nI
+    let resnodes = node.unify(root_ctx)
 
-    if (undefined === val) {
-      nodes.push(node)
-    }
+    // TODO: search pathmap, and append vals if path matches
+
+    nodes.push(...resnodes)
   }
 
   meta.d = Date.now() - meta.s
-  ;(nodes as any).$meta = meta
+    ; (nodes as any).$meta = meta
 
-  return nodes.slice(0, origlen)
+  return nodes
 }
 
 function reify(nodes: Node[]): any {
@@ -84,6 +98,8 @@ function reify(nodes: Node[]): any {
 }
 
 function inject(obj: any, parts: string[], val: any) {
+  if (null == val) return
+
   let cur = obj
   for (let pI = 0; pI < parts.length; pI++) {
     cur = cur[parts[pI]] =
@@ -91,23 +107,30 @@ function inject(obj: any, parts: string[], val: any) {
       (pI < parts.length - 1
         ? {}
         : // TODO: should be Val.reify()
-          (val as any).scalar)
+        (val as any).scalar)
   }
 }
 
-function resolve(path: Path, nodes: Node[]) {
-  let node = nodes.find((n) => path.equals(n.path))
-  return node ? node.val : undefined
+function resolve(path: Path, ctx: UnifyContext) {
+  // TODO: use pathmap (overwrite refvals!)
+  let index = ctx.nodes.findIndex((n) => {
+    return path.equals(n.path) && null != n.val
+  })
+
+  let node = ctx.nodes[index]
+  let val = node ? node.val : undefined
+
+  if (val instanceof MapVal) {
+    val = new NodesVal(index, path, ctx.nodes[ctx.index].path)
+  }
+
+  return val
 }
 
 class Node {
   path: Path
   val?: Val
   vals: Val[]
-
-  static clone(node: Node): Node {
-    return new Node(node.path, node.vals)
-  }
 
   constructor(path: Path | string | string[], vals: string | (Val | string)[]) {
     this.path = new Path(path)
@@ -116,16 +139,22 @@ class Node {
       'string' === typeof vals
         ? parseVals(vals)
         : vals.map((v) => {
-            if ('string' === typeof v) {
-              return parseVal(v)
-            } else {
-              return v
-            }
-          })
+          if ('string' === typeof v) {
+            return parseVal(v)
+          } else {
+            return v
+          }
+        })
   }
 
-  unify(root_ctx: UnifyContext): Val | undefined {
-    if (this.val) return this.val
+  clone(to?: Path): Node {
+    let cn = new Node(to || this.path, this.vals)
+    cn.val = this.val
+    return cn
+  }
+
+  unify(root_ctx: UnifyContext): Node[] {
+    if (this.val) return []
 
     let ctx = {
       ...root_ctx,
@@ -141,11 +170,16 @@ class Node {
       }
     }
 
-    if (val) {
-      this.val = val
+    if (val instanceof DeferVal) {
+      return [this]
     }
-
-    return this.val
+    else if (val instanceof NodesVal) {
+      return val.nodes
+    }
+    else {
+      this.val = val
+      return []
+    }
   }
 
   toString() {
@@ -156,11 +190,21 @@ class Node {
 class Path {
   parts: string[] = []
   parts_str: string = ''
+  length: number = 0
 
   constructor(parts: Path | string | string[]) {
     parts = parts instanceof Path ? parts.parts : parts
     this.parts = 'string' === typeof parts ? parts.split(/\./) : [...parts]
+    this.length = this.parts.length
     this.parts_str = this.parts.join('.')
+  }
+
+  append(other: Path) {
+    return new Path([...this.parts, ...other.parts])
+  }
+
+  slice(n: number) {
+    return new Path(this.parts.slice(n))
   }
 
   equals(other: Path) {
@@ -168,7 +212,12 @@ class Path {
   }
 
   deeper(other: Path) {
-    return this.parts.length > other.parts.length
+    //return this.parts_str != other.parts_str &&
+    return this.parts_str.startsWith(other.parts_str)
+  }
+
+  toString() {
+    return this.parts_str
   }
 }
 
@@ -191,6 +240,14 @@ function parseVal(s: string): Val {
     return new IntTypeVal()
   }
 
+  if (s.startsWith('{}')) {
+    return new MapVal()
+  }
+
+  if (s.startsWith('[]')) {
+    return new ListVal()
+  }
+
   if (s.startsWith('$')) {
     return new RefVal(new Path(s))
   }
@@ -208,10 +265,11 @@ function parseVals(s: string): Val[] {
 interface UnifyContext {
   path: Path
   nodes: Node[]
+  index: number
 }
 
 interface Val {
-  unify(other: Val, ctx: UnifyContext): Val | undefined
+  unify(other: Val, ctx: UnifyContext): Val
   toString(): string
 }
 
@@ -234,6 +292,18 @@ class BottomVal implements Val {
   }
 }
 const bottom = new BottomVal()
+
+class DeferVal implements Val {
+  unify(other: Val) {
+    return other instanceof BottomVal ? other : this
+  }
+  toString() {
+    return 'defer'
+  }
+}
+const defer = new DeferVal()
+
+
 
 class IntTypeVal implements Val {
   unify(other: Val) {
@@ -261,7 +331,7 @@ class IntScalarVal implements Val {
     this.scalar = val
   }
 
-  unify(other: Val, ctx: UnifyContext) {
+  unify(other: Val) {
     let out: Val = bottom
 
     if (other instanceof TopVal) {
@@ -289,9 +359,11 @@ class RefVal implements Val {
   }
 
   unify(other: Val, ctx: UnifyContext) {
-    let out: Val | undefined = undefined
+    let out: Val = defer
 
-    this.val = resolve(this.path, ctx.nodes)
+    // TODO: unify with same
+
+    this.val = resolve(this.path, ctx)
 
     if (this.val) {
       out = this.val = this.val.unify(other, ctx)
@@ -305,6 +377,86 @@ class RefVal implements Val {
   }
 }
 
+
+class NodesVal implements Val {
+  from_index: number
+  from: Path
+  to: Path
+  nodes: Node[]
+
+  constructor(from_index: number, from: Path, to: Path) {
+    this.from_index = from_index
+    this.from = from
+    this.to = to
+    this.nodes = []
+  }
+
+  unify(other: Val, ctx: UnifyContext) {
+    let out: Val = bottom
+
+    if (other instanceof TopVal) {
+      let index = this.from_index
+
+
+      // FIX: doesn't really work as misses earlier values
+      while (ctx.nodes[index].path.deeper(this.from)) {
+        let suffix = ctx.nodes[index].path.slice(this.from.length)
+        // console.log('sx', this.from, this.from.length, '' + suffix)
+        let to = this.to.append(suffix)
+        this.nodes.push(ctx.nodes[index].clone(to))
+        index++
+      }
+
+      return this
+    }
+
+    return out
+  }
+
+  toString() {
+    return 'N=' + this.from_index + '~' + this.to.parts_str + ':' + this.from.parts_str
+  }
+}
+
+
+class MapVal implements Val {
+  unify(other: Val) {
+    let out: Val = bottom
+
+    if (other instanceof TopVal) {
+      return this
+    } else if (other instanceof MapVal) {
+      return other
+    }
+
+    return out
+  }
+
+  toString() {
+    return '{}'
+  }
+}
+
+
+class ListVal implements Val {
+  unify(other: Val) {
+    let out: Val = bottom
+
+    if (other instanceof TopVal) {
+      return this
+    } else if (other instanceof ListVal) {
+      return other
+    }
+
+    return out
+  }
+
+  toString() {
+    return '{}'
+  }
+}
+
+
 export {
   unify,
   reify,
@@ -315,6 +467,12 @@ export {
   IntTypeVal,
   IntScalarVal,
   RefVal,
+  NodesVal,
+  MapVal,
+  ListVal,
+  top,
+  defer,
   bottom,
   parseVal,
+  parseNode,
 }
