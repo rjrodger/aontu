@@ -1,18 +1,18 @@
 {
   "compilerOptions": {
-    "outDir": "dist",
-    "target": "ES6",
+    "esModuleInterop": true,
     "module": "commonjs",
-    "sourceMap": true,
     "noEmitOnError": true,
     "noImplicitAny": true,
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "sourceMap": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
+    "target": "ES2019",
   },
   "exclude": [
-    "dist",
-    "node_modules"
+    "node_modules",
+    "dist"
   ]
 }

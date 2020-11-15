@@ -1,0 +1,53 @@
+/* Copyright (c) 2020 Richard Rodger and other contributors, MIT License */
+'use strict'
+
+var Lab = require('@hapi/lab')
+Lab = null != Lab.script ? Lab : require('hapi-lab-shim')
+
+var Code = require('@hapi/code')
+
+var lab = (exports.lab = Lab.script())
+var describe = lab.describe
+var it = lab.it
+var expect = Code.expect
+
+
+
+let {
+  parseVal,
+  parseTokens,
+} = require('../lib/parse')
+
+
+let {
+  TopVal,
+  BottomVal,
+  IntTypeVal,
+  IntScalarVal,
+} = require('../lib/val')
+
+
+//const pv = parseVal
+//const pt = parseVal
+
+describe('parse', function () {
+  it('val', () => {
+
+    let vs = [
+      ['$T',TopVal],
+      ['$B',BottomVal],
+
+      ['$int',IntTypeVal],
+
+      ['1',IntScalarVal],
+    ]
+    
+    vs.forEach(tc=>{
+      let str = tc[0]
+      let val = tc[1]
+      let v = parseVal(str)
+      expect(v).instanceof(val)
+      expect(v.toString()).equal(str)
+    })
+  })
+})

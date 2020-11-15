@@ -30,6 +30,7 @@
   "license": "MIT",
   "files": [
     "aontu.ts",
+    "lib",
     "dist",
     "LICENSE"
   ],
