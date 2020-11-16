@@ -26,60 +26,109 @@ let {
   IntScalarVal,
   MapVal,
   MeetVal,
+  RefVal,
 } = require('../lib/val')
 
 
-const pv = (vstr)=>parseVal('$',vstr)
+const pv = (vstr,path)=>parseVal(path||'$',vstr)
+const us = (vs0,vs1,ctx)=>pv(vs0).unify(pv(vs1),ctx||new Context())+''
 
 
 describe('val', function () {
   it('boundary', () => {
-    expect(''+pv('$T')).equal('$T')
-    expect(''+pv('$B')).equal('$B')
-    expect(''+pv('$T').unify(pv('$T'))).equal('$T')
-    expect(''+pv('$T').unify(pv('$B'))).equal('$B')
-    expect(''+pv('$B').unify(pv('$T'))).equal('$B')
-    expect(''+pv('$B').unify(pv('$B'))).equal('$B')
+    expect(pv('$T')+'').equal('$T')
+    expect(pv('$B')+'').equal('$B')
+    expect(us('$T','$T')).equal('$T')
+    expect(us('$T','$B')).equal('$B')
+    expect(us('$B','$T')).equal('$B')
+    expect(us('$B','$B')).equal('$B')
   })
 
-  
+
   it('int', () => {
-    let it0 = pv('$int')
-    let iv0 = pv('1')
-    let v0 = it0.unify(iv0)
+    expect(pv('$int')+'').equal('$int')
+    expect(us('$int','$int')).equal('$int')
+    expect(us('$T','$int')).equal('$int')
+    expect(us('$int','$T')).equal('$int')
 
-    expect(''+v0).equal('1')
-    expect(v0.val.scalar).equal(1)
-    expect(v0 === iv0).true()
-    expect(v0 === it0.val).true()
-
-    expect(''+(pv('2').unify(pv('2')))).equal('2')
+    expect(pv('1')+'').equal('1')
+    expect(us('$int','1')).equal('1')
+    expect(us('1','$int')).equal('1')
+    expect(us('1','1')).equal('1')
   })
 
-  
+
+  it('context', () => {
+    let c0 = new Context()
+
+    c0.add(pv('1','$.a'))
+    console.log(c0.describe())
+
+    c0.add(pv('2','$.b'))
+    console.log(c0.describe())
+
+  })
+
   it('meet', () => {
+    expect(pv('$int & 1')+'').equal('$int & 1')
+    expect(pv('1 & $int')+'').equal('1 & $int')
+
+    expect(us('1 & $int','$T')).equal('1')
+    expect(us('$T','1 & $int')).equal('1')
+
+    expect(us('1 & $int & 1','$T')).equal('1')
+    expect(us('$T','$int & 1 & $int')).equal('1')
+
+    expect(us('1 & $int','1 & $int')).equal('1')
+    
     let p = new Path('$')
-    
-    let mt0 = new MeetVal(p,[pv('1'),pv('$int')])
-    console.log('mt0:'+mt0)
-    
-    let mt1 = mt0.unify(new TopVal(p))
-    console.log('mt1:'+mt1)
+    let c = new Context()
 
-    let mt2 = new MeetVal(p,[pv('$int'),pv('1')])
-    console.log('mt2:'+mt2)
-    
-    let mt3 = new TopVal(p).unify(mt2)
-    console.log('mt3:'+mt3)
-
-    console.log('mt4:'+(new TopVal(p).unify(new MeetVal(p,[
+    let m0 = new MeetVal([
       pv('$int'),
-      new MeetVal(p,[pv('2'),pv('2')])
-    ]))))
+      pv('1'),
+    ],p)
+
+    let u0 = m0.unify(pv('$T'),c)
+    //console.log(u0)
+    //console.log(m0)
+    expect(u0+'').equals('1')
+    
+    let m1 = new MeetVal([
+      pv('$int'),
+      pv('1'),
+      new MeetVal([
+        pv('1')
+      ])
+    ],p)
+
+    let u1 = m1.unify(pv('$T'),c)
+    //console.log(u1)
+    //console.log(m1)
+    expect(u1+'').equals('1')
+
+    
+    let m2 = new MeetVal([
+      new MeetVal([
+        pv('1'),
+        new MeetVal([
+          pv('1')
+        ]),
+        pv('$int'),
+      ]),
+      pv('$int'),
+      pv('1'),
+    ],p)
+
+    let u2 = m2.unify(pv('$T'),c)
+    //console.log(u1)
+    //console.log(m1)
+    expect(u2+'').equals('1')
+
   })
 
   
-
+/*    
   it('map', () => {
     let p = new Path('$')
     
@@ -105,12 +154,96 @@ describe('val', function () {
     console.log('m4'+m4)
 
   })
-  
+*/  
 
 
 
   it('ref', () => {
+    console.log('REF')
     let c0 = new Context()
+
+    c0.add(pv('1','$.a'))
+    c0.add(pv('$.a','$.b'))
+
+    let $_b = c0.get('$.b')
+    console.log($_b)
+
+    let u0 = $_b.unify(pv('$T'),c0)
+    console.log('u0:'+u0)
+
+    let u1 = pv('$.d','$.c').unify(pv('1'),c0)
+    console.log('u1:'+u1)
+
+    let u2 = pv('$.a','$.e').unify(pv('$.g','$.f'),c0)
+    console.log('u2:'+u2)
+
+    let rv0 = pv('$.a','$.b')
+    let rv1 = pv('$.a','$.b')
+    let u_same = rv1.unify(rv0,c0)
+    console.log('u_same:'+u_same)
+
+
+    let u_i0 = pv('1','$.g').unify(pv('$.a','$.f'), c0)
+    console.log('u_i0:'+u_i0)
+    let u_i1 = pv('$.a','$.h').unify(pv('1','$.i'), c0)
+    console.log('u_i1:'+u_i1)
+
+
+    
+    let c1 = new Context()
+
+    c1.add(pv('$.b','$.a'))
+    c1.add(pv('$.a','$.b'))
+    console.log(c1)
+    console.log(c1.describe())
+
+    let $1_a = c1.get('$.a')
+    let $1_b = c1.get('$.b')
+    let u3 = $1_b.unify($1_a,c1)
+    console.log('u3:'+u3)
+
+    
+
+        
+    c1.add(pv('$.e','$.c'))
+    c1.add(pv('$.f','$.e'))
+    c1.add(pv('$.c','$.f'))
+    console.log(c1)
+    console.log(c1.describe())
+
+    let $1_c = c1.get('$.c')
+    let $1_f = c1.get('$.f')
+    let u4 = $1_c.unify($1_f,c1)
+    console.log('u4:'+u4)
+
+    
+
+    
+    let c2 = new Context()
+
+    c2.add(pv('1 & $.b','$.a'))
+    //c2.add(pv('$int','$.b'))
+    c2.add(pv('$.a','$.b'))
+    console.log(c2)
+    console.log(c2.describe())
+
+    let $2_a = c2.get('$.a')
+    let $2_b = c2.get('$.b')
+
+
+    console.log('=======')
+    console.log('$2_a', $2_a)
+    console.log('$2_b', $2_b)
+    
+    let u5 = $2_a.unify(pv('$T'),c2)
+    //let u5 = $2_a.unify($2_b,c2)
+    console.log('u5:'+u5)
+
+
+    
+    
+    
+    /*
     let p = new Path('$')
     let p_a = new Path('$.a')
     
@@ -148,7 +281,7 @@ describe('val', function () {
 
     let mt1 = mt0.unify(new TopVal(p),c0)
     console.log('mt1:'+mt0)
-    
+*/    
   })
 
 })

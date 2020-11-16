@@ -7,6 +7,7 @@ import {
   TopVal,
   IntTypeVal,
   IntScalarVal,
+  MeetVal,
   RefVal,
 } from './val'
 
@@ -21,11 +22,18 @@ import {
 // does it matter if reference paths are maintained separately?
 
 
+// TODO: replace with a real parse
 function parseVal(p: string | Path, s: string): Val {
   let path = p instanceof Path ? p : new Path(p)
   let val: Val = new BottomVal(path)
 
   s = s.trim()
+
+  let terms = s.split(/\s*&\s*/)
+  if (1 < terms.length) {
+    return new MeetVal(terms.map(term => parseVal(path, term)), path)
+  }
+
 
   if ('$T' === s) {
     return new TopVal(path)
@@ -35,17 +43,19 @@ function parseVal(p: string | Path, s: string): Val {
     return new BottomVal(path)
   }
 
+
   if ('$int' === s) {
     return new IntTypeVal(path)
   }
 
   if (s.startsWith('$.')) {
-    return new RefVal(path, new Path(s))
+    return new RefVal(new Path(s), path)
   }
+
 
   let n = parseInt(s)
   if (!isNaN(n)) {
-    return new IntScalarVal(path, n)
+    return new IntScalarVal(n, path)
   }
 
 

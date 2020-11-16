@@ -30,20 +30,65 @@ class Update {
 
 class Context {
   path: Path
+  depth: number
 
   pathmap: { [key: string]: Val } = {}
+  refs: Path[]
+
   resolvemap: { [key: string]: Val } = {}
 
-  constructor(path: Path) {
-    this.path = path
+  constructor(path?: Path) {
+    this.path = path || new Path('$')
+    this.depth = 0
+    this.refs = []
   }
 
+
+  add(val: Val) {
+    if (val.path) {
+      if (!this.pathmap[val.path.str]) {
+        this.pathmap[val.path.str] = val
+      }
+    }
+    return this
+  }
+
+  get(pstr: string) {
+    return new Path(pstr).resolve(this)
+  }
+
+  /*
   descend(part: string): Context {
     let child: Context = new Context(this.path.append(new Path(part)))
     child.pathmap = this.pathmap
     child.resolvemap = this.resolvemap
     return child
   }
+  */
+
+  descend(ref?: Path): Context {
+    let child: Context = new Context(this.path)
+    child.depth = this.depth + 1
+    if (ref) {
+      child.refs = this.refs.concat(ref)
+    }
+
+    child.pathmap = this.pathmap
+
+
+
+    child.resolvemap = this.resolvemap
+    return child
+  }
+
+
+  describe() {
+    return Object
+      .keys(this.pathmap)
+      .sort()
+      .map(ps => ps + ': ' + this.pathmap[ps]).join('\n') + '\n'
+  }
+
 
   /*
   update(val: Val): Update {
@@ -65,9 +110,9 @@ class Context {
 
 abstract class Val {
   val: Val
-  path: Path
+  path?: Path
 
-  constructor(path: Path) {
+  constructor(path?: Path) {
     this.path = path
     this.val = this
   }
@@ -76,25 +121,60 @@ abstract class Val {
     return this === this.val ? this.str() : this.val.toString()
   }
 
-  abstract unify(other: Val, ctx?: Context): Val
+  unify(other: Val, ctx: Context): Val {
+    ctx = ctx.descend().add(this)
+
+    console.log('UA:' + ctx.depth + ' ' + this.constructor.name + ' t:' + this + ' o:' + other)
+
+    if (ctx.depth > 11) {
+      console.log('DEPTH')
+      return new BottomVal()
+    }
+
+    if (other instanceof BottomVal) {
+      return this.val = other
+    }
+
+    //if (other instanceof RefVal) {
+    //  return this.val = other.unify(this.val || this, ctx)
+    //}
+
+    let oval = other.val || other
+    let val: Val | undefined
+
+    if (!this.val || this.val === this) {
+      val = this.unifier(oval, ctx)
+    }
+    else {
+      val = this.val.unify(oval, ctx)
+    }
+
+    if (!val) {
+      val = new BottomVal()
+    }
+
+    console.log('UB:' + ctx.depth + ' ' + this.constructor.name + ' t:' + this + ' o:' + other + ' -> ' + val)
+
+    return this.val = val
+  }
+
+  abstract unifier(other: Val, ctx?: Context): Val | undefined
   abstract str(): string
 }
 
 
 
 class TopVal extends Val {
-  constructor(path: Path) {
+  constructor(path?: Path) {
     super(path)
   }
 
-  unify(other: Val, ctx?: Context) {
-    let oval = other.val
-
-    if (oval instanceof TopVal) {
-      return this.val
+  unifier(other: Val, ctx: Context): Val {
+    if (other instanceof TopVal) {
+      return this
     }
     else {
-      return this.val = oval.unify(this.val)
+      return other.unify(this, ctx)
     }
   }
 
@@ -107,12 +187,12 @@ class TopVal extends Val {
 class BottomVal extends Val {
 
   // TODO: constructor that captures error
-  constructor(path: Path) {
+  constructor(path?: Path) {
     super(path)
   }
 
-  unify() {
-    return this.val
+  unifier() {
+    return this
   }
 
   str() {
@@ -122,22 +202,20 @@ class BottomVal extends Val {
 
 
 class IntTypeVal extends Val {
-  constructor(path: Path) {
+  constructor(path?: Path) {
     super(path)
   }
 
-  unify(other: Val): Val {
-    let oval = other.val
-
+  unifier(other: Val, ctx: Context): Val | undefined {
     if (other instanceof TopVal) {
-      return this.val
+      return this
+    } else if (other instanceof MeetVal) {
+      return other.unify(this, ctx)
     } else if (other instanceof IntScalarVal) {
-      return this.val = oval
+      return other
     } else if (other instanceof IntTypeVal) {
-      return this.val
+      return this
     }
-
-    return this.val = new BottomVal(this.path)
   }
 
   str() {
@@ -149,29 +227,31 @@ class IntTypeVal extends Val {
 class IntScalarVal extends Val {
   scalar: number
 
-  constructor(path: Path, scalar: number) {
+  constructor(scalar: number, path?: Path) {
     super(path)
     this.scalar = scalar
   }
 
-  unify(other: Val): Val {
-    let oval = other.val
-
-    if (oval instanceof TopVal) {
-      return this.val
-    }
-
-    else if (oval instanceof IntTypeVal) {
+  unifier(other: Val, ctx: Context): Val | undefined {
+    if (other instanceof TopVal) {
       return this
     }
 
-    else if (oval instanceof IntScalarVal) {
-      let self = this.val as IntScalarVal
-      return this.val = oval.scalar === self.scalar ? oval :
-        new BottomVal(this.path)
+    else if (other instanceof MeetVal) {
+      return other.unify(this, ctx)
     }
 
-    return this.val = new BottomVal(this.path)
+    else if (other instanceof RefVal) {
+      return other.unify(this, ctx)
+    }
+
+    else if (other instanceof IntTypeVal) {
+      return this
+    }
+
+    else if (other instanceof IntScalarVal) {
+      return other.scalar === this.scalar ? other : undefined
+    }
   }
 
   str() {
@@ -179,6 +259,8 @@ class IntScalarVal extends Val {
   }
 }
 
+
+/*
 
 
 type ValMap = { [key: string]: Val }
@@ -238,6 +320,7 @@ class MapVal extends Val {
     return b.join('')
   }
 }
+*/
 
 
 type Vals = Val[]
@@ -247,44 +330,19 @@ class MeetVal extends Val {
   vals: Vals
 
 
-  constructor(path: Path, vals: Vals) {
+  constructor(vals: Vals, path?: Path) {
     super(path)
     this.vals = vals
   }
 
-  unify(other: Val, ctx?: Context): Val {
-    let oval = other.val
+  unifier(other: Val, ctx: Context): Val | undefined {
+    let cur = other
 
-    if (!(this.val instanceof MeetVal)) {
-      return this.val = this.val.unify(oval)
+    for (let vI = 0; vI < this.vals.length; vI++) {
+      cur = this.vals[vI].unify(cur, ctx)
     }
 
-    let meets: Vals = []
-    let vals = this.val.vals
-    let cur = new TopVal(this.path)
-
-    for (let vI = 0; vI < vals.length; vI++) {
-      let val = vals[vI].unify(oval, ctx)
-
-      // returns MeetVal if children cannot yet unify due to unresolved refs
-      if (val instanceof MeetVal) {
-        meets.push(...val.vals)
-      }
-      else {
-        cur = cur.unify(val, ctx)
-        if (cur instanceof MeetVal) {
-          meets.push(cur)
-          cur = new TopVal(this.path)
-        }
-      }
-    }
-
-    if (0 == meets.length) {
-      return this.val = cur
-    }
-    else {
-      return this.val = new MeetVal(this.path, [cur, ...meets])
-    }
+    return cur
   }
 
   str() {
@@ -293,30 +351,51 @@ class MeetVal extends Val {
 }
 
 
+
+
 class RefVal extends Val {
   ref: Path
 
-  constructor(path: Path, ref: Path) {
+  constructor(ref: Path, path?: Path) {
     super(path)
     this.ref = ref
   }
 
-  unify(other: Val, ctx?: Context): Val {
-    let oval = other.val
-
+  unifier(other: Val, ctx: Context): Val | undefined {
+    ctx.refs.push(this.ref)
     // TODO: unify with same
     // cycles cancel if path =/= ref ?
 
-    let val = ctx ? this.ref.resolve(ctx) : undefined
+    let oval: Val | undefined = other
+    if (oval instanceof RefVal) {
+      if (oval.ref.equals(this.ref)) {
+        return this.ref.resolve(ctx)
+      }
+
+      if (this.ref.equals(oval.path) && oval.ref.equals(this.path)) {
+        return new TopVal(this.path)
+      }
+
+      oval = oval.ref.resolve(ctx)
+
+      if (!oval) {
+        return new MeetVal([
+          new RefVal(this.ref, this.path),
+          new RefVal((other as RefVal).ref, this.path),
+        ], this.path)
+      }
+    }
+
+    let val = this.ref.resolve(ctx)
 
     if (val) {
-      return this.val = val.unify(oval)
+      return val.unify(oval, ctx)
     }
     else {
-      return this.val = new MeetVal(this.path, [
-        new RefVal(this.path, this.ref),
-        oval
-      ])
+      return new MeetVal([
+        new RefVal(this.ref, this.path),
+        other
+      ], this.path)
     }
   }
 
@@ -340,7 +419,8 @@ class Path {
   }
 
   resolve(ctx: Context): Val | undefined {
-    return ctx.pathmap[this.str]
+    let seen = ctx.refs.find(ref => ref.equals(this))
+    return seen ? new TopVal(this) : ctx.pathmap[this.str]
   }
 
 
@@ -352,8 +432,8 @@ class Path {
     return new Path(this.parts.slice(n))
   }
 
-  equals(other: Path) {
-    return this.str === other.str
+  equals(other: Path | undefined) {
+    return other ? this.str === other.str : false
   }
 
   deeper(other: Path) {
@@ -375,7 +455,7 @@ export {
   BottomVal,
   IntTypeVal,
   IntScalarVal,
-  MapVal,
+  // MapVal,
   MeetVal,
   RefVal,
 }

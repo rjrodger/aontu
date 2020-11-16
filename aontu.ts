@@ -1,9 +1,9 @@
 
-import { IntTypeVal } from './lib/val'
+import { Path, TopVal } from './lib/val'
 
 
 function Aontu() {
-  return new IntTypeVal()
+  return new TopVal(new Path('$'))
 }
 
 
