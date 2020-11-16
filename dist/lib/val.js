@@ -1,25 +1,7 @@
 "use strict";
 /* Copyright (c) 2020 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RefVal = exports.MeetVal = exports.IntScalarVal = exports.IntTypeVal = exports.BottomVal = exports.TopVal = exports.Val = exports.Path = exports.Context = void 0;
-//import Jsonic from 'jsonic'
-//const Jsonic = require('jsonic')
-// QUESTION: should unify clone or update both?
-// does it matter if reference paths are maintained separately?
-/*
-interface Val {
-  final: boolean
-  path?: Path
-  unify(other: Val, ctx: Context): Val
-  clone(): Val // TODO: include history as params
-  toString(): string
-}
-*/
-class Update {
-    constructor(val) {
-        this.val = val;
-    }
-}
+exports.RefVal = exports.MeetVal = exports.MapVal = exports.IntScalarVal = exports.IntTypeVal = exports.BottomVal = exports.TopVal = exports.Val = exports.Path = exports.Context = void 0;
 class Context {
     constructor(path) {
         this.pathmap = {};
@@ -39,21 +21,11 @@ class Context {
     get(pstr) {
         return new Path(pstr).resolve(this);
     }
-    /*
-    descend(part: string): Context {
-      let child: Context = new Context(this.path.append(new Path(part)))
-      child.pathmap = this.pathmap
-      child.resolvemap = this.resolvemap
-      return child
-    }
-    */
-    descend(ref) {
-        let child = new Context(this.path);
+    descend(part) {
+        let child = new Context(new Path(this.path, part));
         child.depth = this.depth + 1;
-        if (ref) {
-            child.refs = this.refs.concat(ref);
-        }
         child.pathmap = this.pathmap;
+        child.refs = [...this.refs];
         child.resolvemap = this.resolvemap;
         return child;
     }
@@ -75,7 +47,7 @@ class Val {
     }
     unify(other, ctx) {
         ctx = ctx.descend().add(this);
-        console.log('UA:' + ctx.depth + ' ' + this.constructor.name + ' t:' + this + ' o:' + other);
+        console.log('UA:' + ctx.depth + ' ' + this.constructor.name + ' t:' + this + ' o:' + other + ' refs:' + ctx.refs);
         if (ctx.depth > 11) {
             console.log('DEPTH');
             return new BottomVal();
@@ -182,6 +154,48 @@ class IntScalarVal extends Val {
     }
 }
 exports.IntScalarVal = IntScalarVal;
+class MapVal extends Val {
+    constructor(map, path) {
+        super(path);
+        this.map = map;
+    }
+    unifier(other, ctx) {
+        if (other instanceof TopVal || other instanceof MapVal) {
+            let top = new TopVal();
+            let fields = Object.keys(this.map);
+            for (let fI = 0; fI < fields.length; fI++) {
+                let fn = fields[fI];
+                this.map[fn] = this.map[fn].unify(top, ctx);
+            }
+            if (other instanceof TopVal) {
+                return this;
+            }
+        }
+        if (other instanceof MapVal && this.val instanceof MapVal) {
+            let map = this.val.map;
+            let ofields = Object.keys(other.map);
+            for (let ofI = 0; ofI < ofields.length; ofI++) {
+                let ofn = ofields[ofI];
+                let ofv = other.map[ofn];
+                let fv = map[ofn];
+                let uv = null == fv ? ofv : ofv.unify(fv, ctx);
+                map[ofn] = uv;
+            }
+            return this;
+        }
+    }
+    str() {
+        let b = ['{'];
+        let fields = Object.keys(this.map);
+        for (let fI = 0; fI < fields.length; fI++) {
+            let fn = fields[fI];
+            b.push(fn, ':', this.map[fn].toString(), ',');
+        }
+        b.push('}');
+        return b.join('');
+    }
+}
+exports.MapVal = MapVal;
 class MeetVal extends Val {
     constructor(vals, path) {
         super(path);
@@ -205,16 +219,10 @@ class RefVal extends Val {
         this.ref = ref;
     }
     unifier(other, ctx) {
-        ctx.refs.push(this.ref);
-        // TODO: unify with same
-        // cycles cancel if path =/= ref ?
         let oval = other;
         if (oval instanceof RefVal) {
             if (oval.ref.equals(this.ref)) {
                 return this.ref.resolve(ctx);
-            }
-            if (this.ref.equals(oval.path) && oval.ref.equals(this.path)) {
-                return new TopVal(this.path);
             }
             oval = oval.ref.resolve(ctx);
             if (!oval) {
@@ -226,6 +234,7 @@ class RefVal extends Val {
         }
         let val = this.ref.resolve(ctx);
         if (val) {
+            ctx.refs.push(this.ref);
             return val.unify(oval, ctx);
         }
         else {
@@ -241,21 +250,24 @@ class RefVal extends Val {
 }
 exports.RefVal = RefVal;
 class Path {
-    constructor(parts) {
+    constructor(parts, append) {
         this.parts = [];
         this.str = '';
         this.length = 0;
-        parts = parts instanceof Path ? parts.parts : parts;
-        this.parts = 'string' === typeof parts ? parts.split(/\./) : [...parts];
+        this.parts = this.parseParts(parts);
+        if (append) {
+            this.parts = this.parts.concat(this.parseParts(append));
+        }
         this.length = this.parts.length;
         this.str = this.parts.join('.');
     }
     resolve(ctx) {
-        let seen = ctx.refs.find(ref => ref.equals(this));
+        let seen = !!ctx.refs.find(ref => ref.equals(this));
+        // console.log('RESOLVE', this.str, ctx.pathmap[this.str], seen, ctx.refs)
         return seen ? new TopVal(this) : ctx.pathmap[this.str];
     }
     append(other) {
-        return new Path([...this.parts, ...other.parts]);
+        return new Path([...this.parts, ...this.parseParts(other)]);
     }
     slice(n) {
         return new Path(this.parts.slice(n));
@@ -266,6 +278,10 @@ class Path {
     deeper(other) {
         //return this.parts_str != other.parts_str &&
         return this.str.startsWith(other.str);
+    }
+    parseParts(parts) {
+        parts = parts instanceof Path ? parts.parts : parts;
+        return 'string' === typeof parts ? parts.split(/\./) : [...parts];
     }
     toString() {
         return this.str;

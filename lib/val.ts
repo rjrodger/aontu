@@ -1,32 +1,7 @@
 /* Copyright (c) 2020 Richard Rodger, MIT License */
 
-//import Jsonic from 'jsonic'
-//const Jsonic = require('jsonic')
 
 
-
-// QUESTION: should unify clone or update both?
-// does it matter if reference paths are maintained separately?
-
-
-
-/*
-interface Val {
-  final: boolean
-  path?: Path
-  unify(other: Val, ctx: Context): Val
-  clone(): Val // TODO: include history as params
-  toString(): string
-}
-*/
-
-class Update {
-  val: Val
-
-  constructor(val: Val) {
-    this.val = val
-  }
-}
 
 class Context {
   path: Path
@@ -57,25 +32,13 @@ class Context {
     return new Path(pstr).resolve(this)
   }
 
-  /*
-  descend(part: string): Context {
-    let child: Context = new Context(this.path.append(new Path(part)))
-    child.pathmap = this.pathmap
-    child.resolvemap = this.resolvemap
-    return child
-  }
-  */
 
-  descend(ref?: Path): Context {
-    let child: Context = new Context(this.path)
+  descend(part?: string): Context {
+    let child: Context = new Context(new Path(this.path, part))
+
     child.depth = this.depth + 1
-    if (ref) {
-      child.refs = this.refs.concat(ref)
-    }
-
     child.pathmap = this.pathmap
-
-
+    child.refs = [...this.refs]
 
     child.resolvemap = this.resolvemap
     return child
@@ -124,7 +87,7 @@ abstract class Val {
   unify(other: Val, ctx: Context): Val {
     ctx = ctx.descend().add(this)
 
-    console.log('UA:' + ctx.depth + ' ' + this.constructor.name + ' t:' + this + ' o:' + other)
+    console.log('UA:' + ctx.depth + ' ' + this.constructor.name + ' t:' + this + ' o:' + other + ' refs:' + ctx.refs)
 
     if (ctx.depth > 11) {
       console.log('DEPTH')
@@ -260,8 +223,6 @@ class IntScalarVal extends Val {
 }
 
 
-/*
-
 
 type ValMap = { [key: string]: Val }
 
@@ -270,42 +231,39 @@ class MapVal extends Val {
   map: ValMap
 
 
-  constructor(path: Path, map: ValMap) {
+  constructor(map: ValMap, path?: Path) {
     super(path)
     this.map = map
   }
 
-  unify(other: Val): Val {
-    let oval = other.val
-
-    if (oval instanceof TopVal) {
-      let map: ValMap = {}
-
+  unifier(other: Val, ctx: Context): Val | undefined {
+    if (other instanceof TopVal || other instanceof MapVal) {
+      let top = new TopVal()
       let fields = Object.keys(this.map)
       for (let fI = 0; fI < fields.length; fI++) {
         let fn = fields[fI]
-        map[fn] = this.map[fn].unify(oval)
+        this.map[fn] = this.map[fn].unify(top, ctx)
       }
 
-      return this.val
+      if (other instanceof TopVal) {
+        return this
+      }
     }
 
-    else if (oval instanceof MapVal && this.val instanceof MapVal) {
+    if (other instanceof MapVal && this.val instanceof MapVal) {
       let map = this.val.map
 
-      let ofields = Object.keys(oval.map)
+      let ofields = Object.keys(other.map)
       for (let ofI = 0; ofI < ofields.length; ofI++) {
         let ofn = ofields[ofI]
-        let ofv = oval.map[ofn]
+        let ofv = other.map[ofn]
         let fv = map[ofn]
-        let uv = null == fv ? ofv : ofv.unify(fv)
+        let uv = null == fv ? ofv : ofv.unify(fv, ctx)
         map[ofn] = uv
       }
 
-      return this.val
+      return this
     }
-
-    return this.val = new BottomVal(this.path)
   }
 
 
@@ -320,7 +278,8 @@ class MapVal extends Val {
     return b.join('')
   }
 }
-*/
+
+
 
 
 type Vals = Val[]
@@ -362,18 +321,11 @@ class RefVal extends Val {
   }
 
   unifier(other: Val, ctx: Context): Val | undefined {
-    ctx.refs.push(this.ref)
-    // TODO: unify with same
-    // cycles cancel if path =/= ref ?
-
     let oval: Val | undefined = other
     if (oval instanceof RefVal) {
+
       if (oval.ref.equals(this.ref)) {
         return this.ref.resolve(ctx)
-      }
-
-      if (this.ref.equals(oval.path) && oval.ref.equals(this.path)) {
-        return new TopVal(this.path)
       }
 
       oval = oval.ref.resolve(ctx)
@@ -389,6 +341,7 @@ class RefVal extends Val {
     let val = this.ref.resolve(ctx)
 
     if (val) {
+      ctx.refs.push(this.ref)
       return val.unify(oval, ctx)
     }
     else {
@@ -411,21 +364,26 @@ class Path {
   str: string = ''
   length: number = 0
 
-  constructor(parts: Path | string | string[]) {
-    parts = parts instanceof Path ? parts.parts : parts
-    this.parts = 'string' === typeof parts ? parts.split(/\./) : [...parts]
+  constructor(parts: Path | string | string[], append?: Path | string | string[]) {
+    this.parts = this.parseParts(parts)
+
+    if (append) {
+      this.parts = this.parts.concat(this.parseParts(append))
+    }
+
     this.length = this.parts.length
     this.str = this.parts.join('.')
   }
 
   resolve(ctx: Context): Val | undefined {
-    let seen = ctx.refs.find(ref => ref.equals(this))
+    let seen = !!ctx.refs.find(ref => ref.equals(this))
+    // console.log('RESOLVE', this.str, ctx.pathmap[this.str], seen, ctx.refs)
     return seen ? new TopVal(this) : ctx.pathmap[this.str]
   }
 
 
-  append(other: Path) {
-    return new Path([...this.parts, ...other.parts])
+  append(other: Path | string | string[]) {
+    return new Path([...this.parts, ...this.parseParts(other)])
   }
 
   slice(n: number) {
@@ -441,6 +399,12 @@ class Path {
     return this.str.startsWith(other.str)
   }
 
+  parseParts(parts: Path | string | string[]): string[] {
+    parts = parts instanceof Path ? parts.parts : parts
+    return 'string' === typeof parts ? parts.split(/\./) : [...parts]
+  }
+
+
   toString() {
     return this.str
   }
@@ -455,7 +419,7 @@ export {
   BottomVal,
   IntTypeVal,
   IntScalarVal,
-  // MapVal,
+  MapVal,
   MeetVal,
   RefVal,
 }

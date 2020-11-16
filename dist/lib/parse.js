@@ -12,6 +12,15 @@ function parseVal(p, s) {
     let path = p instanceof val_1.Path ? p : new val_1.Path(p);
     let val = new val_1.BottomVal(path);
     s = s.trim();
+    if (s.startsWith('{')) {
+        return new val_1.MapVal(s.replace(/[{}]/g, '')
+            .split(/\s*,\s*/)
+            .reduce((vm, pair) => {
+            let [field, value] = pair.split(/\s*:\s*/);
+            vm[field] = parseVal(path.append(field).str, value);
+            return vm;
+        }, {}), path);
+    }
     let terms = s.split(/\s*&\s*/);
     if (1 < terms.length) {
         return new val_1.MeetVal(terms.map(term => parseVal(path, term)), path);
@@ -33,17 +42,8 @@ function parseVal(p, s) {
         return new val_1.IntScalarVal(n, path);
     }
     /*
-  if (s.startsWith('{')) {
-    return parseMapVal()
-  }
-  
   if (s.startsWith('[')) {
-    return parseListVal()
-  }
-  
-  
-  if (s.startsWith('$')) {
-    return new RefVal(new Path(s))
+  return parseListVal()
   }
   */
     return val;

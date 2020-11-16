@@ -11,7 +11,7 @@ declare class Context {
     constructor(path?: Path);
     add(val: Val): this;
     get(pstr: string): Val | undefined;
-    descend(ref?: Path): Context;
+    descend(part?: string): Context;
     describe(): string;
 }
 declare abstract class Val {
@@ -44,6 +44,15 @@ declare class IntScalarVal extends Val {
     unifier(other: Val, ctx: Context): Val | undefined;
     str(): string;
 }
+declare type ValMap = {
+    [key: string]: Val;
+};
+declare class MapVal extends Val {
+    map: ValMap;
+    constructor(map: ValMap, path?: Path);
+    unifier(other: Val, ctx: Context): Val | undefined;
+    str(): string;
+}
 declare type Vals = Val[];
 declare class MeetVal extends Val {
     vals: Vals;
@@ -61,12 +70,13 @@ declare class Path {
     parts: string[];
     str: string;
     length: number;
-    constructor(parts: Path | string | string[]);
+    constructor(parts: Path | string | string[], append?: Path | string | string[]);
     resolve(ctx: Context): Val | undefined;
-    append(other: Path): Path;
+    append(other: Path | string | string[]): Path;
     slice(n: number): Path;
     equals(other: Path | undefined): boolean;
     deeper(other: Path): boolean;
+    parseParts(parts: Path | string | string[]): string[];
     toString(): string;
 }
-export { Context, Path, Val, TopVal, BottomVal, IntTypeVal, IntScalarVal, MeetVal, RefVal, };
+export { Context, Path, Val, TopVal, BottomVal, IntTypeVal, IntScalarVal, MapVal, MeetVal, RefVal, };

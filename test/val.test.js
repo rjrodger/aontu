@@ -128,34 +128,6 @@ describe('val', function () {
   })
 
   
-/*    
-  it('map', () => {
-    let p = new Path('$')
-    
-    let m0 = new MapVal(p,{
-      a: pv('1'),
-      b: pv('2')
-    })
-    console.log('m0'+m0)
-    
-    let m1 = new MapVal(p,{
-      b: pv('2'),
-      c: pv('3'),
-    })
-    console.log('m1'+m1)
-    
-    let m2 = m0.unify(m1)
-    console.log('m2'+m2)
-
-    let m3 = new MapVal(p,{
-      a: pv('11'),
-    })
-    let m4 = m2.unify(m3)
-    console.log('m4'+m4)
-
-  })
-*/  
-
 
 
   it('ref', () => {
@@ -238,50 +210,48 @@ describe('val', function () {
     let u5 = $2_a.unify(pv('$T'),c2)
     //let u5 = $2_a.unify($2_b,c2)
     console.log('u5:'+u5)
-
-
-    
-    
-    
-    /*
-    let p = new Path('$')
-    let p_a = new Path('$.a')
-    
-    c0.pathmap['$.a'] = new IntScalarVal(p_a,1)
-
-    let r0 = parseVal('$.b','$.a')
-    console.log('r0:'+r0)
-    
-    let v0 = r0.unify(new TopVal(p),c0)
-    console.log('v0:'+v0)
-    console.log('r0:'+r0)
-
-
-    let p_b = new Path('$.b')
-    let m0 = new MapVal(p_b,{
-      x: pv('1')
-    })
-    c0.pathmap['$.c'] = m0
-    
-    let m1 = new MapVal(p,{
-      y: pv('2')
-    })
-
-    let m2 = parseVal('$.d','$.c').unify(m1,c0)
-    console.log('m2:'+m2)
-
-
-    c0.pathmap['$.a1'] = new MapVal(new Path('$.a1'),{x:pv('1')})
-    c0.pathmap['$.a2'] = new MapVal(new Path('$.a2'),{y:pv('2')})
-
-    let mt0 = new MeetVal(p,[
-      parseVal('$.b1','$.a1'),
-      parseVal('$.b1','$.a2'),
-    ])
-
-    let mt1 = mt0.unify(new TopVal(p),c0)
-    console.log('mt1:'+mt0)
-*/    
+    expect(u5+'').equal('1')
   })
+
+
+  
+  it('map', () => {
+    let m0 = pv('{a:1}','$.a')
+    console.log('m0:'+m0)
+    
+    let c0 = new Context()
+    c0.add(m0)
+    console.log('c0:'+c0.describe())
+
+    let m1 = pv('{b:2}','$.b')
+    let mu01 = m0.unify(m1,c0)
+    console.log('mu01:'+mu01)
+
+    c0.add(pv('1','$.x'))
+    console.log('c0:'+c0.describe())
+    
+    let m2 = pv('{c:3,d:1&$int,x:$.x}','$.c')
+    let mu02 = m2.unify(pv('$T'),c0)
+    console.log('mu02:'+mu02)
+    console.log('c0:'+c0.describe())
+
+    let c1 = new Context()
+    c1.add(pv('{a:1}','$.a'))
+    c1.add(
+      new MeetVal([
+        new RefVal(new Path('$.a')),
+        new MapVal({
+          b: pv('2')
+        })
+      ],new Path('$.b'))
+    )
+    console.log('c1:'+c1.describe())
+
+    let mu3 = c1.get('$.b').unify(pv('$T'), c1)
+    console.log('mu3:'+mu3)
+  })
+
+
+
 
 })

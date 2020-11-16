@@ -9,6 +9,7 @@ import {
   IntScalarVal,
   MeetVal,
   RefVal,
+  MapVal,
 } from './val'
 
 
@@ -28,6 +29,19 @@ function parseVal(p: string | Path, s: string): Val {
   let val: Val = new BottomVal(path)
 
   s = s.trim()
+
+
+  if (s.startsWith('{')) {
+    return new MapVal(
+      s.replace(/[{}]/g, '')
+        .split(/\s*,\s*/)
+        .reduce((vm: any, pair: string) => {
+          let [field, value] = pair.split(/\s*:\s*/)
+          vm[field] = parseVal(path.append(field).str, value)
+          return vm
+        }, {}), path)
+  }
+
 
   let terms = s.split(/\s*&\s*/)
   if (1 < terms.length) {
@@ -53,24 +67,20 @@ function parseVal(p: string | Path, s: string): Val {
   }
 
 
+
+
   let n = parseInt(s)
   if (!isNaN(n)) {
     return new IntScalarVal(n, path)
   }
 
 
+
+
+
   /*
-if (s.startsWith('{')) {
-  return parseMapVal()
-}
-
 if (s.startsWith('[')) {
-  return parseListVal()
-}
-
-
-if (s.startsWith('$')) {
-  return new RefVal(new Path(s))
+return parseListVal()
 }
 */
 
