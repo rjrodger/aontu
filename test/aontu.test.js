@@ -82,4 +82,64 @@ describe('aontu', function () {
 
   })
 
+
+  it('metapeer', async () => {
+    expect(unify(
+      meta(
+        {
+          a: 1,
+          b:'B',
+        },
+        {
+          peers: [
+            {
+              a: Number,
+              c: 2
+            },
+            {
+              d: new DefaultVal(String,'D')
+            }
+          ]
+        }
+      )
+    )).equals({
+      a: 1, b: 'B', c: 2, d: 'D'
+    })
+  })
+
+
+  it('childpeer', async () => {
+    expect(unify(
+      meta(
+        {
+          a: {
+            x: 1
+          },
+          b: {
+            x: 2
+          },
+        },
+        {
+          children: [
+            {
+              x: Number,
+              y: 3,
+            },
+            {
+              d: new DefaultVal(String,'D')
+            }
+          ]
+        }
+      )
+    )).equals({
+      a: { x: 1, y: 3, d: 'D' }, b: { x: 2, y: 3, d: 'D' }
+    })
+  })
+
 })
+
+
+function meta(o,m) {
+  Object.defineProperty(o,'$',{value:m})
+  return o
+}

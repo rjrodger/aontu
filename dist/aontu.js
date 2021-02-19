@@ -23,32 +23,64 @@ function unify(basetop, peertop) {
     const ns = [new Node(basetop, peertop)];
     let node;
     while (node = ns.shift()) {
+        //console.log('LS', node)
+        //console.log(ns)
         let base = node.base;
         let peer = node.peer;
-        let peerkeys = Object.keys(peer);
-        //console.log('peerkeys', peerkeys)
-        for (let pkI = 0; pkI < peerkeys.length; pkI++) {
-            let key = peerkeys[pkI];
-            let subpeer = peer[key];
-            let subbase = base[key];
-            let subpeertype = typeof (subpeer);
-            let subbasetype = typeof (subbase);
-            if (subpeer instanceof Val || subbase instanceof Val) {
-                base[key] = unify_scalar(key, subbase, subpeer, true);
+        // also get peers from base meta, if any
+        let basemeta = base.$;
+        if (basemeta && basemeta.peers && !basemeta.peers_done) {
+            for (let bpI = 0; bpI < basemeta.peers.length; bpI++) {
+                let metapeer = basemeta.peers[bpI];
+                let metanode = new Node(base, metapeer);
+                ns.push(metanode);
             }
-            else if ('object' === subpeertype || 'object' === subbasetype) {
-                if (undefined === subbase) {
-                    base[key] = subpeer;
+            basemeta.peers_done = true;
+            //console.log('BP', ns)
+        }
+        if (null != peer) {
+            let peerkeys = Object.keys(peer);
+            //console.log('peerkeys', peerkeys)
+            for (let pkI = 0; pkI < peerkeys.length; pkI++) {
+                let peerkey = peerkeys[pkI];
+                let subpeer = peer[peerkey];
+                let subbase = base[peerkey];
+                let subpeertype = typeof (subpeer);
+                let subbasetype = typeof (subbase);
+                if (subpeer instanceof Val || subbase instanceof Val) {
+                    base[peerkey] = unify_scalar(peerkey, subbase, subpeer, true);
+                }
+                else if ('object' === subpeertype || 'object' === subbasetype) {
+                    if (undefined === subbase) {
+                        base[peerkey] = subpeer;
+                    }
+                    else {
+                        let subnode = new Node(subbase, subpeer);
+                        //console.log('PN', subnode)
+                        ns.push(subnode);
+                    }
                 }
                 else {
-                    let subnode = new Node(subbase, subpeer);
-                    //console.log('PN', subnode)
-                    ns.push(subnode);
+                    base[peerkey] = unify_scalar(peerkey, subbase, subpeer, true);
                 }
             }
-            else {
-                base[key] = unify_scalar(key, subbase, subpeer, true);
+        }
+        // TODO: rename children->sub
+        // iterate over base keys, apply child peers, if any
+        if (basemeta && basemeta.children && !basemeta.children_done) {
+            for (let cI = 0; cI < basemeta.children.length; cI++) {
+                let childpeer = basemeta.children[cI];
+                let basekeys = Object.keys(base);
+                for (let bkI = 0; bkI < basekeys.length; bkI++) {
+                    let basekey = basekeys[bkI];
+                    let basechild = base[basekey];
+                    // Assumes peer is never altered
+                    let childnode = new Node(basechild, childpeer);
+                    ns.push(childnode);
+                }
             }
+            basemeta.children_done = true;
+            //console.log('BP', ns)
         }
     }
     return basetop;
@@ -76,6 +108,9 @@ function unify_scalar(key, basescalar, peerscalar, commute) {
         else if (basetype === peerscalar.type.name.toLowerCase()) {
             return basescalar;
         }
+    }
+    else if (basescalar === peerscalar) {
+        return basescalar;
     }
     else if (commute) {
         return unify_scalar(key, peerscalar, basescalar, false);
