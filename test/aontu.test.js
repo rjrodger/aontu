@@ -18,8 +18,16 @@ let { Aontu } = require('..')
 describe('aontu', function () {
 
   it('happy', async () => {
-    
-    expect(Aontu({a:String,b:1},{a:'A',c:2})).equals({a:'A',b:1,c:2})
+    expect(Aontu(
+      {a:String,b:Number,x:10},
+      {a:'A',b:1,y:20}
+    )).equals({a:'A',b:1,x:10,y:20})
+
+    expect(Aontu(
+      {a:String,b:Number,c:{d:String},e:{f:Number},x:10},
+      {a:'A',b:1,c:{d:'D'},y:20}
+    )).equals({a:'A',b:1,c:{d:'D'},e:{f:Number},x:10,y:20})
+
   })
 
 })

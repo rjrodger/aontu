@@ -16,13 +16,43 @@ function unify(basetop, peertop) {
         let peerkeys = Object.keys(peer);
         for (let pkI = 0; pkI < peerkeys.length; pkI++) {
             let key = peerkeys[pkI];
-            base[key] = unify_scalar(base[key], peer[key]);
+            let subpeer = peer[key];
+            let subbase = base[key];
+            let subpeertype = typeof (subpeer);
+            if ('object' === subpeertype) {
+                if (undefined == subbase) {
+                    base[key] = subpeer;
+                }
+                else {
+                    let subnode = new Node(subbase, subpeer);
+                    ns.push(subnode);
+                }
+            }
+            else {
+                base[key] = unify_scalar(subbase, subpeer, true);
+            }
         }
     }
     return basetop;
 }
-function unify_scalar(basescalar, peerscalar) {
-    return peerscalar;
+function unify_scalar(basescalar, peerscalar, commute) {
+    let basetype = typeof (basescalar);
+    if (undefined === peerscalar) {
+        return basescalar;
+    }
+    else if (String === peerscalar && 'string' === basetype) {
+        return basescalar;
+    }
+    else if (Number === peerscalar && 'number' === basetype) {
+        return basescalar;
+    }
+    else if (commute) {
+        return unify_scalar(peerscalar, basescalar, false);
+    }
+    else {
+        // TODO: collect instead
+        throw new Error('NU: ' + basescalar + ' =/= ' + peerscalar);
+    }
 }
 function Aontu(base, peer) {
     return unify(base, peer);
