@@ -29,6 +29,7 @@ function unify(basetop, peertop) {
         let peer = node.peer;
         // also get peers from base meta, if any
         let basemeta = base.$;
+        let had_peers = false;
         if (basemeta && basemeta.peers && !basemeta.peers_done) {
             for (let bpI = 0; bpI < basemeta.peers.length; bpI++) {
                 let metapeer = basemeta.peers[bpI];
@@ -36,6 +37,7 @@ function unify(basetop, peertop) {
                 ns.push(metanode);
             }
             basemeta.peers_done = true;
+            had_peers = true;
             //console.log('BP', ns)
         }
         if (null != peer) {
@@ -68,18 +70,23 @@ function unify(basetop, peertop) {
         // TODO: rename children->sub
         // iterate over base keys, apply child peers, if any
         if (basemeta && basemeta.children && !basemeta.children_done) {
-            for (let cI = 0; cI < basemeta.children.length; cI++) {
-                let childpeer = basemeta.children[cI];
-                let basekeys = Object.keys(base);
-                for (let bkI = 0; bkI < basekeys.length; bkI++) {
-                    let basekey = basekeys[bkI];
-                    let basechild = base[basekey];
-                    // Assumes peer is never altered
-                    let childnode = new Node(basechild, childpeer);
-                    ns.push(childnode);
-                }
+            if (had_peers) {
+                ns.push(new Node(base, undefined));
             }
-            basemeta.children_done = true;
+            else {
+                for (let cI = 0; cI < basemeta.children.length; cI++) {
+                    let childpeer = basemeta.children[cI];
+                    let basekeys = Object.keys(base);
+                    for (let bkI = 0; bkI < basekeys.length; bkI++) {
+                        let basekey = basekeys[bkI];
+                        let basechild = base[basekey];
+                        // Assumes peer is never altered
+                        let childnode = new Node(basechild, childpeer);
+                        ns.push(childnode);
+                    }
+                }
+                basemeta.children_done = true;
+            }
             //console.log('BP', ns)
         }
     }

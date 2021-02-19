@@ -136,6 +136,49 @@ describe('aontu', function () {
     })
   })
 
+
+
+  it('peers', async () => {
+    expect(unify(
+      meta(
+        {
+          a: {
+            x: 1
+          },
+          b: {
+            x: 2
+          },
+        },
+        {
+          peers: [
+            {
+              c: {
+                x: 3
+              },
+              d: {
+                x: 4
+              }
+            }
+          ],
+          children: [
+            {
+              x: Number,
+              y: 3,
+            },
+            {
+              d: new DefaultVal(String,'D')
+            }
+          ]
+        }
+      )
+    )).equals({
+      a: { x: 1, y: 3, d: 'D' },
+      b: { x: 2, y: 3, d: 'D' },
+      c: { x: 3, y: 3, d: 'D' },
+      d: { x: 4, y: 3, d: 'D' }
+    })
+  })
+
 })
 
 
