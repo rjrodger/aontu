@@ -1,3 +1,2 @@
-import { TopVal } from './lib/val';
-declare function Aontu(): TopVal;
-export default Aontu;
+declare function Aontu(base: any, peer: any): any;
+export { Aontu };

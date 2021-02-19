@@ -536,26 +536,18 @@
         <li><a href="#tests">Test Report</a></li>
         <li><a href="#coverage">Coverage Report</a></li>
         <li class="generated">
-            <span class="cov high">95</span>
-            <a href="#lib/parse.ts"><span class="dirname">lib/</span><span class="basename">parse.ts</span></a>
-        </li>
-        <li class="generated">
-            <span class="cov high">92.93</span>
-            <a href="#lib/val.ts"><span class="dirname">lib/</span><span class="basename">val.ts</span></a>
+            <span class="cov high">100</span>
+            <a href="#dist/aontu.js"><span class="dirname">dist/</span><span class="basename">aontu.js</span></a>
         </li>
         <li><a href="#linting">Linting Report</a></li>
-        <li>
-            <span class="lint"><span class="low">5</span> || <span class="low">28</span></span>
-            <a href="#lint-test/val.test.js">test/val.test.js</a>
-        </li>
     </div>
     <div id="tests">
       <h1>Test Report</h1>
-      <div class="stats high">
-          <div class="failures">0</div>
+      <div class="stats terrible">
+          <div class="failures">1</div>
           <div class="skipped">0</div>
-          <div class="test-count">6</div>
-          <div class="duration">100</div>
+          <div class="test-count">1</div>
+          <div class="duration">21</div>
       </div>
       <div id="filters">
           <input type="checkbox" checked="" onchange="filter(this)" value="success" id="show-success">
@@ -563,8 +555,8 @@
           <input type="checkbox" checked="" onchange="filter(this)" value="failure" id="show-failure">
           <label for="show-failure">Show Failure</label>
           <br>
-          <input type="checkbox" checked="" onchange="filter(this)" value="val" id="show-val">
-          <label for="show-val">val</label>
+          <input type="checkbox" checked="" onchange="filter(this)" value="aontu" id="show-aontu">
+          <label for="show-aontu">aontu</label>
       </div>
       <table>
           <thead>
@@ -575,47 +567,16 @@
           </tr>
           </thead>
           <tbody>
-          <tr class="show val success">
+          <tr class="show aontu failure">
               <td class="test-id">1</td>
-              <td class="test-title">val boundary
-                  
+              <td class="test-title">aontu happy
+                  <div class="stack">Error: Expected { a: &#x27;A&#x27;, b: 1, c: 2 } to equal specified value: { a: &#x27;Ax&#x27;, b: 1, c: 2 }
+        at internals.Assertion.internals.equal (/Users/richard/Projects/rjrodger/aontu/node_modules/@hapi/code/lib/index.js:305:17)
+        at /Users/richard/Projects/rjrodger/aontu/test/aontu.test.js:22:47
+        at Immediate._onImmediate (/Users/richard/Projects/rjrodger/aontu/node_modules/@hapi/lab/lib/runner.js:661:35)
+        at processImmediate (internal/timers.js:439:21)</div>
               </td>
-              <td class="test-duration">12</td>
-          </tr>
-          <tr class="show val success">
-              <td class="test-id">2</td>
-              <td class="test-title">val int
-                  
-              </td>
-              <td class="test-duration">25</td>
-          </tr>
-          <tr class="show val success">
-              <td class="test-id">3</td>
-              <td class="test-title">val context
-                  
-              </td>
-              <td class="test-duration">1</td>
-          </tr>
-          <tr class="show val success">
-              <td class="test-id">4</td>
-              <td class="test-title">val meet
-                  
-              </td>
-              <td class="test-duration">18</td>
-          </tr>
-          <tr class="show val success">
-              <td class="test-id">5</td>
-              <td class="test-title">val ref
-                  
-              </td>
-              <td class="test-duration">30</td>
-          </tr>
-          <tr class="show val success">
-              <td class="test-id">6</td>
-              <td class="test-title">val map
-                  
-              </td>
-              <td class="test-duration">3</td>
+              <td class="test-duration">8</td>
           </tr>
           </tbody>
       </table>
@@ -623,10 +584,10 @@
     </div>    <div id="coverage">
         <h1>Code Coverage Report</h1>
         <div class="stats high">
-            <div class="percentage">93.19%</div>
-            <div class="sloc">323</div>
-            <div class="hits">301</div>
-            <div class="misses">22</div>
+            <div class="percentage">100%</div>
+            <div class="sloc">30</div>
+            <div class="hits">30</div>
+            <div class="misses">0</div>
         </div>
         <div id="filters">
           <input type="checkbox" checked="" onchange="filter(this)" value="generated" id="show-generated">
@@ -634,12 +595,12 @@
         </div>
         <div id="files">
             <div class="file show generated">
-                <h2 id="lib/parse.ts">lib/parse.ts </h2>
+                <h2 id="dist/aontu.js">dist/aontu.js </h2>
                 <div class="stats high">
-                    <div class="percentage">95%</div>
-                    <div class="sloc">40</div>
-                    <div class="hits">38</div>
-                    <div class="misses">2</div>
+                    <div class="percentage">100%</div>
+                    <div class="sloc">30</div>
+                    <div class="hits">30</div>
+                    <div class="misses">0</div>
                 </div>
                 <table>
                     <thead>
@@ -652,2085 +613,191 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr id="lib/parse.ts__1" class="hit">
+                        <tr id="dist/aontu.js__1" class="hit">
                           <td class="line" data-tooltip>1</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
                           <td class="source">&quot;use strict&quot;;</td>
                           
-                        </tr>            <tr id="lib/parse.ts__2" class="hit">
+                        </tr>            <tr id="dist/aontu.js__2" class="hit">
                           <td class="line" data-tooltip>2</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">/* Copyright (c) 2020 Richard Rodger, MIT License */</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__1">1</a></td>
-                        </tr>            <tr id="lib/parse.ts__3" class="hit">
-                          <td class="line" data-tooltip>3</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip>1</td>
                           <td class="source">Object.defineProperty(exports, &quot;__esModule&quot;, { value: true });</td>
                           
-                        </tr>            <tr id="lib/parse.ts__4" class="hit">
-                          <td class="line" data-tooltip>4</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.parseVal &#x3D; void 0;</td>
-                          
-                        </tr>            <tr id="lib/parse.ts__5" class="hit">
-                          <td class="line" data-tooltip>5</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">const val_1 &#x3D; require(&quot;./val&quot;);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__13">13</a></td>
-                        </tr>            <tr id="lib/parse.ts__6" class="hit">
-                          <td class="line" data-tooltip>6</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">//import Jsonic from &#x27;jsonic&#x27;</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__17">17</a></td>
-                        </tr>            <tr id="lib/parse.ts__7" class="hit">
-                          <td class="line" data-tooltip>7</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">//const Jsonic &#x3D; require(&#x27;jsonic&#x27;)</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__18">18</a></td>
-                        </tr>            <tr id="lib/parse.ts__8" class="hit">
-                          <td class="line" data-tooltip>8</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">// QUESTION: should unify clone or update both?</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__22">22</a></td>
-                        </tr>            <tr id="lib/parse.ts__9" class="hit">
-                          <td class="line" data-tooltip>9</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">// does it matter if reference paths are maintained separately?</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__23">23</a></td>
-                        </tr>            <tr id="lib/parse.ts__10" class="hit">
-                          <td class="line" data-tooltip>10</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">// TODO: replace with a real parse</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__26">26</a></td>
-                        </tr>            <tr id="lib/parse.ts__11" class="hit">
-                          <td class="line" data-tooltip>11</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">function parseVal(p, s) {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__27">27</a></td>
-                        </tr>            <tr id="lib/parse.ts__12" class="hit">
-                          <td class="line" data-tooltip>12</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>101</td>
-                          <td class="source">    let path &#x3D; p instanceof val_1.Path ? p : new val_1.Path(p);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__28">28</a></td>
-                        </tr>            <tr id="lib/parse.ts__13" class="hit">
-                          <td class="line" data-tooltip>13</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>101</td>
-                          <td class="source">    let val &#x3D; new val_1.BottomVal(path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__29">29</a></td>
-                        </tr>            <tr id="lib/parse.ts__14" class="hit">
-                          <td class="line" data-tooltip>14</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>101</td>
-                          <td class="source">    s &#x3D; s.trim();</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__31">31</a></td>
-                        </tr>            <tr id="lib/parse.ts__15" class="hit">
-                          <td class="line" data-tooltip>15</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>101</td>
-                          <td class="source">    if (s.startsWith(&#x27;{&#x27;)) {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__34">34</a></td>
-                        </tr>            <tr id="lib/parse.ts__16" class="hit">
-                          <td class="line" data-tooltip>16</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>3</td>
-                          <td class="source">        return new val_1.MapVal(s.replace(/[{}]/g, &#x27;&#x27;)</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__36">36</a></td>
-                        </tr>            <tr id="lib/parse.ts__17" class="hit">
-                          <td class="line" data-tooltip>17</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            .split(/\s*,\s*/)</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__37">37</a></td>
-                        </tr>            <tr id="lib/parse.ts__18" class="hit">
-                          <td class="line" data-tooltip>18</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            .reduce((vm, pair) &#x3D;&gt; {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__38">38</a></td>
-                        </tr>            <tr id="lib/parse.ts__19" class="hit">
-                          <td class="line" data-tooltip>19</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            let [field, value] &#x3D; pair.split(/\s*:\s*/);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__39">39</a></td>
-                        </tr>            <tr id="lib/parse.ts__20" class="hit">
-                          <td class="line" data-tooltip>20</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>4</td>
-                          <td class="source">            vm[field] &#x3D; parseVal(path.append(field).str, value);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__40">40</a></td>
-                        </tr>            <tr id="lib/parse.ts__21" class="hit">
-                          <td class="line" data-tooltip>21</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>4</td>
-                          <td class="source">            return vm;</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__41">41</a></td>
-                        </tr>            <tr id="lib/parse.ts__22" class="hit">
-                          <td class="line" data-tooltip>22</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }, {}), path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__42">42</a></td>
-                        </tr>            <tr id="lib/parse.ts__23" class="hit">
-                          <td class="line" data-tooltip>23</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__43">43</a></td>
-                        </tr>            <tr id="lib/parse.ts__24" class="hit">
-                          <td class="line" data-tooltip>24</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>98</td>
-                          <td class="source">    let terms &#x3D; s.split(/\s*&amp;\s*/);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__46">46</a></td>
-                        </tr>            <tr id="lib/parse.ts__25" class="hit">
-                          <td class="line" data-tooltip>25</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>98</td>
-                          <td class="source">    if (1 &lt; terms.length) {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__47">47</a></td>
-                        </tr>            <tr id="lib/parse.ts__26" class="hit">
-                          <td class="line" data-tooltip>26</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>9</td>
-                          <td class="source">        return new val_1.MeetVal(terms.map(term &#x3D;&gt; parseVal(path, term)), path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__48">48</a></td>
-                        </tr>            <tr id="lib/parse.ts__27" class="hit">
-                          <td class="line" data-tooltip>27</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__49">49</a></td>
-                        </tr>            <tr id="lib/parse.ts__28" class="hit">
-                          <td class="line" data-tooltip>28</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>89</td>
-                          <td class="source">    if (&#x27;$T&#x27; &#x3D;&#x3D;&#x3D; s) {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__52">52</a></td>
-                        </tr>            <tr id="lib/parse.ts__29" class="hit">
-                          <td class="line" data-tooltip>29</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>17</td>
-                          <td class="source">        return new val_1.TopVal(path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__53">53</a></td>
-                        </tr>            <tr id="lib/parse.ts__30" class="hit">
-                          <td class="line" data-tooltip>30</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__54">54</a></td>
-                        </tr>            <tr id="lib/parse.ts__31" class="hit">
-                          <td class="line" data-tooltip>31</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>72</td>
-                          <td class="source">    if (&#x27;$B&#x27; &#x3D;&#x3D;&#x3D; s) {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__56">56</a></td>
-                        </tr>            <tr id="lib/parse.ts__32" class="hit">
-                          <td class="line" data-tooltip>32</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>5</td>
-                          <td class="source">        return new val_1.BottomVal(path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__57">57</a></td>
-                        </tr>            <tr id="lib/parse.ts__33" class="hit">
-                          <td class="line" data-tooltip>33</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__58">58</a></td>
-                        </tr>            <tr id="lib/parse.ts__34" class="hit">
-                          <td class="line" data-tooltip>34</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>67</td>
-                          <td class="source">    if (&#x27;$int&#x27; &#x3D;&#x3D;&#x3D; s) {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__61">61</a></td>
-                        </tr>            <tr id="lib/parse.ts__35" class="hit">
-                          <td class="line" data-tooltip>35</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>20</td>
-                          <td class="source">        return new val_1.IntTypeVal(path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__62">62</a></td>
-                        </tr>            <tr id="lib/parse.ts__36" class="hit">
-                          <td class="line" data-tooltip>36</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__63">63</a></td>
-                        </tr>            <tr id="lib/parse.ts__37" class="hit">
-                          <td class="line" data-tooltip>37</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>47</td>
-                          <td class="source">    if (s.startsWith(&#x27;$.&#x27;)) {</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__65">65</a></td>
-                        </tr>            <tr id="lib/parse.ts__38" class="hit">
-                          <td class="line" data-tooltip>38</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>16</td>
-                          <td class="source">        return new val_1.RefVal(new val_1.Path(s), path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__66">66</a></td>
-                        </tr>            <tr id="lib/parse.ts__39" class="hit">
-                          <td class="line" data-tooltip>39</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__67">67</a></td>
-                        </tr>            <tr id="lib/parse.ts__40" class="hit">
-                          <td class="line" data-tooltip>40</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>31</td>
-                          <td class="source">    let n &#x3D; parseInt(s);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__72">72</a></td>
-                        </tr>            <tr id="lib/parse.ts__41" class="chunks">
-                          <td class="line" data-tooltip>41</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>    if (</div><div class="miss true" data-tooltip>!isNaN(n)</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__73">73</a></td>
-                        </tr>            <tr id="lib/parse.ts__42" class="hit">
-                          <td class="line" data-tooltip>42</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>31</td>
-                          <td class="source">        return new val_1.IntScalarVal(n, path);</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__74">74</a></td>
-                        </tr>            <tr id="lib/parse.ts__43" class="hit">
-                          <td class="line" data-tooltip>43</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__75">75</a></td>
-                        </tr>            <tr id="lib/parse.ts__44" class="hit">
-                          <td class="line" data-tooltip>44</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    /*</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__81">81</a></td>
-                        </tr>            <tr id="lib/parse.ts__45" class="hit">
-                          <td class="line" data-tooltip>45</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">  if (s.startsWith(&#x27;[&#x27;)) {</td>
-                          
-                        </tr>            <tr id="lib/parse.ts__46" class="hit">
-                          <td class="line" data-tooltip>46</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">  return parseListVal()</td>
-                          
-                        </tr>            <tr id="lib/parse.ts__47" class="hit">
-                          <td class="line" data-tooltip>47</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">  }</td>
-                          
-                        </tr>            <tr id="lib/parse.ts__48" class="hit">
-                          <td class="line" data-tooltip>48</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">  */</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__85">85</a></td>
-                        </tr>            <tr id="lib/parse.ts__49" class="miss">
-                          <td class="line" data-tooltip>49</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source" data-tooltip>    return val;</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__87">87</a></td>
-                        </tr>            <tr id="lib/parse.ts__50" class="hit">
-                          <td class="line" data-tooltip>50</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__88">88</a></td>
-                        </tr>            <tr id="lib/parse.ts__51" class="hit">
-                          <td class="line" data-tooltip>51</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.parseVal &#x3D; parseVal;</td>
-                          <td class="original-line" data-tooltip="lib/parse.ts"><a href="#lib/parse.ts__103">103</a></td>
-                        </tr>            <tr id="lib/parse.ts__52" class="hit">
-                          <td class="line" data-tooltip>52</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">//# sourceMappingURL&#x3D;data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicGFyc2UuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyJsaWIvcGFyc2UudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6IjtBQUFBLG9EQUFvRDs7O0FBRXBELCtCQVVjO0FBSWQsNkJBQTZCO0FBQzdCLGtDQUFrQztBQUlsQywrQ0FBK0M7QUFDL0MsK0RBQStEO0FBRy9ELGtDQUFrQztBQUNsQyxTQUFTLFFBQVEsQ0FBQyxDQUFnQixFQUFFLENBQVM7SUFDM0MsSUFBSSxJQUFJLEdBQUcsQ0FBQyxZQUFZLFVBQUksQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxJQUFJLFVBQUksQ0FBQyxDQUFDLENBQUMsQ0FBQTtJQUM5QyxJQUFJLEdBQUcsR0FBUSxJQUFJLGVBQVMsQ0FBQyxJQUFJLENBQUMsQ0FBQTtJQUVsQyxDQUFDLEdBQUcsQ0FBQyxDQUFDLElBQUksRUFBRSxDQUFBO0lBR1osSUFBSSxDQUFDLENBQUMsVUFBVSxDQUFDLEdBQUcsQ0FBQyxFQUFFO1FBQ3JCLE9BQU8sSUFBSSxZQUFNLENBQ2YsQ0FBQyxDQUFDLE9BQU8sQ0FBQyxPQUFPLEVBQUUsRUFBRSxDQUFDO2FBQ25CLEtBQUssQ0FBQyxTQUFTLENBQUM7YUFDaEIsTUFBTSxDQUFDLENBQUMsRUFBTyxFQUFFLElBQVksRUFBRSxFQUFFO1lBQ2hDLElBQUksQ0FBQyxLQUFLLEVBQUUsS0FBSyxDQUFDLEdBQUcsSUFBSSxDQUFDLEtBQUssQ0FBQyxTQUFTLENBQUMsQ0FBQTtZQUMxQyxFQUFFLENBQUMsS0FBSyxDQUFDLEdBQUcsUUFBUSxDQUFDLElBQUksQ0FBQyxNQUFNLENBQUMsS0FBSyxDQUFDLENBQUMsR0FBRyxFQUFFLEtBQUssQ0FBQyxDQUFBO1lBQ25ELE9BQU8sRUFBRSxDQUFBO1FBQ1gsQ0FBQyxFQUFFLEVBQUUsQ0FBQyxFQUFFLElBQUksQ0FBQyxDQUFBO0tBQ2xCO0lBR0QsSUFBSSxLQUFLLEdBQUcsQ0FBQyxDQUFDLEtBQUssQ0FBQyxTQUFTLENBQUMsQ0FBQTtJQUM5QixJQUFJLENBQUMsR0FBRyxLQUFLLENBQUMsTUFBTSxFQUFFO1FBQ3BCLE9BQU8sSUFBSSxhQUFPLENBQUMsS0FBSyxDQUFDLEdBQUcsQ0FBQyxJQUFJLENBQUMsRUFBRSxDQUFDLFFBQVEsQ0FBQyxJQUFJLEVBQUUsSUFBSSxDQUFDLENBQUMsRUFBRSxJQUFJLENBQUMsQ0FBQTtLQUNsRTtJQUdELElBQUksSUFBSSxLQUFLLENBQUMsRUFBRTtRQUNkLE9BQU8sSUFBSSxZQUFNLENBQUMsSUFBSSxDQUFDLENBQUE7S0FDeEI7SUFFRCxJQUFJLElBQUksS0FBSyxDQUFDLEVBQUU7UUFDZCxPQUFPLElBQUksZUFBUyxDQUFDLElBQUksQ0FBQyxDQUFBO0tBQzNCO0lBR0QsSUFBSSxNQUFNLEtBQUssQ0FBQyxFQUFFO1FBQ2hCLE9BQU8sSUFBSSxnQkFBVSxDQUFDLElBQUksQ0FBQyxDQUFBO0tBQzVCO0lBRUQsSUFBSSxDQUFDLENBQUMsVUFBVSxDQUFDLElBQUksQ0FBQyxFQUFFO1FBQ3RCLE9BQU8sSUFBSSxZQUFNLENBQUMsSUFBSSxVQUFJLENBQUMsQ0FBQyxDQUFDLEVBQUUsSUFBSSxDQUFDLENBQUE7S0FDckM7SUFLRCxJQUFJLENBQUMsR0FBRyxRQUFRLENBQUMsQ0FBQyxDQUFDLENBQUE7SUFDbkIsSUFBSSxDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUMsRUFBRTtRQUNiLE9BQU8sSUFBSSxrQkFBWSxDQUFDLENBQUMsRUFBRSxJQUFJLENBQUMsQ0FBQTtLQUNqQztJQU1EOzs7O0lBSUE7SUFFQSxPQUFPLEdBQUcsQ0FBQTtBQUNaLENBQUM7QUFlQyw0QkFBUSJ9</td>
-                          
-                        </tr>        </tbody>
-                </table>
-            </div>
-            <div class="file show generated">
-                <h2 id="lib/val.ts">lib/val.ts </h2>
-                <div class="stats high">
-                    <div class="percentage">92.93%</div>
-                    <div class="sloc">283</div>
-                    <div class="hits">263</div>
-                    <div class="misses">20</div>
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Line</th>
-                            <th>Lint</th>
-                            <th>Hits</th>
-                            <th>Source</th>
-                            <th>Original line</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr id="lib/val.ts__1" class="hit">
-                          <td class="line" data-tooltip>1</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">&quot;use strict&quot;;</td>
-                          
-                        </tr>            <tr id="lib/val.ts__2" class="hit">
-                          <td class="line" data-tooltip>2</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">/* Copyright (c) 2020 Richard Rodger, MIT License */</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__1">1</a></td>
-                        </tr>            <tr id="lib/val.ts__3" class="hit">
+                        </tr>            <tr id="dist/aontu.js__3" class="hit">
                           <td class="line" data-tooltip>3</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip>1</td>
-                          <td class="source">Object.defineProperty(exports, &quot;__esModule&quot;, { value: true });</td>
+                          <td class="source">exports.Aontu &#x3D; void 0;</td>
                           
-                        </tr>            <tr id="lib/val.ts__4" class="hit">
+                        </tr>            <tr id="dist/aontu.js__4" class="hit">
                           <td class="line" data-tooltip>4</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.RefVal &#x3D; exports.MeetVal &#x3D; exports.MapVal &#x3D; exports.IntScalarVal &#x3D; exports.IntTypeVal &#x3D; exports.BottomVal &#x3D; exports.TopVal &#x3D; exports.Val &#x3D; exports.Path &#x3D; exports.Context &#x3D; void 0;</td>
-                          
-                        </tr>            <tr id="lib/val.ts__5" class="hit">
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">class Node {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__3">3</a></td>
+                        </tr>            <tr id="dist/aontu.js__5" class="hit">
                           <td class="line" data-tooltip>5</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
-                          <td class="source">class Context {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__6">6</a></td>
-                        </tr>            <tr id="lib/val.ts__6" class="hit">
+                          <td class="source">    constructor(base, peer) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__7">7</a></td>
+                        </tr>            <tr id="dist/aontu.js__6" class="hit">
                           <td class="line" data-tooltip>6</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__15">15</a></td>
-                        </tr>            <tr id="lib/val.ts__7" class="hit">
+                          <td class="source">        this.base &#x3D; base;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__8">8</a></td>
+                        </tr>            <tr id="dist/aontu.js__7" class="hit">
                           <td class="line" data-tooltip>7</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        this.pathmap &#x3D; {};</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__10">10</a></td>
-                        </tr>            <tr id="lib/val.ts__8" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">        this.peer &#x3D; peer;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__9">9</a></td>
+                        </tr>            <tr id="dist/aontu.js__8" class="hit">
                           <td class="line" data-tooltip>8</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>105</td>
-                          <td class="source">        this.resolvemap &#x3D; {};</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__13">13</a></td>
-                        </tr>            <tr id="lib/val.ts__9" class="hit">
-                          <td class="line" data-tooltip>9</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>105</td>
-                          <td class="source">        this.path &#x3D; path || new Path(&#x27;$&#x27;);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__16">16</a></td>
-                        </tr>            <tr id="lib/val.ts__10" class="hit">
-                          <td class="line" data-tooltip>10</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>105</td>
-                          <td class="source">        this.depth &#x3D; 0;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__17">17</a></td>
-                        </tr>            <tr id="lib/val.ts__11" class="hit">
-                          <td class="line" data-tooltip>11</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>105</td>
-                          <td class="source">        this.refs &#x3D; [];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__18">18</a></td>
-                        </tr>            <tr id="lib/val.ts__12" class="hit">
-                          <td class="line" data-tooltip>12</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
                           <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__19">19</a></td>
-                        </tr>            <tr id="lib/val.ts__13" class="hit">
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__10">10</a></td>
+                        </tr>            <tr id="dist/aontu.js__9" class="hit">
+                          <td class="line" data-tooltip>9</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__11">11</a></td>
+                        </tr>            <tr id="dist/aontu.js__10" class="hit">
+                          <td class="line" data-tooltip>10</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function unify(basetop, peertop) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__14">14</a></td>
+                        </tr>            <tr id="dist/aontu.js__11" class="hit">
+                          <td class="line" data-tooltip>11</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">    const ns &#x3D; [new Node(basetop, peertop)];</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__16">16</a></td>
+                        </tr>            <tr id="dist/aontu.js__12" class="hit">
+                          <td class="line" data-tooltip>12</td>
+                          <td class="lint empty"></td>
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">    let node;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__17">17</a></td>
+                        </tr>            <tr id="dist/aontu.js__13" class="hit">
                           <td class="line" data-tooltip>13</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    add(val) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__22">22</a></td>
-                        </tr>            <tr id="lib/val.ts__14" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">    while (node &#x3D; ns.shift()) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__19">19</a></td>
+                        </tr>            <tr id="dist/aontu.js__14" class="hit">
                           <td class="line" data-tooltip>14</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        if (val.path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__23">23</a></td>
-                        </tr>            <tr id="lib/val.ts__15" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">        let base &#x3D; node.base;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__20">20</a></td>
+                        </tr>            <tr id="dist/aontu.js__15" class="hit">
                           <td class="line" data-tooltip>15</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>94</td>
-                          <td class="source">            if (!this.pathmap[val.path.str]) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__24">24</a></td>
-                        </tr>            <tr id="lib/val.ts__16" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">        let peer &#x3D; node.peer;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__21">21</a></td>
+                        </tr>            <tr id="dist/aontu.js__16" class="hit">
                           <td class="line" data-tooltip>16</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>38</td>
-                          <td class="source">                this.pathmap[val.path.str] &#x3D; val;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__25">25</a></td>
-                        </tr>            <tr id="lib/val.ts__17" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">        let peerkeys &#x3D; Object.keys(peer);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__23">23</a></td>
+                        </tr>            <tr id="dist/aontu.js__17" class="hit">
                           <td class="line" data-tooltip>17</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__26">26</a></td>
-                        </tr>            <tr id="lib/val.ts__18" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">        for (let pkI &#x3D; 0; pkI &lt; peerkeys.length; pkI++) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__24">24</a></td>
+                        </tr>            <tr id="dist/aontu.js__18" class="hit">
                           <td class="line" data-tooltip>18</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__27">27</a></td>
-                        </tr>            <tr id="lib/val.ts__19" class="hit">
+                          <td class="hits" data-tooltip>2</td>
+                          <td class="source">            let key &#x3D; peerkeys[pkI];</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__25">25</a></td>
+                        </tr>            <tr id="dist/aontu.js__19" class="hit">
                           <td class="line" data-tooltip>19</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>97</td>
-                          <td class="source">        return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__28">28</a></td>
-                        </tr>            <tr id="lib/val.ts__20" class="hit">
+                          <td class="hits" data-tooltip>2</td>
+                          <td class="source">            base[key] &#x3D; unify_scalar(base[key], peer[key]);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__26">26</a></td>
+                        </tr>            <tr id="dist/aontu.js__20" class="hit">
                           <td class="line" data-tooltip>20</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__29">29</a></td>
-                        </tr>            <tr id="lib/val.ts__21" class="hit">
+                          <td class="source">        }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__27">27</a></td>
+                        </tr>            <tr id="dist/aontu.js__21" class="hit">
                           <td class="line" data-tooltip>21</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
-                          <td class="source">    get(pstr) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__31">31</a></td>
-                        </tr>            <tr id="lib/val.ts__22" class="hit">
+                          <td class="source">    }</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__29">29</a></td>
+                        </tr>            <tr id="dist/aontu.js__22" class="hit">
                           <td class="line" data-tooltip>22</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return new Path(pstr).resolve(this);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__32">32</a></td>
-                        </tr>            <tr id="lib/val.ts__23" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">    return basetop;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__31">31</a></td>
+                        </tr>            <tr id="dist/aontu.js__23" class="hit">
                           <td class="line" data-tooltip>23</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__33">33</a></td>
-                        </tr>            <tr id="lib/val.ts__24" class="hit">
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__32">32</a></td>
+                        </tr>            <tr id="dist/aontu.js__24" class="hit">
                           <td class="line" data-tooltip>24</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
-                          <td class="source">    descend(part) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__36">36</a></td>
-                        </tr>            <tr id="lib/val.ts__25" class="hit">
+                          <td class="source">function unify_scalar(basescalar, peerscalar) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__35">35</a></td>
+                        </tr>            <tr id="dist/aontu.js__25" class="hit">
                           <td class="line" data-tooltip>25</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        let child &#x3D; new Context(new Path(this.path, part));</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__37">37</a></td>
-                        </tr>            <tr id="lib/val.ts__26" class="hit">
+                          <td class="hits" data-tooltip>2</td>
+                          <td class="source">    return peerscalar;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__36">36</a></td>
+                        </tr>            <tr id="dist/aontu.js__26" class="hit">
                           <td class="line" data-tooltip>26</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>84</td>
-                          <td class="source">        child.depth &#x3D; this.depth + 1;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__39">39</a></td>
-                        </tr>            <tr id="lib/val.ts__27" class="hit">
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__37">37</a></td>
+                        </tr>            <tr id="dist/aontu.js__27" class="hit">
                           <td class="line" data-tooltip>27</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>84</td>
-                          <td class="source">        child.pathmap &#x3D; this.pathmap;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__40">40</a></td>
-                        </tr>            <tr id="lib/val.ts__28" class="hit">
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">function Aontu(base, peer) {</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__40">40</a></td>
+                        </tr>            <tr id="dist/aontu.js__28" class="hit">
                           <td class="line" data-tooltip>28</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>84</td>
-                          <td class="source">        child.refs &#x3D; [...this.refs];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__41">41</a></td>
-                        </tr>            <tr id="lib/val.ts__29" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">    return unify(base, peer);</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__41">41</a></td>
+                        </tr>            <tr id="dist/aontu.js__29" class="hit">
                           <td class="line" data-tooltip>29</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>84</td>
-                          <td class="source">        child.resolvemap &#x3D; this.resolvemap;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__43">43</a></td>
-                        </tr>            <tr id="lib/val.ts__30" class="hit">
+                          <td class="hits" data-tooltip></td>
+                          <td class="source">}</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__42">42</a></td>
+                        </tr>            <tr id="dist/aontu.js__30" class="hit">
                           <td class="line" data-tooltip>30</td>
                           <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>84</td>
-                          <td class="source">        return child;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__44">44</a></td>
-                        </tr>            <tr id="lib/val.ts__31" class="hit">
+                          <td class="hits" data-tooltip>1</td>
+                          <td class="source">exports.Aontu &#x3D; Aontu;</td>
+                          <td class="original-line" data-tooltip="../aontu.ts"><a href="#../aontu.ts__45">45</a></td>
+                        </tr>            <tr id="dist/aontu.js__31" class="hit">
                           <td class="line" data-tooltip>31</td>
                           <td class="lint empty"></td>
                           <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__45">45</a></td>
-                        </tr>            <tr id="lib/val.ts__32" class="hit">
-                          <td class="line" data-tooltip>32</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    describe() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__48">48</a></td>
-                        </tr>            <tr id="lib/val.ts__33" class="hit">
-                          <td class="line" data-tooltip>33</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return Object</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__49">49</a></td>
-                        </tr>            <tr id="lib/val.ts__34" class="hit">
-                          <td class="line" data-tooltip>34</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            .keys(this.pathmap)</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__50">50</a></td>
-                        </tr>            <tr id="lib/val.ts__35" class="hit">
-                          <td class="line" data-tooltip>35</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            .sort()</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__51">51</a></td>
-                        </tr>            <tr id="lib/val.ts__36" class="hit">
-                          <td class="line" data-tooltip>36</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            .map(ps &#x3D;&gt; ps + &#x27;: &#x27; + this.pathmap[ps]).join(&#x27;\n&#x27;) + &#x27;\n&#x27;;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__52">52</a></td>
-                        </tr>            <tr id="lib/val.ts__37" class="hit">
-                          <td class="line" data-tooltip>37</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__53">53</a></td>
-                        </tr>            <tr id="lib/val.ts__38" class="hit">
-                          <td class="line" data-tooltip>38</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__71">71</a></td>
-                        </tr>            <tr id="lib/val.ts__39" class="hit">
-                          <td class="line" data-tooltip>39</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.Context &#x3D; Context;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__415">415</a></td>
-                        </tr>            <tr id="lib/val.ts__40" class="hit">
-                          <td class="line" data-tooltip>40</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__74">74</a></td>
-                        </tr>            <tr id="lib/val.ts__41" class="hit">
-                          <td class="line" data-tooltip>41</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__78">78</a></td>
-                        </tr>            <tr id="lib/val.ts__42" class="hit">
-                          <td class="line" data-tooltip>42</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        this.path &#x3D; path;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__79">79</a></td>
-                        </tr>            <tr id="lib/val.ts__43" class="hit">
-                          <td class="line" data-tooltip>43</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>220</td>
-                          <td class="source">        this.val &#x3D; this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__80">80</a></td>
-                        </tr>            <tr id="lib/val.ts__44" class="hit">
-                          <td class="line" data-tooltip>44</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__81">81</a></td>
-                        </tr>            <tr id="lib/val.ts__45" class="hit">
-                          <td class="line" data-tooltip>45</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    toString() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__83">83</a></td>
-                        </tr>            <tr id="lib/val.ts__46" class="hit">
-                          <td class="line" data-tooltip>46</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return this &#x3D;&#x3D;&#x3D; this.val ? this.str() : this.val.toString();</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__84">84</a></td>
-                        </tr>            <tr id="lib/val.ts__47" class="hit">
-                          <td class="line" data-tooltip>47</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__85">85</a></td>
-                        </tr>            <tr id="lib/val.ts__48" class="hit">
-                          <td class="line" data-tooltip>48</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unify(other, ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__87">87</a></td>
-                        </tr>            <tr id="lib/val.ts__49" class="hit">
-                          <td class="line" data-tooltip>49</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        ctx &#x3D; ctx.descend().add(this);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__88">88</a></td>
-                        </tr>            <tr id="lib/val.ts__50" class="hit">
-                          <td class="line" data-tooltip>50</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>84</td>
-                          <td class="source">        console.log(&#x27;UA:&#x27; + ctx.depth + &#x27; &#x27; + this.constructor.name + &#x27; t:&#x27; + this + &#x27; o:&#x27; + other + &#x27; refs:&#x27; + ctx.refs);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__90">90</a></td>
-                        </tr>            <tr id="lib/val.ts__51" class="chunks">
-                          <td class="line" data-tooltip>51</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        if (</div><div class="miss false" data-tooltip>ctx.depth &gt; 11</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__92">92</a></td>
-                        </tr>            <tr id="lib/val.ts__52" class="miss">
-                          <td class="line" data-tooltip>52</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source" data-tooltip>            console.log(&#x27;DEPTH&#x27;);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__93">93</a></td>
-                        </tr>            <tr id="lib/val.ts__53" class="miss">
-                          <td class="line" data-tooltip>53</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source" data-tooltip>            return new BottomVal();</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__94">94</a></td>
-                        </tr>            <tr id="lib/val.ts__54" class="hit">
-                          <td class="line" data-tooltip>54</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__95">95</a></td>
-                        </tr>            <tr id="lib/val.ts__55" class="hit">
-                          <td class="line" data-tooltip>55</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>84</td>
-                          <td class="source">        if (other instanceof BottomVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__97">97</a></td>
-                        </tr>            <tr id="lib/val.ts__56" class="hit">
-                          <td class="line" data-tooltip>56</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>2</td>
-                          <td class="source">            return this.val &#x3D; other;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__98">98</a></td>
-                        </tr>            <tr id="lib/val.ts__57" class="hit">
-                          <td class="line" data-tooltip>57</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__99">99</a></td>
-                        </tr>            <tr id="lib/val.ts__58" class="hit">
-                          <td class="line" data-tooltip>58</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        //if (other instanceof RefVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__101">101</a></td>
-                        </tr>            <tr id="lib/val.ts__59" class="hit">
-                          <td class="line" data-tooltip>59</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        //  return this.val &#x3D; other.unify(this.val || this, ctx)</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__102">102</a></td>
-                        </tr>            <tr id="lib/val.ts__60" class="hit">
-                          <td class="line" data-tooltip>60</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        //}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__103">103</a></td>
-                        </tr>            <tr id="lib/val.ts__61" class="chunks">
-                          <td class="line" data-tooltip>61</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        let oval &#x3D; </div><div class="miss true" data-tooltip>other.val</div><div> || </div><div class="miss never" data-tooltip>other</div><div>;</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__105">105</a></td>
-                        </tr>            <tr id="lib/val.ts__62" class="hit">
-                          <td class="line" data-tooltip>62</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>82</td>
-                          <td class="source">        let val;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__106">106</a></td>
-                        </tr>            <tr id="lib/val.ts__63" class="chunks">
-                          <td class="line" data-tooltip>63</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        if (</div><div class="miss false" data-tooltip>!this.val</div><div> || this.val &#x3D;&#x3D;&#x3D; this) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__108">108</a></td>
-                        </tr>            <tr id="lib/val.ts__64" class="hit">
-                          <td class="line" data-tooltip>64</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>81</td>
-                          <td class="source">            val &#x3D; this.unifier(oval, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__109">109</a></td>
-                        </tr>            <tr id="lib/val.ts__65" class="hit">
-                          <td class="line" data-tooltip>65</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__110">110</a></td>
-                        </tr>            <tr id="lib/val.ts__66" class="hit">
-                          <td class="line" data-tooltip>66</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        else {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__111">111</a></td>
-                        </tr>            <tr id="lib/val.ts__67" class="hit">
-                          <td class="line" data-tooltip>67</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            val &#x3D; this.val.unify(oval, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__112">112</a></td>
-                        </tr>            <tr id="lib/val.ts__68" class="hit">
-                          <td class="line" data-tooltip>68</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__113">113</a></td>
-                        </tr>            <tr id="lib/val.ts__69" class="chunks">
-                          <td class="line" data-tooltip>69</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        if (</div><div class="miss false" data-tooltip>!val</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__115">115</a></td>
-                        </tr>            <tr id="lib/val.ts__70" class="miss">
-                          <td class="line" data-tooltip>70</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source" data-tooltip>            val &#x3D; new BottomVal();</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__116">116</a></td>
-                        </tr>            <tr id="lib/val.ts__71" class="hit">
-                          <td class="line" data-tooltip>71</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__117">117</a></td>
-                        </tr>            <tr id="lib/val.ts__72" class="hit">
-                          <td class="line" data-tooltip>72</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>82</td>
-                          <td class="source">        console.log(&#x27;UB:&#x27; + ctx.depth + &#x27; &#x27; + this.constructor.name + &#x27; t:&#x27; + this + &#x27; o:&#x27; + other + &#x27; -&gt; &#x27; + val);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__119">119</a></td>
-                        </tr>            <tr id="lib/val.ts__73" class="hit">
-                          <td class="line" data-tooltip>73</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>82</td>
-                          <td class="source">        return this.val &#x3D; val;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__121">121</a></td>
-                        </tr>            <tr id="lib/val.ts__74" class="hit">
-                          <td class="line" data-tooltip>74</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__122">122</a></td>
-                        </tr>            <tr id="lib/val.ts__75" class="hit">
-                          <td class="line" data-tooltip>75</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__126">126</a></td>
-                        </tr>            <tr id="lib/val.ts__76" class="hit">
-                          <td class="line" data-tooltip>76</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.Val &#x3D; Val;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__417">417</a></td>
-                        </tr>            <tr id="lib/val.ts__77" class="hit">
-                          <td class="line" data-tooltip>77</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class TopVal extends Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__130">130</a></td>
-                        </tr>            <tr id="lib/val.ts__78" class="hit">
-                          <td class="line" data-tooltip>78</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__131">131</a></td>
-                        </tr>            <tr id="lib/val.ts__79" class="hit">
-                          <td class="line" data-tooltip>79</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        super(path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__132">132</a></td>
-                        </tr>            <tr id="lib/val.ts__80" class="hit">
-                          <td class="line" data-tooltip>80</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__133">133</a></td>
-                        </tr>            <tr id="lib/val.ts__81" class="hit">
-                          <td class="line" data-tooltip>81</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unifier(other, ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__135">135</a></td>
-                        </tr>            <tr id="lib/val.ts__82" class="hit">
-                          <td class="line" data-tooltip>82</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        if (other instanceof TopVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__136">136</a></td>
-                        </tr>            <tr id="lib/val.ts__83" class="hit">
-                          <td class="line" data-tooltip>83</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>3</td>
-                          <td class="source">            return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__137">137</a></td>
-                        </tr>            <tr id="lib/val.ts__84" class="hit">
-                          <td class="line" data-tooltip>84</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__138">138</a></td>
-                        </tr>            <tr id="lib/val.ts__85" class="hit">
-                          <td class="line" data-tooltip>85</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        else {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__139">139</a></td>
-                        </tr>            <tr id="lib/val.ts__86" class="hit">
-                          <td class="line" data-tooltip>86</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>4</td>
-                          <td class="source">            return other.unify(this, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__140">140</a></td>
-                        </tr>            <tr id="lib/val.ts__87" class="hit">
-                          <td class="line" data-tooltip>87</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__141">141</a></td>
-                        </tr>            <tr id="lib/val.ts__88" class="hit">
-                          <td class="line" data-tooltip>88</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__142">142</a></td>
-                        </tr>            <tr id="lib/val.ts__89" class="hit">
-                          <td class="line" data-tooltip>89</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    str() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__144">144</a></td>
-                        </tr>            <tr id="lib/val.ts__90" class="hit">
-                          <td class="line" data-tooltip>90</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return &#x27;$T&#x27;;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__145">145</a></td>
-                        </tr>            <tr id="lib/val.ts__91" class="hit">
-                          <td class="line" data-tooltip>91</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__146">146</a></td>
-                        </tr>            <tr id="lib/val.ts__92" class="hit">
-                          <td class="line" data-tooltip>92</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__147">147</a></td>
-                        </tr>            <tr id="lib/val.ts__93" class="hit">
-                          <td class="line" data-tooltip>93</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.TopVal &#x3D; TopVal;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__418">418</a></td>
-                        </tr>            <tr id="lib/val.ts__94" class="hit">
-                          <td class="line" data-tooltip>94</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class BottomVal extends Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__150">150</a></td>
-                        </tr>            <tr id="lib/val.ts__95" class="hit">
-                          <td class="line" data-tooltip>95</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    // TODO: constructor that captures error</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__152">152</a></td>
-                        </tr>            <tr id="lib/val.ts__96" class="hit">
-                          <td class="line" data-tooltip>96</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__153">153</a></td>
-                        </tr>            <tr id="lib/val.ts__97" class="hit">
-                          <td class="line" data-tooltip>97</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        super(path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__154">154</a></td>
-                        </tr>            <tr id="lib/val.ts__98" class="hit">
-                          <td class="line" data-tooltip>98</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__155">155</a></td>
-                        </tr>            <tr id="lib/val.ts__99" class="hit">
-                          <td class="line" data-tooltip>99</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unifier() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__157">157</a></td>
-                        </tr>            <tr id="lib/val.ts__100" class="hit">
-                          <td class="line" data-tooltip>100</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__158">158</a></td>
-                        </tr>            <tr id="lib/val.ts__101" class="hit">
-                          <td class="line" data-tooltip>101</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__159">159</a></td>
-                        </tr>            <tr id="lib/val.ts__102" class="hit">
-                          <td class="line" data-tooltip>102</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    str() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__161">161</a></td>
-                        </tr>            <tr id="lib/val.ts__103" class="hit">
-                          <td class="line" data-tooltip>103</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return &#x27;$B&#x27;;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__162">162</a></td>
-                        </tr>            <tr id="lib/val.ts__104" class="hit">
-                          <td class="line" data-tooltip>104</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__163">163</a></td>
-                        </tr>            <tr id="lib/val.ts__105" class="hit">
-                          <td class="line" data-tooltip>105</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__164">164</a></td>
-                        </tr>            <tr id="lib/val.ts__106" class="hit">
-                          <td class="line" data-tooltip>106</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.BottomVal &#x3D; BottomVal;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__419">419</a></td>
-                        </tr>            <tr id="lib/val.ts__107" class="hit">
-                          <td class="line" data-tooltip>107</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class IntTypeVal extends Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__167">167</a></td>
-                        </tr>            <tr id="lib/val.ts__108" class="hit">
-                          <td class="line" data-tooltip>108</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__168">168</a></td>
-                        </tr>            <tr id="lib/val.ts__109" class="hit">
-                          <td class="line" data-tooltip>109</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        super(path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__169">169</a></td>
-                        </tr>            <tr id="lib/val.ts__110" class="hit">
-                          <td class="line" data-tooltip>110</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__170">170</a></td>
-                        </tr>            <tr id="lib/val.ts__111" class="hit">
-                          <td class="line" data-tooltip>111</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unifier(other, ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__172">172</a></td>
-                        </tr>            <tr id="lib/val.ts__112" class="hit">
-                          <td class="line" data-tooltip>112</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        if (other instanceof TopVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__173">173</a></td>
-                        </tr>            <tr id="lib/val.ts__113" class="hit">
-                          <td class="line" data-tooltip>113</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>5</td>
-                          <td class="source">            return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__174">174</a></td>
-                        </tr>            <tr id="lib/val.ts__114" class="hit">
-                          <td class="line" data-tooltip>114</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__175">175</a></td>
-                        </tr>            <tr id="lib/val.ts__115" class="chunks">
-                          <td class="line" data-tooltip>115</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        else if (</div><div class="miss false" data-tooltip>other instanceof MeetVal</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__175">175</a></td>
-                        </tr>            <tr id="lib/val.ts__116" class="miss">
-                          <td class="line" data-tooltip>116</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source" data-tooltip>            return other.unify(this, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__176">176</a></td>
-                        </tr>            <tr id="lib/val.ts__117" class="hit">
-                          <td class="line" data-tooltip>117</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__177">177</a></td>
-                        </tr>            <tr id="lib/val.ts__118" class="hit">
-                          <td class="line" data-tooltip>118</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>10</td>
-                          <td class="source">        else if (other instanceof IntScalarVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__177">177</a></td>
-                        </tr>            <tr id="lib/val.ts__119" class="hit">
-                          <td class="line" data-tooltip>119</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>9</td>
-                          <td class="source">            return other;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__178">178</a></td>
-                        </tr>            <tr id="lib/val.ts__120" class="hit">
-                          <td class="line" data-tooltip>120</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__179">179</a></td>
-                        </tr>            <tr id="lib/val.ts__121" class="chunks">
-                          <td class="line" data-tooltip>121</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        else if (</div><div class="miss true" data-tooltip>other instanceof IntTypeVal</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__179">179</a></td>
-                        </tr>            <tr id="lib/val.ts__122" class="hit">
-                          <td class="line" data-tooltip>122</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__180">180</a></td>
-                        </tr>            <tr id="lib/val.ts__123" class="hit">
-                          <td class="line" data-tooltip>123</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__181">181</a></td>
-                        </tr>            <tr id="lib/val.ts__124" class="hit">
-                          <td class="line" data-tooltip>124</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__182">182</a></td>
-                        </tr>            <tr id="lib/val.ts__125" class="hit">
-                          <td class="line" data-tooltip>125</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    str() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__184">184</a></td>
-                        </tr>            <tr id="lib/val.ts__126" class="hit">
-                          <td class="line" data-tooltip>126</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return &#x27;$int&#x27;;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__185">185</a></td>
-                        </tr>            <tr id="lib/val.ts__127" class="hit">
-                          <td class="line" data-tooltip>127</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__186">186</a></td>
-                        </tr>            <tr id="lib/val.ts__128" class="hit">
-                          <td class="line" data-tooltip>128</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__187">187</a></td>
-                        </tr>            <tr id="lib/val.ts__129" class="hit">
-                          <td class="line" data-tooltip>129</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.IntTypeVal &#x3D; IntTypeVal;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__420">420</a></td>
-                        </tr>            <tr id="lib/val.ts__130" class="hit">
-                          <td class="line" data-tooltip>130</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class IntScalarVal extends Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__190">190</a></td>
-                        </tr>            <tr id="lib/val.ts__131" class="hit">
-                          <td class="line" data-tooltip>131</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(scalar, path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__193">193</a></td>
-                        </tr>            <tr id="lib/val.ts__132" class="hit">
-                          <td class="line" data-tooltip>132</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        super(path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__194">194</a></td>
-                        </tr>            <tr id="lib/val.ts__133" class="hit">
-                          <td class="line" data-tooltip>133</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>31</td>
-                          <td class="source">        this.scalar &#x3D; scalar;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__195">195</a></td>
-                        </tr>            <tr id="lib/val.ts__134" class="hit">
-                          <td class="line" data-tooltip>134</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__196">196</a></td>
-                        </tr>            <tr id="lib/val.ts__135" class="hit">
-                          <td class="line" data-tooltip>135</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unifier(other, ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__198">198</a></td>
-                        </tr>            <tr id="lib/val.ts__136" class="hit">
-                          <td class="line" data-tooltip>136</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        if (other instanceof TopVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__199">199</a></td>
-                        </tr>            <tr id="lib/val.ts__137" class="hit">
-                          <td class="line" data-tooltip>137</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>10</td>
-                          <td class="source">            return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__200">200</a></td>
-                        </tr>            <tr id="lib/val.ts__138" class="hit">
-                          <td class="line" data-tooltip>138</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__201">201</a></td>
-                        </tr>            <tr id="lib/val.ts__139" class="hit">
-                          <td class="line" data-tooltip>139</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>15</td>
-                          <td class="source">        else if (other instanceof MeetVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__203">203</a></td>
-                        </tr>            <tr id="lib/val.ts__140" class="hit">
-                          <td class="line" data-tooltip>140</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            return other.unify(this, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__204">204</a></td>
-                        </tr>            <tr id="lib/val.ts__141" class="hit">
-                          <td class="line" data-tooltip>141</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__205">205</a></td>
-                        </tr>            <tr id="lib/val.ts__142" class="hit">
-                          <td class="line" data-tooltip>142</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>14</td>
-                          <td class="source">        else if (other instanceof RefVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__207">207</a></td>
-                        </tr>            <tr id="lib/val.ts__143" class="hit">
-                          <td class="line" data-tooltip>143</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            return other.unify(this, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__208">208</a></td>
-                        </tr>            <tr id="lib/val.ts__144" class="hit">
-                          <td class="line" data-tooltip>144</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__209">209</a></td>
-                        </tr>            <tr id="lib/val.ts__145" class="hit">
-                          <td class="line" data-tooltip>145</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>13</td>
-                          <td class="source">        else if (other instanceof IntTypeVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__211">211</a></td>
-                        </tr>            <tr id="lib/val.ts__146" class="hit">
-                          <td class="line" data-tooltip>146</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>4</td>
-                          <td class="source">            return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__212">212</a></td>
-                        </tr>            <tr id="lib/val.ts__147" class="hit">
-                          <td class="line" data-tooltip>147</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__213">213</a></td>
-                        </tr>            <tr id="lib/val.ts__148" class="chunks">
-                          <td class="line" data-tooltip>148</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        else if (</div><div class="miss true" data-tooltip>other instanceof IntScalarVal</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__215">215</a></td>
-                        </tr>            <tr id="lib/val.ts__149" class="chunks">
-                          <td class="line" data-tooltip>149</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>            return </div><div class="miss true" data-tooltip>other.scalar &#x3D;&#x3D;&#x3D; this.scalar</div><div> ? other : </div><div class="miss never" data-tooltip>undefined</div><div>;</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__216">216</a></td>
-                        </tr>            <tr id="lib/val.ts__150" class="hit">
-                          <td class="line" data-tooltip>150</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__217">217</a></td>
-                        </tr>            <tr id="lib/val.ts__151" class="hit">
-                          <td class="line" data-tooltip>151</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__218">218</a></td>
-                        </tr>            <tr id="lib/val.ts__152" class="hit">
-                          <td class="line" data-tooltip>152</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    str() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__220">220</a></td>
-                        </tr>            <tr id="lib/val.ts__153" class="hit">
-                          <td class="line" data-tooltip>153</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return this.scalar.toString();</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__221">221</a></td>
-                        </tr>            <tr id="lib/val.ts__154" class="hit">
-                          <td class="line" data-tooltip>154</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__222">222</a></td>
-                        </tr>            <tr id="lib/val.ts__155" class="hit">
-                          <td class="line" data-tooltip>155</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__223">223</a></td>
-                        </tr>            <tr id="lib/val.ts__156" class="hit">
-                          <td class="line" data-tooltip>156</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.IntScalarVal &#x3D; IntScalarVal;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__421">421</a></td>
-                        </tr>            <tr id="lib/val.ts__157" class="hit">
-                          <td class="line" data-tooltip>157</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class MapVal extends Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__230">230</a></td>
-                        </tr>            <tr id="lib/val.ts__158" class="hit">
-                          <td class="line" data-tooltip>158</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(map, path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__234">234</a></td>
-                        </tr>            <tr id="lib/val.ts__159" class="hit">
-                          <td class="line" data-tooltip>159</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        super(path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__235">235</a></td>
-                        </tr>            <tr id="lib/val.ts__160" class="hit">
-                          <td class="line" data-tooltip>160</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>3</td>
-                          <td class="source">        this.map &#x3D; map;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__236">236</a></td>
-                        </tr>            <tr id="lib/val.ts__161" class="hit">
-                          <td class="line" data-tooltip>161</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__237">237</a></td>
-                        </tr>            <tr id="lib/val.ts__162" class="hit">
-                          <td class="line" data-tooltip>162</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unifier(other, ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__239">239</a></td>
-                        </tr>            <tr id="lib/val.ts__163" class="chunks">
-                          <td class="line" data-tooltip>163</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        if (other instanceof TopVal || </div><div class="miss true" data-tooltip>other instanceof MapVal</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__240">240</a></td>
-                        </tr>            <tr id="lib/val.ts__164" class="hit">
-                          <td class="line" data-tooltip>164</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>2</td>
-                          <td class="source">            let top &#x3D; new TopVal();</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__241">241</a></td>
-                        </tr>            <tr id="lib/val.ts__165" class="hit">
-                          <td class="line" data-tooltip>165</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>2</td>
-                          <td class="source">            let fields &#x3D; Object.keys(this.map);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__242">242</a></td>
-                        </tr>            <tr id="lib/val.ts__166" class="hit">
-                          <td class="line" data-tooltip>166</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>2</td>
-                          <td class="source">            for (let fI &#x3D; 0; fI &lt; fields.length; fI++) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__243">243</a></td>
-                        </tr>            <tr id="lib/val.ts__167" class="hit">
-                          <td class="line" data-tooltip>167</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>3</td>
-                          <td class="source">                let fn &#x3D; fields[fI];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__244">244</a></td>
-                        </tr>            <tr id="lib/val.ts__168" class="hit">
-                          <td class="line" data-tooltip>168</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>3</td>
-                          <td class="source">                this.map[fn] &#x3D; this.map[fn].unify(top, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__245">245</a></td>
-                        </tr>            <tr id="lib/val.ts__169" class="hit">
-                          <td class="line" data-tooltip>169</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__246">246</a></td>
-                        </tr>            <tr id="lib/val.ts__170" class="hit">
-                          <td class="line" data-tooltip>170</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>2</td>
-                          <td class="source">            if (other instanceof TopVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__248">248</a></td>
-                        </tr>            <tr id="lib/val.ts__171" class="hit">
-                          <td class="line" data-tooltip>171</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">                return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__249">249</a></td>
-                        </tr>            <tr id="lib/val.ts__172" class="hit">
-                          <td class="line" data-tooltip>172</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__250">250</a></td>
-                        </tr>            <tr id="lib/val.ts__173" class="hit">
-                          <td class="line" data-tooltip>173</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__251">251</a></td>
-                        </tr>            <tr id="lib/val.ts__174" class="chunks">
-                          <td class="line" data-tooltip>174</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        if (</div><div class="miss true" data-tooltip>other instanceof MapVal</div><div> &amp;&amp; </div><div class="miss true" data-tooltip>this.val instanceof MapVal</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__253">253</a></td>
-                        </tr>            <tr id="lib/val.ts__175" class="hit">
-                          <td class="line" data-tooltip>175</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            let map &#x3D; this.val.map;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__254">254</a></td>
-                        </tr>            <tr id="lib/val.ts__176" class="hit">
-                          <td class="line" data-tooltip>176</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            let ofields &#x3D; Object.keys(other.map);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__256">256</a></td>
-                        </tr>            <tr id="lib/val.ts__177" class="hit">
-                          <td class="line" data-tooltip>177</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            for (let ofI &#x3D; 0; ofI &lt; ofields.length; ofI++) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__257">257</a></td>
-                        </tr>            <tr id="lib/val.ts__178" class="hit">
-                          <td class="line" data-tooltip>178</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">                let ofn &#x3D; ofields[ofI];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__258">258</a></td>
-                        </tr>            <tr id="lib/val.ts__179" class="hit">
-                          <td class="line" data-tooltip>179</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">                let ofv &#x3D; other.map[ofn];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__259">259</a></td>
-                        </tr>            <tr id="lib/val.ts__180" class="hit">
-                          <td class="line" data-tooltip>180</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">                let fv &#x3D; map[ofn];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__260">260</a></td>
-                        </tr>            <tr id="lib/val.ts__181" class="chunks">
-                          <td class="line" data-tooltip>181</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>                let uv &#x3D; </div><div class="miss true" data-tooltip>null &#x3D;&#x3D; fv</div><div> ? ofv : </div><div class="miss never" data-tooltip>ofv.unify(fv, ctx)</div><div>;</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__261">261</a></td>
-                        </tr>            <tr id="lib/val.ts__182" class="hit">
-                          <td class="line" data-tooltip>182</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">                map[ofn] &#x3D; uv;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__262">262</a></td>
-                        </tr>            <tr id="lib/val.ts__183" class="hit">
-                          <td class="line" data-tooltip>183</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__263">263</a></td>
-                        </tr>            <tr id="lib/val.ts__184" class="hit">
-                          <td class="line" data-tooltip>184</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            return this;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__265">265</a></td>
-                        </tr>            <tr id="lib/val.ts__185" class="hit">
-                          <td class="line" data-tooltip>185</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__266">266</a></td>
-                        </tr>            <tr id="lib/val.ts__186" class="hit">
-                          <td class="line" data-tooltip>186</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__267">267</a></td>
-                        </tr>            <tr id="lib/val.ts__187" class="hit">
-                          <td class="line" data-tooltip>187</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    str() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__270">270</a></td>
-                        </tr>            <tr id="lib/val.ts__188" class="hit">
-                          <td class="line" data-tooltip>188</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        let b &#x3D; [&#x27;{&#x27;];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__271">271</a></td>
-                        </tr>            <tr id="lib/val.ts__189" class="hit">
-                          <td class="line" data-tooltip>189</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>15</td>
-                          <td class="source">        let fields &#x3D; Object.keys(this.map);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__272">272</a></td>
-                        </tr>            <tr id="lib/val.ts__190" class="hit">
-                          <td class="line" data-tooltip>190</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>15</td>
-                          <td class="source">        for (let fI &#x3D; 0; fI &lt; fields.length; fI++) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__273">273</a></td>
-                        </tr>            <tr id="lib/val.ts__191" class="hit">
-                          <td class="line" data-tooltip>191</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>25</td>
-                          <td class="source">            let fn &#x3D; fields[fI];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__274">274</a></td>
-                        </tr>            <tr id="lib/val.ts__192" class="hit">
-                          <td class="line" data-tooltip>192</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>25</td>
-                          <td class="source">            b.push(fn, &#x27;:&#x27;, this.map[fn].toString(), &#x27;,&#x27;);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__275">275</a></td>
-                        </tr>            <tr id="lib/val.ts__193" class="hit">
-                          <td class="line" data-tooltip>193</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__276">276</a></td>
-                        </tr>            <tr id="lib/val.ts__194" class="hit">
-                          <td class="line" data-tooltip>194</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>15</td>
-                          <td class="source">        b.push(&#x27;}&#x27;);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__277">277</a></td>
-                        </tr>            <tr id="lib/val.ts__195" class="hit">
-                          <td class="line" data-tooltip>195</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>15</td>
-                          <td class="source">        return b.join(&#x27;&#x27;);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__278">278</a></td>
-                        </tr>            <tr id="lib/val.ts__196" class="hit">
-                          <td class="line" data-tooltip>196</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__279">279</a></td>
-                        </tr>            <tr id="lib/val.ts__197" class="hit">
-                          <td class="line" data-tooltip>197</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__280">280</a></td>
-                        </tr>            <tr id="lib/val.ts__198" class="hit">
-                          <td class="line" data-tooltip>198</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.MapVal &#x3D; MapVal;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__422">422</a></td>
-                        </tr>            <tr id="lib/val.ts__199" class="hit">
-                          <td class="line" data-tooltip>199</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class MeetVal extends Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__288">288</a></td>
-                        </tr>            <tr id="lib/val.ts__200" class="hit">
-                          <td class="line" data-tooltip>200</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(vals, path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__292">292</a></td>
-                        </tr>            <tr id="lib/val.ts__201" class="hit">
-                          <td class="line" data-tooltip>201</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        super(path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__293">293</a></td>
-                        </tr>            <tr id="lib/val.ts__202" class="hit">
-                          <td class="line" data-tooltip>202</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>17</td>
-                          <td class="source">        this.vals &#x3D; vals;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__294">294</a></td>
-                        </tr>            <tr id="lib/val.ts__203" class="hit">
-                          <td class="line" data-tooltip>203</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__295">295</a></td>
-                        </tr>            <tr id="lib/val.ts__204" class="hit">
-                          <td class="line" data-tooltip>204</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unifier(other, ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__297">297</a></td>
-                        </tr>            <tr id="lib/val.ts__205" class="hit">
-                          <td class="line" data-tooltip>205</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        let cur &#x3D; other;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__298">298</a></td>
-                        </tr>            <tr id="lib/val.ts__206" class="hit">
-                          <td class="line" data-tooltip>206</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>14</td>
-                          <td class="source">        for (let vI &#x3D; 0; vI &lt; this.vals.length; vI++) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__300">300</a></td>
-                        </tr>            <tr id="lib/val.ts__207" class="hit">
-                          <td class="line" data-tooltip>207</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>31</td>
-                          <td class="source">            cur &#x3D; this.vals[vI].unify(cur, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__301">301</a></td>
-                        </tr>            <tr id="lib/val.ts__208" class="hit">
-                          <td class="line" data-tooltip>208</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__302">302</a></td>
-                        </tr>            <tr id="lib/val.ts__209" class="hit">
-                          <td class="line" data-tooltip>209</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>14</td>
-                          <td class="source">        return cur;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__304">304</a></td>
-                        </tr>            <tr id="lib/val.ts__210" class="hit">
-                          <td class="line" data-tooltip>210</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__305">305</a></td>
-                        </tr>            <tr id="lib/val.ts__211" class="hit">
-                          <td class="line" data-tooltip>211</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    str() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__307">307</a></td>
-                        </tr>            <tr id="lib/val.ts__212" class="hit">
-                          <td class="line" data-tooltip>212</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return this.vals.map(v &#x3D;&gt; v.toString()).join(&#x27; &amp; &#x27;);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__308">308</a></td>
-                        </tr>            <tr id="lib/val.ts__213" class="hit">
-                          <td class="line" data-tooltip>213</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__309">309</a></td>
-                        </tr>            <tr id="lib/val.ts__214" class="hit">
-                          <td class="line" data-tooltip>214</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__310">310</a></td>
-                        </tr>            <tr id="lib/val.ts__215" class="hit">
-                          <td class="line" data-tooltip>215</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.MeetVal &#x3D; MeetVal;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__423">423</a></td>
-                        </tr>            <tr id="lib/val.ts__216" class="hit">
-                          <td class="line" data-tooltip>216</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class RefVal extends Val {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__315">315</a></td>
-                        </tr>            <tr id="lib/val.ts__217" class="hit">
-                          <td class="line" data-tooltip>217</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(ref, path) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__318">318</a></td>
-                        </tr>            <tr id="lib/val.ts__218" class="hit">
-                          <td class="line" data-tooltip>218</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        super(path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__319">319</a></td>
-                        </tr>            <tr id="lib/val.ts__219" class="hit">
-                          <td class="line" data-tooltip>219</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>19</td>
-                          <td class="source">        this.ref &#x3D; ref;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__320">320</a></td>
-                        </tr>            <tr id="lib/val.ts__220" class="hit">
-                          <td class="line" data-tooltip>220</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__321">321</a></td>
-                        </tr>            <tr id="lib/val.ts__221" class="hit">
-                          <td class="line" data-tooltip>221</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    unifier(other, ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__323">323</a></td>
-                        </tr>            <tr id="lib/val.ts__222" class="hit">
-                          <td class="line" data-tooltip>222</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        let oval &#x3D; other;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__324">324</a></td>
-                        </tr>            <tr id="lib/val.ts__223" class="hit">
-                          <td class="line" data-tooltip>223</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>17</td>
-                          <td class="source">        if (oval instanceof RefVal) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__325">325</a></td>
-                        </tr>            <tr id="lib/val.ts__224" class="hit">
-                          <td class="line" data-tooltip>224</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>6</td>
-                          <td class="source">            if (oval.ref.equals(this.ref)) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__327">327</a></td>
-                        </tr>            <tr id="lib/val.ts__225" class="hit">
-                          <td class="line" data-tooltip>225</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">                return this.ref.resolve(ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__328">328</a></td>
-                        </tr>            <tr id="lib/val.ts__226" class="hit">
-                          <td class="line" data-tooltip>226</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__329">329</a></td>
-                        </tr>            <tr id="lib/val.ts__227" class="hit">
-                          <td class="line" data-tooltip>227</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>5</td>
-                          <td class="source">            oval &#x3D; oval.ref.resolve(ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__331">331</a></td>
-                        </tr>            <tr id="lib/val.ts__228" class="hit">
-                          <td class="line" data-tooltip>228</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>5</td>
-                          <td class="source">            if (!oval) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__333">333</a></td>
-                        </tr>            <tr id="lib/val.ts__229" class="hit">
-                          <td class="line" data-tooltip>229</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">                return new MeetVal([</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__334">334</a></td>
-                        </tr>            <tr id="lib/val.ts__230" class="hit">
-                          <td class="line" data-tooltip>230</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">                    new RefVal(this.ref, this.path),</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__335">335</a></td>
-                        </tr>            <tr id="lib/val.ts__231" class="hit">
-                          <td class="line" data-tooltip>231</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">                    new RefVal(other.ref, this.path),</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__336">336</a></td>
-                        </tr>            <tr id="lib/val.ts__232" class="hit">
-                          <td class="line" data-tooltip>232</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">                ], this.path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__337">337</a></td>
-                        </tr>            <tr id="lib/val.ts__233" class="hit">
-                          <td class="line" data-tooltip>233</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__338">338</a></td>
-                        </tr>            <tr id="lib/val.ts__234" class="hit">
-                          <td class="line" data-tooltip>234</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__339">339</a></td>
-                        </tr>            <tr id="lib/val.ts__235" class="hit">
-                          <td class="line" data-tooltip>235</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>15</td>
-                          <td class="source">        let val &#x3D; this.ref.resolve(ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__341">341</a></td>
-                        </tr>            <tr id="lib/val.ts__236" class="hit">
-                          <td class="line" data-tooltip>236</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>15</td>
-                          <td class="source">        if (val) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__343">343</a></td>
-                        </tr>            <tr id="lib/val.ts__237" class="hit">
-                          <td class="line" data-tooltip>237</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>14</td>
-                          <td class="source">            ctx.refs.push(this.ref);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__344">344</a></td>
-                        </tr>            <tr id="lib/val.ts__238" class="hit">
-                          <td class="line" data-tooltip>238</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>14</td>
-                          <td class="source">            return val.unify(oval, ctx);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__345">345</a></td>
-                        </tr>            <tr id="lib/val.ts__239" class="hit">
-                          <td class="line" data-tooltip>239</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__346">346</a></td>
-                        </tr>            <tr id="lib/val.ts__240" class="hit">
-                          <td class="line" data-tooltip>240</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        else {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__347">347</a></td>
-                        </tr>            <tr id="lib/val.ts__241" class="hit">
-                          <td class="line" data-tooltip>241</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">            return new MeetVal([</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__348">348</a></td>
-                        </tr>            <tr id="lib/val.ts__242" class="hit">
-                          <td class="line" data-tooltip>242</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">                new RefVal(this.ref, this.path),</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__349">349</a></td>
-                        </tr>            <tr id="lib/val.ts__243" class="hit">
-                          <td class="line" data-tooltip>243</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">                other</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__350">350</a></td>
-                        </tr>            <tr id="lib/val.ts__244" class="hit">
-                          <td class="line" data-tooltip>244</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">            ], this.path);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__351">351</a></td>
-                        </tr>            <tr id="lib/val.ts__245" class="hit">
-                          <td class="line" data-tooltip>245</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__352">352</a></td>
-                        </tr>            <tr id="lib/val.ts__246" class="hit">
-                          <td class="line" data-tooltip>246</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__353">353</a></td>
-                        </tr>            <tr id="lib/val.ts__247" class="hit">
-                          <td class="line" data-tooltip>247</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    str() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__356">356</a></td>
-                        </tr>            <tr id="lib/val.ts__248" class="hit">
-                          <td class="line" data-tooltip>248</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return this.ref.str;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__357">357</a></td>
-                        </tr>            <tr id="lib/val.ts__249" class="hit">
-                          <td class="line" data-tooltip>249</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__358">358</a></td>
-                        </tr>            <tr id="lib/val.ts__250" class="hit">
-                          <td class="line" data-tooltip>250</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__359">359</a></td>
-                        </tr>            <tr id="lib/val.ts__251" class="hit">
-                          <td class="line" data-tooltip>251</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.RefVal &#x3D; RefVal;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__424">424</a></td>
-                        </tr>            <tr id="lib/val.ts__252" class="hit">
-                          <td class="line" data-tooltip>252</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">class Path {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__362">362</a></td>
-                        </tr>            <tr id="lib/val.ts__253" class="hit">
-                          <td class="line" data-tooltip>253</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    constructor(parts, append) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__367">367</a></td>
-                        </tr>            <tr id="lib/val.ts__254" class="hit">
-                          <td class="line" data-tooltip>254</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        this.parts &#x3D; [];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__363">363</a></td>
-                        </tr>            <tr id="lib/val.ts__255" class="hit">
-                          <td class="line" data-tooltip>255</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>214</td>
-                          <td class="source">        this.str &#x3D; &#x27;&#x27;;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__364">364</a></td>
-                        </tr>            <tr id="lib/val.ts__256" class="hit">
-                          <td class="line" data-tooltip>256</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>214</td>
-                          <td class="source">        this.length &#x3D; 0;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__365">365</a></td>
-                        </tr>            <tr id="lib/val.ts__257" class="hit">
-                          <td class="line" data-tooltip>257</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>214</td>
-                          <td class="source">        this.parts &#x3D; this.parseParts(parts);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__368">368</a></td>
-                        </tr>            <tr id="lib/val.ts__258" class="chunks">
-                          <td class="line" data-tooltip>258</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        if (</div><div class="miss false" data-tooltip>append</div><div>) {</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__370">370</a></td>
-                        </tr>            <tr id="lib/val.ts__259" class="miss">
-                          <td class="line" data-tooltip>259</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source" data-tooltip>            this.parts &#x3D; this.parts.concat(this.parseParts(append));</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__371">371</a></td>
-                        </tr>            <tr id="lib/val.ts__260" class="hit">
-                          <td class="line" data-tooltip>260</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__372">372</a></td>
-                        </tr>            <tr id="lib/val.ts__261" class="hit">
-                          <td class="line" data-tooltip>261</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>214</td>
-                          <td class="source">        this.length &#x3D; this.parts.length;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__374">374</a></td>
-                        </tr>            <tr id="lib/val.ts__262" class="hit">
-                          <td class="line" data-tooltip>262</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>214</td>
-                          <td class="source">        this.str &#x3D; this.parts.join(&#x27;.&#x27;);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__375">375</a></td>
-                        </tr>            <tr id="lib/val.ts__263" class="hit">
-                          <td class="line" data-tooltip>263</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__376">376</a></td>
-                        </tr>            <tr id="lib/val.ts__264" class="hit">
-                          <td class="line" data-tooltip>264</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    resolve(ctx) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__378">378</a></td>
-                        </tr>            <tr id="lib/val.ts__265" class="hit">
-                          <td class="line" data-tooltip>265</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        let seen &#x3D; !!ctx.refs.find(ref &#x3D;&gt; ref.equals(this));</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__379">379</a></td>
-                        </tr>            <tr id="lib/val.ts__266" class="hit">
-                          <td class="line" data-tooltip>266</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        // console.log(&#x27;RESOLVE&#x27;, this.str, ctx.pathmap[this.str], seen, ctx.refs)</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__380">380</a></td>
-                        </tr>            <tr id="lib/val.ts__267" class="hit">
-                          <td class="line" data-tooltip>267</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>28</td>
-                          <td class="source">        return seen ? new TopVal(this) : ctx.pathmap[this.str];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__381">381</a></td>
-                        </tr>            <tr id="lib/val.ts__268" class="hit">
-                          <td class="line" data-tooltip>268</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__382">382</a></td>
-                        </tr>            <tr id="lib/val.ts__269" class="hit">
-                          <td class="line" data-tooltip>269</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    append(other) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__385">385</a></td>
-                        </tr>            <tr id="lib/val.ts__270" class="hit">
-                          <td class="line" data-tooltip>270</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return new Path([...this.parts, ...this.parseParts(other)]);</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__386">386</a></td>
-                        </tr>            <tr id="lib/val.ts__271" class="hit">
-                          <td class="line" data-tooltip>271</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__387">387</a></td>
-                        </tr>            <tr id="lib/val.ts__272" class="hit">
-                          <td class="line" data-tooltip>272</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    slice(n) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__389">389</a></td>
-                        </tr>            <tr id="lib/val.ts__273" class="chunks">
-                          <td class="line" data-tooltip>273</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        </div><div class="miss never" data-tooltip>return new Path(this.parts.slice(n));</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__390">390</a></td>
-                        </tr>            <tr id="lib/val.ts__274" class="hit">
-                          <td class="line" data-tooltip>274</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__391">391</a></td>
-                        </tr>            <tr id="lib/val.ts__275" class="hit">
-                          <td class="line" data-tooltip>275</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    equals(other) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__393">393</a></td>
-                        </tr>            <tr id="lib/val.ts__276" class="chunks">
-                          <td class="line" data-tooltip>276</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        return </div><div class="miss true" data-tooltip>other</div><div> ? this.str &#x3D;&#x3D;&#x3D; other.str : </div><div class="miss never" data-tooltip>false</div><div>;</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__394">394</a></td>
-                        </tr>            <tr id="lib/val.ts__277" class="hit">
-                          <td class="line" data-tooltip>277</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__395">395</a></td>
-                        </tr>            <tr id="lib/val.ts__278" class="hit">
-                          <td class="line" data-tooltip>278</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    deeper(other) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__397">397</a></td>
-                        </tr>            <tr id="lib/val.ts__279" class="hit">
-                          <td class="line" data-tooltip>279</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        //return this.parts_str !&#x3D; other.parts_str &amp;&amp;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__398">398</a></td>
-                        </tr>            <tr id="lib/val.ts__280" class="chunks">
-                          <td class="line" data-tooltip>280</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source"><div>        </div><div class="miss never" data-tooltip>return this.str.startsWith(other.str);</div></td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__399">399</a></td>
-                        </tr>            <tr id="lib/val.ts__281" class="hit">
-                          <td class="line" data-tooltip>281</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__400">400</a></td>
-                        </tr>            <tr id="lib/val.ts__282" class="hit">
-                          <td class="line" data-tooltip>282</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    parseParts(parts) {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__402">402</a></td>
-                        </tr>            <tr id="lib/val.ts__283" class="hit">
-                          <td class="line" data-tooltip>283</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        parts &#x3D; parts instanceof Path ? parts.parts : parts;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__403">403</a></td>
-                        </tr>            <tr id="lib/val.ts__284" class="hit">
-                          <td class="line" data-tooltip>284</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>218</td>
-                          <td class="source">        return &#x27;string&#x27; &#x3D;&#x3D;&#x3D; typeof parts ? parts.split(/\./) : [...parts];</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__404">404</a></td>
-                        </tr>            <tr id="lib/val.ts__285" class="hit">
-                          <td class="line" data-tooltip>285</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__405">405</a></td>
-                        </tr>            <tr id="lib/val.ts__286" class="hit">
-                          <td class="line" data-tooltip>286</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    toString() {</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__408">408</a></td>
-                        </tr>            <tr id="lib/val.ts__287" class="hit">
-                          <td class="line" data-tooltip>287</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">        return this.str;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__409">409</a></td>
-                        </tr>            <tr id="lib/val.ts__288" class="hit">
-                          <td class="line" data-tooltip>288</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">    }</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__410">410</a></td>
-                        </tr>            <tr id="lib/val.ts__289" class="hit">
-                          <td class="line" data-tooltip>289</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">}</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__411">411</a></td>
-                        </tr>            <tr id="lib/val.ts__290" class="hit">
-                          <td class="line" data-tooltip>290</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip>1</td>
-                          <td class="source">exports.Path &#x3D; Path;</td>
-                          <td class="original-line" data-tooltip="lib/val.ts"><a href="#lib/val.ts__416">416</a></td>
-                        </tr>            <tr id="lib/val.ts__291" class="hit">
-                          <td class="line" data-tooltip>291</td>
-                          <td class="lint empty"></td>
-                          <td class="hits" data-tooltip></td>
-                          <td class="source">//# sourceMappingURL&#x3D;data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidmFsLmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsibGliL3ZhbC50cyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiO0FBQUEsb0RBQW9EOzs7QUFLcEQsTUFBTSxPQUFPO0lBU1gsWUFBWSxJQUFXO1FBTHZCLFlBQU8sR0FBMkIsRUFBRSxDQUFBO1FBR3BDLGVBQVUsR0FBMkIsRUFBRSxDQUFBO1FBR3JDLElBQUksQ0FBQyxJQUFJLEdBQUcsSUFBSSxJQUFJLElBQUksSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFBO1FBQ2pDLElBQUksQ0FBQyxLQUFLLEdBQUcsQ0FBQyxDQUFBO1FBQ2QsSUFBSSxDQUFDLElBQUksR0FBRyxFQUFFLENBQUE7SUFDaEIsQ0FBQztJQUdELEdBQUcsQ0FBQyxHQUFRO1FBQ1YsSUFBSSxHQUFHLENBQUMsSUFBSSxFQUFFO1lBQ1osSUFBSSxDQUFDLElBQUksQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFDLElBQUksQ0FBQyxHQUFHLENBQUMsRUFBRTtnQkFDL0IsSUFBSSxDQUFDLE9BQU8sQ0FBQyxHQUFHLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxHQUFHLEdBQUcsQ0FBQTthQUNqQztTQUNGO1FBQ0QsT0FBTyxJQUFJLENBQUE7SUFDYixDQUFDO0lBRUQsR0FBRyxDQUFDLElBQVk7UUFDZCxPQUFPLElBQUksSUFBSSxDQUFDLElBQUksQ0FBQyxDQUFDLE9BQU8sQ0FBQyxJQUFJLENBQUMsQ0FBQTtJQUNyQyxDQUFDO0lBR0QsT0FBTyxDQUFDLElBQWE7UUFDbkIsSUFBSSxLQUFLLEdBQVksSUFBSSxPQUFPLENBQUMsSUFBSSxJQUFJLENBQUMsSUFBSSxDQUFDLElBQUksRUFBRSxJQUFJLENBQUMsQ0FBQyxDQUFBO1FBRTNELEtBQUssQ0FBQyxLQUFLLEdBQUcsSUFBSSxDQUFDLEtBQUssR0FBRyxDQUFDLENBQUE7UUFDNUIsS0FBSyxDQUFDLE9BQU8sR0FBRyxJQUFJLENBQUMsT0FBTyxDQUFBO1FBQzVCLEtBQUssQ0FBQyxJQUFJLEdBQUcsQ0FBQyxHQUFHLElBQUksQ0FBQyxJQUFJLENBQUMsQ0FBQTtRQUUzQixLQUFLLENBQUMsVUFBVSxHQUFHLElBQUksQ0FBQyxVQUFVLENBQUE7UUFDbEMsT0FBTyxLQUFLLENBQUE7SUFDZCxDQUFDO0lBR0QsUUFBUTtRQUNOLE9BQU8sTUFBTTthQUNWLElBQUksQ0FBQyxJQUFJLENBQUMsT0FBTyxDQUFDO2FBQ2xCLElBQUksRUFBRTthQUNOLEdBQUcsQ0FBQyxFQUFFLENBQUMsRUFBRSxDQUFDLEVBQUUsR0FBRyxJQUFJLEdBQUcsSUFBSSxDQUFDLE9BQU8sQ0FBQyxFQUFFLENBQUMsQ0FBQyxDQUFDLElBQUksQ0FBQyxJQUFJLENBQUMsR0FBRyxJQUFJLENBQUE7SUFDOUQsQ0FBQztDQWtCRjtBQXdWQywwQkFBTztBQXJWVCxNQUFlLEdBQUc7SUFJaEIsWUFBWSxJQUFXO1FBQ3JCLElBQUksQ0FBQyxJQUFJLEdBQUcsSUFBSSxDQUFBO1FBQ2hCLElBQUksQ0FBQyxHQUFHLEdBQUcsSUFBSSxDQUFBO0lBQ2pCLENBQUM7SUFFRCxRQUFRO1FBQ04sT0FBTyxJQUFJLEtBQUssSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUMsSUFBSSxDQUFDLEdBQUcsRUFBRSxDQUFDLENBQUMsQ0FBQyxJQUFJLENBQUMsR0FBRyxDQUFDLFFBQVEsRUFBRSxDQUFBO0lBQzdELENBQUM7SUFFRCxLQUFLLENBQUMsS0FBVSxFQUFFLEdBQVk7UUFDNUIsR0FBRyxHQUFHLEdBQUcsQ0FBQyxPQUFPLEVBQUUsQ0FBQyxHQUFHLENBQUMsSUFBSSxDQUFDLENBQUE7UUFFN0IsT0FBTyxDQUFDLEdBQUcsQ0FBQyxLQUFLLEdBQUcsR0FBRyxDQUFDLEtBQUssR0FBRyxHQUFHLEdBQUcsSUFBSSxDQUFDLFdBQVcsQ0FBQyxJQUFJLEdBQUcsS0FBSyxHQUFHLElBQUksR0FBRyxLQUFLLEdBQUcsS0FBSyxHQUFHLFFBQVEsR0FBRyxHQUFHLENBQUMsSUFBSSxDQUFDLENBQUE7UUFFakgsSUFBSSxHQUFHLENBQUMsS0FBSyxHQUFHLEVBQUUsRUFBRTtZQUNsQixPQUFPLENBQUMsR0FBRyxDQUFDLE9BQU8sQ0FBQyxDQUFBO1lBQ3BCLE9BQU8sSUFBSSxTQUFTLEVBQUUsQ0FBQTtTQUN2QjtRQUVELElBQUksS0FBSyxZQUFZLFNBQVMsRUFBRTtZQUM5QixPQUFPLElBQUksQ0FBQyxHQUFHLEdBQUcsS0FBSyxDQUFBO1NBQ3hCO1FBRUQsZ0NBQWdDO1FBQ2hDLHdEQUF3RDtRQUN4RCxHQUFHO1FBRUgsSUFBSSxJQUFJLEdBQUcsS0FBSyxDQUFDLEdBQUcsSUFBSSxLQUFLLENBQUE7UUFDN0IsSUFBSSxHQUFvQixDQUFBO1FBRXhCLElBQUksQ0FBQyxJQUFJLENBQUMsR0FBRyxJQUFJLElBQUksQ0FBQyxHQUFHLEtBQUssSUFBSSxFQUFFO1lBQ2xDLEdBQUcsR0FBRyxJQUFJLENBQUMsT0FBTyxDQUFDLElBQUksRUFBRSxHQUFHLENBQUMsQ0FBQTtTQUM5QjthQUNJO1lBQ0gsR0FBRyxHQUFHLElBQUksQ0FBQyxHQUFHLENBQUMsS0FBSyxDQUFDLElBQUksRUFBRSxHQUFHLENBQUMsQ0FBQTtTQUNoQztRQUVELElBQUksQ0FBQyxHQUFHLEVBQUU7WUFDUixHQUFHLEdBQUcsSUFBSSxTQUFTLEVBQUUsQ0FBQTtTQUN0QjtRQUVELE9BQU8sQ0FBQyxHQUFHLENBQUMsS0FBSyxHQUFHLEdBQUcsQ0FBQyxLQUFLLEdBQUcsR0FBRyxHQUFHLElBQUksQ0FBQyxXQUFXLENBQUMsSUFBSSxHQUFHLEtBQUssR0FBRyxJQUFJLEdBQUcsS0FBSyxHQUFHLEtBQUssR0FBRyxNQUFNLEdBQUcsR0FBRyxDQUFDLENBQUE7UUFFMUcsT0FBTyxJQUFJLENBQUMsR0FBRyxHQUFHLEdBQUcsQ0FBQTtJQUN2QixDQUFDO0NBSUY7QUFtU0Msa0JBQUc7QUEvUkwsTUFBTSxNQUFPLFNBQVEsR0FBRztJQUN0QixZQUFZLElBQVc7UUFDckIsS0FBSyxDQUFDLElBQUksQ0FBQyxDQUFBO0lBQ2IsQ0FBQztJQUVELE9BQU8sQ0FBQyxLQUFVLEVBQUUsR0FBWTtRQUM5QixJQUFJLEtBQUssWUFBWSxNQUFNLEVBQUU7WUFDM0IsT0FBTyxJQUFJLENBQUE7U0FDWjthQUNJO1lBQ0gsT0FBTyxLQUFLLENBQUMsS0FBSyxDQUFDLElBQUksRUFBRSxHQUFHLENBQUMsQ0FBQTtTQUM5QjtJQUNILENBQUM7SUFFRCxHQUFHO1FBQ0QsT0FBTyxJQUFJLENBQUE7SUFDYixDQUFDO0NBQ0Y7QUErUUMsd0JBQU07QUE1UVIsTUFBTSxTQUFVLFNBQVEsR0FBRztJQUV6Qix3Q0FBd0M7SUFDeEMsWUFBWSxJQUFXO1FBQ3JCLEtBQUssQ0FBQyxJQUFJLENBQUMsQ0FBQTtJQUNiLENBQUM7SUFFRCxPQUFPO1FBQ0wsT0FBTyxJQUFJLENBQUE7SUFDYixDQUFDO0lBRUQsR0FBRztRQUNELE9BQU8sSUFBSSxDQUFBO0lBQ2IsQ0FBQztDQUNGO0FBK1BDLDhCQUFTO0FBNVBYLE1BQU0sVUFBVyxTQUFRLEdBQUc7SUFDMUIsWUFBWSxJQUFXO1FBQ3JCLEtBQUssQ0FBQyxJQUFJLENBQUMsQ0FBQTtJQUNiLENBQUM7SUFFRCxPQUFPLENBQUMsS0FBVSxFQUFFLEdBQVk7UUFDOUIsSUFBSSxLQUFLLFlBQVksTUFBTSxFQUFFO1lBQzNCLE9BQU8sSUFBSSxDQUFBO1NBQ1o7YUFBTSxJQUFJLEtBQUssWUFBWSxPQUFPLEVBQUU7WUFDbkMsT0FBTyxLQUFLLENBQUMsS0FBSyxDQUFDLElBQUksRUFBRSxHQUFHLENBQUMsQ0FBQTtTQUM5QjthQUFNLElBQUksS0FBSyxZQUFZLFlBQVksRUFBRTtZQUN4QyxPQUFPLEtBQUssQ0FBQTtTQUNiO2FBQU0sSUFBSSxLQUFLLFlBQVksVUFBVSxFQUFFO1lBQ3RDLE9BQU8sSUFBSSxDQUFBO1NBQ1o7SUFDSCxDQUFDO0lBRUQsR0FBRztRQUNELE9BQU8sTUFBTSxDQUFBO0lBQ2YsQ0FBQztDQUNGO0FBeU9DLGdDQUFVO0FBdE9aLE1BQU0sWUFBYSxTQUFRLEdBQUc7SUFHNUIsWUFBWSxNQUFjLEVBQUUsSUFBVztRQUNyQyxLQUFLLENBQUMsSUFBSSxDQUFDLENBQUE7UUFDWCxJQUFJLENBQUMsTUFBTSxHQUFHLE1BQU0sQ0FBQTtJQUN0QixDQUFDO0lBRUQsT0FBTyxDQUFDLEtBQVUsRUFBRSxHQUFZO1FBQzlCLElBQUksS0FBSyxZQUFZLE1BQU0sRUFBRTtZQUMzQixPQUFPLElBQUksQ0FBQTtTQUNaO2FBRUksSUFBSSxLQUFLLFlBQVksT0FBTyxFQUFFO1lBQ2pDLE9BQU8sS0FBSyxDQUFDLEtBQUssQ0FBQyxJQUFJLEVBQUUsR0FBRyxDQUFDLENBQUE7U0FDOUI7YUFFSSxJQUFJLEtBQUssWUFBWSxNQUFNLEVBQUU7WUFDaEMsT0FBTyxLQUFLLENBQUMsS0FBSyxDQUFDLElBQUksRUFBRSxHQUFHLENBQUMsQ0FBQTtTQUM5QjthQUVJLElBQUksS0FBSyxZQUFZLFVBQVUsRUFBRTtZQUNwQyxPQUFPLElBQUksQ0FBQTtTQUNaO2FBRUksSUFBSSxLQUFLLFlBQVksWUFBWSxFQUFFO1lBQ3RDLE9BQU8sS0FBSyxDQUFDLE1BQU0sS0FBSyxJQUFJLENBQUMsTUFBTSxDQUFDLENBQUMsQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLFNBQVMsQ0FBQTtTQUN4RDtJQUNILENBQUM7SUFFRCxHQUFHO1FBQ0QsT0FBTyxJQUFJLENBQUMsTUFBTSxDQUFDLFFBQVEsRUFBRSxDQUFBO0lBQy9CLENBQUM7Q0FDRjtBQXNNQyxvQ0FBWTtBQS9MZCxNQUFNLE1BQU8sU0FBUSxHQUFHO0lBSXRCLFlBQVksR0FBVyxFQUFFLElBQVc7UUFDbEMsS0FBSyxDQUFDLElBQUksQ0FBQyxDQUFBO1FBQ1gsSUFBSSxDQUFDLEdBQUcsR0FBRyxHQUFHLENBQUE7SUFDaEIsQ0FBQztJQUVELE9BQU8sQ0FBQyxLQUFVLEVBQUUsR0FBWTtRQUM5QixJQUFJLEtBQUssWUFBWSxNQUFNLElBQUksS0FBSyxZQUFZLE1BQU0sRUFBRTtZQUN0RCxJQUFJLEdBQUcsR0FBRyxJQUFJLE1BQU0sRUFBRSxDQUFBO1lBQ3RCLElBQUksTUFBTSxHQUFHLE1BQU0sQ0FBQyxJQUFJLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFBO1lBQ2xDLEtBQUssSUFBSSxFQUFFLEdBQUcsQ0FBQyxFQUFFLEVBQUUsR0FBRyxNQUFNLENBQUMsTUFBTSxFQUFFLEVBQUUsRUFBRSxFQUFFO2dCQUN6QyxJQUFJLEVBQUUsR0FBRyxNQUFNLENBQUMsRUFBRSxDQUFDLENBQUE7Z0JBQ25CLElBQUksQ0FBQyxHQUFHLENBQUMsRUFBRSxDQUFDLEdBQUcsSUFBSSxDQUFDLEdBQUcsQ0FBQyxFQUFFLENBQUMsQ0FBQyxLQUFLLENBQUMsR0FBRyxFQUFFLEdBQUcsQ0FBQyxDQUFBO2FBQzVDO1lBRUQsSUFBSSxLQUFLLFlBQVksTUFBTSxFQUFFO2dCQUMzQixPQUFPLElBQUksQ0FBQTthQUNaO1NBQ0Y7UUFFRCxJQUFJLEtBQUssWUFBWSxNQUFNLElBQUksSUFBSSxDQUFDLEdBQUcsWUFBWSxNQUFNLEVBQUU7WUFDekQsSUFBSSxHQUFHLEdBQUcsSUFBSSxDQUFDLEdBQUcsQ0FBQyxHQUFHLENBQUE7WUFFdEIsSUFBSSxPQUFPLEdBQUcsTUFBTSxDQUFDLElBQUksQ0FBQyxLQUFLLENBQUMsR0FBRyxDQUFDLENBQUE7WUFDcEMsS0FBSyxJQUFJLEdBQUcsR0FBRyxDQUFDLEVBQUUsR0FBRyxHQUFHLE9BQU8sQ0FBQyxNQUFNLEVBQUUsR0FBRyxFQUFFLEVBQUU7Z0JBQzdDLElBQUksR0FBRyxHQUFHLE9BQU8sQ0FBQyxHQUFHLENBQUMsQ0FBQTtnQkFDdEIsSUFBSSxHQUFHLEdBQUcsS0FBSyxDQUFDLEdBQUcsQ0FBQyxHQUFHLENBQUMsQ0FBQTtnQkFDeEIsSUFBSSxFQUFFLEdBQUcsR0FBRyxDQUFDLEdBQUcsQ0FBQyxDQUFBO2dCQUNqQixJQUFJLEVBQUUsR0FBRyxJQUFJLElBQUksRUFBRSxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxLQUFLLENBQUMsRUFBRSxFQUFFLEdBQUcsQ0FBQyxDQUFBO2dCQUM5QyxHQUFHLENBQUMsR0FBRyxDQUFDLEdBQUcsRUFBRSxDQUFBO2FBQ2Q7WUFFRCxPQUFPLElBQUksQ0FBQTtTQUNaO0lBQ0gsQ0FBQztJQUdELEdBQUc7UUFDRCxJQUFJLENBQUMsR0FBRyxDQUFDLEdBQUcsQ0FBQyxDQUFBO1FBQ2IsSUFBSSxNQUFNLEdBQUcsTUFBTSxDQUFDLElBQUksQ0FBQyxJQUFJLENBQUMsR0FBRyxDQUFDLENBQUE7UUFDbEMsS0FBSyxJQUFJLEVBQUUsR0FBRyxDQUFDLEVBQUUsRUFBRSxHQUFHLE1BQU0sQ0FBQyxNQUFNLEVBQUUsRUFBRSxFQUFFLEVBQUU7WUFDekMsSUFBSSxFQUFFLEdBQUcsTUFBTSxDQUFDLEVBQUUsQ0FBQyxDQUFBO1lBQ25CLENBQUMsQ0FBQyxJQUFJLENBQUMsRUFBRSxFQUFFLEdBQUcsRUFBRSxJQUFJLENBQUMsR0FBRyxDQUFDLEVBQUUsQ0FBQyxDQUFDLFFBQVEsRUFBRSxFQUFFLEdBQUcsQ0FBQyxDQUFBO1NBQzlDO1FBQ0QsQ0FBQyxDQUFDLElBQUksQ0FBQyxHQUFHLENBQUMsQ0FBQTtRQUNYLE9BQU8sQ0FBQyxDQUFDLElBQUksQ0FBQyxFQUFFLENBQUMsQ0FBQTtJQUNuQixDQUFDO0NBQ0Y7QUE4SUMsd0JBQU07QUF0SVIsTUFBTSxPQUFRLFNBQVEsR0FBRztJQUl2QixZQUFZLElBQVUsRUFBRSxJQUFXO1FBQ2pDLEtBQUssQ0FBQyxJQUFJLENBQUMsQ0FBQTtRQUNYLElBQUksQ0FBQyxJQUFJLEdBQUcsSUFBSSxDQUFBO0lBQ2xCLENBQUM7SUFFRCxPQUFPLENBQUMsS0FBVSxFQUFFLEdBQVk7UUFDOUIsSUFBSSxHQUFHLEdBQUcsS0FBSyxDQUFBO1FBRWYsS0FBSyxJQUFJLEVBQUUsR0FBRyxDQUFDLEVBQUUsRUFBRSxHQUFHLElBQUksQ0FBQyxJQUFJLENBQUMsTUFBTSxFQUFFLEVBQUUsRUFBRSxFQUFFO1lBQzVDLEdBQUcsR0FBRyxJQUFJLENBQUMsSUFBSSxDQUFDLEVBQUUsQ0FBQyxDQUFDLEtBQUssQ0FBQyxHQUFHLEVBQUUsR0FBRyxDQUFDLENBQUE7U0FDcEM7UUFFRCxPQUFPLEdBQUcsQ0FBQTtJQUNaLENBQUM7SUFFRCxHQUFHO1FBQ0QsT0FBTyxJQUFJLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFDLENBQUMsRUFBRSxDQUFDLENBQUMsQ0FBQyxRQUFRLEVBQUUsQ0FBQyxDQUFDLElBQUksQ0FBQyxLQUFLLENBQUMsQ0FBQTtJQUNyRCxDQUFDO0NBQ0Y7QUFpSEMsMEJBQU87QUE1R1QsTUFBTSxNQUFPLFNBQVEsR0FBRztJQUd0QixZQUFZLEdBQVMsRUFBRSxJQUFXO1FBQ2hDLEtBQUssQ0FBQyxJQUFJLENBQUMsQ0FBQTtRQUNYLElBQUksQ0FBQyxHQUFHLEdBQUcsR0FBRyxDQUFBO0lBQ2hCLENBQUM7SUFFRCxPQUFPLENBQUMsS0FBVSxFQUFFLEdBQVk7UUFDOUIsSUFBSSxJQUFJLEdBQW9CLEtBQUssQ0FBQTtRQUNqQyxJQUFJLElBQUksWUFBWSxNQUFNLEVBQUU7WUFFMUIsSUFBSSxJQUFJLENBQUMsR0FBRyxDQUFDLE1BQU0sQ0FBQyxJQUFJLENBQUMsR0FBRyxDQUFDLEVBQUU7Z0JBQzdCLE9BQU8sSUFBSSxDQUFDLEdBQUcsQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFDLENBQUE7YUFDN0I7WUFFRCxJQUFJLEdBQUcsSUFBSSxDQUFDLEdBQUcsQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFDLENBQUE7WUFFNUIsSUFBSSxDQUFDLElBQUksRUFBRTtnQkFDVCxPQUFPLElBQUksT0FBTyxDQUFDO29CQUNqQixJQUFJLE1BQU0sQ0FBQyxJQUFJLENBQUMsR0FBRyxFQUFFLElBQUksQ0FBQyxJQUFJLENBQUM7b0JBQy9CLElBQUksTUFBTSxDQUFFLEtBQWdCLENBQUMsR0FBRyxFQUFFLElBQUksQ0FBQyxJQUFJLENBQUM7aUJBQzdDLEVBQUUsSUFBSSxDQUFDLElBQUksQ0FBQyxDQUFBO2FBQ2Q7U0FDRjtRQUVELElBQUksR0FBRyxHQUFHLElBQUksQ0FBQyxHQUFHLENBQUMsT0FBTyxDQUFDLEdBQUcsQ0FBQyxDQUFBO1FBRS9CLElBQUksR0FBRyxFQUFFO1lBQ1AsR0FBRyxDQUFDLElBQUksQ0FBQyxJQUFJLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFBO1lBQ3ZCLE9BQU8sR0FBRyxDQUFDLEtBQUssQ0FBQyxJQUFJLEVBQUUsR0FBRyxDQUFDLENBQUE7U0FDNUI7YUFDSTtZQUNILE9BQU8sSUFBSSxPQUFPLENBQUM7Z0JBQ2pCLElBQUksTUFBTSxDQUFDLElBQUksQ0FBQyxHQUFHLEVBQUUsSUFBSSxDQUFDLElBQUksQ0FBQztnQkFDL0IsS0FBSzthQUNOLEVBQUUsSUFBSSxDQUFDLElBQUksQ0FBQyxDQUFBO1NBQ2Q7SUFDSCxDQUFDO0lBR0QsR0FBRztRQUNELE9BQU8sSUFBSSxDQUFDLEdBQUcsQ0FBQyxHQUFHLENBQUE7SUFDckIsQ0FBQztDQUNGO0FBaUVDLHdCQUFNO0FBOURSLE1BQU0sSUFBSTtJQUtSLFlBQVksS0FBK0IsRUFBRSxNQUFpQztRQUo5RSxVQUFLLEdBQWEsRUFBRSxDQUFBO1FBQ3BCLFFBQUcsR0FBVyxFQUFFLENBQUE7UUFDaEIsV0FBTSxHQUFXLENBQUMsQ0FBQTtRQUdoQixJQUFJLENBQUMsS0FBSyxHQUFHLElBQUksQ0FBQyxVQUFVLENBQUMsS0FBSyxDQUFDLENBQUE7UUFFbkMsSUFBSSxNQUFNLEVBQUU7WUFDVixJQUFJLENBQUMsS0FBSyxHQUFHLElBQUksQ0FBQyxLQUFLLENBQUMsTUFBTSxDQUFDLElBQUksQ0FBQyxVQUFVLENBQUMsTUFBTSxDQUFDLENBQUMsQ0FBQTtTQUN4RDtRQUVELElBQUksQ0FBQyxNQUFNLEdBQUcsSUFBSSxDQUFDLEtBQUssQ0FBQyxNQUFNLENBQUE7UUFDL0IsSUFBSSxDQUFDLEdBQUcsR0FBRyxJQUFJLENBQUMsS0FBSyxDQUFDLElBQUksQ0FBQyxHQUFHLENBQUMsQ0FBQTtJQUNqQyxDQUFDO0lBRUQsT0FBTyxDQUFDLEdBQVk7UUFDbEIsSUFBSSxJQUFJLEdBQUcsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxJQUFJLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxFQUFFLENBQUMsR0FBRyxDQUFDLE1BQU0sQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFBO1FBQ25ELDBFQUEwRTtRQUMxRSxPQUFPLElBQUksQ0FBQyxDQUFDLENBQUMsSUFBSSxNQUFNLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQyxDQUFDLEdBQUcsQ0FBQyxPQUFPLENBQUMsSUFBSSxDQUFDLEdBQUcsQ0FBQyxDQUFBO0lBQ3hELENBQUM7SUFHRCxNQUFNLENBQUMsS0FBK0I7UUFDcEMsT0FBTyxJQUFJLElBQUksQ0FBQyxDQUFDLEdBQUcsSUFBSSxDQUFDLEtBQUssRUFBRSxHQUFHLElBQUksQ0FBQyxVQUFVLENBQUMsS0FBSyxDQUFDLENBQUMsQ0FBQyxDQUFBO0lBQzdELENBQUM7SUFFRCxLQUFLLENBQUMsQ0FBUztRQUNiLE9BQU8sSUFBSSxJQUFJLENBQUMsSUFBSSxDQUFDLEtBQUssQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQTtJQUN0QyxDQUFDO0lBRUQsTUFBTSxDQUFDLEtBQXVCO1FBQzVCLE9BQU8sS0FBSyxDQUFDLENBQUMsQ0FBQyxJQUFJLENBQUMsR0FBRyxLQUFLLEtBQUssQ0FBQyxHQUFHLENBQUMsQ0FBQyxDQUFDLEtBQUssQ0FBQTtJQUMvQyxDQUFDO0lBRUQsTUFBTSxDQUFDLEtBQVc7UUFDaEIsNkNBQTZDO1FBQzdDLE9BQU8sSUFBSSxDQUFDLEdBQUcsQ0FBQyxVQUFVLENBQUMsS0FBSyxDQUFDLEdBQUcsQ0FBQyxDQUFBO0lBQ3ZDLENBQUM7SUFFRCxVQUFVLENBQUMsS0FBK0I7UUFDeEMsS0FBSyxHQUFHLEtBQUssWUFBWSxJQUFJLENBQUMsQ0FBQyxDQUFDLEtBQUssQ0FBQyxLQUFLLENBQUMsQ0FBQyxDQUFDLEtBQUssQ0FBQTtRQUNuRCxPQUFPLFFBQVEsS0FBSyxPQUFPLEtBQUssQ0FBQyxDQUFDLENBQUMsS0FBSyxDQUFDLEtBQUssQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxHQUFHLEtBQUssQ0FBQyxDQUFBO0lBQ25FLENBQUM7SUFHRCxRQUFRO1FBQ04sT0FBTyxJQUFJLENBQUMsR0FBRyxDQUFBO0lBQ2pCLENBQUM7Q0FDRjtBQUtDLG9CQUFJIn0&#x3D;</td>
+                          <td class="source">//# sourceMappingURL&#x3D;aontu.js.map</td>
                           
                         </tr>        </tbody>
                 </table>
@@ -2739,48 +806,10 @@
     </div>    <div id="linting">
         <h1>Linting Report</h1>
             <div class="lint-stats">
-                <span class="lint-errors low">5</span>
-                <span class="lint-warnings low">28</span>
+                <span class="lint-errors high">0</span>
+                <span class="lint-warnings high">0</span>
             </div>
             <div class="lint-files">
-                <div class="lint-file">
-                </div>            <div class="lint-file">
-                    <h2 id="lint-test/val.test.js">test/val.test.js</h2>
-                    <ul>
-                        <li class="lint-entry">L24 - <span class="level-ERROR">ERROR</span> - no-unused-vars - &#x27;TopVal&#x27; is assigned a value but never used.</li>
-                        <li class="lint-entry">L25 - <span class="level-ERROR">ERROR</span> - no-unused-vars - &#x27;IntTypeVal&#x27; is assigned a value but never used.</li>
-                        <li class="lint-entry">L26 - <span class="level-ERROR">ERROR</span> - no-unused-vars - &#x27;IntScalarVal&#x27; is assigned a value but never used.</li>
-                        <li class="lint-entry">L27 - <span class="level-ERROR">ERROR</span> - no-unused-vars - &#x27;MapVal&#x27; is assigned a value but never used.</li>
-                        <li class="lint-entry">L29 - <span class="level-ERROR">ERROR</span> - no-unused-vars - &#x27;RefVal&#x27; is assigned a value but never used.</li>
-                        <li class="lint-entry">L65 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L68 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L134 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L141 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L144 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L147 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L150 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L155 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L159 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L161 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L169 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L170 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L175 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L183 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L184 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L189 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L199 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L200 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L206 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L207 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L208 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L212 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L220 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L224 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L228 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L231 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L235 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                        <li class="lint-entry">L236 - <span class="level-WARNING">WARNING</span> - no-console - Unexpected console statement.</li>
-                    </ul>
-                </div>        </div>
+            </div>
     </div>  </body>
 </html>
