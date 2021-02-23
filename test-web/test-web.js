@@ -1,6 +1,6 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Aontu = f()}})(function(){var define,module,exports;return (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 (function (global){
-!function(t){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=t();else if("function"==typeof define&&define.amd)define([],t);else{("undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this).Aontu=t()}}((function(){var t={};function e(t,e,s){let n=t;for(let r=0;r<e.length;r++)n=n[e[r]]=n[e[r]]||(r<e.length-1?{}:s.scalar)}Object.defineProperty(t,"__esModule",{value:!0}),t.parseVal=t.bottom=t.RefVal=t.IntScalarVal=t.IntTypeVal=t.BottomVal=t.Path=t.Node=t.reify=t.unify=void 0,t.unify=function(t){let e={s:Date.now(),d:0},r=t.map(t=>"string"==typeof t?function(t){let[e,n]=t.split(":");return new s(e,n)}(t):s.clone(t)).sort((t,e)=>{let s=t.path.parts.length-e.path.parts.length;return 0===s?t.path.parts_str<e.path.parts_str?-1:t.path.parts_str>e.path.parts_str?1:0:s});r=r.reduce((t,e,s,n)=>{let r=n[s-1];return r&&e.path.equals(r.path)?r.vals.splice(r.vals.length,0,...e.vals):t.push(e),t},[]);let a={path:new n([]),nodes:r},i=r.length;for(let s=0;s<r.length&&s<11*i;s++){let t=r[s];if(!t)break;void 0===t.unify(a)&&r.push(t)}return e.d=Date.now()-e.s,r.$meta=e,r.slice(0,i)},t.reify=function(t){let s={};for(let n=0;n<t.length;n++){let r=t[n];e(s,r.path.parts,r.val)}return s};class s{constructor(t,e){this.path=new n(t),this.vals="string"==typeof e?e.split(/\s*,\s*/).filter(t=>""!==t).map(t=>r(t)):e.map(t=>"string"==typeof t?r(t):t)}static clone(t){return new s(t.path,t.vals)}unify(t){if(this.val)return this.val;let e=Object.assign(Object.assign({},t),{path:this.path}),s=i;for(let n=0;n<this.vals.length&&(s=s.unify(this.vals[n],e));n++);return s&&(this.val=s),this.val}toString(){return this.path.parts_str+": "+this.val+" # "+this.vals}}t.Node=s;class n{constructor(t){this.parts=[],this.parts_str="",t=t instanceof n?t.parts:t,this.parts="string"==typeof t?t.split(/\./):[...t],this.parts_str=this.parts.join(".")}equals(t){return this.parts_str===t.parts_str}deeper(t){return this.parts.length>t.parts.length}}function r(t){let e=o;t=t.trim();let s=parseInt(t);return isNaN(s)?"int"===t?new h:t.startsWith("$")?new u(new n(t)):e:new p(s)}t.Path=n,t.parseVal=r;class a{unify(t,e){return t.unify(this,e)}toString(){return"top"}}const i=new a;class l{unify(){return this}toString(){return"bottom"}}t.BottomVal=l;const o=new l;t.bottom=o;class h{unify(t){let e=o;return t instanceof a?this:((t instanceof p||t instanceof h)&&(e=t),e)}toString(){return"int"}}t.IntTypeVal=h;class p{constructor(t){this.scalar=t}unify(t,e){let s=o;return t instanceof a?this:t instanceof p?t.scalar===this.scalar?t:o:t instanceof h?this:s}toString(){return"int="+this.scalar}}t.IntScalarVal=p;class u{constructor(t){this.val=void 0,this.path=t}unify(t,e){let s=void 0;return this.val=function(t,e){let s=e.find(e=>t.equals(e.path));return s?s.val:void 0}(this.path,e.nodes),this.val&&(s=this.val=this.val.unify(t,e)),s}toString(){return this.path.parts_str}}return t.RefVal=u,t}));
+!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{("undefined"!=typeof window?window:"undefined"!=typeof global?global:"undefined"!=typeof self?self:this).Aontu=e()}}((function(){var e={};Object.defineProperty(e,"__esModule",{value:!0}),e.DefaultVal=e.unify=e.evaluate=e.Aontu=void 0;class t{constructor(e,t){this.base=e,this.peer=t}}class n{constructor(e){this.val=e}}class o extends n{constructor(e,t){super(t),this.type=e}}function r(e,o){const r=[new t(e,o)];let i;for(;i=r.shift();){let e=i.base,o=i.peer,l=e.$,s=!1;if(l&&l.peers&&!l.peers_done){for(let n=0;n<l.peers.length;n++){let o=l.peers[n],f=new t(e,o);r.push(f)}l.peers_done=!0,s=!0}if(null!=o){let i=Object.keys(o);for(let l=0;l<i.length;l++){let s=i[l],u=o[s],c=e[s],d=typeof u,p=typeof c;if(u instanceof n||c instanceof n)e[s]=f(s,c,u,!0);else if("object"===d||"object"===p)if(void 0===c)e[s]=u;else{let e=new t(c,u);r.push(e)}else e[s]=f(s,c,u,!0)}}if(l&&l.children&&!l.children_done)if(s)r.push(new t(e,void 0));else{for(let n=0;n<l.children.length;n++){let o=l.children[n],f=Object.keys(e);for(let n=0;n<f.length;n++){let i=e[f[n]],l=new t(i,o);r.push(l)}}l.children_done=!0}}return e}function f(e,t,n,r){let i=typeof t;if(void 0===n)return t;if(String===n&&"string"===i)return t;if(Number===n&&"number"===i)return t;if(n instanceof o){if(void 0===t)return n.val;if(t===n.type)return n;if(i===n.type.name.toLowerCase())return t}else{if(t===n)return t;if(r)return f(e,n,t,!1)}throw new Error("NU: "+t+" =/= "+n)}function i(e){let t,o=[{top:e}];for(;t=o.pop();)if("object"==typeof t){let e=Object.keys(t);for(let r=0;r<e.length;r++){let f=e[r],i=t[f];i instanceof n?t[f]=i.val:"object"==typeof i&&o.push(i)}}return e}return e.DefaultVal=o,e.unify=r,e.evaluate=i,e.Aontu=function(e,t){return i(r(e,t))},e}));
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],2:[function(require,module,exports){
 (function (Buffer,__dirname){
@@ -635,7 +635,8 @@ internals.applyToDefaultsWithShallow = function (defaults, source, options) {
         internals.reachCopy(copy, source, key);
     }
 
-    return Merge(copy, source, { mergeArrays: false, nullOverride: false });
+    const nullOverride = options.nullOverride !== undefined ? options.nullOverride : false;
+    return Merge(copy, source, { nullOverride, mergeArrays: false });
 };
 
 
@@ -646,7 +647,13 @@ internals.reachCopy = function (dst, src, path) {
             return;
         }
 
-        src = src[segment];
+        const val = src[segment];
+
+        if (typeof val !== 'object' || val === null) {
+            return;
+        }
+
+        src = val;
     }
 
     const value = src;
@@ -2228,92 +2235,185 @@ var describe = lab.describe
 var it = lab.it
 var expect = Code.expect
 
-//var Aontu = require('..')
-
-let {
-  IntTypeVal,
-  IntScalarVal,
-  Node,
-  Path,
-  unify,
-  reify,
-  parseVal,
-} = require('..')
-
-/*
-function rs(x) {
-  return x.toString(true).replace(/\s+/g, '').replace(/\n+/g, '')
-}
-*/
+let { Aontu, unify, evaluate, DefaultVal } = require('..')
 
 describe('aontu', function () {
-  it('happy', async () => {})
+  it('happy', async () => {
+    expect(
+      unify({ a: String, b: Number, x: 10 }, { a: 'A', b: 1, y: 20 })
+    ).equals({ a: 'A', b: 1, x: 10, y: 20 })
 
-  it('unify-int', async () => {
-    let inttype = new IntTypeVal()
-    let int1 = new IntScalarVal(1)
+    expect(
+      unify(
+        { a: String, b: Number, c: { d: String }, e: { f: Number }, x: 10 },
+        { a: 'A', b: 1, c: { d: 'D' }, y: 20 }
+      )
+    ).equals({ a: 'A', b: 1, c: { d: 'D' }, e: { f: Number }, x: 10, y: 20 })
 
-    expect(inttype.unify(int1).scalar).equal(1)
-    expect(int1.unify(inttype).scalar).equal(1)
+    expect(evaluate({ a: 1 })).equal({ a: 1 })
+    expect(evaluate({ a: new DefaultVal(String, 'A') })).equal({ a: 'A' })
+    expect(evaluate({ a: 1, b: { c: 2 } })).equal({ a: 1, b: { c: 2 } })
+    expect(
+      evaluate({ a: 1, b: { c: 2, d: new DefaultVal(Number, 3) } })
+    ).equal({ a: 1, b: { c: 2, d: 3 } })
   })
 
-  it('node-unify-ints', async () => {
-    let p = new Path(['$'])
+  it('defaults', async () => {
+    let dvB = new DefaultVal(String, 'B')
+    let dvC = new DefaultVal(Number, 1)
+    let dvD = new DefaultVal(String, 'D')
 
-    let n0 = new Node(p, [new IntTypeVal(), new IntScalarVal(1)])
-    expect(n0 + '').equal('$: undefined # int,int=1')
+    expect(
+      unify(
+        {
+          a: new DefaultVal(String, 'A'),
+          b: dvB,
+          c: 1,
+          d: dvD,
+        },
+        {
+          a: 'AA',
+          c: dvC,
+          d: String,
+        }
+      )
+    ).equals({
+      a: 'AA',
+      b: dvB,
+      c: 1,
+      d: dvD, // default val is more specific
+    })
 
-    let n0u = n0.unify()
-    expect(n0u + '').equal('int=1')
-
-    let n1 = new Node('$', ['1', 'int'])
-    expect(n1 + '').equal('$: undefined # int=1,int')
-    let n1u = n1.unify()
-    expect(n1u + '').equal('int=1')
-
-    let n2 = new Node(new Path('$'), 'int,1,int,1')
-    expect(n2 + '').equal('$: undefined # int,int=1,int,int=1')
-    let n2u = n2.unify()
-    expect(n2u + '').equal('int=1')
+    expect(
+      Aontu(
+        {
+          a: new DefaultVal(String, 'A'),
+          b: dvB,
+          c: 1,
+          d: dvD,
+        },
+        {
+          a: 'AA',
+          c: dvC,
+          d: String,
+        }
+      )
+    ).equals({
+      a: 'AA',
+      b: 'B',
+      c: 1,
+      d: 'D',
+    })
   })
 
-  it('unify-ints', async () => {
-    let nodes = unify(['$:int,1', '$:1'])
-    expect(nodes + '').equals('$: int=1 # int,int=1,int=1')
-
-    let nodes1 = unify([
-      '$.a:int,1',
-      '$.a:1',
-      '$.b.c:int',
-      '$.b.c:2',
-      '$.b.d:3',
-    ])
-    expect(nodes1.length).equal(3)
-    expect(reify(nodes1)).equal({ $: { a: 1, b: { c: 2, d: 3 } } })
+  it('metapeer', async () => {
+    expect(
+      unify(
+        meta(
+          {
+            a: 1,
+            b: 'B',
+          },
+          {
+            peers: [
+              {
+                a: Number,
+                c: 2,
+              },
+              {
+                d: new DefaultVal(String, 'D'),
+              },
+            ],
+          }
+        )
+      )
+    ).equals({
+      a: 1,
+      b: 'B',
+      c: 2,
+      d: 'D',
+    })
   })
 
-  it('ref-ints', async () => {
-    let v0 = parseVal('$.b.c')
-    expect(v0 + '').equal('$.b.c')
+  it('childpeer', async () => {
+    expect(
+      unify(
+        meta(
+          {
+            a: {
+              x: 1,
+            },
+            b: {
+              x: 2,
+            },
+          },
+          {
+            children: [
+              {
+                x: Number,
+                y: 3,
+              },
+              {
+                d: new DefaultVal(String, 'D'),
+              },
+            ],
+          }
+        )
+      )
+    ).equals({
+      a: { x: 1, y: 3, d: 'D' },
+      b: { x: 2, y: 3, d: 'D' },
+    })
+  })
 
-    let nodes1 = unify(['$.a: 1', '$.b.c: $.a'])
-    expect(nodes1.length).equal(2)
-    expect(reify(nodes1)).equal({ $: { a: 1, b: { c: 1 } } })
-
-    let nodes2 = unify([
-      '$.a: 1',
-      '$.b.c: $.a',
-      '$.b.d: $.b.c',
-      '$.b.e.f: $.b.d',
-    ])
-    expect(nodes2.length).equal(4)
-    expect(reify(nodes2)).equal({ $: { a: 1, b: { c: 1, d: 1, e: { f: 1 } } } })
-
-    let nodes3 = unify(['$.a: $.b.c', '$.b.c: 1'])
-    expect(nodes3.length).equal(2)
-    expect(reify(nodes3)).equal({ $: { a: 1, b: { c: 1 } } })
+  it('peers', async () => {
+    expect(
+      unify(
+        meta(
+          {
+            a: {
+              x: 1,
+            },
+            b: {
+              x: 2,
+            },
+          },
+          {
+            peers: [
+              {
+                c: {
+                  x: 3,
+                },
+                d: {
+                  x: 4,
+                },
+              },
+            ],
+            children: [
+              {
+                x: Number,
+                y: 3,
+              },
+              {
+                d: new DefaultVal(String, 'D'),
+              },
+            ],
+          }
+        )
+      )
+    ).equals({
+      a: { x: 1, y: 3, d: 'D' },
+      b: { x: 2, y: 3, d: 'D' },
+      c: { x: 3, y: 3, d: 'D' },
+      d: { x: 4, y: 3, d: 'D' },
+    })
   })
 })
+
+function meta(o, m) {
+  Object.defineProperty(o, '$', { value: m })
+  return o
+}
 
 },{"..":1,"@hapi/code":2,"@hapi/lab":30,"hapi-lab-shim":28}],30:[function(require,module,exports){
 

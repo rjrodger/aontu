@@ -9,4 +9,4 @@ declare class DefaultVal extends Val {
 declare function unify(basetop: any, peertop: any): any;
 declare function evaluate(top: any): any;
 declare function Aontu(base: any, peer: any): any;
-export { Aontu, evaluate, unify, DefaultVal, };
+export { Aontu, evaluate, unify, DefaultVal };

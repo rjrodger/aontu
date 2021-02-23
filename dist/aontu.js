@@ -22,7 +22,7 @@ exports.DefaultVal = DefaultVal;
 function unify(basetop, peertop) {
     const ns = [new Node(basetop, peertop)];
     let node;
-    while (node = ns.shift()) {
+    while ((node = ns.shift())) {
         //console.log('LS', node)
         //console.log(ns)
         let base = node.base;
@@ -47,8 +47,8 @@ function unify(basetop, peertop) {
                 let peerkey = peerkeys[pkI];
                 let subpeer = peer[peerkey];
                 let subbase = base[peerkey];
-                let subpeertype = typeof (subpeer);
-                let subbasetype = typeof (subbase);
+                let subpeertype = typeof subpeer;
+                let subbasetype = typeof subbase;
                 if (subpeer instanceof Val || subbase instanceof Val) {
                     base[peerkey] = unify_scalar(peerkey, subbase, subpeer, true);
                 }
@@ -95,7 +95,7 @@ function unify(basetop, peertop) {
 exports.unify = unify;
 function unify_scalar(key, basescalar, peerscalar, commute) {
     // console.log('US', key, basescalar, peerscalar, commute)
-    let basetype = typeof (basescalar);
+    let basetype = typeof basescalar;
     if (undefined === peerscalar) {
         return basescalar;
     }
@@ -128,8 +128,8 @@ function unify_scalar(key, basescalar, peerscalar, commute) {
 function evaluate(top) {
     let ns = [{ top: top }];
     let node;
-    while (node = ns.pop()) {
-        if ('object' === typeof (node)) {
+    while ((node = ns.pop())) {
+        if ('object' === typeof node) {
             let keys = Object.keys(node);
             for (let kI = 0; kI < keys.length; kI++) {
                 let key = keys[kI];
@@ -137,7 +137,7 @@ function evaluate(top) {
                 if (val instanceof Val) {
                     node[key] = val.val;
                 }
-                else if ('object' === typeof (val)) {
+                else if ('object' === typeof val) {
                     ns.push(val);
                 }
             }
