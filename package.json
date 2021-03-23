@@ -2,9 +2,7 @@
   "name": "aontu",
   "version": "0.0.4",
   "main": "dist/aontu.js",
-  "exports": {
-    "aontu": "./dist/aontu.js"
-  },
+  "type": "commonjs",
   "browser": "dist/aontu.min.js",
   "types": "dist/aontu.d.ts",
   "description": "Unifier.",

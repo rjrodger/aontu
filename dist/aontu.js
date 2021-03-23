@@ -7,6 +7,7 @@ class Node {
         this.peer = peer;
     }
 }
+// TODO: everything should be Vals?
 class Val {
     constructor(val) {
         this.val = val;
@@ -19,7 +20,42 @@ class DefaultVal extends Val {
     }
 }
 exports.DefaultVal = DefaultVal;
+// NOTE: if val defined, that *becomes* the val
+// preserve obj refs
+class Disjunct extends Val {
+    constructor() {
+        super(undefined);
+        this.parts = [];
+    }
+    // TODO: needs shared node stack
+    unify(peer) {
+        if (this.val) {
+            // unify with this.val
+        }
+        let uniparts = [];
+        for (let pI = 0; pI < this.parts.length; pI++) {
+            // TOOD: shared node stack
+            let uval = unify(peer, this.parts[pI]);
+            if (uval) { // not BottomVal
+                uniparts.push(uval);
+            }
+        }
+        if (0 === uniparts.length) {
+            // this.val = BottomVal
+            return; // BottomVal
+        }
+        else if (1 === uniparts.length) {
+            this.val = uniparts[1];
+            return this.val;
+        }
+        // remove bottoms as they can no longer match
+        else {
+            //this.parts = uniparts.filter(p=>p!==BottomVal)
+        }
+    }
+}
 function unify(basetop, peertop) {
+    // TODO: check if scalars
     const ns = [new Node(basetop, peertop)];
     let node;
     while ((node = ns.shift())) {
@@ -29,6 +65,7 @@ function unify(basetop, peertop) {
         let peer = node.peer;
         // also get peers from base meta, if any
         let basemeta = base.$;
+        // spread over self: { ...ref, a:1 }
         let had_peers = false;
         if (basemeta && basemeta.peers && !basemeta.peers_done) {
             for (let bpI = 0; bpI < basemeta.peers.length; bpI++) {
@@ -67,6 +104,10 @@ function unify(basetop, peertop) {
                 }
             }
         }
+        else {
+            // TODO: interate over base children as they may have peers
+        }
+        // spread over children: [ ...ref, {a:1} ]
         // TODO: rename children->sub
         // iterate over base keys, apply child peers, if any
         if (basemeta && basemeta.children && !basemeta.children_done) {
@@ -152,4 +193,5 @@ function Aontu(base, peer) {
     return value;
 }
 exports.Aontu = Aontu;
+exports.default = Aontu;
 //# sourceMappingURL=aontu.js.map

@@ -1,82 +1,42 @@
-declare class Context {
-    path: Path;
-    depth: number;
-    pathmap: {
-        [key: string]: Val;
-    };
-    refs: Path[];
-    resolvemap: {
-        [key: string]: Val;
-    };
-    constructor(path?: Path);
-    add(val: Val): this;
-    get(pstr: string): Val | undefined;
-    descend(part?: string): Context;
-    describe(): string;
+declare const TOP: Val<unknown>;
+declare abstract class Val<T> {
+    val?: T;
+    constructor(val?: T);
+    abstract unify(_peer: Val<any>): Val<any>;
 }
-declare abstract class Val {
-    val: Val;
-    path?: Path;
-    constructor(path?: Path);
-    toString(): string;
-    unify(other: Val, ctx: Context): Val;
-    abstract unifier(other: Val, ctx?: Context): Val | undefined;
-    abstract str(): string;
+declare class Bottom extends Val<unknown> {
+    why: any;
+    constructor(why: any);
+    unify(_peer: Val<any>): this;
 }
-declare class TopVal extends Val {
-    constructor(path?: Path);
-    unifier(other: Val, ctx: Context): Val;
-    str(): string;
+declare class Integer {
 }
-declare class BottomVal extends Val {
-    constructor(path?: Path);
-    unifier(): this;
-    str(): string;
+declare type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
+declare class ScalarTypeVal extends Val<unknown> {
+    constructor(val: ScalarConstructor);
+    unify(peer: Val<any>): Val<any>;
 }
-declare class IntTypeVal extends Val {
-    constructor(path?: Path);
-    unifier(other: Val, ctx: Context): Val | undefined;
-    str(): string;
+declare class ScalarVal<T> extends Val<unknown> {
+    type: any;
+    constructor(val: T, type: ScalarConstructor);
+    unify(peer: Val<any>): Val<any>;
 }
-declare class IntScalarVal extends Val {
-    scalar: number;
-    constructor(scalar: number, path?: Path);
-    unifier(other: Val, ctx: Context): Val | undefined;
-    str(): string;
+declare class NumberVal extends ScalarVal<number> {
+    constructor(val: number);
+    unify(peer: Val<any>): Val<any>;
 }
-declare type ValMap = {
-    [key: string]: Val;
-};
-declare class MapVal extends Val {
-    map: ValMap;
-    constructor(map: ValMap, path?: Path);
-    unifier(other: Val, ctx: Context): Val | undefined;
-    str(): string;
+declare class IntegerVal extends ScalarVal<number> {
+    constructor(val: number);
+    unify(peer: Val<any>): Val<any>;
 }
-declare type Vals = Val[];
-declare class MeetVal extends Val {
-    vals: Vals;
-    constructor(vals: Vals, path?: Path);
-    unifier(other: Val, ctx: Context): Val | undefined;
-    str(): string;
+declare class StringVal extends ScalarVal<string> {
+    constructor(val: string);
+    unify(peer: Val<any>): Val<any>;
 }
-declare class RefVal extends Val {
-    ref: Path;
-    constructor(ref: Path, path?: Path);
-    unifier(other: Val, ctx: Context): Val | undefined;
-    str(): string;
+declare class BooleanVal extends ScalarVal<boolean> {
+    constructor(val: boolean);
+    unify(peer: Val<any>): Val<any>;
+    static TRUE: BooleanVal;
+    static FALSE: BooleanVal;
 }
-declare class Path {
-    parts: string[];
-    str: string;
-    length: number;
-    constructor(parts: Path | string | string[], append?: Path | string | string[]);
-    resolve(ctx: Context): Val | undefined;
-    append(other: Path | string | string[]): Path;
-    slice(n: number): Path;
-    equals(other: Path | undefined): boolean;
-    deeper(other: Path): boolean;
-    parseParts(parts: Path | string | string[]): string[];
-    toString(): string;
-}
-export { Context, Path, Val, TopVal, BottomVal, IntTypeVal, IntScalarVal, MapVal, MeetVal, RefVal, };
+export { Val, TOP, Bottom, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, Integer };

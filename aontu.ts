@@ -1,3 +1,4 @@
+
 class Node {
   base: any
   peer: any
@@ -8,6 +9,8 @@ class Node {
   }
 }
 
+
+// TODO: everything should be Vals?
 class Val {
   val: any
 
@@ -25,7 +28,53 @@ class DefaultVal extends Val {
   }
 }
 
+
+// NOTE: if val defined, that *becomes* the val
+// preserve obj refs
+class Disjunct extends Val {
+  parts: Val[] = []
+
+  constructor() {
+    super(undefined)
+  }
+
+  // TODO: needs shared node stack
+  unify(peer: Val) {
+    if (this.val) {
+      // unify with this.val
+    }
+
+    let uniparts = []
+    for (let pI = 0; pI < this.parts.length; pI++) {
+      // TOOD: shared node stack
+      let uval = unify(peer, this.parts[pI])
+      if (uval) {  // not BottomVal
+        uniparts.push(uval)
+      }
+    }
+
+    if (0 === uniparts.length) {
+      // this.val = BottomVal
+      return // BottomVal
+    }
+
+    else if (1 === uniparts.length) {
+      this.val = uniparts[1]
+      return this.val
+    }
+
+    // remove bottoms as they can no longer match
+    else {
+      //this.parts = uniparts.filter(p=>p!==BottomVal)
+    }
+  }
+}
+
+
+
 function unify(basetop: any, peertop: any) {
+  // TODO: check if scalars
+
   const ns: Node[] = [new Node(basetop, peertop)]
   let node: Node
 
@@ -39,6 +88,8 @@ function unify(basetop: any, peertop: any) {
     // also get peers from base meta, if any
     let basemeta = base.$
 
+
+    // spread over self: { ...ref, a:1 }
     let had_peers = false
     if (basemeta && basemeta.peers && !basemeta.peers_done) {
       for (let bpI = 0; bpI < basemeta.peers.length; bpI++) {
@@ -76,7 +127,12 @@ function unify(basetop: any, peertop: any) {
         }
       }
     }
+    else {
+      // TODO: interate over base children as they may have peers
+    }
 
+
+    // spread over children: [ ...ref, {a:1} ]
     // TODO: rename children->sub
     // iterate over base keys, apply child peers, if any
     if (basemeta && basemeta.children && !basemeta.children_done) {
@@ -164,4 +220,8 @@ function Aontu(base: any, peer: any) {
   return value
 }
 
+
 export { Aontu, evaluate, unify, DefaultVal }
+export default Aontu
+
+

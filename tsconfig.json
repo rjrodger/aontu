@@ -7,12 +7,12 @@
     "outDir": "dist",
     "resolveJsonModule": true,
     "sourceMap": true,
-    "strictNullChecks": true,
-    "strictPropertyInitialization": true,
-    "target": "ES2019",
+    "strict": true,
+    "target": "ES2019"
   },
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "test"
   ]
 }
