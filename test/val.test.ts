@@ -2,10 +2,20 @@ import Lab from '@hapi/lab'
 import Code from '@hapi/code'
 
 
+
 var lab = (exports.lab = Lab.script())
 var describe = lab.describe
 var it = lab.it
 var expect = Code.expect
+
+
+import { Jsonic } from 'jsonic'
+
+
+import {
+  AontuLang
+} from '../lib/lang'
+
 
 let {
   TOP,
@@ -15,6 +25,7 @@ let {
   BooleanVal,
   IntegerVal,
   ScalarTypeVal,
+  MapVal,
   Integer,
 } = require('../lib/val')
 
@@ -202,6 +213,68 @@ describe('val', function() {
     let x0 = new NumberVal(0)
     expect(n0.unify(x0)).equal(n0)
     expect(x0.unify(n0)).equal(n0)
+
+  })
+
+
+  it('map', () => {
+    let m0 = new MapVal({})
+
+    expect(m0.unify(m0)).equal(m0)
+
+    expect(m0.unify(TOP)).equal(m0)
+    expect(TOP.unify(m0)).equal(m0)
+
+    let b0 = new Bottom()
+    expect(m0.unify(b0)).equal(b0)
+    expect(b0.unify(m0)).equal(b0)
+
+    let s0 = new StringVal('s0')
+    expect(m0.unify(s0)).instanceof(Bottom)
+    expect(s0.unify(m0)).instanceof(Bottom)
+
+    let n0 = new NumberVal(0)
+    expect(m0.unify(n0)).instanceof(Bottom)
+    expect(n0.unify(m0)).instanceof(Bottom)
+
+    let t0 = new ScalarTypeVal(String)
+    expect(m0.unify(t0)).instanceof(Bottom)
+    expect(t0.unify(m0)).instanceof(Bottom)
+
+
+    let m1 = new MapVal({ a: new NumberVal(1) })
+    let u01 = m0.unify(m1)
+
+    console.log(m0)
+    console.log(m1)
+    console.log(u01)
+
+
+    let m2 = new MapVal({
+      a: new NumberVal(1),
+      b: new ScalarTypeVal(String),
+    })
+    let m3 = new MapVal({
+      b: new StringVal('foo')
+    })
+    let u02 = m2.unify(m3)
+    let u02c = m3.unify(m2)
+
+    console.log(m2)
+    console.log(m3)
+    console.log('u02', u02)
+    console.log('u02c', u02c)
+
+
+    let ja = Jsonic.make().use(AontuLang)
+    let m2s = new MapVal(ja('a: 1, b: string'))
+    let m3s = new MapVal(ja('b: foo'))
+    console.log('m2s', m2s)
+    console.log('m3s', m3s)
+
+    let u02s = m2s.unify(m3s)
+    //let u02c = m3.unify(m2)
+    console.log('u02s', u02s)
 
   })
 

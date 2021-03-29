@@ -1,3 +1,5 @@
+
+// Vals are immutable
 // NOTE: each Val must handle all parent and child unifications explicitly
 
 /*
@@ -43,6 +45,7 @@ const UNIFIER = (self: Val<any>, peer: Val<any>): Val<any> => {
 
 
 abstract class Val<T> {
+  $$ = true
   val?: T
   constructor(val?: T) {
     this.val = val
@@ -192,6 +195,94 @@ class BooleanVal extends ScalarVal<boolean> {
 
 
 
+// TODO: rename to MapValNode
+class MapNode {
+  base: Val<any>
+  peer: Val<any>
+  dest: MapVal
+  key: string | undefined
+
+
+  constructor(base: Val<any>, peer: Val<any>, dest: MapVal, key?: string,) {
+    this.dest = dest
+    this.key = key
+    this.base = base
+    this.peer = peer
+  }
+}
+
+
+class MapVal extends Val<any> {
+  id = Math.random()
+
+  constructor(val: { [key: string]: Val<any> }) {
+    super(val)
+  }
+
+  // NOTE: order of keys is not preserved!
+  // not possible in any case - consider {a,b} unify {b,a}
+  unify(peertop: Val<any>): Val<any> {
+    if (peertop instanceof MapVal) {
+      const basetop = this
+      if (basetop === peertop) return basetop
+
+      const ns: MapNode[] = [new MapNode(basetop, peertop, basetop)]
+      let node: MapNode
+      let outbase: MapVal = basetop;
+
+      while ((node = ns.shift() as MapNode)) {
+        console.log('N', node)
+
+        let base: any = node.base
+        let peer: any = node.peer
+
+        if (null != node.key) {
+          node.dest.val[node.key] = node.base
+        }
+
+        if (null != peer) {
+          let peerkeys = Object.keys(peer.val)
+          console.log('PK', peerkeys)
+
+          outbase = new MapVal({ ...base.val });
+          if (null != node.key) {
+            node.dest.val[node.key] = outbase
+          }
+
+          let outval = outbase.val
+
+          for (let pkI = 0; pkI < peerkeys.length; pkI++) {
+            let peerkey = peerkeys[pkI]
+            let subpeer = peer.val[peerkey]
+            let subbase = base.val[peerkey]
+
+            if (subpeer instanceof MapVal || subbase instanceof MapVal) {
+              let subnode = new MapNode(subbase, subpeer, outbase, peerkey)
+              ns.push(subnode)
+            }
+            else if (null != subbase && null != subpeer) {
+              outval[peerkey] = subbase.unify(subpeer)
+            }
+            else if (null == subbase && null != subpeer) {
+              outval[peerkey] = subpeer
+            }
+          }
+
+        }
+      }
+
+      return outbase
+    }
+    else {
+      return UNIFIER(this, peertop)
+    }
+  }
+}
+
+
+
+
+
 
 
 
@@ -205,5 +296,6 @@ export {
   StringVal,
   BooleanVal,
   IntegerVal,
-  Integer
+  MapVal,
+  Integer,
 }

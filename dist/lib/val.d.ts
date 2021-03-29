@@ -39,4 +39,11 @@ declare class BooleanVal extends ScalarVal<boolean> {
     static TRUE: BooleanVal;
     static FALSE: BooleanVal;
 }
-export { Val, TOP, Bottom, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, Integer };
+declare class MapVal extends Val<any> {
+    id: number;
+    constructor(val: {
+        [key: string]: Val<any>;
+    });
+    unify(peertop: Val<any>): Val<any>;
+}
+export { Val, TOP, Bottom, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, Integer, };

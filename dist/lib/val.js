@@ -1,7 +1,8 @@
 "use strict";
+// Vals are immutable
 // NOTE: each Val must handle all parent and child unifications explicitly
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Integer = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Bottom = exports.TOP = exports.Val = void 0;
+exports.Integer = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Bottom = exports.TOP = exports.Val = void 0;
 /*
 
 TOP -> Scalar/Boolean -> BooleanVal
@@ -162,4 +163,68 @@ class BooleanVal extends ScalarVal {
 exports.BooleanVal = BooleanVal;
 BooleanVal.TRUE = new BooleanVal(true);
 BooleanVal.FALSE = new BooleanVal(false);
+// TODO: rename to MapValNode
+class MapNode {
+    constructor(base, peer, dest, key) {
+        this.dest = dest;
+        this.key = key;
+        this.base = base;
+        this.peer = peer;
+    }
+}
+class MapVal extends Val {
+    constructor(val) {
+        super(val);
+        this.id = Math.random();
+    }
+    // NOTE: order of keys is not preserved!
+    // not possible in any case - consider {a,b} unify {b,a}
+    unify(peertop) {
+        if (peertop instanceof MapVal) {
+            const basetop = this;
+            if (basetop === peertop)
+                return basetop;
+            const ns = [new MapNode(basetop, peertop, basetop)];
+            let node;
+            let outbase = basetop;
+            while ((node = ns.shift())) {
+                console.log('N', node);
+                let base = node.base;
+                let peer = node.peer;
+                if (null != node.key) {
+                    node.dest.val[node.key] = node.base;
+                }
+                if (null != peer) {
+                    let peerkeys = Object.keys(peer.val);
+                    console.log('PK', peerkeys);
+                    outbase = new MapVal({});
+                    if (null != node.key) {
+                        node.dest.val[node.key] = outbase;
+                    }
+                    let outval = outbase.val;
+                    for (let pkI = 0; pkI < peerkeys.length; pkI++) {
+                        let peerkey = peerkeys[pkI];
+                        let subpeer = peer.val[peerkey];
+                        let subbase = base.val[peerkey];
+                        if (subpeer instanceof MapVal || subbase instanceof MapVal) {
+                            let subnode = new MapNode(subbase, subpeer, outbase, peerkey);
+                            ns.push(subnode);
+                        }
+                        else if (null != subbase && null != subpeer) {
+                            outval[peerkey] = subbase.unify(subpeer);
+                        }
+                        else if (null == subbase && null != subpeer) {
+                            outval[peerkey] = subpeer;
+                        }
+                    }
+                }
+            }
+            return outbase;
+        }
+        else {
+            return UNIFIER(this, peertop);
+        }
+    }
+}
+exports.MapVal = MapVal;
 //# sourceMappingURL=val.js.map

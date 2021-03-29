@@ -1,0 +1,4 @@
+* clean up lang.ts - should just output a Val
+* test map children!
+* implement Disjunct and defaults
+* implement base peer and child peers as per old aontu.ts
