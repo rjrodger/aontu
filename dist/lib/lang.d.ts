@@ -1,3 +1,3 @@
-import { Plugin } from 'jsonic';
-declare let AontuLang: Plugin;
+import { Val } from './val';
+declare function AontuLang(src: string): Val<any>;
 export { AontuLang };

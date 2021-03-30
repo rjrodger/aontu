@@ -12,6 +12,9 @@ var expect = Code.expect
 import { Jsonic } from 'jsonic'
 
 
+
+
+
 import {
   TOP,
   Bottom,
@@ -31,7 +34,7 @@ import {
 describe('lang', function() {
 
   it('happy', () => {
-    let ja = Jsonic.make().use(AontuLang)
+    let al = AontuLang
 
     let src = `
 a:  string
@@ -40,8 +43,19 @@ b:  foo
 `
 
 
-    console.dir(ja(src), { depth: null })
+    console.dir(al(src), { depth: null })
+    //expect(al(src)).equal()
+
+
+    console.dir(al(`
+a: {
+  b: {
+    c: 1
+  }
+}
+`), { depth: null })
 
   })
 
 })
+

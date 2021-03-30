@@ -163,7 +163,6 @@ class BooleanVal extends ScalarVal {
 exports.BooleanVal = BooleanVal;
 BooleanVal.TRUE = new BooleanVal(true);
 BooleanVal.FALSE = new BooleanVal(false);
-// TODO: rename to MapValNode
 class MapNode {
     constructor(base, peer, dest, key) {
         this.dest = dest;
@@ -187,8 +186,10 @@ class MapVal extends Val {
             const ns = [new MapNode(basetop, peertop, basetop)];
             let node;
             let outbase = basetop;
+            let out = basetop;
+            let first = true;
             while ((node = ns.shift())) {
-                console.log('N', node);
+                console.log('NA', ns.length, node);
                 let base = node.base;
                 let peer = node.peer;
                 if (null != node.key) {
@@ -197,7 +198,11 @@ class MapVal extends Val {
                 if (null != peer) {
                     let peerkeys = Object.keys(peer.val);
                     console.log('PK', peerkeys);
-                    outbase = new MapVal({});
+                    outbase = new MapVal({ ...base.val });
+                    if (first) {
+                        out = outbase;
+                        first = false;
+                    }
                     if (null != node.key) {
                         node.dest.val[node.key] = outbase;
                     }
@@ -218,8 +223,9 @@ class MapVal extends Val {
                         }
                     }
                 }
+                console.log('NB', ns.length);
             }
-            return outbase;
+            return out;
         }
         else {
             return UNIFIER(this, peertop);

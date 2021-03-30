@@ -2,11 +2,15 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AontuLang = void 0;
+const jsonic_1 = require("jsonic");
 const val_1 = require("./val");
-let AontuLang = function aontu(jsonic) {
+let AontuJsonic = function aontu(jsonic) {
     jsonic.options({
         value: {
             src: {
+                // NOTE: specify with functions as jsonic/deep will
+                // remove class prototype as options are assumed plain
+                // (except for functions).
                 'string': () => new val_1.ScalarTypeVal(String),
                 'number': () => new val_1.ScalarTypeVal(Number),
                 'integer': () => new val_1.ScalarTypeVal(val_1.Integer),
@@ -40,6 +44,22 @@ let AontuLang = function aontu(jsonic) {
         };
         return rs;
     });
+    jsonic.rule('map', (rs) => {
+        let orig_bc = rs.def.bc;
+        rs.def.bc = function (rule, ctx) {
+            let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined;
+            rule.node = new val_1.MapVal(rule.node);
+            return out;
+        };
+        return rs;
+    });
 };
+function AontuLang(src) {
+    let jsonic = jsonic_1.Jsonic.make().use(AontuJsonic);
+    let root = jsonic(src);
+    //let val = new MapVal(root)
+    //return val
+    return root;
+}
 exports.AontuLang = AontuLang;
 //# sourceMappingURL=lang.js.map

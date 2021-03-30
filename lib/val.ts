@@ -45,12 +45,13 @@ const UNIFIER = (self: Val<any>, peer: Val<any>): Val<any> => {
 
 
 abstract class Val<T> {
-  $$ = true
   val?: T
+
   constructor(val?: T) {
     this.val = val
   }
   abstract unify(_peer: Val<any>): Val<any>
+  //abstract get canon(): string
 }
 
 
@@ -63,6 +64,9 @@ class Bottom extends Val<unknown> {
   unify(_peer: Val<any>) {
     return this
   }
+  //get canon() {
+  //  return 'bottom'
+  //}
 }
 
 class Integer {
@@ -195,7 +199,6 @@ class BooleanVal extends ScalarVal<boolean> {
 
 
 
-// TODO: rename to MapValNode
 class MapNode {
   base: Val<any>
   peer: Val<any>
@@ -228,10 +231,12 @@ class MapVal extends Val<any> {
 
       const ns: MapNode[] = [new MapNode(basetop, peertop, basetop)]
       let node: MapNode
-      let outbase: MapVal = basetop;
+      let outbase: MapVal = basetop
+      let out: MapVal = basetop
+      let first = true
 
       while ((node = ns.shift() as MapNode)) {
-        console.log('N', node)
+        console.log('NA', ns.length, node)
 
         let base: any = node.base
         let peer: any = node.peer
@@ -245,6 +250,11 @@ class MapVal extends Val<any> {
           console.log('PK', peerkeys)
 
           outbase = new MapVal({ ...base.val });
+          if (first) {
+            out = outbase
+            first = false
+          }
+
           if (null != node.key) {
             node.dest.val[node.key] = outbase
           }
@@ -269,9 +279,11 @@ class MapVal extends Val<any> {
           }
 
         }
+
+        console.log('NB', ns.length)
       }
 
-      return outbase
+      return out
     }
     else {
       return UNIFIER(this, peertop)

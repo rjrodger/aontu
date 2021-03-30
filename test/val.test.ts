@@ -266,15 +266,41 @@ describe('val', function() {
     console.log('u02c', u02c)
 
 
-    let ja = Jsonic.make().use(AontuLang)
-    let m2s = new MapVal(ja('a: 1, b: string'))
-    let m3s = new MapVal(ja('b: foo'))
+
+    let la = AontuLang
+    let m2s = la('a: 1, b: string')
+    let m3s = la('b: foo')
     console.log('m2s', m2s)
     console.log('m3s', m3s)
 
     let u02s = m2s.unify(m3s)
     //let u02c = m3.unify(m2)
     console.log('u02s', u02s)
+
+
+    let mc0 = la('a:b:c:1')
+    let mc1 = la('a:b:d:2')
+    console.log('mc0')
+    console.dir(mc0, { depth: null })
+
+    console.log('mc1')
+    console.dir(mc1, { depth: null })
+
+
+    console.log('+++++++')
+    let mcu0 = mc0.unify(mc1)
+    console.log('mcu0')
+    console.dir(mcu0, { depth: null })
+
+    console.log('mc0-u')
+    console.dir(mc0, { depth: null })
+
+    console.log('mc1-u')
+    console.dir(mc1, { depth: null })
+
+
+    let mcu0c = mc1.unify(mc0)
+    console.dir(mcu0c, { depth: null })
 
   })
 
