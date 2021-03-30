@@ -30,16 +30,16 @@ const UNIFIER = (self: Val<any>, peer: Val<any>): Val<any> => {
     return peer
   }
   else if (self.constructor === peer.constructor) {
-    return self.val === peer.val ? self : new Bottom('no-unify-val')
+    return self.val === peer.val ? self : new Nil('no-unify-val')
   }
-  else if (peer instanceof Bottom) {
+  else if (peer instanceof Nil) {
     return peer
   }
-  else if (self instanceof Bottom) {
+  else if (self instanceof Nil) {
     return self
   }
   else {
-    return new Bottom('no-unify')
+    return new Nil('no-unify')
   }
 }
 
@@ -55,7 +55,7 @@ abstract class Val<T> {
 }
 
 
-class Bottom extends Val<unknown> {
+class Nil extends Val<unknown> {
   why: any
   constructor(why: any) {
     super()
@@ -65,7 +65,7 @@ class Bottom extends Val<unknown> {
     return this
   }
   //get canon() {
-  //  return 'bottom'
+  //  return 'nil'
   //}
 }
 
@@ -98,7 +98,7 @@ class ScalarTypeVal extends Val<unknown> {
         return peer
       }
       else {
-        return new Bottom('no-scalar-unify')
+        return new Nil('no-scalar-unify')
       }
     }
     else {
@@ -302,7 +302,7 @@ class MapVal extends Val<any> {
 export {
   Val,
   TOP,
-  Bottom,
+  Nil,
   ScalarTypeVal,
   NumberVal,
   StringVal,

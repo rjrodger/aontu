@@ -4,7 +4,7 @@ declare abstract class Val<T> {
     constructor(val?: T);
     abstract unify(_peer: Val<any>): Val<any>;
 }
-declare class Bottom extends Val<unknown> {
+declare class Nil extends Val<unknown> {
     why: any;
     constructor(why: any);
     unify(_peer: Val<any>): this;
@@ -46,4 +46,4 @@ declare class MapVal extends Val<any> {
     });
     unify(peertop: Val<any>): Val<any>;
 }
-export { Val, TOP, Bottom, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, Integer, };
+export { Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, Integer, };

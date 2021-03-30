@@ -2,7 +2,7 @@
 // Vals are immutable
 // NOTE: each Val must handle all parent and child unifications explicitly
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Integer = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Bottom = exports.TOP = exports.Val = void 0;
+exports.Integer = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = void 0;
 /*
 
 TOP -> Scalar/Boolean -> BooleanVal
@@ -28,16 +28,16 @@ const UNIFIER = (self, peer) => {
         return peer;
     }
     else if (self.constructor === peer.constructor) {
-        return self.val === peer.val ? self : new Bottom('no-unify-val');
+        return self.val === peer.val ? self : new Nil('no-unify-val');
     }
-    else if (peer instanceof Bottom) {
+    else if (peer instanceof Nil) {
         return peer;
     }
-    else if (self instanceof Bottom) {
+    else if (self instanceof Nil) {
         return self;
     }
     else {
-        return new Bottom('no-unify');
+        return new Nil('no-unify');
     }
 };
 class Val {
@@ -46,7 +46,7 @@ class Val {
     }
 }
 exports.Val = Val;
-class Bottom extends Val {
+class Nil extends Val {
     constructor(why) {
         super();
         this.why = why;
@@ -55,7 +55,7 @@ class Bottom extends Val {
         return this;
     }
 }
-exports.Bottom = Bottom;
+exports.Nil = Nil;
 class Integer {
 }
 exports.Integer = Integer;
@@ -75,7 +75,7 @@ class ScalarTypeVal extends Val {
                 return peer;
             }
             else {
-                return new Bottom('no-scalar-unify');
+                return new Nil('no-scalar-unify');
             }
         }
         else {
