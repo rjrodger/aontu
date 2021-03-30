@@ -14,10 +14,12 @@ TOP -> Scalar/Boolean -> BooleanVal
 */
 // There can be only one.
 const TOP = {
+    top: true,
     val: undefined,
     unify(peer) {
         return peer;
     },
+    get canon() { return 'top'; }
 };
 exports.TOP = TOP;
 const UNIFIER = (self, peer) => {
@@ -53,6 +55,9 @@ class Nil extends Val {
     }
     unify(_peer) {
         return this;
+    }
+    get canon() {
+        return 'nil';
     }
 }
 exports.Nil = Nil;
@@ -91,6 +96,9 @@ class ScalarTypeVal extends Val {
             return UNIFIER(this, peer);
         }
     }
+    get canon() {
+        return this.val.toString.toLowerCase();
+    }
 }
 exports.ScalarTypeVal = ScalarTypeVal;
 class ScalarVal extends Val {
@@ -105,6 +113,9 @@ class ScalarVal extends Val {
         else {
             return UNIFIER(this, peer);
         }
+    }
+    get canon() {
+        return this.val.toString();
     }
 }
 class NumberVal extends ScalarVal {
@@ -149,6 +160,9 @@ class StringVal extends ScalarVal {
     }
     unify(peer) {
         return super.unify(peer);
+    }
+    get canon() {
+        return JSON.stringify(this.val);
     }
 }
 exports.StringVal = StringVal;
@@ -230,6 +244,10 @@ class MapVal extends Val {
         else {
             return UNIFIER(this, peertop);
         }
+    }
+    get canon() {
+        return '{' + Object.keys(this.val)
+            .map(k => [JSON.stringify(k) + ':' + this.val[k].canon]).join(',') + '}';
     }
 }
 exports.MapVal = MapVal;

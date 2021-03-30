@@ -30,46 +30,21 @@ let {
 } = require('../lib/val')
 
 describe('val', function() {
-  /*
-  it('happy', () => {
-    let u0 = TOP.unify(new Nil())
-    expect(u0).instanceof(Nil)
-    console.log(u0)
+  it('canon', () => {
+    let la = AontuLang
 
-    let nt = new ScalarVal(Number)
-    console.log('nt', nt)
+    expect(la('1').canon).equals('1')
+    expect(la('"a"').canon).equals('"a"')
+    expect(la('b').canon).equals('"b"')
+    expect(la('true').canon).equals('true')
+    expect(la('top').canon).equals('top')
+    expect(la('nil').canon).equals('nil')
+    expect(la('a:1').canon).equals('{"a":1}')
+    expect(la('a:1,b:nil').canon).equals('{"a":1,"b":nil}')
+    expect(la('a:1,b:c:2').canon).equals('{"a":1,"b":{"c":2}}')
 
-    let n0 = new NumberVal(1.1)
-    console.log('n0', n0)
-
-    console.log('nt~n0', nt.unify(n0))
-    console.log('n0~nt', n0.unify(nt))
-    console.log('n0~n0', n0.unify(n0))
-    console.log('nt~nt', nt.unify(nt))
-
-    console.log('n0~T', n0.unify(TOP))
-    console.log('n0~B', n0.unify(new Nil()))
-    console.log('T~n0', TOP.unify(n0))
-    console.log('B~n0', new Nil().unify(n0))
-
-
-    console.log(Integer)
-
-    let it = new ScalarVal(Integer)
-    console.log('it', it)
-
-    let i0 = new NumberVal(1)
-    console.log('i0', i0)
-
-    console.log('it~i0', it.unify(i0))
-    console.log('i0~it', i0.unify(it))
-    console.log('i0~i0', i0.unify(i0))
-    console.log('it~it', it.unify(it))
-
-    console.log('it~n0', it.unify(n0))
 
   })
-  */
 
 
   it('boolean', () => {

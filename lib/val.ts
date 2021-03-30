@@ -15,11 +15,15 @@ TOP -> Scalar/Boolean -> BooleanVal
 
 // There can be only one.
 const TOP: Val<unknown> = {
+  top: true,
+
   val: undefined,
 
   unify(peer: Val<any>): Val<any> {
     return peer
   },
+
+  get canon() { return 'top' }
 }
 
 const UNIFIER = (self: Val<any>, peer: Val<any>): Val<any> => {
@@ -45,33 +49,33 @@ const UNIFIER = (self: Val<any>, peer: Val<any>): Val<any> => {
 
 
 abstract class Val<T> {
+  top?: boolean
   val?: T
 
   constructor(val?: T) {
     this.val = val
   }
   abstract unify(_peer: Val<any>): Val<any>
-  //abstract get canon(): string
+  abstract get canon(): string
 }
 
 
 class Nil extends Val<unknown> {
   why: any
-  constructor(why: any) {
+  constructor(why?: any) {
     super()
     this.why = why
   }
   unify(_peer: Val<any>) {
     return this
   }
-  //get canon() {
-  //  return 'nil'
-  //}
+  get canon() {
+    return 'nil'
+  }
 }
 
-class Integer {
-  //static subsume(child: ScalarTypeVal) { return Number.isInteger(child.val) }
-}
+class Integer { }
+
 
 
 type ScalarConstructor =
@@ -115,6 +119,9 @@ class ScalarTypeVal extends Val<unknown> {
       return UNIFIER(this, peer)
     }
   }
+  get canon() {
+    return (this.val as any).toString.toLowerCase()
+  }
 }
 
 
@@ -131,6 +138,9 @@ class ScalarVal<T> extends Val<unknown> {
     else {
       return UNIFIER(this, peer)
     }
+  }
+  get canon() {
+    return (this.val as any).toString()
   }
 }
 
@@ -180,6 +190,10 @@ class StringVal extends ScalarVal<string> {
   unify(peer: Val<any>): Val<any> {
     return super.unify(peer)
   }
+  get canon() {
+    return JSON.stringify(this.val)
+  }
+
 }
 
 
@@ -288,6 +302,11 @@ class MapVal extends Val<any> {
     else {
       return UNIFIER(this, peertop)
     }
+  }
+
+  get canon() {
+    return '{' + Object.keys(this.val)
+      .map(k => [JSON.stringify(k) + ':' + this.val[k].canon]).join(',') + '}'
   }
 }
 

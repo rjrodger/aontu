@@ -10,6 +10,8 @@ import {
 
 import {
   Val,
+  Nil,
+  TOP,
   MapVal,
   ScalarTypeVal,
   Integer,
@@ -32,12 +34,14 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         'number': () => new ScalarTypeVal(Number),
         'integer': () => new ScalarTypeVal(Integer),
         'boolean': () => new ScalarTypeVal(Boolean),
+        'nil': () => new Nil(),
+        'top': () => TOP,
       }
     }
   })
 
 
-  console.log('VAL', jsonic.options.value)
+  // console.log('VAL', jsonic.options.value)
 
   jsonic.rule('val', (rs: RuleSpec) => {
     let orig_bc = rs.def.bc
@@ -88,6 +92,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 function AontuLang(src: string): Val<any> {
   let jsonic = Jsonic.make().use(AontuJsonic)
   let root = jsonic(src)
+  console.log('LANG', root)
   //let val = new MapVal(root)
   //return val
   return root

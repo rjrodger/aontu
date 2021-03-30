@@ -15,10 +15,12 @@ let AontuJsonic = function aontu(jsonic) {
                 'number': () => new val_1.ScalarTypeVal(Number),
                 'integer': () => new val_1.ScalarTypeVal(val_1.Integer),
                 'boolean': () => new val_1.ScalarTypeVal(Boolean),
+                'nil': () => new val_1.Nil(),
+                'top': () => val_1.TOP,
             }
         }
     });
-    console.log('VAL', jsonic.options.value);
+    // console.log('VAL', jsonic.options.value)
     jsonic.rule('val', (rs) => {
         let orig_bc = rs.def.bc;
         rs.def.bc = function (rule, ctx) {
@@ -57,6 +59,7 @@ let AontuJsonic = function aontu(jsonic) {
 function AontuLang(src) {
     let jsonic = jsonic_1.Jsonic.make().use(AontuJsonic);
     let root = jsonic(src);
+    console.log('LANG', root);
     //let val = new MapVal(root)
     //return val
     return root;
