@@ -14,19 +14,25 @@ TOP -> Scalar/Boolean -> BooleanVal
 
 
 // There can be only one.
-const TOP: Val<unknown> = {
+const TOP: Val = {
   top: true,
 
   val: undefined,
 
-  unify(peer: Val<any>): Val<any> {
+  unify(peer: Val): Val {
     return peer
   },
 
-  get canon() { return 'top' }
+  get canon() { return 'top' },
+
+  gen: (_log: any[]) => {
+    // TOPs evaporate
+    return undefined
+  },
+
 }
 
-const UNIFIER = (self: Val<any>, peer: Val<any>): Val<any> => {
+const UNIFIER = (self: Val, peer: Val): Val => {
   if (peer === TOP) {
     return self
   }
@@ -42,35 +48,44 @@ const UNIFIER = (self: Val<any>, peer: Val<any>): Val<any> => {
   else if (self instanceof Nil) {
     return self
   }
+  else if (peer instanceof DisjunctVal) {
+    return peer.unify(self)
+  }
   else {
     return new Nil('no-unify')
   }
 }
 
 
-abstract class Val<T> {
+abstract class Val {
   top?: boolean
-  val?: T
+  val?: any
 
-  constructor(val?: T) {
+  constructor(val?: any) {
     this.val = val
   }
-  abstract unify(_peer: Val<any>): Val<any>
+  abstract unify(_peer: Val): Val
   abstract get canon(): string
+  abstract gen(log: any[]): any
 }
 
 
-class Nil extends Val<unknown> {
+class Nil extends Val {
   why: any
   constructor(why?: any) {
     super()
     this.why = why
   }
-  unify(_peer: Val<any>) {
+  unify(_peer: Val) {
     return this
   }
   get canon() {
     return 'nil'
+  }
+  gen(log: any[]) {
+    // This is an error.
+    log.push('nil')
+    return undefined
   }
 }
 
@@ -85,11 +100,11 @@ type ScalarConstructor =
   (typeof Integer.constructor)
 
 
-class ScalarTypeVal extends Val<unknown> {
+class ScalarTypeVal extends Val {
   constructor(val: ScalarConstructor) {
     super(val)
   }
-  unify(peer: Val<any>): Val<any> {
+  unify(peer: Val): Val {
     //console.log('ScalarTypeVal.unify',
     //  peer, (peer as any).type, this.val, (peer as any).type === this.val)
 
@@ -115,23 +130,29 @@ class ScalarTypeVal extends Val<unknown> {
         }
       }
 
-      console.log('BBB')
       return UNIFIER(this, peer)
     }
   }
   get canon() {
-    return (this.val as any).toString.toLowerCase()
+    return (this.val as any).name.toLowerCase()
   }
+
+  gen(log: any[]) {
+    // This is an error.
+    log.push('ScalarTypeVal<' + this.canon + '>')
+    return undefined
+  }
+
 }
 
 
-class ScalarVal<T> extends Val<unknown> {
+class ScalarVal<T> extends Val {
   type: any
   constructor(val: T, type: ScalarConstructor) {
     super(val)
     this.type = type
   }
-  unify(peer: Val<any>): Val<any> {
+  unify(peer: Val): Val {
     if (peer instanceof ScalarTypeVal) {
       return peer.unify(this)
     }
@@ -142,6 +163,9 @@ class ScalarVal<T> extends Val<unknown> {
   get canon() {
     return (this.val as any).toString()
   }
+  gen(_log: any[]) {
+    return this.val
+  }
 }
 
 
@@ -149,7 +173,7 @@ class NumberVal extends ScalarVal<number> {
   constructor(val: number) {
     super(val, Number)
   }
-  unify(peer: Val<any>): Val<any> {
+  unify(peer: Val): Val {
     if (peer instanceof ScalarVal && peer.type === Integer) {
       return peer
     }
@@ -167,7 +191,7 @@ class IntegerVal extends ScalarVal<number> {
     }
     super(val, Integer)
   }
-  unify(peer: Val<any>): Val<any> {
+  unify(peer: Val): Val {
     if (peer instanceof ScalarTypeVal && peer.val === Number) {
       return this
     }
@@ -187,7 +211,7 @@ class StringVal extends ScalarVal<string> {
   constructor(val: string) {
     super(val, String)
   }
-  unify(peer: Val<any>): Val<any> {
+  unify(peer: Val): Val {
     return super.unify(peer)
   }
   get canon() {
@@ -201,7 +225,7 @@ class BooleanVal extends ScalarVal<boolean> {
   constructor(val: boolean) {
     super(val, Boolean)
   }
-  unify(peer: Val<any>): Val<any> {
+  unify(peer: Val): Val {
     return super.unify(peer)
   }
 
@@ -214,13 +238,13 @@ class BooleanVal extends ScalarVal<boolean> {
 
 
 class MapNode {
-  base: Val<any>
-  peer: Val<any>
+  base: Val
+  peer: Val
   dest: MapVal
   key: string | undefined
 
 
-  constructor(base: Val<any>, peer: Val<any>, dest: MapVal, key?: string,) {
+  constructor(base: Val, peer: Val, dest: MapVal, key?: string,) {
     this.dest = dest
     this.key = key
     this.base = base
@@ -229,16 +253,16 @@ class MapNode {
 }
 
 
-class MapVal extends Val<any> {
+class MapVal extends Val {
   id = Math.random()
 
-  constructor(val: { [key: string]: Val<any> }) {
+  constructor(val: { [key: string]: Val }) {
     super(val)
   }
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peertop: Val<any>): Val<any> {
+  unify(peertop: Val): Val {
     if (peertop instanceof MapVal) {
       const basetop = this
       if (basetop === peertop) return basetop
@@ -250,8 +274,6 @@ class MapVal extends Val<any> {
       let first = true
 
       while ((node = ns.shift() as MapNode)) {
-        console.log('NA', ns.length, node)
-
         let base: any = node.base
         let peer: any = node.peer
 
@@ -261,7 +283,6 @@ class MapVal extends Val<any> {
 
         if (null != peer) {
           let peerkeys = Object.keys(peer.val)
-          console.log('PK', peerkeys)
 
           outbase = new MapVal({ ...base.val });
           if (first) {
@@ -293,8 +314,6 @@ class MapVal extends Val<any> {
           }
 
         }
-
-        console.log('NB', ns.length)
       }
 
       return out
@@ -308,6 +327,76 @@ class MapVal extends Val<any> {
     return '{' + Object.keys(this.val)
       .map(k => [JSON.stringify(k) + ':' + this.val[k].canon]).join(',') + '}'
   }
+
+
+  gen(log: any[]) {
+    let out: any = {}
+    for (let p in this.val) {
+      out[p] = this.val[p].gen(log)
+    }
+    return out
+  }
+
+}
+
+
+
+
+
+class DisjunctVal extends Val {
+  constructor(val: Val[]) {
+    super(val)
+  }
+  append(peer: Val): DisjunctVal {
+    return new DisjunctVal([...this.val, peer])
+  }
+  unify(peer: Val): Val {
+    let out: Val[] = []
+
+    for (let vI = 0; vI < this.val.length; vI++) {
+      out[vI] = this.val[vI].unify(peer)
+    }
+
+    out = out.filter(v => !(v instanceof Nil))
+
+    return new DisjunctVal(out)
+  }
+  get canon() {
+    return this.val.map((v: Val) => v.canon).join('|')
+  }
+  gen(log: any[]) {
+    if (0 < this.val.length) {
+
+      // Default is just the first term - does this work?
+      let v: Val = this.val[0]
+
+      /*
+      for (let vI = 1; vI < this.val.length; vI++) {
+        if (v instanceof Nil) {
+          v = this.val[vI]
+        }
+        else if (!(this.val[vI] instanceof Nil)) {
+          v = this.val[vI].unify(v)
+        }
+      }
+
+      console.log('DJ', v)
+      */
+
+      let out = undefined
+      if (undefined !== v && !(v instanceof Nil)) {
+        out = v.gen(log)
+      }
+      else {
+        log.push('nil:|:none=' + this.canon)
+      }
+      return out
+    }
+    else {
+      log.push('nil:|:empty=' + this.canon)
+      return undefined
+    }
+  }
 }
 
 
@@ -316,9 +405,8 @@ class MapVal extends Val<any> {
 
 
 
-
-
 export {
+  Integer,
   Val,
   TOP,
   Nil,
@@ -328,5 +416,5 @@ export {
   BooleanVal,
   IntegerVal,
   MapVal,
-  Integer,
+  DisjunctVal,
 }

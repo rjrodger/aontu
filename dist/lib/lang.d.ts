@@ -1,3 +1,3 @@
 import { Val } from './val';
-declare function AontuLang(src: string): Val<any>;
+declare function AontuLang<T extends string | string[]>(src: T): (T extends string ? Val : Val[]);
 export { AontuLang };

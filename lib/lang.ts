@@ -89,13 +89,16 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
-function AontuLang(src: string): Val<any> {
+function AontuLang<T extends string | string[]>(src: T):
+  (T extends string ? Val : Val[]) {
   let jsonic = Jsonic.make().use(AontuJsonic)
-  let root = jsonic(src)
-  console.log('LANG', root)
-  //let val = new MapVal(root)
-  //return val
-  return root
+  if (Array.isArray(src)) {
+    return (src.map(s => jsonic(s)) as any)
+  }
+  else {
+    return jsonic(src)
+  }
+
 }
 
 

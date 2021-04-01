@@ -58,11 +58,12 @@ let AontuJsonic = function aontu(jsonic) {
 };
 function AontuLang(src) {
     let jsonic = jsonic_1.Jsonic.make().use(AontuJsonic);
-    let root = jsonic(src);
-    console.log('LANG', root);
-    //let val = new MapVal(root)
-    //return val
-    return root;
+    if (Array.isArray(src)) {
+        return src.map(s => jsonic(s));
+    }
+    else {
+        return jsonic(src);
+    }
 }
 exports.AontuLang = AontuLang;
 //# sourceMappingURL=lang.js.map

@@ -2,7 +2,7 @@
 // Vals are immutable
 // NOTE: each Val must handle all parent and child unifications explicitly
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Integer = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = void 0;
+exports.DisjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = void 0;
 /*
 
 TOP -> Scalar/Boolean -> BooleanVal
@@ -19,7 +19,11 @@ const TOP = {
     unify(peer) {
         return peer;
     },
-    get canon() { return 'top'; }
+    get canon() { return 'top'; },
+    gen: (_log) => {
+        // TOPs evaporate
+        return undefined;
+    },
 };
 exports.TOP = TOP;
 const UNIFIER = (self, peer) => {
@@ -37,6 +41,9 @@ const UNIFIER = (self, peer) => {
     }
     else if (self instanceof Nil) {
         return self;
+    }
+    else if (peer instanceof DisjunctVal) {
+        return peer.unify(self);
     }
     else {
         return new Nil('no-unify');
@@ -58,6 +65,11 @@ class Nil extends Val {
     }
     get canon() {
         return 'nil';
+    }
+    gen(log) {
+        // This is an error.
+        log.push('nil');
+        return undefined;
     }
 }
 exports.Nil = Nil;
@@ -92,12 +104,16 @@ class ScalarTypeVal extends Val {
                     return this;
                 }
             }
-            console.log('BBB');
             return UNIFIER(this, peer);
         }
     }
     get canon() {
-        return this.val.toString.toLowerCase();
+        return this.val.name.toLowerCase();
+    }
+    gen(log) {
+        // This is an error.
+        log.push('ScalarTypeVal<' + this.canon + '>');
+        return undefined;
     }
 }
 exports.ScalarTypeVal = ScalarTypeVal;
@@ -116,6 +132,9 @@ class ScalarVal extends Val {
     }
     get canon() {
         return this.val.toString();
+    }
+    gen(_log) {
+        return this.val;
     }
 }
 class NumberVal extends ScalarVal {
@@ -203,7 +222,6 @@ class MapVal extends Val {
             let out = basetop;
             let first = true;
             while ((node = ns.shift())) {
-                console.log('NA', ns.length, node);
                 let base = node.base;
                 let peer = node.peer;
                 if (null != node.key) {
@@ -211,7 +229,6 @@ class MapVal extends Val {
                 }
                 if (null != peer) {
                     let peerkeys = Object.keys(peer.val);
-                    console.log('PK', peerkeys);
                     outbase = new MapVal({ ...base.val });
                     if (first) {
                         out = outbase;
@@ -237,7 +254,6 @@ class MapVal extends Val {
                         }
                     }
                 }
-                console.log('NB', ns.length);
             }
             return out;
         }
@@ -249,6 +265,63 @@ class MapVal extends Val {
         return '{' + Object.keys(this.val)
             .map(k => [JSON.stringify(k) + ':' + this.val[k].canon]).join(',') + '}';
     }
+    gen(log) {
+        let out = {};
+        for (let p in this.val) {
+            out[p] = this.val[p].gen(log);
+        }
+        return out;
+    }
 }
 exports.MapVal = MapVal;
+class DisjunctVal extends Val {
+    constructor(val) {
+        super(val);
+    }
+    append(peer) {
+        return new DisjunctVal([...this.val, peer]);
+    }
+    unify(peer) {
+        let out = [];
+        for (let vI = 0; vI < this.val.length; vI++) {
+            out[vI] = this.val[vI].unify(peer);
+        }
+        out = out.filter(v => !(v instanceof Nil));
+        return new DisjunctVal(out);
+    }
+    get canon() {
+        return this.val.map((v) => v.canon).join('|');
+    }
+    gen(log) {
+        if (0 < this.val.length) {
+            // Default is just the first term - does this work?
+            let v = this.val[0];
+            /*
+            for (let vI = 1; vI < this.val.length; vI++) {
+              if (v instanceof Nil) {
+                v = this.val[vI]
+              }
+              else if (!(this.val[vI] instanceof Nil)) {
+                v = this.val[vI].unify(v)
+              }
+            }
+      
+            console.log('DJ', v)
+            */
+            let out = undefined;
+            if (undefined !== v && !(v instanceof Nil)) {
+                out = v.gen(log);
+            }
+            else {
+                log.push('nil:|:none=' + this.canon);
+            }
+            return out;
+        }
+        else {
+            log.push('nil:|:empty=' + this.canon);
+            return undefined;
+        }
+    }
+}
+exports.DisjunctVal = DisjunctVal;
 //# sourceMappingURL=val.js.map

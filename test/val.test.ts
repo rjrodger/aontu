@@ -18,6 +18,7 @@ import {
 
 
 let {
+  Integer,
   TOP,
   Nil,
   NumberVal,
@@ -26,7 +27,7 @@ let {
   IntegerVal,
   ScalarTypeVal,
   MapVal,
-  Integer,
+  DisjunctVal,
 } = require('../lib/val')
 
 describe('val', function() {
@@ -45,6 +46,31 @@ describe('val', function() {
 
 
   })
+
+
+  it('gen', () => {
+    let la = AontuLang
+    let g = []
+
+    g = []; expect(la('1').gen(g)).equals(1)
+    g = []; expect(la('"a"').gen(g)).equals('a')
+    g = []; expect(la('b').gen(g)).equals('b')
+    g = []; expect(la('true').gen(g)).equals(true)
+    g = []; expect(la('top').gen(g)).equals(undefined)
+
+    g = []; expect(la('nil').gen(g)).equals(undefined)
+    expect(g).equals(['nil'])
+
+    g = []; expect(la('a:1').gen(g)).equals({ a: 1 })
+
+    g = []; expect(la('a:1,b:nil').gen(g)).equals({ a: 1, b: undefined })
+    expect(g).equals(['nil'])
+
+    g = []; expect(la('a:1,b:c:2').gen(g)).equals({ a: 1, b: { c: 2 } })
+
+
+  })
+
 
 
   it('boolean', () => {
@@ -194,6 +220,7 @@ describe('val', function() {
 
   it('map', () => {
     let m0 = new MapVal({})
+    expect(m0.canon).equals('{}')
 
     expect(m0.unify(m0)).equal(m0)
 
@@ -218,11 +245,11 @@ describe('val', function() {
 
 
     let m1 = new MapVal({ a: new NumberVal(1) })
-    let u01 = m0.unify(m1)
+    expect(m1.canon).equals('{"a":1}')
 
-    console.log(m0)
-    console.log(m1)
-    console.log(u01)
+    let u01 = m0.unify(m1)
+    expect(u01.canon).equals('{"a":1}')
+
 
 
     let m2 = new MapVal({
@@ -279,5 +306,57 @@ describe('val', function() {
 
   })
 
+
+  it('disjunct', () => {
+    let la = AontuLang
+    let d0 = new DisjunctVal(la(['1']))
+    let d1 = new DisjunctVal(la(['1', '2']))
+    let d2 = new DisjunctVal(la(['1', 'number']))
+    let d3 = new DisjunctVal(la(['1', 'number', 'integer']))
+    let d4 = new DisjunctVal(la(['{a:1}']))
+    let d5 = new DisjunctVal(la(['{a:1}', '{b:2}']))
+
+    expect(d0.canon).equals('1')
+    expect(d1.canon).equals('1|2')
+    expect(d2.canon).equals('1|number')
+    expect(d3.canon).equals('1|number|integer')
+    expect(d4.canon).equals('{"a":1}')
+    expect(d5.canon).equals('{"a":1}|{"b":2}')
+
+
+    let g = []
+
+    g = []; expect(d0.unify(la('1')).gen(g)).equal(1)
+    g = []; expect(la('1').unify(d0).gen(g)).equal(1)
+    g = []; expect(d0.unify(la('2')).gen(g)).equal(undefined)
+    g = []; expect(la('2').unify(d0).gen(g)).equal(undefined)
+
+    g = []; expect(d1.unify(la('1')).gen(g)).equal(1)
+    g = []; expect(la('1').unify(d1).gen(g)).equal(1)
+    g = []; expect(d1.unify(la('2')).gen(g)).equal(2)
+    g = []; expect(la('2').unify(d1).gen(g)).equal(2)
+    g = []; expect(d1.unify(la('3')).gen(g)).equal(undefined)
+    g = []; expect(la('3').unify(d1).gen(g)).equal(undefined)
+
+    g = []; expect(d2.unify(la('1')).gen(g)).equal(1)
+    g = []; expect(la('1').unify(d2).gen(g)).equal(1)
+    g = []; expect(d2.unify(la('2')).gen(g)).equal(2)
+    g = []; expect(la('2').unify(d2).gen(g)).equal(2)
+    g = []; expect(d3.unify(la('3')).gen(g)).equal(3)
+    g = []; expect(la('3').unify(d3).gen(g)).equal(3)
+    g = []; expect(d3.unify(la('true')).gen(g)).equal(undefined)
+    g = []; expect(la('true').unify(d3).gen(g)).equal(undefined)
+
+
+
+
+    g = []; expect(d0.gen(g)).equals(1)
+    g = []; expect(d1.gen(g)).equals(1)
+    g = []; expect(d2.gen(g)).equals(1)
+    g = []; expect(d3.gen(g)).equals(1)
+
+    g = []; expect(d4.gen(g)).equals({ a: 1 })
+    g = []; expect(d5.gen(g)).equals({ a: 1 })
+  })
 
 })
