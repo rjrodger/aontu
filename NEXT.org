@@ -1,3 +1,4 @@
-* test map children!
 * implement Disjunct and defaults
+** parse disjuncts using expr
+*** cut and paste expr and observe changes to see if expr can be used as a Plugin with mods
 * implement base peer and child peers as per old aontu.ts

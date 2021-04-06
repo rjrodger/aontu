@@ -28,6 +28,8 @@ let {
   ScalarTypeVal,
   MapVal,
   DisjunctVal,
+  ConjunctVal,
+  RefVal,
 } = require('../lib/val')
 
 describe('val', function() {
@@ -222,10 +224,11 @@ describe('val', function() {
     let m0 = new MapVal({})
     expect(m0.canon).equals('{}')
 
-    expect(m0.unify(m0)).equal(m0)
+    // TODO: update
+    expect(m0.unify(m0).canon).equal('{}')
 
-    expect(m0.unify(TOP)).equal(m0)
-    expect(TOP.unify(m0)).equal(m0)
+    expect(m0.unify(TOP).canon).equal('{}')
+    expect(TOP.unify(m0).canon).equal('{}')
 
     let b0 = new Nil()
     expect(m0.unify(b0)).equal(b0)
@@ -245,65 +248,133 @@ describe('val', function() {
 
 
     let m1 = new MapVal({ a: new NumberVal(1) })
+    print(m1, 'm1')
     expect(m1.canon).equals('{"a":1}')
 
+    let m1u = m1.unify(TOP)
+    print(m1u, 'm1u')
+    expect(m1u.canon).equals('{"a":1}')
+
+
     let u01 = m0.unify(m1)
-    expect(u01.canon).equals('{"a":1}')
+    print(u01, 'u01')
+    expect(m1u.canon).equals('{"a":1}')
+    expect(m0.canon).equals('{}')
+    expect(m1.canon).equals('{"a":1}')
 
+    let u02 = m1.unify(m0)
+    print(u02, 'u02')
+    expect(u02.canon).equals('{"a":1}')
+    expect(m0.canon).equals('{}')
+    expect(m1.canon).equals('{"a":1}')
 
+    return;
 
+    /*
     let m2 = new MapVal({
-      a: new NumberVal(1),
-      b: new ScalarTypeVal(String),
+    a: new NumberVal(1),
+    b: new ScalarTypeVal(String),
     })
     let m3 = new MapVal({
-      b: new StringVal('foo')
+    b: new StringVal('foo')
     })
     let u02 = m2.unify(m3)
     let u02c = m3.unify(m2)
-
+    
     console.log(m2)
     console.log(m3)
     console.log('u02', u02)
     console.log('u02c', u02c)
-
-
-
+    
+    
+    
     let la = AontuLang
     let m2s = la('a: 1, b: string')
     let m3s = la('b: foo')
     console.log('m2s', m2s)
     console.log('m3s', m3s)
-
+    
     let u02s = m2s.unify(m3s)
     //let u02c = m3.unify(m2)
     console.log('u02s', u02s)
-
-
+    
+    
     let mc0 = la('a:b:c:1')
     let mc1 = la('a:b:d:2')
     console.log('mc0')
     console.dir(mc0, { depth: null })
-
+    
     console.log('mc1')
     console.dir(mc1, { depth: null })
-
-
+    
+    
     console.log('+++++++')
     let mcu0 = mc0.unify(mc1)
     console.log('mcu0')
     console.dir(mcu0, { depth: null })
-
+    
     console.log('mc0-u')
     console.dir(mc0, { depth: null })
-
+    
     console.log('mc1-u')
     console.dir(mc1, { depth: null })
-
-
+    
+    
     let mcu0c = mc1.unify(mc0)
     console.dir(mcu0c, { depth: null })
+    */
+  })
 
+
+  it('conjunct', () => {
+    let la = AontuLang
+    let d0 = new ConjunctVal(la(['1']))
+    let d1 = new ConjunctVal(la(['1', '1']))
+    let d2 = new ConjunctVal(la(['1', '2']))
+    let d3 = new ConjunctVal(la(['1', 'number']))
+    let d4 = new ConjunctVal(la(['1', 'number', 'integer']))
+    let d5 = new ConjunctVal(la(['{a:1}']))
+    let d6 = new ConjunctVal(la(['{a:1}', '{b:2}']))
+
+    let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('1')])
+    let d101 = new ConjunctVal([new IntegerVal(1), new RefVal('a')])
+
+    expect(d0.canon).equals('1')
+    expect(d1.canon).equals('1&1')
+    expect(d2.canon).equals('1&2')
+    expect(d3.canon).equals('1&number')
+    expect(d4.canon).equals('1&number&integer')
+    expect(d5.canon).equals('{"a":1}')
+    expect(d6.canon).equals('{"a":1}&{"b":2}')
+
+
+    expect(d0.unify(la('1')).canon).equal('1')
+    expect(la('1').unify(d0).canon).equal('1')
+    expect(d0.unify(la('2')).canon)
+      .equal('nil:&peer[nil:no-unify-val:[1,2],2]')
+    expect(la('2').unify(d0).canon)
+      .equal('nil:&peer[nil:no-unify-val:[1,2],2]')
+
+
+    expect(d0.unify(TOP).canon).equal('1')
+    expect(TOP.unify(d0).canon).equal('1')
+
+    expect(d1.unify(TOP).canon).equal('1')
+    expect(TOP.unify(d1).canon).equal('1')
+
+    expect(d2.unify(TOP).canon)
+      .equal('nil:&reduce[nil:no-unify-val:[1,2],2]')
+    expect(TOP.unify(d2).canon)
+      .equal('nil:&reduce[nil:no-unify-val:[1,2],2]')
+
+    expect(d3.unify(TOP).canon).equal('1')
+    expect(TOP.unify(d3).canon).equal('1')
+
+    expect(d100.unify(TOP).dc).equal('1/*d-1*/')
+    expect(TOP.unify(d100).dc).equal('1/*d-1*/')
+
+    console.log('+++++++')
+    expect(d101.unify(TOP).dc).equal('REF[a]&1/*d1*/')
   })
 
 
@@ -359,4 +430,31 @@ describe('val', function() {
     g = []; expect(d5.gen(g)).equals({ a: 1 })
   })
 
+
+
+  it('ref', () => {
+    let la = AontuLang
+    let d0 = new RefVal('1')
+    let d1 = new RefVal('a')
+
+    expect(d0.canon).equals('REF[1]')
+    expect(d1.canon).equals('REF[a]')
+
+
+    expect(d0.unify(TOP).canon).equal('1')
+    expect(TOP.unify(d0).canon).equal('1')
+
+    expect(d1.unify(TOP).canon).equal('REF[a]&top')
+    expect(TOP.unify(d1).canon).equal('REF[a]&top')
+  })
+
+
 })
+
+
+function print(o: any, t?: string) {
+  if (null != t) {
+    console.log(t)
+  }
+  console.dir(o, { depth: null })
+}

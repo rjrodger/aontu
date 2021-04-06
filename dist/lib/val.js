@@ -2,7 +2,7 @@
 // Vals are immutable
 // NOTE: each Val must handle all parent and child unifications explicitly
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DisjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = void 0;
+exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = void 0;
 /*
 
 TOP -> Scalar/Boolean -> BooleanVal
@@ -12,14 +12,28 @@ TOP -> Scalar/Boolean -> BooleanVal
     -> Scalar/Integer -> IntegerVal
 
 */
+const DONE = -1;
 // There can be only one.
 const TOP = {
     top: true,
     val: undefined,
+    done: DONE,
     unify(peer) {
-        return peer;
+        if (peer instanceof DisjunctVal) {
+            return peer.unify(this);
+        }
+        else if (peer instanceof ConjunctVal) {
+            return peer.unify(this);
+        }
+        else if (peer instanceof RefVal) {
+            return peer.unify(this);
+        }
+        else {
+            return peer;
+        }
     },
     get canon() { return 'top'; },
+    get dc() { return 'top'; },
     gen: (_log) => {
         // TOPs evaporate
         return undefined;
@@ -34,7 +48,8 @@ const UNIFIER = (self, peer) => {
         return peer;
     }
     else if (self.constructor === peer.constructor) {
-        return self.val === peer.val ? self : new Nil('no-unify-val');
+        return self.val === peer.val ? self :
+            new Nil('no-unify-val:[' + self.canon + ',' + peer.canon + ']');
     }
     else if (peer instanceof Nil) {
         return peer;
@@ -45,13 +60,23 @@ const UNIFIER = (self, peer) => {
     else if (peer instanceof DisjunctVal) {
         return peer.unify(self);
     }
+    else if (peer instanceof ConjunctVal) {
+        return peer.unify(self);
+    }
+    else if (peer instanceof RefVal) {
+        return peer.unify(self);
+    }
     else {
-        return new Nil('no-unify');
+        return new Nil('no-unify:' + self.canon + ',' + peer.canon);
     }
 };
 class Val {
     constructor(val) {
+        this.done = 0;
         this.val = val;
+    }
+    get dc() {
+        return this.canon + '/*d' + this.done + '*/';
     }
 }
 exports.Val = Val;
@@ -59,12 +84,13 @@ class Nil extends Val {
     constructor(why) {
         super();
         this.why = why;
+        this.done = DONE;
     }
     unify(_peer) {
         return this;
     }
     get canon() {
-        return 'nil';
+        return 'nil:' + this.why;
     }
     gen(log) {
         // This is an error.
@@ -79,6 +105,7 @@ exports.Integer = Integer;
 class ScalarTypeVal extends Val {
     constructor(val) {
         super(val);
+        this.done = DONE;
     }
     unify(peer) {
         //console.log('ScalarTypeVal.unify',
@@ -121,6 +148,7 @@ class ScalarVal extends Val {
     constructor(val, type) {
         super(val);
         this.type = type;
+        this.done = DONE;
     }
     unify(peer) {
         if (peer instanceof ScalarTypeVal) {
@@ -196,14 +224,6 @@ class BooleanVal extends ScalarVal {
 exports.BooleanVal = BooleanVal;
 BooleanVal.TRUE = new BooleanVal(true);
 BooleanVal.FALSE = new BooleanVal(false);
-class MapNode {
-    constructor(base, peer, dest, key) {
-        this.dest = dest;
-        this.key = key;
-        this.base = base;
-        this.peer = peer;
-    }
-}
 class MapVal extends Val {
     constructor(val) {
         super(val);
@@ -211,54 +231,32 @@ class MapVal extends Val {
     }
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
-    unify(peertop) {
-        if (peertop instanceof MapVal) {
-            const basetop = this;
-            if (basetop === peertop)
-                return basetop;
-            const ns = [new MapNode(basetop, peertop, basetop)];
-            let node;
-            let outbase = basetop;
-            let out = basetop;
-            let first = true;
-            while ((node = ns.shift())) {
-                let base = node.base;
-                let peer = node.peer;
-                if (null != node.key) {
-                    node.dest.val[node.key] = node.base;
-                }
-                if (null != peer) {
-                    let peerkeys = Object.keys(peer.val);
-                    outbase = new MapVal({ ...base.val });
-                    if (first) {
-                        out = outbase;
-                        first = false;
-                    }
-                    if (null != node.key) {
-                        node.dest.val[node.key] = outbase;
-                    }
-                    let outval = outbase.val;
-                    for (let pkI = 0; pkI < peerkeys.length; pkI++) {
-                        let peerkey = peerkeys[pkI];
-                        let subpeer = peer.val[peerkey];
-                        let subbase = base.val[peerkey];
-                        if (subpeer instanceof MapVal || subbase instanceof MapVal) {
-                            let subnode = new MapNode(subbase, subpeer, outbase, peerkey);
-                            ns.push(subnode);
-                        }
-                        else if (null != subbase && null != subpeer) {
-                            outval[peerkey] = subbase.unify(subpeer);
-                        }
-                        else if (null == subbase && null != subpeer) {
-                            outval[peerkey] = subpeer;
-                        }
-                    }
-                }
+    unify(peer) {
+        let done = true;
+        let out = this;
+        if (DONE !== this.done) {
+            out = new MapVal({});
+            out.done = this.done + 1;
+            // Always unify children against TOP first
+            for (let key in this.val) {
+                out.val[key] = this.val[key].unify(TOP);
+                done = (done && DONE === out.val[key].done);
             }
+        }
+        if (peer instanceof MapVal) {
+            let upeer = peer.unify(TOP);
+            for (let peerkey in upeer.val) {
+                let peerchild = upeer.val[peerkey];
+                let child = this.val[peerkey];
+                out.val[peerkey] = undefined === child ? peerchild : child.unify(peerchild);
+                done = (done && DONE === out.val[peerkey].done);
+            }
+            out.done = done ? DONE : out.done;
             return out;
         }
         else {
-            return UNIFIER(this, peertop);
+            out.done = done ? DONE : out.done;
+            return UNIFIER(out, peer);
         }
     }
     get canon() {
@@ -274,6 +272,78 @@ class MapVal extends Val {
     }
 }
 exports.MapVal = MapVal;
+class ConjunctVal extends Val {
+    constructor(val) {
+        super(val);
+    }
+    append(peer) {
+        return new ConjunctVal([...this.val, peer]);
+    }
+    unify(peer) {
+        let done = true;
+        let upeer = [];
+        for (let vI = 0; vI < this.val.length; vI++) {
+            upeer[vI] = this.val[vI].unify(peer);
+            done = done && DONE === upeer[vI].done;
+            console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon);
+            if (upeer[vI] instanceof Nil) {
+                return new Nil('&peer[' + upeer[vI].canon + ',' + peer.canon + ']');
+            }
+        }
+        console.log('Cb', ...upeer.map(x => x.canon));
+        let outvals = 0 < upeer.length ? [upeer[0]] : [];
+        let oI = 0;
+        for (let uI = 1; uI < upeer.length; uI++) {
+            if (outvals[oI] instanceof ConjunctVal) {
+                outvals.splice(oI, 0, ...outvals[oI].val);
+                oI += outvals[oI].val.length;
+                done = false;
+            }
+            else {
+                outvals[oI] = null == outvals[oI] ? upeer[uI] : outvals[oI].unify(upeer[uI]);
+                done = done && DONE === outvals[oI].done;
+                if (outvals[oI] instanceof Nil) {
+                    return new Nil('&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']');
+                }
+            }
+        }
+        let out;
+        if (0 === outvals.length) {
+            out = new Nil('&empty');
+        }
+        else if (1 === outvals.length) {
+            out = outvals[0];
+        }
+        else {
+            out = new ConjunctVal(outvals);
+        }
+        out.done = done ? DONE : this.done + 1;
+        return out;
+    }
+    get canon() {
+        return this.val.map((v) => v.canon).join('&');
+    }
+    gen(log) {
+        if (0 < this.val.length) {
+            // Default is just the first term - does this work?
+            // TODO: maybe use a PrefVal() ?
+            let v = this.val[0];
+            let out = undefined;
+            if (undefined !== v && !(v instanceof Nil)) {
+                out = v.gen(log);
+            }
+            else {
+                log.push('nil:|:none=' + this.canon);
+            }
+            return out;
+        }
+        else {
+            log.push('nil:|:empty=' + this.canon);
+            return undefined;
+        }
+    }
+}
+exports.ConjunctVal = ConjunctVal;
 class DisjunctVal extends Val {
     constructor(val) {
         super(val);
@@ -295,6 +365,7 @@ class DisjunctVal extends Val {
     gen(log) {
         if (0 < this.val.length) {
             // Default is just the first term - does this work?
+            // TODO: maybe use a PrefVal() ?
             let v = this.val[0];
             /*
             for (let vI = 1; vI < this.val.length; vI++) {
@@ -324,4 +395,38 @@ class DisjunctVal extends Val {
     }
 }
 exports.DisjunctVal = DisjunctVal;
+class RefVal extends Val {
+    constructor(val) {
+        super(val);
+    }
+    unify(peer) {
+        let resolved = '1' === this.val ? new IntegerVal(1) : this;
+        console.log('UREF', this.val, peer, resolved);
+        let out;
+        if (resolved instanceof RefVal) {
+            if (TOP === peer) {
+                out = new RefVal(this.val);
+            }
+            else if (peer instanceof Nil) {
+                out = new Nil('ref[' + this.val + ']');
+            }
+            else {
+                out = new ConjunctVal([this, peer]);
+            }
+        }
+        else {
+            out = resolved.unify(peer);
+        }
+        out.done = DONE === out.done ? DONE : this.done + 1;
+        return out;
+    }
+    get canon() {
+        return 'REF[' + this.val + ']';
+    }
+    gen(log) {
+        log.push(this.canon);
+        return undefined;
+    }
+}
+exports.RefVal = RefVal;
 //# sourceMappingURL=val.js.map

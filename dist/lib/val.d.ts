@@ -2,10 +2,12 @@ declare const TOP: Val;
 declare abstract class Val {
     top?: boolean;
     val?: any;
+    done: number;
     constructor(val?: any);
     abstract unify(_peer: Val): Val;
     abstract get canon(): string;
     abstract gen(log: any[]): any;
+    get dc(): string;
 }
 declare class Nil extends Val {
     why: any;
@@ -54,8 +56,15 @@ declare class MapVal extends Val {
     constructor(val: {
         [key: string]: Val;
     });
-    unify(peertop: Val): Val;
+    unify(peer: Val): Val;
     get canon(): string;
+    gen(log: any[]): any;
+}
+declare class ConjunctVal extends Val {
+    constructor(val: Val[]);
+    append(peer: Val): ConjunctVal;
+    unify(peer: Val): Val;
+    get canon(): any;
     gen(log: any[]): any;
 }
 declare class DisjunctVal extends Val {
@@ -65,4 +74,10 @@ declare class DisjunctVal extends Val {
     get canon(): any;
     gen(log: any[]): any;
 }
-export { Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, DisjunctVal, };
+declare class RefVal extends Val {
+    constructor(val: string);
+    unify(peer: Val): Val;
+    get canon(): string;
+    gen(log: any[]): undefined;
+}
+export { Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, };
