@@ -36,24 +36,35 @@ describe('lang', function() {
   it('happy', () => {
     let al = AontuLang
 
-    let src = `
-a:  string
-b:  foo
 
-`
+    expect(al('1').canon).equal('1')
+    expect(al('a:1').canon).equal('{"a":1}')
+    expect(al('{a:{b:x}}').canon).equal('{"a":{"b":"x"}}')
 
-
-    console.dir(al(src), { depth: null })
-    //expect(al(src)).equal()
+    expect(al('a:11|22,b:33', { xlog: -1 }).canon).equal('{"a":11|22,"b":33}')
+    expect(al('a:11|22|33,b:44', { xlog: -1 }).canon).equal('{"a":11|22|33,"b":44}')
 
 
-    console.dir(al(`
-a: {
-  b: {
-    c: 1
-  }
-}
-`), { depth: null })
+    expect(al('a:{b:11}|{c:22},b:33', { xlog: -1 }).canon)
+      .equal('{"a":{"b":11}|{"c":22},"b":33}')
+    //console.dir(al('a:{b:11}|{c:22},b:33'), { depth: null })
+
+
+
+    expect(al('a:11&22,b:33', { xlog: -1 }).canon).equal('{"a":11&22,"b":33}')
+    expect(al('a:11&22&33,b:44', { xlog: -1 }).canon).equal('{"a":11&22&33,"b":44}')
+
+    expect(al('a:{b:11}&{c:22},b:33', { xlog: -1 }).canon)
+      .equal('{"a":{"b":11}&{"c":22},"b":33}')
+    //console.dir(al('a:{b:11}&{c:22},b:33'), { depth: null })
+
+
+    expect(al('a:11&22|33,b:44', { xlog: -1 }).canon).equal('{"a":11&22|33,"b":44}')
+    console.dir(al('a:11&22|33,b:44', { xlog: -1 }), { depth: null })
+
+    expect(al('a:11|22&33,b:44', { xlog: -1 }).canon).equal('{"a":11|22&33,"b":44}')
+    console.dir(al('a:11|22&33,b:44', { xlog: -1 }), { depth: null })
+
 
   })
 

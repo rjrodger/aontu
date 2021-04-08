@@ -272,7 +272,7 @@ class BooleanVal extends ScalarVal<boolean> {
 
 
 class MapVal extends Val {
-  id = Math.random()
+  id = 'v' + ('' + Math.random()).substr(3, 5)
 
   constructor(val: { [key: string]: Val }) {
     super(val)
@@ -340,6 +340,9 @@ class ConjunctVal extends Val {
   }
   append(peer: Val): ConjunctVal {
     return new ConjunctVal([...this.val, peer])
+  }
+  prepend(peer: Val): ConjunctVal {
+    return new ConjunctVal([peer, ...this.val])
   }
   unify(peer: Val): Val {
     let done = true
@@ -432,6 +435,9 @@ class DisjunctVal extends Val {
   }
   append(peer: Val): DisjunctVal {
     return new DisjunctVal([...this.val, peer])
+  }
+  prepend(peer: Val): ConjunctVal {
+    return new DisjunctVal([peer, ...this.val])
   }
   unify(peer: Val): Val {
     let out: Val[] = []

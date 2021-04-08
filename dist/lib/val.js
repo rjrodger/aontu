@@ -227,7 +227,7 @@ BooleanVal.FALSE = new BooleanVal(false);
 class MapVal extends Val {
     constructor(val) {
         super(val);
-        this.id = Math.random();
+        this.id = 'v' + ('' + Math.random()).substr(3, 5);
     }
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
@@ -278,6 +278,9 @@ class ConjunctVal extends Val {
     }
     append(peer) {
         return new ConjunctVal([...this.val, peer]);
+    }
+    prepend(peer) {
+        return new ConjunctVal([peer, ...this.val]);
     }
     unify(peer) {
         let done = true;
@@ -350,6 +353,9 @@ class DisjunctVal extends Val {
     }
     append(peer) {
         return new DisjunctVal([...this.val, peer]);
+    }
+    prepend(peer) {
+        return new DisjunctVal([peer, ...this.val]);
     }
     unify(peer) {
         let out = [];

@@ -52,7 +52,7 @@ declare class BooleanVal extends ScalarVal<boolean> {
     static FALSE: BooleanVal;
 }
 declare class MapVal extends Val {
-    id: number;
+    id: string;
     constructor(val: {
         [key: string]: Val;
     });
@@ -63,6 +63,7 @@ declare class MapVal extends Val {
 declare class ConjunctVal extends Val {
     constructor(val: Val[]);
     append(peer: Val): ConjunctVal;
+    prepend(peer: Val): ConjunctVal;
     unify(peer: Val): Val;
     get canon(): any;
     gen(log: any[]): any;
@@ -70,6 +71,7 @@ declare class ConjunctVal extends Val {
 declare class DisjunctVal extends Val {
     constructor(val: Val[]);
     append(peer: Val): DisjunctVal;
+    prepend(peer: Val): ConjunctVal;
     unify(peer: Val): Val;
     get canon(): any;
     gen(log: any[]): any;

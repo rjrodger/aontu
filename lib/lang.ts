@@ -19,6 +19,9 @@ import {
   NumberVal,
   IntegerVal,
   BooleanVal,
+  DisjunctVal,
+  ConjunctVal,
+
 } from './val'
 
 
@@ -37,13 +40,161 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         'nil': () => new Nil(),
         'top': () => TOP,
       }
+    },
+
+    token: {
+      '#A&': { c: '&' },
+      '#A|': { c: '|' },
     }
   })
 
 
-  // console.log('VAL', jsonic.options.value)
+  let NR = jsonic.token.NR
+  let TX = jsonic.token.TX
+  let ST = jsonic.token.ST
+  let VL = jsonic.token.VL
+  let OB = jsonic.token.OB
+  let OS = jsonic.token.OS
+
+  let CB = jsonic.token.CB
+  let CS = jsonic.token.CS
+  let CJ = jsonic.token['#A&']
+  let DJ = jsonic.token['#A|']
+
+
+  jsonic.rule('expr', () => {
+    return new RuleSpec({
+      open: [
+        { s: [[CJ, DJ]], p: 'disjunct', b: 1, n: { expr: 1 } },
+      ],
+      close: [
+        { s: [] }
+      ],
+
+      // NOTE: expr node are meta structures, not Vals
+      // t=most recent term on the left, o=Val
+      bo: (r: Rule) => r.node = { t: r.node },
+
+      ac: (r: Rule) => {
+        // replace first val with expr val
+        r.node = r.child.node.o
+      },
+    })
+  })
+
+
+  jsonic.rule('disjunct', () => {
+    return new RuleSpec({
+      open: [
+        {
+          s: [CJ], p: 'conjunct', b: 1
+        },
+        {
+          s: [DJ, [NR, TX, ST, VL, OB, OS]], b: 1,
+          p: 'val',
+          a: (r: Rule) => {
+            // Append to existing or start new
+            r.node.o = r.node.o instanceof DisjunctVal ?
+              r.node.o : new DisjunctVal([r.node.t])
+          }
+        },
+      ],
+      close: [
+        {
+          s: [DJ], r: 'disjunct', b: 1, a: (r: Rule) => {
+            // higher precedence term (e.g &) was on the left
+            let cn = r.child.node?.o || r.child.node
+            r.node.t = cn
+          }
+        },
+        {
+          s: [CJ], r: 'disjunct', b: 1, a: (r: Rule) => {
+            // & with higher precedence to the right
+            let cn = r.child.node?.o || r.child.node
+            r.node.t = cn
+            r.child.node = null
+          }
+        },
+        {}
+      ],
+      ac: (r: Rule) => {
+        // child values may be normal or expr metas
+        let cn = r.child.node?.o || r.child.node
+        if (cn) {
+          if (r.node.o instanceof DisjunctVal) {
+            r.node.o.val.push(cn)
+          }
+          else {
+            // this rule was just a pass-through
+            r.node.o = cn
+          }
+        }
+      }
+    })
+  })
+
+
+
+  jsonic.rule('conjunct', () => {
+    return new RuleSpec({
+      open: [
+        {
+          s: [CJ, [NR, TX, ST, VL, OB, OS]], b: 1,
+          p: 'val',
+          a: (r: Rule) => {
+            r.node = {
+              o: r.node.o instanceof ConjunctVal ?
+                r.node.o : new ConjunctVal([r.node.t])
+            }
+          }
+
+        },
+      ],
+      close: [
+        {
+          s: [CJ], r: 'conjunct', b: 1, a: (r: Rule) => {
+            //r.node =
+            //  r.node instanceof ConjunctVal ? r.node : new ConjunctVal([])
+          }
+        },
+        /*
+        {
+          s: [DJ], r: 'disjunct', b: 1, a: (r: Rule) => {
+            let cn = r.child.node?.o || r.child.node
+            r.node.t = cn
+            r.child.node = null
+          }
+        },
+        */
+        {}
+      ],
+      ac: (r: Rule) => {
+        let cn = r.child.node?.o || r.child.node
+        if (cn) {
+          if (r.node.o instanceof ConjunctVal) {
+            r.node.o.val.push(cn)
+          }
+          else {
+            r.node.o = cn
+          }
+        }
+      }
+    })
+  })
+
+
+
 
   jsonic.rule('val', (rs: RuleSpec) => {
+    rs.def.close.unshift(
+      {
+        s: [[CJ, DJ]], p: 'expr', b: 1, c: (r: Rule) => {
+          return null == r.n.expr || 0 === r.n.expr
+        }
+      },
+    )
+
+
     let orig_bc = rs.def.bc
     rs.def.bc = function(rule: Rule, ctx: Context) {
       let out = orig_bc.call(this, rule, ctx)
@@ -89,14 +240,20 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
-function AontuLang<T extends string | string[]>(src: T):
+function AontuLang<T extends string | string[]>(src: T, opts?: any):
   (T extends string ? Val : Val[]) {
   let jsonic = Jsonic.make().use(AontuJsonic)
+  let jm: any = {}
+
+  if (opts && null != opts.log && Number.isInteger(opts.log)) {
+    jm.log = opts.log
+  }
+
   if (Array.isArray(src)) {
-    return (src.map(s => jsonic(s)) as any)
+    return (src.map(s => jsonic(s, jm)) as any)
   }
   else {
-    return jsonic(src)
+    return jsonic(src, jm)
   }
 
 }
