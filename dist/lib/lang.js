@@ -22,6 +22,7 @@ let AontuJsonic = function aontu(jsonic) {
         token: {
             '#A&': { c: '&' },
             '#A|': { c: '|' },
+            '#A/': { c: '/' },
         }
     });
     let NR = jsonic.token.NR;
@@ -30,10 +31,9 @@ let AontuJsonic = function aontu(jsonic) {
     let VL = jsonic.token.VL;
     let OB = jsonic.token.OB;
     let OS = jsonic.token.OS;
-    let CB = jsonic.token.CB;
-    let CS = jsonic.token.CS;
     let CJ = jsonic.token['#A&'];
     let DJ = jsonic.token['#A|'];
+    let FS = jsonic.token['#A/'];
     jsonic.rule('expr', () => {
         return new jsonic_1.RuleSpec({
             open: [
@@ -121,21 +121,8 @@ let AontuJsonic = function aontu(jsonic) {
             ],
             close: [
                 {
-                    s: [CJ], r: 'conjunct', b: 1,
-                    a: (r) => {
-                        //r.node =
-                        //  r.node instanceof ConjunctVal ? r.node : new ConjunctVal([])
-                    }
+                    s: [CJ], r: 'conjunct', b: 1
                 },
-                /*
-                {
-                  s: [DJ], r: 'disjunct', b: 1, a: (r: Rule) => {
-                    let cn = r.child.node?.o || r.child.node
-                    r.node.t = cn
-                    r.child.node = null
-                  }
-                },
-                */
                 {}
             ],
             ac: (r) => {
@@ -152,7 +139,30 @@ let AontuJsonic = function aontu(jsonic) {
             }
         });
     });
+    jsonic.rule('path', () => {
+        return new jsonic_1.RuleSpec({
+            open: [
+                { s: [FS, [TX, ST, NR, VL]], p: 'part', b: 2 }
+            ],
+            bo: (r) => r.node = new val_1.RefVal('/')
+        });
+    });
+    jsonic.rule('part', () => {
+        return new jsonic_1.RuleSpec({
+            open: [
+                {
+                    s: [FS, [TX, ST, NR, VL]], r: 'part',
+                    a: (r) => {
+                        r.node.append(r.open[1].src);
+                    }
+                }
+            ],
+        });
+    });
     jsonic.rule('val', (rs) => {
+        rs.def.open.unshift({
+            s: [FS, [TX, ST, NR, VL]], p: 'path', b: 2
+        });
         rs.def.close.unshift({
             s: [[CJ, DJ]], p: 'expr', b: 1,
             c: (r) => {
@@ -193,8 +203,8 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
 };
+let jsonic = jsonic_1.Jsonic.make().use(AontuJsonic);
 function AontuLang(src, opts) {
-    let jsonic = jsonic_1.Jsonic.make().use(AontuJsonic);
     let jm = {};
     if (opts && null != opts.log && Number.isInteger(opts.log)) {
         jm.log = opts.log;
@@ -207,4 +217,5 @@ function AontuLang(src, opts) {
     }
 }
 exports.AontuLang = AontuLang;
+AontuLang.jsonic = jsonic;
 //# sourceMappingURL=lang.js.map

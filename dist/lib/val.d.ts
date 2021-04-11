@@ -77,9 +77,12 @@ declare class DisjunctVal extends Val {
     gen(log: any[]): any;
 }
 declare class RefVal extends Val {
+    parts: string[];
+    absolute: boolean;
     constructor(val: string);
+    append(part: string): void;
     unify(peer: Val): Val;
-    get canon(): string;
+    get canon(): any;
     gen(log: any[]): undefined;
 }
 export { Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, };

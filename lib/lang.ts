@@ -21,7 +21,7 @@ import {
   BooleanVal,
   DisjunctVal,
   ConjunctVal,
-
+  RefVal,
 } from './val'
 
 
@@ -45,6 +45,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     token: {
       '#A&': { c: '&' },
       '#A|': { c: '|' },
+      '#A/': { c: '/' },
     }
   })
 
@@ -56,10 +57,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   let OB = jsonic.token.OB
   let OS = jsonic.token.OS
 
-  let CB = jsonic.token.CB
-  let CS = jsonic.token.CS
   let CJ = jsonic.token['#A&']
   let DJ = jsonic.token['#A|']
+  let FS = jsonic.token['#A/']
 
 
   jsonic.rule('expr', () => {
@@ -152,20 +152,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       ],
       close: [
         {
-          s: [CJ], r: 'conjunct', b: 1, a: (r: Rule) => {
-            //r.node =
-            //  r.node instanceof ConjunctVal ? r.node : new ConjunctVal([])
-          }
+          s: [CJ], r: 'conjunct', b: 1
         },
-        /*
-        {
-          s: [DJ], r: 'disjunct', b: 1, a: (r: Rule) => {
-            let cn = r.child.node?.o || r.child.node
-            r.node.t = cn
-            r.child.node = null
-          }
-        },
-        */
         {}
       ],
       ac: (r: Rule) => {
@@ -184,8 +172,36 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
 
+  jsonic.rule('path', () => {
+    return new RuleSpec({
+      open: [
+        { s: [FS, [TX, ST, NR, VL]], p: 'part', b: 2 }
+      ],
+      bo: (r: Rule) => r.node = new RefVal('/')
+    })
+  })
+
+  jsonic.rule('part', () => {
+    return new RuleSpec({
+      open: [
+        {
+          s: [FS, [TX, ST, NR, VL]], r: 'part', a: (r: Rule) => {
+            r.node.append(r.open[1].src)
+          }
+        }
+      ],
+    })
+  })
+
+
+
 
   jsonic.rule('val', (rs: RuleSpec) => {
+    rs.def.open.unshift(
+      {
+        s: [FS, [TX, ST, NR, VL]], p: 'path', b: 2
+      },
+    )
     rs.def.close.unshift(
       {
         s: [[CJ, DJ]], p: 'expr', b: 1, c: (r: Rule) => {
@@ -193,7 +209,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         }
       },
     )
-
 
     let orig_bc = rs.def.bc
     rs.def.bc = function(rule: Rule, ctx: Context) {
@@ -240,9 +255,11 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
+let jsonic = Jsonic.make().use(AontuJsonic)
+
 function AontuLang<T extends string | string[]>(src: T, opts?: any):
   (T extends string ? Val : Val[]) {
-  let jsonic = Jsonic.make().use(AontuJsonic)
+
   let jm: any = {}
 
   if (opts && null != opts.log && Number.isInteger(opts.log)) {
@@ -257,6 +274,8 @@ function AontuLang<T extends string | string[]>(src: T, opts?: any):
   }
 
 }
+
+AontuLang.jsonic = jsonic
 
 
 export {

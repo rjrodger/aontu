@@ -434,18 +434,32 @@ describe('val', function() {
 
   it('ref', () => {
     let la = AontuLang
-    let d0 = new RefVal('1')
-    let d1 = new RefVal('a')
 
-    expect(d0.canon).equals('REF[1]')
-    expect(d1.canon).equals('REF[a]')
+    let d0 = new RefVal('a')
+    let d1 = new RefVal('/c')
+    let d2 = new RefVal('a/b')
+    let d3 = new RefVal('/c/d/e')
 
+    expect(d0.canon).equals('a')
+    expect(d1.canon).equals('/c')
+    expect(d2.canon).equals('a/b')
+    expect(d3.canon).equals('/c/d/e')
 
-    expect(d0.unify(TOP).canon).equal('1')
-    expect(TOP.unify(d0).canon).equal('1')
+    d0.append('x')
+    d1.append('x')
+    d2.append('x')
+    d3.append('x')
 
-    expect(d1.unify(TOP).canon).equal('REF[a]&top')
-    expect(TOP.unify(d1).canon).equal('REF[a]&top')
+    expect(d0.canon).equals('a/x')
+    expect(d1.canon).equals('/c/x')
+    expect(d2.canon).equals('a/b/x')
+    expect(d3.canon).equals('/c/d/e/x')
+
+    expect(d0.unify(TOP).canon).equal('a/x')
+    expect(TOP.unify(d0).canon).equal('a/x')
+    expect(d1.unify(TOP).canon).equal('/c/x')
+    expect(TOP.unify(d1).canon).equal('/c/x')
+
   })
 
 

@@ -68,5 +68,19 @@ describe('lang', function() {
 
   })
 
+
+  it('ref', () => {
+    let al = AontuLang
+    console.dir(al.jsonic.internal().config)
+
+    let v0 = al('a:/x')
+    console.log(v0)
+    expect(v0.val.a.parts).equals(['x'])
+
+    let v1 = al('a:/x/y', { xlog: -1 })
+    console.log(v1)
+    expect(v1.val.a.parts).equals(['x', 'y'])
+  })
+
 })
 

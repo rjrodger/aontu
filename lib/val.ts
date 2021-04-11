@@ -492,12 +492,22 @@ class DisjunctVal extends Val {
 
 
 class RefVal extends Val {
+  parts: string[]
+  absolute: boolean
+
   constructor(val: string) {
     super(val)
+    this.parts = val.split('/').filter(p => '' != p)
+    this.absolute = val.startsWith('/')
   }
+
+  append(part: string) {
+    this.parts.push(part)
+    this.val = (this.absolute ? '/' : '') + this.parts.join('/')
+  }
+
   unify(peer: Val): Val {
     let resolved = '1' === this.val ? new IntegerVal(1) : this
-    console.log('UREF', this.val, peer, resolved)
 
     let out: Val
 
@@ -521,7 +531,7 @@ class RefVal extends Val {
     return out
   }
   get canon() {
-    return 'REF[' + this.val + ']'
+    return this.val
   }
   gen(log: any[]) {
     log.push(this.canon)
