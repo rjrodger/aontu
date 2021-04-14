@@ -16,8 +16,14 @@ import {
   AontuLang
 } from '../lib/lang'
 
+import {
+  Context
+} from '../lib/unify'
 
-let {
+
+
+
+import {
   Integer,
   TOP,
   Nil,
@@ -30,7 +36,8 @@ let {
   DisjunctVal,
   ConjunctVal,
   RefVal,
-} = require('../lib/val')
+} from '../lib/val'
+
 
 describe('val', function() {
   it('canon', () => {
@@ -463,7 +470,43 @@ describe('val', function() {
   })
 
 
+
+  it('unify', () => {
+    let al = AontuLang
+
+    let m0 = (al(`
+a: 1
+b: /a
+c: /x
+`, { xlog: -1 }) as MapVal)
+
+    //console.dir(m0, { depth: null })
+    expect(m0.canon).equals('{"a":1,"b":/a,"c":/x}')
+
+    let c0 = new Context({
+      root: m0
+    })
+
+    let m0u = m0.unify(TOP, c0)
+    // console.dir(m0u, { depth: null })
+    expect(m0u.canon).equals('{"a":1,"b":1,"c":/x}')
+
+
+    let m1 = (al(`
+a: /b/c
+b: c: 1
+`, { xlog: -1 }) as MapVal)
+
+    let c1 = new Context({
+      root: m1
+    })
+
+    let m1u = m1.unify(TOP, c1)
+    console.dir(m1u, { depth: null })
+    expect(m1u.canon).equals('{"a":1,"b":{"c":1}}')
+  })
 })
+
 
 
 function print(o: any, t?: string) {

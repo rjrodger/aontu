@@ -1,3 +1,3 @@
-* implement RefVal resolves
+* test refval with & and |
 * implement done with refvals
 

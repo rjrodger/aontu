@@ -1,24 +1,14 @@
 "use strict";
-// Vals are immutable
-// NOTE: each Val must handle all parent and child unifications explicitly
+/* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = void 0;
-/*
-
-TOP -> Scalar/Boolean -> BooleanVal
-    -> Scalar/String  -> StringVal
-    -> Scalar/Number  -> NumberVal -> IntegerVal
-         -> Scalar/Integer
-    -> Scalar/Integer -> IntegerVal
-
-*/
 const DONE = -1;
 // There can be only one.
 const TOP = {
     top: true,
     val: undefined,
     done: DONE,
-    unify(peer) {
+    unify(peer, _ctx) {
         if (peer instanceof DisjunctVal) {
             return peer.unify(this);
         }
@@ -231,7 +221,7 @@ class MapVal extends Val {
     }
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
-    unify(peer) {
+    unify(peer, ctx) {
         let done = true;
         let out = this;
         if (DONE !== this.done) {
@@ -239,16 +229,17 @@ class MapVal extends Val {
             out.done = this.done + 1;
             // Always unify children against TOP first
             for (let key in this.val) {
-                out.val[key] = this.val[key].unify(TOP);
+                out.val[key] = this.val[key].unify(TOP, ctx);
                 done = (done && DONE === out.val[key].done);
             }
         }
         if (peer instanceof MapVal) {
-            let upeer = peer.unify(TOP);
+            let upeer = peer.unify(TOP, ctx);
             for (let peerkey in upeer.val) {
                 let peerchild = upeer.val[peerkey];
                 let child = this.val[peerkey];
-                out.val[peerkey] = undefined === child ? peerchild : child.unify(peerchild);
+                out.val[peerkey] =
+                    undefined === child ? peerchild : child.unify(peerchild, ctx);
                 done = (done && DONE === out.val[peerkey].done);
             }
             out.done = done ? DONE : out.done;
@@ -411,8 +402,8 @@ class RefVal extends Val {
         this.parts.push(part);
         this.val = (this.absolute ? '/' : '') + this.parts.join('/');
     }
-    unify(peer) {
-        let resolved = '1' === this.val ? new IntegerVal(1) : this;
+    unify(peer, ctx) {
+        let resolved = null == ctx ? this : (ctx.find(this) || this);
         let out;
         if (resolved instanceof RefVal) {
             if (TOP === peer) {

@@ -1,3 +1,4 @@
+/* Copyright (c) 2021 Richard Rodger, MIT License */
 
 // Vals are immutable
 // NOTE: each Val must handle all parent and child unifications explicitly
@@ -13,6 +14,9 @@ TOP -> Scalar/Boolean -> BooleanVal
 */
 
 
+import { Context } from './unify'
+
+
 const DONE = -1
 
 // There can be only one.
@@ -21,7 +25,7 @@ const TOP: Val = {
   val: undefined,
   done: DONE,
 
-  unify(peer: Val): Val {
+  unify(peer: Val, _ctx?: Context): Val {
     if (peer instanceof DisjunctVal) {
       return peer.unify(this)
     }
@@ -280,7 +284,7 @@ class MapVal extends Val {
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val): Val {
+  unify(peer: Val, ctx?: Context): Val {
     let done: boolean = true
     let out: MapVal = this
 
@@ -290,20 +294,21 @@ class MapVal extends Val {
 
       // Always unify children against TOP first
       for (let key in this.val) {
-        out.val[key] = this.val[key].unify(TOP)
+        out.val[key] = this.val[key].unify(TOP, ctx)
         done = (done && DONE === out.val[key].done)
       }
     }
 
 
     if (peer instanceof MapVal) {
-      let upeer: MapVal = (peer.unify(TOP) as MapVal)
+      let upeer: MapVal = (peer.unify(TOP, ctx) as MapVal)
 
       for (let peerkey in upeer.val) {
         let peerchild = upeer.val[peerkey]
         let child = this.val[peerkey]
 
-        out.val[peerkey] = undefined === child ? peerchild : child.unify(peerchild)
+        out.val[peerkey] =
+          undefined === child ? peerchild : child.unify(peerchild, ctx)
         done = (done && DONE === out.val[peerkey].done)
       }
 
@@ -506,8 +511,8 @@ class RefVal extends Val {
     this.val = (this.absolute ? '/' : '') + this.parts.join('/')
   }
 
-  unify(peer: Val): Val {
-    let resolved = '1' === this.val ? new IntegerVal(1) : this
+  unify(peer: Val, ctx?: Context): Val {
+    let resolved = null == ctx ? this : (ctx.find(this) || this)
 
     let out: Val
 

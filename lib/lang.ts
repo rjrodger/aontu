@@ -188,7 +188,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           s: [FS, [TX, ST, NR, VL]], r: 'part', a: (r: Rule) => {
             r.node.append(r.open[1].src)
           }
-        }
+        },
+        {}, // no more parts
       ],
     })
   })

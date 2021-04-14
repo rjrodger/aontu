@@ -155,7 +155,8 @@ let AontuJsonic = function aontu(jsonic) {
                     a: (r) => {
                         r.node.append(r.open[1].src);
                     }
-                }
+                },
+                {}, // no more parts
             ],
         });
     });

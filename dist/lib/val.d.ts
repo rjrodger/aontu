@@ -1,3 +1,4 @@
+import { Context } from './unify';
 declare const TOP: Val;
 declare abstract class Val {
     top?: boolean;
@@ -56,7 +57,7 @@ declare class MapVal extends Val {
     constructor(val: {
         [key: string]: Val;
     });
-    unify(peer: Val): Val;
+    unify(peer: Val, ctx?: Context): Val;
     get canon(): string;
     gen(log: any[]): any;
 }
@@ -81,7 +82,7 @@ declare class RefVal extends Val {
     absolute: boolean;
     constructor(val: string);
     append(part: string): void;
-    unify(peer: Val): Val;
+    unify(peer: Val, ctx?: Context): Val;
     get canon(): any;
     gen(log: any[]): undefined;
 }

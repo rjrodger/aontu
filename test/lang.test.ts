@@ -9,7 +9,7 @@ var it = lab.it
 var expect = Code.expect
 
 
-import { Jsonic } from 'jsonic'
+//import { Jsonic } from 'jsonic'
 
 
 
@@ -17,7 +17,7 @@ import { Jsonic } from 'jsonic'
 
 import {
   TOP,
-  Bottom,
+  Nil,
   NumberVal,
   StringVal,
   BooleanVal,
