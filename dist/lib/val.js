@@ -30,7 +30,7 @@ const TOP = {
     },
 };
 exports.TOP = TOP;
-const UNIFIER = (self, peer) => {
+const UNIFIER = (self, peer, ctx) => {
     if (peer === TOP) {
         return self;
     }
@@ -48,13 +48,13 @@ const UNIFIER = (self, peer) => {
         return self;
     }
     else if (peer instanceof DisjunctVal) {
-        return peer.unify(self);
+        return peer.unify(self, ctx);
     }
     else if (peer instanceof ConjunctVal) {
-        return peer.unify(self);
+        return peer.unify(self, ctx);
     }
     else if (peer instanceof RefVal) {
-        return peer.unify(self);
+        return peer.unify(self, ctx);
     }
     else {
         return new Nil('no-unify:' + self.canon + ',' + peer.canon);
@@ -76,7 +76,7 @@ class Nil extends Val {
         this.why = why;
         this.done = DONE;
     }
-    unify(_peer) {
+    unify(_peer, _ctx) {
         return this;
     }
     get canon() {
@@ -97,9 +97,7 @@ class ScalarTypeVal extends Val {
         super(val);
         this.done = DONE;
     }
-    unify(peer) {
-        //console.log('ScalarTypeVal.unify',
-        //  peer, (peer as any).type, this.val, (peer as any).type === this.val)
+    unify(peer, _ctx) {
         if (peer instanceof ScalarVal) {
             if (peer.type === this.val) {
                 //console.log('AAA')
@@ -140,7 +138,7 @@ class ScalarVal extends Val {
         this.type = type;
         this.done = DONE;
     }
-    unify(peer) {
+    unify(peer, _ctx) {
         if (peer instanceof ScalarTypeVal) {
             return peer.unify(this);
         }
@@ -159,7 +157,7 @@ class NumberVal extends ScalarVal {
     constructor(val) {
         super(val, Number);
     }
-    unify(peer) {
+    unify(peer, _ctx) {
         if (peer instanceof ScalarVal && peer.type === Integer) {
             return peer;
         }
@@ -176,7 +174,7 @@ class IntegerVal extends ScalarVal {
         }
         super(val, Integer);
     }
-    unify(peer) {
+    unify(peer, _ctx) {
         if (peer instanceof ScalarTypeVal && peer.val === Number) {
             return this;
         }
@@ -195,7 +193,7 @@ class StringVal extends ScalarVal {
     constructor(val) {
         super(val, String);
     }
-    unify(peer) {
+    unify(peer, _ctx) {
         return super.unify(peer);
     }
     get canon() {
@@ -273,11 +271,11 @@ class ConjunctVal extends Val {
     prepend(peer) {
         return new ConjunctVal([peer, ...this.val]);
     }
-    unify(peer) {
+    unify(peer, ctx) {
         let done = true;
         let upeer = [];
         for (let vI = 0; vI < this.val.length; vI++) {
-            upeer[vI] = this.val[vI].unify(peer);
+            upeer[vI] = this.val[vI].unify(peer, ctx);
             done = done && DONE === upeer[vI].done;
             console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon);
             if (upeer[vI] instanceof Nil) {
@@ -294,7 +292,8 @@ class ConjunctVal extends Val {
                 done = false;
             }
             else {
-                outvals[oI] = null == outvals[oI] ? upeer[uI] : outvals[oI].unify(upeer[uI]);
+                outvals[oI] = null == outvals[oI] ? upeer[uI] :
+                    outvals[oI].unify(upeer[uI], ctx);
                 done = done && DONE === outvals[oI].done;
                 if (outvals[oI] instanceof Nil) {
                     return new Nil('&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']');
@@ -348,10 +347,10 @@ class DisjunctVal extends Val {
     prepend(peer) {
         return new DisjunctVal([peer, ...this.val]);
     }
-    unify(peer) {
+    unify(peer, ctx) {
         let out = [];
         for (let vI = 0; vI < this.val.length; vI++) {
-            out[vI] = this.val[vI].unify(peer);
+            out[vI] = this.val[vI].unify(peer, ctx);
         }
         out = out.filter(v => !(v instanceof Nil));
         return new DisjunctVal(out);
@@ -417,9 +416,10 @@ class RefVal extends Val {
             }
         }
         else {
-            out = resolved.unify(peer);
+            out = resolved.unify(peer, ctx);
         }
         out.done = DONE === out.done ? DONE : this.done + 1;
+        console.log('RefVal.unify', this.val, resolved, peer, out);
         return out;
     }
     get canon() {

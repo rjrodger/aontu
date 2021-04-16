@@ -139,7 +139,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     return new RuleSpec({
       open: [
         {
-          s: [CJ, [NR, TX, ST, VL, OB, OS]], b: 1,
+          s: [CJ, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
           p: 'val',
           a: (r: Rule) => {
             r.node = {

@@ -1,3 +1,5 @@
-* test refval with & and |
-* implement done with refvals
+* implement done, rest with ref-conjunct f:/b
+* fix |
+* test refval with |
+
 

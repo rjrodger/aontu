@@ -5,7 +5,7 @@ declare abstract class Val {
     val?: any;
     done: number;
     constructor(val?: any);
-    abstract unify(_peer: Val): Val;
+    abstract unify(_peer: Val, _ctx?: Context): Val;
     abstract get canon(): string;
     abstract gen(log: any[]): any;
     get dc(): string;
@@ -13,7 +13,7 @@ declare abstract class Val {
 declare class Nil extends Val {
     why: any;
     constructor(why?: any);
-    unify(_peer: Val): this;
+    unify(_peer: Val, _ctx?: Context): this;
     get canon(): string;
     gen(log: any[]): undefined;
 }
@@ -22,28 +22,28 @@ declare class Integer {
 declare type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
 declare class ScalarTypeVal extends Val {
     constructor(val: ScalarConstructor);
-    unify(peer: Val): Val;
+    unify(peer: Val, _ctx?: Context): Val;
     get canon(): any;
     gen(log: any[]): undefined;
 }
 declare class ScalarVal<T> extends Val {
     type: any;
     constructor(val: T, type: ScalarConstructor);
-    unify(peer: Val): Val;
+    unify(peer: Val, _ctx?: Context): Val;
     get canon(): any;
     gen(_log: any[]): any;
 }
 declare class NumberVal extends ScalarVal<number> {
     constructor(val: number);
-    unify(peer: Val): Val;
+    unify(peer: Val, _ctx?: Context): Val;
 }
 declare class IntegerVal extends ScalarVal<number> {
     constructor(val: number);
-    unify(peer: Val): Val;
+    unify(peer: Val, _ctx?: Context): Val;
 }
 declare class StringVal extends ScalarVal<string> {
     constructor(val: string);
-    unify(peer: Val): Val;
+    unify(peer: Val, _ctx?: Context): Val;
     get canon(): string;
 }
 declare class BooleanVal extends ScalarVal<boolean> {
@@ -65,7 +65,7 @@ declare class ConjunctVal extends Val {
     constructor(val: Val[]);
     append(peer: Val): ConjunctVal;
     prepend(peer: Val): ConjunctVal;
-    unify(peer: Val): Val;
+    unify(peer: Val, ctx?: Context): Val;
     get canon(): any;
     gen(log: any[]): any;
 }
@@ -73,7 +73,7 @@ declare class DisjunctVal extends Val {
     constructor(val: Val[]);
     append(peer: Val): DisjunctVal;
     prepend(peer: Val): ConjunctVal;
-    unify(peer: Val): Val;
+    unify(peer: Val, ctx?: Context): Val;
     get canon(): any;
     gen(log: any[]): any;
 }

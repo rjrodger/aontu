@@ -109,7 +109,7 @@ let AontuJsonic = function aontu(jsonic) {
         return new jsonic_1.RuleSpec({
             open: [
                 {
-                    s: [CJ, [NR, TX, ST, VL, OB, OS]], b: 1,
+                    s: [CJ, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
                     p: 'val',
                     a: (r) => {
                         r.node = {

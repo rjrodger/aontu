@@ -471,6 +471,38 @@ describe('val', function() {
 
 
 
+  it('ref-conjunct', () => {
+    let al = AontuLang
+
+    let m0 = al(`
+a: 1
+b: /a
+c: 1 & /a
+d: 1
+e: /d & /a
+f: /b
+`, { xlog: -1 })
+
+    let g = []
+    console.log('m0===', m0.done, m0.canon)
+    g = []; console.log(m0.gen(g))
+
+    let c0 = new Context({ root: m0 })
+    let u0 = m0.unify(TOP, c0)
+
+    console.log('u0===', u0.done, u0.canon)
+    g = []; console.log(u0.gen(g))
+
+    let c0a = new Context({ root: u0 })
+    let u0a = u0.unify(TOP, c0a)
+
+    console.log('u0a===', u0a.done, u0a.canon)
+    g = []; console.log(u0a.gen(g))
+
+
+  })
+
+
   it('unify', () => {
     let al = AontuLang
 

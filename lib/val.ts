@@ -52,7 +52,7 @@ const TOP: Val = {
 
 }
 
-const UNIFIER = (self: Val, peer: Val): Val => {
+const UNIFIER = (self: Val, peer: Val, ctx?: Context): Val => {
   if (peer === TOP) {
     return self
   }
@@ -70,13 +70,13 @@ const UNIFIER = (self: Val, peer: Val): Val => {
     return self
   }
   else if (peer instanceof DisjunctVal) {
-    return peer.unify(self)
+    return peer.unify(self, ctx)
   }
   else if (peer instanceof ConjunctVal) {
-    return peer.unify(self)
+    return peer.unify(self, ctx)
   }
   else if (peer instanceof RefVal) {
-    return peer.unify(self)
+    return peer.unify(self, ctx)
   }
   else {
     return new Nil('no-unify:' + self.canon + ',' + peer.canon)
@@ -92,7 +92,7 @@ abstract class Val {
   constructor(val?: any) {
     this.val = val
   }
-  abstract unify(_peer: Val): Val
+  abstract unify(_peer: Val, _ctx?: Context): Val
   abstract get canon(): string
   abstract gen(log: any[]): any
 
@@ -110,7 +110,7 @@ class Nil extends Val {
     this.why = why
     this.done = DONE
   }
-  unify(_peer: Val) {
+  unify(_peer: Val, _ctx?: Context) {
     return this
   }
   get canon() {
@@ -140,10 +140,7 @@ class ScalarTypeVal extends Val {
     this.done = DONE
   }
 
-  unify(peer: Val): Val {
-    //console.log('ScalarTypeVal.unify',
-    //  peer, (peer as any).type, this.val, (peer as any).type === this.val)
-
+  unify(peer: Val, _ctx?: Context): Val {
     if (peer instanceof ScalarVal) {
       if (peer.type === this.val) {
         //console.log('AAA')
@@ -190,7 +187,7 @@ class ScalarVal<T> extends Val {
     this.type = type
     this.done = DONE
   }
-  unify(peer: Val): Val {
+  unify(peer: Val, _ctx?: Context): Val {
     if (peer instanceof ScalarTypeVal) {
       return peer.unify(this)
     }
@@ -211,7 +208,7 @@ class NumberVal extends ScalarVal<number> {
   constructor(val: number) {
     super(val, Number)
   }
-  unify(peer: Val): Val {
+  unify(peer: Val, _ctx?: Context): Val {
     if (peer instanceof ScalarVal && peer.type === Integer) {
       return peer
     }
@@ -229,7 +226,7 @@ class IntegerVal extends ScalarVal<number> {
     }
     super(val, Integer)
   }
-  unify(peer: Val): Val {
+  unify(peer: Val, _ctx?: Context): Val {
     if (peer instanceof ScalarTypeVal && peer.val === Number) {
       return this
     }
@@ -249,7 +246,7 @@ class StringVal extends ScalarVal<string> {
   constructor(val: string) {
     super(val, String)
   }
-  unify(peer: Val): Val {
+  unify(peer: Val, _ctx?: Context): Val {
     return super.unify(peer)
   }
   get canon() {
@@ -349,13 +346,13 @@ class ConjunctVal extends Val {
   prepend(peer: Val): ConjunctVal {
     return new ConjunctVal([peer, ...this.val])
   }
-  unify(peer: Val): Val {
+  unify(peer: Val, ctx?: Context): Val {
     let done = true
 
     let upeer: Val[] = []
 
     for (let vI = 0; vI < this.val.length; vI++) {
-      upeer[vI] = this.val[vI].unify(peer)
+      upeer[vI] = this.val[vI].unify(peer, ctx)
       done = done && DONE === upeer[vI].done
       console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
 
@@ -376,7 +373,8 @@ class ConjunctVal extends Val {
         done = false
       }
       else {
-        outvals[oI] = null == outvals[oI] ? upeer[uI] : outvals[oI].unify(upeer[uI])
+        outvals[oI] = null == outvals[oI] ? upeer[uI] :
+          outvals[oI].unify(upeer[uI], ctx)
         done = done && DONE === outvals[oI].done
 
         if (outvals[oI] instanceof Nil) {
@@ -444,11 +442,11 @@ class DisjunctVal extends Val {
   prepend(peer: Val): ConjunctVal {
     return new DisjunctVal([peer, ...this.val])
   }
-  unify(peer: Val): Val {
+  unify(peer: Val, ctx?: Context): Val {
     let out: Val[] = []
 
     for (let vI = 0; vI < this.val.length; vI++) {
-      out[vI] = this.val[vI].unify(peer)
+      out[vI] = this.val[vI].unify(peer, ctx)
     }
 
     out = out.filter(v => !(v instanceof Nil))
@@ -513,7 +511,6 @@ class RefVal extends Val {
 
   unify(peer: Val, ctx?: Context): Val {
     let resolved = null == ctx ? this : (ctx.find(this) || this)
-
     let out: Val
 
     if (resolved instanceof RefVal) {
@@ -528,10 +525,12 @@ class RefVal extends Val {
       }
     }
     else {
-      out = resolved.unify(peer)
+      out = resolved.unify(peer, ctx)
     }
 
     out.done = DONE === out.done ? DONE : this.done + 1
+
+    console.log('RefVal.unify', this.val, resolved, peer, out)
 
     return out
   }
