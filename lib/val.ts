@@ -354,14 +354,14 @@ class ConjunctVal extends Val {
     for (let vI = 0; vI < this.val.length; vI++) {
       upeer[vI] = this.val[vI].unify(peer, ctx)
       done = done && DONE === upeer[vI].done
-      console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
+      // console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
 
       if (upeer[vI] instanceof Nil) {
         return new Nil('&peer[' + upeer[vI].canon + ',' + peer.canon + ']')
       }
     }
 
-    console.log('Cb', ...upeer.map(x => x.canon))
+    // console.log('Cb', ...upeer.map(x => x.canon))
 
     let outvals: Val[] = 0 < upeer.length ? [upeer[0]] : []
 
@@ -530,7 +530,7 @@ class RefVal extends Val {
 
     out.done = DONE === out.done ? DONE : this.done + 1
 
-    console.log('RefVal.unify', this.val, resolved, peer, out)
+    // console.log('RefVal.unify', this.val, resolved, peer, out)
 
     return out
   }
@@ -550,6 +550,7 @@ class RefVal extends Val {
 
 
 export {
+  DONE,
   Integer,
   Val,
   TOP,

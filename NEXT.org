@@ -1,5 +1,15 @@
-* implement done, rest with ref-conjunct f:/b
+* loop detection in unify
+** Context collects ids - checks if change
+*** node id is path
+*** dup Context needed to know current path
+**** descend method? 
 * fix |
+** PrefVal
 * test refval with |
-
-
+* jsonic long tokens
+* peer spreads over self { ...x, } - like js
+** OR x & { ... }
+* peer spreads over children
+** { :::{x:1}, a:{y:2}, b:{y:3}} -> {a:{x:1,y:2},b:{x:1,y:3}}
+** OR: { &{x:1}, a:{y:2}, b:{y:3}}
+*** this would work in arrays too

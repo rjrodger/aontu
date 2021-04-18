@@ -1,4 +1,5 @@
 import { Context } from './unify';
+declare const DONE = -1;
 declare const TOP: Val;
 declare abstract class Val {
     top?: boolean;
@@ -86,4 +87,4 @@ declare class RefVal extends Val {
     get canon(): any;
     gen(log: any[]): undefined;
 }
-export { Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, };
+export { DONE, Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, };

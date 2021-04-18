@@ -1,10 +1,16 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
 import {
+  DONE,
+  TOP,
   Val,
   RefVal,
   MapVal,
 } from './val'
+
+import {
+  AontuLang as parse
+} from './lang'
 
 
 class Context {
@@ -32,6 +38,33 @@ class Context {
 }
 
 
+class Unify {
+  root: Val
+  res: Val
+  dc = 0
+
+  constructor(root: Val | string) {
+    if ('string' === typeof root) {
+      root = parse(root)
+    }
+
+    this.root = root
+    this.res = root
+
+    let res = root
+    let ctx: Context
+    while (this.dc < 111 && DONE !== res.done) {
+      ctx = new Context({ root: res })
+      res = res.unify(TOP, ctx)
+      this.dc++
+    }
+
+    this.res = res
+  }
+}
+
+
 export {
-  Context
+  Context,
+  Unify,
 }

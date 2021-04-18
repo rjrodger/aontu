@@ -1,8 +1,9 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = void 0;
+exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = exports.DONE = void 0;
 const DONE = -1;
+exports.DONE = DONE;
 // There can be only one.
 const TOP = {
     top: true,
@@ -277,12 +278,12 @@ class ConjunctVal extends Val {
         for (let vI = 0; vI < this.val.length; vI++) {
             upeer[vI] = this.val[vI].unify(peer, ctx);
             done = done && DONE === upeer[vI].done;
-            console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon);
+            // console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
             if (upeer[vI] instanceof Nil) {
                 return new Nil('&peer[' + upeer[vI].canon + ',' + peer.canon + ']');
             }
         }
-        console.log('Cb', ...upeer.map(x => x.canon));
+        // console.log('Cb', ...upeer.map(x => x.canon))
         let outvals = 0 < upeer.length ? [upeer[0]] : [];
         let oI = 0;
         for (let uI = 1; uI < upeer.length; uI++) {
@@ -419,7 +420,7 @@ class RefVal extends Val {
             out = resolved.unify(peer, ctx);
         }
         out.done = DONE === out.done ? DONE : this.done + 1;
-        console.log('RefVal.unify', this.val, resolved, peer, out);
+        // console.log('RefVal.unify', this.val, resolved, peer, out)
         return out;
     }
     get canon() {
