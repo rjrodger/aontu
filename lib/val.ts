@@ -168,7 +168,8 @@ class ScalarTypeVal extends Val {
   }
 
   get canon() {
-    return (this.val as any).name.toLowerCase()
+    let ctor = (this.val as any)
+    return ctor.name.toLowerCase()
   }
 
   gen(log: any[]) {
@@ -399,6 +400,8 @@ class ConjunctVal extends Val {
 
     return out
   }
+
+  // TODO: need a well-defined val order so conjunt canon is always the same
   get canon() {
     return this.val.map((v: Val) => v.canon).join('&')
   }

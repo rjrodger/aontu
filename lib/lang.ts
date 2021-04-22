@@ -46,6 +46,14 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       '#A&': { c: '&' },
       '#A|': { c: '|' },
       '#A/': { c: '/' },
+    },
+
+    map: {
+      merge: (prev: any, curr: any) => {
+        let pval = (prev as Val)
+        let cval = (curr as Val)
+        return new ConjunctVal([pval, cval])
+      }
     }
   })
 

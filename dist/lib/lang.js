@@ -23,6 +23,13 @@ let AontuJsonic = function aontu(jsonic) {
             '#A&': { c: '&' },
             '#A|': { c: '|' },
             '#A/': { c: '/' },
+        },
+        map: {
+            merge: (prev, curr) => {
+                let pval = prev;
+                let cval = curr;
+                return new val_1.ConjunctVal([pval, cval]);
+            }
         }
     });
     let NR = jsonic.token.NR;

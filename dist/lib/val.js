@@ -124,7 +124,8 @@ class ScalarTypeVal extends Val {
         }
     }
     get canon() {
-        return this.val.name.toLowerCase();
+        let ctor = this.val;
+        return ctor.name.toLowerCase();
     }
     gen(log) {
         // This is an error.
@@ -314,6 +315,7 @@ class ConjunctVal extends Val {
         out.done = done ? DONE : this.done + 1;
         return out;
     }
+    // TODO: need a well-defined val order so conjunt canon is always the same
     get canon() {
         return this.val.map((v) => v.canon).join('&');
     }
