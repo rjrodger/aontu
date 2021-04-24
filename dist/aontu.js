@@ -10,7 +10,8 @@ const unify_1 = require("./lib/unify");
  */
 function Aontu(src, popts) {
     let opts = util.options(src, popts);
-    let val = lang_1.AontuLang(opts.src);
+    let lang = new lang_1.Lang(opts);
+    let val = lang.parse(opts.src);
     let uni = new unify_1.Unify(val);
     return uni.res;
 }

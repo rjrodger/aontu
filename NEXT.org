@@ -1,3 +1,8 @@
+* conversion of partial js native trees to full aontu
+** allows model def using js
+*** {a:1,b:RefVal('/x')} -> MapVal({a:ScalarVal<Integer>(1), b: RefVal('/x')})
+* jsonic multifile update to handle aontu
+** custom jsonic instances for file types
 * loop detection in unify
 ** Context collects ids - checks if change
 *** node id is path

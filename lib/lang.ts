@@ -8,6 +8,11 @@ import {
   Context,
 } from 'jsonic'
 
+
+import {
+  Options
+} from './common'
+
 import {
   Val,
   Nil,
@@ -264,29 +269,39 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
-let jsonic = Jsonic.make().use(AontuJsonic)
+// support MultiSource - convert AontuLang to class with jsonic instance spec'd by ctor params
+//let jsonic = Jsonic.make().use(AontuJsonic)
 
-function AontuLang<T extends string | string[]>(src: T, opts?: any):
-  (T extends string ? Val : Val[]) {
 
-  let jm: any = {}
+class Lang {
+  jsonic: Jsonic
 
-  if (opts && null != opts.log && Number.isInteger(opts.log)) {
-    jm.log = opts.log
+  constructor(options?: Partial<Options>) {
+    this.jsonic = Jsonic.make()
+      .use(AontuJsonic)
+    // .use(MultiSource, {...resolve from options}})
   }
 
-  if (Array.isArray(src)) {
-    return (src.map(s => jsonic(s, jm)) as any)
-  }
-  else {
-    return jsonic(src, jm)
-  }
+  parse<T extends string | string[]>(src: T, opts?: any):
+    (T extends string ? Val : Val[]) {
 
+    let jm: any = {}
+
+    if (opts && null != opts.log && Number.isInteger(opts.log)) {
+      jm.log = opts.log
+    }
+
+    if (Array.isArray(src)) {
+      return (src.map(s => this.jsonic(s, jm)) as any)
+    }
+    else {
+      return this.jsonic(src, jm)
+    }
+
+  }
 }
-
-AontuLang.jsonic = jsonic
 
 
 export {
-  AontuLang
+  Lang
 }

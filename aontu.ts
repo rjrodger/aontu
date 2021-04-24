@@ -1,7 +1,8 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
 
-import { AontuLang } from './lib/lang'
+import { Options } from './lib/common'
+import { Lang } from './lib/lang'
 import { Unify } from './lib/unify'
 
 
@@ -15,10 +16,6 @@ type Val = {
   gen: (log: any[]) => any
 }
 
-type Options = {
-  src: string,    // Source text.
-  print: number,  // Print debug verbosity
-}
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
@@ -26,7 +23,8 @@ type Options = {
  */
 function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   let opts = util.options(src, popts)
-  let val = AontuLang(opts.src)
+  let lang = new Lang(opts)
+  let val = lang.parse(opts.src)
   let uni = new Unify(val)
   return uni.res
 }

@@ -25,17 +25,20 @@ import {
 } from '../lib/val'
 
 import {
-  AontuLang
+  Lang
 } from '../lib/lang'
+
+
+let lang = new Lang()
+let P = lang.parse.bind(lang)
 
 
 describe('unify', function() {
 
   it('find', () => {
-    let al = AontuLang
-    let ref = (s: string) => (al(s) as RefVal)
+    let ref = (s: string) => (P(s) as RefVal)
 
-    let m0 = al('{a:1,b:{c:2},d:{e:{f:3}}')
+    let m0 = P('{a:1,b:{c:2},d:{e:{f:3}}')
 
     let c0 = new Context({
       root: m0
@@ -76,7 +79,7 @@ describe('unify', function() {
 
 
   it('merge-is-conjunct', () => {
-    let ur = (s: string) => new Unify(s).res
+    // let ur = (s: string) => new Unify(s).res
     let uc = (s: string) => new Unify(s).res.canon
 
     let u0 = new Unify('a:1,a:integer')

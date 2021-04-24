@@ -25,10 +25,11 @@ class Context {
 }
 exports.Context = Context;
 class Unify {
-    constructor(root) {
+    constructor(root, lang) {
         this.dc = 0;
+        this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
-            root = lang_1.AontuLang(root);
+            root = this.lang.parse(root);
         }
         this.root = root;
         this.res = root;

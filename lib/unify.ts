@@ -1,5 +1,7 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
+
+
 import {
   DONE,
   TOP,
@@ -9,7 +11,7 @@ import {
 } from './val'
 
 import {
-  AontuLang as parse
+  Lang
 } from './lang'
 
 
@@ -42,10 +44,12 @@ class Unify {
   root: Val
   res: Val
   dc = 0
+  lang: Lang
 
-  constructor(root: Val | string) {
+  constructor(root: Val | string, lang?: Lang) {
+    this.lang = lang || new Lang()
     if ('string' === typeof root) {
-      root = parse(root)
+      root = this.lang.parse(root)
     }
 
     this.root = root

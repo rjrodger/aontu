@@ -1,5 +1,7 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
+
+
 // Vals are immutable
 // NOTE: each Val must handle all parent and child unifications explicitly
 
@@ -99,7 +101,6 @@ abstract class Val {
   get dc() {
     return this.canon + '/*d' + this.done + '*/'
   }
-
 }
 
 
@@ -350,6 +351,8 @@ class ConjunctVal extends Val {
   unify(peer: Val, ctx?: Context): Val {
     let done = true
 
+
+    // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
     for (let vI = 0; vI < this.val.length; vI++) {
@@ -362,12 +365,20 @@ class ConjunctVal extends Val {
       }
     }
 
-    // console.log('Cb', ...upeer.map(x => x.canon))
+    // console.log('Cb', upeer.map(x => x.canon))
 
+
+    // TODO: FIX: conjuncts get replicated inside each other
+    // 1&/x => CV[CV[1&/x]]
+
+    // Unify each term of conjunct against following sibling,
+    // reducing to smallest conjunct or single val
     let outvals: Val[] = 0 < upeer.length ? [upeer[0]] : []
 
     let oI = 0
     for (let uI = 1; uI < upeer.length; uI++) {
+      // console.log('Cu', oI, uI, outvals.map(x => x.canon))
+
       if (outvals[oI] instanceof ConjunctVal) {
         outvals.splice(oI, 0, ...outvals[oI].val)
         oI += outvals[oI].val.length
@@ -378,23 +389,35 @@ class ConjunctVal extends Val {
           outvals[oI].unify(upeer[uI], ctx)
         done = done && DONE === outvals[oI].done
 
+        // Conjuct fails
         if (outvals[oI] instanceof Nil) {
           return new Nil('&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']')
         }
       }
     }
 
+    // console.log('Cc', outvals.map(x => x.canon), outvals)
+
     let out: Val
+
+    let why = ''
 
     if (0 === outvals.length) {
       out = new Nil('&empty')
+      why += 'A'
     }
+
+    // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
     else if (1 === outvals.length) {
       out = outvals[0]
+      why += 'B'
     }
     else {
       out = new ConjunctVal(outvals)
+      why += 'C'
     }
+
+    // console.log('Cd', why, out.val)
 
     out.done = done ? DONE : this.done + 1
 

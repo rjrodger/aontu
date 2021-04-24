@@ -275,6 +275,7 @@ class ConjunctVal extends Val {
     }
     unify(peer, ctx) {
         let done = true;
+        // Unify each term of conjunct against peer
         let upeer = [];
         for (let vI = 0; vI < this.val.length; vI++) {
             upeer[vI] = this.val[vI].unify(peer, ctx);
@@ -284,10 +285,15 @@ class ConjunctVal extends Val {
                 return new Nil('&peer[' + upeer[vI].canon + ',' + peer.canon + ']');
             }
         }
-        // console.log('Cb', ...upeer.map(x => x.canon))
+        // console.log('Cb', upeer.map(x => x.canon))
+        // TODO: FIX: conjuncts get replicated inside each other
+        // 1&/x => CV[CV[1&/x]]
+        // Unify each term of conjunct against following sibling,
+        // reducing to smallest conjunct or single val
         let outvals = 0 < upeer.length ? [upeer[0]] : [];
         let oI = 0;
         for (let uI = 1; uI < upeer.length; uI++) {
+            // console.log('Cu', oI, uI, outvals.map(x => x.canon))
             if (outvals[oI] instanceof ConjunctVal) {
                 outvals.splice(oI, 0, ...outvals[oI].val);
                 oI += outvals[oI].val.length;
@@ -297,21 +303,29 @@ class ConjunctVal extends Val {
                 outvals[oI] = null == outvals[oI] ? upeer[uI] :
                     outvals[oI].unify(upeer[uI], ctx);
                 done = done && DONE === outvals[oI].done;
+                // Conjuct fails
                 if (outvals[oI] instanceof Nil) {
                     return new Nil('&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']');
                 }
             }
         }
+        // console.log('Cc', outvals.map(x => x.canon), outvals)
         let out;
+        let why = '';
         if (0 === outvals.length) {
             out = new Nil('&empty');
+            why += 'A';
         }
+        // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {
             out = outvals[0];
+            why += 'B';
         }
         else {
             out = new ConjunctVal(outvals);
+            why += 'C';
         }
+        // console.log('Cd', why, out.val)
         out.done = done ? DONE : this.done + 1;
         return out;
     }

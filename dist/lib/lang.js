@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AontuLang = void 0;
+exports.Lang = void 0;
 const jsonic_1 = require("jsonic");
 const val_1 = require("./val");
 let AontuJsonic = function aontu(jsonic) {
@@ -211,19 +211,26 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
 };
-let jsonic = jsonic_1.Jsonic.make().use(AontuJsonic);
-function AontuLang(src, opts) {
-    let jm = {};
-    if (opts && null != opts.log && Number.isInteger(opts.log)) {
-        jm.log = opts.log;
+// support MultiSource - convert AontuLang to class with jsonic instance spec'd by ctor params
+//let jsonic = Jsonic.make().use(AontuJsonic)
+class Lang {
+    constructor(options) {
+        this.jsonic = jsonic_1.Jsonic.make()
+            .use(AontuJsonic);
+        // .use(MultiSource, {...resolve from options}})
     }
-    if (Array.isArray(src)) {
-        return src.map(s => jsonic(s, jm));
-    }
-    else {
-        return jsonic(src, jm);
+    parse(src, opts) {
+        let jm = {};
+        if (opts && null != opts.log && Number.isInteger(opts.log)) {
+            jm.log = opts.log;
+        }
+        if (Array.isArray(src)) {
+            return src.map(s => this.jsonic(s, jm));
+        }
+        else {
+            return this.jsonic(src, jm);
+        }
     }
 }
-exports.AontuLang = AontuLang;
-AontuLang.jsonic = jsonic;
+exports.Lang = Lang;
 //# sourceMappingURL=lang.js.map

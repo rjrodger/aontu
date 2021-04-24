@@ -1,4 +1,5 @@
 import { Val, RefVal, MapVal } from './val';
+import { Lang } from './lang';
 declare class Context {
     root: MapVal;
     constructor(cfg: any);
@@ -8,6 +9,7 @@ declare class Unify {
     root: Val;
     res: Val;
     dc: number;
-    constructor(root: Val | string);
+    lang: Lang;
+    constructor(root: Val | string, lang?: Lang);
 }
 export { Context, Unify, };
