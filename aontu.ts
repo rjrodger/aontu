@@ -4,7 +4,7 @@
 import { Options } from './lib/common'
 import { Lang } from './lib/lang'
 import { Unify } from './lib/unify'
-
+import { Nil } from './lib/val'
 
 // TODO: error reporting
 // TODO: debug tracing
@@ -15,6 +15,9 @@ type Val = {
   canon: string
   gen: (log: any[]) => any
 }
+
+
+const EmptyResolver = () => new Nil()
 
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
@@ -37,6 +40,7 @@ const util = {
       ...{
         src: '',
         print: 0,
+        resolver: EmptyResolver,
       },
       ...srcopts,
       ...(popts || {})

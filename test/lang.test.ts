@@ -10,7 +10,7 @@ var it = lab.it
 var expect = Code.expect
 
 
-//import { Jsonic } from 'jsonic'
+import { FileResolver } from '@jsonic/multisource/resolver/file'
 
 
 
@@ -29,6 +29,10 @@ import {
 import {
   Lang
 } from '../lib/lang'
+
+import {
+  Unify
+} from '../lib/unify'
 
 
 let lang = new Lang()
@@ -80,6 +84,23 @@ describe('lang', function() {
     let v1 = P('a:/x/y', { xlog: -1 })
     console.log(v1)
     expect(v1.val.a.parts).equals(['x', 'y'])
+  })
+
+
+  it('file', () => {
+    let g0 = new Lang({ resolver: FileResolver })
+
+    let t01v = g0.parse('@"' + __dirname + '/t01.jsonic"')
+    expect(t01v.canon).equals('{"a":1,"b":{"d":2},"c":3}')
+
+    let t02v = g0.parse('@"' + __dirname + '/t02.jsonic"')
+    console.dir(t02v, { depth: null })
+    console.log(t02v.canon)
+
+
+    let u02 = new Unify(t02v)
+    console.log(u02.res.canon)
+    console.log(u02.res.gen([]))
   })
 
 })

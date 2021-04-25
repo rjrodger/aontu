@@ -1,0 +1,5 @@
+
+foo: /sys/ent & { name:'foo', fields: { f0: { kind:'string'} }}
+
+bar: /sys/ent & { name:'bar', fields: { f0: { kind:'number'} }}
+

@@ -8,6 +8,10 @@ import {
   Context,
 } from 'jsonic'
 
+import {
+  MultiSource
+} from '@jsonic/multisource'
+
 
 import {
   Options
@@ -28,6 +32,7 @@ import {
   ConjunctVal,
   RefVal,
 } from './val'
+
 
 
 let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
@@ -269,6 +274,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
+
 // support MultiSource - convert AontuLang to class with jsonic instance spec'd by ctor params
 //let jsonic = Jsonic.make().use(AontuJsonic)
 
@@ -279,7 +285,9 @@ class Lang {
   constructor(options?: Partial<Options>) {
     this.jsonic = Jsonic.make()
       .use(AontuJsonic)
-    // .use(MultiSource, {...resolve from options}})
+      .use(MultiSource, {
+        resolver: options ? options.resolver : undefined
+      })
   }
 
   parse<T extends string | string[]>(src: T, opts?: any):

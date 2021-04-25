@@ -13,6 +13,9 @@ var expect = Code.expect
 
 let { Aontu, util } = require('..')
 
+let { FileResolver} = require('@jsonic/multisource/resolver/file')
+
+
 describe('aontu', function () {
   it('happy', async () => {
     let v0 = Aontu('a:1')
@@ -28,4 +31,14 @@ describe('aontu', function () {
     
   })
 
+
+  it('happy', async () => {
+    let v0 = Aontu('@"' + __dirname + '/t02.jsonic"', {
+      resolver: FileResolver
+    })
+    console.log(v0.canon)
+    expect(v0.canon)
+      .equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}')
+  })
+  
 })

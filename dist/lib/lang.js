@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Lang = void 0;
 const jsonic_1 = require("jsonic");
+const multisource_1 = require("@jsonic/multisource");
 const val_1 = require("./val");
 let AontuJsonic = function aontu(jsonic) {
     jsonic.options({
@@ -216,8 +217,10 @@ let AontuJsonic = function aontu(jsonic) {
 class Lang {
     constructor(options) {
         this.jsonic = jsonic_1.Jsonic.make()
-            .use(AontuJsonic);
-        // .use(MultiSource, {...resolve from options}})
+            .use(AontuJsonic)
+            .use(multisource_1.MultiSource, {
+            resolver: options ? options.resolver : undefined
+        });
     }
     parse(src, opts) {
         let jm = {};

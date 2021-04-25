@@ -4,6 +4,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.util = exports.Aontu = void 0;
 const lang_1 = require("./lib/lang");
 const unify_1 = require("./lib/unify");
+const val_1 = require("./lib/val");
+const EmptyResolver = () => new val_1.Nil();
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
@@ -23,6 +25,7 @@ const util = {
             ...{
                 src: '',
                 print: 0,
+                resolver: EmptyResolver,
             },
             ...srcopts,
             ...(popts || {})
