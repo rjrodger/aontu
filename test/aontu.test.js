@@ -19,6 +19,15 @@ describe('aontu', function () {
   it('happy', async () => {
     let v0 = Aontu('a:1')
     expect(v0.canon).equals('{"a":1}')
+
+    expect(Aontu('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}')
+    expect(Aontu(`a:{b:1},a:{c:2}`).canon).equal('{"a":{"b":1,"c":2}}')
+    expect(
+      Aontu(`
+a:{b:1}
+a:{c:2}
+`).canon
+    ).equal('{"a":{"b":1,"c":2}}')
   })
 
   it('util', async () => {
