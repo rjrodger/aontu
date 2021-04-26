@@ -74,6 +74,19 @@ describe('lang', function() {
   })
 
 
+  it('merge', () => {
+    let v0 = P('a:{x:1},a:{y:2}')
+    //console.dir(v0, { depth: null })
+    expect(v0.canon).equal('{"a":{"x":1}&{"y":2}}')
+
+    let u0 = v0.unify(TOP)
+    //console.dir(u0, { depth: null })
+    expect(u0.canon).equal('{"a":{"x":1,"y":2}}')
+
+    expect(u0.gen([])).equal({ a: { x: 1, y: 2 } })
+  })
+
+
   it('ref', () => {
     // console.dir(lang.jsonic.internal().config)
 
