@@ -32,13 +32,49 @@ describe('aontu', function () {
   })
 
 
-  it('happy', async () => {
+  it('file', async () => {
     let v0 = Aontu('@"' + __dirname + '/t02.jsonic"', {
       resolver: FileResolver
     })
-    console.log(v0.canon)
+    //console.log(v0.canon)
     expect(v0.canon)
       .equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}')
+    expect(v0.gen([])).equal({
+      sys: { ent: { name: undefined } },
+      ent: {
+        foo: { name: 'foo', fields: {
+          f0: {
+            kind: 'string'
+          }
+        } },
+        bar: { name: 'bar', fields: {
+          f0: {
+            kind: 'number'
+          }
+        } }
+      }
+    })
   })
+
+
+  it('pref', async () => {
+    let v0 = Aontu('@"' + __dirname + '/t03.jsonic"', {
+      resolver: FileResolver
+    })
+
+    //console.log(v0.canon)
+    //console.dir(v0.gen([]),{depth:null})
+    
+    expect(v0.canon)
+      .equal('{"uxc":{"name":string,"size":integer|*1},"foo":{"name":string,"size":integer|*1},"bar":{"name":"bar","size":integer|*1},"zed":{"name":"zed","size":2},"qaz":{"name":"bar","size":nil:|:empty}}')
+    expect(v0.gen([])).equal({
+      uxc: { name: undefined, size: 1 },
+      foo: { name: undefined, size: 1 },
+      bar: { name: 'bar', size: 1 },
+      zed: { name: 'zed', size: 2 },
+      qaz: { name: 'bar', size: undefined }
+    })
+  })
+
   
 })

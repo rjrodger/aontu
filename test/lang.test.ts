@@ -103,5 +103,24 @@ describe('lang', function() {
     console.log(u02.res.gen([]))
   })
 
+
+  it('conjunct', () => {
+    expect(() => P('*1')).throws()
+    expect(() => P('*1&number')).throws()
+    expect(() => P('number&*1')).throws()
+  })
+
+
+  it('disjunct', () => {
+    expect(() => P('*1')).throws()
+
+    let v1 = P('*1|number')
+    //console.dir(v1, { depth: null })
+    expect(v1.canon).equals('*1|number')
+
+    let v2 = P('integer|*2', { xlog: -1 })
+    //console.dir(v2, { depth: null })
+    expect(v2.canon).equals('integer|*2')
+  })
 })
 

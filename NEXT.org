@@ -1,3 +1,4 @@
+* disjuncts and prefvals
 * conversion of partial js native trees to full aontu
 ** allows model def using js
 *** {a:1,b:RefVal('/x')} -> MapVal({a:ScalarVal<Integer>(1), b: RefVal('/x')})

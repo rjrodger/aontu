@@ -24,6 +24,7 @@ let AontuJsonic = function aontu(jsonic) {
             '#A&': { c: '&' },
             '#A|': { c: '|' },
             '#A/': { c: '/' },
+            '#A*': { c: '*' },
         },
         map: {
             merge: (prev, curr) => {
@@ -42,10 +43,11 @@ let AontuJsonic = function aontu(jsonic) {
     let CJ = jsonic.token['#A&'];
     let DJ = jsonic.token['#A|'];
     let FS = jsonic.token['#A/'];
+    let AK = jsonic.token['#A*'];
     jsonic.rule('expr', () => {
         return new jsonic_1.RuleSpec({
             open: [
-                { s: [[CJ, DJ]], p: 'disjunct', b: 1, n: { expr: 1 } },
+                { s: [[CJ, DJ, AK]], p: 'disjunct', b: 1, n: { expr: 1 } },
             ],
             close: [
                 { s: [] }
@@ -54,8 +56,12 @@ let AontuJsonic = function aontu(jsonic) {
             // t=most recent term on the left, o=Val
             bo: (r) => r.node = { t: r.node },
             ac: (r) => {
+                let cn = r.child.node.o;
+                if (cn instanceof val_1.PrefVal) {
+                    return { err: 'single-pref' };
+                }
                 // replace first val with expr val
-                r.node = r.child.node.o;
+                r.node = cn;
             },
         });
     });
@@ -64,6 +70,17 @@ let AontuJsonic = function aontu(jsonic) {
             open: [
                 {
                     s: [CJ], p: 'conjunct', b: 1
+                },
+                {
+                    s: [AK], p: 'pref', b: 1
+                },
+                {
+                    s: [DJ, AK], p: 'pref', b: 1,
+                    a: (r) => {
+                        // Append to existing or start new
+                        r.node.o = r.node.o instanceof val_1.DisjunctVal ?
+                            r.node.o : new val_1.DisjunctVal([r.node.t]);
+                    }
                 },
                 {
                     s: [DJ, [NR, TX, ST, VL, OB, OS]], b: 1,
@@ -168,10 +185,29 @@ let AontuJsonic = function aontu(jsonic) {
             ],
         });
     });
-    jsonic.rule('val', (rs) => {
-        rs.def.open.unshift({
-            s: [FS, [TX, ST, NR, VL]], p: 'path', b: 2
+    // pref is a unary operator: *1
+    jsonic.rule('pref', () => {
+        return new jsonic_1.RuleSpec({
+            open: [
+                {
+                    s: [AK, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
+                    p: 'val',
+                },
+            ],
+            close: [
+                // Can't be in a conjunct
+                { s: [CJ], e: (r) => r.open[1] },
+                {}
+            ],
+            ac: (r) => {
+                r.node = new val_1.PrefVal(r.child.node);
+            }
         });
+    });
+    jsonic.rule('val', (rs) => {
+        rs.def.open.unshift(
+        // Prefs are always within an expression
+        { s: [AK, [NR, TX, ST, VL, OB, OS, FS]], p: 'expr', b: 2 }, { s: [FS, [TX, ST, NR, VL]], p: 'path', b: 2 });
         rs.def.close.unshift({
             s: [[CJ, DJ]], p: 'expr', b: 1,
             c: (r) => {
@@ -212,8 +248,6 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
 };
-// support MultiSource - convert AontuLang to class with jsonic instance spec'd by ctor params
-//let jsonic = Jsonic.make().use(AontuJsonic)
 class Lang {
     constructor(options) {
         this.jsonic = jsonic_1.Jsonic.make()

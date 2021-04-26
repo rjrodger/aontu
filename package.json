@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -37,7 +37,8 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@types/node": "^14.14.41",
+    "@jsonic/multisource": "0.0.2",
+    "@types/node": "^15.0.0",
     "jsonic": "jsonicjs/jsonic#nextgen"
   },
   "devDependencies": {

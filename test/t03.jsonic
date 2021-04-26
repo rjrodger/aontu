@@ -1,0 +1,21 @@
+
+uxc: {
+  name: string
+  size: integer | *1
+}
+
+foo: /uxc
+
+bar: /uxc & {
+  name: 'bar'
+}
+
+zed: /uxc & {
+  name: 'zed',
+  size: 2,
+}
+
+qaz: /uxc & {
+  name: 'bar',
+  size: true,
+}

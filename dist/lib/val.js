@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = exports.DONE = void 0;
+exports.PrefVal = exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = exports.DONE = void 0;
 const DONE = -1;
 exports.DONE = DONE;
 // There can be only one.
@@ -25,6 +25,9 @@ const TOP = {
     },
     get canon() { return 'top'; },
     get dc() { return 'top'; },
+    same(peer) {
+        return TOP === peer;
+    },
     gen: (_log) => {
         // TOPs evaporate
         return undefined;
@@ -68,6 +71,9 @@ class Val {
     }
     get dc() {
         return this.canon + '/*d' + this.done + '*/';
+    }
+    same(peer) {
+        return this === peer;
     }
 }
 exports.Val = Val;
@@ -127,6 +133,9 @@ class ScalarTypeVal extends Val {
         let ctor = this.val;
         return ctor.name.toLowerCase();
     }
+    same(peer) {
+        return peer instanceof ScalarTypeVal ? this.val === peer.val : super.same(peer);
+    }
     gen(log) {
         // This is an error.
         log.push('ScalarTypeVal<' + this.canon + '>');
@@ -150,6 +159,9 @@ class ScalarVal extends Val {
     }
     get canon() {
         return this.val.toString();
+    }
+    same(peer) {
+        return peer instanceof ScalarVal ? peer.val === this.val : super.same(peer);
     }
     gen(_log) {
         return this.val;
@@ -311,19 +323,19 @@ class ConjunctVal extends Val {
         }
         // console.log('Cc', outvals.map(x => x.canon), outvals)
         let out;
-        let why = '';
+        //let why = ''
         if (0 === outvals.length) {
             out = new Nil('&empty');
-            why += 'A';
+            //why += 'A'
         }
         // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {
             out = outvals[0];
-            why += 'B';
+            //why += 'B'
         }
         else {
             out = new ConjunctVal(outvals);
-            why += 'C';
+            //why += 'C'
         }
         // console.log('Cd', why, out.val)
         out.done = done ? DONE : this.done + 1;
@@ -365,41 +377,58 @@ class DisjunctVal extends Val {
         return new DisjunctVal([peer, ...this.val]);
     }
     unify(peer, ctx) {
-        let out = [];
+        let done = true;
+        let oval = [];
+        //let peers = peer instanceof DisjunctVal ? peer.val : [peer]
+        //for (let pI = 0; pI < peers.length; pI++) {
         for (let vI = 0; vI < this.val.length; vI++) {
-            out[vI] = this.val[vI].unify(peer, ctx);
+            //oval[vI] = this.val[vI].unify(peers[pI], ctx)
+            oval[vI] = this.val[vI].unify(peer, ctx);
+            done = done && DONE === oval[vI].done;
         }
-        out = out.filter(v => !(v instanceof Nil));
-        return new DisjunctVal(out);
+        //}
+        // Remove duplicates, and normalize
+        if (1 < oval.length) {
+            for (let vI = 0; vI < oval.length; vI++) {
+                if (oval[vI] instanceof DisjunctVal) {
+                    oval.splice(vI, 1, ...oval[vI].val);
+                }
+            }
+            let remove = new Nil('remove');
+            for (let vI = 0; vI < oval.length; vI++) {
+                for (let kI = vI + 1; kI < oval.length; kI++) {
+                    if (oval[kI].same(oval[vI])) {
+                        oval[kI] = remove;
+                    }
+                }
+            }
+            oval = oval.filter(v => !(v instanceof Nil));
+        }
+        let out;
+        if (1 == oval.length) {
+            out = oval[0];
+        }
+        else if (0 == oval.length) {
+            return new Nil('|:empty');
+        }
+        else {
+            out = new DisjunctVal(oval);
+        }
+        out.done = done ? DONE : this.done + 1;
+        return out;
     }
     get canon() {
         return this.val.map((v) => v.canon).join('|');
     }
     gen(log) {
         if (0 < this.val.length) {
-            // Default is just the first term - does this work?
-            // TODO: maybe use a PrefVal() ?
-            let v = this.val[0];
-            /*
+            let vals = this.val.filter((v) => v instanceof PrefVal);
+            vals = 0 === vals.length ? this.val : vals;
+            let val = vals[0];
             for (let vI = 1; vI < this.val.length; vI++) {
-              if (v instanceof Nil) {
-                v = this.val[vI]
-              }
-              else if (!(this.val[vI] instanceof Nil)) {
-                v = this.val[vI].unify(v)
-              }
+                val = val.unify(this.val[vI]);
             }
-      
-            console.log('DJ', v)
-            */
-            let out = undefined;
-            if (undefined !== v && !(v instanceof Nil)) {
-                out = v.gen(log);
-            }
-            else {
-                log.push('nil:|:none=' + this.canon);
-            }
-            return out;
+            return val.gen(log);
         }
         else {
             log.push('nil:|:empty=' + this.canon);
@@ -448,4 +477,39 @@ class RefVal extends Val {
     }
 }
 exports.RefVal = RefVal;
+class PrefVal extends Val {
+    constructor(val, pref) {
+        super(val);
+        this.pref = pref || val;
+    }
+    // PrefVal unify always returns a PrefVal
+    // PrevVals can only be removed by becoming Nil in a Disjunct
+    unify(peer, ctx) {
+        let out;
+        if (peer instanceof PrefVal) {
+            out = new PrefVal(this.val.unify(peer.val, ctx), this.pref.unify(peer.pref, ctx));
+        }
+        else {
+            out = new PrefVal(this.val.unify(peer, ctx), this.pref.unify(peer, ctx));
+        }
+        if (out.val instanceof Nil) {
+            out = out.pref;
+        }
+        else if (out.pref instanceof Nil) {
+            out = out.val;
+        }
+        return out;
+    }
+    get canon() {
+        return this.pref instanceof Nil ? this.val.canon : '*' + this.pref.canon;
+    }
+    gen(log) {
+        log.push(this.canon);
+        let val = !(this.pref instanceof Nil) ? this.pref :
+            !(this.val instanceof Nil) ? this.val :
+                undefined;
+        return undefined === val ? undefined : val.gen(log);
+    }
+}
+exports.PrefVal = PrefVal;
 //# sourceMappingURL=val.js.map

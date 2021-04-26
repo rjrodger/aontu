@@ -1,9 +1,12 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
 
+// NOTES
+// - Vals are immutable
+// - each Val must handle all parent and child unifications explicitly
+// - performance is not considered yet
 
-// Vals are immutable
-// NOTE: each Val must handle all parent and child unifications explicitly
+
 
 /*
 
@@ -45,7 +48,9 @@ const TOP: Val = {
   get canon() { return 'top' },
   get dc() { return 'top' },
 
-
+  same(peer: Val): boolean {
+    return TOP === peer
+  },
 
   gen: (_log: any[]) => {
     // TOPs evaporate
@@ -94,14 +99,22 @@ abstract class Val {
   constructor(val?: any) {
     this.val = val
   }
-  abstract unify(_peer: Val, _ctx?: Context): Val
-  abstract get canon(): string
-  abstract gen(log: any[]): any
 
   get dc() {
     return this.canon + '/*d' + this.done + '*/'
   }
+
+  same(peer: Val): boolean {
+    return this === peer
+  }
+
+  abstract unify(peer: Val, ctx?: Context): Val
+  abstract get canon(): string
+  abstract gen(log: any[]): any
+
+
 }
+
 
 
 class Nil extends Val {
@@ -173,6 +186,10 @@ class ScalarTypeVal extends Val {
     return ctor.name.toLowerCase()
   }
 
+  same(peer: Val): boolean {
+    return peer instanceof ScalarTypeVal ? this.val === peer.val : super.same(peer)
+  }
+
   gen(log: any[]) {
     // This is an error.
     log.push('ScalarTypeVal<' + this.canon + '>')
@@ -200,6 +217,10 @@ class ScalarVal<T> extends Val {
   get canon() {
     return (this.val as any).toString()
   }
+  same(peer: Val): boolean {
+    return peer instanceof ScalarVal ? peer.val === this.val : super.same(peer)
+  }
+
   gen(_log: any[]) {
     return this.val
   }
@@ -400,21 +421,21 @@ class ConjunctVal extends Val {
 
     let out: Val
 
-    let why = ''
+    //let why = ''
 
     if (0 === outvals.length) {
       out = new Nil('&empty')
-      why += 'A'
+      //why += 'A'
     }
 
     // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
     else if (1 === outvals.length) {
       out = outvals[0]
-      why += 'B'
+      //why += 'B'
     }
     else {
       out = new ConjunctVal(outvals)
-      why += 'C'
+      //why += 'C'
     }
 
     // console.log('Cd', why, out.val)
@@ -469,15 +490,56 @@ class DisjunctVal extends Val {
     return new DisjunctVal([peer, ...this.val])
   }
   unify(peer: Val, ctx?: Context): Val {
-    let out: Val[] = []
+    let done = true
 
+    let oval: Val[] = []
+
+    //let peers = peer instanceof DisjunctVal ? peer.val : [peer]
+
+    //for (let pI = 0; pI < peers.length; pI++) {
     for (let vI = 0; vI < this.val.length; vI++) {
-      out[vI] = this.val[vI].unify(peer, ctx)
+      //oval[vI] = this.val[vI].unify(peers[pI], ctx)
+      oval[vI] = this.val[vI].unify(peer, ctx)
+      done = done && DONE === oval[vI].done
+    }
+    //}
+
+
+    // Remove duplicates, and normalize
+    if (1 < oval.length) {
+      for (let vI = 0; vI < oval.length; vI++) {
+        if (oval[vI] instanceof DisjunctVal) {
+          oval.splice(vI, 1, ...oval[vI].val)
+        }
+      }
+
+      let remove = new Nil('remove')
+      for (let vI = 0; vI < oval.length; vI++) {
+        for (let kI = vI + 1; kI < oval.length; kI++) {
+          if (oval[kI].same(oval[vI])) {
+            oval[kI] = remove
+          }
+        }
+      }
+
+      oval = oval.filter(v => !(v instanceof Nil))
     }
 
-    out = out.filter(v => !(v instanceof Nil))
+    let out: Val
 
-    return new DisjunctVal(out)
+    if (1 == oval.length) {
+      out = oval[0]
+    }
+    else if (0 == oval.length) {
+      return new Nil('|:empty')
+    }
+    else {
+      out = new DisjunctVal(oval)
+    }
+
+    out.done = done ? DONE : this.done + 1
+
+    return out
   }
   get canon() {
     return this.val.map((v: Val) => v.canon).join('|')
@@ -485,31 +547,17 @@ class DisjunctVal extends Val {
   gen(log: any[]) {
     if (0 < this.val.length) {
 
-      // Default is just the first term - does this work?
-      // TODO: maybe use a PrefVal() ?
-      let v: Val = this.val[0]
+      let vals = this.val.filter((v: Val) => v instanceof PrefVal)
 
-      /*
+      vals = 0 === vals.length ? this.val : vals
+
+      let val = vals[0]
+
       for (let vI = 1; vI < this.val.length; vI++) {
-        if (v instanceof Nil) {
-          v = this.val[vI]
-        }
-        else if (!(this.val[vI] instanceof Nil)) {
-          v = this.val[vI].unify(v)
-        }
+        val = val.unify(this.val[vI])
       }
 
-      console.log('DJ', v)
-      */
-
-      let out = undefined
-      if (undefined !== v && !(v instanceof Nil)) {
-        out = v.gen(log)
-      }
-      else {
-        log.push('nil:|:none=' + this.canon)
-      }
-      return out
+      return val.gen(log)
     }
     else {
       log.push('nil:|:empty=' + this.canon)
@@ -571,6 +619,56 @@ class RefVal extends Val {
 
 
 
+class PrefVal extends Val {
+  pref: Val
+  constructor(val: any, pref?: any) {
+    super(val)
+    this.pref = pref || val
+  }
+
+  // PrefVal unify always returns a PrefVal
+  // PrevVals can only be removed by becoming Nil in a Disjunct
+  unify(peer: Val, ctx?: Context): Val {
+    let out: Val
+    if (peer instanceof PrefVal) {
+      out = new PrefVal(
+        this.val.unify(peer.val, ctx),
+        this.pref.unify(peer.pref, ctx)
+      )
+    }
+    else {
+      out = new PrefVal(
+        this.val.unify(peer, ctx),
+        this.pref.unify(peer, ctx)
+      )
+    }
+
+    if (out.val instanceof Nil) {
+      out = (out as PrefVal).pref
+    }
+    else if ((out as PrefVal).pref instanceof Nil) {
+      out = out.val
+    }
+
+    return out
+  }
+
+  get canon() {
+    return this.pref instanceof Nil ? this.val.canon : '*' + this.pref.canon
+  }
+
+  gen(log: any[]) {
+    log.push(this.canon)
+
+    let val = !(this.pref instanceof Nil) ? this.pref :
+      !(this.val instanceof Nil) ? this.val :
+        undefined
+
+    return undefined === val ? undefined : val.gen(log)
+  }
+
+}
+
 
 
 
@@ -590,4 +688,5 @@ export {
   ConjunctVal,
   DisjunctVal,
   RefVal,
+  PrefVal,
 }

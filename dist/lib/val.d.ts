@@ -6,10 +6,11 @@ declare abstract class Val {
     val?: any;
     done: number;
     constructor(val?: any);
-    abstract unify(_peer: Val, _ctx?: Context): Val;
+    get dc(): string;
+    same(peer: Val): boolean;
+    abstract unify(peer: Val, ctx?: Context): Val;
     abstract get canon(): string;
     abstract gen(log: any[]): any;
-    get dc(): string;
 }
 declare class Nil extends Val {
     why: any;
@@ -25,6 +26,7 @@ declare class ScalarTypeVal extends Val {
     constructor(val: ScalarConstructor);
     unify(peer: Val, _ctx?: Context): Val;
     get canon(): any;
+    same(peer: Val): boolean;
     gen(log: any[]): undefined;
 }
 declare class ScalarVal<T> extends Val {
@@ -32,6 +34,7 @@ declare class ScalarVal<T> extends Val {
     constructor(val: T, type: ScalarConstructor);
     unify(peer: Val, _ctx?: Context): Val;
     get canon(): any;
+    same(peer: Val): boolean;
     gen(_log: any[]): any;
 }
 declare class NumberVal extends ScalarVal<number> {
@@ -87,4 +90,11 @@ declare class RefVal extends Val {
     get canon(): any;
     gen(log: any[]): undefined;
 }
-export { DONE, Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, };
+declare class PrefVal extends Val {
+    pref: Val;
+    constructor(val: any, pref?: any);
+    unify(peer: Val, ctx?: Context): Val;
+    get canon(): any;
+    gen(log: any[]): any;
+}
+export { DONE, Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, PrefVal, };

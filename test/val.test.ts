@@ -34,12 +34,14 @@ import {
   DisjunctVal,
   ConjunctVal,
   RefVal,
+  PrefVal,
 } from '../lib/val'
 
 
 let lang = new Lang()
 let P = lang.parse.bind(lang)
 
+let D = (x: any) => console.dir(x, { depth: null })
 
 
 describe('val', function() {
@@ -81,6 +83,22 @@ describe('val', function() {
   })
 
 
+  it('scalartype', () => {
+    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(String))).true()
+    expect(new ScalarTypeVal(Number).same(new ScalarTypeVal(Number))).true()
+    expect(new ScalarTypeVal(Boolean).same(new ScalarTypeVal(Boolean))).true()
+    expect(new ScalarTypeVal(Integer).same(new ScalarTypeVal(Integer))).true()
+
+    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(Number))).false()
+    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(Boolean))).false()
+    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(Integer))).false()
+
+    expect(new ScalarTypeVal(Number).same(new ScalarTypeVal(Boolean))).false()
+    expect(new ScalarTypeVal(Number).same(new ScalarTypeVal(Integer))).false()
+
+    expect(new ScalarTypeVal(Integer).same(new ScalarTypeVal(Boolean))).false()
+  })
+
 
   it('boolean', () => {
     let bt = BooleanVal.TRUE
@@ -112,6 +130,15 @@ describe('val', function() {
     expect(bf.unify(n0)).instanceof(Nil)
     expect(n0.unify(bt)).instanceof(Nil)
     expect(n0.unify(bf)).instanceof(Nil)
+
+    expect(bt.same(bt)).true()
+    expect(bf.same(bf)).true()
+    expect(bt.same(bf)).false()
+
+    expect(new BooleanVal(true).same(new BooleanVal(true))).true()
+    expect(new BooleanVal(false).same(new BooleanVal(false))).true()
+    expect(new BooleanVal(true).same(new BooleanVal(false))).false()
+
   })
 
 
@@ -145,6 +172,10 @@ describe('val', function() {
     expect(s1.unify(n0)).instanceof(Nil)
     expect(n0.unify(s0)).instanceof(Nil)
     expect(n0.unify(s1)).instanceof(Nil)
+
+    expect(s0.same(s0)).true()
+    expect(new StringVal('a').same(new StringVal('a'))).true()
+    expect(new StringVal('a').same(new StringVal('b'))).false()
   })
 
 
@@ -178,6 +209,11 @@ describe('val', function() {
     expect(n1.unify(s0)).instanceof(Nil)
     expect(s0.unify(n0)).instanceof(Nil)
     expect(s0.unify(n1)).instanceof(Nil)
+
+    expect(n0.same(n0)).true()
+    expect(new NumberVal(11).same(new NumberVal(11))).true()
+    expect(new NumberVal(11).same(new NumberVal(22))).false()
+
   })
 
 
@@ -223,6 +259,11 @@ describe('val', function() {
     let x0 = new NumberVal(0)
     expect(n0.unify(x0)).equal(n0)
     expect(x0.unify(n0)).equal(n0)
+
+    expect(n0.same(n0)).true()
+    expect(new IntegerVal(11).same(new IntegerVal(11))).true()
+    expect(new IntegerVal(11).same(new IntegerVal(22))).false()
+
 
   })
 
@@ -382,54 +423,57 @@ describe('val', function() {
 
 
   it('disjunct', () => {
-    let d0 = new DisjunctVal(P(['1']))
-    let d1 = new DisjunctVal(P(['1', '2']))
-    let d2 = new DisjunctVal(P(['1', 'number']))
-    let d3 = new DisjunctVal(P(['1', 'number', 'integer']))
-    let d4 = new DisjunctVal(P(['{a:1}']))
-    let d5 = new DisjunctVal(P(['{a:1}', '{b:2}']))
-
-    expect(d0.canon).equals('1')
-    expect(d1.canon).equals('1|2')
-    expect(d2.canon).equals('1|number')
-    expect(d3.canon).equals('1|number|integer')
-    expect(d4.canon).equals('{"a":1}')
-    expect(d5.canon).equals('{"a":1}|{"b":2}')
 
 
-    let g = []
+    expect(P('1|number').canon).equals('1|number')
+    expect(P('1|number|top').canon).equals('1|number|top')
 
-    g = []; expect(d0.unify(P('1')).gen(g)).equal(1)
-    g = []; expect(P('1').unify(d0).gen(g)).equal(1)
-    g = []; expect(d0.unify(P('2')).gen(g)).equal(undefined)
-    g = []; expect(P('2').unify(d0).gen(g)).equal(undefined)
+    expect(P('1|number').gen([])).equals(1)
+    expect(P('1|number|top').gen([])).equals(1)
 
-    g = []; expect(d1.unify(P('1')).gen(g)).equal(1)
-    g = []; expect(P('1').unify(d1).gen(g)).equal(1)
-    g = []; expect(d1.unify(P('2')).gen(g)).equal(2)
-    g = []; expect(P('2').unify(d1).gen(g)).equal(2)
-    g = []; expect(d1.unify(P('3')).gen(g)).equal(undefined)
-    g = []; expect(P('3').unify(d1).gen(g)).equal(undefined)
+    expect(P('number|1').unify(P('top')).canon).equals('number|1')
 
-    g = []; expect(d2.unify(P('1')).gen(g)).equal(1)
-    g = []; expect(P('1').unify(d2).gen(g)).equal(1)
-    g = []; expect(d2.unify(P('2')).gen(g)).equal(2)
-    g = []; expect(P('2').unify(d2).gen(g)).equal(2)
-    g = []; expect(d3.unify(P('3')).gen(g)).equal(3)
-    g = []; expect(P('3').unify(d3).gen(g)).equal(3)
-    g = []; expect(d3.unify(P('true')).gen(g)).equal(undefined)
-    g = []; expect(P('true').unify(d3).gen(g)).equal(undefined)
+    expect(P('1|number|1').unify(P('top')).canon).equals('1|number')
+
+    expect(P('number|string').unify(P('top')).canon).equals('number|string')
+
+    expect(P('number|string').unify(P('1')).canon).equals('1')
+    expect(P('number|1').unify(P('1')).canon).equals('1')
+
+
+    expect(P('number|1').unify(P('number|1')).canon).equal('number|1')
+    expect(P('1|number').unify(P('1|number')).canon).equals('1|number')
+    expect(P('number|1').unify(P('1|number')).canon).equals('1|number')
+
+    expect(P('number|1').unify(P('number|string')).canon).equals('number|1')
+    expect(P('number|string').unify(P('boolean|number')).canon).equals('number')
 
 
 
+    let u0 = P('number|*1').unify(P('number'))
+    //console.dir(u0, { depth: null })
+    //console.log(u0.canon)
+    //console.log(u0.gen([]))
+    expect(u0.canon).equals('number|*1')
+    expect(u0.gen([])).equals(1)
 
-    g = []; expect(d0.gen(g)).equals(1)
-    g = []; expect(d1.gen(g)).equals(1)
-    g = []; expect(d2.gen(g)).equals(1)
-    g = []; expect(d3.gen(g)).equals(1)
 
-    g = []; expect(d4.gen(g)).equals({ a: 1 })
-    g = []; expect(d5.gen(g)).equals({ a: 1 })
+    let u1 = P('number|*1').unify(P('number|string'))
+    //console.dir(u1, { depth: null })
+    //console.log(u1.canon)
+    //console.log(u1.gen([]))
+    expect(u1.canon).equals('number|*1')
+    expect(u1.gen([])).equals(1)
+
+
+
+    let u2 = P('number|*1').unify(P('2'))
+    console.dir(u2, { depth: null })
+    console.log(u2.canon)
+    console.log(u2.gen([]))
+    expect(u2.canon).equals('2')
+    expect(u2.gen([])).equals(2)
+
   })
 
 
@@ -528,6 +572,43 @@ b: c: 1
     console.dir(m1u, { depth: null })
     expect(m1u.canon).equals('{"a":1,"b":{"c":1}}')
   })
+
+
+  it('pref', () => {
+    let p0 = new PrefVal(new StringVal('p0'))
+    expect(p0.canon).equals('*"p0"')
+    expect(p0.gen([])).equals('p0')
+
+    p0.val = new ScalarTypeVal(String)
+    expect(p0.canon).equals('*"p0"')
+    expect(p0.gen([])).equals('p0')
+
+    p0.pref = new Nil('test:pref')
+    expect(p0.canon).equals('string')
+    expect(p0.gen([])).equals(undefined)
+
+    p0.val = new Nil('test:val')
+    expect(p0.canon).equals('nil:test:val')
+    expect(p0.gen([])).equals(undefined)
+
+    let p1 = new PrefVal(new StringVal('p1'))
+    let p2 = new PrefVal(new ScalarTypeVal(String))
+
+    let up12 = p1.unify(p2)
+    expect(up12.canon).equals('*"p1"')
+
+    let up21 = p2.unify(p1)
+    expect(up21.canon).equals('*"p1"')
+
+    let up2s0 = p2.unify(new StringVal('s0'))
+    expect(up2s0.canon).equals('*"s0"')
+
+    // NOTE: once made concrete a prefval is fixed
+    expect(up2s0.unify(new StringVal('s1')).canon)
+      .equals('nil:no-unify-val:["s0","s1"]')
+
+  })
+
 })
 
 
