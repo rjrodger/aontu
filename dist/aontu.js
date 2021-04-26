@@ -20,7 +20,7 @@ function Aontu(src, popts) {
 exports.Aontu = Aontu;
 const util = {
     options: (src, popts) => {
-        let srcopts = 'string' === typeof (src) ? { src } : src;
+        let srcopts = 'string' === typeof src ? { src } : src;
         let opts = {
             ...{
                 src: '',
@@ -28,10 +28,10 @@ const util = {
                 resolver: EmptyResolver,
             },
             ...srcopts,
-            ...(popts || {})
+            ...(popts || {}),
         };
         return opts;
-    }
+    },
 };
 exports.util = util;
 exports.default = Aontu;

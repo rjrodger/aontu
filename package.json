@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -19,7 +19,8 @@
     "watch": "tsc -w -d",
     "test": "lab -v -L -P test -t 70 --sourcemaps --transform node_modules/lab-transform-typescript -r console -o stdout -r html -o test/coverage.html",
     "test-some": "lab -v -P test --sourcemaps --transform node_modules/lab-transform-typescript -g",
-    "test-web": "browserify -o test-web/test-web.js -e test/aontu.test.js -s Aontu -im -i assert -i @hapi/lab && open test-web/index.html",
+    "test-web": "echo no-test-web",
+    "xtest-web": "browserify -o test-web/test-web.js -e test/aontu.test.js -s Aontu -im -i assert -i @hapi/lab && open test-web/index.html",
     "coveralls": "lab -s -P test -r lcov -I URL,URLSearchParams | coveralls",
     "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
     "build": "tsc -d && cp dist/aontu.js dist/aontu.min.js && browserify -o dist/aontu.min.js -e dist/aontu.js -s Aontu -im -i assert -p tinyify",
@@ -37,7 +38,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/multisource": "0.0.2",
+    "@jsonic/multisource": "0.0.5",
     "@types/node": "^15.0.0",
     "jsonic": "jsonicjs/jsonic#nextgen"
   },

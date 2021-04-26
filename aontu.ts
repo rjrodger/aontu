@@ -1,6 +1,5 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
-
 import { Options } from './lib/common'
 import { Lang } from './lib/lang'
 import { Unify } from './lib/unify'
@@ -10,15 +9,12 @@ import { Nil } from './lib/val'
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
 
-
 type Val = {
   canon: string
   gen: (log: any[]) => any
 }
 
-
 const EmptyResolver = () => new Nil()
-
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
@@ -32,10 +28,12 @@ function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   return uni.res
 }
 
-
 const util = {
-  options: (src: string | Partial<Options>, popts?: Partial<Options>): Options => {
-    let srcopts: Partial<Options> = 'string' === typeof (src) ? { src } : src
+  options: (
+    src: string | Partial<Options>,
+    popts?: Partial<Options>
+  ): Options => {
+    let srcopts: Partial<Options> = 'string' === typeof src ? { src } : src
     let opts: Options = {
       ...{
         src: '',
@@ -43,18 +41,11 @@ const util = {
         resolver: EmptyResolver,
       },
       ...srcopts,
-      ...(popts || {})
+      ...(popts || {}),
     }
     return opts
-  }
+  },
 }
 
-
-export {
-  Aontu,
-  Val,
-  util,
-}
+export { Aontu, Val, util }
 export default Aontu
-
-

@@ -7,5 +7,5 @@ declare function Aontu(src: string | Partial<Options>, popts?: Partial<Options>)
 declare const util: {
     options: (src: string | Partial<Options>, popts?: Partial<Options> | undefined) => Options;
 };
-export { Aontu, Val, util, };
+export { Aontu, Val, util };
 export default Aontu;
