@@ -8,6 +8,7 @@ import {
   Val,
   RefVal,
   MapVal,
+  Nil,
 } from './val'
 
 import {
@@ -22,16 +23,22 @@ type Path = string[]
 class Context {
   root: MapVal
   path: Path
+  err: Nil[]
 
-  constructor(cfg: any) {
+  constructor(cfg: {
+    root: Val
+    err?: Nil[]
+  }) {
     this.root = cfg.root
     this.path = []
+    this.err = cfg.err || []
   }
 
 
   descend(key: string) {
     let cfg = { root: this.root }
     let ctx = new Context(cfg)
+    ctx.err = this.err
     ctx.path = this.path.concat(key)
     return ctx
   }
@@ -59,6 +66,7 @@ class Context {
 class Unify {
   root: Val
   res: Val
+  err: Nil[]
   dc = 0
   lang: Lang
 
@@ -70,11 +78,12 @@ class Unify {
 
     this.root = root
     this.res = root
+    this.err = []
 
     let res = root
     let ctx: Context
     while (this.dc < 111 && DONE !== res.done) {
-      ctx = new Context({ root: res })
+      ctx = new Context({ root: res, err: this.err })
       res = res.unify(TOP, ctx)
       this.dc++
     }

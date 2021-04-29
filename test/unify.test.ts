@@ -70,14 +70,6 @@ describe('unify', function() {
   })
 
 
-  it('error', () => {
-    let uc = (s: string) => new Unify(s).res.canon
-
-    expect(uc('1&string')).startsWith('nil')
-    expect(uc('{a:1}&{a:string}')).startsWith('{"a":nil')
-  })
-
-
   it('merge-is-conjunct', () => {
     // let ur = (s: string) => new Unify(s).res
     let uc = (s: string) => new Unify(s).res.canon
@@ -126,6 +118,26 @@ describe('unify', function() {
 
   })
 
+
+  it('error', () => {
+    let uc = (s: string) => new Unify(s).res.canon
+
+    expect(uc('1&string')).startsWith('nil')
+    expect(uc('{a:1}&{a:string}')).startsWith('{"a":nil')
+
+
+    let e0 = new Unify('a:b:1&2')
+    //console.log(e0.res.canon)
+    //console.log(e0.err)
+    expect(e0.err[0].path.join('/')).equal('a/b')
+
+    let e1 = new Unify('a:b:1&2,c:d:e:true&3')
+    //console.log(e1.res.canon)
+    //console.log(e1.err)
+    expect(e1.err[0].path.join('/')).equal('a/b')
+    expect(e1.err[1].path.join('/')).equal('c/d/e')
+
+  })
 })
 
 

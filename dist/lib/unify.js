@@ -8,10 +8,12 @@ class Context {
     constructor(cfg) {
         this.root = cfg.root;
         this.path = [];
+        this.err = cfg.err || [];
     }
     descend(key) {
         let cfg = { root: this.root };
         let ctx = new Context(cfg);
+        ctx.err = this.err;
         ctx.path = this.path.concat(key);
         return ctx;
     }
@@ -40,10 +42,11 @@ class Unify {
         }
         this.root = root;
         this.res = root;
+        this.err = [];
         let res = root;
         let ctx;
         while (this.dc < 111 && val_1.DONE !== res.done) {
-            ctx = new Context({ root: res });
+            ctx = new Context({ root: res, err: this.err });
             res = res.unify(val_1.TOP, ctx);
             this.dc++;
         }

@@ -1,3 +1,5 @@
+* errors
+** gen context and collect for non-concrete 
 * parens!
 * peer spreads
 * conversion of partial js native trees to full aontu

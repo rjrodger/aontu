@@ -27,7 +27,9 @@ import {
 
 const DONE = -1
 
-let valcount = 1
+
+// TODO: move to Context to make repeatable
+let valcount = 1_000_000_000
 
 // There can be only one.
 const TOP: Val = {
@@ -98,10 +100,15 @@ const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
 
 
 abstract class Val {
+  // TODO: REVIEW: maybe this should just be a counter?
   id = 'V' + valcount++
+  // TODO: need a separate counter for parse-created first versions?
+
   done: number = 0
   path: string[]
   top?: boolean
+
+  // TODO: RENAME: confusion with Val
   val?: any
 
   constructor(val?: any, path?: Path) {
@@ -116,7 +123,6 @@ abstract class Val {
   abstract unify(peer: Val, ctx: Context): Val
   abstract get canon(): string
   abstract gen(log: any[]): any
-
 
 }
 
@@ -325,8 +331,12 @@ class MapVal extends Val {
 
       // Always unify children against TOP first
       for (let key in this.val) {
-        out.val[key] = this.val[key].unify(TOP, ctx.descend(key))
+        let oval = out.val[key] = this.val[key].unify(TOP, ctx.descend(key))
         done = (done && DONE === out.val[key].done)
+
+        if (oval instanceof Nil) {
+          ctx.err.push(oval)
+        }
       }
     }
 
@@ -336,13 +346,20 @@ class MapVal extends Val {
 
       for (let peerkey in upeer.val) {
         let peerchild = upeer.val[peerkey]
-        let child = this.val[peerkey]
+        let child = out.val[peerkey]
 
-        out.val[peerkey] =
+        let oval = out.val[peerkey] =
           undefined === child ? peerchild :
-            child.unify(peerchild, ctx.descend(peerkey))
+            child instanceof Nil ? child :
+              peerchild instanceof Nil ? peerchild :
+                child.unify(peerchild, ctx.descend(peerkey))
 
-        done = (done && DONE === out.val[peerkey].done)
+        done = (done && DONE === oval.done)
+
+        if (oval instanceof Nil) {
+          ctx.err.push(oval)
+        }
+
       }
 
       out.done = done ? DONE : out.done

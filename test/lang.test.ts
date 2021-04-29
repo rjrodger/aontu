@@ -133,6 +133,13 @@ describe('lang', function() {
     //console.dir(v2, { depth: null })
     expect(v2.canon).equals('integer|*2')
   })
+
+
+  it('precedence', () => {
+    let v0 = P('a:b:1&2')
+    // console.dir(v0, { depth: null })
+    expect(v0.canon).equal('{"a":{"b":1&2}}')
+  })
 })
 
 
