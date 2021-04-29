@@ -7,6 +7,13 @@ const lang_1 = require("./lang");
 class Context {
     constructor(cfg) {
         this.root = cfg.root;
+        this.path = [];
+    }
+    descend(key) {
+        let cfg = { root: this.root };
+        let ctx = new Context(cfg);
+        ctx.path = this.path.concat(key);
+        return ctx;
     }
     find(ref) {
         // TODO: relative paths

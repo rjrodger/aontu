@@ -5,16 +5,19 @@ import { Lang } from './lib/lang'
 import { Unify } from './lib/unify'
 import { Nil } from './lib/val'
 
+
 // TODO: error reporting
+
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
 
+// TODO: REVIEW: External Val, a subset of the internal Val
 type Val = {
   canon: string
   gen: (log: any[]) => any
 }
 
-const EmptyResolver = () => new Nil()
+const EmptyResolver = () => new Nil([], 'no-resolve')
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`

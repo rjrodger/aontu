@@ -82,7 +82,7 @@ a:{c:2}
     //console.dir(v0.gen([]),{depth:null})
 
     expect(v0.canon).equal(
-      '{"uxc":{"name":string,"size":integer|*1},"foo":{"name":string,"size":integer|*1},"bar":{"name":"bar","size":integer|*1},"zed":{"name":"zed","size":2},"qaz":{"name":"bar","size":nil:|:empty}}'
+      '{"uxc":{"name":string,"size":integer|*1},"foo":{"name":string,"size":integer|*1},"bar":{"name":"bar","size":integer|*1},"zed":{"name":"zed","size":2},"qaz":{"name":"bar","size":nil}}'
     )
     expect(v0.gen([])).equal({
       uxc: { name: undefined, size: 1 },

@@ -15,11 +15,27 @@ import {
 } from './lang'
 
 
+
+type Path = string[]
+
+
 class Context {
   root: MapVal
+  path: Path
+
   constructor(cfg: any) {
     this.root = cfg.root
+    this.path = []
   }
+
+
+  descend(key: string) {
+    let cfg = { root: this.root }
+    let ctx = new Context(cfg)
+    ctx.path = this.path.concat(key)
+    return ctx
+  }
+
 
   find(ref: RefVal) {
 
@@ -70,5 +86,6 @@ class Unify {
 
 export {
   Context,
+  Path,
   Unify,
 }

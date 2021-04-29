@@ -17,13 +17,8 @@ import { FileResolver } from '@jsonic/multisource/resolver/file'
 
 import {
   TOP,
-  Nil,
-  NumberVal,
-  StringVal,
-  BooleanVal,
-  IntegerVal,
-  ScalarTypeVal,
-  Integer,
+  Val,
+  MapVal,
 } from '../lib/val'
 
 import {
@@ -31,12 +26,13 @@ import {
 } from '../lib/lang'
 
 import {
-  Unify
+  Unify,
+  Context,
 } from '../lib/unify'
 
 
 let lang = new Lang()
-let P = lang.parse.bind(lang)
+let P: (s: string, o?: any) => Val = lang.parse.bind(lang)
 
 
 describe('lang', function() {
@@ -75,11 +71,13 @@ describe('lang', function() {
 
 
   it('merge', () => {
+    let ctx = makeCtx()
+
     let v0 = P('a:{x:1},a:{y:2}')
     //console.dir(v0, { depth: null })
     expect(v0.canon).equal('{"a":{"x":1}&{"y":2}}')
 
-    let u0 = v0.unify(TOP)
+    let u0 = v0.unify(TOP, ctx)
     //console.dir(u0, { depth: null })
     expect(u0.canon).equal('{"a":{"x":1,"y":2}}')
 
@@ -137,3 +135,7 @@ describe('lang', function() {
   })
 })
 
+
+function makeCtx() {
+  return new Context({ root: new MapVal({}) })
+}

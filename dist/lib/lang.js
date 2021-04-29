@@ -12,11 +12,12 @@ let AontuJsonic = function aontu(jsonic) {
                 // NOTE: specify with functions as jsonic/deep will
                 // remove class prototype as options are assumed plain
                 // (except for functions).
+                // TODO: jsonic should be able to pass context into these
                 'string': () => new val_1.ScalarTypeVal(String),
                 'number': () => new val_1.ScalarTypeVal(Number),
                 'integer': () => new val_1.ScalarTypeVal(val_1.Integer),
                 'boolean': () => new val_1.ScalarTypeVal(Boolean),
-                'nil': () => new val_1.Nil(),
+                'nil': () => new val_1.Nil([], 'literal'),
                 'top': () => val_1.TOP,
             }
         },
@@ -24,7 +25,7 @@ let AontuJsonic = function aontu(jsonic) {
             '#A&': { c: '&' },
             '#A|': { c: '|' },
             '#A/': { c: '/' },
-            '#A*': { c: '*' },
+            '#A*': { c: '*' }, // TODO: REVIEW char as * is a bit overloaded
         },
         map: {
             merge: (prev, curr) => {

@@ -5,7 +5,7 @@ exports.util = exports.Aontu = void 0;
 const lang_1 = require("./lib/lang");
 const unify_1 = require("./lib/unify");
 const val_1 = require("./lib/val");
-const EmptyResolver = () => new val_1.Nil();
+const EmptyResolver = () => new val_1.Nil([], 'no-resolve');
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`

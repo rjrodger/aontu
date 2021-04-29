@@ -19,26 +19,33 @@ TOP -> Scalar/Boolean -> BooleanVal
 */
 
 
-import { Context } from './unify'
+import {
+  Context,
+  Path,
+} from './unify'
 
 
 const DONE = -1
 
+let valcount = 1
+
 // There can be only one.
 const TOP: Val = {
+  id: 'V0',
   top: true,
   val: undefined,
   done: DONE,
+  path: [],
 
-  unify(peer: Val, _ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     if (peer instanceof DisjunctVal) {
-      return peer.unify(this)
+      return peer.unify(this, ctx)
     }
     else if (peer instanceof ConjunctVal) {
-      return peer.unify(this)
+      return peer.unify(this, ctx)
     }
     else if (peer instanceof RefVal) {
-      return peer.unify(this)
+      return peer.unify(this, ctx)
     }
     else {
       return peer
@@ -46,7 +53,6 @@ const TOP: Val = {
   },
 
   get canon() { return 'top' },
-  get dc() { return 'top' },
 
   same(peer: Val): boolean {
     return TOP === peer
@@ -59,7 +65,7 @@ const TOP: Val = {
 
 }
 
-const UNIFIER = (self: Val, peer: Val, ctx?: Context): Val => {
+const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
   if (peer === TOP) {
     return self
   }
@@ -68,7 +74,7 @@ const UNIFIER = (self: Val, peer: Val, ctx?: Context): Val => {
   }
   else if (self.constructor === peer.constructor) {
     return self.val === peer.val ? self :
-      new Nil('no-unify-val:[' + self.canon + ',' + peer.canon + ']')
+      Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>')
   }
   else if (peer instanceof Nil) {
     return peer
@@ -86,29 +92,28 @@ const UNIFIER = (self: Val, peer: Val, ctx?: Context): Val => {
     return peer.unify(self, ctx)
   }
   else {
-    return new Nil('no-unify:' + self.canon + ',' + peer.canon)
+    return Nil.make(ctx, 'no-unify<' + self.canon + '&' + peer.canon + '>')
   }
 }
 
 
 abstract class Val {
+  id = 'V' + valcount++
+  done: number = 0
+  path: string[]
   top?: boolean
   val?: any
-  done: number = 0
 
-  constructor(val?: any) {
+  constructor(val?: any, path?: Path) {
     this.val = val
-  }
-
-  get dc() {
-    return this.canon + '/*d' + this.done + '*/'
+    this.path = path || []
   }
 
   same(peer: Val): boolean {
     return this === peer
   }
 
-  abstract unify(peer: Val, ctx?: Context): Val
+  abstract unify(peer: Val, ctx: Context): Val
   abstract get canon(): string
   abstract gen(log: any[]): any
 
@@ -119,17 +124,24 @@ abstract class Val {
 
 class Nil extends Val {
   why: any
-  constructor(why?: any) {
-    super()
+
+  static make = (ctx: Context, why?: any) => {
+    return new Nil(ctx.path, why)
+  }
+
+  constructor(path: Path, why?: any) {
+    super(null, path)
     this.why = why
     this.done = DONE
   }
-  unify(_peer: Val, _ctx?: Context) {
+  unify(_peer: Val, _ctx: Context) {
     return this
   }
+
   get canon() {
-    return 'nil:' + this.why
+    return 'nil'
   }
+
   gen(log: any[]) {
     // This is an error.
     log.push('nil')
@@ -137,6 +149,8 @@ class Nil extends Val {
   }
 }
 
+
+// A ScalarType for integers. Number includes floats.
 class Integer { }
 
 
@@ -154,17 +168,16 @@ class ScalarTypeVal extends Val {
     this.done = DONE
   }
 
-  unify(peer: Val, _ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarVal) {
       if (peer.type === this.val) {
-        //console.log('AAA')
         return peer
       }
       else if (Number === this.val && Integer === peer.type) {
         return peer
       }
       else {
-        return new Nil('no-scalar-unify')
+        return Nil.make(ctx, 'no-scalar-unify')
       }
     }
     else {
@@ -177,7 +190,7 @@ class ScalarTypeVal extends Val {
         }
       }
 
-      return UNIFIER(this, peer)
+      return UNIFIER(this, peer, ctx)
     }
   }
 
@@ -206,12 +219,12 @@ class ScalarVal<T> extends Val {
     this.type = type
     this.done = DONE
   }
-  unify(peer: Val, _ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarTypeVal) {
-      return peer.unify(this)
+      return peer.unify(this, ctx)
     }
     else {
-      return UNIFIER(this, peer)
+      return UNIFIER(this, peer, ctx)
     }
   }
   get canon() {
@@ -231,12 +244,12 @@ class NumberVal extends ScalarVal<number> {
   constructor(val: number) {
     super(val, Number)
   }
-  unify(peer: Val, _ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarVal && peer.type === Integer) {
       return peer
     }
     else {
-      return super.unify(peer)
+      return super.unify(peer, ctx)
     }
   }
 }
@@ -249,7 +262,7 @@ class IntegerVal extends ScalarVal<number> {
     }
     super(val, Integer)
   }
-  unify(peer: Val, _ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarTypeVal && peer.val === Number) {
       return this
     }
@@ -259,7 +272,7 @@ class IntegerVal extends ScalarVal<number> {
       return this
     }
     else {
-      return super.unify(peer)
+      return super.unify(peer, ctx)
     }
   }
 }
@@ -269,8 +282,8 @@ class StringVal extends ScalarVal<string> {
   constructor(val: string) {
     super(val, String)
   }
-  unify(peer: Val, _ctx?: Context): Val {
-    return super.unify(peer)
+  unify(peer: Val, ctx: Context): Val {
+    return super.unify(peer, ctx)
   }
   get canon() {
     return JSON.stringify(this.val)
@@ -283,8 +296,8 @@ class BooleanVal extends ScalarVal<boolean> {
   constructor(val: boolean) {
     super(val, Boolean)
   }
-  unify(peer: Val): Val {
-    return super.unify(peer)
+  unify(peer: Val, ctx: Context): Val {
+    return super.unify(peer, ctx)
   }
 
   static TRUE = new BooleanVal(true)
@@ -296,15 +309,13 @@ class BooleanVal extends ScalarVal<boolean> {
 
 
 class MapVal extends Val {
-  id = 'v' + ('' + Math.random()).substr(3, 5)
-
   constructor(val: { [key: string]: Val }) {
     super(val)
   }
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val, ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     let done: boolean = true
     let out: MapVal = this
 
@@ -314,7 +325,7 @@ class MapVal extends Val {
 
       // Always unify children against TOP first
       for (let key in this.val) {
-        out.val[key] = this.val[key].unify(TOP, ctx)
+        out.val[key] = this.val[key].unify(TOP, ctx.descend(key))
         done = (done && DONE === out.val[key].done)
       }
     }
@@ -328,7 +339,9 @@ class MapVal extends Val {
         let child = this.val[peerkey]
 
         out.val[peerkey] =
-          undefined === child ? peerchild : child.unify(peerchild, ctx)
+          undefined === child ? peerchild :
+            child.unify(peerchild, ctx.descend(peerkey))
+
         done = (done && DONE === out.val[peerkey].done)
       }
 
@@ -337,7 +350,7 @@ class MapVal extends Val {
     }
     else {
       out.done = done ? DONE : out.done
-      return UNIFIER(out, peer)
+      return UNIFIER(out, peer, ctx)
     }
   }
 
@@ -369,7 +382,7 @@ class ConjunctVal extends Val {
   prepend(peer: Val): ConjunctVal {
     return new ConjunctVal([peer, ...this.val])
   }
-  unify(peer: Val, ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     let done = true
 
 
@@ -382,7 +395,7 @@ class ConjunctVal extends Val {
       // console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
 
       if (upeer[vI] instanceof Nil) {
-        return new Nil('&peer[' + upeer[vI].canon + ',' + peer.canon + ']')
+        return Nil.make(ctx, '&peer[' + upeer[vI].canon + ',' + peer.canon + ']')
       }
     }
 
@@ -412,7 +425,8 @@ class ConjunctVal extends Val {
 
         // Conjuct fails
         if (outvals[oI] instanceof Nil) {
-          return new Nil('&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']')
+          return Nil.make(ctx,
+            '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']')
         }
       }
     }
@@ -424,7 +438,7 @@ class ConjunctVal extends Val {
     //let why = ''
 
     if (0 === outvals.length) {
-      out = new Nil('&empty')
+      out = Nil.make(ctx, '&empty')
       //why += 'A'
     }
 
@@ -489,21 +503,16 @@ class DisjunctVal extends Val {
   prepend(peer: Val): ConjunctVal {
     return new DisjunctVal([peer, ...this.val])
   }
-  unify(peer: Val, ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     let done = true
 
     let oval: Val[] = []
 
-    //let peers = peer instanceof DisjunctVal ? peer.val : [peer]
-
-    //for (let pI = 0; pI < peers.length; pI++) {
+    // Conjunction (&) distributes over disjunction (|)
     for (let vI = 0; vI < this.val.length; vI++) {
-      //oval[vI] = this.val[vI].unify(peers[pI], ctx)
       oval[vI] = this.val[vI].unify(peer, ctx)
       done = done && DONE === oval[vI].done
     }
-    //}
-
 
     // Remove duplicates, and normalize
     if (1 < oval.length) {
@@ -513,7 +522,7 @@ class DisjunctVal extends Val {
         }
       }
 
-      let remove = new Nil('remove')
+      let remove = Nil.make(ctx, 'remove')
       for (let vI = 0; vI < oval.length; vI++) {
         for (let kI = vI + 1; kI < oval.length; kI++) {
           if (oval[kI].same(oval[vI])) {
@@ -531,7 +540,7 @@ class DisjunctVal extends Val {
       out = oval[0]
     }
     else if (0 == oval.length) {
-      return new Nil('|:empty')
+      return Nil.make(ctx, '|:empty')
     }
     else {
       out = new DisjunctVal(oval)
@@ -583,7 +592,7 @@ class RefVal extends Val {
     this.val = (this.absolute ? '/' : '') + this.parts.join('/')
   }
 
-  unify(peer: Val, ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     let resolved = null == ctx ? this : (ctx.find(this) || this)
     let out: Val
 
@@ -592,7 +601,7 @@ class RefVal extends Val {
         out = new RefVal(this.val)
       }
       else if (peer instanceof Nil) {
-        out = new Nil('ref[' + this.val + ']')
+        out = Nil.make(ctx, 'ref[' + this.val + ']')
       }
       else {
         out = new ConjunctVal([this, peer])
@@ -603,8 +612,6 @@ class RefVal extends Val {
     }
 
     out.done = DONE === out.done ? DONE : this.done + 1
-
-    // console.log('RefVal.unify', this.val, resolved, peer, out)
 
     return out
   }
@@ -628,7 +635,7 @@ class PrefVal extends Val {
 
   // PrefVal unify always returns a PrefVal
   // PrevVals can only be removed by becoming Nil in a Disjunct
-  unify(peer: Val, ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     let out: Val
     if (peer instanceof PrefVal) {
       out = new PrefVal(

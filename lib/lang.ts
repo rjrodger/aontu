@@ -44,11 +44,12 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         // NOTE: specify with functions as jsonic/deep will
         // remove class prototype as options are assumed plain
         // (except for functions).
+        // TODO: jsonic should be able to pass context into these
         'string': () => new ScalarTypeVal(String),
         'number': () => new ScalarTypeVal(Number),
         'integer': () => new ScalarTypeVal(Integer),
         'boolean': () => new ScalarTypeVal(Boolean),
-        'nil': () => new Nil(),
+        'nil': () => new Nil([], 'literal'),
         'top': () => TOP,
       }
     },
@@ -57,7 +58,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       '#A&': { c: '&' },
       '#A|': { c: '|' },
       '#A/': { c: '/' },
-      '#A*': { c: '*' },
+      '#A*': { c: '*' }, // TODO: REVIEW char as * is a bit overloaded
     },
 
     map: {
