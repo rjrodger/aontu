@@ -38,6 +38,8 @@ const TOP: Val = {
   val: undefined,
   done: DONE,
   path: [],
+  row: -1,
+  col: -1,
 
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof DisjunctVal) {
@@ -76,7 +78,7 @@ const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
   }
   else if (self.constructor === peer.constructor) {
     return self.val === peer.val ? self :
-      Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>')
+      Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>', self, peer)
   }
   else if (peer instanceof Nil) {
     return peer
@@ -94,7 +96,7 @@ const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
     return peer.unify(self, ctx)
   }
   else {
-    return Nil.make(ctx, 'no-unify<' + self.canon + '&' + peer.canon + '>')
+    return Nil.make(ctx, 'no-unify<' + self.canon + '&' + peer.canon + '>', self, peer)
   }
 }
 
@@ -106,6 +108,9 @@ abstract class Val {
 
   done: number = 0
   path: string[]
+  row: number = -1
+  col: number = -1
+
   top?: boolean
 
   // TODO: RENAME: confusion with Val
@@ -131,8 +136,18 @@ abstract class Val {
 class Nil extends Val {
   why: any
 
-  static make = (ctx: Context, why?: any) => {
-    return new Nil(ctx.path, why)
+  static make = (ctx: Context, why?: any, av?: Val, bv?: Val) => {
+    let nil = new Nil(ctx.path, why)
+    let first = null == bv ? av : (null != av && null != bv) ?
+      (av.row === bv.row ? (av.col <= bv.col ? av : bv) :
+        (av.row <= bv.row ? av : bv)) : null
+
+    if (first) {
+      nil.row = first.row
+      nil.col = first.col
+    }
+
+    return nil
   }
 
   constructor(path: Path, why?: any) {
@@ -183,7 +198,7 @@ class ScalarTypeVal extends Val {
         return peer
       }
       else {
-        return Nil.make(ctx, 'no-scalar-unify')
+        return Nil.make(ctx, 'no-scalar-unify', this, peer)
       }
     }
     else {
@@ -402,7 +417,6 @@ class ConjunctVal extends Val {
   unify(peer: Val, ctx: Context): Val {
     let done = true
 
-
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
@@ -412,7 +426,12 @@ class ConjunctVal extends Val {
       // console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
 
       if (upeer[vI] instanceof Nil) {
-        return Nil.make(ctx, '&peer[' + upeer[vI].canon + ',' + peer.canon + ']')
+        return Nil.make(
+          ctx,
+          '&peer[' + upeer[vI].canon + ',' + peer.canon + ']',
+          this.val[vI],
+          peer
+        )
       }
     }
 
@@ -442,8 +461,12 @@ class ConjunctVal extends Val {
 
         // Conjuct fails
         if (outvals[oI] instanceof Nil) {
-          return Nil.make(ctx,
-            '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']')
+          return Nil.make(
+            ctx,
+            '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']',
+            outvals[oI],
+            upeer[uI]
+          )
         }
       }
     }
@@ -455,7 +478,7 @@ class ConjunctVal extends Val {
     //let why = ''
 
     if (0 === outvals.length) {
-      out = Nil.make(ctx, '&empty')
+      out = Nil.make(ctx, '&empty', this)
       //why += 'A'
     }
 
@@ -557,7 +580,7 @@ class DisjunctVal extends Val {
       out = oval[0]
     }
     else if (0 == oval.length) {
-      return Nil.make(ctx, '|:empty')
+      return Nil.make(ctx, '|:empty', this)
     }
     else {
       out = new DisjunctVal(oval)
@@ -618,7 +641,7 @@ class RefVal extends Val {
         out = new RefVal(this.val)
       }
       else if (peer instanceof Nil) {
-        out = Nil.make(ctx, 'ref[' + this.val + ']')
+        out = Nil.make(ctx, 'ref[' + this.val + ']', this, peer)
       }
       else {
         out = new ConjunctVal([this, peer])

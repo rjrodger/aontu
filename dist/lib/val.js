@@ -13,6 +13,8 @@ const TOP = {
     val: undefined,
     done: DONE,
     path: [],
+    row: -1,
+    col: -1,
     unify(peer, ctx) {
         if (peer instanceof DisjunctVal) {
             return peer.unify(this, ctx);
@@ -46,7 +48,7 @@ const UNIFIER = (self, peer, ctx) => {
     }
     else if (self.constructor === peer.constructor) {
         return self.val === peer.val ? self :
-            Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>');
+            Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>', self, peer);
     }
     else if (peer instanceof Nil) {
         return peer;
@@ -64,7 +66,7 @@ const UNIFIER = (self, peer, ctx) => {
         return peer.unify(self, ctx);
     }
     else {
-        return Nil.make(ctx, 'no-unify<' + self.canon + '&' + peer.canon + '>');
+        return Nil.make(ctx, 'no-unify<' + self.canon + '&' + peer.canon + '>', self, peer);
     }
 };
 class Val {
@@ -73,6 +75,8 @@ class Val {
         this.id = 'V' + valcount++;
         // TODO: need a separate counter for parse-created first versions?
         this.done = 0;
+        this.row = -1;
+        this.col = -1;
         this.val = val;
         this.path = path || [];
     }
@@ -100,8 +104,16 @@ class Nil extends Val {
     }
 }
 exports.Nil = Nil;
-Nil.make = (ctx, why) => {
-    return new Nil(ctx.path, why);
+Nil.make = (ctx, why, av, bv) => {
+    let nil = new Nil(ctx.path, why);
+    let first = null == bv ? av : (null != av && null != bv) ?
+        (av.row === bv.row ? (av.col <= bv.col ? av : bv) :
+            (av.row <= bv.row ? av : bv)) : null;
+    if (first) {
+        nil.row = first.row;
+        nil.col = first.col;
+    }
+    return nil;
 };
 // A ScalarType for integers. Number includes floats.
 class Integer {
@@ -121,7 +133,7 @@ class ScalarTypeVal extends Val {
                 return peer;
             }
             else {
-                return Nil.make(ctx, 'no-scalar-unify');
+                return Nil.make(ctx, 'no-scalar-unify', this, peer);
             }
         }
         else {
@@ -309,7 +321,7 @@ class ConjunctVal extends Val {
             done = done && DONE === upeer[vI].done;
             // console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
             if (upeer[vI] instanceof Nil) {
-                return Nil.make(ctx, '&peer[' + upeer[vI].canon + ',' + peer.canon + ']');
+                return Nil.make(ctx, '&peer[' + upeer[vI].canon + ',' + peer.canon + ']', this.val[vI], peer);
             }
         }
         // console.log('Cb', upeer.map(x => x.canon))
@@ -332,7 +344,7 @@ class ConjunctVal extends Val {
                 done = done && DONE === outvals[oI].done;
                 // Conjuct fails
                 if (outvals[oI] instanceof Nil) {
-                    return Nil.make(ctx, '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']');
+                    return Nil.make(ctx, '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']', outvals[oI], upeer[uI]);
                 }
             }
         }
@@ -340,7 +352,7 @@ class ConjunctVal extends Val {
         let out;
         //let why = ''
         if (0 === outvals.length) {
-            out = Nil.make(ctx, '&empty');
+            out = Nil.make(ctx, '&empty', this);
             //why += 'A'
         }
         // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
@@ -421,7 +433,7 @@ class DisjunctVal extends Val {
             out = oval[0];
         }
         else if (0 == oval.length) {
-            return Nil.make(ctx, '|:empty');
+            return Nil.make(ctx, '|:empty', this);
         }
         else {
             out = new DisjunctVal(oval);
@@ -467,7 +479,7 @@ class RefVal extends Val {
                 out = new RefVal(this.val);
             }
             else if (peer instanceof Nil) {
-                out = Nil.make(ctx, 'ref[' + this.val + ']');
+                out = Nil.make(ctx, 'ref[' + this.val + ']', this, peer);
             }
             else {
                 out = new ConjunctVal([this, peer]);

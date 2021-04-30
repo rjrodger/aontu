@@ -271,11 +271,13 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       },
     )
 
+
+    // TODO: wrap utility needed for jsonic to do this?
     let orig_bc = rs.def.bc
     rs.def.bc = function(rule: Rule, ctx: Context) {
       let out = orig_bc.call(this, rule, ctx)
 
-      let valnode = rule.node
+      let valnode: Val = rule.node
       let valtype = typeof valnode
 
       if ('string' === valtype) {
@@ -292,6 +294,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       else if ('boolean' === valtype) {
         valnode = new BooleanVal(rule.node)
       }
+
+      let st = rule.open[0]
+      valnode.row = st.row
+      valnode.col = st.col
 
       rule.node = valnode
 

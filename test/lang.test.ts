@@ -140,6 +140,21 @@ describe('lang', function() {
     // console.dir(v0, { depth: null })
     expect(v0.canon).equal('{"a":{"b":1&2}}')
   })
+
+
+  it('source', () => {
+    let v0 = P(`
+a: {
+  b: {
+    c: 1
+    d: 2 & 3 
+  }
+}
+`)
+
+    // REMOVE
+    console.dir(v0, { depth: null })
+  })
 })
 
 

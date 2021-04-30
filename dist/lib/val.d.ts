@@ -5,6 +5,8 @@ declare abstract class Val {
     id: string;
     done: number;
     path: string[];
+    row: number;
+    col: number;
     top?: boolean;
     val?: any;
     constructor(val?: any, path?: Path);
@@ -15,7 +17,7 @@ declare abstract class Val {
 }
 declare class Nil extends Val {
     why: any;
-    static make: (ctx: Context, why?: any) => Nil;
+    static make: (ctx: Context, why?: any, av?: Val | undefined, bv?: Val | undefined) => Nil;
     constructor(path: Path, why?: any);
     unify(_peer: Val, _ctx: Context): this;
     get canon(): string;

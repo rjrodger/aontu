@@ -137,6 +137,19 @@ describe('unify', function() {
     expect(e1.err[0].path.join('/')).equal('a/b')
     expect(e1.err[1].path.join('/')).equal('c/d/e')
 
+
+    let e2 = new Unify(`
+a: {
+  b: {
+    c: 1
+    d: 2 & 3 
+  }
+}
+`)
+
+    console.dir(e2.res, { depth: null })
+    console.dir(e2.err, { depth: null })
+
   })
 })
 

@@ -215,6 +215,7 @@ let AontuJsonic = function aontu(jsonic) {
                 return null == r.n.expr || 0 === r.n.expr;
             }
         });
+        // TODO: wrap utility needed for jsonic to do this?
         let orig_bc = rs.def.bc;
         rs.def.bc = function (rule, ctx) {
             let out = orig_bc.call(this, rule, ctx);
@@ -234,6 +235,9 @@ let AontuJsonic = function aontu(jsonic) {
             else if ('boolean' === valtype) {
                 valnode = new val_1.BooleanVal(rule.node);
             }
+            let st = rule.open[0];
+            valnode.row = st.row;
+            valnode.col = st.col;
             rule.node = valnode;
             return out;
         };
