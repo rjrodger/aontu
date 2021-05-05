@@ -40,9 +40,8 @@ import {
 
 let lang = new Lang()
 let P = lang.parse.bind(lang)
-
 let D = (x: any) => console.dir(x, { depth: null })
-
+let UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
 
 describe('val', function() {
   it('canon', () => {
@@ -329,6 +328,26 @@ describe('val', function() {
   })
 
 
+
+  it('map-spread', () => {
+    let ctx = makeCtx()
+
+    let m0 = new MapVal({
+      [MapVal.SPREAD]: { o: '&', v: P('{x:1}') },
+      a: P('{ y: 1 }'),
+      b: P('{ y: 2 }'),
+    })
+
+    console.dir(m0, { depth: null })
+
+    //expect(m0.canon).equals('{}')
+
+    let u0 = m0.unify(TOP, ctx)
+    console.log(u0.canon)
+  })
+
+
+
   it('conjunct', () => {
     let ctx = makeCtx()
 
@@ -376,6 +395,9 @@ describe('val', function() {
     // TODO: term order is swapped by ConjunctVal impl - should be preserved
     expect(d100.unify(TOP, ctx).canon).equal('/x&1')
     expect(TOP.unify(d100, ctx).canon).equal('/x&1')
+
+    // TODO: same for DisjunctVal
+    expect(new ConjunctVal([]).unify(TOP, ctx).canon).equal('top')
   })
 
 
@@ -538,11 +560,20 @@ b: c: 1
   it('pref', () => {
     let ctx = makeCtx()
 
+
+
     let p0 = new PrefVal(new StringVal('p0'))
     expect(p0.canon).equals('*"p0"')
     expect(p0.gen([])).equals('p0')
 
-    p0.val = new ScalarTypeVal(String)
+    let pu0 = p0.unify(TOP, ctx)
+    console.log(pu0)
+
+    return;
+
+    /*
+    
+    p0.peg = new ScalarTypeVal(String)
     expect(p0.canon).equals('*"p0"')
     expect(p0.gen([])).equals('p0')
 
@@ -550,7 +581,7 @@ b: c: 1
     expect(p0.canon).equals('string')
     expect(p0.gen([])).equals(undefined)
 
-    p0.val = new Nil([], 'test:val')
+    p0.peg = new Nil([], 'test:val')
     expect(p0.canon).equals('nil')
     expect(p0.gen([])).equals(undefined)
 
@@ -570,6 +601,25 @@ b: c: 1
     expect(up2s0.unify(new StringVal('s1'), ctx).canon)
       .equals('nil')
 
+    */
+
+
+    let u0 = P('1|number').unify(TOP, ctx)
+    console.log(u0)
+
+    let u1 = P('*1|number').unify(TOP, ctx)
+    console.log(u1)
+
+
+    expect(UC('a:1')).equals('{"a":1}')
+    expect(UC('a:1,b:/a')).equals('{"a":1,"b":1}')
+    expect(UC('a:*1|number,b:2,c:/a&/b')).equals('{"a":*1|number,"b":2,"c":2}')
+    expect(UC('a:*1|number,b:top,c:/a&/b'))
+      .equals('{"a":*1|number,"b":top,"c":*1|number}')
+    expect(UC('a:*1|number,b:*2|number,c:/a&/b'))
+      .equals('{"a":*1|number,"b":*2|number,"c":*1|*2|number}')
+
+
   })
 
 })
@@ -584,6 +634,6 @@ function print(o: any, t?: string) {
 }
 
 
-function makeCtx() {
-  return new Context({ root: new MapVal({}) })
+function makeCtx(r?: any) {
+  return new Context({ root: r || new MapVal({}) })
 }

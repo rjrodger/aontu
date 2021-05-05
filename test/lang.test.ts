@@ -90,11 +90,11 @@ describe('lang', function() {
 
     let v0 = P('a:/x')
     console.log(v0)
-    expect(v0.val.a.parts).equals(['x'])
+    expect(v0.peg.a.parts).equals(['x'])
 
     let v1 = P('a:/x/y', { xlog: -1 })
     console.log(v1)
-    expect(v1.val.a.parts).equals(['x', 'y'])
+    expect(v1.peg.a.parts).equals(['x', 'y'])
   })
 
 
@@ -140,6 +140,13 @@ describe('lang', function() {
     // console.dir(v0, { depth: null })
     expect(v0.canon).equal('{"a":{"b":1&2}}')
   })
+
+
+  it('spreads', () => {
+    let v0 = P('a:{&={x:1,y:integer},b:{y:1},c:{y:2}}')
+    console.dir(v0, { depth: null })
+  })
+
 
 
   it('source', () => {

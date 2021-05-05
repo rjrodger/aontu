@@ -1,5 +1,7 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
+// TODO: infinite recursion protection
+
 
 // NOTES
 // - Vals are immutable
@@ -25,6 +27,9 @@ import {
 } from './unify'
 
 
+let Q = 0
+let W = 0
+
 const DONE = -1
 
 
@@ -35,7 +40,7 @@ let valcount = 1_000_000_000
 const TOP: Val = {
   id: 'V0',
   top: true,
-  val: undefined,
+  peg: undefined,
   done: DONE,
   path: [],
   row: -1,
@@ -77,7 +82,7 @@ const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
     return peer
   }
   else if (self.constructor === peer.constructor) {
-    return self.val === peer.val ? self :
+    return self.peg === peer.peg ? self :
       Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>', self, peer)
   }
   else if (peer instanceof Nil) {
@@ -104,8 +109,9 @@ const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
 abstract class Val {
   // TODO: REVIEW: maybe this should just be a counter?
   id = 'V' + valcount++
-  // TODO: need a separate counter for parse-created first versions?
 
+  // TODO: need a separate counter for parse-created first versions?
+  // TODO: rename, this is a counter, not just a flag, confuses with local boolean `done`
   done: number = 0
   path: string[]
   row: number = -1
@@ -113,11 +119,11 @@ abstract class Val {
 
   top?: boolean
 
-  // TODO: RENAME: confusion with Val
-  val?: any
+  // Actual native value.
+  peg?: any
 
-  constructor(val?: any, path?: Path) {
-    this.val = val
+  constructor(peg?: any, path?: Path) {
+    this.peg = peg
     this.path = path || []
   }
 
@@ -184,17 +190,17 @@ type ScalarConstructor =
 
 
 class ScalarTypeVal extends Val {
-  constructor(val: ScalarConstructor) {
-    super(val)
+  constructor(peg: ScalarConstructor) {
+    super(peg)
     this.done = DONE
   }
 
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarVal) {
-      if (peer.type === this.val) {
+      if (peer.type === this.peg) {
         return peer
       }
-      else if (Number === this.val && Integer === peer.type) {
+      else if (Number === this.peg && Integer === peer.type) {
         return peer
       }
       else {
@@ -203,10 +209,10 @@ class ScalarTypeVal extends Val {
     }
     else {
       if (peer instanceof ScalarTypeVal) {
-        if (Number === this.val && Integer === peer.val) {
+        if (Number === this.peg && Integer === peer.peg) {
           return peer
         }
-        else if (Number === peer.val && Integer === this.val) {
+        else if (Number === peer.peg && Integer === this.peg) {
           return this
         }
       }
@@ -216,12 +222,12 @@ class ScalarTypeVal extends Val {
   }
 
   get canon() {
-    let ctor = (this.val as any)
+    let ctor = (this.peg as any)
     return ctor.name.toLowerCase()
   }
 
   same(peer: Val): boolean {
-    return peer instanceof ScalarTypeVal ? this.val === peer.val : super.same(peer)
+    return peer instanceof ScalarTypeVal ? this.peg === peer.peg : super.same(peer)
   }
 
   gen(log: any[]) {
@@ -235,8 +241,8 @@ class ScalarTypeVal extends Val {
 
 class ScalarVal<T> extends Val {
   type: any
-  constructor(val: T, type: ScalarConstructor) {
-    super(val)
+  constructor(peg: T, type: ScalarConstructor) {
+    super(peg)
     this.type = type
     this.done = DONE
   }
@@ -249,21 +255,21 @@ class ScalarVal<T> extends Val {
     }
   }
   get canon() {
-    return (this.val as any).toString()
+    return (this.peg as any).toString()
   }
   same(peer: Val): boolean {
-    return peer instanceof ScalarVal ? peer.val === this.val : super.same(peer)
+    return peer instanceof ScalarVal ? peer.peg === this.peg : super.same(peer)
   }
 
   gen(_log: any[]) {
-    return this.val
+    return this.peg
   }
 }
 
 
 class NumberVal extends ScalarVal<number> {
-  constructor(val: number) {
-    super(val, Number)
+  constructor(peg: number) {
+    super(peg, Number)
   }
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarVal && peer.type === Integer) {
@@ -277,19 +283,19 @@ class NumberVal extends ScalarVal<number> {
 
 
 class IntegerVal extends ScalarVal<number> {
-  constructor(val: number) {
-    if (!Number.isInteger(val)) {
+  constructor(peg: number) {
+    if (!Number.isInteger(peg)) {
       throw new Error('not-integer')
     }
-    super(val, Integer)
+    super(peg, Integer)
   }
   unify(peer: Val, ctx: Context): Val {
-    if (peer instanceof ScalarTypeVal && peer.val === Number) {
+    if (peer instanceof ScalarTypeVal && peer.peg === Number) {
       return this
     }
     else if (peer instanceof ScalarVal &&
       peer.type === Number &&
-      this.val === peer.val) {
+      this.peg === peer.peg) {
       return this
     }
     else {
@@ -300,22 +306,22 @@ class IntegerVal extends ScalarVal<number> {
 
 
 class StringVal extends ScalarVal<string> {
-  constructor(val: string) {
-    super(val, String)
+  constructor(peg: string) {
+    super(peg, String)
   }
   unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
   }
   get canon() {
-    return JSON.stringify(this.val)
+    return JSON.stringify(this.peg)
   }
 
 }
 
 
 class BooleanVal extends ScalarVal<boolean> {
-  constructor(val: boolean) {
-    super(val, Boolean)
+  constructor(peg: boolean) {
+    super(peg, Boolean)
   }
   unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
@@ -330,24 +336,66 @@ class BooleanVal extends ScalarVal<boolean> {
 
 
 class MapVal extends Val {
-  constructor(val: { [key: string]: Val }) {
-    super(val)
+  static SPREAD = Symbol('spread')
+
+  spread = {
+    cj: (new ConjunctVal([]) as Val),
+    dj: (new DisjunctVal([]) as Val),
+  }
+
+  constructor(peg: { [key: string]: Val }) {
+    super(peg)
+
+    let spread = (this.peg as any)[MapVal.SPREAD]
+    delete (this.peg as any)[MapVal.SPREAD]
+
+    if (spread) {
+      if ('&' === spread.o) {
+        (this.spread.cj as ConjunctVal).append(spread.v)
+      }
+
+      // TODO: implement in unify
+      else if ('|' === spread.o) {
+        (this.spread.dj as DisjunctVal).append(spread.v)
+      }
+    }
   }
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
+    W += 2
     let done: boolean = true
     let out: MapVal = this
 
+    // console.log(' '.repeat(W) + 'MV UNIFY A', this.id, this.canon, peer.canon)
+
+
     if (DONE !== this.done) {
       out = new MapVal({})
+      out.spread.cj = this.spread.cj
+      out.spread.dj = this.spread.dj
+
       out.done = this.done + 1
 
-      // Always unify children against TOP first
-      for (let key in this.val) {
-        let oval = out.val[key] = this.val[key].unify(TOP, ctx.descend(key))
-        done = (done && DONE === out.val[key].done)
+      if (DONE !== this.spread.cj.done) {
+        // console.log(' '.repeat(W) + 'MV SPREAD CJ A', this.id, this.spread.cj.canon, '%', this.spread.cj.constructor.name)
+        out.spread.cj = this.spread.cj.unify(TOP, ctx)
+        // console.log(' '.repeat(W)+'MV UC SPREAD CJ', out.spread.cj.canon, this.spread.cj.canon)
+      }
+
+      if (DONE !== this.spread.dj.done) {
+        out.spread.dj = this.spread.dj.unify(TOP, ctx)
+      }
+
+
+      // Always unify children first
+      for (let key in this.peg) {
+        // console.log(' '.repeat(W) + 'MV UC SPREAD', this.id, key, this.peg[key].canon, out.spread.cj.canon)
+
+        let oval = out.peg[key] = this.peg[key].unify(out.spread.cj, ctx.descend(key))
+        //let oval = out.peg[key] = this.peg[key].unify(TOP, ctx.descend(key))
+        done = (done && DONE === out.peg[key].done)
 
         if (oval instanceof Nil) {
           ctx.err.push(oval)
@@ -356,14 +404,20 @@ class MapVal extends Val {
     }
 
 
+    /*
+    if (8 < Q++) {
+      process.exit(1)
+    }
+    */
+
     if (peer instanceof MapVal) {
       let upeer: MapVal = (peer.unify(TOP, ctx) as MapVal)
 
-      for (let peerkey in upeer.val) {
-        let peerchild = upeer.val[peerkey]
-        let child = out.val[peerkey]
+      for (let peerkey in upeer.peg) {
+        let peerchild = upeer.peg[peerkey]
+        let child = out.peg[peerkey]
 
-        let oval = out.val[peerkey] =
+        let oval = out.peg[peerkey] =
           undefined === child ? peerchild :
             child instanceof Nil ? child :
               peerchild instanceof Nil ? peerchild :
@@ -378,24 +432,32 @@ class MapVal extends Val {
       }
 
       out.done = done ? DONE : out.done
+
+      // console.log(' '.repeat(W) + 'MV OUT A', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
+      W -= 2
       return out
     }
     else {
       out.done = done ? DONE : out.done
-      return UNIFIER(out, peer, ctx)
+      out = (UNIFIER(out, peer, ctx) as MapVal)
+
+      // console.log(' '.repeat(W) + 'MV OUT B', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
+
+      W -= 2
+      return out
     }
   }
 
   get canon() {
-    return '{' + Object.keys(this.val)
-      .map(k => [JSON.stringify(k) + ':' + this.val[k].canon]).join(',') + '}'
+    return '{' + Object.keys(this.peg)
+      .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') + '}'
   }
 
 
   gen(log: any[]) {
     let out: any = {}
-    for (let p in this.val) {
-      out[p] = this.val[p].gen(log)
+    for (let p in this.peg) {
+      out[p] = this.peg[p].gen(log)
     }
     return out
   }
@@ -405,37 +467,38 @@ class MapVal extends Val {
 
 
 class ConjunctVal extends Val {
-  constructor(val: Val[]) {
-    super(val)
+  constructor(peg: Val[]) {
+    super(peg)
   }
+
+  // NOTE: mutation!
   append(peer: Val): ConjunctVal {
-    return new ConjunctVal([...this.val, peer])
+    this.peg.push(peer)
+    return this
   }
-  prepend(peer: Val): ConjunctVal {
-    return new ConjunctVal([peer, ...this.val])
-  }
+
   unify(peer: Val, ctx: Context): Val {
     let done = true
 
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
-    for (let vI = 0; vI < this.val.length; vI++) {
-      upeer[vI] = this.val[vI].unify(peer, ctx)
+    for (let vI = 0; vI < this.peg.length; vI++) {
+      upeer[vI] = this.peg[vI].unify(peer, ctx)
       done = done && DONE === upeer[vI].done
-      // console.log('Ca', vI, this.val[vI].canon, peer.canon, upeer[vI].canon)
+      // // console.log('Ca', vI, this.peg[vI].canon, peer.canon, upeer[vI].canon)
 
       if (upeer[vI] instanceof Nil) {
         return Nil.make(
           ctx,
           '&peer[' + upeer[vI].canon + ',' + peer.canon + ']',
-          this.val[vI],
+          this.peg[vI],
           peer
         )
       }
     }
 
-    // console.log('Cb', upeer.map(x => x.canon))
+    // // console.log('Cb', upeer.map(x => x.canon))
 
 
     // TODO: FIX: conjuncts get replicated inside each other
@@ -447,11 +510,11 @@ class ConjunctVal extends Val {
 
     let oI = 0
     for (let uI = 1; uI < upeer.length; uI++) {
-      // console.log('Cu', oI, uI, outvals.map(x => x.canon))
+      // // console.log('Cu', oI, uI, outvals.map(x => x.canon))
 
       if (outvals[oI] instanceof ConjunctVal) {
-        outvals.splice(oI, 0, ...outvals[oI].val)
-        oI += outvals[oI].val.length
+        outvals.splice(oI, 0, ...outvals[oI].peg)
+        oI += outvals[oI].peg.length
         done = false
       }
       else {
@@ -471,14 +534,17 @@ class ConjunctVal extends Val {
       }
     }
 
-    // console.log('Cc', outvals.map(x => x.canon), outvals)
+    // // console.log('Cc', outvals.map(x => x.canon), outvals)
 
     let out: Val
 
     //let why = ''
 
     if (0 === outvals.length) {
-      out = Nil.make(ctx, '&empty', this)
+      //out = Nil.make(ctx, '&empty', this)
+
+      // Empty conjuncts evaporate.
+      out = TOP
       //why += 'A'
     }
 
@@ -492,7 +558,7 @@ class ConjunctVal extends Val {
       //why += 'C'
     }
 
-    // console.log('Cd', why, out.val)
+    // // console.log('Cd', why, out.peg)
 
     out.done = done ? DONE : this.done + 1
 
@@ -501,15 +567,15 @@ class ConjunctVal extends Val {
 
   // TODO: need a well-defined val order so conjunt canon is always the same
   get canon() {
-    return this.val.map((v: Val) => v.canon).join('&')
+    return this.peg.map((v: Val) => v.canon).join('&')
   }
 
   gen(log: any[]) {
-    if (0 < this.val.length) {
+    if (0 < this.peg.length) {
 
       // Default is just the first term - does this work?
       // TODO: maybe use a PrefVal() ?
-      let v: Val = this.val[0]
+      let v: Val = this.peg[0]
 
 
       let out = undefined
@@ -531,26 +597,25 @@ class ConjunctVal extends Val {
 
 
 
-
-
 class DisjunctVal extends Val {
-  constructor(val: Val[]) {
-    super(val)
+  constructor(peg: Val[]) {
+    super(peg)
   }
+
+  // NOTE: mutation!
   append(peer: Val): DisjunctVal {
-    return new DisjunctVal([...this.val, peer])
+    this.peg.push(peer)
+    return this
   }
-  prepend(peer: Val): ConjunctVal {
-    return new DisjunctVal([peer, ...this.val])
-  }
+
   unify(peer: Val, ctx: Context): Val {
     let done = true
 
     let oval: Val[] = []
 
     // Conjunction (&) distributes over disjunction (|)
-    for (let vI = 0; vI < this.val.length; vI++) {
-      oval[vI] = this.val[vI].unify(peer, ctx)
+    for (let vI = 0; vI < this.peg.length; vI++) {
+      oval[vI] = this.peg[vI].unify(peer, ctx)
       done = done && DONE === oval[vI].done
     }
 
@@ -558,7 +623,7 @@ class DisjunctVal extends Val {
     if (1 < oval.length) {
       for (let vI = 0; vI < oval.length; vI++) {
         if (oval[vI] instanceof DisjunctVal) {
-          oval.splice(vI, 1, ...oval[vI].val)
+          oval.splice(vI, 1, ...oval[vI].peg)
         }
       }
 
@@ -578,12 +643,14 @@ class DisjunctVal extends Val {
 
     if (1 == oval.length) {
       out = oval[0]
+      // console.log('DJ OUT A', out.canon)
     }
     else if (0 == oval.length) {
       return Nil.make(ctx, '|:empty', this)
     }
     else {
       out = new DisjunctVal(oval)
+      // console.log('DJ OUT C', out.canon)
     }
 
     out.done = done ? DONE : this.done + 1
@@ -591,19 +658,19 @@ class DisjunctVal extends Val {
     return out
   }
   get canon() {
-    return this.val.map((v: Val) => v.canon).join('|')
+    return this.peg.map((v: Val) => v.canon).join('|')
   }
   gen(log: any[]) {
-    if (0 < this.val.length) {
+    if (0 < this.peg.length) {
 
-      let vals = this.val.filter((v: Val) => v instanceof PrefVal)
+      let vals = this.peg.filter((v: Val) => v instanceof PrefVal)
 
-      vals = 0 === vals.length ? this.val : vals
+      vals = 0 === vals.length ? this.peg : vals
 
       let val = vals[0]
 
-      for (let vI = 1; vI < this.val.length; vI++) {
-        val = val.unify(this.val[vI])
+      for (let vI = 1; vI < this.peg.length; vI++) {
+        val = val.unify(this.peg[vI])
       }
 
       return val.gen(log)
@@ -621,15 +688,15 @@ class RefVal extends Val {
   parts: string[]
   absolute: boolean
 
-  constructor(val: string) {
-    super(val)
-    this.parts = val.split('/').filter(p => '' != p)
-    this.absolute = val.startsWith('/')
+  constructor(peg: string) {
+    super(peg)
+    this.parts = peg.split('/').filter(p => '' != p)
+    this.absolute = peg.startsWith('/')
   }
 
   append(part: string) {
     this.parts.push(part)
-    this.val = (this.absolute ? '/' : '') + this.parts.join('/')
+    this.peg = (this.absolute ? '/' : '') + this.parts.join('/')
   }
 
   unify(peer: Val, ctx: Context): Val {
@@ -638,10 +705,10 @@ class RefVal extends Val {
 
     if (resolved instanceof RefVal) {
       if (TOP === peer) {
-        out = new RefVal(this.val)
+        out = new RefVal(this.peg)
       }
       else if (peer instanceof Nil) {
-        out = Nil.make(ctx, 'ref[' + this.val + ']', this, peer)
+        out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
       }
       else {
         out = new ConjunctVal([this, peer])
@@ -656,7 +723,7 @@ class RefVal extends Val {
     return out
   }
   get canon() {
-    return this.val
+    return this.peg
   }
   gen(log: any[]) {
     log.push(this.canon)
@@ -668,47 +735,62 @@ class RefVal extends Val {
 
 class PrefVal extends Val {
   pref: Val
-  constructor(val: any, pref?: any) {
-    super(val)
-    this.pref = pref || val
+  constructor(peg: any, pref?: any) {
+    super(peg)
+    this.pref = pref || peg
   }
 
   // PrefVal unify always returns a PrefVal
   // PrevVals can only be removed by becoming Nil in a Disjunct
   unify(peer: Val, ctx: Context): Val {
+    let done = true
+
+    // console.log('PV A', this.canon, peer.canon)
+
     let out: Val
     if (peer instanceof PrefVal) {
       out = new PrefVal(
-        this.val.unify(peer.val, ctx),
+        this.peg.unify(peer.peg, ctx),
         this.pref.unify(peer.pref, ctx)
       )
     }
     else {
       out = new PrefVal(
-        this.val.unify(peer, ctx),
+        this.peg.unify(peer, ctx),
         this.pref.unify(peer, ctx)
       )
     }
 
-    if (out.val instanceof Nil) {
+    done = done && DONE === out.peg.done &&
+      (null != (out as PrefVal).pref ? DONE === (out as PrefVal).pref.done : true)
+
+    // console.log('PV', done, out.peg.done, (out as PrefVal).pref.done)
+
+    // console.log('PV B', out.canon)
+
+    if (out.peg instanceof Nil) {
       out = (out as PrefVal).pref
     }
     else if ((out as PrefVal).pref instanceof Nil) {
-      out = out.val
+      out = out.peg
     }
+
+    out.done = done ? DONE : this.done + 1
+
+    // console.log('PV C', out.canon)
 
     return out
   }
 
   get canon() {
-    return this.pref instanceof Nil ? this.val.canon : '*' + this.pref.canon
+    return this.pref instanceof Nil ? this.peg.canon : '*' + this.pref.canon
   }
 
   gen(log: any[]) {
     log.push(this.canon)
 
     let val = !(this.pref instanceof Nil) ? this.pref :
-      !(this.val instanceof Nil) ? this.val :
+      !(this.peg instanceof Nil) ? this.peg :
         undefined
 
     return undefined === val ? undefined : val.gen(log)

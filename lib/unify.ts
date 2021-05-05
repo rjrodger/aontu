@@ -21,7 +21,7 @@ type Path = string[]
 
 
 class Context {
-  root: MapVal
+  root: Val
   path: Path
   err: Nil[]
 
@@ -47,12 +47,12 @@ class Context {
   find(ref: RefVal) {
 
     // TODO: relative paths
-    if (ref.absolute) {
+    if (this.root instanceof MapVal && ref.absolute) {
       let node: MapVal = this.root
       let pI = 0
       for (; pI < ref.parts.length && node instanceof MapVal; pI++) {
         let part = ref.parts[pI]
-        node = node.val[part]
+        node = node.peg[part]
       }
 
       if (pI === ref.parts.length) {

@@ -8,8 +8,8 @@ declare abstract class Val {
     row: number;
     col: number;
     top?: boolean;
-    val?: any;
-    constructor(val?: any, path?: Path);
+    peg?: any;
+    constructor(peg?: any, path?: Path);
     same(peer: Val): boolean;
     abstract unify(peer: Val, ctx: Context): Val;
     abstract get canon(): string;
@@ -27,7 +27,7 @@ declare class Integer {
 }
 declare type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
 declare class ScalarTypeVal extends Val {
-    constructor(val: ScalarConstructor);
+    constructor(peg: ScalarConstructor);
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     same(peer: Val): boolean;
@@ -35,33 +35,38 @@ declare class ScalarTypeVal extends Val {
 }
 declare class ScalarVal<T> extends Val {
     type: any;
-    constructor(val: T, type: ScalarConstructor);
+    constructor(peg: T, type: ScalarConstructor);
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     same(peer: Val): boolean;
     gen(_log: any[]): any;
 }
 declare class NumberVal extends ScalarVal<number> {
-    constructor(val: number);
+    constructor(peg: number);
     unify(peer: Val, ctx: Context): Val;
 }
 declare class IntegerVal extends ScalarVal<number> {
-    constructor(val: number);
+    constructor(peg: number);
     unify(peer: Val, ctx: Context): Val;
 }
 declare class StringVal extends ScalarVal<string> {
-    constructor(val: string);
+    constructor(peg: string);
     unify(peer: Val, ctx: Context): Val;
     get canon(): string;
 }
 declare class BooleanVal extends ScalarVal<boolean> {
-    constructor(val: boolean);
+    constructor(peg: boolean);
     unify(peer: Val, ctx: Context): Val;
     static TRUE: BooleanVal;
     static FALSE: BooleanVal;
 }
 declare class MapVal extends Val {
-    constructor(val: {
+    static SPREAD: symbol;
+    spread: {
+        cj: Val;
+        dj: Val;
+    };
+    constructor(peg: {
         [key: string]: Val;
     });
     unify(peer: Val, ctx: Context): Val;
@@ -69,17 +74,15 @@ declare class MapVal extends Val {
     gen(log: any[]): any;
 }
 declare class ConjunctVal extends Val {
-    constructor(val: Val[]);
+    constructor(peg: Val[]);
     append(peer: Val): ConjunctVal;
-    prepend(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     gen(log: any[]): any;
 }
 declare class DisjunctVal extends Val {
-    constructor(val: Val[]);
+    constructor(peg: Val[]);
     append(peer: Val): DisjunctVal;
-    prepend(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     gen(log: any[]): any;
@@ -87,7 +90,7 @@ declare class DisjunctVal extends Val {
 declare class RefVal extends Val {
     parts: string[];
     absolute: boolean;
-    constructor(val: string);
+    constructor(peg: string);
     append(part: string): void;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
@@ -95,7 +98,7 @@ declare class RefVal extends Val {
 }
 declare class PrefVal extends Val {
     pref: Val;
-    constructor(val: any, pref?: any);
+    constructor(peg: any, pref?: any);
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     gen(log: any[]): any;

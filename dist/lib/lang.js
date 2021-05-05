@@ -25,7 +25,8 @@ let AontuJsonic = function aontu(jsonic) {
             '#A&': { c: '&' },
             '#A|': { c: '|' },
             '#A/': { c: '/' },
-            '#A*': { c: '*' }, // TODO: REVIEW char as * is a bit overloaded
+            '#A*': { c: '*' },
+            '#A=': { c: '=' },
         },
         map: {
             merge: (prev, curr) => {
@@ -45,6 +46,7 @@ let AontuJsonic = function aontu(jsonic) {
     let DJ = jsonic.token['#A|'];
     let FS = jsonic.token['#A/'];
     let AK = jsonic.token['#A*'];
+    let EQ = jsonic.token['#A='];
     jsonic.rule('expr', () => {
         return new jsonic_1.RuleSpec({
             open: [
@@ -121,7 +123,7 @@ let AontuJsonic = function aontu(jsonic) {
                 let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
                 if (cn) {
                     if (r.node.o instanceof val_1.DisjunctVal) {
-                        r.node.o.val.push(cn);
+                        r.node.o.append(cn);
                     }
                     else {
                         // this rule was just a pass-through
@@ -156,7 +158,7 @@ let AontuJsonic = function aontu(jsonic) {
                 let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
                 if (cn) {
                     if (r.node.o instanceof val_1.ConjunctVal) {
-                        r.node.o.val.push(cn);
+                        r.node.o.append(cn);
                     }
                     else {
                         r.node.o = cn;
@@ -186,7 +188,21 @@ let AontuJsonic = function aontu(jsonic) {
             ],
         });
     });
-    // pref is a unary operator: *1
+    jsonic.rule('pair', (rs) => {
+        rs.def.open.unshift({
+            s: [[CJ, DJ], EQ], p: 'val', u: { spread: true }
+        });
+        // TODO: make before/after function[]
+        let orig_bc = rs.def.bc;
+        rs.def.bc = function (rule, ctx) {
+            let out = orig_bc.call(this, rule, ctx);
+            if (rule.use.spread) {
+                rule.node[val_1.MapVal.SPREAD] = { o: rule.open[0].src, v: rule.child.node };
+            }
+            return out;
+        };
+        return rs;
+    });
     jsonic.rule('pref', () => {
         return new jsonic_1.RuleSpec({
             open: [

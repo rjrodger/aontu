@@ -2,7 +2,7 @@ import { Val, RefVal, MapVal, Nil } from './val';
 import { Lang } from './lang';
 declare type Path = string[];
 declare class Context {
-    root: MapVal;
+    root: Val;
     path: Path;
     err: Nil[];
     constructor(cfg: {

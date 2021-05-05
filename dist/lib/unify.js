@@ -19,12 +19,12 @@ class Context {
     }
     find(ref) {
         // TODO: relative paths
-        if (ref.absolute) {
+        if (this.root instanceof val_1.MapVal && ref.absolute) {
             let node = this.root;
             let pI = 0;
             for (; pI < ref.parts.length && node instanceof val_1.MapVal; pI++) {
                 let part = ref.parts[pI];
-                node = node.val[part];
+                node = node.peg[part];
             }
             if (pI === ref.parts.length) {
                 return node;

@@ -59,6 +59,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       '#A|': { c: '|' },
       '#A/': { c: '/' },
       '#A*': { c: '*' }, // TODO: REVIEW char as * is a bit overloaded
+      '#A=': { c: '=' },
     },
 
     map: {
@@ -81,8 +82,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   let CJ = jsonic.token['#A&']
   let DJ = jsonic.token['#A|']
   let FS = jsonic.token['#A/']
-
   let AK = jsonic.token['#A*']
+  let EQ = jsonic.token['#A=']
 
 
   jsonic.rule('expr', () => {
@@ -162,7 +163,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         let cn = r.child.node?.o || r.child.node
         if (cn) {
           if (r.node.o instanceof DisjunctVal) {
-            r.node.o.val.push(cn)
+            r.node.o.append(cn)
           }
           else {
             // this rule was just a pass-through
@@ -199,7 +200,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         let cn = r.child.node?.o || r.child.node
         if (cn) {
           if (r.node.o instanceof ConjunctVal) {
-            r.node.o.val.push(cn)
+            r.node.o.append(cn)
           }
           else {
             r.node.o = cn
@@ -208,7 +209,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       }
     })
   })
-
 
 
   jsonic.rule('path', () => {
@@ -235,7 +235,27 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   })
 
 
-  // pref is a unary operator: *1
+  jsonic.rule('pair', (rs: RuleSpec) => {
+    rs.def.open.unshift({
+      s: [[CJ, DJ], EQ], p: 'val', u: { spread: true }
+    })
+
+    // TODO: make before/after function[]
+    let orig_bc = rs.def.bc
+    rs.def.bc = function(rule: Rule, ctx: Context) {
+      let out = orig_bc.call(this, rule, ctx)
+
+      if (rule.use.spread) {
+        rule.node[MapVal.SPREAD] = { o: rule.open[0].src, v: rule.child.node }
+      }
+
+      return out
+    }
+
+    return rs
+  })
+
+
   jsonic.rule('pref', () => {
     return new RuleSpec({
       open: [
