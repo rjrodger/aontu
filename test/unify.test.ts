@@ -90,10 +90,12 @@ describe('unify', function() {
     let uc = (s: string) => new Unify(s).res.canon
 
     expect(uc('a:{z:*3|number},d:{&=/a,b:{},c:{z:4}}'))
-      .equal('{"a":{"z":*3|number},"d":{"b":{"z":*3|number},"c":{"z":4}}}')
+      .equal('{"a":{"z":*3|number},' +
+        '"d":{&={"z":*3|number},"b":{"z":*3|number},"c":{"z":4}}}')
 
     expect(uc('a:{z:*3|number},d:{&=/a,b:{z:"bad"},c:{z:4}}'))
-      .equal('{"a":{"z":*3|number},"d":{"b":{"z":nil},"c":{"z":4}}}')
+      .equal('{"a":{"z":*3|number},' +
+        '"d":{&={"z":*3|number},"b":{"z":nil},"c":{"z":4}}}')
 
     expect(new Unify('a:{z:*3|number},d:{&=/a,b:{},c:{z:4}}').res.gen([]))
       .equal({ a: { z: 3 }, d: { b: { z: 3 }, c: { z: 4 } } })
@@ -163,22 +165,22 @@ describe('unify', function() {
     let uc = (s: string) => new Unify(s).res.canon
 
     expect(uc('a:{&={x:1,y:integer},b:{y:1},c:{y:2}}'))
-      .equal('{"a":{"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+      .equal('{"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
 
     expect(uc('a:{&={x:1,y:integer},b:{y:1},c:{y:true}}'))
-      .equal('{"a":{"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
+      .equal('{"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
 
     expect(uc('a:{&={x:1,y:integer,z:*3|number},b:{y:1},c:{y:true}}'))
-      .equal('{"a":{"b":{"y":1,"x":1,"z":*3|number},"c":{"y":nil,"x":1,"z":*3|number}}}')
+      .equal('{"a":{&={"x":1,"y":integer,"z":*3|number},"b":{"y":1,"x":1,"z":*3|number},"c":{"y":nil,"x":1,"z":*3|number}}}')
 
     expect(uc('q:{x:1,y:integer},a:{&=/q,b:{y:1},c:{y:2}}'))
-      .equal('{"q":{"x":1,"y":integer},"a":{"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+      .equal('{"q":{"x":1,"y":integer},"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
 
     expect(uc('q:{x:1,y:integer},a:{&=/q,b:{y:1},c:{y:true}}'))
-      .equal('{"q":{"x":1,"y":integer},"a":{"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
+      .equal('{"q":{"x":1,"y":integer},"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
 
     expect(uc('q:{x:1,y:integer,z:*3|number},a:{&=/q,b:{y:1,z:4},c:{y:2}}'))
-      .equal('{"q":{"x":1,"y":integer,"z":*3|number},"a":{"b":{"y":1,"z":4,"x":1},"c":{"y":2,"x":1,"z":*3|number}}}')
+      .equal('{"q":{"x":1,"y":integer,"z":*3|number},"a":{&={"x":1,"y":integer,"z":*3|number},"b":{"y":1,"z":4,"x":1},"c":{"y":2,"x":1,"z":*3|number}}}')
 
   })
 

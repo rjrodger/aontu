@@ -1,8 +1,8 @@
-import { Jsonic, Context } from 'jsonic';
+import { Resolver } from '@jsonic/multisource';
 declare type Options = {
     src: string;
     print: number;
-    resolver: Resolver;
+    resolver?: Resolver;
+    base?: string;
 };
-declare type Resolver = (path: string, jsonic: Jsonic, ctx: Context, opts: any) => any;
-export { Options };
+export { Options, Resolver, };

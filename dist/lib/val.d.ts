@@ -63,8 +63,8 @@ declare class BooleanVal extends ScalarVal<boolean> {
 declare class MapVal extends Val {
     static SPREAD: symbol;
     spread: {
-        cj: Val;
-        dj: Val;
+        cj: Val | undefined;
+        dj: Val | undefined;
     };
     constructor(peg: {
         [key: string]: Val;

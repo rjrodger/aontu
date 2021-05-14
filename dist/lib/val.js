@@ -252,18 +252,21 @@ class MapVal extends Val {
     constructor(peg) {
         super(peg);
         this.spread = {
-            cj: new ConjunctVal([]),
-            dj: new DisjunctVal([]),
+            cj: undefined,
+            dj: undefined,
         };
         let spread = this.peg[MapVal.SPREAD];
         delete this.peg[MapVal.SPREAD];
+        // TODO: spread.v should parse as array
         if (spread) {
             if ('&' === spread.o) {
-                this.spread.cj.append(spread.v);
+                this.spread.cj =
+                    new ConjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v]);
             }
             // TODO: implement in unify
             else if ('|' === spread.o) {
-                this.spread.dj.append(spread.v);
+                this.spread.dj =
+                    new DisjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v]);
             }
         }
     }
@@ -272,39 +275,46 @@ class MapVal extends Val {
     unify(peer, ctx) {
         W += 2;
         let done = true;
-        let out = this;
-        // console.log(' '.repeat(W) + 'MV UNIFY A', this.id, this.canon, peer.canon)
-        if (DONE !== this.done) {
-            out = new MapVal({});
-            out.spread.cj = this.spread.cj;
-            out.spread.dj = this.spread.dj;
-            out.done = this.done + 1;
-            if (DONE !== this.spread.cj.done) {
-                // console.log(' '.repeat(W) + 'MV SPREAD CJ A', this.id, this.spread.cj.canon, '%', this.spread.cj.constructor.name)
-                out.spread.cj = this.spread.cj.unify(TOP, ctx);
-                // console.log(' '.repeat(W)+'MV UC SPREAD CJ', out.spread.cj.canon, this.spread.cj.canon)
-            }
-            if (DONE !== this.spread.dj.done) {
-                out.spread.dj = this.spread.dj.unify(TOP, ctx);
-            }
-            // Always unify children first
-            for (let key in this.peg) {
-                // console.log(' '.repeat(W) + 'MV UC SPREAD', this.id, key, this.peg[key].canon, out.spread.cj.canon)
-                let oval = out.peg[key] = this.peg[key].unify(out.spread.cj, ctx.descend(key));
-                //let oval = out.peg[key] = this.peg[key].unify(TOP, ctx.descend(key))
-                done = (done && DONE === out.peg[key].done);
-                if (oval instanceof Nil) {
-                    ctx.err.push(oval);
-                }
+        let out = new MapVal({});
+        out.spread.cj = this.spread.cj;
+        if (peer instanceof MapVal) {
+            out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj])));
+        }
+        out.done = this.done + 1;
+        if (this.spread.cj) {
+            out.spread.cj =
+                DONE !== this.spread.cj.done ? this.spread.cj.unify(TOP, ctx) :
+                    this.spread.cj;
+        }
+        // console.log(
+        //   ('  '.repeat(ctx.path.length)),
+        //   'MV spread', this.id, peer.id, out.id, '|',
+        //   this.canon, peer.canon, out.canon, '|',
+        //   (this.spread.cj || {}).done,
+        //   (this.spread.cj || {}).canon, (out.spread.cj || {}).canon)
+        let spread_cj = out.spread.cj || TOP;
+        // Always unify children first
+        for (let key in this.peg) {
+            let oval = out.peg[key] = this.peg[key].unify(spread_cj, ctx.descend(key));
+            done = (done && DONE === out.peg[key].done);
+            if (oval instanceof Nil) {
+                ctx.err.push(oval);
             }
         }
-        /*
-        if (8 < Q++) {
-          process.exit(1)
-        }
-        */
+        // console.log(
+        //   ('  '.repeat(ctx.path.length)),
+        //   'MV child ', this.id, peer.id, out.id, '|',
+        //   this.canon, peer.canon, out.canon, '|',
+        //   this.constructor.name,
+        //   peer.constructor.name,
+        //   out.constructor.name,
+        // )
         if (peer instanceof MapVal) {
             let upeer = peer.unify(TOP, ctx);
+            // console.log(
+            //   ('  '.repeat(ctx.path.length)),
+            //   'MV peer A', this.id, peer.id, out.id, '|',
+            //   Object.keys(this.peg), Object.keys(upeer.peg), Object.keys(out.peg))
             for (let peerkey in upeer.peg) {
                 let peerchild = upeer.peg[peerkey];
                 let child = out.peg[peerkey];
@@ -313,14 +323,29 @@ class MapVal extends Val {
                         child instanceof Nil ? child :
                             peerchild instanceof Nil ? peerchild :
                                 child.unify(peerchild, ctx.descend(peerkey));
+                if (this.spread.cj) {
+                    out.peg[peerkey] = out.peg[peerkey].unify(spread_cj, ctx);
+                }
                 done = (done && DONE === oval.done);
                 if (oval instanceof Nil) {
                     ctx.err.push(oval);
                 }
             }
+            // console.log(
+            //   ('  '.repeat(ctx.path.length)),
+            //   'MV peer B', this.id, peer.id, out.id, '|',
+            //   Object.keys(this.peg), Object.keys(upeer.peg), Object.keys(out.peg))
             out.done = done ? DONE : out.done;
             // console.log(' '.repeat(W) + 'MV OUT A', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
             W -= 2;
+            // console.log(
+            //   ('  '.repeat(ctx.path.length)),
+            //   'MV out ', this.id, peer.id, out.id, '|',
+            //   this.canon, peer.canon, out.canon, '|',
+            //   this.constructor.name,
+            //   peer.constructor.name,
+            //   out.constructor.name,
+            // )
             return out;
         }
         else {
@@ -332,8 +357,13 @@ class MapVal extends Val {
         }
     }
     get canon() {
-        return '{' + Object.keys(this.peg)
-            .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') + '}';
+        let keys = Object.keys(this.peg);
+        return '{' +
+            (this.spread.cj ? '&=' + this.spread.cj.canon +
+                (0 < keys.length ? ',' : '') : '') +
+            keys
+                .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') +
+            '}';
     }
     gen(log) {
         let out = {};
@@ -474,14 +504,12 @@ class DisjunctVal extends Val {
         let out;
         if (1 == oval.length) {
             out = oval[0];
-            // console.log('DJ OUT A', out.canon)
         }
         else if (0 == oval.length) {
             return Nil.make(ctx, '|:empty', this);
         }
         else {
             out = new DisjunctVal(oval);
-            // console.log('DJ OUT C', out.canon)
         }
         out.done = done ? DONE : this.done + 1;
         return out;
@@ -531,6 +559,7 @@ class RefVal extends Val {
             }
         }
         else {
+            //console.log('RVr', resolved.canon, peer.canon)
             out = resolved.unify(peer, ctx);
         }
         out.done = DONE === out.done ? DONE : this.done + 1;

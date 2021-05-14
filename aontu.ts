@@ -1,9 +1,21 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
+
+import { Resolver } from '@jsonic/multisource'
+
 import { Options } from './lib/common'
 import { Lang } from './lib/lang'
 import { Unify } from './lib/unify'
-import { Nil } from './lib/val'
+import { Val } from './lib/val'
+
+
+
+/*
+NEXT:
+inject path from multisource into Vals when created
+report via nil error
+also trace deps into top val and watch via model
+*/
 
 
 // TODO: error reporting
@@ -11,23 +23,27 @@ import { Nil } from './lib/val'
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
 
-// TODO: REVIEW: External Val, a subset of the internal Val
-type Val = {
-  canon: string
-  gen: (log: any[]) => any
-}
+const NoResolver = () => ({
+  path: '<no-path>',
+  full: '<no-full>',
+  base: '<no-base>'
+})
 
-const EmptyResolver = () => new Nil([], 'no-resolve')
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
  */
-function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
+function Aontu(
+  src: string | Partial<Options>,
+  popts?: Partial<Options>): Val {
   let opts = util.options(src, popts)
+
+  // console.log('A opts', opts)
+
   let lang = new Lang(opts)
   let val = lang.parse(opts.src)
-  let uni = new Unify(val)
+  let uni = new Unify((val as unknown as Val))
   return uni.res
 }
 
@@ -36,12 +52,16 @@ const util = {
     src: string | Partial<Options>,
     popts?: Partial<Options>
   ): Options => {
-    let srcopts: Partial<Options> = 'string' === typeof src ? { src } : src
+
+    // Convert convenience first param into Options.src
+    let srcopts: Partial<Options> =
+      'string' === typeof src ? { src } : src
+
     let opts: Options = {
       ...{
         src: '',
         print: 0,
-        resolver: EmptyResolver,
+        resolver: NoResolver,
       },
       ...srcopts,
       ...(popts || {}),
@@ -50,5 +70,10 @@ const util = {
   },
 }
 
-export { Aontu, Val, util }
+export {
+  Aontu,
+  Val,
+  Resolver,
+  util
+}
 export default Aontu

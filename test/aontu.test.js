@@ -13,7 +13,7 @@ var expect = Code.expect
 
 let { Aontu, util } = require('..')
 
-let { FileResolver } = require('@jsonic/multisource/resolver/file')
+let { makeFileResolver } = require('@jsonic/multisource')
 
 describe('aontu', function () {
   it('happy', async () => {
@@ -21,13 +21,33 @@ describe('aontu', function () {
     expect(v0.canon).equals('{"a":1}')
 
     expect(Aontu('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}')
-    expect(Aontu(`a:{b:1},a:{c:2}`).canon).equal('{"a":{"b":1,"c":2}}')
+    expect(Aontu('a:b:1,a:c:2').canon).equal('{"a":{"b":1,"c":2}}')
+
     expect(
       Aontu(`
 a:{b:1}
 a:{c:2}
 `).canon
     ).equal('{"a":{"b":1,"c":2}}')
+
+    
+    expect(Aontu(`
+u: { x: 1, y: number}
+q: a: /u
+w: b: /q/a & {y:2,z:3}
+`).canon)
+      .equal('{"u":{"x":1,"y":number},'+
+             '"q":{"a":{"x":1,"y":number}},"w":{"b":{"x":1,"y":2,"z":3}}}')
+
+    expect(Aontu(`
+q: a: { x: 1, y: number}
+w: b: /q/a & {y:2,z:3}
+`).gen([])).equal({ q: { a: { x: 1, y: undefined } }, w: { b: { x: 1, y: 2, z: 3 } } })
+
+    // TODO: fix in jsonic
+    expect(Aontu('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}')
+    
+
   })
 
   it('util', async () => {
@@ -44,7 +64,7 @@ a:{c:2}
 
   it('file', async () => {
     let v0 = Aontu('@"' + __dirname + '/t02.jsonic"', {
-      resolver: FileResolver,
+      resolver: makeFileResolver(),
     })
     //console.log(v0.canon)
     expect(v0.canon).equal(
@@ -75,7 +95,8 @@ a:{c:2}
 
   it('pref', async () => {
     let v0 = Aontu('@"' + __dirname + '/t03.jsonic"', {
-      resolver: FileResolver,
+      resolver: makeFileResolver(),
+      base: __dirname,
     })
 
     //console.log(v0.canon)
@@ -92,4 +113,24 @@ a:{c:2}
       qaz: { name: 'bar', size: undefined },
     })
   })
+
+
+  it('map-spread', () => {
+    let v0 = Aontu('c:{&={x:2},y:{k:3},z:{k:4}}')
+    //console.dir(v0,{depth:null})
+    expect(v0.canon).equals('{"c":{&={"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}')
+
+    let v1 = Aontu('c:{&={x:2},z:{k:4}},c:{y:{k:3}}')
+    //console.dir(v0,{depth:null})
+    expect(v1.canon).equals('{"c":{&={"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}')
+
+
+    let v10 = Aontu('a:{&={x:1}},b:/a,b:{y:{k:2}},c:{&={x:2}},c:{y:{k:3}}')
+    //console.dir(v0,{depth:null})
+    expect(v10.canon)
+      .equals('{"a":{&={"x":1}},'+
+              '"b":{&={"x":1},"y":{"k":2,"x":1}},'+
+              '"c":{&={"x":2},"y":{"k":3,"x":2}}}')
+  })
+
 })

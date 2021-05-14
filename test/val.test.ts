@@ -39,8 +39,10 @@ import {
 
 
 let lang = new Lang()
-let P = lang.parse.bind(lang)
-let D = (x: any) => console.dir(x, { depth: null })
+let PL = lang.parse.bind(lang)
+let P = (x: string | string[], ctx?: any) =>
+  'string' === typeof (x) ? PL(x, ctx) : x.map(s => PL(s, ctx))
+//let D = (x: any) => console.dir(x, { depth: null })
 let UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
 
 describe('val', function() {
@@ -338,12 +340,12 @@ describe('val', function() {
       b: P('{ y: 2 }'),
     })
 
-    console.dir(m0, { depth: null })
+    //console.dir(m0, { depth: null })
 
-    //expect(m0.canon).equals('{}')
+    expect(m0.canon).equals('{&={"x":1},"a":{"y":1},"b":{"y":2}}')
 
     let u0 = m0.unify(TOP, ctx)
-    console.log(u0.canon)
+    expect(u0.canon).equals('{&={"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
   })
 
 
@@ -404,7 +406,7 @@ describe('val', function() {
   it('disjunct', () => {
     let ctx = makeCtx()
 
-    let d1 = new DisjunctVal(P(['1', '2']))
+    let d1 = new DisjunctVal([P('1'), P('2')])
 
     expect(d1.unify(P('2'), ctx).canon).equal('2')
 
@@ -494,32 +496,45 @@ describe('val', function() {
 
 
   it('ref-conjunct', () => {
-    let m0 = P(`
-a: 1
-b: /a
-c: 1 & /a
-d: 1
-e: /d & /a
-f: /b
-`, { xlog: -1 })
+    /*
+        let m0 = P(`
+    a: 1
+    b: /a
+    c: 1 & /a
+    d: 1
+    e: /d & /a
+    f: /b
+    `, { xlog: -1 })
+    
+        let g = []
+        console.log('m0===', m0.done, m0.canon)
+        g = []; console.log(m0.gen(g))
+    
+        let c0 = new Context({ root: m0 })
+        let u0 = m0.unify(TOP, c0)
+    
+        console.log('u0===', u0.done, u0.canon)
+        g = []; console.log(u0.gen(g))
+    
+        let c0a = new Context({ root: u0 })
+        let u0a = u0.unify(TOP, c0a)
+    
+        console.log('u0a===', u0a.done, u0a.canon)
+        g = []; console.log(u0a.gen(g))
+    */
 
-    let g = []
-    console.log('m0===', m0.done, m0.canon)
-    g = []; console.log(m0.gen(g))
+    let m1 = P(`
+u: { x: 1, y: number}
+q: a: /u
+w: b: /q/a & {y:2, z: 3}
+`)
 
-    let c0 = new Context({ root: m0 })
-    let u0 = m0.unify(TOP, c0)
-
-    console.log('u0===', u0.done, u0.canon)
-    g = []; console.log(u0.gen(g))
-
-    let c0a = new Context({ root: u0 })
-    let u0a = u0.unify(TOP, c0a)
-
-    console.log('u0a===', u0a.done, u0a.canon)
-    g = []; console.log(u0a.gen(g))
-
-
+    let u1a = m1.unify(TOP, new Context({ root: m1 }))
+    console.log('u1a', u1a.done, u1a.canon)
+    //console.dir(u1a, { depth: null })
+    let u1b = u1a.unify(TOP, new Context({ root: u1a }))
+    console.log('u1b', u1b.done, u1b.canon)
+    //console.dir(u1b, { depth: null })
   })
 
 
@@ -576,31 +591,31 @@ b: c: 1
     p0.peg = new ScalarTypeVal(String)
     expect(p0.canon).equals('*"p0"')
     expect(p0.gen([])).equals('p0')
-
+  
     p0.pref = new Nil([], 'test:pref')
     expect(p0.canon).equals('string')
     expect(p0.gen([])).equals(undefined)
-
+  
     p0.peg = new Nil([], 'test:val')
     expect(p0.canon).equals('nil')
     expect(p0.gen([])).equals(undefined)
-
+  
     let p1 = new PrefVal(new StringVal('p1'))
     let p2 = new PrefVal(new ScalarTypeVal(String))
-
+  
     let up12 = p1.unify(p2, ctx)
     expect(up12.canon).equals('*"p1"')
-
+  
     let up21 = p2.unify(p1, ctx)
     expect(up21.canon).equals('*"p1"')
-
+  
     let up2s0 = p2.unify(new StringVal('s0'), ctx)
     expect(up2s0.canon).equals('*"s0"')
-
+  
     // NOTE: once made concrete a prefval is fixed
     expect(up2s0.unify(new StringVal('s1'), ctx).canon)
       .equals('nil')
-
+  
     */
 
 

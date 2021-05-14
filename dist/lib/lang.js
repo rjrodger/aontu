@@ -271,23 +271,32 @@ let AontuJsonic = function aontu(jsonic) {
 };
 class Lang {
     constructor(options) {
+        this.options = {
+            src: '',
+            print: -1,
+        };
+        this.options = Object.assign({}, this.options, options);
         this.jsonic = jsonic_1.Jsonic.make()
             .use(AontuJsonic)
             .use(multisource_1.MultiSource, {
             resolver: options ? options.resolver : undefined
         });
+        // console.log('AL options', this.options)
     }
     parse(src, opts) {
-        let jm = {};
+        let jm = {
+            multisource: {
+                // NOTE: multisource has property `path` NOT `base`
+                path: this.options.base
+            }
+        };
+        // Pass through Jsonic debug log value
         if (opts && null != opts.log && Number.isInteger(opts.log)) {
             jm.log = opts.log;
         }
-        if (Array.isArray(src)) {
-            return src.map(s => this.jsonic(s, jm));
-        }
-        else {
-            return this.jsonic(src, jm);
-        }
+        // console.log('ALp jm', jm)
+        let val = this.jsonic(src, jm);
+        return val;
     }
 }
 exports.Lang = Lang;

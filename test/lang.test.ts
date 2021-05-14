@@ -10,7 +10,7 @@ var it = lab.it
 var expect = Code.expect
 
 
-import { FileResolver } from '@jsonic/multisource/resolver/file'
+import { makeFileResolver } from '@jsonic/multisource'
 
 
 
@@ -99,7 +99,7 @@ describe('lang', function() {
 
 
   it('file', () => {
-    let g0 = new Lang({ resolver: FileResolver })
+    let g0 = new Lang({ resolver: makeFileResolver() })
 
     let t01v = g0.parse('@"' + __dirname + '/t01.jsonic"')
     expect(t01v.canon).equals('{"a":1,"b":{"d":2},"c":3}')
@@ -143,8 +143,61 @@ describe('lang', function() {
 
 
   it('spreads', () => {
+    let ctx = makeCtx()
+
     let v0 = P('a:{&={x:1,y:integer},b:{y:1},c:{y:2}}')
-    console.dir(v0, { depth: null })
+    expect(v0.canon).equals('{"a":{&={"x":1,"y":integer},"b":{"y":1},"c":{"y":2}}}')
+
+    let u0 = v0.unify(TOP, ctx)
+    expect(u0.canon)
+      .equals('{"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+
+    let v1 = P('k:{x:1,y:integer},a:{&=/k,b:{y:1},c:{y:2}}')
+    expect(v1.canon)
+      .equals('{"k":{"x":1,"y":integer},"a":{&=/k,"b":{"y":1},"c":{"y":2}}}')
+
+    let c1 = makeCtx({ root: v1 })
+    let u1a = v1.unify(TOP, c1)
+    //console.log(u1a.done, u1a.canon)
+    expect(u1a.canon).
+      equal('{"k":{"x":1,"y":integer},"a":{&={"x":1,"y":integer},' +
+        '"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+
+
+    let v2 = P('a:{&=number},a:{x:1},a:{y:2}')
+    expect(v2.canon).equals('{"a":{&=number}&{"x":1}&{"y":2}}')
+    let u2 = v2.unify(TOP, ctx)
+    expect(u2.canon).equal('{"a":{&=number,"x":1,"y":2}}')
+
+    let v3 = P('a:{&=number,z:3},a:{x:1},a:{y:2}')
+    expect(v3.canon).equals('{"a":{&=number,"z":3}&{"x":1}&{"y":2}}')
+    let u3 = v3.unify(TOP, ctx)
+    expect(u3.canon).equal('{"a":{&=number,"z":3,"x":1,"y":2}}')
+
+    let v4 = P('b:{a:{&=number,z:3},a:{x:1},a:{y:2}}')
+    expect(v4.canon).equals('{"b":{"a":{&=number,"z":3}&{"x":1}&{"y":2}}}')
+    let u4 = v4.unify(TOP, ctx)
+    expect(u4.canon).equal('{"b":{"a":{&=number,"z":3,"x":1,"y":2}}}')
+
+    // Must commute!
+
+    let v5a = P('{&={x:1}}&{a:{y:1}}')
+    let u5a = v5a.unify(TOP, ctx)
+    expect(u5a.canon).equal('{&={"x":1},"a":{"y":1,"x":1}}')
+
+    let v5b = P('{a:{y:1}}&{&={x:1}}')
+    let u5b = v5b.unify(TOP, ctx)
+    expect(u5b.canon).equal('{&={"x":1},"a":{"y":1,"x":1}}')
+
+
+    let v6 = P('b:{a:{&={K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}')
+    expect(v6.canon)
+      .equals('{"b":{"a":{&={"K":0},"z":{"Z":3}}&{"x":{"X":1}}&{"y":{"Y":2}}}}')
+    let u6 = v6.unify(TOP, ctx)
+    expect(u6.canon)
+      .equal('{"b":{"a":{&={"K":0},' +
+        '"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}')
+
   })
 
 
@@ -165,6 +218,6 @@ a: {
 })
 
 
-function makeCtx() {
-  return new Context({ root: new MapVal({}) })
+function makeCtx(opts?: any) {
+  return new Context(opts || { root: new MapVal({}) })
 }

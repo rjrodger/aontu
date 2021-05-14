@@ -346,34 +346,43 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 class Lang {
   jsonic: Jsonic
+  options: Options = {
+    src: '',
+    print: -1,
+  }
 
   constructor(options?: Partial<Options>) {
+    this.options = Object.assign({}, this.options, options)
     this.jsonic = Jsonic.make()
       .use(AontuJsonic)
       .use(MultiSource, {
         resolver: options ? options.resolver : undefined
       })
+
+    // console.log('AL options', this.options)
   }
 
-  parse<T extends string | string[]>(src: T, opts?: any):
-    (T extends string ? Val : Val[]) {
+  parse(src: string, opts?: any): Val {
 
-    let jm: any = {}
+    let jm: any = {
+      multisource: {
+        // NOTE: multisource has property `path` NOT `base`
+        path: this.options.base
+      }
+    }
 
+    // Pass through Jsonic debug log value
     if (opts && null != opts.log && Number.isInteger(opts.log)) {
       jm.log = opts.log
     }
 
-    if (Array.isArray(src)) {
-      return (src.map(s => this.jsonic(s, jm)) as any)
-    }
-    else {
-      return this.jsonic(src, jm)
-    }
+    // console.log('ALp jm', jm)
 
+    let val = this.jsonic(src, jm)
+
+    return val
   }
 }
-
 
 export {
   Lang
