@@ -9,9 +9,14 @@ class Context {
         this.root = cfg.root;
         this.path = [];
         this.err = cfg.err || [];
+        this.map = cfg.map || { url: {} };
     }
     descend(key) {
-        let cfg = { root: this.root };
+        let cfg = {
+            root: this.root,
+            err: this.err,
+            map: this.map,
+        };
         let ctx = new Context(cfg);
         ctx.err = this.err;
         ctx.path = this.path.concat(key);
@@ -40,14 +45,23 @@ class Unify {
         if ('string' === typeof root) {
             root = this.lang.parse(root);
         }
+        // console.log('ROOT', root.canon, root.url)
         this.root = root;
         this.res = root;
         this.err = [];
+        this.map = {
+            url: {}
+        };
         let res = root;
         let ctx;
         while (this.dc < 111 && val_1.DONE !== res.done) {
-            ctx = new Context({ root: res, err: this.err });
+            ctx = new Context({
+                root: res,
+                err: this.err,
+                map: this.map
+            });
             res = res.unify(val_1.TOP, ctx);
+            // console.log('U', this.dc, this.map)
             this.dc++;
         }
         this.res = res;

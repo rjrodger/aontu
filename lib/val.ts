@@ -45,6 +45,8 @@ const TOP: Val = {
   path: [],
   row: -1,
   col: -1,
+  url: '',
+
 
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof DisjunctVal) {
@@ -75,6 +77,9 @@ const TOP: Val = {
 }
 
 const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
+  ctx.map.url[self.url] = true
+  ctx.map.url[peer.url] = true
+
   if (peer === TOP) {
     return self
   }
@@ -116,11 +121,14 @@ abstract class Val {
   path: string[]
   row: number = -1
   col: number = -1
+  url: string = ''
 
   top?: boolean
 
   // Actual native value.
   peg?: any
+
+  map?: any
 
   constructor(peg?: any, path?: Path) {
     this.peg = peg
@@ -367,6 +375,12 @@ class MapVal extends Val {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
+    // TODO: is it sufficient to capture source urls just here and in TOP?
+    ctx.map.url[this.url] = true
+    ctx.map.url[peer.url] = true
+
+    //console.log('MV', this.canon, this.url, peer.canon, peer.url)
+
     W += 2
     let done: boolean = true
     let out: MapVal = new MapVal({})

@@ -7,8 +7,10 @@ declare abstract class Val {
     path: string[];
     row: number;
     col: number;
+    url: string;
     top?: boolean;
     peg?: any;
+    map?: any;
     constructor(peg?: any, path?: Path);
     same(peer: Val): boolean;
     abstract unify(peer: Val, ctx: Context): Val;

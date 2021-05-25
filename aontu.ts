@@ -44,7 +44,11 @@ function Aontu(
   let lang = new Lang(opts)
   let val = lang.parse(opts.src)
   let uni = new Unify((val as unknown as Val))
-  return uni.res
+  let res = uni.res
+
+  res.map = uni.map
+
+  return res
 }
 
 const util = {

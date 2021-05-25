@@ -17,6 +17,7 @@ const TOP = {
     path: [],
     row: -1,
     col: -1,
+    url: '',
     unify(peer, ctx) {
         if (peer instanceof DisjunctVal) {
             return peer.unify(this, ctx);
@@ -42,6 +43,8 @@ const TOP = {
 };
 exports.TOP = TOP;
 const UNIFIER = (self, peer, ctx) => {
+    ctx.map.url[self.url] = true;
+    ctx.map.url[peer.url] = true;
     if (peer === TOP) {
         return self;
     }
@@ -80,6 +83,7 @@ class Val {
         this.done = 0;
         this.row = -1;
         this.col = -1;
+        this.url = '';
         this.peg = peg;
         this.path = path || [];
     }
@@ -273,6 +277,10 @@ class MapVal extends Val {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
+        // TODO: is it sufficient to capture source urls just here and in TOP?
+        ctx.map.url[this.url] = true;
+        ctx.map.url[peer.url] = true;
+        //console.log('MV', this.canon, this.url, peer.canon, peer.url)
         W += 2;
         let done = true;
         let out = new MapVal({});

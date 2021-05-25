@@ -66,6 +66,9 @@ w: b: /q/a & {y:2,z:3}
     let v0 = Aontu('@"' + __dirname + '/t02.jsonic"', {
       resolver: makeFileResolver(),
     })
+
+    console.log('MAP', v0.map)
+    
     //console.log(v0.canon)
     expect(v0.canon).equal(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}'

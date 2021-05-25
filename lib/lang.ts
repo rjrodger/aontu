@@ -318,6 +318,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       let st = rule.open[0]
       valnode.row = st.row
       valnode.col = st.col
+      valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
+
+      // console.log('VAL META', valnode.canon, valnode.url)
 
       rule.node = valnode
 
