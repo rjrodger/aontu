@@ -19,24 +19,24 @@ import {
 
 type Path = string[]
 
-type MapMap = { [name: string]: { [key: string]: any } }
+//type MapMap = { [name: string]: { [key: string]: any } }
 
 
 class Context {
   root: Val
   path: Path
   err: Nil[]
-  map: MapMap
+  //map: MapMap
 
   constructor(cfg: {
     root: Val
     err?: Nil[],
-    map?: MapMap
+    //map?: MapMap
   }) {
     this.root = cfg.root
     this.path = []
     this.err = cfg.err || []
-    this.map = cfg.map || { url: {} }
+    //this.map = cfg.map || { url: {} }
   }
 
 
@@ -44,7 +44,7 @@ class Context {
     let cfg = {
       root: this.root,
       err: this.err,
-      map: this.map,
+      // map: this.map,
     }
     let ctx = new Context(cfg)
     ctx.err = this.err
@@ -76,7 +76,7 @@ class Unify {
   root: Val
   res: Val
   err: Nil[]
-  map: MapMap
+  // map: MapMap
   dc = 0
   lang: Lang
 
@@ -91,9 +91,9 @@ class Unify {
     this.root = root
     this.res = root
     this.err = []
-    this.map = {
-      url: {}
-    }
+    //this.map = {
+    //  url: {}
+    //}
 
     let res = root
     let ctx: Context
@@ -101,7 +101,7 @@ class Unify {
       ctx = new Context({
         root: res,
         err: this.err,
-        map: this.map
+        // map: this.map
       })
       res = res.unify(TOP, ctx)
 

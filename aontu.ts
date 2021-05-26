@@ -6,7 +6,7 @@ import { Resolver } from '@jsonic/multisource'
 import { Options } from './lib/common'
 import { Lang } from './lib/lang'
 import { Unify } from './lib/unify'
-import { Val } from './lib/val'
+import { Val, Nil } from './lib/val'
 
 
 
@@ -41,12 +41,15 @@ function Aontu(
 
   // console.log('A opts', opts)
 
+
   let lang = new Lang(opts)
-  let val = lang.parse(opts.src)
+  let deps = {}
+  let val = lang.parse(opts.src, { deps: deps })
   let uni = new Unify((val as unknown as Val))
   let res = uni.res
 
-  res.map = uni.map
+  res.deps = deps
+  //res.map = uni.map
 
   return res
 }
@@ -77,6 +80,7 @@ const util = {
 export {
   Aontu,
   Val,
+  Nil,
   Resolver,
   util
 }

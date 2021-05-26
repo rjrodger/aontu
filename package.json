@@ -38,20 +38,20 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/multisource": "0.0.6",
-    "@types/node": "^15.0.0",
-    "jsonic": "jsonicjs/jsonic#60c4b636886ba96d665da912928e19547ab275d8"
+    "@jsonic/multisource": "jsonicjs/multisource",
+    "@types/node": "^15.6.1",
+    "jsonic": "jsonicjs/jsonic#nextgen"
   },
   "devDependencies": {
     "@hapi/code": "^8.0.3",
-    "@hapi/lab": "^24.2.0",
+    "@hapi/lab": "^24.2.1",
     "benchmark": "^2.1.4",
     "coveralls": "^3.1.0",
     "hapi-lab-shim": "0.0.2",
     "lab-transform-typescript": "^3.0.1",
-    "prettier": "^2.2.1",
+    "prettier": "^2.3.0",
     "serve": "^11.3.2",
     "tinyify": "^3.0.0",
-    "typescript": "^4.2.4"
+    "typescript": "^4.3.2"
   }
 }

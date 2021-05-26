@@ -1,11 +1,12 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.util = exports.Val = exports.Aontu = void 0;
+exports.util = exports.Nil = exports.Val = exports.Aontu = void 0;
 const lang_1 = require("./lib/lang");
 const unify_1 = require("./lib/unify");
 const val_1 = require("./lib/val");
 Object.defineProperty(exports, "Val", { enumerable: true, get: function () { return val_1.Val; } });
+Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return val_1.Nil; } });
 /*
 NEXT:
 inject path from multisource into Vals when created
@@ -28,10 +29,12 @@ function Aontu(src, popts) {
     let opts = util.options(src, popts);
     // console.log('A opts', opts)
     let lang = new lang_1.Lang(opts);
-    let val = lang.parse(opts.src);
+    let deps = {};
+    let val = lang.parse(opts.src, { deps: deps });
     let uni = new unify_1.Unify(val);
     let res = uni.res;
-    res.map = uni.map;
+    res.deps = deps;
+    //res.map = uni.map
     return res;
 }
 exports.Aontu = Aontu;

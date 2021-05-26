@@ -10,7 +10,7 @@ declare abstract class Val {
     url: string;
     top?: boolean;
     peg?: any;
-    map?: any;
+    deps?: any;
     constructor(peg?: any, path?: Path);
     same(peer: Val): boolean;
     abstract unify(peer: Val, ctx: Context): Val;
@@ -18,8 +18,9 @@ declare abstract class Val {
     abstract gen(log: any[]): any;
 }
 declare class Nil extends Val {
+    nil: boolean;
     why: any;
-    static make: (ctx: Context, why?: any, av?: Val | undefined, bv?: Val | undefined) => Nil;
+    static make: (ctx?: Context | undefined, why?: any, av?: Val | undefined, bv?: Val | undefined) => Nil;
     constructor(path: Path, why?: any);
     unify(_peer: Val, _ctx: Context): this;
     get canon(): string;

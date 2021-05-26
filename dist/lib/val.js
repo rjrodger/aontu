@@ -2,8 +2,6 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefVal = exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = exports.DONE = void 0;
-let Q = 0;
-let W = 0;
 const DONE = -1;
 exports.DONE = DONE;
 // TODO: move to Context to make repeatable
@@ -43,8 +41,8 @@ const TOP = {
 };
 exports.TOP = TOP;
 const UNIFIER = (self, peer, ctx) => {
-    ctx.map.url[self.url] = true;
-    ctx.map.url[peer.url] = true;
+    //ctx.map.url[self.url] = true
+    //ctx.map.url[peer.url] = true
     if (peer === TOP) {
         return self;
     }
@@ -95,6 +93,7 @@ exports.Val = Val;
 class Nil extends Val {
     constructor(path, why) {
         super(null, path);
+        this.nil = true;
         this.why = why;
         this.done = DONE;
     }
@@ -112,7 +111,8 @@ class Nil extends Val {
 }
 exports.Nil = Nil;
 Nil.make = (ctx, why, av, bv) => {
-    let nil = new Nil(ctx.path, why);
+    let path = ctx ? ctx.path : [];
+    let nil = new Nil(path, why);
     let first = null == bv ? av : (null != av && null != bv) ?
         (av.row === bv.row ? (av.col <= bv.col ? av : bv) :
             (av.row <= bv.row ? av : bv)) : null;
@@ -278,10 +278,9 @@ class MapVal extends Val {
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
         // TODO: is it sufficient to capture source urls just here and in TOP?
-        ctx.map.url[this.url] = true;
-        ctx.map.url[peer.url] = true;
+        //ctx.map.url[this.url] = true
+        //ctx.map.url[peer.url] = true
         //console.log('MV', this.canon, this.url, peer.canon, peer.url)
-        W += 2;
         let done = true;
         let out = new MapVal({});
         out.spread.cj = this.spread.cj;
@@ -345,7 +344,6 @@ class MapVal extends Val {
             //   Object.keys(this.peg), Object.keys(upeer.peg), Object.keys(out.peg))
             out.done = done ? DONE : out.done;
             // console.log(' '.repeat(W) + 'MV OUT A', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
-            W -= 2;
             // console.log(
             //   ('  '.repeat(ctx.path.length)),
             //   'MV out ', this.id, peer.id, out.id, '|',
@@ -360,7 +358,6 @@ class MapVal extends Val {
             out.done = done ? DONE : out.done;
             out = UNIFIER(out, peer, ctx);
             // console.log(' '.repeat(W) + 'MV OUT B', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
-            W -= 2;
             return out;
         }
     }

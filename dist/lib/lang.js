@@ -97,8 +97,7 @@ let AontuJsonic = function aontu(jsonic) {
             ],
             close: [
                 {
-                    s: [DJ], r: 'disjunct', b: 1,
-                    a: (r) => {
+                    s: [DJ], r: 'disjunct', b: 1, a: (r) => {
                         var _a;
                         // higher precedence term (e.g &) was on the left
                         let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
@@ -106,8 +105,7 @@ let AontuJsonic = function aontu(jsonic) {
                     }
                 },
                 {
-                    s: [CJ], r: 'disjunct', b: 1,
-                    a: (r) => {
+                    s: [CJ], r: 'disjunct', b: 1, a: (r) => {
                         var _a;
                         // & with higher precedence to the right
                         let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
@@ -179,8 +177,7 @@ let AontuJsonic = function aontu(jsonic) {
         return new jsonic_1.RuleSpec({
             open: [
                 {
-                    s: [FS, [TX, ST, NR, VL]], r: 'part',
-                    a: (r) => {
+                    s: [FS, [TX, ST, NR, VL]], r: 'part', a: (r) => {
                         r.node.append(r.open[1].src);
                     }
                 },
@@ -226,8 +223,7 @@ let AontuJsonic = function aontu(jsonic) {
         // Prefs are always within an expression
         { s: [AK, [NR, TX, ST, VL, OB, OS, FS]], p: 'expr', b: 2 }, { s: [FS, [TX, ST, NR, VL]], p: 'path', b: 2 });
         rs.def.close.unshift({
-            s: [[CJ, DJ]], p: 'expr', b: 1,
-            c: (r) => {
+            s: [[CJ, DJ]], p: 'expr', b: 1, c: (r) => {
                 return null == r.n.expr || 0 === r.n.expr;
             }
         });
@@ -289,7 +285,8 @@ class Lang {
         let jm = {
             multisource: {
                 // NOTE: multisource has property `path` NOT `base`
-                path: this.options.base
+                path: this.options.base,
+                deps: (opts && opts.deps) || undefined
             }
         };
         // Pass through Jsonic debug log value

@@ -67,7 +67,7 @@ w: b: /q/a & {y:2,z:3}
       resolver: makeFileResolver(),
     })
 
-    console.log('MAP', v0.map)
+    // console.log('MAP', v0.map)
     
     //console.log(v0.canon)
     expect(v0.canon).equal(

@@ -27,9 +27,6 @@ import {
 } from './unify'
 
 
-let Q = 0
-let W = 0
-
 const DONE = -1
 
 
@@ -46,7 +43,6 @@ const TOP: Val = {
   row: -1,
   col: -1,
   url: '',
-
 
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof DisjunctVal) {
@@ -77,8 +73,8 @@ const TOP: Val = {
 }
 
 const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
-  ctx.map.url[self.url] = true
-  ctx.map.url[peer.url] = true
+  //ctx.map.url[self.url] = true
+  //ctx.map.url[peer.url] = true
 
   if (peer === TOP) {
     return self
@@ -128,7 +124,9 @@ abstract class Val {
   // Actual native value.
   peg?: any
 
-  map?: any
+  // TODO: used for top level result - not great
+  // map?: any
+  deps?: any
 
   constructor(peg?: any, path?: Path) {
     this.peg = peg
@@ -148,10 +146,12 @@ abstract class Val {
 
 
 class Nil extends Val {
+  nil = true
   why: any
 
-  static make = (ctx: Context, why?: any, av?: Val, bv?: Val) => {
-    let nil = new Nil(ctx.path, why)
+  static make = (ctx?: Context, why?: any, av?: Val, bv?: Val) => {
+    let path = ctx ? ctx.path : []
+    let nil = new Nil(path, why)
     let first = null == bv ? av : (null != av && null != bv) ?
       (av.row === bv.row ? (av.col <= bv.col ? av : bv) :
         (av.row <= bv.row ? av : bv)) : null
@@ -376,12 +376,11 @@ class MapVal extends Val {
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
     // TODO: is it sufficient to capture source urls just here and in TOP?
-    ctx.map.url[this.url] = true
-    ctx.map.url[peer.url] = true
+    //ctx.map.url[this.url] = true
+    //ctx.map.url[peer.url] = true
 
     //console.log('MV', this.canon, this.url, peer.canon, peer.url)
 
-    W += 2
     let done: boolean = true
     let out: MapVal = new MapVal({})
 
@@ -472,7 +471,6 @@ class MapVal extends Val {
       out.done = done ? DONE : out.done
 
       // console.log(' '.repeat(W) + 'MV OUT A', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
-      W -= 2
 
       // console.log(
       //   ('  '.repeat(ctx.path.length)),
@@ -491,7 +489,6 @@ class MapVal extends Val {
 
       // console.log(' '.repeat(W) + 'MV OUT B', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
 
-      W -= 2
       return out
     }
   }
@@ -850,9 +847,6 @@ class PrefVal extends Val {
   }
 
 }
-
-
-
 
 
 export {

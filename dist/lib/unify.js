@@ -4,18 +4,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Unify = exports.Context = void 0;
 const val_1 = require("./val");
 const lang_1 = require("./lang");
+//type MapMap = { [name: string]: { [key: string]: any } }
 class Context {
+    //map: MapMap
     constructor(cfg) {
         this.root = cfg.root;
         this.path = [];
         this.err = cfg.err || [];
-        this.map = cfg.map || { url: {} };
+        //this.map = cfg.map || { url: {} }
     }
     descend(key) {
         let cfg = {
             root: this.root,
             err: this.err,
-            map: this.map,
+            // map: this.map,
         };
         let ctx = new Context(cfg);
         ctx.err = this.err;
@@ -40,6 +42,7 @@ class Context {
 exports.Context = Context;
 class Unify {
     constructor(root, lang) {
+        // map: MapMap
         this.dc = 0;
         this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
@@ -49,16 +52,16 @@ class Unify {
         this.root = root;
         this.res = root;
         this.err = [];
-        this.map = {
-            url: {}
-        };
+        //this.map = {
+        //  url: {}
+        //}
         let res = root;
         let ctx;
         while (this.dc < 111 && val_1.DONE !== res.done) {
             ctx = new Context({
                 root: res,
                 err: this.err,
-                map: this.map
+                // map: this.map
             });
             res = res.unify(val_1.TOP, ctx);
             // console.log('U', this.dc, this.map)

@@ -370,7 +370,8 @@ class Lang {
     let jm: any = {
       multisource: {
         // NOTE: multisource has property `path` NOT `base`
-        path: this.options.base
+        path: this.options.base,
+        deps: (opts && opts.deps) || undefined
       }
     }
 
