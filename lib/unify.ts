@@ -19,37 +19,46 @@ import {
 
 type Path = string[]
 
-//type MapMap = { [name: string]: { [key: string]: any } }
 
 
 class Context {
-  root: Val
-  path: Path
-  err: Nil[]
-  //map: MapMap
+  root: Val   // Starting Val, root of paths.
+  path: Path  // Path to current Val.
+  err: Nil[]  // Nil error log of current unify.
+  vc: number  // Val counter to create unique val ids.
+
 
   constructor(cfg: {
     root: Val
     err?: Nil[],
-    //map?: MapMap
+    vc?: number
   }) {
     this.root = cfg.root
     this.path = []
     this.err = cfg.err || []
-    //this.map = cfg.map || { url: {} }
+
+    // Multiple unify passes will keep incrementing Val counter.
+    this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
   }
 
 
-  descend(key: string) {
-    let cfg = {
-      root: this.root,
+  clone(cfg: {
+    root: Val,
+    path?: Path
+  }): Context {
+    return new Context({
+      root: cfg.root,
       err: this.err,
-      // map: this.map,
-    }
-    let ctx = new Context(cfg)
-    ctx.err = this.err
-    ctx.path = this.path.concat(key)
-    return ctx
+      vc: this.vc,
+    })
+  }
+
+
+  descend(key: string): Context {
+    return this.clone({
+      root: this.root,
+      path: this.path.concat(key),
+    })
   }
 
 
@@ -76,8 +85,7 @@ class Unify {
   root: Val
   res: Val
   err: Nil[]
-  // map: MapMap
-  dc = 0
+  dc: number
   lang: Lang
 
   constructor(root: Val | string, lang?: Lang) {
@@ -86,29 +94,48 @@ class Unify {
       root = this.lang.parse(root)
     }
 
-    // console.log('ROOT', root.canon, root.url)
-
     this.root = root
     this.res = root
     this.err = []
-    //this.map = {
-    //  url: {}
-    //}
 
     let res = root
     let ctx: Context
-    while (this.dc < 111 && DONE !== res.done) {
-      ctx = new Context({
+
+      /*
+      this.dc = 0
+      while (this.dc < 111 && DONE !== res.done) {
+        ctx = new Context({
+          root: res,
+          err: this.err,
+          // map: this.map
+        })
+        res = res.unify(TOP, ctx)
+  
+        // console.log('U', this.dc, this.map)
+  
+        this.dc++
+      }
+      */
+
+
+      = new Context({
         root: res,
         err: this.err,
-        // map: this.map
       })
+
+
+    // TODO: derive maxdc from res deterministically
+    // perhaps parse should count intial vals, paths, etc?
+
+
+
+
+    let maxdc = 111
+    for (this.dc = 0; this.dc < maxdc && DONE !== res.done; this.dc++) {
       res = res.unify(TOP, ctx)
-
-      // console.log('U', this.dc, this.map)
-
-      this.dc++
+      ctx = ctx.clone({ root: res })
     }
+
 
     this.res = res
   }

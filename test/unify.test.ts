@@ -182,10 +182,21 @@ describe('unify', function() {
     expect(uc('q:{x:1,y:integer,z:*3|number},a:{&=/q,b:{y:1,z:4},c:{y:2}}'))
       .equal('{"q":{"x":1,"y":integer,"z":*3|number},"a":{&={"x":1,"y":integer,"z":*3|number},"b":{"y":1,"z":4,"x":1},"c":{"y":2,"x":1,"z":*3|number}}}')
 
+
+    expect(uc('p:{x:1},q:{y:2},u:/p&/q,v:{&=/u,a:{z:33},b:{z:44}}'))
+      .equal('{"p":{"x":1},"q":{"y":2},"u":{"x":1,"y":2},"v":{&={"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
+
+    expect(uc('p:x:1,q:y:2,u:/p&/q,v:{&=/u,a:z:33,b:z:44}'))
+      .equal('{"p":{"x":1},"q":{"y":2},"u":{"x":1,"y":2},"v":{&={"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
+
+    expect(uc('p:x:1,q:y:2,v:{&=/p,&=/q,a:z:33,b:z:44}'))
+      .equal('{"p":{"x":1},"q":{"y":2},"v":{&={"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
+
   })
 
 
 
+  /*
   it('error', () => {
     let uc = (s: string) => new Unify(s).res.canon
 
@@ -218,6 +229,7 @@ a: {
     //console.dir(e2.err, { depth: null })
 
   })
+  */
 })
 
 

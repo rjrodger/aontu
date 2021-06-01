@@ -118,7 +118,7 @@ describe('val', function() {
     expect(TOP.unify(bt, ctx)).equal(bt)
     expect(TOP.unify(bf, ctx)).equal(bf)
 
-    let b0 = new Nil([], 'test')
+    let b0 = new Nil('test', ctx)
     expect(bt.unify(b0, ctx)).equal(b0)
     expect(bf.unify(b0, ctx)).equal(b0)
     expect(b0.unify(bt, ctx)).equal(b0)
@@ -162,7 +162,7 @@ describe('val', function() {
     expect(TOP.unify(s0, ctx)).equal(s0)
     expect(TOP.unify(s1, ctx)).equal(s1)
 
-    let b0 = new Nil([], 'test')
+    let b0 = new Nil('test', ctx)
     expect(s0.unify(b0, ctx)).equal(b0)
     expect(s1.unify(b0, ctx)).equal(b0)
     expect(b0.unify(s0, ctx)).equal(b0)
@@ -201,7 +201,7 @@ describe('val', function() {
     expect(TOP.unify(n0, ctx)).equal(n0)
     expect(TOP.unify(n1, ctx)).equal(n1)
 
-    let b0 = new Nil([], 'test')
+    let b0 = new Nil('test', ctx)
     expect(n0.unify(b0, ctx)).equal(b0)
     expect(n1.unify(b0, ctx)).equal(b0)
     expect(b0.unify(n0, ctx)).equal(b0)
@@ -242,7 +242,7 @@ describe('val', function() {
     expect(TOP.unify(n0, ctx)).equal(n0)
     expect(TOP.unify(n1, ctx)).equal(n1)
 
-    let b0 = new Nil([], 'test')
+    let b0 = new Nil('test', ctx)
     expect(n0.unify(b0, ctx)).equal(b0)
     expect(n1.unify(b0, ctx)).equal(b0)
     expect(b0.unify(n0, ctx)).equal(b0)
@@ -289,7 +289,7 @@ describe('val', function() {
     expect(m0.unify(TOP, ctx).canon).equal('{}')
     expect(TOP.unify(m0, ctx).canon).equal('{}')
 
-    let b0 = new Nil([], 'test')
+    let b0 = new Nil('test', ctx)
     expect(m0.unify(b0, ctx)).equal(b0)
     expect(b0.unify(m0, ctx)).equal(b0)
 
@@ -347,6 +347,23 @@ describe('val', function() {
     let u0 = m0.unify(TOP, ctx)
     expect(u0.canon).equals('{&={"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
   })
+
+
+
+  /*
+  it('map-merge', () => {
+    let ctx = makeCtx()
+
+    let m0 = P('a:{x:1},a:{y:2}')
+
+    console.dir(m0, { depth: null })
+
+    //expect(m0.canon).equals('{&={"x":1},"a":{"y":1},"b":{"y":2}}')
+
+    //let u0 = m0.unify(TOP, ctx)
+    //expect(u0.canon).equals('{&={"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+  })
+  */
 
 
 
@@ -616,7 +633,7 @@ b: c: 1
     expect(up2s0.unify(new StringVal('s1'), ctx).canon)
       .equals('nil')
   
-    */
+
 
 
     let u0 = P('1|number').unify(TOP, ctx)
@@ -634,7 +651,7 @@ b: c: 1
     expect(UC('a:*1|number,b:*2|number,c:/a&/b'))
       .equals('{"a":*1|number,"b":*2|number,"c":*1|*2|number}')
 
-
+    */
   })
 
 })

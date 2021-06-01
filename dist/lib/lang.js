@@ -17,7 +17,7 @@ let AontuJsonic = function aontu(jsonic) {
                 'number': () => new val_1.ScalarTypeVal(Number),
                 'integer': () => new val_1.ScalarTypeVal(val_1.Integer),
                 'boolean': () => new val_1.ScalarTypeVal(Boolean),
-                'nil': () => new val_1.Nil([], 'literal'),
+                'nil': () => new val_1.Nil('literal'),
                 'top': () => val_1.TOP,
             }
         },
@@ -194,7 +194,9 @@ let AontuJsonic = function aontu(jsonic) {
         rs.def.bc = function (rule, ctx) {
             let out = orig_bc.call(this, rule, ctx);
             if (rule.use.spread) {
-                rule.node[val_1.MapVal.SPREAD] = { o: rule.open[0].src, v: rule.child.node };
+                rule.node[val_1.MapVal.SPREAD] =
+                    (rule.node[val_1.MapVal.SPREAD] || { o: rule.open[0].src, v: [] });
+                rule.node[val_1.MapVal.SPREAD].v.push(rule.child.node);
             }
             return out;
         };

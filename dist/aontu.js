@@ -33,8 +33,9 @@ function Aontu(src, popts) {
     let val = lang.parse(opts.src, { deps: deps });
     let uni = new unify_1.Unify(val);
     let res = uni.res;
+    let err = uni.err;
     res.deps = deps;
-    //res.map = uni.map
+    res.err = err;
     return res;
 }
 exports.Aontu = Aontu;

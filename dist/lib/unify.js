@@ -4,25 +4,26 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Unify = exports.Context = void 0;
 const val_1 = require("./val");
 const lang_1 = require("./lang");
-//type MapMap = { [name: string]: { [key: string]: any } }
 class Context {
-    //map: MapMap
     constructor(cfg) {
         this.root = cfg.root;
         this.path = [];
         this.err = cfg.err || [];
-        //this.map = cfg.map || { url: {} }
+        // Multiple unify passes will keep incrementing Val counter.
+        this.vc = null == cfg.vc ? 1000000000 : cfg.vc;
+    }
+    clone(cfg) {
+        return new Context({
+            root: cfg.root,
+            err: this.err,
+            vc: this.vc,
+        });
     }
     descend(key) {
-        let cfg = {
+        return this.clone({
             root: this.root,
-            err: this.err,
-            // map: this.map,
-        };
-        let ctx = new Context(cfg);
-        ctx.err = this.err;
-        ctx.path = this.path.concat(key);
-        return ctx;
+            path: this.path.concat(key),
+        });
     }
     find(ref) {
         // TODO: relative paths
@@ -42,30 +43,24 @@ class Context {
 exports.Context = Context;
 class Unify {
     constructor(root, lang) {
-        // map: MapMap
-        this.dc = 0;
         this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
             root = this.lang.parse(root);
         }
-        // console.log('ROOT', root.canon, root.url)
         this.root = root;
         this.res = root;
         this.err = [];
-        //this.map = {
-        //  url: {}
-        //}
         let res = root;
-        let ctx;
-        while (this.dc < 111 && val_1.DONE !== res.done) {
-            ctx = new Context({
-                root: res,
-                err: this.err,
-                // map: this.map
-            });
+        let ctx = new Context({
+            root: res,
+            err: this.err,
+        });
+        // TODO: derive maxdc from res deterministically
+        // perhaps parse should count intial vals, paths, etc?
+        let maxdc = 111;
+        for (this.dc = 0; this.dc < maxdc && val_1.DONE !== res.done; this.dc++) {
             res = res.unify(val_1.TOP, ctx);
-            // console.log('U', this.dc, this.map)
-            this.dc++;
+            ctx = ctx.clone({ root: res });
         }
         this.res = res;
     }

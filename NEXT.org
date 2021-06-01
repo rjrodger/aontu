@@ -1,5 +1,5 @@
-* errors
-** gen context and collect for non-concrete 
+* spreads and paths over multisource
+* multisource file ref at top level
 * parens!
 * peer spreads
 * conversion of partial js native trees to full aontu

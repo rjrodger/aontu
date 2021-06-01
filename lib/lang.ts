@@ -49,7 +49,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         'number': () => new ScalarTypeVal(Number),
         'integer': () => new ScalarTypeVal(Integer),
         'boolean': () => new ScalarTypeVal(Boolean),
-        'nil': () => new Nil([], 'literal'),
+        'nil': () => new Nil('literal'),
         'top': () => TOP,
       }
     },
@@ -246,7 +246,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       let out = orig_bc.call(this, rule, ctx)
 
       if (rule.use.spread) {
-        rule.node[MapVal.SPREAD] = { o: rule.open[0].src, v: rule.child.node }
+        rule.node[MapVal.SPREAD] =
+          (rule.node[MapVal.SPREAD] || { o: rule.open[0].src, v: [] })
+        rule.node[MapVal.SPREAD].v.push(rule.child.node)
       }
 
       return out

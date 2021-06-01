@@ -73,16 +73,62 @@ describe('lang', function() {
   it('merge', () => {
     let ctx = makeCtx()
 
+
     let v0 = P('a:{x:1},a:{y:2}')
-    //console.dir(v0, { depth: null })
     expect(v0.canon).equal('{"a":{"x":1}&{"y":2}}')
 
     let u0 = v0.unify(TOP, ctx)
-    //console.dir(u0, { depth: null })
     expect(u0.canon).equal('{"a":{"x":1,"y":2}}')
-
     expect(u0.gen([])).equal({ a: { x: 1, y: 2 } })
+
+
+    let v1 = P('a:b:{x:1},a:b:{y:2}')
+    expect(v1.canon).equal('{"a":{"b":{"x":1}}&{"b":{"y":2}}}')
+
+    let u1 = v1.unify(TOP, ctx)
+    expect(u1.canon).equal('{"a":{"b":{"x":1,"y":2}}}')
+    expect(u1.gen([])).equal({ a: { b: { x: 1, y: 2 } } })
+
+
+    let v2 = P('a:b:c:{x:1},a:b:c:{y:2}')
+    expect(v2.canon).equal('{"a":{"b":{"c":{"x":1}}}&{"b":{"c":{"y":2}}}}')
+
+    let u2 = v2.unify(TOP, ctx)
+    expect(u2.canon).equal('{"a":{"b":{"c":{"x":1,"y":2}}}}')
+    expect(u2.gen([])).equal({ a: { b: { c: { x: 1, y: 2 } } } })
+
+
+    let v0m = P('a:{x:1},a:{y:2},a:{z:3}')
+    expect(v0m.canon).equal('{"a":{"x":1}&{"y":2}&{"z":3}}')
+
+    let u0m = v0m.unify(TOP, ctx)
+    expect(u0m.canon).equal('{"a":{"x":1,"y":2,"z":3}}')
+    expect(u0m.gen([])).equal({ a: { x: 1, y: 2, z: 3 } })
+
+
+    let v1m = P('a:b:{x:1},a:b:{y:2},a:b:{z:3}')
+    expect(v1m.canon).equal('{"a":{"b":{"x":1}}&{"b":{"y":2}}&{"b":{"z":3}}}')
+
+    let u1m = v1m.unify(TOP, ctx)
+    expect(u1m.canon).equal('{"a":{"b":{"x":1,"y":2,"z":3}}}')
+    expect(u1m.gen([])).equal({ a: { b: { x: 1, y: 2, z: 3 } } })
+
+
+    let v2m = P('a:b:c:{x:1},a:b:c:{y:2},a:b:c:{z:3}')
+    expect(v2m.canon).equal(
+      '{"a":' +
+      '{"b":{"c":{"x":1}}}&' +
+      '{"b":{"c":{"y":2}}}&' +
+      '{"b":{"c":{"z":3}}}}')
+
+    let u2m = v2m.unify(TOP, ctx)
+    expect(u2m.canon).equal('{"a":{"b":{"c":{"x":1,"y":2,"z":3}}}}')
+    expect(u2m.gen([])).equal({ a: { b: { c: { x: 1, y: 2, z: 3 } } } })
+
+
   })
+
+
 
 
   it('ref', () => {
@@ -119,6 +165,9 @@ describe('lang', function() {
     expect(() => P('*1')).throws()
     expect(() => P('*1&number')).throws()
     expect(() => P('number&*1')).throws()
+
+    expect(P('{a:1}&{b:2}').canon).equal('{"a":1}&{"b":2}')
+    expect(P('{a:{c:1}}&{b:{d:2}}').canon).equal('{"a":{"c":1}}&{"b":{"d":2}}')
   })
 
 

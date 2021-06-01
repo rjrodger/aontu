@@ -5,10 +5,16 @@ declare class Context {
     root: Val;
     path: Path;
     err: Nil[];
+    vc: number;
     constructor(cfg: {
         root: Val;
         err?: Nil[];
+        vc?: number;
     });
+    clone(cfg: {
+        root: Val;
+        path?: Path;
+    }): Context;
     descend(key: string): Context;
     find(ref: RefVal): MapVal | undefined;
 }

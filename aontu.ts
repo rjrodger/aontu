@@ -47,9 +47,10 @@ function Aontu(
   let val = lang.parse(opts.src, { deps: deps })
   let uni = new Unify((val as unknown as Val))
   let res = uni.res
+  let err = uni.err
 
   res.deps = deps
-  //res.map = uni.map
+  res.err = err
 
   return res
 }

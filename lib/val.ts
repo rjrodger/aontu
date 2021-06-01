@@ -23,19 +23,18 @@ TOP -> Scalar/Boolean -> BooleanVal
 
 import {
   Context,
-  Path,
 } from './unify'
 
+
+type ValMap = { [key: string]: Val }
 
 const DONE = -1
 
 
-// TODO: move to Context to make repeatable
-let valcount = 1_000_000_000
 
 // There can be only one.
 const TOP: Val = {
-  id: 'V0',
+  id: 0,
   top: true,
   peg: undefined,
   done: DONE,
@@ -73,9 +72,6 @@ const TOP: Val = {
 }
 
 const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
-  //ctx.map.url[self.url] = true
-  //ctx.map.url[peer.url] = true
-
   if (peer === TOP) {
     return self
   }
@@ -108,11 +104,7 @@ const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
 
 
 abstract class Val {
-  // TODO: REVIEW: maybe this should just be a counter?
-  id = 'V' + valcount++
-
-  // TODO: need a separate counter for parse-created first versions?
-  // TODO: rename, this is a counter, not just a flag, confuses with local boolean `done`
+  id: number
   done: number = 0
   path: string[]
   row: number = -1
@@ -125,12 +117,13 @@ abstract class Val {
   peg?: any
 
   // TODO: used for top level result - not great
-  // map?: any
+  err?: any[]
   deps?: any
 
-  constructor(peg?: any, path?: Path) {
+  constructor(peg?: any, ctx?: Context) {
     this.peg = peg
-    this.path = path || []
+    this.path = (ctx && ctx.path) || []
+    this.id = (ctx && ctx.vc++) || (9e9 + Math.floor(Math.random() * (1e9)))
   }
 
   same(peer: Val): boolean {
@@ -140,7 +133,6 @@ abstract class Val {
   abstract unify(peer: Val, ctx: Context): Val
   abstract get canon(): string
   abstract gen(log: any[]): any
-
 }
 
 
@@ -148,27 +140,53 @@ abstract class Val {
 class Nil extends Val {
   nil = true
   why: any
+  primary?: Val
+  secondary?: Val
 
+  // TODO: include Val generating nil, thus capture type
   static make = (ctx?: Context, why?: any, av?: Val, bv?: Val) => {
-    let path = ctx ? ctx.path : []
-    let nil = new Nil(path, why)
-    let first = null == bv ? av : (null != av && null != bv) ?
-      (av.row === bv.row ? (av.col <= bv.col ? av : bv) :
-        (av.row <= bv.row ? av : bv)) : null
+    let nil = new Nil(why, ctx)
 
-    if (first) {
-      nil.row = first.row
-      nil.col = first.col
+    // Terms later in same file are considered the primary error location.
+    if (null != av) {
+      nil.row = av.row
+      nil.col = av.col
+      nil.url = av.url
+
+      nil.primary = av
+
+      if (null != bv) {
+        nil.secondary = bv
+
+        let bv_loc_wins =
+          (nil.url === bv.url) && (
+            (nil.row < bv.row) ||
+            (nil.row === bv.row && nil.col < bv.col)
+          )
+
+        if (bv_loc_wins) {
+          nil.row = bv.row
+          nil.col = bv.col
+          nil.url = bv.url
+          nil.primary = bv
+          nil.secondary = av
+        }
+      }
+    }
+
+    if (ctx) {
+      ctx.err.push(nil)
     }
 
     return nil
   }
 
-  constructor(path: Path, why?: any) {
-    super(null, path)
+  constructor(why?: any, ctx?: Context) {
+    super(null, ctx)
     this.why = why
     this.done = DONE
   }
+
   unify(_peer: Val, _ctx: Context) {
     return this
   }
@@ -198,8 +216,8 @@ type ScalarConstructor =
 
 
 class ScalarTypeVal extends Val {
-  constructor(peg: ScalarConstructor) {
-    super(peg)
+  constructor(peg: ScalarConstructor, ctx?: Context) {
+    super(peg, ctx)
     this.done = DONE
   }
 
@@ -249,8 +267,8 @@ class ScalarTypeVal extends Val {
 
 class ScalarVal<T> extends Val {
   type: any
-  constructor(peg: T, type: ScalarConstructor) {
-    super(peg)
+  constructor(peg: T, type: ScalarConstructor, ctx?: Context) {
+    super(peg, ctx)
     this.type = type
     this.done = DONE
   }
@@ -276,8 +294,8 @@ class ScalarVal<T> extends Val {
 
 
 class NumberVal extends ScalarVal<number> {
-  constructor(peg: number) {
-    super(peg, Number)
+  constructor(peg: number, ctx?: Context) {
+    super(peg, Number, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarVal && peer.type === Integer) {
@@ -291,11 +309,12 @@ class NumberVal extends ScalarVal<number> {
 
 
 class IntegerVal extends ScalarVal<number> {
-  constructor(peg: number) {
+  constructor(peg: number, ctx?: Context) {
     if (!Number.isInteger(peg)) {
+      // TODO: use Nil?
       throw new Error('not-integer')
     }
-    super(peg, Integer)
+    super(peg, Integer, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarTypeVal && peer.peg === Number) {
@@ -314,8 +333,8 @@ class IntegerVal extends ScalarVal<number> {
 
 
 class StringVal extends ScalarVal<string> {
-  constructor(peg: string) {
-    super(peg, String)
+  constructor(peg: string, ctx?: Context) {
+    super(peg, String, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
@@ -328,15 +347,15 @@ class StringVal extends ScalarVal<string> {
 
 
 class BooleanVal extends ScalarVal<boolean> {
-  constructor(peg: boolean) {
-    super(peg, Boolean)
+  constructor(peg: boolean, ctx?: Context) {
+    super(peg, Boolean, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
   }
 
-  static TRUE = new BooleanVal(true)
-  static FALSE = new BooleanVal(false)
+  static TRUE = new BooleanVal(true, new Context({ vc: 1, root: TOP }))
+  static FALSE = new BooleanVal(false, new Context({ vc: 2, root: TOP }))
 }
 
 
@@ -348,26 +367,18 @@ class MapVal extends Val {
 
   spread = {
     cj: (undefined as Val | undefined),
-    dj: (undefined as Val | undefined),
   }
 
-  constructor(peg: { [key: string]: Val }) {
-    super(peg)
+  constructor(peg: ValMap, ctx?: Context) {
+    super(peg, ctx)
 
     let spread = (this.peg as any)[MapVal.SPREAD]
     delete (this.peg as any)[MapVal.SPREAD]
 
-    // TODO: spread.v should parse as array
     if (spread) {
       if ('&' === spread.o) {
         this.spread.cj =
-          new ConjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v])
-      }
-
-      // TODO: implement in unify
-      else if ('|' === spread.o) {
-        this.spread.dj =
-          new DisjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v])
+          new ConjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v], ctx)
       }
     }
   }
@@ -375,21 +386,15 @@ class MapVal extends Val {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
-    // TODO: is it sufficient to capture source urls just here and in TOP?
-    //ctx.map.url[this.url] = true
-    //ctx.map.url[peer.url] = true
-
-    //console.log('MV', this.canon, this.url, peer.canon, peer.url)
-
     let done: boolean = true
-    let out: MapVal = new MapVal({})
+    let out: MapVal = new MapVal({}, ctx)
 
     out.spread.cj = this.spread.cj
 
     if (peer instanceof MapVal) {
       out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
         null == peer.spread.cj ? out.spread.cj : (
-          out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj])
+          out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj], ctx)
         )
       )
     }
@@ -420,7 +425,7 @@ class MapVal extends Val {
       done = (done && DONE === out.peg[key].done)
 
       if (oval instanceof Nil) {
-        ctx.err.push(oval)
+        // ctx.err.push(oval)
       }
     }
 
@@ -458,7 +463,7 @@ class MapVal extends Val {
         done = (done && DONE === oval.done)
 
         if (oval instanceof Nil) {
-          ctx.err.push(oval)
+          // ctx.err.push(oval)
         }
 
       }
@@ -517,8 +522,8 @@ class MapVal extends Val {
 
 
 class ConjunctVal extends Val {
-  constructor(peg: Val[]) {
-    super(peg)
+  constructor(peg: Val[], ctx?: Context) {
+    super(peg, ctx)
   }
 
   // NOTE: mutation!
@@ -574,12 +579,16 @@ class ConjunctVal extends Val {
 
         // Conjuct fails
         if (outvals[oI] instanceof Nil) {
+          return outvals[oI]
+
+          /*
           return Nil.make(
             ctx,
             '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']',
             outvals[oI],
             upeer[uI]
           )
+          */
         }
       }
     }
@@ -604,7 +613,7 @@ class ConjunctVal extends Val {
       //why += 'B'
     }
     else {
-      out = new ConjunctVal(outvals)
+      out = new ConjunctVal(outvals, ctx)
       //why += 'C'
     }
 
@@ -648,8 +657,8 @@ class ConjunctVal extends Val {
 
 
 class DisjunctVal extends Val {
-  constructor(peg: Val[]) {
-    super(peg)
+  constructor(peg: Val[], ctx?: Context) {
+    super(peg, ctx)
   }
 
   // NOTE: mutation!
@@ -677,6 +686,7 @@ class DisjunctVal extends Val {
         }
       }
 
+      // TODO: not an error Nil!
       let remove = Nil.make(ctx, 'remove')
       for (let vI = 0; vI < oval.length; vI++) {
         for (let kI = vI + 1; kI < oval.length; kI++) {
@@ -698,7 +708,7 @@ class DisjunctVal extends Val {
       return Nil.make(ctx, '|:empty', this)
     }
     else {
-      out = new DisjunctVal(oval)
+      out = new DisjunctVal(oval, ctx)
     }
 
     out.done = done ? DONE : this.done + 1
@@ -736,8 +746,8 @@ class RefVal extends Val {
   parts: string[]
   absolute: boolean
 
-  constructor(peg: string) {
-    super(peg)
+  constructor(peg: string, ctx?: Context) {
+    super(peg, ctx)
     this.parts = peg.split('/').filter(p => '' != p)
     this.absolute = peg.startsWith('/')
   }
@@ -753,13 +763,13 @@ class RefVal extends Val {
 
     if (resolved instanceof RefVal) {
       if (TOP === peer) {
-        out = new RefVal(this.peg)
+        out = new RefVal(this.peg, ctx)
       }
       else if (peer instanceof Nil) {
         out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
       }
       else {
-        out = new ConjunctVal([this, peer])
+        out = new ConjunctVal([this, peer], ctx)
       }
     }
     else {
@@ -785,8 +795,8 @@ class RefVal extends Val {
 
 class PrefVal extends Val {
   pref: Val
-  constructor(peg: any, pref?: any) {
-    super(peg)
+  constructor(peg: any, pref?: any, ctx?: Context) {
+    super(peg, ctx)
     this.pref = pref || peg
   }
 
@@ -795,28 +805,36 @@ class PrefVal extends Val {
   unify(peer: Val, ctx: Context): Val {
     let done = true
 
-    // console.log('PV A', this.canon, peer.canon)
+    //let peer_peg = peer instanceof PrefVal ? peer.peg : peer
+    //let peer_pref = peer instanceof PrefVal ? peer.pref : peer
 
     let out: Val
+    /*
+          = new PrefVal(
+          this.peg.unify(peer_peg, ctx),
+          this.pref.unify(peer_pref, ctx),
+          ctx
+        )
+    */
+
     if (peer instanceof PrefVal) {
       out = new PrefVal(
         this.peg.unify(peer.peg, ctx),
-        this.pref.unify(peer.pref, ctx)
+        this.pref.unify(peer.pref, ctx),
+        ctx
       )
     }
     else {
       out = new PrefVal(
         this.peg.unify(peer, ctx),
-        this.pref.unify(peer, ctx)
+        this.pref.unify(peer, ctx),
+        ctx
       )
     }
 
+
     done = done && DONE === out.peg.done &&
       (null != (out as PrefVal).pref ? DONE === (out as PrefVal).pref.done : true)
-
-    // console.log('PV', done, out.peg.done, (out as PrefVal).pref.done)
-
-    // console.log('PV B', out.canon)
 
     if (out.peg instanceof Nil) {
       out = (out as PrefVal).pref
@@ -826,8 +844,6 @@ class PrefVal extends Val {
     }
 
     out.done = done ? DONE : this.done + 1
-
-    // console.log('PV C', out.canon)
 
     return out
   }
