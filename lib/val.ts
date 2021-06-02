@@ -64,8 +64,7 @@ const TOP: Val = {
     return TOP === peer
   },
 
-  gen: (_log: any[]) => {
-    // TOPs evaporate
+  gen: (_ctx?: Context) => {
     return undefined
   },
 
@@ -130,9 +129,10 @@ abstract class Val {
     return this === peer
   }
 
+  // TODO: can ctx be optional?
   abstract unify(peer: Val, ctx: Context): Val
   abstract get canon(): string
-  abstract gen(log: any[]): any
+  abstract gen(ctx?: Context): any
 }
 
 
@@ -195,9 +195,7 @@ class Nil extends Val {
     return 'nil'
   }
 
-  gen(log: any[]) {
-    // This is an error.
-    log.push('nil')
+  gen(_ctx?: Context) {
     return undefined
   }
 }
@@ -256,9 +254,7 @@ class ScalarTypeVal extends Val {
     return peer instanceof ScalarTypeVal ? this.peg === peer.peg : super.same(peer)
   }
 
-  gen(log: any[]) {
-    // This is an error.
-    log.push('ScalarTypeVal<' + this.canon + '>')
+  gen(_ctx?: Context) {
     return undefined
   }
 
@@ -287,7 +283,7 @@ class ScalarVal<T> extends Val {
     return peer instanceof ScalarVal ? peer.peg === this.peg : super.same(peer)
   }
 
-  gen(_log: any[]) {
+  gen(_ctx?: Context) {
     return this.peg
   }
 }
@@ -508,17 +504,14 @@ class MapVal extends Val {
       '}'
   }
 
-
-  gen(log: any[]) {
+  gen(ctx?: Context) {
     let out: any = {}
     for (let p in this.peg) {
-      out[p] = this.peg[p].gen(log)
+      out[p] = this.peg[p].gen(ctx)
     }
     return out
   }
-
 }
-
 
 
 class ConjunctVal extends Val {
@@ -629,7 +622,7 @@ class ConjunctVal extends Val {
     return this.peg.map((v: Val) => v.canon).join('&')
   }
 
-  gen(log: any[]) {
+  gen(ctx?: Context) {
     if (0 < this.peg.length) {
 
       // Default is just the first term - does this work?
@@ -639,17 +632,12 @@ class ConjunctVal extends Val {
 
       let out = undefined
       if (undefined !== v && !(v instanceof Nil)) {
-        out = v.gen(log)
-      }
-      else {
-        log.push('nil:|:none=' + this.canon)
+        out = v.gen(ctx)
       }
       return out
     }
-    else {
-      log.push('nil:|:empty=' + this.canon)
-      return undefined
-    }
+
+    return undefined
   }
 }
 
@@ -718,7 +706,7 @@ class DisjunctVal extends Val {
   get canon() {
     return this.peg.map((v: Val) => v.canon).join('|')
   }
-  gen(log: any[]) {
+  gen(ctx?: Context) {
     if (0 < this.peg.length) {
 
       let vals = this.peg.filter((v: Val) => v instanceof PrefVal)
@@ -731,12 +719,10 @@ class DisjunctVal extends Val {
         val = val.unify(this.peg[vI])
       }
 
-      return val.gen(log)
+      return val.gen(ctx)
     }
-    else {
-      log.push('nil:|:empty=' + this.canon)
-      return undefined
-    }
+
+    return undefined
   }
 }
 
@@ -782,11 +768,12 @@ class RefVal extends Val {
 
     return out
   }
+
   get canon() {
     return this.peg
   }
-  gen(log: any[]) {
-    log.push(this.canon)
+
+  gen(_ctx?: Context) {
     return undefined
   }
 }
@@ -852,16 +839,13 @@ class PrefVal extends Val {
     return this.pref instanceof Nil ? this.peg.canon : '*' + this.pref.canon
   }
 
-  gen(log: any[]) {
-    log.push(this.canon)
-
+  gen(ctx?: Context) {
     let val = !(this.pref instanceof Nil) ? this.pref :
       !(this.peg instanceof Nil) ? this.peg :
         undefined
 
-    return undefined === val ? undefined : val.gen(log)
+    return undefined === val ? undefined : val.gen(ctx)
   }
-
 }
 
 

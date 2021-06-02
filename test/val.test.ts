@@ -62,23 +62,18 @@ describe('val', function() {
 
 
   it('gen', () => {
-    let g = []
+    expect(P('1').gen()).equals(1)
+    expect(P('"a"').gen()).equals('a')
+    expect(P('b').gen()).equals('b')
+    expect(P('true').gen()).equals(true)
+    expect(P('top').gen()).equals(undefined)
 
-    g = []; expect(P('1').gen(g)).equals(1)
-    g = []; expect(P('"a"').gen(g)).equals('a')
-    g = []; expect(P('b').gen(g)).equals('b')
-    g = []; expect(P('true').gen(g)).equals(true)
-    g = []; expect(P('top').gen(g)).equals(undefined)
+    expect(P('nil').gen()).equals(undefined)
+    expect(P('a:1').gen()).equals({ a: 1 })
 
-    g = []; expect(P('nil').gen(g)).equals(undefined)
-    expect(g).equals(['nil'])
+    expect(P('a:1,b:nil').gen()).equals({ a: 1, b: undefined })
 
-    g = []; expect(P('a:1').gen(g)).equals({ a: 1 })
-
-    g = []; expect(P('a:1,b:nil').gen(g)).equals({ a: 1, b: undefined })
-    expect(g).equals(['nil'])
-
-    g = []; expect(P('a:1,b:c:2').gen(g)).equals({ a: 1, b: { c: 2 } })
+    expect(P('a:1,b:c:2').gen()).equals({ a: 1, b: { c: 2 } })
 
 
   })
@@ -525,19 +520,19 @@ describe('val', function() {
     
         let g = []
         console.log('m0===', m0.done, m0.canon)
-        g = []; console.log(m0.gen(g))
+        g = []; console.log(m0.gen())
     
         let c0 = new Context({ root: m0 })
         let u0 = m0.unify(TOP, c0)
     
         console.log('u0===', u0.done, u0.canon)
-        g = []; console.log(u0.gen(g))
+        g = []; console.log(u0.gen())
     
         let c0a = new Context({ root: u0 })
         let u0a = u0.unify(TOP, c0a)
     
         console.log('u0a===', u0a.done, u0a.canon)
-        g = []; console.log(u0a.gen(g))
+        g = []; console.log(u0a.gen())
     */
 
     let m1 = P(`

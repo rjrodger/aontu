@@ -19,7 +19,7 @@ declare abstract class Val {
     same(peer: Val): boolean;
     abstract unify(peer: Val, ctx: Context): Val;
     abstract get canon(): string;
-    abstract gen(log: any[]): any;
+    abstract gen(ctx?: Context): any;
 }
 declare class Nil extends Val {
     nil: boolean;
@@ -30,7 +30,7 @@ declare class Nil extends Val {
     constructor(why?: any, ctx?: Context);
     unify(_peer: Val, _ctx: Context): this;
     get canon(): string;
-    gen(log: any[]): undefined;
+    gen(_ctx?: Context): undefined;
 }
 declare class Integer {
 }
@@ -40,7 +40,7 @@ declare class ScalarTypeVal extends Val {
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     same(peer: Val): boolean;
-    gen(log: any[]): undefined;
+    gen(_ctx?: Context): undefined;
 }
 declare class ScalarVal<T> extends Val {
     type: any;
@@ -48,7 +48,7 @@ declare class ScalarVal<T> extends Val {
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     same(peer: Val): boolean;
-    gen(_log: any[]): any;
+    gen(_ctx?: Context): any;
 }
 declare class NumberVal extends ScalarVal<number> {
     constructor(peg: number, ctx?: Context);
@@ -77,21 +77,21 @@ declare class MapVal extends Val {
     constructor(peg: ValMap, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     get canon(): string;
-    gen(log: any[]): any;
+    gen(ctx?: Context): any;
 }
 declare class ConjunctVal extends Val {
     constructor(peg: Val[], ctx?: Context);
     append(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
-    gen(log: any[]): any;
+    gen(ctx?: Context): any;
 }
 declare class DisjunctVal extends Val {
     constructor(peg: Val[], ctx?: Context);
     append(peer: Val): DisjunctVal;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
-    gen(log: any[]): any;
+    gen(ctx?: Context): any;
 }
 declare class RefVal extends Val {
     parts: string[];
@@ -100,13 +100,13 @@ declare class RefVal extends Val {
     append(part: string): void;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
-    gen(log: any[]): undefined;
+    gen(_ctx?: Context): undefined;
 }
 declare class PrefVal extends Val {
     pref: Val;
     constructor(peg: any, pref?: any, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
-    gen(log: any[]): any;
+    gen(ctx?: Context): any;
 }
 export { DONE, Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, PrefVal, };
