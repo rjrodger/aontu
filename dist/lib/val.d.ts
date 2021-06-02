@@ -1,4 +1,5 @@
 import { Context } from './unify';
+import { Site } from './lang';
 declare type ValMap = {
     [key: string]: Val;
 };
@@ -17,6 +18,7 @@ declare abstract class Val {
     deps?: any;
     constructor(peg?: any, ctx?: Context);
     same(peer: Val): boolean;
+    get site(): Site;
     abstract unify(peer: Val, ctx: Context): Val;
     abstract get canon(): string;
     abstract gen(ctx?: Context): any;
@@ -87,7 +89,7 @@ declare class ConjunctVal extends Val {
     gen(ctx?: Context): any;
 }
 declare class DisjunctVal extends Val {
-    constructor(peg: Val[], ctx?: Context);
+    constructor(peg: Val[], ctx?: Context, _sites?: Site[]);
     append(peer: Val): DisjunctVal;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;

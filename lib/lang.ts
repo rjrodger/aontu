@@ -36,6 +36,25 @@ import {
 
 
 
+class Site {
+  row: number = -1
+  col: number = -1
+  url: string = ''
+
+  static NONE = new Site(TOP)
+
+  constructor(val: Val) {
+    // TODO: logic to select most meaningful site if val has no site,
+    // but has peg children that do.
+    this.row = val.row
+    this.col = val.col
+    this.url = val.url
+  }
+
+
+}
+
+
 let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.options({
@@ -391,5 +410,6 @@ class Lang {
 }
 
 export {
-  Lang
+  Lang,
+  Site,
 }

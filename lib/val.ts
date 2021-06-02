@@ -26,6 +26,11 @@ import {
 } from './unify'
 
 
+import {
+  Site
+} from './lang'
+
+
 type ValMap = { [key: string]: Val }
 
 const DONE = -1
@@ -60,6 +65,8 @@ const TOP: Val = {
 
   get canon() { return 'top' },
 
+  get site() { return new Site(this) },
+
   same(peer: Val): boolean {
     return TOP === peer
   },
@@ -69,6 +76,8 @@ const TOP: Val = {
   },
 
 }
+
+
 
 const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
   if (peer === TOP) {
@@ -129,6 +138,11 @@ abstract class Val {
     return this === peer
   }
 
+  get site(): Site {
+    return new Site(this)
+  }
+
+
   // TODO: can ctx be optional?
   abstract unify(peer: Val, ctx: Context): Val
   abstract get canon(): string
@@ -146,6 +160,8 @@ class Nil extends Val {
   // TODO: include Val generating nil, thus capture type
   static make = (ctx?: Context, why?: any, av?: Val, bv?: Val) => {
     let nil = new Nil(why, ctx)
+
+    // TODO: this should be done lazily, for multiple terms
 
     // Terms later in same file are considered the primary error location.
     if (null != av) {
@@ -645,7 +661,8 @@ class ConjunctVal extends Val {
 
 
 class DisjunctVal extends Val {
-  constructor(peg: Val[], ctx?: Context) {
+  // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
+  constructor(peg: Val[], ctx?: Context, _sites?: Site[]) {
     super(peg, ctx)
   }
 

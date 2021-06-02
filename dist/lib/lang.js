@@ -1,10 +1,24 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Lang = void 0;
+exports.Site = exports.Lang = void 0;
 const jsonic_1 = require("jsonic");
 const multisource_1 = require("@jsonic/multisource");
 const val_1 = require("./val");
+class Site {
+    constructor(val) {
+        this.row = -1;
+        this.col = -1;
+        this.url = '';
+        // TODO: logic to select most meaningful site if val has no site,
+        // but has peg children that do.
+        this.row = val.row;
+        this.col = val.col;
+        this.url = val.url;
+    }
+}
+exports.Site = Site;
+Site.NONE = new Site(val_1.TOP);
 let AontuJsonic = function aontu(jsonic) {
     jsonic.options({
         value: {

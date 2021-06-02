@@ -17,6 +17,7 @@ TOP -> Scalar/Boolean -> BooleanVal
 
 */
 const unify_1 = require("./unify");
+const lang_1 = require("./lang");
 const DONE = -1;
 exports.DONE = DONE;
 // There can be only one.
@@ -44,6 +45,7 @@ const TOP = {
         }
     },
     get canon() { return 'top'; },
+    get site() { return new lang_1.Site(this); },
     same(peer) {
         return TOP === peer;
     },
@@ -95,6 +97,9 @@ class Val {
     same(peer) {
         return this === peer;
     }
+    get site() {
+        return new lang_1.Site(this);
+    }
 }
 exports.Val = Val;
 class Nil extends Val {
@@ -118,6 +123,7 @@ exports.Nil = Nil;
 // TODO: include Val generating nil, thus capture type
 Nil.make = (ctx, why, av, bv) => {
     let nil = new Nil(why, ctx);
+    // TODO: this should be done lazily, for multiple terms
     // Terms later in same file are considered the primary error location.
     if (null != av) {
         nil.row = av.row;
@@ -483,7 +489,8 @@ class ConjunctVal extends Val {
 }
 exports.ConjunctVal = ConjunctVal;
 class DisjunctVal extends Val {
-    constructor(peg, ctx) {
+    // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
+    constructor(peg, ctx, _sites) {
         super(peg, ctx);
     }
     // NOTE: mutation!

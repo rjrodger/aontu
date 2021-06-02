@@ -15,6 +15,9 @@ import {
   Lang
 } from './lang'
 
+import {
+  unite
+} from './op/op'
 
 
 type Path = string[]
@@ -132,7 +135,8 @@ class Unify {
 
     let maxdc = 111
     for (this.dc = 0; this.dc < maxdc && DONE !== res.done; this.dc++) {
-      res = res.unify(TOP, ctx)
+      //res = res.unify(TOP, ctx)
+      res = unite(ctx, res, TOP)
       ctx = ctx.clone({ root: res })
     }
 

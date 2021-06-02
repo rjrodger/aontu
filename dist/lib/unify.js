@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Unify = exports.Context = void 0;
 const val_1 = require("./val");
 const lang_1 = require("./lang");
+const op_1 = require("./op/op");
 class Context {
     constructor(cfg) {
         this.root = cfg.root;
@@ -59,7 +60,8 @@ class Unify {
         // perhaps parse should count intial vals, paths, etc?
         let maxdc = 111;
         for (this.dc = 0; this.dc < maxdc && val_1.DONE !== res.done; this.dc++) {
-            res = res.unify(val_1.TOP, ctx);
+            //res = res.unify(TOP, ctx)
+            res = op_1.unite(ctx, res, val_1.TOP);
             ctx = ctx.clone({ root: res });
         }
         this.res = res;
