@@ -31,19 +31,22 @@ const TOP = {
     row: -1,
     col: -1,
     url: '',
-    unify(peer, ctx) {
+    unify(peer, _ctx) {
+        return peer;
+        /*
         if (peer instanceof DisjunctVal) {
-            return peer.unify(this, ctx);
+          return peer.unify(this, ctx)
         }
         else if (peer instanceof ConjunctVal) {
-            return peer.unify(this, ctx);
+          return peer.unify(this, ctx)
         }
         else if (peer instanceof RefVal) {
-            return peer.unify(this, ctx);
+          return peer.unify(this, ctx)
         }
         else {
-            return peer;
+          return peer
         }
+        */
     },
     get canon() { return 'top'; },
     get site() { return new lang_1.Site(this); },
@@ -55,37 +58,6 @@ const TOP = {
     },
 };
 exports.TOP = TOP;
-// REMOVE
-const UNIFIER = (self, peer, ctx) => {
-    if (peer === TOP) {
-        return self;
-    }
-    else if (self === TOP) {
-        return peer;
-    }
-    else if (self.constructor === peer.constructor) {
-        return self.peg === peer.peg ? self :
-            Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>', self, peer);
-    }
-    else if (peer instanceof Nil) {
-        return peer;
-    }
-    else if (self instanceof Nil) {
-        return self;
-    }
-    else if (peer instanceof DisjunctVal) {
-        return peer.unify(self, ctx);
-    }
-    else if (peer instanceof ConjunctVal) {
-        return peer.unify(self, ctx);
-    }
-    else if (peer instanceof RefVal) {
-        return peer.unify(self, ctx);
-    }
-    else {
-        return Nil.make(ctx, 'no-unify<' + self.canon + '&' + peer.canon + '>', self, peer);
-    }
-};
 class Val {
     constructor(peg, ctx) {
         this.done = 0;
@@ -168,9 +140,7 @@ class ScalarTypeVal extends Val {
             else if (Number === this.peg && Integer === peer.type) {
                 return peer;
             }
-            else {
-                return Nil.make(ctx, 'no-scalar-unify', this, peer);
-            }
+            return Nil.make(ctx, 'no-scalar-unify', this, peer);
         }
         else {
             if (peer instanceof ScalarTypeVal) {
@@ -181,7 +151,6 @@ class ScalarTypeVal extends Val {
                     return this;
                 }
             }
-            //return UNIFIER(this, peer, ctx)
             return Nil.make(ctx, 'scalar-type', this, peer);
         }
     }
@@ -208,9 +177,6 @@ class ScalarVal extends Val {
             return peer.unify(this, ctx);
         }
         return Nil.make(ctx, 'scalar', this, peer);
-        //else {
-        //return UNIFIER(this, peer, ctx)
-        //}
     }
     get canon() {
         return this.peg.toString();
@@ -301,7 +267,7 @@ class MapVal extends Val {
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
         let done = true;
-        let out = new MapVal({}, ctx);
+        let out = TOP === peer ? this : new MapVal({}, ctx);
         out.spread.cj = this.spread.cj;
         if (peer instanceof MapVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj], ctx)));
@@ -325,12 +291,13 @@ class MapVal extends Val {
         // Always unify children first
         for (let key in this.peg) {
             //let oval = out.peg[key] = this.peg[key].unify(spread_cj, ctx.descend(key))
-            let oval = out.peg[key] =
+            //let oval =
+            out.peg[key] =
                 op_1.unite(ctx.descend(key), this.peg[key], spread_cj);
             done = (done && DONE === out.peg[key].done);
-            if (oval instanceof Nil) {
-                // ctx.err.push(oval)
-            }
+            //if (oval instanceof Nil) {
+            // ctx.err.push(oval)
+            //}
         }
         // console.log(
         //   ('  '.repeat(ctx.path.length)),
@@ -369,7 +336,7 @@ class MapVal extends Val {
             //   ('  '.repeat(ctx.path.length)),
             //   'MV peer B', this.id, peer.id, out.id, '|',
             //   Object.keys(this.peg), Object.keys(upeer.peg), Object.keys(out.peg))
-            out.done = done ? DONE : out.done;
+            //out.done = done ? DONE : out.done
             // console.log(' '.repeat(W) + 'MV OUT A', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
             // console.log(
             //   ('  '.repeat(ctx.path.length)),
@@ -379,13 +346,14 @@ class MapVal extends Val {
             //   peer.constructor.name,
             //   out.constructor.name,
             // )
-            return out;
         }
-        else {
-            out.done = done ? DONE : out.done;
-            return UNIFIER(out, peer, ctx);
-            //return Nil.make(ctx, 'map', this, peer)
+        else if (TOP !== peer) {
+            //out.done = done ? DONE : out.done
+            //return (UNIFIER(out, peer, ctx) as MapVal)
+            return Nil.make(ctx, 'map', this, peer);
         }
+        out.done = done ? DONE : out.done;
+        return out;
     }
     get canon() {
         let keys = Object.keys(this.peg);
@@ -406,6 +374,7 @@ class MapVal extends Val {
 }
 exports.MapVal = MapVal;
 MapVal.SPREAD = Symbol('spread');
+// TODO: move main logic to op/conjunct
 class ConjunctVal extends Val {
     constructor(peg, ctx) {
         super(peg, ctx);
@@ -502,6 +471,7 @@ class ConjunctVal extends Val {
     }
 }
 exports.ConjunctVal = ConjunctVal;
+// TODO: move main logic to op/disjunct
 class DisjunctVal extends Val {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
     constructor(peg, ctx, _sites) {

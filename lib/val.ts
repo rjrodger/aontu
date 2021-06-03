@@ -53,7 +53,10 @@ const TOP: Val = {
   col: -1,
   url: '',
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, _ctx: Context): Val {
+    return peer
+
+    /*
     if (peer instanceof DisjunctVal) {
       return peer.unify(this, ctx)
     }
@@ -66,6 +69,7 @@ const TOP: Val = {
     else {
       return peer
     }
+    */
   },
 
   get canon() { return 'top' },
@@ -82,38 +86,6 @@ const TOP: Val = {
 
 }
 
-
-// REMOVE
-const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
-  if (peer === TOP) {
-    return self
-  }
-  else if (self === TOP) {
-    return peer
-  }
-  else if (self.constructor === peer.constructor) {
-    return self.peg === peer.peg ? self :
-      Nil.make(ctx, 'no-unify-val<' + self.canon + '&' + peer.canon + '>', self, peer)
-  }
-  else if (peer instanceof Nil) {
-    return peer
-  }
-  else if (self instanceof Nil) {
-    return self
-  }
-  else if (peer instanceof DisjunctVal) {
-    return peer.unify(self, ctx)
-  }
-  else if (peer instanceof ConjunctVal) {
-    return peer.unify(self, ctx)
-  }
-  else if (peer instanceof RefVal) {
-    return peer.unify(self, ctx)
-  }
-  else {
-    return Nil.make(ctx, 'no-unify<' + self.canon + '&' + peer.canon + '>', self, peer)
-  }
-}
 
 
 abstract class Val {
@@ -250,9 +222,7 @@ class ScalarTypeVal extends Val {
       else if (Number === this.peg && Integer === peer.type) {
         return peer
       }
-      else {
-        return Nil.make(ctx, 'no-scalar-unify', this, peer)
-      }
+      return Nil.make(ctx, 'no-scalar-unify', this, peer)
     }
     else {
       if (peer instanceof ScalarTypeVal) {
@@ -263,8 +233,6 @@ class ScalarTypeVal extends Val {
           return this
         }
       }
-
-      //return UNIFIER(this, peer, ctx)
       return Nil.make(ctx, 'scalar-type', this, peer)
     }
   }
@@ -297,9 +265,6 @@ class ScalarVal<T> extends Val {
       return peer.unify(this, ctx)
     }
     return Nil.make(ctx, 'scalar', this, peer)
-    //else {
-    //return UNIFIER(this, peer, ctx)
-    //}
   }
   get canon() {
     return (this.peg as any).toString()
@@ -408,7 +373,7 @@ class MapVal extends Val {
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
     let done: boolean = true
-    let out: MapVal = new MapVal({}, ctx)
+    let out: MapVal = TOP === peer ? this : new MapVal({}, ctx)
 
     out.spread.cj = this.spread.cj
 
@@ -446,14 +411,16 @@ class MapVal extends Val {
     // Always unify children first
     for (let key in this.peg) {
       //let oval = out.peg[key] = this.peg[key].unify(spread_cj, ctx.descend(key))
-      let oval = out.peg[key] =
+      //let oval =
+
+      out.peg[key] =
         unite(ctx.descend(key), this.peg[key], spread_cj)
 
       done = (done && DONE === out.peg[key].done)
 
-      if (oval instanceof Nil) {
-        // ctx.err.push(oval)
-      }
+      //if (oval instanceof Nil) {
+      // ctx.err.push(oval)
+      //}
     }
 
     // console.log(
@@ -503,7 +470,7 @@ class MapVal extends Val {
       //   'MV peer B', this.id, peer.id, out.id, '|',
       //   Object.keys(this.peg), Object.keys(upeer.peg), Object.keys(out.peg))
 
-      out.done = done ? DONE : out.done
+      //out.done = done ? DONE : out.done
 
       // console.log(' '.repeat(W) + 'MV OUT A', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
 
@@ -516,14 +483,18 @@ class MapVal extends Val {
       //   out.constructor.name,
       // )
 
-      return out
-    }
-    else {
-      out.done = done ? DONE : out.done
-      return (UNIFIER(out, peer, ctx) as MapVal)
 
-      //return Nil.make(ctx, 'map', this, peer)
     }
+    else if (TOP !== peer) {
+      //out.done = done ? DONE : out.done
+
+      //return (UNIFIER(out, peer, ctx) as MapVal)
+
+      return Nil.make(ctx, 'map', this, peer)
+    }
+
+    out.done = done ? DONE : out.done
+    return out
   }
 
   get canon() {
@@ -546,6 +517,7 @@ class MapVal extends Val {
 }
 
 
+// TODO: move main logic to op/conjunct
 class ConjunctVal extends Val {
   constructor(peg: Val[], ctx?: Context) {
     super(peg, ctx)
@@ -677,7 +649,7 @@ class ConjunctVal extends Val {
 
 
 
-
+// TODO: move main logic to op/disjunct
 class DisjunctVal extends Val {
   // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
   constructor(peg: Val[], ctx?: Context, _sites?: Site[]) {

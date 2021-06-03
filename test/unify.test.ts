@@ -75,7 +75,7 @@ describe('unify', function() {
     let uc = (s: string) => new Unify(s).res.canon
 
     let u0 = new Unify('a:1,a:integer')
-    expect(u0.root.canon).equal('{"a":1&integer}')
+    expect(u0.root.canon).equal('{"a":1}')
 
     expect(uc('a:number,a:1')).equals('{"a":1}')
     expect(uc('a:{b:1},a:{c:2}')).equals('{"a":{"b":1,"c":2}}')
@@ -138,7 +138,7 @@ describe('unify', function() {
     expect(uc('a:1,b:/a')).equal({ c: '{"a":1,"b":1}', d: 1 })
     expect(uc('a:/b,b:1')).equal({ c: '{"a":1,"b":1}', d: 1 })
 
-    expect(uc('a:1,b:/a,c:/b')).equal({ c: '{"a":1,"b":1,"c":1}', d: 2 })
+    expect(uc('a:1,b:/a,c:/b')).equal({ c: '{"a":1,"b":1,"c":1}', d: 1 })
 
     expect(uc('a:{b:1}')).equal({ c: '{"a":{"b":1}}', d: 1 })
     expect(uc('{a:{b:1}} & c:2')).equal({ c: '{"a":{"b":1},"c":2}', d: 1 })

@@ -282,26 +282,26 @@ describe('val', function() {
     expect(m0.canon).equals('{}')
 
     // TODO: update
-    expect(m0.unify(m0, ctx).canon).equal('{}')
+    expect(unite(ctx, m0, m0).canon).equal('{}')
 
-    expect(m0.unify(TOP, ctx).canon).equal('{}')
-    expect(TOP.unify(m0, ctx).canon).equal('{}')
+    expect(unite(ctx, m0, TOP).canon).equal('{}')
+    expect(unite(ctx, TOP, m0).canon).equal('{}')
 
-    let b0 = new Nil('test', ctx)
-    expect(m0.unify(b0, ctx)).equal(b0)
-    expect(b0.unify(m0, ctx)).equal(b0)
+    let b0 = new Nil('test')
+    expect(unite(ctx, m0, b0)).equal(b0)
+    expect(unite(ctx, b0, m0)).equal(b0)
 
     let s0 = new StringVal('s0')
-    expect(m0.unify(s0, ctx)).instanceof(Nil)
-    expect(s0.unify(m0, ctx)).instanceof(Nil)
+    expect(unite(ctx, m0, s0)).instanceof(Nil)
+    expect(unite(ctx, s0, m0)).instanceof(Nil)
 
     let n0 = new NumberVal(0)
-    expect(m0.unify(n0, ctx)).instanceof(Nil)
-    expect(n0.unify(m0, ctx)).instanceof(Nil)
+    expect(unite(ctx, m0, n0)).instanceof(Nil)
+    expect(unite(ctx, n0, m0)).instanceof(Nil)
 
     let t0 = new ScalarTypeVal(String)
-    expect(m0.unify(t0, ctx)).instanceof(Nil)
-    expect(t0.unify(m0, ctx)).instanceof(Nil)
+    expect(unite(ctx, m0, t0)).instanceof(Nil)
+    expect(unite(ctx, t0, m0)).instanceof(Nil)
 
 
     let m1 = new MapVal({ a: new NumberVal(1) })

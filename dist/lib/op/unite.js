@@ -4,10 +4,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = void 0;
 const val_1 = require("../val");
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
+// and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b) => {
     let out = a;
+    //console.log('Ua', a && a.canon, b && b.canon)
     if (b && (val_1.TOP === a || !a)) {
+        //console.log('Utb', b.canon)
         out = b;
+    }
+    else if (a && (val_1.TOP === b || !b)) {
+        //console.log('Uta', a.canon)
+        out = a;
     }
     else if (a && b && val_1.TOP !== b) {
         if (a instanceof val_1.Nil) {
@@ -20,6 +27,7 @@ const unite = (ctx, a, b) => {
             b instanceof val_1.DisjunctVal ||
             b instanceof val_1.RefVal ||
             b instanceof val_1.PrefVal) {
+            //console.log('U', a.canon, b.canon)
             return b.unify(a, ctx);
         }
         else if (a.constructor === b.constructor && a.peg === b.peg) {
