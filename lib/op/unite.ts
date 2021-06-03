@@ -3,10 +3,20 @@
 
 // import { Site } from '../lang'
 import { Context } from '../unify'
-import { Val, TOP, Nil, DONE } from '../val'
+import {
+  Val,
+  ConjunctVal,
+  DisjunctVal,
+  RefVal,
+  PrefVal,
+  TOP,
+  Nil,
+  DONE
+} from '../val'
 import { Operation } from './op'
 
 
+// Vals should only have to unify downwards (in .unify) over Vals they understand.
 const unite: Operation = (ctx: Context, a?: Val, b?: Val) => {
   let out = a
 
@@ -20,6 +30,14 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val) => {
     }
     else if (b instanceof Nil) {
       out = update(b, a)
+    }
+    else if (
+      b instanceof ConjunctVal ||
+      b instanceof DisjunctVal ||
+      b instanceof RefVal ||
+      b instanceof PrefVal
+    ) {
+      return b.unify(a, ctx)
     }
     else if (a.constructor === b.constructor && a.peg === b.peg) {
       out = update(a, b)

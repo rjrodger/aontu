@@ -273,7 +273,8 @@ describe('op', () => {
   it('unite-conjunct', () => {
     let U = makeUnite()
 
-    expect(U('1&1')).equal('1')
+    //expect(U('1&1')).equal('1')
+    expect(U('1&number')).equal('1')
   })
 })
 

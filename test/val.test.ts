@@ -18,6 +18,10 @@ import {
   Context
 } from '../lib/unify'
 
+import {
+  unite
+} from '../lib/op/op'
+
 
 
 
@@ -102,32 +106,32 @@ describe('val', function() {
     let bt = BooleanVal.TRUE
     let bf = BooleanVal.FALSE
 
-    expect(bt.unify(bt, ctx)).equal(bt)
-    expect(bf.unify(bf, ctx)).equal(bf)
+    expect(unite(ctx, bt, bt)).equal(bt)
+    expect(unite(ctx, bf, bf)).equal(bf)
 
-    expect(bt.unify(bf, ctx)).instanceof(Nil)
-    expect(bf.unify(bt, ctx)).instanceof(Nil)
+    expect(unite(ctx, bt, bf)).instanceof(Nil)
+    expect(unite(ctx, bf, bt)).instanceof(Nil)
 
-    expect(bt.unify(TOP, ctx)).equal(bt)
-    expect(bf.unify(TOP, ctx)).equal(bf)
-    expect(TOP.unify(bt, ctx)).equal(bt)
-    expect(TOP.unify(bf, ctx)).equal(bf)
+    expect(unite(ctx, bt, TOP)).equal(bt)
+    expect(unite(ctx, bf, TOP)).equal(bf)
+    expect(unite(ctx, TOP, bt)).equal(bt)
+    expect(unite(ctx, TOP, bf)).equal(bf)
 
-    let b0 = new Nil('test', ctx)
-    expect(bt.unify(b0, ctx)).equal(b0)
-    expect(bf.unify(b0, ctx)).equal(b0)
-    expect(b0.unify(bt, ctx)).equal(b0)
-    expect(b0.unify(bf, ctx)).equal(b0)
+    let b0 = new Nil('test')
+    expect(unite(ctx, bt, b0)).equal(b0)
+    expect(unite(ctx, bf, b0)).equal(b0)
+    expect(unite(ctx, b0, bt)).equal(b0)
+    expect(unite(ctx, b0, bf)).equal(b0)
 
     let bs = new ScalarTypeVal(Boolean)
-    expect(bt.unify(bs, ctx)).equal(bt)
-    expect(bs.unify(bt, ctx)).equal(bt)
+    expect(unite(ctx, bt, bs)).equal(bt)
+    expect(unite(ctx, bs, bt)).equal(bt)
 
     let n0 = new NumberVal(1)
-    expect(bt.unify(n0, ctx)).instanceof(Nil)
-    expect(bf.unify(n0, ctx)).instanceof(Nil)
-    expect(n0.unify(bt, ctx)).instanceof(Nil)
-    expect(n0.unify(bf, ctx)).instanceof(Nil)
+    expect(unite(ctx, bt, n0)).instanceof(Nil)
+    expect(unite(ctx, bf, n0)).instanceof(Nil)
+    expect(unite(ctx, n0, bt)).instanceof(Nil)
+    expect(unite(ctx, n0, bf)).instanceof(Nil)
 
     expect(bt.same(bt)).true()
     expect(bf.same(bf)).true()
@@ -136,7 +140,6 @@ describe('val', function() {
     expect(new BooleanVal(true).same(new BooleanVal(true))).true()
     expect(new BooleanVal(false).same(new BooleanVal(false))).true()
     expect(new BooleanVal(true).same(new BooleanVal(false))).false()
-
   })
 
 
@@ -146,32 +149,32 @@ describe('val', function() {
     let s0 = new StringVal('s0')
     let s1 = new StringVal('s1')
 
-    expect(s0.unify(s0, ctx)).equal(s0)
-    expect(s1.unify(s1, ctx)).equal(s1)
+    expect(unite(ctx, s0, s0)).equal(s0)
+    expect(unite(ctx, s1, s1)).equal(s1)
 
-    expect(s0.unify(s1, ctx)).instanceof(Nil)
-    expect(s1.unify(s0, ctx)).instanceof(Nil)
+    expect(unite(ctx, s0, s1)).instanceof(Nil)
+    expect(unite(ctx, s1, s0)).instanceof(Nil)
 
-    expect(s0.unify(TOP, ctx)).equal(s0)
-    expect(s1.unify(TOP, ctx)).equal(s1)
-    expect(TOP.unify(s0, ctx)).equal(s0)
-    expect(TOP.unify(s1, ctx)).equal(s1)
+    expect(unite(ctx, s0, TOP)).equal(s0)
+    expect(unite(ctx, s1, TOP)).equal(s1)
+    expect(unite(ctx, TOP, s0)).equal(s0)
+    expect(unite(ctx, TOP, s1)).equal(s1)
 
-    let b0 = new Nil('test', ctx)
-    expect(s0.unify(b0, ctx)).equal(b0)
-    expect(s1.unify(b0, ctx)).equal(b0)
-    expect(b0.unify(s0, ctx)).equal(b0)
-    expect(b0.unify(s1, ctx)).equal(b0)
+    let b0 = new Nil('test')
+    expect(unite(ctx, s0, b0)).equal(b0)
+    expect(unite(ctx, s1, b0)).equal(b0)
+    expect(unite(ctx, b0, s0)).equal(b0)
+    expect(unite(ctx, b0, s1)).equal(b0)
 
     let t0 = new ScalarTypeVal(String)
-    expect(s0.unify(t0, ctx)).equal(s0)
-    expect(t0.unify(s0, ctx)).equal(s0)
+    expect(unite(ctx, s0, t0)).equal(s0)
+    expect(unite(ctx, t0, s0)).equal(s0)
 
     let n0 = new NumberVal(1)
-    expect(s0.unify(n0, ctx)).instanceof(Nil)
-    expect(s1.unify(n0, ctx)).instanceof(Nil)
-    expect(n0.unify(s0, ctx)).instanceof(Nil)
-    expect(n0.unify(s1, ctx)).instanceof(Nil)
+    expect(unite(ctx, s0, n0)).instanceof(Nil)
+    expect(unite(ctx, s1, n0)).instanceof(Nil)
+    expect(unite(ctx, n0, s0)).instanceof(Nil)
+    expect(unite(ctx, n0, s1)).instanceof(Nil)
 
     expect(s0.same(s0)).true()
     expect(new StringVal('a').same(new StringVal('a'))).true()
@@ -182,35 +185,37 @@ describe('val', function() {
   it('number', () => {
     let ctx = makeCtx()
 
-    let n0 = new NumberVal(0)
-    let n1 = new NumberVal(1.1)
+    let n0 = new NumberVal(0, ctx)
+    let n1 = new NumberVal(1.1, ctx)
 
-    expect(n0.unify(n0, ctx)).equal(n0)
-    expect(n1.unify(n1, ctx)).equal(n1)
+    expect(unite(ctx, n0, n0)).equal(n0)
 
-    expect(n0.unify(n1, ctx)).instanceof(Nil)
-    expect(n1.unify(n0, ctx)).instanceof(Nil)
+    expect(unite(ctx, n0, n0)).equal(n0)
+    expect(unite(ctx, n1, n1)).equal(n1)
 
-    expect(n0.unify(TOP, ctx)).equal(n0)
-    expect(n1.unify(TOP, ctx)).equal(n1)
-    expect(TOP.unify(n0, ctx)).equal(n0)
-    expect(TOP.unify(n1, ctx)).equal(n1)
+    expect(unite(ctx, n0, n1)).instanceof(Nil)
+    expect(unite(ctx, n1, n0)).instanceof(Nil)
 
-    let b0 = new Nil('test', ctx)
-    expect(n0.unify(b0, ctx)).equal(b0)
-    expect(n1.unify(b0, ctx)).equal(b0)
-    expect(b0.unify(n0, ctx)).equal(b0)
-    expect(b0.unify(n1, ctx)).equal(b0)
+    expect(unite(ctx, n0, TOP)).equal(n0)
+    expect(unite(ctx, n1, TOP)).equal(n1)
+    expect(unite(ctx, TOP, n0)).equal(n0)
+    expect(unite(ctx, TOP, n1)).equal(n1)
+
+    let b0 = new Nil('test')
+    expect(unite(ctx, n0, b0)).equal(b0)
+    expect(unite(ctx, n1, b0)).equal(b0)
+    expect(unite(ctx, b0, n0)).equal(b0)
+    expect(unite(ctx, b0, n1)).equal(b0)
 
     let t0 = new ScalarTypeVal(Number)
-    expect(n0.unify(t0, ctx)).equal(n0)
-    expect(t0.unify(n0, ctx)).equal(n0)
+    expect(unite(ctx, n0, t0)).equal(n0)
+    expect(unite(ctx, t0, n0)).equal(n0)
 
     let s0 = new StringVal('s0')
-    expect(n0.unify(s0, ctx)).instanceof(Nil)
-    expect(n1.unify(s0, ctx)).instanceof(Nil)
-    expect(s0.unify(n0, ctx)).instanceof(Nil)
-    expect(s0.unify(n1, ctx)).instanceof(Nil)
+    expect(unite(ctx, n0, s0)).instanceof(Nil)
+    expect(unite(ctx, n1, s0)).instanceof(Nil)
+    expect(unite(ctx, s0, n0)).instanceof(Nil)
+    expect(unite(ctx, s0, n1)).instanceof(Nil)
 
     expect(n0.same(n0)).true()
     expect(new NumberVal(11).same(new NumberVal(11))).true()
@@ -226,49 +231,47 @@ describe('val', function() {
     let n0 = new IntegerVal(0)
     let n1 = new IntegerVal(1)
 
-    expect(n0.unify(n0, ctx)).equal(n0)
-    expect(n1.unify(n1, ctx)).equal(n1)
+    expect(unite(ctx, n0, n0)).equal(n0)
+    expect(unite(ctx, n1, n1)).equal(n1)
 
-    expect(n0.unify(n1, ctx)).instanceof(Nil)
-    expect(n1.unify(n0, ctx)).instanceof(Nil)
+    expect(unite(ctx, n0, n1)).instanceof(Nil)
+    expect(unite(ctx, n1, n0)).instanceof(Nil)
 
-    expect(n0.unify(TOP, ctx)).equal(n0)
-    expect(n1.unify(TOP, ctx)).equal(n1)
-    expect(TOP.unify(n0, ctx)).equal(n0)
-    expect(TOP.unify(n1, ctx)).equal(n1)
+    expect(unite(ctx, n0, TOP)).equal(n0)
+    expect(unite(ctx, n1, TOP)).equal(n1)
+    expect(unite(ctx, TOP, n0)).equal(n0)
+    expect(unite(ctx, TOP, n1)).equal(n1)
 
-    let b0 = new Nil('test', ctx)
-    expect(n0.unify(b0, ctx)).equal(b0)
-    expect(n1.unify(b0, ctx)).equal(b0)
-    expect(b0.unify(n0, ctx)).equal(b0)
-    expect(b0.unify(n1, ctx)).equal(b0)
+    let b0 = new Nil('test')
+    expect(unite(ctx, n0, b0)).equal(b0)
+    expect(unite(ctx, n1, b0)).equal(b0)
+    expect(unite(ctx, b0, n0)).equal(b0)
+    expect(unite(ctx, b0, n1)).equal(b0)
 
     let s0 = new StringVal('s0')
-    expect(n0.unify(s0, ctx)).instanceof(Nil)
-    expect(n1.unify(s0, ctx)).instanceof(Nil)
-    expect(s0.unify(n0, ctx)).instanceof(Nil)
-    expect(s0.unify(n1, ctx)).instanceof(Nil)
+    expect(unite(ctx, n0, s0)).instanceof(Nil)
+    expect(unite(ctx, n1, s0)).instanceof(Nil)
+    expect(unite(ctx, s0, n0)).instanceof(Nil)
+    expect(unite(ctx, s0, n1)).instanceof(Nil)
 
     let t0 = new ScalarTypeVal(Integer)
-    expect(n0.unify(t0, ctx)).equal(n0)
-    expect(t0.unify(n0, ctx)).equal(n0)
+    expect(unite(ctx, n0, t0)).equal(n0)
+    expect(unite(ctx, t0, n0)).equal(n0)
 
     let t1 = new ScalarTypeVal(Number)
-    expect(n0.unify(t1, ctx)).equal(n0)
-    expect(t1.unify(n0, ctx)).equal(n0)
+    expect(unite(ctx, n0, t1)).equal(n0)
+    expect(unite(ctx, t1, n0)).equal(n0)
 
-    expect(t0.unify(t1, ctx)).equal(t0)
-    expect(t1.unify(t0, ctx)).equal(t0)
+    expect(unite(ctx, t0, t1)).equal(t0)
+    expect(unite(ctx, t1, t0)).equal(t0)
 
     let x0 = new NumberVal(0)
-    expect(n0.unify(x0, ctx)).equal(n0)
-    expect(x0.unify(n0, ctx)).equal(n0)
+    expect(unite(ctx, n0, x0)).equal(n0)
+    expect(unite(ctx, x0, n0)).equal(n0)
 
     expect(n0.same(n0)).true()
     expect(new IntegerVal(11).same(new IntegerVal(11))).true()
     expect(new IntegerVal(11).same(new IntegerVal(22))).false()
-
-
   })
 
 
@@ -363,7 +366,7 @@ describe('val', function() {
 
 
   it('conjunct', () => {
-    let ctx = makeCtx()
+    let ctx = makeCtx(new MapVal({ x: new IntegerVal(1) }))
 
     let d0 = new ConjunctVal(P(['1']))
     let d1 = new ConjunctVal(P(['1', '1']))
@@ -384,34 +387,35 @@ describe('val', function() {
     expect(d6.canon).equals('{"a":1}&{"b":2}')
 
 
-    expect(d0.unify(P('1'), ctx).canon).equal('1')
-    expect(P('1').unify(d0, ctx).canon).equal('1')
-    expect(d0.unify(P('2'), ctx).canon)
+    expect(unite(ctx, d0, P('1')).canon).equal('1')
+    expect(unite(ctx, P('1', d0)).canon).equal('1')
+    expect(unite(ctx, d0, P('2')).canon)
       .equal('nil')
-    expect(P('2').unify(d0, ctx).canon)
-      .equal('nil')
-
-
-    expect(d0.unify(TOP, ctx).canon).equal('1')
-    expect(TOP.unify(d0, ctx).canon).equal('1')
-
-    expect(d1.unify(TOP, ctx).canon).equal('1')
-    expect(TOP.unify(d1, ctx).canon).equal('1')
-
-    expect(d2.unify(TOP, ctx).canon)
-      .equal('nil')
-    expect(TOP.unify(d2, ctx).canon)
+    expect(unite(ctx, P('2'), d0).canon)
       .equal('nil')
 
-    expect(d3.unify(TOP, ctx).canon).equal('1')
-    expect(TOP.unify(d3, ctx).canon).equal('1')
+
+    expect(unite(ctx, d0, TOP).canon).equal('1')
+    expect(unite(ctx, TOP, d0).canon).equal('1')
+
+    expect(unite(ctx, d1, TOP).canon).equal('1')
+    expect(unite(ctx, TOP, d1).canon).equal('1')
+
+    expect(unite(ctx, d2, TOP).canon)
+      .equal('nil')
+    expect(unite(ctx, TOP, d2).canon)
+      .equal('nil')
+
+    expect(unite(ctx, d3, TOP).canon).equal('1')
+    expect(unite(ctx, TOP, d3).canon).equal('1')
+
 
     // TODO: term order is swapped by ConjunctVal impl - should be preserved
-    expect(d100.unify(TOP, ctx).canon).equal('/x&1')
-    expect(TOP.unify(d100, ctx).canon).equal('/x&1')
+    expect(unite(ctx, d100, TOP).canon).equal('1')
+    expect(unite(ctx, TOP, d100).canon).equal('1')
 
     // TODO: same for DisjunctVal
-    expect(new ConjunctVal([]).unify(TOP, ctx).canon).equal('top')
+    expect(unite(ctx, new ConjunctVal([]), TOP).canon).equal('top')
   })
 
 
@@ -420,56 +424,60 @@ describe('val', function() {
 
     let d1 = new DisjunctVal([P('1'), P('2')])
 
-    expect(d1.unify(P('2'), ctx).canon).equal('2')
+    expect(unite(ctx, d1, P('2')).canon).equal('2')
 
-    expect(P('1|number', ctx).canon).equals('1|number')
-    expect(P('1|number|top', ctx).canon).equals('1|number|top')
+    expect(unite(ctx, P('1|number')).canon).equals('1|number')
+    expect(unite(ctx, P('1|top')).canon).equals('1|top')
+    expect(unite(ctx, P('1|number|top')).canon).equals('1|number|top')
 
-    expect(P('1|number').gen([])).equals(1)
-    expect(P('1|number|top').gen([])).equals(1)
+    expect(unite(ctx, P('1|number')).gen()).equals(1)
+    expect(unite(ctx, P('1|number|top')).gen()).equals(undefined)
 
-    expect(P('number|1').unify(P('top'), ctx).canon).equals('number|1')
+    expect(unite(ctx, P('number|1').unify(P('top'))).canon).equals('number|1')
 
-    expect(P('1|number|1').unify(P('top'), ctx).canon).equals('1|number')
+    expect(unite(ctx, P('1|number|1').unify(P('top'))).canon).equals('1|number')
 
-    expect(P('number|string').unify(P('top'), ctx).canon).equals('number|string')
+    expect(unite(ctx, P('number|string').unify(P('top'))).canon)
+      .equals('number|string')
 
-    expect(P('number|string').unify(P('1'), ctx).canon).equals('1')
-    expect(P('number|1').unify(P('1'), ctx).canon).equals('1')
-
-
-    expect(P('number|1').unify(P('number|1'), ctx).canon).equal('number|1')
-    expect(P('1|number').unify(P('1|number'), ctx).canon).equals('1|number')
-    expect(P('number|1').unify(P('1|number'), ctx).canon).equals('1|number')
-
-    expect(P('number|1').unify(P('number|string'), ctx).canon).equals('number|1')
-    expect(P('number|string').unify(P('boolean|number'), ctx).canon).equals('number')
+    expect(unite(ctx, P('number|string').unify(P('1'))).canon).equals('1')
+    expect(unite(ctx, P('number|1').unify(P('1'))).canon).equals('1')
 
 
+    expect(unite(ctx, P('number|1').unify(P('number|1'))).canon).equal('number|1')
+    expect(unite(ctx, P('1|number').unify(P('1|number'))).canon).equals('1|number')
+    expect(unite(ctx, P('number|1').unify(P('1|number'))).canon).equals('1|number')
 
-    let u0 = P('number|*1').unify(P('number'), ctx)
+    expect(unite(ctx, P('number|1').unify(P('number|string'))).canon)
+      .equals('number|1')
+    expect(unite(ctx, P('number|string').unify(P('boolean|number'))).canon)
+      .equals('number')
+
+
+
+    let u0 = unite(ctx, P('number|*1'), P('number'))
     //console.dir(u0, { depth: null })
     //console.log(u0.canon)
-    //console.log(u0.gen([]))
+    //console.log(u0.gen())
     expect(u0.canon).equals('number|*1')
-    expect(u0.gen([])).equals(1)
+    expect(u0.gen()).equals(1)
 
 
-    let u1 = P('number|*1').unify(P('number|string'), ctx)
+    let u1 = unite(ctx, P('number|*1'), P('number|string'))
     //console.dir(u1, { depth: null })
     //console.log(u1.canon)
-    //console.log(u1.gen([]))
+    //console.log(u1.gen())
     expect(u1.canon).equals('number|*1')
-    expect(u1.gen([])).equals(1)
+    expect(u1.gen()).equals(1)
 
 
 
-    let u2 = P('number|*1').unify(P('2'), ctx)
-    console.dir(u2, { depth: null })
-    console.log(u2.canon)
-    console.log(u2.gen([]))
+    let u2 = unite(ctx, P('number|*1'), P('2'))
+    //console.dir(u2, { depth: null })
+    //console.log(u2.canon)
+    //console.log(u2.gen())
     expect(u2.canon).equals('2')
-    expect(u2.gen([])).equals(2)
+    expect(u2.gen()).equals(2)
 
   })
 
@@ -508,6 +516,8 @@ describe('val', function() {
 
 
   it('ref-conjunct', () => {
+    return;
+
     /*
         let m0 = P(`
     a: 1

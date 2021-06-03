@@ -31,6 +31,11 @@ import {
 } from './lang'
 
 
+import {
+  unite
+} from './op/op'
+
+
 type ValMap = { [key: string]: Val }
 
 const DONE = -1
@@ -78,7 +83,7 @@ const TOP: Val = {
 }
 
 
-
+// REMOVE
 const UNIFIER = (self: Val, peer: Val, ctx: Context): Val => {
   if (peer === TOP) {
     return self
@@ -200,6 +205,8 @@ class Nil extends Val {
   constructor(why?: any, ctx?: Context) {
     super(null, ctx)
     this.why = why
+
+    // Nil is always DONE, by definition.
     this.done = DONE
   }
 
@@ -257,7 +264,8 @@ class ScalarTypeVal extends Val {
         }
       }
 
-      return UNIFIER(this, peer, ctx)
+      //return UNIFIER(this, peer, ctx)
+      return Nil.make(ctx, 'scalar-type', this, peer)
     }
   }
 
@@ -288,9 +296,10 @@ class ScalarVal<T> extends Val {
     if (peer instanceof ScalarTypeVal) {
       return peer.unify(this, ctx)
     }
-    else {
-      return UNIFIER(this, peer, ctx)
-    }
+    return Nil.make(ctx, 'scalar', this, peer)
+    //else {
+    //return UNIFIER(this, peer, ctx)
+    //}
   }
   get canon() {
     return (this.peg as any).toString()
@@ -415,9 +424,13 @@ class MapVal extends Val {
     out.done = this.done + 1
 
     if (this.spread.cj) {
+      //out.spread.cj =
+      //  DONE !== this.spread.cj.done ? this.spread.cj.unify(TOP, ctx) :
+      //    this.spread.cj
       out.spread.cj =
-        DONE !== this.spread.cj.done ? this.spread.cj.unify(TOP, ctx) :
+        DONE !== this.spread.cj.done ? unite(ctx, this.spread.cj) :
           this.spread.cj
+
     }
 
 
@@ -432,7 +445,9 @@ class MapVal extends Val {
 
     // Always unify children first
     for (let key in this.peg) {
-      let oval = out.peg[key] = this.peg[key].unify(spread_cj, ctx.descend(key))
+      //let oval = out.peg[key] = this.peg[key].unify(spread_cj, ctx.descend(key))
+      let oval = out.peg[key] =
+        unite(ctx.descend(key), this.peg[key], spread_cj)
 
       done = (done && DONE === out.peg[key].done)
 
@@ -451,7 +466,8 @@ class MapVal extends Val {
     // )
 
     if (peer instanceof MapVal) {
-      let upeer: MapVal = (peer.unify(TOP, ctx) as MapVal)
+      //let upeer: MapVal = (peer.unify(TOP, ctx) as MapVal)
+      let upeer: MapVal = (unite(ctx, peer) as MapVal)
 
       // console.log(
       //   ('  '.repeat(ctx.path.length)),
@@ -466,10 +482,12 @@ class MapVal extends Val {
           undefined === child ? peerchild :
             child instanceof Nil ? child :
               peerchild instanceof Nil ? peerchild :
-                child.unify(peerchild, ctx.descend(peerkey))
+                //child.unify(peerchild, ctx.descend(peerkey))
+                unite(ctx.descend(peerkey), child, peerchild)
 
         if (this.spread.cj) {
-          out.peg[peerkey] = out.peg[peerkey].unify(spread_cj, ctx)
+          //out.peg[peerkey] = out.peg[peerkey].unify(spread_cj, ctx)
+          out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
         }
 
         done = (done && DONE === oval.done)
@@ -502,11 +520,9 @@ class MapVal extends Val {
     }
     else {
       out.done = done ? DONE : out.done
-      out = (UNIFIER(out, peer, ctx) as MapVal)
+      return (UNIFIER(out, peer, ctx) as MapVal)
 
-      // console.log(' '.repeat(W) + 'MV OUT B', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
-
-      return out
+      //return Nil.make(ctx, 'map', this, peer)
     }
   }
 
@@ -548,7 +564,8 @@ class ConjunctVal extends Val {
     let upeer: Val[] = []
 
     for (let vI = 0; vI < this.peg.length; vI++) {
-      upeer[vI] = this.peg[vI].unify(peer, ctx)
+      // upeer[vI] = this.peg[vI].unify(peer, ctx)
+      upeer[vI] = unite(ctx, this.peg[vI], peer)
       done = done && DONE === upeer[vI].done
       // // console.log('Ca', vI, this.peg[vI].canon, peer.canon, upeer[vI].canon)
 
@@ -583,7 +600,8 @@ class ConjunctVal extends Val {
       }
       else {
         outvals[oI] = null == outvals[oI] ? upeer[uI] :
-          outvals[oI].unify(upeer[uI], ctx)
+          //outvals[oI].unify(upeer[uI], ctx)
+          unite(ctx, outvals[oI], upeer[uI])
         done = done && DONE === outvals[oI].done
 
         // Conjuct fails
@@ -677,11 +695,18 @@ class DisjunctVal extends Val {
 
     let oval: Val[] = []
 
+    //console.log('oval', this.canon, peer.canon)
+
     // Conjunction (&) distributes over disjunction (|)
     for (let vI = 0; vI < this.peg.length; vI++) {
-      oval[vI] = this.peg[vI].unify(peer, ctx)
+      //oval[vI] = this.peg[vI].unify(peer, ctx)
+      oval[vI] = unite(ctx, this.peg[vI], peer)
+      //console.log('ovalA', vI, this.peg[vI].canon, peer.canon, oval[vI].canon)
+
       done = done && DONE === oval[vI].done
     }
+
+    //console.log('ovalB', oval.map(v => v.canon))
 
     // Remove duplicates, and normalize
     if (1 < oval.length) {
@@ -691,8 +716,10 @@ class DisjunctVal extends Val {
         }
       }
 
+      //console.log('ovalC', oval.map(v => v.canon))
+
       // TODO: not an error Nil!
-      let remove = Nil.make(ctx, 'remove')
+      let remove = new Nil()
       for (let vI = 0; vI < oval.length; vI++) {
         for (let kI = vI + 1; kI < oval.length; kI++) {
           if (oval[kI].same(oval[vI])) {
@@ -700,6 +727,8 @@ class DisjunctVal extends Val {
           }
         }
       }
+
+      //console.log('ovalD', oval.map(v => v.canon))
 
       oval = oval.filter(v => !(v instanceof Nil))
     }
@@ -761,24 +790,33 @@ class RefVal extends Val {
   }
 
   unify(peer: Val, ctx: Context): Val {
-    let resolved = null == ctx ? this : (ctx.find(this) || this)
+    let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
+
+    resolved = null == resolved && 1 < this.done ?
+      Nil.make(ctx, 'no-path', this, peer) : (resolved || this)
     let out: Val
+
+    // console.log('RV', this.id, this.done, this.canon, peer.canon, !!resolved, resolved instanceof RefVal, resolved && resolved.canon)
 
     if (resolved instanceof RefVal) {
       if (TOP === peer) {
-        out = new RefVal(this.peg, ctx)
+        out = this
+        //out = new RefVal(this.peg, ctx)
       }
       else if (peer instanceof Nil) {
         out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
       }
       else {
+        // Ensure RefVal done is incremented
+        this.done = DONE === this.done ? DONE : this.done + 1
         out = new ConjunctVal([this, peer], ctx)
       }
     }
     else {
       //console.log('RVr', resolved.canon, peer.canon)
 
-      out = resolved.unify(peer, ctx)
+      //out = resolved.unify(peer, ctx)
+      out = unite(ctx, resolved, peer)
     }
 
     out.done = DONE === out.done ? DONE : this.done + 1
@@ -823,15 +861,19 @@ class PrefVal extends Val {
 
     if (peer instanceof PrefVal) {
       out = new PrefVal(
-        this.peg.unify(peer.peg, ctx),
-        this.pref.unify(peer.pref, ctx),
+        //this.peg.unify(peer.peg, ctx),
+        //this.pref.unify(peer.pref, ctx),
+        unite(ctx, this.peg, peer.peg),
+        unite(ctx, this.pref, peer.pref),
         ctx
       )
     }
     else {
       out = new PrefVal(
-        this.peg.unify(peer, ctx),
-        this.pref.unify(peer, ctx),
+        //this.peg.unify(peer, ctx),
+        //this.pref.unify(peer, ctx),
+        unite(ctx, this.peg, peer),
+        unite(ctx, this.pref, peer),
         ctx
       )
     }

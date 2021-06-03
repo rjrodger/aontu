@@ -30,6 +30,7 @@ a:{c:2}
 `).canon
     ).equal('{"a":{"b":1,"c":2}}')
 
+    return;
     
     expect(Aontu(`
 u: { x: 1, y: number}
