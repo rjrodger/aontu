@@ -30,24 +30,29 @@ a:{c:2}
 `).canon
     ).equal('{"a":{"b":1,"c":2}}')
 
-    
-    expect(Aontu(`
+    expect(
+      Aontu(`
 u: { x: 1, y: number}
 q: a: /u
 w: b: /q/a & {y:2,z:3}
-`).canon)
-      .equal('{"u":{"x":1,"y":number},'+
-             '"q":{"a":{"x":1,"y":number}},"w":{"b":{"x":1,"y":2,"z":3}}}')
+`).canon
+    ).equal(
+      '{"u":{"x":1,"y":number},' +
+        '"q":{"a":{"x":1,"y":number}},"w":{"b":{"x":1,"y":2,"z":3}}}'
+    )
 
-    expect(Aontu(`
+    expect(
+      Aontu(`
 q: a: { x: 1, y: number}
 w: b: /q/a & {y:2,z:3}
-`).gen([])).equal({ q: { a: { x: 1, y: undefined } }, w: { b: { x: 1, y: 2, z: 3 } } })
+`).gen([])
+    ).equal({
+      q: { a: { x: 1, y: undefined } },
+      w: { b: { x: 1, y: 2, z: 3 } },
+    })
 
     // TODO: fix in jsonic
     expect(Aontu('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}')
-    
-
   })
 
   it('util', async () => {
@@ -68,7 +73,7 @@ w: b: /q/a & {y:2,z:3}
     })
 
     // console.log('MAP', v0.map)
-    
+
     //console.log(v0.canon)
     expect(v0.canon).equal(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}'
@@ -117,23 +122,25 @@ w: b: /q/a & {y:2,z:3}
     })
   })
 
-
   it('map-spread', () => {
     let v0 = Aontu('c:{&={x:2},y:{k:3},z:{k:4}}')
     //console.dir(v0,{depth:null})
-    expect(v0.canon).equals('{"c":{&={"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}')
+    expect(v0.canon).equals(
+      '{"c":{&={"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
+    )
 
     let v1 = Aontu('c:{&={x:2},z:{k:4}},c:{y:{k:3}}')
     //console.dir(v0,{depth:null})
-    expect(v1.canon).equals('{"c":{&={"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}')
-
+    expect(v1.canon).equals(
+      '{"c":{&={"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
+    )
 
     let v10 = Aontu('a:{&={x:1}},b:/a,b:{y:{k:2}},c:{&={x:2}},c:{y:{k:3}}')
     //console.dir(v0,{depth:null})
-    expect(v10.canon)
-      .equals('{"a":{&={"x":1}},'+
-              '"b":{&={"x":1},"y":{"k":2,"x":1}},'+
-              '"c":{&={"x":2},"y":{"k":3,"x":2}}}')
+    expect(v10.canon).equals(
+      '{"a":{&={"x":1}},' +
+        '"b":{&={"x":1},"y":{"k":2,"x":1}},' +
+        '"c":{&={"x":2},"y":{"k":3,"x":2}}}'
+    )
   })
-
 })

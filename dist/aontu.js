@@ -19,7 +19,7 @@ also trace deps into top val and watch via model
 const NoResolver = () => ({
     path: '<no-path>',
     full: '<no-full>',
-    base: '<no-base>'
+    base: '<no-base>',
 });
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`

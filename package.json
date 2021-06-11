@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -38,8 +38,8 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/multisource": "jsonicjs/multisource",
-    "@types/node": "^15.6.1",
+    "@jsonic/multisource": "0.0.7",
+    "@types/node": "^15.12.2",
     "jsonic": "jsonicjs/jsonic#nextgen"
   },
   "devDependencies": {
@@ -49,8 +49,8 @@
     "coveralls": "^3.1.0",
     "hapi-lab-shim": "0.0.2",
     "lab-transform-typescript": "^3.0.1",
-    "prettier": "^2.3.0",
-    "serve": "^11.3.2",
+    "prettier": "^2.3.1",
+    "serve": "^12.0.0",
     "tinyify": "^3.0.0",
     "typescript": "^4.3.2"
   }

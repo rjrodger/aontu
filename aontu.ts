@@ -1,6 +1,5 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
-
 import { Resolver } from '@jsonic/multisource'
 
 import { Options } from './lib/common'
@@ -8,15 +7,12 @@ import { Lang } from './lib/lang'
 import { Unify } from './lib/unify'
 import { Val, Nil } from './lib/val'
 
-
-
 /*
 NEXT:
 inject path from multisource into Vals when created
 report via nil error
 also trace deps into top val and watch via model
 */
-
 
 // TODO: error reporting
 
@@ -26,26 +22,22 @@ also trace deps into top val and watch via model
 const NoResolver = () => ({
   path: '<no-path>',
   full: '<no-full>',
-  base: '<no-base>'
+  base: '<no-base>',
 })
-
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
  */
-function Aontu(
-  src: string | Partial<Options>,
-  popts?: Partial<Options>): Val {
+function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   let opts = util.options(src, popts)
 
   // console.log('A opts', opts)
 
-
   let lang = new Lang(opts)
   let deps = {}
   let val = lang.parse(opts.src, { deps: deps })
-  let uni = new Unify((val as unknown as Val))
+  let uni = new Unify(val as unknown as Val)
   let res = uni.res
   let err = uni.err
 
@@ -60,10 +52,8 @@ const util = {
     src: string | Partial<Options>,
     popts?: Partial<Options>
   ): Options => {
-
     // Convert convenience first param into Options.src
-    let srcopts: Partial<Options> =
-      'string' === typeof src ? { src } : src
+    let srcopts: Partial<Options> = 'string' === typeof src ? { src } : src
 
     let opts: Options = {
       ...{
@@ -78,11 +68,5 @@ const util = {
   },
 }
 
-export {
-  Aontu,
-  Val,
-  Nil,
-  Resolver,
-  util
-}
+export { Aontu, Val, Nil, Resolver, util }
 export default Aontu
