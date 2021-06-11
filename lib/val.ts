@@ -764,7 +764,8 @@ class RefVal extends Val {
   unify(peer: Val, ctx: Context): Val {
     let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
 
-    resolved = null == resolved && 1 < this.done ?
+    // TODO: large amount of reruns needed? why?
+    resolved = null == resolved && 111 < this.done ?
       Nil.make(ctx, 'no-path', this, peer) : (resolved || this)
     let out: Val
 

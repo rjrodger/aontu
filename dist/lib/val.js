@@ -556,7 +556,8 @@ class RefVal extends Val {
     }
     unify(peer, ctx) {
         let resolved = null == ctx ? this : ctx.find(this);
-        resolved = null == resolved && 1 < this.done ?
+        // TODO: large amount of reruns needed? why?
+        resolved = null == resolved && 111 < this.done ?
             Nil.make(ctx, 'no-path', this, peer) : (resolved || this);
         let out;
         // console.log('RV', this.id, this.done, this.canon, peer.canon, !!resolved, resolved instanceof RefVal, resolved && resolved.canon)
