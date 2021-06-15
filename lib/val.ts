@@ -765,7 +765,7 @@ class RefVal extends Val {
     let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
 
     // TODO: large amount of reruns needed? why?
-    resolved = null == resolved && 111 < this.done ?
+    resolved = null == resolved && 999 < this.done ?
       Nil.make(ctx, 'no-path', this, peer) : (resolved || this)
     let out: Val
 

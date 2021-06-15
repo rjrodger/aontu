@@ -102,29 +102,10 @@ class Unify {
     this.err = []
 
     let res = root
-    let ctx: Context
-
-      /*
-      this.dc = 0
-      while (this.dc < 111 && DONE !== res.done) {
-        ctx = new Context({
-          root: res,
-          err: this.err,
-          // map: this.map
-        })
-        res = res.unify(TOP, ctx)
-  
-        // console.log('U', this.dc, this.map)
-  
-        this.dc++
-      }
-      */
-
-
-      = new Context({
-        root: res,
-        err: this.err,
-      })
+    let ctx: Context = new Context({
+      root: res,
+      err: this.err,
+    })
 
 
     // TODO: derive maxdc from res deterministically
@@ -133,7 +114,7 @@ class Unify {
 
 
 
-    let maxdc = 111
+    let maxdc = 999
     for (this.dc = 0; this.dc < maxdc && DONE !== res.done; this.dc++) {
       //res = res.unify(TOP, ctx)
       res = unite(ctx, res, TOP)

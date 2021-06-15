@@ -58,7 +58,7 @@ class Unify {
         });
         // TODO: derive maxdc from res deterministically
         // perhaps parse should count intial vals, paths, etc?
-        let maxdc = 111;
+        let maxdc = 999;
         for (this.dc = 0; this.dc < maxdc && val_1.DONE !== res.done; this.dc++) {
             //res = res.unify(TOP, ctx)
             res = op_1.unite(ctx, res, val_1.TOP);
