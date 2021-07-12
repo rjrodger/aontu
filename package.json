@@ -17,7 +17,7 @@
   },
   "scripts": {
     "watch": "tsc -w -d",
-    "test": "lab -v -L -P test -t 70 --sourcemaps --transform node_modules/lab-transform-typescript -r console -o stdout -r html -o test/coverage.html",
+    "test": "lab -v -P test -t 70 --sourcemaps --transform node_modules/lab-transform-typescript -r console -o stdout -r html -o test/coverage.html",
     "test-some": "lab -v -P test --sourcemaps --transform node_modules/lab-transform-typescript -g",
     "test-web": "echo no-test-web",
     "xtest-web": "browserify -o test-web/test-web.js -e test/aontu.test.js -s Aontu -im -i assert -i @hapi/lab && open test-web/index.html",
@@ -38,20 +38,20 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/multisource": "0.0.7",
-    "@types/node": "^15.12.2",
-    "jsonic": "jsonicjs/jsonic#nextgen"
+    "@jsonic/multisource": "0.0.8",
+    "@types/node": "^16.3.1",
+    "jsonic": "jsonicjs/jsonic#4edd639987b75ef62a74e3904fb890f59d21379c"
   },
   "devDependencies": {
     "@hapi/code": "^8.0.3",
-    "@hapi/lab": "^24.2.1",
+    "@hapi/lab": "^24.3.0",
     "benchmark": "^2.1.4",
-    "coveralls": "^3.1.0",
+    "coveralls": "^3.1.1",
     "hapi-lab-shim": "0.0.2",
     "lab-transform-typescript": "^3.0.1",
-    "prettier": "^2.3.1",
+    "prettier": "^2.3.2",
     "serve": "^12.0.0",
     "tinyify": "^3.0.0",
-    "typescript": "^4.3.2"
+    "typescript": "^4.3.5"
   }
 }
