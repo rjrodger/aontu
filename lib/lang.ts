@@ -59,6 +59,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.options({
     value: {
+      // JSONIC-UPDATE: map: { val: ... }
       src: {
         // NOTE: specify with functions as jsonic/deep will
         // remove class prototype as options are assumed plain
@@ -73,6 +74,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       }
     },
 
+    // JSONIC-UPDATE: fixed: { token }
     token: {
       '#A&': { c: '&' },
       '#A|': { c: '|' },
@@ -81,6 +83,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       '#A=': { c: '=' },
     },
 
+    // JSONIC-UPDATE: check impl
     map: {
       merge: (prev: any, curr: any) => {
         let pval = (prev as Val)
@@ -104,6 +107,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   let AK = jsonic.token['#A*']
   let EQ = jsonic.token['#A=']
 
+
+  // JSONIC-UPDATE: rule.open[], rule.close[] - replace with rule.oN|cN
 
   jsonic.rule('expr', () => {
     return new RuleSpec({
@@ -339,6 +344,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       let st = rule.open[0]
       valnode.row = st.row
       valnode.col = st.col
+
+      // JSONIC-UPDATE: still valid? check multisource
       valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
 
       // console.log('VAL META', valnode.canon, valnode.url)
@@ -388,6 +395,7 @@ class Lang {
 
   parse(src: string, opts?: any): Val {
 
+    // JSONIC-UPDATE - check meta
     let jm: any = {
       multisource: {
         // NOTE: multisource has property `path` NOT `base`
