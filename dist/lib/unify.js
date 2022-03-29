@@ -61,7 +61,7 @@ class Unify {
         let maxdc = 999;
         for (this.dc = 0; this.dc < maxdc && val_1.DONE !== res.done; this.dc++) {
             //res = res.unify(TOP, ctx)
-            res = op_1.unite(ctx, res, val_1.TOP);
+            res = (0, op_1.unite)(ctx, res, val_1.TOP);
             ctx = ctx.clone({ root: res });
         }
         this.res = res;

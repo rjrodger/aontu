@@ -305,22 +305,22 @@ describe('val', function() {
 
 
     let m1 = new MapVal({ a: new NumberVal(1) })
-    print(m1, 'm1')
+    // print(m1, 'm1')
     expect(m1.canon).equals('{"a":1}')
 
     let m1u = m1.unify(TOP, ctx)
-    print(m1u, 'm1u')
+    // print(m1u, 'm1u')
     expect(m1u.canon).equals('{"a":1}')
 
 
     let u01 = m0.unify(m1, ctx)
-    print(u01, 'u01')
+    // print(u01, 'u01')
     expect(m1u.canon).equals('{"a":1}')
     expect(m0.canon).equals('{}')
     expect(m1.canon).equals('{"a":1}')
 
     let u02 = m1.unify(m0, ctx)
-    print(u02, 'u02')
+    // print(u02, 'u02')
     expect(u02.canon).equals('{"a":1}')
     expect(m0.canon).equals('{}')
     expect(m1.canon).equals('{"a":1}')
@@ -552,10 +552,10 @@ w: b: /q/a & {y:2, z: 3}
 `)
 
     let u1a = m1.unify(TOP, new Context({ root: m1 }))
-    console.log('u1a', u1a.done, u1a.canon)
+    // console.log('u1a', u1a.done, u1a.canon)
     //console.dir(u1a, { depth: null })
     let u1b = u1a.unify(TOP, new Context({ root: u1a }))
-    console.log('u1b', u1b.done, u1b.canon)
+    // console.log('u1b', u1b.done, u1b.canon)
     //console.dir(u1b, { depth: null })
   })
 
@@ -589,7 +589,7 @@ b: c: 1
     })
 
     let m1u = m1.unify(TOP, c1)
-    console.dir(m1u, { depth: null })
+    // console.dir(m1u, { depth: null })
     expect(m1u.canon).equals('{"a":1,"b":{"c":1}}')
   })
 
@@ -604,7 +604,7 @@ b: c: 1
     expect(p0.gen([])).equals('p0')
 
     let pu0 = p0.unify(TOP, ctx)
-    console.log(pu0)
+    // console.log(pu0)
 
     return;
 
@@ -642,10 +642,10 @@ b: c: 1
 
 
     let u0 = P('1|number').unify(TOP, ctx)
-    console.log(u0)
+    // console.log(u0)
 
     let u1 = P('*1|number').unify(TOP, ctx)
-    console.log(u1)
+    // console.log(u1)
 
 
     expect(UC('a:1')).equals('{"a":1}')

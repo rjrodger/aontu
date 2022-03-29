@@ -278,7 +278,7 @@ class MapVal extends Val {
             //  DONE !== this.spread.cj.done ? this.spread.cj.unify(TOP, ctx) :
             //    this.spread.cj
             out.spread.cj =
-                DONE !== this.spread.cj.done ? op_1.unite(ctx, this.spread.cj) :
+                DONE !== this.spread.cj.done ? (0, op_1.unite)(ctx, this.spread.cj) :
                     this.spread.cj;
         }
         // console.log(
@@ -293,7 +293,7 @@ class MapVal extends Val {
             //let oval = out.peg[key] = this.peg[key].unify(spread_cj, ctx.descend(key))
             //let oval =
             out.peg[key] =
-                op_1.unite(ctx.descend(key), this.peg[key], spread_cj);
+                (0, op_1.unite)(ctx.descend(key), this.peg[key], spread_cj);
             done = (done && DONE === out.peg[key].done);
             //if (oval instanceof Nil) {
             // ctx.err.push(oval)
@@ -309,7 +309,7 @@ class MapVal extends Val {
         // )
         if (peer instanceof MapVal) {
             //let upeer: MapVal = (peer.unify(TOP, ctx) as MapVal)
-            let upeer = op_1.unite(ctx, peer);
+            let upeer = (0, op_1.unite)(ctx, peer);
             // console.log(
             //   ('  '.repeat(ctx.path.length)),
             //   'MV peer A', this.id, peer.id, out.id, '|',
@@ -322,10 +322,10 @@ class MapVal extends Val {
                         child instanceof Nil ? child :
                             peerchild instanceof Nil ? peerchild :
                                 //child.unify(peerchild, ctx.descend(peerkey))
-                                op_1.unite(ctx.descend(peerkey), child, peerchild);
+                                (0, op_1.unite)(ctx.descend(peerkey), child, peerchild);
                 if (this.spread.cj) {
                     //out.peg[peerkey] = out.peg[peerkey].unify(spread_cj, ctx)
-                    out.peg[peerkey] = op_1.unite(ctx, out.peg[peerkey], spread_cj);
+                    out.peg[peerkey] = (0, op_1.unite)(ctx, out.peg[peerkey], spread_cj);
                 }
                 done = (done && DONE === oval.done);
                 if (oval instanceof Nil) {
@@ -390,7 +390,7 @@ class ConjunctVal extends Val {
         let upeer = [];
         for (let vI = 0; vI < this.peg.length; vI++) {
             // upeer[vI] = this.peg[vI].unify(peer, ctx)
-            upeer[vI] = op_1.unite(ctx, this.peg[vI], peer);
+            upeer[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer);
             done = done && DONE === upeer[vI].done;
             // // console.log('Ca', vI, this.peg[vI].canon, peer.canon, upeer[vI].canon)
             if (upeer[vI] instanceof Nil) {
@@ -414,7 +414,7 @@ class ConjunctVal extends Val {
             else {
                 outvals[oI] = null == outvals[oI] ? upeer[uI] :
                     //outvals[oI].unify(upeer[uI], ctx)
-                    op_1.unite(ctx, outvals[oI], upeer[uI]);
+                    (0, op_1.unite)(ctx, outvals[oI], upeer[uI]);
                 done = done && DONE === outvals[oI].done;
                 // Conjuct fails
                 if (outvals[oI] instanceof Nil) {
@@ -489,7 +489,7 @@ class DisjunctVal extends Val {
         // Conjunction (&) distributes over disjunction (|)
         for (let vI = 0; vI < this.peg.length; vI++) {
             //oval[vI] = this.peg[vI].unify(peer, ctx)
-            oval[vI] = op_1.unite(ctx, this.peg[vI], peer);
+            oval[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer);
             //console.log('ovalA', vI, this.peg[vI].canon, peer.canon, oval[vI].canon)
             done = done && DONE === oval[vI].done;
         }
@@ -578,7 +578,7 @@ class RefVal extends Val {
         else {
             //console.log('RVr', resolved.canon, peer.canon)
             //out = resolved.unify(peer, ctx)
-            out = op_1.unite(ctx, resolved, peer);
+            out = (0, op_1.unite)(ctx, resolved, peer);
         }
         out.done = DONE === out.done ? DONE : this.done + 1;
         return out;
@@ -614,13 +614,13 @@ class PrefVal extends Val {
             out = new PrefVal(
             //this.peg.unify(peer.peg, ctx),
             //this.pref.unify(peer.pref, ctx),
-            op_1.unite(ctx, this.peg, peer.peg), op_1.unite(ctx, this.pref, peer.pref), ctx);
+            (0, op_1.unite)(ctx, this.peg, peer.peg), (0, op_1.unite)(ctx, this.pref, peer.pref), ctx);
         }
         else {
             out = new PrefVal(
             //this.peg.unify(peer, ctx),
             //this.pref.unify(peer, ctx),
-            op_1.unite(ctx, this.peg, peer), op_1.unite(ctx, this.pref, peer), ctx);
+            (0, op_1.unite)(ctx, this.peg, peer), (0, op_1.unite)(ctx, this.pref, peer), ctx);
         }
         done = done && DONE === out.peg.done &&
             (null != out.pref ? DONE === out.pref.done : true);

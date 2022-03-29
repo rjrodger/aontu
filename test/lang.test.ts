@@ -61,10 +61,10 @@ describe('lang', function() {
 
 
     expect(P('a:11&22|33,b:44', { xlog: -1 }).canon).equal('{"a":11&22|33,"b":44}')
-    console.dir(P('a:11&22|33,b:44', { xlog: -1 }), { depth: null })
+    // console.dir(P('a:11&22|33,b:44', { xlog: -1 }), { depth: null })
 
     expect(P('a:11|22&33,b:44', { xlog: -1 }).canon).equal('{"a":11|22&33,"b":44}')
-    console.dir(P('a:11|22&33,b:44', { xlog: -1 }), { depth: null })
+    // console.dir(P('a:11|22&33,b:44', { xlog: -1 }), { depth: null })
 
 
   })
@@ -135,11 +135,11 @@ describe('lang', function() {
     // console.dir(lang.jsonic.internal().config)
 
     let v0 = P('a:/x')
-    console.log(v0)
+    // console.log(v0)
     expect(v0.peg.a.parts).equals(['x'])
 
     let v1 = P('a:/x/y', { xlog: -1 })
-    console.log(v1)
+    // console.log(v1)
     expect(v1.peg.a.parts).equals(['x', 'y'])
   })
 
@@ -151,13 +151,13 @@ describe('lang', function() {
     expect(t01v.canon).equals('{"a":1,"b":{"d":2},"c":3}')
 
     let t02v = g0.parse('@"' + __dirname + '/t02.jsonic"')
-    console.dir(t02v, { depth: null })
-    console.log(t02v.canon)
+    // console.dir(t02v, { depth: null })
+    // console.log(t02v.canon)
 
 
     let u02 = new Unify(t02v)
-    console.log(u02.res.canon)
-    console.log(u02.res.gen([]))
+    // console.log(u02.res.canon)
+    // console.log(u02.res.gen([]))
   })
 
 
@@ -262,7 +262,7 @@ a: {
 `)
 
     // REMOVE
-    console.dir(v0, { depth: null })
+    // console.dir(v0, { depth: null })
   })
 })
 

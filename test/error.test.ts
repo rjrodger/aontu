@@ -40,15 +40,15 @@ describe('error', function() {
     let lang = new Lang(opts)
     let deps = {}
     let val = lang.parse(opts.src, { deps: deps })
-    console.log('INITIAL', val.canon)
-    console.dir(val, { depth: null })
+    // console.log('INITIAL', val.canon)
+    // console.dir(val, { depth: null })
 
     let uni = new Unify((val as unknown as Val))
     //let res = uni.res
 
-    console.log('UNIFIED', uni.res.canon)
-    console.dir(uni.res, { depth: null })
-    console.dir(uni.err, { depth: null })
+    // console.log('UNIFIED', uni.res.canon)
+    // console.dir(uni.res, { depth: null })
+    // console.dir(uni.err, { depth: null })
   })
 
 })
