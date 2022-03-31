@@ -13,7 +13,7 @@ var expect = Code.expect
 
 let { Aontu, util } = require('..')
 
-let { makeFileResolver } = require('@jsonic/multisource')
+// let { makeFileResolver } = require('@jsonic/multisource')
 
 describe('aontu', function () {
   it('happy', async () => {
@@ -69,7 +69,7 @@ w: b: /q/a & {y:2,z:3}
 
   it('file', async () => {
     let v0 = Aontu('@"' + __dirname + '/t02.jsonic"', {
-      resolver: makeFileResolver(),
+      // resolver: makeFileResolver(),
     })
 
     // console.log('MAP', v0.map)
@@ -103,7 +103,7 @@ w: b: /q/a & {y:2,z:3}
 
   it('pref', async () => {
     let v0 = Aontu('@"' + __dirname + '/t03.jsonic"', {
-      resolver: makeFileResolver(),
+      // resolver: makeFileResolver(),
       base: __dirname,
     })
 

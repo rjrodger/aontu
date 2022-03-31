@@ -12,6 +12,9 @@ import {
   MultiSource
 } from '@jsonic/multisource'
 
+import {
+  makeFileResolver
+} from '@jsonic/multisource/dist/resolver/file'
 
 import {
   Options
@@ -109,8 +112,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   let AK = jsonic.token['#A*']
   let EQ = jsonic.token['#A=']
 
-  // console.log('TOKENS', CJ)
-
 
   // JSONIC-UPDATE: rule.open[], rule.close[] - replace with rule.oN|cN
 
@@ -137,8 +138,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
         // replace first val with expr val
         r.node = cn
-
-        // console.log('EXPR END', r.parent)
 
         if ('val' === r.parent?.name) {
           r.parent.node = r.node
@@ -200,8 +199,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         if (cn) {
           if (r.node.o instanceof DisjunctVal) {
             r.node.o.append(cn)
-
-            // console.log('DJ AC', r.node.o)
           }
           else {
             // this rule was just a pass-through
@@ -357,8 +354,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       // JSONIC-UPDATE: still valid? check multisource
       valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
 
-      // console.log('VAL META', valnode.canon, valnode.url)
-
       rule.node = valnode
 
       return out
@@ -382,6 +377,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
+const includeFileResolver = makeFileResolver((spec: any) => {
+  return 'string' === typeof spec ? spec : spec?.peg
+})
 
 
 class Lang {
@@ -396,10 +394,8 @@ class Lang {
     this.jsonic = Jsonic.make()
       .use(AontuJsonic)
       .use(MultiSource, {
-        resolver: options ? options.resolver : undefined
+        resolver: options?.resolver || includeFileResolver
       })
-
-    // console.log('AL options', this.options)
   }
 
   parse(src: string, opts?: any): Val {
@@ -418,8 +414,6 @@ class Lang {
       jm.log = opts.log
     }
 
-    console.log('ALp jm', jm)
-
     let val = this.jsonic(src, jm)
 
     return val
@@ -429,4 +423,5 @@ class Lang {
 export {
   Lang,
   Site,
+  includeFileResolver,
 }

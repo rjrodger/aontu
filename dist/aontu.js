@@ -16,14 +16,14 @@ also trace deps into top val and watch via model
 // TODO: error reporting
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
-const NoResolver = () => ({
-    kind: '<no-kind>',
-    path: '<no-path>',
-    full: '<no-full>',
-    base: '<no-base>',
-    abs: true,
-    found: false,
-});
+// const NoResolver: Resolver = () => ({
+//   kind: '<no-kind>',
+//   path: '<no-path>',
+//   full: '<no-full>',
+//   base: '<no-base>',
+//   abs: true,
+//   found: false,
+// })
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
@@ -50,7 +50,7 @@ const util = {
             ...{
                 src: '',
                 print: 0,
-                resolver: NoResolver,
+                resolver: lang_1.includeFileResolver,
             },
             ...srcopts,
             ...(popts || {}),

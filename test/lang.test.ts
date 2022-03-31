@@ -10,7 +10,7 @@ var it = lab.it
 var expect = Code.expect
 
 
-import { makeFileResolver } from '@jsonic/multisource/dist/resolver/file'
+// import { makeFileResolver } from '@jsonic/multisource/dist/resolver/file'
 
 
 
@@ -145,7 +145,11 @@ describe('lang', function() {
 
 
   it('file', () => {
-    let g0 = new Lang({ resolver: makeFileResolver() })
+    let g0 = new Lang({
+      // resolver: makeFileResolver((spec: any) => {
+      //   return 'string' === typeof spec ? spec : spec?.peg
+      // })
+    })
 
     let t01v = g0.parse('@"' + __dirname + '/t01.jsonic"')
     expect(t01v.canon).equals('{"a":1,"b":{"d":2},"c":3}')
@@ -170,6 +174,8 @@ describe('lang', function() {
 
     expect(P('{a:1}&{b:2}').canon).equal('{"a":1}&{"b":2}')
     expect(P('{a:{c:1}}&{b:{d:2}}').canon).equal('{"a":{"c":1}}&{"b":{"d":2}}')
+
+    // console.log(P('*1'))
 
     expect(() => P('*1')).throws()
   })

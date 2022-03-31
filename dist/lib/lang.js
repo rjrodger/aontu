@@ -1,9 +1,10 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Site = exports.Lang = void 0;
+exports.includeFileResolver = exports.Site = exports.Lang = void 0;
 const jsonic_1 = require("jsonic");
 const multisource_1 = require("@jsonic/multisource");
+const file_1 = require("@jsonic/multisource/dist/resolver/file");
 const val_1 = require("./val");
 class Site {
     constructor(val) {
@@ -66,7 +67,6 @@ let AontuJsonic = function aontu(jsonic) {
     let FS = jsonic.token['#A/'];
     let AK = jsonic.token['#A*'];
     let EQ = jsonic.token['#A='];
-    // console.log('TOKENS', CJ)
     // JSONIC-UPDATE: rule.open[], rule.close[] - replace with rule.oN|cN
     jsonic.rule('expr', (rs) => {
         rs
@@ -87,7 +87,6 @@ let AontuJsonic = function aontu(jsonic) {
             }
             // replace first val with expr val
             r.node = cn;
-            // console.log('EXPR END', r.parent)
             if ('val' === ((_a = r.parent) === null || _a === void 0 ? void 0 : _a.name)) {
                 r.parent.node = r.node;
             }
@@ -147,7 +146,6 @@ let AontuJsonic = function aontu(jsonic) {
             if (cn) {
                 if (r.node.o instanceof val_1.DisjunctVal) {
                     r.node.o.append(cn);
-                    // console.log('DJ AC', r.node.o)
                 }
                 else {
                     // this rule was just a pass-through
@@ -275,7 +273,6 @@ let AontuJsonic = function aontu(jsonic) {
             valnode.col = st.cI;
             // JSONIC-UPDATE: still valid? check multisource
             valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
-            // console.log('VAL META', valnode.canon, valnode.url)
             rule.node = valnode;
             return out;
         };
@@ -291,6 +288,10 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
 };
+const includeFileResolver = (0, file_1.makeFileResolver)((spec) => {
+    return 'string' === typeof spec ? spec : spec === null || spec === void 0 ? void 0 : spec.peg;
+});
+exports.includeFileResolver = includeFileResolver;
 class Lang {
     constructor(options) {
         this.options = {
@@ -301,9 +302,8 @@ class Lang {
         this.jsonic = jsonic_1.Jsonic.make()
             .use(AontuJsonic)
             .use(multisource_1.MultiSource, {
-            resolver: options ? options.resolver : undefined
+            resolver: (options === null || options === void 0 ? void 0 : options.resolver) || includeFileResolver
         });
-        // console.log('AL options', this.options)
     }
     parse(src, opts) {
         // JSONIC-UPDATE - check meta
@@ -318,7 +318,6 @@ class Lang {
         if (opts && null != opts.log && Number.isInteger(opts.log)) {
             jm.log = opts.log;
         }
-        console.log('ALp jm', jm);
         let val = this.jsonic(src, jm);
         return val;
     }

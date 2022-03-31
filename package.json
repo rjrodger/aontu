@@ -38,9 +38,10 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/multisource": "0.0.8",
+    "@jsonic/directive": "^0.4.1",
+    "@jsonic/multisource": "0.3.0",
     "@types/node": "^17.0.23",
-    "jsonic": "jsonicjs/jsonic#4edd639987b75ef62a74e3904fb890f59d21379c"
+    "jsonic": "jsonicjs/jsonic#nextgen"
   },
   "devDependencies": {
     "@hapi/code": "^8.0.7",

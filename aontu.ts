@@ -1,9 +1,7 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
-import { Resolver } from '@jsonic/multisource'
-
 import { Options } from './lib/common'
-import { Lang } from './lib/lang'
+import { Lang, includeFileResolver } from './lib/lang'
 import { Unify } from './lib/unify'
 import { Val, Nil } from './lib/val'
 
@@ -19,14 +17,16 @@ also trace deps into top val and watch via model
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
 
-const NoResolver: Resolver = () => ({
-  kind: '<no-kind>',
-  path: '<no-path>',
-  full: '<no-full>',
-  base: '<no-base>',
-  abs: true,
-  found: false,
-})
+// const NoResolver: Resolver = () => ({
+//   kind: '<no-kind>',
+//   path: '<no-path>',
+//   full: '<no-full>',
+//   base: '<no-base>',
+//   abs: true,
+//   found: false,
+// })
+
+
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
@@ -62,7 +62,7 @@ const util = {
       ...{
         src: '',
         print: 0,
-        resolver: NoResolver,
+        resolver: includeFileResolver,
       },
       ...srcopts,
       ...(popts || {}),
@@ -71,5 +71,5 @@ const util = {
   },
 }
 
-export { Aontu, Val, Nil, Resolver, util }
+export { Aontu, Val, Nil, util }
 export default Aontu

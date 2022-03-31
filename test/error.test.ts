@@ -13,14 +13,14 @@ var expect = Code.expect
 
 let { Aontu, util } = require('..')
 
-import { Resolver } from '@jsonic/multisource'
+// import { Resolver } from '@jsonic/multisource'
 
 import { Options } from '../lib/common'
 import { Lang } from '../lib/lang'
 import { Unify } from '../lib/unify'
 import { Val, Nil } from '../lib/val'
 
-let { makeFileResolver } = require('@jsonic/multisource')
+// let { makeFileResolver } = require('@jsonic/multisource')
 
 describe('error', function() {
 
@@ -35,7 +35,7 @@ describe('error', function() {
 
     let opts = {
       src: '@"' + __dirname + '/error/e01.jsonic"',
-      resolver: makeFileResolver(),
+      // resolver: makeFileResolver(),
     }
     let lang = new Lang(opts)
     let deps = {}
