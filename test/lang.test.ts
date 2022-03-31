@@ -10,7 +10,7 @@ var it = lab.it
 var expect = Code.expect
 
 
-import { makeFileResolver } from '@jsonic/multisource'
+import { makeFileResolver } from '@jsonic/multisource/dist/resolver/file'
 
 
 
@@ -162,12 +162,16 @@ describe('lang', function() {
 
 
   it('conjunct', () => {
-    expect(() => P('*1')).throws()
+    expect(P('1&number').canon).equal('1&number')
+    expect(P('number&1').canon).equal('number&1')
+
     expect(() => P('*1&number')).throws()
     expect(() => P('number&*1')).throws()
 
     expect(P('{a:1}&{b:2}').canon).equal('{"a":1}&{"b":2}')
     expect(P('{a:{c:1}}&{b:{d:2}}').canon).equal('{"a":{"c":1}}&{"b":{"d":2}}')
+
+    expect(() => P('*1')).throws()
   })
 
 

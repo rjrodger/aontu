@@ -60,27 +60,29 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   jsonic.options({
     value: {
       // JSONIC-UPDATE: map: { val: ... }
-      src: {
+      map: {
         // NOTE: specify with functions as jsonic/deep will
         // remove class prototype as options are assumed plain
         // (except for functions).
         // TODO: jsonic should be able to pass context into these
-        'string': () => new ScalarTypeVal(String),
-        'number': () => new ScalarTypeVal(Number),
-        'integer': () => new ScalarTypeVal(Integer),
-        'boolean': () => new ScalarTypeVal(Boolean),
-        'nil': () => new Nil('literal'),
-        'top': () => TOP,
+        'string': { val: () => new ScalarTypeVal(String) },
+        'number': { val: () => new ScalarTypeVal(Number) },
+        'integer': { val: () => new ScalarTypeVal(Integer) },
+        'boolean': { val: () => new ScalarTypeVal(Boolean) },
+        'nil': { val: () => new Nil('literal') },
+        'top': { val: () => TOP },
       }
     },
 
     // JSONIC-UPDATE: fixed: { token }
-    token: {
-      '#A&': { c: '&' },
-      '#A|': { c: '|' },
-      '#A/': { c: '/' },
-      '#A*': { c: '*' }, // TODO: REVIEW char as * is a bit overloaded
-      '#A=': { c: '=' },
+    fixed: {
+      token: {
+        '#A&': '&',
+        '#A|': '|',
+        '#A/': '/',
+        '#A*': '*', // TODO: REVIEW char as * is a bit overloaded
+        '#A=': '=',
+      }
     },
 
     // JSONIC-UPDATE: check impl
@@ -107,23 +109,26 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   let AK = jsonic.token['#A*']
   let EQ = jsonic.token['#A=']
 
+  // console.log('TOKENS', CJ)
+
 
   // JSONIC-UPDATE: rule.open[], rule.close[] - replace with rule.oN|cN
 
-  jsonic.rule('expr', () => {
-    return new RuleSpec({
-      open: [
+  jsonic.rule('expr', (rs: RuleSpec) => {
+    rs
+      .open([
         { s: [[CJ, DJ, AK]], p: 'disjunct', b: 1, n: { expr: 1 } },
-      ],
-      close: [
+      ])
+
+      .close([
         { s: [] }
-      ],
+      ])
 
       // NOTE: expr node are meta structures, not Vals
       // t=most recent term on the left, o=Val
-      bo: (r: Rule) => r.node = { t: r.node },
+      .bo((r: Rule) => r.node = { t: r.node })
 
-      ac: (r: Rule) => {
+      .ac((r: Rule) => {
         let cn = r.child.node.o
 
         if (cn instanceof PrefVal) {
@@ -132,14 +137,20 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
         // replace first val with expr val
         r.node = cn
-      },
-    })
+
+        // console.log('EXPR END', r.parent)
+
+        if ('val' === r.parent?.name) {
+          r.parent.node = r.node
+        }
+      })
+
   })
 
 
-  jsonic.rule('disjunct', () => {
-    return new RuleSpec({
-      open: [
+  jsonic.rule('disjunct', (rs: RuleSpec) => {
+    rs
+      .open([
         {
           s: [CJ], p: 'conjunct', b: 1
         },
@@ -163,8 +174,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
               r.node.o : new DisjunctVal([r.node.t])
           }
         },
-      ],
-      close: [
+      ])
+
+      .close([
         {
           s: [DJ], r: 'disjunct', b: 1, a: (r: Rule) => {
             // higher precedence term (e.g &) was on the left
@@ -181,28 +193,29 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           }
         },
         {}
-      ],
-      ac: (r: Rule) => {
+      ])
+      .ac((r: Rule) => {
         // child values may be normal or expr metas
         let cn = r.child.node?.o || r.child.node
         if (cn) {
           if (r.node.o instanceof DisjunctVal) {
             r.node.o.append(cn)
+
+            // console.log('DJ AC', r.node.o)
           }
           else {
             // this rule was just a pass-through
             r.node.o = cn
           }
         }
-      }
-    })
+      })
   })
 
 
 
-  jsonic.rule('conjunct', () => {
-    return new RuleSpec({
-      open: [
+  jsonic.rule('conjunct', (rs: RuleSpec) => {
+    rs
+      .open([
         {
           s: [CJ, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
           p: 'val',
@@ -213,14 +226,14 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
             }
           }
         },
-      ],
-      close: [
+      ])
+      .close([
         {
           s: [CJ], r: 'conjunct', b: 1
         },
         {}
-      ],
-      ac: (r: Rule) => {
+      ])
+      .ac((r: Rule) => {
         let cn = r.child.node?.o || r.child.node
         if (cn) {
           if (r.node.o instanceof ConjunctVal) {
@@ -230,32 +243,29 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
             r.node.o = cn
           }
         }
-      }
-    })
+      })
   })
 
 
-  jsonic.rule('path', () => {
-    return new RuleSpec({
-      open: [
+  jsonic.rule('path', (rs: RuleSpec) => {
+    rs
+      .open([
         { s: [FS, [TX, ST, NR, VL]], p: 'part', b: 2 }
-      ],
-      bo: (r: Rule) => r.node = new RefVal('/')
-    })
+      ])
+      .bo((r: Rule) => r.node = new RefVal('/'))
   })
 
 
-  jsonic.rule('part', () => {
-    return new RuleSpec({
-      open: [
+  jsonic.rule('part', (rs: RuleSpec) => {
+    rs.
+      open([
         {
           s: [FS, [TX, ST, NR, VL]], r: 'part', a: (r: Rule) => {
-            r.node.append(r.open[1].src)
+            r.node.append(r.o1.src)
           }
         },
         {}, // no more parts
-      ],
-    })
+      ])
   })
 
 
@@ -265,13 +275,13 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     })
 
     // TODO: make before/after function[]
-    let orig_bc = rs.def.bc
+    let orig_bc: any = rs.def.bc
     rs.def.bc = function(rule: Rule, ctx: Context) {
       let out = orig_bc.call(this, rule, ctx)
 
       if (rule.use.spread) {
         rule.node[MapVal.SPREAD] =
-          (rule.node[MapVal.SPREAD] || { o: rule.open[0].src, v: [] })
+          (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
         rule.node[MapVal.SPREAD].v.push(rule.child.node)
       }
 
@@ -282,23 +292,22 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   })
 
 
-  jsonic.rule('pref', () => {
-    return new RuleSpec({
-      open: [
+  jsonic.rule('pref', (rs: RuleSpec) => {
+    rs
+      .open([
         {
           s: [AK, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
           p: 'val',
         },
-      ],
-      close: [
+      ])
+      .close([
         // Can't be in a conjunct
-        { s: [CJ], e: (r: Rule) => r.open[1] },
+        { s: [CJ], e: (r: Rule) => r.o1 },
         {}
-      ],
-      ac: (r: Rule) => {
+      ])
+      .ac((r: Rule) => {
         r.node = new PrefVal(r.child.node)
-      }
-    })
+      })
   })
 
 
@@ -319,7 +328,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
     // TODO: wrap utility needed for jsonic to do this?
-    let orig_bc = rs.def.bc
+    let orig_bc: any = rs.def.bc
     rs.def.bc = function(rule: Rule, ctx: Context) {
       let out = orig_bc.call(this, rule, ctx)
 
@@ -341,9 +350,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         valnode = new BooleanVal(rule.node)
       }
 
-      let st = rule.open[0]
-      valnode.row = st.row
-      valnode.col = st.col
+      let st = rule.o0
+      valnode.row = st.rI
+      valnode.col = st.cI
 
       // JSONIC-UPDATE: still valid? check multisource
       valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
@@ -409,7 +418,7 @@ class Lang {
       jm.log = opts.log
     }
 
-    // console.log('ALp jm', jm)
+    console.log('ALp jm', jm)
 
     let val = this.jsonic(src, jm)
 

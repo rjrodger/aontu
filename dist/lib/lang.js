@@ -22,26 +22,31 @@ Site.NONE = new Site(val_1.TOP);
 let AontuJsonic = function aontu(jsonic) {
     jsonic.options({
         value: {
-            src: {
+            // JSONIC-UPDATE: map: { val: ... }
+            map: {
                 // NOTE: specify with functions as jsonic/deep will
                 // remove class prototype as options are assumed plain
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
-                'string': () => new val_1.ScalarTypeVal(String),
-                'number': () => new val_1.ScalarTypeVal(Number),
-                'integer': () => new val_1.ScalarTypeVal(val_1.Integer),
-                'boolean': () => new val_1.ScalarTypeVal(Boolean),
-                'nil': () => new val_1.Nil('literal'),
-                'top': () => val_1.TOP,
+                'string': { val: () => new val_1.ScalarTypeVal(String) },
+                'number': { val: () => new val_1.ScalarTypeVal(Number) },
+                'integer': { val: () => new val_1.ScalarTypeVal(val_1.Integer) },
+                'boolean': { val: () => new val_1.ScalarTypeVal(Boolean) },
+                'nil': { val: () => new val_1.Nil('literal') },
+                'top': { val: () => val_1.TOP },
             }
         },
-        token: {
-            '#A&': { c: '&' },
-            '#A|': { c: '|' },
-            '#A/': { c: '/' },
-            '#A*': { c: '*' },
-            '#A=': { c: '=' },
+        // JSONIC-UPDATE: fixed: { token }
+        fixed: {
+            token: {
+                '#A&': '&',
+                '#A|': '|',
+                '#A/': '/',
+                '#A*': '*',
+                '#A=': '=',
+            }
         },
+        // JSONIC-UPDATE: check impl
         map: {
             merge: (prev, curr) => {
                 let pval = prev;
@@ -61,143 +66,146 @@ let AontuJsonic = function aontu(jsonic) {
     let FS = jsonic.token['#A/'];
     let AK = jsonic.token['#A*'];
     let EQ = jsonic.token['#A='];
-    jsonic.rule('expr', () => {
-        return new jsonic_1.RuleSpec({
-            open: [
-                { s: [[CJ, DJ, AK]], p: 'disjunct', b: 1, n: { expr: 1 } },
-            ],
-            close: [
-                { s: [] }
-            ],
+    // console.log('TOKENS', CJ)
+    // JSONIC-UPDATE: rule.open[], rule.close[] - replace with rule.oN|cN
+    jsonic.rule('expr', (rs) => {
+        rs
+            .open([
+            { s: [[CJ, DJ, AK]], p: 'disjunct', b: 1, n: { expr: 1 } },
+        ])
+            .close([
+            { s: [] }
+        ])
             // NOTE: expr node are meta structures, not Vals
             // t=most recent term on the left, o=Val
-            bo: (r) => r.node = { t: r.node },
-            ac: (r) => {
-                let cn = r.child.node.o;
-                if (cn instanceof val_1.PrefVal) {
-                    return { err: 'single-pref' };
-                }
-                // replace first val with expr val
-                r.node = cn;
+            .bo((r) => r.node = { t: r.node })
+            .ac((r) => {
+            var _a;
+            let cn = r.child.node.o;
+            if (cn instanceof val_1.PrefVal) {
+                return { err: 'single-pref' };
+            }
+            // replace first val with expr val
+            r.node = cn;
+            // console.log('EXPR END', r.parent)
+            if ('val' === ((_a = r.parent) === null || _a === void 0 ? void 0 : _a.name)) {
+                r.parent.node = r.node;
+            }
+        });
+    });
+    jsonic.rule('disjunct', (rs) => {
+        rs
+            .open([
+            {
+                s: [CJ], p: 'conjunct', b: 1
             },
-        });
-    });
-    jsonic.rule('disjunct', () => {
-        return new jsonic_1.RuleSpec({
-            open: [
-                {
-                    s: [CJ], p: 'conjunct', b: 1
-                },
-                {
-                    s: [AK], p: 'pref', b: 1
-                },
-                {
-                    s: [DJ, AK], p: 'pref', b: 1,
-                    a: (r) => {
-                        // Append to existing or start new
-                        r.node.o = r.node.o instanceof val_1.DisjunctVal ?
-                            r.node.o : new val_1.DisjunctVal([r.node.t]);
-                    }
-                },
-                {
-                    s: [DJ, [NR, TX, ST, VL, OB, OS]], b: 1,
-                    p: 'val',
-                    a: (r) => {
-                        // Append to existing or start new
-                        r.node.o = r.node.o instanceof val_1.DisjunctVal ?
-                            r.node.o : new val_1.DisjunctVal([r.node.t]);
-                    }
-                },
-            ],
-            close: [
-                {
-                    s: [DJ], r: 'disjunct', b: 1, a: (r) => {
-                        var _a;
-                        // higher precedence term (e.g &) was on the left
-                        let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
-                        r.node.t = cn;
-                    }
-                },
-                {
-                    s: [CJ], r: 'disjunct', b: 1, a: (r) => {
-                        var _a;
-                        // & with higher precedence to the right
-                        let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
-                        r.node.t = cn;
-                        r.child.node = null;
-                    }
-                },
-                {}
-            ],
-            ac: (r) => {
-                var _a;
-                // child values may be normal or expr metas
-                let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
-                if (cn) {
-                    if (r.node.o instanceof val_1.DisjunctVal) {
-                        r.node.o.append(cn);
-                    }
-                    else {
-                        // this rule was just a pass-through
-                        r.node.o = cn;
-                    }
+            {
+                s: [AK], p: 'pref', b: 1
+            },
+            {
+                s: [DJ, AK], p: 'pref', b: 1,
+                a: (r) => {
+                    // Append to existing or start new
+                    r.node.o = r.node.o instanceof val_1.DisjunctVal ?
+                        r.node.o : new val_1.DisjunctVal([r.node.t]);
+                }
+            },
+            {
+                s: [DJ, [NR, TX, ST, VL, OB, OS]], b: 1,
+                p: 'val',
+                a: (r) => {
+                    // Append to existing or start new
+                    r.node.o = r.node.o instanceof val_1.DisjunctVal ?
+                        r.node.o : new val_1.DisjunctVal([r.node.t]);
+                }
+            },
+        ])
+            .close([
+            {
+                s: [DJ], r: 'disjunct', b: 1, a: (r) => {
+                    var _a;
+                    // higher precedence term (e.g &) was on the left
+                    let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
+                    r.node.t = cn;
+                }
+            },
+            {
+                s: [CJ], r: 'disjunct', b: 1, a: (r) => {
+                    var _a;
+                    // & with higher precedence to the right
+                    let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
+                    r.node.t = cn;
+                    r.child.node = null;
+                }
+            },
+            {}
+        ])
+            .ac((r) => {
+            var _a;
+            // child values may be normal or expr metas
+            let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
+            if (cn) {
+                if (r.node.o instanceof val_1.DisjunctVal) {
+                    r.node.o.append(cn);
+                    // console.log('DJ AC', r.node.o)
+                }
+                else {
+                    // this rule was just a pass-through
+                    r.node.o = cn;
                 }
             }
         });
     });
-    jsonic.rule('conjunct', () => {
-        return new jsonic_1.RuleSpec({
-            open: [
-                {
-                    s: [CJ, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
-                    p: 'val',
-                    a: (r) => {
-                        r.node = {
-                            o: r.node.o instanceof val_1.ConjunctVal ?
-                                r.node.o : new val_1.ConjunctVal([r.node.t])
-                        };
-                    }
-                },
-            ],
-            close: [
-                {
-                    s: [CJ], r: 'conjunct', b: 1
-                },
-                {}
-            ],
-            ac: (r) => {
-                var _a;
-                let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
-                if (cn) {
-                    if (r.node.o instanceof val_1.ConjunctVal) {
-                        r.node.o.append(cn);
-                    }
-                    else {
-                        r.node.o = cn;
-                    }
+    jsonic.rule('conjunct', (rs) => {
+        rs
+            .open([
+            {
+                s: [CJ, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
+                p: 'val',
+                a: (r) => {
+                    r.node = {
+                        o: r.node.o instanceof val_1.ConjunctVal ?
+                            r.node.o : new val_1.ConjunctVal([r.node.t])
+                    };
+                }
+            },
+        ])
+            .close([
+            {
+                s: [CJ], r: 'conjunct', b: 1
+            },
+            {}
+        ])
+            .ac((r) => {
+            var _a;
+            let cn = ((_a = r.child.node) === null || _a === void 0 ? void 0 : _a.o) || r.child.node;
+            if (cn) {
+                if (r.node.o instanceof val_1.ConjunctVal) {
+                    r.node.o.append(cn);
+                }
+                else {
+                    r.node.o = cn;
                 }
             }
         });
     });
-    jsonic.rule('path', () => {
-        return new jsonic_1.RuleSpec({
-            open: [
-                { s: [FS, [TX, ST, NR, VL]], p: 'part', b: 2 }
-            ],
-            bo: (r) => r.node = new val_1.RefVal('/')
-        });
+    jsonic.rule('path', (rs) => {
+        rs
+            .open([
+            { s: [FS, [TX, ST, NR, VL]], p: 'part', b: 2 }
+        ])
+            .bo((r) => r.node = new val_1.RefVal('/'));
     });
-    jsonic.rule('part', () => {
-        return new jsonic_1.RuleSpec({
-            open: [
-                {
-                    s: [FS, [TX, ST, NR, VL]], r: 'part', a: (r) => {
-                        r.node.append(r.open[1].src);
-                    }
-                },
-                {}, // no more parts
-            ],
-        });
+    jsonic.rule('part', (rs) => {
+        rs.
+            open([
+            {
+                s: [FS, [TX, ST, NR, VL]], r: 'part', a: (r) => {
+                    r.node.append(r.o1.src);
+                }
+            },
+            {}, // no more parts
+        ]);
     });
     jsonic.rule('pair', (rs) => {
         rs.def.open.unshift({
@@ -209,29 +217,28 @@ let AontuJsonic = function aontu(jsonic) {
             let out = orig_bc.call(this, rule, ctx);
             if (rule.use.spread) {
                 rule.node[val_1.MapVal.SPREAD] =
-                    (rule.node[val_1.MapVal.SPREAD] || { o: rule.open[0].src, v: [] });
+                    (rule.node[val_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
                 rule.node[val_1.MapVal.SPREAD].v.push(rule.child.node);
             }
             return out;
         };
         return rs;
     });
-    jsonic.rule('pref', () => {
-        return new jsonic_1.RuleSpec({
-            open: [
-                {
-                    s: [AK, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
-                    p: 'val',
-                },
-            ],
-            close: [
-                // Can't be in a conjunct
-                { s: [CJ], e: (r) => r.open[1] },
-                {}
-            ],
-            ac: (r) => {
-                r.node = new val_1.PrefVal(r.child.node);
-            }
+    jsonic.rule('pref', (rs) => {
+        rs
+            .open([
+            {
+                s: [AK, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
+                p: 'val',
+            },
+        ])
+            .close([
+            // Can't be in a conjunct
+            { s: [CJ], e: (r) => r.o1 },
+            {}
+        ])
+            .ac((r) => {
+            r.node = new val_1.PrefVal(r.child.node);
         });
     });
     jsonic.rule('val', (rs) => {
@@ -263,9 +270,10 @@ let AontuJsonic = function aontu(jsonic) {
             else if ('boolean' === valtype) {
                 valnode = new val_1.BooleanVal(rule.node);
             }
-            let st = rule.open[0];
-            valnode.row = st.row;
-            valnode.col = st.col;
+            let st = rule.o0;
+            valnode.row = st.rI;
+            valnode.col = st.cI;
+            // JSONIC-UPDATE: still valid? check multisource
             valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
             // console.log('VAL META', valnode.canon, valnode.url)
             rule.node = valnode;
@@ -298,6 +306,7 @@ class Lang {
         // console.log('AL options', this.options)
     }
     parse(src, opts) {
+        // JSONIC-UPDATE - check meta
         let jm = {
             multisource: {
                 // NOTE: multisource has property `path` NOT `base`
@@ -309,7 +318,7 @@ class Lang {
         if (opts && null != opts.log && Number.isInteger(opts.log)) {
             jm.log = opts.log;
         }
-        // console.log('ALp jm', jm)
+        console.log('ALp jm', jm);
         let val = this.jsonic(src, jm);
         return val;
     }

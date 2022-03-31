@@ -19,10 +19,13 @@ also trace deps into top val and watch via model
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
 
-const NoResolver = () => ({
+const NoResolver: Resolver = () => ({
+  kind: '<no-kind>',
   path: '<no-path>',
   full: '<no-full>',
   base: '<no-base>',
+  abs: true,
+  found: false,
 })
 
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
