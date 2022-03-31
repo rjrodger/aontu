@@ -376,7 +376,8 @@ describe('val', function() {
     let d5 = new ConjunctVal(P(['{a:1}']))
     let d6 = new ConjunctVal(P(['{a:1}', '{b:2}']))
 
-    let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('/x')])
+    // let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('/x')])
+    let d100 = new ConjunctVal([new IntegerVal(1), new RefVal(['x'], true)])
 
     expect(d0.canon).equals('1')
     expect(d1.canon).equals('1&1')
@@ -486,30 +487,30 @@ describe('val', function() {
   it('ref', () => {
     let ctx = makeCtx()
 
-    let d0 = new RefVal('a')
-    let d1 = new RefVal('/c')
-    let d2 = new RefVal('a/b')
-    let d3 = new RefVal('/c/d/e')
+    let d0 = new RefVal(['a'])
+    let d1 = new RefVal(['c'], true)
+    let d2 = new RefVal(['a', 'b'], false)
+    let d3 = new RefVal(['c', 'd', 'e'], true)
 
     expect(d0.canon).equals('a')
-    expect(d1.canon).equals('/c')
-    expect(d2.canon).equals('a/b')
-    expect(d3.canon).equals('/c/d/e')
+    expect(d1.canon).equals('.c')
+    expect(d2.canon).equals('a.b')
+    expect(d3.canon).equals('.c.d.e')
 
     d0.append('x')
     d1.append('x')
     d2.append('x')
     d3.append('x')
 
-    expect(d0.canon).equals('a/x')
-    expect(d1.canon).equals('/c/x')
-    expect(d2.canon).equals('a/b/x')
-    expect(d3.canon).equals('/c/d/e/x')
+    expect(d0.canon).equals('a.x')
+    expect(d1.canon).equals('.c.x')
+    expect(d2.canon).equals('a.b.x')
+    expect(d3.canon).equals('.c.d.e.x')
 
-    expect(d0.unify(TOP, ctx).canon).equal('a/x')
-    expect(TOP.unify(d0, ctx).canon).equal('a/x')
-    expect(d1.unify(TOP, ctx).canon).equal('/c/x')
-    expect(TOP.unify(d1, ctx).canon).equal('/c/x')
+    expect(d0.unify(TOP, ctx).canon).equal('a.x')
+    expect(TOP.unify(d0, ctx).canon).equal('a.x')
+    expect(d1.unify(TOP, ctx).canon).equal('.c.x')
+    expect(TOP.unify(d1, ctx).canon).equal('.c.x')
 
   })
 

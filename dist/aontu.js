@@ -1,8 +1,9 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.util = exports.Nil = exports.Val = exports.Aontu = void 0;
+exports.util = exports.Lang = exports.Nil = exports.Val = exports.Aontu = void 0;
 const lang_1 = require("./lib/lang");
+Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./lib/unify");
 const val_1 = require("./lib/val");
 Object.defineProperty(exports, "Val", { enumerable: true, get: function () { return val_1.Val; } });

@@ -98,8 +98,9 @@ declare class DisjunctVal extends Val {
 declare class RefVal extends Val {
     parts: string[];
     absolute: boolean;
-    constructor(peg: string, ctx?: Context);
-    append(part: string): void;
+    sep: string;
+    constructor(peg: any[], abs?: boolean);
+    append(part: any): void;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     gen(_ctx?: Context): undefined;

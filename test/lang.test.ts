@@ -175,16 +175,19 @@ describe('lang', function() {
     expect(P('{a:1}&{b:2}').canon).equal('{"a":1}&{"b":2}')
     expect(P('{a:{c:1}}&{b:{d:2}}').canon).equal('{"a":{"c":1}}&{"b":{"d":2}}')
 
-    // console.log(P('*1'))
-
     expect(() => P('*1')).throws()
   })
 
 
   it('disjunct', () => {
+    // console.log(P('1|2|3|4', { log: -1 }).canon)
+
     expect(() => P('*1')).throws()
 
-    let v1 = P('*1|number')
+    let v0 = P('1|number')
+    expect(v0.canon).equals('1|number')
+
+    let v1 = P('*1|number', { xlog: -1 })
     //console.dir(v1, { depth: null })
     expect(v1.canon).equals('*1|number')
 

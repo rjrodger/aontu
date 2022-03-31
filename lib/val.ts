@@ -749,16 +749,48 @@ class DisjunctVal extends Val {
 class RefVal extends Val {
   parts: string[]
   absolute: boolean
+  sep = '.' // was '/'
 
-  constructor(peg: string, ctx?: Context) {
-    super(peg, ctx)
-    this.parts = peg.split('/').filter(p => '' != p)
-    this.absolute = peg.startsWith('/')
+  // constructor(peg: string | string[], ctx?: Context) {
+  //   super(peg, ctx)
+  //   this.parts = 'string' === typeof peg ? peg.split(this.sep) : peg
+  //   this.parts = this.parts.filter(p => '' != p)
+  //   // this.absolute = peg.startsWith(this.sep)
+  // }
+
+
+  constructor(peg: any[], abs?: boolean) {
+    super('')
+    this.absolute = true === abs
+    this.parts = []
+
+    console.log('RV', peg)
+
+    for (let part of peg) {
+      this.append(part)
+    }
   }
 
-  append(part: string) {
-    this.parts.push(part)
-    this.peg = (this.absolute ? '/' : '') + this.parts.join('/')
+
+  append(part: any) {
+    if ('string' === typeof part) {
+      this.parts.push(part)
+    }
+
+    else if (part instanceof StringVal) {
+      this.parts.push(part.peg)
+    }
+
+    else if (part instanceof RefVal) {
+      this.parts.push(...part.parts)
+
+      if (part.absolute) {
+        this.absolute = true
+      }
+    }
+
+
+    this.peg = (this.absolute ? this.sep : '') + this.parts.join(this.sep)
   }
 
   unify(peer: Val, ctx: Context): Val {

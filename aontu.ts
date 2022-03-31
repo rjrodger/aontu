@@ -71,5 +71,5 @@ const util = {
   },
 }
 
-export { Aontu, Val, Nil, util }
+export { Aontu, Val, Nil, Lang, util }
 export default Aontu
