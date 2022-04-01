@@ -110,36 +110,50 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     'conjunct-infix': (_op: Op, terms: any) => new ConjunctVal(terms),
     'disjunct-infix': (_op: Op, terms: any) => new DisjunctVal(terms),
 
-    'predot-prefix': (_op: Op, terms: any) => new RefVal(terms, true),
-    'indot-infix': (_op: Op, terms: any) => new RefVal(terms),
+    'dot-prefix': (_op: Op, terms: any) => new RefVal(terms, true),
+    'dot-infix': (_op: Op, terms: any) => new RefVal(terms),
+
+    'star-prefix': (_op: Op, terms: any) => new PrefVal(terms[0]),
   }
+
 
   jsonic
     .use(Expr, {
       op: {
-        conjunct: {
+        'conjunct': {
           infix: true, src: '&', left: 14000, right: 15000
         },
-        disjunct: {
+        'disjunct': {
           infix: true, src: '|', left: 14000, right: 15000
         },
-        indot: {
+
+        'dot-infix': {
           src: '.',
           infix: true,
           left: 15_000_000,
           right: 14_000_000,
         },
-        predot: {
+        'dot-prefix': {
           src: '.',
           prefix: true,
           right: 14_000_000,
-        }
+        },
 
+        'star': {
+          src: '*',
+          prefix: true,
+          right: 14_000_000,
+        },
       },
       evaluate: (op: Op, terms: any) => {
+        // console.log('LANG EVAL', op, terms)
         return opmap[op.name](op, terms)
       }
     })
+
+  // console.log(jsonic.token)
+  let CJ = jsonic.token['#E&']
+  let CL = jsonic.token.CL
 
   // let NR = jsonic.token.NR
   // let TX = jsonic.token.TX
@@ -148,7 +162,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   // let OB = jsonic.token.OB
   // let OS = jsonic.token.OS
 
-  // let CJ = jsonic.token['#A&']
+
   // let DJ = jsonic.token['#A|']
   // let FS = jsonic.token['#A/']
   // let AK = jsonic.token['#A*']
@@ -308,24 +322,24 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   // })
 
 
-  // jsonic.rule('pair', (rs: RuleSpec) => {
-  //   rs.def.open.unshift({
-  //     s: [[CJ, DJ], EQ], p: 'val', u: { spread: true }
-  //   })
 
-  //   // TODO: make before/after function[]
-  //   let orig_bc: any = rs.def.bc
-  //   rs.def.bc = function(rule: Rule, ctx: Context) {
-  //     let out = orig_bc.call(this, rule, ctx)
+  //   // rs.def.open.unshift({
+  //   //   s: [[CJ, DJ], EQ], p: 'val', u: { spread: true }
+  //   // })
 
-  //     if (rule.use.spread) {
-  //       rule.node[MapVal.SPREAD] =
-  //         (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
-  //       rule.node[MapVal.SPREAD].v.push(rule.child.node)
-  //     }
+  //   // // TODO: make before/after function[]
+  //   // let orig_bc: any = rs.def.bc
+  //   // rs.def.bc = function(rule: Rule, ctx: Context) {
+  //   //   let out = orig_bc.call(this, rule, ctx)
 
-  //     return out
-  //   }
+  //   //   if (rule.use.spread) {
+  //   //     rule.node[MapVal.SPREAD] =
+  //   //       (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
+  //   //     rule.node[MapVal.SPREAD].v.push(rule.child.node)
+  //   //   }
+
+  //   //   return out
+  //   // }
 
   //   return rs
   // })
@@ -414,6 +428,24 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
       return out
     }
+    return rs
+  })
+
+
+  jsonic.rule('pair', (rs: RuleSpec) => {
+    let orig_bc: any = rs.def.bc
+    rs
+      .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
+      .bc((...rest: any) => {
+        orig_bc(...rest)
+
+        let rule = rest[0]
+        if (rule.use.spread) {
+          rule.node[MapVal.SPREAD] =
+            (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
+          rule.node[MapVal.SPREAD].v.push(rule.child.node)
+        }
+      })
     return rs
   })
 

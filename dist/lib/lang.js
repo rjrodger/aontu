@@ -60,41 +60,50 @@ let AontuJsonic = function aontu(jsonic) {
     let opmap = {
         'conjunct-infix': (_op, terms) => new val_1.ConjunctVal(terms),
         'disjunct-infix': (_op, terms) => new val_1.DisjunctVal(terms),
-        'predot-prefix': (_op, terms) => new val_1.RefVal(terms, true),
-        'indot-infix': (_op, terms) => new val_1.RefVal(terms),
+        'dot-prefix': (_op, terms) => new val_1.RefVal(terms, true),
+        'dot-infix': (_op, terms) => new val_1.RefVal(terms),
+        'star-prefix': (_op, terms) => new val_1.PrefVal(terms[0]),
     };
     jsonic
         .use(expr_1.Expr, {
         op: {
-            conjunct: {
+            'conjunct': {
                 infix: true, src: '&', left: 14000, right: 15000
             },
-            disjunct: {
+            'disjunct': {
                 infix: true, src: '|', left: 14000, right: 15000
             },
-            indot: {
+            'dot-infix': {
                 src: '.',
                 infix: true,
                 left: 15000000,
                 right: 14000000,
             },
-            predot: {
+            'dot-prefix': {
                 src: '.',
                 prefix: true,
                 right: 14000000,
-            }
+            },
+            'star': {
+                src: '*',
+                prefix: true,
+                right: 14000000,
+            },
         },
         evaluate: (op, terms) => {
+            // console.log('LANG EVAL', op, terms)
             return opmap[op.name](op, terms);
         }
     });
+    // console.log(jsonic.token)
+    let CJ = jsonic.token['#E&'];
+    let CL = jsonic.token.CL;
     // let NR = jsonic.token.NR
     // let TX = jsonic.token.TX
     // let ST = jsonic.token.ST
     // let VL = jsonic.token.VL
     // let OB = jsonic.token.OB
     // let OS = jsonic.token.OS
-    // let CJ = jsonic.token['#A&']
     // let DJ = jsonic.token['#A|']
     // let FS = jsonic.token['#A/']
     // let AK = jsonic.token['#A*']
@@ -232,21 +241,20 @@ let AontuJsonic = function aontu(jsonic) {
     //       {}, // no more parts
     //     ])
     // })
-    // jsonic.rule('pair', (rs: RuleSpec) => {
-    //   rs.def.open.unshift({
-    //     s: [[CJ, DJ], EQ], p: 'val', u: { spread: true }
-    //   })
-    //   // TODO: make before/after function[]
-    //   let orig_bc: any = rs.def.bc
-    //   rs.def.bc = function(rule: Rule, ctx: Context) {
-    //     let out = orig_bc.call(this, rule, ctx)
-    //     if (rule.use.spread) {
-    //       rule.node[MapVal.SPREAD] =
-    //         (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
-    //       rule.node[MapVal.SPREAD].v.push(rule.child.node)
-    //     }
-    //     return out
-    //   }
+    //   // rs.def.open.unshift({
+    //   //   s: [[CJ, DJ], EQ], p: 'val', u: { spread: true }
+    //   // })
+    //   // // TODO: make before/after function[]
+    //   // let orig_bc: any = rs.def.bc
+    //   // rs.def.bc = function(rule: Rule, ctx: Context) {
+    //   //   let out = orig_bc.call(this, rule, ctx)
+    //   //   if (rule.use.spread) {
+    //   //     rule.node[MapVal.SPREAD] =
+    //   //       (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
+    //   //     rule.node[MapVal.SPREAD].v.push(rule.child.node)
+    //   //   }
+    //   //   return out
+    //   // }
     //   return rs
     // })
     // jsonic.rule('pref', (rs: RuleSpec) => {
@@ -316,6 +324,21 @@ let AontuJsonic = function aontu(jsonic) {
             rule.node = new val_1.MapVal(rule.node);
             return out;
         };
+        return rs;
+    });
+    jsonic.rule('pair', (rs) => {
+        let orig_bc = rs.def.bc;
+        rs
+            .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
+            .bc((...rest) => {
+            orig_bc(...rest);
+            let rule = rest[0];
+            if (rule.use.spread) {
+                rule.node[val_1.MapVal.SPREAD] =
+                    (rule.node[val_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
+                rule.node[val_1.MapVal.SPREAD].v.push(rule.child.node);
+            }
+        });
         return rs;
     });
 };

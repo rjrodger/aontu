@@ -11,7 +11,7 @@ var describe = lab.describe
 var it = lab.it
 var expect = Code.expect
 
-let { Aontu, util } = require('..')
+let { Aontu, Lang, util } = require('..')
 
 // let { makeFileResolver } = require('@jsonic/multisource')
 
@@ -30,31 +30,34 @@ a:{c:2}
 `).canon
     ).equal('{"a":{"b":1,"c":2}}')
 
+    let p0 = new Lang()
+    
     expect(
-      Aontu(`
+      p0.parse(`
 u: { x: 1, y: number}
-q: a: /u
-w: b: /q/a & {y:2,z:3}
+q: a: .u
+w: b: .q.a & {y:2,z:3}
 `).canon
-    ).equal(
-      '{"u":{"x":1,"y":number},' +
-        '"q":{"a":{"x":1,"y":number}},"w":{"b":{"x":1,"y":2,"z":3}}}'
     )
+      .equal('{"u":{"x":1,"y":number},"q":{"a":.u},"w":{"b":.q.a&{"y":2,"z":3}}}')
 
     expect(
       Aontu(`
 q: a: { x: 1, y: number}
-w: b: /q/a & {y:2,z:3}
+w0: b: .q.a & {y:2,z:3}
+w1: b: {y:2,z:3} & .q.a
 `).gen([])
     ).equal({
       q: { a: { x: 1, y: undefined } },
-      w: { b: { x: 1, y: 2, z: 3 } },
+      w0: { b: { x: 1, y: 2, z: 3 } },
+      w1: { b: { x: 1, y: 2, z: 3 } },
     })
 
     // TODO: fix in jsonic
     expect(Aontu('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}')
   })
 
+  
   it('util', async () => {
     expect(util.options('x')).contains({ src: 'x', print: 0 })
     expect(util.options('x', { print: 1 })).contains({ src: 'x', print: 1 })
@@ -67,10 +70,9 @@ w: b: /q/a & {y:2,z:3}
     ).contains({ src: 'y', print: 2 })
   })
 
+  
   it('file', async () => {
-    let v0 = Aontu('@"' + __dirname + '/t02.jsonic"', {
-      // resolver: makeFileResolver(),
-    })
+    let v0 = Aontu('@"' + __dirname + '/t02.jsonic"')
 
     // console.log('MAP', v0.map)
 
@@ -123,24 +125,24 @@ w: b: /q/a & {y:2,z:3}
   })
 
   it('map-spread', () => {
-    let v0 = Aontu('c:{&={x:2},y:{k:3},z:{k:4}}')
+    let v0 = Aontu('c:{&:{x:2},y:{k:3},z:{k:4}}')
     //console.dir(v0,{depth:null})
     expect(v0.canon).equals(
-      '{"c":{&={"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
+      '{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
     )
 
-    let v1 = Aontu('c:{&={x:2},z:{k:4}},c:{y:{k:3}}')
+    let v1 = Aontu('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}')
     //console.dir(v0,{depth:null})
     expect(v1.canon).equals(
-      '{"c":{&={"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
+      '{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
     )
 
-    let v10 = Aontu('a:{&={x:1}},b:/a,b:{y:{k:2}},c:{&={x:2}},c:{y:{k:3}}')
+    let v10 = Aontu('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}')
     //console.dir(v0,{depth:null})
     expect(v10.canon).equals(
-      '{"a":{&={"x":1}},' +
-        '"b":{&={"x":1},"y":{"k":2,"x":1}},' +
-        '"c":{&={"x":2},"y":{"k":3,"x":2}}}'
+      '{"a":{&:{"x":1}},' +
+        '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
+        '"c":{&:{"x":2},"y":{"k":3,"x":2}}}'
     )
   })
 })

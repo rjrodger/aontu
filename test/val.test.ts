@@ -340,10 +340,10 @@ describe('val', function() {
 
     //console.dir(m0, { depth: null })
 
-    expect(m0.canon).equals('{&={"x":1},"a":{"y":1},"b":{"y":2}}')
+    expect(m0.canon).equals('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
 
     let u0 = m0.unify(TOP, ctx)
-    expect(u0.canon).equals('{&={"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+    expect(u0.canon).equals('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
   })
 
 
@@ -356,10 +356,10 @@ describe('val', function() {
 
     console.dir(m0, { depth: null })
 
-    //expect(m0.canon).equals('{&={"x":1},"a":{"y":1},"b":{"y":2}}')
+    //expect(m0.canon).equals('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
 
     //let u0 = m0.unify(TOP, ctx)
-    //expect(u0.canon).equals('{&={"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+    //expect(u0.canon).equals('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
   })
   */
 
@@ -548,8 +548,8 @@ describe('val', function() {
 
     let m1 = P(`
 u: { x: 1, y: number}
-q: a: /u
-w: b: /q/a & {y:2, z: 3}
+q: a: .u
+w: b: .q.a & {y:2, z: 3}
 `)
 
     let u1a = m1.unify(TOP, new Context({ root: m1 }))
@@ -564,12 +564,12 @@ w: b: /q/a & {y:2, z: 3}
   it('unify', () => {
     let m0 = (P(`
 a: 1
-b: /a
-c: /x
+b: .a
+c: .x
 `, { xlog: -1 }) as MapVal)
 
     //console.dir(m0, { depth: null })
-    expect(m0.canon).equals('{"a":1,"b":/a,"c":/x}')
+    expect(m0.canon).equals('{"a":1,"b":.a,"c":.x}')
 
     let c0 = new Context({
       root: m0
@@ -577,11 +577,11 @@ c: /x
 
     let m0u = m0.unify(TOP, c0)
     // console.dir(m0u, { depth: null })
-    expect(m0u.canon).equals('{"a":1,"b":1,"c":/x}')
+    expect(m0u.canon).equals('{"a":1,"b":1,"c":.x}')
 
 
     let m1 = (P(`
-a: /b/c
+a: .b.c
 b: c: 1
 `, { xlog: -1 }) as MapVal)
 

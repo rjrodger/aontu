@@ -35,8 +35,6 @@ also trace deps into top val and watch via model
 function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   let opts = util.options(src, popts)
 
-  // console.log('A opts', opts)
-
   let lang = new Lang(opts)
   let deps = {}
   let val = lang.parse(opts.src, { deps: deps })

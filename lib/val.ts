@@ -500,7 +500,7 @@ class MapVal extends Val {
   get canon() {
     let keys = Object.keys(this.peg)
     return '{' +
-      (this.spread.cj ? '&=' + this.spread.cj.canon +
+      (this.spread.cj ? '&:' + this.spread.cj.canon +
         (0 < keys.length ? ',' : '') : '') +
       keys
         .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') +
@@ -764,7 +764,7 @@ class RefVal extends Val {
     this.absolute = true === abs
     this.parts = []
 
-    console.log('RV', peg)
+    // console.log('RV', peg)
 
     for (let part of peg) {
       this.append(part)
@@ -773,6 +773,8 @@ class RefVal extends Val {
 
 
   append(part: any) {
+    //console.log('APPEND 0', part)
+
     if ('string' === typeof part) {
       this.parts.push(part)
     }
@@ -789,8 +791,9 @@ class RefVal extends Val {
       }
     }
 
-
     this.peg = (this.absolute ? this.sep : '') + this.parts.join(this.sep)
+
+    // console.log('APPEND 1', this.parts)
   }
 
   unify(peer: Val, ctx: Context): Val {

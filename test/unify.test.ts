@@ -44,12 +44,12 @@ describe('unify', function() {
       root: m0
     })
 
-    expect(c0.find(ref('/a')).canon).equals('1')
-    expect(c0.find(ref('/b/c')).canon).equals('2')
-    expect(c0.find(ref('/d/e/f')).canon).equals('3')
-    expect(c0.find(ref('/b')).canon).equals('{"c":2}')
+    expect(c0.find(ref('.a')).canon).equals('1')
+    expect(c0.find(ref('.b.c')).canon).equals('2')
+    expect(c0.find(ref('.d.e.f')).canon).equals('3')
+    expect(c0.find(ref('.b')).canon).equals('{"c":2}')
 
-    expect(c0.find(ref('/x'))).equals(undefined)
+    expect(c0.find(ref('.x'))).equals(undefined)
   })
 
   it('basic', () => {
@@ -89,15 +89,15 @@ describe('unify', function() {
   it('pref-in-conjunct', () => {
     let uc = (s: string) => new Unify(s).res.canon
 
-    expect(uc('a:{z:*3|number},d:{&=/a,b:{},c:{z:4}}'))
+    expect(uc('a:{z:*3|number},d:{&:.a,b:{},c:{z:4}}'))
       .equal('{"a":{"z":*3|number},' +
-        '"d":{&={"z":*3|number},"b":{"z":*3|number},"c":{"z":4}}}')
+        '"d":{&:{"z":*3|number},"b":{"z":*3|number},"c":{"z":4}}}')
 
-    expect(uc('a:{z:*3|number},d:{&=/a,b:{z:"bad"},c:{z:4}}'))
+    expect(uc('a:{z:*3|number},d:{&:.a,b:{z:"bad"},c:{z:4}}'))
       .equal('{"a":{"z":*3|number},' +
-        '"d":{&={"z":*3|number},"b":{"z":nil},"c":{"z":4}}}')
+        '"d":{&:{"z":*3|number},"b":{"z":nil},"c":{"z":4}}}')
 
-    expect(new Unify('a:{z:*3|number},d:{&=/a,b:{},c:{z:4}}').res.gen([]))
+    expect(new Unify('a:{z:*3|number},d:{&:.a,b:{},c:{z:4}}').res.gen([]))
       .equal({ a: { z: 3 }, d: { b: { z: 3 }, c: { z: 4 } } })
 
 
@@ -108,7 +108,7 @@ describe('unify', function() {
     expect(uc('*1|number')).equals('*1|number')
     expect(uc('a:*1|number')).equals('{"a":*1|number}')
     expect(uc('{a:*1|number}&{a:2}')).equals('{"a":2}')
-    expect(uc('q:{a:*1|number},w:/q&{a:2}'))
+    expect(uc('q:{a:*1|number},w:.q&{a:2}'))
       .equals('{"q":{"a":*1|number},"w":{"a":2}}')
 
     expect(uc('b:{y:1}&{x:1,y:integer,z:*3|number},c:{y:true,z:4}&{x:1,y:integer,z:*3|number}'))
@@ -121,7 +121,7 @@ describe('unify', function() {
     expect(uc('a:{x:1,y:integer,z:*3|number},d:{b:{y:1}&/a,c:{y:true,z:4}&/a}'))
       .equal('{"a":{"x":1,"y":integer,"z":*3|number},"d":{"b":{"y":1,"x":1,"z":*3|number},"c":{"y":nil,"z":4,"x":1}}}')
 
-    expect(uc('a:{x:1,y:integer,z:*3|number},d:{&=/a,b:{y:1},c:{y:true,z:4}}'))
+    expect(uc('a:{x:1,y:integer,z:*3|number},d:{&:.a,b:{y:1},c:{y:true,z:4}}'))
       .equal('{"a":{"x":1,"y":integer,"z":*3|number},"d":{"b":{"y":1,"x":1,"z":*3|number},"c":{"y":nil,"z":4,"x":1}}}')
 
 
@@ -135,24 +135,24 @@ describe('unify', function() {
       return { c: u.res.canon, d: u.dc }
     }
 
-    expect(uc('a:1,b:/a')).equal({ c: '{"a":1,"b":1}', d: 1 })
-    expect(uc('a:/b,b:1')).equal({ c: '{"a":1,"b":1}', d: 1 })
+    expect(uc('a:1,b:.a')).equal({ c: '{"a":1,"b":1}', d: 1 })
+    expect(uc('a:.b,b:1')).equal({ c: '{"a":1,"b":1}', d: 1 })
 
-    expect(uc('a:1,b:/a,c:/b')).equal({ c: '{"a":1,"b":1,"c":1}', d: 1 })
+    expect(uc('a:1,b:.a,c:.b')).equal({ c: '{"a":1,"b":1,"c":1}', d: 1 })
 
     expect(uc('a:{b:1}')).equal({ c: '{"a":{"b":1}}', d: 1 })
     expect(uc('{a:{b:1}} & c:2')).equal({ c: '{"a":{"b":1},"c":2}', d: 1 })
 
-    expect(uc('a:{b:1}, c:/a/b')).equal({ c: '{"a":{"b":1},"c":1}', d: 1 })
-    expect(uc('c:/a/b, a:{b:1},')).equal({ c: '{"c":1,"a":{"b":1}}', d: 1 })
+    expect(uc('a:{b:1}, c:.a.b')).equal({ c: '{"a":{"b":1},"c":1}', d: 1 })
+    expect(uc('c:.a.b, a:{b:1},')).equal({ c: '{"c":1,"a":{"b":1}}', d: 1 })
 
-    expect(uc('c:/a/b, a:{b:/d}, d:1'))
+    expect(uc('c:.a.b, a:{b:.d}, d:1'))
       .equal({ c: '{"c":1,"a":{"b":1},"d":1}', d: 2 })
 
-    expect(uc('a:{b:1},x:/a&{y:2}'))
+    expect(uc('a:{b:1},x:.a&{y:2}'))
       .equal({ c: '{"a":{"b":1},"x":{"b":1,"y":2}}', d: 1 })
 
-    expect(uc('a:{b:1,y:number},x:{z2:/a&{y:2},z3:/a&{y:3}}'))
+    expect(uc('a:{b:1,y:number},x:{z2:.a&{y:2},z3:.a&{y:3}}'))
       .equal({
         c: '{"a":{"b":1,"y":number},' +
           '"x":{"z2":{"b":1,"y":2},"z3":{"b":1,"y":3}}}', d: 1
@@ -164,33 +164,33 @@ describe('unify', function() {
   it('spreads', () => {
     let uc = (s: string) => new Unify(s).res.canon
 
-    expect(uc('a:{&={x:1,y:integer},b:{y:1},c:{y:2}}'))
-      .equal('{"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+    expect(uc('a:{&:{x:1,y:integer},b:{y:1},c:{y:2}}'))
+      .equal('{"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
 
-    expect(uc('a:{&={x:1,y:integer},b:{y:1},c:{y:true}}'))
-      .equal('{"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
+    expect(uc('a:{&:{x:1,y:integer},b:{y:1},c:{y:true}}'))
+      .equal('{"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
 
-    expect(uc('a:{&={x:1,y:integer,z:*3|number},b:{y:1},c:{y:true}}'))
-      .equal('{"a":{&={"x":1,"y":integer,"z":*3|number},"b":{"y":1,"x":1,"z":*3|number},"c":{"y":nil,"x":1,"z":*3|number}}}')
+    expect(uc('a:{&:{x:1,y:integer,z:*3|number},b:{y:1},c:{y:true}}'))
+      .equal('{"a":{&:{"x":1,"y":integer,"z":*3|number},"b":{"y":1,"x":1,"z":*3|number},"c":{"y":nil,"x":1,"z":*3|number}}}')
 
-    expect(uc('q:{x:1,y:integer},a:{&=/q,b:{y:1},c:{y:2}}'))
-      .equal('{"q":{"x":1,"y":integer},"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+    expect(uc('q:{x:1,y:integer},a:{&:.q,b:{y:1},c:{y:2}}'))
+      .equal('{"q":{"x":1,"y":integer},"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
 
-    expect(uc('q:{x:1,y:integer},a:{&=/q,b:{y:1},c:{y:true}}'))
-      .equal('{"q":{"x":1,"y":integer},"a":{&={"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
+    expect(uc('q:{x:1,y:integer},a:{&:.q,b:{y:1},c:{y:true}}'))
+      .equal('{"q":{"x":1,"y":integer},"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":nil,"x":1}}}')
 
-    expect(uc('q:{x:1,y:integer,z:*3|number},a:{&=/q,b:{y:1,z:4},c:{y:2}}'))
-      .equal('{"q":{"x":1,"y":integer,"z":*3|number},"a":{&={"x":1,"y":integer,"z":*3|number},"b":{"y":1,"z":4,"x":1},"c":{"y":2,"x":1,"z":*3|number}}}')
+    expect(uc('q:{x:1,y:integer,z:*3|number},a:{&:.q,b:{y:1,z:4},c:{y:2}}'))
+      .equal('{"q":{"x":1,"y":integer,"z":*3|number},"a":{&:{"x":1,"y":integer,"z":*3|number},"b":{"y":1,"z":4,"x":1},"c":{"y":2,"x":1,"z":*3|number}}}')
 
 
-    expect(uc('p:{x:1},q:{y:2},u:/p&/q,v:{&=/u,a:{z:33},b:{z:44}}'))
-      .equal('{"p":{"x":1},"q":{"y":2},"u":{"x":1,"y":2},"v":{&={"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
+    expect(uc('p:{x:1},q:{y:2},u:.p&.q,v:{&:.u,a:{z:33},b:{z:44}}'))
+      .equal('{"p":{"x":1},"q":{"y":2},"u":{"x":1,"y":2},"v":{&:{"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
 
-    expect(uc('p:x:1,q:y:2,u:/p&/q,v:{&=/u,a:z:33,b:z:44}'))
-      .equal('{"p":{"x":1},"q":{"y":2},"u":{"x":1,"y":2},"v":{&={"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
+    expect(uc('p:x:1,q:y:2,u:.p&.q,v:{&:.u,a:z:33,b:z:44}'))
+      .equal('{"p":{"x":1},"q":{"y":2},"u":{"x":1,"y":2},"v":{&:{"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
 
-    expect(uc('p:x:1,q:y:2,v:{&=/p,&=/q,a:z:33,b:z:44}'))
-      .equal('{"p":{"x":1},"q":{"y":2},"v":{&={"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
+    expect(uc('p:x:1,q:y:2,v:{&:.p,&:.q,a:z:33,b:z:44}'))
+      .equal('{"p":{"x":1},"q":{"y":2},"v":{&:{"x":1,"y":2},"a":{"z":33,"x":1,"y":2},"b":{"z":44,"x":1,"y":2}}}')
 
   })
 
