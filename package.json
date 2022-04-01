@@ -38,8 +38,9 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/directive": "^0.4.1",
-    "@jsonic/multisource": "0.3.0",
+    "@jsonic/directive": "^0.5.0",
+    "@jsonic/expr": "^0.1.1",
+    "@jsonic/multisource": "0.4.0",
     "@types/node": "^17.0.23",
     "jsonic": "jsonicjs/jsonic#nextgen"
   },
