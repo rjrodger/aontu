@@ -3,7 +3,7 @@ import { Lang } from './lib/lang';
 import { Val, Nil } from './lib/val';
 declare function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val;
 declare const util: {
-    options: (src: string | Partial<Options>, popts?: Partial<Options> | undefined) => Options;
+    options: (src: string | Partial<Options>, popts?: Partial<Options>) => Options;
 };
 export { Aontu, Val, Nil, Lang, util };
 export default Aontu;

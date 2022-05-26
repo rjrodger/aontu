@@ -258,6 +258,7 @@ class MapVal extends Val {
         delete this.peg[MapVal.SPREAD];
         if (spread) {
             if ('&' === spread.o) {
+                // TODO: handle existing spread!
                 this.spread.cj =
                     new ConjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v], ctx);
             }

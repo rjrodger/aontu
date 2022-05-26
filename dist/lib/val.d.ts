@@ -28,7 +28,7 @@ declare class Nil extends Val {
     why: any;
     primary?: Val;
     secondary?: Val;
-    static make: (ctx?: Context | undefined, why?: any, av?: Val | undefined, bv?: Val | undefined) => Nil;
+    static make: (ctx?: Context, why?: any, av?: Val, bv?: Val) => Nil;
     constructor(why?: any, ctx?: Context);
     unify(_peer: Val, _ctx: Context): this;
     get canon(): string;

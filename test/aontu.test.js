@@ -31,15 +31,16 @@ a:{c:2}
     ).equal('{"a":{"b":1,"c":2}}')
 
     let p0 = new Lang()
-    
+
     expect(
       p0.parse(`
 u: { x: 1, y: number}
 q: a: .u
 w: b: .q.a & {y:2,z:3}
 `).canon
+    ).equal(
+      '{"u":{"x":1,"y":number},"q":{"a":.u},"w":{"b":.q.a&{"y":2,"z":3}}}'
     )
-      .equal('{"u":{"x":1,"y":number},"q":{"a":.u},"w":{"b":.q.a&{"y":2,"z":3}}}')
 
     expect(
       Aontu(`
@@ -57,7 +58,6 @@ w1: b: {y:2,z:3} & .q.a
     expect(Aontu('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}')
   })
 
-  
   it('util', async () => {
     expect(util.options('x')).contains({ src: 'x', print: 0 })
     expect(util.options('x', { print: 1 })).contains({ src: 'x', print: 1 })
@@ -70,7 +70,6 @@ w1: b: {y:2,z:3} & .q.a
     ).contains({ src: 'y', print: 2 })
   })
 
-  
   it('file', async () => {
     let v0 = Aontu('@"' + __dirname + '/t02.jsonic"')
 

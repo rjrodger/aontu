@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.0.9",
+  "version": "0.1.0",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -23,7 +23,8 @@
     "xtest-web": "browserify -o test-web/test-web.js -e test/aontu.test.js -s Aontu -im -i assert -i @hapi/lab && open test-web/index.html",
     "coveralls": "lab -s -P test -r lcov -I URL,URLSearchParams | coveralls",
     "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
-    "build": "tsc -d && cp dist/aontu.js dist/aontu.min.js && browserify -o dist/aontu.min.js -e dist/aontu.js -s Aontu -im -i assert -p tinyify",
+    "build": "tsc -d",
+    "build-web": "tsc -d && cp dist/aontu.js dist/aontu.min.js && browserify -o dist/aontu.min.js -e dist/aontu.js -s Aontu -im -i assert -p tinyify",
     "clean": "rm -rf node_modules yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
@@ -41,7 +42,7 @@
     "@jsonic/directive": "^0.5.0",
     "@jsonic/expr": "^0.1.1",
     "@jsonic/multisource": "0.4.0",
-    "@types/node": "^17.0.23",
+    "@types/node": "^17.0.35",
     "jsonic": "jsonicjs/jsonic#nextgen"
   },
   "devDependencies": {
@@ -51,9 +52,9 @@
     "coveralls": "^3.1.1",
     "hapi-lab-shim": "0.0.2",
     "lab-transform-typescript": "^3.0.1",
-    "prettier": "^2.6.1",
+    "prettier": "^2.6.2",
     "serve": "^13.0.2",
     "tinyify": "^3.0.0",
-    "typescript": "^4.6.3"
+    "typescript": "^4.7.2"
   }
 }
