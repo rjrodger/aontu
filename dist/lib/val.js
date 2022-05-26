@@ -621,24 +621,17 @@ class PrefVal extends Val {
     constructor(peg, pref, ctx) {
         super(peg, ctx);
         this.pref = pref || peg;
-        // console.log('AA PrefVal C', peg?.canon, pref?.canon)
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
     unify(peer, ctx) {
         let done = true;
         let out;
-        // if (peer === TOP) {
-        //   out = this
-        // }
-        // else
         if (peer instanceof PrefVal) {
             out = new PrefVal((0, op_1.unite)(ctx, this.peg, peer.peg, 'Pref000'), (0, op_1.unite)(ctx, this.pref, peer.pref, 'Pref010'), ctx);
         }
         else {
             out = new PrefVal(
-            // unite(ctx, this.peg, peer, 'Pref020'),
-            // unite(ctx, this.pref, peer, 'Pref030'),
             // TODO: find a better way to drop Nil non-errors
             (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.peg, peer, 'Pref020'), (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.pref, peer, 'Pref030'), ctx);
         }
@@ -650,10 +643,6 @@ class PrefVal extends Val {
         else if (out.pref instanceof Nil) {
             out = out.peg;
         }
-        // }
-        // else {
-        //   out = new Nil('pref')
-        // }
         out.done = done ? DONE : this.done + 1;
         return out;
     }

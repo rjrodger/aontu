@@ -5,13 +5,12 @@ let { Aontu, Lang, util } = require('..')
 let A = Aontu
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
-    console.log(v.canon, '::', Util.inspect(v.gen(), { depth: null }), v.err)
+  console.log(v.canon, '::', Util.inspect(v.gen(), { depth: null }), v.err)
 
 let lang = new Lang()
 let P = lang.parse.bind(lang)
 
 let tmp = {}
-
 
 // console.log(Aontu('11'))
 // console.log(Aontu('11&number'))
@@ -81,7 +80,6 @@ let tmp = {}
 // G(A('string|*1'))
 // G(A('a:*1,a:2'))
 
-
 // G(A(`
 // a: *true | boolean
 // b: .a
@@ -96,7 +94,6 @@ let tmp = {}
 // h: { z: false }
 // `))
 
-
 // G(A(`
 // x: y: { m: n: o: *false | boolean }
 // a: b: { &: .x.y }
@@ -104,7 +101,6 @@ let tmp = {}
 // a: b: d: {}
 // a: b: e: m: n: o: true
 // `))
-
 
 // G(tmp.a1 = A(`
 // x: y: { m: n: o: *false | boolean }
@@ -114,9 +110,7 @@ let tmp = {}
 // a: b: e: m: n: o: true
 // `))
 
-
 // G(tmp.a1)
-
 
 // G(A('number|*1 & a'))
 // G(A('number|*1 & 2'))
