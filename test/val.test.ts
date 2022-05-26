@@ -15,7 +15,8 @@ import {
 } from '../lib/lang'
 
 import {
-  Context
+  Context,
+  Unify,
 } from '../lib/unify'
 
 import {
@@ -42,12 +43,14 @@ import {
 } from '../lib/val'
 
 
-let lang = new Lang()
-let PL = lang.parse.bind(lang)
-let P = (x: string | string[], ctx?: any) =>
+const lang = new Lang()
+const PL = lang.parse.bind(lang)
+const P = (x: string | string[], ctx?: any) =>
   'string' === typeof (x) ? PL(x, ctx) : x.map(s => PL(s, ctx))
-//let D = (x: any) => console.dir(x, { depth: null })
-let UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
+const D = (x: any) => console.dir(x, { depth: null })
+const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
+const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen()
+
 
 describe('val', function() {
   it('canon', () => {
@@ -602,67 +605,142 @@ b: c: 1
 
     let p0 = new PrefVal(new StringVal('p0'))
     expect(p0.canon).equals('*"p0"')
-    expect(p0.gen([])).equals('p0')
+    expect(p0.gen()).equals('p0')
 
     let pu0 = p0.unify(TOP, ctx)
     // console.log(pu0)
+    expect(pu0).contains({
+      done: -1,
+      row: -1,
+      col: -1,
+      url: '',
 
-    return;
+      // FIX: use jest toMatchObject
+      // peg: {
+      //   done: -1,
+      //   row: -1,
+      //   col: -1,
+      //   url: '',
+      //   peg: 'p0',
+      //   path: [],
+      //   type: String,
+      // },
+      // path: [],
+      // pref: {
+      //   done: -1,
+      //   row: -1,
+      //   col: -1,
+      //   url: '',
+      //   peg: 'p0',
+      //   path: [],
+      //   type: String,
+      // }
+    })
 
 
-    /*
-    
+
+
     p0.peg = new ScalarTypeVal(String)
     expect(p0.canon).equals('*"p0"')
-    expect(p0.gen([])).equals('p0')
-  
-    p0.pref = new Nil([], 'test:pref')
-    expect(p0.canon).equals('string')
-    expect(p0.gen([])).equals(undefined)
-  
-    p0.peg = new Nil([], 'test:val')
-    expect(p0.canon).equals('nil')
-    expect(p0.gen([])).equals(undefined)
-  
+    expect(p0.gen()).equals('p0')
+
+    // p0.pref = new Nil([], 'test:pref')
+    // expect(p0.canon).equals('string')
+    // expect(p0.gen([])).equals(undefined)
+
+    // p0.peg = new Nil([], 'test:val')
+    // expect(p0.canon).equals('nil')
+    // expect(p0.gen([])).equals(undefined)
+
+
+
     let p1 = new PrefVal(new StringVal('p1'))
     let p2 = new PrefVal(new ScalarTypeVal(String))
-  
+
     let up12 = p1.unify(p2, ctx)
     expect(up12.canon).equals('*"p1"')
-  
+
     let up21 = p2.unify(p1, ctx)
     expect(up21.canon).equals('*"p1"')
-  
+
     let up2s0 = p2.unify(new StringVal('s0'), ctx)
     expect(up2s0.canon).equals('*"s0"')
-  
+
     // NOTE: once made concrete a prefval is fixed
     expect(up2s0.unify(new StringVal('s1'), ctx).canon)
       .equals('nil')
-  
 
 
 
-    let u0 = P('1|number').unify(TOP, ctx)
-    // console.log(u0)
 
-    let u1 = P('*1|number').unify(TOP, ctx)
-    // console.log(u1)
+    // let u0 = P('1|number').unify(TOP, ctx)
+    // // console.log(u0)
+
+    // let u1 = P('*1|number').unify(TOP, ctx)
+    // // console.log(u1)
 
 
     expect(UC('a:1')).equals('{"a":1}')
-    expect(UC('a:1,b:/a')).equals('{"a":1,"b":1}')
-    expect(UC('a:*1|number,b:2,c:/a&/b')).equals('{"a":*1|number,"b":2,"c":2}')
-    expect(UC('a:*1|number,b:top,c:/a&/b'))
+    expect(UC('a:1,b:.a')).equals('{"a":1,"b":1}')
+    expect(UC('a:*1|number,b:2,c:.a&.b')).equals('{"a":*1|number,"b":2,"c":2}')
+    expect(UC('a:*1|number,b:top,c:.a&.b'))
       .equals('{"a":*1|number,"b":top,"c":*1|number}')
-    expect(UC('a:*1|number,b:*2|number,c:/a&/b'))
-      .equals('{"a":*1|number,"b":*2|number,"c":*1|*2|number}')
+    expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
+      .equals('{"a":*1|number,"b":*2|number,"c":*2|*1|number}')
 
-    */
+
+    let d0 = P('1|number').unify(TOP, ctx)
+    // console.log(d0.canon)
+    // console.log(d0.gen())
+    expect(d0.canon).equals('1|number')
+    expect(d0.gen()).equals(1)
+
+    expect(G('number|*1')).equals(1)
+    expect(G('string|*1')).equals(1)
+    expect(G('a:*1,a:2')).equals({ a: undefined })
+    expect(G('*1 & 2')).equals(undefined)
+
+    expect(G(`
+a: *true | boolean
+b: .a
+c: .a & false
+d: { x: .a }
+d: { x: false }
+e: { x: .a }
+f: { &: *true | boolean }
+f: { y: false }
+g: .f
+h: { &: .a }
+h: { z: false }
+`)).equals({
+      a: true,
+      b: true,
+      c: false,
+      d: { x: false },
+      e: { x: true },
+      f: { y: false },
+      g: { y: false },
+      h: { z: false }
+    })
+
+    expect(G(`
+x: y: { m: n: *false | boolean }
+a: b: { &: .x.y }
+a: b: { c: {} }
+a: b: d: {}
+a: b: e: m: n: true
+`)).equals({
+      x: { y: { m: { n: false } } },
+      a: {
+        b: {
+          c: { m: { n: false } },
+          d: { m: { n: false } },
+          e: { m: { n: true } }
+        }
+      },
+    })
   })
-
 })
-
 
 
 function print(o: any, t?: string) {
