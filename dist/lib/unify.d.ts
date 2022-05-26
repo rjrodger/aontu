@@ -12,8 +12,9 @@ declare class Context {
         vc?: number;
     });
     clone(cfg: {
-        root: Val;
+        root?: Val;
         path?: Path;
+        err?: Nil[];
     }): Context;
     descend(key: string): Context;
     find(ref: RefVal): MapVal | undefined;

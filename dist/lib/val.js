@@ -173,6 +173,7 @@ class ScalarVal extends Val {
         this.done = DONE;
     }
     unify(peer, ctx) {
+        // Exactly equal scalars are handled in op/unite
         if (peer instanceof ScalarTypeVal) {
             return peer.unify(this, ctx);
         }
@@ -620,32 +621,26 @@ class PrefVal extends Val {
     constructor(peg, pref, ctx) {
         super(peg, ctx);
         this.pref = pref || peg;
+        // console.log('AA PrefVal C', peg?.canon, pref?.canon)
     }
     // PrefVal unify always returns a PrefVal
-    // PrevVals can only be removed by becoming Nil in a Disjunct
+    // PrefVals can only be removed by becoming Nil in a Disjunct
     unify(peer, ctx) {
         let done = true;
-        //let peer_peg = peer instanceof PrefVal ? peer.peg : peer
-        //let peer_pref = peer instanceof PrefVal ? peer.pref : peer
         let out;
-        /*
-              = new PrefVal(
-              this.peg.unify(peer_peg, ctx),
-              this.pref.unify(peer_pref, ctx),
-              ctx
-            )
-        */
+        // if (peer === TOP) {
+        //   out = this
+        // }
+        // else
         if (peer instanceof PrefVal) {
-            out = new PrefVal(
-            //this.peg.unify(peer.peg, ctx),
-            //this.pref.unify(peer.pref, ctx),
-            (0, op_1.unite)(ctx, this.peg, peer.peg), (0, op_1.unite)(ctx, this.pref, peer.pref), ctx);
+            out = new PrefVal((0, op_1.unite)(ctx, this.peg, peer.peg, 'Pref000'), (0, op_1.unite)(ctx, this.pref, peer.pref, 'Pref010'), ctx);
         }
         else {
             out = new PrefVal(
-            //this.peg.unify(peer, ctx),
-            //this.pref.unify(peer, ctx),
-            (0, op_1.unite)(ctx, this.peg, peer), (0, op_1.unite)(ctx, this.pref, peer), ctx);
+            // unite(ctx, this.peg, peer, 'Pref020'),
+            // unite(ctx, this.pref, peer, 'Pref030'),
+            // TODO: find a better way to drop Nil non-errors
+            (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.peg, peer, 'Pref020'), (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.pref, peer, 'Pref030'), ctx);
         }
         done = done && DONE === out.peg.done &&
             (null != out.pref ? DONE === out.pref.done : true);
@@ -655,6 +650,10 @@ class PrefVal extends Val {
         else if (out.pref instanceof Nil) {
             out = out.peg;
         }
+        // }
+        // else {
+        //   out = new Nil('pref')
+        // }
         out.done = done ? DONE : this.done + 1;
         return out;
     }

@@ -5,10 +5,13 @@ let { Aontu, Lang, util } = require('..')
 let A = Aontu
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
-  console.log(v.canon, '::', Util.inspect(v.gen(), { depth: null }))
+    console.log(v.canon, '::', Util.inspect(v.gen(), { depth: null }), v.err)
 
 let lang = new Lang()
 let P = lang.parse.bind(lang)
+
+let tmp = {}
+
 
 // console.log(Aontu('11'))
 // console.log(Aontu('11&number'))
@@ -71,36 +74,54 @@ let P = lang.parse.bind(lang)
 
 // D(A('x:{&:{b:number,c:2}},x:a:{b:1},x:aa:{b:9}',{xlog:-1}).gen())
 
-G(A('number|1'))
-G(A('number|string'))
-G(A('number|*1'))
-G(A('string|*1'))
-G(A('a:*1,a:2'))
+// G(A('1 & 1'))
+// G(A('number|1'))
+// G(A('number|string'))
+// G(A('number|*1'))
+// G(A('string|*1'))
+// G(A('a:*1,a:2'))
 
 
-G(A(`
-a: *true | boolean
-b: .a
-c: .a & false
-d: { x: .a }
-d: { x: false }
-e: { x: .a }
-f: { &: *true | boolean }
-f: { y: false }
-g: .f
-h: { &: .a }
-h: { z: false }
-`))
+// G(A(`
+// a: *true | boolean
+// b: .a
+// c: .a & false
+// d: { x: .a }
+// d: { x: false }
+// e: { x: .a }
+// f: { &: *true | boolean }
+// f: { y: false }
+// g: .f
+// h: { &: .a }
+// h: { z: false }
+// `))
 
 
-G(A(`
-x: y: { m: n: *false | boolean }
-a: b: { &: .x.y }
-a: b: { c: {} }
-a: b: d: {}
-a: b: e: m: n: true
-`))
+// G(A(`
+// x: y: { m: n: o: *false | boolean }
+// a: b: { &: .x.y }
+// # a: b: { c: {} }
+// a: b: d: {}
+// a: b: e: m: n: o: true
+// `))
 
 
+// G(tmp.a1 = A(`
+// x: y: { m: n: o: *false | boolean }
+// a: b: { &: .x.y }
+// a: b: { c: {} }
+// a: b: d: {}
+// a: b: e: m: n: o: true
+// `))
 
 
+// G(tmp.a1)
+
+
+// G(A('number|*1 & a'))
+// G(A('number|*1 & 2'))
+// G(A('number|*1 & number'))
+// G(A('number|*1'))
+// G(A('*1 & 2'))
+
+G(A('*1|number & 2'))

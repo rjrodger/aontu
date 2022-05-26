@@ -120,11 +120,13 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   jsonic
     .use(Expr, {
       op: {
+        // disjunct > conjunct: c & b|a -> c & (b|a)
         'conjunct': {
           infix: true, src: '&', left: 14000, right: 15000
         },
         'disjunct': {
-          infix: true, src: '|', left: 14000, right: 15000
+          // infix: true, src: '|', left: 14000, right: 15000
+          infix: true, src: '|', left: 16000, right: 17000
         },
 
         'dot-infix': {

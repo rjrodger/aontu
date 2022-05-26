@@ -30,7 +30,6 @@ class Context {
   err: Nil[]  // Nil error log of current unify.
   vc: number  // Val counter to create unique val ids.
 
-
   constructor(cfg: {
     root: Val
     err?: Nil[],
@@ -46,12 +45,13 @@ class Context {
 
 
   clone(cfg: {
-    root: Val,
-    path?: Path
+    root?: Val,
+    path?: Path,
+    err?: Nil[],
   }): Context {
     return new Context({
-      root: cfg.root,
-      err: this.err,
+      root: cfg.root || this.root,
+      err: cfg.err || this.err,
       vc: this.vc,
     })
   }
@@ -112,11 +112,8 @@ class Unify {
     // perhaps parse should count intial vals, paths, etc?
 
 
-
-
     let maxdc = 999
     for (this.dc = 0; this.dc < maxdc && DONE !== res.done; this.dc++) {
-      //res = res.unify(TOP, ctx)
       res = unite(ctx, res, TOP)
       ctx = ctx.clone({ root: res })
     }
