@@ -2,7 +2,7 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.includeFileResolver = exports.Site = exports.Lang = void 0;
-const jsonic_1 = require("jsonic");
+const jsonic_next_1 = require("@jsonic/jsonic-next");
 const multisource_1 = require("@jsonic/multisource");
 const file_1 = require("@jsonic/multisource/dist/resolver/file");
 const expr_1 = require("@jsonic/expr");
@@ -355,7 +355,7 @@ class Lang {
             print: -1,
         };
         this.options = Object.assign({}, this.options, options);
-        this.jsonic = jsonic_1.Jsonic.make()
+        this.jsonic = jsonic_next_1.Jsonic.make()
             .use(AontuJsonic)
             .use(multisource_1.MultiSource, {
             resolver: (options === null || options === void 0 ? void 0 : options.resolver) || includeFileResolver

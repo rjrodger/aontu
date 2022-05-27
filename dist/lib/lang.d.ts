@@ -1,4 +1,4 @@
-import { Jsonic } from 'jsonic';
+import { Jsonic } from '@jsonic/jsonic-next';
 import { Options } from './common';
 import { Val } from './val';
 declare class Site {
