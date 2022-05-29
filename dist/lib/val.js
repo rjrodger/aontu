@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PrefVal = exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = exports.DONE = void 0;
+exports.PrefVal = exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.ListVal = exports.MapVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Nil = exports.TOP = exports.Val = exports.Integer = exports.DONE = void 0;
 // TODO: infinite recursion protection
 // NOTES
 // - Vals are immutable
@@ -33,20 +33,6 @@ const TOP = {
     url: '',
     unify(peer, _ctx) {
         return peer;
-        /*
-        if (peer instanceof DisjunctVal) {
-          return peer.unify(this, ctx)
-        }
-        else if (peer instanceof ConjunctVal) {
-          return peer.unify(this, ctx)
-        }
-        else if (peer instanceof RefVal) {
-          return peer.unify(this, ctx)
-        }
-        else {
-          return peer
-        }
-        */
     },
     get canon() { return 'top'; },
     get site() { return new lang_1.Site(this); },
@@ -376,6 +362,87 @@ class MapVal extends Val {
 }
 exports.MapVal = MapVal;
 MapVal.SPREAD = Symbol('spread');
+class ListVal extends Val {
+    constructor(peg, ctx) {
+        super(peg, ctx);
+        this.spread = {
+            cj: undefined,
+        };
+        let spread = this.peg[ListVal.SPREAD];
+        delete this.peg[ListVal.SPREAD];
+        if (spread) {
+            if ('&' === spread.o) {
+                // TODO: handle existing spread!
+                this.spread.cj =
+                    new ConjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v], ctx);
+            }
+        }
+    }
+    // NOTE: order of keys is not preserved!
+    // not possible in any case - consider {a,b} unify {b,a}
+    unify(peer, ctx) {
+        let done = true;
+        let out = TOP === peer ? this : new ListVal([], ctx);
+        out.spread.cj = this.spread.cj;
+        if (peer instanceof ListVal) {
+            out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj], ctx)));
+        }
+        out.done = this.done + 1;
+        if (this.spread.cj) {
+            out.spread.cj =
+                DONE !== this.spread.cj.done ? (0, op_1.unite)(ctx, this.spread.cj) :
+                    this.spread.cj;
+        }
+        let spread_cj = out.spread.cj || TOP;
+        // Always unify children first
+        for (let key in this.peg) {
+            out.peg[key] =
+                (0, op_1.unite)(ctx.descend(key), this.peg[key], spread_cj);
+            done = (done && DONE === out.peg[key].done);
+        }
+        if (peer instanceof ListVal) {
+            let upeer = (0, op_1.unite)(ctx, peer);
+            for (let peerkey in upeer.peg) {
+                let peerchild = upeer.peg[peerkey];
+                let child = out.peg[peerkey];
+                let oval = out.peg[peerkey] =
+                    undefined === child ? peerchild :
+                        child instanceof Nil ? child :
+                            peerchild instanceof Nil ? peerchild :
+                                (0, op_1.unite)(ctx.descend(peerkey), child, peerchild);
+                if (this.spread.cj) {
+                    out.peg[peerkey] = (0, op_1.unite)(ctx, out.peg[peerkey], spread_cj);
+                }
+                done = (done && DONE === oval.done);
+            }
+        }
+        else if (TOP !== peer) {
+            return Nil.make(ctx, 'map', this, peer);
+        }
+        out.done = done ? DONE : out.done;
+        return out;
+    }
+    get canon() {
+        let keys = Object.keys(this.peg);
+        return '[' +
+            (this.spread.cj ? '&:' + this.spread.cj.canon +
+                (0 < keys.length ? ',' : '') : '') +
+            keys
+                // NOTE: handle array non-index key vals
+                // .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') +
+                .map(k => [this.peg[k].canon]).join(',') +
+            ']';
+    }
+    gen(ctx) {
+        let out = this.peg.map((v) => v.gen(ctx));
+        // for (let p in this.peg) {
+        //   out[p] = this.peg[p].gen(ctx)
+        // }
+        return out;
+    }
+}
+exports.ListVal = ListVal;
+ListVal.SPREAD = Symbol('spread');
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends Val {
     constructor(peg, ctx) {
@@ -547,18 +614,11 @@ class DisjunctVal extends Val {
 }
 exports.DisjunctVal = DisjunctVal;
 class RefVal extends Val {
-    // constructor(peg: string | string[], ctx?: Context) {
-    //   super(peg, ctx)
-    //   this.parts = 'string' === typeof peg ? peg.split(this.sep) : peg
-    //   this.parts = this.parts.filter(p => '' != p)
-    //   // this.absolute = peg.startsWith(this.sep)
-    // }
     constructor(peg, abs) {
         super('');
-        this.sep = '.'; // was '/'
+        this.sep = '.';
         this.absolute = true === abs;
         this.parts = [];
-        // console.log('RV', peg)
         for (let part of peg) {
             this.append(part);
         }
@@ -578,7 +638,6 @@ class RefVal extends Val {
             }
         }
         this.peg = (this.absolute ? this.sep : '') + this.parts.join(this.sep);
-        // console.log('APPEND 1', this.parts)
     }
     unify(peer, ctx) {
         let resolved = null == ctx ? this : ctx.find(this);
@@ -586,11 +645,9 @@ class RefVal extends Val {
         resolved = null == resolved && 999 < this.done ?
             Nil.make(ctx, 'no-path', this, peer) : (resolved || this);
         let out;
-        // console.log('RV', this.id, this.done, this.canon, peer.canon, !!resolved, resolved instanceof RefVal, resolved && resolved.canon)
         if (resolved instanceof RefVal) {
             if (TOP === peer) {
                 out = this;
-                //out = new RefVal(this.peg, ctx)
             }
             else if (peer instanceof Nil) {
                 out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer);
@@ -602,8 +659,6 @@ class RefVal extends Val {
             }
         }
         else {
-            //console.log('RVr', resolved.canon, peer.canon)
-            //out = resolved.unify(peer, ctx)
             out = (0, op_1.unite)(ctx, resolved, peer);
         }
         out.done = DONE === out.done ? DONE : this.done + 1;

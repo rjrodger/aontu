@@ -40,7 +40,7 @@ const unite = (ctx, a, b, whence) => {
             out = a.unify(b, ctx);
         }
     }
-    if (!out) {
+    if (!out || !out.unify) {
         out = val_1.Nil.make(ctx, 'unite', a, b);
     }
     if (val_1.DONE !== out.done) {

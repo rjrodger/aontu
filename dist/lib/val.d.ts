@@ -3,6 +3,7 @@ import { Site } from './lang';
 declare type ValMap = {
     [key: string]: Val;
 };
+declare type ValList = Val[];
 declare const DONE = -1;
 declare const TOP: Val;
 declare abstract class Val {
@@ -81,6 +82,16 @@ declare class MapVal extends Val {
     get canon(): string;
     gen(ctx?: Context): any;
 }
+declare class ListVal extends Val {
+    static SPREAD: symbol;
+    spread: {
+        cj: Val | undefined;
+    };
+    constructor(peg: ValList, ctx?: Context);
+    unify(peer: Val, ctx: Context): Val;
+    get canon(): string;
+    gen(ctx?: Context): any;
+}
 declare class ConjunctVal extends Val {
     constructor(peg: Val[], ctx?: Context);
     append(peer: Val): ConjunctVal;
@@ -112,4 +123,4 @@ declare class PrefVal extends Val {
     get canon(): any;
     gen(ctx?: Context): any;
 }
-export { DONE, Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ConjunctVal, DisjunctVal, RefVal, PrefVal, };
+export { DONE, Integer, Val, TOP, Nil, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, MapVal, ListVal, ConjunctVal, DisjunctVal, RefVal, PrefVal, };

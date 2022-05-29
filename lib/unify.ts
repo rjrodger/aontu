@@ -66,6 +66,7 @@ class Context {
 
 
   find(ref: RefVal) {
+    // console.log('FIND', ref.path, ref.peg)
 
     // TODO: relative paths
     if (this.root instanceof MapVal && ref.absolute) {

@@ -27,6 +27,7 @@ class Context {
         });
     }
     find(ref) {
+        // console.log('FIND', ref.path, ref.peg)
         // TODO: relative paths
         if (this.root instanceof val_1.MapVal && ref.absolute) {
             let node = this.root;

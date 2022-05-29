@@ -8,6 +8,7 @@ const unify_1 = require("./lib/unify");
 const val_1 = require("./lib/val");
 Object.defineProperty(exports, "Val", { enumerable: true, get: function () { return val_1.Val; } });
 Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return val_1.Nil; } });
+// FIX: multisource file loading within Conjuct fails
 /*
 NEXT:
 inject path from multisource into Vals when created

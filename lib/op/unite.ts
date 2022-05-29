@@ -64,7 +64,7 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
     }
   }
 
-  if (!out) {
+  if (!out || !out.unify) {
     out = Nil.make(ctx, 'unite', a, b)
   }
 

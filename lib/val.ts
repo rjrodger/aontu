@@ -37,6 +37,8 @@ import {
 
 
 type ValMap = { [key: string]: Val }
+type ValList = Val[]
+
 
 const DONE = -1
 
@@ -54,21 +56,6 @@ const TOP: Val = {
 
   unify(peer: Val, _ctx: Context): Val {
     return peer
-
-    /*
-    if (peer instanceof DisjunctVal) {
-      return peer.unify(this, ctx)
-    }
-    else if (peer instanceof ConjunctVal) {
-      return peer.unify(this, ctx)
-    }
-    else if (peer instanceof RefVal) {
-      return peer.unify(this, ctx)
-    }
-    else {
-      return peer
-    }
-    */
   },
 
   get canon() { return 'top' },
@@ -518,6 +505,118 @@ class MapVal extends Val {
 }
 
 
+
+class ListVal extends Val {
+  static SPREAD = Symbol('spread')
+
+  spread = {
+    cj: (undefined as Val | undefined),
+  }
+
+  constructor(peg: ValList, ctx?: Context) {
+    super(peg, ctx)
+
+    let spread = (this.peg as any)[ListVal.SPREAD]
+    delete (this.peg as any)[ListVal.SPREAD]
+
+    if (spread) {
+      if ('&' === spread.o) {
+        // TODO: handle existing spread!
+        this.spread.cj =
+          new ConjunctVal(Array.isArray(spread.v) ? spread.v : [spread.v], ctx)
+      }
+    }
+  }
+
+  // NOTE: order of keys is not preserved!
+  // not possible in any case - consider {a,b} unify {b,a}
+  unify(peer: Val, ctx: Context): Val {
+    let done: boolean = true
+    let out: ListVal = TOP === peer ? this : new ListVal([], ctx)
+
+    out.spread.cj = this.spread.cj
+
+    if (peer instanceof ListVal) {
+      out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
+        null == peer.spread.cj ? out.spread.cj : (
+          out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj], ctx)
+        )
+      )
+    }
+
+
+    out.done = this.done + 1
+
+    if (this.spread.cj) {
+      out.spread.cj =
+        DONE !== this.spread.cj.done ? unite(ctx, this.spread.cj) :
+          this.spread.cj
+    }
+
+    let spread_cj = out.spread.cj || TOP
+
+    // Always unify children first
+    for (let key in this.peg) {
+      out.peg[key] =
+        unite(ctx.descend(key), this.peg[key], spread_cj)
+
+      done = (done && DONE === out.peg[key].done)
+    }
+
+    if (peer instanceof ListVal) {
+      let upeer: ListVal = (unite(ctx, peer) as ListVal)
+
+      for (let peerkey in upeer.peg) {
+        let peerchild = upeer.peg[peerkey]
+        let child = out.peg[peerkey]
+
+        let oval = out.peg[peerkey] =
+          undefined === child ? peerchild :
+            child instanceof Nil ? child :
+              peerchild instanceof Nil ? peerchild :
+                unite(ctx.descend(peerkey), child, peerchild)
+
+        if (this.spread.cj) {
+          out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
+        }
+
+        done = (done && DONE === oval.done)
+
+      }
+    }
+    else if (TOP !== peer) {
+      return Nil.make(ctx, 'map', this, peer)
+    }
+
+    out.done = done ? DONE : out.done
+    return out
+  }
+
+  get canon() {
+    let keys = Object.keys(this.peg)
+    return '[' +
+      (this.spread.cj ? '&:' + this.spread.cj.canon +
+        (0 < keys.length ? ',' : '') : '') +
+      keys
+        // NOTE: handle array non-index key vals
+        // .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') +
+        .map(k => [this.peg[k].canon]).join(',') +
+      ']'
+  }
+
+  gen(ctx?: Context) {
+    let out: any = this.peg.map((v: Val) => v.gen(ctx))
+    // for (let p in this.peg) {
+    //   out[p] = this.peg[p].gen(ctx)
+    // }
+
+    return out
+  }
+}
+
+
+
+
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends Val {
   constructor(peg: Val[], ctx?: Context) {
@@ -750,22 +849,12 @@ class DisjunctVal extends Val {
 class RefVal extends Val {
   parts: string[]
   absolute: boolean
-  sep = '.' // was '/'
-
-  // constructor(peg: string | string[], ctx?: Context) {
-  //   super(peg, ctx)
-  //   this.parts = 'string' === typeof peg ? peg.split(this.sep) : peg
-  //   this.parts = this.parts.filter(p => '' != p)
-  //   // this.absolute = peg.startsWith(this.sep)
-  // }
-
+  sep = '.'
 
   constructor(peg: any[], abs?: boolean) {
     super('')
     this.absolute = true === abs
     this.parts = []
-
-    // console.log('RV', peg)
 
     for (let part of peg) {
       this.append(part)
@@ -793,8 +882,6 @@ class RefVal extends Val {
     }
 
     this.peg = (this.absolute ? this.sep : '') + this.parts.join(this.sep)
-
-    // console.log('APPEND 1', this.parts)
   }
 
   unify(peer: Val, ctx: Context): Val {
@@ -805,12 +892,9 @@ class RefVal extends Val {
       Nil.make(ctx, 'no-path', this, peer) : (resolved || this)
     let out: Val
 
-    // console.log('RV', this.id, this.done, this.canon, peer.canon, !!resolved, resolved instanceof RefVal, resolved && resolved.canon)
-
     if (resolved instanceof RefVal) {
       if (TOP === peer) {
         out = this
-        //out = new RefVal(this.peg, ctx)
       }
       else if (peer instanceof Nil) {
         out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
@@ -822,9 +906,6 @@ class RefVal extends Val {
       }
     }
     else {
-      //console.log('RVr', resolved.canon, peer.canon)
-
-      //out = resolved.unify(peer, ctx)
       out = unite(ctx, resolved, peer)
     }
 
@@ -833,9 +914,11 @@ class RefVal extends Val {
     return out
   }
 
+
   get canon() {
     return this.peg
   }
+
 
   gen(_ctx?: Context) {
     return undefined
@@ -915,6 +998,7 @@ export {
   BooleanVal,
   IntegerVal,
   MapVal,
+  ListVal,
   ConjunctVal,
   DisjunctVal,
   RefVal,

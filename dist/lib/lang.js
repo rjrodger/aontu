@@ -24,7 +24,6 @@ Site.NONE = new Site(val_1.TOP);
 let AontuJsonic = function aontu(jsonic) {
     jsonic.options({
         value: {
-            // JSONIC-UPDATE: map: { val: ... }
             map: {
                 // NOTE: specify with functions as jsonic/deep will
                 // remove class prototype as options are assumed plain
@@ -38,17 +37,6 @@ let AontuJsonic = function aontu(jsonic) {
                 'top': { val: () => val_1.TOP },
             }
         },
-        // // JSONIC-UPDATE: fixed: { token }
-        // fixed: {
-        //   token: {
-        //     '#A&': '&',
-        //     '#A|': '|',
-        //     '#A/': '/',
-        //     '#A*': '*', // TODO: REVIEW char as * is a bit overloaded
-        //     '#A=': '=',
-        //   }
-        // },
-        // JSONIC-UPDATE: check impl
         map: {
             merge: (prev, curr) => {
                 let pval = prev;
@@ -97,204 +85,17 @@ let AontuJsonic = function aontu(jsonic) {
             return opmap[op.name](op, terms);
         }
     });
-    // console.log(jsonic.token)
     let CJ = jsonic.token['#E&'];
     let CL = jsonic.token.CL;
-    // let NR = jsonic.token.NR
-    // let TX = jsonic.token.TX
-    // let ST = jsonic.token.ST
-    // let VL = jsonic.token.VL
-    // let OB = jsonic.token.OB
-    // let OS = jsonic.token.OS
-    // let DJ = jsonic.token['#A|']
-    // let FS = jsonic.token['#A/']
-    // let AK = jsonic.token['#A*']
-    // let EQ = jsonic.token['#A=']
-    // JSONIC-UPDATE: rule.open[], rule.close[] - replace with rule.oN|cN
-    // jsonic.rule('expr', (rs: RuleSpec) => {
-    //   rs
-    //     .open([
-    //       { s: [[CJ, DJ, AK]], p: 'disjunct', b: 1, n: { expr: 1 } },
-    //     ])
-    //     .close([
-    //       { s: [] }
-    //     ])
-    //     // NOTE: expr node are meta structures, not Vals
-    //     // t=most recent term on the left, o=Val
-    //     .bo((r: Rule) => r.node = { t: r.node })
-    //     .ac((r: Rule) => {
-    //       let cn = r.child.node.o
-    //       if (cn instanceof PrefVal) {
-    //         return r.o0.bad('single-pref')
-    //       }
-    //       // replace first val with expr val
-    //       r.node = cn
-    //       if ('val' === r.parent?.name) {
-    //         r.parent.node = r.node
-    //       }
-    //     })
-    // })
-    // jsonic.rule('disjunct', (rs: RuleSpec) => {
-    //   rs
-    //     .open([
-    //       {
-    //         s: [CJ], p: 'conjunct', b: 1
-    //       },
-    //       {
-    //         s: [AK], p: 'pref', b: 1
-    //       },
-    //       {
-    //         s: [DJ, AK], p: 'pref', b: 1,
-    //         a: (r: Rule) => {
-    //           // Append to existing or start new
-    //           r.node.o = r.node.o instanceof DisjunctVal ?
-    //             r.node.o : new DisjunctVal([r.node.t])
-    //         }
-    //       },
-    //       {
-    //         s: [DJ, [NR, TX, ST, VL, OB, OS]], b: 1,
-    //         p: 'val',
-    //         a: (r: Rule) => {
-    //           // Append to existing or start new
-    //           r.node.o = r.node.o instanceof DisjunctVal ?
-    //             r.node.o : new DisjunctVal([r.node.t])
-    //         }
-    //       },
-    //     ])
-    //     .close([
-    //       {
-    //         s: [DJ], r: 'disjunct', b: 1, a: (r: Rule) => {
-    //           // higher precedence term (e.g &) was on the left
-    //           let cn = r.child.node?.o || r.child.node
-    //           r.node.t = cn
-    //         }
-    //       },
-    //       {
-    //         s: [CJ], r: 'disjunct', b: 1, a: (r: Rule) => {
-    //           // & with higher precedence to the right
-    //           let cn = r.child.node?.o || r.child.node
-    //           r.node.t = cn
-    //           r.child.node = null
-    //         }
-    //       },
-    //       {}
-    //     ])
-    //     .ac((r: Rule) => {
-    //       // child values may be normal or expr metas
-    //       let cn = r.child.node?.o || r.child.node
-    //       if (cn) {
-    //         if (r.node.o instanceof DisjunctVal) {
-    //           r.node.o.append(cn)
-    //         }
-    //         else {
-    //           // this rule was just a pass-through
-    //           r.node.o = cn
-    //         }
-    //       }
-    //     })
-    // })
-    // jsonic.rule('conjunct', (rs: RuleSpec) => {
-    //   rs
-    //     .open([
-    //       {
-    //         s: [CJ, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
-    //         p: 'val',
-    //         a: (r: Rule) => {
-    //           r.node = {
-    //             o: r.node.o instanceof ConjunctVal ?
-    //               r.node.o : new ConjunctVal([r.node.t])
-    //           }
-    //         }
-    //       },
-    //     ])
-    //     .close([
-    //       {
-    //         s: [CJ], r: 'conjunct', b: 1
-    //       },
-    //       {}
-    //     ])
-    //     .ac((r: Rule) => {
-    //       let cn = r.child.node?.o || r.child.node
-    //       if (cn) {
-    //         if (r.node.o instanceof ConjunctVal) {
-    //           r.node.o.append(cn)
-    //         }
-    //         else {
-    //           r.node.o = cn
-    //         }
-    //       }
-    //     })
-    // })
-    // jsonic.rule('path', (rs: RuleSpec) => {
-    //   rs
-    //     .open([
-    //       { s: [FS, [TX, ST, NR, VL]], p: 'part', b: 2 }
-    //     ])
-    //     .bo((r: Rule) => r.node = new RefVal('/'))
-    // })
-    // jsonic.rule('part', (rs: RuleSpec) => {
-    //   rs.
-    //     open([
-    //       {
-    //         s: [FS, [TX, ST, NR, VL]], r: 'part', a: (r: Rule) => {
-    //           r.node.append(r.o1.src)
-    //         }
-    //       },
-    //       {}, // no more parts
-    //     ])
-    // })
-    //   // rs.def.open.unshift({
-    //   //   s: [[CJ, DJ], EQ], p: 'val', u: { spread: true }
-    //   // })
-    //   // // TODO: make before/after function[]
-    //   // let orig_bc: any = rs.def.bc
-    //   // rs.def.bc = function(rule: Rule, ctx: Context) {
-    //   //   let out = orig_bc.call(this, rule, ctx)
-    //   //   if (rule.use.spread) {
-    //   //     rule.node[MapVal.SPREAD] =
-    //   //       (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
-    //   //     rule.node[MapVal.SPREAD].v.push(rule.child.node)
-    //   //   }
-    //   //   return out
-    //   // }
-    //   return rs
-    // })
-    // jsonic.rule('pref', (rs: RuleSpec) => {
-    //   rs
-    //     .open([
-    //       {
-    //         s: [AK, [NR, TX, ST, VL, OB, OS, FS]], b: 1,
-    //         p: 'val',
-    //       },
-    //     ])
-    //     .close([
-    //       // Can't be in a conjunct
-    //       { s: [CJ], e: (r: Rule) => r.o1 },
-    //       {}
-    //     ])
-    //     .ac((r: Rule) => {
-    //       r.node = new PrefVal(r.child.node)
-    //     })
-    // })
     jsonic.rule('val', (rs) => {
-        // rs.def.open.unshift(
-        //   // Prefs are always within an expression
-        //   { s: [AK, [NR, TX, ST, VL, OB, OS, FS]], p: 'expr', b: 2 },
-        //   { s: [FS, [TX, ST, NR, VL]], p: 'path', b: 2 },
-        // )
-        // rs.def.close.unshift(
-        //   {
-        //     s: [[CJ, DJ]], p: 'expr', b: 1, c: (r: Rule) => {
-        //       return null == r.n.expr || 0 === r.n.expr
-        //     }
-        //   },
-        // )
         // TODO: wrap utility needed for jsonic to do this?
-        let orig_bc = rs.def.bc;
-        rs.def.bc = function (rule, ctx) {
-            let out = orig_bc.call(this, rule, ctx);
+        // let orig_bc: any = rs.def.bc
+        // rs.def.bc = function(rule: Rule, ctx: Context) {
+        //   let out = orig_bc.call(this, rule, ctx)
+        rs.bc(false, (rule, ctx) => {
             let valnode = rule.node;
             let valtype = typeof valnode;
+            // console.log('VAL RULE', rule.use, rule.node)
             if ('string' === valtype) {
                 valnode = new val_1.StringVal(rule.node);
             }
@@ -315,31 +116,51 @@ let AontuJsonic = function aontu(jsonic) {
             // JSONIC-UPDATE: still valid? check multisource
             valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
             rule.node = valnode;
-            return out;
-        };
+            // return out
+            return undefined;
+        });
         return rs;
     });
     jsonic.rule('map', (rs) => {
-        let orig_bc = rs.def.bc;
-        rs.def.bc = function (rule, ctx) {
-            let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined;
+        // let orig_bc = rs.def.bc
+        // rs.def.bc = function(rule: Rule, ctx: Context) {
+        //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
+        rs.bc(false, (rule) => {
+            // console.log('MAP RULE', rule.use, rule.node)
             rule.node = new val_1.MapVal(rule.node);
-            return out;
-        };
+            // return out
+            return undefined;
+        });
+        return rs;
+    });
+    jsonic.rule('list', (rs) => {
+        // let orig_bc = rs.def.bc
+        // rs.def.bc = function(rule: Rule, ctx: Context) {
+        //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
+        rs.bc(false, (rule) => {
+            rule.node = new val_1.ListVal(rule.node);
+            // return out
+            return undefined;
+        });
         return rs;
     });
     jsonic.rule('pair', (rs) => {
-        let orig_bc = rs.def.bc;
+        // let orig_bc: any = rs.def.bc
         rs
             .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
-            .bc((...rest) => {
-            orig_bc(...rest);
-            let rule = rest[0];
+            // .bc((...rest: any) => {
+            //   orig_bc(...rest)
+            .bc(false, (rule) => {
+            // let rule = rest[0]
+            // console.log('PAIR RULE', rule.use, rule.node,
+            //  rule.parent.name, rule.parent.use)
+            // TRAVERSE PARENTS TO GET PATH
             if (rule.use.spread) {
                 rule.node[val_1.MapVal.SPREAD] =
                     (rule.node[val_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
                 rule.node[val_1.MapVal.SPREAD].v.push(rule.child.node);
             }
+            return undefined;
         });
         return rs;
     });
@@ -374,6 +195,7 @@ class Lang {
         if (opts && null != opts.log && Number.isInteger(opts.log)) {
             jm.log = opts.log;
         }
+        // jm.log = -1
         let val = this.jsonic(src, jm);
         return val;
     }
