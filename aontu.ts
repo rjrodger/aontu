@@ -5,12 +5,9 @@ import { Lang, includeFileResolver } from './lib/lang'
 import { Unify } from './lib/unify'
 import { Val, Nil } from './lib/val'
 
-
 // FIX: multisource file loading within Conjuct fails
 
 // TODO: propogate property path and url properly over unification, and multisource
-
-
 
 /*
 NEXT:

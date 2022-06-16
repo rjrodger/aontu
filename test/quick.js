@@ -2,7 +2,7 @@ const Util = require('util')
 
 let { Aontu, Lang, util } = require('..')
 
-let A = (s)=>Aontu(s)
+let A = (s) => Aontu(s)
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
   console.log(v.canon, '::', Util.inspect(v.gen(), { depth: null }), v.err)
@@ -121,7 +121,6 @@ let tmp = {}
 // G(A('{a:number} & {a:1}'))
 // G(A('[number] & [1]'))
 // G(A('[{a:number},{b:[string,string]}] & [{a:11},{b:[x,y]}]'))
-
 
 //G(A('{a:{b:1}, x:y:.a.b}'))
 //G(A('a:b:1, x:y:.a.b'))
