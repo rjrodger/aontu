@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.util = exports.Lang = exports.Nil = exports.Val = exports.Aontu = void 0;
 const lang_1 = require("./lib/lang");
@@ -9,6 +9,7 @@ const val_1 = require("./lib/val");
 Object.defineProperty(exports, "Val", { enumerable: true, get: function () { return val_1.Val; } });
 Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return val_1.Nil; } });
 // FIX: multisource file loading within Conjuct fails
+// TODO: propogate property path and url properly over unification, and multisource
 /*
 NEXT:
 inject path from multisource into Vals when created

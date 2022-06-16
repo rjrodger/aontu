@@ -6,6 +6,7 @@ const jsonic_next_1 = require("@jsonic/jsonic-next");
 const multisource_1 = require("@jsonic/multisource");
 const file_1 = require("@jsonic/multisource/dist/resolver/file");
 const expr_1 = require("@jsonic/expr");
+const path_1 = require("@jsonic/path");
 const val_1 = require("./val");
 class Site {
     constructor(val) {
@@ -22,6 +23,9 @@ class Site {
 exports.Site = Site;
 Site.NONE = new Site(val_1.TOP);
 let AontuJsonic = function aontu(jsonic) {
+    jsonic.use(path_1.Path);
+    // TODO: refactor Val constructor
+    let addpath = (v, p) => (v.path = [...(p || [])], v);
     jsonic.options({
         value: {
             map: {
@@ -29,11 +33,22 @@ let AontuJsonic = function aontu(jsonic) {
                 // remove class prototype as options are assumed plain
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
-                'string': { val: () => new val_1.ScalarTypeVal(String) },
-                'number': { val: () => new val_1.ScalarTypeVal(Number) },
-                'integer': { val: () => new val_1.ScalarTypeVal(val_1.Integer) },
-                'boolean': { val: () => new val_1.ScalarTypeVal(Boolean) },
-                'nil': { val: () => new val_1.Nil('literal') },
+                'string': {
+                    val: (r) => addpath(new val_1.ScalarTypeVal(String), r.keep.path)
+                },
+                'number': {
+                    val: (r) => addpath(new val_1.ScalarTypeVal(Number), r.keep.path)
+                },
+                'integer': {
+                    val: (r) => addpath(new val_1.ScalarTypeVal(val_1.Integer), r.keep.path)
+                },
+                'boolean': {
+                    val: (r) => addpath(new val_1.ScalarTypeVal(Boolean), r.keep.path)
+                },
+                'nil': {
+                    val: (r) => addpath(new val_1.Nil('literal'), r.keep.path)
+                },
+                // TODO: FIX: need a TOP instance to hold path
                 'top': { val: () => val_1.TOP },
             }
         },
@@ -41,16 +56,16 @@ let AontuJsonic = function aontu(jsonic) {
             merge: (prev, curr) => {
                 let pval = prev;
                 let cval = curr;
-                return new val_1.ConjunctVal([pval, cval]);
+                return addpath(new val_1.ConjunctVal([pval, cval]), prev.path);
             }
         }
     });
     let opmap = {
-        'conjunct-infix': (_op, terms) => new val_1.ConjunctVal(terms),
-        'disjunct-infix': (_op, terms) => new val_1.DisjunctVal(terms),
-        'dot-prefix': (_op, terms) => new val_1.RefVal(terms, true),
-        'dot-infix': (_op, terms) => new val_1.RefVal(terms),
-        'star-prefix': (_op, terms) => new val_1.PrefVal(terms[0]),
+        'conjunct-infix': (r, _op, terms) => addpath(new val_1.ConjunctVal(terms), r.keep.path),
+        'disjunct-infix': (r, _op, terms) => addpath(new val_1.DisjunctVal(terms), r.keep.path),
+        'dot-prefix': (r, _op, terms) => addpath(new val_1.RefVal(terms, true), r.keep.path),
+        'dot-infix': (r, _op, terms) => addpath(new val_1.RefVal(terms), r.keep.path),
+        'star-prefix': (r, _op, terms) => addpath(new val_1.PrefVal(terms[0]), r.keep.path),
     };
     jsonic
         .use(expr_1.Expr, {
@@ -80,9 +95,11 @@ let AontuJsonic = function aontu(jsonic) {
                 right: 14000000,
             },
         },
-        evaluate: (op, terms) => {
-            // console.log('LANG EVAL', op, terms)
-            return opmap[op.name](op, terms);
+        evaluate: (r, op, terms) => {
+            // console.log('LANG EVAL', r.keep, op, terms)
+            let val = opmap[op.name](r, op, terms);
+            // console.dir(val, { depth: null })
+            return val;
         }
     });
     let CJ = jsonic.token['#E&'];
@@ -92,30 +109,30 @@ let AontuJsonic = function aontu(jsonic) {
         // let orig_bc: any = rs.def.bc
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc.call(this, rule, ctx)
-        rs.bc(false, (rule, ctx) => {
-            let valnode = rule.node;
+        rs.bc(false, (r, ctx) => {
+            let valnode = r.node;
             let valtype = typeof valnode;
             // console.log('VAL RULE', rule.use, rule.node)
             if ('string' === valtype) {
-                valnode = new val_1.StringVal(rule.node);
+                valnode = addpath(new val_1.StringVal(r.node), r.keep.path);
             }
             else if ('number' === valtype) {
-                if (Number.isInteger(rule.node)) {
-                    valnode = new val_1.IntegerVal(rule.node);
+                if (Number.isInteger(r.node)) {
+                    valnode = addpath(new val_1.IntegerVal(r.node), r.keep.path);
                 }
                 else {
-                    valnode = new val_1.NumberVal(rule.node);
+                    valnode = addpath(new val_1.NumberVal(r.node), r.keep.path);
                 }
             }
             else if ('boolean' === valtype) {
-                valnode = new val_1.BooleanVal(rule.node);
+                valnode = addpath(new val_1.BooleanVal(r.node), r.keep.path);
             }
-            let st = rule.o0;
+            let st = r.o0;
             valnode.row = st.rI;
             valnode.col = st.cI;
             // JSONIC-UPDATE: still valid? check multisource
             valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
-            rule.node = valnode;
+            r.node = valnode;
             // return out
             return undefined;
         });
@@ -125,9 +142,9 @@ let AontuJsonic = function aontu(jsonic) {
         // let orig_bc = rs.def.bc
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
-        rs.bc(false, (rule) => {
+        rs.bc(false, (r) => {
             // console.log('MAP RULE', rule.use, rule.node)
-            rule.node = new val_1.MapVal(rule.node);
+            r.node = addpath(new val_1.MapVal(r.node), r.keep.path);
             // return out
             return undefined;
         });
@@ -137,8 +154,8 @@ let AontuJsonic = function aontu(jsonic) {
         // let orig_bc = rs.def.bc
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
-        rs.bc(false, (rule) => {
-            rule.node = new val_1.ListVal(rule.node);
+        rs.bc(false, (r) => {
+            r.node = addpath(new val_1.ListVal(r.node), r.keep.path);
             // return out
             return undefined;
         });

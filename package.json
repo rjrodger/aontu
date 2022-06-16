@@ -40,21 +40,22 @@
   ],
   "dependencies": {
     "@jsonic/directive": "^0.7.0",
-    "@jsonic/expr": "^0.3.0",
+    "@jsonic/expr": "^0.4.1",
+    "@jsonic/jsonic-next": "2.1.0",
     "@jsonic/multisource": "0.6.0",
-    "@types/node": "^17.0.36",
-    "@jsonic/jsonic-next": "2.0.2"
+    "@jsonic/path": "^0.1.0",
+    "@types/node": "^18.0.0"
   },
   "devDependencies": {
-    "@hapi/code": "^9.0.0",
+    "@hapi/code": "^9.0.1",
     "@hapi/lab": "^25.0.1",
     "benchmark": "^2.1.4",
     "coveralls": "^3.1.1",
     "hapi-lab-shim": "0.0.2",
     "lab-transform-typescript": "^3.0.1",
-    "prettier": "^2.6.2",
+    "prettier": "^2.7.1",
     "serve": "^13.0.2",
     "tinyify": "^3.0.0",
-    "typescript": "^4.7.2"
+    "typescript": "^4.7.3"
   }
 }

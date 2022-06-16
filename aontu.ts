@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 
 import { Options } from './lib/common'
 import { Lang, includeFileResolver } from './lib/lang'
@@ -8,6 +8,7 @@ import { Val, Nil } from './lib/val'
 
 // FIX: multisource file loading within Conjuct fails
 
+// TODO: propogate property path and url properly over unification, and multisource
 
 
 
