@@ -39,12 +39,12 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/directive": "^0.7.0",
-    "@jsonic/expr": "^0.4.1",
-    "@jsonic/jsonic-next": "2.1.0",
-    "@jsonic/multisource": "0.6.0",
-    "@jsonic/path": "^0.1.0",
-    "@types/node": "^18.0.0"
+    "@jsonic/directive": "^0.8.0",
+    "@jsonic/expr": "^0.5.0",
+    "@jsonic/jsonic-next": "^2.3.0",
+    "@jsonic/multisource": "^0.7.0",
+    "@jsonic/path": "^0.2.0",
+    "@types/node": "^18.0.3"
   },
   "devDependencies": {
     "@hapi/code": "^9.0.1",
@@ -54,8 +54,8 @@
     "hapi-lab-shim": "0.0.2",
     "lab-transform-typescript": "^3.0.1",
     "prettier": "^2.7.1",
-    "serve": "^13.0.2",
-    "tinyify": "^3.0.0",
-    "typescript": "^4.7.3"
+    "serve": "^14.0.0",
+    "tinyify": "^3.1.0",
+    "typescript": "^4.7.4"
   }
 }

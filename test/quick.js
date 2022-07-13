@@ -5,7 +5,13 @@ let { Aontu, Lang, util } = require('..')
 let A = (s) => Aontu(s)
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
-  console.log(v.canon, '::', Util.inspect(v.gen(), { depth: null }), v.err)
+    console.log(v.canon, '::',
+                Util.inspect(v.gen(), { depth: null }),
+                Util.inspect(v.err, { depth: null }),
+               )
+
+let V = (v) => console.dir(v,{depth:null})
+
 
 let lang = new Lang()
 let P = lang.parse.bind(lang)
@@ -128,4 +134,13 @@ let tmp = {}
 
 // G(A('{a:{b:1}}'))
 
-G(A('x:{a: string, b: 1 & .x.a}'))
+// G(A('x:{a: string, b: 1 & .x.a}'))
+
+G(A('x:{&:number,a:1}'))
+V(A('x:{&:number,a:1}'))
+
+G(A('[&:number,1]'))
+V(A('[&:number,1]'))
+
+G(A('[&:{x:number},{x:1}]'))
+V(A('[&:{x:number},{x:1}]'))

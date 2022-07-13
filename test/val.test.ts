@@ -36,6 +36,7 @@ import {
   IntegerVal,
   ScalarTypeVal,
   MapVal,
+  ListVal,
   DisjunctVal,
   ConjunctVal,
   RefVal,
@@ -318,6 +319,7 @@ describe('val', function() {
 
     let u01 = m0.unify(m1, ctx)
     // print(u01, 'u01')
+    expect(u01.canon).equals('{"a":1}')
     expect(m1u.canon).equals('{"a":1}')
     expect(m0.canon).equals('{}')
     expect(m1.canon).equals('{"a":1}')
@@ -331,6 +333,15 @@ describe('val', function() {
   })
 
 
+  it('map', () => {
+    let ctx = makeCtx()
+
+    let l0 = new ListVal([])
+    expect(l0.canon).equals('[]')
+
+    expect(unite(ctx, l0, l0).canon).equal('[]')
+  })
+
 
   it('map-spread', () => {
     let ctx = makeCtx()
@@ -341,12 +352,35 @@ describe('val', function() {
       b: P('{ y: 2 }'),
     })
 
-    //console.dir(m0, { depth: null })
+    // console.dir(m0, { depth: null })
 
     expect(m0.canon).equals('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
 
     let u0 = m0.unify(TOP, ctx)
     expect(u0.canon).equals('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+
+  })
+
+
+  it('list-spread', () => {
+    let ctx = makeCtx()
+
+    let vals = [
+      P('{ y: 1 }'),
+      P('{ y: 2 }'),
+    ]
+    vals[ListVal.SPREAD] = { o: '&', v: P('{x:1}') }
+
+
+    let l0 = new ListVal(vals)
+
+    // console.dir(l0, { depth: null })
+
+    expect(l0.canon).equals('[&:{"x":1},{"y":1},{"y":2}]')
+
+    let u0 = l0.unify(TOP, ctx)
+    expect(u0.canon).equals('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]')
+
   })
 
 

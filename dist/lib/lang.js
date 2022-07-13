@@ -109,10 +109,10 @@ let AontuJsonic = function aontu(jsonic) {
         // let orig_bc: any = rs.def.bc
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc.call(this, rule, ctx)
-        rs.bc(false, (r, ctx) => {
+        rs.bc((r, ctx) => {
             let valnode = r.node;
             let valtype = typeof valnode;
-            // console.log('VAL RULE', rule.use, rule.node)
+            // console.log('VAL RULE', valtype, r.use, r.node)
             if ('string' === valtype) {
                 valnode = addpath(new val_1.StringVal(r.node), r.keep.path);
             }
@@ -142,7 +142,7 @@ let AontuJsonic = function aontu(jsonic) {
         // let orig_bc = rs.def.bc
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
-        rs.bc(false, (r) => {
+        rs.bc((r) => {
             // console.log('MAP RULE', rule.use, rule.node)
             r.node = addpath(new val_1.MapVal(r.node), r.keep.path);
             // return out
@@ -154,7 +154,7 @@ let AontuJsonic = function aontu(jsonic) {
         // let orig_bc = rs.def.bc
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
-        rs.bc(false, (r) => {
+        rs.bc((r) => {
             r.node = addpath(new val_1.ListVal(r.node), r.keep.path);
             // return out
             return undefined;
@@ -162,20 +162,28 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
     jsonic.rule('pair', (rs) => {
-        // let orig_bc: any = rs.def.bc
         rs
             .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
-            // .bc((...rest: any) => {
-            //   orig_bc(...rest)
-            .bc(false, (rule) => {
-            // let rule = rest[0]
-            // console.log('PAIR RULE', rule.use, rule.node,
-            //  rule.parent.name, rule.parent.use)
+            .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
             if (rule.use.spread) {
                 rule.node[val_1.MapVal.SPREAD] =
                     (rule.node[val_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
                 rule.node[val_1.MapVal.SPREAD].v.push(rule.child.node);
+            }
+            return undefined;
+        });
+        return rs;
+    });
+    jsonic.rule('elem', (rs) => {
+        rs
+            .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
+            .bc((rule) => {
+            // TRAVERSE PARENTS TO GET PATH
+            if (rule.use.spread) {
+                rule.node[val_1.ListVal.SPREAD] =
+                    (rule.node[val_1.ListVal.SPREAD] || { o: rule.o0.src, v: [] });
+                rule.node[val_1.ListVal.SPREAD].v.push(rule.child.node);
             }
             return undefined;
         });
