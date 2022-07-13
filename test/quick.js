@@ -5,13 +5,14 @@ let { Aontu, Lang, util } = require('..')
 let A = (s) => Aontu(s)
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
-    console.log(v.canon, '::',
-                Util.inspect(v.gen(), { depth: null }),
-                Util.inspect(v.err, { depth: null }),
-               )
+  console.log(
+    v.canon,
+    '::',
+    Util.inspect(v.gen(), { depth: null }),
+    Util.inspect(v.err, { depth: null })
+  )
 
-let V = (v) => console.dir(v,{depth:null})
-
+let V = (v) => console.dir(v, { depth: null })
 
 let lang = new Lang()
 let P = lang.parse.bind(lang)
