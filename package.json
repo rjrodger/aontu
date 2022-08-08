@@ -44,7 +44,7 @@
     "@jsonic/jsonic-next": "^2.3.0",
     "@jsonic/multisource": "^0.7.0",
     "@jsonic/path": "^0.2.0",
-    "@types/node": "^18.0.3"
+    "@types/node": "^18.6.4"
   },
   "devDependencies": {
     "@hapi/code": "^9.0.1",
@@ -54,7 +54,7 @@
     "hapi-lab-shim": "0.0.2",
     "lab-transform-typescript": "^3.0.1",
     "prettier": "^2.7.1",
-    "serve": "^14.0.0",
+    "serve": "^14.0.1",
     "tinyify": "^3.1.0",
     "typescript": "^4.7.4"
   }

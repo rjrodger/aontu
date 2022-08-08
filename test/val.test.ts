@@ -734,6 +734,26 @@ b: c: 1
     expect(G('a:*1,a:2')).equals({ a: undefined })
     expect(G('*1 & 2')).equals(undefined)
 
+
+    expect(G('{a:2}&{a:number|*1}')).equals({ a: 2 })
+    expect(G('{&:number}&{a:2}&{a:number|*1}')).equals({ a: 2 })
+    expect(G('{a:{&:{c:number|*1}}} & {a:{b:{c:2}}}')).equals({ a: { b: { c: 2 } } })
+    expect(G('{a:{&:{c:number|*1,d:boolean}}} & {a:{b:{c:2,d:true}}}'))
+      .equals({ a: { b: { c: 2, d: true } } })
+    expect(G('x: {a:{&:{c:number|*1,d:boolean}}} & {a:{b:{c:2,d:true}}}'))
+      .equals({ x: { a: { b: { c: 2, d: true } } } })
+    expect(G('y: "Y", x: {a:{&:{c:number|*1,d:boolean}}} & {a:{b:{c:2,d:true}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true } } } })
+    expect(G('y: "Y", x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
+      ' & {a:{b:{c:2,d:true}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
+      ' & {a:{b:{c:2,d:true}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
+      ' & {a:{b:{c:2,d:true,e:"Q"}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Q' } } } })
+
     expect(G(`
 a: *true | boolean
 b: .a
