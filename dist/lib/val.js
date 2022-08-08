@@ -44,6 +44,7 @@ const TOP = {
     },
 };
 exports.TOP = TOP;
+// TODO: extends Val ???
 class Val {
     constructor(peg, ctx) {
         this.done = 0;
@@ -55,7 +56,8 @@ class Val {
         this.id = (ctx && ctx.vc++) || (9e9 + Math.floor(Math.random() * (1e9)));
     }
     same(peer) {
-        return this === peer;
+        // return this === peer
+        return null == peer ? false : this.id === peer.id;
     }
     get site() {
         return new lang_1.Site(this);
@@ -554,15 +556,15 @@ class DisjunctVal extends Val {
     unify(peer, ctx) {
         let done = true;
         let oval = [];
-        //console.log('oval', this.canon, peer.canon)
+        // console.log('oval', this.canon, peer.canon)
         // Conjunction (&) distributes over disjunction (|)
         for (let vI = 0; vI < this.peg.length; vI++) {
             //oval[vI] = this.peg[vI].unify(peer, ctx)
             oval[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer);
-            //console.log('ovalA', vI, this.peg[vI].canon, peer.canon, oval[vI].canon)
+            // console.log('ovalA', vI, this.peg[vI].canon, peer.canon, oval[vI].canon)
             done = done && DONE === oval[vI].done;
         }
-        //console.log('ovalB', oval.map(v => v.canon))
+        // console.log('ovalB', oval.map(v => v.canon))
         // Remove duplicates, and normalize
         if (1 < oval.length) {
             for (let vI = 0; vI < oval.length; vI++) {
@@ -664,6 +666,9 @@ class RefVal extends Val {
         out.done = DONE === out.done ? DONE : this.done + 1;
         return out;
     }
+    same(peer) {
+        return null == peer ? false : this.peg === peer.peg;
+    }
     get canon() {
         return this.peg;
     }
@@ -700,6 +705,17 @@ class PrefVal extends Val {
         }
         out.done = done ? DONE : this.done + 1;
         return out;
+    }
+    same(peer) {
+        if (null == peer) {
+            return false;
+        }
+        let pegsame = (this.peg === peer.peg) ||
+            (this.peg instanceof Val && this.peg.same(peer.peg));
+        let prefsame = peer instanceof PrefVal &&
+            ((this.pref === peer.pref) ||
+                (this.pref instanceof Val && this.pref.same(peer.pref)));
+        return pegsame && prefsame;
     }
     get canon() {
         return this.pref instanceof Nil ? this.peg.canon : '*' + this.pref.canon;

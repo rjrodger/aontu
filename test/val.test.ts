@@ -491,6 +491,7 @@ describe('val', function() {
     expect(unite(ctx, P('number|string').unify(P('boolean|number'))).canon)
       .equals('number')
 
+    expect(unite(ctx, P('number|*1').unify(P('number|*1'))).canon).equal('number|*1')
 
 
     let u0 = unite(ctx, P('number|*1'), P('number'))
@@ -636,7 +637,6 @@ b: c: 1
     let ctx = makeCtx()
 
 
-
     let p0 = new PrefVal(new StringVal('p0'))
     expect(p0.canon).equals('*"p0"')
     expect(p0.gen()).equals('p0')
@@ -729,10 +729,20 @@ b: c: 1
     expect(d0.canon).equals('1|number')
     expect(d0.gen()).equals(1)
 
+
     expect(G('number|*1')).equals(1)
     expect(G('string|*1')).equals(1)
     expect(G('a:*1,a:2')).equals({ a: undefined })
     expect(G('*1 & 2')).equals(undefined)
+
+    expect(G('true|*true')).equals(true)
+    expect(G('*true|true')).equals(true)
+    expect(G('*true|*true')).equals(true)
+    expect(G('*true|*true|*true')).equals(true)
+
+    expect(G('true&*true')).equals(true)
+    expect(G('*true&true')).equals(true)
+    expect(G('*true&*true')).equals(true)
 
 
     expect(G('{a:2}&{a:number|*1}')).equals({ a: 2 })
@@ -742,6 +752,9 @@ b: c: 1
       .equals({ a: { b: { c: 2, d: true } } })
     expect(G('x: {a:{&:{c:number|*1,d:boolean}}} & {a:{b:{c:2,d:true}}}'))
       .equals({ x: { a: { b: { c: 2, d: true } } } })
+    expect(G('x: {a:{&:{c:number|*1}&{d:boolean}}} & {a:{b:{c:2,d:true}}}'))
+      .equals({ x: { a: { b: { c: 2, d: true } } } })
+
     expect(G('y: "Y", x: {a:{&:{c:number|*1,d:boolean}}} & {a:{b:{c:2,d:true}}}'))
       .equals({ y: 'Y', x: { a: { b: { c: 2, d: true } } } })
     expect(G('y: "Y", x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
@@ -753,6 +766,19 @@ b: c: 1
     expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
       ' & {a:{b:{c:2,d:true,e:"Q"}}}'))
       .equals({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Q' } } } })
+
+    expect(G('y: "Y", x: {a:{&:{c:number|*1}&{d:boolean}}} & {a:{b:{c:2,d:true}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true } } } })
+    expect(G('y: "Y", x: {a:{&:{c:number|*1}&{d:boolean,e:.y}}}' +
+      ' & {a:{b:{c:2,d:true}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1}&{d:boolean,e:.y}}}' +
+      ' & {a:{b:{c:2,d:true}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1}&{d:boolean,e:.y}}}' +
+      ' & {a:{b:{c:2,d:true,e:"Q"}}}'))
+      .equals({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Q' } } } })
+
 
     expect(G(`
 a: *true | boolean

@@ -73,7 +73,7 @@ const TOP: Val = {
 }
 
 
-
+// TODO: extends Val ???
 abstract class Val {
   id: number
   done: number = 0
@@ -98,7 +98,8 @@ abstract class Val {
   }
 
   same(peer: Val): boolean {
-    return this === peer
+    // return this === peer
+    return null == peer ? false : this.id === peer.id
   }
 
   get site(): Site {
@@ -767,18 +768,18 @@ class DisjunctVal extends Val {
 
     let oval: Val[] = []
 
-    //console.log('oval', this.canon, peer.canon)
+    // console.log('oval', this.canon, peer.canon)
 
     // Conjunction (&) distributes over disjunction (|)
     for (let vI = 0; vI < this.peg.length; vI++) {
       //oval[vI] = this.peg[vI].unify(peer, ctx)
       oval[vI] = unite(ctx, this.peg[vI], peer)
-      //console.log('ovalA', vI, this.peg[vI].canon, peer.canon, oval[vI].canon)
+      // console.log('ovalA', vI, this.peg[vI].canon, peer.canon, oval[vI].canon)
 
       done = done && DONE === oval[vI].done
     }
 
-    //console.log('ovalB', oval.map(v => v.canon))
+    // console.log('ovalB', oval.map(v => v.canon))
 
     // Remove duplicates, and normalize
     if (1 < oval.length) {
@@ -915,6 +916,11 @@ class RefVal extends Val {
   }
 
 
+  same(peer: Val): boolean {
+    return null == peer ? false : this.peg === peer.peg
+  }
+
+
   get canon() {
     return this.peg
   }
@@ -970,6 +976,23 @@ class PrefVal extends Val {
 
     return out
   }
+
+
+  same(peer: Val): boolean {
+    if (null == peer) {
+      return false
+    }
+
+    let pegsame = (this.peg === peer.peg) ||
+      (this.peg instanceof Val && this.peg.same(peer.peg))
+
+    let prefsame = peer instanceof PrefVal &&
+      ((this.pref === peer.pref) ||
+        (this.pref instanceof Val && this.pref.same(peer.pref)))
+
+    return pegsame && prefsame
+  }
+
 
   get canon() {
     return this.pref instanceof Nil ? this.peg.canon : '*' + this.pref.canon
