@@ -7,6 +7,9 @@ const multisource_1 = require("@jsonic/multisource");
 const file_1 = require("@jsonic/multisource/dist/resolver/file");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
+const ConjunctVal_1 = require("./val/ConjunctVal");
+const MapVal_1 = require("./val/MapVal");
+const Nil_1 = require("./val/Nil");
 const val_1 = require("./val");
 // console.log('TOP', TOP)
 class Site {
@@ -47,7 +50,7 @@ let AontuJsonic = function aontu(jsonic) {
                     val: (r) => addpath(new val_1.ScalarTypeVal(Boolean), r.keep.path)
                 },
                 'nil': {
-                    val: (r) => addpath(new val_1.Nil('literal'), r.keep.path)
+                    val: (r) => addpath(new Nil_1.Nil('literal'), r.keep.path)
                 },
                 // TODO: FIX: need a TOP instance to hold path
                 'top': { val: () => val_1.TOP },
@@ -57,12 +60,12 @@ let AontuJsonic = function aontu(jsonic) {
             merge: (prev, curr) => {
                 let pval = prev;
                 let cval = curr;
-                return addpath(new val_1.ConjunctVal([pval, cval]), prev.path);
+                return addpath(new ConjunctVal_1.ConjunctVal([pval, cval]), prev.path);
             }
         }
     });
     let opmap = {
-        'conjunct-infix': (r, _op, terms) => addpath(new val_1.ConjunctVal(terms), r.keep.path),
+        'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal(terms), r.keep.path),
         'disjunct-infix': (r, _op, terms) => addpath(new val_1.DisjunctVal(terms), r.keep.path),
         'dot-prefix': (r, _op, terms) => addpath(new val_1.RefVal(terms, true), r.keep.path),
         'dot-infix': (r, _op, terms) => addpath(new val_1.RefVal(terms), r.keep.path),
@@ -145,7 +148,7 @@ let AontuJsonic = function aontu(jsonic) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
         rs.bc((r) => {
             // console.log('MAP RULE', rule.use, rule.node)
-            r.node = addpath(new val_1.MapVal(r.node), r.keep.path);
+            r.node = addpath(new MapVal_1.MapVal(r.node), r.keep.path);
             // return out
             return undefined;
         });
@@ -168,9 +171,9 @@ let AontuJsonic = function aontu(jsonic) {
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
             if (rule.use.spread) {
-                rule.node[val_1.MapVal.SPREAD] =
-                    (rule.node[val_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
-                rule.node[val_1.MapVal.SPREAD].v.push(rule.child.node);
+                rule.node[MapVal_1.MapVal.SPREAD] =
+                    (rule.node[MapVal_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
+                rule.node[MapVal_1.MapVal.SPREAD].v.push(rule.child.node);
             }
             return undefined;
         });

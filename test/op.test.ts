@@ -7,14 +7,15 @@ import {
   Context
 } from '../lib/unify'
 
-import {
-  MapVal
-} from '../lib/val'
+
+import { MapVal } from '../lib/val/MapVal'
+import { Nil } from '../lib/val/Nil'
 
 import {
   disjunct,
   unite,
 } from '../lib/op/op'
+
 
 
 let lang = new Lang()

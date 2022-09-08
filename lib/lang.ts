@@ -26,16 +26,18 @@ import {
 } from '@jsonic/path'
 
 
-
-import {
-  Options
-} from './common'
-
-import {
+import type {
   Val,
-  Nil,
+  Options,
+} from './type'
+
+import { ConjunctVal } from './val/ConjunctVal'
+import { MapVal } from './val/MapVal'
+import { Nil } from './val/Nil'
+
+
+import {
   TOP,
-  MapVal,
   ListVal,
   ScalarTypeVal,
   Integer,
@@ -44,7 +46,6 @@ import {
   IntegerVal,
   BooleanVal,
   DisjunctVal,
-  ConjunctVal,
   RefVal,
   PrefVal,
 } from './val'

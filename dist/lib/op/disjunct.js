@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.disjunct = void 0;
 const val_1 = require("../val");
+const ValBase_1 = require("../val/ValBase");
 const disjunct = (ctx, a, b) => {
     let peers = [];
     let origsites = [];
@@ -19,7 +20,7 @@ function append(peers, v) {
         // origsite = v.site
     }
     // TODO: handle no-error Nil (drop) and error Nil (keep and become)
-    else if (v instanceof val_1.Val) {
+    else if (v instanceof ValBase_1.ValBase) {
         peers.push(v);
     }
     // return origsite

@@ -1,14 +1,18 @@
 /* Copyright (c) 2020 Richard Rodger and other contributors, MIT License */
 
 
+
 let { Aontu, util } = require('..')
 
 // import { Resolver } from '@jsonic/multisource'
 
-import { Options } from '../lib/common'
+import type { Val, Options } from '../lib/type'
 import { Lang } from '../lib/lang'
 import { Unify } from '../lib/unify'
-import { Val, Nil } from '../lib/val'
+
+import { MapVal } from '../lib/val/MapVal'
+import { Nil } from '../lib/val/Nil'
+
 
 // let { makeFileResolver } = require('@jsonic/multisource')
 

@@ -1,5 +1,8 @@
-import { Val, RefVal, MapVal, Nil } from './val';
+import type { Val } from './type';
+import { RefVal } from './val';
 import { Lang } from './lang';
+import { MapVal } from '../lib/val/MapVal';
+import { Nil } from '../lib/val/Nil';
 declare type Path = string[];
 declare class Context {
     root: Val;

@@ -1,14 +1,14 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
 
+import type { Val } from './type'
+
+import { DONE } from './type'
+
 
 import {
-  DONE,
   TOP,
-  Val,
   RefVal,
-  MapVal,
-  Nil,
 } from './val'
 
 import {
@@ -18,6 +18,10 @@ import {
 import {
   unite
 } from './op/op'
+
+
+import { MapVal } from '../lib/val/MapVal'
+import { Nil } from '../lib/val/Nil'
 
 
 type Path = string[]

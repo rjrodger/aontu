@@ -1,10 +1,15 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 
 
+import type { Val } from '../type'
+
 import { Site } from '../lang'
 import { Context } from '../unify'
-import { Val, DisjunctVal } from '../val'
+import { DisjunctVal } from '../val'
 import { Operation } from './op'
+
+
+import { ValBase } from '../val/ValBase'
 
 
 const disjunct: Operation = (ctx?: Context, a?: Val, b?: Val) => {
@@ -26,13 +31,12 @@ function append(peers: Val[], v?: Val) {
   }
 
   // TODO: handle no-error Nil (drop) and error Nil (keep and become)
-  else if (v instanceof Val) {
+  else if (v instanceof ValBase) {
     peers.push(v)
   }
 
   // return origsite
 }
-
 
 export {
   disjunct

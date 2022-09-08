@@ -1,9 +1,11 @@
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 
-import { Options } from './lib/common'
+
+import type { Val, Options } from './lib/type'
+
 import { Lang, includeFileResolver } from './lib/lang'
 import { Unify } from './lib/unify'
-import { Val, Nil } from './lib/val'
+import { Nil } from './lib/val/Nil'
 
 // FIX: multisource file loading within Conjuct fails
 

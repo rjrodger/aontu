@@ -1,6 +1,5 @@
 import { Jsonic } from '@jsonic/jsonic-next';
-import { Options } from './common';
-import { Val } from './val';
+import type { Val, Options } from './type';
 declare class Site {
     row: number;
     col: number;

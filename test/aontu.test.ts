@@ -48,6 +48,7 @@ w1: b: {y:2,z:3} & .q.a
     expect(Aontu('{a:b:1\na:c:2}').canon).toEqual('{"a":{"b":1,"c":2}}')
   })
 
+
   it('util', async () => {
     expect(util.options('x')).toMatchObject({ src: 'x', print: 0 })
     expect(util.options('x', { print: 1 })).toMatchObject({ src: 'x', print: 1 })

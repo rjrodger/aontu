@@ -1,23 +1,34 @@
-declare const TOP: Val<unknown>;
-declare abstract class Val<T> {
-    val?: T;
-    constructor(val?: T);
-    abstract unify(_peer: Val<any>): Val<any>;
+import { Resolver } from '@jsonic/multisource';
+import { Context } from './unify';
+import { Site } from './lang';
+declare type Options = {
+    src: string;
+    print: number;
+    resolver?: Resolver;
+    base?: string;
+};
+interface Val {
+    id: number;
+    done: number;
+    path: string[];
+    row: number;
+    col: number;
+    url: string;
+    top?: boolean;
+    peg?: any;
+    err?: any[];
+    deps?: any;
+    same(peer: Val): boolean;
+    get site(): Site;
+    unify(peer: Val, ctx?: Context): Val;
+    get canon(): string;
+    gen(ctx?: Context): any;
 }
-declare class Bottom extends Val<unknown> {
-    why: any;
-    constructor(why: any);
-    unify(_peer: Val<any>): this;
-}
-declare class Integer {
-    static subsume(child: ScalarVal): boolean;
-}
-declare class ScalarVal extends Val<unknown> {
-    constructor(val: String | Number | Boolean);
-    unify(peer: Val<any>): Val<any>;
-}
-declare class NumVal extends Val<number> {
-    constructor(val: number);
-    unify(peer: Val<any>): Val<any>;
-}
-export { Val, TOP, Bottom, ScalarVal, NumVal, Integer, };
+declare type ValMap = {
+    [key: string]: Val;
+};
+declare type ValList = Val[];
+declare const DONE = -1;
+declare const TOP: Val;
+export type { Val, ValMap, ValList, Options, };
+export { DONE, TOP, Resolver, };

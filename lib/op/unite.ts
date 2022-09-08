@@ -1,18 +1,20 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 
 
-// import { Site } from '../lang'
+import type { Val } from '../type'
+
+import { DONE } from '../type'
 import { Context } from '../unify'
 import {
-  Val,
-  ConjunctVal,
   DisjunctVal,
   RefVal,
   PrefVal,
   TOP,
-  Nil,
-  DONE
 } from '../val'
+import { ConjunctVal } from '../val/ConjunctVal'
+import { Nil } from '../val/Nil'
+
+
 import { Operation } from './op'
 
 

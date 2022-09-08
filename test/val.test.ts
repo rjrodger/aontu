@@ -1,6 +1,10 @@
 
 
 
+import type {
+  Val
+} from '../lib/type'
+
 import {
   Lang
 } from '../lib/lang'
@@ -15,22 +19,21 @@ import {
 } from '../lib/op/op'
 
 
+import { ConjunctVal } from '../lib/val/ConjunctVal'
+import { MapVal } from '../lib/val/MapVal'
+import { Nil } from '../lib/val/Nil'
 
 
 import {
   Integer,
   TOP,
-  Nil,
-  Val,
   NumberVal,
   StringVal,
   BooleanVal,
   IntegerVal,
   ScalarTypeVal,
-  MapVal,
   ListVal,
   DisjunctVal,
-  ConjunctVal,
   RefVal,
   PrefVal,
 } from '../lib/val'

@@ -1,11 +1,8 @@
 
 
-
-import {
-  TOP,
+import type {
   Val,
-  MapVal,
-} from '../lib/val'
+} from '../lib/type'
 
 import {
   Lang
@@ -15,6 +12,14 @@ import {
   Unify,
   Context,
 } from '../lib/unify'
+
+import { MapVal } from '../lib/val/MapVal'
+import { Nil } from '../lib/val/Nil'
+
+import {
+  TOP,
+} from '../lib/type'
+
 
 
 let lang = new Lang()

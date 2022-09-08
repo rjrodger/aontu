@@ -2,7 +2,7 @@
 
 
 import { Context } from '../unify'
-import { Val } from '../val'
+import { Val } from '../type'
 
 import { disjunct } from './disjunct'
 import { unite } from './unite'

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
-const val_1 = require("../lib/val");
+const MapVal_1 = require("../lib/val/MapVal");
 const op_1 = require("../lib/op/op");
 let lang = new lang_1.Lang();
 let PL = lang.parse.bind(lang);
@@ -223,7 +223,7 @@ describe('op', () => {
     });
 });
 function makeCtx(r) {
-    return new unify_1.Context({ root: r || new val_1.MapVal({}) });
+    return new unify_1.Context({ root: r || new MapVal_1.MapVal({}) });
 }
 function makeUnite(r) {
     let ctx = makeCtx(r);

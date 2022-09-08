@@ -1,6 +1,6 @@
-import { Options } from './lib/common';
+import type { Val, Options } from './lib/type';
 import { Lang } from './lib/lang';
-import { Val, Nil } from './lib/val';
+import { Nil } from './lib/val/Nil';
 declare function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val;
 declare const util: {
     options: (src: string | Partial<Options>, popts?: Partial<Options>) => Options;

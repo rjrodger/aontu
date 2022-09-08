@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
 const op_1 = require("../lib/op/op");
+const ConjunctVal_1 = require("../lib/val/ConjunctVal");
+const MapVal_1 = require("../lib/val/MapVal");
+const Nil_1 = require("../lib/val/Nil");
 const val_1 = require("../lib/val");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
@@ -52,13 +55,13 @@ describe('val', function () {
         let bf = val_1.BooleanVal.FALSE;
         expect((0, op_1.unite)(ctx, bt, bt)).toEqual(bt);
         expect((0, op_1.unite)(ctx, bf, bf)).toEqual(bf);
-        expect((0, op_1.unite)(ctx, bt, bf) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, bf, bt) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, bt, bf) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, bf, bt) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, bt, val_1.TOP)).toEqual(bt);
         expect((0, op_1.unite)(ctx, bf, val_1.TOP)).toEqual(bf);
         expect((0, op_1.unite)(ctx, val_1.TOP, bt)).toEqual(bt);
         expect((0, op_1.unite)(ctx, val_1.TOP, bf)).toEqual(bf);
-        let b0 = new val_1.Nil('test');
+        let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, bt, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, bf, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, b0, bt)).toEqual(b0);
@@ -67,10 +70,10 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, bt, bs)).toEqual(bt);
         expect((0, op_1.unite)(ctx, bs, bt)).toEqual(bt);
         let n0 = new val_1.NumberVal(1);
-        expect((0, op_1.unite)(ctx, bt, n0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, bf, n0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n0, bt) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n0, bf) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, bt, n0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, bf, n0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, bt) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, bf) instanceof Nil_1.Nil).toBeTruthy();
         expect(bt.same(bt)).toBeTruthy();
         expect(bf.same(bf)).toBeTruthy();
         expect(bt.same(bf)).toBeFalsy();
@@ -84,13 +87,13 @@ describe('val', function () {
         let s1 = new val_1.StringVal('s1');
         expect((0, op_1.unite)(ctx, s0, s0)).toEqual(s0);
         expect((0, op_1.unite)(ctx, s1, s1)).toEqual(s1);
-        expect((0, op_1.unite)(ctx, s0, s1) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s1, s0) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s0, s1) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s1, s0) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, s0, val_1.TOP)).toEqual(s0);
         expect((0, op_1.unite)(ctx, s1, val_1.TOP)).toEqual(s1);
         expect((0, op_1.unite)(ctx, val_1.TOP, s0)).toEqual(s0);
         expect((0, op_1.unite)(ctx, val_1.TOP, s1)).toEqual(s1);
-        let b0 = new val_1.Nil('test');
+        let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, s0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, s1, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, b0, s0)).toEqual(b0);
@@ -99,10 +102,10 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, s0, t0)).toEqual(s0);
         expect((0, op_1.unite)(ctx, t0, s0)).toEqual(s0);
         let n0 = new val_1.NumberVal(1);
-        expect((0, op_1.unite)(ctx, s0, n0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s1, n0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n0, s0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n0, s1) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s0, n0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s1, n0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, s0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, s1) instanceof Nil_1.Nil).toBeTruthy();
         expect(s0.same(s0)).toBeTruthy();
         expect(new val_1.StringVal('a').same(new val_1.StringVal('a'))).toBeTruthy();
         expect(new val_1.StringVal('a').same(new val_1.StringVal('b'))).toBeFalsy();
@@ -114,13 +117,13 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, n0, n0)).toEqual(n0);
         expect((0, op_1.unite)(ctx, n0, n0)).toEqual(n0);
         expect((0, op_1.unite)(ctx, n1, n1)).toEqual(n1);
-        expect((0, op_1.unite)(ctx, n0, n1) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n1, n0) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, n1) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n1, n0) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, n0, val_1.TOP)).toEqual(n0);
         expect((0, op_1.unite)(ctx, n1, val_1.TOP)).toEqual(n1);
         expect((0, op_1.unite)(ctx, val_1.TOP, n0)).toEqual(n0);
         expect((0, op_1.unite)(ctx, val_1.TOP, n1)).toEqual(n1);
-        let b0 = new val_1.Nil('test');
+        let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, n0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, n1, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, b0, n0)).toEqual(b0);
@@ -129,10 +132,10 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, n0, t0)).toEqual(n0);
         expect((0, op_1.unite)(ctx, t0, n0)).toEqual(n0);
         let s0 = new val_1.StringVal('s0');
-        expect((0, op_1.unite)(ctx, n0, s0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n1, s0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s0, n0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s0, n1) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, s0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n1, s0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s0, n0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s0, n1) instanceof Nil_1.Nil).toBeTruthy();
         expect(n0.same(n0)).toBeTruthy();
         expect(new val_1.NumberVal(11).same(new val_1.NumberVal(11))).toBeTruthy();
         expect(new val_1.NumberVal(11).same(new val_1.NumberVal(22))).toBeFalsy();
@@ -143,22 +146,22 @@ describe('val', function () {
         let n1 = new val_1.IntegerVal(1);
         expect((0, op_1.unite)(ctx, n0, n0)).toEqual(n0);
         expect((0, op_1.unite)(ctx, n1, n1)).toEqual(n1);
-        expect((0, op_1.unite)(ctx, n0, n1) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n1, n0) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, n1) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n1, n0) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, n0, val_1.TOP)).toEqual(n0);
         expect((0, op_1.unite)(ctx, n1, val_1.TOP)).toEqual(n1);
         expect((0, op_1.unite)(ctx, val_1.TOP, n0)).toEqual(n0);
         expect((0, op_1.unite)(ctx, val_1.TOP, n1)).toEqual(n1);
-        let b0 = new val_1.Nil('test');
+        let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, n0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, n1, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, b0, n0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, b0, n1)).toEqual(b0);
         let s0 = new val_1.StringVal('s0');
-        expect((0, op_1.unite)(ctx, n0, s0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n1, s0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s0, n0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s0, n1) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, s0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n1, s0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s0, n0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s0, n1) instanceof Nil_1.Nil).toBeTruthy();
         let t0 = new val_1.ScalarTypeVal(val_1.Integer);
         expect((0, op_1.unite)(ctx, n0, t0)).toEqual(n0);
         expect((0, op_1.unite)(ctx, t0, n0)).toEqual(n0);
@@ -176,25 +179,25 @@ describe('val', function () {
     });
     it('map', () => {
         let ctx = makeCtx();
-        let m0 = new val_1.MapVal({});
+        let m0 = new MapVal_1.MapVal({});
         expect(m0.canon).toEqual('{}');
         // TODO: update
         expect((0, op_1.unite)(ctx, m0, m0).canon).toEqual('{}');
         expect((0, op_1.unite)(ctx, m0, val_1.TOP).canon).toEqual('{}');
         expect((0, op_1.unite)(ctx, val_1.TOP, m0).canon).toEqual('{}');
-        let b0 = new val_1.Nil('test');
+        let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, m0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, b0, m0)).toEqual(b0);
         let s0 = new val_1.StringVal('s0');
-        expect((0, op_1.unite)(ctx, m0, s0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s0, m0) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, m0, s0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, s0, m0) instanceof Nil_1.Nil).toBeTruthy();
         let n0 = new val_1.NumberVal(0);
-        expect((0, op_1.unite)(ctx, m0, n0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n0, m0) instanceof val_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, m0, n0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, n0, m0) instanceof Nil_1.Nil).toBeTruthy();
         let t0 = new val_1.ScalarTypeVal(String);
-        expect((0, op_1.unite)(ctx, m0, t0) instanceof val_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, t0, m0) instanceof val_1.Nil).toBeTruthy();
-        let m1 = new val_1.MapVal({ a: new val_1.NumberVal(1) });
+        expect((0, op_1.unite)(ctx, m0, t0) instanceof Nil_1.Nil).toBeTruthy();
+        expect((0, op_1.unite)(ctx, t0, m0) instanceof Nil_1.Nil).toBeTruthy();
+        let m1 = new MapVal_1.MapVal({ a: new val_1.NumberVal(1) });
         // print(m1, 'm1')
         expect(m1.canon).toEqual('{"a":1}');
         let m1u = m1.unify(val_1.TOP, ctx);
@@ -220,8 +223,8 @@ describe('val', function () {
     });
     it('map-spread', () => {
         let ctx = makeCtx();
-        let m0 = new val_1.MapVal({
-            [val_1.MapVal.SPREAD]: { o: '&', v: P('{x:1}') },
+        let m0 = new MapVal_1.MapVal({
+            [MapVal_1.MapVal.SPREAD]: { o: '&', v: P('{x:1}') },
             a: P('{ y: 1 }'),
             b: P('{ y: 2 }'),
         });
@@ -258,16 +261,16 @@ describe('val', function () {
     })
     */
     it('conjunct', () => {
-        let ctx = makeCtx(new val_1.MapVal({ x: new val_1.IntegerVal(1) }));
-        let d0 = new val_1.ConjunctVal(PA(['1']));
-        let d1 = new val_1.ConjunctVal(PA(['1', '1']));
-        let d2 = new val_1.ConjunctVal(PA(['1', '2']));
-        let d3 = new val_1.ConjunctVal(PA(['1', 'number']));
-        let d4 = new val_1.ConjunctVal(PA(['1', 'number', 'integer']));
-        let d5 = new val_1.ConjunctVal(PA(['{a:1}']));
-        let d6 = new val_1.ConjunctVal(PA(['{a:1}', '{b:2}']));
+        let ctx = makeCtx(new MapVal_1.MapVal({ x: new val_1.IntegerVal(1) }));
+        let d0 = new ConjunctVal_1.ConjunctVal(PA(['1']));
+        let d1 = new ConjunctVal_1.ConjunctVal(PA(['1', '1']));
+        let d2 = new ConjunctVal_1.ConjunctVal(PA(['1', '2']));
+        let d3 = new ConjunctVal_1.ConjunctVal(PA(['1', 'number']));
+        let d4 = new ConjunctVal_1.ConjunctVal(PA(['1', 'number', 'integer']));
+        let d5 = new ConjunctVal_1.ConjunctVal(PA(['{a:1}']));
+        let d6 = new ConjunctVal_1.ConjunctVal(PA(['{a:1}', '{b:2}']));
         // let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('/x')])
-        let d100 = new val_1.ConjunctVal([new val_1.IntegerVal(1), new val_1.RefVal(['x'], true)]);
+        let d100 = new ConjunctVal_1.ConjunctVal([new val_1.IntegerVal(1), new val_1.RefVal(['x'], true)]);
         expect(d0.canon).toEqual('1');
         expect(d1.canon).toEqual('1&1');
         expect(d2.canon).toEqual('1&2');
@@ -295,7 +298,7 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, d100, val_1.TOP).canon).toEqual('1');
         expect((0, op_1.unite)(ctx, val_1.TOP, d100).canon).toEqual('1');
         // TODO: same for DisjunctVal
-        expect((0, op_1.unite)(ctx, new val_1.ConjunctVal([]), val_1.TOP).canon).toEqual('top');
+        expect((0, op_1.unite)(ctx, new ConjunctVal_1.ConjunctVal([]), val_1.TOP).canon).toEqual('top');
     });
     it('disjunct', () => {
         let ctx = makeCtx();
@@ -585,6 +588,6 @@ function print(o, t) {
     console.dir(o, { depth: null });
 }
 function makeCtx(r) {
-    return new unify_1.Context({ root: r || new val_1.MapVal({}) });
+    return new unify_1.Context({ root: r || new MapVal_1.MapVal({}) });
 }
 //# sourceMappingURL=val.test.js.map

@@ -2,9 +2,11 @@
 /* Copyright (c) 2021 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Unify = exports.Context = void 0;
+const type_1 = require("./type");
 const val_1 = require("./val");
 const lang_1 = require("./lang");
 const op_1 = require("./op/op");
+const MapVal_1 = require("../lib/val/MapVal");
 class Context {
     constructor(cfg) {
         this.root = cfg.root;
@@ -29,10 +31,10 @@ class Context {
     find(ref) {
         // console.log('FIND', ref.path, ref.peg)
         // TODO: relative paths
-        if (this.root instanceof val_1.MapVal && ref.absolute) {
+        if (this.root instanceof MapVal_1.MapVal && ref.absolute) {
             let node = this.root;
             let pI = 0;
-            for (; pI < ref.parts.length && node instanceof val_1.MapVal; pI++) {
+            for (; pI < ref.parts.length && node instanceof MapVal_1.MapVal; pI++) {
                 let part = ref.parts[pI];
                 node = node.peg[part];
             }
@@ -60,7 +62,7 @@ class Unify {
         // TODO: derive maxdc from res deterministically
         // perhaps parse should count intial vals, paths, etc?
         let maxdc = 999;
-        for (this.dc = 0; this.dc < maxdc && val_1.DONE !== res.done; this.dc++) {
+        for (this.dc = 0; this.dc < maxdc && type_1.DONE !== res.done; this.dc++) {
             res = (0, op_1.unite)(ctx, res, val_1.TOP);
             ctx = ctx.clone({ root: res });
         }

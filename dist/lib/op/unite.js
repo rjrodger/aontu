@@ -1,8 +1,11 @@
 "use strict";
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = void 0;
+const type_1 = require("../type");
 const val_1 = require("../val");
+const ConjunctVal_1 = require("../val/ConjunctVal");
+const Nil_1 = require("../val/Nil");
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
@@ -19,13 +22,13 @@ const unite = (ctx, a, b, whence) => {
         out = a;
     }
     else if (a && b && val_1.TOP !== b) {
-        if (a instanceof val_1.Nil) {
+        if (a instanceof Nil_1.Nil) {
             out = update(a, b);
         }
-        else if (b instanceof val_1.Nil) {
+        else if (b instanceof Nil_1.Nil) {
             out = update(b, a);
         }
-        else if (b instanceof val_1.ConjunctVal ||
+        else if (b instanceof ConjunctVal_1.ConjunctVal ||
             b instanceof val_1.DisjunctVal ||
             b instanceof val_1.RefVal ||
             b instanceof val_1.PrefVal) {
@@ -41,9 +44,9 @@ const unite = (ctx, a, b, whence) => {
         }
     }
     if (!out || !out.unify) {
-        out = val_1.Nil.make(ctx, 'unite', a, b);
+        out = Nil_1.Nil.make(ctx, 'unite', a, b);
     }
-    if (val_1.DONE !== out.done) {
+    if (type_1.DONE !== out.done) {
         out = out.unify(val_1.TOP, ctx);
     }
     // console.log('AA OP unite OUT', a?.canon, b?.canon, '->', out && out.canon,
