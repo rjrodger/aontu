@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConjunctVal = void 0;
+exports.ConjunctVal = exports.norm = void 0;
 const type_1 = require("../type");
 const ValBase_1 = require("../val/ValBase");
 const Nil_1 = require("../val/Nil");
@@ -30,6 +30,7 @@ class ConjunctVal extends ValBase_1.ValBase {
             }
         }
         // // console.log('Cb', upeer.map(x => x.canon))
+        upeer = norm(upeer);
         // TODO: FIX: conjuncts get replicated inside each other
         // 1&/x => CV[CV[1&/x]]
         // Unify each term of conjunct against following sibling,
@@ -103,4 +104,19 @@ class ConjunctVal extends ValBase_1.ValBase {
     }
 }
 exports.ConjunctVal = ConjunctVal;
+function norm(terms) {
+    // console.log('CJ norm', terms.map((t: Val) => t.canon))
+    let expand = [];
+    for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
+        if (terms[tI] instanceof ConjunctVal) {
+            expand.push(...terms[tI].peg);
+            pI += terms[tI].peg.length - 1;
+        }
+        else {
+            expand[pI] = terms[tI];
+        }
+    }
+    return expand;
+}
+exports.norm = norm;
 //# sourceMappingURL=ConjunctVal.js.map

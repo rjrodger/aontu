@@ -6,10 +6,6 @@ import type {
 } from '../lib/type'
 
 import {
-  TOP
-} from '../lib/type'
-
-import {
   Lang
 } from '../lib/lang'
 
@@ -40,6 +36,11 @@ import {
   IntegerVal,
   ScalarTypeVal,
 } from '../lib/val'
+
+
+import {
+  TOP
+} from '../lib/type'
 
 
 const lang = new Lang()

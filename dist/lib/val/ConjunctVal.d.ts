@@ -8,4 +8,5 @@ declare class ConjunctVal extends ValBase {
     get canon(): any;
     gen(ctx?: Context): any;
 }
-export { ConjunctVal };
+declare function norm(terms: Val[]): Val[];
+export { norm, ConjunctVal, };

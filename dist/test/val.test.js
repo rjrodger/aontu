@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const type_1 = require("../lib/type");
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
 const op_1 = require("../lib/op/op");
@@ -12,6 +11,7 @@ const PrefVal_1 = require("../lib/val/PrefVal");
 const RefVal_1 = require("../lib/val/RefVal");
 const Nil_1 = require("../lib/val/Nil");
 const val_1 = require("../lib/val");
+const type_1 = require("../lib/type");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);

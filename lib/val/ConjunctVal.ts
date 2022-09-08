@@ -74,6 +74,9 @@ class ConjunctVal extends ValBase {
     // // console.log('Cb', upeer.map(x => x.canon))
 
 
+    upeer = norm(upeer)
+
+
     // TODO: FIX: conjuncts get replicated inside each other
     // 1&/x => CV[CV[1&/x]]
 
@@ -168,6 +171,25 @@ class ConjunctVal extends ValBase {
 }
 
 
+function norm(terms: Val[]): Val[] {
+  // console.log('CJ norm', terms.map((t: Val) => t.canon))
+
+  let expand: Val[] = []
+  for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
+    if (terms[tI] instanceof ConjunctVal) {
+      expand.push(...terms[tI].peg)
+      pI += terms[tI].peg.length - 1
+    }
+    else {
+      expand[pI] = terms[tI]
+    }
+  }
+
+  return expand
+}
+
+
 export {
-  ConjunctVal
+  norm,
+  ConjunctVal,
 }
