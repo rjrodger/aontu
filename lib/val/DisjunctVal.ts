@@ -113,16 +113,20 @@ class DisjunctVal extends ValBase {
     return this.peg.map((v: Val) => v.canon).join('|')
   }
   gen(ctx?: Context) {
+
+    // TODO: this is not right - unresolved Disjuncts eval to undef
     if (0 < this.peg.length) {
 
       let vals = this.peg.filter((v: Val) => v instanceof PrefVal)
 
       vals = 0 === vals.length ? this.peg : vals
 
+      // console.log(vals.map((m: any) => m.canon))
+
       let val = vals[0]
 
       for (let vI = 1; vI < this.peg.length; vI++) {
-        val = val.unify(this.peg[vI])
+        val = val.unify(this.peg[vI], ctx)
       }
 
       return val.gen(ctx)

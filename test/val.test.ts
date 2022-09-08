@@ -716,6 +716,10 @@ describe('val', function() {
     expect(UC('a:*1|number,b:2,c:.a&.b')).toEqual('{"a":*1|number,"b":2,"c":2}')
     expect(UC('a:*1|number,b:top,c:.a&.b'))
       .toEqual('{"a":*1|number,"b":top,"c":*1|number}')
+
+    expect(UC('a:*1|number,a:*2|number'))
+      .toEqual('{"a":*2|*1|number}')
+
     expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
       .toEqual('{"a":*1|number,"b":*2|number,"c":*2|*1|number}')
 

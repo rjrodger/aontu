@@ -68,6 +68,11 @@ class MapVal extends ValBase {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
+    // console.log('QQQ ctx', !!ctx)
+    if (null == ctx) {
+      console.trace()
+    }
+
     let done: boolean = true
     let out: MapVal = TOP === peer ? this : new MapVal({}, ctx)
 
@@ -203,7 +208,7 @@ class MapVal extends ValBase {
       '}'
   }
 
-  gen(ctx?: Context) {
+  gen(ctx: Context) {
     let out: any = {}
     for (let p in this.peg) {
       out[p] = this.peg[p].gen(ctx)

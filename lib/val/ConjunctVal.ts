@@ -20,6 +20,9 @@ import {
   Nil,
 } from '../val/Nil'
 
+// import { RefVal } from '../val/RefVal'
+import { MapVal } from '../val/MapVal'
+
 import {
   Context,
 } from '../unify'
@@ -77,43 +80,124 @@ class ConjunctVal extends ValBase {
     upeer = norm(upeer)
 
 
-    // TODO: FIX: conjuncts get replicated inside each other
-    // 1&/x => CV[CV[1&/x]]
+    let outvals: Val[] = []
+    let val: Val
 
-    // Unify each term of conjunct against following sibling,
-    // reducing to smallest conjunct or single val
-    let outvals: Val[] = 0 < upeer.length ? [upeer[0]] : []
+    next_term:
+    for (let pI = 0; pI < upeer.length; pI++) {
+      let t0 = upeer[pI]
 
-    let oI = 0
-    for (let uI = 1; uI < upeer.length; uI++) {
-      // // console.log('Cu', oI, uI, outvals.map(x => x.canon))
+      // console.log('CJ unify QQ', mark, uc, 't0', pI, t0.canon)
 
-      if (outvals[oI] instanceof ConjunctVal) {
-        outvals.splice(oI, 0, ...outvals[oI].peg)
-        oI += outvals[oI].peg.length
-        done = false
-      }
-      else {
-        outvals[oI] = null == outvals[oI] ? upeer[uI] :
-          //outvals[oI].unify(upeer[uI], ctx)
-          unite(ctx, outvals[oI], upeer[uI])
-        done = done && DONE === outvals[oI].done
+      if (DONE !== t0.done) {
+        let u0 = unite(ctx, t0, TOP)
 
-        // Conjuct fails
-        if (outvals[oI] instanceof Nil) {
-          return outvals[oI]
+        if (
+          DONE !== u0.done
 
-          /*
-          return Nil.make(
-            ctx,
-            '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']',
-            outvals[oI],
-            upeer[uI]
-          )
-          */
+          // Maps and Lists are still unified so that path refs will work
+          && !(u0 instanceof MapVal) // TODO: || ListVal - test!
+        ) {
+          outvals.push(u0)
+          continue next_term
+        }
+        else {
+          t0 = u0
         }
       }
+
+
+      let t1 = upeer[pI + 1]
+
+      // console.log('CJ unify WW', mark, uc, 't1', pI + 1, t1?.canon)
+
+      // if (
+      //   null == t1 ||
+      //   t0.id === t1.id ||
+      //   t0 instanceof RefVal
+      // ) {
+      //   if (DONE !== t0.done) {
+      //     let u0 = unite(ctx, t0, TOP)
+      //     // console.log('CJ unify EE', mark, uc, 't0', t0.canon, 'u0', u0.canon)
+      //     outvals.push(u0)
+      //   }
+      //   else {
+      //     outvals.push(t0)
+      //   }
+      //   pI++
+      // }
+
+      // else if (DONE !== t0.done || DONE != t1.done) {
+      //   if (DONE !== t0.done) {
+      //     let u0 = unite(ctx, t0, TOP)
+      //     // console.log('CJ unify FF', mark, uc, 't0', t0.canon, 'u0', u0.canon)
+      //     outvals.push(u0)
+      //   }
+      //   else {
+      //     outvals.push(t0)
+      //   }
+      // }
+
+      if (null == t1) {
+        outvals.push(t0)
+      }
+      else {
+        // console.log('CJS unify0', t0?.canon, t1?.canon)
+        val = unite(ctx, t0, t1)
+        done = done && DONE === val.done
+
+        if (val instanceof ConjunctVal) {
+          if (t0.id === val.peg[0].id) {
+            val = t0
+          }
+        }
+        else if (val instanceof Nil) {
+          return val
+        }
+
+        outvals.push(val)
+        pI++
+      }
     }
+
+
+    // // TODO: FIX: conjuncts get replicated inside each other
+    // // 1&/x => CV[CV[1&/x]]
+
+    // // Unify each term of conjunct against following sibling,
+    // // reducing to smallest conjunct or single val
+    // let outvals: Val[] = 0 < upeer.length ? [upeer[0]] : []
+
+    // let oI = 0
+    // for (let uI = 1; uI < upeer.length; uI++) {
+    //   // // console.log('Cu', oI, uI, outvals.map(x => x.canon))
+
+    //   if (outvals[oI] instanceof ConjunctVal) {
+    //     outvals.splice(oI, 0, ...outvals[oI].peg)
+    //     oI += outvals[oI].peg.length
+    //     done = false
+    //   }
+    //   else {
+    //     outvals[oI] = null == outvals[oI] ? upeer[uI] :
+    //       //outvals[oI].unify(upeer[uI], ctx)
+    //       unite(ctx, outvals[oI], upeer[uI])
+    //     done = done && DONE === outvals[oI].done
+
+    //     // Conjuct fails
+    //     if (outvals[oI] instanceof Nil) {
+    //       return outvals[oI]
+
+    //       /*
+    //       return Nil.make(
+    //         ctx,
+    //         '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']',
+    //         outvals[oI],
+    //         upeer[uI]
+    //       )
+    //       */
+    //     }
+    //   }
+    // }
 
     // // console.log('Cc', outvals.map(x => x.canon), outvals)
 

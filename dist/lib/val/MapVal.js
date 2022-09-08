@@ -26,6 +26,10 @@ class MapVal extends ValBase_1.ValBase {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
+        // console.log('QQQ ctx', !!ctx)
+        if (null == ctx) {
+            console.trace();
+        }
         let done = true;
         let out = type_1.TOP === peer ? this : new MapVal({}, ctx);
         out.spread.cj = this.spread.cj;

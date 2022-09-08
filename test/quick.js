@@ -137,11 +137,21 @@ let tmp = {}
 
 // G(A('x:{a: string, b: 1 & .x.a}'))
 
-G(A('x:{&:number,a:1}'))
-V(A('x:{&:number,a:1}'))
+// G(A('x:{&:number,a:1}'))
+// V(A('x:{&:number,a:1}'))
 
-G(A('[&:number,1]'))
-V(A('[&:number,1]'))
+// G(A('[&:number,1]'))
+// V(A('[&:number,1]'))
 
-G(A('[&:{x:number},{x:1}]'))
-V(A('[&:{x:number},{x:1}]'))
+// G(A('[&:{x:number},{x:1}]'))
+// V(A('[&:{x:number},{x:1}]'))
+
+
+
+let s = 'x:{a:.x.b}&{b:2}'
+
+V(A(s))
+G(A(s))
+
+
+

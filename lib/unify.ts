@@ -117,6 +117,7 @@ class Unify {
     let maxdc = 999
     for (this.dc = 0; this.dc < maxdc && DONE !== res.done; this.dc++) {
       res = unite(ctx, res, TOP)
+      // console.log('U', this.dc, res.canon)
       ctx = ctx.clone({ root: res })
     }
 
