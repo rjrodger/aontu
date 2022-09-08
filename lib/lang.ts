@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 
 import {
   Jsonic,
@@ -31,23 +31,26 @@ import type {
   Options,
 } from './type'
 
+import {
+  TOP
+} from './type'
+
 import { ConjunctVal } from './val/ConjunctVal'
+import { DisjunctVal } from './val/DisjunctVal'
 import { MapVal } from './val/MapVal'
+import { ListVal } from './val/ListVal'
+import { PrefVal } from './val/PrefVal'
+import { RefVal } from './val/RefVal'
 import { Nil } from './val/Nil'
 
 
 import {
-  TOP,
-  ListVal,
   ScalarTypeVal,
   Integer,
   StringVal,
   NumberVal,
   IntegerVal,
   BooleanVal,
-  DisjunctVal,
-  RefVal,
-  PrefVal,
 } from './val'
 
 

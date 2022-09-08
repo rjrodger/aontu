@@ -6,6 +6,10 @@ import type {
 } from '../lib/type'
 
 import {
+  TOP
+} from '../lib/type'
+
+import {
   Lang
 } from '../lib/lang'
 
@@ -20,22 +24,21 @@ import {
 
 
 import { ConjunctVal } from '../lib/val/ConjunctVal'
+import { DisjunctVal } from '../lib/val/DisjunctVal'
 import { MapVal } from '../lib/val/MapVal'
+import { ListVal } from '../lib/val/ListVal'
+import { PrefVal } from '../lib/val/PrefVal'
+import { RefVal } from '../lib/val/RefVal'
 import { Nil } from '../lib/val/Nil'
 
 
 import {
   Integer,
-  TOP,
   NumberVal,
   StringVal,
   BooleanVal,
   IntegerVal,
   ScalarTypeVal,
-  ListVal,
-  DisjunctVal,
-  RefVal,
-  PrefVal,
 } from '../lib/val'
 
 

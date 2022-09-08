@@ -3,13 +3,8 @@
 
 import type { Val } from './type'
 
-import { DONE } from './type'
+import { DONE, TOP } from './type'
 
-
-import {
-  TOP,
-  RefVal,
-} from './val'
 
 import {
   Lang
@@ -20,7 +15,9 @@ import {
 } from './op/op'
 
 
+
 import { MapVal } from '../lib/val/MapVal'
+import { RefVal } from '../lib/val/RefVal'
 import { Nil } from '../lib/val/Nil'
 
 

@@ -3,8 +3,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = void 0;
 const type_1 = require("../type");
-const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
+const DisjunctVal_1 = require("../val/DisjunctVal");
+const PrefVal_1 = require("../val/PrefVal");
+const RefVal_1 = require("../val/RefVal");
 const Nil_1 = require("../val/Nil");
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
@@ -13,15 +15,15 @@ const unite = (ctx, a, b, whence) => {
     // console.log('AA OP unite  IN', a?.canon, b?.canon,
     //   'W', whence,
     //   'E', 0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')
-    if (b && (val_1.TOP === a || !a)) {
+    if (b && (type_1.TOP === a || !a)) {
         //console.log('Utb', b.canon)
         out = b;
     }
-    else if (a && (val_1.TOP === b || !b)) {
+    else if (a && (type_1.TOP === b || !b)) {
         //console.log('Uta', a.canon)
         out = a;
     }
-    else if (a && b && val_1.TOP !== b) {
+    else if (a && b && type_1.TOP !== b) {
         if (a instanceof Nil_1.Nil) {
             out = update(a, b);
         }
@@ -29,9 +31,9 @@ const unite = (ctx, a, b, whence) => {
             out = update(b, a);
         }
         else if (b instanceof ConjunctVal_1.ConjunctVal ||
-            b instanceof val_1.DisjunctVal ||
-            b instanceof val_1.RefVal ||
-            b instanceof val_1.PrefVal) {
+            b instanceof DisjunctVal_1.DisjunctVal ||
+            b instanceof RefVal_1.RefVal ||
+            b instanceof PrefVal_1.PrefVal) {
             //console.log('U', a.canon, b.canon)
             return b.unify(a, ctx);
         }
@@ -47,7 +49,7 @@ const unite = (ctx, a, b, whence) => {
         out = Nil_1.Nil.make(ctx, 'unite', a, b);
     }
     if (type_1.DONE !== out.done) {
-        out = out.unify(val_1.TOP, ctx);
+        out = out.unify(type_1.TOP, ctx);
     }
     // console.log('AA OP unite OUT', a?.canon, b?.canon, '->', out && out.canon,
     //   0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')

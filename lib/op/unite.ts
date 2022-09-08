@@ -3,16 +3,16 @@
 
 import type { Val } from '../type'
 
-import { DONE } from '../type'
+import { DONE, TOP } from '../type'
 import { Context } from '../unify'
-import {
-  DisjunctVal,
-  RefVal,
-  PrefVal,
-  TOP,
-} from '../val'
+
 import { ConjunctVal } from '../val/ConjunctVal'
+import { DisjunctVal } from '../val/DisjunctVal'
+import { PrefVal } from '../val/PrefVal'
+import { RefVal } from '../val/RefVal'
 import { Nil } from '../val/Nil'
+
+
 
 
 import { Operation } from './op'

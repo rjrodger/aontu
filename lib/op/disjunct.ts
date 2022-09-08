@@ -5,8 +5,9 @@ import type { Val } from '../type'
 
 import { Site } from '../lang'
 import { Context } from '../unify'
-import { DisjunctVal } from '../val'
+import { DisjunctVal } from '../val/DisjunctVal'
 import { Operation } from './op'
+
 
 
 import { ValBase } from '../val/ValBase'
@@ -20,6 +21,7 @@ const disjunct: Operation = (ctx?: Context, a?: Val, b?: Val) => {
   let out = new DisjunctVal(peers, ctx, origsites)
   return out
 }
+
 
 
 function append(peers: Val[], v?: Val) {

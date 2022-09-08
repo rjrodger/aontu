@@ -6,9 +6,7 @@ import {
   Unify,
 } from '../lib/unify'
 
-import {
-  RefVal
-} from '../lib/val'
+import { RefVal } from '../lib/val/RefVal'
 
 import {
   Lang

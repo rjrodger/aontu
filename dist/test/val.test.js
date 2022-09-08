@@ -1,10 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const type_1 = require("../lib/type");
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
 const op_1 = require("../lib/op/op");
 const ConjunctVal_1 = require("../lib/val/ConjunctVal");
+const DisjunctVal_1 = require("../lib/val/DisjunctVal");
 const MapVal_1 = require("../lib/val/MapVal");
+const ListVal_1 = require("../lib/val/ListVal");
+const PrefVal_1 = require("../lib/val/PrefVal");
+const RefVal_1 = require("../lib/val/RefVal");
 const Nil_1 = require("../lib/val/Nil");
 const val_1 = require("../lib/val");
 const lang = new lang_1.Lang();
@@ -12,7 +17,7 @@ const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 const PA = (x, ctx) => x.map(s => PL(s, ctx));
 const D = (x) => console.dir(x, { depth: null });
-const UC = (s, r) => { var _a; return (_a = (r = P(s)).unify(val_1.TOP, makeCtx(r))) === null || _a === void 0 ? void 0 : _a.canon; };
+const UC = (s, r) => { var _a; return (_a = (r = P(s)).unify(type_1.TOP, makeCtx(r))) === null || _a === void 0 ? void 0 : _a.canon; };
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen();
 describe('val', function () {
     it('canon', () => {
@@ -57,10 +62,10 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, bf, bf)).toEqual(bf);
         expect((0, op_1.unite)(ctx, bt, bf) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, bf, bt) instanceof Nil_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, bt, val_1.TOP)).toEqual(bt);
-        expect((0, op_1.unite)(ctx, bf, val_1.TOP)).toEqual(bf);
-        expect((0, op_1.unite)(ctx, val_1.TOP, bt)).toEqual(bt);
-        expect((0, op_1.unite)(ctx, val_1.TOP, bf)).toEqual(bf);
+        expect((0, op_1.unite)(ctx, bt, type_1.TOP)).toEqual(bt);
+        expect((0, op_1.unite)(ctx, bf, type_1.TOP)).toEqual(bf);
+        expect((0, op_1.unite)(ctx, type_1.TOP, bt)).toEqual(bt);
+        expect((0, op_1.unite)(ctx, type_1.TOP, bf)).toEqual(bf);
         let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, bt, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, bf, b0)).toEqual(b0);
@@ -89,10 +94,10 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, s1, s1)).toEqual(s1);
         expect((0, op_1.unite)(ctx, s0, s1) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, s1, s0) instanceof Nil_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, s0, val_1.TOP)).toEqual(s0);
-        expect((0, op_1.unite)(ctx, s1, val_1.TOP)).toEqual(s1);
-        expect((0, op_1.unite)(ctx, val_1.TOP, s0)).toEqual(s0);
-        expect((0, op_1.unite)(ctx, val_1.TOP, s1)).toEqual(s1);
+        expect((0, op_1.unite)(ctx, s0, type_1.TOP)).toEqual(s0);
+        expect((0, op_1.unite)(ctx, s1, type_1.TOP)).toEqual(s1);
+        expect((0, op_1.unite)(ctx, type_1.TOP, s0)).toEqual(s0);
+        expect((0, op_1.unite)(ctx, type_1.TOP, s1)).toEqual(s1);
         let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, s0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, s1, b0)).toEqual(b0);
@@ -119,10 +124,10 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, n1, n1)).toEqual(n1);
         expect((0, op_1.unite)(ctx, n0, n1) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, n1, n0) instanceof Nil_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n0, val_1.TOP)).toEqual(n0);
-        expect((0, op_1.unite)(ctx, n1, val_1.TOP)).toEqual(n1);
-        expect((0, op_1.unite)(ctx, val_1.TOP, n0)).toEqual(n0);
-        expect((0, op_1.unite)(ctx, val_1.TOP, n1)).toEqual(n1);
+        expect((0, op_1.unite)(ctx, n0, type_1.TOP)).toEqual(n0);
+        expect((0, op_1.unite)(ctx, n1, type_1.TOP)).toEqual(n1);
+        expect((0, op_1.unite)(ctx, type_1.TOP, n0)).toEqual(n0);
+        expect((0, op_1.unite)(ctx, type_1.TOP, n1)).toEqual(n1);
         let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, n0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, n1, b0)).toEqual(b0);
@@ -148,10 +153,10 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, n1, n1)).toEqual(n1);
         expect((0, op_1.unite)(ctx, n0, n1) instanceof Nil_1.Nil).toBeTruthy();
         expect((0, op_1.unite)(ctx, n1, n0) instanceof Nil_1.Nil).toBeTruthy();
-        expect((0, op_1.unite)(ctx, n0, val_1.TOP)).toEqual(n0);
-        expect((0, op_1.unite)(ctx, n1, val_1.TOP)).toEqual(n1);
-        expect((0, op_1.unite)(ctx, val_1.TOP, n0)).toEqual(n0);
-        expect((0, op_1.unite)(ctx, val_1.TOP, n1)).toEqual(n1);
+        expect((0, op_1.unite)(ctx, n0, type_1.TOP)).toEqual(n0);
+        expect((0, op_1.unite)(ctx, n1, type_1.TOP)).toEqual(n1);
+        expect((0, op_1.unite)(ctx, type_1.TOP, n0)).toEqual(n0);
+        expect((0, op_1.unite)(ctx, type_1.TOP, n1)).toEqual(n1);
         let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, n0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, n1, b0)).toEqual(b0);
@@ -183,8 +188,8 @@ describe('val', function () {
         expect(m0.canon).toEqual('{}');
         // TODO: update
         expect((0, op_1.unite)(ctx, m0, m0).canon).toEqual('{}');
-        expect((0, op_1.unite)(ctx, m0, val_1.TOP).canon).toEqual('{}');
-        expect((0, op_1.unite)(ctx, val_1.TOP, m0).canon).toEqual('{}');
+        expect((0, op_1.unite)(ctx, m0, type_1.TOP).canon).toEqual('{}');
+        expect((0, op_1.unite)(ctx, type_1.TOP, m0).canon).toEqual('{}');
         let b0 = new Nil_1.Nil('test');
         expect((0, op_1.unite)(ctx, m0, b0)).toEqual(b0);
         expect((0, op_1.unite)(ctx, b0, m0)).toEqual(b0);
@@ -200,7 +205,7 @@ describe('val', function () {
         let m1 = new MapVal_1.MapVal({ a: new val_1.NumberVal(1) });
         // print(m1, 'm1')
         expect(m1.canon).toEqual('{"a":1}');
-        let m1u = m1.unify(val_1.TOP, ctx);
+        let m1u = m1.unify(type_1.TOP, ctx);
         // print(m1u, 'm1u')
         expect(m1u.canon).toEqual('{"a":1}');
         let u01 = m0.unify(m1, ctx);
@@ -217,7 +222,7 @@ describe('val', function () {
     });
     it('map', () => {
         let ctx = makeCtx();
-        let l0 = new val_1.ListVal([]);
+        let l0 = new ListVal_1.ListVal([]);
         expect(l0.canon).toEqual('[]');
         expect((0, op_1.unite)(ctx, l0, l0).canon).toEqual('[]');
     });
@@ -230,7 +235,7 @@ describe('val', function () {
         });
         // console.dir(m0, { depth: null })
         expect(m0.canon).toEqual('{&:{"x":1},"a":{"y":1},"b":{"y":2}}');
-        let u0 = m0.unify(val_1.TOP, ctx);
+        let u0 = m0.unify(type_1.TOP, ctx);
         expect(u0.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}');
     });
     it('list-spread', () => {
@@ -239,11 +244,11 @@ describe('val', function () {
             P('{ y: 1 }'),
             P('{ y: 2 }'),
         ];
-        vals[val_1.ListVal.SPREAD] = { o: '&', v: P('{x:1}') };
-        let l0 = new val_1.ListVal(vals);
+        vals[ListVal_1.ListVal.SPREAD] = { o: '&', v: P('{x:1}') };
+        let l0 = new ListVal_1.ListVal(vals);
         // console.dir(l0, { depth: null })
         expect(l0.canon).toEqual('[&:{"x":1},{"y":1},{"y":2}]');
-        let u0 = l0.unify(val_1.TOP, ctx);
+        let u0 = l0.unify(type_1.TOP, ctx);
         expect(u0.canon).toEqual('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]');
     });
     /*
@@ -270,7 +275,7 @@ describe('val', function () {
         let d5 = new ConjunctVal_1.ConjunctVal(PA(['{a:1}']));
         let d6 = new ConjunctVal_1.ConjunctVal(PA(['{a:1}', '{b:2}']));
         // let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('/x')])
-        let d100 = new ConjunctVal_1.ConjunctVal([new val_1.IntegerVal(1), new val_1.RefVal(['x'], true)]);
+        let d100 = new ConjunctVal_1.ConjunctVal([new val_1.IntegerVal(1), new RefVal_1.RefVal(['x'], true)]);
         expect(d0.canon).toEqual('1');
         expect(d1.canon).toEqual('1&1');
         expect(d2.canon).toEqual('1&2');
@@ -284,25 +289,25 @@ describe('val', function () {
             .toEqual('nil');
         expect((0, op_1.unite)(ctx, P('2'), d0).canon)
             .toEqual('nil');
-        expect((0, op_1.unite)(ctx, d0, val_1.TOP).canon).toEqual('1');
-        expect((0, op_1.unite)(ctx, val_1.TOP, d0).canon).toEqual('1');
-        expect((0, op_1.unite)(ctx, d1, val_1.TOP).canon).toEqual('1');
-        expect((0, op_1.unite)(ctx, val_1.TOP, d1).canon).toEqual('1');
-        expect((0, op_1.unite)(ctx, d2, val_1.TOP).canon)
+        expect((0, op_1.unite)(ctx, d0, type_1.TOP).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, type_1.TOP, d0).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, d1, type_1.TOP).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, type_1.TOP, d1).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, d2, type_1.TOP).canon)
             .toEqual('nil');
-        expect((0, op_1.unite)(ctx, val_1.TOP, d2).canon)
+        expect((0, op_1.unite)(ctx, type_1.TOP, d2).canon)
             .toEqual('nil');
-        expect((0, op_1.unite)(ctx, d3, val_1.TOP).canon).toEqual('1');
-        expect((0, op_1.unite)(ctx, val_1.TOP, d3).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, d3, type_1.TOP).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, type_1.TOP, d3).canon).toEqual('1');
         // TODO: term order is swapped by ConjunctVal impl - should be preserved
-        expect((0, op_1.unite)(ctx, d100, val_1.TOP).canon).toEqual('1');
-        expect((0, op_1.unite)(ctx, val_1.TOP, d100).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, d100, type_1.TOP).canon).toEqual('1');
+        expect((0, op_1.unite)(ctx, type_1.TOP, d100).canon).toEqual('1');
         // TODO: same for DisjunctVal
-        expect((0, op_1.unite)(ctx, new ConjunctVal_1.ConjunctVal([]), val_1.TOP).canon).toEqual('top');
+        expect((0, op_1.unite)(ctx, new ConjunctVal_1.ConjunctVal([]), type_1.TOP).canon).toEqual('top');
     });
     it('disjunct', () => {
         let ctx = makeCtx();
-        let d1 = new val_1.DisjunctVal([P('1'), P('2')]);
+        let d1 = new DisjunctVal_1.DisjunctVal([P('1'), P('2')]);
         expect((0, op_1.unite)(ctx, d1, P('2')).canon).toEqual('2');
         expect((0, op_1.unite)(ctx, P('1|number')).canon).toEqual('1|number');
         expect((0, op_1.unite)(ctx, P('1|top')).canon).toEqual('1|top');
@@ -344,10 +349,10 @@ describe('val', function () {
     });
     it('ref', () => {
         let ctx = makeCtx();
-        let d0 = new val_1.RefVal(['a']);
-        let d1 = new val_1.RefVal(['c'], true);
-        let d2 = new val_1.RefVal(['a', 'b'], false);
-        let d3 = new val_1.RefVal(['c', 'd', 'e'], true);
+        let d0 = new RefVal_1.RefVal(['a']);
+        let d1 = new RefVal_1.RefVal(['c'], true);
+        let d2 = new RefVal_1.RefVal(['a', 'b'], false);
+        let d3 = new RefVal_1.RefVal(['c', 'd', 'e'], true);
         expect(d0.canon).toEqual('a');
         expect(d1.canon).toEqual('.c');
         expect(d2.canon).toEqual('a.b');
@@ -360,10 +365,10 @@ describe('val', function () {
         expect(d1.canon).toEqual('.c.x');
         expect(d2.canon).toEqual('a.b.x');
         expect(d3.canon).toEqual('.c.d.e.x');
-        expect(d0.unify(val_1.TOP, ctx).canon).toEqual('a.x');
-        expect(val_1.TOP.unify(d0, ctx).canon).toEqual('a.x');
-        expect(d1.unify(val_1.TOP, ctx).canon).toEqual('.c.x');
-        expect(val_1.TOP.unify(d1, ctx).canon).toEqual('.c.x');
+        expect(d0.unify(type_1.TOP, ctx).canon).toEqual('a.x');
+        expect(type_1.TOP.unify(d0, ctx).canon).toEqual('a.x');
+        expect(d1.unify(type_1.TOP, ctx).canon).toEqual('.c.x');
+        expect(type_1.TOP.unify(d1, ctx).canon).toEqual('.c.x');
     });
     it('ref-conjunct', () => {
         return;
@@ -398,10 +403,10 @@ describe('val', function () {
   q: a: .u
   w: b: .q.a & {y:2, z: 3}
   `);
-        let u1a = m1.unify(val_1.TOP, new unify_1.Context({ root: m1 }));
+        let u1a = m1.unify(type_1.TOP, new unify_1.Context({ root: m1 }));
         // console.log('u1a', u1a.done, u1a.canon)
         //console.dir(u1a, { depth: null })
-        let u1b = u1a.unify(val_1.TOP, new unify_1.Context({ root: u1a }));
+        let u1b = u1a.unify(type_1.TOP, new unify_1.Context({ root: u1a }));
         // console.log('u1b', u1b.done, u1b.canon)
         //console.dir(u1b, { depth: null })
     });
@@ -416,7 +421,7 @@ describe('val', function () {
         let c0 = new unify_1.Context({
             root: m0
         });
-        let m0u = m0.unify(val_1.TOP, c0);
+        let m0u = m0.unify(type_1.TOP, c0);
         // console.dir(m0u, { depth: null })
         expect(m0u.canon).toEqual('{"a":1,"b":1,"c":.x}');
         let m1 = P(`
@@ -426,16 +431,16 @@ describe('val', function () {
         let c1 = new unify_1.Context({
             root: m1
         });
-        let m1u = m1.unify(val_1.TOP, c1);
+        let m1u = m1.unify(type_1.TOP, c1);
         // console.dir(m1u, { depth: null })
         expect(m1u.canon).toEqual('{"a":1,"b":{"c":1}}');
     });
     it('pref', () => {
         let ctx = makeCtx();
-        let p0 = new val_1.PrefVal(new val_1.StringVal('p0'));
+        let p0 = new PrefVal_1.PrefVal(new val_1.StringVal('p0'));
         expect(p0.canon).toEqual('*"p0"');
         expect(p0.gen()).toEqual('p0');
-        let pu0 = p0.unify(val_1.TOP, ctx);
+        let pu0 = p0.unify(type_1.TOP, ctx);
         // console.log(pu0)
         expect(pu0).toMatchObject({
             done: -1,
@@ -472,8 +477,8 @@ describe('val', function () {
         // p0.peg = new Nil([], 'test:val')
         // expect(p0.canon).toEqual('nil')
         // expect(p0.gen([])).toEqual(undefined)
-        let p1 = new val_1.PrefVal(new val_1.StringVal('p1'));
-        let p2 = new val_1.PrefVal(new val_1.ScalarTypeVal(String));
+        let p1 = new PrefVal_1.PrefVal(new val_1.StringVal('p1'));
+        let p2 = new PrefVal_1.PrefVal(new val_1.ScalarTypeVal(String));
         let up12 = p1.unify(p2, ctx);
         expect(up12.canon).toEqual('*"p1"');
         let up21 = p2.unify(p1, ctx);
@@ -494,7 +499,7 @@ describe('val', function () {
             .toEqual('{"a":*1|number,"b":top,"c":*1|number}');
         expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
             .toEqual('{"a":*1|number,"b":*2|number,"c":*2|*1|number}');
-        let d0 = P('1|number').unify(val_1.TOP, ctx);
+        let d0 = P('1|number').unify(type_1.TOP, ctx);
         // console.log(d0.canon)
         // console.log(d0.gen())
         expect(d0.canon).toEqual('1|number');

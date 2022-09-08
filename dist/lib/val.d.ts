@@ -1,7 +1,5 @@
-import type { Val, ValList } from './type';
-import { TOP } from './type';
+import type { Val } from './type';
 import { Context } from './unify';
-import { Site } from './lang';
 import { ValBase } from './val/ValBase';
 declare class Integer {
 }
@@ -40,40 +38,4 @@ declare class BooleanVal extends ScalarVal<boolean> {
     static TRUE: BooleanVal;
     static FALSE: BooleanVal;
 }
-declare class ListVal extends ValBase {
-    static SPREAD: symbol;
-    spread: {
-        cj: Val | undefined;
-    };
-    constructor(peg: ValList, ctx?: Context);
-    unify(peer: Val, ctx: Context): Val;
-    get canon(): string;
-    gen(ctx?: Context): any;
-}
-declare class DisjunctVal extends ValBase {
-    constructor(peg: Val[], ctx?: Context, _sites?: Site[]);
-    append(peer: Val): DisjunctVal;
-    unify(peer: Val, ctx: Context): Val;
-    get canon(): any;
-    gen(ctx?: Context): any;
-}
-declare class RefVal extends ValBase {
-    parts: string[];
-    absolute: boolean;
-    sep: string;
-    constructor(peg: any[], abs?: boolean);
-    append(part: any): void;
-    unify(peer: Val, ctx: Context): Val;
-    same(peer: Val): boolean;
-    get canon(): any;
-    gen(_ctx?: Context): undefined;
-}
-declare class PrefVal extends ValBase {
-    pref: Val;
-    constructor(peg: any, pref?: any, ctx?: Context);
-    unify(peer: Val, ctx: Context): Val;
-    same(peer: Val): boolean;
-    get canon(): any;
-    gen(ctx?: Context): any;
-}
-export { Integer, TOP, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, ListVal, DisjunctVal, RefVal, PrefVal, };
+export { Integer, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, };

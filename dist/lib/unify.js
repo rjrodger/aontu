@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Unify = exports.Context = void 0;
 const type_1 = require("./type");
-const val_1 = require("./val");
 const lang_1 = require("./lang");
 const op_1 = require("./op/op");
 const MapVal_1 = require("../lib/val/MapVal");
@@ -63,7 +62,7 @@ class Unify {
         // perhaps parse should count intial vals, paths, etc?
         let maxdc = 999;
         for (this.dc = 0; this.dc < maxdc && type_1.DONE !== res.done; this.dc++) {
-            res = (0, op_1.unite)(ctx, res, val_1.TOP);
+            res = (0, op_1.unite)(ctx, res, type_1.TOP);
             ctx = ctx.clone({ root: res });
         }
         this.res = res;
