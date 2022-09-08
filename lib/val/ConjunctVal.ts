@@ -79,6 +79,7 @@ class ConjunctVal extends ValBase {
 
     upeer = norm(upeer)
 
+    // console.log('CJ AA', upeer.map(x => x.canon))
 
     let outvals: Val[] = []
     let val: Val
@@ -155,11 +156,15 @@ class ConjunctVal extends ValBase {
           return val
         }
 
+        // TODO: t0 should become this to avoid unnecessary repasses
         outvals.push(val)
+
         pI++
       }
     }
 
+
+    // console.log('CJ BB', outvals.map(x => x.canon))
 
     // // TODO: FIX: conjuncts get replicated inside each other
     // // 1&/x => CV[CV[1&/x]]

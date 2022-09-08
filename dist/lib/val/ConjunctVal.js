@@ -33,6 +33,7 @@ class ConjunctVal extends ValBase_1.ValBase {
         }
         // // console.log('Cb', upeer.map(x => x.canon))
         upeer = norm(upeer);
+        // console.log('CJ AA', upeer.map(x => x.canon))
         let outvals = [];
         let val;
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
@@ -93,10 +94,12 @@ class ConjunctVal extends ValBase_1.ValBase {
                 else if (val instanceof Nil_1.Nil) {
                     return val;
                 }
+                // TODO: t0 should become this to avoid unnecessary repasses
                 outvals.push(val);
                 pI++;
             }
         }
+        // console.log('CJ BB', outvals.map(x => x.canon))
         // // TODO: FIX: conjuncts get replicated inside each other
         // // 1&/x => CV[CV[1&/x]]
         // // Unify each term of conjunct against following sibling,
