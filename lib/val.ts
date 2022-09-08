@@ -108,7 +108,7 @@ abstract class Val {
 
 
   // TODO: can ctx be optional?
-  abstract unify(peer: Val, ctx: Context): Val
+  abstract unify(peer: Val, ctx?: Context): Val
   abstract get canon(): string
   abstract gen(ctx?: Context): any
 }

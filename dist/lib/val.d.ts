@@ -20,7 +20,7 @@ declare abstract class Val {
     constructor(peg?: any, ctx?: Context);
     same(peer: Val): boolean;
     get site(): Site;
-    abstract unify(peer: Val, ctx: Context): Val;
+    abstract unify(peer: Val, ctx?: Context): Val;
     abstract get canon(): string;
     abstract gen(ctx?: Context): any;
 }

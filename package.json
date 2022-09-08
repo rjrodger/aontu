@@ -16,17 +16,19 @@
     "url": "git://github.com/rjrodger/aontu.git"
   },
   "scripts": {
+    "test": "npm run version && jest --coverage",
+    "test-pure": "npm run version && jest --coverage --config jest.config.pure.js",
+    "test-some": "npm run version && jest -t",
+    "test-some-pure": "npm run version && jest --config jest.config.pure.js -t",
+    "test-watch": "npm run version && jest --coverage --watchAll",
+    "test-web": "npm run build && npm run build-web && browserify -i util -o test/web.js -e test/entry.js -im && open test/web.html",
     "watch": "tsc -w -d",
-    "test": "lab -v -P test -t 70 --sourcemaps --transform node_modules/lab-transform-typescript -r console -o stdout -r html -o test/coverage.html",
-    "test-some": "lab -v -P test --sourcemaps --transform node_modules/lab-transform-typescript -g",
-    "test-web": "echo no-test-web",
-    "xtest-web": "browserify -o test-web/test-web.js -e test/aontu.test.js -s Aontu -im -i assert -i @hapi/lab && open test-web/index.html",
-    "coveralls": "lab -s -P test -r lcov -I URL,URLSearchParams | coveralls",
     "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
     "build": "tsc -d",
     "build-web": "tsc -d && cp dist/aontu.js dist/aontu.min.js && browserify -o dist/aontu.min.js -e dist/aontu.js -s Aontu -im -i assert -p tinyify",
     "clean": "rm -rf node_modules yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
+    "version": "node -r fs -e \"v=require('./package.json').version;s=fs.readFileSync('./aontu.ts').toString();if(!s.includes('VERSION = \\''+v+'\\'')){s=s.replace(/VERSION = '.*?'/,'VERSION = \\''+v+'\\'');fs.writeFileSync('./aontu.ts',s)}\"",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
     "repo-publish-quick": "npm run prettier && npm run build && npm run test && npm run test-web && npm run repo-tag && npm publish --registry https://registry.npmjs.org "
@@ -43,19 +45,19 @@
     "@jsonic/expr": "^0.5.0",
     "@jsonic/jsonic-next": "^2.3.0",
     "@jsonic/multisource": "^0.7.0",
-    "@jsonic/path": "^0.2.0",
-    "@types/node": "^18.6.5"
+    "@jsonic/path": "^0.2.0"
   },
   "devDependencies": {
-    "@hapi/code": "^9.0.1",
-    "@hapi/lab": "^25.0.1",
-    "benchmark": "^2.1.4",
-    "coveralls": "^3.1.1",
-    "hapi-lab-shim": "0.0.2",
-    "lab-transform-typescript": "^3.0.1",
+    "@types/jest": "^28.1.2",
+    "browserify": "^17.0.0",
+    "esbuild": "^0.15.6",
+    "esbuild-jest": "^0.5.0",
+    "jest": "^28.1.1",
     "prettier": "^2.7.1",
     "serve": "^14.0.1",
     "tinyify": "^3.1.0",
-    "typescript": "^4.7.4"
+    "ts-jest": "^28.0.8",
+    "typescript": "^4.8.2",
+    "@types/node": "^18.7.16"
   }
 }

@@ -5,7 +5,6 @@ declare class Site {
     row: number;
     col: number;
     url: string;
-    static NONE: Site;
     constructor(val: Val);
 }
 declare const includeFileResolver: import("@jsonic/multisource").Resolver;

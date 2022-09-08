@@ -8,7 +8,9 @@ const file_1 = require("@jsonic/multisource/dist/resolver/file");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
 const val_1 = require("./val");
+// console.log('TOP', TOP)
 class Site {
+    // static NONE = new Site(TOP)
     constructor(val) {
         this.row = -1;
         this.col = -1;
@@ -21,7 +23,6 @@ class Site {
     }
 }
 exports.Site = Site;
-Site.NONE = new Site(val_1.TOP);
 let AontuJsonic = function aontu(jsonic) {
     jsonic.use(path_1.Path);
     // TODO: refactor Val constructor
