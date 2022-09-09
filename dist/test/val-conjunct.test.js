@@ -62,6 +62,12 @@ describe('val-conjunct', function () {
         expect(UC(s3)).toEqual('{"y":{"x":{"a":.y.x.b,"b":2}}}');
         expect(G(s3)).toEqual({ y: { x: { a: 2, b: 2 } } });
     });
+    it('spread', () => {
+        let g0 = G('{&:{x:*1|number},a:{},b:{x:2}}');
+        expect(g0).toEqual({ a: { x: 1 }, b: { x: 2 } });
+        let g1 = G('&:{x:*1|number},a:{},b:{x:2}');
+        expect(g1).toEqual({ a: { x: 1 }, b: { x: 2 } });
+    });
 });
 function print(o, t) {
     if (null != t) {

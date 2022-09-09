@@ -189,45 +189,43 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.rule('val', (rs: RuleSpec) => {
 
-    // TODO: wrap utility needed for jsonic to do this?
-    // let orig_bc: any = rs.def.bc
-    // rs.def.bc = function(rule: Rule, ctx: Context) {
-    //   let out = orig_bc.call(this, rule, ctx)
+    rs
+      .open([{ s: [CJ, CL], p: 'map', b: 2, g: 'spread' }])
 
-    rs.bc((r: Rule, ctx: Context) => {
+      .bc((r: Rule, ctx: Context) => {
 
-      let valnode: Val = r.node
-      let valtype = typeof valnode
+        let valnode: Val = r.node
+        let valtype = typeof valnode
 
-      // console.log('VAL RULE', valtype, r.use, r.node)
+        // console.log('VAL RULE', valtype, r.use, r.node)
 
-      if ('string' === valtype) {
-        valnode = addpath(new StringVal(r.node), r.keep.path)
-      }
-      else if ('number' === valtype) {
-        if (Number.isInteger(r.node)) {
-          valnode = addpath(new IntegerVal(r.node), r.keep.path)
+        if ('string' === valtype) {
+          valnode = addpath(new StringVal(r.node), r.keep.path)
         }
-        else {
-          valnode = addpath(new NumberVal(r.node), r.keep.path)
+        else if ('number' === valtype) {
+          if (Number.isInteger(r.node)) {
+            valnode = addpath(new IntegerVal(r.node), r.keep.path)
+          }
+          else {
+            valnode = addpath(new NumberVal(r.node), r.keep.path)
+          }
         }
-      }
-      else if ('boolean' === valtype) {
-        valnode = addpath(new BooleanVal(r.node), r.keep.path)
-      }
+        else if ('boolean' === valtype) {
+          valnode = addpath(new BooleanVal(r.node), r.keep.path)
+        }
 
-      let st = r.o0
-      valnode.row = st.rI
-      valnode.col = st.cI
+        let st = r.o0
+        valnode.row = st.rI
+        valnode.col = st.cI
 
-      // JSONIC-UPDATE: still valid? check multisource
-      valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
+        // JSONIC-UPDATE: still valid? check multisource
+        valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
 
-      r.node = valnode
+        r.node = valnode
 
-      // return out
-      return undefined
-    })
+        // return out
+        return undefined
+      })
 
     return rs
   })
@@ -238,15 +236,17 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     // let orig_bc = rs.def.bc
     // rs.def.bc = function(rule: Rule, ctx: Context) {
     //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
+    rs
+      .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
 
-    rs.bc((r: Rule) => {
+      .bc((r: Rule) => {
 
-      // console.log('MAP RULE', rule.use, rule.node)
-      r.node = addpath(new MapVal(r.node), r.keep.path)
+        // console.log('MAP RULE', rule.use, rule.node)
+        r.node = addpath(new MapVal(r.node), r.keep.path)
 
-      // return out
-      return undefined
-    })
+        // return out
+        return undefined
+      })
 
     return rs
   })

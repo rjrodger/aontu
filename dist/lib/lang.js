@@ -114,11 +114,9 @@ let AontuJsonic = function aontu(jsonic) {
     let CJ = jsonic.token['#E&'];
     let CL = jsonic.token.CL;
     jsonic.rule('val', (rs) => {
-        // TODO: wrap utility needed for jsonic to do this?
-        // let orig_bc: any = rs.def.bc
-        // rs.def.bc = function(rule: Rule, ctx: Context) {
-        //   let out = orig_bc.call(this, rule, ctx)
-        rs.bc((r, ctx) => {
+        rs
+            .open([{ s: [CJ, CL], p: 'map', b: 2, g: 'spread' }])
+            .bc((r, ctx) => {
             let valnode = r.node;
             let valtype = typeof valnode;
             // console.log('VAL RULE', valtype, r.use, r.node)
@@ -151,7 +149,9 @@ let AontuJsonic = function aontu(jsonic) {
         // let orig_bc = rs.def.bc
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
-        rs.bc((r) => {
+        rs
+            .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
+            .bc((r) => {
             // console.log('MAP RULE', rule.use, rule.node)
             r.node = addpath(new MapVal_1.MapVal(r.node), r.keep.path);
             // return out

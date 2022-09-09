@@ -114,6 +114,15 @@ describe('val-conjunct', function() {
   })
 
 
+  it('spread', () => {
+    let g0 = G('{&:{x:*1|number},a:{},b:{x:2}}')
+    expect(g0).toEqual({ a: { x: 1 }, b: { x: 2 } })
+
+    let g1 = G('&:{x:*1|number},a:{},b:{x:2}')
+    expect(g1).toEqual({ a: { x: 1 }, b: { x: 2 } })
+
+  })
+
 })
 
 
