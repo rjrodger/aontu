@@ -1,6 +1,5 @@
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 
-
 import type { Val, Options } from './lib/type'
 
 import { Lang, includeFileResolver } from './lib/lang'

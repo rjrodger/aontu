@@ -1,7 +1,7 @@
 /* Copyright (c) 2020-2022 Richard Rodger and other contributors, MIT License */
 
 
-let { Aontu, Lang, util } = require('..')
+let { Aontu, Lang, util } = require('../aontu')
 
 // let { makeFileResolver } = require('@jsonic/multisource')
 

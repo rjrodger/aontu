@@ -146,12 +146,7 @@ let tmp = {}
 // G(A('[&:{x:number},{x:1}]'))
 // V(A('[&:{x:number},{x:1}]'))
 
-
-
 let s = 'x:{a:.x.b}&{b:2}'
 
 V(A(s))
 G(A(s))
-
-
-

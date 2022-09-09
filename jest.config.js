@@ -6,4 +6,5 @@ module.exports = {
   transform: {
     '^.+\\.ts?$': 'esbuild-jest'
   },
+  coveragePathIgnorePatterns: ['\\/dist\\/']
 }
