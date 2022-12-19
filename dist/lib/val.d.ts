@@ -3,7 +3,7 @@ import { Context } from './unify';
 import { ValBase } from './val/ValBase';
 declare class Integer {
 }
-declare type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
+type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
 declare class ScalarTypeVal extends ValBase {
     constructor(peg: ScalarConstructor, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;

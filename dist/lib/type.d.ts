@@ -1,7 +1,7 @@
 import { Resolver } from '@jsonic/multisource';
 import { Context } from './unify';
 import { Site } from './lang';
-declare type Options = {
+type Options = {
     src: string;
     print: number;
     resolver?: Resolver;
@@ -24,10 +24,10 @@ interface Val {
     get canon(): string;
     gen(ctx?: Context): any;
 }
-declare type ValMap = {
+type ValMap = {
     [key: string]: Val;
 };
-declare type ValList = Val[];
+type ValList = Val[];
 declare const DONE = -1;
 declare const TOP: Val;
 export type { Val, ValMap, ValList, Options, };

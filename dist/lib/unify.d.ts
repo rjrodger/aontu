@@ -3,7 +3,7 @@ import { Lang } from './lang';
 import { MapVal } from '../lib/val/MapVal';
 import { RefVal } from '../lib/val/RefVal';
 import { Nil } from '../lib/val/Nil';
-declare type Path = string[];
+type Path = string[];
 declare class Context {
     root: Val;
     path: Path;
