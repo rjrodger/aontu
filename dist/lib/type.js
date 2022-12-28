@@ -7,6 +7,7 @@ const DONE = -1;
 exports.DONE = DONE;
 // There can be only one.
 const TOP = {
+    isVal: true,
     id: 0,
     top: true,
     peg: undefined,

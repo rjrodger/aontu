@@ -72,17 +72,52 @@ describe('lang', function () {
         expect(v1.peg.a.parts).toEqual(['x', 'y']);
     });
     it('file', () => {
+        global.console = require('console');
         let g0 = new lang_1.Lang({
         // resolver: makeFileResolver((spec: any) => {
         //   return 'string' === typeof spec ? spec : spec?.peg
         // })
         });
+        let t00x = g0.parse('x:@"' + __dirname + '/t00.jsonic"');
+        expect(t00x.canon).toEqual('{"x":{"a":1}}');
+        let t00xA = g0.parse('A:11,x:@"' + __dirname + '/t00.jsonic"');
+        expect(t00xA.canon).toEqual('{"A":11,"x":{"a":1}}');
+        let t00xB = g0.parse('x:@"' + __dirname + '/t00.jsonic",B:22');
+        expect(t00xB.canon).toEqual('{"x":{"a":1},"B":22}');
+        let t00xAB = g0.parse('A:11,x:@"' + __dirname + '/t00.jsonic",B:22');
+        expect(t00xAB.canon).toEqual('{"A":11,"x":{"a":1},"B":22}');
+        let t00xAs = g0.parse('A:11 x:@"' + __dirname + '/t00.jsonic"');
+        expect(t00xAs.canon).toEqual('{"A":11,"x":{"a":1}}');
+        let t00xBs = g0.parse('x:@"' + __dirname + '/t00.jsonic" B:22');
+        expect(t00xBs.canon).toEqual('{"x":{"a":1},"B":22}');
+        let t00xABs = g0.parse('A:11 x:@"' + __dirname + '/t00.jsonic" B:22');
+        expect(t00xABs.canon).toEqual('{"A":11,"x":{"a":1},"B":22}');
+        let t00v = g0.parse('@"' + __dirname + '/t00.jsonic"');
+        expect(t00v.canon).toEqual('{}&{"a":1}');
+        let t00 = new unify_1.Unify(t00v);
+        expect(t00.res.canon).toEqual('{"a":1}');
+        expect(t00.res.gen()).toEqual({ a: 1 });
+        let t00vX = g0.parse(' X:11 @"' + __dirname + '/t00.jsonic"');
+        expect(t00vX.canon).toEqual('{"X":11}&{"a":1}');
+        let t00X = new unify_1.Unify(t00vX);
+        expect(t00X.res.canon).toEqual('{"X":11,"a":1}');
+        expect(t00X.res.gen()).toEqual({ X: 11, a: 1 });
+        let t00vY = g0.parse('@"' + __dirname + '/t00.jsonic" Y:22 ');
+        expect(t00vY.canon).toEqual('{"Y":22}&{"a":1}');
+        let t00Y = new unify_1.Unify(t00vY);
+        expect(t00Y.res.canon).toEqual('{"Y":22,"a":1}');
+        expect(t00Y.res.gen()).toEqual({ Y: 22, a: 1 });
+        let t00dv = g0.parse('D:{@"' + __dirname + '/t00.jsonic"}');
+        expect(t00dv.canon).toEqual('{"D":{}&{"a":1}}');
+        let t00d = new unify_1.Unify(t00dv);
+        expect(t00d.res.canon).toEqual('{"D":{"a":1}}');
+        expect(t00d.res.gen()).toEqual({ D: { a: 1 } });
         let t01v = g0.parse('@"' + __dirname + '/t01.jsonic"');
-        expect(t01v.canon).toEqual('{"a":1,"b":{"d":2},"c":3}');
-        let t02v = g0.parse('@"' + __dirname + '/t02.jsonic"');
+        expect(t01v.canon).toEqual('{}&{"a":1,"b":{"d":2},"c":3}');
+        // let t02v = g0.parse('@"' + __dirname + '/t02.jsonic"')
         // console.dir(t02v, { depth: null })
         // console.log(t02v.canon)
-        let u02 = new unify_1.Unify(t02v);
+        // let u02 = new Unify(t02v)
         // console.log(u02.res.canon)
         // console.log(u02.res.gen())
     });

@@ -65,7 +65,16 @@ let AontuJsonic = function aontu(jsonic) {
             merge: (prev, curr) => {
                 let pval = prev;
                 let cval = curr;
-                return addpath(new ConjunctVal_1.ConjunctVal([pval, cval]), prev.path);
+                if ((pval === null || pval === void 0 ? void 0 : pval.isVal) && (cval === null || cval === void 0 ? void 0 : cval.isVal)) {
+                    return addpath(new ConjunctVal_1.ConjunctVal([pval, cval]), prev.path);
+                }
+                // Handle defered conjuncts, where MapVal does not yet
+                // exist, by creating ConjunctVal later.
+                else {
+                    prev.___merge = (prev.___merge || []);
+                    prev.___merge.push(curr);
+                    return prev;
+                }
             }
         }
     });
@@ -152,8 +161,17 @@ let AontuJsonic = function aontu(jsonic) {
         rs
             .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
             .bc((r) => {
-            // console.log('MAP RULE', rule.use, rule.node)
-            r.node = addpath(new MapVal_1.MapVal(r.node), r.keep.path);
+            let mo = r.node;
+            //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
+            if (mo.___merge) {
+                let mop = { ...mo };
+                delete mop.___merge;
+                let mopv = new MapVal_1.MapVal(mop);
+                r.node = addpath(new ConjunctVal_1.ConjunctVal([mopv, ...mo.___merge]), r.keep.path);
+            }
+            else {
+                r.node = addpath(new MapVal_1.MapVal(mo), r.keep.path);
+            }
             // return out
             return undefined;
         });
@@ -211,6 +229,7 @@ class Lang {
         };
         this.options = Object.assign({}, this.options, options);
         this.jsonic = jsonic_next_1.Jsonic.make()
+            // .use(Debug, { trace: true })
             .use(AontuJsonic)
             .use(multisource_1.MultiSource, {
             resolver: (options === null || options === void 0 ? void 0 : options.resolver) || includeFileResolver

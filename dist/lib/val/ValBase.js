@@ -4,7 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ValBase = void 0;
 const lang_1 = require("../lang");
 class ValBase {
+    // deps?: any
     constructor(peg, ctx) {
+        this.isVal = true;
         this.done = 0;
         this.row = -1;
         this.col = -1;

@@ -30,6 +30,8 @@ import {
 
 
 abstract class ValBase implements Val {
+  isVal = true
+
   id: number
   done: number = 0
   path: string[]
@@ -44,7 +46,7 @@ abstract class ValBase implements Val {
 
   // TODO: used for top level result - not great
   err?: any[]
-  deps?: any
+  // deps?: any
 
   constructor(peg?: any, ctx?: Context) {
     this.peg = peg

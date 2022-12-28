@@ -2,6 +2,7 @@ import type { Val } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
 declare abstract class ValBase implements Val {
+    isVal: boolean;
     id: number;
     done: number;
     path: string[];
@@ -11,7 +12,6 @@ declare abstract class ValBase implements Val {
     top?: boolean;
     peg?: any;
     err?: any[];
-    deps?: any;
     constructor(peg?: any, ctx?: Context);
     same(peer: Val): boolean;
     get site(): Site;

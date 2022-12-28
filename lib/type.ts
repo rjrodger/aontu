@@ -24,6 +24,8 @@ type Options = {
 
 
 interface Val {
+  isVal: boolean
+
   id: number
   done: number
   path: string[]
@@ -60,6 +62,8 @@ const DONE = -1
 
 // There can be only one.
 const TOP: Val = {
+  isVal: true,
+
   id: 0,
   top: true,
   peg: undefined,

@@ -6,6 +6,7 @@ import {
   Rule,
   RuleSpec,
   Context,
+  Debug,
 } from '@jsonic/jsonic-next'
 
 import {
@@ -121,7 +122,18 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       merge: (prev: any, curr: any) => {
         let pval = (prev as Val)
         let cval = (curr as Val)
-        return addpath(new ConjunctVal([pval, cval]), prev.path)
+
+        if (pval?.isVal && cval?.isVal) {
+          return addpath(new ConjunctVal([pval, cval]), prev.path)
+        }
+
+        // Handle defered conjuncts, where MapVal does not yet
+        // exist, by creating ConjunctVal later.
+        else {
+          prev.___merge = (prev.___merge || [])
+          prev.___merge.push(curr)
+          return prev
+        }
       }
     }
   })
@@ -241,8 +253,18 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
       .bc((r: Rule) => {
 
-        // console.log('MAP RULE', rule.use, rule.node)
-        r.node = addpath(new MapVal(r.node), r.keep.path)
+        let mo = r.node
+
+        //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
+        if (mo.___merge) {
+          let mop = { ...mo }
+          delete mop.___merge
+          let mopv = new MapVal(mop)
+          r.node = addpath(new ConjunctVal([mopv, ...mo.___merge]), r.keep.path)
+        }
+        else {
+          r.node = addpath(new MapVal(mo), r.keep.path)
+        }
 
         // return out
         return undefined
@@ -326,6 +348,7 @@ class Lang {
   constructor(options?: Partial<Options>) {
     this.options = Object.assign({}, this.options, options)
     this.jsonic = Jsonic.make()
+      // .use(Debug, { trace: true })
       .use(AontuJsonic)
       .use(MultiSource, {
         resolver: options?.resolver || includeFileResolver

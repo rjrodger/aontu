@@ -8,6 +8,7 @@ type Options = {
     base?: string;
 };
 interface Val {
+    isVal: boolean;
     id: number;
     done: number;
     path: string[];
