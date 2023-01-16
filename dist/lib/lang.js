@@ -37,7 +37,7 @@ let AontuJsonic = function aontu(jsonic) {
     let addpath = (v, p) => (v.path = [...(p || [])], v);
     jsonic.options({
         value: {
-            map: {
+            def: {
                 // NOTE: specify with functions as jsonic/deep will
                 // remove class prototype as options are assumed plain
                 // (except for functions).

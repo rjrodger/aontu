@@ -87,7 +87,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.options({
     value: {
-      map: {
+      def: {
         // NOTE: specify with functions as jsonic/deep will
         // remove class prototype as options are assumed plain
         // (except for functions).
