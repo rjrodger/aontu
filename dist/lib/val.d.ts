@@ -1,9 +1,9 @@
 import { Context } from './unify';
 import { Site } from './lang';
-declare type ValMap = {
+type ValMap = {
     [key: string]: Val;
 };
-declare type ValList = Val[];
+type ValList = Val[];
 declare const DONE = -1;
 declare const TOP: Val;
 declare abstract class Val {
@@ -37,7 +37,7 @@ declare class Nil extends Val {
 }
 declare class Integer {
 }
-declare type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
+type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
 declare class ScalarTypeVal extends Val {
     constructor(peg: ScalarConstructor, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;

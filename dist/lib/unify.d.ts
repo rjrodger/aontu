@@ -1,6 +1,6 @@
 import { Val, RefVal, MapVal, Nil } from './val';
 import { Lang } from './lang';
-declare type Path = string[];
+type Path = string[];
 declare class Context {
     root: Val;
     path: Path;
