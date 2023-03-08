@@ -6,8 +6,9 @@ import {
   Rule,
   RuleSpec,
   Context,
-  Debug,
 } from '@jsonic/jsonic-next'
+
+// import { Debug } from '@jsonic/jsonic-next/debug'
 
 import {
   MultiSource
