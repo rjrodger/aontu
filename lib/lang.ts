@@ -57,8 +57,6 @@ import {
 
 
 
-// console.log('TOP', TOP)
-
 class Site {
   row: number = -1
   col: number = -1
@@ -187,10 +185,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         },
       },
       evaluate: (r: Rule, op: Op, terms: any) => {
-        // console.log('LANG EVAL', r.keep, op, terms)
         let val: Val = opmap[op.name](r, op, terms)
-        // console.dir(val, { depth: null })
-
         return val
       }
     })
@@ -209,8 +204,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
         let valnode: Val = r.node
         let valtype = typeof valnode
-
-        // console.log('VAL RULE', valtype, r.use, r.node)
 
         if ('string' === valtype) {
           valnode = addpath(new StringVal(r.node), r.keep.path)

@@ -45,6 +45,10 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
     else if (b instanceof Nil) {
       out = update(b, a)
     }
+    else if (a instanceof ConjunctVal) {
+      // console.log('Q', a.canon, b.canon)
+      out = a.unify(b, ctx)
+    }
     else if (
       b instanceof ConjunctVal ||
       b instanceof DisjunctVal ||
@@ -52,8 +56,10 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
       b instanceof PrefVal
     ) {
 
-      //console.log('U', a.canon, b.canon)
-      return b.unify(a, ctx)
+      // console.log('U', a.canon, b.canon)
+      // return b.unify(a, ctx)
+      out = b.unify(a, ctx)
+      // console.log('UO', out.canon)
     }
 
     // Exactly equal scalars.

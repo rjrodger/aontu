@@ -27,8 +27,11 @@ class Nil extends ValBase {
   why: any
   primary?: Val
   secondary?: Val
+  msg: string = ''
 
   // TODO: include Val generating nil, thus capture type
+
+  // A Nil is an error - should not happen - unify failed
   static make = (ctx?: Context, why?: any, av?: Val, bv?: Val) => {
     let nil = new Nil(why, ctx)
 

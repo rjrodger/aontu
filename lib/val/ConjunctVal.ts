@@ -20,7 +20,7 @@ import {
   Nil,
 } from '../val/Nil'
 
-// import { RefVal } from '../val/RefVal'
+import { RefVal } from '../val/RefVal'
 import { MapVal } from '../val/MapVal'
 
 import {
@@ -53,16 +53,21 @@ class ConjunctVal extends ValBase {
   }
 
   unify(peer: Val, ctx: Context): Val {
+    const mark = (Math.random() * 1e7) % 1e6 | 0
+    // console.log('CONJUNCT unify', mark, this.done, this.canon, 'peer=', peer.canon)
+
     let done = true
 
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
     for (let vI = 0; vI < this.peg.length; vI++) {
-      // upeer[vI] = this.peg[vI].unify(peer, ctx)
       upeer[vI] = unite(ctx, this.peg[vI], peer)
-      done = done && DONE === upeer[vI].done
-      // // console.log('Ca', vI, this.peg[vI].canon, peer.canon, upeer[vI].canon)
+
+      let prevdone = done
+      done = done && (DONE === upeer[vI].done)
+
+      // console.log('CONJUNCT pud', mark, vI, done, prevdone, '|', upeer[vI].done, upeer[vI].canon)
 
       if (upeer[vI] instanceof Nil) {
         return Nil.make(
@@ -74,12 +79,10 @@ class ConjunctVal extends ValBase {
       }
     }
 
-    // // console.log('Cb', upeer.map(x => x.canon))
-
-
     upeer = norm(upeer)
+    // console.log('CONJUNCT upeer', mark, done, upeer.map(p => p.canon))
 
-    // console.log('CJ AA', upeer.map(x => x.canon))
+    // Unify terms against each other
 
     let outvals: Val[] = []
     let val: Val
@@ -88,8 +91,6 @@ class ConjunctVal extends ValBase {
     for (let pI = 0; pI < upeer.length; pI++) {
       let t0 = upeer[pI]
 
-      // console.log('CJ unify QQ', mark, uc, 't0', pI, t0.canon)
-
       if (DONE !== t0.done) {
         let u0 = unite(ctx, t0, TOP)
 
@@ -97,8 +98,14 @@ class ConjunctVal extends ValBase {
           DONE !== u0.done
 
           // Maps and Lists are still unified so that path refs will work
-          && !(u0 instanceof MapVal) // TODO: || ListVal - test!
+          // TODO: || ListVal - test!
+          && !(
+            u0 instanceof MapVal
+            || u0 instanceof RefVal
+          )
         ) {
+
+          // console.log('CONJUNCT PUSH A', u0.id, u0.canon)
           outvals.push(u0)
           continue next_term
         }
@@ -107,43 +114,20 @@ class ConjunctVal extends ValBase {
         }
       }
 
-
       let t1 = upeer[pI + 1]
 
-      // console.log('CJ unify WW', mark, uc, 't1', pI + 1, t1?.canon)
-
-      // if (
-      //   null == t1 ||
-      //   t0.id === t1.id ||
-      //   t0 instanceof RefVal
-      // ) {
-      //   if (DONE !== t0.done) {
-      //     let u0 = unite(ctx, t0, TOP)
-      //     // console.log('CJ unify EE', mark, uc, 't0', t0.canon, 'u0', u0.canon)
-      //     outvals.push(u0)
-      //   }
-      //   else {
-      //     outvals.push(t0)
-      //   }
-      //   pI++
-      // }
-
-      // else if (DONE !== t0.done || DONE != t1.done) {
-      //   if (DONE !== t0.done) {
-      //     let u0 = unite(ctx, t0, TOP)
-      //     // console.log('CJ unify FF', mark, uc, 't0', t0.canon, 'u0', u0.canon)
-      //     outvals.push(u0)
-      //   }
-      //   else {
-      //     outvals.push(t0)
-      //   }
-      // }
-
       if (null == t1) {
+        // console.log('CONJUNCT PUSH B', t0.canon)
         outvals.push(t0)
       }
+
+      // Can't unite with a RefVal, unless also a RefVal with same path.
+      else if (t0 instanceof RefVal && !(t1 instanceof RefVal)) {
+        // console.log('CONJUNCT PUSH D', t0.canon)
+        outvals.push(t0)
+      }
+
       else {
-        // console.log('CJS unify0', t0?.canon, t1?.canon)
         val = unite(ctx, t0, t1)
         done = done && DONE === val.done
 
@@ -157,6 +141,7 @@ class ConjunctVal extends ValBase {
         }
 
         // TODO: t0 should become this to avoid unnecessary repasses
+        // console.log('CONJUNCT PUSH C', val.canon)
         outvals.push(val)
 
         pI++
@@ -164,73 +149,27 @@ class ConjunctVal extends ValBase {
     }
 
 
-    // console.log('CJ BB', outvals.map(x => x.canon))
-
-    // // TODO: FIX: conjuncts get replicated inside each other
-    // // 1&/x => CV[CV[1&/x]]
-
-    // // Unify each term of conjunct against following sibling,
-    // // reducing to smallest conjunct or single val
-    // let outvals: Val[] = 0 < upeer.length ? [upeer[0]] : []
-
-    // let oI = 0
-    // for (let uI = 1; uI < upeer.length; uI++) {
-    //   // // console.log('Cu', oI, uI, outvals.map(x => x.canon))
-
-    //   if (outvals[oI] instanceof ConjunctVal) {
-    //     outvals.splice(oI, 0, ...outvals[oI].peg)
-    //     oI += outvals[oI].peg.length
-    //     done = false
-    //   }
-    //   else {
-    //     outvals[oI] = null == outvals[oI] ? upeer[uI] :
-    //       //outvals[oI].unify(upeer[uI], ctx)
-    //       unite(ctx, outvals[oI], upeer[uI])
-    //     done = done && DONE === outvals[oI].done
-
-    //     // Conjuct fails
-    //     if (outvals[oI] instanceof Nil) {
-    //       return outvals[oI]
-
-    //       /*
-    //       return Nil.make(
-    //         ctx,
-    //         '&reduce[' + outvals[oI].canon + ',' + upeer[uI].canon + ']',
-    //         outvals[oI],
-    //         upeer[uI]
-    //       )
-    //       */
-    //     }
-    //   }
-    // }
-
-    // // console.log('Cc', outvals.map(x => x.canon), outvals)
+    // console.log('CONJUNCT outvals', mark, outvals.map(v => v.canon))
 
     let out: Val
 
-    //let why = ''
-
     if (0 === outvals.length) {
-      //out = Nil.make(ctx, '&empty', this)
 
       // Empty conjuncts evaporate.
       out = TOP
-      //why += 'A'
     }
 
     // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
     else if (1 === outvals.length) {
       out = outvals[0]
-      //why += 'B'
     }
     else {
       out = new ConjunctVal(outvals, ctx)
-      //why += 'C'
     }
 
-    // // console.log('Cd', why, out.peg)
-
     out.done = done ? DONE : this.done + 1
+
+    // console.log('CONJUNCT out', mark, out.done, out.canon)
 
     return out
   }
@@ -260,8 +199,9 @@ class ConjunctVal extends ValBase {
 }
 
 
+// Normalize Conjuct:
+// - flatten child conjuncts
 function norm(terms: Val[]): Val[] {
-  // console.log('CJ norm', terms.map((t: Val) => t.canon))
 
   let expand: Val[] = []
   for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {

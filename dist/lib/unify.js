@@ -28,14 +28,19 @@ class Context {
         });
     }
     find(ref) {
-        // console.log('FIND', ref.path, ref.peg)
         // TODO: relative paths
-        if (this.root instanceof MapVal_1.MapVal && ref.absolute) {
+        // if (this.root instanceof MapVal && ref.absolute) {
+        if (ref.absolute) {
             let node = this.root;
             let pI = 0;
-            for (; pI < ref.parts.length && node instanceof MapVal_1.MapVal; pI++) {
+            for (; pI < ref.parts.length; pI++) {
                 let part = ref.parts[pI];
-                node = node.peg[part];
+                if (node instanceof MapVal_1.MapVal) {
+                    node = node.peg[part];
+                }
+                else {
+                    break;
+                }
             }
             if (pI === ref.parts.length) {
                 return node;
@@ -62,6 +67,8 @@ class Unify {
         // perhaps parse should count intial vals, paths, etc?
         let maxdc = 999;
         for (this.dc = 0; this.dc < maxdc && type_1.DONE !== res.done; this.dc++) {
+            // console.log('\n\nRES', this.dc, res.canon)
+            // console.dir(res, { depth: null })
             res = (0, op_1.unite)(ctx, res, type_1.TOP);
             // console.log('U', this.dc, res.canon)
             ctx = ctx.clone({ root: res });

@@ -30,12 +30,18 @@ const unite = (ctx, a, b, whence) => {
         else if (b instanceof Nil_1.Nil) {
             out = update(b, a);
         }
+        else if (a instanceof ConjunctVal_1.ConjunctVal) {
+            // console.log('Q', a.canon, b.canon)
+            out = a.unify(b, ctx);
+        }
         else if (b instanceof ConjunctVal_1.ConjunctVal ||
             b instanceof DisjunctVal_1.DisjunctVal ||
             b instanceof RefVal_1.RefVal ||
             b instanceof PrefVal_1.PrefVal) {
-            //console.log('U', a.canon, b.canon)
-            return b.unify(a, ctx);
+            // console.log('U', a.canon, b.canon)
+            // return b.unify(a, ctx)
+            out = b.unify(a, ctx);
+            // console.log('UO', out.canon)
         }
         // Exactly equal scalars.
         else if (a.constructor === b.constructor && a.peg === b.peg) {

@@ -6,6 +6,7 @@ declare class Nil extends ValBase {
     why: any;
     primary?: Val;
     secondary?: Val;
+    msg: string;
     static make: (ctx?: Context, why?: any, av?: Val, bv?: Val) => Nil;
     constructor(why?: any, ctx?: Context);
     unify(_peer: Val, _ctx: Context): this;

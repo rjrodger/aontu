@@ -8,6 +8,7 @@ class Nil extends ValBase_1.ValBase {
     constructor(why, ctx) {
         super(null, ctx);
         this.nil = true;
+        this.msg = '';
         this.why = why;
         // Nil is always DONE, by definition.
         this.done = type_1.DONE;
@@ -24,6 +25,7 @@ class Nil extends ValBase_1.ValBase {
 }
 exports.Nil = Nil;
 // TODO: include Val generating nil, thus capture type
+// A Nil is an error - should not happen - unify failed
 Nil.make = (ctx, why, av, bv) => {
     let nil = new Nil(why, ctx);
     // TODO: this should be done lazily, for multiple terms

@@ -38,6 +38,8 @@ describe('val-conjunct', function () {
         expect(g2).toEqual({ x: { a: 1, b: 1 } });
         expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
             .toEqual('{"a":*1|number,"b":*2|number,"c":*2|*1|number}');
+        let g3 = G('{b:.a&.a}&{a:1}');
+        expect(g3).toEqual({ a: 1, b: 1 });
     });
     it('disjunct', () => {
         let u0 = UC('a:{x:1}|{y:2},a:{z:3}');

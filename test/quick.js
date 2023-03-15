@@ -146,7 +146,8 @@ let tmp = {}
 // G(A('[&:{x:number},{x:1}]'))
 // V(A('[&:{x:number},{x:1}]'))
 
-let s = 'x:{a:.x.b}&{b:2}'
+// let s = 'x:{a:.x.b}&{b:2}'
+let s = '{b:.a&.a}&{a:1} '
 
-V(A(s))
+// V(A(s))
 G(A(s))

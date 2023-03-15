@@ -17,7 +17,6 @@ const PrefVal_1 = require("./val/PrefVal");
 const RefVal_1 = require("./val/RefVal");
 const Nil_1 = require("./val/Nil");
 const val_1 = require("./val");
-// console.log('TOP', TOP)
 class Site {
     // static NONE = new Site(TOP)
     constructor(val) {
@@ -115,9 +114,7 @@ let AontuJsonic = function aontu(jsonic) {
             },
         },
         evaluate: (r, op, terms) => {
-            // console.log('LANG EVAL', r.keep, op, terms)
             let val = opmap[op.name](r, op, terms);
-            // console.dir(val, { depth: null })
             return val;
         }
     });
@@ -129,7 +126,6 @@ let AontuJsonic = function aontu(jsonic) {
             .bc((r, ctx) => {
             let valnode = r.node;
             let valtype = typeof valnode;
-            // console.log('VAL RULE', valtype, r.use, r.node)
             if ('string' === valtype) {
                 valnode = addpath(new val_1.StringVal(r.node), r.keep.path);
             }

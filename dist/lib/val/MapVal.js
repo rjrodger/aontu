@@ -26,10 +26,9 @@ class MapVal extends ValBase_1.ValBase {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
-        // console.log('QQQ ctx', !!ctx)
-        if (null == ctx) {
-            console.trace();
-        }
+        // if (null == ctx) {
+        //   console.trace()
+        // }
         let done = true;
         let out = type_1.TOP === peer ? this : new MapVal({}, ctx);
         out.spread.cj = this.spread.cj;
@@ -38,46 +37,22 @@ class MapVal extends ValBase_1.ValBase {
         }
         out.done = this.done + 1;
         if (this.spread.cj) {
-            //out.spread.cj =
-            //  DONE !== this.spread.cj.done ? this.spread.cj.unify(TOP, ctx) :
-            //    this.spread.cj
             out.spread.cj =
                 type_1.DONE !== this.spread.cj.done ? (0, op_1.unite)(ctx, this.spread.cj) :
                     this.spread.cj;
+            done = (done && type_1.DONE === out.spread.cj.done);
         }
-        // console.log(
-        //   ('  '.repeat(ctx.path.length)),
-        //   'MV spread', this.id, peer.id, out.id, '|',
-        //   this.canon, peer.canon, out.canon, '|',
-        //   (this.spread.cj || {}).done,
-        //   (this.spread.cj || {}).canon, (out.spread.cj || {}).canon)
         let spread_cj = out.spread.cj || type_1.TOP;
         // Always unify children first
         for (let key in this.peg) {
-            //let oval = out.peg[key] = this.peg[key].unify(spread_cj, ctx.descend(key))
-            //let oval =
+            // console.log('MAP ukA', key, this.peg[key].canon)
             out.peg[key] =
                 (0, op_1.unite)(ctx.descend(key), this.peg[key], spread_cj);
+            // console.log('MAP ukB', key, out.peg[key].canon)
             done = (done && type_1.DONE === out.peg[key].done);
-            //if (oval instanceof Nil) {
-            // ctx.err.push(oval)
-            //}
         }
-        // console.log(
-        //   ('  '.repeat(ctx.path.length)),
-        //   'MV child ', this.id, peer.id, out.id, '|',
-        //   this.canon, peer.canon, out.canon, '|',
-        //   this.constructor.name,
-        //   peer.constructor.name,
-        //   out.constructor.name,
-        // )
         if (peer instanceof MapVal) {
-            //let upeer: MapVal = (peer.unify(TOP, ctx) as MapVal)
             let upeer = (0, op_1.unite)(ctx, peer);
-            // console.log(
-            //   ('  '.repeat(ctx.path.length)),
-            //   'MV peer A', this.id, peer.id, out.id, '|',
-            //   Object.keys(this.peg), Object.keys(upeer.peg), Object.keys(out.peg))
             for (let peerkey in upeer.peg) {
                 let peerchild = upeer.peg[peerkey];
                 let child = out.peg[peerkey];
@@ -85,35 +60,14 @@ class MapVal extends ValBase_1.ValBase {
                     undefined === child ? peerchild :
                         child instanceof Nil_1.Nil ? child :
                             peerchild instanceof Nil_1.Nil ? peerchild :
-                                //child.unify(peerchild, ctx.descend(peerkey))
                                 (0, op_1.unite)(ctx.descend(peerkey), child, peerchild);
                 if (this.spread.cj) {
-                    //out.peg[peerkey] = out.peg[peerkey].unify(spread_cj, ctx)
                     out.peg[peerkey] = (0, op_1.unite)(ctx, out.peg[peerkey], spread_cj);
                 }
                 done = (done && type_1.DONE === oval.done);
-                if (oval instanceof Nil_1.Nil) {
-                    // ctx.err.push(oval)
-                }
             }
-            // console.log(
-            //   ('  '.repeat(ctx.path.length)),
-            //   'MV peer B', this.id, peer.id, out.id, '|',
-            //   Object.keys(this.peg), Object.keys(upeer.peg), Object.keys(out.peg))
-            //out.done = done ? DONE : out.done
-            // console.log(' '.repeat(W) + 'MV OUT A', this.id, out.done, out.id, out.canon)//this.spread.cj, out.spread.cj)
-            // console.log(
-            //   ('  '.repeat(ctx.path.length)),
-            //   'MV out ', this.id, peer.id, out.id, '|',
-            //   this.canon, peer.canon, out.canon, '|',
-            //   this.constructor.name,
-            //   peer.constructor.name,
-            //   out.constructor.name,
-            // )
         }
         else if (type_1.TOP !== peer) {
-            //out.done = done ? DONE : out.done
-            //return (UNIFIER(out, peer, ctx) as MapVal)
             return Nil_1.Nil.make(ctx, 'map', this, peer);
         }
         out.done = done ? type_1.DONE : out.done;

@@ -3,10 +3,10 @@
 import type { Val, Options } from './lib/type'
 
 import { Lang, includeFileResolver } from './lib/lang'
-import { Unify } from './lib/unify'
+import { Unify, Context } from './lib/unify'
 import { Nil } from './lib/val/Nil'
+import { descErr } from './lib/err'
 
-// FIX: multisource file loading within Conjuct fails
 
 // TODO: propogate property path and url properly over unification, and multisource
 
@@ -45,6 +45,8 @@ function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   let res = uni.res
   let err = uni.err
 
+  descErr(uni.err)
+
   res.deps = deps
   res.err = err
 
@@ -72,5 +74,5 @@ const util = {
   },
 }
 
-export { Aontu, Val, Nil, Lang, util }
+export { Aontu, Val, Nil, Lang, Context, util }
 export default Aontu

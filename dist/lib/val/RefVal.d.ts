@@ -5,11 +5,11 @@ declare class RefVal extends ValBase {
     parts: string[];
     absolute: boolean;
     sep: string;
-    constructor(peg: any[], abs?: boolean);
+    constructor(peg: any[] | string, abs?: boolean);
     append(part: any): void;
     unify(peer: Val, ctx: Context): Val;
     same(peer: Val): boolean;
     get canon(): any;
-    gen(_ctx?: Context): undefined;
+    gen(ctx?: Context): undefined;
 }
 export { RefVal, };

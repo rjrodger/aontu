@@ -14,6 +14,9 @@ class RefVal extends ValBase_1.ValBase {
         this.sep = '.';
         this.absolute = true === abs;
         this.parts = [];
+        if ('string' === typeof peg) {
+            peg = peg.split('.');
+        }
         for (let part of peg) {
             this.append(part);
         }
@@ -36,6 +39,7 @@ class RefVal extends ValBase_1.ValBase {
     }
     unify(peer, ctx) {
         let resolved = null == ctx ? this : ctx.find(this);
+        // Don't try to resolve paths forever.
         // TODO: large amount of reruns needed? why?
         resolved = null == resolved && 999 < this.done ?
             Nil_1.Nil.make(ctx, 'no-path', this, peer) : (resolved || this);
@@ -46,6 +50,10 @@ class RefVal extends ValBase_1.ValBase {
             }
             else if (peer instanceof Nil_1.Nil) {
                 out = Nil_1.Nil.make(ctx, 'ref[' + this.peg + ']', this, peer);
+            }
+            // same path
+            else if (this.peg === peer.peg) {
+                out = this;
             }
             else {
                 // Ensure RefVal done is incremented
@@ -65,7 +73,11 @@ class RefVal extends ValBase_1.ValBase {
     get canon() {
         return this.peg;
     }
-    gen(_ctx) {
+    gen(ctx) {
+        // throw new Error('REF ' + this.peg)
+        if (ctx) {
+            ctx.err.push(Nil_1.Nil.make(ctx, 'ref', this.peg, undefined));
+        }
         return undefined;
     }
 }

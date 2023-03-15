@@ -76,6 +76,9 @@ describe('val-conjunct', function() {
     expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
       .toEqual('{"a":*1|number,"b":*2|number,"c":*2|*1|number}')
 
+    let g3 = G('{b:.a&.a}&{a:1}')
+    expect(g3).toEqual({ a: 1, b: 1 })
+
   })
 
 

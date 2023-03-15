@@ -41,10 +41,14 @@ class RefVal extends ValBase {
   absolute: boolean
   sep = '.'
 
-  constructor(peg: any[], abs?: boolean) {
+  constructor(peg: any[] | string, abs?: boolean) {
     super('')
     this.absolute = true === abs
     this.parts = []
+
+    if ('string' === typeof peg) {
+      peg = peg.split('.')
+    }
 
     for (let part of peg) {
       this.append(part)
@@ -77,6 +81,7 @@ class RefVal extends ValBase {
   unify(peer: Val, ctx: Context): Val {
     let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
 
+    // Don't try to resolve paths forever.
     // TODO: large amount of reruns needed? why?
     resolved = null == resolved && 999 < this.done ?
       Nil.make(ctx, 'no-path', this, peer) : (resolved || this)
@@ -89,6 +94,12 @@ class RefVal extends ValBase {
       else if (peer instanceof Nil) {
         out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
       }
+
+      // same path
+      else if (this.peg === peer.peg) {
+        out = this
+      }
+
       else {
         // Ensure RefVal done is incremented
         this.done = DONE === this.done ? DONE : this.done + 1
@@ -115,7 +126,17 @@ class RefVal extends ValBase {
   }
 
 
-  gen(_ctx?: Context) {
+  gen(ctx?: Context) {
+    // throw new Error('REF ' + this.peg)
+    if (ctx) {
+      ctx.err.push(Nil.make(
+        ctx,
+        'ref',
+        this.peg,
+        undefined,
+      ))
+    }
+
     return undefined
   }
 }

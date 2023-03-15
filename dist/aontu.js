@@ -1,13 +1,14 @@
 "use strict";
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.util = exports.Lang = exports.Nil = exports.Aontu = void 0;
+exports.util = exports.Context = exports.Lang = exports.Nil = exports.Aontu = void 0;
 const lang_1 = require("./lib/lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./lib/unify");
+Object.defineProperty(exports, "Context", { enumerable: true, get: function () { return unify_1.Context; } });
 const Nil_1 = require("./lib/val/Nil");
 Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return Nil_1.Nil; } });
-// FIX: multisource file loading within Conjuct fails
+const err_1 = require("./lib/err");
 // TODO: propogate property path and url properly over unification, and multisource
 /*
 NEXT:
@@ -38,6 +39,7 @@ function Aontu(src, popts) {
     let uni = new unify_1.Unify(val);
     let res = uni.res;
     let err = uni.err;
+    (0, err_1.descErr)(uni.err);
     res.deps = deps;
     res.err = err;
     return res;
