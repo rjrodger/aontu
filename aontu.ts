@@ -7,7 +7,6 @@ import { Unify, Context } from './lib/unify'
 import { Nil } from './lib/val/Nil'
 import { descErr } from './lib/err'
 
-
 // TODO: propogate property path and url properly over unification, and multisource
 
 /*
