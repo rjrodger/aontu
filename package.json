@@ -46,7 +46,7 @@
     "@jsonic/directive": "^0.11.0",
     "@jsonic/expr": "^0.8.0",
     "@jsonic/jsonic-next": "^2.10.0",
-    "@jsonic/multisource": "^0.11.0",
+    "@jsonic/multisource": "^0.12.0",
     "@jsonic/path": "^0.6.0"
   },
   "devDependencies": {

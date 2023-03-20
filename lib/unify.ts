@@ -124,7 +124,6 @@ class Unify {
       // console.dir(res, { depth: null })
 
       res = unite(ctx, res, TOP)
-      // console.log('U', this.dc, res.canon)
       ctx = ctx.clone({ root: res })
     }
 

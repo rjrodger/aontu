@@ -70,7 +70,6 @@ class Unify {
             // console.log('\n\nRES', this.dc, res.canon)
             // console.dir(res, { depth: null })
             res = (0, op_1.unite)(ctx, res, type_1.TOP);
-            // console.log('U', this.dc, res.canon)
             ctx = ctx.clone({ root: res });
         }
         this.res = res;

@@ -1,7 +1,8 @@
 "use strict";
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.util = exports.Context = exports.Lang = exports.Nil = exports.Aontu = void 0;
+// import { Lang, includeFileResolver } from './lib/lang'
 const lang_1 = require("./lib/lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./lib/unify");
@@ -53,7 +54,7 @@ const util = {
             ...{
                 src: '',
                 print: 0,
-                resolver: lang_1.includeFileResolver,
+                // resolver: includeFileResolver,
             },
             ...srcopts,
             ...(popts || {}),

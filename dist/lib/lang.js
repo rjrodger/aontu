@@ -1,11 +1,13 @@
 "use strict";
 /* Copyright (c) 2021-2022 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.includeFileResolver = exports.Site = exports.Lang = void 0;
+exports.Site = exports.Lang = void 0;
 const jsonic_next_1 = require("@jsonic/jsonic-next");
 // import { Debug } from '@jsonic/jsonic-next/debug'
 const multisource_1 = require("@jsonic/multisource");
 const file_1 = require("@jsonic/multisource/dist/resolver/file");
+const pkg_1 = require("@jsonic/multisource/dist/resolver/pkg");
+const mem_1 = require("@jsonic/multisource/dist/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
 const type_1 = require("./type");
@@ -214,10 +216,50 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
 };
-const includeFileResolver = (0, file_1.makeFileResolver)((spec) => {
-    return 'string' === typeof spec ? spec : spec === null || spec === void 0 ? void 0 : spec.peg;
-});
-exports.includeFileResolver = includeFileResolver;
+// const includeFileResolver = makeFileResolver((spec: any) => {
+//   return 'string' === typeof spec ? spec : spec?.peg
+// })
+function makeModelResolver(options) {
+    var _a, _b;
+    const useRequire = options.require || require;
+    let memResolver = (0, mem_1.makeMemResolver)({
+        ...(((_a = options.resolver) === null || _a === void 0 ? void 0 : _a.mem) || {})
+    });
+    // let fileResolver = makeFileResolver({
+    //   ...(options.resolver?.file || {})
+    // })
+    // TODO: make this consistent with other resolvers
+    let fileResolver = (0, file_1.makeFileResolver)((spec) => {
+        return 'string' === typeof spec ? spec : spec === null || spec === void 0 ? void 0 : spec.peg;
+    });
+    let pkgResolver = (0, pkg_1.makePkgResolver)({
+        require: useRequire,
+        ...(((_b = options.resolver) === null || _b === void 0 ? void 0 : _b.pkg) || {})
+    });
+    return function ModelResolver(spec, popts, rule, ctx, jsonic) {
+        let path = 'string' === typeof spec ? spec : spec === null || spec === void 0 ? void 0 : spec.peg;
+        let search = [];
+        let res = memResolver(path, popts, rule, ctx, jsonic);
+        res.path = path;
+        if (res.found) {
+            return res;
+        }
+        search = search.concat(res.search);
+        res = fileResolver(path, popts, rule, ctx, jsonic);
+        res.path = path;
+        if (res.found) {
+            return res;
+        }
+        search = search.concat(res.search);
+        res = pkgResolver(path, popts, rule, ctx, jsonic);
+        res.path = path;
+        if (res.found) {
+            return res;
+        }
+        res.search = search.concat(res.search);
+        return res;
+    };
+}
 class Lang {
     constructor(options) {
         this.options = {
@@ -225,11 +267,13 @@ class Lang {
             print: -1,
         };
         this.options = Object.assign({}, this.options, options);
+        const modelResolver = makeModelResolver(this.options);
         this.jsonic = jsonic_next_1.Jsonic.make()
             // .use(Debug, { trace: true })
             .use(AontuJsonic)
             .use(multisource_1.MultiSource, {
-            resolver: (options === null || options === void 0 ? void 0 : options.resolver) || includeFileResolver
+            // resolver: options?.resolver || includeFileResolver
+            resolver: (options === null || options === void 0 ? void 0 : options.resolver) || modelResolver
         });
     }
     parse(src, opts) {

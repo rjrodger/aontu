@@ -19,6 +19,15 @@ import {
 } from '@jsonic/multisource/dist/resolver/file'
 
 import {
+  makePkgResolver
+} from '@jsonic/multisource/dist/resolver/pkg'
+
+import {
+  makeMemResolver
+} from '@jsonic/multisource/dist/resolver/mem'
+
+
+import {
   Expr,
   Op,
 } from '@jsonic/expr'
@@ -327,9 +336,68 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
-const includeFileResolver = makeFileResolver((spec: any) => {
-  return 'string' === typeof spec ? spec : spec?.peg
-})
+// const includeFileResolver = makeFileResolver((spec: any) => {
+//   return 'string' === typeof spec ? spec : spec?.peg
+// })
+
+function makeModelResolver(options: any) {
+  const useRequire = options.require || require
+
+  let memResolver = makeMemResolver({
+    ...(options.resolver?.mem || {})
+  })
+
+  // let fileResolver = makeFileResolver({
+  //   ...(options.resolver?.file || {})
+  // })
+
+  // TODO: make this consistent with other resolvers
+  let fileResolver = makeFileResolver((spec: any) => {
+    return 'string' === typeof spec ? spec : spec?.peg
+  })
+
+  let pkgResolver = makePkgResolver({
+    require: useRequire,
+    ...(options.resolver?.pkg || {})
+  })
+
+  return function ModelResolver(
+    spec: any,
+    popts: any,
+    rule: Rule,
+    ctx: Context,
+    jsonic: Jsonic
+  ) {
+
+    let path = 'string' === typeof spec ? spec : spec?.peg
+
+    let search: any = []
+    let res = memResolver(path, popts, rule, ctx, jsonic)
+    res.path = path
+    if (res.found) {
+      return res
+    }
+
+    search = search.concat(res.search)
+
+    res = fileResolver(path, popts, rule, ctx, jsonic)
+    res.path = path
+    if (res.found) {
+      return res
+    }
+
+    search = search.concat(res.search)
+
+    res = pkgResolver(path, popts, rule, ctx, jsonic)
+    res.path = path
+    if (res.found) {
+      return res
+    }
+
+    res.search = search.concat(res.search)
+    return res
+  }
+}
 
 
 class Lang {
@@ -341,11 +409,15 @@ class Lang {
 
   constructor(options?: Partial<Options>) {
     this.options = Object.assign({}, this.options, options)
+
+    const modelResolver = makeModelResolver(this.options)
+
     this.jsonic = Jsonic.make()
       // .use(Debug, { trace: true })
       .use(AontuJsonic)
       .use(MultiSource, {
-        resolver: options?.resolver || includeFileResolver
+        // resolver: options?.resolver || includeFileResolver
+        resolver: options?.resolver || modelResolver
       })
   }
 
@@ -376,5 +448,5 @@ class Lang {
 export {
   Lang,
   Site,
-  includeFileResolver,
+  // includeFileResolver,
 }

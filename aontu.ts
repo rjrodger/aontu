@@ -1,8 +1,9 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 import type { Val, Options } from './lib/type'
 
-import { Lang, includeFileResolver } from './lib/lang'
+// import { Lang, includeFileResolver } from './lib/lang'
+import { Lang } from './lib/lang'
 import { Unify, Context } from './lib/unify'
 import { Nil } from './lib/val/Nil'
 import { descErr } from './lib/err'
@@ -64,7 +65,7 @@ const util = {
       ...{
         src: '',
         print: 0,
-        resolver: includeFileResolver,
+        // resolver: includeFileResolver,
       },
       ...srcopts,
       ...(popts || {}),

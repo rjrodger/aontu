@@ -6,11 +6,10 @@ declare class Site {
     url: string;
     constructor(val: Val);
 }
-declare const includeFileResolver: import("@jsonic/multisource").Resolver;
 declare class Lang {
     jsonic: Jsonic;
     options: Options;
     constructor(options?: Partial<Options>);
     parse(src: string, opts?: any): Val;
 }
-export { Lang, Site, includeFileResolver, };
+export { Lang, Site, };
