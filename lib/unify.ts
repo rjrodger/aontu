@@ -78,6 +78,14 @@ class Context {
           node = node.peg[part]
         }
         else {
+          // console.log(
+          //   'FIND', ref.parts, pI, node.constructor.name,
+          //   node.peg.map(
+          //     (n: any) =>
+          //       n.constructor.name + ':' + n.done +
+          //       ' {' + Object.keys(n.peg) + '}'
+          //   )
+          // )
           break;
         }
       }
@@ -118,8 +126,9 @@ class Unify {
     // perhaps parse should count intial vals, paths, etc?
 
 
-    let maxdc = 999
+    let maxdc = 9 // 99
     for (this.dc = 0; this.dc < maxdc && DONE !== res.done; this.dc++) {
+      // console.log('\n\nRES', this.dc)
       // console.log('\n\nRES', this.dc, res.canon)
       // console.dir(res, { depth: null })
 

@@ -74,7 +74,10 @@ class DisjunctVal extends ValBase_1.ValBase {
             // console.log(vals.map((m: any) => m.canon))
             let val = vals[0];
             for (let vI = 1; vI < this.peg.length; vI++) {
-                val = val.unify(this.peg[vI], ctx);
+                // val = val.unify(this.peg[vI], ctx)
+                let valnext = val.unify(this.peg[vI], ctx);
+                // console.log(valnext.canon, val.canon, this.peg[vI].canon, val, this.peg[vI])
+                val = valnext;
             }
             return val.gen(ctx);
         }

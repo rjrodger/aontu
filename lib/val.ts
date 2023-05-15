@@ -123,6 +123,9 @@ class ScalarVal<T> extends ValBase {
     if (peer instanceof ScalarTypeVal) {
       return peer.unify(this, ctx)
     }
+    else if (peer.top) {
+      return this
+    }
     return Nil.make(ctx, 'scalar', this, peer)
   }
   get canon() {
@@ -171,6 +174,7 @@ class IntegerVal extends ScalarVal<number> {
       return this
     }
     else {
+      // console.log('IntegerVal Q', peer.canon)
       return super.unify(peer, ctx)
     }
   }

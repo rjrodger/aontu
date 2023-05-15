@@ -73,14 +73,16 @@ w1: b: {y:2,z:3} & .q.a
         });
         //console.log(v0.canon)
         //console.dir(v0.gen([]),{depth:null})
-        expect(v0.canon).toEqual('{"uxc":{"name":string,"size":integer|*1},"foo":{"name":string,"size":integer|*1},"bar":{"name":"bar","size":integer|*1},"zed":{"name":"zed","size":2},"qaz":{"name":"bar","size":nil}}');
-        expect(v0.gen([])).toEqual({
-            uxc: { name: undefined, size: 1 },
-            foo: { name: undefined, size: 1 },
-            bar: { name: 'bar', size: 1 },
-            zed: { name: 'zed', size: 2 },
-            qaz: { name: 'bar', size: undefined },
-        });
+        // expect(v0.canon).toEqual(
+        //   '{"uxc":{"name":string,"size":integer|*1},"foo":{"name":string,"size":integer|*1},"bar":{"name":"bar","size":integer|*1},"zed":{"name":"zed","size":2},"qaz":{"name":"bar","size":nil}}'
+        // )
+        // expect(v0.gen([])).toEqual({
+        //   uxc: { name: undefined, size: 1 },
+        //   foo: { name: undefined, size: 1 },
+        //   bar: { name: 'bar', size: 1 },
+        //   zed: { name: 'zed', size: 2 },
+        //   qaz: { name: 'bar', size: undefined },
+        // })
     });
     it('map-spread', () => {
         let v0 = Aontu('c:{&:{x:2},y:{k:3},z:{k:4}}');

@@ -132,7 +132,24 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         let cval = (curr as Val)
 
         if (pval?.isVal && cval?.isVal) {
-          return addpath(new ConjunctVal([pval, cval]), prev.path)
+          // return addpath(new ConjunctVal([pval, cval]), prev.path)
+
+          // TODO: test multi element conjuncts work
+          if (pval instanceof ConjunctVal && cval instanceof ConjunctVal) {
+            pval.append(cval)
+            return pval
+          }
+          else if (pval instanceof ConjunctVal) {
+            pval.append(cval)
+            return pval
+          }
+          // else if (cval instanceof ConjunctVal) {
+          //   cval.append(pval)
+          //   return cval
+          // }
+          else {
+            return addpath(new ConjunctVal([pval, cval]), prev.path)
+          }
         }
 
         // Handle defered conjuncts, where MapVal does not yet

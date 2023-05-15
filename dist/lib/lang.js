@@ -68,7 +68,23 @@ let AontuJsonic = function aontu(jsonic) {
                 let pval = prev;
                 let cval = curr;
                 if ((pval === null || pval === void 0 ? void 0 : pval.isVal) && (cval === null || cval === void 0 ? void 0 : cval.isVal)) {
-                    return addpath(new ConjunctVal_1.ConjunctVal([pval, cval]), prev.path);
+                    // return addpath(new ConjunctVal([pval, cval]), prev.path)
+                    // TODO: test multi element conjuncts work
+                    if (pval instanceof ConjunctVal_1.ConjunctVal && cval instanceof ConjunctVal_1.ConjunctVal) {
+                        pval.append(cval);
+                        return pval;
+                    }
+                    else if (pval instanceof ConjunctVal_1.ConjunctVal) {
+                        pval.append(cval);
+                        return pval;
+                    }
+                    // else if (cval instanceof ConjunctVal) {
+                    //   cval.append(pval)
+                    //   return cval
+                    // }
+                    else {
+                        return addpath(new ConjunctVal_1.ConjunctVal([pval, cval]), prev.path);
+                    }
                 }
                 // Handle defered conjuncts, where MapVal does not yet
                 // exist, by creating ConjunctVal later.

@@ -10,6 +10,7 @@ Object.defineProperty(exports, "Context", { enumerable: true, get: function () {
 const Nil_1 = require("./lib/val/Nil");
 Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return Nil_1.Nil; } });
 const err_1 = require("./lib/err");
+// TODO: exclude tests from dist!!!
 // TODO: propogate property path and url properly over unification, and multisource
 /*
 NEXT:

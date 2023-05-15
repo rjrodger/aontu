@@ -72,15 +72,11 @@ describe('val', function() {
     expect(P('b').gen()).toEqual('b')
     expect(P('true').gen()).toEqual(true)
     expect(P('top').gen()).toEqual(undefined)
-
-    expect(P('nil').gen()).toEqual(undefined)
     expect(P('a:1').gen()).toEqual({ a: 1 })
-
-    expect(P('a:1,b:nil').gen()).toEqual({ a: 1, b: undefined })
-
     expect(P('a:1,b:c:2').gen()).toEqual({ a: 1, b: { c: 2 } })
 
-
+    expect(() => P('nil').gen()).toThrow()
+    expect(() => P('a:1,b:nil').gen()).toThrow()
   })
 
 
@@ -451,6 +447,12 @@ describe('val', function() {
 
     // TODO: same for DisjunctVal
     expect(unite(ctx, new ConjunctVal([]), TOP).canon).toEqual('top')
+
+    expect(unite(ctx, P('1 & .a')).canon).toEqual('1&.a')
+    expect(unite(ctx, P('1 & 1 & .a')).canon).toEqual('1&.a')
+    expect(unite(ctx, P('1 & 1 & .a & 2')).canon).toEqual('1&.a&2')
+    expect(unite(ctx, P('1 & 1 & .a & 2 & .b')).canon).toEqual('1&.a&2&.b')
+    expect(unite(ctx, P('1 & 1 & .a & 2 & .b & 3')).canon).toEqual('1&.a&2&.b&3')
   })
 
 
@@ -466,7 +468,8 @@ describe('val', function() {
     expect(unite(ctx, P('1|number|top')).canon).toEqual('1|number|top')
 
     expect(unite(ctx, P('1|number')).gen()).toEqual(1)
-    expect(unite(ctx, P('1|number|top')).gen()).toEqual(undefined)
+    // expect(unite(ctx, P('1|number|top')).gen()).toEqual(undefined)
+    expect(unite(ctx, P('1|number|top')).gen()).toEqual(1)
 
     expect(unite(ctx, P('number|1').unify(P('top'))).canon).toEqual('number|1')
 
@@ -627,6 +630,25 @@ describe('val', function() {
     let m1u = m1.unify(TOP, c1)
     // console.dir(m1u, { depth: null })
     expect(m1u.canon).toEqual('{"a":1,"b":{"c":1}}')
+
+
+    let m2 = (P(`
+a: {x:1}
+b: { &: .a }
+b: c0: {n:0}
+b: c1: {n:1}
+b: c2: {n:2}
+`
+      ,) as MapVal)
+
+    let c2 = new Context({
+      root: m2
+    })
+
+    let m2u = m2.unify(TOP, c2)
+    // console.dir(m1u, { depth: null })
+    expect(m2u.canon).toEqual('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
+
   })
 
 
@@ -733,8 +755,11 @@ describe('val', function() {
 
     expect(G('number|*1')).toEqual(1)
     expect(G('string|*1')).toEqual(1)
-    expect(G('a:*1,a:2')).toEqual({ a: undefined })
-    expect(G('*1 & 2')).toEqual(undefined)
+
+    // expect(G('a:*1,a:2')).toEqual({ a: undefined })
+    expect(() => G('a:*1,a:2')).toThrow()
+    // expect(G('*1 & 2')).toEqual(undefined)
+    expect(() => G('*1 & 2')).toThrow()
 
     expect(G('true|*true')).toEqual(true)
     expect(G('*true|true')).toEqual(true)

@@ -19,6 +19,8 @@ let P = lang.parse.bind(lang)
 
 let tmp = {}
 
+let s = ''
+
 // console.log(Aontu('11'))
 // console.log(Aontu('11&number'))
 // console.log(Aontu('11|22'))
@@ -147,7 +149,46 @@ let tmp = {}
 // V(A('[&:{x:number},{x:1}]'))
 
 // let s = 'x:{a:.x.b}&{b:2}'
-let s = '{b:.a&.a}&{a:1} '
+// let s = '{b:.a&.a}&{a:1} '
 
-// V(A(s))
-G(A(s))
+
+s = `
+a: { x: 1 }
+b: { &: .a }
+#b: c0: { n:0}
+`
+for(let i = 0; i < 2222; i++) {
+  s+=`b: c${i}: { n:0 }
+`
+}
+
+
+// s = `
+// a: { x: 1, b: .q }
+// a: { y: 2 }
+// `
+
+
+// s = `
+// a: {x:1}
+// b: { &: .a }
+// b: c0: {n:0}
+// b: c1: {n:1}
+// b: c2: {n:2}
+// `
+
+// s = `
+// 1&1&.a&2&2&.b&3&3
+// #1&.a
+// `
+
+
+// s = `
+// 1|number|top
+// #1&top
+// `
+
+let a = A(s)
+
+// V(a)
+G(a)

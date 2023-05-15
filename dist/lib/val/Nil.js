@@ -20,6 +20,7 @@ class Nil extends ValBase_1.ValBase {
         return 'nil';
     }
     gen(_ctx) {
+        throw new Error('Nil-gen');
         return undefined;
     }
 }

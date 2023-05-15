@@ -26,6 +26,9 @@ class MapVal extends ValBase_1.ValBase {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
+        // console.log('MAP UNIFY', this.done, this.path.join('.'), this.canon,
+        //  'P', peer.top || peer.constructor.name,
+        //  peer.done, peer.path.join(''), peer.canon)
         // if (null == ctx) {
         //   console.trace()
         // }
@@ -87,6 +90,9 @@ class MapVal extends ValBase_1.ValBase {
         for (let p in this.peg) {
             out[p] = this.peg[p].gen(ctx);
         }
+        // if (0 === Object.keys(out).length) {
+        //   console.log('MapVal-gen 0', this.path, this.done)
+        // }
         return out;
     }
 }

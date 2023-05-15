@@ -37,10 +37,10 @@ describe('val', function () {
         expect(P('b').gen()).toEqual('b');
         expect(P('true').gen()).toEqual(true);
         expect(P('top').gen()).toEqual(undefined);
-        expect(P('nil').gen()).toEqual(undefined);
         expect(P('a:1').gen()).toEqual({ a: 1 });
-        expect(P('a:1,b:nil').gen()).toEqual({ a: 1, b: undefined });
         expect(P('a:1,b:c:2').gen()).toEqual({ a: 1, b: { c: 2 } });
+        expect(() => P('nil').gen()).toThrow();
+        expect(() => P('a:1,b:nil').gen()).toThrow();
     });
     it('scalartype', () => {
         expect(new val_1.ScalarTypeVal(String).same(new val_1.ScalarTypeVal(String))).toBeTruthy();
@@ -304,6 +304,11 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, type_1.TOP, d100).canon).toEqual('1');
         // TODO: same for DisjunctVal
         expect((0, op_1.unite)(ctx, new ConjunctVal_1.ConjunctVal([]), type_1.TOP).canon).toEqual('top');
+        expect((0, op_1.unite)(ctx, P('1 & .a')).canon).toEqual('1&.a');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & .a')).canon).toEqual('1&.a');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 2')).canon).toEqual('1&.a&2');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 2 & .b')).canon).toEqual('1&.a&2&.b');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 2 & .b & 3')).canon).toEqual('1&.a&2&.b&3');
     });
     it('disjunct', () => {
         let ctx = makeCtx();
@@ -313,7 +318,8 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, P('1|top')).canon).toEqual('1|top');
         expect((0, op_1.unite)(ctx, P('1|number|top')).canon).toEqual('1|number|top');
         expect((0, op_1.unite)(ctx, P('1|number')).gen()).toEqual(1);
-        expect((0, op_1.unite)(ctx, P('1|number|top')).gen()).toEqual(undefined);
+        // expect(unite(ctx, P('1|number|top')).gen()).toEqual(undefined)
+        expect((0, op_1.unite)(ctx, P('1|number|top')).gen()).toEqual(1);
         expect((0, op_1.unite)(ctx, P('number|1').unify(P('top'))).canon).toEqual('number|1');
         expect((0, op_1.unite)(ctx, P('1|number|1').unify(P('top'))).canon).toEqual('1|number');
         expect((0, op_1.unite)(ctx, P('number|string').unify(P('top'))).canon)
@@ -434,6 +440,19 @@ describe('val', function () {
         let m1u = m1.unify(type_1.TOP, c1);
         // console.dir(m1u, { depth: null })
         expect(m1u.canon).toEqual('{"a":1,"b":{"c":1}}');
+        let m2 = P(`
+a: {x:1}
+b: { &: .a }
+b: c0: {n:0}
+b: c1: {n:1}
+b: c2: {n:2}
+`);
+        let c2 = new unify_1.Context({
+            root: m2
+        });
+        let m2u = m2.unify(type_1.TOP, c2);
+        // console.dir(m1u, { depth: null })
+        expect(m2u.canon).toEqual('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}');
     });
     it('pref', () => {
         let ctx = makeCtx();
@@ -508,8 +527,10 @@ describe('val', function () {
         expect(d0.gen()).toEqual(1);
         expect(G('number|*1')).toEqual(1);
         expect(G('string|*1')).toEqual(1);
-        expect(G('a:*1,a:2')).toEqual({ a: undefined });
-        expect(G('*1 & 2')).toEqual(undefined);
+        // expect(G('a:*1,a:2')).toEqual({ a: undefined })
+        expect(() => G('a:*1,a:2')).toThrow();
+        // expect(G('*1 & 2')).toEqual(undefined)
+        expect(() => G('*1 & 2')).toThrow();
         expect(G('true|*true')).toEqual(true);
         expect(G('*true|true')).toEqual(true);
         expect(G('*true|*true')).toEqual(true);

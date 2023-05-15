@@ -6,7 +6,7 @@ declare class ConjunctVal extends ValBase {
     append(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
-    gen(ctx?: Context): any;
+    gen(ctx?: Context): void;
 }
 declare function norm(terms: Val[]): Val[];
 export { norm, ConjunctVal, };

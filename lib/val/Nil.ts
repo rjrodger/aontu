@@ -88,6 +88,7 @@ class Nil extends ValBase {
   }
 
   gen(_ctx?: Context) {
+    throw new Error('Nil-gen')
     return undefined
   }
 }

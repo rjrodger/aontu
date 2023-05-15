@@ -39,6 +39,14 @@ class Context {
                     node = node.peg[part];
                 }
                 else {
+                    // console.log(
+                    //   'FIND', ref.parts, pI, node.constructor.name,
+                    //   node.peg.map(
+                    //     (n: any) =>
+                    //       n.constructor.name + ':' + n.done +
+                    //       ' {' + Object.keys(n.peg) + '}'
+                    //   )
+                    // )
                     break;
                 }
             }
@@ -65,8 +73,9 @@ class Unify {
         });
         // TODO: derive maxdc from res deterministically
         // perhaps parse should count intial vals, paths, etc?
-        let maxdc = 999;
+        let maxdc = 9; // 99
         for (this.dc = 0; this.dc < maxdc && type_1.DONE !== res.done; this.dc++) {
+            // console.log('\n\nRES', this.dc)
             // console.log('\n\nRES', this.dc, res.canon)
             // console.dir(res, { depth: null })
             res = (0, op_1.unite)(ctx, res, type_1.TOP);

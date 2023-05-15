@@ -38,11 +38,28 @@ class RefVal extends ValBase_1.ValBase {
         this.peg = (this.absolute ? this.sep : '') + this.parts.join(this.sep);
     }
     unify(peer, ctx) {
+        if (this.id === peer.id) {
+            return this;
+        }
+        // TODO: not resolved when all Vals in path are done is an error
+        // as path cannot be found
         let resolved = null == ctx ? this : ctx.find(this);
+        // console.log('REF', resolved, this.peg, peer.canon)
+        // if (null == resolved && peer instanceof RefVal && this.peg === peer.peg) {
+        //   console.log('SAMEREF', this.peg, this.id, this.done, peer.canon, peer.id)
+        // }
+        // if (null == resolved && 0 < this.done) {
+        //   console.log('UREF', this.peg, this.done, peer.canon)
+        // }
         // Don't try to resolve paths forever.
         // TODO: large amount of reruns needed? why?
-        resolved = null == resolved && 999 < this.done ?
-            Nil_1.Nil.make(ctx, 'no-path', this, peer) : (resolved || this);
+        // resolved =
+        //   null == resolved &&
+        //     9999 < this.done
+        //     ?
+        //     Nil.make(ctx, 'no-path', this, peer)
+        //     : (resolved || this)
+        resolved = resolved || this;
         let out;
         if (resolved instanceof RefVal) {
             if (type_1.TOP === peer) {
@@ -74,10 +91,10 @@ class RefVal extends ValBase_1.ValBase {
         return this.peg;
     }
     gen(ctx) {
-        // throw new Error('REF ' + this.peg)
         if (ctx) {
             ctx.err.push(Nil_1.Nil.make(ctx, 'ref', this.peg, undefined));
         }
+        throw new Error('REF-gen ' + this.peg);
         return undefined;
     }
 }
