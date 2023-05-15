@@ -447,12 +447,17 @@ b: c0: {n:0}
 b: c1: {n:1}
 b: c2: {n:2}
 `);
+        expect(m2.canon)
+            .toEqual('{"a":{"x":1},"b":{&:.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}');
+        expect(m2.peg.b.constructor.name).toEqual('ConjunctVal');
+        expect(m2.peg.b.peg.length).toEqual(4);
         let c2 = new unify_1.Context({
             root: m2
         });
         let m2u = m2.unify(type_1.TOP, c2);
         // console.dir(m1u, { depth: null })
-        expect(m2u.canon).toEqual('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}');
+        expect(m2u.canon)
+            .toEqual('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}');
     });
     it('pref', () => {
         let ctx = makeCtx();
