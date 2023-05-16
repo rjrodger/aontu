@@ -275,7 +275,7 @@ describe('val', function () {
         let d5 = new ConjunctVal_1.ConjunctVal(PA(['{a:1}']));
         let d6 = new ConjunctVal_1.ConjunctVal(PA(['{a:1}', '{b:2}']));
         // let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('/x')])
-        let d100 = new ConjunctVal_1.ConjunctVal([new val_1.IntegerVal(1), new RefVal_1.RefVal(['x'], true)]);
+        let d100 = new ConjunctVal_1.ConjunctVal([new val_1.IntegerVal(1), new RefVal_1.RefVal(['$', 'x'])]);
         expect(d0.canon).toEqual('1');
         expect(d1.canon).toEqual('1&1');
         expect(d2.canon).toEqual('1&2');
@@ -352,29 +352,6 @@ describe('val', function () {
         //console.log(u2.gen())
         expect(u2.canon).toEqual('2');
         expect(u2.gen()).toEqual(2);
-    });
-    it('ref', () => {
-        let ctx = makeCtx();
-        let d0 = new RefVal_1.RefVal(['a']);
-        let d1 = new RefVal_1.RefVal(['c'], true);
-        let d2 = new RefVal_1.RefVal(['a', 'b'], false);
-        let d3 = new RefVal_1.RefVal(['c', 'd', 'e'], true);
-        expect(d0.canon).toEqual('a');
-        expect(d1.canon).toEqual('.c');
-        expect(d2.canon).toEqual('a.b');
-        expect(d3.canon).toEqual('.c.d.e');
-        d0.append('x');
-        d1.append('x');
-        d2.append('x');
-        d3.append('x');
-        expect(d0.canon).toEqual('a.x');
-        expect(d1.canon).toEqual('.c.x');
-        expect(d2.canon).toEqual('a.b.x');
-        expect(d3.canon).toEqual('.c.d.e.x');
-        expect(d0.unify(type_1.TOP, ctx).canon).toEqual('a.x');
-        expect(type_1.TOP.unify(d0, ctx).canon).toEqual('a.x');
-        expect(d1.unify(type_1.TOP, ctx).canon).toEqual('.c.x');
-        expect(type_1.TOP.unify(d1, ctx).canon).toEqual('.c.x');
     });
     it('ref-conjunct', () => {
         return;

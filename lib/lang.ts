@@ -171,7 +171,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       addpath(new DisjunctVal(terms), r.keep.path),
 
     'dot-prefix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new RefVal(terms, true), r.keep.path),
+      addpath(new RefVal(terms), r.keep.path),
     'dot-infix': (r: Rule, _op: Op, terms: any) =>
       addpath(new RefVal(terms), r.keep.path),
 

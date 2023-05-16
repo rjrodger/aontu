@@ -1,6 +1,5 @@
 import type { Val } from './type';
 import { Lang } from './lang';
-import { RefVal } from '../lib/val/RefVal';
 import { Nil } from '../lib/val/Nil';
 type Path = string[];
 declare class Context {
@@ -19,7 +18,6 @@ declare class Context {
         err?: Nil[];
     }): Context;
     descend(key: string): Context;
-    find(ref: RefVal): Val | undefined;
 }
 declare class Unify {
     root: Val;

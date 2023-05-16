@@ -52,6 +52,7 @@ const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
 const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen()
 
 
+
 describe('val', function() {
   it('canon', () => {
     expect(P('1').canon).toEqual('1')
@@ -407,7 +408,7 @@ describe('val', function() {
     let d6 = new ConjunctVal(PA(['{a:1}', '{b:2}']))
 
     // let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('/x')])
-    let d100 = new ConjunctVal([new IntegerVal(1), new RefVal(['x'], true)])
+    let d100 = new ConjunctVal([new IntegerVal(1), new RefVal(['$', 'x'])])
 
     expect(d0.canon).toEqual('1')
     expect(d1.canon).toEqual('1&1')
@@ -522,35 +523,6 @@ describe('val', function() {
 
 
 
-  it('ref', () => {
-    let ctx = makeCtx()
-
-    let d0 = new RefVal(['a'])
-    let d1 = new RefVal(['c'], true)
-    let d2 = new RefVal(['a', 'b'], false)
-    let d3 = new RefVal(['c', 'd', 'e'], true)
-
-    expect(d0.canon).toEqual('a')
-    expect(d1.canon).toEqual('.c')
-    expect(d2.canon).toEqual('a.b')
-    expect(d3.canon).toEqual('.c.d.e')
-
-    d0.append('x')
-    d1.append('x')
-    d2.append('x')
-    d3.append('x')
-
-    expect(d0.canon).toEqual('a.x')
-    expect(d1.canon).toEqual('.c.x')
-    expect(d2.canon).toEqual('a.b.x')
-    expect(d3.canon).toEqual('.c.d.e.x')
-
-    expect(d0.unify(TOP, ctx).canon).toEqual('a.x')
-    expect(TOP.unify(d0, ctx).canon).toEqual('a.x')
-    expect(d1.unify(TOP, ctx).canon).toEqual('.c.x')
-    expect(TOP.unify(d1, ctx).canon).toEqual('.c.x')
-
-  })
 
 
 

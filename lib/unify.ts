@@ -66,35 +66,49 @@ class Context {
   }
 
 
-  find(ref: RefVal) {
+  // TODO: move to RefVal
+  /*
+  xfind(ref: RefVal) {
     // TODO: relative paths
     // if (this.root instanceof MapVal && ref.absolute) {
-    if (ref.absolute) {
-      let node = this.root
-      let pI = 0
-      for (; pI < ref.parts.length; pI++) {
-        let part = ref.parts[pI]
-        if (node instanceof MapVal) {
-          node = node.peg[part]
-        }
-        else {
-          // console.log(
-          //   'FIND', ref.parts, pI, node.constructor.name,
-          //   node.peg.map(
-          //     (n: any) =>
-          //       n.constructor.name + ':' + n.done +
-          //       ' {' + Object.keys(n.peg) + '}'
-          //   )
-          // )
-          break;
-        }
-      }
 
-      if (pI === ref.parts.length) {
-        return node
+    // NOTE: path *to* the ref, not the ref itself!
+    let fullpath = ref.path
+
+    if (ref.absolute) {
+      fullpath = ref.parts.slice(1) // ignore '$' at start
+    }
+    else {
+      fullpath = fullpath.concat(ref.parts)
+    }
+
+    console.log('FP', ref.absolute, ref.parts, fullpath)
+
+    let node = this.root
+    let pI = 0
+    for (; pI < ref.parts.length; pI++) {
+      let part = ref.parts[pI]
+      if (node instanceof MapVal) {
+        node = node.peg[part]
+      }
+      else {
+        // console.log(
+        //   'FIND', ref.parts, pI, node.constructor.name,
+        //   node.peg.map(
+        //     (n: any) =>
+        //       n.constructor.name + ':' + n.done +
+        //       ' {' + Object.keys(n.peg) + '}'
+        //   )
+        // )
+        break;
       }
     }
-  }
+
+    if (pI === ref.parts.length) {
+      return node
+    }
+    }
+    */
 }
 
 

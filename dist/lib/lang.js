@@ -99,7 +99,7 @@ let AontuJsonic = function aontu(jsonic) {
     let opmap = {
         'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal(terms), r.keep.path),
         'disjunct-infix': (r, _op, terms) => addpath(new DisjunctVal_1.DisjunctVal(terms), r.keep.path),
-        'dot-prefix': (r, _op, terms) => addpath(new RefVal_1.RefVal(terms, true), r.keep.path),
+        'dot-prefix': (r, _op, terms) => addpath(new RefVal_1.RefVal(terms), r.keep.path),
         'dot-infix': (r, _op, terms) => addpath(new RefVal_1.RefVal(terms), r.keep.path),
         'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal(terms[0]), r.keep.path),
     };

@@ -5,7 +5,6 @@ exports.Unify = exports.Context = void 0;
 const type_1 = require("./type");
 const lang_1 = require("./lang");
 const op_1 = require("./op/op");
-const MapVal_1 = require("../lib/val/MapVal");
 class Context {
     constructor(cfg) {
         this.root = cfg.root;
@@ -26,34 +25,6 @@ class Context {
             root: this.root,
             path: this.path.concat(key),
         });
-    }
-    find(ref) {
-        // TODO: relative paths
-        // if (this.root instanceof MapVal && ref.absolute) {
-        if (ref.absolute) {
-            let node = this.root;
-            let pI = 0;
-            for (; pI < ref.parts.length; pI++) {
-                let part = ref.parts[pI];
-                if (node instanceof MapVal_1.MapVal) {
-                    node = node.peg[part];
-                }
-                else {
-                    // console.log(
-                    //   'FIND', ref.parts, pI, node.constructor.name,
-                    //   node.peg.map(
-                    //     (n: any) =>
-                    //       n.constructor.name + ':' + n.done +
-                    //       ' {' + Object.keys(n.peg) + '}'
-                    //   )
-                    // )
-                    break;
-                }
-            }
-            if (pI === ref.parts.length) {
-                return node;
-            }
-        }
     }
 }
 exports.Context = Context;

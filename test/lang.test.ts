@@ -21,7 +21,6 @@ import {
 } from '../lib/type'
 
 
-
 let lang = new Lang()
 let P: (s: string, o?: any) => Val = lang.parse.bind(lang)
 
@@ -120,8 +119,6 @@ describe('lang', function() {
 
 
   })
-
-
 
 
   it('ref', () => {
