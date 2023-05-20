@@ -25,18 +25,18 @@ a:{c:2}
     expect(
       p0.parse(`
 u: { x: 1, y: number}
-q: a: .u
-w: b: .q.a & {y:2,z:3}
+q: a: $.u
+w: b: $.q.a & {y:2,z:3}
 `).canon
     ).toEqual(
-      '{"u":{"x":1,"y":number},"q":{"a":.u},"w":{"b":.q.a&{"y":2,"z":3}}}'
+      '{"u":{"x":1,"y":number},"q":{"a":$.u},"w":{"b":$.q.a&{"y":2,"z":3}}}'
     )
 
     expect(
       Aontu(`
 q: a: { x: 1, y: number}
-w0: b: .q.a & {y:2,z:3}
-w1: b: {y:2,z:3} & .q.a
+w0: b: $.q.a & {y:2,z:3}
+w1: b: {y:2,z:3} & $.q.a
 `).gen([])
     ).toEqual({
       q: { a: { x: 1, y: undefined } },

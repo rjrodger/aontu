@@ -30,15 +30,15 @@ describe('val-conjunct', function () {
         expect(g1).toEqual({ a: 1, b: 2, c: 3 });
     });
     it('ref', () => {
-        let g0 = G('a:1,b:number&.a');
+        let g0 = G('a:1,b:number&$.a');
         expect(g0).toEqual({ a: 1, b: 1 });
-        let g1 = G('x:a:1,x:b:.x.a');
+        let g1 = G('x:a:1,x:b:$.x.a');
         expect(g1).toEqual({ x: { a: 1, b: 1 } });
-        let g2 = G('x:a:1,x:b:number&.x.a');
+        let g2 = G('x:a:1,x:b:number&$.x.a');
         expect(g2).toEqual({ x: { a: 1, b: 1 } });
-        expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
+        expect(UC('a:*1|number,b:*2|number,c:$.a&$.b'))
             .toEqual('{"a":*1|number,"b":*2|number,"c":*2|*1|number}');
-        let g3 = G('{b:.a&.a}&{a:1}');
+        let g3 = G('{b:$.a&$.a}&{a:1}');
         expect(g3).toEqual({ a: 1, b: 1 });
     });
     it('disjunct', () => {
@@ -55,13 +55,13 @@ describe('val-conjunct', function () {
     it('map', () => {
         let m0 = UC('{a:1}&{b:2}');
         expect(m0).toEqual('{"a":1,"b":2}');
-        let m1 = UC('x:{a:.y}&{b:2},y:1');
+        let m1 = UC('x:{a:$.y}&{b:2},y:1');
         expect(m1).toEqual('{"x":{"a":1,"b":2},"y":1}');
-        let s2 = 'x:{a:.x.b}&{b:2}';
-        expect(UC(s2)).toEqual('{"x":{"a":.x.b,"b":2}}');
+        let s2 = 'x:{a:$.x.b}&{b:2}';
+        expect(UC(s2)).toEqual('{"x":{"a":$.x.b,"b":2}}');
         expect(G(s2)).toEqual({ "x": { "a": 2, "b": 2 } });
-        let s3 = 'y:x:{a:.y.x.b}&{b:2}';
-        expect(UC(s3)).toEqual('{"y":{"x":{"a":.y.x.b,"b":2}}}');
+        let s3 = 'y:x:{a:$.y.x.b}&{b:2}';
+        expect(UC(s3)).toEqual('{"y":{"x":{"a":$.y.x.b,"b":2}}}');
         expect(G(s3)).toEqual({ y: { x: { a: 2, b: 2 } } });
     });
     it('spread', () => {

@@ -762,40 +762,40 @@ b: c2: {n:2}
 
     expect(G('y: "Y", x: {a:{&:{c:number|*1,d:boolean}}} & {a:{b:{c:2,d:true}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true } } } })
-    expect(G('y: "Y", x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
+    expect(G('y: "Y", x: {a:{&:{c:number|*1,d:boolean,e:$.y}}}' +
       ' & {a:{b:{c:2,d:true}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
-    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1,d:boolean,e:$.y}}}' +
       ' & {a:{b:{c:2,d:true}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
-    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1,d:boolean,e:.y}}}' +
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1,d:boolean,e:$.y}}}' +
       ' & {a:{b:{c:2,d:true,e:"Q"}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Q' } } } })
 
     expect(G('y: "Y", x: {a:{&:{c:number|*1}&{d:boolean}}} & {a:{b:{c:2,d:true}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true } } } })
-    expect(G('y: "Y", x: {a:{&:{c:number|*1}&{d:boolean,e:.y}}}' +
+    expect(G('y: "Y", x: {a:{&:{c:number|*1}&{d:boolean,e:$.y}}}' +
       ' & {a:{b:{c:2,d:true}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
-    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1}&{d:boolean,e:.y}}}' +
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1}&{d:boolean,e:$.y}}}' +
       ' & {a:{b:{c:2,d:true}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Y' } } } })
-    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1}&{d:boolean,e:.y}}}' +
+    expect(G('y: *"Y"|string, x: {a:{&:{c:number|*1}&{d:boolean,e:$.y}}}' +
       ' & {a:{b:{c:2,d:true,e:"Q"}}}'))
       .toEqual({ y: 'Y', x: { a: { b: { c: 2, d: true, e: 'Q' } } } })
 
 
     expect(G(`
   a: *true | boolean
-  b: .a
-  c: .a & false
-  d: { x: .a }
+  b: $.a
+  c: $.a & false
+  d: { x: $.a }
   d: { x: false }
-  e: { x: .a }
+  e: { x: $.a }
   f: { &: *true | boolean }
   f: { y: false }
   g: .f
-  h: { &: .a }
+  h: { &: $.a }
   h: { z: false }
   `)).toEqual({
       a: true,
@@ -810,7 +810,7 @@ b: c2: {n:2}
 
     expect(G(`
   x: y: { m: n: *false | boolean }
-  a: b: { &: .x.y }
+  a: b: { &: $.x.y }
   a: b: { c: {} }
   a: b: d: {}
   a: b: e: m: n: true

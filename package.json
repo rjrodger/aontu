@@ -27,7 +27,7 @@
     "build": "tsc -d",
     "build-web": "tsc -d && npm run build-browser",
     "build-browser": "cp dist/aontu.js dist/aontu.min.js && browserify -o dist/aontu.min.js -e dist/aontu.js -s Aontu -im -i assert -p tinyify",
-    "clean": "rm -rf node_modules yarn.lock package-lock.json",
+    "clean": "rm -rf dist node_modules yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "version": "node -r fs -e \"v=require('./package.json').version;s=fs.readFileSync('./aontu.ts').toString();if(!s.includes('VERSION = \\''+v+'\\'')){s=s.replace(/VERSION = '.*?'/,'VERSION = \\''+v+'\\'');fs.writeFileSync('./aontu.ts',s)}\"",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
