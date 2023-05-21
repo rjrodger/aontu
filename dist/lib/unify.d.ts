@@ -9,6 +9,7 @@ declare class Context {
     vc: number;
     constructor(cfg: {
         root: Val;
+        path?: Path;
         err?: Nil[];
         vc?: number;
     });

@@ -1,6 +1,18 @@
 const Util = require('util')
 
-let { Aontu, Lang, util } = require('..')
+let { Aontu, Lang, Context, util } = require('..')
+
+
+let {
+  Integer,
+  NumberVal,
+  StringVal,
+  BooleanVal,
+  IntegerVal,
+  ScalarTypeVal,
+} = require('../dist/lib/val')
+
+
 
 let A = (s) => Aontu(s)
 let D = (x) => console.dir(x, { depth: null })
@@ -189,33 +201,71 @@ let s = ''
 // `
 
 
-s = `
-a: 1
-b: $.a // 1
-c: {
-  d: 2
-  e: .d
-}
+// s = `
+// a: 1
+// b: $.a // 1
 // c: {
-//   n: $KEY // "n"
-//   p: $PATH // "c.p"
+//   d: 2
+//   e: .d
 // }
-// cc: {
-//   nn: $.c.d$KEY // "d"
-// }
-// f: {
-//   g: { x: { y: 3 } }
-//   g: $SELF.x
-// }
-// h: i: j: k: {
-//   z: ...m // 4
-//   zz: ...j..ii // 5
-// }
-// h: i: m: 4
-// h: ii: 5
+// // c: {
+// //   n: $KEY // "n"
+// //   p: $PATH // "c.p"
+// // }
+// // cc: {
+// //   nn: $.c.d$KEY // "d"
+// // }
+// // f: {
+// //   g: { x: { y: 3 } }
+// //   g: $SELF.x
+// // }
+// // h: i: j: k: {
+// //   z: ...m // 4
+// //   zz: ...j..ii // 5
+// // }
+// // h: i: m: 4
+// // h: ii: 5
+// `
+
+
+s = `
+# a: { n: .$KEY, x:1 }
+# b: { &: .a }
+b: { &: {n:.$KEY} }
+# b: { c0: { k:0, m:.$KEY }}
+b: { c1: { k:1 }}
+
 `
 
 let a = A(s)
+console.log('========')
+console.dir(a,{depth:null})
+// console.log(a.canon)
 
 // V(a)
 G(a)
+
+
+
+// let c0 = new Context({})
+// // console.log(c0)
+
+// let c1 = c0.descend('a')
+// // console.log(c1)
+
+// let n0 = new NumberVal(11,c1)
+// console.log(n0)
+
+// let c2 = c1.descend('b')
+// let n1 = n0.clone(c2)
+// console.log(n1)
+
+
+// let m0 = A(`{c:d:e:f:1}`)
+// // console.dir(m0,{depth:null})
+// let m1 = m0.peg.c.peg.d
+// console.dir(m1,{depth:null})
+
+// let m1c = m1.clone(c2)
+// console.dir(m1c,{depth:null})
+

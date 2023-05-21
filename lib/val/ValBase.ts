@@ -50,13 +50,28 @@ abstract class ValBase implements Val {
 
   constructor(peg?: any, ctx?: Context) {
     this.peg = peg
-    this.path = (ctx && ctx.path) || []
+    this.path = ctx?.path || []
     this.id = (ctx && ctx.vc++) || (9e9 + Math.floor(Math.random() * (1e9)))
   }
 
   same(peer: Val): boolean {
     // return this === peer
     return null == peer ? false : this.id === peer.id
+  }
+
+  clone(ctx?: Context): Val {
+    let cloneCtx = ctx ? ctx.clone({
+      path: ctx.path.concat(this.path.slice(ctx.path.length))
+      // path: ctx.path.concat(this.path)
+    }) : undefined
+
+    let out = new (this as any).constructor(this.peg, cloneCtx)
+
+    if (null == cloneCtx) {
+      out.path = this.path.slice(0)
+    }
+
+    return out
   }
 
   get site(): Site {

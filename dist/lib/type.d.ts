@@ -20,6 +20,7 @@ interface Val {
     err?: any[];
     deps?: any;
     same(peer: Val): boolean;
+    clone(ctx?: Context): Val;
     get site(): Site;
     unify(peer: Val, ctx?: Context): Val;
     get canon(): string;

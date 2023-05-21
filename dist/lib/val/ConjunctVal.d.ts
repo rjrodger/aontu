@@ -5,6 +5,7 @@ declare class ConjunctVal extends ValBase {
     constructor(peg: Val[], ctx?: Context);
     append(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: Context): Val;
+    clone(ctx?: Context): Val;
     get canon(): any;
     gen(ctx?: Context): void;
 }

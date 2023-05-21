@@ -32,12 +32,13 @@ class Context {
   vc: number  // Val counter to create unique val ids.
 
   constructor(cfg: {
-    root: Val
+    root: Val,
+    path?: Path,
     err?: Nil[],
     vc?: number
   }) {
     this.root = cfg.root
-    this.path = []
+    this.path = cfg.path || []
     this.err = cfg.err || []
 
     // Multiple unify passes will keep incrementing Val counter.
@@ -52,6 +53,7 @@ class Context {
   }): Context {
     return new Context({
       root: cfg.root || this.root,
+      path: cfg.path,
       err: cfg.err || this.err,
       vc: this.vc,
     })

@@ -43,6 +43,7 @@ interface Val {
   deps?: any
 
   same(peer: Val): boolean
+  clone(ctx?: Context): Val
 
   get site(): Site
 
@@ -83,6 +84,10 @@ const TOP: Val = {
 
   same(peer: Val): boolean {
     return TOP === peer
+  },
+
+  clone() {
+    return TOP
   },
 
   gen: (_ctx?: Context) => {

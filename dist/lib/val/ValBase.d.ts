@@ -14,6 +14,7 @@ declare abstract class ValBase implements Val {
     err?: any[];
     constructor(peg?: any, ctx?: Context);
     same(peer: Val): boolean;
+    clone(ctx?: Context): Val;
     get site(): Site;
     abstract unify(peer: Val, ctx?: Context): Val;
     abstract get canon(): string;

@@ -196,6 +196,14 @@ class ConjunctVal extends ValBase {
     return out
   }
 
+
+  clone(ctx?: Context): Val {
+    let out = (super.clone(ctx) as MapVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
+    return out
+  }
+
+
   // TODO: need a well-defined val order so conjunt canon is always the same
   get canon() {
     // return '  C( ' + this.peg.map((v: Val) => v.canon).join('&') + ' )  '

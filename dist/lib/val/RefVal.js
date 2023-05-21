@@ -10,12 +10,17 @@ const ValBase_1 = require("../val/ValBase");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const val_1 = require("../val");
 class RefVal extends ValBase_1.ValBase {
-    constructor(peg) {
+    constructor(peg, ctx) {
         var _a;
-        super('');
+        super('', ctx);
         this.sep = '.';
         this.root = '$';
-        // console.log('RC', peg)
+        // TODO this.peg is a string! breaks clone - refactor
+        if ('string' === typeof peg) {
+            this.parts = [];
+            this.absolute = false;
+            return;
+        }
         this.absolute =
             this.root === peg[0] ||
                 this.root === ((_a = peg[0]) === null || _a === void 0 ? void 0 : _a.peg);
@@ -32,7 +37,6 @@ class RefVal extends ValBase_1.ValBase {
         }
     }
     append(part) {
-        //console.log('APPEND 0', part)
         let partstr;
         if ('string' === typeof part) {
             // this.parts.push(part)
@@ -53,7 +57,6 @@ class RefVal extends ValBase_1.ValBase {
             //   this.absolute = true
             // }
         }
-        // console.log('PARTSTR', partstr)
         if (null != partstr) {
             let m = partstr.match(/^(.*)\$([^$]+)$/);
             if (m) {
@@ -70,7 +73,6 @@ class RefVal extends ValBase_1.ValBase {
                 // this.parts.join(this.sep)
                 this.parts.map(p => this.sep === p ? '' : p).join(this.sep) +
                 (null == this.attr ? '' : '$' + this.attr.kind);
-        // console.log('PEG', this.peg)
     }
     unify(peer, ctx) {
         if (this.id === peer.id) {
@@ -80,21 +82,6 @@ class RefVal extends ValBase_1.ValBase {
         // as path cannot be found
         // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
         let resolved = null == ctx ? this : this.find(ctx);
-        // console.log('REF', resolved, this.peg, peer.canon)
-        // if (null == resolved && peer instanceof RefVal && this.peg === peer.peg) {
-        //   console.log('SAMEREF', this.peg, this.id, this.done, peer.canon, peer.id)
-        // }
-        // if (null == resolved && 0 < this.done) {
-        //   console.log('UREF', this.peg, this.done, peer.canon)
-        // }
-        // Don't try to resolve paths forever.
-        // TODO: large amount of reruns needed? why?
-        // resolved =
-        //   null == resolved &&
-        //     9999 < this.done
-        //     ?
-        //     Nil.make(ctx, 'no-path', this, peer)
-        //     : (resolved || this)
         resolved = resolved || this;
         let out;
         if (resolved instanceof RefVal) {
@@ -116,7 +103,6 @@ class RefVal extends ValBase_1.ValBase {
         }
         else {
             out = (0, op_1.unite)(ctx, resolved, peer);
-            // console.log('WWW', out, resolved, peer)
         }
         out.done = type_1.DONE === out.done ? type_1.DONE : this.done + 1;
         return out;
@@ -135,7 +121,6 @@ class RefVal extends ValBase_1.ValBase {
         let sep = this.sep;
         fullpath = fullpath
             .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
-        // console.log('FP', this.absolute, this.parts, fullpath)
         let node = ctx.root;
         let pI = 0;
         for (; pI < fullpath.length; pI++) {
@@ -144,27 +129,16 @@ class RefVal extends ValBase_1.ValBase {
                 node = node.peg[part];
             }
             else {
-                // console.log(
-                //   'FIND', ref.parts, pI, node.constructor.name,
-                //   node.peg.map(
-                //     (n: any) =>
-                //       n.constructor.name + ':' + n.done +
-                //       ' {' + Object.keys(n.peg) + '}'
-                //   )
-                // )
                 break;
             }
         }
-        // console.log('FIND', pI, fullpath, this.attr)
         if (pI === fullpath.length) {
             if (this.attr && 'KEY' === this.attr.kind) {
                 let key = fullpath[fullpath.length - ('' === this.attr.part ? 1 : 2)];
-                // console.log('FIND KEY', key, fullpath)
                 let sv = new val_1.StringVal(null == key ? '' : key, ctx);
                 // TODO: other props?
                 sv.done = type_1.DONE;
                 sv.path = this.path;
-                // console.log('SV', sv)
                 return sv;
             }
             else {
@@ -174,6 +148,14 @@ class RefVal extends ValBase_1.ValBase {
     }
     same(peer) {
         return null == peer ? false : this.peg === peer.peg;
+    }
+    clone(ctx) {
+        let out = super.clone(ctx);
+        out.absolute = this.absolute;
+        out.peg = this.peg;
+        out.parts = this.parts.slice(0);
+        out.attr = this.attr;
+        return out;
     }
     get canon() {
         return this.peg;

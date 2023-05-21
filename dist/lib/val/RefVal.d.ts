@@ -11,11 +11,12 @@ declare class RefVal extends ValBase {
         kind: 'KEY';
         part: string;
     };
-    constructor(peg: any[]);
+    constructor(peg: any[], ctx?: Context);
     append(part: any): void;
     unify(peer: Val, ctx: Context): Val;
     find(ctx: Context): Val | StringVal | undefined;
     same(peer: Val): boolean;
+    clone(ctx?: Context): Val;
     get canon(): any;
     gen(ctx?: Context): undefined;
 }

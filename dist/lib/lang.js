@@ -181,6 +181,7 @@ let AontuJsonic = function aontu(jsonic) {
             if (mo.___merge) {
                 let mop = { ...mo };
                 delete mop.___merge;
+                // TODO: needs addpath?
                 let mopv = new MapVal_1.MapVal(mop);
                 r.node = addpath(new ConjunctVal_1.ConjunctVal([mopv, ...mo.___merge]), r.keep.path);
             }
@@ -205,7 +206,19 @@ let AontuJsonic = function aontu(jsonic) {
     });
     jsonic.rule('pair', (rs) => {
         rs
-            .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
+            .open([{
+                s: [CJ, CL], p: 'val',
+                // pair:true not set, so key ignored by normal pair close
+                u: { spread: true },
+                g: 'spread'
+            }])
+            // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
+            .ao((r) => {
+            if (0 < r.d && r.use.spread) {
+                r.child.keep.path = [...r.keep.path, '&'];
+                r.child.keep.key = '&';
+            }
+        })
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
             if (rule.use.spread) {

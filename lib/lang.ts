@@ -279,7 +279,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         if (mo.___merge) {
           let mop = { ...mo }
           delete mop.___merge
+
+          // TODO: needs addpath?
           let mopv = new MapVal(mop)
+
           r.node = addpath(new ConjunctVal([mopv, ...mo.___merge]), r.keep.path)
         }
         else {
@@ -313,7 +316,20 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.rule('pair', (rs: RuleSpec) => {
     rs
-      .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
+      .open([{
+        s: [CJ, CL], p: 'val',
+        // pair:true not set, so key ignored by normal pair close
+        u: { spread: true },
+        g: 'spread'
+      }])
+
+      // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
+      .ao((r) => {
+        if (0 < r.d && r.use.spread) {
+          r.child.keep.path = [...r.keep.path, '&']
+          r.child.keep.key = '&'
+        }
+      })
 
       .bc((rule: Rule) => {
         // TRAVERSE PARENTS TO GET PATH
@@ -321,6 +337,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         if (rule.use.spread) {
           rule.node[MapVal.SPREAD] =
             (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
+
           rule.node[MapVal.SPREAD].v.push(rule.child.node)
         }
 

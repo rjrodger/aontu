@@ -97,6 +97,50 @@ describe('val-ref', function() {
   })
 
 
+  test('clone', () => {
+
+    let c0 = makeCtx(null, ['x'])
+
+    let r0 = new RefVal(['$', 'a'], c0)
+    // console.log(r0)
+    expect(r0).toMatchObject({
+      peg: '$.a',
+      path: ['x'],
+      absolute: true,
+      parts: ['a']
+    })
+
+    let r1 = r0.clone()
+    expect(r1).toMatchObject({
+      peg: '$.a',
+      path: ['x'],
+      absolute: true,
+      parts: ['a']
+    })
+
+    let c1 = makeCtx(null, ['y', 'z'])
+    let r2 = r0.clone(c1)
+    expect(r2).toMatchObject({
+      peg: '$.a',
+      path: ['y', 'z'],
+      absolute: true,
+      parts: ['a']
+    })
+
+
+    let c2 = makeCtx(null, ['k'])
+    let r3 = r2.clone(c2)
+    expect(r3).toMatchObject({
+      peg: '$.a',
+      path: ['k', 'z'],
+      absolute: true,
+      parts: ['a']
+    })
+
+
+  })
+
+
   test('absolute', () => {
     let s0 = 'a:$.x,x:1'
     let v0 = P(s0)
@@ -196,37 +240,35 @@ b: { c1: { k:1 }}
   })
 
 
-  /*
-    it('ref', () => {
-      let ctx = makeCtx()
-  
-      let d0 = new RefVal(['a'])
-      let d1 = new RefVal(['c'], true)
-      let d2 = new RefVal(['a', 'b'], false)
-      let d3 = new RefVal(['c', 'd', 'e'], true)
-  
-      expect(d0.canon).toEqual('a')
-      expect(d1.canon).toEqual('.c')
-      expect(d2.canon).toEqual('a.b')
-      expect(d3.canon).toEqual('.c.d.e')
-  
-      d0.append('x')
-      d1.append('x')
-      d2.append('x')
-      d3.append('x')
-  
-      expect(d0.canon).toEqual('a.x')
-      expect(d1.canon).toEqual('.c.x')
-      expect(d2.canon).toEqual('a.b.x')
-      expect(d3.canon).toEqual('.c.d.e.x')
-  
-      expect(d0.unify(TOP, ctx).canon).toEqual('a.x')
-      expect(TOP.unify(d0, ctx).canon).toEqual('a.x')
-      expect(d1.unify(TOP, ctx).canon).toEqual('.c.x')
-      expect(TOP.unify(d1, ctx).canon).toEqual('.c.x')
-  
-    })
-  */
+
+  it('ref', () => {
+    let ctx = makeCtx()
+
+    let d0 = new RefVal(['a'])
+    let d1 = new RefVal(['$', 'c'])
+    let d2 = new RefVal(['a', 'b'])
+    let d3 = new RefVal(['$', 'c', 'd', 'e'])
+
+    expect(d0.canon).toEqual('.a')
+    expect(d1.canon).toEqual('$.c')
+    expect(d2.canon).toEqual('.a.b')
+    expect(d3.canon).toEqual('$.c.d.e')
+
+    d0.append('x')
+    d1.append('x')
+    d2.append('x')
+    d3.append('x')
+
+    expect(d0.canon).toEqual('.a.x')
+    expect(d1.canon).toEqual('$.c.x')
+    expect(d2.canon).toEqual('.a.b.x')
+    expect(d3.canon).toEqual('$.c.d.e.x')
+
+    expect(d0.unify(TOP, ctx).canon).toEqual('.a.x')
+    expect(TOP.unify(d0, ctx).canon).toEqual('.a.x')
+    expect(d1.unify(TOP, ctx).canon).toEqual('$.c.x')
+    expect(TOP.unify(d1, ctx).canon).toEqual('$.c.x')
+  })
 
   /*
   it('unify', () => {
@@ -271,6 +313,9 @@ function print(o: any, t?: string) {
 }
 
 
-function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({}) })
+function makeCtx(r?: any, p?: string[]) {
+  return new Context({
+    root: r || new MapVal({}),
+    path: p
+  })
 }

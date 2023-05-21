@@ -8,7 +8,7 @@ const op_1 = require("./op/op");
 class Context {
     constructor(cfg) {
         this.root = cfg.root;
-        this.path = [];
+        this.path = cfg.path || [];
         this.err = cfg.err || [];
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1000000000 : cfg.vc;
@@ -16,6 +16,7 @@ class Context {
     clone(cfg) {
         return new Context({
             root: cfg.root || this.root,
+            path: cfg.path,
             err: cfg.err || this.err,
             vc: this.vc,
         });

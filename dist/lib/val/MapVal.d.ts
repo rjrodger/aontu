@@ -8,6 +8,7 @@ declare class MapVal extends ValBase {
     };
     constructor(peg: ValMap, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
+    clone(ctx?: Context): Val;
     get canon(): string;
     gen(ctx: Context): any;
 }

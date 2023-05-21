@@ -24,6 +24,9 @@ const TOP = {
     same(peer) {
         return TOP === peer;
     },
+    clone() {
+        return TOP;
+    },
     gen: (_ctx) => {
         return undefined;
     },
