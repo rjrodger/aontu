@@ -223,7 +223,7 @@ b: { &: {n:.$KEY} }
 b: { c0: { k:0, m:.$KEY }}
 b: { c1: { k:1 }}
 `
-    console.dir(G(s3), { depth: null })
+    // console.dir(G(s3), { depth: null })
 
 
     // let v1 = P(s1)

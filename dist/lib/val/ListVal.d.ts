@@ -8,6 +8,7 @@ declare class ListVal extends ValBase {
     };
     constructor(peg: ValList, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
+    clone(ctx?: Context): Val;
     get canon(): string;
     gen(ctx?: Context): any;
 }

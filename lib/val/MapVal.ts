@@ -50,34 +50,17 @@ class MapVal extends ValBase {
 
     if (spread) {
       if ('&' === spread.o) {
-
-        // let sctx = ctx ? ctx.descend('&') : new Context({
-        //   path: this.path.concat('&')
-        // })
-        // console.log('Sctx', this.id, this.path, sctx)
-
         let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-        // tmv = tmv.map((v: Val) => v.clone(sctx))
         this.spread.cj = new ConjunctVal(tmv, ctx)
-
-        // console.log('McS', this.id, ctx?.path)
-        // console.dir(this.spread.cj, { depth: null })
       }
     }
   }
 
+
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
-    let mark = Math.random()
-
-    // console.log('MAP UNIFY', this.done, this.path.join('.'), this.canon,
-    //  'P', peer.top || peer.constructor.name,
-    //  peer.done, peer.path.join(''), peer.canon)
-
-    // if (null == ctx) {
-    //   console.trace()
-    // }
+    // let mark = Math.random()
 
     let done: boolean = true
     let out: MapVal = TOP === peer ? this : new MapVal({}, ctx)
@@ -146,10 +129,10 @@ class MapVal extends ValBase {
 
         if (this.spread.cj) {
           let key_ctx = ctx.descend(peerkey)
-          // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
           let key_spread_cj = spread_cj.clone(key_ctx)
 
-          out.peg[peerkey] = new ConjunctVal([out.peg[peerkey], key_spread_cj], key_ctx)
+          out.peg[peerkey] =
+            new ConjunctVal([out.peg[peerkey], key_spread_cj], key_ctx)
           done = false
         }
         else {

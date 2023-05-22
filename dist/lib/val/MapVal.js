@@ -19,28 +19,15 @@ class MapVal extends ValBase_1.ValBase {
         // console.log('MC', this.id, peg, spread)
         if (spread) {
             if ('&' === spread.o) {
-                // let sctx = ctx ? ctx.descend('&') : new Context({
-                //   path: this.path.concat('&')
-                // })
-                // console.log('Sctx', this.id, this.path, sctx)
                 let tmv = Array.isArray(spread.v) ? spread.v : [spread.v];
-                // tmv = tmv.map((v: Val) => v.clone(sctx))
                 this.spread.cj = new ConjunctVal_1.ConjunctVal(tmv, ctx);
-                // console.log('McS', this.id, ctx?.path)
-                // console.dir(this.spread.cj, { depth: null })
             }
         }
     }
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
-        let mark = Math.random();
-        // console.log('MAP UNIFY', this.done, this.path.join('.'), this.canon,
-        //  'P', peer.top || peer.constructor.name,
-        //  peer.done, peer.path.join(''), peer.canon)
-        // if (null == ctx) {
-        //   console.trace()
-        // }
+        // let mark = Math.random()
         let done = true;
         let out = val_1.TOP === peer ? this : new MapVal({}, ctx);
         out.spread.cj = this.spread.cj;
@@ -88,9 +75,9 @@ class MapVal extends ValBase_1.ValBase {
                                 (0, op_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
-                    // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
                     let key_spread_cj = spread_cj.clone(key_ctx);
-                    out.peg[peerkey] = new ConjunctVal_1.ConjunctVal([out.peg[peerkey], key_spread_cj], key_ctx);
+                    out.peg[peerkey] =
+                        new ConjunctVal_1.ConjunctVal([out.peg[peerkey], key_spread_cj], key_ctx);
                     done = false;
                 }
                 else {

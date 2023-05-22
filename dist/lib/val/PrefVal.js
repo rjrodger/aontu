@@ -46,6 +46,11 @@ class PrefVal extends ValBase_1.ValBase {
                 (this.pref instanceof ValBase_1.ValBase && this.pref.same(peer.pref)));
         return pegsame && prefsame;
     }
+    clone(ctx) {
+        let out = super.clone(ctx);
+        out.pref = this.pref.clone(ctx);
+        return out;
+    }
     get canon() {
         return this.pref instanceof Nil_1.Nil ? this.peg.canon : '*' + this.pref.canon;
     }

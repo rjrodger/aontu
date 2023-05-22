@@ -98,6 +98,13 @@ class PrefVal extends ValBase {
   }
 
 
+  clone(ctx?: Context): Val {
+    let out = (super.clone(ctx) as PrefVal)
+    out.pref = this.pref.clone(ctx)
+    return out
+  }
+
+
   get canon() {
     return this.pref instanceof Nil ? this.peg.canon : '*' + this.pref.canon
   }

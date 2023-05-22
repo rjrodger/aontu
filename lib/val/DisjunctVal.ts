@@ -111,9 +111,20 @@ class DisjunctVal extends ValBase {
 
     return out
   }
+
+
+  clone(ctx?: Context): Val {
+    let out = (super.clone(ctx) as MapVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
+    return out
+  }
+
+
   get canon() {
     return this.peg.map((v: Val) => v.canon).join('|')
   }
+
+
   gen(ctx?: Context) {
 
     // TODO: this is not right - unresolved Disjuncts eval to undef

@@ -10,6 +10,7 @@ declare class Nil extends ValBase {
     static make: (ctx?: Context, why?: any, av?: Val, bv?: Val) => Nil;
     constructor(why?: any, ctx?: Context);
     unify(_peer: Val, _ctx: Context): this;
+    clone(ctx?: Context): Val;
     get canon(): string;
     gen(_ctx?: Context): undefined;
 }

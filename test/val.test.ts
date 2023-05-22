@@ -369,7 +369,7 @@ describe('val', function() {
     expect(l0.canon).toEqual('[&:{"x":1},{"y":1},{"y":2}]')
 
     let u0 = l0.unify(TOP, ctx)
-    expect(u0.canon).toEqual('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]')
+    expect(u0.canon).toEqual('[&:{"x":1},{"x":1,"y":1},{"x":1,"y":2}]')
 
   })
 

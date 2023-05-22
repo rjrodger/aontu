@@ -203,6 +203,7 @@ class ConjunctVal extends ValBase {
     return this.peg.map((v: Val) => v.canon).join('&')
   }
 
+
   gen(ctx?: Context) {
     throw new Error('ConjuntVal-gen')
 

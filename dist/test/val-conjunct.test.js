@@ -70,6 +70,13 @@ describe('val-conjunct', function () {
         let g1 = G('&:{x:*1|number},a:{},b:{x:2}');
         expect(g1).toEqual({ a: { x: 1 }, b: { x: 2 } });
     });
+    it('clone', () => {
+        let v0 = P('{x:1}&{y:2}&{z:3}');
+        // console.log(v0.canon)
+        expect(v0.canon).toEqual('{"x":1}&{"y":2}&{"z":3}');
+        let v0c = v0.clone();
+        expect(v0c.canon).toEqual('{"x":1}&{"y":2}&{"z":3}');
+    });
 });
 function print(o, t) {
     if (null != t) {

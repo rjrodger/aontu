@@ -16,6 +16,15 @@ class Nil extends ValBase_1.ValBase {
     unify(_peer, _ctx) {
         return this;
     }
+    clone(ctx) {
+        var _a, _b;
+        let out = super.clone(ctx);
+        out.why = this.why;
+        out.primary = (_a = this.primary) === null || _a === void 0 ? void 0 : _a.clone();
+        out.secondary = (_b = this.secondary) === null || _b === void 0 ? void 0 : _b.clone();
+        out.msg = this.msg;
+        return out;
+    }
     get canon() {
         return 'nil';
     }

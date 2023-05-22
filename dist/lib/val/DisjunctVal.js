@@ -63,6 +63,11 @@ class DisjunctVal extends ValBase_1.ValBase {
         out.done = done ? type_1.DONE : this.done + 1;
         return out;
     }
+    clone(ctx) {
+        let out = super.clone(ctx);
+        out.peg = this.peg.map((entry) => entry.clone(ctx));
+        return out;
+    }
     get canon() {
         return this.peg.map((v) => v.canon).join('|');
     }

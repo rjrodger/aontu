@@ -68,6 +68,7 @@ class Nil extends ValBase {
     return nil
   }
 
+
   constructor(why?: any, ctx?: Context) {
     super(null, ctx)
     this.why = why
@@ -76,9 +77,21 @@ class Nil extends ValBase {
     this.done = DONE
   }
 
+
   unify(_peer: Val, _ctx: Context) {
     return this
   }
+
+
+  clone(ctx?: Context): Val {
+    let out = (super.clone(ctx) as Nil)
+    out.why = this.why
+    out.primary = this.primary?.clone()
+    out.secondary = this.secondary?.clone()
+    out.msg = this.msg
+    return out
+  }
+
 
   get canon() {
     return 'nil'

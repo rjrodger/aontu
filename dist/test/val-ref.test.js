@@ -169,7 +169,7 @@ b: { &: {n:.$KEY} }
 b: { c0: { k:0, m:.$KEY }}
 b: { c1: { k:1 }}
 `;
-        console.dir(G(s3), { depth: null });
+        // console.dir(G(s3), { depth: null })
         // let v1 = P(s1)
         // console.log('AAA', v0)
         // expect(v0.canon).toEqual('{"a":{"b":1},"c":$.a.b$KEY}')
