@@ -1,17 +1,21 @@
 "use strict";
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Unify = exports.Context = void 0;
 const type_1 = require("./type");
+const val_1 = require("./val");
 const lang_1 = require("./lang");
 const op_1 = require("./op/op");
 class Context {
     constructor(cfg) {
+        this.cc = -1;
         this.root = cfg.root;
         this.path = cfg.path || [];
         this.err = cfg.err || [];
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1000000000 : cfg.vc;
+        this.cc = null == cfg.cc ? this.cc : cfg.cc;
+        // this.uc = null == cfg.uc ? this.uc : cfg.uc
     }
     clone(cfg) {
         return new Context({
@@ -19,6 +23,8 @@ class Context {
             path: cfg.path,
             err: cfg.err || this.err,
             vc: this.vc,
+            cc: this.cc,
+            // uc: this.uc,
         });
     }
     descend(key) {
@@ -46,11 +52,12 @@ class Unify {
         // TODO: derive maxdc from res deterministically
         // perhaps parse should count intial vals, paths, etc?
         let maxdc = 9; // 99
-        for (this.dc = 0; this.dc < maxdc && type_1.DONE !== res.done; this.dc++) {
+        for (this.cc = 0; this.cc < maxdc && type_1.DONE !== res.done; this.cc++) {
             // console.log('\n\nRES', this.dc)
             // console.log('\n\nRES', this.dc, res.canon)
             // console.dir(res, { depth: null })
-            res = (0, op_1.unite)(ctx, res, type_1.TOP);
+            ctx.cc = this.cc;
+            res = (0, op_1.unite)(ctx, res, val_1.TOP);
             ctx = ctx.clone({ root: res });
         }
         this.res = res;

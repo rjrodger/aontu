@@ -1,4 +1,5 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+
 
 
 import type {
@@ -23,12 +24,16 @@ import {
   unite
 } from '../op/op'
 
+
+
+import { TOP } from '../val'
+import { ConjunctVal } from '../val/ConjunctVal'
+import { DisjunctVal } from '../val/DisjunctVal'
+import { ListVal } from '../val/ListVal'
+import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
-
-import {
-  ValBase,
-} from '../val/ValBase'
-
+import { RefVal } from '../val/RefVal'
+import { ValBase } from '../val/ValBase'
 
 
 class PrefVal extends ValBase {

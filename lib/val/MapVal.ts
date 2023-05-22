@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
 
@@ -9,7 +9,6 @@ import type {
 
 import {
   DONE,
-  TOP,
 } from '../type'
 
 import {
@@ -17,30 +16,21 @@ import {
 } from '../unify'
 
 
-import {
-  Site
-} from '../lang'
-
 
 import {
   unite
 } from '../op/op'
 
-import {
-  ValBase,
-} from '../val/ValBase'
-
-import {
-  Nil,
-} from './Nil'
-
-import {
-  ConjunctVal,
-} from './ConjunctVal'
 
 
-
-
+import { TOP } from '../val'
+import { ConjunctVal } from '../val/ConjunctVal'
+import { DisjunctVal } from '../val/DisjunctVal'
+import { ListVal } from '../val/ListVal'
+import { Nil } from '../val/Nil'
+import { PrefVal } from '../val/PrefVal'
+import { RefVal } from '../val/RefVal'
+import { ValBase } from '../val/ValBase'
 
 
 class MapVal extends ValBase {
@@ -56,7 +46,7 @@ class MapVal extends ValBase {
     let spread = (this.peg as any)[MapVal.SPREAD]
     delete (this.peg as any)[MapVal.SPREAD]
 
-    console.log('MC', this.id, peg, spread)
+    // console.log('MC', this.id, peg, spread)
 
     if (spread) {
       if ('&' === spread.o) {
@@ -70,8 +60,8 @@ class MapVal extends ValBase {
         // tmv = tmv.map((v: Val) => v.clone(sctx))
         this.spread.cj = new ConjunctVal(tmv, ctx)
 
-        console.log('McS', this.id, ctx?.path)
-        console.dir(this.spread.cj, { depth: null })
+        // console.log('McS', this.id, ctx?.path)
+        // console.dir(this.spread.cj, { depth: null })
       }
     }
   }
@@ -116,34 +106,34 @@ class MapVal extends ValBase {
 
     let spread_cj = out.spread.cj || TOP
 
-    // Always unify children first
+    // Always unify own children first
     for (let key in this.peg) {
       let keyctx = ctx.descend(key)
       let key_spread_cj = spread_cj.clone(keyctx)
 
-      console.log('M0', this.id, mark, Object.keys(this.peg).join('~'),
-        'p=', this.path.join('.'),
-        'k=', key, peer.top || peer.constructor.name,
-        'pp=', this.peg[key].path.join('.'),
-        this.peg[key].canon,
-        'sp=', key_spread_cj.path.join('.'),
-        key_spread_cj.canon)
+      // console.log('M0', this.id, mark, Object.keys(this.peg).join('~'),
+      //   'p=', this.path.join('.'),
+      //   'k=', key, peer.top || peer.constructor.name,
+      //   'pp=', this.peg[key].path.join('.'),
+      //   this.peg[key].canon,
+      //   'sp=', key_spread_cj.path.join('.'),
+      //   key_spread_cj.canon)
 
-      if (1000000000 === this.id) {
-        console.dir(key_spread_cj, { depth: null })
-      }
+      // if (1000000000 === this.id) {
+      //   console.dir(key_spread_cj, { depth: null })
+      // }
 
-      out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj)
+      out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'map-own')
       done = (done && DONE === out.peg[key].done)
     }
 
 
     if (peer instanceof MapVal) {
-      let upeer: MapVal = (unite(ctx, peer) as MapVal)
+      let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map') as MapVal)
 
       for (let peerkey in upeer.peg) {
-        console.log('M1', this.id, mark, Object.keys(this.peg).join('~'),
-          'pk=', peerkey)
+        // console.log('M1', this.id, mark, Object.keys(this.peg).join('~'),
+        //   'pk=', peerkey)
 
         let peerchild = upeer.peg[peerkey]
         let child = out.peg[peerkey]
@@ -152,7 +142,7 @@ class MapVal extends ValBase {
           undefined === child ? peerchild :
             child instanceof Nil ? child :
               peerchild instanceof Nil ? peerchild :
-                unite(ctx.descend(peerkey), child, peerchild)
+                unite(ctx.descend(peerkey), child, peerchild, 'map-peer')
 
         if (this.spread.cj) {
           let key_ctx = ctx.descend(peerkey)

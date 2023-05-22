@@ -3,13 +3,11 @@
 
 import type {
   Val,
-  ValMap,
   ValList,
 } from '../type'
 
 import {
   DONE,
-  TOP,
 } from '../type'
 
 import {
@@ -26,13 +24,17 @@ import {
   unite
 } from '../op/op'
 
-import { Nil } from '../val/Nil'
 
-import {
-  ValBase,
-} from '../val/ValBase'
 
+
+import { TOP } from '../val'
 import { ConjunctVal } from '../val/ConjunctVal'
+import { DisjunctVal } from '../val/DisjunctVal'
+import { MapVal } from '../val/MapVal'
+import { Nil } from '../val/Nil'
+import { PrefVal } from '../val/PrefVal'
+import { RefVal } from '../val/RefVal'
+import { ValBase } from '../val/ValBase'
 
 
 

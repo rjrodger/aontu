@@ -8,23 +8,17 @@ import {
   Unify,
 } from '../lib/unify'
 
-import {
-  unite
-} from '../lib/op/op'
 
 
-import {
-  RefVal,
-  // norm
-} from '../lib/val/RefVal'
-
-
+import { TOP } from '../lib/val'
+import { ConjunctVal } from '../lib/val/ConjunctVal'
+import { DisjunctVal } from '../lib/val/DisjunctVal'
+import { ListVal } from '../lib/val/ListVal'
 import { MapVal } from '../lib/val/MapVal'
-
-
-import {
-  TOP
-} from '../lib/type'
+import { Nil } from '../lib/val/Nil'
+import { PrefVal } from '../lib/val/PrefVal'
+import { RefVal } from '../lib/val/RefVal'
+import { ValBase } from '../lib/val/ValBase'
 
 
 const lang = new Lang()

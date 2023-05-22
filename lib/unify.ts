@@ -1,10 +1,14 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
 import type { Val } from './type'
 
-import { DONE, TOP } from './type'
+import { DONE, } from './type'
 
+
+import {
+  TOP
+} from './val'
 
 import {
   Lang
@@ -16,8 +20,10 @@ import {
 
 
 
-import { MapVal } from '../lib/val/MapVal'
-import { RefVal } from '../lib/val/RefVal'
+
+
+// import { MapVal } from '../lib/val/MapVal'
+// import { RefVal } from '../lib/val/RefVal'
 import { Nil } from '../lib/val/Nil'
 
 
@@ -30,12 +36,15 @@ class Context {
   path: Path  // Path to current Val.
   err: Nil[]  // Nil error log of current unify.
   vc: number  // Val counter to create unique val ids.
+  cc: number = -1
 
   constructor(cfg: {
     root: Val,
     path?: Path,
     err?: Nil[],
-    vc?: number
+    vc?: number,
+    cc?: number,
+    // uc?: number,
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
@@ -43,6 +52,9 @@ class Context {
 
     // Multiple unify passes will keep incrementing Val counter.
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
+
+    this.cc = null == cfg.cc ? this.cc : cfg.cc
+    // this.uc = null == cfg.uc ? this.uc : cfg.uc
   }
 
 
@@ -56,6 +68,8 @@ class Context {
       path: cfg.path,
       err: cfg.err || this.err,
       vc: this.vc,
+      cc: this.cc,
+      // uc: this.uc,
     })
   }
 
@@ -118,7 +132,7 @@ class Unify {
   root: Val
   res: Val
   err: Nil[]
-  dc: number
+  cc: number
   lang: Lang
 
   constructor(root: Val | string, lang?: Lang) {
@@ -143,11 +157,11 @@ class Unify {
 
 
     let maxdc = 9 // 99
-    for (this.dc = 0; this.dc < maxdc && DONE !== res.done; this.dc++) {
+    for (this.cc = 0; this.cc < maxdc && DONE !== res.done; this.cc++) {
       // console.log('\n\nRES', this.dc)
       // console.log('\n\nRES', this.dc, res.canon)
       // console.dir(res, { depth: null })
-
+      ctx.cc = this.cc
       res = unite(ctx, res, TOP)
       ctx = ctx.clone({ root: res })
     }

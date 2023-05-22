@@ -1,13 +1,14 @@
 "use strict";
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConjunctVal = exports.norm = void 0;
 const type_1 = require("../type");
-const ValBase_1 = require("../val/ValBase");
+const op_1 = require("../op/op");
+const val_1 = require("../val");
+const MapVal_1 = require("../val/MapVal");
 const Nil_1 = require("../val/Nil");
 const RefVal_1 = require("../val/RefVal");
-const MapVal_1 = require("../val/MapVal");
-const op_1 = require("../op/op");
+const ValBase_1 = require("../val/ValBase");
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends ValBase_1.ValBase {
     constructor(peg, ctx) {
@@ -22,13 +23,14 @@ class ConjunctVal extends ValBase_1.ValBase {
         // console.log('CONJUNCT UNIFY', this.done, this.path.join('.'), this.canon,
         //   'P', peer.top || peer.constructor.name,
         //  peer.done, peer.path.join('.'), peer.canon)
-        // const mark = (Math.random() * 1e7) % 1e6 | 0
+        const mark = (Math.random() * 1e7) % 1e6 | 0;
         // console.log('CONJUNCT unify', mark, this.done, this.canon, 'peer=', peer.canon)
         let done = true;
         // Unify each term of conjunct against peer
         let upeer = [];
+        // console.log('CJa' + mark, this.peg.map((p: Val) => p.canon), 'p=', peer.canon)
         for (let vI = 0; vI < this.peg.length; vI++) {
-            upeer[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer);
+            upeer[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer, 'cj-own' + mark);
             // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].done);
             // console.log('CONJUNCT pud', mark, vI, done, prevdone, '|', upeer[vI].done, upeer[vI].canon)
@@ -41,14 +43,14 @@ class ConjunctVal extends ValBase_1.ValBase {
         // Unify terms against each other
         let outvals = [];
         let val;
-        let mark = Math.random();
+        // let mark = Math.random()
         // console.log('CJ upeer', mark, upeer.map(v => v.canon))
         let t0 = upeer[0];
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
             // let t0 = upeer[pI]
             // console.log('CJ TERM t0', pI, t0.done, t0.canon)
             if (type_1.DONE !== t0.done) {
-                let u0 = (0, op_1.unite)(ctx, t0, type_1.TOP);
+                let u0 = (0, op_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
                 if (type_1.DONE !== u0.done
                     // Maps and Lists are still unified so that path refs will work
                     // TODO: || ListVal - test!
@@ -78,7 +80,7 @@ class ConjunctVal extends ValBase_1.ValBase {
                 // console.log('CJ outvals C', outvals.map(v => v.canon))
             }
             else {
-                val = (0, op_1.unite)(ctx, t0, t1);
+                val = (0, op_1.unite)(ctx, t0, t1, 'cj-peer-t0t1');
                 done = done && type_1.DONE === val.done;
                 // Unite was just a conjunt anyway, so discard.
                 if (val instanceof ConjunctVal) {
@@ -105,7 +107,7 @@ class ConjunctVal extends ValBase_1.ValBase {
         let out;
         if (0 === outvals.length) {
             // Empty conjuncts evaporate.
-            out = type_1.TOP;
+            out = val_1.TOP;
         }
         // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {

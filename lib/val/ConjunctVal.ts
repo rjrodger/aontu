@@ -1,36 +1,19 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
 import type {
   Val,
-  ValMap,
-  ValList,
 } from '../type'
 
 import {
   DONE,
-  TOP,
 } from '../type'
 
-import {
-  ValBase,
-} from '../val/ValBase'
-
-import {
-  Nil,
-} from '../val/Nil'
-
-import { RefVal } from '../val/RefVal'
-import { MapVal } from '../val/MapVal'
 
 import {
   Context,
 } from '../unify'
 
-
-import {
-  Site
-} from '../lang'
 
 
 import {
@@ -38,6 +21,14 @@ import {
 } from '../op/op'
 
 
+import { TOP } from '../val'
+import { DisjunctVal } from '../val/DisjunctVal'
+import { ListVal } from '../val/ListVal'
+import { MapVal } from '../val/MapVal'
+import { Nil } from '../val/Nil'
+import { PrefVal } from '../val/PrefVal'
+import { RefVal } from '../val/RefVal'
+import { ValBase } from '../val/ValBase'
 
 
 // TODO: move main logic to op/conjunct
@@ -58,7 +49,7 @@ class ConjunctVal extends ValBase {
     //  peer.done, peer.path.join('.'), peer.canon)
 
 
-    // const mark = (Math.random() * 1e7) % 1e6 | 0
+    const mark = (Math.random() * 1e7) % 1e6 | 0
     // console.log('CONJUNCT unify', mark, this.done, this.canon, 'peer=', peer.canon)
 
     let done = true
@@ -66,8 +57,10 @@ class ConjunctVal extends ValBase {
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
+
+    // console.log('CJa' + mark, this.peg.map((p: Val) => p.canon), 'p=', peer.canon)
     for (let vI = 0; vI < this.peg.length; vI++) {
-      upeer[vI] = unite(ctx, this.peg[vI], peer)
+      upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own' + mark)
 
       // let prevdone = done
       done = done && (DONE === upeer[vI].done)
@@ -92,7 +85,7 @@ class ConjunctVal extends ValBase {
     let outvals: Val[] = []
     let val: Val
 
-    let mark = Math.random()
+    // let mark = Math.random()
 
     // console.log('CJ upeer', mark, upeer.map(v => v.canon))
 
@@ -104,7 +97,7 @@ class ConjunctVal extends ValBase {
       // console.log('CJ TERM t0', pI, t0.done, t0.canon)
 
       if (DONE !== t0.done) {
-        let u0 = unite(ctx, t0, TOP)
+        let u0 = unite(ctx, t0, TOP, 'cj-peer-t0')
 
         if (
           DONE !== u0.done
@@ -145,7 +138,7 @@ class ConjunctVal extends ValBase {
       }
 
       else {
-        val = unite(ctx, t0, t1)
+        val = unite(ctx, t0, t1, 'cj-peer-t0t1')
         done = done && DONE === val.done
 
         // Unite was just a conjunt anyway, so discard.

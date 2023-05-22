@@ -1,14 +1,14 @@
 "use strict";
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
 const type_1 = require("../type");
 const op_1 = require("../op/op");
-const Nil_1 = require("../val/Nil");
-const MapVal_1 = require("./MapVal");
-const ValBase_1 = require("../val/ValBase");
-const ConjunctVal_1 = require("../val/ConjunctVal");
 const val_1 = require("../val");
+const ConjunctVal_1 = require("../val/ConjunctVal");
+const MapVal_1 = require("../val/MapVal");
+const Nil_1 = require("../val/Nil");
+const ValBase_1 = require("../val/ValBase");
 class RefVal extends ValBase_1.ValBase {
     constructor(peg, ctx) {
         var _a;
@@ -75,36 +75,42 @@ class RefVal extends ValBase_1.ValBase {
                 (null == this.attr ? '' : '$' + this.attr.kind);
     }
     unify(peer, ctx) {
-        if (this.id === peer.id) {
-            return this;
-        }
-        // TODO: not resolved when all Vals in path are done is an error
-        // as path cannot be found
-        // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
-        let resolved = null == ctx ? this : this.find(ctx);
-        resolved = resolved || this;
-        let out;
-        if (resolved instanceof RefVal) {
-            if (type_1.TOP === peer) {
-                out = this;
-            }
-            else if (peer instanceof Nil_1.Nil) {
-                out = Nil_1.Nil.make(ctx, 'ref[' + this.peg + ']', this, peer);
-            }
-            // same path
-            else if (this.peg === peer.peg) {
-                out = this;
+        let out = this;
+        let why = 'id';
+        if (this.id !== peer.id) {
+            // TODO: not resolved when all Vals in path are done is an error
+            // as path cannot be found
+            // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
+            let resolved = null == ctx ? this : this.find(ctx);
+            resolved = resolved || this;
+            if (resolved instanceof RefVal) {
+                if (val_1.TOP === peer) {
+                    out = this;
+                    why = 'pt';
+                }
+                else if (peer instanceof Nil_1.Nil) {
+                    out = Nil_1.Nil.make(ctx, 'ref[' + this.peg + ']', this, peer);
+                    why = 'pn';
+                }
+                // same path
+                else if (this.peg === peer.peg) {
+                    out = this;
+                    why = 'pp';
+                }
+                else {
+                    // Ensure RefVal done is incremented
+                    this.done = type_1.DONE === this.done ? type_1.DONE : this.done + 1;
+                    out = new ConjunctVal_1.ConjunctVal([this, peer], ctx);
+                    why = 'cj';
+                }
             }
             else {
-                // Ensure RefVal done is incremented
-                this.done = type_1.DONE === this.done ? type_1.DONE : this.done + 1;
-                out = new ConjunctVal_1.ConjunctVal([this, peer], ctx);
+                out = (0, op_1.unite)(ctx, resolved, peer, 'ref');
+                why = 'u';
             }
+            out.done = type_1.DONE === out.done ? type_1.DONE : this.done + 1;
         }
-        else {
-            out = (0, op_1.unite)(ctx, resolved, peer);
-        }
-        out.done = type_1.DONE === out.done ? type_1.DONE : this.done + 1;
+        // console.log('RV', why, this.id, this.canon, '&', peer.canon, '->', out.canon)
         return out;
     }
     find(ctx) {

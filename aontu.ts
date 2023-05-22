@@ -38,10 +38,9 @@ also trace deps into top val and watch via model
  */
 function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   let opts = util.options(src, popts)
-
-  let lang = new Lang(opts)
   let deps = {}
-  let val = lang.parse(opts.src, { deps: deps })
+
+  let val = util.parse(opts, { deps })
   let uni = new Unify(val as unknown as Val)
   let res = uni.res
   let err = uni.err
@@ -73,6 +72,13 @@ const util = {
     }
     return opts
   },
+
+
+  parse(opts: Options, ctx: { deps: any }): Val {
+    let lang = new Lang(opts)
+    let val = lang.parse(opts.src, { deps: ctx.deps })
+    return val
+  }
 }
 
 export { Aontu, Val, Nil, Lang, Context, util }

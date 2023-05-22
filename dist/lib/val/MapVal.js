@@ -1,12 +1,13 @@
 "use strict";
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MapVal = void 0;
 const type_1 = require("../type");
 const op_1 = require("../op/op");
+const val_1 = require("../val");
+const ConjunctVal_1 = require("../val/ConjunctVal");
+const Nil_1 = require("../val/Nil");
 const ValBase_1 = require("../val/ValBase");
-const Nil_1 = require("./Nil");
-const ConjunctVal_1 = require("./ConjunctVal");
 class MapVal extends ValBase_1.ValBase {
     constructor(peg, ctx) {
         super(peg, ctx);
@@ -15,7 +16,7 @@ class MapVal extends ValBase_1.ValBase {
         };
         let spread = this.peg[MapVal.SPREAD];
         delete this.peg[MapVal.SPREAD];
-        console.log('MC', this.id, peg, spread);
+        // console.log('MC', this.id, peg, spread)
         if (spread) {
             if ('&' === spread.o) {
                 // let sctx = ctx ? ctx.descend('&') : new Context({
@@ -25,8 +26,8 @@ class MapVal extends ValBase_1.ValBase {
                 let tmv = Array.isArray(spread.v) ? spread.v : [spread.v];
                 // tmv = tmv.map((v: Val) => v.clone(sctx))
                 this.spread.cj = new ConjunctVal_1.ConjunctVal(tmv, ctx);
-                console.log('McS', this.id, ctx === null || ctx === void 0 ? void 0 : ctx.path);
-                console.dir(this.spread.cj, { depth: null });
+                // console.log('McS', this.id, ctx?.path)
+                // console.dir(this.spread.cj, { depth: null })
             }
         }
     }
@@ -41,7 +42,7 @@ class MapVal extends ValBase_1.ValBase {
         //   console.trace()
         // }
         let done = true;
-        let out = type_1.TOP === peer ? this : new MapVal({}, ctx);
+        let out = val_1.TOP === peer ? this : new MapVal({}, ctx);
         out.spread.cj = this.spread.cj;
         if (peer instanceof MapVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj = new ConjunctVal_1.ConjunctVal([out.spread.cj, peer.spread.cj], ctx)));
@@ -55,29 +56,36 @@ class MapVal extends ValBase_1.ValBase {
           done = (done && DONE === out.spread.cj.done)
         }
         */
-        let spread_cj = out.spread.cj || type_1.TOP;
-        // Always unify children first
+        let spread_cj = out.spread.cj || val_1.TOP;
+        // Always unify own children first
         for (let key in this.peg) {
             let keyctx = ctx.descend(key);
             let key_spread_cj = spread_cj.clone(keyctx);
-            console.log('M0', this.id, mark, Object.keys(this.peg).join('~'), 'p=', this.path.join('.'), 'k=', key, peer.top || peer.constructor.name, 'pp=', this.peg[key].path.join('.'), this.peg[key].canon, 'sp=', key_spread_cj.path.join('.'), key_spread_cj.canon);
-            if (1000000000 === this.id) {
-                console.dir(key_spread_cj, { depth: null });
-            }
-            out.peg[key] = (0, op_1.unite)(keyctx, this.peg[key], key_spread_cj);
+            // console.log('M0', this.id, mark, Object.keys(this.peg).join('~'),
+            //   'p=', this.path.join('.'),
+            //   'k=', key, peer.top || peer.constructor.name,
+            //   'pp=', this.peg[key].path.join('.'),
+            //   this.peg[key].canon,
+            //   'sp=', key_spread_cj.path.join('.'),
+            //   key_spread_cj.canon)
+            // if (1000000000 === this.id) {
+            //   console.dir(key_spread_cj, { depth: null })
+            // }
+            out.peg[key] = (0, op_1.unite)(keyctx, this.peg[key], key_spread_cj, 'map-own');
             done = (done && type_1.DONE === out.peg[key].done);
         }
         if (peer instanceof MapVal) {
-            let upeer = (0, op_1.unite)(ctx, peer);
+            let upeer = (0, op_1.unite)(ctx, peer, undefined, 'map-peer-map');
             for (let peerkey in upeer.peg) {
-                console.log('M1', this.id, mark, Object.keys(this.peg).join('~'), 'pk=', peerkey);
+                // console.log('M1', this.id, mark, Object.keys(this.peg).join('~'),
+                //   'pk=', peerkey)
                 let peerchild = upeer.peg[peerkey];
                 let child = out.peg[peerkey];
                 let oval = out.peg[peerkey] =
                     undefined === child ? peerchild :
                         child instanceof Nil_1.Nil ? child :
                             peerchild instanceof Nil_1.Nil ? peerchild :
-                                (0, op_1.unite)(ctx.descend(peerkey), child, peerchild);
+                                (0, op_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
                     // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
@@ -90,7 +98,7 @@ class MapVal extends ValBase_1.ValBase {
                 }
             }
         }
-        else if (type_1.TOP !== peer) {
+        else if (val_1.TOP !== peer) {
             return Nil_1.Nil.make(ctx, 'map', this, peer);
         }
         out.done = done ? type_1.DONE : out.done;

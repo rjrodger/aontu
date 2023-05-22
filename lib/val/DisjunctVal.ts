@@ -1,4 +1,5 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+
 
 
 import type {
@@ -24,15 +25,16 @@ import {
 } from '../op/op'
 
 
-import {
-  ValBase,
-} from '../val/ValBase'
 
 
-import { Nil } from './Nil'
-import { PrefVal } from './PrefVal'
-
-
+import { TOP } from '../val'
+import { ConjunctVal } from '../val/ConjunctVal'
+import { ListVal } from '../val/ListVal'
+import { MapVal } from '../val/MapVal'
+import { Nil } from '../val/Nil'
+import { PrefVal } from '../val/PrefVal'
+import { RefVal } from '../val/RefVal'
+import { ValBase } from '../val/ValBase'
 
 
 

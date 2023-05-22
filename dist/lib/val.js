@@ -1,11 +1,45 @@
 "use strict";
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Integer = void 0;
+exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarTypeVal = exports.Integer = exports.TOP = void 0;
 const type_1 = require("./type");
 const unify_1 = require("./unify");
+const lang_1 = require("./lang");
 const Nil_1 = require("./val/Nil");
 const ValBase_1 = require("./val/ValBase");
+// There can be only one.
+class TopVal extends ValBase_1.ValBase {
+    constructor() {
+        super(null);
+        this.isVal = true;
+        this.id = 0;
+        this.top = true;
+        this.peg = undefined;
+        this.done = type_1.DONE;
+        this.path = [];
+        this.row = -1;
+        this.col = -1;
+        this.url = '';
+        // TOP is always DONE, by definition.
+        this.done = type_1.DONE;
+    }
+    unify(peer, _ctx) {
+        return peer;
+    }
+    get canon() { return 'top'; }
+    get site() { return new lang_1.Site(this); }
+    same(peer) {
+        return this === peer;
+    }
+    clone() {
+        return this;
+    }
+    gen(_ctx) {
+        return undefined;
+    }
+}
+const TOP = new TopVal();
+exports.TOP = TOP;
 // A ScalarType for integers. Number includes floats.
 class Integer {
 }
@@ -134,6 +168,6 @@ class BooleanVal extends ScalarVal {
     }
 }
 exports.BooleanVal = BooleanVal;
-BooleanVal.TRUE = new BooleanVal(true, new unify_1.Context({ vc: 1, root: type_1.TOP }));
-BooleanVal.FALSE = new BooleanVal(false, new unify_1.Context({ vc: 2, root: type_1.TOP }));
+BooleanVal.TRUE = new BooleanVal(true, new unify_1.Context({ vc: 1, root: TOP }));
+BooleanVal.FALSE = new BooleanVal(false, new unify_1.Context({ vc: 2, root: TOP }));
 //# sourceMappingURL=val.js.map

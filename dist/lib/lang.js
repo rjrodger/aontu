@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
 const jsonic_next_1 = require("@jsonic/jsonic-next");
@@ -10,14 +10,13 @@ const pkg_1 = require("@jsonic/multisource/dist/resolver/pkg");
 const mem_1 = require("@jsonic/multisource/dist/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
-const type_1 = require("./type");
-const ConjunctVal_1 = require("./val/ConjunctVal");
 const DisjunctVal_1 = require("./val/DisjunctVal");
-const MapVal_1 = require("./val/MapVal");
+const ConjunctVal_1 = require("./val/ConjunctVal");
 const ListVal_1 = require("./val/ListVal");
+const MapVal_1 = require("./val/MapVal");
+const Nil_1 = require("./val/Nil");
 const PrefVal_1 = require("./val/PrefVal");
 const RefVal_1 = require("./val/RefVal");
-const Nil_1 = require("./val/Nil");
 const val_1 = require("./val");
 class Site {
     // static NONE = new Site(TOP)
@@ -60,7 +59,7 @@ let AontuJsonic = function aontu(jsonic) {
                     val: (r) => addpath(new Nil_1.Nil('literal'), r.keep.path)
                 },
                 // TODO: FIX: need a TOP instance to hold path
-                'top': { val: () => type_1.TOP },
+                'top': { val: () => val_1.TOP },
             }
         },
         map: {

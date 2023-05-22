@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Richard Rodger, MIT License */
+/* Copyright (c) 2022-2023 Richard Rodger, MIT License */
 
 
 // TODO: refactor these out
@@ -61,43 +61,6 @@ type ValList = Val[]
 const DONE = -1
 
 
-// There can be only one.
-const TOP: Val = {
-  isVal: true,
-
-  id: 0,
-  top: true,
-  peg: undefined,
-  done: DONE,
-  path: [],
-  row: -1,
-  col: -1,
-  url: '',
-
-  unify(peer: Val, _ctx: Context): Val {
-    return peer
-  },
-
-  get canon() { return 'top' },
-
-  get site() { return new Site(this) },
-
-  same(peer: Val): boolean {
-    return TOP === peer
-  },
-
-  clone() {
-    return TOP
-  },
-
-  gen: (_ctx?: Context) => {
-    return undefined
-  },
-
-}
-
-
-
 export type {
   Val,
   ValMap,
@@ -107,7 +70,6 @@ export type {
 
 export {
   DONE,
-  TOP,
   Resolver,
 }
 

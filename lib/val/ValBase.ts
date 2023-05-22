@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
 
@@ -6,10 +6,6 @@ import type {
   Val,
 } from '../type'
 
-import {
-  DONE,
-  TOP,
-} from '../type'
 
 import {
   Context,
@@ -21,15 +17,9 @@ import {
 } from '../lang'
 
 
-import {
-  unite
-} from '../op/op'
 
 
-
-
-
-abstract class ValBase implements Val {
+class ValBase implements Val {
   isVal = true
 
   id: number
@@ -51,7 +41,8 @@ abstract class ValBase implements Val {
   constructor(peg?: any, ctx?: Context) {
     this.peg = peg
     this.path = ctx?.path || []
-    this.id = (ctx && ctx.vc++) || (9e9 + Math.floor(Math.random() * (1e9)))
+    // this.id = (ctx && ctx.vc++) || (9e9 + Math.floor(Math.random() * (1e9)))
+    this.id = (9e9 + Math.floor(Math.random() * (1e9)))
   }
 
   same(peer: Val): boolean {
@@ -80,9 +71,14 @@ abstract class ValBase implements Val {
 
 
   // TODO: can ctx be optional?
-  abstract unify(peer: Val, ctx?: Context): Val
-  abstract get canon(): string
-  abstract gen(ctx?: Context): any
+  // abstract unify(peer: Val, ctx?: Context): Val
+  // abstract get canon(): string
+  // abstract gen(ctx?: Context): any
+
+  unify(peer: Val, ctx?: Context): Val { return this }
+  get canon(): string { return '' }
+  gen(ctx?: Context): any { return null }
+
 }
 
 

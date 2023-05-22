@@ -7,11 +7,13 @@ declare class Context {
     path: Path;
     err: Nil[];
     vc: number;
+    cc: number;
     constructor(cfg: {
         root: Val;
         path?: Path;
         err?: Nil[];
         vc?: number;
+        cc?: number;
     });
     clone(cfg: {
         root?: Val;
@@ -24,7 +26,7 @@ declare class Unify {
     root: Val;
     res: Val;
     err: Nil[];
-    dc: number;
+    cc: number;
     lang: Lang;
     constructor(root: Val | string, lang?: Lang);
 }

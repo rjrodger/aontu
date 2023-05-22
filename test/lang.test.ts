@@ -13,12 +13,16 @@ import {
   Context,
 } from '../lib/unify'
 
+
+import { TOP } from '../lib/val'
+import { ConjunctVal } from '../lib/val/ConjunctVal'
+import { DisjunctVal } from '../lib/val/DisjunctVal'
+import { ListVal } from '../lib/val/ListVal'
 import { MapVal } from '../lib/val/MapVal'
 import { Nil } from '../lib/val/Nil'
-
-import {
-  TOP,
-} from '../lib/type'
+import { PrefVal } from '../lib/val/PrefVal'
+import { RefVal } from '../lib/val/RefVal'
+import { ValBase } from '../lib/val/ValBase'
 
 
 let lang = new Lang()
@@ -250,18 +254,18 @@ describe('lang', function() {
 
     let u0 = v0.unify(TOP, ctx)
     expect(u0.canon)
-      .toEqual('{"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+      .toEqual('{"a":{&:{"x":1,"y":integer},"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}')
 
-    let v1 = P('k:{x:1,y:integer},a:{&:.k,b:{y:1},c:{y:2}}')
+    let v1 = P('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}')
     expect(v1.canon)
-      .toEqual('{"k":{"x":1,"y":integer},"a":{&:.k,"b":{"y":1},"c":{"y":2}}}')
+      .toEqual('{"k":{"x":1,"y":integer},"a":{&:$.k,"b":{"y":1},"c":{"y":2}}}')
 
     let c1 = makeCtx({ root: v1 })
     let u1a = v1.unify(TOP, c1)
     //console.log(u1a.done, u1a.canon)
     expect(u1a.canon).
-      toEqual('{"k":{"x":1,"y":integer},"a":{&:{"x":1,"y":integer},' +
-        '"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+      toEqual('{"k":{"x":1,"y":integer},"a":{&:$.k,' +
+        '"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}')
 
 
     let v2 = P('a:{&:number},a:{x:1},a:{y:2}')
@@ -283,11 +287,11 @@ describe('lang', function() {
 
     let v5a = P('{&:{x:1}}&{a:{y:1}}')
     let u5a = v5a.unify(TOP, ctx)
-    expect(u5a.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1}}')
+    expect(u5a.canon).toEqual('{&:{"x":1},"a":{"x":1,"y":1}}')
 
     let v5b = P('{a:{y:1}}&{&:{x:1}}')
     let u5b = v5b.unify(TOP, ctx)
-    expect(u5b.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1}}')
+    expect(u5b.canon).toEqual('{&:{"x":1},"a":{"x":1,"y":1}}')
 
 
     let v6 = P('b:{a:{&:{K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}')
@@ -296,7 +300,7 @@ describe('lang', function() {
     let u6 = v6.unify(TOP, ctx)
     expect(u6.canon)
       .toEqual('{"b":{"a":{&:{"K":0},' +
-        '"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}')
+        '"z":{"K":0,"Z":3},"x":{"K":0,"X":1},"y":{"K":0,"Y":2}}}}')
 
   })
 

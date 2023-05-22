@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ValBase = void 0;
 const lang_1 = require("../lang");
@@ -13,7 +13,8 @@ class ValBase {
         this.url = '';
         this.peg = peg;
         this.path = (ctx === null || ctx === void 0 ? void 0 : ctx.path) || [];
-        this.id = (ctx && ctx.vc++) || (9e9 + Math.floor(Math.random() * (1e9)));
+        // this.id = (ctx && ctx.vc++) || (9e9 + Math.floor(Math.random() * (1e9)))
+        this.id = (9e9 + Math.floor(Math.random() * (1e9)));
     }
     same(peer) {
         // return this === peer
@@ -33,6 +34,13 @@ class ValBase {
     get site() {
         return new lang_1.Site(this);
     }
+    // TODO: can ctx be optional?
+    // abstract unify(peer: Val, ctx?: Context): Val
+    // abstract get canon(): string
+    // abstract gen(ctx?: Context): any
+    unify(peer, ctx) { return this; }
+    get canon() { return ''; }
+    gen(ctx) { return null; }
 }
 exports.ValBase = ValBase;
 //# sourceMappingURL=ValBase.js.map

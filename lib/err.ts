@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
 import { Nil } from './val/Nil'

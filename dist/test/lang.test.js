@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
+const val_1 = require("../lib/val");
 const MapVal_1 = require("../lib/val/MapVal");
-const type_1 = require("../lib/type");
 let lang = new lang_1.Lang();
 let P = lang.parse.bind(lang);
 describe('lang', function () {
@@ -30,27 +30,27 @@ describe('lang', function () {
         let ctx = makeCtx();
         let v0 = P('a:{x:1},a:{y:2}');
         expect(v0.canon).toEqual('{"a":{"x":1}&{"y":2}}');
-        let u0 = v0.unify(type_1.TOP, ctx);
+        let u0 = v0.unify(val_1.TOP, ctx);
         expect(u0.canon).toEqual('{"a":{"x":1,"y":2}}');
         expect(u0.gen()).toEqual({ a: { x: 1, y: 2 } });
         let v1 = P('a:b:{x:1},a:b:{y:2}');
         expect(v1.canon).toEqual('{"a":{"b":{"x":1}}&{"b":{"y":2}}}');
-        let u1 = v1.unify(type_1.TOP, ctx);
+        let u1 = v1.unify(val_1.TOP, ctx);
         expect(u1.canon).toEqual('{"a":{"b":{"x":1,"y":2}}}');
         expect(u1.gen()).toEqual({ a: { b: { x: 1, y: 2 } } });
         let v2 = P('a:b:c:{x:1},a:b:c:{y:2}');
         expect(v2.canon).toEqual('{"a":{"b":{"c":{"x":1}}}&{"b":{"c":{"y":2}}}}');
-        let u2 = v2.unify(type_1.TOP, ctx);
+        let u2 = v2.unify(val_1.TOP, ctx);
         expect(u2.canon).toEqual('{"a":{"b":{"c":{"x":1,"y":2}}}}');
         expect(u2.gen()).toEqual({ a: { b: { c: { x: 1, y: 2 } } } });
         let v0m = P('a:{x:1},a:{y:2},a:{z:3}');
         expect(v0m.canon).toEqual('{"a":{"x":1}&{"y":2}&{"z":3}}');
-        let u0m = v0m.unify(type_1.TOP, ctx);
+        let u0m = v0m.unify(val_1.TOP, ctx);
         expect(u0m.canon).toEqual('{"a":{"x":1,"y":2,"z":3}}');
         expect(u0m.gen()).toEqual({ a: { x: 1, y: 2, z: 3 } });
         let v1m = P('a:b:{x:1},a:b:{y:2},a:b:{z:3}');
         expect(v1m.canon).toEqual('{"a":{"b":{"x":1}}&{"b":{"y":2}}&{"b":{"z":3}}}');
-        let u1m = v1m.unify(type_1.TOP, ctx);
+        let u1m = v1m.unify(val_1.TOP, ctx);
         expect(u1m.canon).toEqual('{"a":{"b":{"x":1,"y":2,"z":3}}}');
         expect(u1m.gen()).toEqual({ a: { b: { x: 1, y: 2, z: 3 } } });
         let v2m = P('a:b:c:{x:1},a:b:c:{y:2},a:b:c:{z:3}');
@@ -58,7 +58,7 @@ describe('lang', function () {
             '{"b":{"c":{"x":1}}}&' +
             '{"b":{"c":{"y":2}}}&' +
             '{"b":{"c":{"z":3}}}}');
-        let u2m = v2m.unify(type_1.TOP, ctx);
+        let u2m = v2m.unify(val_1.TOP, ctx);
         expect(u2m.canon).toEqual('{"a":{"b":{"c":{"x":1,"y":2,"z":3}}}}');
         expect(u2m.gen()).toEqual({ a: { b: { c: { x: 1, y: 2, z: 3 } } } });
     });
@@ -154,44 +154,44 @@ describe('lang', function () {
         let ctx = makeCtx();
         let v0 = P('a:{&:{x:1,y:integer},b:{y:1},c:{y:2}}');
         expect(v0.canon).toEqual('{"a":{&:{"x":1,"y":integer},"b":{"y":1},"c":{"y":2}}}');
-        let u0 = v0.unify(type_1.TOP, ctx);
+        let u0 = v0.unify(val_1.TOP, ctx);
         expect(u0.canon)
-            .toEqual('{"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}');
-        let v1 = P('k:{x:1,y:integer},a:{&:.k,b:{y:1},c:{y:2}}');
+            .toEqual('{"a":{&:{"x":1,"y":integer},"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}');
+        let v1 = P('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}');
         expect(v1.canon)
-            .toEqual('{"k":{"x":1,"y":integer},"a":{&:.k,"b":{"y":1},"c":{"y":2}}}');
+            .toEqual('{"k":{"x":1,"y":integer},"a":{&:$.k,"b":{"y":1},"c":{"y":2}}}');
         let c1 = makeCtx({ root: v1 });
-        let u1a = v1.unify(type_1.TOP, c1);
+        let u1a = v1.unify(val_1.TOP, c1);
         //console.log(u1a.done, u1a.canon)
         expect(u1a.canon).
-            toEqual('{"k":{"x":1,"y":integer},"a":{&:{"x":1,"y":integer},' +
-            '"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}');
+            toEqual('{"k":{"x":1,"y":integer},"a":{&:$.k,' +
+            '"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}');
         let v2 = P('a:{&:number},a:{x:1},a:{y:2}');
         expect(v2.canon).toEqual('{"a":{&:number}&{"x":1}&{"y":2}}');
-        let u2 = v2.unify(type_1.TOP, ctx);
+        let u2 = v2.unify(val_1.TOP, ctx);
         expect(u2.canon).toEqual('{"a":{&:number,"x":1,"y":2}}');
         let v3 = P('a:{&:number,z:3},a:{x:1},a:{y:2}');
         expect(v3.canon).toEqual('{"a":{&:number,"z":3}&{"x":1}&{"y":2}}');
-        let u3 = v3.unify(type_1.TOP, ctx);
+        let u3 = v3.unify(val_1.TOP, ctx);
         expect(u3.canon).toEqual('{"a":{&:number,"z":3,"x":1,"y":2}}');
         let v4 = P('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}');
         expect(v4.canon).toEqual('{"b":{"a":{&:number,"z":3}&{"x":1}&{"y":2}}}');
-        let u4 = v4.unify(type_1.TOP, ctx);
+        let u4 = v4.unify(val_1.TOP, ctx);
         expect(u4.canon).toEqual('{"b":{"a":{&:number,"z":3,"x":1,"y":2}}}');
         // Must commute!
         let v5a = P('{&:{x:1}}&{a:{y:1}}');
-        let u5a = v5a.unify(type_1.TOP, ctx);
-        expect(u5a.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1}}');
+        let u5a = v5a.unify(val_1.TOP, ctx);
+        expect(u5a.canon).toEqual('{&:{"x":1},"a":{"x":1,"y":1}}');
         let v5b = P('{a:{y:1}}&{&:{x:1}}');
-        let u5b = v5b.unify(type_1.TOP, ctx);
-        expect(u5b.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1}}');
+        let u5b = v5b.unify(val_1.TOP, ctx);
+        expect(u5b.canon).toEqual('{&:{"x":1},"a":{"x":1,"y":1}}');
         let v6 = P('b:{a:{&:{K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}');
         expect(v6.canon)
             .toEqual('{"b":{"a":{&:{"K":0},"z":{"Z":3}}&{"x":{"X":1}}&{"y":{"Y":2}}}}');
-        let u6 = v6.unify(type_1.TOP, ctx);
+        let u6 = v6.unify(val_1.TOP, ctx);
         expect(u6.canon)
             .toEqual('{"b":{"a":{&:{"K":0},' +
-            '"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}');
+            '"z":{"K":0,"Z":3},"x":{"K":0,"X":1},"y":{"K":0,"Y":2}}}}');
     });
     it('source', () => {
         let v0 = P(`

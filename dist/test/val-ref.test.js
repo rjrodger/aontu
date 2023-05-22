@@ -2,14 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
-const RefVal_1 = require("../lib/val/RefVal");
+const val_1 = require("../lib/val");
 const MapVal_1 = require("../lib/val/MapVal");
-const type_1 = require("../lib/type");
+const RefVal_1 = require("../lib/val/RefVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 const D = (x) => console.dir(x, { depth: null });
-const UC = (s, r) => (r = P(s)).unify(type_1.TOP, makeCtx(r)).canon;
+const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
 const V = (x) => console.dir(x, { depth: null });
 describe('val-ref', function () {
@@ -193,10 +193,10 @@ b: { c1: { k:1 }}
         expect(d1.canon).toEqual('$.c.x');
         expect(d2.canon).toEqual('.a.b.x');
         expect(d3.canon).toEqual('$.c.d.e.x');
-        expect(d0.unify(type_1.TOP, ctx).canon).toEqual('.a.x');
-        expect(type_1.TOP.unify(d0, ctx).canon).toEqual('.a.x');
-        expect(d1.unify(type_1.TOP, ctx).canon).toEqual('$.c.x');
-        expect(type_1.TOP.unify(d1, ctx).canon).toEqual('$.c.x');
+        expect(d0.unify(val_1.TOP, ctx).canon).toEqual('.a.x');
+        expect(val_1.TOP.unify(d0, ctx).canon).toEqual('.a.x');
+        expect(d1.unify(val_1.TOP, ctx).canon).toEqual('$.c.x');
+        expect(val_1.TOP.unify(d1, ctx).canon).toEqual('$.c.x');
     });
     /*
     it('unify', () => {

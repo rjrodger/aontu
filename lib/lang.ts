@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 import {
   Jsonic,
@@ -42,20 +42,20 @@ import type {
   Options,
 } from './type'
 
-import {
-  TOP
-} from './type'
 
-import { ConjunctVal } from './val/ConjunctVal'
+
 import { DisjunctVal } from './val/DisjunctVal'
-import { MapVal } from './val/MapVal'
+import { ConjunctVal } from './val/ConjunctVal'
 import { ListVal } from './val/ListVal'
+import { MapVal } from './val/MapVal'
+import { Nil } from './val/Nil'
 import { PrefVal } from './val/PrefVal'
 import { RefVal } from './val/RefVal'
-import { Nil } from './val/Nil'
+import { ValBase } from './val/ValBase'
 
 
 import {
+  TOP,
   ScalarTypeVal,
   Integer,
   StringVal,
@@ -80,9 +80,8 @@ class Site {
     this.col = val.col
     this.url = val.url
   }
-
-
 }
+
 
 
 let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {

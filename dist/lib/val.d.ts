@@ -1,6 +1,26 @@
 import type { Val } from './type';
 import { Context } from './unify';
+import { Site } from './lang';
 import { ValBase } from './val/ValBase';
+declare class TopVal extends ValBase {
+    isVal: boolean;
+    id: number;
+    top: boolean;
+    peg: undefined;
+    done: number;
+    path: never[];
+    row: number;
+    col: number;
+    url: string;
+    constructor();
+    unify(peer: Val, _ctx: Context): Val;
+    get canon(): string;
+    get site(): Site;
+    same(peer: Val): boolean;
+    clone(): this;
+    gen(_ctx?: Context): undefined;
+}
+declare const TOP: TopVal;
 declare class Integer {
 }
 type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
@@ -38,4 +58,4 @@ declare class BooleanVal extends ScalarVal<boolean> {
     static TRUE: BooleanVal;
     static FALSE: BooleanVal;
 }
-export { Integer, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, };
+export { TOP, Integer, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, };

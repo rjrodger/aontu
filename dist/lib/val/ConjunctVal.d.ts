@@ -1,6 +1,6 @@
 import type { Val } from '../type';
-import { ValBase } from '../val/ValBase';
 import { Context } from '../unify';
+import { ValBase } from '../val/ValBase';
 declare class ConjunctVal extends ValBase {
     constructor(peg: Val[], ctx?: Context);
     append(peer: Val): ConjunctVal;

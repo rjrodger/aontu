@@ -1,7 +1,7 @@
 import type { Val } from '../type';
 import { Context } from '../unify';
-import { ValBase } from '../val/ValBase';
 import { StringVal } from '../val';
+import { ValBase } from '../val/ValBase';
 declare class RefVal extends ValBase {
     parts: string[];
     absolute: boolean;

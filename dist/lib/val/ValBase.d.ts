@@ -1,7 +1,7 @@
 import type { Val } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
-declare abstract class ValBase implements Val {
+declare class ValBase implements Val {
     isVal: boolean;
     id: number;
     done: number;
@@ -16,8 +16,8 @@ declare abstract class ValBase implements Val {
     same(peer: Val): boolean;
     clone(ctx?: Context): Val;
     get site(): Site;
-    abstract unify(peer: Val, ctx?: Context): Val;
-    abstract get canon(): string;
-    abstract gen(ctx?: Context): any;
+    unify(peer: Val, ctx?: Context): Val;
+    get canon(): string;
+    gen(ctx?: Context): any;
 }
 export { ValBase, };

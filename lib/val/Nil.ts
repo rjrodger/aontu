@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
 import type {
@@ -14,10 +14,7 @@ import {
 } from '../unify'
 
 
-import {
-  ValBase,
-} from '../val/ValBase'
-
+import { ValBase } from '../val/ValBase'
 
 
 

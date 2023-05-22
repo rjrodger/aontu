@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 // TODO: infinite recursion protection
 
@@ -21,13 +21,13 @@ TOP -> Scalar/Boolean -> BooleanVal
 */
 
 
+
 import type {
   Val,
 } from './type'
 
 import {
   DONE,
-  TOP,
 } from './type'
 
 import {
@@ -41,17 +41,60 @@ import {
 
 
 
+import { ConjunctVal } from './val/ConjunctVal'
+import { DisjunctVal } from './val/DisjunctVal'
+import { ListVal } from './val/ListVal'
+import { MapVal } from './val/MapVal'
 import { Nil } from './val/Nil'
-
-import {
-  ValBase,
-} from './val/ValBase'
-
+import { PrefVal } from './val/PrefVal'
+import { RefVal } from './val/RefVal'
+import { ValBase } from './val/ValBase'
 
 
+// There can be only one.
+class TopVal extends ValBase {
+  isVal = true
+
+  id = 0
+  top = true
+  peg = undefined
+  done = DONE
+  path = []
+  row = -1
+  col = -1
+  url = ''
+
+  constructor() {
+    super(null)
+
+    // TOP is always DONE, by definition.
+    this.done = DONE
+  }
+
+  unify(peer: Val, _ctx: Context): Val {
+    return peer
+  }
+
+  get canon() { return 'top' }
+
+  get site(): Site { return new Site(this) }
+
+  same(peer: Val): boolean {
+    return this === peer
+  }
+
+  clone() {
+    return this
+  }
+
+  gen(_ctx?: Context) {
+    return undefined
+  }
+}
 
 
 
+const TOP = new TopVal()
 
 
 // A ScalarType for integers. Number includes floats.
@@ -109,6 +152,7 @@ class ScalarTypeVal extends ValBase {
   }
 
 }
+
 
 
 class ScalarVal<T> extends ValBase {
@@ -209,11 +253,8 @@ class BooleanVal extends ScalarVal<boolean> {
 
 
 
-
-
-
-
 export {
+  TOP,
   Integer,
   ScalarTypeVal,
   NumberVal,

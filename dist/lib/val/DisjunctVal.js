@@ -1,12 +1,12 @@
 "use strict";
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisjunctVal = void 0;
 const type_1 = require("../type");
 const op_1 = require("../op/op");
+const Nil_1 = require("../val/Nil");
+const PrefVal_1 = require("../val/PrefVal");
 const ValBase_1 = require("../val/ValBase");
-const Nil_1 = require("./Nil");
-const PrefVal_1 = require("./PrefVal");
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends ValBase_1.ValBase {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs

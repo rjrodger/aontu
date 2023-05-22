@@ -1,6 +1,7 @@
 /* Copyright (c) 2020-2022 Richard Rodger and other contributors, MIT License */
 
 
+
 let { Aontu, Lang, util } = require('../aontu')
 
 // let { makeFileResolver } = require('@jsonic/multisource')
@@ -119,21 +120,21 @@ w1: b: {y:2,z:3} & $.q.a
     let v0 = Aontu('c:{&:{x:2},y:{k:3},z:{k:4}}')
     //console.dir(v0,{depth:null})
     expect(v0.canon).toEqual(
-      '{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
+      '{"c":{&:{"x":2},"y":{"x":2,"k":3},"z":{"x":2,"k":4}}}'
     )
 
     let v1 = Aontu('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}')
     //console.dir(v0,{depth:null})
     expect(v1.canon).toEqual(
-      '{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
+      '{"c":{&:{"x":2},"z":{"x":2,"k":4},"y":{"x":2,"k":3}}}'
     )
 
     let v10 = Aontu('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}')
     //console.dir(v0,{depth:null})
     expect(v10.canon).toEqual(
       '{"a":{&:{"x":1}},' +
-      '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
-      '"c":{&:{"x":2},"y":{"k":3,"x":2}}}'
+      '"b":{&:{"x":1},"y":{"x":1,"k":2}},' +
+      '"c":{&:{"x":2},"y":{"x":2,"k":3}}}'
     )
   })
 })

@@ -1,9 +1,6 @@
 
 
 
-import type {
-  Val
-} from '../lib/type'
 
 import {
   Lang
@@ -19,13 +16,16 @@ import {
 } from '../lib/op/op'
 
 
+
+
 import { ConjunctVal } from '../lib/val/ConjunctVal'
 import { DisjunctVal } from '../lib/val/DisjunctVal'
-import { MapVal } from '../lib/val/MapVal'
 import { ListVal } from '../lib/val/ListVal'
+import { MapVal } from '../lib/val/MapVal'
+import { Nil } from '../lib/val/Nil'
 import { PrefVal } from '../lib/val/PrefVal'
 import { RefVal } from '../lib/val/RefVal'
-import { Nil } from '../lib/val/Nil'
+import { ValBase } from '../lib/val/ValBase'
 
 
 import {
@@ -35,12 +35,8 @@ import {
   BooleanVal,
   IntegerVal,
   ScalarTypeVal,
+  TOP,
 } from '../lib/val'
-
-
-import {
-  TOP
-} from '../lib/type'
 
 
 const lang = new Lang()
@@ -351,7 +347,7 @@ describe('val', function() {
     expect(m0.canon).toEqual('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
 
     let u0 = m0.unify(TOP, ctx)
-    expect(u0.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+    expect(u0.canon).toEqual('{&:{"x":1},"a":{"x":1,"y":1},"b":{"x":1,"y":2}}')
 
   })
 
@@ -606,7 +602,7 @@ describe('val', function() {
 
     let m2 = (P(`
 a: {x:1}
-b: { &: .a }
+b: { &: $.a }
 b: c0: {n:0}
 b: c1: {n:1}
 b: c2: {n:2}
@@ -614,7 +610,7 @@ b: c2: {n:2}
       ,) as MapVal)
 
     expect(m2.canon)
-      .toEqual('{"a":{"x":1},"b":{&:.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}')
+      .toEqual('{"a":{"x":1},"b":{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}')
 
     expect(m2.peg.b.constructor.name).toEqual('ConjunctVal')
     expect(m2.peg.b.peg.length).toEqual(4)
@@ -626,14 +622,18 @@ b: c2: {n:2}
     let m2u = m2.unify(TOP, c2)
     // console.dir(m1u, { depth: null })
     expect(m2u.canon)
-      .toEqual('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
+      // .toEqual('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
+      .toEqual('{"a":{"x":1},"b":{&:$.a,"c0":{"x":1,"n":0},"c1":{"x":1,"n":1},"c2":{"x":1,"n":2}}}')
+
+    // console.log(m2u.canon)
+    // c2.root = m2u
+    // console.log(m2u.unify(TOP, c2).canon)
 
   })
 
 
   it('pref', () => {
     let ctx = makeCtx()
-
 
     let p0 = new PrefVal(new StringVal('p0'))
     expect(p0.canon).toEqual('*"p0"')

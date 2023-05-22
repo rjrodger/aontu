@@ -31,6 +31,5 @@ type ValMap = {
 };
 type ValList = Val[];
 declare const DONE = -1;
-declare const TOP: Val;
 export type { Val, ValMap, ValList, Options, };
-export { DONE, TOP, Resolver, };
+export { DONE, Resolver, };

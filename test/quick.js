@@ -14,6 +14,7 @@ let {
 
 
 
+let P = (s) => util.parse({src:s},{})
 let A = (s) => Aontu(s)
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
@@ -26,8 +27,8 @@ let G = (v) =>
 
 let V = (v) => console.dir(v, { depth: null })
 
-let lang = new Lang()
-let P = lang.parse.bind(lang)
+// let lang = new Lang()
+// let P = lang.parse.bind(lang)
 
 let tmp = {}
 
@@ -231,15 +232,27 @@ let s = ''
 s = `
 # a: { n: .$KEY, x:1 }
 # b: { &: .a }
-b: { &: {n:.$KEY} }
-# b: { c0: { k:0, m:.$KEY }}
+# a: {n:.$KEY}
+# b: { &: $.a }
+a: { x:1 }
+# b: { &: {n:.$KEY} }
+b: &: $.a
+# b: &: x: 1
+b: { c0: { k:0, m:.$KEY }}
 b: { c1: { k:1 }}
 
 `
 
+s = 'a:{x:1} b:{&:$.a,"c0":{"k":0}} & {"c1":{"k":1}}'
+// s = 'b:{"c0":{"x":1,"k":0,"m":$KEY}} & {"c1":{"k":1}}'
+// s = 'a:{x:1} b:$.a&{m:0}&{n:0}'
+
+let p = P(s)
+console.log(p.canon)
+
 let a = A(s)
-console.log('========')
-console.dir(a,{depth:null})
+// console.log('========')
+// console.dir(a,{depth:null})
 // console.log(a.canon)
 
 // V(a)

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
 
@@ -8,16 +8,11 @@ import type {
 
 import {
   DONE,
-  TOP,
 } from '../type'
 
 import {
   Context,
 } from '../unify'
-
-import {
-  Site
-} from '../lang'
 
 
 
@@ -25,12 +20,22 @@ import {
   unite
 } from '../op/op'
 
-import { Nil } from '../val/Nil'
-import { MapVal } from './MapVal'
-import { ValBase } from '../val/ValBase'
-import { ConjunctVal } from '../val/ConjunctVal'
 
-import { StringVal } from '../val'
+
+import {
+  TOP,
+  StringVal,
+} from '../val'
+
+import { ConjunctVal } from '../val/ConjunctVal'
+import { DisjunctVal } from '../val/DisjunctVal'
+import { ListVal } from '../val/ListVal'
+import { MapVal } from '../val/MapVal'
+import { Nil } from '../val/Nil'
+import { PrefVal } from '../val/PrefVal'
+import { ValBase } from '../val/ValBase'
+
+
 
 
 
@@ -119,43 +124,50 @@ class RefVal extends ValBase {
 
 
   unify(peer: Val, ctx: Context): Val {
-    if (this.id === peer.id) {
-      return this
-    }
+    let out: Val = this
+    let why = 'id'
 
-    // TODO: not resolved when all Vals in path are done is an error
-    // as path cannot be found
-    // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
-    let resolved: Val | undefined = null == ctx ? this : this.find(ctx)
+    if (this.id !== peer.id) {
 
-    resolved = resolved || this
+      // TODO: not resolved when all Vals in path are done is an error
+      // as path cannot be found
+      // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
+      let resolved: Val | undefined = null == ctx ? this : this.find(ctx)
 
-    let out: Val
+      resolved = resolved || this
 
-    if (resolved instanceof RefVal) {
-      if (TOP === peer) {
-        out = this
+      if (resolved instanceof RefVal) {
+        if (TOP === peer) {
+          out = this
+          why = 'pt'
+        }
+        else if (peer instanceof Nil) {
+          out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
+          why = 'pn'
+        }
+
+        // same path
+        else if (this.peg === peer.peg) {
+          out = this
+          why = 'pp'
+        }
+
+        else {
+          // Ensure RefVal done is incremented
+          this.done = DONE === this.done ? DONE : this.done + 1
+          out = new ConjunctVal([this, peer], ctx)
+          why = 'cj'
+        }
       }
-      else if (peer instanceof Nil) {
-        out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
-      }
-
-      // same path
-      else if (this.peg === peer.peg) {
-        out = this
-      }
-
       else {
-        // Ensure RefVal done is incremented
-        this.done = DONE === this.done ? DONE : this.done + 1
-        out = new ConjunctVal([this, peer], ctx)
+        out = unite(ctx, resolved, peer, 'ref')
+        why = 'u'
       }
-    }
-    else {
-      out = unite(ctx, resolved, peer)
+
+      out.done = DONE === out.done ? DONE : this.done + 1
     }
 
-    out.done = DONE === out.done ? DONE : this.done + 1
+    // console.log('RV', why, this.id, this.canon, '&', peer.canon, '->', out.canon)
 
     return out
   }

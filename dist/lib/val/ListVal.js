@@ -4,9 +4,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVal = void 0;
 const type_1 = require("../type");
 const op_1 = require("../op/op");
+const val_1 = require("../val");
+const ConjunctVal_1 = require("../val/ConjunctVal");
 const Nil_1 = require("../val/Nil");
 const ValBase_1 = require("../val/ValBase");
-const ConjunctVal_1 = require("../val/ConjunctVal");
 class ListVal extends ValBase_1.ValBase {
     constructor(peg, ctx) {
         super(peg, ctx);
@@ -27,7 +28,7 @@ class ListVal extends ValBase_1.ValBase {
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
         let done = true;
-        let out = type_1.TOP === peer ? this : new ListVal([], ctx);
+        let out = val_1.TOP === peer ? this : new ListVal([], ctx);
         out.spread.cj = this.spread.cj;
         if (peer instanceof ListVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj = new ConjunctVal_1.ConjunctVal([out.spread.cj, peer.spread.cj], ctx)));
@@ -38,7 +39,7 @@ class ListVal extends ValBase_1.ValBase {
                 type_1.DONE !== this.spread.cj.done ? (0, op_1.unite)(ctx, this.spread.cj) :
                     this.spread.cj;
         }
-        let spread_cj = out.spread.cj || type_1.TOP;
+        let spread_cj = out.spread.cj || val_1.TOP;
         // Always unify children first
         for (let key in this.peg) {
             out.peg[key] =
@@ -61,7 +62,7 @@ class ListVal extends ValBase_1.ValBase {
                 done = (done && type_1.DONE === oval.done);
             }
         }
-        else if (type_1.TOP !== peer) {
+        else if (val_1.TOP !== peer) {
             return Nil_1.Nil.make(ctx, 'map', this, peer);
         }
         out.done = done ? type_1.DONE : out.done;
