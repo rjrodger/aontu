@@ -214,8 +214,6 @@ describe('val-ref', function() {
     expect(G(s2)).toEqual({ a: { b: 'a' } })
 
 
-    // TRY: copy RefVal on first find 
-
     let s3 = `
 # a: { n: .$KEY, x:1 }
 # b: { &: .a }
@@ -224,7 +222,13 @@ b: { c0: { k:0, m:.$KEY }}
 b: { c1: { k:1 }}
 `
     // console.dir(G(s3), { depth: null })
-
+    expect(G(s3))
+      .toEqual({
+        b: {
+          c0: { n: 'c0', k: 0, m: 'c0' },
+          c1: { n: 'c1', k: 1 }
+        }
+      })
 
     // let v1 = P(s1)
     // console.log('AAA', v0)

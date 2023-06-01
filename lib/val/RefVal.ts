@@ -1,6 +1,16 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 
 
+/* TODO
+
+   $SELF.a - path starting at self
+   $PARENT.b === .b - sibling
+
+   implement $ as a prefix operator
+   this allows "$AString" to be used for literal part names
+*/
+
+
 
 import type {
   Val,
