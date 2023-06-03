@@ -243,17 +243,28 @@ b: { c1: { k:1 }}
 
 `
 
-s = 'a:{x:1} b:{&:$.a,"c0":{"k":0}} & {"c1":{"k":1}}'
+// s = `$.a`
+s = `$.a.b`
+// s = 'a:m:{x:1} b:{&:$.a.m,"c0":{"k":0}}'
+// s = 'b:{&:{x:1},"c0":{"k":0}}'
+// s = 'a:{x:1} b:{&:$.a,"c0":{"k":0}}'
+// s = 'a:{x:1} b:{&:$.a,"c0":{"k":0}} & {"c1":{"k":1}}'
 // s = 'b:{"c0":{"x":1,"k":0,"m":$KEY}} & {"c1":{"k":1}}'
 // s = 'a:{x:1} b:$.a&{m:0}&{n:0}'
 
+
+// s = `a:b:c:.$KEY`
+
+// s = `a:b:1,x:$.a.b`
+
 let p = P(s)
 console.log(p.canon)
+console.dir(p,{depth:null})
 
 let a = A(s)
 // console.log('========')
 // console.dir(a,{depth:null})
-// console.log(a.canon)
+console.log(a.canon)
 
 // V(a)
 G(a)

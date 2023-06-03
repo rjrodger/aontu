@@ -10,6 +10,7 @@ const MapVal_1 = require("../lib/val/MapVal");
 const Nil_1 = require("../lib/val/Nil");
 const PrefVal_1 = require("../lib/val/PrefVal");
 const RefVal_1 = require("../lib/val/RefVal");
+const VarVal_1 = require("../lib/val/VarVal");
 const val_1 = require("../lib/val");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
@@ -17,7 +18,7 @@ const P = (x, ctx) => PL(x, ctx);
 const PA = (x, ctx) => x.map(s => PL(s, ctx));
 const D = (x) => console.dir(x, { depth: null });
 const UC = (s, r) => { var _a; return (_a = (r = P(s)).unify(val_1.TOP, makeCtx(r))) === null || _a === void 0 ? void 0 : _a.canon; };
-const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen();
+const G = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen();
 describe('val', function () {
     it('canon', () => {
         expect(P('1').canon).toEqual('1');
@@ -250,20 +251,19 @@ describe('val', function () {
         let u0 = l0.unify(val_1.TOP, ctx);
         expect(u0.canon).toEqual('[&:{"x":1},{"x":1,"y":1},{"x":1,"y":2}]');
     });
-    /*
-    it('map-merge', () => {
-      let ctx = makeCtx()
-  
-      let m0 = P('a:{x:1},a:{y:2}')
-  
-      console.dir(m0, { depth: null })
-  
-      //expect(m0.canon).toEqual('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
-  
-      //let u0 = m0.unify(TOP, ctx)
-      //expect(u0.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
-    })
-    */
+    it('var', () => {
+        let q0 = new VarVal_1.VarVal('a');
+        expect(q0.canon).toEqual('$a');
+        let ctx = makeCtx();
+        ctx.var.foo = new val_1.NumberVal(11);
+        let s = 'a:$foo';
+        let v0 = P(s, ctx);
+        // console.log(v0.peg.a)
+        expect(v0.canon).toEqual('{"a":$"foo"}');
+        let g0 = G(s, ctx);
+        // console.log(g0)
+        expect(g0).toEqual({ a: 11 });
+    });
     it('conjunct', () => {
         let ctx = makeCtx(new MapVal_1.MapVal({ x: new val_1.IntegerVal(1) }));
         let d0 = new ConjunctVal_1.ConjunctVal(PA(['1']));

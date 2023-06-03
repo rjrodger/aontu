@@ -1,9 +1,10 @@
 import type { Val } from '../type';
 import { Context } from '../unify';
 import { StringVal } from '../val';
+import { VarVal } from '../val/VarVal';
 import { ValBase } from '../val/ValBase';
 declare class RefVal extends ValBase {
-    parts: string[];
+    parts: (string | VarVal)[];
     absolute: boolean;
     sep: string;
     root: string;
@@ -17,7 +18,7 @@ declare class RefVal extends ValBase {
     find(ctx: Context): Val | StringVal | undefined;
     same(peer: Val): boolean;
     clone(ctx?: Context): Val;
-    get canon(): any;
+    get canon(): string;
     gen(ctx?: Context): undefined;
 }
 export { RefVal, };

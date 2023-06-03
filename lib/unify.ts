@@ -37,6 +37,7 @@ class Context {
   err: Nil[]  // Nil error log of current unify.
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
+  var: Record<string, Val> = {}
 
   constructor(cfg: {
     root: Val,
@@ -44,7 +45,7 @@ class Context {
     err?: Nil[],
     vc?: number,
     cc?: number,
-    // uc?: number,
+    var?: Record<string, Val>
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
@@ -54,7 +55,8 @@ class Context {
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
 
     this.cc = null == cfg.cc ? this.cc : cfg.cc
-    // this.uc = null == cfg.uc ? this.uc : cfg.uc
+
+    this.var = cfg.var || this.var
   }
 
 
@@ -69,7 +71,7 @@ class Context {
       err: cfg.err || this.err,
       vc: this.vc,
       cc: this.cc,
-      // uc: this.uc,
+      var: { ...this.var },
     })
   }
 
@@ -135,7 +137,7 @@ class Unify {
   cc: number
   lang: Lang
 
-  constructor(root: Val | string, lang?: Lang) {
+  constructor(root: Val | string, lang?: Lang, ctx?: Context) {
     this.lang = lang || new Lang()
     if ('string' === typeof root) {
       root = this.lang.parse(root)
@@ -146,7 +148,8 @@ class Unify {
     this.err = []
 
     let res = root
-    let ctx: Context = new Context({
+
+    ctx = ctx || new Context({
       root: res,
       err: this.err,
     })

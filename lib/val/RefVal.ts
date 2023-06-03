@@ -2,7 +2,8 @@
 
 
 /* TODO
-
+   Rename ot PathVal
+   
    $SELF.a - path starting at self
    $PARENT.b === .b - sibling
 
@@ -25,11 +26,9 @@ import {
 } from '../unify'
 
 
-
 import {
   unite
 } from '../op/op'
-
 
 
 import {
@@ -42,7 +41,7 @@ import { DisjunctVal } from '../val/DisjunctVal'
 import { ListVal } from '../val/ListVal'
 import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
-import { PrefVal } from '../val/PrefVal'
+import { VarVal } from '../val/VarVal'
 import { ValBase } from '../val/ValBase'
 
 
@@ -50,7 +49,7 @@ import { ValBase } from '../val/ValBase'
 
 
 class RefVal extends ValBase {
-  parts: string[]
+  parts: (string | VarVal)[]
   absolute: boolean
   sep = '.'
   root = '$'
@@ -88,6 +87,7 @@ class RefVal extends ValBase {
 
 
   append(part: any) {
+    // console.log('APPEND', part)
     let partstr
 
     if ('string' === typeof part) {
@@ -100,24 +100,34 @@ class RefVal extends ValBase {
       partstr = part.peg
     }
 
-    else if (part instanceof RefVal) {
+    else if (part instanceof VarVal) {
+      if (part.peg instanceof RefVal) {
+        this.absolute = true
+        part = part.peg
+      }
+      else {
+        partstr = part
+      }
+    }
+
+    if (part instanceof RefVal) {
       this.attr = part.attr
       this.parts.push(...part.parts)
       if (0 < this.parts.length) {
         partstr = this.parts[this.parts.length - 1]
         this.parts.length = this.parts.length - 1
       }
-      // if (part.absolute) {
-      //   this.absolute = true
-      // }
+      if (part.absolute) {
+        this.absolute = true
+      }
     }
 
     if (null != partstr) {
-      let m = partstr.match(/^(.*)\$([^$]+)$/)
-      if (m) {
-        partstr = m[1]
-        this.attr = { kind: m[2], part: partstr }
-      }
+      // let m = partstr.match(/^(.*)\$([^$]+)$/)
+      // if (m) {
+      //   partstr = m[1]
+      //   this.attr = { kind: m[2], part: partstr }
+      // }
       if ('' != partstr) {
         this.parts.push(partstr)
       }
@@ -127,9 +137,12 @@ class RefVal extends ValBase {
       (this.absolute ? this.root : '') +
       (0 < this.parts.length ? this.sep : '') +
       // this.parts.join(this.sep)
-      this.parts.map(p => this.sep === p ? '' : p).join(this.sep) +
+      this.parts.map((p: any) => this.sep === p ? '' :
+        (p.isVal ? p.canon : '' + p))
+        .join(this.sep) +
       (null == this.attr ? '' : '$' + this.attr.kind)
 
+    // console.log('APPEND PEG', this.peg, this.absolute)
   }
 
 
@@ -190,11 +203,79 @@ class RefVal extends ValBase {
     // NOTE: path *to* the ref, not the ref itself!
     let fullpath = this.path
 
+    let parts: string[] = []
+
+    let modes: string[] = []
+
+    // console.log('PARTS', this.parts)
+
+    for (let pI = 0; pI < this.parts.length; pI++) {
+      let part = this.parts[pI]
+      if (part instanceof VarVal) {
+        let strval = (part as VarVal).peg
+        let name = strval ? '' + strval.peg : ''
+
+        // console.log('QQQ name', name, pI, this.parts.length)
+
+        if ('KEY' === name) {
+          if (pI === this.parts.length - 1) {
+            modes.push(name)
+          }
+          else {
+            // TODO: return a Nil explaining error
+            return
+          }
+        }
+
+        if ('SELF' === name) {
+          if (pI === 0) {
+            modes.push(name)
+          }
+          else {
+            // TODO: return a Nil explaining error
+            return
+          }
+        }
+        else if ('PARENT' === name) {
+          if (pI === 0) {
+            modes.push(name)
+          }
+          else {
+            // TODO: return a Nil explaining error
+            return
+          }
+        }
+        else if (0 === modes.length) {
+          part = (part as VarVal).unify(TOP, ctx)
+          if (part instanceof Nil) {
+            // TODO: var not found, so can't find path
+            return
+          }
+          else {
+            part = '' + part.peg
+          }
+        }
+      }
+      else {
+        parts.push(part)
+      }
+    }
+
+    // console.log('modes', modes)
+
+
     if (this.absolute) {
-      fullpath = this.parts // ignore '$' at start
+      fullpath = parts
     }
     else {
-      fullpath = fullpath.slice(0, -1).concat(this.parts)
+      fullpath = fullpath.slice(
+        0,
+        (
+          modes.includes('SELF') ? 0 :
+            modes.includes('PARENT') ? -1 :
+              -1 // siblings
+        )
+      ).concat(parts)
     }
 
     let sep = this.sep
@@ -206,6 +287,7 @@ class RefVal extends ValBase {
     let pI = 0
     for (; pI < fullpath.length; pI++) {
       let part = fullpath[pI]
+
       if (node instanceof MapVal) {
         node = node.peg[part]
       }
@@ -214,11 +296,11 @@ class RefVal extends ValBase {
       }
     }
 
-
-
     if (pI === fullpath.length) {
-      if (this.attr && 'KEY' === this.attr.kind) {
-        let key = fullpath[fullpath.length - ('' === this.attr.part ? 1 : 2)]
+      // if (this.attr && 'KEY' === this.attr.kind) {
+      if (modes.includes('KEY')) {
+        // let key = fullpath[fullpath.length - ('' === this.attr.part ? 1 : 2)]
+        let key = fullpath[fullpath.length - 1]
         let sv = new StringVal(null == key ? '' : key, ctx)
 
         // TODO: other props?
@@ -251,7 +333,15 @@ class RefVal extends ValBase {
 
 
   get canon() {
-    return this.peg
+    let str =
+      (this.absolute ? this.root : '') +
+      (0 < this.parts.length ? this.sep : '') +
+      // this.parts.join(this.sep)
+      this.parts.map((p: any) => this.sep === p ? '' :
+        (p.isVal ? p.canon : '' + p))
+        .join(this.sep) +
+      (null == this.attr ? '' : '$' + this.attr.kind)
+    return str
   }
 
 

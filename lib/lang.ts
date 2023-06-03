@@ -51,6 +51,7 @@ import { MapVal } from './val/MapVal'
 import { Nil } from './val/Nil'
 import { PrefVal } from './val/PrefVal'
 import { RefVal } from './val/RefVal'
+import { VarVal } from './val/VarVal'
 import { ValBase } from './val/ValBase'
 
 
@@ -176,6 +177,15 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
     'star-prefix': (r: Rule, _op: Op, terms: any) =>
       addpath(new PrefVal(terms[0]), r.keep.path),
+
+    'dollar-prefix': (r: Rule, _op: Op, terms: any) => {
+      // $.a.b absolute path
+      if (terms[0] instanceof RefVal) {
+        terms[0].absolute = true
+        return terms[0]
+      }
+      return addpath(new VarVal(terms[0]), r.keep.path)
+    },
   }
 
 
@@ -184,29 +194,34 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       op: {
         // disjunct > conjunct: c & b|a -> c & (b|a)
         'conjunct': {
-          infix: true, src: '&', left: 14000, right: 15000
+          infix: true, src: '&', left: 14_000_000, right: 15_000_000
         },
         'disjunct': {
-          // infix: true, src: '|', left: 14000, right: 15000
-          infix: true, src: '|', left: 16000, right: 17000
+          infix: true, src: '|', left: 16_000_000, right: 17_000_000
+        },
+
+        'dollar-prefix': {
+          src: '$',
+          prefix: true,
+          right: 31_000_000,
         },
 
         'dot-infix': {
           src: '.',
           infix: true,
-          left: 15_000_000,
-          right: 14_000_000,
+          left: 25_000_000,
+          right: 24_000_000,
         },
         'dot-prefix': {
           src: '.',
           prefix: true,
-          right: 14_000_000,
+          right: 24_000_000,
         },
 
         'star': {
           src: '*',
           prefix: true,
-          right: 14_000_000,
+          right: 24_000_000,
         },
       },
       evaluate: (r: Rule, op: Op, terms: any) => {

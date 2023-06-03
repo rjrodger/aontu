@@ -9,13 +9,14 @@ const op_1 = require("./op/op");
 class Context {
     constructor(cfg) {
         this.cc = -1;
+        this.var = {};
         this.root = cfg.root;
         this.path = cfg.path || [];
         this.err = cfg.err || [];
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1000000000 : cfg.vc;
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
-        // this.uc = null == cfg.uc ? this.uc : cfg.uc
+        this.var = cfg.var || this.var;
     }
     clone(cfg) {
         return new Context({
@@ -24,7 +25,7 @@ class Context {
             err: cfg.err || this.err,
             vc: this.vc,
             cc: this.cc,
-            // uc: this.uc,
+            var: { ...this.var },
         });
     }
     descend(key) {
@@ -36,7 +37,7 @@ class Context {
 }
 exports.Context = Context;
 class Unify {
-    constructor(root, lang) {
+    constructor(root, lang, ctx) {
         this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
             root = this.lang.parse(root);
@@ -45,7 +46,7 @@ class Unify {
         this.res = root;
         this.err = [];
         let res = root;
-        let ctx = new Context({
+        ctx = ctx || new Context({
             root: res,
             err: this.err,
         });

@@ -17,6 +17,7 @@ const MapVal_1 = require("./val/MapVal");
 const Nil_1 = require("./val/Nil");
 const PrefVal_1 = require("./val/PrefVal");
 const RefVal_1 = require("./val/RefVal");
+const VarVal_1 = require("./val/VarVal");
 const val_1 = require("./val");
 class Site {
     // static NONE = new Site(TOP)
@@ -101,33 +102,45 @@ let AontuJsonic = function aontu(jsonic) {
         'dot-prefix': (r, _op, terms) => addpath(new RefVal_1.RefVal(terms), r.keep.path),
         'dot-infix': (r, _op, terms) => addpath(new RefVal_1.RefVal(terms), r.keep.path),
         'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal(terms[0]), r.keep.path),
+        'dollar-prefix': (r, _op, terms) => {
+            // $.a.b absolute path
+            if (terms[0] instanceof RefVal_1.RefVal) {
+                terms[0].absolute = true;
+                return terms[0];
+            }
+            return addpath(new VarVal_1.VarVal(terms[0]), r.keep.path);
+        },
     };
     jsonic
         .use(expr_1.Expr, {
         op: {
             // disjunct > conjunct: c & b|a -> c & (b|a)
             'conjunct': {
-                infix: true, src: '&', left: 14000, right: 15000
+                infix: true, src: '&', left: 14000000, right: 15000000
             },
             'disjunct': {
-                // infix: true, src: '|', left: 14000, right: 15000
-                infix: true, src: '|', left: 16000, right: 17000
+                infix: true, src: '|', left: 16000000, right: 17000000
+            },
+            'dollar-prefix': {
+                src: '$',
+                prefix: true,
+                right: 31000000,
             },
             'dot-infix': {
                 src: '.',
                 infix: true,
-                left: 15000000,
-                right: 14000000,
+                left: 25000000,
+                right: 24000000,
             },
             'dot-prefix': {
                 src: '.',
                 prefix: true,
-                right: 14000000,
+                right: 24000000,
             },
             'star': {
                 src: '*',
                 prefix: true,
-                right: 14000000,
+                right: 24000000,
             },
         },
         evaluate: (r, op, terms) => {

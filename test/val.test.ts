@@ -25,6 +25,7 @@ import { MapVal } from '../lib/val/MapVal'
 import { Nil } from '../lib/val/Nil'
 import { PrefVal } from '../lib/val/PrefVal'
 import { RefVal } from '../lib/val/RefVal'
+import { VarVal } from '../lib/val/VarVal'
 import { ValBase } from '../lib/val/ValBase'
 
 
@@ -45,7 +46,7 @@ const P = (x: string, ctx?: any) => PL(x, ctx)
 const PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
 const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
-const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen()
+const G = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen()
 
 
 
@@ -374,22 +375,23 @@ describe('val', function() {
   })
 
 
+  it('var', () => {
+    let q0 = new VarVal('a')
+    expect(q0.canon).toEqual('$a')
 
-  /*
-  it('map-merge', () => {
+
     let ctx = makeCtx()
+    ctx.var.foo = new NumberVal(11)
 
-    let m0 = P('a:{x:1},a:{y:2}')
+    let s = 'a:$foo'
+    let v0 = P(s, ctx)
+    // console.log(v0.peg.a)
+    expect(v0.canon).toEqual('{"a":$"foo"}')
 
-    console.dir(m0, { depth: null })
-
-    //expect(m0.canon).toEqual('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
-
-    //let u0 = m0.unify(TOP, ctx)
-    //expect(u0.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+    let g0 = G(s, ctx)
+    // console.log(g0)
+    expect(g0).toEqual({ a: 11 })
   })
-  */
-
 
 
   it('conjunct', () => {

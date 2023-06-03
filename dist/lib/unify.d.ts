@@ -8,12 +8,14 @@ declare class Context {
     err: Nil[];
     vc: number;
     cc: number;
+    var: Record<string, Val>;
     constructor(cfg: {
         root: Val;
         path?: Path;
         err?: Nil[];
         vc?: number;
         cc?: number;
+        var?: Record<string, Val>;
     });
     clone(cfg: {
         root?: Val;
@@ -28,6 +30,6 @@ declare class Unify {
     err: Nil[];
     cc: number;
     lang: Lang;
-    constructor(root: Val | string, lang?: Lang);
+    constructor(root: Val | string, lang?: Lang, ctx?: Context);
 }
 export { Context, Path, Unify, };

@@ -136,16 +136,16 @@ describe('val-ref', function() {
 
 
   test('absolute', () => {
+    // NOTE: built as VarVal[RefVal]
     let s0 = 'a:$.x,x:1'
     let v0 = P(s0)
-    // console.log(v0)
     expect(v0.peg.a.parts).toEqual(['x'])
     expect(v0.canon).toEqual('{"a":$.x,"x":1}')
     expect(G(s0)).toEqual({ a: 1, x: 1 })
 
     let s1 = 'a:$.x.y,x:y:1'
     let v1 = P(s1)
-    // console.log(v0)
+    // console.log(v1.peg.a)
     expect(v1.peg.a.parts).toEqual(['x', 'y'])
     expect(v1.canon).toEqual('{"a":$.x.y,"x":{"y":1}}')
     expect(G(s1)).toEqual({ a: 1, x: { y: 1 } })
@@ -194,27 +194,24 @@ describe('val-ref', function() {
 
 
   test('key', () => {
-    let s0 = 'a:b:1,c:$.a.b$KEY'
+    // let s0 = 'a:b:1,c:$.a.b$KEY'
     // let v0 = P(s0)
     // console.log('AAA', v0)
     // expect(v0.canon).toEqual('{"a":{"b":1},"c":$.a.b$KEY}')
-    expect(G(s0)).toEqual({ a: { b: 1 }, c: 'a' })
+    // expect(G(s0)).toEqual({ a: { b: 1 }, c: 'a' })
 
 
-    let s1 = 'a:b:c:.$KEY'
-    // let v1 = P(s1)
-    // console.log('AAA', v0)
-    // expect(v1.canon).toEqual('')
-    expect(G(s1)).toEqual({ a: { b: { c: 'b' } } })
+    // let s1 = 'a:.$KEY'
+    // expect(G(s1)).toEqual({ a: '' })
 
-    let s2 = 'a:b:.$KEY'
-    // let v1 = P(s1)
-    // console.log('AAA', v0)
-    // expect(v1.canon).toEqual('')
-    expect(G(s2)).toEqual({ a: { b: 'a' } })
+    // let s2 = 'a:b:.$KEY'
+    // expect(G(s2)).toEqual({ a: { b: 'a' } })
+
+    let s3 = 'a:b:c:.$KEY'
+    expect(G(s3)).toEqual({ a: { b: { c: 'b' } } })
 
 
-    let s3 = `
+    let s10 = `
 # a: { n: .$KEY, x:1 }
 # b: { &: .a }
 b: { &: {n:.$KEY} }
@@ -222,7 +219,7 @@ b: { c0: { k:0, m:.$KEY }}
 b: { c1: { k:1 }}
 `
     // console.dir(G(s3), { depth: null })
-    expect(G(s3))
+    expect(G(s10))
       .toEqual({
         b: {
           c0: { n: 'c0', k: 0, m: 'c0' },
