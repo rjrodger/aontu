@@ -1,3 +1,4 @@
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
 
 
@@ -49,6 +50,16 @@ const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
 const G = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen()
 
 
+const makeST_String = () => new ScalarTypeVal({ peg: String })
+const makeST_Number = () => new ScalarTypeVal({ peg: Number })
+const makeST_Integer = () => new ScalarTypeVal({ peg: Integer })
+const makeST_Boolean = () => new ScalarTypeVal({ peg: Boolean })
+
+const makeBooleanVal = (v: boolean) => new BooleanVal({ peg: v })
+const makeNumberVal = (v: number, c?: Context) => new NumberVal({ peg: v }, c)
+const makeIntegerVal = (v: number, c?: Context) => new IntegerVal({ peg: v }, c)
+
+
 
 describe('val', function() {
   it('canon', () => {
@@ -78,20 +89,21 @@ describe('val', function() {
   })
 
 
+
   it('scalartype', () => {
-    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(String))).toBeTruthy()
-    expect(new ScalarTypeVal(Number).same(new ScalarTypeVal(Number))).toBeTruthy()
-    expect(new ScalarTypeVal(Boolean).same(new ScalarTypeVal(Boolean))).toBeTruthy()
-    expect(new ScalarTypeVal(Integer).same(new ScalarTypeVal(Integer))).toBeTruthy()
+    expect(makeST_String().same(makeST_String())).toBeTruthy()
+    expect(makeST_Number().same(makeST_Number())).toBeTruthy()
+    expect(makeST_Boolean().same(makeST_Boolean())).toBeTruthy()
+    expect(makeST_Integer().same(makeST_Integer())).toBeTruthy()
 
-    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(Number))).toBeFalsy()
-    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(Boolean))).toBeFalsy()
-    expect(new ScalarTypeVal(String).same(new ScalarTypeVal(Integer))).toBeFalsy()
+    expect(makeST_String().same(makeST_Number())).toBeFalsy()
+    expect(makeST_String().same(makeST_Boolean())).toBeFalsy()
+    expect(makeST_String().same(makeST_Integer())).toBeFalsy()
 
-    expect(new ScalarTypeVal(Number).same(new ScalarTypeVal(Boolean))).toBeFalsy()
-    expect(new ScalarTypeVal(Number).same(new ScalarTypeVal(Integer))).toBeFalsy()
+    expect(makeST_Number().same(makeST_Boolean())).toBeFalsy()
+    expect(makeST_Number().same(makeST_Integer())).toBeFalsy()
 
-    expect(new ScalarTypeVal(Integer).same(new ScalarTypeVal(Boolean))).toBeFalsy()
+    expect(makeST_Integer().same(makeST_Boolean())).toBeFalsy()
   })
 
 
@@ -118,11 +130,11 @@ describe('val', function() {
     expect(unite(ctx, b0, bt)).toEqual(b0)
     expect(unite(ctx, b0, bf)).toEqual(b0)
 
-    let bs = new ScalarTypeVal(Boolean)
+    let bs = makeST_Boolean()
     expect(unite(ctx, bt, bs)).toEqual(bt)
     expect(unite(ctx, bs, bt)).toEqual(bt)
 
-    let n0 = new NumberVal(1)
+    let n0 = makeNumberVal(1)
     expect(unite(ctx, bt, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, bf, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n0, bt) instanceof Nil).toBeTruthy()
@@ -132,17 +144,17 @@ describe('val', function() {
     expect(bf.same(bf)).toBeTruthy()
     expect(bt.same(bf)).toBeFalsy()
 
-    expect(new BooleanVal(true).same(new BooleanVal(true))).toBeTruthy()
-    expect(new BooleanVal(false).same(new BooleanVal(false))).toBeTruthy()
-    expect(new BooleanVal(true).same(new BooleanVal(false))).toBeFalsy()
+    expect(makeBooleanVal(true).same(makeBooleanVal(true))).toBeTruthy()
+    expect(makeBooleanVal(false).same(makeBooleanVal(false))).toBeTruthy()
+    expect(makeBooleanVal(true).same(makeBooleanVal(false))).toBeFalsy()
   })
 
 
   it('string', () => {
     let ctx = makeCtx()
 
-    let s0 = new StringVal('s0')
-    let s1 = new StringVal('s1')
+    let s0 = new StringVal({ peg: 's0' })
+    let s1 = new StringVal({ peg: 's1' })
 
     expect(unite(ctx, s0, s0)).toEqual(s0)
     expect(unite(ctx, s1, s1)).toEqual(s1)
@@ -161,27 +173,27 @@ describe('val', function() {
     expect(unite(ctx, b0, s0)).toEqual(b0)
     expect(unite(ctx, b0, s1)).toEqual(b0)
 
-    let t0 = new ScalarTypeVal(String)
+    let t0 = makeST_String()
     expect(unite(ctx, s0, t0)).toEqual(s0)
     expect(unite(ctx, t0, s0)).toEqual(s0)
 
-    let n0 = new NumberVal(1)
+    let n0 = makeNumberVal(1)
     expect(unite(ctx, s0, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s1, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n0, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n0, s1) instanceof Nil).toBeTruthy()
 
     expect(s0.same(s0)).toBeTruthy()
-    expect(new StringVal('a').same(new StringVal('a'))).toBeTruthy()
-    expect(new StringVal('a').same(new StringVal('b'))).toBeFalsy()
+    expect(new StringVal({ peg: 'a' }).same(new StringVal({ peg: 'a' }))).toBeTruthy()
+    expect(new StringVal({ peg: 'a' }).same(new StringVal({ peg: 'b' }))).toBeFalsy()
   })
 
 
   it('number', () => {
     let ctx = makeCtx()
 
-    let n0 = new NumberVal(0, ctx)
-    let n1 = new NumberVal(1.1, ctx)
+    let n0 = makeNumberVal(0, ctx)
+    let n1 = makeNumberVal(1.1, ctx)
 
     expect(unite(ctx, n0, n0)).toEqual(n0)
 
@@ -202,19 +214,19 @@ describe('val', function() {
     expect(unite(ctx, b0, n0)).toEqual(b0)
     expect(unite(ctx, b0, n1)).toEqual(b0)
 
-    let t0 = new ScalarTypeVal(Number)
+    let t0 = makeST_Number()
     expect(unite(ctx, n0, t0)).toEqual(n0)
     expect(unite(ctx, t0, n0)).toEqual(n0)
 
-    let s0 = new StringVal('s0')
+    let s0 = new StringVal({ peg: 's0' })
     expect(unite(ctx, n0, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n1, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s0, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s0, n1) instanceof Nil).toBeTruthy()
 
     expect(n0.same(n0)).toBeTruthy()
-    expect(new NumberVal(11).same(new NumberVal(11))).toBeTruthy()
-    expect(new NumberVal(11).same(new NumberVal(22))).toBeFalsy()
+    expect(makeNumberVal(11).same(makeNumberVal(11))).toBeTruthy()
+    expect(makeNumberVal(11).same(makeNumberVal(22))).toBeFalsy()
 
   })
 
@@ -223,8 +235,8 @@ describe('val', function() {
   it('integer', () => {
     let ctx = makeCtx()
 
-    let n0 = new IntegerVal(0)
-    let n1 = new IntegerVal(1)
+    let n0 = makeIntegerVal(0)
+    let n1 = makeIntegerVal(1)
 
     expect(unite(ctx, n0, n0)).toEqual(n0)
     expect(unite(ctx, n1, n1)).toEqual(n1)
@@ -243,37 +255,37 @@ describe('val', function() {
     expect(unite(ctx, b0, n0)).toEqual(b0)
     expect(unite(ctx, b0, n1)).toEqual(b0)
 
-    let s0 = new StringVal('s0')
+    let s0 = new StringVal({ peg: 's0' })
     expect(unite(ctx, n0, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n1, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s0, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s0, n1) instanceof Nil).toBeTruthy()
 
-    let t0 = new ScalarTypeVal(Integer)
+    let t0 = makeST_Integer()
     expect(unite(ctx, n0, t0)).toEqual(n0)
     expect(unite(ctx, t0, n0)).toEqual(n0)
 
-    let t1 = new ScalarTypeVal(Number)
+    let t1 = makeST_Number()
     expect(unite(ctx, n0, t1)).toEqual(n0)
     expect(unite(ctx, t1, n0)).toEqual(n0)
 
     expect(unite(ctx, t0, t1)).toEqual(t0)
     expect(unite(ctx, t1, t0)).toEqual(t0)
 
-    let x0 = new NumberVal(0)
+    let x0 = makeNumberVal(0)
     expect(unite(ctx, n0, x0)).toEqual(n0)
     expect(unite(ctx, x0, n0)).toEqual(n0)
 
     expect(n0.same(n0)).toBeTruthy()
-    expect(new IntegerVal(11).same(new IntegerVal(11))).toBeTruthy()
-    expect(new IntegerVal(11).same(new IntegerVal(22))).toBeFalsy()
+    expect(makeIntegerVal(11).same(makeIntegerVal(11))).toBeTruthy()
+    expect(makeIntegerVal(11).same(makeIntegerVal(22))).toBeFalsy()
   })
 
 
   it('map', () => {
     let ctx = makeCtx()
 
-    let m0 = new MapVal({})
+    let m0 = new MapVal({ peg: {} })
     expect(m0.canon).toEqual('{}')
 
     // TODO: update
@@ -286,20 +298,20 @@ describe('val', function() {
     expect(unite(ctx, m0, b0)).toEqual(b0)
     expect(unite(ctx, b0, m0)).toEqual(b0)
 
-    let s0 = new StringVal('s0')
+    let s0 = new StringVal({ peg: 's0' })
     expect(unite(ctx, m0, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s0, m0) instanceof Nil).toBeTruthy()
 
-    let n0 = new NumberVal(0)
+    let n0 = makeNumberVal(0)
     expect(unite(ctx, m0, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n0, m0) instanceof Nil).toBeTruthy()
 
-    let t0 = new ScalarTypeVal(String)
+    let t0 = makeST_String()
     expect(unite(ctx, m0, t0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, t0, m0) instanceof Nil).toBeTruthy()
 
 
-    let m1 = new MapVal({ a: new NumberVal(1) })
+    let m1 = new MapVal({ peg: { a: makeNumberVal(1) } })
     // print(m1, 'm1')
     expect(m1.canon).toEqual('{"a":1}')
 
@@ -327,7 +339,7 @@ describe('val', function() {
   it('map', () => {
     let ctx = makeCtx()
 
-    let l0 = new ListVal([])
+    let l0 = new ListVal({ peg: [] })
     expect(l0.canon).toEqual('[]')
 
     expect(unite(ctx, l0, l0).canon).toEqual('[]')
@@ -338,9 +350,11 @@ describe('val', function() {
     let ctx = makeCtx()
 
     let m0 = new MapVal({
-      [MapVal.SPREAD]: { o: '&', v: P('{x:1}') },
-      a: P('{ y: 1 }'),
-      b: P('{ y: 2 }'),
+      peg: {
+        [MapVal.SPREAD]: { o: '&', v: P('{x:1}') },
+        a: P('{ y: 1 }'),
+        b: P('{ y: 2 }'),
+      }
     })
 
     // console.dir(m0, { depth: null })
@@ -363,7 +377,7 @@ describe('val', function() {
     vals[ListVal.SPREAD] = { o: '&', v: P('{x:1}') }
 
 
-    let l0 = new ListVal(vals)
+    let l0 = new ListVal({ peg: vals })
 
     // console.dir(l0, { depth: null })
 
@@ -376,12 +390,12 @@ describe('val', function() {
 
 
   it('var', () => {
-    let q0 = new VarVal('a')
+    let q0 = new VarVal({ peg: 'a' })
     expect(q0.canon).toEqual('$a')
 
 
     let ctx = makeCtx()
-    ctx.var.foo = new NumberVal(11)
+    ctx.var.foo = makeNumberVal(11)
 
     let s = 'a:$foo'
     let v0 = P(s, ctx)
@@ -395,18 +409,24 @@ describe('val', function() {
 
 
   it('conjunct', () => {
-    let ctx = makeCtx(new MapVal({ x: new IntegerVal(1) }))
+    let ctx = makeCtx(new MapVal({ peg: { x: makeIntegerVal(1) } }))
 
-    let d0 = new ConjunctVal(PA(['1']))
-    let d1 = new ConjunctVal(PA(['1', '1']))
-    let d2 = new ConjunctVal(PA(['1', '2']))
-    let d3 = new ConjunctVal(PA(['1', 'number']))
-    let d4 = new ConjunctVal(PA(['1', 'number', 'integer']))
-    let d5 = new ConjunctVal(PA(['{a:1}']))
-    let d6 = new ConjunctVal(PA(['{a:1}', '{b:2}']))
+    let d0 = new ConjunctVal({ peg: PA(['1']) })
+    let d1 = new ConjunctVal({ peg: PA(['1', '1']) })
+    let d2 = new ConjunctVal({ peg: PA(['1', '2']) })
+    let d3 = new ConjunctVal({ peg: PA(['1', 'number']) })
+    let d4 = new ConjunctVal({ peg: PA(['1', 'number', 'integer']) })
+    let d5 = new ConjunctVal({ peg: PA(['{a:1}']) })
+    let d6 = new ConjunctVal({ peg: PA(['{a:1}', '{b:2}']) })
 
-    // let d100 = new ConjunctVal([new IntegerVal(1), new RefVal('/x')])
-    let d100 = new ConjunctVal([new IntegerVal(1), new RefVal(['$', 'x'])])
+    // let d100 = new ConjunctVal([makeIntegerVal(1), new RefVal({peg:'/x')])
+    let d100 =
+      new ConjunctVal({
+        peg: [
+          makeIntegerVal(1),
+          new RefVal({ peg: ['x'], absolute: true })
+        ]
+      })
 
     expect(d0.canon).toEqual('1')
     expect(d1.canon).toEqual('1&1')
@@ -445,7 +465,7 @@ describe('val', function() {
     expect(unite(ctx, TOP, d100).canon).toEqual('1')
 
     // TODO: same for DisjunctVal
-    expect(unite(ctx, new ConjunctVal([]), TOP).canon).toEqual('top')
+    expect(unite(ctx, new ConjunctVal({ peg: [] }), TOP).canon).toEqual('top')
 
     expect(unite(ctx, P('1 & .a')).canon).toEqual('1&.a')
     expect(unite(ctx, P('1 & 1 & .a')).canon).toEqual('1&.a')
@@ -458,7 +478,7 @@ describe('val', function() {
   it('disjunct', () => {
     let ctx = makeCtx()
 
-    let d1 = new DisjunctVal([P('1'), P('2')])
+    let d1 = new DisjunctVal({ peg: [P('1'), P('2')] })
 
     expect(unite(ctx, d1, P('2')).canon).toEqual('2')
 
@@ -490,7 +510,8 @@ describe('val', function() {
     expect(unite(ctx, P('number|string').unify(P('boolean|number'))).canon)
       .toEqual('number')
 
-    expect(unite(ctx, P('number|*1').unify(P('number|*1'))).canon).toEqual('number|*1')
+    expect(unite(ctx, P('number|*1').unify(P('number|*1'))).canon)
+      .toEqual('number|*1')
 
 
     let u0 = unite(ctx, P('number|*1'), P('number'))
@@ -521,9 +542,6 @@ describe('val', function() {
 
 
 
-
-
-
   it('ref-conjunct', () => {
     return;
 
@@ -536,20 +554,20 @@ describe('val', function() {
     e: /d & /a
     f: /b
     `, { xlog: -1 })
-
+  
         let g = []
         console.log('m0===', m0.done, m0.canon)
         g = []; console.log(m0.gen())
-
+  
         let c0 = new Context({ root: m0 })
         let u0 = m0.unify(TOP, c0)
-
+  
         console.log('u0===', u0.done, u0.canon)
         g = []; console.log(u0.gen())
-
+  
         let c0a = new Context({ root: u0 })
         let u0a = u0.unify(TOP, c0a)
-
+  
         console.log('u0a===', u0a.done, u0a.canon)
         g = []; console.log(u0a.gen())
     */
@@ -637,7 +655,7 @@ b: c2: {n:2}
   it('pref', () => {
     let ctx = makeCtx()
 
-    let p0 = new PrefVal(new StringVal('p0'))
+    let p0 = new PrefVal({ peg: new StringVal({ peg: 'p0' }) })
     expect(p0.canon).toEqual('*"p0"')
     expect(p0.gen()).toEqual('p0')
 
@@ -674,7 +692,7 @@ b: c2: {n:2}
 
 
 
-    p0.peg = new ScalarTypeVal(String)
+    p0.peg = makeST_String()
     expect(p0.canon).toEqual('*"p0"')
     expect(p0.gen()).toEqual('p0')
 
@@ -688,8 +706,8 @@ b: c2: {n:2}
 
 
 
-    let p1 = new PrefVal(new StringVal('p1'))
-    let p2 = new PrefVal(new ScalarTypeVal(String))
+    let p1 = new PrefVal({ peg: new StringVal({ peg: 'p1' }) })
+    let p2 = new PrefVal({ peg: makeST_String() })
 
     let up12 = p1.unify(p2, ctx)
     expect(up12.canon).toEqual('*"p1"')
@@ -697,11 +715,11 @@ b: c2: {n:2}
     let up21 = p2.unify(p1, ctx)
     expect(up21.canon).toEqual('*"p1"')
 
-    let up2s0 = p2.unify(new StringVal('s0'), ctx)
+    let up2s0 = p2.unify(new StringVal({ peg: 's0' }), ctx)
     expect(up2s0.canon).toEqual('*"s0"')
 
     // NOTE: once made concrete a prefval is fixed
-    expect(up2s0.unify(new StringVal('s1'), ctx).canon)
+    expect(up2s0.unify(new StringVal({ peg: 's1' }), ctx).canon)
       .toEqual('nil')
 
 
@@ -840,5 +858,5 @@ function print(o: any, t?: string) {
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({}) })
+  return new Context({ root: r || new MapVal({ peg: {} }) })
 }

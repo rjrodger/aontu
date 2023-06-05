@@ -1,4 +1,5 @@
 "use strict";
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
@@ -85,6 +86,6 @@ function print(o, t) {
     console.dir(o, { depth: null });
 }
 function makeCtx(r) {
-    return new unify_1.Context({ root: r || new MapVal_1.MapVal({}) });
+    return new unify_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
 }
 //# sourceMappingURL=val-conjunct.test.js.map

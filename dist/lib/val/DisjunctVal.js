@@ -10,8 +10,8 @@ const ValBase_1 = require("../val/ValBase");
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends ValBase_1.ValBase {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
-    constructor(peg, ctx, _sites) {
-        super(peg, ctx);
+    constructor(spec, ctx, _sites) {
+        super(spec, ctx);
     }
     // NOTE: mutation!
     append(peer) {
@@ -58,14 +58,14 @@ class DisjunctVal extends ValBase_1.ValBase {
             return Nil_1.Nil.make(ctx, '|:empty', this);
         }
         else {
-            out = new DisjunctVal(oval, ctx);
+            out = new DisjunctVal({ peg: oval }, ctx);
         }
         out.done = done ? type_1.DONE : this.done + 1;
         return out;
     }
-    clone(ctx) {
-        let out = super.clone(ctx);
-        out.peg = this.peg.map((entry) => entry.clone(ctx));
+    clone(spec, ctx) {
+        let out = super.clone(spec, ctx);
+        out.peg = this.peg.map((entry) => entry.clone(null, ctx));
         return out;
     }
     get canon() {

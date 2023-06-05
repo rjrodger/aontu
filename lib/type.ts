@@ -33,26 +33,30 @@ interface Val {
   col: number
   url: string
 
-  top?: boolean
+  top: boolean
 
   // Actual native value.
-  peg?: any
+  peg: any
 
   // TODO: used for top level result - not great
-  err?: any[]
+  err: any[]
   deps?: any
 
   same(peer: Val): boolean
-  clone(ctx?: Context): Val
 
-  get site(): Site
+  // TODO: reverse args, as spec is mostly only used internally?
+  clone(spec?: ValSpec, ctx?: Context): Val
 
+  // get site(): Site
   unify(peer: Val, ctx?: Context): Val
   get canon(): string
   gen(ctx?: Context): any
 }
 
-
+type ValSpec = {
+  peg?: any,
+  [name: string]: any,
+} | null
 type ValMap = { [key: string]: Val }
 type ValList = Val[]
 
@@ -63,6 +67,7 @@ const DONE = -1
 
 export type {
   Val,
+  ValSpec,
   ValMap,
   ValList,
   Options,

@@ -3,6 +3,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -29,8 +30,9 @@ class Nil extends ValBase {
   // TODO: include Val generating nil, thus capture type
 
   // A Nil is an error - should not happen - unify failed
+  // refactor ,make(spec,ctx)
   static make = (ctx?: Context, why?: any, av?: Val, bv?: Val) => {
-    let nil = new Nil(why, ctx)
+    let nil = new Nil({ why }, ctx)
 
     // TODO: this should be done lazily, for multiple terms
 
@@ -69,9 +71,9 @@ class Nil extends ValBase {
   }
 
 
-  constructor(why?: any, ctx?: Context) {
-    super(null, ctx)
-    this.why = why
+  constructor(spec?: any, ctx?: Context) {
+    super(spec, ctx)
+    this.why = spec?.why
 
     // Nil is always DONE, by definition.
     this.done = DONE
@@ -83,11 +85,16 @@ class Nil extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as Nil)
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone(spec, ctx) as Nil)
     out.why = this.why
-    out.primary = this.primary?.clone()
-    out.secondary = this.secondary?.clone()
+
+    // Should these clone?
+    // out.primary = this.primary?.clone()
+    // out.secondary = this.secondary?.clone()
+    out.primary = this.primary
+    out.secondary = this.secondary
+
     out.msg = this.msg
     return out
   }
@@ -98,10 +105,12 @@ class Nil extends ValBase {
   }
 
   gen(_ctx?: Context) {
+    // TODO: proper gen error
     throw new Error('Nil-gen: ' + this.why)
     return undefined
   }
 }
+
 
 export {
   Nil,

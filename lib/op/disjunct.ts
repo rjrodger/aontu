@@ -25,7 +25,7 @@ const disjunct: Operation = (ctx?: Context, a?: Val, b?: Val) => {
   let origsites: Site[] = []
   // origsites.push(append(peers, a))
   // origsites.push(append(peers, b))
-  let out = new DisjunctVal(peers, ctx, origsites)
+  let out = new DisjunctVal({ peg: peers }, ctx, origsites)
   return out
 }
 

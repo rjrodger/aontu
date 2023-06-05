@@ -3,6 +3,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -33,8 +34,14 @@ import { ValBase } from '../val/ValBase'
 
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends ValBase {
-  constructor(peg: Val[], ctx?: Context) {
-    super(peg, ctx)
+
+  constructor(
+    spec: {
+      peg: Val[]
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
   }
 
   // NOTE: mutation!
@@ -179,7 +186,7 @@ class ConjunctVal extends ValBase {
       out = outvals[0]
     }
     else {
-      out = new ConjunctVal(outvals, ctx)
+      out = new ConjunctVal({ peg: outvals }, ctx)
     }
 
     out.done = done ? DONE : this.done + 1
@@ -190,9 +197,9 @@ class ConjunctVal extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as MapVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone(spec, ctx) as ConjunctVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(null, ctx))
     return out
   }
 

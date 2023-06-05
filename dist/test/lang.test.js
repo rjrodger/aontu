@@ -1,4 +1,5 @@
 "use strict";
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 const lang_1 = require("../lib/lang");
 const unify_1 = require("../lib/unify");
@@ -66,10 +67,10 @@ describe('lang', function () {
         // console.dir(lang.jsonic.internal().config)
         let v0 = P('a:.x');
         // console.log(v0)
-        expect(v0.peg.a.parts).toEqual(['x']);
+        expect(v0.peg.a.peg).toEqual(['x']);
         let v1 = P('a:.x.y', { xlog: -1 });
         // console.log(v1)
-        expect(v1.peg.a.parts).toEqual(['x', 'y']);
+        expect(v1.peg.a.peg).toEqual(['x', 'y']);
     });
     it('file', () => {
         global.console = require('console');
@@ -207,6 +208,6 @@ describe('lang', function () {
     });
 });
 function makeCtx(opts) {
-    return new unify_1.Context(opts || { root: new MapVal_1.MapVal({}) });
+    return new unify_1.Context(opts || { root: new MapVal_1.MapVal({ peg: {} }) });
 }
 //# sourceMappingURL=lang.test.js.map

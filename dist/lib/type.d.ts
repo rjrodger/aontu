@@ -1,6 +1,5 @@
 import { Resolver } from '@jsonic/multisource';
 import { Context } from './unify';
-import { Site } from './lang';
 type Options = {
     src: string;
     print: number;
@@ -15,21 +14,24 @@ interface Val {
     row: number;
     col: number;
     url: string;
-    top?: boolean;
-    peg?: any;
-    err?: any[];
+    top: boolean;
+    peg: any;
+    err: any[];
     deps?: any;
     same(peer: Val): boolean;
-    clone(ctx?: Context): Val;
-    get site(): Site;
+    clone(spec?: ValSpec, ctx?: Context): Val;
     unify(peer: Val, ctx?: Context): Val;
     get canon(): string;
     gen(ctx?: Context): any;
 }
+type ValSpec = {
+    peg?: any;
+    [name: string]: any;
+} | null;
 type ValMap = {
     [key: string]: Val;
 };
 type ValList = Val[];
 declare const DONE = -1;
-export type { Val, ValMap, ValList, Options, };
+export type { Val, ValSpec, ValMap, ValList, Options, };
 export { DONE, Resolver, };

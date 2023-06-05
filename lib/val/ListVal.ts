@@ -4,6 +4,7 @@
 import type {
   Val,
   ValList,
+  ValSpec,
 } from '../type'
 
 import {
@@ -47,8 +48,17 @@ class ListVal extends ValBase {
     cj: (undefined as Val | undefined),
   }
 
-  constructor(peg: ValList, ctx?: Context) {
-    super(peg, ctx)
+  constructor(
+    spec: {
+      peg: ValList
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
+
+    if (null == this.peg) {
+      throw new Error('ListVal spec.peg undefined')
+    }
 
     let spread = (this.peg as any)[ListVal.SPREAD]
     delete (this.peg as any)[ListVal.SPREAD]
@@ -57,7 +67,7 @@ class ListVal extends ValBase {
       if ('&' === spread.o) {
         // TODO: handle existing spread!
         let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-        this.spread.cj = new ConjunctVal(tmv, ctx)
+        this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
       }
     }
   }
@@ -67,14 +77,15 @@ class ListVal extends ValBase {
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
     let done: boolean = true
-    let out: ListVal = TOP === peer ? this : new ListVal([], ctx)
+    let out: ListVal = TOP === peer ? this : new ListVal({ peg: [] }, ctx)
 
     out.spread.cj = this.spread.cj
 
     if (peer instanceof ListVal) {
       out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
         null == peer.spread.cj ? out.spread.cj : (
-          out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj], ctx)
+          out.spread.cj =
+          new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
         )
       )
     }
@@ -93,7 +104,7 @@ class ListVal extends ValBase {
     // Always unify children first
     for (let key in this.peg) {
       let keyctx = ctx.descend(key)
-      let key_spread_cj = spread_cj.clone(keyctx)
+      let key_spread_cj = spread_cj.clone(null, keyctx)
 
       out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'list-own')
       done = (done && DONE === out.peg[key].done)
@@ -116,11 +127,11 @@ class ListVal extends ValBase {
 
         if (this.spread.cj) {
           let key_ctx = ctx.descend(peerkey)
-          let key_spread_cj = spread_cj.clone(key_ctx)
+          let key_spread_cj = spread_cj.clone(null, key_ctx)
 
           // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
           out.peg[peerkey] =
-            new ConjunctVal([out.peg[peerkey], key_spread_cj], key_ctx)
+            new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
           done = false
 
         }
@@ -138,11 +149,11 @@ class ListVal extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as ListVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone(spec, ctx) as ListVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(null, ctx))
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx)
+      out.spread.cj = this.spread.cj.clone(null, ctx)
     }
     return out
   }

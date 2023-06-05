@@ -1,11 +1,13 @@
-import type { Val } from '../type';
+import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { ValBase } from '../val/ValBase';
 declare class VarVal extends ValBase {
-    constructor(peg: string | Val, ctx?: Context);
+    constructor(spec: {
+        peg: string | Val;
+    }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     same(peer: Val): boolean;
-    clone(ctx?: Context): Val;
+    clone(spec?: ValSpec, ctx?: Context): Val;
     get canon(): string;
     gen(ctx?: Context): undefined;
 }

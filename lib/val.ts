@@ -24,6 +24,7 @@ TOP -> Scalar/Boolean -> BooleanVal
 
 import type {
   Val,
+  ValSpec,
 } from './type'
 
 import {
@@ -110,8 +111,14 @@ type ScalarConstructor =
 
 
 class ScalarTypeVal extends ValBase {
-  constructor(peg: ScalarConstructor, ctx?: Context) {
-    super(peg, ctx)
+
+  constructor(
+    spec: {
+      peg: ScalarConstructor
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
     this.done = DONE
   }
 
@@ -157,11 +164,28 @@ class ScalarTypeVal extends ValBase {
 
 class ScalarVal<T> extends ValBase {
   type: any
-  constructor(peg: T, type: ScalarConstructor, ctx?: Context) {
-    super(peg, ctx)
-    this.type = type
+
+  constructor(
+    spec: {
+      peg: T,
+      type: ScalarConstructor
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
+    this.type = spec.type
     this.done = DONE
   }
+
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone({
+      peg: this.peg,
+      type: this.type,
+      ...(spec || {})
+    }, ctx) as RefVal)
+    return out
+  }
+
   unify(peer: Val, ctx: Context): Val {
     // Exactly equal scalars are handled in op/unite
     if (peer instanceof ScalarTypeVal) {
@@ -172,9 +196,11 @@ class ScalarVal<T> extends ValBase {
     }
     return Nil.make(ctx, 'scalar', this, peer)
   }
+
   get canon() {
     return (this.peg as any).toString()
   }
+
   same(peer: Val): boolean {
     return peer instanceof ScalarVal ? peer.peg === this.peg : super.same(peer)
   }
@@ -186,8 +212,13 @@ class ScalarVal<T> extends ValBase {
 
 
 class NumberVal extends ScalarVal<number> {
-  constructor(peg: number, ctx?: Context) {
-    super(peg, Number, ctx)
+  constructor(
+    spec: {
+      peg: number
+    },
+    ctx?: Context
+  ) {
+    super({ peg: spec.peg, type: Number }, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarVal && peer.type === Integer) {
@@ -201,12 +232,17 @@ class NumberVal extends ScalarVal<number> {
 
 
 class IntegerVal extends ScalarVal<number> {
-  constructor(peg: number, ctx?: Context) {
-    if (!Number.isInteger(peg)) {
+  constructor(
+    spec: {
+      peg: number
+    },
+    ctx?: Context
+  ) {
+    if (!Number.isInteger(spec.peg)) {
       // TODO: use Nil?
       throw new Error('not-integer')
     }
-    super(peg, Integer, ctx)
+    super({ peg: spec.peg, type: Integer }, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     if (peer instanceof ScalarTypeVal && peer.peg === Number) {
@@ -226,8 +262,13 @@ class IntegerVal extends ScalarVal<number> {
 
 
 class StringVal extends ScalarVal<string> {
-  constructor(peg: string, ctx?: Context) {
-    super(peg, String, ctx)
+  constructor(
+    spec: {
+      peg: string
+    },
+    ctx?: Context
+  ) {
+    super({ peg: spec.peg, type: String }, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
@@ -240,15 +281,20 @@ class StringVal extends ScalarVal<string> {
 
 
 class BooleanVal extends ScalarVal<boolean> {
-  constructor(peg: boolean, ctx?: Context) {
-    super(peg, Boolean, ctx)
+  constructor(
+    spec: {
+      peg: boolean
+    },
+    ctx?: Context
+  ) {
+    super({ peg: spec.peg, type: Boolean }, ctx)
   }
   unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
   }
 
-  static TRUE = new BooleanVal(true, new Context({ vc: 1, root: TOP }))
-  static FALSE = new BooleanVal(false, new Context({ vc: 2, root: TOP }))
+  static TRUE = new BooleanVal({ peg: true }, new Context({ vc: 1, root: TOP }))
+  static FALSE = new BooleanVal({ peg: false }, new Context({ vc: 2, root: TOP }))
 }
 
 

@@ -1,4 +1,4 @@
-import type { Val } from '../type';
+import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
 declare class ValBase implements Val {
@@ -9,15 +9,15 @@ declare class ValBase implements Val {
     row: number;
     col: number;
     url: string;
-    top?: boolean;
-    peg?: any;
-    err?: any[];
-    constructor(peg?: any, ctx?: Context);
+    top: boolean;
+    peg: any;
+    err: any[];
+    constructor(spec: ValSpec, ctx?: Context);
     same(peer: Val): boolean;
-    clone(ctx?: Context): Val;
+    clone(spec?: ValSpec, ctx?: Context): Val;
     get site(): Site;
-    unify(peer: Val, ctx?: Context): Val;
+    unify(_peer: Val, _ctx?: Context): Val;
     get canon(): string;
-    gen(ctx?: Context): any;
+    gen(_ctx?: Context): any;
 }
 export { ValBase, };

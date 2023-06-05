@@ -9,8 +9,8 @@ const RefVal_1 = require("../val/RefVal");
 const ValBase_1 = require("../val/ValBase");
 // TODO: KEY, SELF, PARENT are reserved names - error
 class VarVal extends ValBase_1.ValBase {
-    constructor(peg, ctx) {
-        super(peg, ctx);
+    constructor(spec, ctx) {
+        super(spec, ctx);
     }
     unify(peer, ctx) {
         let out;
@@ -27,7 +27,7 @@ class VarVal extends ValBase_1.ValBase {
         }
         else {
             // TODO: how to pass row+col?
-            nameVal = new val_1.StringVal('' + this.peg, ctx);
+            nameVal = new val_1.StringVal({ peg: '' + this.peg }, ctx);
         }
         if (!(nameVal instanceof RefVal_1.RefVal) && type_1.DONE === nameVal.done) {
             if (nameVal instanceof val_1.StringVal) {
@@ -48,8 +48,8 @@ class VarVal extends ValBase_1.ValBase {
     same(peer) {
         return null == peer ? false : peer instanceof VarVal && this.peg === peer.peg;
     }
-    clone(ctx) {
-        let out = super.clone(ctx);
+    clone(spec, ctx) {
+        let out = super.clone(spec, ctx);
         return out;
     }
     get canon() {

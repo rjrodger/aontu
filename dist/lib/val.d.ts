@@ -1,4 +1,4 @@
-import type { Val } from './type';
+import type { Val, ValSpec } from './type';
 import { Context } from './unify';
 import { Site } from './lang';
 import { ValBase } from './val/ValBase';
@@ -25,7 +25,9 @@ declare class Integer {
 }
 type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
 declare class ScalarTypeVal extends ValBase {
-    constructor(peg: ScalarConstructor, ctx?: Context);
+    constructor(spec: {
+        peg: ScalarConstructor;
+    }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     same(peer: Val): boolean;
@@ -33,27 +35,39 @@ declare class ScalarTypeVal extends ValBase {
 }
 declare class ScalarVal<T> extends ValBase {
     type: any;
-    constructor(peg: T, type: ScalarConstructor, ctx?: Context);
+    constructor(spec: {
+        peg: T;
+        type: ScalarConstructor;
+    }, ctx?: Context);
+    clone(spec?: ValSpec, ctx?: Context): Val;
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     same(peer: Val): boolean;
     gen(_ctx?: Context): any;
 }
 declare class NumberVal extends ScalarVal<number> {
-    constructor(peg: number, ctx?: Context);
+    constructor(spec: {
+        peg: number;
+    }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
 }
 declare class IntegerVal extends ScalarVal<number> {
-    constructor(peg: number, ctx?: Context);
+    constructor(spec: {
+        peg: number;
+    }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
 }
 declare class StringVal extends ScalarVal<string> {
-    constructor(peg: string, ctx?: Context);
+    constructor(spec: {
+        peg: string;
+    }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     get canon(): string;
 }
 declare class BooleanVal extends ScalarVal<boolean> {
-    constructor(peg: boolean, ctx?: Context);
+    constructor(spec: {
+        peg: boolean;
+    }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     static TRUE: BooleanVal;
     static FALSE: BooleanVal;

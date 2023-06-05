@@ -4,6 +4,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -42,8 +43,14 @@ import { ValBase } from '../val/ValBase'
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends ValBase {
   // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
-  constructor(peg: Val[], ctx?: Context, _sites?: Site[]) {
-    super(peg, ctx)
+  constructor(
+    spec: {
+      peg: Val[]
+    },
+    ctx?: Context,
+    _sites?: Site[]
+  ) {
+    super(spec, ctx)
   }
 
   // NOTE: mutation!
@@ -104,7 +111,7 @@ class DisjunctVal extends ValBase {
       return Nil.make(ctx, '|:empty', this)
     }
     else {
-      out = new DisjunctVal(oval, ctx)
+      out = new DisjunctVal({ peg: oval }, ctx)
     }
 
     out.done = done ? DONE : this.done + 1
@@ -113,9 +120,9 @@ class DisjunctVal extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as MapVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone(spec, ctx) as DisjunctVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(null, ctx))
     return out
   }
 

@@ -7,9 +7,9 @@ const op_1 = require("../op/op");
 const Nil_1 = require("../val/Nil");
 const ValBase_1 = require("../val/ValBase");
 class PrefVal extends ValBase_1.ValBase {
-    constructor(peg, pref, ctx) {
-        super(peg, ctx);
-        this.pref = pref || peg;
+    constructor(spec, ctx) {
+        super(spec, ctx);
+        this.pref = spec.pref || spec.peg;
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
@@ -17,12 +17,17 @@ class PrefVal extends ValBase_1.ValBase {
         let done = true;
         let out;
         if (peer instanceof PrefVal) {
-            out = new PrefVal((0, op_1.unite)(ctx, this.peg, peer.peg, 'Pref000'), (0, op_1.unite)(ctx, this.pref, peer.pref, 'Pref010'), ctx);
+            out = new PrefVal({
+                peg: (0, op_1.unite)(ctx, this.peg, peer.peg, 'Pref000'),
+                pref: (0, op_1.unite)(ctx, this.pref, peer.pref, 'Pref010'),
+            }, ctx);
         }
         else {
-            out = new PrefVal(
-            // TODO: find a better way to drop Nil non-errors
-            (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.peg, peer, 'Pref020'), (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.pref, peer, 'Pref030'), ctx);
+            out = new PrefVal({
+                // TODO: find a better way to drop Nil non-errors
+                peg: (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.peg, peer, 'Pref020'),
+                pref: (0, op_1.unite)(ctx === null || ctx === void 0 ? void 0 : ctx.clone({ err: [] }), this.pref, peer, 'Pref030'),
+            }, ctx);
         }
         done = done && type_1.DONE === out.peg.done &&
             (null != out.pref ? type_1.DONE === out.pref.done : true);
@@ -46,9 +51,9 @@ class PrefVal extends ValBase_1.ValBase {
                 (this.pref instanceof ValBase_1.ValBase && this.pref.same(peer.pref)));
         return pegsame && prefsame;
     }
-    clone(ctx) {
-        let out = super.clone(ctx);
-        out.pref = this.pref.clone(ctx);
+    clone(spec, ctx) {
+        let out = super.clone(spec, ctx);
+        out.pref = this.pref.clone(null, ctx);
         return out;
     }
     get canon() {

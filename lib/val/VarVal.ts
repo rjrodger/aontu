@@ -14,6 +14,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -51,8 +52,13 @@ import { ValBase } from '../val/ValBase'
 
 class VarVal extends ValBase {
 
-  constructor(peg: string | Val, ctx?: Context) {
-    super(peg, ctx)
+  constructor(
+    spec: {
+      peg: string | Val
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
   }
 
 
@@ -73,7 +79,7 @@ class VarVal extends ValBase {
     }
     else {
       // TODO: how to pass row+col?
-      nameVal = new StringVal('' + this.peg, ctx)
+      nameVal = new StringVal({ peg: '' + this.peg }, ctx)
     }
 
     if (!(nameVal instanceof RefVal) && DONE === nameVal.done) {
@@ -100,8 +106,8 @@ class VarVal extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as VarVal)
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone(spec, ctx) as VarVal)
     return out
   }
 

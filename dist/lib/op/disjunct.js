@@ -9,7 +9,7 @@ const disjunct = (ctx, a, b) => {
     let origsites = [];
     // origsites.push(append(peers, a))
     // origsites.push(append(peers, b))
-    let out = new DisjunctVal_1.DisjunctVal(peers, ctx, origsites);
+    let out = new DisjunctVal_1.DisjunctVal({ peg: peers }, ctx, origsites);
     return out;
 };
 exports.disjunct = disjunct;

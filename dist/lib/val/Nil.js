@@ -5,23 +5,25 @@ exports.Nil = void 0;
 const type_1 = require("../type");
 const ValBase_1 = require("../val/ValBase");
 class Nil extends ValBase_1.ValBase {
-    constructor(why, ctx) {
-        super(null, ctx);
+    constructor(spec, ctx) {
+        super(spec, ctx);
         this.nil = true;
         this.msg = '';
-        this.why = why;
+        this.why = spec === null || spec === void 0 ? void 0 : spec.why;
         // Nil is always DONE, by definition.
         this.done = type_1.DONE;
     }
     unify(_peer, _ctx) {
         return this;
     }
-    clone(ctx) {
-        var _a, _b;
-        let out = super.clone(ctx);
+    clone(spec, ctx) {
+        let out = super.clone(spec, ctx);
         out.why = this.why;
-        out.primary = (_a = this.primary) === null || _a === void 0 ? void 0 : _a.clone();
-        out.secondary = (_b = this.secondary) === null || _b === void 0 ? void 0 : _b.clone();
+        // Should these clone?
+        // out.primary = this.primary?.clone()
+        // out.secondary = this.secondary?.clone()
+        out.primary = this.primary;
+        out.secondary = this.secondary;
         out.msg = this.msg;
         return out;
     }
@@ -29,6 +31,7 @@ class Nil extends ValBase_1.ValBase {
         return 'nil';
     }
     gen(_ctx) {
+        // TODO: proper gen error
         throw new Error('Nil-gen: ' + this.why);
         return undefined;
     }
@@ -36,8 +39,9 @@ class Nil extends ValBase_1.ValBase {
 exports.Nil = Nil;
 // TODO: include Val generating nil, thus capture type
 // A Nil is an error - should not happen - unify failed
+// refactor ,make(spec,ctx)
 Nil.make = (ctx, why, av, bv) => {
-    let nil = new Nil(why, ctx);
+    let nil = new Nil({ why }, ctx);
     // TODO: this should be done lazily, for multiple terms
     // Terms later in same file are considered the primary error location.
     if (null != av) {

@@ -102,19 +102,19 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         // TODO: jsonic should be able to pass context into these
         'string': {
           val: (r: Rule) =>
-            addpath(new ScalarTypeVal(String), r.keep.path)
+            addpath(new ScalarTypeVal({ peg: String }), r.keep.path)
         },
         'number': {
           val: (r: Rule) =>
-            addpath(new ScalarTypeVal(Number), r.keep.path)
+            addpath(new ScalarTypeVal({ peg: Number }), r.keep.path)
         },
         'integer': {
           val: (r: Rule) =>
-            addpath(new ScalarTypeVal(Integer), r.keep.path)
+            addpath(new ScalarTypeVal({ peg: Integer }), r.keep.path)
         },
         'boolean': {
           val: (r: Rule) =>
-            addpath(new ScalarTypeVal(Boolean), r.keep.path)
+            addpath(new ScalarTypeVal({ peg: Boolean }), r.keep.path)
         },
         'nil': {
           val: (r: Rule) =>
@@ -132,7 +132,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         let cval = (curr as Val)
 
         if (pval?.isVal && cval?.isVal) {
-          // return addpath(new ConjunctVal([pval, cval]), prev.path)
 
           // TODO: test multi element conjuncts work
           if (pval instanceof ConjunctVal && cval instanceof ConjunctVal) {
@@ -148,7 +147,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           //   return cval
           // }
           else {
-            return addpath(new ConjunctVal([pval, cval]), prev.path)
+            return addpath(new ConjunctVal({ peg: [pval, cval] }), prev.path)
           }
         }
 
@@ -166,17 +165,22 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   let opmap: any = {
     'conjunct-infix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new ConjunctVal(terms), r.keep.path),
+      addpath(new ConjunctVal({ peg: terms }), r.keep.path),
     'disjunct-infix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new DisjunctVal(terms), r.keep.path),
+      addpath(new DisjunctVal({ peg: terms }), r.keep.path),
 
-    'dot-prefix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new RefVal(terms), r.keep.path),
-    'dot-infix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new RefVal(terms), r.keep.path),
+    'dot-prefix': (r: Rule, _op: Op, terms: any) => {
+      // console.log('DP', terms)
+      return addpath(new RefVal({ peg: terms, prefix: true }), r.keep.path)
+    },
+
+    'dot-infix': (r: Rule, _op: Op, terms: any) => {
+      // console.log('DI', terms)
+      return addpath(new RefVal({ peg: terms }), r.keep.path)
+    },
 
     'star-prefix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new PrefVal(terms[0]), r.keep.path),
+      addpath(new PrefVal({ peg: terms[0] }), r.keep.path),
 
     'dollar-prefix': (r: Rule, _op: Op, terms: any) => {
       // $.a.b absolute path
@@ -184,7 +188,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         terms[0].absolute = true
         return terms[0]
       }
-      return addpath(new VarVal(terms[0]), r.keep.path)
+      return addpath(new VarVal({ peg: terms[0] }), r.keep.path)
     },
   }
 
@@ -246,18 +250,18 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         let valtype = typeof valnode
 
         if ('string' === valtype) {
-          valnode = addpath(new StringVal(r.node), r.keep.path)
+          valnode = addpath(new StringVal({ peg: r.node }), r.keep.path)
         }
         else if ('number' === valtype) {
           if (Number.isInteger(r.node)) {
-            valnode = addpath(new IntegerVal(r.node), r.keep.path)
+            valnode = addpath(new IntegerVal({ peg: r.node }), r.keep.path)
           }
           else {
-            valnode = addpath(new NumberVal(r.node), r.keep.path)
+            valnode = addpath(new NumberVal({ peg: r.node }), r.keep.path)
           }
         }
         else if ('boolean' === valtype) {
-          valnode = addpath(new BooleanVal(r.node), r.keep.path)
+          valnode = addpath(new BooleanVal({ peg: r.node }), r.keep.path)
         }
 
         let st = r.o0
@@ -295,12 +299,13 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           delete mop.___merge
 
           // TODO: needs addpath?
-          let mopv = new MapVal(mop)
+          let mopv = new MapVal({ peg: mop })
 
-          r.node = addpath(new ConjunctVal([mopv, ...mo.___merge]), r.keep.path)
+          r.node =
+            addpath(new ConjunctVal({ peg: [mopv, ...mo.___merge] }), r.keep.path)
         }
         else {
-          r.node = addpath(new MapVal(mo), r.keep.path)
+          r.node = addpath(new MapVal({ peg: mo }), r.keep.path)
         }
 
         // return out
@@ -317,7 +322,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
 
     rs.bc((r: Rule) => {
-      r.node = addpath(new ListVal(r.node), r.keep.path)
+      r.node = addpath(new ListVal({ peg: r.node }), r.keep.path)
 
       // return out
       return undefined
@@ -325,7 +330,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
     return rs
   })
-
 
 
   jsonic.rule('pair', (rs: RuleSpec) => {

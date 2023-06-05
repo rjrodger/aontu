@@ -45,16 +45,16 @@ let AontuJsonic = function aontu(jsonic) {
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
                 'string': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal(String), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: String }), r.keep.path)
                 },
                 'number': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal(Number), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Number }), r.keep.path)
                 },
                 'integer': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal(val_1.Integer), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: val_1.Integer }), r.keep.path)
                 },
                 'boolean': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal(Boolean), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Boolean }), r.keep.path)
                 },
                 'nil': {
                     val: (r) => addpath(new Nil_1.Nil('literal'), r.keep.path)
@@ -68,7 +68,6 @@ let AontuJsonic = function aontu(jsonic) {
                 let pval = prev;
                 let cval = curr;
                 if ((pval === null || pval === void 0 ? void 0 : pval.isVal) && (cval === null || cval === void 0 ? void 0 : cval.isVal)) {
-                    // return addpath(new ConjunctVal([pval, cval]), prev.path)
                     // TODO: test multi element conjuncts work
                     if (pval instanceof ConjunctVal_1.ConjunctVal && cval instanceof ConjunctVal_1.ConjunctVal) {
                         pval.append(cval);
@@ -83,7 +82,7 @@ let AontuJsonic = function aontu(jsonic) {
                     //   return cval
                     // }
                     else {
-                        return addpath(new ConjunctVal_1.ConjunctVal([pval, cval]), prev.path);
+                        return addpath(new ConjunctVal_1.ConjunctVal({ peg: [pval, cval] }), prev.path);
                     }
                 }
                 // Handle defered conjuncts, where MapVal does not yet
@@ -97,18 +96,24 @@ let AontuJsonic = function aontu(jsonic) {
         }
     });
     let opmap = {
-        'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal(terms), r.keep.path),
-        'disjunct-infix': (r, _op, terms) => addpath(new DisjunctVal_1.DisjunctVal(terms), r.keep.path),
-        'dot-prefix': (r, _op, terms) => addpath(new RefVal_1.RefVal(terms), r.keep.path),
-        'dot-infix': (r, _op, terms) => addpath(new RefVal_1.RefVal(terms), r.keep.path),
-        'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal(terms[0]), r.keep.path),
+        'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal({ peg: terms }), r.keep.path),
+        'disjunct-infix': (r, _op, terms) => addpath(new DisjunctVal_1.DisjunctVal({ peg: terms }), r.keep.path),
+        'dot-prefix': (r, _op, terms) => {
+            // console.log('DP', terms)
+            return addpath(new RefVal_1.RefVal({ peg: terms, prefix: true }), r.keep.path);
+        },
+        'dot-infix': (r, _op, terms) => {
+            // console.log('DI', terms)
+            return addpath(new RefVal_1.RefVal({ peg: terms }), r.keep.path);
+        },
+        'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal({ peg: terms[0] }), r.keep.path),
         'dollar-prefix': (r, _op, terms) => {
             // $.a.b absolute path
             if (terms[0] instanceof RefVal_1.RefVal) {
                 terms[0].absolute = true;
                 return terms[0];
             }
-            return addpath(new VarVal_1.VarVal(terms[0]), r.keep.path);
+            return addpath(new VarVal_1.VarVal({ peg: terms[0] }), r.keep.path);
         },
     };
     jsonic
@@ -157,18 +162,18 @@ let AontuJsonic = function aontu(jsonic) {
             let valnode = r.node;
             let valtype = typeof valnode;
             if ('string' === valtype) {
-                valnode = addpath(new val_1.StringVal(r.node), r.keep.path);
+                valnode = addpath(new val_1.StringVal({ peg: r.node }), r.keep.path);
             }
             else if ('number' === valtype) {
                 if (Number.isInteger(r.node)) {
-                    valnode = addpath(new val_1.IntegerVal(r.node), r.keep.path);
+                    valnode = addpath(new val_1.IntegerVal({ peg: r.node }), r.keep.path);
                 }
                 else {
-                    valnode = addpath(new val_1.NumberVal(r.node), r.keep.path);
+                    valnode = addpath(new val_1.NumberVal({ peg: r.node }), r.keep.path);
                 }
             }
             else if ('boolean' === valtype) {
-                valnode = addpath(new val_1.BooleanVal(r.node), r.keep.path);
+                valnode = addpath(new val_1.BooleanVal({ peg: r.node }), r.keep.path);
             }
             let st = r.o0;
             valnode.row = st.rI;
@@ -194,11 +199,12 @@ let AontuJsonic = function aontu(jsonic) {
                 let mop = { ...mo };
                 delete mop.___merge;
                 // TODO: needs addpath?
-                let mopv = new MapVal_1.MapVal(mop);
-                r.node = addpath(new ConjunctVal_1.ConjunctVal([mopv, ...mo.___merge]), r.keep.path);
+                let mopv = new MapVal_1.MapVal({ peg: mop });
+                r.node =
+                    addpath(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r.keep.path);
             }
             else {
-                r.node = addpath(new MapVal_1.MapVal(mo), r.keep.path);
+                r.node = addpath(new MapVal_1.MapVal({ peg: mo }), r.keep.path);
             }
             // return out
             return undefined;
@@ -210,7 +216,7 @@ let AontuJsonic = function aontu(jsonic) {
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
         rs.bc((r) => {
-            r.node = addpath(new ListVal_1.ListVal(r.node), r.keep.path);
+            r.node = addpath(new ListVal_1.ListVal({ peg: r.node }), r.keep.path);
             // return out
             return undefined;
         });

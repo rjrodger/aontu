@@ -4,6 +4,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -38,9 +39,16 @@ import { ValBase } from '../val/ValBase'
 
 class PrefVal extends ValBase {
   pref: Val
-  constructor(peg: any, pref?: any, ctx?: Context) {
-    super(peg, ctx)
-    this.pref = pref || peg
+
+  constructor(
+    spec: {
+      peg: any,
+      pref?: any
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
+    this.pref = spec.pref || spec.peg
   }
 
   // PrefVal unify always returns a PrefVal
@@ -51,17 +59,21 @@ class PrefVal extends ValBase {
 
     if (peer instanceof PrefVal) {
       out = new PrefVal(
-        unite(ctx, this.peg, peer.peg, 'Pref000'),
-        unite(ctx, this.pref, peer.pref, 'Pref010'),
+        {
+          peg: unite(ctx, this.peg, peer.peg, 'Pref000'),
+          pref: unite(ctx, this.pref, peer.pref, 'Pref010'),
+        },
         ctx
       )
-
     }
+
     else {
       out = new PrefVal(
-        // TODO: find a better way to drop Nil non-errors
-        unite(ctx?.clone({ err: [] }), this.peg, peer, 'Pref020'),
-        unite(ctx?.clone({ err: [] }), this.pref, peer, 'Pref030'),
+        {
+          // TODO: find a better way to drop Nil non-errors
+          peg: unite(ctx?.clone({ err: [] }), this.peg, peer, 'Pref020'),
+          pref: unite(ctx?.clone({ err: [] }), this.pref, peer, 'Pref030'),
+        },
         ctx
       )
     }
@@ -98,9 +110,9 @@ class PrefVal extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as PrefVal)
-    out.pref = this.pref.clone(ctx)
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone(spec, ctx) as PrefVal)
+    out.pref = this.pref.clone(null, ctx)
     return out
   }
 

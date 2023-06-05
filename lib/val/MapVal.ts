@@ -5,6 +5,7 @@
 import type {
   Val,
   ValMap,
+  ValSpec,
 } from '../type'
 
 import {
@@ -40,8 +41,18 @@ class MapVal extends ValBase {
     cj: (undefined as Val | undefined),
   }
 
-  constructor(peg: ValMap, ctx?: Context) {
-    super(peg, ctx)
+  constructor(
+    spec: {
+      peg: ValMap
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
+
+    if (null == this.peg) {
+      throw new Error('MapVal spec.peg undefined')
+    }
+
 
     let spread = (this.peg as any)[MapVal.SPREAD]
     delete (this.peg as any)[MapVal.SPREAD]
@@ -51,7 +62,7 @@ class MapVal extends ValBase {
     if (spread) {
       if ('&' === spread.o) {
         let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-        this.spread.cj = new ConjunctVal(tmv, ctx)
+        this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
       }
     }
   }
@@ -63,14 +74,15 @@ class MapVal extends ValBase {
     // let mark = Math.random()
 
     let done: boolean = true
-    let out: MapVal = TOP === peer ? this : new MapVal({}, ctx)
+    let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
 
     out.spread.cj = this.spread.cj
 
     if (peer instanceof MapVal) {
       out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
         null == peer.spread.cj ? out.spread.cj : (
-          out.spread.cj = new ConjunctVal([out.spread.cj, peer.spread.cj], ctx)
+          out.spread.cj =
+          new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
         )
       )
     }
@@ -78,21 +90,12 @@ class MapVal extends ValBase {
 
     out.done = this.done + 1
 
-    /*
-    if (this.spread.cj) {
-      out.spread.cj =
-        DONE !== this.spread.cj.done ? unite(ctx, this.spread.cj) :
-          this.spread.cj
-      done = (done && DONE === out.spread.cj.done)
-    }
-    */
-
     let spread_cj = out.spread.cj || TOP
 
     // Always unify own children first
     for (let key in this.peg) {
       let keyctx = ctx.descend(key)
-      let key_spread_cj = spread_cj.clone(keyctx)
+      let key_spread_cj = spread_cj.clone(null, keyctx)
 
       // console.log('M0', this.id, mark, Object.keys(this.peg).join('~'),
       //   'p=', this.path.join('.'),
@@ -129,10 +132,10 @@ class MapVal extends ValBase {
 
         if (this.spread.cj) {
           let key_ctx = ctx.descend(peerkey)
-          let key_spread_cj = spread_cj.clone(key_ctx)
+          let key_spread_cj = spread_cj.clone(null, key_ctx)
 
           out.peg[peerkey] =
-            new ConjunctVal([out.peg[peerkey], key_spread_cj], key_ctx)
+            new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
           done = false
         }
         else {
@@ -149,14 +152,15 @@ class MapVal extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as MapVal)
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone(spec, ctx) as MapVal)
     out.peg = {}
     for (let entry of Object.entries(this.peg)) {
-      out.peg[entry[0]] = entry[1] instanceof ValBase ? entry[1].clone(ctx) : entry[1]
+      out.peg[entry[0]] =
+        entry[1] instanceof ValBase ? entry[1].clone(null, ctx) : entry[1]
     }
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx)
+      out.spread.cj = this.spread.cj.clone(null, ctx)
     }
     return out
   }

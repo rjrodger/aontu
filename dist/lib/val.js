@@ -45,8 +45,8 @@ class Integer {
 }
 exports.Integer = Integer;
 class ScalarTypeVal extends ValBase_1.ValBase {
-    constructor(peg, ctx) {
-        super(peg, ctx);
+    constructor(spec, ctx) {
+        super(spec, ctx);
         this.done = type_1.DONE;
     }
     unify(peer, ctx) {
@@ -84,10 +84,18 @@ class ScalarTypeVal extends ValBase_1.ValBase {
 }
 exports.ScalarTypeVal = ScalarTypeVal;
 class ScalarVal extends ValBase_1.ValBase {
-    constructor(peg, type, ctx) {
-        super(peg, ctx);
-        this.type = type;
+    constructor(spec, ctx) {
+        super(spec, ctx);
+        this.type = spec.type;
         this.done = type_1.DONE;
+    }
+    clone(spec, ctx) {
+        let out = super.clone({
+            peg: this.peg,
+            type: this.type,
+            ...(spec || {})
+        }, ctx);
+        return out;
     }
     unify(peer, ctx) {
         // Exactly equal scalars are handled in op/unite
@@ -110,8 +118,8 @@ class ScalarVal extends ValBase_1.ValBase {
     }
 }
 class NumberVal extends ScalarVal {
-    constructor(peg, ctx) {
-        super(peg, Number, ctx);
+    constructor(spec, ctx) {
+        super({ peg: spec.peg, type: Number }, ctx);
     }
     unify(peer, ctx) {
         if (peer instanceof ScalarVal && peer.type === Integer) {
@@ -124,12 +132,12 @@ class NumberVal extends ScalarVal {
 }
 exports.NumberVal = NumberVal;
 class IntegerVal extends ScalarVal {
-    constructor(peg, ctx) {
-        if (!Number.isInteger(peg)) {
+    constructor(spec, ctx) {
+        if (!Number.isInteger(spec.peg)) {
             // TODO: use Nil?
             throw new Error('not-integer');
         }
-        super(peg, Integer, ctx);
+        super({ peg: spec.peg, type: Integer }, ctx);
     }
     unify(peer, ctx) {
         if (peer instanceof ScalarTypeVal && peer.peg === Number) {
@@ -148,8 +156,8 @@ class IntegerVal extends ScalarVal {
 }
 exports.IntegerVal = IntegerVal;
 class StringVal extends ScalarVal {
-    constructor(peg, ctx) {
-        super(peg, String, ctx);
+    constructor(spec, ctx) {
+        super({ peg: spec.peg, type: String }, ctx);
     }
     unify(peer, ctx) {
         return super.unify(peer, ctx);
@@ -160,14 +168,14 @@ class StringVal extends ScalarVal {
 }
 exports.StringVal = StringVal;
 class BooleanVal extends ScalarVal {
-    constructor(peg, ctx) {
-        super(peg, Boolean, ctx);
+    constructor(spec, ctx) {
+        super({ peg: spec.peg, type: Boolean }, ctx);
     }
     unify(peer, ctx) {
         return super.unify(peer, ctx);
     }
 }
 exports.BooleanVal = BooleanVal;
-BooleanVal.TRUE = new BooleanVal(true, new unify_1.Context({ vc: 1, root: TOP }));
-BooleanVal.FALSE = new BooleanVal(false, new unify_1.Context({ vc: 2, root: TOP }));
+BooleanVal.TRUE = new BooleanVal({ peg: true }, new unify_1.Context({ vc: 1, root: TOP }));
+BooleanVal.FALSE = new BooleanVal({ peg: false }, new unify_1.Context({ vc: 2, root: TOP }));
 //# sourceMappingURL=val.js.map

@@ -9,18 +9,21 @@ const ConjunctVal_1 = require("../val/ConjunctVal");
 const Nil_1 = require("../val/Nil");
 const ValBase_1 = require("../val/ValBase");
 class MapVal extends ValBase_1.ValBase {
-    constructor(peg, ctx) {
-        super(peg, ctx);
+    constructor(spec, ctx) {
+        super(spec, ctx);
         this.spread = {
             cj: undefined,
         };
+        if (null == this.peg) {
+            throw new Error('MapVal spec.peg undefined');
+        }
         let spread = this.peg[MapVal.SPREAD];
         delete this.peg[MapVal.SPREAD];
         // console.log('MC', this.id, peg, spread)
         if (spread) {
             if ('&' === spread.o) {
                 let tmv = Array.isArray(spread.v) ? spread.v : [spread.v];
-                this.spread.cj = new ConjunctVal_1.ConjunctVal(tmv, ctx);
+                this.spread.cj = new ConjunctVal_1.ConjunctVal({ peg: tmv }, ctx);
             }
         }
     }
@@ -29,25 +32,18 @@ class MapVal extends ValBase_1.ValBase {
     unify(peer, ctx) {
         // let mark = Math.random()
         let done = true;
-        let out = val_1.TOP === peer ? this : new MapVal({}, ctx);
+        let out = val_1.TOP === peer ? this : new MapVal({ peg: {} }, ctx);
         out.spread.cj = this.spread.cj;
         if (peer instanceof MapVal) {
-            out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj = new ConjunctVal_1.ConjunctVal([out.spread.cj, peer.spread.cj], ctx)));
+            out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
+                new ConjunctVal_1.ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)));
         }
         out.done = this.done + 1;
-        /*
-        if (this.spread.cj) {
-          out.spread.cj =
-            DONE !== this.spread.cj.done ? unite(ctx, this.spread.cj) :
-              this.spread.cj
-          done = (done && DONE === out.spread.cj.done)
-        }
-        */
         let spread_cj = out.spread.cj || val_1.TOP;
         // Always unify own children first
         for (let key in this.peg) {
             let keyctx = ctx.descend(key);
-            let key_spread_cj = spread_cj.clone(keyctx);
+            let key_spread_cj = spread_cj.clone(null, keyctx);
             // console.log('M0', this.id, mark, Object.keys(this.peg).join('~'),
             //   'p=', this.path.join('.'),
             //   'k=', key, peer.top || peer.constructor.name,
@@ -75,9 +71,9 @@ class MapVal extends ValBase_1.ValBase {
                                 (0, op_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
-                    let key_spread_cj = spread_cj.clone(key_ctx);
+                    let key_spread_cj = spread_cj.clone(null, key_ctx);
                     out.peg[peerkey] =
-                        new ConjunctVal_1.ConjunctVal([out.peg[peerkey], key_spread_cj], key_ctx);
+                        new ConjunctVal_1.ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx);
                     done = false;
                 }
                 else {
@@ -91,14 +87,15 @@ class MapVal extends ValBase_1.ValBase {
         out.done = done ? type_1.DONE : out.done;
         return out;
     }
-    clone(ctx) {
-        let out = super.clone(ctx);
+    clone(spec, ctx) {
+        let out = super.clone(spec, ctx);
         out.peg = {};
         for (let entry of Object.entries(this.peg)) {
-            out.peg[entry[0]] = entry[1] instanceof ValBase_1.ValBase ? entry[1].clone(ctx) : entry[1];
+            out.peg[entry[0]] =
+                entry[1] instanceof ValBase_1.ValBase ? entry[1].clone(null, ctx) : entry[1];
         }
         if (this.spread.cj) {
-            out.spread.cj = this.spread.cj.clone(ctx);
+            out.spread.cj = this.spread.cj.clone(null, ctx);
         }
         return out;
     }

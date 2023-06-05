@@ -1,3 +1,5 @@
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+
 
 import {
   Lang
@@ -7,6 +9,7 @@ import {
   Context,
   Unify,
 } from '../lib/unify'
+
 
 
 
@@ -35,59 +38,348 @@ const V = (x: any) => console.dir(x, { depth: null })
 describe('val-ref', function() {
 
   test('construct', () => {
-    let r0 = new RefVal(['$', 'a'])
-    // console.log(r0)
+    let r0 = new RefVal({ peg: [], absolute: true })
+    expect(r0.canon).toEqual('$')
     expect(r0).toMatchObject({
-      peg: '$.a',
       path: [],
       absolute: true,
-      parts: ['a']
+      peg: []
     })
 
-    let r1 = new RefVal(['$', 'a', 'b'])
-    // console.log(r0)
+
+    let r1 = new RefVal({ peg: ['a'], absolute: true })
+    expect(r1.canon).toEqual('$.a')
     expect(r1).toMatchObject({
-      peg: '$.a.b',
       path: [],
       absolute: true,
-      parts: ['a', 'b']
+      peg: ['a']
     })
 
-    let r2 = new RefVal(['$'])
-    // console.log(r0)
+
+    let r2 = new RefVal({ peg: ['a', 'b'], absolute: true })
+    expect(r2.canon).toEqual('$.a.b')
     expect(r2).toMatchObject({
-      peg: '$',
       path: [],
       absolute: true,
-      parts: []
+      peg: ['a', 'b']
     })
 
-    let r3 = new RefVal([])
+    let r3 = new RefVal({ peg: ['a'] })
     // console.log(r0)
+    expect(r3.canon).toEqual('.a')
     expect(r3).toMatchObject({
-      peg: '',
       path: [],
       absolute: false,
-      parts: []
+      peg: ['a']
     })
 
-    let r4 = new RefVal(['a'])
+    let r4 = new RefVal({ peg: ['a', 'b'] })
     // console.log(r0)
+    expect(r4.canon).toEqual('.a.b')
     expect(r4).toMatchObject({
-      peg: '.a',
       path: [],
       absolute: false,
-      parts: ['a']
+      peg: ['a', 'b']
     })
 
-    let r5 = new RefVal(['a', 'b'])
+    let r5 = new RefVal({ peg: ['a', 'b', 'c'] })
     // console.log(r0)
+    expect(r5.canon).toEqual('.a.b.c')
     expect(r5).toMatchObject({
-      peg: '.a.b',
       path: [],
       absolute: false,
-      parts: ['a', 'b']
+      peg: ['a', 'b', 'c']
     })
+
+    let r6 = new RefVal({ peg: ['a', 'b', 'c'], absolute: true })
+    // console.log(r0)
+    expect(r6.canon).toEqual('$.a.b.c')
+    expect(r6).toMatchObject({
+      path: [],
+      absolute: true,
+      peg: ['a', 'b', 'c']
+    })
+
+    let r7 = new RefVal({ peg: [] })
+    expect(r7.canon).toEqual('')
+    expect(r7).toMatchObject({
+      path: [],
+      absolute: false,
+      peg: []
+    })
+
+
+    let r8 = new RefVal({
+      peg: [
+        new RefVal({ peg: ['a'] }),
+        'b'
+      ]
+    })
+    expect(r8.canon).toEqual('.a.b')
+    expect(r8).toMatchObject({
+      path: [],
+      absolute: false,
+      peg: ['a', 'b']
+    })
+
+
+    let r9 = new RefVal({
+      peg: [
+        'a',
+        new RefVal({ peg: ['b'] }),
+      ]
+    })
+    expect(r9.canon).toEqual('.a.b')
+    expect(r9).toMatchObject({
+      path: [],
+      absolute: false,
+      peg: ['a', 'b']
+    })
+
+
+    let r10 = new RefVal({
+      peg: [
+        new RefVal({ peg: ['a'] }),
+        new RefVal({ peg: ['b'] }),
+      ]
+    })
+    expect(r10.canon).toEqual('.a.b')
+    expect(r10).toMatchObject({
+      path: [],
+      absolute: false,
+      peg: ['a', 'b']
+    })
+
+
+    let r11 = new RefVal({
+      peg: [
+        new RefVal({ peg: ['a'], absolute: true }),
+        'b'
+      ]
+    })
+    expect(r11).toMatchObject({
+      canon: '$.a.b',
+      path: [],
+      absolute: true,
+      peg: ['a', 'b']
+    })
+
+
+    let r12 = new RefVal({
+      peg: [
+        'a',
+        new RefVal({ peg: ['b'], absolute: true }),
+      ]
+    })
+    expect(r12).toMatchObject({
+      canon: '$.a.b',
+      path: [],
+      absolute: true,
+      peg: ['a', 'b']
+    })
+
+
+    let r13 = new RefVal({
+      peg: [
+        new RefVal({ peg: ['a'], absolute: true }),
+        new RefVal({ peg: ['b'], absolute: true }),
+      ]
+    })
+    expect(r13).toMatchObject({
+      canon: '$.a.b',
+      path: [],
+      absolute: true,
+      peg: ['a', 'b']
+    })
+  })
+
+
+  test('parse', () => {
+    expect(P('.a'))
+      .toMatchObject({
+        canon: '.a', peg: ['a'],
+        prefix: true, absolute: false
+      })
+
+    // D(P('..a'))
+    expect(P('..a'))
+      .toMatchObject({
+        canon: '..a', peg: ['.', 'a'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('...a'))
+      .toMatchObject({
+        canon: '...a', peg: ['.', '.', 'a'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('....a'))
+      .toMatchObject({
+        canon: '....a', peg: ['.', '.', '.', 'a'],
+        prefix: true, absolute: false
+      })
+
+
+    // D(P('.a.b'))
+
+    expect(P('.a.b'))
+      .toMatchObject({
+        canon: '.a.b', peg: ['a', 'b'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('..a.b'))
+      .toMatchObject({
+        canon: '..a.b', peg: ['.', 'a', 'b'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('...a.b'))
+      .toMatchObject({
+        canon: '...a.b', peg: ['.', '.', 'a', 'b'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('....a.b'))
+      .toMatchObject({
+        canon: '....a.b', peg: ['.', '.', '.', 'a', 'b'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a..b'))
+      .toMatchObject({
+        canon: '.a..b', peg: ['a', '.', 'b'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a...b'))
+      .toMatchObject({
+        canon: '.a...b', peg: ['a', '.', '.', 'b'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a....b'))
+      .toMatchObject({
+        canon: '.a....b', peg: ['a', '.', '.', '.', 'b'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a.b.c'))
+      .toMatchObject({
+        canon: '.a.b.c', peg: ['a', 'b', 'c'],
+        prefix: true, absolute: false
+      })
+
+
+    // D(P('.a.b..c'))
+
+    expect(P('.a.b..c'))
+      .toMatchObject({
+        canon: '.a.b..c', peg: ['a', 'b', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a..b..c'))
+      .toMatchObject({
+        canon: '.a..b..c', peg: ['a', '.', 'b', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a..b...c'))
+      .toMatchObject({
+        canon: '.a..b...c', peg: ['a', '.', 'b', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a...b...c'))
+      .toMatchObject({
+        canon: '.a...b...c', peg: ['a', '.', '.', 'b', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a...b....c'))
+      .toMatchObject({
+        canon: '.a...b....c', peg: ['a', '.', '.', 'b', '.', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a....b....c'))
+      .toMatchObject({
+        canon: '.a....b....c', peg: ['a', '.', '.', '.', 'b', '.', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('..a....b....c'))
+      .toMatchObject({
+        canon: '..a....b....c',
+        peg: ['.', 'a', '.', '.', '.', 'b', '.', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('...a....b....c'))
+      .toMatchObject({
+        canon: '...a....b....c',
+        peg: ['.', '.', 'a', '.', '.', '.', 'b', '.', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('....a....b....c'))
+      .toMatchObject({
+        canon: '....a....b....c',
+        peg: ['.', '.', '.', 'a', '.', '.', '.', 'b', '.', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a.b..c'))
+      .toMatchObject({
+        canon: '.a.b..c',
+        peg: ['a', 'b', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a.b...c'))
+      .toMatchObject({
+        canon: '.a.b...c',
+        peg: ['a', 'b', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a.b....c'))
+      .toMatchObject({
+        canon: '.a.b....c',
+        peg: ['a', 'b', '.', '.', '.', 'c'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a.b.c.d'))
+      .toMatchObject({
+        canon: '.a.b.c.d',
+        peg: ['a', 'b', 'c', 'd'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a.b.c..d'))
+      .toMatchObject({
+        canon: '.a.b.c..d',
+        peg: ['a', 'b', 'c', '.', 'd'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a..b.c..d'))
+      .toMatchObject({
+        canon: '.a..b.c..d',
+        peg: ['a', '.', 'b', 'c', '.', 'd'],
+        prefix: true, absolute: false
+      })
+
+    expect(P('.a..b..c..d'))
+      .toMatchObject({
+        canon: '.a..b..c..d',
+        peg: ['a', '.', 'b', '.', 'c', '.', 'd'],
+        prefix: true, absolute: false
+      })
+
   })
 
 
@@ -95,43 +387,41 @@ describe('val-ref', function() {
 
     let c0 = makeCtx(null, ['x'])
 
-    let r0 = new RefVal(['$', 'a'], c0)
+    let r0 = new RefVal({ peg: ['a'], absolute: true }, c0)
     // console.log(r0)
     expect(r0).toMatchObject({
-      peg: '$.a',
+      canon: '$.a',
       path: ['x'],
       absolute: true,
-      parts: ['a']
+      peg: ['a']
     })
 
     let r1 = r0.clone()
     expect(r1).toMatchObject({
-      peg: '$.a',
+      canon: '$.a',
       path: ['x'],
       absolute: true,
-      parts: ['a']
+      peg: ['a']
     })
 
     let c1 = makeCtx(null, ['y', 'z'])
-    let r2 = r0.clone(c1)
+    let r2 = r0.clone(null, c1)
     expect(r2).toMatchObject({
-      peg: '$.a',
+      canon: '$.a',
       path: ['y', 'z'],
       absolute: true,
-      parts: ['a']
+      peg: ['a']
     })
 
 
     let c2 = makeCtx(null, ['k'])
-    let r3 = r2.clone(c2)
+    let r3 = r2.clone(null, c2)
     expect(r3).toMatchObject({
-      peg: '$.a',
+      canon: '$.a',
       path: ['k', 'z'],
       absolute: true,
-      parts: ['a']
+      peg: ['a']
     })
-
-
   })
 
 
@@ -139,21 +429,21 @@ describe('val-ref', function() {
     // NOTE: built as VarVal[RefVal]
     let s0 = 'a:$.x,x:1'
     let v0 = P(s0)
-    expect(v0.peg.a.parts).toEqual(['x'])
+    expect(v0.peg.a.peg).toEqual(['x'])
     expect(v0.canon).toEqual('{"a":$.x,"x":1}')
     expect(G(s0)).toEqual({ a: 1, x: 1 })
 
     let s1 = 'a:$.x.y,x:y:1'
     let v1 = P(s1)
     // console.log(v1.peg.a)
-    expect(v1.peg.a.parts).toEqual(['x', 'y'])
+    expect(v1.peg.a.peg).toEqual(['x', 'y'])
     expect(v1.canon).toEqual('{"a":$.x.y,"x":{"y":1}}')
     expect(G(s1)).toEqual({ a: 1, x: { y: 1 } })
 
     let s2 = 'a:$.x.y.z,x:y:z:1'
     let v2 = P(s2)
     // console.log(v0)
-    expect(v2.peg.a.parts).toEqual(['x', 'y', 'z'])
+    expect(v2.peg.a.peg).toEqual(['x', 'y', 'z'])
     expect(v2.canon).toEqual('{"a":$.x.y.z,"x":{"y":{"z":1}}}')
     expect(G(s2)).toEqual({ a: 1, x: { y: { z: 1 } } })
   })
@@ -163,14 +453,14 @@ describe('val-ref', function() {
     let s0 = 'a:{b:.c,c:1}'
     let v0 = P(s0)
     // console.log(v0)
-    expect(v0.peg.a.peg.b.parts).toEqual(['c'])
+    expect(v0.peg.a.peg.b.peg).toEqual(['c'])
     expect(v0.canon).toEqual('{"a":{"b":.c,"c":1}}')
     expect(G(s0)).toEqual({ a: { b: 1, c: 1 } })
 
     let s1 = 'a:{b:.c.d,c:d:1}'
     let v1 = P(s1)
     // console.log(v0)
-    expect(v1.peg.a.peg.b.parts).toEqual(['c', 'd'])
+    expect(v1.peg.a.peg.b.peg).toEqual(['c', 'd'])
     expect(v1.canon).toEqual('{"a":{"b":.c.d,"c":{"d":1}}}')
     expect(G(s1)).toEqual({ a: { b: 1, c: { d: 1 } } })
   })
@@ -180,14 +470,14 @@ describe('val-ref', function() {
     let s0 = 'a:b:c:1,a:d:e:..b.c'
     let v0 = P(s0)
     // console.dir(v0, { depth: null })
-    expect(v0.peg.a.peg[1].peg.d.peg.e.parts).toEqual(['.', 'b', 'c'])
+    expect(v0.peg.a.peg[1].peg.d.peg.e.peg).toEqual(['.', 'b', 'c'])
     expect(v0.canon).toEqual('{"a":{"b":{"c":1}}&{"d":{"e":..b.c}}}')
     expect(G(s0)).toEqual({ a: { b: { c: 1 }, d: { e: 1 } } })
 
     let s1 = 'a:b:c:1,a:d:e:...a.b.c'
     let v1 = P(s1)
     // console.dir(v0, { depth: null })
-    expect(v1.peg.a.peg[1].peg.d.peg.e.parts).toEqual(['.', '.', 'a', 'b', 'c'])
+    expect(v1.peg.a.peg[1].peg.d.peg.e.peg).toEqual(['.', '.', 'a', 'b', 'c'])
     expect(v1.canon).toEqual('{"a":{"b":{"c":1}}&{"d":{"e":...a.b.c}}}')
     expect(G(s1)).toEqual({ a: { b: { c: 1 }, d: { e: 1 } } })
   })
@@ -204,16 +494,42 @@ describe('val-ref', function() {
     // let s1 = 'a:.$KEY'
     // expect(G(s1)).toEqual({ a: '' })
 
-    // let s2 = 'a:b:.$KEY'
-    // expect(G(s2)).toEqual({ a: { b: 'a' } })
+    let s2 = 'a:b:.$KEY'
+    expect(G(s2)).toEqual({ a: { b: 'a' } })
 
     let s3 = 'a:b:c:.$KEY'
     expect(G(s3)).toEqual({ a: { b: { c: 'b' } } })
 
+    let s4 = `
+a: { n: .$KEY, x:1 }
+b: { c: $.a }
+`
+    expect(G(s4)).toEqual({
+      a: {
+        n: 'a',
+        x: 1,
+      },
+      b: {
+        c: {
+          n: 'a', // NOTE: correct as `a` tree is a normal tree
+          x: 1,
+        },
+      },
+    })
+
+    let s5 = `
+a: { &: { n: .$KEY } }
+`
+    expect(G(s5)).toEqual({ a: {} })
+
+    let s6 = `
+a: { &: { n: .$KEY } }
+a: { b0: {} }
+`
+    expect(G(s6)).toEqual({ a: { b0: { n: 'b0' } } })
+
 
     let s10 = `
-# a: { n: .$KEY, x:1 }
-# b: { &: .a }
 b: { &: {n:.$KEY} }
 b: { c0: { k:0, m:.$KEY }}
 b: { c1: { k:1 }}
@@ -239,10 +555,10 @@ b: { c1: { k:1 }}
   it('ref', () => {
     let ctx = makeCtx()
 
-    let d0 = new RefVal(['a'])
-    let d1 = new RefVal(['$', 'c'])
-    let d2 = new RefVal(['a', 'b'])
-    let d3 = new RefVal(['$', 'c', 'd', 'e'])
+    let d0 = new RefVal({ peg: ['a'] })
+    let d1 = new RefVal({ peg: ['c'], absolute: true })
+    let d2 = new RefVal({ peg: ['a', 'b'] })
+    let d3 = new RefVal({ peg: ['c', 'd', 'e'], absolute: true })
 
     expect(d0.canon).toEqual('.a')
     expect(d1.canon).toEqual('$.c')
@@ -265,19 +581,30 @@ b: { c1: { k:1 }}
     expect(TOP.unify(d1, ctx).canon).toEqual('$.c.x')
   })
 
-  /*
+
   it('unify', () => {
-    let r1 = new RefVal('a')
-    let r2 = new RefVal('a')
+    let r1 = new RefVal({ peg: ['a'] })
+    let r2 = new RefVal({ peg: ['a'] })
 
     let ctx = makeCtx()
     let u12 = r1.unify(r2, ctx)
     // console.log(u12, r1.id, r2.id)
 
     expect(r1).toEqual(u12)
+
+
+    let s0 = `a:$.x,a:$.x,x:1`
+    expect(G(s0)).toEqual({ a: 1, x: 1 })
+
+    let s1 = `x:1,a:$.x,a:$.x`
+    expect(G(s1)).toEqual({ a: 1, x: 1 })
+
+    let s2 = `a:$.x,a:$.x`
+    expect(UC(s2)).toEqual('{"a":$.x}')
   })
 
 
+  /*
   it('spreadable', () => {
     let g0 = G('a:1 x:{&:{y:.a}} x:m:q:2 x:n:q:3')
     // console.log(g0)
@@ -310,7 +637,7 @@ function print(o: any, t?: string) {
 
 function makeCtx(r?: any, p?: string[]) {
   return new Context({
-    root: r || new MapVal({}),
+    root: r || new MapVal({ peg: {} }),
     path: p
   })
 }

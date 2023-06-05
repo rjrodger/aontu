@@ -11,8 +11,8 @@ const RefVal_1 = require("../val/RefVal");
 const ValBase_1 = require("../val/ValBase");
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends ValBase_1.ValBase {
-    constructor(peg, ctx) {
-        super(peg, ctx);
+    constructor(spec, ctx) {
+        super(spec, ctx);
     }
     // NOTE: mutation!
     append(peer) {
@@ -114,15 +114,15 @@ class ConjunctVal extends ValBase_1.ValBase {
             out = outvals[0];
         }
         else {
-            out = new ConjunctVal(outvals, ctx);
+            out = new ConjunctVal({ peg: outvals }, ctx);
         }
         out.done = done ? type_1.DONE : this.done + 1;
         // console.log('CJ out', out.done, out.canon)
         return out;
     }
-    clone(ctx) {
-        let out = super.clone(ctx);
-        out.peg = this.peg.map((entry) => entry.clone(ctx));
+    clone(spec, ctx) {
+        let out = super.clone(spec, ctx);
+        out.peg = this.peg.map((entry) => entry.clone(null, ctx));
         return out;
     }
     // TODO: need a well-defined val order so conjunt canon is always the same

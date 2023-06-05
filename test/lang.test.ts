@@ -1,3 +1,5 @@
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+
 
 
 import type {
@@ -130,11 +132,11 @@ describe('lang', function() {
 
     let v0 = P('a:.x')
     // console.log(v0)
-    expect(v0.peg.a.parts).toEqual(['x'])
+    expect(v0.peg.a.peg).toEqual(['x'])
 
     let v1 = P('a:.x.y', { xlog: -1 })
     // console.log(v1)
-    expect(v1.peg.a.parts).toEqual(['x', 'y'])
+    expect(v1.peg.a.peg).toEqual(['x', 'y'])
   })
 
 
@@ -325,5 +327,5 @@ describe('lang', function() {
 
 
 function makeCtx(opts?: any) {
-  return new Context(opts || { root: new MapVal({}) })
+  return new Context(opts || { root: new MapVal({ peg: {} }) })
 }

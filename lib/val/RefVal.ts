@@ -15,6 +15,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -49,106 +50,80 @@ import { ValBase } from '../val/ValBase'
 
 
 class RefVal extends ValBase {
-  parts: (string | VarVal)[]
-  absolute: boolean
-  sep = '.'
-  root = '$'
-  attr: undefined | { kind: 'KEY', part: string }
+  absolute: boolean = false
+  prefix: boolean = false
 
-  constructor(peg: any[], ctx?: Context) {
-    super('', ctx)
+  constructor(
+    spec: {
+      peg: any[],
+      absolute?: boolean,
+      prefix?: boolean
+    },
+    ctx?: Context
+  ) {
+    super(spec, ctx)
+    this.peg = []
 
-    // TODO this.peg is a string! breaks clone - refactor
-    if ('string' === typeof peg) {
-      this.parts = []
-      this.absolute = false
-      return
+    this.absolute = true === this.absolute ? true : // absolute sticks
+      true === spec.absolute ? true : false
+
+    this.prefix = true === spec.prefix
+
+    for (let pI = 0; pI < spec.peg.length; pI++) {
+      this.append(spec.peg[pI])
     }
-
-    this.absolute =
-      this.root === peg[0] ||
-      this.root === peg[0]?.peg
-
-    if (this.absolute) {
-      this.peg = this.root
-    }
-    else if (1 === peg.length && peg[0] instanceof RefVal) {
-      peg.unshift(this.sep)
-    }
-
-    this.parts = []
-
-    let pI = this.absolute ? 1 : 0
-    for (; pI < peg.length; pI++) {
-      this.append(peg[pI])
-    }
-
   }
 
 
   append(part: any) {
-    // console.log('APPEND', part)
-    let partstr
+    // console.log('APPEND', part, this)
+    let partval
 
     if ('string' === typeof part) {
-      // this.parts.push(part)
-      partstr = part
+      partval = part
+      this.peg.push(partval)
     }
 
     else if (part instanceof StringVal) {
-      // this.parts.push(part.peg)
-      partstr = part.peg
+      partval = part.peg
+      this.peg.push(partval)
     }
 
     else if (part instanceof VarVal) {
-      if (part.peg instanceof RefVal) {
-        this.absolute = true
-        part = part.peg
-      }
-      else {
-        partstr = part
-      }
+      partval = part
+      this.peg.push(partval)
     }
 
-    if (part instanceof RefVal) {
-      this.attr = part.attr
-      this.parts.push(...part.parts)
-      if (0 < this.parts.length) {
-        partstr = this.parts[this.parts.length - 1]
-        this.parts.length = this.parts.length - 1
-      }
+    else if (part instanceof RefVal) {
       if (part.absolute) {
         this.absolute = true
       }
-    }
 
-    if (null != partstr) {
-      // let m = partstr.match(/^(.*)\$([^$]+)$/)
-      // if (m) {
-      //   partstr = m[1]
-      //   this.attr = { kind: m[2], part: partstr }
-      // }
-      if ('' != partstr) {
-        this.parts.push(partstr)
+      if (this.prefix) {
+        if (part.prefix) {
+          this.peg.push('.')
+        }
       }
+      else {
+        if (part.prefix) {
+          if (0 === this.peg.length) {
+            this.prefix = true
+          }
+
+          else if (0 < this.peg.length) {
+            this.peg.push('.')
+          }
+        }
+      }
+
+      this.peg.push(...part.peg)
     }
-
-    this.peg =
-      (this.absolute ? this.root : '') +
-      (0 < this.parts.length ? this.sep : '') +
-      // this.parts.join(this.sep)
-      this.parts.map((p: any) => this.sep === p ? '' :
-        (p.isVal ? p.canon : '' + p))
-        .join(this.sep) +
-      (null == this.attr ? '' : '$' + this.attr.kind)
-
-    // console.log('APPEND PEG', this.peg, this.absolute)
   }
 
 
   unify(peer: Val, ctx: Context): Val {
     let out: Val = this
-    let why = 'id'
+    // let why = 'id'
 
     if (this.id !== peer.id) {
 
@@ -157,34 +132,40 @@ class RefVal extends ValBase {
       // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
       let resolved: Val | undefined = null == ctx ? this : this.find(ctx)
 
+      // console.log('UR', this.peg, resolved)
+
       resolved = resolved || this
 
-      if (resolved instanceof RefVal) {
+      if (null == resolved && this.canon === peer.canon) {
+        out = this
+      }
+      else if (resolved instanceof RefVal) {
         if (TOP === peer) {
           out = this
-          why = 'pt'
+          // why = 'pt'
         }
         else if (peer instanceof Nil) {
           out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
-          why = 'pn'
+          // why = 'pn'
         }
 
         // same path
-        else if (this.peg === peer.peg) {
+        // else if (this.peg === peer.peg) {
+        else if (this.canon === peer.canon) {
           out = this
-          why = 'pp'
+          // why = 'pp'
         }
 
         else {
           // Ensure RefVal done is incremented
           this.done = DONE === this.done ? DONE : this.done + 1
-          out = new ConjunctVal([this, peer], ctx)
-          why = 'cj'
+          out = new ConjunctVal({ peg: [this, peer] }, ctx)
+          // why = 'cj'
         }
       }
       else {
         out = unite(ctx, resolved, peer, 'ref')
-        why = 'u'
+        // why = 'u'
       }
 
       out.done = DONE === out.done ? DONE : this.done + 1
@@ -207,18 +188,16 @@ class RefVal extends ValBase {
 
     let modes: string[] = []
 
-    // console.log('PARTS', this.parts)
+    // console.log('PARTS', this.peg)
 
-    for (let pI = 0; pI < this.parts.length; pI++) {
-      let part = this.parts[pI]
+    for (let pI = 0; pI < this.peg.length; pI++) {
+      let part = this.peg[pI]
       if (part instanceof VarVal) {
         let strval = (part as VarVal).peg
         let name = strval ? '' + strval.peg : ''
 
-        // console.log('QQQ name', name, pI, this.parts.length)
-
         if ('KEY' === name) {
-          if (pI === this.parts.length - 1) {
+          if (pI === this.peg.length - 1) {
             modes.push(name)
           }
           else {
@@ -278,7 +257,7 @@ class RefVal extends ValBase {
       ).concat(parts)
     }
 
-    let sep = this.sep
+    let sep = '.'
     fullpath = fullpath
       .reduce(((a: string[], p: string) =>
         (p === sep ? a.length = a.length - 1 : a.push(p), a)), [])
@@ -301,7 +280,7 @@ class RefVal extends ValBase {
       if (modes.includes('KEY')) {
         // let key = fullpath[fullpath.length - ('' === this.attr.part ? 1 : 2)]
         let key = fullpath[fullpath.length - 1]
-        let sv = new StringVal(null == key ? '' : key, ctx)
+        let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
 
         // TODO: other props?
         sv.done = DONE
@@ -321,26 +300,26 @@ class RefVal extends ValBase {
   }
 
 
-  clone(ctx?: Context): Val {
-    let out = (super.clone(ctx) as RefVal)
-    out.absolute = this.absolute
-    out.peg = this.peg
-    out.parts = this.parts.slice(0)
-    out.attr = this.attr
-
+  clone(spec?: ValSpec, ctx?: Context): Val {
+    let out = (super.clone({
+      peg: this.peg,
+      absolute: this.absolute,
+      ...(spec || {})
+    }, ctx) as RefVal)
+    // out.absolute = this.absolute
+    // out.peg = this.peg
     return out
   }
 
 
   get canon() {
     let str =
-      (this.absolute ? this.root : '') +
-      (0 < this.parts.length ? this.sep : '') +
-      // this.parts.join(this.sep)
-      this.parts.map((p: any) => this.sep === p ? '' :
+      (this.absolute ? '$' : '') +
+      (0 < this.peg.length ? '.' : '') +
+      // this.peg.join(this.sep)
+      this.peg.map((p: any) => '.' === p ? '' :
         (p.isVal ? p.canon : '' + p))
-        .join(this.sep) +
-      (null == this.attr ? '' : '$' + this.attr.kind)
+        .join('.')
     return str
   }
 

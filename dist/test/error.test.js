@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2020 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 let { Aontu, util } = require('..');
 const lang_1 = require("../lib/lang");

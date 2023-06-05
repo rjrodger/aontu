@@ -1,3 +1,6 @@
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+
+
 
 import {
   Lang
@@ -145,5 +148,5 @@ function print(o: any, t?: string) {
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({}) })
+  return new Context({ root: r || new MapVal({ peg: {} }) })
 }

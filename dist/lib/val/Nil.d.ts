@@ -1,4 +1,4 @@
-import type { Val } from '../type';
+import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { ValBase } from '../val/ValBase';
 declare class Nil extends ValBase {
@@ -8,9 +8,9 @@ declare class Nil extends ValBase {
     secondary?: Val;
     msg: string;
     static make: (ctx?: Context, why?: any, av?: Val, bv?: Val) => Nil;
-    constructor(why?: any, ctx?: Context);
+    constructor(spec?: any, ctx?: Context);
     unify(_peer: Val, _ctx: Context): this;
-    clone(ctx?: Context): Val;
+    clone(spec?: ValSpec, ctx?: Context): Val;
     get canon(): string;
     gen(_ctx?: Context): undefined;
 }

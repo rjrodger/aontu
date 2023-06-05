@@ -1,5 +1,4 @@
-/* Copyright (c) 2020-2022 Richard Rodger and other contributors, MIT License */
-
+/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
 
 let { Aontu, Lang, util } = require('../aontu')
