@@ -2,7 +2,6 @@ const Util = require('util')
 
 let { Aontu, Lang, Context, util } = require('..')
 
-
 let {
   Integer,
   NumberVal,
@@ -12,9 +11,7 @@ let {
   ScalarTypeVal,
 } = require('../dist/lib/val')
 
-
-
-let P = (s) => util.parse({src:s},{})
+let P = (s) => util.parse({ src: s }, {})
 let A = (s) => Aontu(s)
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
@@ -164,7 +161,6 @@ let s = ''
 // let s = 'x:{a:.x.b}&{b:2}'
 // let s = '{b:.a&.a}&{a:1} '
 
-
 // s = `
 // a: { x: 1 }
 // b: { &: .a }
@@ -175,12 +171,10 @@ let s = ''
 // `
 // }
 
-
 // s = `
 // a: { x: 1, b: .q }
 // a: { y: 2 }
 // `
-
 
 // s = `
 // a: {x:1}
@@ -195,12 +189,10 @@ let s = ''
 // #1&.a
 // `
 
-
 // s = `
 // 1|number|top
 // #1&top
 // `
-
 
 // s = `
 // a: 1
@@ -228,7 +220,6 @@ let s = ''
 // // h: ii: 5
 // `
 
-
 s = `
 # a: { n: .$KEY, x:1 }
 # b: { &: .a }
@@ -252,14 +243,13 @@ s = `$.a.b`
 // s = 'b:{"c0":{"x":1,"k":0,"m":$KEY}} & {"c1":{"k":1}}'
 // s = 'a:{x:1} b:$.a&{m:0}&{n:0}'
 
-
 // s = `a:b:c:.$KEY`
 
 // s = `a:b:1,x:$.a.b`
 
 let p = P(s)
 console.log(p.canon)
-console.dir(p,{depth:null})
+console.dir(p, { depth: null })
 
 let a = A(s)
 // console.log('========')
@@ -268,8 +258,6 @@ console.log(a.canon)
 
 // V(a)
 G(a)
-
-
 
 // let c0 = new Context({})
 // // console.log(c0)
@@ -284,7 +272,6 @@ G(a)
 // let n1 = n0.clone(c2)
 // console.log(n1)
 
-
 // let m0 = A(`{c:d:e:f:1}`)
 // // console.dir(m0,{depth:null})
 // let m1 = m0.peg.c.peg.d
@@ -292,4 +279,3 @@ G(a)
 
 // let m1c = m1.clone(c2)
 // console.dir(m1c,{depth:null})
-

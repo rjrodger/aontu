@@ -422,6 +422,7 @@ function makeModelResolver(options: any) {
   ) {
 
     let path = 'string' === typeof spec ? spec : spec?.peg
+    // console.log('MR', path, ctx.meta)
 
     let search: any = []
     let res = memResolver(path, popts, rule, ctx, jsonic)

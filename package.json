@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -46,7 +46,7 @@
     "@jsonic/directive": "^0.11.0",
     "@jsonic/expr": "^0.8.0",
     "@jsonic/jsonic-next": "^2.10.0",
-    "@jsonic/multisource": "^1.0.0",
+    "@jsonic/multisource": "^1.0.1",
     "@jsonic/path": "^0.6.0"
   },
   "devDependencies": {

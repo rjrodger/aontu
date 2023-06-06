@@ -285,6 +285,7 @@ function makeModelResolver(options) {
     });
     return function ModelResolver(spec, popts, rule, ctx, jsonic) {
         let path = 'string' === typeof spec ? spec : spec === null || spec === void 0 ? void 0 : spec.peg;
+        // console.log('MR', path, ctx.meta)
         let search = [];
         let res = memResolver(path, popts, rule, ctx, jsonic);
         res.path = path;

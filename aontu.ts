@@ -73,12 +73,11 @@ const util = {
     return opts
   },
 
-
   parse(opts: Options, ctx: { deps: any }): Val {
     let lang = new Lang(opts)
     let val = lang.parse(opts.src, { deps: ctx.deps })
     return val
-  }
+  },
 }
 
 export { Aontu, Val, Nil, Lang, Context, util }

@@ -65,7 +65,7 @@ const util = {
         let lang = new lang_1.Lang(opts);
         let val = lang.parse(opts.src, { deps: ctx.deps });
         return val;
-    }
+    },
 };
 exports.util = util;
 exports.default = Aontu;
