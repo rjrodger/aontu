@@ -23,19 +23,22 @@ import {
 } from '../type'
 
 import {
+  descErr
+} from '../err'
+
+import {
   Context,
 } from '../unify'
-
 
 import {
   unite
 } from '../op/op'
 
-
 import {
   TOP,
   StringVal,
 } from '../val'
+
 
 import { ConjunctVal } from '../val/ConjunctVal'
 import { DisjunctVal } from '../val/DisjunctVal'
@@ -306,8 +309,6 @@ class RefVal extends ValBase {
       absolute: this.absolute,
       ...(spec || {})
     }, ctx) as RefVal)
-    // out.absolute = this.absolute
-    // out.peg = this.peg
     return out
   }
 
@@ -325,16 +326,28 @@ class RefVal extends ValBase {
 
 
   gen(ctx?: Context) {
-    if (ctx) {
-      ctx.err.push(Nil.make(
-        ctx,
-        'ref',
-        this.peg,
-        undefined,
-      ))
-    }
+    // Unresolved ref cannot be generated, so always an error.
+    let nil = Nil.make(
+      ctx,
+      'ref',
+      this, // (formatPath(this.peg, this.absolute) as any),
+      undefined
+    )
 
-    throw new Error('REF-gen ' + this.peg)
+    // TODO: refactor to use Site
+    nil.path = this.path
+    nil.url = this.url
+    nil.row = this.row
+    nil.col = this.col
+
+    descErr(nil)
+
+    if (ctx) {
+      ctx.err.push(nil)
+    }
+    else {
+      throw new Error(nil.msg)
+    }
 
     return undefined
   }

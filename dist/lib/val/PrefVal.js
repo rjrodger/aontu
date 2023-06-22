@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefVal = void 0;
 const type_1 = require("../type");
+const err_1 = require("../err");
 const op_1 = require("../op/op");
 const Nil_1 = require("../val/Nil");
 const ValBase_1 = require("../val/ValBase");
@@ -61,9 +62,18 @@ class PrefVal extends ValBase_1.ValBase {
     }
     gen(ctx) {
         let val = !(this.pref instanceof Nil_1.Nil) ? this.pref :
-            !(this.peg instanceof Nil_1.Nil) ? this.peg :
-                undefined;
-        return undefined === val ? undefined : val.gen(ctx);
+            (!(this.peg instanceof Nil_1.Nil) ? this.peg :
+                this.pref);
+        if (val instanceof Nil_1.Nil) {
+            (0, err_1.descErr)(val);
+            if (ctx) {
+                ctx.err.push(val);
+            }
+            else {
+                throw new Error(val.msg);
+            }
+        }
+        return val.gen(ctx);
     }
 }
 exports.PrefVal = PrefVal;

@@ -10,6 +10,9 @@ import {
   DONE,
 } from '../type'
 
+import {
+  descErr
+} from '../err'
 
 import {
   Context,
@@ -212,26 +215,30 @@ class ConjunctVal extends ValBase {
 
 
   gen(ctx?: Context) {
-    throw new Error('ConjuntVal-gen')
+    // Unresolved conjunct cannot be generated, so always an error.
+    let nil = Nil.make(
+      ctx,
+      'conjunct',
+      this, // (formatPath(this.peg, this.absolute) as any),
+      undefined
+    )
 
-    // if (0 < this.peg.length) {
+    // TODO: refactor to use Site
+    nil.path = this.path
+    nil.url = this.url
+    nil.row = this.row
+    nil.col = this.col
 
-    //   // Default is just the first term - does this work?
-    //   // TODO: maybe use a PrefVal() ?
-    //   let v: Val = this.peg[0]
+    descErr(nil)
 
+    if (ctx) {
+      ctx.err.push(nil)
+    }
+    else {
+      throw new Error(nil.msg)
+    }
 
-    //   let out = undefined
-    //   if (undefined !== v && !(v instanceof Nil)) {
-    //     out = v.gen(ctx)
-    //   }
-    //   return out
-    // }
-    // else {
-    //   throw new Error('ConjuntVal-gen')
-    // }
-
-    // return undefined
+    return undefined
   }
 }
 

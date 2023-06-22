@@ -11,13 +11,15 @@ import {
 } from '../type'
 
 import {
+  descErr
+} from '../err'
+
+import {
   Context,
 } from '../unify'
 
 
 import { ValBase } from '../val/ValBase'
-
-
 
 
 class Nil extends ValBase {
@@ -116,9 +118,18 @@ class Nil extends ValBase {
     return 'nil'
   }
 
-  gen(_ctx?: Context) {
-    // TODO: proper gen error
-    throw new Error('Nil-gen: ' + this.why)
+  gen(ctx?: Context) {
+    // Unresolved nil cannot be generated, so always an error.
+
+    descErr(this)
+
+    if (ctx) {
+      ctx.err.push(this)
+    }
+    else {
+      throw new Error(this.msg)
+    }
+
     return undefined
   }
 }

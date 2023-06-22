@@ -16,6 +16,6 @@ declare class Nil extends ValBase {
     unify(_peer: Val, _ctx: Context): this;
     clone(spec?: ValSpec, ctx?: Context): Val;
     get canon(): string;
-    gen(_ctx?: Context): undefined;
+    gen(ctx?: Context): undefined;
 }
 export { Nil, };

@@ -22,6 +22,10 @@ import {
 } from '../type'
 
 import {
+  descErr
+} from '../err'
+
+import {
   Context,
 } from '../unify'
 
@@ -118,16 +122,28 @@ class VarVal extends ValBase {
 
 
   gen(ctx?: Context) {
-    if (ctx) {
-      ctx.err.push(Nil.make(
-        ctx,
-        'var',
-        this.peg,
-        undefined,
-      ))
-    }
+    // Unresolved var cannot be generated, so always an error.
+    let nil = Nil.make(
+      ctx,
+      'var',
+      this,
+      undefined
+    )
 
-    throw new Error('REF-var ' + this.peg)
+    // TODO: refactor to use Site
+    nil.path = this.path
+    nil.url = this.url
+    nil.row = this.row
+    nil.col = this.col
+
+    descErr(nil)
+
+    if (ctx) {
+      ctx.err.push(nil)
+    }
+    else {
+      throw new Error(nil.msg)
+    }
 
     return undefined
   }

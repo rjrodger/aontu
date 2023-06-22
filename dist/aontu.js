@@ -29,6 +29,7 @@ also trace deps into top val and watch via model
 //   abs: true,
 //   found: false,
 // })
+// TODO: Aontu should return final generated version?
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`

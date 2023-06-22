@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VarVal = void 0;
 const type_1 = require("../type");
+const err_1 = require("../err");
 const val_1 = require("../val");
 const Nil_1 = require("../val/Nil");
 const RefVal_1 = require("../val/RefVal");
@@ -57,10 +58,20 @@ class VarVal extends ValBase_1.ValBase {
         return '$' + (((_a = this.peg) === null || _a === void 0 ? void 0 : _a.isVal) ? this.peg.canon : '' + this.peg);
     }
     gen(ctx) {
+        // Unresolved var cannot be generated, so always an error.
+        let nil = Nil_1.Nil.make(ctx, 'var', this, undefined);
+        // TODO: refactor to use Site
+        nil.path = this.path;
+        nil.url = this.url;
+        nil.row = this.row;
+        nil.col = this.col;
+        (0, err_1.descErr)(nil);
         if (ctx) {
-            ctx.err.push(Nil_1.Nil.make(ctx, 'var', this.peg, undefined));
+            ctx.err.push(nil);
         }
-        throw new Error('REF-var ' + this.peg);
+        else {
+            throw new Error(nil.msg);
+        }
         return undefined;
     }
 }

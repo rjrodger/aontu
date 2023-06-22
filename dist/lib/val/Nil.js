@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Nil = void 0;
 const type_1 = require("../type");
+const err_1 = require("../err");
 const ValBase_1 = require("../val/ValBase");
 class Nil extends ValBase_1.ValBase {
     constructor(spec, ctx) {
@@ -34,9 +35,15 @@ class Nil extends ValBase_1.ValBase {
     get canon() {
         return 'nil';
     }
-    gen(_ctx) {
-        // TODO: proper gen error
-        throw new Error('Nil-gen: ' + this.why);
+    gen(ctx) {
+        // Unresolved nil cannot be generated, so always an error.
+        (0, err_1.descErr)(this);
+        if (ctx) {
+            ctx.err.push(this);
+        }
+        else {
+            throw new Error(this.msg);
+        }
         return undefined;
     }
 }

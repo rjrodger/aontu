@@ -12,6 +12,10 @@ import {
 } from '../type'
 
 import {
+  descErr
+} from '../err'
+
+import {
   Context,
 } from '../unify'
 
@@ -123,10 +127,21 @@ class PrefVal extends ValBase {
 
   gen(ctx?: Context) {
     let val = !(this.pref instanceof Nil) ? this.pref :
-      !(this.peg instanceof Nil) ? this.peg :
-        undefined
+      (!(this.peg instanceof Nil) ? this.peg :
+        this.pref)
 
-    return undefined === val ? undefined : val.gen(ctx)
+    if (val instanceof Nil) {
+      descErr(val)
+
+      if (ctx) {
+        ctx.err.push(val)
+      }
+      else {
+        throw new Error(val.msg)
+      }
+    }
+
+    return val.gen(ctx)
   }
 }
 

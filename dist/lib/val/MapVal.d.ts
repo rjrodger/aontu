@@ -12,6 +12,6 @@ declare class MapVal extends ValBase {
     unify(peer: Val, ctx: Context): Val;
     clone(spec?: ValSpec, ctx?: Context): Val;
     get canon(): string;
-    gen(ctx: Context): any;
+    gen(ctx?: Context): any;
 }
 export { MapVal };

@@ -177,16 +177,11 @@ class MapVal extends ValBase {
   }
 
 
-  gen(ctx: Context) {
+  gen(ctx?: Context) {
     let out: any = {}
     for (let p in this.peg) {
       out[p] = this.peg[p].gen(ctx)
     }
-
-    // if (0 === Object.keys(out).length) {
-    //   console.log('MapVal-gen 0', this.path, this.done)
-    // }
-
     return out
   }
 }

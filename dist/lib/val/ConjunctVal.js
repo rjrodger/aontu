@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConjunctVal = exports.norm = void 0;
 const type_1 = require("../type");
+const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
 const MapVal_1 = require("../val/MapVal");
@@ -131,21 +132,22 @@ class ConjunctVal extends ValBase_1.ValBase {
         return this.peg.map((v) => v.canon).join('&');
     }
     gen(ctx) {
-        throw new Error('ConjuntVal-gen');
-        // if (0 < this.peg.length) {
-        //   // Default is just the first term - does this work?
-        //   // TODO: maybe use a PrefVal() ?
-        //   let v: Val = this.peg[0]
-        //   let out = undefined
-        //   if (undefined !== v && !(v instanceof Nil)) {
-        //     out = v.gen(ctx)
-        //   }
-        //   return out
-        // }
-        // else {
-        //   throw new Error('ConjuntVal-gen')
-        // }
-        // return undefined
+        // Unresolved conjunct cannot be generated, so always an error.
+        let nil = Nil_1.Nil.make(ctx, 'conjunct', this, // (formatPath(this.peg, this.absolute) as any),
+        undefined);
+        // TODO: refactor to use Site
+        nil.path = this.path;
+        nil.url = this.url;
+        nil.row = this.row;
+        nil.col = this.col;
+        (0, err_1.descErr)(nil);
+        if (ctx) {
+            ctx.err.push(nil);
+        }
+        else {
+            throw new Error(nil.msg);
+        }
+        return undefined;
     }
 }
 exports.ConjunctVal = ConjunctVal;

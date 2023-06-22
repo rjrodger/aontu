@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
 const type_1 = require("../type");
+const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
@@ -208,8 +209,6 @@ class RefVal extends ValBase_1.ValBase {
             absolute: this.absolute,
             ...(spec || {})
         }, ctx);
-        // out.absolute = this.absolute
-        // out.peg = this.peg
         return out;
     }
     get canon() {
@@ -222,10 +221,21 @@ class RefVal extends ValBase_1.ValBase {
         return str;
     }
     gen(ctx) {
+        // Unresolved ref cannot be generated, so always an error.
+        let nil = Nil_1.Nil.make(ctx, 'ref', this, // (formatPath(this.peg, this.absolute) as any),
+        undefined);
+        // TODO: refactor to use Site
+        nil.path = this.path;
+        nil.url = this.url;
+        nil.row = this.row;
+        nil.col = this.col;
+        (0, err_1.descErr)(nil);
         if (ctx) {
-            ctx.err.push(Nil_1.Nil.make(ctx, 'ref', this.peg, undefined));
+            ctx.err.push(nil);
         }
-        throw new Error('REF-gen ' + this.peg);
+        else {
+            throw new Error(nil.msg);
+        }
         return undefined;
     }
 }
