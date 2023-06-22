@@ -42,24 +42,25 @@ class Unify {
         if ('string' === typeof root) {
             root = this.lang.parse(root);
         }
+        this.cc = 0;
         this.root = root;
         this.res = root;
-        this.err = [];
+        this.err = root.err || [];
         let res = root;
-        ctx = ctx || new Context({
-            root: res,
-            err: this.err,
-        });
-        // TODO: derive maxdc from res deterministically
-        // perhaps parse should count intial vals, paths, etc?
-        let maxdc = 9; // 99
-        for (this.cc = 0; this.cc < maxdc && type_1.DONE !== res.done; this.cc++) {
-            // console.log('\n\nRES', this.dc)
-            // console.log('\n\nRES', this.dc, res.canon)
-            // console.dir(res, { depth: null })
-            ctx.cc = this.cc;
-            res = (0, op_1.unite)(ctx, res, val_1.TOP);
-            ctx = ctx.clone({ root: res });
+        // Only unify if no syntax errors
+        if (!root.nil) {
+            ctx = ctx || new Context({
+                root: res,
+                err: this.err,
+            });
+            // TODO: derive maxdc from res deterministically
+            // perhaps parse should count intial vals, paths, etc?
+            let maxdc = 9; // 99
+            for (; this.cc < maxdc && type_1.DONE !== res.done; this.cc++) {
+                ctx.cc = this.cc;
+                res = (0, op_1.unite)(ctx, res, val_1.TOP);
+                ctx = ctx.clone({ root: res });
+            }
         }
         this.res = res;
     }

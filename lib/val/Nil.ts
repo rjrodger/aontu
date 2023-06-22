@@ -71,9 +71,21 @@ class Nil extends ValBase {
   }
 
 
-  constructor(spec?: any, ctx?: Context) {
-    super(spec, ctx)
-    this.why = spec?.why
+  constructor(
+    spec?: {
+      why?: string
+      msg?: string
+      err?: Nil | Nil[] | Error | Error[]
+    } | string,
+    ctx?: Context
+  ) {
+    super(spec && 'string' !== typeof spec ? spec : {}, ctx)
+
+    if (spec && 'object' === typeof spec) {
+      this.why = spec?.why
+      this.msg = 'string' === typeof spec?.msg ? spec.msg : this.msg
+      this.err = spec ? (Array.isArray(spec.err) ? [...spec.err] : [spec.err]) : []
+    }
 
     // Nil is always DONE, by definition.
     this.done = DONE

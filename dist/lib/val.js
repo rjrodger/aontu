@@ -149,7 +149,6 @@ class IntegerVal extends ScalarVal {
             return this;
         }
         else {
-            // console.log('IntegerVal Q', peer.canon)
             return super.unify(peer, ctx);
         }
     }

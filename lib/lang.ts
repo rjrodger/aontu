@@ -6,6 +6,7 @@ import {
   Rule,
   RuleSpec,
   Context,
+  JsonicError,
 } from '@jsonic/jsonic-next'
 
 // import { Debug } from '@jsonic/jsonic-next/debug'
@@ -170,12 +171,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       addpath(new DisjunctVal({ peg: terms }), r.keep.path),
 
     'dot-prefix': (r: Rule, _op: Op, terms: any) => {
-      // console.log('DP', terms)
       return addpath(new RefVal({ peg: terms, prefix: true }), r.keep.path)
     },
 
     'dot-infix': (r: Rule, _op: Op, terms: any) => {
-      // console.log('DI', terms)
       return addpath(new RefVal({ peg: terms }), r.keep.path)
     },
 
@@ -422,8 +421,6 @@ function makeModelResolver(options: any) {
   ) {
 
     let path = 'string' === typeof spec ? spec : spec?.peg
-    // console.log('MR', path, ctx.meta)
-
     let search: any = []
     let res = memResolver(path, popts, rule, ctx, jsonic)
     res.path = path
@@ -492,7 +489,28 @@ class Lang {
 
     // jm.log = -1
 
-    let val = this.jsonic(src, jm)
+    let val: Val
+
+    try {
+      val = this.jsonic(src, jm)
+    }
+    catch (e: any) {
+      if (e instanceof JsonicError) {
+        val = new Nil({
+          why: 'parse',
+          err: new Nil({
+            why: 'syntax',
+            msg: e.message,
+            err: e,
+          })
+        })
+      }
+      else {
+        throw e
+      }
+    }
+
+    // console.log('LANG VAL', val)
 
     return val
   }
@@ -501,5 +519,4 @@ class Lang {
 export {
   Lang,
   Site,
-  // includeFileResolver,
 }

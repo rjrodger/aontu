@@ -82,51 +82,6 @@ class Context {
       path: this.path.concat(key),
     })
   }
-
-
-  // TODO: move to RefVal
-  /*
-  xfind(ref: RefVal) {
-    // TODO: relative paths
-    // if (this.root instanceof MapVal && ref.absolute) {
-
-    // NOTE: path *to* the ref, not the ref itself!
-    let fullpath = ref.path
-
-    if (ref.absolute) {
-      fullpath = ref.parts.slice(1) // ignore '$' at start
-    }
-    else {
-      fullpath = fullpath.concat(ref.parts)
-    }
-
-    console.log('FP', ref.absolute, ref.parts, fullpath)
-
-    let node = this.root
-    let pI = 0
-    for (; pI < ref.parts.length; pI++) {
-      let part = ref.parts[pI]
-      if (node instanceof MapVal) {
-        node = node.peg[part]
-      }
-      else {
-        // console.log(
-        //   'FIND', ref.parts, pI, node.constructor.name,
-        //   node.peg.map(
-        //     (n: any) =>
-        //       n.constructor.name + ':' + n.done +
-        //       ' {' + Object.keys(n.peg) + '}'
-        //   )
-        // )
-        break;
-      }
-    }
-
-    if (pI === ref.parts.length) {
-      return node
-    }
-    }
-    */
 }
 
 
@@ -143,30 +98,31 @@ class Unify {
       root = this.lang.parse(root)
     }
 
+    this.cc = 0
     this.root = root
     this.res = root
-    this.err = []
+    this.err = root.err || []
 
     let res = root
 
-    ctx = ctx || new Context({
-      root: res,
-      err: this.err,
-    })
+    // Only unify if no syntax errors
+    if (!(root as Nil).nil) {
+      ctx = ctx || new Context({
+        root: res,
+        err: this.err,
+      })
 
 
-    // TODO: derive maxdc from res deterministically
-    // perhaps parse should count intial vals, paths, etc?
+      // TODO: derive maxdc from res deterministically
+      // perhaps parse should count intial vals, paths, etc?
 
 
-    let maxdc = 9 // 99
-    for (this.cc = 0; this.cc < maxdc && DONE !== res.done; this.cc++) {
-      // console.log('\n\nRES', this.dc)
-      // console.log('\n\nRES', this.dc, res.canon)
-      // console.dir(res, { depth: null })
-      ctx.cc = this.cc
-      res = unite(ctx, res, TOP)
-      ctx = ctx.clone({ root: res })
+      let maxdc = 9 // 99
+      for (; this.cc < maxdc && DONE !== res.done; this.cc++) {
+        ctx.cc = this.cc
+        res = unite(ctx, res, TOP)
+        ctx = ctx.clone({ root: res })
+      }
     }
 
 

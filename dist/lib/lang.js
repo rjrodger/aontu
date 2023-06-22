@@ -99,11 +99,9 @@ let AontuJsonic = function aontu(jsonic) {
         'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal({ peg: terms }), r.keep.path),
         'disjunct-infix': (r, _op, terms) => addpath(new DisjunctVal_1.DisjunctVal({ peg: terms }), r.keep.path),
         'dot-prefix': (r, _op, terms) => {
-            // console.log('DP', terms)
             return addpath(new RefVal_1.RefVal({ peg: terms, prefix: true }), r.keep.path);
         },
         'dot-infix': (r, _op, terms) => {
-            // console.log('DI', terms)
             return addpath(new RefVal_1.RefVal({ peg: terms }), r.keep.path);
         },
         'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal({ peg: terms[0] }), r.keep.path),
@@ -285,7 +283,6 @@ function makeModelResolver(options) {
     });
     return function ModelResolver(spec, popts, rule, ctx, jsonic) {
         let path = 'string' === typeof spec ? spec : spec === null || spec === void 0 ? void 0 : spec.peg;
-        // console.log('MR', path, ctx.meta)
         let search = [];
         let res = memResolver(path, popts, rule, ctx, jsonic);
         res.path = path;
@@ -338,7 +335,26 @@ class Lang {
             jm.log = opts.log;
         }
         // jm.log = -1
-        let val = this.jsonic(src, jm);
+        let val;
+        try {
+            val = this.jsonic(src, jm);
+        }
+        catch (e) {
+            if (e instanceof jsonic_next_1.JsonicError) {
+                val = new Nil_1.Nil({
+                    why: 'parse',
+                    err: new Nil_1.Nil({
+                        why: 'syntax',
+                        msg: e.message,
+                        err: e,
+                    })
+                });
+            }
+            else {
+                throw e;
+            }
+        }
+        // console.log('LANG VAL', val)
         return val;
     }
 }

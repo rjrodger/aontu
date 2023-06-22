@@ -6,20 +6,22 @@ const Nil_1 = require("./val/Nil");
 function descErr(err) {
     var _a, _b, _c;
     if (err instanceof Nil_1.Nil) {
-        let v1 = err.primary || {};
-        let v2 = err.secondary || {};
-        err.msg = 'Cannot unify' +
-            (0 < ((_a = err.path) === null || _a === void 0 ? void 0 : _a.length) ? ' path ' + err.path.join('.') : '') +
-            ' ' + (err.url ? 'in ' + err.url : '') + ':\n' +
-            'LHS: ' +
-            (0 < ((_b = v1.path) === null || _b === void 0 ? void 0 : _b.length) ? v1.path.join('.') + ':' : '') +
-            `<${v1.canon}>:${v1.row}:${v1.col}` + ' ' +
-            ((v1.url && v1.url !== err.url) ? ' in ' + v1.url : '') + '\n' +
-            'RHS: ' +
-            (0 < ((_c = v2.path) === null || _c === void 0 ? void 0 : _c.length) ? v2.path.join('.') + ':' : '') +
-            `<${v2.canon}>:${v2.row}:${v2.col}` + ' ' +
-            ((v2.url && v2.url !== err.url) ? ' in ' + v2.url : '') + '\n' +
-            '';
+        if (null == err.msg) {
+            let v1 = err.primary || {};
+            let v2 = err.secondary || {};
+            err.msg = 'Cannot unify' +
+                (0 < ((_a = err.path) === null || _a === void 0 ? void 0 : _a.length) ? ' path ' + err.path.join('.') : '') +
+                ' ' + (err.url ? 'in ' + err.url : '') + ':\n' +
+                'LHS: ' +
+                (0 < ((_b = v1.path) === null || _b === void 0 ? void 0 : _b.length) ? v1.path.join('.') + ':' : '') +
+                `<${v1.canon}>:${v1.row}:${v1.col}` + ' ' +
+                ((v1.url && v1.url !== err.url) ? ' in ' + v1.url : '') + '\n' +
+                'RHS: ' +
+                (0 < ((_c = v2.path) === null || _c === void 0 ? void 0 : _c.length) ? v2.path.join('.') + ':' : '') +
+                `<${v2.canon}>:${v2.row}:${v2.col}` + ' ' +
+                ((v2.url && v2.url !== err.url) ? ' in ' + v2.url : '') + '\n' +
+                '';
+        }
         return err;
     }
     else {

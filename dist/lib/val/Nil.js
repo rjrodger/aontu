@@ -6,10 +6,14 @@ const type_1 = require("../type");
 const ValBase_1 = require("../val/ValBase");
 class Nil extends ValBase_1.ValBase {
     constructor(spec, ctx) {
-        super(spec, ctx);
+        super(spec && 'string' !== typeof spec ? spec : {}, ctx);
         this.nil = true;
         this.msg = '';
-        this.why = spec === null || spec === void 0 ? void 0 : spec.why;
+        if (spec && 'object' === typeof spec) {
+            this.why = spec === null || spec === void 0 ? void 0 : spec.why;
+            this.msg = 'string' === typeof (spec === null || spec === void 0 ? void 0 : spec.msg) ? spec.msg : this.msg;
+            this.err = spec ? (Array.isArray(spec.err) ? [...spec.err] : [spec.err]) : [];
+        }
         // Nil is always DONE, by definition.
         this.done = type_1.DONE;
     }
