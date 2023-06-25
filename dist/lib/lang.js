@@ -265,6 +265,7 @@ let AontuJsonic = function aontu(jsonic) {
 //   return 'string' === typeof spec ? spec : spec?.peg
 // })
 function makeModelResolver(options) {
+    // console.log('AONTU lang', options)
     var _a, _b;
     const useRequire = options.require || require;
     let memResolver = (0, mem_1.makeMemResolver)({
@@ -322,6 +323,7 @@ class Lang {
         });
     }
     parse(src, opts) {
+        // console.log('AONTU lang parse', this.options)
         // JSONIC-UPDATE - check meta
         let jm = {
             multisource: {

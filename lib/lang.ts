@@ -392,6 +392,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 // })
 
 function makeModelResolver(options: any) {
+  // console.log('AONTU lang', options)
+
   const useRequire = options.require || require
 
   let memResolver = makeMemResolver({
@@ -472,6 +474,8 @@ class Lang {
   }
 
   parse(src: string, opts?: any): Val {
+
+    // console.log('AONTU lang parse', this.options)
 
     // JSONIC-UPDATE - check meta
     let jm: any = {
