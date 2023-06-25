@@ -18,6 +18,7 @@ type Options = {
   print: number,  // Print debug verbosity
   resolver?: Resolver, // Source resolver
   base?: string, // Base path for resolver
+  path?: string, // Path of entry file
 }
 
 

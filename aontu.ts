@@ -40,10 +40,7 @@ also trace deps into top val and watch via model
  */
 function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   let opts = util.options(src, popts)
-  // console.log('AONTU opts', opts)
-
   let deps = {}
-
   let val = util.parse(opts, { deps })
   let uni = new Unify(val as unknown as Val)
   let res = uni.res

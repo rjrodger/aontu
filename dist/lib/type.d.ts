@@ -5,6 +5,7 @@ type Options = {
     print: number;
     resolver?: Resolver;
     base?: string;
+    path?: string;
 };
 interface Val {
     isVal: boolean;
