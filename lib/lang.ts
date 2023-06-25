@@ -474,6 +474,7 @@ class Lang {
   parse(src: string, opts?: any): Val {
     // JSONIC-UPDATE - check meta
     let jm: any = {
+      fileName: this.options.path,
       multisource: {
         path: this.options.path,
         deps: (opts && opts.deps) || undefined
