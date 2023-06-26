@@ -93,7 +93,8 @@ class ListVal extends ValBase {
       out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
         null == peer.spread.cj ? out.spread.cj : (
           out.spread.cj =
-          new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
+          // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
+          unite(ctx, out.spread.cj, peer.spread.cj)
         )
       )
     }
@@ -138,10 +139,10 @@ class ListVal extends ValBase {
           let key_spread_cj = spread_cj.clone(null, key_ctx)
 
           // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
-          out.peg[peerkey] =
-            new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
-          done = false
-
+          oval = out.peg[peerkey] =
+            // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
+            // done = false
+            unite(key_ctx, out.peg[peerkey], key_spread_cj)
         }
 
         done = (done && DONE === oval.done)

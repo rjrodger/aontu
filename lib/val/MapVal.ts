@@ -89,7 +89,8 @@ class MapVal extends ValBase {
       out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
         null == peer.spread.cj ? out.spread.cj : (
           out.spread.cj =
-          new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
+          // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
+          unite(ctx, out.spread.cj, peer.spread.cj)
         )
       )
     }
@@ -141,13 +142,14 @@ class MapVal extends ValBase {
           let key_ctx = ctx.descend(peerkey)
           let key_spread_cj = spread_cj.clone(null, key_ctx)
 
-          out.peg[peerkey] =
-            new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
-          done = false
+          oval = out.peg[peerkey] =
+            // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
+            // done = false
+            unite(key_ctx, out.peg[peerkey], key_spread_cj)
         }
-        else {
-          done = (done && DONE === oval.done)
-        }
+        // else {
+        done = (done && DONE === oval.done)
+        // }
       }
     }
     else if (TOP !== peer) {

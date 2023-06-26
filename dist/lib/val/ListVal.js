@@ -41,7 +41,8 @@ class ListVal extends ValBase_1.ValBase {
         out.spread.cj = this.spread.cj;
         if (peer instanceof ListVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                new ConjunctVal_1.ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)));
+                // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
+                (0, op_1.unite)(ctx, out.spread.cj, peer.spread.cj)));
         }
         out.done = this.done + 1;
         // if (this.spread.cj) {
@@ -72,9 +73,10 @@ class ListVal extends ValBase_1.ValBase {
                     let key_ctx = ctx.descend(peerkey);
                     let key_spread_cj = spread_cj.clone(null, key_ctx);
                     // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
-                    out.peg[peerkey] =
-                        new ConjunctVal_1.ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx);
-                    done = false;
+                    oval = out.peg[peerkey] =
+                        // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
+                        // done = false
+                        (0, op_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj);
                 }
                 done = (done && type_1.DONE === oval.done);
             }

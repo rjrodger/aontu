@@ -43,7 +43,8 @@ class MapVal extends ValBase_1.ValBase {
         out.spread.cj = this.spread.cj;
         if (peer instanceof MapVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                new ConjunctVal_1.ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)));
+                // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
+                (0, op_1.unite)(ctx, out.spread.cj, peer.spread.cj)));
         }
         out.done = this.done + 1;
         let spread_cj = out.spread.cj || val_1.TOP;
@@ -79,13 +80,14 @@ class MapVal extends ValBase_1.ValBase {
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
                     let key_spread_cj = spread_cj.clone(null, key_ctx);
-                    out.peg[peerkey] =
-                        new ConjunctVal_1.ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx);
-                    done = false;
+                    oval = out.peg[peerkey] =
+                        // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
+                        // done = false
+                        (0, op_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj);
                 }
-                else {
-                    done = (done && type_1.DONE === oval.done);
-                }
+                // else {
+                done = (done && type_1.DONE === oval.done);
+                // }
             }
         }
         else if (val_1.TOP !== peer) {

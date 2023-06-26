@@ -45,6 +45,8 @@ class ConjunctVal extends ValBase {
     ctx?: Context
   ) {
     super(spec, ctx)
+    // console.log('NEWCJ')
+    // console.trace()
   }
 
   // NOTE: mutation!
@@ -88,14 +90,32 @@ class ConjunctVal extends ValBase {
     }
 
     upeer = norm(upeer)
-    // console.log('CONJUNCT upeer', mark, done, upeer.map(p => p.canon))
+
+    // console.log('CONJUNCT upeer', this.id, mark, this.done, done, upeer.map(p => p.canon))
+
+    upeer.sort((a: Val, b: Val) => {
+      return (a.constructor.name === b.constructor.name) ? 0 :
+        (a.constructor.name < b.constructor.name ? -1 : 1)
+    })
+
+    // console.log('CONJUNCT upeer sort', this.id, mark, this.done, done, upeer.map(p => p.canon))
 
     // Unify terms against each other
 
     let outvals: Val[] = []
     let val: Val
 
-    // let mark = Math.random()
+
+    // for (let pI = 0; pI < upeer.length; pI++) {
+    //   let pt = upeer[pI]
+    //   for (let qI = pI; qI < upeer.length; qI++) {
+    //     let qt = upeer[pI]
+
+    //     let pq = unite(ctx, pt, qt, 'cj-pq')
+
+    //   }
+    // }
+
 
     // console.log('CJ upeer', mark, upeer.map(v => v.canon))
 
@@ -103,7 +123,6 @@ class ConjunctVal extends ValBase {
 
     next_term:
     for (let pI = 0; pI < upeer.length; pI++) {
-      // let t0 = upeer[pI]
       // console.log('CJ TERM t0', pI, t0.done, t0.canon)
 
       if (DONE !== t0.done) {
@@ -116,6 +135,7 @@ class ConjunctVal extends ValBase {
           // TODO: || ListVal - test!
           && !(
             u0 instanceof MapVal
+            || u0 instanceof ListVal
             || u0 instanceof RefVal
           )
         ) {
@@ -146,6 +166,14 @@ class ConjunctVal extends ValBase {
         t0 = t1
         // console.log('CJ outvals C', outvals.map(v => v.canon))
       }
+
+      else if (t1 instanceof RefVal && !(t0 instanceof RefVal)) {
+        // console.log('CONJUNCT PUSH D', t0.canon)
+        outvals.push(t0)
+        t0 = t1
+        // console.log('CJ outvals C', outvals.map(v => v.canon))
+      }
+
 
       else {
         val = unite(ctx, t0, t1, 'cj-peer-t0t1')

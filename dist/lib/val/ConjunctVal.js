@@ -6,6 +6,7 @@ const type_1 = require("../type");
 const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
+const ListVal_1 = require("../val/ListVal");
 const MapVal_1 = require("../val/MapVal");
 const Nil_1 = require("../val/Nil");
 const RefVal_1 = require("../val/RefVal");
@@ -14,6 +15,8 @@ const ValBase_1 = require("../val/ValBase");
 class ConjunctVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        // console.log('NEWCJ')
+        // console.trace()
     }
     // NOTE: mutation!
     append(peer) {
@@ -40,15 +43,25 @@ class ConjunctVal extends ValBase_1.ValBase {
             }
         }
         upeer = norm(upeer);
-        // console.log('CONJUNCT upeer', mark, done, upeer.map(p => p.canon))
+        // console.log('CONJUNCT upeer', this.id, mark, this.done, done, upeer.map(p => p.canon))
+        upeer.sort((a, b) => {
+            return (a.constructor.name === b.constructor.name) ? 0 :
+                (a.constructor.name < b.constructor.name ? -1 : 1);
+        });
+        // console.log('CONJUNCT upeer sort', this.id, mark, this.done, done, upeer.map(p => p.canon))
         // Unify terms against each other
         let outvals = [];
         let val;
-        // let mark = Math.random()
+        // for (let pI = 0; pI < upeer.length; pI++) {
+        //   let pt = upeer[pI]
+        //   for (let qI = pI; qI < upeer.length; qI++) {
+        //     let qt = upeer[pI]
+        //     let pq = unite(ctx, pt, qt, 'cj-pq')
+        //   }
+        // }
         // console.log('CJ upeer', mark, upeer.map(v => v.canon))
         let t0 = upeer[0];
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
-            // let t0 = upeer[pI]
             // console.log('CJ TERM t0', pI, t0.done, t0.canon)
             if (type_1.DONE !== t0.done) {
                 let u0 = (0, op_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
@@ -56,6 +69,7 @@ class ConjunctVal extends ValBase_1.ValBase {
                     // Maps and Lists are still unified so that path refs will work
                     // TODO: || ListVal - test!
                     && !(u0 instanceof MapVal_1.MapVal
+                        || u0 instanceof ListVal_1.ListVal
                         || u0 instanceof RefVal_1.RefVal)) {
                     // console.log('CONJUNCT PUSH A', u0.id, u0.canon)
                     outvals.push(u0);
@@ -75,6 +89,12 @@ class ConjunctVal extends ValBase_1.ValBase {
             }
             // Can't unite with a RefVal, unless also a RefVal with same path.
             else if (t0 instanceof RefVal_1.RefVal && !(t1 instanceof RefVal_1.RefVal)) {
+                // console.log('CONJUNCT PUSH D', t0.canon)
+                outvals.push(t0);
+                t0 = t1;
+                // console.log('CJ outvals C', outvals.map(v => v.canon))
+            }
+            else if (t1 instanceof RefVal_1.RefVal && !(t0 instanceof RefVal_1.RefVal)) {
                 // console.log('CONJUNCT PUSH D', t0.canon)
                 outvals.push(t0);
                 t0 = t1;

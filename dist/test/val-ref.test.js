@@ -484,6 +484,24 @@ b: { c1: { k:1 }}
         let g1 = G(`a:x:1 b:&:$.a b:c0:k:0 b:c1:k:1`);
         // console.dir(g1, { depth: null })
         expect(g1).toEqual({ a: { x: 1 }, b: { c0: { x: 1, k: 0 }, c1: { x: 1, k: 1 } } });
+        let g2 = G(`a:x:1 b:&:{y:2}&$.a b:c0:k:0 b:c1:k:1`);
+        // console.dir(g1, { depth: null })
+        expect(g2).toEqual({
+            a: { x: 1 },
+            b: {
+                c0: { x: 1, k: 0, y: 2 },
+                c1: { x: 1, k: 1, y: 2 }
+            }
+        });
+        let g3 = G(`a:x:1 b:&:{}&$.a b:c0:k:0 b:c1:k:1`);
+        // console.dir(g1, { depth: null })
+        expect(g3).toEqual({
+            a: { x: 1 },
+            b: {
+                c0: { x: 1, k: 0 },
+                c1: { x: 1, k: 1 }
+            }
+        });
         // let g1 = G('{z:4} & {a:1 x:{&:{y:.a}} x:m:q:2 x:n:q:3}')
         // // console.log(g1)
         // expect(g1).toEqual({ z: 4, a: 1, x: { m: { q: 2, y: 1 }, n: { q: 3, y: 1 } } })

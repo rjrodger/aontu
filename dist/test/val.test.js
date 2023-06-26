@@ -319,10 +319,13 @@ describe('val', function () {
         // TODO: same for DisjunctVal
         expect((0, op_1.unite)(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), val_1.TOP).canon).toEqual('top');
         expect((0, op_1.unite)(ctx, P('1 & .a')).canon).toEqual('1&.a');
+        expect((0, op_1.unite)(ctx, P('.a & 1')).canon).toEqual('1&.a');
         expect((0, op_1.unite)(ctx, P('1 & 1 & .a')).canon).toEqual('1&.a');
-        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 2')).canon).toEqual('1&.a&2');
-        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 2 & .b')).canon).toEqual('1&.a&2&.b');
-        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 2 & .b & 3')).canon).toEqual('1&.a&2&.b&3');
+        expect((0, op_1.unite)(ctx, P('1 & 2')).canon).toEqual('nil');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & 2')).canon).toEqual('nil');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 2')).canon).toEqual('nil');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & .b')).canon).toEqual('1&.a&.b');
+        expect((0, op_1.unite)(ctx, P('1 & 1 & .a & 1 & .b & 1')).canon).toEqual('1&.a&.b');
     });
     it('disjunct', () => {
         let ctx = makeCtx();

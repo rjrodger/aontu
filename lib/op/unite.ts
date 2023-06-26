@@ -38,6 +38,7 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
   //   'W', whence,
   //   'E', 0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')
 
+  let unified = false
 
   if (b && (TOP === a || !a)) {
     //console.log('Utb', b.canon)
@@ -63,6 +64,7 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
     else if (a instanceof ConjunctVal) {
       // console.log('Q', a.canon, b.canon)
       out = a.unify(b, ctx)
+      unified = true
       why = 'acj'
     }
     else if (
@@ -75,6 +77,7 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
       // console.log('U', a.canon, b.canon)
       // return b.unify(a, ctx)
       out = b.unify(a, ctx)
+      unified = true
       // console.log('UO', out.canon)
       why = 'bv'
     }
@@ -86,7 +89,9 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
     }
 
     else {
+      // console.log('QQQ')
       out = a.unify(b, ctx)
+      unified = true
       why = 'ab'
     }
   }
@@ -96,7 +101,7 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
     why += 'N'
   }
 
-  if (DONE !== out.done) {
+  if (DONE !== out.done && !unified) {
     out = out.unify(TOP, ctx)
     why += 'T'
   }

@@ -468,10 +468,17 @@ describe('val', function() {
     expect(unite(ctx, new ConjunctVal({ peg: [] }), TOP).canon).toEqual('top')
 
     expect(unite(ctx, P('1 & .a')).canon).toEqual('1&.a')
+    expect(unite(ctx, P('.a & 1')).canon).toEqual('1&.a')
+
     expect(unite(ctx, P('1 & 1 & .a')).canon).toEqual('1&.a')
-    expect(unite(ctx, P('1 & 1 & .a & 2')).canon).toEqual('1&.a&2')
-    expect(unite(ctx, P('1 & 1 & .a & 2 & .b')).canon).toEqual('1&.a&2&.b')
-    expect(unite(ctx, P('1 & 1 & .a & 2 & .b & 3')).canon).toEqual('1&.a&2&.b&3')
+
+    expect(unite(ctx, P('1 & 2')).canon).toEqual('nil')
+    expect(unite(ctx, P('1 & 1 & 2')).canon).toEqual('nil')
+    expect(unite(ctx, P('1 & 1 & .a & 2')).canon).toEqual('nil')
+
+    expect(unite(ctx, P('1 & 1 & .a & .b')).canon).toEqual('1&.a&.b')
+
+    expect(unite(ctx, P('1 & 1 & .a & 1 & .b & 1')).canon).toEqual('1&.a&.b')
   })
 
 

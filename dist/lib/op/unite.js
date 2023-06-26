@@ -18,6 +18,7 @@ const unite = (ctx, a, b, whence) => {
     // console.log('AA OP unite  IN', a?.canon, b?.canon,
     //   'W', whence,
     //   'E', 0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')
+    let unified = false;
     if (b && (val_1.TOP === a || !a)) {
         //console.log('Utb', b.canon)
         out = b;
@@ -40,6 +41,7 @@ const unite = (ctx, a, b, whence) => {
         else if (a instanceof ConjunctVal_1.ConjunctVal) {
             // console.log('Q', a.canon, b.canon)
             out = a.unify(b, ctx);
+            unified = true;
             why = 'acj';
         }
         else if (b instanceof ConjunctVal_1.ConjunctVal ||
@@ -49,6 +51,7 @@ const unite = (ctx, a, b, whence) => {
             // console.log('U', a.canon, b.canon)
             // return b.unify(a, ctx)
             out = b.unify(a, ctx);
+            unified = true;
             // console.log('UO', out.canon)
             why = 'bv';
         }
@@ -58,7 +61,9 @@ const unite = (ctx, a, b, whence) => {
             why = 'up';
         }
         else {
+            // console.log('QQQ')
             out = a.unify(b, ctx);
+            unified = true;
             why = 'ab';
         }
     }
@@ -66,7 +71,7 @@ const unite = (ctx, a, b, whence) => {
         out = Nil_1.Nil.make(ctx, 'unite', a, b);
         why += 'N';
     }
-    if (type_1.DONE !== out.done) {
+    if (type_1.DONE !== out.done && !unified) {
         out = out.unify(val_1.TOP, ctx);
         why += 'T';
     }
