@@ -22,8 +22,14 @@ class ListVal extends ValBase_1.ValBase {
         if (spread) {
             if ('&' === spread.o) {
                 // TODO: handle existing spread!
-                let tmv = Array.isArray(spread.v) ? spread.v : [spread.v];
-                this.spread.cj = new ConjunctVal_1.ConjunctVal({ peg: tmv }, ctx);
+                this.spread.cj =
+                    Array.isArray(spread.v) ?
+                        1 < spread.v.length ?
+                            new ConjunctVal_1.ConjunctVal({ peg: spread.v }, ctx) :
+                            spread.v :
+                        spread.v;
+                // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
+                // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
             }
         }
     }

@@ -61,8 +61,15 @@ class MapVal extends ValBase {
 
     if (spread) {
       if ('&' === spread.o) {
-        let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-        this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
+        // TODO: handle existing spread!
+        this.spread.cj =
+          Array.isArray(spread.v) ?
+            1 < spread.v.length ?
+              new ConjunctVal({ peg: spread.v }, ctx) :
+              spread.v[0] :
+            spread.v
+        // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
+        // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
       }
     }
   }

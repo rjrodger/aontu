@@ -246,7 +246,7 @@ describe('val', function () {
         // console.dir(m0, { depth: null })
         expect(m0.canon).toEqual('{&:{"x":1},"a":{"y":1},"b":{"y":2}}');
         let u0 = m0.unify(val_1.TOP, ctx);
-        expect(u0.canon).toEqual('{&:{"x":1},"a":{"x":1,"y":1},"b":{"x":1,"y":2}}');
+        expect(u0.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}');
     });
     it('list-spread', () => {
         let ctx = makeCtx();
@@ -259,7 +259,7 @@ describe('val', function () {
         // console.dir(l0, { depth: null })
         expect(l0.canon).toEqual('[&:{"x":1},{"y":1},{"y":2}]');
         let u0 = l0.unify(val_1.TOP, ctx);
-        expect(u0.canon).toEqual('[&:{"x":1},{"x":1,"y":1},{"x":1,"y":2}]');
+        expect(u0.canon).toEqual('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]');
     });
     it('var', () => {
         let q0 = new VarVal_1.VarVal({ peg: 'a' });
