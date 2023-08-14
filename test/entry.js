@@ -21,7 +21,7 @@ function stringify(o) {
     Object.keys(o)
       .sort()
       .reduce((a, k) => ((a[k] = o[k]), a), {}),
-    stringify
+    stringify,
   ) // Recusively!
 }
 
@@ -58,7 +58,7 @@ window.expect = function (sval) {
       state.fail.found = sval
       state.fail.expected = cval
       let err = new Error(
-        'FAIL: ' + state.describe.name + ' ' + state.unit.name
+        'FAIL: ' + state.describe.name + ' ' + state.unit.name,
       )
       throw err
     }

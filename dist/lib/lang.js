@@ -45,19 +45,19 @@ let AontuJsonic = function aontu(jsonic) {
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
                 'string': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: String }), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: String }), r.k.path)
                 },
                 'number': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Number }), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Number }), r.k.path)
                 },
                 'integer': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: val_1.Integer }), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: val_1.Integer }), r.k.path)
                 },
                 'boolean': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Boolean }), r.keep.path)
+                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Boolean }), r.k.path)
                 },
                 'nil': {
-                    val: (r) => addpath(new Nil_1.Nil('literal'), r.keep.path)
+                    val: (r) => addpath(new Nil_1.Nil('literal'), r.k.path)
                 },
                 // TODO: FIX: need a TOP instance to hold path
                 'top': { val: () => val_1.TOP },
@@ -96,22 +96,22 @@ let AontuJsonic = function aontu(jsonic) {
         }
     });
     let opmap = {
-        'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal({ peg: terms }), r.keep.path),
-        'disjunct-infix': (r, _op, terms) => addpath(new DisjunctVal_1.DisjunctVal({ peg: terms }), r.keep.path),
+        'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal({ peg: terms }), r.k.path),
+        'disjunct-infix': (r, _op, terms) => addpath(new DisjunctVal_1.DisjunctVal({ peg: terms }), r.k.path),
         'dot-prefix': (r, _op, terms) => {
-            return addpath(new RefVal_1.RefVal({ peg: terms, prefix: true }), r.keep.path);
+            return addpath(new RefVal_1.RefVal({ peg: terms, prefix: true }), r.k.path);
         },
         'dot-infix': (r, _op, terms) => {
-            return addpath(new RefVal_1.RefVal({ peg: terms }), r.keep.path);
+            return addpath(new RefVal_1.RefVal({ peg: terms }), r.k.path);
         },
-        'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal({ peg: terms[0] }), r.keep.path),
+        'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal({ peg: terms[0] }), r.k.path),
         'dollar-prefix': (r, _op, terms) => {
             // $.a.b absolute path
             if (terms[0] instanceof RefVal_1.RefVal) {
                 terms[0].absolute = true;
                 return terms[0];
             }
-            return addpath(new VarVal_1.VarVal({ peg: terms[0] }), r.keep.path);
+            return addpath(new VarVal_1.VarVal({ peg: terms[0] }), r.k.path);
         },
     };
     jsonic
@@ -160,18 +160,18 @@ let AontuJsonic = function aontu(jsonic) {
             let valnode = r.node;
             let valtype = typeof valnode;
             if ('string' === valtype) {
-                valnode = addpath(new val_1.StringVal({ peg: r.node }), r.keep.path);
+                valnode = addpath(new val_1.StringVal({ peg: r.node }), r.k.path);
             }
             else if ('number' === valtype) {
                 if (Number.isInteger(r.node)) {
-                    valnode = addpath(new val_1.IntegerVal({ peg: r.node }), r.keep.path);
+                    valnode = addpath(new val_1.IntegerVal({ peg: r.node }), r.k.path);
                 }
                 else {
-                    valnode = addpath(new val_1.NumberVal({ peg: r.node }), r.keep.path);
+                    valnode = addpath(new val_1.NumberVal({ peg: r.node }), r.k.path);
                 }
             }
             else if ('boolean' === valtype) {
-                valnode = addpath(new val_1.BooleanVal({ peg: r.node }), r.keep.path);
+                valnode = addpath(new val_1.BooleanVal({ peg: r.node }), r.k.path);
             }
             let st = r.o0;
             valnode.row = st.rI;
@@ -199,10 +199,10 @@ let AontuJsonic = function aontu(jsonic) {
                 // TODO: needs addpath?
                 let mopv = new MapVal_1.MapVal({ peg: mop });
                 r.node =
-                    addpath(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r.keep.path);
+                    addpath(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r.k.path);
             }
             else {
-                r.node = addpath(new MapVal_1.MapVal({ peg: mo }), r.keep.path);
+                r.node = addpath(new MapVal_1.MapVal({ peg: mo }), r.k.path);
             }
             // return out
             return undefined;
@@ -214,7 +214,7 @@ let AontuJsonic = function aontu(jsonic) {
         // rs.def.bc = function(rule: Rule, ctx: Context) {
         //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
         rs.bc((r) => {
-            r.node = addpath(new ListVal_1.ListVal({ peg: r.node }), r.keep.path);
+            r.node = addpath(new ListVal_1.ListVal({ peg: r.node }), r.k.path);
             // return out
             return undefined;
         });
@@ -230,14 +230,14 @@ let AontuJsonic = function aontu(jsonic) {
             }])
             // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
             .ao((r) => {
-            if (0 < r.d && r.use.spread) {
-                r.child.keep.path = [...r.keep.path, '&'];
-                r.child.keep.key = '&';
+            if (0 < r.d && r.u.spread) {
+                r.child.k.path = [...r.k.path, '&'];
+                r.child.k.key = '&';
             }
         })
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
-            if (rule.use.spread) {
+            if (rule.u.spread) {
                 rule.node[MapVal_1.MapVal.SPREAD] =
                     (rule.node[MapVal_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
                 rule.node[MapVal_1.MapVal.SPREAD].v.push(rule.child.node);
@@ -251,7 +251,7 @@ let AontuJsonic = function aontu(jsonic) {
             .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
-            if (rule.use.spread) {
+            if (rule.u.spread) {
                 rule.node[ListVal_1.ListVal.SPREAD] =
                     (rule.node[ListVal_1.ListVal.SPREAD] || { o: rule.o0.src, v: [] });
                 rule.node[ListVal_1.ListVal.SPREAD].v.push(rule.child.node);

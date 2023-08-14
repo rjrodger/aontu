@@ -57,7 +57,7 @@ function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
 const util = {
   options: (
     src: string | Partial<Options>,
-    popts?: Partial<Options>
+    popts?: Partial<Options>,
   ): Options => {
     // Convert convenience first param into Options.src
     let srcopts: Partial<Options> = 'string' === typeof src ? { src } : src

@@ -19,7 +19,7 @@ let G = (v) =>
     v.canon,
     '::',
     Util.inspect(v.gen(), { depth: null }),
-    Util.inspect(v.err, { depth: null })
+    Util.inspect(v.err, { depth: null }),
   )
 
 let V = (v) => console.dir(v, { depth: null })

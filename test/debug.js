@@ -34,7 +34,7 @@ console.log(
     compact: false,
     depth: null,
     colors: true,
-  })
+  }),
 )
 
 if (0 < ctx.err.length) {
@@ -50,7 +50,7 @@ if (0 < ctx.err.length) {
         ':' +
         (e.primary && e.primary.canon) +
         ':' +
-        (e.secondary && e.secondary.canon)
-    )
+        (e.secondary && e.secondary.canon),
+    ),
   )
 }
