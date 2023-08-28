@@ -9,7 +9,7 @@ import {
   JsonicError,
 } from '@jsonic/jsonic-next'
 
-// import { Debug } from '@jsonic/jsonic-next/debug'
+import { Debug } from '@jsonic/jsonic-next/debug'
 
 import {
   MultiSource
@@ -17,15 +17,15 @@ import {
 
 import {
   makeFileResolver
-} from '@jsonic/multisource/dist/resolver/file'
+} from '@jsonic/multisource/resolver/file'
 
 import {
   makePkgResolver
-} from '@jsonic/multisource/dist/resolver/pkg'
+} from '@jsonic/multisource/resolver/pkg'
 
 import {
   makeMemResolver
-} from '@jsonic/multisource/dist/resolver/mem'
+} from '@jsonic/multisource/resolver/mem'
 
 
 import {

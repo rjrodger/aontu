@@ -3,11 +3,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
 const jsonic_next_1 = require("@jsonic/jsonic-next");
-// import { Debug } from '@jsonic/jsonic-next/debug'
 const multisource_1 = require("@jsonic/multisource");
-const file_1 = require("@jsonic/multisource/dist/resolver/file");
-const pkg_1 = require("@jsonic/multisource/dist/resolver/pkg");
-const mem_1 = require("@jsonic/multisource/dist/resolver/mem");
+const file_1 = require("@jsonic/multisource/resolver/file");
+const pkg_1 = require("@jsonic/multisource/resolver/pkg");
+const mem_1 = require("@jsonic/multisource/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
 const DisjunctVal_1 = require("./val/DisjunctVal");

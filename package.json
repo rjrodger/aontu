@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -26,7 +26,7 @@
     "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
     "build": "tsc -d",
     "build-web": "tsc -d && npm run build-browser",
-    "build-browser": "cp dist/aontu.js dist/aontu.min.js && browserify -o dist/aontu.min.js -e dist/aontu.js -s Aontu -im -i assert -p tinyify",
+    "build-browser": "cp dist/aontu.js dist/aontu.min.js && browserify -o dist/aontu.min.js -e dist/aontu.js -s Aontu -im -i assert -p tinyify -t aliasify",
     "clean": "rm -rf dist node_modules yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "version": "node -r fs -e \"v=require('./package.json').version;s=fs.readFileSync('./aontu.ts').toString();if(!s.includes('VERSION = \\''+v+'\\'')){s=s.replace(/VERSION = '.*?'/,'VERSION = \\''+v+'\\'');fs.writeFileSync('./aontu.ts',s)}\"",
@@ -46,19 +46,27 @@
     "@jsonic/directive": "^0.11.4",
     "@jsonic/expr": "^0.8.3",
     "@jsonic/jsonic-next": "^2.12.1",
-    "@jsonic/multisource": "^1.0.6",
+    "@jsonic/multisource": "^1.1.0",
     "@jsonic/path": "^0.6.6"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.3",
+    "@types/jest": "^29.5.4",
+    "@types/node": "^20.5.7",
+    "aliasify": "^2.1.0",
     "browserify": "^17.0.0",
-    "esbuild": "^0.19.2",
     "es-jest": "^2.1.0",
-    "jest": "^29.6.2",
-    "prettier": "^3.0.1",
-    "serve": "^14.2.0",
+    "esbuild": "^0.19.2",
+    "jest": "^29.6.4",
+    "prettier": "^3.0.2",
+    "serve": "^14.2.1",
     "tinyify": "^4.0.0",
-    "typescript": "^5.1.6",
-    "@types/node": "^20.5.0"
+    "typescript": "^5.2.2"
+  },
+  "aliasify": {
+    "aliases": {
+      "@jsonic/multisource/resolver/file": "@jsonic/multisource/dist/resolver/file.js",
+      "@jsonic/multisource/resolver/pkg": "@jsonic/multisource/dist/resolver/pkg.js",
+      "@jsonic/multisource/resolver/mem": "@jsonic/multisource/dist/resolver/mem.js"
+    }
   }
 }

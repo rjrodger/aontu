@@ -6,6 +6,7 @@
 (function (__dirname){(function (){
 "use strict";
 /* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+Object.defineProperty(exports, "__esModule", { value: true });
 let { Aontu, Lang, util } = require('../aontu');
 // let { makeFileResolver } = require('@jsonic/multisource')
 describe('aontu', function () {
