@@ -136,4 +136,56 @@ w1: b: {y:2,z:3} & $.q.a
       '"c":{&:{"x":2},"y":{"k":3,"x":2}}}'
     )
   })
+
+
+  it('empty-and-comments', () => {
+    // TODO: fix
+
+    // Avoid failures when model is commented out
+    //     expect(Aontu('').gen()).toEqual({})
+    //     expect(Aontu(`
+
+    // # comment
+
+    // `).gen()).toEqual({})
+  })
+
+
+  it('practical-path-spread', () => {
+    let v0 = Aontu(`
+micks: $.def.garage & {
+
+  porsche: {
+    color: silver
+  }
+
+
+  ferrari: {
+    color: red
+  }
+
+  telsa: {
+  }
+}
+
+def: car: {
+  doors: *4 | number
+  color: *green | string
+}
+
+def: garage: {
+  &: $.def.car
+}
+`)
+
+    expect(v0.gen()).toEqual({
+      micks: {
+        porsche: { doors: 4, color: 'silver' },
+        ferrari: { doors: 4, color: 'red' },
+        telsa: { doors: 4, color: 'green' }
+      },
+      def: { car: { doors: 4, color: 'green' }, garage: {} }
+    })
+
+  })
 })

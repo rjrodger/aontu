@@ -98,5 +98,41 @@ w1: b: {y:2,z:3} & $.q.a
             '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
             '"c":{&:{"x":2},"y":{"k":3,"x":2}}}');
     });
+    it('practical-path-spread', () => {
+        let v0 = Aontu(`
+# richardsgarage: $.def.garage & {
+
+#   porsche: {
+#     color: silver
+#   }
+
+
+#   ferrari: {
+#     color: red
+#   }
+
+#   telsa: {
+#   }
+
+# }
+
+
+# def: car: {
+#   doors: *4 | number
+#   color: *greenx | string
+# }
+
+
+# def: garage: {
+#   &: $.def.car
+  
+#   # &: {
+#   #   doors: *4 | number
+#   #   color: *green | string
+#   # }
+# }
+`);
+        console.log(v0);
+    });
 });
 //# sourceMappingURL=aontu.test.js.map
