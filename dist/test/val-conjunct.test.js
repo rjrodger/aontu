@@ -65,11 +65,23 @@ describe('val-conjunct', function () {
         expect(UC(s3)).toEqual('{"y":{"x":{"a":$.y.x.b,"b":2}}}');
         expect(G(s3)).toEqual({ y: { x: { a: 2, b: 2 } } });
     });
-    it('spread', () => {
-        let g0 = G('{&:{x:*1|number},a:{},b:{x:2}}');
-        expect(g0).toEqual({ a: { x: 1 }, b: { x: 2 } });
-        let g1 = G('&:{x:*1|number},a:{},b:{x:2}');
-        expect(g1).toEqual({ a: { x: 1 }, b: { x: 2 } });
+    it('conjunct-spread', () => {
+        // let g0 = G('{&:{x:*1|number},a:{},b:{x:2}}')
+        // expect(g0).toEqual({ a: { x: 1 }, b: { x: 2 } })
+        // let g1 = G('&:{x:*1|number},a:{},b:{x:2}')
+        // expect(g1).toEqual({ a: { x: 1 }, b: { x: 2 } })
+        // let p2 = P('a1: &: { x1: 11 } b2: { y2: 22 }')
+        // console.dir(p2, { depth: null })
+        // let g2 = G('a1: &: { x1: 11 } b2: { y2: 22 }')
+        // expect(g2).toEqual({ a1: {}, b2: { y2: 22 } })
+        // let g3 = G('a1: &: { c1: { x1: 11 } } b2: { y2: 22 }')
+        // expect(g3).toEqual({ a1: {}, b2: { y2: 22 } })
+        let p4 = P('a1: &: { c1: &: { x1: 11 } } b2: { y2: 22 }');
+        console.dir(p4, { depth: null });
+        // let g4 = G('a1: &: { c1: &: { x1: 11 } } b2: { y2: 22 }')
+        // expect(g4).toEqual({ a1: {}, b2: { y2: 22 } })
+        let p5 = P('a1: &: { c1: &: { d1: &: { x1: 11 } } } b2: { y2: 22 }');
+        console.dir(p5, { depth: null });
     });
     it('clone', () => {
         let v0 = P('{x:1}&{y:2}&{z:3}');

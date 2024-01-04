@@ -167,6 +167,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   let opmap: any = {
     'conjunct-infix': (r: Rule, _op: Op, terms: any) =>
       addpath(new ConjunctVal({ peg: terms }), r.k.path),
+
     'disjunct-infix': (r: Rule, _op: Op, terms: any) =>
       addpath(new DisjunctVal({ peg: terms }), r.k.path),
 
@@ -195,7 +196,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   jsonic
     .use(Expr, {
       op: {
-        // disjunct > conjunct: c & b|a -> c & (b|a)
+        // PPP
+        // disjunct > conjunct: c & b | a -> c & (b | a)
         'conjunct': {
           infix: true, src: '&', left: 14_000_000, right: 15_000_000
         },
@@ -234,6 +236,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     })
 
 
+  // PPP
   let CJ = jsonic.token['#E&']
   let CL = jsonic.token.CL
 
@@ -241,7 +244,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   jsonic.rule('val', (rs: RuleSpec) => {
 
     rs
-      .open([{ s: [CJ, CL], p: 'map', b: 2, g: 'spread' }])
+      // PPP
+      .open([{ s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' }])
 
       .bc((r: Rule, ctx: Context) => {
 
@@ -280,12 +284,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   })
 
 
-
   jsonic.rule('map', (rs: RuleSpec) => {
-    // let orig_bc = rs.def.bc
-    // rs.def.bc = function(rule: Rule, ctx: Context) {
-    //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
     rs
+      // PPP
       .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
 
       .bc((r: Rule) => {
@@ -307,7 +308,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           r.node = addpath(new MapVal({ peg: mo }), r.k.path)
         }
 
-        // return out
         return undefined
       })
 
@@ -316,14 +316,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
   jsonic.rule('list', (rs: RuleSpec) => {
-    // let orig_bc = rs.def.bc
-    // rs.def.bc = function(rule: Rule, ctx: Context) {
-    //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
-
     rs.bc((r: Rule) => {
       r.node = addpath(new ListVal({ peg: r.node }), r.k.path)
 
-      // return out
       return undefined
     })
 
@@ -333,9 +328,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.rule('pair', (rs: RuleSpec) => {
     rs
+      // PPP
       .open([{
         s: [CJ, CL], p: 'val',
-        // pair:true not set, so key ignored by normal pair close
         u: { spread: true },
         g: 'spread'
       }])
@@ -367,7 +362,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.rule('elem', (rs: RuleSpec) => {
     rs
-      .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
+      // PPP
+      .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, n: { pk: 1 }, g: 'spread' }])
 
       .bc((rule: Rule) => {
         // TRAVERSE PARENTS TO GET PATH
@@ -455,15 +451,21 @@ class Lang {
   options: Options = {
     src: '',
     print: -1,
+    debug: false,
   }
 
   constructor(options?: Partial<Options>) {
-    this.options = Object.assign({}, this.options, options)
+    this.options = Object.assign({}, this.options, options) as Options
 
     const modelResolver = makeModelResolver(this.options)
 
     this.jsonic = Jsonic.make()
-      // .use(Debug, { trace: true })
+
+    if (this.options.debug) {
+      this.jsonic.use(Debug, { trace: true })
+    }
+
+    this.jsonic
       .use(AontuJsonic)
       .use(MultiSource, {
         // resolver: options?.resolver || includeFileResolver

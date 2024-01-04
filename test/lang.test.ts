@@ -307,6 +307,50 @@ describe('lang', function() {
   })
 
 
+  it('pair-spreads', () => {
+    let s1 = `a:b:c:1 z:2`
+    expect(P(s1).canon).toEqual('{"a":{"b":{"c":1}},"z":2}')
+
+    let s1_1 = `a:&:b:1 z:2`
+    expect(P(s1_1).canon).toEqual('{"a":{&:{"b":1}},"z":2}')
+
+    let s1_2 = `a:&:{b:1} z:2`
+    expect(P(s1_2).canon).toEqual('{"a":{&:{"b":1}},"z":2}')
+
+    let s1_3 = `a:{&:{b:1}} z:2`
+    expect(P(s1_3).canon).toEqual('{"a":{&:{"b":1}},"z":2}')
+
+    let s1_4 = `{a:{&:{b:1}} z:2}`
+    expect(P(s1_4).canon).toEqual('{"a":{&:{"b":1}},"z":2}')
+
+    let s2 = `a:&:b:&:1 z:2`
+    expect(P(s2).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}')
+
+    let s2_1 = `a:&:b:{&:1} z:2`
+    expect(P(s2_1).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}')
+
+    let s2_2 = `a:&:{b:{&:1}} z:2`
+    expect(P(s2_2).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}')
+
+    let s2_3 = `a:{&:{b:{&:1}}} z:2`
+    expect(P(s2_3).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}')
+
+    let s2_4 = `{a:{&:{b:{&:1}}} z:2}`
+    expect(P(s2_4).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}')
+
+    let s3 = `a:&:b:&:c:1 z:2`
+    expect(P(s3).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+
+    let s4 = `a:&:b:&:{c:1} z:2`
+    expect(P(s4).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+
+    let s5 = `a:&:{b:&:c:1} z:2`
+    expect(P(s5).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+
+    let s6 = `a:&:{b:&:{c:1}} z:2`
+    expect(P(s6).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+  })
+
 
   it('source', () => {
     let v0 = P(`

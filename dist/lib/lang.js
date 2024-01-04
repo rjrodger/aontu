@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
 const jsonic_next_1 = require("@jsonic/jsonic-next");
+const debug_1 = require("@jsonic/jsonic-next/debug");
 const multisource_1 = require("@jsonic/multisource");
 const file_1 = require("@jsonic/multisource/resolver/file");
 const pkg_1 = require("@jsonic/multisource/resolver/pkg");
@@ -116,7 +117,8 @@ let AontuJsonic = function aontu(jsonic) {
     jsonic
         .use(expr_1.Expr, {
         op: {
-            // disjunct > conjunct: c & b|a -> c & (b|a)
+            // PPP
+            // disjunct > conjunct: c & b | a -> c & (b | a)
             'conjunct': {
                 infix: true, src: '&', left: 14000000, right: 15000000
             },
@@ -150,11 +152,13 @@ let AontuJsonic = function aontu(jsonic) {
             return val;
         }
     });
+    // PPP
     let CJ = jsonic.token['#E&'];
     let CL = jsonic.token.CL;
     jsonic.rule('val', (rs) => {
         rs
-            .open([{ s: [CJ, CL], p: 'map', b: 2, g: 'spread' }])
+            // PPP
+            .open([{ s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' }])
             .bc((r, ctx) => {
             let valnode = r.node;
             let valtype = typeof valnode;
@@ -184,10 +188,8 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
     jsonic.rule('map', (rs) => {
-        // let orig_bc = rs.def.bc
-        // rs.def.bc = function(rule: Rule, ctx: Context) {
-        //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
         rs
+            // PPP
             .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
             .bc((r) => {
             let mo = r.node;
@@ -203,27 +205,22 @@ let AontuJsonic = function aontu(jsonic) {
             else {
                 r.node = addpath(new MapVal_1.MapVal({ peg: mo }), r.k.path);
             }
-            // return out
             return undefined;
         });
         return rs;
     });
     jsonic.rule('list', (rs) => {
-        // let orig_bc = rs.def.bc
-        // rs.def.bc = function(rule: Rule, ctx: Context) {
-        //   let out = orig_bc ? orig_bc.call(this, rule, ctx) : undefined
         rs.bc((r) => {
             r.node = addpath(new ListVal_1.ListVal({ peg: r.node }), r.k.path);
-            // return out
             return undefined;
         });
         return rs;
     });
     jsonic.rule('pair', (rs) => {
         rs
+            // PPP
             .open([{
                 s: [CJ, CL], p: 'val',
-                // pair:true not set, so key ignored by normal pair close
                 u: { spread: true },
                 g: 'spread'
             }])
@@ -247,6 +244,7 @@ let AontuJsonic = function aontu(jsonic) {
     });
     jsonic.rule('elem', (rs) => {
         rs
+            // PPP
             .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
@@ -309,11 +307,15 @@ class Lang {
         this.options = {
             src: '',
             print: -1,
+            debug: false,
         };
         this.options = Object.assign({}, this.options, options);
         const modelResolver = makeModelResolver(this.options);
-        this.jsonic = jsonic_next_1.Jsonic.make()
-            // .use(Debug, { trace: true })
+        this.jsonic = jsonic_next_1.Jsonic.make();
+        if (this.options.debug) {
+            this.jsonic.use(debug_1.Debug, { trace: true });
+        }
+        this.jsonic
             .use(AontuJsonic)
             .use(multisource_1.MultiSource, {
             // resolver: options?.resolver || includeFileResolver

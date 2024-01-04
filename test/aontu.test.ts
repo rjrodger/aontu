@@ -159,7 +159,6 @@ micks: $.def.garage & {
     color: silver
   }
 
-
   ferrari: {
     color: red
   }

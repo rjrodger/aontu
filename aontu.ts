@@ -8,6 +8,9 @@ import { Unify, Context } from './lib/unify'
 import { Nil } from './lib/val/Nil'
 import { descErr } from './lib/err'
 
+
+// TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level
+
 // TODO: exclude tests from dist!!!
 // TODO: propogate property path and url properly over unification, and multisource
 

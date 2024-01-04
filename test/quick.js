@@ -11,7 +11,7 @@ let {
   ScalarTypeVal,
 } = require('../dist/lib/val')
 
-let P = (s) => util.parse({ src: s }, {})
+let P = (s) => util.parse('string' === typeof s ? { src: s } : s, {})
 let A = (s) => Aontu(s)
 let D = (x) => console.dir(x, { depth: null })
 let G = (v) =>
@@ -247,23 +247,23 @@ let s = ''
 
 // s = `a:b:1,x:$.a.b`
 
-s = `
-# b: $.a & 1 & $.a
-# 1 & $.a
-.a & .b
-`
+// s = `
+// # b: $.a & 1 & $.a
+// # 1 & $.a
+// .a & .b
+// `
 
-let p = P(s)
-console.log(p.canon)
-console.dir(p, { depth: null })
+// let p = P(s)
+// console.log(p.canon)
+// console.dir(p, { depth: null })
 
-let a = A(s)
-// console.log('========')
-// console.dir(a,{depth:null})
-console.log(a.canon)
+// let a = A(s)
+// // console.log('========')
+// // console.dir(a,{depth:null})
+// console.log(a.canon)
 
-// V(a)
-G(a)
+// // V(a)
+// G(a)
 
 // let c0 = new Context({})
 // // console.log(c0)
@@ -285,3 +285,20 @@ G(a)
 
 // let m1c = m1.clone(c2)
 // console.dir(m1c,{depth:null})
+
+
+s0 = `
+a1: &: { c1: &: { x1: 11 } }
+b2: { y2: 22 }
+`
+
+s1= `a:b:c:1 z:2`
+s2= `a:&:b:&:1 z:2`
+s3= `a:&:b:&:c:1 z:2`
+s4= `a:&:b:&:{c:1} z:2`
+s5= `a:&:{b:&:c:1} z:2`
+s6= `a:&:{b:&:{c:1}} z:2`
+
+let p = P({src:s5,debug:true})
+console.log(p.canon)
+// console.dir(p, { depth: null })

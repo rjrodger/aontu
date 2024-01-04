@@ -408,7 +408,7 @@ b: { c: $.a }
             },
             b: {
                 c: {
-                    n: 'a',
+                    n: 'a', // NOTE: correct as `a` tree is a normal tree
                     x: 1,
                 },
             },

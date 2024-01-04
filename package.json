@@ -35,6 +35,9 @@
     "repo-publish-quick": "npm run prettier && npm run build && npm run test && npm run test-web && npm run repo-tag && npm publish --registry https://registry.npmjs.org "
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=16"
+  },
   "files": [
     "aontu.ts",
     "lib",
@@ -50,17 +53,17 @@
     "@jsonic/path": "^0.6.6"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.5",
-    "@types/node": "^20.8.4",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.6",
     "aliasify": "^2.1.0",
     "browserify": "^17.0.0",
     "es-jest": "^2.1.0",
-    "esbuild": "^0.19.4",
+    "esbuild": "^0.19.11",
     "jest": "^29.7.0",
-    "prettier": "^3.0.3",
+    "prettier": "^3.1.1",
     "serve": "^14.2.1",
     "tinyify": "^4.0.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.3.3"
   },
   "aliasify": {
     "aliases": {

@@ -6,6 +6,7 @@ type Options = {
     resolver?: Resolver;
     base?: string;
     path?: string;
+    debug?: boolean;
 };
 interface Val {
     isVal: boolean;
