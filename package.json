@@ -63,6 +63,7 @@
     "prettier": "^3.1.1",
     "serve": "^14.2.1",
     "tinyify": "^4.0.0",
+    "ts-jest": "^29.1.1",
     "typescript": "^5.3.3"
   },
   "aliasify": {
