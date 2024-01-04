@@ -40,7 +40,6 @@ window.test = function (name, unit) {
   try {
     Jester.state.unit = { name }
     unit()
-    // console.log('PASS:', name)
     print('PASS: ' + name)
   } catch (e) {
     console.log(e)
@@ -52,7 +51,6 @@ window.it = window.test
 
 window.expect = function (sval) {
   function pass(cval, ok) {
-    // console.log('pass',cval,ok)
     if (!ok) {
       let state = Jester.state
       state.fail.found = sval
@@ -73,11 +71,12 @@ window.expect = function (sval) {
   }
 
   return {
+    toBeTruthy: () => pass(sval, !!sval),
+    toBeFalsy: () => pass(sval, !sval),
+
     toEqual: (cval) => {
       passEqualJSON(cval)
     },
-    toBeTruthy: (cval) => pass(cval, !!cval),
-    toBeFalsy: (cval) => pass(cval, !cval),
     toBeDefined: (cval) => pass(cval, undefined !== sval),
     toBeUndefined: (cval) => pass(cval, undefined === sval),
     toMatch: (cval) => pass(cval, sval.match(cval)),

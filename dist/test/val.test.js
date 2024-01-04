@@ -277,7 +277,6 @@ describe('val', function () {
                 b: P('{ y: 2 }'),
             }
         });
-        // console.dir(m0, { depth: null })
         expect(m0.canon).toEqual('{&:{"x":1},"a":{"y":1},"b":{"y":2}}');
         let u0 = m0.unify(val_1.TOP, ctx);
         expect(u0.canon).toEqual('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}');
@@ -290,7 +289,6 @@ describe('val', function () {
         ];
         vals[ListVal_1.ListVal.SPREAD] = { o: '&', v: P('{x:1}') };
         let l0 = new ListVal_1.ListVal({ peg: vals });
-        // console.dir(l0, { depth: null })
         expect(l0.canon).toEqual('[&:{"x":1},{"y":1},{"y":2}]');
         let u0 = l0.unify(val_1.TOP, ctx);
         expect(u0.canon).toEqual('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]');
@@ -302,10 +300,8 @@ describe('val', function () {
         ctx.var.foo = makeNumberVal(11);
         let s = 'a:$foo';
         let v0 = P(s, ctx);
-        // console.log(v0.peg.a)
         expect(v0.canon).toEqual('{"a":$"foo"}');
         let g0 = G(s, ctx);
-        // console.log(g0)
         expect(g0).toEqual({ a: 11 });
     });
     it('conjunct', () => {
@@ -387,21 +383,12 @@ describe('val', function () {
         expect((0, op_1.unite)(ctx, P('number|*1').unify(P('number|*1'))).canon)
             .toEqual('number|*1');
         let u0 = (0, op_1.unite)(ctx, P('number|*1'), P('number'));
-        //console.dir(u0, { depth: null })
-        //console.log(u0.canon)
-        //console.log(u0.gen())
         expect(u0.canon).toEqual('number|*1');
         expect(u0.gen()).toEqual(1);
         let u1 = (0, op_1.unite)(ctx, P('number|*1'), P('number|string'));
-        //console.dir(u1, { depth: null })
-        //console.log(u1.canon)
-        //console.log(u1.gen())
         expect(u1.canon).toEqual('number|*1');
         expect(u1.gen()).toEqual(1);
         let u2 = (0, op_1.unite)(ctx, P('number|*1'), P('2'));
-        //console.dir(u2, { depth: null })
-        //console.log(u2.canon)
-        //console.log(u2.gen())
         expect(u2.canon).toEqual('2');
         expect(u2.gen()).toEqual(2);
     });
@@ -418,19 +405,16 @@ describe('val', function () {
         `, { xlog: -1 })
       
             let g = []
-            console.log('m0===', m0.done, m0.canon)
             g = []; console.log(m0.gen())
       
             let c0 = new Context({ root: m0 })
             let u0 = m0.unify(TOP, c0)
       
-            console.log('u0===', u0.done, u0.canon)
             g = []; console.log(u0.gen())
       
             let c0a = new Context({ root: u0 })
             let u0a = u0.unify(TOP, c0a)
       
-            console.log('u0a===', u0a.done, u0a.canon)
             g = []; console.log(u0a.gen())
         */
         let m1 = P(`
@@ -439,11 +423,7 @@ describe('val', function () {
   w: b: .q.a & {y:2, z: 3}
   `);
         let u1a = m1.unify(val_1.TOP, new unify_1.Context({ root: m1 }));
-        // console.log('u1a', u1a.done, u1a.canon)
-        //console.dir(u1a, { depth: null })
         let u1b = u1a.unify(val_1.TOP, new unify_1.Context({ root: u1a }));
-        // console.log('u1b', u1b.done, u1b.canon)
-        //console.dir(u1b, { depth: null })
     });
     it('unify', () => {
         let m0 = P(`
@@ -451,13 +431,11 @@ describe('val', function () {
   b: .a
   c: .x
   `, { xlog: -1 });
-        //console.dir(m0, { depth: null })
         expect(m0.canon).toEqual('{"a":1,"b":.a,"c":.x}');
         let c0 = new unify_1.Context({
             root: m0
         });
         let m0u = m0.unify(val_1.TOP, c0);
-        // console.dir(m0u, { depth: null })
         expect(m0u.canon).toEqual('{"a":1,"b":1,"c":.x}');
         let m1 = P(`
   a: .b.c
@@ -467,7 +445,6 @@ describe('val', function () {
             root: m1
         });
         let m1u = m1.unify(val_1.TOP, c1);
-        // console.dir(m1u, { depth: null })
         expect(m1u.canon).toEqual('{"a":1,"b":{"c":1}}');
         let m2 = P(`
 a: {x:1}
@@ -484,13 +461,9 @@ b: c2: {n:2}
             root: m2
         });
         let m2u = m2.unify(val_1.TOP, c2);
-        // console.dir(m1u, { depth: null })
         expect(m2u.canon)
             // .toEqual('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
             .toEqual('{"a":{"x":1},"b":{&:$.a,"c0":{"x":1,"n":0},"c1":{"x":1,"n":1},"c2":{"x":1,"n":2}}}');
-        // console.log(m2u.canon)
-        // c2.root = m2u
-        // console.log(m2u.unify(TOP, c2).canon)
     });
     it('pref', () => {
         let ctx = makeCtx();
@@ -498,7 +471,6 @@ b: c2: {n:2}
         expect(p0.canon).toEqual('*"p0"');
         expect(p0.gen()).toEqual('p0');
         let pu0 = p0.unify(val_1.TOP, ctx);
-        // console.log(pu0)
         expect(pu0).toMatchObject({
             done: -1,
             row: -1,
@@ -546,9 +518,7 @@ b: c2: {n:2}
         expect(up2s0.unify(new val_1.StringVal({ peg: 's1' }), ctx).canon)
             .toEqual('nil');
         // let u0 = P('1|number').unify(TOP, ctx)
-        // // console.log(u0)
         // let u1 = P('*1|number').unify(TOP, ctx)
-        // // console.log(u1)
         expect(UC('a:1')).toEqual('{"a":1}');
         expect(UC('a:1,b:.a')).toEqual('{"a":1,"b":1}');
         expect(UC('a:*1|number,b:2,c:.a&.b')).toEqual('{"a":*1|number,"b":2,"c":2}');
@@ -559,8 +529,6 @@ b: c2: {n:2}
         expect(UC('a:*1|number,b:*2|number,c:.a&.b'))
             .toEqual('{"a":*1|number,"b":*2|number,"c":*2|*1|number}');
         let d0 = P('1|number').unify(val_1.TOP, ctx);
-        // console.log(d0.canon)
-        // console.log(d0.gen())
         expect(d0.canon).toEqual('1|number');
         expect(d0.gen()).toEqual(1);
         expect(G('number|*1')).toEqual(1);

@@ -77,7 +77,8 @@ class ScalarTypeVal extends ValBase_1.ValBase {
         return ctor.name.toLowerCase();
     }
     same(peer) {
-        return (peer === null || peer === void 0 ? void 0 : peer.isScalarTypeVal) ? this.peg === peer.peg : super.same(peer);
+        let out = (peer === null || peer === void 0 ? void 0 : peer.isScalarTypeVal) ? this.peg === (peer === null || peer === void 0 ? void 0 : peer.peg) : super.same(peer);
+        return out;
     }
     gen(_ctx) {
         return undefined;

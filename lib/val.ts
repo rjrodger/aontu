@@ -146,7 +146,8 @@ class ScalarTypeVal extends ValBase {
   }
 
   same(peer: any): boolean {
-    return peer?.isScalarTypeVal ? this.peg === peer.peg : super.same(peer)
+    let out = peer?.isScalarTypeVal ? this.peg === peer?.peg : super.same(peer)
+    return out
   }
 
   gen(_ctx?: Context) {
