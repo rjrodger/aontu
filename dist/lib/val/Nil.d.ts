@@ -2,6 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { ValBase } from '../val/ValBase';
 declare class Nil extends ValBase {
+    isNil: boolean;
     nil: boolean;
     why: any;
     primary?: Val;

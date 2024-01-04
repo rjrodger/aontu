@@ -5,6 +5,10 @@ exports.VarVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const val_1 = require("../val");
+// import { ConjunctVal } from '../val/ConjunctVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
+// import { MapVal } from '../val/MapVal'
 const Nil_1 = require("../val/Nil");
 const RefVal_1 = require("../val/RefVal");
 const ValBase_1 = require("../val/ValBase");
@@ -12,6 +16,7 @@ const ValBase_1 = require("../val/ValBase");
 class VarVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isVarVal = true;
     }
     unify(peer, ctx) {
         let out;

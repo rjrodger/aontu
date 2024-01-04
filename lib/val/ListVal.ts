@@ -30,11 +30,11 @@ import {
 
 import { TOP } from '../val'
 import { ConjunctVal } from '../val/ConjunctVal'
-import { DisjunctVal } from '../val/DisjunctVal'
-import { MapVal } from '../val/MapVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
-import { PrefVal } from '../val/PrefVal'
-import { RefVal } from '../val/RefVal'
+// import { PrefVal } from '../val/PrefVal'
+// import { RefVal } from '../val/RefVal'
 import { ValBase } from '../val/ValBase'
 
 
@@ -42,6 +42,8 @@ import { ValBase } from '../val/ValBase'
 
 
 class ListVal extends ValBase {
+  isListVal = true
+
   static SPREAD = Symbol('spread')
 
   spread = {

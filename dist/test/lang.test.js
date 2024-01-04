@@ -73,6 +73,9 @@ describe('lang', function () {
         expect(v1.peg.a.peg).toEqual(['x', 'y']);
     });
     it('file', () => {
+        if (undefined !== global.window) {
+            return;
+        }
         global.console = require('console');
         let g0 = new lang_1.Lang({
         // resolver: makeFileResolver((spec: any) => {
@@ -193,6 +196,36 @@ describe('lang', function () {
         expect(u6.canon)
             .toEqual('{"b":{"a":{&:{"K":0},' +
             '"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}');
+    });
+    it('pair-spreads', () => {
+        let s1 = `a:b:c:1 z:2`;
+        expect(P(s1).canon).toEqual('{"a":{"b":{"c":1}},"z":2}');
+        let s1_1 = `a:&:b:1 z:2`;
+        expect(P(s1_1).canon).toEqual('{"a":{&:{"b":1}},"z":2}');
+        let s1_2 = `a:&:{b:1} z:2`;
+        expect(P(s1_2).canon).toEqual('{"a":{&:{"b":1}},"z":2}');
+        let s1_3 = `a:{&:{b:1}} z:2`;
+        expect(P(s1_3).canon).toEqual('{"a":{&:{"b":1}},"z":2}');
+        let s1_4 = `{a:{&:{b:1}} z:2}`;
+        expect(P(s1_4).canon).toEqual('{"a":{&:{"b":1}},"z":2}');
+        let s2 = `a:&:b:&:1 z:2`;
+        expect(P(s2).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}');
+        let s2_1 = `a:&:b:{&:1} z:2`;
+        expect(P(s2_1).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}');
+        let s2_2 = `a:&:{b:{&:1}} z:2`;
+        expect(P(s2_2).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}');
+        let s2_3 = `a:{&:{b:{&:1}}} z:2`;
+        expect(P(s2_3).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}');
+        let s2_4 = `{a:{&:{b:{&:1}}} z:2}`;
+        expect(P(s2_4).canon).toEqual('{"a":{&:{"b":{&:1}}},"z":2}');
+        let s3 = `a:&:b:&:c:1 z:2`;
+        expect(P(s3).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}');
+        let s4 = `a:&:b:&:{c:1} z:2`;
+        expect(P(s4).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}');
+        let s5 = `a:&:{b:&:c:1} z:2`;
+        expect(P(s5).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}');
+        let s6 = `a:&:{b:&:{c:1}} z:2`;
+        expect(P(s6).canon).toEqual('{"a":{&:{"b":{&:{"c":1}}}},"z":2}');
     });
     it('source', () => {
         let v0 = P(`

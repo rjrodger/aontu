@@ -7,6 +7,8 @@ const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
 const MapVal_1 = require("../val/MapVal");
 const Nil_1 = require("../val/Nil");
 const VarVal_1 = require("../val/VarVal");
@@ -14,6 +16,7 @@ const ValBase_1 = require("../val/ValBase");
 class RefVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isRefVal = true;
         this.absolute = false;
         this.prefix = false;
         this.peg = [];

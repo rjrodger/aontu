@@ -42,10 +42,10 @@ import {
   StringVal,
 } from '../val'
 
-import { ConjunctVal } from '../val/ConjunctVal'
-import { DisjunctVal } from '../val/DisjunctVal'
-import { ListVal } from '../val/ListVal'
-import { MapVal } from '../val/MapVal'
+// import { ConjunctVal } from '../val/ConjunctVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
+// import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
 import { RefVal } from '../val/RefVal'
 import { ValBase } from '../val/ValBase'
@@ -55,6 +55,7 @@ import { ValBase } from '../val/ValBase'
 // TODO: KEY, SELF, PARENT are reserved names - error
 
 class VarVal extends ValBase {
+  isVarVal = true
 
   constructor(
     spec: {

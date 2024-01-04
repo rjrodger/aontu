@@ -5,8 +5,8 @@ import { Nil } from './val/Nil'
 
 
 // TODO: move to utility?
-function descErr<NILS extends Nil | Nil[]>(err: NILS): any {
-  if (err instanceof Nil) {
+function descErr<NILS extends Nil | Nil[]>(err: NILS | any): any {
+  if (err?.isNil) {
     if (null == err.msg || '' === err.msg) {
       let v1: any = err.primary
       let v2: any = err.secondary
@@ -36,7 +36,7 @@ function descErr<NILS extends Nil | Nil[]>(err: NILS): any {
     return err
   }
   else {
-    return err.map(n => descErr(n))
+    return err.map((n: any) => descErr(n))
   }
 }
 

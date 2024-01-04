@@ -4,14 +4,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisjunctVal = void 0;
 const type_1 = require("../type");
 const op_1 = require("../op/op");
+// import { TOP } from '../val'
+// import { ConjunctVal } from '../val/ConjunctVal'
+// import { ListVal } from '../val/ListVal'
+// import { MapVal } from '../val/MapVal'
 const Nil_1 = require("../val/Nil");
 const PrefVal_1 = require("../val/PrefVal");
+// import { RefVal } from '../val/RefVal'
 const ValBase_1 = require("../val/ValBase");
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends ValBase_1.ValBase {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
     constructor(spec, ctx, _sites) {
         super(spec, ctx);
+        this.isDisjunctVal = true;
     }
     // NOTE: mutation!
     append(peer) {

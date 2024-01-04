@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -21,7 +21,7 @@
     "test-some": "npm run version && jest -t",
     "test-some-pure": "npm run version && jest --config jest.config.pure.js -t",
     "test-watch": "npm run version && jest --coverage --watchAll",
-    "test-web": "npm run build-web && browserify -i util -o test/web.js -e test/entry.js -im && open test/web.html",
+    "test-web": "npm run build-web && browserify -i util -o test/web.js -e test/entry.js -im -t aliasify && open test/web.html",
     "watch": "tsc -w -d",
     "prettier": "prettier --write --no-semi --single-quote *.ts test/*.js",
     "build": "tsc -d",
@@ -70,7 +70,8 @@
     "aliases": {
       "@jsonic/multisource/resolver/file": "@jsonic/multisource/dist/resolver/file.js",
       "@jsonic/multisource/resolver/pkg": "@jsonic/multisource/dist/resolver/pkg.js",
-      "@jsonic/multisource/resolver/mem": "@jsonic/multisource/dist/resolver/mem.js"
+      "@jsonic/multisource/resolver/mem": "@jsonic/multisource/dist/resolver/mem.js",
+      "@jsonic/jsonic-next/debug": "@jsonic/jsonic-next/dist/debug.js"
     }
   }
 }

@@ -2,11 +2,10 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.descErr = void 0;
-const Nil_1 = require("./val/Nil");
 // TODO: move to utility?
 function descErr(err) {
     var _a, _b, _c;
-    if (err instanceof Nil_1.Nil) {
+    if (err === null || err === void 0 ? void 0 : err.isNil) {
         if (null == err.msg || '' === err.msg) {
             let v1 = err.primary;
             let v2 = err.secondary;
@@ -30,7 +29,7 @@ function descErr(err) {
         return err;
     }
     else {
-        return err.map(n => descErr(n));
+        return err.map((n) => descErr(n));
     }
 }
 exports.descErr = descErr;

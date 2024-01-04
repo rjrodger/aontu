@@ -5,11 +5,18 @@ exports.PrefVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const op_1 = require("../op/op");
+// import { TOP } from '../val'
+// import { ConjunctVal } from '../val/ConjunctVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
+// import { MapVal } from '../val/MapVal'
 const Nil_1 = require("../val/Nil");
+// import { RefVal } from '../val/RefVal'
 const ValBase_1 = require("../val/ValBase");
 class PrefVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isPrefVal = true;
         this.pref = spec.pref || spec.peg;
     }
     // PrefVal unify always returns a PrefVal

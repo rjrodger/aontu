@@ -3,11 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = void 0;
 const type_1 = require("../type");
-const ConjunctVal_1 = require("../val/ConjunctVal");
-const DisjunctVal_1 = require("../val/DisjunctVal");
 const Nil_1 = require("../val/Nil");
-const PrefVal_1 = require("../val/PrefVal");
-const RefVal_1 = require("../val/RefVal");
 const val_1 = require("../val");
 let uc = 0;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
@@ -30,24 +26,24 @@ const unite = (ctx, a, b, whence) => {
         why = 'a';
     }
     else if (a && b && val_1.TOP !== b) {
-        if (a instanceof Nil_1.Nil) {
+        if (a.isNil) {
             out = update(a, b);
             why = 'an';
         }
-        else if (b instanceof Nil_1.Nil) {
+        else if (b.isNil) {
             out = update(b, a);
             why = 'bn';
         }
-        else if (a instanceof ConjunctVal_1.ConjunctVal) {
+        else if (a.isConjunctVal) {
             // console.log('Q', a.canon, b.canon)
             out = a.unify(b, ctx);
             unified = true;
             why = 'acj';
         }
-        else if (b instanceof ConjunctVal_1.ConjunctVal ||
-            b instanceof DisjunctVal_1.DisjunctVal ||
-            b instanceof RefVal_1.RefVal ||
-            b instanceof PrefVal_1.PrefVal) {
+        else if (b.isConjunctVal ||
+            b.isDisjunctVal ||
+            b.isRefVal ||
+            b.isPrefVal) {
             // console.log('U', a.canon, b.canon)
             // return b.unify(a, ctx)
             out = b.unify(a, ctx);

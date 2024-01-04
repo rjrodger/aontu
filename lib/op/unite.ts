@@ -31,7 +31,7 @@ let uc = 0
 
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
-const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
+const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
   let out = a
   let why = 'u'
   // console.log('AA OP unite  IN', a?.canon, b?.canon,
@@ -53,25 +53,25 @@ const unite: Operation = (ctx: Context, a?: Val, b?: Val, whence?: string) => {
   }
 
   else if (a && b && TOP !== b) {
-    if (a instanceof Nil) {
+    if (a.isNil) {
       out = update(a, b)
       why = 'an'
     }
-    else if (b instanceof Nil) {
+    else if (b.isNil) {
       out = update(b, a)
       why = 'bn'
     }
-    else if (a instanceof ConjunctVal) {
+    else if (a.isConjunctVal) {
       // console.log('Q', a.canon, b.canon)
       out = a.unify(b, ctx)
       unified = true
       why = 'acj'
     }
     else if (
-      b instanceof ConjunctVal ||
-      b instanceof DisjunctVal ||
-      b instanceof RefVal ||
-      b instanceof PrefVal
+      b.isConjunctVal ||
+      b.isDisjunctVal ||
+      b.isRefVal ||
+      b.isPrefVal
     ) {
 
       // console.log('U', a.canon, b.canon)

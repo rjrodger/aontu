@@ -3,6 +3,7 @@ import { Context } from '../unify';
 import { StringVal } from '../val';
 import { ValBase } from '../val/ValBase';
 declare class RefVal extends ValBase {
+    isRefVal: boolean;
     absolute: boolean;
     prefix: boolean;
     constructor(spec: {

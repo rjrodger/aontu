@@ -141,6 +141,10 @@ describe('lang', function() {
 
 
   it('file', () => {
+    if (undefined !== global.window) {
+      return
+    }
+
     global.console = require('console')
 
     let g0 = new Lang({

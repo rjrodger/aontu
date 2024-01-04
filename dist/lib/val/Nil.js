@@ -8,6 +8,7 @@ const ValBase_1 = require("../val/ValBase");
 class Nil extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
+        this.isNil = true;
         this.nil = true;
         this.msg = '';
         if (spec && 'object' === typeof spec) {

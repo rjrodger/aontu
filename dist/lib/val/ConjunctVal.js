@@ -6,15 +6,18 @@ const type_1 = require("../type");
 const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
+// import { DisjunctVal } from '../val/DisjunctVal'
 const ListVal_1 = require("../val/ListVal");
 const MapVal_1 = require("../val/MapVal");
 const Nil_1 = require("../val/Nil");
+// import { PrefVal } from '../val/PrefVal'
 const RefVal_1 = require("../val/RefVal");
 const ValBase_1 = require("../val/ValBase");
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isConjunctVal = true;
         // console.log('NEWCJ')
         // console.trace()
     }

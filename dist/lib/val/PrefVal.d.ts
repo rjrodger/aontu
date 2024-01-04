@@ -2,6 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { ValBase } from '../val/ValBase';
 declare class PrefVal extends ValBase {
+    isPrefVal: boolean;
     pref: Val;
     constructor(spec: {
         peg: any;

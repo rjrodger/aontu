@@ -28,13 +28,13 @@ import {
 
 
 
-import { TOP } from '../val'
-import { ConjunctVal } from '../val/ConjunctVal'
-import { ListVal } from '../val/ListVal'
-import { MapVal } from '../val/MapVal'
+// import { TOP } from '../val'
+// import { ConjunctVal } from '../val/ConjunctVal'
+// import { ListVal } from '../val/ListVal'
+// import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
 import { PrefVal } from '../val/PrefVal'
-import { RefVal } from '../val/RefVal'
+// import { RefVal } from '../val/RefVal'
 import { ValBase } from '../val/ValBase'
 
 
@@ -42,6 +42,8 @@ import { ValBase } from '../val/ValBase'
 
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends ValBase {
+  isDisjunctVal = true
+
   // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
   constructor(
     spec: {

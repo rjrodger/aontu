@@ -2,6 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { ValBase } from '../val/ValBase';
 declare class VarVal extends ValBase {
+    isVarVal: boolean;
     constructor(spec: {
         peg: string | Val;
     }, ctx?: Context);

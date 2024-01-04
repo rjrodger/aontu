@@ -41,8 +41,8 @@ import {
 
 
 import { ConjunctVal } from '../val/ConjunctVal'
-import { DisjunctVal } from '../val/DisjunctVal'
-import { ListVal } from '../val/ListVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
 import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
 import { VarVal } from '../val/VarVal'
@@ -53,6 +53,8 @@ import { ValBase } from '../val/ValBase'
 
 
 class RefVal extends ValBase {
+  isRefVal = true
+
   absolute: boolean = false
   prefix: boolean = false
 

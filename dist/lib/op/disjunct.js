@@ -15,7 +15,7 @@ const disjunct = (ctx, a, b) => {
 exports.disjunct = disjunct;
 function append(peers, v) {
     // let origsite: Site = Site.NONE
-    if (v instanceof DisjunctVal_1.DisjunctVal) {
+    if (v.isDisjunctVal) {
         peers.push(...v.peg);
         // origsite = v.site
     }

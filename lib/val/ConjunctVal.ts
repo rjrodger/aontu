@@ -26,17 +26,18 @@ import {
 
 
 import { TOP } from '../val'
-import { DisjunctVal } from '../val/DisjunctVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
 import { ListVal } from '../val/ListVal'
 import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
-import { PrefVal } from '../val/PrefVal'
+// import { PrefVal } from '../val/PrefVal'
 import { RefVal } from '../val/RefVal'
 import { ValBase } from '../val/ValBase'
 
 
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends ValBase {
+  isConjunctVal = true
 
   constructor(
     spec: {

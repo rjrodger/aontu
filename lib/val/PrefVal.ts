@@ -31,17 +31,19 @@ import {
 
 
 
-import { TOP } from '../val'
-import { ConjunctVal } from '../val/ConjunctVal'
-import { DisjunctVal } from '../val/DisjunctVal'
-import { ListVal } from '../val/ListVal'
-import { MapVal } from '../val/MapVal'
+// import { TOP } from '../val'
+// import { ConjunctVal } from '../val/ConjunctVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
+// import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
-import { RefVal } from '../val/RefVal'
+// import { RefVal } from '../val/RefVal'
 import { ValBase } from '../val/ValBase'
 
 
 class PrefVal extends ValBase {
+  isPrefVal = true
+
   pref: Val
 
   constructor(

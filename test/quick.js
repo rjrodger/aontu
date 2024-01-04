@@ -286,19 +286,18 @@ let s = ''
 // let m1c = m1.clone(c2)
 // console.dir(m1c,{depth:null})
 
-
 s0 = `
 a1: &: { c1: &: { x1: 11 } }
 b2: { y2: 22 }
 `
 
-s1= `a:b:c:1 z:2`
-s2= `a:&:b:&:1 z:2`
-s3= `a:&:b:&:c:1 z:2`
-s4= `a:&:b:&:{c:1} z:2`
-s5= `a:&:{b:&:c:1} z:2`
-s6= `a:&:{b:&:{c:1}} z:2`
+s1 = `a:b:c:1 z:2`
+s2 = `a:&:b:&:1 z:2`
+s3 = `a:&:b:&:c:1 z:2`
+s4 = `a:&:b:&:{c:1} z:2`
+s5 = `a:&:{b:&:c:1} z:2`
+s6 = `a:&:{b:&:{c:1}} z:2`
 
-let p = P({src:s5,debug:true})
+let p = P({ src: s5, debug: true })
 console.log(p.canon)
 // console.dir(p, { depth: null })

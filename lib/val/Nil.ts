@@ -23,6 +23,8 @@ import { ValBase } from '../val/ValBase'
 
 
 class Nil extends ValBase {
+  isNil = true
+
   nil = true
   why: any
   primary?: Val

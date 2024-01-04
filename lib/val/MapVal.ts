@@ -26,15 +26,17 @@ import {
 
 import { TOP } from '../val'
 import { ConjunctVal } from '../val/ConjunctVal'
-import { DisjunctVal } from '../val/DisjunctVal'
-import { ListVal } from '../val/ListVal'
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
 import { Nil } from '../val/Nil'
-import { PrefVal } from '../val/PrefVal'
-import { RefVal } from '../val/RefVal'
+// import { PrefVal } from '../val/PrefVal'
+// import { RefVal } from '../val/RefVal'
 import { ValBase } from '../val/ValBase'
 
 
 class MapVal extends ValBase {
+  isMapVal = true
+
   static SPREAD = Symbol('spread')
 
   spread = {

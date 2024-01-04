@@ -496,7 +496,7 @@ class Lang {
       val = this.jsonic(src, jm)
     }
     catch (e: any) {
-      if (e instanceof JsonicError) {
+      if (e instanceof JsonicError || 'JsonicError' === e.constructor.name) {
         val = new Nil({
           why: 'parse',
           err: new Nil({

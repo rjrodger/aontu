@@ -31,10 +31,10 @@ const disjunct: Operation = (ctx?: Context, a?: Val, b?: Val) => {
 
 
 
-function append(peers: Val[], v?: Val) {
+function append(peers: Val[], v?: any) {
   // let origsite: Site = Site.NONE
 
-  if (v instanceof DisjunctVal) {
+  if (v.isDisjunctVal) {
     peers.push(...v.peg)
     // origsite = v.site
   }

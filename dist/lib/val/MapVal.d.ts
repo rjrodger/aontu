@@ -2,6 +2,7 @@ import type { Val, ValMap, ValSpec } from '../type';
 import { Context } from '../unify';
 import { ValBase } from '../val/ValBase';
 declare class MapVal extends ValBase {
+    isMapVal: boolean;
     static SPREAD: symbol;
     spread: {
         cj: Val | undefined;

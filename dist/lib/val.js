@@ -11,7 +11,7 @@ const ValBase_1 = require("./val/ValBase");
 class TopVal extends ValBase_1.ValBase {
     constructor() {
         super(null);
-        this.isVal = true;
+        this.isTop = true;
         this.id = 0;
         this.top = true;
         this.peg = undefined;
@@ -47,10 +47,11 @@ exports.Integer = Integer;
 class ScalarTypeVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isScalarTypeVal = true;
         this.done = type_1.DONE;
     }
     unify(peer, ctx) {
-        if (peer instanceof ScalarVal) {
+        if (peer === null || peer === void 0 ? void 0 : peer.isScalarVal) {
             if (peer.type === this.peg) {
                 return peer;
             }
@@ -60,7 +61,7 @@ class ScalarTypeVal extends ValBase_1.ValBase {
             return Nil_1.Nil.make(ctx, 'no-scalar-unify', this, peer);
         }
         else {
-            if (peer instanceof ScalarTypeVal) {
+            if (peer === null || peer === void 0 ? void 0 : peer.isScalarTypeVal) {
                 if (Number === this.peg && Integer === peer.peg) {
                     return peer;
                 }
@@ -76,7 +77,7 @@ class ScalarTypeVal extends ValBase_1.ValBase {
         return ctor.name.toLowerCase();
     }
     same(peer) {
-        return peer instanceof ScalarTypeVal ? this.peg === peer.peg : super.same(peer);
+        return (peer === null || peer === void 0 ? void 0 : peer.isScalarTypeVal) ? this.peg === peer.peg : super.same(peer);
     }
     gen(_ctx) {
         return undefined;
@@ -86,6 +87,7 @@ exports.ScalarTypeVal = ScalarTypeVal;
 class ScalarVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isScalarVal = true;
         this.type = spec.type;
         this.done = type_1.DONE;
     }
@@ -99,7 +101,7 @@ class ScalarVal extends ValBase_1.ValBase {
     }
     unify(peer, ctx) {
         // Exactly equal scalars are handled in op/unite
-        if (peer instanceof ScalarTypeVal) {
+        if (peer === null || peer === void 0 ? void 0 : peer.isScalarTypeVal) {
             return peer.unify(this, ctx);
         }
         else if (peer.top) {
@@ -111,7 +113,7 @@ class ScalarVal extends ValBase_1.ValBase {
         return this.peg.toString();
     }
     same(peer) {
-        return peer instanceof ScalarVal ? peer.peg === this.peg : super.same(peer);
+        return (peer === null || peer === void 0 ? void 0 : peer.isScalarVal) ? peer.peg === this.peg : super.same(peer);
     }
     gen(_ctx) {
         return this.peg;
@@ -120,14 +122,19 @@ class ScalarVal extends ValBase_1.ValBase {
 class NumberVal extends ScalarVal {
     constructor(spec, ctx) {
         super({ peg: spec.peg, type: Number }, ctx);
+        this.isNumberVal = true;
     }
     unify(peer, ctx) {
-        if (peer instanceof ScalarVal && peer.type === Integer) {
-            return peer;
+        if (null != peer) {
+            if (peer.isScalarTypeVal && peer.type === Number) {
+                return this;
+            }
+            else if (peer.isScalarVal &&
+                peer.peg === this.peg) {
+                return peer.isIntegerVal ? peer : this;
+            }
         }
-        else {
-            return super.unify(peer, ctx);
-        }
+        return super.unify(peer, ctx);
     }
 }
 exports.NumberVal = NumberVal;
@@ -138,25 +145,27 @@ class IntegerVal extends ScalarVal {
             throw new Error('not-integer');
         }
         super({ peg: spec.peg, type: Integer }, ctx);
+        this.isIntegerVal = true;
     }
     unify(peer, ctx) {
-        if (peer instanceof ScalarTypeVal && peer.peg === Number) {
-            return this;
+        if (null != peer) {
+            if (peer.isScalarTypeVal && (peer.peg === Number || peer.peg === Integer)) {
+                return this;
+            }
+            else if (peer.isScalarVal &&
+                // peer.type === Number &&
+                peer.peg === this.peg) {
+                return this;
+            }
         }
-        else if (peer instanceof ScalarVal &&
-            peer.type === Number &&
-            this.peg === peer.peg) {
-            return this;
-        }
-        else {
-            return super.unify(peer, ctx);
-        }
+        return super.unify(peer, ctx);
     }
 }
 exports.IntegerVal = IntegerVal;
 class StringVal extends ScalarVal {
     constructor(spec, ctx) {
         super({ peg: spec.peg, type: String }, ctx);
+        this.isStringVal = true;
     }
     unify(peer, ctx) {
         return super.unify(peer, ctx);
@@ -169,6 +178,7 @@ exports.StringVal = StringVal;
 class BooleanVal extends ScalarVal {
     constructor(spec, ctx) {
         super({ peg: spec.peg, type: Boolean }, ctx);
+        this.isBooleanVal = true;
     }
     unify(peer, ctx) {
         return super.unify(peer, ctx);

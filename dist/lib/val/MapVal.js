@@ -6,11 +6,16 @@ const type_1 = require("../type");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
+// import { DisjunctVal } from '../val/DisjunctVal'
+// import { ListVal } from '../val/ListVal'
 const Nil_1 = require("../val/Nil");
+// import { PrefVal } from '../val/PrefVal'
+// import { RefVal } from '../val/RefVal'
 const ValBase_1 = require("../val/ValBase");
 class MapVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isMapVal = true;
         this.spread = {
             cj: undefined,
         };

@@ -96,3 +96,10 @@ window.expect = function (sval) {
 }
 
 require('../dist/test/aontu.test.js')
+require('../dist/test/lang.test.js')
+require('../dist/test/op.test.js')
+require('../dist/test/unify.test.js')
+require('../dist/test/val.test.js')
+require('../dist/test/val-ref.test.js')
+require('../dist/test/val-conjunct.test.js')
+require('../dist/test/val-disjunct.test.js')

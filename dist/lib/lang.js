@@ -245,7 +245,7 @@ let AontuJsonic = function aontu(jsonic) {
     jsonic.rule('elem', (rs) => {
         rs
             // PPP
-            .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, g: 'spread' }])
+            .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, n: { pk: 1 }, g: 'spread' }])
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
             if (rule.u.spread) {
@@ -341,7 +341,7 @@ class Lang {
             val = this.jsonic(src, jm);
         }
         catch (e) {
-            if (e instanceof jsonic_next_1.JsonicError) {
+            if (e instanceof jsonic_next_1.JsonicError || 'JsonicError' === e.constructor.name) {
                 val = new Nil_1.Nil({
                     why: 'parse',
                     err: new Nil_1.Nil({
