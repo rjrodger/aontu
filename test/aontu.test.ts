@@ -151,6 +151,26 @@ w1: b: {y:2,z:3} & $.q.a
   })
 
 
+  it('spread-edges', () => {
+    expect(Aontu('a:b:{} a:&:{x:1}').gen()).toEqual({ a: { b: { x: 1 } } })
+
+    // FIX
+    // expect(Aontu('a:{} &:{x:1}').gen()).toEqual({ a: { x: 1 } })
+  })
+
+
+  it('key-edges', () => {
+    expect(Aontu('a:{k:.$KEY}').gen()).toEqual({ a: { k: 'a' } })
+    expect(Aontu('a:b:{k:.$KEY}').gen()).toEqual({ a: { b: { k: 'b' } } })
+
+    expect(Aontu('a:{k:.$KEY} x:1').gen()).toEqual({ x: 1, a: { k: 'a' } })
+    expect(Aontu('a:b:{k:.$KEY} x:1').gen()).toEqual({ x: 1, a: { b: { k: 'b' } } })
+
+    expect(Aontu('x:1 a:{k:.$KEY}').gen()).toEqual({ x: 1, a: { k: 'a' } })
+    expect(Aontu('x:1 a:b:{k:.$KEY}').gen()).toEqual({ x: 1, a: { b: { k: 'b' } } })
+  })
+
+
   it('practical-path-spread', () => {
     let v0 = Aontu(`
 micks: $.def.garage & {

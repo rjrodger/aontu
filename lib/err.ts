@@ -11,6 +11,8 @@ function descErr<NILS extends Nil | Nil[]>(err: NILS | any): any {
       let v1: any = err.primary
       let v2: any = err.secondary
 
+      // console.log(err)
+
       err.msg =
         'Cannot ' +
         (null == v2 ? 'resolve' : 'unify') +

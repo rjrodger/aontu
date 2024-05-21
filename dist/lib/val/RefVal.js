@@ -179,6 +179,7 @@ class RefVal extends ValBase_1.ValBase {
         let node = ctx.root;
         let pI = 0;
         for (; pI < fullpath.length; pI++) {
+            // console.log('RefVal DESCEND', pI, node)
             let part = fullpath[pI];
             if (node instanceof MapVal_1.MapVal) {
                 node = node.peg[part];
@@ -187,6 +188,7 @@ class RefVal extends ValBase_1.ValBase {
                 break;
             }
         }
+        // console.log('RefVal KEY', modes, pI, fullpath)
         if (pI === fullpath.length) {
             // if (this.attr && 'KEY' === this.attr.kind) {
             if (modes.includes('KEY')) {

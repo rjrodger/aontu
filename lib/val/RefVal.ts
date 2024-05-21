@@ -270,6 +270,7 @@ class RefVal extends ValBase {
     let node = ctx.root
     let pI = 0
     for (; pI < fullpath.length; pI++) {
+      // console.log('RefVal DESCEND', pI, node)
       let part = fullpath[pI]
 
       if (node instanceof MapVal) {
@@ -279,6 +280,8 @@ class RefVal extends ValBase {
         break;
       }
     }
+
+    // console.log('RefVal KEY', modes, pI, fullpath)
 
     if (pI === fullpath.length) {
       // if (this.attr && 'KEY' === this.attr.kind) {
