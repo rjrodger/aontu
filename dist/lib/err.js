@@ -9,7 +9,7 @@ function descErr(err) {
         if (null == err.msg || '' === err.msg) {
             let v1 = err.primary;
             let v2 = err.secondary;
-            console.log(err);
+            // console.log(err)
             err.msg =
                 'Cannot ' +
                     (null == v2 ? 'resolve' : 'unify') +

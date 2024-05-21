@@ -61,16 +61,18 @@ w1: b: {y:2,z:3} & $.q.a
     ).toMatchObject({ src: 'y', print: 2 })
   })
 
+
   it('file', async () => {
     let v0 = Aontu('@"' + __dirname + '/t02.jsonic"')
 
     // console.log('MAP', v0.map)
 
-    //console.log(v0.canon)
+    // console.log(v0.canon)
+
     expect(v0.canon).toEqual(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}'
     )
-    expect(v0.gen([])).toEqual({
+    expect(v0.gen({ err: [] })).toEqual({
       sys: { ent: { name: undefined } },
       ent: {
         foo: {
@@ -92,6 +94,7 @@ w1: b: {y:2,z:3} & $.q.a
       },
     })
   })
+
 
   it('pref', async () => {
     let v0 = Aontu('@"' + __dirname + '/t03.jsonic"', {
