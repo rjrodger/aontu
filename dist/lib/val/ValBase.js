@@ -1,10 +1,10 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ValBase = void 0;
 const lang_1 = require("../lang");
+let ID = 0;
 class ValBase {
-    // deps?: any
     constructor(spec, ctx) {
         this.isVal = true;
         this.done = 0;
@@ -19,15 +19,22 @@ class ValBase {
         this.err = [];
         this.peg = spec === null || spec === void 0 ? void 0 : spec.peg;
         this.path = (ctx === null || ctx === void 0 ? void 0 : ctx.path) || [];
-        this.id = (9e9 + Math.floor(Math.random() * (1e9)));
+        // this.id = (9e9 + Math.floor(Math.random() * (1e9)))
+        this.id = ++ID; // (9e9 + Math.floor(Math.random() * (1e5)))
+        this.uh = [];
     }
     same(peer) {
         return null == peer ? false : this.id === peer.id;
     }
     clone(spec, ctx) {
-        let cloneCtx = ctx ? ctx.clone({
-            path: ctx.path.concat(this.path.slice(ctx.path.length))
-        }) : undefined;
+        let cloneCtx;
+        if (ctx) {
+            let cut = this.path.indexOf('&');
+            cut = -1 < cut ? cut + 1 : ctx.path.length;
+            cloneCtx = ctx.clone({
+                path: ctx.path.concat(this.path.slice(cut))
+            });
+        }
         let out = new this
             .constructor(spec || { peg: this.peg }, cloneCtx);
         if (null == cloneCtx) {

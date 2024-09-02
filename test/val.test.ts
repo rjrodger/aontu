@@ -679,6 +679,40 @@ b: c2: {n:2}
   })
 
 
+
+
+  it('repeat-spread', () => {
+    let ctx = makeCtx()
+
+    expect(G('p:a:b:&:n:1 p:a:b:c:{}', ctx)).toEqual({
+      p: { a: { b: { c: { n: 1 } } } }
+    })
+
+    expect(G('p:a:&:&:n:1 p:a:b:c:{}', ctx)).toEqual({
+      p: { a: { b: { c: { n: 1 } } } }
+    })
+
+    expect(G('p:a:b:&:n:.$KEY p:a:b:c:{}', ctx)).toEqual({
+      p: { a: { b: { c: { n: 'c' } } } }
+    })
+
+    expect(G('p:a:&:&:n:.$KEY p:a:b:c:{}', ctx)).toEqual({
+      p: { a: { b: { c: { n: 'c' } } } }
+    })
+  })
+
+
+  it('operator-plus', () => {
+    let ctx = makeCtx()
+
+    expect(G('a:1+2', ctx)).toEqual({ a: 3 })
+    expect(G('a:"b"+"c"', ctx)).toEqual({ a: 'bc' })
+    expect(G('a:"1"+2', ctx)).toEqual({ a: '12' })
+    expect(G('a:1,b:$.a+3', ctx)).toEqual({ a: 1, b: 4 })
+    expect(G('a:"A",b:B+$.a', ctx)).toEqual({ a: 'A', b: 'BA' })
+  })
+
+
   it('pref', () => {
     let ctx = makeCtx()
 

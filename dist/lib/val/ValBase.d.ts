@@ -12,6 +12,7 @@ declare class ValBase implements Val {
     top: boolean;
     peg: any;
     err: any[];
+    uh: number[];
     constructor(spec: ValSpec, ctx?: Context);
     same(peer: Val): boolean;
     clone(spec?: ValSpec, ctx?: Context): Val;

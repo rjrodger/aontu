@@ -1,11 +1,12 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.descErr = void 0;
+exports.descErr = descErr;
 // TODO: move to utility?
 function descErr(err) {
     var _a, _b, _c;
     if (err === null || err === void 0 ? void 0 : err.isNil) {
+        // console.trace()
         if (null == err.msg || '' === err.msg) {
             let v1 = err.primary;
             let v2 = err.secondary;
@@ -33,5 +34,4 @@ function descErr(err) {
         return err.map((n) => descErr(n));
     }
 }
-exports.descErr = descErr;
 //# sourceMappingURL=err.js.map

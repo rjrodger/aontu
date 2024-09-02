@@ -7,6 +7,7 @@ type Options = {
     base?: string;
     path?: string;
     debug?: boolean;
+    trace?: boolean;
 };
 interface Val {
     isVal: boolean;

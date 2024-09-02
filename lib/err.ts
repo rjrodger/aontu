@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
 
 
 import { Nil } from './val/Nil'
@@ -7,6 +7,8 @@ import { Nil } from './val/Nil'
 // TODO: move to utility?
 function descErr<NILS extends Nil | Nil[]>(err: NILS | any): any {
   if (err?.isNil) {
+    // console.trace()
+
     if (null == err.msg || '' === err.msg) {
       let v1: any = err.primary
       let v2: any = err.secondary

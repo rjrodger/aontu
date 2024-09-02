@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
 
 
 
@@ -18,6 +18,7 @@ import {
 } from '../lang'
 
 
+let ID = 0
 
 
 class ValBase implements Val {
@@ -39,11 +40,15 @@ class ValBase implements Val {
   err: any[] = []
   // deps?: any
 
+  uh: number[]
+
 
   constructor(spec: ValSpec, ctx?: Context) {
     this.peg = spec?.peg
     this.path = ctx?.path || []
-    this.id = (9e9 + Math.floor(Math.random() * (1e9)))
+    // this.id = (9e9 + Math.floor(Math.random() * (1e9)))
+    this.id = ++ID // (9e9 + Math.floor(Math.random() * (1e5)))
+    this.uh = []
   }
 
 
@@ -53,9 +58,15 @@ class ValBase implements Val {
 
 
   clone(spec?: ValSpec, ctx?: Context): Val {
-    let cloneCtx = ctx ? ctx.clone({
-      path: ctx.path.concat(this.path.slice(ctx.path.length))
-    }) : undefined
+    let cloneCtx
+
+    if (ctx) {
+      let cut = this.path.indexOf('&')
+      cut = -1 < cut ? cut + 1 : ctx.path.length
+      cloneCtx = ctx.clone({
+        path: ctx.path.concat(this.path.slice(cut))
+      })
+    }
 
     let out = new (this as any)
       .constructor(spec || { peg: this.peg }, cloneCtx)

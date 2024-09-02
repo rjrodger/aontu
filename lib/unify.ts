@@ -122,6 +122,8 @@ class Unify {
         ctx.cc = this.cc
         res = unite(ctx, res, TOP)
         ctx = ctx.clone({ root: res })
+
+        // console.log('==============', this.cc)
       }
     }
 

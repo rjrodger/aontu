@@ -1,8 +1,7 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
 
 import type { Val, Options } from './lib/type'
 
-// import { Lang, includeFileResolver } from './lib/lang'
 import { Lang } from './lib/lang'
 import { Unify, Context } from './lib/unify'
 import { Nil } from './lib/val/Nil'
@@ -24,15 +23,6 @@ also trace deps into top val and watch via model
 
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
-
-// const NoResolver: Resolver = () => ({
-//   kind: '<no-kind>',
-//   path: '<no-path>',
-//   full: '<no-full>',
-//   base: '<no-base>',
-//   abs: true,
-//   found: false,
-// })
 
 // TODO: Aontu should return final generated version?
 
@@ -68,7 +58,6 @@ const util = {
       ...{
         src: '',
         print: 0,
-        // resolver: includeFileResolver,
       },
       ...srcopts,
       ...(popts || {}),

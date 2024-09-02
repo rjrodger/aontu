@@ -7,8 +7,6 @@ const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { ListVal } from '../val/ListVal'
 const MapVal_1 = require("../val/MapVal");
 const Nil_1 = require("../val/Nil");
 const VarVal_1 = require("../val/VarVal");
@@ -115,7 +113,8 @@ class RefVal extends ValBase_1.ValBase {
         let fullpath = this.path;
         let parts = [];
         let modes = [];
-        // console.log('PARTS', this.peg)
+        // console.log('REF', this.id, this.path, this.done, 'PEG', this.peg.map((p: any) => p.canon))
+        // console.dir(this.peg, { depth: null })
         for (let pI = 0; pI < this.peg.length; pI++) {
             let part = this.peg[pI];
             if (part instanceof VarVal_1.VarVal) {
@@ -176,6 +175,15 @@ class RefVal extends ValBase_1.ValBase {
         let sep = '.';
         fullpath = fullpath
             .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
+        // console.log('REF', this.id, this.path, this.done, 'FULLPATH', fullpath)
+        if (modes.includes('KEY')) {
+            let key = this.path[this.path.length - 2];
+            let sv = new val_1.StringVal({ peg: null == key ? '' : key }, ctx);
+            // TODO: other props?
+            sv.done = type_1.DONE;
+            sv.path = this.path;
+            return sv;
+        }
         let node = ctx.root;
         let pI = 0;
         for (; pI < fullpath.length; pI++) {
@@ -191,18 +199,18 @@ class RefVal extends ValBase_1.ValBase {
         // console.log('RefVal KEY', modes, pI, fullpath)
         if (pI === fullpath.length) {
             // if (this.attr && 'KEY' === this.attr.kind) {
-            if (modes.includes('KEY')) {
-                // let key = fullpath[fullpath.length - ('' === this.attr.part ? 1 : 2)]
-                let key = fullpath[fullpath.length - 1];
-                let sv = new val_1.StringVal({ peg: null == key ? '' : key }, ctx);
-                // TODO: other props?
-                sv.done = type_1.DONE;
-                sv.path = this.path;
-                return sv;
-            }
-            else {
-                return node;
-            }
+            // if (modes.includes('KEY')) {
+            //   let key = fullpath[fullpath.length - 1]
+            //   let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
+            //   // TODO: other props?
+            //   sv.done = DONE
+            //   sv.path = this.path
+            //   return sv
+            // }
+            // else {
+            // console.log('REF', this.id, this.path, this.done, 'FOUND', node.canon)
+            return node;
+            // }
         }
     }
     same(peer) {

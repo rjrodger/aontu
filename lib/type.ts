@@ -20,6 +20,7 @@ type Options = {
   base?: string // Base path for resolver
   path?: string // Path of entry file
   debug?: boolean
+  trace?: boolean
 }
 
 

@@ -41,8 +41,6 @@ import {
 
 
 import { ConjunctVal } from '../val/ConjunctVal'
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { ListVal } from '../val/ListVal'
 import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
 import { VarVal } from '../val/VarVal'
@@ -193,7 +191,9 @@ class RefVal extends ValBase {
 
     let modes: string[] = []
 
-    // console.log('PARTS', this.peg)
+    // console.log('REF', this.id, this.path, this.done, 'PEG', this.peg.map((p: any) => p.canon))
+    // console.dir(this.peg, { depth: null })
+
 
     for (let pI = 0; pI < this.peg.length; pI++) {
       let part = this.peg[pI]
@@ -267,6 +267,22 @@ class RefVal extends ValBase {
       .reduce(((a: string[], p: string) =>
         (p === sep ? a.length = a.length - 1 : a.push(p), a)), [])
 
+    // console.log('REF', this.id, this.path, this.done, 'FULLPATH', fullpath)
+
+
+    if (modes.includes('KEY')) {
+      let key = this.path[this.path.length - 2]
+      let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
+
+      // TODO: other props?
+      sv.done = DONE
+      sv.path = this.path
+
+      return sv
+    }
+
+
+
     let node = ctx.root
     let pI = 0
     for (; pI < fullpath.length; pI++) {
@@ -285,20 +301,20 @@ class RefVal extends ValBase {
 
     if (pI === fullpath.length) {
       // if (this.attr && 'KEY' === this.attr.kind) {
-      if (modes.includes('KEY')) {
-        // let key = fullpath[fullpath.length - ('' === this.attr.part ? 1 : 2)]
-        let key = fullpath[fullpath.length - 1]
-        let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
+      // if (modes.includes('KEY')) {
+      //   let key = fullpath[fullpath.length - 1]
+      //   let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
 
-        // TODO: other props?
-        sv.done = DONE
-        sv.path = this.path
+      //   // TODO: other props?
+      //   sv.done = DONE
+      //   sv.path = this.path
 
-        return sv
-      }
-      else {
-        return node
-      }
+      //   return sv
+      // }
+      // else {
+      // console.log('REF', this.id, this.path, this.done, 'FOUND', node.canon)
+      return node
+      // }
     }
   }
 

@@ -18,6 +18,7 @@ const Nil_1 = require("./val/Nil");
 const PrefVal_1 = require("./val/PrefVal");
 const RefVal_1 = require("./val/RefVal");
 const VarVal_1 = require("./val/VarVal");
+const PlusVal_1 = require("./val/PlusVal");
 const val_1 = require("./val");
 class Site {
     // static NONE = new Site(TOP)
@@ -113,17 +114,25 @@ let AontuJsonic = function aontu(jsonic) {
             }
             return addpath(new VarVal_1.VarVal({ peg: terms[0] }), r.k.path);
         },
+        'plus-infix': (r, _op, terms) => {
+            return addpath(new PlusVal_1.PlusVal({ peg: [terms[0], terms[1]] }), r.k.path);
+        },
     };
     jsonic
         .use(expr_1.Expr, {
         op: {
-            // PPP
             // disjunct > conjunct: c & b | a -> c & (b | a)
             'conjunct': {
                 infix: true, src: '&', left: 14000000, right: 15000000
             },
             'disjunct': {
                 infix: true, src: '|', left: 16000000, right: 17000000
+            },
+            'plus-infix': {
+                src: '+',
+                infix: true,
+                left: 20000000,
+                right: 21000000,
             },
             'dollar-prefix': {
                 src: '$',
@@ -152,12 +161,10 @@ let AontuJsonic = function aontu(jsonic) {
             return val;
         }
     });
-    // PPP
     let CJ = jsonic.token['#E&'];
     let CL = jsonic.token.CL;
     jsonic.rule('val', (rs) => {
         rs
-            // PPP
             .open([{ s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' }])
             .bc((r, ctx) => {
             let valnode = r.node;
@@ -184,12 +191,12 @@ let AontuJsonic = function aontu(jsonic) {
             r.node = valnode;
             // return out
             return undefined;
-        });
+        })
+            .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }]);
         return rs;
     });
     jsonic.rule('map', (rs) => {
         rs
-            // PPP
             .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
             .bc((r) => {
             let mo = r.node;
@@ -206,7 +213,8 @@ let AontuJsonic = function aontu(jsonic) {
                 r.node = addpath(new MapVal_1.MapVal({ peg: mo }), r.k.path);
             }
             return undefined;
-        });
+        })
+            .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }]);
         return rs;
     });
     jsonic.rule('list', (rs) => {
@@ -218,7 +226,6 @@ let AontuJsonic = function aontu(jsonic) {
     });
     jsonic.rule('pair', (rs) => {
         rs
-            // PPP
             .open([{
                 s: [CJ, CL], p: 'val',
                 u: { spread: true },
@@ -239,7 +246,11 @@ let AontuJsonic = function aontu(jsonic) {
                 rule.node[MapVal_1.MapVal.SPREAD].v.push(rule.child.node);
             }
             return undefined;
-        });
+        })
+            .close([
+            { s: [CJ, CL], c: (r) => r.lte('dmap', 1), r: 'pair', b: 2, g: 'spread,json,pair' },
+            { s: [CJ, CL], b: 2, g: 'spread,json,more' }
+        ]);
         return rs;
     });
     jsonic.rule('elem', (rs) => {
@@ -254,7 +265,8 @@ let AontuJsonic = function aontu(jsonic) {
                 rule.node[ListVal_1.ListVal.SPREAD].v.push(rule.child.node);
             }
             return undefined;
-        });
+        })
+            .close([{ s: [CJ, CL], r: 'elem', b: 2, g: 'spread,json,more' }]);
         return rs;
     });
 };
@@ -308,12 +320,15 @@ class Lang {
             src: '',
             print: -1,
             debug: false,
+            trace: false,
         };
         this.options = Object.assign({}, this.options, options);
         const modelResolver = makeModelResolver(this.options);
         this.jsonic = jsonic_next_1.Jsonic.make();
         if (this.options.debug) {
-            this.jsonic.use(debug_1.Debug, { trace: true });
+            this.jsonic.use(debug_1.Debug, {
+                trace: this.options.trace
+            });
         }
         this.jsonic
             .use(AontuJsonic)

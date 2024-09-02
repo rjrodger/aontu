@@ -60,6 +60,7 @@ class Unify {
                 ctx.cc = this.cc;
                 res = (0, op_1.unite)(ctx, res, val_1.TOP);
                 ctx = ctx.clone({ root: res });
+                // console.log('==============', this.cc)
             }
         }
         this.res = res;

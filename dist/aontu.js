@@ -1,8 +1,8 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.util = exports.Context = exports.Lang = exports.Nil = exports.Aontu = void 0;
-// import { Lang, includeFileResolver } from './lib/lang'
+exports.util = exports.Context = exports.Lang = exports.Nil = void 0;
+exports.Aontu = Aontu;
 const lang_1 = require("./lib/lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./lib/unify");
@@ -22,14 +22,6 @@ also trace deps into top val and watch via model
 // TODO: error reporting
 // TODO: debug tracing
 // TODO: providers - e.g source files from paths
-// const NoResolver: Resolver = () => ({
-//   kind: '<no-kind>',
-//   path: '<no-path>',
-//   full: '<no-full>',
-//   base: '<no-base>',
-//   abs: true,
-//   found: false,
-// })
 // TODO: Aontu should return final generated version?
 /* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
@@ -47,7 +39,6 @@ function Aontu(src, popts) {
     res.err = err;
     return res;
 }
-exports.Aontu = Aontu;
 const util = {
     options: (src, popts) => {
         // Convert convenience first param into Options.src
@@ -56,7 +47,6 @@ const util = {
             ...{
                 src: '',
                 print: 0,
-                // resolver: includeFileResolver,
             },
             ...srcopts,
             ...(popts || {}),

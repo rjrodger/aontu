@@ -53,7 +53,8 @@ import { Nil } from './val/Nil'
 import { PrefVal } from './val/PrefVal'
 import { RefVal } from './val/RefVal'
 import { VarVal } from './val/VarVal'
-import { ValBase } from './val/ValBase'
+import { PlusVal } from './val/PlusVal'
+
 
 
 import {
@@ -190,19 +191,30 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       }
       return addpath(new VarVal({ peg: terms[0] }), r.k.path)
     },
+
+    'plus-infix': (r: Rule, _op: Op, terms: any) => {
+      return addpath(new PlusVal({ peg: [terms[0], terms[1]] }), r.k.path)
+    },
+
   }
 
 
   jsonic
     .use(Expr, {
       op: {
-        // PPP
         // disjunct > conjunct: c & b | a -> c & (b | a)
         'conjunct': {
           infix: true, src: '&', left: 14_000_000, right: 15_000_000
         },
         'disjunct': {
           infix: true, src: '|', left: 16_000_000, right: 17_000_000
+        },
+
+        'plus-infix': {
+          src: '+',
+          infix: true,
+          left: 20_000_000,
+          right: 21_000_000,
         },
 
         'dollar-prefix': {
@@ -217,6 +229,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           left: 25_000_000,
           right: 24_000_000,
         },
+
         'dot-prefix': {
           src: '.',
           prefix: true,
@@ -236,7 +249,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     })
 
 
-  // PPP
   let CJ = jsonic.token['#E&']
   let CL = jsonic.token.CL
 
@@ -244,7 +256,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   jsonic.rule('val', (rs: RuleSpec) => {
 
     rs
-      // PPP
       .open([{ s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' }])
 
       .bc((r: Rule, ctx: Context) => {
@@ -280,13 +291,14 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         return undefined
       })
 
+      .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }])
+
     return rs
   })
 
 
   jsonic.rule('map', (rs: RuleSpec) => {
     rs
-      // PPP
       .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
 
       .bc((r: Rule) => {
@@ -311,6 +323,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         return undefined
       })
 
+      .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }])
+
     return rs
   })
 
@@ -328,7 +342,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.rule('pair', (rs: RuleSpec) => {
     rs
-      // PPP
       .open([{
         s: [CJ, CL], p: 'val',
         u: { spread: true },
@@ -356,6 +369,12 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         return undefined
       })
 
+      .close([
+        { s: [CJ, CL], c: (r) => r.lte('dmap', 1), r: 'pair', b: 2, g: 'spread,json,pair' },
+        { s: [CJ, CL], b: 2, g: 'spread,json,more' }
+      ])
+
+
     return rs
   })
 
@@ -376,6 +395,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
         return undefined
       })
+
+      .close([{ s: [CJ, CL], r: 'elem', b: 2, g: 'spread,json,more' }])
 
     return rs
   })
@@ -452,7 +473,9 @@ class Lang {
     src: '',
     print: -1,
     debug: false,
+    trace: false,
   }
+
 
   constructor(options?: Partial<Options>) {
     this.options = Object.assign({}, this.options, options) as Options
@@ -462,7 +485,9 @@ class Lang {
     this.jsonic = Jsonic.make()
 
     if (this.options.debug) {
-      this.jsonic.use(Debug, { trace: true })
+      this.jsonic.use(Debug, {
+        trace: this.options.trace
+      })
     }
 
     this.jsonic
@@ -472,6 +497,7 @@ class Lang {
         resolver: options?.resolver || modelResolver
       })
   }
+
 
   parse(src: string, opts?: any): Val {
     // JSONIC-UPDATE - check meta

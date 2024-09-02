@@ -286,18 +286,48 @@ let s = ''
 // let m1c = m1.clone(c2)
 // console.dir(m1c,{depth:null})
 
-s0 = `
-a1: &: { c1: &: { x1: 11 } }
-b2: { y2: 22 }
-`
+// s0 = `
+// a1: &: { c1: &: { x1: 11 } }
+// b2: { y2: 22 }
+// `
 
-s1 = `a:b:c:1 z:2`
-s2 = `a:&:b:&:1 z:2`
-s3 = `a:&:b:&:c:1 z:2`
-s4 = `a:&:b:&:{c:1} z:2`
-s5 = `a:&:{b:&:c:1} z:2`
-s6 = `a:&:{b:&:{c:1}} z:2`
+// s1 = `a:b:c:1 z:2`
+// s2 = `a:&:b:&:1 z:2`
+// s3 = `a:&:b:&:c:1 z:2`
+// s4 = `a:&:b:&:{c:1} z:2`
+// s5 = `a:&:{b:&:c:1} z:2`
+// s6 = `a:&:{b:&:{c:1}} z:2`
 
-let p = P({ src: s5, debug: true })
-console.log(p.canon)
-// console.dir(p, { depth: null })
+// let p = P({ src: s5, debug: true })
+// console.log(p.canon)
+// // console.dir(p, { depth: null })
+
+// s0 = `
+// q: &: { n: .$KEY, m: &: { k: .$KEY } }
+// a: q: $.q
+// a: q: v: { m: { w:{}, y:{} } }
+// `
+// s0 = `
+// # a:&:n:.$KEY
+// # a:b:{}
+// # a:&:b:&:n:.$KEY
+// # a:x:b:y:{}
+// # &:n:.$KEY
+// # a:{}
+// # &:b:&:n:.$KEY
+// # x:b:y:{}
+// # &:&:n:.$KEY
+// # p:&:n:1
+// # p:&:&:n:1
+// # p:a:b:&:n:1
+// p:a:b:&:n:1
+// p:a:b:c:{}
+// `
+// s0='a:1+2 b:x+y, a:number a:integer a:3'
+s0 = 'a:A b:B+$.a'
+let p0 = P(s0)
+console.log(p0.canon)
+// V(p0)
+let a0 = A(s0)
+// console.dir(a0,{depth:null})
+G(a0)

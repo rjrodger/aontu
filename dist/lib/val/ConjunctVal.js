@@ -1,7 +1,8 @@
 "use strict";
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConjunctVal = exports.norm = void 0;
+exports.ConjunctVal = void 0;
+exports.norm = norm;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const op_1 = require("../op/op");
@@ -189,5 +190,4 @@ function norm(terms) {
     }
     return expand;
 }
-exports.norm = norm;
 //# sourceMappingURL=ConjunctVal.js.map

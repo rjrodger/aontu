@@ -55,14 +55,13 @@ class MapVal extends ValBase {
       throw new Error('MapVal spec.peg undefined')
     }
 
-
     let spread = (this.peg as any)[MapVal.SPREAD]
     delete (this.peg as any)[MapVal.SPREAD]
 
-    // console.log('MC', this.id, peg, spread)
-
     if (spread) {
       if ('&' === spread.o) {
+        // console.log('MapVal.ctor', this.id, this.path.join('.'),
+        //   'SPREAD', spread.v[0] && spread.v[0].id)
         // TODO: handle existing spread!
         this.spread.cj =
           Array.isArray(spread.v) ?
@@ -70,8 +69,6 @@ class MapVal extends ValBase {
               new ConjunctVal({ peg: spread.v }, ctx) :
               spread.v[0] :
             spread.v
-        // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-        // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
       }
     }
   }
@@ -81,6 +78,13 @@ class MapVal extends ValBase {
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
     // let mark = Math.random()
+
+    // console.log(
+    //   'MapVal.unify',
+    //   this.id, '=' + this.uh, this.path.join('.'),
+    //   (this.spread.cj ?
+    //     'spread:' + this.spread.cj.id + ':' + this.spread.cj.path.join('.') : ''),
+    //   peer.constructor.name, peer.id, peer.path.join('.'))
 
     let done: boolean = true
     let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
@@ -128,9 +132,6 @@ class MapVal extends ValBase {
       let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map') as MapVal)
 
       for (let peerkey in upeer.peg) {
-        // console.log('M1', this.id, mark, Object.keys(this.peg).join('~'),
-        //   'pk=', peerkey)
-
         let peerchild = upeer.peg[peerkey]
         let child = out.peg[peerkey]
 
@@ -142,21 +143,34 @@ class MapVal extends ValBase {
 
         if (this.spread.cj) {
           let key_ctx = ctx.descend(peerkey)
+          // console.log('KEY_CTX', peerkey, key_ctx)
+
           let key_spread_cj = spread_cj.clone(null, key_ctx)
 
+          // console.log('MapVal.unify.spread', this.id, '=' + this.uh, this.path.join('.'),
+          //   key_spread_cj.id, key_spread_cj.path.join('.'))
+
+
+          // console.log('ORIG')
+          // console.dir(out.peg[peerkey], { depth: null })
+          // console.log('SPREAD')
+          // console.dir(this.spread.cj, { depth: null })
+
           oval = out.peg[peerkey] =
-            // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
-            // done = false
             unite(key_ctx, out.peg[peerkey], key_spread_cj)
+
+          // console.log('OVAL')
+          // console.dir(oval, { depth: null })
         }
-        // else {
+
         done = (done && DONE === oval.done)
-        // }
       }
     }
     else if (TOP !== peer) {
       return Nil.make(ctx, 'map', this, peer)
     }
+
+    out.uh.push(peer.id)
 
     out.done = done ? DONE : out.done
     return out

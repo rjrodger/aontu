@@ -239,6 +239,41 @@ describe('lang', function () {
         // REMOVE
         // console.dir(v0, { depth: null })
     });
+    it('edge-top-spreads', () => {
+        let v0 = P('a:b &:string');
+        expect(v0.canon).toEqual('{&:string,"a":"b"}');
+        expect(v0.gen()).toEqual({ a: 'b' });
+        let v1 = P(' &:string a:b &:string');
+        expect(v1.canon).toEqual('{&:string&string,"a":"b"}');
+        expect(v1.gen()).toEqual({ a: 'b' });
+        let v2 = P(' &:string &:string a:b &:string');
+        expect(v2.canon).toEqual('{&:string&string&string,"a":"b"}');
+        expect(v2.gen()).toEqual({ a: 'b' });
+        let v3 = P('&:string &:string a:b &:string &:string');
+        expect(v3.canon).toEqual('{&:string&string&string&string,"a":"b"}');
+        expect(v3.gen()).toEqual({ a: 'b' });
+        let v4 = P('a:&:string');
+        expect(v4.canon).toEqual('{"a":{&:string}}');
+        expect(v4.gen()).toEqual({ a: {} });
+        let v5 = P('a:b:c a:d:e');
+        expect(v5.canon).toEqual('{"a":{"b":"c"}&{"d":"e"}}');
+        expect(v5.unify(val_1.TOP, makeCtx()).gen()).toEqual({ a: { b: 'c', d: 'e' } });
+        let v6 = P('a:b:c a:&:string');
+        expect(v6.canon).toEqual('{"a":{"b":"c"}&{&:string}}');
+        expect(v6.unify(val_1.TOP, makeCtx()).gen()).toEqual({ a: { b: 'c' } });
+        let v7 = P('a:&:c a:&:string');
+        expect(v7.canon).toEqual('{"a":{&:"c"}&{&:string}}');
+        expect(v7.unify(val_1.TOP, makeCtx()).gen()).toEqual({ a: {} });
+        let v8 = P('a:&:c a:&:string a:b:c');
+        expect(v8.canon).toEqual('{"a":{&:"c"}&{&:string}&{"b":"c"}}');
+        expect(v8.unify(val_1.TOP, makeCtx()).gen()).toEqual({ a: { b: 'c' } });
+        let v9 = P('&:c &:string');
+        expect(v9.canon).toEqual('{&:"c"&string}');
+        expect(v9.unify(val_1.TOP, makeCtx()).gen()).toEqual({});
+        let v10 = P('&:b &:string a:b');
+        expect(v10.canon).toEqual('{&:"b"&string,"a":"b"}');
+        expect(v10.unify(val_1.TOP, makeCtx()).gen()).toEqual({ a: 'b' });
+    });
 });
 function makeCtx(opts) {
     return new unify_1.Context(opts || { root: new MapVal_1.MapVal({ peg: {} }) });
