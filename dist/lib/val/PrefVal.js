@@ -72,7 +72,7 @@ class PrefVal extends ValBase_1.ValBase {
             (!(this.peg instanceof Nil_1.Nil) ? this.peg :
                 this.pref);
         if (val instanceof Nil_1.Nil) {
-            (0, err_1.descErr)(val);
+            (0, err_1.descErr)(val, ctx);
             if (ctx) {
                 ctx.err.push(val);
             }

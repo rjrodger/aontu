@@ -46,11 +46,11 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/directive": "^0.12.0",
-    "@jsonic/expr": "^0.9.0",
-    "@jsonic/jsonic-next": "^2.13.0",
-    "@jsonic/multisource": "^1.5.0",
-    "@jsonic/path": "^0.8.0"
+    "@jsonic/directive": "^1.0.0",
+    "@jsonic/expr": "^1.0.0",
+    "@jsonic/jsonic-next": "^2.14.0",
+    "@jsonic/multisource": "^1.7.0",
+    "@jsonic/path": "^1.0.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

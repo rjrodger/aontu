@@ -140,7 +140,7 @@ class OpVal extends ValBase {
     nil.row = this.row
     nil.col = this.col
 
-    descErr(nil)
+    descErr(nil, ctx)
 
     if (ctx) {
       ctx.err.push(nil)

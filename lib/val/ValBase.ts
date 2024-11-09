@@ -42,8 +42,11 @@ class ValBase implements Val {
 
   uh: number[]
 
+  #ctx: any
 
   constructor(spec: ValSpec, ctx?: Context) {
+    this.#ctx = ctx
+
     this.peg = spec?.peg
     this.path = ctx?.path || []
     // this.id = (9e9 + Math.floor(Math.random() * (1e9)))
@@ -51,6 +54,10 @@ class ValBase implements Val {
     this.uh = []
   }
 
+
+  ctx() {
+    return this.#ctx
+  }
 
   same(peer: Val): boolean {
     return null == peer ? false : this.id === peer.id
@@ -70,6 +77,10 @@ class ValBase implements Val {
 
     let out = new (this as any)
       .constructor(spec || { peg: this.peg }, cloneCtx)
+
+    out.row = spec?.row || this.row || -1
+    out.col = spec?.col || this.col || -1
+    out.url = spec?.url || this.url || ''
 
     if (null == cloneCtx) {
       out.path = this.path.slice(0)

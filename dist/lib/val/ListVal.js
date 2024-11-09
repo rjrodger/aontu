@@ -107,15 +107,11 @@ class ListVal extends ValBase_1.ValBase {
                 (0 < keys.length ? ',' : '') : '') +
             keys
                 // NOTE: handle array non-index key vals
-                // .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') +
                 .map(k => [this.peg[k].canon]).join(',') +
             ']';
     }
     gen(ctx) {
         let out = this.peg.map((v) => v.gen(ctx));
-        // for (let p in this.peg) {
-        //   out[p] = this.peg[p].gen(ctx)
-        // }
         return out;
     }
 }

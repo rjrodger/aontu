@@ -92,7 +92,18 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   jsonic.use(Path)
 
   // TODO: refactor Val constructor
-  let addpath = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
+  // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
+  let addsite = (v: Val, r: Rule, ctx: Context) => {
+
+    v.row = null == r.o0 ? -1 : r.o0.rI
+    v.col = null == r.o0 ? -1 : r.o0.cI
+    v.url = ctx.meta.multisource ? ctx.meta.multisource.path : ''
+    v.path = r.k ? [...(r.k.path || [])] : []
+
+    // console.log('ADDSITE', v)
+
+    return v
+  }
 
 
   jsonic.options({
@@ -103,24 +114,24 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         // (except for functions).
         // TODO: jsonic should be able to pass context into these
         'string': {
-          val: (r: Rule) =>
-            addpath(new ScalarTypeVal({ peg: String }), r.k.path)
+          val: (r: Rule, ctx: Context) =>
+            addsite(new ScalarTypeVal({ peg: String }), r, ctx)
         },
         'number': {
-          val: (r: Rule) =>
-            addpath(new ScalarTypeVal({ peg: Number }), r.k.path)
+          val: (r: Rule, ctx: Context) =>
+            addsite(new ScalarTypeVal({ peg: Number }), r, ctx)
         },
         'integer': {
-          val: (r: Rule) =>
-            addpath(new ScalarTypeVal({ peg: Integer }), r.k.path)
+          val: (r: Rule, ctx: Context) =>
+            addsite(new ScalarTypeVal({ peg: Integer }), r, ctx)
         },
         'boolean': {
-          val: (r: Rule) =>
-            addpath(new ScalarTypeVal({ peg: Boolean }), r.k.path)
+          val: (r: Rule, ctx: Context) =>
+            addsite(new ScalarTypeVal({ peg: Boolean }), r, ctx)
         },
         'nil': {
-          val: (r: Rule) =>
-            addpath(new Nil('literal'), r.k.path)
+          val: (r: Rule, ctx: Context) =>
+            addsite(new Nil('literal'), r, ctx)
         },
 
         // TODO: FIX: need a TOP instance to hold path
@@ -129,7 +140,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     },
 
     map: {
-      merge: (prev: any, curr: any) => {
+      merge: (prev: any, curr: any, _r: Rule, ctx: Context) => {
         let pval = (prev as Val)
         let cval = (curr as Val)
 
@@ -149,7 +160,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           //   return cval
           // }
           else {
-            return addpath(new ConjunctVal({ peg: [pval, cval] }), prev.path)
+            return addsite(new ConjunctVal({ peg: [pval, cval] }), prev, ctx)
           }
         }
 
@@ -166,34 +177,34 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
   let opmap: any = {
-    'conjunct-infix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new ConjunctVal({ peg: terms }), r.k.path),
+    'conjunct-infix': (r: Rule, ctx: Context, _op: Op, terms: any) =>
+      addsite(new ConjunctVal({ peg: terms }), r, ctx),
 
-    'disjunct-infix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new DisjunctVal({ peg: terms }), r.k.path),
+    'disjunct-infix': (r: Rule, ctx: Context, _op: Op, terms: any) =>
+      addsite(new DisjunctVal({ peg: terms }), r, ctx),
 
-    'dot-prefix': (r: Rule, _op: Op, terms: any) => {
-      return addpath(new RefVal({ peg: terms, prefix: true }), r.k.path)
+    'dot-prefix': (r: Rule, ctx: Context, _op: Op, terms: any) => {
+      return addsite(new RefVal({ peg: terms, prefix: true }), r, ctx)
     },
 
-    'dot-infix': (r: Rule, _op: Op, terms: any) => {
-      return addpath(new RefVal({ peg: terms }), r.k.path)
+    'dot-infix': (r: Rule, ctx: Context, _op: Op, terms: any) => {
+      return addsite(new RefVal({ peg: terms }), r, ctx)
     },
 
-    'star-prefix': (r: Rule, _op: Op, terms: any) =>
-      addpath(new PrefVal({ peg: terms[0] }), r.k.path),
+    'star-prefix': (r: Rule, ctx: Context, _op: Op, terms: any) =>
+      addsite(new PrefVal({ peg: terms[0] }), r, ctx),
 
-    'dollar-prefix': (r: Rule, _op: Op, terms: any) => {
+    'dollar-prefix': (r: Rule, ctx: Context, _op: Op, terms: any) => {
       // $.a.b absolute path
       if (terms[0] instanceof RefVal) {
         terms[0].absolute = true
         return terms[0]
       }
-      return addpath(new VarVal({ peg: terms[0] }), r.k.path)
+      return addsite(new VarVal({ peg: terms[0] }), r, ctx)
     },
 
-    'plus-infix': (r: Rule, _op: Op, terms: any) => {
-      return addpath(new PlusVal({ peg: [terms[0], terms[1]] }), r.k.path)
+    'plus-infix': (r: Rule, ctx: Context, _op: Op, terms: any) => {
+      return addsite(new PlusVal({ peg: [terms[0], terms[1]] }), r, ctx)
     },
 
   }
@@ -242,8 +253,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           right: 24_000_000,
         },
       },
-      evaluate: (r: Rule, op: Op, terms: any) => {
-        let val: Val = opmap[op.name](r, op, terms)
+      evaluate: (r: Rule, ctx: Context, op: Op, terms: any) => {
+        let val: Val = opmap[op.name](r, ctx, op, terms)
         return val
       }
     })
@@ -264,25 +275,23 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         let valtype = typeof valnode
 
         if ('string' === valtype) {
-          valnode = addpath(new StringVal({ peg: r.node }), r.k.path)
+          valnode = addsite(new StringVal({ peg: r.node }), r, ctx)
         }
         else if ('number' === valtype) {
           if (Number.isInteger(r.node)) {
-            valnode = addpath(new IntegerVal({ peg: r.node }), r.k.path)
+            valnode = addsite(new IntegerVal({ peg: r.node }), r, ctx)
           }
           else {
-            valnode = addpath(new NumberVal({ peg: r.node }), r.k.path)
+            valnode = addsite(new NumberVal({ peg: r.node }), r, ctx)
           }
         }
         else if ('boolean' === valtype) {
-          valnode = addpath(new BooleanVal({ peg: r.node }), r.k.path)
+          valnode = addsite(new BooleanVal({ peg: r.node }), r, ctx)
         }
 
         let st = r.o0
         valnode.row = st.rI
         valnode.col = st.cI
-
-        // JSONIC-UPDATE: still valid? check multisource
         valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
 
         r.node = valnode
@@ -301,7 +310,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     rs
       .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
 
-      .bc((r: Rule) => {
+      .bc((r: Rule, ctx: Context) => {
 
         let mo = r.node
 
@@ -314,10 +323,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           let mopv = new MapVal({ peg: mop })
 
           r.node =
-            addpath(new ConjunctVal({ peg: [mopv, ...mo.___merge] }), r.k.path)
+            addsite(new ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx)
         }
         else {
-          r.node = addpath(new MapVal({ peg: mo }), r.k.path)
+          r.node = addsite(new MapVal({ peg: mo }), r, ctx)
         }
 
         return undefined
@@ -330,8 +339,8 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
   jsonic.rule('list', (rs: RuleSpec) => {
-    rs.bc((r: Rule) => {
-      r.node = addpath(new ListVal({ peg: r.node }), r.k.path)
+    rs.bc((r: Rule, ctx: Context) => {
+      r.node = addsite(new ListVal({ peg: r.node }), r, ctx)
 
       return undefined
     })

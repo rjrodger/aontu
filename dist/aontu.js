@@ -29,12 +29,14 @@ also trace deps into top val and watch via model
  */
 function Aontu(src, popts) {
     let opts = util.options(src, popts);
+    // console.log('OPTS', opts)
     let deps = {};
+    // TODO: handle empty src
     let val = util.parse(opts, { deps });
     let uni = new unify_1.Unify(val);
     let res = uni.res;
     let err = uni.err;
-    (0, err_1.descErr)(uni.err);
+    (0, err_1.descErr)(uni.err, { src: opts.src });
     res.deps = deps;
     res.err = err;
     return res;

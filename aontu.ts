@@ -32,13 +32,18 @@ also trace deps into top val and watch via model
  */
 function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   let opts = util.options(src, popts)
+
+  // console.log('OPTS', opts)
+
   let deps = {}
+
+  // TODO: handle empty src
   let val = util.parse(opts, { deps })
   let uni = new Unify(val as unknown as Val)
   let res = uni.res
   let err = uni.err
 
-  descErr(uni.err)
+  descErr(uni.err, { src: opts.src })
 
   res.deps = deps
   res.err = err

@@ -133,7 +133,7 @@ class PrefVal extends ValBase {
         this.pref)
 
     if (val instanceof Nil) {
-      descErr(val)
+      descErr(val, ctx)
 
       if (ctx) {
         ctx.err.push(val)

@@ -93,10 +93,14 @@ class Unify {
   lang: Lang
 
   constructor(root: Val | string, lang?: Lang, ctx?: Context) {
+    // console.log('ROOT-A', root)
+
     this.lang = lang || new Lang()
     if ('string' === typeof root) {
       root = this.lang.parse(root)
     }
+
+    // console.log('ROOT-B', root)
 
     this.cc = 0
     this.root = root

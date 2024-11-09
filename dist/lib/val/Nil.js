@@ -38,12 +38,14 @@ class Nil extends ValBase_1.ValBase {
     }
     gen(ctx) {
         // Unresolved nil cannot be generated, so always an error.
-        (0, err_1.descErr)(this);
-        if (ctx) {
+        (0, err_1.descErr)(this, ctx);
+        if (Array.isArray(ctx === null || ctx === void 0 ? void 0 : ctx.err)) {
             ctx.err.push(this);
         }
         else {
-            throw new Error(this.msg);
+            const err = new Error(this.msg);
+            err.aontu = true;
+            throw err;
         }
         return undefined;
     }

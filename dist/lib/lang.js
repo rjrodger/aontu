@@ -37,7 +37,15 @@ exports.Site = Site;
 let AontuJsonic = function aontu(jsonic) {
     jsonic.use(path_1.Path);
     // TODO: refactor Val constructor
-    let addpath = (v, p) => (v.path = [...(p || [])], v);
+    // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
+    let addsite = (v, r, ctx) => {
+        v.row = null == r.o0 ? -1 : r.o0.rI;
+        v.col = null == r.o0 ? -1 : r.o0.cI;
+        v.url = ctx.meta.multisource ? ctx.meta.multisource.path : '';
+        v.path = r.k ? [...(r.k.path || [])] : [];
+        // console.log('ADDSITE', v)
+        return v;
+    };
     jsonic.options({
         value: {
             def: {
@@ -46,26 +54,26 @@ let AontuJsonic = function aontu(jsonic) {
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
                 'string': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: String }), r.k.path)
+                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: String }), r, ctx)
                 },
                 'number': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Number }), r.k.path)
+                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: Number }), r, ctx)
                 },
                 'integer': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: val_1.Integer }), r.k.path)
+                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: val_1.Integer }), r, ctx)
                 },
                 'boolean': {
-                    val: (r) => addpath(new val_1.ScalarTypeVal({ peg: Boolean }), r.k.path)
+                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: Boolean }), r, ctx)
                 },
                 'nil': {
-                    val: (r) => addpath(new Nil_1.Nil('literal'), r.k.path)
+                    val: (r, ctx) => addsite(new Nil_1.Nil('literal'), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
                 'top': { val: () => val_1.TOP },
             }
         },
         map: {
-            merge: (prev, curr) => {
+            merge: (prev, curr, _r, ctx) => {
                 let pval = prev;
                 let cval = curr;
                 if ((pval === null || pval === void 0 ? void 0 : pval.isVal) && (cval === null || cval === void 0 ? void 0 : cval.isVal)) {
@@ -83,7 +91,7 @@ let AontuJsonic = function aontu(jsonic) {
                     //   return cval
                     // }
                     else {
-                        return addpath(new ConjunctVal_1.ConjunctVal({ peg: [pval, cval] }), prev.path);
+                        return addsite(new ConjunctVal_1.ConjunctVal({ peg: [pval, cval] }), prev, ctx);
                     }
                 }
                 // Handle defered conjuncts, where MapVal does not yet
@@ -97,25 +105,25 @@ let AontuJsonic = function aontu(jsonic) {
         }
     });
     let opmap = {
-        'conjunct-infix': (r, _op, terms) => addpath(new ConjunctVal_1.ConjunctVal({ peg: terms }), r.k.path),
-        'disjunct-infix': (r, _op, terms) => addpath(new DisjunctVal_1.DisjunctVal({ peg: terms }), r.k.path),
-        'dot-prefix': (r, _op, terms) => {
-            return addpath(new RefVal_1.RefVal({ peg: terms, prefix: true }), r.k.path);
+        'conjunct-infix': (r, ctx, _op, terms) => addsite(new ConjunctVal_1.ConjunctVal({ peg: terms }), r, ctx),
+        'disjunct-infix': (r, ctx, _op, terms) => addsite(new DisjunctVal_1.DisjunctVal({ peg: terms }), r, ctx),
+        'dot-prefix': (r, ctx, _op, terms) => {
+            return addsite(new RefVal_1.RefVal({ peg: terms, prefix: true }), r, ctx);
         },
-        'dot-infix': (r, _op, terms) => {
-            return addpath(new RefVal_1.RefVal({ peg: terms }), r.k.path);
+        'dot-infix': (r, ctx, _op, terms) => {
+            return addsite(new RefVal_1.RefVal({ peg: terms }), r, ctx);
         },
-        'star-prefix': (r, _op, terms) => addpath(new PrefVal_1.PrefVal({ peg: terms[0] }), r.k.path),
-        'dollar-prefix': (r, _op, terms) => {
+        'star-prefix': (r, ctx, _op, terms) => addsite(new PrefVal_1.PrefVal({ peg: terms[0] }), r, ctx),
+        'dollar-prefix': (r, ctx, _op, terms) => {
             // $.a.b absolute path
             if (terms[0] instanceof RefVal_1.RefVal) {
                 terms[0].absolute = true;
                 return terms[0];
             }
-            return addpath(new VarVal_1.VarVal({ peg: terms[0] }), r.k.path);
+            return addsite(new VarVal_1.VarVal({ peg: terms[0] }), r, ctx);
         },
-        'plus-infix': (r, _op, terms) => {
-            return addpath(new PlusVal_1.PlusVal({ peg: [terms[0], terms[1]] }), r.k.path);
+        'plus-infix': (r, ctx, _op, terms) => {
+            return addsite(new PlusVal_1.PlusVal({ peg: [terms[0], terms[1]] }), r, ctx);
         },
     };
     jsonic
@@ -156,8 +164,8 @@ let AontuJsonic = function aontu(jsonic) {
                 right: 24000000,
             },
         },
-        evaluate: (r, op, terms) => {
-            let val = opmap[op.name](r, op, terms);
+        evaluate: (r, ctx, op, terms) => {
+            let val = opmap[op.name](r, ctx, op, terms);
             return val;
         }
     });
@@ -170,23 +178,22 @@ let AontuJsonic = function aontu(jsonic) {
             let valnode = r.node;
             let valtype = typeof valnode;
             if ('string' === valtype) {
-                valnode = addpath(new val_1.StringVal({ peg: r.node }), r.k.path);
+                valnode = addsite(new val_1.StringVal({ peg: r.node }), r, ctx);
             }
             else if ('number' === valtype) {
                 if (Number.isInteger(r.node)) {
-                    valnode = addpath(new val_1.IntegerVal({ peg: r.node }), r.k.path);
+                    valnode = addsite(new val_1.IntegerVal({ peg: r.node }), r, ctx);
                 }
                 else {
-                    valnode = addpath(new val_1.NumberVal({ peg: r.node }), r.k.path);
+                    valnode = addsite(new val_1.NumberVal({ peg: r.node }), r, ctx);
                 }
             }
             else if ('boolean' === valtype) {
-                valnode = addpath(new val_1.BooleanVal({ peg: r.node }), r.k.path);
+                valnode = addsite(new val_1.BooleanVal({ peg: r.node }), r, ctx);
             }
             let st = r.o0;
             valnode.row = st.rI;
             valnode.col = st.cI;
-            // JSONIC-UPDATE: still valid? check multisource
             valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
             r.node = valnode;
             // return out
@@ -198,7 +205,7 @@ let AontuJsonic = function aontu(jsonic) {
     jsonic.rule('map', (rs) => {
         rs
             .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
-            .bc((r) => {
+            .bc((r, ctx) => {
             let mo = r.node;
             //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
             if (mo.___merge) {
@@ -207,10 +214,10 @@ let AontuJsonic = function aontu(jsonic) {
                 // TODO: needs addpath?
                 let mopv = new MapVal_1.MapVal({ peg: mop });
                 r.node =
-                    addpath(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r.k.path);
+                    addsite(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx);
             }
             else {
-                r.node = addpath(new MapVal_1.MapVal({ peg: mo }), r.k.path);
+                r.node = addsite(new MapVal_1.MapVal({ peg: mo }), r, ctx);
             }
             return undefined;
         })
@@ -218,8 +225,8 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
     jsonic.rule('list', (rs) => {
-        rs.bc((r) => {
-            r.node = addpath(new ListVal_1.ListVal({ peg: r.node }), r.k.path);
+        rs.bc((r, ctx) => {
+            r.node = addsite(new ListVal_1.ListVal({ peg: r.node }), r, ctx);
             return undefined;
         });
         return rs;

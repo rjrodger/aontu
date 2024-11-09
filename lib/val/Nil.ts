@@ -123,13 +123,15 @@ class Nil extends ValBase {
   gen(ctx?: Context) {
     // Unresolved nil cannot be generated, so always an error.
 
-    descErr(this)
+    descErr(this, ctx)
 
-    if (ctx) {
+    if (Array.isArray(ctx?.err)) {
       ctx.err.push(this)
     }
     else {
-      throw new Error(this.msg)
+      const err: any = new Error(this.msg)
+      err.aontu = true
+      throw err
     }
 
     return undefined

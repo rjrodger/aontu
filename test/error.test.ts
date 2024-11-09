@@ -36,9 +36,7 @@ describe('error', function() {
     // console.dir(v0, { depth: null })
     // v0.gen()
 
-    expect(() => v0.gen()).toThrow(`Cannot resolve path a :
-LHS: a:<$.b>:1:3 
-`)
+    expect(() => v0.gen()).toThrow('Cannot resolve path $.a')
 
     let c0 = new Context({ root: v0 })
     let g0 = v0.gen(c0)
@@ -64,7 +62,7 @@ LHS: a:<$.b>:1:3
     let v0 = Aontu('@"' + __dirname + '/error/e02.jsonic"')
 
     expect(() => v0.gen())
-      .toThrow(/Cannot resolve path a in .*e02.jsonic:\nLHS: a:\<\$\.b\>:1:4/)
+      .toThrow('Cannot resolve path $.a')
 
     let c0 = new Context({ root: v0 })
     let g0 = v0.gen(c0)

@@ -2,6 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
 declare class ValBase implements Val {
+    #private;
     isVal: boolean;
     id: number;
     done: number;
@@ -14,6 +15,7 @@ declare class ValBase implements Val {
     err: any[];
     uh: number[];
     constructor(spec: ValSpec, ctx?: Context);
+    ctx(): any;
     same(peer: Val): boolean;
     clone(spec?: ValSpec, ctx?: Context): Val;
     get site(): Site;

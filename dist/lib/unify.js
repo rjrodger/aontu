@@ -38,10 +38,12 @@ class Context {
 exports.Context = Context;
 class Unify {
     constructor(root, lang, ctx) {
+        // console.log('ROOT-A', root)
         this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
             root = this.lang.parse(root);
         }
+        // console.log('ROOT-B', root)
         this.cc = 0;
         this.root = root;
         this.res = root;
