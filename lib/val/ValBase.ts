@@ -42,8 +42,12 @@ class ValBase implements Val {
 
   uh: number[]
 
+  // TODO: implement!
+  // site: Site
+
   #ctx: any
 
+  // TODO: Site needed in ctor
   constructor(spec: ValSpec, ctx?: Context) {
     this.#ctx = ctx
 

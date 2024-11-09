@@ -17,6 +17,7 @@ exports.ValBase = void 0;
 const lang_1 = require("../lang");
 let ID = 0;
 class ValBase {
+    // TODO: Site needed in ctor
     constructor(spec, ctx) {
         this.isVal = true;
         this.done = 0;
@@ -29,6 +30,8 @@ class ValBase {
         this.peg = undefined;
         // TODO: used for top level result - not great
         this.err = [];
+        // TODO: implement!
+        // site: Site
         _ValBase_ctx.set(this, void 0);
         __classPrivateFieldSet(this, _ValBase_ctx, ctx, "f");
         this.peg = spec === null || spec === void 0 ? void 0 : spec.peg;
