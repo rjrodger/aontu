@@ -1,4 +1,4 @@
-import { Jsonic } from '@jsonic/jsonic-next';
+import { Jsonic } from 'jsonic';
 import type { Val, Options } from './type';
 declare class Site {
     row: number;

@@ -2,8 +2,8 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
-const jsonic_next_1 = require("@jsonic/jsonic-next");
-const debug_1 = require("@jsonic/jsonic-next/debug");
+const jsonic_1 = require("jsonic");
+const debug_1 = require("jsonic/debug");
 const multisource_1 = require("@jsonic/multisource");
 const file_1 = require("@jsonic/multisource/resolver/file");
 const pkg_1 = require("@jsonic/multisource/resolver/pkg");
@@ -191,6 +191,9 @@ let AontuJsonic = function aontu(jsonic) {
             else if ('boolean' === valtype) {
                 valnode = addsite(new val_1.BooleanVal({ peg: r.node }), r, ctx);
             }
+            // if (null == r.node) {
+            //   console.log('QQQ', r)
+            // }
             let st = r.o0;
             valnode.row = st.rI;
             valnode.col = st.cI;
@@ -331,7 +334,7 @@ class Lang {
         };
         this.options = Object.assign({}, this.options, options);
         const modelResolver = makeModelResolver(this.options);
-        this.jsonic = jsonic_next_1.Jsonic.make();
+        this.jsonic = jsonic_1.Jsonic.make();
         if (this.options.debug) {
             this.jsonic.use(debug_1.Debug, {
                 trace: this.options.trace
@@ -363,7 +366,7 @@ class Lang {
             val = this.jsonic(src, jm);
         }
         catch (e) {
-            if (e instanceof jsonic_next_1.JsonicError || 'JsonicError' === e.constructor.name) {
+            if (e instanceof jsonic_1.JsonicError || 'JsonicError' === e.constructor.name) {
                 val = new Nil_1.Nil({
                     why: 'parse',
                     err: new Nil_1.Nil({

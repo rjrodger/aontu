@@ -7,9 +7,9 @@ import {
   RuleSpec,
   Context,
   JsonicError,
-} from '@jsonic/jsonic-next'
+} from 'jsonic'
 
-import { Debug } from '@jsonic/jsonic-next/debug'
+import { Debug } from 'jsonic/debug'
 
 import {
   MultiSource
@@ -288,6 +288,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         else if ('boolean' === valtype) {
           valnode = addsite(new BooleanVal({ peg: r.node }), r, ctx)
         }
+
+        // if (null == r.node) {
+        //   console.log('QQQ', r)
+        // }
 
         let st = r.o0
         valnode.row = st.rI

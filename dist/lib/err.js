@@ -6,8 +6,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.descErr = descErr;
 const node_fs_1 = __importDefault(require("node:fs"));
-const jsonic_next_1 = require("@jsonic/jsonic-next");
-const { errmsg } = jsonic_next_1.util;
+const jsonic_1 = require("jsonic");
+const { errmsg } = jsonic_1.util;
 // TODO: move to utility?
 function descErr(err, ctx) {
     var _a, _b, _c;

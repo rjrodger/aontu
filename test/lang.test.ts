@@ -151,6 +151,8 @@ describe('lang', function() {
       // resolver: makeFileResolver((spec: any) => {
       //   return 'string' === typeof spec ? spec : spec?.peg
       // })
+      // debug: true,
+      // trace: true,
     })
 
     let t00x = g0.parse('x:@"' + __dirname + '/t00.jsonic"')
@@ -199,6 +201,35 @@ describe('lang', function() {
 
     let t01v = g0.parse('@"' + __dirname + '/t01.jsonic"')
     expect(t01v.canon).toEqual('{}&{"a":1,"b":{"d":2},"c":3}')
+
+
+    let t00m = g0.parse(`
+    @"` + __dirname + `/t00.jsonic"
+    `)
+    expect(t00m.canon).toEqual('{}&{"a":1}')
+
+    let t01m = g0.parse(`
+    @"` + __dirname + `/t00.jsonic"
+    @"` + __dirname + `/t04.jsonic"
+    `)
+    expect(t01m.canon).toEqual('{}&{"a":1}&{"b":2}')
+
+    let t02m = g0.parse(`
+    x: 11
+    @"` + __dirname + `/t00.jsonic"
+    y: 22
+    @"` + __dirname + `/t04.jsonic"
+    z: 33
+    `)
+    expect(t02m.canon).toEqual('{"x":11,"y":22,"z":33}&{"a":1}&{"b":2}')
+
+
+    let t03m = g0.parse(`
+    x:y:{}
+    @"` + __dirname + `/t00.jsonic"
+    `)
+    expect(t03m.canon).toEqual('{"x":{"y":{}}}&{"a":1}')
+
 
     // let t02v = g0.parse('@"' + __dirname + '/t02.jsonic"')
     // console.dir(t02v, { depth: null })

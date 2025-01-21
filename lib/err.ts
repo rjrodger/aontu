@@ -2,7 +2,7 @@
 
 import Fs from 'node:fs'
 
-import { util } from '@jsonic/jsonic-next'
+import { util } from 'jsonic'
 
 import { Val } from './type'
 import { Nil } from './val/Nil'
