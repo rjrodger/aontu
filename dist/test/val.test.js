@@ -487,6 +487,17 @@ b: c2: {n:2}
         expect(G('a:"1"+2', ctx)).toEqual({ a: '12' });
         expect(G('a:1,b:$.a+3', ctx)).toEqual({ a: 1, b: 4 });
         expect(G('a:"A",b:B+$.a', ctx)).toEqual({ a: 'A', b: 'BA' });
+        expect(P('a:1+2', ctx).canon).toEqual('{"a":1+2}');
+        expect(P('a:"b"+"c"', ctx).canon).toEqual('{"a":"b"+"c"}');
+    });
+    it('null-val', () => {
+        let ctx = makeCtx();
+        expect(G('a:null', ctx)).toEqual({ a: null });
+        expect(G('[null]', ctx)).toEqual([null]);
+        expect(G('null', ctx)).toEqual(null);
+        expect(P('a:null', ctx).canon).toEqual('{"a":null}');
+        expect(P('[null]', ctx).canon).toEqual('[null]');
+        expect(P('null', ctx).canon).toEqual('null');
     });
     it('pref', () => {
         let ctx = makeCtx();

@@ -19,6 +19,7 @@ const PrefVal_1 = require("./val/PrefVal");
 const RefVal_1 = require("./val/RefVal");
 const VarVal_1 = require("./val/VarVal");
 const PlusVal_1 = require("./val/PlusVal");
+const NullVal_1 = require("./val/NullVal");
 const val_1 = require("./val");
 class Site {
     // static NONE = new Site(TOP)
@@ -190,6 +191,9 @@ let AontuJsonic = function aontu(jsonic) {
             }
             else if ('boolean' === valtype) {
                 valnode = addsite(new val_1.BooleanVal({ peg: r.node }), r, ctx);
+            }
+            else if (null === valnode) {
+                valnode = addsite(new NullVal_1.NullVal({ peg: r.node }), r, ctx);
             }
             // if (null == r.node) {
             //   console.log('QQQ', r)

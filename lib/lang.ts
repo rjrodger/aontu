@@ -54,6 +54,7 @@ import { PrefVal } from './val/PrefVal'
 import { RefVal } from './val/RefVal'
 import { VarVal } from './val/VarVal'
 import { PlusVal } from './val/PlusVal'
+import { NullVal } from './val/NullVal'
 
 
 
@@ -287,6 +288,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         }
         else if ('boolean' === valtype) {
           valnode = addsite(new BooleanVal({ peg: r.node }), r, ctx)
+        }
+        else if (null === valnode) {
+          valnode = addsite(new NullVal({ peg: r.node }), r, ctx)
         }
 
         // if (null == r.node) {
