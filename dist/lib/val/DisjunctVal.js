@@ -18,6 +18,7 @@ class DisjunctVal extends ValBase_1.ValBase {
     constructor(spec, ctx, _sites) {
         super(spec, ctx);
         this.isDisjunctVal = true;
+        this.isBinaryOp = true;
     }
     // NOTE: mutation!
     append(peer) {
@@ -75,7 +76,10 @@ class DisjunctVal extends ValBase_1.ValBase {
         return out;
     }
     get canon() {
-        return this.peg.map((v) => v.canon).join('|');
+        return this.peg.map((v) => {
+            return v.isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
+                '(' + v.canon + ')' : v.canon;
+        }).join('|');
     }
     gen(ctx) {
         // TODO: this is not right - unresolved Disjuncts eval to undef

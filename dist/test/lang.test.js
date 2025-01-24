@@ -13,19 +13,32 @@ describe('lang', function () {
         expect(P('a:1').canon).toEqual('{"a":1}');
         expect(P('{a:{b:x}}').canon).toEqual('{"a":{"b":"x"}}');
         expect(P('a:11|22,b:33', { xlog: -1 }).canon).toEqual('{"a":11|22,"b":33}');
-        expect(P('a:11|22|33,b:44', { xlog: -1 }).canon).toEqual('{"a":11|22|33,"b":44}');
+        expect(P('a:11|22|33,b:44', { xlog: -1 }).canon).toEqual('{"a":(11|22)|33,"b":44}');
         expect(P('a:{b:11}|{c:22},b:33', { xlog: -1 }).canon)
             .toEqual('{"a":{"b":11}|{"c":22},"b":33}');
         //console.dir(P('a:{b:11}|{c:22},b:33'), { depth: null })
         expect(P('a:11&22,b:33', { xlog: -1 }).canon).toEqual('{"a":11&22,"b":33}');
-        expect(P('a:11&22&33,b:44', { xlog: -1 }).canon).toEqual('{"a":11&22&33,"b":44}');
+        expect(P('a:11&22&33,b:44', { xlog: -1 }).canon).toEqual('{"a":(11&22)&33,"b":44}');
         expect(P('a:{b:11}&{c:22},b:33', { xlog: -1 }).canon)
             .toEqual('{"a":{"b":11}&{"c":22},"b":33}');
         //console.dir(P('a:{b:11}&{c:22},b:33'), { depth: null })
-        expect(P('a:11&22|33,b:44', { xlog: -1 }).canon).toEqual('{"a":11&22|33,"b":44}');
+        expect(P('a:11&22|33,b:44', { xlog: -1 }).canon).toEqual('{"a":11&(22|33),"b":44}');
         // console.dir(P('a:11&22|33,b:44', { xlog: -1 }), { depth: null })
-        expect(P('a:11|22&33,b:44', { xlog: -1 }).canon).toEqual('{"a":11|22&33,"b":44}');
+        expect(P('a:(11|22)&33,b:44', { xlog: -1 }).canon).toEqual('{"a":(11|22)&33,"b":44}');
         // console.dir(P('a:11|22&33,b:44', { xlog: -1 }), { depth: null })
+    });
+    it('parens', () => {
+        expect(P('(1)').canon).toEqual('1');
+        expect(P('(1+2)').canon).toEqual('1+2');
+        expect(P('1&2').canon).toEqual('1&2');
+        expect(P('(1&2)').canon).toEqual('1&2');
+        expect(P('(1&2)&3').canon).toEqual('(1&2)&3');
+        expect(P('1&(2&3)').canon).toEqual('1&(2&3)');
+        expect(P('1&(2&3)&4').canon).toEqual('(1&(2&3))&4');
+        expect(P('1&((2&3)&4)').canon).toEqual('1&((2&3)&4)');
+        // TODO: is this precedence right?
+        expect(P('1&2|3').canon).toEqual('1&(2|3)');
+        expect(P('1|2&3').canon).toEqual('(1|2)&3');
     });
     it('merge', () => {
         let ctx = makeCtx();

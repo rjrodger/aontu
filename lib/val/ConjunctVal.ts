@@ -37,6 +37,7 @@ import { ValBase } from '../val/ValBase'
 
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends ValBase {
+  isBinaryOp = true
   isConjunctVal = true
 
   constructor(
@@ -238,8 +239,10 @@ class ConjunctVal extends ValBase {
 
   // TODO: need a well-defined val order so conjunt canon is always the same
   get canon() {
-    // return '  C( ' + this.peg.map((v: Val) => v.canon).join('&') + ' )  '
-    return this.peg.map((v: Val) => v.canon).join('&')
+    return this.peg.map((v: Val) => {
+      return (v as any).isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
+        '(' + v.canon + ')' : v.canon
+    }).join('&')
   }
 
 

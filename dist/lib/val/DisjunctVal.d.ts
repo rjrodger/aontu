@@ -4,6 +4,7 @@ import { Site } from '../lang';
 import { ValBase } from '../val/ValBase';
 declare class DisjunctVal extends ValBase {
     isDisjunctVal: boolean;
+    isBinaryOp: boolean;
     constructor(spec: {
         peg: Val[];
     }, ctx?: Context, _sites?: Site[]);

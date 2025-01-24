@@ -2,6 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { ValBase } from '../val/ValBase';
 declare class ConjunctVal extends ValBase {
+    isBinaryOp: boolean;
     isConjunctVal: boolean;
     constructor(spec: {
         peg: Val[];

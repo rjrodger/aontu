@@ -208,6 +208,22 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       return addsite(new PlusVal({ peg: [terms[0], terms[1]] }), r, ctx)
     },
 
+    'negative-prefix': (r: Rule, ctx: Context, _op: Op, terms: any) => {
+      let val = terms[0]
+      val.peg = -1 * val.peg
+      return addsite(val, r, ctx)
+    },
+
+    'positive-prefix': (r: Rule, ctx: Context, _op: Op, terms: any) => {
+      let val = terms[0]
+      return addsite(val, r, ctx)
+    },
+
+    'plain-paren': (r: Rule, ctx: Context, _op: Op, terms: any) => {
+      let val = terms[0]
+      return addsite(val, r, ctx)
+    },
+
   }
 
 
@@ -253,8 +269,16 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           prefix: true,
           right: 24_000_000,
         },
+
+        addition: null,
+        subtraction: null,
+        multiplication: null,
+        division: null,
+        remainder: null,
       },
       evaluate: (r: Rule, ctx: Context, op: Op, terms: any) => {
+        // console.log('EVAL', op.name, terms)
+
         let val: Val = opmap[op.name](r, ctx, op, terms)
         return val
       }
@@ -293,18 +317,16 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           valnode = addsite(new NullVal({ peg: r.node }), r, ctx)
         }
 
-        // if (null == r.node) {
-        //   console.log('QQQ', r)
-        // }
-
-        let st = r.o0
-        valnode.row = st.rI
-        valnode.col = st.cI
-        valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
+        if (null != valnode && 'object' === typeof valnode) {
+          let st = r.o0
+          valnode.row = st.rI
+          valnode.col = st.cI
+          valnode.url = ctx.meta.multisource && ctx.meta.multisource.path
+        }
+        // else { ERROR? }
 
         r.node = valnode
 
-        // return out
         return undefined
       })
 

@@ -62,6 +62,11 @@ const makeIntegerVal = (v: number, c?: Context) => new IntegerVal({ peg: v }, c)
 
 
 describe('val', function() {
+
+  beforeEach(() => {
+    global.console = require('console')
+  })
+
   it('canon', () => {
     expect(P('1').canon).toEqual('1')
     expect(P('"a"').canon).toEqual('"a"')
@@ -194,25 +199,35 @@ describe('val', function() {
 
     let n0 = makeNumberVal(0, ctx)
     let n1 = makeNumberVal(1.1, ctx)
+    let n2 = makeNumberVal(-2, ctx)
 
     expect(unite(ctx, n0, n0)).toEqual(n0)
 
     expect(unite(ctx, n0, n0)).toEqual(n0)
     expect(unite(ctx, n1, n1)).toEqual(n1)
+    expect(unite(ctx, n2, n2)).toEqual(n2)
 
     expect(unite(ctx, n0, n1) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n1, n0) instanceof Nil).toBeTruthy()
+    expect(unite(ctx, n0, n2) instanceof Nil).toBeTruthy()
+    expect(unite(ctx, n2, n0) instanceof Nil).toBeTruthy()
+    expect(unite(ctx, n1, n2) instanceof Nil).toBeTruthy()
+    expect(unite(ctx, n2, n1) instanceof Nil).toBeTruthy()
 
     expect(unite(ctx, n0, TOP)).toEqual(n0)
     expect(unite(ctx, n1, TOP)).toEqual(n1)
+    expect(unite(ctx, n2, TOP)).toEqual(n2)
     expect(unite(ctx, TOP, n0)).toEqual(n0)
     expect(unite(ctx, TOP, n1)).toEqual(n1)
+    expect(unite(ctx, TOP, n2)).toEqual(n2)
 
     let b0 = new Nil('test')
     expect(unite(ctx, n0, b0)).toEqual(b0)
     expect(unite(ctx, n1, b0)).toEqual(b0)
+    expect(unite(ctx, n2, b0)).toEqual(b0)
     expect(unite(ctx, b0, n0)).toEqual(b0)
     expect(unite(ctx, b0, n1)).toEqual(b0)
+    expect(unite(ctx, b0, n2)).toEqual(b0)
 
     let t0 = makeST_Number()
     expect(unite(ctx, n0, t0)).toEqual(n0)
@@ -221,10 +236,15 @@ describe('val', function() {
     let s0 = new StringVal({ peg: 's0' })
     expect(unite(ctx, n0, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, n1, s0) instanceof Nil).toBeTruthy()
+    expect(unite(ctx, n2, s0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s0, n0) instanceof Nil).toBeTruthy()
     expect(unite(ctx, s0, n1) instanceof Nil).toBeTruthy()
+    expect(unite(ctx, s0, n2) instanceof Nil).toBeTruthy()
 
     expect(n0.same(n0)).toBeTruthy()
+    expect(n1.same(n1)).toBeTruthy()
+    expect(n2.same(n2)).toBeTruthy()
+
     expect(makeNumberVal(11).same(makeNumberVal(11))).toBeTruthy()
     expect(makeNumberVal(11).same(makeNumberVal(22))).toBeFalsy()
 
@@ -282,7 +302,28 @@ describe('val', function() {
 
     expect(x2.unify(n0).isNil).toEqual(true)
     expect((n0.unify(x2) as any).isNil).toEqual(true)
+  })
 
+
+  it('number-parse', () => {
+    // expect(P('0').canon).toEqual('0')
+    // expect(P('1').canon).toEqual('1')
+    // expect(P('2.2').canon).toEqual('2.2')
+    // expect(P('-3').canon).toEqual('-3')
+    // expect(P('+4').canon).toEqual('4')
+
+    // const ctx = makeCtx()
+    // expect(G('0', ctx)).toEqual(0)
+    // expect(G('1', ctx)).toEqual(1)
+    // expect(G('2.2', ctx)).toEqual(2.2)
+    // expect(G('-3', ctx)).toEqual(-3)
+    // expect(G('+4', ctx)).toEqual(4)
+
+    const lang = new Lang({
+      // debug: true,
+      // trace: true,
+    })
+    console.dir(lang.parse('(11)'))
   })
 
 

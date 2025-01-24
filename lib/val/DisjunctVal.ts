@@ -43,6 +43,7 @@ import { ValBase } from '../val/ValBase'
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends ValBase {
   isDisjunctVal = true
+  isBinaryOp = true
 
   // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
   constructor(
@@ -130,7 +131,10 @@ class DisjunctVal extends ValBase {
 
 
   get canon() {
-    return this.peg.map((v: Val) => v.canon).join('|')
+    return this.peg.map((v: Val) => {
+      return (v as any).isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
+        '(' + v.canon + ')' : v.canon
+    }).join('|')
   }
 
 

@@ -18,6 +18,7 @@ const ValBase_1 = require("../val/ValBase");
 class ConjunctVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isBinaryOp = true;
         this.isConjunctVal = true;
         // console.log('NEWCJ')
         // console.trace()
@@ -152,8 +153,10 @@ class ConjunctVal extends ValBase_1.ValBase {
     }
     // TODO: need a well-defined val order so conjunt canon is always the same
     get canon() {
-        // return '  C( ' + this.peg.map((v: Val) => v.canon).join('&') + ' )  '
-        return this.peg.map((v) => v.canon).join('&');
+        return this.peg.map((v) => {
+            return v.isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
+                '(' + v.canon + ')' : v.canon;
+        }).join('&');
     }
     gen(ctx) {
         // Unresolved conjunct cannot be generated, so always an error.

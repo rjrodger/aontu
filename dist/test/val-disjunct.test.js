@@ -31,9 +31,9 @@ describe('val-disjunct', function () {
     it('clone', () => {
         let v0 = P('{x:1}|{y:2}|{z:3}');
         // console.log(v0.canon)
-        expect(v0.canon).toEqual('{"x":1}|{"y":2}|{"z":3}');
+        expect(v0.canon).toEqual('({"x":1}|{"y":2})|{"z":3}');
         let v0c = v0.clone();
-        expect(v0c.canon).toEqual('{"x":1}|{"y":2}|{"z":3}');
+        expect(v0c.canon).toEqual('({"x":1}|{"y":2})|{"z":3}');
     });
 });
 function print(o, t) {

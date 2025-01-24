@@ -126,6 +126,19 @@ let AontuJsonic = function aontu(jsonic) {
         'plus-infix': (r, ctx, _op, terms) => {
             return addsite(new PlusVal_1.PlusVal({ peg: [terms[0], terms[1]] }), r, ctx);
         },
+        'negative-prefix': (r, ctx, _op, terms) => {
+            let val = terms[0];
+            val.peg = -1 * val.peg;
+            return addsite(val, r, ctx);
+        },
+        'positive-prefix': (r, ctx, _op, terms) => {
+            let val = terms[0];
+            return addsite(val, r, ctx);
+        },
+        'plain-paren': (r, ctx, _op, terms) => {
+            let val = terms[0];
+            return addsite(val, r, ctx);
+        },
     };
     jsonic
         .use(expr_1.Expr, {
@@ -164,8 +177,14 @@ let AontuJsonic = function aontu(jsonic) {
                 prefix: true,
                 right: 24000000,
             },
+            addition: null,
+            subtraction: null,
+            multiplication: null,
+            division: null,
+            remainder: null,
         },
         evaluate: (r, ctx, op, terms) => {
+            // console.log('EVAL', op.name, terms)
             let val = opmap[op.name](r, ctx, op, terms);
             return val;
         }
@@ -195,15 +214,14 @@ let AontuJsonic = function aontu(jsonic) {
             else if (null === valnode) {
                 valnode = addsite(new NullVal_1.NullVal({ peg: r.node }), r, ctx);
             }
-            // if (null == r.node) {
-            //   console.log('QQQ', r)
-            // }
-            let st = r.o0;
-            valnode.row = st.rI;
-            valnode.col = st.cI;
-            valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
+            if (null != valnode && 'object' === typeof valnode) {
+                let st = r.o0;
+                valnode.row = st.rI;
+                valnode.col = st.cI;
+                valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
+            }
+            // else { ERROR? }
             r.node = valnode;
-            // return out
             return undefined;
         })
             .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }]);
