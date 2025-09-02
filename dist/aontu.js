@@ -3,12 +3,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.util = exports.Context = exports.Lang = exports.Nil = void 0;
 exports.Aontu = Aontu;
+exports.parse = parse;
 const lang_1 = require("./lib/lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./lib/unify");
 Object.defineProperty(exports, "Context", { enumerable: true, get: function () { return unify_1.Context; } });
 const Nil_1 = require("./lib/val/Nil");
 Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return Nil_1.Nil; } });
+const MapVal_1 = require("./lib/val/MapVal");
 const err_1 = require("./lib/err");
 // TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level
 // TODO: exclude tests from dist!!!
@@ -28,38 +30,43 @@ also trace deps into top val and watch via model
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
  */
 function Aontu(src, popts) {
-    let opts = util.options(src, popts);
-    // console.log('OPTS', opts)
+    // TODO: review: why is an undefined src allowed?
+    let opts = prepareOptions(src, popts);
     let deps = {};
     // TODO: handle empty src
-    let val = util.parse(opts, { deps });
+    let val = parse(opts, { deps });
+    if (null == val) {
+        val = new MapVal_1.MapVal({ peg: {} });
+    }
     let uni = new unify_1.Unify(val);
     let res = uni.res;
     let err = uni.err;
-    (0, err_1.descErr)(uni.err, { src: opts.src });
+    (0, err_1.descErr)(uni.err, { src: opts.src, fs: opts.fs });
     res.deps = deps;
     res.err = err;
     return res;
 }
+function prepareOptions(src, popts) {
+    // Convert convenience first param into Options.src
+    let srcopts = 'string' === typeof src ? { src } : src;
+    let opts = {
+        ...{
+            src: '',
+            print: 0,
+        },
+        ...srcopts,
+        ...(popts || {}),
+    };
+    return opts;
+}
+function parse(opts, ctx) {
+    let lang = new lang_1.Lang(opts);
+    let val = lang.parse(opts.src, { deps: ctx.deps });
+    return val;
+}
 const util = {
-    options: (src, popts) => {
-        // Convert convenience first param into Options.src
-        let srcopts = 'string' === typeof src ? { src } : src;
-        let opts = {
-            ...{
-                src: '',
-                print: 0,
-            },
-            ...srcopts,
-            ...(popts || {}),
-        };
-        return opts;
-    },
-    parse(opts, ctx) {
-        let lang = new lang_1.Lang(opts);
-        let val = lang.parse(opts.src, { deps: ctx.deps });
-        return val;
-    },
+    parse,
+    options: prepareOptions
 };
 exports.util = util;
 exports.default = Aontu;

@@ -1,4 +1,5 @@
 import type { Val } from './type';
+import { FST } from './type';
 import { Lang } from './lang';
 import { Nil } from '../lib/val/Nil';
 type Path = string[];
@@ -9,6 +10,8 @@ declare class Context {
     vc: number;
     cc: number;
     var: Record<string, Val>;
+    src?: string;
+    fs?: FST;
     constructor(cfg: {
         root: Val;
         path?: Path;

@@ -26,7 +26,6 @@ class RefVal extends ValBase_1.ValBase {
         }
     }
     append(part) {
-        // console.log('APPEND', part, this)
         let partval;
         if ('string' === typeof part) {
             partval = part;
@@ -70,7 +69,6 @@ class RefVal extends ValBase_1.ValBase {
             // as path cannot be found
             // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
             let resolved = null == ctx ? this : this.find(ctx);
-            // console.log('UR', this.peg, resolved)
             resolved = resolved || this;
             if (null == resolved && this.canon === peer.canon) {
                 out = this;
@@ -103,7 +101,6 @@ class RefVal extends ValBase_1.ValBase {
             }
             out.done = type_1.DONE === out.done ? type_1.DONE : this.done + 1;
         }
-        // console.log('RV', why, this.id, this.canon, '&', peer.canon, '->', out.canon)
         return out;
     }
     find(ctx) {
@@ -113,8 +110,6 @@ class RefVal extends ValBase_1.ValBase {
         let fullpath = this.path;
         let parts = [];
         let modes = [];
-        // console.log('REF', this.id, this.path, this.done, 'PEG', this.peg.map((p: any) => p.canon))
-        // console.dir(this.peg, { depth: null })
         for (let pI = 0; pI < this.peg.length; pI++) {
             let part = this.peg[pI];
             if (part instanceof VarVal_1.VarVal) {
@@ -162,7 +157,6 @@ class RefVal extends ValBase_1.ValBase {
                 parts.push(part);
             }
         }
-        // console.log('modes', modes)
         if (this.absolute) {
             fullpath = parts;
         }
@@ -175,7 +169,6 @@ class RefVal extends ValBase_1.ValBase {
         let sep = '.';
         fullpath = fullpath
             .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
-        // console.log('REF', this.id, this.path, this.done, 'FULLPATH', fullpath)
         if (modes.includes('KEY')) {
             let key = this.path[this.path.length - 2];
             let sv = new val_1.StringVal({ peg: null == key ? '' : key }, ctx);
@@ -187,7 +180,6 @@ class RefVal extends ValBase_1.ValBase {
         let node = ctx.root;
         let pI = 0;
         for (; pI < fullpath.length; pI++) {
-            // console.log('RefVal DESCEND', pI, node)
             let part = fullpath[pI];
             if (node instanceof MapVal_1.MapVal) {
                 node = node.peg[part];
@@ -196,7 +188,6 @@ class RefVal extends ValBase_1.ValBase {
                 break;
             }
         }
-        // console.log('RefVal KEY', modes, pI, fullpath)
         if (pI === fullpath.length) {
             // if (this.attr && 'KEY' === this.attr.kind) {
             // if (modes.includes('KEY')) {

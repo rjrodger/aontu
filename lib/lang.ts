@@ -101,8 +101,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     v.url = ctx.meta.multisource ? ctx.meta.multisource.path : ''
     v.path = r.k ? [...(r.k.path || [])] : []
 
-    // console.log('ADDSITE', v)
-
     return v
   }
 
@@ -538,9 +536,10 @@ class Lang {
   }
 
 
-  parse(src: string, opts?: any): Val {
+  parse(src: string, opts?: Partial<Options>): Val {
     // JSONIC-UPDATE - check meta
     let jm: any = {
+      fs: opts?.fs,
       fileName: this.options.path,
       multisource: {
         path: this.options.path,

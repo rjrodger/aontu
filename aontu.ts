@@ -1,10 +1,11 @@
 /* Copyright (c) 2021-2024 Richard Rodger, MIT License */
 
-import type { Val, Options } from './lib/type'
+import type { Val, Options, FST } from './lib/type'
 
 import { Lang } from './lib/lang'
 import { Unify, Context } from './lib/unify'
 import { Nil } from './lib/val/Nil'
+import { MapVal } from './lib/val/MapVal'
 import { descErr } from './lib/err'
 
 // TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level
@@ -31,19 +32,24 @@ also trace deps into top val and watch via model
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
  */
 function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
-  let opts = util.options(src, popts)
+  // TODO: review: why is an undefined src allowed?
 
-  // console.log('OPTS', opts)
+  let opts = prepareOptions(src, popts)
 
   let deps = {}
 
   // TODO: handle empty src
-  let val = util.parse(opts, { deps })
+  let val = parse(opts, { deps })
+
+  if (null == val) {
+    val = new MapVal({ peg: {} })
+  }
+
   let uni = new Unify(val as unknown as Val)
   let res = uni.res
   let err = uni.err
 
-  descErr(uni.err, { src: opts.src })
+  descErr(uni.err, { src: opts.src, fs: opts.fs })
 
   res.deps = deps
   res.err = err
@@ -51,31 +57,39 @@ function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   return res
 }
 
-const util = {
-  options: (
-    src: string | Partial<Options>,
-    popts?: Partial<Options>,
-  ): Options => {
-    // Convert convenience first param into Options.src
-    let srcopts: Partial<Options> = 'string' === typeof src ? { src } : src
 
-    let opts: Options = {
-      ...{
-        src: '',
-        print: 0,
-      },
-      ...srcopts,
-      ...(popts || {}),
-    }
-    return opts
-  },
+function prepareOptions(
+  src: string | Partial<Options>,
+  popts?: Partial<Options>,
+): Options {
+  // Convert convenience first param into Options.src
+  let srcopts: Partial<Options> = 'string' === typeof src ? { src } : src
 
-  parse(opts: Options, ctx: { deps: any }): Val {
-    let lang = new Lang(opts)
-    let val = lang.parse(opts.src, { deps: ctx.deps })
-    return val
-  },
+  let opts: Options = {
+    ...{
+      src: '',
+      print: 0,
+    },
+    ...srcopts,
+    ...(popts || {}),
+  }
+
+  return opts
 }
 
-export { Aontu, Val, Nil, Lang, Context, util }
+
+function parse(opts: Options, ctx: { deps: any, fs?: FST }): Val {
+  let lang = new Lang(opts)
+  let val = lang.parse(opts.src, { deps: ctx.deps })
+  return val
+}
+
+
+const util = {
+  parse,
+  options: prepareOptions
+}
+
+export { Aontu, Val, Nil, Lang, Context, parse, util }
+
 export default Aontu

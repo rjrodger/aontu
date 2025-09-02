@@ -45,25 +45,16 @@ describe('lang', function() {
 
     expect(P('a:{b:11}|{c:22},b:33', { xlog: -1 }).canon)
       .toEqual('{"a":{"b":11}|{"c":22},"b":33}')
-    //console.dir(P('a:{b:11}|{c:22},b:33'), { depth: null })
-
-
 
     expect(P('a:11&22,b:33', { xlog: -1 }).canon).toEqual('{"a":11&22,"b":33}')
     expect(P('a:11&22&33,b:44', { xlog: -1 }).canon).toEqual('{"a":(11&22)&33,"b":44}')
 
     expect(P('a:{b:11}&{c:22},b:33', { xlog: -1 }).canon)
       .toEqual('{"a":{"b":11}&{"c":22},"b":33}')
-    //console.dir(P('a:{b:11}&{c:22},b:33'), { depth: null })
-
 
     expect(P('a:11&22|33,b:44', { xlog: -1 }).canon).toEqual('{"a":11&(22|33),"b":44}')
-    // console.dir(P('a:11&22|33,b:44', { xlog: -1 }), { depth: null })
 
     expect(P('a:(11|22)&33,b:44', { xlog: -1 }).canon).toEqual('{"a":(11|22)&33,"b":44}')
-    // console.dir(P('a:11|22&33,b:44', { xlog: -1 }), { depth: null })
-
-
   })
 
 
@@ -142,14 +133,10 @@ describe('lang', function() {
 
 
   it('ref', () => {
-    // console.dir(lang.jsonic.internal().config)
-
     let v0 = P('a:.x')
-    // console.log(v0)
     expect(v0.peg.a.peg).toEqual(['x'])
 
     let v1 = P('a:.x.y', { xlog: -1 })
-    // console.log(v1)
     expect(v1.peg.a.peg).toEqual(['x', 'y'])
   })
 
@@ -243,15 +230,6 @@ describe('lang', function() {
     @"` + __dirname + `/t00.jsonic"
     `)
     expect(t03m.canon).toEqual('{"x":{"y":{}}}&{"a":1}')
-
-
-    // let t02v = g0.parse('@"' + __dirname + '/t02.jsonic"')
-    // console.dir(t02v, { depth: null })
-    // console.log(t02v.canon)
-
-    // let u02 = new Unify(t02v)
-    // console.log(u02.res.canon)
-    // console.log(u02.res.gen())
   })
 
 
@@ -272,8 +250,6 @@ describe('lang', function() {
 
 
   it('disjunct', () => {
-    // console.log(P('1|2|3|4', { log: -1 }).canon)
-
     // FIX
     // expect(() => P('*1')).throws()
 
@@ -281,18 +257,15 @@ describe('lang', function() {
     expect(v0.canon).toEqual('1|number')
 
     let v1 = P('*1|number', { xlog: -1 })
-    //console.dir(v1, { depth: null })
     expect(v1.canon).toEqual('*1|number')
 
     let v2 = P('integer|*2', { xlog: -1 })
-    //console.dir(v2, { depth: null })
     expect(v2.canon).toEqual('integer|*2')
   })
 
 
   it('precedence', () => {
     let v0 = P('a:b:1&2')
-    // console.dir(v0, { depth: null })
     expect(v0.canon).toEqual('{"a":{"b":1&2}}')
   })
 
@@ -313,7 +286,7 @@ describe('lang', function() {
 
     let c1 = makeCtx({ root: v1 })
     let u1a = v1.unify(TOP, c1)
-    //console.log(u1a.done, u1a.canon)
+
     expect(u1a.canon).
       toEqual('{"k":{"x":1,"y":integer},"a":{&:$.k,' +
         '"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}')
@@ -411,8 +384,6 @@ describe('lang', function() {
   }
   `)
 
-    // REMOVE
-    // console.dir(v0, { depth: null })
   })
 
 

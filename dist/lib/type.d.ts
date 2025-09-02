@@ -1,5 +1,7 @@
+import * as Fs from 'node:fs';
 import { Resolver } from '@jsonic/multisource';
 import { Context } from './unify';
+type FST = typeof Fs;
 type Options = {
     src: string;
     print: number;
@@ -8,6 +10,9 @@ type Options = {
     path?: string;
     debug?: boolean;
     trace?: boolean;
+    fs?: FST;
+    deps?: any;
+    log?: any;
 };
 interface Val {
     isVal: boolean;
@@ -36,5 +41,9 @@ type ValMap = {
 };
 type ValList = Val[];
 declare const DONE = -1;
-export type { Val, ValSpec, ValMap, ValList, Options, };
+type ErrContext = {
+    src?: string;
+    fs?: FST;
+};
+export type { Val, ValSpec, ValMap, ValList, Options, ErrContext, FST, };
 export { DONE, Resolver, };

@@ -42,8 +42,6 @@ w1: b: {y:2,z:3} & $.q.a
     });
     it('file', async () => {
         let v0 = Aontu('@"' + __dirname + '/t02.jsonic"');
-        // console.log('MAP', v0.map)
-        // console.log(v0.canon)
         expect(v0.canon).toEqual('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}');
         expect(v0.gen({ err: [] })).toEqual({
             sys: { ent: { name: undefined } },
@@ -72,9 +70,7 @@ w1: b: {y:2,z:3} & $.q.a
             // resolver: makeFileResolver(),
             base: __dirname,
         });
-        // console.log(v0.canon)
         // TODO: fix err msg
-        // console.dir(v0.gen([]), { depth: null })
         // expect(v0.canon).toEqual(
         //   '{"uxc":{"name":string,"size":integer|*1},"foo":{"name":string,"size":integer|*1},"bar":{"name":"bar","size":integer|*1},"zed":{"name":"zed","size":2},"qaz":{"name":"bar","size":nil}}'
         // )
@@ -88,24 +84,20 @@ w1: b: {y:2,z:3} & $.q.a
     });
     it('map-spread', () => {
         let v0 = Aontu('c:{&:{x:2},y:{k:3},z:{k:4}}');
-        //console.dir(v0,{depth:null})
         expect(v0.canon).toEqual('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v1 = Aontu('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}');
-        //console.dir(v0,{depth:null})
         expect(v1.canon).toEqual('{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}');
         let v10 = Aontu('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}');
-        //console.dir(v0,{depth:null})
         expect(v10.canon).toEqual('{"a":{&:{"x":1}},' +
             '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
             '"c":{&:{"x":2},"y":{"k":3,"x":2}}}');
     });
     it('empty-and-comments', () => {
-        // TODO: fix
-        // Avoid failures when model is commented out
-        //     expect(Aontu('').gen()).toEqual({})
-        //     expect(Aontu(`
-        // # comment
-        // `).gen()).toEqual({})
+        expect(Aontu('').gen()).toEqual({});
+        expect(Aontu().gen()).toEqual({});
+        expect(Aontu(`
+    # comment
+    `).gen()).toEqual({});
     });
     it('spread-edges', () => {
         expect(Aontu('a:b:{} a:&:{x:1}').gen()).toEqual({ a: { b: { x: 1 } } });

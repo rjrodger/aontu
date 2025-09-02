@@ -30,7 +30,6 @@ const disjunct: Operation = (ctx?: Context, a?: Val, b?: Val) => {
 }
 
 
-
 function append(peers: Val[], v?: any) {
   // let origsite: Site = Site.NONE
 

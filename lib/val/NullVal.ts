@@ -34,8 +34,6 @@ class NullVal extends ValBase {
   unify(peer: Val, ctx: Context): Val {
     let out: Val
 
-    // console.log('NULLVAL-U', peer)
-
     if ((peer as any).isTop || (peer as NullVal).isNullVal) {
       out = this
     }

@@ -79,7 +79,6 @@ class RefVal extends ValBase {
 
 
   append(part: any) {
-    // console.log('APPEND', part, this)
     let partval
 
     if ('string' === typeof part) {
@@ -135,8 +134,6 @@ class RefVal extends ValBase {
       // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
       let resolved: Val | undefined = null == ctx ? this : this.find(ctx)
 
-      // console.log('UR', this.peg, resolved)
-
       resolved = resolved || this
 
       if (null == resolved && this.canon === peer.canon) {
@@ -174,8 +171,6 @@ class RefVal extends ValBase {
       out.done = DONE === out.done ? DONE : this.done + 1
     }
 
-    // console.log('RV', why, this.id, this.canon, '&', peer.canon, '->', out.canon)
-
     return out
   }
 
@@ -190,10 +185,6 @@ class RefVal extends ValBase {
     let parts: string[] = []
 
     let modes: string[] = []
-
-    // console.log('REF', this.id, this.path, this.done, 'PEG', this.peg.map((p: any) => p.canon))
-    // console.dir(this.peg, { depth: null })
-
 
     for (let pI = 0; pI < this.peg.length; pI++) {
       let part = this.peg[pI]
@@ -245,9 +236,6 @@ class RefVal extends ValBase {
       }
     }
 
-    // console.log('modes', modes)
-
-
     if (this.absolute) {
       fullpath = parts
     }
@@ -267,9 +255,6 @@ class RefVal extends ValBase {
       .reduce(((a: string[], p: string) =>
         (p === sep ? a.length = a.length - 1 : a.push(p), a)), [])
 
-    // console.log('REF', this.id, this.path, this.done, 'FULLPATH', fullpath)
-
-
     if (modes.includes('KEY')) {
       let key = this.path[this.path.length - 2]
       let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
@@ -286,7 +271,6 @@ class RefVal extends ValBase {
     let node = ctx.root
     let pI = 0
     for (; pI < fullpath.length; pI++) {
-      // console.log('RefVal DESCEND', pI, node)
       let part = fullpath[pI]
 
       if (node instanceof MapVal) {
@@ -296,8 +280,6 @@ class RefVal extends ValBase {
         break;
       }
     }
-
-    // console.log('RefVal KEY', modes, pI, fullpath)
 
     if (pI === fullpath.length) {
       // if (this.attr && 'KEY' === this.attr.kind) {

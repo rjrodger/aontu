@@ -45,7 +45,7 @@ const lang = new Lang()
 const PL = lang.parse.bind(lang)
 const P = (x: string, ctx?: any) => PL(x, ctx)
 const PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
-const D = (x: any) => console.dir(x, { depth: null })
+// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
 const G = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen()
 
@@ -323,7 +323,23 @@ describe('val', function() {
       // debug: true,
       // trace: true,
     })
-    console.dir(lang.parse('(11)'))
+    const i11 = lang.parse('(11)')
+    expect(i11).toEqual({
+      col: 1,
+      done: -1,
+      err: [],
+      id: 120,
+      isIntegerVal: true,
+      isScalarVal: true,
+      isVal: true,
+      path: [],
+      peg: 11,
+      row: 1,
+      top: false,
+      type: Integer,
+      uh: [],
+      url: undefined,
+    })
   })
 
 
@@ -961,14 +977,6 @@ b: c2: {n:2}
   })
 
 })
-
-
-function print(o: any, t?: string) {
-  if (null != t) {
-    console.log(t)
-  }
-  console.dir(o, { depth: null })
-}
 
 
 function makeCtx(r?: any) {

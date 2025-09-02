@@ -67,18 +67,12 @@ class DisjunctVal extends ValBase {
 
     let oval: Val[] = []
 
-    // console.log('oval', this.canon, peer.canon)
-
     // Conjunction (&) distributes over disjunction (|)
     for (let vI = 0; vI < this.peg.length; vI++) {
       //oval[vI] = this.peg[vI].unify(peer, ctx)
       oval[vI] = unite(ctx, this.peg[vI], peer)
-      // console.log('ovalA', vI, this.peg[vI].canon, peer.canon, oval[vI].canon)
-
       done = done && DONE === oval[vI].done
     }
-
-    // console.log('ovalB', oval.map(v => v.canon))
 
     // Remove duplicates, and normalize
     if (1 < oval.length) {
@@ -87,8 +81,6 @@ class DisjunctVal extends ValBase {
           oval.splice(vI, 1, ...oval[vI].peg)
         }
       }
-
-      //console.log('ovalC', oval.map(v => v.canon))
 
       // TODO: not an error Nil!
       let remove = new Nil()
@@ -99,8 +91,6 @@ class DisjunctVal extends ValBase {
           }
         }
       }
-
-      //console.log('ovalD', oval.map(v => v.canon))
 
       oval = oval.filter(v => !(v instanceof Nil))
     }

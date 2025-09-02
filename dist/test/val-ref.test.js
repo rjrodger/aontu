@@ -9,10 +9,10 @@ const RefVal_1 = require("../lib/val/RefVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-const D = (x) => console.dir(x, { depth: null });
+// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
-const V = (x) => console.dir(x, { depth: null });
+// const V = (x: any) => console.dir(x, { depth: null })
 describe('val-ref', function () {
     test('construct', () => {
         let r0 = new RefVal_1.RefVal({ peg: [], absolute: true });
@@ -374,13 +374,11 @@ describe('val-ref', function () {
     test('relative-parent', () => {
         let s0 = 'a:b:c:1,a:d:e:..b.c';
         let v0 = P(s0);
-        // console.dir(v0, { depth: null })
         expect(v0.peg.a.peg[1].peg.d.peg.e.peg).toEqual(['.', 'b', 'c']);
         expect(v0.canon).toEqual('{"a":{"b":{"c":1}}&{"d":{"e":..b.c}}}');
         expect(G(s0)).toEqual({ a: { b: { c: 1 }, d: { e: 1 } } });
         let s1 = 'a:b:c:1,a:d:e:...a.b.c';
         let v1 = P(s1);
-        // console.dir(v0, { depth: null })
         expect(v1.peg.a.peg[1].peg.d.peg.e.peg).toEqual(['.', '.', 'a', 'b', 'c']);
         expect(v1.canon).toEqual('{"a":{"b":{"c":1}}&{"d":{"e":...a.b.c}}}');
         expect(G(s1)).toEqual({ a: { b: { c: 1 }, d: { e: 1 } } });
@@ -427,7 +425,6 @@ b: { &: {n:.$KEY} }
 b: { c0: { k:0, m:.$KEY }}
 b: { c1: { k:1 }}
 `;
-        // console.dir(G(s3), { depth: null })
         expect(G(s10))
             .toEqual({
             b: {
@@ -479,13 +476,10 @@ b: { c1: { k:1 }}
     });
     it('spreadable', () => {
         let g0 = G('a:1 x:{&:{y:$.a}} x:m:q:2 x:n:q:3');
-        // console.log(g0)
         expect(g0).toEqual({ a: 1, x: { m: { q: 2, y: 1 }, n: { q: 3, y: 1 } } });
         let g1 = G(`a:x:1 b:&:$.a b:c0:k:0 b:c1:k:1`);
-        // console.dir(g1, { depth: null })
         expect(g1).toEqual({ a: { x: 1 }, b: { c0: { x: 1, k: 0 }, c1: { x: 1, k: 1 } } });
         let g2 = G(`a:x:1 b:&:{y:2}&$.a b:c0:k:0 b:c1:k:1`);
-        // console.dir(g1, { depth: null })
         expect(g2).toEqual({
             a: { x: 1 },
             b: {
@@ -494,7 +488,6 @@ b: { c1: { k:1 }}
             }
         });
         let g3 = G(`a:x:1 b:&:{}&$.a b:c0:k:0 b:c1:k:1`);
-        // console.dir(g1, { depth: null })
         expect(g3).toEqual({
             a: { x: 1 },
             b: {
@@ -502,15 +495,6 @@ b: { c1: { k:1 }}
                 c1: { x: 1, k: 1 }
             }
         });
-        // let g1 = G('{z:4} & {a:1 x:{&:{y:.a}} x:m:q:2 x:n:q:3}')
-        // // console.log(g1)
-        // expect(g1).toEqual({ z: 4, a: 1, x: { m: { q: 2, y: 1 }, n: { q: 3, y: 1 } } })
-        // let g2 = G('{ x:{&:.a} x:{y:{q:2}} x:{m:{q:3}} } & {a:{z:1}}')
-        // // console.log(g2)
-        // expect(g2).toEqual({ a: { z: 1 }, x: { y: { z: 1, q: 2 }, m: { z: 1, q: 3 } } })
-        // let g3 = G('{}&{a:{z:1},x:{&:.a}&{y:{q:2}}}')
-        // // console.log(g3)
-        // expect(g3).toEqual({ a: { z: 1 }, x: { y: { z: 1, q: 2 } } })
     });
     it('multi-spreadable', () => {
         expect(P('&:a').canon).toEqual('{&:"a"}');
@@ -611,12 +595,6 @@ a: b: f: {
         });
     });
 });
-function print(o, t) {
-    if (null != t) {
-        console.log(t);
-    }
-    console.dir(o, { depth: null });
-}
 function makeCtx(r, p) {
     return new unify_1.Context({
         root: r || new MapVal_1.MapVal({ peg: {} }),

@@ -1,5 +1,6 @@
 /* Copyright (c) 2022-2023 Richard Rodger, MIT License */
 
+import * as Fs from 'node:fs'
 
 // TODO: refactor these out
 
@@ -13,6 +14,8 @@ import {
 
 
 
+type FST = typeof Fs
+
 type Options = {
   src: string    // Source text.
   print: number  // Print debug verbosity
@@ -21,8 +24,10 @@ type Options = {
   path?: string // Path of entry file
   debug?: boolean
   trace?: boolean
+  fs?: FST
+  deps?: any
+  log?: any
 }
-
 
 
 
@@ -68,12 +73,19 @@ type ValList = Val[]
 const DONE = -1
 
 
+type ErrContext = {
+  src?: string,
+  fs?: FST
+}
+
 export type {
   Val,
   ValSpec,
   ValMap,
   ValList,
   Options,
+  ErrContext,
+  FST,
 }
 
 export {

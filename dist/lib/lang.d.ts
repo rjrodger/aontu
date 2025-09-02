@@ -10,6 +10,6 @@ declare class Lang {
     jsonic: Jsonic;
     options: Options;
     constructor(options?: Partial<Options>);
-    parse(src: string, opts?: any): Val;
+    parse(src: string, opts?: Partial<Options>): Val;
 }
 export { Lang, Site, };

@@ -38,12 +38,10 @@ class Context {
 exports.Context = Context;
 class Unify {
     constructor(root, lang, ctx) {
-        // console.log('ROOT-A', root)
         this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
             root = this.lang.parse(root);
         }
-        // console.log('ROOT-B', root)
         this.cc = 0;
         this.root = root;
         this.res = root;
@@ -55,14 +53,11 @@ class Unify {
                 root: res,
                 err: this.err,
             });
-            // TODO: derive maxdc from res deterministically
-            // perhaps parse should count intial vals, paths, etc?
             let maxdc = 9; // 99
             for (; this.cc < maxdc && type_1.DONE !== res.done; this.cc++) {
                 ctx.cc = this.cc;
                 res = (0, op_1.unite)(ctx, res, val_1.TOP);
                 ctx = ctx.clone({ root: res });
-                // console.log('==============', this.cc)
             }
         }
         this.res = res;

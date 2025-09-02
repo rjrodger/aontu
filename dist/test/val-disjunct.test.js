@@ -8,10 +8,10 @@ const MapVal_1 = require("../lib/val/MapVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-const D = (x) => console.dir(x, { depth: null });
+// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
-const V = (x) => console.dir(x, { depth: null });
+// const V = (x: any) => console.dir(x, { depth: null })
 describe('val-disjunct', function () {
     it('basic', () => {
         let u0 = UC('a:{x:1}|{y:2},a:{z:3}');
@@ -36,12 +36,6 @@ describe('val-disjunct', function () {
         expect(v0c.canon).toEqual('({"x":1}|{"y":2})|{"z":3}');
     });
 });
-function print(o, t) {
-    if (null != t) {
-        console.log(t);
-    }
-    console.dir(o, { depth: null });
-}
 function makeCtx(r) {
     return new unify_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
 }

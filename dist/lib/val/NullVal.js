@@ -12,7 +12,6 @@ class NullVal extends ValBase_1.ValBase {
     }
     unify(peer, ctx) {
         let out;
-        // console.log('NULLVAL-U', peer)
         if (peer.isTop || peer.isNullVal) {
             out = this;
         }

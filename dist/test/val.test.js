@@ -17,7 +17,7 @@ const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 const PA = (x, ctx) => x.map(s => PL(s, ctx));
-const D = (x) => console.dir(x, { depth: null });
+// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => { var _a; return (_a = (r = P(s)).unify(val_1.TOP, makeCtx(r))) === null || _a === void 0 ? void 0 : _a.canon; };
 const G = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen();
 const makeST_String = () => new val_1.ScalarTypeVal({ peg: String });
@@ -220,7 +220,23 @@ describe('val', function () {
         // debug: true,
         // trace: true,
         });
-        console.dir(lang.parse('(11)'));
+        const i11 = lang.parse('(11)');
+        expect(i11).toEqual({
+            col: 1,
+            done: -1,
+            err: [],
+            id: 120,
+            isIntegerVal: true,
+            isScalarVal: true,
+            isVal: true,
+            path: [],
+            peg: 11,
+            row: 1,
+            top: false,
+            type: val_1.Integer,
+            uh: [],
+            url: undefined,
+        });
     });
     it('integer', () => {
         let ctx = makeCtx();
@@ -684,12 +700,6 @@ b: c2: {n:2}
         });
     });
 });
-function print(o, t) {
-    if (null != t) {
-        console.log(t);
-    }
-    console.dir(o, { depth: null });
-}
 function makeCtx(r) {
     return new unify_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
 }

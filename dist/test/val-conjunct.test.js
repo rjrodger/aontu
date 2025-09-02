@@ -8,10 +8,10 @@ const MapVal_1 = require("../lib/val/MapVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-const D = (x) => console.dir(x, { depth: null });
+// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
-const V = (x) => console.dir(x, { depth: null });
+// const V = (x: any) => console.dir(x, { depth: null })
 describe('val-conjunct', function () {
     it('norm', () => {
         // let c0 = P('1&2&3')
@@ -70,18 +70,12 @@ describe('val-conjunct', function () {
         expect(g0).toEqual({ a: { x: 1 }, b: { x: 2 } });
         let g1 = G('&:{x:*1|number},a:{},b:{x:2}');
         expect(g1).toEqual({ a: { x: 1 }, b: { x: 2 } });
-        // let p2 = P('a1: &: { x1: 11 } b2: { y2: 22 }')
-        // console.dir(p2, { depth: null })
         let g2 = G('a1: &: { x1: 11 } b2: { y2: 22 }');
         expect(g2).toEqual({ a1: {}, b2: { y2: 22 } });
         let g3 = G('a1: &: { c1: { x1: 11 } } b2: { y2: 22 }');
         expect(g3).toEqual({ a1: {}, b2: { y2: 22 } });
-        // let p4 = P('a1: &: { c1: &: { x1: 11 } } b2: { y2: 22 }')
-        // console.dir(p4, { depth: null })
         let g4 = G('a1: &: { c1: &: { x1: 11 } } b2: { y2: 22 }');
         expect(g4).toEqual({ a1: {}, b2: { y2: 22 } });
-        // let p5 = P('a1: &: { c1: &: { d1: &: { x1: 11 } } } b2: { y2: 22 }')
-        // console.dir(p5, { depth: null })
         let g5 = G('a1: &: { c1: &: { d1: &: { x1: 11 } } } b2: { y2: 22 }');
         expect(g5).toEqual({ a1: {}, b2: { y2: 22 } });
     });
@@ -93,12 +87,6 @@ describe('val-conjunct', function () {
         expect(v0c.canon).toEqual('({"x":1}&{"y":2})&{"z":3}');
     });
 });
-function print(o, t) {
-    if (null != t) {
-        console.log(t);
-    }
-    console.dir(o, { depth: null });
-}
 function makeCtx(r) {
     return new unify_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
 }

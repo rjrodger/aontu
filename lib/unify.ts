@@ -3,7 +3,7 @@
 
 import type { Val } from './type'
 
-import { DONE, } from './type'
+import { DONE, FST } from './type'
 
 
 import {
@@ -19,16 +19,10 @@ import {
 } from './op/op'
 
 
-
-
-
-// import { MapVal } from '../lib/val/MapVal'
-// import { RefVal } from '../lib/val/RefVal'
 import { Nil } from '../lib/val/Nil'
 
 
 type Path = string[]
-
 
 
 class Context {
@@ -38,6 +32,8 @@ class Context {
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
   var: Record<string, Val> = {}
+  src?: string
+  fs?: FST
 
   constructor(cfg: {
     root: Val,
@@ -93,14 +89,10 @@ class Unify {
   lang: Lang
 
   constructor(root: Val | string, lang?: Lang, ctx?: Context) {
-    // console.log('ROOT-A', root)
-
     this.lang = lang || new Lang()
     if ('string' === typeof root) {
       root = this.lang.parse(root)
     }
-
-    // console.log('ROOT-B', root)
 
     this.cc = 0
     this.root = root
@@ -116,21 +108,13 @@ class Unify {
         err: this.err,
       })
 
-
-      // TODO: derive maxdc from res deterministically
-      // perhaps parse should count intial vals, paths, etc?
-
-
       let maxdc = 9 // 99
       for (; this.cc < maxdc && DONE !== res.done; this.cc++) {
         ctx.cc = this.cc
         res = unite(ctx, res, TOP)
         ctx = ctx.clone({ root: res })
-
-        // console.log('==============', this.cc)
       }
     }
-
 
     this.res = res
   }

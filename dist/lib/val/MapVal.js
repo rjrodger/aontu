@@ -26,8 +26,6 @@ class MapVal extends ValBase_1.ValBase {
         delete this.peg[MapVal.SPREAD];
         if (spread) {
             if ('&' === spread.o) {
-                // console.log('MapVal.ctor', this.id, this.path.join('.'),
-                //   'SPREAD', spread.v[0] && spread.v[0].id)
                 // TODO: handle existing spread!
                 this.spread.cj =
                     Array.isArray(spread.v) ?
@@ -42,12 +40,6 @@ class MapVal extends ValBase_1.ValBase {
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
         // let mark = Math.random()
-        // console.log(
-        //   'MapVal.unify',
-        //   this.id, '=' + this.uh, this.path.join('.'),
-        //   (this.spread.cj ?
-        //     'spread:' + this.spread.cj.id + ':' + this.spread.cj.path.join('.') : ''),
-        //   peer.constructor.name, peer.id, peer.path.join('.'))
         let done = true;
         let out = val_1.TOP === peer ? this : new MapVal({ peg: {} }, ctx);
         out.spread.cj = this.spread.cj;
@@ -62,16 +54,6 @@ class MapVal extends ValBase_1.ValBase {
         for (let key in this.peg) {
             let keyctx = ctx.descend(key);
             let key_spread_cj = spread_cj.clone(null, keyctx);
-            // console.log('M0', this.id, mark, Object.keys(this.peg).join('~'),
-            //   'p=', this.path.join('.'),
-            //   'k=', key, peer.top || peer.constructor.name,
-            //   'pp=', this.peg[key].path.join('.'),
-            //   this.peg[key].canon,
-            //   'sp=', key_spread_cj.path.join('.'),
-            //   key_spread_cj.canon)
-            // if (1000000000 === this.id) {
-            //   console.dir(key_spread_cj, { depth: null })
-            // }
             out.peg[key] = (0, op_1.unite)(keyctx, this.peg[key], key_spread_cj, 'map-own');
             done = (done && type_1.DONE === out.peg[key].done);
         }
@@ -87,18 +69,9 @@ class MapVal extends ValBase_1.ValBase {
                                 (0, op_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
-                    // console.log('KEY_CTX', peerkey, key_ctx)
                     let key_spread_cj = spread_cj.clone(null, key_ctx);
-                    // console.log('MapVal.unify.spread', this.id, '=' + this.uh, this.path.join('.'),
-                    //   key_spread_cj.id, key_spread_cj.path.join('.'))
-                    // console.log('ORIG')
-                    // console.dir(out.peg[peerkey], { depth: null })
-                    // console.log('SPREAD')
-                    // console.dir(this.spread.cj, { depth: null })
                     oval = out.peg[peerkey] =
                         (0, op_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj);
-                    // console.log('OVAL')
-                    // console.dir(oval, { depth: null })
                 }
                 done = (done && type_1.DONE === oval.done);
             }

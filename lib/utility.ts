@@ -1,6 +1,7 @@
 /* Copyright (c) 2023 Richard Rodger, MIT License */
 
 
+
 import type { Val } from './type'
 
 function formatPath(path: Val | string[], absolute?: boolean) {

@@ -44,7 +44,6 @@ let AontuJsonic = function aontu(jsonic) {
         v.col = null == r.o0 ? -1 : r.o0.cI;
         v.url = ctx.meta.multisource ? ctx.meta.multisource.path : '';
         v.path = r.k ? [...(r.k.path || [])] : [];
-        // console.log('ADDSITE', v)
         return v;
     };
     jsonic.options({
@@ -372,6 +371,7 @@ class Lang {
     parse(src, opts) {
         // JSONIC-UPDATE - check meta
         let jm = {
+            fs: opts === null || opts === void 0 ? void 0 : opts.fs,
             fileName: this.options.path,
             multisource: {
                 path: this.options.path,

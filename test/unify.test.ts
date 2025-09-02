@@ -222,9 +222,6 @@ describe('unify', function() {
   }
   `)
   
-      //console.dir(e2.res, { depth: null })
-      //console.dir(e2.err, { depth: null })
-  
     })
     */
 })

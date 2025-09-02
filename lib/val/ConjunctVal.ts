@@ -58,28 +58,17 @@ class ConjunctVal extends ValBase {
   }
 
   unify(peer: Val, ctx: Context): Val {
-    // console.log('CONJUNCT UNIFY', this.done, this.path.join('.'), this.canon,
-    //   'P', peer.top || peer.constructor.name,
-    //  peer.done, peer.path.join('.'), peer.canon)
-
-
     const mark = (Math.random() * 1e7) % 1e6 | 0
-    // console.log('CONJUNCT unify', mark, this.done, this.canon, 'peer=', peer.canon)
-
     let done = true
 
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
-
-    // console.log('CJa' + mark, this.peg.map((p: Val) => p.canon), 'p=', peer.canon)
     for (let vI = 0; vI < this.peg.length; vI++) {
       upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own' + mark)
 
       // let prevdone = done
       done = done && (DONE === upeer[vI].done)
-
-      // console.log('CONJUNCT pud', mark, vI, done, prevdone, '|', upeer[vI].done, upeer[vI].canon)
 
       if (upeer[vI] instanceof Nil) {
         return Nil.make(
@@ -93,14 +82,10 @@ class ConjunctVal extends ValBase {
 
     upeer = norm(upeer)
 
-    // console.log('CONJUNCT upeer', this.id, mark, this.done, done, upeer.map(p => p.canon))
-
     upeer.sort((a: Val, b: Val) => {
       return (a.constructor.name === b.constructor.name) ? 0 :
         (a.constructor.name < b.constructor.name ? -1 : 1)
     })
-
-    // console.log('CONJUNCT upeer sort', this.id, mark, this.done, done, upeer.map(p => p.canon))
 
     // Unify terms against each other
 
@@ -118,8 +103,6 @@ class ConjunctVal extends ValBase {
     //   }
     // }
 
-
-    // console.log('CJ upeer', mark, upeer.map(v => v.canon))
 
     let t0 = upeer[0]
 
@@ -142,9 +125,7 @@ class ConjunctVal extends ValBase {
           )
         ) {
 
-          // console.log('CONJUNCT PUSH A', u0.id, u0.canon)
           outvals.push(u0)
-          // console.log('CJ outvals A', outvals.map(v => v.canon))
           continue next_term
         }
         else {
@@ -153,27 +134,20 @@ class ConjunctVal extends ValBase {
       }
 
       let t1 = upeer[pI + 1]
-      // console.log('CJ TERM t1', pI + 1, t1?.done, t1?.canon)
 
       if (null == t1) {
-        // console.log('CONJUNCT PUSH B', t0.canon)
         outvals.push(t0)
-        // console.log('CJ outvals B', outvals.map(v => v.canon))
       }
 
       // Can't unite with a RefVal, unless also a RefVal with same path.
       else if (t0 instanceof RefVal && !(t1 instanceof RefVal)) {
-        // console.log('CONJUNCT PUSH D', t0.canon)
         outvals.push(t0)
         t0 = t1
-        // console.log('CJ outvals C', outvals.map(v => v.canon))
       }
 
       else if (t1 instanceof RefVal && !(t0 instanceof RefVal)) {
-        // console.log('CONJUNCT PUSH D', t0.canon)
         outvals.push(t0)
         t0 = t1
-        // console.log('CJ outvals C', outvals.map(v => v.canon))
       }
 
 
@@ -183,12 +157,8 @@ class ConjunctVal extends ValBase {
 
         // Unite was just a conjunt anyway, so discard.
         if (val instanceof ConjunctVal) {
-          // if (t0.id === val.peg[0].id) {
-          // val = t0
           outvals.push(t0)
           t0 = t1
-          // console.log('CJ outvals D', outvals.map(v => v.canon))
-          //}
         }
         else if (val instanceof Nil) {
           return val
@@ -197,14 +167,11 @@ class ConjunctVal extends ValBase {
           t0 = val
         }
         // TODO: t0 should become this to avoid unnecessary repasses
-        // console.log('CONJUNCT PUSH C', val.canon)
         // outvals.push(val)
 
         // pI++
       }
     }
-
-    // console.log('CJ outvals', mark, outvals.map(v => v.canon))
 
     let out: Val
 
@@ -223,8 +190,6 @@ class ConjunctVal extends ValBase {
     }
 
     out.done = done ? DONE : this.done + 1
-
-    // console.log('CJ out', out.done, out.canon)
 
     return out
   }
