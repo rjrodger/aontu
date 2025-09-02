@@ -13,7 +13,7 @@ declare class RefVal extends ValBase {
     }, ctx?: Context);
     append(part: any): void;
     unify(peer: Val, ctx: Context): Val;
-    find(ctx: Context): StringVal | Val | undefined;
+    find(ctx: Context): Val | StringVal | undefined;
     same(peer: Val): boolean;
     clone(spec?: ValSpec, ctx?: Context): Val;
     get canon(): string;

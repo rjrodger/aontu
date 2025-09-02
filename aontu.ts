@@ -57,7 +57,6 @@ function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   return res
 }
 
-
 function prepareOptions(
   src: string | Partial<Options>,
   popts?: Partial<Options>,
@@ -77,17 +76,15 @@ function prepareOptions(
   return opts
 }
 
-
-function parse(opts: Options, ctx: { deps: any, fs?: FST }): Val {
+function parse(opts: Options, ctx: { deps: any; fs?: FST }): Val {
   let lang = new Lang(opts)
   let val = lang.parse(opts.src, { deps: ctx.deps })
   return val
 }
 
-
 const util = {
   parse,
-  options: prepareOptions
+  options: prepareOptions,
 }
 
 export { Aontu, Val, Nil, Lang, Context, parse, util }

@@ -66,7 +66,7 @@ function parse(opts, ctx) {
 }
 const util = {
     parse,
-    options: prepareOptions
+    options: prepareOptions,
 };
 exports.util = util;
 exports.default = Aontu;

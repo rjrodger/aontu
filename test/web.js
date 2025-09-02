@@ -67,8 +67,8 @@
                 },
                 t = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.Site = t.Lang = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.Site = t.Lang = void 0))
                   const r = u({}),
                     p = i({}),
                     d = a({}),
@@ -81,12 +81,12 @@
                     O = h({})
                   t.Site = class {
                     constructor(e) {
-                      ;(this.row = -1),
+                      ;((this.row = -1),
                         (this.col = -1),
                         (this.url = ''),
                         (this.row = e.row),
                         (this.col = e.col),
-                        (this.url = e.url)
+                        (this.url = e.url))
                     }
                   }
                   let S = function (e) {
@@ -192,7 +192,7 @@
                     })
                     let i = e.token['#E&'],
                       l = e.token.CL
-                    e.rule(
+                    ;(e.rule(
                       'val',
                       (e) => (
                         e
@@ -229,11 +229,11 @@
                                     e.k.path,
                                   ))
                             let l = e.o0
-                            ;(r.row = l.rI),
+                            ;((r.row = l.rI),
                               (r.col = l.cI),
                               (r.url =
                                 n.meta.multisource && n.meta.multisource.path),
-                              (e.node = r)
+                              (e.node = r))
                           })
                           .close([{ s: [i, l], b: 2, g: 'spread,json,more' }]),
                         e
@@ -342,17 +342,17 @@
                             ]),
                           e
                         ),
-                      )
+                      ))
                   }
                   t.Lang = class {
                     constructor(e) {
-                      ;(this.options = {
+                      ;((this.options = {
                         src: '',
                         print: -1,
                         debug: !1,
                         trace: !1,
                       }),
-                        (this.options = Object.assign({}, this.options, e))
+                        (this.options = Object.assign({}, this.options, e)))
                       const t = (function (e) {
                         var t, n
                         const r = e.require || require
@@ -398,14 +398,14 @@
                           )
                         }
                       })(this.options)
-                      ;(this.jsonic = x.Jsonic.make()),
+                      ;((this.jsonic = x.Jsonic.make()),
                         this.options.debug &&
                           this.jsonic.use(k.Debug, {
                             trace: this.options.trace,
                           }),
                         this.jsonic.use(S).use(R.MultiSource, {
                           resolver: (null == e ? void 0 : e.resolver) || t,
-                        })
+                        }))
                     }
                     parse(e, t) {
                       let n,
@@ -445,13 +445,13 @@
                 }),
                 n = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.PlusVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.PlusVal = void 0))
                   const n = h({}),
                     i = r({})
                   class l extends i.OpVal {
                     constructor(e, t) {
-                      super(e, t), (this.isOpVal = !0)
+                      ;(super(e, t), (this.isOpVal = !0))
                     }
                     operate(e) {
                       if ((super.operate(e), this.peg.find((e) => e.isRefVal)))
@@ -474,8 +474,8 @@
                 }),
                 r = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.OpVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.OpVal = void 0))
                   const n = p({}),
                     r = h({}),
                     l = i({}),
@@ -483,7 +483,7 @@
                     o = v({})
                   class a extends o.ValBase {
                     constructor(e, t) {
-                      super(e, t), (this.isOpVal = !0), (this.peg = [])
+                      ;(super(e, t), (this.isOpVal = !0), (this.peg = []))
                       for (let n = 0; n < e.peg.length; n++)
                         this.append(e.peg[n])
                     }
@@ -494,7 +494,7 @@
                       let i = this
                       if (this.id !== e.id) {
                         let o = null == t ? this : this.operate(t)
-                        ;(o = o || this),
+                        ;((o = o || this),
                           null == o && this.canon === e.canon
                             ? (i = this)
                             : o instanceof a
@@ -519,7 +519,7 @@
                                       )))
                               : (i = (0, n.unite)(t, o, e, 'op')),
                           (i.done =
-                            je.DONE === i.done ? je.DONE : this.done + 1)
+                            je.DONE === i.done ? je.DONE : this.done + 1))
                       }
                       return i
                     }
@@ -555,9 +555,9 @@
                 }),
                 i = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
                     (t.ConjunctVal = void 0),
-                    (t.norm = g)
+                    (t.norm = g))
                   const n = p({}),
                     r = h({}),
                     i = a({}),
@@ -567,10 +567,10 @@
                     d = v({})
                   class f extends d.ValBase {
                     constructor(e, t) {
-                      super(e, t), (this.isConjunctVal = !0)
+                      ;(super(e, t), (this.isConjunctVal = !0))
                     }
                     append(e) {
-                      return this.peg.push(e), this
+                      return (this.peg.push(e), this)
                     }
                     unify(e, t) {
                       const l = (1e7 * Math.random()) % 1e6 | 0
@@ -593,14 +593,14 @@
                             this.peg[r],
                             e,
                           )
-                      ;(a = g(a)),
+                      ;((a = g(a)),
                         a.sort((e, t) =>
                           e.constructor.name === t.constructor.name
                             ? 0
                             : e.constructor.name < t.constructor.name
                               ? -1
                               : 1,
-                        )
+                        ))
                       let p,
                         d,
                         h = [],
@@ -627,18 +627,18 @@
                           m instanceof c.RefVal &&
                           !(e instanceof c.RefVal)
                         )
-                          h.push(m), (m = e)
+                          (h.push(m), (m = e))
                         else if (
                           e instanceof c.RefVal &&
                           !(m instanceof c.RefVal)
                         )
-                          h.push(m), (m = e)
+                          (h.push(m), (m = e))
                         else if (
                           ((p = (0, n.unite)(t, m, e, 'cj-peer-t0t1')),
                           (o = o && je.DONE === p.done),
                           p instanceof f)
                         )
-                          h.push(m), (m = e)
+                          (h.push(m), (m = e))
                         else {
                           if (p instanceof u.Nil) return p
                           m = p
@@ -657,7 +657,10 @@
                     }
                     clone(e, t) {
                       let n = super.clone(e, t)
-                      return (n.peg = this.peg.map((e) => e.clone(null, t))), n
+                      return (
+                        (n.peg = this.peg.map((e) => e.clone(null, t))),
+                        n
+                      )
                     }
                     get canon() {
                       return this.peg.map((e) => e.canon).join('&')
@@ -688,8 +691,8 @@
                 }),
                 l = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.RefVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.RefVal = void 0))
                   const n = p({}),
                     r = h({}),
                     l = i({}),
@@ -699,14 +702,14 @@
                     d = v({})
                   class f extends d.ValBase {
                     constructor(e, t) {
-                      super(e, t),
+                      ;(super(e, t),
                         (this.isRefVal = !0),
                         (this.absolute = !1),
                         (this.prefix = !1),
                         (this.peg = []),
                         (this.absolute =
                           !0 === this.absolute || !0 === e.absolute),
-                        (this.prefix = !0 === e.prefix)
+                        (this.prefix = !0 === e.prefix))
                       for (let n = 0; n < e.peg.length; n++)
                         this.append(e.peg[n])
                     }
@@ -733,7 +736,7 @@
                       let i = this
                       if (this.id !== e.id) {
                         let s = null == t ? this : this.find(t)
-                        ;(s = s || this),
+                        ;((s = s || this),
                           null == s && this.canon === e.canon
                             ? (i = this)
                             : s instanceof f
@@ -758,7 +761,7 @@
                                       )))
                               : (i = (0, n.unite)(t, s, e, 'ref')),
                           (i.done =
-                            je.DONE === i.done ? je.DONE : this.done + 1)
+                            je.DONE === i.done ? je.DONE : this.done + 1))
                       }
                       return i
                     }
@@ -801,7 +804,8 @@
                               .concat(n)),
                         (t = t.reduce(
                           (e, t) => (
-                            '.' === t ? (e.length = e.length - 1) : e.push(t), e
+                            '.' === t ? (e.length = e.length - 1) : e.push(t),
+                            e
                           ),
                           [],
                         )),
@@ -809,7 +813,7 @@
                       ) {
                         let t = this.path[this.path.length - 2],
                           n = new r.StringVal({ peg: null == t ? '' : t }, e)
-                        return (n.done = je.DONE), (n.path = this.path), n
+                        return ((n.done = je.DONE), (n.path = this.path), n)
                       }
                       let l = e.root,
                         s = 0
@@ -862,15 +866,15 @@
                 }),
                 s = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.VarVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.VarVal = void 0))
                   const n = h({}),
                     r = m({}),
                     i = l({}),
                     s = v({})
                   class o extends s.ValBase {
                     constructor(e, t) {
-                      super(e, t), (this.isVarVal = !0)
+                      ;(super(e, t), (this.isVarVal = !0))
                     }
                     unify(e, t) {
                       let l, s
@@ -937,8 +941,8 @@
                 }),
                 o = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.MapVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.MapVal = void 0))
                   const n = p({}),
                     r = h({}),
                     l = i({}),
@@ -954,19 +958,19 @@
                       )
                         throw new Error('MapVal spec.peg undefined')
                       let n = this.peg[a.SPREAD]
-                      delete this.peg[a.SPREAD],
+                      ;(delete this.peg[a.SPREAD],
                         n &&
                           '&' === n.o &&
                           (this.spread.cj = Array.isArray(n.v)
                             ? 1 < n.v.length
                               ? new l.ConjunctVal({ peg: n.v }, t)
                               : n.v[0]
-                            : n.v)
+                            : n.v))
                     }
                     unify(e, t) {
                       let i = !0,
                         l = r.TOP === e ? this : new a({ peg: {} }, t)
-                      ;(l.spread.cj = this.spread.cj),
+                      ;((l.spread.cj = this.spread.cj),
                         e instanceof a &&
                           (l.spread.cj =
                             null == l.spread.cj
@@ -978,18 +982,18 @@
                                     l.spread.cj,
                                     e.spread.cj,
                                   ))),
-                        (l.done = this.done + 1)
+                        (l.done = this.done + 1))
                       let o = l.spread.cj || r.TOP
                       for (let r in this.peg) {
                         let e = t.descend(r),
                           s = o.clone(null, e)
-                        ;(l.peg[r] = (0, n.unite)(
+                        ;((l.peg[r] = (0, n.unite)(
                           e,
                           this.peg[r],
                           s,
                           'map-own',
                         )),
-                          (i = i && je.DONE === l.peg[r].done)
+                          (i = i && je.DONE === l.peg[r].done))
                       }
                       if (e instanceof a) {
                         let r = (0, n.unite)(t, e, void 0, 'map-peer-map')
@@ -1018,7 +1022,11 @@
                         }
                       } else if (r.TOP !== e)
                         return s.Nil.make(t, 'map', this, e)
-                      return l.uh.push(e.id), (l.done = i ? je.DONE : l.done), l
+                      return (
+                        l.uh.push(e.id),
+                        (l.done = i ? je.DONE : l.done),
+                        l
+                      )
                     }
                     clone(e, t) {
                       let n = super.clone(e, t)
@@ -1055,12 +1063,12 @@
                       return t
                     }
                   }
-                  ;(t.MapVal = a), (a.SPREAD = Symbol('spread'))
+                  ;((t.MapVal = a), (a.SPREAD = Symbol('spread')))
                 }),
                 a = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.ListVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.ListVal = void 0))
                   const n = p({}),
                     r = h({}),
                     l = i({}),
@@ -1076,18 +1084,18 @@
                       )
                         throw new Error('ListVal spec.peg undefined')
                       let n = this.peg[a.SPREAD]
-                      delete this.peg[a.SPREAD],
+                      ;(delete this.peg[a.SPREAD],
                         n &&
                           '&' === n.o &&
                           (this.spread.cj =
                             Array.isArray(n.v) && 1 < n.v.length
                               ? new l.ConjunctVal({ peg: n.v }, t)
-                              : n.v)
+                              : n.v))
                     }
                     unify(e, t) {
                       let i = !0,
                         l = r.TOP === e ? this : new a({ peg: [] }, t)
-                      ;(l.spread.cj = this.spread.cj),
+                      ;((l.spread.cj = this.spread.cj),
                         e instanceof a &&
                           (l.spread.cj =
                             null == l.spread.cj
@@ -1099,18 +1107,18 @@
                                     l.spread.cj,
                                     e.spread.cj,
                                   ))),
-                        (l.done = this.done + 1)
+                        (l.done = this.done + 1))
                       let o = l.spread.cj || r.TOP
                       for (let r in this.peg) {
                         let e = t.descend(r),
                           s = o.clone(null, e)
-                        ;(l.peg[r] = (0, n.unite)(
+                        ;((l.peg[r] = (0, n.unite)(
                           e,
                           this.peg[r],
                           s,
                           'list-own',
                         )),
-                          (i = i && je.DONE === l.peg[r].done)
+                          (i = i && je.DONE === l.peg[r].done))
                       }
                       if (e instanceof a) {
                         let r = (0, n.unite)(t, e, void 0, 'list-peer-list')
@@ -1139,7 +1147,7 @@
                         }
                       } else if (r.TOP !== e)
                         return s.Nil.make(t, 'map', this, e)
-                      return (l.done = i ? je.DONE : l.done), l
+                      return ((l.done = i ? je.DONE : l.done), l)
                     }
                     clone(e, t) {
                       let n = super.clone(e, t)
@@ -1167,30 +1175,30 @@
                       return this.peg.map((t) => t.gen(e))
                     }
                   }
-                  ;(t.ListVal = a), (a.SPREAD = Symbol('spread'))
+                  ;((t.ListVal = a), (a.SPREAD = Symbol('spread')))
                 }),
                 u = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.DisjunctVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.DisjunctVal = void 0))
                   const n = p({}),
                     r = m({}),
                     i = c({}),
                     l = v({})
                   class s extends l.ValBase {
                     constructor(e, t, n) {
-                      super(e, t), (this.isDisjunctVal = !0)
+                      ;(super(e, t), (this.isDisjunctVal = !0))
                     }
                     append(e) {
-                      return this.peg.push(e), this
+                      return (this.peg.push(e), this)
                     }
                     unify(e, t) {
                       let i,
                         l = !0,
                         o = []
                       for (let r = 0; r < this.peg.length; r++)
-                        (o[r] = (0, n.unite)(t, this.peg[r], e)),
-                          (l = l && je.DONE === o[r].done)
+                        ((o[r] = (0, n.unite)(t, this.peg[r], e)),
+                          (l = l && je.DONE === o[r].done))
                       if (1 < o.length) {
                         for (let t = 0; t < o.length; t++)
                           o[t] instanceof s && o.splice(t, 1, ...o[t].peg)
@@ -1205,11 +1213,14 @@
                         if (0 == o.length) return r.Nil.make(t, '|:empty', this)
                         i = new s({ peg: o }, t)
                       }
-                      return (i.done = l ? je.DONE : this.done + 1), i
+                      return ((i.done = l ? je.DONE : this.done + 1), i)
                     }
                     clone(e, t) {
                       let n = super.clone(e, t)
-                      return (n.peg = this.peg.map((e) => e.clone(null, t))), n
+                      return (
+                        (n.peg = this.peg.map((e) => e.clone(null, t))),
+                        n
+                      )
                     }
                     get canon() {
                       return this.peg.map((e) => e.canon).join('|')
@@ -1231,16 +1242,16 @@
                 }),
                 c = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.PrefVal = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.PrefVal = void 0))
                   const n = p({}),
                     r = m({}),
                     i = v({})
                   class l extends i.ValBase {
                     constructor(e, t) {
-                      super(e, t),
+                      ;(super(e, t),
                         (this.isPrefVal = !0),
-                        (this.pref = e.pref || e.peg)
+                        (this.pref = e.pref || e.peg))
                     }
                     unify(e, t) {
                       let i,
@@ -1304,7 +1315,7 @@
                     }
                     clone(e, t) {
                       let n = super.clone(e, t)
-                      return (n.pref = this.pref.clone(null, t)), n
+                      return ((n.pref = this.pref.clone(null, t)), n)
                     }
                     get canon() {
                       return this.pref instanceof r.Nil
@@ -1329,8 +1340,8 @@
                 }),
                 p = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.unite = t.disjunct = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.unite = t.disjunct = void 0))
                   const n = g({})
                   Object.defineProperty(t, 'disjunct', {
                     enumerable: !0,
@@ -1348,8 +1359,8 @@
                 }),
                 d = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.unite = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.unite = void 0))
                   const n = m({}),
                     r = h({})
                   function i(e, t) {
@@ -1397,7 +1408,7 @@
                 }),
                 h = e(function (e, n) {
                   'use strict'
-                  Object.defineProperty(n, '__esModule', { value: !0 }),
+                  ;(Object.defineProperty(n, '__esModule', { value: !0 }),
                     (n.IntegerVal =
                       n.BooleanVal =
                       n.StringVal =
@@ -1405,14 +1416,14 @@
                       n.ScalarTypeVal =
                       n.Integer =
                       n.TOP =
-                        void 0)
+                        void 0))
                   const r = f({}),
                     i = t({}),
                     l = m({}),
                     s = v({})
                   class o extends s.ValBase {
                     constructor() {
-                      super(null),
+                      ;(super(null),
                         (this.isTop = !0),
                         (this.id = 0),
                         (this.top = !0),
@@ -1422,7 +1433,7 @@
                         (this.row = -1),
                         (this.col = -1),
                         (this.url = ''),
-                        (this.done = je.DONE)
+                        (this.done = je.DONE))
                     }
                     unify(e, t) {
                       return e
@@ -1447,9 +1458,9 @@
                   n.Integer = u
                   class c extends s.ValBase {
                     constructor(e, t) {
-                      super(e, t),
+                      ;(super(e, t),
                         (this.isScalarTypeVal = !0),
-                        (this.done = je.DONE)
+                        (this.done = je.DONE))
                     }
                     unify(e, t) {
                       if (null == e ? void 0 : e.isScalarVal)
@@ -1476,10 +1487,10 @@
                   n.ScalarTypeVal = c
                   class p extends s.ValBase {
                     constructor(e, t) {
-                      super(e, t),
+                      ;(super(e, t),
                         (this.isScalarVal = !0),
                         (this.type = e.type),
-                        (this.done = je.DONE)
+                        (this.done = je.DONE))
                     }
                     clone(e, t) {
                       return super.clone(
@@ -1506,10 +1517,10 @@
                       return this.peg
                     }
                   }
-                  ;(n.NumberVal = class extends p {
+                  ;((n.NumberVal = class extends p {
                     constructor(e, t) {
-                      super({ peg: e.peg, type: Number }, t),
-                        (this.isNumberVal = !0)
+                      ;(super({ peg: e.peg, type: Number }, t),
+                        (this.isNumberVal = !0))
                     }
                     unify(e, t) {
                       if (null != e) {
@@ -1524,8 +1535,8 @@
                       constructor(e, t) {
                         if (!Number.isInteger(e.peg))
                           throw new Error('not-integer')
-                        super({ peg: e.peg, type: u }, t),
-                          (this.isIntegerVal = !0)
+                        ;(super({ peg: e.peg, type: u }, t),
+                          (this.isIntegerVal = !0))
                       }
                       unify(e, t) {
                         if (null != e) {
@@ -1541,8 +1552,8 @@
                     }),
                     (n.StringVal = class extends p {
                       constructor(e, t) {
-                        super({ peg: e.peg, type: String }, t),
-                          (this.isStringVal = !0)
+                        ;(super({ peg: e.peg, type: String }, t),
+                          (this.isStringVal = !0))
                       }
                       unify(e, t) {
                         return super.unify(e, t)
@@ -1550,17 +1561,17 @@
                       get canon() {
                         return JSON.stringify(this.peg)
                       }
-                    })
+                    }))
                   class d extends p {
                     constructor(e, t) {
-                      super({ peg: e.peg, type: Boolean }, t),
-                        (this.isBooleanVal = !0)
+                      ;(super({ peg: e.peg, type: Boolean }, t),
+                        (this.isBooleanVal = !0))
                     }
                     unify(e, t) {
                       return super.unify(e, t)
                     }
                   }
-                  ;(n.BooleanVal = d),
+                  ;((n.BooleanVal = d),
                     (d.TRUE = new d(
                       { peg: !0 },
                       new r.Context({ vc: 1, root: a }),
@@ -1568,25 +1579,25 @@
                     (d.FALSE = new d(
                       { peg: !1 },
                       new r.Context({ vc: 2, root: a }),
-                    ))
+                    )))
                 }),
                 f = e(function (e, n) {
                   'use strict'
-                  Object.defineProperty(n, '__esModule', { value: !0 }),
-                    (n.Unify = n.Context = void 0)
+                  ;(Object.defineProperty(n, '__esModule', { value: !0 }),
+                    (n.Unify = n.Context = void 0))
                   const r = h({}),
                     i = t({}),
                     l = p({})
                   class s {
                     constructor(e) {
-                      ;(this.cc = -1),
+                      ;((this.cc = -1),
                         (this.var = {}),
                         (this.root = e.root),
                         (this.path = e.path || []),
                         (this.err = e.err || []),
                         (this.vc = null == e.vc ? 1e9 : e.vc),
                         (this.cc = null == e.cc ? this.cc : e.cc),
-                        (this.var = e.var || this.var)
+                        (this.var = e.var || this.var))
                     }
                     clone(e) {
                       return new s({
@@ -1605,36 +1616,36 @@
                       })
                     }
                   }
-                  ;(n.Context = s),
+                  ;((n.Context = s),
                     (n.Unify = class {
                       constructor(e, t, n) {
-                        ;(this.lang = t || new i.Lang()),
+                        ;((this.lang = t || new i.Lang()),
                           'string' == typeof e && (e = this.lang.parse(e)),
                           (this.cc = 0),
                           (this.root = e),
                           (this.res = e),
-                          (this.err = e.err || [])
+                          (this.err = e.err || []))
                         let o = e
                         if (!e.nil) {
                           n = n || new s({ root: o, err: this.err })
                           let e = 9
                           for (; this.cc < e && je.DONE !== o.done; this.cc++)
-                            (n.cc = this.cc),
+                            ((n.cc = this.cc),
                               (o = (0, l.unite)(n, o, r.TOP)),
-                              (n = n.clone({ root: o }))
+                              (n = n.clone({ root: o })))
                         }
                         this.res = o
                       }
-                    })
+                    }))
                 }),
                 m = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.Nil = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.Nil = void 0))
                   const n = v({})
                   class r extends n.ValBase {
                     constructor(e, t) {
-                      super(e && 'string' != typeof e ? e : {}, t),
+                      ;(super(e && 'string' != typeof e ? e : {}, t),
                         (this.isNil = !0),
                         (this.nil = !0),
                         (this.msg = ''),
@@ -1650,7 +1661,7 @@
                               ? [...e.err]
                               : [e.err]
                             : [])),
-                        (this.done = je.DONE)
+                        (this.done = je.DONE))
                     }
                     unify(e, t) {
                       return this
@@ -1673,7 +1684,7 @@
                       e.err.push(this)
                     }
                   }
-                  ;(t.Nil = r),
+                  ;((t.Nil = r),
                     (r.make = (e, t, n, i) => {
                       let l = new r({ why: t }, e)
                       return (
@@ -1695,26 +1706,26 @@
                         e && e.err.push(l),
                         l
                       )
-                    })
+                    }))
                 }),
                 g = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
-                    (t.disjunct = void 0)
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                    (t.disjunct = void 0))
                   const n = u({})
-                  v({}),
+                  ;(v({}),
                     (t.disjunct = (e, t, r) =>
-                      new n.DisjunctVal({ peg: [] }, e, []))
+                      new n.DisjunctVal({ peg: [] }, e, [])))
                 }),
                 v = e(function (e, n) {
                   'use strict'
-                  Object.defineProperty(n, '__esModule', { value: !0 }),
-                    (n.ValBase = void 0)
+                  ;(Object.defineProperty(n, '__esModule', { value: !0 }),
+                    (n.ValBase = void 0))
                   const r = t({})
                   let i = 0
                   n.ValBase = class {
                     constructor(e, t) {
-                      ;(this.isVal = !0),
+                      ;((this.isVal = !0),
                         (this.done = 0),
                         (this.path = []),
                         (this.row = -1),
@@ -1726,7 +1737,7 @@
                         (this.peg = null == e ? void 0 : e.peg),
                         (this.path = (null == t ? void 0 : t.path) || []),
                         (this.id = ++i),
-                        (this.uh = [])
+                        (this.uh = []))
                     }
                     same(e) {
                       return null != e && this.id === e.id
@@ -1735,13 +1746,13 @@
                       let n
                       if (t) {
                         let e = this.path.indexOf('&')
-                        ;(e = -1 < e ? e + 1 : t.path.length),
+                        ;((e = -1 < e ? e + 1 : t.path.length),
                           (n = t.clone({
                             path: t.path.concat(this.path.slice(e)),
-                          }))
+                          })))
                       }
                       let r = new this.constructor(e || { peg: this.peg }, n)
-                      return null == n && (r.path = this.path.slice(0)), r
+                      return (null == n && (r.path = this.path.slice(0)), r)
                     }
                     get site() {
                       return new r.Site(this)
@@ -1758,7 +1769,7 @@
                   }
                 }),
                 x = { exports: {} }
-              ;(function (e) {
+              ;((function (e) {
                 ;(function () {
                   !(function (t) {
                     'object' == typeof x.exports
@@ -1783,7 +1794,7 @@
                       },
                       t = e(function (e, t) {
                         'use strict'
-                        Object.defineProperty(t, '__esModule', { value: !0 }),
+                        ;(Object.defineProperty(t, '__esModule', { value: !0 }),
                           (t.modlist =
                             t.findTokenSet =
                             t.values =
@@ -1816,7 +1827,7 @@
                             t.assign =
                             t.S =
                             t.JsonicError =
-                              void 0)
+                              void 0))
                         const i = n({}),
                           l = (e) => (null == e ? [] : Object.keys(e))
                         t.keys = l
@@ -1826,7 +1837,7 @@
                         t.entries = o
                         const a = (e, ...t) =>
                           Object.assign(null == e ? {} : e, ...t)
-                        ;(t.assign = a), (t.isarr = (e) => Array.isArray(e))
+                        ;((t.assign = a), (t.isarr = (e) => Array.isArray(e)))
                         const u = Object.defineProperty
                         t.defprop = u
                         const c = (e, t) =>
@@ -1835,7 +1846,7 @@
                             void 0 === r[0] ? delete e[n[0]] : (e[r[0]] = r[1])
                             let i = 2
                             for (; void 0 !== r[i]; )
-                              (e[r[i]] = r[i + 1]), (i += 2)
+                              ((e[r[i]] = r[i + 1]), (i += 2))
                             return e
                           }, {})
                         t.omap = c
@@ -1884,7 +1895,7 @@
                         class d extends SyntaxError {
                           constructor(e, t, n, r, i) {
                             let l = b(e, (t = g({}, t)), n, r, i)
-                            super(l.message), a(this, l), x(this)
+                            ;(super(l.message), a(this, l), x(this))
                           }
                           toJSON() {
                             return {
@@ -1942,7 +1953,7 @@
                             )
                               for (let n in i) e[n] = g(e[n], i[n])
                             else
-                              (e =
+                              ((e =
                                 void 0 === i
                                   ? e
                                   : l
@@ -1956,7 +1967,7 @@
                                         : g(Array.isArray(i) ? [] : {}, i)
                                       : i),
                                 (n = p.function === typeof e),
-                                (r = null != e && (p.object === typeof e || n))
+                                (r = null != e && (p.object === typeof e || n)))
                           }
                           return e
                         }
@@ -2127,7 +2138,7 @@
                               f
                             )
                           } catch (a) {
-                            return console.log(a), {}
+                            return (console.log(a), {})
                           }
                         }
                         function y(e) {
@@ -2198,7 +2209,7 @@
                           for (let t in e) null == e[t] && delete e[t]
                           return e
                         }
-                        ;(t.JsonicError = d),
+                        ;((t.JsonicError = d),
                           (t.configure = function (e, t, n) {
                             var r,
                               i,
@@ -2251,9 +2262,9 @@
                               oe,
                               ae
                             const ue = t || {}
-                            ;(ue.t = ue.t || {}), (ue.tI = ue.tI || 1)
+                            ;((ue.t = ue.t || {}), (ue.tI = ue.tI || 1))
                             const ce = (e) => h(e, ue)
-                            !1 !== n.standard$ &&
+                            ;(!1 !== n.standard$ &&
                               (ce('#BD'),
                               ce('#ZZ'),
                               ce('#UK'),
@@ -2317,7 +2328,7 @@
                               c(ue.match.token, ([e, t]) => [
                                 e,
                                 ((t.tin$ = +e), t),
-                              ])
+                              ]))
                             const pe = n.tokenSet
                               ? Object.keys(n.tokenSet).reduce(
                                   (e, t) => (
@@ -2329,7 +2340,7 @@
                                   {},
                                 )
                               : {}
-                            ;(ue.tokenSet = ue.tokenSet || {}),
+                            ;((ue.tokenSet = ue.tokenSet || {}),
                               o(pe).map((e) => {
                                 let t = e[0],
                                   n = e[1]
@@ -2523,7 +2534,7 @@
                                 void 0 === G
                                   ? void 0
                                   : G.property),
-                              })
+                              }))
                             let de = Object.keys(ue.fixed.token)
                                 .sort((e, t) => t.length - e.length)
                                 .map((e) => m(e))
@@ -2610,11 +2621,11 @@
                                           i = t[1]
                                         if (i) {
                                           let t = i.make(ue, n)
-                                          t &&
+                                          ;(t &&
                                             ((t.matcher = r),
                                             (t.make = i.make),
                                             (t.order = i.order)),
-                                            e.push(t)
+                                            e.push(t))
                                         }
                                         return e
                                       }, [])
@@ -2688,7 +2699,7 @@
                             return t.tokenSet[e]
                           }),
                           (t.mesc = function (e, t) {
-                            return ((t = new String(e)).esc = !0), t
+                            return (((t = new String(e)).esc = !0), t)
                           }),
                           (t.regexp = f),
                           (t.escre = m),
@@ -2705,8 +2716,8 @@
                                 if (t === o.tin) {
                                   let t = {}
                                   throw (
-                                    (null != o.use && (t.use = o.use),
-                                    new d(o.why || p.unexpected, t, o, e, n))
+                                    null != o.use && (t.use = o.use),
+                                    new d(o.why || p.unexpected, t, o, e, n)
                                   )
                                 }
                                 return o
@@ -2736,7 +2747,7 @@
                               ) {
                                 let n = !1,
                                   r = null == t ? void 0 : t.log
-                                ;(-1 === r || l) && ((r = 1), (n = !0)),
+                                ;((-1 === r || l) && ((r = 1), (n = !0)),
                                   (e.log = (...t) => {
                                     if (n) {
                                       let n = t
@@ -2750,7 +2761,7 @@
                                       e.cfg.debug
                                         .get_console()
                                         .dir(t, { depth: r })
-                                  })
+                                  }))
                               } else
                                 'function' == typeof t.log && (e.log = t.log)
                             return e.log
@@ -2800,9 +2811,9 @@
                               let r,
                                 i = t.split('.')
                               for (let t = 0; t < i.length; t++)
-                                (r = i[t]),
-                                  t < i.length - 1 && (e = e[r] = e[r] || {})
-                              return void 0 !== n && (e[r] = n), e[r]
+                                ((r = i[t]),
+                                  t < i.length - 1 && (e = e[r] = e[r] || {}))
+                              return (void 0 !== n && (e[r] = n), e[r])
                             } catch (i) {
                               throw new Error(
                                 'Cannot ' +
@@ -2833,7 +2844,7 @@
                                     let n = (e.length + t.move[r]) % e.length,
                                       i = (e.length + t.move[r + 1]) % e.length,
                                       l = e[n]
-                                    e.splice(n, 1), e.splice(i, 0, l)
+                                    ;(e.splice(n, 1), e.splice(i, 0, l))
                                   }
                                 let n = e.filter((e) => null != e)
                                 n.length !== e.length &&
@@ -2861,11 +2872,11 @@
                                         /^Unexpected token (.) .*position\s+(\d+)/i,
                                       )
                                     if (p) {
-                                      ;(c = p[1]),
+                                      ;((c = p[1]),
                                         (s = parseInt(p[2])),
                                         (a = t
                                           .substring(0, s)
-                                          .replace(/[^\n]/g, r.EMPTY).length)
+                                          .replace(/[^\n]/g, r.EMPTY).length))
                                       let e = s - 1
                                       for (; -1 < e && '\n' !== t.charAt(e); )
                                         e--
@@ -2925,11 +2936,11 @@
                                 }
                               },
                             }
-                          })
+                          }))
                       }),
                       n = e(function (e, n) {
                         'use strict'
-                        Object.defineProperty(n, '__esModule', { value: !0 }),
+                        ;(Object.defineProperty(n, '__esModule', { value: !0 }),
                           (n.makeTextMatcher =
                             n.makeNumberMatcher =
                             n.makeCommentMatcher =
@@ -2942,11 +2953,11 @@
                             n.makePoint =
                             n.makeLex =
                             n.makeNoToken =
-                              void 0)
+                              void 0))
                         const i = t({})
                         class l {
                           constructor(e, t, n, r) {
-                            ;(this.len = -1),
+                            ;((this.len = -1),
                               (this.sI = 0),
                               (this.rI = 1),
                               (this.cI = 1),
@@ -2954,7 +2965,7 @@
                               (this.len = e),
                               null != t && (this.sI = t),
                               null != n && (this.rI = n),
-                              null != r && (this.cI = r)
+                              null != r && (this.cI = r))
                           }
                           toString() {
                             return (
@@ -2972,7 +2983,7 @@
                         n.makePoint = s
                         class o {
                           constructor(e, t, n, i, l, s, o) {
-                            ;(this.isToken = !0),
+                            ;((this.isToken = !0),
                               (this.name = r.EMPTY),
                               (this.tin = -1),
                               (this.val = void 0),
@@ -2990,7 +3001,7 @@
                               (this.cI = l.cI),
                               (this.use = s),
                               (this.why = o),
-                              (this.len = null == i ? 0 : i.length)
+                              (this.len = null == i ? 0 : i.length))
                           }
                           resolveVal(e, t) {
                             return 'function' == typeof this.val
@@ -3049,15 +3060,15 @@
                           if (e.cfg.fixed.lex && null != n && 0 < n.length) {
                             let l,
                               s = e.cfg.fixed.token[n]
-                            null != s && (l = e.token(s, void 0, n, r)),
+                            ;(null != s && (l = e.token(s, void 0, n, r)),
                               null != l &&
                                 ((r.sI += l.src.length),
                                 (r.cI += l.src.length),
-                                null == t ? (i = l) : r.token.push(l))
+                                null == t ? (i = l) : r.token.push(l)))
                           }
                           return i
                         }
-                        ;(n.makeToken = a),
+                        ;((n.makeToken = a),
                           (n.makeNoToken = () =>
                             a('', -1, void 0, r.EMPTY, s(-1))),
                           (n.makeFixedMatcher = (e, t) => {
@@ -3172,7 +3183,7 @@
                                   lex: !!n.lex,
                                   eatline: !!n.eatline,
                                 }
-                                return (e[t] = r), e
+                                return ((e[t] = r), e)
                               }, {}),
                             }
                             let r = e.comment.lex
@@ -3204,10 +3215,10 @@
                                     r < n && !e.line.chars[o[r]];
 
                                   )
-                                    u++, r++
+                                    (u++, r++)
                                   if (i.eatline)
                                     for (; r < n && e.line.chars[o[r]]; )
-                                      e.line.rowChars[o[r]] && a++, r++
+                                      (e.line.rowChars[o[r]] && a++, r++)
                                   let l = o.substring(0, r),
                                     c = t.token('#CM', void 0, l, s)
                                   return (
@@ -3227,13 +3238,13 @@
                                     l < n && !o.substring(l).startsWith(c);
 
                                   )
-                                    e.line.rowChars[o[l]] && (a++, (u = 0)),
+                                    (e.line.rowChars[o[l]] && (a++, (u = 0)),
                                       u++,
-                                      l++
+                                      l++)
                                   if (o.substring(l).startsWith(c)) {
                                     if (((u += c.length), r.eatline))
                                       for (; l < n && e.line.chars[o[l]]; )
-                                        e.line.rowChars[o[l]] && a++, l++
+                                        (e.line.rowChars[o[l]] && a++, l++)
                                     let i = o.substring(0, l + c.length),
                                       p = t.token('#CM', void 0, i, s)
                                     return (
@@ -3278,9 +3289,9 @@
                                     let u
                                     if (e.value.lex)
                                       if (void 0 !== (u = o[p]))
-                                        (n = r.token('#VL', u.val, p, l)),
+                                        ((n = r.token('#VL', u.val, p, l)),
                                           (l.sI += t),
-                                          (l.cI += t)
+                                          (l.cI += t))
                                       else
                                         for (let e in a) {
                                           let t = a[e]
@@ -3300,8 +3311,8 @@
                                                 let s = t.val(e)
                                                 n = r.token('#VL', s, i, l)
                                               }
-                                              ;(l.sI += i.length),
-                                                (l.cI += i.length)
+                                              ;((l.sI += i.length),
+                                                (l.cI += i.length))
                                             }
                                           }
                                         }
@@ -3395,7 +3406,7 @@
                                     }
                                   }
                                 }
-                                return c && (n = u(t, n, s)), n
+                                return (c && (n = u(t, n, s)), n)
                               }
                             }
                           }),
@@ -3450,7 +3461,7 @@
                                     k = m,
                                     b = g,
                                     y = u[l]
-                                  ++m, ++v
+                                  ;(++m, ++v)
                                   let j,
                                     O = []
                                   for (; m < x; m++) {
@@ -3461,7 +3472,7 @@
                                       break
                                     }
                                     if (o === r) {
-                                      m++, v++
+                                      ;(m++, v++)
                                       let e = s[f[m]]
                                       if (null != e) O.push(e)
                                       else if ('x' === f[m]) {
@@ -3481,7 +3492,7 @@
                                           )
                                         }
                                         let r = String.fromCharCode(e)
-                                        O.push(r), (m += 1), (v += 2)
+                                        ;(O.push(r), (m += 1), (v += 2))
                                       } else if ('u' === f[m]) {
                                         m++
                                         let e = '{' === f[m] ? (m++, 1) : 0,
@@ -3505,9 +3516,9 @@
                                           )
                                         }
                                         let s = String.fromCodePoint(l)
-                                        O.push(s),
+                                        ;(O.push(s),
                                           (m += r - 1 + e),
-                                          (v += r + e)
+                                          (v += r + e))
                                       } else {
                                         if (!c) {
                                           if (n.abandon) return
@@ -3523,7 +3534,7 @@
                                       d &&
                                       void 0 !== (j = p[f.charCodeAt(m)])
                                     )
-                                      O.push(j), v++
+                                      (O.push(j), v++)
                                     else {
                                       let r = m,
                                         s = l.charCodeAt(0),
@@ -3537,7 +3548,7 @@
                                         a !== o;
 
                                       )
-                                        (o = f.charCodeAt(++m)), v++
+                                        ((o = f.charCodeAt(++m)), v++)
                                       if ((v--, void 0 === j && o < 32)) {
                                         if (!y || !e.line.chars[f[m]]) {
                                           if (n.abandon) return
@@ -3547,10 +3558,10 @@
                                             t.bad(i.S.unprintable, m, m + 1)
                                           )
                                         }
-                                        e.line.rowChars[f[m]] && (h.rI = ++g),
+                                        ;(e.line.rowChars[f[m]] && (h.rI = ++g),
                                           (v = 1),
-                                          O.push(f.substring(r, m + 1))
-                                      } else O.push(f.substring(r, m)), m--
+                                          O.push(f.substring(r, m + 1)))
+                                      } else (O.push(f.substring(r, m)), m--)
                                     }
                                   }
                                   if (f[m - 1] !== l || h.sI === m - 1) {
@@ -3566,7 +3577,7 @@
                                     f.substring(h.sI, m),
                                     h,
                                   )
-                                  return (h.sI = m), (h.rI = g), (h.cI = v), S
+                                  return ((h.sI = m), (h.rI = g), (h.cI = v), S)
                                 }
                               }
                             )
@@ -3593,12 +3604,15 @@
                                 );
 
                               )
-                                (a += i[s[o]] ? 1 : 0), o++
+                                ((a += i[s[o]] ? 1 : 0), o++)
                               if (l.sI < o) {
                                 let e = s.substring(l.sI, o)
                                 const n = t.token('#LN', void 0, e, l)
                                 return (
-                                  (l.sI += e.length), (l.rI = a), (l.cI = 1), n
+                                  (l.sI += e.length),
+                                  (l.rI = a),
+                                  (l.cI = 1),
+                                  n
                                 )
                               }
                             }),
@@ -3612,23 +3626,23 @@
                               let { chars: n } = e.space,
                                 { pnt: r, src: i } = t,
                                 { sI: l, cI: s } = r
-                              for (; n[i[l]]; ) l++, s++
+                              for (; n[i[l]]; ) (l++, s++)
                               if (r.sI < l) {
                                 let e = i.substring(r.sI, l)
                                 const n = t.token('#SP', void 0, e, r)
-                                return (r.sI += e.length), (r.cI = s), n
+                                return ((r.sI += e.length), (r.cI = s), n)
                               }
-                            })
+                            }))
                         class c {
                           constructor(e) {
-                            ;(this.src = r.EMPTY),
+                            ;((this.src = r.EMPTY),
                               (this.ctx = {}),
                               (this.cfg = {}),
                               (this.pnt = s(-1)),
                               (this.ctx = e),
                               (this.src = e.src()),
                               (this.cfg = e.cfg),
-                              (this.pnt = s(this.src.length))
+                              (this.pnt = s(this.src.length)))
                           }
                           token(e, t, n, r, l, s) {
                             let o, u
@@ -3647,8 +3661,8 @@
                             if (o.end) l = o.end
                             else if (0 < o.token.length) l = o.token.shift()
                             else if (o.len <= o.sI)
-                              (o.end = this.token('#ZZ', void 0, '', o)),
-                                (l = o.end)
+                              ((o.end = this.token('#ZZ', void 0, '', o)),
+                                (l = o.end))
                             else {
                               try {
                                 for (let t of this.cfg.lex.match)
@@ -3718,7 +3732,7 @@
                         n.makeLex = (...e) => new c(...e)
                       }),
                       r = {}
-                    Object.defineProperty(r, '__esModule', { value: !0 }),
+                    ;(Object.defineProperty(r, '__esModule', { value: !0 }),
                       (r.STRING =
                         r.INSPECT =
                         r.EMPTY =
@@ -3733,10 +3747,10 @@
                       (r.AFTER = 'a'),
                       (r.EMPTY = ''),
                       (r.INSPECT = Symbol.for('nodejs.util.inspect.custom')),
-                      (r.STRING = 'string')
+                      (r.STRING = 'string'))
                     var i = {}
-                    Object.defineProperty(i, '__esModule', { value: !0 }),
-                      (i.defaults = void 0)
+                    ;(Object.defineProperty(i, '__esModule', { value: !0 }),
+                      (i.defaults = void 0))
                     const l = n({}),
                       s = {
                         safe: { key: !0 },
@@ -3889,12 +3903,12 @@
                       }
                     i.defaults = s
                     var o = {}
-                    Object.defineProperty(o, '__esModule', { value: !0 }),
-                      (o.makeRuleSpec = o.makeNoRule = o.makeRule = void 0)
+                    ;(Object.defineProperty(o, '__esModule', { value: !0 }),
+                      (o.makeRuleSpec = o.makeNoRule = o.makeRule = void 0))
                     const a = t({})
                     class u {
                       constructor(e, t, n) {
-                        ;(this.i = -1),
+                        ;((this.i = -1),
                           (this.name = r.EMPTY),
                           (this.node = null),
                           (this.state = r.OPEN),
@@ -3924,7 +3938,7 @@
                           (this.bo = null != e.def.bo),
                           (this.ao = null != e.def.ao),
                           (this.bc = null != e.def.bc),
-                          (this.ac = null != e.def.ac)
+                          (this.ac = null != e.def.ac))
                       }
                       process(e, t) {
                         return this.spec.process(this, e, t, this.state)
@@ -3954,11 +3968,11 @@
                       }
                     }
                     const c = (...e) => new u(...e)
-                    ;(o.makeRule = c),
-                      (o.makeNoRule = (e) => c(g(e.cfg, {}), e))
+                    ;((o.makeRule = c),
+                      (o.makeNoRule = (e) => c(g(e.cfg, {}), e)))
                     class p {
                       constructor() {
-                        ;(this.p = r.EMPTY), (this.r = r.EMPTY), (this.b = 0)
+                        ;((this.p = r.EMPTY), (this.r = r.EMPTY), (this.b = 0))
                       }
                     }
                     const d = (...e) => new p(...e),
@@ -3966,7 +3980,7 @@
                       f = d()
                     class m {
                       constructor(e, t) {
-                        ;(this.name = r.EMPTY),
+                        ;((this.name = r.EMPTY),
                           (this.def = {
                             open: [],
                             close: [],
@@ -3983,7 +3997,7 @@
                           )),
                           (this.def.close = (this.def.close || []).filter(
                             (e) => null != e,
-                          ))
+                          )))
                         for (let n of [...this.def.open, ...this.def.close])
                           v(n)
                       }
@@ -4015,7 +4029,7 @@
                       }
                       action(e, t, n, r) {
                         let i = this.def[t + n]
-                        return e ? i.push(r) : i.unshift(r), this
+                        return (e ? i.push(r) : i.unshift(r), this)
                       }
                       bo(e, t) {
                         return this.action(!t || !!e, r.BEFORE, r.OPEN, t || e)
@@ -4041,8 +4055,8 @@
                         )
                       }
                       norm() {
-                        this.def.open.map((e) => v(e)),
-                          this.def.close.map((e) => v(e))
+                        ;(this.def.open.map((e) => v(e)),
+                          this.def.close.map((e) => v(e)))
                         const e = []
                         function t(e, t, n) {
                           return (
@@ -4051,7 +4065,7 @@
                               function (e, n) {
                                 if (n.s && n.s[t]) {
                                   let r = [...new Set(e.concat(n.s[t]))]
-                                  ;(e.length = 0), e.push(...r)
+                                  ;((e.length = 0), e.push(...r))
                                 }
                                 return e
                               },
@@ -4090,7 +4104,7 @@
                           0 < p.length
                             ? (function (e, t, n, i, l) {
                                 let s = h
-                                ;(s.b = 0),
+                                ;((s.b = 0),
                                   (s.p = r.EMPTY),
                                   (s.r = r.EMPTY),
                                   (s.n = void 0),
@@ -4098,7 +4112,7 @@
                                   (s.a = void 0),
                                   (s.u = void 0),
                                   (s.k = void 0),
-                                  (s.e = void 0)
+                                  (s.e = void 0))
                                 let o = null,
                                   u = 0,
                                   c = !0,
@@ -4107,7 +4121,7 @@
                                 function f(e, t, r, i) {
                                   let s
                                   do {
-                                    ;(s = n.next(e, t, r, i)), l.tC++
+                                    ;((s = n.next(e, t, r, i)), l.tC++)
                                   } while (d[s.tin])
                                   return s
                                 }
@@ -4133,11 +4147,11 @@
                                         l.NOTOKEN !== l.t1
                                           ? l.t1
                                           : (l.t1 = f(i, o, u, 1))).tin
-                                      ;(r = !0),
+                                      ;((r = !0),
                                         (c = !!(
                                           o.S1[(e / 31) | 0] &
                                           ((1 << ((e % 31) - 1)) | p)
-                                        ))
+                                        )))
                                     }
                                   }
                                   if (
@@ -4154,7 +4168,7 @@
                                     break
                                   o = null
                                 }
-                                c || (s.e = l.t0),
+                                ;(c || (s.e = l.t0),
                                   o &&
                                     ((s.n = null != o.n ? o.n : s.n),
                                     (s.h = null != o.h ? o.h : s.h),
@@ -4180,7 +4194,7 @@
                                         ? 'number' == typeof o.b
                                           ? o.b
                                           : o.b(i, l, s)
-                                        : s.b))
+                                        : s.b)))
                                 let g = u < t.length
                                 return (
                                   l.log &&
@@ -4216,23 +4230,23 @@
                             return this.bad(this.unknownRule(t.t0, m.p), e, t, {
                               is_open: l,
                             })
-                          ;(s = e.child = c(n, t, e.node)),
+                          ;((s = e.child = c(n, t, e.node)),
                             (s.parent = e),
                             (s.n = { ...e.n }),
                             0 < Object.keys(e.k).length && (s.k = { ...e.k }),
-                            (o += 'P`' + m.p + '`')
+                            (o += 'P`' + m.p + '`'))
                         } else if (m.r) {
                           let n = t.rsm[m.r]
                           if (!n)
                             return this.bad(this.unknownRule(t.t0, m.r), e, t, {
                               is_open: l,
                             })
-                          ;(s = c(n, t, e.node)),
+                          ;((s = c(n, t, e.node)),
                             (s.parent = e.parent),
                             (s.prev = e),
                             (s.n = { ...e.n }),
                             0 < Object.keys(e.k).length && (s.k = { ...e.k }),
-                            (o += 'R`' + m.r + '`')
+                            (o += 'R`' + m.r + '`'))
                         } else l || (s = t.rs[--t.rsI] || t.NORULE)
                         let g = l ? (e.ao ? u.ao : null) : e.ac ? u.ac : null
                         if (g) {
@@ -4245,9 +4259,9 @@
                             )
                               return this.bad(n, e, t, { is_open: l })
                         }
-                        ;(s.why = o),
+                        ;((s.why = o),
                           t.log && t.log(a.S.node, t, e, n, s),
-                          r.OPEN === e.state && (e.state = r.CLOSE)
+                          r.OPEN === e.state && (e.state = r.CLOSE))
                         let v = e[l ? 'os' : 'cs'] - (m.b || 0)
                         return (
                           1 === v
@@ -4302,7 +4316,7 @@
                           i = t([e.s[0]]),
                           l = t([e.s[1]]),
                           s = e
-                        ;(s.S0 =
+                        ;((s.S0 =
                           0 < i.length
                             ? new Array(
                                 Math.max(...i.map((e) => (1 + e / 31) | 0)),
@@ -4319,7 +4333,7 @@
                                   .fill(null)
                                   .map((e, t) => t)
                                   .map((e) => r(n(l, e), e))
-                              : null)
+                              : null))
                       } else e.s = null
                       return (
                         e.p || (e.p = null),
@@ -4330,11 +4344,11 @@
                     }
                     o.makeRuleSpec = g
                     var x = {}
-                    Object.defineProperty(x, '__esModule', { value: !0 }),
-                      (x.makeParser = x.makeRuleSpec = x.makeRule = void 0)
+                    ;(Object.defineProperty(x, '__esModule', { value: !0 }),
+                      (x.makeParser = x.makeRuleSpec = x.makeRule = void 0))
                     const k = t({}),
                       b = n({})
-                    Object.defineProperty(x, 'makeRule', {
+                    ;(Object.defineProperty(x, 'makeRule', {
                       enumerable: !0,
                       get: function () {
                         return o.makeRule
@@ -4345,10 +4359,10 @@
                         get: function () {
                           return o.makeRuleSpec
                         },
-                      })
+                      }))
                     class y {
                       constructor(e, t) {
-                        ;(this.rsm = {}), (this.options = e), (this.cfg = t)
+                        ;((this.rsm = {}), (this.options = e), (this.cfg = t))
                       }
                       rule(e, t) {
                         if (null == e) return this.rsm
@@ -4437,13 +4451,13 @@
                             u.cfg.rule.maxmul,
                           m = 0
                         for (; c !== h && m < f; )
-                          (u.kI = m),
+                          ((u.kI = m),
                             (u.rule = h),
                             u.log && u.log('', u.kI + ':'),
                             u.sub.rule && u.sub.rule.map((e) => e(h, u)),
                             (h = h.process(u, p)),
                             u.log && u.log(k.S.stack, u, h, p),
-                            m++
+                            m++)
                         if (s.tin !== p.next(h).tin)
                           throw new k.JsonicError(
                             k.S.unexpected,
@@ -4502,14 +4516,14 @@
                         { VAL: p, KEY: d } = e.tokenSet,
                         h = (e, t) => {
                           if (!t.cfg.rule.finish)
-                            return (t.t0.src = 'END_OF_SOURCE'), t.t0
+                            return ((t.t0.src = 'END_OF_SOURCE'), t.t0)
                         },
                         f = (e) => {
                           const t = e.o0,
                             n = u === t.tin || a === t.tin ? t.val : t.src
                           e.u.key = n
                         }
-                      e.rule('val', (e) => {
+                      ;(e.rule('val', (e) => {
                         e.bo((e) => (e.node = void 0))
                           .open([
                             { s: [n], p: 'map', b: 1, g: 'map,json' },
@@ -4585,12 +4599,12 @@
                               { s: [o], r: 'elem', g: 'list,elem,json' },
                               { s: [l], b: 1, g: 'list,elem,json' },
                             ])
-                        })
+                        }))
                       const m = (e, n) => {
                         let r = e.u.key,
                           i = e.child.node
                         const l = e.u.prev
-                        ;(i = void 0 === i ? null : i),
+                        ;((i = void 0 === i ? null : i),
                           (e.u.list &&
                             n.cfg.safe.key &&
                             ('__proto__' === r || 'constructor' === r)) ||
@@ -4601,9 +4615,9 @@
                                   ? n.cfg.map.merge(l, i, e, n)
                                   : n.cfg.map.extend
                                     ? t(l, i)
-                                    : i)
+                                    : i))
                       }
-                      e.rule('val', (e) => {
+                      ;(e.rule('val', (e) => {
                         e.open(
                           [
                             {
@@ -4694,10 +4708,10 @@
                         }),
                         e.rule('list', (e) => {
                           e.bo((e) => {
-                            ;(e.n.dlist = 1 + (e.n.dlist ? e.n.dlist : 0)),
+                            ;((e.n.dlist = 1 + (e.n.dlist ? e.n.dlist : 0)),
                               e.prev.u.implist &&
                                 (e.node.push(e.prev.node),
-                                (e.prev.node = e.node))
+                                (e.prev.node = e.node)))
                           })
                             .open({ c: (e) => e.prev.u.implist, p: 'elem' })
                             .open(
@@ -4814,9 +4828,9 @@
                               ],
                               { delete: [-1, -2] },
                             )
-                        })
+                        }))
                     }
-                    Object.defineProperty(j, '__esModule', { value: !0 }),
+                    ;(Object.defineProperty(j, '__esModule', { value: !0 }),
                       (j.makeJSON = j.grammar = void 0),
                       (j.grammar = O),
                       (j.makeJSON = function (e) {
@@ -4843,10 +4857,10 @@
                           result: { fail: [void 0, NaN] },
                           tokenSet: { KEY: ['#ST', null, null, null] },
                         })
-                        return O(t), t
-                      })
+                        return (O(t), t)
+                      }))
                     var S = { exports: {} }
-                    Object.defineProperty(S.exports, '__esModule', {
+                    ;(Object.defineProperty(S.exports, '__esModule', {
                       value: !0,
                     }),
                       (S.exports.root =
@@ -4903,9 +4917,9 @@
                         get: function () {
                           return r.EMPTY
                         },
-                      })
+                      }))
                     const E = t({})
-                    Object.defineProperty(S.exports, 'JsonicError', {
+                    ;(Object.defineProperty(S.exports, 'JsonicError', {
                       enumerable: !0,
                       get: function () {
                         return E.JsonicError
@@ -4916,9 +4930,9 @@
                         get: function () {
                           return E.S
                         },
-                      })
+                      }))
                     const N = n({})
-                    Object.defineProperty(S.exports, 'makePoint', {
+                    ;(Object.defineProperty(S.exports, 'makePoint', {
                       enumerable: !0,
                       get: function () {
                         return N.makePoint
@@ -4995,7 +5009,7 @@
                         get: function () {
                           return x.makeParser
                         },
-                      })
+                      }))
                     const _ = {
                       tokenize: E.tokenize,
                       srcfmt: E.srcfmt,
@@ -5060,7 +5074,8 @@
                         },
                         o = (e) => {
                           if (null != e && E.S.object === typeof e) {
-                            ;(0, E.deep)(l, e), (0, E.configure)(s, r.config, l)
+                            ;((0, E.deep)(l, e),
+                              (0, E.configure)(s, r.config, l))
                             let t = s.internal().parser
                             r.parser = t.clone(l, r.config)
                           }
@@ -5134,24 +5149,24 @@
                         for (let n in t) void 0 === s[n] && (s[n] = t[n])
                         s.parent = t
                         let e = t.internal()
-                        ;(r.config = (0, E.deep)({}, e.config)),
+                        ;((r.config = (0, E.deep)({}, e.config)),
                           (0, E.configure)(s, r.config, l),
                           (0, E.assign)(s.token, r.config.t),
                           (r.plugins = [...e.plugins]),
-                          (r.parser = e.parser.clone(l, r.config))
+                          (r.parser = e.parser.clone(l, r.config)))
                       } else {
                         let e = { ...s, ...a }
-                        ;(r.config = (0, E.configure)(e, void 0, l)),
+                        ;((r.config = (0, E.configure)(e, void 0, l)),
                           (r.plugins = []),
                           (r.parser = (0, x.makeParser)(l, r.config)),
-                          !1 !== l.grammar$ && (0, j.grammar)(e)
+                          !1 !== l.grammar$ && (0, j.grammar)(e))
                       }
                       return s
                     }
                     let P
-                    ;(S.exports.util = _),
+                    ;((S.exports.util = _),
                       (S.exports.make = w),
-                      (S.exports.root = P)
+                      (S.exports.root = P))
                     let T = (S.exports.root = P = w('jsonic'))
                     return (
                       (S.exports.Jsonic = T),
@@ -5194,10 +5209,10 @@
                       ? window
                       : {},
               ),
-                (x = x.exports)
+                (x = x.exports))
               var k = {}
-              Object.defineProperty(k, '__esModule', { value: !0 }),
-                (k.Debug = void 0)
+              ;(Object.defineProperty(k, '__esModule', { value: !0 }),
+                (k.Debug = void 0))
               const { entries: b, tokenize: y } = x.util,
                 j = (e, t) => {
                   const { keys: n, values: r, entries: i } = e.util
@@ -5282,7 +5297,7 @@
                     },
                   }
                   const l = e.use.bind(e)
-                  ;(e.use = (...e) => {
+                  ;((e.use = (...e) => {
                     let n = l(...e)
                     return (
                       t.print &&
@@ -5314,7 +5329,7 @@
                             },
                           },
                         },
-                      })
+                      }))
                 }
               function O(e, t, n) {
                 const { entries: r } = e.util
@@ -5586,7 +5601,7 @@
                 }
               j.defaults = { print: !0, trace: !1 }
               var I = { exports: {} }
-              ;(function (e) {
+              ;((function (e) {
                 ;(function () {
                   !(function (t) {
                     'object' == typeof I.exports
@@ -5601,8 +5616,8 @@
                         ).JsonicDirective = t())
                   })(function () {
                     var e = {}
-                    Object.defineProperty(e, '__esModule', { value: !0 }),
-                      (e.Directive = void 0)
+                    ;(Object.defineProperty(e, '__esModule', { value: !0 }),
+                      (e.Directive = void 0))
                     const t = (e) =>
                         ('string' == typeof e
                           ? e.split(/\s*,\s*/)
@@ -5642,7 +5657,7 @@
                           throw new Error(
                             'Directive open token already in use: ' + a,
                           )
-                        ;(p[d] = a),
+                        ;((p[d] = a),
                           null == m && null != u && (p[h] = u),
                           e.options({
                             fixed: { token: p },
@@ -5664,9 +5679,9 @@
                                   ? null
                                   : `\nThe ${o} directive must start with the characters "${a}" and end\nwith the characters "${u}". The end characters "${u}" may not\nappear without the start characters "${a}" appearing first:\n"${a}...${u}".\n`,
                             },
-                          })
+                          }))
                         let g = e.token.CA
-                        ;(f = e.fixed(a)),
+                        ;((f = e.fixed(a)),
                           (m = null == u ? null : e.fixed(u)),
                           s.open.forEach((t) => {
                             e.rule(
@@ -5734,7 +5749,7 @@
                                 null != u ? [{ s: [m] }, { s: [g, m] }] : [],
                               ),
                           ),
-                          c && c(e, { OPEN: f, CLOSE: m, name: o })
+                          c && c(e, { OPEN: f, CLOSE: m, name: o }))
                       }
                     return (
                       (e.Directive = n),
@@ -5755,9 +5770,9 @@
                       ? window
                       : {},
               ),
-                (I = I.exports)
+                (I = I.exports))
               var M = {}
-              Object.defineProperty(M, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(M, '__esModule', { value: !0 }),
                 (M.makeJsonicProcessor = void 0),
                 (M.makeJsonicProcessor = function () {
                   return function (e, t, n, r, i) {
@@ -5765,9 +5780,9 @@
                       null != e.full &&
                       (e.val = i(e.src, r.meta))
                   }
-                })
+                }))
               var C = {}
-              Object.defineProperty(C, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(C, '__esModule', { value: !0 }),
                 (C.makeJavaScriptProcessor = void 0),
                 (C.makeJavaScriptProcessor = function (e) {
                   const t = (e) => {
@@ -5780,16 +5795,16 @@
                       )
                     })(e)
                   }
-                  return (t.opts = e), t
-                })
+                  return ((t.opts = e), t)
+                }))
               var R = {}
-              Object.defineProperty(R, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(R, '__esModule', { value: !0 }),
                 (R.meta =
                   R.TOP =
                   R.NONE =
                   R.resolvePathSpec =
                   R.MultiSource =
-                    void 0)
+                    void 0))
               R.NONE = ''
               const A = Symbol('TOP')
               R.TOP = A
@@ -5856,11 +5871,11 @@
                         t = h.path || A
                       if (null != t) {
                         let n = { tar: t, src: d, wen: Date.now() }
-                        ;(e[t] = e[t] || {}), (e[t][d] = n)
+                        ;((e[t] = e[t] || {}), (e[t][d] = n))
                       }
                     }
                     let g = { ...s, meta: m }
-                    ;(i[p.kind] || i[''])(p, t, n, g, e),
+                    ;((i[p.kind] || i[''])(p, t, n, g, e),
                       'pair' === u
                         ? s.cfg.map.merge
                           ? (n.parent.parent.node = s.cfg.map.merge(
@@ -5875,10 +5890,10 @@
                                 p.val,
                               ))
                             : Object.assign(n.parent.node, p.val)
-                        : (n.node = p.val)
+                        : (n.node = p.val))
                   },
                   custom: (e, { OPEN: t, name: n }) => {
-                    e.rule('val', (e) => {
+                    ;(e.rule('val', (e) => {
                       e.open({
                         s: [t],
                         c: (e) => 0 === e.d,
@@ -5894,7 +5909,7 @@
                           p: 'pair',
                           b: 1,
                         })
-                      })
+                      }))
                   },
                 }
                 e.use(I.Directive, o)
@@ -5910,7 +5925,7 @@
                 ),
                 Y = (0, M.makeJsonicProcessor)(),
                 J = (0, C.makeJavaScriptProcessor)()
-              ;(V.defaults = {
+              ;((V.defaults = {
                 markchar: '@',
                 processor: { '': D, jsonic: Y, jsc: Y, json: F, js: J },
                 implictExt: ['jsonic', 'jsc', 'json', 'js'],
@@ -5949,7 +5964,7 @@
                     found: !1,
                   }
                 }),
-                (R.meta = { name: 'MultiSource' })
+                (R.meta = { name: 'MultiSource' }))
               var B,
                 U,
                 K,
@@ -5964,7 +5979,7 @@
               function W(e) {
                 if (U === setTimeout) return setTimeout(e, 0)
                 if ((U === G || !U) && setTimeout)
-                  return (U = setTimeout), setTimeout(e, 0)
+                  return ((U = setTimeout), setTimeout(e, 0))
                 try {
                   return U(e, 0)
                 } catch (t) {
@@ -6004,14 +6019,14 @@
                   Q = !0
                   for (var t = X.length; t; ) {
                     for (H = X, X = []; ++ee < t; ) H && H[ee].run()
-                    ;(ee = -1), (t = X.length)
+                    ;((ee = -1), (t = X.length))
                   }
-                  ;(H = null),
+                  ;((H = null),
                     (Q = !1),
                     (function (e) {
                       if (K === clearTimeout) return clearTimeout(e)
                       if ((K === Z || !K) && clearTimeout)
-                        return (K = clearTimeout), clearTimeout(e)
+                        return ((K = clearTimeout), clearTimeout(e))
                       try {
                         K(e)
                       } catch (t) {
@@ -6021,19 +6036,19 @@
                           return K.call(this, e)
                         }
                       }
-                    })(e)
+                    })(e))
                 }
               }
               function re(e, t) {
-                ;(this.fun = e), (this.array = t)
+                ;((this.fun = e), (this.array = t))
               }
               function ie() {}
-              ;(z.nextTick = function (e) {
+              ;((z.nextTick = function (e) {
                 var t = new Array(arguments.length - 1)
                 if (arguments.length > 1)
                   for (var n = 1; n < arguments.length; n++)
                     t[n - 1] = arguments[n]
-                X.push(new re(e, t)), 1 !== X.length || Q || W(ne)
+                ;(X.push(new re(e, t)), 1 !== X.length || Q || W(ne))
               }),
                 (re.prototype.run = function () {
                   this.fun.apply(null, this.array)
@@ -6067,7 +6082,7 @@
                 }),
                 (z.umask = function () {
                   return 0
-                })
+                }))
               var le = {}
               ;(function (e) {
                 ;(function () {
@@ -6101,28 +6116,28 @@
                             if (r.length > 2) {
                               var a = r.lastIndexOf('/')
                               if (a !== r.length - 1) {
-                                ;-1 === a
+                                ;(-1 === a
                                   ? ((r = ''), (i = 0))
                                   : (i =
                                       (r = r.slice(0, a)).length -
                                       1 -
                                       r.lastIndexOf('/')),
                                   (l = o),
-                                  (s = 0)
+                                  (s = 0))
                                 continue
                               }
                             } else if (2 === r.length || 1 === r.length) {
-                              ;(r = ''), (i = 0), (l = o), (s = 0)
+                              ;((r = ''), (i = 0), (l = o), (s = 0))
                               continue
                             }
                           t &&
                             (r.length > 0 ? (r += '/..') : (r = '..'), (i = 2))
                         } else
-                          r.length > 0
+                          (r.length > 0
                             ? (r += '/' + e.slice(l + 1, o))
                             : (r = e.slice(l + 1, o)),
-                            (i = o - l - 1)
-                        ;(l = o), (s = 0)
+                            (i = o - l - 1))
+                        ;((l = o), (s = 0))
                       } else 46 === n && -1 !== s ? ++s : (s = -1)
                     }
                     return r
@@ -6135,12 +6150,12 @@
                         s--
                       ) {
                         var o
-                        s >= 0
+                        ;(s >= 0
                           ? (o = arguments[s])
                           : (void 0 === r && (r = e.cwd()), (o = r)),
                           t(o),
                           0 !== o.length &&
-                            ((i = o + '/' + i), (l = 47 === o.charCodeAt(0)))
+                            ((i = o + '/' + i), (l = 47 === o.charCodeAt(0))))
                       }
                       return (
                         (i = n(i, !l)),
@@ -6164,15 +6179,15 @@
                       )
                     },
                     isAbsolute: function (e) {
-                      return t(e), e.length > 0 && 47 === e.charCodeAt(0)
+                      return (t(e), e.length > 0 && 47 === e.charCodeAt(0))
                     },
                     join: function () {
                       if (0 === arguments.length) return '.'
                       for (var e, n = 0; n < arguments.length; ++n) {
                         var i = arguments[n]
-                        t(i),
+                        ;(t(i),
                           i.length > 0 &&
-                            (void 0 === e ? (e = i) : (e += '/' + i))
+                            (void 0 === e ? (e = i) : (e += '/' + i)))
                       }
                       return void 0 === e ? '.' : r.normalize(e)
                     },
@@ -6270,11 +6285,11 @@
                               break
                             }
                           } else
-                            -1 === a && ((s = !1), (a = r + 1)),
+                            (-1 === a && ((s = !1), (a = r + 1)),
                               o >= 0 &&
                                 (u === n.charCodeAt(o)
                                   ? -1 == --o && (l = r)
-                                  : ((o = -1), (l = a)))
+                                  : ((o = -1), (l = a))))
                         }
                         return (
                           i === l ? (l = a) : -1 === l && (l = e.length),
@@ -6304,12 +6319,12 @@
                       ) {
                         var a = e.charCodeAt(o)
                         if (47 !== a)
-                          -1 === i && ((l = !1), (i = o + 1)),
+                          (-1 === i && ((l = !1), (i = o + 1)),
                             46 === a
                               ? -1 === n
                                 ? (n = o)
                                 : 1 !== s && (s = 1)
-                              : -1 !== n && (s = -1)
+                              : -1 !== n && (s = -1))
                         else if (!l) {
                           r = o + 1
                           break
@@ -6353,12 +6368,12 @@
                         --c
                       )
                         if (47 !== (i = e.charCodeAt(c)))
-                          -1 === a && ((u = !1), (a = c + 1)),
+                          (-1 === a && ((u = !1), (a = c + 1)),
                             46 === i
                               ? -1 === s
                                 ? (s = c)
                                 : 1 !== p && (p = 1)
-                              : -1 !== s && (p = -1)
+                              : -1 !== s && (p = -1))
                         else if (!u) {
                           o = c + 1
                           break
@@ -6388,7 +6403,7 @@
                     win32: null,
                     posix: null,
                   }
-                  ;(r.posix = r), (le = r)
+                  ;((r.posix = r), (le = r))
                 }).call(this)
               }).call(this, B)
               var se = {}
@@ -6409,7 +6424,7 @@
                 }
                 return i
               }
-              Object.defineProperty(se, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(se, '__esModule', { value: !0 }),
                 (se.makeMemResolver = se.buildPotentials = void 0),
                 (se.makeMemResolver = function (e) {
                   return function (t, n, r, i) {
@@ -6440,26 +6455,26 @@
                       )
                       for (let n of t)
                         if (null != (l = e[n])) {
-                          ;(s.full = n),
+                          ;((s.full = n),
                             (s.kind = (n.match(/\.([^.]*)$/) || [
                               R.NONE,
                               R.NONE,
-                            ])[1])
+                            ])[1]))
                           break
                         }
                     }
                     return { ...s, src: l, found: null != l }
                   }
                 }),
-                (se.buildPotentials = oe)
+                (se.buildPotentials = oe))
               var ae = {},
                 ue =
                   (this && this.__importDefault) ||
                   function (e) {
                     return e && e.__esModule ? e : { default: e }
                   }
-              Object.defineProperty(ae, '__esModule', { value: !0 }),
-                (ae.makeFileResolver = void 0)
+              ;(Object.defineProperty(ae, '__esModule', { value: !0 }),
+                (ae.makeFileResolver = void 0))
               const ce = ue(q),
                 pe = ue(le)
               function de(e) {
@@ -6497,11 +6512,11 @@
                     a.push(...e)
                     for (let t of e)
                       if (null != (l = he(t))) {
-                        ;(o.full = t),
+                        ;((o.full = t),
                           (o.kind = (t.match(/\.([^.]*)$/) || [
                             R.NONE,
                             R.NONE,
-                          ])[1])
+                          ])[1]))
                         break
                       }
                   }
@@ -6514,8 +6529,8 @@
                   function (e) {
                     return e && e.__esModule ? e : { default: e }
                   }
-              Object.defineProperty(fe, '__esModule', { value: !0 }),
-                (fe.makePkgResolver = void 0)
+              ;(Object.defineProperty(fe, '__esModule', { value: !0 }),
+                (fe.makePkgResolver = void 0))
               const ge = me(q),
                 ve = me(le)
               function xe(e) {
@@ -6549,13 +6564,13 @@
                       u = []
                     if (null != a.path)
                       try {
-                        ;(a.full = n.resolve(a.path, t)),
+                        ;((a.full = n.resolve(a.path, t)),
                           null != a.full &&
                             ((s = ke(a.full)),
                             (a.kind = (a.full.match(/\.([^.]*)$/) || [
                               R.NONE,
                               R.NONE,
-                            ])[1]))
+                            ])[1])))
                       } catch (c) {
                         u.push(
                           ...((null == t ? void 0 : t.paths) ||
@@ -6571,11 +6586,11 @@
                         for (let r of e)
                           try {
                             if (((a.full = n.resolve(r, t)), null != a.full)) {
-                              ;(s = ke(a.full)),
+                              ;((s = ke(a.full)),
                                 (a.kind = (a.full.match(/\.([^.]*)$/) || [
                                   R.NONE,
                                   R.NONE,
-                                ])[1])
+                                ])[1]))
                               break
                             }
                           } catch (c) {
@@ -6592,7 +6607,7 @@
                 )
               }
               var be = { exports: {} }
-              ;(function (e) {
+              ;((function (e) {
                 ;(function () {
                   !(function (t) {
                     'object' == typeof be.exports
@@ -6607,7 +6622,7 @@
                         ).JsonicExpr = t())
                   })(function () {
                     var t = { exports: {} }
-                    ;(function (e) {
+                    ;((function (e) {
                       ;(function () {
                         !(function (n) {
                           'object' == typeof t.exports
@@ -6636,7 +6651,7 @@
                             },
                             t = e(function (e, t) {
                               'use strict'
-                              Object.defineProperty(t, '__esModule', {
+                              ;(Object.defineProperty(t, '__esModule', {
                                 value: !0,
                               }),
                                 (t.modlist =
@@ -6671,7 +6686,7 @@
                                   t.assign =
                                   t.S =
                                   t.JsonicError =
-                                    void 0)
+                                    void 0))
                               const i = n({}),
                                 l = (e) => (null == e ? [] : Object.keys(e))
                               t.keys = l
@@ -6683,8 +6698,8 @@
                               t.entries = o
                               const a = (e, ...t) =>
                                 Object.assign(null == e ? {} : e, ...t)
-                              ;(t.assign = a),
-                                (t.isarr = (e) => Array.isArray(e))
+                              ;((t.assign = a),
+                                (t.isarr = (e) => Array.isArray(e)))
                               const u = Object.defineProperty
                               t.defprop = u
                               const c = (e, t) =>
@@ -6695,7 +6710,7 @@
                                     : (e[r[0]] = r[1])
                                   let i = 2
                                   for (; void 0 !== r[i]; )
-                                    (e[r[i]] = r[i + 1]), (i += 2)
+                                    ((e[r[i]] = r[i + 1]), (i += 2))
                                   return e
                                 }, {})
                               t.omap = c
@@ -6744,7 +6759,7 @@
                               class d extends SyntaxError {
                                 constructor(e, t, n, r, i) {
                                   let l = b(e, (t = g({}, t)), n, r, i)
-                                  super(l.message), a(this, l), x(this)
+                                  ;(super(l.message), a(this, l), x(this))
                                 }
                                 toJSON() {
                                   return {
@@ -6803,7 +6818,7 @@
                                   )
                                     for (let n in i) e[n] = g(e[n], i[n])
                                   else
-                                    (e =
+                                    ((e =
                                       void 0 === i
                                         ? e
                                         : l
@@ -6819,7 +6834,7 @@
                                       (n = p.function === typeof e),
                                       (r =
                                         null != e &&
-                                        (p.object === typeof e || n))
+                                        (p.object === typeof e || n)))
                                 }
                                 return e
                               }
@@ -6993,7 +7008,7 @@
                                     f
                                   )
                                 } catch (a) {
-                                  return console.log(a), {}
+                                  return (console.log(a), {})
                                 }
                               }
                               function y(e) {
@@ -7072,7 +7087,7 @@
                                 for (let t in e) null == e[t] && delete e[t]
                                 return e
                               }
-                              ;(t.JsonicError = d),
+                              ;((t.JsonicError = d),
                                 (t.configure = function (e, t, n) {
                                   var r,
                                     i,
@@ -7125,9 +7140,9 @@
                                     oe,
                                     ae
                                   const ue = t || {}
-                                  ;(ue.t = ue.t || {}), (ue.tI = ue.tI || 1)
+                                  ;((ue.t = ue.t || {}), (ue.tI = ue.tI || 1))
                                   const ce = (e) => h(e, ue)
-                                  !1 !== n.standard$ &&
+                                  ;(!1 !== n.standard$ &&
                                     (ce('#BD'),
                                     ce('#ZZ'),
                                     ce('#UK'),
@@ -7196,7 +7211,7 @@
                                     c(ue.match.token, ([e, t]) => [
                                       e,
                                       ((t.tin$ = +e), t),
-                                    ])
+                                    ]))
                                   const pe = n.tokenSet
                                     ? Object.keys(n.tokenSet).reduce(
                                         (e, t) => (
@@ -7208,7 +7223,7 @@
                                         {},
                                       )
                                     : {}
-                                  ;(ue.tokenSet = ue.tokenSet || {}),
+                                  ;((ue.tokenSet = ue.tokenSet || {}),
                                     o(pe).map((e) => {
                                       let t = e[0],
                                         n = e[1]
@@ -7416,7 +7431,7 @@
                                       void 0 === G
                                         ? void 0
                                         : G.property),
-                                    })
+                                    }))
                                   let de = Object.keys(ue.fixed.token)
                                       .sort((e, t) => t.length - e.length)
                                       .map((e) => m(e))
@@ -7505,11 +7520,11 @@
                                                 i = t[1]
                                               if (i) {
                                                 let t = i.make(ue, n)
-                                                t &&
+                                                ;(t &&
                                                   ((t.matcher = r),
                                                   (t.make = i.make),
                                                   (t.order = i.order)),
-                                                  e.push(t)
+                                                  e.push(t))
                                               }
                                               return e
                                             }, [])
@@ -7590,7 +7605,7 @@
                                   return t.tokenSet[e]
                                 }),
                                 (t.mesc = function (e, t) {
-                                  return ((t = new String(e)).esc = !0), t
+                                  return (((t = new String(e)).esc = !0), t)
                                 }),
                                 (t.regexp = f),
                                 (t.escre = m),
@@ -7607,14 +7622,14 @@
                                       if (t === o.tin) {
                                         let t = {}
                                         throw (
-                                          (null != o.use && (t.use = o.use),
+                                          null != o.use && (t.use = o.use),
                                           new d(
                                             o.why || p.unexpected,
                                             t,
                                             o,
                                             e,
                                             n,
-                                          ))
+                                          )
                                         )
                                       }
                                       return o
@@ -7645,7 +7660,7 @@
                                     ) {
                                       let n = !1,
                                         r = null == t ? void 0 : t.log
-                                      ;(-1 === r || l) && ((r = 1), (n = !0)),
+                                      ;((-1 === r || l) && ((r = 1), (n = !0)),
                                         (e.log = (...t) => {
                                           if (n) {
                                             let n = t
@@ -7663,7 +7678,7 @@
                                             e.cfg.debug
                                               .get_console()
                                               .dir(t, { depth: r })
-                                        })
+                                        }))
                                     } else
                                       'function' == typeof t.log &&
                                         (e.log = t.log)
@@ -7719,10 +7734,10 @@
                                     let r,
                                       i = t.split('.')
                                     for (let t = 0; t < i.length; t++)
-                                      (r = i[t]),
+                                      ((r = i[t]),
                                         t < i.length - 1 &&
-                                          (e = e[r] = e[r] || {})
-                                    return void 0 !== n && (e[r] = n), e[r]
+                                          (e = e[r] = e[r] || {}))
+                                    return (void 0 !== n && (e[r] = n), e[r])
                                   } catch (i) {
                                     throw new Error(
                                       'Cannot ' +
@@ -7765,7 +7780,7 @@
                                               (e.length + t.move[r + 1]) %
                                               e.length,
                                             l = e[n]
-                                          e.splice(n, 1), e.splice(i, 0, l)
+                                          ;(e.splice(n, 1), e.splice(i, 0, l))
                                         }
                                       let n = e.filter((e) => null != e)
                                       n.length !== e.length &&
@@ -7793,14 +7808,14 @@
                                               /^Unexpected token (.) .*position\s+(\d+)/i,
                                             )
                                           if (p) {
-                                            ;(c = p[1]),
+                                            ;((c = p[1]),
                                               (s = parseInt(p[2])),
                                               (a = t
                                                 .substring(0, s)
                                                 .replace(
                                                   /[^\n]/g,
                                                   r.EMPTY,
-                                                ).length)
+                                                ).length))
                                             let e = s - 1
                                             for (
                                               ;
@@ -7867,11 +7882,11 @@
                                       }
                                     },
                                   }
-                                })
+                                }))
                             }),
                             n = e(function (e, n) {
                               'use strict'
-                              Object.defineProperty(n, '__esModule', {
+                              ;(Object.defineProperty(n, '__esModule', {
                                 value: !0,
                               }),
                                 (n.makeTextMatcher =
@@ -7886,11 +7901,11 @@
                                   n.makePoint =
                                   n.makeLex =
                                   n.makeNoToken =
-                                    void 0)
+                                    void 0))
                               const i = t({})
                               class l {
                                 constructor(e, t, n, r) {
-                                  ;(this.len = -1),
+                                  ;((this.len = -1),
                                     (this.sI = 0),
                                     (this.rI = 1),
                                     (this.cI = 1),
@@ -7898,7 +7913,7 @@
                                     (this.len = e),
                                     null != t && (this.sI = t),
                                     null != n && (this.rI = n),
-                                    null != r && (this.cI = r)
+                                    null != r && (this.cI = r))
                                 }
                                 toString() {
                                   return (
@@ -7922,7 +7937,7 @@
                               n.makePoint = s
                               class o {
                                 constructor(e, t, n, i, l, s, o) {
-                                  ;(this.isToken = !0),
+                                  ;((this.isToken = !0),
                                     (this.name = r.EMPTY),
                                     (this.tin = -1),
                                     (this.val = void 0),
@@ -7940,7 +7955,7 @@
                                     (this.cI = l.cI),
                                     (this.use = s),
                                     (this.why = o),
-                                    (this.len = null == i ? 0 : i.length)
+                                    (this.len = null == i ? 0 : i.length))
                                 }
                                 resolveVal(e, t) {
                                   return 'function' == typeof this.val
@@ -8006,15 +8021,15 @@
                                 ) {
                                   let l,
                                     s = e.cfg.fixed.token[n]
-                                  null != s && (l = e.token(s, void 0, n, r)),
+                                  ;(null != s && (l = e.token(s, void 0, n, r)),
                                     null != l &&
                                       ((r.sI += l.src.length),
                                       (r.cI += l.src.length),
-                                      null == t ? (i = l) : r.token.push(l))
+                                      null == t ? (i = l) : r.token.push(l)))
                                 }
                                 return i
                               }
-                              ;(n.makeToken = a),
+                              ;((n.makeToken = a),
                                 (n.makeNoToken = () =>
                                   a('', -1, void 0, r.EMPTY, s(-1))),
                                 (n.makeFixedMatcher = (e, t) => {
@@ -8131,7 +8146,7 @@
                                         lex: !!n.lex,
                                         eatline: !!n.eatline,
                                       }
-                                      return (e[t] = r), e
+                                      return ((e[t] = r), e)
                                     }, {}),
                                   }
                                   let r = e.comment.lex
@@ -8163,10 +8178,10 @@
                                           r < n && !e.line.chars[o[r]];
 
                                         )
-                                          u++, r++
+                                          (u++, r++)
                                         if (i.eatline)
                                           for (; r < n && e.line.chars[o[r]]; )
-                                            e.line.rowChars[o[r]] && a++, r++
+                                            (e.line.rowChars[o[r]] && a++, r++)
                                         let l = o.substring(0, r),
                                           c = t.token('#CM', void 0, l, s)
                                         return (
@@ -8187,10 +8202,10 @@
                                           !o.substring(l).startsWith(c);
 
                                         )
-                                          e.line.rowChars[o[l]] &&
+                                          (e.line.rowChars[o[l]] &&
                                             (a++, (u = 0)),
                                             u++,
-                                            l++
+                                            l++)
                                         if (o.substring(l).startsWith(c)) {
                                           if (((u += c.length), r.eatline))
                                             for (
@@ -8198,7 +8213,8 @@
                                               l < n && e.line.chars[o[l]];
 
                                             )
-                                              e.line.rowChars[o[l]] && a++, l++
+                                              (e.line.rowChars[o[l]] && a++,
+                                                l++)
                                           let i = o.substring(0, l + c.length),
                                             p = t.token('#CM', void 0, i, s)
                                           return (
@@ -8243,9 +8259,14 @@
                                           let u
                                           if (e.value.lex)
                                             if (void 0 !== (u = o[p]))
-                                              (n = r.token('#VL', u.val, p, l)),
+                                              ((n = r.token(
+                                                '#VL',
+                                                u.val,
+                                                p,
+                                                l,
+                                              )),
                                                 (l.sI += t),
-                                                (l.cI += t)
+                                                (l.cI += t))
                                             else
                                               for (let e in a) {
                                                 let t = a[e]
@@ -8275,8 +8296,8 @@
                                                         l,
                                                       )
                                                     }
-                                                    ;(l.sI += i.length),
-                                                      (l.cI += i.length)
+                                                    ;((l.sI += i.length),
+                                                      (l.cI += i.length))
                                                   }
                                                 }
                                               }
@@ -8376,7 +8397,7 @@
                                           }
                                         }
                                       }
-                                      return c && (n = u(t, n, s)), n
+                                      return (c && (n = u(t, n, s)), n)
                                     }
                                   }
                                 }),
@@ -8434,7 +8455,7 @@
                                           k = m,
                                           b = g,
                                           y = u[l]
-                                        ++m, ++v
+                                        ;(++m, ++v)
                                         let j,
                                           O = []
                                         for (; m < x; m++) {
@@ -8445,7 +8466,7 @@
                                             break
                                           }
                                           if (o === r) {
-                                            m++, v++
+                                            ;(m++, v++)
                                             let e = s[f[m]]
                                             if (null != e) O.push(e)
                                             else if ('x' === f[m]) {
@@ -8469,7 +8490,7 @@
                                                 )
                                               }
                                               let r = String.fromCharCode(e)
-                                              O.push(r), (m += 1), (v += 2)
+                                              ;(O.push(r), (m += 1), (v += 2))
                                             } else if ('u' === f[m]) {
                                               m++
                                               let e =
@@ -8494,9 +8515,9 @@
                                                 )
                                               }
                                               let s = String.fromCodePoint(l)
-                                              O.push(s),
+                                              ;(O.push(s),
                                                 (m += r - 1 + e),
-                                                (v += r + e)
+                                                (v += r + e))
                                             } else {
                                               if (!c) {
                                                 if (n.abandon) return
@@ -8516,7 +8537,7 @@
                                             d &&
                                             void 0 !== (j = p[f.charCodeAt(m)])
                                           )
-                                            O.push(j), v++
+                                            (O.push(j), v++)
                                           else {
                                             let r = m,
                                               s = l.charCodeAt(0),
@@ -8530,7 +8551,7 @@
                                               a !== o;
 
                                             )
-                                              (o = f.charCodeAt(++m)), v++
+                                              ((o = f.charCodeAt(++m)), v++)
                                             if ((v--, void 0 === j && o < 32)) {
                                               if (!y || !e.line.chars[f[m]]) {
                                                 if (n.abandon) return
@@ -8544,12 +8565,12 @@
                                                   )
                                                 )
                                               }
-                                              e.line.rowChars[f[m]] &&
+                                              ;(e.line.rowChars[f[m]] &&
                                                 (h.rI = ++g),
                                                 (v = 1),
-                                                O.push(f.substring(r, m + 1))
+                                                O.push(f.substring(r, m + 1)))
                                             } else
-                                              O.push(f.substring(r, m)), m--
+                                              (O.push(f.substring(r, m)), m--)
                                           }
                                         }
                                         if (f[m - 1] !== l || h.sI === m - 1) {
@@ -8566,7 +8587,10 @@
                                           h,
                                         )
                                         return (
-                                          (h.sI = m), (h.rI = g), (h.cI = v), S
+                                          (h.sI = m),
+                                          (h.rI = g),
+                                          (h.cI = v),
+                                          S
                                         )
                                       }
                                     }
@@ -8594,7 +8618,7 @@
                                       );
 
                                     )
-                                      (a += i[s[o]] ? 1 : 0), o++
+                                      ((a += i[s[o]] ? 1 : 0), o++)
                                     if (l.sI < o) {
                                       let e = s.substring(l.sI, o)
                                       const n = t.token('#LN', void 0, e, l)
@@ -8616,23 +8640,23 @@
                                     let { chars: n } = e.space,
                                       { pnt: r, src: i } = t,
                                       { sI: l, cI: s } = r
-                                    for (; n[i[l]]; ) l++, s++
+                                    for (; n[i[l]]; ) (l++, s++)
                                     if (r.sI < l) {
                                       let e = i.substring(r.sI, l)
                                       const n = t.token('#SP', void 0, e, r)
-                                      return (r.sI += e.length), (r.cI = s), n
+                                      return ((r.sI += e.length), (r.cI = s), n)
                                     }
-                                  })
+                                  }))
                               class c {
                                 constructor(e) {
-                                  ;(this.src = r.EMPTY),
+                                  ;((this.src = r.EMPTY),
                                     (this.ctx = {}),
                                     (this.cfg = {}),
                                     (this.pnt = s(-1)),
                                     (this.ctx = e),
                                     (this.src = e.src()),
                                     (this.cfg = e.cfg),
-                                    (this.pnt = s(this.src.length))
+                                    (this.pnt = s(this.src.length)))
                                 }
                                 token(e, t, n, r, l, s) {
                                   let o, u
@@ -8654,8 +8678,8 @@
                                   else if (0 < o.token.length)
                                     l = o.token.shift()
                                   else if (o.len <= o.sI)
-                                    (o.end = this.token('#ZZ', void 0, '', o)),
-                                      (l = o.end)
+                                    ((o.end = this.token('#ZZ', void 0, '', o)),
+                                      (l = o.end))
                                   else {
                                     try {
                                       for (let t of this.cfg.lex.match)
@@ -8727,7 +8751,9 @@
                               n.makeLex = (...e) => new c(...e)
                             }),
                             r = {}
-                          Object.defineProperty(r, '__esModule', { value: !0 }),
+                          ;(Object.defineProperty(r, '__esModule', {
+                            value: !0,
+                          }),
                             (r.STRING =
                               r.INSPECT =
                               r.EMPTY =
@@ -8744,10 +8770,12 @@
                             (r.INSPECT = Symbol.for(
                               'nodejs.util.inspect.custom',
                             )),
-                            (r.STRING = 'string')
+                            (r.STRING = 'string'))
                           var i = {}
-                          Object.defineProperty(i, '__esModule', { value: !0 }),
-                            (i.defaults = void 0)
+                          ;(Object.defineProperty(i, '__esModule', {
+                            value: !0,
+                          }),
+                            (i.defaults = void 0))
                           const l = n({}),
                             s = {
                               safe: { key: !0 },
@@ -8926,15 +8954,17 @@
                             }
                           i.defaults = s
                           var o = {}
-                          Object.defineProperty(o, '__esModule', { value: !0 }),
+                          ;(Object.defineProperty(o, '__esModule', {
+                            value: !0,
+                          }),
                             (o.makeRuleSpec =
                               o.makeNoRule =
                               o.makeRule =
-                                void 0)
+                                void 0))
                           const a = t({})
                           class u {
                             constructor(e, t, n) {
-                              ;(this.i = -1),
+                              ;((this.i = -1),
                                 (this.name = r.EMPTY),
                                 (this.node = null),
                                 (this.state = r.OPEN),
@@ -8964,7 +8994,7 @@
                                 (this.bo = null != e.def.bo),
                                 (this.ao = null != e.def.ao),
                                 (this.bc = null != e.def.bc),
-                                (this.ac = null != e.def.ac)
+                                (this.ac = null != e.def.ac))
                             }
                             process(e, t) {
                               return this.spec.process(this, e, t, this.state)
@@ -8994,13 +9024,13 @@
                             }
                           }
                           const c = (...e) => new u(...e)
-                          ;(o.makeRule = c),
-                            (o.makeNoRule = (e) => c(g(e.cfg, {}), e))
+                          ;((o.makeRule = c),
+                            (o.makeNoRule = (e) => c(g(e.cfg, {}), e)))
                           class p {
                             constructor() {
-                              ;(this.p = r.EMPTY),
+                              ;((this.p = r.EMPTY),
                                 (this.r = r.EMPTY),
-                                (this.b = 0)
+                                (this.b = 0))
                             }
                           }
                           const d = (...e) => new p(...e),
@@ -9008,7 +9038,7 @@
                             f = d()
                           class m {
                             constructor(e, t) {
-                              ;(this.name = r.EMPTY),
+                              ;((this.name = r.EMPTY),
                                 (this.def = {
                                   open: [],
                                   close: [],
@@ -9025,7 +9055,7 @@
                                 )),
                                 (this.def.close = (this.def.close || []).filter(
                                   (e) => null != e,
-                                ))
+                                )))
                               for (let n of [
                                 ...this.def.open,
                                 ...this.def.close,
@@ -9062,7 +9092,7 @@
                             }
                             action(e, t, n, r) {
                               let i = this.def[t + n]
-                              return e ? i.push(r) : i.unshift(r), this
+                              return (e ? i.push(r) : i.unshift(r), this)
                             }
                             bo(e, t) {
                               return this.action(
@@ -9108,8 +9138,8 @@
                               )
                             }
                             norm() {
-                              this.def.open.map((e) => v(e)),
-                                this.def.close.map((e) => v(e))
+                              ;(this.def.open.map((e) => v(e)),
+                                this.def.close.map((e) => v(e)))
                               const e = []
                               function t(e, t, n) {
                                 return (
@@ -9118,7 +9148,7 @@
                                     function (e, n) {
                                       if (n.s && n.s[t]) {
                                         let r = [...new Set(e.concat(n.s[t]))]
-                                        ;(e.length = 0), e.push(...r)
+                                        ;((e.length = 0), e.push(...r))
                                       }
                                       return e
                                     },
@@ -9163,7 +9193,7 @@
                                 0 < p.length
                                   ? (function (e, t, n, i, l) {
                                       let s = h
-                                      ;(s.b = 0),
+                                      ;((s.b = 0),
                                         (s.p = r.EMPTY),
                                         (s.r = r.EMPTY),
                                         (s.n = void 0),
@@ -9171,7 +9201,7 @@
                                         (s.a = void 0),
                                         (s.u = void 0),
                                         (s.k = void 0),
-                                        (s.e = void 0)
+                                        (s.e = void 0))
                                       let o = null,
                                         u = 0,
                                         c = !0,
@@ -9180,7 +9210,7 @@
                                       function f(e, t, r, i) {
                                         let s
                                         do {
-                                          ;(s = n.next(e, t, r, i)), l.tC++
+                                          ;((s = n.next(e, t, r, i)), l.tC++)
                                         } while (d[s.tin])
                                         return s
                                       }
@@ -9206,11 +9236,11 @@
                                               l.NOTOKEN !== l.t1
                                                 ? l.t1
                                                 : (l.t1 = f(i, o, u, 1))).tin
-                                            ;(r = !0),
+                                            ;((r = !0),
                                               (c = !!(
                                                 o.S1[(e / 31) | 0] &
                                                 ((1 << ((e % 31) - 1)) | p)
-                                              ))
+                                              )))
                                           }
                                         }
                                         if (
@@ -9229,7 +9259,7 @@
                                           break
                                         o = null
                                       }
-                                      c || (s.e = l.t0),
+                                      ;(c || (s.e = l.t0),
                                         o &&
                                           ((s.n = null != o.n ? o.n : s.n),
                                           (s.h = null != o.h ? o.h : s.h),
@@ -9256,7 +9286,7 @@
                                               ? 'number' == typeof o.b
                                                 ? o.b
                                                 : o.b(i, l, s)
-                                              : s.b))
+                                              : s.b)))
                                       let g = u < t.length
                                       return (
                                         l.log &&
@@ -9307,12 +9337,12 @@
                                     t,
                                     { is_open: l },
                                   )
-                                ;(s = e.child = c(n, t, e.node)),
+                                ;((s = e.child = c(n, t, e.node)),
                                   (s.parent = e),
                                   (s.n = { ...e.n }),
                                   0 < Object.keys(e.k).length &&
                                     (s.k = { ...e.k }),
-                                  (o += 'P`' + m.p + '`')
+                                  (o += 'P`' + m.p + '`'))
                               } else if (m.r) {
                                 let n = t.rsm[m.r]
                                 if (!n)
@@ -9322,13 +9352,13 @@
                                     t,
                                     { is_open: l },
                                   )
-                                ;(s = c(n, t, e.node)),
+                                ;((s = c(n, t, e.node)),
                                   (s.parent = e.parent),
                                   (s.prev = e),
                                   (s.n = { ...e.n }),
                                   0 < Object.keys(e.k).length &&
                                     (s.k = { ...e.k }),
-                                  (o += 'R`' + m.r + '`')
+                                  (o += 'R`' + m.r + '`'))
                               } else l || (s = t.rs[--t.rsI] || t.NORULE)
                               let g = l
                                 ? e.ao
@@ -9347,9 +9377,9 @@
                                   )
                                     return this.bad(n, e, t, { is_open: l })
                               }
-                              ;(s.why = o),
+                              ;((s.why = o),
                                 t.log && t.log(a.S.node, t, e, n, s),
-                                r.OPEN === e.state && (e.state = r.CLOSE)
+                                r.OPEN === e.state && (e.state = r.CLOSE))
                               let v = e[l ? 'os' : 'cs'] - (m.b || 0)
                               return (
                                 1 === v
@@ -9409,7 +9439,7 @@
                                 i = t([e.s[0]]),
                                 l = t([e.s[1]]),
                                 s = e
-                              ;(s.S0 =
+                              ;((s.S0 =
                                 0 < i.length
                                   ? new Array(
                                       Math.max(
@@ -9430,7 +9460,7 @@
                                         .fill(null)
                                         .map((e, t) => t)
                                         .map((e) => r(n(l, e), e))
-                                    : null)
+                                    : null))
                             } else e.s = null
                             return (
                               e.p || (e.p = null),
@@ -9441,14 +9471,16 @@
                           }
                           o.makeRuleSpec = g
                           var x = {}
-                          Object.defineProperty(x, '__esModule', { value: !0 }),
+                          ;(Object.defineProperty(x, '__esModule', {
+                            value: !0,
+                          }),
                             (x.makeParser =
                               x.makeRuleSpec =
                               x.makeRule =
-                                void 0)
+                                void 0))
                           const k = t({}),
                             b = n({})
-                          Object.defineProperty(x, 'makeRule', {
+                          ;(Object.defineProperty(x, 'makeRule', {
                             enumerable: !0,
                             get: function () {
                               return o.makeRule
@@ -9459,12 +9491,12 @@
                               get: function () {
                                 return o.makeRuleSpec
                               },
-                            })
+                            }))
                           class y {
                             constructor(e, t) {
-                              ;(this.rsm = {}),
+                              ;((this.rsm = {}),
                                 (this.options = e),
-                                (this.cfg = t)
+                                (this.cfg = t))
                             }
                             rule(e, t) {
                               if (null == e) return this.rsm
@@ -9558,13 +9590,13 @@
                                   u.cfg.rule.maxmul,
                                 m = 0
                               for (; c !== h && m < f; )
-                                (u.kI = m),
+                                ((u.kI = m),
                                   (u.rule = h),
                                   u.log && u.log('', u.kI + ':'),
                                   u.sub.rule && u.sub.rule.map((e) => e(h, u)),
                                   (h = h.process(u, p)),
                                   u.log && u.log(k.S.stack, u, h, p),
-                                  m++
+                                  m++)
                               if (s.tin !== p.next(h).tin)
                                 throw new k.JsonicError(
                                   k.S.unexpected,
@@ -9623,14 +9655,14 @@
                               { VAL: p, KEY: d } = e.tokenSet,
                               h = (e, t) => {
                                 if (!t.cfg.rule.finish)
-                                  return (t.t0.src = 'END_OF_SOURCE'), t.t0
+                                  return ((t.t0.src = 'END_OF_SOURCE'), t.t0)
                               },
                               f = (e) => {
                                 const t = e.o0,
                                   n = u === t.tin || a === t.tin ? t.val : t.src
                                 e.u.key = n
                               }
-                            e.rule('val', (e) => {
+                            ;(e.rule('val', (e) => {
                               e.bo((e) => (e.node = void 0))
                                 .open([
                                   { s: [n], p: 'map', b: 1, g: 'map,json' },
@@ -9711,12 +9743,12 @@
                                     { s: [o], r: 'elem', g: 'list,elem,json' },
                                     { s: [l], b: 1, g: 'list,elem,json' },
                                   ])
-                              })
+                              }))
                             const m = (e, n) => {
                               let r = e.u.key,
                                 i = e.child.node
                               const l = e.u.prev
-                              ;(i = void 0 === i ? null : i),
+                              ;((i = void 0 === i ? null : i),
                                 (e.u.list &&
                                   n.cfg.safe.key &&
                                   ('__proto__' === r || 'constructor' === r)) ||
@@ -9727,9 +9759,9 @@
                                         ? n.cfg.map.merge(l, i, e, n)
                                         : n.cfg.map.extend
                                           ? t(l, i)
-                                          : i)
+                                          : i))
                             }
-                            e.rule('val', (e) => {
+                            ;(e.rule('val', (e) => {
                               e.open(
                                 [
                                   {
@@ -9826,11 +9858,11 @@
                               }),
                               e.rule('list', (e) => {
                                 e.bo((e) => {
-                                  ;(e.n.dlist =
+                                  ;((e.n.dlist =
                                     1 + (e.n.dlist ? e.n.dlist : 0)),
                                     e.prev.u.implist &&
                                       (e.node.push(e.prev.node),
-                                      (e.prev.node = e.node))
+                                      (e.prev.node = e.node)))
                                 })
                                   .open({
                                     c: (e) => e.prev.u.implist,
@@ -9973,9 +10005,11 @@
                                     ],
                                     { delete: [-1, -2] },
                                   )
-                              })
+                              }))
                           }
-                          Object.defineProperty(j, '__esModule', { value: !0 }),
+                          ;(Object.defineProperty(j, '__esModule', {
+                            value: !0,
+                          }),
                             (j.makeJSON = j.grammar = void 0),
                             (j.grammar = O),
                             (j.makeJSON = function (e) {
@@ -10002,10 +10036,10 @@
                                 result: { fail: [void 0, NaN] },
                                 tokenSet: { KEY: ['#ST', null, null, null] },
                               })
-                              return O(t), t
-                            })
+                              return (O(t), t)
+                            }))
                           var S = { exports: {} }
-                          Object.defineProperty(S.exports, '__esModule', {
+                          ;(Object.defineProperty(S.exports, '__esModule', {
                             value: !0,
                           }),
                             (S.exports.root =
@@ -10062,9 +10096,9 @@
                               get: function () {
                                 return r.EMPTY
                               },
-                            })
+                            }))
                           const E = t({})
-                          Object.defineProperty(S.exports, 'JsonicError', {
+                          ;(Object.defineProperty(S.exports, 'JsonicError', {
                             enumerable: !0,
                             get: function () {
                               return E.JsonicError
@@ -10075,9 +10109,9 @@
                               get: function () {
                                 return E.S
                               },
-                            })
+                            }))
                           const N = n({})
-                          Object.defineProperty(S.exports, 'makePoint', {
+                          ;(Object.defineProperty(S.exports, 'makePoint', {
                             enumerable: !0,
                             get: function () {
                               return N.makePoint
@@ -10182,7 +10216,7 @@
                               get: function () {
                                 return x.makeParser
                               },
-                            })
+                            }))
                           const _ = {
                             tokenize: E.tokenize,
                             srcfmt: E.srcfmt,
@@ -10247,8 +10281,8 @@
                               },
                               o = (e) => {
                                 if (null != e && E.S.object === typeof e) {
-                                  ;(0, E.deep)(l, e),
-                                    (0, E.configure)(s, r.config, l)
+                                  ;((0, E.deep)(l, e),
+                                    (0, E.configure)(s, r.config, l))
                                   let t = s.internal().parser
                                   r.parser = t.clone(l, r.config)
                                 }
@@ -10330,24 +10364,24 @@
                               for (let n in t) void 0 === s[n] && (s[n] = t[n])
                               s.parent = t
                               let e = t.internal()
-                              ;(r.config = (0, E.deep)({}, e.config)),
+                              ;((r.config = (0, E.deep)({}, e.config)),
                                 (0, E.configure)(s, r.config, l),
                                 (0, E.assign)(s.token, r.config.t),
                                 (r.plugins = [...e.plugins]),
-                                (r.parser = e.parser.clone(l, r.config))
+                                (r.parser = e.parser.clone(l, r.config)))
                             } else {
                               let e = { ...s, ...a }
-                              ;(r.config = (0, E.configure)(e, void 0, l)),
+                              ;((r.config = (0, E.configure)(e, void 0, l)),
                                 (r.plugins = []),
                                 (r.parser = (0, x.makeParser)(l, r.config)),
-                                !1 !== l.grammar$ && (0, j.grammar)(e)
+                                !1 !== l.grammar$ && (0, j.grammar)(e))
                             }
                             return s
                           }
                           let P
-                          ;(S.exports.util = _),
+                          ;((S.exports.util = _),
                             (S.exports.make = w),
-                            (S.exports.root = P)
+                            (S.exports.root = P))
                           let T = (S.exports.root = P = w('jsonic'))
                           return (
                             (S.exports.Jsonic = T),
@@ -10390,10 +10424,10 @@
                             ? window
                             : {},
                     ),
-                      (t = t.exports)
+                      (t = t.exports))
                     var n = {}
-                    Object.defineProperty(n, '__esModule', { value: !0 }),
-                      (n.testing = n.evaluate = n.Expr = void 0)
+                    ;(Object.defineProperty(n, '__esModule', { value: !0 }),
+                      (n.testing = n.evaluate = n.Expr = void 0))
                     const { omap: r, entries: i, values: l } = t.util,
                       s = {}
                     let o = function (e, t) {
@@ -10451,7 +10485,9 @@
                         w = r(_, ([e, t]) => [void 0, void 0, t.ctin, t])
                       let P = Object.values({ ..._, ...w }).reduce(
                           (e, t) => (
-                            (e[t.otkn] = t.osrc), (e[t.ctkn] = t.csrc), e
+                            (e[t.otkn] = t.osrc),
+                            (e[t.ctkn] = t.csrc),
+                            e
                           ),
                           {},
                         ),
@@ -10488,8 +10524,8 @@
                         Z = e.token.VL,
                         W = e.token.ZZ,
                         H = [q, z, G, Z]
-                      e.rule('val', (t) => {
-                        Y &&
+                      ;(e.rule('val', (t) => {
+                        ;(Y &&
                           A.includes(e.token.CL) &&
                           (t.def.open.find((e) => e.g.includes('pair')).c = (
                             e,
@@ -10601,7 +10637,7 @@
                                 b: 1,
                                 g: 'expr,list,val,imp,space,top',
                               },
-                            ])
+                            ]))
                       }),
                         e.rule('list', (e) => {
                           e.bo(!1, (e) => {
@@ -10621,11 +10657,11 @@
                         }),
                         e.rule('map', (e) => {
                           e.bo(!1, (...e) => {
-                            ;(e[0].n.expr = 0),
+                            ;((e[0].n.expr = 0),
                               (e[0].n.expr_prefix = 0),
                               (e[0].n.expr_suffix = 0),
                               (e[0].n.expr_paren = 0),
-                              (e[0].n.expr_ternary = 0)
+                              (e[0].n.expr_ternary = 0))
                           }).close([
                             J && {
                               s: [L],
@@ -10813,7 +10849,7 @@
                         }),
                         e.rule('paren', (e) => {
                           e.bo((e) => {
-                            ;(e.n.dmap = 0), (e.n.dlist = 0), (e.n.pk = 0)
+                            ;((e.n.dmap = 0), (e.n.dlist = 0), (e.n.pk = 0))
                           })
                             .open([
                               J
@@ -10872,7 +10908,7 @@
                                 g: 'expr,expr-ternary,open',
                                 a: (e) => {
                                   let t = u(e.o0, N)
-                                  ;(e.u.expr_ternary_name = t.name),
+                                  ;((e.u.expr_ternary_name = t.name),
                                     x(e.prev.node)
                                       ? (e.node = c(
                                           e.prev.node,
@@ -10885,17 +10921,17 @@
                                       e.n.expr_paren ||
                                       e.prev.u.expr_ternary_paren ||
                                       0),
-                                    (e.n.expr_paren = 0)
+                                    (e.n.expr_paren = 0))
                                 },
                               },
                               {
                                 p: 'val',
                                 c: (e) => 2 === e.prev.u.expr_ternary_step,
                                 a: (e) => {
-                                  ;(e.u.expr_ternary_step =
+                                  ;((e.u.expr_ternary_step =
                                     e.prev.u.expr_ternary_step),
                                     (e.n.expr_paren = e.u.expr_ternary_paren =
-                                      e.prev.u.expr_ternary_paren)
+                                      e.prev.u.expr_ternary_paren))
                                 },
                                 g: 'expr,expr-ternary,step',
                               },
@@ -10907,8 +10943,8 @@
                                   e.u.expr_ternary_name === N[e.c0.tin].name,
                                 r: 'ternary',
                                 a: (e) => {
-                                  e.u.expr_ternary_step++,
-                                    e.node.push(e.child.node)
+                                  ;(e.u.expr_ternary_step++,
+                                    e.node.push(e.child.node))
                                 },
                                 g: 'expr,expr-ternary,step',
                               },
@@ -10958,7 +10994,7 @@
                                 g: 'expr,expr-ternary,close',
                               },
                             ])
-                          })
+                          }))
                     }
                     function a(e, t, n) {
                       let r = t.node
@@ -10978,7 +11014,7 @@
                       r[0] = t
                       let i = 0
                       for (; i < n.length; i++) r[i + 1] = n[i]
-                      return (r.length = i + 1), r
+                      return ((r.length = i + 1), r)
                     }
                     function p(e) {
                       return [...e]
@@ -10986,7 +11022,7 @@
                     function d(e) {
                       return function (t) {
                         let n = 'expr_paren_depth_' + u(t.o0, e).name
-                        ;(t.u[n] = t.n[n] = 1), (t.node = void 0)
+                        ;((t.u[n] = t.n[n] = 1), (t.node = void 0))
                       }
                     }
                     function h(e) {
@@ -10997,7 +11033,7 @@
                         let r = 'expr_paren_depth_' + n.name
                         if (t.u[r] === t.n[r]) {
                           const e = t.node
-                          ;(t.node = [n]),
+                          ;((t.node = [n]),
                             void 0 !== e && (t.node[1] = e),
                             t.parent.prev.u.paren_preval &&
                               (v('paren', t.parent.prev.node)
@@ -11008,7 +11044,7 @@
                                     t.node[1],
                                   ))
                                 : (t.node.splice(1, 0, t.parent.prev.node),
-                                  (t.parent.prev.node = t.node)))
+                                  (t.parent.prev.node = t.node))))
                         }
                       }
                     }
@@ -11041,10 +11077,10 @@
                       )
                     }
                     function g(e, t, n) {
-                      ;(e.n.expr_paren = e.prev.u.expr_ternary_paren),
+                      ;((e.n.expr_paren = e.prev.u.expr_ternary_paren),
                         e.node.push(e.child.node),
                         'elem' === n.r &&
-                          ((e.node[0] = p(e.node)), (e.node.length = 1))
+                          ((e.node[0] = p(e.node)), (e.node.length = 1)))
                     }
                     function v(e, t) {
                       return null != t && x(t) && !0 === t[0][e]
@@ -11059,9 +11095,9 @@
                           let o = '',
                             a = -1,
                             u = ''
-                          ;(u = 'string' == typeof l.src ? l.src : l.src[0]),
+                          ;((u = 'string' == typeof l.src ? l.src : l.src[0]),
                             (a = t(u) || e('#E' + u)),
-                            (o = e(a))
+                            (o = e(a)))
                           let c = (n[a] = {
                             src: u,
                             left: l.left || Number.MIN_SAFE_INTEGER,
@@ -11088,16 +11124,16 @@
                           })
                           if (c.ternary) {
                             let r = l.src
-                            ;(c.src = r[0]), (c.use.ternary = { opI: 0 })
+                            ;((c.src = r[0]), (c.use.ternary = { opI: 0 }))
                             let i = { ...c }
-                            ;(u = l.src[1]),
+                            ;((u = l.src[1]),
                               (a = t(u) || e('#E' + u)),
                               (o = e(a)),
                               (i.src = u),
                               (i.use = { ternary: { opI: 1 } }),
                               (i.tkn = o),
                               (i.tin = a),
-                              (n[a] = i)
+                              (n[a] = i))
                           }
                           return n
                         }, {})
@@ -11136,7 +11172,7 @@
                             )
                           : t
                     }
-                    ;(n.Expr = o),
+                    ;((n.Expr = o),
                       (o.defaults = {
                         op: {
                           positive: { prefix: !0, right: 14e3, src: '+' },
@@ -11174,12 +11210,12 @@
                           plain: { paren: !0, osrc: '(', csrc: ')' },
                         },
                       }),
-                      (n.evaluate = y)
+                      (n.evaluate = y))
                     const j = {
                       prattify: b,
                       opify: (e) => ((e.OP_MARK = s), e),
                     }
-                    return (n.testing = j), n
+                    return ((n.testing = j), n)
                   })
                 }).call(this)
               }).call(
@@ -11192,9 +11228,9 @@
                       ? window
                       : {},
               ),
-                (be = be.exports)
+                (be = be.exports))
               var ye = { exports: {} }
-              ;(function (e) {
+              ;((function (e) {
                 ;(function () {
                   !(function (t) {
                     'object' == typeof ye.exports
@@ -11209,10 +11245,10 @@
                         ).JsonicPath = t())
                   })(function () {
                     var e = {}
-                    Object.defineProperty(e, '__esModule', { value: !0 }),
-                      (e.Path = void 0)
+                    ;(Object.defineProperty(e, '__esModule', { value: !0 }),
+                      (e.Path = void 0))
                     const t = (e, t) => {
-                      e.rule('val', (e) => {
+                      ;(e.rule('val', (e) => {
                         e.bo((e, t) => {
                           var n, r
                           0 === e.d &&
@@ -11252,9 +11288,9 @@
                               (e.child.k.key = e.k.index),
                               (e.child.k.index = e.k.index))
                           })
-                        })
+                        }))
                     }
-                    return (e.Path = t), (t.defaults = {}), e
+                    return ((e.Path = t), (t.defaults = {}), e)
                   })
                 }).call(this)
               }).call(
@@ -11267,13 +11303,13 @@
                       ? window
                       : {},
               ),
-                (ye = ye.exports)
+                (ye = ye.exports))
               var je = {}
-              Object.defineProperty(je, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(je, '__esModule', { value: !0 }),
                 (je.DONE = void 0),
-                (je.DONE = -1)
+                (je.DONE = -1))
               var Oe = {}
-              Object.defineProperty(Oe, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(Oe, '__esModule', { value: !0 }),
                 (Oe.descErr = function e(t) {
                   var n, r, i
                   if (null == t ? void 0 : t.isNil) {
@@ -11320,11 +11356,11 @@
                     return t
                   }
                   return t.map((t) => e(t))
-                })
+                }))
               var Se = {}
-              Object.defineProperty(Se, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(Se, '__esModule', { value: !0 }),
                 (Se.util = Se.Context = Se.Lang = Se.Nil = void 0),
-                (Se.Aontu = we)
+                (Se.Aontu = we))
               const Ee = t({})
               Object.defineProperty(Se, 'Lang', {
                 enumerable: !0,
@@ -11347,7 +11383,7 @@
                   l = new Ne.Unify(i),
                   s = l.res,
                   o = l.err
-                return (0, Oe.descErr)(l.err), (s.deps = r), (s.err = o), s
+                return ((0, Oe.descErr)(l.err), (s.deps = r), (s.err = o), s)
               }
               Object.defineProperty(Se, 'Nil', {
                 enumerable: !0,
@@ -11364,7 +11400,7 @@
                 }),
                 parse: (e, t) => new Ee.Lang(e).parse(e.src, { deps: t.deps }),
               }
-              return (Se.util = Pe), (Se.default = we), Se
+              return ((Se.util = Pe), (Se.default = we), Se)
             })
           }).call(this)
         }).call(
@@ -16616,8 +16652,8 @@ b: c2: {n:2}
               }
             })(function () {
               var e = {}
-              Object.defineProperty(e, '__esModule', { value: !0 }),
-                (e.Directive = void 0)
+              ;(Object.defineProperty(e, '__esModule', { value: !0 }),
+                (e.Directive = void 0))
               const n = (e) =>
                   ('string' == typeof e ? e.split(/\s*,\s*/) : e || []).filter(
                     (e) => null != e && '' !== e,
@@ -16654,7 +16690,7 @@ b: c2: {n:2}
                     v = null == u ? null : e.fixed(u)
                   if (null != h)
                     throw new Error('Directive open token already in use: ' + d)
-                  ;(a[f] = d),
+                  ;((a[f] = d),
                     null == v && null != u && (a[p] = u),
                     e.options({
                       fixed: { token: a },
@@ -16676,9 +16712,9 @@ b: c2: {n:2}
                             ? null
                             : `\nThe ${r} directive must start with the characters "${d}" and end\nwith the characters "${u}". The end characters "${u}" may not\nappear without the start characters "${d}" appearing first:\n"${d}...${u}".\n`,
                       },
-                    })
+                    }))
                   let m = e.token.CA
-                  ;(h = e.fixed(d)),
+                  ;((h = e.fixed(d)),
                     (v = null == u ? null : e.fixed(u)),
                     s.open.forEach((n) => {
                       e.rule(
@@ -16744,7 +16780,7 @@ b: c2: {n:2}
                         })
                         .close(null != u ? [{ s: [v] }, { s: [m, v] }] : []),
                     ),
-                    c && c(e, { OPEN: h, CLOSE: v, name: r })
+                    c && c(e, { OPEN: h, CLOSE: v, name: r }))
                 }
               return (
                 (e.Directive = l),
@@ -16788,7 +16824,7 @@ b: c2: {n:2}
               }
             })(function () {
               var e = { exports: {} }
-              ;(function (t) {
+              ;((function (t) {
                 ;(function () {
                   !(function (n) {
                     'object' == typeof e.exports
@@ -16813,7 +16849,7 @@ b: c2: {n:2}
                       },
                       t = e(function (e, t) {
                         'use strict'
-                        Object.defineProperty(t, '__esModule', { value: !0 }),
+                        ;(Object.defineProperty(t, '__esModule', { value: !0 }),
                           (t.modlist =
                             t.findTokenSet =
                             t.values =
@@ -16846,7 +16882,7 @@ b: c2: {n:2}
                             t.assign =
                             t.S =
                             t.JsonicError =
-                              void 0)
+                              void 0))
                         const i = n({}),
                           l = (e) => (null == e ? [] : Object.keys(e))
                         t.keys = l
@@ -16856,7 +16892,7 @@ b: c2: {n:2}
                         t.entries = s
                         const a = (e, ...t) =>
                           Object.assign(null == e ? {} : e, ...t)
-                        ;(t.assign = a), (t.isarr = (e) => Array.isArray(e))
+                        ;((t.assign = a), (t.isarr = (e) => Array.isArray(e)))
                         const c = Object.defineProperty
                         t.defprop = c
                         const u = (e, t) =>
@@ -16865,7 +16901,7 @@ b: c2: {n:2}
                             void 0 === r[0] ? delete e[n[0]] : (e[r[0]] = r[1])
                             let i = 2
                             for (; void 0 !== r[i]; )
-                              (e[r[i]] = r[i + 1]), (i += 2)
+                              ((e[r[i]] = r[i + 1]), (i += 2))
                             return e
                           }, {})
                         t.omap = u
@@ -16914,7 +16950,7 @@ b: c2: {n:2}
                         class d extends SyntaxError {
                           constructor(e, t, n, r, i) {
                             let l = b(e, (t = g({}, t)), n, r, i)
-                            super(l.message), a(this, l), v(this)
+                            ;(super(l.message), a(this, l), v(this))
                           }
                           toJSON() {
                             return {
@@ -16972,7 +17008,7 @@ b: c2: {n:2}
                             )
                               for (let n in i) e[n] = g(e[n], i[n])
                             else
-                              (e =
+                              ((e =
                                 void 0 === i
                                   ? e
                                   : l
@@ -16986,7 +17022,7 @@ b: c2: {n:2}
                                         : g(Array.isArray(i) ? [] : {}, i)
                                       : i),
                                 (n = p.function === typeof e),
-                                (r = null != e && (p.object === typeof e || n))
+                                (r = null != e && (p.object === typeof e || n)))
                           }
                           return e
                         }
@@ -17157,7 +17193,7 @@ b: c2: {n:2}
                               m
                             )
                           } catch (a) {
-                            return console.log(a), {}
+                            return (console.log(a), {})
                           }
                         }
                         function y(e) {
@@ -17228,7 +17264,7 @@ b: c2: {n:2}
                           for (let t in e) null == e[t] && delete e[t]
                           return e
                         }
-                        ;(t.JsonicError = d),
+                        ;((t.JsonicError = d),
                           (t.configure = function (e, t, n) {
                             var r,
                               i,
@@ -17281,9 +17317,9 @@ b: c2: {n:2}
                               se,
                               ae
                             const ce = t || {}
-                            ;(ce.t = ce.t || {}), (ce.tI = ce.tI || 1)
+                            ;((ce.t = ce.t || {}), (ce.tI = ce.tI || 1))
                             const ue = (e) => f(e, ce)
-                            !1 !== n.standard$ &&
+                            ;(!1 !== n.standard$ &&
                               (ue('#BD'),
                               ue('#ZZ'),
                               ue('#UK'),
@@ -17347,7 +17383,7 @@ b: c2: {n:2}
                               u(ce.match.token, ([e, t]) => [
                                 e,
                                 ((t.tin$ = +e), t),
-                              ])
+                              ]))
                             const pe = n.tokenSet
                               ? Object.keys(n.tokenSet).reduce(
                                   (e, t) => (
@@ -17359,7 +17395,7 @@ b: c2: {n:2}
                                   {},
                                 )
                               : {}
-                            ;(ce.tokenSet = ce.tokenSet || {}),
+                            ;((ce.tokenSet = ce.tokenSet || {}),
                               s(pe).map((e) => {
                                 let t = e[0],
                                   n = e[1]
@@ -17553,7 +17589,7 @@ b: c2: {n:2}
                                 void 0 === Z
                                   ? void 0
                                   : Z.property),
-                              })
+                              }))
                             let de = Object.keys(ce.fixed.token)
                                 .sort((e, t) => t.length - e.length)
                                 .map((e) => h(e))
@@ -17640,11 +17676,11 @@ b: c2: {n:2}
                                           i = t[1]
                                         if (i) {
                                           let t = i.make(ce, n)
-                                          t &&
+                                          ;(t &&
                                             ((t.matcher = r),
                                             (t.make = i.make),
                                             (t.order = i.order)),
-                                            e.push(t)
+                                            e.push(t))
                                         }
                                         return e
                                       }, [])
@@ -17718,7 +17754,7 @@ b: c2: {n:2}
                             return t.tokenSet[e]
                           }),
                           (t.mesc = function (e, t) {
-                            return ((t = new String(e)).esc = !0), t
+                            return (((t = new String(e)).esc = !0), t)
                           }),
                           (t.regexp = m),
                           (t.escre = h),
@@ -17735,8 +17771,8 @@ b: c2: {n:2}
                                 if (t === s.tin) {
                                   let t = {}
                                   throw (
-                                    (null != s.use && (t.use = s.use),
-                                    new d(s.why || p.unexpected, t, s, e, n))
+                                    null != s.use && (t.use = s.use),
+                                    new d(s.why || p.unexpected, t, s, e, n)
                                   )
                                 }
                                 return s
@@ -17766,7 +17802,7 @@ b: c2: {n:2}
                               ) {
                                 let n = !1,
                                   r = null == t ? void 0 : t.log
-                                ;(-1 === r || l) && ((r = 1), (n = !0)),
+                                ;((-1 === r || l) && ((r = 1), (n = !0)),
                                   (e.log = (...t) => {
                                     if (n) {
                                       let n = t
@@ -17780,7 +17816,7 @@ b: c2: {n:2}
                                       e.cfg.debug
                                         .get_console()
                                         .dir(t, { depth: r })
-                                  })
+                                  }))
                               } else
                                 'function' == typeof t.log && (e.log = t.log)
                             return e.log
@@ -17830,9 +17866,9 @@ b: c2: {n:2}
                               let r,
                                 i = t.split('.')
                               for (let t = 0; t < i.length; t++)
-                                (r = i[t]),
-                                  t < i.length - 1 && (e = e[r] = e[r] || {})
-                              return void 0 !== n && (e[r] = n), e[r]
+                                ((r = i[t]),
+                                  t < i.length - 1 && (e = e[r] = e[r] || {}))
+                              return (void 0 !== n && (e[r] = n), e[r])
                             } catch (i) {
                               throw new Error(
                                 'Cannot ' +
@@ -17863,7 +17899,7 @@ b: c2: {n:2}
                                     let n = (e.length + t.move[r]) % e.length,
                                       i = (e.length + t.move[r + 1]) % e.length,
                                       l = e[n]
-                                    e.splice(n, 1), e.splice(i, 0, l)
+                                    ;(e.splice(n, 1), e.splice(i, 0, l))
                                   }
                                 let n = e.filter((e) => null != e)
                                 n.length !== e.length &&
@@ -17891,11 +17927,11 @@ b: c2: {n:2}
                                         /^Unexpected token (.) .*position\s+(\d+)/i,
                                       )
                                     if (p) {
-                                      ;(u = p[1]),
+                                      ;((u = p[1]),
                                         (o = parseInt(p[2])),
                                         (a = t
                                           .substring(0, o)
-                                          .replace(/[^\n]/g, r.EMPTY).length)
+                                          .replace(/[^\n]/g, r.EMPTY).length))
                                       let e = o - 1
                                       for (; -1 < e && '\n' !== t.charAt(e); )
                                         e--
@@ -17955,11 +17991,11 @@ b: c2: {n:2}
                                 }
                               },
                             }
-                          })
+                          }))
                       }),
                       n = e(function (e, n) {
                         'use strict'
-                        Object.defineProperty(n, '__esModule', { value: !0 }),
+                        ;(Object.defineProperty(n, '__esModule', { value: !0 }),
                           (n.makeTextMatcher =
                             n.makeNumberMatcher =
                             n.makeCommentMatcher =
@@ -17972,11 +18008,11 @@ b: c2: {n:2}
                             n.makePoint =
                             n.makeLex =
                             n.makeNoToken =
-                              void 0)
+                              void 0))
                         const i = t({})
                         class l {
                           constructor(e, t, n, r) {
-                            ;(this.len = -1),
+                            ;((this.len = -1),
                               (this.sI = 0),
                               (this.rI = 1),
                               (this.cI = 1),
@@ -17984,7 +18020,7 @@ b: c2: {n:2}
                               (this.len = e),
                               null != t && (this.sI = t),
                               null != n && (this.rI = n),
-                              null != r && (this.cI = r)
+                              null != r && (this.cI = r))
                           }
                           toString() {
                             return (
@@ -18002,7 +18038,7 @@ b: c2: {n:2}
                         n.makePoint = o
                         class s {
                           constructor(e, t, n, i, l, o, s) {
-                            ;(this.isToken = !0),
+                            ;((this.isToken = !0),
                               (this.name = r.EMPTY),
                               (this.tin = -1),
                               (this.val = void 0),
@@ -18020,7 +18056,7 @@ b: c2: {n:2}
                               (this.cI = l.cI),
                               (this.use = o),
                               (this.why = s),
-                              (this.len = null == i ? 0 : i.length)
+                              (this.len = null == i ? 0 : i.length))
                           }
                           resolveVal(e, t) {
                             return 'function' == typeof this.val
@@ -18079,15 +18115,15 @@ b: c2: {n:2}
                           if (e.cfg.fixed.lex && null != n && 0 < n.length) {
                             let l,
                               o = e.cfg.fixed.token[n]
-                            null != o && (l = e.token(o, void 0, n, r)),
+                            ;(null != o && (l = e.token(o, void 0, n, r)),
                               null != l &&
                                 ((r.sI += l.src.length),
                                 (r.cI += l.src.length),
-                                null == t ? (i = l) : r.token.push(l))
+                                null == t ? (i = l) : r.token.push(l)))
                           }
                           return i
                         }
-                        ;(n.makeToken = a),
+                        ;((n.makeToken = a),
                           (n.makeNoToken = () =>
                             a('', -1, void 0, r.EMPTY, o(-1))),
                           (n.makeFixedMatcher = (e, t) => {
@@ -18202,7 +18238,7 @@ b: c2: {n:2}
                                   lex: !!n.lex,
                                   eatline: !!n.eatline,
                                 }
-                                return (e[t] = r), e
+                                return ((e[t] = r), e)
                               }, {}),
                             }
                             let r = e.comment.lex
@@ -18234,10 +18270,10 @@ b: c2: {n:2}
                                     r < n && !e.line.chars[s[r]];
 
                                   )
-                                    c++, r++
+                                    (c++, r++)
                                   if (i.eatline)
                                     for (; r < n && e.line.chars[s[r]]; )
-                                      e.line.rowChars[s[r]] && a++, r++
+                                      (e.line.rowChars[s[r]] && a++, r++)
                                   let l = s.substring(0, r),
                                     u = t.token('#CM', void 0, l, o)
                                   return (
@@ -18257,13 +18293,13 @@ b: c2: {n:2}
                                     l < n && !s.substring(l).startsWith(u);
 
                                   )
-                                    e.line.rowChars[s[l]] && (a++, (c = 0)),
+                                    (e.line.rowChars[s[l]] && (a++, (c = 0)),
                                       c++,
-                                      l++
+                                      l++)
                                   if (s.substring(l).startsWith(u)) {
                                     if (((c += u.length), r.eatline))
                                       for (; l < n && e.line.chars[s[l]]; )
-                                        e.line.rowChars[s[l]] && a++, l++
+                                        (e.line.rowChars[s[l]] && a++, l++)
                                     let i = s.substring(0, l + u.length),
                                       p = t.token('#CM', void 0, i, o)
                                     return (
@@ -18308,9 +18344,9 @@ b: c2: {n:2}
                                     let c
                                     if (e.value.lex)
                                       if (void 0 !== (c = s[p]))
-                                        (n = r.token('#VL', c.val, p, l)),
+                                        ((n = r.token('#VL', c.val, p, l)),
                                           (l.sI += t),
-                                          (l.cI += t)
+                                          (l.cI += t))
                                       else
                                         for (let e in a) {
                                           let t = a[e]
@@ -18330,8 +18366,8 @@ b: c2: {n:2}
                                                 let o = t.val(e)
                                                 n = r.token('#VL', o, i, l)
                                               }
-                                              ;(l.sI += i.length),
-                                                (l.cI += i.length)
+                                              ;((l.sI += i.length),
+                                                (l.cI += i.length))
                                             }
                                           }
                                         }
@@ -18425,7 +18461,7 @@ b: c2: {n:2}
                                     }
                                   }
                                 }
-                                return u && (n = c(t, n, o)), n
+                                return (u && (n = c(t, n, o)), n)
                               }
                             }
                           }),
@@ -18480,7 +18516,7 @@ b: c2: {n:2}
                                     k = h,
                                     b = g,
                                     y = c[l]
-                                  ++h, ++x
+                                  ;(++h, ++x)
                                   let _,
                                     S = []
                                   for (; h < v; h++) {
@@ -18491,7 +18527,7 @@ b: c2: {n:2}
                                       break
                                     }
                                     if (s === r) {
-                                      h++, x++
+                                      ;(h++, x++)
                                       let e = o[m[h]]
                                       if (null != e) S.push(e)
                                       else if ('x' === m[h]) {
@@ -18511,7 +18547,7 @@ b: c2: {n:2}
                                           )
                                         }
                                         let r = String.fromCharCode(e)
-                                        S.push(r), (h += 1), (x += 2)
+                                        ;(S.push(r), (h += 1), (x += 2))
                                       } else if ('u' === m[h]) {
                                         h++
                                         let e = '{' === m[h] ? (h++, 1) : 0,
@@ -18535,9 +18571,9 @@ b: c2: {n:2}
                                           )
                                         }
                                         let o = String.fromCodePoint(l)
-                                        S.push(o),
+                                        ;(S.push(o),
                                           (h += r - 1 + e),
-                                          (x += r + e)
+                                          (x += r + e))
                                       } else {
                                         if (!u) {
                                           if (n.abandon) return
@@ -18553,7 +18589,7 @@ b: c2: {n:2}
                                       d &&
                                       void 0 !== (_ = p[m.charCodeAt(h)])
                                     )
-                                      S.push(_), x++
+                                      (S.push(_), x++)
                                     else {
                                       let r = h,
                                         o = l.charCodeAt(0),
@@ -18567,7 +18603,7 @@ b: c2: {n:2}
                                         a !== s;
 
                                       )
-                                        (s = m.charCodeAt(++h)), x++
+                                        ((s = m.charCodeAt(++h)), x++)
                                       if ((x--, void 0 === _ && s < 32)) {
                                         if (!y || !e.line.chars[m[h]]) {
                                           if (n.abandon) return
@@ -18577,10 +18613,10 @@ b: c2: {n:2}
                                             t.bad(i.S.unprintable, h, h + 1)
                                           )
                                         }
-                                        e.line.rowChars[m[h]] && (f.rI = ++g),
+                                        ;(e.line.rowChars[m[h]] && (f.rI = ++g),
                                           (x = 1),
-                                          S.push(m.substring(r, h + 1))
-                                      } else S.push(m.substring(r, h)), h--
+                                          S.push(m.substring(r, h + 1)))
+                                      } else (S.push(m.substring(r, h)), h--)
                                     }
                                   }
                                   if (m[h - 1] !== l || f.sI === h - 1) {
@@ -18596,7 +18632,7 @@ b: c2: {n:2}
                                     m.substring(f.sI, h),
                                     f,
                                   )
-                                  return (f.sI = h), (f.rI = g), (f.cI = x), E
+                                  return ((f.sI = h), (f.rI = g), (f.cI = x), E)
                                 }
                               }
                             )
@@ -18623,12 +18659,15 @@ b: c2: {n:2}
                                 );
 
                               )
-                                (a += i[o[s]] ? 1 : 0), s++
+                                ((a += i[o[s]] ? 1 : 0), s++)
                               if (l.sI < s) {
                                 let e = o.substring(l.sI, s)
                                 const n = t.token('#LN', void 0, e, l)
                                 return (
-                                  (l.sI += e.length), (l.rI = a), (l.cI = 1), n
+                                  (l.sI += e.length),
+                                  (l.rI = a),
+                                  (l.cI = 1),
+                                  n
                                 )
                               }
                             }),
@@ -18642,23 +18681,23 @@ b: c2: {n:2}
                               let { chars: n } = e.space,
                                 { pnt: r, src: i } = t,
                                 { sI: l, cI: o } = r
-                              for (; n[i[l]]; ) l++, o++
+                              for (; n[i[l]]; ) (l++, o++)
                               if (r.sI < l) {
                                 let e = i.substring(r.sI, l)
                                 const n = t.token('#SP', void 0, e, r)
-                                return (r.sI += e.length), (r.cI = o), n
+                                return ((r.sI += e.length), (r.cI = o), n)
                               }
-                            })
+                            }))
                         class u {
                           constructor(e) {
-                            ;(this.src = r.EMPTY),
+                            ;((this.src = r.EMPTY),
                               (this.ctx = {}),
                               (this.cfg = {}),
                               (this.pnt = o(-1)),
                               (this.ctx = e),
                               (this.src = e.src()),
                               (this.cfg = e.cfg),
-                              (this.pnt = o(this.src.length))
+                              (this.pnt = o(this.src.length)))
                           }
                           token(e, t, n, r, l, o) {
                             let s, c
@@ -18677,8 +18716,8 @@ b: c2: {n:2}
                             if (s.end) l = s.end
                             else if (0 < s.token.length) l = s.token.shift()
                             else if (s.len <= s.sI)
-                              (s.end = this.token('#ZZ', void 0, '', s)),
-                                (l = s.end)
+                              ((s.end = this.token('#ZZ', void 0, '', s)),
+                                (l = s.end))
                             else {
                               try {
                                 for (let t of this.cfg.lex.match)
@@ -18748,7 +18787,7 @@ b: c2: {n:2}
                         n.makeLex = (...e) => new u(...e)
                       }),
                       r = {}
-                    Object.defineProperty(r, '__esModule', { value: !0 }),
+                    ;(Object.defineProperty(r, '__esModule', { value: !0 }),
                       (r.STRING =
                         r.INSPECT =
                         r.EMPTY =
@@ -18763,10 +18802,10 @@ b: c2: {n:2}
                       (r.AFTER = 'a'),
                       (r.EMPTY = ''),
                       (r.INSPECT = Symbol.for('nodejs.util.inspect.custom')),
-                      (r.STRING = 'string')
+                      (r.STRING = 'string'))
                     var i = {}
-                    Object.defineProperty(i, '__esModule', { value: !0 }),
-                      (i.defaults = void 0)
+                    ;(Object.defineProperty(i, '__esModule', { value: !0 }),
+                      (i.defaults = void 0))
                     const l = n({}),
                       o = {
                         safe: { key: !0 },
@@ -18919,12 +18958,12 @@ b: c2: {n:2}
                       }
                     i.defaults = o
                     var s = {}
-                    Object.defineProperty(s, '__esModule', { value: !0 }),
-                      (s.makeRuleSpec = s.makeNoRule = s.makeRule = void 0)
+                    ;(Object.defineProperty(s, '__esModule', { value: !0 }),
+                      (s.makeRuleSpec = s.makeNoRule = s.makeRule = void 0))
                     const a = t({})
                     class c {
                       constructor(e, t, n) {
-                        ;(this.i = -1),
+                        ;((this.i = -1),
                           (this.name = r.EMPTY),
                           (this.node = null),
                           (this.state = r.OPEN),
@@ -18954,7 +18993,7 @@ b: c2: {n:2}
                           (this.bo = null != e.def.bo),
                           (this.ao = null != e.def.ao),
                           (this.bc = null != e.def.bc),
-                          (this.ac = null != e.def.ac)
+                          (this.ac = null != e.def.ac))
                       }
                       process(e, t) {
                         return this.spec.process(this, e, t, this.state)
@@ -18984,11 +19023,11 @@ b: c2: {n:2}
                       }
                     }
                     const u = (...e) => new c(...e)
-                    ;(s.makeRule = u),
-                      (s.makeNoRule = (e) => u(g(e.cfg, {}), e))
+                    ;((s.makeRule = u),
+                      (s.makeNoRule = (e) => u(g(e.cfg, {}), e)))
                     class p {
                       constructor() {
-                        ;(this.p = r.EMPTY), (this.r = r.EMPTY), (this.b = 0)
+                        ;((this.p = r.EMPTY), (this.r = r.EMPTY), (this.b = 0))
                       }
                     }
                     const d = (...e) => new p(...e),
@@ -18996,7 +19035,7 @@ b: c2: {n:2}
                       m = d()
                     class h {
                       constructor(e, t) {
-                        ;(this.name = r.EMPTY),
+                        ;((this.name = r.EMPTY),
                           (this.def = {
                             open: [],
                             close: [],
@@ -19013,7 +19052,7 @@ b: c2: {n:2}
                           )),
                           (this.def.close = (this.def.close || []).filter(
                             (e) => null != e,
-                          ))
+                          )))
                         for (let n of [...this.def.open, ...this.def.close])
                           x(n)
                       }
@@ -19045,7 +19084,7 @@ b: c2: {n:2}
                       }
                       action(e, t, n, r) {
                         let i = this.def[t + n]
-                        return e ? i.push(r) : i.unshift(r), this
+                        return (e ? i.push(r) : i.unshift(r), this)
                       }
                       bo(e, t) {
                         return this.action(!t || !!e, r.BEFORE, r.OPEN, t || e)
@@ -19071,8 +19110,8 @@ b: c2: {n:2}
                         )
                       }
                       norm() {
-                        this.def.open.map((e) => x(e)),
-                          this.def.close.map((e) => x(e))
+                        ;(this.def.open.map((e) => x(e)),
+                          this.def.close.map((e) => x(e)))
                         const e = []
                         function t(e, t, n) {
                           return (
@@ -19081,7 +19120,7 @@ b: c2: {n:2}
                               function (e, n) {
                                 if (n.s && n.s[t]) {
                                   let r = [...new Set(e.concat(n.s[t]))]
-                                  ;(e.length = 0), e.push(...r)
+                                  ;((e.length = 0), e.push(...r))
                                 }
                                 return e
                               },
@@ -19120,7 +19159,7 @@ b: c2: {n:2}
                           0 < p.length
                             ? (function (e, t, n, i, l) {
                                 let o = f
-                                ;(o.b = 0),
+                                ;((o.b = 0),
                                   (o.p = r.EMPTY),
                                   (o.r = r.EMPTY),
                                   (o.n = void 0),
@@ -19128,7 +19167,7 @@ b: c2: {n:2}
                                   (o.a = void 0),
                                   (o.u = void 0),
                                   (o.k = void 0),
-                                  (o.e = void 0)
+                                  (o.e = void 0))
                                 let s = null,
                                   c = 0,
                                   u = !0,
@@ -19137,7 +19176,7 @@ b: c2: {n:2}
                                 function m(e, t, r, i) {
                                   let o
                                   do {
-                                    ;(o = n.next(e, t, r, i)), l.tC++
+                                    ;((o = n.next(e, t, r, i)), l.tC++)
                                   } while (d[o.tin])
                                   return o
                                 }
@@ -19163,11 +19202,11 @@ b: c2: {n:2}
                                         l.NOTOKEN !== l.t1
                                           ? l.t1
                                           : (l.t1 = m(i, s, c, 1))).tin
-                                      ;(r = !0),
+                                      ;((r = !0),
                                         (u = !!(
                                           s.S1[(e / 31) | 0] &
                                           ((1 << ((e % 31) - 1)) | p)
-                                        ))
+                                        )))
                                     }
                                   }
                                   if (
@@ -19184,7 +19223,7 @@ b: c2: {n:2}
                                     break
                                   s = null
                                 }
-                                u || (o.e = l.t0),
+                                ;(u || (o.e = l.t0),
                                   s &&
                                     ((o.n = null != s.n ? s.n : o.n),
                                     (o.h = null != s.h ? s.h : o.h),
@@ -19210,7 +19249,7 @@ b: c2: {n:2}
                                         ? 'number' == typeof s.b
                                           ? s.b
                                           : s.b(i, l, o)
-                                        : o.b))
+                                        : o.b)))
                                 let g = c < t.length
                                 return (
                                   l.log &&
@@ -19246,23 +19285,23 @@ b: c2: {n:2}
                             return this.bad(this.unknownRule(t.t0, h.p), e, t, {
                               is_open: l,
                             })
-                          ;(o = e.child = u(n, t, e.node)),
+                          ;((o = e.child = u(n, t, e.node)),
                             (o.parent = e),
                             (o.n = { ...e.n }),
                             0 < Object.keys(e.k).length && (o.k = { ...e.k }),
-                            (s += 'P`' + h.p + '`')
+                            (s += 'P`' + h.p + '`'))
                         } else if (h.r) {
                           let n = t.rsm[h.r]
                           if (!n)
                             return this.bad(this.unknownRule(t.t0, h.r), e, t, {
                               is_open: l,
                             })
-                          ;(o = u(n, t, e.node)),
+                          ;((o = u(n, t, e.node)),
                             (o.parent = e.parent),
                             (o.prev = e),
                             (o.n = { ...e.n }),
                             0 < Object.keys(e.k).length && (o.k = { ...e.k }),
-                            (s += 'R`' + h.r + '`')
+                            (s += 'R`' + h.r + '`'))
                         } else l || (o = t.rs[--t.rsI] || t.NORULE)
                         let g = l ? (e.ao ? c.ao : null) : e.ac ? c.ac : null
                         if (g) {
@@ -19275,9 +19314,9 @@ b: c2: {n:2}
                             )
                               return this.bad(n, e, t, { is_open: l })
                         }
-                        ;(o.why = s),
+                        ;((o.why = s),
                           t.log && t.log(a.S.node, t, e, n, o),
-                          r.OPEN === e.state && (e.state = r.CLOSE)
+                          r.OPEN === e.state && (e.state = r.CLOSE))
                         let x = e[l ? 'os' : 'cs'] - (h.b || 0)
                         return (
                           1 === x
@@ -19332,7 +19371,7 @@ b: c2: {n:2}
                           i = t([e.s[0]]),
                           l = t([e.s[1]]),
                           o = e
-                        ;(o.S0 =
+                        ;((o.S0 =
                           0 < i.length
                             ? new Array(
                                 Math.max(...i.map((e) => (1 + e / 31) | 0)),
@@ -19349,7 +19388,7 @@ b: c2: {n:2}
                                   .fill(null)
                                   .map((e, t) => t)
                                   .map((e) => r(n(l, e), e))
-                              : null)
+                              : null))
                       } else e.s = null
                       return (
                         e.p || (e.p = null),
@@ -19360,11 +19399,11 @@ b: c2: {n:2}
                     }
                     s.makeRuleSpec = g
                     var v = {}
-                    Object.defineProperty(v, '__esModule', { value: !0 }),
-                      (v.makeParser = v.makeRuleSpec = v.makeRule = void 0)
+                    ;(Object.defineProperty(v, '__esModule', { value: !0 }),
+                      (v.makeParser = v.makeRuleSpec = v.makeRule = void 0))
                     const k = t({}),
                       b = n({})
-                    Object.defineProperty(v, 'makeRule', {
+                    ;(Object.defineProperty(v, 'makeRule', {
                       enumerable: !0,
                       get: function () {
                         return s.makeRule
@@ -19375,10 +19414,10 @@ b: c2: {n:2}
                         get: function () {
                           return s.makeRuleSpec
                         },
-                      })
+                      }))
                     class y {
                       constructor(e, t) {
-                        ;(this.rsm = {}), (this.options = e), (this.cfg = t)
+                        ;((this.rsm = {}), (this.options = e), (this.cfg = t))
                       }
                       rule(e, t) {
                         if (null == e) return this.rsm
@@ -19467,13 +19506,13 @@ b: c2: {n:2}
                             c.cfg.rule.maxmul,
                           h = 0
                         for (; u !== f && h < m; )
-                          (c.kI = h),
+                          ((c.kI = h),
                             (c.rule = f),
                             c.log && c.log('', c.kI + ':'),
                             c.sub.rule && c.sub.rule.map((e) => e(f, c)),
                             (f = f.process(c, p)),
                             c.log && c.log(k.S.stack, c, f, p),
-                            h++
+                            h++)
                         if (o.tin !== p.next(f).tin)
                           throw new k.JsonicError(
                             k.S.unexpected,
@@ -19532,14 +19571,14 @@ b: c2: {n:2}
                         { VAL: p, KEY: d } = e.tokenSet,
                         f = (e, t) => {
                           if (!t.cfg.rule.finish)
-                            return (t.t0.src = 'END_OF_SOURCE'), t.t0
+                            return ((t.t0.src = 'END_OF_SOURCE'), t.t0)
                         },
                         m = (e) => {
                           const t = e.o0,
                             n = c === t.tin || a === t.tin ? t.val : t.src
                           e.u.key = n
                         }
-                      e.rule('val', (e) => {
+                      ;(e.rule('val', (e) => {
                         e.bo((e) => (e.node = void 0))
                           .open([
                             { s: [n], p: 'map', b: 1, g: 'map,json' },
@@ -19615,12 +19654,12 @@ b: c2: {n:2}
                               { s: [s], r: 'elem', g: 'list,elem,json' },
                               { s: [l], b: 1, g: 'list,elem,json' },
                             ])
-                        })
+                        }))
                       const h = (e, n) => {
                         let r = e.u.key,
                           i = e.child.node
                         const l = e.u.prev
-                        ;(i = void 0 === i ? null : i),
+                        ;((i = void 0 === i ? null : i),
                           (e.u.list &&
                             n.cfg.safe.key &&
                             ('__proto__' === r || 'constructor' === r)) ||
@@ -19631,9 +19670,9 @@ b: c2: {n:2}
                                   ? n.cfg.map.merge(l, i, e, n)
                                   : n.cfg.map.extend
                                     ? t(l, i)
-                                    : i)
+                                    : i))
                       }
-                      e.rule('val', (e) => {
+                      ;(e.rule('val', (e) => {
                         e.open(
                           [
                             {
@@ -19724,10 +19763,10 @@ b: c2: {n:2}
                         }),
                         e.rule('list', (e) => {
                           e.bo((e) => {
-                            ;(e.n.dlist = 1 + (e.n.dlist ? e.n.dlist : 0)),
+                            ;((e.n.dlist = 1 + (e.n.dlist ? e.n.dlist : 0)),
                               e.prev.u.implist &&
                                 (e.node.push(e.prev.node),
-                                (e.prev.node = e.node))
+                                (e.prev.node = e.node)))
                           })
                             .open({ c: (e) => e.prev.u.implist, p: 'elem' })
                             .open(
@@ -19844,9 +19883,9 @@ b: c2: {n:2}
                               ],
                               { delete: [-1, -2] },
                             )
-                        })
+                        }))
                     }
-                    Object.defineProperty(_, '__esModule', { value: !0 }),
+                    ;(Object.defineProperty(_, '__esModule', { value: !0 }),
                       (_.makeJSON = _.grammar = void 0),
                       (_.grammar = S),
                       (_.makeJSON = function (e) {
@@ -19873,10 +19912,10 @@ b: c2: {n:2}
                           result: { fail: [void 0, NaN] },
                           tokenSet: { KEY: ['#ST', null, null, null] },
                         })
-                        return S(t), t
-                      })
+                        return (S(t), t)
+                      }))
                     var E = { exports: {} }
-                    Object.defineProperty(E.exports, '__esModule', {
+                    ;(Object.defineProperty(E.exports, '__esModule', {
                       value: !0,
                     }),
                       (E.exports.root =
@@ -19933,9 +19972,9 @@ b: c2: {n:2}
                         get: function () {
                           return r.EMPTY
                         },
-                      })
+                      }))
                     const j = t({})
-                    Object.defineProperty(E.exports, 'JsonicError', {
+                    ;(Object.defineProperty(E.exports, 'JsonicError', {
                       enumerable: !0,
                       get: function () {
                         return j.JsonicError
@@ -19946,9 +19985,9 @@ b: c2: {n:2}
                         get: function () {
                           return j.S
                         },
-                      })
+                      }))
                     const O = n({})
-                    Object.defineProperty(E.exports, 'makePoint', {
+                    ;(Object.defineProperty(E.exports, 'makePoint', {
                       enumerable: !0,
                       get: function () {
                         return O.makePoint
@@ -20025,7 +20064,7 @@ b: c2: {n:2}
                         get: function () {
                           return v.makeParser
                         },
-                      })
+                      }))
                     const I = {
                       tokenize: j.tokenize,
                       srcfmt: j.srcfmt,
@@ -20090,7 +20129,8 @@ b: c2: {n:2}
                         },
                         s = (e) => {
                           if (null != e && j.S.object === typeof e) {
-                            ;(0, j.deep)(l, e), (0, j.configure)(o, r.config, l)
+                            ;((0, j.deep)(l, e),
+                              (0, j.configure)(o, r.config, l))
                             let t = o.internal().parser
                             r.parser = t.clone(l, r.config)
                           }
@@ -20164,24 +20204,24 @@ b: c2: {n:2}
                         for (let n in t) void 0 === o[n] && (o[n] = t[n])
                         o.parent = t
                         let e = t.internal()
-                        ;(r.config = (0, j.deep)({}, e.config)),
+                        ;((r.config = (0, j.deep)({}, e.config)),
                           (0, j.configure)(o, r.config, l),
                           (0, j.assign)(o.token, r.config.t),
                           (r.plugins = [...e.plugins]),
-                          (r.parser = e.parser.clone(l, r.config))
+                          (r.parser = e.parser.clone(l, r.config)))
                       } else {
                         let e = { ...o, ...a }
-                        ;(r.config = (0, j.configure)(e, void 0, l)),
+                        ;((r.config = (0, j.configure)(e, void 0, l)),
                           (r.plugins = []),
                           (r.parser = (0, v.makeParser)(l, r.config)),
-                          !1 !== l.grammar$ && (0, _.grammar)(e)
+                          !1 !== l.grammar$ && (0, _.grammar)(e))
                       }
                       return o
                     }
                     let M
-                    ;(E.exports.util = I),
+                    ;((E.exports.util = I),
                       (E.exports.make = T),
-                      (E.exports.root = M)
+                      (E.exports.root = M))
                     let N = (E.exports.root = M = T('jsonic'))
                     return (
                       (E.exports.Jsonic = N),
@@ -20224,10 +20264,10 @@ b: c2: {n:2}
                       ? window
                       : {},
               ),
-                (e = e.exports)
+                (e = e.exports))
               var t = {}
-              Object.defineProperty(t, '__esModule', { value: !0 }),
-                (t.testing = t.evaluate = t.Expr = void 0)
+              ;(Object.defineProperty(t, '__esModule', { value: !0 }),
+                (t.testing = t.evaluate = t.Expr = void 0))
               const { omap: n, entries: r, values: i } = e.util,
                 l = {}
               let o = function (e, t) {
@@ -20319,8 +20359,8 @@ b: c2: {n:2}
                   q = e.token.VL,
                   W = e.token.ZZ,
                   X = [G, z, Z, q]
-                e.rule('val', (t) => {
-                  U &&
+                ;(e.rule('val', (t) => {
+                  ;(U &&
                     A.includes(e.token.CL) &&
                     (t.def.open.find((e) => e.g.includes('pair')).c = (e) =>
                       !e.n.expr_ternary),
@@ -20427,7 +20467,7 @@ b: c2: {n:2}
                           b: 1,
                           g: 'expr,list,val,imp,space,top',
                         },
-                      ])
+                      ]))
                 }),
                   e.rule('list', (e) => {
                     e.bo(!1, (e) => {
@@ -20446,11 +20486,11 @@ b: c2: {n:2}
                   }),
                   e.rule('map', (e) => {
                     e.bo(!1, (...e) => {
-                      ;(e[0].n.expr = 0),
+                      ;((e[0].n.expr = 0),
                         (e[0].n.expr_prefix = 0),
                         (e[0].n.expr_suffix = 0),
                         (e[0].n.expr_paren = 0),
-                        (e[0].n.expr_ternary = 0)
+                        (e[0].n.expr_ternary = 0))
                     }).close([
                       K && {
                         s: [Y],
@@ -20622,7 +20662,7 @@ b: c2: {n:2}
                   }),
                   e.rule('paren', (e) => {
                     e.bo((e) => {
-                      ;(e.n.dmap = 0), (e.n.dlist = 0), (e.n.pk = 0)
+                      ;((e.n.dmap = 0), (e.n.dlist = 0), (e.n.pk = 0))
                     })
                       .open([
                         K
@@ -20679,7 +20719,7 @@ b: c2: {n:2}
                           g: 'expr,expr-ternary,open',
                           a: (e) => {
                             let t = a(e.o0, O)
-                            ;(e.u.expr_ternary_name = t.name),
+                            ;((e.u.expr_ternary_name = t.name),
                               x(e.prev.node)
                                 ? (e.node = c(e.prev.node, t, u(e.prev.node)))
                                 : (e.node = e.prev.node =
@@ -20688,17 +20728,17 @@ b: c2: {n:2}
                                 e.n.expr_paren ||
                                 e.prev.u.expr_ternary_paren ||
                                 0),
-                              (e.n.expr_paren = 0)
+                              (e.n.expr_paren = 0))
                           },
                         },
                         {
                           p: 'val',
                           c: (e) => 2 === e.prev.u.expr_ternary_step,
                           a: (e) => {
-                            ;(e.u.expr_ternary_step =
+                            ;((e.u.expr_ternary_step =
                               e.prev.u.expr_ternary_step),
                               (e.n.expr_paren = e.u.expr_ternary_paren =
-                                e.prev.u.expr_ternary_paren)
+                                e.prev.u.expr_ternary_paren))
                           },
                           g: 'expr,expr-ternary,step',
                         },
@@ -20710,7 +20750,8 @@ b: c2: {n:2}
                             e.u.expr_ternary_name === O[e.c0.tin].name,
                           r: 'ternary',
                           a: (e) => {
-                            e.u.expr_ternary_step++, e.node.push(e.child.node)
+                            ;(e.u.expr_ternary_step++,
+                              e.node.push(e.child.node))
                           },
                           g: 'expr,expr-ternary,step',
                         },
@@ -20757,7 +20798,7 @@ b: c2: {n:2}
                           g: 'expr,expr-ternary,close',
                         },
                       ])
-                    })
+                    }))
               }
               function s(e, t, n) {
                 let r = t.node
@@ -20777,7 +20818,7 @@ b: c2: {n:2}
                 r[0] = t
                 let i = 0
                 for (; i < n.length; i++) r[i + 1] = n[i]
-                return (r.length = i + 1), r
+                return ((r.length = i + 1), r)
               }
               function u(e) {
                 return [...e]
@@ -20785,7 +20826,7 @@ b: c2: {n:2}
               function p(e) {
                 return function (t) {
                   let n = 'expr_paren_depth_' + a(t.o0, e).name
-                  ;(t.u[n] = t.n[n] = 1), (t.node = void 0)
+                  ;((t.u[n] = t.n[n] = 1), (t.node = void 0))
                 }
               }
               function d(e) {
@@ -20796,7 +20837,7 @@ b: c2: {n:2}
                   let r = 'expr_paren_depth_' + n.name
                   if (t.u[r] === t.n[r]) {
                     const e = t.node
-                    ;(t.node = [n]),
+                    ;((t.node = [n]),
                       void 0 !== e && (t.node[1] = e),
                       t.parent.prev.u.paren_preval &&
                         (g('paren', t.parent.prev.node)
@@ -20807,7 +20848,7 @@ b: c2: {n:2}
                               t.node[1],
                             ))
                           : (t.node.splice(1, 0, t.parent.prev.node),
-                            (t.parent.prev.node = t.node)))
+                            (t.parent.prev.node = t.node))))
                   }
                 }
               }
@@ -20838,10 +20879,10 @@ b: c2: {n:2}
                 )
               }
               function h(e, t, n) {
-                ;(e.n.expr_paren = e.prev.u.expr_ternary_paren),
+                ;((e.n.expr_paren = e.prev.u.expr_ternary_paren),
                   e.node.push(e.child.node),
                   'elem' === n.r &&
-                    ((e.node[0] = u(e.node)), (e.node.length = 1))
+                    ((e.node[0] = u(e.node)), (e.node.length = 1)))
               }
               function g(e, t) {
                 return null != t && x(t) && !0 === t[0][e]
@@ -20856,9 +20897,9 @@ b: c2: {n:2}
                     let s = '',
                       a = -1,
                       c = ''
-                    ;(c = 'string' == typeof o.src ? o.src : o.src[0]),
+                    ;((c = 'string' == typeof o.src ? o.src : o.src[0]),
                       (a = t(c) || e('#E' + c)),
-                      (s = e(a))
+                      (s = e(a)))
                     let u = (n[a] = {
                       src: c,
                       left: o.left || Number.MIN_SAFE_INTEGER,
@@ -20885,16 +20926,16 @@ b: c2: {n:2}
                     })
                     if (u.ternary) {
                       let r = o.src
-                      ;(u.src = r[0]), (u.use.ternary = { opI: 0 })
+                      ;((u.src = r[0]), (u.use.ternary = { opI: 0 }))
                       let i = { ...u }
-                      ;(c = o.src[1]),
+                      ;((c = o.src[1]),
                         (a = t(c) || e('#E' + c)),
                         (s = e(a)),
                         (i.src = c),
                         (i.use = { ternary: { opI: 1 } }),
                         (i.tkn = s),
                         (i.tin = a),
-                        (n[a] = i)
+                        (n[a] = i))
                     }
                     return n
                   }, {})
@@ -20933,7 +20974,7 @@ b: c2: {n:2}
                       )
                     : t
               }
-              ;(t.Expr = o),
+              ;((t.Expr = o),
                 (o.defaults = {
                   op: {
                     positive: { prefix: !0, right: 14e3, src: '+' },
@@ -20951,9 +20992,9 @@ b: c2: {n:2}
                     plain: { paren: !0, osrc: '(', csrc: ')' },
                   },
                 }),
-                (t.evaluate = b)
+                (t.evaluate = b))
               const y = { prattify: k, opify: (e) => ((e.OP_MARK = l), e) }
-              return (t.testing = y), t
+              return ((t.testing = y), t)
             })
           }).call(this)
         }).call(
@@ -21419,7 +21460,7 @@ b: c2: {n:2}
                 },
                 t = e(function (e, t) {
                   'use strict'
-                  Object.defineProperty(t, '__esModule', { value: !0 }),
+                  ;(Object.defineProperty(t, '__esModule', { value: !0 }),
                     (t.modlist =
                       t.findTokenSet =
                       t.values =
@@ -21452,7 +21493,7 @@ b: c2: {n:2}
                       t.assign =
                       t.S =
                       t.JsonicError =
-                        void 0)
+                        void 0))
                   const l = n({}),
                     i = (e) => (null == e ? [] : Object.keys(e))
                   t.keys = i
@@ -21461,7 +21502,7 @@ b: c2: {n:2}
                   const o = (e) => (null == e ? [] : Object.entries(e))
                   t.entries = o
                   const a = (e, ...t) => Object.assign(null == e ? {} : e, ...t)
-                  ;(t.assign = a), (t.isarr = (e) => Array.isArray(e))
+                  ;((t.assign = a), (t.isarr = (e) => Array.isArray(e)))
                   const c = Object.defineProperty
                   t.defprop = c
                   const u = (e, t) =>
@@ -21469,7 +21510,7 @@ b: c2: {n:2}
                       let r = t ? t(n) : n
                       void 0 === r[0] ? delete e[n[0]] : (e[r[0]] = r[1])
                       let l = 2
-                      for (; void 0 !== r[l]; ) (e[r[l]] = r[l + 1]), (l += 2)
+                      for (; void 0 !== r[l]; ) ((e[r[l]] = r[l + 1]), (l += 2))
                       return e
                     }, {})
                   t.omap = u
@@ -21518,7 +21559,7 @@ b: c2: {n:2}
                   class p extends SyntaxError {
                     constructor(e, t, n, r, l) {
                       let i = x(e, (t = g({}, t)), n, r, l)
-                      super(i.message), a(this, i), v(this)
+                      ;(super(i.message), a(this, i), v(this))
                     }
                     toJSON() {
                       return {
@@ -21569,7 +21610,7 @@ b: c2: {n:2}
                       if (r && s && !i && Array.isArray(e) === Array.isArray(l))
                         for (let n in l) e[n] = g(e[n], l[n])
                       else
-                        (e =
+                        ((e =
                           void 0 === l
                             ? e
                             : i
@@ -21582,7 +21623,7 @@ b: c2: {n:2}
                                   : g(Array.isArray(l) ? [] : {}, l)
                                 : l),
                           (n = d.function === typeof e),
-                          (r = null != e && (d.object === typeof e || n))
+                          (r = null != e && (d.object === typeof e || n)))
                     }
                     return e
                   }
@@ -21611,7 +21652,8 @@ b: c2: {n:2}
                                               : '$' + o,
                             u = t && a ? c : JSON.stringify(c)
                           return (
-                            (u = null == u ? '' : u), u.replace(/\n/g, '\n  ')
+                            (u = null == u ? '' : u),
+                            u.replace(/\n/g, '\n  ')
                           )
                         })
                   }
@@ -21741,7 +21783,7 @@ b: c2: {n:2}
                         h
                       )
                     } catch (a) {
-                      return console.log(a), {}
+                      return (console.log(a), {})
                     }
                   }
                   function y(e) {
@@ -21806,7 +21848,7 @@ b: c2: {n:2}
                     for (let t in e) null == e[t] && delete e[t]
                     return e
                   }
-                  ;(t.JsonicError = p),
+                  ;((t.JsonicError = p),
                     (t.configure = function (e, t, n) {
                       var r,
                         l,
@@ -21859,9 +21901,9 @@ b: c2: {n:2}
                         oe,
                         ae
                       const ce = t || {}
-                      ;(ce.t = ce.t || {}), (ce.tI = ce.tI || 1)
+                      ;((ce.t = ce.t || {}), (ce.tI = ce.tI || 1))
                       const ue = (e) => m(e, ce)
-                      !1 !== n.standard$ &&
+                      ;(!1 !== n.standard$ &&
                         (ue('#BD'),
                         ue('#ZZ'),
                         ue('#UK'),
@@ -21913,7 +21955,7 @@ b: c2: {n:2}
                               ? void 0
                               : p.check,
                         }),
-                        u(ce.match.token, ([e, t]) => [e, ((t.tin$ = +e), t)])
+                        u(ce.match.token, ([e, t]) => [e, ((t.tin$ = +e), t)]))
                       const de = n.tokenSet
                         ? Object.keys(n.tokenSet).reduce(
                             (e, t) => (
@@ -21925,7 +21967,7 @@ b: c2: {n:2}
                             {},
                           )
                         : {}
-                      ;(ce.tokenSet = ce.tokenSet || {}),
+                      ;((ce.tokenSet = ce.tokenSet || {}),
                         o(de).map((e) => {
                           let t = e[0],
                             n = e[1]
@@ -22117,7 +22159,7 @@ b: c2: {n:2}
                           property: !!(null === (Z = n.list) || void 0 === Z
                             ? void 0
                             : Z.property),
-                        })
+                        }))
                       let pe = Object.keys(ce.fixed.token)
                           .sort((e, t) => t.length - e.length)
                           .map((e) => f(e))
@@ -22204,11 +22246,11 @@ b: c2: {n:2}
                                     l = t[1]
                                   if (l) {
                                     let t = l.make(ce, n)
-                                    t &&
+                                    ;(t &&
                                       ((t.matcher = r),
                                       (t.make = l.make),
                                       (t.order = l.order)),
-                                      e.push(t)
+                                      e.push(t))
                                   }
                                   return e
                                 }, [])
@@ -22279,7 +22321,7 @@ b: c2: {n:2}
                       return t.tokenSet[e]
                     }),
                     (t.mesc = function (e, t) {
-                      return ((t = new String(e)).esc = !0), t
+                      return (((t = new String(e)).esc = !0), t)
                     }),
                     (t.regexp = h),
                     (t.escre = f),
@@ -22296,8 +22338,8 @@ b: c2: {n:2}
                           if (t === o.tin) {
                             let t = {}
                             throw (
-                              (null != o.use && (t.use = o.use),
-                              new p(o.why || d.unexpected, t, o, e, n))
+                              null != o.use && (t.use = o.use),
+                              new p(o.why || d.unexpected, t, o, e, n)
                             )
                           }
                           return o
@@ -22326,7 +22368,7 @@ b: c2: {n:2}
                         ) {
                           let n = !1,
                             r = null == t ? void 0 : t.log
-                          ;(-1 === r || i) && ((r = 1), (n = !0)),
+                          ;((-1 === r || i) && ((r = 1), (n = !0)),
                             (e.log = (...t) => {
                               if (n) {
                                 let n = t
@@ -22338,7 +22380,7 @@ b: c2: {n:2}
                                 e.cfg.debug.get_console().log(n)
                               } else
                                 e.cfg.debug.get_console().dir(t, { depth: r })
-                            })
+                            }))
                         } else 'function' == typeof t.log && (e.log = t.log)
                       return e.log
                     }),
@@ -22385,9 +22427,9 @@ b: c2: {n:2}
                         let r,
                           l = t.split('.')
                         for (let t = 0; t < l.length; t++)
-                          (r = l[t]),
-                            t < l.length - 1 && (e = e[r] = e[r] || {})
-                        return void 0 !== n && (e[r] = n), e[r]
+                          ((r = l[t]),
+                            t < l.length - 1 && (e = e[r] = e[r] || {}))
+                        return (void 0 !== n && (e[r] = n), e[r])
                       } catch (l) {
                         throw new Error(
                           'Cannot ' +
@@ -22414,7 +22456,7 @@ b: c2: {n:2}
                               let n = (e.length + t.move[r]) % e.length,
                                 l = (e.length + t.move[r + 1]) % e.length,
                                 i = e[n]
-                              e.splice(n, 1), e.splice(l, 0, i)
+                              ;(e.splice(n, 1), e.splice(l, 0, i))
                             }
                           let n = e.filter((e) => null != e)
                           n.length !== e.length &&
@@ -22442,11 +22484,11 @@ b: c2: {n:2}
                                   /^Unexpected token (.) .*position\s+(\d+)/i,
                                 )
                               if (u) {
-                                ;(c = u[1]),
+                                ;((c = u[1]),
                                   (e = parseInt(u[2])),
                                   (s = t
                                     .substring(0, e)
-                                    .replace(/[^\n]/g, r.EMPTY).length)
+                                    .replace(/[^\n]/g, r.EMPTY).length))
                                 let n = e - 1
                                 for (; -1 < n && '\n' !== t.charAt(n); ) n--
                                 a = Math.max(t.substring(n, e).length, 0)
@@ -22505,11 +22547,11 @@ b: c2: {n:2}
                           }
                         },
                       }
-                    })
+                    }))
                 }),
                 n = e(function (e, n) {
                   'use strict'
-                  Object.defineProperty(n, '__esModule', { value: !0 }),
+                  ;(Object.defineProperty(n, '__esModule', { value: !0 }),
                     (n.makeTextMatcher =
                       n.makeNumberMatcher =
                       n.makeCommentMatcher =
@@ -22522,11 +22564,11 @@ b: c2: {n:2}
                       n.makePoint =
                       n.makeLex =
                       n.makeNoToken =
-                        void 0)
+                        void 0))
                   const l = t({})
                   class i {
                     constructor(e, t, n, r) {
-                      ;(this.len = -1),
+                      ;((this.len = -1),
                         (this.sI = 0),
                         (this.rI = 1),
                         (this.cI = 1),
@@ -22534,7 +22576,7 @@ b: c2: {n:2}
                         (this.len = e),
                         null != t && (this.sI = t),
                         null != n && (this.rI = n),
-                        null != r && (this.cI = r)
+                        null != r && (this.cI = r))
                     }
                     toString() {
                       return (
@@ -22552,7 +22594,7 @@ b: c2: {n:2}
                   n.makePoint = s
                   class o {
                     constructor(e, t, n, l, i, s, o) {
-                      ;(this.isToken = !0),
+                      ;((this.isToken = !0),
                         (this.name = r.EMPTY),
                         (this.tin = -1),
                         (this.val = void 0),
@@ -22570,7 +22612,7 @@ b: c2: {n:2}
                         (this.cI = i.cI),
                         (this.use = s),
                         (this.why = o),
-                        (this.len = null == l ? 0 : l.length)
+                        (this.len = null == l ? 0 : l.length))
                     }
                     resolveVal(e, t) {
                       return 'function' == typeof this.val
@@ -22625,15 +22667,15 @@ b: c2: {n:2}
                     if (e.cfg.fixed.lex && null != n && 0 < n.length) {
                       let i,
                         s = e.cfg.fixed.token[n]
-                      null != s && (i = e.token(s, void 0, n, r)),
+                      ;(null != s && (i = e.token(s, void 0, n, r)),
                         null != i &&
                           ((r.sI += i.src.length),
                           (r.cI += i.src.length),
-                          null == t ? (l = i) : r.token.push(i))
+                          null == t ? (l = i) : r.token.push(i)))
                     }
                     return l
                   }
-                  ;(n.makeToken = a),
+                  ;((n.makeToken = a),
                     (n.makeNoToken = () => a('', -1, void 0, r.EMPTY, s(-1))),
                     (n.makeFixedMatcher = (e, t) => {
                       let n = (0, l.regexp)(null, '^(', e.rePart.fixed, ')')
@@ -22742,7 +22784,7 @@ b: c2: {n:2}
                             lex: !!n.lex,
                             eatline: !!n.eatline,
                           }
-                          return (e[t] = r), e
+                          return ((e[t] = r), e)
                         }, {}),
                       }
                       let r = e.comment.lex
@@ -22774,13 +22816,18 @@ b: c2: {n:2}
                               r < n && !e.line.chars[o[r]];
 
                             )
-                              c++, r++
+                              (c++, r++)
                             if (l.eatline)
                               for (; r < n && e.line.chars[o[r]]; )
-                                e.line.rowChars[o[r]] && a++, r++
+                                (e.line.rowChars[o[r]] && a++, r++)
                             let i = o.substring(0, r),
                               u = t.token('#CM', void 0, i, s)
-                            return (s.sI += i.length), (s.cI = c), (s.rI = a), u
+                            return (
+                              (s.sI += i.length),
+                              (s.cI = c),
+                              (s.rI = a),
+                              u
+                            )
                           }
                         for (let r of i)
                           if (o.startsWith(r.start)) {
@@ -22792,15 +22839,20 @@ b: c2: {n:2}
                               i < n && !o.substring(i).startsWith(u);
 
                             )
-                              e.line.rowChars[o[i]] && (a++, (c = 0)), c++, i++
+                              (e.line.rowChars[o[i]] && (a++, (c = 0)),
+                                c++,
+                                i++)
                             if (o.substring(i).startsWith(u)) {
                               if (((c += u.length), r.eatline))
                                 for (; i < n && e.line.chars[o[i]]; )
-                                  e.line.rowChars[o[i]] && a++, i++
+                                  (e.line.rowChars[o[i]] && a++, i++)
                               let l = o.substring(0, i + u.length),
                                 d = t.token('#CM', void 0, l, s)
                               return (
-                                (s.sI += l.length), (s.rI = a), (s.cI = c), d
+                                (s.sI += l.length),
+                                (s.rI = a),
+                                (s.cI = c),
+                                d
                               )
                             }
                             return t.bad(
@@ -22838,9 +22890,9 @@ b: c2: {n:2}
                               let c
                               if (e.value.lex)
                                 if (void 0 !== (c = o[d]))
-                                  (n = r.token('#VL', c.val, d, i)),
+                                  ((n = r.token('#VL', c.val, d, i)),
                                     (i.sI += t),
-                                    (i.cI += t)
+                                    (i.cI += t))
                                 else
                                   for (let e in a) {
                                     let t = a[e]
@@ -22857,7 +22909,8 @@ b: c2: {n:2}
                                           let s = t.val(e)
                                           n = r.token('#VL', s, l, i)
                                         }
-                                        ;(i.sI += l.length), (i.cI += l.length)
+                                        ;((i.sI += l.length),
+                                          (i.cI += l.length))
                                       }
                                     }
                                   }
@@ -22948,7 +23001,7 @@ b: c2: {n:2}
                               }
                             }
                           }
-                          return u && (n = c(t, n, s)), n
+                          return (u && (n = c(t, n, s)), n)
                         }
                       }
                     }),
@@ -23002,7 +23055,7 @@ b: c2: {n:2}
                               b = f,
                               x = g,
                               y = c[i]
-                            ++f, ++k
+                            ;(++f, ++k)
                             let S,
                               j = []
                             for (; f < v; f++) {
@@ -23013,7 +23066,7 @@ b: c2: {n:2}
                                 break
                               }
                               if (o === r) {
-                                f++, k++
+                                ;(f++, k++)
                                 let e = s[h[f]]
                                 if (null != e) j.push(e)
                                 else if ('x' === h[f]) {
@@ -23030,7 +23083,7 @@ b: c2: {n:2}
                                     )
                                   }
                                   let r = String.fromCharCode(e)
-                                  j.push(r), (f += 1), (k += 2)
+                                  ;(j.push(r), (f += 1), (k += 2))
                                 } else if ('u' === h[f]) {
                                   f++
                                   let e = '{' === h[f] ? (f++, 1) : 0,
@@ -23051,7 +23104,7 @@ b: c2: {n:2}
                                     )
                                   }
                                   let s = String.fromCodePoint(i)
-                                  j.push(s), (f += r - 1 + e), (k += r + e)
+                                  ;(j.push(s), (f += r - 1 + e), (k += r + e))
                                 } else {
                                   if (!u) {
                                     if (n.abandon) return
@@ -23067,7 +23120,7 @@ b: c2: {n:2}
                                 p &&
                                 void 0 !== (S = d[h.charCodeAt(f)])
                               )
-                                j.push(S), k++
+                                (j.push(S), k++)
                               else {
                                 let r = f,
                                   s = i.charCodeAt(0),
@@ -23081,7 +23134,7 @@ b: c2: {n:2}
                                   a !== o;
 
                                 )
-                                  (o = h.charCodeAt(++f)), k++
+                                  ((o = h.charCodeAt(++f)), k++)
                                 if ((k--, void 0 === S && o < 32)) {
                                   if (!y || !e.line.chars[h[f]]) {
                                     if (n.abandon) return
@@ -23091,16 +23144,17 @@ b: c2: {n:2}
                                       t.bad(l.S.unprintable, f, f + 1)
                                     )
                                   }
-                                  e.line.rowChars[h[f]] && (m.rI = ++g),
+                                  ;(e.line.rowChars[h[f]] && (m.rI = ++g),
                                     (k = 1),
-                                    j.push(h.substring(r, f + 1))
-                                } else j.push(h.substring(r, f)), f--
+                                    j.push(h.substring(r, f + 1)))
+                                } else (j.push(h.substring(r, f)), f--)
                               }
                             }
                             if (h[f - 1] !== i || m.sI === f - 1) {
                               if (n.abandon) return
                               return (
-                                (m.rI = x), t.bad(l.S.unterminated_string, b, f)
+                                (m.rI = x),
+                                t.bad(l.S.unterminated_string, b, f)
                               )
                             }
                             const E = t.token(
@@ -23109,7 +23163,7 @@ b: c2: {n:2}
                               h.substring(m.sI, f),
                               m,
                             )
-                            return (m.sI = f), (m.rI = g), (m.cI = k), E
+                            return ((m.sI = f), (m.rI = g), (m.cI = k), E)
                           }
                         }
                       )
@@ -23135,11 +23189,11 @@ b: c2: {n:2}
                           );
 
                         )
-                          (a += l[s[o]] ? 1 : 0), o++
+                          ((a += l[s[o]] ? 1 : 0), o++)
                         if (i.sI < o) {
                           let e = s.substring(i.sI, o)
                           const n = t.token('#LN', void 0, e, i)
-                          return (i.sI += e.length), (i.rI = a), (i.cI = 1), n
+                          return ((i.sI += e.length), (i.rI = a), (i.cI = 1), n)
                         }
                       }),
                     (n.makeSpaceMatcher = (e, t) =>
@@ -23152,23 +23206,23 @@ b: c2: {n:2}
                         let { chars: n } = e.space,
                           { pnt: r, src: l } = t,
                           { sI: i, cI: s } = r
-                        for (; n[l[i]]; ) i++, s++
+                        for (; n[l[i]]; ) (i++, s++)
                         if (r.sI < i) {
                           let e = l.substring(r.sI, i)
                           const n = t.token('#SP', void 0, e, r)
-                          return (r.sI += e.length), (r.cI = s), n
+                          return ((r.sI += e.length), (r.cI = s), n)
                         }
-                      })
+                      }))
                   class u {
                     constructor(e) {
-                      ;(this.src = r.EMPTY),
+                      ;((this.src = r.EMPTY),
                         (this.ctx = {}),
                         (this.cfg = {}),
                         (this.pnt = s(-1)),
                         (this.ctx = e),
                         (this.src = e.src()),
                         (this.cfg = e.cfg),
-                        (this.pnt = s(this.src.length))
+                        (this.pnt = s(this.src.length)))
                     }
                     token(e, t, n, r, i, s) {
                       let o, c
@@ -23187,7 +23241,8 @@ b: c2: {n:2}
                       if (o.end) i = o.end
                       else if (0 < o.token.length) i = o.token.shift()
                       else if (o.len <= o.sI)
-                        (o.end = this.token('#ZZ', void 0, '', o)), (i = o.end)
+                        ((o.end = this.token('#ZZ', void 0, '', o)),
+                          (i = o.end))
                       else {
                         try {
                           for (let t of this.cfg.lex.match)
@@ -23257,7 +23312,7 @@ b: c2: {n:2}
                   n.makeLex = (...e) => new u(...e)
                 }),
                 r = {}
-              Object.defineProperty(r, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(r, '__esModule', { value: !0 }),
                 (r.STRING =
                   r.INSPECT =
                   r.EMPTY =
@@ -23272,10 +23327,10 @@ b: c2: {n:2}
                 (r.AFTER = 'a'),
                 (r.EMPTY = ''),
                 (r.INSPECT = Symbol.for('nodejs.util.inspect.custom')),
-                (r.STRING = 'string')
+                (r.STRING = 'string'))
               var l = {}
-              Object.defineProperty(l, '__esModule', { value: !0 }),
-                (l.defaults = void 0)
+              ;(Object.defineProperty(l, '__esModule', { value: !0 }),
+                (l.defaults = void 0))
               const i = n({}),
                 s = {
                   safe: { key: !0 },
@@ -23412,12 +23467,12 @@ b: c2: {n:2}
                 }
               l.defaults = s
               var o = {}
-              Object.defineProperty(o, '__esModule', { value: !0 }),
-                (o.makeRuleSpec = o.makeNoRule = o.makeRule = void 0)
+              ;(Object.defineProperty(o, '__esModule', { value: !0 }),
+                (o.makeRuleSpec = o.makeNoRule = o.makeRule = void 0))
               const a = t({})
               class c {
                 constructor(e, t, n) {
-                  ;(this.i = -1),
+                  ;((this.i = -1),
                     (this.name = r.EMPTY),
                     (this.node = null),
                     (this.state = r.OPEN),
@@ -23447,7 +23502,7 @@ b: c2: {n:2}
                     (this.bo = null != e.def.bo),
                     (this.ao = null != e.def.ao),
                     (this.bc = null != e.def.bc),
-                    (this.ac = null != e.def.ac)
+                    (this.ac = null != e.def.ac))
                 }
                 process(e, t) {
                   return this.spec.process(this, e, t, this.state)
@@ -23477,10 +23532,10 @@ b: c2: {n:2}
                 }
               }
               const u = (...e) => new c(...e)
-              ;(o.makeRule = u), (o.makeNoRule = (e) => u(g(e.cfg, {}), e))
+              ;((o.makeRule = u), (o.makeNoRule = (e) => u(g(e.cfg, {}), e)))
               class d {
                 constructor() {
-                  ;(this.p = r.EMPTY), (this.r = r.EMPTY), (this.b = 0)
+                  ;((this.p = r.EMPTY), (this.r = r.EMPTY), (this.b = 0))
                 }
               }
               const p = (...e) => new d(...e),
@@ -23488,7 +23543,7 @@ b: c2: {n:2}
                 h = p()
               class f {
                 constructor(e, t) {
-                  ;(this.name = r.EMPTY),
+                  ;((this.name = r.EMPTY),
                     (this.def = {
                       open: [],
                       close: [],
@@ -23505,7 +23560,7 @@ b: c2: {n:2}
                     )),
                     (this.def.close = (this.def.close || []).filter(
                       (e) => null != e,
-                    ))
+                    )))
                   for (let n of [...this.def.open, ...this.def.close]) k(n)
                 }
                 tin(e) {
@@ -23534,7 +23589,7 @@ b: c2: {n:2}
                 }
                 action(e, t, n, r) {
                   let l = this.def[t + n]
-                  return e ? l.push(r) : l.unshift(r), this
+                  return (e ? l.push(r) : l.unshift(r), this)
                 }
                 bo(e, t) {
                   return this.action(!t || !!e, r.BEFORE, r.OPEN, t || e)
@@ -23560,8 +23615,8 @@ b: c2: {n:2}
                   )
                 }
                 norm() {
-                  this.def.open.map((e) => k(e)),
-                    this.def.close.map((e) => k(e))
+                  ;(this.def.open.map((e) => k(e)),
+                    this.def.close.map((e) => k(e)))
                   const e = []
                   function t(e, t, n) {
                     return (
@@ -23570,7 +23625,7 @@ b: c2: {n:2}
                         function (e, n) {
                           if (n.s && n.s[t]) {
                             let r = [...new Set(e.concat(n.s[t]))]
-                            ;(e.length = 0), e.push(...r)
+                            ;((e.length = 0), e.push(...r))
                           }
                           return e
                         },
@@ -23609,7 +23664,7 @@ b: c2: {n:2}
                     0 < d.length
                       ? (function (e, t, n, l, i) {
                           let s = m
-                          ;(s.b = 0),
+                          ;((s.b = 0),
                             (s.p = r.EMPTY),
                             (s.r = r.EMPTY),
                             (s.n = void 0),
@@ -23617,7 +23672,7 @@ b: c2: {n:2}
                             (s.a = void 0),
                             (s.u = void 0),
                             (s.k = void 0),
-                            (s.e = void 0)
+                            (s.e = void 0))
                           let o = null,
                             c = 0,
                             u = !0,
@@ -23626,7 +23681,7 @@ b: c2: {n:2}
                           function h(e, t, r, l) {
                             let s
                             do {
-                              ;(s = n.next(e, t, r, l)), i.tC++
+                              ;((s = n.next(e, t, r, l)), i.tC++)
                             } while (p[s.tin])
                             return s
                           }
@@ -23652,11 +23707,11 @@ b: c2: {n:2}
                                   i.NOTOKEN !== i.t1
                                     ? i.t1
                                     : (i.t1 = h(l, o, c, 1))).tin
-                                ;(r = !0),
+                                ;((r = !0),
                                   (u = !!(
                                     o.S1[(e / 31) | 0] &
                                     ((1 << ((e % 31) - 1)) | d)
-                                  ))
+                                  )))
                               }
                             }
                             if (
@@ -23673,7 +23728,7 @@ b: c2: {n:2}
                               break
                             o = null
                           }
-                          u || (s.e = i.t0),
+                          ;(u || (s.e = i.t0),
                             o &&
                               ((s.n = null != o.n ? o.n : s.n),
                               (s.h = null != o.h ? o.h : s.h),
@@ -23699,10 +23754,11 @@ b: c2: {n:2}
                                   ? 'number' == typeof o.b
                                     ? o.b
                                     : o.b(l, i, s)
-                                  : s.b))
+                                  : s.b)))
                           let g = c < t.length
                           return (
-                            i.log && i.log(a.S.parse, i, l, n, g, u, c, o, s), s
+                            i.log && i.log(a.S.parse, i, l, n, g, u, c, o, s),
+                            s
                           )
                         })(i, d, n, e, t)
                       : h
@@ -23731,23 +23787,23 @@ b: c2: {n:2}
                       return this.bad(this.unknownRule(t.t0, f.p), e, t, {
                         is_open: i,
                       })
-                    ;(s = e.child = u(n, t, e.node)),
+                    ;((s = e.child = u(n, t, e.node)),
                       (s.parent = e),
                       (s.n = { ...e.n }),
                       0 < Object.keys(e.k).length && (s.k = { ...e.k }),
-                      (o += 'P`' + f.p + '`')
+                      (o += 'P`' + f.p + '`'))
                   } else if (f.r) {
                     let n = t.rsm[f.r]
                     if (!n)
                       return this.bad(this.unknownRule(t.t0, f.r), e, t, {
                         is_open: i,
                       })
-                    ;(s = u(n, t, e.node)),
+                    ;((s = u(n, t, e.node)),
                       (s.parent = e.parent),
                       (s.prev = e),
                       (s.n = { ...e.n }),
                       0 < Object.keys(e.k).length && (s.k = { ...e.k }),
-                      (o += 'R`' + f.r + '`')
+                      (o += 'R`' + f.r + '`'))
                   } else i || (s = t.rs[--t.rsI] || t.NORULE)
                   let g = i ? (e.ao ? c.ao : null) : e.ac ? c.ac : null
                   if (g) {
@@ -23760,9 +23816,9 @@ b: c2: {n:2}
                       )
                         return this.bad(n, e, t, { is_open: i })
                   }
-                  ;(s.why = o),
+                  ;((s.why = o),
                     t.log && t.log(a.S.node, t, e, n, s),
-                    r.OPEN === e.state && (e.state = r.CLOSE)
+                    r.OPEN === e.state && (e.state = r.CLOSE))
                   let k = e[i ? 'os' : 'cs'] - (f.b || 0)
                   return (
                     1 === k
@@ -23813,7 +23869,7 @@ b: c2: {n:2}
                     l = t([e.s[0]]),
                     i = t([e.s[1]]),
                     s = e
-                  ;(s.S0 =
+                  ;((s.S0 =
                     0 < l.length
                       ? new Array(Math.max(...l.map((e) => (1 + e / 31) | 0)))
                           .fill(null)
@@ -23826,7 +23882,7 @@ b: c2: {n:2}
                             .fill(null)
                             .map((e, t) => t)
                             .map((e) => r(n(i, e), e))
-                        : null)
+                        : null))
                 } else e.s = null
                 return (
                   e.p || (e.p = null),
@@ -23837,11 +23893,11 @@ b: c2: {n:2}
               }
               o.makeRuleSpec = g
               var v = {}
-              Object.defineProperty(v, '__esModule', { value: !0 }),
-                (v.makeParser = v.makeRuleSpec = v.makeRule = void 0)
+              ;(Object.defineProperty(v, '__esModule', { value: !0 }),
+                (v.makeParser = v.makeRuleSpec = v.makeRule = void 0))
               const b = t({}),
                 x = n({})
-              Object.defineProperty(v, 'makeRule', {
+              ;(Object.defineProperty(v, 'makeRule', {
                 enumerable: !0,
                 get: function () {
                   return o.makeRule
@@ -23852,10 +23908,10 @@ b: c2: {n:2}
                   get: function () {
                     return o.makeRuleSpec
                   },
-                })
+                }))
               class y {
                 constructor(e, t) {
-                  ;(this.rsm = {}), (this.options = e), (this.cfg = t)
+                  ;((this.rsm = {}), (this.options = e), (this.cfg = t))
                 }
                 rule(e, t) {
                   if (null == e) return this.rsm
@@ -23942,13 +23998,13 @@ b: c2: {n:2}
                       c.cfg.rule.maxmul,
                     f = 0
                   for (; u !== m && f < h; )
-                    (c.kI = f),
+                    ((c.kI = f),
                       (c.rule = m),
                       c.log && c.log('', c.kI + ':'),
                       c.sub.rule && c.sub.rule.map((e) => e(m, c)),
                       (m = m.process(c, d)),
                       c.log && c.log(b.S.stack, c, m, d),
-                      f++
+                      f++)
                   if (s.tin !== d.next(m).tin)
                     throw new b.JsonicError(b.S.unexpected, {}, c.t0, u, c)
                   const g = c.root().node
@@ -23961,7 +24017,8 @@ b: c2: {n:2}
                   return (
                     (n.rsm = Object.keys(this.rsm).reduce(
                       (e, t) => (
-                        (e[t] = (0, b.filterRules)(this.rsm[t], this.cfg)), e
+                        (e[t] = (0, b.filterRules)(this.rsm[t], this.cfg)),
+                        e
                       ),
                       {},
                     )),
@@ -23991,14 +24048,14 @@ b: c2: {n:2}
                   { VAL: d, KEY: p } = e.tokenSet,
                   m = (e, t) => {
                     if (!t.cfg.rule.finish)
-                      return (t.t0.src = 'END_OF_SOURCE'), t.t0
+                      return ((t.t0.src = 'END_OF_SOURCE'), t.t0)
                   },
                   h = (e) => {
                     const t = e.o0,
                       n = c === t.tin || a === t.tin ? t.val : t.src
                     e.u.key = n
                   }
-                e.rule('val', (e) => {
+                ;(e.rule('val', (e) => {
                   e.bo((e) => (e.node = void 0))
                     .open([
                       { s: [n], p: 'map', b: 1, g: 'map,json' },
@@ -24069,12 +24126,12 @@ b: c2: {n:2}
                         { s: [o], r: 'elem', g: 'list,elem,json' },
                         { s: [i], b: 1, g: 'list,elem,json' },
                       ])
-                  })
+                  }))
                 const f = (e, n) => {
                   let r = e.u.key,
                     l = e.child.node
                   const i = e.u.prev
-                  ;(l = void 0 === l ? null : l),
+                  ;((l = void 0 === l ? null : l),
                     (e.u.list &&
                       n.cfg.safe.key &&
                       ('__proto__' === r || 'constructor' === r)) ||
@@ -24085,9 +24142,9 @@ b: c2: {n:2}
                             ? n.cfg.map.merge(i, l, e, n)
                             : n.cfg.map.extend
                               ? t(i, l)
-                              : l)
+                              : l))
                 }
-                e.rule('val', (e) => {
+                ;(e.rule('val', (e) => {
                   e.open(
                     [
                       {
@@ -24170,9 +24227,9 @@ b: c2: {n:2}
                   }),
                   e.rule('list', (e) => {
                     e.bo((e) => {
-                      ;(e.n.dlist = 1 + (e.n.dlist ? e.n.dlist : 0)),
+                      ;((e.n.dlist = 1 + (e.n.dlist ? e.n.dlist : 0)),
                         e.prev.u.implist &&
-                          (e.node.push(e.prev.node), (e.prev.node = e.node))
+                          (e.node.push(e.prev.node), (e.prev.node = e.node)))
                     })
                       .open({ c: (e) => e.prev.u.implist, p: 'elem' })
                       .open(
@@ -24285,9 +24342,9 @@ b: c2: {n:2}
                         ],
                         { delete: [-1, -2] },
                       )
-                  })
+                  }))
               }
-              Object.defineProperty(S, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(S, '__esModule', { value: !0 }),
                 (S.makeJSON = S.grammar = void 0),
                 (S.grammar = j),
                 (S.makeJSON = function (e) {
@@ -24314,10 +24371,10 @@ b: c2: {n:2}
                     result: { fail: [void 0, NaN] },
                     tokenSet: { KEY: ['#ST', null, null, null] },
                   })
-                  return j(t), t
-                })
+                  return (j(t), t)
+                }))
               var E = { exports: {} }
-              Object.defineProperty(E.exports, '__esModule', { value: !0 }),
+              ;(Object.defineProperty(E.exports, '__esModule', { value: !0 }),
                 (E.exports.root =
                   E.exports.S =
                   E.exports.EMPTY =
@@ -24372,9 +24429,9 @@ b: c2: {n:2}
                   get: function () {
                     return r.EMPTY
                   },
-                })
+                }))
               const O = t({})
-              Object.defineProperty(E.exports, 'JsonicError', {
+              ;(Object.defineProperty(E.exports, 'JsonicError', {
                 enumerable: !0,
                 get: function () {
                   return O.JsonicError
@@ -24385,9 +24442,9 @@ b: c2: {n:2}
                   get: function () {
                     return O.S
                   },
-                })
+                }))
               const I = n({})
-              Object.defineProperty(E.exports, 'makePoint', {
+              ;(Object.defineProperty(E.exports, 'makePoint', {
                 enumerable: !0,
                 get: function () {
                   return I.makePoint
@@ -24464,7 +24521,7 @@ b: c2: {n:2}
                   get: function () {
                     return v.makeParser
                   },
-                })
+                }))
               const T = {
                 tokenize: O.tokenize,
                 srcfmt: O.srcfmt,
@@ -24529,7 +24586,7 @@ b: c2: {n:2}
                   },
                   o = (e) => {
                     if (null != e && O.S.object === typeof e) {
-                      ;(0, O.deep)(i, e), (0, O.configure)(s, r.config, i)
+                      ;((0, O.deep)(i, e), (0, O.configure)(s, r.config, i))
                       let t = s.internal().parser
                       r.parser = t.clone(i, r.config)
                     }
@@ -24600,22 +24657,24 @@ b: c2: {n:2}
                   for (let n in t) void 0 === s[n] && (s[n] = t[n])
                   s.parent = t
                   let e = t.internal()
-                  ;(r.config = (0, O.deep)({}, e.config)),
+                  ;((r.config = (0, O.deep)({}, e.config)),
                     (0, O.configure)(s, r.config, i),
                     (0, O.assign)(s.token, r.config.t),
                     (r.plugins = [...e.plugins]),
-                    (r.parser = e.parser.clone(i, r.config))
+                    (r.parser = e.parser.clone(i, r.config)))
                 } else {
                   let e = { ...s, ...a }
-                  ;(r.config = (0, O.configure)(e, void 0, i)),
+                  ;((r.config = (0, O.configure)(e, void 0, i)),
                     (r.plugins = []),
                     (r.parser = (0, v.makeParser)(i, r.config)),
-                    !1 !== i.grammar$ && (0, S.grammar)(e)
+                    !1 !== i.grammar$ && (0, S.grammar)(e))
                 }
                 return s
               }
               let N
-              ;(E.exports.util = T), (E.exports.make = M), (E.exports.root = N)
+              ;((E.exports.util = T),
+                (E.exports.make = M),
+                (E.exports.root = N))
               let P = (E.exports.root = N = M('jsonic'))
               return (
                 (E.exports.Jsonic = P),
@@ -25268,10 +25327,10 @@ b: c2: {n:2}
               }
             })(function () {
               var e = {}
-              Object.defineProperty(e, '__esModule', { value: !0 }),
-                (e.Path = void 0)
+              ;(Object.defineProperty(e, '__esModule', { value: !0 }),
+                (e.Path = void 0))
               const d = (e, d) => {
-                e.rule('val', (e) => {
+                ;(e.rule('val', (e) => {
                   e.bo((e, d) => {
                     var i, n
                     0 === e.d &&
@@ -25311,9 +25370,9 @@ b: c2: {n:2}
                         (e.child.k.key = e.k.index),
                         (e.child.k.index = e.k.index))
                     })
-                  })
+                  }))
               }
-              return (e.Path = d), (d.defaults = {}), e
+              return ((e.Path = d), (d.defaults = {}), e)
             })
           }).call(this)
         }).call(
