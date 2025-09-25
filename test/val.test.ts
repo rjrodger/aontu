@@ -1,34 +1,33 @@
 /* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
-
-
+import { describe, it, beforeEach } from 'node:test'
 
 import {
   Lang
-} from '../lib/lang'
+} from '../dist/lang'
 
 import {
   Context,
   Unify,
-} from '../lib/unify'
+} from '../dist/unify'
 
 import { expect } from '@hapi/code'
 import {
   unite
-} from '../lib/op/op'
+} from '../dist/op/op'
 
 
 
 
-import { ConjunctVal } from '../lib/val/ConjunctVal'
-import { DisjunctVal } from '../lib/val/DisjunctVal'
-import { ListVal } from '../lib/val/ListVal'
-import { MapVal } from '../lib/val/MapVal'
-import { Nil } from '../lib/val/Nil'
-import { PrefVal } from '../lib/val/PrefVal'
-import { RefVal } from '../lib/val/RefVal'
-import { VarVal } from '../lib/val/VarVal'
-import { ValBase } from '../lib/val/ValBase'
+import { ConjunctVal } from '../dist/val/ConjunctVal'
+import { DisjunctVal } from '../dist/val/DisjunctVal'
+import { ListVal } from '../dist/val/ListVal'
+import { MapVal } from '../dist/val/MapVal'
+import { Nil } from '../dist/val/Nil'
+import { PrefVal } from '../dist/val/PrefVal'
+import { RefVal } from '../dist/val/RefVal'
+import { VarVal } from '../dist/val/VarVal'
+import { ValBase } from '../dist/val/ValBase'
 
 
 import {
@@ -39,7 +38,7 @@ import {
   IntegerVal,
   ScalarTypeVal,
   TOP,
-} from '../lib/val'
+} from '../dist/val'
 
 
 const lang = new Lang()

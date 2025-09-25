@@ -1,23 +1,23 @@
 /* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
-
+import { describe, it } from 'node:test'
 import {
   Lang
-} from '../lib/lang'
+} from '../dist/lang'
 
 import {
   Context
-} from '../lib/unify'
+} from '../dist/unify'
 
 
-import { MapVal } from '../lib/val/MapVal'
-import { Nil } from '../lib/val/Nil'
+import { MapVal } from '../dist/val/MapVal'
+import { Nil } from '../dist/val/Nil'
 
 import { expect } from '@hapi/code'
 import {
   disjunct,
   unite,
-} from '../lib/op/op'
+} from '../dist/op/op'
 
 
 

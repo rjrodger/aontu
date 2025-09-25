@@ -1,28 +1,29 @@
-/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
+import { describe, test } from 'node:test'
 
 import {
   Lang
-} from '../lib/lang'
+} from '../dist/lang'
 
 import {
   Context,
   Unify,
-} from '../lib/unify'
+} from '../dist/unify'
 
 
 
 
 import { expect } from '@hapi/code'
-import { TOP } from '../lib/val'
-import { ConjunctVal } from '../lib/val/ConjunctVal'
-import { DisjunctVal } from '../lib/val/DisjunctVal'
-import { ListVal } from '../lib/val/ListVal'
-import { MapVal } from '../lib/val/MapVal'
-import { Nil } from '../lib/val/Nil'
-import { PrefVal } from '../lib/val/PrefVal'
-import { RefVal } from '../lib/val/RefVal'
-import { ValBase } from '../lib/val/ValBase'
+import { TOP } from '../dist/val'
+import { ConjunctVal } from '../dist/val/ConjunctVal'
+import { DisjunctVal } from '../dist/val/DisjunctVal'
+import { ListVal } from '../dist/val/ListVal'
+import { MapVal } from '../dist/val/MapVal'
+import { Nil } from '../dist/val/Nil'
+import { PrefVal } from '../dist/val/PrefVal'
+import { RefVal } from '../dist/val/RefVal'
+import { ValBase } from '../dist/val/ValBase'
 
 
 const lang = new Lang()
@@ -598,7 +599,7 @@ b: { c1: { k:1 }}
 
 
 
-  it('ref', () => {
+  test('ref', () => {
     let ctx = makeCtx()
 
     let d0 = new RefVal({ peg: ['a'] })
@@ -628,7 +629,7 @@ b: { c1: { k:1 }}
   })
 
 
-  it('unify', () => {
+  test('unify', () => {
     let r1 = new RefVal({ peg: ['a'] })
     let r2 = new RefVal({ peg: ['a'] })
 
@@ -651,7 +652,7 @@ b: { c1: { k:1 }}
 
 
 
-  it('spreadable', () => {
+  test('spreadable', () => {
     let g0 = G('a:1 x:{&:{y:$.a}} x:m:q:2 x:n:q:3')
     expect(g0).equal({ a: 1, x: { m: { q: 2, y: 1 }, n: { q: 3, y: 1 } } })
 
@@ -682,7 +683,7 @@ b: { c1: { k:1 }}
   })
 
 
-  it('multi-spreadable', () => {
+  test('multi-spreadable', () => {
 
     expect(P('&:a').canon).equal('{&:"a"}')
     expect(P('&:a:1').canon).equal('{&:{"a":1}}')
@@ -720,7 +721,7 @@ b: { c1: { k:1 }}
   })
 
 
-  it('multi-spreadable-key', () => {
+  test('multi-spreadable-key', () => {
     expect(G('.$KEY')).equal('')
     expect(G('k:.$KEY')).equal({ k: '' })
     expect(G('a:k:.$KEY')).equal({ a: { k: 'a' } })

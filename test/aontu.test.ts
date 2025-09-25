@@ -1,9 +1,10 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
+import { describe, it } from 'node:test'
 import { memfs as Memfs } from 'memfs'
 import { expect } from '@hapi/code'
 
-let { Aontu, Lang, util } = require('../aontu')
+let { Aontu, Lang, util } = require('../dist/aontu')
 
 // let { makeFileResolver } = require('@jsonic/multisource')
 
@@ -65,7 +66,7 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   it('file', async () => {
-    let v0 = Aontu('@"' + __dirname + '/t02.jsonic"')
+    let v0 = Aontu('@"' + __dirname + '/../test/t02.jsonic"')
 
     expect(v0.canon).equal(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}'
@@ -95,7 +96,7 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   it('pref', async () => {
-    let v0 = Aontu('@"' + __dirname + '/t03.jsonic"', {
+    let v0 = Aontu('@"' + __dirname + '/../test/t03.jsonic"', {
       // resolver: makeFileResolver(),
       base: __dirname,
     })

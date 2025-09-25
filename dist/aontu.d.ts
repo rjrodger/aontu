@@ -1,7 +1,7 @@
-import type { Val, Options } from './lib/type';
-import { Lang } from './lib/lang';
-import { Context } from './lib/unify';
-import { Nil } from './lib/val/Nil';
+import type { Val, Options } from './type';
+import { Lang } from './lang';
+import { Context } from './unify';
+import { Nil } from './val/Nil';
 declare function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val;
 declare function prepareOptions(src: string | Partial<Options>, popts?: Partial<Options>): Options;
 declare function parse(opts: Options, ctx: {

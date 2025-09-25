@@ -1,31 +1,31 @@
 /* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
-
+import { describe, it } from 'node:test'
 
 import type {
   Val,
-} from '../lib/type'
+} from '../dist/type'
 
 import {
   Lang
-} from '../lib/lang'
+} from '../dist/lang'
 
 import {
   Unify,
   Context,
-} from '../lib/unify'
+} from '../dist/unify'
 
 
 import { expect } from '@hapi/code'
-import { TOP } from '../lib/val'
-import { ConjunctVal } from '../lib/val/ConjunctVal'
-import { DisjunctVal } from '../lib/val/DisjunctVal'
-import { ListVal } from '../lib/val/ListVal'
-import { MapVal } from '../lib/val/MapVal'
-import { Nil } from '../lib/val/Nil'
-import { PrefVal } from '../lib/val/PrefVal'
-import { RefVal } from '../lib/val/RefVal'
-import { ValBase } from '../lib/val/ValBase'
+import { TOP } from '../dist/val'
+import { ConjunctVal } from '../dist/val/ConjunctVal'
+import { DisjunctVal } from '../dist/val/DisjunctVal'
+import { ListVal } from '../dist/val/ListVal'
+import { MapVal } from '../dist/val/MapVal'
+import { Nil } from '../dist/val/Nil'
+import { PrefVal } from '../dist/val/PrefVal'
+import { RefVal } from '../dist/val/RefVal'
+import { ValBase } from '../dist/val/ValBase'
 
 
 let lang = new Lang()
@@ -157,70 +157,70 @@ describe('lang', function() {
       // trace: true,
     })
 
-    let t00x = g0.parse('x:@"' + __dirname + '/t00.jsonic"')
+    let t00x = g0.parse('x:@"' + __dirname + '/../test/t00.jsonic"')
     expect(t00x.canon).equal('{"x":{"a":1}}')
 
-    let t00xA = g0.parse('A:11,x:@"' + __dirname + '/t00.jsonic"')
+    let t00xA = g0.parse('A:11,x:@"' + __dirname + '/../test/t00.jsonic"')
     expect(t00xA.canon).equal('{"A":11,"x":{"a":1}}')
-    let t00xB = g0.parse('x:@"' + __dirname + '/t00.jsonic",B:22')
+    let t00xB = g0.parse('x:@"' + __dirname + '/../test/t00.jsonic",B:22')
     expect(t00xB.canon).equal('{"x":{"a":1},"B":22}')
-    let t00xAB = g0.parse('A:11,x:@"' + __dirname + '/t00.jsonic",B:22')
+    let t00xAB = g0.parse('A:11,x:@"' + __dirname + '/../test/t00.jsonic",B:22')
     expect(t00xAB.canon).equal('{"A":11,"x":{"a":1},"B":22}')
 
-    let t00xAs = g0.parse('A:11 x:@"' + __dirname + '/t00.jsonic"')
+    let t00xAs = g0.parse('A:11 x:@"' + __dirname + '/../test/t00.jsonic"')
     expect(t00xAs.canon).equal('{"A":11,"x":{"a":1}}')
-    let t00xBs = g0.parse('x:@"' + __dirname + '/t00.jsonic" B:22')
+    let t00xBs = g0.parse('x:@"' + __dirname + '/../test/t00.jsonic" B:22')
     expect(t00xBs.canon).equal('{"x":{"a":1},"B":22}')
-    let t00xABs = g0.parse('A:11 x:@"' + __dirname + '/t00.jsonic" B:22')
+    let t00xABs = g0.parse('A:11 x:@"' + __dirname + '/../test/t00.jsonic" B:22')
     expect(t00xABs.canon).equal('{"A":11,"x":{"a":1},"B":22}')
 
 
-    let t00v = g0.parse('@"' + __dirname + '/t00.jsonic"')
+    let t00v = g0.parse('@"' + __dirname + '/../test/t00.jsonic"')
     expect(t00v.canon).equal('{}&{"a":1}')
     let t00 = new Unify(t00v)
     expect(t00.res.canon).equal('{"a":1}')
     expect(t00.res.gen()).equal({ a: 1 })
 
-    let t00vX = g0.parse(' X:11 @"' + __dirname + '/t00.jsonic"')
+    let t00vX = g0.parse(' X:11 @"' + __dirname + '/../test/t00.jsonic"')
     expect(t00vX.canon).equal('{"X":11}&{"a":1}')
     let t00X = new Unify(t00vX)
     expect(t00X.res.canon).equal('{"X":11,"a":1}')
     expect(t00X.res.gen()).equal({ X: 11, a: 1 })
 
-    let t00vY = g0.parse('@"' + __dirname + '/t00.jsonic" Y:22 ')
+    let t00vY = g0.parse('@"' + __dirname + '/../test/t00.jsonic" Y:22 ')
     expect(t00vY.canon).equal('{"Y":22}&{"a":1}')
     let t00Y = new Unify(t00vY)
     expect(t00Y.res.canon).equal('{"Y":22,"a":1}')
     expect(t00Y.res.gen()).equal({ Y: 22, a: 1 })
 
 
-    let t00dv = g0.parse('D:{@"' + __dirname + '/t00.jsonic"}')
+    let t00dv = g0.parse('D:{@"' + __dirname + '/../test/t00.jsonic"}')
     expect(t00dv.canon).equal('{"D":{}&{"a":1}}')
     let t00d = new Unify(t00dv)
     expect(t00d.res.canon).equal('{"D":{"a":1}}')
     expect(t00d.res.gen()).equal({ D: { a: 1 } })
 
 
-    let t01v = g0.parse('@"' + __dirname + '/t01.jsonic"')
+    let t01v = g0.parse('@"' + __dirname + '/../test/t01.jsonic"')
     expect(t01v.canon).equal('{}&{"a":1,"b":{"d":2},"c":3}')
 
 
     let t00m = g0.parse(`
-    @"` + __dirname + `/t00.jsonic"
+    @"` + __dirname + `/../test/t00.jsonic"
     `)
     expect(t00m.canon).equal('{}&{"a":1}')
 
     let t01m = g0.parse(`
-    @"` + __dirname + `/t00.jsonic"
-    @"` + __dirname + `/t04.jsonic"
+    @"` + __dirname + `/../test/t00.jsonic"
+    @"` + __dirname + `/../test/t04.jsonic"
     `)
     expect(t01m.canon).equal('{}&{"a":1}&{"b":2}')
 
     let t02m = g0.parse(`
     x: 11
-    @"` + __dirname + `/t00.jsonic"
+    @"` + __dirname + `/../test/t00.jsonic"
     y: 22
-    @"` + __dirname + `/t04.jsonic"
+    @"` + __dirname + `/../test/t04.jsonic"
     z: 33
     `)
     expect(t02m.canon).equal('{"x":11,"y":22,"z":33}&{"a":1}&{"b":2}')
@@ -228,7 +228,7 @@ describe('lang', function() {
 
     let t03m = g0.parse(`
     x:y:{}
-    @"` + __dirname + `/t00.jsonic"
+    @"` + __dirname + `/../test/t00.jsonic"
     `)
     expect(t03m.canon).equal('{"x":{"y":{}}}&{"a":1}')
   })

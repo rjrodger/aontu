@@ -1,8 +1,8 @@
 /* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
-
+import { describe, it } from 'node:test'
 import { expect } from '@hapi/code'
-import { Aontu, Context } from '../aontu'
+import { Aontu, Context } from '../dist/aontu'
 
 
 describe('error', function() {
@@ -22,7 +22,7 @@ describe('error', function() {
 
 
   it('file-e01', async () => {
-    let v0 = Aontu('@"' + __dirname + '/error/e01.jsonic"')
+    let v0 = Aontu('@"' + __dirname + '/../test/error/e01.jsonic"')
     expect(v0.err[0]).include({ nil: true, why: 'scalar' })
     expect(typeof v0.err[0].msg).equal('string')
   })
@@ -57,7 +57,7 @@ describe('error', function() {
 
 
   it('generate-file-e02', () => {
-    let v0 = Aontu('@"' + __dirname + '/error/e02.jsonic"')
+    let v0 = Aontu('@"' + __dirname + '/../test/error/e02.jsonic"')
 
     try {
       v0.gen()

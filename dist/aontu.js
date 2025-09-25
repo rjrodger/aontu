@@ -4,14 +4,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.util = exports.Context = exports.Lang = exports.Nil = void 0;
 exports.Aontu = Aontu;
 exports.parse = parse;
-const lang_1 = require("./lib/lang");
+const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
-const unify_1 = require("./lib/unify");
+const unify_1 = require("./unify");
 Object.defineProperty(exports, "Context", { enumerable: true, get: function () { return unify_1.Context; } });
-const Nil_1 = require("./lib/val/Nil");
+const Nil_1 = require("./val/Nil");
 Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return Nil_1.Nil; } });
-const MapVal_1 = require("./lib/val/MapVal");
-const err_1 = require("./lib/err");
+const MapVal_1 = require("./val/MapVal");
+const err_1 = require("./err");
 // TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level
 // TODO: exclude tests from dist!!!
 // TODO: propogate property path and url properly over unification, and multisource

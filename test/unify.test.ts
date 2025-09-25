@@ -1,28 +1,28 @@
 
-
-
+import { describe, test } from 'node:test'
 
 import { expect } from '@hapi/code'
+
 import {
   Context,
   Unify,
-} from '../lib/unify'
+} from '../dist/unify'
 
 
 import {
   Lang
-} from '../lib/lang'
+} from '../dist/lang'
 
 
-import { TOP } from '../lib/val'
-import { ConjunctVal } from '../lib/val/ConjunctVal'
-import { DisjunctVal } from '../lib/val/DisjunctVal'
-import { ListVal } from '../lib/val/ListVal'
-import { MapVal } from '../lib/val/MapVal'
-import { Nil } from '../lib/val/Nil'
-import { PrefVal } from '../lib/val/PrefVal'
-import { RefVal } from '../lib/val/RefVal'
-import { ValBase } from '../lib/val/ValBase'
+import { TOP } from '../dist/val'
+import { ConjunctVal } from '../dist/val/ConjunctVal'
+import { DisjunctVal } from '../dist/val/DisjunctVal'
+import { ListVal } from '../dist/val/ListVal'
+import { MapVal } from '../dist/val/MapVal'
+import { Nil } from '../dist/val/Nil'
+import { PrefVal } from '../dist/val/PrefVal'
+import { RefVal } from '../dist/val/RefVal'
+import { ValBase } from '../dist/val/ValBase'
 
 
 let lang = new Lang()
@@ -31,7 +31,7 @@ let P = lang.parse.bind(lang)
 
 describe('unify', function() {
 
-  it('find', () => {
+  test('find', () => {
     // let ref = (s: string) => (P(s) as RefVal)
 
     // let m0 = P('{a:1,b:{c:2},d:{e:{f:3}}')
@@ -50,7 +50,7 @@ describe('unify', function() {
 
 
   /*  
-  it('basic', () => {
+  test('basic', () => {
     let u0 = new Unify('1')
     expect(u0.res.canon).equal('1')
 
@@ -68,7 +68,7 @@ describe('unify', function() {
   })
 
 
-    it('merge-is-conjunct', () => {
+    test('merge-is-conjunct', () => {
       // let ur = (s: string) => new Unify(s).res
       let uc = (s: string) => new Unify(s).res.canon
   
@@ -84,7 +84,7 @@ describe('unify', function() {
     })
   
   
-    it('pref-in-conjunct', () => {
+    test('pref-in-conjunct', () => {
       let uc = (s: string) => new Unify(s).res.canon
   
       expect(uc('a:{z:*3|number},d:{&:.a,b:{},c:{z:4}}'))
@@ -127,7 +127,7 @@ describe('unify', function() {
   
   
   
-    it('ref', () => {
+    test('ref', () => {
       let uc = (s: string) => {
         let u = new Unify(s)
         return { c: u.res.canon, d: u.dc }
@@ -159,7 +159,7 @@ describe('unify', function() {
     })
   
   
-    it('spreads', () => {
+    test('spreads', () => {
       let uc = (s: string) => new Unify(s).res.canon
   
       expect(uc('a:{&:{x:1,y:integer},b:{y:1},c:{y:2}}'))
@@ -195,7 +195,7 @@ describe('unify', function() {
   
   
     /*
-    it('error', () => {
+    test('error', () => {
       let uc = (s: string) => new Unify(s).res.canon
   
       expect(uc('1&string')).startsWith('nil')

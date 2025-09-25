@@ -1,28 +1,30 @@
 /* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
 
+import { describe, test } from 'node:test'
+
 import {
   Lang
-} from '../lib/lang'
+} from '../dist/lang'
 
 import {
   Context,
   Unify,
-} from '../lib/unify'
+} from '../dist/unify'
 
 
 
 
 import { expect } from '@hapi/code'
-import { TOP } from '../lib/val'
-import { ConjunctVal } from '../lib/val/ConjunctVal'
-import { DisjunctVal } from '../lib/val/DisjunctVal'
-import { ListVal } from '../lib/val/ListVal'
-import { MapVal } from '../lib/val/MapVal'
-import { Nil } from '../lib/val/Nil'
-import { PrefVal } from '../lib/val/PrefVal'
-import { RefVal } from '../lib/val/RefVal'
-import { ValBase } from '../lib/val/ValBase'
+import { TOP } from '../dist/val'
+import { ConjunctVal } from '../dist/val/ConjunctVal'
+import { DisjunctVal } from '../dist/val/DisjunctVal'
+import { ListVal } from '../dist/val/ListVal'
+import { MapVal } from '../dist/val/MapVal'
+import { Nil } from '../dist/val/Nil'
+import { PrefVal } from '../dist/val/PrefVal'
+import { RefVal } from '../dist/val/RefVal'
+import { ValBase } from '../dist/val/ValBase'
 
 
 
@@ -41,7 +43,7 @@ const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
 describe('val-disjunct', function() {
 
 
-  it('basic', () => {
+  test('basic', () => {
     let u0 = UC('a:{x:1}|{y:2},a:{z:3}')
     expect(u0).equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}}')
 
@@ -63,7 +65,7 @@ describe('val-disjunct', function() {
   })
 
 
-  it('clone', () => {
+  test('clone', () => {
     let v0 = P('{x:1}|{y:2}|{z:3}')
     // console.log(v0.canon)
     expect(v0.canon).equal('({"x":1}|{"y":2})|{"z":3}')
