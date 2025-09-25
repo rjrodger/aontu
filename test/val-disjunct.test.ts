@@ -13,6 +13,7 @@ import {
 
 
 
+import { expect } from '@hapi/code'
 import { TOP } from '../lib/val'
 import { ConjunctVal } from '../lib/val/ConjunctVal'
 import { DisjunctVal } from '../lib/val/DisjunctVal'
@@ -42,33 +43,33 @@ describe('val-disjunct', function() {
 
   it('basic', () => {
     let u0 = UC('a:{x:1}|{y:2},a:{z:3}')
-    expect(u0).toEqual('{"a":{"x":1,"z":3}|{"y":2,"z":3}}')
+    expect(u0).equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}}')
 
     let u1 = UC('a:{x:1}|{y:2},a:{z:3}|{q:4}')
     expect(u1)
-      .toEqual('{"a":{"x":1,"z":3}|{"y":2,"z":3}|{"x":1,"q":4}|{"y":2,"q":4}}')
+      .equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}|{"x":1,"q":4}|{"y":2,"q":4}}')
 
     let u2 = UC('a:*1|number,a:*2|number')
-    expect(u2).toEqual('{"a":*2|*1|number}')
+    expect(u2).equal('{"a":*2|*1|number}')
 
     let u3 = UC('*1|number & *2|number')
-    expect(u3).toEqual('*2|*1|number')
+    expect(u3).equal('*2|*1|number')
 
     let g0 = G('{&:{x:*1|number},a:{},b:{x:2}}')
-    expect(g0).toEqual({ a: { x: 1 }, b: { x: 2 } })
+    expect(g0).equal({ a: { x: 1 }, b: { x: 2 } })
 
     let g1 = G('&:{x:*1|number},a:{},b:{x:2}')
-    expect(g1).toEqual({ a: { x: 1 }, b: { x: 2 } })
+    expect(g1).equal({ a: { x: 1 }, b: { x: 2 } })
   })
 
 
   it('clone', () => {
     let v0 = P('{x:1}|{y:2}|{z:3}')
     // console.log(v0.canon)
-    expect(v0.canon).toEqual('({"x":1}|{"y":2})|{"z":3}')
+    expect(v0.canon).equal('({"x":1}|{"y":2})|{"z":3}')
 
     let v0c = v0.clone()
-    expect(v0c.canon).toEqual('({"x":1}|{"y":2})|{"z":3}')
+    expect(v0c.canon).equal('({"x":1}|{"y":2})|{"z":3}')
   })
 
 })

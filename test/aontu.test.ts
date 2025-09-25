@@ -1,6 +1,7 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
 import { memfs as Memfs } from 'memfs'
+import { expect } from '@hapi/code'
 
 let { Aontu, Lang, util } = require('../aontu')
 
@@ -9,17 +10,17 @@ let { Aontu, Lang, util } = require('../aontu')
 describe('aontu', function() {
   it('happy', async () => {
     let v0 = Aontu('a:1')
-    expect(v0.canon).toEqual('{"a":1}')
+    expect(v0.canon).equal('{"a":1}')
 
-    expect(Aontu('a:{b:1},a:{c:2}').canon).toEqual('{"a":{"b":1,"c":2}}')
-    expect(Aontu('a:b:1,a:c:2').canon).toEqual('{"a":{"b":1,"c":2}}')
+    expect(Aontu('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}')
+    expect(Aontu('a:b:1,a:c:2').canon).equal('{"a":{"b":1,"c":2}}')
 
     expect(
       Aontu(`
 a:{b:1}
 a:{c:2}
 `).canon
-    ).toEqual('{"a":{"b":1,"c":2}}')
+    ).equal('{"a":{"b":1,"c":2}}')
 
     let p0 = new Lang()
 
@@ -29,7 +30,7 @@ u: { x: 1, y: number}
 q: a: $.u
 w: b: $.q.a & {y:2,z:3}
 `).canon
-    ).toEqual(
+    ).equal(
       '{"u":{"x":1,"y":number},"q":{"a":$.u},"w":{"b":$.q.a&{"y":2,"z":3}}}'
     )
 
@@ -39,37 +40,37 @@ q: a: { x: 1, y: number}
 w0: b: $.q.a & {y:2,z:3}
 w1: b: {y:2,z:3} & $.q.a
 `).gen([])
-    ).toEqual({
+    ).equal({
       q: { a: { x: 1, y: undefined } },
       w0: { b: { x: 1, y: 2, z: 3 } },
       w1: { b: { x: 1, y: 2, z: 3 } },
     })
 
     // TODO: fix in jsonic
-    expect(Aontu('{a:b:1\na:c:2}').canon).toEqual('{"a":{"b":1,"c":2}}')
+    expect(Aontu('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}')
   })
 
 
   it('util', async () => {
-    expect(util.options('x')).toMatchObject({ src: 'x', print: 0 })
-    expect(util.options('x', { print: 1 })).toMatchObject({ src: 'x', print: 1 })
-    expect(util.options({ src: 'x' }, { print: 1 })).toMatchObject({
+    expect(util.options('x')).include({ src: 'x', print: 0 })
+    expect(util.options('x', { print: 1 })).include({ src: 'x', print: 1 })
+    expect(util.options({ src: 'x' }, { print: 1 })).include({
       src: 'x',
       print: 1,
     })
     expect(
       util.options({ src: 'x', print: 1 }, { src: 'y', print: 2 })
-    ).toMatchObject({ src: 'y', print: 2 })
+    ).include({ src: 'y', print: 2 })
   })
 
 
   it('file', async () => {
     let v0 = Aontu('@"' + __dirname + '/t02.jsonic"')
 
-    expect(v0.canon).toEqual(
+    expect(v0.canon).equal(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}'
     )
-    expect(v0.gen({ err: [] })).toEqual({
+    expect(v0.gen({ err: [] })).equal({
       sys: { ent: { name: undefined } },
       ent: {
         foo: {
@@ -117,17 +118,17 @@ w1: b: {y:2,z:3} & $.q.a
 
   it('map-spread', () => {
     let v0 = Aontu('c:{&:{x:2},y:{k:3},z:{k:4}}')
-    expect(v0.canon).toEqual(
+    expect(v0.canon).equal(
       '{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
     )
 
     let v1 = Aontu('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}')
-    expect(v1.canon).toEqual(
+    expect(v1.canon).equal(
       '{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
     )
 
     let v10 = Aontu('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}')
-    expect(v10.canon).toEqual(
+    expect(v10.canon).equal(
       '{"a":{&:{"x":1}},' +
       '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
       '"c":{&:{"x":2},"y":{"k":3,"x":2}}}'
@@ -136,17 +137,17 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   it('empty-and-comments', () => {
-    expect(Aontu('').gen()).toEqual({})
-    expect(Aontu().gen()).toEqual({})
+    expect(Aontu('').gen()).equal({})
+    expect(Aontu().gen()).equal({})
 
     expect(Aontu(`
     # comment
-    `).gen()).toEqual({})
+    `).gen()).equal({})
   })
 
 
   it('spread-edges', () => {
-    expect(Aontu('a:b:{} a:&:{x:1}').gen()).toEqual({ a: { b: { x: 1 } } })
+    expect(Aontu('a:b:{} a:&:{x:1}').gen()).equal({ a: { b: { x: 1 } } })
 
     // FIX
     // expect(Aontu('a:{} &:{x:1}').gen()).toEqual({ a: { x: 1 } })
@@ -154,14 +155,14 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   it('key-edges', () => {
-    expect(Aontu('a:{k:.$KEY}').gen()).toEqual({ a: { k: 'a' } })
-    expect(Aontu('a:b:{k:.$KEY}').gen()).toEqual({ a: { b: { k: 'b' } } })
+    expect(Aontu('a:{k:.$KEY}').gen()).equal({ a: { k: 'a' } })
+    expect(Aontu('a:b:{k:.$KEY}').gen()).equal({ a: { b: { k: 'b' } } })
 
-    expect(Aontu('a:{k:.$KEY} x:1').gen()).toEqual({ x: 1, a: { k: 'a' } })
-    expect(Aontu('a:b:{k:.$KEY} x:1').gen()).toEqual({ x: 1, a: { b: { k: 'b' } } })
+    expect(Aontu('a:{k:.$KEY} x:1').gen()).equal({ x: 1, a: { k: 'a' } })
+    expect(Aontu('a:b:{k:.$KEY} x:1').gen()).equal({ x: 1, a: { b: { k: 'b' } } })
 
-    expect(Aontu('x:1 a:{k:.$KEY}').gen()).toEqual({ x: 1, a: { k: 'a' } })
-    expect(Aontu('x:1 a:b:{k:.$KEY}').gen()).toEqual({ x: 1, a: { b: { k: 'b' } } })
+    expect(Aontu('x:1 a:{k:.$KEY}').gen()).equal({ x: 1, a: { k: 'a' } })
+    expect(Aontu('x:1 a:b:{k:.$KEY}').gen()).equal({ x: 1, a: { b: { k: 'b' } } })
   })
 
 
@@ -191,7 +192,7 @@ def: garage: {
 }
 `)
 
-    expect(v0.gen()).toEqual({
+    expect(v0.gen()).equal({
       micks: {
         porsche: { doors: 4, color: 'silver' },
         ferrari: { doors: 4, color: 'red' },
@@ -210,12 +211,12 @@ def: garage: {
     })
 
     let v0 = Aontu(`a:@"/foo.jsonic"`, { fs })
-    expect(v0.canon).toEqual(
+    expect(v0.canon).equal(
       '{"a":{"f":11}}'
     )
 
     let v1 = Aontu(`a:@"foo.jsonic"`, { fs, path: '/' })
-    expect(v1.canon).toEqual(
+    expect(v1.canon).equal(
       '{"a":{"f":11}}'
     )
   })

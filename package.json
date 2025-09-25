@@ -53,6 +53,7 @@
     "jsonic": "^2.16.0"
   },
   "devDependencies": {
+    "@hapi/code": "^9.0.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.5.2",
     "aliasify": "^2.1.0",
