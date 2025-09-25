@@ -76,9 +76,9 @@ function prepareOptions(
   return opts
 }
 
-function parse(opts: Options, ctx: { deps: any; fs?: FST }): Val {
-  let lang = new Lang(opts)
-  let val = lang.parse(opts.src, { deps: ctx.deps })
+function parse(opts: Options, ctx: { deps: any }): Val {
+  const lang = new Lang(opts)
+  const val = lang.parse(opts.src, { deps: ctx.deps, fs: opts.fs })
   return val
 }
 

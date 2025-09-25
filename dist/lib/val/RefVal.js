@@ -189,19 +189,7 @@ class RefVal extends ValBase_1.ValBase {
             }
         }
         if (pI === fullpath.length) {
-            // if (this.attr && 'KEY' === this.attr.kind) {
-            // if (modes.includes('KEY')) {
-            //   let key = fullpath[fullpath.length - 1]
-            //   let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
-            //   // TODO: other props?
-            //   sv.done = DONE
-            //   sv.path = this.path
-            //   return sv
-            // }
-            // else {
-            // console.log('REF', this.id, this.path, this.done, 'FOUND', node.canon)
             return node;
-            // }
         }
     }
     same(peer) {

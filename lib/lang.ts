@@ -275,8 +275,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         remainder: null,
       },
       evaluate: (r: Rule, ctx: Context, op: Op, terms: any) => {
-        // console.log('EVAL', op.name, terms)
-
         let val: Val = opmap[op.name](r, ctx, op, terms)
         return val
       }

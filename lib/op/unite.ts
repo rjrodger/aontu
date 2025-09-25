@@ -34,20 +34,15 @@ let uc = 0
 const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
   let out = a
   let why = 'u'
-  // console.log('AA OP unite  IN', a?.canon, b?.canon,
-  //   'W', whence,
-  //   'E', 0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')
 
   let unified = false
 
   if (b && (TOP === a || !a)) {
-    //console.log('Utb', b.canon)
     out = b
     why = 'b'
   }
 
   else if (a && (TOP === b || !b)) {
-    //console.log('Uta', a.canon)
     out = a
     why = 'a'
   }
@@ -62,7 +57,6 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
       why = 'bn'
     }
     else if (a.isConjunctVal) {
-      // console.log('Q', a.canon, b.canon)
       out = a.unify(b, ctx)
       unified = true
       why = 'acj'
@@ -74,11 +68,8 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
       b.isPrefVal
     ) {
 
-      // console.log('U', a.canon, b.canon)
-      // return b.unify(a, ctx)
       out = b.unify(a, ctx)
       unified = true
-      // console.log('UO', out.canon)
       why = 'bv'
     }
 
@@ -89,7 +80,6 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
     }
 
     else {
-      // console.log('QQQ')
       out = a.unify(b, ctx)
       unified = true
       why = 'ab'
@@ -105,9 +95,6 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
     out = out.unify(TOP, ctx)
     why += 'T'
   }
-
-  // console.log('AA OP unite OUT', a?.canon, b?.canon, '->', out && out.canon,
-  //   0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')
 
   uc++
 

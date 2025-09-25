@@ -1,5 +1,6 @@
-/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
+import { memfs as Memfs } from 'memfs'
 
 let { Aontu, Lang, util } = require('../aontu')
 
@@ -200,4 +201,23 @@ def: garage: {
     })
 
   })
+
+
+
+  it('virtual-fs', () => {
+    const { fs } = Memfs({
+      'foo.jsonic': '{f:11}'
+    })
+
+    let v0 = Aontu(`a:@"/foo.jsonic"`, { fs })
+    expect(v0.canon).toEqual(
+      '{"a":{"f":11}}'
+    )
+
+    let v1 = Aontu(`a:@"foo.jsonic"`, { fs, path: '/' })
+    expect(v1.canon).toEqual(
+      '{"a":{"f":11}}'
+    )
+  })
+
 })

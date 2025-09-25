@@ -47,8 +47,6 @@ class ConjunctVal extends ValBase {
     ctx?: Context
   ) {
     super(spec, ctx)
-    // console.log('NEWCJ')
-    // console.trace()
   }
 
   // NOTE: mutation!
@@ -108,7 +106,6 @@ class ConjunctVal extends ValBase {
 
     next_term:
     for (let pI = 0; pI < upeer.length; pI++) {
-      // console.log('CJ TERM t0', pI, t0.done, t0.canon)
 
       if (DONE !== t0.done) {
         let u0 = unite(ctx, t0, TOP, 'cj-peer-t0')

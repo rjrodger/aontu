@@ -183,7 +183,6 @@ let AontuJsonic = function aontu(jsonic) {
             remainder: null,
         },
         evaluate: (r, ctx, op, terms) => {
-            // console.log('EVAL', op.name, terms)
             let val = opmap[op.name](r, ctx, op, terms);
             return val;
         }

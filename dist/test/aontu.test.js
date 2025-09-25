@@ -1,6 +1,7 @@
 "use strict";
-/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+const memfs_1 = require("memfs");
 let { Aontu, Lang, util } = require('../aontu');
 // let { makeFileResolver } = require('@jsonic/multisource')
 describe('aontu', function () {
@@ -145,6 +146,15 @@ def: garage: {
             },
             def: { car: { doors: 4, color: 'green' }, garage: {} }
         });
+    });
+    it('virtual-fs', () => {
+        const { fs } = (0, memfs_1.memfs)({
+            'foo.jsonic': '{f:11}'
+        });
+        let v0 = Aontu(`a:@"/foo.jsonic"`, { fs });
+        expect(v0.canon).toEqual('{"a":{"f":11}}');
+        let v1 = Aontu(`a:@"foo.jsonic"`, { fs, path: '/' });
+        expect(v1.canon).toEqual('{"a":{"f":11}}');
     });
 });
 //# sourceMappingURL=aontu.test.js.map

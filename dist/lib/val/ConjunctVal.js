@@ -20,8 +20,6 @@ class ConjunctVal extends ValBase_1.ValBase {
         super(spec, ctx);
         this.isBinaryOp = true;
         this.isConjunctVal = true;
-        // console.log('NEWCJ')
-        // console.trace()
     }
     // NOTE: mutation!
     append(peer) {
@@ -58,7 +56,6 @@ class ConjunctVal extends ValBase_1.ValBase {
         // }
         let t0 = upeer[0];
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
-            // console.log('CJ TERM t0', pI, t0.done, t0.canon)
             if (type_1.DONE !== t0.done) {
                 let u0 = (0, op_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
                 if (type_1.DONE !== u0.done

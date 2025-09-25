@@ -60,8 +60,8 @@ function prepareOptions(src, popts) {
     return opts;
 }
 function parse(opts, ctx) {
-    let lang = new lang_1.Lang(opts);
-    let val = lang.parse(opts.src, { deps: ctx.deps });
+    const lang = new lang_1.Lang(opts);
+    const val = lang.parse(opts.src, { deps: ctx.deps, fs: opts.fs });
     return val;
 }
 const util = {

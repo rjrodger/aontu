@@ -11,17 +11,12 @@ let uc = 0;
 const unite = (ctx, a, b, whence) => {
     let out = a;
     let why = 'u';
-    // console.log('AA OP unite  IN', a?.canon, b?.canon,
-    //   'W', whence,
-    //   'E', 0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')
     let unified = false;
     if (b && (val_1.TOP === a || !a)) {
-        //console.log('Utb', b.canon)
         out = b;
         why = 'b';
     }
     else if (a && (val_1.TOP === b || !b)) {
-        //console.log('Uta', a.canon)
         out = a;
         why = 'a';
     }
@@ -35,7 +30,6 @@ const unite = (ctx, a, b, whence) => {
             why = 'bn';
         }
         else if (a.isConjunctVal) {
-            // console.log('Q', a.canon, b.canon)
             out = a.unify(b, ctx);
             unified = true;
             why = 'acj';
@@ -44,11 +38,8 @@ const unite = (ctx, a, b, whence) => {
             b.isDisjunctVal ||
             b.isRefVal ||
             b.isPrefVal) {
-            // console.log('U', a.canon, b.canon)
-            // return b.unify(a, ctx)
             out = b.unify(a, ctx);
             unified = true;
-            // console.log('UO', out.canon)
             why = 'bv';
         }
         // Exactly equal scalars.
@@ -57,7 +48,6 @@ const unite = (ctx, a, b, whence) => {
             why = 'up';
         }
         else {
-            // console.log('QQQ')
             out = a.unify(b, ctx);
             unified = true;
             why = 'ab';
@@ -71,8 +61,6 @@ const unite = (ctx, a, b, whence) => {
         out = out.unify(val_1.TOP, ctx);
         why += 'T';
     }
-    // console.log('AA OP unite OUT', a?.canon, b?.canon, '->', out && out.canon,
-    //   0 < ctx?.err?.length ? ctx.err.map((e: Val) => e.canon) : '')
     uc++;
     // TODO: KEEP THIS! print in debug mode! push to ctx.log?
     /*
