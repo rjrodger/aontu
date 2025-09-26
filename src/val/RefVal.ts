@@ -332,7 +332,8 @@ class RefVal extends ValBase {
     descErr(nil, ctx)
 
     if (ctx) {
-      ctx.err.push(nil)
+      // ctx.err.push(nil)
+      ctx.adderr(nil)
     }
     else {
       throw new Error(nil.msg)

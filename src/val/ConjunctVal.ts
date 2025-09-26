@@ -56,6 +56,9 @@ class ConjunctVal extends ValBase {
   }
 
   unify(peer: Val, ctx: Context): Val {
+    const sc = this.canon
+    const pc = peer?.canon
+
     const mark = (Math.random() * 1e7) % 1e6 | 0
     let done = true
 
@@ -69,12 +72,13 @@ class ConjunctVal extends ValBase {
       done = done && (DONE === upeer[vI].done)
 
       if (upeer[vI] instanceof Nil) {
-        return Nil.make(
-          ctx,
-          '&peer[' + upeer[vI].canon + ',' + peer.canon + ']',
-          this.peg[vI],
-          peer
-        )
+        return upeer[vI]
+        // return Nil.make(
+        //   ctx,
+        //   '&peer[' + upeer[vI].canon + ',' + peer.canon + ']',
+        //   this.peg[vI],
+        //   peer
+        // )
       }
     }
 
@@ -188,6 +192,9 @@ class ConjunctVal extends ValBase {
 
     out.done = done ? DONE : this.done + 1
 
+    // console.log('CONJUNCT-unify',
+    //   this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
+
     return out
   }
 
@@ -223,12 +230,13 @@ class ConjunctVal extends ValBase {
     nil.row = this.row
     nil.col = this.col
 
-    descErr(nil, ctx)
+    // descErr(nil, ctx)
 
-    if (ctx) {
-      ctx.err.push(nil)
-    }
-    else {
+    if (null == ctx) {
+      //   // ctx.err.push(nil)
+      //   ctx.adderr(nil)
+      // }
+      // else {
       throw new Error(nil.msg)
     }
 

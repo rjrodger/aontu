@@ -18,6 +18,9 @@ import {
   unite
 } from './op/op'
 
+import {
+  descErr
+} from './err'
 
 import { Nil } from './val/Nil'
 
@@ -28,7 +31,7 @@ type Path = string[]
 class Context {
   root: Val   // Starting Val, root of paths.
   path: Path  // Path to current Val.
-  err: Nil[]  // Nil error log of current unify.
+  err: Omit<Nil[], "push">  // Nil error log of current unify.
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
   var: Record<string, Val> = {}
@@ -38,14 +41,16 @@ class Context {
   constructor(cfg: {
     root: Val,
     path?: Path,
-    err?: Nil[],
+    err?: Omit<Nil[], "push">,
     vc?: number,
     cc?: number,
     var?: Record<string, Val>
+    src?: string
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
     this.err = cfg.err || []
+    this.src = cfg.src
 
     // Multiple unify passes will keep incrementing Val counter.
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
@@ -59,7 +64,7 @@ class Context {
   clone(cfg: {
     root?: Val,
     path?: Path,
-    err?: Nil[],
+    err?: Omit<Nil[], "push">,
   }): Context {
     return new Context({
       root: cfg.root || this.root,
@@ -68,6 +73,7 @@ class Context {
       vc: this.vc,
       cc: this.cc,
       var: { ...this.var },
+      src: this.src,
     })
   }
 
@@ -78,17 +84,25 @@ class Context {
       path: this.path.concat(key),
     })
   }
+
+
+  adderr(err: Nil, whence?: string) {
+    (this.err as any).push(err)
+    if (null == err.msg || '' == err.msg) {
+      descErr(err, this)
+    }
+  }
 }
 
 
 class Unify {
   root: Val
   res: Val
-  err: Nil[]
+  err: Omit<Nil[], "push">
   cc: number
   lang: Lang
 
-  constructor(root: Val | string, lang?: Lang, ctx?: Context) {
+  constructor(root: Val | string, lang?: Lang, ctx?: Context, src?: string) {
     this.lang = lang || new Lang()
     if ('string' === typeof root) {
       root = this.lang.parse(root)
@@ -106,6 +120,7 @@ class Unify {
       ctx = ctx || new Context({
         root: res,
         err: this.err,
+        src,
       })
 
       let maxdc = 9 // 99

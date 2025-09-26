@@ -8,7 +8,8 @@ declare class Nil extends ValBase {
     primary?: Val;
     secondary?: Val;
     msg: string;
-    static make: (ctx?: Context, why?: any, av?: Val, bv?: Val) => Nil;
+    attempt?: string;
+    static make: (ctx?: Context, why?: any, av?: Val, bv?: Val, attempt?: string) => Nil;
     constructor(spec?: {
         why?: string;
         msg?: string;

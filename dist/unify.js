@@ -6,6 +6,7 @@ const type_1 = require("./type");
 const val_1 = require("./val");
 const lang_1 = require("./lang");
 const op_1 = require("./op/op");
+const err_1 = require("./err");
 class Context {
     constructor(cfg) {
         this.cc = -1;
@@ -13,6 +14,7 @@ class Context {
         this.root = cfg.root;
         this.path = cfg.path || [];
         this.err = cfg.err || [];
+        this.src = cfg.src;
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
@@ -26,6 +28,7 @@ class Context {
             vc: this.vc,
             cc: this.cc,
             var: { ...this.var },
+            src: this.src,
         });
     }
     descend(key) {
@@ -34,10 +37,16 @@ class Context {
             path: this.path.concat(key),
         });
     }
+    adderr(err, whence) {
+        this.err.push(err);
+        if (null == err.msg || '' == err.msg) {
+            (0, err_1.descErr)(err, this);
+        }
+    }
 }
 exports.Context = Context;
 class Unify {
-    constructor(root, lang, ctx) {
+    constructor(root, lang, ctx, src) {
         this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
             root = this.lang.parse(root);
@@ -52,6 +61,7 @@ class Unify {
             ctx = ctx || new Context({
                 root: res,
                 err: this.err,
+                src,
             });
             let maxdc = 9; // 99
             for (; this.cc < maxdc && type_1.DONE !== res.done; this.cc++) {

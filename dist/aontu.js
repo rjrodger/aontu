@@ -38,7 +38,7 @@ function Aontu(src, popts) {
     if (null == val) {
         val = new MapVal_1.MapVal({ peg: {} });
     }
-    let uni = new unify_1.Unify(val);
+    let uni = new unify_1.Unify(val, undefined, undefined, opts.src);
     let res = uni.res;
     let err = uni.err;
     (0, err_1.descErr)(uni.err, { src: opts.src, fs: opts.fs });
@@ -61,7 +61,7 @@ function prepareOptions(src, popts) {
 }
 function parse(opts, ctx) {
     const lang = new lang_1.Lang(opts);
-    const val = lang.parse(opts.src, { deps: ctx.deps, fs: opts.fs });
+    const val = lang.parse(opts.src, { src: opts.src, deps: ctx.deps, fs: opts.fs });
     return val;
 }
 const util = {

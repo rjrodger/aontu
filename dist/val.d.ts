@@ -75,7 +75,5 @@ declare class BooleanVal extends ScalarVal<boolean> {
         peg: boolean;
     }, ctx?: Context);
     unify(peer: Val, ctx?: Context): Val;
-    static TRUE: BooleanVal;
-    static FALSE: BooleanVal;
 }
 export { TOP, Integer, ScalarTypeVal, NumberVal, StringVal, BooleanVal, IntegerVal, };

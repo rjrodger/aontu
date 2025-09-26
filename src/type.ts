@@ -47,7 +47,9 @@ interface Val {
   peg: any
 
   // TODO: used for top level result - not great
-  err: any[]
+  // err: any[]
+  err: Omit<any[], "push">
+
   deps?: any
 
   same(peer: Val): boolean

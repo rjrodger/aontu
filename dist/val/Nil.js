@@ -54,8 +54,9 @@ exports.Nil = Nil;
 // TODO: include Val generating nil, thus capture type
 // A Nil is an error - should not happen - unify failed
 // refactor ,make(spec,ctx)
-Nil.make = (ctx, why, av, bv) => {
+Nil.make = (ctx, why, av, bv, attempt) => {
     let nil = new Nil({ why }, ctx);
+    nil.attempt = attempt;
     // TODO: this should be done lazily, for multiple terms
     // Terms later in same file are considered the primary error location.
     if (null != av) {
@@ -77,7 +78,8 @@ Nil.make = (ctx, why, av, bv) => {
         }
     }
     if (ctx) {
-        ctx.err.push(nil);
+        // ctx.err.push(nil)
+        ctx.adderr(nil, 'nil-make:' + why);
     }
     return nil;
 };

@@ -35,7 +35,6 @@ function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
   // TODO: review: why is an undefined src allowed?
 
   let opts = prepareOptions(src, popts)
-
   let deps = {}
 
   // TODO: handle empty src
@@ -45,7 +44,7 @@ function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
     val = new MapVal({ peg: {} })
   }
 
-  let uni = new Unify(val as unknown as Val)
+  let uni = new Unify(val as unknown as Val, undefined, undefined, opts.src)
   let res = uni.res
   let err = uni.err
 
@@ -78,7 +77,7 @@ function prepareOptions(
 
 function parse(opts: Options, ctx: { deps: any }): Val {
   const lang = new Lang(opts)
-  const val = lang.parse(opts.src, { deps: ctx.deps, fs: opts.fs })
+  const val = lang.parse(opts.src, { src: opts.src, deps: ctx.deps, fs: opts.fs })
   return val
 }
 

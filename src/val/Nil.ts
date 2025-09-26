@@ -30,14 +30,15 @@ class Nil extends ValBase {
   primary?: Val
   secondary?: Val
   msg: string = ''
+  attempt?: string
 
   // TODO: include Val generating nil, thus capture type
 
   // A Nil is an error - should not happen - unify failed
   // refactor ,make(spec,ctx)
-  static make = (ctx?: Context, why?: any, av?: Val, bv?: Val) => {
+  static make = (ctx?: Context, why?: any, av?: Val, bv?: Val, attempt?: string) => {
     let nil = new Nil({ why }, ctx)
-
+    nil.attempt = attempt
     // TODO: this should be done lazily, for multiple terms
 
     // Terms later in same file are considered the primary error location.
@@ -68,7 +69,8 @@ class Nil extends ValBase {
     }
 
     if (ctx) {
-      ctx.err.push(nil)
+      // ctx.err.push(nil)
+      ctx.adderr(nil, 'nil-make:' + why)
     }
 
     return nil

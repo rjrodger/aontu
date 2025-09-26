@@ -37,7 +37,7 @@ class ValBase implements Val {
   peg: any = undefined
 
   // TODO: used for top level result - not great
-  err: any[] = []
+  err: Omit<any[], "push"> = []
   // deps?: any
 
   uh: number[]

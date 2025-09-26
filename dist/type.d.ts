@@ -24,7 +24,7 @@ interface Val {
     url: string;
     top: boolean;
     peg: any;
-    err: any[];
+    err: Omit<any[], "push">;
     deps?: any;
     same(peer: Val): boolean;
     clone(spec?: ValSpec, ctx?: Context): Val;

@@ -310,8 +310,8 @@ class BooleanVal extends ScalarVal<boolean> {
     return super.unify(peer, ctx)
   }
 
-  static TRUE = new BooleanVal({ peg: true }, new Context({ vc: 1, root: TOP }))
-  static FALSE = new BooleanVal({ peg: false }, new Context({ vc: 2, root: TOP }))
+  // static TRUE = new BooleanVal({ peg: true }, new Context({ vc: 1, root: TOP }))
+  // static FALSE = new BooleanVal({ peg: false }, new Context({ vc: 2, root: TOP }))
 }
 
 

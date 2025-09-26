@@ -32,6 +32,9 @@ let uc = 0
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
+  const ac = a?.canon
+  const bc = b?.canon
+
   let out = a
   let why = 'u'
 
@@ -114,6 +117,9 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
     '  '.repeat(ctx.path.length),
     a?.canon, '&', b?.canon, '->', out.canon)
   */
+
+  // console.log('UNITE', whence, a?.id + '=' + a?.canon, b?.id + '=' + b?.canon, '->',
+  //  out?.canon, 'W=' + why, 'E=', out?.err)
 
   return out
 }

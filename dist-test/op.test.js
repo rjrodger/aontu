@@ -14,7 +14,7 @@ let PA = (x, ctx) => x.map(s => PL(s, ctx));
 (0, node_test_1.describe)('op', () => {
     (0, node_test_1.it)('happy', () => {
         (0, code_1.expect)(op_1.unite.name).equal('unite');
-        (0, code_1.expect)(op_1.disjunct.name).equal('disjunct');
+        // expect(disjunct.name).equal('disjunct')
     });
     (0, node_test_1.it)('unite-scalar-val', () => {
         let U = makeUnite();

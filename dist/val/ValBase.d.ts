@@ -12,7 +12,7 @@ declare class ValBase implements Val {
     url: string;
     top: boolean;
     peg: any;
-    err: any[];
+    err: Omit<any[], "push">;
     uh: number[];
     constructor(spec: ValSpec, ctx?: Context);
     ctx(): any;

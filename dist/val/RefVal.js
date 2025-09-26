@@ -223,7 +223,8 @@ class RefVal extends ValBase_1.ValBase {
         nil.col = this.col;
         (0, err_1.descErr)(nil, ctx);
         if (ctx) {
-            ctx.err.push(nil);
+            // ctx.err.push(nil)
+            ctx.adderr(nil);
         }
         else {
             throw new Error(nil.msg);

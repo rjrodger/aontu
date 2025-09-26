@@ -15,7 +15,7 @@ import { Nil } from '../dist/val/Nil'
 
 import { expect } from '@hapi/code'
 import {
-  disjunct,
+  // disjunct,
   unite,
 } from '../dist/op/op'
 
@@ -29,7 +29,7 @@ let PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
 describe('op', () => {
   it('happy', () => {
     expect(unite.name).equal('unite')
-    expect(disjunct.name).equal('disjunct')
+    // expect(disjunct.name).equal('disjunct')
   })
 
   it('unite-scalar-val', () => {

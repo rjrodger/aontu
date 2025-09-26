@@ -51,6 +51,9 @@ describe('val-disjunct', function() {
     expect(u1)
       .equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}|{"x":1,"q":4}|{"y":2,"q":4}}')
 
+    let u2a = UC('a:*1|*1|number')
+    expect(u2a).equal('{"a":*1|number}')
+
     let u2 = UC('a:*1|number,a:*2|number')
     expect(u2).equal('{"a":*2|*1|number}')
 

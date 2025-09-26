@@ -19,19 +19,32 @@ class DisjunctVal extends ValBase_1.ValBase {
         super(spec, ctx);
         this.isDisjunctVal = true;
         this.isBinaryOp = true;
+        this.prefsRanked = false;
     }
     // NOTE: mutation!
     append(peer) {
         this.peg.push(peer);
+        this.prefsRanked = false;
         return this;
     }
     unify(peer, ctx) {
+        // const sc = this.canon
+        // const pc = peer?.canon
+        if (!this.prefsRanked) {
+            this.rankPrefs(ctx);
+        }
         let done = true;
         let oval = [];
         // Conjunction (&) distributes over disjunction (|)
         for (let vI = 0; vI < this.peg.length; vI++) {
-            //oval[vI] = this.peg[vI].unify(peer, ctx)
-            oval[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer);
+            const v = this.peg[vI];
+            const cloneCtx = ctx?.clone({ err: [] });
+            // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
+            oval[vI] = (0, op_1.unite)(cloneCtx, v, peer);
+            // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
+            if (0 < cloneCtx?.err.length) {
+                oval[vI] = Nil_1.Nil.make(cloneCtx, '|:empty-dist', this);
+            }
             done = done && type_1.DONE === oval[vI].done;
         }
         // Remove duplicates, and normalize
@@ -57,13 +70,56 @@ class DisjunctVal extends ValBase_1.ValBase {
             out = oval[0];
         }
         else if (0 == oval.length) {
-            return Nil_1.Nil.make(ctx, '|:empty', this);
+            return Nil_1.Nil.make(ctx, '|:empty', this, peer);
         }
         else {
             out = new DisjunctVal({ peg: oval }, ctx);
         }
         out.done = done ? type_1.DONE : this.done + 1;
+        // console.log('DISJUNCT-unify',
+        //  this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
         return out;
+    }
+    rankPrefs(ctx) {
+        let lastpref = undefined;
+        let lastprefI = -1;
+        // console.log('RP-A', this.peg.map((p: Val) => p.canon))
+        for (let vI = 0; vI < this.peg.length; vI++) {
+            const v = this.peg[vI];
+            if (v instanceof PrefVal_1.PrefVal) {
+                if (null != lastpref) {
+                    if (v.rank === lastpref.rank) {
+                        return Nil_1.Nil.make(ctx, '|:prefs', lastpref, v, 'associate');
+                    }
+                    else if (v.rank < lastpref.rank) {
+                        this.peg[lastprefI] = null;
+                        lastpref = v;
+                        lastprefI = vI;
+                    }
+                    else {
+                        this.peg[vI] = null;
+                    }
+                }
+                else {
+                    lastpref = v;
+                    lastprefI = vI;
+                }
+            }
+            else if (v instanceof DisjunctVal) {
+                let subrank = v.rankPrefs(ctx);
+                if (subrank instanceof PrefVal_1.PrefVal) {
+                    this.peg[vI] = subrank;
+                    lastpref = subrank;
+                    lastprefI = vI;
+                }
+            }
+        }
+        this.peg = this.peg.filter((p) => null != p);
+        this.prefsRanked = true;
+        // console.log('RP-Z', this.peg.map((p: Val) => p.canon))
+        if (1 === this.peg.length && this.peg[0] instanceof PrefVal_1.PrefVal) {
+            return this.peg[0];
+        }
     }
     clone(spec, ctx) {
         let out = super.clone(spec, ctx);
@@ -77,18 +133,39 @@ class DisjunctVal extends ValBase_1.ValBase {
         }).join('|');
     }
     gen(ctx) {
-        // TODO: this is not right - unresolved Disjuncts eval to undef
-        if (0 < this.peg.length) {
-            let vals = this.peg.filter((v) => v instanceof PrefVal_1.PrefVal);
-            vals = 0 === vals.length ? this.peg : vals;
-            let val = vals[0];
-            for (let vI = 1; vI < this.peg.length; vI++) {
-                let valnext = val.unify(this.peg[vI], ctx);
-                val = valnext;
-            }
-            return val.gen(ctx);
+        // if (0 < this.peg.length) {
+        //   let vals = this.peg.filter((v: Val) => v instanceof PrefVal)
+        //   vals = 0 === vals.length ? this.peg : vals
+        //   let val = vals[0]
+        //   for (let vI = 1; vI < this.peg.length; vI++) {
+        //     let valnext = val.unify(this.peg[vI], ctx)
+        //     val = valnext
+        //   }
+        //   return val.gen(ctx)
+        // }
+        // console.log('DJ-GEN', this.peg)
+        if (1 === this.peg.length) {
+            return this.peg[0].gen(ctx);
         }
-        return undefined;
+        else if (1 < this.peg.length) {
+            let peg = this.peg.filter((v) => v instanceof PrefVal_1.PrefVal);
+            if (1 === peg.length) {
+                return peg[0].gen(ctx);
+            }
+            else {
+                let nil = Nil_1.Nil.make(ctx, 'disjunct', this, undefined);
+                // TODO: refactor to use Site
+                nil.path = this.path;
+                nil.url = this.url;
+                nil.row = this.row;
+                nil.col = this.col;
+                // descErr(nil, ctx)
+                if (null == ctx) {
+                    throw new Error(nil.msg);
+                }
+            }
+            return undefined;
+        }
     }
 }
 exports.DisjunctVal = DisjunctVal;

@@ -9,6 +9,8 @@ let uc = 0;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
+    const ac = a?.canon;
+    const bc = b?.canon;
     let out = a;
     let why = 'u';
     let unified = false;
@@ -78,6 +80,8 @@ const unite = (ctx, a, b, whence) => {
       '  '.repeat(ctx.path.length),
       a?.canon, '&', b?.canon, '->', out.canon)
     */
+    // console.log('UNITE', whence, a?.id + '=' + a?.canon, b?.id + '=' + b?.canon, '->',
+    //  out?.canon, 'W=' + why, 'E=', out?.err)
     return out;
 };
 exports.unite = unite;

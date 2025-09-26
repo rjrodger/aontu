@@ -115,8 +115,8 @@ describe('val', function() {
   it('boolean', () => {
     let ctx = makeCtx()
 
-    let bt = BooleanVal.TRUE
-    let bf = BooleanVal.FALSE
+    let bt = new BooleanVal({ peg: true }, ctx)
+    let bf = new BooleanVal({ peg: false }, ctx)
 
     expect(unite(ctx, bt, bt)).equal(bt)
     expect(unite(ctx, bf, bf)).equal(bf)
@@ -598,9 +598,8 @@ describe('val', function() {
     expect(unite(ctx, P('1|top')).canon).equal('1|top')
     expect(unite(ctx, P('1|number|top')).canon).equal('1|number|top')
 
-    expect(unite(ctx, P('1|number')).gen()).equal(1)
-    // expect(unite(ctx, P('1|number|top')).gen()).equal(undefined)
-    expect(unite(ctx, P('1|number|top')).gen()).equal(1)
+    expect(unite(ctx, P('1|number')).gen()).equal(undefined)
+    expect(unite(ctx, P('1|number|top')).gen()).equal(undefined)
 
     expect(unite(ctx, P('number|1').unify(P('top'))).canon).equal('number|1')
 
@@ -879,7 +878,8 @@ b: c2: {n:2}
 
     let d0 = P('1|number').unify(TOP, ctx)
     expect(d0.canon).equal('1|number')
-    expect(d0.gen()).equal(1)
+    // expect(d0.gen()).equal(1)
+    expect(d0.gen()).equal(undefined)
 
 
     expect(G('number|*1')).equal(1)

@@ -4,7 +4,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConjunctVal = void 0;
 exports.norm = norm;
 const type_1 = require("../type");
-const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
 // import { DisjunctVal } from '../val/DisjunctVal'
@@ -27,6 +26,8 @@ class ConjunctVal extends ValBase_1.ValBase {
         return this;
     }
     unify(peer, ctx) {
+        const sc = this.canon;
+        const pc = peer?.canon;
         const mark = (Math.random() * 1e7) % 1e6 | 0;
         let done = true;
         // Unify each term of conjunct against peer
@@ -36,7 +37,13 @@ class ConjunctVal extends ValBase_1.ValBase {
             // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].done);
             if (upeer[vI] instanceof Nil_1.Nil) {
-                return Nil_1.Nil.make(ctx, '&peer[' + upeer[vI].canon + ',' + peer.canon + ']', this.peg[vI], peer);
+                return upeer[vI];
+                // return Nil.make(
+                //   ctx,
+                //   '&peer[' + upeer[vI].canon + ',' + peer.canon + ']',
+                //   this.peg[vI],
+                //   peer
+                // )
             }
         }
         upeer = norm(upeer);
@@ -116,6 +123,8 @@ class ConjunctVal extends ValBase_1.ValBase {
             out = new ConjunctVal({ peg: outvals }, ctx);
         }
         out.done = done ? type_1.DONE : this.done + 1;
+        // console.log('CONJUNCT-unify',
+        //   this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
         return out;
     }
     clone(spec, ctx) {
@@ -139,11 +148,12 @@ class ConjunctVal extends ValBase_1.ValBase {
         nil.url = this.url;
         nil.row = this.row;
         nil.col = this.col;
-        (0, err_1.descErr)(nil, ctx);
-        if (ctx) {
-            ctx.err.push(nil);
-        }
-        else {
+        // descErr(nil, ctx)
+        if (null == ctx) {
+            //   // ctx.err.push(nil)
+            //   ctx.adderr(nil)
+            // }
+            // else {
             throw new Error(nil.msg);
         }
         return undefined;

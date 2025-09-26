@@ -1,22 +1,169 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
+const code_1 = require("@hapi/code");
+const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
+const MapVal_1 = require("../dist/val/MapVal");
 let lang = new lang_1.Lang();
-let P = lang.parse.bind(lang);
+const G = (x, ctx) => new unify_1.Unify(x, lang).res
+    .gen(ctx || new unify_1.Context({ root: new MapVal_1.MapVal({ peg: {} }) }));
 (0, node_test_1.describe)('unify', function () {
-    (0, node_test_1.test)('find', () => {
-        // let ref = (s: string) => (P(s) as RefVal)
-        // let m0 = P('{a:1,b:{c:2},d:{e:{f:3}}')
-        // let c0 = new Context({
-        //   root: m0
-        // })
-        // expect(c0.find(ref('.a'))?.canon).equal('1')
-        // expect(c0.find(ref('.b.c'))?.canon).equal('2')
-        // expect(c0.find(ref('.d.e.f'))?.canon).equal('3')
-        // expect(c0.find(ref('.b'))?.canon).equal('{"c":2}')
-        // expect(c0.find(ref('.x'))).equal(undefined)
+    (0, node_test_1.test)('condis-same', () => {
+        (0, code_1.expect)(G('a')).equal('a');
+        (0, code_1.expect)(G('a&a')).equal('a');
+        (0, code_1.expect)(G('a|a')).equal('a');
+        (0, code_1.expect)(G('(a)')).equal('a');
+        (0, code_1.expect)(G('(a&a)')).equal('a');
+        (0, code_1.expect)(G('(a|a)')).equal('a');
+        (0, code_1.expect)(G('(a)&a')).equal('a');
+        (0, code_1.expect)(G('(a&a)&a')).equal('a');
+        (0, code_1.expect)(G('(a|a)&a')).equal('a');
+        (0, code_1.expect)(G('a&(a)')).equal('a');
+        (0, code_1.expect)(G('a&(a&a)')).equal('a');
+        (0, code_1.expect)(G('a&(a|a)')).equal('a');
+        (0, code_1.expect)(G('a&(a)&a')).equal('a');
+        (0, code_1.expect)(G('a&(a&a)&a')).equal('a');
+        (0, code_1.expect)(G('a&(a|a)&a')).equal('a');
+        (0, code_1.expect)(G('a&a')).equal('a');
+        (0, code_1.expect)(G('a&a&a')).equal('a');
+        (0, code_1.expect)(G('a|a&a')).equal('a');
+        (0, code_1.expect)(G('a&a|a')).equal('a');
+        (0, code_1.expect)(G('a&a&a&a')).equal('a');
+        (0, code_1.expect)(G('a&a|a&a')).equal('a');
+        (0, code_1.expect)(G('(a)|a')).equal('a');
+        (0, code_1.expect)(G('(a&a)|a')).equal('a');
+        (0, code_1.expect)(G('(a|a)|a')).equal('a');
+        (0, code_1.expect)(G('a|(a)')).equal('a');
+        (0, code_1.expect)(G('a|(a&a)')).equal('a');
+        (0, code_1.expect)(G('a|(a|a)')).equal('a');
+        (0, code_1.expect)(G('a|(a)|a')).equal('a');
+        (0, code_1.expect)(G('a|(a&a)|a')).equal('a');
+        (0, code_1.expect)(G('a|(a|a)|a')).equal('a');
+        (0, code_1.expect)(G('a|a')).equal('a');
+        (0, code_1.expect)(G('a&a|a')).equal('a');
+        (0, code_1.expect)(G('a|a|a')).equal('a');
+        (0, code_1.expect)(G('a|a&a')).equal('a');
+        (0, code_1.expect)(G('a|a|a|a')).equal('a');
+        (0, code_1.expect)(G('a|a&a|a')).equal('a');
+        (0, code_1.expect)(G('x:a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a&a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a|a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a)&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a&a)&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a|a)&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&(a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&(a&a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&(a|a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&(a)&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&(a&a)&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&(a|a)&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&a&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|a&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&a|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&a&a&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&a|a&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a)|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a&a)|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:(a|a)|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|(a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|(a&a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|(a|a)')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|(a)|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|(a&a)|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|(a|a)|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a&a|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|a|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|a&a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|a|a|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|a&a|a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('[a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|a]')).equal(['a']);
+        (0, code_1.expect)(G('[(a)]')).equal(['a']);
+        (0, code_1.expect)(G('[(a&a)]')).equal(['a']);
+        (0, code_1.expect)(G('[(a|a)]')).equal(['a']);
+        (0, code_1.expect)(G('[(a)&a]')).equal(['a']);
+        (0, code_1.expect)(G('[(a&a)&a]')).equal(['a']);
+        (0, code_1.expect)(G('[(a|a)&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&(a)]')).equal(['a']);
+        (0, code_1.expect)(G('[a&(a&a)]')).equal(['a']);
+        (0, code_1.expect)(G('[a&(a|a)]')).equal(['a']);
+        (0, code_1.expect)(G('[a&(a)&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&(a&a)&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&(a|a)&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&a&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|a&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&a|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&a&a&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&a|a&a]')).equal(['a']);
+        (0, code_1.expect)(G('[(a)|a]')).equal(['a']);
+        (0, code_1.expect)(G('[(a&a)|a]')).equal(['a']);
+        (0, code_1.expect)(G('[(a|a)|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|(a)]')).equal(['a']);
+        (0, code_1.expect)(G('[a|(a&a)]')).equal(['a']);
+        (0, code_1.expect)(G('[a|(a|a)]')).equal(['a']);
+        (0, code_1.expect)(G('[a|(a)|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|(a&a)|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|(a|a)|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a&a|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|a|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|a&a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|a|a|a]')).equal(['a']);
+        (0, code_1.expect)(G('[a|a&a|a]')).equal(['a']);
     });
+    (0, node_test_1.test)('condis-different', () => {
+        (0, code_1.expect)(G('a')).equal('a');
+        (0, code_1.expect)(G('a|b')).equal(undefined);
+        (0, code_1.expect)(G('a&b')).equal(undefined);
+        (0, code_1.expect)(G('x:a')).equal({ x: 'a' });
+        (0, code_1.expect)(G('x:a|b')).equal({ x: undefined });
+        (0, code_1.expect)(G('x:a&b')).equal({ x: undefined });
+        (0, code_1.expect)(G('(a|b)&a')).equal('a');
+        (0, code_1.expect)(G('a&(a|b)')).equal('a');
+        (0, code_1.expect)(G('a&(a|b)&a')).equal('a');
+        (0, code_1.expect)(G('a|b&a')).equal('a');
+        (0, code_1.expect)(G('a&a|b')).equal('a');
+        (0, code_1.expect)(G('a&a|b&a')).equal('a');
+        (0, code_1.expect)(G('a|(b&a)')).equal('a');
+        (0, code_1.expect)(G('(a|b)&a')).equal('a');
+        (0, code_1.expect)(G('(a|b)&b')).equal('b');
+        (0, code_1.expect)(G('(a|b)&c')).equal(undefined);
+    });
+    (0, node_test_1.test)('pref', () => {
+        (0, code_1.expect)(G('*a|string')).equal('a');
+        (0, code_1.expect)(G('*a|b')).equal('a');
+        (0, code_1.expect)(G('**1|*b')).equal('b');
+        (0, code_1.expect)(G('***1|**2|*3')).equal(3);
+        (0, code_1.expect)(G('***a|**b|*c')).equal('c');
+        (0, code_1.expect)(G('***1|**b|*true')).equal(true);
+        (0, code_1.expect)(G('***1|*true')).equal(true);
+        (0, code_1.expect)(G('x:*a')).equal({ x: 'a' });
+        // expect(G('x:*a x:b')).equal({ x: 'b' })
+        (0, code_1.expect)(G('x:*{a:1}')).equal({ x: { a: 1 } });
+        (0, code_1.expect)(G('x:*{a:1} x:{a:2}')).equal({ x: { a: 2 } });
+        (0, code_1.expect)(G('x:*{a:1}|{a:number}')).equal({ x: { a: 1 } });
+        (0, code_1.expect)(G('x:*{a:1}|{a:number} x:{a:2}')).equal({ x: { a: 2 } });
+    });
+    // test('find', () => {
+    // let ref = (s: string) => (P(s) as RefVal)
+    // let m0 = P('{a:1,b:{c:2},d:{e:{f:3}}')
+    // let c0 = new Context({
+    //   root: m0
+    // })
+    // expect(c0.find(ref('.a'))?.canon).equal('1')
+    // expect(c0.find(ref('.b.c'))?.canon).equal('2')
+    // expect(c0.find(ref('.d.e.f'))?.canon).equal('3')
+    // expect(c0.find(ref('.b'))?.canon).equal('{"c":2}')
+    // expect(c0.find(ref('.x'))).equal(undefined)
+    // })
     /*
     test('basic', () => {
       let u0 = new Unify('1')

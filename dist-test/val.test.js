@@ -69,8 +69,8 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
     });
     (0, node_test_1.it)('boolean', () => {
         let ctx = makeCtx();
-        let bt = val_1.BooleanVal.TRUE;
-        let bf = val_1.BooleanVal.FALSE;
+        let bt = new val_1.BooleanVal({ peg: true }, ctx);
+        let bf = new val_1.BooleanVal({ peg: false }, ctx);
         (0, code_1.expect)((0, op_1.unite)(ctx, bt, bt)).equal(bt);
         (0, code_1.expect)((0, op_1.unite)(ctx, bf, bf)).equal(bf);
         (0, code_1.expect)((0, op_1.unite)(ctx, bt, bf) instanceof Nil_1.Nil).exist();
@@ -417,9 +417,8 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)((0, op_1.unite)(ctx, P('1|number')).canon).equal('1|number');
         (0, code_1.expect)((0, op_1.unite)(ctx, P('1|top')).canon).equal('1|top');
         (0, code_1.expect)((0, op_1.unite)(ctx, P('1|number|top')).canon).equal('1|number|top');
-        (0, code_1.expect)((0, op_1.unite)(ctx, P('1|number')).gen()).equal(1);
-        // expect(unite(ctx, P('1|number|top')).gen()).equal(undefined)
-        (0, code_1.expect)((0, op_1.unite)(ctx, P('1|number|top')).gen()).equal(1);
+        (0, code_1.expect)((0, op_1.unite)(ctx, P('1|number')).gen()).equal(undefined);
+        (0, code_1.expect)((0, op_1.unite)(ctx, P('1|number|top')).gen()).equal(undefined);
         (0, code_1.expect)((0, op_1.unite)(ctx, P('number|1').unify(P('top'))).canon).equal('number|1');
         (0, code_1.expect)((0, op_1.unite)(ctx, P('1|number|1').unify(P('top'))).canon).equal('1|number');
         (0, code_1.expect)((0, op_1.unite)(ctx, P('number|string').unify(P('top'))).canon)
@@ -617,7 +616,8 @@ b: c2: {n:2}
             .equal('{"a":*1|number,"b":*2|number,"c":*2|*1|number}');
         let d0 = P('1|number').unify(val_1.TOP, ctx);
         (0, code_1.expect)(d0.canon).equal('1|number');
-        (0, code_1.expect)(d0.gen()).equal(1);
+        // expect(d0.gen()).equal(1)
+        (0, code_1.expect)(d0.gen()).equal(undefined);
         (0, code_1.expect)(G('number|*1')).equal(1);
         (0, code_1.expect)(G('string|*1')).equal(1);
         // expect(G('a:*1,a:2')).equal({ a: undefined })
