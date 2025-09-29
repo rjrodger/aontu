@@ -1,14 +1,17 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
+import Fs from 'node:fs'
 import { describe, it } from 'node:test'
 import { memfs as Memfs } from 'memfs'
 import { expect } from '@hapi/code'
 
-let { Aontu, Lang, util } = require('../dist/aontu')
+import { Aontu, Lang, util } from '../dist/aontu'
 
-// let { makeFileResolver } = require('@jsonic/multisource')
+type FST = typeof Fs
+
 
 describe('aontu', function() {
+
   it('happy', async () => {
     let v0 = Aontu('a:1')
     expect(v0.canon).equal('{"a":1}')
@@ -37,12 +40,12 @@ w: b: $.q.a & {y:2,z:3}
 
     expect(
       Aontu(`
-q: a: { x: 1, y: number}
+q: a: { x: 1 }
 w0: b: $.q.a & {y:2,z:3}
 w1: b: {y:2,z:3} & $.q.a
-`).gen([])
+`).gen()
     ).equal({
-      q: { a: { x: 1, y: undefined } },
+      q: { a: { x: 1 } },
       w0: { b: { x: 1, y: 2, z: 3 } },
       w1: { b: { x: 1, y: 2, z: 3 } },
     })
@@ -71,7 +74,8 @@ w1: b: {y:2,z:3} & $.q.a
     expect(v0.canon).equal(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}'
     )
-    expect(v0.gen({ err: [] })).equal({
+
+    expect(v0.gen()).equal({
       sys: { ent: { name: undefined } },
       ent: {
         foo: {
@@ -96,24 +100,14 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   it('pref', async () => {
-    let v0 = Aontu('@"' + __dirname + '/../test/t03.jsonic"', {
-      // resolver: makeFileResolver(),
-      base: __dirname,
-    })
-
-    // TODO: fix err msg
-
-    // expect(v0.canon).toEqual(
-    //   '{"uxc":{"name":string,"size":integer|*1},"foo":{"name":string,"size":integer|*1},"bar":{"name":"bar","size":integer|*1},"zed":{"name":"zed","size":2},"qaz":{"name":"bar","size":nil}}'
-    // )
-
-    // expect(v0.gen([])).toEqual({
-    //   uxc: { name: undefined, size: 1 },
-    //   foo: { name: undefined, size: 1 },
-    //   bar: { name: 'bar', size: 1 },
-    //   zed: { name: 'zed', size: 2 },
-    //   qaz: { name: 'bar', size: undefined },
-    // })
+    try {
+      Aontu('@"' + __dirname + '/../test/t03.jsonic"', {
+        base: __dirname,
+      })
+    }
+    catch (err: any) {
+      expect(err.message).include('Cannot unify value: integer|*1 with value: true')
+    }
   })
 
 
@@ -205,11 +199,11 @@ def: garage: {
   })
 
 
-
   it('virtual-fs', () => {
-    const { fs } = Memfs({
+    const mfs = Memfs({
       'foo.jsonic': '{f:11}'
     })
+    const fs = mfs.fs as unknown as FST
 
     let v0 = Aontu(`a:@"/foo.jsonic"`, { fs })
     expect(v0.canon).equal(

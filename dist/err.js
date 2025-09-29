@@ -21,12 +21,12 @@ function descErr(err, errctx) {
                     code: err.why,
                     msg: 'Cannot ' +
                         attempt +
-                        ' path $.' + valpath + ' value' + (null == v2 ? '' : 's'),
+                        ' path $.' + valpath + ' value' + (null == v2 ? '' : 's'), // + ' #' + err.id,
                 }),
                 (null != v1 && errmsg({
                     color: true,
                     msg: 'Cannot ' + attempt + ' value: ' + v1.canon +
-                        (null == v2 ? '' : ' with value: ' + v2.canon),
+                        (null == v2 ? '' : ' with value: ' + v2.canon), // + ' #' + err.id,
                     smsg: 'value was: ' + v1.canon,
                     // file: v1.url?.replace(process.cwd() + '/', ''),
                     file: resolveFile(v1.url),
@@ -36,9 +36,9 @@ function descErr(err, errctx) {
                 })),
                 (null != v2 && errmsg({
                     color: true,
-                    msg: 'Cannot ' + attempt + ' value: ' + v2.canon + ' with value: ' + v1.canon,
+                    msg: 'Cannot ' + attempt + ' value: ' + v2.canon +
+                        ' with value: ' + v1.canon, // + ' #' + err.id,
                     smsg: 'value was: ' + v2.canon,
-                    // file: v2.url?.replace(process.cwd() + '/', ''),
                     file: resolveFile(v2.url),
                     src: v2src,
                     row: v2.row,

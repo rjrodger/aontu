@@ -12,13 +12,18 @@ import {
   Context,
 } from '../unify'
 
+import {
+  descErr
+} from '../err'
 
 import {
   Site
 } from '../lang'
 
+import { Nil } from '../val/Nil'
 
-let ID = 0
+
+let ID = 1000
 
 
 class ValBase implements Val {
@@ -53,8 +58,11 @@ class ValBase implements Val {
 
     this.peg = spec?.peg
     this.path = ctx?.path || []
-    // this.id = (9e9 + Math.floor(Math.random() * (1e9)))
-    this.id = ++ID // (9e9 + Math.floor(Math.random() * (1e5)))
+
+    // TODO: make this work
+    // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
+    this.id = ++ID
+
     this.uh = []
   }
 
@@ -100,7 +108,17 @@ class ValBase implements Val {
 
   unify(_peer: Val, _ctx?: Context): Val { return this }
   get canon(): string { return '' }
-  gen(_ctx?: Context): any { return null }
+  // gen(_ctx?: Context): any { return null }
+
+
+  errcanon(): string {
+    return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`
+  }
+
+  gen(_ctx?: Context): any {
+    return undefined
+  }
+
 
 }
 

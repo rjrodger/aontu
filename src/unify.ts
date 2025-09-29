@@ -31,12 +31,14 @@ type Path = string[]
 class Context {
   root: Val   // Starting Val, root of paths.
   path: Path  // Path to current Val.
-  err: Omit<Nil[], "push">  // Nil error log of current unify.
+  // err: Omit<Nil[], "push">  // Nil error log of current unify.
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
   var: Record<string, Val> = {}
   src?: string
   fs?: FST
+
+  #errlist: Omit<Nil[], "push">  // Nil error log of current unify.
 
   constructor(cfg: {
     root: Val,
@@ -49,8 +51,10 @@ class Context {
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
-    this.err = cfg.err || []
+    // this.err = cfg.err || []
     this.src = cfg.src
+
+    this.#errlist = cfg.err || []
 
     // Multiple unify passes will keep incrementing Val counter.
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
@@ -69,7 +73,7 @@ class Context {
     return new Context({
       root: cfg.root || this.root,
       path: cfg.path,
-      err: cfg.err || this.err,
+      err: cfg.err || this.#errlist,
       vc: this.vc,
       cc: this.cc,
       var: { ...this.var },
@@ -86,8 +90,18 @@ class Context {
   }
 
 
+  get err() {
+    let a: any = [...this.#errlist]
+    a.push = () => {
+      throw new Error('ERR-PUSH')
+    }
+    return a
+  }
+
+
   adderr(err: Nil, whence?: string) {
-    (this.err as any).push(err)
+    // console.log('ADDERR', whence, err)
+    ; (this.#errlist as any).push(err)
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
     }
@@ -114,10 +128,11 @@ class Unify {
     this.err = root.err || []
 
     let res = root
+    let uctx = ctx
 
     // Only unify if no syntax errors
     if (!(root as Nil).nil) {
-      ctx = ctx || new Context({
+      uctx = uctx ?? new Context({
         root: res,
         err: this.err,
         src,
@@ -125,9 +140,9 @@ class Unify {
 
       let maxdc = 9 // 99
       for (; this.cc < maxdc && DONE !== res.done; this.cc++) {
-        ctx.cc = this.cc
-        res = unite(ctx, res, TOP)
-        ctx = ctx.clone({ root: res })
+        uctx.cc = this.cc
+        res = unite(uctx, res, TOP)
+        uctx = uctx.clone({ root: res })
       }
     }
 

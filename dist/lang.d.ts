@@ -9,6 +9,7 @@ declare class Site {
 declare class Lang {
     jsonic: Jsonic;
     options: Options;
+    idcount: number | undefined;
     constructor(options?: Partial<Options>);
     parse(src: string, opts?: Partial<Options>): Val;
 }

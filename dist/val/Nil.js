@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Nil = void 0;
 const type_1 = require("../type");
-const err_1 = require("../err");
 const ValBase_1 = require("../val/ValBase");
 class Nil extends ValBase_1.ValBase {
     constructor(spec, ctx) {
@@ -37,16 +36,16 @@ class Nil extends ValBase_1.ValBase {
         return 'nil';
     }
     gen(ctx) {
-        // Unresolved nil cannot be generated, so always an error.
-        (0, err_1.descErr)(this, ctx);
-        if (Array.isArray(ctx?.err)) {
-            ctx.err.push(this);
-        }
-        else {
-            const err = new Error(this.msg);
-            err.aontu = true;
-            throw err;
-        }
+        // // Unresolved nil cannot be generated, so always an error.
+        // descErr(this, ctx)
+        // if (Array.isArray(ctx?.err)) {
+        //   ctx.err.push(this)
+        // }
+        // else {
+        //   const err: any = new Error(this.msg)
+        //   err.aontu = true
+        //   throw err
+        // }
         return undefined;
     }
 }
@@ -78,7 +77,6 @@ Nil.make = (ctx, why, av, bv, attempt) => {
         }
     }
     if (ctx) {
-        // ctx.err.push(nil)
         ctx.adderr(nil, 'nil-make:' + why);
     }
     return nil;

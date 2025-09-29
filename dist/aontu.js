@@ -30,25 +30,31 @@ also trace deps into top val and watch via model
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
  */
 function Aontu(src, popts) {
-    // TODO: review: why is an undefined src allowed?
-    let opts = prepareOptions(src, popts);
-    let deps = {};
-    // TODO: handle empty src
-    let val = parse(opts, { deps });
-    if (null == val) {
-        val = new MapVal_1.MapVal({ peg: {} });
+    try {
+        let opts = prepareOptions(src, popts);
+        let deps = {};
+        // TODO: handle empty src
+        let val = parse(opts, { deps });
+        if (null == val) {
+            val = new MapVal_1.MapVal({ peg: {} });
+        }
+        let uni = new unify_1.Unify(val, undefined, undefined, opts.src);
+        let res = uni.res;
+        let err = uni.err;
+        (0, err_1.descErr)(uni.err, { src: opts.src, fs: opts.fs });
+        res.deps = deps;
+        res.err = err;
+        return res;
     }
-    let uni = new unify_1.Unify(val, undefined, undefined, opts.src);
-    let res = uni.res;
-    let err = uni.err;
-    (0, err_1.descErr)(uni.err, { src: opts.src, fs: opts.fs });
-    res.deps = deps;
-    res.err = err;
-    return res;
+    // NOTE: errors always return as Nil, and are never thrown.
+    catch (err) {
+        return new Nil_1.Nil({ why: 'unknown', msg: err.message, err: [err] });
+    }
 }
 function prepareOptions(src, popts) {
     // Convert convenience first param into Options.src
-    let srcopts = 'string' === typeof src ? { src } : src;
+    let srcopts = 'string' === typeof src ? { src } :
+        null == src ? {} : src;
     let opts = {
         ...{
             src: '',
@@ -57,6 +63,7 @@ function prepareOptions(src, popts) {
         ...srcopts,
         ...(popts || {}),
     };
+    opts.src = null == opts.src ? '' : opts.src;
     return opts;
 }
 function parse(opts, ctx) {

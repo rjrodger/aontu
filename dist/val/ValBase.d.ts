@@ -21,6 +21,7 @@ declare class ValBase implements Val {
     get site(): Site;
     unify(_peer: Val, _ctx?: Context): Val;
     get canon(): string;
+    errcanon(): string;
     gen(_ctx?: Context): any;
 }
 export { ValBase, };

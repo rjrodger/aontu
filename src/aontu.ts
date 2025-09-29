@@ -31,37 +31,44 @@ also trace deps into top val and watch via model
  * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
  * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
  */
-function Aontu(src: string | Partial<Options>, popts?: Partial<Options>): Val {
-  // TODO: review: why is an undefined src allowed?
+function Aontu(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
+  try {
+    let opts = prepareOptions(src, popts)
+    let deps = {}
 
-  let opts = prepareOptions(src, popts)
-  let deps = {}
+    // TODO: handle empty src
+    let val = parse(opts, { deps })
 
-  // TODO: handle empty src
-  let val = parse(opts, { deps })
+    if (null == val) {
+      val = new MapVal({ peg: {} })
+    }
 
-  if (null == val) {
-    val = new MapVal({ peg: {} })
+    let uni = new Unify(val as unknown as Val, undefined, undefined, opts.src)
+    let res = uni.res
+    let err = uni.err
+
+    descErr(uni.err, { src: opts.src, fs: opts.fs })
+
+    res.deps = deps
+    res.err = err
+
+    return res
   }
 
-  let uni = new Unify(val as unknown as Val, undefined, undefined, opts.src)
-  let res = uni.res
-  let err = uni.err
-
-  descErr(uni.err, { src: opts.src, fs: opts.fs })
-
-  res.deps = deps
-  res.err = err
-
-  return res
+  // NOTE: errors always return as Nil, and are never thrown.
+  catch (err: any) {
+    return new Nil({ why: 'unknown', msg: err.message, err: [err] })
+  }
 }
 
+
 function prepareOptions(
-  src: string | Partial<Options>,
+  src?: string | Partial<Options>,
   popts?: Partial<Options>,
 ): Options {
   // Convert convenience first param into Options.src
-  let srcopts: Partial<Options> = 'string' === typeof src ? { src } : src
+  let srcopts: Partial<Options> = 'string' === typeof src ? { src } :
+    null == src ? {} : src
 
   let opts: Options = {
     ...{
@@ -72,8 +79,11 @@ function prepareOptions(
     ...(popts || {}),
   }
 
+  opts.src = null == opts.src ? '' : opts.src
+
   return opts
 }
+
 
 function parse(opts: Options, ctx: { deps: any }): Val {
   const lang = new Lang(opts)

@@ -23,23 +23,25 @@ const root = Aontu(src, {
   path: process.cwd()
 })
 
+console.log('UNIFIED:', root.canon)
+
 if('deep'===debug) {
-  console.log('UNIFIED:')
-  // console.dir(root,{depth:null})
   print(root)
 }
+
 
 if(0<root.err?.length) {
   root.err.map(err=>console.error(err.msg))
 }
 else {
   if(debug) {
-    console.log('GENERATED:')
+    console.log('GEN:')
   }
   const err = []
   const out = root.gen(new Context({ src, root, err }))
 
   if(0<err.length) {
+    console.log('ERRORS: '+err.length)
     err.map(err=>console.error(err.msg))
   }
   else {

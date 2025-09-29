@@ -4,9 +4,9 @@ import { Lang } from './lang';
 import { Nil } from './val/Nil';
 type Path = string[];
 declare class Context {
+    #private;
     root: Val;
     path: Path;
-    err: Omit<Nil[], "push">;
     vc: number;
     cc: number;
     var: Record<string, Val>;
@@ -27,6 +27,7 @@ declare class Context {
         err?: Omit<Nil[], "push">;
     }): Context;
     descend(key: string): Context;
+    get err(): any;
     adderr(err: Nil, whence?: string): void;
 }
 declare class Unify {

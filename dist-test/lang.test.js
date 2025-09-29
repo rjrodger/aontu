@@ -22,7 +22,7 @@ let P = lang.parse.bind(lang);
         (0, code_1.expect)(P('a:11&22&33,b:44', { xlog: -1 }).canon).equal('{"a":(11&22)&33,"b":44}');
         (0, code_1.expect)(P('a:{b:11}&{c:22},b:33', { xlog: -1 }).canon)
             .equal('{"a":{"b":11}&{"c":22},"b":33}');
-        (0, code_1.expect)(P('a:11&22|33,b:44', { xlog: -1 }).canon).equal('{"a":11&(22|33),"b":44}');
+        (0, code_1.expect)(P('a:11&22|33,b:44', { xlog: -1 }).canon).equal('{"a":(11&22)|33,"b":44}');
         (0, code_1.expect)(P('a:(11|22)&33,b:44', { xlog: -1 }).canon).equal('{"a":(11|22)&33,"b":44}');
     });
     (0, node_test_1.it)('parens', () => {
@@ -34,9 +34,10 @@ let P = lang.parse.bind(lang);
         (0, code_1.expect)(P('1&(2&3)').canon).equal('1&(2&3)');
         (0, code_1.expect)(P('1&(2&3)&4').canon).equal('(1&(2&3))&4');
         (0, code_1.expect)(P('1&((2&3)&4)').canon).equal('1&((2&3)&4)');
-        // TODO: is this precedence right?
-        (0, code_1.expect)(P('1&2|3').canon).equal('1&(2|3)');
-        (0, code_1.expect)(P('1|2&3').canon).equal('(1|2)&3');
+        (0, code_1.expect)(P('1&2|3').canon).equal('(1&2)|3');
+        (0, code_1.expect)(P('1|2&3').canon).equal('1|(2&3)');
+        (0, code_1.expect)(P('1&(2|3)').canon).equal('1&(2|3)');
+        (0, code_1.expect)(P('(1|2)&3').canon).equal('(1|2)&3');
     });
     (0, node_test_1.it)('merge', () => {
         let ctx = makeCtx();

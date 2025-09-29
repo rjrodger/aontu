@@ -6,7 +6,7 @@ declare class PlusVal extends OpVal {
     constructor(spec: {
         peg: any[];
     }, ctx?: Context);
-    operate(ctx: Context): StringVal | IntegerVal | NumberVal | undefined;
+    operate(ctx: Context): NumberVal | IntegerVal | StringVal | undefined;
     get canon(): string;
 }
 export { PlusVal, };

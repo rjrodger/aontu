@@ -203,8 +203,14 @@ describe('unify', function() {
     expect(G('a&(a|b)&a')).equal('a')
 
     expect(G('a|b&a')).equal('a')
-    expect(G('a&a|b')).equal('a')
+    expect(G('a|(b&a)')).equal('a')
+    expect(G('(a|b)&a)')).equal('a')
+
+    expect(G('a&a|b')).equal(undefined)
     expect(G('a&a|b&a')).equal('a')
+    expect(G('(a&a)|(b&a)')).equal('a')
+    expect(G('(a&a)|nil')).equal('a')
+    expect(G('a&a|nil')).equal('a')
 
     expect(G('a|(b&a)')).equal('a')
 

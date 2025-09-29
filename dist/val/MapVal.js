@@ -97,7 +97,7 @@ class MapVal extends ValBase_1.ValBase {
     }
     get canon() {
         let keys = Object.keys(this.peg);
-        return '{' +
+        return this.errcanon() + '{' +
             (this.spread.cj ? '&:' + this.spread.cj.canon +
                 (0 < keys.length ? ',' : '') : '') +
             keys

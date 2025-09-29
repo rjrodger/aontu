@@ -2,6 +2,7 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
+// TODO: structured creation of Vals so that context can be passed in
 const jsonic_1 = require("jsonic");
 const debug_1 = require("jsonic/debug");
 const multisource_1 = require("@jsonic/multisource");
@@ -142,12 +143,12 @@ let AontuJsonic = function aontu(jsonic) {
     jsonic
         .use(expr_1.Expr, {
         op: {
-            // disjunct > conjunct: c & b | a -> c & (b | a)
+            // disjunct < conjunct: c & b | a -> (c & b) | a
             'conjunct': {
-                infix: true, src: '&', left: 14_000_000, right: 15_000_000
+                infix: true, src: '&', left: 16_000_000, right: 17_000_000
             },
             'disjunct': {
-                infix: true, src: '|', left: 16_000_000, right: 17_000_000
+                infix: true, src: '|', left: 14_000_000, right: 15_000_000
             },
             'plus-infix': {
                 src: '+',
@@ -376,6 +377,9 @@ class Lang {
                 deps: (opts && opts.deps) || undefined
             }
         };
+        if (null != opts?.idcount) {
+            this.idcount = opts.idcount;
+        }
         // Pass through Jsonic debug log value
         if (opts && null != opts.log && Number.isInteger(opts.log)) {
             jm.log = opts.log;

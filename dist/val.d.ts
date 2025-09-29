@@ -32,7 +32,6 @@ declare class ScalarTypeVal extends ValBase {
     unify(peer: any, ctx?: Context): Val;
     get canon(): any;
     same(peer: any): boolean;
-    gen(_ctx?: Context): undefined;
 }
 declare class ScalarVal<T> extends ValBase {
     type: any;

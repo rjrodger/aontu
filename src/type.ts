@@ -27,6 +27,7 @@ type Options = {
   fs?: FST
   deps?: any
   log?: any
+  idcount?: number
 }
 
 

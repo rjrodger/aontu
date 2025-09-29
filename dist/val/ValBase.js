@@ -15,7 +15,7 @@ var _ValBase_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ValBase = void 0;
 const lang_1 = require("../lang");
-let ID = 0;
+let ID = 1000;
 class ValBase {
     // TODO: Site needed in ctor
     constructor(spec, ctx) {
@@ -36,8 +36,9 @@ class ValBase {
         __classPrivateFieldSet(this, _ValBase_ctx, ctx, "f");
         this.peg = spec?.peg;
         this.path = ctx?.path || [];
-        // this.id = (9e9 + Math.floor(Math.random() * (1e9)))
-        this.id = ++ID; // (9e9 + Math.floor(Math.random() * (1e5)))
+        // TODO: make this work
+        // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
+        this.id = ++ID;
         this.uh = [];
     }
     ctx() {
@@ -70,7 +71,13 @@ class ValBase {
     }
     unify(_peer, _ctx) { return this; }
     get canon() { return ''; }
-    gen(_ctx) { return null; }
+    // gen(_ctx?: Context): any { return null }
+    errcanon() {
+        return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`;
+    }
+    gen(_ctx) {
+        return undefined;
+    }
 }
 exports.ValBase = ValBase;
 _ValBase_ctx = new WeakMap();

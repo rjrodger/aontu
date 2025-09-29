@@ -79,9 +79,6 @@ class ScalarTypeVal extends ValBase_1.ValBase {
         let out = peer?.isScalarTypeVal ? this.peg === peer?.peg : super.same(peer);
         return out;
     }
-    gen(_ctx) {
-        return undefined;
-    }
 }
 exports.ScalarTypeVal = ScalarTypeVal;
 class ScalarVal extends ValBase_1.ValBase {

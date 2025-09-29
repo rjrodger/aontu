@@ -112,16 +112,33 @@ class PrefVal extends ValBase {
     // }
 
     if (peer instanceof PrefVal) {
-      out = Nil.make(ctx, 'pref', this, peer)
+      if (this.rank < peer.rank) {
+        return this
+      }
+      else if (peer.rank < this.rank) {
+        return peer
+      }
+      else {
+        let peg = unite(ctx, this.peg, peer.peg, 'pref-peer/' + this.id)
+        out = new PrefVal({ peg }, ctx)
+        // out = Nil.make(ctx, 'pref', this, peer)
+      }
     }
     else if (!peer.top) {
+      // out = Nil.make(ctx, 'pref', this, peer)
+
       if (this.superpeg instanceof Nil) {
         out = peer
       }
       else {
         out = unite(ctx, this.superpeg, peer, 'pref-super/' + this.id)
-        if (out instanceof Nil) {
-          out = Nil.make(ctx, '*super', this, peer)
+        // console.log('QQQ', out.canon)
+        // if (out instanceof Nil) {
+        //   out = Nil.make(ctx, '*super', this, peer)
+        // }
+        // if (!(out instanceof Nil)) {
+        if (out.same(this.superpeg)) {
+          return this.peg
         }
       }
     }
@@ -171,7 +188,7 @@ class PrefVal extends ValBase {
     let val = this.peg
 
     if (val instanceof Nil) {
-      descErr(val, ctx)
+      // descErr(val, ctx)
 
       if (ctx) {
         // ctx.err.push(val)

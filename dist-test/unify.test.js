@@ -130,8 +130,13 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res
         (0, code_1.expect)(G('a&(a|b)')).equal('a');
         (0, code_1.expect)(G('a&(a|b)&a')).equal('a');
         (0, code_1.expect)(G('a|b&a')).equal('a');
-        (0, code_1.expect)(G('a&a|b')).equal('a');
+        (0, code_1.expect)(G('a|(b&a)')).equal('a');
+        (0, code_1.expect)(G('(a|b)&a)')).equal('a');
+        (0, code_1.expect)(G('a&a|b')).equal(undefined);
         (0, code_1.expect)(G('a&a|b&a')).equal('a');
+        (0, code_1.expect)(G('(a&a)|(b&a)')).equal('a');
+        (0, code_1.expect)(G('(a&a)|nil')).equal('a');
+        (0, code_1.expect)(G('a&a|nil')).equal('a');
         (0, code_1.expect)(G('a|(b&a)')).equal('a');
         (0, code_1.expect)(G('(a|b)&a')).equal('a');
         (0, code_1.expect)(G('(a|b)&b')).equal('b');

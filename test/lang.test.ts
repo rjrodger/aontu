@@ -53,7 +53,7 @@ describe('lang', function() {
     expect(P('a:{b:11}&{c:22},b:33', { xlog: -1 }).canon)
       .equal('{"a":{"b":11}&{"c":22},"b":33}')
 
-    expect(P('a:11&22|33,b:44', { xlog: -1 }).canon).equal('{"a":11&(22|33),"b":44}')
+    expect(P('a:11&22|33,b:44', { xlog: -1 }).canon).equal('{"a":(11&22)|33,"b":44}')
 
     expect(P('a:(11|22)&33,b:44', { xlog: -1 }).canon).equal('{"a":(11|22)&33,"b":44}')
   })
@@ -68,10 +68,10 @@ describe('lang', function() {
     expect(P('1&(2&3)').canon).equal('1&(2&3)')
     expect(P('1&(2&3)&4').canon).equal('(1&(2&3))&4')
     expect(P('1&((2&3)&4)').canon).equal('1&((2&3)&4)')
-
-    // TODO: is this precedence right?
-    expect(P('1&2|3').canon).equal('1&(2|3)')
-    expect(P('1|2&3').canon).equal('(1|2)&3')
+    expect(P('1&2|3').canon).equal('(1&2)|3')
+    expect(P('1|2&3').canon).equal('1|(2&3)')
+    expect(P('1&(2|3)').canon).equal('1&(2|3)')
+    expect(P('(1|2)&3').canon).equal('(1|2)&3')
   })
 
 

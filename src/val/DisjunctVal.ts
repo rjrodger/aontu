@@ -75,12 +75,14 @@ class DisjunctVal extends ValBase {
 
 
   unify(peer: Val, ctx: Context): Val {
-    // const sc = this.canon
-    // const pc = peer?.canon
+    const sc = this.canon
+    const pc = peer?.canon
 
     if (!this.prefsRanked) {
       this.rankPrefs(ctx)
     }
+
+    // console.log('DISJUNCT-unify-A', this.id, this.canon)
 
     let done = true
 
@@ -102,6 +104,8 @@ class DisjunctVal extends ValBase {
       done = done && DONE === oval[vI].done
     }
 
+    // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))
+
     // Remove duplicates, and normalize
     if (1 < oval.length) {
       for (let vI = 0; vI < oval.length; vI++) {
@@ -109,6 +113,8 @@ class DisjunctVal extends ValBase {
           oval.splice(vI, 1, ...oval[vI].peg)
         }
       }
+
+      // console.log('DISJUNCT-unify-C', this.id, oval.map(v => v.id + '=' + v.canon))
 
       // TODO: not an error Nil!
       let remove = new Nil()
@@ -119,6 +125,8 @@ class DisjunctVal extends ValBase {
           }
         }
       }
+
+      // console.log('DISJUNCT-unify-D', this.id, oval.map(v => v.canon))
 
       oval = oval.filter(v => !(v instanceof Nil))
     }
@@ -138,7 +146,7 @@ class DisjunctVal extends ValBase {
     out.done = done ? DONE : this.done + 1
 
     // console.log('DISJUNCT-unify',
-    //  this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
+    //   this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
 
     return out
   }
@@ -155,7 +163,16 @@ class DisjunctVal extends ValBase {
       if (v instanceof PrefVal) {
         if (null != lastpref) {
           if (v.rank === lastpref.rank) {
-            return Nil.make(ctx, '|:prefs', lastpref, v, 'associate')
+            const pref = v.unify(lastpref, ctx) as PrefVal
+            if (pref instanceof Nil) {
+              return pref
+            }
+            else {
+              this.peg[lastprefI] = pref
+              lastpref = pref
+              this.peg[vI] = null
+            }
+            // return Nil.make(ctx, '|:prefs', lastpref, v, 'associate')
           }
           else if (v.rank < lastpref.rank) {
             this.peg[lastprefI] = null
@@ -209,58 +226,66 @@ class DisjunctVal extends ValBase {
 
 
   gen(ctx?: Context) {
+    // console.log('DJ-GEN', this.peg.map((p: any) => p.canon))
 
-    // if (0 < this.peg.length) {
+    if (0 < this.peg.length) {
 
-    //   let vals = this.peg.filter((v: Val) => v instanceof PrefVal)
+      let vals = this.peg.filter((v: Val) => v instanceof PrefVal)
+      // console.log('DJ-GEN-VALS-A', vals.map((p: any) => p.canon))
 
-    //   vals = 0 === vals.length ? this.peg : vals
+      vals = 0 === vals.length ? this.peg : vals
 
-    //   let val = vals[0]
+      let val = vals[0]
 
-    //   for (let vI = 1; vI < this.peg.length; vI++) {
-    //     let valnext = val.unify(this.peg[vI], ctx)
-    //     val = valnext
-    //   }
+      for (let vI = 1; vI < vals.length; vI++) {
+        let valnext = val.unify(this.peg[vI], ctx)
+        // console.log('DJ-GEN-VALS-NEXT', valnext.canon)
+        val = valnext
+      }
 
-    //   return val.gen(ctx)
-    // }
+      // console.log('DJ-GEN-VALS-B', val.canon)
+      const out = val.gen(ctx)
+      // console.log('DJ-GEN-VALS-C', out)
+      return out
+    }
+
+    return super.gen(ctx)
 
     // console.log('DJ-GEN', this.peg)
 
-    if (1 === this.peg.length) {
-      return this.peg[0].gen(ctx)
-    }
-    else if (1 < this.peg.length) {
-      let peg = this.peg.filter((v: Val) => v instanceof PrefVal)
+    // if (1 === this.peg.length) {
+    //   return this.peg[0].gen(ctx)
+    // }
+    // else if (1 < this.peg.length) {
+    //   let peg = this.peg.filter((v: Val) => v instanceof PrefVal)
 
-      if (1 === peg.length) {
-        return peg[0].gen(ctx)
-      }
-      else {
+    //   if (1 === peg.length) {
+    //     return peg[0].gen(ctx)
+    //   }
+    //   else {
 
-        let nil = Nil.make(
-          ctx,
-          'disjunct',
-          this,
-          undefined
-        )
+    //     let nil = Nil.make(
+    //       ctx,
+    //       'disjunct',
+    //       this,
+    //       undefined
+    //     )
 
-        // TODO: refactor to use Site
-        nil.path = this.path
-        nil.url = this.url
-        nil.row = this.row
-        nil.col = this.col
+    //     // TODO: refactor to use Site
+    //     nil.path = this.path
+    //     nil.url = this.url
+    //     nil.row = this.row
+    //     nil.col = this.col
 
-        // descErr(nil, ctx)
+    //     // descErr(nil, ctx)
 
-        if (null == ctx) {
-          throw new Error(nil.msg)
-        }
-      }
+    //     if (null == ctx) {
+    //       throw new Error(nil.msg)
+    //     }
+    //   }
 
-      return undefined
-    }
+    //   return undefined
+    // }
   }
 }
 

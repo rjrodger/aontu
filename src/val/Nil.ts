@@ -69,7 +69,6 @@ class Nil extends ValBase {
     }
 
     if (ctx) {
-      // ctx.err.push(nil)
       ctx.adderr(nil, 'nil-make:' + why)
     }
 
@@ -123,18 +122,18 @@ class Nil extends ValBase {
   }
 
   gen(ctx?: Context) {
-    // Unresolved nil cannot be generated, so always an error.
+    // // Unresolved nil cannot be generated, so always an error.
 
-    descErr(this, ctx)
+    // descErr(this, ctx)
 
-    if (Array.isArray(ctx?.err)) {
-      ctx.err.push(this)
-    }
-    else {
-      const err: any = new Error(this.msg)
-      err.aontu = true
-      throw err
-    }
+    // if (Array.isArray(ctx?.err)) {
+    //   ctx.err.push(this)
+    // }
+    // else {
+    //   const err: any = new Error(this.msg)
+    //   err.aontu = true
+    //   throw err
+    // }
 
     return undefined
   }

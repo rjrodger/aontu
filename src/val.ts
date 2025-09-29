@@ -151,9 +151,9 @@ class ScalarTypeVal extends ValBase {
     return out
   }
 
-  gen(_ctx?: Context) {
-    return undefined
-  }
+  // gen(_ctx?: Context) {
+  //   return undefined
+  // }
 
 }
 

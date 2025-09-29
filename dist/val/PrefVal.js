@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefVal = void 0;
 const type_1 = require("../type");
-const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
 // import { ConjunctVal } from '../val/ConjunctVal'
@@ -58,16 +57,32 @@ class PrefVal extends ValBase_1.ValBase {
         //   out = out.peg
         // }
         if (peer instanceof PrefVal) {
-            out = Nil_1.Nil.make(ctx, 'pref', this, peer);
+            if (this.rank < peer.rank) {
+                return this;
+            }
+            else if (peer.rank < this.rank) {
+                return peer;
+            }
+            else {
+                let peg = (0, op_1.unite)(ctx, this.peg, peer.peg, 'pref-peer/' + this.id);
+                out = new PrefVal({ peg }, ctx);
+                // out = Nil.make(ctx, 'pref', this, peer)
+            }
         }
         else if (!peer.top) {
+            // out = Nil.make(ctx, 'pref', this, peer)
             if (this.superpeg instanceof Nil_1.Nil) {
                 out = peer;
             }
             else {
                 out = (0, op_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id);
-                if (out instanceof Nil_1.Nil) {
-                    out = Nil_1.Nil.make(ctx, '*super', this, peer);
+                // console.log('QQQ', out.canon)
+                // if (out instanceof Nil) {
+                //   out = Nil.make(ctx, '*super', this, peer)
+                // }
+                // if (!(out instanceof Nil)) {
+                if (out.same(this.superpeg)) {
+                    return this.peg;
                 }
             }
         }
@@ -101,7 +116,7 @@ class PrefVal extends ValBase_1.ValBase {
         //     this.pref)
         let val = this.peg;
         if (val instanceof Nil_1.Nil) {
-            (0, err_1.descErr)(val, ctx);
+            // descErr(val, ctx)
             if (ctx) {
                 // ctx.err.push(val)
                 ctx.adderr(val);
