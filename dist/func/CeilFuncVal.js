@@ -1,27 +1,27 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FloorFuncVal = void 0;
+exports.CeilFuncVal = void 0;
 const val_1 = require("../val");
 const FuncValBase_1 = require("./FuncValBase");
-class FloorFuncVal extends FuncValBase_1.FuncValBase {
+class CeilFuncVal extends FuncValBase_1.FuncValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isFloorFuncVal = true;
+        this.isCeilFuncVal = true;
     }
     make(_ctx, spec) {
-        return new FloorFuncVal(spec);
+        return new CeilFuncVal(spec);
     }
     funcname() {
-        return 'floor';
+        return 'ceil';
     }
     resolve(_ctx, args) {
         const oldpeg = args?.[0].peg;
-        const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg);
+        const peg = isNaN(oldpeg) ? undefined : Math.ceil(oldpeg);
         const out = null == peg ? new val_1.Nil({ msg: 'Not a number: ' + oldpeg }) :
             new val_1.IntegerVal({ peg });
         return out;
     }
 }
-exports.FloorFuncVal = FloorFuncVal;
-//# sourceMappingURL=FloorFuncVal.js.map
+exports.CeilFuncVal = CeilFuncVal;
+//# sourceMappingURL=CeilFuncVal.js.map

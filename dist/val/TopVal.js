@@ -8,7 +8,7 @@ const ValBase_1 = require("./ValBase");
 // There can be only one.
 class TopVal extends ValBase_1.ValBase {
     constructor() {
-        super(null);
+        super({ peg: null });
         this.isTop = true;
         this.id = 0;
         this.top = true;

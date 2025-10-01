@@ -9,12 +9,18 @@ class PlusVal extends OpVal_1.OpVal {
         super(spec, ctx);
         this.isOpVal = true;
     }
-    operate(ctx) {
-        super.operate(ctx);
-        if (this.peg.find((v) => v.isRefVal)) {
-            return undefined;
-        }
-        let peg = this.peg[0].peg + this.peg[1].peg;
+    make(_ctx, spec) {
+        return new PlusVal(spec);
+    }
+    opname() {
+        return 'plus';
+    }
+    operate(ctx, args) {
+        // super.operate(ctx)
+        // if (this.peg.find((v: any) => v.isRefVal)) {
+        //   return undefined
+        // }
+        let peg = args[0].peg + args[1].peg;
         let pegtype = typeof peg;
         if ('string' === pegtype) {
             return new val_1.StringVal({ peg });
@@ -25,7 +31,7 @@ class PlusVal extends OpVal_1.OpVal {
         return undefined;
     }
     get canon() {
-        return this.peg[0].canon + '+' + this.peg[1].canon;
+        return this.peg[0]?.canon + '+' + this.peg[1]?.canon;
     }
 }
 exports.PlusVal = PlusVal;

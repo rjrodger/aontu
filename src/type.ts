@@ -34,6 +34,8 @@ type Options = {
 
 interface Val {
   isVal: boolean
+  isTop: boolean
+  isNil: boolean
 
   id: number
   dc: number
@@ -53,6 +55,8 @@ interface Val {
 
   deps?: any
 
+  get done(): boolean
+
   same(peer: Val): boolean
 
   clone(ctx: Context, spec?: ValSpec): Val
@@ -66,7 +70,7 @@ interface Val {
 type ValSpec = {
   peg?: any,
   [name: string]: any,
-} | null
+}
 type ValMap = { [key: string]: Val }
 type ValList = Val[]
 

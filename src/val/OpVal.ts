@@ -34,14 +34,11 @@ import { ValBase } from '../val/ValBase'
 
 
 
-
 class OpVal extends ValBase {
   isOpVal = true
 
   constructor(
-    spec: {
-      peg: any[],
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super(spec, ctx)
@@ -58,11 +55,38 @@ class OpVal extends ValBase {
   }
 
 
+  make(ctx: Context, _spec: ValSpec): Val {
+    return Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'make')
+  }
+
+  opname() {
+    return 'op'
+  }
+
+
   unify(peer: Val, ctx: Context): Val {
     let out: Val = this
 
-    if (this.id !== peer.id) {
-      let result: Val | undefined = null == ctx ? this : this.operate(ctx)
+    if (this.id == peer.id) {
+      return this
+    }
+
+
+    let pegdone = true
+    let newpeg: Val[] = []
+
+    for (let arg of this.peg) {
+      if (!arg.done) {
+        arg = arg.unify(TOP, ctx)
+      }
+      pegdone &&= arg.done
+      newpeg.push(arg)
+    }
+
+    // console.log('OPVAL', pegdone, newpeg)
+
+    if (pegdone) {
+      let result: Val | undefined = null == ctx ? this : this.operate(ctx, newpeg)
 
       result = result || this
 
@@ -92,6 +116,33 @@ class OpVal extends ValBase {
 
       out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
+    else if (peer.isTop) {
+      this.notdone()
+      out = this.make(ctx, { peg: newpeg })
+
+      // TODO: make should handle this using ctx?
+      out.row = this.row
+      out.col = this.col
+      out.url = this.url
+      out.path = this.path
+
+      // why += 'top'
+    }
+    else if (peer.isNil) {
+      this.notdone()
+      out = peer
+      //why += 'nil'
+    }
+    else {
+      this.notdone()
+      out = new ConjunctVal({ peg: [this, peer] }, ctx)
+
+      // TODO: make should handle this using ctx?
+      out.row = this.row
+      out.col = this.col
+      out.url = this.url
+      out.path = this.path
+    }
 
     return out
   }
@@ -110,15 +161,14 @@ class OpVal extends ValBase {
   }
 
 
-  operate(ctx: Context): Val | undefined {
-    this.peg = this.peg.map((v: any) => v.isRefVal ? v.unify(TOP, ctx) : v)
-    return undefined
+  operate(ctx: Context, _args: Val[]): Val | undefined {
+    return Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'operate')
   }
 
 
 
   get canon() {
-    return ''
+    return 'op'
   }
 
 

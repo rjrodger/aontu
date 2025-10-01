@@ -90,6 +90,7 @@ class Unify {
             });
             let maxcc = 9; // 99
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
+                // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
                 res = (0, op_1.unite)(uctx, res, val_1.TOP);
                 uctx = uctx.clone({ root: res });

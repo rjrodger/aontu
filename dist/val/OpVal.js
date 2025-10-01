@@ -21,10 +21,29 @@ class OpVal extends ValBase_1.ValBase {
     append(part) {
         this.peg.push(part);
     }
+    make(ctx, _spec) {
+        return Nil_1.Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'make');
+    }
+    opname() {
+        return 'op';
+    }
     unify(peer, ctx) {
         let out = this;
-        if (this.id !== peer.id) {
-            let result = null == ctx ? this : this.operate(ctx);
+        if (this.id == peer.id) {
+            return this;
+        }
+        let pegdone = true;
+        let newpeg = [];
+        for (let arg of this.peg) {
+            if (!arg.done) {
+                arg = arg.unify(val_1.TOP, ctx);
+            }
+            pegdone &&= arg.done;
+            newpeg.push(arg);
+        }
+        // console.log('OPVAL', pegdone, newpeg)
+        if (pegdone) {
+            let result = null == ctx ? this : this.operate(ctx, newpeg);
             result = result || this;
             if (null == result && this.canon === peer.canon) {
                 out = this;
@@ -49,6 +68,30 @@ class OpVal extends ValBase_1.ValBase {
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
+        else if (peer.isTop) {
+            this.notdone();
+            out = this.make(ctx, { peg: newpeg });
+            // TODO: make should handle this using ctx?
+            out.row = this.row;
+            out.col = this.col;
+            out.url = this.url;
+            out.path = this.path;
+            // why += 'top'
+        }
+        else if (peer.isNil) {
+            this.notdone();
+            out = peer;
+            //why += 'nil'
+        }
+        else {
+            this.notdone();
+            out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
+            // TODO: make should handle this using ctx?
+            out.row = this.row;
+            out.col = this.col;
+            out.url = this.url;
+            out.path = this.path;
+        }
         return out;
     }
     same(peer) {
@@ -60,12 +103,11 @@ class OpVal extends ValBase_1.ValBase {
         });
         return out;
     }
-    operate(ctx) {
-        this.peg = this.peg.map((v) => v.isRefVal ? v.unify(val_1.TOP, ctx) : v);
-        return undefined;
+    operate(ctx, _args) {
+        return Nil_1.Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'operate');
     }
     get canon() {
-        return '';
+        return 'op';
     }
     gen(ctx) {
         // Unresolved op cannot be generated, so always an error.

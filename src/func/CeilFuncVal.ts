@@ -20,8 +20,8 @@ import {
 import { FuncValBase } from './FuncValBase'
 
 
-class FloorFuncVal extends FuncValBase {
-  isFloorFuncVal = true
+class CeilFuncVal extends FuncValBase {
+  isCeilFuncVal = true
 
   constructor(
     spec: ValSpec,
@@ -32,17 +32,17 @@ class FloorFuncVal extends FuncValBase {
 
 
   make(_ctx: Context, spec: ValSpec): Val {
-    return new FloorFuncVal(spec)
+    return new CeilFuncVal(spec)
   }
 
   funcname() {
-    return 'floor'
+    return 'ceil'
   }
 
 
   resolve(_ctx: Context | undefined, args: Val[]) {
     const oldpeg = args?.[0].peg
-    const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg)
+    const peg = isNaN(oldpeg) ? undefined : Math.ceil(oldpeg)
     const out =
       null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) :
         new IntegerVal({ peg })
@@ -52,5 +52,5 @@ class FloorFuncVal extends FuncValBase {
 
 
 export {
-  FloorFuncVal,
+  CeilFuncVal,
 }

@@ -104,6 +104,7 @@ class RefVal extends ValBase_1.ValBase {
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
+        // console.log('REF:', this.peg, '->', out.canon)
         return out;
     }
     find(ctx) {

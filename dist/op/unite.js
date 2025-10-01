@@ -35,10 +35,11 @@ const unite = (ctx, a, b, whence) => {
             unified = true;
             why = 'acj';
         }
-        else if (b.isConjunctVal ||
-            b.isDisjunctVal ||
-            b.isRefVal ||
-            b.isPrefVal) {
+        else if (b.isConjunctVal
+            || b.isDisjunctVal
+            || b.isRefVal
+            || b.isPrefVal
+            || b.isFuncVal) {
             out = b.unify(a, ctx);
             unified = true;
             why = 'bv';

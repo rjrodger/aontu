@@ -33,7 +33,7 @@ class TopVal extends ValBase {
   url = ''
 
   constructor() {
-    super(null)
+    super({ peg: null })
 
     // TOP is always DONE, by definition.
     this.dc = DONE

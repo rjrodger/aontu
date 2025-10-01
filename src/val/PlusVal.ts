@@ -35,23 +35,29 @@ class PlusVal extends OpVal {
   isOpVal = true
 
   constructor(
-    spec: {
-      peg: any[],
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super(spec, ctx)
   }
 
 
-  operate(ctx: Context) {
-    super.operate(ctx)
+  make(_ctx: Context, spec: ValSpec): Val {
+    return new PlusVal(spec)
+  }
 
-    if (this.peg.find((v: any) => v.isRefVal)) {
-      return undefined
-    }
+  opname() {
+    return 'plus'
+  }
 
-    let peg = this.peg[0].peg + this.peg[1].peg
+  operate(ctx: Context, args: Val[]) {
+    // super.operate(ctx)
+
+    // if (this.peg.find((v: any) => v.isRefVal)) {
+    //   return undefined
+    // }
+
+    let peg = args[0].peg + args[1].peg
     let pegtype = typeof peg
     if ('string' === pegtype) {
       return new StringVal({ peg })
@@ -65,7 +71,7 @@ class PlusVal extends OpVal {
 
 
   get canon() {
-    return this.peg[0].canon + '+' + this.peg[1].canon
+    return this.peg[0]?.canon + '+' + this.peg[1]?.canon
   }
 
 }

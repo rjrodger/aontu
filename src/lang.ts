@@ -62,6 +62,13 @@ import {
 } from './val'
 
 
+import {
+  FloorFuncVal,
+  CeilFuncVal,
+  UpperFuncVal,
+  LowerFuncVal,
+} from './func'
+
 
 import {
   TOP,
@@ -73,7 +80,6 @@ import {
   BooleanVal,
 } from './val'
 
-import { Context } from './unify'
 
 
 
@@ -182,6 +188,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   })
 
 
+  /*
   const funcMap: Record<string, Function> = {
     floor: (v: Val) => {
       const oldpeg = v.peg
@@ -194,6 +201,15 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       const ctx = new Context({ root: v, path: [] })
       return v.clone(ctx)
     }
+  }
+  */
+
+
+  const funcMap: Record<string, any> = {
+    floor: FloorFuncVal,
+    ceil: CeilFuncVal,
+    upper: UpperFuncVal,
+    lower: LowerFuncVal,
   }
 
 
@@ -250,10 +266,11 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       let val = terms[1]
       const fname = terms[0].peg
       if ('' !== fname) {
-        const func = funcMap[fname]
+        const funcval = funcMap[fname]
         const args = terms.slice(1)
-        // console.log('ARGS', args)
-        val = null == func ? new Nil({ msg: 'Not a function: ' + fname }) : func(...args)
+        val = null == funcval ? new Nil({ msg: 'Not a function: ' + fname }) : new funcval({
+          peg: args
+        })
       }
       const out = addsite(val, r, ctx)
       // console.log('FUNC-PAREN', fname, terms, '->', out)

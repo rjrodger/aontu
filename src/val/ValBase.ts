@@ -9,6 +9,11 @@ import type {
 
 
 import {
+  DONE
+} from '../type'
+
+
+import {
   Context,
 } from '../unify'
 
@@ -23,6 +28,8 @@ let ID = 1000
 
 class ValBase implements Val {
   isVal = true
+  isTop = false
+  isNil = false
 
   id: number
   dc: number = 0
@@ -66,6 +73,12 @@ class ValBase implements Val {
     return this.#ctx
   }
 
+
+  get done() {
+    return this.dc === DONE
+  }
+
+
   same(peer: Val): boolean {
     return null == peer ? false : this.id === peer.id
   }
@@ -95,19 +108,25 @@ class ValBase implements Val {
     return new Site(this)
   }
 
+  // NOTE: MUST not mutate! Val immutability is a critical assumption. 
   unify(_peer: Val, _ctx?: Context): Val { return this }
+
   get canon(): string { return '' }
-  // gen(_ctx?: Context): any { return null }
 
 
   errcanon(): string {
     return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`
   }
 
+
   gen(_ctx?: Context): any {
     return undefined
   }
 
+
+  notdone() {
+    this.dc = DONE === this.dc ? DONE : this.dc + 1
+  }
 }
 
 export {

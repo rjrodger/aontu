@@ -4,6 +4,8 @@ import { Site } from '../lang';
 declare class ValBase implements Val {
     #private;
     isVal: boolean;
+    isTop: boolean;
+    isNil: boolean;
     id: number;
     dc: number;
     path: string[];
@@ -16,6 +18,7 @@ declare class ValBase implements Val {
     uh: number[];
     constructor(spec: ValSpec, ctx?: Context);
     ctx(): any;
+    get done(): boolean;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;
     get site(): Site;
@@ -23,5 +26,6 @@ declare class ValBase implements Val {
     get canon(): string;
     errcanon(): string;
     gen(_ctx?: Context): any;
+    notdone(): void;
 }
 export { ValBase, };

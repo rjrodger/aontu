@@ -14,12 +14,15 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 var _ValBase_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ValBase = void 0;
+const type_1 = require("../type");
 const lang_1 = require("../lang");
 let ID = 1000;
 class ValBase {
     // TODO: Site needed in ctor
     constructor(spec, ctx) {
         this.isVal = true;
+        this.isTop = false;
+        this.isNil = false;
         this.dc = 0;
         this.path = [];
         this.row = -1;
@@ -44,6 +47,9 @@ class ValBase {
     ctx() {
         return __classPrivateFieldGet(this, _ValBase_ctx, "f");
     }
+    get done() {
+        return this.dc === type_1.DONE;
+    }
     same(peer) {
         return null == peer ? false : this.id === peer.id;
     }
@@ -64,14 +70,17 @@ class ValBase {
     get site() {
         return new lang_1.Site(this);
     }
+    // NOTE: MUST not mutate! Val immutability is a critical assumption. 
     unify(_peer, _ctx) { return this; }
     get canon() { return ''; }
-    // gen(_ctx?: Context): any { return null }
     errcanon() {
         return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`;
     }
     gen(_ctx) {
         return undefined;
+    }
+    notdone() {
+        this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
     }
 }
 exports.ValBase = ValBase;

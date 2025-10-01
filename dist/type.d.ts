@@ -17,6 +17,8 @@ type Options = {
 };
 interface Val {
     isVal: boolean;
+    isTop: boolean;
+    isNil: boolean;
     id: number;
     dc: number;
     path: string[];
@@ -27,6 +29,7 @@ interface Val {
     peg: any;
     err: Omit<any[], "push">;
     deps?: any;
+    get done(): boolean;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;
     unify(peer: Val, ctx?: Context): Val;
@@ -36,7 +39,7 @@ interface Val {
 type ValSpec = {
     peg?: any;
     [name: string]: any;
-} | null;
+};
 type ValMap = {
     [key: string]: Val;
 };

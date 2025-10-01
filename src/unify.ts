@@ -140,6 +140,7 @@ class Unify {
 
       let maxcc = 9 // 99
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
+        // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
         res = unite(uctx, res, TOP)
         uctx = uctx.clone({ root: res })

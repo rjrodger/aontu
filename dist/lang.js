@@ -12,8 +12,8 @@ const mem_1 = require("@jsonic/multisource/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
 const val_1 = require("./val");
+const func_1 = require("./func");
 const val_2 = require("./val");
-const unify_1 = require("./unify");
 class Site {
     // static NONE = new Site(TOP)
     constructor(val) {
@@ -97,17 +97,26 @@ let AontuJsonic = function aontu(jsonic) {
             }
         }
     });
+    /*
+    const funcMap: Record<string, Function> = {
+      floor: (v: Val) => {
+        const oldpeg = v.peg
+        const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg)
+        const out =
+          null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) : new IntegerVal({ peg })
+        return out
+      },
+      copy: (v: Val) => {
+        const ctx = new Context({ root: v, path: [] })
+        return v.clone(ctx)
+      }
+    }
+    */
     const funcMap = {
-        floor: (v) => {
-            const oldpeg = v.peg;
-            const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg);
-            const out = null == peg ? new val_1.Nil({ msg: 'Not a number: ' + oldpeg }) : new val_2.IntegerVal({ peg });
-            return out;
-        },
-        copy: (v) => {
-            const ctx = new unify_1.Context({ root: v, path: [] });
-            return v.clone(ctx);
-        }
+        floor: func_1.FloorFuncVal,
+        ceil: func_1.CeilFuncVal,
+        upper: func_1.UpperFuncVal,
+        lower: func_1.LowerFuncVal,
     };
     let opmap = {
         'conjunct-infix': (r, ctx, _op, terms) => addsite(new val_1.ConjunctVal({ peg: terms }), r, ctx),
@@ -149,10 +158,11 @@ let AontuJsonic = function aontu(jsonic) {
             let val = terms[1];
             const fname = terms[0].peg;
             if ('' !== fname) {
-                const func = funcMap[fname];
+                const funcval = funcMap[fname];
                 const args = terms.slice(1);
-                // console.log('ARGS', args)
-                val = null == func ? new val_1.Nil({ msg: 'Not a function: ' + fname }) : func(...args);
+                val = null == funcval ? new val_1.Nil({ msg: 'Not a function: ' + fname }) : new funcval({
+                    peg: args
+                });
             }
             const out = addsite(val, r, ctx);
             // console.log('FUNC-PAREN', fname, terms, '->', out)

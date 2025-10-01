@@ -62,10 +62,11 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
       why = 'acj'
     }
     else if (
-      b.isConjunctVal ||
-      b.isDisjunctVal ||
-      b.isRefVal ||
-      b.isPrefVal
+      b.isConjunctVal
+      || b.isDisjunctVal
+      || b.isRefVal
+      || b.isPrefVal
+      || b.isFuncVal
     ) {
 
       out = b.unify(a, ctx)

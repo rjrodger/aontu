@@ -12,7 +12,7 @@ import {
 
 import {
   Nil,
-  IntegerVal,
+  StringVal,
 } from '../val'
 
 
@@ -20,8 +20,8 @@ import {
 import { FuncValBase } from './FuncValBase'
 
 
-class FloorFuncVal extends FuncValBase {
-  isFloorFuncVal = true
+class UpperFuncVal extends FuncValBase {
+  isUpperFuncVal = true
 
   constructor(
     spec: ValSpec,
@@ -32,25 +32,25 @@ class FloorFuncVal extends FuncValBase {
 
 
   make(_ctx: Context, spec: ValSpec): Val {
-    return new FloorFuncVal(spec)
+    return new UpperFuncVal(spec)
   }
 
   funcname() {
-    return 'floor'
+    return 'upper'
   }
 
 
   resolve(_ctx: Context | undefined, args: Val[]) {
     const oldpeg = args?.[0].peg
-    const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg)
+    const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() : undefined
     const out =
-      null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) :
-        new IntegerVal({ peg })
+      null == peg ? new Nil({ msg: 'Not a string: ' + oldpeg }) :
+        new StringVal({ peg })
     return out
   }
 }
 
 
 export {
-  FloorFuncVal,
+  UpperFuncVal,
 }

@@ -170,6 +170,7 @@ class RefVal extends ValBase {
       out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
 
+    // console.log('REF:', this.peg, '->', out.canon)
     return out
   }
 
