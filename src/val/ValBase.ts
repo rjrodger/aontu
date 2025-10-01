@@ -13,14 +13,9 @@ import {
 } from '../unify'
 
 import {
-  descErr
-} from '../err'
-
-import {
   Site
 } from '../lang'
 
-import { Nil } from '../val/Nil'
 
 
 let ID = 1000
@@ -30,7 +25,7 @@ class ValBase implements Val {
   isVal = true
 
   id: number
-  done: number = 0
+  dc: number = 0
   path: string[] = []
   row: number = -1
   col: number = -1
@@ -76,16 +71,14 @@ class ValBase implements Val {
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
+  clone(ctx: Context, spec?: ValSpec): Val {
     let cloneCtx
 
-    if (ctx) {
-      let cut = this.path.indexOf('&')
-      cut = -1 < cut ? cut + 1 : ctx.path.length
-      cloneCtx = ctx.clone({
-        path: ctx.path.concat(this.path.slice(cut))
-      })
-    }
+    let cut = this.path.indexOf('&')
+    cut = -1 < cut ? cut + 1 : ctx.path.length
+    cloneCtx = ctx.clone({
+      path: ctx.path.concat(this.path.slice(cut))
+    })
 
     let out = new (this as any)
       .constructor(spec || { peg: this.peg }, cloneCtx)
@@ -93,10 +86,6 @@ class ValBase implements Val {
     out.row = spec?.row || this.row || -1
     out.col = spec?.col || this.col || -1
     out.url = spec?.url || this.url || ''
-
-    if (null == cloneCtx) {
-      out.path = this.path.slice(0)
-    }
 
     return out
   }
@@ -118,7 +107,6 @@ class ValBase implements Val {
   gen(_ctx?: Context): any {
     return undefined
   }
-
 
 }
 

@@ -363,7 +363,7 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
             absolute: true,
             peg: ['a']
         });
-        let r1 = r0.clone();
+        let r1 = r0.clone(c0);
         (0, code_1.expect)(r1.canon).equal('$.a');
         (0, code_1.expect)(r1).include({
             path: ['x'],
@@ -371,7 +371,7 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
             peg: ['a']
         });
         let c1 = makeCtx(null, ['y', 'z']);
-        let r2 = r0.clone(null, c1);
+        let r2 = r0.clone(c1);
         (0, code_1.expect)(r2.canon).equal('$.a');
         (0, code_1.expect)(r2).include({
             path: ['y', 'z'],
@@ -379,7 +379,7 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
             peg: ['a']
         });
         let c2 = makeCtx(null, ['k']);
-        let r3 = r2.clone(null, c2);
+        let r3 = r2.clone(c2);
         (0, code_1.expect)(r3.canon).equal('$.a');
         (0, code_1.expect)(r3).include({
             path: ['k', 'z'],

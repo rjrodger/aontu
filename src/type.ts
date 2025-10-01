@@ -36,7 +36,7 @@ interface Val {
   isVal: boolean
 
   id: number
-  done: number
+  dc: number
   path: string[]
   row: number
   col: number
@@ -55,8 +55,7 @@ interface Val {
 
   same(peer: Val): boolean
 
-  // TODO: reverse args, as spec is mostly only used internally?
-  clone(spec?: ValSpec, ctx?: Context): Val
+  clone(ctx: Context, spec?: ValSpec): Val
 
   // get site(): Site
   unify(peer: Val, ctx?: Context): Val

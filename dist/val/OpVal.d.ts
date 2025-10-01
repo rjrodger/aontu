@@ -9,7 +9,7 @@ declare class OpVal extends ValBase {
     append(part: any): void;
     unify(peer: Val, ctx: Context): Val;
     same(peer: Val): boolean;
-    clone(_spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, _spec?: ValSpec): Val;
     operate(ctx: Context): Val | undefined;
     get canon(): string;
     gen(ctx?: Context): undefined;

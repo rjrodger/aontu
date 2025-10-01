@@ -13,7 +13,7 @@ declare class DisjunctVal extends ValBase {
     append(peer: Val): DisjunctVal;
     unify(peer: Val, ctx: Context): Val;
     rankPrefs(ctx: Context): PrefVal | undefined;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): any;
     gen(ctx?: Context): any;
 }

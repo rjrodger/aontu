@@ -280,7 +280,11 @@ function makeUnite(r?: any) {
   let ctx = makeCtx(r)
   return (s: string) => {
     let terms: any[] = s.trim().split(/\s+/).map(x => 'undef' === x ? undefined : x)
-    return unite(ctx, ...PA(terms)).canon
+    let pterms = PA(terms)
+    // console.log(pterms)
+    let u = unite(ctx, ...pterms)
+    // console.log(u)
+    return u.canon
   }
 }
 

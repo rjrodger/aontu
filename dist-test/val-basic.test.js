@@ -227,7 +227,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         const i11 = lang.parse('(11)');
         (0, code_1.expect)(i11).include({
             col: 1,
-            done: -1,
+            dc: -1,
             err: [],
             // id: 1,
             isIntegerVal: true,
@@ -562,13 +562,13 @@ b: c2: {n:2}
         (0, code_1.expect)(p0.gen()).equal('p0');
         let pu0 = p0.unify(val_1.TOP, ctx);
         (0, code_1.expect)(pu0).include({
-            done: -1,
+            dc: -1,
             row: -1,
             col: -1,
             url: '',
             // FIX: use jest toMatchObject
             // peg: {
-            //   done: -1,
+            //   dc: -1,
             //   row: -1,
             //   col: -1,
             //   url: '',
@@ -578,7 +578,7 @@ b: c2: {n:2}
             // },
             // path: [],
             // pref: {
-            //   done: -1,
+            //   dc: -1,
             //   row: -1,
             //   col: -1,
             //   url: '',

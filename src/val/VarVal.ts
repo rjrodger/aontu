@@ -38,18 +38,15 @@ import {
 
 
 
-import {
-  TOP,
-  StringVal,
-} from '../val'
+import { TOP, StringVal } from '../val'
+import { Nil } from './Nil'
+import { RefVal } from './RefVal'
+import { ValBase } from './ValBase'
 
-// import { ConjunctVal } from '../val/ConjunctVal'
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { ListVal } from '../val/ListVal'
-// import { MapVal } from '../val/MapVal'
-import { Nil } from '../val/Nil'
-import { RefVal } from '../val/RefVal'
-import { ValBase } from '../val/ValBase'
+// import { ConjunctVal } from './ConjunctVal'
+// import { DisjunctVal } from './DisjunctVal'
+// import { ListVal } from './ListVal'
+// import { MapVal } from './MapVal'
 
 
 
@@ -88,7 +85,7 @@ class VarVal extends ValBase {
       nameVal = new StringVal({ peg: '' + this.peg }, ctx)
     }
 
-    if (!(nameVal instanceof RefVal) && DONE === nameVal.done) {
+    if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
       if (nameVal instanceof StringVal) {
         out = ctx.var[nameVal.peg]
         if (null == out) {
@@ -112,8 +109,8 @@ class VarVal extends ValBase {
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as VarVal)
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as VarVal)
     return out
   }
 

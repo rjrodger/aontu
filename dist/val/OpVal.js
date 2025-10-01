@@ -40,24 +40,24 @@ class OpVal extends ValBase_1.ValBase {
                     out = this;
                 }
                 else {
-                    this.done = type_1.DONE === this.done ? type_1.DONE : this.done + 1;
+                    this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
                     out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
                 }
             }
             else {
                 out = (0, op_1.unite)(ctx, result, peer, 'op');
             }
-            out.done = type_1.DONE === out.done ? type_1.DONE : this.done + 1;
+            out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
         return out;
     }
     same(peer) {
         return null == peer ? false : this.peg === peer.peg;
     }
-    clone(_spec, ctx) {
-        let out = super.clone({
+    clone(ctx, _spec) {
+        let out = super.clone(ctx, {
             peg: this.peg,
-        }, ctx);
+        });
         return out;
     }
     operate(ctx) {

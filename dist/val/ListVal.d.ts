@@ -1,6 +1,6 @@
 import type { Val, ValList, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from '../val/ValBase';
+import { ValBase } from './ValBase';
 declare class ListVal extends ValBase {
     isListVal: boolean;
     static SPREAD: symbol;
@@ -11,7 +11,7 @@ declare class ListVal extends ValBase {
         peg: ValList;
     }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;
     gen(ctx?: Context): any;
 }

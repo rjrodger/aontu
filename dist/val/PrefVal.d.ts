@@ -10,7 +10,7 @@ declare class PrefVal extends ValBase {
     }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     same(peer: Val): boolean;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;
     gen(ctx?: Context): any;
 }

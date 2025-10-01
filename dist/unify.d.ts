@@ -1,7 +1,7 @@
 import type { Val } from './type';
 import { FST } from './type';
 import { Lang } from './lang';
-import { Nil } from './val/Nil';
+import { Nil } from './val';
 type Path = string[];
 declare class Context {
     #private;

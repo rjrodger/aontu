@@ -8,18 +8,16 @@ import { DONE } from '../type'
 import { Context } from '../unify'
 
 
-import { ConjunctVal } from '../val/ConjunctVal'
-import { DisjunctVal } from '../val/DisjunctVal'
-import { ListVal } from '../val/ListVal'
-import { MapVal } from '../val/MapVal'
-import { Nil } from '../val/Nil'
-import { PrefVal } from '../val/PrefVal'
-import { RefVal } from '../val/RefVal'
-import { ValBase } from '../val/ValBase'
-
-
 import {
-  TOP,
+  ConjunctVal,
+  DisjunctVal,
+  ListVal,
+  MapVal,
+  Nil,
+  PrefVal,
+  RefVal,
+  ValBase,
+  TOP
 } from '../val'
 
 
@@ -27,7 +25,6 @@ import { Operation } from './op'
 
 
 let uc = 0
-
 
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
@@ -94,7 +91,7 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
     why += 'N'
   }
 
-  if (DONE !== out.done && !unified) {
+  if (DONE !== out.dc && !unified) {
     out = out.unify(TOP, ctx)
     why += 'T'
   }
@@ -118,8 +115,8 @@ const unite: Operation = (ctx: Context, a?: any, b?: any, whence?: string) => {
     a?.canon, '&', b?.canon, '->', out.canon)
   */
 
-  // console.log('UNITE', whence, a?.id + '=' + a?.canon, b?.id + '=' + b?.canon, '->',
-  //  out?.canon, 'W=' + why, 'E=', out?.err)
+  // console.log('UNITE', whence, a?.id + '=' + ac, b?.id + '=' + bc, '->',
+  //   out?.canon, 'W=' + why, 'E=', out?.err)
 
   return out
 }

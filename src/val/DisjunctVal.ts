@@ -16,16 +16,9 @@ import {
 } from '../unify'
 
 import {
-  descErr
-} from '../err'
-
-import {
   Site
 } from '../lang'
 
-import {
-  TOP
-} from '../val'
 
 
 import {
@@ -101,7 +94,7 @@ class DisjunctVal extends ValBase {
         oval[vI] = Nil.make(cloneCtx, '|:empty-dist', this)
       }
 
-      done = done && DONE === oval[vI].done
+      done = done && DONE === oval[vI].dc
     }
 
     // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))
@@ -143,10 +136,10 @@ class DisjunctVal extends ValBase {
       out = new DisjunctVal({ peg: oval }, ctx)
     }
 
-    out.done = done ? DONE : this.done + 1
+    out.dc = done ? DONE : this.dc + 1
 
     // console.log('DISJUNCT-unify',
-    //   this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
+    //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
 
     return out
   }
@@ -210,9 +203,9 @@ class DisjunctVal extends ValBase {
 
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as DisjunctVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(null, ctx))
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as DisjunctVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
     return out
   }
 
@@ -237,6 +230,8 @@ class DisjunctVal extends ValBase {
 
       let val = vals[0]
 
+      // TODO: over unifies complex types like maps
+      // ({x:1}|{y:2})&{z:3} should be {"x":1,"z":3}|{"y":2,"z":3} not { x:1, z:3, y:2 }
       for (let vI = 1; vI < vals.length; vI++) {
         let valnext = val.unify(this.peg[vI], ctx)
         // console.log('DJ-GEN-VALS-NEXT', valnext.canon)

@@ -6,13 +6,13 @@ exports.norm = norm;
 const type_1 = require("../type");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
-// import { DisjunctVal } from '../val/DisjunctVal'
-const ListVal_1 = require("../val/ListVal");
-const MapVal_1 = require("../val/MapVal");
-const Nil_1 = require("../val/Nil");
-// import { PrefVal } from '../val/PrefVal'
-const RefVal_1 = require("../val/RefVal");
-const ValBase_1 = require("../val/ValBase");
+const ListVal_1 = require("./ListVal");
+const MapVal_1 = require("./MapVal");
+const Nil_1 = require("./Nil");
+const RefVal_1 = require("./RefVal");
+const ValBase_1 = require("./ValBase");
+// import { DisjunctVal } from './DisjunctVal'
+// import { PrefVal } from './PrefVal'
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
@@ -35,7 +35,7 @@ class ConjunctVal extends ValBase_1.ValBase {
         for (let vI = 0; vI < this.peg.length; vI++) {
             upeer[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer, 'cj-own' + mark);
             // let prevdone = done
-            done = done && (type_1.DONE === upeer[vI].done);
+            done = done && (type_1.DONE === upeer[vI].dc);
             if (upeer[vI] instanceof Nil_1.Nil) {
                 return upeer[vI];
                 // return Nil.make(
@@ -63,9 +63,9 @@ class ConjunctVal extends ValBase_1.ValBase {
         // }
         let t0 = upeer[0];
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
-            if (type_1.DONE !== t0.done) {
+            if (type_1.DONE !== t0.dc) {
                 let u0 = (0, op_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
-                if (type_1.DONE !== u0.done
+                if (type_1.DONE !== u0.dc
                     // Maps and Lists are still unified so that path refs will work
                     // TODO: || ListVal - test!
                     && !(u0 instanceof MapVal_1.MapVal
@@ -93,7 +93,7 @@ class ConjunctVal extends ValBase_1.ValBase {
             }
             else {
                 val = (0, op_1.unite)(ctx, t0, t1, 'cj-peer-t0t1');
-                done = done && type_1.DONE === val.done;
+                done = done && type_1.DONE === val.dc;
                 // Unite was just a conjunt anyway, so discard.
                 if (val instanceof ConjunctVal) {
                     outvals.push(t0);
@@ -122,14 +122,14 @@ class ConjunctVal extends ValBase_1.ValBase {
         else {
             out = new ConjunctVal({ peg: outvals }, ctx);
         }
-        out.done = done ? type_1.DONE : this.done + 1;
+        out.dc = done ? type_1.DONE : this.dc + 1;
         // console.log('CONJUNCT-unify',
-        //   this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
+        //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
         return out;
     }
-    clone(spec, ctx) {
-        let out = super.clone(spec, ctx);
-        out.peg = this.peg.map((entry) => entry.clone(null, ctx));
+    clone(ctx, spec) {
+        let out = super.clone(ctx, spec);
+        out.peg = this.peg.map((entry) => entry.clone(ctx));
         return out;
     }
     // TODO: need a well-defined val order so conjunt canon is always the same

@@ -1,6 +1,6 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from '../val/ValBase';
+import { ValBase } from './ValBase';
 declare class Nil extends ValBase {
     isNil: boolean;
     nil: boolean;
@@ -16,7 +16,7 @@ declare class Nil extends ValBase {
         err?: Nil | Nil[] | Error | Error[];
     } | string, ctx?: Context);
     unify(_peer: Val, _ctx: Context): this;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;
     gen(ctx?: Context): undefined;
 }

@@ -24,8 +24,8 @@ import {
 
 
 import { TOP, IntegerVal, NumberVal, StringVal } from '../val'
-import { Nil } from '../val/Nil'
-import { OpVal } from '../val/OpVal'
+import { Nil } from './Nil'
+import { OpVal } from './OpVal'
 
 
 

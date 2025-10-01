@@ -18,7 +18,7 @@ type Options = {
 interface Val {
     isVal: boolean;
     id: number;
-    done: number;
+    dc: number;
     path: string[];
     row: number;
     col: number;
@@ -28,7 +28,7 @@ interface Val {
     err: Omit<any[], "push">;
     deps?: any;
     same(peer: Val): boolean;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     unify(peer: Val, ctx?: Context): Val;
     get canon(): string;
     gen(ctx?: Context): any;

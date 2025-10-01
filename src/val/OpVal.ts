@@ -24,14 +24,11 @@ import {
 
 import {
   TOP,
-  StringVal,
 } from '../val'
 
 
 import { ConjunctVal } from '../val/ConjunctVal'
-import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
-import { VarVal } from '../val/VarVal'
 import { ValBase } from '../val/ValBase'
 
 
@@ -85,7 +82,7 @@ class OpVal extends ValBase {
         }
 
         else {
-          this.done = DONE === this.done ? DONE : this.done + 1
+          this.dc = DONE === this.dc ? DONE : this.dc + 1
           out = new ConjunctVal({ peg: [this, peer] }, ctx)
         }
       }
@@ -93,7 +90,7 @@ class OpVal extends ValBase {
         out = unite(ctx, result, peer, 'op')
       }
 
-      out.done = DONE === out.done ? DONE : this.done + 1
+      out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
 
     return out
@@ -105,10 +102,10 @@ class OpVal extends ValBase {
   }
 
 
-  clone(_spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone({
+  clone(ctx: Context, _spec?: ValSpec): Val {
+    let out = (super.clone(ctx, {
       peg: this.peg,
-    }, ctx) as OpVal)
+    }) as OpVal)
     return out
   }
 

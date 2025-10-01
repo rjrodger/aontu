@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlusVal = void 0;
 const val_1 = require("../val");
-const OpVal_1 = require("../val/OpVal");
+const OpVal_1 = require("./OpVal");
 class PlusVal extends OpVal_1.OpVal {
     constructor(spec, ctx) {
         super(spec, ctx);

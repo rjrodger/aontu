@@ -4,8 +4,7 @@ import type { Val, Options, FST } from './type'
 
 import { Lang } from './lang'
 import { Unify, Context } from './unify'
-import { Nil } from './val/Nil'
-import { MapVal } from './val/MapVal'
+import { Nil, MapVal } from './val'
 import { descErr } from './err'
 
 // TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level

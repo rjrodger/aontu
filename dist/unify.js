@@ -88,8 +88,8 @@ class Unify {
                 err: this.err,
                 src,
             });
-            let maxdc = 9; // 99
-            for (; this.cc < maxdc && type_1.DONE !== res.done; this.cc++) {
+            let maxcc = 9; // 99
+            for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 uctx.cc = this.cc;
                 res = (0, op_1.unite)(uctx, res, val_1.TOP);
                 uctx = uctx.clone({ root: res });

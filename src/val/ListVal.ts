@@ -29,13 +29,13 @@ import {
 
 
 import { TOP } from '../val'
-import { ConjunctVal } from '../val/ConjunctVal'
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { MapVal } from '../val/MapVal'
-import { Nil } from '../val/Nil'
-// import { PrefVal } from '../val/PrefVal'
-// import { RefVal } from '../val/RefVal'
-import { ValBase } from '../val/ValBase'
+import { ConjunctVal } from './ConjunctVal'
+import { Nil } from './Nil'
+import { ValBase } from './ValBase'
+// import { DisjunctVal } from './DisjunctVal'
+// import { MapVal } from './MapVal'
+// import { PrefVal } from './PrefVal'
+// import { RefVal } from './RefVal'
 
 
 
@@ -102,11 +102,11 @@ class ListVal extends ValBase {
     }
 
 
-    out.done = this.done + 1
+    out.dc = this.dc + 1
 
     // if (this.spread.cj) {
     //   out.spread.cj =
-    //     DONE !== this.spread.cj.done ? unite(ctx, this.spread.cj) :
+    //     DONE !== this.spread.cj.dc ? unite(ctx, this.spread.cj) :
     //       this.spread.cj
     // }
 
@@ -115,10 +115,10 @@ class ListVal extends ValBase {
     // Always unify children first
     for (let key in this.peg) {
       let keyctx = ctx.descend(key)
-      let key_spread_cj = spread_cj.clone(null, keyctx)
+      let key_spread_cj = spread_cj.clone(keyctx)
 
       out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'list-own')
-      done = (done && DONE === out.peg[key].done)
+      done = (done && DONE === out.peg[key].dc)
     }
 
 
@@ -138,7 +138,7 @@ class ListVal extends ValBase {
 
         if (this.spread.cj) {
           let key_ctx = ctx.descend(peerkey)
-          let key_spread_cj = spread_cj.clone(null, key_ctx)
+          let key_spread_cj = spread_cj.clone(key_ctx)
 
           // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
           oval = out.peg[peerkey] =
@@ -147,7 +147,7 @@ class ListVal extends ValBase {
             unite(key_ctx, out.peg[peerkey], key_spread_cj)
         }
 
-        done = (done && DONE === oval.done)
+        done = (done && DONE === oval.dc)
 
       }
     }
@@ -155,16 +155,16 @@ class ListVal extends ValBase {
       return Nil.make(ctx, 'map', this, peer)
     }
 
-    out.done = done ? DONE : out.done
+    out.dc = done ? DONE : out.dc
     return out
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as ListVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(null, ctx))
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as ListVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(null, ctx)
+      out.spread.cj = this.spread.cj.clone(ctx)
     }
     return out
   }

@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = void 0;
 const type_1 = require("../type");
-const Nil_1 = require("../val/Nil");
 const val_1 = require("../val");
 let uc = 0;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
@@ -56,10 +55,10 @@ const unite = (ctx, a, b, whence) => {
         }
     }
     if (!out || !out.unify) {
-        out = Nil_1.Nil.make(ctx, 'unite', a, b);
+        out = val_1.Nil.make(ctx, 'unite', a, b);
         why += 'N';
     }
-    if (type_1.DONE !== out.done && !unified) {
+    if (type_1.DONE !== out.dc && !unified) {
         out = out.unify(val_1.TOP, ctx);
         why += 'T';
     }
@@ -80,8 +79,8 @@ const unite = (ctx, a, b, whence) => {
       '  '.repeat(ctx.path.length),
       a?.canon, '&', b?.canon, '->', out.canon)
     */
-    // console.log('UNITE', whence, a?.id + '=' + a?.canon, b?.id + '=' + b?.canon, '->',
-    //  out?.canon, 'W=' + why, 'E=', out?.err)
+    // console.log('UNITE', whence, a?.id + '=' + ac, b?.id + '=' + bc, '->',
+    //   out?.canon, 'W=' + why, 'E=', out?.err)
     return out;
 };
 exports.unite = unite;

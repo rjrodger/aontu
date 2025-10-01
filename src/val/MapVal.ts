@@ -25,13 +25,13 @@ import {
 
 
 import { TOP } from '../val'
-import { ConjunctVal } from '../val/ConjunctVal'
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { ListVal } from '../val/ListVal'
-import { Nil } from '../val/Nil'
-// import { PrefVal } from '../val/PrefVal'
-// import { RefVal } from '../val/RefVal'
-import { ValBase } from '../val/ValBase'
+import { ConjunctVal } from './ConjunctVal'
+import { Nil } from './Nil'
+import { ValBase } from './ValBase'
+// import { DisjunctVal } from './DisjunctVal'
+// import { ListVal } from './ListVal'
+// import { PrefVal } from './PrefVal'
+// import { RefVal } from './RefVal'
 
 
 class MapVal extends ValBase {
@@ -93,17 +93,17 @@ class MapVal extends ValBase {
     }
 
 
-    out.done = this.done + 1
+    out.dc = this.dc + 1
 
     let spread_cj = out.spread.cj || TOP
 
     // Always unify own children first
     for (let key in this.peg) {
       let keyctx = ctx.descend(key)
-      let key_spread_cj = spread_cj.clone(null, keyctx)
+      let key_spread_cj = spread_cj.clone(keyctx)
 
       out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'map-own')
-      done = (done && DONE === out.peg[key].done)
+      done = (done && DONE === out.peg[key].dc)
     }
 
 
@@ -122,12 +122,12 @@ class MapVal extends ValBase {
 
         if (this.spread.cj) {
           let key_ctx = ctx.descend(peerkey)
-          let key_spread_cj = spread_cj.clone(null, key_ctx)
+          let key_spread_cj = spread_cj.clone(key_ctx)
           oval = out.peg[peerkey] =
             unite(key_ctx, out.peg[peerkey], key_spread_cj)
         }
 
-        done = (done && DONE === oval.done)
+        done = (done && DONE === oval.dc)
       }
     }
     else if (TOP !== peer) {
@@ -136,20 +136,20 @@ class MapVal extends ValBase {
 
     out.uh.push(peer.id)
 
-    out.done = done ? DONE : out.done
+    out.dc = done ? DONE : out.dc
     return out
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as MapVal)
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as MapVal)
     out.peg = {}
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        entry[1] instanceof ValBase ? entry[1].clone(null, ctx) : entry[1]
+        entry[1] instanceof ValBase ? entry[1].clone(ctx) : entry[1]
     }
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(null, ctx)
+      out.spread.cj = this.spread.cj.clone(ctx)
     }
     return out
   }

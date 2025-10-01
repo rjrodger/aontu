@@ -19,7 +19,7 @@ import {
 } from '../unify'
 
 
-import { ValBase } from '../val/ValBase'
+import { ValBase } from './ValBase'
 
 
 class Nil extends ValBase {
@@ -93,7 +93,7 @@ class Nil extends ValBase {
     }
 
     // Nil is always DONE, by definition.
-    this.done = DONE
+    this.dc = DONE
   }
 
 
@@ -102,8 +102,8 @@ class Nil extends ValBase {
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as Nil)
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as Nil)
     out.why = this.why
 
     // Should these clone?

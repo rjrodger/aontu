@@ -48,16 +48,18 @@ import type {
 
 
 
-import { DisjunctVal } from './val/DisjunctVal'
-import { ConjunctVal } from './val/ConjunctVal'
-import { ListVal } from './val/ListVal'
-import { MapVal } from './val/MapVal'
-import { Nil } from './val/Nil'
-import { PrefVal } from './val/PrefVal'
-import { RefVal } from './val/RefVal'
-import { VarVal } from './val/VarVal'
-import { PlusVal } from './val/PlusVal'
-import { NullVal } from './val/NullVal'
+import {
+  DisjunctVal,
+  ConjunctVal,
+  ListVal,
+  MapVal,
+  Nil,
+  PrefVal,
+  RefVal,
+  VarVal,
+  PlusVal,
+  NullVal
+} from './val'
 
 
 
@@ -70,6 +72,8 @@ import {
   IntegerVal,
   BooleanVal,
 } from './val'
+
+import { Context } from './unify'
 
 
 
@@ -178,6 +182,21 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   })
 
 
+  const funcMap: Record<string, Function> = {
+    floor: (v: Val) => {
+      const oldpeg = v.peg
+      const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg)
+      const out =
+        null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) : new IntegerVal({ peg })
+      return out
+    },
+    copy: (v: Val) => {
+      const ctx = new Context({ root: v, path: [] })
+      return v.clone(ctx)
+    }
+  }
+
+
   let opmap: any = {
     'conjunct-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) =>
       addsite(new ConjunctVal({ peg: terms }), r, ctx),
@@ -220,11 +239,26 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       return addsite(val, r, ctx)
     },
 
+    /*
     'plain-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[0]
       return addsite(val, r, ctx)
     },
+    */
 
+    'func-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      let val = terms[1]
+      const fname = terms[0].peg
+      if ('' !== fname) {
+        const func = funcMap[fname]
+        const args = terms.slice(1)
+        // console.log('ARGS', args)
+        val = null == func ? new Nil({ msg: 'Not a function: ' + fname }) : func(...args)
+      }
+      const out = addsite(val, r, ctx)
+      // console.log('FUNC-PAREN', fname, terms, '->', out)
+      return out
+    },
   }
 
 
@@ -272,6 +306,17 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           right: 24_000_000,
         },
 
+        'func': {
+          paren: true,
+          preval: {
+            active: true,
+            // allow: ['floor'], //Object.keys(funcMap)
+          },
+          osrc: '(',
+          csrc: ')',
+        },
+
+        plain: null,
         addition: null,
         subtraction: null,
         multiplication: null,
@@ -279,6 +324,13 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         remainder: null,
       },
       evaluate: (r: Rule, ctx: JsonicContext, op: Op, terms: any) => {
+        if (
+          'func-paren' === op.name
+          && !r.parent.prev?.u?.paren_preval
+        ) {
+          terms = [new StringVal({ peg: '' }), ...terms]
+        }
+
         let val: Val = opmap[op.name](r, ctx, op, terms)
         return val
       }

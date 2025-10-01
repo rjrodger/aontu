@@ -78,7 +78,8 @@ describe('val-disjunct', function() {
     // console.log(v0.canon)
     expect(v0.canon).equal('({"x":1}|{"y":2})|{"z":3}')
 
-    let v0c = v0.clone()
+    let ctx = makeCtx(v0)
+    let v0c = v0.clone(ctx)
     expect(v0c.canon).equal('({"x":1}|{"y":2})|{"z":3}')
   })
 

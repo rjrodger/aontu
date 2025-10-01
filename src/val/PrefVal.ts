@@ -101,8 +101,8 @@ class PrefVal extends ValBase {
     //   )
     // }
 
-    // done = done && DONE === out.peg.done &&
-    //   (null != (out as PrefVal).pref ? DONE === (out as PrefVal).pref.done : true)
+    // done = done && DONE === out.peg.dc &&
+    //   (null != (out as PrefVal).pref ? DONE === (out as PrefVal).pref.dc : true)
 
     // if (out.peg instanceof Nil) {
     //   out = (out as PrefVal).pref
@@ -143,7 +143,7 @@ class PrefVal extends ValBase {
       }
     }
 
-    out.done = done ? DONE : this.done + 1
+    out.dc = done ? DONE : this.dc + 1
 
     return out
   }
@@ -167,8 +167,8 @@ class PrefVal extends ValBase {
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as PrefVal)
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as PrefVal)
     // out.pref = this.pref.clone(null, ctx)
     return out
   }

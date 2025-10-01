@@ -13,8 +13,8 @@ import {
 
 
 
-import { Nil } from '../val/Nil'
-import { ValBase } from '../val/ValBase'
+import { Nil } from './Nil'
+import { ValBase } from './ValBase'
 
 
 class NullVal extends ValBase {
@@ -50,8 +50,8 @@ class NullVal extends ValBase {
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as NullVal)
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as NullVal)
     return out
   }
 

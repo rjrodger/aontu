@@ -46,7 +46,7 @@ class DisjunctVal extends ValBase_1.ValBase {
             if (0 < cloneCtx?.err.length) {
                 oval[vI] = Nil_1.Nil.make(cloneCtx, '|:empty-dist', this);
             }
-            done = done && type_1.DONE === oval[vI].done;
+            done = done && type_1.DONE === oval[vI].dc;
         }
         // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))
         // Remove duplicates, and normalize
@@ -79,9 +79,9 @@ class DisjunctVal extends ValBase_1.ValBase {
         else {
             out = new DisjunctVal({ peg: oval }, ctx);
         }
-        out.done = done ? type_1.DONE : this.done + 1;
+        out.dc = done ? type_1.DONE : this.dc + 1;
         // console.log('DISJUNCT-unify',
-        //   this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
+        //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
         return out;
     }
     rankPrefs(ctx) {
@@ -134,9 +134,9 @@ class DisjunctVal extends ValBase_1.ValBase {
             return this.peg[0];
         }
     }
-    clone(spec, ctx) {
-        let out = super.clone(spec, ctx);
-        out.peg = this.peg.map((entry) => entry.clone(null, ctx));
+    clone(ctx, spec) {
+        let out = super.clone(ctx, spec);
+        out.peg = this.peg.map((entry) => entry.clone(ctx));
         return out;
     }
     get canon() {
@@ -152,6 +152,8 @@ class DisjunctVal extends ValBase_1.ValBase {
             // console.log('DJ-GEN-VALS-A', vals.map((p: any) => p.canon))
             vals = 0 === vals.length ? this.peg : vals;
             let val = vals[0];
+            // TODO: over unifies complex types like maps
+            // ({x:1}|{y:2})&{z:3} should be {"x":1,"z":3}|{"y":2,"z":3} not { x:1, z:3, y:2 }
             for (let vI = 1; vI < vals.length; vI++) {
                 let valnext = val.unify(this.peg[vI], ctx);
                 // console.log('DJ-GEN-VALS-NEXT', valnext.canon)

@@ -8,9 +8,8 @@ const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./unify");
 Object.defineProperty(exports, "Context", { enumerable: true, get: function () { return unify_1.Context; } });
-const Nil_1 = require("./val/Nil");
-Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return Nil_1.Nil; } });
-const MapVal_1 = require("./val/MapVal");
+const val_1 = require("./val");
+Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return val_1.Nil; } });
 const err_1 = require("./err");
 // TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level
 // TODO: exclude tests from dist!!!
@@ -36,7 +35,7 @@ function Aontu(src, popts) {
         // TODO: handle empty src
         let val = parse(opts, { deps });
         if (null == val) {
-            val = new MapVal_1.MapVal({ peg: {} });
+            val = new val_1.MapVal({ peg: {} });
         }
         let uni = new unify_1.Unify(val, undefined, undefined, opts.src);
         let res = uni.res;
@@ -48,7 +47,7 @@ function Aontu(src, popts) {
     }
     // NOTE: errors always return as Nil, and are never thrown.
     catch (err) {
-        return new Nil_1.Nil({ why: 'unknown', msg: err.message, err: [err] });
+        return new val_1.Nil({ why: 'unknown', msg: err.message, err: [err] });
     }
 }
 function prepareOptions(src, popts) {

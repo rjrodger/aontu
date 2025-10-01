@@ -23,9 +23,9 @@ let unitings = [parse]
 ctx = new Context({ root: parse })
 
 let uc = 1
-for (; uc < 111 && DONE !== unitings[uc - 1].done; uc++) {
+for (; uc < 111 && DONE !== unitings[uc - 1].dc; uc++) {
   unitings[uc] = unite(ctx.clone({ root: unitings[uc - 1] }), parse, TOP)
-  console.log('UNITE : ', uc, unitings[uc].done, unitings[uc].canon)
+  console.log('UNITE : ', uc, unitings[uc].dc, unitings[uc].canon)
 }
 
 console.log(

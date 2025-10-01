@@ -5,13 +5,13 @@ exports.VarVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const val_1 = require("../val");
-// import { ConjunctVal } from '../val/ConjunctVal'
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { ListVal } from '../val/ListVal'
-// import { MapVal } from '../val/MapVal'
-const Nil_1 = require("../val/Nil");
-const RefVal_1 = require("../val/RefVal");
-const ValBase_1 = require("../val/ValBase");
+const Nil_1 = require("./Nil");
+const RefVal_1 = require("./RefVal");
+const ValBase_1 = require("./ValBase");
+// import { ConjunctVal } from './ConjunctVal'
+// import { DisjunctVal } from './DisjunctVal'
+// import { ListVal } from './ListVal'
+// import { MapVal } from './MapVal'
 // TODO: KEY, SELF, PARENT are reserved names - error
 class VarVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
@@ -35,7 +35,7 @@ class VarVal extends ValBase_1.ValBase {
             // TODO: how to pass row+col?
             nameVal = new val_1.StringVal({ peg: '' + this.peg }, ctx);
         }
-        if (!(nameVal instanceof RefVal_1.RefVal) && type_1.DONE === nameVal.done) {
+        if (!(nameVal instanceof RefVal_1.RefVal) && type_1.DONE === nameVal.dc) {
             if (nameVal instanceof val_1.StringVal) {
                 out = ctx.var[nameVal.peg];
                 if (null == out) {
@@ -54,8 +54,8 @@ class VarVal extends ValBase_1.ValBase {
     same(peer) {
         return null == peer ? false : peer instanceof VarVal && this.peg === peer.peg;
     }
-    clone(spec, ctx) {
-        let out = super.clone(spec, ctx);
+    clone(ctx, spec) {
+        let out = super.clone(ctx, spec);
         return out;
     }
     get canon() {

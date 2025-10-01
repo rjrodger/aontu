@@ -11,17 +11,9 @@ const pkg_1 = require("@jsonic/multisource/resolver/pkg");
 const mem_1 = require("@jsonic/multisource/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
-const DisjunctVal_1 = require("./val/DisjunctVal");
-const ConjunctVal_1 = require("./val/ConjunctVal");
-const ListVal_1 = require("./val/ListVal");
-const MapVal_1 = require("./val/MapVal");
-const Nil_1 = require("./val/Nil");
-const PrefVal_1 = require("./val/PrefVal");
-const RefVal_1 = require("./val/RefVal");
-const VarVal_1 = require("./val/VarVal");
-const PlusVal_1 = require("./val/PlusVal");
-const NullVal_1 = require("./val/NullVal");
 const val_1 = require("./val");
+const val_2 = require("./val");
+const unify_1 = require("./unify");
 class Site {
     // static NONE = new Site(TOP)
     constructor(val) {
@@ -55,22 +47,22 @@ let AontuJsonic = function aontu(jsonic) {
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
                 'string': {
-                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: String }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: String }), r, ctx)
                 },
                 'number': {
-                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: Number }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: Number }), r, ctx)
                 },
                 'integer': {
-                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: val_1.Integer }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: val_2.Integer }), r, ctx)
                 },
                 'boolean': {
-                    val: (r, ctx) => addsite(new val_1.ScalarTypeVal({ peg: Boolean }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: Boolean }), r, ctx)
                 },
                 'nil': {
-                    val: (r, ctx) => addsite(new Nil_1.Nil('literal'), r, ctx)
+                    val: (r, ctx) => addsite(new val_1.Nil('literal'), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
-                'top': { val: () => val_1.TOP },
+                'top': { val: () => val_2.TOP },
             }
         },
         map: {
@@ -79,11 +71,11 @@ let AontuJsonic = function aontu(jsonic) {
                 let cval = curr;
                 if (pval?.isVal && cval?.isVal) {
                     // TODO: test multi element conjuncts work
-                    if (pval instanceof ConjunctVal_1.ConjunctVal && cval instanceof ConjunctVal_1.ConjunctVal) {
+                    if (pval instanceof val_1.ConjunctVal && cval instanceof val_1.ConjunctVal) {
                         pval.append(cval);
                         return pval;
                     }
-                    else if (pval instanceof ConjunctVal_1.ConjunctVal) {
+                    else if (pval instanceof val_1.ConjunctVal) {
                         pval.append(cval);
                         return pval;
                     }
@@ -92,7 +84,7 @@ let AontuJsonic = function aontu(jsonic) {
                     //   return cval
                     // }
                     else {
-                        return addsite(new ConjunctVal_1.ConjunctVal({ peg: [pval, cval] }), prev, ctx);
+                        return addsite(new val_1.ConjunctVal({ peg: [pval, cval] }), prev, ctx);
                     }
                 }
                 // Handle defered conjuncts, where MapVal does not yet
@@ -105,26 +97,38 @@ let AontuJsonic = function aontu(jsonic) {
             }
         }
     });
+    const funcMap = {
+        floor: (v) => {
+            const oldpeg = v.peg;
+            const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg);
+            const out = null == peg ? new val_1.Nil({ msg: 'Not a number: ' + oldpeg }) : new val_2.IntegerVal({ peg });
+            return out;
+        },
+        copy: (v) => {
+            const ctx = new unify_1.Context({ root: v, path: [] });
+            return v.clone(ctx);
+        }
+    };
     let opmap = {
-        'conjunct-infix': (r, ctx, _op, terms) => addsite(new ConjunctVal_1.ConjunctVal({ peg: terms }), r, ctx),
-        'disjunct-infix': (r, ctx, _op, terms) => addsite(new DisjunctVal_1.DisjunctVal({ peg: terms }), r, ctx),
+        'conjunct-infix': (r, ctx, _op, terms) => addsite(new val_1.ConjunctVal({ peg: terms }), r, ctx),
+        'disjunct-infix': (r, ctx, _op, terms) => addsite(new val_1.DisjunctVal({ peg: terms }), r, ctx),
         'dot-prefix': (r, ctx, _op, terms) => {
-            return addsite(new RefVal_1.RefVal({ peg: terms, prefix: true }), r, ctx);
+            return addsite(new val_1.RefVal({ peg: terms, prefix: true }), r, ctx);
         },
         'dot-infix': (r, ctx, _op, terms) => {
-            return addsite(new RefVal_1.RefVal({ peg: terms }), r, ctx);
+            return addsite(new val_1.RefVal({ peg: terms }), r, ctx);
         },
-        'star-prefix': (r, ctx, _op, terms) => addsite(new PrefVal_1.PrefVal({ peg: terms[0] }), r, ctx),
+        'star-prefix': (r, ctx, _op, terms) => addsite(new val_1.PrefVal({ peg: terms[0] }), r, ctx),
         'dollar-prefix': (r, ctx, _op, terms) => {
             // $.a.b absolute path
-            if (terms[0] instanceof RefVal_1.RefVal) {
+            if (terms[0] instanceof val_1.RefVal) {
                 terms[0].absolute = true;
                 return terms[0];
             }
-            return addsite(new VarVal_1.VarVal({ peg: terms[0] }), r, ctx);
+            return addsite(new val_1.VarVal({ peg: terms[0] }), r, ctx);
         },
         'plus-infix': (r, ctx, _op, terms) => {
-            return addsite(new PlusVal_1.PlusVal({ peg: [terms[0], terms[1]] }), r, ctx);
+            return addsite(new val_1.PlusVal({ peg: [terms[0], terms[1]] }), r, ctx);
         },
         'negative-prefix': (r, ctx, _op, terms) => {
             let val = terms[0];
@@ -135,9 +139,24 @@ let AontuJsonic = function aontu(jsonic) {
             let val = terms[0];
             return addsite(val, r, ctx);
         },
-        'plain-paren': (r, ctx, _op, terms) => {
-            let val = terms[0];
-            return addsite(val, r, ctx);
+        /*
+        'plain-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+          let val = terms[0]
+          return addsite(val, r, ctx)
+        },
+        */
+        'func-paren': (r, ctx, _op, terms) => {
+            let val = terms[1];
+            const fname = terms[0].peg;
+            if ('' !== fname) {
+                const func = funcMap[fname];
+                const args = terms.slice(1);
+                // console.log('ARGS', args)
+                val = null == func ? new val_1.Nil({ msg: 'Not a function: ' + fname }) : func(...args);
+            }
+            const out = addsite(val, r, ctx);
+            // console.log('FUNC-PAREN', fname, terms, '->', out)
+            return out;
         },
     };
     jsonic
@@ -177,6 +196,16 @@ let AontuJsonic = function aontu(jsonic) {
                 prefix: true,
                 right: 24_000_000,
             },
+            'func': {
+                paren: true,
+                preval: {
+                    active: true,
+                    // allow: ['floor'], //Object.keys(funcMap)
+                },
+                osrc: '(',
+                csrc: ')',
+            },
+            plain: null,
             addition: null,
             subtraction: null,
             multiplication: null,
@@ -184,6 +213,10 @@ let AontuJsonic = function aontu(jsonic) {
             remainder: null,
         },
         evaluate: (r, ctx, op, terms) => {
+            if ('func-paren' === op.name
+                && !r.parent.prev?.u?.paren_preval) {
+                terms = [new val_2.StringVal({ peg: '' }), ...terms];
+            }
             let val = opmap[op.name](r, ctx, op, terms);
             return val;
         }
@@ -197,21 +230,21 @@ let AontuJsonic = function aontu(jsonic) {
             let valnode = r.node;
             let valtype = typeof valnode;
             if ('string' === valtype) {
-                valnode = addsite(new val_1.StringVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new val_2.StringVal({ peg: r.node }), r, ctx);
             }
             else if ('number' === valtype) {
                 if (Number.isInteger(r.node)) {
-                    valnode = addsite(new val_1.IntegerVal({ peg: r.node }), r, ctx);
+                    valnode = addsite(new val_2.IntegerVal({ peg: r.node }), r, ctx);
                 }
                 else {
-                    valnode = addsite(new val_1.NumberVal({ peg: r.node }), r, ctx);
+                    valnode = addsite(new val_2.NumberVal({ peg: r.node }), r, ctx);
                 }
             }
             else if ('boolean' === valtype) {
-                valnode = addsite(new val_1.BooleanVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new val_2.BooleanVal({ peg: r.node }), r, ctx);
             }
             else if (null === valnode) {
-                valnode = addsite(new NullVal_1.NullVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new val_1.NullVal({ peg: r.node }), r, ctx);
             }
             if (null != valnode && 'object' === typeof valnode) {
                 let st = r.o0;
@@ -236,12 +269,12 @@ let AontuJsonic = function aontu(jsonic) {
                 let mop = { ...mo };
                 delete mop.___merge;
                 // TODO: needs addpath?
-                let mopv = new MapVal_1.MapVal({ peg: mop });
+                let mopv = new val_1.MapVal({ peg: mop });
                 r.node =
-                    addsite(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx);
+                    addsite(new val_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx);
             }
             else {
-                r.node = addsite(new MapVal_1.MapVal({ peg: mo }), r, ctx);
+                r.node = addsite(new val_1.MapVal({ peg: mo }), r, ctx);
             }
             return undefined;
         })
@@ -250,7 +283,7 @@ let AontuJsonic = function aontu(jsonic) {
     });
     jsonic.rule('list', (rs) => {
         rs.bc((r, ctx) => {
-            r.node = addsite(new ListVal_1.ListVal({ peg: r.node }), r, ctx);
+            r.node = addsite(new val_1.ListVal({ peg: r.node }), r, ctx);
             return undefined;
         });
         return rs;
@@ -272,9 +305,9 @@ let AontuJsonic = function aontu(jsonic) {
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
             if (rule.u.spread) {
-                rule.node[MapVal_1.MapVal.SPREAD] =
-                    (rule.node[MapVal_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
-                rule.node[MapVal_1.MapVal.SPREAD].v.push(rule.child.node);
+                rule.node[val_1.MapVal.SPREAD] =
+                    (rule.node[val_1.MapVal.SPREAD] || { o: rule.o0.src, v: [] });
+                rule.node[val_1.MapVal.SPREAD].v.push(rule.child.node);
             }
             return undefined;
         })
@@ -291,9 +324,9 @@ let AontuJsonic = function aontu(jsonic) {
             .bc((rule) => {
             // TRAVERSE PARENTS TO GET PATH
             if (rule.u.spread) {
-                rule.node[ListVal_1.ListVal.SPREAD] =
-                    (rule.node[ListVal_1.ListVal.SPREAD] || { o: rule.o0.src, v: [] });
-                rule.node[ListVal_1.ListVal.SPREAD].v.push(rule.child.node);
+                rule.node[val_1.ListVal.SPREAD] =
+                    (rule.node[val_1.ListVal.SPREAD] || { o: rule.o0.src, v: [] });
+                rule.node[val_1.ListVal.SPREAD].v.push(rule.child.node);
             }
             return undefined;
         })
@@ -391,9 +424,9 @@ class Lang {
         }
         catch (e) {
             if (e instanceof jsonic_1.JsonicError || 'JsonicError' === e.constructor.name) {
-                val = new Nil_1.Nil({
+                val = new val_1.Nil({
                     why: 'parse',
-                    err: new Nil_1.Nil({
+                    err: new val_1.Nil({
                         why: 'syntax',
                         msg: e.message,
                         err: e,

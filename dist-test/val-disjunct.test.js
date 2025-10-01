@@ -39,7 +39,8 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
         let v0 = P('{x:1}|{y:2}|{z:3}');
         // console.log(v0.canon)
         (0, code_1.expect)(v0.canon).equal('({"x":1}|{"y":2})|{"z":3}');
-        let v0c = v0.clone();
+        let ctx = makeCtx(v0);
+        let v0c = v0.clone(ctx);
         (0, code_1.expect)(v0c.canon).equal('({"x":1}|{"y":2})|{"z":3}');
     });
 });

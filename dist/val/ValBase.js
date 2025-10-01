@@ -20,7 +20,7 @@ class ValBase {
     // TODO: Site needed in ctor
     constructor(spec, ctx) {
         this.isVal = true;
-        this.done = 0;
+        this.dc = 0;
         this.path = [];
         this.row = -1;
         this.col = -1;
@@ -47,23 +47,18 @@ class ValBase {
     same(peer) {
         return null == peer ? false : this.id === peer.id;
     }
-    clone(spec, ctx) {
+    clone(ctx, spec) {
         let cloneCtx;
-        if (ctx) {
-            let cut = this.path.indexOf('&');
-            cut = -1 < cut ? cut + 1 : ctx.path.length;
-            cloneCtx = ctx.clone({
-                path: ctx.path.concat(this.path.slice(cut))
-            });
-        }
+        let cut = this.path.indexOf('&');
+        cut = -1 < cut ? cut + 1 : ctx.path.length;
+        cloneCtx = ctx.clone({
+            path: ctx.path.concat(this.path.slice(cut))
+        });
         let out = new this
             .constructor(spec || { peg: this.peg }, cloneCtx);
         out.row = spec?.row || this.row || -1;
         out.col = spec?.col || this.col || -1;
         out.url = spec?.url || this.url || '';
-        if (null == cloneCtx) {
-            out.path = this.path.slice(0);
-        }
         return out;
     }
     get site() {

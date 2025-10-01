@@ -6,11 +6,11 @@ const type_1 = require("../type");
 const err_1 = require("../err");
 const op_1 = require("../op/op");
 const val_1 = require("../val");
-const ConjunctVal_1 = require("../val/ConjunctVal");
-const MapVal_1 = require("../val/MapVal");
-const Nil_1 = require("../val/Nil");
-const VarVal_1 = require("../val/VarVal");
-const ValBase_1 = require("../val/ValBase");
+const ConjunctVal_1 = require("./ConjunctVal");
+const MapVal_1 = require("./MapVal");
+const Nil_1 = require("./Nil");
+const VarVal_1 = require("./VarVal");
+const ValBase_1 = require("./ValBase");
 class RefVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -68,8 +68,11 @@ class RefVal extends ValBase_1.ValBase {
             // TODO: not resolved when all Vals in path are done is an error
             // as path cannot be found
             // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
-            let resolved = null == ctx ? this : this.find(ctx);
-            resolved = resolved || this;
+            let found = null == ctx ? this : this.find(ctx);
+            const resolved = found ?? this;
+            // const resolved = found ? found.clone(null, ctx) : this
+            // console.log('REF', this.id, this.peg, '->',
+            //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
             if (null == resolved && this.canon === peer.canon) {
                 out = this;
             }
@@ -90,7 +93,7 @@ class RefVal extends ValBase_1.ValBase {
                 }
                 else {
                     // Ensure RefVal done is incremented
-                    this.done = type_1.DONE === this.done ? type_1.DONE : this.done + 1;
+                    this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
                     out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
                     // why = 'cj'
                 }
@@ -99,7 +102,7 @@ class RefVal extends ValBase_1.ValBase {
                 out = (0, op_1.unite)(ctx, resolved, peer, 'ref');
                 // why = 'u'
             }
-            out.done = type_1.DONE === out.done ? type_1.DONE : this.done + 1;
+            out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
         return out;
     }
@@ -173,7 +176,7 @@ class RefVal extends ValBase_1.ValBase {
             let key = this.path[this.path.length - 2];
             let sv = new val_1.StringVal({ peg: null == key ? '' : key }, ctx);
             // TODO: other props?
-            sv.done = type_1.DONE;
+            sv.dc = type_1.DONE;
             sv.path = this.path;
             return sv;
         }
@@ -195,12 +198,12 @@ class RefVal extends ValBase_1.ValBase {
     same(peer) {
         return null == peer ? false : this.peg === peer.peg;
     }
-    clone(spec, ctx) {
-        let out = super.clone({
+    clone(ctx, spec) {
+        let out = super.clone(ctx, {
             peg: this.peg,
             absolute: this.absolute,
             ...(spec || {})
-        }, ctx);
+        });
         return out;
     }
     get canon() {

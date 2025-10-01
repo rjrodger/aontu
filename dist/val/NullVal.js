@@ -2,8 +2,8 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NullVal = void 0;
-const Nil_1 = require("../val/Nil");
-const ValBase_1 = require("../val/ValBase");
+const Nil_1 = require("./Nil");
+const ValBase_1 = require("./ValBase");
 class NullVal extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -23,8 +23,8 @@ class NullVal extends ValBase_1.ValBase {
     same(peer) {
         return null == peer ? false : peer instanceof NullVal && this.peg === peer.peg;
     }
-    clone(spec, ctx) {
-        let out = super.clone(spec, ctx);
+    clone(ctx, spec) {
+        let out = super.clone(ctx, spec);
         return out;
     }
     get canon() {

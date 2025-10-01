@@ -232,7 +232,11 @@ function makeUnite(r) {
     let ctx = makeCtx(r);
     return (s) => {
         let terms = s.trim().split(/\s+/).map(x => 'undef' === x ? undefined : x);
-        return (0, op_1.unite)(ctx, ...PA(terms)).canon;
+        let pterms = PA(terms);
+        // console.log(pterms)
+        let u = (0, op_1.unite)(ctx, ...pterms);
+        // console.log(u)
+        return u.canon;
     };
 }
 //# sourceMappingURL=op.test.js.map

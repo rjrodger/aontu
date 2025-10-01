@@ -48,8 +48,8 @@ class PrefVal extends ValBase_1.ValBase {
         //     ctx
         //   )
         // }
-        // done = done && DONE === out.peg.done &&
-        //   (null != (out as PrefVal).pref ? DONE === (out as PrefVal).pref.done : true)
+        // done = done && DONE === out.peg.dc &&
+        //   (null != (out as PrefVal).pref ? DONE === (out as PrefVal).pref.dc : true)
         // if (out.peg instanceof Nil) {
         //   out = (out as PrefVal).pref
         // }
@@ -86,7 +86,7 @@ class PrefVal extends ValBase_1.ValBase {
                 }
             }
         }
-        out.done = done ? type_1.DONE : this.done + 1;
+        out.dc = done ? type_1.DONE : this.dc + 1;
         return out;
     }
     same(peer) {
@@ -101,8 +101,8 @@ class PrefVal extends ValBase_1.ValBase {
         // return pegsame && prefsame
         return pegsame;
     }
-    clone(spec, ctx) {
-        let out = super.clone(spec, ctx);
+    clone(ctx, spec) {
+        let out = super.clone(ctx, spec);
         // out.pref = this.pref.clone(null, ctx)
         return out;
     }

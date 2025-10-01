@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Nil = void 0;
 const type_1 = require("../type");
-const ValBase_1 = require("../val/ValBase");
+const ValBase_1 = require("./ValBase");
 class Nil extends ValBase_1.ValBase {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
@@ -16,13 +16,13 @@ class Nil extends ValBase_1.ValBase {
             this.err = spec ? (Array.isArray(spec.err) ? [...spec.err] : [spec.err]) : [];
         }
         // Nil is always DONE, by definition.
-        this.done = type_1.DONE;
+        this.dc = type_1.DONE;
     }
     unify(_peer, _ctx) {
         return this;
     }
-    clone(spec, ctx) {
-        let out = super.clone(spec, ctx);
+    clone(ctx, spec) {
+        let out = super.clone(ctx, spec);
         out.why = this.why;
         // Should these clone?
         // out.primary = this.primary?.clone()

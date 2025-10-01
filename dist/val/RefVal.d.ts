@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { StringVal } from '../val';
-import { ValBase } from '../val/ValBase';
+import { ValBase } from './ValBase';
 declare class RefVal extends ValBase {
     isRefVal: boolean;
     absolute: boolean;
@@ -13,9 +13,9 @@ declare class RefVal extends ValBase {
     }, ctx?: Context);
     append(part: any): void;
     unify(peer: Val, ctx: Context): Val;
-    find(ctx: Context): StringVal | Val | undefined;
+    find(ctx: Context): Val | StringVal | undefined;
     same(peer: Val): boolean;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;
     gen(ctx?: Context): undefined;
 }

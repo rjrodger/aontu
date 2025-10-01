@@ -34,17 +34,12 @@ import {
   unite
 } from '../op/op'
 
-import {
-  TOP,
-  StringVal,
-} from '../val'
-
-
-import { ConjunctVal } from '../val/ConjunctVal'
-import { MapVal } from '../val/MapVal'
-import { Nil } from '../val/Nil'
-import { VarVal } from '../val/VarVal'
-import { ValBase } from '../val/ValBase'
+import { TOP, StringVal } from '../val'
+import { ConjunctVal } from './ConjunctVal'
+import { MapVal } from './MapVal'
+import { Nil } from './Nil'
+import { VarVal } from './VarVal'
+import { ValBase } from './ValBase'
 
 
 
@@ -132,9 +127,13 @@ class RefVal extends ValBase {
       // TODO: not resolved when all Vals in path are done is an error
       // as path cannot be found
       // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
-      let resolved: Val | undefined = null == ctx ? this : this.find(ctx)
+      let found: Val | undefined = null == ctx ? this : this.find(ctx)
 
-      resolved = resolved || this
+      const resolved = found ?? this
+
+      // const resolved = found ? found.clone(null, ctx) : this
+      // console.log('REF', this.id, this.peg, '->',
+      //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
 
       if (null == resolved && this.canon === peer.canon) {
         out = this
@@ -158,7 +157,7 @@ class RefVal extends ValBase {
 
         else {
           // Ensure RefVal done is incremented
-          this.done = DONE === this.done ? DONE : this.done + 1
+          this.dc = DONE === this.dc ? DONE : this.dc + 1
           out = new ConjunctVal({ peg: [this, peer] }, ctx)
           // why = 'cj'
         }
@@ -168,7 +167,7 @@ class RefVal extends ValBase {
         // why = 'u'
       }
 
-      out.done = DONE === out.done ? DONE : this.done + 1
+      out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
 
     return out
@@ -260,13 +259,11 @@ class RefVal extends ValBase {
       let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
 
       // TODO: other props?
-      sv.done = DONE
+      sv.dc = DONE
       sv.path = this.path
 
       return sv
     }
-
-
 
     let node = ctx.root
     let pI = 0
@@ -292,12 +289,12 @@ class RefVal extends ValBase {
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone({
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, {
       peg: this.peg,
       absolute: this.absolute,
       ...(spec || {})
-    }, ctx) as RefVal)
+    }) as RefVal)
     return out
   }
 

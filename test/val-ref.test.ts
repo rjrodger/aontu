@@ -446,7 +446,7 @@ describe('val-ref', function() {
       peg: ['a']
     })
 
-    let r1 = r0.clone()
+    let r1 = r0.clone(c0)
     expect(r1.canon).equal('$.a')
     expect(r1).include({
       path: ['x'],
@@ -455,7 +455,7 @@ describe('val-ref', function() {
     })
 
     let c1 = makeCtx(null, ['y', 'z'])
-    let r2 = r0.clone(null, c1)
+    let r2 = r0.clone(c1)
     expect(r2.canon).equal('$.a')
     expect(r2).include({
       path: ['y', 'z'],
@@ -465,7 +465,7 @@ describe('val-ref', function() {
 
 
     let c2 = makeCtx(null, ['k'])
-    let r3 = r2.clone(null, c2)
+    let r3 = r2.clone(c2)
     expect(r3.canon).equal('$.a')
     expect(r3).include({
       path: ['k', 'z'],

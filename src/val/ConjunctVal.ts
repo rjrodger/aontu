@@ -26,13 +26,13 @@ import {
 
 
 import { TOP } from '../val'
-// import { DisjunctVal } from '../val/DisjunctVal'
-import { ListVal } from '../val/ListVal'
-import { MapVal } from '../val/MapVal'
-import { Nil } from '../val/Nil'
-// import { PrefVal } from '../val/PrefVal'
-import { RefVal } from '../val/RefVal'
-import { ValBase } from '../val/ValBase'
+import { ListVal } from './ListVal'
+import { MapVal } from './MapVal'
+import { Nil } from './Nil'
+import { RefVal } from './RefVal'
+import { ValBase } from './ValBase'
+// import { DisjunctVal } from './DisjunctVal'
+// import { PrefVal } from './PrefVal'
 
 
 // TODO: move main logic to op/conjunct
@@ -69,7 +69,7 @@ class ConjunctVal extends ValBase {
       upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own' + mark)
 
       // let prevdone = done
-      done = done && (DONE === upeer[vI].done)
+      done = done && (DONE === upeer[vI].dc)
 
       if (upeer[vI] instanceof Nil) {
         return upeer[vI]
@@ -111,11 +111,11 @@ class ConjunctVal extends ValBase {
     next_term:
     for (let pI = 0; pI < upeer.length; pI++) {
 
-      if (DONE !== t0.done) {
+      if (DONE !== t0.dc) {
         let u0 = unite(ctx, t0, TOP, 'cj-peer-t0')
 
         if (
-          DONE !== u0.done
+          DONE !== u0.dc
 
           // Maps and Lists are still unified so that path refs will work
           // TODO: || ListVal - test!
@@ -154,7 +154,7 @@ class ConjunctVal extends ValBase {
 
       else {
         val = unite(ctx, t0, t1, 'cj-peer-t0t1')
-        done = done && DONE === val.done
+        done = done && DONE === val.dc
 
         // Unite was just a conjunt anyway, so discard.
         if (val instanceof ConjunctVal) {
@@ -190,18 +190,18 @@ class ConjunctVal extends ValBase {
       out = new ConjunctVal({ peg: outvals }, ctx)
     }
 
-    out.done = done ? DONE : this.done + 1
+    out.dc = done ? DONE : this.dc + 1
 
     // console.log('CONJUNCT-unify',
-    //   this.id, sc, pc, '->', out.canon, 'D=' + out.done, 'E=', this.err)
+    //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
 
     return out
   }
 
 
-  clone(spec?: ValSpec, ctx?: Context): Val {
-    let out = (super.clone(spec, ctx) as ConjunctVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(null, ctx))
+  clone(ctx: Context, spec?: ValSpec): Val {
+    let out = (super.clone(ctx, spec) as ConjunctVal)
+    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
     return out
   }
 

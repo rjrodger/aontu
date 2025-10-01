@@ -22,7 +22,7 @@ import {
   descErr
 } from './err'
 
-import { Nil } from './val/Nil'
+import { Nil } from './val'
 
 
 type Path = string[]
@@ -138,8 +138,8 @@ class Unify {
         src,
       })
 
-      let maxdc = 9 // 99
-      for (; this.cc < maxdc && DONE !== res.done; this.cc++) {
+      let maxcc = 9 // 99
+      for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         uctx.cc = this.cc
         res = unite(uctx, res, TOP)
         uctx = uctx.clone({ root: res })

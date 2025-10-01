@@ -5,7 +5,7 @@ declare class ValBase implements Val {
     #private;
     isVal: boolean;
     id: number;
-    done: number;
+    dc: number;
     path: string[];
     row: number;
     col: number;
@@ -17,7 +17,7 @@ declare class ValBase implements Val {
     constructor(spec: ValSpec, ctx?: Context);
     ctx(): any;
     same(peer: Val): boolean;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     get site(): Site;
     unify(_peer: Val, _ctx?: Context): Val;
     get canon(): string;

@@ -1,6 +1,6 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from '../val/ValBase';
+import { ValBase } from './ValBase';
 declare class NullVal extends ValBase {
     isNullVal: boolean;
     constructor(spec: {
@@ -8,7 +8,7 @@ declare class NullVal extends ValBase {
     }, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     same(peer: Val): boolean;
-    clone(spec?: ValSpec, ctx?: Context): Val;
+    clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;
     gen(_ctx?: Context): null;
 }
