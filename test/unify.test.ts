@@ -23,8 +23,7 @@ const G = (x: string, ctx?: any) => new Unify(x, lang)
   .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
 
 
-describe('unify-x', function() {
-
+describe('unify', function() {
 
   test('condis-same', () => {
     expect(G('a')).equal('a')

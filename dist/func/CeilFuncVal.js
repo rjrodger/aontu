@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CeilFuncVal = void 0;
 const val_1 = require("../val");
-const FuncValBase_1 = require("./FuncValBase");
-class CeilFuncVal extends FuncValBase_1.FuncValBase {
+const FuncBaseVal_1 = require("./FuncBaseVal");
+class CeilFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isCeilFuncVal = true;

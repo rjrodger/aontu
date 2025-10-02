@@ -14,27 +14,22 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
-
-
-
-import {
-  unite
-} from '../op/op'
 
 
 
 import { TOP } from '../val'
 import { ConjunctVal } from './ConjunctVal'
 import { Nil } from './Nil'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 // import { DisjunctVal } from './DisjunctVal'
 // import { ListVal } from './ListVal'
 // import { PrefVal } from './PrefVal'
 // import { RefVal } from './RefVal'
 
 
-class MapVal extends ValBase {
+class MapVal extends BaseVal {
   isMapVal = true
 
   static SPREAD = Symbol('spread')
@@ -146,7 +141,7 @@ class MapVal extends ValBase {
     out.peg = {}
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        entry[1] instanceof ValBase ? entry[1].clone(ctx) : entry[1]
+        entry[1] instanceof BaseVal ? entry[1].clone(ctx) : entry[1]
     }
     if (this.spread.cj) {
       out.spread.cj = this.spread.cj.clone(ctx)

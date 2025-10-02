@@ -19,10 +19,10 @@ import {
 } from '../unify'
 
 
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 
 
-class Nil extends ValBase {
+class Nil extends BaseVal {
   isNil = true
 
   nil = true

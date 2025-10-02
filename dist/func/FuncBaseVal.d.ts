@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from '../val/ValBase';
-declare class FuncValBase extends ValBase {
+import { BaseVal } from '../val/BaseVal';
+declare class FuncBaseVal extends BaseVal {
     isFuncVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     make(ctx: Context, _spec: ValSpec): Val;
@@ -10,4 +10,4 @@ declare class FuncValBase extends ValBase {
     funcname(): string;
     resolve(ctx: Context | undefined, _args: Val[]): Val;
 }
-export { FuncValBase, };
+export { FuncBaseVal, };

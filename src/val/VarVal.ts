@@ -28,20 +28,15 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
-
-
-
-import {
-  unite
-} from '../op/op'
 
 
 
 import { TOP, StringVal } from '../val'
 import { Nil } from './Nil'
 import { RefVal } from './RefVal'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 
 // import { ConjunctVal } from './ConjunctVal'
 // import { DisjunctVal } from './DisjunctVal'
@@ -52,7 +47,7 @@ import { ValBase } from './ValBase'
 
 // TODO: KEY, SELF, PARENT are reserved names - error
 
-class VarVal extends ValBase {
+class VarVal extends BaseVal {
   isVarVal = true
 
   constructor(

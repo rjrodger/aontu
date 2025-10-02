@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpperFuncVal = void 0;
 const val_1 = require("../val");
-const FuncValBase_1 = require("./FuncValBase");
-class UpperFuncVal extends FuncValBase_1.FuncValBase {
+const FuncBaseVal_1 = require("./FuncBaseVal");
+class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isUpperFuncVal = true;

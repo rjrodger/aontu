@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisjunctVal = void 0;
 const type_1 = require("../type");
-const op_1 = require("../op/op");
+const unify_1 = require("../unify");
 // import { TOP } from '../val'
 // import { ConjunctVal } from '../val/ConjunctVal'
 // import { ListVal } from '../val/ListVal'
@@ -11,9 +11,9 @@ const op_1 = require("../op/op");
 const Nil_1 = require("../val/Nil");
 const PrefVal_1 = require("../val/PrefVal");
 // import { RefVal } from '../val/RefVal'
-const ValBase_1 = require("../val/ValBase");
+const BaseVal_1 = require("../val/BaseVal");
 // TODO: move main logic to op/disjunct
-class DisjunctVal extends ValBase_1.ValBase {
+class DisjunctVal extends BaseVal_1.BaseVal {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
     constructor(spec, ctx, _sites) {
         super(spec, ctx);
@@ -41,7 +41,7 @@ class DisjunctVal extends ValBase_1.ValBase {
             const v = this.peg[vI];
             const cloneCtx = ctx?.clone({ err: [] });
             // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
-            oval[vI] = (0, op_1.unite)(cloneCtx, v, peer);
+            oval[vI] = (0, unify_1.unite)(cloneCtx, v, peer);
             // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
             if (0 < cloneCtx?.err.length) {
                 oval[vI] = Nil_1.Nil.make(cloneCtx, '|:empty-dist', this);

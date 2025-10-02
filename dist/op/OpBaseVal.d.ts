@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from '../val/ValBase';
-declare class OpVal extends ValBase {
+import { BaseVal } from '../val/BaseVal';
+declare class OpBaseVal extends BaseVal {
     isOpVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     append(part: any): void;
@@ -14,4 +14,4 @@ declare class OpVal extends ValBase {
     get canon(): string;
     gen(ctx?: Context): undefined;
 }
-export { OpVal, };
+export { OpBaseVal, };

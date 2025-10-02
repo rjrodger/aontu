@@ -7,13 +7,13 @@ const err_1 = require("../err");
 const val_1 = require("../val");
 const Nil_1 = require("./Nil");
 const RefVal_1 = require("./RefVal");
-const ValBase_1 = require("./ValBase");
+const BaseVal_1 = require("./BaseVal");
 // import { ConjunctVal } from './ConjunctVal'
 // import { DisjunctVal } from './DisjunctVal'
 // import { ListVal } from './ListVal'
 // import { MapVal } from './MapVal'
 // TODO: KEY, SELF, PARENT are reserved names - error
-class VarVal extends ValBase_1.ValBase {
+class VarVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isVarVal = true;

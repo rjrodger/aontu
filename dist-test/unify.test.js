@@ -8,7 +8,7 @@ const MapVal_1 = require("../dist/val/MapVal");
 let lang = new lang_1.Lang();
 const G = (x, ctx) => new unify_1.Unify(x, lang)
     .res.gen(ctx || new unify_1.Context({ root: new MapVal_1.MapVal({ peg: {} }) }));
-(0, node_test_1.describe)('unify-x', function () {
+(0, node_test_1.describe)('unify', function () {
     (0, node_test_1.test)('condis-same', () => {
         (0, code_1.expect)(G('a')).equal('a');
         (0, code_1.expect)(G('a&a')).equal('a');

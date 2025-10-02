@@ -4,8 +4,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarVal = void 0;
 const type_1 = require("../type");
 const Nil_1 = require("./Nil");
-const ValBase_1 = require("./ValBase");
-class ScalarVal extends ValBase_1.ValBase {
+const BaseVal_1 = require("./BaseVal");
+class ScalarVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isScalarVal = true;

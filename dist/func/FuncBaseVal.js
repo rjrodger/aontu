@@ -1,11 +1,11 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FuncValBase = void 0;
-const op_1 = require("../op/op");
+exports.FuncBaseVal = void 0;
+const unify_1 = require("../unify");
 const val_1 = require("../val");
-const ValBase_1 = require("../val/ValBase");
-class FuncValBase extends ValBase_1.ValBase {
+const BaseVal_1 = require("../val/BaseVal");
+class FuncBaseVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFuncVal = true;
@@ -30,7 +30,7 @@ class FuncValBase extends ValBase_1.ValBase {
         }
         if (pegdone) {
             const resolved = this.resolve(ctx, newpeg);
-            const unified = (0, op_1.unite)(ctx, resolved, peer, 'func-floor/' + this.id);
+            const unified = (0, unify_1.unite)(ctx, resolved, peer, 'func-floor/' + this.id);
             out = unified;
             // TODO: make should handle this using ctx?
             out.row = this.row;
@@ -78,5 +78,5 @@ class FuncValBase extends ValBase_1.ValBase {
         return val_1.Nil.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
     }
 }
-exports.FuncValBase = FuncValBase;
-//# sourceMappingURL=FuncValBase.js.map
+exports.FuncBaseVal = FuncBaseVal;
+//# sourceMappingURL=FuncBaseVal.js.map

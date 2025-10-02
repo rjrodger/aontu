@@ -14,7 +14,7 @@ import {
 import { expect } from '@hapi/code'
 import {
   unite
-} from '../dist/op/op'
+} from '../dist/unify'
 
 
 
@@ -27,7 +27,7 @@ import { Nil } from '../dist/val/Nil'
 import { PrefVal } from '../dist/val/PrefVal'
 import { RefVal } from '../dist/val/RefVal'
 import { VarVal } from '../dist/val/VarVal'
-import { ValBase } from '../dist/val/ValBase'
+import { BaseVal } from '../dist/val/BaseVal'
 
 
 import {

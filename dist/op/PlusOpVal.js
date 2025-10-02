@@ -1,16 +1,16 @@
 "use strict";
 /* Copyright (c) 2024 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PlusVal = void 0;
+exports.PlusOpVal = void 0;
 const val_1 = require("../val");
-const OpVal_1 = require("./OpVal");
-class PlusVal extends OpVal_1.OpVal {
+const OpBaseVal_1 = require("./OpBaseVal");
+class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isOpVal = true;
     }
     make(_ctx, spec) {
-        return new PlusVal(spec);
+        return new PlusOpVal(spec);
     }
     opname() {
         return 'plus';
@@ -34,5 +34,5 @@ class PlusVal extends OpVal_1.OpVal {
         return this.peg[0]?.canon + '+' + this.peg[1]?.canon;
     }
 }
-exports.PlusVal = PlusVal;
-//# sourceMappingURL=PlusVal.js.map
+exports.PlusOpVal = PlusOpVal;
+//# sourceMappingURL=PlusOpVal.js.map

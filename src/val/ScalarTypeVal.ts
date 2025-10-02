@@ -13,7 +13,7 @@ import {
 } from '../unify'
 
 import { Nil } from './Nil'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 
 
 
@@ -28,7 +28,7 @@ type ScalarConstructor =
   (typeof Integer.constructor)
 
 
-class ScalarTypeVal extends ValBase {
+class ScalarTypeVal extends BaseVal {
   isScalarTypeVal = true
 
   constructor(

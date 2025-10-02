@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NullVal = void 0;
 const Nil_1 = require("./Nil");
-const ValBase_1 = require("./ValBase");
-class NullVal extends ValBase_1.ValBase {
+const BaseVal_1 = require("./BaseVal");
+class NullVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isNullVal = true;

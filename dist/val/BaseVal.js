@@ -11,13 +11,13 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _ValBase_ctx;
+var _BaseVal_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ValBase = void 0;
+exports.BaseVal = void 0;
 const type_1 = require("../type");
 const lang_1 = require("../lang");
 let ID = 1000;
-class ValBase {
+class BaseVal {
     // TODO: Site needed in ctor
     constructor(spec, ctx) {
         this.isVal = true;
@@ -35,8 +35,8 @@ class ValBase {
         this.err = [];
         // TODO: implement!
         // site: Site
-        _ValBase_ctx.set(this, void 0);
-        __classPrivateFieldSet(this, _ValBase_ctx, ctx, "f");
+        _BaseVal_ctx.set(this, void 0);
+        __classPrivateFieldSet(this, _BaseVal_ctx, ctx, "f");
         this.peg = spec?.peg;
         this.path = ctx?.path || [];
         // TODO: make this work
@@ -45,7 +45,7 @@ class ValBase {
         this.uh = [];
     }
     ctx() {
-        return __classPrivateFieldGet(this, _ValBase_ctx, "f");
+        return __classPrivateFieldGet(this, _BaseVal_ctx, "f");
     }
     get done() {
         return this.dc === type_1.DONE;
@@ -83,6 +83,6 @@ class ValBase {
         this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
     }
 }
-exports.ValBase = ValBase;
-_ValBase_ctx = new WeakMap();
-//# sourceMappingURL=ValBase.js.map
+exports.BaseVal = BaseVal;
+_BaseVal_ctx = new WeakMap();
+//# sourceMappingURL=BaseVal.js.map

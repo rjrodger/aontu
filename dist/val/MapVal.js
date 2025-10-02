@@ -3,16 +3,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MapVal = void 0;
 const type_1 = require("../type");
-const op_1 = require("../op/op");
+const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("./ConjunctVal");
 const Nil_1 = require("./Nil");
-const ValBase_1 = require("./ValBase");
+const BaseVal_1 = require("./BaseVal");
 // import { DisjunctVal } from './DisjunctVal'
 // import { ListVal } from './ListVal'
 // import { PrefVal } from './PrefVal'
 // import { RefVal } from './RefVal'
-class MapVal extends ValBase_1.ValBase {
+class MapVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isMapVal = true;
@@ -46,7 +46,7 @@ class MapVal extends ValBase_1.ValBase {
         if (peer instanceof MapVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
                 // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
-                (0, op_1.unite)(ctx, out.spread.cj, peer.spread.cj)));
+                (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj)));
         }
         out.dc = this.dc + 1;
         let spread_cj = out.spread.cj || val_1.TOP;
@@ -54,11 +54,11 @@ class MapVal extends ValBase_1.ValBase {
         for (let key in this.peg) {
             let keyctx = ctx.descend(key);
             let key_spread_cj = spread_cj.clone(keyctx);
-            out.peg[key] = (0, op_1.unite)(keyctx, this.peg[key], key_spread_cj, 'map-own');
+            out.peg[key] = (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'map-own');
             done = (done && type_1.DONE === out.peg[key].dc);
         }
         if (peer instanceof MapVal) {
-            let upeer = (0, op_1.unite)(ctx, peer, undefined, 'map-peer-map');
+            let upeer = (0, unify_1.unite)(ctx, peer, undefined, 'map-peer-map');
             for (let peerkey in upeer.peg) {
                 let peerchild = upeer.peg[peerkey];
                 let child = out.peg[peerkey];
@@ -66,12 +66,12 @@ class MapVal extends ValBase_1.ValBase {
                     undefined === child ? peerchild :
                         child instanceof Nil_1.Nil ? child :
                             peerchild instanceof Nil_1.Nil ? peerchild :
-                                (0, op_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
+                                (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
                     let key_spread_cj = spread_cj.clone(key_ctx);
                     oval = out.peg[peerkey] =
-                        (0, op_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj);
+                        (0, unify_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj);
                 }
                 done = (done && type_1.DONE === oval.dc);
             }
@@ -88,7 +88,7 @@ class MapVal extends ValBase_1.ValBase {
         out.peg = {};
         for (let entry of Object.entries(this.peg)) {
             out.peg[entry[0]] =
-                entry[1] instanceof ValBase_1.ValBase ? entry[1].clone(ctx) : entry[1];
+                entry[1] instanceof BaseVal_1.BaseVal ? entry[1].clone(ctx) : entry[1];
         }
         if (this.spread.cj) {
             out.spread.cj = this.spread.cj.clone(ctx);

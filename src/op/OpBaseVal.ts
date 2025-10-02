@@ -16,11 +16,8 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
-
-import {
-  unite
-} from '../op/op'
 
 import {
   TOP,
@@ -29,12 +26,12 @@ import {
 
 import { ConjunctVal } from '../val/ConjunctVal'
 import { Nil } from '../val/Nil'
-import { ValBase } from '../val/ValBase'
+import { BaseVal } from '../val/BaseVal'
 
 
 
 
-class OpVal extends ValBase {
+class OpBaseVal extends BaseVal {
   isOpVal = true
 
   constructor(
@@ -93,7 +90,7 @@ class OpVal extends ValBase {
       if (null == result && this.canon === peer.canon) {
         out = this
       }
-      else if (result instanceof OpVal) {
+      else if (result instanceof OpBaseVal) {
         if (TOP === peer) {
           out = this
         }
@@ -156,7 +153,7 @@ class OpVal extends ValBase {
   clone(ctx: Context, _spec?: ValSpec): Val {
     let out = (super.clone(ctx, {
       peg: this.peg,
-    }) as OpVal)
+    }) as OpBaseVal)
     return out
   }
 
@@ -203,5 +200,5 @@ class OpVal extends ValBase {
 
 
 export {
-  OpVal,
+  OpBaseVal,
 }

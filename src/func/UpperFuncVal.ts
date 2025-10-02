@@ -17,10 +17,10 @@ import {
 
 
 
-import { FuncValBase } from './FuncValBase'
+import { FuncBaseVal } from './FuncBaseVal'
 
 
-class UpperFuncVal extends FuncValBase {
+class UpperFuncVal extends FuncBaseVal {
   isUpperFuncVal = true
 
   constructor(

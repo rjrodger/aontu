@@ -16,11 +16,11 @@ import {
   Site
 } from '../lang'
 
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 
 
 // There can be only one.
-class TopVal extends ValBase {
+class TopVal extends BaseVal {
   isTop = true
 
   id = 0

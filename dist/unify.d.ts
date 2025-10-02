@@ -1,8 +1,9 @@
 import type { Val } from './type';
 import { FST } from './type';
-import { Lang } from './lang';
 import { Nil } from './val';
+import { Lang } from './lang';
 type Path = string[];
+declare const unite: (ctx: Context, a?: any, b?: any, whence?: string) => any;
 declare class Context {
     #private;
     root: Val;
@@ -38,4 +39,4 @@ declare class Unify {
     lang: Lang;
     constructor(root: Val | string, lang?: Lang, ctx?: Context, src?: string);
 }
-export { Context, Path, Unify, };
+export { Context, Path, Unify, unite, };

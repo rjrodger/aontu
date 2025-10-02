@@ -1,8 +1,8 @@
 import type { Val } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
-import { ValBase } from './ValBase';
-declare class TopVal extends ValBase {
+import { BaseVal } from './BaseVal';
+declare class TopVal extends BaseVal {
     isTop: boolean;
     id: number;
     top: boolean;

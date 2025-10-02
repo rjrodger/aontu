@@ -13,6 +13,7 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
 
 
@@ -21,17 +22,12 @@ import {
 } from '../lang'
 
 
-import {
-  unite
-} from '../op/op'
-
-
 
 
 import { TOP } from '../val'
 import { ConjunctVal } from './ConjunctVal'
 import { Nil } from './Nil'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 // import { DisjunctVal } from './DisjunctVal'
 // import { MapVal } from './MapVal'
 // import { PrefVal } from './PrefVal'
@@ -41,7 +37,7 @@ import { ValBase } from './ValBase'
 
 
 
-class ListVal extends ValBase {
+class ListVal extends BaseVal {
   isListVal = true
 
   static SPREAD = Symbol('spread')

@@ -17,10 +17,10 @@ import {
 
 
 
-import { FuncValBase } from './FuncValBase'
+import { FuncBaseVal } from './FuncBaseVal'
 
 
-class FloorFuncVal extends FuncValBase {
+class FloorFuncVal extends FuncBaseVal {
   isFloorFuncVal = true
 
   constructor(

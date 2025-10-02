@@ -1,8 +1,8 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Nil, StringVal } from '../val';
-import { FuncValBase } from './FuncValBase';
-declare class UpperFuncVal extends FuncValBase {
+import { FuncBaseVal } from './FuncBaseVal';
+declare class UpperFuncVal extends FuncBaseVal {
     isUpperFuncVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;

@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DisjunctVal = exports.ConjunctVal = exports.PrefVal = exports.PlusVal = exports.OpVal = exports.MapVal = exports.ListVal = exports.VarVal = exports.NullVal = exports.Nil = exports.RefVal = exports.ValBase = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.ScalarTypeVal = exports.Integer = exports.TopVal = exports.TOP = void 0;
+exports.DisjunctVal = exports.ConjunctVal = exports.PrefVal = exports.MapVal = exports.ListVal = exports.VarVal = exports.NullVal = exports.Nil = exports.RefVal = exports.BaseVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.ScalarTypeVal = exports.Integer = exports.PlusOpVal = exports.OpBaseVal = exports.TopVal = exports.TOP = void 0;
 // NOTES
 // - Vals are immutable
 // - each Val must handle all parent and child unifications explicitly
@@ -18,6 +18,10 @@ TOP -> Scalar/Boolean -> BooleanVal
 var TopVal_1 = require("./val/TopVal");
 Object.defineProperty(exports, "TOP", { enumerable: true, get: function () { return TopVal_1.TOP; } });
 Object.defineProperty(exports, "TopVal", { enumerable: true, get: function () { return TopVal_1.TopVal; } });
+var op_1 = require("./op");
+Object.defineProperty(exports, "OpBaseVal", { enumerable: true, get: function () { return op_1.OpBaseVal; } });
+var op_2 = require("./op");
+Object.defineProperty(exports, "PlusOpVal", { enumerable: true, get: function () { return op_2.PlusOpVal; } });
 var ScalarTypeVal_1 = require("./val/ScalarTypeVal");
 Object.defineProperty(exports, "Integer", { enumerable: true, get: function () { return ScalarTypeVal_1.Integer; } });
 Object.defineProperty(exports, "ScalarTypeVal", { enumerable: true, get: function () { return ScalarTypeVal_1.ScalarTypeVal; } });
@@ -31,8 +35,8 @@ var BooleanVal_1 = require("./val/BooleanVal");
 Object.defineProperty(exports, "BooleanVal", { enumerable: true, get: function () { return BooleanVal_1.BooleanVal; } });
 var IntegerVal_1 = require("./val/IntegerVal");
 Object.defineProperty(exports, "IntegerVal", { enumerable: true, get: function () { return IntegerVal_1.IntegerVal; } });
-var ValBase_1 = require("./val/ValBase");
-Object.defineProperty(exports, "ValBase", { enumerable: true, get: function () { return ValBase_1.ValBase; } });
+var BaseVal_1 = require("./val/BaseVal");
+Object.defineProperty(exports, "BaseVal", { enumerable: true, get: function () { return BaseVal_1.BaseVal; } });
 var RefVal_1 = require("./val/RefVal");
 Object.defineProperty(exports, "RefVal", { enumerable: true, get: function () { return RefVal_1.RefVal; } });
 var Nil_1 = require("./val/Nil");
@@ -45,10 +49,6 @@ var ListVal_1 = require("./val/ListVal");
 Object.defineProperty(exports, "ListVal", { enumerable: true, get: function () { return ListVal_1.ListVal; } });
 var MapVal_1 = require("./val/MapVal");
 Object.defineProperty(exports, "MapVal", { enumerable: true, get: function () { return MapVal_1.MapVal; } });
-var OpVal_1 = require("./val/OpVal");
-Object.defineProperty(exports, "OpVal", { enumerable: true, get: function () { return OpVal_1.OpVal; } });
-var PlusVal_1 = require("./val/PlusVal");
-Object.defineProperty(exports, "PlusVal", { enumerable: true, get: function () { return PlusVal_1.PlusVal; } });
 var PrefVal_1 = require("./val/PrefVal");
 Object.defineProperty(exports, "PrefVal", { enumerable: true, get: function () { return PrefVal_1.PrefVal; } });
 var ConjunctVal_1 = require("./val/ConjunctVal");

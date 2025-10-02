@@ -17,17 +17,13 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
 
 
 import {
   Site
 } from '../lang'
-
-
-import {
-  unite
-} from '../op/op'
 
 
 
@@ -45,10 +41,10 @@ import {
 // import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
 // import { RefVal } from '../val/RefVal'
-import { ValBase } from '../val/ValBase'
+import { BaseVal } from '../val/BaseVal'
 
 
-class PrefVal extends ValBase {
+class PrefVal extends BaseVal {
   isPrefVal = true
 
   // pref: Val
@@ -155,7 +151,7 @@ class PrefVal extends ValBase {
     }
 
     let pegsame = (this.peg === peer.peg) ||
-      (this.peg instanceof ValBase && this.peg.same(peer.peg))
+      (this.peg instanceof BaseVal && this.peg.same(peer.peg))
 
     // let prefsame = peer instanceof PrefVal &&
     //   ((this.pref === peer.pref) ||

@@ -13,17 +13,12 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
 
 import {
   Site
 } from '../lang'
-
-
-
-import {
-  unite
-} from '../op/op'
 
 
 
@@ -35,13 +30,13 @@ import {
 import { Nil } from '../val/Nil'
 import { PrefVal } from '../val/PrefVal'
 // import { RefVal } from '../val/RefVal'
-import { ValBase } from '../val/ValBase'
+import { BaseVal } from '../val/BaseVal'
 
 
 
 
 // TODO: move main logic to op/disjunct
-class DisjunctVal extends ValBase {
+class DisjunctVal extends BaseVal {
   isDisjunctVal = true
   isBinaryOp = true
 

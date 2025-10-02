@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TopVal = exports.TOP = void 0;
 const type_1 = require("../type");
 const lang_1 = require("../lang");
-const ValBase_1 = require("./ValBase");
+const BaseVal_1 = require("./BaseVal");
 // There can be only one.
-class TopVal extends ValBase_1.ValBase {
+class TopVal extends BaseVal_1.BaseVal {
     constructor() {
         super({ peg: null });
         this.isTop = true;

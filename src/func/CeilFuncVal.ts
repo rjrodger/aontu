@@ -17,10 +17,10 @@ import {
 
 
 
-import { FuncValBase } from './FuncValBase'
+import { FuncBaseVal } from './FuncBaseVal'
 
 
-class CeilFuncVal extends FuncValBase {
+class CeilFuncVal extends FuncBaseVal {
   isCeilFuncVal = true
 
   constructor(

@@ -26,7 +26,7 @@ import {
 let ID = 1000
 
 
-class ValBase implements Val {
+class BaseVal implements Val {
   isVal = true
   isTop = false
   isNil = false
@@ -130,5 +130,5 @@ class ValBase implements Val {
 }
 
 export {
-  ValBase,
+  BaseVal,
 }

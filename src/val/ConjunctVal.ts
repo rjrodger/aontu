@@ -16,13 +16,8 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
-
-
-
-import {
-  unite
-} from '../op/op'
 
 
 import { TOP } from '../val'
@@ -30,13 +25,13 @@ import { ListVal } from './ListVal'
 import { MapVal } from './MapVal'
 import { Nil } from './Nil'
 import { RefVal } from './RefVal'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 // import { DisjunctVal } from './DisjunctVal'
 // import { PrefVal } from './PrefVal'
 
 
 // TODO: move main logic to op/conjunct
-class ConjunctVal extends ValBase {
+class ConjunctVal extends BaseVal {
   isBinaryOp = true
   isConjunctVal = true
 

@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from './ValBase';
-declare class VarVal extends ValBase {
+import { BaseVal } from './BaseVal';
+declare class VarVal extends BaseVal {
     isVarVal: boolean;
     constructor(spec: {
         peg: string | Val;

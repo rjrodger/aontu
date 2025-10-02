@@ -16,22 +16,19 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
-
-import {
-  unite
-} from '../op/op'
 
 
 import { TOP, IntegerVal, NumberVal, StringVal } from '../val'
-import { Nil } from './Nil'
-import { OpVal } from './OpVal'
+import { Nil } from '../val/Nil'
+import { OpBaseVal } from './OpBaseVal'
 
 
 
 
 
-class PlusVal extends OpVal {
+class PlusOpVal extends OpBaseVal {
   isOpVal = true
 
   constructor(
@@ -43,7 +40,7 @@ class PlusVal extends OpVal {
 
 
   make(_ctx: Context, spec: ValSpec): Val {
-    return new PlusVal(spec)
+    return new PlusOpVal(spec)
   }
 
   opname() {
@@ -78,5 +75,5 @@ class PlusVal extends OpVal {
 
 
 export {
-  PlusVal,
+  PlusOpVal,
 }

@@ -28,24 +28,21 @@ import {
 
 import {
   Context,
+  unite,
 } from '../unify'
-
-import {
-  unite
-} from '../op/op'
 
 import { TOP, StringVal } from '../val'
 import { ConjunctVal } from './ConjunctVal'
 import { MapVal } from './MapVal'
 import { Nil } from './Nil'
 import { VarVal } from './VarVal'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 
 
 
 
 
-class RefVal extends ValBase {
+class RefVal extends BaseVal {
   isRefVal = true
 
   absolute: boolean = false

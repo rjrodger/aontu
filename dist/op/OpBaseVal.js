@@ -1,15 +1,15 @@
 "use strict";
 /* Copyright (c) 2024 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OpVal = void 0;
+exports.OpBaseVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
-const op_1 = require("../op/op");
+const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const Nil_1 = require("../val/Nil");
-const ValBase_1 = require("../val/ValBase");
-class OpVal extends ValBase_1.ValBase {
+const BaseVal_1 = require("../val/BaseVal");
+class OpBaseVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isOpVal = true;
@@ -48,7 +48,7 @@ class OpVal extends ValBase_1.ValBase {
             if (null == result && this.canon === peer.canon) {
                 out = this;
             }
-            else if (result instanceof OpVal) {
+            else if (result instanceof OpBaseVal) {
                 if (val_1.TOP === peer) {
                     out = this;
                 }
@@ -64,7 +64,7 @@ class OpVal extends ValBase_1.ValBase {
                 }
             }
             else {
-                out = (0, op_1.unite)(ctx, result, peer, 'op');
+                out = (0, unify_1.unite)(ctx, result, peer, 'op');
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
@@ -128,5 +128,5 @@ class OpVal extends ValBase_1.ValBase {
         return undefined;
     }
 }
-exports.OpVal = OpVal;
-//# sourceMappingURL=OpVal.js.map
+exports.OpBaseVal = OpBaseVal;
+//# sourceMappingURL=OpBaseVal.js.map

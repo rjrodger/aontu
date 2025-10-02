@@ -15,11 +15,11 @@ import {
 
 import { Nil } from './Nil'
 import { RefVal } from './RefVal'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 import { ScalarConstructor } from './ScalarTypeVal'
 
 
-class ScalarVal<T> extends ValBase {
+class ScalarVal<T> extends BaseVal {
   type: any
   isScalarVal = true
 

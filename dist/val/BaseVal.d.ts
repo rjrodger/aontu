@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
-declare class ValBase implements Val {
+declare class BaseVal implements Val {
     #private;
     isVal: boolean;
     isTop: boolean;
@@ -28,4 +28,4 @@ declare class ValBase implements Val {
     gen(_ctx?: Context): any;
     notdone(): void;
 }
-export { ValBase, };
+export { BaseVal, };

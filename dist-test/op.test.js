@@ -6,14 +6,14 @@ const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const MapVal_1 = require("../dist/val/MapVal");
 const code_1 = require("@hapi/code");
-const op_1 = require("../dist/op/op");
+const unify_2 = require("../dist/unify");
 let lang = new lang_1.Lang();
 let PL = lang.parse.bind(lang);
 let P = (x, ctx) => PL(x, ctx);
 let PA = (x, ctx) => x.map(s => PL(s, ctx));
 (0, node_test_1.describe)('op', () => {
     (0, node_test_1.it)('happy', () => {
-        (0, code_1.expect)(op_1.unite.name).equal('unite');
+        (0, code_1.expect)(unify_2.unite.name).equal('unite');
         // expect(disjunct.name).equal('disjunct')
     });
     (0, node_test_1.it)('unite-scalar-val', () => {
@@ -234,7 +234,7 @@ function makeUnite(r) {
         let terms = s.trim().split(/\s+/).map(x => 'undef' === x ? undefined : x);
         let pterms = PA(terms);
         // console.log(pterms)
-        let u = (0, op_1.unite)(ctx, ...pterms);
+        let u = (0, unify_2.unite)(ctx, ...pterms);
         // console.log(u)
         return u.canon;
     };

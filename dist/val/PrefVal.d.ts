@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from '../val/ValBase';
-declare class PrefVal extends ValBase {
+import { BaseVal } from '../val/BaseVal';
+declare class PrefVal extends BaseVal {
     isPrefVal: boolean;
     superpeg: Val;
     rank: number;

@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Nil = void 0;
 const type_1 = require("../type");
-const ValBase_1 = require("./ValBase");
-class Nil extends ValBase_1.ValBase {
+const BaseVal_1 = require("./BaseVal");
+class Nil extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
         this.isNil = true;

@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefVal = void 0;
 const type_1 = require("../type");
-const op_1 = require("../op/op");
+const unify_1 = require("../unify");
 const val_1 = require("../val");
 // import { ConjunctVal } from '../val/ConjunctVal'
 // import { DisjunctVal } from '../val/DisjunctVal'
@@ -11,8 +11,8 @@ const val_1 = require("../val");
 // import { MapVal } from '../val/MapVal'
 const Nil_1 = require("../val/Nil");
 // import { RefVal } from '../val/RefVal'
-const ValBase_1 = require("../val/ValBase");
-class PrefVal extends ValBase_1.ValBase {
+const BaseVal_1 = require("../val/BaseVal");
+class PrefVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isPrefVal = true;
@@ -64,7 +64,7 @@ class PrefVal extends ValBase_1.ValBase {
                 return peer;
             }
             else {
-                let peg = (0, op_1.unite)(ctx, this.peg, peer.peg, 'pref-peer/' + this.id);
+                let peg = (0, unify_1.unite)(ctx, this.peg, peer.peg, 'pref-peer/' + this.id);
                 out = new PrefVal({ peg }, ctx);
                 // out = Nil.make(ctx, 'pref', this, peer)
             }
@@ -75,7 +75,7 @@ class PrefVal extends ValBase_1.ValBase {
                 out = peer;
             }
             else {
-                out = (0, op_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id);
+                out = (0, unify_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id);
                 // console.log('QQQ', out.canon)
                 // if (out instanceof Nil) {
                 //   out = Nil.make(ctx, '*super', this, peer)
@@ -94,7 +94,7 @@ class PrefVal extends ValBase_1.ValBase {
             return false;
         }
         let pegsame = (this.peg === peer.peg) ||
-            (this.peg instanceof ValBase_1.ValBase && this.peg.same(peer.peg));
+            (this.peg instanceof BaseVal_1.BaseVal && this.peg.same(peer.peg));
         // let prefsame = peer instanceof PrefVal &&
         //   ((this.pref === peer.pref) ||
         //     (this.pref instanceof ValBase && this.pref.same(peer.pref)))

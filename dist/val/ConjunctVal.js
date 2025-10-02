@@ -4,17 +4,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConjunctVal = void 0;
 exports.norm = norm;
 const type_1 = require("../type");
-const op_1 = require("../op/op");
+const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ListVal_1 = require("./ListVal");
 const MapVal_1 = require("./MapVal");
 const Nil_1 = require("./Nil");
 const RefVal_1 = require("./RefVal");
-const ValBase_1 = require("./ValBase");
+const BaseVal_1 = require("./BaseVal");
 // import { DisjunctVal } from './DisjunctVal'
 // import { PrefVal } from './PrefVal'
 // TODO: move main logic to op/conjunct
-class ConjunctVal extends ValBase_1.ValBase {
+class ConjunctVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isBinaryOp = true;
@@ -33,7 +33,7 @@ class ConjunctVal extends ValBase_1.ValBase {
         // Unify each term of conjunct against peer
         let upeer = [];
         for (let vI = 0; vI < this.peg.length; vI++) {
-            upeer[vI] = (0, op_1.unite)(ctx, this.peg[vI], peer, 'cj-own' + mark);
+            upeer[vI] = (0, unify_1.unite)(ctx, this.peg[vI], peer, 'cj-own' + mark);
             // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].dc);
             if (upeer[vI] instanceof Nil_1.Nil) {
@@ -64,7 +64,7 @@ class ConjunctVal extends ValBase_1.ValBase {
         let t0 = upeer[0];
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
             if (type_1.DONE !== t0.dc) {
-                let u0 = (0, op_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
+                let u0 = (0, unify_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
                 if (type_1.DONE !== u0.dc
                     // Maps and Lists are still unified so that path refs will work
                     // TODO: || ListVal - test!
@@ -92,7 +92,7 @@ class ConjunctVal extends ValBase_1.ValBase {
                 t0 = t1;
             }
             else {
-                val = (0, op_1.unite)(ctx, t0, t1, 'cj-peer-t0t1');
+                val = (0, unify_1.unite)(ctx, t0, t1, 'cj-peer-t0t1');
                 done = done && type_1.DONE === val.dc;
                 // Unite was just a conjunt anyway, so discard.
                 if (val instanceof ConjunctVal) {

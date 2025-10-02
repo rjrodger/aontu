@@ -8,11 +8,8 @@ import type {
 
 import {
   Context,
+  unite,
 } from '../unify'
-
-import {
-  unite
-} from '../op/op'
 
 import {
   TOP,
@@ -20,10 +17,10 @@ import {
   ConjunctVal,
 } from '../val'
 
-import { ValBase } from '../val/ValBase'
+import { BaseVal } from '../val/BaseVal'
 
 
-class FuncValBase extends ValBase {
+class FuncBaseVal extends BaseVal {
   isFuncVal = true
 
   constructor(
@@ -126,5 +123,5 @@ class FuncValBase extends ValBase {
 
 
 export {
-  FuncValBase,
+  FuncBaseVal,
 }

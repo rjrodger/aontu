@@ -57,9 +57,12 @@ import {
   PrefVal,
   RefVal,
   VarVal,
-  PlusVal,
   NullVal
 } from './val'
+
+import {
+  PlusOpVal,
+} from './op'
 
 
 import {
@@ -241,7 +244,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     },
 
     'plus-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
-      return addsite(new PlusVal({ peg: [terms[0], terms[1]] }), r, ctx)
+      return addsite(new PlusOpVal({ peg: [terms[0], terms[1]] }), r, ctx)
     },
 
     'negative-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {

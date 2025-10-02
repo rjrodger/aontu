@@ -15,9 +15,8 @@ import { Nil } from '../dist/val/Nil'
 
 import { expect } from '@hapi/code'
 import {
-  // disjunct,
   unite,
-} from '../dist/op/op'
+} from '../dist/unify'
 
 
 

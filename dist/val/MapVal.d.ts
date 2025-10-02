@@ -1,7 +1,7 @@
 import type { Val, ValMap, ValSpec } from '../type';
 import { Context } from '../unify';
-import { ValBase } from './ValBase';
-declare class MapVal extends ValBase {
+import { BaseVal } from './BaseVal';
+declare class MapVal extends BaseVal {
     isMapVal: boolean;
     static SPREAD: symbol;
     spread: {

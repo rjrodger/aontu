@@ -1,10 +1,10 @@
 import type { Val } from '../type';
 import { Context } from '../unify';
-import { ValBase } from './ValBase';
+import { BaseVal } from './BaseVal';
 declare class Integer {
 }
 type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
-declare class ScalarTypeVal extends ValBase {
+declare class ScalarTypeVal extends BaseVal {
     isScalarTypeVal: boolean;
     constructor(spec: {
         peg: ScalarConstructor;

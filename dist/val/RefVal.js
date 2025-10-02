@@ -4,14 +4,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
-const op_1 = require("../op/op");
+const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("./ConjunctVal");
 const MapVal_1 = require("./MapVal");
 const Nil_1 = require("./Nil");
 const VarVal_1 = require("./VarVal");
-const ValBase_1 = require("./ValBase");
-class RefVal extends ValBase_1.ValBase {
+const BaseVal_1 = require("./BaseVal");
+class RefVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isRefVal = true;
@@ -99,7 +99,7 @@ class RefVal extends ValBase_1.ValBase {
                 }
             }
             else {
-                out = (0, op_1.unite)(ctx, resolved, peer, 'ref');
+                out = (0, unify_1.unite)(ctx, resolved, peer, 'ref');
                 // why = 'u'
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;

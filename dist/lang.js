@@ -12,6 +12,7 @@ const mem_1 = require("@jsonic/multisource/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
 const val_1 = require("./val");
+const op_1 = require("./op");
 const func_1 = require("./func");
 const val_2 = require("./val");
 class Site {
@@ -137,7 +138,7 @@ let AontuJsonic = function aontu(jsonic) {
             return addsite(new val_1.VarVal({ peg: terms[0] }), r, ctx);
         },
         'plus-infix': (r, ctx, _op, terms) => {
-            return addsite(new val_1.PlusVal({ peg: [terms[0], terms[1]] }), r, ctx);
+            return addsite(new op_1.PlusOpVal({ peg: [terms[0], terms[1]] }), r, ctx);
         },
         'negative-prefix': (r, ctx, _op, terms) => {
             let val = terms[0];

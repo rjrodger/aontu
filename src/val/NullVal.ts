@@ -14,10 +14,10 @@ import {
 
 
 import { Nil } from './Nil'
-import { ValBase } from './ValBase'
+import { BaseVal } from './BaseVal'
 
 
-class NullVal extends ValBase {
+class NullVal extends BaseVal {
   isNullVal = true
 
   constructor(

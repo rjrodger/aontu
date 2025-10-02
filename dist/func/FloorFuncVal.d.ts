@@ -1,8 +1,8 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Nil, IntegerVal } from '../val';
-import { FuncValBase } from './FuncValBase';
-declare class FloorFuncVal extends FuncValBase {
+import { FuncBaseVal } from './FuncBaseVal';
+declare class FloorFuncVal extends FuncBaseVal {
     isFloorFuncVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;

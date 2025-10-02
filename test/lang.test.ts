@@ -25,7 +25,7 @@ import { MapVal } from '../dist/val/MapVal'
 import { Nil } from '../dist/val/Nil'
 import { PrefVal } from '../dist/val/PrefVal'
 import { RefVal } from '../dist/val/RefVal'
-import { ValBase } from '../dist/val/ValBase'
+import { BaseVal } from '../dist/val/BaseVal'
 
 
 let lang = new Lang()
