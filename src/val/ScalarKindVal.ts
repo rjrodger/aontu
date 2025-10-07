@@ -2,6 +2,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -28,16 +29,19 @@ type ScalarConstructor =
   (typeof Integer.constructor)
 
 
-class ScalarTypeVal extends BaseVal {
-  isScalarTypeVal = true
+class ScalarKindVal extends BaseVal {
+  isScalarKindVal = true
 
   constructor(
-    spec: {
-      peg: ScalarConstructor
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super(spec, ctx)
+
+    if (null == this.peg) {
+      throw new Error('ScalarKindVal spec.peg undefined')
+    }
+
     this.dc = DONE
   }
 
@@ -84,5 +88,5 @@ class ScalarTypeVal extends BaseVal {
 export {
   Integer,
   ScalarConstructor,
-  ScalarTypeVal,
+  ScalarKindVal,
 }

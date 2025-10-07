@@ -13,6 +13,7 @@ declare class BaseVal implements Val {
     col: number;
     url: string;
     top: boolean;
+    type: boolean;
     peg: any;
     err: Omit<any[], "push">;
     uh: number[];

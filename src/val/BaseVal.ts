@@ -40,6 +40,8 @@ class BaseVal implements Val {
 
   top: boolean = false
 
+  type = false
+
   // Actual native value.
   peg: any = undefined
 
@@ -66,6 +68,10 @@ class BaseVal implements Val {
     this.id = ++ID
 
     this.uh = []
+
+    this.type = !!spec.type
+
+    // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
   }
 
 
@@ -93,12 +99,17 @@ class BaseVal implements Val {
       path: ctx.path.concat(this.path.slice(cut))
     })
 
+    let fullspec = { peg: this.peg, type: this.type, ...(spec ?? {}) }
+
     let out = new (this as any)
-      .constructor(spec || { peg: this.peg }, cloneCtx)
+      .constructor(fullspec, cloneCtx)
 
     out.row = spec?.row || this.row || -1
     out.col = spec?.col || this.col || -1
     out.url = spec?.url || this.url || ''
+
+    // TODO: should not be needed - update all VAL ctors to handle spec.type
+    out.type = this.type && fullspec.type
 
     return out
   }

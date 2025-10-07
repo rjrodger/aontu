@@ -5,7 +5,7 @@ exports.NumberVal = void 0;
 const ScalarVal_1 = require("./ScalarVal");
 class NumberVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
-        super({ peg: spec.peg, type: Number }, ctx);
+        super({ peg: spec.peg, kind: Number }, ctx);
         this.isNumberVal = true;
     }
     unify(peer, ctx) {

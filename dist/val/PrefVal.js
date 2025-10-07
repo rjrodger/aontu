@@ -5,12 +5,7 @@ exports.PrefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
-// import { ConjunctVal } from '../val/ConjunctVal'
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { ListVal } from '../val/ListVal'
-// import { MapVal } from '../val/MapVal'
 const Nil_1 = require("../val/Nil");
-// import { RefVal } from '../val/RefVal'
 const BaseVal_1 = require("../val/BaseVal");
 class PrefVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
@@ -22,7 +17,7 @@ class PrefVal extends BaseVal_1.BaseVal {
         if (spec.peg instanceof PrefVal) {
             this.rank = 1 + spec.peg.rank;
         }
-        // console.log('SP', this.superpeg)
+        // // // console.log('SP', this.superpeg)
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
@@ -76,7 +71,7 @@ class PrefVal extends BaseVal_1.BaseVal {
             }
             else {
                 out = (0, unify_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id);
-                // console.log('QQQ', out.canon)
+                // // // console.log('QQQ', out.canon)
                 // if (out instanceof Nil) {
                 //   out = Nil.make(ctx, '*super', this, peer)
                 // }
@@ -132,16 +127,16 @@ exports.PrefVal = PrefVal;
 function makeSuper(v) {
     // return v.superior() - apply * deeply into maps etc
     if (v instanceof val_1.NumberVal) {
-        return new val_1.ScalarTypeVal({ peg: Number });
+        return new val_1.ScalarKindVal({ peg: Number });
     }
     else if (v instanceof val_1.IntegerVal) {
-        return new val_1.ScalarTypeVal({ peg: val_1.Integer });
+        return new val_1.ScalarKindVal({ peg: val_1.Integer });
     }
     else if (v instanceof val_1.StringVal) {
-        return new val_1.ScalarTypeVal({ peg: String });
+        return new val_1.ScalarKindVal({ peg: String });
     }
     else if (v instanceof val_1.BooleanVal) {
-        return new val_1.ScalarTypeVal({ peg: Boolean });
+        return new val_1.ScalarKindVal({ peg: Boolean });
     }
     else {
         return new Nil_1.Nil();

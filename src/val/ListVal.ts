@@ -92,7 +92,7 @@ class ListVal extends BaseVal {
         null == peer.spread.cj ? out.spread.cj : (
           out.spread.cj =
           // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
-          unite(ctx, out.spread.cj, peer.spread.cj)
+          unite(ctx, out.spread.cj, peer.spread.cj, 'list-peer')
         )
       )
     }
@@ -140,7 +140,7 @@ class ListVal extends BaseVal {
           oval = out.peg[peerkey] =
             // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
             // done = false
-            unite(key_ctx, out.peg[peerkey], key_spread_cj)
+            unite(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread')
         }
 
         done = (done && DONE === oval.dc)

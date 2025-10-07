@@ -20,7 +20,7 @@ class NumberVal extends ScalarVal<number> {
     },
     ctx?: Context
   ) {
-    super({ peg: spec.peg, type: Number }, ctx)
+    super({ peg: spec.peg, kind: Number }, ctx)
   }
 
   unify(peer: any, ctx?: Context): Val {

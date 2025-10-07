@@ -18,84 +18,101 @@ const type_1 = require("./type");
 const val_1 = require("./val");
 const lang_1 = require("./lang");
 const err_1 = require("./err");
+// TODO: relation to unify loops?
+const MAXCYCLE = 9;
 let uc = 0;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
-    // const ac = a?.canon
-    // const bc = b?.canon
+    const ac = a?.canon;
+    const bc = b?.canon;
     let out = a;
     let why = 'u';
-    let unified = false;
-    if (b && (val_1.TOP === a || !a)) {
-        out = b;
-        why = 'b';
+    const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '');
+    // console.log('SAW', saw)
+    if (MAXCYCLE < ctx.seen[saw]) {
+        out = val_1.Nil.make(ctx, 'cycle', a, b);
     }
-    else if (a && (val_1.TOP === b || !b)) {
-        out = a;
-        why = 'a';
+    else {
+        ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0);
+        try {
+            let unified = false;
+            if (b && (val_1.TOP === a || !a)) {
+                out = b;
+                why = 'b';
+            }
+            else if (a && (val_1.TOP === b || !b)) {
+                out = a;
+                why = 'a';
+            }
+            else if (a && b && val_1.TOP !== b) {
+                if (a.isNil) {
+                    out = update(a, b);
+                    why = 'an';
+                }
+                else if (b.isNil) {
+                    out = update(b, a);
+                    why = 'bn';
+                }
+                else if (a.isConjunctVal) {
+                    out = a.unify(b, ctx);
+                    unified = true;
+                    why = 'acj';
+                }
+                else if (b.isConjunctVal
+                    || b.isDisjunctVal
+                    || b.isRefVal
+                    || b.isPrefVal
+                    || b.isFuncVal) {
+                    out = b.unify(a, ctx);
+                    unified = true;
+                    why = 'bv';
+                }
+                // Exactly equal scalars.
+                else if (a.constructor === b.constructor && a.peg === b.peg) {
+                    out = update(a, b);
+                    why = 'up';
+                }
+                else {
+                    out = a.unify(b, ctx);
+                    unified = true;
+                    why = 'ab';
+                }
+            }
+            if (!out || !out.unify) {
+                out = val_1.Nil.make(ctx, 'unite', a, b, whence + '/nil');
+                why += 'N';
+            }
+            if (type_1.DONE !== out.dc && !unified) {
+                let nout = out.unify(val_1.TOP, ctx);
+                // console.log('UNITE-NOTDONE', out.canon, '->', nout.canon)
+                out = nout;
+                why += 'T';
+            }
+            uc++;
+            // TODO: KEEP THIS! print in debug mode! push to ctx.log?
+            /*
+            // console.log(
+              'U',
+              ('' + ctx.cc).padStart(2),
+              ('' + uc).padStart(4),
+              (whence || '').substring(0, 16).padEnd(16),
+              why.padEnd(6),
+              ctx.path.join('.').padEnd(16),
+              (a || '').constructor.name.substring(0, 3),
+              '&',
+              (b || '').constructor.name.substring(0, 3),
+              '|',
+              '  '.repeat(ctx.path.length),
+              a?.canon, '&', b?.canon, '->', out.canon)
+            */
+        }
+        catch (err) {
+            // console.log(err)
+            out = val_1.Nil.make(ctx, 'internal', a, b);
+        }
     }
-    else if (a && b && val_1.TOP !== b) {
-        if (a.isNil) {
-            out = update(a, b);
-            why = 'an';
-        }
-        else if (b.isNil) {
-            out = update(b, a);
-            why = 'bn';
-        }
-        else if (a.isConjunctVal) {
-            out = a.unify(b, ctx);
-            unified = true;
-            why = 'acj';
-        }
-        else if (b.isConjunctVal
-            || b.isDisjunctVal
-            || b.isRefVal
-            || b.isPrefVal
-            || b.isFuncVal) {
-            out = b.unify(a, ctx);
-            unified = true;
-            why = 'bv';
-        }
-        // Exactly equal scalars.
-        else if (a.constructor === b.constructor && a.peg === b.peg) {
-            out = update(a, b);
-            why = 'up';
-        }
-        else {
-            out = a.unify(b, ctx);
-            unified = true;
-            why = 'ab';
-        }
-    }
-    if (!out || !out.unify) {
-        out = val_1.Nil.make(ctx, 'unite', a, b);
-        why += 'N';
-    }
-    if (type_1.DONE !== out.dc && !unified) {
-        out = out.unify(val_1.TOP, ctx);
-        why += 'T';
-    }
-    uc++;
-    // TODO: KEEP THIS! print in debug mode! push to ctx.log?
-    /*
-    console.log(
-      'U',
-      ('' + ctx.cc).padStart(2),
-      ('' + uc).padStart(4),
-      (whence || '').substring(0, 16).padEnd(16),
-      why.padEnd(6),
-      ctx.path.join('.').padEnd(16),
-      (a || '').constructor.name.substring(0, 3),
-      '&',
-      (b || '').constructor.name.substring(0, 3),
-      '|',
-      '  '.repeat(ctx.path.length),
-      a?.canon, '&', b?.canon, '->', out.canon)
-    */
-    // console.log('UNITE', whence, a?.id + '=' + ac, b?.id + '=' + bc, '->',
-    //   out?.canon, 'W=' + why, 'E=', out?.err)
+    // console.log('UNITE', ctx.cc, whence, a?.id + '=' + ac, b?.id + '=' + bc, '->', out?.canon, 'W=' + why, 'E=', out?.err)
     return out;
 };
 exports.unite = unite;
@@ -117,6 +134,8 @@ class Context {
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
         this.var = cfg.var || this.var;
+        this.seenI = cfg.seenI ?? 0;
+        this.seen = cfg.seen ?? {};
     }
     clone(cfg) {
         return new Context({
@@ -127,6 +146,8 @@ class Context {
             cc: this.cc,
             var: { ...this.var },
             src: this.src,
+            seenI: this.seenI,
+            seen: this.seen,
         });
     }
     descend(key) {
@@ -149,6 +170,26 @@ class Context {
         if (null == err.msg || '' == err.msg) {
             (0, err_1.descErr)(err, this);
         }
+    }
+    find(path) {
+        let node = this.root;
+        let pI = 0;
+        for (; pI < path.length; pI++) {
+            let part = path[pI];
+            if (node instanceof val_1.MapVal) {
+                node = node.peg[part];
+            }
+            else if (node instanceof val_1.ListVal) {
+                node = node.peg[part];
+            }
+            else {
+                break;
+            }
+        }
+        if (pI < path.length) {
+            node = undefined;
+        }
+        return node;
     }
 }
 exports.Context = Context;
@@ -174,12 +215,13 @@ class Unify {
             });
             let maxcc = 9; // 99
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
-                // console.log('CC', this.cc, res.canon)
+                console.log('CC', this.cc, res.canon);
                 uctx.cc = this.cc;
-                res = unite(uctx, res, val_1.TOP);
+                res = unite(uctx, res, val_1.TOP, 'unify');
                 uctx = uctx.clone({ root: res });
             }
         }
+        // console.log('CC-END', uctx?.cc)
         this.res = res;
     }
 }

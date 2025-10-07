@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ScalarTypeVal = exports.Integer = void 0;
+exports.ScalarKindVal = exports.Integer = void 0;
 const type_1 = require("../type");
 const Nil_1 = require("./Nil");
 const BaseVal_1 = require("./BaseVal");
@@ -9,10 +9,13 @@ const BaseVal_1 = require("./BaseVal");
 class Integer {
 }
 exports.Integer = Integer;
-class ScalarTypeVal extends BaseVal_1.BaseVal {
+class ScalarKindVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isScalarTypeVal = true;
+        this.isScalarKindVal = true;
+        if (null == this.peg) {
+            throw new Error('ScalarKindVal spec.peg undefined');
+        }
         this.dc = type_1.DONE;
     }
     unify(peer, ctx) {
@@ -46,5 +49,5 @@ class ScalarTypeVal extends BaseVal_1.BaseVal {
         return out;
     }
 }
-exports.ScalarTypeVal = ScalarTypeVal;
-//# sourceMappingURL=ScalarTypeVal.js.map
+exports.ScalarKindVal = ScalarKindVal;
+//# sourceMappingURL=ScalarKindVal.js.map

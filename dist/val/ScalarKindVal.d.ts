@@ -1,16 +1,14 @@
-import type { Val } from '../type';
+import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { BaseVal } from './BaseVal';
 declare class Integer {
 }
 type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
-declare class ScalarTypeVal extends BaseVal {
-    isScalarTypeVal: boolean;
-    constructor(spec: {
-        peg: ScalarConstructor;
-    }, ctx?: Context);
+declare class ScalarKindVal extends BaseVal {
+    isScalarKindVal: boolean;
+    constructor(spec: ValSpec, ctx?: Context);
     unify(peer: any, ctx?: Context): Val;
     get canon(): any;
     same(peer: any): boolean;
 }
-export { Integer, ScalarConstructor, ScalarTypeVal, };
+export { Integer, ScalarConstructor, ScalarKindVal, };

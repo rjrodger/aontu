@@ -28,6 +28,7 @@ class FloorFuncVal extends FuncBaseVal {
     ctx?: Context
   ) {
     super(spec, ctx)
+    // // console.log('FFV', spec)
   }
 
 

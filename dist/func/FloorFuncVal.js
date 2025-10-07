@@ -8,6 +8,7 @@ class FloorFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFloorFuncVal = true;
+        // // console.log('FFV', spec)
     }
     make(_ctx, spec) {
         return new FloorFuncVal(spec);

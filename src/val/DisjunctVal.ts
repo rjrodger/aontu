@@ -70,7 +70,7 @@ class DisjunctVal extends BaseVal {
       this.rankPrefs(ctx)
     }
 
-    // console.log('DISJUNCT-unify-A', this.id, this.canon)
+    // // // console.log('DISJUNCT-unify-A', this.id, this.canon)
 
     let done = true
 
@@ -81,9 +81,9 @@ class DisjunctVal extends BaseVal {
       const v = this.peg[vI]
       const cloneCtx = ctx?.clone({ err: [] })
 
-      // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
-      oval[vI] = unite(cloneCtx, v, peer)
-      // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
+      // // // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
+      oval[vI] = unite(cloneCtx, v, peer, 'dj-peer')
+      // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
 
       if (0 < cloneCtx?.err.length) {
         oval[vI] = Nil.make(cloneCtx, '|:empty-dist', this)
@@ -92,7 +92,7 @@ class DisjunctVal extends BaseVal {
       done = done && DONE === oval[vI].dc
     }
 
-    // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))
+    // // // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))
 
     // Remove duplicates, and normalize
     if (1 < oval.length) {
@@ -102,7 +102,7 @@ class DisjunctVal extends BaseVal {
         }
       }
 
-      // console.log('DISJUNCT-unify-C', this.id, oval.map(v => v.id + '=' + v.canon))
+      // // // console.log('DISJUNCT-unify-C', this.id, oval.map(v => v.id + '=' + v.canon))
 
       // TODO: not an error Nil!
       let remove = new Nil()
@@ -114,7 +114,7 @@ class DisjunctVal extends BaseVal {
         }
       }
 
-      // console.log('DISJUNCT-unify-D', this.id, oval.map(v => v.canon))
+      // // // console.log('DISJUNCT-unify-D', this.id, oval.map(v => v.canon))
 
       oval = oval.filter(v => !(v instanceof Nil))
     }
@@ -133,7 +133,7 @@ class DisjunctVal extends BaseVal {
 
     out.dc = done ? DONE : this.dc + 1
 
-    // console.log('DISJUNCT-unify',
+    // // // console.log('DISJUNCT-unify',
     //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
 
     return out
@@ -144,7 +144,7 @@ class DisjunctVal extends BaseVal {
     let lastpref: PrefVal | undefined = undefined
     let lastprefI = -1
 
-    // console.log('RP-A', this.peg.map((p: Val) => p.canon))
+    // // // console.log('RP-A', this.peg.map((p: Val) => p.canon))
 
     for (let vI = 0; vI < this.peg.length; vI++) {
       const v = this.peg[vI]
@@ -189,7 +189,7 @@ class DisjunctVal extends BaseVal {
     this.peg = this.peg.filter((p: any) => null != p)
     this.prefsRanked = true
 
-    // console.log('RP-Z', this.peg.map((p: Val) => p.canon))
+    // // // console.log('RP-Z', this.peg.map((p: Val) => p.canon))
 
     if (1 === this.peg.length && this.peg[0] instanceof PrefVal) {
       return this.peg[0]
@@ -214,12 +214,12 @@ class DisjunctVal extends BaseVal {
 
 
   gen(ctx?: Context) {
-    // console.log('DJ-GEN', this.peg.map((p: any) => p.canon))
+    // // // console.log('DJ-GEN', this.peg.map((p: any) => p.canon))
 
     if (0 < this.peg.length) {
 
       let vals = this.peg.filter((v: Val) => v instanceof PrefVal)
-      // console.log('DJ-GEN-VALS-A', vals.map((p: any) => p.canon))
+      // // // console.log('DJ-GEN-VALS-A', vals.map((p: any) => p.canon))
 
       vals = 0 === vals.length ? this.peg : vals
 
@@ -229,19 +229,19 @@ class DisjunctVal extends BaseVal {
       // ({x:1}|{y:2})&{z:3} should be {"x":1,"z":3}|{"y":2,"z":3} not { x:1, z:3, y:2 }
       for (let vI = 1; vI < vals.length; vI++) {
         let valnext = val.unify(this.peg[vI], ctx)
-        // console.log('DJ-GEN-VALS-NEXT', valnext.canon)
+        // // // console.log('DJ-GEN-VALS-NEXT', valnext.canon)
         val = valnext
       }
 
-      // console.log('DJ-GEN-VALS-B', val.canon)
+      // // // console.log('DJ-GEN-VALS-B', val.canon)
       const out = val.gen(ctx)
-      // console.log('DJ-GEN-VALS-C', out)
+      // // // console.log('DJ-GEN-VALS-C', out)
       return out
     }
 
     return super.gen(ctx)
 
-    // console.log('DJ-GEN', this.peg)
+    // // // console.log('DJ-GEN', this.peg)
 
     // if (1 === this.peg.length) {
     //   return this.peg[0].gen(ctx)

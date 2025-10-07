@@ -26,6 +26,7 @@ interface Val {
     col: number;
     url: string;
     top: boolean;
+    type: boolean;
     peg: any;
     err: Omit<any[], "push">;
     deps?: any;
@@ -39,6 +40,8 @@ interface Val {
 type ValSpec = {
     peg?: any;
     [name: string]: any;
+    type?: boolean;
+    kind?: any;
 };
 type ValMap = {
     [key: string]: Val;

@@ -23,10 +23,6 @@ import { TOP } from '../val'
 import { ConjunctVal } from './ConjunctVal'
 import { Nil } from './Nil'
 import { BaseVal } from './BaseVal'
-// import { DisjunctVal } from './DisjunctVal'
-// import { ListVal } from './ListVal'
-// import { PrefVal } from './PrefVal'
-// import { RefVal } from './RefVal'
 
 
 class MapVal extends BaseVal {
@@ -39,9 +35,7 @@ class MapVal extends BaseVal {
   }
 
   constructor(
-    spec: {
-      peg: ValMap
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super(spec, ctx)
@@ -49,6 +43,8 @@ class MapVal extends BaseVal {
     if (null == this.peg) {
       throw new Error('MapVal spec.peg undefined')
     }
+
+    this.type = !!spec.type
 
     let spread = (this.peg as any)[MapVal.SPREAD]
     delete (this.peg as any)[MapVal.SPREAD]
@@ -64,6 +60,8 @@ class MapVal extends BaseVal {
             spread.v
       }
     }
+
+    // console.log('MAPVAL-ctor', this.type, spec)
   }
 
 
@@ -74,6 +72,7 @@ class MapVal extends BaseVal {
 
     let done: boolean = true
     let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
+    console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon)
 
     out.spread.cj = this.spread.cj
 
@@ -81,24 +80,32 @@ class MapVal extends BaseVal {
       out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
         null == peer.spread.cj ? out.spread.cj : (
           out.spread.cj =
-          // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
-          unite(ctx, out.spread.cj, peer.spread.cj)
+          unite(ctx, out.spread.cj, peer.spread.cj, 'map-self')
         )
       )
     }
 
-
     out.dc = this.dc + 1
 
-    let spread_cj = out.spread.cj || TOP
+    // let newtype = this.type || peer.type
+
+    let spread_cj = out.spread.cj ?? TOP
 
     // Always unify own children first
     for (let key in this.peg) {
       let keyctx = ctx.descend(key)
       let key_spread_cj = spread_cj.clone(keyctx)
 
+      // this.peg[key].type = newtype = this.peg[key].type || newtype
+
+      this.peg[key].type = this.peg[key].type || this.type
+
       out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'map-own')
+
+      // out.peg[key].type = newtype = out.peg[key].type || newtype
+
       done = (done && DONE === out.peg[key].dc)
+      console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
     }
 
 
@@ -119,9 +126,13 @@ class MapVal extends BaseVal {
           let key_ctx = ctx.descend(peerkey)
           let key_spread_cj = spread_cj.clone(key_ctx)
           oval = out.peg[peerkey] =
-            unite(key_ctx, out.peg[peerkey], key_spread_cj)
+            // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
+            unite(key_ctx, oval, key_spread_cj, 'map-peer-spread')
         }
 
+        oval.type = this.type || oval.type
+
+        // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
         done = (done && DONE === oval.dc)
       }
     }
@@ -132,6 +143,10 @@ class MapVal extends BaseVal {
     out.uh.push(peer.id)
 
     out.dc = done ? DONE : out.dc
+    out.type = this.type || peer.type
+
+    console.log('MAPVAL-OUT', this.id, this.canon, peer.canon, '->', out.canon)
+
     return out
   }
 
@@ -141,18 +156,23 @@ class MapVal extends BaseVal {
     out.peg = {}
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        entry[1] instanceof BaseVal ? entry[1].clone(ctx) : entry[1]
+        entry[1] instanceof BaseVal ? entry[1].clone(ctx, { type: spec?.type }) : entry[1]
     }
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx)
+      out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type })
     }
+
+    // console.log('MAPVAL-CLONE', this.canon, '->', out.canon)
     return out
   }
 
 
   get canon() {
     let keys = Object.keys(this.peg)
-    return this.errcanon() + '{' +
+    return this.errcanon() +
+      (this.type ? '<type>' : '') +
+      (this.id + '=') +
+      '{' +
       (this.spread.cj ? '&:' + this.spread.cj.canon +
         (0 < keys.length ? ',' : '') : '') +
       keys
@@ -163,9 +183,15 @@ class MapVal extends BaseVal {
 
   gen(ctx?: Context) {
     let out: any = {}
+    if (this.type) {
+      // out.$TYPE = true
+      return undefined
+    }
+
     for (let p in this.peg) {
       out[p] = this.peg[p].gen(ctx)
     }
+
     return out
   }
 }

@@ -5,7 +5,7 @@ exports.BooleanVal = void 0;
 const ScalarVal_1 = require("./ScalarVal");
 class BooleanVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
-        super({ peg: spec.peg, type: Boolean }, ctx);
+        super({ peg: spec.peg, kind: Boolean }, ctx);
         this.isBooleanVal = true;
     }
     unify(peer, ctx) {

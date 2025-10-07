@@ -20,7 +20,7 @@ class StringVal extends ScalarVal<string> {
     },
     ctx?: Context
   ) {
-    super({ peg: spec.peg, type: String }, ctx)
+    super({ peg: spec.peg, kind: String }, ctx)
   }
   unify(peer: Val, ctx?: Context): Val {
     return super.unify(peer, ctx)

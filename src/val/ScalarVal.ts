@@ -16,29 +16,26 @@ import {
 import { Nil } from './Nil'
 import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
-import { ScalarConstructor } from './ScalarTypeVal'
+// import { ScalarConstructor } from './ScalarTypeVal'
 
 
 class ScalarVal<T> extends BaseVal {
-  type: any
+  kind: any
   isScalarVal = true
 
   constructor(
-    spec: {
-      peg: T,
-      type: ScalarConstructor
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super(spec, ctx)
-    this.type = spec.type
+    this.kind = spec.kind
     this.dc = DONE
   }
 
   clone(ctx: Context, spec?: ValSpec): Val {
     let out = (super.clone(ctx, {
       peg: this.peg,
-      type: this.type,
+      kind: this.kind,
       ...(spec || {})
     }) as RefVal)
     return out
@@ -46,7 +43,7 @@ class ScalarVal<T> extends BaseVal {
 
   unify(peer: any, ctx?: Context): Val {
     // Exactly equal scalars are handled in op/unite
-    if (peer?.isScalarTypeVal) {
+    if (peer?.isScalarKindVal) {
       return peer.unify(this, ctx)
     }
     else if (peer.top) {

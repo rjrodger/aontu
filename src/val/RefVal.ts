@@ -34,6 +34,7 @@ import {
 import { TOP, StringVal } from '../val'
 import { ConjunctVal } from './ConjunctVal'
 import { MapVal } from './MapVal'
+import { ListVal } from './ListVal'
 import { Nil } from './Nil'
 import { VarVal } from './VarVal'
 import { BaseVal } from './BaseVal'
@@ -67,6 +68,8 @@ class RefVal extends BaseVal {
     for (let pI = 0; pI < spec.peg.length; pI++) {
       this.append(spec.peg[pI])
     }
+
+    // // // console.log('RefVal', this.id, this.peg)
   }
 
 
@@ -112,6 +115,8 @@ class RefVal extends BaseVal {
 
       this.peg.push(...part.peg)
     }
+
+    // // // console.log('RefVal-append', this.id, this.peg)
   }
 
 
@@ -129,7 +134,7 @@ class RefVal extends BaseVal {
       const resolved = found ?? this
 
       // const resolved = found ? found.clone(null, ctx) : this
-      // console.log('REF', this.id, this.peg, '->',
+      // // // console.log('REF', this.id, this.peg, '->',
       //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
 
       if (null == resolved && this.canon === peer.canon) {
@@ -167,7 +172,7 @@ class RefVal extends BaseVal {
       out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
 
-    // console.log('REF:', this.peg, '->', out.canon)
+    // // // console.log('REF:', this.peg, '->', out.canon)
     return out
   }
 
@@ -269,6 +274,9 @@ class RefVal extends BaseVal {
       let part = fullpath[pI]
 
       if (node instanceof MapVal) {
+        node = node.peg[part]
+      }
+      else if (node instanceof ListVal) {
         node = node.peg[part]
       }
       else {

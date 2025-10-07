@@ -1,4 +1,4 @@
-import type { Val, ValMap, ValSpec } from '../type';
+import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { BaseVal } from './BaseVal';
 declare class MapVal extends BaseVal {
@@ -7,9 +7,7 @@ declare class MapVal extends BaseVal {
     spread: {
         cj: Val | undefined;
     };
-    constructor(spec: {
-        peg: ValMap;
-    }, ctx?: Context);
+    constructor(spec: ValSpec, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;

@@ -8,6 +8,7 @@ const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("./ConjunctVal");
 const MapVal_1 = require("./MapVal");
+const ListVal_1 = require("./ListVal");
 const Nil_1 = require("./Nil");
 const VarVal_1 = require("./VarVal");
 const BaseVal_1 = require("./BaseVal");
@@ -24,6 +25,7 @@ class RefVal extends BaseVal_1.BaseVal {
         for (let pI = 0; pI < spec.peg.length; pI++) {
             this.append(spec.peg[pI]);
         }
+        // // // console.log('RefVal', this.id, this.peg)
     }
     append(part) {
         let partval;
@@ -60,6 +62,7 @@ class RefVal extends BaseVal_1.BaseVal {
             }
             this.peg.push(...part.peg);
         }
+        // // // console.log('RefVal-append', this.id, this.peg)
     }
     unify(peer, ctx) {
         let out = this;
@@ -71,7 +74,7 @@ class RefVal extends BaseVal_1.BaseVal {
             let found = null == ctx ? this : this.find(ctx);
             const resolved = found ?? this;
             // const resolved = found ? found.clone(null, ctx) : this
-            // console.log('REF', this.id, this.peg, '->',
+            // // // console.log('REF', this.id, this.peg, '->',
             //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
             if (null == resolved && this.canon === peer.canon) {
                 out = this;
@@ -104,7 +107,7 @@ class RefVal extends BaseVal_1.BaseVal {
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
-        // console.log('REF:', this.peg, '->', out.canon)
+        // // // console.log('REF:', this.peg, '->', out.canon)
         return out;
     }
     find(ctx) {
@@ -186,6 +189,9 @@ class RefVal extends BaseVal_1.BaseVal {
         for (; pI < fullpath.length; pI++) {
             let part = fullpath[pI];
             if (node instanceof MapVal_1.MapVal) {
+                node = node.peg[part];
+            }
+            else if (node instanceof ListVal_1.ListVal) {
                 node = node.peg[part];
             }
             else {

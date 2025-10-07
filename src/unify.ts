@@ -8,14 +8,9 @@ import { DONE, FST } from './type'
 
 import {
   TOP,
-  ConjunctVal,
-  DisjunctVal,
-  ListVal,
   MapVal,
+  ListVal,
   Nil,
-  PrefVal,
-  RefVal,
-  BaseVal,
 } from './val'
 
 import {
@@ -29,101 +24,122 @@ import {
 
 type Path = string[]
 
+// TODO: relation to unify loops?
+const MAXCYCLE = 9
 
 let uc = 0
 
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
-const unite = (ctx: Context, a?: any, b?: any, whence?: string) => {
-  // const ac = a?.canon
-  // const bc = b?.canon
+const unite = (ctx: Context, a: any, b: any, whence: string) => {
+  const ac = a?.canon
+  const bc = b?.canon
 
   let out = a
   let why = 'u'
 
-  let unified = false
+  const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '')
+  // console.log('SAW', saw)
 
-  if (b && (TOP === a || !a)) {
-    out = b
-    why = 'b'
+  if (MAXCYCLE < ctx.seen[saw]) {
+    out = Nil.make(ctx, 'cycle', a, b)
+  }
+  else {
+    ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0)
+
+    try {
+
+      let unified = false
+
+      if (b && (TOP === a || !a)) {
+        out = b
+        why = 'b'
+      }
+
+      else if (a && (TOP === b || !b)) {
+        out = a
+        why = 'a'
+      }
+
+      else if (a && b && TOP !== b) {
+        if (a.isNil) {
+          out = update(a, b)
+          why = 'an'
+        }
+        else if (b.isNil) {
+          out = update(b, a)
+          why = 'bn'
+        }
+        else if (a.isConjunctVal) {
+          out = a.unify(b, ctx)
+          unified = true
+          why = 'acj'
+        }
+        else if (
+          b.isConjunctVal
+          || b.isDisjunctVal
+          || b.isRefVal
+          || b.isPrefVal
+          || b.isFuncVal
+        ) {
+
+          out = b.unify(a, ctx)
+          unified = true
+          why = 'bv'
+        }
+
+        // Exactly equal scalars.
+        else if (a.constructor === b.constructor && a.peg === b.peg) {
+          out = update(a, b)
+          why = 'up'
+        }
+
+        else {
+          out = a.unify(b, ctx)
+          unified = true
+          why = 'ab'
+        }
+      }
+
+      if (!out || !out.unify) {
+        out = Nil.make(ctx, 'unite', a, b, whence + '/nil')
+        why += 'N'
+      }
+
+      if (DONE !== out.dc && !unified) {
+        let nout = out.unify(TOP, ctx)
+        // console.log('UNITE-NOTDONE', out.canon, '->', nout.canon)
+        out = nout
+        why += 'T'
+      }
+
+      uc++
+
+      // TODO: KEEP THIS! print in debug mode! push to ctx.log?
+      /*
+      // console.log(
+        'U',
+        ('' + ctx.cc).padStart(2),
+        ('' + uc).padStart(4),
+        (whence || '').substring(0, 16).padEnd(16),
+        why.padEnd(6),
+        ctx.path.join('.').padEnd(16),
+        (a || '').constructor.name.substring(0, 3),
+        '&',
+        (b || '').constructor.name.substring(0, 3),
+        '|',
+        '  '.repeat(ctx.path.length),
+        a?.canon, '&', b?.canon, '->', out.canon)
+      */
+
+    }
+    catch (err: any) {
+      // console.log(err)
+      out = Nil.make(ctx, 'internal', a, b)
+    }
   }
 
-  else if (a && (TOP === b || !b)) {
-    out = a
-    why = 'a'
-  }
-
-  else if (a && b && TOP !== b) {
-    if (a.isNil) {
-      out = update(a, b)
-      why = 'an'
-    }
-    else if (b.isNil) {
-      out = update(b, a)
-      why = 'bn'
-    }
-    else if (a.isConjunctVal) {
-      out = a.unify(b, ctx)
-      unified = true
-      why = 'acj'
-    }
-    else if (
-      b.isConjunctVal
-      || b.isDisjunctVal
-      || b.isRefVal
-      || b.isPrefVal
-      || b.isFuncVal
-    ) {
-
-      out = b.unify(a, ctx)
-      unified = true
-      why = 'bv'
-    }
-
-    // Exactly equal scalars.
-    else if (a.constructor === b.constructor && a.peg === b.peg) {
-      out = update(a, b)
-      why = 'up'
-    }
-
-    else {
-      out = a.unify(b, ctx)
-      unified = true
-      why = 'ab'
-    }
-  }
-
-  if (!out || !out.unify) {
-    out = Nil.make(ctx, 'unite', a, b)
-    why += 'N'
-  }
-
-  if (DONE !== out.dc && !unified) {
-    out = out.unify(TOP, ctx)
-    why += 'T'
-  }
-
-  uc++
-
-  // TODO: KEEP THIS! print in debug mode! push to ctx.log?
-  /*
-  console.log(
-    'U',
-    ('' + ctx.cc).padStart(2),
-    ('' + uc).padStart(4),
-    (whence || '').substring(0, 16).padEnd(16),
-    why.padEnd(6),
-    ctx.path.join('.').padEnd(16),
-    (a || '').constructor.name.substring(0, 3),
-    '&',
-    (b || '').constructor.name.substring(0, 3),
-    '|',
-    '  '.repeat(ctx.path.length),
-    a?.canon, '&', b?.canon, '->', out.canon)
-  */
-
-  // console.log('UNITE', whence, a?.id + '=' + ac, b?.id + '=' + bc, '->',
-  //   out?.canon, 'W=' + why, 'E=', out?.err)
+  // console.log('UNITE', ctx.cc, whence, a?.id + '=' + ac, b?.id + '=' + bc, '->', out?.canon, 'W=' + why, 'E=', out?.err)
 
   return out
 }
@@ -145,16 +161,21 @@ class Context {
   src?: string
   fs?: FST
 
+  seenI: number
+  seen: Record<string, number>
+
   #errlist: Omit<Nil[], "push">  // Nil error log of current unify.
 
   constructor(cfg: {
-    root: Val,
-    path?: Path,
-    err?: Omit<Nil[], "push">,
-    vc?: number,
-    cc?: number,
+    root: Val
+    path?: Path
+    err?: Omit<Nil[], "push">
+    vc?: number
+    cc?: number
     var?: Record<string, Val>
     src?: string
+    seenI?: number
+    seen?: Record<string, number>
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
@@ -169,6 +190,9 @@ class Context {
     this.cc = null == cfg.cc ? this.cc : cfg.cc
 
     this.var = cfg.var || this.var
+
+    this.seenI = cfg.seenI ?? 0
+    this.seen = cfg.seen ?? {}
   }
 
 
@@ -185,6 +209,8 @@ class Context {
       cc: this.cc,
       var: { ...this.var },
       src: this.src,
+      seenI: this.seenI,
+      seen: this.seen,
     })
   }
 
@@ -212,6 +238,31 @@ class Context {
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
     }
+  }
+
+
+  find(path: string[]): Val | undefined {
+    let node: Val | undefined = this.root
+    let pI = 0
+    for (; pI < path.length; pI++) {
+      let part = path[pI]
+
+      if (node instanceof MapVal) {
+        node = node.peg[part]
+      }
+      else if (node instanceof ListVal) {
+        node = node.peg[part]
+      }
+      else {
+        break;
+      }
+    }
+
+    if (pI < path.length) {
+      node = undefined
+    }
+
+    return node
   }
 }
 
@@ -247,12 +298,14 @@ class Unify {
 
       let maxcc = 9 // 99
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
-        // console.log('CC', this.cc, res.canon)
+        console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
-        res = unite(uctx, res, TOP)
+        res = unite(uctx, res, TOP, 'unify')
         uctx = uctx.clone({ root: res })
       }
     }
+
+    // console.log('CC-END', uctx?.cc)
 
     this.res = res
   }

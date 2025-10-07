@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DisjunctVal = exports.ConjunctVal = exports.PrefVal = exports.MapVal = exports.ListVal = exports.VarVal = exports.NullVal = exports.Nil = exports.RefVal = exports.BaseVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.ScalarTypeVal = exports.Integer = exports.PlusOpVal = exports.OpBaseVal = exports.TopVal = exports.TOP = void 0;
+exports.DisjunctVal = exports.ConjunctVal = exports.PrefVal = exports.MapVal = exports.ListVal = exports.VarVal = exports.NullVal = exports.Nil = exports.RefVal = exports.BaseVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.ScalarKindVal = exports.Integer = exports.PlusOpVal = exports.OpBaseVal = exports.TopVal = exports.TOP = void 0;
 // NOTES
 // - Vals are immutable
 // - each Val must handle all parent and child unifications explicitly
@@ -22,9 +22,9 @@ var op_1 = require("./op");
 Object.defineProperty(exports, "OpBaseVal", { enumerable: true, get: function () { return op_1.OpBaseVal; } });
 var op_2 = require("./op");
 Object.defineProperty(exports, "PlusOpVal", { enumerable: true, get: function () { return op_2.PlusOpVal; } });
-var ScalarTypeVal_1 = require("./val/ScalarTypeVal");
-Object.defineProperty(exports, "Integer", { enumerable: true, get: function () { return ScalarTypeVal_1.Integer; } });
-Object.defineProperty(exports, "ScalarTypeVal", { enumerable: true, get: function () { return ScalarTypeVal_1.ScalarTypeVal; } });
+var ScalarKindVal_1 = require("./val/ScalarKindVal");
+Object.defineProperty(exports, "Integer", { enumerable: true, get: function () { return ScalarKindVal_1.Integer; } });
+Object.defineProperty(exports, "ScalarKindVal", { enumerable: true, get: function () { return ScalarKindVal_1.ScalarKindVal; } });
 var ScalarVal_1 = require("./val/ScalarVal");
 Object.defineProperty(exports, "ScalarVal", { enumerable: true, get: function () { return ScalarVal_1.ScalarVal; } });
 var NumberVal_1 = require("./val/NumberVal");

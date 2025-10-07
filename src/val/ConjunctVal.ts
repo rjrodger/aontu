@@ -26,8 +26,7 @@ import { MapVal } from './MapVal'
 import { Nil } from './Nil'
 import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
-// import { DisjunctVal } from './DisjunctVal'
-// import { PrefVal } from './PrefVal'
+
 
 
 // TODO: move main logic to op/conjunct
@@ -36,17 +35,19 @@ class ConjunctVal extends BaseVal {
   isConjunctVal = true
 
   constructor(
-    spec: {
-      peg: Val[]
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super(spec, ctx)
+    this.type = !!spec.type
+    this.peg?.map((v: Val) => v.type = this.type || v.type)
+    // console.log('CONJUNCT-ctor', this.peg.map((v: Val) => v.canon))
   }
 
   // NOTE: mutation!
   append(peer: Val): ConjunctVal {
     this.peg.push(peer)
+    peer.type = this.type || peer.type
     return this
   }
 
@@ -60,8 +61,18 @@ class ConjunctVal extends BaseVal {
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
+    let newtype = this.type || peer.type
+
     for (let vI = 0; vI < this.peg.length; vI++) {
+      newtype = this.peg[vI].type || newtype
+    }
+
+    for (let vI = 0; vI < this.peg.length; vI++) {
+      this.peg[vI].type = newtype
+      console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
+
       upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own' + mark)
+      upeer[vI].type = newtype = newtype || upeer[vI].type
 
       // let prevdone = done
       done = done && (DONE === upeer[vI].dc)
@@ -108,6 +119,7 @@ class ConjunctVal extends BaseVal {
 
       if (DONE !== t0.dc) {
         let u0 = unite(ctx, t0, TOP, 'cj-peer-t0')
+        newtype = this.type || u0.type
 
         if (
           DONE !== u0.dc
@@ -133,6 +145,7 @@ class ConjunctVal extends BaseVal {
 
       if (null == t1) {
         outvals.push(t0)
+        newtype = this.type || t0.type
       }
 
       // Can't unite with a RefVal, unless also a RefVal with same path.
@@ -150,6 +163,7 @@ class ConjunctVal extends BaseVal {
       else {
         val = unite(ctx, t0, t1, 'cj-peer-t0t1')
         done = done && DONE === val.dc
+        newtype = this.type || val.type
 
         // Unite was just a conjunt anyway, so discard.
         if (val instanceof ConjunctVal) {
@@ -171,6 +185,8 @@ class ConjunctVal extends BaseVal {
 
     let out: Val
 
+    // console.log('CONJUCT-prepout', this.type, newtype, outvals.map((v: Val) => v.canon))
+
     if (0 === outvals.length) {
 
       // Empty conjuncts evaporate.
@@ -180,15 +196,15 @@ class ConjunctVal extends BaseVal {
     // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
     else if (1 === outvals.length) {
       out = outvals[0]
+      out.type = newtype
     }
     else {
-      out = new ConjunctVal({ peg: outvals }, ctx)
+      out = new ConjunctVal({ peg: outvals, type: newtype }, ctx)
     }
 
     out.dc = done ? DONE : this.dc + 1
 
-    // console.log('CONJUNCT-unify',
-    //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
+    // console.log('CONJUNCT-unify', this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
 
     return out
   }
@@ -196,7 +212,7 @@ class ConjunctVal extends BaseVal {
 
   clone(ctx: Context, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as ConjunctVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
+    out.peg = this.peg.map((entry: Val) => entry.clone(ctx, { type: spec?.type }))
     return out
   }
 

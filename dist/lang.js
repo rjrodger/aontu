@@ -48,16 +48,16 @@ let AontuJsonic = function aontu(jsonic) {
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
                 'string': {
-                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: String }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: String }), r, ctx)
                 },
                 'number': {
-                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: Number }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: Number }), r, ctx)
                 },
                 'integer': {
-                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: val_2.Integer }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: val_2.Integer }), r, ctx)
                 },
                 'boolean': {
-                    val: (r, ctx) => addsite(new val_2.ScalarTypeVal({ peg: Boolean }), r, ctx)
+                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: Boolean }), r, ctx)
                 },
                 'nil': {
                     val: (r, ctx) => addsite(new val_1.Nil('literal'), r, ctx)
@@ -118,6 +118,9 @@ let AontuJsonic = function aontu(jsonic) {
         ceil: func_1.CeilFuncVal,
         upper: func_1.UpperFuncVal,
         lower: func_1.LowerFuncVal,
+        copy: func_1.CopyFuncVal,
+        key: func_1.KeyFuncVal,
+        type: func_1.TypeFuncVal,
     };
     let opmap = {
         'conjunct-infix': (r, ctx, _op, terms) => addsite(new val_1.ConjunctVal({ peg: terms }), r, ctx),
@@ -126,6 +129,7 @@ let AontuJsonic = function aontu(jsonic) {
             return addsite(new val_1.RefVal({ peg: terms, prefix: true }), r, ctx);
         },
         'dot-infix': (r, ctx, _op, terms) => {
+            // // console.log('DOT-INFIX-OP', terms)
             return addsite(new val_1.RefVal({ peg: terms }), r, ctx);
         },
         'star-prefix': (r, ctx, _op, terms) => addsite(new val_1.PrefVal({ peg: terms[0] }), r, ctx),
@@ -133,6 +137,7 @@ let AontuJsonic = function aontu(jsonic) {
             // $.a.b absolute path
             if (terms[0] instanceof val_1.RefVal) {
                 terms[0].absolute = true;
+                // // console.log('DOLLAR-PREFIX-PATH', terms)
                 return terms[0];
             }
             return addsite(new val_1.VarVal({ peg: terms[0] }), r, ctx);
@@ -155,9 +160,10 @@ let AontuJsonic = function aontu(jsonic) {
           return addsite(val, r, ctx)
         },
         */
-        'func-paren': (r, ctx, _op, terms) => {
+        'func-paren': (r, ctx, op, terms) => {
             let val = terms[1];
-            const fname = terms[0].peg;
+            // const fname = terms[0].peg
+            const fname = terms[0];
             if ('' !== fname) {
                 const funcval = funcMap[fname];
                 const args = terms.slice(1);
@@ -166,7 +172,7 @@ let AontuJsonic = function aontu(jsonic) {
                 });
             }
             const out = addsite(val, r, ctx);
-            // console.log('FUNC-PAREN', fname, terms, '->', out)
+            // // console.log('FUNC-PAREN', fname, terms, '->', out)
             return out;
         },
     };
@@ -224,11 +230,15 @@ let AontuJsonic = function aontu(jsonic) {
             remainder: null,
         },
         evaluate: (r, ctx, op, terms) => {
+            // // console.log('EVAL-START', r.u)
             if ('func-paren' === op.name
-                && !r.parent.prev?.u?.paren_preval) {
-                terms = [new val_2.StringVal({ peg: '' }), ...terms];
+                // && !r.parent.prev?.u?.paren_preval
+                && !r.u?.paren_preval) {
+                // terms = [new StringVal({ peg: '' }), ...terms]
+                terms = ['', ...terms];
             }
             let val = opmap[op.name](r, ctx, op, terms);
+            // // console.log('EVAL', terms, '->', val)
             return val;
         }
     });

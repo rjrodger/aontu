@@ -20,14 +20,11 @@ class BooleanVal extends ScalarVal<boolean> {
     },
     ctx?: Context
   ) {
-    super({ peg: spec.peg, type: Boolean }, ctx)
+    super({ peg: spec.peg, kind: Boolean }, ctx)
   }
   unify(peer: Val, ctx?: Context): Val {
     return super.unify(peer, ctx)
   }
-
-  // static TRUE = new BooleanVal({ peg: true }, new Context({ vc: 1, root: TOP }))
-  // static FALSE = new BooleanVal({ peg: false }, new Context({ vc: 2, root: TOP }))
 }
 
 

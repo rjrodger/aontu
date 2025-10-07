@@ -28,19 +28,14 @@ import {
 
 
 import {
-  ScalarTypeVal,
+  ScalarKindVal,
   IntegerVal,
   NumberVal,
   StringVal,
   BooleanVal,
   Integer,
 } from '../val'
-// import { ConjunctVal } from '../val/ConjunctVal'
-// import { DisjunctVal } from '../val/DisjunctVal'
-// import { ListVal } from '../val/ListVal'
-// import { MapVal } from '../val/MapVal'
 import { Nil } from '../val/Nil'
-// import { RefVal } from '../val/RefVal'
 import { BaseVal } from '../val/BaseVal'
 
 
@@ -67,7 +62,7 @@ class PrefVal extends BaseVal {
       this.rank = 1 + spec.peg.rank
     }
 
-    // console.log('SP', this.superpeg)
+    // // // console.log('SP', this.superpeg)
   }
 
   // PrefVal unify always returns a PrefVal
@@ -128,7 +123,7 @@ class PrefVal extends BaseVal {
       }
       else {
         out = unite(ctx, this.superpeg, peer, 'pref-super/' + this.id)
-        // console.log('QQQ', out.canon)
+        // // // console.log('QQQ', out.canon)
         // if (out instanceof Nil) {
         //   out = Nil.make(ctx, '*super', this, peer)
         // }
@@ -203,16 +198,16 @@ class PrefVal extends BaseVal {
 function makeSuper(v: Val) {
   // return v.superior() - apply * deeply into maps etc
   if (v instanceof NumberVal) {
-    return new ScalarTypeVal({ peg: Number })
+    return new ScalarKindVal({ peg: Number })
   }
   else if (v instanceof IntegerVal) {
-    return new ScalarTypeVal({ peg: Integer })
+    return new ScalarKindVal({ peg: Integer })
   }
   else if (v instanceof StringVal) {
-    return new ScalarTypeVal({ peg: String })
+    return new ScalarKindVal({ peg: String })
   }
   else if (v instanceof BooleanVal) {
-    return new ScalarTypeVal({ peg: Boolean })
+    return new ScalarKindVal({ peg: Boolean })
   }
   else {
     return new Nil()

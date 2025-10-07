@@ -46,7 +46,9 @@ interface Val {
 
   top: boolean
 
-  // Actual native value.
+  type: boolean
+
+  // Child value(s).
   peg: any
 
   // TODO: used for top level result - not great
@@ -70,6 +72,8 @@ interface Val {
 type ValSpec = {
   peg?: any,
   [name: string]: any,
+  type?: boolean,
+  kind?: any,
 }
 type ValMap = { [key: string]: Val }
 type ValList = Val[]

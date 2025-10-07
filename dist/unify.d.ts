@@ -3,7 +3,7 @@ import { FST } from './type';
 import { Nil } from './val';
 import { Lang } from './lang';
 type Path = string[];
-declare const unite: (ctx: Context, a?: any, b?: any, whence?: string) => any;
+declare const unite: (ctx: Context, a: any, b: any, whence: string) => any;
 declare class Context {
     #private;
     root: Val;
@@ -13,6 +13,8 @@ declare class Context {
     var: Record<string, Val>;
     src?: string;
     fs?: FST;
+    seenI: number;
+    seen: Record<string, number>;
     constructor(cfg: {
         root: Val;
         path?: Path;
@@ -21,6 +23,8 @@ declare class Context {
         cc?: number;
         var?: Record<string, Val>;
         src?: string;
+        seenI?: number;
+        seen?: Record<string, number>;
     });
     clone(cfg: {
         root?: Val;
@@ -30,6 +34,7 @@ declare class Context {
     descend(key: string): Context;
     get err(): any;
     adderr(err: Nil, whence?: string): void;
+    find(path: string[]): Val | undefined;
 }
 declare class Unify {
     root: Val;

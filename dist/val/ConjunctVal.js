@@ -11,18 +11,20 @@ const MapVal_1 = require("./MapVal");
 const Nil_1 = require("./Nil");
 const RefVal_1 = require("./RefVal");
 const BaseVal_1 = require("./BaseVal");
-// import { DisjunctVal } from './DisjunctVal'
-// import { PrefVal } from './PrefVal'
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isBinaryOp = true;
         this.isConjunctVal = true;
+        this.type = !!spec.type;
+        this.peg?.map((v) => v.type = this.type || v.type);
+        // console.log('CONJUNCT-ctor', this.peg.map((v: Val) => v.canon))
     }
     // NOTE: mutation!
     append(peer) {
         this.peg.push(peer);
+        peer.type = this.type || peer.type;
         return this;
     }
     unify(peer, ctx) {
@@ -32,8 +34,15 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         let done = true;
         // Unify each term of conjunct against peer
         let upeer = [];
+        let newtype = this.type || peer.type;
         for (let vI = 0; vI < this.peg.length; vI++) {
+            newtype = this.peg[vI].type || newtype;
+        }
+        for (let vI = 0; vI < this.peg.length; vI++) {
+            this.peg[vI].type = newtype;
+            console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon);
             upeer[vI] = (0, unify_1.unite)(ctx, this.peg[vI], peer, 'cj-own' + mark);
+            upeer[vI].type = newtype = newtype || upeer[vI].type;
             // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].dc);
             if (upeer[vI] instanceof Nil_1.Nil) {
@@ -65,6 +74,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
             if (type_1.DONE !== t0.dc) {
                 let u0 = (0, unify_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
+                newtype = this.type || u0.type;
                 if (type_1.DONE !== u0.dc
                     // Maps and Lists are still unified so that path refs will work
                     // TODO: || ListVal - test!
@@ -81,6 +91,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
             let t1 = upeer[pI + 1];
             if (null == t1) {
                 outvals.push(t0);
+                newtype = this.type || t0.type;
             }
             // Can't unite with a RefVal, unless also a RefVal with same path.
             else if (t0 instanceof RefVal_1.RefVal && !(t1 instanceof RefVal_1.RefVal)) {
@@ -94,6 +105,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
             else {
                 val = (0, unify_1.unite)(ctx, t0, t1, 'cj-peer-t0t1');
                 done = done && type_1.DONE === val.dc;
+                newtype = this.type || val.type;
                 // Unite was just a conjunt anyway, so discard.
                 if (val instanceof ConjunctVal) {
                     outvals.push(t0);
@@ -111,6 +123,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
             }
         }
         let out;
+        // console.log('CONJUCT-prepout', this.type, newtype, outvals.map((v: Val) => v.canon))
         if (0 === outvals.length) {
             // Empty conjuncts evaporate.
             out = val_1.TOP;
@@ -118,18 +131,18 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {
             out = outvals[0];
+            out.type = newtype;
         }
         else {
-            out = new ConjunctVal({ peg: outvals }, ctx);
+            out = new ConjunctVal({ peg: outvals, type: newtype }, ctx);
         }
         out.dc = done ? type_1.DONE : this.dc + 1;
-        // console.log('CONJUNCT-unify',
-        //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
+        // console.log('CONJUNCT-unify', this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
         return out;
     }
     clone(ctx, spec) {
         let out = super.clone(ctx, spec);
-        out.peg = this.peg.map((entry) => entry.clone(ctx));
+        out.peg = this.peg.map((entry) => entry.clone(ctx, { type: spec?.type }));
         return out;
     }
     // TODO: need a well-defined val order so conjunt canon is always the same

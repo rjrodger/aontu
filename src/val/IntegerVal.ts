@@ -9,7 +9,7 @@ import {
 } from '../unify'
 
 import { ScalarVal } from './ScalarVal'
-import { Integer } from './ScalarTypeVal'
+import { Integer } from './ScalarKindVal'
 
 
 class IntegerVal extends ScalarVal<number> {
@@ -25,7 +25,7 @@ class IntegerVal extends ScalarVal<number> {
       // TODO: use Nil?
       throw new Error('not-integer')
     }
-    super({ peg: spec.peg, type: Integer }, ctx)
+    super({ peg: spec.peg, kind: Integer }, ctx)
   }
 
   unify(peer: any, ctx?: Context): Val {

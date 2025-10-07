@@ -4,9 +4,7 @@ import { BaseVal } from './BaseVal';
 declare class ConjunctVal extends BaseVal {
     isBinaryOp: boolean;
     isConjunctVal: boolean;
-    constructor(spec: {
-        peg: Val[];
-    }, ctx?: Context);
+    constructor(spec: ValSpec, ctx?: Context);
     append(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: Context): Val;
     clone(ctx: Context, spec?: ValSpec): Val;

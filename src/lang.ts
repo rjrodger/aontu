@@ -70,12 +70,15 @@ import {
   CeilFuncVal,
   UpperFuncVal,
   LowerFuncVal,
+  CopyFuncVal,
+  KeyFuncVal,
+  TypeFuncVal,
 } from './func'
 
 
 import {
   TOP,
-  ScalarTypeVal,
+  ScalarKindVal,
   Integer,
   StringVal,
   NumberVal,
@@ -130,19 +133,19 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         // TODO: jsonic should be able to pass context into these
         'string': {
           val: (r: Rule, ctx: JsonicContext) =>
-            addsite(new ScalarTypeVal({ peg: String }), r, ctx)
+            addsite(new ScalarKindVal({ peg: String }), r, ctx)
         },
         'number': {
           val: (r: Rule, ctx: JsonicContext) =>
-            addsite(new ScalarTypeVal({ peg: Number }), r, ctx)
+            addsite(new ScalarKindVal({ peg: Number }), r, ctx)
         },
         'integer': {
           val: (r: Rule, ctx: JsonicContext) =>
-            addsite(new ScalarTypeVal({ peg: Integer }), r, ctx)
+            addsite(new ScalarKindVal({ peg: Integer }), r, ctx)
         },
         'boolean': {
           val: (r: Rule, ctx: JsonicContext) =>
-            addsite(new ScalarTypeVal({ peg: Boolean }), r, ctx)
+            addsite(new ScalarKindVal({ peg: Boolean }), r, ctx)
         },
         'nil': {
           val: (r: Rule, ctx: JsonicContext) =>
@@ -213,6 +216,9 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     ceil: CeilFuncVal,
     upper: UpperFuncVal,
     lower: LowerFuncVal,
+    copy: CopyFuncVal,
+    key: KeyFuncVal,
+    type: TypeFuncVal,
   }
 
 
@@ -228,6 +234,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     },
 
     'dot-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      // // console.log('DOT-INFIX-OP', terms)
       return addsite(new RefVal({ peg: terms }), r, ctx)
     },
 
@@ -238,6 +245,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       // $.a.b absolute path
       if (terms[0] instanceof RefVal) {
         terms[0].absolute = true
+        // // console.log('DOLLAR-PREFIX-PATH', terms)
         return terms[0]
       }
       return addsite(new VarVal({ peg: terms[0] }), r, ctx)
@@ -265,9 +273,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     },
     */
 
-    'func-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+    'func-paren': (r: Rule, ctx: JsonicContext, op: Op, terms: any) => {
       let val = terms[1]
-      const fname = terms[0].peg
+      // const fname = terms[0].peg
+      const fname = terms[0]
       if ('' !== fname) {
         const funcval = funcMap[fname]
         const args = terms.slice(1)
@@ -276,7 +285,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         })
       }
       const out = addsite(val, r, ctx)
-      // console.log('FUNC-PAREN', fname, terms, '->', out)
+      // // console.log('FUNC-PAREN', fname, terms, '->', out)
       return out
     },
   }
@@ -344,14 +353,22 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         remainder: null,
       },
       evaluate: (r: Rule, ctx: JsonicContext, op: Op, terms: any) => {
+        // // console.log('EVAL-START', r.u)
+
         if (
           'func-paren' === op.name
-          && !r.parent.prev?.u?.paren_preval
+          // && !r.parent.prev?.u?.paren_preval
+          && !r.u?.paren_preval
         ) {
-          terms = [new StringVal({ peg: '' }), ...terms]
+          // terms = [new StringVal({ peg: '' }), ...terms]
+          terms = ['', ...terms]
         }
 
+
         let val: Val = opmap[op.name](r, ctx, op, terms)
+
+        // // console.log('EVAL', terms, '->', val)
+
         return val
       }
     })

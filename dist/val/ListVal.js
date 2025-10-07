@@ -47,7 +47,7 @@ class ListVal extends BaseVal_1.BaseVal {
         if (peer instanceof ListVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
                 // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
-                (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj)));
+                (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj, 'list-peer')));
         }
         out.dc = this.dc + 1;
         // if (this.spread.cj) {
@@ -81,7 +81,7 @@ class ListVal extends BaseVal_1.BaseVal {
                     oval = out.peg[peerkey] =
                         // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
                         // done = false
-                        (0, unify_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj);
+                        (0, unify_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread');
                 }
                 done = (done && type_1.DONE === oval.dc);
             }

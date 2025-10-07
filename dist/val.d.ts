@@ -1,7 +1,7 @@
 export { TOP, TopVal } from './val/TopVal';
 export { OpBaseVal } from './op';
 export { PlusOpVal } from './op';
-export { Integer, ScalarConstructor, ScalarTypeVal } from './val/ScalarTypeVal';
+export { Integer, ScalarConstructor, ScalarKindVal } from './val/ScalarKindVal';
 export { ScalarVal } from './val/ScalarVal';
 export { NumberVal } from './val/NumberVal';
 export { StringVal } from './val/StringVal';
