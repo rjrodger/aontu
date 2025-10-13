@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { BaseVal } from './BaseVal';
-declare class ScalarVal<T> extends BaseVal {
+declare class ScalarVal extends BaseVal {
     kind: any;
     isScalarVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);

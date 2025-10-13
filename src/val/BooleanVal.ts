@@ -11,7 +11,7 @@ import {
 import { ScalarVal } from './ScalarVal'
 
 
-class BooleanVal extends ScalarVal<boolean> {
+class BooleanVal extends ScalarVal {
   isBooleanVal = true
 
   constructor(

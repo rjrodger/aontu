@@ -40,7 +40,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         }
         for (let vI = 0; vI < this.peg.length; vI++) {
             this.peg[vI].type = newtype;
-            console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon);
+            // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
             upeer[vI] = (0, unify_1.unite)(ctx, this.peg[vI], peer, 'cj-own' + mark);
             upeer[vI].type = newtype = newtype || upeer[vI].type;
             // let prevdone = done

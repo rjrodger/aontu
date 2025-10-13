@@ -9,11 +9,11 @@ if(debug) {
   const pval = parse({src},{src,deps:{}})
 
   if('canon'===debug || 'deep'===debug) {
-    console.log('CANON:', pval.canon)
+    console.log('> CANON:', pval.canon)
   }
 
   if('deep'===debug) {
-    console.log('AST:'),
+    console.log('> AST:'),
     // console.dir(pval,{depth:null})
     print(pval)
   }
@@ -23,7 +23,7 @@ const root = Aontu(src, {
   path: process.cwd()
 })
 
-console.log('UNIFIED:', root.canon)
+console.log('> UNIFIED:', root.canon)
 
 if('deep'===debug) {
   print(root)
@@ -35,13 +35,13 @@ if(0<root.err?.length) {
 }
 else {
   if(debug) {
-    console.log('GEN:')
+    console.log('> GEN:')
   }
   const err = []
   const out = root.gen(new Context({ src, root, err }))
 
   if(0<err.length) {
-    console.log('ERRORS: '+err.length)
+    console.log('> ERRORS: '+err.length)
     err.map(err=>console.error(err.msg))
   }
   else {

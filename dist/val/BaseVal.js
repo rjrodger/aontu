@@ -82,7 +82,7 @@ class BaseVal {
     errcanon() {
         return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`;
     }
-    gen(_ctx) {
+    gen(ctx) {
         return undefined;
     }
     notdone() {

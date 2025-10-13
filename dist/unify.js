@@ -164,7 +164,7 @@ class Context {
         return a;
     }
     adderr(err, whence) {
-        // console.log('ADDERR', whence, err)
+        // console.log('ADDERR', whence, err?.why)
         ;
         __classPrivateFieldGet(this, _Context_errlist, "f").push(err);
         if (null == err.msg || '' == err.msg) {
@@ -215,13 +215,13 @@ class Unify {
             });
             let maxcc = 9; // 99
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
-                console.log('CC', this.cc, res.canon);
+                // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
                 res = unite(uctx, res, val_1.TOP, 'unify');
                 uctx = uctx.clone({ root: res });
             }
         }
-        // console.log('CC-END', uctx?.cc)
+        // console.log('CC-END', uctx?.cc, uctx?.err)
         this.res = res;
     }
 }

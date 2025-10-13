@@ -26,7 +26,7 @@ declare class BaseVal implements Val {
     unify(_peer: Val, _ctx?: Context): Val;
     get canon(): string;
     errcanon(): string;
-    gen(_ctx?: Context): any;
+    gen(ctx?: Context): any;
     notdone(): void;
 }
 export { BaseVal, };

@@ -1,7 +1,7 @@
 import type { Val } from '../type';
 import { Context } from '../unify';
 import { ScalarVal } from './ScalarVal';
-declare class StringVal extends ScalarVal<string> {
+declare class StringVal extends ScalarVal {
     isStringVal: boolean;
     constructor(spec: {
         peg: string;

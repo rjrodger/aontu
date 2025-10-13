@@ -40,7 +40,7 @@ class MapVal extends BaseVal_1.BaseVal {
         // let mark = Math.random()
         let done = true;
         let out = val_1.TOP === peer ? this : new MapVal({ peg: {} }, ctx);
-        console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon);
+        // console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon)
         out.spread.cj = this.spread.cj;
         if (peer instanceof MapVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
@@ -58,7 +58,7 @@ class MapVal extends BaseVal_1.BaseVal {
             out.peg[key] = (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'map-own');
             // out.peg[key].type = newtype = out.peg[key].type || newtype
             done = (done && type_1.DONE === out.peg[key].dc);
-            console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon);
+            // console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
         }
         if (peer instanceof MapVal) {
             let upeer = (0, unify_1.unite)(ctx, peer, undefined, 'map-peer-map');
@@ -88,7 +88,7 @@ class MapVal extends BaseVal_1.BaseVal {
         out.uh.push(peer.id);
         out.dc = done ? type_1.DONE : out.dc;
         out.type = this.type || peer.type;
-        console.log('MAPVAL-OUT', this.id, this.canon, peer.canon, '->', out.canon);
+        // console.log('MAPVAL-OUT', this.id, this.canon, peer.canon, '->', out.canon)
         return out;
     }
     clone(ctx, spec) {
@@ -107,8 +107,8 @@ class MapVal extends BaseVal_1.BaseVal {
     get canon() {
         let keys = Object.keys(this.peg);
         return this.errcanon() +
-            (this.type ? '<type>' : '') +
-            (this.id + '=') +
+            // (this.type ? '<type>' : '') +
+            // (this.id + '=') +
             '{' +
             (this.spread.cj ? '&:' + this.spread.cj.canon +
                 (0 < keys.length ? ',' : '') : '') +

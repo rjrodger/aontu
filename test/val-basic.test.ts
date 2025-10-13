@@ -1,4 +1,5 @@
-/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
+
 
 import { describe, it, beforeEach } from 'node:test'
 
@@ -17,8 +18,6 @@ import {
 } from '../dist/unify'
 
 
-
-
 import { ConjunctVal } from '../dist/val/ConjunctVal'
 import { DisjunctVal } from '../dist/val/DisjunctVal'
 import { ListVal } from '../dist/val/ListVal'
@@ -27,7 +26,6 @@ import { Nil } from '../dist/val/Nil'
 import { PrefVal } from '../dist/val/PrefVal'
 import { RefVal } from '../dist/val/RefVal'
 import { VarVal } from '../dist/val/VarVal'
-import { BaseVal } from '../dist/val/BaseVal'
 
 
 import {
@@ -36,7 +34,8 @@ import {
   StringVal,
   BooleanVal,
   IntegerVal,
-  ScalarTypeVal,
+  NullVal,
+  ScalarKindVal,
   TOP,
 } from '../dist/val'
 
@@ -47,13 +46,13 @@ const P = (x: string, ctx?: any) => PL(x, ctx)
 const PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
 // const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
-const G = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen()
+const G = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
 
 
-const makeST_String = () => new ScalarTypeVal({ peg: String })
-const makeST_Number = () => new ScalarTypeVal({ peg: Number })
-const makeST_Integer = () => new ScalarTypeVal({ peg: Integer })
-const makeST_Boolean = () => new ScalarTypeVal({ peg: Boolean })
+const makeSK_String = () => new ScalarKindVal({ peg: String })
+const makeSK_Number = () => new ScalarKindVal({ peg: Number })
+const makeSK_Integer = () => new ScalarKindVal({ peg: Integer })
+const makeSK_Boolean = () => new ScalarKindVal({ peg: Boolean })
 
 const makeBooleanVal = (v: boolean) => new BooleanVal({ peg: v })
 const makeNumberVal = (v: number, c?: Context) => new NumberVal({ peg: v }, c)
@@ -81,6 +80,8 @@ describe('val-basic', function() {
 
 
   it('gen', () => {
+    let ctx = makeCtx()
+
     expect(P('1').gen()).equal(1)
     expect(P('"a"').gen()).equal('a')
     expect(P('b').gen()).equal('b')
@@ -89,61 +90,62 @@ describe('val-basic', function() {
     expect(P('a:1').gen()).equal({ a: 1 })
     expect(P('a:1,b:c:2').gen()).equal({ a: 1, b: { c: 2 } })
 
-    expect(P('nil').gen()).equal(undefined)
-    expect(P('a:1,b:nil').gen()).equal({ a: 1, b: undefined })
+    expect(P('nil').gen(ctx)).equal(undefined)
+    expect(P('a:1,b:nil').gen(ctx)).equal({ a: 1, b: undefined })
   })
 
 
-  it('scalartype', () => {
-    expect(makeST_String().same(makeST_String())).equal(true)
+  it('scalar-kind', () => {
+    expect(makeSK_String().same(makeSK_String())).equal(true)
 
-    expect(makeST_Number().same(makeST_Number())).equal(true)
-    expect(makeST_Boolean().same(makeST_Boolean())).equal(true)
-    expect(makeST_Integer().same(makeST_Integer())).equal(true)
+    expect(makeSK_Number().same(makeSK_Number())).equal(true)
+    expect(makeSK_Boolean().same(makeSK_Boolean())).equal(true)
+    expect(makeSK_Integer().same(makeSK_Integer())).equal(true)
 
-    expect(makeST_String().same(makeST_Number())).equal(false)
-    expect(makeST_String().same(makeST_Boolean())).equal(false)
-    expect(makeST_String().same(makeST_Integer())).equal(false)
+    expect(makeSK_String().same(makeSK_Number())).equal(false)
+    expect(makeSK_String().same(makeSK_Boolean())).equal(false)
+    expect(makeSK_String().same(makeSK_Integer())).equal(false)
 
-    expect(makeST_Number().same(makeST_Boolean())).equal(false)
-    expect(makeST_Number().same(makeST_Integer())).equal(false)
+    expect(makeSK_Number().same(makeSK_Boolean())).equal(false)
+    expect(makeSK_Number().same(makeSK_Integer())).equal(false)
 
-    expect(makeST_Integer().same(makeST_Boolean())).equal(false)
+    expect(makeSK_Integer().same(makeSK_Boolean())).equal(false)
   })
 
 
   it('boolean', () => {
+    let tu = (ctx: any, a: any, b: any) => unite(ctx, a, b, 'boolean-test')
     let ctx = makeCtx()
 
     let bt = new BooleanVal({ peg: true }, ctx)
     let bf = new BooleanVal({ peg: false }, ctx)
 
-    expect(unite(ctx, bt, bt)).equal(bt)
-    expect(unite(ctx, bf, bf)).equal(bf)
+    expect(tu(ctx, bt, bt)).equal(bt)
+    expect(tu(ctx, bf, bf)).equal(bf)
 
-    expect(unite(ctx, bt, bf) instanceof Nil).exist()
-    expect(unite(ctx, bf, bt) instanceof Nil).exist()
+    expect(tu(ctx, bt, bf) instanceof Nil).exist()
+    expect(tu(ctx, bf, bt) instanceof Nil).exist()
 
-    expect(unite(ctx, bt, TOP)).equal(bt)
-    expect(unite(ctx, bf, TOP)).equal(bf)
-    expect(unite(ctx, TOP, bt)).equal(bt)
-    expect(unite(ctx, TOP, bf)).equal(bf)
+    expect(tu(ctx, bt, TOP)).equal(bt)
+    expect(tu(ctx, bf, TOP)).equal(bf)
+    expect(tu(ctx, TOP, bt)).equal(bt)
+    expect(tu(ctx, TOP, bf)).equal(bf)
 
     let b0 = new Nil('test')
-    expect(unite(ctx, bt, b0)).equal(b0)
-    expect(unite(ctx, bf, b0)).equal(b0)
-    expect(unite(ctx, b0, bt)).equal(b0)
-    expect(unite(ctx, b0, bf)).equal(b0)
+    expect(tu(ctx, bt, b0)).equal(b0)
+    expect(tu(ctx, bf, b0)).equal(b0)
+    expect(tu(ctx, b0, bt)).equal(b0)
+    expect(tu(ctx, b0, bf)).equal(b0)
 
-    let bs = makeST_Boolean()
-    expect(unite(ctx, bt, bs)).equal(bt)
-    expect(unite(ctx, bs, bt)).equal(bt)
+    let bs = makeSK_Boolean()
+    expect(tu(ctx, bt, bs)).equal(bt)
+    expect(tu(ctx, bs, bt)).equal(bt)
 
     let n0 = makeNumberVal(1)
-    expect(unite(ctx, bt, n0) instanceof Nil).exist()
-    expect(unite(ctx, bf, n0) instanceof Nil).exist()
-    expect(unite(ctx, n0, bt) instanceof Nil).exist()
-    expect(unite(ctx, n0, bf) instanceof Nil).exist()
+    expect(tu(ctx, bt, n0) instanceof Nil).exist()
+    expect(tu(ctx, bf, n0) instanceof Nil).exist()
+    expect(tu(ctx, n0, bt) instanceof Nil).exist()
+    expect(tu(ctx, n0, bf) instanceof Nil).exist()
 
     expect(bt.same(bt)).equal(true)
     expect(bf.same(bf)).equal(true)
@@ -156,37 +158,39 @@ describe('val-basic', function() {
 
 
   it('string', () => {
+    let ou = unite
+    let tu = (ctx: any, a: any, b: any) => ou(ctx, a, b, 'string-test')
     let ctx = makeCtx()
 
     let s0 = new StringVal({ peg: 's0' })
     let s1 = new StringVal({ peg: 's1' })
 
-    expect(unite(ctx, s0, s0)).equal(s0)
-    expect(unite(ctx, s1, s1)).equal(s1)
+    expect(tu(ctx, s0, s0)).equal(s0)
+    expect(tu(ctx, s1, s1)).equal(s1)
 
-    expect(unite(ctx, s0, s1) instanceof Nil).exist()
-    expect(unite(ctx, s1, s0) instanceof Nil).exist()
+    expect(tu(ctx, s0, s1) instanceof Nil).exist()
+    expect(tu(ctx, s1, s0) instanceof Nil).exist()
 
-    expect(unite(ctx, s0, TOP)).equal(s0)
-    expect(unite(ctx, s1, TOP)).equal(s1)
-    expect(unite(ctx, TOP, s0)).equal(s0)
-    expect(unite(ctx, TOP, s1)).equal(s1)
+    expect(tu(ctx, s0, TOP)).equal(s0)
+    expect(tu(ctx, s1, TOP)).equal(s1)
+    expect(tu(ctx, TOP, s0)).equal(s0)
+    expect(tu(ctx, TOP, s1)).equal(s1)
 
     let b0 = new Nil('test')
-    expect(unite(ctx, s0, b0)).equal(b0)
-    expect(unite(ctx, s1, b0)).equal(b0)
-    expect(unite(ctx, b0, s0)).equal(b0)
-    expect(unite(ctx, b0, s1)).equal(b0)
+    expect(tu(ctx, s0, b0)).equal(b0)
+    expect(tu(ctx, s1, b0)).equal(b0)
+    expect(tu(ctx, b0, s0)).equal(b0)
+    expect(tu(ctx, b0, s1)).equal(b0)
 
-    let t0 = makeST_String()
-    expect(unite(ctx, s0, t0)).equal(s0)
-    expect(unite(ctx, t0, s0)).equal(s0)
+    let t0 = makeSK_String()
+    expect(tu(ctx, s0, t0)).equal(s0)
+    expect(tu(ctx, t0, s0)).equal(s0)
 
     let n0 = makeNumberVal(1)
-    expect(unite(ctx, s0, n0) instanceof Nil).exist()
-    expect(unite(ctx, s1, n0) instanceof Nil).exist()
-    expect(unite(ctx, n0, s0) instanceof Nil).exist()
-    expect(unite(ctx, n0, s1) instanceof Nil).exist()
+    expect(tu(ctx, s0, n0) instanceof Nil).exist()
+    expect(tu(ctx, s1, n0) instanceof Nil).exist()
+    expect(tu(ctx, n0, s0) instanceof Nil).exist()
+    expect(tu(ctx, n0, s1) instanceof Nil).exist()
 
     expect(s0.same(s0)).equal(true)
     expect(new StringVal({ peg: 'a' }).same(new StringVal({ peg: 'a' }))).equal(true)
@@ -195,51 +199,52 @@ describe('val-basic', function() {
 
 
   it('number', () => {
+    let tu = (ctx: any, a: any, b: any) => unite(ctx, a, b, 'number-test')
     let ctx = makeCtx()
 
     let n0 = makeNumberVal(0, ctx)
     let n1 = makeNumberVal(1.1, ctx)
     let n2 = makeNumberVal(-2, ctx)
 
-    expect(unite(ctx, n0, n0)).equal(n0)
+    expect(tu(ctx, n0, n0)).equal(n0)
 
-    expect(unite(ctx, n0, n0)).equal(n0)
-    expect(unite(ctx, n1, n1)).equal(n1)
-    expect(unite(ctx, n2, n2)).equal(n2)
+    expect(tu(ctx, n0, n0)).equal(n0)
+    expect(tu(ctx, n1, n1)).equal(n1)
+    expect(tu(ctx, n2, n2)).equal(n2)
 
-    expect(unite(ctx, n0, n1) instanceof Nil).exist()
-    expect(unite(ctx, n1, n0) instanceof Nil).exist()
-    expect(unite(ctx, n0, n2) instanceof Nil).exist()
-    expect(unite(ctx, n2, n0) instanceof Nil).exist()
-    expect(unite(ctx, n1, n2) instanceof Nil).exist()
-    expect(unite(ctx, n2, n1) instanceof Nil).exist()
+    expect(tu(ctx, n0, n1) instanceof Nil).exist()
+    expect(tu(ctx, n1, n0) instanceof Nil).exist()
+    expect(tu(ctx, n0, n2) instanceof Nil).exist()
+    expect(tu(ctx, n2, n0) instanceof Nil).exist()
+    expect(tu(ctx, n1, n2) instanceof Nil).exist()
+    expect(tu(ctx, n2, n1) instanceof Nil).exist()
 
-    expect(unite(ctx, n0, TOP)).equal(n0)
-    expect(unite(ctx, n1, TOP)).equal(n1)
-    expect(unite(ctx, n2, TOP)).equal(n2)
-    expect(unite(ctx, TOP, n0)).equal(n0)
-    expect(unite(ctx, TOP, n1)).equal(n1)
-    expect(unite(ctx, TOP, n2)).equal(n2)
+    expect(tu(ctx, n0, TOP)).equal(n0)
+    expect(tu(ctx, n1, TOP)).equal(n1)
+    expect(tu(ctx, n2, TOP)).equal(n2)
+    expect(tu(ctx, TOP, n0)).equal(n0)
+    expect(tu(ctx, TOP, n1)).equal(n1)
+    expect(tu(ctx, TOP, n2)).equal(n2)
 
     let b0 = new Nil('test')
-    expect(unite(ctx, n0, b0)).equal(b0)
-    expect(unite(ctx, n1, b0)).equal(b0)
-    expect(unite(ctx, n2, b0)).equal(b0)
-    expect(unite(ctx, b0, n0)).equal(b0)
-    expect(unite(ctx, b0, n1)).equal(b0)
-    expect(unite(ctx, b0, n2)).equal(b0)
+    expect(tu(ctx, n0, b0)).equal(b0)
+    expect(tu(ctx, n1, b0)).equal(b0)
+    expect(tu(ctx, n2, b0)).equal(b0)
+    expect(tu(ctx, b0, n0)).equal(b0)
+    expect(tu(ctx, b0, n1)).equal(b0)
+    expect(tu(ctx, b0, n2)).equal(b0)
 
-    let t0 = makeST_Number()
-    expect(unite(ctx, n0, t0)).equal(n0)
-    expect(unite(ctx, t0, n0)).equal(n0)
+    let t0 = makeSK_Number()
+    expect(tu(ctx, n0, t0)).equal(n0)
+    expect(tu(ctx, t0, n0)).equal(n0)
 
     let s0 = new StringVal({ peg: 's0' })
-    expect(unite(ctx, n0, s0) instanceof Nil).exist()
-    expect(unite(ctx, n1, s0) instanceof Nil).exist()
-    expect(unite(ctx, n2, s0) instanceof Nil).exist()
-    expect(unite(ctx, s0, n0) instanceof Nil).exist()
-    expect(unite(ctx, s0, n1) instanceof Nil).exist()
-    expect(unite(ctx, s0, n2) instanceof Nil).exist()
+    expect(tu(ctx, n0, s0) instanceof Nil).exist()
+    expect(tu(ctx, n1, s0) instanceof Nil).exist()
+    expect(tu(ctx, n2, s0) instanceof Nil).exist()
+    expect(tu(ctx, s0, n0) instanceof Nil).exist()
+    expect(tu(ctx, s0, n1) instanceof Nil).exist()
+    expect(tu(ctx, s0, n2) instanceof Nil).exist()
 
     expect(n0.same(n0)).equal(true)
     expect(n1.same(n1)).equal(true)
@@ -252,6 +257,8 @@ describe('val-basic', function() {
 
 
   it('number-unify', () => {
+    let ctx = makeCtx()
+
     let n0: any = makeIntegerVal(11)
     n0.mark$ = 'n0'
 
@@ -261,14 +268,14 @@ describe('val-basic', function() {
     expect(n0.unify(n1).mark$).equal('n0')
     expect(n1.unify(n0).mark$).equal('n1')
 
-    let tn0 = makeST_Number()
-    let ti0 = makeST_Integer()
+    let tn0 = makeSK_Number()
+    let ti0 = makeSK_Integer()
 
     expect(n0.unify(tn0).mark$).equal('n0')
-    expect((tn0.unify(n0) as any).mark$).equal('n0')
+    expect((tn0.unify(n0, ctx) as any).mark$).equal('n0')
 
     expect(n0.unify(ti0).mark$).equal('n0')
-    expect((ti0.unify(n0) as any).mark$).equal('n0')
+    expect((ti0.unify(n0, ctx) as any).mark$).equal('n0')
 
 
     let x0: any = makeNumberVal(11)
@@ -281,10 +288,10 @@ describe('val-basic', function() {
     expect(x1.unify(x0).mark$).equal('x1')
 
     expect(x0.unify(tn0).mark$).equal('x0')
-    expect((tn0.unify(x0) as any).mark$).equal('x0')
+    expect((tn0.unify(x0, ctx) as any).mark$).equal('x0')
 
     expect(x0.unify(ti0).isNil).equal(true)
-    expect((ti0.unify(x0) as any).isNil).equal(true)
+    expect((ti0.unify(x0, ctx) as any).isNil).equal(true)
 
 
     expect(x0.unify(n0).mark$).equal('n0')
@@ -295,13 +302,13 @@ describe('val-basic', function() {
     x2.mark$ = 'x2'
 
     expect(x2.unify(tn0).mark$).equal('x2')
-    expect((tn0.unify(x2) as any).mark$).equal('x2')
+    expect((tn0.unify(x2, ctx) as any).mark$).equal('x2')
 
     expect(x2.unify(ti0).isNil).equal(true)
-    expect((ti0.unify(x2) as any).isNil).equal(true)
+    expect((ti0.unify(x2, ctx) as any).isNil).equal(true)
 
     expect(x2.unify(n0).isNil).equal(true)
-    expect((n0.unify(x2) as any).isNil).equal(true)
+    expect((n0.unify(x2, ctx) as any).isNil).equal(true)
   })
 
 
@@ -339,7 +346,7 @@ describe('val-basic', function() {
       peg: 11,
       row: 1,
       top: false,
-      type: Integer,
+      kind: Integer,
       uh: [],
       url: undefined,
     })
@@ -347,48 +354,50 @@ describe('val-basic', function() {
 
 
   it('integer', () => {
+    let ou = unite
+    let tu = (ctx: any, a: any, b: any) => ou(ctx, a, b, 'integer-test')
     let ctx = makeCtx()
 
     let n0 = makeIntegerVal(0)
     let n1 = makeIntegerVal(1)
 
-    expect(unite(ctx, n0, n0)).equal(n0)
-    expect(unite(ctx, n1, n1)).equal(n1)
+    expect(tu(ctx, n0, n0)).equal(n0)
+    expect(tu(ctx, n1, n1)).equal(n1)
 
-    expect(unite(ctx, n0, n1) instanceof Nil).exist()
-    expect(unite(ctx, n1, n0) instanceof Nil).exist()
+    expect(tu(ctx, n0, n1) instanceof Nil).exist()
+    expect(tu(ctx, n1, n0) instanceof Nil).exist()
 
-    expect(unite(ctx, n0, TOP)).equal(n0)
-    expect(unite(ctx, n1, TOP)).equal(n1)
-    expect(unite(ctx, TOP, n0)).equal(n0)
-    expect(unite(ctx, TOP, n1)).equal(n1)
+    expect(tu(ctx, n0, TOP)).equal(n0)
+    expect(tu(ctx, n1, TOP)).equal(n1)
+    expect(tu(ctx, TOP, n0)).equal(n0)
+    expect(tu(ctx, TOP, n1)).equal(n1)
 
     let b0 = new Nil('test')
-    expect(unite(ctx, n0, b0)).equal(b0)
-    expect(unite(ctx, n1, b0)).equal(b0)
-    expect(unite(ctx, b0, n0)).equal(b0)
-    expect(unite(ctx, b0, n1)).equal(b0)
+    expect(tu(ctx, n0, b0)).equal(b0)
+    expect(tu(ctx, n1, b0)).equal(b0)
+    expect(tu(ctx, b0, n0)).equal(b0)
+    expect(tu(ctx, b0, n1)).equal(b0)
 
     let s0 = new StringVal({ peg: 's0' })
-    expect(unite(ctx, n0, s0) instanceof Nil).exist()
-    expect(unite(ctx, n1, s0) instanceof Nil).exist()
-    expect(unite(ctx, s0, n0) instanceof Nil).exist()
-    expect(unite(ctx, s0, n1) instanceof Nil).exist()
+    expect(tu(ctx, n0, s0) instanceof Nil).exist()
+    expect(tu(ctx, n1, s0) instanceof Nil).exist()
+    expect(tu(ctx, s0, n0) instanceof Nil).exist()
+    expect(tu(ctx, s0, n1) instanceof Nil).exist()
 
-    let t0 = makeST_Integer()
-    expect(unite(ctx, n0, t0)).equal(n0)
-    expect(unite(ctx, t0, n0)).equal(n0)
+    let t0 = makeSK_Integer()
+    expect(tu(ctx, n0, t0)).equal(n0)
+    expect(tu(ctx, t0, n0)).equal(n0)
 
-    let t1 = makeST_Number()
-    expect(unite(ctx, n0, t1)).equal(n0)
-    expect(unite(ctx, t1, n0)).equal(n0)
+    let t1 = makeSK_Number()
+    expect(tu(ctx, n0, t1)).equal(n0)
+    expect(tu(ctx, t1, n0)).equal(n0)
 
-    expect(unite(ctx, t0, t1)).equal(t0)
-    expect(unite(ctx, t1, t0)).equal(t0)
+    expect(tu(ctx, t0, t1)).equal(t0)
+    expect(tu(ctx, t1, t0)).equal(t0)
 
     let x0 = makeNumberVal(0)
-    expect(unite(ctx, n0, x0)).equal(n0)
-    expect(unite(ctx, x0, n0)).equal(n0)
+    expect(tu(ctx, n0, x0)).equal(n0)
+    expect(tu(ctx, x0, n0)).equal(n0)
 
     expect(n0.same(n0)).equal(true)
     expect(makeIntegerVal(11).same(makeIntegerVal(11))).equal(true)
@@ -396,33 +405,55 @@ describe('val-basic', function() {
   })
 
 
+
+  it('null', () => {
+    let tu = (ctx: any, a: any, b: any) => unite(ctx, a, b, 'null-test')
+    let ctx = makeCtx()
+
+    let nv = new NullVal({}, ctx)
+    let bv = new BooleanVal({ peg: true }, ctx)
+    let mv = new NumberVal({ peg: 2.2 }, ctx)
+    let iv = new IntegerVal({ peg: 2 }, ctx)
+    let sv = new StringVal({ peg: 'a' }, ctx)
+
+    expect(tu(ctx, nv, nv)).equal(nv)
+
+    expect(tu(ctx, nv, bv) instanceof Nil).exist()
+    expect(tu(ctx, nv, mv) instanceof Nil).exist()
+    expect(tu(ctx, nv, iv) instanceof Nil).exist()
+    expect(tu(ctx, nv, sv) instanceof Nil).exist()
+  })
+
+
   it('map', () => {
+    let ou = unite
+    let tu = (ctx: any, a: any, b: any) => ou(ctx, a, b, 'integer-test')
     let ctx = makeCtx()
 
     let m0 = new MapVal({ peg: {} })
     expect(m0.canon).equal('{}')
 
     // TODO: update
-    expect(unite(ctx, m0, m0).canon).equal('{}')
+    expect(tu(ctx, m0, m0).canon).equal('{}')
 
-    expect(unite(ctx, m0, TOP).canon).equal('{}')
-    expect(unite(ctx, TOP, m0).canon).equal('{}')
+    expect(tu(ctx, m0, TOP).canon).equal('{}')
+    expect(tu(ctx, TOP, m0).canon).equal('{}')
 
     let b0 = new Nil('test')
-    expect(unite(ctx, m0, b0)).equal(b0)
-    expect(unite(ctx, b0, m0)).equal(b0)
+    expect(tu(ctx, m0, b0)).equal(b0)
+    expect(tu(ctx, b0, m0)).equal(b0)
 
     let s0 = new StringVal({ peg: 's0' })
-    expect(unite(ctx, m0, s0) instanceof Nil).exist()
-    expect(unite(ctx, s0, m0) instanceof Nil).exist()
+    expect(tu(ctx, m0, s0) instanceof Nil).exist()
+    expect(tu(ctx, s0, m0) instanceof Nil).exist()
 
     let n0 = makeNumberVal(0)
-    expect(unite(ctx, m0, n0) instanceof Nil).exist()
-    expect(unite(ctx, n0, m0) instanceof Nil).exist()
+    expect(tu(ctx, m0, n0) instanceof Nil).exist()
+    expect(tu(ctx, n0, m0) instanceof Nil).exist()
 
-    let t0 = makeST_String()
-    expect(unite(ctx, m0, t0) instanceof Nil).exist()
-    expect(unite(ctx, t0, m0) instanceof Nil).exist()
+    let t0 = makeSK_String()
+    expect(tu(ctx, m0, t0) instanceof Nil).exist()
+    expect(tu(ctx, t0, m0) instanceof Nil).exist()
 
 
     let m1 = new MapVal({ peg: { a: makeNumberVal(1) } })
@@ -451,12 +482,14 @@ describe('val-basic', function() {
 
 
   it('map', () => {
+    let ou = unite
+    let tu = (ctx: any, a: any, b: any) => ou(ctx, a, b, 'integer-test')
     let ctx = makeCtx()
 
     let l0 = new ListVal({ peg: [] })
     expect(l0.canon).equal('[]')
 
-    expect(unite(ctx, l0, l0).canon).equal('[]')
+    expect(tu(ctx, l0, l0).canon).equal('[]')
   })
 
 
@@ -517,6 +550,8 @@ describe('val-basic', function() {
 
 
   it('conjunct', () => {
+    let ou = unite
+    let tu = (ctx: any, a: any, b: any) => ou(ctx, a, b, 'integer-test')
     let ctx = makeCtx(new MapVal({ peg: { x: makeIntegerVal(1) } }))
 
     let d0 = new ConjunctVal({ peg: PA(['1']) })
@@ -545,102 +580,103 @@ describe('val-basic', function() {
     expect(d6.canon).equal('{"a":1}&{"b":2}')
 
 
-    expect(unite(ctx, d0, P('1')).canon).equal('1')
-    expect(unite(ctx, P('1', d0)).canon).equal('1')
-    expect(unite(ctx, d0, P('2')).canon)
+    expect(tu(ctx, d0, P('1')).canon).equal('1')
+    expect(tu(ctx, P('1', d0), TOP).canon).equal('1')
+    expect(tu(ctx, d0, P('2')).canon)
       .equal('nil')
-    expect(unite(ctx, P('2'), d0).canon)
-      .equal('nil')
-
-
-    expect(unite(ctx, d0, TOP).canon).equal('1')
-    expect(unite(ctx, TOP, d0).canon).equal('1')
-
-    expect(unite(ctx, d1, TOP).canon).equal('1')
-    expect(unite(ctx, TOP, d1).canon).equal('1')
-
-    expect(unite(ctx, d2, TOP).canon)
-      .equal('nil')
-    expect(unite(ctx, TOP, d2).canon)
+    expect(tu(ctx, P('2'), d0).canon)
       .equal('nil')
 
-    expect(unite(ctx, d3, TOP).canon).equal('1')
-    expect(unite(ctx, TOP, d3).canon).equal('1')
+
+    expect(tu(ctx, d0, TOP).canon).equal('1')
+    expect(tu(ctx, TOP, d0).canon).equal('1')
+
+    expect(tu(ctx, d1, TOP).canon).equal('1')
+    expect(tu(ctx, TOP, d1).canon).equal('1')
+
+    expect(tu(ctx, d2, TOP).canon)
+      .equal('nil')
+    expect(tu(ctx, TOP, d2).canon)
+      .equal('nil')
+
+    expect(tu(ctx, d3, TOP).canon).equal('1')
+    expect(tu(ctx, TOP, d3).canon).equal('1')
 
 
     // TODO: term order is swapped by ConjunctVal impl - should be preserved
-    expect(unite(ctx, d100, TOP).canon).equal('1')
-    expect(unite(ctx, TOP, d100).canon).equal('1')
+    expect(tu(ctx, d100, TOP).canon).equal('1')
+    expect(tu(ctx, TOP, d100).canon).equal('1')
 
     // TODO: same for DisjunctVal
-    expect(unite(ctx, new ConjunctVal({ peg: [] }), TOP).canon).equal('top')
+    expect(tu(ctx, new ConjunctVal({ peg: [] }), TOP).canon).equal('top')
 
-    expect(unite(ctx, P('1 & .a')).canon).equal('1&.a')
-    expect(unite(ctx, P('.a & 1')).canon).equal('1&.a')
+    expect(tu(ctx, P('1 & .a'), TOP).canon).equal('1&.a')
+    expect(tu(ctx, P('.a & 1'), TOP).canon).equal('1&.a')
 
-    expect(unite(ctx, P('1 & 1 & .a')).canon).equal('1&.a')
+    expect(tu(ctx, P('1 & 1 & .a'), TOP).canon).equal('1&.a')
 
-    expect(unite(ctx, P('1 & 2')).canon).equal('nil')
-    expect(unite(ctx, P('1 & 1 & 2')).canon).equal('nil')
-    expect(unite(ctx, P('1 & 1 & .a & 2')).canon).equal('nil')
+    expect(tu(ctx, P('1 & 2'), TOP).canon).equal('nil')
+    expect(tu(ctx, P('1 & 1 & 2'), TOP).canon).equal('nil')
+    expect(tu(ctx, P('1 & 1 & .a & 2'), TOP).canon).equal('nil')
 
-    expect(unite(ctx, P('1 & 1 & .a & .b')).canon).equal('1&.a&.b')
+    expect(tu(ctx, P('1 & 1 & .a & .b'), TOP).canon).equal('1&.a&.b')
 
-    expect(unite(ctx, P('1 & 1 & .a & 1 & .b & 1')).canon).equal('1&.a&.b')
+    expect(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), TOP).canon).equal('1&.a&.b')
   })
 
 
   it('disjunct', () => {
+    let ou = unite
+    let tu = (ctx: any, a: any, b: any) => ou(ctx, a, b, 'integer-test')
     let ctx = makeCtx()
 
     let d1 = new DisjunctVal({ peg: [P('1'), P('2')] })
 
-    expect(unite(ctx, d1, P('2')).canon).equal('2')
+    expect(tu(ctx, d1, P('2')).canon).equal('2')
 
-    expect(unite(ctx, P('1|number')).canon).equal('1|number')
-    expect(unite(ctx, P('1|top')).canon).equal('1|top')
-    expect(unite(ctx, P('1|number|top')).canon).equal('1|number|top')
+    expect(tu(ctx, P('1|number'), TOP).canon).equal('1|number')
+    expect(tu(ctx, P('1|top'), TOP).canon).equal('1|top')
+    expect(tu(ctx, P('1|number|top'), TOP).canon).equal('1|number|top')
 
-    expect(unite(ctx, P('1|number')).gen()).equal(1)
-    expect(unite(ctx, P('1|number|top')).gen()).equal(1)
+    expect(tu(ctx, P('1|number'), TOP).gen()).equal(1)
+    expect(tu(ctx, P('1|number|top'), TOP).gen()).equal(1)
 
-    expect(unite(ctx, P('number|1').unify(P('top'))).canon).equal('number|1')
+    expect(tu(ctx, P('number|1').unify(P('top'), ctx), TOP).canon).equal('number|1')
 
-    expect(unite(ctx, P('1|number|1').unify(P('top'))).canon).equal('1|number')
+    expect(tu(ctx, P('1|number|1').unify(P('top'), ctx), TOP).canon).equal('1|number')
 
-    expect(unite(ctx, P('number|string').unify(P('top'))).canon)
+    expect(tu(ctx, P('number|string').unify(P('top'), ctx), TOP).canon)
       .equal('number|string')
 
-    expect(unite(ctx, P('number|string').unify(P('1'))).canon).equal('1')
-    expect(unite(ctx, P('number|1').unify(P('1'))).canon).equal('1')
+    expect(tu(ctx, P('number|string').unify(P('1'), ctx), TOP).canon).equal('1')
+    expect(tu(ctx, P('number|1').unify(P('1'), ctx), TOP).canon).equal('1')
 
 
-    expect(unite(ctx, P('number|1').unify(P('number|1'))).canon).equal('number|1')
-    expect(unite(ctx, P('1|number').unify(P('1|number'))).canon).equal('1|number')
-    expect(unite(ctx, P('number|1').unify(P('1|number'))).canon).equal('1|number')
+    expect(tu(ctx, P('number|1').unify(P('number|1'), ctx), TOP).canon).equal('number|1')
+    expect(tu(ctx, P('1|number').unify(P('1|number'), ctx), TOP).canon).equal('1|number')
+    expect(tu(ctx, P('number|1').unify(P('1|number'), ctx), TOP).canon).equal('1|number')
 
-    expect(unite(ctx, P('number|1').unify(P('number|string'))).canon)
+    expect(tu(ctx, P('number|1').unify(P('number|string'), ctx), TOP).canon)
       .equal('number|1')
-    expect(unite(ctx, P('number|string').unify(P('boolean|number'))).canon)
+    expect(tu(ctx, P('number|string').unify(P('boolean|number'), ctx), TOP).canon)
       .equal('number')
 
-    expect(unite(ctx, P('number|*1').unify(P('number|*1'))).canon)
+    expect(tu(ctx, P('number|*1').unify(P('number|*1'), ctx), TOP).canon)
       .equal('number|1|*1')
 
 
-    let u0 = unite(ctx, P('number|*1'), P('number'))
+    let u0 = tu(ctx, P('number|*1'), P('number'))
     expect(u0.canon).equal('number|1')
     expect(u0.gen()).equal(1)
 
-    let u1 = unite(ctx, P('number|*1'), P('number|string'))
+    let u1 = tu(ctx, P('number|*1'), P('number|string'))
     expect(u1.canon).equal('number|1')
     expect(u1.gen()).equal(1)
 
-    let u2 = unite(ctx, P('number|*1'), P('2'))
+    let u2 = tu(ctx, P('number|*1'), P('2'))
     expect(u2.canon).equal('2')
     expect(u2.gen()).equal(2)
   })
-
 
 
   it('ref-conjunct', () => {
@@ -814,7 +850,7 @@ b: c2: {n:2}
       //   url: '',
       //   peg: 'p0',
       //   path: [],
-      //   type: String,
+      //   kind: String,
       // },
       // path: [],
       // pref: {
@@ -824,14 +860,14 @@ b: c2: {n:2}
       //   url: '',
       //   peg: 'p0',
       //   path: [],
-      //   type: String,
+      //   kind: String,
       // }
     })
 
 
 
 
-    p0.peg = makeST_String()
+    p0.peg = makeSK_String()
     expect(p0.canon).equal('*string')
     expect(p0.gen()).equal(undefined)
 
@@ -846,7 +882,7 @@ b: c2: {n:2}
 
 
     let p1 = new PrefVal({ peg: new StringVal({ peg: 'p1' }) })
-    let p2 = new PrefVal({ peg: makeST_String() })
+    let p2 = new PrefVal({ peg: makeSK_String() })
 
     let up12 = p1.unify(p2, ctx)
     expect(up12.canon).equal('*"p1"')
@@ -892,9 +928,9 @@ b: c2: {n:2}
     expect(G('number|*1')).equal(1)
     expect(G('string|*1')).equal(1)
 
-    expect(G('*1 & x')).equals(undefined)
+    expect(G('*1 & x', ctx)).equals(undefined)
     expect(G('a:*1,a:2')).equal({ a: 2 })
-    expect(G('a:*1,a:x')).equals({ a: undefined })
+    expect(G('a:*1,a:x', ctx)).equals({ a: undefined })
     expect(G('a: *1 & 2')).equal({ a: 2 })
 
 

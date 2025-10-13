@@ -1,7 +1,6 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
 
-
 import type {
   Val,
   ValSpec,
@@ -11,58 +10,24 @@ import {
   Context,
 } from '../unify'
 
+import { ScalarVal } from './ScalarVal'
+import { Null } from './ScalarKindVal'
 
 
-import { Nil } from './Nil'
-import { BaseVal } from './BaseVal'
-
-
-class NullVal extends BaseVal {
+class NullVal extends ScalarVal {
   isNullVal = true
 
   constructor(
-    spec: {
-      peg: null
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
-    super(spec, ctx)
+    super({ peg: spec.peg, kind: Null }, ctx)
     this.peg = null
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
-    let out: Val
-
-    if ((peer as any).isTop || (peer as NullVal).isNullVal) {
-      out = this
-    }
-    else {
-      out = Nil.make(ctx, 'null', this, peer)
-    }
-
-    return out
-  }
-
-
-  same(peer: Val): boolean {
-    return null == peer ? false : peer instanceof NullVal && this.peg === peer.peg
-  }
-
-
-  clone(ctx: Context, spec?: ValSpec): Val {
-    let out = (super.clone(ctx, spec) as NullVal)
-    return out
-  }
-
-
-  get canon() {
-    return '' + this.peg
-  }
-
-
-  gen(_ctx?: Context) {
-    return null
+  unify(peer: Val, ctx?: Context): Val {
+    return super.unify(peer, ctx)
   }
 }
 
@@ -70,3 +35,4 @@ class NullVal extends BaseVal {
 export {
   NullVal,
 }
+

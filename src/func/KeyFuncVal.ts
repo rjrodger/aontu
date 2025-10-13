@@ -60,7 +60,7 @@ class KeyFuncVal extends FuncBaseVal {
     }
 
     else if (
-      (peer as any).isScalarTypeVal
+      (peer as any).isScalarKindVal
       && peer.peg === String
     ) {
       return this
@@ -93,7 +93,7 @@ class KeyFuncVal extends FuncBaseVal {
       out = new StringVal({ peg: key })
     }
 
-    console.log('KEYFUNC', this.path, this.canon, out.canon)
+    // console.log('KEYFUNC', this.path, this.canon, out.canon)
     return out
   }
 

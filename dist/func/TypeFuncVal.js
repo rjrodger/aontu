@@ -35,7 +35,7 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
                 return val;
             });
         }
-        console.log('TYPE-RESOLVE', args[0]?.canon, '->', out.canon);
+        // console.log('TYPE-RESOLVE', args[0]?.canon, '->', out.canon)
         return out;
     }
 }

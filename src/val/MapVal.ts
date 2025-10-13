@@ -72,7 +72,7 @@ class MapVal extends BaseVal {
 
     let done: boolean = true
     let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
-    console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon)
+    // console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon)
 
     out.spread.cj = this.spread.cj
 
@@ -105,7 +105,7 @@ class MapVal extends BaseVal {
       // out.peg[key].type = newtype = out.peg[key].type || newtype
 
       done = (done && DONE === out.peg[key].dc)
-      console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
+      // console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
     }
 
 
@@ -145,7 +145,7 @@ class MapVal extends BaseVal {
     out.dc = done ? DONE : out.dc
     out.type = this.type || peer.type
 
-    console.log('MAPVAL-OUT', this.id, this.canon, peer.canon, '->', out.canon)
+    // console.log('MAPVAL-OUT', this.id, this.canon, peer.canon, '->', out.canon)
 
     return out
   }
@@ -170,8 +170,8 @@ class MapVal extends BaseVal {
   get canon() {
     let keys = Object.keys(this.peg)
     return this.errcanon() +
-      (this.type ? '<type>' : '') +
-      (this.id + '=') +
+      // (this.type ? '<type>' : '') +
+      // (this.id + '=') +
       '{' +
       (this.spread.cj ? '&:' + this.spread.cj.canon +
         (0 < keys.length ? ',' : '') : '') +

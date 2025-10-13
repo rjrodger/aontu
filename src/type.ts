@@ -64,7 +64,7 @@ interface Val {
   clone(ctx: Context, spec?: ValSpec): Val
 
   // get site(): Site
-  unify(peer: Val, ctx?: Context): Val
+  unify(peer: Val, ctx: Context): Val
   get canon(): string
   gen(ctx?: Context): any
 }

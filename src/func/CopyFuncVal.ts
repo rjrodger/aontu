@@ -50,11 +50,11 @@ class CopyFuncVal extends FuncBaseVal {
 
   unify(peer: Val, ctx: Context): Val {
     let out: Val | undefined = this.resolved
-    console.log('COPY-UNIFY-START', this.canon, peer.canon, '->', out?.canon)
+    // console.log('COPY-UNIFY-START', this.canon, peer.canon, '->', out?.canon)
 
     if (null == out) {
       let oldpeg = this.peg[0]
-      console.log('COPY-UNITE-PEG-A', oldpeg.canon)
+      // console.log('COPY-UNITE-PEG-A', oldpeg.canon)
       let newpeg = unite(ctx, oldpeg, TOP, 'copy')
       this.peg = [newpeg]
 
@@ -66,7 +66,7 @@ class CopyFuncVal extends FuncBaseVal {
       }
     }
 
-    console.log('COPY-UNIFY-OUT', this.canon, peer.canon, '->', out.canon)
+    // console.log('COPY-UNIFY-OUT', this.canon, peer.canon, '->', out.canon)
 
     return out
   }
@@ -84,7 +84,7 @@ class CopyFuncVal extends FuncBaseVal {
     })
 
 
-    console.log('COPY-RESOLVE', this.canon, '->', out.canon)
+    // console.log('COPY-RESOLVE', this.canon, '->', out.canon)
     return out
   }
 }

@@ -43,6 +43,7 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('x:{a:2.7} y:$.x.a')).equal({ x: { a: 2.7 }, y: 2.7 });
         (0, code_1.expect)(G('x:3 y:($.x)')).equal({ x: 3, y: 3 });
         (0, code_1.expect)(G('x:{a:5} y:(x.a)')).equal({ x: { a: 5 }, y: 5 });
+        (0, code_1.expect)(G('z:x:{a:6} z:y:(.x.a)')).equal({ z: { x: { a: 6 }, y: 6 } });
         (0, code_1.expect)(G('z:x:{a:6} z:y:(x.a)')).equal({ z: { x: { a: 6 }, y: 6 } });
         (0, code_1.expect)(G('x:{a:4} y:(.x.a)')).equal({ x: { a: 4 }, y: 4 });
         (0, code_1.expect)(G('x:{a:3} y:($.x.a)')).equal({ x: { a: 3 }, y: 3 });

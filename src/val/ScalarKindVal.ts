@@ -15,11 +15,15 @@ import {
 
 import { Nil } from './Nil'
 import { BaseVal } from './BaseVal'
+import { ScalarVal } from './ScalarVal'
 
 
 
-// A ScalarType for integers. Number includes floats.
+// A ScalarKind for integers. Number includes floats.
 class Integer { }
+
+// A ScalarKind for null.
+class Null { }
 
 
 type ScalarConstructor =
@@ -45,48 +49,66 @@ class ScalarKindVal extends BaseVal {
     this.dc = DONE
   }
 
-  unify(peer: any, ctx?: Context): Val {
-    if (peer?.isScalarVal) {
-      if (peer.type === this.peg) {
-        return peer
+
+  unify(peer: Val, ctx: Context): Val {
+    const peerIsScalarVal = (peer as ScalarVal).isScalarVal
+    const peerIsScalarKindVal = (peer as ScalarKindVal).isScalarKindVal
+
+    let out: Val = this
+
+    if (peerIsScalarVal) {
+      let peerKind = (peer as ScalarVal).kind
+
+      if (peerKind === this.peg) {
+        out = peer
       }
-      else if (Number === this.peg && Integer === peer.type) {
-        return peer
+      else if (Number === this.peg && Integer === peerKind) {
+        out = peer
       }
-      return Nil.make(ctx, 'no-scalar-unify', this, peer)
+      else {
+        out = Nil.make(ctx, 'no-scalar-unify', this, peer)
+      }
+    }
+    else if (peerIsScalarKindVal) {
+      if (Number === this.peg && Integer === peer.peg) {
+        out = peer
+      }
+      else if (Number === peer.peg && Integer === this.peg) {
+        out = this
+      }
+      else if (this.peg === peer.peg) {
+        out = this
+      }
+      else {
+        out = Nil.make(ctx, 'scalar-type', this, peer)
+      }
     }
     else {
-      if (peer?.isScalarTypeVal) {
-        if (Number === this.peg && Integer === peer.peg) {
-          return peer
-        }
-        else if (Number === peer.peg && Integer === this.peg) {
-          return this
-        }
-      }
-      return Nil.make(ctx, 'scalar-type', this, peer)
+      out = Nil.make(ctx, 'not-scalar-type', this, peer)
     }
+
+    // console.log('SCALARKINDVAL', this.canon.peer.canon, '->', out.canon)
+    return out
   }
+
 
   get canon() {
     let ctor = (this.peg as any)
     return ctor.name.toLowerCase()
   }
 
+
   same(peer: any): boolean {
-    let out = peer?.isScalarTypeVal ? this.peg === peer?.peg : super.same(peer)
+    let out = peer?.isScalarKindVal ? this.peg === peer?.peg : super.same(peer)
     return out
   }
-
-  // gen(_ctx?: Context) {
-  //   return undefined
-  // }
 
 }
 
 
 export {
   Integer,
+  Null,
   ScalarConstructor,
   ScalarKindVal,
 }

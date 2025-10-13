@@ -2,6 +2,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -11,21 +12,24 @@ import {
 import { ScalarVal } from './ScalarVal'
 
 
-class NumberVal extends ScalarVal<number> {
+class NumberVal extends ScalarVal {
   isNumberVal = true
 
   constructor(
-    spec: {
-      peg: number
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
+    if (isNaN(spec.peg)) {
+      // TODO: use Nil?
+      throw new Error('not-number: ' + spec.peg)
+    }
+
     super({ peg: spec.peg, kind: Number }, ctx)
   }
 
   unify(peer: any, ctx?: Context): Val {
     if (null != peer) {
-      if (peer.isScalarTypeVal && peer.type === Number) {
+      if (peer.isScalarKindVal && peer.type === Number) {
         return this
       }
       else if (

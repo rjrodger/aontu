@@ -11,7 +11,7 @@ import {
 import { ScalarVal } from './ScalarVal'
 
 
-class StringVal extends ScalarVal<string> {
+class StringVal extends ScalarVal {
   isStringVal = true
 
   constructor(

@@ -5,12 +5,16 @@ exports.NumberVal = void 0;
 const ScalarVal_1 = require("./ScalarVal");
 class NumberVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
+        if (isNaN(spec.peg)) {
+            // TODO: use Nil?
+            throw new Error('not-number: ' + spec.peg);
+        }
         super({ peg: spec.peg, kind: Number }, ctx);
         this.isNumberVal = true;
     }
     unify(peer, ctx) {
         if (null != peer) {
-            if (peer.isScalarTypeVal && peer.type === Number) {
+            if (peer.isScalarKindVal && peer.type === Number) {
                 return this;
             }
             else if (peer.isScalarVal &&

@@ -33,7 +33,7 @@ interface Val {
     get done(): boolean;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;
-    unify(peer: Val, ctx?: Context): Val;
+    unify(peer: Val, ctx: Context): Val;
     get canon(): string;
     gen(ctx?: Context): any;
 }

@@ -8,18 +8,17 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
         if (!Number.isInteger(spec.peg)) {
             // TODO: use Nil?
-            throw new Error('not-integer');
+            throw new Error('not-integer: ' + spec.peg);
         }
         super({ peg: spec.peg, kind: ScalarKindVal_1.Integer }, ctx);
         this.isIntegerVal = true;
     }
     unify(peer, ctx) {
         if (null != peer) {
-            if (peer.isScalarTypeVal && (peer.peg === Number || peer.peg === ScalarKindVal_1.Integer)) {
+            if (peer.isScalarKindVal && (peer.peg === Number || peer.peg === ScalarKindVal_1.Integer)) {
                 return this;
             }
             else if (peer.isScalarVal &&
-                // peer.type === Number &&
                 peer.peg === this.peg) {
                 return this;
             }

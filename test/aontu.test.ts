@@ -1,5 +1,6 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
+
 import Fs from 'node:fs'
 import { describe, it } from 'node:test'
 import { memfs as Memfs } from 'memfs'

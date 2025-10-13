@@ -36,16 +36,17 @@ class Nil extends BaseVal_1.BaseVal {
         return 'nil';
     }
     gen(ctx) {
-        // // Unresolved nil cannot be generated, so always an error.
-        // descErr(this, ctx)
-        // if (Array.isArray(ctx?.err)) {
-        //   ctx.err.push(this)
-        // }
-        // else {
-        //   const err: any = new Error(this.msg)
-        //   err.aontu = true
-        //   throw err
-        // }
+        // Unresolved nil cannot be generated, so always an error.
+        ///descErr(this, ctx)
+        if (Array.isArray(ctx?.err)) {
+            // ctx.err.push(this)
+            ctx.adderr(this);
+        }
+        else {
+            const err = new Error(this.msg);
+            err.aontu = true;
+            throw err;
+        }
         return undefined;
     }
 }

@@ -122,18 +122,19 @@ class Nil extends BaseVal {
   }
 
   gen(ctx?: Context) {
-    // // Unresolved nil cannot be generated, so always an error.
+    // Unresolved nil cannot be generated, so always an error.
 
-    // descErr(this, ctx)
+    ///descErr(this, ctx)
 
-    // if (Array.isArray(ctx?.err)) {
-    //   ctx.err.push(this)
-    // }
-    // else {
-    //   const err: any = new Error(this.msg)
-    //   err.aontu = true
-    //   throw err
-    // }
+    if (Array.isArray(ctx?.err)) {
+      // ctx.err.push(this)
+      ctx.adderr(this)
+    }
+    else {
+      const err: any = new Error(this.msg)
+      err.aontu = true
+      throw err
+    }
 
     return undefined
   }

@@ -20,10 +20,10 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     }
     unify(peer, ctx) {
         let out = this.resolved;
-        console.log('COPY-UNIFY-START', this.canon, peer.canon, '->', out?.canon);
+        // console.log('COPY-UNIFY-START', this.canon, peer.canon, '->', out?.canon)
         if (null == out) {
             let oldpeg = this.peg[0];
-            console.log('COPY-UNITE-PEG-A', oldpeg.canon);
+            // console.log('COPY-UNITE-PEG-A', oldpeg.canon)
             let newpeg = (0, unify_1.unite)(ctx, oldpeg, val_1.TOP, 'copy');
             this.peg = [newpeg];
             if (newpeg.done) {
@@ -33,7 +33,7 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
                 out = this;
             }
         }
-        console.log('COPY-UNIFY-OUT', this.canon, peer.canon, '->', out.canon);
+        // console.log('COPY-UNIFY-OUT', this.canon, peer.canon, '->', out.canon)
         return out;
     }
     resolve(ctx, args) {
@@ -45,7 +45,7 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
             val.type = false;
             return val;
         });
-        console.log('COPY-RESOLVE', this.canon, '->', out.canon);
+        // console.log('COPY-RESOLVE', this.canon, '->', out.canon)
         return out;
     }
 }

@@ -8,7 +8,7 @@ let {
   StringVal,
   BooleanVal,
   IntegerVal,
-  ScalarTypeVal,
+  ScalarKindVal,
 } = require('../dist/lib/val')
 
 let P = (s) => util.parse('string' === typeof s ? { src: s } : s, {})

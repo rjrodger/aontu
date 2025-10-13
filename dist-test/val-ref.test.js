@@ -589,8 +589,11 @@ b: { c1: { k:1 }}
         (0, code_1.expect)(G('&:k:.$KEY a:{}')).equal({ a: { k: 'a' } });
         (0, code_1.expect)(G('&:k:.$KEY a:{} b:{}')).equal({ a: { k: 'a' }, b: { k: 'b' } });
         (0, code_1.expect)(G('&:k:a &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } });
-        (0, code_1.expect)(G('&:k:.$KEY &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } });
-        (0, code_1.expect)(G('&:k:.$KEY &:p:2 a:{x:11} b:{x:22}'))
+        // expect(G('&:k:.$KEY &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } })
+        (0, code_1.expect)(G('&:k:key() &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } });
+        // expect(G('&:k:.$KEY &:p:2 a:{x:11} b:{x:22}'))
+        //   .equal({ a: { k: 'a', p: 2, x: 11 }, b: { k: 'b', p: 2, x: 22 } })
+        (0, code_1.expect)(G('&:k:key() &:p:2 a:{x:11} b:{x:22}'))
             .equal({ a: { k: 'a', p: 2, x: 11 }, b: { k: 'b', p: 2, x: 22 } });
         (0, code_1.expect)(G('a:&:n:.$KEY a:b:{}'))
             .equal({ a: { b: { n: 'b' } } });

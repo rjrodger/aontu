@@ -17,7 +17,7 @@ class FuncBaseVal extends BaseVal_1.BaseVal {
     }
     unify(peer, ctx) {
         let why = '';
-        console.log('FBV', this.id, peer.id, this.constructor.name, this.type, this.peg?.canon);
+        // console.log('FBV', this.id, peer.id, this.constructor.name, this.type, this.peg?.canon)
         if (this.id === peer.id) {
             return this;
         }

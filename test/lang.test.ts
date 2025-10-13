@@ -1,4 +1,5 @@
-/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
+
 
 import { describe, it } from 'node:test'
 

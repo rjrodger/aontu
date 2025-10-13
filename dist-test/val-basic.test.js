@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const lang_1 = require("../dist/lang");
@@ -21,11 +21,11 @@ const P = (x, ctx) => PL(x, ctx);
 const PA = (x, ctx) => x.map(s => PL(s, ctx));
 // const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r))?.canon;
-const G = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen();
-const makeST_String = () => new val_1.ScalarTypeVal({ peg: String });
-const makeST_Number = () => new val_1.ScalarTypeVal({ peg: Number });
-const makeST_Integer = () => new val_1.ScalarTypeVal({ peg: val_1.Integer });
-const makeST_Boolean = () => new val_1.ScalarTypeVal({ peg: Boolean });
+const G = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen(ctx);
+const makeSK_String = () => new val_1.ScalarKindVal({ peg: String });
+const makeSK_Number = () => new val_1.ScalarKindVal({ peg: Number });
+const makeSK_Integer = () => new val_1.ScalarKindVal({ peg: val_1.Integer });
+const makeSK_Boolean = () => new val_1.ScalarKindVal({ peg: Boolean });
 const makeBooleanVal = (v) => new val_1.BooleanVal({ peg: v });
 const makeNumberVal = (v, c) => new val_1.NumberVal({ peg: v }, c);
 const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
@@ -45,6 +45,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(P('a:1,b:c:2').canon).equal('{"a":1,"b":{"c":2}}');
     });
     (0, node_test_1.it)('gen', () => {
+        let ctx = makeCtx();
         (0, code_1.expect)(P('1').gen()).equal(1);
         (0, code_1.expect)(P('"a"').gen()).equal('a');
         (0, code_1.expect)(P('b').gen()).equal('b');
@@ -52,46 +53,47 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(P('top').gen()).equal(undefined);
         (0, code_1.expect)(P('a:1').gen()).equal({ a: 1 });
         (0, code_1.expect)(P('a:1,b:c:2').gen()).equal({ a: 1, b: { c: 2 } });
-        (0, code_1.expect)(P('nil').gen()).equal(undefined);
-        (0, code_1.expect)(P('a:1,b:nil').gen()).equal({ a: 1, b: undefined });
+        (0, code_1.expect)(P('nil').gen(ctx)).equal(undefined);
+        (0, code_1.expect)(P('a:1,b:nil').gen(ctx)).equal({ a: 1, b: undefined });
     });
-    (0, node_test_1.it)('scalartype', () => {
-        (0, code_1.expect)(makeST_String().same(makeST_String())).equal(true);
-        (0, code_1.expect)(makeST_Number().same(makeST_Number())).equal(true);
-        (0, code_1.expect)(makeST_Boolean().same(makeST_Boolean())).equal(true);
-        (0, code_1.expect)(makeST_Integer().same(makeST_Integer())).equal(true);
-        (0, code_1.expect)(makeST_String().same(makeST_Number())).equal(false);
-        (0, code_1.expect)(makeST_String().same(makeST_Boolean())).equal(false);
-        (0, code_1.expect)(makeST_String().same(makeST_Integer())).equal(false);
-        (0, code_1.expect)(makeST_Number().same(makeST_Boolean())).equal(false);
-        (0, code_1.expect)(makeST_Number().same(makeST_Integer())).equal(false);
-        (0, code_1.expect)(makeST_Integer().same(makeST_Boolean())).equal(false);
+    (0, node_test_1.it)('scalar-kind', () => {
+        (0, code_1.expect)(makeSK_String().same(makeSK_String())).equal(true);
+        (0, code_1.expect)(makeSK_Number().same(makeSK_Number())).equal(true);
+        (0, code_1.expect)(makeSK_Boolean().same(makeSK_Boolean())).equal(true);
+        (0, code_1.expect)(makeSK_Integer().same(makeSK_Integer())).equal(true);
+        (0, code_1.expect)(makeSK_String().same(makeSK_Number())).equal(false);
+        (0, code_1.expect)(makeSK_String().same(makeSK_Boolean())).equal(false);
+        (0, code_1.expect)(makeSK_String().same(makeSK_Integer())).equal(false);
+        (0, code_1.expect)(makeSK_Number().same(makeSK_Boolean())).equal(false);
+        (0, code_1.expect)(makeSK_Number().same(makeSK_Integer())).equal(false);
+        (0, code_1.expect)(makeSK_Integer().same(makeSK_Boolean())).equal(false);
     });
     (0, node_test_1.it)('boolean', () => {
+        let tu = (ctx, a, b) => (0, unify_2.unite)(ctx, a, b, 'boolean-test');
         let ctx = makeCtx();
         let bt = new val_1.BooleanVal({ peg: true }, ctx);
         let bf = new val_1.BooleanVal({ peg: false }, ctx);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bt, bt)).equal(bt);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bf, bf)).equal(bf);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bt, bf) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bf, bt) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bt, val_1.TOP)).equal(bt);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bf, val_1.TOP)).equal(bf);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, bt)).equal(bt);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, bf)).equal(bf);
+        (0, code_1.expect)(tu(ctx, bt, bt)).equal(bt);
+        (0, code_1.expect)(tu(ctx, bf, bf)).equal(bf);
+        (0, code_1.expect)(tu(ctx, bt, bf) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, bf, bt) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, bt, val_1.TOP)).equal(bt);
+        (0, code_1.expect)(tu(ctx, bf, val_1.TOP)).equal(bf);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, bt)).equal(bt);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, bf)).equal(bf);
         let b0 = new Nil_1.Nil('test');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bt, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bf, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, bt)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, bf)).equal(b0);
-        let bs = makeST_Boolean();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bt, bs)).equal(bt);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bs, bt)).equal(bt);
+        (0, code_1.expect)(tu(ctx, bt, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, bf, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, bt)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, bf)).equal(b0);
+        let bs = makeSK_Boolean();
+        (0, code_1.expect)(tu(ctx, bt, bs)).equal(bt);
+        (0, code_1.expect)(tu(ctx, bs, bt)).equal(bt);
         let n0 = makeNumberVal(1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bt, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, bf, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, bt) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, bf) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, bt, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, bf, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, bt) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, bf) instanceof Nil_1.Nil).exist();
         (0, code_1.expect)(bt.same(bt)).equal(true);
         (0, code_1.expect)(bf.same(bf)).equal(true);
         (0, code_1.expect)(bt.same(bf)).equal(false);
@@ -100,72 +102,75 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(makeBooleanVal(true).same(makeBooleanVal(false))).equal(false);
     });
     (0, node_test_1.it)('string', () => {
+        let ou = unify_2.unite;
+        let tu = (ctx, a, b) => ou(ctx, a, b, 'string-test');
         let ctx = makeCtx();
         let s0 = new val_1.StringVal({ peg: 's0' });
         let s1 = new val_1.StringVal({ peg: 's1' });
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, s0)).equal(s0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s1, s1)).equal(s1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, s1) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s1, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, val_1.TOP)).equal(s0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s1, val_1.TOP)).equal(s1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, s0)).equal(s0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, s1)).equal(s1);
+        (0, code_1.expect)(tu(ctx, s0, s0)).equal(s0);
+        (0, code_1.expect)(tu(ctx, s1, s1)).equal(s1);
+        (0, code_1.expect)(tu(ctx, s0, s1) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s1, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, val_1.TOP)).equal(s0);
+        (0, code_1.expect)(tu(ctx, s1, val_1.TOP)).equal(s1);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, s0)).equal(s0);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, s1)).equal(s1);
         let b0 = new Nil_1.Nil('test');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s1, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, s0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, s1)).equal(b0);
-        let t0 = makeST_String();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, t0)).equal(s0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, t0, s0)).equal(s0);
+        (0, code_1.expect)(tu(ctx, s0, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, s1, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, s0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, s1)).equal(b0);
+        let t0 = makeSK_String();
+        (0, code_1.expect)(tu(ctx, s0, t0)).equal(s0);
+        (0, code_1.expect)(tu(ctx, t0, s0)).equal(s0);
         let n0 = makeNumberVal(1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s1, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, s1) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s1, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, s1) instanceof Nil_1.Nil).exist();
         (0, code_1.expect)(s0.same(s0)).equal(true);
         (0, code_1.expect)(new val_1.StringVal({ peg: 'a' }).same(new val_1.StringVal({ peg: 'a' }))).equal(true);
         (0, code_1.expect)(new val_1.StringVal({ peg: 'a' }).same(new val_1.StringVal({ peg: 'b' }))).equal(false);
     });
     (0, node_test_1.it)('number', () => {
+        let tu = (ctx, a, b) => (0, unify_2.unite)(ctx, a, b, 'number-test');
         let ctx = makeCtx();
         let n0 = makeNumberVal(0, ctx);
         let n1 = makeNumberVal(1.1, ctx);
         let n2 = makeNumberVal(-2, ctx);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, n0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, n0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, n1)).equal(n1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n2, n2)).equal(n2);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, n1) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, n2) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n2, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, n2) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n2, n1) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, val_1.TOP)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, val_1.TOP)).equal(n1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n2, val_1.TOP)).equal(n2);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, n0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, n1)).equal(n1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, n2)).equal(n2);
+        (0, code_1.expect)(tu(ctx, n0, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, n0, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, n1, n1)).equal(n1);
+        (0, code_1.expect)(tu(ctx, n2, n2)).equal(n2);
+        (0, code_1.expect)(tu(ctx, n0, n1) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n1, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, n2) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n2, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n1, n2) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n2, n1) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, val_1.TOP)).equal(n0);
+        (0, code_1.expect)(tu(ctx, n1, val_1.TOP)).equal(n1);
+        (0, code_1.expect)(tu(ctx, n2, val_1.TOP)).equal(n2);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, n1)).equal(n1);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, n2)).equal(n2);
         let b0 = new Nil_1.Nil('test');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n2, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, n0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, n1)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, n2)).equal(b0);
-        let t0 = makeST_Number();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, t0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, t0, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, n0, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, n1, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, n2, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, n0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, n1)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, n2)).equal(b0);
+        let t0 = makeSK_Number();
+        (0, code_1.expect)(tu(ctx, n0, t0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, t0, n0)).equal(n0);
         let s0 = new val_1.StringVal({ peg: 's0' });
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n2, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, n1) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, n2) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n1, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n2, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, n1) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, n2) instanceof Nil_1.Nil).exist();
         (0, code_1.expect)(n0.same(n0)).equal(true);
         (0, code_1.expect)(n1.same(n1)).equal(true);
         (0, code_1.expect)(n2.same(n2)).equal(true);
@@ -173,18 +178,19 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(makeNumberVal(11).same(makeNumberVal(22))).equal(false);
     });
     (0, node_test_1.it)('number-unify', () => {
+        let ctx = makeCtx();
         let n0 = makeIntegerVal(11);
         n0.mark$ = 'n0';
         let n1 = makeIntegerVal(11);
         n1.mark$ = 'n1';
         (0, code_1.expect)(n0.unify(n1).mark$).equal('n0');
         (0, code_1.expect)(n1.unify(n0).mark$).equal('n1');
-        let tn0 = makeST_Number();
-        let ti0 = makeST_Integer();
+        let tn0 = makeSK_Number();
+        let ti0 = makeSK_Integer();
         (0, code_1.expect)(n0.unify(tn0).mark$).equal('n0');
-        (0, code_1.expect)(tn0.unify(n0).mark$).equal('n0');
+        (0, code_1.expect)(tn0.unify(n0, ctx).mark$).equal('n0');
         (0, code_1.expect)(n0.unify(ti0).mark$).equal('n0');
-        (0, code_1.expect)(ti0.unify(n0).mark$).equal('n0');
+        (0, code_1.expect)(ti0.unify(n0, ctx).mark$).equal('n0');
         let x0 = makeNumberVal(11);
         x0.mark$ = 'x0';
         let x1 = makeNumberVal(11);
@@ -192,19 +198,19 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(x0.unify(x1).mark$).equal('x0');
         (0, code_1.expect)(x1.unify(x0).mark$).equal('x1');
         (0, code_1.expect)(x0.unify(tn0).mark$).equal('x0');
-        (0, code_1.expect)(tn0.unify(x0).mark$).equal('x0');
+        (0, code_1.expect)(tn0.unify(x0, ctx).mark$).equal('x0');
         (0, code_1.expect)(x0.unify(ti0).isNil).equal(true);
-        (0, code_1.expect)(ti0.unify(x0).isNil).equal(true);
+        (0, code_1.expect)(ti0.unify(x0, ctx).isNil).equal(true);
         (0, code_1.expect)(x0.unify(n0).mark$).equal('n0');
         (0, code_1.expect)(n0.unify(x0).mark$).equal('n0');
         let x2 = makeNumberVal(2.2);
         x2.mark$ = 'x2';
         (0, code_1.expect)(x2.unify(tn0).mark$).equal('x2');
-        (0, code_1.expect)(tn0.unify(x2).mark$).equal('x2');
+        (0, code_1.expect)(tn0.unify(x2, ctx).mark$).equal('x2');
         (0, code_1.expect)(x2.unify(ti0).isNil).equal(true);
-        (0, code_1.expect)(ti0.unify(x2).isNil).equal(true);
+        (0, code_1.expect)(ti0.unify(x2, ctx).isNil).equal(true);
         (0, code_1.expect)(x2.unify(n0).isNil).equal(true);
-        (0, code_1.expect)(n0.unify(x2).isNil).equal(true);
+        (0, code_1.expect)(n0.unify(x2, ctx).isNil).equal(true);
     });
     (0, node_test_1.it)('number-parse', () => {
         // expect(P('0').canon).equal('0')
@@ -237,68 +243,86 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
             peg: 11,
             row: 1,
             top: false,
-            type: val_1.Integer,
+            kind: val_1.Integer,
             uh: [],
             url: undefined,
         });
     });
     (0, node_test_1.it)('integer', () => {
+        let ou = unify_2.unite;
+        let tu = (ctx, a, b) => ou(ctx, a, b, 'integer-test');
         let ctx = makeCtx();
         let n0 = makeIntegerVal(0);
         let n1 = makeIntegerVal(1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, n0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, n1)).equal(n1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, n1) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, val_1.TOP)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, val_1.TOP)).equal(n1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, n0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, n1)).equal(n1);
+        (0, code_1.expect)(tu(ctx, n0, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, n1, n1)).equal(n1);
+        (0, code_1.expect)(tu(ctx, n0, n1) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n1, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, val_1.TOP)).equal(n0);
+        (0, code_1.expect)(tu(ctx, n1, val_1.TOP)).equal(n1);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, val_1.TOP, n1)).equal(n1);
         let b0 = new Nil_1.Nil('test');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, n0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, n1)).equal(b0);
+        (0, code_1.expect)(tu(ctx, n0, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, n1, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, n0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, n1)).equal(b0);
         let s0 = new val_1.StringVal({ peg: 's0' });
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n1, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, n1) instanceof Nil_1.Nil).exist();
-        let t0 = makeST_Integer();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, t0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, t0, n0)).equal(n0);
-        let t1 = makeST_Number();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, t1)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, t1, n0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, t0, t1)).equal(t0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, t1, t0)).equal(t0);
+        (0, code_1.expect)(tu(ctx, n0, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n1, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, n1) instanceof Nil_1.Nil).exist();
+        let t0 = makeSK_Integer();
+        (0, code_1.expect)(tu(ctx, n0, t0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, t0, n0)).equal(n0);
+        let t1 = makeSK_Number();
+        (0, code_1.expect)(tu(ctx, n0, t1)).equal(n0);
+        (0, code_1.expect)(tu(ctx, t1, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, t0, t1)).equal(t0);
+        (0, code_1.expect)(tu(ctx, t1, t0)).equal(t0);
         let x0 = makeNumberVal(0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, x0)).equal(n0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, x0, n0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, n0, x0)).equal(n0);
+        (0, code_1.expect)(tu(ctx, x0, n0)).equal(n0);
         (0, code_1.expect)(n0.same(n0)).equal(true);
         (0, code_1.expect)(makeIntegerVal(11).same(makeIntegerVal(11))).equal(true);
         (0, code_1.expect)(makeIntegerVal(11).same(makeIntegerVal(22))).equal(false);
     });
+    (0, node_test_1.it)('null', () => {
+        let tu = (ctx, a, b) => (0, unify_2.unite)(ctx, a, b, 'null-test');
+        let ctx = makeCtx();
+        let nv = new val_1.NullVal({}, ctx);
+        let bv = new val_1.BooleanVal({ peg: true }, ctx);
+        let mv = new val_1.NumberVal({ peg: 2.2 }, ctx);
+        let iv = new val_1.IntegerVal({ peg: 2 }, ctx);
+        let sv = new val_1.StringVal({ peg: 'a' }, ctx);
+        (0, code_1.expect)(tu(ctx, nv, nv)).equal(nv);
+        (0, code_1.expect)(tu(ctx, nv, bv) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, nv, mv) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, nv, iv) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, nv, sv) instanceof Nil_1.Nil).exist();
+    });
     (0, node_test_1.it)('map', () => {
+        let ou = unify_2.unite;
+        let tu = (ctx, a, b) => ou(ctx, a, b, 'integer-test');
         let ctx = makeCtx();
         let m0 = new MapVal_1.MapVal({ peg: {} });
         (0, code_1.expect)(m0.canon).equal('{}');
         // TODO: update
-        (0, code_1.expect)((0, unify_2.unite)(ctx, m0, m0).canon).equal('{}');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, m0, val_1.TOP).canon).equal('{}');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, m0).canon).equal('{}');
+        (0, code_1.expect)(tu(ctx, m0, m0).canon).equal('{}');
+        (0, code_1.expect)(tu(ctx, m0, val_1.TOP).canon).equal('{}');
+        (0, code_1.expect)(tu(ctx, val_1.TOP, m0).canon).equal('{}');
         let b0 = new Nil_1.Nil('test');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, m0, b0)).equal(b0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, b0, m0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, m0, b0)).equal(b0);
+        (0, code_1.expect)(tu(ctx, b0, m0)).equal(b0);
         let s0 = new val_1.StringVal({ peg: 's0' });
-        (0, code_1.expect)((0, unify_2.unite)(ctx, m0, s0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, s0, m0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, m0, s0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, s0, m0) instanceof Nil_1.Nil).exist();
         let n0 = makeNumberVal(0);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, m0, n0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, n0, m0) instanceof Nil_1.Nil).exist();
-        let t0 = makeST_String();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, m0, t0) instanceof Nil_1.Nil).exist();
-        (0, code_1.expect)((0, unify_2.unite)(ctx, t0, m0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, m0, n0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, n0, m0) instanceof Nil_1.Nil).exist();
+        let t0 = makeSK_String();
+        (0, code_1.expect)(tu(ctx, m0, t0) instanceof Nil_1.Nil).exist();
+        (0, code_1.expect)(tu(ctx, t0, m0) instanceof Nil_1.Nil).exist();
         let m1 = new MapVal_1.MapVal({ peg: { a: makeNumberVal(1) } });
         // print(m1, 'm1')
         (0, code_1.expect)(m1.canon).equal('{"a":1}');
@@ -318,10 +342,12 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(m1.canon).equal('{"a":1}');
     });
     (0, node_test_1.it)('map', () => {
+        let ou = unify_2.unite;
+        let tu = (ctx, a, b) => ou(ctx, a, b, 'integer-test');
         let ctx = makeCtx();
         let l0 = new ListVal_1.ListVal({ peg: [] });
         (0, code_1.expect)(l0.canon).equal('[]');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, l0, l0).canon).equal('[]');
+        (0, code_1.expect)(tu(ctx, l0, l0).canon).equal('[]');
     });
     (0, node_test_1.it)('map-spread', () => {
         let ctx = makeCtx();
@@ -360,6 +386,8 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(g0).equal({ a: 11 });
     });
     (0, node_test_1.it)('conjunct', () => {
+        let ou = unify_2.unite;
+        let tu = (ctx, a, b) => ou(ctx, a, b, 'integer-test');
         let ctx = makeCtx(new MapVal_1.MapVal({ peg: { x: makeIntegerVal(1) } }));
         let d0 = new ConjunctVal_1.ConjunctVal({ peg: PA(['1']) });
         let d1 = new ConjunctVal_1.ConjunctVal({ peg: PA(['1', '1']) });
@@ -382,67 +410,69 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(d4.canon).equal('1&number&integer');
         (0, code_1.expect)(d5.canon).equal('{"a":1}');
         (0, code_1.expect)(d6.canon).equal('{"a":1}&{"b":2}');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d0, P('1')).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1', d0)).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d0, P('2')).canon)
+        (0, code_1.expect)(tu(ctx, d0, P('1')).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, P('1', d0), val_1.TOP).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, d0, P('2')).canon)
             .equal('nil');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('2'), d0).canon)
+        (0, code_1.expect)(tu(ctx, P('2'), d0).canon)
             .equal('nil');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d0, val_1.TOP).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, d0).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d1, val_1.TOP).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, d1).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d2, val_1.TOP).canon)
+        (0, code_1.expect)(tu(ctx, d0, val_1.TOP).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, val_1.TOP, d0).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, d1, val_1.TOP).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, val_1.TOP, d1).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, d2, val_1.TOP).canon)
             .equal('nil');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, d2).canon)
+        (0, code_1.expect)(tu(ctx, val_1.TOP, d2).canon)
             .equal('nil');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d3, val_1.TOP).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, d3).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, d3, val_1.TOP).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, val_1.TOP, d3).canon).equal('1');
         // TODO: term order is swapped by ConjunctVal impl - should be preserved
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d100, val_1.TOP).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, val_1.TOP, d100).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, d100, val_1.TOP).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, val_1.TOP, d100).canon).equal('1');
         // TODO: same for DisjunctVal
-        (0, code_1.expect)((0, unify_2.unite)(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), val_1.TOP).canon).equal('top');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1 & .a')).canon).equal('1&.a');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('.a & 1')).canon).equal('1&.a');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1 & 1 & .a')).canon).equal('1&.a');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1 & 2')).canon).equal('nil');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1 & 1 & 2')).canon).equal('nil');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1 & 1 & .a & 2')).canon).equal('nil');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1 & 1 & .a & .b')).canon).equal('1&.a&.b');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1 & 1 & .a & 1 & .b & 1')).canon).equal('1&.a&.b');
+        (0, code_1.expect)(tu(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), val_1.TOP).canon).equal('top');
+        (0, code_1.expect)(tu(ctx, P('1 & .a'), val_1.TOP).canon).equal('1&.a');
+        (0, code_1.expect)(tu(ctx, P('.a & 1'), val_1.TOP).canon).equal('1&.a');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a'), val_1.TOP).canon).equal('1&.a');
+        (0, code_1.expect)(tu(ctx, P('1 & 2'), val_1.TOP).canon).equal('nil');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & 2'), val_1.TOP).canon).equal('nil');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & 2'), val_1.TOP).canon).equal('nil');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & .b'), val_1.TOP).canon).equal('1&.a&.b');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), val_1.TOP).canon).equal('1&.a&.b');
     });
     (0, node_test_1.it)('disjunct', () => {
+        let ou = unify_2.unite;
+        let tu = (ctx, a, b) => ou(ctx, a, b, 'integer-test');
         let ctx = makeCtx();
         let d1 = new DisjunctVal_1.DisjunctVal({ peg: [P('1'), P('2')] });
-        (0, code_1.expect)((0, unify_2.unite)(ctx, d1, P('2')).canon).equal('2');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1|number')).canon).equal('1|number');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1|top')).canon).equal('1|top');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1|number|top')).canon).equal('1|number|top');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1|number')).gen()).equal(1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1|number|top')).gen()).equal(1);
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|1').unify(P('top'))).canon).equal('number|1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1|number|1').unify(P('top'))).canon).equal('1|number');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|string').unify(P('top'))).canon)
+        (0, code_1.expect)(tu(ctx, d1, P('2')).canon).equal('2');
+        (0, code_1.expect)(tu(ctx, P('1|number'), val_1.TOP).canon).equal('1|number');
+        (0, code_1.expect)(tu(ctx, P('1|top'), val_1.TOP).canon).equal('1|top');
+        (0, code_1.expect)(tu(ctx, P('1|number|top'), val_1.TOP).canon).equal('1|number|top');
+        (0, code_1.expect)(tu(ctx, P('1|number'), val_1.TOP).gen()).equal(1);
+        (0, code_1.expect)(tu(ctx, P('1|number|top'), val_1.TOP).gen()).equal(1);
+        (0, code_1.expect)(tu(ctx, P('number|1').unify(P('top'), ctx), val_1.TOP).canon).equal('number|1');
+        (0, code_1.expect)(tu(ctx, P('1|number|1').unify(P('top'), ctx), val_1.TOP).canon).equal('1|number');
+        (0, code_1.expect)(tu(ctx, P('number|string').unify(P('top'), ctx), val_1.TOP).canon)
             .equal('number|string');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|string').unify(P('1'))).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|1').unify(P('1'))).canon).equal('1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|1').unify(P('number|1'))).canon).equal('number|1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('1|number').unify(P('1|number'))).canon).equal('1|number');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|1').unify(P('1|number'))).canon).equal('1|number');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|1').unify(P('number|string'))).canon)
+        (0, code_1.expect)(tu(ctx, P('number|string').unify(P('1'), ctx), val_1.TOP).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, P('number|1').unify(P('1'), ctx), val_1.TOP).canon).equal('1');
+        (0, code_1.expect)(tu(ctx, P('number|1').unify(P('number|1'), ctx), val_1.TOP).canon).equal('number|1');
+        (0, code_1.expect)(tu(ctx, P('1|number').unify(P('1|number'), ctx), val_1.TOP).canon).equal('1|number');
+        (0, code_1.expect)(tu(ctx, P('number|1').unify(P('1|number'), ctx), val_1.TOP).canon).equal('1|number');
+        (0, code_1.expect)(tu(ctx, P('number|1').unify(P('number|string'), ctx), val_1.TOP).canon)
             .equal('number|1');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|string').unify(P('boolean|number'))).canon)
+        (0, code_1.expect)(tu(ctx, P('number|string').unify(P('boolean|number'), ctx), val_1.TOP).canon)
             .equal('number');
-        (0, code_1.expect)((0, unify_2.unite)(ctx, P('number|*1').unify(P('number|*1'))).canon)
+        (0, code_1.expect)(tu(ctx, P('number|*1').unify(P('number|*1'), ctx), val_1.TOP).canon)
             .equal('number|1|*1');
-        let u0 = (0, unify_2.unite)(ctx, P('number|*1'), P('number'));
+        let u0 = tu(ctx, P('number|*1'), P('number'));
         (0, code_1.expect)(u0.canon).equal('number|1');
         (0, code_1.expect)(u0.gen()).equal(1);
-        let u1 = (0, unify_2.unite)(ctx, P('number|*1'), P('number|string'));
+        let u1 = tu(ctx, P('number|*1'), P('number|string'));
         (0, code_1.expect)(u1.canon).equal('number|1');
         (0, code_1.expect)(u1.gen()).equal(1);
-        let u2 = (0, unify_2.unite)(ctx, P('number|*1'), P('2'));
+        let u2 = tu(ctx, P('number|*1'), P('2'));
         (0, code_1.expect)(u2.canon).equal('2');
         (0, code_1.expect)(u2.gen()).equal(2);
     });
@@ -574,7 +604,7 @@ b: c2: {n:2}
             //   url: '',
             //   peg: 'p0',
             //   path: [],
-            //   type: String,
+            //   kind: String,
             // },
             // path: [],
             // pref: {
@@ -584,10 +614,10 @@ b: c2: {n:2}
             //   url: '',
             //   peg: 'p0',
             //   path: [],
-            //   type: String,
+            //   kind: String,
             // }
         });
-        p0.peg = makeST_String();
+        p0.peg = makeSK_String();
         (0, code_1.expect)(p0.canon).equal('*string');
         (0, code_1.expect)(p0.gen()).equal(undefined);
         // p0.pref = new Nil([], 'test:pref')
@@ -597,7 +627,7 @@ b: c2: {n:2}
         // expect(p0.canon).equal('nil')
         // expect(p0.gen([])).equal(undefined)
         let p1 = new PrefVal_1.PrefVal({ peg: new val_1.StringVal({ peg: 'p1' }) });
-        let p2 = new PrefVal_1.PrefVal({ peg: makeST_String() });
+        let p2 = new PrefVal_1.PrefVal({ peg: makeSK_String() });
         let up12 = p1.unify(p2, ctx);
         (0, code_1.expect)(up12.canon).equal('*"p1"');
         let up21 = p2.unify(p1, ctx);
@@ -625,9 +655,9 @@ b: c2: {n:2}
         // expect(d0.gen()).equal(undefined)
         (0, code_1.expect)(G('number|*1')).equal(1);
         (0, code_1.expect)(G('string|*1')).equal(1);
-        (0, code_1.expect)(G('*1 & x')).equals(undefined);
+        (0, code_1.expect)(G('*1 & x', ctx)).equals(undefined);
         (0, code_1.expect)(G('a:*1,a:2')).equal({ a: 2 });
-        (0, code_1.expect)(G('a:*1,a:x')).equals({ a: undefined });
+        (0, code_1.expect)(G('a:*1,a:x', ctx)).equals({ a: undefined });
         (0, code_1.expect)(G('a: *1 & 2')).equal({ a: 2 });
         (0, code_1.expect)(G('true|*true')).equal(true);
         (0, code_1.expect)(G('*true|true')).equal(true);

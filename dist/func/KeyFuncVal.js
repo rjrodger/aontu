@@ -31,7 +31,7 @@ class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
       }
   
       else if (
-        (peer as any).isScalarTypeVal
+        (peer as any).isScalarKindVal
         && peer.peg === String
       ) {
         return this
@@ -59,7 +59,7 @@ class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
             // return key
             out = new val_1.StringVal({ peg: key });
         }
-        console.log('KEYFUNC', this.path, this.canon, out.canon);
+        // console.log('KEYFUNC', this.path, this.canon, out.canon)
         return out;
     }
     gen(ctx) {

@@ -233,7 +233,7 @@ class Context {
 
 
   adderr(err: Nil, whence?: string) {
-    // console.log('ADDERR', whence, err)
+    // console.log('ADDERR', whence, err?.why)
     ; (this.#errlist as any).push(err)
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
@@ -298,14 +298,14 @@ class Unify {
 
       let maxcc = 9 // 99
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
-        console.log('CC', this.cc, res.canon)
+        // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
         res = unite(uctx, res, TOP, 'unify')
         uctx = uctx.clone({ root: res })
       }
     }
 
-    // console.log('CC-END', uctx?.cc)
+    // console.log('CC-END', uctx?.cc, uctx?.err)
 
     this.res = res
   }

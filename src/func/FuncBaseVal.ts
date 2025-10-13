@@ -44,7 +44,7 @@ class FuncBaseVal extends BaseVal {
   unify(peer: Val, ctx: Context): Val {
     let why = ''
 
-    console.log('FBV', this.id, peer.id, this.constructor.name, this.type, this.peg?.canon)
+    // console.log('FBV', this.id, peer.id, this.constructor.name, this.type, this.peg?.canon)
 
     if (this.id === peer.id) {
       return this

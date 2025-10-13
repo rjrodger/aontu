@@ -12,7 +12,7 @@ import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
 
 
-class IntegerVal extends ScalarVal<number> {
+class IntegerVal extends ScalarVal {
   isIntegerVal = true
 
   constructor(
@@ -23,19 +23,18 @@ class IntegerVal extends ScalarVal<number> {
   ) {
     if (!Number.isInteger(spec.peg)) {
       // TODO: use Nil?
-      throw new Error('not-integer')
+      throw new Error('not-integer: ' + spec.peg)
     }
     super({ peg: spec.peg, kind: Integer }, ctx)
   }
 
   unify(peer: any, ctx?: Context): Val {
     if (null != peer) {
-      if (peer.isScalarTypeVal && (peer.peg === Number || peer.peg === Integer)) {
+      if (peer.isScalarKindVal && (peer.peg === Number || peer.peg === Integer)) {
         return this
       }
       else if (
         peer.isScalarVal &&
-        // peer.type === Number &&
         peer.peg === this.peg
       ) {
         return this

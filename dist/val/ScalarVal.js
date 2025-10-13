@@ -5,7 +5,6 @@ exports.ScalarVal = void 0;
 const type_1 = require("../type");
 const Nil_1 = require("./Nil");
 const BaseVal_1 = require("./BaseVal");
-// import { ScalarConstructor } from './ScalarTypeVal'
 class ScalarVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -22,8 +21,8 @@ class ScalarVal extends BaseVal_1.BaseVal {
         return out;
     }
     unify(peer, ctx) {
-        // Exactly equal scalars are handled in op/unite
-        if (peer?.isScalarKindVal) {
+        // Exactly equal scalars are handled in unify.unite
+        if (peer.isScalarKindVal) {
             return peer.unify(this, ctx);
         }
         else if (peer.top) {
@@ -32,7 +31,9 @@ class ScalarVal extends BaseVal_1.BaseVal {
         return Nil_1.Nil.make(ctx, 'scalar', this, peer);
     }
     get canon() {
-        return this.peg.toString();
+        return null === this.peg ? 'null' :
+            undefined === this.peg ? 'undefined' :
+                this.peg.toString();
     }
     same(peer) {
         return peer?.isScalarVal ? peer.peg === this.peg : super.same(peer);
