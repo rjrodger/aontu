@@ -1,7 +1,7 @@
 "use strict";
-/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.util = exports.Context = exports.Lang = exports.Nil = void 0;
+exports.AontuX = exports.util = exports.Context = exports.Lang = exports.Nil = void 0;
 exports.Aontu = Aontu;
 exports.parse = parse;
 const lang_1 = require("./lang");
@@ -11,8 +11,84 @@ Object.defineProperty(exports, "Context", { enumerable: true, get: function () {
 const val_1 = require("./val");
 Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return val_1.Nil; } });
 const err_1 = require("./err");
-// TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level
-// TODO: exclude tests from dist!!!
+class AontuX {
+    constructor(popts) {
+        this.opts = popts;
+    }
+    ctx(arg) {
+        return arg instanceof AontuContext ? arg :
+            new AontuContext(arg);
+    }
+    parse(src, ac) {
+        ac = this.ctx(ac);
+        let opts = prepareOptions(src, { ...this.opts });
+        let deps = {};
+        let val = parse(opts, { deps });
+        if (null == val) {
+            val = new val_1.MapVal({ peg: {} });
+        }
+        if (val.err) {
+            val.err.map((err) => ac.adderr(err));
+        }
+        val.deps = deps;
+        ac.root = val;
+        return val;
+    }
+    unify(src, ac) {
+        ac = this.ctx(ac);
+        let pval = src.isVal ? src : this.parse(src, ac);
+        let osrc = 'string' === typeof src ? src : (ac.src ?? '');
+        let uni = new unify_1.Unify(pval, undefined, undefined, osrc);
+        let res = uni.res;
+        let err = uni.err;
+        res.deps = pval.deps;
+        res.err = err;
+        if (res.err) {
+            res.err.map((err) => ac.adderr(err));
+        }
+        ac.root = res;
+        return res;
+    }
+    generate(src, meta) {
+        try {
+            let ac = this.ctx({ src, err: meta?.err });
+            let pval = this.parse(src, ac);
+            if (0 < meta.err?.length) {
+                return undefined;
+            }
+            let uval = this.unify(pval, ac);
+            if (0 < uval.err?.length) {
+                return undefined;
+            }
+            let out = uval.gen(ac);
+            return out;
+        }
+        catch (err) {
+            if (err instanceof AontuError) {
+                throw err;
+            }
+            const unex = new AontuError('Aontu: unexpexted error: ' + err.message);
+            Object.assign(unex, err);
+            unex.stack = unex.stack;
+            throw unex;
+        }
+    }
+}
+exports.AontuX = AontuX;
+class AontuContext extends unify_1.Context {
+    constructor(cfg) {
+        cfg = cfg ?? {
+            root: new val_1.Nil()
+        };
+        super(cfg);
+    }
+}
+class AontuError extends Error {
+    constructor(msg, errs) {
+        super(msg);
+        this.errs = errs ?? [];
+    }
+}
 // TODO: propogate property path and url properly over unification, and multisource
 /*
 NEXT:

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 import type { Val, Options, FST } from './type'
 
@@ -7,9 +7,145 @@ import { Unify, Context } from './unify'
 import { Nil, MapVal } from './val'
 import { descErr } from './err'
 
-// TODO: BUG: foo: { bar: {} } zed: {} puts zed a wrong level
 
-// TODO: exclude tests from dist!!!
+
+type AontuOptions = {
+
+}
+
+
+
+
+class AontuX {
+  opts: any // AontuOptions
+
+  constructor(popts?: Partial<AontuOptions>) {
+    this.opts = popts
+  }
+
+
+  ctx(arg?: AontuContextConfig | AontuContext): AontuContext {
+    return arg instanceof AontuContext ? arg :
+      new AontuContext(arg)
+  }
+
+
+  parse(src: string, ac?: AontuContext): Val {
+    ac = this.ctx(ac)
+    let opts = prepareOptions(src, { ...this.opts })
+
+    let deps = {}
+    let val = parse(opts, { deps })
+
+    if (null == val) {
+      val = new MapVal({ peg: {} })
+    }
+
+    if (val.err) {
+      val.err.map((err: any) => ac.adderr(err))
+    }
+
+    val.deps = deps
+
+    ac.root = val
+
+    return val
+  }
+
+
+  unify(src: string | Val, ac?: AontuContext): Val {
+    ac = this.ctx(ac)
+
+    let pval = (src as Val).isVal ? src as Val : this.parse(src as string, ac)
+    let osrc = 'string' === typeof src ? src : (ac.src ?? '')
+
+    let uni = new Unify(pval, undefined, undefined, osrc)
+    let res = uni.res
+    let err = uni.err
+
+    res.deps = pval.deps
+    res.err = err
+
+    if (res.err) {
+      res.err.map((err: any) => ac.adderr(err))
+    }
+
+    ac.root = res
+
+    return res
+  }
+
+
+  generate(src: string, meta?: any): any {
+    try {
+      let ac = this.ctx({ src, err: meta?.err })
+
+      let pval = this.parse(src, ac)
+      if (0 < meta.err?.length) {
+        return undefined
+      }
+
+      let uval = this.unify(pval, ac)
+      if (0 < uval.err?.length) {
+        return undefined
+      }
+
+      let out = uval.gen(ac as any)
+      return out
+    }
+    catch (err: any) {
+      if (err instanceof AontuError) {
+        throw err
+      }
+      const unex = new AontuError('Aontu: unexpexted error: ' + err.message)
+      Object.assign(unex, err)
+      unex.stack = unex.stack
+      throw unex
+    }
+  }
+
+}
+
+
+
+type AontuContextConfig = {
+  root?: Val
+  path?: []
+  err?: Omit<Nil[], "push">
+  vc?: number
+  cc?: number
+  var?: Record<string, Val>
+  src?: string
+  seenI?: number
+  seen?: Record<string, number>
+}
+
+
+class AontuContext extends Context {
+  constructor(cfg?: AontuContextConfig) {
+    cfg = cfg ?? {
+      root: new Nil()
+    }
+    super(cfg as any)
+  }
+
+}
+
+
+
+class AontuError extends Error {
+  errs: Nil[]
+
+  constructor(msg: string, errs?: Nil[]) {
+    super(msg)
+    this.errs = errs ?? []
+  }
+
+
+}
+
+
+
 // TODO: propogate property path and url properly over unification, and multisource
 
 /*
@@ -95,6 +231,6 @@ const util = {
   options: prepareOptions,
 }
 
-export { Aontu, Val, Nil, Lang, Context, parse, util }
+export { Aontu, Val, Nil, Lang, Context, parse, util, AontuX }
 
 export default Aontu

@@ -1,63 +1,53 @@
 
 const Util = require('node:util')
-const { AontuX } = require('..')
+const { Aontu, Context, parse } = require('..')
 
 const src = process.argv[2]
 const debug = process.argv[3]
 
-
-const aontu = new AontuX({
-  path: process.cwd()
-})
-
-let err = []
-
 if(debug) {
-  console.log('> SRC:', src)
-}
+  const pval = parse({src},{src,deps:{}})
 
-if(debug) {
-  const pval = aontu.parse(src)
-  err = pval.err
-  
   if('canon'===debug || 'deep'===debug) {
     console.log('> CANON:', pval.canon)
   }
 
   if('deep'===debug) {
     console.log('> AST:'),
+    // console.dir(pval,{depth:null})
     print(pval)
   }
 }
 
-let root
+const root = Aontu(src, {
+  path: process.cwd()
+})
 
+console.log('> UNIFIED:', root.canon)
 
-if(debug && 0 === err.length) {
-  root = aontu.unify(src)
-  err = root.err
-  
-  console.log('> UNIFIED:', root.canon)
-
-  if('deep'===debug) {
-    print(root)
-  }
+if('deep'===debug) {
+  print(root)
 }
 
-if(0 === err.length) {
+
+if(0<root.err?.length) {
+  root.err.map(err=>console.error(err.msg))
+}
+else {
   if(debug) {
     console.log('> GEN:')
   }
-  const out = aontu.generate(src, { err })
-  print(out)
+  const err = []
+  const out = root.gen(new Context({ src, root, err }))
+
+  if(0<err.length) {
+    console.log('> ERRORS: '+err.length)
+    err.map(err=>console.error(err.msg))
+  }
+  else {
+    print(out)
+  }
 }
-
-
-if(0 < err.length) {
-  console.log('> ERRORS: '+err.length)
-  err.map(err=>console.error(err.msg))
-}
-
 
 
 function print(v) {
