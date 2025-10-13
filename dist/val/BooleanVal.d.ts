@@ -6,6 +6,6 @@ declare class BooleanVal extends ScalarVal {
     constructor(spec: {
         peg: boolean;
     }, ctx?: Context);
-    unify(peer: Val, ctx?: Context): Val;
+    unify(peer: Val, ctx: Context): Val;
 }
 export { BooleanVal, };

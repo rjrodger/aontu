@@ -6,7 +6,7 @@ declare class StringVal extends ScalarVal {
     constructor(spec: {
         peg: string;
     }, ctx?: Context);
-    unify(peer: Val, ctx?: Context): Val;
+    unify(peer: Val, ctx: Context): Val;
     get canon(): string;
 }
 export { StringVal, };

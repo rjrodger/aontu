@@ -112,11 +112,11 @@ class PrefVal extends BaseVal_1.BaseVal {
         let val = this.peg;
         if (val instanceof Nil_1.Nil) {
             // descErr(val, ctx)
-            if (ctx) {
-                // ctx.err.push(val)
-                ctx.adderr(val);
-            }
-            else {
+            if (null == ctx) {
+                //   // ctx.err.push(val)
+                //   ctx.adderr(val)
+                // }
+                // else {
                 throw new Error(val.msg);
             }
         }

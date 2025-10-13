@@ -15,6 +15,7 @@ declare class Context {
     fs?: FST;
     seenI: number;
     seen: Record<string, number>;
+    collect: boolean;
     constructor(cfg: {
         root: Val;
         path?: Path;
@@ -25,6 +26,7 @@ declare class Context {
         src?: string;
         seenI?: number;
         seen?: Record<string, number>;
+        collect?: boolean;
     });
     clone(cfg: {
         root?: Val;
@@ -34,6 +36,7 @@ declare class Context {
     descend(key: string): Context;
     get err(): any;
     adderr(err: Nil, whence?: string): void;
+    errmsg(): string;
     find(path: string[]): Val | undefined;
 }
 declare class Unify {

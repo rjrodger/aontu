@@ -48,7 +48,7 @@ if(0 === err.length) {
   if(debug) {
     console.log('> GEN:')
   }
-  const out = aontu.generate(src, { err })
+  const out = aontu.generate(src, {err})
   print(out)
 }
 

@@ -21,55 +21,71 @@ class AontuX {
     }
     parse(src, ac) {
         ac = this.ctx(ac);
-        let opts = prepareOptions(src, { ...this.opts });
-        let deps = {};
+        const opts = prepareOptions(src, { ...this.opts });
+        const deps = {};
         let val = parse(opts, { deps });
-        if (null == val) {
+        if (undefined === val) {
             val = new val_1.MapVal({ peg: {} });
-        }
-        if (val.err) {
-            val.err.map((err) => ac.adderr(err));
         }
         val.deps = deps;
         ac.root = val;
+        if (val.err && 0 < val.err.length) {
+            val.err.map((err) => ac.adderr(err));
+            if (!ac.collect) {
+                throw new AontuError(ac.errmsg(), ac.err);
+            }
+            return undefined;
+        }
         return val;
     }
     unify(src, ac) {
         ac = this.ctx(ac);
         let pval = src.isVal ? src : this.parse(src, ac);
         let osrc = 'string' === typeof src ? src : (ac.src ?? '');
+        if (undefined === pval) {
+            return undefined;
+        }
         let uni = new unify_1.Unify(pval, undefined, undefined, osrc);
         let res = uni.res;
         let err = uni.err;
         res.deps = pval.deps;
         res.err = err;
-        if (res.err) {
-            res.err.map((err) => ac.adderr(err));
-        }
         ac.root = res;
+        if (res.err && 0 < res.err.length) {
+            res.err.map((err) => ac.adderr(err));
+            if (!ac.collect) {
+                throw new AontuError(ac.errmsg(), ac.err);
+            }
+        }
         return res;
     }
     generate(src, meta) {
         try {
             let ac = this.ctx({ src, err: meta?.err });
             let pval = this.parse(src, ac);
-            if (0 < meta.err?.length) {
+            if (undefined === pval || 0 < pval.err?.length) {
                 return undefined;
             }
             let uval = this.unify(pval, ac);
-            if (0 < uval.err?.length) {
+            if (undefined == uval || 0 < uval.err?.length) {
                 return undefined;
             }
             let out = uval.gen(ac);
+            if (0 < ac.err.length) {
+                if (!ac.collect) {
+                    throw new AontuError(ac.errmsg(), ac.err);
+                }
+                return undefined;
+            }
             return out;
         }
         catch (err) {
             if (err instanceof AontuError) {
                 throw err;
             }
-            const unex = new AontuError('Aontu: unexpexted error: ' + err.message);
+            const unex = new AontuError('Aontu: unexpected error: ' + err.message);
             Object.assign(unex, err);
-            unex.stack = unex.stack;
+            unex.stack = err.stack;
             throw unex;
         }
     }
@@ -86,7 +102,7 @@ class AontuContext extends unify_1.Context {
 class AontuError extends Error {
     constructor(msg, errs) {
         super(msg);
-        this.errs = errs ?? [];
+        this.errs = () => errs ?? [];
     }
 }
 // TODO: propogate property path and url properly over unification, and multisource

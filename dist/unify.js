@@ -129,6 +129,7 @@ class Context {
         this.path = cfg.path || [];
         // this.err = cfg.err || []
         this.src = cfg.src;
+        this.collect = cfg.collect ?? null != cfg.err;
         __classPrivateFieldSet(this, _Context_errlist, cfg.err || [], "f");
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
@@ -148,6 +149,7 @@ class Context {
             src: this.src,
             seenI: this.seenI,
             seen: this.seen,
+            collect: this.collect,
         });
     }
     descend(key) {
@@ -164,12 +166,17 @@ class Context {
         return a;
     }
     adderr(err, whence) {
-        // console.log('ADDERR', whence, err?.why)
         ;
         __classPrivateFieldGet(this, _Context_errlist, "f").push(err);
         if (null == err.msg || '' == err.msg) {
             (0, err_1.descErr)(err, this);
         }
+    }
+    errmsg() {
+        return __classPrivateFieldGet(this, _Context_errlist, "f")
+            .map((err) => err?.msg)
+            .filter(msg => null != msg)
+            .join('\n------\n');
     }
     find(path) {
         let node = this.root;

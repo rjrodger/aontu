@@ -5,6 +5,10 @@ import { describe, test } from 'node:test'
 import { expect } from '@hapi/code'
 
 import {
+  AontuX
+} from '..'
+
+import {
   Context,
   Unify,
 } from '../dist/unify'
@@ -250,35 +254,65 @@ describe('func', function() {
   })
 
 
-  test('key-expr', () => {
-    // expect(G('key()+B')).equal('B')
-    // expect(G('C+key()')).equal('C')
-    // expect(G('(key())')).equal('')
-    // expect(G('(J+key())')).equal('J')
-    // expect(G('(key()+H)')).equal('H')
-    // expect(G('(J+key()+H)')).equal('JH')
-    // expect(G('key()+key()')).equal('')
-    // expect(G('(key()+key())')).equal('')
+  test('key-unify', () => {
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
 
-    // expect(G('a:key()+B')).equal({ a: 'B' })
-    // expect(G('a:C+key()')).equal({ a: 'C' })
-    // expect(G('a:(key())')).equal({ a: '' })
-    // expect(G('a:(J+key())')).equal({ a: 'J' })
-    // expect(G('a:(key()+H)')).equal({ a: 'H' })
-    // expect(G('a:(J+key()+H)')).equal({ a: 'JH' })
-    // expect(G('a:key()+key()')).equal({ a: '' })
-    // expect(G('a:(key()+key())')).equal({ a: '' })
+    expect(G('key()&""')).equal('')
+    expect(G('a:key()&""')).equal({ a: '' })
+    expect(() => G('key()&"x"')).throw(/scalar/)
+    expect(() => G('a:key()&"x"')).throw(/scalar/)
+    expect(G('x:a:key()&"x"')).equal({ x: { a: 'x' } })
+  })
+
+
+  test('key-expr', () => {
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    expect(G('key()+B')).equal('B')
+    expect(G('C+key()')).equal('C')
+    expect(G('D+key()+E')).equal('DE')
+    expect(G('(key())')).equal('')
+    expect(G('(J+key())')).equal('J')
+    expect(G('(key()+H)')).equal('H')
+    expect(G('(J+key()+H)')).equal('JH')
+
+    expect(G('key()')).equal('')
+    expect(G('(key())')).equal('')
+    expect(G('key()+key()')).equal('')
+    expect(G('(key()+key())')).equal('')
+    expect(G('key()+key()+key()')).equal('')
+    expect(G('(key()+key()+key())')).equal('')
+
+    expect(G('((key()))')).equal('')
+    expect(G('(key()+key())')).equal('')
+    expect(G('((key()+key()))')).equal('')
+    expect(G('(key()+key()+key())')).equal('')
+    expect(G('((key()+key()+key()))')).equal('')
+
+    expect(G('AA+(key())')).equal('AA')
+    expect(G('(key())+BB')).equal('BB')
+    expect(G('AA+(key())+BB')).equal('AABB')
+
+    expect(G('a:key()+B')).equal({ a: 'B' })
+    expect(G('a:C+key()')).equal({ a: 'C' })
+    expect(G('a:(key())')).equal({ a: '' })
+    expect(G('a:(J+key())')).equal({ a: 'J' })
+    expect(G('a:(key()+H)')).equal({ a: 'H' })
+    expect(G('a:(J+key()+H)')).equal({ a: 'JH' })
+    expect(G('a:key()+key()')).equal({ a: '' })
+    expect(G('a:(key()+key())')).equal({ a: '' })
 
     expect(G('a:b:key()')).equal({ a: { b: 'a' } })
     expect(G('a:b:key()+B')).equal({ a: { b: 'aB' } })
-    // expect(G('a:b:C+key()')).equal({ a: { b: 'Ca' } })
-    // expect(G('a:b:(key())')).equal({ a: { b: 'a' } })
-    // expect(G('a:b:(J+key())')).equal({ a: { b: 'Ja' } })
-    // expect(G('a:b:(key()+H)')).equal({ a: { b: 'aH' } })
-    // expect(G('a:b:(J+key()+H)')).equal({ a: { b: 'JaH' } })
-    // expect(G('a:b:key()+key()')).equal({ a: { b: 'aa' } })
-    // expect(G('a:b:(key()+key())')).equal({ a: { b: 'aax' } })
-
+    expect(G('a:b:C+key()')).equal({ a: { b: 'Ca' } })
+    expect(G('a:b:(key())')).equal({ a: { b: 'a' } })
+    expect(G('a:b:(J+key())')).equal({ a: { b: 'Ja' } })
+    expect(G('a:b:(key()+H)')).equal({ a: { b: 'aH' } })
+    expect(G('a:b:(J+key()+H)')).equal({ a: { b: 'JaH' } })
+    expect(G('a:b:key()+key()')).equal({ a: { b: 'aa' } })
+    expect(G('a:b:(key()+key())')).equal({ a: { b: 'aa' } })
   })
 
 

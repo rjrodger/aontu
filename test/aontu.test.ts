@@ -17,13 +17,13 @@ describe('aontu', function() {
     let a0 = new AontuX()
 
     let p0 = a0.parse('a:number')
-    expect(p0.canon).equal('{"a":number}')
+    expect(p0?.canon).equal('{"a":number}')
 
     let v0 = a0.unify('a:1')
-    expect(v0.canon).equal('{"a":1}')
+    expect(v0?.canon).equal('{"a":1}')
 
-    let v0a = a0.unify(v0)
-    expect(v0a.canon).equal('{"a":1}')
+    let v0a = a0.unify(v0 as any)
+    expect(v0a?.canon).equal('{"a":1}')
 
     let d0 = a0.generate('a:2')
     expect(d0).equal({ a: 2 })
@@ -34,7 +34,7 @@ describe('aontu', function() {
     let a0 = new AontuX()
 
     expect(() => a0.parse('a::number')).throws('QQQ')
-    expect(a0.parse('a:number a:A').canon).equal('WWW')
+    expect((a0 as any).parse('a:number a:A').canon).equal('WWW')
 
     expect(() => a0.unify('a::1')).throws('QQQ')
     expect(() => a0.unify('a:1 a:2')).throws('QQQ')

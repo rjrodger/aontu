@@ -9,6 +9,6 @@ declare class CopyFuncVal extends FuncBaseVal {
     make(_ctx: Context, spec: ValSpec): Val;
     funcname(): string;
     unify(peer: Val, ctx: Context): Val;
-    resolve(ctx: Context | undefined, args: Val[]): Nil | Val;
+    resolve(ctx: Context | undefined, args: Val[]): Val | Nil;
 }
 export { CopyFuncVal, };

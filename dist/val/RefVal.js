@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
 const type_1 = require("../type");
-const err_1 = require("../err");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("./ConjunctVal");
@@ -231,12 +230,12 @@ class RefVal extends BaseVal_1.BaseVal {
         nil.url = this.url;
         nil.row = this.row;
         nil.col = this.col;
-        (0, err_1.descErr)(nil, ctx);
-        if (ctx) {
-            // ctx.err.push(nil)
-            ctx.adderr(nil);
-        }
-        else {
+        // descErr(nil, ctx)
+        if (null == ctx) {
+            //   // ctx.err.push(nil)
+            //   ctx.adderr(nil)
+            // }
+            // else {
             throw new Error(nil.msg);
         }
         return undefined;

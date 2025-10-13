@@ -30,34 +30,44 @@ class AontuX {
   }
 
 
-  parse(src: string, ac?: AontuContext): Val {
+  parse(src: string, ac?: AontuContext): Val | undefined {
     ac = this.ctx(ac)
-    let opts = prepareOptions(src, { ...this.opts })
 
-    let deps = {}
+    const opts = prepareOptions(src, { ...this.opts })
+    const deps = {}
+
     let val = parse(opts, { deps })
 
-    if (null == val) {
+    if (undefined === val) {
       val = new MapVal({ peg: {} })
     }
 
-    if (val.err) {
-      val.err.map((err: any) => ac.adderr(err))
-    }
-
     val.deps = deps
-
     ac.root = val
+
+    if (val.err && 0 < val.err.length) {
+      val.err.map((err: any) => ac.adderr(err))
+
+      if (!ac.collect) {
+        throw new AontuError(ac.errmsg(), ac.err)
+      }
+
+      return undefined
+    }
 
     return val
   }
 
 
-  unify(src: string | Val, ac?: AontuContext): Val {
+  unify(src: string | Val, ac?: AontuContext): Val | undefined {
     ac = this.ctx(ac)
 
     let pval = (src as Val).isVal ? src as Val : this.parse(src as string, ac)
     let osrc = 'string' === typeof src ? src : (ac.src ?? '')
+
+    if (undefined === pval) {
+      return undefined
+    }
 
     let uni = new Unify(pval, undefined, undefined, osrc)
     let res = uni.res
@@ -66,11 +76,15 @@ class AontuX {
     res.deps = pval.deps
     res.err = err
 
-    if (res.err) {
-      res.err.map((err: any) => ac.adderr(err))
-    }
-
     ac.root = res
+
+    if (res.err && 0 < res.err.length) {
+      res.err.map((err: any) => ac.adderr(err))
+
+      if (!ac.collect) {
+        throw new AontuError(ac.errmsg(), ac.err)
+      }
+    }
 
     return res
   }
@@ -81,25 +95,32 @@ class AontuX {
       let ac = this.ctx({ src, err: meta?.err })
 
       let pval = this.parse(src, ac)
-      if (0 < meta.err?.length) {
+      if (undefined === pval || 0 < pval.err?.length) {
         return undefined
       }
 
       let uval = this.unify(pval, ac)
-      if (0 < uval.err?.length) {
+      if (undefined == uval || 0 < uval.err?.length) {
         return undefined
       }
 
       let out = uval.gen(ac as any)
+      if (0 < ac.err.length) {
+        if (!ac.collect) {
+          throw new AontuError(ac.errmsg(), ac.err)
+        }
+        return undefined
+      }
+
       return out
     }
     catch (err: any) {
       if (err instanceof AontuError) {
         throw err
       }
-      const unex = new AontuError('Aontu: unexpexted error: ' + err.message)
+      const unex = new AontuError('Aontu: unexpected error: ' + err.message)
       Object.assign(unex, err)
-      unex.stack = unex.stack
+      unex.stack = err.stack
       throw unex
     }
   }
@@ -134,14 +155,12 @@ class AontuContext extends Context {
 
 
 class AontuError extends Error {
-  errs: Nil[]
-
   constructor(msg: string, errs?: Nil[]) {
     super(msg)
-    this.errs = errs ?? []
+    this.errs = () => errs ?? []
   }
 
-
+  errs: () => Nil[]
 }
 
 

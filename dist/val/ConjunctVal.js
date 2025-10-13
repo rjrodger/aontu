@@ -18,6 +18,8 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         this.isBinaryOp = true;
         this.isConjunctVal = true;
         this.type = !!spec.type;
+        this.peg = (Array.isArray(this.peg) ? this.peg : [])
+            .filter((p) => null != p && p.isVal);
         this.peg?.map((v) => v.type = this.type || v.type);
         // console.log('CONJUNCT-ctor', this.peg.map((v: Val) => v.canon))
     }

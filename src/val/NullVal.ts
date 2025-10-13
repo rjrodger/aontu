@@ -26,7 +26,7 @@ class NullVal extends ScalarVal {
   }
 
 
-  unify(peer: Val, ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
   }
 }

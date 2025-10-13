@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const code_1 = require("@hapi/code");
+const __1 = require("..");
 const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
 const MapVal_1 = require("../dist/val/MapVal");
@@ -200,32 +201,56 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('a:b:c:key(-1)')).equal({ a: { b: { c: '' } } });
         (0, code_1.expect)(G('a:b:c:key(-2)')).equal({ a: { b: { c: '' } } });
     });
+    (0, node_test_1.test)('key-unify', () => {
+        const a0 = new __1.AontuX();
+        const G = a0.generate.bind(a0);
+        (0, code_1.expect)(G('key()&""')).equal('');
+        (0, code_1.expect)(G('a:key()&""')).equal({ a: '' });
+        (0, code_1.expect)(() => G('key()&"x"')).throw(/scalar/);
+        (0, code_1.expect)(() => G('a:key()&"x"')).throw(/scalar/);
+        (0, code_1.expect)(G('x:a:key()&"x"')).equal({ x: { a: 'x' } });
+    });
     (0, node_test_1.test)('key-expr', () => {
-        // expect(G('key()+B')).equal('B')
-        // expect(G('C+key()')).equal('C')
-        // expect(G('(key())')).equal('')
-        // expect(G('(J+key())')).equal('J')
-        // expect(G('(key()+H)')).equal('H')
-        // expect(G('(J+key()+H)')).equal('JH')
-        // expect(G('key()+key()')).equal('')
-        // expect(G('(key()+key())')).equal('')
-        // expect(G('a:key()+B')).equal({ a: 'B' })
-        // expect(G('a:C+key()')).equal({ a: 'C' })
-        // expect(G('a:(key())')).equal({ a: '' })
-        // expect(G('a:(J+key())')).equal({ a: 'J' })
-        // expect(G('a:(key()+H)')).equal({ a: 'H' })
-        // expect(G('a:(J+key()+H)')).equal({ a: 'JH' })
-        // expect(G('a:key()+key()')).equal({ a: '' })
-        // expect(G('a:(key()+key())')).equal({ a: '' })
+        const a0 = new __1.AontuX();
+        const G = a0.generate.bind(a0);
+        (0, code_1.expect)(G('key()+B')).equal('B');
+        (0, code_1.expect)(G('C+key()')).equal('C');
+        (0, code_1.expect)(G('D+key()+E')).equal('DE');
+        (0, code_1.expect)(G('(key())')).equal('');
+        (0, code_1.expect)(G('(J+key())')).equal('J');
+        (0, code_1.expect)(G('(key()+H)')).equal('H');
+        (0, code_1.expect)(G('(J+key()+H)')).equal('JH');
+        (0, code_1.expect)(G('key()')).equal('');
+        (0, code_1.expect)(G('(key())')).equal('');
+        (0, code_1.expect)(G('key()+key()')).equal('');
+        (0, code_1.expect)(G('(key()+key())')).equal('');
+        (0, code_1.expect)(G('key()+key()+key()')).equal('');
+        (0, code_1.expect)(G('(key()+key()+key())')).equal('');
+        (0, code_1.expect)(G('((key()))')).equal('');
+        (0, code_1.expect)(G('(key()+key())')).equal('');
+        (0, code_1.expect)(G('((key()+key()))')).equal('');
+        (0, code_1.expect)(G('(key()+key()+key())')).equal('');
+        (0, code_1.expect)(G('((key()+key()+key()))')).equal('');
+        (0, code_1.expect)(G('AA+(key())')).equal('AA');
+        (0, code_1.expect)(G('(key())+BB')).equal('BB');
+        (0, code_1.expect)(G('AA+(key())+BB')).equal('AABB');
+        (0, code_1.expect)(G('a:key()+B')).equal({ a: 'B' });
+        (0, code_1.expect)(G('a:C+key()')).equal({ a: 'C' });
+        (0, code_1.expect)(G('a:(key())')).equal({ a: '' });
+        (0, code_1.expect)(G('a:(J+key())')).equal({ a: 'J' });
+        (0, code_1.expect)(G('a:(key()+H)')).equal({ a: 'H' });
+        (0, code_1.expect)(G('a:(J+key()+H)')).equal({ a: 'JH' });
+        (0, code_1.expect)(G('a:key()+key()')).equal({ a: '' });
+        (0, code_1.expect)(G('a:(key()+key())')).equal({ a: '' });
         (0, code_1.expect)(G('a:b:key()')).equal({ a: { b: 'a' } });
         (0, code_1.expect)(G('a:b:key()+B')).equal({ a: { b: 'aB' } });
-        // expect(G('a:b:C+key()')).equal({ a: { b: 'Ca' } })
-        // expect(G('a:b:(key())')).equal({ a: { b: 'a' } })
-        // expect(G('a:b:(J+key())')).equal({ a: { b: 'Ja' } })
-        // expect(G('a:b:(key()+H)')).equal({ a: { b: 'aH' } })
-        // expect(G('a:b:(J+key()+H)')).equal({ a: { b: 'JaH' } })
-        // expect(G('a:b:key()+key()')).equal({ a: { b: 'aa' } })
-        // expect(G('a:b:(key()+key())')).equal({ a: { b: 'aax' } })
+        (0, code_1.expect)(G('a:b:C+key()')).equal({ a: { b: 'Ca' } });
+        (0, code_1.expect)(G('a:b:(key())')).equal({ a: { b: 'a' } });
+        (0, code_1.expect)(G('a:b:(J+key())')).equal({ a: { b: 'Ja' } });
+        (0, code_1.expect)(G('a:b:(key()+H)')).equal({ a: { b: 'aH' } });
+        (0, code_1.expect)(G('a:b:(J+key()+H)')).equal({ a: { b: 'JaH' } });
+        (0, code_1.expect)(G('a:b:key()+key()')).equal({ a: { b: 'aa' } });
+        (0, code_1.expect)(G('a:b:(key()+key())')).equal({ a: { b: 'aa' } });
     });
     /*
     test('key-deep', () => {

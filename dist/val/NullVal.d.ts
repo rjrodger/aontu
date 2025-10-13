@@ -4,6 +4,6 @@ import { ScalarVal } from './ScalarVal';
 declare class NullVal extends ScalarVal {
     isNullVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);
-    unify(peer: Val, ctx?: Context): Val;
+    unify(peer: Val, ctx: Context): Val;
 }
 export { NullVal, };

@@ -181,11 +181,11 @@ class PrefVal extends BaseVal {
     if (val instanceof Nil) {
       // descErr(val, ctx)
 
-      if (ctx) {
-        // ctx.err.push(val)
-        ctx.adderr(val)
-      }
-      else {
+      if (null == ctx) {
+        //   // ctx.err.push(val)
+        //   ctx.adderr(val)
+        // }
+        // else {
         throw new Error(val.msg)
       }
     }
@@ -193,6 +193,7 @@ class PrefVal extends BaseVal {
     return val.gen(ctx)
   }
 }
+
 
 
 function makeSuper(v: Val) {

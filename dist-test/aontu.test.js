@@ -9,11 +9,11 @@ const aontu_1 = require("../dist/aontu");
     (0, node_test_1.it)('basic-api', async () => {
         let a0 = new aontu_1.AontuX();
         let p0 = a0.parse('a:number');
-        (0, code_1.expect)(p0.canon).equal('{"a":number}');
+        (0, code_1.expect)(p0?.canon).equal('{"a":number}');
         let v0 = a0.unify('a:1');
-        (0, code_1.expect)(v0.canon).equal('{"a":1}');
+        (0, code_1.expect)(v0?.canon).equal('{"a":1}');
         let v0a = a0.unify(v0);
-        (0, code_1.expect)(v0a.canon).equal('{"a":1}');
+        (0, code_1.expect)(v0a?.canon).equal('{"a":1}');
         let d0 = a0.generate('a:2');
         (0, code_1.expect)(d0).equal({ a: 2 });
     });

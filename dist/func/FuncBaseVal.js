@@ -79,13 +79,15 @@ class FuncBaseVal extends BaseVal_1.BaseVal {
             out.path = this.path;
             why += 'defer';
         }
-        // console.log('FUNC-OUT', this.funcname(), why, out.dc, out.canon, out.id)
+        // console.log('FUNC-UNIFY-OUT', this.funcname(), why, peer.canon,
+        //  'O=', out.dc, out.canon, out.id)
         return out;
     }
     get canon() {
-        return (this.type ? '<type>' : '') +
-            (this.done ? '<done>' : '') +
-            (this.id + '=') +
+        return '' +
+            // (this.type ? '<type>' : '') +
+            // (this.done ? '<done>' : '') +
+            // (this.id + '=') +
             this.funcname() + '(' + (this.peg.map((p) => p.canon).join(',')) + ')';
     }
     funcname() {

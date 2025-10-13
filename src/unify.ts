@@ -164,6 +164,8 @@ class Context {
   seenI: number
   seen: Record<string, number>
 
+  collect: boolean
+
   #errlist: Omit<Nil[], "push">  // Nil error log of current unify.
 
   constructor(cfg: {
@@ -176,12 +178,14 @@ class Context {
     src?: string
     seenI?: number
     seen?: Record<string, number>
+    collect?: boolean
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
     // this.err = cfg.err || []
     this.src = cfg.src
 
+    this.collect = cfg.collect ?? null != cfg.err
     this.#errlist = cfg.err || []
 
     // Multiple unify passes will keep incrementing Val counter.
@@ -211,6 +215,7 @@ class Context {
       src: this.src,
       seenI: this.seenI,
       seen: this.seen,
+      collect: this.collect,
     })
   }
 
@@ -233,11 +238,18 @@ class Context {
 
 
   adderr(err: Nil, whence?: string) {
-    // console.log('ADDERR', whence, err?.why)
     ; (this.#errlist as any).push(err)
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
     }
+  }
+
+
+  errmsg() {
+    return this.#errlist
+      .map((err: any) => err?.msg)
+      .filter(msg => null != msg)
+      .join('\n------\n')
   }
 
 

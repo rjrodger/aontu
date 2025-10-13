@@ -27,7 +27,7 @@ class NumberVal extends ScalarVal {
     super({ peg: spec.peg, kind: Number }, ctx)
   }
 
-  unify(peer: any, ctx?: Context): Val {
+  unify(peer: any, ctx: Context): Val {
     if (null != peer) {
       if (peer.isScalarKindVal && peer.type === Number) {
         return this

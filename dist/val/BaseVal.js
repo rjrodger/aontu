@@ -39,6 +39,9 @@ class BaseVal {
         _BaseVal_ctx.set(this, void 0);
         __classPrivateFieldSet(this, _BaseVal_ctx, ctx, "f");
         this.peg = spec?.peg;
+        if (Array.isArray(this.peg)) {
+            this.peg = this.peg.filter(n => undefined !== n);
+        }
         this.path = ctx?.path || [];
         // TODO: make this work
         // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)

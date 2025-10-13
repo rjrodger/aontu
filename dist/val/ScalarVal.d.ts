@@ -6,7 +6,7 @@ declare class ScalarVal extends BaseVal {
     isScalarVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     clone(ctx: Context, spec?: ValSpec): Val;
-    unify(peer: any, ctx?: Context): Val;
+    unify(peer: Val, ctx: Context): Val;
     get canon(): any;
     same(peer: any): boolean;
     gen(_ctx?: Context): any;

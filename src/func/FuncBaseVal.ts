@@ -120,7 +120,8 @@ class FuncBaseVal extends BaseVal {
       why += 'defer'
     }
 
-    // console.log('FUNC-OUT', this.funcname(), why, out.dc, out.canon, out.id)
+    // console.log('FUNC-UNIFY-OUT', this.funcname(), why, peer.canon,
+    //  'O=', out.dc, out.canon, out.id)
 
     return out
   }
@@ -128,9 +129,10 @@ class FuncBaseVal extends BaseVal {
 
 
   get canon() {
-    return (this.type ? '<type>' : '') +
-      (this.done ? '<done>' : '') +
-      (this.id + '=') +
+    return '' +
+      // (this.type ? '<type>' : '') +
+      // (this.done ? '<done>' : '') +
+      // (this.id + '=') +
       this.funcname() + '(' + (this.peg.map((p: any) => p.canon).join(',')) + ')'
   }
 

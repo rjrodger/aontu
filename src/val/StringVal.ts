@@ -22,9 +22,11 @@ class StringVal extends ScalarVal {
   ) {
     super({ peg: spec.peg, kind: String }, ctx)
   }
-  unify(peer: Val, ctx?: Context): Val {
+
+  unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
   }
+
   get canon() {
     return JSON.stringify(this.peg)
   }

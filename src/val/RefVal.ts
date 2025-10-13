@@ -323,7 +323,7 @@ class RefVal extends BaseVal {
       ctx,
       'ref',
       this, // (formatPath(this.peg, this.absolute) as any),
-      undefined
+      undefined,
     )
 
     // TODO: refactor to use Site
@@ -332,13 +332,13 @@ class RefVal extends BaseVal {
     nil.row = this.row
     nil.col = this.col
 
-    descErr(nil, ctx)
+    // descErr(nil, ctx)
 
-    if (ctx) {
-      // ctx.err.push(nil)
-      ctx.adderr(nil)
-    }
-    else {
+    if (null == ctx) {
+      //   // ctx.err.push(nil)
+      //   ctx.adderr(nil)
+      // }
+      // else {
       throw new Error(nil.msg)
     }
 

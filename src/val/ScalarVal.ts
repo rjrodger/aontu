@@ -16,6 +16,8 @@ import {
 import { Nil } from './Nil'
 import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
+import { ScalarKindVal } from './ScalarKindVal'
+import { FuncBaseVal } from '../func/FuncBaseVal'
 
 
 
@@ -44,14 +46,21 @@ class ScalarVal extends BaseVal {
   }
 
 
-  unify(peer: any, ctx?: Context): Val {
+  unify(peer: Val, ctx: Context): Val {
+    const peerIsScalarKindVal = (peer as ScalarKindVal).isScalarKindVal
+    // const peerIsFuncVal = (peer as FuncBaseVal).isFuncVal
+
     // Exactly equal scalars are handled in unify.unite
-    if (peer.isScalarKindVal) {
+    if (peerIsScalarKindVal) {
       return peer.unify(this, ctx)
     }
+    // else if (peerIsFuncVal) {
+    //   return peer.unify(this, ctx)
+    // }
     else if (peer.top) {
       return this
     }
+
     return Nil.make(ctx, 'scalar', this, peer)
   }
 

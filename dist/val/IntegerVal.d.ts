@@ -6,6 +6,6 @@ declare class IntegerVal extends ScalarVal {
     constructor(spec: {
         peg: number;
     }, ctx?: Context);
-    unify(peer: any, ctx?: Context): Val;
+    unify(peer: any, ctx: Context): Val;
 }
 export { IntegerVal, };

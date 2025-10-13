@@ -7,8 +7,8 @@ declare class AontuX {
     opts: any;
     constructor(popts?: Partial<AontuOptions>);
     ctx(arg?: AontuContextConfig | AontuContext): AontuContext;
-    parse(src: string, ac?: AontuContext): Val;
-    unify(src: string | Val, ac?: AontuContext): Val;
+    parse(src: string, ac?: AontuContext): Val | undefined;
+    unify(src: string | Val, ac?: AontuContext): Val | undefined;
     generate(src: string, meta?: any): any;
 }
 type AontuContextConfig = {

@@ -7,6 +7,6 @@ declare class FloorFuncVal extends FuncBaseVal {
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;
     funcname(): string;
-    resolve(_ctx: Context | undefined, args: Val[]): Nil | IntegerVal;
+    resolve(_ctx: Context | undefined, args: Val[]): IntegerVal | Nil;
 }
 export { FloorFuncVal, };

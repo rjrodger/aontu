@@ -61,6 +61,11 @@ class BaseVal implements Val {
     this.#ctx = ctx
 
     this.peg = spec?.peg
+
+    if (Array.isArray(this.peg)) {
+      this.peg = this.peg.filter(n => undefined !== n)
+    }
+
     this.path = ctx?.path || []
 
     // TODO: make this work

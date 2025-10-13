@@ -22,7 +22,8 @@ class BooleanVal extends ScalarVal {
   ) {
     super({ peg: spec.peg, kind: Boolean }, ctx)
   }
-  unify(peer: Val, ctx?: Context): Val {
+
+  unify(peer: Val, ctx: Context): Val {
     return super.unify(peer, ctx)
   }
 }

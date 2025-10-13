@@ -21,10 +21,15 @@ class ScalarVal extends BaseVal_1.BaseVal {
         return out;
     }
     unify(peer, ctx) {
+        const peerIsScalarKindVal = peer.isScalarKindVal;
+        // const peerIsFuncVal = (peer as FuncBaseVal).isFuncVal
         // Exactly equal scalars are handled in unify.unite
-        if (peer.isScalarKindVal) {
+        if (peerIsScalarKindVal) {
             return peer.unify(this, ctx);
         }
+        // else if (peerIsFuncVal) {
+        //   return peer.unify(this, ctx)
+        // }
         else if (peer.top) {
             return this;
         }
