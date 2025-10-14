@@ -26,12 +26,12 @@ import {
 
 import { ConjunctVal } from '../val/ConjunctVal'
 import { NilVal } from '../val/NilVal'
-import { BaseVal } from '../val/BaseVal'
+import { FeatureVal } from '../val/FeatureVal'
 
 
 
 
-class OpBaseVal extends BaseVal {
+class OpBaseVal extends FeatureVal {
   isOpVal = true
 
   constructor(

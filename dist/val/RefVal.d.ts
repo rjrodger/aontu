@@ -1,8 +1,8 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { StringVal } from '../val';
-import { BaseVal } from './BaseVal';
-declare class RefVal extends BaseVal {
+import { StringVal } from './StringVal';
+import { FeatureVal } from './FeatureVal';
+declare class RefVal extends FeatureVal {
     isRefVal: boolean;
     absolute: boolean;
     prefix: boolean;

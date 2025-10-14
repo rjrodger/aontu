@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { BaseVal } from '../val/BaseVal';
-declare class FuncBaseVal extends BaseVal {
+import { FeatureVal } from '../val/FeatureVal';
+declare class FuncBaseVal extends FeatureVal {
     isFuncVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     make(ctx: Context, _spec: ValSpec): Val;

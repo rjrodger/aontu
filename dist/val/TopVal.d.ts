@@ -1,24 +1,35 @@
 import type { Val } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
-import { BaseVal } from './BaseVal';
-declare class TopVal extends BaseVal {
+declare class TopVal implements Val {
+    #private;
+    static SPREAD: symbol;
+    isVal: boolean;
     isTop: boolean;
+    isNil: boolean;
     id: number;
-    top: boolean;
-    peg: undefined;
     dc: number;
-    path: never[];
+    path: string[];
     row: number;
     col: number;
     url: string;
+    top: boolean;
+    type: boolean;
+    peg: any;
+    err: Omit<any[], "push">;
+    uh: number[];
     constructor();
+    get done(): boolean;
+    ctx(): any;
+    same(peer: Val): boolean;
+    place(v: Val): Val;
+    get site(): Site;
+    notdone(): void;
     unify(peer: Val, _ctx?: Context): Val;
     get canon(): string;
-    get site(): Site;
-    same(peer: Val): boolean;
     clone(_ctx: Context, _spec?: any): this;
     gen(_ctx?: Context): undefined;
+    superior(): Val;
 }
 declare const TOP: TopVal;
 export { TOP, TopVal, };

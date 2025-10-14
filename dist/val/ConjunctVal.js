@@ -5,12 +5,12 @@ exports.ConjunctVal = void 0;
 exports.norm = norm;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
-const val_1 = require("../val");
+const TopVal_1 = require("./TopVal");
 const ListVal_1 = require("./ListVal");
 const MapVal_1 = require("./MapVal");
 const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
-const BaseVal_1 = require("./BaseVal");
+const FeatureVal_1 = require("./FeatureVal");
 const CONJUNCT_ORDERING = {
     PrefVal: 30000,
     RefVal: 32500,
@@ -19,7 +19,7 @@ const CONJUNCT_ORDERING = {
     Any: 99999
 };
 // TODO: move main logic to op/conjunct
-class ConjunctVal extends BaseVal_1.BaseVal {
+class ConjunctVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isBinaryOp = true;
@@ -72,7 +72,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         let t0 = upeer[0];
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
             if (type_1.DONE !== t0.dc) {
-                let u0 = (0, unify_1.unite)(ctx, t0, val_1.TOP, 'cj-peer-t0');
+                let u0 = (0, unify_1.unite)(ctx, t0, TopVal_1.TOP, 'cj-peer-t0');
                 newtype = this.type || u0.type;
                 if (type_1.DONE !== u0.dc
                     // Maps and Lists are still unified so that path refs will work
@@ -125,7 +125,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         // console.log('CONJUCT-prepout', this.type, newtype, outvals.map((v: Val) => v.canon))
         if (0 === outvals.length) {
             // Empty conjuncts evaporate.
-            out = val_1.TOP;
+            out = TopVal_1.TOP;
         }
         // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {

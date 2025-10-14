@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { BaseVal } from './BaseVal';
-declare class ConjunctVal extends BaseVal {
+import { FeatureVal } from './FeatureVal';
+declare class ConjunctVal extends FeatureVal {
     isBinaryOp: boolean;
     isConjunctVal: boolean;
     constructor(spec: ValSpec, ctx?: Context);

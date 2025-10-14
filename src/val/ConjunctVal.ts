@@ -20,12 +20,12 @@ import {
 } from '../unify'
 
 
-import { TOP } from '../val'
+import { TOP } from './TopVal'
 import { ListVal } from './ListVal'
 import { MapVal } from './MapVal'
 import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
-import { BaseVal } from './BaseVal'
+import { FeatureVal } from './FeatureVal'
 
 
 const CONJUNCT_ORDERING: Record<string, number> = {
@@ -39,7 +39,7 @@ const CONJUNCT_ORDERING: Record<string, number> = {
 
 
 // TODO: move main logic to op/conjunct
-class ConjunctVal extends BaseVal {
+class ConjunctVal extends FeatureVal {
   isBinaryOp = true
   isConjunctVal = true
 

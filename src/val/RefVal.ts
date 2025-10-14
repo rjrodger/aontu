@@ -31,19 +31,18 @@ import {
   unite,
 } from '../unify'
 
-import { TOP, StringVal } from '../val'
+import { TOP } from './TopVal'
+import { StringVal } from './StringVal'
 import { ConjunctVal } from './ConjunctVal'
 import { MapVal } from './MapVal'
 import { ListVal } from './ListVal'
 import { NilVal } from './NilVal'
 import { VarVal } from './VarVal'
-import { BaseVal } from './BaseVal'
+import { FeatureVal } from './FeatureVal'
 
 
 
-
-
-class RefVal extends BaseVal {
+class RefVal extends FeatureVal {
   isRefVal = true
 
   absolute: boolean = false

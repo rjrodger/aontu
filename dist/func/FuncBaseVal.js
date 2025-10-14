@@ -5,8 +5,8 @@ exports.FuncBaseVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
-const BaseVal_1 = require("../val/BaseVal");
-class FuncBaseVal extends BaseVal_1.BaseVal {
+const FeatureVal_1 = require("../val/FeatureVal");
+class FuncBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFuncVal = true;

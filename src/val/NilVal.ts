@@ -138,6 +138,12 @@ class NilVal extends BaseVal {
 
     return undefined
   }
+
+
+  superior(): Val {
+    return this
+  }
+
 }
 
 

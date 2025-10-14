@@ -10,5 +10,6 @@ declare class ScalarVal extends BaseVal {
     get canon(): any;
     same(peer: any): boolean;
     gen(_ctx?: Context): any;
+    superior(): Val;
 }
 export { ScalarVal, };

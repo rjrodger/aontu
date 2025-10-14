@@ -49,6 +49,9 @@ class NilVal extends BaseVal_1.BaseVal {
         }
         return undefined;
     }
+    superior() {
+        return this;
+    }
 }
 exports.NilVal = NilVal;
 // TODO: include Val generating nil, thus capture type

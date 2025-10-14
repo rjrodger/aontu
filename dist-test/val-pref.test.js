@@ -82,8 +82,8 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
     (0, node_test_1.test)('func', () => {
         let a0 = new aontu_1.AontuX();
         let G = a0.generate.bind(a0);
-        (0, code_1.expect)(G('*floor(1.1)&2')).equal(2);
-        (0, code_1.expect)(G('*floor(1.1)&a')).equal('a');
+        (0, code_1.expect)(G('*lower(1.1)&2')).equal(2);
+        (0, code_1.expect)(() => G('*lower(1.1)&a')).throws(/Cannot unify/);
     });
     /*
       test('parse', () => {

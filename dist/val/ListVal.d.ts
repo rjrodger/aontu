@@ -1,7 +1,7 @@
 import type { Val, ValList, ValSpec } from '../type';
 import { Context } from '../unify';
-import { BaseVal } from './BaseVal';
-declare class ListVal extends BaseVal {
+import { FeatureVal } from './FeatureVal';
+declare class ListVal extends FeatureVal {
     isListVal: boolean;
     spread: {
         cj: Val | undefined;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 import type {
   Val,
@@ -12,6 +12,7 @@ import {
 import {
   Context,
 } from '../unify'
+
 
 import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
@@ -78,6 +79,14 @@ class ScalarVal extends BaseVal {
   gen(_ctx?: Context) {
     return this.peg
   }
+
+
+  superior() {
+    return this.place(new ScalarKindVal({
+      peg: this.kind
+    }))
+  }
+
 }
 
 

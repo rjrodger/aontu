@@ -4,11 +4,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MapVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
-const val_1 = require("../val");
+const TopVal_1 = require("./TopVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const NilVal_1 = require("./NilVal");
-const BaseVal_1 = require("./BaseVal");
-class MapVal extends BaseVal_1.BaseVal {
+const FeatureVal_1 = require("./FeatureVal");
+class MapVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isMapVal = true;
@@ -49,7 +49,7 @@ class MapVal extends BaseVal_1.BaseVal {
         }
         out.dc = this.dc + 1;
         // let newtype = this.type || peer.type
-        let spread_cj = out.spread.cj ?? val_1.TOP;
+        let spread_cj = out.spread.cj ?? TopVal_1.TOP;
         // Always unify own children first
         for (let key in this.peg) {
             let keyctx = ctx.descend(key);
@@ -98,7 +98,7 @@ class MapVal extends BaseVal_1.BaseVal {
         out.peg = {};
         for (let entry of Object.entries(this.peg)) {
             out.peg[entry[0]] =
-                entry[1] instanceof BaseVal_1.BaseVal ? entry[1].clone(ctx, { type: spec?.type }) : entry[1];
+                entry[1]?.isVal ? entry[1].clone(ctx, { type: spec?.type }) : entry[1];
         }
         if (this.spread.cj) {
             out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type });

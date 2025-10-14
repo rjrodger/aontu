@@ -12,7 +12,8 @@ import {
 
 import {
   NilVal,
-  StringVal,
+  ScalarKindVal,
+  makeScalar,
 } from '../val'
 
 
@@ -42,12 +43,26 @@ class LowerFuncVal extends FuncBaseVal {
 
   resolve(_ctx: Context | undefined, args: Val[]) {
     const oldpeg = args?.[0].peg
-    const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() : undefined
-    const out =
+    const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
+      'number' === typeof oldpeg ? Math.floor(oldpeg) :
+        undefined
+    const out = this.place(
       null == peg ? new NilVal({ msg: 'Not a string: ' + oldpeg }) :
-        new StringVal({ peg })
+        makeScalar(peg)
+    )
     return out
   }
+
+
+  superior() {
+    const arg = this.peg?.[0]
+    return arg?.isScalarVal ?
+      this.place(new ScalarKindVal({
+        peg: arg.kind
+      })) :
+      super.superior()
+  }
+
 }
 
 

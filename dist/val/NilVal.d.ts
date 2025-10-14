@@ -19,5 +19,6 @@ declare class NilVal extends BaseVal {
     clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;
     gen(ctx?: Context): undefined;
+    superior(): Val;
 }
 export { NilVal, };

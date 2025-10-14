@@ -8,8 +8,8 @@ const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const NilVal_1 = require("../val/NilVal");
-const BaseVal_1 = require("../val/BaseVal");
-class OpBaseVal extends BaseVal_1.BaseVal {
+const FeatureVal_1 = require("../val/FeatureVal");
+class OpBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isOpVal = true;

@@ -29,19 +29,12 @@ import {
 
 import {
   TOP,
-  ScalarKindVal,
-  IntegerVal,
-  NumberVal,
-  StringVal,
-  BooleanVal,
-  Integer,
-  TopVal,
 } from '../val'
 import { NilVal } from '../val/NilVal'
-import { BaseVal } from '../val/BaseVal'
+import { FeatureVal } from '../val/FeatureVal'
 
 
-class PrefVal extends BaseVal {
+class PrefVal extends FeatureVal {
   isPrefVal = true
 
   superpeg: Val
@@ -54,11 +47,14 @@ class PrefVal extends BaseVal {
     super(spec, ctx)
     // this.pref = spec.pref || spec.peg
 
-    this.superpeg = makeSuper(spec.peg)
+    // this.superpeg = makeSuper(spec.peg)
 
     if (spec.peg instanceof PrefVal) {
       this.rank = 1 + spec.peg.rank
     }
+
+    this.superpeg = this.peg.superior()
+    // console.log('PVC', this.peg.canon, this.superpeg.canon)
   }
 
 
@@ -129,7 +125,7 @@ class PrefVal extends BaseVal {
     }
 
     let pegsame = (this.peg === peer.peg) ||
-      (this.peg instanceof BaseVal && this.peg.same(peer.peg))
+      (this.peg.isVal && this.peg.same(peer.peg))
 
     return pegsame
   }
@@ -163,6 +159,7 @@ class PrefVal extends BaseVal {
 
 
 
+/*
 function makeSuper(v: Val) {
   // let out: Val = new Nil()
   // let out: Val = TOP
@@ -184,6 +181,7 @@ function makeSuper(v: Val) {
   // console.log('MAKESUPER', v.canon, out.canon)
   return out
 }
+*/
 
 
 export {

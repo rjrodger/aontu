@@ -21,10 +21,10 @@ import {
   ConjunctVal,
 } from '../val'
 
-import { BaseVal } from '../val/BaseVal'
+import { FeatureVal } from '../val/FeatureVal'
 
 
-class FuncBaseVal extends BaseVal {
+class FuncBaseVal extends FeatureVal {
   isFuncVal = true
 
   constructor(

@@ -4,12 +4,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VarVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
-const val_1 = require("../val");
+const StringVal_1 = require("./StringVal");
 const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
-const BaseVal_1 = require("./BaseVal");
+const FeatureVal_1 = require("./FeatureVal");
 // TODO: KEY, SELF, PARENT are reserved names - error
-class VarVal extends BaseVal_1.BaseVal {
+class VarVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isVarVal = true;
@@ -29,10 +29,10 @@ class VarVal extends BaseVal_1.BaseVal {
         }
         else {
             // TODO: how to pass row+col?
-            nameVal = new val_1.StringVal({ peg: '' + this.peg }, ctx);
+            nameVal = new StringVal_1.StringVal({ peg: '' + this.peg }, ctx);
         }
         if (!(nameVal instanceof RefVal_1.RefVal) && type_1.DONE === nameVal.dc) {
-            if (nameVal instanceof val_1.StringVal) {
+            if (nameVal instanceof StringVal_1.StringVal) {
                 out = ctx.var[nameVal.peg];
                 if (null == out) {
                     out = NilVal_1.NilVal.make(ctx, 'var[' + nameVal.peg + ']', this, peer);

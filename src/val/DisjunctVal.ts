@@ -23,12 +23,12 @@ import {
 
 import { NilVal } from '../val/NilVal'
 import { PrefVal } from '../val/PrefVal'
-import { BaseVal } from '../val/BaseVal'
+import { FeatureVal } from '../val/FeatureVal'
 
 
 
 // TODO: move main logic to op/disjunct
-class DisjunctVal extends BaseVal {
+class DisjunctVal extends FeatureVal {
   isDisjunct = true
   isBinaryOp = true
 

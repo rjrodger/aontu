@@ -4,10 +4,10 @@ const node_test_1 = require("node:test");
 const code_1 = require("@hapi/code");
 const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
-const MapVal_1 = require("../dist/val/MapVal");
+const val_1 = require("../dist/val");
 let lang = new lang_1.Lang();
 const G = (x, ctx) => new unify_1.Unify(x, lang)
-    .res.gen(ctx || new unify_1.Context({ root: new MapVal_1.MapVal({ peg: {} }) }));
+    .res.gen(ctx || new unify_1.Context({ root: new val_1.MapVal({ peg: {} }) }));
 (0, node_test_1.describe)('unify', function () {
     (0, node_test_1.test)('condis-same', () => {
         (0, code_1.expect)(G('a')).equal('a');

@@ -125,8 +125,8 @@ describe('val-pref', function() {
     let a0 = new AontuX()
     let G = a0.generate.bind(a0)
 
-    expect(G('*floor(1.1)&2')).equal(2)
-    expect(G('*floor(1.1)&a')).equal('a')
+    expect(G('*lower(1.1)&2')).equal(2)
+    expect(() => G('*lower(1.1)&a')).throws(/Cannot unify/)
   })
 
 

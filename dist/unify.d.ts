@@ -1,6 +1,6 @@
 import type { Val } from './type';
 import { FST } from './type';
-import { NilVal } from './val';
+import { NilVal } from './val/NilVal';
 import { Lang } from './lang';
 type Path = string[];
 declare const unite: (ctx: Context, a: any, b: any, whence: string) => any;

@@ -2,8 +2,8 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
 import { PrefVal } from '../val/PrefVal';
-import { BaseVal } from '../val/BaseVal';
-declare class DisjunctVal extends BaseVal {
+import { FeatureVal } from '../val/FeatureVal';
+declare class DisjunctVal extends FeatureVal {
     isDisjunct: boolean;
     isBinaryOp: boolean;
     prefsRanked: boolean;

@@ -16,28 +16,66 @@ import {
   Site
 } from '../lang'
 
-import { BaseVal } from './BaseVal'
-
-
 
 // There can be only one.
-class TopVal extends BaseVal {
+class TopVal implements Val {
+  static SPREAD = Symbol('spread')
+
+  isVal = true
   isTop = true
+  isNil = false
 
   id = 0
-  top = true
-  peg = undefined
   dc = DONE
-  path = []
+  path: string[] = []
   row = -1
   col = -1
   url = ''
 
-  constructor() {
-    super({ peg: null })
+  top = true
+  type = false
 
+  // Actual native value.
+  peg: any = undefined
+
+  // TODO: used for top level result - not great
+  err: Omit<any[], "push"> = []
+
+  uh: number[] = []
+
+  #ctx: any = undefined
+
+  constructor() {
     // TOP is always DONE, by definition.
     this.dc = DONE
+  }
+
+  get done() {
+    return this.dc === DONE
+  }
+
+  ctx() {
+    return this.#ctx
+  }
+
+  same(peer: Val): boolean {
+    // return this === peer
+    return peer.isTop
+  }
+
+  place(v: Val) {
+    v.row = this.row
+    v.col = this.col
+    v.url = this.url
+    return v
+  }
+
+  get site(): Site {
+    return new Site(this)
+  }
+
+  notdone() {
+    this.dc = DONE === this.dc ? DONE : this.dc + 1
   }
 
   unify(peer: Val, _ctx?: Context): Val {
@@ -46,13 +84,6 @@ class TopVal extends BaseVal {
 
   get canon() { return 'top' }
 
-  get site(): Site { return new Site(this) }
-
-  same(peer: Val): boolean {
-    // return this === peer
-    return peer.isTop
-  }
-
   clone(_ctx: Context, _spec?: any) {
     return this
   }
@@ -60,6 +91,11 @@ class TopVal extends BaseVal {
   gen(_ctx?: Context) {
     return undefined
   }
+
+  superior(): Val {
+    return this
+  }
+
 }
 
 

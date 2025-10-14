@@ -1,10 +1,11 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarVal = void 0;
 const type_1 = require("../type");
 const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
+const ScalarKindVal_1 = require("./ScalarKindVal");
 class ScalarVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -45,6 +46,11 @@ class ScalarVal extends BaseVal_1.BaseVal {
     }
     gen(_ctx) {
         return this.peg;
+    }
+    superior() {
+        return this.place(new ScalarKindVal_1.ScalarKindVal({
+            peg: this.kind
+        }));
     }
 }
 exports.ScalarVal = ScalarVal;

@@ -19,13 +19,13 @@ import {
 
 
 
-import { TOP } from '../val'
+import { TOP } from './TopVal'
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
-import { BaseVal } from './BaseVal'
+import { FeatureVal } from './FeatureVal'
 
 
-class MapVal extends BaseVal {
+class MapVal extends FeatureVal {
   isMapVal = true
 
   static SPREAD = Symbol('spread')
@@ -158,7 +158,7 @@ class MapVal extends BaseVal {
     out.peg = {}
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        entry[1] instanceof BaseVal ? entry[1].clone(ctx, { type: spec?.type }) : entry[1]
+        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, { type: spec?.type }) : entry[1]
     }
     if (this.spread.cj) {
       out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type })

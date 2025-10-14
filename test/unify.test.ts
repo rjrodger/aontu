@@ -4,6 +4,8 @@ import { describe, test } from 'node:test'
 
 import { expect } from '@hapi/code'
 
+
+
 import {
   Context,
   Unify,
@@ -15,10 +17,13 @@ import {
 } from '../dist/lang'
 
 
-import { MapVal } from '../dist/val/MapVal'
+
+import { MapVal } from '../dist/val'
+
 
 
 let lang = new Lang()
+
 
 const G = (x: string, ctx?: any) => new Unify(x, lang)
   .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))

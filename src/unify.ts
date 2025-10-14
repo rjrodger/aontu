@@ -6,12 +6,10 @@ import type { Val } from './type'
 import { DONE, FST } from './type'
 
 
-import {
-  TOP,
-  MapVal,
-  ListVal,
-  NilVal,
-} from './val'
+import { TOP } from './val/TopVal'
+import { MapVal } from './val/MapVal'
+import { ListVal } from './val/ListVal'
+import { NilVal } from './val/NilVal'
 
 import {
   Lang

@@ -6,9 +6,9 @@ const type_1 = require("../type");
 const unify_1 = require("../unify");
 const NilVal_1 = require("../val/NilVal");
 const PrefVal_1 = require("../val/PrefVal");
-const BaseVal_1 = require("../val/BaseVal");
+const FeatureVal_1 = require("../val/FeatureVal");
 // TODO: move main logic to op/disjunct
-class DisjunctVal extends BaseVal_1.BaseVal {
+class DisjunctVal extends FeatureVal_1.FeatureVal {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
     constructor(spec, ctx, _sites) {
         super(spec, ctx);

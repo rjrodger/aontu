@@ -19,22 +19,41 @@ TOP -> Scalar/Boolean -> BooleanVal
 */
 
 
+// Core Val classes
+export { BaseVal } from './val/BaseVal'
+export { FeatureVal } from './val/FeatureVal'
+
+// Top level
 export { TOP, TopVal } from './val/TopVal'
-export { OpBaseVal } from './op'
-export { PlusOpVal } from './op'
-export { Integer, ScalarConstructor, ScalarKindVal } from './val/ScalarKindVal'
+
+// Scalar values
 export { ScalarVal } from './val/ScalarVal'
 export { NumberVal } from './val/NumberVal'
 export { StringVal } from './val/StringVal'
 export { BooleanVal } from './val/BooleanVal'
 export { IntegerVal } from './val/IntegerVal'
-export { BaseVal } from './val/BaseVal'
-export { RefVal } from './val/RefVal'
-export { NilVal } from './val/NilVal'
 export { NullVal } from './val/NullVal'
-export { VarVal } from './val/VarVal'
+export { Integer, Null, ScalarConstructor, ScalarKindVal } from './val/ScalarKindVal'
+
+// Container values
 export { ListVal } from './val/ListVal'
 export { MapVal } from './val/MapVal'
-export { PrefVal } from './val/PrefVal'
+
+// Logic values
 export { ConjunctVal } from './val/ConjunctVal'
 export { DisjunctVal } from './val/DisjunctVal'
+
+// Reference and variable values
+export { RefVal } from './val/RefVal'
+export { VarVal } from './val/VarVal'
+
+// Preference and nil values
+export { PrefVal } from './val/PrefVal'
+export { NilVal } from './val/NilVal'
+
+// Utility functions
+export { makeScalar } from './val/valutil'
+
+// Operation values  
+export { OpBaseVal } from './op'
+export { PlusOpVal } from './op'

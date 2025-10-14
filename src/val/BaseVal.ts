@@ -22,16 +22,11 @@ import {
 } from '../lang'
 
 
-import {
-  TopVal
-} from './TopVal'
-
-
 
 let ID = 1000
 
 
-class BaseVal implements Val {
+abstract class BaseVal implements Val {
   static SPREAD = Symbol('spread')
 
   isVal = true
@@ -164,9 +159,8 @@ class BaseVal implements Val {
   }
 
 
-  superior() {
-    return this.place(new TopVal())
-  }
+  abstract superior(): Val
+
 }
 
 export {

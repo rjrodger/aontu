@@ -15,7 +15,10 @@ var _Context_errlist;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = exports.Unify = exports.Context = void 0;
 const type_1 = require("./type");
-const val_1 = require("./val");
+const TopVal_1 = require("./val/TopVal");
+const MapVal_1 = require("./val/MapVal");
+const ListVal_1 = require("./val/ListVal");
+const NilVal_1 = require("./val/NilVal");
 const lang_1 = require("./lang");
 const err_1 = require("./err");
 // TODO: relation to unify loops?
@@ -31,7 +34,7 @@ const unite = (ctx, a, b, whence) => {
     const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '');
     // console.log('SAW', saw)
     if (MAXCYCLE < ctx.seen[saw]) {
-        out = val_1.NilVal.make(ctx, 'cycle', a, b);
+        out = NilVal_1.NilVal.make(ctx, 'cycle', a, b);
     }
     else {
         ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0);
@@ -83,11 +86,11 @@ const unite = (ctx, a, b, whence) => {
                 }
             }
             if (!out || !out.unify) {
-                out = val_1.NilVal.make(ctx, 'unite', a, b, whence + '/nil');
+                out = NilVal_1.NilVal.make(ctx, 'unite', a, b, whence + '/nil');
                 why += 'N';
             }
             if (type_1.DONE !== out.dc && !unified) {
-                let nout = out.unify(val_1.TOP, ctx);
+                let nout = out.unify(TopVal_1.TOP, ctx);
                 // console.log('UNITE-NOTDONE', out.canon, '->', nout.canon)
                 out = nout;
                 why += 'T';
@@ -112,7 +115,7 @@ const unite = (ctx, a, b, whence) => {
         }
         catch (err) {
             // console.log(err)
-            out = val_1.NilVal.make(ctx, 'internal', a, b);
+            out = NilVal_1.NilVal.make(ctx, 'internal', a, b);
         }
     }
     // console.log('UNITE', ctx.cc, whence, a?.id + '=' + ac, b?.id + '=' + bc, '->', out?.canon, 'W=' + why, 'E=', out?.err)
@@ -186,10 +189,10 @@ class Context {
         let pI = 0;
         for (; pI < path.length; pI++) {
             let part = path[pI];
-            if (node instanceof val_1.MapVal) {
+            if (node instanceof MapVal_1.MapVal) {
                 node = node.peg[part];
             }
-            else if (node instanceof val_1.ListVal) {
+            else if (node instanceof ListVal_1.ListVal) {
                 node = node.peg[part];
             }
             else {
@@ -227,7 +230,7 @@ class Unify {
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
-                res = unite(uctx, res, val_1.TOP, 'unify');
+                res = unite(uctx, res, TopVal_1.TOP, 'unify');
                 uctx = uctx.clone({ root: res });
             }
         }

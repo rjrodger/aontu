@@ -4,14 +4,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
-const val_1 = require("../val");
+const TopVal_1 = require("./TopVal");
+const StringVal_1 = require("./StringVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const MapVal_1 = require("./MapVal");
 const ListVal_1 = require("./ListVal");
 const NilVal_1 = require("./NilVal");
 const VarVal_1 = require("./VarVal");
-const BaseVal_1 = require("./BaseVal");
-class RefVal extends BaseVal_1.BaseVal {
+const FeatureVal_1 = require("./FeatureVal");
+class RefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isRefVal = true;
@@ -32,7 +33,7 @@ class RefVal extends BaseVal_1.BaseVal {
             partval = part;
             this.peg.push(partval);
         }
-        else if (part instanceof val_1.StringVal) {
+        else if (part instanceof StringVal_1.StringVal) {
             partval = part.peg;
             this.peg.push(partval);
         }
@@ -79,7 +80,7 @@ class RefVal extends BaseVal_1.BaseVal {
                 out = this;
             }
             else if (resolved instanceof RefVal) {
-                if (val_1.TOP === peer) {
+                if (TopVal_1.TOP === peer) {
                     out = this;
                     // why = 'pt'
                 }
@@ -149,7 +150,7 @@ class RefVal extends BaseVal_1.BaseVal {
                     }
                 }
                 else if (0 === modes.length) {
-                    part = part.unify(val_1.TOP, ctx);
+                    part = part.unify(TopVal_1.TOP, ctx);
                     if (part instanceof NilVal_1.NilVal) {
                         // TODO: var not found, so can't find path
                         return;
@@ -177,7 +178,7 @@ class RefVal extends BaseVal_1.BaseVal {
             .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
         if (modes.includes('KEY')) {
             let key = this.path[this.path.length - 2];
-            let sv = new val_1.StringVal({ peg: null == key ? '' : key }, ctx);
+            let sv = new StringVal_1.StringVal({ peg: null == key ? '' : key }, ctx);
             // TODO: other props?
             sv.dc = type_1.DONE;
             sv.path = this.path;

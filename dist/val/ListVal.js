@@ -4,11 +4,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
-const val_1 = require("../val");
+const TopVal_1 = require("./TopVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const NilVal_1 = require("./NilVal");
-const BaseVal_1 = require("./BaseVal");
-class ListVal extends BaseVal_1.BaseVal {
+const FeatureVal_1 = require("./FeatureVal");
+class ListVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isListVal = true;
@@ -53,7 +53,7 @@ class ListVal extends BaseVal_1.BaseVal {
         //     DONE !== this.spread.cj.dc ? unite(ctx, this.spread.cj) :
         //       this.spread.cj
         // }
-        let spread_cj = out.spread.cj || val_1.TOP;
+        let spread_cj = out.spread.cj || TopVal_1.TOP;
         // Always unify children first
         for (let key in this.peg) {
             let keyctx = ctx.descend(key);

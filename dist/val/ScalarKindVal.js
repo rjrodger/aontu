@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarKindVal = exports.Null = exports.Integer = void 0;
 const type_1 = require("../type");
+const TopVal_1 = require("./TopVal");
 const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
 // A ScalarKind for integers. Number includes floats.
@@ -65,6 +66,9 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
     same(peer) {
         let out = peer?.isScalarKindVal ? this.peg === peer?.peg : super.same(peer);
         return out;
+    }
+    superior() {
+        return TopVal_1.TOP;
     }
 }
 exports.ScalarKindVal = ScalarKindVal;

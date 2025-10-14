@@ -13,9 +13,10 @@ import {
   Context,
 } from '../unify'
 
+
+import { TOP } from './TopVal'
 import { NilVal } from './NilVal'
 import { BaseVal } from './BaseVal'
-import { ScalarVal } from './ScalarVal'
 
 
 
@@ -51,13 +52,13 @@ class ScalarKindVal extends BaseVal {
 
 
   unify(peer: Val, ctx: Context): Val {
-    const peerIsScalarVal = (peer as ScalarVal).isScalarVal
+    const peerIsScalarVal = (peer as any).isScalarVal
     const peerIsScalarKindVal = (peer as ScalarKindVal).isScalarKindVal
 
     let out: Val = this
 
     if (peerIsScalarVal) {
-      let peerKind = (peer as ScalarVal).kind
+      let peerKind = (peer as any).kind
 
       if (peerKind === this.peg) {
         out = peer
@@ -103,6 +104,10 @@ class ScalarKindVal extends BaseVal {
     return out
   }
 
+
+  superior(): Val {
+    return TOP
+  }
 }
 
 

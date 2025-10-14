@@ -6,17 +6,19 @@ const type_1 = require("../type");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
 const NilVal_1 = require("../val/NilVal");
-const BaseVal_1 = require("../val/BaseVal");
-class PrefVal extends BaseVal_1.BaseVal {
+const FeatureVal_1 = require("../val/FeatureVal");
+class PrefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isPrefVal = true;
         this.rank = 0;
         // this.pref = spec.pref || spec.peg
-        this.superpeg = makeSuper(spec.peg);
+        // this.superpeg = makeSuper(spec.peg)
         if (spec.peg instanceof PrefVal) {
             this.rank = 1 + spec.peg.rank;
         }
+        this.superpeg = this.peg.superior();
+        // console.log('PVC', this.peg.canon, this.superpeg.canon)
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
@@ -72,7 +74,7 @@ class PrefVal extends BaseVal_1.BaseVal {
             return false;
         }
         let pegsame = (this.peg === peer.peg) ||
-            (this.peg instanceof BaseVal_1.BaseVal && this.peg.same(peer.peg));
+            (this.peg.isVal && this.peg.same(peer.peg));
         return pegsame;
     }
     clone(ctx, spec) {
@@ -95,23 +97,4 @@ class PrefVal extends BaseVal_1.BaseVal {
     }
 }
 exports.PrefVal = PrefVal;
-function makeSuper(v) {
-    // let out: Val = new Nil()
-    // let out: Val = TOP
-    let out = new val_1.TopVal();
-    if (v instanceof val_1.NumberVal) {
-        out = new val_1.ScalarKindVal({ peg: Number });
-    }
-    else if (v instanceof val_1.IntegerVal) {
-        out = new val_1.ScalarKindVal({ peg: val_1.Integer });
-    }
-    else if (v instanceof val_1.StringVal) {
-        out = new val_1.ScalarKindVal({ peg: String });
-    }
-    else if (v instanceof val_1.BooleanVal) {
-        out = new val_1.ScalarKindVal({ peg: Boolean });
-    }
-    // console.log('MAKESUPER', v.canon, out.canon)
-    return out;
-}
 //# sourceMappingURL=PrefVal.js.map

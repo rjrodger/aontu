@@ -1,7 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
-declare class BaseVal implements Val {
+declare abstract class BaseVal implements Val {
     #private;
     static SPREAD: symbol;
     isVal: boolean;
@@ -30,6 +30,6 @@ declare class BaseVal implements Val {
     errcanon(): string;
     gen(_ctx: Context): any;
     notdone(): void;
-    superior(): Val;
+    abstract superior(): Val;
 }
 export { BaseVal, };

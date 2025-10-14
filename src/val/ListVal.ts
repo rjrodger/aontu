@@ -24,13 +24,13 @@ import {
 
 
 
-import { TOP } from '../val'
+import { TOP } from './TopVal'
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
-import { BaseVal } from './BaseVal'
+import { FeatureVal } from './FeatureVal'
 
 
-class ListVal extends BaseVal {
+class ListVal extends FeatureVal {
   isListVal = true
 
   spread = {

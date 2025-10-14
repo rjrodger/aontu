@@ -16,7 +16,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseVal = void 0;
 const type_1 = require("../type");
 const lang_1 = require("../lang");
-const TopVal_1 = require("./TopVal");
 let ID = 1000;
 class BaseVal {
     // TODO: Site needed in ctor
@@ -101,9 +100,6 @@ class BaseVal {
     }
     notdone() {
         this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
-    }
-    superior() {
-        return this.place(new TopVal_1.TopVal());
     }
 }
 exports.BaseVal = BaseVal;

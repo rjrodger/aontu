@@ -21,15 +21,15 @@ import {
 
 
 
-import { StringVal } from '../val'
+import { StringVal } from './StringVal'
 import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
-import { BaseVal } from './BaseVal'
+import { FeatureVal } from './FeatureVal'
 
 
 // TODO: KEY, SELF, PARENT are reserved names - error
 
-class VarVal extends BaseVal {
+class VarVal extends FeatureVal {
   isVarVal = true
 
   constructor(
