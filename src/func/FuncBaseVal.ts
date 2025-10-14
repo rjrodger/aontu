@@ -17,7 +17,7 @@ import {
 
 import {
   TOP,
-  Nil,
+  NilVal,
   ConjunctVal,
 } from '../val'
 
@@ -37,7 +37,7 @@ class FuncBaseVal extends BaseVal {
 
 
   make(ctx: Context, _spec: ValSpec): Val {
-    return Nil.make(ctx, 'func:' + this.funcname(), this, undefined, 'make')
+    return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make')
   }
 
 
@@ -142,7 +142,7 @@ class FuncBaseVal extends BaseVal {
 
 
   resolve(ctx: Context | undefined, _args: Val[]): Val {
-    return Nil.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve')
+    return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve')
   }
 
 }

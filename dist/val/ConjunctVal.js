@@ -8,7 +8,7 @@ const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ListVal_1 = require("./ListVal");
 const MapVal_1 = require("./MapVal");
-const Nil_1 = require("./Nil");
+const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
 const BaseVal_1 = require("./BaseVal");
 const CONJUNCT_ORDERING = {
@@ -55,7 +55,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
             upeer[vI].type = newtype = newtype || upeer[vI].type;
             // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].dc);
-            if (upeer[vI] instanceof Nil_1.Nil) {
+            if (upeer[vI] instanceof NilVal_1.NilVal) {
                 return upeer[vI];
                 // return Nil.make(
                 //   ctx,
@@ -110,7 +110,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
                     outvals.push(t0);
                     t0 = t1;
                 }
-                else if (val instanceof Nil_1.Nil) {
+                else if (val instanceof NilVal_1.NilVal) {
                     return val;
                 }
                 else {
@@ -153,7 +153,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
     }
     gen(ctx) {
         // Unresolved conjunct cannot be generated, so always an error.
-        let nil = Nil_1.Nil.make(ctx, 'conjunct', this, // (formatPath(this.peg, this.absolute) as any),
+        let nil = NilVal_1.NilVal.make(ctx, 'conjunct', this, // (formatPath(this.peg, this.absolute) as any),
         undefined);
         // TODO: refactor to use Site
         nil.path = this.path;

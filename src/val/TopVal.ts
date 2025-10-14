@@ -49,7 +49,8 @@ class TopVal extends BaseVal {
   get site(): Site { return new Site(this) }
 
   same(peer: Val): boolean {
-    return this === peer
+    // return this === peer
+    return peer.isTop
   }
 
   clone(_ctx: Context, _spec?: any) {

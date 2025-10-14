@@ -13,7 +13,7 @@ import {
   Context,
 } from '../unify'
 
-import { Nil } from './Nil'
+import { NilVal } from './NilVal'
 import { BaseVal } from './BaseVal'
 import { ScalarVal } from './ScalarVal'
 
@@ -66,7 +66,7 @@ class ScalarKindVal extends BaseVal {
         out = peer
       }
       else {
-        out = Nil.make(ctx, 'no-scalar-unify', this, peer)
+        out = NilVal.make(ctx, 'no-scalar-unify', this, peer)
       }
     }
     else if (peerIsScalarKindVal) {
@@ -80,11 +80,11 @@ class ScalarKindVal extends BaseVal {
         out = this
       }
       else {
-        out = Nil.make(ctx, 'scalar-type', this, peer)
+        out = NilVal.make(ctx, 'scalar-type', this, peer)
       }
     }
     else {
-      out = Nil.make(ctx, 'not-scalar-type', this, peer)
+      out = NilVal.make(ctx, 'not-scalar-type', this, peer)
     }
 
     // console.log('SCALARKINDVAL', this.canon.peer.canon, '->', out.canon)

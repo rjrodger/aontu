@@ -18,7 +18,7 @@ class LowerFuncVal extends FuncBaseVal_1.FuncBaseVal {
     resolve(_ctx, args) {
         const oldpeg = args?.[0].peg;
         const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() : undefined;
-        const out = null == peg ? new val_1.Nil({ msg: 'Not a string: ' + oldpeg }) :
+        const out = null == peg ? new val_1.NilVal({ msg: 'Not a string: ' + oldpeg }) :
             new val_1.StringVal({ peg });
         return out;
     }

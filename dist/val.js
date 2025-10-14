@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DisjunctVal = exports.ConjunctVal = exports.PrefVal = exports.MapVal = exports.ListVal = exports.VarVal = exports.NullVal = exports.Nil = exports.RefVal = exports.BaseVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.ScalarKindVal = exports.Integer = exports.PlusOpVal = exports.OpBaseVal = exports.TopVal = exports.TOP = void 0;
+exports.DisjunctVal = exports.ConjunctVal = exports.PrefVal = exports.MapVal = exports.ListVal = exports.VarVal = exports.NullVal = exports.NilVal = exports.RefVal = exports.BaseVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.ScalarKindVal = exports.Integer = exports.PlusOpVal = exports.OpBaseVal = exports.TopVal = exports.TOP = void 0;
 // NOTES
 // - Vals are immutable
 // - each Val must handle all parent and child unifications explicitly
@@ -39,8 +39,8 @@ var BaseVal_1 = require("./val/BaseVal");
 Object.defineProperty(exports, "BaseVal", { enumerable: true, get: function () { return BaseVal_1.BaseVal; } });
 var RefVal_1 = require("./val/RefVal");
 Object.defineProperty(exports, "RefVal", { enumerable: true, get: function () { return RefVal_1.RefVal; } });
-var Nil_1 = require("./val/Nil");
-Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return Nil_1.Nil; } });
+var NilVal_1 = require("./val/NilVal");
+Object.defineProperty(exports, "NilVal", { enumerable: true, get: function () { return NilVal_1.NilVal; } });
 var NullVal_1 = require("./val/NullVal");
 Object.defineProperty(exports, "NullVal", { enumerable: true, get: function () { return NullVal_1.NullVal; } });
 var VarVal_1 = require("./val/VarVal");

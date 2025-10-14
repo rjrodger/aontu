@@ -35,7 +35,7 @@ import { TOP, StringVal } from '../val'
 import { ConjunctVal } from './ConjunctVal'
 import { MapVal } from './MapVal'
 import { ListVal } from './ListVal'
-import { Nil } from './Nil'
+import { NilVal } from './NilVal'
 import { VarVal } from './VarVal'
 import { BaseVal } from './BaseVal'
 
@@ -145,8 +145,8 @@ class RefVal extends BaseVal {
           out = this
           // why = 'pt'
         }
-        else if (peer instanceof Nil) {
-          out = Nil.make(ctx, 'ref[' + this.peg + ']', this, peer)
+        else if (peer instanceof NilVal) {
+          out = NilVal.make(ctx, 'ref[' + this.peg + ']', this, peer)
           // why = 'pn'
         }
 
@@ -224,7 +224,7 @@ class RefVal extends BaseVal {
         }
         else if (0 === modes.length) {
           part = (part as VarVal).unify(TOP, ctx)
-          if (part instanceof Nil) {
+          if (part instanceof NilVal) {
             // TODO: var not found, so can't find path
             return
           }
@@ -319,7 +319,7 @@ class RefVal extends BaseVal {
 
   gen(ctx?: Context) {
     // Unresolved ref cannot be generated, so always an error.
-    let nil = Nil.make(
+    let nil = NilVal.make(
       ctx,
       'ref',
       this, // (formatPath(this.peg, this.absolute) as any),

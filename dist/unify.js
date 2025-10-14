@@ -31,21 +31,24 @@ const unite = (ctx, a, b, whence) => {
     const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '');
     // console.log('SAW', saw)
     if (MAXCYCLE < ctx.seen[saw]) {
-        out = val_1.Nil.make(ctx, 'cycle', a, b);
+        out = val_1.NilVal.make(ctx, 'cycle', a, b);
     }
     else {
         ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0);
         try {
             let unified = false;
-            if (b && (val_1.TOP === a || !a)) {
+            // if (b && (TOP === a || !a)) {
+            if (b && (!a || a.isTop)) {
                 out = b;
                 why = 'b';
             }
-            else if (a && (val_1.TOP === b || !b)) {
+            // else if (a && (TOP === b || !b)) {
+            else if (a && (!b || b.isTop)) {
                 out = a;
                 why = 'a';
             }
-            else if (a && b && val_1.TOP !== b) {
+            // else if (a && b && TOP !== b) {
+            else if (a && b && !b.isTop) {
                 if (a.isNil) {
                     out = update(a, b);
                     why = 'an';
@@ -60,7 +63,7 @@ const unite = (ctx, a, b, whence) => {
                     why = 'acj';
                 }
                 else if (b.isConjunctVal
-                    || b.isDisjunctVal
+                    || b.isDisjunct
                     || b.isRefVal
                     || b.isPrefVal
                     || b.isFuncVal) {
@@ -80,7 +83,7 @@ const unite = (ctx, a, b, whence) => {
                 }
             }
             if (!out || !out.unify) {
-                out = val_1.Nil.make(ctx, 'unite', a, b, whence + '/nil');
+                out = val_1.NilVal.make(ctx, 'unite', a, b, whence + '/nil');
                 why += 'N';
             }
             if (type_1.DONE !== out.dc && !unified) {
@@ -109,7 +112,7 @@ const unite = (ctx, a, b, whence) => {
         }
         catch (err) {
             // console.log(err)
-            out = val_1.Nil.make(ctx, 'internal', a, b);
+            out = val_1.NilVal.make(ctx, 'internal', a, b);
         }
     }
     // console.log('UNITE', ctx.cc, whence, a?.id + '=' + ac, b?.id + '=' + bc, '->', out?.canon, 'W=' + why, 'E=', out?.err)

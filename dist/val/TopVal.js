@@ -27,7 +27,8 @@ class TopVal extends BaseVal_1.BaseVal {
     get canon() { return 'top'; }
     get site() { return new lang_1.Site(this); }
     same(peer) {
-        return this === peer;
+        // return this === peer
+        return peer.isTop;
     }
     clone(_ctx, _spec) {
         return this;

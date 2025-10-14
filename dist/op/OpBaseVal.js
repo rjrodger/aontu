@@ -7,7 +7,7 @@ const err_1 = require("../err");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
-const Nil_1 = require("../val/Nil");
+const NilVal_1 = require("../val/NilVal");
 const BaseVal_1 = require("../val/BaseVal");
 class OpBaseVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
@@ -22,7 +22,7 @@ class OpBaseVal extends BaseVal_1.BaseVal {
         this.peg.push(part);
     }
     make(ctx, _spec) {
-        return Nil_1.Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'make');
+        return NilVal_1.NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'make');
     }
     opname() {
         return 'op';
@@ -48,12 +48,15 @@ class OpBaseVal extends BaseVal_1.BaseVal {
             if (null == result && this.canon === peer.canon) {
                 out = this;
             }
+            // TODO: should result.isOp
             else if (result instanceof OpBaseVal) {
-                if (val_1.TOP === peer) {
+                // if (TOP === peer) {
+                if (peer.isTop) {
                     out = this;
                 }
-                else if (peer instanceof Nil_1.Nil) {
-                    out = Nil_1.Nil.make(ctx, 'op[' + this.peg + ']', this, peer);
+                // TODO: should peer.isNil
+                else if (peer instanceof NilVal_1.NilVal) {
+                    out = NilVal_1.NilVal.make(ctx, 'op[' + this.peg + ']', this, peer);
                 }
                 else if (this.canon === peer.canon) {
                     out = this;
@@ -104,14 +107,14 @@ class OpBaseVal extends BaseVal_1.BaseVal {
         return out;
     }
     operate(ctx, _args) {
-        return Nil_1.Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'operate');
+        return NilVal_1.NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'operate');
     }
     get canon() {
         return 'op';
     }
     gen(ctx) {
         // Unresolved op cannot be generated, so always an error.
-        let nil = Nil_1.Nil.make(ctx, 'op', this, undefined);
+        let nil = NilVal_1.NilVal.make(ctx, 'op', this, undefined);
         // TODO: refactor to use Site
         nil.path = this.path;
         nil.url = this.url;

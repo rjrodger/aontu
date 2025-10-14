@@ -12,7 +12,7 @@ import {
 } from '../unify'
 
 import {
-  Nil,
+  NilVal,
   TOP,
 } from '../val'
 
@@ -75,7 +75,7 @@ class CopyFuncVal extends FuncBaseVal {
   resolve(ctx: Context | undefined, args: Val[]) {
     const val = args?.[0]
     const out = null == val || null == ctx ?
-      new Nil({ msg: 'Invalid copy argument' }) :
+      new NilVal({ msg: 'Invalid copy argument' }) :
       val.clone(ctx, { type: false })
 
     walk(out, (_key: string | number | undefined, val: Val) => {

@@ -2,17 +2,6 @@
 
 
 
-/* TODO
-
-   $SELF.a - path starting at self
-   $PARENT.b === .b - sibling
-
-   implement $ as a prefix operator
-   this allows "$AString" to be used for literal part names
-*/
-
-
-
 import type {
   Val,
   ValSpec,
@@ -28,21 +17,14 @@ import {
 
 import {
   Context,
-  unite,
 } from '../unify'
 
 
 
-import { TOP, StringVal } from '../val'
-import { Nil } from './Nil'
+import { StringVal } from '../val'
+import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
-
-// import { ConjunctVal } from './ConjunctVal'
-// import { DisjunctVal } from './DisjunctVal'
-// import { ListVal } from './ListVal'
-// import { MapVal } from './MapVal'
-
 
 
 // TODO: KEY, SELF, PARENT are reserved names - error
@@ -84,11 +66,11 @@ class VarVal extends BaseVal {
       if (nameVal instanceof StringVal) {
         out = ctx.var[nameVal.peg]
         if (null == out) {
-          out = Nil.make(ctx, 'var[' + nameVal.peg + ']', this, peer)
+          out = NilVal.make(ctx, 'var[' + nameVal.peg + ']', this, peer)
         }
       }
       else {
-        out = Nil.make(ctx, 'var[' + typeof nameVal + ']', this, peer)
+        out = NilVal.make(ctx, 'var[' + typeof nameVal + ']', this, peer)
       }
     }
     else {
@@ -117,7 +99,7 @@ class VarVal extends BaseVal {
 
   gen(ctx?: Context) {
     // Unresolved var cannot be generated, so always an error.
-    let nil = Nil.make(
+    let nil = NilVal.make(
       ctx,
       'var',
       this,

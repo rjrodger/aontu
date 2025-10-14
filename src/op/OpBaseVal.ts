@@ -25,7 +25,7 @@ import {
 
 
 import { ConjunctVal } from '../val/ConjunctVal'
-import { Nil } from '../val/Nil'
+import { NilVal } from '../val/NilVal'
 import { BaseVal } from '../val/BaseVal'
 
 
@@ -53,7 +53,7 @@ class OpBaseVal extends BaseVal {
 
 
   make(ctx: Context, _spec: ValSpec): Val {
-    return Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'make')
+    return NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'make')
   }
 
   opname() {
@@ -90,12 +90,16 @@ class OpBaseVal extends BaseVal {
       if (null == result && this.canon === peer.canon) {
         out = this
       }
+
+      // TODO: should result.isOp
       else if (result instanceof OpBaseVal) {
-        if (TOP === peer) {
+        // if (TOP === peer) {
+        if (peer.isTop) {
           out = this
         }
-        else if (peer instanceof Nil) {
-          out = Nil.make(ctx, 'op[' + this.peg + ']', this, peer)
+        // TODO: should peer.isNil
+        else if (peer instanceof NilVal) {
+          out = NilVal.make(ctx, 'op[' + this.peg + ']', this, peer)
         }
 
         else if (this.canon === peer.canon) {
@@ -159,7 +163,7 @@ class OpBaseVal extends BaseVal {
 
 
   operate(ctx: Context, _args: Val[]): Val | undefined {
-    return Nil.make(ctx, 'op:' + this.opname(), this, undefined, 'operate')
+    return NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'operate')
   }
 
 
@@ -171,7 +175,7 @@ class OpBaseVal extends BaseVal {
 
   gen(ctx?: Context) {
     // Unresolved op cannot be generated, so always an error.
-    let nil = Nil.make(
+    let nil = NilVal.make(
       ctx,
       'op',
       this,

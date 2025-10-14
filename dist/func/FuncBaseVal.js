@@ -13,7 +13,7 @@ class FuncBaseVal extends BaseVal_1.BaseVal {
         // console.log('FBV', this.id, this.constructor.name, this.peg?.[0]?.canon)
     }
     make(ctx, _spec) {
-        return val_1.Nil.make(ctx, 'func:' + this.funcname(), this, undefined, 'make');
+        return val_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make');
     }
     unify(peer, ctx) {
         let why = '';
@@ -93,7 +93,7 @@ class FuncBaseVal extends BaseVal_1.BaseVal {
         return 'func';
     }
     resolve(ctx, _args) {
-        return val_1.Nil.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
+        return val_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
     }
 }
 exports.FuncBaseVal = FuncBaseVal;

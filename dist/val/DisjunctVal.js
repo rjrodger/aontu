@@ -4,20 +4,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisjunctVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
-// import { TOP } from '../val'
-// import { ConjunctVal } from '../val/ConjunctVal'
-// import { ListVal } from '../val/ListVal'
-// import { MapVal } from '../val/MapVal'
-const Nil_1 = require("../val/Nil");
+const NilVal_1 = require("../val/NilVal");
 const PrefVal_1 = require("../val/PrefVal");
-// import { RefVal } from '../val/RefVal'
 const BaseVal_1 = require("../val/BaseVal");
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends BaseVal_1.BaseVal {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
     constructor(spec, ctx, _sites) {
         super(spec, ctx);
-        this.isDisjunctVal = true;
+        this.isDisjunct = true;
         this.isBinaryOp = true;
         this.prefsRanked = false;
     }
@@ -44,7 +39,7 @@ class DisjunctVal extends BaseVal_1.BaseVal {
             oval[vI] = (0, unify_1.unite)(cloneCtx, v, peer, 'dj-peer');
             // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
             if (0 < cloneCtx?.err.length) {
-                oval[vI] = Nil_1.Nil.make(cloneCtx, '|:empty-dist', this);
+                oval[vI] = NilVal_1.NilVal.make(cloneCtx, '|:empty-dist', this);
             }
             done = done && type_1.DONE === oval[vI].dc;
         }
@@ -58,7 +53,7 @@ class DisjunctVal extends BaseVal_1.BaseVal {
             }
             // // // console.log('DISJUNCT-unify-C', this.id, oval.map(v => v.id + '=' + v.canon))
             // TODO: not an error Nil!
-            let remove = new Nil_1.Nil();
+            let remove = new NilVal_1.NilVal();
             for (let vI = 0; vI < oval.length; vI++) {
                 for (let kI = vI + 1; kI < oval.length; kI++) {
                     if (oval[kI].same(oval[vI])) {
@@ -67,14 +62,14 @@ class DisjunctVal extends BaseVal_1.BaseVal {
                 }
             }
             // // // console.log('DISJUNCT-unify-D', this.id, oval.map(v => v.canon))
-            oval = oval.filter(v => !(v instanceof Nil_1.Nil));
+            oval = oval.filter(v => !(v instanceof NilVal_1.NilVal));
         }
         let out;
         if (1 == oval.length) {
             out = oval[0];
         }
         else if (0 == oval.length) {
-            return Nil_1.Nil.make(ctx, '|:empty', this, peer);
+            return NilVal_1.NilVal.make(ctx, '|:empty', this, peer);
         }
         else {
             out = new DisjunctVal({ peg: oval }, ctx);
@@ -94,7 +89,7 @@ class DisjunctVal extends BaseVal_1.BaseVal {
                 if (null != lastpref) {
                     if (v.rank === lastpref.rank) {
                         const pref = v.unify(lastpref, ctx);
-                        if (pref instanceof Nil_1.Nil) {
+                        if (pref instanceof NilVal_1.NilVal) {
                             return pref;
                         }
                         else {

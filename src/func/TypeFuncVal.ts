@@ -11,8 +11,7 @@ import {
 } from '../unify'
 
 import {
-  Nil,
-  IntegerVal,
+  NilVal,
 } from '../val'
 
 
@@ -60,7 +59,7 @@ class TypeFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: Context, args: Val[]) {
-    let out = args[0] ?? Nil.make(ctx, 'arg', this)
+    let out = args[0] ?? NilVal.make(ctx, 'arg', this)
     if (!out.isNil) {
       out = out.clone(ctx)
       // out.type = true

@@ -5,13 +5,9 @@ exports.VarVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const val_1 = require("../val");
-const Nil_1 = require("./Nil");
+const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
 const BaseVal_1 = require("./BaseVal");
-// import { ConjunctVal } from './ConjunctVal'
-// import { DisjunctVal } from './DisjunctVal'
-// import { ListVal } from './ListVal'
-// import { MapVal } from './MapVal'
 // TODO: KEY, SELF, PARENT are reserved names - error
 class VarVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
@@ -39,11 +35,11 @@ class VarVal extends BaseVal_1.BaseVal {
             if (nameVal instanceof val_1.StringVal) {
                 out = ctx.var[nameVal.peg];
                 if (null == out) {
-                    out = Nil_1.Nil.make(ctx, 'var[' + nameVal.peg + ']', this, peer);
+                    out = NilVal_1.NilVal.make(ctx, 'var[' + nameVal.peg + ']', this, peer);
                 }
             }
             else {
-                out = Nil_1.Nil.make(ctx, 'var[' + typeof nameVal + ']', this, peer);
+                out = NilVal_1.NilVal.make(ctx, 'var[' + typeof nameVal + ']', this, peer);
             }
         }
         else {
@@ -63,7 +59,7 @@ class VarVal extends BaseVal_1.BaseVal {
     }
     gen(ctx) {
         // Unresolved var cannot be generated, so always an error.
-        let nil = Nil_1.Nil.make(ctx, 'var', this, undefined);
+        let nil = NilVal_1.NilVal.make(ctx, 'var', this, undefined);
         // TODO: refactor to use Site
         nil.path = this.path;
         nil.url = this.url;

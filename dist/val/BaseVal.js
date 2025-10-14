@@ -16,6 +16,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseVal = void 0;
 const type_1 = require("../type");
 const lang_1 = require("../lang");
+const TopVal_1 = require("./TopVal");
 let ID = 1000;
 class BaseVal {
     // TODO: Site needed in ctor
@@ -78,6 +79,14 @@ class BaseVal {
         out.type = this.type && fullspec.type;
         return out;
     }
+    // TODO: should use Site
+    place(v) {
+        v.row = this.row;
+        v.col = this.col;
+        v.url = this.url;
+        return v;
+    }
+    // TODO: make Site work
     get site() {
         return new lang_1.Site(this);
     }
@@ -87,11 +96,14 @@ class BaseVal {
     errcanon() {
         return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`;
     }
-    gen(ctx) {
+    gen(_ctx) {
         return undefined;
     }
     notdone() {
         this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
+    }
+    superior() {
+        return this.place(new TopVal_1.TopVal());
     }
 }
 exports.BaseVal = BaseVal;

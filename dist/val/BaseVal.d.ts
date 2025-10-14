@@ -23,11 +23,13 @@ declare class BaseVal implements Val {
     get done(): boolean;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;
+    place(v: Val): Val;
     get site(): Site;
     unify(_peer: Val, _ctx?: Context): Val;
     get canon(): string;
     errcanon(): string;
-    gen(ctx?: Context): any;
+    gen(_ctx: Context): any;
     notdone(): void;
+    superior(): Val;
 }
 export { BaseVal, };

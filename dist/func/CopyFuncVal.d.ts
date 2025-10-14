@@ -1,6 +1,6 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { Nil } from '../val';
+import { NilVal } from '../val';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class CopyFuncVal extends FuncBaseVal {
     isCopyFuncVal: boolean;
@@ -9,6 +9,6 @@ declare class CopyFuncVal extends FuncBaseVal {
     make(_ctx: Context, spec: ValSpec): Val;
     funcname(): string;
     unify(peer: Val, ctx: Context): Val;
-    resolve(ctx: Context | undefined, args: Val[]): Val | Nil;
+    resolve(ctx: Context | undefined, args: Val[]): NilVal | Val;
 }
 export { CopyFuncVal, };

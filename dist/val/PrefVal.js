@@ -5,7 +5,7 @@ exports.PrefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
-const Nil_1 = require("../val/Nil");
+const NilVal_1 = require("../val/NilVal");
 const BaseVal_1 = require("../val/BaseVal");
 class PrefVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
@@ -47,18 +47,18 @@ class PrefVal extends BaseVal_1.BaseVal {
         }
         else if (!peer.isTop) {
             why += 'super-';
-            if (this.superpeg instanceof Nil_1.Nil) {
-                out = peer;
-                why += 'nil';
+            // if (this.superpeg instanceof Nil) {
+            //   out = peer
+            //   why += 'nil'
+            // }
+            // else {
+            //   why += 'unify'
+            out = (0, unify_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id);
+            if (out.same(this.superpeg)) {
+                out = this.peg;
+                why += 'same';
             }
-            else {
-                why += 'unify';
-                out = (0, unify_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id);
-                if (out.same(this.superpeg)) {
-                    out = this.peg;
-                    why += '-same';
-                }
-            }
+            // }
         }
         else {
             why += 'none';
@@ -86,7 +86,7 @@ class PrefVal extends BaseVal_1.BaseVal {
     }
     gen(ctx) {
         let val = this.peg;
-        if (val instanceof Nil_1.Nil) {
+        if (val instanceof NilVal_1.NilVal) {
             if (null == ctx) {
                 throw new Error(val.msg);
             }
@@ -96,21 +96,22 @@ class PrefVal extends BaseVal_1.BaseVal {
 }
 exports.PrefVal = PrefVal;
 function makeSuper(v) {
-    // return v.superior() - apply * deeply into maps etc
+    // let out: Val = new Nil()
+    // let out: Val = TOP
+    let out = new val_1.TopVal();
     if (v instanceof val_1.NumberVal) {
-        return new val_1.ScalarKindVal({ peg: Number });
+        out = new val_1.ScalarKindVal({ peg: Number });
     }
     else if (v instanceof val_1.IntegerVal) {
-        return new val_1.ScalarKindVal({ peg: val_1.Integer });
+        out = new val_1.ScalarKindVal({ peg: val_1.Integer });
     }
     else if (v instanceof val_1.StringVal) {
-        return new val_1.ScalarKindVal({ peg: String });
+        out = new val_1.ScalarKindVal({ peg: String });
     }
     else if (v instanceof val_1.BooleanVal) {
-        return new val_1.ScalarKindVal({ peg: Boolean });
+        out = new val_1.ScalarKindVal({ peg: Boolean });
     }
-    else {
-        return new Nil_1.Nil();
-    }
+    // console.log('MAKESUPER', v.canon, out.canon)
+    return out;
 }
 //# sourceMappingURL=PrefVal.js.map

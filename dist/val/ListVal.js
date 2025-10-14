@@ -6,12 +6,8 @@ const type_1 = require("../type");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("./ConjunctVal");
-const Nil_1 = require("./Nil");
+const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
-// import { DisjunctVal } from './DisjunctVal'
-// import { MapVal } from './MapVal'
-// import { PrefVal } from './PrefVal'
-// import { RefVal } from './RefVal'
 class ListVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -43,7 +39,8 @@ class ListVal extends BaseVal_1.BaseVal {
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
         let done = true;
-        let out = val_1.TOP === peer ? this : new ListVal({ peg: [] }, ctx);
+        // let out: ListVal = TOP === peer ? this : new ListVal({ peg: [] }, ctx)
+        let out = peer.isTop ? this : new ListVal({ peg: [] }, ctx);
         out.spread.cj = this.spread.cj;
         if (peer instanceof ListVal) {
             out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
@@ -72,8 +69,8 @@ class ListVal extends BaseVal_1.BaseVal {
                 let child = out.peg[peerkey];
                 let oval = out.peg[peerkey] =
                     undefined === child ? peerchild :
-                        child instanceof Nil_1.Nil ? child :
-                            peerchild instanceof Nil_1.Nil ? peerchild :
+                        child instanceof NilVal_1.NilVal ? child :
+                            peerchild instanceof NilVal_1.NilVal ? peerchild :
                                 (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'list-peer');
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
@@ -87,8 +84,9 @@ class ListVal extends BaseVal_1.BaseVal {
                 done = (done && type_1.DONE === oval.dc);
             }
         }
-        else if (val_1.TOP !== peer) {
-            return Nil_1.Nil.make(ctx, 'map', this, peer);
+        // else if (TOP !== peer) {
+        else if (!peer.isTop) {
+            return NilVal_1.NilVal.make(ctx, 'map', this, peer);
         }
         out.dc = done ? type_1.DONE : out.dc;
         return out;

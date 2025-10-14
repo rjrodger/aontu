@@ -35,8 +35,9 @@ import {
   StringVal,
   BooleanVal,
   Integer,
+  TopVal,
 } from '../val'
-import { Nil } from '../val/Nil'
+import { NilVal } from '../val/NilVal'
 import { BaseVal } from '../val/BaseVal'
 
 
@@ -95,19 +96,20 @@ class PrefVal extends BaseVal {
     else if (!peer.isTop) {
       why += 'super-'
 
-      if (this.superpeg instanceof Nil) {
-        out = peer
-        why += 'nil'
-      }
-      else {
-        why += 'unify'
+      // if (this.superpeg instanceof Nil) {
+      //   out = peer
+      //   why += 'nil'
+      // }
+      // else {
+      //   why += 'unify'
 
-        out = unite(ctx, this.superpeg, peer, 'pref-super/' + this.id)
-        if (out.same(this.superpeg)) {
-          out = this.peg
-          why += '-same'
-        }
+      out = unite(ctx, this.superpeg, peer, 'pref-super/' + this.id)
+      if (out.same(this.superpeg)) {
+        out = this.peg
+        why += 'same'
       }
+
+      // }
     }
     else {
       why += 'none'
@@ -149,7 +151,7 @@ class PrefVal extends BaseVal {
   gen(ctx?: Context) {
     let val = this.peg
 
-    if (val instanceof Nil) {
+    if (val instanceof NilVal) {
       if (null == ctx) {
         throw new Error(val.msg)
       }
@@ -162,22 +164,25 @@ class PrefVal extends BaseVal {
 
 
 function makeSuper(v: Val) {
-  // return v.superior() - apply * deeply into maps etc
+  // let out: Val = new Nil()
+  // let out: Val = TOP
+  let out: Val = new TopVal()
+
   if (v instanceof NumberVal) {
-    return new ScalarKindVal({ peg: Number })
+    out = new ScalarKindVal({ peg: Number })
   }
   else if (v instanceof IntegerVal) {
-    return new ScalarKindVal({ peg: Integer })
+    out = new ScalarKindVal({ peg: Integer })
   }
   else if (v instanceof StringVal) {
-    return new ScalarKindVal({ peg: String })
+    out = new ScalarKindVal({ peg: String })
   }
   else if (v instanceof BooleanVal) {
-    return new ScalarKindVal({ peg: Boolean })
+    out = new ScalarKindVal({ peg: Boolean })
   }
-  else {
-    return new Nil()
-  }
+
+  // console.log('MAKESUPER', v.canon, out.canon)
+  return out
 }
 
 

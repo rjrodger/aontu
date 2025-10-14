@@ -26,7 +26,7 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return out;
     }
     resolve(ctx, args) {
-        let out = args[0] ?? val_1.Nil.make(ctx, 'arg', this);
+        let out = args[0] ?? val_1.NilVal.make(ctx, 'arg', this);
         if (!out.isNil) {
             out = out.clone(ctx);
             // out.type = true

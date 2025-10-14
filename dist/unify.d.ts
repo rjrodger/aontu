@@ -1,6 +1,6 @@
 import type { Val } from './type';
 import { FST } from './type';
-import { Nil } from './val';
+import { NilVal } from './val';
 import { Lang } from './lang';
 type Path = string[];
 declare const unite: (ctx: Context, a: any, b: any, whence: string) => any;
@@ -19,7 +19,7 @@ declare class Context {
     constructor(cfg: {
         root: Val;
         path?: Path;
-        err?: Omit<Nil[], "push">;
+        err?: Omit<NilVal[], "push">;
         vc?: number;
         cc?: number;
         var?: Record<string, Val>;
@@ -31,18 +31,18 @@ declare class Context {
     clone(cfg: {
         root?: Val;
         path?: Path;
-        err?: Omit<Nil[], "push">;
+        err?: Omit<NilVal[], "push">;
     }): Context;
     descend(key: string): Context;
     get err(): any;
-    adderr(err: Nil, whence?: string): void;
+    adderr(err: NilVal, whence?: string): void;
     errmsg(): string;
     find(path: string[]): Val | undefined;
 }
 declare class Unify {
     root: Val;
     res: Val;
-    err: Omit<Nil[], "push">;
+    err: Omit<NilVal[], "push">;
     cc: number;
     lang: Lang;
     constructor(root: Val | string, lang?: Lang, ctx?: Context, src?: string);

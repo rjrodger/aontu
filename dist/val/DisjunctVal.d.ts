@@ -4,7 +4,7 @@ import { Site } from '../lang';
 import { PrefVal } from '../val/PrefVal';
 import { BaseVal } from '../val/BaseVal';
 declare class DisjunctVal extends BaseVal {
-    isDisjunctVal: boolean;
+    isDisjunct: boolean;
     isBinaryOp: boolean;
     prefsRanked: boolean;
     constructor(spec: {
@@ -15,6 +15,6 @@ declare class DisjunctVal extends BaseVal {
     rankPrefs(ctx: Context): PrefVal | undefined;
     clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): any;
-    gen(ctx?: Context): any;
+    gen(ctx: Context): any;
 }
 export { DisjunctVal, };

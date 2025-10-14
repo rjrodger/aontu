@@ -11,7 +11,7 @@ import {
 } from '../unify'
 
 import {
-  Nil,
+  NilVal,
   IntegerVal,
 } from '../val'
 
@@ -45,7 +45,7 @@ class FloorFuncVal extends FuncBaseVal {
     const oldpeg = args?.[0].peg
     const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg)
     const out =
-      null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) :
+      null == peg ? new NilVal({ msg: 'Not a number: ' + oldpeg }) :
         new IntegerVal({ peg })
     // console.log('FLOOR-RES', oldpeg?.canon, '->', out?.canon)
     return out

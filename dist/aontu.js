@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AontuX = exports.util = exports.Context = exports.Lang = exports.Nil = void 0;
+exports.AontuX = exports.util = exports.Context = exports.Lang = exports.NilVal = void 0;
 exports.Aontu = Aontu;
 exports.parse = parse;
 const lang_1 = require("./lang");
@@ -9,7 +9,7 @@ Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { re
 const unify_1 = require("./unify");
 Object.defineProperty(exports, "Context", { enumerable: true, get: function () { return unify_1.Context; } });
 const val_1 = require("./val");
-Object.defineProperty(exports, "Nil", { enumerable: true, get: function () { return val_1.Nil; } });
+Object.defineProperty(exports, "NilVal", { enumerable: true, get: function () { return val_1.NilVal; } });
 const err_1 = require("./err");
 class AontuX {
     constructor(popts) {
@@ -94,7 +94,7 @@ exports.AontuX = AontuX;
 class AontuContext extends unify_1.Context {
     constructor(cfg) {
         cfg = cfg ?? {
-            root: new val_1.Nil()
+            root: new val_1.NilVal()
         };
         super(cfg);
     }
@@ -139,7 +139,7 @@ function Aontu(src, popts) {
     }
     // NOTE: errors always return as Nil, and are never thrown.
     catch (err) {
-        return new val_1.Nil({ why: 'unknown', msg: err.message, err: [err] });
+        return new val_1.NilVal({ why: 'unknown', msg: err.message, err: [err] });
     }
 }
 function prepareOptions(src, popts) {

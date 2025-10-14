@@ -21,23 +21,15 @@ import {
 } from '../lang'
 
 
-
-
-// import { TOP } from '../val'
-// import { ConjunctVal } from '../val/ConjunctVal'
-// import { ListVal } from '../val/ListVal'
-// import { MapVal } from '../val/MapVal'
-import { Nil } from '../val/Nil'
+import { NilVal } from '../val/NilVal'
 import { PrefVal } from '../val/PrefVal'
-// import { RefVal } from '../val/RefVal'
 import { BaseVal } from '../val/BaseVal'
-
 
 
 
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends BaseVal {
-  isDisjunctVal = true
+  isDisjunct = true
   isBinaryOp = true
 
   prefsRanked = false
@@ -86,7 +78,7 @@ class DisjunctVal extends BaseVal {
       // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
 
       if (0 < cloneCtx?.err.length) {
-        oval[vI] = Nil.make(cloneCtx, '|:empty-dist', this)
+        oval[vI] = NilVal.make(cloneCtx, '|:empty-dist', this)
       }
 
       done = done && DONE === oval[vI].dc
@@ -105,7 +97,7 @@ class DisjunctVal extends BaseVal {
       // // // console.log('DISJUNCT-unify-C', this.id, oval.map(v => v.id + '=' + v.canon))
 
       // TODO: not an error Nil!
-      let remove = new Nil()
+      let remove = new NilVal()
       for (let vI = 0; vI < oval.length; vI++) {
         for (let kI = vI + 1; kI < oval.length; kI++) {
           if (oval[kI].same(oval[vI])) {
@@ -116,7 +108,7 @@ class DisjunctVal extends BaseVal {
 
       // // // console.log('DISJUNCT-unify-D', this.id, oval.map(v => v.canon))
 
-      oval = oval.filter(v => !(v instanceof Nil))
+      oval = oval.filter(v => !(v instanceof NilVal))
     }
 
     let out: Val
@@ -125,7 +117,7 @@ class DisjunctVal extends BaseVal {
       out = oval[0]
     }
     else if (0 == oval.length) {
-      return Nil.make(ctx, '|:empty', this, peer)
+      return NilVal.make(ctx, '|:empty', this, peer)
     }
     else {
       out = new DisjunctVal({ peg: oval }, ctx)
@@ -152,7 +144,7 @@ class DisjunctVal extends BaseVal {
         if (null != lastpref) {
           if (v.rank === lastpref.rank) {
             const pref = v.unify(lastpref, ctx) as PrefVal
-            if (pref instanceof Nil) {
+            if (pref instanceof NilVal) {
               return pref
             }
             else {
@@ -213,7 +205,7 @@ class DisjunctVal extends BaseVal {
   }
 
 
-  gen(ctx?: Context) {
+  gen(ctx: Context) {
     // // // console.log('DJ-GEN', this.peg.map((p: any) => p.canon))
 
     if (0 < this.peg.length) {

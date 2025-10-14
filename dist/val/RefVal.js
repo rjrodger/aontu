@@ -8,7 +8,7 @@ const val_1 = require("../val");
 const ConjunctVal_1 = require("./ConjunctVal");
 const MapVal_1 = require("./MapVal");
 const ListVal_1 = require("./ListVal");
-const Nil_1 = require("./Nil");
+const NilVal_1 = require("./NilVal");
 const VarVal_1 = require("./VarVal");
 const BaseVal_1 = require("./BaseVal");
 class RefVal extends BaseVal_1.BaseVal {
@@ -83,8 +83,8 @@ class RefVal extends BaseVal_1.BaseVal {
                     out = this;
                     // why = 'pt'
                 }
-                else if (peer instanceof Nil_1.Nil) {
-                    out = Nil_1.Nil.make(ctx, 'ref[' + this.peg + ']', this, peer);
+                else if (peer instanceof NilVal_1.NilVal) {
+                    out = NilVal_1.NilVal.make(ctx, 'ref[' + this.peg + ']', this, peer);
                     // why = 'pn'
                 }
                 // same path
@@ -150,7 +150,7 @@ class RefVal extends BaseVal_1.BaseVal {
                 }
                 else if (0 === modes.length) {
                     part = part.unify(val_1.TOP, ctx);
-                    if (part instanceof Nil_1.Nil) {
+                    if (part instanceof NilVal_1.NilVal) {
                         // TODO: var not found, so can't find path
                         return;
                     }
@@ -223,7 +223,7 @@ class RefVal extends BaseVal_1.BaseVal {
     }
     gen(ctx) {
         // Unresolved ref cannot be generated, so always an error.
-        let nil = Nil_1.Nil.make(ctx, 'ref', this, // (formatPath(this.peg, this.absolute) as any),
+        let nil = NilVal_1.NilVal.make(ctx, 'ref', this, // (formatPath(this.peg, this.absolute) as any),
         undefined);
         // TODO: refactor to use Site
         nil.path = this.path;

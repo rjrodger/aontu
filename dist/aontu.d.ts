@@ -1,7 +1,7 @@
 import type { Val, Options } from './type';
 import { Lang } from './lang';
 import { Context } from './unify';
-import { Nil } from './val';
+import { NilVal } from './val';
 type AontuOptions = {};
 declare class AontuX {
     opts: any;
@@ -14,7 +14,7 @@ declare class AontuX {
 type AontuContextConfig = {
     root?: Val;
     path?: [];
-    err?: Omit<Nil[], "push">;
+    err?: Omit<NilVal[], "push">;
     vc?: number;
     cc?: number;
     var?: Record<string, Val>;
@@ -34,5 +34,5 @@ declare const util: {
     parse: typeof parse;
     options: typeof prepareOptions;
 };
-export { Aontu, Val, Nil, Lang, Context, parse, util, AontuX };
+export { Aontu, Val, NilVal, Lang, Context, parse, util, AontuX };
 export default Aontu;

@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarKindVal = exports.Null = exports.Integer = void 0;
 const type_1 = require("../type");
-const Nil_1 = require("./Nil");
+const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
 // A ScalarKind for integers. Number includes floats.
 class Integer {
@@ -35,7 +35,7 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
                 out = peer;
             }
             else {
-                out = Nil_1.Nil.make(ctx, 'no-scalar-unify', this, peer);
+                out = NilVal_1.NilVal.make(ctx, 'no-scalar-unify', this, peer);
             }
         }
         else if (peerIsScalarKindVal) {
@@ -49,11 +49,11 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
                 out = this;
             }
             else {
-                out = Nil_1.Nil.make(ctx, 'scalar-type', this, peer);
+                out = NilVal_1.NilVal.make(ctx, 'scalar-type', this, peer);
             }
         }
         else {
-            out = Nil_1.Nil.make(ctx, 'not-scalar-type', this, peer);
+            out = NilVal_1.NilVal.make(ctx, 'not-scalar-type', this, peer);
         }
         // console.log('SCALARKINDVAL', this.canon.peer.canon, '->', out.canon)
         return out;

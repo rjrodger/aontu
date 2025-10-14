@@ -19,7 +19,7 @@ class FloorFuncVal extends FuncBaseVal_1.FuncBaseVal {
     resolve(_ctx, args) {
         const oldpeg = args?.[0].peg;
         const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg);
-        const out = null == peg ? new val_1.Nil({ msg: 'Not a number: ' + oldpeg }) :
+        const out = null == peg ? new val_1.NilVal({ msg: 'Not a number: ' + oldpeg }) :
             new val_1.IntegerVal({ peg });
         // console.log('FLOOR-RES', oldpeg?.canon, '->', out?.canon)
         return out;

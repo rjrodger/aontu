@@ -15,7 +15,6 @@ import {
 } from '../unify'
 
 import {
-  Nil,
   StringVal,
 } from '../val'
 

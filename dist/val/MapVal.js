@@ -6,7 +6,7 @@ const type_1 = require("../type");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("./ConjunctVal");
-const Nil_1 = require("./Nil");
+const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
 class MapVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
@@ -39,7 +39,8 @@ class MapVal extends BaseVal_1.BaseVal {
     unify(peer, ctx) {
         // let mark = Math.random()
         let done = true;
-        let out = val_1.TOP === peer ? this : new MapVal({ peg: {} }, ctx);
+        // let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
+        let out = peer.isTop ? this : new MapVal({ peg: {} }, ctx);
         // console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon)
         out.spread.cj = this.spread.cj;
         if (peer instanceof MapVal) {
@@ -67,8 +68,8 @@ class MapVal extends BaseVal_1.BaseVal {
                 let child = out.peg[peerkey];
                 let oval = out.peg[peerkey] =
                     undefined === child ? peerchild :
-                        child instanceof Nil_1.Nil ? child :
-                            peerchild instanceof Nil_1.Nil ? peerchild :
+                        child instanceof NilVal_1.NilVal ? child :
+                            peerchild instanceof NilVal_1.NilVal ? peerchild :
                                 (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
                 if (this.spread.cj) {
                     let key_ctx = ctx.descend(peerkey);
@@ -82,8 +83,9 @@ class MapVal extends BaseVal_1.BaseVal {
                 done = (done && type_1.DONE === oval.dc);
             }
         }
-        else if (val_1.TOP !== peer) {
-            return Nil_1.Nil.make(ctx, 'map', this, peer);
+        // else if (TOP !== peer) {
+        else if (!peer.isTop) {
+            return NilVal_1.NilVal.make(ctx, 'map', this, peer);
         }
         out.uh.push(peer.id);
         out.dc = done ? type_1.DONE : out.dc;

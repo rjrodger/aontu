@@ -11,7 +11,7 @@ import {
 } from '../unify'
 
 import {
-  Nil,
+  NilVal,
   StringVal,
 } from '../val'
 
@@ -44,7 +44,7 @@ class LowerFuncVal extends FuncBaseVal {
     const oldpeg = args?.[0].peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() : undefined
     const out =
-      null == peg ? new Nil({ msg: 'Not a string: ' + oldpeg }) :
+      null == peg ? new NilVal({ msg: 'Not a string: ' + oldpeg }) :
         new StringVal({ peg })
     return out
   }

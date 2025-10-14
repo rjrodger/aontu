@@ -13,12 +13,10 @@ import {
   Context,
 } from '../unify'
 
-import { Nil } from './Nil'
+import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
 import { ScalarKindVal } from './ScalarKindVal'
-import { FuncBaseVal } from '../func/FuncBaseVal'
-
 
 
 class ScalarVal extends BaseVal {
@@ -61,7 +59,7 @@ class ScalarVal extends BaseVal {
       return this
     }
 
-    return Nil.make(ctx, 'scalar', this, peer)
+    return NilVal.make(ctx, 'scalar', this, peer)
   }
 
 

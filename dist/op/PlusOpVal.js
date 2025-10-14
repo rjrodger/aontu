@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2024 Richard Rodger, MIT License */
+/* Copyright (c) 2024-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlusOpVal = void 0;
 const val_1 = require("../val");
@@ -15,11 +15,7 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     opname() {
         return 'plus';
     }
-    operate(ctx, args) {
-        // super.operate(ctx)
-        // if (this.peg.find((v: any) => v.isRefVal)) {
-        //   return undefined
-        // }
+    operate(_ctx, args) {
         let peg = args[0].peg + args[1].peg;
         let pegtype = typeof peg;
         if ('string' === pegtype) {

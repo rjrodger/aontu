@@ -53,7 +53,7 @@ import {
   ConjunctVal,
   ListVal,
   MapVal,
-  Nil,
+  NilVal,
   PrefVal,
   RefVal,
   VarVal,
@@ -149,7 +149,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         },
         'nil': {
           val: (r: Rule, ctx: JsonicContext) =>
-            addsite(new Nil('literal'), r, ctx)
+            addsite(new NilVal('literal'), r, ctx)
         },
 
         // TODO: FIX: need a TOP instance to hold path
@@ -280,7 +280,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       if ('' !== fname) {
         const funcval = funcMap[fname]
         const args = terms.slice(1)
-        val = null == funcval ? new Nil({ msg: 'Not a function: ' + fname }) : new funcval({
+        val = null == funcval ? new NilVal({ msg: 'Not a function: ' + fname }) : new funcval({
           peg: args
         })
       }
@@ -657,9 +657,9 @@ class Lang {
     }
     catch (e: any) {
       if (e instanceof JsonicError || 'JsonicError' === e.constructor.name) {
-        val = new Nil({
+        val = new NilVal({
           why: 'parse',
-          err: new Nil({
+          err: new NilVal({
             why: 'syntax',
             msg: e.message,
             err: e,

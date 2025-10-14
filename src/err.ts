@@ -4,14 +4,14 @@
 import { util } from 'jsonic'
 
 import { Val, ErrContext } from './type'
-import { Nil } from './val'
+import { NilVal } from './val'
 
 
 const { errmsg } = util
 
 
 // TODO: move to utility?
-function descErr<NILS extends Nil | Nil[]>(
+function descErr<NILS extends NilVal | NilVal[]>(
   err: NILS | any,
   errctx?: ErrContext,
 ): any {

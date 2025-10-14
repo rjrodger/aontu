@@ -22,7 +22,7 @@ import {
 import { BaseVal } from './BaseVal'
 
 
-class Nil extends BaseVal {
+class NilVal extends BaseVal {
   isNil = true
 
   nil = true
@@ -37,7 +37,7 @@ class Nil extends BaseVal {
   // A Nil is an error - should not happen - unify failed
   // refactor ,make(spec,ctx)
   static make = (ctx?: Context, why?: any, av?: Val, bv?: Val, attempt?: string) => {
-    let nil = new Nil({ why }, ctx)
+    let nil = new NilVal({ why }, ctx)
     nil.attempt = attempt
     // TODO: this should be done lazily, for multiple terms
 
@@ -80,7 +80,7 @@ class Nil extends BaseVal {
     spec?: {
       why?: string
       msg?: string
-      err?: Nil | Nil[] | Error | Error[]
+      err?: NilVal | NilVal[] | Error | Error[]
     } | string,
     ctx?: Context
   ) {
@@ -103,7 +103,7 @@ class Nil extends BaseVal {
 
 
   clone(ctx: Context, spec?: ValSpec): Val {
-    let out = (super.clone(ctx, spec) as Nil)
+    let out = (super.clone(ctx, spec) as NilVal)
     out.why = this.why
 
     // Should these clone?
@@ -142,5 +142,5 @@ class Nil extends BaseVal {
 
 
 export {
-  Nil,
+  NilVal,
 }

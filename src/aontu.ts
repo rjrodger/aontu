@@ -1,10 +1,10 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-import type { Val, Options, FST } from './type'
+import type { Val, Options } from './type'
 
 import { Lang } from './lang'
 import { Unify, Context } from './unify'
-import { Nil, MapVal } from './val'
+import { NilVal, MapVal } from './val'
 import { descErr } from './err'
 
 
@@ -132,7 +132,7 @@ class AontuX {
 type AontuContextConfig = {
   root?: Val
   path?: []
-  err?: Omit<Nil[], "push">
+  err?: Omit<NilVal[], "push">
   vc?: number
   cc?: number
   var?: Record<string, Val>
@@ -145,7 +145,7 @@ type AontuContextConfig = {
 class AontuContext extends Context {
   constructor(cfg?: AontuContextConfig) {
     cfg = cfg ?? {
-      root: new Nil()
+      root: new NilVal()
     }
     super(cfg as any)
   }
@@ -155,12 +155,12 @@ class AontuContext extends Context {
 
 
 class AontuError extends Error {
-  constructor(msg: string, errs?: Nil[]) {
+  constructor(msg: string, errs?: NilVal[]) {
     super(msg)
     this.errs = () => errs ?? []
   }
 
-  errs: () => Nil[]
+  errs: () => NilVal[]
 }
 
 
@@ -211,7 +211,7 @@ function Aontu(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
 
   // NOTE: errors always return as Nil, and are never thrown.
   catch (err: any) {
-    return new Nil({ why: 'unknown', msg: err.message, err: [err] })
+    return new NilVal({ why: 'unknown', msg: err.message, err: [err] })
   }
 }
 
@@ -250,6 +250,6 @@ const util = {
   options: prepareOptions,
 }
 
-export { Aontu, Val, Nil, Lang, Context, parse, util, AontuX }
+export { Aontu, Val, NilVal, Lang, Context, parse, util, AontuX }
 
 export default Aontu

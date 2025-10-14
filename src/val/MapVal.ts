@@ -21,7 +21,7 @@ import {
 
 import { TOP } from '../val'
 import { ConjunctVal } from './ConjunctVal'
-import { Nil } from './Nil'
+import { NilVal } from './NilVal'
 import { BaseVal } from './BaseVal'
 
 
@@ -71,7 +71,8 @@ class MapVal extends BaseVal {
     // let mark = Math.random()
 
     let done: boolean = true
-    let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
+    // let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
+    let out: MapVal = peer.isTop ? this : new MapVal({ peg: {} }, ctx)
     // console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon)
 
     out.spread.cj = this.spread.cj
@@ -118,8 +119,8 @@ class MapVal extends BaseVal {
 
         let oval = out.peg[peerkey] =
           undefined === child ? peerchild :
-            child instanceof Nil ? child :
-              peerchild instanceof Nil ? peerchild :
+            child instanceof NilVal ? child :
+              peerchild instanceof NilVal ? peerchild :
                 unite(ctx.descend(peerkey), child, peerchild, 'map-peer')
 
         if (this.spread.cj) {
@@ -136,8 +137,9 @@ class MapVal extends BaseVal {
         done = (done && DONE === oval.dc)
       }
     }
-    else if (TOP !== peer) {
-      return Nil.make(ctx, 'map', this, peer)
+    // else if (TOP !== peer) {
+    else if (!peer.isTop) {
+      return NilVal.make(ctx, 'map', this, peer)
     }
 
     out.uh.push(peer.id)

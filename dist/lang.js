@@ -60,7 +60,7 @@ let AontuJsonic = function aontu(jsonic) {
                     val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: Boolean }), r, ctx)
                 },
                 'nil': {
-                    val: (r, ctx) => addsite(new val_1.Nil('literal'), r, ctx)
+                    val: (r, ctx) => addsite(new val_1.NilVal('literal'), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
                 'top': { val: () => val_2.TOP },
@@ -167,7 +167,7 @@ let AontuJsonic = function aontu(jsonic) {
             if ('' !== fname) {
                 const funcval = funcMap[fname];
                 const args = terms.slice(1);
-                val = null == funcval ? new val_1.Nil({ msg: 'Not a function: ' + fname }) : new funcval({
+                val = null == funcval ? new val_1.NilVal({ msg: 'Not a function: ' + fname }) : new funcval({
                     peg: args
                 });
             }
@@ -445,9 +445,9 @@ class Lang {
         }
         catch (e) {
             if (e instanceof jsonic_1.JsonicError || 'JsonicError' === e.constructor.name) {
-                val = new val_1.Nil({
+                val = new val_1.NilVal({
                     why: 'parse',
-                    err: new val_1.Nil({
+                    err: new val_1.NilVal({
                         why: 'syntax',
                         msg: e.message,
                         err: e,

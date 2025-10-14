@@ -10,7 +10,7 @@ import {
   TOP,
   MapVal,
   ListVal,
-  Nil,
+  NilVal,
 } from './val'
 
 import {
@@ -42,7 +42,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
   // console.log('SAW', saw)
 
   if (MAXCYCLE < ctx.seen[saw]) {
-    out = Nil.make(ctx, 'cycle', a, b)
+    out = NilVal.make(ctx, 'cycle', a, b)
   }
   else {
     ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0)
@@ -51,17 +51,20 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
 
       let unified = false
 
-      if (b && (TOP === a || !a)) {
+      // if (b && (TOP === a || !a)) {
+      if (b && (!a || a.isTop)) {
         out = b
         why = 'b'
       }
 
-      else if (a && (TOP === b || !b)) {
+      // else if (a && (TOP === b || !b)) {
+      else if (a && (!b || b.isTop)) {
         out = a
         why = 'a'
       }
 
-      else if (a && b && TOP !== b) {
+      // else if (a && b && TOP !== b) {
+      else if (a && b && !b.isTop) {
         if (a.isNil) {
           out = update(a, b)
           why = 'an'
@@ -77,7 +80,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
         }
         else if (
           b.isConjunctVal
-          || b.isDisjunctVal
+          || b.isDisjunct
           || b.isRefVal
           || b.isPrefVal
           || b.isFuncVal
@@ -102,7 +105,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
       }
 
       if (!out || !out.unify) {
-        out = Nil.make(ctx, 'unite', a, b, whence + '/nil')
+        out = NilVal.make(ctx, 'unite', a, b, whence + '/nil')
         why += 'N'
       }
 
@@ -135,7 +138,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
     }
     catch (err: any) {
       // console.log(err)
-      out = Nil.make(ctx, 'internal', a, b)
+      out = NilVal.make(ctx, 'internal', a, b)
     }
   }
 
@@ -166,12 +169,12 @@ class Context {
 
   collect: boolean
 
-  #errlist: Omit<Nil[], "push">  // Nil error log of current unify.
+  #errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
 
   constructor(cfg: {
     root: Val
     path?: Path
-    err?: Omit<Nil[], "push">
+    err?: Omit<NilVal[], "push">
     vc?: number
     cc?: number
     var?: Record<string, Val>
@@ -203,7 +206,7 @@ class Context {
   clone(cfg: {
     root?: Val,
     path?: Path,
-    err?: Omit<Nil[], "push">,
+    err?: Omit<NilVal[], "push">,
   }): Context {
     return new Context({
       root: cfg.root || this.root,
@@ -237,7 +240,7 @@ class Context {
   }
 
 
-  adderr(err: Nil, whence?: string) {
+  adderr(err: NilVal, whence?: string) {
     ; (this.#errlist as any).push(err)
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
@@ -282,7 +285,7 @@ class Context {
 class Unify {
   root: Val
   res: Val
-  err: Omit<Nil[], "push">
+  err: Omit<NilVal[], "push">
   cc: number
   lang: Lang
 
@@ -301,7 +304,7 @@ class Unify {
     let uctx = ctx
 
     // Only unify if no syntax errors
-    if (!(root as Nil).nil) {
+    if (!(root as NilVal).nil) {
       uctx = uctx ?? new Context({
         root: res,
         err: this.err,

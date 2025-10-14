@@ -23,7 +23,7 @@ import {
 import { TOP } from '../val'
 import { ListVal } from './ListVal'
 import { MapVal } from './MapVal'
-import { Nil } from './Nil'
+import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
 
@@ -91,7 +91,7 @@ class ConjunctVal extends BaseVal {
       // let prevdone = done
       done = done && (DONE === upeer[vI].dc)
 
-      if (upeer[vI] instanceof Nil) {
+      if (upeer[vI] instanceof NilVal) {
         return upeer[vI]
         // return Nil.make(
         //   ctx,
@@ -168,7 +168,7 @@ class ConjunctVal extends BaseVal {
           outvals.push(t0)
           t0 = t1
         }
-        else if (val instanceof Nil) {
+        else if (val instanceof NilVal) {
           return val
         }
         else {
@@ -226,7 +226,7 @@ class ConjunctVal extends BaseVal {
 
   gen(ctx?: Context) {
     // Unresolved conjunct cannot be generated, so always an error.
-    let nil = Nil.make(
+    let nil = NilVal.make(
       ctx,
       'conjunct',
       this, // (formatPath(this.peg, this.absolute) as any),

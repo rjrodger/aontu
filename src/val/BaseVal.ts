@@ -22,6 +22,11 @@ import {
 } from '../lang'
 
 
+import {
+  TopVal
+} from './TopVal'
+
+
 
 let ID = 1000
 
@@ -124,6 +129,16 @@ class BaseVal implements Val {
   }
 
 
+  // TODO: should use Site
+  place(v: Val) {
+    v.row = this.row
+    v.col = this.col
+    v.url = this.url
+    return v
+  }
+
+
+  // TODO: make Site work
   get site(): Site {
     return new Site(this)
   }
@@ -139,13 +154,18 @@ class BaseVal implements Val {
   }
 
 
-  gen(ctx?: Context): any {
+  gen(_ctx: Context): any {
     return undefined
   }
 
 
   notdone() {
     this.dc = DONE === this.dc ? DONE : this.dc + 1
+  }
+
+
+  superior() {
+    return this.place(new TopVal())
   }
 }
 

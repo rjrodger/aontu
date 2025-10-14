@@ -11,7 +11,7 @@ import {
 } from '../unify'
 
 import {
-  Nil,
+  NilVal,
   IntegerVal,
 } from '../val'
 
@@ -44,7 +44,7 @@ class CeilFuncVal extends FuncBaseVal {
     const oldpeg = args?.[0].peg
     const peg = isNaN(oldpeg) ? undefined : Math.ceil(oldpeg)
     const out =
-      null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) :
+      null == peg ? new NilVal({ msg: 'Not a number: ' + oldpeg }) :
         new IntegerVal({ peg })
     return out
   }

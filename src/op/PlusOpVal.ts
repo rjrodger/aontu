@@ -1,4 +1,4 @@
-/* Copyright (c) 2024 Richard Rodger, MIT License */
+/* Copyright (c) 2024-2025 Richard Rodger, MIT License */
 
 
 import type {
@@ -6,22 +6,13 @@ import type {
   ValSpec,
 } from '../type'
 
-import {
-  DONE,
-} from '../type'
-
-import {
-  descErr
-} from '../err'
 
 import {
   Context,
-  unite,
 } from '../unify'
 
 
-import { TOP, IntegerVal, NumberVal, StringVal } from '../val'
-import { Nil } from '../val/Nil'
+import { IntegerVal, NumberVal, StringVal } from '../val'
 import { OpBaseVal } from './OpBaseVal'
 
 
@@ -47,13 +38,7 @@ class PlusOpVal extends OpBaseVal {
     return 'plus'
   }
 
-  operate(ctx: Context, args: Val[]) {
-    // super.operate(ctx)
-
-    // if (this.peg.find((v: any) => v.isRefVal)) {
-    //   return undefined
-    // }
-
+  operate(_ctx: Context, args: Val[]) {
     let peg = args[0].peg + args[1].peg
     let pegtype = typeof peg
     if ('string' === pegtype) {

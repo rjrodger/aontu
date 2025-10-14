@@ -1,10 +1,10 @@
 "use strict";
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Nil = void 0;
+exports.NilVal = void 0;
 const type_1 = require("../type");
 const BaseVal_1 = require("./BaseVal");
-class Nil extends BaseVal_1.BaseVal {
+class NilVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
         this.isNil = true;
@@ -50,12 +50,12 @@ class Nil extends BaseVal_1.BaseVal {
         return undefined;
     }
 }
-exports.Nil = Nil;
+exports.NilVal = NilVal;
 // TODO: include Val generating nil, thus capture type
 // A Nil is an error - should not happen - unify failed
 // refactor ,make(spec,ctx)
-Nil.make = (ctx, why, av, bv, attempt) => {
-    let nil = new Nil({ why }, ctx);
+NilVal.make = (ctx, why, av, bv, attempt) => {
+    let nil = new NilVal({ why }, ctx);
     nil.attempt = attempt;
     // TODO: this should be done lazily, for multiple terms
     // Terms later in same file are considered the primary error location.
@@ -82,4 +82,4 @@ Nil.make = (ctx, why, av, bv, attempt) => {
     }
     return nil;
 };
-//# sourceMappingURL=Nil.js.map
+//# sourceMappingURL=NilVal.js.map

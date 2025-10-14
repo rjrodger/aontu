@@ -26,15 +26,8 @@ import {
 
 import { TOP } from '../val'
 import { ConjunctVal } from './ConjunctVal'
-import { Nil } from './Nil'
+import { NilVal } from './NilVal'
 import { BaseVal } from './BaseVal'
-// import { DisjunctVal } from './DisjunctVal'
-// import { MapVal } from './MapVal'
-// import { PrefVal } from './PrefVal'
-// import { RefVal } from './RefVal'
-
-
-
 
 
 class ListVal extends BaseVal {
@@ -83,7 +76,8 @@ class ListVal extends BaseVal {
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
     let done: boolean = true
-    let out: ListVal = TOP === peer ? this : new ListVal({ peg: [] }, ctx)
+    // let out: ListVal = TOP === peer ? this : new ListVal({ peg: [] }, ctx)
+    let out: ListVal = peer.isTop ? this : new ListVal({ peg: [] }, ctx)
 
     out.spread.cj = this.spread.cj
 
@@ -128,8 +122,8 @@ class ListVal extends BaseVal {
 
         let oval = out.peg[peerkey] =
           undefined === child ? peerchild :
-            child instanceof Nil ? child :
-              peerchild instanceof Nil ? peerchild :
+            child instanceof NilVal ? child :
+              peerchild instanceof NilVal ? peerchild :
                 unite(ctx.descend(peerkey), child, peerchild, 'list-peer')
 
         if (this.spread.cj) {
@@ -147,8 +141,9 @@ class ListVal extends BaseVal {
 
       }
     }
-    else if (TOP !== peer) {
-      return Nil.make(ctx, 'map', this, peer)
+    // else if (TOP !== peer) {
+    else if (!peer.isTop) {
+      return NilVal.make(ctx, 'map', this, peer)
     }
 
     out.dc = done ? DONE : out.dc

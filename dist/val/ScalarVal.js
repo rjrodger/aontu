@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarVal = void 0;
 const type_1 = require("../type");
-const Nil_1 = require("./Nil");
+const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
 class ScalarVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
@@ -33,7 +33,7 @@ class ScalarVal extends BaseVal_1.BaseVal {
         else if (peer.top) {
             return this;
         }
-        return Nil_1.Nil.make(ctx, 'scalar', this, peer);
+        return NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
     }
     get canon() {
         return null === this.peg ? 'null' :
