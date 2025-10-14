@@ -24,6 +24,7 @@ class ListVal extends BaseVal_1.BaseVal {
         }
         let spread = this.peg[ListVal.SPREAD];
         delete this.peg[ListVal.SPREAD];
+        // console.log('LISTVAL', spread)
         if (spread) {
             if ('&' === spread.o) {
                 // TODO: handle existing spread!
@@ -116,5 +117,4 @@ class ListVal extends BaseVal_1.BaseVal {
     }
 }
 exports.ListVal = ListVal;
-ListVal.SPREAD = Symbol('spread');
 //# sourceMappingURL=ListVal.js.map

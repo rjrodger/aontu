@@ -61,6 +61,9 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('a:{&:x:floor(2.9)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 2, y: 1 }, c: { x: 2, y: 2 } } });
         (0, code_1.expect)(G('a:{&:z:floor(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 3, y: 1 } } });
     });
+    (0, node_test_1.test)('floor-pref', () => {
+        (0, code_1.expect)(G('x:*floor(1.1)')).equal({ x: 1 });
+    });
     (0, node_test_1.test)('ceil-basic', () => {
         (0, code_1.expect)(G('ceil(1.1)')).equal(2);
         (0, code_1.expect)(G('ceil(1.9)')).equal(2);
@@ -209,6 +212,8 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(() => G('key()&"x"')).throw(/scalar/);
         (0, code_1.expect)(() => G('a:key()&"x"')).throw(/scalar/);
         (0, code_1.expect)(G('x:a:key()&"x"')).equal({ x: { a: 'x' } });
+        (0, code_1.expect)(G('x:a:key()&key()')).equal({ x: { a: 'x' } });
+        (0, code_1.expect)(G('x:a:key()|key()')).equal({ x: { a: 'x' } });
     });
     (0, node_test_1.test)('key-expr', () => {
         const a0 = new __1.AontuX();
@@ -267,6 +272,12 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
       expect(G('x:BAZ y:{z:key($.x)}')).equal({ x: 'BAZ', y: { z: 'baz' } })
     })
   
+    test('key-pref', () => {
+      expect(G('x:FOO y:key($.x)')).equal({ x: 'FOO', y: 'foo' })
+      expect(G('x:{a:BAR} y:key($.x.a)')).equal({ x: { a: 'BAR' }, y: 'bar' })
+      expect(G('x:BAZ y:{z:key($.x)}')).equal({ x: 'BAZ', y: { z: 'baz' } })
+    })
+    
     test('key-spread', () => {
       expect(G('a:{&:x:key(FOO)} a:{b:{y:1}}')).equal({ a: { b: { x: 'foo', y: 1 } } })
       expect(G('a:{&:x:key(BAR)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 'bar', y: 1 }, c: { x: 'bar', y: 2 } } })

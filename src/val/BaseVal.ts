@@ -27,6 +27,8 @@ let ID = 1000
 
 
 class BaseVal implements Val {
+  static SPREAD = Symbol('spread')
+
   isVal = true
   isTop = false
   isNil = false
@@ -63,7 +65,9 @@ class BaseVal implements Val {
     this.peg = spec?.peg
 
     if (Array.isArray(this.peg)) {
+      let spread = (this.peg as any)[BaseVal.SPREAD]
       this.peg = this.peg.filter(n => undefined !== n)
+        ; (this.peg as any)[BaseVal.SPREAD] = spread
     }
 
     this.path = ctx?.path || []

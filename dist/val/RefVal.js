@@ -236,7 +236,7 @@ class RefVal extends BaseVal_1.BaseVal {
             //   ctx.adderr(nil)
             // }
             // else {
-            throw new Error(nil.msg);
+            throw new Error(nil.msg ?? 'RefVal: unknown error');
         }
         return undefined;
     }

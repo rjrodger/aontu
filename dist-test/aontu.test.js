@@ -19,12 +19,12 @@ const aontu_1 = require("../dist/aontu");
     });
     (0, node_test_1.it)('error-api', async () => {
         let a0 = new aontu_1.AontuX();
-        (0, code_1.expect)(() => a0.parse('a::number')).throws('QQQ');
-        (0, code_1.expect)(a0.parse('a:number a:A').canon).equal('WWW');
-        (0, code_1.expect)(() => a0.unify('a::1')).throws('QQQ');
-        (0, code_1.expect)(() => a0.unify('a:1 a:2')).throws('QQQ');
-        (0, code_1.expect)(() => a0.generate('a::A')).throws('QQQ');
-        (0, code_1.expect)(() => a0.generate('a:A a:B')).throws('QQQ');
+        (0, code_1.expect)(() => a0.parse('a::number')).throws(/unexpected char/);
+        (0, code_1.expect)(a0.parse('a:number a:A').canon).equal('{"a":number&"A"}');
+        (0, code_1.expect)(() => a0.unify('a::1')).throws(/unexpected char/);
+        (0, code_1.expect)(() => a0.unify('a:1 a:2')).throws(/Cannot unify value: 2 with value: 1/);
+        (0, code_1.expect)(() => a0.generate('a::A')).throws(/unexpected char/);
+        (0, code_1.expect)(() => a0.generate('a:A a:B')).throws(/Cannot unify value: "B" with value: "A"/);
     });
     (0, node_test_1.it)('happy', async () => {
         let v0 = (0, aontu_1.Aontu)('a:1');

@@ -40,8 +40,6 @@ import { BaseVal } from './BaseVal'
 class ListVal extends BaseVal {
   isListVal = true
 
-  static SPREAD = Symbol('spread')
-
   spread = {
     cj: (undefined as Val | undefined),
   }
@@ -60,6 +58,8 @@ class ListVal extends BaseVal {
 
     let spread = (this.peg as any)[ListVal.SPREAD]
     delete (this.peg as any)[ListVal.SPREAD]
+
+    // console.log('LISTVAL', spread)
 
     if (spread) {
       if ('&' === spread.o) {

@@ -7,6 +7,6 @@ declare class CeilFuncVal extends FuncBaseVal {
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;
     funcname(): string;
-    resolve(_ctx: Context | undefined, args: Val[]): IntegerVal | Nil;
+    resolve(_ctx: Context | undefined, args: Val[]): Nil | IntegerVal;
 }
 export { CeilFuncVal, };

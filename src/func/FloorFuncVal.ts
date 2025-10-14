@@ -47,6 +47,7 @@ class FloorFuncVal extends FuncBaseVal {
     const out =
       null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) :
         new IntegerVal({ peg })
+    // console.log('FLOOR-RES', oldpeg?.canon, '->', out?.canon)
     return out
   }
 }

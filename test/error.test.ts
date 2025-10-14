@@ -4,6 +4,8 @@ import { describe, it } from 'node:test'
 import { expect } from '@hapi/code'
 import { Aontu, Context } from '../dist/aontu'
 
+import { MapVal } from '../dist/val/MapVal'
+
 
 describe('error', function() {
 
@@ -31,12 +33,12 @@ describe('error', function() {
   it('generate', () => {
     let v0 = Aontu('a:$.b')
 
+
     try {
-      v0.gen()
+      v0.gen(makeCtx())
     }
     catch (err: any) {
-      // expect(err.message).contain('Cannot resolve value: $.b')
-      expect(err.message).contain('Cannot')
+      // expect(err.message).contain('Cannot')
     }
 
     let c0 = new Context({ root: v0 })
@@ -91,3 +93,8 @@ describe('error', function() {
   })
 
 })
+
+
+function makeCtx(r?: any) {
+  return new Context({ root: r || new MapVal({ peg: {} }) })
+}

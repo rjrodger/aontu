@@ -523,6 +523,7 @@ describe('val-basic', function() {
 
 
     let l0 = new ListVal({ peg: vals })
+    // console.log(l0)
 
     expect(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]')
 
@@ -610,18 +611,18 @@ describe('val-basic', function() {
     // TODO: same for DisjunctVal
     expect(tu(ctx, new ConjunctVal({ peg: [] }), TOP).canon).equal('top')
 
-    expect(tu(ctx, P('1 & .a'), TOP).canon).equal('1&.a')
-    expect(tu(ctx, P('.a & 1'), TOP).canon).equal('1&.a')
+    expect(tu(ctx, P('1 & .a'), TOP).canon).equal('.a&1')
+    expect(tu(ctx, P('.a & 1'), TOP).canon).equal('.a&1')
 
-    expect(tu(ctx, P('1 & 1 & .a'), TOP).canon).equal('1&.a')
+    expect(tu(ctx, P('1 & 1 & .a'), TOP).canon).equal('.a&1')
 
     expect(tu(ctx, P('1 & 2'), TOP).canon).equal('nil')
     expect(tu(ctx, P('1 & 1 & 2'), TOP).canon).equal('nil')
     expect(tu(ctx, P('1 & 1 & .a & 2'), TOP).canon).equal('nil')
 
-    expect(tu(ctx, P('1 & 1 & .a & .b'), TOP).canon).equal('1&.a&.b')
+    expect(tu(ctx, P('1 & 1 & .a & .b'), TOP).canon).equal('.a&.b&1')
 
-    expect(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), TOP).canon).equal('1&.a&.b')
+    expect(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), TOP).canon).equal('.b&.a&1')
   })
 
 

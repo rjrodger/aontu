@@ -28,6 +28,15 @@ import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
 
 
+const CONJUNCT_ORDERING: Record<string, number> = {
+  PrefVal: 30000,
+  RefVal: 32500,
+  DisjunctVal: 35000,
+  ConjunctVal: 40000,
+  Any: 99999
+}
+
+
 
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends BaseVal {
@@ -59,6 +68,9 @@ class ConjunctVal extends BaseVal {
 
     const mark = (Math.random() * 1e7) % 1e6 | 0
     let done = true
+
+    this.peg = norm(this.peg)
+
 
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
@@ -92,26 +104,10 @@ class ConjunctVal extends BaseVal {
 
     upeer = norm(upeer)
 
-    upeer.sort((a: Val, b: Val) => {
-      return (a.constructor.name === b.constructor.name) ? 0 :
-        (a.constructor.name < b.constructor.name ? -1 : 1)
-    })
-
     // Unify terms against each other
 
     let outvals: Val[] = []
     let val: Val
-
-
-    // for (let pI = 0; pI < upeer.length; pI++) {
-    //   let pt = upeer[pI]
-    //   for (let qI = pI; qI < upeer.length; qI++) {
-    //     let qt = upeer[pI]
-
-    //     let pq = unite(ctx, pt, qt, 'cj-pq')
-
-    //   }
-    // }
 
 
     let t0 = upeer[0]
@@ -258,8 +254,10 @@ class ConjunctVal extends BaseVal {
 }
 
 
-// Normalize Conjuct:
+
+// Normalize Conjunct:
 // - flatten child conjuncts
+// - consistent sorting of terms
 function norm(terms: Val[]): Val[] {
 
   let expand: Val[] = []
@@ -272,6 +270,17 @@ function norm(terms: Val[]): Val[] {
       expand[pI] = terms[tI]
     }
   }
+
+
+  // Consistent ordering ensures order independent unification.
+  expand = expand.sort((a: Val, b: Val) => {
+    const an = CONJUNCT_ORDERING[a.constructor.name] ?? CONJUNCT_ORDERING.Any
+    const bn = CONJUNCT_ORDERING[b.constructor.name] ?? CONJUNCT_ORDERING.Any
+    return an - bn
+  })
+
+  // console.log('NORM', expand.map(t => t.canon).join(', '))
+
 
   return expand
 }

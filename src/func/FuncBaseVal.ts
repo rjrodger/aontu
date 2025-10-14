@@ -120,8 +120,7 @@ class FuncBaseVal extends BaseVal {
       why += 'defer'
     }
 
-    // console.log('FUNC-UNIFY-OUT', this.funcname(), why, peer.canon,
-    //  'O=', out.dc, out.canon, out.id)
+    // console.log('FUNC-UNIFY-OUT', this.funcname(), why, peer.canon, 'O=', out.dc, out.canon, out.id)
 
     return out
   }

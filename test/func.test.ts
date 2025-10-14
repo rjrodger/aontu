@@ -85,6 +85,10 @@ describe('func', function() {
     expect(G('a:{&:z:floor(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 3, y: 1 } } })
   })
 
+  test('floor-pref', () => {
+    expect(G('x:*floor(1.1)')).equal({ x: 1 })
+  })
+
 
   test('ceil-basic', () => {
     expect(G('ceil(1.1)')).equal(2)
@@ -263,6 +267,8 @@ describe('func', function() {
     expect(() => G('key()&"x"')).throw(/scalar/)
     expect(() => G('a:key()&"x"')).throw(/scalar/)
     expect(G('x:a:key()&"x"')).equal({ x: { a: 'x' } })
+    expect(G('x:a:key()&key()')).equal({ x: { a: 'x' } })
+    expect(G('x:a:key()|key()')).equal({ x: { a: 'x' } })
   })
 
 
@@ -331,6 +337,12 @@ describe('func', function() {
     expect(G('x:BAZ y:{z:key($.x)}')).equal({ x: 'BAZ', y: { z: 'baz' } })
   })
 
+  test('key-pref', () => {
+    expect(G('x:FOO y:key($.x)')).equal({ x: 'FOO', y: 'foo' })
+    expect(G('x:{a:BAR} y:key($.x.a)')).equal({ x: { a: 'BAR' }, y: 'bar' })
+    expect(G('x:BAZ y:{z:key($.x)}')).equal({ x: 'BAZ', y: { z: 'baz' } })
+  })
+  
   test('key-spread', () => {
     expect(G('a:{&:x:key(FOO)} a:{b:{y:1}}')).equal({ a: { b: { x: 'foo', y: 1 } } })
     expect(G('a:{&:x:key(BAR)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 'bar', y: 1 }, c: { x: 'bar', y: 2 } } })

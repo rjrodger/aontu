@@ -11,6 +11,13 @@ const MapVal_1 = require("./MapVal");
 const Nil_1 = require("./Nil");
 const RefVal_1 = require("./RefVal");
 const BaseVal_1 = require("./BaseVal");
+const CONJUNCT_ORDERING = {
+    PrefVal: 30000,
+    RefVal: 32500,
+    DisjunctVal: 35000,
+    ConjunctVal: 40000,
+    Any: 99999
+};
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
@@ -34,6 +41,7 @@ class ConjunctVal extends BaseVal_1.BaseVal {
         const pc = peer?.canon;
         const mark = (Math.random() * 1e7) % 1e6 | 0;
         let done = true;
+        this.peg = norm(this.peg);
         // Unify each term of conjunct against peer
         let upeer = [];
         let newtype = this.type || peer.type;
@@ -58,20 +66,9 @@ class ConjunctVal extends BaseVal_1.BaseVal {
             }
         }
         upeer = norm(upeer);
-        upeer.sort((a, b) => {
-            return (a.constructor.name === b.constructor.name) ? 0 :
-                (a.constructor.name < b.constructor.name ? -1 : 1);
-        });
         // Unify terms against each other
         let outvals = [];
         let val;
-        // for (let pI = 0; pI < upeer.length; pI++) {
-        //   let pt = upeer[pI]
-        //   for (let qI = pI; qI < upeer.length; qI++) {
-        //     let qt = upeer[pI]
-        //     let pq = unite(ctx, pt, qt, 'cj-pq')
-        //   }
-        // }
         let t0 = upeer[0];
         next_term: for (let pI = 0; pI < upeer.length; pI++) {
             if (type_1.DONE !== t0.dc) {
@@ -175,8 +172,9 @@ class ConjunctVal extends BaseVal_1.BaseVal {
     }
 }
 exports.ConjunctVal = ConjunctVal;
-// Normalize Conjuct:
+// Normalize Conjunct:
 // - flatten child conjuncts
+// - consistent sorting of terms
 function norm(terms) {
     let expand = [];
     for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
@@ -188,6 +186,13 @@ function norm(terms) {
             expand[pI] = terms[tI];
         }
     }
+    // Consistent ordering ensures order independent unification.
+    expand = expand.sort((a, b) => {
+        const an = CONJUNCT_ORDERING[a.constructor.name] ?? CONJUNCT_ORDERING.Any;
+        const bn = CONJUNCT_ORDERING[b.constructor.name] ?? CONJUNCT_ORDERING.Any;
+        return an - bn;
+    });
+    // console.log('NORM', expand.map(t => t.canon).join(', '))
     return expand;
 }
 //# sourceMappingURL=ConjunctVal.js.map

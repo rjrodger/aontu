@@ -3,6 +3,7 @@ import { Context } from '../unify';
 import { Site } from '../lang';
 declare class BaseVal implements Val {
     #private;
+    static SPREAD: symbol;
     isVal: boolean;
     isTop: boolean;
     isNil: boolean;

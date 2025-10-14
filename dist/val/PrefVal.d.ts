@@ -5,9 +5,7 @@ declare class PrefVal extends BaseVal {
     isPrefVal: boolean;
     superpeg: Val;
     rank: number;
-    constructor(spec: {
-        peg: any;
-    }, ctx?: Context);
+    constructor(spec: ValSpec, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;

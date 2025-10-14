@@ -33,14 +33,14 @@ describe('aontu', function() {
   it('error-api', async () => {
     let a0 = new AontuX()
 
-    expect(() => a0.parse('a::number')).throws('QQQ')
-    expect((a0 as any).parse('a:number a:A').canon).equal('WWW')
+    expect(() => a0.parse('a::number')).throws(/unexpected char/)
+    expect((a0 as any).parse('a:number a:A').canon).equal('{"a":number&"A"}')
 
-    expect(() => a0.unify('a::1')).throws('QQQ')
-    expect(() => a0.unify('a:1 a:2')).throws('QQQ')
+    expect(() => a0.unify('a::1')).throws(/unexpected char/)
+    expect(() => a0.unify('a:1 a:2')).throws(/Cannot unify value: 2 with value: 1/)
 
-    expect(() => a0.generate('a::A')).throws('QQQ')
-    expect(() => a0.generate('a:A a:B')).throws('QQQ')
+    expect(() => a0.generate('a::A')).throws(/unexpected char/)
+    expect(() => a0.generate('a:A a:B')).throws(/Cannot unify value: "B" with value: "A"/)
   })
 
 

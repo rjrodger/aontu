@@ -370,6 +370,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         ];
         vals[ListVal_1.ListVal.SPREAD] = { o: '&', v: P('{x:1}') };
         let l0 = new ListVal_1.ListVal({ peg: vals });
+        // console.log(l0)
         (0, code_1.expect)(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]');
         let u0 = l0.unify(val_1.TOP, ctx);
         (0, code_1.expect)(u0.canon).equal('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]');
@@ -431,14 +432,14 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(tu(ctx, val_1.TOP, d100).canon).equal('1');
         // TODO: same for DisjunctVal
         (0, code_1.expect)(tu(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), val_1.TOP).canon).equal('top');
-        (0, code_1.expect)(tu(ctx, P('1 & .a'), val_1.TOP).canon).equal('1&.a');
-        (0, code_1.expect)(tu(ctx, P('.a & 1'), val_1.TOP).canon).equal('1&.a');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a'), val_1.TOP).canon).equal('1&.a');
+        (0, code_1.expect)(tu(ctx, P('1 & .a'), val_1.TOP).canon).equal('.a&1');
+        (0, code_1.expect)(tu(ctx, P('.a & 1'), val_1.TOP).canon).equal('.a&1');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a'), val_1.TOP).canon).equal('.a&1');
         (0, code_1.expect)(tu(ctx, P('1 & 2'), val_1.TOP).canon).equal('nil');
         (0, code_1.expect)(tu(ctx, P('1 & 1 & 2'), val_1.TOP).canon).equal('nil');
         (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & 2'), val_1.TOP).canon).equal('nil');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & .b'), val_1.TOP).canon).equal('1&.a&.b');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), val_1.TOP).canon).equal('1&.a&.b');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & .b'), val_1.TOP).canon).equal('.a&.b&1');
+        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), val_1.TOP).canon).equal('.b&.a&1');
     });
     (0, node_test_1.it)('disjunct', () => {
         let ou = unify_2.unite;

@@ -3,7 +3,6 @@ import { Context } from '../unify';
 import { BaseVal } from './BaseVal';
 declare class ListVal extends BaseVal {
     isListVal: boolean;
-    static SPREAD: symbol;
     spread: {
         cj: Val | undefined;
     };

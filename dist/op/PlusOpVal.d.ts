@@ -7,7 +7,7 @@ declare class PlusOpVal extends OpBaseVal {
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;
     opname(): string;
-    operate(ctx: Context, args: Val[]): IntegerVal | StringVal | NumberVal | undefined;
+    operate(ctx: Context, args: Val[]): StringVal | IntegerVal | NumberVal | undefined;
     get canon(): string;
 }
 export { PlusOpVal, };
