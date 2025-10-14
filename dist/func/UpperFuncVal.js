@@ -17,10 +17,20 @@ class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
     }
     resolve(_ctx, args) {
         const oldpeg = args?.[0].peg;
-        const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() : undefined;
-        const out = null == peg ? new val_1.NilVal({ msg: 'Not a string: ' + oldpeg }) :
-            new val_1.StringVal({ peg });
+        const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() :
+            'number' === typeof oldpeg ? Math.ceil(oldpeg) :
+                undefined;
+        const out = this.place(null == peg ? new val_1.NilVal({ msg: 'Not a string or number: ' + oldpeg }) :
+            (0, val_1.makeScalar)(peg));
         return out;
+    }
+    superior() {
+        const arg = this.peg?.[0];
+        return arg?.isScalarVal ?
+            this.place(new val_1.ScalarKindVal({
+                peg: arg.kind
+            })) :
+            super.superior();
     }
 }
 exports.UpperFuncVal = UpperFuncVal;

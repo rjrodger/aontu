@@ -47,7 +47,7 @@ class LowerFuncVal extends FuncBaseVal {
       'number' === typeof oldpeg ? Math.floor(oldpeg) :
         undefined
     const out = this.place(
-      null == peg ? new NilVal({ msg: 'Not a string: ' + oldpeg }) :
+      null == peg ? new NilVal({ msg: 'Not a string or number: ' + oldpeg }) :
         makeScalar(peg)
     )
     return out

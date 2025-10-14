@@ -30,39 +30,39 @@ const G = (x: string, ctx?: any) => new Unify(x, lang)
 
 describe('func', function() {
 
-  test('floor-basic', () => {
-    expect(G('floor(1.1)')).equal(1)
-    expect(G('floor(1.9)')).equal(1)
-    expect(G('floor(2.0)')).equal(2)
-    expect(G('floor(-1.1)')).equal(-2)
-    expect(G('floor(-1.9)')).equal(-2)
+  test('lower-numbers', () => {
+    expect(G('lower(1.1)')).equal(1)
+    expect(G('lower(1.9)')).equal(1)
+    expect(G('lower(2.0)')).equal(2)
+    expect(G('lower(-1.1)')).equal(-2)
+    expect(G('lower(-1.9)')).equal(-2)
   })
 
-  test('floor-expr', () => {
-    expect(G('floor(1.1)+2')).equal(3)
-    expect(G('2+floor(1.9)')).equal(3)
-    expect(G('(floor(1.5))')).equal(1)
-    expect(G('floor(2.7)+1')).equal(3)
-    expect(G('1+floor(2.7)')).equal(3)
-    expect(G('1+floor(2.7)+1')).equal(4)
-    expect(G('(floor(2.7)+1)')).equal(3)
-    expect(G('(1+floor(2.7))')).equal(3)
-    expect(G('(1+floor(2.7)+1)')).equal(4)
-    expect(G('floor(1.1)+floor(2.9)')).equal(3)
+  test('lower-numbers-expr', () => {
+    expect(G('lower(1.1)+2')).equal(3)
+    expect(G('2+lower(1.9)')).equal(3)
+    expect(G('(lower(1.5))')).equal(1)
+    expect(G('lower(2.7)+1')).equal(3)
+    expect(G('1+lower(2.7)')).equal(3)
+    expect(G('1+lower(2.7)+1')).equal(4)
+    expect(G('(lower(2.7)+1)')).equal(3)
+    expect(G('(1+lower(2.7))')).equal(3)
+    expect(G('(1+lower(2.7)+1)')).equal(4)
+    expect(G('lower(1.1)+lower(2.9)')).equal(3)
   })
 
-  test('floor-deep', () => {
-    expect(G('x:floor(1.1)')).equal({ x: 1 })
-    expect(G('x:{y:floor(2.9)}')).equal({ x: { y: 2 } })
-    expect(G('[floor(1.1)]')).equal([1])
-    expect(G('[x,floor(2.9)]')).equal(['x', 2])
-    expect(G('x:{y:[floor(3.9)]}')).equal({ x: { y: [3] } })
+  test('lower-numbers-deep', () => {
+    expect(G('x:lower(1.1)')).equal({ x: 1 })
+    expect(G('x:{y:lower(2.9)}')).equal({ x: { y: 2 } })
+    expect(G('[lower(1.1)]')).equal([1])
+    expect(G('[x,lower(2.9)]')).equal(['x', 2])
+    expect(G('x:{y:[lower(3.9)]}')).equal({ x: { y: [3] } })
   })
 
-  test('floor-path', () => {
-    expect(G('x:1.5 y:floor($.x)')).equal({ x: 1.5, y: 1 })
-    expect(G('x:3.9 y:{z:floor($.x)}')).equal({ x: 3.9, y: { z: 3 } })
-    expect(G('a:2.7 y:floor($.a)')).equal({ a: 2.7, y: 2 })
+  test('lower-numbers-path', () => {
+    expect(G('x:1.5 y:lower($.x)')).equal({ x: 1.5, y: 1 })
+    expect(G('x:3.9 y:{z:lower($.x)}')).equal({ x: 3.9, y: { z: 3 } })
+    expect(G('a:2.7 y:lower($.a)')).equal({ a: 2.7, y: 2 })
     expect(G('x:{a:2.7} y:$.x.a')).equal({ x: { a: 2.7 }, y: 2.7 })
     expect(G('x:3 y:($.x)')).equal({ x: 3, y: 3 })
     expect(G('x:{a:5} y:(x.a)')).equal({ x: { a: 5 }, y: 5 })
@@ -70,7 +70,7 @@ describe('func', function() {
     expect(G('z:x:{a:6} z:y:(x.a)')).equal({ z: { x: { a: 6 }, y: 6 } })
     expect(G('x:{a:4} y:(.x.a)')).equal({ x: { a: 4 }, y: 4 })
     expect(G('x:{a:3} y:($.x.a)')).equal({ x: { a: 3 }, y: 3 })
-    expect(G('x:{a:2.7} y:floor($.x.a)')).equal({ x: { a: 2.7 }, y: 2 })
+    expect(G('x:{a:2.7} y:lower($.x.a)')).equal({ x: { a: 2.7 }, y: 2 })
     expect(G('x:(1)')).equal({ x: 1 })
     expect(G('x:(+2)')).equal({ x: 2 })
     expect(G('x:(3+4)')).equal({ x: 7 })
@@ -79,51 +79,51 @@ describe('func', function() {
     expect(G('x:(+5+6+7)')).equal({ x: 18 })
   })
 
-  test('floor-spread', () => {
-    expect(G('a:{&:x:floor(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 1, y: 1 } } })
-    expect(G('a:{&:x:floor(2.9)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 2, y: 1 }, c: { x: 2, y: 2 } } })
-    expect(G('a:{&:z:floor(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 3, y: 1 } } })
+  test('lower-numbers-spread', () => {
+    expect(G('a:{&:x:lower(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 1, y: 1 } } })
+    expect(G('a:{&:x:lower(2.9)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 2, y: 1 }, c: { x: 2, y: 2 } } })
+    expect(G('a:{&:z:lower(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 3, y: 1 } } })
   })
 
-  test('floor-pref', () => {
-    expect(G('x:*floor(1.1)')).equal({ x: 1 })
+  test('lower-numbers-pref', () => {
+    expect(G('x:*lower(1.1)')).equal({ x: 1 })
   })
 
 
-  test('ceil-basic', () => {
-    expect(G('ceil(1.1)')).equal(2)
-    expect(G('ceil(1.9)')).equal(2)
-    expect(G('ceil(2.0)')).equal(2)
-    expect(G('ceil(-1.1)')).equal(-1)
-    expect(G('ceil(-1.9)')).equal(-1)
+  test('upper-numbers', () => {
+    expect(G('upper(1.1)')).equal(2)
+    expect(G('upper(1.9)')).equal(2)
+    expect(G('upper(2.0)')).equal(2)
+    expect(G('upper(-1.1)')).equal(-1)
+    expect(G('upper(-1.9)')).equal(-1)
   })
 
-  test('ceil-expr', () => {
-    expect(G('ceil(1.1)+2')).equal(4)
-    expect(G('2+ceil(1.9)')).equal(4)
-    expect(G('(ceil(1.5))')).equal(2)
-    expect(G('(ceil(2.1)+1)')).equal(4)
-    expect(G('ceil(1.1)+ceil(2.1)')).equal(5)
+  test('upper-numbers-expr', () => {
+    expect(G('upper(1.1)+2')).equal(4)
+    expect(G('2+upper(1.9)')).equal(4)
+    expect(G('(upper(1.5))')).equal(2)
+    expect(G('(upper(2.1)+1)')).equal(4)
+    expect(G('upper(1.1)+upper(2.1)')).equal(5)
   })
 
-  test('ceil-deep', () => {
-    expect(G('x:ceil(1.1)')).equal({ x: 2 })
-    expect(G('x:{y:ceil(2.1)}')).equal({ x: { y: 3 } })
-    expect(G('[ceil(1.1)]')).equal([2])
-    expect(G('[x,ceil(2.1)]')).equal(['x', 3])
-    expect(G('x:{y:[ceil(3.1)]}')).equal({ x: { y: [4] } })
+  test('upper-numbers-deep', () => {
+    expect(G('x:upper(1.1)')).equal({ x: 2 })
+    expect(G('x:{y:upper(2.1)}')).equal({ x: { y: 3 } })
+    expect(G('[upper(1.1)]')).equal([2])
+    expect(G('[x,upper(2.1)]')).equal(['x', 3])
+    expect(G('x:{y:[upper(3.1)]}')).equal({ x: { y: [4] } })
   })
 
-  test('ceil-path', () => {
-    expect(G('x:1.5 y:ceil($.x)')).equal({ x: 1.5, y: 2 })
-    expect(G('x:{a:2.3} y:ceil($.x.a)')).equal({ x: { a: 2.3 }, y: 3 })
-    expect(G('x:3.1 y:{z:ceil($.x)}')).equal({ x: 3.1, y: { z: 4 } })
+  test('upper-numbers-path', () => {
+    expect(G('x:1.5 y:upper($.x)')).equal({ x: 1.5, y: 2 })
+    expect(G('x:{a:2.3} y:upper($.x.a)')).equal({ x: { a: 2.3 }, y: 3 })
+    expect(G('x:3.1 y:{z:upper($.x)}')).equal({ x: 3.1, y: { z: 4 } })
   })
 
-  test('ceil-spread', () => {
-    expect(G('a:{&:x:ceil(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 2, y: 1 } } })
-    expect(G('a:{&:x:ceil(2.1)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } })
-    expect(G('a:{&:z:ceil(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 4, y: 1 } } })
+  test('upper-numbers-spread', () => {
+    expect(G('a:{&:x:upper(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 2, y: 1 } } })
+    expect(G('a:{&:x:upper(2.1)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } })
+    expect(G('a:{&:z:upper(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 4, y: 1 } } })
   })
 
 
@@ -162,6 +162,10 @@ describe('func', function() {
     expect(G('a:{&:z:upper(qux)} a:{b:{y:1}}')).equal({ a: { b: { z: 'QUX', y: 1 } } })
   })
 
+  test('upper-pref', () => {
+    expect(G('x:*upper(foo)')).equal({ x: 'FOO' })
+  })
+
 
   test('lower-basic', () => {
     expect(G('lower(A)')).equal('a')
@@ -196,6 +200,10 @@ describe('func', function() {
     expect(G('a:{&:x:lower(FOO)} a:{b:{y:1}}')).equal({ a: { b: { x: 'foo', y: 1 } } })
     expect(G('a:{&:x:lower(BAR)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 'bar', y: 1 }, c: { x: 'bar', y: 2 } } })
     expect(G('a:{&:z:lower(QUX)} a:{b:{y:1}}')).equal({ a: { b: { z: 'qux', y: 1 } } })
+  })
+
+  test('lower-pref', () => {
+    expect(G('x:*lower(FOO)')).equal({ x: 'foo' })
   })
 
 

@@ -12,7 +12,8 @@ import {
 
 import {
   NilVal,
-  StringVal,
+  ScalarKindVal,
+  makeScalar,
 } from '../val'
 
 
@@ -42,11 +43,24 @@ class UpperFuncVal extends FuncBaseVal {
 
   resolve(_ctx: Context | undefined, args: Val[]) {
     const oldpeg = args?.[0].peg
-    const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() : undefined
-    const out =
-      null == peg ? new NilVal({ msg: 'Not a string: ' + oldpeg }) :
-        new StringVal({ peg })
+    const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() :
+      'number' === typeof oldpeg ? Math.ceil(oldpeg) :
+        undefined
+    const out = this.place(
+      null == peg ? new NilVal({ msg: 'Not a string or number: ' + oldpeg }) :
+        makeScalar(peg)
+    )
     return out
+  }
+
+
+  superior() {
+    const arg = this.peg?.[0]
+    return arg?.isScalarVal ?
+      this.place(new ScalarKindVal({
+        peg: arg.kind
+      })) :
+      super.superior()
   }
 }
 

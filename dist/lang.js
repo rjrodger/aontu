@@ -114,8 +114,6 @@ let AontuJsonic = function aontu(jsonic) {
     }
     */
     const funcMap = {
-        floor: func_1.FloorFuncVal,
-        ceil: func_1.CeilFuncVal,
         upper: func_1.UpperFuncVal,
         lower: func_1.LowerFuncVal,
         copy: func_1.CopyFuncVal,

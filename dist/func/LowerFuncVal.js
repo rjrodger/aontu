@@ -20,7 +20,7 @@ class LowerFuncVal extends FuncBaseVal_1.FuncBaseVal {
         const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
             'number' === typeof oldpeg ? Math.floor(oldpeg) :
                 undefined;
-        const out = this.place(null == peg ? new val_1.NilVal({ msg: 'Not a string: ' + oldpeg }) :
+        const out = this.place(null == peg ? new val_1.NilVal({ msg: 'Not a string or number: ' + oldpeg }) :
             (0, val_1.makeScalar)(peg));
         return out;
     }

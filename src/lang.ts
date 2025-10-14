@@ -66,8 +66,6 @@ import {
 
 
 import {
-  FloorFuncVal,
-  CeilFuncVal,
   UpperFuncVal,
   LowerFuncVal,
   CopyFuncVal,
@@ -212,8 +210,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
   const funcMap: Record<string, any> = {
-    floor: FloorFuncVal,
-    ceil: CeilFuncVal,
     upper: UpperFuncVal,
     lower: LowerFuncVal,
     copy: CopyFuncVal,
