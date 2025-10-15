@@ -24,6 +24,8 @@ class TopVal implements Val {
   isVal = true
   isTop = true
   isNil = false
+  isMap = false
+  isList = false
 
   id = 0
   dc = DONE

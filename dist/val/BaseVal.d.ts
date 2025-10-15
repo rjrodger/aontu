@@ -3,10 +3,11 @@ import { Context } from '../unify';
 import { Site } from '../lang';
 declare abstract class BaseVal implements Val {
     #private;
-    static SPREAD: symbol;
     isVal: boolean;
     isTop: boolean;
     isNil: boolean;
+    isMap: boolean;
+    isList: boolean;
     id: number;
     dc: number;
     path: string[];

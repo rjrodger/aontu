@@ -46,6 +46,9 @@ import type {
   Options,
 } from './type'
 
+import {
+  SPREAD
+} from './type'
 
 
 import {
@@ -71,6 +74,10 @@ import {
   CopyFuncVal,
   KeyFuncVal,
   TypeFuncVal,
+  PrefFuncVal,
+  CloseFuncVal,
+  OpenFuncVal,
+  SuperFuncVal,
 } from './func'
 
 
@@ -123,6 +130,11 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
   jsonic.options({
+    fixed: {
+      token: {
+        '#QM': '?'
+      },
+    },
     value: {
       def: {
         // NOTE: specify with functions as jsonic/deep will
@@ -171,10 +183,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
             pval.append(cval)
             return pval
           }
-          // else if (cval instanceof ConjunctVal) {
-          //   cval.append(pval)
-          //   return cval
-          // }
           else {
             return addsite(new ConjunctVal({ peg: [pval, cval] }), prev, ctx)
           }
@@ -192,29 +200,16 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   })
 
 
-  /*
-  const funcMap: Record<string, Function> = {
-    floor: (v: Val) => {
-      const oldpeg = v.peg
-      const peg = isNaN(oldpeg) ? undefined : Math.floor(oldpeg)
-      const out =
-        null == peg ? new Nil({ msg: 'Not a number: ' + oldpeg }) : new IntegerVal({ peg })
-      return out
-    },
-    copy: (v: Val) => {
-      const ctx = new Context({ root: v, path: [] })
-      return v.clone(ctx)
-    }
-  }
-  */
-
-
   const funcMap: Record<string, any> = {
     upper: UpperFuncVal,
     lower: LowerFuncVal,
     copy: CopyFuncVal,
     key: KeyFuncVal,
     type: TypeFuncVal,
+    pref: PrefFuncVal,
+    close: CloseFuncVal,
+    open: OpenFuncVal,
+    super: SuperFuncVal,
   }
 
 
@@ -261,13 +256,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       let val = terms[0]
       return addsite(val, r, ctx)
     },
-
-    /*
-    'plain-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
-      let val = terms[0]
-      return addsite(val, r, ctx)
-    },
-    */
 
     'func-paren': (r: Rule, ctx: JsonicContext, op: Op, terms: any) => {
       let val = terms[1]
@@ -370,8 +358,16 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     })
 
 
-  let CJ = jsonic.token['#E&']
-  let CL = jsonic.token.CL
+  const CJ = jsonic.token['#E&']
+  const CL = jsonic.token.CL
+  const ST = jsonic.token.ST
+  const TX = jsonic.token.TX
+  const NR = jsonic.token.NR
+
+  const QM = jsonic.token.QM
+
+  const KEY = jsonic.tokenSet.KEY
+  const OPTKEY = [TX, ST, NR]
 
 
   jsonic.rule('val', (rs: RuleSpec) => {
@@ -426,6 +422,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
 
       .bc((r: Rule, ctx: JsonicContext) => {
+        const optionalKeys = r.u.aontu_optional_keys ?? []
 
         let mo = r.node
 
@@ -436,12 +433,14 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
           // TODO: needs addpath?
           let mopv = new MapVal({ peg: mop })
+          mopv.optionalKeys = optionalKeys
 
           r.node =
             addsite(new ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx)
         }
         else {
           r.node = addsite(new MapVal({ peg: mo }), r, ctx)
+          r.node.optionalKeys = optionalKeys
         }
 
         return undefined
@@ -453,6 +452,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   })
 
 
+  /*
   jsonic.rule('list', (rs: RuleSpec) => {
     rs.bc((r: Rule, ctx: JsonicContext) => {
       r.node = addsite(new ListVal({ peg: r.node }), r, ctx)
@@ -462,15 +462,86 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
     return rs
   })
+  */
+
+
+  jsonic.rule('list', (rs: RuleSpec) => {
+    rs
+      // .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
+
+      .bc((r: Rule, ctx: JsonicContext) => {
+        const optionalKeys = r.u.aontu_optional_keys ?? []
+
+        let ao = r.node
+
+        if (ao.___merge) {
+          let aop = [...ao]
+          delete (aop as any).___merge
+
+          // TODO: needs addpath?
+          let aopv = new ListVal({ peg: aop })
+          aopv.optionalKeys = optionalKeys
+
+          r.node =
+            addsite(new ConjunctVal({ peg: [aopv, ...ao.___merge] }), r, ctx)
+        }
+        else {
+          r.node = addsite(new ListVal({ peg: ao }), r, ctx)
+          r.node.optionalKeys = optionalKeys
+        }
+
+        return undefined
+      })
+
+    // .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }])
+
+    return rs
+  })
+
+
+  // TODO: copied from jsonic grammar
+  // jsonic should provide a way to export this
+  const pairkey = (r: Rule) => {
+    // Get key string value from first matching token of `Open` state.
+    const key_token = r.o0
+    const key =
+      ST === key_token.tin || TX === key_token.tin
+        ? key_token.val // Was text
+        : key_token.src // Was number, use original text
+
+    r.u.key = key
+  }
 
 
   jsonic.rule('pair', (rs: RuleSpec) => {
     rs
-      .open([{
-        s: [CJ, CL], p: 'val',
-        u: { spread: true },
-        g: 'spread'
-      }])
+      .open([
+        {
+          s: [CJ, CL], p: 'val',
+          u: { spread: true },
+          g: 'spread'
+        },
+
+        {
+          s: [OPTKEY, QM], b: 1, r: 'pair', u: { aontu_optional: true },
+          g: 'aontu-optional-key'
+        },
+
+        {
+          s: [QM, CL],
+          c: (r) => r.prev.u.aontu_optional,
+          p: 'val',
+          u: { pair: true },
+          a: (r) => {
+            pairkey(r.prev)
+            r.u.key = r.prev.u.key
+
+            r.parent.u.aontu_optional_keys = (r.parent.u.aontu_optional_keys || [])
+            r.parent.u.aontu_optional_keys.push('' + r.u.key)
+          },
+          g: 'aontu-optional-pair'
+        }
+      ])
 
       // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
       .ao((r) => {
@@ -484,10 +555,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         // TRAVERSE PARENTS TO GET PATH
 
         if (rule.u.spread) {
-          rule.node[MapVal.SPREAD] =
-            (rule.node[MapVal.SPREAD] || { o: rule.o0.src, v: [] })
+          rule.node[SPREAD] =
+            (rule.node[SPREAD] || { o: rule.o0.src, v: [] })
 
-          rule.node[MapVal.SPREAD].v.push(rule.child.node)
+          rule.node[SPREAD].v.push(rule.child.node)
         }
 
         return undefined
@@ -505,16 +576,44 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.rule('elem', (rs: RuleSpec) => {
     rs
-      // PPP
-      .open([{ s: [CJ, CL], p: 'val', u: { spread: true }, n: { pk: 1 }, g: 'spread' }])
+      .open([
+        {
+          s: [CJ, CL],
+          p: 'val',
+          n: { pk: 1, dmap: 1 },
+          u: { spread: true, done: true, list: true },
+          g: 'spread'
+        },
+
+        {
+          s: [OPTKEY, QM], b: 1, r: 'elem', u: { aontu_optional: true },
+          g: 'aontu-optional-key-elem'
+        },
+
+        {
+          s: [QM, CL],
+          c: (r) => r.prev.u.aontu_optional,
+          p: 'val',
+          u: { spread: true, done: true, list: true, pair: true },
+          a: (r) => {
+            pairkey(r.prev)
+            r.u.key = r.prev.u.key
+
+            r.parent.u.aontu_optional_keys = (r.parent.u.aontu_optional_keys || [])
+            r.parent.u.aontu_optional_keys.push('' + r.u.key)
+          },
+          g: 'aontu-optional-elem'
+        }
+      ])
+
 
       .bc((rule: Rule) => {
         // TRAVERSE PARENTS TO GET PATH
 
         if (rule.u.spread) {
-          rule.node[ListVal.SPREAD] =
-            (rule.node[ListVal.SPREAD] || { o: rule.o0.src, v: [] })
-          rule.node[ListVal.SPREAD].v.push(rule.child.node)
+          rule.node[SPREAD] =
+            (rule.node[SPREAD] || { o: rule.o0.src, v: [] })
+          rule.node[SPREAD].v.push(rule.child.node)
         }
 
         return undefined

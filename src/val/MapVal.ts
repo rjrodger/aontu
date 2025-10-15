@@ -4,12 +4,12 @@
 
 import type {
   Val,
-  ValMap,
   ValSpec,
 } from '../type'
 
 import {
   DONE,
+  SPREAD,
 } from '../type'
 
 import {
@@ -22,13 +22,11 @@ import {
 import { TOP } from './TopVal'
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
-import { FeatureVal } from './FeatureVal'
+import { BagVal } from './BagVal'
 
 
-class MapVal extends FeatureVal {
-  isMapVal = true
-
-  static SPREAD = Symbol('spread')
+class MapVal extends BagVal {
+  isMap = true
 
   spread = {
     cj: (undefined as Val | undefined),
@@ -46,8 +44,8 @@ class MapVal extends FeatureVal {
 
     this.type = !!spec.type
 
-    let spread = (this.peg as any)[MapVal.SPREAD]
-    delete (this.peg as any)[MapVal.SPREAD]
+    let spread = (this.peg as any)[SPREAD]
+    delete (this.peg as any)[SPREAD]
 
     if (spread) {
       if ('&' === spread.o) {
@@ -71,83 +69,113 @@ class MapVal extends FeatureVal {
     // let mark = Math.random()
 
     let done: boolean = true
-    // let out: MapVal = TOP === peer ? this : new MapVal({ peg: {} }, ctx)
-    let out: MapVal = peer.isTop ? this : new MapVal({ peg: {} }, ctx)
-    // console.log('MAPVAL-START', this.id, this.canon, peer.canon, '->', out.canon)
+    let exit = false
+
+    // NOTE: not a clone! needs to be constructed.
+    let out: MapVal | NilVal = (peer.isTop ? this : new MapVal({ peg: {} }, ctx))
+
+    out.closed = this.closed
+    out.optionalKeys = [...this.optionalKeys]
 
     out.spread.cj = this.spread.cj
 
     if (peer instanceof MapVal) {
-      out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
-        null == peer.spread.cj ? out.spread.cj : (
-          out.spread.cj =
-          unite(ctx, out.spread.cj, peer.spread.cj, 'map-self')
+      if (!this.closed && peer.closed) {
+        out = peer.unify(this, ctx) as MapVal
+        exit = true
+      }
+      else {
+        out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
+          null == peer.spread.cj ? out.spread.cj : (
+            out.spread.cj =
+            unite(ctx, out.spread.cj, peer.spread.cj, 'map-self')
+          )
         )
-      )
-    }
-
-    out.dc = this.dc + 1
-
-    // let newtype = this.type || peer.type
-
-    let spread_cj = out.spread.cj ?? TOP
-
-    // Always unify own children first
-    for (let key in this.peg) {
-      let keyctx = ctx.descend(key)
-      let key_spread_cj = spread_cj.clone(keyctx)
-
-      // this.peg[key].type = newtype = this.peg[key].type || newtype
-
-      this.peg[key].type = this.peg[key].type || this.type
-
-      out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'map-own')
-
-      // out.peg[key].type = newtype = out.peg[key].type || newtype
-
-      done = (done && DONE === out.peg[key].dc)
-      // console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
-    }
-
-
-    if (peer instanceof MapVal) {
-      let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map') as MapVal)
-
-      for (let peerkey in upeer.peg) {
-        let peerchild = upeer.peg[peerkey]
-        let child = out.peg[peerkey]
-
-        let oval = out.peg[peerkey] =
-          undefined === child ? peerchild :
-            child instanceof NilVal ? child :
-              peerchild instanceof NilVal ? peerchild :
-                unite(ctx.descend(peerkey), child, peerchild, 'map-peer')
-
-        if (this.spread.cj) {
-          let key_ctx = ctx.descend(peerkey)
-          let key_spread_cj = spread_cj.clone(key_ctx)
-          oval = out.peg[peerkey] =
-            // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
-            unite(key_ctx, oval, key_spread_cj, 'map-peer-spread')
-        }
-
-        oval.type = this.type || oval.type
-
-        // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
-        done = (done && DONE === oval.dc)
       }
     }
-    // else if (TOP !== peer) {
-    else if (!peer.isTop) {
-      return NilVal.make(ctx, 'map', this, peer)
+
+    if (!exit) {
+      out.dc = this.dc + 1
+
+      // let newtype = this.type || peer.type
+
+      let spread_cj = out.spread.cj ?? TOP
+
+      // Always unify own children first
+      for (let key in this.peg) {
+        let keyctx = ctx.descend(key)
+        let key_spread_cj = spread_cj.clone(keyctx)
+
+        // this.peg[key].type = newtype = this.peg[key].type || newtype
+
+        this.peg[key].type = this.peg[key].type || this.type
+
+        out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'map-own')
+
+        // out.peg[key].type = newtype = out.peg[key].type || newtype
+
+        done = (done && DONE === out.peg[key].dc)
+        // console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
+      }
+
+      const allowedKeys: string[] = this.closed ? Object.keys(this.peg) : []
+      let bad: NilVal | undefined = undefined
+
+      if (peer instanceof MapVal) {
+        let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map') as MapVal)
+
+        for (let peerkey in upeer.peg) {
+          let peerchild = upeer.peg[peerkey]
+
+          if (this.closed && !allowedKeys.includes(peerkey)) {
+            bad = NilVal.make(ctx, 'closed', peerchild, undefined)
+          }
+
+          // key optionality is additive
+          if (upeer.optionalKeys.includes(peerkey) && !out.optionalKeys.includes(peerkey)) {
+            out.optionalKeys.push(peerkey)
+          }
+
+          let child = out.peg[peerkey]
+
+          let oval = out.peg[peerkey] =
+            undefined === child ? peerchild :
+              child instanceof NilVal ? child :
+                peerchild instanceof NilVal ? peerchild :
+                  unite(ctx.descend(peerkey), child, peerchild, 'map-peer')
+
+          if (this.spread.cj) {
+            let key_ctx = ctx.descend(peerkey)
+            let key_spread_cj = spread_cj.clone(key_ctx)
+            oval = out.peg[peerkey] =
+              // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
+              unite(key_ctx, oval, key_spread_cj, 'map-peer-spread')
+          }
+
+          oval.type = this.type || oval.type
+
+          // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
+          done = (done && DONE === oval.dc)
+        }
+      }
+      // else if (TOP !== peer) {
+      else if (!peer.isTop) {
+        out = NilVal.make(ctx, 'map', this, peer)
+      }
+
+      if (null != bad) {
+        out = bad
+      }
+
+      if (!out.isNil) {
+        out.uh.push(peer.id)
+
+        out.dc = done ? DONE : out.dc
+        out.type = this.type || peer.type
+      }
     }
 
-    out.uh.push(peer.id)
-
-    out.dc = done ? DONE : out.dc
-    out.type = this.type || peer.type
-
-    // console.log('MAPVAL-OUT', this.id, this.canon, peer.canon, '->', out.canon)
+    // console.log('MAPVAL-OUT', this.id, this.closed, this.canon, 'P=', (peer as any).closed, peer.canon, '->', (out as any).closed, out.canon)
 
     return out
   }
@@ -164,6 +192,9 @@ class MapVal extends FeatureVal {
       out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type })
     }
 
+    out.closed = this.closed
+    out.optionalKeys = [...this.optionalKeys]
+
     // console.log('MAPVAL-CLONE', this.canon, '->', out.canon)
     return out
   }
@@ -171,14 +202,17 @@ class MapVal extends FeatureVal {
 
   get canon() {
     let keys = Object.keys(this.peg)
-    return this.errcanon() +
+    return '' +
+      // this.errcanon() +
       // (this.type ? '<type>' : '') +
       // (this.id + '=') +
       '{' +
       (this.spread.cj ? '&:' + this.spread.cj.canon +
         (0 < keys.length ? ',' : '') : '') +
       keys
-        .map(k => [JSON.stringify(k) + ':' + this.peg[k].canon]).join(',') +
+        .map(k => [JSON.stringify(k) +
+          (this.optionalKeys.includes(k) ? '?' : '') +
+          ':' + this.peg[k].canon]).join(',') +
       '}'
   }
 
@@ -186,12 +220,23 @@ class MapVal extends FeatureVal {
   gen(ctx?: Context) {
     let out: any = {}
     if (this.type) {
-      // out.$TYPE = true
       return undefined
     }
 
     for (let p in this.peg) {
-      out[p] = this.peg[p].gen(ctx)
+      if (this.peg[p].type) {
+        continue
+      }
+
+      let val = this.peg[p].gen(ctx)
+      if (undefined === val) {
+        if (!this.optionalKeys.includes(p)) {
+          return NilVal.make(ctx, 'required', this.peg[p], undefined)
+        }
+      }
+      else {
+        out[p] = val
+      }
     }
 
     return out

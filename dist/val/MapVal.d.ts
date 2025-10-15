@@ -1,9 +1,8 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { FeatureVal } from './FeatureVal';
-declare class MapVal extends FeatureVal {
-    isMapVal: boolean;
-    static SPREAD: symbol;
+import { BagVal } from './BagVal';
+declare class MapVal extends BagVal {
+    isMap: boolean;
     spread: {
         cj: Val | undefined;
     };

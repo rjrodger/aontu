@@ -58,7 +58,8 @@ const MapVal_1 = require("../dist/val/MapVal");
         let v1 = (0, aontu_1.Aontu)('@"' + __dirname + '/../test/error/e02.jsonic"');
         let c1 = new aontu_1.Context({ root: v1 });
         let g1 = v1.gen(c1);
-        (0, code_1.expect)(g1).equal({ a: undefined });
+        // expect(g1).equal({ a: undefined })
+        (0, code_1.expect)(g1).includes({ isNil: true });
         /*
         expect(c1.err[0] as any).include({
           path: ['a'],

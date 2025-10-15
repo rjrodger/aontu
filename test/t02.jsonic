@@ -1,4 +1,5 @@
 
 sys: @"./sys01.jsonic"
+sys: type({})
 
 ent: @"./ent01.jsonic"

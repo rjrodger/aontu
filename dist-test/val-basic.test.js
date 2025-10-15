@@ -2,6 +2,8 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
+const __1 = require("..");
+const type_1 = require("../dist/type");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const code_1 = require("@hapi/code");
@@ -21,7 +23,10 @@ const P = (x, ctx) => PL(x, ctx);
 const PA = (x, ctx) => x.map(s => PL(s, ctx));
 // const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r))?.canon;
-const G = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen(ctx);
+const GC = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen(ctx);
+const N = (x, ctx) => new unify_1.Unify(x, lang).res.canon;
+const A = new __1.AontuX();
+const G = (s, ctx) => A.generate(s);
 const makeSK_String = () => new val_1.ScalarKindVal({ peg: String });
 const makeSK_Number = () => new val_1.ScalarKindVal({ peg: Number });
 const makeSK_Integer = () => new val_1.ScalarKindVal({ peg: val_1.Integer });
@@ -54,7 +59,9 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(P('a:1').gen()).equal({ a: 1 });
         (0, code_1.expect)(P('a:1,b:c:2').gen()).equal({ a: 1, b: { c: 2 } });
         (0, code_1.expect)(P('nil').gen(ctx)).equal(undefined);
-        (0, code_1.expect)(P('a:1,b:nil').gen(ctx)).equal({ a: 1, b: undefined });
+        (0, code_1.expect)(P('a:1,b:nil').gen(ctx)).includes({
+            isNil: true
+        });
     });
     (0, node_test_1.it)('scalar-kind', () => {
         (0, code_1.expect)(makeSK_String().same(makeSK_String())).equal(true);
@@ -353,7 +360,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         let ctx = makeCtx();
         let m0 = new MapVal_1.MapVal({
             peg: {
-                [MapVal_1.MapVal.SPREAD]: { o: '&', v: P('{x:1}') },
+                [type_1.SPREAD]: { o: '&', v: P('{x:1}') },
                 a: P('{ y: 1 }'),
                 b: P('{ y: 2 }'),
             }
@@ -368,7 +375,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
             P('{ y: 1 }'),
             P('{ y: 2 }'),
         ];
-        vals[ListVal_1.ListVal.SPREAD] = { o: '&', v: P('{x:1}') };
+        vals[type_1.SPREAD] = { o: '&', v: P('{x:1}') };
         let l0 = new ListVal_1.ListVal({ peg: vals });
         // console.log(l0)
         (0, code_1.expect)(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]');
@@ -376,6 +383,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(u0.canon).equal('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]');
     });
     (0, node_test_1.it)('var', () => {
+        // TODO: make Aontu.generate support this
         let q0 = new VarVal_1.VarVal({ peg: 'a' });
         (0, code_1.expect)(q0.canon).equal('$a');
         let ctx = makeCtx();
@@ -383,7 +391,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         let s = 'a:$foo';
         let v0 = P(s, ctx);
         (0, code_1.expect)(v0.canon).equal('{"a":$"foo"}');
-        let g0 = G(s, ctx);
+        let g0 = GC(s, ctx);
         (0, code_1.expect)(g0).equal({ a: 11 });
     });
     (0, node_test_1.it)('conjunct', () => {
@@ -656,9 +664,11 @@ b: c2: {n:2}
         // expect(d0.gen()).equal(undefined)
         (0, code_1.expect)(G('number|*1')).equal(1);
         (0, code_1.expect)(G('string|*1')).equal(1);
-        (0, code_1.expect)(G('*1 & x', ctx)).equals(undefined);
+        (0, code_1.expect)(N('*1 & x', ctx)).equal('nil');
+        (0, code_1.expect)(() => G('*1 & x', ctx)).throws(/aontu/);
         (0, code_1.expect)(G('a:*1,a:2')).equal({ a: 2 });
-        (0, code_1.expect)(G('a:*1,a:x', ctx)).equals({ a: undefined });
+        (0, code_1.expect)(N('a:*1,a:x', ctx)).equal('{"a":nil}');
+        (0, code_1.expect)(() => G('a:*1,a:x', ctx)).throws(/aontu/);
         (0, code_1.expect)(G('a: *1 & 2')).equal({ a: 2 });
         (0, code_1.expect)(G('true|*true')).equal(true);
         (0, code_1.expect)(G('*true|true')).equal(true);

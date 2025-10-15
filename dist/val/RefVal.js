@@ -2,6 +2,16 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
+/* TODO
+   Rename ot PathVal
+   
+   $SELF.a - path starting at self
+   $PARENT.b === .b - sibling
+
+   implement $ as a prefix operator
+   this allows "$AString" to be used for literal part names
+*/
+const utility_1 = require("../utility");
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const TopVal_1 = require("./TopVal");
@@ -111,8 +121,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
         return out;
     }
     find(ctx) {
-        // TODO: relative paths
-        // if (this.root instanceof MapVal && ref.absolute) {
+        let out = undefined;
         // NOTE: path *to* the ref, not the ref itself!
         let fullpath = this.path;
         let parts = [];
@@ -199,8 +208,17 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
         }
         if (pI === fullpath.length) {
-            return node;
+            out = node;
+            // Types are cloned and made concrete
+            if (null != out && out.type) {
+                out = out.clone(ctx);
+                (0, utility_1.walk)(out, (_key, val) => {
+                    val.type = false;
+                    return val;
+                });
+            }
         }
+        return out;
     }
     same(peer) {
         return null == peer ? false : this.peg === peer.peg;

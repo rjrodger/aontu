@@ -4,10 +4,13 @@ const { AontuX } = require('..')
 
 const src = process.argv[2]
 const debug = process.argv[3]
+const trace = process.argv[4]
 
 
 const aontu = new AontuX({
-  path: process.cwd()
+  path: process.cwd(),
+  debug: null != trace,
+  trace: null != trace,
 })
 
 let err = []

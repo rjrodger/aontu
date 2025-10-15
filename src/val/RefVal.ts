@@ -11,6 +11,9 @@
    this allows "$AString" to be used for literal part names
 */
 
+import {
+  walk
+} from '../utility'
 
 
 import type {
@@ -177,8 +180,7 @@ class RefVal extends FeatureVal {
 
 
   find(ctx: Context) {
-    // TODO: relative paths
-    // if (this.root instanceof MapVal && ref.absolute) {
+    let out: Val | undefined = undefined
 
     // NOTE: path *to* the ref, not the ref itself!
     let fullpath = this.path
@@ -284,8 +286,20 @@ class RefVal extends FeatureVal {
     }
 
     if (pI === fullpath.length) {
-      return node
+      out = node
+
+      // Types are cloned and made concrete
+      if (null != out && out.type) {
+        out = out.clone(ctx)
+
+        walk(out, (_key: string | number | undefined, val: Val) => {
+          val.type = false
+          return val
+        })
+      }
     }
+
+    return out
   }
 
 

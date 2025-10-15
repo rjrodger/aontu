@@ -36,6 +36,15 @@ class FuncBaseVal extends FeatureVal {
   }
 
 
+  validateArgs(args: Val[], min: number) {
+    if (min < args.length) {
+      // TODO: this is an error as as a parse error, needs to be handled same way
+      throw new Error('The ' + this.funcname() + ' function needs at least ' +
+        min + ' argument' + (1 === min ? '' : 's') + '.')
+    }
+  }
+
+
   make(ctx: Context, _spec: ValSpec): Val {
     return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make')
   }
@@ -143,6 +152,11 @@ class FuncBaseVal extends FeatureVal {
 
   resolve(ctx: Context | undefined, _args: Val[]): Val {
     return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve')
+  }
+
+
+  superior(): Val {
+    return TOP
   }
 
 }

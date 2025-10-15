@@ -16,6 +16,10 @@ import {
   Lang
 } from '../dist/lang'
 
+import {
+  AontuX
+} from '..'
+
 
 
 import { MapVal } from '../dist/val'
@@ -25,8 +29,12 @@ import { MapVal } from '../dist/val'
 let lang = new Lang()
 
 
-const G = (x: string, ctx?: any) => new Unify(x, lang)
-  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
+const N = (x: string, ctx?: any) => new Unify(x, lang).res.canon
+// const G = (x: string, ctx?: any) => new Unify(x, lang)
+//  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
+
+const A = new AontuX()
+const G = (s: string) => A.generate(s)
 
 
 describe('unify', function() {
@@ -37,11 +45,15 @@ describe('unify', function() {
     expect(G('a|a')).equal('a')
 
     expect(G('(a)')).equal('a')
+
     expect(G('(a&a)')).equal('a')
+
     expect(G('(a|a)')).equal('a')
+
 
     expect(G('(a)&a')).equal('a')
     expect(G('(a&a)&a')).equal('a')
+
     expect(G('(a|a)&a')).equal('a')
 
     expect(G('a&(a)')).equal('a')
@@ -189,12 +201,16 @@ describe('unify', function() {
 
   test('condis-different', () => {
     expect(G('a')).equal('a')
-    expect(G('a|b')).equal(undefined)
-    expect(G('a&b')).equal(undefined)
+    expect(N('a|b')).equal('"a"|"b"')
+    expect(() => G('a|b')).throws(/aontu\/scalar/)
+    expect(N('a&b')).equal('nil')
+    expect(() => G('a&b')).throws(/aontu\/scalar/)
 
     expect(G('x:a')).equal({ x: 'a' })
-    expect(G('x:a|b')).equal({ x: undefined })
-    expect(G('x:a&b')).equal({ x: undefined })
+    expect(N('x:a|b')).equal('{"x":"a"|"b"}')
+    expect(() => G('x:a|b')).throws(/aontu\/scalar/)
+    expect(N('x:a&b')).equal('{"x":nil}')
+    expect(() => G('x:a&b')).throws(/aontu\/scalar/)
 
     expect(G('(a|b)&a')).equal('a')
     expect(G('a&(a|b)')).equal('a')
@@ -204,7 +220,8 @@ describe('unify', function() {
     expect(G('a|(b&a)')).equal('a')
     expect(G('(a|b)&a)')).equal('a')
 
-    expect(G('a&a|b')).equal(undefined)
+    expect(N('a&a|b')).equal('"a"|"b"')
+    expect(() => G('a&a|b')).throws(/aontu\/scalar/)
     expect(G('a&a|b&a')).equal('a')
     expect(G('(a&a)|(b&a)')).equal('a')
     expect(G('(a&a)|nil')).equal('a')
@@ -214,7 +231,8 @@ describe('unify', function() {
 
     expect(G('(a|b)&a')).equal('a')
     expect(G('(a|b)&b')).equal('b')
-    expect(G('(a|b)&c')).equal(undefined)
+    expect(N('(a|b)&c')).equal('nil')
+    expect(() => G('(a|b)&c')).throws(/aontu\//)
   })
 
 

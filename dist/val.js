@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PlusOpVal = exports.OpBaseVal = exports.makeScalar = exports.NilVal = exports.PrefVal = exports.VarVal = exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.ListVal = exports.ScalarKindVal = exports.Null = exports.Integer = exports.NullVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.TopVal = exports.TOP = exports.FeatureVal = exports.BaseVal = void 0;
+exports.PlusOpVal = exports.OpBaseVal = exports.makeScalar = exports.NilVal = exports.PrefVal = exports.VarVal = exports.RefVal = exports.DisjunctVal = exports.ConjunctVal = exports.MapVal = exports.ListVal = exports.ScalarKindVal = exports.Null = exports.Integer = exports.NullVal = exports.IntegerVal = exports.BooleanVal = exports.StringVal = exports.NumberVal = exports.ScalarVal = exports.TopVal = exports.TOP = exports.BagVal = exports.FeatureVal = exports.BaseVal = void 0;
 // NOTES
 // - Vals are immutable
 // - each Val must handle all parent and child unifications explicitly
@@ -20,6 +20,8 @@ var BaseVal_1 = require("./val/BaseVal");
 Object.defineProperty(exports, "BaseVal", { enumerable: true, get: function () { return BaseVal_1.BaseVal; } });
 var FeatureVal_1 = require("./val/FeatureVal");
 Object.defineProperty(exports, "FeatureVal", { enumerable: true, get: function () { return FeatureVal_1.FeatureVal; } });
+var BagVal_1 = require("./val/BagVal");
+Object.defineProperty(exports, "BagVal", { enumerable: true, get: function () { return BagVal_1.BagVal; } });
 // Top level
 var TopVal_1 = require("./val/TopVal");
 Object.defineProperty(exports, "TOP", { enumerable: true, get: function () { return TopVal_1.TOP; } });

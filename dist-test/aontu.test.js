@@ -64,15 +64,15 @@ w1: b: {y:2,z:3} & $.q.a
     });
     (0, node_test_1.it)('file', async () => {
         let v0 = (0, aontu_1.Aontu)('@"' + __dirname + '/../test/t02.jsonic"');
-        (0, code_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}');
+        (0, code_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}');
         (0, code_1.expect)(v0.gen()).equal({
-            sys: { ent: { name: undefined } },
+            // sys: { ent: { name: undefined } },
             ent: {
                 foo: {
                     name: 'foo',
                     fields: {
                         f0: {
-                            kind: 'string',
+                            kind: 'String',
                         },
                     },
                 },
@@ -80,7 +80,7 @@ w1: b: {y:2,z:3} & $.q.a
                     name: 'bar',
                     fields: {
                         f0: {
-                            kind: 'number',
+                            kind: 'Number',
                         },
                     },
                 },

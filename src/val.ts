@@ -22,6 +22,7 @@ TOP -> Scalar/Boolean -> BooleanVal
 // Core Val classes
 export { BaseVal } from './val/BaseVal'
 export { FeatureVal } from './val/FeatureVal'
+export { BagVal } from './val/BagVal'
 
 // Top level
 export { TOP, TopVal } from './val/TopVal'

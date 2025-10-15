@@ -4,6 +4,14 @@
 import { describe, it, beforeEach } from 'node:test'
 
 import {
+  AontuX
+} from '..'
+
+import {
+  SPREAD
+} from '../dist/type'
+
+import {
   Lang
 } from '../dist/lang'
 
@@ -46,7 +54,13 @@ const P = (x: string, ctx?: any) => PL(x, ctx)
 const PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
 // const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
-const G = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
+const GC = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
+
+
+const N = (x: string, ctx?: any) => new Unify(x, lang).res.canon
+const A = new AontuX()
+const G = (s: string, ctx?: any) => A.generate(s)
+
 
 
 const makeSK_String = () => new ScalarKindVal({ peg: String })
@@ -91,7 +105,10 @@ describe('val-basic', function() {
     expect(P('a:1,b:c:2').gen()).equal({ a: 1, b: { c: 2 } })
 
     expect(P('nil').gen(ctx)).equal(undefined)
-    expect(P('a:1,b:nil').gen(ctx)).equal({ a: 1, b: undefined })
+
+    expect(P('a:1,b:nil').gen(ctx)).includes({
+      isNil: true
+    })
   })
 
 
@@ -498,7 +515,7 @@ describe('val-basic', function() {
 
     let m0 = new MapVal({
       peg: {
-        [MapVal.SPREAD]: { o: '&', v: P('{x:1}') },
+        [SPREAD]: { o: '&', v: P('{x:1}') },
         a: P('{ y: 1 }'),
         b: P('{ y: 2 }'),
       }
@@ -519,7 +536,7 @@ describe('val-basic', function() {
       P('{ y: 1 }'),
       P('{ y: 2 }'),
     ]
-    vals[ListVal.SPREAD] = { o: '&', v: P('{x:1}') }
+    vals[SPREAD] = { o: '&', v: P('{x:1}') }
 
 
     let l0 = new ListVal({ peg: vals })
@@ -534,9 +551,10 @@ describe('val-basic', function() {
 
 
   it('var', () => {
+    // TODO: make Aontu.generate support this
+
     let q0 = new VarVal({ peg: 'a' })
     expect(q0.canon).equal('$a')
-
 
     let ctx = makeCtx()
     ctx.var.foo = makeNumberVal(11)
@@ -545,7 +563,7 @@ describe('val-basic', function() {
     let v0 = P(s, ctx)
     expect(v0.canon).equal('{"a":$"foo"}')
 
-    let g0 = G(s, ctx)
+    let g0 = GC(s, ctx)
     expect(g0).equal({ a: 11 })
   })
 
@@ -929,9 +947,11 @@ b: c2: {n:2}
     expect(G('number|*1')).equal(1)
     expect(G('string|*1')).equal(1)
 
-    expect(G('*1 & x', ctx)).equals(undefined)
+    expect(N('*1 & x', ctx)).equal('nil')
+    expect(() => G('*1 & x', ctx)).throws(/aontu/)
     expect(G('a:*1,a:2')).equal({ a: 2 })
-    expect(G('a:*1,a:x', ctx)).equals({ a: undefined })
+    expect(N('a:*1,a:x', ctx)).equal('{"a":nil}')
+    expect(() => G('a:*1,a:x', ctx)).throws(/aontu/)
     expect(G('a: *1 & 2')).equal({ a: 2 })
 
 

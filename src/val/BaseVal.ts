@@ -9,7 +9,8 @@ import type {
 
 
 import {
-  DONE
+  DONE,
+  SPREAD,
 } from '../type'
 
 
@@ -27,11 +28,11 @@ let ID = 1000
 
 
 abstract class BaseVal implements Val {
-  static SPREAD = Symbol('spread')
-
   isVal = true
   isTop = false
   isNil = false
+  isMap = false
+  isList = false
 
   id: number
   dc: number = 0
@@ -65,9 +66,9 @@ abstract class BaseVal implements Val {
     this.peg = spec?.peg
 
     if (Array.isArray(this.peg)) {
-      let spread = (this.peg as any)[BaseVal.SPREAD]
+      let spread = (this.peg as any)[SPREAD]
       this.peg = this.peg.filter(n => undefined !== n)
-        ; (this.peg as any)[BaseVal.SPREAD] = spread
+        ; (this.peg as any)[SPREAD] = spread
     }
 
     this.path = ctx?.path || []

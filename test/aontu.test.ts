@@ -105,17 +105,17 @@ w1: b: {y:2,z:3} & $.q.a
     let v0 = Aontu('@"' + __dirname + '/../test/t02.jsonic"')
 
     expect(v0.canon).equal(
-      '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"string"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"number"}}}}}'
+      '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}'
     )
 
     expect(v0.gen()).equal({
-      sys: { ent: { name: undefined } },
+      // sys: { ent: { name: undefined } },
       ent: {
         foo: {
           name: 'foo',
           fields: {
             f0: {
-              kind: 'string',
+              kind: 'String',
             },
           },
         },
@@ -123,7 +123,7 @@ w1: b: {y:2,z:3} & $.q.a
           name: 'bar',
           fields: {
             f0: {
-              kind: 'number',
+              kind: 'Number',
             },
           },
         },

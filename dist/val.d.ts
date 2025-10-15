@@ -1,5 +1,6 @@
 export { BaseVal } from './val/BaseVal';
 export { FeatureVal } from './val/FeatureVal';
+export { BagVal } from './val/BagVal';
 export { TOP, TopVal } from './val/TopVal';
 export { ScalarVal } from './val/ScalarVal';
 export { NumberVal } from './val/NumberVal';

@@ -7,20 +7,19 @@ const unify_1 = require("../unify");
 const TopVal_1 = require("./TopVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const NilVal_1 = require("./NilVal");
-const FeatureVal_1 = require("./FeatureVal");
-class ListVal extends FeatureVal_1.FeatureVal {
+const BagVal_1 = require("./BagVal");
+class ListVal extends BagVal_1.BagVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isListVal = true;
+        this.isList = true;
         this.spread = {
             cj: undefined,
         };
         if (null == this.peg) {
             throw new Error('ListVal spec.peg undefined');
         }
-        let spread = this.peg[ListVal.SPREAD];
-        delete this.peg[ListVal.SPREAD];
-        // console.log('LISTVAL', spread)
+        let spread = this.peg[type_1.SPREAD];
+        delete this.peg[type_1.SPREAD];
         if (spread) {
             if ('&' === spread.o) {
                 // TODO: handle existing spread!
@@ -28,7 +27,7 @@ class ListVal extends FeatureVal_1.FeatureVal {
                     Array.isArray(spread.v) ?
                         1 < spread.v.length ?
                             new ConjunctVal_1.ConjunctVal({ peg: spread.v }, ctx) :
-                            spread.v :
+                            spread.v[0] :
                         spread.v;
                 // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
                 // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
@@ -39,78 +38,126 @@ class ListVal extends FeatureVal_1.FeatureVal {
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
         let done = true;
-        // let out: ListVal = TOP === peer ? this : new ListVal({ peg: [] }, ctx)
-        let out = peer.isTop ? this : new ListVal({ peg: [] }, ctx);
+        let exit = false;
+        // NOTE: not a clone! needs to be constructed.
+        let out = (peer.isTop ? this : new ListVal({ peg: [] }, ctx));
+        out.closed = this.closed;
+        out.optionalKeys = [...this.optionalKeys];
         out.spread.cj = this.spread.cj;
         if (peer instanceof ListVal) {
-            out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                // new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
-                (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj, 'list-peer')));
-        }
-        out.dc = this.dc + 1;
-        // if (this.spread.cj) {
-        //   out.spread.cj =
-        //     DONE !== this.spread.cj.dc ? unite(ctx, this.spread.cj) :
-        //       this.spread.cj
-        // }
-        let spread_cj = out.spread.cj || TopVal_1.TOP;
-        // Always unify children first
-        for (let key in this.peg) {
-            let keyctx = ctx.descend(key);
-            let key_spread_cj = spread_cj.clone(keyctx);
-            out.peg[key] = (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'list-own');
-            done = (done && type_1.DONE === out.peg[key].dc);
-        }
-        if (peer instanceof ListVal) {
-            let upeer = (0, unify_1.unite)(ctx, peer, undefined, 'list-peer-list');
-            // NOTE: peerkey is the index
-            for (let peerkey in upeer.peg) {
-                let peerchild = upeer.peg[peerkey];
-                let child = out.peg[peerkey];
-                let oval = out.peg[peerkey] =
-                    undefined === child ? peerchild :
-                        child instanceof NilVal_1.NilVal ? child :
-                            peerchild instanceof NilVal_1.NilVal ? peerchild :
-                                (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'list-peer');
-                if (this.spread.cj) {
-                    let key_ctx = ctx.descend(peerkey);
-                    let key_spread_cj = spread_cj.clone(key_ctx);
-                    // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
-                    oval = out.peg[peerkey] =
-                        // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
-                        // done = false
-                        (0, unify_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread');
-                }
-                done = (done && type_1.DONE === oval.dc);
+            if (!this.closed && peer.closed) {
+                out = peer.unify(this, ctx);
+                exit = true;
+            }
+            else {
+                out.closed = out.closed || peer.closed;
+                out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
+                    (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj, 'list-peer')));
             }
         }
-        // else if (TOP !== peer) {
-        else if (!peer.isTop) {
-            return NilVal_1.NilVal.make(ctx, 'map', this, peer);
+        if (!exit) {
+            out.dc = this.dc + 1;
+            // if (this.spread.cj) {
+            //   out.spread.cj =
+            //     DONE !== this.spread.cj.dc ? unite(ctx, this.spread.cj) :
+            //       this.spread.cj
+            // }
+            let spread_cj = out.spread.cj || TopVal_1.TOP;
+            // Always unify children first
+            for (let key in this.peg) {
+                let keyctx = ctx.descend(key);
+                let key_spread_cj = spread_cj.clone(keyctx);
+                out.peg[key] = (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'list-own');
+                done = (done && type_1.DONE === out.peg[key].dc);
+            }
+            const allowedKeys = this.closed ? Object.keys(this.peg) : [];
+            let bad = undefined;
+            if (peer instanceof ListVal) {
+                let upeer = (0, unify_1.unite)(ctx, peer, undefined, 'list-peer-list');
+                // NOTE: peerkey is the index
+                for (let peerkey in upeer.peg) {
+                    let peerchild = upeer.peg[peerkey];
+                    if (this.closed && !allowedKeys.includes(peerkey)) {
+                        bad = NilVal_1.NilVal.make(ctx, 'closed', peerchild, undefined);
+                    }
+                    let child = out.peg[peerkey];
+                    let oval = out.peg[peerkey] =
+                        undefined === child ? peerchild :
+                            child instanceof NilVal_1.NilVal ? child :
+                                peerchild instanceof NilVal_1.NilVal ? peerchild :
+                                    (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'list-peer');
+                    if (this.spread.cj) {
+                        let key_ctx = ctx.descend(peerkey);
+                        let key_spread_cj = spread_cj.clone(key_ctx);
+                        // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
+                        oval = out.peg[peerkey] =
+                            // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
+                            // done = false
+                            (0, unify_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread');
+                    }
+                    done = (done && type_1.DONE === oval.dc);
+                }
+            }
+            // else if (TOP !== peer) {
+            else if (!peer.isTop) {
+                out = NilVal_1.NilVal.make(ctx, 'list', this, peer);
+            }
+            if (null != bad) {
+                out = bad;
+            }
+            if (!out.isNil) {
+                out.uh.push(peer.id);
+                out.dc = done ? type_1.DONE : out.dc;
+                out.type = this.type || peer.type;
+            }
         }
-        out.dc = done ? type_1.DONE : out.dc;
         return out;
     }
     clone(ctx, spec) {
         let out = super.clone(ctx, spec);
-        out.peg = this.peg.map((entry) => entry.clone(ctx));
-        if (this.spread.cj) {
-            out.spread.cj = this.spread.cj.clone(ctx);
+        for (let entry of Object.entries(this.peg)) {
+            out.peg[entry[0]] =
+                entry[1]?.isVal ? entry[1].clone(ctx, { type: spec?.type }) : entry[1];
         }
+        if (this.spread.cj) {
+            out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type });
+        }
+        out.closed = this.closed;
+        out.optionalKeys = [...this.optionalKeys];
+        // console.log('LISTVAL-CLONE', this.canon, '->', out.canon)
         return out;
     }
     get canon() {
+        // console.log('LISTVAL-CANON', this.optionalKeys)
         let keys = Object.keys(this.peg);
-        return '[' +
+        return '' +
+            // this.errcanon() +
+            '[' +
             (this.spread.cj ? '&:' + this.spread.cj.canon +
                 (0 < keys.length ? ',' : '') : '') +
             keys
-                // NOTE: handle array non-index key vals
-                .map(k => [this.peg[k].canon]).join(',') +
+                .map(k => this.optionalKeys.includes(k) ?
+                k + '?:' + this.peg[k].canon :
+                this.peg[k].canon).join(',') +
             ']';
     }
     gen(ctx) {
-        let out = this.peg.map((v) => v.gen(ctx));
+        let out = [];
+        if (this.type) {
+            return undefined;
+        }
+        // console.log('LISTVAL-GEN', this.optionalKeys)
+        for (let i = 0; i < this.peg.length; i++) {
+            let val = this.peg[i].gen(ctx);
+            if (undefined === val) {
+                if (!this.optionalKeys.includes('' + i)) {
+                    return NilVal_1.NilVal.make(ctx, 'required', this.peg[i], undefined);
+                }
+            }
+            else {
+                out.push(val);
+            }
+        }
         return out;
     }
 }

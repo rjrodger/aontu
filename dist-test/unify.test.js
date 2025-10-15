@@ -4,10 +4,13 @@ const node_test_1 = require("node:test");
 const code_1 = require("@hapi/code");
 const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
-const val_1 = require("../dist/val");
+const __1 = require("..");
 let lang = new lang_1.Lang();
-const G = (x, ctx) => new unify_1.Unify(x, lang)
-    .res.gen(ctx || new unify_1.Context({ root: new val_1.MapVal({ peg: {} }) }));
+const N = (x, ctx) => new unify_1.Unify(x, lang).res.canon;
+// const G = (x: string, ctx?: any) => new Unify(x, lang)
+//  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
+const A = new __1.AontuX();
+const G = (s) => A.generate(s);
 (0, node_test_1.describe)('unify', function () {
     (0, node_test_1.test)('condis-same', () => {
         (0, code_1.expect)(G('a')).equal('a');
@@ -121,18 +124,23 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
     });
     (0, node_test_1.test)('condis-different', () => {
         (0, code_1.expect)(G('a')).equal('a');
-        (0, code_1.expect)(G('a|b')).equal(undefined);
-        (0, code_1.expect)(G('a&b')).equal(undefined);
+        (0, code_1.expect)(N('a|b')).equal('"a"|"b"');
+        (0, code_1.expect)(() => G('a|b')).throws(/aontu\/scalar/);
+        (0, code_1.expect)(N('a&b')).equal('nil');
+        (0, code_1.expect)(() => G('a&b')).throws(/aontu\/scalar/);
         (0, code_1.expect)(G('x:a')).equal({ x: 'a' });
-        (0, code_1.expect)(G('x:a|b')).equal({ x: undefined });
-        (0, code_1.expect)(G('x:a&b')).equal({ x: undefined });
+        (0, code_1.expect)(N('x:a|b')).equal('{"x":"a"|"b"}');
+        (0, code_1.expect)(() => G('x:a|b')).throws(/aontu\/scalar/);
+        (0, code_1.expect)(N('x:a&b')).equal('{"x":nil}');
+        (0, code_1.expect)(() => G('x:a&b')).throws(/aontu\/scalar/);
         (0, code_1.expect)(G('(a|b)&a')).equal('a');
         (0, code_1.expect)(G('a&(a|b)')).equal('a');
         (0, code_1.expect)(G('a&(a|b)&a')).equal('a');
         (0, code_1.expect)(G('a|b&a')).equal('a');
         (0, code_1.expect)(G('a|(b&a)')).equal('a');
         (0, code_1.expect)(G('(a|b)&a)')).equal('a');
-        (0, code_1.expect)(G('a&a|b')).equal(undefined);
+        (0, code_1.expect)(N('a&a|b')).equal('"a"|"b"');
+        (0, code_1.expect)(() => G('a&a|b')).throws(/aontu\/scalar/);
         (0, code_1.expect)(G('a&a|b&a')).equal('a');
         (0, code_1.expect)(G('(a&a)|(b&a)')).equal('a');
         (0, code_1.expect)(G('(a&a)|nil')).equal('a');
@@ -140,7 +148,8 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('a|(b&a)')).equal('a');
         (0, code_1.expect)(G('(a|b)&a')).equal('a');
         (0, code_1.expect)(G('(a|b)&b')).equal('b');
-        (0, code_1.expect)(G('(a|b)&c')).equal(undefined);
+        (0, code_1.expect)(N('(a|b)&c')).equal('nil');
+        (0, code_1.expect)(() => G('(a|b)&c')).throws(/aontu\//);
     });
     (0, node_test_1.test)('pref', () => {
         (0, code_1.expect)(G('*a|string')).equal('a');

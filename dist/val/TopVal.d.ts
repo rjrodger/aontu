@@ -7,6 +7,8 @@ declare class TopVal implements Val {
     isVal: boolean;
     isTop: boolean;
     isNil: boolean;
+    isMap: boolean;
+    isList: boolean;
     id: number;
     dc: number;
     path: string[];

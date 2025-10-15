@@ -23,6 +23,8 @@ class BaseVal {
         this.isVal = true;
         this.isTop = false;
         this.isNil = false;
+        this.isMap = false;
+        this.isList = false;
         this.dc = 0;
         this.path = [];
         this.row = -1;
@@ -40,9 +42,9 @@ class BaseVal {
         __classPrivateFieldSet(this, _BaseVal_ctx, ctx, "f");
         this.peg = spec?.peg;
         if (Array.isArray(this.peg)) {
-            let spread = this.peg[BaseVal.SPREAD];
+            let spread = this.peg[type_1.SPREAD];
             this.peg = this.peg.filter(n => undefined !== n);
-            this.peg[BaseVal.SPREAD] = spread;
+            this.peg[type_1.SPREAD] = spread;
         }
         this.path = ctx?.path || [];
         // TODO: make this work
@@ -104,5 +106,4 @@ class BaseVal {
 }
 exports.BaseVal = BaseVal;
 _BaseVal_ctx = new WeakMap();
-BaseVal.SPREAD = Symbol('spread');
 //# sourceMappingURL=BaseVal.js.map

@@ -36,6 +36,9 @@ interface Val {
   isVal: boolean
   isTop: boolean
   isNil: boolean
+  isMap: boolean
+  isList: boolean
+
 
   id: number
   dc: number
@@ -82,6 +85,9 @@ type ValList = Val[]
 
 const DONE = -1
 
+const SPREAD = Symbol('spread')
+
+
 
 type ErrContext = {
   src?: string,
@@ -100,6 +106,7 @@ export type {
 
 export {
   DONE,
+  SPREAD,
   Resolver,
 }
 

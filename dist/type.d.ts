@@ -19,6 +19,8 @@ interface Val {
     isVal: boolean;
     isTop: boolean;
     isNil: boolean;
+    isMap: boolean;
+    isList: boolean;
     id: number;
     dc: number;
     path: string[];
@@ -48,9 +50,10 @@ type ValMap = {
 };
 type ValList = Val[];
 declare const DONE = -1;
+declare const SPREAD: unique symbol;
 type ErrContext = {
     src?: string;
     fs?: FST;
 };
 export type { Val, ValSpec, ValMap, ValList, Options, ErrContext, FST, };
-export { DONE, Resolver, };
+export { DONE, SPREAD, Resolver, };

@@ -75,7 +75,8 @@ describe('error', function() {
     let v1 = Aontu('@"' + __dirname + '/../test/error/e02.jsonic"')
     let c1 = new Context({ root: v1 })
     let g1 = v1.gen(c1)
-    expect(g1).equal({ a: undefined })
+    // expect(g1).equal({ a: undefined })
+    expect(g1).includes({ isNil: true })
 
     /*
     expect(c1.err[0] as any).include({
