@@ -84,7 +84,25 @@ class MapVal extends BagVal {
         out = peer.unify(this, ctx) as MapVal
         exit = true
       }
-      else {
+
+      // ensure determinism of unification
+      else if (this.closed && peer.closed) {
+        const peerkeys = Object.keys(peer.peg)
+        const selfkeys = Object.keys(this.peg)
+
+        if (
+          peerkeys.length < selfkeys.length
+          || (peerkeys.length === selfkeys.length
+            && peerkeys.join('~') < selfkeys.join('~')
+          )
+        ) {
+          out = peer.unify(this, ctx) as MapVal
+          exit = true
+        }
+
+      }
+
+      if (!exit) {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =

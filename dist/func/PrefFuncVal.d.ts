@@ -6,6 +6,6 @@ declare class PrefFuncVal extends FuncBaseVal {
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;
     funcname(): string;
-    resolve(_ctx: Context | undefined, _args: Val[]): this;
+    resolve(ctx: Context, args: Val[]): Val;
 }
 export { PrefFuncVal, };

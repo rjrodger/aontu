@@ -23,7 +23,7 @@ class CloseFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         if (argval.isMap || argval.isList) {
             argval.closed = true;
-            console.log('CLOSED', argval.canon);
+            // console.log('CLOSED', argval.canon)
         }
         return argval;
     }

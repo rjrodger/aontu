@@ -10,7 +10,11 @@ import {
   Context,
 } from '../unify'
 
+import {
+  walk
+} from '../utility'
 
+import { NilVal, PrefVal } from '../val'
 import { FuncBaseVal } from './FuncBaseVal'
 
 
@@ -34,8 +38,24 @@ class PrefFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(_ctx: Context | undefined, _args: Val[]) {
-    return this
+  resolve(ctx: Context, args: Val[]) {
+    let out = args[0] ?? NilVal.make(ctx, 'arg', this)
+
+    if (!out.isNil) {
+      out = out.clone(ctx)
+
+      // Wrap every child val in a PrefVal
+      out = walk(out, (_key: string | number | undefined, val: Val) => {
+        let out = val
+        // console.log('PREFVAL', _key, out.canon, (out as any).isScalarVal)
+        if ((val as any).isScalarVal) {
+          out = new PrefVal({ peg: val }, ctx)
+        }
+        return out
+      })
+    }
+
+    return out
   }
 
 }

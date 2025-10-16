@@ -357,4 +357,78 @@ describe('func', function() {
     expect(G('a:{&:z:key(QUX)} a:{b:{y:1}}')).equal({ a: { b: { z: 'qux', y: 1 } } })
   })
   */
+
+
+  test('pref-basic', () => {
+    expect(G('pref(1)')).equal(1)
+    expect(G('pref(abc)')).equal('abc')
+    expect(G('pref(true)')).equal(true)
+    expect(G('pref({x:1})')).equal({ x: 1 })
+    expect(G('pref([1,2])')).equal([1, 2])
+  })
+
+  test('pref-canon', () => {
+    // Test canonical representation shows preference wrapping
+    const N = (x: string, ctx?: any) => new Unify(x, lang)
+      .res.canon
+
+    expect(N('pref(1)')).equal('*1')
+    expect(N('pref(foo)')).equal('*"foo"')
+    expect(N('pref({x:1})')).equal('*{"x":*1}')
+    expect(N('pref([1,2])')).equal('*[*1,*2]')
+    expect(N('pref({x:{y:1}})')).equal('*{"x":*{"y":*1}}')
+  })
+
+  test('pref-wrapping', () => {
+    // Test that pref() wraps values in PrefVal
+    expect(G('pref(1) & number')).equal(1)
+    expect(G('pref(foo) & string')).equal('foo')
+    expect(G('number & pref(2)')).equal(2)
+    expect(G('string & pref(bar)')).equal('bar')
+  })
+
+  test('pref-deep-structure', () => {
+    expect(G('pref({x:{y:1}})')).equal({ x: { y: 1 } })
+    expect(G('pref([{a:1},{b:2}])')).equal([{ a: 1 }, { b: 2 }])
+    expect(G('pref({x:[1,{y:2}]})')).equal({ x: [1, { y: 2 }] })
+  })
+
+  test('pref-double-wrap', () => {
+    const N = (x: string, ctx?: any) => new Unify(x, lang)
+      .res.canon
+
+    // Test double-wrapping behavior in canon
+    expect(N('pref(pref(1))')).equal('**1')
+    expect(N('pref(pref({x:1}))')).equal('**{"x":**1}')
+    expect(N('pref(pref([1,2]))')).equal('**[**1,**2]')
+
+    // Test double-wrapping behavior in generation
+    expect(G('pref(pref(1))')).equal(1)
+    expect(G('pref(pref({x:1}))')).equal({ x: 1 })
+    expect(G('pref(pref([1,2]))')).equal([1, 2])
+  })
+
+  test('pref-unification', () => {
+    // Test preference behavior in unification
+    expect(G('pref(1) & 1')).equal(1)
+    expect(G('pref(foo) & foo')).equal('foo')
+    expect(G('pref({x:1}) & {x:1}')).equal({ x: 1 })
+    expect(G('pref({x:1}) & {x:number}')).equal({ x: 1 })
+  })
+
+  test('pref-expr', () => {
+    expect(G('pref(1)+2')).equal(3)
+    expect(G('2+pref(3)')).equal(5)
+    expect(G('(pref(4))')).equal(4)
+    expect(G('(pref(5)+1)')).equal(6)
+    expect(G('pref(a)+pref(b)')).equal('ab')
+  })
+
+  test('pref-path', () => {
+    expect(G('x:1 y:pref($.x)')).equal({ x: 1, y: 1 })
+    expect(G('x:{a:2} y:pref($.x.a)')).equal({ x: { a: 2 }, y: 2 })
+    expect(G('x:3 y:{z:pref($.x)}')).equal({ x: 3, y: { z: 3 } })
+    expect(G('x:{a:1,b:2} y:pref($.x)')).equal({ x: { a: 1, b: 2 }, y: { a: 1, b: 2 } })
+  })
+
 })

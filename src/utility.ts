@@ -48,6 +48,8 @@ function walk(
   parent?: Val,
   path?: (string | number)[]
 ): Val {
+  // console.log('WALK-START', val.constructor.name, val.canon)
+
   let out = null == before ? val : before(key, val, parent, path || [])
 
   maxdepth = null != maxdepth && 0 <= maxdepth ? maxdepth : 32
@@ -58,55 +60,23 @@ function walk(
     return out
   }
 
-  // Walk children in Val.peg
-  if (isVal(out) && null != out.peg) {
-    const peg = out.peg
+  // console.log('WALK-PEG', out.canon)
 
-    // Handle array peg (ListVal, ConjunctVal, DisjunctVal, etc.)
-    if (Array.isArray(peg)) {
-      for (let i = 0; i < peg.length; i++) {
-        const child = peg[i]
-        if (isVal(child)) {
-          peg[i] = walk(
-            child,
-            before,
-            after,
-            maxdepth,
-            i,
-            out,
-            [...(path || []), i]
-          )
-        }
+  const child: any = out.peg
+
+  // Container Vals (Map etc) have peg = plain {} or []
+  if (null != child && !child.isVal) {
+    if ('object' === typeof child) {
+      for (let ckey in child) {
+        child[ckey] = walk(
+          child[ckey], before, after, maxdepth, ckey, out, [...(path || []), ckey])
       }
     }
-    // Handle object peg (MapVal)
-    else if ('object' === typeof peg && null !== peg) {
-      for (let key in peg) {
-        const child = peg[key]
-        if (isVal(child)) {
-          peg[key] = walk(
-            child,
-            before,
-            after,
-            maxdepth,
-            key,
-            out,
-            [...(path || []), key]
-          )
-        }
+    else if (Array.isArray(child)) {
+      for (let i = 0; i < child.length; i++) {
+        child[i] = walk(
+          child[i], before, after, maxdepth, i, out, [...(path || []), '' + i])
       }
-    }
-    // Single Val in peg (PrefVal, etc.)
-    else if (isVal(peg)) {
-      out.peg = walk(
-        peg,
-        before,
-        after,
-        maxdepth,
-        '',
-        out,
-        [...(path || []), '']
-      )
     }
   }
 
@@ -114,11 +84,6 @@ function walk(
 
   return out
 }
-
-function isVal(v: any): v is Val {
-  return v && 'object' === typeof v && v.isVal === true
-}
-
 
 export {
   formatPath,

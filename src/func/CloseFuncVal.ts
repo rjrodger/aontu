@@ -46,7 +46,7 @@ class CloseFuncVal extends FuncBaseVal {
 
     if (argval.isMap || argval.isList) {
       (argval as BagVal).closed = true
-      console.log('CLOSED', argval.canon)
+      // console.log('CLOSED', argval.canon)
     }
 
     return argval

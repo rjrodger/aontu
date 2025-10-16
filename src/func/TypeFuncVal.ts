@@ -71,6 +71,15 @@ class TypeFuncVal extends FuncBaseVal {
 
     }
     // console.log('TYPE-RESOLVE', args[0]?.canon, '->', out.canon)
+
+    // TODO: since type is self-erasing, we need this hack - find a better way
+
+    const origcanon = out.canon
+    Object.defineProperty(out, 'canon', {
+      get: () => 'type(' + origcanon + ')',
+      configurable: true
+    })
+
     return out
   }
 }

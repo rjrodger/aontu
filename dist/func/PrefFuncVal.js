@@ -2,6 +2,8 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefFuncVal = void 0;
+const utility_1 = require("../utility");
+const val_1 = require("../val");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
@@ -14,8 +16,21 @@ class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
     funcname() {
         return 'pref';
     }
-    resolve(_ctx, _args) {
-        return this;
+    resolve(ctx, args) {
+        let out = args[0] ?? val_1.NilVal.make(ctx, 'arg', this);
+        if (!out.isNil) {
+            out = out.clone(ctx);
+            // Wrap every child val in a PrefVal
+            out = (0, utility_1.walk)(out, (_key, val) => {
+                let out = val;
+                // console.log('PREFVAL', _key, out.canon, (out as any).isScalarVal)
+                if (val.isScalarVal) {
+                    out = new val_1.PrefVal({ peg: val }, ctx);
+                }
+                return out;
+            });
+        }
+        return out;
     }
 }
 exports.PrefFuncVal = PrefFuncVal;
