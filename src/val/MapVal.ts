@@ -66,8 +66,6 @@ class MapVal extends BagVal {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context): Val {
-    // let mark = Math.random()
-
     let done: boolean = true
     let exit = false
 

@@ -5,6 +5,7 @@ import { NilVal } from './val';
 type AontuOptions = {};
 declare class AontuX {
     opts: any;
+    lang: Lang;
     constructor(popts?: Partial<AontuOptions>);
     ctx(arg?: AontuContextConfig | AontuContext): AontuContext;
     parse(src: string, ac?: AontuContext): Val | undefined;
@@ -27,7 +28,7 @@ declare class AontuContext extends Context {
 }
 declare function Aontu(src?: string | Partial<Options>, popts?: Partial<Options>): Val;
 declare function prepareOptions(src?: string | Partial<Options>, popts?: Partial<Options>): Options;
-declare function parse(opts: Options, ctx: {
+declare function parse(lang: Lang, opts: Options, ctx: {
     deps: any;
 }): Val;
 declare const util: {

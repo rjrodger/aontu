@@ -62,10 +62,9 @@ class ConjunctVal extends JunctionVal {
   }
 
   unify(peer: Val, ctx: Context): Val {
-    const sc = this.canon
-    const pc = peer?.canon
+    // const sc = this.canon
+    // const pc = peer?.canon
 
-    const mark = (Math.random() * 1e7) % 1e6 | 0
     let done = true
 
     this.peg = norm(this.peg)
@@ -84,7 +83,7 @@ class ConjunctVal extends JunctionVal {
       this.peg[vI].type = newtype
       // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
 
-      upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own' + mark)
+      upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own')
       upeer[vI].type = newtype = newtype || upeer[vI].type
 
       // let prevdone = done

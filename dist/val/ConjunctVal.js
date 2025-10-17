@@ -36,9 +36,8 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         return this;
     }
     unify(peer, ctx) {
-        const sc = this.canon;
-        const pc = peer?.canon;
-        const mark = (Math.random() * 1e7) % 1e6 | 0;
+        // const sc = this.canon
+        // const pc = peer?.canon
         let done = true;
         this.peg = norm(this.peg);
         // Unify each term of conjunct against peer
@@ -50,7 +49,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         for (let vI = 0; vI < this.peg.length; vI++) {
             this.peg[vI].type = newtype;
             // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
-            upeer[vI] = (0, unify_1.unite)(ctx, this.peg[vI], peer, 'cj-own' + mark);
+            upeer[vI] = (0, unify_1.unite)(ctx, this.peg[vI], peer, 'cj-own');
             upeer[vI].type = newtype = newtype || upeer[vI].type;
             // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].dc);

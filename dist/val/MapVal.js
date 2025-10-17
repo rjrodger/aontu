@@ -37,7 +37,6 @@ class MapVal extends BagVal_1.BagVal {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
-        // let mark = Math.random()
         let done = true;
         let exit = false;
         // NOTE: not a clone! needs to be constructed.

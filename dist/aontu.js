@@ -14,6 +14,7 @@ const err_1 = require("./err");
 class AontuX {
     constructor(popts) {
         this.opts = popts;
+        this.lang = new lang_1.Lang(this.opts);
     }
     ctx(arg) {
         return arg instanceof AontuContext ? arg :
@@ -23,7 +24,7 @@ class AontuX {
         ac = this.ctx(ac);
         const opts = prepareOptions(src, { ...this.opts });
         const deps = {};
-        let val = parse(opts, { deps });
+        let val = parse(this.lang, opts, { deps });
         if (undefined === val) {
             val = new val_1.MapVal({ peg: {} });
         }
@@ -45,7 +46,7 @@ class AontuX {
         if (undefined === pval) {
             return undefined;
         }
-        let uni = new unify_1.Unify(pval, undefined, undefined, osrc);
+        let uni = new unify_1.Unify(pval, this.lang, undefined, osrc);
         let res = uni.res;
         let err = uni.err;
         res.deps = pval.deps;
@@ -125,7 +126,7 @@ function Aontu(src, popts) {
         let opts = prepareOptions(src, popts);
         let deps = {};
         // TODO: handle empty src
-        let val = parse(opts, { deps });
+        let val = parse(new lang_1.Lang(opts), opts, { deps });
         if (null == val) {
             val = new val_1.MapVal({ peg: {} });
         }
@@ -157,8 +158,8 @@ function prepareOptions(src, popts) {
     opts.src = null == opts.src ? '' : opts.src;
     return opts;
 }
-function parse(opts, ctx) {
-    const lang = new lang_1.Lang(opts);
+function parse(lang, opts, ctx) {
+    // const lang = new Lang(opts)
     const val = lang.parse(opts.src, { src: opts.src, deps: ctx.deps, fs: opts.fs });
     return val;
 }

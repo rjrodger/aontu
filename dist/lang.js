@@ -2,7 +2,6 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
-// TODO: structured creation of Vals so that context can be passed in
 const jsonic_1 = require("jsonic");
 const debug_1 = require("jsonic/debug");
 const multisource_1 = require("@jsonic/multisource");
@@ -472,6 +471,7 @@ function makeModelResolver(options) {
 }
 class Lang {
     constructor(options) {
+        // const start = performance.now()
         this.options = {
             src: '',
             print: -1,
@@ -492,8 +492,12 @@ class Lang {
             // resolver: options?.resolver || includeFileResolver
             resolver: options?.resolver || modelResolver
         });
+        // if (false === (global as any).aontu_warm) {
+        //   (global as any).aontu.time.langctor.push(performance.now() - start)
+        // }
     }
     parse(src, opts) {
+        // const start = performance.now()
         // JSONIC-UPDATE - check meta
         let jm = {
             fs: opts?.fs,
@@ -530,6 +534,9 @@ class Lang {
                 throw e;
             }
         }
+        // if (false === (global as any).aontu_warm) {
+        //   (global as any).aontu.time.langparse.push(performance.now() - start)
+        // }
         return val;
     }
 }

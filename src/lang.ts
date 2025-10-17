@@ -2,6 +2,8 @@
 
 // TODO: structured creation of Vals so that context can be passed in
 
+import { performance } from 'node:perf_hooks'
+
 import {
   Jsonic,
   Plugin,
@@ -697,6 +699,8 @@ class Lang {
 
 
   constructor(options?: Partial<Options>) {
+    // const start = performance.now()
+
     this.options = Object.assign({}, this.options, options) as Options
 
     const modelResolver = makeModelResolver(this.options)
@@ -715,10 +719,16 @@ class Lang {
         // resolver: options?.resolver || includeFileResolver
         resolver: options?.resolver || modelResolver
       })
+
+    // if (false === (global as any).aontu_warm) {
+    //   (global as any).aontu.time.langctor.push(performance.now() - start)
+    // }
   }
 
 
   parse(src: string, opts?: Partial<Options>): Val {
+    // const start = performance.now()
+
     // JSONIC-UPDATE - check meta
     let jm: any = {
       fs: opts?.fs,
@@ -760,6 +770,10 @@ class Lang {
         throw e
       }
     }
+
+    // if (false === (global as any).aontu_warm) {
+    //   (global as any).aontu.time.langparse.push(performance.now() - start)
+    // }
 
     return val
   }

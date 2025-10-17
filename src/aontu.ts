@@ -18,9 +18,11 @@ type AontuOptions = {
 
 class AontuX {
   opts: any // AontuOptions
+  lang: Lang
 
   constructor(popts?: Partial<AontuOptions>) {
     this.opts = popts
+    this.lang = new Lang(this.opts)
   }
 
 
@@ -36,7 +38,7 @@ class AontuX {
     const opts = prepareOptions(src, { ...this.opts })
     const deps = {}
 
-    let val = parse(opts, { deps })
+    let val = parse(this.lang, opts, { deps })
 
     if (undefined === val) {
       val = new MapVal({ peg: {} })
@@ -69,7 +71,7 @@ class AontuX {
       return undefined
     }
 
-    let uni = new Unify(pval, undefined, undefined, osrc)
+    let uni = new Unify(pval, this.lang, undefined, osrc)
     let res = uni.res
     let err = uni.err
 
@@ -191,7 +193,7 @@ function Aontu(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
     let deps = {}
 
     // TODO: handle empty src
-    let val = parse(opts, { deps })
+    let val = parse(new Lang(opts), opts, { deps })
 
     if (null == val) {
       val = new MapVal({ peg: {} })
@@ -239,8 +241,8 @@ function prepareOptions(
 }
 
 
-function parse(opts: Options, ctx: { deps: any }): Val {
-  const lang = new Lang(opts)
+function parse(lang: Lang, opts: Options, ctx: { deps: any }): Val {
+  // const lang = new Lang(opts)
   const val = lang.parse(opts.src, { src: opts.src, deps: ctx.deps, fs: opts.fs })
   return val
 }

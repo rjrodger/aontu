@@ -5,7 +5,6 @@ import { Lang } from './lang';
 type Path = string[];
 declare const unite: (ctx: Context, a: any, b: any, whence: string) => any;
 declare class Context {
-    #private;
     root: Val;
     path: Path;
     vc: number;
@@ -16,6 +15,7 @@ declare class Context {
     seenI: number;
     seen: Record<string, number>;
     collect: boolean;
+    errlist: Omit<NilVal[], "push">;
     constructor(cfg: {
         root: Val;
         path?: Path;
@@ -35,6 +35,7 @@ declare class Context {
     }): Context;
     descend(key: string): Context;
     get err(): any;
+    seterr(err: any): void;
     adderr(err: NilVal, whence?: string): void;
     errmsg(): string;
     find(path: string[]): Val | undefined;

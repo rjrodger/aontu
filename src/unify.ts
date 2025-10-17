@@ -81,7 +81,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
           || b.isDisjunct
           || b.isRef
           || b.isPref
-          || b.isFuncVal
+          || b.isFunc
         ) {
 
           out = b.unify(a, ctx)
@@ -135,7 +135,6 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
 
     }
     catch (err: any) {
-      console.log(err)
       out = NilVal.make(ctx, 'internal', a, b)
     }
   }
@@ -167,7 +166,7 @@ class Context {
 
   collect: boolean
 
-  #errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
+  errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
 
   constructor(cfg: {
     root: Val
@@ -187,7 +186,7 @@ class Context {
     this.src = cfg.src
 
     this.collect = cfg.collect ?? null != cfg.err
-    this.#errlist = cfg.err || []
+    this.errlist = cfg.err || []
 
     // Multiple unify passes will keep incrementing Val counter.
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
@@ -206,6 +205,7 @@ class Context {
     path?: Path,
     err?: Omit<NilVal[], "push">,
   }): Context {
+    /*
     return new Context({
       root: cfg.root || this.root,
       path: cfg.path,
@@ -217,7 +217,16 @@ class Context {
       seenI: this.seenI,
       seen: this.seen,
       collect: this.collect,
-    })
+      })
+    */
+    const ctx = Object.create(this)
+    ctx.path = cfg.path ?? this.path
+    ctx.root = cfg.root ?? this.root
+    ctx.var = Object.create(this.var)
+
+    ctx.seterr(cfg.err)
+
+    return ctx
   }
 
 
@@ -230,7 +239,7 @@ class Context {
 
 
   get err() {
-    let a: any = [...this.#errlist]
+    let a: any = [...this.errlist]
     a.push = () => {
       throw new Error('ERR-PUSH')
     }
@@ -238,8 +247,12 @@ class Context {
   }
 
 
+  seterr(err: any) {
+    this.errlist = err ?? this.errlist
+  }
+
   adderr(err: NilVal, whence?: string) {
-    ; (this.#errlist as any).push(err)
+    ; (this.errlist as any).push(err)
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
     }
@@ -247,7 +260,7 @@ class Context {
 
 
   errmsg() {
-    return this.#errlist
+    return this.errlist
       .map((err: any) => err?.msg)
       .filter(msg => null != msg)
       .join('\n------\n')

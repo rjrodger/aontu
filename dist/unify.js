@@ -1,17 +1,5 @@
 "use strict";
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
-var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
-    if (kind === "m") throw new TypeError("Private method is not writable");
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
-    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
-};
-var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-};
-var _Context_errlist;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = exports.Unify = exports.Context = void 0;
 const type_1 = require("./type");
@@ -69,7 +57,7 @@ const unite = (ctx, a, b, whence) => {
                     || b.isDisjunct
                     || b.isRef
                     || b.isPref
-                    || b.isFuncVal) {
+                    || b.isFunc) {
                     out = b.unify(a, ctx);
                     unified = true;
                     why = 'bv';
@@ -114,7 +102,6 @@ const unite = (ctx, a, b, whence) => {
             */
         }
         catch (err) {
-            console.log(err);
             out = NilVal_1.NilVal.make(ctx, 'internal', a, b);
         }
     }
@@ -130,13 +117,12 @@ class Context {
     constructor(cfg) {
         this.cc = -1;
         this.var = {};
-        _Context_errlist.set(this, void 0); // Nil error log of current unify.
         this.root = cfg.root;
         this.path = cfg.path || [];
         // this.err = cfg.err || []
         this.src = cfg.src;
         this.collect = cfg.collect ?? null != cfg.err;
-        __classPrivateFieldSet(this, _Context_errlist, cfg.err || [], "f");
+        this.errlist = cfg.err || [];
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
@@ -145,18 +131,26 @@ class Context {
         this.seen = cfg.seen ?? {};
     }
     clone(cfg) {
+        /*
         return new Context({
-            root: cfg.root || this.root,
-            path: cfg.path,
-            err: cfg.err || __classPrivateFieldGet(this, _Context_errlist, "f"),
-            vc: this.vc,
-            cc: this.cc,
-            var: { ...this.var },
-            src: this.src,
-            seenI: this.seenI,
-            seen: this.seen,
-            collect: this.collect,
-        });
+          root: cfg.root || this.root,
+          path: cfg.path,
+          err: cfg.err || this.#errlist,
+          vc: this.vc,
+          cc: this.cc,
+          var: { ...this.var },
+          src: this.src,
+          seenI: this.seenI,
+          seen: this.seen,
+          collect: this.collect,
+          })
+        */
+        const ctx = Object.create(this);
+        ctx.path = cfg.path ?? this.path;
+        ctx.root = cfg.root ?? this.root;
+        ctx.var = Object.create(this.var);
+        ctx.seterr(cfg.err);
+        return ctx;
     }
     descend(key) {
         return this.clone({
@@ -165,21 +159,24 @@ class Context {
         });
     }
     get err() {
-        let a = [...__classPrivateFieldGet(this, _Context_errlist, "f")];
+        let a = [...this.errlist];
         a.push = () => {
             throw new Error('ERR-PUSH');
         };
         return a;
     }
+    seterr(err) {
+        this.errlist = err ?? this.errlist;
+    }
     adderr(err, whence) {
         ;
-        __classPrivateFieldGet(this, _Context_errlist, "f").push(err);
+        this.errlist.push(err);
         if (null == err.msg || '' == err.msg) {
             (0, err_1.descErr)(err, this);
         }
     }
     errmsg() {
-        return __classPrivateFieldGet(this, _Context_errlist, "f")
+        return this.errlist
             .map((err) => err?.msg)
             .filter(msg => null != msg)
             .join('\n------\n');
@@ -206,7 +203,6 @@ class Context {
     }
 }
 exports.Context = Context;
-_Context_errlist = new WeakMap();
 class Unify {
     constructor(root, lang, ctx, src) {
         this.lang = lang || new lang_1.Lang();
