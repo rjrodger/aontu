@@ -25,7 +25,7 @@ import { FeatureVal } from '../val/FeatureVal'
 
 
 class FuncBaseVal extends FeatureVal {
-  isFuncVal = true
+  isFunc = true
 
   constructor(
     spec: ValSpec,

@@ -2,7 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { FeatureVal } from '../val/FeatureVal';
 declare class OpBaseVal extends FeatureVal {
-    isOpVal: boolean;
+    isPlusOp: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     append(part: any): void;
     make(ctx: Context, _spec: ValSpec): Val;

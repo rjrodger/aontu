@@ -8,7 +8,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isTypeFuncVal = true;
+        this.isTypeFunc = true;
         this.type = true;
         // console.log('TFV', this.id, this.peg?.[0]?.canon)
     }

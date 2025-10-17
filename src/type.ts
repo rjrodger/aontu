@@ -36,6 +36,7 @@ interface Val {
   isVal: boolean
   isTop: boolean
   isNil: boolean
+
   isMap: boolean
   isList: boolean
   isScalar: boolean
@@ -52,14 +53,27 @@ interface Val {
   isString: boolean
   isBoolean: boolean
 
+  isOp: boolean
+  isPlusOp: boolean
+
+  isFunc: boolean
+  isCloseFunc: boolean
+  isCopyFunc: boolean
+  isKeyFunc: boolean
+  isLowerFunc: boolean
+  isOpenFunc: boolean
+  isPrefFunc: boolean
+  isSuperFunc: boolean
+  isTypeFunc: boolean
+  isUpperFunc: boolean
+
+
   id: number
   dc: number
   path: string[]
   row: number
   col: number
   url: string
-
-  top: boolean
 
   type: boolean
 
@@ -71,6 +85,7 @@ interface Val {
   err: Omit<any[], "push">
 
   deps?: any
+
 
   get done(): boolean
 

@@ -3,7 +3,7 @@ import { Context } from '../unify';
 import { NilVal } from '../val';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class CopyFuncVal extends FuncBaseVal {
-    isCopyFuncVal: boolean;
+    isCopyFunc: boolean;
     resolved?: Val;
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;

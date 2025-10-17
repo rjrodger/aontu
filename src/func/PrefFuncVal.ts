@@ -19,7 +19,7 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 
 class PrefFuncVal extends FuncBaseVal {
-  isPrefFuncVal = true
+  isPrefFunc = true
 
   constructor(
     spec: ValSpec,

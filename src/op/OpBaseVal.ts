@@ -32,7 +32,7 @@ import { FeatureVal } from '../val/FeatureVal'
 
 
 class OpBaseVal extends FeatureVal {
-  isOpVal = true
+  isPlusOp = true
 
   constructor(
     spec: ValSpec,

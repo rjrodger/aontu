@@ -7,7 +7,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isKeyFuncVal = true;
+        this.isKeyFunc = true;
         // this.dc = DONE
     }
     make(_ctx, spec) {

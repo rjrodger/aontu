@@ -22,7 +22,7 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 
 class UpperFuncVal extends FuncBaseVal {
-  isUpperFuncVal = true
+  isUpperFunc = true
 
   constructor(
     spec: ValSpec,

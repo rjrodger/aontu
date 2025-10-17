@@ -20,6 +20,7 @@ import { BaseVal } from './BaseVal'
 import { ScalarKindVal } from './ScalarKindVal'
 
 
+
 class ScalarVal extends BaseVal {
   kind: any
   isScalar = true
@@ -46,17 +47,11 @@ class ScalarVal extends BaseVal {
 
 
   unify(peer: Val, ctx: Context): Val {
-    const peerIsScalarKind = (peer as ScalarKindVal).isScalarKind
-    // const peerIsFuncVal = (peer as FuncBaseVal).isFuncVal
-
     // Exactly equal scalars are handled in unify.unite
-    if (peerIsScalarKind) {
+    if (peer.isScalarKind) {
       return peer.unify(this, ctx)
     }
-    // else if (peerIsFuncVal) {
-    //   return peer.unify(this, ctx)
-    // }
-    else if (peer.top) {
+    else if (peer.isTop) {
       return this
     }
 

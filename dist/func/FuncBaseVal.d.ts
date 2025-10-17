@@ -2,7 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { FeatureVal } from '../val/FeatureVal';
 declare class FuncBaseVal extends FeatureVal {
-    isFuncVal: boolean;
+    isFunc: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     validateArgs(args: Val[], min: number): void;
     make(ctx: Context, _spec: ValSpec): Val;

@@ -24,7 +24,7 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 
 class KeyFuncVal extends FuncBaseVal {
-  isKeyFuncVal = true
+  isKeyFunc = true
 
   constructor(
     spec: ValSpec,

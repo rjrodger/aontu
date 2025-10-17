@@ -15,7 +15,7 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 
 class SuperFuncVal extends FuncBaseVal {
-  isSuperFuncVal = true
+  isSuperFunc = true
 
   constructor(
     spec: ValSpec,
@@ -34,8 +34,8 @@ class SuperFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(_ctx: Context | undefined, _args: Val[]) {
-    return this
+  resolve(_ctx: Context, _args: Val[]) {
+    return this.place(this.superior())
   }
 
 }

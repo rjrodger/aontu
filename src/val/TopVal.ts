@@ -40,6 +40,19 @@ class TopVal implements Val {
   isString = false
   isBoolean = false
   isBag = false
+  isOp = true
+  isPlusOp = true
+
+  isFunc = false
+  isCloseFunc = false
+  isCopyFunc = false
+  isKeyFunc = false
+  isLowerFunc = false
+  isOpenFunc = false
+  isPrefFunc = false
+  isSuperFunc = false
+  isTypeFunc = false
+  isUpperFunc = false
 
   id = 0
   dc = DONE

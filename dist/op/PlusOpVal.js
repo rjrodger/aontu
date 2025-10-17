@@ -7,7 +7,7 @@ const OpBaseVal_1 = require("./OpBaseVal");
 class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isOpVal = true;
+        this.isPlusOp = true;
     }
     make(_ctx, spec) {
         return new PlusOpVal(spec);

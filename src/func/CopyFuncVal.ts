@@ -26,7 +26,7 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 
 class CopyFuncVal extends FuncBaseVal {
-  isCopyFuncVal = true
+  isCopyFunc = true
 
   resolved?: Val
 

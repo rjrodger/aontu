@@ -7,7 +7,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isUpperFuncVal = true;
+        this.isUpperFunc = true;
     }
     make(_ctx, spec) {
         return new UpperFuncVal(spec);

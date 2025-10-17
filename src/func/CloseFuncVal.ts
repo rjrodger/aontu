@@ -17,7 +17,7 @@ import { BagVal } from '../val/BagVal'
 
 
 class CloseFuncVal extends FuncBaseVal {
-  isCloseFuncVal = true
+  isCloseFunc = true
 
   constructor(
     spec: ValSpec,

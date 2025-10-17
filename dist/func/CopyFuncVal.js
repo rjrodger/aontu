@@ -9,7 +9,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isCopyFuncVal = true;
+        this.isCopyFunc = true;
         this.type = false;
     }
     make(_ctx, spec) {

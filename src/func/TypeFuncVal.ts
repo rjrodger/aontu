@@ -24,7 +24,7 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 
 class TypeFuncVal extends FuncBaseVal {
-  isTypeFuncVal = true
+  isTypeFunc = true
 
   resolved?: Val
 

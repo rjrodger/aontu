@@ -38,12 +38,23 @@ class BaseVal {
         this.isConjunct = false;
         this.isDisjunct = false;
         this.isJunction = false;
+        this.isOp = false;
+        this.isPlusOp = false;
+        this.isFunc = false;
+        this.isCloseFunc = false;
+        this.isCopyFunc = false;
+        this.isKeyFunc = false;
+        this.isLowerFunc = false;
+        this.isOpenFunc = false;
+        this.isPrefFunc = false;
+        this.isSuperFunc = false;
+        this.isTypeFunc = false;
+        this.isUpperFunc = false;
         this.dc = 0;
         this.path = [];
         this.row = -1;
         this.col = -1;
         this.url = '';
-        this.top = false;
         this.type = false;
         // Actual native value.
         this.peg = undefined;

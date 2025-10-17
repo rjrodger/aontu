@@ -17,7 +17,7 @@ import { BagVal } from '../val/BagVal'
 
 
 class OpenFuncVal extends FuncBaseVal {
-  isOpenFuncVal = true
+  isOpenFunc = true
 
   constructor(
     spec: ValSpec,

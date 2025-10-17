@@ -20,7 +20,7 @@ import { OpBaseVal } from './OpBaseVal'
 
 
 class PlusOpVal extends OpBaseVal {
-  isOpVal = true
+  isPlusOp = true
 
   constructor(
     spec: ValSpec,

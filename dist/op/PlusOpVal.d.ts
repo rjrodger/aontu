@@ -3,7 +3,7 @@ import { Context } from '../unify';
 import { IntegerVal, NumberVal, StringVal, BooleanVal } from '../val';
 import { OpBaseVal } from './OpBaseVal';
 declare class PlusOpVal extends OpBaseVal {
-    isOpVal: boolean;
+    isPlusOp: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;
     opname(): string;

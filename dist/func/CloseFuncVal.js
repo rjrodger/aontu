@@ -7,7 +7,7 @@ const NilVal_1 = require("../val/NilVal");
 class CloseFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isCloseFuncVal = true;
+        this.isCloseFunc = true;
         this.validateArgs(spec.peg, 1);
     }
     make(_ctx, spec) {

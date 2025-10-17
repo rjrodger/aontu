@@ -6,7 +6,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 class SuperFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isSuperFuncVal = true;
+        this.isSuperFunc = true;
     }
     make(_ctx, spec) {
         return new SuperFuncVal(spec);
@@ -15,7 +15,7 @@ class SuperFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'super';
     }
     resolve(_ctx, _args) {
-        return this;
+        return this.place(this.superior());
     }
 }
 exports.SuperFuncVal = SuperFuncVal;

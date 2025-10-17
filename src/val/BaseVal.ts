@@ -48,14 +48,27 @@ abstract class BaseVal implements Val {
   isDisjunct = false
   isJunction = false
 
+  isOp = false
+  isPlusOp = false
+
+  isFunc = false
+  isCloseFunc = false
+  isCopyFunc = false
+  isKeyFunc = false
+  isLowerFunc = false
+  isOpenFunc = false
+  isPrefFunc = false
+  isSuperFunc = false
+  isTypeFunc = false
+  isUpperFunc = false
+
+
   id: number
   dc: number = 0
   path: string[] = []
   row: number = -1
   col: number = -1
   url: string = ''
-
-  top: boolean = false
 
   type = false
 

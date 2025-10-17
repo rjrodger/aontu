@@ -7,7 +7,7 @@ const NilVal_1 = require("../val/NilVal");
 class OpenFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isOpenFuncVal = true;
+        this.isOpenFunc = true;
     }
     make(_ctx, spec) {
         return new OpenFuncVal(spec);

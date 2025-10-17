@@ -8,7 +8,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isPrefFuncVal = true;
+        this.isPrefFunc = true;
     }
     make(_ctx, spec) {
         return new PrefFuncVal(spec);

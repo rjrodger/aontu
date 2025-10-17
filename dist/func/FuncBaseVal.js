@@ -9,7 +9,7 @@ const FeatureVal_1 = require("../val/FeatureVal");
 class FuncBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isFuncVal = true;
+        this.isFunc = true;
         // console.log('FBV', this.id, this.constructor.name, this.peg?.[0]?.canon)
     }
     validateArgs(args, min) {

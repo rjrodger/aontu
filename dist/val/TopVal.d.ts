@@ -22,6 +22,18 @@ declare class TopVal implements Val {
     isString: boolean;
     isBoolean: boolean;
     isBag: boolean;
+    isOp: boolean;
+    isPlusOp: boolean;
+    isFunc: boolean;
+    isCloseFunc: boolean;
+    isCopyFunc: boolean;
+    isKeyFunc: boolean;
+    isLowerFunc: boolean;
+    isOpenFunc: boolean;
+    isPrefFunc: boolean;
+    isSuperFunc: boolean;
+    isTypeFunc: boolean;
+    isUpperFunc: boolean;
     id: number;
     dc: number;
     path: string[];
