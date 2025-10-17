@@ -12,6 +12,7 @@ declare class OpBaseVal extends FeatureVal {
     clone(ctx: Context, _spec?: ValSpec): Val;
     operate(ctx: Context, _args: Val[]): Val | undefined;
     get canon(): string;
+    primatize(v: any): undefined | null | string | number | boolean;
     gen(ctx?: Context): undefined;
 }
 export { OpBaseVal, };

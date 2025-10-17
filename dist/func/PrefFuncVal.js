@@ -22,12 +22,13 @@ class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
             out = out.clone(ctx);
             // Wrap every child val in a PrefVal
             out = (0, utility_1.walk)(out, (_key, val) => {
-                let out = val;
-                // console.log('PREFVAL', _key, out.canon, (out as any).isScalarVal)
-                if (val.isScalarVal) {
-                    out = new val_1.PrefVal({ peg: val }, ctx);
+                let oval = val;
+                // console.log('PREFVAL', _key, oval.canon, oval.constructor.name)
+                if (val.isScalarVal
+                    || val.isPrefVal) {
+                    oval = new val_1.PrefVal({ peg: val }, ctx);
                 }
-                return out;
+                return oval;
             });
         }
         return out;

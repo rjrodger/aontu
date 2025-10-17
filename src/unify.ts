@@ -135,7 +135,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
 
     }
     catch (err: any) {
-      // console.log(err)
+      console.log(err)
       out = NilVal.make(ctx, 'internal', a, b)
     }
   }

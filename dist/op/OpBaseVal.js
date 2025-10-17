@@ -41,14 +41,14 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             pegdone &&= arg.done;
             newpeg.push(arg);
         }
-        // console.log('OPVAL', pegdone, newpeg)
+        // console.log('OPVAL', this.id, this.opname(), pegdone, newpeg.map(p => p.canon))
         if (pegdone) {
             let result = null == ctx ? this : this.operate(ctx, newpeg);
             result = result || this;
             if (null == result && this.canon === peer.canon) {
                 out = this;
             }
-            // TODO: should result.isOp
+            // TODO: should be result.isOp
             else if (result instanceof OpBaseVal) {
                 // if (TOP === peer) {
                 if (peer.isTop) {
@@ -111,6 +111,21 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
     }
     get canon() {
         return 'op';
+    }
+    primatize(v) {
+        const t = typeof v;
+        if (null == v || 'string' === t || 'number' === t || 'boolean' === t) {
+            return v;
+        }
+        else if (v?.isVal) {
+            return this.primatize(v.peg);
+        }
+        else if (v?.toString) {
+            return '' + v;
+        }
+        else {
+            return undefined;
+        }
     }
     gen(ctx) {
         // Unresolved op cannot be generated, so always an error.

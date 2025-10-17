@@ -12,7 +12,7 @@ import {
 } from '../unify'
 
 
-import { IntegerVal, NumberVal, StringVal } from '../val'
+import { IntegerVal, NumberVal, StringVal, BooleanVal } from '../val'
 import { OpBaseVal } from './OpBaseVal'
 
 
@@ -38,17 +38,44 @@ class PlusOpVal extends OpBaseVal {
     return 'plus'
   }
 
+
   operate(_ctx: Context, args: Val[]) {
-    let peg = args[0].peg + args[1].peg
-    let pegtype = typeof peg
-    if ('string' === pegtype) {
-      return new StringVal({ peg })
+    let a: any = this.primatize(args[0]?.peg)
+    let b: any = this.primatize(args[1]?.peg)
+
+    let peg = undefined
+    if (undefined === a && undefined !== b) {
+      peg = b
     }
-    else if ('number' === pegtype) {
-      return Number.isInteger(peg) ? new IntegerVal({ peg }) : new NumberVal({ peg })
+    else if (undefined === b && undefined !== a) {
+      peg = a
+    }
+    else {
+      const at = typeof a
+      const bt = typeof b
+      if ('boolean' === at && 'boolean' === bt) {
+        peg = a || b
+      }
+      else {
+        peg = a + b
+      }
     }
 
-    return undefined
+    let pegtype = typeof peg
+
+    let out = undefined
+
+    if ('string' === pegtype) {
+      out = new StringVal({ peg })
+    }
+    else if ('boolean' === pegtype) {
+      out = new BooleanVal({ peg })
+    }
+    else if ('number' === pegtype) {
+      out = Number.isInteger(peg) ? new IntegerVal({ peg }) : new NumberVal({ peg })
+    }
+
+    return out
   }
 
 

@@ -80,7 +80,7 @@ class OpBaseVal extends FeatureVal {
       newpeg.push(arg)
     }
 
-    // console.log('OPVAL', pegdone, newpeg)
+    // console.log('OPVAL', this.id, this.opname(), pegdone, newpeg.map(p => p.canon))
 
     if (pegdone) {
       let result: Val | undefined = null == ctx ? this : this.operate(ctx, newpeg)
@@ -91,7 +91,7 @@ class OpBaseVal extends FeatureVal {
         out = this
       }
 
-      // TODO: should result.isOp
+      // TODO: should be result.isOp
       else if (result instanceof OpBaseVal) {
         // if (TOP === peer) {
         if (peer.isTop) {
@@ -167,9 +167,25 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-
   get canon() {
     return 'op'
+  }
+
+
+  primatize(v: any): undefined | null | string | number | boolean {
+    const t = typeof v
+    if (null == v || 'string' === t || 'number' === t || 'boolean' === t) {
+      return v
+    }
+    else if (v?.isVal) {
+      return this.primatize(v.peg)
+    }
+    else if (v?.toString) {
+      return '' + v
+    }
+    else {
+      return undefined
+    }
   }
 
 

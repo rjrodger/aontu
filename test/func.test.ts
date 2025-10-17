@@ -374,9 +374,9 @@ describe('func', function() {
 
     expect(N('pref(1)')).equal('*1')
     expect(N('pref(foo)')).equal('*"foo"')
-    expect(N('pref({x:1})')).equal('*{"x":*1}')
-    expect(N('pref([1,2])')).equal('*[*1,*2]')
-    expect(N('pref({x:{y:1}})')).equal('*{"x":*{"y":*1}}')
+    expect(N('pref({x:1})')).equal('{"x":*1}')
+    expect(N('pref([1,2])')).equal('[*1,*2]')
+    expect(N('pref({x:{y:1}})')).equal('{"x":{"y":*1}}')
   })
 
   test('pref-wrapping', () => {
@@ -399,8 +399,8 @@ describe('func', function() {
 
     // Test double-wrapping behavior in canon
     expect(N('pref(pref(1))')).equal('**1')
-    expect(N('pref(pref({x:1}))')).equal('**{"x":**1}')
-    expect(N('pref(pref([1,2]))')).equal('**[**1,**2]')
+    expect(N('pref(pref({x:1}))')).equal('{"x":**1}')
+    expect(N('pref(pref([1,2]))')).equal('[**1,**2]')
 
     // Test double-wrapping behavior in generation
     expect(G('pref(pref(1))')).equal(1)

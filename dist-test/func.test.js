@@ -303,9 +303,9 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
             .res.canon;
         (0, code_1.expect)(N('pref(1)')).equal('*1');
         (0, code_1.expect)(N('pref(foo)')).equal('*"foo"');
-        (0, code_1.expect)(N('pref({x:1})')).equal('*{"x":*1}');
-        (0, code_1.expect)(N('pref([1,2])')).equal('*[*1,*2]');
-        (0, code_1.expect)(N('pref({x:{y:1}})')).equal('*{"x":*{"y":*1}}');
+        (0, code_1.expect)(N('pref({x:1})')).equal('{"x":*1}');
+        (0, code_1.expect)(N('pref([1,2])')).equal('[*1,*2]');
+        (0, code_1.expect)(N('pref({x:{y:1}})')).equal('{"x":{"y":*1}}');
     });
     (0, node_test_1.test)('pref-wrapping', () => {
         // Test that pref() wraps values in PrefVal
@@ -324,8 +324,8 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
             .res.canon;
         // Test double-wrapping behavior in canon
         (0, code_1.expect)(N('pref(pref(1))')).equal('**1');
-        (0, code_1.expect)(N('pref(pref({x:1}))')).equal('**{"x":**1}');
-        (0, code_1.expect)(N('pref(pref([1,2]))')).equal('**[**1,**2]');
+        (0, code_1.expect)(N('pref(pref({x:1}))')).equal('{"x":**1}');
+        (0, code_1.expect)(N('pref(pref([1,2]))')).equal('[**1,**2]');
         // Test double-wrapping behavior in generation
         (0, code_1.expect)(G('pref(pref(1))')).equal(1);
         (0, code_1.expect)(G('pref(pref({x:1}))')).equal({ x: 1 });

@@ -21,7 +21,7 @@ if(debug) {
 
 if(debug) {
   const pval = aontu.parse(src)
-  err = pval.err
+  err = pval.err ?? err
   
   if('canon'===debug || 'deep'===debug) {
     console.log('> CANON:', pval.canon)

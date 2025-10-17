@@ -114,7 +114,7 @@ const unite = (ctx, a, b, whence) => {
             */
         }
         catch (err) {
-            // console.log(err)
+            console.log(err);
             out = NilVal_1.NilVal.make(ctx, 'internal', a, b);
         }
     }
