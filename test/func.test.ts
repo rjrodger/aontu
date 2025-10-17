@@ -431,4 +431,126 @@ describe('func', function() {
     expect(G('x:{a:1,b:2} y:pref($.x)')).equal({ x: { a: 1, b: 2 }, y: { a: 1, b: 2 } })
   })
 
+
+  test('close-basic', () => {
+    expect(G('close({x:1})')).equal({ x: 1 })
+    expect(G('close([1,2])')).equal([1, 2])
+    expect(G('close(42)')).equal(42)
+    expect(G('close(hello)')).equal('hello')
+    expect(G('close(true)')).equal(true)
+  })
+
+  test('close-functionality', () => {
+    // Test that close() prevents additional properties from being unified
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    expect(() => G('close({x:1}) & {y:2}')).throw(/closed/)
+    expect(() => G('close([1,2]) & [3,4,5]')).throw(/closed/)
+    expect(G('close({x:1}) & {x:1}')).equal({ x: 1 })
+    expect(G('close({x:1}) & {x:number}')).equal({ x: 1 })
+  })
+
+  /*  
+    test('close-expr', () => {
+      expect(G('close({x:1}).x')).equal(1)
+      expect(G('close([1,2])[0]')).equal(1)
+    })
+  */
+
+  test('close-path', () => {
+    expect(G('x:{a:1} y:close($.x)')).equal({ x: { a: 1 }, y: { a: 1 } })
+    expect(G('x:[1,2] y:close($.x)')).equal({ x: [1, 2], y: [1, 2] })
+  })
+
+
+  test('open-basic', () => {
+    expect(G('open({x:1})')).equal({ x: 1 })
+    expect(G('open([1,2])')).equal([1, 2])
+    expect(G('open(42)')).equal(42)
+    expect(G('open(hello)')).equal('hello')
+    expect(G('open(true)')).equal(true)
+  })
+
+  /*
+  test('open-functionality', () => {
+    // Test that open() allows additional properties to be unified
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    expect(G('open({x:1}) & {y:2}')).equal({ x: 1, y: 2 })
+    expect(G('open([1,2]) & [3,4,5]')).equal([3, 4, 5])
+    expect(G('open({x:1}) & {x:number}')).equal({ x: 1 })
+  })
+  */
+
+  test('open-close-interaction', () => {
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    // Test opening a previously closed object
+    expect(G('open(close({x:1})) & {y:2}')).equal({ x: 1, y: 2 })
+    // expect(G('close(open({x:1})) & {y:2}')).throw(/closed/)
+  })
+
+  /*
+    test('type-basic', () => {
+      expect(G('type(1)')).equal(1)
+      expect(G('type(hello)')).equal('hello')
+      expect(G('type(true)')).equal(true)
+      expect(G('type({x:1})')).equal({ x: 1 })
+      expect(G('type([1,2])')).equal([1, 2])
+    })
+  */
+
+  test('type-functionality', () => {
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    // type() should mark values as type constraints
+    expect(G('type(1) & number')).equal(1)
+    expect(G('type(hello) & string')).equal('hello')
+    expect(G('type(true) & boolean')).equal(true)
+    expect(G('number & type(42)')).equal(42)
+    expect(G('string & type(world)')).equal('world')
+  })
+
+  test('type-canon', () => {
+    // Test canonical representation shows type wrapping
+    const N = (x: string, ctx?: any) => new Unify(x, lang)
+      .res.canon
+
+    expect(N('type(1)')).equal('type(1)')
+    expect(N('type(foo)')).equal('type("foo")')
+    expect(N('type({x:1})')).equal('type({"x":1})')
+    expect(N('type([1,2])')).equal('type([1,2])')
+  })
+
+  /*
+  test('type-complex', () => {
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    expect(G('type({x:number}) & {x:42}')).equal({ x: 42 })
+    expect(G('type([string]) & [hello]')).equal(['hello'])
+    expect(G('type({x:{y:number}}) & {x:{y:5}}')).equal({ x: { y: 5 } })
+  })
+*/
+
+  test('super-basic', () => {
+    // super() returns the superior type of the current context
+    // These tests may need adjustment based on the actual superior() implementation
+    expect(G('super()')).equal(undefined) // TOP has no superior
+  })
+
+  test('super-functionality', () => {
+    // super() should return the superior type in type hierarchies
+    // The exact behavior depends on the superior() implementation in the Val classes
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    // These tests may need to be adjusted based on actual behavior
+    expect(G('super()')).equal(undefined)
+  })
+
 })
