@@ -52,7 +52,7 @@ class ScalarKindVal extends BaseVal {
 
 
   unify(peer: Val, ctx: Context): Val {
-    const peerIsScalarVal = (peer as any).isScalarVal
+    const peerIsScalarVal = peer.isScalar
     const peerIsScalarKindVal = (peer as ScalarKindVal).isScalarKindVal
 
     let out: Val = this

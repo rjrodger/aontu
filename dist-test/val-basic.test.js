@@ -244,7 +244,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
             err: [],
             // id: 1,
             isIntegerVal: true,
-            isScalarVal: true,
+            isScalar: true,
             isVal: true,
             path: [],
             peg: 11,

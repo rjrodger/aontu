@@ -9,7 +9,7 @@ const ScalarKindVal_1 = require("./ScalarKindVal");
 class ScalarVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isScalarVal = true;
+        this.isScalar = true;
         this.kind = spec.kind;
         this.dc = type_1.DONE;
     }
@@ -42,7 +42,7 @@ class ScalarVal extends BaseVal_1.BaseVal {
                 this.peg.toString();
     }
     same(peer) {
-        return peer?.isScalarVal ? peer.peg === this.peg : super.same(peer);
+        return peer?.isScalar ? peer.peg === this.peg : super.same(peer);
     }
     gen(_ctx) {
         return this.peg;

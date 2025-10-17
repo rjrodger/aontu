@@ -33,6 +33,7 @@ abstract class BaseVal implements Val {
   isNil = false
   isMap = false
   isList = false
+  isScalar = false
 
   id: number
   dc: number = 0

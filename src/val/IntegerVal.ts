@@ -34,7 +34,7 @@ class IntegerVal extends ScalarVal {
         return this
       }
       else if (
-        peer.isScalarVal &&
+        peer.isScalar &&
         peer.peg === this.peg
       ) {
         return this

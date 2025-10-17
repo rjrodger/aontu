@@ -26,7 +26,7 @@ class LowerFuncVal extends FuncBaseVal_1.FuncBaseVal {
     }
     superior() {
         const arg = this.peg?.[0];
-        return arg?.isScalarVal ?
+        return arg?.isScalar ?
             this.place(new val_1.ScalarKindVal({
                 peg: arg.kind
             })) :

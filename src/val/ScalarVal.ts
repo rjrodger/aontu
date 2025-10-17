@@ -22,7 +22,7 @@ import { ScalarKindVal } from './ScalarKindVal'
 
 class ScalarVal extends BaseVal {
   kind: any
-  isScalarVal = true
+  isScalar = true
 
 
   constructor(
@@ -72,7 +72,7 @@ class ScalarVal extends BaseVal {
 
 
   same(peer: any): boolean {
-    return peer?.isScalarVal ? peer.peg === this.peg : super.same(peer)
+    return peer?.isScalar ? peer.peg === this.peg : super.same(peer)
   }
 
 

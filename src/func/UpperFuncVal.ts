@@ -56,7 +56,7 @@ class UpperFuncVal extends FuncBaseVal {
 
   superior() {
     const arg = this.peg?.[0]
-    return arg?.isScalarVal ?
+    return arg?.isScalar ?
       this.place(new ScalarKindVal({
         peg: arg.kind
       })) :

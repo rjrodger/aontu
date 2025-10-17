@@ -13,7 +13,7 @@ declare class RefVal extends FeatureVal {
     }, ctx?: Context);
     append(part: any): void;
     unify(peer: Val, ctx: Context): Val;
-    find(ctx: Context): StringVal | Val | undefined;
+    find(ctx: Context): Val | StringVal | undefined;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;

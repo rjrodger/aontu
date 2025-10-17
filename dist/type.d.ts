@@ -21,6 +21,7 @@ interface Val {
     isNil: boolean;
     isMap: boolean;
     isList: boolean;
+    isScalar: boolean;
     id: number;
     dc: number;
     path: string[];

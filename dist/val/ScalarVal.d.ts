@@ -3,7 +3,7 @@ import { Context } from '../unify';
 import { BaseVal } from './BaseVal';
 declare class ScalarVal extends BaseVal {
     kind: any;
-    isScalarVal: boolean;
+    isScalar: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     clone(ctx: Context, spec?: ValSpec): Val;
     unify(peer: Val, ctx: Context): Val;

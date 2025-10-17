@@ -24,7 +24,7 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
         this.dc = type_1.DONE;
     }
     unify(peer, ctx) {
-        const peerIsScalarVal = peer.isScalarVal;
+        const peerIsScalarVal = peer.isScalar;
         const peerIsScalarKindVal = peer.isScalarKindVal;
         let out = this;
         if (peerIsScalarVal) {

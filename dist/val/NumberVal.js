@@ -17,7 +17,7 @@ class NumberVal extends ScalarVal_1.ScalarVal {
             if (peer.isScalarKindVal && peer.type === Number) {
                 return this;
             }
-            else if (peer.isScalarVal &&
+            else if (peer.isScalar &&
                 peer.peg === this.peg) {
                 return peer.isIntegerVal ? peer : this;
             }

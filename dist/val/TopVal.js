@@ -18,6 +18,7 @@ class TopVal {
         this.isNil = false;
         this.isMap = false;
         this.isList = false;
+        this.isScalar = false;
         this.id = 0;
         this.dc = type_1.DONE;
         this.path = [];
