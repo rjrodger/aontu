@@ -55,7 +55,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
                     out = this;
                 }
                 // TODO: should peer.isNil
-                else if (peer instanceof NilVal_1.NilVal) {
+                else if (peer.isNil) {
                     out = NilVal_1.NilVal.make(ctx, 'op[' + this.peg + ']', this, peer);
                 }
                 else if (this.canon === peer.canon) {

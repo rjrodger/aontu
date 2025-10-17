@@ -10,7 +10,7 @@ const ListVal_1 = require("./ListVal");
 const MapVal_1 = require("./MapVal");
 const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
-const FeatureVal_1 = require("./FeatureVal");
+const JunctionVal_1 = require("./JunctionVal");
 const CONJUNCT_ORDERING = {
     PrefVal: 30000,
     RefVal: 32500,
@@ -19,11 +19,10 @@ const CONJUNCT_ORDERING = {
     Any: 99999
 };
 // TODO: move main logic to op/conjunct
-class ConjunctVal extends FeatureVal_1.FeatureVal {
+class ConjunctVal extends JunctionVal_1.JunctionVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isBinaryOp = true;
-        this.isConjunctVal = true;
+        this.isConjunct = true;
         this.type = !!spec.type;
         this.peg = (Array.isArray(this.peg) ? this.peg : [])
             .filter((p) => null != p && p.isVal);
@@ -32,7 +31,7 @@ class ConjunctVal extends FeatureVal_1.FeatureVal {
     }
     // NOTE: mutation!
     append(peer) {
-        this.peg.push(peer);
+        super.append(peer);
         peer.type = this.type || peer.type;
         return this;
     }
@@ -55,7 +54,7 @@ class ConjunctVal extends FeatureVal_1.FeatureVal {
             upeer[vI].type = newtype = newtype || upeer[vI].type;
             // let prevdone = done
             done = done && (type_1.DONE === upeer[vI].dc);
-            if (upeer[vI] instanceof NilVal_1.NilVal) {
+            if (upeer[vI].isNil) {
                 return upeer[vI];
                 // return Nil.make(
                 //   ctx,
@@ -106,11 +105,11 @@ class ConjunctVal extends FeatureVal_1.FeatureVal {
                 done = done && type_1.DONE === val.dc;
                 newtype = this.type || val.type;
                 // Unite was just a conjunt anyway, so discard.
-                if (val instanceof ConjunctVal) {
+                if (val.isConjunct) {
                     outvals.push(t0);
                     t0 = t1;
                 }
-                else if (val instanceof NilVal_1.NilVal) {
+                else if (val.isNil) {
                     return val;
                 }
                 else {
@@ -141,15 +140,10 @@ class ConjunctVal extends FeatureVal_1.FeatureVal {
     }
     clone(ctx, spec) {
         let out = super.clone(ctx, spec);
-        out.peg = this.peg.map((entry) => entry.clone(ctx, { type: spec?.type }));
         return out;
     }
-    // TODO: need a well-defined val order so conjunt canon is always the same
-    get canon() {
-        return this.peg.map((v) => {
-            return v.isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
-                '(' + v.canon + ')' : v.canon;
-        }).join('&');
+    getJunctionSymbol() {
+        return '&';
     }
     gen(ctx) {
         // Unresolved conjunct cannot be generated, so always an error.
@@ -178,7 +172,7 @@ exports.ConjunctVal = ConjunctVal;
 function norm(terms) {
     let expand = [];
     for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
-        if (terms[tI] instanceof ConjunctVal) {
+        if (terms[tI].isConjunct) {
             expand.push(...terms[tI].peg);
             pI += terms[tI].peg.length - 1;
         }

@@ -7,7 +7,7 @@ const BaseVal_1 = require("./BaseVal");
 class FeatureVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isScalarKindVal = true;
+        this.isScalarKind = true;
     }
     superior() {
         return TopVal_1.TOP;

@@ -17,7 +17,7 @@ exports.Null = Null;
 class ScalarKindVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isScalarKindVal = true;
+        this.isScalarKind = true;
         if (null == this.peg) {
             throw new Error('ScalarKindVal spec.peg undefined');
         }
@@ -25,7 +25,7 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
     }
     unify(peer, ctx) {
         const peerIsScalarVal = peer.isScalar;
-        const peerIsScalarKindVal = peer.isScalarKindVal;
+        const peerIsScalarKind = peer.isScalarKind;
         let out = this;
         if (peerIsScalarVal) {
             let peerKind = peer.kind;
@@ -39,7 +39,7 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
                 out = NilVal_1.NilVal.make(ctx, 'no-scalar-unify', this, peer);
             }
         }
-        else if (peerIsScalarKindVal) {
+        else if (peerIsScalarKind) {
             if (Number === this.peg && Integer === peer.peg) {
                 out = peer;
             }
@@ -64,7 +64,7 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
         return ctor.name.toLowerCase();
     }
     same(peer) {
-        let out = peer?.isScalarKindVal ? this.peg === peer?.peg : super.same(peer);
+        let out = peer?.isScalarKind ? this.peg === peer?.peg : super.same(peer);
         return out;
     }
     superior() {

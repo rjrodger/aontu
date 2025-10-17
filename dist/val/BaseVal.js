@@ -26,6 +26,9 @@ class BaseVal {
         this.isMap = false;
         this.isList = false;
         this.isScalar = false;
+        this.isScalarKind = false;
+        this.isConjunct = false;
+        this.isDisjunct = false;
         this.dc = 0;
         this.path = [];
         this.row = -1;

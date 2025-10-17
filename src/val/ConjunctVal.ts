@@ -25,7 +25,7 @@ import { ListVal } from './ListVal'
 import { MapVal } from './MapVal'
 import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
-import { FeatureVal } from './FeatureVal'
+import { JunctionVal } from './JunctionVal'
 
 
 const CONJUNCT_ORDERING: Record<string, number> = {
@@ -39,9 +39,8 @@ const CONJUNCT_ORDERING: Record<string, number> = {
 
 
 // TODO: move main logic to op/conjunct
-class ConjunctVal extends FeatureVal {
-  isBinaryOp = true
-  isConjunctVal = true
+class ConjunctVal extends JunctionVal {
+  isConjunct = true
 
   constructor(
     spec: ValSpec,
@@ -57,7 +56,7 @@ class ConjunctVal extends FeatureVal {
 
   // NOTE: mutation!
   append(peer: Val): ConjunctVal {
-    this.peg.push(peer)
+    super.append(peer)
     peer.type = this.type || peer.type
     return this
   }
@@ -91,7 +90,7 @@ class ConjunctVal extends FeatureVal {
       // let prevdone = done
       done = done && (DONE === upeer[vI].dc)
 
-      if (upeer[vI] instanceof NilVal) {
+      if (upeer[vI].isNil) {
         return upeer[vI]
         // return Nil.make(
         //   ctx,
@@ -164,11 +163,11 @@ class ConjunctVal extends FeatureVal {
         newtype = this.type || val.type
 
         // Unite was just a conjunt anyway, so discard.
-        if (val instanceof ConjunctVal) {
+        if (val.isConjunct) {
           outvals.push(t0)
           t0 = t1
         }
-        else if (val instanceof NilVal) {
+        else if (val.isNil) {
           return val
         }
         else {
@@ -210,17 +209,12 @@ class ConjunctVal extends FeatureVal {
 
   clone(ctx: Context, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as ConjunctVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(ctx, { type: spec?.type }))
     return out
   }
 
 
-  // TODO: need a well-defined val order so conjunt canon is always the same
-  get canon() {
-    return this.peg.map((v: Val) => {
-      return (v as any).isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
-        '(' + v.canon + ')' : v.canon
-    }).join('&')
+  getJunctionSymbol(): string {
+    return '&'
   }
 
 
@@ -262,7 +256,7 @@ function norm(terms: Val[]): Val[] {
 
   let expand: Val[] = []
   for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
-    if (terms[tI] instanceof ConjunctVal) {
+    if (terms[tI].isConjunct) {
       expand.push(...terms[tI].peg)
       pI += terms[tI].peg.length - 1
     }

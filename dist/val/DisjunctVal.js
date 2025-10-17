@@ -6,19 +6,18 @@ const type_1 = require("../type");
 const unify_1 = require("../unify");
 const NilVal_1 = require("../val/NilVal");
 const PrefVal_1 = require("../val/PrefVal");
-const FeatureVal_1 = require("../val/FeatureVal");
+const JunctionVal_1 = require("../val/JunctionVal");
 // TODO: move main logic to op/disjunct
-class DisjunctVal extends FeatureVal_1.FeatureVal {
+class DisjunctVal extends JunctionVal_1.JunctionVal {
     // TODO: sites from normalization of orginal Disjuncts, as well as child pegs
     constructor(spec, ctx, _sites) {
         super(spec, ctx);
         this.isDisjunct = true;
-        this.isBinaryOp = true;
         this.prefsRanked = false;
     }
     // NOTE: mutation!
     append(peer) {
-        this.peg.push(peer);
+        super.append(peer);
         this.prefsRanked = false;
         return this;
     }
@@ -47,7 +46,7 @@ class DisjunctVal extends FeatureVal_1.FeatureVal {
         // Remove duplicates, and normalize
         if (1 < oval.length) {
             for (let vI = 0; vI < oval.length; vI++) {
-                if (oval[vI] instanceof DisjunctVal) {
+                if (oval[vI].isDisjunct) {
                     oval.splice(vI, 1, ...oval[vI].peg);
                 }
             }
@@ -62,7 +61,7 @@ class DisjunctVal extends FeatureVal_1.FeatureVal {
                 }
             }
             // // // console.log('DISJUNCT-unify-D', this.id, oval.map(v => v.canon))
-            oval = oval.filter(v => !(v instanceof NilVal_1.NilVal));
+            oval = oval.filter(v => !v.isNil);
         }
         let out;
         if (1 == oval.length) {
@@ -89,7 +88,7 @@ class DisjunctVal extends FeatureVal_1.FeatureVal {
                 if (null != lastpref) {
                     if (v.rank === lastpref.rank) {
                         const pref = v.unify(lastpref, ctx);
-                        if (pref instanceof NilVal_1.NilVal) {
+                        if (pref.isNil) {
                             return pref;
                         }
                         else {
@@ -113,7 +112,7 @@ class DisjunctVal extends FeatureVal_1.FeatureVal {
                     lastprefI = vI;
                 }
             }
-            else if (v instanceof DisjunctVal) {
+            else if (v.isDisjunct) {
                 let subrank = v.rankPrefs(ctx);
                 if (subrank instanceof PrefVal_1.PrefVal) {
                     this.peg[vI] = subrank;
@@ -131,14 +130,10 @@ class DisjunctVal extends FeatureVal_1.FeatureVal {
     }
     clone(ctx, spec) {
         let out = super.clone(ctx, spec);
-        out.peg = this.peg.map((entry) => entry.clone(ctx));
         return out;
     }
-    get canon() {
-        return this.peg.map((v) => {
-            return v.isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
-                '(' + v.canon + ')' : v.canon;
-        }).join('|');
+    getJunctionSymbol() {
+        return '|';
     }
     gen(ctx) {
         // // // console.log('DJ-GEN', this.peg.map((p: any) => p.canon))

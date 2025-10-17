@@ -29,11 +29,15 @@ let ID = 1000
 
 abstract class BaseVal implements Val {
   isVal = true
+
   isTop = false
   isNil = false
   isMap = false
   isList = false
   isScalar = false
+  isScalarKind = false
+  isConjunct = false
+  isDisjunct = false
 
   id: number
   dc: number = 0

@@ -71,13 +71,13 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
           out = update(b, a)
           why = 'bn'
         }
-        else if (a.isConjunctVal) {
+        else if (a.isConjunct) {
           out = a.unify(b, ctx)
           unified = true
           why = 'acj'
         }
         else if (
-          b.isConjunctVal
+          b.isConjunct
           || b.isDisjunct
           || b.isRefVal
           || b.isPrefVal

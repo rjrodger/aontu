@@ -10,6 +10,9 @@ declare class TopVal implements Val {
     isMap: boolean;
     isList: boolean;
     isScalar: boolean;
+    isScalarKind: boolean;
+    isConjunct: boolean;
+    isDisjunct: boolean;
     id: number;
     dc: number;
     path: string[];

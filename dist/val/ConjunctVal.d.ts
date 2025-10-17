@@ -1,14 +1,13 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { FeatureVal } from './FeatureVal';
-declare class ConjunctVal extends FeatureVal {
-    isBinaryOp: boolean;
-    isConjunctVal: boolean;
+import { JunctionVal } from './JunctionVal';
+declare class ConjunctVal extends JunctionVal {
+    isConjunct: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     append(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: Context): Val;
     clone(ctx: Context, spec?: ValSpec): Val;
-    get canon(): any;
+    getJunctionSymbol(): string;
     gen(ctx?: Context): undefined;
 }
 declare function norm(terms: Val[]): Val[];

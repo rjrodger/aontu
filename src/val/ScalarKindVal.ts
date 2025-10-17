@@ -35,7 +35,7 @@ type ScalarConstructor =
 
 
 class ScalarKindVal extends BaseVal {
-  isScalarKindVal = true
+  isScalarKind = true
 
   constructor(
     spec: ValSpec,
@@ -53,7 +53,7 @@ class ScalarKindVal extends BaseVal {
 
   unify(peer: Val, ctx: Context): Val {
     const peerIsScalarVal = peer.isScalar
-    const peerIsScalarKindVal = (peer as ScalarKindVal).isScalarKindVal
+    const peerIsScalarKind = (peer as ScalarKindVal).isScalarKind
 
     let out: Val = this
 
@@ -70,7 +70,7 @@ class ScalarKindVal extends BaseVal {
         out = NilVal.make(ctx, 'no-scalar-unify', this, peer)
       }
     }
-    else if (peerIsScalarKindVal) {
+    else if (peerIsScalarKind) {
       if (Number === this.peg && Integer === peer.peg) {
         out = peer
       }
@@ -100,7 +100,7 @@ class ScalarKindVal extends BaseVal {
 
 
   same(peer: any): boolean {
-    let out = peer?.isScalarKindVal ? this.peg === peer?.peg : super.same(peer)
+    let out = peer?.isScalarKind ? this.peg === peer?.peg : super.same(peer)
     return out
   }
 

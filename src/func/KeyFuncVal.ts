@@ -59,7 +59,7 @@ class KeyFuncVal extends FuncBaseVal {
     }
 
     else if (
-      (peer as any).isScalarKindVal
+      (peer as any).isScalarKind
       && peer.peg === String
     ) {
       return this

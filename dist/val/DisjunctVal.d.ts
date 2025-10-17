@@ -2,10 +2,9 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
 import { PrefVal } from '../val/PrefVal';
-import { FeatureVal } from '../val/FeatureVal';
-declare class DisjunctVal extends FeatureVal {
+import { JunctionVal } from '../val/JunctionVal';
+declare class DisjunctVal extends JunctionVal {
     isDisjunct: boolean;
-    isBinaryOp: boolean;
     prefsRanked: boolean;
     constructor(spec: {
         peg: Val[];
@@ -14,7 +13,7 @@ declare class DisjunctVal extends FeatureVal {
     unify(peer: Val, ctx: Context): Val;
     rankPrefs(ctx: Context): PrefVal | undefined;
     clone(ctx: Context, spec?: ValSpec): Val;
-    get canon(): any;
+    getJunctionSymbol(): string;
     gen(ctx: Context): any;
 }
 export { DisjunctVal, };

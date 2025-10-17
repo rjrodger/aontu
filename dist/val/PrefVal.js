@@ -5,7 +5,6 @@ exports.PrefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const val_1 = require("../val");
-const NilVal_1 = require("../val/NilVal");
 const FeatureVal_1 = require("../val/FeatureVal");
 class PrefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
@@ -88,7 +87,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
     }
     gen(ctx) {
         let val = this.peg;
-        if (val instanceof NilVal_1.NilVal) {
+        if (val.isNil) {
             if (null == ctx) {
                 throw new Error(val.msg);
             }

@@ -94,7 +94,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     out = this;
                     // why = 'pt'
                 }
-                else if (peer instanceof NilVal_1.NilVal) {
+                else if (peer.isNil) {
                     out = NilVal_1.NilVal.make(ctx, 'ref[' + this.peg + ']', this, peer);
                     // why = 'pn'
                 }
@@ -160,7 +160,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 }
                 else if (0 === modes.length) {
                     part = part.unify(TopVal_1.TOP, ctx);
-                    if (part instanceof NilVal_1.NilVal) {
+                    if (part.isNil) {
                         // TODO: var not found, so can't find path
                         return;
                     }

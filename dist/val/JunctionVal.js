@@ -1,0 +1,31 @@
+"use strict";
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.JunctionVal = void 0;
+const FeatureVal_1 = require("./FeatureVal");
+// Abstract base class for binary operations that work with arrays of Val objects
+// (ConjunctVal and DisjunctVal)
+class JunctionVal extends FeatureVal_1.FeatureVal {
+    constructor(spec, ctx) {
+        super(spec, ctx);
+        this.isBinaryOp = true;
+    }
+    // NOTE: mutation!
+    append(peer) {
+        this.peg.push(peer);
+        return this;
+    }
+    clone(ctx, spec) {
+        let out = super.clone(ctx, spec);
+        out.peg = this.peg.map((entry) => entry.clone(ctx, { type: spec?.type }));
+        return out;
+    }
+    get canon() {
+        return this.peg.map((v) => {
+            return v.isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
+                '(' + v.canon + ')' : v.canon;
+        }).join(this.getJunctionSymbol());
+    }
+}
+exports.JunctionVal = JunctionVal;
+//# sourceMappingURL=JunctionVal.js.map

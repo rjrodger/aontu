@@ -14,7 +14,7 @@ class NumberVal extends ScalarVal_1.ScalarVal {
     }
     unify(peer, ctx) {
         if (null != peer) {
-            if (peer.isScalarKindVal && peer.type === Number) {
+            if (peer.isScalarKind && peer.type === Number) {
                 return this;
             }
             else if (peer.isScalar &&

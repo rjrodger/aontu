@@ -30,7 +30,7 @@ class IntegerVal extends ScalarVal {
 
   unify(peer: any, ctx: Context): Val {
     if (null != peer) {
-      if (peer.isScalarKindVal && (peer.peg === Number || peer.peg === Integer)) {
+      if (peer.isScalarKind && (peer.peg === Number || peer.peg === Integer)) {
         return this
       }
       else if (

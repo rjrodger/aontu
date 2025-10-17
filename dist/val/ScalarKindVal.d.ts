@@ -7,7 +7,7 @@ declare class Null {
 }
 type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
 declare class ScalarKindVal extends BaseVal {
-    isScalarKindVal: boolean;
+    isScalarKind: boolean;
     constructor(spec: ValSpec, ctx?: Context);
     unify(peer: Val, ctx: Context): Val;
     get canon(): any;

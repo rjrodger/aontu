@@ -19,6 +19,9 @@ class TopVal {
         this.isMap = false;
         this.isList = false;
         this.isScalar = false;
+        this.isScalarKind = false;
+        this.isConjunct = false;
+        this.isDisjunct = false;
         this.id = 0;
         this.dc = type_1.DONE;
         this.path = [];

@@ -15,7 +15,6 @@ const type_1 = require("./type");
 const val_1 = require("./val");
 const op_1 = require("./op");
 const func_1 = require("./func");
-const val_2 = require("./val");
 class Site {
     // static NONE = new Site(TOP)
     constructor(val) {
@@ -54,22 +53,22 @@ let AontuJsonic = function aontu(jsonic) {
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
                 'string': {
-                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: String }), r, ctx)
+                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: String }), r, ctx)
                 },
                 'number': {
-                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: Number }), r, ctx)
+                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: Number }), r, ctx)
                 },
                 'integer': {
-                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: val_2.Integer }), r, ctx)
+                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: val_1.Integer }), r, ctx)
                 },
                 'boolean': {
-                    val: (r, ctx) => addsite(new val_2.ScalarKindVal({ peg: Boolean }), r, ctx)
+                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: Boolean }), r, ctx)
                 },
                 'nil': {
                     val: (r, ctx) => addsite(new val_1.NilVal('literal'), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
-                'top': { val: () => val_2.TOP },
+                'top': { val: () => val_1.TOP },
             }
         },
         map: {
@@ -78,11 +77,11 @@ let AontuJsonic = function aontu(jsonic) {
                 let cval = curr;
                 if (pval?.isVal && cval?.isVal) {
                     // TODO: test multi element conjuncts work
-                    if (pval instanceof val_1.ConjunctVal && cval instanceof val_1.ConjunctVal) {
+                    if (pval.isConjunct && cval.isConjunct) {
                         pval.append(cval);
                         return pval;
                     }
-                    else if (pval instanceof val_1.ConjunctVal) {
+                    else if (pval.isConjunct) {
                         pval.append(cval);
                         return pval;
                     }
@@ -240,18 +239,18 @@ let AontuJsonic = function aontu(jsonic) {
             let valnode = r.node;
             let valtype = typeof valnode;
             if ('string' === valtype) {
-                valnode = addsite(new val_2.StringVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new val_1.StringVal({ peg: r.node }), r, ctx);
             }
             else if ('number' === valtype) {
                 if (Number.isInteger(r.node)) {
-                    valnode = addsite(new val_2.IntegerVal({ peg: r.node }), r, ctx);
+                    valnode = addsite(new val_1.IntegerVal({ peg: r.node }), r, ctx);
                 }
                 else {
-                    valnode = addsite(new val_2.NumberVal({ peg: r.node }), r, ctx);
+                    valnode = addsite(new val_1.NumberVal({ peg: r.node }), r, ctx);
                 }
             }
             else if ('boolean' === valtype) {
-                valnode = addsite(new val_2.BooleanVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new val_1.BooleanVal({ peg: r.node }), r, ctx);
             }
             else if (null === valnode) {
                 valnode = addsite(new val_1.NullVal({ peg: r.node }), r, ctx);
@@ -298,10 +297,10 @@ let AontuJsonic = function aontu(jsonic) {
     jsonic.rule('list', (rs: RuleSpec) => {
       rs.bc((r: Rule, ctx: JsonicContext) => {
         r.node = addsite(new ListVal({ peg: r.node }), r, ctx)
-  
+    
         return undefined
       })
-  
+    
       return rs
     })
     */

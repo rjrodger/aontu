@@ -147,7 +147,7 @@ class PrefVal extends FeatureVal {
   gen(ctx?: Context) {
     let val = this.peg
 
-    if (val instanceof NilVal) {
+    if (val.isNil) {
       if (null == ctx) {
         throw new Error(val.msg)
       }

@@ -52,15 +52,22 @@ import {
 
 
 import {
-  DisjunctVal,
+  BooleanVal,
   ConjunctVal,
+  DisjunctVal,
+  Integer,
+  IntegerVal,
   ListVal,
   MapVal,
   NilVal,
+  NullVal,
+  NumberVal,
   PrefVal,
   RefVal,
+  ScalarKindVal,
+  StringVal,
+  TOP,
   VarVal,
-  NullVal
 } from './val'
 
 import {
@@ -79,18 +86,6 @@ import {
   OpenFuncVal,
   SuperFuncVal,
 } from './func'
-
-
-import {
-  TOP,
-  ScalarKindVal,
-  Integer,
-  StringVal,
-  NumberVal,
-  IntegerVal,
-  BooleanVal,
-} from './val'
-
 
 
 
@@ -175,12 +170,12 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         if (pval?.isVal && cval?.isVal) {
 
           // TODO: test multi element conjuncts work
-          if (pval instanceof ConjunctVal && cval instanceof ConjunctVal) {
-            pval.append(cval)
+          if (pval.isConjunct && cval.isConjunct) {
+            (pval as ConjunctVal).append(cval)
             return pval
           }
-          else if (pval instanceof ConjunctVal) {
-            pval.append(cval)
+          else if (pval.isConjunct) {
+            (pval as ConjunctVal).append(cval)
             return pval
           }
           else {
@@ -456,10 +451,10 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
   jsonic.rule('list', (rs: RuleSpec) => {
     rs.bc((r: Rule, ctx: JsonicContext) => {
       r.node = addsite(new ListVal({ peg: r.node }), r, ctx)
-
+  
       return undefined
     })
-
+  
     return rs
   })
   */

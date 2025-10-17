@@ -23,14 +23,13 @@ import {
 
 import { NilVal } from '../val/NilVal'
 import { PrefVal } from '../val/PrefVal'
-import { FeatureVal } from '../val/FeatureVal'
+import { JunctionVal } from '../val/JunctionVal'
 
 
 
 // TODO: move main logic to op/disjunct
-class DisjunctVal extends FeatureVal {
+class DisjunctVal extends JunctionVal {
   isDisjunct = true
-  isBinaryOp = true
 
   prefsRanked = false
 
@@ -48,7 +47,7 @@ class DisjunctVal extends FeatureVal {
 
   // NOTE: mutation!
   append(peer: Val): DisjunctVal {
-    this.peg.push(peer)
+    super.append(peer)
     this.prefsRanked = false
     return this
   }
@@ -89,7 +88,7 @@ class DisjunctVal extends FeatureVal {
     // Remove duplicates, and normalize
     if (1 < oval.length) {
       for (let vI = 0; vI < oval.length; vI++) {
-        if (oval[vI] instanceof DisjunctVal) {
+        if (oval[vI].isDisjunct) {
           oval.splice(vI, 1, ...oval[vI].peg)
         }
       }
@@ -108,7 +107,7 @@ class DisjunctVal extends FeatureVal {
 
       // // // console.log('DISJUNCT-unify-D', this.id, oval.map(v => v.canon))
 
-      oval = oval.filter(v => !(v instanceof NilVal))
+      oval = oval.filter(v => !v.isNil)
     }
 
     let out: Val
@@ -144,7 +143,7 @@ class DisjunctVal extends FeatureVal {
         if (null != lastpref) {
           if (v.rank === lastpref.rank) {
             const pref = v.unify(lastpref, ctx) as PrefVal
-            if (pref instanceof NilVal) {
+            if (pref.isNil) {
               return pref
             }
             else {
@@ -168,7 +167,7 @@ class DisjunctVal extends FeatureVal {
           lastprefI = vI
         }
       }
-      else if (v instanceof DisjunctVal) {
+      else if (v.isDisjunct) {
         let subrank: any = v.rankPrefs(ctx)
         if (subrank instanceof PrefVal) {
           this.peg[vI] = subrank
@@ -192,16 +191,12 @@ class DisjunctVal extends FeatureVal {
 
   clone(ctx: Context, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as DisjunctVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(ctx))
     return out
   }
 
 
-  get canon() {
-    return this.peg.map((v: Val) => {
-      return (v as any).isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
-        '(' + v.canon + ')' : v.canon
-    }).join('|')
+  getJunctionSymbol(): string {
+    return '|'
   }
 
 

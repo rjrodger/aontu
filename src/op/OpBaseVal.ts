@@ -98,7 +98,7 @@ class OpBaseVal extends FeatureVal {
           out = this
         }
         // TODO: should peer.isNil
-        else if (peer instanceof NilVal) {
+        else if (peer.isNil) {
           out = NilVal.make(ctx, 'op[' + this.peg + ']', this, peer)
         }
 

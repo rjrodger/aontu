@@ -97,8 +97,8 @@ class MapVal extends BagVal_1.BagVal {
                     let child = out.peg[peerkey];
                     let oval = out.peg[peerkey] =
                         undefined === child ? peerchild :
-                            child instanceof NilVal_1.NilVal ? child :
-                                peerchild instanceof NilVal_1.NilVal ? peerchild :
+                            child.isNil ? child :
+                                peerchild.isNil ? peerchild :
                                     (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer');
                     if (this.spread.cj) {
                         let key_ctx = ctx.descend(peerkey);

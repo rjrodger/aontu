@@ -46,11 +46,11 @@ class ScalarVal extends BaseVal {
 
 
   unify(peer: Val, ctx: Context): Val {
-    const peerIsScalarKindVal = (peer as ScalarKindVal).isScalarKindVal
+    const peerIsScalarKind = (peer as ScalarKindVal).isScalarKind
     // const peerIsFuncVal = (peer as FuncBaseVal).isFuncVal
 
     // Exactly equal scalars are handled in unify.unite
-    if (peerIsScalarKindVal) {
+    if (peerIsScalarKind) {
       return peer.unify(this, ctx)
     }
     // else if (peerIsFuncVal) {

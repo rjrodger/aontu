@@ -140,8 +140,8 @@ class ListVal extends BagVal {
 
           let oval = out.peg[peerkey] =
             undefined === child ? peerchild :
-              child instanceof NilVal ? child :
-                peerchild instanceof NilVal ? peerchild :
+              child.isNil ? child :
+                peerchild.isNil ? peerchild :
                   unite(ctx.descend(peerkey), child, peerchild, 'list-peer')
 
           if (this.spread.cj) {
