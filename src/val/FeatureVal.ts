@@ -17,7 +17,7 @@ import { BaseVal } from './BaseVal'
 
 
 abstract class FeatureVal extends BaseVal {
-  isScalarKind = true
+  isFeature = true
 
   constructor(
     spec: ValSpec,

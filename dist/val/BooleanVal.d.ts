@@ -2,7 +2,7 @@ import type { Val } from '../type';
 import { Context } from '../unify';
 import { ScalarVal } from './ScalarVal';
 declare class BooleanVal extends ScalarVal {
-    isBooleanVal: boolean;
+    isBoolean: boolean;
     constructor(spec: {
         peg: boolean;
     }, ctx?: Context);

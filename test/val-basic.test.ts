@@ -159,10 +159,10 @@ describe('val-basic', function() {
     expect(tu(ctx, bs, bt)).equal(bt)
 
     let n0 = makeNumberVal(1)
-    expect(tu(ctx, bt, n0) .isNil).exist()
-    expect(tu(ctx, bf, n0) .isNil).exist()
-    expect(tu(ctx, n0, bt) .isNil).exist()
-    expect(tu(ctx, n0, bf) .isNil).exist()
+    expect(tu(ctx, bt, n0).isNil).exist()
+    expect(tu(ctx, bf, n0).isNil).exist()
+    expect(tu(ctx, n0, bt).isNil).exist()
+    expect(tu(ctx, n0, bf).isNil).exist()
 
     expect(bt.same(bt)).equal(true)
     expect(bf.same(bf)).equal(true)
@@ -185,8 +185,8 @@ describe('val-basic', function() {
     expect(tu(ctx, s0, s0)).equal(s0)
     expect(tu(ctx, s1, s1)).equal(s1)
 
-    expect(tu(ctx, s0, s1) .isNil).exist()
-    expect(tu(ctx, s1, s0) .isNil).exist()
+    expect(tu(ctx, s0, s1).isNil).exist()
+    expect(tu(ctx, s1, s0).isNil).exist()
 
     expect(tu(ctx, s0, TOP)).equal(s0)
     expect(tu(ctx, s1, TOP)).equal(s1)
@@ -204,10 +204,10 @@ describe('val-basic', function() {
     expect(tu(ctx, t0, s0)).equal(s0)
 
     let n0 = makeNumberVal(1)
-    expect(tu(ctx, s0, n0) .isNil).exist()
-    expect(tu(ctx, s1, n0) .isNil).exist()
-    expect(tu(ctx, n0, s0) .isNil).exist()
-    expect(tu(ctx, n0, s1) .isNil).exist()
+    expect(tu(ctx, s0, n0).isNil).exist()
+    expect(tu(ctx, s1, n0).isNil).exist()
+    expect(tu(ctx, n0, s0).isNil).exist()
+    expect(tu(ctx, n0, s1).isNil).exist()
 
     expect(s0.same(s0)).equal(true)
     expect(new StringVal({ peg: 'a' }).same(new StringVal({ peg: 'a' }))).equal(true)
@@ -229,12 +229,12 @@ describe('val-basic', function() {
     expect(tu(ctx, n1, n1)).equal(n1)
     expect(tu(ctx, n2, n2)).equal(n2)
 
-    expect(tu(ctx, n0, n1) .isNil).exist()
-    expect(tu(ctx, n1, n0) .isNil).exist()
-    expect(tu(ctx, n0, n2) .isNil).exist()
-    expect(tu(ctx, n2, n0) .isNil).exist()
-    expect(tu(ctx, n1, n2) .isNil).exist()
-    expect(tu(ctx, n2, n1) .isNil).exist()
+    expect(tu(ctx, n0, n1).isNil).exist()
+    expect(tu(ctx, n1, n0).isNil).exist()
+    expect(tu(ctx, n0, n2).isNil).exist()
+    expect(tu(ctx, n2, n0).isNil).exist()
+    expect(tu(ctx, n1, n2).isNil).exist()
+    expect(tu(ctx, n2, n1).isNil).exist()
 
     expect(tu(ctx, n0, TOP)).equal(n0)
     expect(tu(ctx, n1, TOP)).equal(n1)
@@ -256,12 +256,12 @@ describe('val-basic', function() {
     expect(tu(ctx, t0, n0)).equal(n0)
 
     let s0 = new StringVal({ peg: 's0' })
-    expect(tu(ctx, n0, s0) .isNil).exist()
-    expect(tu(ctx, n1, s0) .isNil).exist()
-    expect(tu(ctx, n2, s0) .isNil).exist()
-    expect(tu(ctx, s0, n0) .isNil).exist()
-    expect(tu(ctx, s0, n1) .isNil).exist()
-    expect(tu(ctx, s0, n2) .isNil).exist()
+    expect(tu(ctx, n0, s0).isNil).exist()
+    expect(tu(ctx, n1, s0).isNil).exist()
+    expect(tu(ctx, n2, s0).isNil).exist()
+    expect(tu(ctx, s0, n0).isNil).exist()
+    expect(tu(ctx, s0, n1).isNil).exist()
+    expect(tu(ctx, s0, n2).isNil).exist()
 
     expect(n0.same(n0)).equal(true)
     expect(n1.same(n1)).equal(true)
@@ -355,8 +355,7 @@ describe('val-basic', function() {
       col: 1,
       dc: -1,
       err: [],
-      // id: 1,
-      isIntegerVal: true,
+      isInteger: true,
       isScalar: true,
       isVal: true,
       path: [],
@@ -381,8 +380,8 @@ describe('val-basic', function() {
     expect(tu(ctx, n0, n0)).equal(n0)
     expect(tu(ctx, n1, n1)).equal(n1)
 
-    expect(tu(ctx, n0, n1) .isNil).exist()
-    expect(tu(ctx, n1, n0) .isNil).exist()
+    expect(tu(ctx, n0, n1).isNil).exist()
+    expect(tu(ctx, n1, n0).isNil).exist()
 
     expect(tu(ctx, n0, TOP)).equal(n0)
     expect(tu(ctx, n1, TOP)).equal(n1)
@@ -396,10 +395,10 @@ describe('val-basic', function() {
     expect(tu(ctx, b0, n1)).equal(b0)
 
     let s0 = new StringVal({ peg: 's0' })
-    expect(tu(ctx, n0, s0) .isNil).exist()
-    expect(tu(ctx, n1, s0) .isNil).exist()
-    expect(tu(ctx, s0, n0) .isNil).exist()
-    expect(tu(ctx, s0, n1) .isNil).exist()
+    expect(tu(ctx, n0, s0).isNil).exist()
+    expect(tu(ctx, n1, s0).isNil).exist()
+    expect(tu(ctx, s0, n0).isNil).exist()
+    expect(tu(ctx, s0, n1).isNil).exist()
 
     let t0 = makeSK_Integer()
     expect(tu(ctx, n0, t0)).equal(n0)
@@ -435,10 +434,10 @@ describe('val-basic', function() {
 
     expect(tu(ctx, nv, nv)).equal(nv)
 
-    expect(tu(ctx, nv, bv) .isNil).exist()
-    expect(tu(ctx, nv, mv) .isNil).exist()
-    expect(tu(ctx, nv, iv) .isNil).exist()
-    expect(tu(ctx, nv, sv) .isNil).exist()
+    expect(tu(ctx, nv, bv).isNil).exist()
+    expect(tu(ctx, nv, mv).isNil).exist()
+    expect(tu(ctx, nv, iv).isNil).exist()
+    expect(tu(ctx, nv, sv).isNil).exist()
   })
 
 
@@ -461,16 +460,16 @@ describe('val-basic', function() {
     expect(tu(ctx, b0, m0)).equal(b0)
 
     let s0 = new StringVal({ peg: 's0' })
-    expect(tu(ctx, m0, s0) .isNil).exist()
-    expect(tu(ctx, s0, m0) .isNil).exist()
+    expect(tu(ctx, m0, s0).isNil).exist()
+    expect(tu(ctx, s0, m0).isNil).exist()
 
     let n0 = makeNumberVal(0)
-    expect(tu(ctx, m0, n0) .isNil).exist()
-    expect(tu(ctx, n0, m0) .isNil).exist()
+    expect(tu(ctx, m0, n0).isNil).exist()
+    expect(tu(ctx, n0, m0).isNil).exist()
 
     let t0 = makeSK_String()
-    expect(tu(ctx, m0, t0) .isNil).exist()
-    expect(tu(ctx, t0, m0) .isNil).exist()
+    expect(tu(ctx, m0, t0).isNil).exist()
+    expect(tu(ctx, t0, m0).isNil).exist()
 
 
     let m1 = new MapVal({ peg: { a: makeNumberVal(1) } })

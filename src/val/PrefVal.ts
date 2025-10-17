@@ -35,7 +35,7 @@ import { FeatureVal } from '../val/FeatureVal'
 
 
 class PrefVal extends FeatureVal {
-  isPrefVal = true
+  isPref = true
 
   superpeg: Val
   rank: number = 0
@@ -156,32 +156,6 @@ class PrefVal extends FeatureVal {
     return val.gen(ctx)
   }
 }
-
-
-
-/*
-function makeSuper(v: Val) {
-  // let out: Val = new Nil()
-  // let out: Val = TOP
-  let out: Val = new TopVal()
-
-  if (v instanceof NumberVal) {
-    out = new ScalarKindVal({ peg: Number })
-  }
-  else if (v instanceof IntegerVal) {
-    out = new ScalarKindVal({ peg: Integer })
-  }
-  else if (v instanceof StringVal) {
-    out = new ScalarKindVal({ peg: String })
-  }
-  else if (v instanceof BooleanVal) {
-    out = new ScalarKindVal({ peg: Boolean })
-  }
-
-  // console.log('MAKESUPER', v.canon, out.canon)
-  return out
-}
-*/
 
 
 export {

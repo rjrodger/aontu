@@ -15,7 +15,7 @@ import { Null } from './ScalarKindVal'
 
 
 class NullVal extends ScalarVal {
-  isNullVal = true
+  isNull = true
 
   constructor(
     spec: ValSpec,

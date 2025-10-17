@@ -11,7 +11,7 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
             throw new Error('not-integer: ' + spec.peg);
         }
         super({ peg: spec.peg, kind: ScalarKindVal_1.Integer }, ctx);
-        this.isIntegerVal = true;
+        this.isInteger = true;
     }
     unify(peer, ctx) {
         if (null != peer) {

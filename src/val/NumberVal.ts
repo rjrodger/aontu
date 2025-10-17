@@ -13,7 +13,7 @@ import { ScalarVal } from './ScalarVal'
 
 
 class NumberVal extends ScalarVal {
-  isNumberVal = true
+  isNumber = true
 
   constructor(
     spec: ValSpec,
@@ -36,7 +36,7 @@ class NumberVal extends ScalarVal {
         peer.isScalar &&
         peer.peg === this.peg
       ) {
-        return peer.isIntegerVal ? peer : this
+        return peer.isInteger ? peer : this
       }
     }
 

@@ -25,7 +25,7 @@ const FeatureVal_1 = require("./FeatureVal");
 class RefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isRefVal = true;
+        this.isRef = true;
         this.absolute = false;
         this.prefix = false;
         this.peg = [];

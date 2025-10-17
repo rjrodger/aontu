@@ -27,8 +27,8 @@ let uc = 0;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
-    const ac = a?.canon;
-    const bc = b?.canon;
+    // const ac = a?.canon
+    // const bc = b?.canon
     let out = a;
     let why = 'u';
     const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '');
@@ -67,8 +67,8 @@ const unite = (ctx, a, b, whence) => {
                 }
                 else if (b.isConjunct
                     || b.isDisjunct
-                    || b.isRefVal
-                    || b.isPrefVal
+                    || b.isRef
+                    || b.isPref
                     || b.isFuncVal) {
                     out = b.unify(a, ctx);
                     unified = true;

@@ -36,8 +36,17 @@ abstract class BaseVal implements Val {
   isList = false
   isScalar = false
   isScalarKind = false
+  isRef = false
+  isPref = false
+  isVar = false
+  isBag = false
+  isNumber = false
+  isInteger = false
+  isString = false
+  isBoolean = false
   isConjunct = false
   isDisjunct = false
+  isJunction = false
 
   id: number
   dc: number = 0

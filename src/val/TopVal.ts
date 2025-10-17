@@ -23,6 +23,7 @@ class TopVal implements Val {
 
   isVal = true
   isTop = true
+
   isNil = false
   isMap = false
   isList = false
@@ -30,6 +31,15 @@ class TopVal implements Val {
   isScalarKind = false
   isConjunct = false
   isDisjunct = false
+  isJunction = false
+  isPref = false
+  isRef = false
+  isVar = false
+  isNumber = false
+  isInteger = false
+  isString = false
+  isBoolean = false
+  isBag = false
 
   id = 0
   dc = DONE

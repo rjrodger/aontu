@@ -13,6 +13,15 @@ declare class TopVal implements Val {
     isScalarKind: boolean;
     isConjunct: boolean;
     isDisjunct: boolean;
+    isJunction: boolean;
+    isPref: boolean;
+    isRef: boolean;
+    isVar: boolean;
+    isNumber: boolean;
+    isInteger: boolean;
+    isString: boolean;
+    isBoolean: boolean;
+    isBag: boolean;
     id: number;
     dc: number;
     path: string[];

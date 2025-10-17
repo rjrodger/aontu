@@ -13,7 +13,7 @@ import { Integer } from './ScalarKindVal'
 
 
 class IntegerVal extends ScalarVal {
-  isIntegerVal = true
+  isInteger = true
 
   constructor(
     spec: {

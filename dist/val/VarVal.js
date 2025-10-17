@@ -12,7 +12,7 @@ const FeatureVal_1 = require("./FeatureVal");
 class VarVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isVarVal = true;
+        this.isVar = true;
     }
     unify(peer, ctx) {
         let out;

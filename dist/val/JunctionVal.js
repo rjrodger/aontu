@@ -8,7 +8,7 @@ const FeatureVal_1 = require("./FeatureVal");
 class JunctionVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isBinaryOp = true;
+        this.isJunction = true;
     }
     // NOTE: mutation!
     append(peer) {
@@ -22,7 +22,7 @@ class JunctionVal extends FeatureVal_1.FeatureVal {
     }
     get canon() {
         return this.peg.map((v) => {
-            return v.isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
+            return v.isJunction && Array.isArray(v.peg) && 1 < v.peg.length ?
                 '(' + v.canon + ')' : v.canon;
         }).join(this.getJunctionSymbol());
     }

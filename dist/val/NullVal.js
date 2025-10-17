@@ -7,7 +7,7 @@ const ScalarKindVal_1 = require("./ScalarKindVal");
 class NullVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
         super({ peg: spec.peg, kind: ScalarKindVal_1.Null }, ctx);
-        this.isNullVal = true;
+        this.isNull = true;
         this.peg = null;
     }
     unify(peer, ctx) {

@@ -31,7 +31,7 @@ import { FeatureVal } from './FeatureVal'
 // TODO: KEY, SELF, PARENT are reserved names - error
 
 class VarVal extends FeatureVal {
-  isVarVal = true
+  isVar = true
 
   constructor(
     spec: {

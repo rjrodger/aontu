@@ -3,7 +3,7 @@ import { Context } from '../unify';
 import { StringVal } from './StringVal';
 import { FeatureVal } from './FeatureVal';
 declare class RefVal extends FeatureVal {
-    isRefVal: boolean;
+    isRef: boolean;
     absolute: boolean;
     prefix: boolean;
     constructor(spec: {

@@ -15,6 +15,8 @@ import { FeatureVal } from './FeatureVal'
 
 
 abstract class BagVal extends FeatureVal {
+  isBag = true
+
   closed: boolean = false
   optionalKeys: string[] = []
 

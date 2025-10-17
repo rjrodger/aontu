@@ -10,8 +10,17 @@ declare abstract class BaseVal implements Val {
     isList: boolean;
     isScalar: boolean;
     isScalarKind: boolean;
+    isRef: boolean;
+    isPref: boolean;
+    isVar: boolean;
+    isBag: boolean;
+    isNumber: boolean;
+    isInteger: boolean;
+    isString: boolean;
+    isBoolean: boolean;
     isConjunct: boolean;
     isDisjunct: boolean;
+    isJunction: boolean;
     id: number;
     dc: number;
     path: string[];

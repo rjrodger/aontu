@@ -9,7 +9,7 @@ const FeatureVal_1 = require("../val/FeatureVal");
 class PrefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isPrefVal = true;
+        this.isPref = true;
         this.rank = 0;
         // this.pref = spec.pref || spec.peg
         // this.superpeg = makeSuper(spec.peg)

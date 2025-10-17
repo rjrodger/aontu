@@ -22,6 +22,15 @@ class TopVal {
         this.isScalarKind = false;
         this.isConjunct = false;
         this.isDisjunct = false;
+        this.isJunction = false;
+        this.isPref = false;
+        this.isRef = false;
+        this.isVar = false;
+        this.isNumber = false;
+        this.isInteger = false;
+        this.isString = false;
+        this.isBoolean = false;
+        this.isBag = false;
         this.id = 0;
         this.dc = type_1.DONE;
         this.path = [];

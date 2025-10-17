@@ -12,7 +12,7 @@ import { ScalarVal } from './ScalarVal'
 
 
 class BooleanVal extends ScalarVal {
-  isBooleanVal = true
+  isBoolean = true
 
   constructor(
     spec: {

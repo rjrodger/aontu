@@ -16,7 +16,7 @@ import { FeatureVal } from './FeatureVal'
 // Abstract base class for binary operations that work with arrays of Val objects
 // (ConjunctVal and DisjunctVal)
 abstract class JunctionVal extends FeatureVal {
-  isBinaryOp = true
+  isJunction = true
 
   constructor(
     spec: ValSpec,
@@ -39,7 +39,7 @@ abstract class JunctionVal extends FeatureVal {
 
   get canon() {
     return this.peg.map((v: Val) => {
-      return (v as any).isBinaryOp && Array.isArray(v.peg) && 1 < v.peg.length ?
+      return (v as any).isJunction && Array.isArray(v.peg) && 1 < v.peg.length ?
         '(' + v.canon + ')' : v.canon
     }).join(this.getJunctionSymbol())
   }

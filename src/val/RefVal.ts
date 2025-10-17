@@ -26,10 +26,6 @@ import {
 } from '../type'
 
 import {
-  descErr
-} from '../err'
-
-import {
   Context,
   unite,
 } from '../unify'
@@ -46,7 +42,7 @@ import { FeatureVal } from './FeatureVal'
 
 
 class RefVal extends FeatureVal {
-  isRefVal = true
+  isRef = true
 
   absolute: boolean = false
   prefix: boolean = false

@@ -10,7 +10,7 @@ class NumberVal extends ScalarVal_1.ScalarVal {
             throw new Error('not-number: ' + spec.peg);
         }
         super({ peg: spec.peg, kind: Number }, ctx);
-        this.isNumberVal = true;
+        this.isNumber = true;
     }
     unify(peer, ctx) {
         if (null != peer) {
@@ -19,7 +19,7 @@ class NumberVal extends ScalarVal_1.ScalarVal {
             }
             else if (peer.isScalar &&
                 peer.peg === this.peg) {
-                return peer.isIntegerVal ? peer : this;
+                return peer.isInteger ? peer : this;
             }
         }
         return super.unify(peer, ctx);

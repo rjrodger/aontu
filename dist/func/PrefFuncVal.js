@@ -25,7 +25,7 @@ class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
                 let oval = val;
                 // console.log('PREFVAL', _key, oval.canon, oval.constructor.name)
                 if (val.isScalar
-                    || val.isPrefVal) {
+                    || val.isPref) {
                     oval = new val_1.PrefVal({ peg: val }, ctx);
                 }
                 return oval;

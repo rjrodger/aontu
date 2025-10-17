@@ -2,7 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { FeatureVal } from '../val/FeatureVal';
 declare class PrefVal extends FeatureVal {
-    isPrefVal: boolean;
+    isPref: boolean;
     superpeg: Val;
     rank: number;
     constructor(spec: ValSpec, ctx?: Context);

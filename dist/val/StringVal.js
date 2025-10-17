@@ -6,7 +6,7 @@ const ScalarVal_1 = require("./ScalarVal");
 class StringVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
         super({ peg: spec.peg, kind: String }, ctx);
-        this.isStringVal = true;
+        this.isString = true;
     }
     unify(peer, ctx) {
         return super.unify(peer, ctx);

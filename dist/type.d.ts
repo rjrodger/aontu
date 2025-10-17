@@ -25,6 +25,15 @@ interface Val {
     isScalarKind: boolean;
     isConjunct: boolean;
     isDisjunct: boolean;
+    isJunction: boolean;
+    isPref: boolean;
+    isRef: boolean;
+    isVar: boolean;
+    isBag: boolean;
+    isNumber: boolean;
+    isInteger: boolean;
+    isString: boolean;
+    isBoolean: boolean;
     id: number;
     dc: number;
     path: string[];

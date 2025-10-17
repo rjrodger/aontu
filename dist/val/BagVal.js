@@ -6,6 +6,7 @@ const FeatureVal_1 = require("./FeatureVal");
 class BagVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
+        this.isBag = true;
         this.closed = false;
         this.optionalKeys = [];
     }

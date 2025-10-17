@@ -27,8 +27,17 @@ class BaseVal {
         this.isList = false;
         this.isScalar = false;
         this.isScalarKind = false;
+        this.isRef = false;
+        this.isPref = false;
+        this.isVar = false;
+        this.isBag = false;
+        this.isNumber = false;
+        this.isInteger = false;
+        this.isString = false;
+        this.isBoolean = false;
         this.isConjunct = false;
         this.isDisjunct = false;
+        this.isJunction = false;
         this.dc = 0;
         this.path = [];
         this.row = -1;

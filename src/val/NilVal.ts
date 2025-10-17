@@ -22,6 +22,7 @@ import {
 import { BaseVal } from './BaseVal'
 
 
+
 class NilVal extends BaseVal {
   isNil = true
 
