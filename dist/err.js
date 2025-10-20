@@ -16,28 +16,35 @@ function descErr(err, errctx) {
             let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify');
             err.msg = [
                 errmsg({
-                    color: true,
+                    color: { active: true },
                     name: 'aontu',
                     code: err.why,
-                    msg: 'Cannot ' +
-                        attempt +
-                        ' path $.' + valpath + ' value' + (null == v2 ? '' : 's'), // + ' #' + err.id,
+                    txts: {
+                        msg: 'Cannot ' +
+                            attempt +
+                            ' path $.' + valpath + ' value' + (null == v2 ? '' : 's'), // + ' #' + err.id,
+                    }
                 }),
                 (null != v1 && errmsg({
-                    color: true,
-                    msg: 'Cannot ' + attempt + ' value: ' + v1.canon +
-                        (null == v2 ? '' : ' with value: ' + v2.canon), // + ' #' + err.id,
+                    // TODO: color should come from jsonic config
+                    color: { active: true, line: '\x1b[34m' },
+                    txts: {
+                        msg: 'Cannot ' + attempt + ' value: ' + v1.canon +
+                            (null == v2 ? '' : ' with value: ' + v2.canon), // + ' #' + err.id,
+                    },
                     smsg: 'value was: ' + v1.canon,
-                    // file: v1.url?.replace(process.cwd() + '/', ''),
                     file: resolveFile(v1.url),
                     src: v1src,
                     row: v1.row,
                     col: v1.col,
                 })),
                 (null != v2 && errmsg({
-                    color: true,
-                    msg: 'Cannot ' + attempt + ' value: ' + v2.canon +
-                        ' with value: ' + v1.canon, // + ' #' + err.id,
+                    // TODO: color should come from jsonic config
+                    color: { active: true, line: '\x1b[34m' },
+                    txts: {
+                        msg: 'Cannot ' + attempt + ' value: ' + v2.canon +
+                            ' with value: ' + v1.canon, // + ' #' + err.id,
+                    },
                     smsg: 'value was: ' + v2.canon,
                     file: resolveFile(v2.url),
                     src: v2src,
