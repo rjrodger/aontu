@@ -5,6 +5,7 @@ exports.ConjunctVal = void 0;
 exports.norm = norm;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
+const utility_1 = require("../utility");
 const TopVal_1 = require("./TopVal");
 const ListVal_1 = require("./ListVal");
 const MapVal_1 = require("./MapVal");
@@ -23,13 +24,12 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isConjunct = true;
-        this.mark.type = !!spec.type;
-        this.mark.hide = !!spec.hide;
+        this.mark.type = !!spec.mark?.type;
+        this.mark.hide = !!spec.mark?.hide;
         this.peg = (Array.isArray(this.peg) ? this.peg : [])
             .filter((p) => null != p && p.isVal);
         this.peg?.map((v) => {
-            v.mark.type = this.mark.type || v.mark.type;
-            v.mark.hide = this.mark.hide || v.mark.hide;
+            (0, utility_1.propagateMarks)(this, v);
             return v;
         });
         // console.log('CONJUNCT-ctor', this.peg.map((v: Val) => v.canon))
@@ -37,8 +37,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
     // NOTE: mutation!
     append(peer) {
         super.append(peer);
-        peer.mark.type = this.mark.type || peer.mark.type;
-        peer.mark.hide = this.mark.hide || peer.mark.hide;
+        (0, utility_1.propagateMarks)(this, peer);
         return this;
     }
     unify(peer, ctx) {
@@ -145,7 +144,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             out.mark.hide = newhide;
         }
         else {
-            out = new ConjunctVal({ peg: outvals, type: newtype, hide: newhide }, ctx);
+            out = new ConjunctVal({ peg: outvals, mark: { type: newtype, hide: newhide } }, ctx);
         }
         out.dc = done ? type_1.DONE : this.dc + 1;
         // console.log('CONJUNCT-unify', this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)

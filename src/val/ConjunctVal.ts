@@ -19,6 +19,10 @@ import {
   unite,
 } from '../unify'
 
+import {
+  propagateMarks,
+} from '../utility'
+
 
 import { TOP } from './TopVal'
 import { ListVal } from './ListVal'
@@ -47,13 +51,12 @@ class ConjunctVal extends JunctionVal {
     ctx?: Context
   ) {
     super(spec, ctx)
-    this.mark.type = !!spec.type
-    this.mark.hide = !!spec.hide
+    this.mark.type = !!spec.mark?.type
+    this.mark.hide = !!spec.mark?.hide
     this.peg = (Array.isArray(this.peg) ? this.peg : [])
       .filter((p: Val) => null != p && p.isVal)
     this.peg?.map((v: Val) => {
-      v.mark.type = this.mark.type || v.mark.type
-      v.mark.hide = this.mark.hide || v.mark.hide
+      propagateMarks(this, v)
       return v
     })
     // console.log('CONJUNCT-ctor', this.peg.map((v: Val) => v.canon))
@@ -62,8 +65,7 @@ class ConjunctVal extends JunctionVal {
   // NOTE: mutation!
   append(peer: Val): ConjunctVal {
     super.append(peer)
-    peer.mark.type = this.mark.type || peer.mark.type
-    peer.mark.hide = this.mark.hide || peer.mark.hide
+    propagateMarks(this, peer)
     return this
   }
 
@@ -209,7 +211,7 @@ class ConjunctVal extends JunctionVal {
       out.mark.hide = newhide
     }
     else {
-      out = new ConjunctVal({ peg: outvals, type: newtype, hide: newhide }, ctx)
+      out = new ConjunctVal({ peg: outvals, mark: { type: newtype, hide: newhide } }, ctx)
     }
 
     out.dc = done ? DONE : this.dc + 1

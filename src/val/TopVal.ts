@@ -2,6 +2,7 @@
 
 import type {
   Val,
+  ValMark,
 } from '../type'
 
 import {
@@ -64,7 +65,7 @@ class TopVal implements Val {
   top = true
 
   // Map of boolean flags.
-  mark: Record<string, boolean> = {}
+  mark: ValMark = { type: false, hide: false }
 
   // Actual native value.
   peg: any = undefined

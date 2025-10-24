@@ -52,7 +52,7 @@ interface Val {
     row: number;
     col: number;
     url: string;
-    mark: Record<string, boolean>;
+    mark: ValMark;
     peg: any;
     err: Omit<any[], "push">;
     deps?: any;
@@ -63,10 +63,14 @@ interface Val {
     get canon(): string;
     gen(ctx?: Context): any;
 }
+type ValMark = {
+    type: boolean;
+    hide: boolean;
+    [name: `_${string}`]: boolean;
+};
 type ValSpec = {
     peg?: any;
-    type?: boolean;
-    hide?: boolean;
+    mark?: Partial<ValMark>;
     kind?: any;
     row?: number;
     col?: number;
@@ -89,5 +93,5 @@ type ErrContext = {
     src?: string;
     fs?: FST;
 };
-export type { Val, ValSpec, ValMap, ValList, Options, ErrContext, FST, };
+export type { Val, ValMark, ValSpec, ValMap, ValList, Options, ErrContext, FST, };
 export { DONE, SPREAD, Resolver, };

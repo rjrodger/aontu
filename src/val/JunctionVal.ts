@@ -33,7 +33,7 @@ abstract class JunctionVal extends FeatureVal {
 
   clone(ctx: Context, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as JunctionVal)
-    out.peg = this.peg.map((entry: Val) => entry.clone(ctx, { type: spec?.type, hide: spec?.hide }))
+    out.peg = this.peg.map((entry: Val) => entry.clone(ctx, spec?.mark ? { mark: spec.mark } : {}))
     return out
   }
 

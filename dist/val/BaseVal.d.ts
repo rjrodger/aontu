@@ -1,4 +1,4 @@
-import type { Val, ValSpec } from '../type';
+import type { Val, ValMark, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
 declare abstract class BaseVal implements Val {
@@ -39,7 +39,7 @@ declare abstract class BaseVal implements Val {
     row: number;
     col: number;
     url: string;
-    mark: Record<string, boolean>;
+    mark: ValMark;
     peg: any;
     err: Omit<any[], "push">;
     uh: number[];

@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ListVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
+const utility_1 = require("../utility");
 const TopVal_1 = require("./TopVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const NilVal_1 = require("./NilVal");
@@ -108,8 +109,8 @@ class ListVal extends BagVal_1.BagVal {
             if (!out.isNil) {
                 out.uh.push(peer.id);
                 out.dc = done ? type_1.DONE : out.dc;
-                out.mark.type = this.mark.type || peer.mark.type;
-                out.mark.hide = this.mark.hide || peer.mark.hide;
+                (0, utility_1.propagateMarks)(peer, out);
+                (0, utility_1.propagateMarks)(this, out);
             }
         }
         return out;
@@ -118,10 +119,10 @@ class ListVal extends BagVal_1.BagVal {
         let out = super.clone(ctx, spec);
         for (let entry of Object.entries(this.peg)) {
             out.peg[entry[0]] =
-                entry[1]?.isVal ? entry[1].clone(ctx, { type: spec?.type, hide: spec?.hide }) : entry[1];
+                entry[1]?.isVal ? entry[1].clone(ctx, spec?.mark ? { mark: spec.mark } : {}) : entry[1];
         }
         if (this.spread.cj) {
-            out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type, hide: spec?.hide });
+            out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {});
         }
         out.closed = this.closed;
         out.optionalKeys = [...this.optionalKeys];

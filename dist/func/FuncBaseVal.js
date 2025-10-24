@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.FuncBaseVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
+const utility_1 = require("../utility");
 const val_1 = require("../val");
 const FeatureVal_1 = require("../val/FeatureVal");
 class FuncBaseVal extends FeatureVal_1.FeatureVal {
@@ -54,8 +55,8 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
             // console.log('RESOLVED:', resolved?.canon)
             const unified = (0, unify_1.unite)(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id);
             out = unified;
-            out.mark.type = this.mark.type || unified.mark.type;
-            out.mark.hide = this.mark.hide || unified.mark.hide;
+            (0, utility_1.propagateMarks)(unified, out);
+            (0, utility_1.propagateMarks)(this, out);
             // TODO: make should handle this using ctx?
             out.row = this.row;
             out.col = this.col;
@@ -65,7 +66,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         }
         else if (peer.isTop) {
             this.notdone();
-            out = this.make(ctx, { peg: newpeg, type: newtype, hide: newhide });
+            out = this.make(ctx, { peg: newpeg, mark: { type: newtype, hide: newhide } });
             // TODO: make should handle this using ctx?
             out.row = this.row;
             out.col = this.col;
@@ -81,7 +82,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         else {
             // this.dc = DONE === this.dc ? DONE : this.dc + 1
             this.notdone();
-            out = new val_1.ConjunctVal({ peg: [this, peer], type: newtype, hide: newhide }, ctx);
+            out = new val_1.ConjunctVal({ peg: [this, peer], mark: { type: newtype, hide: newhide } }, ctx);
             // TODO: make should handle this using ctx?
             out.row = this.row;
             out.col = this.col;

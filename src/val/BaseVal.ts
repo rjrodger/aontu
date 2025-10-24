@@ -4,6 +4,7 @@
 
 import type {
   Val,
+  ValMark,
   ValSpec,
 } from '../type'
 
@@ -71,7 +72,7 @@ abstract class BaseVal implements Val {
   url: string = ''
 
   // Map of boolean flags.
-  mark: Record<string, boolean> = {}
+  mark: ValMark = { type: false, hide: false }
 
   // Actual native value.
   peg: any = undefined
@@ -107,8 +108,8 @@ abstract class BaseVal implements Val {
 
     this.uh = []
 
-    this.mark.type = !!spec.type
-    this.mark.hide = !!spec.hide
+    this.mark.type = !!spec.mark?.type
+    this.mark.hide = !!spec.mark?.hide
 
     // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
   }
@@ -138,7 +139,11 @@ abstract class BaseVal implements Val {
       path: ctx.path.concat(this.path.slice(cut))
     })
 
-    let fullspec = { peg: this.peg, type: this.mark.type, hide: this.mark.hide, ...(spec ?? {}) }
+    let fullspec = {
+      peg: this.peg,
+      mark: { type: this.mark.type, hide: this.mark.hide },
+      ...(spec ?? {})
+    }
 
     let out = new (this as any)
       .constructor(fullspec, cloneCtx)
@@ -147,9 +152,9 @@ abstract class BaseVal implements Val {
     out.col = spec?.col || this.col || -1
     out.url = spec?.url || this.url || ''
 
-    // TODO: should not be needed - update all VAL ctors to handle spec.type
-    out.mark.type = this.mark.type && fullspec.type
-    out.mark.hide = this.mark.hide && fullspec.hide
+    // TODO: should not be needed - update all VAL ctors to handle spec.mark
+    out.mark.type = this.mark.type && (fullspec.mark?.type ?? true)
+    out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true)
 
     return out
   }

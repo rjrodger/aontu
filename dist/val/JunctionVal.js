@@ -17,7 +17,7 @@ class JunctionVal extends FeatureVal_1.FeatureVal {
     }
     clone(ctx, spec) {
         let out = super.clone(ctx, spec);
-        out.peg = this.peg.map((entry) => entry.clone(ctx, { type: spec?.type, hide: spec?.hide }));
+        out.peg = this.peg.map((entry) => entry.clone(ctx, spec?.mark ? { mark: spec.mark } : {}));
         return out;
     }
     get canon() {

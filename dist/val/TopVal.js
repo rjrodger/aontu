@@ -51,7 +51,7 @@ class TopVal {
         this.url = '';
         this.top = true;
         // Map of boolean flags.
-        this.mark = {};
+        this.mark = { type: false, hide: false };
         // Actual native value.
         this.peg = undefined;
         // TODO: used for top level result - not great

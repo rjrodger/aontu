@@ -1,8 +1,15 @@
 "use strict";
-/* Copyright (c) 2023 Richard Rodger, MIT License */
+/* Copyright (c) 2023-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.propagateMarks = propagateMarks;
 exports.formatPath = formatPath;
 exports.walk = walk;
+// Mark value in source is propagated to target (true ratchets).
+function propagateMarks(source, target) {
+    for (let name in source.mark) {
+        target.mark[name] = target.mark[name] || source.mark[name];
+    }
+}
 function formatPath(path, absolute) {
     let parts;
     if (Array.isArray(path)) {

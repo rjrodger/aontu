@@ -17,6 +17,9 @@ import {
   unite,
 } from '../unify'
 
+import {
+  propagateMarks,
+} from '../utility'
 
 
 import { TOP } from './TopVal'
@@ -42,8 +45,8 @@ class MapVal extends BagVal {
       throw new Error('MapVal spec.peg undefined')
     }
 
-    this.mark.type = !!spec.type
-    this.mark.hide = !!spec.hide
+    this.mark.type = !!spec.mark?.type
+    this.mark.hide = !!spec.mark?.hide
 
     let spread = (this.peg as any)[SPREAD]
     delete (this.peg as any)[SPREAD]
@@ -125,8 +128,7 @@ class MapVal extends BagVal {
 
         // this.peg[key].mark.type = newtype = this.peg[key].mark.type || newtype
 
-        this.peg[key].mark.type = this.peg[key].mark.type || this.mark.type
-        this.peg[key].mark.hide = this.peg[key].mark.hide || this.mark.hide
+        propagateMarks(this, this.peg[key])
 
         out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'map-own')
 
@@ -170,8 +172,7 @@ class MapVal extends BagVal {
               unite(key_ctx, oval, key_spread_cj, 'map-peer-spread')
           }
 
-          oval.mark.type = this.mark.type || oval.mark.type
-          oval.mark.hide = this.mark.hide || oval.mark.hide
+          propagateMarks(this, oval)
 
           // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
           done = (done && DONE === oval.dc)
@@ -190,8 +191,8 @@ class MapVal extends BagVal {
         out.uh.push(peer.id)
 
         out.dc = done ? DONE : out.dc
-        out.mark.type = this.mark.type || peer.mark.type
-        out.mark.hide = this.mark.hide || peer.mark.hide
+        propagateMarks(peer, out)
+        propagateMarks(this, out)
       }
     }
 
@@ -206,10 +207,10 @@ class MapVal extends BagVal {
     out.peg = {}
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, { type: spec?.type, hide: spec?.hide }) : entry[1]
+        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, spec?.mark ? { mark: spec.mark } : {}) : entry[1]
     }
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type, hide: spec?.hide })
+      out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {})
     }
 
     out.closed = this.closed

@@ -1,4 +1,4 @@
-import type { Val } from '../type';
+import type { Val, ValMark } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
 declare class TopVal implements Val {
@@ -41,7 +41,7 @@ declare class TopVal implements Val {
     col: number;
     url: string;
     top: boolean;
-    mark: Record<string, boolean>;
+    mark: ValMark;
     peg: any;
     err: Omit<any[], "push">;
     uh: number[];

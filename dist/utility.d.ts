@@ -1,4 +1,5 @@
 import type { Val } from './type';
+declare function propagateMarks(source: Val, target: Val): void;
 declare function formatPath(path: Val | string[], absolute?: boolean): string;
 type WalkApply = (key: string | number | undefined, val: Val, parent: Val | undefined, path: (string | number)[]) => Val;
 /**
@@ -6,4 +7,4 @@ type WalkApply = (key: string | number | undefined, val: Val, parent: Val | unde
  * Only traverses Val instances - stops at non-Val children.
  */
 declare function walk(val: Val, before?: WalkApply, after?: WalkApply, maxdepth?: number | null, key?: string | number, parent?: Val, path?: (string | number)[]): Val;
-export { formatPath, walk, WalkApply, };
+export { propagateMarks, formatPath, walk, WalkApply, };

@@ -41,7 +41,7 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
         const val = args?.[0];
         const out = null == val || null == ctx ?
             new val_1.NilVal({ msg: 'Invalid copy argument' }) :
-            val.clone(ctx, { type: false, hide: false });
+            val.clone(ctx, { mark: { type: false, hide: false } });
         (0, utility_1.walk)(out, (_key, val) => {
             val.mark.type = false;
             val.mark.hide = false;

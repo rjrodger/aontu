@@ -17,6 +17,9 @@ import {
   unite,
 } from '../unify'
 
+import {
+  propagateMarks,
+} from '../utility'
 
 import {
   Site
@@ -172,8 +175,8 @@ class ListVal extends BagVal {
         out.uh.push(peer.id)
 
         out.dc = done ? DONE : out.dc
-        out.mark.type = this.mark.type || peer.mark.type
-        out.mark.hide = this.mark.hide || peer.mark.hide
+        propagateMarks(peer, out)
+        propagateMarks(this, out)
       }
     }
 
@@ -185,10 +188,10 @@ class ListVal extends BagVal {
     let out = (super.clone(ctx, spec) as ListVal)
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, { type: spec?.type, hide: spec?.hide }) : entry[1]
+        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, spec?.mark ? { mark: spec.mark } : {}) : entry[1]
     }
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type, hide: spec?.hide })
+      out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {})
     }
 
     out.closed = this.closed

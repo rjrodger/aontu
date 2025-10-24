@@ -1,8 +1,17 @@
-/* Copyright (c) 2023 Richard Rodger, MIT License */
+/* Copyright (c) 2023-2025 Richard Rodger, MIT License */
 
 
 
 import type { Val } from './type'
+
+
+// Mark value in source is propagated to target (true ratchets).
+function propagateMarks(source: Val, target: Val): void {
+  for (let name in source.mark) {
+    (target.mark as any)[name] = (target.mark as any)[name] || (source.mark as any)[name]
+  }
+}
+
 
 function formatPath(path: Val | string[], absolute?: boolean) {
   let parts: string[]
@@ -86,6 +95,7 @@ function walk(
 }
 
 export {
+  propagateMarks,
   formatPath,
   walk,
   WalkApply,

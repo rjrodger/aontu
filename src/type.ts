@@ -76,7 +76,7 @@ interface Val {
   url: string
 
   // Map of boolean flags.
-  mark: Record<string, boolean>
+  mark: ValMark
 
   // Child value(s).
   peg: any
@@ -100,10 +100,17 @@ interface Val {
   gen(ctx?: Context): any
 }
 
+type ValMark = {
+  type: boolean,
+  hide: boolean,
+
+  // Custom marks must have _ prefix.
+  [name: `_${string}`]: boolean,
+}
+
 type ValSpec = {
   peg?: any,
-  type?: boolean,
-  hide?: boolean,
+  mark?: Partial<ValMark>,
   kind?: any,
   row?: number,
   col?: number,
@@ -138,6 +145,7 @@ type ErrContext = {
 
 export type {
   Val,
+  ValMark,
   ValSpec,
   ValMap,
   ValList,
