@@ -209,11 +209,12 @@ class RefVal extends FeatureVal_1.FeatureVal {
         }
         if (pI === fullpath.length) {
             out = node;
-            // Types are cloned and made concrete
-            if (null != out && out.type) {
+            // Types and hidden values are cloned and made concrete
+            if (null != out && (out.mark.type || out.mark.hide)) {
                 out = out.clone(ctx);
                 (0, utility_1.walk)(out, (_key, val) => {
-                    val.type = false;
+                    val.mark.type = false;
+                    val.mark.hide = false;
                     return val;
                 });
             }

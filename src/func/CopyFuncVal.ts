@@ -35,7 +35,8 @@ class CopyFuncVal extends FuncBaseVal {
     ctx?: Context
   ) {
     super(spec, ctx)
-    this.type = false
+    this.mark.type = false
+    this.mark.hide = false
   }
 
 
@@ -76,10 +77,11 @@ class CopyFuncVal extends FuncBaseVal {
     const val = args?.[0]
     const out = null == val || null == ctx ?
       new NilVal({ msg: 'Invalid copy argument' }) :
-      val.clone(ctx, { type: false })
+      val.clone(ctx, { type: false, hide: false })
 
     walk(out, (_key: string | number | undefined, val: Val) => {
-      val.type = false
+      val.mark.type = false
+      val.mark.hide = false
       return val
     })
 

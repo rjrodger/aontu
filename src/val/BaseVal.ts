@@ -70,7 +70,8 @@ abstract class BaseVal implements Val {
   col: number = -1
   url: string = ''
 
-  type = false
+  // Map of boolean flags.
+  mark: Record<string, boolean> = {}
 
   // Actual native value.
   peg: any = undefined
@@ -106,7 +107,8 @@ abstract class BaseVal implements Val {
 
     this.uh = []
 
-    this.type = !!spec.type
+    this.mark.type = !!spec.type
+    this.mark.hide = !!spec.hide
 
     // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
   }
@@ -136,7 +138,7 @@ abstract class BaseVal implements Val {
       path: ctx.path.concat(this.path.slice(cut))
     })
 
-    let fullspec = { peg: this.peg, type: this.type, ...(spec ?? {}) }
+    let fullspec = { peg: this.peg, type: this.mark.type, hide: this.mark.hide, ...(spec ?? {}) }
 
     let out = new (this as any)
       .constructor(fullspec, cloneCtx)
@@ -146,7 +148,8 @@ abstract class BaseVal implements Val {
     out.url = spec?.url || this.url || ''
 
     // TODO: should not be needed - update all VAL ctors to handle spec.type
-    out.type = this.type && fullspec.type
+    out.mark.type = this.mark.type && fullspec.type
+    out.mark.hide = this.mark.hide && fullspec.hide
 
     return out
   }

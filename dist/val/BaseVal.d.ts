@@ -39,7 +39,7 @@ declare abstract class BaseVal implements Val {
     row: number;
     col: number;
     url: string;
-    type: boolean;
+    mark: Record<string, boolean>;
     peg: any;
     err: Omit<any[], "push">;
     uh: number[];

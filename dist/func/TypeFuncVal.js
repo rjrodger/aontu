@@ -9,7 +9,8 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isTypeFunc = true;
-        this.type = true;
+        this.mark.type = true;
+        this.mark.hide = false;
         // console.log('TFV', this.id, this.peg?.[0]?.canon)
     }
     make(_ctx, spec) {
@@ -29,9 +30,9 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
         let out = args[0] ?? val_1.NilVal.make(ctx, 'arg', this);
         if (!out.isNil) {
             out = out.clone(ctx);
-            // out.type = true
+            // out.mark.type = true
             (0, utility_1.walk)(out, (_key, val) => {
-                val.type = true;
+                val.mark.type = true;
                 return val;
             });
         }

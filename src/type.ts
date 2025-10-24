@@ -75,7 +75,8 @@ interface Val {
   col: number
   url: string
 
-  type: boolean
+  // Map of boolean flags.
+  mark: Record<string, boolean>
 
   // Child value(s).
   peg: any
@@ -101,9 +102,23 @@ interface Val {
 
 type ValSpec = {
   peg?: any,
-  [name: string]: any,
   type?: boolean,
+  hide?: boolean,
   kind?: any,
+  row?: number,
+  col?: number,
+  url?: string,
+  path?: string[],
+  id?: number,
+
+  // NilVal specific
+  why?: string,
+  msg?: string,
+  err?: any[] | any,
+
+  // RefVal specific
+  absolute?: boolean,
+  prefix?: boolean,
 }
 type ValMap = { [key: string]: Val }
 type ValList = Val[]

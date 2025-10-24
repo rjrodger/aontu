@@ -29,7 +29,7 @@ class NumberVal extends ScalarVal {
 
   unify(peer: any, ctx: Context): Val {
     if (null != peer) {
-      if (peer.isScalarKind && peer.type === Number) {
+      if (peer.isScalarKind && (peer.mark.type === Number || peer.mark.hide === Number)) {
         return this
       }
       else if (

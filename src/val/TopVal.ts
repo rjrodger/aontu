@@ -62,7 +62,9 @@ class TopVal implements Val {
   url = ''
 
   top = true
-  type = false
+
+  // Map of boolean flags.
+  mark: Record<string, boolean> = {}
 
   // Actual native value.
   peg: any = undefined
@@ -77,6 +79,8 @@ class TopVal implements Val {
   constructor() {
     // TOP is always DONE, by definition.
     this.dc = DONE
+    this.mark.type = false
+    this.mark.hide = false
   }
 
   get done() {

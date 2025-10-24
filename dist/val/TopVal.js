@@ -50,7 +50,8 @@ class TopVal {
         this.col = -1;
         this.url = '';
         this.top = true;
-        this.type = false;
+        // Map of boolean flags.
+        this.mark = {};
         // Actual native value.
         this.peg = undefined;
         // TODO: used for top level result - not great
@@ -59,6 +60,8 @@ class TopVal {
         _TopVal_ctx.set(this, undefined);
         // TOP is always DONE, by definition.
         this.dc = type_1.DONE;
+        this.mark.type = false;
+        this.mark.hide = false;
     }
     get done() {
         return this.dc === type_1.DONE;

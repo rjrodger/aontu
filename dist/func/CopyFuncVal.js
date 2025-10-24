@@ -10,7 +10,8 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isCopyFunc = true;
-        this.type = false;
+        this.mark.type = false;
+        this.mark.hide = false;
     }
     make(_ctx, spec) {
         return new CopyFuncVal(spec);
@@ -40,9 +41,10 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
         const val = args?.[0];
         const out = null == val || null == ctx ?
             new val_1.NilVal({ msg: 'Invalid copy argument' }) :
-            val.clone(ctx, { type: false });
+            val.clone(ctx, { type: false, hide: false });
         (0, utility_1.walk)(out, (_key, val) => {
-            val.type = false;
+            val.mark.type = false;
+            val.mark.hide = false;
             return val;
         });
         // console.log('COPY-RESOLVE', this.canon, '->', out.canon)

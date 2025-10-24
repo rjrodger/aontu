@@ -82,7 +82,7 @@ class KeyFuncVal extends FuncBaseVal {
   resolve(ctx: Context, args: Val[]) {
     let out: Val = this
 
-    if (!this.type) {
+    if (!this.mark.type && !this.mark.hide) {
       let move = this.peg?.[0]?.peg
       move = isNaN(move) ? 1 : +move
       const key = this.path[this.path.length - (1 + move)] ?? ''

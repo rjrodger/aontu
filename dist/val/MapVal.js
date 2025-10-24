@@ -18,7 +18,8 @@ class MapVal extends BagVal_1.BagVal {
         if (null == this.peg) {
             throw new Error('MapVal spec.peg undefined');
         }
-        this.type = !!spec.type;
+        this.mark.type = !!spec.type;
+        this.mark.hide = !!spec.hide;
         let spread = this.peg[type_1.SPREAD];
         delete this.peg[type_1.SPREAD];
         if (spread) {
@@ -73,12 +74,13 @@ class MapVal extends BagVal_1.BagVal {
             for (let key in this.peg) {
                 let keyctx = ctx.descend(key);
                 let key_spread_cj = spread_cj.clone(keyctx);
-                // this.peg[key].type = newtype = this.peg[key].type || newtype
-                this.peg[key].type = this.peg[key].type || this.type;
+                // this.peg[key].mark.type = newtype = this.peg[key].mark.type || newtype
+                this.peg[key].mark.type = this.peg[key].mark.type || this.mark.type;
+                this.peg[key].mark.hide = this.peg[key].mark.hide || this.mark.hide;
                 out.peg[key] = (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'map-own');
-                // out.peg[key].type = newtype = out.peg[key].type || newtype
+                // out.peg[key].mark.type = newtype = out.peg[key].mark.type || newtype
                 done = (done && type_1.DONE === out.peg[key].dc);
-                // console.log('MAPVAL-OWN', this.id, this.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
+                // console.log('MAPVAL-OWN', this.id, this.mark.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
             }
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;
@@ -106,7 +108,8 @@ class MapVal extends BagVal_1.BagVal {
                             // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
                             (0, unify_1.unite)(key_ctx, oval, key_spread_cj, 'map-peer-spread');
                     }
-                    oval.type = this.type || oval.type;
+                    oval.mark.type = this.mark.type || oval.mark.type;
+                    oval.mark.hide = this.mark.hide || oval.mark.hide;
                     // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
                     done = (done && type_1.DONE === oval.dc);
                 }
@@ -121,7 +124,8 @@ class MapVal extends BagVal_1.BagVal {
             if (!out.isNil) {
                 out.uh.push(peer.id);
                 out.dc = done ? type_1.DONE : out.dc;
-                out.type = this.type || peer.type;
+                out.mark.type = this.mark.type || peer.mark.type;
+                out.mark.hide = this.mark.hide || peer.mark.hide;
             }
         }
         // console.log('MAPVAL-OUT', this.id, this.closed, this.canon, 'P=', (peer as any).closed, peer.canon, '->', (out as any).closed, out.canon)
@@ -132,10 +136,10 @@ class MapVal extends BagVal_1.BagVal {
         out.peg = {};
         for (let entry of Object.entries(this.peg)) {
             out.peg[entry[0]] =
-                entry[1]?.isVal ? entry[1].clone(ctx, { type: spec?.type }) : entry[1];
+                entry[1]?.isVal ? entry[1].clone(ctx, { type: spec?.type, hide: spec?.hide }) : entry[1];
         }
         if (this.spread.cj) {
-            out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type });
+            out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type, hide: spec?.hide });
         }
         out.closed = this.closed;
         out.optionalKeys = [...this.optionalKeys];
@@ -159,11 +163,11 @@ class MapVal extends BagVal_1.BagVal {
     }
     gen(ctx) {
         let out = {};
-        if (this.type) {
+        if (this.mark.type || this.mark.hide) {
             return undefined;
         }
         for (let p in this.peg) {
-            if (this.peg[p].type) {
+            if (this.peg[p].mark.type || this.peg[p].mark.hide) {
                 continue;
             }
             let val = this.peg[p].gen(ctx);

@@ -41,7 +41,7 @@ declare class TopVal implements Val {
     col: number;
     url: string;
     top: boolean;
-    type: boolean;
+    mark: Record<string, boolean>;
     peg: any;
     err: Omit<any[], "push">;
     uh: number[];

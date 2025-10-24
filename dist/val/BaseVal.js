@@ -55,7 +55,8 @@ class BaseVal {
         this.row = -1;
         this.col = -1;
         this.url = '';
-        this.type = false;
+        // Map of boolean flags.
+        this.mark = {};
         // Actual native value.
         this.peg = undefined;
         // TODO: used for top level result - not great
@@ -75,7 +76,8 @@ class BaseVal {
         // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
         this.id = ++ID;
         this.uh = [];
-        this.type = !!spec.type;
+        this.mark.type = !!spec.type;
+        this.mark.hide = !!spec.hide;
         // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
     }
     ctx() {
@@ -94,14 +96,15 @@ class BaseVal {
         cloneCtx = ctx.clone({
             path: ctx.path.concat(this.path.slice(cut))
         });
-        let fullspec = { peg: this.peg, type: this.type, ...(spec ?? {}) };
+        let fullspec = { peg: this.peg, type: this.mark.type, hide: this.mark.hide, ...(spec ?? {}) };
         let out = new this
             .constructor(fullspec, cloneCtx);
         out.row = spec?.row || this.row || -1;
         out.col = spec?.col || this.col || -1;
         out.url = spec?.url || this.url || '';
         // TODO: should not be needed - update all VAL ctors to handle spec.type
-        out.type = this.type && fullspec.type;
+        out.mark.type = this.mark.type && fullspec.type;
+        out.mark.hide = this.mark.hide && fullspec.hide;
         return out;
     }
     // TODO: should use Site

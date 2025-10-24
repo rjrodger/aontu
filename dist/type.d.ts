@@ -52,7 +52,7 @@ interface Val {
     row: number;
     col: number;
     url: string;
-    type: boolean;
+    mark: Record<string, boolean>;
     peg: any;
     err: Omit<any[], "push">;
     deps?: any;
@@ -65,9 +65,19 @@ interface Val {
 }
 type ValSpec = {
     peg?: any;
-    [name: string]: any;
     type?: boolean;
+    hide?: boolean;
     kind?: any;
+    row?: number;
+    col?: number;
+    url?: string;
+    path?: string[];
+    id?: number;
+    why?: string;
+    msg?: string;
+    err?: any[] | any;
+    absolute?: boolean;
+    prefix?: boolean;
 };
 type ValMap = {
     [key: string]: Val;

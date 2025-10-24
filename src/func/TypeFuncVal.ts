@@ -33,7 +33,8 @@ class TypeFuncVal extends FuncBaseVal {
     ctx?: Context
   ) {
     super(spec, ctx)
-    this.type = true
+    this.mark.type = true
+    this.mark.hide = false
     // console.log('TFV', this.id, this.peg?.[0]?.canon)
   }
 
@@ -62,10 +63,10 @@ class TypeFuncVal extends FuncBaseVal {
     let out = args[0] ?? NilVal.make(ctx, 'arg', this)
     if (!out.isNil) {
       out = out.clone(ctx)
-      // out.type = true
+      // out.mark.type = true
 
       walk(out, (_key: string | number | undefined, val: Val) => {
-        val.type = true
+        val.mark.type = true
         return val
       })
 

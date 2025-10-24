@@ -47,17 +47,23 @@ class ConjunctVal extends JunctionVal {
     ctx?: Context
   ) {
     super(spec, ctx)
-    this.type = !!spec.type
+    this.mark.type = !!spec.type
+    this.mark.hide = !!spec.hide
     this.peg = (Array.isArray(this.peg) ? this.peg : [])
       .filter((p: Val) => null != p && p.isVal)
-    this.peg?.map((v: Val) => v.type = this.type || v.type)
+    this.peg?.map((v: Val) => {
+      v.mark.type = this.mark.type || v.mark.type
+      v.mark.hide = this.mark.hide || v.mark.hide
+      return v
+    })
     // console.log('CONJUNCT-ctor', this.peg.map((v: Val) => v.canon))
   }
 
   // NOTE: mutation!
   append(peer: Val): ConjunctVal {
     super.append(peer)
-    peer.type = this.type || peer.type
+    peer.mark.type = this.mark.type || peer.mark.type
+    peer.mark.hide = this.mark.hide || peer.mark.hide
     return this
   }
 
@@ -73,18 +79,22 @@ class ConjunctVal extends JunctionVal {
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
 
-    let newtype = this.type || peer.type
+    let newtype = this.mark.type || peer.mark.type
+    let newhide = this.mark.hide || peer.mark.hide
 
     for (let vI = 0; vI < this.peg.length; vI++) {
-      newtype = this.peg[vI].type || newtype
+      newtype = this.peg[vI].mark.type || newtype
+      newhide = this.peg[vI].mark.hide || newhide
     }
 
     for (let vI = 0; vI < this.peg.length; vI++) {
-      this.peg[vI].type = newtype
+      this.peg[vI].mark.type = newtype
+      this.peg[vI].mark.hide = newhide
       // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
 
       upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own')
-      upeer[vI].type = newtype = newtype || upeer[vI].type
+      upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type
+      upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide
 
       // let prevdone = done
       done = done && (DONE === upeer[vI].dc)
@@ -115,7 +125,8 @@ class ConjunctVal extends JunctionVal {
 
       if (DONE !== t0.dc) {
         let u0 = unite(ctx, t0, TOP, 'cj-peer-t0')
-        newtype = this.type || u0.type
+        newtype = this.mark.type || u0.mark.type
+        newhide = this.mark.hide || u0.mark.hide
 
         if (
           DONE !== u0.dc
@@ -141,7 +152,8 @@ class ConjunctVal extends JunctionVal {
 
       if (null == t1) {
         outvals.push(t0)
-        newtype = this.type || t0.type
+        newtype = this.mark.type || t0.mark.type
+        newhide = this.mark.hide || t0.mark.hide
       }
 
       // Can't unite with a RefVal, unless also a RefVal with same path.
@@ -159,7 +171,8 @@ class ConjunctVal extends JunctionVal {
       else {
         val = unite(ctx, t0, t1, 'cj-peer-t0t1')
         done = done && DONE === val.dc
-        newtype = this.type || val.type
+        newtype = this.mark.type || val.mark.type
+        newhide = this.mark.hide || val.mark.hide
 
         // Unite was just a conjunt anyway, so discard.
         if (val.isConjunct) {
@@ -181,7 +194,7 @@ class ConjunctVal extends JunctionVal {
 
     let out: Val
 
-    // console.log('CONJUCT-prepout', this.type, newtype, outvals.map((v: Val) => v.canon))
+    // console.log('CONJUCT-prepout', this.mark.type, newtype, outvals.map((v: Val) => v.canon))
 
     if (0 === outvals.length) {
 
@@ -192,10 +205,11 @@ class ConjunctVal extends JunctionVal {
     // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
     else if (1 === outvals.length) {
       out = outvals[0]
-      out.type = newtype
+      out.mark.type = newtype
+      out.mark.hide = newhide
     }
     else {
-      out = new ConjunctVal({ peg: outvals, type: newtype }, ctx)
+      out = new ConjunctVal({ peg: outvals, type: newtype, hide: newhide }, ctx)
     }
 
     out.dc = done ? DONE : this.dc + 1

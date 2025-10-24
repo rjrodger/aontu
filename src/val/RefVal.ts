@@ -284,12 +284,13 @@ class RefVal extends FeatureVal {
     if (pI === fullpath.length) {
       out = node
 
-      // Types are cloned and made concrete
-      if (null != out && out.type) {
+      // Types and hidden values are cloned and made concrete
+      if (null != out && (out.mark.type || out.mark.hide)) {
         out = out.clone(ctx)
 
         walk(out, (_key: string | number | undefined, val: Val) => {
-          val.type = false
+          val.mark.type = false
+          val.mark.hide = false
           return val
         })
       }

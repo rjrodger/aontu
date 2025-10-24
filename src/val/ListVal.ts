@@ -172,7 +172,8 @@ class ListVal extends BagVal {
         out.uh.push(peer.id)
 
         out.dc = done ? DONE : out.dc
-        out.type = this.type || peer.type
+        out.mark.type = this.mark.type || peer.mark.type
+        out.mark.hide = this.mark.hide || peer.mark.hide
       }
     }
 
@@ -184,10 +185,10 @@ class ListVal extends BagVal {
     let out = (super.clone(ctx, spec) as ListVal)
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, { type: spec?.type }) : entry[1]
+        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, { type: spec?.type, hide: spec?.hide }) : entry[1]
     }
     if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type })
+      out.spread.cj = this.spread.cj.clone(ctx, { type: spec?.type, hide: spec?.hide })
     }
 
     out.closed = this.closed
@@ -215,7 +216,7 @@ class ListVal extends BagVal {
 
   gen(ctx?: Context) {
     let out: any = []
-    if (this.type) {
+    if (this.mark.type || this.mark.hide) {
       return undefined
     }
 
