@@ -12,7 +12,10 @@
 */
 
 import {
-  walk
+  walk,
+  explainOpen,
+  ec,
+  explainClose,
 } from '../utility'
 
 
@@ -67,7 +70,7 @@ class RefVal extends FeatureVal {
       this.append(spec.peg[pI])
     }
 
-    // // // console.log('RefVal', this.id, this.peg)
+    //console.log('RefVal', this.id, this.peg)
   }
 
 
@@ -114,11 +117,12 @@ class RefVal extends FeatureVal {
       this.peg.push(...part.peg)
     }
 
-    // // // console.log('RefVal-append', this.id, this.peg)
+    //console.log('RefVal-append', this.id, this.peg)
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'Ref', this, peer)
     let out: Val = this
     // let why = 'id'
 
@@ -128,11 +132,12 @@ class RefVal extends FeatureVal {
       // as path cannot be found
       // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
       let found: Val | undefined = null == ctx ? this : this.find(ctx)
+      // console.log('REF-FOUND', ctx.cc, found?.canon)
 
       const resolved = found ?? this
 
       // const resolved = found ? found.clone(null, ctx) : this
-      // // // console.log('REF', this.id, this.peg, '->',
+      //console.log('REF', this.id, this.peg, '->',
       //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
 
       if (null == resolved && this.canon === peer.canon) {
@@ -163,14 +168,15 @@ class RefVal extends FeatureVal {
         }
       }
       else {
-        out = unite(ctx, resolved, peer, 'ref')
+        out = unite(ctx, resolved, peer, 'ref', ec(te, 'RES'))
         // why = 'u'
       }
 
       out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
 
-    // // // console.log('REF:', this.peg, '->', out.canon)
+    // console.log('REF:', this.peg, '->', out.canon)
+    explainClose(te, out)
     return out
   }
 

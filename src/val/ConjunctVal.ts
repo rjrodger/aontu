@@ -31,6 +31,12 @@ import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
 import { JunctionVal } from './JunctionVal'
 
+import {
+  explainOpen,
+  ec,
+  explainClose,
+} from '../utility'
+
 
 const CONJUNCT_ORDERING: Record<string, number> = {
   PrefVal: 30000,
@@ -69,9 +75,9 @@ class ConjunctVal extends JunctionVal {
     return this
   }
 
-  unify(peer: Val, ctx: Context): Val {
-    // const sc = this.canon
-    // const pc = peer?.canon
+
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'Conjunct', this, peer)
 
     let done = true
 
@@ -94,7 +100,8 @@ class ConjunctVal extends JunctionVal {
       this.peg[vI].mark.hide = newhide
       // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
 
-      upeer[vI] = unite(ctx, this.peg[vI], peer, 'cj-own')
+      upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
+        unite(ctx, this.peg[vI], peer, 'cj-own', ec(te, 'OWN'))
       upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type
       upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide
 
@@ -126,7 +133,7 @@ class ConjunctVal extends JunctionVal {
     for (let pI = 0; pI < upeer.length; pI++) {
 
       if (DONE !== t0.dc) {
-        let u0 = unite(ctx, t0, TOP, 'cj-peer-t0')
+        let u0 = unite(ctx, t0, TOP, 'cj-peer-t0', ec(te, 'PER'))
         newtype = this.mark.type || u0.mark.type
         newhide = this.mark.hide || u0.mark.hide
 
@@ -171,7 +178,7 @@ class ConjunctVal extends JunctionVal {
 
 
       else {
-        val = unite(ctx, t0, t1, 'cj-peer-t0t1')
+        val = unite(ctx, t0, t1, 'cj-peer-t0t1', ec(te, 'DEF'))
         done = done && DONE === val.dc
         newtype = this.mark.type || val.mark.type
         newhide = this.mark.hide || val.mark.hide
@@ -217,6 +224,8 @@ class ConjunctVal extends JunctionVal {
     out.dc = done ? DONE : this.dc + 1
 
     // console.log('CONJUNCT-unify', this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
+
+    explainClose(te, out)
 
     return out
   }

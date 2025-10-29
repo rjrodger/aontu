@@ -17,6 +17,12 @@ import {
 } from '../unify'
 
 import {
+  explainOpen,
+  ec,
+  explainClose,
+} from '../utility'
+
+import {
   Site
 } from '../lang'
 
@@ -53,7 +59,8 @@ class DisjunctVal extends JunctionVal {
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'Disjunct', this, peer)
     const sc = this.canon
     const pc = peer?.canon
 
@@ -73,7 +80,7 @@ class DisjunctVal extends JunctionVal {
       const cloneCtx = ctx?.clone({ err: [] })
 
       // // // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
-      oval[vI] = unite(cloneCtx, v, peer, 'dj-peer')
+      oval[vI] = unite(cloneCtx, v, peer, 'dj-peer', ec(te, 'DIST:' + vI))
       // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
 
       if (0 < cloneCtx?.err.length) {
@@ -126,6 +133,8 @@ class DisjunctVal extends JunctionVal {
 
     // // // console.log('DISJUNCT-unify',
     //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
+
+    explainClose(te, out)
 
     return out
   }

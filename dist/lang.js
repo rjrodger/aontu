@@ -104,6 +104,8 @@ let AontuJsonic = function aontu(jsonic) {
         copy: func_1.CopyFuncVal,
         key: func_1.KeyFuncVal,
         type: func_1.TypeFuncVal,
+        hide: func_1.HideFuncVal,
+        move: func_1.MoveFuncVal,
         pref: func_1.PrefFuncVal,
         close: func_1.CloseFuncVal,
         open: func_1.OpenFuncVal,

@@ -39,6 +39,8 @@ interface Val {
     isFunc: boolean;
     isCloseFunc: boolean;
     isCopyFunc: boolean;
+    isHideFunc: boolean;
+    isMoveFunc: boolean;
     isKeyFunc: boolean;
     isLowerFunc: boolean;
     isOpenFunc: boolean;
@@ -54,12 +56,13 @@ interface Val {
     url: string;
     mark: ValMark;
     peg: any;
-    err: Omit<any[], "push">;
+    err: any[];
+    explain: any[] | null;
     deps?: any;
     get done(): boolean;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;
-    unify(peer: Val, ctx: Context): Val;
+    unify(peer: Val, ctx: Context, trace?: any[]): Val;
     get canon(): string;
     gen(ctx?: Context): any;
 }

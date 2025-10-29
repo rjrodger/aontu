@@ -20,6 +20,12 @@ import {
   unite,
 } from '../unify'
 
+import {
+  explainOpen,
+  ec,
+  explainClose,
+} from '../utility'
+
 
 import {
   Site
@@ -60,14 +66,15 @@ class PrefVal extends FeatureVal {
 
   // PrefVal unify always returns a PrefVal
   // PrefVals can only be removed by becoming Nil in a Disjunct
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'Pref', this, peer)
     let done = true
     let out: Val = this
     let why = ''
 
 
     if (!this.peg.done) {
-      const resolved = unite(ctx, this.peg, TOP, 'pref/resolve')
+      const resolved = unite(ctx, this.peg, TOP, 'pref/resolve', ec(te, 'RES'))
       // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
     }
@@ -84,7 +91,7 @@ class PrefVal extends FeatureVal {
         why += 'rank-lose'
       }
       else {
-        let peg = unite(ctx, this.peg, peer.peg, 'pref-peer/' + this.id)
+        let peg = unite(ctx, this.peg, peer.peg, 'pref-peer/' + this.id, ec(te, 'PEER'))
         out = new PrefVal({ peg }, ctx)
         why += 'rank-same'
       }
@@ -99,7 +106,7 @@ class PrefVal extends FeatureVal {
       // else {
       //   why += 'unify'
 
-      out = unite(ctx, this.superpeg, peer, 'pref-super/' + this.id)
+      out = unite(ctx, this.superpeg, peer, 'pref-super/' + this.id, ec(te, 'SUPER'))
       if (out.same(this.superpeg)) {
         out = this.peg
         why += 'same'
@@ -114,6 +121,8 @@ class PrefVal extends FeatureVal {
     out.dc = done ? DONE : this.dc + 1
 
     // console.log('PREFVAL-OUT', why, this.canon, peer.canon, '->', out.canon, out.done)
+
+    explainClose(te, out)
 
     return out
   }

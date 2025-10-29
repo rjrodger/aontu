@@ -13,6 +13,10 @@ import {
   Context,
 } from '../unify'
 
+import {
+  explainOpen,
+  explainClose,
+} from '../utility'
 
 import { TOP } from './TopVal'
 import { NilVal } from './NilVal'
@@ -51,7 +55,9 @@ class ScalarKindVal extends BaseVal {
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'ScalarKind', this, peer)
+
     const peerIsScalarVal = peer.isScalar
     const peerIsScalarKind = (peer as ScalarKindVal).isScalarKind
 
@@ -87,6 +93,8 @@ class ScalarKindVal extends BaseVal {
     else {
       out = NilVal.make(ctx, 'not-scalar-type', this, peer)
     }
+
+    ctx.explain && explainClose(te, out)
 
     // console.log('SCALARKINDVAL', this.canon.peer.canon, '->', out.canon)
     return out

@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AontuX = exports.util = exports.Context = exports.Lang = exports.NilVal = void 0;
+exports.formatExplain = exports.AontuX = exports.util = exports.Context = exports.Lang = exports.NilVal = void 0;
 exports.Aontu = Aontu;
 exports.parse = parse;
 const lang_1 = require("./lang");
@@ -11,6 +11,8 @@ Object.defineProperty(exports, "Context", { enumerable: true, get: function () {
 const val_1 = require("./val");
 Object.defineProperty(exports, "NilVal", { enumerable: true, get: function () { return val_1.NilVal; } });
 const err_1 = require("./err");
+const utility_1 = require("./utility");
+Object.defineProperty(exports, "formatExplain", { enumerable: true, get: function () { return utility_1.formatExplain; } });
 class AontuX {
     constructor(popts) {
         this.opts = popts;
@@ -21,7 +23,9 @@ class AontuX {
             new AontuContext(arg);
     }
     parse(src, ac) {
-        ac = this.ctx(ac);
+        if (!(ac instanceof unify_1.Context)) {
+            ac = this.ctx({ ...(ac ?? {}) });
+        }
         const opts = prepareOptions(src, { ...this.opts });
         const deps = {};
         let val = parse(this.lang, opts, { deps });
@@ -40,20 +44,22 @@ class AontuX {
         return val;
     }
     unify(src, ac) {
-        ac = this.ctx(ac);
+        if (!(ac instanceof unify_1.Context)) {
+            ac = this.ctx({ ...(ac ?? {}) });
+        }
         let pval = src.isVal ? src : this.parse(src, ac);
         let osrc = 'string' === typeof src ? src : (ac.src ?? '');
         if (undefined === pval) {
             return undefined;
         }
-        let uni = new unify_1.Unify(pval, this.lang, undefined, osrc);
+        let uni = new unify_1.Unify(pval, this.lang, ac, osrc);
         let res = uni.res;
         let err = uni.err;
         res.deps = pval.deps;
         res.err = err;
         ac.root = res;
         if (res.err && 0 < res.err.length) {
-            res.err.map((err) => ac.adderr(err));
+            // res.err.map((err: any) => ac.adderr(err))
             if (!ac.collect) {
                 throw new AontuError(ac.errmsg(), ac.err);
             }
@@ -62,21 +68,20 @@ class AontuX {
     }
     generate(src, meta) {
         try {
-            let ac = this.ctx({ src, err: meta?.err });
+            let out = undefined;
+            let ac = this.ctx({ src, err: meta?.err, explain: meta?.explain });
             let pval = this.parse(src, ac);
-            if (undefined === pval || 0 < pval.err?.length) {
-                return undefined;
-            }
-            let uval = this.unify(pval, ac);
-            if (undefined == uval || 0 < uval.err?.length) {
-                return undefined;
-            }
-            let out = uval.gen(ac);
-            if (0 < ac.err.length) {
-                if (!ac.collect) {
-                    throw new AontuError(ac.errmsg(), ac.err);
+            if (undefined !== pval && 0 === pval.err.length) {
+                let uval = this.unify(pval, ac);
+                if (undefined !== uval && 0 === uval.err.length) {
+                    out = uval.isNil ? undefined : uval.gen(ac);
+                    if (0 < ac.err.length) {
+                        if (!ac.collect) {
+                            throw new AontuError(ac.errmsg(), ac.err);
+                        }
+                        out = undefined;
+                    }
                 }
-                return undefined;
             }
             return out;
         }
@@ -159,7 +164,6 @@ function prepareOptions(src, popts) {
     return opts;
 }
 function parse(lang, opts, ctx) {
-    // const lang = new Lang(opts)
     const val = lang.parse(opts.src, { src: opts.src, deps: ctx.deps, fs: opts.fs });
     return val;
 }

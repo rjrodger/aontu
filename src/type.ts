@@ -59,6 +59,8 @@ interface Val {
   isFunc: boolean
   isCloseFunc: boolean
   isCopyFunc: boolean
+  isHideFunc: boolean
+  isMoveFunc: boolean
   isKeyFunc: boolean
   isLowerFunc: boolean
   isOpenFunc: boolean
@@ -81,12 +83,11 @@ interface Val {
   // Child value(s).
   peg: any
 
-  // TODO: used for top level result - not great
-  // err: any[]
-  err: Omit<any[], "push">
+  // err: Omit<any[], "push">
+  err: any[]
+  explain: any[] | null
 
   deps?: any
-
 
   get done(): boolean
 
@@ -95,8 +96,10 @@ interface Val {
   clone(ctx: Context, spec?: ValSpec): Val
 
   // get site(): Site
-  unify(peer: Val, ctx: Context): Val
+  unify(peer: Val, ctx: Context, trace?: any[]): Val
+
   get canon(): string
+
   gen(ctx?: Context): any
 }
 

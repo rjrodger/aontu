@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarKindVal = exports.Null = exports.Integer = void 0;
 const type_1 = require("../type");
+const utility_1 = require("../utility");
 const TopVal_1 = require("./TopVal");
 const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
@@ -23,7 +24,8 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
         }
         this.dc = type_1.DONE;
     }
-    unify(peer, ctx) {
+    unify(peer, ctx, trace) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'ScalarKind', this, peer);
         const peerIsScalarVal = peer.isScalar;
         const peerIsScalarKind = peer.isScalarKind;
         let out = this;
@@ -56,6 +58,7 @@ class ScalarKindVal extends BaseVal_1.BaseVal {
         else {
             out = NilVal_1.NilVal.make(ctx, 'not-scalar-type', this, peer);
         }
+        ctx.explain && (0, utility_1.explainClose)(te, out);
         // console.log('SCALARKINDVAL', this.canon.peer.canon, '->', out.canon)
         return out;
     }

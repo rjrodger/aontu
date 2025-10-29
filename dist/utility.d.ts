@@ -7,4 +7,8 @@ type WalkApply = (key: string | number | undefined, val: Val, parent: Val | unde
  * Only traverses Val instances - stops at non-Val children.
  */
 declare function walk(val: Val, before?: WalkApply, after?: WalkApply, maxdepth?: number | null, key?: string | number, parent?: Val, path?: (string | number)[]): Val;
-export { propagateMarks, formatPath, walk, WalkApply, };
+declare function explainOpen(ctx: any, t: any[] | undefined | null | false, note: string, ac?: Val, bc?: Val): any[] | null;
+declare function ec(t: any[] | undefined | null, why: string): (string | null)[] | undefined;
+declare function explainClose(t: any[] | undefined | null, out?: Val): void;
+declare function formatExplain(t: any[], d?: number): string;
+export { propagateMarks, formatPath, walk, WalkApply, explainOpen, ec, explainClose, formatExplain, };

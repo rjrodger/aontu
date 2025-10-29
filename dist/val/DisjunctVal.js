@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisjunctVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
+const utility_1 = require("../utility");
 const NilVal_1 = require("../val/NilVal");
 const PrefVal_1 = require("../val/PrefVal");
 const JunctionVal_1 = require("../val/JunctionVal");
@@ -21,7 +22,8 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         this.prefsRanked = false;
         return this;
     }
-    unify(peer, ctx) {
+    unify(peer, ctx, trace) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Disjunct', this, peer);
         const sc = this.canon;
         const pc = peer?.canon;
         if (!this.prefsRanked) {
@@ -35,7 +37,7 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
             const v = this.peg[vI];
             const cloneCtx = ctx?.clone({ err: [] });
             // // // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
-            oval[vI] = (0, unify_1.unite)(cloneCtx, v, peer, 'dj-peer');
+            oval[vI] = (0, unify_1.unite)(cloneCtx, v, peer, 'dj-peer', (0, utility_1.ec)(te, 'DIST:' + vI));
             // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
             if (0 < cloneCtx?.err.length) {
                 oval[vI] = NilVal_1.NilVal.make(cloneCtx, '|:empty-dist', this);
@@ -76,6 +78,7 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         out.dc = done ? type_1.DONE : this.dc + 1;
         // // // console.log('DISJUNCT-unify',
         //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
+        (0, utility_1.explainClose)(te, out);
         return out;
     }
     rankPrefs(ctx) {

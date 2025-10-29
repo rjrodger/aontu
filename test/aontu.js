@@ -1,33 +1,43 @@
 
 const Util = require('node:util')
-const { AontuX } = require('..')
+const { AontuX, formatExplain } = require('..')
 
-const src = process.argv[2]
-const debug = process.argv[3]
-const trace = process.argv[4]
+const args = {
+  src: process.argv[2],
+  debug: process.argv[3],
+  trace: process.argv[4],
+  explain: process.argv[5],
+}
 
+const hasDebugArg = ('canon'===args.debug || 'lang' ===args.debug || 'deep'===args.debug)
 
 const aontu = new AontuX({
   path: process.cwd(),
-  debug: null != trace,
-  trace: null != trace,
+  debug: 'lang' === args.debug || 'trace' == args.trace,
+  trace: 'trace' == args.trace,
 })
 
 let err = []
+err.foo = 1
 
-if(debug) {
-  console.log('> SRC:', src)
+let explain = null
+
+if(hasDebugArg) {
+  console.log('> SRC:', args.src)
 }
 
-if(debug) {
-  const pval = aontu.parse(src)
-  err = pval.err ?? err
-  
-  if('canon'===debug || 'deep'===debug) {
-    console.log('> CANON:', pval.canon)
+if(hasDebugArg) {
+  if('explain' === args.explain) {
+    explain = []
   }
 
-  if('deep'===debug) {
+  const pval = aontu.parse(args.src, {err, explain})
+  
+  if(hasDebugArg) {
+    console.log('> CANON:', pval?.canon)
+  }
+
+  if('deep'===args.debug) {
     console.log('> AST:'),
     print(pval)
   }
@@ -36,25 +46,38 @@ if(debug) {
 let root
 
 
-if(debug && 0 === err.length) {
-  root = aontu.unify(src)
-  err = root.err
-  
+if(hasDebugArg && 0 === err.length) {
+  if('explain' === args.explain) {
+    explain = []
+  }
+
+  root = aontu.unify(args.src, {err,collect:true,explain})
   console.log('> UNIFIED:', root.canon)
 
-  if('deep'===debug) {
+  if('deep'===args.debug) {
     print(root)
   }
 }
 
+
 if(0 === err.length) {
-  if(debug) {
+  if('explain' === args.explain) {
+    explain = []
+  }
+
+  if(hasDebugArg) {
     console.log('> GEN:')
   }
-  const out = aontu.generate(src, {err})
+  const meta = {err,explain}
+  const out = aontu.generate(args.src, meta)
+
   print(out)
 }
 
+if('explain' === args.explain) {
+  console.log('> EXPLAIN:')
+  console.log(formatExplain(explain))
+}
 
 if(0 < err.length) {
   console.log('> ERRORS: '+err.length)
@@ -70,21 +93,11 @@ function print(v) {
       v, {
         compact: true,
         colors: true,
-        // breakLength: Infinity,
         maxStringLength: 33,
         stringBreakNewline: true,
         depth: null,
       })
       .replace(/: /g, ':')
-      // .replace(/ ([{}[\]],?) /g, ' $1\n')
-      // .replace(/^.*$/gm,l=>{
-      //   l=l.trim()
-      //   if(!l)return""
-      //   if(/ [}\]],?/.test(l))d--
-      //   let r="  ".repeat(d<0?0:d)+l
-      //   if(/[{\[]\s*$/.test(l))d++
-      //   return r
-      // })
   )
 }
 

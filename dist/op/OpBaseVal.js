@@ -5,6 +5,7 @@ exports.OpBaseVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const unify_1 = require("../unify");
+const utility_1 = require("../utility");
 const val_1 = require("../val");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const NilVal_1 = require("../val/NilVal");
@@ -27,7 +28,8 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
     opname() {
         return 'op';
     }
-    unify(peer, ctx) {
+    unify(peer, ctx, trace) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Op:' + this.opname(), this, peer);
         let out = this;
         if (this.id == peer.id) {
             return this;
@@ -36,7 +38,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         let newpeg = [];
         for (let arg of this.peg) {
             if (!arg.done) {
-                arg = arg.unify(val_1.TOP, ctx);
+                arg = arg.unify(val_1.TOP, ctx, (0, utility_1.ec)(te, 'ARG'));
             }
             pegdone &&= arg.done;
             newpeg.push(arg);
@@ -67,7 +69,8 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
                 }
             }
             else {
-                out = (0, unify_1.unite)(ctx, result, peer, 'op');
+                out = result.done && peer.isTop ? result :
+                    (0, unify_1.unite)(ctx, result, peer, 'op', (0, utility_1.ec)(te, 'RES'));
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
@@ -95,6 +98,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             out.url = this.url;
             out.path = this.path;
         }
+        (0, utility_1.explainClose)(te, out);
         return out;
     }
     same(peer) {

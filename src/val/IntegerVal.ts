@@ -10,6 +10,12 @@ import {
 
 import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
+import { NilVal } from './NilVal'
+
+import {
+  explainOpen,
+  explainClose,
+} from '../utility'
 
 
 class IntegerVal extends ScalarVal {
@@ -28,20 +34,32 @@ class IntegerVal extends ScalarVal {
     super({ peg: spec.peg, kind: Integer }, ctx)
   }
 
-  unify(peer: any, ctx: Context): Val {
+  unify(peer: any, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'Integer', this, peer)
+
+    let out: Val = this
+
     if (null != peer) {
       if (peer.isScalarKind && (peer.peg === Number || peer.peg === Integer)) {
-        return this
+        out = this
       }
       else if (
         peer.isScalar &&
         peer.peg === this.peg
       ) {
-        return this
+        out = this
+      }
+      else {
+        out = NilVal.make(ctx, 'integer', this, peer)
       }
     }
+    else {
+      out = super.unify(peer, ctx)
+    }
 
-    return super.unify(peer, ctx)
+    explainClose(te, out)
+
+    return out
   }
 }
 

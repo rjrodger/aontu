@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.propagateMarks = propagateMarks;
 exports.formatPath = formatPath;
 exports.walk = walk;
+exports.explainOpen = explainOpen;
+exports.ec = ec;
+exports.explainClose = explainClose;
+exports.formatExplain = formatExplain;
 // Mark value in source is propagated to target (true ratchets).
 function propagateMarks(source, target) {
     for (let name in source.mark) {
@@ -62,5 +66,60 @@ key, parent, path) {
     }
     out = null == after ? out : after(key, out, parent, path || []);
     return out;
+}
+const T_NOTE = 0;
+const T_WHY = 1;
+const T_AVAL = 2;
+const T_BVAL = 3;
+const T_OVAL = 4;
+const T_CHILDREN = 5;
+function explainOpen(ctx, t, note, ac, bc) {
+    if (false === t)
+        return null;
+    // console.log('OPEN', ctx.cc)
+    t = t ?? [null, 'root', null, null, null, null];
+    t[T_WHY] = t[T_WHY] ?? '';
+    t[T_NOTE] = (0 <= ctx.cc ? ctx.cc + '~' : '') + note;
+    if (ac) {
+        t[T_AVAL] = ac.id + (ac.done ? '' : '!') + '=' + ac.canon;
+    }
+    if (bc) {
+        t[T_BVAL] = bc.id + (bc.done ? '' : '!') + '=' + bc.canon;
+    }
+    return t;
+}
+function ec(t, why) {
+    if (null == t)
+        return;
+    const child = [null, why, null, null, null, null];
+    t[T_CHILDREN] = t[T_CHILDREN] ?? [];
+    t[T_CHILDREN].push(child);
+    return child;
+}
+function explainClose(t, out) {
+    if (null == t)
+        return;
+    if (out) {
+        t[T_OVAL] = out.id + (out.done ? '' : '!') + '=' + out.canon;
+    }
+}
+function formatExplain(t, d) {
+    d = null == d ? 0 : d;
+    const indent = ('  '.repeat(d));
+    if (Array.isArray(t)) {
+        const b = [
+            indent + t.slice(0, t.length - 1).join(' ')
+        ];
+        const children = t[t.length - 1];
+        if (Array.isArray(children)) {
+            for (let ce of children) {
+                b.push(formatExplain(ce, d + 1));
+            }
+        }
+        return b.join('\n');
+    }
+    else {
+        return indent + t;
+    }
 }
 //# sourceMappingURL=utility.js.map

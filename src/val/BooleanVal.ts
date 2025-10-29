@@ -10,7 +10,6 @@ import {
 
 import { ScalarVal } from './ScalarVal'
 
-
 class BooleanVal extends ScalarVal {
   isBoolean = true
 

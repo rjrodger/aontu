@@ -3,7 +3,7 @@ import { FST } from './type';
 import { NilVal } from './val/NilVal';
 import { Lang } from './lang';
 type Path = string[];
-declare const unite: (ctx: Context, a: any, b: any, whence: string) => any;
+declare const unite: (ctx: Context, a: any, b: any, whence: string, explain?: any[]) => any;
 declare class Context {
     root: Val;
     path: Path;
@@ -15,11 +15,13 @@ declare class Context {
     seenI: number;
     seen: Record<string, number>;
     collect: boolean;
-    errlist: Omit<NilVal[], "push">;
+    err: any[];
+    explain: any[] | null;
     constructor(cfg: {
         root: Val;
         path?: Path;
-        err?: Omit<NilVal[], "push">;
+        err?: any[];
+        explain?: any[] | null;
         vc?: number;
         cc?: number;
         var?: Record<string, Val>;
@@ -31,11 +33,9 @@ declare class Context {
     clone(cfg: {
         root?: Val;
         path?: Path;
-        err?: Omit<NilVal[], "push">;
+        err?: any[];
     }): Context;
     descend(key: string): Context;
-    get err(): any;
-    seterr(err: any): void;
     adderr(err: NilVal, whence?: string): void;
     errmsg(): string;
     find(path: string[]): Val | undefined;
@@ -43,9 +43,10 @@ declare class Context {
 declare class Unify {
     root: Val;
     res: Val;
-    err: Omit<NilVal[], "push">;
+    err: any[];
+    explain: any[] | null;
     cc: number;
     lang: Lang;
-    constructor(root: Val | string, lang?: Lang, ctx?: Context, src?: string);
+    constructor(root: Val | string, lang?: Lang, ctx?: Context | any, src?: string);
 }
 export { Context, Path, Unify, unite, };

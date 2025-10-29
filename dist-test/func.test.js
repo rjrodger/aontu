@@ -453,5 +453,24 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         // These tests may need to be adjusted based on actual behavior
         (0, code_1.expect)(G('super()')).equal(undefined);
     });
+    (0, node_test_1.test)('hide-functionality', () => {
+        const a0 = new __1.AontuX();
+        const G = a0.generate.bind(a0);
+        // hide() should mark values as hidden from generation
+        (0, code_1.expect)(G('hide(1) & number')).equal(1);
+        (0, code_1.expect)(G('hide(hello) & string')).equal('hello');
+        (0, code_1.expect)(G('hide(true) & boolean')).equal(true);
+        (0, code_1.expect)(G('number & hide(42)')).equal(42);
+        (0, code_1.expect)(G('string & hide(world)')).equal('world');
+    });
+    (0, node_test_1.test)('hide-canon', () => {
+        // Test canonical representation shows hide wrapping
+        const N = (x, ctx) => new unify_1.Unify(x, lang)
+            .res.canon;
+        (0, code_1.expect)(N('hide(1)')).equal('hide(1)');
+        (0, code_1.expect)(N('hide(foo)')).equal('hide("foo")');
+        (0, code_1.expect)(N('hide({x:1})')).equal('hide({"x":1})');
+        (0, code_1.expect)(N('hide([1,2])')).equal('hide([1,2])');
+    });
 });
 //# sourceMappingURL=func.test.js.map

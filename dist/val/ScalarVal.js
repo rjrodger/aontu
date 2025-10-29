@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarVal = void 0;
 const type_1 = require("../type");
+const utility_1 = require("../utility");
 const NilVal_1 = require("./NilVal");
 const BaseVal_1 = require("./BaseVal");
 const ScalarKindVal_1 = require("./ScalarKindVal");
@@ -21,14 +22,17 @@ class ScalarVal extends BaseVal_1.BaseVal {
         });
         return out;
     }
-    unify(peer, ctx) {
+    unify(peer, ctx, trace) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Scalar', this, peer);
+        let out = NilVal_1.NilVal.make(ctx, 'nil-scalar', this, peer);
         // Exactly equal scalars are handled in unify.unite
         if (peer.isScalarKind) {
-            return peer.unify(this, ctx);
+            out = peer.unify(this, ctx);
         }
         else if (peer.isTop) {
-            return this;
+            out = this;
         }
+        (0, utility_1.explainClose)(te, out);
         return NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
     }
     get canon() {

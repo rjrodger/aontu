@@ -20,6 +20,10 @@ import {
 } from './err'
 
 
+import {
+  explainOpen, ec, explainClose,
+} from './utility'
+
 type Path = string[]
 
 // TODO: relation to unify loops?
@@ -29,15 +33,13 @@ let uc = 0
 
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
-const unite = (ctx: Context, a: any, b: any, whence: string) => {
-  // const ac = a?.canon
-  // const bc = b?.canon
+const unite = (ctx: Context, a: any, b: any, whence: string, explain?: any[]) => {
+  const te = ctx.explain && explainOpen(ctx, explain, 'unite', a, b)
 
   let out = a
   let why = 'u'
 
   const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '')
-  // console.log('SAW', saw)
 
   if (MAXCYCLE < ctx.seen[saw]) {
     out = NilVal.make(ctx, 'cycle', a, b)
@@ -72,7 +74,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
           why = 'bn'
         }
         else if (a.isConjunct) {
-          out = a.unify(b, ctx)
+          out = a.unify(b, ctx, ec(te, 'CJ'))
           unified = true
           why = 'acj'
         }
@@ -84,7 +86,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
           || b.isFunc
         ) {
 
-          out = b.unify(a, ctx)
+          out = b.unify(a, ctx, ec(te, 'BW'))
           unified = true
           why = 'bv'
         }
@@ -96,7 +98,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
         }
 
         else {
-          out = a.unify(b, ctx)
+          out = a.unify(b, ctx, ec(te, 'GN'))
           unified = true
           why = 'ab'
         }
@@ -108,38 +110,19 @@ const unite = (ctx: Context, a: any, b: any, whence: string) => {
       }
 
       if (DONE !== out.dc && !unified) {
-        let nout = out.unify(TOP, ctx)
-        // console.log('UNITE-NOTDONE', out.canon, '->', nout.canon)
+        let nout = out.unify(TOP, ctx, ec(te, 'ND'))
         out = nout
         why += 'T'
       }
 
       uc++
-
-      // TODO: KEEP THIS! print in debug mode! push to ctx.log?
-      /*
-      // console.log(
-        'U',
-        ('' + ctx.cc).padStart(2),
-        ('' + uc).padStart(4),
-        (whence || '').substring(0, 16).padEnd(16),
-        why.padEnd(6),
-        ctx.path.join('.').padEnd(16),
-        (a || '').constructor.name.substring(0, 3),
-        '&',
-        (b || '').constructor.name.substring(0, 3),
-        '|',
-        '  '.repeat(ctx.path.length),
-        a?.canon, '&', b?.canon, '->', out.canon)
-      */
-
     }
     catch (err: any) {
       out = NilVal.make(ctx, 'internal', a, b)
     }
   }
 
-  // console.log('UNITE', ctx.cc, whence, a?.id + '=' + ac, b?.id + '=' + bc, '->', out?.canon, 'W=' + why, 'E=', out?.err)
+  explain && explainClose(te, out)
 
   return out
 }
@@ -166,12 +149,16 @@ class Context {
 
   collect: boolean
 
-  errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
+  // errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
+  err: any[]
+  explain: any[] | null
 
   constructor(cfg: {
     root: Val
     path?: Path
-    err?: Omit<NilVal[], "push">
+    // err?: Omit<NilVal[], "push">
+    err?: any[]
+    explain?: any[] | null
     vc?: number
     cc?: number
     var?: Record<string, Val>
@@ -186,7 +173,9 @@ class Context {
     this.src = cfg.src
 
     this.collect = cfg.collect ?? null != cfg.err
-    this.errlist = cfg.err || []
+    // this.errlist = cfg.err || []
+    this.err = cfg.err || []
+    this.explain = cfg.explain ?? null
 
     // Multiple unify passes will keep incrementing Val counter.
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
@@ -203,32 +192,19 @@ class Context {
   clone(cfg: {
     root?: Val,
     path?: Path,
-    err?: Omit<NilVal[], "push">,
+    // err?: Omit<NilVal[], "push">,
+    err?: any[]
   }): Context {
-    /*
-    return new Context({
-      root: cfg.root || this.root,
-      path: cfg.path,
-      err: cfg.err || this.#errlist,
-      vc: this.vc,
-      cc: this.cc,
-      var: { ...this.var },
-      src: this.src,
-      seenI: this.seenI,
-      seen: this.seen,
-      collect: this.collect,
-      })
-    */
     const ctx = Object.create(this)
     ctx.path = cfg.path ?? this.path
     ctx.root = cfg.root ?? this.root
     ctx.var = Object.create(this.var)
 
-    ctx.seterr(cfg.err)
+    ctx.err = cfg.err ?? ctx.err
+    // ctx.seterr(cfg.err)
 
     return ctx
   }
-
 
   descend(key: string): Context {
     return this.clone({
@@ -238,21 +214,8 @@ class Context {
   }
 
 
-  get err() {
-    let a: any = [...this.errlist]
-    a.push = () => {
-      throw new Error('ERR-PUSH')
-    }
-    return a
-  }
-
-
-  seterr(err: any) {
-    this.errlist = err ?? this.errlist
-  }
-
   adderr(err: NilVal, whence?: string) {
-    ; (this.errlist as any).push(err)
+    this.err.push(err)
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
     }
@@ -260,7 +223,8 @@ class Context {
 
 
   errmsg() {
-    return this.errlist
+    // return this.errlist
+    return this.err
       .map((err: any) => err?.msg)
       .filter(msg => null != msg)
       .join('\n------\n')
@@ -296,11 +260,13 @@ class Context {
 class Unify {
   root: Val
   res: Val
-  err: Omit<NilVal[], "push">
+  // err: Omit<NilVal[], "push">
+  err: any[]
+  explain: any[] | null
   cc: number
   lang: Lang
 
-  constructor(root: Val | string, lang?: Lang, ctx?: Context, src?: string) {
+  constructor(root: Val | string, lang?: Lang, ctx?: Context | any, src?: string) {
     this.lang = lang || new Lang()
     if ('string' === typeof root) {
       root = this.lang.parse(root)
@@ -309,33 +275,58 @@ class Unify {
     this.cc = 0
     this.root = root
     this.res = root
-    this.err = root.err || []
+    this.err = ctx?.err ?? root.err ?? []
+    this.explain = ctx?.explain ?? root.explain ?? null
 
     let res = root
-    let uctx = ctx
+    let uctx: Context
 
     // Only unify if no syntax errors
     if (!(root as NilVal).nil) {
-      uctx = uctx ?? new Context({
-        root: res,
-        err: this.err,
-        src,
-      })
+      if (ctx instanceof Context) {
+        uctx = ctx
+      }
+      else {
+        uctx = new Context({
+          ...(ctx || {}),
+          root: res,
+          err: this.err,
+          explain: this.explain,
+          src,
+        })
+      }
 
+
+      // TODO: messy
+      // uctx.seterr(this.err)
+      uctx.err = this.err
+      uctx.explain = this.explain
+
+      const explain = null == ctx?.explain ? undefined : ctx?.explain
+      const te = explain && explainOpen(uctx, explain, 'root', res)
+
+      // NOTE: if true === res.done already, then this loop never needs to run.
       let maxcc = 9 // 99
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
-        res = unite(uctx, res, TOP, 'unify')
+        res = unite(uctx, res, TOP, 'unify', explain && ec(te, 'run'))
+
+        if (0 < uctx.err.length) {
+          break
+        }
+
         uctx = uctx.clone({ root: res })
       }
-    }
 
-    // console.log('CC-END', uctx?.cc, uctx?.err)
+      explain && explainClose(te, res)
+    }
 
     this.res = res
   }
 }
+
+
 
 
 export {

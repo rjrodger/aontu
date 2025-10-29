@@ -19,13 +19,17 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
     funcname() {
         return 'type';
     }
-    unify(peer, ctx) {
-        let out = this.resolved;
-        if (null == out) {
-            out = this.resolve(ctx, this.peg);
-        }
-        return out;
+    /*
+    unify(peer: Val, ctx: Context): Val {
+      let out: Val | undefined = this.resolved
+  
+      if (null == out) {
+        out = this.resolve(ctx, this.peg)
+      }
+  
+      return out
     }
+    */
     resolve(ctx, args) {
         let out = args[0] ?? val_1.NilVal.make(ctx, 'arg', this);
         if (!out.isNil) {

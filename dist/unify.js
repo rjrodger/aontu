@@ -9,18 +9,17 @@ const ListVal_1 = require("./val/ListVal");
 const NilVal_1 = require("./val/NilVal");
 const lang_1 = require("./lang");
 const err_1 = require("./err");
+const utility_1 = require("./utility");
 // TODO: relation to unify loops?
 const MAXCYCLE = 9;
 let uc = 0;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
-const unite = (ctx, a, b, whence) => {
-    // const ac = a?.canon
-    // const bc = b?.canon
+const unite = (ctx, a, b, whence, explain) => {
+    const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'unite', a, b);
     let out = a;
     let why = 'u';
     const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '');
-    // console.log('SAW', saw)
     if (MAXCYCLE < ctx.seen[saw]) {
         out = NilVal_1.NilVal.make(ctx, 'cycle', a, b);
     }
@@ -49,7 +48,7 @@ const unite = (ctx, a, b, whence) => {
                     why = 'bn';
                 }
                 else if (a.isConjunct) {
-                    out = a.unify(b, ctx);
+                    out = a.unify(b, ctx, (0, utility_1.ec)(te, 'CJ'));
                     unified = true;
                     why = 'acj';
                 }
@@ -58,7 +57,7 @@ const unite = (ctx, a, b, whence) => {
                     || b.isRef
                     || b.isPref
                     || b.isFunc) {
-                    out = b.unify(a, ctx);
+                    out = b.unify(a, ctx, (0, utility_1.ec)(te, 'BW'));
                     unified = true;
                     why = 'bv';
                 }
@@ -68,7 +67,7 @@ const unite = (ctx, a, b, whence) => {
                     why = 'up';
                 }
                 else {
-                    out = a.unify(b, ctx);
+                    out = a.unify(b, ctx, (0, utility_1.ec)(te, 'GN'));
                     unified = true;
                     why = 'ab';
                 }
@@ -78,34 +77,17 @@ const unite = (ctx, a, b, whence) => {
                 why += 'N';
             }
             if (type_1.DONE !== out.dc && !unified) {
-                let nout = out.unify(TopVal_1.TOP, ctx);
-                // console.log('UNITE-NOTDONE', out.canon, '->', nout.canon)
+                let nout = out.unify(TopVal_1.TOP, ctx, (0, utility_1.ec)(te, 'ND'));
                 out = nout;
                 why += 'T';
             }
             uc++;
-            // TODO: KEEP THIS! print in debug mode! push to ctx.log?
-            /*
-            // console.log(
-              'U',
-              ('' + ctx.cc).padStart(2),
-              ('' + uc).padStart(4),
-              (whence || '').substring(0, 16).padEnd(16),
-              why.padEnd(6),
-              ctx.path.join('.').padEnd(16),
-              (a || '').constructor.name.substring(0, 3),
-              '&',
-              (b || '').constructor.name.substring(0, 3),
-              '|',
-              '  '.repeat(ctx.path.length),
-              a?.canon, '&', b?.canon, '->', out.canon)
-            */
         }
         catch (err) {
             out = NilVal_1.NilVal.make(ctx, 'internal', a, b);
         }
     }
-    // console.log('UNITE', ctx.cc, whence, a?.id + '=' + ac, b?.id + '=' + bc, '->', out?.canon, 'W=' + why, 'E=', out?.err)
+    explain && (0, utility_1.explainClose)(te, out);
     return out;
 };
 exports.unite = unite;
@@ -122,7 +104,9 @@ class Context {
         // this.err = cfg.err || []
         this.src = cfg.src;
         this.collect = cfg.collect ?? null != cfg.err;
-        this.errlist = cfg.err || [];
+        // this.errlist = cfg.err || []
+        this.err = cfg.err || [];
+        this.explain = cfg.explain ?? null;
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
@@ -131,25 +115,12 @@ class Context {
         this.seen = cfg.seen ?? {};
     }
     clone(cfg) {
-        /*
-        return new Context({
-          root: cfg.root || this.root,
-          path: cfg.path,
-          err: cfg.err || this.#errlist,
-          vc: this.vc,
-          cc: this.cc,
-          var: { ...this.var },
-          src: this.src,
-          seenI: this.seenI,
-          seen: this.seen,
-          collect: this.collect,
-          })
-        */
         const ctx = Object.create(this);
         ctx.path = cfg.path ?? this.path;
         ctx.root = cfg.root ?? this.root;
         ctx.var = Object.create(this.var);
-        ctx.seterr(cfg.err);
+        ctx.err = cfg.err ?? ctx.err;
+        // ctx.seterr(cfg.err)
         return ctx;
     }
     descend(key) {
@@ -158,25 +129,15 @@ class Context {
             path: this.path.concat(key),
         });
     }
-    get err() {
-        let a = [...this.errlist];
-        a.push = () => {
-            throw new Error('ERR-PUSH');
-        };
-        return a;
-    }
-    seterr(err) {
-        this.errlist = err ?? this.errlist;
-    }
     adderr(err, whence) {
-        ;
-        this.errlist.push(err);
+        this.err.push(err);
         if (null == err.msg || '' == err.msg) {
             (0, err_1.descErr)(err, this);
         }
     }
     errmsg() {
-        return this.errlist
+        // return this.errlist
+        return this.err
             .map((err) => err?.msg)
             .filter(msg => null != msg)
             .join('\n------\n');
@@ -212,25 +173,43 @@ class Unify {
         this.cc = 0;
         this.root = root;
         this.res = root;
-        this.err = root.err || [];
+        this.err = ctx?.err ?? root.err ?? [];
+        this.explain = ctx?.explain ?? root.explain ?? null;
         let res = root;
-        let uctx = ctx;
+        let uctx;
         // Only unify if no syntax errors
         if (!root.nil) {
-            uctx = uctx ?? new Context({
-                root: res,
-                err: this.err,
-                src,
-            });
+            if (ctx instanceof Context) {
+                uctx = ctx;
+            }
+            else {
+                uctx = new Context({
+                    ...(ctx || {}),
+                    root: res,
+                    err: this.err,
+                    explain: this.explain,
+                    src,
+                });
+            }
+            // TODO: messy
+            // uctx.seterr(this.err)
+            uctx.err = this.err;
+            uctx.explain = this.explain;
+            const explain = null == ctx?.explain ? undefined : ctx?.explain;
+            const te = explain && (0, utility_1.explainOpen)(uctx, explain, 'root', res);
+            // NOTE: if true === res.done already, then this loop never needs to run.
             let maxcc = 9; // 99
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
-                res = unite(uctx, res, TopVal_1.TOP, 'unify');
+                res = unite(uctx, res, TopVal_1.TOP, 'unify', explain && (0, utility_1.ec)(te, 'run'));
+                if (0 < uctx.err.length) {
+                    break;
+                }
                 uctx = uctx.clone({ root: res });
             }
+            explain && (0, utility_1.explainClose)(te, res);
         }
-        // console.log('CC-END', uctx?.cc, uctx?.err)
         this.res = res;
     }
 }

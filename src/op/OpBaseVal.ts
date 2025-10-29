@@ -20,6 +20,12 @@ import {
 } from '../unify'
 
 import {
+  explainOpen,
+  ec,
+  explainClose,
+} from '../utility'
+
+import {
   TOP,
 } from '../val'
 
@@ -61,7 +67,8 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'Op:' + this.opname(), this, peer)
     let out: Val = this
 
     if (this.id == peer.id) {
@@ -74,7 +81,7 @@ class OpBaseVal extends FeatureVal {
 
     for (let arg of this.peg) {
       if (!arg.done) {
-        arg = arg.unify(TOP, ctx)
+        arg = arg.unify(TOP, ctx, ec(te, 'ARG'))
       }
       pegdone &&= arg.done
       newpeg.push(arg)
@@ -112,7 +119,8 @@ class OpBaseVal extends FeatureVal {
         }
       }
       else {
-        out = unite(ctx, result, peer, 'op')
+        out = result.done && peer.isTop ? result :
+          unite(ctx, result, peer, 'op', ec(te, 'RES'))
       }
 
       out.dc = DONE === out.dc ? DONE : this.dc + 1
@@ -144,6 +152,8 @@ class OpBaseVal extends FeatureVal {
       out.url = this.url
       out.path = this.path
     }
+
+    explainClose(te, out)
 
     return out
   }

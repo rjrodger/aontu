@@ -1,6 +1,7 @@
-/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
+import { inspect } from 'node:util'
 
 import type {
   Val,
@@ -55,6 +56,8 @@ abstract class BaseVal implements Val {
   isFunc = false
   isCloseFunc = false
   isCopyFunc = false
+  isHideFunc = false
+  isMoveFunc = false
   isKeyFunc = false
   isLowerFunc = false
   isOpenFunc = false
@@ -62,7 +65,6 @@ abstract class BaseVal implements Val {
   isSuperFunc = false
   isTypeFunc = false
   isUpperFunc = false
-
 
   id: number
   dc: number = 0
@@ -78,8 +80,9 @@ abstract class BaseVal implements Val {
   peg: any = undefined
 
   // TODO: used for top level result - not great
-  err: Omit<any[], "push"> = []
-  // deps?: any
+  // err: Omit<any[], "push"> = []
+  err: any[] = []
+  explain: any[] | null = null
 
   uh: number[]
 
@@ -197,7 +200,44 @@ abstract class BaseVal implements Val {
 
   abstract superior(): Val
 
+
+  [inspect.custom](d: number, o: any, inspect: any) {
+    let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]
+
+    s.push('/' + this.path.join('.') + '/')
+
+    s.push([
+      this.dc,
+      ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
+    ].filter(n => null != n).join(','))
+
+    s.push('=')
+
+    if ('object' === typeof this.peg) {
+      s.push(inspectpeg(this.peg))
+    }
+    else if ('function' === typeof this.peg) {
+      s.push(this.peg.name)
+    }
+    else {
+      s.push(this.peg)
+    }
+
+    s.push('>')
+
+    return s.join('')
+  }
+
 }
+
+
+function inspectpeg(peg: any) {
+  return !Array.isArray(peg) ? inspect(peg) :
+    ('[' + peg.map(n => inspect(n)).join(',') + ']')
+      .replace(/\[Object: null prototype\]/g, '')
+      .replace(/\s+/g, '')
+}
+
 
 export {
   BaseVal,

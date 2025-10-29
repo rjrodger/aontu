@@ -27,6 +27,8 @@ declare class TopVal implements Val {
     isFunc: boolean;
     isCloseFunc: boolean;
     isCopyFunc: boolean;
+    isHideFunc: boolean;
+    isMoveFunc: boolean;
     isKeyFunc: boolean;
     isLowerFunc: boolean;
     isOpenFunc: boolean;
@@ -43,7 +45,8 @@ declare class TopVal implements Val {
     top: boolean;
     mark: ValMark;
     peg: any;
-    err: Omit<any[], "push">;
+    err: any[];
+    explain: any[] | null;
     uh: number[];
     constructor();
     get done(): boolean;
@@ -57,6 +60,7 @@ declare class TopVal implements Val {
     clone(_ctx: Context, _spec?: any): this;
     gen(_ctx?: Context): undefined;
     superior(): Val;
+    [inspect.custom](d: number, o: any, inspect: any): string;
 }
 declare const TOP: TopVal;
 export { TOP, TopVal, };

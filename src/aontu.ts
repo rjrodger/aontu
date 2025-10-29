@@ -6,6 +6,7 @@ import { Lang } from './lang'
 import { Unify, Context } from './unify'
 import { NilVal, MapVal } from './val'
 import { descErr } from './err'
+import { formatExplain } from './utility'
 
 
 
@@ -33,7 +34,9 @@ class AontuX {
 
 
   parse(src: string, ac?: AontuContext): Val | undefined {
-    ac = this.ctx(ac)
+    if (!(ac instanceof Context)) {
+      ac = this.ctx({ ...(ac ?? {}) })
+    }
 
     const opts = prepareOptions(src, { ...this.opts })
     const deps = {}
@@ -61,8 +64,10 @@ class AontuX {
   }
 
 
-  unify(src: string | Val, ac?: AontuContext): Val | undefined {
-    ac = this.ctx(ac)
+  unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
+    if (!(ac instanceof Context)) {
+      ac = this.ctx({ ...(ac ?? {}) })
+    }
 
     let pval = (src as Val).isVal ? src as Val : this.parse(src as string, ac)
     let osrc = 'string' === typeof src ? src : (ac.src ?? '')
@@ -71,7 +76,7 @@ class AontuX {
       return undefined
     }
 
-    let uni = new Unify(pval, this.lang, undefined, osrc)
+    let uni = new Unify(pval, this.lang, ac, osrc)
     let res = uni.res
     let err = uni.err
 
@@ -81,7 +86,7 @@ class AontuX {
     ac.root = res
 
     if (res.err && 0 < res.err.length) {
-      res.err.map((err: any) => ac.adderr(err))
+      // res.err.map((err: any) => ac.adderr(err))
 
       if (!ac.collect) {
         throw new AontuError(ac.errmsg(), ac.err)
@@ -94,24 +99,23 @@ class AontuX {
 
   generate(src: string, meta?: any): any {
     try {
-      let ac = this.ctx({ src, err: meta?.err })
-
+      let out = undefined
+      let ac = this.ctx({ src, err: meta?.err, explain: meta?.explain })
       let pval = this.parse(src, ac)
-      if (undefined === pval || 0 < pval.err?.length) {
-        return undefined
-      }
 
-      let uval = this.unify(pval, ac)
-      if (undefined == uval || 0 < uval.err?.length) {
-        return undefined
-      }
+      if (undefined !== pval && 0 === pval.err.length) {
+        let uval = this.unify(pval, ac)
 
-      let out = uval.gen(ac as any)
-      if (0 < ac.err.length) {
-        if (!ac.collect) {
-          throw new AontuError(ac.errmsg(), ac.err)
+        if (undefined !== uval && 0 === uval.err.length) {
+          out = uval.isNil ? undefined : uval.gen(ac as any)
+
+          if (0 < ac.err.length) {
+            if (!ac.collect) {
+              throw new AontuError(ac.errmsg(), ac.err)
+            }
+            out = undefined
+          }
         }
-        return undefined
       }
 
       return out
@@ -135,6 +139,7 @@ type AontuContextConfig = {
   root?: Val
   path?: []
   err?: Omit<NilVal[], "push">
+  explain?: any[],
   vc?: number
   cc?: number
   var?: Record<string, Val>
@@ -242,7 +247,6 @@ function prepareOptions(
 
 
 function parse(lang: Lang, opts: Options, ctx: { deps: any }): Val {
-  // const lang = new Lang(opts)
   const val = lang.parse(opts.src, { src: opts.src, deps: ctx.deps, fs: opts.fs })
   return val
 }
@@ -252,6 +256,10 @@ const util = {
   options: prepareOptions,
 }
 
-export { Aontu, Val, NilVal, Lang, Context, parse, util, AontuX }
+export {
+  Aontu, Val, NilVal, Lang, Context, parse, util, AontuX,
+  formatExplain
+
+}
 
 export default Aontu

@@ -37,7 +37,8 @@ class ListVal extends BagVal_1.BagVal {
     }
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
-    unify(peer, ctx) {
+    unify(peer, ctx, explain) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'List', this, peer);
         let done = true;
         let exit = false;
         // NOTE: not a clone! needs to be constructed.
@@ -47,13 +48,13 @@ class ListVal extends BagVal_1.BagVal {
         out.spread.cj = this.spread.cj;
         if (peer instanceof ListVal) {
             if (!this.closed && peer.closed) {
-                out = peer.unify(this, ctx);
+                out = peer.unify(this, ctx, explain && (0, utility_1.ec)(te, 'PMC'));
                 exit = true;
             }
             else {
                 out.closed = out.closed || peer.closed;
                 out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                    (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj, 'list-peer')));
+                    (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj, 'list-peer', (0, utility_1.ec)(te, 'SPR'))));
             }
         }
         if (!exit) {
@@ -68,13 +69,13 @@ class ListVal extends BagVal_1.BagVal {
             for (let key in this.peg) {
                 let keyctx = ctx.descend(key);
                 let key_spread_cj = spread_cj.clone(keyctx);
-                out.peg[key] = (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'list-own');
+                out.peg[key] = (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'list-own', (0, utility_1.ec)(te, 'PEG:' + key));
                 done = (done && type_1.DONE === out.peg[key].dc);
             }
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;
             if (peer instanceof ListVal) {
-                let upeer = (0, unify_1.unite)(ctx, peer, undefined, 'list-peer-list');
+                let upeer = (0, unify_1.unite)(ctx, peer, TopVal_1.TOP, 'list-peer-list', (0, utility_1.ec)(te, 'PER'));
                 // NOTE: peerkey is the index
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
@@ -86,7 +87,7 @@ class ListVal extends BagVal_1.BagVal {
                         undefined === child ? peerchild :
                             child.isNil ? child :
                                 peerchild.isNil ? peerchild :
-                                    (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'list-peer');
+                                    (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'list-peer', (0, utility_1.ec)(te, 'CHD'));
                     if (this.spread.cj) {
                         let key_ctx = ctx.descend(peerkey);
                         let key_spread_cj = spread_cj.clone(key_ctx);
@@ -94,7 +95,7 @@ class ListVal extends BagVal_1.BagVal {
                         oval = out.peg[peerkey] =
                             // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
                             // done = false
-                            (0, unify_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread');
+                            (0, unify_1.unite)(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread', (0, utility_1.ec)(te, 'PSP:' + peerkey));
                     }
                     done = (done && type_1.DONE === oval.dc);
                 }
@@ -113,6 +114,7 @@ class ListVal extends BagVal_1.BagVal {
                 (0, utility_1.propagateMarks)(this, out);
             }
         }
+        ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;
     }
     clone(ctx, spec) {

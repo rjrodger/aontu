@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
     if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
@@ -8,6 +8,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 var _TopVal_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TopVal = exports.TOP = void 0;
+const node_util_1 = require("node:util");
 const type_1 = require("../type");
 const lang_1 = require("../lang");
 // There can be only one.
@@ -36,6 +37,8 @@ class TopVal {
         this.isFunc = false;
         this.isCloseFunc = false;
         this.isCopyFunc = false;
+        this.isHideFunc = false;
+        this.isMoveFunc = false;
         this.isKeyFunc = false;
         this.isLowerFunc = false;
         this.isOpenFunc = false;
@@ -55,7 +58,9 @@ class TopVal {
         // Actual native value.
         this.peg = undefined;
         // TODO: used for top level result - not great
+        // err: Omit<any[], "push"> = []
         this.err = [];
+        this.explain = null;
         this.uh = [];
         _TopVal_ctx.set(this, undefined);
         // TOP is always DONE, by definition.
@@ -98,9 +103,18 @@ class TopVal {
     superior() {
         return this;
     }
+    [(_TopVal_ctx = new WeakMap(), node_util_1.inspect.custom)](d, o, inspect) {
+        let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
+        s.push('/' + this.path.join('.') + '/');
+        s.push([
+            this.dc,
+            ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
+        ].filter(n => null != n).join(','));
+        s.push('>');
+        return s.join('');
+    }
 }
 exports.TopVal = TopVal;
-_TopVal_ctx = new WeakMap();
 TopVal.SPREAD = Symbol('spread');
 const TOP = new TopVal();
 exports.TOP = TOP;

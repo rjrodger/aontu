@@ -1,4 +1,6 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
+
+import { inspect } from 'node:util'
 
 import type {
   Val,
@@ -47,6 +49,8 @@ class TopVal implements Val {
   isFunc = false
   isCloseFunc = false
   isCopyFunc = false
+  isHideFunc = false
+  isMoveFunc = false
   isKeyFunc = false
   isLowerFunc = false
   isOpenFunc = false
@@ -71,7 +75,9 @@ class TopVal implements Val {
   peg: any = undefined
 
   // TODO: used for top level result - not great
-  err: Omit<any[], "push"> = []
+  // err: Omit<any[], "push"> = []
+  err: any[] = []
+  explain: any[] | null = null
 
   uh: number[] = []
 
@@ -128,6 +134,21 @@ class TopVal implements Val {
 
   superior(): Val {
     return this
+  }
+
+  [inspect.custom](d: number, o: any, inspect: any) {
+    let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]
+
+    s.push('/' + this.path.join('.') + '/')
+
+    s.push([
+      this.dc,
+      ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
+    ].filter(n => null != n).join(','))
+
+    s.push('>')
+
+    return s.join('')
   }
 
 }

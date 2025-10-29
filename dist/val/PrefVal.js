@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
+const utility_1 = require("../utility");
 const val_1 = require("../val");
 const FeatureVal_1 = require("../val/FeatureVal");
 class PrefVal extends FeatureVal_1.FeatureVal {
@@ -21,12 +22,13 @@ class PrefVal extends FeatureVal_1.FeatureVal {
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
-    unify(peer, ctx) {
+    unify(peer, ctx, trace) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Pref', this, peer);
         let done = true;
         let out = this;
         let why = '';
         if (!this.peg.done) {
-            const resolved = (0, unify_1.unite)(ctx, this.peg, val_1.TOP, 'pref/resolve');
+            const resolved = (0, unify_1.unite)(ctx, this.peg, val_1.TOP, 'pref/resolve', (0, utility_1.ec)(te, 'RES'));
             // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
         }
@@ -41,7 +43,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
                 why += 'rank-lose';
             }
             else {
-                let peg = (0, unify_1.unite)(ctx, this.peg, peer.peg, 'pref-peer/' + this.id);
+                let peg = (0, unify_1.unite)(ctx, this.peg, peer.peg, 'pref-peer/' + this.id, (0, utility_1.ec)(te, 'PEER'));
                 out = new PrefVal({ peg }, ctx);
                 why += 'rank-same';
             }
@@ -54,7 +56,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
             // }
             // else {
             //   why += 'unify'
-            out = (0, unify_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id);
+            out = (0, unify_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id, (0, utility_1.ec)(te, 'SUPER'));
             if (out.same(this.superpeg)) {
                 out = this.peg;
                 why += 'same';
@@ -66,6 +68,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         }
         out.dc = done ? type_1.DONE : this.dc + 1;
         // console.log('PREFVAL-OUT', why, this.canon, peer.canon, '->', out.canon, out.done)
+        (0, utility_1.explainClose)(te, out);
         return out;
     }
     same(peer) {

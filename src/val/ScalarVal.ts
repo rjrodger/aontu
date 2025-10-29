@@ -13,6 +13,10 @@ import {
   Context,
 } from '../unify'
 
+import {
+  explainOpen,
+  explainClose,
+} from '../utility'
 
 import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
@@ -46,14 +50,20 @@ class ScalarVal extends BaseVal {
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'Scalar', this, peer)
+
+    let out: Val = NilVal.make(ctx, 'nil-scalar', this, peer)
+
     // Exactly equal scalars are handled in unify.unite
     if (peer.isScalarKind) {
-      return peer.unify(this, ctx)
+      out = peer.unify(this, ctx)
     }
     else if (peer.isTop) {
-      return this
+      out = this
     }
+
+    explainClose(te, out)
 
     return NilVal.make(ctx, 'scalar', this, peer)
   }

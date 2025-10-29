@@ -35,7 +35,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
         for (let pI = 0; pI < spec.peg.length; pI++) {
             this.append(spec.peg[pI]);
         }
-        // // // console.log('RefVal', this.id, this.peg)
+        //console.log('RefVal', this.id, this.peg)
     }
     append(part) {
         let partval;
@@ -72,9 +72,10 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
             this.peg.push(...part.peg);
         }
-        // // // console.log('RefVal-append', this.id, this.peg)
+        //console.log('RefVal-append', this.id, this.peg)
     }
-    unify(peer, ctx) {
+    unify(peer, ctx, trace) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Ref', this, peer);
         let out = this;
         // let why = 'id'
         if (this.id !== peer.id) {
@@ -82,9 +83,10 @@ class RefVal extends FeatureVal_1.FeatureVal {
             // as path cannot be found
             // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
             let found = null == ctx ? this : this.find(ctx);
+            // console.log('REF-FOUND', ctx.cc, found?.canon)
             const resolved = found ?? this;
             // const resolved = found ? found.clone(null, ctx) : this
-            // // // console.log('REF', this.id, this.peg, '->',
+            //console.log('REF', this.id, this.peg, '->',
             //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
             if (null == resolved && this.canon === peer.canon) {
                 out = this;
@@ -112,12 +114,13 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 }
             }
             else {
-                out = (0, unify_1.unite)(ctx, resolved, peer, 'ref');
+                out = (0, unify_1.unite)(ctx, resolved, peer, 'ref', (0, utility_1.ec)(te, 'RES'));
                 // why = 'u'
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
-        // // // console.log('REF:', this.peg, '->', out.canon)
+        // console.log('REF:', this.peg, '->', out.canon)
+        (0, utility_1.explainClose)(te, out);
         return out;
     }
     find(ctx) {

@@ -19,6 +19,9 @@ import {
 
 import {
   propagateMarks,
+  explainOpen,
+  ec,
+  explainClose,
 } from '../utility'
 
 
@@ -69,9 +72,17 @@ class MapVal extends BagVal {
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, explain?: any[] | false): Val {
+    const te = ctx.explain && explainOpen(ctx, explain, 'Map', this, peer)
+    // const sc = this.id + '=' + this.canon
+    // const pc = peer.id + '=' + peer.canon
+
     let done: boolean = true
     let exit = false
+
+    // to(trace, 'V=map', sc, pc]
+    // const te = ['V=map', sc, pc, null, '', []]
+    // trace?.push(te)
 
     // NOTE: not a clone! needs to be constructed.
     let out: MapVal | NilVal = (peer.isTop ? this : new MapVal({ peg: {} }, ctx))
@@ -83,7 +94,7 @@ class MapVal extends BagVal {
 
     if (peer instanceof MapVal) {
       if (!this.closed && peer.closed) {
-        out = peer.unify(this, ctx) as MapVal
+        out = peer.unify(this, ctx, explain && ec(te, 'PMC')) as MapVal
         exit = true
       }
 
@@ -98,7 +109,7 @@ class MapVal extends BagVal {
             && peerkeys.join('~') < selfkeys.join('~')
           )
         ) {
-          out = peer.unify(this, ctx) as MapVal
+          out = peer.unify(this, ctx, ec(te, 'SPC')) as MapVal
           exit = true
         }
 
@@ -108,7 +119,7 @@ class MapVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx, out.spread.cj, peer.spread.cj, 'map-self')
+            unite(ctx, out.spread.cj, peer.spread.cj, 'map-self', ec(te, 'SPR'))
           )
         )
       }
@@ -130,7 +141,12 @@ class MapVal extends BagVal {
 
         propagateMarks(this, this.peg[key])
 
-        out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'map-own')
+        // let t0 = tr(te, 'PEG:' + key)
+        // console.log('MAPVAL-peg', key, te)
+
+        out.peg[key] =
+          // unite(keyctx, this.peg[key], key_spread_cj, 'map-own', tr(te, 'PEG'))
+          unite(keyctx, this.peg[key], key_spread_cj, 'map-own', ec(te, 'PEG:' + key))
 
         // out.peg[key].mark.type = newtype = out.peg[key].mark.type || newtype
 
@@ -142,7 +158,9 @@ class MapVal extends BagVal {
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof MapVal) {
-        let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map') as MapVal)
+        // QQQ
+        // let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map', tr(te, 'PER')) as MapVal)
+        let upeer: MapVal = (unite(ctx, peer, TOP, 'map-peer-map', ec(te, 'PER')) as MapVal)
 
         for (let peerkey in upeer.peg) {
           let peerchild = upeer.peg[peerkey]
@@ -162,14 +180,14 @@ class MapVal extends BagVal {
             undefined === child ? peerchild :
               child.isNil ? child :
                 peerchild.isNil ? peerchild :
-                  unite(ctx.descend(peerkey), child, peerchild, 'map-peer')
+                  unite(ctx.descend(peerkey), child, peerchild, 'map-peer', ec(te, 'CHD'))
 
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
             let key_spread_cj = spread_cj.clone(key_ctx)
             oval = out.peg[peerkey] =
               // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
-              unite(key_ctx, oval, key_spread_cj, 'map-peer-spread')
+              unite(key_ctx, oval, key_spread_cj, 'map-peer-spread', ec(te, 'PSP:' + peerkey))
           }
 
           propagateMarks(this, oval)
@@ -197,6 +215,8 @@ class MapVal extends BagVal {
     }
 
     // console.log('MAPVAL-OUT', this.id, this.closed, this.canon, 'P=', (peer as any).closed, peer.canon, '->', (out as any).closed, out.canon)
+
+    ctx.explain && explainClose(te, out)
 
     return out
   }

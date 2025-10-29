@@ -553,4 +553,28 @@ describe('func', function() {
     expect(G('super()')).equal(undefined)
   })
 
+
+  test('hide-functionality', () => {
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    // hide() should mark values as hidden from generation
+    expect(G('hide(1) & number')).equal(1)
+    expect(G('hide(hello) & string')).equal('hello')
+    expect(G('hide(true) & boolean')).equal(true)
+    expect(G('number & hide(42)')).equal(42)
+    expect(G('string & hide(world)')).equal('world')
+  })
+
+  test('hide-canon', () => {
+    // Test canonical representation shows hide wrapping
+    const N = (x: string, ctx?: any) => new Unify(x, lang)
+      .res.canon
+
+    expect(N('hide(1)')).equal('hide(1)')
+    expect(N('hide(foo)')).equal('hide("foo")')
+    expect(N('hide({x:1})')).equal('hide({"x":1})')
+    expect(N('hide([1,2])')).equal('hide([1,2])')
+  })
+
 })

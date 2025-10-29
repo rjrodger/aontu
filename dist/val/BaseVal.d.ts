@@ -26,6 +26,8 @@ declare abstract class BaseVal implements Val {
     isFunc: boolean;
     isCloseFunc: boolean;
     isCopyFunc: boolean;
+    isHideFunc: boolean;
+    isMoveFunc: boolean;
     isKeyFunc: boolean;
     isLowerFunc: boolean;
     isOpenFunc: boolean;
@@ -41,7 +43,8 @@ declare abstract class BaseVal implements Val {
     url: string;
     mark: ValMark;
     peg: any;
-    err: Omit<any[], "push">;
+    err: any[];
+    explain: any[] | null;
     uh: number[];
     constructor(spec: ValSpec, ctx?: Context);
     ctx(): any;
@@ -56,5 +59,6 @@ declare abstract class BaseVal implements Val {
     gen(_ctx: Context): any;
     notdone(): void;
     abstract superior(): Val;
+    [inspect.custom](d: number, o: any, inspect: any): string;
 }
 export { BaseVal, };

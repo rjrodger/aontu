@@ -7,7 +7,7 @@ declare class OpBaseVal extends FeatureVal {
     append(part: any): void;
     make(ctx: Context, _spec: ValSpec): Val;
     opname(): string;
-    unify(peer: Val, ctx: Context): Val;
+    unify(peer: Val, ctx: Context, trace?: any[]): Val;
     same(peer: Val): boolean;
     clone(ctx: Context, _spec?: ValSpec): Val;
     operate(ctx: Context, _args: Val[]): Val | undefined;

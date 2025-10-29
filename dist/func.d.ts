@@ -4,6 +4,8 @@ export { LowerFuncVal } from './func/LowerFuncVal';
 export { CopyFuncVal } from './func/CopyFuncVal';
 export { KeyFuncVal } from './func/KeyFuncVal';
 export { TypeFuncVal } from './func/TypeFuncVal';
+export { HideFuncVal } from './func/HideFuncVal';
+export { MoveFuncVal } from './func/MoveFuncVal';
 export { PrefFuncVal } from './func/PrefFuncVal';
 export { CloseFuncVal } from './func/CloseFuncVal';
 export { OpenFuncVal } from './func/OpenFuncVal';

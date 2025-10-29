@@ -19,6 +19,9 @@ import {
 
 import {
   propagateMarks,
+  explainOpen,
+  ec,
+  explainClose,
 } from '../utility'
 
 import {
@@ -76,7 +79,8 @@ class ListVal extends BagVal {
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, explain?: any[] | false): Val {
+    const te = ctx.explain && explainOpen(ctx, explain, 'List', this, peer)
     let done: boolean = true
     let exit = false
 
@@ -90,7 +94,7 @@ class ListVal extends BagVal {
 
     if (peer instanceof ListVal) {
       if (!this.closed && peer.closed) {
-        out = peer.unify(this, ctx) as ListVal
+        out = peer.unify(this, ctx, explain && ec(te, 'PMC')) as ListVal
         exit = true
       }
       else {
@@ -98,7 +102,7 @@ class ListVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx, out.spread.cj, peer.spread.cj, 'list-peer')
+            unite(ctx, out.spread.cj, peer.spread.cj, 'list-peer', ec(te, 'SPR'))
           )
         )
       }
@@ -121,7 +125,7 @@ class ListVal extends BagVal {
         let keyctx = ctx.descend(key)
         let key_spread_cj = spread_cj.clone(keyctx)
 
-        out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'list-own')
+        out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'list-own', ec(te, 'PEG:' + key))
         done = (done && DONE === out.peg[key].dc)
       }
 
@@ -129,7 +133,7 @@ class ListVal extends BagVal {
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof ListVal) {
-        let upeer: ListVal = (unite(ctx, peer, undefined, 'list-peer-list') as ListVal)
+        let upeer: ListVal = (unite(ctx, peer, TOP, 'list-peer-list', ec(te, 'PER')) as ListVal)
 
         // NOTE: peerkey is the index
         for (let peerkey in upeer.peg) {
@@ -145,7 +149,7 @@ class ListVal extends BagVal {
             undefined === child ? peerchild :
               child.isNil ? child :
                 peerchild.isNil ? peerchild :
-                  unite(ctx.descend(peerkey), child, peerchild, 'list-peer')
+                  unite(ctx.descend(peerkey), child, peerchild, 'list-peer', ec(te, 'CHD'))
 
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
@@ -155,7 +159,7 @@ class ListVal extends BagVal {
             oval = out.peg[peerkey] =
               // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
               // done = false
-              unite(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread')
+              unite(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread', ec(te, 'PSP:' + peerkey))
           }
 
           done = (done && DONE === oval.dc)
@@ -179,6 +183,8 @@ class ListVal extends BagVal {
         propagateMarks(this, out)
       }
     }
+
+    ctx.explain && explainClose(te, out)
 
     return out
   }

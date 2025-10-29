@@ -23,7 +23,9 @@ function descErr<NILS extends NilVal | NilVal[]>(
       let v1src = resolveSrc(v1, errctx)
       let v2src = resolveSrc(v2, errctx)
 
-      let valpath = (0 < err.path?.length ? err.path.join('.') : '')
+      let path = ['$', ...err.path].filter((p: any) => null != p && '' != p)
+
+      let valpath = (0 < path.length ? path.join('.') : '')
       let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify')
 
       err.msg = [
@@ -34,7 +36,8 @@ function descErr<NILS extends NilVal | NilVal[]>(
           txts: {
             msg: 'Cannot ' +
               attempt +
-              ' path $.' + valpath + ' value' + (null == v2 ? '' : 's'), // + ' #' + err.id,
+              ' value' + (null == v2 ? '' : 's') +
+              ' at path ' + valpath
           }
         }),
 
@@ -44,6 +47,7 @@ function descErr<NILS extends NilVal | NilVal[]>(
           txts: {
             msg: 'Cannot ' + attempt + ' value: ' + v1.canon +
               (null == v2 ? '' : ' with value: ' + v2.canon), // + ' #' + err.id,
+            site: ''
           },
           smsg: 'value was: ' + v1.canon,
           file: resolveFile(v1.url),
@@ -58,6 +62,7 @@ function descErr<NILS extends NilVal | NilVal[]>(
           txts: {
             msg: 'Cannot ' + attempt + ' value: ' + v2.canon +
               ' with value: ' + v1.canon, // + ' #' + err.id,
+            site: ''
           },
           smsg: 'value was: ' + v2.canon,
           file: resolveFile(v2.url),
@@ -86,9 +91,20 @@ function resolveFile(url: string | undefined) {
 
 
 function resolveSrc(v: Val, errctx?: ErrContext) {
-  let src = null == v || null == v.url ? errctx?.src :
-    errctx?.fs?.existsSync(v.url) ? errctx.fs.readFileSync(v.url, 'utf8') : errctx?.src
-  return null == src ? '' : src
+  let src: string | undefined = undefined
+
+  if (null != v?.url) {
+    const fileExists = errctx?.fs?.existsSync(v.url)
+    if (fileExists) {
+      src = errctx?.fs?.readFileSync(v.url, 'utf8') ?? undefined
+    }
+  }
+
+  if (errctx && (undefined == src || '' === src)) {
+    src = errctx.src ?? ''
+  }
+
+  return src
 }
 
 

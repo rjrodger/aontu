@@ -15,8 +15,12 @@ import {
   unite,
 } from '../unify'
 
+
 import {
   propagateMarks,
+  ec,
+  explainClose,
+  explainOpen,
 } from '../utility'
 
 import {
@@ -54,89 +58,106 @@ class FuncBaseVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, explain?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, explain, 'Func:' + this.funcname(), this, peer)
+
+    // const sc = this.id + '=' + this.canon
+    // const pc = peer.id + '=' + peer.canon
+
+
     let why = ''
-
-    // console.log('FBV', this.id, peer.id, this.constructor.name, this.mark.type, this.peg?.canon)
-
-    if (this.id === peer.id) {
-      return this
-    }
-
-    let out: Val
-    let pegdone = true
-    let newpeg: Val[] = []
-    let newtype = this.mark.type
-    let newhide = this.mark.hide
+    let out: Val = this
 
 
-    if ((this.mark.type || this.mark.hide) && peer.isTop) {
-      this.dc = DONE
-      return this
-    }
+    // console.log('FBV', this.id, this.constructor.name, this.mark.type, this.peg?.canon, 'PEER', peer.id, peer.canon)
 
-    for (let arg of this.peg) {
-      // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
+    if (this.id !== peer.id) {
 
-      let newarg = arg
-      if (!arg.done) {
-        newarg = arg.unify(TOP, ctx)
-        newtype = newtype || newarg.mark.type
-        newhide = newhide || newarg.mark.hide
-        // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)
+      if (peer.isTop && (this.mark.type || this.mark.hide)) {
+        this.dc = DONE
       }
-      pegdone &&= arg.done
-      newpeg.push(newarg)
+
+      else {
+        let pegdone = true
+        let newpeg: Val[] = []
+        let newtype = this.mark.type
+        let newhide = this.mark.hide
+
+        for (let arg of this.peg) {
+          // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
+
+          let newarg = arg
+          if (!arg.done) {
+            newarg = arg.unify(TOP, ctx, ec(te, 'ARG'))
+            newtype = newtype || newarg.mark.type
+            newhide = newhide || newarg.mark.hide
+            // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)
+          }
+          pegdone &&= arg.done
+          newpeg.push(newarg)
+        }
+
+        // console.log('FUNCBASE-PEG', pegdone, this.peg.map((p: any) => p?.canon))
+
+        if (pegdone) {
+          const resolved = this.resolve(ctx, newpeg)
+          // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
+
+          out = resolved.done && peer.isTop ? resolved :
+            unite(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id, ec(te, 'PEG'))
+          propagateMarks(this, out)
+
+          // const unified =
+          //   unite(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id)
+          // out = unified
+          // propagateMarks(unified, out)
+          // propagateMarks(this, out)
+
+          // TODO: make should handle this using ctx?
+          out.row = this.row
+          out.col = this.col
+          out.url = this.url
+          out.path = this.path
+
+          why += 'pegdone'
+        }
+        else if (peer.isTop) {
+          this.notdone()
+          out = this.make(ctx, { peg: newpeg, mark: { type: newtype, hide: newhide } })
+
+          // TODO: make should handle this using ctx?
+          out.row = this.row
+          out.col = this.col
+          out.url = this.url
+          out.path = this.path
+
+          why += 'top'
+        }
+        else if (peer.isNil) {
+          this.notdone()
+          out = peer
+          why += 'nil'
+        }
+        else {
+          this.notdone()
+          out = new ConjunctVal({
+            peg: [this, peer], mark: { type: newtype, hide: newhide }
+          }, ctx)
+
+          // TODO: make should handle this using ctx?
+          out.row = this.row
+          out.col = this.col
+          out.url = this.url
+          out.path = this.path
+
+          why += 'defer'
+        }
+      }
     }
 
-    if (pegdone) {
-      const resolved = this.resolve(ctx, newpeg)
-      // console.log('RESOLVED:', resolved?.canon)
-      const unified = unite(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id)
-      out = unified
-      propagateMarks(unified, out)
-      propagateMarks(this, out)
+    // console.log('FUNC-UNIFY-OUT', this.funcname(), this.id, this.canon, 'W=', why, peer.id, peer.canon, 'O=', out.dc, out.id, out.canon)
 
-      // TODO: make should handle this using ctx?
-      out.row = this.row
-      out.col = this.col
-      out.url = this.url
-      out.path = this.path
-
-      why += 'pegdone'
-    }
-    else if (peer.isTop) {
-      this.notdone()
-      out = this.make(ctx, { peg: newpeg, mark: { type: newtype, hide: newhide } })
-
-      // TODO: make should handle this using ctx?
-      out.row = this.row
-      out.col = this.col
-      out.url = this.url
-      out.path = this.path
-
-      why += 'top'
-    }
-    else if (peer.isNil) {
-      this.notdone()
-      out = peer
-      why += 'nil'
-    }
-    else {
-      // this.dc = DONE === this.dc ? DONE : this.dc + 1
-      this.notdone()
-      out = new ConjunctVal({ peg: [this, peer], mark: { type: newtype, hide: newhide } }, ctx)
-
-      // TODO: make should handle this using ctx?
-      out.row = this.row
-      out.col = this.col
-      out.url = this.url
-      out.path = this.path
-
-      why += 'defer'
-    }
-
-    // console.log('FUNC-UNIFY-OUT', this.funcname(), why, peer.canon, 'O=', out.dc, out.canon, out.id)
+    explainClose(te, out)
 
     return out
   }

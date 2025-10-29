@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021-2024 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
     if (kind === "m") throw new TypeError("Private method is not writable");
     if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
@@ -14,6 +14,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 var _BaseVal_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseVal = void 0;
+const node_util_1 = require("node:util");
 const type_1 = require("../type");
 const lang_1 = require("../lang");
 let ID = 1000;
@@ -43,6 +44,8 @@ class BaseVal {
         this.isFunc = false;
         this.isCloseFunc = false;
         this.isCopyFunc = false;
+        this.isHideFunc = false;
+        this.isMoveFunc = false;
         this.isKeyFunc = false;
         this.isLowerFunc = false;
         this.isOpenFunc = false;
@@ -60,7 +63,9 @@ class BaseVal {
         // Actual native value.
         this.peg = undefined;
         // TODO: used for top level result - not great
+        // err: Omit<any[], "push"> = []
         this.err = [];
+        this.explain = null;
         // TODO: implement!
         // site: Site
         _BaseVal_ctx.set(this, void 0);
@@ -134,7 +139,32 @@ class BaseVal {
     notdone() {
         this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
     }
+    [(_BaseVal_ctx = new WeakMap(), node_util_1.inspect.custom)](d, o, inspect) {
+        let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
+        s.push('/' + this.path.join('.') + '/');
+        s.push([
+            this.dc,
+            ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
+        ].filter(n => null != n).join(','));
+        s.push('=');
+        if ('object' === typeof this.peg) {
+            s.push(inspectpeg(this.peg));
+        }
+        else if ('function' === typeof this.peg) {
+            s.push(this.peg.name);
+        }
+        else {
+            s.push(this.peg);
+        }
+        s.push('>');
+        return s.join('');
+    }
 }
 exports.BaseVal = BaseVal;
-_BaseVal_ctx = new WeakMap();
+function inspectpeg(peg) {
+    return !Array.isArray(peg) ? (0, node_util_1.inspect)(peg) :
+        ('[' + peg.map(n => (0, node_util_1.inspect)(n)).join(',') + ']')
+            .replace(/\[Object: null prototype\]/g, '')
+            .replace(/\s+/g, '');
+}
 //# sourceMappingURL=BaseVal.js.map

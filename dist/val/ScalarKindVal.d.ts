@@ -9,7 +9,7 @@ type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstruc
 declare class ScalarKindVal extends BaseVal {
     isScalarKind: boolean;
     constructor(spec: ValSpec, ctx?: Context);
-    unify(peer: Val, ctx: Context): Val;
+    unify(peer: Val, ctx: Context, trace?: any[]): Val;
     get canon(): any;
     same(peer: any): boolean;
     superior(): Val;

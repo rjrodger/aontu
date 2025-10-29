@@ -6,7 +6,7 @@ declare class PrefVal extends FeatureVal {
     superpeg: Val;
     rank: number;
     constructor(spec: ValSpec, ctx?: Context);
-    unify(peer: Val, ctx: Context): Val;
+    unify(peer: Val, ctx: Context, trace?: any[]): Val;
     same(peer: Val): boolean;
     clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;

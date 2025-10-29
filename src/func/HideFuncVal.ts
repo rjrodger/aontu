@@ -16,15 +16,17 @@ import {
 
 
 import {
-  walk
+  walk,
+  explainOpen,
+  explainClose,
 } from '../utility'
 
 
 import { FuncBaseVal } from './FuncBaseVal'
 
 
-class TypeFuncVal extends FuncBaseVal {
-  isTypeFunc = true
+class HideFuncVal extends FuncBaseVal {
+  isHideFunc = true
 
   resolved?: Val
 
@@ -33,53 +35,53 @@ class TypeFuncVal extends FuncBaseVal {
     ctx?: Context
   ) {
     super(spec, ctx)
-    this.mark.type = true
-    this.mark.hide = false
-    // console.log('TFV', this.id, this.peg?.[0]?.canon)
+    this.mark.type = false
+    this.mark.hide = true
+    // console.log('HFV', this.id, this.peg?.[0]?.canon)
   }
 
 
   make(_ctx: Context, spec: ValSpec): Val {
-    return new TypeFuncVal(spec)
+    return new HideFuncVal(spec)
   }
 
   funcname() {
-    return 'type'
+    return 'hide'
   }
 
 
-  /*
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, trace, 'HideFunc', this, peer)
     let out: Val | undefined = this.resolved
 
     if (null == out) {
       out = this.resolve(ctx, this.peg)
     }
 
+    explainClose(te, out)
     return out
   }
-  */
 
 
   resolve(ctx: Context, args: Val[]) {
     let out = args[0] ?? NilVal.make(ctx, 'arg', this)
     if (!out.isNil) {
       out = out.clone(ctx)
-      // out.mark.type = true
+      // out.mark.hide = true
 
       walk(out, (_key: string | number | undefined, val: Val) => {
-        val.mark.type = true
+        val.mark.hide = true
         return val
       })
 
     }
-    // console.log('TYPE-RESOLVE', args[0]?.canon, '->', out.canon)
+    // console.log('HIDE-RESOLVE', args[0]?.canon, '->', out.canon)
 
-    // TODO: since type is self-erasing, we need this hack - find a better way
+    // TODO: since hide is self-erasing, we need this hack - find a better way
 
     const origcanon = out.canon
     Object.defineProperty(out, 'canon', {
-      get: () => 'type(' + origcanon + ')',
+      get: () => 'hide(' + origcanon + ')',
       configurable: true
     })
 
@@ -89,5 +91,5 @@ class TypeFuncVal extends FuncBaseVal {
 
 
 export {
-  TypeFuncVal,
+  HideFuncVal,
 }
