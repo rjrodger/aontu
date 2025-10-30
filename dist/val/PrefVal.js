@@ -22,8 +22,8 @@ class PrefVal extends FeatureVal_1.FeatureVal {
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
-    unify(peer, ctx, trace) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Pref', this, peer);
+    unify(peer, ctx, explain) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Pref', this, peer);
         let done = true;
         let out = this;
         let why = '';

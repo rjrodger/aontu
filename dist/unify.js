@@ -84,6 +84,8 @@ const unite = (ctx, a, b, whence, explain) => {
             uc++;
         }
         catch (err) {
+            // TODO: handle unexpected
+            console.log(err);
             out = NilVal_1.NilVal.make(ctx, 'internal', a, b);
         }
     }

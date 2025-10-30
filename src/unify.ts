@@ -118,6 +118,8 @@ const unite = (ctx: Context, a: any, b: any, whence: string, explain?: any[]) =>
       uc++
     }
     catch (err: any) {
+      // TODO: handle unexpected
+      console.log(err)
       out = NilVal.make(ctx, 'internal', a, b)
     }
   }

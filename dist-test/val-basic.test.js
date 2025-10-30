@@ -206,6 +206,7 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(x1.unify(x0, ctx).mark$).equal('x1');
         (0, code_1.expect)(x0.unify(tn0, ctx).mark$).equal('x0');
         (0, code_1.expect)(tn0.unify(x0, ctx).mark$).equal('x0');
+        // Integer Kind can't unify with Number Scalar
         (0, code_1.expect)(x0.unify(ti0, ctx).isNil).equal(true);
         (0, code_1.expect)(ti0.unify(x0, ctx).isNil).equal(true);
         (0, code_1.expect)(x0.unify(n0, ctx).mark$).equal('n0');
@@ -659,7 +660,7 @@ b: c2: {n:2}
             .equal('{"a":*1|number,"b":*2|number,"c":2|1|number}');
         let d0 = P('1|number').unify(val_1.TOP, ctx);
         (0, code_1.expect)(d0.canon).equal('1|number');
-        (0, code_1.expect)(d0.gen()).equal(1);
+        (0, code_1.expect)(d0.gen(ctx)).equal(1);
         // expect(d0.gen()).equal(undefined)
         (0, code_1.expect)(G('number|*1')).equal(1);
         (0, code_1.expect)(G('string|*1')).equal(1);

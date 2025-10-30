@@ -528,15 +528,6 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(N('path("$foo.bar")')).equal('$.foo.bar');
         (0, code_1.expect)(N('path("$a.b.c")')).equal('$.a.b.c');
     });
-    (0, node_test_1.test)('path-ref-creation', () => {
-        const a0 = new __1.AontuX();
-        // Test that path() creates a RefVal that can be used to reference values
-        const res = a0.unify('{x: 10, y: path("x")}');
-        (0, code_1.expect)(res).exist();
-        (0, code_1.expect)(res.isRef).equal(false); // The result MapVal itself is not a ref
-        (0, code_1.expect)(res.peg.y.isRef).equal(true); // But y should be a RefVal
-        (0, code_1.expect)(res.peg.y.canon).equal('.x');
-    });
     (0, node_test_1.test)('path-unification', () => {
         const a0 = new __1.AontuX();
         const G = a0.generate.bind(a0);

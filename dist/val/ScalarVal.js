@@ -23,9 +23,9 @@ class ScalarVal extends BaseVal_1.BaseVal {
         });
         return out;
     }
-    unify(peer, ctx, trace) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Scalar', this, peer);
-        let out = NilVal_1.NilVal.make(ctx, 'nil-scalar', this, peer);
+    unify(peer, ctx, explain) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Scalar', this, peer);
+        let out;
         // Exactly equal scalars are handled in unify.unite
         if (peer.isScalarKind) {
             out = peer.unify(this, ctx);
@@ -33,8 +33,11 @@ class ScalarVal extends BaseVal_1.BaseVal {
         else if (peer.isTop) {
             out = this;
         }
+        else {
+            out = NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
+        }
         (0, utility_1.explainClose)(te, out);
-        return NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
+        return out;
     }
     get canon() {
         return null === this.peg ? 'null' :

@@ -26,6 +26,11 @@ import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
 import { FeatureVal } from './FeatureVal'
 
+import {
+  explainOpen,
+  ec,
+  explainClose,
+} from '../utility'
 
 
 // TODO: KEY, SELF, PARENT are reserved names - error
@@ -34,16 +39,16 @@ class VarVal extends FeatureVal {
   isVar = true
 
   constructor(
-    spec: {
-      peg: string | Val
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super(spec, ctx)
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: Context, explain?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, explain, 'Var', this, peer)
+
     let out: Val
 
     let nameVal
@@ -55,7 +60,7 @@ class VarVal extends FeatureVal {
         nameVal = this.peg
       }
       else {
-        nameVal = this.peg.unify(peer)
+        nameVal = this.peg.unify(peer, ctx, ec(te, 'PEG'))
       }
     }
     else {
@@ -77,6 +82,8 @@ class VarVal extends FeatureVal {
     else {
       out = nameVal
     }
+
+    explainClose(te, out)
 
     return out
   }

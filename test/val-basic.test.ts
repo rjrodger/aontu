@@ -307,8 +307,9 @@ describe('val-basic', function() {
     expect(x0.unify(tn0, ctx).mark$).equal('x0')
     expect((tn0.unify(x0, ctx) as any).mark$).equal('x0')
 
+    // Integer Kind can't unify with Number Scalar
     expect(x0.unify(ti0, ctx).isNil).equal(true)
-    expect((ti0.unify(x0, ctx) as any).isNil).equal(true)
+    expect(ti0.unify(x0, ctx).isNil).equal(true)
 
 
     expect(x0.unify(n0, ctx).mark$).equal('n0')
@@ -939,7 +940,7 @@ b: c2: {n:2}
 
     let d0 = P('1|number').unify(TOP, ctx)
     expect(d0.canon).equal('1|number')
-    expect(d0.gen()).equal(1)
+    expect(d0.gen(ctx)).equal(1)
     // expect(d0.gen()).equal(undefined)
 
 

@@ -8,13 +8,15 @@ const StringVal_1 = require("./StringVal");
 const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
 const FeatureVal_1 = require("./FeatureVal");
+const utility_1 = require("../utility");
 // TODO: KEY, SELF, PARENT are reserved names - error
 class VarVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isVar = true;
     }
-    unify(peer, ctx) {
+    unify(peer, ctx, explain) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Var', this, peer);
         let out;
         let nameVal;
         if (this.peg.isVal) {
@@ -24,7 +26,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
                 nameVal = this.peg;
             }
             else {
-                nameVal = this.peg.unify(peer);
+                nameVal = this.peg.unify(peer, ctx, (0, utility_1.ec)(te, 'PEG'));
             }
         }
         else {
@@ -45,6 +47,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
         else {
             out = nameVal;
         }
+        (0, utility_1.explainClose)(te, out);
         return out;
     }
     same(peer) {

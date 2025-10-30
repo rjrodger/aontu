@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NumberVal = void 0;
 const ScalarVal_1 = require("./ScalarVal");
+const NilVal_1 = require("./NilVal");
 const utility_1 = require("../utility");
 class NumberVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
@@ -18,12 +19,15 @@ class NumberVal extends ScalarVal_1.ScalarVal {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Number', this, peer);
         let out = this;
         if (null != peer) {
-            if (peer.isScalarKind && (peer.mark.type === Number || peer.mark.hide === Number)) {
-                out = this;
+            if (peer.isScalarKind) {
+                out = peer.unify(this, ctx);
             }
             else if (peer.isScalar &&
                 peer.peg === this.peg) {
                 out = peer.isInteger ? peer : this;
+            }
+            else {
+                out = NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
             }
         }
         else {

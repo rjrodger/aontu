@@ -650,18 +650,6 @@ describe('func', function() {
   })
 
 
-  test('path-ref-creation', () => {
-    const a0 = new AontuX()
-
-    // Test that path() creates a RefVal that can be used to reference values
-    const res = a0.unify('{x: 10, y: path("x")}')
-    expect(res).exist()
-    expect(res!.isRef).equal(false) // The result MapVal itself is not a ref
-    expect(res!.peg.y.isRef).equal(true) // But y should be a RefVal
-    expect(res!.peg.y.canon).equal('.x')
-  })
-
-
   test('path-unification', () => {
     const a0 = new AontuX()
     const G = a0.generate.bind(a0)

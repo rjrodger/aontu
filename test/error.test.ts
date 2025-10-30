@@ -18,14 +18,14 @@ describe('error', function() {
 
   it('unify', () => {
     let v0 = Aontu('a:1,a:2')
-    expect(v0.err[0].why).equal('integer')
+    expect(v0.err[0].why).equal('scalar')
     expect(typeof v0.err[0].msg).equal('string')
   })
 
 
   it('file-e01', async () => {
     let v0 = Aontu('@"' + __dirname + '/../test/error/e01.jsonic"')
-    expect(v0.err[0].why).equal('integer')
+    expect(v0.err[0].why).equal('scalar')
     expect(typeof v0.err[0].msg).equal('string')
   })
 

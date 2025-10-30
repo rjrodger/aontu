@@ -20,15 +20,18 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Integer', this, peer);
         let out = this;
         if (null != peer) {
-            if (peer.isScalarKind && (peer.peg === Number || peer.peg === ScalarKindVal_1.Integer)) {
-                out = this;
+            // if (peer.isScalarKind && (peer.peg === Number || peer.peg === Integer)) {
+            //   out = this
+            // }
+            if (peer.isScalarKind) {
+                out = peer.unify(this, ctx);
             }
             else if (peer.isScalar &&
                 peer.peg === this.peg) {
                 out = this;
             }
             else {
-                out = NilVal_1.NilVal.make(ctx, 'integer', this, peer);
+                out = NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
             }
         }
         else {

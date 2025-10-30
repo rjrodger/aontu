@@ -10,6 +10,7 @@ import {
 } from '../unify'
 
 import { ScalarVal } from './ScalarVal'
+import { NilVal } from './NilVal'
 
 import {
   explainOpen,
@@ -41,14 +42,17 @@ class NumberVal extends ScalarVal {
     let out: Val = this
 
     if (null != peer) {
-      if (peer.isScalarKind && (peer.mark.type === Number || peer.mark.hide === Number)) {
-        out = this
+      if (peer.isScalarKind) {
+        out = peer.unify(this, ctx)
       }
       else if (
         peer.isScalar &&
         peer.peg === this.peg
       ) {
         out = peer.isInteger ? peer : this
+      }
+      else {
+        out = NilVal.make(ctx, 'scalar', this, peer)
       }
     }
     else {

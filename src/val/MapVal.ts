@@ -253,7 +253,7 @@ class MapVal extends BagVal {
       keys
         .map(k => [JSON.stringify(k) +
           (this.optionalKeys.includes(k) ? '?' : '') +
-          ':' + this.peg[k].canon]).join(',') +
+          ':' + (this.peg[k]?.canon ?? this.peg[k])]).join(',') +
       '}'
   }
 

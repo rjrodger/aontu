@@ -40,9 +40,13 @@ class IntegerVal extends ScalarVal {
     let out: Val = this
 
     if (null != peer) {
-      if (peer.isScalarKind && (peer.peg === Number || peer.peg === Integer)) {
-        out = this
+      // if (peer.isScalarKind && (peer.peg === Number || peer.peg === Integer)) {
+      //   out = this
+      // }
+      if (peer.isScalarKind) {
+        out = peer.unify(this, ctx)
       }
+
       else if (
         peer.isScalar &&
         peer.peg === this.peg
@@ -50,7 +54,7 @@ class IntegerVal extends ScalarVal {
         out = this
       }
       else {
-        out = NilVal.make(ctx, 'integer', this, peer)
+        out = NilVal.make(ctx, 'scalar', this, peer)
       }
     }
     else {
