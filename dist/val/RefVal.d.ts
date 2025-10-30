@@ -18,5 +18,6 @@ declare class RefVal extends FeatureVal {
     clone(ctx: Context, spec?: ValSpec): Val;
     get canon(): string;
     gen(ctx?: Context): undefined;
+    inspection(): string;
 }
 export { RefVal, };

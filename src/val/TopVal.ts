@@ -54,6 +54,7 @@ class TopVal implements Val {
   isKeyFunc = false
   isLowerFunc = false
   isOpenFunc = false
+  isPathFunc = false
   isPrefFunc = false
   isSuperFunc = false
   isTypeFunc = false
@@ -136,7 +137,8 @@ class TopVal implements Val {
     return this
   }
 
-  [inspect.custom](d: number, o: any, inspect: any) {
+
+  [inspect.custom](_d: number, _o: any, _inspect: any) {
     let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]
 
     s.push('/' + this.path.join('.') + '/')

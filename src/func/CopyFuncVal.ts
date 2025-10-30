@@ -48,42 +48,10 @@ class CopyFuncVal extends FuncBaseVal {
     return 'copy'
   }
 
-
-  /*
-  unify(peer: Val, ctx: Context): Val {
-    let out: Val | undefined = this.resolved
-    console.log('COPY-UNIFY-START', this.canon, peer.canon, '->', out?.canon, out)
-
-    if (null == out) {
-      let oldpeg = this.peg[0]
-
-      if (null == oldpeg) {
-        out = NilVal.make(ctx, 'missing-arg', this)
-      }
-      else {
-        console.log('COPY-UNITE-PEG-A', oldpeg.canon)
-        let newpeg = unite(ctx, oldpeg, TOP, 'copy')
-        this.peg = [newpeg]
-
-        if (newpeg.done) {
-          out = this.resolve(ctx, this.peg)
-        }
-        else {
-          out = this
-        }
-      }
-    }
-
-    console.log('COPY-UNIFY-OUT', this.canon, peer.canon, '->', out.canon)
-
-    return out
-    }
-    */
-
   resolve(ctx: Context | undefined, args: Val[]) {
     const val = args?.[0]
     const out = null == val || null == ctx ?
-      new NilVal({ msg: 'Invalid copy argument' }) :
+      NilVal.make(ctx, 'invalid-arg', this) :
       val.clone(ctx, { mark: { type: false, hide: false } })
 
     walk(out, (_key: string | number | undefined, val: Val) => {
@@ -92,8 +60,6 @@ class CopyFuncVal extends FuncBaseVal {
       return val
     })
 
-
-    // console.log('COPY-RESOLVE', this.canon, '->', out.canon)
     return out
   }
 }

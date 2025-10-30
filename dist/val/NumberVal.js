@@ -10,7 +10,8 @@ class NumberVal extends ScalarVal_1.ScalarVal {
             // TODO: use Nil?
             throw new Error('not-number: ' + spec.peg);
         }
-        super({ peg: spec.peg, kind: Number }, ctx);
+        // super({ peg: spec.peg, kind: Number }, ctx)
+        super({ ...spec, kind: Number }, ctx);
         this.isNumber = true;
     }
     unify(peer, ctx, trace) {

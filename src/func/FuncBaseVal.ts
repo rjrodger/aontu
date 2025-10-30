@@ -83,6 +83,8 @@ class FuncBaseVal extends FeatureVal {
         let newtype = this.mark.type
         let newhide = this.mark.hide
 
+        this.peg = this.prepare(ctx, this.peg)
+
         for (let arg of this.peg) {
           // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
 
@@ -97,7 +99,7 @@ class FuncBaseVal extends FeatureVal {
           newpeg.push(newarg)
         }
 
-        // console.log('FUNCBASE-PEG', pegdone, this.peg.map((p: any) => p?.canon))
+        // console.log('FUNCBASE-PEG', this.id, pegdone, this.peg.map((p: any) => p?.canon))
 
         if (pegdone) {
           const resolved = this.resolve(ctx, newpeg)
@@ -175,6 +177,11 @@ class FuncBaseVal extends FeatureVal {
 
   funcname() {
     return 'func'
+  }
+
+
+  prepare(_ctx: Context | undefined, args: Val[]): Val[] {
+    return args
   }
 
 

@@ -6,6 +6,7 @@ export { KeyFuncVal } from './func/KeyFuncVal';
 export { TypeFuncVal } from './func/TypeFuncVal';
 export { HideFuncVal } from './func/HideFuncVal';
 export { MoveFuncVal } from './func/MoveFuncVal';
+export { PathFuncVal } from './func/PathFuncVal';
 export { PrefFuncVal } from './func/PrefFuncVal';
 export { CloseFuncVal } from './func/CloseFuncVal';
 export { OpenFuncVal } from './func/OpenFuncVal';

@@ -9,6 +9,7 @@ declare class FuncBaseVal extends FeatureVal {
     unify(peer: Val, ctx: Context, explain?: any[]): Val;
     get canon(): string;
     funcname(): string;
+    prepare(_ctx: Context | undefined, args: Val[]): Val[];
     resolve(ctx: Context | undefined, _args: Val[]): Val;
     superior(): Val;
 }

@@ -85,6 +85,7 @@ import {
   TypeFuncVal,
   HideFuncVal,
   MoveFuncVal,
+  PathFuncVal,
   PrefFuncVal,
   CloseFuncVal,
   OpenFuncVal,
@@ -207,6 +208,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     type: TypeFuncVal,
     hide: HideFuncVal,
     move: MoveFuncVal,
+    path: PathFuncVal,
     pref: PrefFuncVal,
     close: CloseFuncVal,
     open: OpenFuncVal,
@@ -385,11 +387,12 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           valnode = addsite(new StringVal({ peg: r.node }), r, ctx)
         }
         else if ('number' === valtype) {
-          if (Number.isInteger(r.node)) {
-            valnode = addsite(new IntegerVal({ peg: r.node }), r, ctx)
+          // 1.0 in source is *not* an integer
+          if (Number.isInteger(r.node) && !r.o0.src.includes('.')) {
+            valnode = addsite(new IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx)
           }
           else {
-            valnode = addsite(new NumberVal({ peg: r.node }), r, ctx)
+            valnode = addsite(new NumberVal({ peg: r.node, src: r.o0.src }), r, ctx)
           }
         }
         else if ('boolean' === valtype) {

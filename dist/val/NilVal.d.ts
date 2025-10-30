@@ -20,5 +20,6 @@ declare class NilVal extends BaseVal {
     get canon(): string;
     gen(ctx?: Context): undefined;
     superior(): Val;
+    inspection(): any;
 }
 export { NilVal, };

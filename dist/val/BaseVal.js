@@ -49,6 +49,7 @@ class BaseVal {
         this.isKeyFunc = false;
         this.isLowerFunc = false;
         this.isOpenFunc = false;
+        this.isPathFunc = false;
         this.isPrefFunc = false;
         this.isSuperFunc = false;
         this.isTypeFunc = false;
@@ -139,13 +140,17 @@ class BaseVal {
     notdone() {
         this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
     }
-    [(_BaseVal_ctx = new WeakMap(), node_util_1.inspect.custom)](d, o, inspect) {
+    [(_BaseVal_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
         s.push('/' + this.path.join('.') + '/');
         s.push([
-            this.dc,
+            type_1.DONE === this.dc ? 'D' : 'd' + this.dc,
             ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
         ].filter(n => null != n).join(','));
+        let insp = this.inspection();
+        if (null != insp && '' != insp) {
+            s.push('/' + insp);
+        }
         s.push('=');
         if ('object' === typeof this.peg) {
             s.push(inspectpeg(this.peg));
@@ -159,11 +164,14 @@ class BaseVal {
         s.push('>');
         return s.join('');
     }
+    inspection() {
+        return '';
+    }
 }
 exports.BaseVal = BaseVal;
 function inspectpeg(peg) {
     return !Array.isArray(peg) ? (0, node_util_1.inspect)(peg) :
-        ('[' + peg.map(n => (0, node_util_1.inspect)(n)).join(',') + ']')
+        ('[' + peg.map(n => (0, node_util_1.inspect)(n)).join(',\n') + ']')
             .replace(/\[Object: null prototype\]/g, '')
             .replace(/\s+/g, '');
 }

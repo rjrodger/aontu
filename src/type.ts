@@ -64,6 +64,7 @@ interface Val {
   isKeyFunc: boolean
   isLowerFunc: boolean
   isOpenFunc: boolean
+  isPathFunc: boolean
   isPrefFunc: boolean
   isSuperFunc: boolean
   isTypeFunc: boolean
@@ -120,6 +121,7 @@ type ValSpec = {
   url?: string,
   path?: string[],
   id?: number,
+  src?: string,
 
   // NilVal specific
   why?: string,

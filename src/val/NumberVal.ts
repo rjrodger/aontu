@@ -30,7 +30,8 @@ class NumberVal extends ScalarVal {
       throw new Error('not-number: ' + spec.peg)
     }
 
-    super({ peg: spec.peg, kind: Number }, ctx)
+    // super({ peg: spec.peg, kind: Number }, ctx)
+    super({ ...spec, kind: Number }, ctx)
   }
 
 

@@ -42,6 +42,7 @@ class TopVal {
         this.isKeyFunc = false;
         this.isLowerFunc = false;
         this.isOpenFunc = false;
+        this.isPathFunc = false;
         this.isPrefFunc = false;
         this.isSuperFunc = false;
         this.isTypeFunc = false;
@@ -103,7 +104,7 @@ class TopVal {
     superior() {
         return this;
     }
-    [(_TopVal_ctx = new WeakMap(), node_util_1.inspect.custom)](d, o, inspect) {
+    [(_TopVal_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
         s.push('/' + this.path.join('.') + '/');
         s.push([

@@ -1,12 +1,13 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
 import { FuncBaseVal } from './FuncBaseVal';
-declare class UpperFuncVal extends FuncBaseVal {
-    isUpperFunc: boolean;
+declare class PathFuncVal extends FuncBaseVal {
+    isPathFunc: boolean;
+    prepared: number;
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;
     funcname(): string;
-    resolve(ctx: Context | undefined, args: Val[]): Val;
-    superior(): Val;
+    prepare(ctx: Context, args: Val[]): Val[];
+    resolve(ctx: Context, args: Val[]): Val;
 }
-export { UpperFuncVal, };
+export { PathFuncVal, };

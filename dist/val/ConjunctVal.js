@@ -7,8 +7,6 @@ const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
 const TopVal_1 = require("./TopVal");
-const ListVal_1 = require("./ListVal");
-const MapVal_1 = require("./MapVal");
 const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
 const JunctionVal_1 = require("./JunctionVal");
@@ -74,29 +72,48 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             }
         }
         upeer = norm(upeer);
+        // console.log('CONJUNCT-UPEER', this.id, upeer.map((v: Val) => v.canon))
         // Unify terms against each other
         let outvals = [];
         let val;
         let t0 = upeer[0];
-        next_term: for (let pI = 0; pI < upeer.length; pI++) {
-            if (type_1.DONE !== t0.dc) {
-                let u0 = (0, unify_1.unite)(ctx, t0, TopVal_1.TOP, 'cj-peer-t0', (0, utility_2.ec)(te, 'PER'));
-                newtype = this.mark.type || u0.mark.type;
-                newhide = this.mark.hide || u0.mark.hide;
-                if (type_1.DONE !== u0.dc
-                    // Maps and Lists are still unified so that path refs will work
-                    // TODO: || ListVal - test!
-                    && !(u0 instanceof MapVal_1.MapVal
-                        || u0 instanceof ListVal_1.ListVal
-                        || u0 instanceof RefVal_1.RefVal)) {
-                    outvals.push(u0);
-                    continue next_term;
-                }
-                else {
-                    t0 = u0;
-                }
+        // next_term:
+        for (let pI = 0; pI < upeer.length; pI++) {
+            /*
+            console.log('CONJUNCT-TERMS-A', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
+      
+            // if (DONE !== t0.dc) {
+            if (!t0.done) {
+              let u0 = unite(ctx, t0, TOP, 'cj-peer-t0', ec(te, 'PER'))
+              newtype = this.mark.type || u0.mark.type
+              newhide = this.mark.hide || u0.mark.hide
+      
+              t0 = u0
+      
+              console.log('CONJUNCT-TERMS-B', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
+      
+              if (
+                DONE !== u0.dc
+      
+                // Maps and Lists are still unified so that path refs will work
+                // TODO: || ListVal - test!
+                && !(
+                  u0 instanceof MapVal
+                  || u0 instanceof ListVal
+                  || u0 instanceof RefVal
+                )
+              ) {
+      
+                outvals.push(u0)
+                continue next_term
+              }
+              // else {
+              // t0 = u0
+              // }
             }
+            */
             let t1 = upeer[pI + 1];
+            // console.log('CONJUNCT-TERMS-C', this.id, pI, t0, t1, 'OV=', outvals.map((v: Val) => v))
             if (null == t1) {
                 outvals.push(t0);
                 newtype = this.mark.type || t0.mark.type;
@@ -133,7 +150,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             }
         }
         let out;
-        // console.log('CONJUCT-prepout', this.mark.type, newtype, outvals.map((v: Val) => v.canon))
+        // console.log('CONJUCT-prepout', this.id, outvals.map((v: Val) => v.canon))
         if (0 === outvals.length) {
             // Empty conjuncts evaporate.
             out = TopVal_1.TOP;

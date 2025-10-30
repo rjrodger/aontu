@@ -16,6 +16,8 @@ const type_1 = require("../type");
 const unify_1 = require("../unify");
 const TopVal_1 = require("./TopVal");
 const StringVal_1 = require("./StringVal");
+const IntegerVal_1 = require("./IntegerVal");
+const NumberVal_1 = require("./NumberVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const MapVal_1 = require("./MapVal");
 const ListVal_1 = require("./ListVal");
@@ -39,6 +41,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
     }
     append(part) {
         let partval;
+        // console.log('APPEND', part)
         if ('string' === typeof part) {
             partval = part;
             this.peg.push(partval);
@@ -46,6 +49,19 @@ class RefVal extends FeatureVal_1.FeatureVal {
         else if (part instanceof StringVal_1.StringVal) {
             partval = part.peg;
             this.peg.push(partval);
+        }
+        else if (part instanceof IntegerVal_1.IntegerVal) {
+            // partval = '' + part.peg
+            partval = part.src;
+            this.peg.push(partval);
+        }
+        // TODO: this is a bit of a hack, review
+        // Seems like a fundamental ambiguity?
+        // Resolved by path function
+        else if (part instanceof NumberVal_1.NumberVal) {
+            // let partvals: string[] = part.peg.toFixed(11).replace(/(\.0)?0+$/, '$1').split('.')
+            let partvals = part.src.split('.');
+            this.peg.push(...partvals);
         }
         else if (part instanceof VarVal_1.VarVal) {
             partval = part;
@@ -72,7 +88,6 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
             this.peg.push(...part.peg);
         }
-        //console.log('RefVal-append', this.id, this.peg)
     }
     unify(peer, ctx, trace) {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Ref', this, peer);
@@ -83,11 +98,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
             // as path cannot be found
             // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
             let found = null == ctx ? this : this.find(ctx);
-            // console.log('REF-FOUND', ctx.cc, found?.canon)
             const resolved = found ?? this;
-            // const resolved = found ? found.clone(null, ctx) : this
-            //console.log('REF', this.id, this.peg, '->',
-            //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
             if (null == resolved && this.canon === peer.canon) {
                 out = this;
             }
@@ -119,19 +130,15 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
-        // console.log('REF:', this.peg, '->', out.canon)
         (0, utility_1.explainClose)(te, out);
         return out;
     }
     find(ctx) {
         let out = undefined;
-        // console.log('FIND', this.path, '%', this.peg)
         if (this.path.join('.').startsWith(this.peg.join('.'))) {
             out = NilVal_1.NilVal.make(ctx, 'path-cycle', this);
         }
         else {
-            // NOTE: path *to* the ref, not the ref itself!
-            let fullpath = this.path;
             let parts = [];
             let modes = [];
             for (let pI = 0; pI < this.peg.length; pI++) {
@@ -181,17 +188,18 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     parts.push(part);
                 }
             }
+            let refpath = [];
             if (this.absolute) {
-                fullpath = parts;
+                refpath = parts;
             }
             else {
-                fullpath = fullpath.slice(0, (modes.includes('SELF') ? 0 :
+                refpath = this.path.slice(0, (modes.includes('SELF') ? 0 :
                     modes.includes('PARENT') ? -1 :
                         -1 // siblings
                 )).concat(parts);
             }
             let sep = '.';
-            fullpath = fullpath
+            refpath = refpath
                 .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
             if (modes.includes('KEY')) {
                 let key = this.path[this.path.length - 2];
@@ -203,8 +211,8 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
             let node = ctx.root;
             let pI = 0;
-            for (; pI < fullpath.length; pI++) {
-                let part = fullpath[pI];
+            for (; pI < refpath.length; pI++) {
+                let part = refpath[pI];
                 if (node instanceof MapVal_1.MapVal) {
                     node = node.peg[part];
                 }
@@ -215,7 +223,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     break;
                 }
             }
-            if (pI === fullpath.length) {
+            if (pI === refpath.length) {
                 out = node;
                 // Types and hidden values are cloned and made concrete
                 if (null != out && (out.mark.type || out.mark.hide)) {
@@ -265,9 +273,15 @@ class RefVal extends FeatureVal_1.FeatureVal {
             //   ctx.adderr(nil)
             // }
             // else {
-            throw new Error(nil.msg ?? 'RefVal: unknown error');
+            throw new Error((null == nil.msg || '' === nil.msg) ? 'RefVal: unknown error' : nil.msg);
         }
         return undefined;
+    }
+    inspection() {
+        return [
+            this.absolute ? 'absolute' : '',
+            this.prefix ? 'prefix' : '',
+        ].filter(p => '' != p).join(',');
     }
 }
 exports.RefVal = RefVal;

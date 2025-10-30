@@ -15,12 +15,13 @@ class LowerFuncVal extends FuncBaseVal_1.FuncBaseVal {
     funcname() {
         return 'lower';
     }
-    resolve(_ctx, args) {
+    resolve(ctx, args) {
         const oldpeg = args?.[0].peg;
         const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
             'number' === typeof oldpeg ? Math.floor(oldpeg) :
                 undefined;
-        const out = this.place(null == peg ? new val_1.NilVal({ msg: 'Not a string or number: ' + oldpeg }) :
+        const out = this.place(null == peg ?
+            val_1.NilVal.make(ctx, 'invalid-arg', this) :
             (0, val_1.makeScalar)(peg));
         return out;
     }

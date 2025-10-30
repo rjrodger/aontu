@@ -1,3 +1,4 @@
+import { inspect } from 'node:util';
 import type { Val, ValMark } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
@@ -32,6 +33,7 @@ declare class TopVal implements Val {
     isKeyFunc: boolean;
     isLowerFunc: boolean;
     isOpenFunc: boolean;
+    isPathFunc: boolean;
     isPrefFunc: boolean;
     isSuperFunc: boolean;
     isTypeFunc: boolean;
@@ -60,7 +62,7 @@ declare class TopVal implements Val {
     clone(_ctx: Context, _spec?: any): this;
     gen(_ctx?: Context): undefined;
     superior(): Val;
-    [inspect.custom](d: number, o: any, inspect: any): string;
+    [inspect.custom](_d: number, _o: any, _inspect: any): string;
 }
 declare const TOP: TopVal;
 export { TOP, TopVal, };

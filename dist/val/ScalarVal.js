@@ -12,6 +12,7 @@ class ScalarVal extends BaseVal_1.BaseVal {
         super(spec, ctx);
         this.isScalar = true;
         this.kind = spec.kind;
+        this.src = spec.src ?? '';
         this.dc = type_1.DONE;
     }
     clone(ctx, spec) {

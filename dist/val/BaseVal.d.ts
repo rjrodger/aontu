@@ -1,3 +1,4 @@
+import { inspect } from 'node:util';
 import type { Val, ValMark, ValSpec } from '../type';
 import { Context } from '../unify';
 import { Site } from '../lang';
@@ -31,6 +32,7 @@ declare abstract class BaseVal implements Val {
     isKeyFunc: boolean;
     isLowerFunc: boolean;
     isOpenFunc: boolean;
+    isPathFunc: boolean;
     isPrefFunc: boolean;
     isSuperFunc: boolean;
     isTypeFunc: boolean;
@@ -53,12 +55,13 @@ declare abstract class BaseVal implements Val {
     clone(ctx: Context, spec?: ValSpec): Val;
     place(v: Val): Val;
     get site(): Site;
-    unify(_peer: Val, _ctx?: Context): Val;
+    unify(_peer: Val, _ctx: Context): Val;
     get canon(): string;
     errcanon(): string;
     gen(_ctx: Context): any;
     notdone(): void;
     abstract superior(): Val;
-    [inspect.custom](d: number, o: any, inspect: any): string;
+    [inspect.custom](_d: number, _o: any, _inspect: any): string;
+    inspection(): string;
 }
 export { BaseVal, };

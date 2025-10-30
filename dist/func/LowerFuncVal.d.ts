@@ -6,7 +6,7 @@ declare class LowerFuncVal extends FuncBaseVal {
     constructor(spec: ValSpec, ctx?: Context);
     make(_ctx: Context, spec: ValSpec): Val;
     funcname(): string;
-    resolve(_ctx: Context | undefined, args: Val[]): Val;
+    resolve(ctx: Context | undefined, args: Val[]): Val;
     superior(): Val;
 }
 export { LowerFuncVal, };

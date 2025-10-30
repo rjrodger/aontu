@@ -6,10 +6,11 @@ const code_1 = require("@hapi/code");
 const __1 = require("..");
 const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
-const MapVal_1 = require("../dist/val/MapVal");
 let lang = new lang_1.Lang();
-const G = (x, ctx) => new unify_1.Unify(x, lang)
-    .res.gen(ctx || new unify_1.Context({ root: new MapVal_1.MapVal({ peg: {} }) }));
+// const G = (x: string, ctx?: any) => new Unify(x, lang)
+//   .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
+const A = new __1.AontuX();
+const G = (x) => A.generate(x);
 (0, node_test_1.describe)('func', function () {
     (0, node_test_1.test)('lower-numbers', () => {
         (0, code_1.expect)(G('lower(1.1)')).equal(1);
@@ -29,6 +30,7 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('(1+lower(2.7))')).equal(3);
         (0, code_1.expect)(G('(1+lower(2.7)+1)')).equal(4);
         (0, code_1.expect)(G('lower(1.1)+lower(2.9)')).equal(3);
+        (0, code_1.expect)(G('lower(1.1)+lower(2.9)+lower(3.5)')).equal(6);
     });
     (0, node_test_1.test)('lower-numbers-deep', () => {
         (0, code_1.expect)(G('x:lower(1.1)')).equal({ x: 1 });
@@ -36,6 +38,8 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('[lower(1.1)]')).equal([1]);
         (0, code_1.expect)(G('[x,lower(2.9)]')).equal(['x', 2]);
         (0, code_1.expect)(G('x:{y:[lower(3.9)]}')).equal({ x: { y: [3] } });
+        (0, code_1.expect)(G('x:y:lower(1.1)+lower(2.1)')).equal({ x: { y: 3 } });
+        (0, code_1.expect)(G('x:y:lower(1.1),z:lower(2.1)')).equal({ x: { y: 1 }, z: 2 });
     });
     (0, node_test_1.test)('lower-numbers-path', () => {
         (0, code_1.expect)(G('x:1.5 y:lower($.x)')).equal({ x: 1.5, y: 1 });
@@ -44,8 +48,11 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('x:{a:2.7} y:$.x.a')).equal({ x: { a: 2.7 }, y: 2.7 });
         (0, code_1.expect)(G('x:3 y:($.x)')).equal({ x: 3, y: 3 });
         (0, code_1.expect)(G('x:{a:5} y:(x.a)')).equal({ x: { a: 5 }, y: 5 });
-        (0, code_1.expect)(G('z:x:{a:6} z:y:(.x.a)')).equal({ z: { x: { a: 6 }, y: 6 } });
-        (0, code_1.expect)(G('z:x:{a:6} z:y:(x.a)')).equal({ z: { x: { a: 6 }, y: 6 } });
+        (0, code_1.expect)(G('z:x:{a:61} z:y:(.x.a)')).equal({ z: { x: { a: 61 }, y: 61 } });
+        (0, code_1.expect)(G('z:x:{a:62} z:y:.x.a')).equal({ z: { x: { a: 62 }, y: 62 } });
+        (0, code_1.expect)(G('z:x:{a:63} z:y:(x.a)')).equal({ z: { x: { a: 63 }, y: 63 } });
+        (0, code_1.expect)(G('z:x:{a:64} z:y:path(x.a)')).equal({ z: { x: { a: 64 }, y: 64 } });
+        (0, code_1.expect)(G('z:x:{a:65} z:y:path($.z.x.a)')).equal({ z: { x: { a: 65 }, y: 65 } });
         (0, code_1.expect)(G('x:{a:4} y:(.x.a)')).equal({ x: { a: 4 }, y: 4 });
         (0, code_1.expect)(G('x:{a:3} y:($.x.a)')).equal({ x: { a: 3 }, y: 3 });
         (0, code_1.expect)(G('x:{a:2.7} y:lower($.x.a)')).equal({ x: { a: 2.7 }, y: 2 });
@@ -55,14 +62,19 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('x:(+3+4)')).equal({ x: 7 });
         (0, code_1.expect)(G('x:(5+6+7)')).equal({ x: 18 });
         (0, code_1.expect)(G('x:(+5+6+7)')).equal({ x: 18 });
+        (0, code_1.expect)(G('x:y:z:100.9,a:b:c:lower($.x.y.z)'))
+            .equal({ x: { y: { z: 100.9 } }, a: { b: { c: 100 } } });
     });
     (0, node_test_1.test)('lower-numbers-spread', () => {
         (0, code_1.expect)(G('a:{&:x:lower(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 1, y: 1 } } });
-        (0, code_1.expect)(G('a:{&:x:lower(2.9)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 2, y: 1 }, c: { x: 2, y: 2 } } });
+        (0, code_1.expect)(G('a:{&:x:lower(2.9)} a:{b:{y:1},c:{y:2}}'))
+            .equal({ a: { b: { x: 2, y: 1 }, c: { x: 2, y: 2 } } });
         (0, code_1.expect)(G('a:{&:z:lower(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 3, y: 1 } } });
     });
     (0, node_test_1.test)('lower-numbers-pref', () => {
         (0, code_1.expect)(G('x:*lower(1.1)')).equal({ x: 1 });
+        (0, code_1.expect)(G('x:*lower(2.2),x:3')).equal({ x: 3 });
+        (0, code_1.expect)(G('x:*lower(2.2),x:lower(4.4)')).equal({ x: 4 });
     });
     (0, node_test_1.test)('upper-numbers', () => {
         (0, code_1.expect)(G('upper(1.1)')).equal(2);
@@ -89,10 +101,16 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(G('x:1.5 y:upper($.x)')).equal({ x: 1.5, y: 2 });
         (0, code_1.expect)(G('x:{a:2.3} y:upper($.x.a)')).equal({ x: { a: 2.3 }, y: 3 });
         (0, code_1.expect)(G('x:3.1 y:{z:upper($.x)}')).equal({ x: 3.1, y: { z: 4 } });
+        (0, code_1.expect)(G('[3.1 upper($.0)]')).equal([3.1, 4]);
+        (0, code_1.expect)(G('[3.1 4.1 upper($.1)]')).equal([3.1, 4.1, 5]);
+        (0, code_1.expect)(G('[3.1 [4.1, 5.1] upper($.1.1)]')).equal([3.1, [4.1, 5.1], 6]);
+        (0, code_1.expect)(G('x:y:1.5 x:z:upper($.x.y)')).equal({ x: { y: 1.5, z: 2 } });
+        (0, code_1.expect)(() => G('x:y:a:1.1 x:z:upper($.x.y)')).throws(/invalid/);
     });
     (0, node_test_1.test)('upper-numbers-spread', () => {
         (0, code_1.expect)(G('a:{&:x:upper(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 2, y: 1 } } });
-        (0, code_1.expect)(G('a:{&:x:upper(2.1)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } });
+        (0, code_1.expect)(G('a:{&:x:upper(2.1)} a:{b:{y:1},c:{y:2}}'))
+            .equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } });
         (0, code_1.expect)(G('a:{&:z:upper(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 4, y: 1 } } });
     });
     (0, node_test_1.test)('upper-basic', () => {
@@ -191,8 +209,17 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
     });
     (0, node_test_1.test)('copy-spread', () => {
         (0, code_1.expect)(G('a:{&:x:copy(1)} a:{b:{y:2}}')).equal({ a: { b: { x: 1, y: 2 } } });
-        (0, code_1.expect)(G('a:{&:x:copy(3)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } });
+        (0, code_1.expect)(G('a:{&:x:copy(3)} a:{b:{y:1},c:{y:2}}'))
+            .equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } });
         (0, code_1.expect)(G('a:{&:z:copy(5)} a:{b:{y:1}}')).equal({ a: { b: { z: 5, y: 1 } } });
+    });
+    (0, node_test_1.test)('copy-type', () => {
+        (0, code_1.expect)(G('x:type({}) x:y:1 a:copy($.x)')).equal({ a: { y: 1 } });
+        (0, code_1.expect)(G('x:type({}) x:y:1 a:pref(copy($.x)) a:y:2')).equal({ a: { y: 2 } });
+        (0, code_1.expect)(() => G('x:type({}) x:y:1 a:pref(copy($.x)) a:y:Y')).throws(/scalar/);
+    });
+    (0, node_test_1.test)('copy-hide', () => {
+        (0, code_1.expect)(G('x:hide({}) x:y:1 a:copy($.x)')).equal({ a: { y: 1 } });
     });
     (0, node_test_1.test)('key-basic', () => {
         (0, code_1.expect)(G('a:b:c:key()')).equal({ a: { b: { c: 'b' } } });
@@ -471,6 +498,63 @@ const G = (x, ctx) => new unify_1.Unify(x, lang)
         (0, code_1.expect)(N('hide(foo)')).equal('hide("foo")');
         (0, code_1.expect)(N('hide({x:1})')).equal('hide({"x":1})');
         (0, code_1.expect)(N('hide([1,2])')).equal('hide([1,2])');
+    });
+    (0, node_test_1.test)('path-string-basic', () => {
+        const N = (x) => new unify_1.Unify(x, lang).res.canon;
+        // Basic string paths should be converted to RefVal
+        (0, code_1.expect)(N('path("foo")')).equal('.foo');
+        (0, code_1.expect)(N('path("foo.bar")')).equal('.foo.bar');
+        (0, code_1.expect)(N('path("a.b.c")')).equal('.a.b.c');
+    });
+    (0, node_test_1.test)('path-number', () => {
+        const N = (x) => new unify_1.Unify(x, lang).res.canon;
+        // Numbers like 1.2 should be treated as paths ["1", "2"], not as the number 1.2
+        (0, code_1.expect)(N('path(1.2)')).equal('path(.1.2)');
+        (0, code_1.expect)(N('path(1.0)')).equal('path(.1.0)');
+        (0, code_1.expect)(N('path(10.20)')).equal('path(.10.20)');
+        (0, code_1.expect)(N('path(3.14)')).equal('path(.3.14)');
+    });
+    (0, node_test_1.test)('path-integer', () => {
+        const N = (x) => new unify_1.Unify(x, lang).res.canon;
+        // Single integers should become single-part paths
+        (0, code_1.expect)(N('path(0)')).equal('.0');
+        (0, code_1.expect)(N('path(1)')).equal('.1');
+        (0, code_1.expect)(N('path(42)')).equal('.42');
+    });
+    (0, node_test_1.test)('path-absolute', () => {
+        const N = (x) => new unify_1.Unify(x, lang).res.canon;
+        // Absolute paths (starting with $) should be preserved
+        (0, code_1.expect)(N('path("$foo")')).equal('$.foo');
+        (0, code_1.expect)(N('path("$foo.bar")')).equal('$.foo.bar');
+        (0, code_1.expect)(N('path("$a.b.c")')).equal('$.a.b.c');
+    });
+    (0, node_test_1.test)('path-ref-creation', () => {
+        const a0 = new __1.AontuX();
+        // Test that path() creates a RefVal that can be used to reference values
+        const res = a0.unify('{x: 10, y: path("x")}');
+        (0, code_1.expect)(res).exist();
+        (0, code_1.expect)(res.isRef).equal(false); // The result MapVal itself is not a ref
+        (0, code_1.expect)(res.peg.y.isRef).equal(true); // But y should be a RefVal
+        (0, code_1.expect)(res.peg.y.canon).equal('.x');
+    });
+    (0, node_test_1.test)('path-unification', () => {
+        const a0 = new __1.AontuX();
+        const G = a0.generate.bind(a0);
+        // Test that path references resolve during unification
+        (0, code_1.expect)(G('{x: 10, y: path("x")}')).equal({ x: 10, y: 10 });
+        (0, code_1.expect)(G('{a: {b: 20}, c: path("a.b")}')).equal({ a: { b: 20 }, c: 20 });
+    });
+    (0, node_test_1.test)('path-empty-error', () => {
+        const res = new unify_1.Unify('path("")', lang).res;
+        // Empty path should result in an error (NilVal)
+        (0, code_1.expect)(res.isNil).equal(true);
+    });
+    (0, node_test_1.test)('path-complex', () => {
+        const N = (x) => new unify_1.Unify(x, lang).res.canon;
+        // Test various complex path patterns
+        (0, code_1.expect)(N('path("foo_bar")')).equal('.foo_bar');
+        (0, code_1.expect)(N('path("foo-bar")')).equal('.foo-bar');
+        (0, code_1.expect)(N('path("0.1.2")')).equal('.0.1.2');
     });
 });
 //# sourceMappingURL=func.test.js.map

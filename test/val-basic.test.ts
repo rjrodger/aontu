@@ -282,16 +282,16 @@ describe('val-basic', function() {
     let n1: any = makeIntegerVal(11)
     n1.mark$ = 'n1'
 
-    expect(n0.unify(n1).mark$).equal('n0')
-    expect(n1.unify(n0).mark$).equal('n1')
+    expect(n0.unify(n1, ctx).mark$).equal('n0')
+    expect(n1.unify(n0, ctx).mark$).equal('n1')
 
     let tn0 = makeSK_Number()
     let ti0 = makeSK_Integer()
 
-    expect(n0.unify(tn0).mark$).equal('n0')
+    expect(n0.unify(tn0, ctx).mark$).equal('n0')
     expect((tn0.unify(n0, ctx) as any).mark$).equal('n0')
 
-    expect(n0.unify(ti0).mark$).equal('n0')
+    expect(n0.unify(ti0, ctx).mark$).equal('n0')
     expect((ti0.unify(n0, ctx) as any).mark$).equal('n0')
 
 
@@ -301,30 +301,30 @@ describe('val-basic', function() {
     let x1: any = makeNumberVal(11)
     x1.mark$ = 'x1'
 
-    expect(x0.unify(x1).mark$).equal('x0')
-    expect(x1.unify(x0).mark$).equal('x1')
+    expect(x0.unify(x1, ctx).mark$).equal('x0')
+    expect(x1.unify(x0, ctx).mark$).equal('x1')
 
-    expect(x0.unify(tn0).mark$).equal('x0')
+    expect(x0.unify(tn0, ctx).mark$).equal('x0')
     expect((tn0.unify(x0, ctx) as any).mark$).equal('x0')
 
-    expect(x0.unify(ti0).isNil).equal(true)
+    expect(x0.unify(ti0, ctx).isNil).equal(true)
     expect((ti0.unify(x0, ctx) as any).isNil).equal(true)
 
 
-    expect(x0.unify(n0).mark$).equal('n0')
-    expect(n0.unify(x0).mark$).equal('n0')
+    expect(x0.unify(n0, ctx).mark$).equal('n0')
+    expect(n0.unify(x0, ctx).mark$).equal('n0')
 
 
     let x2: any = makeNumberVal(2.2)
     x2.mark$ = 'x2'
 
-    expect(x2.unify(tn0).mark$).equal('x2')
+    expect(x2.unify(tn0, ctx).mark$).equal('x2')
     expect((tn0.unify(x2, ctx) as any).mark$).equal('x2')
 
-    expect(x2.unify(ti0).isNil).equal(true)
+    expect(x2.unify(ti0, ctx).isNil).equal(true)
     expect((ti0.unify(x2, ctx) as any).isNil).equal(true)
 
-    expect(x2.unify(n0).isNil).equal(true)
+    expect(x2.unify(n0, ctx).isNil).equal(true)
     expect((n0.unify(x2, ctx) as any).isNil).equal(true)
   })
 

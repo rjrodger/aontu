@@ -13,12 +13,12 @@ const MapVal_1 = require("../dist/val/MapVal");
     });
     (0, node_test_1.it)('unify', () => {
         let v0 = (0, aontu_1.Aontu)('a:1,a:2');
-        (0, code_1.expect)(v0.err[0]).include({ nil: true, why: 'scalar' });
+        (0, code_1.expect)(v0.err[0].why).equal('integer');
         (0, code_1.expect)(typeof v0.err[0].msg).equal('string');
     });
     (0, node_test_1.it)('file-e01', async () => {
         let v0 = (0, aontu_1.Aontu)('@"' + __dirname + '/../test/error/e01.jsonic"');
-        (0, code_1.expect)(v0.err[0]).include({ nil: true, why: 'scalar' });
+        (0, code_1.expect)(v0.err[0].why).equal('integer');
         (0, code_1.expect)(typeof v0.err[0].msg).equal('string');
     });
     (0, node_test_1.it)('generate', () => {
@@ -52,8 +52,7 @@ const MapVal_1 = require("../dist/val/MapVal");
             v0.gen();
         }
         catch (err) {
-            // expect(err.message).contain('Cannot resolve value: $.b')
-            (0, code_1.expect)(err.message).contain('Cannot');
+            (0, code_1.expect)(err.message).contain('RefVal');
         }
         let v1 = (0, aontu_1.Aontu)('@"' + __dirname + '/../test/error/e02.jsonic"');
         let c1 = new aontu_1.Context({ root: v1 });

@@ -11,10 +11,8 @@ const RefVal_1 = require("../dist/val/RefVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-// const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
-// const V = (x: any) => console.dir(x, { depth: null })
 (0, node_test_1.describe)('val-ref', function () {
     (0, node_test_1.test)('construct', () => {
         let r0 = new RefVal_1.RefVal({ peg: [], absolute: true });

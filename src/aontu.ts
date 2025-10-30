@@ -66,7 +66,7 @@ class AontuX {
 
   unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
     if (!(ac instanceof Context)) {
-      ac = this.ctx({ ...(ac ?? {}) })
+      ac = this.ctx({ ...(ac ?? {}), src })
     }
 
     let pval = (src as Val).isVal ? src as Val : this.parse(src as string, ac)
@@ -86,8 +86,6 @@ class AontuX {
     ac.root = res
 
     if (res.err && 0 < res.err.length) {
-      // res.err.map((err: any) => ac.adderr(err))
-
       if (!ac.collect) {
         throw new AontuError(ac.errmsg(), ac.err)
       }

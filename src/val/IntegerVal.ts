@@ -2,6 +2,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -22,20 +23,19 @@ class IntegerVal extends ScalarVal {
   isInteger = true
 
   constructor(
-    spec: {
-      peg: number
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     if (!Number.isInteger(spec.peg)) {
       // TODO: use Nil?
       throw new Error('not-integer: ' + spec.peg)
     }
-    super({ peg: spec.peg, kind: Integer }, ctx)
+    // super({ peg: spec.peg, kind: Integer }, ctx)
+    super({ ...spec, kind: Integer }, ctx)
   }
 
-  unify(peer: any, ctx: Context, trace?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, trace, 'Integer', this, peer)
+  unify(peer: any, ctx: Context, explain?: any[]): Val {
+    const te = ctx.explain && explainOpen(ctx, explain, 'Integer', this, peer)
 
     let out: Val = this
 

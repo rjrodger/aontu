@@ -120,6 +120,7 @@ class ConjunctVal extends JunctionVal {
     }
 
     upeer = norm(upeer)
+    // console.log('CONJUNCT-UPEER', this.id, upeer.map((v: Val) => v.canon))
 
     // Unify terms against each other
 
@@ -129,13 +130,21 @@ class ConjunctVal extends JunctionVal {
 
     let t0 = upeer[0]
 
-    next_term:
+    // next_term:
     for (let pI = 0; pI < upeer.length; pI++) {
 
-      if (DONE !== t0.dc) {
+      /*
+      console.log('CONJUNCT-TERMS-A', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
+
+      // if (DONE !== t0.dc) {
+      if (!t0.done) {
         let u0 = unite(ctx, t0, TOP, 'cj-peer-t0', ec(te, 'PER'))
         newtype = this.mark.type || u0.mark.type
         newhide = this.mark.hide || u0.mark.hide
+
+        t0 = u0
+
+        console.log('CONJUNCT-TERMS-B', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
 
         if (
           DONE !== u0.dc
@@ -152,12 +161,15 @@ class ConjunctVal extends JunctionVal {
           outvals.push(u0)
           continue next_term
         }
-        else {
-          t0 = u0
-        }
+        // else {
+        // t0 = u0
+        // }
       }
+      */
 
       let t1 = upeer[pI + 1]
+
+      // console.log('CONJUNCT-TERMS-C', this.id, pI, t0, t1, 'OV=', outvals.map((v: Val) => v))
 
       if (null == t1) {
         outvals.push(t0)
@@ -203,7 +215,7 @@ class ConjunctVal extends JunctionVal {
 
     let out: Val
 
-    // console.log('CONJUCT-prepout', this.mark.type, newtype, outvals.map((v: Val) => v.canon))
+    // console.log('CONJUCT-prepout', this.id, outvals.map((v: Val) => v.canon))
 
     if (0 === outvals.length) {
 

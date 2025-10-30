@@ -35,6 +35,8 @@ import {
 
 import { TOP } from './TopVal'
 import { StringVal } from './StringVal'
+import { IntegerVal } from './IntegerVal'
+import { NumberVal } from './NumberVal'
 import { ConjunctVal } from './ConjunctVal'
 import { MapVal } from './MapVal'
 import { ListVal } from './ListVal'
@@ -77,6 +79,8 @@ class RefVal extends FeatureVal {
   append(part: any) {
     let partval
 
+    // console.log('APPEND', part)
+
     if ('string' === typeof part) {
       partval = part
       this.peg.push(partval)
@@ -85,6 +89,21 @@ class RefVal extends FeatureVal {
     else if (part instanceof StringVal) {
       partval = part.peg
       this.peg.push(partval)
+    }
+
+    else if (part instanceof IntegerVal) {
+      // partval = '' + part.peg
+      partval = part.src
+      this.peg.push(partval)
+    }
+
+    // TODO: this is a bit of a hack, review
+    // Seems like a fundamental ambiguity?
+    // Resolved by path function
+    else if (part instanceof NumberVal) {
+      // let partvals: string[] = part.peg.toFixed(11).replace(/(\.0)?0+$/, '$1').split('.')
+      let partvals: string[] = part.src.split('.')
+      this.peg.push(...partvals)
     }
 
     else if (part instanceof VarVal) {
@@ -116,8 +135,6 @@ class RefVal extends FeatureVal {
 
       this.peg.push(...part.peg)
     }
-
-    //console.log('RefVal-append', this.id, this.peg)
   }
 
 
@@ -132,13 +149,8 @@ class RefVal extends FeatureVal {
       // as path cannot be found
       // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
       let found: Val | undefined = null == ctx ? this : this.find(ctx)
-      // console.log('REF-FOUND', ctx.cc, found?.canon)
 
       const resolved = found ?? this
-
-      // const resolved = found ? found.clone(null, ctx) : this
-      //console.log('REF', this.id, this.peg, '->',
-      //  found?.id, found?.canon, 'C=', resolved?.id, resolved?.canon)
 
       if (null == resolved && this.canon === peer.canon) {
         out = this
@@ -175,7 +187,6 @@ class RefVal extends FeatureVal {
       out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
 
-    // console.log('REF:', this.peg, '->', out.canon)
     explainClose(te, out)
     return out
   }
@@ -184,15 +195,10 @@ class RefVal extends FeatureVal {
   find(ctx: Context) {
     let out: Val | undefined = undefined
 
-    // console.log('FIND', this.path, '%', this.peg)
-
     if (this.path.join('.').startsWith(this.peg.join('.'))) {
       out = NilVal.make(ctx, 'path-cycle', this)
     }
     else {
-
-      // NOTE: path *to* the ref, not the ref itself!
-      let fullpath = this.path
 
       let parts: string[] = []
 
@@ -248,11 +254,13 @@ class RefVal extends FeatureVal {
         }
       }
 
+      let refpath: string[] = []
+
       if (this.absolute) {
-        fullpath = parts
+        refpath = parts
       }
       else {
-        fullpath = fullpath.slice(
+        refpath = this.path.slice(
           0,
           (
             modes.includes('SELF') ? 0 :
@@ -263,7 +271,7 @@ class RefVal extends FeatureVal {
       }
 
       let sep = '.'
-      fullpath = fullpath
+      refpath = refpath
         .reduce(((a: string[], p: string) =>
           (p === sep ? a.length = a.length - 1 : a.push(p), a)), [])
 
@@ -278,10 +286,10 @@ class RefVal extends FeatureVal {
         return sv
       }
 
-      let node = ctx.root
+      let node: Val = ctx.root
       let pI = 0
-      for (; pI < fullpath.length; pI++) {
-        let part = fullpath[pI]
+      for (; pI < refpath.length; pI++) {
+        let part = refpath[pI]
 
         if (node instanceof MapVal) {
           node = node.peg[part]
@@ -294,7 +302,7 @@ class RefVal extends FeatureVal {
         }
       }
 
-      if (pI === fullpath.length) {
+      if (pI === refpath.length) {
         out = node
 
         // Types and hidden values are cloned and made concrete
@@ -363,11 +371,20 @@ class RefVal extends FeatureVal {
       //   ctx.adderr(nil)
       // }
       // else {
-      throw new Error(nil.msg ?? 'RefVal: unknown error')
+      throw new Error((null == nil.msg || '' === nil.msg) ? 'RefVal: unknown error' : nil.msg)
     }
 
     return undefined
   }
+
+
+  inspection() {
+    return [
+      this.absolute ? 'absolute' : '',
+      this.prefix ? 'prefix' : '',
+    ].filter(p => '' != p).join(',')
+  }
+
 }
 
 

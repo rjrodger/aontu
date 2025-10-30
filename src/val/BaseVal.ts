@@ -61,6 +61,7 @@ abstract class BaseVal implements Val {
   isKeyFunc = false
   isLowerFunc = false
   isOpenFunc = false
+  isPathFunc = false
   isPrefFunc = false
   isSuperFunc = false
   isTypeFunc = false
@@ -178,7 +179,7 @@ abstract class BaseVal implements Val {
   }
 
   // NOTE: MUST not mutate! Val immutability is a critical assumption. 
-  unify(_peer: Val, _ctx?: Context): Val { return this }
+  unify(_peer: Val, _ctx: Context): Val { return this }
 
   get canon(): string { return '' }
 
@@ -201,15 +202,21 @@ abstract class BaseVal implements Val {
   abstract superior(): Val
 
 
-  [inspect.custom](d: number, o: any, inspect: any) {
+
+  [inspect.custom](_d: number, _o: any, _inspect: any): string {
     let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]
 
     s.push('/' + this.path.join('.') + '/')
 
     s.push([
-      this.dc,
+      DONE === this.dc ? 'D' : 'd' + this.dc,
       ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
     ].filter(n => null != n).join(','))
+
+    let insp = this.inspection()
+    if (null != insp && '' != insp) {
+      s.push('/' + insp)
+    }
 
     s.push('=')
 
@@ -228,12 +235,17 @@ abstract class BaseVal implements Val {
     return s.join('')
   }
 
+
+  inspection() {
+    return ''
+  }
+
 }
 
 
 function inspectpeg(peg: any) {
   return !Array.isArray(peg) ? inspect(peg) :
-    ('[' + peg.map(n => inspect(n)).join(',') + ']')
+    ('[' + peg.map(n => inspect(n)).join(',\n') + ']')
       .replace(/\[Object: null prototype\]/g, '')
       .replace(/\s+/g, '')
 }

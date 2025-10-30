@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SuperFuncVal = exports.OpenFuncVal = exports.CloseFuncVal = exports.PrefFuncVal = exports.MoveFuncVal = exports.HideFuncVal = exports.TypeFuncVal = exports.KeyFuncVal = exports.CopyFuncVal = exports.LowerFuncVal = exports.UpperFuncVal = exports.FuncBaseVal = void 0;
+exports.SuperFuncVal = exports.OpenFuncVal = exports.CloseFuncVal = exports.PrefFuncVal = exports.PathFuncVal = exports.MoveFuncVal = exports.HideFuncVal = exports.TypeFuncVal = exports.KeyFuncVal = exports.CopyFuncVal = exports.LowerFuncVal = exports.UpperFuncVal = exports.FuncBaseVal = void 0;
 var FuncBaseVal_1 = require("./func/FuncBaseVal");
 Object.defineProperty(exports, "FuncBaseVal", { enumerable: true, get: function () { return FuncBaseVal_1.FuncBaseVal; } });
 var UpperFuncVal_1 = require("./func/UpperFuncVal");
@@ -18,6 +18,8 @@ var HideFuncVal_1 = require("./func/HideFuncVal");
 Object.defineProperty(exports, "HideFuncVal", { enumerable: true, get: function () { return HideFuncVal_1.HideFuncVal; } });
 var MoveFuncVal_1 = require("./func/MoveFuncVal");
 Object.defineProperty(exports, "MoveFuncVal", { enumerable: true, get: function () { return MoveFuncVal_1.MoveFuncVal; } });
+var PathFuncVal_1 = require("./func/PathFuncVal");
+Object.defineProperty(exports, "PathFuncVal", { enumerable: true, get: function () { return PathFuncVal_1.PathFuncVal; } });
 var PrefFuncVal_1 = require("./func/PrefFuncVal");
 Object.defineProperty(exports, "PrefFuncVal", { enumerable: true, get: function () { return PrefFuncVal_1.PrefFuncVal; } });
 var CloseFuncVal_1 = require("./func/CloseFuncVal");

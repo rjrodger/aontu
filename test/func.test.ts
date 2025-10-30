@@ -24,8 +24,12 @@ import { MapVal } from '../dist/val/MapVal'
 
 let lang = new Lang()
 
-const G = (x: string, ctx?: any) => new Unify(x, lang)
-  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
+// const G = (x: string, ctx?: any) => new Unify(x, lang)
+//   .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
+
+
+const A = new AontuX()
+const G = (x: string) => A.generate(x)
 
 
 describe('func', function() {
@@ -49,6 +53,7 @@ describe('func', function() {
     expect(G('(1+lower(2.7))')).equal(3)
     expect(G('(1+lower(2.7)+1)')).equal(4)
     expect(G('lower(1.1)+lower(2.9)')).equal(3)
+    expect(G('lower(1.1)+lower(2.9)+lower(3.5)')).equal(6)
   })
 
   test('lower-numbers-deep', () => {
@@ -57,6 +62,8 @@ describe('func', function() {
     expect(G('[lower(1.1)]')).equal([1])
     expect(G('[x,lower(2.9)]')).equal(['x', 2])
     expect(G('x:{y:[lower(3.9)]}')).equal({ x: { y: [3] } })
+    expect(G('x:y:lower(1.1)+lower(2.1)')).equal({ x: { y: 3 } })
+    expect(G('x:y:lower(1.1),z:lower(2.1)')).equal({ x: { y: 1 }, z: 2 })
   })
 
   test('lower-numbers-path', () => {
@@ -66,8 +73,11 @@ describe('func', function() {
     expect(G('x:{a:2.7} y:$.x.a')).equal({ x: { a: 2.7 }, y: 2.7 })
     expect(G('x:3 y:($.x)')).equal({ x: 3, y: 3 })
     expect(G('x:{a:5} y:(x.a)')).equal({ x: { a: 5 }, y: 5 })
-    expect(G('z:x:{a:6} z:y:(.x.a)')).equal({ z: { x: { a: 6 }, y: 6 } })
-    expect(G('z:x:{a:6} z:y:(x.a)')).equal({ z: { x: { a: 6 }, y: 6 } })
+    expect(G('z:x:{a:61} z:y:(.x.a)')).equal({ z: { x: { a: 61 }, y: 61 } })
+    expect(G('z:x:{a:62} z:y:.x.a')).equal({ z: { x: { a: 62 }, y: 62 } })
+    expect(G('z:x:{a:63} z:y:(x.a)')).equal({ z: { x: { a: 63 }, y: 63 } })
+    expect(G('z:x:{a:64} z:y:path(x.a)')).equal({ z: { x: { a: 64 }, y: 64 } })
+    expect(G('z:x:{a:65} z:y:path($.z.x.a)')).equal({ z: { x: { a: 65 }, y: 65 } })
     expect(G('x:{a:4} y:(.x.a)')).equal({ x: { a: 4 }, y: 4 })
     expect(G('x:{a:3} y:($.x.a)')).equal({ x: { a: 3 }, y: 3 })
     expect(G('x:{a:2.7} y:lower($.x.a)')).equal({ x: { a: 2.7 }, y: 2 })
@@ -77,16 +87,21 @@ describe('func', function() {
     expect(G('x:(+3+4)')).equal({ x: 7 })
     expect(G('x:(5+6+7)')).equal({ x: 18 })
     expect(G('x:(+5+6+7)')).equal({ x: 18 })
+    expect(G('x:y:z:100.9,a:b:c:lower($.x.y.z)'))
+      .equal({ x: { y: { z: 100.9 } }, a: { b: { c: 100 } } })
   })
 
   test('lower-numbers-spread', () => {
     expect(G('a:{&:x:lower(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 1, y: 1 } } })
-    expect(G('a:{&:x:lower(2.9)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 2, y: 1 }, c: { x: 2, y: 2 } } })
+    expect(G('a:{&:x:lower(2.9)} a:{b:{y:1},c:{y:2}}'))
+      .equal({ a: { b: { x: 2, y: 1 }, c: { x: 2, y: 2 } } })
     expect(G('a:{&:z:lower(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 3, y: 1 } } })
   })
 
   test('lower-numbers-pref', () => {
     expect(G('x:*lower(1.1)')).equal({ x: 1 })
+    expect(G('x:*lower(2.2),x:3')).equal({ x: 3 })
+    expect(G('x:*lower(2.2),x:lower(4.4)')).equal({ x: 4 })
   })
 
 
@@ -118,14 +133,19 @@ describe('func', function() {
     expect(G('x:1.5 y:upper($.x)')).equal({ x: 1.5, y: 2 })
     expect(G('x:{a:2.3} y:upper($.x.a)')).equal({ x: { a: 2.3 }, y: 3 })
     expect(G('x:3.1 y:{z:upper($.x)}')).equal({ x: 3.1, y: { z: 4 } })
+    expect(G('[3.1 upper($.0)]')).equal([3.1, 4])
+    expect(G('[3.1 4.1 upper($.1)]')).equal([3.1, 4.1, 5])
+    expect(G('[3.1 [4.1, 5.1] upper($.1.1)]')).equal([3.1, [4.1, 5.1], 6])
+    expect(G('x:y:1.5 x:z:upper($.x.y)')).equal({ x: { y: 1.5, z: 2 } })
+    expect(() => G('x:y:a:1.1 x:z:upper($.x.y)')).throws(/invalid/)
   })
 
   test('upper-numbers-spread', () => {
     expect(G('a:{&:x:upper(1.1)} a:{b:{y:1}}')).equal({ a: { b: { x: 2, y: 1 } } })
-    expect(G('a:{&:x:upper(2.1)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } })
+    expect(G('a:{&:x:upper(2.1)} a:{b:{y:1},c:{y:2}}'))
+      .equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } })
     expect(G('a:{&:z:upper(3.5)} a:{b:{y:1}}')).equal({ a: { b: { z: 4, y: 1 } } })
   })
-
 
   test('upper-basic', () => {
     expect(G('upper(a)')).equal('A')
@@ -241,8 +261,19 @@ describe('func', function() {
 
   test('copy-spread', () => {
     expect(G('a:{&:x:copy(1)} a:{b:{y:2}}')).equal({ a: { b: { x: 1, y: 2 } } })
-    expect(G('a:{&:x:copy(3)} a:{b:{y:1},c:{y:2}}')).equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } })
+    expect(G('a:{&:x:copy(3)} a:{b:{y:1},c:{y:2}}'))
+      .equal({ a: { b: { x: 3, y: 1 }, c: { x: 3, y: 2 } } })
     expect(G('a:{&:z:copy(5)} a:{b:{y:1}}')).equal({ a: { b: { z: 5, y: 1 } } })
+  })
+
+  test('copy-type', () => {
+    expect(G('x:type({}) x:y:1 a:copy($.x)')).equal({ a: { y: 1 } })
+    expect(G('x:type({}) x:y:1 a:pref(copy($.x)) a:y:2')).equal({ a: { y: 2 } })
+    expect(() => G('x:type({}) x:y:1 a:pref(copy($.x)) a:y:Y')).throws(/scalar/)
+  })
+
+  test('copy-hide', () => {
+    expect(G('x:hide({}) x:y:1 a:copy($.x)')).equal({ a: { y: 1 } })
   })
 
 
@@ -575,6 +606,87 @@ describe('func', function() {
     expect(N('hide(foo)')).equal('hide("foo")')
     expect(N('hide({x:1})')).equal('hide({"x":1})')
     expect(N('hide([1,2])')).equal('hide([1,2])')
+  })
+
+
+  test('path-string-basic', () => {
+    const N = (x: string) => new Unify(x, lang).res.canon
+
+    // Basic string paths should be converted to RefVal
+    expect(N('path("foo")')).equal('.foo')
+    expect(N('path("foo.bar")')).equal('.foo.bar')
+    expect(N('path("a.b.c")')).equal('.a.b.c')
+  })
+
+
+  test('path-number', () => {
+    const N = (x: string) => new Unify(x, lang).res.canon
+
+    // Numbers like 1.2 should be treated as paths ["1", "2"], not as the number 1.2
+    expect(N('path(1.2)')).equal('path(.1.2)')
+    expect(N('path(1.0)')).equal('path(.1.0)')
+    expect(N('path(10.20)')).equal('path(.10.20)')
+    expect(N('path(3.14)')).equal('path(.3.14)')
+  })
+
+
+  test('path-integer', () => {
+    const N = (x: string) => new Unify(x, lang).res.canon
+
+    // Single integers should become single-part paths
+    expect(N('path(0)')).equal('.0')
+    expect(N('path(1)')).equal('.1')
+    expect(N('path(42)')).equal('.42')
+  })
+
+
+  test('path-absolute', () => {
+    const N = (x: string) => new Unify(x, lang).res.canon
+
+    // Absolute paths (starting with $) should be preserved
+    expect(N('path("$foo")')).equal('$.foo')
+    expect(N('path("$foo.bar")')).equal('$.foo.bar')
+    expect(N('path("$a.b.c")')).equal('$.a.b.c')
+  })
+
+
+  test('path-ref-creation', () => {
+    const a0 = new AontuX()
+
+    // Test that path() creates a RefVal that can be used to reference values
+    const res = a0.unify('{x: 10, y: path("x")}')
+    expect(res).exist()
+    expect(res!.isRef).equal(false) // The result MapVal itself is not a ref
+    expect(res!.peg.y.isRef).equal(true) // But y should be a RefVal
+    expect(res!.peg.y.canon).equal('.x')
+  })
+
+
+  test('path-unification', () => {
+    const a0 = new AontuX()
+    const G = a0.generate.bind(a0)
+
+    // Test that path references resolve during unification
+    expect(G('{x: 10, y: path("x")}')).equal({ x: 10, y: 10 })
+    expect(G('{a: {b: 20}, c: path("a.b")}')).equal({ a: { b: 20 }, c: 20 })
+  })
+
+
+  test('path-empty-error', () => {
+    const res = new Unify('path("")', lang).res
+
+    // Empty path should result in an error (NilVal)
+    expect(res.isNil).equal(true)
+  })
+
+
+  test('path-complex', () => {
+    const N = (x: string) => new Unify(x, lang).res.canon
+
+    // Test various complex path patterns
+    expect(N('path("foo_bar")')).equal('.foo_bar')
+    expect(N('path("foo-bar")')).equal('.foo-bar')
+    expect(N('path("0.1.2")')).equal('.0.1.2')
   })
 
 })

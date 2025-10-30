@@ -41,13 +41,14 @@ class LowerFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(_ctx: Context | undefined, args: Val[]) {
+  resolve(ctx: Context | undefined, args: Val[]) {
     const oldpeg = args?.[0].peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
       'number' === typeof oldpeg ? Math.floor(oldpeg) :
         undefined
     const out = this.place(
-      null == peg ? new NilVal({ msg: 'Not a string or number: ' + oldpeg }) :
+      null == peg ?
+        NilVal.make(ctx, 'invalid-arg', this) :
         makeScalar(peg)
     )
     return out

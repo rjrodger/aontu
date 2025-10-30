@@ -106,6 +106,7 @@ let AontuJsonic = function aontu(jsonic) {
         type: func_1.TypeFuncVal,
         hide: func_1.HideFuncVal,
         move: func_1.MoveFuncVal,
+        path: func_1.PathFuncVal,
         pref: func_1.PrefFuncVal,
         close: func_1.CloseFuncVal,
         open: func_1.OpenFuncVal,
@@ -243,11 +244,12 @@ let AontuJsonic = function aontu(jsonic) {
                 valnode = addsite(new val_1.StringVal({ peg: r.node }), r, ctx);
             }
             else if ('number' === valtype) {
-                if (Number.isInteger(r.node)) {
-                    valnode = addsite(new val_1.IntegerVal({ peg: r.node }), r, ctx);
+                // 1.0 in source is *not* an integer
+                if (Number.isInteger(r.node) && !r.o0.src.includes('.')) {
+                    valnode = addsite(new val_1.IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx);
                 }
                 else {
-                    valnode = addsite(new val_1.NumberVal({ peg: r.node }), r, ctx);
+                    valnode = addsite(new val_1.NumberVal({ peg: r.node, src: r.o0.src }), r, ctx);
                 }
             }
             else if ('boolean' === valtype) {

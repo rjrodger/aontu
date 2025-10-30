@@ -18,14 +18,14 @@ describe('error', function() {
 
   it('unify', () => {
     let v0 = Aontu('a:1,a:2')
-    expect(v0.err[0]).include({ nil: true, why: 'scalar' })
+    expect(v0.err[0].why).equal('integer')
     expect(typeof v0.err[0].msg).equal('string')
   })
 
 
   it('file-e01', async () => {
     let v0 = Aontu('@"' + __dirname + '/../test/error/e01.jsonic"')
-    expect(v0.err[0]).include({ nil: true, why: 'scalar' })
+    expect(v0.err[0].why).equal('integer')
     expect(typeof v0.err[0].msg).equal('string')
   })
 
@@ -68,8 +68,7 @@ describe('error', function() {
       v0.gen()
     }
     catch (err: any) {
-      // expect(err.message).contain('Cannot resolve value: $.b')
-      expect(err.message).contain('Cannot')
+      expect(err.message).contain('RefVal')
     }
 
     let v1 = Aontu('@"' + __dirname + '/../test/error/e02.jsonic"')

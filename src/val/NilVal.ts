@@ -145,6 +145,11 @@ class NilVal extends BaseVal {
     return this
   }
 
+
+  inspection() {
+    return this.why
+  }
+
 }
 
 

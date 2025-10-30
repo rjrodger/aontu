@@ -28,7 +28,7 @@ import { ScalarKindVal } from './ScalarKindVal'
 class ScalarVal extends BaseVal {
   kind: any
   isScalar = true
-
+  src: string
 
   constructor(
     spec: ValSpec,
@@ -36,6 +36,7 @@ class ScalarVal extends BaseVal {
   ) {
     super(spec, ctx)
     this.kind = spec.kind
+    this.src = spec.src ?? ''
     this.dc = DONE
   }
 

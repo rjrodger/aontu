@@ -45,7 +45,7 @@ class AontuX {
     }
     unify(src, ac) {
         if (!(ac instanceof unify_1.Context)) {
-            ac = this.ctx({ ...(ac ?? {}) });
+            ac = this.ctx({ ...(ac ?? {}), src });
         }
         let pval = src.isVal ? src : this.parse(src, ac);
         let osrc = 'string' === typeof src ? src : (ac.src ?? '');
@@ -59,7 +59,6 @@ class AontuX {
         res.err = err;
         ac.root = res;
         if (res.err && 0 < res.err.length) {
-            // res.err.map((err: any) => ac.adderr(err))
             if (!ac.collect) {
                 throw new AontuError(ac.errmsg(), ac.err);
             }
