@@ -184,121 +184,129 @@ class RefVal extends FeatureVal {
   find(ctx: Context) {
     let out: Val | undefined = undefined
 
-    // NOTE: path *to* the ref, not the ref itself!
-    let fullpath = this.path
+    // console.log('FIND', this.path, '%', this.peg)
 
-    let parts: string[] = []
-
-    let modes: string[] = []
-
-    for (let pI = 0; pI < this.peg.length; pI++) {
-      let part = this.peg[pI]
-      if (part instanceof VarVal) {
-        let strval = (part as VarVal).peg
-        let name = strval ? '' + strval.peg : ''
-
-        if ('KEY' === name) {
-          if (pI === this.peg.length - 1) {
-            modes.push(name)
-          }
-          else {
-            // TODO: return a Nil explaining error
-            return
-          }
-        }
-
-        if ('SELF' === name) {
-          if (pI === 0) {
-            modes.push(name)
-          }
-          else {
-            // TODO: return a Nil explaining error
-            return
-          }
-        }
-        else if ('PARENT' === name) {
-          if (pI === 0) {
-            modes.push(name)
-          }
-          else {
-            // TODO: return a Nil explaining error
-            return
-          }
-        }
-        else if (0 === modes.length) {
-          part = (part as VarVal).unify(TOP, ctx)
-          if (part.isNil) {
-            // TODO: var not found, so can't find path
-            return
-          }
-          else {
-            part = '' + part.peg
-          }
-        }
-      }
-      else {
-        parts.push(part)
-      }
-    }
-
-    if (this.absolute) {
-      fullpath = parts
+    if (this.path.join('.').startsWith(this.peg.join('.'))) {
+      out = NilVal.make(ctx, 'path-cycle', this)
     }
     else {
-      fullpath = fullpath.slice(
-        0,
-        (
-          modes.includes('SELF') ? 0 :
-            modes.includes('PARENT') ? -1 :
-              -1 // siblings
-        )
-      ).concat(parts)
-    }
 
-    let sep = '.'
-    fullpath = fullpath
-      .reduce(((a: string[], p: string) =>
-        (p === sep ? a.length = a.length - 1 : a.push(p), a)), [])
+      // NOTE: path *to* the ref, not the ref itself!
+      let fullpath = this.path
 
-    if (modes.includes('KEY')) {
-      let key = this.path[this.path.length - 2]
-      let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
+      let parts: string[] = []
 
-      // TODO: other props?
-      sv.dc = DONE
-      sv.path = this.path
+      let modes: string[] = []
 
-      return sv
-    }
+      for (let pI = 0; pI < this.peg.length; pI++) {
+        let part = this.peg[pI]
+        if (part instanceof VarVal) {
+          let strval = (part as VarVal).peg
+          let name = strval ? '' + strval.peg : ''
 
-    let node = ctx.root
-    let pI = 0
-    for (; pI < fullpath.length; pI++) {
-      let part = fullpath[pI]
+          if ('KEY' === name) {
+            if (pI === this.peg.length - 1) {
+              modes.push(name)
+            }
+            else {
+              // TODO: return a Nil explaining error
+              return
+            }
+          }
 
-      if (node instanceof MapVal) {
-        node = node.peg[part]
+          if ('SELF' === name) {
+            if (pI === 0) {
+              modes.push(name)
+            }
+            else {
+              // TODO: return a Nil explaining error
+              return
+            }
+          }
+          else if ('PARENT' === name) {
+            if (pI === 0) {
+              modes.push(name)
+            }
+            else {
+              // TODO: return a Nil explaining error
+              return
+            }
+          }
+          else if (0 === modes.length) {
+            part = (part as VarVal).unify(TOP, ctx)
+            if (part.isNil) {
+              // TODO: var not found, so can't find path
+              return
+            }
+            else {
+              part = '' + part.peg
+            }
+          }
+        }
+        else {
+          parts.push(part)
+        }
       }
-      else if (node instanceof ListVal) {
-        node = node.peg[part]
+
+      if (this.absolute) {
+        fullpath = parts
       }
       else {
-        break;
+        fullpath = fullpath.slice(
+          0,
+          (
+            modes.includes('SELF') ? 0 :
+              modes.includes('PARENT') ? -1 :
+                -1 // siblings
+          )
+        ).concat(parts)
       }
-    }
 
-    if (pI === fullpath.length) {
-      out = node
+      let sep = '.'
+      fullpath = fullpath
+        .reduce(((a: string[], p: string) =>
+          (p === sep ? a.length = a.length - 1 : a.push(p), a)), [])
 
-      // Types and hidden values are cloned and made concrete
-      if (null != out && (out.mark.type || out.mark.hide)) {
-        out = out.clone(ctx)
+      if (modes.includes('KEY')) {
+        let key = this.path[this.path.length - 2]
+        let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
 
-        walk(out, (_key: string | number | undefined, val: Val) => {
-          val.mark.type = false
-          val.mark.hide = false
-          return val
-        })
+        // TODO: other props?
+        sv.dc = DONE
+        sv.path = this.path
+
+        return sv
+      }
+
+      let node = ctx.root
+      let pI = 0
+      for (; pI < fullpath.length; pI++) {
+        let part = fullpath[pI]
+
+        if (node instanceof MapVal) {
+          node = node.peg[part]
+        }
+        else if (node instanceof ListVal) {
+          node = node.peg[part]
+        }
+        else {
+          break;
+        }
+      }
+
+      if (pI === fullpath.length) {
+        out = node
+
+        // Types and hidden values are cloned and made concrete
+        if (null != out && (out.mark.type || out.mark.hide)) {
+          out = out.clone(ctx)
+
+          walk(out, (_key: string | number | undefined, val: Val) => {
+            val.mark.type = false
+            val.mark.hide = false
+            return val
+          })
+        }
       }
     }
 

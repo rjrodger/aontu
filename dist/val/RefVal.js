@@ -125,101 +125,107 @@ class RefVal extends FeatureVal_1.FeatureVal {
     }
     find(ctx) {
         let out = undefined;
-        // NOTE: path *to* the ref, not the ref itself!
-        let fullpath = this.path;
-        let parts = [];
-        let modes = [];
-        for (let pI = 0; pI < this.peg.length; pI++) {
-            let part = this.peg[pI];
-            if (part instanceof VarVal_1.VarVal) {
-                let strval = part.peg;
-                let name = strval ? '' + strval.peg : '';
-                if ('KEY' === name) {
-                    if (pI === this.peg.length - 1) {
-                        modes.push(name);
-                    }
-                    else {
-                        // TODO: return a Nil explaining error
-                        return;
-                    }
-                }
-                if ('SELF' === name) {
-                    if (pI === 0) {
-                        modes.push(name);
-                    }
-                    else {
-                        // TODO: return a Nil explaining error
-                        return;
-                    }
-                }
-                else if ('PARENT' === name) {
-                    if (pI === 0) {
-                        modes.push(name);
-                    }
-                    else {
-                        // TODO: return a Nil explaining error
-                        return;
-                    }
-                }
-                else if (0 === modes.length) {
-                    part = part.unify(TopVal_1.TOP, ctx);
-                    if (part.isNil) {
-                        // TODO: var not found, so can't find path
-                        return;
-                    }
-                    else {
-                        part = '' + part.peg;
-                    }
-                }
-            }
-            else {
-                parts.push(part);
-            }
-        }
-        if (this.absolute) {
-            fullpath = parts;
+        // console.log('FIND', this.path, '%', this.peg)
+        if (this.path.join('.').startsWith(this.peg.join('.'))) {
+            out = NilVal_1.NilVal.make(ctx, 'path-cycle', this);
         }
         else {
-            fullpath = fullpath.slice(0, (modes.includes('SELF') ? 0 :
-                modes.includes('PARENT') ? -1 :
-                    -1 // siblings
-            )).concat(parts);
-        }
-        let sep = '.';
-        fullpath = fullpath
-            .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
-        if (modes.includes('KEY')) {
-            let key = this.path[this.path.length - 2];
-            let sv = new StringVal_1.StringVal({ peg: null == key ? '' : key }, ctx);
-            // TODO: other props?
-            sv.dc = type_1.DONE;
-            sv.path = this.path;
-            return sv;
-        }
-        let node = ctx.root;
-        let pI = 0;
-        for (; pI < fullpath.length; pI++) {
-            let part = fullpath[pI];
-            if (node instanceof MapVal_1.MapVal) {
-                node = node.peg[part];
+            // NOTE: path *to* the ref, not the ref itself!
+            let fullpath = this.path;
+            let parts = [];
+            let modes = [];
+            for (let pI = 0; pI < this.peg.length; pI++) {
+                let part = this.peg[pI];
+                if (part instanceof VarVal_1.VarVal) {
+                    let strval = part.peg;
+                    let name = strval ? '' + strval.peg : '';
+                    if ('KEY' === name) {
+                        if (pI === this.peg.length - 1) {
+                            modes.push(name);
+                        }
+                        else {
+                            // TODO: return a Nil explaining error
+                            return;
+                        }
+                    }
+                    if ('SELF' === name) {
+                        if (pI === 0) {
+                            modes.push(name);
+                        }
+                        else {
+                            // TODO: return a Nil explaining error
+                            return;
+                        }
+                    }
+                    else if ('PARENT' === name) {
+                        if (pI === 0) {
+                            modes.push(name);
+                        }
+                        else {
+                            // TODO: return a Nil explaining error
+                            return;
+                        }
+                    }
+                    else if (0 === modes.length) {
+                        part = part.unify(TopVal_1.TOP, ctx);
+                        if (part.isNil) {
+                            // TODO: var not found, so can't find path
+                            return;
+                        }
+                        else {
+                            part = '' + part.peg;
+                        }
+                    }
+                }
+                else {
+                    parts.push(part);
+                }
             }
-            else if (node instanceof ListVal_1.ListVal) {
-                node = node.peg[part];
+            if (this.absolute) {
+                fullpath = parts;
             }
             else {
-                break;
+                fullpath = fullpath.slice(0, (modes.includes('SELF') ? 0 :
+                    modes.includes('PARENT') ? -1 :
+                        -1 // siblings
+                )).concat(parts);
             }
-        }
-        if (pI === fullpath.length) {
-            out = node;
-            // Types and hidden values are cloned and made concrete
-            if (null != out && (out.mark.type || out.mark.hide)) {
-                out = out.clone(ctx);
-                (0, utility_1.walk)(out, (_key, val) => {
-                    val.mark.type = false;
-                    val.mark.hide = false;
-                    return val;
-                });
+            let sep = '.';
+            fullpath = fullpath
+                .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
+            if (modes.includes('KEY')) {
+                let key = this.path[this.path.length - 2];
+                let sv = new StringVal_1.StringVal({ peg: null == key ? '' : key }, ctx);
+                // TODO: other props?
+                sv.dc = type_1.DONE;
+                sv.path = this.path;
+                return sv;
+            }
+            let node = ctx.root;
+            let pI = 0;
+            for (; pI < fullpath.length; pI++) {
+                let part = fullpath[pI];
+                if (node instanceof MapVal_1.MapVal) {
+                    node = node.peg[part];
+                }
+                else if (node instanceof ListVal_1.ListVal) {
+                    node = node.peg[part];
+                }
+                else {
+                    break;
+                }
+            }
+            if (pI === fullpath.length) {
+                out = node;
+                // Types and hidden values are cloned and made concrete
+                if (null != out && (out.mark.type || out.mark.hide)) {
+                    out = out.clone(ctx);
+                    (0, utility_1.walk)(out, (_key, val) => {
+                        val.mark.type = false;
+                        val.mark.hide = false;
+                        return val;
+                    });
+                }
             }
         }
         return out;
