@@ -2,6 +2,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -14,9 +15,7 @@ class BooleanVal extends ScalarVal {
   isBoolean = true
 
   constructor(
-    spec: {
-      peg: boolean
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super({ peg: spec.peg, kind: Boolean }, ctx)

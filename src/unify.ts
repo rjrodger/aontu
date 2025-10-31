@@ -119,7 +119,6 @@ const unite = (ctx: Context, a: any, b: any, whence: string, explain?: any[]) =>
     }
     catch (err: any) {
       // TODO: handle unexpected
-      console.log(err)
       out = NilVal.make(ctx, 'internal', a, b)
     }
   }
@@ -171,11 +170,9 @@ class Context {
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
-    // this.err = cfg.err || []
     this.src = cfg.src
 
     this.collect = cfg.collect ?? null != cfg.err
-    // this.errlist = cfg.err || []
     this.err = cfg.err || []
     this.explain = cfg.explain ?? null
 
@@ -184,8 +181,7 @@ class Context {
 
     this.cc = null == cfg.cc ? this.cc : cfg.cc
 
-    this.var = cfg.var || this.var
-
+    this.var = cfg.var ?? this.var
     this.seenI = cfg.seenI ?? 0
     this.seen = cfg.seen ?? {}
   }
@@ -194,7 +190,6 @@ class Context {
   clone(cfg: {
     root?: Val,
     path?: Path,
-    // err?: Omit<NilVal[], "push">,
     err?: any[]
   }): Context {
     const ctx = Object.create(this)
@@ -203,7 +198,6 @@ class Context {
     ctx.var = Object.create(this.var)
 
     ctx.err = cfg.err ?? ctx.err
-    // ctx.seterr(cfg.err)
 
     return ctx
   }

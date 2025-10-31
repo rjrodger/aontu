@@ -68,7 +68,12 @@ class AontuX {
     generate(src, meta) {
         try {
             let out = undefined;
-            let ac = this.ctx({ src, err: meta?.err, explain: meta?.explain });
+            let ac = this.ctx({
+                src,
+                err: meta?.err,
+                explain: meta?.explain,
+                var: meta?.var,
+            });
             let pval = this.parse(src, ac);
             if (undefined !== pval && 0 === pval.err.length) {
                 let uval = this.unify(pval, ac);

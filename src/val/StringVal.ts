@@ -2,6 +2,7 @@
 
 import type {
   Val,
+  ValSpec,
 } from '../type'
 
 import {
@@ -15,9 +16,7 @@ class StringVal extends ScalarVal {
   isString = true
 
   constructor(
-    spec: {
-      peg: string
-    },
+    spec: ValSpec,
     ctx?: Context
   ) {
     super({ peg: spec.peg, kind: String }, ctx)

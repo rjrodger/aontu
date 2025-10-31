@@ -7,7 +7,11 @@ const args = {
   debug: process.argv[3],
   trace: process.argv[4],
   explain: process.argv[5],
+  vars: process.argv[6],
 }
+
+const vars = (args.vars ?? '').split(',')
+      .reduce((a,kv,_)=>(_=kv.split('='),a[_[0]]=_[1],a),{})
 
 const hasDebugArg = ('canon'===args.debug || 'lang' ===args.debug || 'deep'===args.debug)
 
@@ -68,7 +72,7 @@ if(0 === err.length) {
   if(hasDebugArg) {
     console.log('> GEN:')
   }
-  const meta = {err,explain}
+  const meta = {err,explain,var:vars}
   const out = aontu.generate(args.src, meta)
 
   print(out)

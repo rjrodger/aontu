@@ -25,6 +25,11 @@ import { StringVal } from './StringVal'
 import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
 import { FeatureVal } from './FeatureVal'
+import { NullVal } from './NullVal'
+import { BooleanVal } from './BooleanVal'
+import { NumberVal } from './NumberVal'
+import { IntegerVal } from './IntegerVal'
+
 
 import {
   explainOpen,
@@ -70,9 +75,29 @@ class VarVal extends FeatureVal {
 
     if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
       if (nameVal instanceof StringVal) {
-        out = ctx.var[nameVal.peg]
-        if (null == out) {
-          out = NilVal.make(ctx, 'var[' + nameVal.peg + ']', this, peer)
+        let found = ctx.var[nameVal.peg]
+        if (undefined === found) {
+          out = NilVal.make(ctx, 'invalid_var', this, peer)
+        }
+
+        // TODO: support complex values
+        const ft = typeof found
+        if (null === found) {
+          out = this.place(new NullVal({ peg: null }))
+        }
+        else if ('string' === ft) {
+          out = new StringVal({ peg: found })
+        }
+        else if ('boolean' === ft) {
+          out = new BooleanVal({ peg: found })
+        }
+        else if ('number' === ft) {
+          out = Number.isInteger(found) ?
+            new IntegerVal({ peg: found }) :
+            new NumberVal({ peg: found })
+        }
+        else {
+          out = NilVal.make(ctx, 'invalid_var', this, peer)
         }
       }
       else {

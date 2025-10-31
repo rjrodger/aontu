@@ -40,7 +40,6 @@ after,
 maxdepth, 
 // These arguments are used for recursive state.
 key, parent, path) {
-    // console.log('WALK-START', val.constructor.name, val.canon)
     let out = null == before ? val : before(key, val, parent, path || []);
     maxdepth = null != maxdepth && 0 <= maxdepth ? maxdepth : 32;
     if (null != maxdepth && 0 === maxdepth) {
@@ -49,7 +48,6 @@ key, parent, path) {
     if (null != path && null != maxdepth && 0 < maxdepth && maxdepth <= path.length) {
         return out;
     }
-    // console.log('WALK-PEG', out.canon)
     const child = out.peg;
     // Container Vals (Map etc) have peg = plain {} or []
     if (null != child && !child.isVal) {
@@ -76,7 +74,6 @@ const T_CHILDREN = 5;
 function explainOpen(ctx, t, note, ac, bc) {
     if (false === t)
         return null;
-    // console.log('OPEN', ctx.cc)
     t = t ?? [null, 'root', null, null, null, null];
     t[T_WHY] = t[T_WHY] ?? '';
     t[T_NOTE] = (0 <= ctx.cc ? ctx.cc + '~' : '') + note;

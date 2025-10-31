@@ -57,8 +57,6 @@ function walk(
   parent?: Val,
   path?: (string | number)[]
 ): Val {
-  // console.log('WALK-START', val.constructor.name, val.canon)
-
   let out = null == before ? val : before(key, val, parent, path || [])
 
   maxdepth = null != maxdepth && 0 <= maxdepth ? maxdepth : 32
@@ -68,8 +66,6 @@ function walk(
   if (null != path && null != maxdepth && 0 < maxdepth && maxdepth <= path.length) {
     return out
   }
-
-  // console.log('WALK-PEG', out.canon)
 
   const child: any = out.peg
 
@@ -111,8 +107,6 @@ function explainOpen(
   bc?: Val
 ): any[] | null {
   if (false === t) return null;
-
-  // console.log('OPEN', ctx.cc)
 
   t = t ?? [null, 'root', null, null, null, null]
   t[T_WHY] = t[T_WHY] ?? ''

@@ -85,7 +85,6 @@ const unite = (ctx, a, b, whence, explain) => {
         }
         catch (err) {
             // TODO: handle unexpected
-            console.log(err);
             out = NilVal_1.NilVal.make(ctx, 'internal', a, b);
         }
     }
@@ -103,16 +102,14 @@ class Context {
         this.var = {};
         this.root = cfg.root;
         this.path = cfg.path || [];
-        // this.err = cfg.err || []
         this.src = cfg.src;
         this.collect = cfg.collect ?? null != cfg.err;
-        // this.errlist = cfg.err || []
         this.err = cfg.err || [];
         this.explain = cfg.explain ?? null;
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
-        this.var = cfg.var || this.var;
+        this.var = cfg.var ?? this.var;
         this.seenI = cfg.seenI ?? 0;
         this.seen = cfg.seen ?? {};
     }
@@ -122,7 +119,6 @@ class Context {
         ctx.root = cfg.root ?? this.root;
         ctx.var = Object.create(this.var);
         ctx.err = cfg.err ?? ctx.err;
-        // ctx.seterr(cfg.err)
         return ctx;
     }
     descend(key) {

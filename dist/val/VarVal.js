@@ -8,6 +8,10 @@ const StringVal_1 = require("./StringVal");
 const NilVal_1 = require("./NilVal");
 const RefVal_1 = require("./RefVal");
 const FeatureVal_1 = require("./FeatureVal");
+const NullVal_1 = require("./NullVal");
+const BooleanVal_1 = require("./BooleanVal");
+const NumberVal_1 = require("./NumberVal");
+const IntegerVal_1 = require("./IntegerVal");
 const utility_1 = require("../utility");
 // TODO: KEY, SELF, PARENT are reserved names - error
 class VarVal extends FeatureVal_1.FeatureVal {
@@ -35,9 +39,28 @@ class VarVal extends FeatureVal_1.FeatureVal {
         }
         if (!(nameVal instanceof RefVal_1.RefVal) && type_1.DONE === nameVal.dc) {
             if (nameVal instanceof StringVal_1.StringVal) {
-                out = ctx.var[nameVal.peg];
-                if (null == out) {
-                    out = NilVal_1.NilVal.make(ctx, 'var[' + nameVal.peg + ']', this, peer);
+                let found = ctx.var[nameVal.peg];
+                if (undefined === found) {
+                    out = NilVal_1.NilVal.make(ctx, 'invalid_var', this, peer);
+                }
+                // TODO: support complex values
+                const ft = typeof found;
+                if (null === found) {
+                    out = this.place(new NullVal_1.NullVal({ peg: null }));
+                }
+                else if ('string' === ft) {
+                    out = new StringVal_1.StringVal({ peg: found });
+                }
+                else if ('boolean' === ft) {
+                    out = new BooleanVal_1.BooleanVal({ peg: found });
+                }
+                else if ('number' === ft) {
+                    out = Number.isInteger(found) ?
+                        new IntegerVal_1.IntegerVal({ peg: found }) :
+                        new NumberVal_1.NumberVal({ peg: found });
+                }
+                else {
+                    out = NilVal_1.NilVal.make(ctx, 'invalid_var', this, peer);
                 }
             }
             else {
