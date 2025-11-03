@@ -26,7 +26,6 @@ abstract class FeatureVal extends BaseVal {
     super(spec, ctx)
   }
 
-
   superior(): Val {
     return TOP
   }

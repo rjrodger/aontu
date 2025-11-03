@@ -9,7 +9,8 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isTypeFunc = true;
-        this.mark.type = true;
+        // this.mark.type = true
+        this.mark.type = false;
         this.mark.hide = false;
         // console.log('TFV', this.id, this.peg?.[0]?.canon)
     }
@@ -19,17 +20,6 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
     funcname() {
         return 'type';
     }
-    /*
-    unify(peer: Val, ctx: Context): Val {
-      let out: Val | undefined = this.resolved
-  
-      if (null == out) {
-        out = this.resolve(ctx, this.peg)
-      }
-  
-      return out
-    }
-    */
     resolve(ctx, args) {
         let out = args[0] ?? val_1.NilVal.make(ctx, 'arg', this);
         if (!out.isNil) {
@@ -42,11 +32,14 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         // console.log('TYPE-RESOLVE', args[0]?.canon, '->', out.canon)
         // TODO: since type is self-erasing, we need this hack - find a better way
-        const origcanon = out.canon;
+        /*
+        const origcanon = out.canon
         Object.defineProperty(out, 'canon', {
-            get: () => 'type(' + origcanon + ')',
-            configurable: true
-        });
+          get: () => 'type(' + origcanon + ')',
+          configurable: true
+        })
+        */
+        // console.log('TYPE-OUT', out.canon)
         return out;
     }
 }

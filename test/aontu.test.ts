@@ -2,18 +2,19 @@
 
 
 import Fs from 'node:fs'
-import { describe, it } from 'node:test'
+import { describe, test } from 'node:test'
 import { memfs as Memfs } from 'memfs'
 import { expect } from '@hapi/code'
+import { MapVal } from '../dist/val/MapVal'
 
-import { Aontu, Lang, util, AontuX } from '../dist/aontu'
+import { Aontu, Lang, util, AontuX, Context } from '../dist/aontu'
 
 type FST = typeof Fs
 
 
 describe('aontu', function() {
 
-  it('basic-api', async () => {
+  test('basic-api', async () => {
     let a0 = new AontuX()
 
     let p0 = a0.parse('a:number')
@@ -30,7 +31,7 @@ describe('aontu', function() {
   })
 
 
-  it('error-api', async () => {
+  test('error-api', async () => {
     let a0 = new AontuX()
 
     expect(() => a0.parse('a::number')).throws(/unexpected char/)
@@ -45,7 +46,9 @@ describe('aontu', function() {
 
 
 
-  it('happy', async () => {
+  test('happy', async () => {
+    let ctx = makeCtx()
+
     let v0 = Aontu('a:1')
     expect(v0.canon).equal('{"a":1}')
 
@@ -76,7 +79,7 @@ w: b: $.q.a & {y:2,z:3}
 q: a: { x: 1 }
 w0: b: $.q.a & {y:2,z:3}
 w1: b: {y:2,z:3} & $.q.a
-`).gen()
+`).gen(ctx)
     ).equal({
       q: { a: { x: 1 } },
       w0: { b: { x: 1, y: 2, z: 3 } },
@@ -88,7 +91,7 @@ w1: b: {y:2,z:3} & $.q.a
   })
 
 
-  it('util', async () => {
+  test('util', async () => {
     expect(util.options('x')).include({ src: 'x', print: 0 })
     expect(util.options('x', { print: 1 })).include({ src: 'x', print: 1 })
     expect(util.options({ src: 'x' }, { print: 1 })).include({
@@ -101,14 +104,16 @@ w1: b: {y:2,z:3} & $.q.a
   })
 
 
-  it('file', async () => {
+  test('file', async () => {
+    let ctx = makeCtx()
+
     let v0 = Aontu('@"' + __dirname + '/../test/t02.jsonic"')
 
     expect(v0.canon).equal(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}'
     )
 
-    expect(v0.gen()).equal({
+    expect(v0.gen(ctx)).equal({
       // sys: { ent: { name: undefined } },
       ent: {
         foo: {
@@ -132,7 +137,7 @@ w1: b: {y:2,z:3} & $.q.a
   })
 
 
-  it('pref', async () => {
+  test('pref', async () => {
     try {
       Aontu('@"' + __dirname + '/../test/t03.jsonic"', {
         base: __dirname,
@@ -144,7 +149,7 @@ w1: b: {y:2,z:3} & $.q.a
   })
 
 
-  it('map-spread', () => {
+  test('map-spread', () => {
     let v0 = Aontu('c:{&:{x:2},y:{k:3},z:{k:4}}')
     expect(v0.canon).equal(
       '{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
@@ -164,37 +169,44 @@ w1: b: {y:2,z:3} & $.q.a
   })
 
 
-  it('empty-and-comments', () => {
-    expect(Aontu('').gen()).equal({})
-    expect(Aontu().gen()).equal({})
+  test('empty-and-comments', () => {
+    let ctx = makeCtx()
+
+    expect(Aontu('').gen(ctx)).equal({})
+    expect(Aontu().gen(ctx)).equal({})
 
     expect(Aontu(`
     # comment
-    `).gen()).equal({})
+    `).gen(ctx)).equal({})
   })
 
 
-  it('spread-edges', () => {
-    expect(Aontu('a:b:{} a:&:{x:1}').gen()).equal({ a: { b: { x: 1 } } })
+  test('spread-edges', () => {
+    let ctx = makeCtx()
+    expect(Aontu('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } })
 
     // FIX
-    // expect(Aontu('a:{} &:{x:1}').gen()).toEqual({ a: { x: 1 } })
+    // expect(Aontu('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
   })
 
 
-  it('key-edges', () => {
-    expect(Aontu('a:{k:.$KEY}').gen()).equal({ a: { k: 'a' } })
-    expect(Aontu('a:b:{k:.$KEY}').gen()).equal({ a: { b: { k: 'b' } } })
+  test('key-edges', () => {
+    let ctx = makeCtx()
 
-    expect(Aontu('a:{k:.$KEY} x:1').gen()).equal({ x: 1, a: { k: 'a' } })
-    expect(Aontu('a:b:{k:.$KEY} x:1').gen()).equal({ x: 1, a: { b: { k: 'b' } } })
+    expect(Aontu('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } })
+    expect(Aontu('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } })
 
-    expect(Aontu('x:1 a:{k:.$KEY}').gen()).equal({ x: 1, a: { k: 'a' } })
-    expect(Aontu('x:1 a:b:{k:.$KEY}').gen()).equal({ x: 1, a: { b: { k: 'b' } } })
+    expect(Aontu('a:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { k: 'a' } })
+    expect(Aontu('a:b:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } })
+
+    expect(Aontu('x:1 a:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { k: 'a' } })
+    expect(Aontu('x:1 a:b:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } })
   })
 
 
-  it('practical-path-spread', () => {
+  test('practical-path-spread', () => {
+    let ctx = makeCtx()
+
     let v0 = Aontu(`
 micks: $.def.garage & {
 
@@ -220,7 +232,7 @@ def: garage: {
 }
 `)
 
-    expect(v0.gen()).equal({
+    expect(v0.gen(ctx)).equal({
       micks: {
         porsche: { doors: 4, color: 'silver' },
         ferrari: { doors: 4, color: 'red' },
@@ -232,7 +244,7 @@ def: garage: {
   })
 
 
-  it('virtual-fs', () => {
+  test('virtual-fs', () => {
     const mfs = Memfs({
       'foo.jsonic': '{f:11}'
     })
@@ -250,3 +262,8 @@ def: garage: {
   })
 
 })
+
+
+function makeCtx(r?: any) {
+  return new Context({ root: r || new MapVal({ peg: {} }) })
+}

@@ -155,7 +155,7 @@ class ListVal extends BagVal_1.BagVal {
             let val = this.peg[i].gen(ctx);
             if (undefined === val) {
                 if (!this.optionalKeys.includes('' + i)) {
-                    return NilVal_1.NilVal.make(ctx, 'required', this.peg[i], undefined);
+                    return NilVal_1.NilVal.make(ctx, 'required_listelem', this.peg[i], undefined);
                 }
             }
             else {

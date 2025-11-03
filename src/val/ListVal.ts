@@ -235,7 +235,7 @@ class ListVal extends BagVal {
       let val = this.peg[i].gen(ctx)
       if (undefined === val) {
         if (!this.optionalKeys.includes('' + i)) {
-          return NilVal.make(ctx, 'required', this.peg[i], undefined)
+          return NilVal.make(ctx, 'required_listelem', this.peg[i], undefined)
         }
       }
       else {

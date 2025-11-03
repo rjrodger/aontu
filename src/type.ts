@@ -101,7 +101,7 @@ interface Val {
 
   get canon(): string
 
-  gen(ctx?: Context): any
+  gen(ctx: Context): any
 }
 
 type ValMark = {

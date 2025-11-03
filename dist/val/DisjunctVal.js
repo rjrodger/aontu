@@ -24,8 +24,6 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
     }
     unify(peer, ctx, trace) {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Disjunct', this, peer);
-        const sc = this.canon;
-        const pc = peer?.canon;
         if (!this.prefsRanked) {
             this.rankPrefs(ctx);
         }
@@ -139,7 +137,8 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         return '|';
     }
     gen(ctx) {
-        // // // console.log('DJ-GEN', this.peg.map((p: any) => p.canon))
+        // TODO: move this to main unify
+        // console.log('DJ-GEN', this.peg.map((p: any) => p.canon), ctx.err)
         if (0 < this.peg.length) {
             let vals = this.peg.filter((v) => v instanceof PrefVal_1.PrefVal);
             // // // console.log('DJ-GEN-VALS-A', vals.map((p: any) => p.canon))
@@ -152,9 +151,9 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
                 // // // console.log('DJ-GEN-VALS-NEXT', valnext.canon)
                 val = valnext;
             }
-            // // // console.log('DJ-GEN-VALS-B', val.canon)
+            // console.log('DJ-GEN-VALS-B', val.canon)
             const out = val.gen(ctx);
-            // // // console.log('DJ-GEN-VALS-C', out)
+            // console.log('DJ-GEN-VALS-C', out)
             return out;
         }
         return super.gen(ctx);

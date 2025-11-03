@@ -4,9 +4,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const memfs_1 = require("memfs");
 const code_1 = require("@hapi/code");
+const MapVal_1 = require("../dist/val/MapVal");
 const aontu_1 = require("../dist/aontu");
 (0, node_test_1.describe)('aontu', function () {
-    (0, node_test_1.it)('basic-api', async () => {
+    (0, node_test_1.test)('basic-api', async () => {
         let a0 = new aontu_1.AontuX();
         let p0 = a0.parse('a:number');
         (0, code_1.expect)(p0?.canon).equal('{"a":number}');
@@ -17,7 +18,7 @@ const aontu_1 = require("../dist/aontu");
         let d0 = a0.generate('a:2');
         (0, code_1.expect)(d0).equal({ a: 2 });
     });
-    (0, node_test_1.it)('error-api', async () => {
+    (0, node_test_1.test)('error-api', async () => {
         let a0 = new aontu_1.AontuX();
         (0, code_1.expect)(() => a0.parse('a::number')).throws(/unexpected char/);
         (0, code_1.expect)(a0.parse('a:number a:A').canon).equal('{"a":number&"A"}');
@@ -26,7 +27,8 @@ const aontu_1 = require("../dist/aontu");
         (0, code_1.expect)(() => a0.generate('a::A')).throws(/unexpected char/);
         (0, code_1.expect)(() => a0.generate('a:A a:B')).throws(/Cannot unify value: "B" with value: "A"/);
     });
-    (0, node_test_1.it)('happy', async () => {
+    (0, node_test_1.test)('happy', async () => {
+        let ctx = makeCtx();
         let v0 = (0, aontu_1.Aontu)('a:1');
         (0, code_1.expect)(v0.canon).equal('{"a":1}');
         (0, code_1.expect)((0, aontu_1.Aontu)('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}');
@@ -45,7 +47,7 @@ w: b: $.q.a & {y:2,z:3}
 q: a: { x: 1 }
 w0: b: $.q.a & {y:2,z:3}
 w1: b: {y:2,z:3} & $.q.a
-`).gen()).equal({
+`).gen(ctx)).equal({
             q: { a: { x: 1 } },
             w0: { b: { x: 1, y: 2, z: 3 } },
             w1: { b: { x: 1, y: 2, z: 3 } },
@@ -53,7 +55,7 @@ w1: b: {y:2,z:3} & $.q.a
         // TODO: fix in jsonic
         (0, code_1.expect)((0, aontu_1.Aontu)('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}');
     });
-    (0, node_test_1.it)('util', async () => {
+    (0, node_test_1.test)('util', async () => {
         (0, code_1.expect)(aontu_1.util.options('x')).include({ src: 'x', print: 0 });
         (0, code_1.expect)(aontu_1.util.options('x', { print: 1 })).include({ src: 'x', print: 1 });
         (0, code_1.expect)(aontu_1.util.options({ src: 'x' }, { print: 1 })).include({
@@ -62,10 +64,11 @@ w1: b: {y:2,z:3} & $.q.a
         });
         (0, code_1.expect)(aontu_1.util.options({ src: 'x', print: 1 }, { src: 'y', print: 2 })).include({ src: 'y', print: 2 });
     });
-    (0, node_test_1.it)('file', async () => {
+    (0, node_test_1.test)('file', async () => {
+        let ctx = makeCtx();
         let v0 = (0, aontu_1.Aontu)('@"' + __dirname + '/../test/t02.jsonic"');
         (0, code_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}');
-        (0, code_1.expect)(v0.gen()).equal({
+        (0, code_1.expect)(v0.gen(ctx)).equal({
             // sys: { ent: { name: undefined } },
             ent: {
                 foo: {
@@ -87,7 +90,7 @@ w1: b: {y:2,z:3} & $.q.a
             },
         });
     });
-    (0, node_test_1.it)('pref', async () => {
+    (0, node_test_1.test)('pref', async () => {
         try {
             (0, aontu_1.Aontu)('@"' + __dirname + '/../test/t03.jsonic"', {
                 base: __dirname,
@@ -97,7 +100,7 @@ w1: b: {y:2,z:3} & $.q.a
             (0, code_1.expect)(err.message).include('Cannot unify value: integer|*1 with value: true');
         }
     });
-    (0, node_test_1.it)('map-spread', () => {
+    (0, node_test_1.test)('map-spread', () => {
         let v0 = (0, aontu_1.Aontu)('c:{&:{x:2},y:{k:3},z:{k:4}}');
         (0, code_1.expect)(v0.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v1 = (0, aontu_1.Aontu)('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}');
@@ -107,27 +110,31 @@ w1: b: {y:2,z:3} & $.q.a
             '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
             '"c":{&:{"x":2},"y":{"k":3,"x":2}}}');
     });
-    (0, node_test_1.it)('empty-and-comments', () => {
-        (0, code_1.expect)((0, aontu_1.Aontu)('').gen()).equal({});
-        (0, code_1.expect)((0, aontu_1.Aontu)().gen()).equal({});
+    (0, node_test_1.test)('empty-and-comments', () => {
+        let ctx = makeCtx();
+        (0, code_1.expect)((0, aontu_1.Aontu)('').gen(ctx)).equal({});
+        (0, code_1.expect)((0, aontu_1.Aontu)().gen(ctx)).equal({});
         (0, code_1.expect)((0, aontu_1.Aontu)(`
     # comment
-    `).gen()).equal({});
+    `).gen(ctx)).equal({});
     });
-    (0, node_test_1.it)('spread-edges', () => {
-        (0, code_1.expect)((0, aontu_1.Aontu)('a:b:{} a:&:{x:1}').gen()).equal({ a: { b: { x: 1 } } });
+    (0, node_test_1.test)('spread-edges', () => {
+        let ctx = makeCtx();
+        (0, code_1.expect)((0, aontu_1.Aontu)('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } });
         // FIX
-        // expect(Aontu('a:{} &:{x:1}').gen()).toEqual({ a: { x: 1 } })
+        // expect(Aontu('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
     });
-    (0, node_test_1.it)('key-edges', () => {
-        (0, code_1.expect)((0, aontu_1.Aontu)('a:{k:.$KEY}').gen()).equal({ a: { k: 'a' } });
-        (0, code_1.expect)((0, aontu_1.Aontu)('a:b:{k:.$KEY}').gen()).equal({ a: { b: { k: 'b' } } });
-        (0, code_1.expect)((0, aontu_1.Aontu)('a:{k:.$KEY} x:1').gen()).equal({ x: 1, a: { k: 'a' } });
-        (0, code_1.expect)((0, aontu_1.Aontu)('a:b:{k:.$KEY} x:1').gen()).equal({ x: 1, a: { b: { k: 'b' } } });
-        (0, code_1.expect)((0, aontu_1.Aontu)('x:1 a:{k:.$KEY}').gen()).equal({ x: 1, a: { k: 'a' } });
-        (0, code_1.expect)((0, aontu_1.Aontu)('x:1 a:b:{k:.$KEY}').gen()).equal({ x: 1, a: { b: { k: 'b' } } });
+    (0, node_test_1.test)('key-edges', () => {
+        let ctx = makeCtx();
+        (0, code_1.expect)((0, aontu_1.Aontu)('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } });
+        (0, code_1.expect)((0, aontu_1.Aontu)('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } });
+        (0, code_1.expect)((0, aontu_1.Aontu)('a:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { k: 'a' } });
+        (0, code_1.expect)((0, aontu_1.Aontu)('a:b:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } });
+        (0, code_1.expect)((0, aontu_1.Aontu)('x:1 a:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { k: 'a' } });
+        (0, code_1.expect)((0, aontu_1.Aontu)('x:1 a:b:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } });
     });
-    (0, node_test_1.it)('practical-path-spread', () => {
+    (0, node_test_1.test)('practical-path-spread', () => {
+        let ctx = makeCtx();
         let v0 = (0, aontu_1.Aontu)(`
 micks: $.def.garage & {
 
@@ -152,7 +159,7 @@ def: garage: {
   &: $.def.car
 }
 `);
-        (0, code_1.expect)(v0.gen()).equal({
+        (0, code_1.expect)(v0.gen(ctx)).equal({
             micks: {
                 porsche: { doors: 4, color: 'silver' },
                 ferrari: { doors: 4, color: 'red' },
@@ -161,7 +168,7 @@ def: garage: {
             def: { car: { doors: 4, color: 'green' }, garage: {} }
         });
     });
-    (0, node_test_1.it)('virtual-fs', () => {
+    (0, node_test_1.test)('virtual-fs', () => {
         const mfs = (0, memfs_1.memfs)({
             'foo.jsonic': '{f:11}'
         });
@@ -172,4 +179,7 @@ def: garage: {
         (0, code_1.expect)(v1.canon).equal('{"a":{"f":11}}');
     });
 });
+function makeCtx(r) {
+    return new aontu_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
+}
 //# sourceMappingURL=aontu.test.js.map

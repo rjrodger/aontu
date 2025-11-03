@@ -47,9 +47,10 @@ const MapVal_1 = require("../dist/val/MapVal");
           */
     });
     (0, node_test_1.it)('generate-file-e02', () => {
+        let ctx = makeCtx();
         let v0 = (0, aontu_1.Aontu)('@"' + __dirname + '/../test/error/e02.jsonic"');
         try {
-            v0.gen();
+            v0.gen(ctx);
         }
         catch (err) {
             (0, code_1.expect)(err.message).contain('RefVal');

@@ -130,6 +130,8 @@ class BaseVal {
     }
     // NOTE: MUST not mutate! Val immutability is a critical assumption. 
     unify(_peer, _ctx) { return this; }
+    // TODO: indicate marks in some way that is ignored by reparse.
+    // Need an annotation/taggins syntax? a:{}/type ?
     get canon() { return ''; }
     errcanon() {
         return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`;
@@ -151,7 +153,7 @@ class BaseVal {
         if (null != insp && '' != insp) {
             s.push('/' + insp);
         }
-        s.push('=');
+        s.push('/');
         if ('object' === typeof this.peg) {
             s.push(inspectpeg(this.peg));
         }

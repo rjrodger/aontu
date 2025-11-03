@@ -61,8 +61,6 @@ class DisjunctVal extends JunctionVal {
 
   unify(peer: Val, ctx: Context, trace?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, trace, 'Disjunct', this, peer)
-    const sc = this.canon
-    const pc = peer?.canon
 
     if (!this.prefsRanked) {
       this.rankPrefs(ctx)
@@ -210,7 +208,9 @@ class DisjunctVal extends JunctionVal {
 
 
   gen(ctx: Context) {
-    // // // console.log('DJ-GEN', this.peg.map((p: any) => p.canon))
+    // TODO: move this to main unify
+
+    // console.log('DJ-GEN', this.peg.map((p: any) => p.canon), ctx.err)
 
     if (0 < this.peg.length) {
 
@@ -229,9 +229,9 @@ class DisjunctVal extends JunctionVal {
         val = valnext
       }
 
-      // // // console.log('DJ-GEN-VALS-B', val.canon)
+      // console.log('DJ-GEN-VALS-B', val.canon)
       const out = val.gen(ctx)
-      // // // console.log('DJ-GEN-VALS-C', out)
+      // console.log('DJ-GEN-VALS-C', out)
       return out
     }
 

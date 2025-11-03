@@ -77,7 +77,7 @@ class VarVal extends FeatureVal {
       if (nameVal instanceof StringVal) {
         let found = ctx.var[nameVal.peg]
         if (undefined === found) {
-          out = NilVal.make(ctx, 'invalid_var', this, peer)
+          out = NilVal.make(ctx, 'unknown_var', this, peer)
         }
 
         // TODO: support complex values
@@ -96,8 +96,11 @@ class VarVal extends FeatureVal {
             new IntegerVal({ peg: found }) :
             new NumberVal({ peg: found })
         }
+        else if ('object' === ft && found.isVal) {
+          out = found
+        }
         else {
-          out = NilVal.make(ctx, 'invalid_var', this, peer)
+          out = NilVal.make(ctx, 'invalid_var_kind', this, peer)
         }
       }
       else {

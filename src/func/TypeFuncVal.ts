@@ -33,7 +33,8 @@ class TypeFuncVal extends FuncBaseVal {
     ctx?: Context
   ) {
     super(spec, ctx)
-    this.mark.type = true
+    // this.mark.type = true
+    this.mark.type = false
     this.mark.hide = false
     // console.log('TFV', this.id, this.peg?.[0]?.canon)
   }
@@ -46,19 +47,6 @@ class TypeFuncVal extends FuncBaseVal {
   funcname() {
     return 'type'
   }
-
-
-  /*
-  unify(peer: Val, ctx: Context): Val {
-    let out: Val | undefined = this.resolved
-
-    if (null == out) {
-      out = this.resolve(ctx, this.peg)
-    }
-
-    return out
-  }
-  */
 
 
   resolve(ctx: Context, args: Val[]) {
@@ -77,11 +65,15 @@ class TypeFuncVal extends FuncBaseVal {
 
     // TODO: since type is self-erasing, we need this hack - find a better way
 
+    /*
     const origcanon = out.canon
     Object.defineProperty(out, 'canon', {
       get: () => 'type(' + origcanon + ')',
       configurable: true
     })
+    */
+
+    // console.log('TYPE-OUT', out.canon)
 
     return out
   }

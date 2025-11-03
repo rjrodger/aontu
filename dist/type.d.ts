@@ -65,7 +65,7 @@ interface Val {
     clone(ctx: Context, spec?: ValSpec): Val;
     unify(peer: Val, ctx: Context, trace?: any[]): Val;
     get canon(): string;
-    gen(ctx?: Context): any;
+    gen(ctx: Context): any;
 }
 type ValMark = {
     type: boolean;

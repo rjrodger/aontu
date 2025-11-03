@@ -51,13 +51,13 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
     });
     (0, node_test_1.it)('gen', () => {
         let ctx = makeCtx();
-        (0, code_1.expect)(P('1').gen()).equal(1);
-        (0, code_1.expect)(P('"a"').gen()).equal('a');
-        (0, code_1.expect)(P('b').gen()).equal('b');
-        (0, code_1.expect)(P('true').gen()).equal(true);
-        (0, code_1.expect)(P('top').gen()).equal(undefined);
-        (0, code_1.expect)(P('a:1').gen()).equal({ a: 1 });
-        (0, code_1.expect)(P('a:1,b:c:2').gen()).equal({ a: 1, b: { c: 2 } });
+        (0, code_1.expect)(P('1').gen(ctx)).equal(1);
+        (0, code_1.expect)(P('"a"').gen(ctx)).equal('a');
+        (0, code_1.expect)(P('b').gen(ctx)).equal('b');
+        (0, code_1.expect)(P('true').gen(ctx)).equal(true);
+        (0, code_1.expect)(P('top').gen(ctx)).equal(undefined);
+        (0, code_1.expect)(P('a:1').gen(ctx)).equal({ a: 1 });
+        (0, code_1.expect)(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } });
         (0, code_1.expect)(P('nil').gen(ctx)).equal(undefined);
         (0, code_1.expect)(P('a:1,b:nil').gen(ctx)).includes({
             isNil: true
@@ -458,8 +458,8 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(tu(ctx, P('1|number'), val_1.TOP).canon).equal('1|number');
         (0, code_1.expect)(tu(ctx, P('1|top'), val_1.TOP).canon).equal('1|top');
         (0, code_1.expect)(tu(ctx, P('1|number|top'), val_1.TOP).canon).equal('1|number|top');
-        (0, code_1.expect)(tu(ctx, P('1|number'), val_1.TOP).gen()).equal(1);
-        (0, code_1.expect)(tu(ctx, P('1|number|top'), val_1.TOP).gen()).equal(1);
+        (0, code_1.expect)(tu(ctx, P('1|number'), val_1.TOP).gen(ctx)).equal(1);
+        (0, code_1.expect)(tu(ctx, P('1|number|top'), val_1.TOP).gen(ctx)).equal(1);
         (0, code_1.expect)(tu(ctx, P('number|1').unify(P('top'), ctx), val_1.TOP).canon).equal('number|1');
         (0, code_1.expect)(tu(ctx, P('1|number|1').unify(P('top'), ctx), val_1.TOP).canon).equal('1|number');
         (0, code_1.expect)(tu(ctx, P('number|string').unify(P('top'), ctx), val_1.TOP).canon)
@@ -477,13 +477,13 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
             .equal('number|1|*1');
         let u0 = tu(ctx, P('number|*1'), P('number'));
         (0, code_1.expect)(u0.canon).equal('number|1');
-        (0, code_1.expect)(u0.gen()).equal(1);
+        (0, code_1.expect)(u0.gen(ctx)).equal(1);
         let u1 = tu(ctx, P('number|*1'), P('number|string'));
         (0, code_1.expect)(u1.canon).equal('number|1');
-        (0, code_1.expect)(u1.gen()).equal(1);
+        (0, code_1.expect)(u1.gen(ctx)).equal(1);
         let u2 = tu(ctx, P('number|*1'), P('2'));
         (0, code_1.expect)(u2.canon).equal('2');
-        (0, code_1.expect)(u2.gen()).equal(2);
+        (0, code_1.expect)(u2.gen(ctx)).equal(2);
     });
     (0, node_test_1.it)('ref-conjunct', () => {
         return;
@@ -498,17 +498,17 @@ const makeIntegerVal = (v, c) => new val_1.IntegerVal({ peg: v }, c);
         `, { xlog: -1 })
       
             let g = []
-            g = []; console.log(m0.gen())
+            g = []; console.log(m0.gen(ctx))
       
             let c0 = new Context({ root: m0 })
             let u0 = m0.unify(TOP, c0)
       
-            g = []; console.log(u0.gen())
+            g = []; console.log(u0.gen(ctx))
       
             let c0a = new Context({ root: u0 })
             let u0a = u0.unify(TOP, c0a)
       
-            g = []; console.log(u0a.gen())
+            g = []; console.log(u0a.gen(ctx))
         */
         let m1 = P(`
   u: { x: 1, y: number}
@@ -598,7 +598,7 @@ b: c2: {n:2}
         (0, code_1.expect)(s0.canon).equal('"p0"');
         let p0 = new PrefVal_1.PrefVal({ peg: s0 });
         (0, code_1.expect)(p0.canon).equal('*"p0"');
-        (0, code_1.expect)(p0.gen()).equal('p0');
+        (0, code_1.expect)(p0.gen(ctx)).equal('p0');
         let pu0 = p0.unify(val_1.TOP, ctx);
         (0, code_1.expect)(pu0).include({
             dc: -1,
@@ -628,7 +628,7 @@ b: c2: {n:2}
         });
         p0.peg = makeSK_String();
         (0, code_1.expect)(p0.canon).equal('*string');
-        (0, code_1.expect)(p0.gen()).equal(undefined);
+        (0, code_1.expect)(p0.gen(ctx)).equal(undefined);
         // p0.pref = new Nil([], 'test:pref')
         // expect(p0.canon).equal('string')
         // expect(p0.gen([])).equal(undefined)
@@ -661,7 +661,7 @@ b: c2: {n:2}
         let d0 = P('1|number').unify(val_1.TOP, ctx);
         (0, code_1.expect)(d0.canon).equal('1|number');
         (0, code_1.expect)(d0.gen(ctx)).equal(1);
-        // expect(d0.gen()).equal(undefined)
+        // expect(d0.gen(ctx)).equal(undefined)
         (0, code_1.expect)(G('number|*1')).equal(1);
         (0, code_1.expect)(G('string|*1')).equal(1);
         (0, code_1.expect)(N('*1 & x', ctx)).equal('nil');

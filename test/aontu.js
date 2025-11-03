@@ -22,7 +22,7 @@ const aontu = new AontuX({
 })
 
 let err = []
-err.foo = 1
+// err.foo = 1
 
 let explain = null
 

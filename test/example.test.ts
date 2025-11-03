@@ -42,6 +42,7 @@ describe('examples', function() {
     expect(G('*2|number')).equal(2)
   })
 
+
   test('path-examples', () => {
     expect(() => G('a:*1|number,b:*2|number,c:$.a&$.b')).throws(/aontu/)
     expect(() => G('a:x:number b:$.a b:x:1 c:$.a c:x:y')).throws(/aontu/)
@@ -50,19 +51,18 @@ describe('examples', function() {
     expect(G('a:x:1 b:$.a')).equal({ a: { x: 1 }, b: { x: 1 } })
     expect(N('a:x:number b:$.a b:x:1 c:$.a c:x:2'))
       .equal('{"a":{"x":number},"b":{"x":1},"c":{"x":2}}')
-    expect(N('a:type(x:number) b:$.a b:x:1 c:$.a c:x:2'))
-      .equal('{"a":type({"x":number}),"b":{"x":1},"c":{"x":2}}')
-    expect(G('a:type(x:number) b:$.a b:x:1 c:$.a c:x:2')).equal({ b: { x: 1 }, c: { x: 2 } })
 
-    expect(G('a:type({}) a:x:number b:$.a b:x:1')).equals({ b: { x: 1 } })
+    expect(N('a:type(x:number) b:$.a b:x:1 c:$.a c:x:2'))
+      .equal('{"a":{"x":number},"b":{"x":1},"c":{"x":2}}')
+
+    expect(G('a:type({}) a:x:number b:x:$.a.x b:x:1 c:$.a c:x:2'))
+      .equal({ b: { x: 1 }, c: { x: 2 } })
+    expect(G('a:type(x:number) b:x:$.a.x b:x:1 c:$.a c:x:2'))
+      .equal({ b: { x: 1 }, c: { x: 2 } })
+
     expect(N('a:x:number b:$.a b:x:1 c:$.a'))
       .equal('{"a":{"x":number},"b":{"x":1},"c":{"x":number}}')
 
-    // TODO: fix - type() call not preserved in canon after conjuncts
-    // expect(N('a:type({}) a:x:number b:$.a b:x:1 c:$.a'))
-    //  .equal('{"a":type({"x":number}),"b":{"x":1},"c":{"x":number}}')
-
-    // TODO: error message does not identify path $.c as the cause
     expect(() => G('a:type({}) a:x:number b:$.a b:x:1 c:$.a')).throws(/aontu/)
 
     expect(G('x:type({}) x:y:1 a:$.x')).equal({ a: { y: 1 } })

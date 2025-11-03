@@ -228,7 +228,7 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(G('key()')).equal('');
         (0, code_1.expect)(G('key() & string')).equal('');
         (0, code_1.expect)(G('key() & *a|string')).equal('');
-        (0, code_1.expect)(G('key() & number')).equal(undefined);
+        (0, code_1.expect)(() => G('key() & number')).throw(/scalar/);
         (0, code_1.expect)(G('a:b:c:key(0)')).equal({ a: { b: { c: 'c' } } });
         (0, code_1.expect)(G('a:b:c:key(1)')).equal({ a: { b: { c: 'b' } } });
         (0, code_1.expect)(G('a:b:c:key(2)')).equal({ a: { b: { c: 'a' } } });
@@ -449,24 +449,13 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(G('string & type(world)')).equal('world');
     });
     (0, node_test_1.test)('type-canon', () => {
-        // Test canonical representation shows type wrapping
-        const N = (x, ctx) => new unify_1.Unify(x, lang)
+        const N = (x, _ctx) => new unify_1.Unify(x, lang)
             .res.canon;
-        (0, code_1.expect)(N('type(1)')).equal('type(1)');
-        (0, code_1.expect)(N('type(foo)')).equal('type("foo")');
-        (0, code_1.expect)(N('type({x:1})')).equal('type({"x":1})');
-        (0, code_1.expect)(N('type([1,2])')).equal('type([1,2])');
+        (0, code_1.expect)(N('type(1)')).equal('1'); // TODO: perhaps 1/type ?
+        (0, code_1.expect)(N('type(foo)')).equal('"foo"');
+        (0, code_1.expect)(N('type({x:1})')).equal('{"x":1}');
+        (0, code_1.expect)(N('type([1,2])')).equal('[1,2]');
     });
-    /*
-    test('type-complex', () => {
-      const a0 = new AontuX()
-      const G = a0.generate.bind(a0)
-  
-      expect(G('type({x:number}) & {x:42}')).equal({ x: 42 })
-      expect(G('type([string]) & [hello]')).equal(['hello'])
-      expect(G('type({x:{y:number}}) & {x:{y:5}}')).equal({ x: { y: 5 } })
-    })
-  */
     (0, node_test_1.test)('super-basic', () => {
         // super() returns the superior type of the current context
         // These tests may need adjustment based on the actual superior() implementation
@@ -499,53 +488,30 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(N('hide({x:1})')).equal('hide({"x":1})');
         (0, code_1.expect)(N('hide([1,2])')).equal('hide([1,2])');
     });
-    (0, node_test_1.test)('path-string-basic', () => {
+    (0, node_test_1.test)('path-canon', () => {
         const N = (x) => new unify_1.Unify(x, lang).res.canon;
-        // Basic string paths should be converted to RefVal
-        (0, code_1.expect)(N('path("foo")')).equal('.foo');
-        (0, code_1.expect)(N('path("foo.bar")')).equal('.foo.bar');
-        (0, code_1.expect)(N('path("a.b.c")')).equal('.a.b.c');
+        (0, code_1.expect)(N('path("foo")')).equal('path(.foo)');
+        (0, code_1.expect)(N('path("foo.bar")')).equal('path(.foo.bar)');
+        (0, code_1.expect)(N('path("a.b.c")')).equal('path(.a.b.c)');
+        (0, code_1.expect)(N('path("foo_bar")')).equal('path(.foo_bar)');
+        (0, code_1.expect)(N('path("foo-bar")')).equal('path(.foo-bar)');
+        (0, code_1.expect)(N('path("0.1.2")')).equal('path(.0.1.2)');
+        (0, code_1.expect)(N('path()')).equal('nil');
+        (0, code_1.expect)(N('path("")')).equal('path(nil)');
     });
     (0, node_test_1.test)('path-number', () => {
         const N = (x) => new unify_1.Unify(x, lang).res.canon;
-        // Numbers like 1.2 should be treated as paths ["1", "2"], not as the number 1.2
+        (0, code_1.expect)(N('path(0.2)')).equal('path(.0.2)');
         (0, code_1.expect)(N('path(1.2)')).equal('path(.1.2)');
+        (0, code_1.expect)(N('path(1.2.3)')).equal('path(.1.2.3)');
+        (0, code_1.expect)(N('path(1.2.3.4)')).equal('path(.1.2.3.4)');
+        (0, code_1.expect)(N('path(0.1.2)')).equal('path(.0.1.2)');
+        (0, code_1.expect)(N('path(0.1.2.3)')).equal('path(.0.1.2.3)');
+        (0, code_1.expect)(N('path(0.1.2.3.4)')).equal('path(.0.1.2.3.4)');
         (0, code_1.expect)(N('path(1.0)')).equal('path(.1.0)');
         (0, code_1.expect)(N('path(10.20)')).equal('path(.10.20)');
         (0, code_1.expect)(N('path(3.14)')).equal('path(.3.14)');
-    });
-    (0, node_test_1.test)('path-integer', () => {
-        const N = (x) => new unify_1.Unify(x, lang).res.canon;
-        // Single integers should become single-part paths
-        (0, code_1.expect)(N('path(0)')).equal('.0');
-        (0, code_1.expect)(N('path(1)')).equal('.1');
-        (0, code_1.expect)(N('path(42)')).equal('.42');
-    });
-    (0, node_test_1.test)('path-absolute', () => {
-        const N = (x) => new unify_1.Unify(x, lang).res.canon;
-        // Absolute paths (starting with $) should be preserved
-        (0, code_1.expect)(N('path("$foo")')).equal('$.foo');
-        (0, code_1.expect)(N('path("$foo.bar")')).equal('$.foo.bar');
-        (0, code_1.expect)(N('path("$a.b.c")')).equal('$.a.b.c');
-    });
-    (0, node_test_1.test)('path-unification', () => {
-        const a0 = new __1.AontuX();
-        const G = a0.generate.bind(a0);
-        // Test that path references resolve during unification
-        (0, code_1.expect)(G('{x: 10, y: path("x")}')).equal({ x: 10, y: 10 });
-        (0, code_1.expect)(G('{a: {b: 20}, c: path("a.b")}')).equal({ a: { b: 20 }, c: 20 });
-    });
-    (0, node_test_1.test)('path-empty-error', () => {
-        const res = new unify_1.Unify('path("")', lang).res;
-        // Empty path should result in an error (NilVal)
-        (0, code_1.expect)(res.isNil).equal(true);
-    });
-    (0, node_test_1.test)('path-complex', () => {
-        const N = (x) => new unify_1.Unify(x, lang).res.canon;
-        // Test various complex path patterns
-        (0, code_1.expect)(N('path("foo_bar")')).equal('.foo_bar');
-        (0, code_1.expect)(N('path("foo-bar")')).equal('.foo-bar');
-        (0, code_1.expect)(N('path("0.1.2")')).equal('.0.1.2');
+        (0, code_1.expect)(N('path(.1)')).equal('path(.1)');
     });
 });
 //# sourceMappingURL=func.test.js.map

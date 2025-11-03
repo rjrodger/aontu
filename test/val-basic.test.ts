@@ -96,13 +96,13 @@ describe('val-basic', function() {
   it('gen', () => {
     let ctx = makeCtx()
 
-    expect(P('1').gen()).equal(1)
-    expect(P('"a"').gen()).equal('a')
-    expect(P('b').gen()).equal('b')
-    expect(P('true').gen()).equal(true)
-    expect(P('top').gen()).equal(undefined)
-    expect(P('a:1').gen()).equal({ a: 1 })
-    expect(P('a:1,b:c:2').gen()).equal({ a: 1, b: { c: 2 } })
+    expect(P('1').gen(ctx)).equal(1)
+    expect(P('"a"').gen(ctx)).equal('a')
+    expect(P('b').gen(ctx)).equal('b')
+    expect(P('true').gen(ctx)).equal(true)
+    expect(P('top').gen(ctx)).equal(undefined)
+    expect(P('a:1').gen(ctx)).equal({ a: 1 })
+    expect(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } })
 
     expect(P('nil').gen(ctx)).equal(undefined)
 
@@ -657,8 +657,8 @@ describe('val-basic', function() {
     expect(tu(ctx, P('1|top'), TOP).canon).equal('1|top')
     expect(tu(ctx, P('1|number|top'), TOP).canon).equal('1|number|top')
 
-    expect(tu(ctx, P('1|number'), TOP).gen()).equal(1)
-    expect(tu(ctx, P('1|number|top'), TOP).gen()).equal(1)
+    expect(tu(ctx, P('1|number'), TOP).gen(ctx)).equal(1)
+    expect(tu(ctx, P('1|number|top'), TOP).gen(ctx)).equal(1)
 
     expect(tu(ctx, P('number|1').unify(P('top'), ctx), TOP).canon).equal('number|1')
 
@@ -686,16 +686,17 @@ describe('val-basic', function() {
 
     let u0 = tu(ctx, P('number|*1'), P('number'))
     expect(u0.canon).equal('number|1')
-    expect(u0.gen()).equal(1)
+    expect(u0.gen(ctx)).equal(1)
 
     let u1 = tu(ctx, P('number|*1'), P('number|string'))
     expect(u1.canon).equal('number|1')
-    expect(u1.gen()).equal(1)
+    expect(u1.gen(ctx)).equal(1)
 
     let u2 = tu(ctx, P('number|*1'), P('2'))
     expect(u2.canon).equal('2')
-    expect(u2.gen()).equal(2)
+    expect(u2.gen(ctx)).equal(2)
   })
+
 
 
   it('ref-conjunct', () => {
@@ -712,17 +713,17 @@ describe('val-basic', function() {
     `, { xlog: -1 })
   
         let g = []
-        g = []; console.log(m0.gen())
+        g = []; console.log(m0.gen(ctx))
   
         let c0 = new Context({ root: m0 })
         let u0 = m0.unify(TOP, c0)
   
-        g = []; console.log(u0.gen())
+        g = []; console.log(u0.gen(ctx))
   
         let c0a = new Context({ root: u0 })
         let u0a = u0.unify(TOP, c0a)
   
-        g = []; console.log(u0a.gen())
+        g = []; console.log(u0a.gen(ctx))
     */
 
     let m1 = P(`
@@ -852,7 +853,7 @@ b: c2: {n:2}
 
     let p0 = new PrefVal({ peg: s0 })
     expect(p0.canon).equal('*"p0"')
-    expect(p0.gen()).equal('p0')
+    expect(p0.gen(ctx)).equal('p0')
 
     let pu0 = p0.unify(TOP, ctx)
     expect(pu0).include({
@@ -888,7 +889,7 @@ b: c2: {n:2}
 
     p0.peg = makeSK_String()
     expect(p0.canon).equal('*string')
-    expect(p0.gen()).equal(undefined)
+    expect(p0.gen(ctx)).equal(undefined)
 
     // p0.pref = new Nil([], 'test:pref')
     // expect(p0.canon).equal('string')
@@ -941,7 +942,7 @@ b: c2: {n:2}
     let d0 = P('1|number').unify(TOP, ctx)
     expect(d0.canon).equal('1|number')
     expect(d0.gen(ctx)).equal(1)
-    // expect(d0.gen()).equal(undefined)
+    // expect(d0.gen(ctx)).equal(undefined)
 
 
     expect(G('number|*1')).equal(1)

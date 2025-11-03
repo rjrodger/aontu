@@ -17,14 +17,8 @@ import { AontuX } from '../dist/aontu'
 
 import { expect } from '@hapi/code'
 import { TOP } from '../dist/val'
-import { ConjunctVal } from '../dist/val/ConjunctVal'
-import { DisjunctVal } from '../dist/val/DisjunctVal'
-import { ListVal } from '../dist/val/ListVal'
 import { MapVal } from '../dist/val/MapVal'
-import { NilVal } from '../dist/val/NilVal'
 import { PrefVal } from '../dist/val/PrefVal'
-import { RefVal } from '../dist/val/RefVal'
-import { BaseVal } from '../dist/val/BaseVal'
 import { NumberVal } from '../dist/val/NumberVal'
 import { StringVal } from '../dist/val/StringVal'
 import { BooleanVal } from '../dist/val/BooleanVal'
@@ -33,10 +27,10 @@ import { NullVal } from '../dist/val/NullVal'
 
 const lang = new Lang()
 const PL = lang.parse.bind(lang)
-const P = (x: string, ctx?: any) => PL(x, ctx)
+// const P = (x: string, ctx?: any) => PL(x, ctx)
 // const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
-const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
+// const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
+// const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
 // const V = (x: any) => console.dir(x, { depth: null })
 
 

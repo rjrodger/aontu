@@ -245,7 +245,7 @@ class MapVal extends BagVal {
     let keys = Object.keys(this.peg)
     return '' +
       // this.errcanon() +
-      // (this.type ? '<type>' : '') +
+      // (this.mark.type ? '<type>' : '') +
       // (this.id + '=') +
       '{' +
       (this.spread.cj ? '&:' + this.spread.cj.canon +
@@ -272,7 +272,7 @@ class MapVal extends BagVal {
       let val = this.peg[p].gen(ctx)
       if (undefined === val) {
         if (!this.optionalKeys.includes(p)) {
-          return NilVal.make(ctx, 'required', this.peg[p], undefined)
+          return NilVal.make(ctx, 'required_mapkey', this.peg[p], undefined)
         }
       }
       else {

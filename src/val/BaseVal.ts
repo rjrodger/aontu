@@ -181,6 +181,8 @@ abstract class BaseVal implements Val {
   // NOTE: MUST not mutate! Val immutability is a critical assumption. 
   unify(_peer: Val, _ctx: Context): Val { return this }
 
+  // TODO: indicate marks in some way that is ignored by reparse.
+  // Need an annotation/taggins syntax? a:{}/type ?
   get canon(): string { return '' }
 
 
@@ -218,7 +220,7 @@ abstract class BaseVal implements Val {
       s.push('/' + insp)
     }
 
-    s.push('=')
+    s.push('/')
 
     if ('object' === typeof this.peg) {
       s.push(inspectpeg(this.peg))

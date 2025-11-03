@@ -62,10 +62,11 @@ describe('error', function() {
 
 
   it('generate-file-e02', () => {
+    let ctx = makeCtx()
     let v0 = Aontu('@"' + __dirname + '/../test/error/e02.jsonic"')
 
     try {
-      v0.gen()
+      v0.gen(ctx)
     }
     catch (err: any) {
       expect(err.message).contain('RefVal')

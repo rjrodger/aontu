@@ -41,7 +41,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
             if (nameVal instanceof StringVal_1.StringVal) {
                 let found = ctx.var[nameVal.peg];
                 if (undefined === found) {
-                    out = NilVal_1.NilVal.make(ctx, 'invalid_var', this, peer);
+                    out = NilVal_1.NilVal.make(ctx, 'unknown_var', this, peer);
                 }
                 // TODO: support complex values
                 const ft = typeof found;
@@ -59,8 +59,11 @@ class VarVal extends FeatureVal_1.FeatureVal {
                         new IntegerVal_1.IntegerVal({ peg: found }) :
                         new NumberVal_1.NumberVal({ peg: found });
                 }
+                else if ('object' === ft && found.isVal) {
+                    out = found;
+                }
                 else {
-                    out = NilVal_1.NilVal.make(ctx, 'invalid_var', this, peer);
+                    out = NilVal_1.NilVal.make(ctx, 'invalid_var_kind', this, peer);
                 }
             }
             else {

@@ -26,6 +26,9 @@ class NumberVal extends ScalarVal_1.ScalarVal {
                 peer.peg === this.peg) {
                 out = peer.isInteger ? peer : this;
             }
+            else if (peer.isTop) {
+                out = this;
+            }
             else {
                 out = NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
             }

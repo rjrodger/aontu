@@ -6,7 +6,6 @@ const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const aontu_1 = require("../dist/aontu");
 const code_1 = require("@hapi/code");
-const val_1 = require("../dist/val");
 const MapVal_1 = require("../dist/val/MapVal");
 const PrefVal_1 = require("../dist/val/PrefVal");
 const NumberVal_1 = require("../dist/val/NumberVal");
@@ -15,10 +14,10 @@ const BooleanVal_1 = require("../dist/val/BooleanVal");
 const NullVal_1 = require("../dist/val/NullVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
-const P = (x, ctx) => PL(x, ctx);
+// const P = (x: string, ctx?: any) => PL(x, ctx)
 // const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
-const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
+// const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
+// const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
 // const V = (x: any) => console.dir(x, { depth: null })
 (0, node_test_1.describe)('val-pref', function () {
     (0, node_test_1.test)('construct', () => {
