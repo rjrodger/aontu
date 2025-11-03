@@ -8,13 +8,9 @@ import type {
 
 import {
   Context,
-  unite,
 } from '../unify'
 
-import {
-  NilVal,
-  TOP,
-} from '../val'
+import { NilVal } from '../val/NilVal'
 
 
 import {

@@ -7,16 +7,10 @@ import type {
 } from '../type'
 
 import {
-  DONE
-} from '../type'
-
-import {
   Context,
 } from '../unify'
 
-import {
-  StringVal,
-} from '../val'
+import { StringVal } from '../val/StringVal'
 
 
 

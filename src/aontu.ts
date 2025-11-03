@@ -4,8 +4,8 @@ import type { Val, Options } from './type'
 
 import { Lang } from './lang'
 import { Unify, Context } from './unify'
-import { NilVal, MapVal } from './val'
-import { descErr } from './err'
+import { MapVal } from './val/MapVal'
+import { NilVal } from './val/NilVal'
 import { formatExplain } from './utility'
 
 

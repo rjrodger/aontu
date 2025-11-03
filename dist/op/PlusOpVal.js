@@ -2,7 +2,10 @@
 /* Copyright (c) 2024-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlusOpVal = void 0;
-const val_1 = require("../val");
+const IntegerVal_1 = require("../val/IntegerVal");
+const NumberVal_1 = require("../val/NumberVal");
+const StringVal_1 = require("../val/StringVal");
+const BooleanVal_1 = require("../val/BooleanVal");
 const OpBaseVal_1 = require("./OpBaseVal");
 class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     constructor(spec, ctx) {
@@ -38,13 +41,13 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
         let pegtype = typeof peg;
         let out = undefined;
         if ('string' === pegtype) {
-            out = new val_1.StringVal({ peg });
+            out = new StringVal_1.StringVal({ peg });
         }
         else if ('boolean' === pegtype) {
-            out = new val_1.BooleanVal({ peg });
+            out = new BooleanVal_1.BooleanVal({ peg });
         }
         else if ('number' === pegtype) {
-            out = Number.isInteger(peg) ? new val_1.IntegerVal({ peg }) : new val_1.NumberVal({ peg });
+            out = Number.isInteger(peg) ? new IntegerVal_1.IntegerVal({ peg }) : new NumberVal_1.NumberVal({ peg });
         }
         return out;
     }

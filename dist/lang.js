@@ -1,7 +1,8 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
+// import { performance } from 'node:perf_hooks'
 const jsonic_1 = require("jsonic");
 const debug_1 = require("jsonic/debug");
 const multisource_1 = require("@jsonic/multisource");
@@ -11,9 +12,34 @@ const mem_1 = require("@jsonic/multisource/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
 const type_1 = require("./type");
-const val_1 = require("./val");
-const op_1 = require("./op");
-const func_1 = require("./func");
+const ScalarKindVal_1 = require("./val/ScalarKindVal");
+const BooleanVal_1 = require("./val/BooleanVal");
+const ConjunctVal_1 = require("./val/ConjunctVal");
+const DisjunctVal_1 = require("./val/DisjunctVal");
+const IntegerVal_1 = require("./val/IntegerVal");
+const ListVal_1 = require("./val/ListVal");
+const MapVal_1 = require("./val/MapVal");
+const NilVal_1 = require("./val/NilVal");
+const NullVal_1 = require("./val/NullVal");
+const NumberVal_1 = require("./val/NumberVal");
+const PrefVal_1 = require("./val/PrefVal");
+const RefVal_1 = require("./val/RefVal");
+const StringVal_1 = require("./val/StringVal");
+const VarVal_1 = require("./val/VarVal");
+const TopVal_1 = require("./val/TopVal");
+const PlusOpVal_1 = require("./op/PlusOpVal");
+const UpperFuncVal_1 = require("./func/UpperFuncVal");
+const LowerFuncVal_1 = require("./func/LowerFuncVal");
+const CopyFuncVal_1 = require("./func/CopyFuncVal");
+const KeyFuncVal_1 = require("./func/KeyFuncVal");
+const TypeFuncVal_1 = require("./func/TypeFuncVal");
+const HideFuncVal_1 = require("./func/HideFuncVal");
+const MoveFuncVal_1 = require("./func/MoveFuncVal");
+const PathFuncVal_1 = require("./func/PathFuncVal");
+const PrefFuncVal_1 = require("./func/PrefFuncVal");
+const CloseFuncVal_1 = require("./func/CloseFuncVal");
+const OpenFuncVal_1 = require("./func/OpenFuncVal");
+const SuperFuncVal_1 = require("./func/SuperFuncVal");
 class Site {
     // static NONE = new Site(TOP)
     constructor(val) {
@@ -52,22 +78,22 @@ let AontuJsonic = function aontu(jsonic) {
                 // (except for functions).
                 // TODO: jsonic should be able to pass context into these
                 'string': {
-                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: String }), r, ctx)
+                    val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: String }), r, ctx)
                 },
                 'number': {
-                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: Number }), r, ctx)
+                    val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: Number }), r, ctx)
                 },
                 'integer': {
-                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: val_1.Integer }), r, ctx)
+                    val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: ScalarKindVal_1.Integer }), r, ctx)
                 },
                 'boolean': {
-                    val: (r, ctx) => addsite(new val_1.ScalarKindVal({ peg: Boolean }), r, ctx)
+                    val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: Boolean }), r, ctx)
                 },
                 'nil': {
-                    val: (r, ctx) => addsite(new val_1.NilVal('literal'), r, ctx)
+                    val: (r, ctx) => addsite(new NilVal_1.NilVal('literal'), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
-                'top': { val: () => val_1.TOP },
+                'top': { val: () => TopVal_1.TOP },
             }
         },
         map: {
@@ -85,7 +111,7 @@ let AontuJsonic = function aontu(jsonic) {
                         return pval;
                     }
                     else {
-                        return addsite(new val_1.ConjunctVal({ peg: [pval, cval] }), prev, ctx);
+                        return addsite(new ConjunctVal_1.ConjunctVal({ peg: [pval, cval] }), prev, ctx);
                     }
                 }
                 // Handle defered conjuncts, where MapVal does not yet
@@ -99,41 +125,41 @@ let AontuJsonic = function aontu(jsonic) {
         }
     });
     const funcMap = {
-        upper: func_1.UpperFuncVal,
-        lower: func_1.LowerFuncVal,
-        copy: func_1.CopyFuncVal,
-        key: func_1.KeyFuncVal,
-        type: func_1.TypeFuncVal,
-        hide: func_1.HideFuncVal,
-        move: func_1.MoveFuncVal,
-        path: func_1.PathFuncVal,
-        pref: func_1.PrefFuncVal,
-        close: func_1.CloseFuncVal,
-        open: func_1.OpenFuncVal,
-        super: func_1.SuperFuncVal,
+        upper: UpperFuncVal_1.UpperFuncVal,
+        lower: LowerFuncVal_1.LowerFuncVal,
+        copy: CopyFuncVal_1.CopyFuncVal,
+        key: KeyFuncVal_1.KeyFuncVal,
+        type: TypeFuncVal_1.TypeFuncVal,
+        hide: HideFuncVal_1.HideFuncVal,
+        move: MoveFuncVal_1.MoveFuncVal,
+        path: PathFuncVal_1.PathFuncVal,
+        pref: PrefFuncVal_1.PrefFuncVal,
+        close: CloseFuncVal_1.CloseFuncVal,
+        open: OpenFuncVal_1.OpenFuncVal,
+        super: SuperFuncVal_1.SuperFuncVal,
     };
     let opmap = {
-        'conjunct-infix': (r, ctx, _op, terms) => addsite(new val_1.ConjunctVal({ peg: terms }), r, ctx),
-        'disjunct-infix': (r, ctx, _op, terms) => addsite(new val_1.DisjunctVal({ peg: terms }), r, ctx),
+        'conjunct-infix': (r, ctx, _op, terms) => addsite(new ConjunctVal_1.ConjunctVal({ peg: terms }), r, ctx),
+        'disjunct-infix': (r, ctx, _op, terms) => addsite(new DisjunctVal_1.DisjunctVal({ peg: terms }), r, ctx),
         'dot-prefix': (r, ctx, _op, terms) => {
-            return addsite(new val_1.RefVal({ peg: terms, prefix: true }), r, ctx);
+            return addsite(new RefVal_1.RefVal({ peg: terms, prefix: true }), r, ctx);
         },
         'dot-infix': (r, ctx, _op, terms) => {
             // // console.log('DOT-INFIX-OP', terms)
-            return addsite(new val_1.RefVal({ peg: terms }), r, ctx);
+            return addsite(new RefVal_1.RefVal({ peg: terms }), r, ctx);
         },
-        'star-prefix': (r, ctx, _op, terms) => addsite(new val_1.PrefVal({ peg: terms[0] }), r, ctx),
+        'star-prefix': (r, ctx, _op, terms) => addsite(new PrefVal_1.PrefVal({ peg: terms[0] }), r, ctx),
         'dollar-prefix': (r, ctx, _op, terms) => {
             // $.a.b absolute path
-            if (terms[0] instanceof val_1.RefVal) {
+            if (terms[0] instanceof RefVal_1.RefVal) {
                 terms[0].absolute = true;
                 // // console.log('DOLLAR-PREFIX-PATH', terms)
                 return terms[0];
             }
-            return addsite(new val_1.VarVal({ peg: terms[0] }), r, ctx);
+            return addsite(new VarVal_1.VarVal({ peg: terms[0] }), r, ctx);
         },
         'plus-infix': (r, ctx, _op, terms) => {
-            return addsite(new op_1.PlusOpVal({ peg: [terms[0], terms[1]] }), r, ctx);
+            return addsite(new PlusOpVal_1.PlusOpVal({ peg: [terms[0], terms[1]] }), r, ctx);
         },
         'negative-prefix': (r, ctx, _op, terms) => {
             let val = terms[0];
@@ -151,7 +177,7 @@ let AontuJsonic = function aontu(jsonic) {
             if ('' !== fname) {
                 const funcval = funcMap[fname];
                 const args = terms.slice(1);
-                val = null == funcval ? new val_1.NilVal({ msg: 'Not a function: ' + fname }) : new funcval({
+                val = null == funcval ? new NilVal_1.NilVal({ msg: 'Not a function: ' + fname }) : new funcval({
                     peg: args
                 });
             }
@@ -241,22 +267,22 @@ let AontuJsonic = function aontu(jsonic) {
             let valnode = r.node;
             let valtype = typeof valnode;
             if ('string' === valtype) {
-                valnode = addsite(new val_1.StringVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new StringVal_1.StringVal({ peg: r.node }), r, ctx);
             }
             else if ('number' === valtype) {
                 // 1.0 in source is *not* an integer
                 if (Number.isInteger(r.node) && !r.o0.src.includes('.')) {
-                    valnode = addsite(new val_1.IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx);
+                    valnode = addsite(new IntegerVal_1.IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx);
                 }
                 else {
-                    valnode = addsite(new val_1.NumberVal({ peg: r.node, src: r.o0.src }), r, ctx);
+                    valnode = addsite(new NumberVal_1.NumberVal({ peg: r.node, src: r.o0.src }), r, ctx);
                 }
             }
             else if ('boolean' === valtype) {
-                valnode = addsite(new val_1.BooleanVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new BooleanVal_1.BooleanVal({ peg: r.node }), r, ctx);
             }
             else if (null === valnode) {
-                valnode = addsite(new val_1.NullVal({ peg: r.node }), r, ctx);
+                valnode = addsite(new NullVal_1.NullVal({ peg: r.node }), r, ctx);
             }
             if (null != valnode && 'object' === typeof valnode) {
                 let st = r.o0;
@@ -282,13 +308,13 @@ let AontuJsonic = function aontu(jsonic) {
                 let mop = { ...mo };
                 delete mop.___merge;
                 // TODO: needs addpath?
-                let mopv = new val_1.MapVal({ peg: mop });
+                let mopv = new MapVal_1.MapVal({ peg: mop });
                 mopv.optionalKeys = optionalKeys;
                 r.node =
-                    addsite(new val_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx);
+                    addsite(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx);
             }
             else {
-                r.node = addsite(new val_1.MapVal({ peg: mo }), r, ctx);
+                r.node = addsite(new MapVal_1.MapVal({ peg: mo }), r, ctx);
                 r.node.optionalKeys = optionalKeys;
             }
             return undefined;
@@ -317,13 +343,13 @@ let AontuJsonic = function aontu(jsonic) {
                 let aop = [...ao];
                 delete aop.___merge;
                 // TODO: needs addpath?
-                let aopv = new val_1.ListVal({ peg: aop });
+                let aopv = new ListVal_1.ListVal({ peg: aop });
                 aopv.optionalKeys = optionalKeys;
                 r.node =
-                    addsite(new val_1.ConjunctVal({ peg: [aopv, ...ao.___merge] }), r, ctx);
+                    addsite(new ConjunctVal_1.ConjunctVal({ peg: [aopv, ...ao.___merge] }), r, ctx);
             }
             else {
-                r.node = addsite(new val_1.ListVal({ peg: ao }), r, ctx);
+                r.node = addsite(new ListVal_1.ListVal({ peg: ao }), r, ctx);
                 r.node.optionalKeys = optionalKeys;
             }
             return undefined;
@@ -525,9 +551,9 @@ class Lang {
         }
         catch (e) {
             if (e instanceof jsonic_1.JsonicError || 'JsonicError' === e.constructor.name) {
-                val = new val_1.NilVal({
+                val = new NilVal_1.NilVal({
                     why: 'parse',
-                    err: new val_1.NilVal({
+                    err: new NilVal_1.NilVal({
                         why: 'syntax',
                         msg: e.message,
                         err: e,

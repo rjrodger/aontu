@@ -6,7 +6,7 @@ const type_1 = require("../type");
 const err_1 = require("../err");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const val_1 = require("../val");
+const TopVal_1 = require("../val/TopVal");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const NilVal_1 = require("../val/NilVal");
 const FeatureVal_1 = require("../val/FeatureVal");
@@ -38,7 +38,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         let newpeg = [];
         for (let arg of this.peg) {
             if (!arg.done) {
-                arg = arg.unify(val_1.TOP, ctx, (0, utility_1.ec)(te, 'ARG'));
+                arg = arg.unify(TopVal_1.TOP, ctx, (0, utility_1.ec)(te, 'ARG'));
             }
             pegdone &&= arg.done;
             newpeg.push(arg);

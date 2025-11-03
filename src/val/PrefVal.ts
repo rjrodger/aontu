@@ -1,6 +1,4 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
-
-
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 import type {
   Val,
@@ -10,10 +8,6 @@ import type {
 import {
   DONE,
 } from '../type'
-
-import {
-  descErr
-} from '../err'
 
 import {
   Context,
@@ -27,17 +21,8 @@ import {
 } from '../utility'
 
 
-import {
-  Site
-} from '../lang'
-
-
-
-import {
-  TOP,
-} from '../val'
-import { NilVal } from '../val/NilVal'
-import { FeatureVal } from '../val/FeatureVal'
+import { TOP } from './TopVal'
+import { FeatureVal } from './FeatureVal'
 
 
 class PrefVal extends FeatureVal {

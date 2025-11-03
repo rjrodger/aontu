@@ -12,7 +12,11 @@ import {
 } from '../unify'
 
 
-import { IntegerVal, NumberVal, StringVal, BooleanVal } from '../val'
+
+import { IntegerVal } from '../val/IntegerVal'
+import { NumberVal } from '../val/NumberVal'
+import { StringVal } from '../val/StringVal'
+import { BooleanVal } from '../val/BooleanVal'
 import { OpBaseVal } from './OpBaseVal'
 
 

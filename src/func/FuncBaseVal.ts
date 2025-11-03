@@ -23,12 +23,10 @@ import {
   explainOpen,
 } from '../utility'
 
-import {
-  TOP,
-  NilVal,
-  ConjunctVal,
-} from '../val'
 
+import { TOP } from '../val/TopVal'
+import { NilVal } from '../val/NilVal'
+import { ConjunctVal } from '../val/ConjunctVal'
 import { FeatureVal } from '../val/FeatureVal'
 
 

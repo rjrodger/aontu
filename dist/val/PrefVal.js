@@ -1,12 +1,12 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const val_1 = require("../val");
-const FeatureVal_1 = require("../val/FeatureVal");
+const TopVal_1 = require("./TopVal");
+const FeatureVal_1 = require("./FeatureVal");
 class PrefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -28,7 +28,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         let out = this;
         let why = '';
         if (!this.peg.done) {
-            const resolved = (0, unify_1.unite)(ctx, this.peg, val_1.TOP, 'pref/resolve', (0, utility_1.ec)(te, 'RES'));
+            const resolved = (0, unify_1.unite)(ctx, this.peg, TopVal_1.TOP, 'pref/resolve', (0, utility_1.ec)(te, 'RES'));
             // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
         }

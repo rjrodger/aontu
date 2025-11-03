@@ -1,7 +1,7 @@
 import type { Val, Options } from './type';
 import { Lang } from './lang';
 import { Context } from './unify';
-import { NilVal } from './val';
+import { NilVal } from './val/NilVal';
 import { formatExplain } from './utility';
 type AontuOptions = {};
 declare class AontuX {

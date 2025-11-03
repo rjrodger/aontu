@@ -2,7 +2,9 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LowerFuncVal = void 0;
-const val_1 = require("../val");
+const NilVal_1 = require("../val/NilVal");
+const ScalarKindVal_1 = require("../val/ScalarKindVal");
+const valutil_1 = require("../val/valutil");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class LowerFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
@@ -21,14 +23,14 @@ class LowerFuncVal extends FuncBaseVal_1.FuncBaseVal {
             'number' === typeof oldpeg ? Math.floor(oldpeg) :
                 undefined;
         const out = this.place(null == peg ?
-            val_1.NilVal.make(ctx, 'invalid-arg', this) :
-            (0, val_1.makeScalar)(peg));
+            NilVal_1.NilVal.make(ctx, 'invalid-arg', this) :
+            (0, valutil_1.makeScalar)(peg));
         return out;
     }
     superior() {
         const arg = this.peg?.[0];
         return arg?.isScalar ?
-            this.place(new val_1.ScalarKindVal({
+            this.place(new ScalarKindVal_1.ScalarKindVal({
                 peg: arg.kind
             })) :
             super.superior();

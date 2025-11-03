@@ -7,8 +7,9 @@ const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./unify");
 Object.defineProperty(exports, "Context", { enumerable: true, get: function () { return unify_1.Context; } });
-const val_1 = require("./val");
-Object.defineProperty(exports, "NilVal", { enumerable: true, get: function () { return val_1.NilVal; } });
+const MapVal_1 = require("./val/MapVal");
+const NilVal_1 = require("./val/NilVal");
+Object.defineProperty(exports, "NilVal", { enumerable: true, get: function () { return NilVal_1.NilVal; } });
 const utility_1 = require("./utility");
 Object.defineProperty(exports, "formatExplain", { enumerable: true, get: function () { return utility_1.formatExplain; } });
 class AontuX {
@@ -22,7 +23,7 @@ class AontuX {
     }
     parse(src, ac) {
         if (undefined === src) {
-            return val_1.NilVal.make(ac, 'parse_no_src');
+            return NilVal_1.NilVal.make(ac, 'parse_no_src');
         }
         if (!(ac instanceof unify_1.Context)) {
             ac = this.ctx({ ...(ac ?? {}) });
@@ -37,7 +38,7 @@ class AontuX {
         const deps = {};
         let val = parse(this.lang, opts, { deps });
         if (undefined === val) {
-            val = new val_1.MapVal({ peg: {} });
+            val = new MapVal_1.MapVal({ peg: {} });
         }
         val.deps = deps;
         ac.root = val;
@@ -53,7 +54,7 @@ class AontuX {
     // unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
     unify(src, ac) {
         if (undefined === src) {
-            return val_1.NilVal.make(ac, 'unify_no_src');
+            return NilVal_1.NilVal.make(ac, 'unify_no_src');
         }
         if (!(ac instanceof unify_1.Context)) {
             ac = this.ctx({ ...(ac ?? {}), src });
@@ -62,7 +63,7 @@ class AontuX {
         let osrc = 'string' === typeof src ? src : (ac.src ?? '');
         let res;
         if (undefined == pval) {
-            res = ac.err[0] ?? val_1.NilVal.make(ac, 'unify_no_val');
+            res = ac.err[0] ?? NilVal_1.NilVal.make(ac, 'unify_no_val');
         }
         else {
             let uni = new unify_1.Unify(pval, this.lang, ac, osrc);
@@ -118,7 +119,7 @@ exports.AontuX = AontuX;
 class AontuContext extends unify_1.Context {
     constructor(cfg) {
         cfg = cfg ?? {
-            root: new val_1.NilVal()
+            root: new NilVal_1.NilVal()
         };
         if ('string' === typeof cfg.path) {
             cfg.srcpath = cfg.path;

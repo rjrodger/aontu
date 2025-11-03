@@ -2,7 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TypeFuncVal = void 0;
-const val_1 = require("../val");
+const NilVal_1 = require("../val/NilVal");
 const utility_1 = require("../utility");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
@@ -21,7 +21,7 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'type';
     }
     resolve(ctx, args) {
-        let out = args[0] ?? val_1.NilVal.make(ctx, 'arg', this);
+        let out = args[0] ?? NilVal_1.NilVal.make(ctx, 'arg', this);
         if (!out.isNil) {
             out = out.clone(ctx);
             // out.mark.type = true

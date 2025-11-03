@@ -4,7 +4,7 @@
 import { util } from 'jsonic'
 
 import { Val, ErrContext } from './type'
-import { NilVal } from './val'
+import { NilVal } from './val/NilVal'
 
 
 const { errmsg } = util

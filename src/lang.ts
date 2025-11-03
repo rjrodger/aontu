@@ -1,8 +1,7 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-// TODO: structured creation of Vals so that context can be passed in
 
-import { performance } from 'node:perf_hooks'
+// import { performance } from 'node:perf_hooks'
 
 import {
   Jsonic,
@@ -53,44 +52,36 @@ import {
 } from './type'
 
 
-import {
-  BooleanVal,
-  ConjunctVal,
-  DisjunctVal,
-  Integer,
-  IntegerVal,
-  ListVal,
-  MapVal,
-  NilVal,
-  NullVal,
-  NumberVal,
-  PrefVal,
-  RefVal,
-  ScalarKindVal,
-  StringVal,
-  TOP,
-  VarVal,
-} from './val'
-
-import {
-  PlusOpVal,
-} from './op'
+import { ScalarKindVal, Integer } from './val/ScalarKindVal'
 
 
-import {
-  UpperFuncVal,
-  LowerFuncVal,
-  CopyFuncVal,
-  KeyFuncVal,
-  TypeFuncVal,
-  HideFuncVal,
-  MoveFuncVal,
-  PathFuncVal,
-  PrefFuncVal,
-  CloseFuncVal,
-  OpenFuncVal,
-  SuperFuncVal,
-} from './func'
+import { BooleanVal } from './val/BooleanVal'
+import { ConjunctVal } from './val/ConjunctVal'
+import { DisjunctVal } from './val/DisjunctVal'
+import { IntegerVal } from './val/IntegerVal'
+import { ListVal } from './val/ListVal'
+import { MapVal } from './val/MapVal'
+import { NilVal } from './val/NilVal'
+import { NullVal } from './val/NullVal'
+import { NumberVal } from './val/NumberVal'
+import { PrefVal } from './val/PrefVal'
+import { RefVal } from './val/RefVal'
+import { StringVal } from './val/StringVal'
+import { VarVal } from './val/VarVal'
+import { TOP } from './val/TopVal'
+import { PlusOpVal } from './op/PlusOpVal'
+import { UpperFuncVal } from './func/UpperFuncVal'
+import { LowerFuncVal } from './func/LowerFuncVal'
+import { CopyFuncVal } from './func/CopyFuncVal'
+import { KeyFuncVal } from './func/KeyFuncVal'
+import { TypeFuncVal } from './func/TypeFuncVal'
+import { HideFuncVal } from './func/HideFuncVal'
+import { MoveFuncVal } from './func/MoveFuncVal'
+import { PathFuncVal } from './func/PathFuncVal'
+import { PrefFuncVal } from './func/PrefFuncVal'
+import { CloseFuncVal } from './func/CloseFuncVal'
+import { OpenFuncVal } from './func/OpenFuncVal'
+import { SuperFuncVal } from './func/SuperFuncVal'
 
 
 

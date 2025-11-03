@@ -5,7 +5,9 @@ exports.FuncBaseVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const val_1 = require("../val");
+const TopVal_1 = require("../val/TopVal");
+const NilVal_1 = require("../val/NilVal");
+const ConjunctVal_1 = require("../val/ConjunctVal");
 const FeatureVal_1 = require("../val/FeatureVal");
 class FuncBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
@@ -21,7 +23,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         }
     }
     make(ctx, _spec) {
-        return val_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make');
+        return NilVal_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make');
     }
     unify(peer, ctx, explain) {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Func:' + this.funcname(), this, peer);
@@ -44,7 +46,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
                     let newarg = arg;
                     if (!arg.done) {
-                        newarg = arg.unify(val_1.TOP, ctx, (0, utility_1.ec)(te, 'ARG'));
+                        newarg = arg.unify(TopVal_1.TOP, ctx, (0, utility_1.ec)(te, 'ARG'));
                         newtype = newtype || newarg.mark.type;
                         newhide = newhide || newarg.mark.hide;
                         // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)
@@ -88,7 +90,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                 }
                 else {
                     this.notdone();
-                    out = new val_1.ConjunctVal({
+                    out = new ConjunctVal_1.ConjunctVal({
                         peg: [this, peer], mark: { type: newtype, hide: newhide }
                     }, ctx);
                     // TODO: make should handle this using ctx?
@@ -118,10 +120,10 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         return args;
     }
     resolve(ctx, _args) {
-        return val_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
+        return NilVal_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
     }
     superior() {
-        return val_1.TOP;
+        return TopVal_1.TOP;
     }
 }
 exports.FuncBaseVal = FuncBaseVal;

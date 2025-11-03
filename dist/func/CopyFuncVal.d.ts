@@ -1,6 +1,6 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { NilVal } from '../val';
+import { NilVal } from '../val/NilVal';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class CopyFuncVal extends FuncBaseVal {
     isCopyFunc: boolean;

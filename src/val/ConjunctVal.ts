@@ -11,10 +11,6 @@ import {
 } from '../type'
 
 import {
-  descErr
-} from '../err'
-
-import {
   Context,
   unite,
 } from '../unify'
@@ -25,8 +21,6 @@ import {
 
 
 import { TOP } from './TopVal'
-import { ListVal } from './ListVal'
-import { MapVal } from './MapVal'
 import { NilVal } from './NilVal'
 import { RefVal } from './RefVal'
 import { JunctionVal } from './JunctionVal'

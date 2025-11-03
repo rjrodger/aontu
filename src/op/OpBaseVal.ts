@@ -27,7 +27,7 @@ import {
 
 import {
   TOP,
-} from '../val'
+} from '../val/TopVal'
 
 
 import { ConjunctVal } from '../val/ConjunctVal'

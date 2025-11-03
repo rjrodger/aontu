@@ -10,11 +10,10 @@ import {
   Context,
 } from '../unify'
 
-import {
-  NilVal,
-  ScalarKindVal,
-  makeScalar,
-} from '../val'
+
+import { NilVal } from '../val/NilVal'
+import { ScalarKindVal } from '../val/ScalarKindVal'
+import { makeScalar } from '../val/valutil'
 
 
 

@@ -10,9 +10,7 @@ import {
   Context,
 } from '../unify'
 
-import {
-  NilVal,
-} from '../val'
+import { NilVal } from '../val/NilVal'
 
 
 import {

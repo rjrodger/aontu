@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2022 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
 import type {
@@ -23,12 +23,6 @@ import {
   ec,
   explainClose,
 } from '../utility'
-
-import {
-  Site
-} from '../lang'
-
-
 
 
 import { TOP } from './TopVal'

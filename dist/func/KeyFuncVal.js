@@ -2,7 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KeyFuncVal = void 0;
-const val_1 = require("../val");
+const StringVal_1 = require("../val/StringVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
@@ -57,7 +57,7 @@ class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
             const key = this.path[this.path.length - (1 + move)] ?? '';
             // console.log('KEYPATH', this.path, move, 'k=', key)
             // return key
-            out = new val_1.StringVal({ peg: key });
+            out = new StringVal_1.StringVal({ peg: key });
         }
         // console.log('KEYFUNC', this.path, this.canon, out.canon)
         return out;
