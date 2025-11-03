@@ -25,7 +25,10 @@ import {
 } from '../utility'
 
 
-import { TOP } from './TopVal'
+import {
+  top
+} from './valutil'
+
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
@@ -74,6 +77,8 @@ class ListVal extends BagVal {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context, explain?: any[] | false): Val {
+    peer = peer ?? top()
+
     const te = ctx.explain && explainOpen(ctx, explain, 'List', this, peer)
     let done: boolean = true
     let exit = false
@@ -112,7 +117,7 @@ class ListVal extends BagVal {
       //       this.spread.cj
       // }
 
-      let spread_cj = out.spread.cj || TOP
+      let spread_cj = out.spread.cj || top()
 
       // Always unify children first
       for (let key in this.peg) {
@@ -127,7 +132,7 @@ class ListVal extends BagVal {
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof ListVal) {
-        let upeer: ListVal = (unite(ctx, peer, TOP, 'list-peer-list', ec(te, 'PER')) as ListVal)
+        let upeer: ListVal = (unite(ctx, peer, top(), 'list-peer-list', ec(te, 'PER')) as ListVal)
 
         // NOTE: peerkey is the index
         for (let peerkey in upeer.peg) {
@@ -160,7 +165,6 @@ class ListVal extends BagVal {
 
         }
       }
-      // else if (TOP !== peer) {
       else if (!peer.isTop) {
         out = NilVal.make(ctx, 'list', this, peer)
       }

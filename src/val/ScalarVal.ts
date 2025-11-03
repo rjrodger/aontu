@@ -19,7 +19,7 @@ import {
 } from '../utility'
 
 import { NilVal } from './NilVal'
-import { RefVal } from './RefVal'
+// import { RefVal } from './RefVal'
 import { BaseVal } from './BaseVal'
 import { ScalarKindVal } from './ScalarKindVal'
 
@@ -42,11 +42,18 @@ class ScalarVal extends BaseVal {
 
 
   clone(ctx: Context, spec?: ValSpec): Val {
-    let out = (super.clone(ctx, {
+    // let out = (super.clone(ctx, {
+    //   peg: this.peg,
+    //   kind: this.kind,
+    //   ...(spec || {})
+    // }) as RefVal)
+
+    let out = super.clone(ctx, {
       peg: this.peg,
       kind: this.kind,
       ...(spec || {})
-    }) as RefVal)
+    })
+
     return out
   }
 

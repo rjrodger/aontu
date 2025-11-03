@@ -12,6 +12,5 @@ declare class ScalarKindVal extends BaseVal {
     unify(peer: Val, ctx: Context, trace?: any[]): Val;
     get canon(): any;
     same(peer: any): boolean;
-    superior(): Val;
 }
 export { Integer, Null, ScalarConstructor, ScalarKindVal, };

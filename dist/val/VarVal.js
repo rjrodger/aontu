@@ -6,7 +6,6 @@ const type_1 = require("../type");
 const err_1 = require("../err");
 const StringVal_1 = require("./StringVal");
 const NilVal_1 = require("./NilVal");
-const RefVal_1 = require("./RefVal");
 const FeatureVal_1 = require("./FeatureVal");
 const NullVal_1 = require("./NullVal");
 const BooleanVal_1 = require("./BooleanVal");
@@ -25,7 +24,8 @@ class VarVal extends FeatureVal_1.FeatureVal {
         let nameVal;
         if (this.peg.isVal) {
             // $.a.b.c - convert path to absolute
-            if (this.peg instanceof RefVal_1.RefVal) {
+            // if (this.peg instanceof RefVal) {
+            if (this.peg.isRef) {
                 this.peg.absolute = true;
                 nameVal = this.peg;
             }
@@ -37,7 +37,8 @@ class VarVal extends FeatureVal_1.FeatureVal {
             // TODO: how to pass row+col?
             nameVal = new StringVal_1.StringVal({ peg: '' + this.peg }, ctx);
         }
-        if (!(nameVal instanceof RefVal_1.RefVal) && type_1.DONE === nameVal.dc) {
+        // if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
+        if (!(nameVal.isRef) && type_1.DONE === nameVal.dc) {
             if (nameVal instanceof StringVal_1.StringVal) {
                 let found = ctx.var[nameVal.peg];
                 if (undefined === found) {

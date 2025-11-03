@@ -2,7 +2,6 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
-const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const aontu_1 = require("../dist/aontu");
 const code_1 = require("@hapi/code");
@@ -12,13 +11,6 @@ const NumberVal_1 = require("../dist/val/NumberVal");
 const StringVal_1 = require("../dist/val/StringVal");
 const BooleanVal_1 = require("../dist/val/BooleanVal");
 const NullVal_1 = require("../dist/val/NullVal");
-const lang = new lang_1.Lang();
-const PL = lang.parse.bind(lang);
-// const P = (x: string, ctx?: any) => PL(x, ctx)
-// const D = (x: any) => console.dir(x, { depth: null })
-// const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
-// const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
-// const V = (x: any) => console.dir(x, { depth: null })
 (0, node_test_1.describe)('val-pref', function () {
     (0, node_test_1.test)('construct', () => {
         let r0 = new PrefVal_1.PrefVal({ peg: new NumberVal_1.NumberVal({ peg: 1 }) });

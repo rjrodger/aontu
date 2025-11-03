@@ -1,6 +1,6 @@
 import type { Val, ValSpec } from '../type';
 import { Context } from '../unify';
-import { Site } from '../lang';
+import { Site } from '../site';
 import { PrefVal } from '../val/PrefVal';
 import { JunctionVal } from '../val/JunctionVal';
 declare class DisjunctVal extends JunctionVal {

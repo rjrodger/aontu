@@ -5,6 +5,18 @@ import { NumberVal } from './NumberVal'
 import { StringVal } from './StringVal'
 import { BooleanVal } from './BooleanVal'
 import { NullVal } from './NullVal'
+import { TopVal } from './TopVal'
+
+
+
+const TOP = new TopVal({})
+
+
+export function top(): TopVal {
+  return TOP
+}
+
+
 
 export function makeScalar(scalar: any): ScalarVal {
   const st = typeof scalar

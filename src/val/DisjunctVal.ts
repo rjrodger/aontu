@@ -24,8 +24,11 @@ import {
 
 import {
   Site
-} from '../lang'
+} from '../site'
 
+import {
+  top
+} from './valutil'
 
 import { NilVal } from '../val/NilVal'
 import { PrefVal } from '../val/PrefVal'
@@ -60,6 +63,8 @@ class DisjunctVal extends JunctionVal {
 
 
   unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    peer = peer ?? top()
+
     const te = ctx.explain && explainOpen(ctx, trace, 'Disjunct', this, peer)
 
     if (!this.prefsRanked) {

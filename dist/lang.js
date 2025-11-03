@@ -12,6 +12,9 @@ const mem_1 = require("@jsonic/multisource/resolver/mem");
 const expr_1 = require("@jsonic/expr");
 const path_1 = require("@jsonic/path");
 const type_1 = require("./type");
+const site_1 = require("./site");
+Object.defineProperty(exports, "Site", { enumerable: true, get: function () { return site_1.Site; } });
+const valutil_1 = require("./val/valutil");
 const ScalarKindVal_1 = require("./val/ScalarKindVal");
 const BooleanVal_1 = require("./val/BooleanVal");
 const ConjunctVal_1 = require("./val/ConjunctVal");
@@ -26,7 +29,6 @@ const PrefVal_1 = require("./val/PrefVal");
 const RefVal_1 = require("./val/RefVal");
 const StringVal_1 = require("./val/StringVal");
 const VarVal_1 = require("./val/VarVal");
-const TopVal_1 = require("./val/TopVal");
 const PlusOpVal_1 = require("./val/PlusOpVal");
 const UpperFuncVal_1 = require("./val/UpperFuncVal");
 const LowerFuncVal_1 = require("./val/LowerFuncVal");
@@ -40,20 +42,6 @@ const PrefFuncVal_1 = require("./val/PrefFuncVal");
 const CloseFuncVal_1 = require("./val/CloseFuncVal");
 const OpenFuncVal_1 = require("./val/OpenFuncVal");
 const SuperFuncVal_1 = require("./val/SuperFuncVal");
-class Site {
-    // static NONE = new Site(TOP)
-    constructor(val) {
-        this.row = -1;
-        this.col = -1;
-        this.url = '';
-        // TODO: logic to select most meaningful site if val has no site,
-        // but has peg children that do.
-        this.row = val.row;
-        this.col = val.col;
-        this.url = val.url;
-    }
-}
-exports.Site = Site;
 let AontuJsonic = function aontu(jsonic) {
     jsonic.use(path_1.Path);
     // TODO: refactor Val constructor
@@ -93,7 +81,7 @@ let AontuJsonic = function aontu(jsonic) {
                     val: (r, ctx) => addsite(new NilVal_1.NilVal('literal'), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
-                'top': { val: () => TopVal_1.TOP },
+                'top': { val: () => (0, valutil_1.top)() },
             }
         },
         map: {

@@ -7,7 +7,6 @@ import { expect } from '@hapi/code'
 
 
 import {
-  Context,
   Unify,
 } from '../dist/unify'
 
@@ -22,14 +21,13 @@ import {
 
 
 
-import { MapVal } from '../dist/val'
 
 
 
 let lang = new Lang()
 
 
-const N = (x: string, ctx?: any) => new Unify(x, lang).res.canon
+const N = (x: string, _ctx?: any) => new Unify(x, lang).res.canon
 // const G = (x: string, ctx?: any) => new Unify(x, lang)
 //  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
 

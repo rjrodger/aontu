@@ -14,7 +14,7 @@ exports.RefVal = void 0;
 const utility_1 = require("../utility");
 const type_1 = require("../type");
 const unify_1 = require("../unify");
-const TopVal_1 = require("./TopVal");
+const valutil_1 = require("./valutil");
 const StringVal_1 = require("./StringVal");
 const IntegerVal_1 = require("./IntegerVal");
 const NumberVal_1 = require("./NumberVal");
@@ -90,6 +90,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
         }
     }
     unify(peer, ctx, trace) {
+        peer = peer ?? (0, valutil_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Ref', this, peer);
         let out = this;
         // let why = 'id'
@@ -103,7 +104,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 out = this;
             }
             else if (resolved instanceof RefVal) {
-                if (TopVal_1.TOP === peer) {
+                if (peer.isTop) {
                     out = this;
                     // why = 'pt'
                 }
@@ -174,7 +175,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                         }
                     }
                     else if (0 === modes.length) {
-                        part = part.unify(TopVal_1.TOP, ctx);
+                        part = part.unify((0, valutil_1.top)(), ctx);
                         if (part.isNil) {
                             // TODO: var not found, so can't find path
                             return;

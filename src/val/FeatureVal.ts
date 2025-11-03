@@ -2,7 +2,6 @@
 
 
 import type {
-  Val,
   ValSpec,
 } from '../type'
 
@@ -11,7 +10,6 @@ import {
 } from '../unify'
 
 
-import { TOP } from './TopVal'
 import { BaseVal } from './BaseVal'
 
 
@@ -26,9 +24,6 @@ abstract class FeatureVal extends BaseVal {
     super(spec, ctx)
   }
 
-  superior(): Val {
-    return TOP
-  }
 }
 
 

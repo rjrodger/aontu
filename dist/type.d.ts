@@ -66,6 +66,7 @@ interface Val {
     unify(peer: Val, ctx: Context, trace?: any[]): Val;
     get canon(): string;
     gen(ctx: Context): any;
+    superior(): Val;
 }
 type ValMark = {
     type: boolean;

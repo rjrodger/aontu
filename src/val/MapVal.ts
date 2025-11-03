@@ -24,8 +24,11 @@ import {
   explainClose,
 } from '../utility'
 
+import {
+  top
+} from './valutil'
 
-import { TOP } from './TopVal'
+
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
@@ -73,9 +76,8 @@ class MapVal extends BagVal {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: Context, explain?: any[] | false): Val {
+    peer = peer ?? top()
     const te = ctx.explain && explainOpen(ctx, explain, 'Map', this, peer)
-    // const sc = this.id + '=' + this.canon
-    // const pc = peer.id + '=' + peer.canon
 
     let done: boolean = true
     let exit = false
@@ -130,7 +132,7 @@ class MapVal extends BagVal {
 
       // let newtype = this.type || peer.type
 
-      let spread_cj = out.spread.cj ?? TOP
+      let spread_cj = out.spread.cj ?? top()
 
       // Always unify own children first
       for (let key in this.peg) {
@@ -160,7 +162,7 @@ class MapVal extends BagVal {
       if (peer instanceof MapVal) {
         // QQQ
         // let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map', tr(te, 'PER')) as MapVal)
-        let upeer: MapVal = (unite(ctx, peer, TOP, 'map-peer-map', ec(te, 'PER')) as MapVal)
+        let upeer: MapVal = (unite(ctx, peer, top(), 'map-peer-map', ec(te, 'PER')) as MapVal)
 
         for (let peerkey in upeer.peg) {
           let peerchild = upeer.peg[peerkey]
@@ -196,7 +198,6 @@ class MapVal extends BagVal {
           done = (done && DONE === oval.dc)
         }
       }
-      // else if (TOP !== peer) {
       else if (!peer.isTop) {
         out = NilVal.make(ctx, 'map', this, peer)
       }

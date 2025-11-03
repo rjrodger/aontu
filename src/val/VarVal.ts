@@ -23,7 +23,6 @@ import {
 
 import { StringVal } from './StringVal'
 import { NilVal } from './NilVal'
-import { RefVal } from './RefVal'
 import { FeatureVal } from './FeatureVal'
 import { NullVal } from './NullVal'
 import { BooleanVal } from './BooleanVal'
@@ -60,7 +59,8 @@ class VarVal extends FeatureVal {
 
     if (this.peg.isVal) {
       // $.a.b.c - convert path to absolute
-      if (this.peg instanceof RefVal) {
+      // if (this.peg instanceof RefVal) {
+      if (this.peg.isRef) {
         this.peg.absolute = true
         nameVal = this.peg
       }
@@ -73,7 +73,8 @@ class VarVal extends FeatureVal {
       nameVal = new StringVal({ peg: '' + this.peg }, ctx)
     }
 
-    if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
+    // if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
+    if (!(nameVal.isRef) && DONE === nameVal.dc) {
       if (nameVal instanceof StringVal) {
         let found = ctx.var[nameVal.peg]
         if (undefined === found) {

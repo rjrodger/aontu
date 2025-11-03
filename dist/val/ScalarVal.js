@@ -5,6 +5,7 @@ exports.ScalarVal = void 0;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
 const NilVal_1 = require("./NilVal");
+// import { RefVal } from './RefVal'
 const BaseVal_1 = require("./BaseVal");
 const ScalarKindVal_1 = require("./ScalarKindVal");
 class ScalarVal extends BaseVal_1.BaseVal {
@@ -16,6 +17,11 @@ class ScalarVal extends BaseVal_1.BaseVal {
         this.dc = type_1.DONE;
     }
     clone(ctx, spec) {
+        // let out = (super.clone(ctx, {
+        //   peg: this.peg,
+        //   kind: this.kind,
+        //   ...(spec || {})
+        // }) as RefVal)
         let out = super.clone(ctx, {
             peg: this.peg,
             kind: this.kind,

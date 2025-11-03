@@ -20,9 +20,7 @@ import {
 } from '../utility'
 
 
-import { TOP } from './TopVal'
 import { NilVal } from './NilVal'
-import { RefVal } from './RefVal'
 import { JunctionVal } from './JunctionVal'
 
 import {
@@ -30,6 +28,11 @@ import {
   ec,
   explainClose,
 } from '../utility'
+
+
+import {
+  top
+} from './valutil'
 
 
 const CONJUNCT_ORDERING: Record<string, number> = {
@@ -71,6 +74,8 @@ class ConjunctVal extends JunctionVal {
 
 
   unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    peer = peer ?? top()
+
     const te = ctx.explain && explainOpen(ctx, trace, 'Conjunct', this, peer)
 
     let done = true
@@ -126,41 +131,6 @@ class ConjunctVal extends JunctionVal {
 
     // next_term:
     for (let pI = 0; pI < upeer.length; pI++) {
-
-      /*
-      console.log('CONJUNCT-TERMS-A', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
-
-      // if (DONE !== t0.dc) {
-      if (!t0.done) {
-        let u0 = unite(ctx, t0, TOP, 'cj-peer-t0', ec(te, 'PER'))
-        newtype = this.mark.type || u0.mark.type
-        newhide = this.mark.hide || u0.mark.hide
-
-        t0 = u0
-
-        console.log('CONJUNCT-TERMS-B', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
-
-        if (
-          DONE !== u0.dc
-
-          // Maps and Lists are still unified so that path refs will work
-          // TODO: || ListVal - test!
-          && !(
-            u0 instanceof MapVal
-            || u0 instanceof ListVal
-            || u0 instanceof RefVal
-          )
-        ) {
-
-          outvals.push(u0)
-          continue next_term
-        }
-        // else {
-        // t0 = u0
-        // }
-      }
-      */
-
       let t1 = upeer[pI + 1]
 
       // console.log('CONJUNCT-TERMS-C', this.id, pI, t0, t1, 'OV=', outvals.map((v: Val) => v))
@@ -172,12 +142,13 @@ class ConjunctVal extends JunctionVal {
       }
 
       // Can't unite with a RefVal, unless also a RefVal with same path.
-      else if (t0 instanceof RefVal && !(t1 instanceof RefVal)) {
+      // else if (t0 instanceof RefVal && !(t1 instanceof RefVal)) {
+      else if (t0.isRef && !(t1.isRef)) {
         outvals.push(t0)
         t0 = t1
       }
 
-      else if (t1 instanceof RefVal && !(t0 instanceof RefVal)) {
+      else if (t1.isRef && !(t0.isRef)) {
         outvals.push(t0)
         t0 = t1
       }
@@ -214,7 +185,7 @@ class ConjunctVal extends JunctionVal {
     if (0 === outvals.length) {
 
       // Empty conjuncts evaporate.
-      out = TOP
+      out = top()
     }
 
     // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!

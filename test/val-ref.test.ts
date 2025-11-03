@@ -13,7 +13,7 @@ import {
 
 
 import { expect } from '@hapi/code'
-import { TOP } from '../dist/val'
+import { top } from '../dist/val/valutil'
 import { MapVal } from '../dist/val/MapVal'
 import { RefVal } from '../dist/val/RefVal'
 
@@ -24,7 +24,7 @@ const P = (x: string, ctx?: any) => PL(x, ctx)
 const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
 const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
 
-
+const TOP = top()
 
 
 describe('val-ref', function() {

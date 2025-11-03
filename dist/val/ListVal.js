@@ -5,7 +5,7 @@ exports.ListVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const TopVal_1 = require("./TopVal");
+const valutil_1 = require("./valutil");
 const ConjunctVal_1 = require("./ConjunctVal");
 const NilVal_1 = require("./NilVal");
 const BagVal_1 = require("./BagVal");
@@ -38,6 +38,7 @@ class ListVal extends BagVal_1.BagVal {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx, explain) {
+        peer = peer ?? (0, valutil_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'List', this, peer);
         let done = true;
         let exit = false;
@@ -64,7 +65,7 @@ class ListVal extends BagVal_1.BagVal {
             //     DONE !== this.spread.cj.dc ? unite(ctx, this.spread.cj) :
             //       this.spread.cj
             // }
-            let spread_cj = out.spread.cj || TopVal_1.TOP;
+            let spread_cj = out.spread.cj || (0, valutil_1.top)();
             // Always unify children first
             for (let key in this.peg) {
                 let keyctx = ctx.descend(key);
@@ -75,7 +76,7 @@ class ListVal extends BagVal_1.BagVal {
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;
             if (peer instanceof ListVal) {
-                let upeer = (0, unify_1.unite)(ctx, peer, TopVal_1.TOP, 'list-peer-list', (0, utility_1.ec)(te, 'PER'));
+                let upeer = (0, unify_1.unite)(ctx, peer, (0, valutil_1.top)(), 'list-peer-list', (0, utility_1.ec)(te, 'PER'));
                 // NOTE: peerkey is the index
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
@@ -100,7 +101,6 @@ class ListVal extends BagVal_1.BagVal {
                     done = (done && type_1.DONE === oval.dc);
                 }
             }
-            // else if (TOP !== peer) {
             else if (!peer.isTop) {
                 out = NilVal_1.NilVal.make(ctx, 'list', this, peer);
             }

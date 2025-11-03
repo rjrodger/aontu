@@ -2,13 +2,12 @@
 
 import { describe, test } from 'node:test'
 import { expect } from '@hapi/code'
-import { Context, Unify } from '../dist/unify'
+import { Unify } from '../dist/unify'
 import { Lang } from '../dist/lang'
 import { AontuX } from '..'
-import { MapVal } from '../dist/val'
 
 let lang = new Lang()
-const N = (x: string, ctx?: any) => new Unify(x, lang).res.canon
+const N = (x: string, _ctx?: any) => new Unify(x, lang).res.canon
 const A = new AontuX()
 const G = (s: string) => A.generate(s)
 

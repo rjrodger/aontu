@@ -16,13 +16,19 @@ import {
   Context,
 } from '../dist/unify'
 
+import {
+  top
+} from '../dist/val/valutil'
+
+const TOP = top()
 
 import { expect } from '@hapi/code'
-import { TOP } from '../dist/val'
 import { MapVal } from '../dist/val/MapVal'
 
 let lang = new Lang()
 let P: (s: string, o?: any) => Val = lang.parse.bind(lang)
+
+
 
 
 describe('lang', function() {

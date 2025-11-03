@@ -1,7 +1,7 @@
 import { inspect } from 'node:util';
 import type { Val, ValMark, ValSpec } from '../type';
 import { Context } from '../unify';
-import { Site } from '../lang';
+import { Site } from '../site';
 declare abstract class BaseVal implements Val {
     #private;
     isVal: boolean;
@@ -60,7 +60,7 @@ declare abstract class BaseVal implements Val {
     errcanon(): string;
     gen(_ctx: Context): any;
     notdone(): void;
-    abstract superior(): Val;
+    superior(): Val;
     [inspect.custom](_d: number, _o: any, _inspect: any): string;
     inspection(): string;
 }

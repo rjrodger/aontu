@@ -5,14 +5,15 @@ const node_test_1 = require("node:test");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const code_1 = require("@hapi/code");
-const val_1 = require("../dist/val");
+const valutil_1 = require("../dist/val/valutil");
 const MapVal_1 = require("../dist/val/MapVal");
 const RefVal_1 = require("../dist/val/RefVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
+const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
+const TOP = (0, valutil_1.top)();
 (0, node_test_1.describe)('val-ref', function () {
     (0, node_test_1.test)('construct', () => {
         let r0 = new RefVal_1.RefVal({ peg: [], absolute: true });
@@ -503,10 +504,10 @@ b: { c1: { k:1 }}
         (0, code_1.expect)(d1.canon).equal('$.c.x');
         (0, code_1.expect)(d2.canon).equal('.a.b.x');
         (0, code_1.expect)(d3.canon).equal('$.c.d.e.x');
-        (0, code_1.expect)(d0.unify(val_1.TOP, ctx).canon).equal('.a.x');
-        (0, code_1.expect)(val_1.TOP.unify(d0, ctx).canon).equal('.a.x');
-        (0, code_1.expect)(d1.unify(val_1.TOP, ctx).canon).equal('$.c.x');
-        (0, code_1.expect)(val_1.TOP.unify(d1, ctx).canon).equal('$.c.x');
+        (0, code_1.expect)(d0.unify(TOP, ctx).canon).equal('.a.x');
+        (0, code_1.expect)(TOP.unify(d0, ctx).canon).equal('.a.x');
+        (0, code_1.expect)(d1.unify(TOP, ctx).canon).equal('$.c.x');
+        (0, code_1.expect)(TOP.unify(d1, ctx).canon).equal('$.c.x');
     });
     (0, node_test_1.test)('unify', () => {
         let r1 = new RefVal_1.RefVal({ peg: ['a'] });

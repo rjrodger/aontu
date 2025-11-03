@@ -5,25 +5,17 @@ const node_test_1 = require("node:test");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const code_1 = require("@hapi/code");
-const val_1 = require("../dist/val");
 const MapVal_1 = require("../dist/val/MapVal");
+const valutil_1 = require("../dist/val/valutil");
+const TOP = (0, valutil_1.top)();
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 // const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
+const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
 // const V = (x: any) => console.dir(x, { depth: null })
 (0, node_test_1.describe)('val-conjunct', function () {
-    (0, node_test_1.test)('norm', () => {
-        // let c0 = P('1&2&3')
-        // let nc0 = norm(c0.peg)
-        // expect(nc0.map(e => e.peg)).equal([1, 2, 3])
-        // // Only norm to one level!
-        // let c1 = P('1&2&3&4')
-        // let nc1 = norm(c1.peg)
-        // expect(nc1.map(e => e.peg)).equal([nc1[0].peg, 3, 4])
-    });
     (0, node_test_1.test)('basic', () => {
         let g0 = G('1&number');
         // console.log(g0)

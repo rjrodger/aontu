@@ -11,10 +11,6 @@ import {
 } from '../type'
 
 import {
-  descErr
-} from '../err'
-
-import {
   Context,
 } from '../unify'
 

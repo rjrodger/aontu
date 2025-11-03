@@ -3,13 +3,13 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.unite = exports.Unify = exports.Context = void 0;
 const type_1 = require("./type");
-const TopVal_1 = require("./val/TopVal");
 const MapVal_1 = require("./val/MapVal");
 const ListVal_1 = require("./val/ListVal");
 const NilVal_1 = require("./val/NilVal");
 const lang_1 = require("./lang");
 const err_1 = require("./err");
 const utility_1 = require("./utility");
+const valutil_1 = require("./val/valutil");
 // TODO: relation to unify loops?
 const MAXCYCLE = 9;
 let uc = 0;
@@ -27,17 +27,14 @@ const unite = (ctx, a, b, whence, explain) => {
         ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0);
         try {
             let unified = false;
-            // if (b && (TOP === a || !a)) {
             if (b && (!a || a.isTop)) {
                 out = b;
                 why = 'b';
             }
-            // else if (a && (TOP === b || !b)) {
             else if (a && (!b || b.isTop)) {
                 out = a;
                 why = 'a';
             }
-            // else if (a && b && TOP !== b) {
             else if (a && b && !b.isTop) {
                 if (a.isNil) {
                     out = update(a, b);
@@ -77,7 +74,7 @@ const unite = (ctx, a, b, whence, explain) => {
                 why += 'N';
             }
             if (type_1.DONE !== out.dc && !unified) {
-                let nout = out.unify(TopVal_1.TOP, ctx, (0, utility_1.ec)(te, 'ND'));
+                let nout = out.unify((0, valutil_1.top)(), ctx, (0, utility_1.ec)(te, 'ND'));
                 out = nout;
                 why += 'T';
             }
@@ -202,7 +199,7 @@ class Unify {
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
-                res = unite(uctx, res, TopVal_1.TOP, 'unify', explain && (0, utility_1.ec)(te, 'run'));
+                res = unite(uctx, res, (0, valutil_1.top)(), 'unify', explain && (0, utility_1.ec)(te, 'run'));
                 if (0 < uctx.err.length) {
                     break;
                 }

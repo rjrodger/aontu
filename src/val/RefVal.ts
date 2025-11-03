@@ -33,7 +33,12 @@ import {
   unite,
 } from '../unify'
 
-import { TOP } from './TopVal'
+
+import {
+  top
+} from './valutil'
+
+
 import { StringVal } from './StringVal'
 import { IntegerVal } from './IntegerVal'
 import { NumberVal } from './NumberVal'
@@ -139,6 +144,8 @@ class RefVal extends FeatureVal {
 
 
   unify(peer: Val, ctx: Context, trace?: any[]): Val {
+    peer = peer ?? top()
+
     const te = ctx.explain && explainOpen(ctx, trace, 'Ref', this, peer)
     let out: Val = this
     // let why = 'id'
@@ -156,7 +163,7 @@ class RefVal extends FeatureVal {
         out = this
       }
       else if (resolved instanceof RefVal) {
-        if (TOP === peer) {
+        if (peer.isTop) {
           out = this
           // why = 'pt'
         }
@@ -239,7 +246,7 @@ class RefVal extends FeatureVal {
             }
           }
           else if (0 === modes.length) {
-            part = (part as VarVal).unify(TOP, ctx)
+            part = (part as VarVal).unify(top(), ctx)
             if (part.isNil) {
               // TODO: var not found, so can't find path
               return

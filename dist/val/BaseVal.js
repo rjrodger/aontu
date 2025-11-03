@@ -16,7 +16,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BaseVal = void 0;
 const node_util_1 = require("node:util");
 const type_1 = require("../type");
-const lang_1 = require("../lang");
+const site_1 = require("../site");
+const valutil_1 = require("./valutil");
 let ID = 1000;
 class BaseVal {
     // TODO: Site needed in ctor
@@ -126,7 +127,7 @@ class BaseVal {
     }
     // TODO: make Site work
     get site() {
-        return new lang_1.Site(this);
+        return new site_1.Site(this);
     }
     // NOTE: MUST not mutate! Val immutability is a critical assumption. 
     unify(_peer, _ctx) { return this; }
@@ -141,6 +142,9 @@ class BaseVal {
     }
     notdone() {
         this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
+    }
+    superior() {
+        return (0, valutil_1.top)(); // null as unknown as Val
     }
     [(_BaseVal_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];

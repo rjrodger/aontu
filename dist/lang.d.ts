@@ -1,11 +1,6 @@
 import { Jsonic } from 'jsonic';
 import type { Val, Options } from './type';
-declare class Site {
-    row: number;
-    col: number;
-    url: string;
-    constructor(val: Val);
-}
+import { Site } from './site';
 declare class Lang {
     jsonic: Jsonic;
     options: Options;

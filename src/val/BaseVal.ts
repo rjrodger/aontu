@@ -22,8 +22,12 @@ import {
 
 import {
   Site
-} from '../lang'
+} from '../site'
 
+
+import {
+  top
+} from './valutil'
 
 
 let ID = 1000
@@ -201,8 +205,9 @@ abstract class BaseVal implements Val {
   }
 
 
-  abstract superior(): Val
-
+  superior(): Val {
+    return top() // null as unknown as Val
+  }
 
 
   [inspect.custom](_d: number, _o: any, _inspect: any): string {

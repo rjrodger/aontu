@@ -5,6 +5,7 @@ exports.DisjunctVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
+const valutil_1 = require("./valutil");
 const NilVal_1 = require("../val/NilVal");
 const PrefVal_1 = require("../val/PrefVal");
 const JunctionVal_1 = require("../val/JunctionVal");
@@ -23,6 +24,7 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         return this;
     }
     unify(peer, ctx, trace) {
+        peer = peer ?? (0, valutil_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Disjunct', this, peer);
         if (!this.prefsRanked) {
             this.rankPrefs(ctx);

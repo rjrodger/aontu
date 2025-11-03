@@ -6,7 +6,7 @@ const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
 const __1 = require("..");
 let lang = new lang_1.Lang();
-const N = (x, ctx) => new unify_1.Unify(x, lang).res.canon;
+const N = (x, _ctx) => new unify_1.Unify(x, lang).res.canon;
 // const G = (x: string, ctx?: any) => new Unify(x, lang)
 //  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
 const A = new __1.AontuX();

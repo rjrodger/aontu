@@ -21,7 +21,8 @@ import {
 } from '../utility'
 
 
-import { TOP } from './TopVal'
+import { top } from './valutil'
+
 import { FeatureVal } from './FeatureVal'
 
 
@@ -52,6 +53,8 @@ class PrefVal extends FeatureVal {
   // PrefVal unify always returns a PrefVal
   // PrefVals can only be removed by becoming Nil in a Disjunct
   unify(peer: Val, ctx: Context, explain?: any[]): Val {
+    peer = peer ?? top()
+
     const te = ctx.explain && explainOpen(ctx, explain, 'Pref', this, peer)
     let done = true
     let out: Val = this
@@ -59,7 +62,7 @@ class PrefVal extends FeatureVal {
 
 
     if (!this.peg.done) {
-      const resolved = unite(ctx, this.peg, TOP, 'pref/resolve', ec(te, 'RES'))
+      const resolved = unite(ctx, this.peg, top(), 'pref/resolve', ec(te, 'RES'))
       // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
     }

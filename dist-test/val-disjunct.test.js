@@ -5,15 +5,14 @@ const node_test_1 = require("node:test");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const code_1 = require("@hapi/code");
-const val_1 = require("../dist/val");
 const MapVal_1 = require("../dist/val/MapVal");
+const valutil_1 = require("../dist/val/valutil");
+const TOP = (0, valutil_1.top)();
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-// const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s, r) => (r = P(s)).unify(val_1.TOP, makeCtx(r)).canon;
+const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
-// const V = (x: any) => console.dir(x, { depth: null })
 (0, node_test_1.describe)('val-disjunct', function () {
     (0, node_test_1.test)('basic', () => {
         let u0 = UC('a:{x:1}|{y:2},a:{z:3}');

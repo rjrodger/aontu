@@ -8,10 +8,6 @@ import { Resolver } from '@jsonic/multisource'
 
 import { Context } from './unify'
 
-import {
-  Site
-} from './lang'
-
 
 
 type FST = typeof Fs
@@ -102,6 +98,8 @@ interface Val {
   get canon(): string
 
   gen(ctx: Context): any
+
+  superior(): Val
 }
 
 type ValMark = {

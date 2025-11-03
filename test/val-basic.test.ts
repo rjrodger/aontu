@@ -35,17 +35,19 @@ import { PrefVal } from '../dist/val/PrefVal'
 import { RefVal } from '../dist/val/RefVal'
 import { VarVal } from '../dist/val/VarVal'
 
+import { NumberVal } from '../dist/val/NumberVal'
+import { StringVal } from '../dist/val/StringVal'
+import { BooleanVal } from '../dist/val/BooleanVal'
+import { IntegerVal } from '../dist/val/IntegerVal'
+import { NullVal } from '../dist/val/NullVal'
+import { ScalarKindVal, Integer } from '../dist/val/ScalarKindVal'
+
 
 import {
-  Integer,
-  NumberVal,
-  StringVal,
-  BooleanVal,
-  IntegerVal,
-  NullVal,
-  ScalarKindVal,
-  TOP,
-} from '../dist/val'
+  top
+} from '../dist/val/valutil'
+
+const TOP = top()
 
 
 const lang = new Lang()

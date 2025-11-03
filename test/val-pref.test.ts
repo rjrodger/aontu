@@ -3,12 +3,7 @@
 import { describe, test } from 'node:test'
 
 import {
-  Lang
-} from '../dist/lang'
-
-import {
   Context,
-  Unify,
 } from '../dist/unify'
 
 import { AontuX } from '../dist/aontu'
@@ -16,23 +11,12 @@ import { AontuX } from '../dist/aontu'
 
 
 import { expect } from '@hapi/code'
-import { TOP } from '../dist/val'
 import { MapVal } from '../dist/val/MapVal'
 import { PrefVal } from '../dist/val/PrefVal'
 import { NumberVal } from '../dist/val/NumberVal'
 import { StringVal } from '../dist/val/StringVal'
 import { BooleanVal } from '../dist/val/BooleanVal'
 import { NullVal } from '../dist/val/NullVal'
-
-
-const lang = new Lang()
-const PL = lang.parse.bind(lang)
-// const P = (x: string, ctx?: any) => PL(x, ctx)
-// const D = (x: any) => console.dir(x, { depth: null })
-// const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
-// const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
-// const V = (x: any) => console.dir(x, { depth: null })
-
 
 
 

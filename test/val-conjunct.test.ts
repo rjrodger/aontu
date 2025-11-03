@@ -15,17 +15,14 @@ import {
 
 
 import { expect } from '@hapi/code'
-import { TOP } from '../dist/val'
-import { ConjunctVal } from '../dist/val/ConjunctVal'
-import { DisjunctVal } from '../dist/val/DisjunctVal'
-import { ListVal } from '../dist/val/ListVal'
 import { MapVal } from '../dist/val/MapVal'
-import { NilVal } from '../dist/val/NilVal'
-import { PrefVal } from '../dist/val/PrefVal'
-import { RefVal } from '../dist/val/RefVal'
-import { BaseVal } from '../dist/val/BaseVal'
 
 
+import {
+  top
+} from '../dist/val/valutil'
+
+const TOP = top()
 
 
 const lang = new Lang()
@@ -40,17 +37,6 @@ const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
 
 
 describe('val-conjunct', function() {
-
-  test('norm', () => {
-    // let c0 = P('1&2&3')
-    // let nc0 = norm(c0.peg)
-    // expect(nc0.map(e => e.peg)).equal([1, 2, 3])
-
-    // // Only norm to one level!
-    // let c1 = P('1&2&3&4')
-    // let nc1 = norm(c1.peg)
-    // expect(nc1.map(e => e.peg)).equal([nc1[0].peg, 3, 4])
-  })
 
   test('basic', () => {
     let g0 = G('1&number')

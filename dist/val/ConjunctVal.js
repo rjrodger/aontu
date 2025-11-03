@@ -6,11 +6,10 @@ exports.norm = norm;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const TopVal_1 = require("./TopVal");
 const NilVal_1 = require("./NilVal");
-const RefVal_1 = require("./RefVal");
 const JunctionVal_1 = require("./JunctionVal");
 const utility_2 = require("../utility");
+const valutil_1 = require("./valutil");
 const CONJUNCT_ORDERING = {
     PrefVal: 30000,
     RefVal: 32500,
@@ -40,6 +39,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         return this;
     }
     unify(peer, ctx, trace) {
+        peer = peer ?? (0, valutil_1.top)();
         const te = ctx.explain && (0, utility_2.explainOpen)(ctx, trace, 'Conjunct', this, peer);
         let done = true;
         this.peg = norm(this.peg);
@@ -79,39 +79,6 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         let t0 = upeer[0];
         // next_term:
         for (let pI = 0; pI < upeer.length; pI++) {
-            /*
-            console.log('CONJUNCT-TERMS-A', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
-      
-            // if (DONE !== t0.dc) {
-            if (!t0.done) {
-              let u0 = unite(ctx, t0, TOP, 'cj-peer-t0', ec(te, 'PER'))
-              newtype = this.mark.type || u0.mark.type
-              newhide = this.mark.hide || u0.mark.hide
-      
-              t0 = u0
-      
-              console.log('CONJUNCT-TERMS-B', this.id, pI, t0, 'OV=', outvals.map((v: Val) => v))
-      
-              if (
-                DONE !== u0.dc
-      
-                // Maps and Lists are still unified so that path refs will work
-                // TODO: || ListVal - test!
-                && !(
-                  u0 instanceof MapVal
-                  || u0 instanceof ListVal
-                  || u0 instanceof RefVal
-                )
-              ) {
-      
-                outvals.push(u0)
-                continue next_term
-              }
-              // else {
-              // t0 = u0
-              // }
-            }
-            */
             let t1 = upeer[pI + 1];
             // console.log('CONJUNCT-TERMS-C', this.id, pI, t0, t1, 'OV=', outvals.map((v: Val) => v))
             if (null == t1) {
@@ -120,11 +87,12 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
                 newhide = this.mark.hide || t0.mark.hide;
             }
             // Can't unite with a RefVal, unless also a RefVal with same path.
-            else if (t0 instanceof RefVal_1.RefVal && !(t1 instanceof RefVal_1.RefVal)) {
+            // else if (t0 instanceof RefVal && !(t1 instanceof RefVal)) {
+            else if (t0.isRef && !(t1.isRef)) {
                 outvals.push(t0);
                 t0 = t1;
             }
-            else if (t1 instanceof RefVal_1.RefVal && !(t0 instanceof RefVal_1.RefVal)) {
+            else if (t1.isRef && !(t0.isRef)) {
                 outvals.push(t0);
                 t0 = t1;
             }
@@ -153,7 +121,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         // console.log('CONJUCT-prepout', this.id, outvals.map((v: Val) => v.canon))
         if (0 === outvals.length) {
             // Empty conjuncts evaporate.
-            out = TopVal_1.TOP;
+            out = (0, valutil_1.top)();
         }
         // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {

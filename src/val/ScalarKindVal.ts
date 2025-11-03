@@ -18,9 +18,9 @@ import {
   explainClose,
 } from '../utility'
 
-import { TOP } from './TopVal'
-import { NilVal } from './NilVal'
+
 import { BaseVal } from './BaseVal'
+import { NilVal } from './NilVal'
 
 
 
@@ -113,9 +113,6 @@ class ScalarKindVal extends BaseVal {
   }
 
 
-  superior(): Val {
-    return TOP
-  }
 }
 
 

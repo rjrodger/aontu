@@ -6,7 +6,6 @@ import type { Val } from './type'
 import { DONE, FST } from './type'
 
 
-import { TOP } from './val/TopVal'
 import { MapVal } from './val/MapVal'
 import { ListVal } from './val/ListVal'
 import { NilVal } from './val/NilVal'
@@ -23,6 +22,13 @@ import {
 import {
   explainOpen, ec, explainClose,
 } from './utility'
+
+
+import {
+  top
+} from './val/valutil'
+
+
 
 type Path = string[]
 
@@ -51,19 +57,16 @@ const unite = (ctx: Context, a: any, b: any, whence: string, explain?: any[]) =>
 
       let unified = false
 
-      // if (b && (TOP === a || !a)) {
       if (b && (!a || a.isTop)) {
         out = b
         why = 'b'
       }
 
-      // else if (a && (TOP === b || !b)) {
       else if (a && (!b || b.isTop)) {
         out = a
         why = 'a'
       }
 
-      // else if (a && b && TOP !== b) {
       else if (a && b && !b.isTop) {
         if (a.isNil) {
           out = update(a, b)
@@ -110,7 +113,7 @@ const unite = (ctx: Context, a: any, b: any, whence: string, explain?: any[]) =>
       }
 
       if (DONE !== out.dc && !unified) {
-        let nout = out.unify(TOP, ctx, ec(te, 'ND'))
+        let nout = out.unify(top(), ctx, ec(te, 'ND'))
         out = nout
         why += 'T'
       }
@@ -314,7 +317,7 @@ class Unify {
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
-        res = unite(uctx, res, TOP, 'unify', explain && ec(te, 'run'))
+        res = unite(uctx, res, top(), 'unify', explain && ec(te, 'run'))
 
         if (0 < uctx.err.length) {
           break
