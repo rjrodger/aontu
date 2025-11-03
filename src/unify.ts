@@ -154,10 +154,13 @@ class Context {
   err: any[]
   explain: any[] | null
 
+  // TODO: separate options and context!!!
+  srcpath?: string
+
   constructor(cfg: {
     root: Val
     path?: Path
-    // err?: Omit<NilVal[], "push">
+    srcpath?: string,
     err?: any[]
     explain?: any[] | null
     vc?: number
@@ -167,14 +170,17 @@ class Context {
     seenI?: number
     seen?: Record<string, number>
     collect?: boolean
+    fs?: any
   }) {
     this.root = cfg.root
     this.path = cfg.path || []
     this.src = cfg.src
 
     this.collect = cfg.collect ?? null != cfg.err
-    this.err = cfg.err || []
+    this.err = cfg.err ?? []
     this.explain = cfg.explain ?? null
+
+    this.fs = cfg.fs ?? null
 
     // Multiple unify passes will keep incrementing Val counter.
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
@@ -184,6 +190,8 @@ class Context {
     this.var = cfg.var ?? this.var
     this.seenI = cfg.seenI ?? 0
     this.seen = cfg.seen ?? {}
+
+    this.srcpath = cfg.srcpath ?? undefined
   }
 
 

@@ -18,11 +18,11 @@ type AontuOptions = {
 
 
 class AontuX {
-  opts: any // AontuOptions
+  opts: Record<string, any> // AontuOptions
   lang: Lang
 
   constructor(popts?: Partial<AontuOptions>) {
-    this.opts = popts
+    this.opts = popts ?? {}
     this.lang = new Lang(this.opts)
   }
 
@@ -34,11 +34,22 @@ class AontuX {
 
 
   parse(src: string, ac?: AontuContext): Val | undefined {
+    if (undefined === src) {
+      return NilVal.make(ac, 'parse_no_src')
+    }
+
     if (!(ac instanceof Context)) {
       ac = this.ctx({ ...(ac ?? {}) })
     }
 
-    const opts = prepareOptions(src, { ...this.opts })
+    const opts = prepareOptions(src, {
+      ...this.opts,
+      fs: ac.fs,
+      path: ac.srcpath
+
+      // TODO: review
+      // deps: ac.deps,
+    })
     const deps = {}
 
     let val = parse(this.lang, opts, { deps })
@@ -64,7 +75,12 @@ class AontuX {
   }
 
 
-  unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
+  // unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
+  unify(src: string | Val, ac?: AontuContext | any): Val {
+    if (undefined === src) {
+      return NilVal.make(ac, 'unify_no_src')
+    }
+
     if (!(ac instanceof Context)) {
       ac = this.ctx({ ...(ac ?? {}), src })
     }
@@ -72,18 +88,22 @@ class AontuX {
     let pval = (src as Val).isVal ? src as Val : this.parse(src as string, ac)
     let osrc = 'string' === typeof src ? src : (ac.src ?? '')
 
-    if (undefined === pval) {
-      return undefined
+    let res: Val
+
+    if (undefined == pval) {
+      res = ac.err[0] ?? NilVal.make(ac, 'unify_no_val')
     }
+    else {
 
-    let uni = new Unify(pval, this.lang, ac, osrc)
-    let res = uni.res
-    let err = uni.err
+      let uni = new Unify(pval, this.lang, ac, osrc)
+      res = uni.res
+      let err = uni.err
 
-    res.deps = pval.deps
-    res.err = err
+      res.deps = pval.deps
+      res.err = err
 
-    ac.root = res
+      ac.root = res
+    }
 
     if (res.err && 0 < res.err.length) {
       if (!ac.collect) {
@@ -145,10 +165,16 @@ type AontuContextConfig = {
   explain?: any[],
   vc?: number
   cc?: number
+
+  // TODO: rename to vars
   var?: Record<string, Val>
   src?: string
+  fs?: any
+
   seenI?: number
   seen?: Record<string, number>
+
+  srcpath?: string
 }
 
 
@@ -156,6 +182,10 @@ class AontuContext extends Context {
   constructor(cfg?: AontuContextConfig) {
     cfg = cfg ?? {
       root: new NilVal()
+    }
+    if ('string' === typeof cfg.path) {
+      cfg.srcpath = cfg.path
+      cfg.path = undefined
     }
     super(cfg as any)
   }
@@ -175,27 +205,8 @@ class AontuError extends Error {
 
 
 
-// TODO: propogate property path and url properly over unification, and multisource
-
 /*
-NEXT:
-inject path from multisource into Vals when created
-report via nil error
-also trace deps into top val and watch via model
-*/
-
-// TODO: error reporting
-
-// TODO: debug tracing
-// TODO: providers - e.g source files from paths
-
-// TODO: Aontu should return final generated version?
-
-/* `Aontu('a:1') => opts={src:'a:1',print:0,...}`
- * `Aontu('a:1',{print:1}) => opts={src:'a:1',print:1,...}`
- * `Aontu({src:'a:1'},{src:'a:2'}) => opts={src:'a:2',print:0,...}`
- */
-function Aontu(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
+  function AontuOld(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
   try {
     let opts = prepareOptions(src, popts)
     let deps = {}
@@ -224,6 +235,7 @@ function Aontu(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
     return new NilVal({ why: 'unknown', msg: err.message, err: [err] })
   }
 }
+*/
 
 
 function prepareOptions(
@@ -250,7 +262,8 @@ function prepareOptions(
 
 
 function parse(lang: Lang, opts: Options, ctx: { deps: any }): Val {
-  const val = lang.parse(opts.src, { src: opts.src, deps: ctx.deps, fs: opts.fs })
+  const popts = { src: opts.src, deps: ctx.deps, fs: opts.fs, path: opts.path }
+  const val = lang.parse(opts.src, popts)
   return val
 }
 
@@ -260,9 +273,11 @@ const util = {
 }
 
 export {
-  Aontu, Val, NilVal, Lang, Context, parse, util, AontuX,
+  // AontuOld,
+  Val, NilVal, Lang, Context, parse, util, AontuX,
   formatExplain
 
 }
 
-export default Aontu
+// export default AontuOld
+export default AontuX

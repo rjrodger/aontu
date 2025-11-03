@@ -17,9 +17,11 @@ declare class Context {
     collect: boolean;
     err: any[];
     explain: any[] | null;
+    srcpath?: string;
     constructor(cfg: {
         root: Val;
         path?: Path;
+        srcpath?: string;
         err?: any[];
         explain?: any[] | null;
         vc?: number;
@@ -29,6 +31,7 @@ declare class Context {
         seenI?: number;
         seen?: Record<string, number>;
         collect?: boolean;
+        fs?: any;
     });
     clone(cfg: {
         root?: Val;

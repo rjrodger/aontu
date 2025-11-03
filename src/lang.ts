@@ -739,9 +739,9 @@ class Lang {
     // JSONIC-UPDATE - check meta
     let jm: any = {
       fs: opts?.fs,
-      fileName: this.options.path,
+      fileName: opts?.path ?? this.options.path,
       multisource: {
-        path: this.options.path,
+        path: opts?.path ?? this.options.path,
         deps: (opts && opts.deps) || undefined
       }
     }

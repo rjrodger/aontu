@@ -47,10 +47,10 @@
   },
   "devDependencies": {
     "@hapi/code": "^9.0.3",
-    "@types/node": "^24.9.2",
+    "@types/node": "^24.10.0",
     "aliasify": "^2.1.0",
     "browserify": "^17.0.1",
-    "esbuild": "^0.25.11",
+    "esbuild": "^0.25.12",
     "memfs": "^4.50.0",
     "serve": "^14.2.5",
     "tinyify": "^4.0.0",

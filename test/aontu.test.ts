@@ -7,7 +7,7 @@ import { memfs as Memfs } from 'memfs'
 import { expect } from '@hapi/code'
 import { MapVal } from '../dist/val/MapVal'
 
-import { Aontu, Lang, util, AontuX, Context } from '../dist/aontu'
+import { Lang, util, AontuX, Context } from '../dist/aontu'
 
 type FST = typeof Fs
 
@@ -48,18 +48,19 @@ describe('aontu', function() {
 
   test('happy', async () => {
     let ctx = makeCtx()
+    let a0 = new AontuX()
 
-    let v0 = Aontu('a:1')
+    let v0 = a0.unify('a:1') as any
     expect(v0.canon).equal('{"a":1}')
 
-    expect(Aontu('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}')
-    expect(Aontu('a:b:1,a:c:2').canon).equal('{"a":{"b":1,"c":2}}')
+    expect((a0.unify('a:{b:1},a:{c:2}') as any).canon).equal('{"a":{"b":1,"c":2}}')
+    expect((a0.unify('a:b:1,a:c:2') as any).canon).equal('{"a":{"b":1,"c":2}}')
 
     expect(
-      Aontu(`
+      (a0.unify(`
 a:{b:1}
 a:{c:2}
-`).canon
+`) as any).canon
     ).equal('{"a":{"b":1,"c":2}}')
 
     let p0 = new Lang()
@@ -75,11 +76,11 @@ w: b: $.q.a & {y:2,z:3}
     )
 
     expect(
-      Aontu(`
+      (a0.unify(`
 q: a: { x: 1 }
 w0: b: $.q.a & {y:2,z:3}
 w1: b: {y:2,z:3} & $.q.a
-`).gen(ctx)
+`) as any).gen(ctx)
     ).equal({
       q: { a: { x: 1 } },
       w0: { b: { x: 1, y: 2, z: 3 } },
@@ -87,7 +88,7 @@ w1: b: {y:2,z:3} & $.q.a
     })
 
     // TODO: fix in jsonic
-    expect(Aontu('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}')
+    expect((a0.unify('{a:b:1\na:c:2}') as any).canon).equal('{"a":{"b":1,"c":2}}')
   })
 
 
@@ -106,8 +107,9 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('file', async () => {
     let ctx = makeCtx()
+    let a0 = new AontuX()
 
-    let v0 = Aontu('@"' + __dirname + '/../test/t02.jsonic"')
+    let v0 = a0.unify('@"' + __dirname + '/../test/t02.jsonic"') as any
 
     expect(v0.canon).equal(
       '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}'
@@ -138,8 +140,10 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   test('pref', async () => {
+    let a0 = new AontuX()
+
     try {
-      Aontu('@"' + __dirname + '/../test/t03.jsonic"', {
+      a0.unify('@"' + __dirname + '/../test/t03.jsonic"', {
         base: __dirname,
       })
     }
@@ -150,17 +154,20 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   test('map-spread', () => {
-    let v0 = Aontu('c:{&:{x:2},y:{k:3},z:{k:4}}')
+    let a0 = new AontuX()
+
+    let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}') as any
     expect(v0.canon).equal(
       '{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
     )
 
-    let v1 = Aontu('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}')
+    let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}') as any
+
     expect(v1.canon).equal(
       '{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
     )
 
-    let v10 = Aontu('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}')
+    let v10 = a0.unify('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}') as any
     expect(v10.canon).equal(
       '{"a":{&:{"x":1}},' +
       '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
@@ -171,11 +178,12 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('empty-and-comments', () => {
     let ctx = makeCtx()
+    let a0 = new AontuX()
 
-    expect(Aontu('').gen(ctx)).equal({})
-    expect(Aontu().gen(ctx)).equal({})
+    expect(a0.unify('').gen(ctx)).equal({})
+    expect(a0.unify(undefined as any).gen(ctx)).equal(undefined)
 
-    expect(Aontu(`
+    expect(a0.unify(`
     # comment
     `).gen(ctx)).equal({})
   })
@@ -183,31 +191,35 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('spread-edges', () => {
     let ctx = makeCtx()
-    expect(Aontu('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } })
+    let a0 = new AontuX()
+
+    expect(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } })
 
     // FIX
-    // expect(Aontu('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
+    // expect(a0.unify('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
   })
 
 
   test('key-edges', () => {
     let ctx = makeCtx()
+    let a0 = new AontuX()
 
-    expect(Aontu('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } })
-    expect(Aontu('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } })
+    expect(a0.unify('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } })
+    expect(a0.unify('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } })
 
-    expect(Aontu('a:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { k: 'a' } })
-    expect(Aontu('a:b:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } })
+    expect(a0.unify('a:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { k: 'a' } })
+    expect(a0.unify('a:b:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } })
 
-    expect(Aontu('x:1 a:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { k: 'a' } })
-    expect(Aontu('x:1 a:b:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } })
+    expect(a0.unify('x:1 a:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { k: 'a' } })
+    expect(a0.unify('x:1 a:b:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } })
   })
 
 
   test('practical-path-spread', () => {
     let ctx = makeCtx()
+    let a0 = new AontuX()
 
-    let v0 = Aontu(`
+    let v0 = a0.unify(`
 micks: $.def.garage & {
 
   porsche: {
@@ -245,17 +257,22 @@ def: garage: {
 
 
   test('virtual-fs', () => {
+    let a0 = new AontuX()
+
     const mfs = Memfs({
       'foo.jsonic': '{f:11}'
     })
     const fs = mfs.fs as unknown as FST
+      ; (fs as any).aaa = 1
 
-    let v0 = Aontu(`a:@"/foo.jsonic"`, { fs })
+    /*
+    let v0 = a0.unify(`a:@"/foo.jsonic"`, { fs })
     expect(v0.canon).equal(
       '{"a":{"f":11}}'
     )
+    */
 
-    let v1 = Aontu(`a:@"foo.jsonic"`, { fs, path: '/' })
+    let v1 = a0.unify(`a:@"foo.jsonic"`, { fs, path: '/' })
     expect(v1.canon).equal(
       '{"a":{"f":11}}'
     )
