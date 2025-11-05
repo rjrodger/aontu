@@ -1,0 +1,102 @@
+"use strict";
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.AontuContext = void 0;
+const MapVal_1 = require("./val/MapVal");
+const ListVal_1 = require("./val/ListVal");
+const err_1 = require("./err");
+/*
+
+{
+    cc?: number
+    collect?: boolean
+    err?: any[]
+    explain?: any[] | null
+    fs?: any
+    path?: string[]
+    root: Val
+    seen?: Record<string, number>
+    seenI?: number
+    src?: string
+    srcpath?: string,
+    var?: Record<string, Val>
+    vc?: number
+  }
+  
+  */
+class AontuContext {
+    constructor(cfg) {
+        this.cc = -1;
+        this.vars = {};
+        this.root = cfg.root;
+        this.path = cfg.path || [];
+        this.src = cfg.src;
+        this.collect = cfg.collect ?? null != cfg.err;
+        this.err = cfg.err ?? [];
+        this.explain = cfg.explain ?? null;
+        this.fs = cfg.fs ?? null;
+        // Multiple unify passes will keep incrementing Val counter.
+        this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
+        this.cc = null == cfg.cc ? this.cc : cfg.cc;
+        this.vars = cfg.vars ?? this.vars;
+        this.seenI = cfg.seenI ?? 0;
+        this.seen = cfg.seen ?? {};
+        this.srcpath = cfg.srcpath ?? undefined;
+        this.deps = cfg.deps ?? {};
+        this.opts = cfg.opts ?? {};
+    }
+    clone(cfg) {
+        const ctx = Object.create(this);
+        ctx.path = cfg.path ?? this.path;
+        ctx.root = cfg.root ?? this.root;
+        ctx.var = Object.create(this.vars);
+        ctx.err = cfg.err ?? ctx.err;
+        return ctx;
+    }
+    descend(key) {
+        return this.clone({
+            root: this.root,
+            path: this.path.concat(key),
+        });
+    }
+    addopts(opts) {
+        if (null != opts) {
+            Object.assign(this.opts, opts);
+        }
+    }
+    adderr(err) {
+        this.err.push(err);
+        if (null == err.msg || '' == err.msg) {
+            (0, err_1.descErr)(err, this);
+        }
+    }
+    errmsg() {
+        // return this.errlist
+        return this.err
+            .map((err) => err?.msg)
+            .filter(msg => null != msg)
+            .join('\n------\n');
+    }
+    find(path) {
+        let node = this.root;
+        let pI = 0;
+        for (; pI < path.length; pI++) {
+            let part = path[pI];
+            if (node instanceof MapVal_1.MapVal) {
+                node = node.peg[part];
+            }
+            else if (node instanceof ListVal_1.ListVal) {
+                node = node.peg[part];
+            }
+            else {
+                break;
+            }
+        }
+        if (pI < path.length) {
+            node = undefined;
+        }
+        return node;
+    }
+}
+exports.AontuContext = AontuContext;
+//# sourceMappingURL=ctx.js.map
