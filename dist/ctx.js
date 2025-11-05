@@ -2,6 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AontuContext = void 0;
+const type_1 = require("./type");
 const MapVal_1 = require("./val/MapVal");
 const ListVal_1 = require("./val/ListVal");
 const err_1 = require("./err");
@@ -28,6 +29,7 @@ class AontuContext {
     constructor(cfg) {
         this.cc = -1;
         this.vars = {};
+        this.opts = type_1.DEFAULT_OPTS;
         this.root = cfg.root;
         this.path = cfg.path || [];
         this.src = cfg.src;
@@ -43,7 +45,8 @@ class AontuContext {
         this.seen = cfg.seen ?? {};
         this.srcpath = cfg.srcpath ?? undefined;
         this.deps = cfg.deps ?? {};
-        this.opts = cfg.opts ?? {};
+        this.addopts(cfg.opts);
+        // this.opts = cfg.opts ?? {}
     }
     clone(cfg) {
         const ctx = Object.create(this);

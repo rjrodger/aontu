@@ -48,7 +48,8 @@ import type {
 } from './type'
 
 import {
-  SPREAD
+  SPREAD,
+  DEFAULT_OPTS,
 } from './type'
 
 import {
@@ -59,6 +60,7 @@ import {
 import {
   top
 } from './val/valutil'
+
 
 
 import { ScalarKindVal, Integer } from './val/ScalarKindVal'
@@ -350,7 +352,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   const QM = jsonic.token.QM
 
-  const KEY = jsonic.tokenSet.KEY
+  // const KEY = jsonic.tokenSet.KEY
   const OPTKEY = [TX, ST, NR]
 
 
@@ -436,18 +438,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
     return rs
   })
 
-
-  /*
-  jsonic.rule('list', (rs: RuleSpec) => {
-    rs.bc((r: Rule, ctx: JsonicContext) => {
-      r.node = addsite(new ListVal({ peg: r.node }), r, ctx)
-  
-      return undefined
-    })
-  
-    return rs
-  })
-  */
 
 
   jsonic.rule('list', (rs: RuleSpec) => {
@@ -612,9 +602,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 }
 
 
-// const includeFileResolver = makeFileResolver((spec: any) => {
-//   return 'string' === typeof spec ? spec : spec?.peg
-// })
 
 function makeModelResolver(options: any) {
   const useRequire = options.require || require
@@ -622,10 +609,6 @@ function makeModelResolver(options: any) {
   let memResolver = makeMemResolver({
     ...(options.resolver?.mem || {})
   })
-
-  // let fileResolver = makeFileResolver({
-  //   ...(options.resolver?.file || {})
-  // })
 
   // TODO: make this consistent with other resolvers
   let fileResolver = makeFileResolver((spec: any) => {
@@ -677,27 +660,22 @@ function makeModelResolver(options: any) {
 
 class Lang {
   jsonic: Jsonic
-  options: AontuOptions = {
-    src: '',
-    print: -1,
-    debug: false,
-    trace: false,
-  }
+  opts: AontuOptions = DEFAULT_OPTS
   idcount: number | undefined
 
 
   constructor(options?: Partial<AontuOptions>) {
     // const start = performance.now()
 
-    this.options = Object.assign({}, this.options, options) as AontuOptions
+    this.opts = Object.assign({}, this.opts, options) as AontuOptions
 
-    const modelResolver = makeModelResolver(this.options)
+    const modelResolver = makeModelResolver(this.opts)
 
     this.jsonic = Jsonic.make()
 
-    if (this.options.debug) {
+    if (this.opts.debug) {
       this.jsonic.use(Debug, {
-        trace: this.options.trace
+        trace: this.opts.trace
       })
     }
 
@@ -720,9 +698,9 @@ class Lang {
     // JSONIC-UPDATE - check meta
     let jm: any = {
       fs: opts?.fs,
-      fileName: opts?.path ?? this.options.path,
+      fileName: opts?.path ?? this.opts.path,
       multisource: {
-        path: opts?.path ?? this.options.path,
+        path: opts?.path ?? this.opts.path,
         deps: (opts && opts.deps) || undefined
       }
     }

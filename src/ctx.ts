@@ -3,6 +3,8 @@
 
 import type { Val, FST, AontuOptions } from './type'
 
+import { DEFAULT_OPTS } from './type'
+
 
 import { MapVal } from './val/MapVal'
 import { ListVal } from './val/ListVal'
@@ -55,6 +57,7 @@ type AontuContextConfig = {
   */
 
 
+
 class AontuContext {
   root?: Val   // Starting Val, root of paths.
   path: string[]  // Path to current Val.
@@ -77,7 +80,7 @@ class AontuContext {
   srcpath?: string
 
   deps: Record<string, any>
-  opts: AontuOptions
+  opts: AontuOptions = DEFAULT_OPTS
 
 
   constructor(cfg: AontuContextConfig) {
@@ -103,7 +106,9 @@ class AontuContext {
     this.srcpath = cfg.srcpath ?? undefined
 
     this.deps = cfg.deps ?? {}
-    this.opts = cfg.opts ?? {}
+
+    this.addopts(cfg.opts)
+    // this.opts = cfg.opts ?? {}
   }
 
 
@@ -130,7 +135,7 @@ class AontuContext {
   }
 
 
-  addopts(opts?: AontuOptions) {
+  addopts(opts?: Partial<AontuOptions>) {
     if (null != opts) {
       Object.assign(this.opts, opts)
     }

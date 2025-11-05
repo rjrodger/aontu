@@ -25,8 +25,16 @@ type AontuOptions = {
   deps?: any
   log?: any
   idcount?: number
+  collect: boolean // Collect errors into an errs property, rather than throw them.
 }
 
+
+const DEFAULT_OPTS: AontuOptions = {
+  collect: true,
+  print: -1,
+  debug: false,
+  trace: false,
+}
 
 
 interface Val {
@@ -162,6 +170,7 @@ export type {
 export {
   DONE,
   SPREAD,
+  DEFAULT_OPTS,
   Resolver,
 }
 

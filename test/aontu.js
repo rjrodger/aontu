@@ -63,10 +63,6 @@ if(hasDebugArg && 0 === err.length) {
   }
 }
 
-process.exit()
-
-
-
 
 if(0 === err.length) {
   if('explain' === args.explain) {

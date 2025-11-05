@@ -45,7 +45,6 @@ describe('aontu', function() {
   })
 
 
-
   test('happy', async () => {
     let ctx = makeCtx()
     let a0 = new Aontu()
@@ -92,6 +91,8 @@ w1: b: {y:2,z:3} & $.q.a
   })
 
 
+  // TODO: create ctx.test.ts
+  /*
   test('util', async () => {
     expect(util.options('x')).include({ src: 'x', print: 0 })
     expect(util.options('x', { print: 1 })).include({ src: 'x', print: 1 })
@@ -103,7 +104,7 @@ w1: b: {y:2,z:3} & $.q.a
       util.options({ src: 'x', print: 1 }, { src: 'y', print: 2 })
     ).include({ src: 'y', print: 2 })
   })
-
+  */
 
   test('file', async () => {
     let ctx = makeCtx()

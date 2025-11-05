@@ -247,7 +247,7 @@ let AontuJsonic = function aontu(jsonic) {
     const TX = jsonic.token.TX;
     const NR = jsonic.token.NR;
     const QM = jsonic.token.QM;
-    const KEY = jsonic.tokenSet.KEY;
+    // const KEY = jsonic.tokenSet.KEY
     const OPTKEY = [TX, ST, NR];
     jsonic.rule('val', (rs) => {
         rs
@@ -311,17 +311,6 @@ let AontuJsonic = function aontu(jsonic) {
             .close([{ s: [CJ, CL], b: 2, g: 'spread,json,more' }]);
         return rs;
     });
-    /*
-    jsonic.rule('list', (rs: RuleSpec) => {
-      rs.bc((r: Rule, ctx: JsonicContext) => {
-        r.node = addsite(new ListVal({ peg: r.node }), r, ctx)
-    
-        return undefined
-      })
-    
-      return rs
-    })
-    */
     jsonic.rule('list', (rs) => {
         rs
             // .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
@@ -445,17 +434,11 @@ let AontuJsonic = function aontu(jsonic) {
         return rs;
     });
 };
-// const includeFileResolver = makeFileResolver((spec: any) => {
-//   return 'string' === typeof spec ? spec : spec?.peg
-// })
 function makeModelResolver(options) {
     const useRequire = options.require || require;
     let memResolver = (0, mem_1.makeMemResolver)({
         ...(options.resolver?.mem || {})
     });
-    // let fileResolver = makeFileResolver({
-    //   ...(options.resolver?.file || {})
-    // })
     // TODO: make this consistent with other resolvers
     let fileResolver = (0, file_1.makeFileResolver)((spec) => {
         return 'string' === typeof spec ? spec : spec?.peg;
@@ -491,18 +474,13 @@ function makeModelResolver(options) {
 class Lang {
     constructor(options) {
         // const start = performance.now()
-        this.options = {
-            src: '',
-            print: -1,
-            debug: false,
-            trace: false,
-        };
-        this.options = Object.assign({}, this.options, options);
-        const modelResolver = makeModelResolver(this.options);
+        this.opts = type_1.DEFAULT_OPTS;
+        this.opts = Object.assign({}, this.opts, options);
+        const modelResolver = makeModelResolver(this.opts);
         this.jsonic = jsonic_1.Jsonic.make();
-        if (this.options.debug) {
+        if (this.opts.debug) {
             this.jsonic.use(debug_1.Debug, {
-                trace: this.options.trace
+                trace: this.opts.trace
             });
         }
         this.jsonic
@@ -520,9 +498,9 @@ class Lang {
         // JSONIC-UPDATE - check meta
         let jm = {
             fs: opts?.fs,
-            fileName: opts?.path ?? this.options.path,
+            fileName: opts?.path ?? this.opts.path,
             multisource: {
-                path: opts?.path ?? this.options.path,
+                path: opts?.path ?? this.opts.path,
                 deps: (opts && opts.deps) || undefined
             }
         };

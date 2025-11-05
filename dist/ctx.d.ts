@@ -40,7 +40,7 @@ declare class AontuContext {
         err?: any[];
     }): AontuContext;
     descend(key: string): AontuContext;
-    addopts(opts?: AontuOptions): void;
+    addopts(opts?: Partial<AontuOptions>): void;
     adderr(err: NilVal): void;
     errmsg(): string;
     find(path: string[]): Val | undefined;

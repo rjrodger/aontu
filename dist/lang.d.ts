@@ -3,7 +3,7 @@ import type { Val, AontuOptions } from './type';
 import { Site } from './site';
 declare class Lang {
     jsonic: Jsonic;
-    options: AontuOptions;
+    opts: AontuOptions;
     idcount: number | undefined;
     constructor(options?: Partial<AontuOptions>);
     parse(src: string, opts?: Partial<AontuOptions>): Val;

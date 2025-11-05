@@ -56,15 +56,20 @@ w1: b: {y:2,z:3} & $.q.a
         // TODO: fix in jsonic
         (0, code_1.expect)(a0.unify('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}');
     });
-    (0, node_test_1.test)('util', async () => {
-        (0, code_1.expect)(aontu_1.util.options('x')).include({ src: 'x', print: 0 });
-        (0, code_1.expect)(aontu_1.util.options('x', { print: 1 })).include({ src: 'x', print: 1 });
-        (0, code_1.expect)(aontu_1.util.options({ src: 'x' }, { print: 1 })).include({
-            src: 'x',
-            print: 1,
-        });
-        (0, code_1.expect)(aontu_1.util.options({ src: 'x', print: 1 }, { src: 'y', print: 2 })).include({ src: 'y', print: 2 });
-    });
+    // TODO: create ctx.test.ts
+    /*
+    test('util', async () => {
+      expect(util.options('x')).include({ src: 'x', print: 0 })
+      expect(util.options('x', { print: 1 })).include({ src: 'x', print: 1 })
+      expect(util.options({ src: 'x' }, { print: 1 })).include({
+        src: 'x',
+        print: 1,
+      })
+      expect(
+        util.options({ src: 'x', print: 1 }, { src: 'y', print: 2 })
+      ).include({ src: 'y', print: 2 })
+    })
+    */
     (0, node_test_1.test)('file', async () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();

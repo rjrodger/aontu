@@ -14,7 +14,9 @@ type AontuOptions = {
     deps?: any;
     log?: any;
     idcount?: number;
+    collect: boolean;
 };
+declare const DEFAULT_OPTS: AontuOptions;
 interface Val {
     isVal: boolean;
     isTop: boolean;
@@ -100,4 +102,4 @@ type ErrContext = {
     fs?: FST;
 };
 export type { Val, ValMark, ValSpec, ValMap, ValList, AontuOptions, ErrContext, FST, };
-export { DONE, SPREAD, Resolver, };
+export { DONE, SPREAD, DEFAULT_OPTS, Resolver, };

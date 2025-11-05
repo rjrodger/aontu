@@ -72,18 +72,22 @@ class Aontu {
         handleErrors(errs, out, ac);
         return out;
     }
-    generate(src, meta) {
+    generate(src, opts, ac) {
         try {
             let out = undefined;
+            ac = ac ?? this.ctx();
+            ac.addopts(opts);
+            /*
             let ac = this.ctx({
-                src,
-                err: meta?.err,
-                explain: meta?.explain,
-                vars: meta?.vars,
-            });
-            let pval = this.parse(src, {}, ac);
+              src,
+              err: opts?.err,
+              explain: opts?.explain,
+              vars: opts?.vars,
+              })
+            */
+            let pval = this.parse(src, undefined, ac);
             if (undefined !== pval && 0 === pval.err.length) {
-                let uval = this.unify(pval, {}, ac);
+                let uval = this.unify(pval, undefined, ac);
                 if (undefined !== uval && 0 === uval.err.length) {
                     out = uval.isNil ? undefined : uval.gen(ac);
                     if (0 < ac.err.length) {
@@ -124,52 +128,6 @@ function handleErrors(errs, out, ac) {
         }
     }
 }
-/*
-class AontuContext extends Context {
-  constructor(cfg?: AontuContextConfig) {
-    cfg = cfg ?? {
-      root: new NilVal()
-    }
-    if ('string' === typeof cfg.path) {
-      cfg.srcpath = cfg.path
-      cfg.path = undefined
-    }
-    super(cfg as any)
-  }
-
-}
-*/
-/*
-  function AontuOld(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
-  try {
-    let opts = prepareOptions(src, popts)
-    let deps = {}
-
-    // TODO: handle empty src
-    let val = parse(new Lang(opts), opts, { deps })
-
-    if (null == val) {
-      val = new MapVal({ peg: {} })
-    }
-
-    let uni = new Unify(val as unknown as Val, undefined, undefined, opts.src)
-    let res = uni.res
-    let err = uni.err
-
-    descErr(uni.err, { src: opts.src, fs: opts.fs })
-
-    res.deps = deps
-    res.err = err
-
-    return res
-  }
-
-  // NOTE: errors always return as Nil, and are never thrown.
-  catch (err: any) {
-    return new NilVal({ why: 'unknown', msg: err.message, err: [err] })
-  }
-}
-*/
 function prepareOptions(src, popts) {
     // Convert convenience first param into Options.src
     let srcopts = 'string' === typeof src ? { src } :
@@ -178,6 +136,7 @@ function prepareOptions(src, popts) {
         ...{
             src: '',
             print: 0,
+            collect: false,
         },
         ...srcopts,
         ...(popts || {}),
@@ -204,7 +163,7 @@ function runparse(src, lang, ctx) {
 }
 const util = {
     runparse,
-    options: prepareOptions,
+    // options: prepareOptions,
 };
 exports.util = util;
 // export default AontuOld

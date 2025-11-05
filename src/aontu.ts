@@ -10,6 +10,7 @@ import { formatExplain } from './utility'
 import { makeNilErr, AontuError } from './err'
 
 
+
 class Aontu {
   opts: Record<string, any> // AontuOptions
   lang: Lang
@@ -27,7 +28,7 @@ class Aontu {
   }
 
 
-  parse(src: string, opts?: AontuOptions, ac?: AontuContext): Val | undefined {
+  parse(src: string, opts?: Partial<AontuOptions>, ac?: AontuContext): Val | undefined {
     let out: Val | undefined
     let errs: any[] = []
 
@@ -52,7 +53,7 @@ class Aontu {
 
 
   // unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
-  unify(src: string | Val, opts?: AontuOptions, ac?: AontuContext | any): Val {
+  unify(src: string | Val, opts?: Partial<AontuOptions>, ac?: AontuContext | any): Val {
     let out: Val | undefined
     let errs: any[] = []
 
@@ -96,21 +97,30 @@ class Aontu {
   }
 
 
-  generate(src: string, meta?: any): any {
+  generate(src: string, opts?: any, ac?: AontuContext): any {
     try {
       let out = undefined
+
+      ac = ac ?? this.ctx()
+      ac.addopts(opts)
+
+      /*
       let ac = this.ctx({
         src,
-        err: meta?.err,
-        explain: meta?.explain,
-        vars: meta?.vars,
-      })
-      let pval = this.parse(src, {}, ac)
+        err: opts?.err,
+        explain: opts?.explain,
+        vars: opts?.vars,
+        })
+      */
+
+      let pval = this.parse(src, undefined, ac)
 
       if (undefined !== pval && 0 === pval.err.length) {
-        let uval = this.unify(pval, {}, ac)
+
+        let uval = this.unify(pval, undefined, ac)
 
         if (undefined !== uval && 0 === uval.err.length) {
+
           out = uval.isNil ? undefined : uval.gen(ac as any)
 
           if (0 < ac.err.length) {
@@ -158,60 +168,6 @@ function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
 
 
 
-
-
-/*
-class AontuContext extends Context {
-  constructor(cfg?: AontuContextConfig) {
-    cfg = cfg ?? {
-      root: new NilVal()
-    }
-    if ('string' === typeof cfg.path) {
-      cfg.srcpath = cfg.path
-      cfg.path = undefined
-    }
-    super(cfg as any)
-  }
-
-}
-*/
-
-
-
-
-/*
-  function AontuOld(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
-  try {
-    let opts = prepareOptions(src, popts)
-    let deps = {}
-
-    // TODO: handle empty src
-    let val = parse(new Lang(opts), opts, { deps })
-
-    if (null == val) {
-      val = new MapVal({ peg: {} })
-    }
-
-    let uni = new Unify(val as unknown as Val, undefined, undefined, opts.src)
-    let res = uni.res
-    let err = uni.err
-
-    descErr(uni.err, { src: opts.src, fs: opts.fs })
-
-    res.deps = deps
-    res.err = err
-
-    return res
-  }
-
-  // NOTE: errors always return as Nil, and are never thrown.
-  catch (err: any) {
-    return new NilVal({ why: 'unknown', msg: err.message, err: [err] })
-  }
-}
-*/
-
-
 function prepareOptions(
   src?: string | Partial<AontuOptions>,
   popts?: Partial<AontuOptions>,
@@ -224,6 +180,7 @@ function prepareOptions(
     ...{
       src: '',
       print: 0,
+      collect: false,
     },
     ...srcopts,
     ...(popts || {}),
@@ -260,7 +217,7 @@ function runparse(src: string, lang: Lang, ctx: AontuContext): Val {
 
 const util = {
   runparse,
-  options: prepareOptions,
+  // options: prepareOptions,
 }
 
 export {
