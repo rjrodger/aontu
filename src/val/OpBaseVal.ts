@@ -14,10 +14,8 @@ import {
   descErr
 } from '../err'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 import {
   explainOpen,
@@ -41,7 +39,7 @@ class OpBaseVal extends FeatureVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     this.peg = []
@@ -57,7 +55,7 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-  make(ctx: Context, _spec: ValSpec): Val {
+  make(ctx: AontuContext, _spec: ValSpec): Val {
     return NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'make')
   }
 
@@ -66,7 +64,7 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, trace, 'Op:' + this.opname(), this, peer)
     let out: Val = this
 
@@ -162,7 +160,7 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-  clone(ctx: Context, _spec?: ValSpec): Val {
+  clone(ctx: AontuContext, _spec?: ValSpec): Val {
     let out = (super.clone(ctx, {
       peg: this.peg,
     }) as OpBaseVal)
@@ -170,7 +168,7 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-  operate(ctx: Context, _args: Val[]): Val | undefined {
+  operate(ctx: AontuContext, _args: Val[]): Val | undefined {
     return NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'operate')
   }
 
@@ -197,7 +195,7 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-  gen(ctx?: Context) {
+  gen(ctx?: AontuContext) {
     // Unresolved op cannot be generated, so always an error.
     let nil = NilVal.make(
       ctx,

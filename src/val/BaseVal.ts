@@ -17,8 +17,8 @@ import {
 
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import {
   Site
@@ -31,6 +31,7 @@ import {
 
 
 let ID = 1000
+
 
 
 abstract class BaseVal implements Val {
@@ -97,7 +98,7 @@ abstract class BaseVal implements Val {
   #ctx: any
 
   // TODO: Site needed in ctor
-  constructor(spec: ValSpec, ctx?: Context) {
+  constructor(spec: ValSpec, ctx?: AontuContext) {
     this.#ctx = ctx
 
     this.peg = spec?.peg
@@ -138,7 +139,7 @@ abstract class BaseVal implements Val {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let cloneCtx
 
     let cut = this.path.indexOf('&')
@@ -183,7 +184,7 @@ abstract class BaseVal implements Val {
   }
 
   // NOTE: MUST not mutate! Val immutability is a critical assumption. 
-  unify(_peer: Val, _ctx: Context): Val { return this }
+  unify(_peer: Val, _ctx: AontuContext): Val { return this }
 
   // TODO: indicate marks in some way that is ignored by reparse.
   // Need an annotation/taggins syntax? a:{}/type ?
@@ -195,7 +196,7 @@ abstract class BaseVal implements Val {
   }
 
 
-  gen(_ctx: Context): any {
+  gen(_ctx: AontuContext): any {
     return undefined
   }
 
@@ -220,7 +221,7 @@ abstract class BaseVal implements Val {
       ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
     ].filter(n => null != n).join(','))
 
-    let insp = this.inspection()
+    let insp = this.inspection(inspect)
     if (null != insp && '' != insp) {
       s.push('/' + insp)
     }
@@ -239,11 +240,13 @@ abstract class BaseVal implements Val {
 
     s.push('>')
 
-    return s.join('')
+    const out = s.join('')
+
+    return out
   }
 
 
-  inspection() {
+  inspection(inspect: Function) {
     return ''
   }
 
@@ -251,10 +254,16 @@ abstract class BaseVal implements Val {
 
 
 function inspectpeg(peg: any) {
-  return !Array.isArray(peg) ? inspect(peg) :
-    ('[' + peg.map(n => inspect(n)).join(',\n') + ']')
+  return pretty(!Array.isArray(peg) ? inspect(peg) :
+    ('[' + peg.map(n => inspect(n)).join(',\n') + ']'))
+}
+
+function pretty(s: string) {
+  return (
+    (String(s))
       .replace(/\[Object: null prototype\]/g, '')
       .replace(/\s+/g, '')
+  )
 }
 
 

@@ -6,6 +6,7 @@ const __1 = require("..");
 const type_1 = require("../dist/type");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
+const ctx_1 = require("../dist/ctx");
 const code_1 = require("@hapi/code");
 const unify_2 = require("../dist/unify");
 const ConjunctVal_1 = require("../dist/val/ConjunctVal");
@@ -32,7 +33,7 @@ const PA = (x, ctx) => x.map(s => PL(s, ctx));
 const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r))?.canon;
 const GC = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen(ctx);
 const N = (x, ctx) => new unify_1.Unify(x, lang).res.canon;
-const A = new __1.AontuX();
+const A = new __1.Aontu();
 const G = (s, ctx) => A.generate(s);
 const makeSK_String = () => new ScalarKindVal_1.ScalarKindVal({ peg: String });
 const makeSK_Number = () => new ScalarKindVal_1.ScalarKindVal({ peg: Number });
@@ -394,7 +395,7 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         let q0 = new VarVal_1.VarVal({ peg: 'a' });
         (0, code_1.expect)(q0.canon).equal('$a');
         let ctx = makeCtx();
-        ctx.var.foo = makeNumberVal(11);
+        ctx.vars.foo = makeNumberVal(11);
         let s = 'a:$foo';
         let v0 = P(s, ctx);
         (0, code_1.expect)(v0.canon).equal('{"a":$"foo"}');
@@ -507,12 +508,12 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
             let g = []
             g = []; console.log(m0.gen(ctx))
       
-            let c0 = new Context({ root: m0 })
+            let c0 = new AontuContext({ root: m0 })
             let u0 = m0.unify(TOP, c0)
       
             g = []; console.log(u0.gen(ctx))
       
-            let c0a = new Context({ root: u0 })
+            let c0a = new AontuContext({ root: u0 })
             let u0a = u0.unify(TOP, c0a)
       
             g = []; console.log(u0a.gen(ctx))
@@ -522,8 +523,8 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
   q: a: .u
   w: b: .q.a & {y:2, z: 3}
   `);
-        let u1a = m1.unify(TOP, new unify_1.Context({ root: m1 }));
-        let u1b = u1a.unify(TOP, new unify_1.Context({ root: u1a }));
+        let u1a = m1.unify(TOP, new ctx_1.AontuContext({ root: m1 }));
+        let u1b = u1a.unify(TOP, new ctx_1.AontuContext({ root: u1a }));
     });
     (0, node_test_1.it)('unify', () => {
         let m0 = P(`
@@ -532,7 +533,7 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
   c: .x
   `, { xlog: -1 });
         (0, code_1.expect)(m0.canon).equal('{"a":1,"b":.a,"c":.x}');
-        let c0 = new unify_1.Context({
+        let c0 = new ctx_1.AontuContext({
             root: m0
         });
         let m0u = m0.unify(TOP, c0);
@@ -541,7 +542,7 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
   a: .b.c
   b: c: 1
   `, { xlog: -1 });
-        let c1 = new unify_1.Context({
+        let c1 = new ctx_1.AontuContext({
             root: m1
         });
         let m1u = m1.unify(TOP, c1);
@@ -557,7 +558,7 @@ b: c2: {n:2}
             .equal('{"a":{"x":1},"b":{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}');
         (0, code_1.expect)(m2.peg.b.constructor.name).equal('ConjunctVal');
         (0, code_1.expect)(m2.peg.b.peg.length).equal(4);
-        let c2 = new unify_1.Context({
+        let c2 = new ctx_1.AontuContext({
             root: m2
         });
         let m2u = m2.unify(TOP, c2);
@@ -756,6 +757,6 @@ b: c2: {n:2}
     });
 });
 function makeCtx(r) {
-    return new unify_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
+    return new ctx_1.AontuContext({ root: r || new MapVal_1.MapVal({ peg: {} }) });
 }
 //# sourceMappingURL=val-basic.test.js.map

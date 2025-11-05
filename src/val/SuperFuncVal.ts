@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 import { FuncBaseVal } from './FuncBaseVal'
@@ -19,13 +19,13 @@ class SuperFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new SuperFuncVal(spec)
   }
 
@@ -34,7 +34,7 @@ class SuperFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(_ctx: Context, _args: Val[]) {
+  resolve(_ctx: AontuContext, _args: Val[]) {
     return this.place(this.superior())
   }
 

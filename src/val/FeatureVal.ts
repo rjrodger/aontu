@@ -6,8 +6,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 import { BaseVal } from './BaseVal'
@@ -19,7 +19,7 @@ abstract class FeatureVal extends BaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }

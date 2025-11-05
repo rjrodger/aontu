@@ -1,6 +1,7 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
 
+
 import { describe, it } from 'node:test'
 
 import type {
@@ -13,8 +14,12 @@ import {
 
 import {
   Unify,
-  Context,
 } from '../dist/unify'
+
+import {
+  AontuContext,
+} from '../dist/ctx'
+
 
 import {
   top
@@ -27,7 +32,6 @@ import { MapVal } from '../dist/val/MapVal'
 
 let lang = new Lang()
 let P: (s: string, o?: any) => Val = lang.parse.bind(lang)
-
 
 
 
@@ -441,5 +445,5 @@ describe('lang', function() {
 
 
 function makeCtx(opts?: any) {
-  return new Context(opts || { root: new MapVal({ peg: {} }) })
+  return new AontuContext(opts || { root: new MapVal({ peg: {} }) })
 }

@@ -3,11 +3,10 @@
 import { describe, test } from 'node:test'
 
 import {
-  Context,
-} from '../dist/unify'
+  AontuContext,
+} from '../dist/ctx'
 
-import { AontuX } from '../dist/aontu'
-
+import { Aontu } from '../dist/aontu'
 
 
 import { expect } from '@hapi/code'
@@ -50,7 +49,7 @@ describe('val-pref', function() {
 
 
   test('conjunct', () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
     let G = a0.generate.bind(a0)
 
     expect(G('*1&2')).equal(2)
@@ -100,7 +99,7 @@ describe('val-pref', function() {
 
 
   test('func', () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
     let G = a0.generate.bind(a0)
 
     expect(G('*lower(1.1)&2')).equal(2)
@@ -719,8 +718,8 @@ describe('val-pref', function() {
 
 
 function makeCtx(r?: any, p?: string[]) {
-  return new Context({
+  return new AontuContext({
     root: r || new MapVal({ peg: {} }),
-    path: p
+    // path: p
   })
 }

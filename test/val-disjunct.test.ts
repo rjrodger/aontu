@@ -8,9 +8,12 @@ import {
 } from '../dist/lang'
 
 import {
-  Context,
   Unify,
 } from '../dist/unify'
+
+import {
+  AontuContext,
+} from '../dist/ctx'
 
 
 
@@ -82,5 +85,5 @@ describe('val-disjunct', function() {
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({ peg: {} }) })
+  return new AontuContext({ root: r || new MapVal({ peg: {} }) })
 }

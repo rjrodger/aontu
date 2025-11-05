@@ -1,84 +1,76 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatExplain = exports.AontuX = exports.util = exports.Context = exports.Lang = exports.NilVal = void 0;
-exports.parse = parse;
+exports.formatExplain = exports.util = exports.Lang = exports.AontuContext = exports.Aontu = void 0;
+exports.runparse = runparse;
 const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
 const unify_1 = require("./unify");
-Object.defineProperty(exports, "Context", { enumerable: true, get: function () { return unify_1.Context; } });
+const ctx_1 = require("./ctx");
+Object.defineProperty(exports, "AontuContext", { enumerable: true, get: function () { return ctx_1.AontuContext; } });
 const MapVal_1 = require("./val/MapVal");
-const NilVal_1 = require("./val/NilVal");
-Object.defineProperty(exports, "NilVal", { enumerable: true, get: function () { return NilVal_1.NilVal; } });
 const utility_1 = require("./utility");
 Object.defineProperty(exports, "formatExplain", { enumerable: true, get: function () { return utility_1.formatExplain; } });
-class AontuX {
+const err_1 = require("./err");
+class Aontu {
     constructor(popts) {
         this.opts = popts ?? {};
         this.lang = new lang_1.Lang(this.opts);
     }
     ctx(arg) {
-        return arg instanceof AontuContext ? arg :
-            new AontuContext(arg);
+        arg = arg ?? {};
+        return new ctx_1.AontuContext(arg);
     }
-    parse(src, ac) {
-        if (undefined === src) {
-            return NilVal_1.NilVal.make(ac, 'parse_no_src');
+    parse(src, opts, ac) {
+        let out;
+        let errs = [];
+        ac = ac ?? this.ctx();
+        ac.addopts(opts);
+        if (null == src || 'string' !== typeof src) {
+            out = (0, err_1.makeNilErr)(ac, 'parse_bad_src');
+            errs.push(out);
         }
-        if (!(ac instanceof unify_1.Context)) {
-            ac = this.ctx({ ...(ac ?? {}) });
+        if (0 === errs.length) {
+            out = runparse(src, this.lang, ac);
+            out.deps = ac.deps;
+            ac.root = out;
         }
-        const opts = prepareOptions(src, {
-            ...this.opts,
-            fs: ac.fs,
-            path: ac.srcpath
-            // TODO: review
-            // deps: ac.deps,
-        });
-        const deps = {};
-        let val = parse(this.lang, opts, { deps });
-        if (undefined === val) {
-            val = new MapVal_1.MapVal({ peg: {} });
-        }
-        val.deps = deps;
-        ac.root = val;
-        if (val.err && 0 < val.err.length) {
-            val.err.map((err) => ac.adderr(err));
-            if (!ac.collect) {
-                throw new AontuError(ac.errmsg(), ac.err);
-            }
-            return undefined;
-        }
-        return val;
+        handleErrors(errs, out, ac);
+        return out;
     }
     // unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
-    unify(src, ac) {
-        if (undefined === src) {
-            return NilVal_1.NilVal.make(ac, 'unify_no_src');
+    unify(src, opts, ac) {
+        let out;
+        let errs = [];
+        ac = ac ?? this.ctx();
+        ac.addopts(opts);
+        let pval;
+        if ('string' === typeof src) {
+            pval = this.parse(src, undefined, ac);
         }
-        if (!(ac instanceof unify_1.Context)) {
-            ac = this.ctx({ ...(ac ?? {}), src });
-        }
-        let pval = src.isVal ? src : this.parse(src, ac);
-        let osrc = 'string' === typeof src ? src : (ac.src ?? '');
-        let res;
-        if (undefined == pval) {
-            res = ac.err[0] ?? NilVal_1.NilVal.make(ac, 'unify_no_val');
+        else if (src.isVal) {
+            pval = src;
         }
         else {
-            let uni = new unify_1.Unify(pval, this.lang, ac, osrc);
-            res = uni.res;
-            let err = uni.err;
-            res.deps = pval.deps;
-            res.err = err;
-            ac.root = res;
+            out = (0, err_1.makeNilErr)(ac, 'unify_no_src');
+            errs.push(out);
         }
-        if (res.err && 0 < res.err.length) {
-            if (!ac.collect) {
-                throw new AontuError(ac.errmsg(), ac.err);
+        if (null != pval && 0 === errs.length) {
+            let uni = new unify_1.Unify(pval, this.lang, ac, src);
+            errs = uni.err;
+            out = uni.res;
+            if (null == out) {
+                out = (0, err_1.makeNilErr)(ac, 'unify_no_res');
+                if (0 === errs.length) {
+                    errs = [out];
+                }
             }
+            out.deps = pval.deps;
+            out.err = errs;
+            ac.root = out;
         }
-        return res;
+        handleErrors(errs, out, ac);
+        return out;
     }
     generate(src, meta) {
         try {
@@ -87,16 +79,16 @@ class AontuX {
                 src,
                 err: meta?.err,
                 explain: meta?.explain,
-                var: meta?.var,
+                vars: meta?.vars,
             });
-            let pval = this.parse(src, ac);
+            let pval = this.parse(src, {}, ac);
             if (undefined !== pval && 0 === pval.err.length) {
-                let uval = this.unify(pval, ac);
+                let uval = this.unify(pval, {}, ac);
                 if (undefined !== uval && 0 === uval.err.length) {
                     out = uval.isNil ? undefined : uval.gen(ac);
                     if (0 < ac.err.length) {
                         if (!ac.collect) {
-                            throw new AontuError(ac.errmsg(), ac.err);
+                            throw new err_1.AontuError(ac.errmsg(), ac.err);
                         }
                         out = undefined;
                     }
@@ -105,35 +97,48 @@ class AontuX {
             return out;
         }
         catch (err) {
-            if (err instanceof AontuError) {
+            if (err instanceof err_1.AontuError) {
                 throw err;
             }
-            const unex = new AontuError('Aontu: unexpected error: ' + err.message);
+            const unex = new err_1.AontuError('Aontu: unexpected error: ' + err.message);
             Object.assign(unex, err);
             unex.stack = err.stack;
             throw unex;
         }
     }
 }
-exports.AontuX = AontuX;
-class AontuContext extends unify_1.Context {
-    constructor(cfg) {
-        cfg = cfg ?? {
-            root: new NilVal_1.NilVal()
-        };
-        if ('string' === typeof cfg.path) {
-            cfg.srcpath = cfg.path;
-            cfg.path = undefined;
+exports.Aontu = Aontu;
+function handleErrors(errs, out, ac) {
+    errs.map((err) => ac.adderr(err));
+    if (out) {
+        out.err.map((err) => ac.adderr(err));
+    }
+    if (0 < ac.err.length) {
+        if (ac.collect) {
+            if (out) {
+                out.err = ac.err;
+            }
         }
-        super(cfg);
+        else {
+            throw new err_1.AontuError(ac.errmsg(), ac.err);
+        }
     }
 }
-class AontuError extends Error {
-    constructor(msg, errs) {
-        super(msg);
-        this.errs = () => errs ?? [];
+/*
+class AontuContext extends Context {
+  constructor(cfg?: AontuContextConfig) {
+    cfg = cfg ?? {
+      root: new NilVal()
     }
+    if ('string' === typeof cfg.path) {
+      cfg.srcpath = cfg.path
+      cfg.path = undefined
+    }
+    super(cfg as any)
+  }
+
 }
+*/
 /*
   function AontuOld(src?: string | Partial<Options>, popts?: Partial<Options>): Val {
   try {
@@ -180,16 +185,28 @@ function prepareOptions(src, popts) {
     opts.src = null == opts.src ? '' : opts.src;
     return opts;
 }
-function parse(lang, opts, ctx) {
-    const popts = { src: opts.src, deps: ctx.deps, fs: opts.fs, path: opts.path };
-    const val = lang.parse(opts.src, popts);
+function runparse(src, lang, ctx) {
+    const popts = {
+        // src: ctx.src,
+        deps: ctx.deps,
+        fs: ctx.fs,
+        path: ctx.opts.path
+    };
+    let val;
+    const tsrc = src.trim().replace(/^(\n\s*)+/, '');
+    if ('string' === typeof src && '' !== tsrc) {
+        val = lang.parse(src, popts);
+    }
+    if (undefined === val) {
+        val = new MapVal_1.MapVal({ peg: {} });
+    }
     return val;
 }
 const util = {
-    parse,
+    runparse,
     options: prepareOptions,
 };
 exports.util = util;
 // export default AontuOld
-exports.default = AontuX;
+exports.default = Aontu;
 //# sourceMappingURL=aontu.js.map

@@ -4,7 +4,7 @@
 import { describe, it, beforeEach } from 'node:test'
 
 import {
-  AontuX
+  Aontu
 } from '..'
 
 import {
@@ -16,9 +16,12 @@ import {
 } from '../dist/lang'
 
 import {
-  Context,
   Unify,
 } from '../dist/unify'
+
+import {
+  AontuContext,
+} from '../dist/ctx'
 
 import { expect } from '@hapi/code'
 import {
@@ -60,7 +63,7 @@ const GC = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
 
 
 const N = (x: string, ctx?: any) => new Unify(x, lang).res.canon
-const A = new AontuX()
+const A = new Aontu()
 const G = (s: string, ctx?: any) => A.generate(s)
 
 
@@ -71,8 +74,8 @@ const makeSK_Integer = () => new ScalarKindVal({ peg: Integer })
 const makeSK_Boolean = () => new ScalarKindVal({ peg: Boolean })
 
 const makeBooleanVal = (v: boolean) => new BooleanVal({ peg: v })
-const makeNumberVal = (v: number, c?: Context) => new NumberVal({ peg: v }, c)
-const makeIntegerVal = (v: number, c?: Context) => new IntegerVal({ peg: v }, c)
+const makeNumberVal = (v: number, c?: AontuContext) => new NumberVal({ peg: v }, c)
+const makeIntegerVal = (v: number, c?: AontuContext) => new IntegerVal({ peg: v }, c)
 
 
 
@@ -559,7 +562,7 @@ describe('val-basic', function() {
     expect(q0.canon).equal('$a')
 
     let ctx = makeCtx()
-    ctx.var.foo = makeNumberVal(11)
+    ctx.vars.foo = makeNumberVal(11)
 
     let s = 'a:$foo'
     let v0 = P(s, ctx)
@@ -717,12 +720,12 @@ describe('val-basic', function() {
         let g = []
         g = []; console.log(m0.gen(ctx))
   
-        let c0 = new Context({ root: m0 })
+        let c0 = new AontuContext({ root: m0 })
         let u0 = m0.unify(TOP, c0)
   
         g = []; console.log(u0.gen(ctx))
   
-        let c0a = new Context({ root: u0 })
+        let c0a = new AontuContext({ root: u0 })
         let u0a = u0.unify(TOP, c0a)
   
         g = []; console.log(u0a.gen(ctx))
@@ -734,8 +737,8 @@ describe('val-basic', function() {
   w: b: .q.a & {y:2, z: 3}
   `)
 
-    let u1a = m1.unify(TOP, new Context({ root: m1 }))
-    let u1b = u1a.unify(TOP, new Context({ root: u1a }))
+    let u1a = m1.unify(TOP, new AontuContext({ root: m1 }))
+    let u1b = u1a.unify(TOP, new AontuContext({ root: u1a }))
   })
 
 
@@ -748,7 +751,7 @@ describe('val-basic', function() {
 
     expect(m0.canon).equal('{"a":1,"b":.a,"c":.x}')
 
-    let c0 = new Context({
+    let c0 = new AontuContext({
       root: m0
     })
 
@@ -761,7 +764,7 @@ describe('val-basic', function() {
   b: c: 1
   `, { xlog: -1 }) as MapVal)
 
-    let c1 = new Context({
+    let c1 = new AontuContext({
       root: m1
     })
 
@@ -784,7 +787,7 @@ b: c2: {n:2}
     expect(m2.peg.b.constructor.name).equal('ConjunctVal')
     expect(m2.peg.b.peg.length).equal(4)
 
-    let c2 = new Context({
+    let c2 = new AontuContext({
       root: m2
     })
 
@@ -1048,5 +1051,5 @@ b: c2: {n:2}
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({ peg: {} }) })
+  return new AontuContext({ root: r || new MapVal({ peg: {} }) })
 }

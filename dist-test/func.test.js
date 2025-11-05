@@ -8,8 +8,8 @@ const unify_1 = require("../dist/unify");
 const lang_1 = require("../dist/lang");
 let lang = new lang_1.Lang();
 // const G = (x: string, ctx?: any) => new Unify(x, lang)
-//   .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
-const A = new __1.AontuX();
+//   .res.gen(ctx || new AontuContext({ root: new MapVal({ peg: {} }) }))
+const A = new __1.Aontu();
 const G = (x) => A.generate(x);
 (0, node_test_1.describe)('func', function () {
     (0, node_test_1.test)('lower-numbers', () => {
@@ -238,7 +238,7 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(G('a:b:c:key(-2)')).equal({ a: { b: { c: '' } } });
     });
     (0, node_test_1.test)('key-unify', () => {
-        const a0 = new __1.AontuX();
+        const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
         (0, code_1.expect)(G('key()&""')).equal('');
         (0, code_1.expect)(G('a:key()&""')).equal({ a: '' });
@@ -249,7 +249,7 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(G('x:a:key()|key()')).equal({ x: { a: 'x' } });
     });
     (0, node_test_1.test)('key-expr', () => {
-        const a0 = new __1.AontuX();
+        const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
         (0, code_1.expect)(G('key()+B')).equal('B');
         (0, code_1.expect)(G('C+key()')).equal('C');
@@ -387,7 +387,7 @@ const G = (x) => A.generate(x);
     });
     (0, node_test_1.test)('close-functionality', () => {
         // Test that close() prevents additional properties from being unified
-        const a0 = new __1.AontuX();
+        const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
         (0, code_1.expect)(() => G('close({x:1}) & {y:2}')).throw(/closed/);
         (0, code_1.expect)(() => G('close([1,2]) & [3,4,5]')).throw(/closed/);
@@ -414,7 +414,7 @@ const G = (x) => A.generate(x);
     /*
     test('open-functionality', () => {
       // Test that open() allows additional properties to be unified
-      const a0 = new AontuX()
+      const a0 = new Aontu()
       const G = a0.generate.bind(a0)
   
       expect(G('open({x:1}) & {y:2}')).equal({ x: 1, y: 2 })
@@ -423,7 +423,7 @@ const G = (x) => A.generate(x);
     })
     */
     (0, node_test_1.test)('open-close-interaction', () => {
-        const a0 = new __1.AontuX();
+        const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
         // Test opening a previously closed object
         (0, code_1.expect)(G('open(close({x:1})) & {y:2}')).equal({ x: 1, y: 2 });
@@ -439,7 +439,7 @@ const G = (x) => A.generate(x);
       })
     */
     (0, node_test_1.test)('type-functionality', () => {
-        const a0 = new __1.AontuX();
+        const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
         // type() should mark values as type constraints
         (0, code_1.expect)(G('type(1) & number')).equal(1);
@@ -464,13 +464,13 @@ const G = (x) => A.generate(x);
     (0, node_test_1.test)('super-functionality', () => {
         // super() should return the superior type in type hierarchies
         // The exact behavior depends on the superior() implementation in the Val classes
-        const a0 = new __1.AontuX();
+        const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
         // These tests may need to be adjusted based on actual behavior
         (0, code_1.expect)(G('super()')).equal(undefined);
     });
     (0, node_test_1.test)('hide-functionality', () => {
-        const a0 = new __1.AontuX();
+        const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
         // hide() should mark values as hidden from generation
         (0, code_1.expect)(G('hide(1) & number')).equal(1);

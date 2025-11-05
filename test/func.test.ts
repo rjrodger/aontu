@@ -5,30 +5,26 @@ import { describe, test } from 'node:test'
 import { expect } from '@hapi/code'
 
 import {
-  AontuX
+  Aontu
 } from '..'
 
 import {
-  Context,
   Unify,
 } from '../dist/unify'
+
 
 
 import {
   Lang
 } from '../dist/lang'
 
-
-import { MapVal } from '../dist/val/MapVal'
-
-
 let lang = new Lang()
 
 // const G = (x: string, ctx?: any) => new Unify(x, lang)
-//   .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
+//   .res.gen(ctx || new AontuContext({ root: new MapVal({ peg: {} }) }))
 
 
-const A = new AontuX()
+const A = new Aontu()
 const G = (x: string) => A.generate(x)
 
 
@@ -298,7 +294,7 @@ describe('func', function() {
 
 
   test('key-unify', () => {
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     expect(G('key()&""')).equal('')
@@ -312,7 +308,7 @@ describe('func', function() {
 
 
   test('key-expr', () => {
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     expect(G('key()+B')).equal('B')
@@ -473,7 +469,7 @@ describe('func', function() {
 
   test('close-functionality', () => {
     // Test that close() prevents additional properties from being unified
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     expect(() => G('close({x:1}) & {y:2}')).throw(/closed/)
@@ -506,7 +502,7 @@ describe('func', function() {
   /*
   test('open-functionality', () => {
     // Test that open() allows additional properties to be unified
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     expect(G('open({x:1}) & {y:2}')).equal({ x: 1, y: 2 })
@@ -516,7 +512,7 @@ describe('func', function() {
   */
 
   test('open-close-interaction', () => {
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     // Test opening a previously closed object
@@ -535,7 +531,7 @@ describe('func', function() {
   */
 
   test('type-functionality', () => {
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     // type() should mark values as type constraints
@@ -567,7 +563,7 @@ describe('func', function() {
   test('super-functionality', () => {
     // super() should return the superior type in type hierarchies
     // The exact behavior depends on the superior() implementation in the Val classes
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     // These tests may need to be adjusted based on actual behavior
@@ -576,7 +572,7 @@ describe('func', function() {
 
 
   test('hide-functionality', () => {
-    const a0 = new AontuX()
+    const a0 = new Aontu()
     const G = a0.generate.bind(a0)
 
     // hide() should mark values as hidden from generation

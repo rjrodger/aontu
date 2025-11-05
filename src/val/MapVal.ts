@@ -12,10 +12,8 @@ import {
   SPREAD,
 } from '../type'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 import {
   propagateMarks,
@@ -43,7 +41,7 @@ class MapVal extends BagVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
 
@@ -75,7 +73,7 @@ class MapVal extends BagVal {
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val, ctx: Context, explain?: any[] | false): Val {
+  unify(peer: Val, ctx: AontuContext, explain?: any[] | false): Val {
     peer = peer ?? top()
     const te = ctx.explain && explainOpen(ctx, explain, 'Map', this, peer)
 
@@ -223,7 +221,7 @@ class MapVal extends BagVal {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as MapVal)
     out.peg = {}
     for (let entry of Object.entries(this.peg)) {
@@ -252,14 +250,23 @@ class MapVal extends BagVal {
       (this.spread.cj ? '&:' + this.spread.cj.canon +
         (0 < keys.length ? ',' : '') : '') +
       keys
-        .map(k => [JSON.stringify(k) +
+        .map(k => [
+          JSON.stringify(k) +
           (this.optionalKeys.includes(k) ? '?' : '') +
-          ':' + (this.peg[k]?.canon ?? this.peg[k])]).join(',') +
+          ':' +
+          (this.peg[k]?.canon ?? this.peg[k])
+        ])
+        .join(',') +
       '}'
   }
 
 
-  gen(ctx?: Context) {
+  inspection(inspect: Function) {
+    return this.spread.cj ? '&:' + inspect(this.spread.cj) : ''
+  }
+
+
+  gen(ctx?: AontuContext) {
     let out: any = {}
     if (this.mark.type || this.mark.hide) {
       return undefined

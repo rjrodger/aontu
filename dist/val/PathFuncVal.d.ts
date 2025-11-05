@@ -1,13 +1,13 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class PathFuncVal extends FuncBaseVal {
     isPathFunc: boolean;
     prepared: number;
-    constructor(spec: ValSpec, ctx?: Context);
-    make(_ctx: Context, spec: ValSpec): Val;
+    constructor(spec: ValSpec, ctx?: AontuContext);
+    make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
-    prepare(ctx: Context, args: Val[]): Val[];
-    resolve(ctx: Context, args: Val[]): Val;
+    prepare(ctx: AontuContext, args: Val[]): Val[];
+    resolve(ctx: AontuContext, args: Val[]): Val;
 }
 export { PathFuncVal, };

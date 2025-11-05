@@ -2,7 +2,7 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
-const unify_1 = require("../dist/unify");
+const ctx_1 = require("../dist/ctx");
 const aontu_1 = require("../dist/aontu");
 const code_1 = require("@hapi/code");
 const MapVal_1 = require("../dist/val/MapVal");
@@ -33,7 +33,7 @@ const NullVal_1 = require("../dist/val/NullVal");
         (0, code_1.expect)(r3.rank).equal(2);
     });
     (0, node_test_1.test)('conjunct', () => {
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         let G = a0.generate.bind(a0);
         (0, code_1.expect)(G('*1&2')).equal(2);
         (0, code_1.expect)(G('(*1)&3')).equal(3);
@@ -71,7 +71,7 @@ const NullVal_1 = require("../dist/val/NullVal");
         (0, code_1.expect)(G('34&*1&**2&***3')).equal(34);
     });
     (0, node_test_1.test)('func', () => {
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         let G = a0.generate.bind(a0);
         (0, code_1.expect)(G('*lower(1.1)&2')).equal(2);
         (0, code_1.expect)(() => G('*lower(1.1)&a')).throws(/Cannot unify/);
@@ -685,9 +685,9 @@ const NullVal_1 = require("../dist/val/NullVal");
         */
 });
 function makeCtx(r, p) {
-    return new unify_1.Context({
+    return new ctx_1.AontuContext({
         root: r || new MapVal_1.MapVal({ peg: {} }),
-        path: p
+        // path: p
     });
 }
 //# sourceMappingURL=val-pref.test.js.map

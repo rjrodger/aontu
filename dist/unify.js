@@ -1,13 +1,11 @@
 "use strict";
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unite = exports.Unify = exports.Context = void 0;
+exports.unite = exports.Unify = void 0;
+const ctx_1 = require("./ctx");
 const type_1 = require("./type");
-const MapVal_1 = require("./val/MapVal");
-const ListVal_1 = require("./val/ListVal");
 const NilVal_1 = require("./val/NilVal");
 const lang_1 = require("./lang");
-const err_1 = require("./err");
 const utility_1 = require("./utility");
 const valutil_1 = require("./val/valutil");
 // TODO: relation to unify loops?
@@ -93,79 +91,140 @@ function update(x, _y) {
     // TODO: update x with y.site
     return x;
 }
+/*
 class Context {
-    constructor(cfg) {
-        this.cc = -1;
-        this.var = {};
-        this.root = cfg.root;
-        this.path = cfg.path || [];
-        this.src = cfg.src;
-        this.collect = cfg.collect ?? null != cfg.err;
-        this.err = cfg.err ?? [];
-        this.explain = cfg.explain ?? null;
-        this.fs = cfg.fs ?? null;
-        // Multiple unify passes will keep incrementing Val counter.
-        this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
-        this.cc = null == cfg.cc ? this.cc : cfg.cc;
-        this.var = cfg.var ?? this.var;
-        this.seenI = cfg.seenI ?? 0;
-        this.seen = cfg.seen ?? {};
-        this.srcpath = cfg.srcpath ?? undefined;
+  root: Val   // Starting Val, root of paths.
+  path: Path  // Path to current Val.
+  // err: Omit<Nil[], "push">  // Nil error log of current unify.
+  vc: number  // Val counter to create unique val ids.
+  cc: number = -1
+  var: Record<string, Val> = {}
+  src?: string
+  fs?: FST
+
+  seenI: number
+  seen: Record<string, number>
+
+  collect: boolean
+
+  // errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
+  err: any[]
+  explain: any[] | null
+
+  // TODO: separate options and context!!!
+  srcpath?: string
+
+  constructor(cfg: {
+    root: Val
+    path?: Path
+    srcpath?: string,
+    err?: any[]
+    explain?: any[] | null
+    vc?: number
+    cc?: number
+    var?: Record<string, Val>
+    src?: string
+    seenI?: number
+    seen?: Record<string, number>
+    collect?: boolean
+    fs?: any
+  }) {
+    this.root = cfg.root
+    this.path = cfg.path || []
+    this.src = cfg.src
+
+    this.collect = cfg.collect ?? null != cfg.err
+    this.err = cfg.err ?? []
+    this.explain = cfg.explain ?? null
+
+    this.fs = cfg.fs ?? null
+
+    // Multiple unify passes will keep incrementing Val counter.
+    this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
+
+    this.cc = null == cfg.cc ? this.cc : cfg.cc
+
+    this.var = cfg.var ?? this.var
+    this.seenI = cfg.seenI ?? 0
+    this.seen = cfg.seen ?? {}
+
+    this.srcpath = cfg.srcpath ?? undefined
+  }
+
+
+  clone(cfg: {
+    root?: Val,
+    path?: Path,
+    err?: any[]
+  }): Context {
+    const ctx = Object.create(this)
+    ctx.path = cfg.path ?? this.path
+    ctx.root = cfg.root ?? this.root
+    ctx.var = Object.create(this.var)
+
+    ctx.err = cfg.err ?? ctx.err
+
+    return ctx
+  }
+
+  descend(key: string): Context {
+    return this.clone({
+      root: this.root,
+      path: this.path.concat(key),
+    })
+  }
+
+
+  adderr(err: NilVal, whence?: string) {
+    this.err.push(err)
+    if (null == err.msg || '' == err.msg) {
+      descErr(err, this)
     }
-    clone(cfg) {
-        const ctx = Object.create(this);
-        ctx.path = cfg.path ?? this.path;
-        ctx.root = cfg.root ?? this.root;
-        ctx.var = Object.create(this.var);
-        ctx.err = cfg.err ?? ctx.err;
-        return ctx;
+  }
+
+
+  errmsg() {
+    // return this.errlist
+    return this.err
+      .map((err: any) => err?.msg)
+      .filter(msg => null != msg)
+      .join('\n------\n')
+  }
+
+
+  find(path: string[]): Val | undefined {
+    let node: Val | undefined = this.root
+    let pI = 0
+    for (; pI < path.length; pI++) {
+      let part = path[pI]
+
+      if (node instanceof MapVal) {
+        node = node.peg[part]
+      }
+      else if (node instanceof ListVal) {
+        node = node.peg[part]
+      }
+      else {
+        break;
+      }
     }
-    descend(key) {
-        return this.clone({
-            root: this.root,
-            path: this.path.concat(key),
-        });
+
+    if (pI < path.length) {
+      node = undefined
     }
-    adderr(err, whence) {
-        this.err.push(err);
-        if (null == err.msg || '' == err.msg) {
-            (0, err_1.descErr)(err, this);
-        }
-    }
-    errmsg() {
-        // return this.errlist
-        return this.err
-            .map((err) => err?.msg)
-            .filter(msg => null != msg)
-            .join('\n------\n');
-    }
-    find(path) {
-        let node = this.root;
-        let pI = 0;
-        for (; pI < path.length; pI++) {
-            let part = path[pI];
-            if (node instanceof MapVal_1.MapVal) {
-                node = node.peg[part];
-            }
-            else if (node instanceof ListVal_1.ListVal) {
-                node = node.peg[part];
-            }
-            else {
-                break;
-            }
-        }
-        if (pI < path.length) {
-            node = undefined;
-        }
-        return node;
-    }
+
+    return node
+  }
 }
-exports.Context = Context;
+*/
 class Unify {
     constructor(root, lang, ctx, src) {
         this.lang = lang || new lang_1.Lang();
         if ('string' === typeof root) {
             root = this.lang.parse(root);
+        }
+        if ('string' !== typeof src) {
+            src = '';
         }
         this.cc = 0;
         this.root = root;
@@ -176,11 +235,11 @@ class Unify {
         let uctx;
         // Only unify if no syntax errors
         if (!root.nil) {
-            if (ctx instanceof Context) {
+            if (ctx instanceof ctx_1.AontuContext) {
                 uctx = ctx;
             }
             else {
-                uctx = new Context({
+                uctx = new ctx_1.AontuContext({
                     ...(ctx || {}),
                     root: res,
                     err: this.err,

@@ -40,7 +40,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
         // if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
         if (!(nameVal.isRef) && type_1.DONE === nameVal.dc) {
             if (nameVal instanceof StringVal_1.StringVal) {
-                let found = ctx.var[nameVal.peg];
+                let found = ctx.vars[nameVal.peg];
                 if (undefined === found) {
                     out = NilVal_1.NilVal.make(ctx, 'unknown_var', this, peer);
                 }

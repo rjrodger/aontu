@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import { NilVal } from '../val/NilVal'
 import { RefVal } from '../val/RefVal'
@@ -22,13 +22,13 @@ class PathFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     const pathfunc = new PathFuncVal(spec)
     pathfunc.prepared = this.prepared
     return pathfunc
@@ -39,7 +39,7 @@ class PathFuncVal extends FuncBaseVal {
   }
 
 
-  prepare(ctx: Context, args: Val[]) {
+  prepare(ctx: AontuContext, args: Val[]) {
     let arg = args[0]
 
     if (0 === this.prepared) {
@@ -59,7 +59,7 @@ class PathFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(ctx: Context, args: Val[]) {
+  resolve(ctx: AontuContext, args: Val[]) {
     let out = args[0] ?? NilVal.make(ctx, 'arg', this)
 
     return out

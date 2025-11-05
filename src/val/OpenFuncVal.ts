@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 import { FuncBaseVal } from './FuncBaseVal'
@@ -21,13 +21,13 @@ class OpenFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new OpenFuncVal(spec)
   }
 
@@ -36,7 +36,7 @@ class OpenFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(ctx: Context | undefined, args: Val[]) {
+  resolve(ctx: AontuContext | undefined, args: Val[]) {
     const argval: any = args[0]
 
     if (null == argval) {

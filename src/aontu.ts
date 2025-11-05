@@ -1,25 +1,19 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-import type { Val, Options } from './type'
+import type { Val, AontuOptions } from './type'
 
 import { Lang } from './lang'
-import { Unify, Context } from './unify'
+import { Unify } from './unify'
+import { AontuContext, AontuContextConfig } from './ctx'
 import { MapVal } from './val/MapVal'
-import { NilVal } from './val/NilVal'
 import { formatExplain } from './utility'
+import { makeNilErr, AontuError } from './err'
 
 
-
-type AontuOptions = {
-
-}
-
-
-
-
-class AontuX {
+class Aontu {
   opts: Record<string, any> // AontuOptions
   lang: Lang
+
 
   constructor(popts?: Partial<AontuOptions>) {
     this.opts = popts ?? {}
@@ -27,91 +21,78 @@ class AontuX {
   }
 
 
-  ctx(arg?: AontuContextConfig | AontuContext): AontuContext {
-    return arg instanceof AontuContext ? arg :
-      new AontuContext(arg)
+  ctx(arg?: AontuContextConfig): AontuContext {
+    arg = arg ?? {}
+    return new AontuContext(arg)
   }
 
 
-  parse(src: string, ac?: AontuContext): Val | undefined {
-    if (undefined === src) {
-      return NilVal.make(ac, 'parse_no_src')
+  parse(src: string, opts?: AontuOptions, ac?: AontuContext): Val | undefined {
+    let out: Val | undefined
+    let errs: any[] = []
+
+    ac = ac ?? this.ctx()
+    ac.addopts(opts)
+
+    if (null == src || 'string' !== typeof src) {
+      out = makeNilErr(ac, 'parse_bad_src')
+      errs.push(out)
     }
 
-    if (!(ac instanceof Context)) {
-      ac = this.ctx({ ...(ac ?? {}) })
+    if (0 === errs.length) {
+      out = runparse(src, this.lang, ac)
+      out.deps = ac.deps
+      ac.root = out
     }
 
-    const opts = prepareOptions(src, {
-      ...this.opts,
-      fs: ac.fs,
-      path: ac.srcpath
+    handleErrors(errs, out, ac)
 
-      // TODO: review
-      // deps: ac.deps,
-    })
-    const deps = {}
-
-    let val = parse(this.lang, opts, { deps })
-
-    if (undefined === val) {
-      val = new MapVal({ peg: {} })
-    }
-
-    val.deps = deps
-    ac.root = val
-
-    if (val.err && 0 < val.err.length) {
-      val.err.map((err: any) => ac.adderr(err))
-
-      if (!ac.collect) {
-        throw new AontuError(ac.errmsg(), ac.err)
-      }
-
-      return undefined
-    }
-
-    return val
+    return out
   }
 
 
   // unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
-  unify(src: string | Val, ac?: AontuContext | any): Val {
-    if (undefined === src) {
-      return NilVal.make(ac, 'unify_no_src')
+  unify(src: string | Val, opts?: AontuOptions, ac?: AontuContext | any): Val {
+    let out: Val | undefined
+    let errs: any[] = []
+
+    ac = ac ?? this.ctx()
+    ac.addopts(opts)
+
+    let pval: Val | undefined
+
+    if ('string' === typeof src) {
+      pval = this.parse(src, undefined, ac)
     }
-
-    if (!(ac instanceof Context)) {
-      ac = this.ctx({ ...(ac ?? {}), src })
-    }
-
-    let pval = (src as Val).isVal ? src as Val : this.parse(src as string, ac)
-    let osrc = 'string' === typeof src ? src : (ac.src ?? '')
-
-    let res: Val
-
-    if (undefined == pval) {
-      res = ac.err[0] ?? NilVal.make(ac, 'unify_no_val')
+    else if (src.isVal) {
+      pval = src
     }
     else {
-
-      let uni = new Unify(pval, this.lang, ac, osrc)
-      res = uni.res
-      let err = uni.err
-
-      res.deps = pval.deps
-      res.err = err
-
-      ac.root = res
+      out = makeNilErr(ac, 'unify_no_src')
+      errs.push(out)
     }
 
-    if (res.err && 0 < res.err.length) {
-      if (!ac.collect) {
-        throw new AontuError(ac.errmsg(), ac.err)
+    if (null != pval && 0 === errs.length) {
+      let uni = new Unify(pval, this.lang, ac, src)
+      errs = uni.err
+
+      out = uni.res
+
+      if (null == out) {
+        out = makeNilErr(ac, 'unify_no_res')
+        if (0 === errs.length) {
+          errs = [out]
+        }
       }
+
+      out.deps = pval.deps
+      out.err = errs
+      ac.root = out
     }
 
-    return res
+    handleErrors(errs, out, ac)
+
+    return out as Val
   }
 
 
@@ -122,12 +103,12 @@ class AontuX {
         src,
         err: meta?.err,
         explain: meta?.explain,
-        var: meta?.var,
+        vars: meta?.vars,
       })
-      let pval = this.parse(src, ac)
+      let pval = this.parse(src, {}, ac)
 
       if (undefined !== pval && 0 === pval.err.length) {
-        let uval = this.unify(pval, ac)
+        let uval = this.unify(pval, {}, ac)
 
         if (undefined !== uval && 0 === uval.err.length) {
           out = uval.isNil ? undefined : uval.gen(ac as any)
@@ -156,28 +137,30 @@ class AontuX {
 
 }
 
+function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
+  errs.map((err: any) => ac.adderr(err))
 
+  if (out) {
+    out.err.map((err: any) => ac.adderr(err))
+  }
 
-type AontuContextConfig = {
-  root?: Val
-  path?: []
-  err?: Omit<NilVal[], "push">
-  explain?: any[],
-  vc?: number
-  cc?: number
-
-  // TODO: rename to vars
-  var?: Record<string, Val>
-  src?: string
-  fs?: any
-
-  seenI?: number
-  seen?: Record<string, number>
-
-  srcpath?: string
+  if (0 < ac.err.length) {
+    if (ac.collect) {
+      if (out) {
+        out.err = ac.err
+      }
+    }
+    else {
+      throw new AontuError(ac.errmsg(), ac.err)
+    }
+  }
 }
 
 
+
+
+
+/*
 class AontuContext extends Context {
   constructor(cfg?: AontuContextConfig) {
     cfg = cfg ?? {
@@ -191,17 +174,8 @@ class AontuContext extends Context {
   }
 
 }
+*/
 
-
-
-class AontuError extends Error {
-  constructor(msg: string, errs?: NilVal[]) {
-    super(msg)
-    this.errs = () => errs ?? []
-  }
-
-  errs: () => NilVal[]
-}
 
 
 
@@ -239,14 +213,14 @@ class AontuError extends Error {
 
 
 function prepareOptions(
-  src?: string | Partial<Options>,
-  popts?: Partial<Options>,
-): Options {
+  src?: string | Partial<AontuOptions>,
+  popts?: Partial<AontuOptions>,
+): AontuOptions {
   // Convert convenience first param into Options.src
-  let srcopts: Partial<Options> = 'string' === typeof src ? { src } :
+  let srcopts: Partial<AontuOptions> = 'string' === typeof src ? { src } :
     null == src ? {} : src
 
-  let opts: Options = {
+  let opts: AontuOptions = {
     ...{
       src: '',
       print: 0,
@@ -261,23 +235,45 @@ function prepareOptions(
 }
 
 
-function parse(lang: Lang, opts: Options, ctx: { deps: any }): Val {
-  const popts = { src: opts.src, deps: ctx.deps, fs: opts.fs, path: opts.path }
-  const val = lang.parse(opts.src, popts)
+function runparse(src: string, lang: Lang, ctx: AontuContext): Val {
+  const popts = {
+    // src: ctx.src,
+    deps: ctx.deps,
+    fs: ctx.fs,
+    path: ctx.opts.path
+  }
+  let val
+
+  const tsrc = src.trim().replace(/^(\n\s*)+/, '')
+
+  if ('string' === typeof src && '' !== tsrc) {
+    val = lang.parse(src, popts)
+  }
+
+  if (undefined === val) {
+    val = new MapVal({ peg: {} })
+  }
+
   return val
 }
 
+
 const util = {
-  parse,
+  runparse,
   options: prepareOptions,
 }
 
 export {
-  // AontuOld,
-  Val, NilVal, Lang, Context, parse, util, AontuX,
-  formatExplain
+  Aontu,
+  AontuOptions,
+  AontuContext,
 
+  Val,
+  Lang,
+  runparse,
+  util,
+  formatExplain
 }
 
 // export default AontuOld
-export default AontuX
+export default Aontu

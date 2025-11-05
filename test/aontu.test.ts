@@ -7,7 +7,7 @@ import { memfs as Memfs } from 'memfs'
 import { expect } from '@hapi/code'
 import { MapVal } from '../dist/val/MapVal'
 
-import { Lang, util, AontuX, Context } from '../dist/aontu'
+import { Lang, util, Aontu, AontuContext } from '../dist/aontu'
 
 type FST = typeof Fs
 
@@ -15,7 +15,7 @@ type FST = typeof Fs
 describe('aontu', function() {
 
   test('basic-api', async () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     let p0 = a0.parse('a:number')
     expect(p0?.canon).equal('{"a":number}')
@@ -32,7 +32,7 @@ describe('aontu', function() {
 
 
   test('error-api', async () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     expect(() => a0.parse('a::number')).throws(/unexpected char/)
     expect((a0 as any).parse('a:number a:A').canon).equal('{"a":number&"A"}')
@@ -48,7 +48,7 @@ describe('aontu', function() {
 
   test('happy', async () => {
     let ctx = makeCtx()
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     let v0 = a0.unify('a:1') as any
     expect(v0.canon).equal('{"a":1}')
@@ -107,7 +107,7 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('file', async () => {
     let ctx = makeCtx()
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     let v0 = a0.unify('@"' + __dirname + '/../test/t02.jsonic"') as any
 
@@ -140,7 +140,7 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   test('pref', async () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     try {
       a0.unify('@"' + __dirname + '/../test/t03.jsonic"', {
@@ -154,7 +154,7 @@ w1: b: {y:2,z:3} & $.q.a
 
 
   test('map-spread', () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}') as any
     expect(v0.canon).equal(
@@ -178,7 +178,7 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('empty-and-comments', () => {
     let ctx = makeCtx()
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     expect(a0.unify('').gen(ctx)).equal({})
     expect(a0.unify(undefined as any).gen(ctx)).equal(undefined)
@@ -191,7 +191,7 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('spread-edges', () => {
     let ctx = makeCtx()
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     expect(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } })
 
@@ -202,7 +202,7 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('key-edges', () => {
     let ctx = makeCtx()
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     expect(a0.unify('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } })
     expect(a0.unify('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } })
@@ -217,7 +217,7 @@ w1: b: {y:2,z:3} & $.q.a
 
   test('practical-path-spread', () => {
     let ctx = makeCtx()
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     let v0 = a0.unify(`
 micks: $.def.garage & {
@@ -257,7 +257,7 @@ def: garage: {
 
 
   test('virtual-fs', () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
 
     const mfs = Memfs({
       'foo.jsonic': '{f:11}'
@@ -282,5 +282,5 @@ def: garage: {
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({ peg: {} }) })
+  return new AontuContext({ root: r || new MapVal({ peg: {} }) })
 }

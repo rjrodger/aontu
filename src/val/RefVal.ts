@@ -1,15 +1,5 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-
-/* TODO
-   Rename ot PathVal
-   
-   $SELF.a - path starting at self
-   $PARENT.b === .b - sibling
-
-   implement $ as a prefix operator
-   this allows "$AString" to be used for literal part names
-*/
 
 import {
   walk,
@@ -28,10 +18,8 @@ import {
   DONE,
 } from '../type'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 
 import {
@@ -43,8 +31,6 @@ import { StringVal } from './StringVal'
 import { IntegerVal } from './IntegerVal'
 import { NumberVal } from './NumberVal'
 import { ConjunctVal } from './ConjunctVal'
-import { MapVal } from './MapVal'
-import { ListVal } from './ListVal'
 import { NilVal } from './NilVal'
 import { VarVal } from './VarVal'
 import { FeatureVal } from './FeatureVal'
@@ -63,7 +49,7 @@ class RefVal extends FeatureVal {
       absolute?: boolean,
       prefix?: boolean
     },
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     this.peg = []
@@ -143,7 +129,7 @@ class RefVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
     peer = peer ?? top()
 
     const te = ctx.explain && explainOpen(ctx, trace, 'Ref', this, peer)
@@ -199,7 +185,7 @@ class RefVal extends FeatureVal {
   }
 
 
-  find(ctx: Context) {
+  find(ctx: AontuContext) {
     let out: Val | undefined = undefined
 
     if (this.path.join('.').startsWith(this.peg.join('.'))) {
@@ -267,6 +253,7 @@ class RefVal extends FeatureVal {
         refpath = parts
       }
       else {
+        // TODO: deprecate $KEY, etc
         refpath = this.path.slice(
           0,
           (
@@ -293,19 +280,22 @@ class RefVal extends FeatureVal {
         return sv
       }
 
-      let node: Val = ctx.root
+      let node = ctx.root as Val
       let pI = 0
-      for (; pI < refpath.length; pI++) {
-        let part = refpath[pI]
 
-        if (node instanceof MapVal) {
-          node = node.peg[part]
-        }
-        else if (node instanceof ListVal) {
-          node = node.peg[part]
-        }
-        else {
-          break;
+      if (null != node) {
+        for (; pI < refpath.length; pI++) {
+          let part = refpath[pI]
+
+          if (node.isMap) {
+            node = node.peg[part]
+          }
+          else if (node.isList) {
+            node = node.peg[part]
+          }
+          else {
+            break;
+          }
         }
       }
 
@@ -334,7 +324,7 @@ class RefVal extends FeatureVal {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, {
       peg: this.peg,
       absolute: this.absolute,
@@ -356,7 +346,7 @@ class RefVal extends FeatureVal {
   }
 
 
-  gen(ctx?: Context) {
+  gen(ctx?: AontuContext) {
     // Unresolved ref cannot be generated, so always an error.
     let nil = NilVal.make(
       ctx,

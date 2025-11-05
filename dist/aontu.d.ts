@@ -1,42 +1,21 @@
-import type { Val, Options } from './type';
+import type { Val, AontuOptions } from './type';
 import { Lang } from './lang';
-import { Context } from './unify';
-import { NilVal } from './val/NilVal';
+import { AontuContext, AontuContextConfig } from './ctx';
 import { formatExplain } from './utility';
-type AontuOptions = {};
-declare class AontuX {
+declare class Aontu {
     opts: Record<string, any>;
     lang: Lang;
     constructor(popts?: Partial<AontuOptions>);
-    ctx(arg?: AontuContextConfig | AontuContext): AontuContext;
-    parse(src: string, ac?: AontuContext): Val | undefined;
-    unify(src: string | Val, ac?: AontuContext | any): Val;
+    ctx(arg?: AontuContextConfig): AontuContext;
+    parse(src: string, opts?: AontuOptions, ac?: AontuContext): Val | undefined;
+    unify(src: string | Val, opts?: AontuOptions, ac?: AontuContext | any): Val;
     generate(src: string, meta?: any): any;
 }
-type AontuContextConfig = {
-    root?: Val;
-    path?: [];
-    err?: Omit<NilVal[], "push">;
-    explain?: any[];
-    vc?: number;
-    cc?: number;
-    var?: Record<string, Val>;
-    src?: string;
-    fs?: any;
-    seenI?: number;
-    seen?: Record<string, number>;
-    srcpath?: string;
-};
-declare class AontuContext extends Context {
-    constructor(cfg?: AontuContextConfig);
-}
-declare function prepareOptions(src?: string | Partial<Options>, popts?: Partial<Options>): Options;
-declare function parse(lang: Lang, opts: Options, ctx: {
-    deps: any;
-}): Val;
+declare function prepareOptions(src?: string | Partial<AontuOptions>, popts?: Partial<AontuOptions>): AontuOptions;
+declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
-    parse: typeof parse;
+    runparse: typeof runparse;
     options: typeof prepareOptions;
 };
-export { Val, NilVal, Lang, Context, parse, util, AontuX, formatExplain };
-export default AontuX;
+export { Aontu, AontuOptions, AontuContext, Val, Lang, runparse, util, formatExplain };
+export default Aontu;

@@ -2,7 +2,7 @@
 
 import { describe, it } from 'node:test'
 import { expect } from '@hapi/code'
-import { AontuX, Context } from '../dist/aontu'
+import { Aontu, AontuContext } from '../dist/aontu'
 
 import { MapVal } from '../dist/val/MapVal'
 
@@ -10,7 +10,7 @@ import { MapVal } from '../dist/val/MapVal'
 describe('error', function() {
 
   it('syntax', () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
     let v0 = a0.unify('a::1', { collect: true })
 
     expect(v0.err[0]).exist()
@@ -22,7 +22,7 @@ describe('error', function() {
 
 
   it('unify', () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
     let v0 = a0.unify('a:1,a:2', { collect: true })
     expect(v0.err[0].why).equal('scalar')
     expect(typeof v0.err[0].msg).equal('string')
@@ -30,7 +30,7 @@ describe('error', function() {
 
 
   it('file-e01', async () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
     let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.jsonic"', { collect: true })
     expect(v0.err[0].why).equal('scalar')
     expect(typeof v0.err[0].msg).equal('string')
@@ -38,7 +38,7 @@ describe('error', function() {
 
 
   it('generate', () => {
-    let a0 = new AontuX()
+    let a0 = new Aontu()
     let v0 = a0.unify('a:$.b')
 
 
@@ -49,7 +49,7 @@ describe('error', function() {
       // expect(err.message).contain('Cannot')
     }
 
-    let c0 = new Context({ root: v0 })
+    let c0 = new AontuContext({ root: v0 })
     let g0 = v0.gen(c0)
     // expect(g0).equal({ a: undefined })
 
@@ -71,7 +71,7 @@ describe('error', function() {
 
   it('generate-file-e02', () => {
     let ctx = makeCtx()
-    let a0 = new AontuX()
+    let a0 = new Aontu()
     let v0 = a0.unify('@"' + __dirname + '/../test/error/e02.jsonic"')
 
     try {
@@ -82,7 +82,7 @@ describe('error', function() {
     }
 
     let v1 = a0.unify('@"' + __dirname + '/../test/error/e02.jsonic"')
-    let c1 = new Context({ root: v1 })
+    let c1 = new AontuContext({ root: v1 })
     let g1 = v1.gen(c1)
     // expect(g1).equal({ a: undefined })
     expect(g1).includes({ isNil: true })
@@ -106,5 +106,5 @@ describe('error', function() {
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({ peg: {} }) })
+  return new AontuContext({ root: r || new MapVal({ peg: {} }) })
 }

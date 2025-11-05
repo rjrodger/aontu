@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 import { NilVal } from '../val/NilVal'
@@ -25,13 +25,13 @@ class UpperFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new UpperFuncVal(spec)
   }
 
@@ -40,7 +40,7 @@ class UpperFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(ctx: Context | undefined, args: Val[]) {
+  resolve(ctx: AontuContext | undefined, args: Val[]) {
     const oldpeg = args?.[0].peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() :
       'number' === typeof oldpeg ? Math.ceil(oldpeg) :

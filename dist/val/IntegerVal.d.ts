@@ -1,9 +1,9 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { ScalarVal } from './ScalarVal';
 declare class IntegerVal extends ScalarVal {
     isInteger: boolean;
-    constructor(spec: ValSpec, ctx?: Context);
-    unify(peer: any, ctx: Context, explain?: any[]): Val;
+    constructor(spec: ValSpec, ctx?: AontuContext);
+    unify(peer: any, ctx: AontuContext, explain?: any[]): Val;
 }
 export { IntegerVal, };

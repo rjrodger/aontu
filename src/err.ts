@@ -4,10 +4,19 @@
 import { util } from 'jsonic'
 
 import { Val, ErrContext } from './type'
+
+import { AontuContext } from './ctx'
+
 import { NilVal } from './val/NilVal'
 
 
 const { errmsg } = util
+
+
+function makeNilErr(ac: AontuContext, code: string, details?: Record<string, any>): NilVal {
+  const nilval = NilVal.make(ac, code)
+  return nilval
+}
 
 
 // TODO: move to utility?
@@ -108,6 +117,18 @@ function resolveSrc(v: Val, errctx?: ErrContext) {
 }
 
 
+class AontuError extends Error {
+  constructor(msg: string, errs?: NilVal[]) {
+    super(msg)
+    this.errs = () => errs ?? []
+  }
+
+  errs: () => NilVal[]
+}
+
+
 export {
-  descErr
+  makeNilErr,
+  descErr,
+  AontuError,
 }

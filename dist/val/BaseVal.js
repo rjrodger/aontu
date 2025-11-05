@@ -153,7 +153,7 @@ class BaseVal {
             type_1.DONE === this.dc ? 'D' : 'd' + this.dc,
             ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
         ].filter(n => null != n).join(','));
-        let insp = this.inspection();
+        let insp = this.inspection(node_util_1.inspect);
         if (null != insp && '' != insp) {
             s.push('/' + insp);
         }
@@ -168,17 +168,21 @@ class BaseVal {
             s.push(this.peg);
         }
         s.push('>');
-        return s.join('');
+        const out = s.join('');
+        return out;
     }
-    inspection() {
+    inspection(inspect) {
         return '';
     }
 }
 exports.BaseVal = BaseVal;
 function inspectpeg(peg) {
-    return !Array.isArray(peg) ? (0, node_util_1.inspect)(peg) :
-        ('[' + peg.map(n => (0, node_util_1.inspect)(n)).join(',\n') + ']')
-            .replace(/\[Object: null prototype\]/g, '')
-            .replace(/\s+/g, '');
+    return pretty(!Array.isArray(peg) ? (0, node_util_1.inspect)(peg) :
+        ('[' + peg.map(n => (0, node_util_1.inspect)(n)).join(',\n') + ']'));
+}
+function pretty(s) {
+    return ((String(s))
+        .replace(/\[Object: null prototype\]/g, '')
+        .replace(/\s+/g, ''));
 }
 //# sourceMappingURL=BaseVal.js.map

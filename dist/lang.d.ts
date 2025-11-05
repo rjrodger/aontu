@@ -1,11 +1,11 @@
 import { Jsonic } from 'jsonic';
-import type { Val, Options } from './type';
+import type { Val, AontuOptions } from './type';
 import { Site } from './site';
 declare class Lang {
     jsonic: Jsonic;
-    options: Options;
+    options: AontuOptions;
     idcount: number | undefined;
-    constructor(options?: Partial<Options>);
-    parse(src: string, opts?: Partial<Options>): Val;
+    constructor(options?: Partial<AontuOptions>);
+    parse(src: string, opts?: Partial<AontuOptions>): Val;
 }
 export { Lang, Site, };

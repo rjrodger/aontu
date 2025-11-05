@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
+const ctx_1 = require("../dist/ctx");
 const valutil_1 = require("../dist/val/valutil");
 const TOP = (0, valutil_1.top)();
 const code_1 = require("@hapi/code");
@@ -299,6 +300,6 @@ let P = lang.parse.bind(lang);
     });
 });
 function makeCtx(opts) {
-    return new unify_1.Context(opts || { root: new MapVal_1.MapVal({ peg: {} }) });
+    return new ctx_1.AontuContext(opts || { root: new MapVal_1.MapVal({ peg: {} }) });
 }
 //# sourceMappingURL=lang.test.js.map

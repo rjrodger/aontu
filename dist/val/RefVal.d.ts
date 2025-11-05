@@ -1,5 +1,5 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { StringVal } from './StringVal';
 import { FeatureVal } from './FeatureVal';
 declare class RefVal extends FeatureVal {
@@ -10,14 +10,14 @@ declare class RefVal extends FeatureVal {
         peg: any[];
         absolute?: boolean;
         prefix?: boolean;
-    }, ctx?: Context);
+    }, ctx?: AontuContext);
     append(part: any): void;
-    unify(peer: Val, ctx: Context, trace?: any[]): Val;
-    find(ctx: Context): Val | StringVal | undefined;
+    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
+    find(ctx: AontuContext): Val | StringVal | undefined;
     same(peer: Val): boolean;
-    clone(ctx: Context, spec?: ValSpec): Val;
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    gen(ctx?: Context): undefined;
+    gen(ctx?: AontuContext): undefined;
     inspection(): string;
 }
 export { RefVal, };

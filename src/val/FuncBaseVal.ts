@@ -10,10 +10,8 @@ import {
   DONE
 } from '../type'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 
 import {
@@ -38,7 +36,7 @@ class FuncBaseVal extends FeatureVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     // console.log('FBV', this.id, this.constructor.name, this.peg?.[0]?.canon)
@@ -54,12 +52,12 @@ class FuncBaseVal extends FeatureVal {
   }
 
 
-  make(ctx: Context, _spec: ValSpec): Val {
+  make(ctx: AontuContext, _spec: ValSpec): Val {
     return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make')
   }
 
 
-  unify(peer: Val, ctx: Context, explain?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, explain, 'Func:' + this.funcname(), this, peer)
 
     // const sc = this.id + '=' + this.canon
@@ -181,12 +179,12 @@ class FuncBaseVal extends FeatureVal {
   }
 
 
-  prepare(_ctx: Context | undefined, args: Val[]): Val[] {
+  prepare(_ctx: AontuContext | undefined, args: Val[]): Val[] {
     return args
   }
 
 
-  resolve(ctx: Context | undefined, _args: Val[]): Val {
+  resolve(ctx: AontuContext | undefined, _args: Val[]): Val {
     return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve')
   }
 

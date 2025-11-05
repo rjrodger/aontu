@@ -44,7 +44,7 @@ import {
 
 import type {
   Val,
-  Options,
+  AontuOptions,
 } from './type'
 
 import {
@@ -240,19 +240,20 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       return addsite(val, r, ctx)
     },
 
-    'func-paren': (r: Rule, ctx: JsonicContext, op: Op, terms: any) => {
+    'func-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[1]
-      // const fname = terms[0].peg
       const fname = terms[0]
       if ('' !== fname) {
         const funcval = funcMap[fname]
         const args = terms.slice(1)
-        val = null == funcval ? new NilVal({ msg: 'Not a function: ' + fname }) : new funcval({
-          peg: args
-        })
+        val = null == funcval ?
+          // TODO: fix error handling
+          new NilVal({ msg: 'Not a function: ' + fname }) :
+          new funcval({
+            peg: args
+          })
       }
       const out = addsite(val, r, ctx)
-      // // console.log('FUNC-PAREN', fname, terms, '->', out)
       return out
     },
   }
@@ -676,7 +677,7 @@ function makeModelResolver(options: any) {
 
 class Lang {
   jsonic: Jsonic
-  options: Options = {
+  options: AontuOptions = {
     src: '',
     print: -1,
     debug: false,
@@ -685,10 +686,10 @@ class Lang {
   idcount: number | undefined
 
 
-  constructor(options?: Partial<Options>) {
+  constructor(options?: Partial<AontuOptions>) {
     // const start = performance.now()
 
-    this.options = Object.assign({}, this.options, options) as Options
+    this.options = Object.assign({}, this.options, options) as AontuOptions
 
     const modelResolver = makeModelResolver(this.options)
 
@@ -713,7 +714,7 @@ class Lang {
   }
 
 
-  parse(src: string, opts?: Partial<Options>): Val {
+  parse(src: string, opts?: Partial<AontuOptions>): Val {
     // const start = performance.now()
 
     // JSONIC-UPDATE - check meta

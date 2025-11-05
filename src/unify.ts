@@ -3,20 +3,16 @@
 
 import type { Val } from './type'
 
-import { DONE, FST } from './type'
+import { AontuContext } from './ctx'
+
+import { DONE } from './type'
 
 
-import { MapVal } from './val/MapVal'
-import { ListVal } from './val/ListVal'
 import { NilVal } from './val/NilVal'
 
 import {
   Lang
 } from './lang'
-
-import {
-  descErr
-} from './err'
 
 
 import {
@@ -30,8 +26,6 @@ import {
 
 
 
-type Path = string[]
-
 // TODO: relation to unify loops?
 const MAXCYCLE = 9
 
@@ -39,7 +33,7 @@ let uc = 0
 
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
-const unite = (ctx: Context, a: any, b: any, whence: string, explain?: any[]) => {
+const unite = (ctx: AontuContext, a: any, b: any, whence: string, explain?: any[]) => {
   const te = ctx.explain && explainOpen(ctx, explain, 'unite', a, b)
 
   let out = a
@@ -138,6 +132,7 @@ function update(x: Val, _y: Val) {
 }
 
 
+/*
 class Context {
   root: Val   // Starting Val, root of paths.
   path: Path  // Path to current Val.
@@ -262,7 +257,7 @@ class Context {
     return node
   }
 }
-
+*/
 
 class Unify {
   root: Val
@@ -273,10 +268,14 @@ class Unify {
   cc: number
   lang: Lang
 
-  constructor(root: Val | string, lang?: Lang, ctx?: Context | any, src?: string) {
+  constructor(root: Val | string, lang?: Lang, ctx?: AontuContext | any, src?: any) {
     this.lang = lang || new Lang()
     if ('string' === typeof root) {
       root = this.lang.parse(root)
+    }
+
+    if ('string' !== typeof src) {
+      src = ''
     }
 
     this.cc = 0
@@ -286,15 +285,15 @@ class Unify {
     this.explain = ctx?.explain ?? root.explain ?? null
 
     let res = root
-    let uctx: Context
+    let uctx: AontuContext
 
     // Only unify if no syntax errors
     if (!(root as NilVal).nil) {
-      if (ctx instanceof Context) {
+      if (ctx instanceof AontuContext) {
         uctx = ctx
       }
       else {
-        uctx = new Context({
+        uctx = new AontuContext({
           ...(ctx || {}),
           root: res,
           err: this.err,
@@ -302,7 +301,6 @@ class Unify {
           src,
         })
       }
-
 
       // TODO: messy
       // uctx.seterr(this.err)
@@ -337,8 +335,6 @@ class Unify {
 
 
 export {
-  Context,
-  Path,
   Unify,
   unite,
 }

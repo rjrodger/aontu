@@ -1,15 +1,16 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { BagVal } from './BagVal';
 declare class MapVal extends BagVal {
     isMap: boolean;
     spread: {
         cj: Val | undefined;
     };
-    constructor(spec: ValSpec, ctx?: Context);
-    unify(peer: Val, ctx: Context, explain?: any[] | false): Val;
-    clone(ctx: Context, spec?: ValSpec): Val;
+    constructor(spec: ValSpec, ctx?: AontuContext);
+    unify(peer: Val, ctx: AontuContext, explain?: any[] | false): Val;
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    gen(ctx?: Context): any;
+    inspection(inspect: Function): string;
+    gen(ctx?: AontuContext): any;
 }
 export { MapVal };

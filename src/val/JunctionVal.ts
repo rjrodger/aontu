@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import { FeatureVal } from './FeatureVal'
 
@@ -20,7 +20,7 @@ abstract class JunctionVal extends FeatureVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
@@ -31,7 +31,7 @@ abstract class JunctionVal extends FeatureVal {
     return this
   }
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as JunctionVal)
     out.peg = this.peg.map((entry: Val) => entry.clone(ctx, spec?.mark ? { mark: spec.mark } : {}))
     return out

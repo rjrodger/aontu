@@ -1,19 +1,22 @@
-/* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
+/* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
 import { describe, it } from 'node:test'
+import { expect } from '@hapi/code'
+
+
 import {
   Lang
 } from '../dist/lang'
 
 import {
-  Context
-} from '../dist/unify'
+  AontuContext
+} from '../dist/ctx'
 
 
 import { MapVal } from '../dist/val/MapVal'
-import { NilVal } from '../dist/val/NilVal'
 
-import { expect } from '@hapi/code'
+
+
 import {
   unite,
 } from '../dist/unify'
@@ -43,7 +46,7 @@ describe('op', () => {
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({ peg: {} }) })
+  return new AontuContext({ root: r || new MapVal({ peg: {} }) })
 }
 
 

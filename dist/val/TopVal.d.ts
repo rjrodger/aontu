@@ -1,17 +1,15 @@
-import { inspect } from 'node:util';
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { BaseVal } from './BaseVal';
 declare class TopVal extends BaseVal {
     isTop: boolean;
     id: number;
     dc: number;
-    constructor(spec: ValSpec, ctx?: Context);
+    constructor(spec: ValSpec, ctx?: AontuContext);
     same(peer: Val): boolean;
-    unify(peer: Val, _ctx?: Context): Val;
+    unify(peer: Val, _ctx?: AontuContext): Val;
     get canon(): string;
-    clone(_ctx: Context, _spec?: any): this;
-    gen(_ctx?: Context): undefined;
-    [inspect.custom](_d: number, _o: any, _inspect: any): string;
+    clone(_ctx: AontuContext, _spec?: ValSpec): this;
+    gen(_ctx?: AontuContext): undefined;
 }
 export { TopVal, };

@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import {
   walk
@@ -24,13 +24,13 @@ class PrefFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new PrefFuncVal(spec)
   }
 
@@ -39,7 +39,7 @@ class PrefFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(ctx: Context, args: Val[]) {
+  resolve(ctx: AontuContext, args: Val[]) {
     let out = args[0] ?? NilVal.make(ctx, 'arg', this)
 
     if (!out.isNil) {

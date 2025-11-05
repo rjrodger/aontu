@@ -6,8 +6,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import { ScalarVal } from './ScalarVal'
 import { NilVal } from './NilVal'
@@ -24,7 +24,7 @@ class NumberVal extends ScalarVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     if (isNaN(spec.peg)) {
       // TODO: use Nil?
@@ -36,7 +36,7 @@ class NumberVal extends ScalarVal {
   }
 
 
-  unify(peer: any, ctx: Context, trace?: any[]): Val {
+  unify(peer: any, ctx: AontuContext, trace?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, trace, 'Number', this, peer)
 
     let out: Val = this

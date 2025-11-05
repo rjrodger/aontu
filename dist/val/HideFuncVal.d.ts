@@ -1,13 +1,13 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class HideFuncVal extends FuncBaseVal {
     isHideFunc: boolean;
     resolved?: Val;
-    constructor(spec: ValSpec, ctx?: Context);
-    make(_ctx: Context, spec: ValSpec): Val;
+    constructor(spec: ValSpec, ctx?: AontuContext);
+    make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
-    unify(peer: Val, ctx: Context, trace?: any[]): Val;
-    resolve(ctx: Context, args: Val[]): Val;
+    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
+    resolve(ctx: AontuContext, args: Val[]): Val;
 }
 export { HideFuncVal, };

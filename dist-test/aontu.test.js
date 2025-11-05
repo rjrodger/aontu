@@ -8,7 +8,7 @@ const MapVal_1 = require("../dist/val/MapVal");
 const aontu_1 = require("../dist/aontu");
 (0, node_test_1.describe)('aontu', function () {
     (0, node_test_1.test)('basic-api', async () => {
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         let p0 = a0.parse('a:number');
         (0, code_1.expect)(p0?.canon).equal('{"a":number}');
         let v0 = a0.unify('a:1');
@@ -19,7 +19,7 @@ const aontu_1 = require("../dist/aontu");
         (0, code_1.expect)(d0).equal({ a: 2 });
     });
     (0, node_test_1.test)('error-api', async () => {
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         (0, code_1.expect)(() => a0.parse('a::number')).throws(/unexpected char/);
         (0, code_1.expect)(a0.parse('a:number a:A').canon).equal('{"a":number&"A"}');
         (0, code_1.expect)(() => a0.unify('a::1')).throws(/unexpected char/);
@@ -29,7 +29,7 @@ const aontu_1 = require("../dist/aontu");
     });
     (0, node_test_1.test)('happy', async () => {
         let ctx = makeCtx();
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('a:1');
         (0, code_1.expect)(v0.canon).equal('{"a":1}');
         (0, code_1.expect)(a0.unify('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}');
@@ -67,7 +67,7 @@ w1: b: {y:2,z:3} & $.q.a
     });
     (0, node_test_1.test)('file', async () => {
         let ctx = makeCtx();
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('@"' + __dirname + '/../test/t02.jsonic"');
         (0, code_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}');
         (0, code_1.expect)(v0.gen(ctx)).equal({
@@ -93,7 +93,7 @@ w1: b: {y:2,z:3} & $.q.a
         });
     });
     (0, node_test_1.test)('pref', async () => {
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         try {
             a0.unify('@"' + __dirname + '/../test/t03.jsonic"', {
                 base: __dirname,
@@ -104,7 +104,7 @@ w1: b: {y:2,z:3} & $.q.a
         }
     });
     (0, node_test_1.test)('map-spread', () => {
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}');
         (0, code_1.expect)(v0.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}');
@@ -116,7 +116,7 @@ w1: b: {y:2,z:3} & $.q.a
     });
     (0, node_test_1.test)('empty-and-comments', () => {
         let ctx = makeCtx();
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         (0, code_1.expect)(a0.unify('').gen(ctx)).equal({});
         (0, code_1.expect)(a0.unify(undefined).gen(ctx)).equal(undefined);
         (0, code_1.expect)(a0.unify(`
@@ -125,14 +125,14 @@ w1: b: {y:2,z:3} & $.q.a
     });
     (0, node_test_1.test)('spread-edges', () => {
         let ctx = makeCtx();
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         (0, code_1.expect)(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } });
         // FIX
         // expect(a0.unify('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
     });
     (0, node_test_1.test)('key-edges', () => {
         let ctx = makeCtx();
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         (0, code_1.expect)(a0.unify('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } });
         (0, code_1.expect)(a0.unify('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } });
         (0, code_1.expect)(a0.unify('a:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { k: 'a' } });
@@ -142,7 +142,7 @@ w1: b: {y:2,z:3} & $.q.a
     });
     (0, node_test_1.test)('practical-path-spread', () => {
         let ctx = makeCtx();
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         let v0 = a0.unify(`
 micks: $.def.garage & {
 
@@ -177,7 +177,7 @@ def: garage: {
         });
     });
     (0, node_test_1.test)('virtual-fs', () => {
-        let a0 = new aontu_1.AontuX();
+        let a0 = new aontu_1.Aontu();
         const mfs = (0, memfs_1.memfs)({
             'foo.jsonic': '{f:11}'
         });
@@ -194,6 +194,6 @@ def: garage: {
     });
 });
 function makeCtx(r) {
-    return new aontu_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
+    return new aontu_1.AontuContext({ root: r || new MapVal_1.MapVal({ peg: {} }) });
 }
 //# sourceMappingURL=aontu.test.js.map

@@ -166,10 +166,17 @@ class MapVal extends BagVal_1.BagVal {
             (this.spread.cj ? '&:' + this.spread.cj.canon +
                 (0 < keys.length ? ',' : '') : '') +
             keys
-                .map(k => [JSON.stringify(k) +
+                .map(k => [
+                JSON.stringify(k) +
                     (this.optionalKeys.includes(k) ? '?' : '') +
-                    ':' + (this.peg[k]?.canon ?? this.peg[k])]).join(',') +
+                    ':' +
+                    (this.peg[k]?.canon ?? this.peg[k])
+            ])
+                .join(',') +
             '}';
+    }
+    inspection(inspect) {
+        return this.spread.cj ? '&:' + inspect(this.spread.cj) : '';
     }
     gen(ctx) {
         let out = {};

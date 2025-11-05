@@ -17,11 +17,6 @@ class ScalarVal extends BaseVal_1.BaseVal {
         this.dc = type_1.DONE;
     }
     clone(ctx, spec) {
-        // let out = (super.clone(ctx, {
-        //   peg: this.peg,
-        //   kind: this.kind,
-        //   ...(spec || {})
-        // }) as RefVal)
         let out = super.clone(ctx, {
             peg: this.peg,
             kind: this.kind,

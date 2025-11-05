@@ -1,16 +1,16 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { BaseVal } from './BaseVal';
 declare class ScalarVal extends BaseVal {
     kind: any;
     isScalar: boolean;
     src: string;
-    constructor(spec: ValSpec, ctx?: Context);
-    clone(ctx: Context, spec?: ValSpec): Val;
-    unify(peer: Val, ctx: Context, explain?: any[]): Val;
+    constructor(spec: ValSpec, ctx?: AontuContext);
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
+    unify(peer: Val, ctx: AontuContext, explain?: any[]): Val;
     get canon(): any;
     same(peer: any): boolean;
-    gen(_ctx?: Context): any;
+    gen(_ctx?: AontuContext): any;
     superior(): Val;
 }
 export { ScalarVal, };

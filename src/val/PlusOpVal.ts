@@ -8,8 +8,8 @@ import type {
 
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 
@@ -25,13 +25,13 @@ class PlusOpVal extends OpBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new PlusOpVal(spec)
   }
 
@@ -40,7 +40,7 @@ class PlusOpVal extends OpBaseVal {
   }
 
 
-  operate(_ctx: Context, args: Val[]) {
+  operate(_ctx: AontuContext, args: Val[]) {
     let a: any = this.primatize(args[0]?.peg)
     let b: any = this.primatize(args[1]?.peg)
 

@@ -9,7 +9,7 @@ let lang = new lang_1.Lang();
 const N = (x, _ctx) => new unify_1.Unify(x, lang).res.canon;
 // const G = (x: string, ctx?: any) => new Unify(x, lang)
 //  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
-const A = new __1.AontuX();
+const A = new __1.Aontu();
 const G = (s) => A.generate(s);
 (0, node_test_1.describe)('unify', function () {
     (0, node_test_1.test)('condis-same', () => {

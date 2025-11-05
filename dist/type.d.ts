@@ -1,10 +1,10 @@
 import * as Fs from 'node:fs';
 import { Resolver } from '@jsonic/multisource';
-import { Context } from './unify';
+import { AontuContext } from './ctx';
 type FST = typeof Fs;
-type Options = {
-    src: string;
-    print: number;
+type AontuOptions = {
+    src?: string;
+    print?: number;
     resolver?: Resolver;
     base?: string;
     path?: string;
@@ -62,10 +62,10 @@ interface Val {
     deps?: any;
     get done(): boolean;
     same(peer: Val): boolean;
-    clone(ctx: Context, spec?: ValSpec): Val;
-    unify(peer: Val, ctx: Context, trace?: any[]): Val;
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
+    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
     get canon(): string;
-    gen(ctx: Context): any;
+    gen(ctx: AontuContext): any;
     superior(): Val;
 }
 type ValMark = {
@@ -99,5 +99,5 @@ type ErrContext = {
     src?: string;
     fs?: FST;
 };
-export type { Val, ValMark, ValSpec, ValMap, ValList, Options, ErrContext, FST, };
+export type { Val, ValMark, ValSpec, ValMap, ValList, AontuOptions, ErrContext, FST, };
 export { DONE, SPREAD, Resolver, };

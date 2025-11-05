@@ -10,8 +10,8 @@ import {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import {
   explainOpen,
@@ -43,7 +43,7 @@ class ScalarKindVal extends BaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
 
@@ -55,7 +55,7 @@ class ScalarKindVal extends BaseVal {
   }
 
 
-  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, trace, 'ScalarKind', this, peer)
 
     const peerIsScalarVal = peer.isScalar

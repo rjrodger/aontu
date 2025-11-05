@@ -16,8 +16,8 @@ import {
 } from '../err'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 
@@ -44,13 +44,13 @@ class VarVal extends FeatureVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
 
 
-  unify(peer: Val, ctx: Context, explain?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, explain, 'Var', this, peer)
 
     let out: Val
@@ -76,7 +76,7 @@ class VarVal extends FeatureVal {
     // if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
     if (!(nameVal.isRef) && DONE === nameVal.dc) {
       if (nameVal instanceof StringVal) {
-        let found = ctx.var[nameVal.peg]
+        let found = ctx.vars[nameVal.peg]
         if (undefined === found) {
           out = NilVal.make(ctx, 'unknown_var', this, peer)
         }
@@ -123,7 +123,7 @@ class VarVal extends FeatureVal {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as VarVal)
     return out
   }
@@ -134,7 +134,7 @@ class VarVal extends FeatureVal {
   }
 
 
-  gen(ctx?: Context) {
+  gen(ctx?: AontuContext) {
     // Unresolved var cannot be generated, so always an error.
     let nil = NilVal.make(
       ctx,

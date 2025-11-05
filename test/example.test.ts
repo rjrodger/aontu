@@ -4,11 +4,11 @@ import { describe, test } from 'node:test'
 import { expect } from '@hapi/code'
 import { Unify } from '../dist/unify'
 import { Lang } from '../dist/lang'
-import { AontuX } from '..'
+import { Aontu } from '..'
 
 let lang = new Lang()
 const N = (x: string, _ctx?: any) => new Unify(x, lang).res.canon
-const A = new AontuX()
+const A = new Aontu()
 const G = (s: string) => A.generate(s)
 
 describe('examples', function() {

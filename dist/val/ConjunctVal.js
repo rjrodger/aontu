@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConjunctVal = void 0;
 exports.norm = norm;

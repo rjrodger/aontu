@@ -16,7 +16,7 @@ import {
 } from '../dist/lang'
 
 import {
-  AontuX
+  Aontu
 } from '..'
 
 
@@ -31,7 +31,7 @@ const N = (x: string, _ctx?: any) => new Unify(x, lang).res.canon
 // const G = (x: string, ctx?: any) => new Unify(x, lang)
 //  .res.gen(ctx || new Context({ root: new MapVal({ peg: {} }) }))
 
-const A = new AontuX()
+const A = new Aontu()
 const G = (s: string) => A.generate(s)
 
 

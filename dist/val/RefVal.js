@@ -1,16 +1,7 @@
 "use strict";
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
-/* TODO
-   Rename ot PathVal
-   
-   $SELF.a - path starting at self
-   $PARENT.b === .b - sibling
-
-   implement $ as a prefix operator
-   this allows "$AString" to be used for literal part names
-*/
 const utility_1 = require("../utility");
 const type_1 = require("../type");
 const unify_1 = require("../unify");
@@ -19,8 +10,6 @@ const StringVal_1 = require("./StringVal");
 const IntegerVal_1 = require("./IntegerVal");
 const NumberVal_1 = require("./NumberVal");
 const ConjunctVal_1 = require("./ConjunctVal");
-const MapVal_1 = require("./MapVal");
-const ListVal_1 = require("./ListVal");
 const NilVal_1 = require("./NilVal");
 const VarVal_1 = require("./VarVal");
 const FeatureVal_1 = require("./FeatureVal");
@@ -194,6 +183,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 refpath = parts;
             }
             else {
+                // TODO: deprecate $KEY, etc
                 refpath = this.path.slice(0, (modes.includes('SELF') ? 0 :
                     modes.includes('PARENT') ? -1 :
                         -1 // siblings
@@ -212,16 +202,18 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
             let node = ctx.root;
             let pI = 0;
-            for (; pI < refpath.length; pI++) {
-                let part = refpath[pI];
-                if (node instanceof MapVal_1.MapVal) {
-                    node = node.peg[part];
-                }
-                else if (node instanceof ListVal_1.ListVal) {
-                    node = node.peg[part];
-                }
-                else {
-                    break;
+            if (null != node) {
+                for (; pI < refpath.length; pI++) {
+                    let part = refpath[pI];
+                    if (node.isMap) {
+                        node = node.peg[part];
+                    }
+                    else if (node.isList) {
+                        node = node.peg[part];
+                    }
+                    else {
+                        break;
+                    }
                 }
             }
             if (pI === refpath.length) {

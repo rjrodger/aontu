@@ -6,8 +6,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
@@ -25,7 +25,7 @@ class IntegerVal extends ScalarVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     if (!Number.isInteger(spec.peg)) {
       // TODO: use Nil?
@@ -35,7 +35,7 @@ class IntegerVal extends ScalarVal {
     super({ ...spec, kind: Integer }, ctx)
   }
 
-  unify(peer: any, ctx: Context, explain?: any[]): Val {
+  unify(peer: any, ctx: AontuContext, explain?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, explain, 'Integer', this, peer)
 
     let out: Val = this

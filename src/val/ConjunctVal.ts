@@ -1,4 +1,5 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
+
 
 
 import type {
@@ -10,10 +11,8 @@ import {
   DONE,
 } from '../type'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 import {
   propagateMarks,
@@ -51,7 +50,7 @@ class ConjunctVal extends JunctionVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     this.mark.type = !!spec.mark?.type
@@ -73,7 +72,7 @@ class ConjunctVal extends JunctionVal {
   }
 
 
-  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
     peer = peer ?? top()
 
     const te = ctx.explain && explainOpen(ctx, trace, 'Conjunct', this, peer)
@@ -208,7 +207,7 @@ class ConjunctVal extends JunctionVal {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as ConjunctVal)
     return out
   }
@@ -219,7 +218,7 @@ class ConjunctVal extends JunctionVal {
   }
 
 
-  gen(ctx?: Context) {
+  gen(ctx?: AontuContext) {
     // Unresolved conjunct cannot be generated, so always an error.
     let nil = NilVal.make(
       ctx,

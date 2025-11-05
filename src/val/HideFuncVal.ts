@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import { NilVal } from '../val/NilVal'
 
@@ -30,7 +30,7 @@ class HideFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     this.mark.type = false
@@ -39,7 +39,7 @@ class HideFuncVal extends FuncBaseVal {
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new HideFuncVal(spec)
   }
 
@@ -48,7 +48,7 @@ class HideFuncVal extends FuncBaseVal {
   }
 
 
-  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, trace, 'HideFunc', this, peer)
     let out: Val | undefined = this.resolved
 
@@ -61,7 +61,7 @@ class HideFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(ctx: Context, args: Val[]) {
+  resolve(ctx: AontuContext, args: Val[]) {
     let out = args[0] ?? NilVal.make(ctx, 'arg', this)
     if (!out.isNil) {
       out = out.clone(ctx)

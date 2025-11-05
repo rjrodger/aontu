@@ -1,4 +1,4 @@
-/* Copyright (c) 2021-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
 
@@ -11,10 +11,8 @@ import {
   DONE,
 } from '../type'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 import {
   explainOpen,
@@ -47,7 +45,7 @@ class DisjunctVal extends JunctionVal {
     spec: {
       peg: Val[]
     },
-    ctx?: Context,
+    ctx?: AontuContext,
     _sites?: Site[]
   ) {
     super(spec, ctx)
@@ -62,7 +60,7 @@ class DisjunctVal extends JunctionVal {
   }
 
 
-  unify(peer: Val, ctx: Context, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
     peer = peer ?? top()
 
     const te = ctx.explain && explainOpen(ctx, trace, 'Disjunct', this, peer)
@@ -143,7 +141,7 @@ class DisjunctVal extends JunctionVal {
   }
 
 
-  rankPrefs(ctx: Context) {
+  rankPrefs(ctx: AontuContext) {
     let lastpref: PrefVal | undefined = undefined
     let lastprefI = -1
 
@@ -201,7 +199,7 @@ class DisjunctVal extends JunctionVal {
 
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as DisjunctVal)
     return out
   }
@@ -212,7 +210,7 @@ class DisjunctVal extends JunctionVal {
   }
 
 
-  gen(ctx: Context) {
+  gen(ctx: AontuContext) {
     // TODO: move this to main unify
 
     // console.log('DJ-GEN', this.peg.map((p: any) => p.canon), ctx.err)

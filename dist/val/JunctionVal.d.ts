@@ -1,11 +1,11 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { FeatureVal } from './FeatureVal';
 declare abstract class JunctionVal extends FeatureVal {
     isJunction: boolean;
-    constructor(spec: ValSpec, ctx?: Context);
+    constructor(spec: ValSpec, ctx?: AontuContext);
     append(peer: Val): JunctionVal;
-    clone(ctx: Context, spec?: ValSpec): Val;
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): any;
     abstract getJunctionSymbol(): string;
 }

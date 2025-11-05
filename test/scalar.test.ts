@@ -7,8 +7,8 @@ import {
 } from '../dist/lang'
 
 import {
-  Context
-} from '../dist/unify'
+  AontuContext
+} from '../dist/ctx'
 
 
 import { MapVal } from '../dist/val/MapVal'
@@ -258,7 +258,7 @@ describe('op', () => {
 
 
 function makeCtx(r?: any) {
-  return new Context({ root: r || new MapVal({ peg: {} }) })
+  return new AontuContext({ root: r || new MapVal({ peg: {} }) })
 }
 
 

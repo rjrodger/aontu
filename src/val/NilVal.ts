@@ -11,8 +11,8 @@ import {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 import { BaseVal } from './BaseVal'
@@ -33,7 +33,7 @@ class NilVal extends BaseVal {
 
   // A Nil is an error - should not happen - unify failed
   // refactor ,make(spec,ctx)
-  static make = (ctx?: Context, why?: any, av?: Val, bv?: Val, attempt?: string) => {
+  static make = (ctx?: AontuContext, why?: any, av?: Val, bv?: Val, attempt?: string) => {
     let nil = new NilVal({ why }, ctx)
     nil.attempt = attempt
     // TODO: this should be done lazily, for multiple terms
@@ -66,7 +66,7 @@ class NilVal extends BaseVal {
     }
 
     if (ctx) {
-      ctx.adderr(nil, 'nil-make:' + why)
+      ctx.adderr(nil)
     }
 
     return nil
@@ -79,7 +79,7 @@ class NilVal extends BaseVal {
       msg?: string
       err?: NilVal | NilVal[] | Error | Error[]
     } | string,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec && 'string' !== typeof spec ? spec : {}, ctx)
 
@@ -94,12 +94,12 @@ class NilVal extends BaseVal {
   }
 
 
-  unify(_peer: Val, _ctx: Context) {
+  unify(_peer: Val, _ctx: AontuContext) {
     return this
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as NilVal)
     out.why = this.why
 
@@ -118,7 +118,7 @@ class NilVal extends BaseVal {
     return 'nil'
   }
 
-  gen(ctx?: Context) {
+  gen(ctx?: AontuContext) {
     // Unresolved nil cannot be generated, so always an error.
 
     ///descErr(this, ctx)

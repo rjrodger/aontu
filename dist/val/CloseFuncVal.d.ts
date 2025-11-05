@@ -1,11 +1,11 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class CloseFuncVal extends FuncBaseVal {
     isCloseFunc: boolean;
-    constructor(spec: ValSpec, ctx?: Context);
-    make(_ctx: Context, spec: ValSpec): Val;
+    constructor(spec: ValSpec, ctx?: AontuContext);
+    make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
-    resolve(ctx: Context, args: Val[]): any;
+    resolve(ctx: AontuContext, args: Val[]): any;
 }
 export { CloseFuncVal, };

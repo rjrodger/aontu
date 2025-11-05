@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 import { FuncBaseVal } from './FuncBaseVal'
@@ -21,14 +21,14 @@ class CloseFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     this.validateArgs(spec.peg, 1)
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new CloseFuncVal(spec)
   }
 
@@ -37,7 +37,7 @@ class CloseFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(ctx: Context, args: Val[]) {
+  resolve(ctx: AontuContext, args: Val[]) {
     const argval: any = args[0]
 
     if (null == argval) {

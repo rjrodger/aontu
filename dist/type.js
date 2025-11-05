@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2022-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2022-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SPREAD = exports.DONE = void 0;
 const DONE = -1;

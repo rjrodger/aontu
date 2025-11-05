@@ -12,10 +12,8 @@ import {
   SPREAD,
 } from '../type'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 import {
   propagateMarks,
@@ -45,7 +43,7 @@ class ListVal extends BagVal {
     spec: {
       peg: ValList
     },
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
 
@@ -76,7 +74,7 @@ class ListVal extends BagVal {
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val, ctx: Context, explain?: any[] | false): Val {
+  unify(peer: Val, ctx: AontuContext, explain?: any[] | false): Val {
     peer = peer ?? top()
 
     const te = ctx.explain && explainOpen(ctx, explain, 'List', this, peer)
@@ -188,7 +186,7 @@ class ListVal extends BagVal {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as ListVal)
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
@@ -221,7 +219,7 @@ class ListVal extends BagVal {
       ']'
   }
 
-  gen(ctx?: Context) {
+  gen(ctx?: AontuContext) {
     let out: any = []
     if (this.mark.type || this.mark.hide) {
       return undefined

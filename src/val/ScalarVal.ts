@@ -10,8 +10,8 @@ import {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import {
   explainOpen,
@@ -32,7 +32,7 @@ class ScalarVal extends BaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     this.kind = spec.kind
@@ -41,13 +41,7 @@ class ScalarVal extends BaseVal {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
-    // let out = (super.clone(ctx, {
-    //   peg: this.peg,
-    //   kind: this.kind,
-    //   ...(spec || {})
-    // }) as RefVal)
-
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = super.clone(ctx, {
       peg: this.peg,
       kind: this.kind,
@@ -58,7 +52,7 @@ class ScalarVal extends BaseVal {
   }
 
 
-  unify(peer: Val, ctx: Context, explain?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
     const te = ctx.explain && explainOpen(ctx, explain, 'Scalar', this, peer)
 
     let out: Val
@@ -92,7 +86,7 @@ class ScalarVal extends BaseVal {
   }
 
 
-  gen(_ctx?: Context) {
+  gen(_ctx?: AontuContext) {
     return this.peg
   }
 

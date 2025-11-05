@@ -1,9 +1,16 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.AontuError = void 0;
+exports.makeNilErr = makeNilErr;
 exports.descErr = descErr;
 const jsonic_1 = require("jsonic");
+const NilVal_1 = require("./val/NilVal");
 const { errmsg } = jsonic_1.util;
+function makeNilErr(ac, code, details) {
+    const nilval = NilVal_1.NilVal.make(ac, code);
+    return nilval;
+}
 // TODO: move to utility?
 function descErr(err, errctx) {
     if (err?.isNil) {
@@ -82,4 +89,11 @@ function resolveSrc(v, errctx) {
     }
     return src;
 }
+class AontuError extends Error {
+    constructor(msg, errs) {
+        super(msg);
+        this.errs = () => errs ?? [];
+    }
+}
+exports.AontuError = AontuError;
 //# sourceMappingURL=err.js.map

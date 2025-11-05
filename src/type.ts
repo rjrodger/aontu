@@ -1,4 +1,4 @@
-/* Copyright (c) 2022-2023 Richard Rodger, MIT License */
+/* Copyright (c) 2022-2025 Richard Rodger, MIT License */
 
 import * as Fs from 'node:fs'
 
@@ -6,15 +6,16 @@ import * as Fs from 'node:fs'
 
 import { Resolver } from '@jsonic/multisource'
 
-import { Context } from './unify'
-
+import { AontuContext } from './ctx'
 
 
 type FST = typeof Fs
 
-type Options = {
-  src: string    // Source text.
-  print: number  // Print debug verbosity
+
+
+type AontuOptions = {
+  src?: string    // Source text.
+  print?: number  // Print debug verbosity
   resolver?: Resolver // Source resolver
   base?: string // Base path for resolver
   path?: string // Path of entry file
@@ -90,17 +91,18 @@ interface Val {
 
   same(peer: Val): boolean
 
-  clone(ctx: Context, spec?: ValSpec): Val
+  clone(ctx: AontuContext, spec?: ValSpec): Val
 
   // get site(): Site
-  unify(peer: Val, ctx: Context, trace?: any[]): Val
+  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val
 
   get canon(): string
 
-  gen(ctx: Context): any
+  gen(ctx: AontuContext): any
 
   superior(): Val
 }
+
 
 type ValMark = {
   type: boolean,
@@ -152,7 +154,7 @@ export type {
   ValSpec,
   ValMap,
   ValList,
-  Options,
+  AontuOptions,
   ErrContext,
   FST,
 }

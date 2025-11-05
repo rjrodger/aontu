@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 import type { Val, ValMark, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { Site } from '../site';
 declare abstract class BaseVal implements Val {
     #private;
@@ -48,20 +48,20 @@ declare abstract class BaseVal implements Val {
     err: any[];
     explain: any[] | null;
     uh: number[];
-    constructor(spec: ValSpec, ctx?: Context);
+    constructor(spec: ValSpec, ctx?: AontuContext);
     ctx(): any;
     get done(): boolean;
     same(peer: Val): boolean;
-    clone(ctx: Context, spec?: ValSpec): Val;
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
     place(v: Val): Val;
     get site(): Site;
-    unify(_peer: Val, _ctx: Context): Val;
+    unify(_peer: Val, _ctx: AontuContext): Val;
     get canon(): string;
     errcanon(): string;
-    gen(_ctx: Context): any;
+    gen(_ctx: AontuContext): any;
     notdone(): void;
     superior(): Val;
     [inspect.custom](_d: number, _o: any, _inspect: any): string;
-    inspection(): string;
+    inspection(inspect: Function): string;
 }
 export { BaseVal, };

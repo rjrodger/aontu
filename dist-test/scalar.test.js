@@ -3,10 +3,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const lang_1 = require("../dist/lang");
-const unify_1 = require("../dist/unify");
+const ctx_1 = require("../dist/ctx");
 const MapVal_1 = require("../dist/val/MapVal");
 const code_1 = require("@hapi/code");
-const unify_2 = require("../dist/unify");
+const unify_1 = require("../dist/unify");
 let lang = new lang_1.Lang();
 let PL = lang.parse.bind(lang);
 let P = (x, ctx) => PL(x, ctx);
@@ -217,7 +217,7 @@ let PA = (x, ctx) => x.map(s => PL(s, ctx));
     });
 });
 function makeCtx(r) {
-    return new unify_1.Context({ root: r || new MapVal_1.MapVal({ peg: {} }) });
+    return new ctx_1.AontuContext({ root: r || new MapVal_1.MapVal({ peg: {} }) });
 }
 function makeUnite(r) {
     let ctx = makeCtx(r);
@@ -225,7 +225,7 @@ function makeUnite(r) {
         let terms = s.trim().split(/\s+/).map(x => 'undef' === x ? undefined : x);
         let pterms = PA(terms);
         // console.log(pterms)
-        let u = (0, unify_2.unite)(ctx, pterms[0], pterms[1], 'scalar-test');
+        let u = (0, unify_1.unite)(ctx, pterms[0], pterms[1], 'scalar-test');
         // console.log(u)
         return u.canon;
     };

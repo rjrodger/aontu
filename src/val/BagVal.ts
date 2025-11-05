@@ -6,8 +6,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 
 import { FeatureVal } from './FeatureVal'
@@ -21,11 +21,10 @@ abstract class BagVal extends FeatureVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
   }
-
 }
 
 

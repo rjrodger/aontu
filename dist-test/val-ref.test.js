@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
+const ctx_1 = require("../dist/ctx");
 const code_1 = require("@hapi/code");
 const valutil_1 = require("../dist/val/valutil");
 const MapVal_1 = require("../dist/val/MapVal");
@@ -648,9 +649,9 @@ a: b: f: {
     });
 });
 function makeCtx(r, p) {
-    return new unify_1.Context({
+    return new ctx_1.AontuContext({
         root: r || new MapVal_1.MapVal({ peg: {} }),
-        path: p
+        // path: p
     });
 }
 //# sourceMappingURL=val-ref.test.js.map

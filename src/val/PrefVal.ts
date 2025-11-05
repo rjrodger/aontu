@@ -9,10 +9,8 @@ import {
   DONE,
 } from '../type'
 
-import {
-  Context,
-  unite,
-} from '../unify'
+import { AontuContext } from '../ctx'
+import { unite } from '../unify'
 
 import {
   explainOpen,
@@ -34,7 +32,7 @@ class PrefVal extends FeatureVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     // this.pref = spec.pref || spec.peg
@@ -52,7 +50,7 @@ class PrefVal extends FeatureVal {
 
   // PrefVal unify always returns a PrefVal
   // PrefVals can only be removed by becoming Nil in a Disjunct
-  unify(peer: Val, ctx: Context, explain?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
     peer = peer ?? top()
 
     const te = ctx.explain && explainOpen(ctx, explain, 'Pref', this, peer)
@@ -128,7 +126,7 @@ class PrefVal extends FeatureVal {
   }
 
 
-  clone(ctx: Context, spec?: ValSpec): Val {
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as PrefVal)
     // out.pref = this.pref.clone(null, ctx)
     return out
@@ -141,7 +139,7 @@ class PrefVal extends FeatureVal {
   }
 
 
-  gen(ctx?: Context) {
+  gen(ctx?: AontuContext) {
     let val = this.peg
 
     if (val.isNil) {

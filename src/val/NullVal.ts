@@ -7,8 +7,8 @@ import type {
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import { ScalarVal } from './ScalarVal'
 import { Null } from './ScalarKindVal'
@@ -19,14 +19,14 @@ class NullVal extends ScalarVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super({ peg: spec.peg, kind: Null }, ctx)
     this.peg = null
   }
 
 
-  unify(peer: Val, ctx: Context): Val {
+  unify(peer: Val, ctx: AontuContext): Val {
     return super.unify(peer, ctx)
   }
 }

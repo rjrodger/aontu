@@ -1,14 +1,15 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
+
 import type {
   Val,
   ValSpec,
 } from '../type'
 
 import {
-  Context,
-} from '../unify'
+  AontuContext,
+} from '../ctx'
 
 import { NilVal } from '../val/NilVal'
 
@@ -28,7 +29,7 @@ class CopyFuncVal extends FuncBaseVal {
 
   constructor(
     spec: ValSpec,
-    ctx?: Context
+    ctx?: AontuContext
   ) {
     super(spec, ctx)
     this.mark.type = false
@@ -36,7 +37,7 @@ class CopyFuncVal extends FuncBaseVal {
   }
 
 
-  make(_ctx: Context, spec: ValSpec): Val {
+  make(_ctx: AontuContext, spec: ValSpec): Val {
     return new CopyFuncVal(spec)
   }
 
@@ -44,7 +45,7 @@ class CopyFuncVal extends FuncBaseVal {
     return 'copy'
   }
 
-  resolve(ctx: Context | undefined, args: Val[]) {
+  resolve(ctx: AontuContext | undefined, args: Val[]) {
     const val = args?.[0]
     const out = null == val || null == ctx ?
       NilVal.make(ctx, 'invalid-arg', this) :

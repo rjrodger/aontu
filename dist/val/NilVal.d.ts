@@ -1,5 +1,5 @@
 import type { Val, ValSpec } from '../type';
-import { Context } from '../unify';
+import { AontuContext } from '../ctx';
 import { BaseVal } from './BaseVal';
 declare class NilVal extends BaseVal {
     isNil: boolean;
@@ -9,16 +9,16 @@ declare class NilVal extends BaseVal {
     secondary?: Val;
     msg: string;
     attempt?: string;
-    static make: (ctx?: Context, why?: any, av?: Val, bv?: Val, attempt?: string) => NilVal;
+    static make: (ctx?: AontuContext, why?: any, av?: Val, bv?: Val, attempt?: string) => NilVal;
     constructor(spec?: {
         why?: string;
         msg?: string;
         err?: NilVal | NilVal[] | Error | Error[];
-    } | string, ctx?: Context);
-    unify(_peer: Val, _ctx: Context): this;
-    clone(ctx: Context, spec?: ValSpec): Val;
+    } | string, ctx?: AontuContext);
+    unify(_peer: Val, _ctx: AontuContext): this;
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    gen(ctx?: Context): undefined;
+    gen(ctx?: AontuContext): undefined;
     superior(): Val;
     inspection(): any;
 }

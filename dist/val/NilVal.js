@@ -84,7 +84,7 @@ NilVal.make = (ctx, why, av, bv, attempt) => {
         }
     }
     if (ctx) {
-        ctx.adderr(nil, 'nil-make:' + why);
+        ctx.adderr(nil);
     }
     return nil;
 };

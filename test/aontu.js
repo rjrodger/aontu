@@ -1,6 +1,6 @@
 
 const Util = require('node:util')
-const { AontuX, formatExplain } = require('..')
+const { Aontu, formatExplain } = require('..')
 
 const args = {
   src: process.argv[2],
@@ -15,7 +15,7 @@ const vars = (args.vars ?? '').split(',')
 
 const hasDebugArg = ('canon'===args.debug || 'lang' ===args.debug || 'deep'===args.debug)
 
-const aontu = new AontuX({
+const aontu = new Aontu({
   path: process.cwd(),
   debug: 'lang' === args.debug || 'trace' == args.trace,
   trace: 'trace' == args.trace,
@@ -62,6 +62,10 @@ if(hasDebugArg && 0 === err.length) {
     print(root)
   }
 }
+
+process.exit()
+
+
 
 
 if(0 === err.length) {

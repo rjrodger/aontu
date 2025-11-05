@@ -158,19 +158,20 @@ let AontuJsonic = function aontu(jsonic) {
             let val = terms[0];
             return addsite(val, r, ctx);
         },
-        'func-paren': (r, ctx, op, terms) => {
+        'func-paren': (r, ctx, _op, terms) => {
             let val = terms[1];
-            // const fname = terms[0].peg
             const fname = terms[0];
             if ('' !== fname) {
                 const funcval = funcMap[fname];
                 const args = terms.slice(1);
-                val = null == funcval ? new NilVal_1.NilVal({ msg: 'Not a function: ' + fname }) : new funcval({
-                    peg: args
-                });
+                val = null == funcval ?
+                    // TODO: fix error handling
+                    new NilVal_1.NilVal({ msg: 'Not a function: ' + fname }) :
+                    new funcval({
+                        peg: args
+                    });
             }
             const out = addsite(val, r, ctx);
-            // // console.log('FUNC-PAREN', fname, terms, '->', out)
             return out;
         },
     };

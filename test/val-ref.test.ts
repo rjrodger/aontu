@@ -7,9 +7,12 @@ import {
 } from '../dist/lang'
 
 import {
-  Context,
   Unify,
 } from '../dist/unify'
+
+import {
+  AontuContext,
+} from '../dist/ctx'
 
 
 import { expect } from '@hapi/code'
@@ -797,8 +800,8 @@ a: b: f: {
 
 
 function makeCtx(r?: any, p?: string[]) {
-  return new Context({
+  return new AontuContext({
     root: r || new MapVal({ peg: {} }),
-    path: p
+    // path: p
   })
 }
