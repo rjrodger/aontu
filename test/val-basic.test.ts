@@ -48,7 +48,7 @@ import { ScalarKindVal, Integer } from '../dist/val/ScalarKindVal'
 
 import {
   top
-} from '../dist/val/valutil'
+} from '../dist/val/top'
 
 const TOP = top()
 

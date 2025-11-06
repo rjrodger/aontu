@@ -6,32 +6,12 @@ const type_1 = require("./type");
 const MapVal_1 = require("./val/MapVal");
 const ListVal_1 = require("./val/ListVal");
 const err_1 = require("./err");
-/*
-
-{
-    cc?: number
-    collect?: boolean
-    err?: any[]
-    explain?: any[] | null
-    fs?: any
-    path?: string[]
-    root: Val
-    seen?: Record<string, number>
-    seenI?: number
-    src?: string
-    srcpath?: string,
-    var?: Record<string, Val>
-    vc?: number
-  }
-  
-  */
 class AontuContext {
     constructor(cfg) {
         this.cc = -1;
         this.vars = {};
-        this.opts = type_1.DEFAULT_OPTS;
         this.root = cfg.root;
-        this.path = cfg.path || [];
+        this.path = [...(cfg.path ?? [])];
         this.src = cfg.src;
         this.collect = cfg.collect ?? null != cfg.err;
         this.err = cfg.err ?? [];
@@ -45,8 +25,8 @@ class AontuContext {
         this.seen = cfg.seen ?? {};
         this.srcpath = cfg.srcpath ?? undefined;
         this.deps = cfg.deps ?? {};
+        this.opts = (0, type_1.DEFAULT_OPTS)();
         this.addopts(cfg.opts);
-        // this.opts = cfg.opts ?? {}
     }
     clone(cfg) {
         const ctx = Object.create(this);
@@ -66,6 +46,11 @@ class AontuContext {
         if (null != opts) {
             Object.assign(this.opts, opts);
         }
+        this.collect = (this.opts.collect ?? null != this.opts.err) ?? this.collect;
+        this.err = this.opts.err ?? this.err;
+        this.fs = this.opts.fs ?? this.fs;
+        // TODO: rename srcpath to file
+        this.srcpath = this.opts.path ?? this.srcpath;
     }
     adderr(err) {
         this.err.push(err);

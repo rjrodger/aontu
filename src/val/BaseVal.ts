@@ -25,9 +25,15 @@ import {
 } from '../site'
 
 
+/*
 import {
   top
-} from './valutil'
+} from './top'
+*/
+
+
+
+// function top() { return null as unknown as Val }
 
 
 let ID = 1000
@@ -206,10 +212,12 @@ abstract class BaseVal implements Val {
   }
 
 
+  abstract superior(): Val
+  /*
   superior(): Val {
-    return top() // null as unknown as Val
+    return top()
   }
-
+  */
 
   [inspect.custom](_d: number, _o: any, _inspect: any): string {
     let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]
@@ -246,7 +254,7 @@ abstract class BaseVal implements Val {
   }
 
 
-  inspection(inspect: Function) {
+  inspection(_inspect: Function) {
     return ''
   }
 

@@ -8,11 +8,17 @@ const MapVal_1 = require("../dist/val/MapVal");
 (0, node_test_1.describe)('error', function () {
     (0, node_test_1.it)('syntax', () => {
         let a0 = new aontu_1.Aontu();
-        let v0 = a0.unify('a::1', { collect: true });
-        (0, code_1.expect)(v0.err[0]).exist();
-        // TODO: normalize Jsonic Errors into Aontu Errors
-        // expect(v0.err[0]).include({ nil: true, why: 'syntax' })
-        // expect(typeof v0.err[0].msg).equal('string')
+        let v0 = a0.parse('a::1', { collect: true });
+        (0, code_1.expect)(v0?.err[0].why).equal('syntax');
+        let v1 = a0.unify('a::1', { collect: true });
+        (0, code_1.expect)(v1?.err[0].why).equal('syntax');
+        let err = [];
+        let v2 = a0.generate('a::1', { err });
+        (0, code_1.expect)(v2).equal(undefined);
+        (0, code_1.expect)(err[0].why).equal('syntax');
+        (0, code_1.expect)(() => a0.parse('a::1')).throws(/syntax/);
+        (0, code_1.expect)(() => a0.unify('a::1')).throws(/syntax/);
+        (0, code_1.expect)(() => a0.generate('a::1')).throws(/syntax/);
     });
     (0, node_test_1.it)('unify', () => {
         let a0 = new aontu_1.Aontu();

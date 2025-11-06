@@ -123,10 +123,19 @@ w1: b: {y:2,z:3} & $.q.a
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         (0, code_1.expect)(a0.unify('').gen(ctx)).equal({});
-        (0, code_1.expect)(a0.unify(undefined).gen(ctx)).equal(undefined);
         (0, code_1.expect)(a0.unify(`
     # comment
     `).gen(ctx)).equal({});
+        (0, code_1.expect)(a0.unify(undefined).gen(ctx)).equal({});
+        (0, code_1.expect)(a0.parse('')?.isMap).equal(true);
+        (0, code_1.expect)(a0.parse(null)?.isMap).equal(true);
+        (0, code_1.expect)(a0.parse(undefined)?.isMap).equal(true);
+        (0, code_1.expect)(a0.unify('')?.isMap).equal(true);
+        (0, code_1.expect)(a0.unify(null)?.isMap).equal(true);
+        (0, code_1.expect)(a0.unify(undefined)?.isMap).equal(true);
+        (0, code_1.expect)(a0.generate('')).equal({});
+        (0, code_1.expect)(a0.generate(null)).equal({});
+        (0, code_1.expect)(a0.generate(undefined)).equal({});
     });
     (0, node_test_1.test)('spread-edges', () => {
         let ctx = makeCtx();

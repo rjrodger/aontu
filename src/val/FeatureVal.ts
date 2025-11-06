@@ -2,6 +2,7 @@
 
 
 import type {
+  Val,
   ValSpec,
 } from '../type'
 
@@ -12,7 +13,7 @@ import {
 
 import { BaseVal } from './BaseVal'
 
-
+import { top } from './top'
 
 abstract class FeatureVal extends BaseVal {
   isFeature = true
@@ -22,6 +23,11 @@ abstract class FeatureVal extends BaseVal {
     ctx?: AontuContext
   ) {
     super(spec, ctx)
+  }
+
+
+  superior(): Val {
+    return top()
   }
 
 }

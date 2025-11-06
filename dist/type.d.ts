@@ -14,9 +14,10 @@ type AontuOptions = {
     deps?: any;
     log?: any;
     idcount?: number;
-    collect: boolean;
+    collect?: boolean;
+    err?: any[];
 };
-declare const DEFAULT_OPTS: AontuOptions;
+declare const DEFAULT_OPTS: () => AontuOptions;
 interface Val {
     isVal: boolean;
     isTop: boolean;

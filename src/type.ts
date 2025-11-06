@@ -25,15 +25,17 @@ type AontuOptions = {
   deps?: any
   log?: any
   idcount?: number
-  collect: boolean // Collect errors into an errs property, rather than throw them.
+  collect?: boolean // Collect errors into an errs property, rather than throw them.
+  err?: any[]
 }
 
 
-const DEFAULT_OPTS: AontuOptions = {
-  collect: true,
-  print: -1,
-  debug: false,
-  trace: false,
+const DEFAULT_OPTS: () => AontuOptions = () => {
+  return {
+    print: -1,
+    debug: false,
+    trace: false,
+  }
 }
 
 

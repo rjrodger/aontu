@@ -1,17 +1,12 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.top = top;
 exports.makeScalar = makeScalar;
 const NumberVal_1 = require("./NumberVal");
 const StringVal_1 = require("./StringVal");
 const BooleanVal_1 = require("./BooleanVal");
 const NullVal_1 = require("./NullVal");
-const TopVal_1 = require("./TopVal");
-const TOP = new TopVal_1.TopVal({});
-function top() {
-    return TOP;
-}
+// TODO: move to FuncBaseVal
 function makeScalar(scalar) {
     const st = typeof scalar;
     const spec = { peg: scalar };

@@ -19,7 +19,7 @@ import {
 } from '../utility'
 
 
-import { top } from './valutil'
+import { top } from './top'
 
 import { FeatureVal } from './FeatureVal'
 

@@ -14,7 +14,7 @@ const path_1 = require("@jsonic/path");
 const type_1 = require("./type");
 const site_1 = require("./site");
 Object.defineProperty(exports, "Site", { enumerable: true, get: function () { return site_1.Site; } });
-const valutil_1 = require("./val/valutil");
+const top_1 = require("./val/top");
 const ScalarKindVal_1 = require("./val/ScalarKindVal");
 const BooleanVal_1 = require("./val/BooleanVal");
 const ConjunctVal_1 = require("./val/ConjunctVal");
@@ -81,7 +81,7 @@ let AontuJsonic = function aontu(jsonic) {
                     val: (r, ctx) => addsite(new NilVal_1.NilVal('literal'), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
-                'top': { val: () => (0, valutil_1.top)() },
+                'top': { val: () => (0, top_1.top)() },
             }
         },
         map: {
@@ -474,8 +474,7 @@ function makeModelResolver(options) {
 class Lang {
     constructor(options) {
         // const start = performance.now()
-        this.opts = type_1.DEFAULT_OPTS;
-        this.opts = Object.assign({}, this.opts, options);
+        this.opts = Object.assign((0, type_1.DEFAULT_OPTS)(), options);
         const modelResolver = makeModelResolver(this.opts);
         this.jsonic = jsonic_1.Jsonic.make();
         if (this.opts.debug) {

@@ -5,7 +5,7 @@ exports.MapVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const valutil_1 = require("./valutil");
+const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const NilVal_1 = require("./NilVal");
 const BagVal_1 = require("./BagVal");
@@ -39,7 +39,7 @@ class MapVal extends BagVal_1.BagVal {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx, explain) {
-        peer = peer ?? (0, valutil_1.top)();
+        peer = peer ?? (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Map', this, peer);
         let done = true;
         let exit = false;
@@ -75,7 +75,7 @@ class MapVal extends BagVal_1.BagVal {
         if (!exit) {
             out.dc = this.dc + 1;
             // let newtype = this.type || peer.type
-            let spread_cj = out.spread.cj ?? (0, valutil_1.top)();
+            let spread_cj = out.spread.cj ?? (0, top_1.top)();
             // Always unify own children first
             for (let key in this.peg) {
                 let keyctx = ctx.descend(key);
@@ -96,7 +96,7 @@ class MapVal extends BagVal_1.BagVal {
             if (peer instanceof MapVal) {
                 // QQQ
                 // let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map', tr(te, 'PER')) as MapVal)
-                let upeer = (0, unify_1.unite)(ctx, peer, (0, valutil_1.top)(), 'map-peer-map', (0, utility_1.ec)(te, 'PER'));
+                let upeer = (0, unify_1.unite)(ctx, peer, (0, top_1.top)(), 'map-peer-map', (0, utility_1.ec)(te, 'PER'));
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
                     if (this.closed && !allowedKeys.includes(peerkey)) {

@@ -31,7 +31,7 @@ import {
 
 import {
   top
-} from './valutil'
+} from './top'
 
 
 const CONJUNCT_ORDERING: Record<string, number> = {

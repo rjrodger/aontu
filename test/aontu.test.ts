@@ -182,11 +182,24 @@ w1: b: {y:2,z:3} & $.q.a
     let a0 = new Aontu()
 
     expect(a0.unify('').gen(ctx)).equal({})
-    expect(a0.unify(undefined as any).gen(ctx)).equal(undefined)
-
     expect(a0.unify(`
     # comment
     `).gen(ctx)).equal({})
+
+    expect(a0.unify(undefined as any).gen(ctx)).equal({})
+
+
+    expect(a0.parse('')?.isMap).equal(true)
+    expect(a0.parse(null as any)?.isMap).equal(true)
+    expect(a0.parse(undefined as any)?.isMap).equal(true)
+
+    expect(a0.unify('')?.isMap).equal(true)
+    expect(a0.unify(null as any)?.isMap).equal(true)
+    expect(a0.unify(undefined as any)?.isMap).equal(true)
+
+    expect(a0.generate('')).equal({})
+    expect(a0.generate(null as any)).equal({})
+    expect(a0.generate(undefined as any)).equal({})
   })
 
 
@@ -196,8 +209,7 @@ w1: b: {y:2,z:3} & $.q.a
 
     expect(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } })
 
-    // FIX
-    // expect(a0.unify('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
+    expect(a0.unify('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
   })
 
 

@@ -60,8 +60,8 @@ declare abstract class BaseVal implements Val {
     errcanon(): string;
     gen(_ctx: AontuContext): any;
     notdone(): void;
-    superior(): Val;
+    abstract superior(): Val;
     [inspect.custom](_d: number, _o: any, _inspect: any): string;
-    inspection(inspect: Function): string;
+    inspection(_inspect: Function): string;
 }
 export { BaseVal, };

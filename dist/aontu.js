@@ -19,14 +19,18 @@ class Aontu {
     }
     ctx(arg) {
         arg = arg ?? {};
-        return new ctx_1.AontuContext(arg);
+        const ac = new ctx_1.AontuContext(arg);
+        return ac;
     }
     parse(src, opts, ac) {
         let out;
         let errs = [];
+        if (null == src) {
+            src = '';
+        }
         ac = ac ?? this.ctx();
         ac.addopts(opts);
-        if (null == src || 'string' !== typeof src) {
+        if ('string' !== typeof src) {
             out = (0, err_1.makeNilErr)(ac, 'parse_bad_src');
             errs.push(out);
         }
@@ -38,17 +42,19 @@ class Aontu {
         handleErrors(errs, out, ac);
         return out;
     }
-    // unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
     unify(src, opts, ac) {
         let out;
         let errs = [];
         ac = ac ?? this.ctx();
         ac.addopts(opts);
         let pval;
+        if (null == src) {
+            src = '';
+        }
         if ('string' === typeof src) {
             pval = this.parse(src, undefined, ac);
         }
-        else if (src.isVal) {
+        else if (src && src.isVal) {
             pval = src;
         }
         else {
@@ -77,14 +83,6 @@ class Aontu {
             let out = undefined;
             ac = ac ?? this.ctx();
             ac.addopts(opts);
-            /*
-            let ac = this.ctx({
-              src,
-              err: opts?.err,
-              explain: opts?.explain,
-              vars: opts?.vars,
-              })
-            */
             let pval = this.parse(src, undefined, ac);
             if (undefined !== pval && 0 === pval.err.length) {
                 let uval = this.unify(pval, undefined, ac);
@@ -127,22 +125,6 @@ function handleErrors(errs, out, ac) {
             throw new err_1.AontuError(ac.errmsg(), ac.err);
         }
     }
-}
-function prepareOptions(src, popts) {
-    // Convert convenience first param into Options.src
-    let srcopts = 'string' === typeof src ? { src } :
-        null == src ? {} : src;
-    let opts = {
-        ...{
-            src: '',
-            print: 0,
-            collect: false,
-        },
-        ...srcopts,
-        ...(popts || {}),
-    };
-    opts.src = null == opts.src ? '' : opts.src;
-    return opts;
 }
 function runparse(src, lang, ctx) {
     const popts = {

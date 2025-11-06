@@ -17,7 +17,12 @@ exports.BaseVal = void 0;
 const node_util_1 = require("node:util");
 const type_1 = require("../type");
 const site_1 = require("../site");
-const valutil_1 = require("./valutil");
+/*
+import {
+  top
+} from './top'
+*/
+// function top() { return null as unknown as Val }
 let ID = 1000;
 class BaseVal {
     // TODO: Site needed in ctor
@@ -143,9 +148,11 @@ class BaseVal {
     notdone() {
         this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
     }
-    superior() {
-        return (0, valutil_1.top)(); // null as unknown as Val
+    /*
+    superior(): Val {
+      return top()
     }
+    */
     [(_BaseVal_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
         s.push('/' + this.path.join('.') + '/');
@@ -171,7 +178,7 @@ class BaseVal {
         const out = s.join('');
         return out;
     }
-    inspection(inspect) {
+    inspection(_inspect) {
         return '';
     }
 }

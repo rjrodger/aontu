@@ -9,6 +9,7 @@ declare class TopVal extends BaseVal {
     same(peer: Val): boolean;
     unify(peer: Val, _ctx?: AontuContext): Val;
     get canon(): string;
+    superior(): Val;
     clone(_ctx: AontuContext, _spec?: ValSpec): this;
     gen(_ctx?: AontuContext): undefined;
 }

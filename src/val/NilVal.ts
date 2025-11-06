@@ -35,6 +35,7 @@ class NilVal extends BaseVal {
   // refactor ,make(spec,ctx)
   static make = (ctx?: AontuContext, why?: any, av?: Val, bv?: Val, attempt?: string) => {
     let nil = new NilVal({ why }, ctx)
+
     nil.attempt = attempt
     // TODO: this should be done lazily, for multiple terms
 
@@ -86,7 +87,10 @@ class NilVal extends BaseVal {
     if (spec && 'object' === typeof spec) {
       this.why = spec?.why
       this.msg = 'string' === typeof spec?.msg ? spec.msg : this.msg
-      this.err = spec ? (Array.isArray(spec.err) ? [...spec.err] : [spec.err]) : []
+      this.err = spec ?
+        Array.isArray(spec.err) ? [...spec.err] :
+          null != spec.err ? [spec.err] :
+            [] : []
     }
 
     // Nil is always DONE, by definition.
@@ -120,8 +124,6 @@ class NilVal extends BaseVal {
 
   gen(ctx?: AontuContext) {
     // Unresolved nil cannot be generated, so always an error.
-
-    ///descErr(this, ctx)
 
     if (Array.isArray(ctx?.err)) {
       // ctx.err.push(this)

@@ -19,7 +19,8 @@ import {
 } from '../utility'
 
 
-import { BaseVal } from './BaseVal'
+// import { BaseVal } from './BaseVal'
+import { FeatureVal } from './FeatureVal'
 import { NilVal } from './NilVal'
 
 
@@ -38,7 +39,8 @@ type ScalarConstructor =
   (typeof Integer.constructor)
 
 
-class ScalarKindVal extends BaseVal {
+// class ScalarKindVal extends BaseVal {
+class ScalarKindVal extends FeatureVal {
   isScalarKind = true
 
   constructor(

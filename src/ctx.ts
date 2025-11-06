@@ -22,7 +22,7 @@ type AontuContextConfig = {
   err?: any[] // Omit<NilVal[], "push">
   explain?: any[]
   fs?: any
-  path?: []
+  path?: string[]
   root?: Val
   seen?: Record<string, number>
   seenI?: number
@@ -34,28 +34,6 @@ type AontuContextConfig = {
   opts?: AontuOptions
   deps?: Record<string, any>
 }
-
-
-/*
-
-{
-    cc?: number
-    collect?: boolean
-    err?: any[]
-    explain?: any[] | null
-    fs?: any
-    path?: string[]
-    root: Val
-    seen?: Record<string, number>
-    seenI?: number
-    src?: string
-    srcpath?: string,
-    var?: Record<string, Val>
-    vc?: number
-  }
-  
-  */
-
 
 
 class AontuContext {
@@ -80,15 +58,16 @@ class AontuContext {
   srcpath?: string
 
   deps: Record<string, any>
-  opts: AontuOptions = DEFAULT_OPTS
+  opts: AontuOptions
 
 
   constructor(cfg: AontuContextConfig) {
     this.root = cfg.root
-    this.path = cfg.path || []
+    this.path = [...(cfg.path ?? [])]
     this.src = cfg.src
 
     this.collect = cfg.collect ?? null != cfg.err
+
     this.err = cfg.err ?? []
     this.explain = cfg.explain ?? null
 
@@ -107,8 +86,8 @@ class AontuContext {
 
     this.deps = cfg.deps ?? {}
 
+    this.opts = DEFAULT_OPTS()
     this.addopts(cfg.opts)
-    // this.opts = cfg.opts ?? {}
   }
 
 
@@ -139,6 +118,13 @@ class AontuContext {
     if (null != opts) {
       Object.assign(this.opts, opts)
     }
+
+    this.collect = (this.opts.collect ?? null != this.opts.err) ?? this.collect
+    this.err = this.opts.err ?? this.err
+    this.fs = this.opts.fs ?? this.fs
+
+    // TODO: rename srcpath to file
+    this.srcpath = this.opts.path ?? this.srcpath
   }
 
 

@@ -16,7 +16,7 @@ import {
 
 
 import { expect } from '@hapi/code'
-import { top } from '../dist/val/valutil'
+import { top } from '../dist/val/top'
 import { MapVal } from '../dist/val/MapVal'
 import { RefVal } from '../dist/val/RefVal'
 
@@ -431,7 +431,6 @@ describe('val-ref', function() {
     let c0 = makeCtx(null, ['x'])
 
     let r0 = new RefVal({ peg: ['a'], absolute: true }, c0)
-    // console.log(r0)
     expect(r0.canon).equal('$.a')
     expect(r0).include({
       path: ['x'],
@@ -455,7 +454,6 @@ describe('val-ref', function() {
       absolute: true,
       peg: ['a']
     })
-
 
     let c2 = makeCtx(null, ['k'])
     let r3 = r2.clone(c2)
@@ -802,6 +800,6 @@ a: b: f: {
 function makeCtx(r?: any, p?: string[]) {
   return new AontuContext({
     root: r || new MapVal({ peg: {} }),
-    // path: p
+    path: p
   })
 }

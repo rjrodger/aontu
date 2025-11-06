@@ -5,7 +5,7 @@ type AontuContextConfig = {
     err?: any[];
     explain?: any[];
     fs?: any;
-    path?: [];
+    path?: string[];
     root?: Val;
     seen?: Record<string, number>;
     seenI?: number;

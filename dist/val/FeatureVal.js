@@ -3,10 +3,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeatureVal = void 0;
 const BaseVal_1 = require("./BaseVal");
+const top_1 = require("./top");
 class FeatureVal extends BaseVal_1.BaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFeature = true;
+    }
+    superior() {
+        return (0, top_1.top)();
     }
 }
 exports.FeatureVal = FeatureVal;

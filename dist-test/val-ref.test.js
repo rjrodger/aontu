@@ -6,7 +6,7 @@ const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const ctx_1 = require("../dist/ctx");
 const code_1 = require("@hapi/code");
-const valutil_1 = require("../dist/val/valutil");
+const top_1 = require("../dist/val/top");
 const MapVal_1 = require("../dist/val/MapVal");
 const RefVal_1 = require("../dist/val/RefVal");
 const lang = new lang_1.Lang();
@@ -14,7 +14,7 @@ const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r)).canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
-const TOP = (0, valutil_1.top)();
+const TOP = (0, top_1.top)();
 (0, node_test_1.describe)('val-ref', function () {
     (0, node_test_1.test)('construct', () => {
         let r0 = new RefVal_1.RefVal({ peg: [], absolute: true });
@@ -356,7 +356,6 @@ const TOP = (0, valutil_1.top)();
     (0, node_test_1.test)('clone', () => {
         let c0 = makeCtx(null, ['x']);
         let r0 = new RefVal_1.RefVal({ peg: ['a'], absolute: true }, c0);
-        // console.log(r0)
         (0, code_1.expect)(r0.canon).equal('$.a');
         (0, code_1.expect)(r0).include({
             path: ['x'],
@@ -651,7 +650,7 @@ a: b: f: {
 function makeCtx(r, p) {
     return new ctx_1.AontuContext({
         root: r || new MapVal_1.MapVal({ peg: {} }),
-        // path: p
+        path: p
     });
 }
 //# sourceMappingURL=val-ref.test.js.map

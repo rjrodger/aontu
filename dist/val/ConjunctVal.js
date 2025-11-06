@@ -9,7 +9,7 @@ const utility_1 = require("../utility");
 const NilVal_1 = require("./NilVal");
 const JunctionVal_1 = require("./JunctionVal");
 const utility_2 = require("../utility");
-const valutil_1 = require("./valutil");
+const top_1 = require("./top");
 const CONJUNCT_ORDERING = {
     PrefVal: 30000,
     RefVal: 32500,
@@ -39,7 +39,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         return this;
     }
     unify(peer, ctx, trace) {
-        peer = peer ?? (0, valutil_1.top)();
+        peer = peer ?? (0, top_1.top)();
         const te = ctx.explain && (0, utility_2.explainOpen)(ctx, trace, 'Conjunct', this, peer);
         let done = true;
         this.peg = norm(this.peg);
@@ -121,7 +121,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         // console.log('CONJUCT-prepout', this.id, outvals.map((v: Val) => v.canon))
         if (0 === outvals.length) {
             // Empty conjuncts evaporate.
-            out = (0, valutil_1.top)();
+            out = (0, top_1.top)();
         }
         // TODO: corrects CV[CV[1&/x]] issue above, but swaps term order!
         else if (1 === outvals.length) {

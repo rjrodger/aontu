@@ -24,6 +24,9 @@ class TopVal extends BaseVal_1.BaseVal {
         return peer;
     }
     get canon() { return 'top'; }
+    superior() {
+        return this;
+    }
     clone(_ctx, _spec) {
         return this;
     }

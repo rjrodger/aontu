@@ -24,7 +24,7 @@ import {
 
 import {
   top
-} from './valutil'
+} from './top'
 
 import { NilVal } from '../val/NilVal'
 import { ConjunctVal } from '../val/ConjunctVal'

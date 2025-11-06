@@ -31,7 +31,6 @@ import {
   makeMemResolver
 } from '@jsonic/multisource/resolver/mem'
 
-
 import {
   Expr,
   Op,
@@ -40,7 +39,6 @@ import {
 import {
   Path
 } from '@jsonic/path'
-
 
 import type {
   Val,
@@ -56,10 +54,9 @@ import {
   Site
 } from './site'
 
-
 import {
   top
-} from './val/valutil'
+} from './val/top'
 
 
 
@@ -660,14 +657,14 @@ function makeModelResolver(options: any) {
 
 class Lang {
   jsonic: Jsonic
-  opts: AontuOptions = DEFAULT_OPTS
+  opts: AontuOptions
   idcount: number | undefined
 
 
   constructor(options?: Partial<AontuOptions>) {
     // const start = performance.now()
 
-    this.opts = Object.assign({}, this.opts, options) as AontuOptions
+    this.opts = Object.assign(DEFAULT_OPTS(), options) as AontuOptions
 
     const modelResolver = makeModelResolver(this.opts)
 

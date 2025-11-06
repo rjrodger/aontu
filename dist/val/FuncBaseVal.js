@@ -5,7 +5,7 @@ exports.FuncBaseVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const valutil_1 = require("./valutil");
+const top_1 = require("./top");
 const NilVal_1 = require("../val/NilVal");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const FeatureVal_1 = require("../val/FeatureVal");
@@ -46,7 +46,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
                     let newarg = arg;
                     if (!arg.done) {
-                        newarg = arg.unify((0, valutil_1.top)(), ctx, (0, utility_1.ec)(te, 'ARG'));
+                        newarg = arg.unify((0, top_1.top)(), ctx, (0, utility_1.ec)(te, 'ARG'));
                         newtype = newtype || newarg.mark.type;
                         newhide = newhide || newarg.mark.hide;
                         // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)

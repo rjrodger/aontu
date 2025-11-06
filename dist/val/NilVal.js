@@ -13,7 +13,10 @@ class NilVal extends BaseVal_1.BaseVal {
         if (spec && 'object' === typeof spec) {
             this.why = spec?.why;
             this.msg = 'string' === typeof spec?.msg ? spec.msg : this.msg;
-            this.err = spec ? (Array.isArray(spec.err) ? [...spec.err] : [spec.err]) : [];
+            this.err = spec ?
+                Array.isArray(spec.err) ? [...spec.err] :
+                    null != spec.err ? [spec.err] :
+                        [] : [];
         }
         // Nil is always DONE, by definition.
         this.dc = type_1.DONE;
@@ -37,7 +40,6 @@ class NilVal extends BaseVal_1.BaseVal {
     }
     gen(ctx) {
         // Unresolved nil cannot be generated, so always an error.
-        ///descErr(this, ctx)
         if (Array.isArray(ctx?.err)) {
             // ctx.err.push(this)
             ctx.adderr(this);

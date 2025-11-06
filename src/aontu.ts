@@ -24,7 +24,8 @@ class Aontu {
 
   ctx(arg?: AontuContextConfig): AontuContext {
     arg = arg ?? {}
-    return new AontuContext(arg)
+    const ac = new AontuContext(arg)
+    return ac
   }
 
 
@@ -32,10 +33,14 @@ class Aontu {
     let out: Val | undefined
     let errs: any[] = []
 
+    if (null == src) {
+      src = ''
+    }
+
     ac = ac ?? this.ctx()
     ac.addopts(opts)
 
-    if (null == src || 'string' !== typeof src) {
+    if ('string' !== typeof src) {
       out = makeNilErr(ac, 'parse_bad_src')
       errs.push(out)
     }
@@ -52,7 +57,6 @@ class Aontu {
   }
 
 
-  // unify(src: string | Val, ac?: AontuContext | any): Val | undefined {
   unify(src: string | Val, opts?: Partial<AontuOptions>, ac?: AontuContext | any): Val {
     let out: Val | undefined
     let errs: any[] = []
@@ -62,10 +66,14 @@ class Aontu {
 
     let pval: Val | undefined
 
+    if (null == src) {
+      src = ''
+    }
+
     if ('string' === typeof src) {
       pval = this.parse(src, undefined, ac)
     }
-    else if (src.isVal) {
+    else if (src && src.isVal) {
       pval = src
     }
     else {
@@ -103,15 +111,6 @@ class Aontu {
 
       ac = ac ?? this.ctx()
       ac.addopts(opts)
-
-      /*
-      let ac = this.ctx({
-        src,
-        err: opts?.err,
-        explain: opts?.explain,
-        vars: opts?.vars,
-        })
-      */
 
       let pval = this.parse(src, undefined, ac)
 
@@ -164,31 +163,6 @@ function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
       throw new AontuError(ac.errmsg(), ac.err)
     }
   }
-}
-
-
-
-function prepareOptions(
-  src?: string | Partial<AontuOptions>,
-  popts?: Partial<AontuOptions>,
-): AontuOptions {
-  // Convert convenience first param into Options.src
-  let srcopts: Partial<AontuOptions> = 'string' === typeof src ? { src } :
-    null == src ? {} : src
-
-  let opts: AontuOptions = {
-    ...{
-      src: '',
-      print: 0,
-      collect: false,
-    },
-    ...srcopts,
-    ...(popts || {}),
-  }
-
-  opts.src = null == opts.src ? '' : opts.src
-
-  return opts
 }
 
 

@@ -11,13 +11,21 @@ describe('error', function() {
 
   it('syntax', () => {
     let a0 = new Aontu()
-    let v0 = a0.unify('a::1', { collect: true })
 
-    expect(v0.err[0]).exist()
+    let v0 = a0.parse('a::1', { collect: true })
+    expect(v0?.err[0].why).equal('syntax')
 
-    // TODO: normalize Jsonic Errors into Aontu Errors
-    // expect(v0.err[0]).include({ nil: true, why: 'syntax' })
-    // expect(typeof v0.err[0].msg).equal('string')
+    let v1 = a0.unify('a::1', { collect: true })
+    expect(v1?.err[0].why).equal('syntax')
+
+    let err: any[] = []
+    let v2 = a0.generate('a::1', { err })
+    expect(v2).equal(undefined)
+    expect(err[0].why).equal('syntax')
+
+    expect(() => a0.parse('a::1')).throws(/syntax/)
+    expect(() => a0.unify('a::1')).throws(/syntax/)
+    expect(() => a0.generate('a::1')).throws(/syntax/)
   })
 
 

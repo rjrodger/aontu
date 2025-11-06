@@ -9,6 +9,7 @@ const NilVal_1 = require("./val/NilVal");
 const { errmsg } = jsonic_1.util;
 function makeNilErr(ac, code, details) {
     const nilval = NilVal_1.NilVal.make(ac, code);
+    console.log('MAKE-NILVAL', nilval, nilval.err);
     return nilval;
 }
 // TODO: move to utility?

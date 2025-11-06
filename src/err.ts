@@ -15,6 +15,7 @@ const { errmsg } = util
 
 function makeNilErr(ac: AontuContext, code: string, details?: Record<string, any>): NilVal {
   const nilval = NilVal.make(ac, code)
+  console.log('MAKE-NILVAL', nilval, nilval.err)
   return nilval
 }
 

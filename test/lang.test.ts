@@ -23,7 +23,7 @@ import {
 
 import {
   top
-} from '../dist/val/valutil'
+} from '../dist/val/top'
 
 const TOP = top()
 

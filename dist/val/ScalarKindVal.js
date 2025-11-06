@@ -4,7 +4,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarKindVal = exports.Null = exports.Integer = void 0;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
-const BaseVal_1 = require("./BaseVal");
+// import { BaseVal } from './BaseVal'
+const FeatureVal_1 = require("./FeatureVal");
 const NilVal_1 = require("./NilVal");
 // A ScalarKind for integers. Number includes floats.
 class Integer {
@@ -14,7 +15,8 @@ exports.Integer = Integer;
 class Null {
 }
 exports.Null = Null;
-class ScalarKindVal extends BaseVal_1.BaseVal {
+// class ScalarKindVal extends BaseVal {
+class ScalarKindVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isScalarKind = true;

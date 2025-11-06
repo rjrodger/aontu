@@ -24,7 +24,7 @@ import { unite } from '../unify'
 
 import {
   top
-} from './valutil'
+} from './top'
 
 
 import { StringVal } from './StringVal'
@@ -287,7 +287,10 @@ class RefVal extends FeatureVal {
         for (; pI < refpath.length; pI++) {
           let part = refpath[pI]
 
-          if (node.isMap) {
+          if (null == node) {
+            break
+          }
+          else if (node.isMap) {
             node = node.peg[part]
           }
           else if (node.isList) {

@@ -50,6 +50,10 @@ class TopVal extends BaseVal {
 
   get canon() { return 'top' }
 
+  superior(): Val {
+    return this
+  }
+
   clone(_ctx: AontuContext, _spec?: ValSpec) {
     return this
   }

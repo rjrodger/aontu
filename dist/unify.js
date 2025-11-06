@@ -7,7 +7,7 @@ const type_1 = require("./type");
 const NilVal_1 = require("./val/NilVal");
 const lang_1 = require("./lang");
 const utility_1 = require("./utility");
-const valutil_1 = require("./val/valutil");
+const top_1 = require("./val/top");
 // TODO: relation to unify loops?
 const MAXCYCLE = 9;
 let uc = 0;
@@ -72,7 +72,7 @@ const unite = (ctx, a, b, whence, explain) => {
                 why += 'N';
             }
             if (type_1.DONE !== out.dc && !unified) {
-                let nout = out.unify((0, valutil_1.top)(), ctx, (0, utility_1.ec)(te, 'ND'));
+                let nout = out.unify((0, top_1.top)(), ctx, (0, utility_1.ec)(te, 'ND'));
                 out = nout;
                 why += 'T';
             }
@@ -258,7 +258,7 @@ class Unify {
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
-                res = unite(uctx, res, (0, valutil_1.top)(), 'unify', explain && (0, utility_1.ec)(te, 'run'));
+                res = unite(uctx, res, (0, top_1.top)(), 'unify', explain && (0, utility_1.ec)(te, 'run'));
                 if (0 < uctx.err.length) {
                     break;
                 }

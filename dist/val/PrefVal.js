@@ -5,7 +5,7 @@ exports.PrefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const valutil_1 = require("./valutil");
+const top_1 = require("./top");
 const FeatureVal_1 = require("./FeatureVal");
 class PrefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
@@ -23,13 +23,13 @@ class PrefVal extends FeatureVal_1.FeatureVal {
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
     unify(peer, ctx, explain) {
-        peer = peer ?? (0, valutil_1.top)();
+        peer = peer ?? (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Pref', this, peer);
         let done = true;
         let out = this;
         let why = '';
         if (!this.peg.done) {
-            const resolved = (0, unify_1.unite)(ctx, this.peg, (0, valutil_1.top)(), 'pref/resolve', (0, utility_1.ec)(te, 'RES'));
+            const resolved = (0, unify_1.unite)(ctx, this.peg, (0, top_1.top)(), 'pref/resolve', (0, utility_1.ec)(te, 'RES'));
             // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
         }
