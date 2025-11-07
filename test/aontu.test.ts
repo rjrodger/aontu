@@ -209,7 +209,7 @@ w1: b: {y:2,z:3} & $.q.a
 
     expect(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } })
 
-    expect(a0.unify('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
+    expect(a0.unify('a:{} &:{x:1}').gen(ctx)).equal({ a: { x: 1 } })
   })
 
 

@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DisjunctVal = void 0;
 const type_1 = require("../type");
+const err_1 = require("../err");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
@@ -23,9 +24,9 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         this.prefsRanked = false;
         return this;
     }
-    unify(peer, ctx, trace) {
+    unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Disjunct', this, peer);
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Disjunct', this, peer);
         if (!this.prefsRanked) {
             this.rankPrefs(ctx);
         }
@@ -37,10 +38,10 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
             const v = this.peg[vI];
             const cloneCtx = ctx?.clone({ err: [] });
             // // // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
-            oval[vI] = (0, unify_1.unite)(cloneCtx, v, peer, 'dj-peer', (0, utility_1.ec)(te, 'DIST:' + vI));
+            oval[vI] = (0, unify_1.unite)(cloneCtx.clone({ explain: (0, utility_1.ec)(te, 'DIST:' + vI) }), v, peer, 'dj-peer');
             // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
             if (0 < cloneCtx?.err.length) {
-                oval[vI] = NilVal_1.NilVal.make(cloneCtx, '|:empty-dist', this);
+                oval[vI] = (0, err_1.makeNilErr)(cloneCtx, '|:empty-dist', this);
             }
             done = done && type_1.DONE === oval[vI].dc;
         }
@@ -70,7 +71,7 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
             out = oval[0];
         }
         else if (0 == oval.length) {
-            return NilVal_1.NilVal.make(ctx, '|:empty', this, peer);
+            return (0, err_1.makeNilErr)(ctx, '|:empty', this, peer);
         }
         else {
             out = new DisjunctVal({ peg: oval }, ctx);
@@ -177,9 +178,9 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         //     )
         //     // TODO: refactor to use Site
         //     nil.path = this.path
-        //     nil.url = this.url
-        //     nil.row = this.row
-        //     nil.col = this.col
+        //     nil.site.url = this.url
+        //     nil.site.row = this.row
+        //     nil.site.col = this.col
         //     // descErr(nil, ctx)
         //     if (null == ctx) {
         //       throw new Error(nil.msg)

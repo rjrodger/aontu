@@ -1,6 +1,5 @@
 import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
-import { StringVal } from './StringVal';
 import { FeatureVal } from './FeatureVal';
 declare class RefVal extends FeatureVal {
     isRef: boolean;
@@ -12,8 +11,8 @@ declare class RefVal extends FeatureVal {
         prefix?: boolean;
     }, ctx?: AontuContext);
     append(part: any): void;
-    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
-    find(ctx: AontuContext): Val | StringVal | undefined;
+    unify(peer: Val, ctx: AontuContext): Val;
+    find(ctx: AontuContext): Val | undefined;
     same(peer: Val): boolean;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;

@@ -11,6 +11,8 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 import { NilVal } from '../val/NilVal'
 
 
@@ -48,7 +50,7 @@ class CopyFuncVal extends FuncBaseVal {
   resolve(ctx: AontuContext | undefined, args: Val[]) {
     const val = args?.[0]
     const out = null == val || null == ctx ?
-      NilVal.make(ctx, 'invalid-arg', this) :
+      makeNilErr(ctx, 'invalid-arg', this) :
       val.clone(ctx, { mark: { type: false, hide: false } })
 
     walk(out, (_key: string | number | undefined, val: Val) => {

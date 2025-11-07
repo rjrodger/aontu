@@ -1,6 +1,7 @@
 import * as Fs from 'node:fs';
 import { Resolver } from '@jsonic/multisource';
-import { AontuContext } from './ctx';
+import { Val, DONE, SPREAD } from './val/Val';
+import type { ValMark, ValSpec } from './val/Val';
 type FST = typeof Fs;
 type AontuOptions = {
     src?: string;
@@ -16,88 +17,13 @@ type AontuOptions = {
     idcount?: number;
     collect?: boolean;
     err?: any[];
+    explain?: any[];
 };
 declare const DEFAULT_OPTS: () => AontuOptions;
-interface Val {
-    isVal: boolean;
-    isTop: boolean;
-    isNil: boolean;
-    isMap: boolean;
-    isList: boolean;
-    isScalar: boolean;
-    isScalarKind: boolean;
-    isConjunct: boolean;
-    isDisjunct: boolean;
-    isJunction: boolean;
-    isPref: boolean;
-    isRef: boolean;
-    isVar: boolean;
-    isBag: boolean;
-    isNumber: boolean;
-    isInteger: boolean;
-    isString: boolean;
-    isBoolean: boolean;
-    isOp: boolean;
-    isPlusOp: boolean;
-    isFunc: boolean;
-    isCloseFunc: boolean;
-    isCopyFunc: boolean;
-    isHideFunc: boolean;
-    isMoveFunc: boolean;
-    isKeyFunc: boolean;
-    isLowerFunc: boolean;
-    isOpenFunc: boolean;
-    isPathFunc: boolean;
-    isPrefFunc: boolean;
-    isSuperFunc: boolean;
-    isTypeFunc: boolean;
-    isUpperFunc: boolean;
-    id: number;
-    dc: number;
-    path: string[];
-    row: number;
-    col: number;
-    url: string;
-    mark: ValMark;
-    peg: any;
-    err: any[];
-    explain: any[] | null;
-    deps?: any;
-    get done(): boolean;
-    same(peer: Val): boolean;
-    clone(ctx: AontuContext, spec?: ValSpec): Val;
-    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
-    get canon(): string;
-    gen(ctx: AontuContext): any;
-    superior(): Val;
-}
-type ValMark = {
-    type: boolean;
-    hide: boolean;
-    [name: `_${string}`]: boolean;
-};
-type ValSpec = {
-    peg?: any;
-    mark?: Partial<ValMark>;
-    kind?: any;
-    row?: number;
-    col?: number;
-    url?: string;
-    path?: string[];
-    id?: number;
-    src?: string;
-    why?: string;
-    msg?: string;
-    err?: any[] | any;
-    absolute?: boolean;
-    prefix?: boolean;
-};
 type ValMap = {
     [key: string]: Val;
 };
 type ValList = Val[];
-declare const DONE = -1;
-declare const SPREAD: unique symbol;
 type ErrContext = {
     src?: string;
     fs?: FST;

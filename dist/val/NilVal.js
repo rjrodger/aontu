@@ -3,8 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NilVal = void 0;
 const type_1 = require("../type");
-const BaseVal_1 = require("./BaseVal");
-class NilVal extends BaseVal_1.BaseVal {
+const Val_1 = require("./Val");
+class NilVal extends Val_1.Val {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
         this.isNil = true;
@@ -68,18 +68,18 @@ NilVal.make = (ctx, why, av, bv, attempt) => {
     // TODO: this should be done lazily, for multiple terms
     // Terms later in same file are considered the primary error location.
     if (null != av) {
-        nil.row = av.row;
-        nil.col = av.col;
-        nil.url = av.url;
+        nil.site.row = av.site.row;
+        nil.site.col = av.site.col;
+        nil.site.url = av.site.url;
         nil.primary = av;
         if (null != bv) {
             nil.secondary = bv;
-            let bv_loc_wins = (nil.url === bv.url) && ((nil.row < bv.row) ||
-                (nil.row === bv.row && nil.col < bv.col));
+            let bv_loc_wins = (nil.site.url === bv.site.url) && ((nil.site.row < bv.site.row) ||
+                (nil.site.row === bv.site.row && nil.site.col < bv.site.col));
             if (bv_loc_wins) {
-                nil.row = bv.row;
-                nil.col = bv.col;
-                nil.url = bv.url;
+                nil.site.row = bv.site.row;
+                nil.site.col = bv.site.col;
+                nil.site.url = bv.site.url;
                 nil.primary = bv;
                 nil.secondary = av;
             }

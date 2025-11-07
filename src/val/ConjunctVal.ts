@@ -12,6 +12,8 @@ import {
 } from '../type'
 
 import { AontuContext } from '../ctx'
+
+import { makeNilErr } from '../err'
 import { unite } from '../unify'
 
 import {
@@ -19,7 +21,6 @@ import {
 } from '../utility'
 
 
-import { NilVal } from './NilVal'
 import { JunctionVal } from './JunctionVal'
 
 import {
@@ -72,10 +73,10 @@ class ConjunctVal extends JunctionVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
 
-    const te = ctx.explain && explainOpen(ctx, trace, 'Conjunct', this, peer)
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Conjunct', this, peer)
 
     let done = true
 
@@ -99,7 +100,7 @@ class ConjunctVal extends JunctionVal {
       // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
 
       upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
-        unite(ctx, this.peg[vI], peer, 'cj-own', ec(te, 'OWN'))
+        unite(ctx.clone({ explain: ec(te, 'OWN') }), this.peg[vI], peer, 'cj-own')
       upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type
       upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide
 
@@ -154,7 +155,7 @@ class ConjunctVal extends JunctionVal {
 
 
       else {
-        val = unite(ctx, t0, t1, 'cj-peer-t0t1', ec(te, 'DEF'))
+        val = unite(ctx.clone({ explain: ec(te, 'DEF') }), t0, t1, 'cj-peer-t0t1')
         done = done && DONE === val.dc
         newtype = this.mark.type || val.mark.type
         newhide = this.mark.hide || val.mark.hide
@@ -220,7 +221,7 @@ class ConjunctVal extends JunctionVal {
 
   gen(ctx?: AontuContext) {
     // Unresolved conjunct cannot be generated, so always an error.
-    let nil = NilVal.make(
+    let nil = makeNilErr(
       ctx,
       'conjunct',
       this, // (formatPath(this.peg, this.absolute) as any),
@@ -229,9 +230,9 @@ class ConjunctVal extends JunctionVal {
 
     // TODO: refactor to use Site
     nil.path = this.path
-    nil.url = this.url
-    nil.row = this.row
-    nil.col = this.col
+    nil.site.url = this.site.url
+    nil.site.row = this.site.row
+    nil.site.col = this.site.col
 
     // descErr(nil, ctx)
 

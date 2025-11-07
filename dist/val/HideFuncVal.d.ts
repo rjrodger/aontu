@@ -7,7 +7,7 @@ declare class HideFuncVal extends FuncBaseVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
     make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
-    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
+    unify(peer: Val, ctx: AontuContext): Val;
     resolve(ctx: AontuContext, args: Val[]): Val;
 }
 export { HideFuncVal, };

@@ -10,6 +10,8 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 import {
   walk
 } from '../utility'
@@ -40,7 +42,7 @@ class PrefFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    let out = args[0] ?? NilVal.make(ctx, 'arg', this)
+    let out = args[0] ?? makeNilErr(ctx, 'arg', this)
 
     if (!out.isNil) {
       out = out.clone(ctx)

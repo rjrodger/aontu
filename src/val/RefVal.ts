@@ -19,6 +19,8 @@ import {
 } from '../type'
 
 import { AontuContext } from '../ctx'
+
+import { makeNilErr } from '../err'
 import { unite } from '../unify'
 
 
@@ -31,7 +33,6 @@ import { StringVal } from './StringVal'
 import { IntegerVal } from './IntegerVal'
 import { NumberVal } from './NumberVal'
 import { ConjunctVal } from './ConjunctVal'
-import { NilVal } from './NilVal'
 import { VarVal } from './VarVal'
 import { FeatureVal } from './FeatureVal'
 
@@ -129,10 +130,10 @@ class RefVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
 
-    const te = ctx.explain && explainOpen(ctx, trace, 'Ref', this, peer)
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Ref', this, peer)
     let out: Val = this
     // let why = 'id'
 
@@ -154,7 +155,7 @@ class RefVal extends FeatureVal {
           // why = 'pt'
         }
         else if (peer.isNil) {
-          out = NilVal.make(ctx, 'ref[' + this.peg + ']', this, peer)
+          out = makeNilErr(ctx, 'ref[' + this.peg + ']', this, peer)
           // why = 'pn'
         }
 
@@ -173,7 +174,7 @@ class RefVal extends FeatureVal {
         }
       }
       else {
-        out = unite(ctx, resolved, peer, 'ref', ec(te, 'RES'))
+        out = unite(ctx.clone({ explain: ec(te, 'RES') }), resolved, peer, 'ref')
         // why = 'u'
       }
 
@@ -189,7 +190,7 @@ class RefVal extends FeatureVal {
     let out: Val | undefined = undefined
 
     if (this.path.join('.').startsWith(this.peg.join('.'))) {
-      out = NilVal.make(ctx, 'path-cycle', this)
+      out = makeNilErr(ctx, 'path-cycle', this)
     }
     else {
 
@@ -351,7 +352,7 @@ class RefVal extends FeatureVal {
 
   gen(ctx?: AontuContext) {
     // Unresolved ref cannot be generated, so always an error.
-    let nil = NilVal.make(
+    let nil = makeNilErr(
       ctx,
       'ref',
       this, // (formatPath(this.peg, this.absolute) as any),
@@ -360,9 +361,9 @@ class RefVal extends FeatureVal {
 
     // TODO: refactor to use Site
     nil.path = this.path
-    nil.url = this.url
-    nil.row = this.row
-    nil.col = this.col
+    nil.site.url = this.site.url
+    nil.site.row = this.site.row
+    nil.site.col = this.site.col
 
     // descErr(nil, ctx)
 

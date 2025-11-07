@@ -10,6 +10,8 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 import { NilVal } from '../val/NilVal'
 
 import {
@@ -44,7 +46,7 @@ class MoveFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    let out = args[0] ?? NilVal.make(ctx, 'arg', this)
+    let out = args[0] ?? makeNilErr(ctx, 'arg', this)
 
     const orig = out
     const origcanon = orig.canon

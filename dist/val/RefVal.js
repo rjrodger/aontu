@@ -4,13 +4,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RefVal = void 0;
 const utility_1 = require("../utility");
 const type_1 = require("../type");
+const err_1 = require("../err");
 const unify_1 = require("../unify");
 const top_1 = require("./top");
 const StringVal_1 = require("./StringVal");
 const IntegerVal_1 = require("./IntegerVal");
 const NumberVal_1 = require("./NumberVal");
 const ConjunctVal_1 = require("./ConjunctVal");
-const NilVal_1 = require("./NilVal");
 const VarVal_1 = require("./VarVal");
 const FeatureVal_1 = require("./FeatureVal");
 class RefVal extends FeatureVal_1.FeatureVal {
@@ -78,9 +78,9 @@ class RefVal extends FeatureVal_1.FeatureVal {
             this.peg.push(...part.peg);
         }
     }
-    unify(peer, ctx, trace) {
+    unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Ref', this, peer);
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Ref', this, peer);
         let out = this;
         // let why = 'id'
         if (this.id !== peer.id) {
@@ -98,7 +98,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     // why = 'pt'
                 }
                 else if (peer.isNil) {
-                    out = NilVal_1.NilVal.make(ctx, 'ref[' + this.peg + ']', this, peer);
+                    out = (0, err_1.makeNilErr)(ctx, 'ref[' + this.peg + ']', this, peer);
                     // why = 'pn'
                 }
                 // same path
@@ -115,7 +115,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 }
             }
             else {
-                out = (0, unify_1.unite)(ctx, resolved, peer, 'ref', (0, utility_1.ec)(te, 'RES'));
+                out = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }), resolved, peer, 'ref');
                 // why = 'u'
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
@@ -126,7 +126,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
     find(ctx) {
         let out = undefined;
         if (this.path.join('.').startsWith(this.peg.join('.'))) {
-            out = NilVal_1.NilVal.make(ctx, 'path-cycle', this);
+            out = (0, err_1.makeNilErr)(ctx, 'path-cycle', this);
         }
         else {
             let parts = [];
@@ -256,13 +256,13 @@ class RefVal extends FeatureVal_1.FeatureVal {
     }
     gen(ctx) {
         // Unresolved ref cannot be generated, so always an error.
-        let nil = NilVal_1.NilVal.make(ctx, 'ref', this, // (formatPath(this.peg, this.absolute) as any),
+        let nil = (0, err_1.makeNilErr)(ctx, 'ref', this, // (formatPath(this.peg, this.absolute) as any),
         undefined);
         // TODO: refactor to use Site
         nil.path = this.path;
-        nil.url = this.url;
-        nil.row = this.row;
-        nil.col = this.col;
+        nil.site.url = this.site.url;
+        nil.site.row = this.site.row;
+        nil.site.col = this.site.col;
         // descErr(nil, ctx)
         if (null == ctx) {
             //   // ctx.err.push(nil)

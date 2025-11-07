@@ -358,7 +358,6 @@ describe('val-basic', function() {
     })
     const i11 = lang.parse('(11)')
     expect(i11 as any).include({
-      col: 1,
       dc: -1,
       err: [],
       isInteger: true,
@@ -367,9 +366,12 @@ describe('val-basic', function() {
       isTop: false,
       path: [],
       peg: 11,
-      row: 1,
       kind: Integer,
       uh: [],
+    })
+    expect((i11 as any).site).include({
+      col: 1,
+      row: 1,
       url: undefined,
     })
   })
@@ -863,9 +865,13 @@ b: c2: {n:2}
     let pu0 = p0.unify(TOP, ctx)
     expect(pu0).include({
       dc: -1,
+    })
+    expect(pu0.site).include({
       row: -1,
       col: -1,
       url: '',
+    })
+    expect(pu0).include({
 
       // FIX: use jest toMatchObject
       // peg: {

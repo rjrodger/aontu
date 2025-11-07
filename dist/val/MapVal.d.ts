@@ -7,7 +7,7 @@ declare class MapVal extends BagVal {
         cj: Val | undefined;
     };
     constructor(spec: ValSpec, ctx?: AontuContext);
-    unify(peer: Val, ctx: AontuContext, explain?: any[] | false): Val;
+    unify(peer: Val, ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
     inspection(inspect: Function): string;

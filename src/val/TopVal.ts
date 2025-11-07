@@ -3,7 +3,6 @@
 import { inspect } from 'node:util'
 
 import type {
-  Val,
   ValSpec,
 } from '../type'
 
@@ -16,12 +15,12 @@ import {
 } from '../ctx'
 
 import {
-  BaseVal
-} from './BaseVal'
+  Val
+} from './Val'
 
 
 // There can be only one.
-class TopVal extends BaseVal {
+class TopVal extends Val {
   isTop = true
 
   id = 0

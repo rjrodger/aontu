@@ -9,13 +9,29 @@ import { AontuContext } from './ctx'
 
 import { NilVal } from './val/NilVal'
 
+import { hints } from './hints'
+
 
 const { errmsg } = util
 
 
-function makeNilErr(ac: AontuContext, code: string, details?: Record<string, any>): NilVal {
-  const nilval = NilVal.make(ac, code)
-  console.log('MAKE-NILVAL', nilval, nilval.err)
+function getHint(why: any): string | undefined {
+  if (hints[why]) {
+    return hints[why]
+  }
+
+  return undefined
+}
+
+
+function makeNilErr(
+  ctx?: AontuContext,
+  why?: any,
+  av?: Val,
+  bv?: Val,
+  attempt?: string
+): NilVal {
+  const nilval = NilVal.make(ctx, why, av, bv, attempt)
   return nilval
 }
 
@@ -47,9 +63,12 @@ function descErr<NILS extends NilVal | NilVal[]>(
             msg: 'Cannot ' +
               attempt +
               ' value' + (null == v2 ? '' : 's') +
-              ' at path ' + valpath
+              ' at path ' + valpath,
+            hint: getHint(err.why)
           }
         }),
+
+        '\n',
 
         (null != v1 && errmsg({
           // TODO: color should come from jsonic config
@@ -60,10 +79,10 @@ function descErr<NILS extends NilVal | NilVal[]>(
             site: ''
           },
           smsg: 'value was: ' + v1.canon,
-          file: resolveFile(v1.url),
+          file: resolveFile(v1.site.url),
           src: v1src,
-          row: v1.row,
-          col: v1.col,
+          row: v1.site.row,
+          col: v1.site.col,
         })),
 
         (null != v2 && errmsg({
@@ -75,14 +94,19 @@ function descErr<NILS extends NilVal | NilVal[]>(
             site: ''
           },
           smsg: 'value was: ' + v2.canon,
-          file: resolveFile(v2.url),
+          file: resolveFile(v2.site.url),
           src: v2src,
-          row: v2.row,
-          col: v2.col,
+          row: v2.site.row,
+          col: v2.site.col,
         })),
 
 
-      ].filter(n => null != n && false !== n).join('\n')
+      ]
+        .filter((n: any) => null != n && false !== n)
+        .join('\n')
+
+        // TODO: update jsonic errmsg to avoid multiple empty lines
+        .replace(/\n\n/g, '\n')
 
     }
     return err
@@ -103,10 +127,15 @@ function resolveFile(url: string | undefined) {
 function resolveSrc(v: Val, errctx?: ErrContext) {
   let src: string | undefined = undefined
 
-  if (null != v?.url) {
-    const fileExists = errctx?.fs?.existsSync(v.url)
-    if (fileExists) {
-      src = errctx?.fs?.readFileSync(v.url, 'utf8') ?? undefined
+  if (null != v?.site.url) {
+    try {
+      const fileExists = errctx?.fs?.existsSync(v.site.url)
+      if (fileExists) {
+        src = errctx?.fs?.readFileSync(v.site.url, 'utf8') ?? undefined
+      }
+    }
+    catch (fe: any) {
+      // ignore as more important to report original error
     }
   }
 
@@ -129,6 +158,7 @@ class AontuError extends Error {
 
 
 export {
+  getHint,
   makeNilErr,
   descErr,
   AontuError,

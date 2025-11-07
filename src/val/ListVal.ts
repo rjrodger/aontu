@@ -22,6 +22,8 @@ import {
   explainClose,
 } from '../utility'
 
+import { makeNilErr } from '../err'
+
 
 import {
   top
@@ -74,10 +76,10 @@ class ListVal extends BagVal {
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val, ctx: AontuContext, explain?: any[] | false): Val {
+  unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
 
-    const te = ctx.explain && explainOpen(ctx, explain, 'List', this, peer)
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'List', this, peer)
     let done: boolean = true
     let exit = false
 
@@ -91,7 +93,7 @@ class ListVal extends BagVal {
 
     if (peer instanceof ListVal) {
       if (!this.closed && peer.closed) {
-        out = peer.unify(this, ctx, explain && ec(te, 'PMC')) as ListVal
+        out = peer.unify(this, ctx.clone({ explain: ec(te, 'PMC') })) as ListVal
         exit = true
       }
       else {
@@ -99,7 +101,7 @@ class ListVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx, out.spread.cj, peer.spread.cj, 'list-peer', ec(te, 'SPR'))
+            unite(ctx.clone({ explain: ec(te, 'SPR') }), out.spread.cj, peer.spread.cj, 'list-peer')
           )
         )
       }
@@ -122,7 +124,7 @@ class ListVal extends BagVal {
         let keyctx = ctx.descend(key)
         let key_spread_cj = spread_cj.clone(keyctx)
 
-        out.peg[key] = unite(keyctx, this.peg[key], key_spread_cj, 'list-own', ec(te, 'PEG:' + key))
+        out.peg[key] = unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }), this.peg[key], key_spread_cj, 'list-own')
         done = (done && DONE === out.peg[key].dc)
       }
 
@@ -130,14 +132,14 @@ class ListVal extends BagVal {
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof ListVal) {
-        let upeer: ListVal = (unite(ctx, peer, top(), 'list-peer-list', ec(te, 'PER')) as ListVal)
+        let upeer: ListVal = (unite(ctx.clone({ explain: ec(te, 'PER') }), peer, top(), 'list-peer-list') as ListVal)
 
         // NOTE: peerkey is the index
         for (let peerkey in upeer.peg) {
           let peerchild = upeer.peg[peerkey]
 
           if (this.closed && !allowedKeys.includes(peerkey)) {
-            bad = NilVal.make(ctx, 'closed', peerchild, undefined)
+            bad = makeNilErr(ctx, 'closed', peerchild, undefined)
           }
 
           let child = out.peg[peerkey]
@@ -146,7 +148,7 @@ class ListVal extends BagVal {
             undefined === child ? peerchild :
               child.isNil ? child :
                 peerchild.isNil ? peerchild :
-                  unite(ctx.descend(peerkey), child, peerchild, 'list-peer', ec(te, 'CHD'))
+                  unite(ctx.descend(peerkey).clone({ explain: ec(te, 'CHD') }), child, peerchild, 'list-peer')
 
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
@@ -156,7 +158,7 @@ class ListVal extends BagVal {
             oval = out.peg[peerkey] =
               // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
               // done = false
-              unite(key_ctx, out.peg[peerkey], key_spread_cj, 'list-spread', ec(te, 'PSP:' + peerkey))
+              unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }), out.peg[peerkey], key_spread_cj, 'list-spread')
           }
 
           done = (done && DONE === oval.dc)
@@ -164,7 +166,7 @@ class ListVal extends BagVal {
         }
       }
       else if (!peer.isTop) {
-        out = NilVal.make(ctx, 'list', this, peer)
+        out = makeNilErr(ctx, 'list', this, peer)
       }
 
       if (null != bad) {
@@ -231,7 +233,7 @@ class ListVal extends BagVal {
       let val = this.peg[i].gen(ctx)
       if (undefined === val) {
         if (!this.optionalKeys.includes('' + i)) {
-          return NilVal.make(ctx, 'required_listelem', this.peg[i], undefined)
+          return makeNilErr(ctx, 'required_listelem', this.peg[i], undefined)
         }
       }
       else {

@@ -22,6 +22,8 @@ import {
   explainClose,
 } from '../utility'
 
+import { makeNilErr } from '../err'
+
 import {
   top
 } from './top'
@@ -73,16 +75,12 @@ class MapVal extends BagVal {
 
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
-  unify(peer: Val, ctx: AontuContext, explain?: any[] | false): Val {
+  unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
-    const te = ctx.explain && explainOpen(ctx, explain, 'Map', this, peer)
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Map', this, peer)
 
     let done: boolean = true
     let exit = false
-
-    // to(trace, 'V=map', sc, pc]
-    // const te = ['V=map', sc, pc, null, '', []]
-    // trace?.push(te)
 
     // NOTE: not a clone! needs to be constructed.
     let out: MapVal | NilVal = (peer.isTop ? this : new MapVal({ peg: {} }, ctx))
@@ -94,7 +92,7 @@ class MapVal extends BagVal {
 
     if (peer instanceof MapVal) {
       if (!this.closed && peer.closed) {
-        out = peer.unify(this, ctx, explain && ec(te, 'PMC')) as MapVal
+        out = peer.unify(this, ctx.clone({ explain: ec(te, 'PMC') })) as MapVal
         exit = true
       }
 
@@ -109,7 +107,7 @@ class MapVal extends BagVal {
             && peerkeys.join('~') < selfkeys.join('~')
           )
         ) {
-          out = peer.unify(this, ctx, ec(te, 'SPC')) as MapVal
+          out = peer.unify(this, ctx.clone({ explain: ec(te, 'SPC') })) as MapVal
           exit = true
         }
 
@@ -119,7 +117,7 @@ class MapVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx, out.spread.cj, peer.spread.cj, 'map-self', ec(te, 'SPR'))
+            unite(ctx.clone({ explain: ec(te, 'SPR') }), out.spread.cj, peer.spread.cj, 'map-self')
           )
         )
       }
@@ -146,7 +144,7 @@ class MapVal extends BagVal {
 
         out.peg[key] =
           // unite(keyctx, this.peg[key], key_spread_cj, 'map-own', tr(te, 'PEG'))
-          unite(keyctx, this.peg[key], key_spread_cj, 'map-own', ec(te, 'PEG:' + key))
+          unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }), this.peg[key], key_spread_cj, 'map-own')
 
         // out.peg[key].mark.type = newtype = out.peg[key].mark.type || newtype
 
@@ -160,13 +158,13 @@ class MapVal extends BagVal {
       if (peer instanceof MapVal) {
         // QQQ
         // let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map', tr(te, 'PER')) as MapVal)
-        let upeer: MapVal = (unite(ctx, peer, top(), 'map-peer-map', ec(te, 'PER')) as MapVal)
+        let upeer: MapVal = (unite(ctx.clone({ explain: ec(te, 'PER') }), peer, top(), 'map-peer-map') as MapVal)
 
         for (let peerkey in upeer.peg) {
           let peerchild = upeer.peg[peerkey]
 
           if (this.closed && !allowedKeys.includes(peerkey)) {
-            bad = NilVal.make(ctx, 'closed', peerchild, undefined)
+            bad = makeNilErr(ctx, 'closed', peerchild, undefined)
           }
 
           // key optionality is additive
@@ -180,14 +178,14 @@ class MapVal extends BagVal {
             undefined === child ? peerchild :
               child.isNil ? child :
                 peerchild.isNil ? peerchild :
-                  unite(ctx.descend(peerkey), child, peerchild, 'map-peer', ec(te, 'CHD'))
+                  unite(ctx.descend(peerkey).clone({ explain: ec(te, 'CHD') }), child, peerchild, 'map-peer')
 
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
             let key_spread_cj = spread_cj.clone(key_ctx)
             oval = out.peg[peerkey] =
               // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
-              unite(key_ctx, oval, key_spread_cj, 'map-peer-spread', ec(te, 'PSP:' + peerkey))
+              unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }), oval, key_spread_cj, 'map-peer-spread')
           }
 
           propagateMarks(this, oval)
@@ -197,7 +195,7 @@ class MapVal extends BagVal {
         }
       }
       else if (!peer.isTop) {
-        out = NilVal.make(ctx, 'map', this, peer)
+        out = makeNilErr(ctx, 'map', this, peer)
       }
 
       if (null != bad) {
@@ -280,7 +278,7 @@ class MapVal extends BagVal {
       let val = this.peg[p].gen(ctx)
       if (undefined === val) {
         if (!this.optionalKeys.includes(p)) {
-          return NilVal.make(ctx, 'required_mapkey', this.peg[p], undefined)
+          return makeNilErr(ctx, 'required_mapkey', this.peg[p], undefined)
         }
       }
       else {

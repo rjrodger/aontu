@@ -2,7 +2,6 @@
 
 
 import type {
-  Val,
   ValSpec,
 } from '../type'
 
@@ -11,11 +10,11 @@ import {
 } from '../ctx'
 
 
-import { BaseVal } from './BaseVal'
+import { Val } from './Val'
 
 import { top } from './top'
 
-abstract class FeatureVal extends BaseVal {
+abstract class FeatureVal extends Val {
   isFeature = true
 
   constructor(

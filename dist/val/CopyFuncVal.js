@@ -2,7 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CopyFuncVal = void 0;
-const NilVal_1 = require("../val/NilVal");
+const err_1 = require("../err");
 const utility_1 = require("../utility");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
@@ -21,7 +21,7 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     resolve(ctx, args) {
         const val = args?.[0];
         const out = null == val || null == ctx ?
-            NilVal_1.NilVal.make(ctx, 'invalid-arg', this) :
+            (0, err_1.makeNilErr)(ctx, 'invalid-arg', this) :
             val.clone(ctx, { mark: { type: false, hide: false } });
         (0, utility_1.walk)(out, (_key, val) => {
             val.mark.type = false;

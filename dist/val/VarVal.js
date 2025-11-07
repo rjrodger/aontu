@@ -5,7 +5,6 @@ exports.VarVal = void 0;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const StringVal_1 = require("./StringVal");
-const NilVal_1 = require("./NilVal");
 const FeatureVal_1 = require("./FeatureVal");
 const NullVal_1 = require("./NullVal");
 const BooleanVal_1 = require("./BooleanVal");
@@ -18,8 +17,8 @@ class VarVal extends FeatureVal_1.FeatureVal {
         super(spec, ctx);
         this.isVar = true;
     }
-    unify(peer, ctx, explain) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Var', this, peer);
+    unify(peer, ctx) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Var', this, peer);
         let out;
         let nameVal;
         if (this.peg.isVal) {
@@ -30,7 +29,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
                 nameVal = this.peg;
             }
             else {
-                nameVal = this.peg.unify(peer, ctx, (0, utility_1.ec)(te, 'PEG'));
+                nameVal = this.peg.unify(peer, ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }));
             }
         }
         else {
@@ -42,7 +41,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
             if (nameVal instanceof StringVal_1.StringVal) {
                 let found = ctx.vars[nameVal.peg];
                 if (undefined === found) {
-                    out = NilVal_1.NilVal.make(ctx, 'unknown_var', this, peer);
+                    out = (0, err_1.makeNilErr)(ctx, 'unknown_var', this, peer);
                 }
                 // TODO: support complex values
                 const ft = typeof found;
@@ -64,11 +63,11 @@ class VarVal extends FeatureVal_1.FeatureVal {
                     out = found;
                 }
                 else {
-                    out = NilVal_1.NilVal.make(ctx, 'invalid_var_kind', this, peer);
+                    out = (0, err_1.makeNilErr)(ctx, 'invalid_var_kind', this, peer);
                 }
             }
             else {
-                out = NilVal_1.NilVal.make(ctx, 'var[' + typeof nameVal + ']', this, peer);
+                out = (0, err_1.makeNilErr)(ctx, 'var[' + typeof nameVal + ']', this, peer);
             }
         }
         else {
@@ -89,12 +88,12 @@ class VarVal extends FeatureVal_1.FeatureVal {
     }
     gen(ctx) {
         // Unresolved var cannot be generated, so always an error.
-        let nil = NilVal_1.NilVal.make(ctx, 'var', this, undefined);
+        let nil = (0, err_1.makeNilErr)(ctx, 'var', this, undefined);
         // TODO: refactor to use Site
         nil.path = this.path;
-        nil.url = this.url;
-        nil.row = this.row;
-        nil.col = this.col;
+        nil.site.url = this.site.url;
+        nil.site.row = this.site.row;
+        nil.site.col = this.site.col;
         (0, err_1.descErr)(nil, ctx);
         if (ctx) {
             // ctx.err.push(nil)

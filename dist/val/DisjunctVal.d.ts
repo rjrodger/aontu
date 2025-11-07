@@ -10,7 +10,7 @@ declare class DisjunctVal extends JunctionVal {
         peg: Val[];
     }, ctx?: AontuContext, _sites?: Site[]);
     append(peer: Val): DisjunctVal;
-    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
+    unify(peer: Val, ctx: AontuContext): Val;
     rankPrefs(ctx: AontuContext): PrefVal | undefined;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     getJunctionSymbol(): string;

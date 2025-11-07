@@ -2,8 +2,8 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CloseFuncVal = void 0;
+const err_1 = require("../err");
 const FuncBaseVal_1 = require("./FuncBaseVal");
-const NilVal_1 = require("../val/NilVal");
 class CloseFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -19,7 +19,7 @@ class CloseFuncVal extends FuncBaseVal_1.FuncBaseVal {
     resolve(ctx, args) {
         const argval = args[0];
         if (null == argval) {
-            return NilVal_1.NilVal.make(ctx, 'no_first_arg', this, undefined, 'close');
+            return (0, err_1.makeNilErr)(ctx, 'no_first_arg', this, undefined, 'close');
         }
         if (argval.isMap || argval.isList) {
             argval.closed = true;

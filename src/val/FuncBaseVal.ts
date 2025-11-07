@@ -21,6 +21,7 @@ import {
   explainOpen,
 } from '../utility'
 
+import { makeNilErr } from '../err'
 
 import {
   top
@@ -53,12 +54,12 @@ class FuncBaseVal extends FeatureVal {
 
 
   make(ctx: AontuContext, _spec: ValSpec): Val {
-    return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make')
+    return makeNilErr(ctx, 'func:' + this.funcname(), this, undefined, 'make')
   }
 
 
-  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, explain, 'Func:' + this.funcname(), this, peer)
+  unify(peer: Val, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer)
 
     // const sc = this.id + '=' + this.canon
     // const pc = peer.id + '=' + peer.canon
@@ -89,7 +90,7 @@ class FuncBaseVal extends FeatureVal {
 
           let newarg = arg
           if (!arg.done) {
-            newarg = arg.unify(top(), ctx, ec(te, 'ARG'))
+            newarg = arg.unify(top(), ctx.clone({ explain: ec(te, 'ARG') }))
             newtype = newtype || newarg.mark.type
             newhide = newhide || newarg.mark.hide
             // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)
@@ -105,7 +106,7 @@ class FuncBaseVal extends FeatureVal {
           // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
 
           out = resolved.done && peer.isTop ? resolved :
-            unite(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id, ec(te, 'PEG'))
+            unite(ctx.clone({ explain: ec(te, 'PEG') }), resolved, peer, 'func-' + this.funcname() + '/' + this.id)
           propagateMarks(this, out)
 
           // const unified =
@@ -115,9 +116,9 @@ class FuncBaseVal extends FeatureVal {
           // propagateMarks(this, out)
 
           // TODO: make should handle this using ctx?
-          out.row = this.row
-          out.col = this.col
-          out.url = this.url
+          out.site.row = this.site.row
+          out.site.col = this.site.col
+          out.site.url = this.site.url
           out.path = this.path
 
           why += 'pegdone'
@@ -127,9 +128,9 @@ class FuncBaseVal extends FeatureVal {
           out = this.make(ctx, { peg: newpeg, mark: { type: newtype, hide: newhide } })
 
           // TODO: make should handle this using ctx?
-          out.row = this.row
-          out.col = this.col
-          out.url = this.url
+          out.site.row = this.site.row
+          out.site.col = this.site.col
+          out.site.url = this.site.url
           out.path = this.path
 
           why += 'top'
@@ -146,9 +147,9 @@ class FuncBaseVal extends FeatureVal {
           }, ctx)
 
           // TODO: make should handle this using ctx?
-          out.row = this.row
-          out.col = this.col
-          out.url = this.url
+          out.site.row = this.site.row
+          out.site.col = this.site.col
+          out.site.url = this.site.url
           out.path = this.path
 
           why += 'defer'
@@ -185,7 +186,7 @@ class FuncBaseVal extends FeatureVal {
 
 
   resolve(ctx: AontuContext | undefined, _args: Val[]): Val {
-    return NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve')
+    return makeNilErr(ctx, 'func:' + this.funcname(), this, undefined, 'resolve')
   }
 
 

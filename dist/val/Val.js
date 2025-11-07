@@ -1,5 +1,5 @@
 "use strict";
-/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
+/* Copyright (c) 2022-2025 Richard Rodger, MIT License */
 var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
     if (kind === "m") throw new TypeError("Private method is not writable");
     if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
@@ -11,20 +11,17 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _BaseVal_ctx;
+var _Val_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.BaseVal = void 0;
+exports.SPREAD = exports.DONE = exports.Val = void 0;
 const node_util_1 = require("node:util");
-const type_1 = require("../type");
 const site_1 = require("../site");
-/*
-import {
-  top
-} from './top'
-*/
-// function top() { return null as unknown as Val }
+const DONE = -1;
+exports.DONE = DONE;
+const SPREAD = Symbol('spread');
+exports.SPREAD = SPREAD;
 let ID = 1000;
-class BaseVal {
+class Val {
     // TODO: Site needed in ctor
     constructor(spec, ctx) {
         this.isVal = true;
@@ -62,9 +59,7 @@ class BaseVal {
         this.isUpperFunc = false;
         this.dc = 0;
         this.path = [];
-        this.row = -1;
-        this.col = -1;
-        this.url = '';
+        this.site = new site_1.Site();
         // Map of boolean flags.
         this.mark = { type: false, hide: false };
         // Actual native value.
@@ -73,15 +68,13 @@ class BaseVal {
         // err: Omit<any[], "push"> = []
         this.err = [];
         this.explain = null;
-        // TODO: implement!
-        // site: Site
-        _BaseVal_ctx.set(this, void 0);
-        __classPrivateFieldSet(this, _BaseVal_ctx, ctx, "f");
+        _Val_ctx.set(this, void 0);
+        __classPrivateFieldSet(this, _Val_ctx, ctx, "f");
         this.peg = spec?.peg;
         if (Array.isArray(this.peg)) {
-            let spread = this.peg[type_1.SPREAD];
+            let spread = this.peg[SPREAD];
             this.peg = this.peg.filter(n => undefined !== n);
-            this.peg[type_1.SPREAD] = spread;
+            this.peg[SPREAD] = spread;
         }
         this.path = ctx?.path || [];
         // TODO: make this work
@@ -93,10 +86,10 @@ class BaseVal {
         // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
     }
     ctx() {
-        return __classPrivateFieldGet(this, _BaseVal_ctx, "f");
+        return __classPrivateFieldGet(this, _Val_ctx, "f");
     }
     get done() {
-        return this.dc === type_1.DONE;
+        return this.dc === DONE;
     }
     same(peer) {
         return null == peer ? false : this.id === peer.id;
@@ -115,26 +108,21 @@ class BaseVal {
         };
         let out = new this
             .constructor(fullspec, cloneCtx);
-        out.row = spec?.row || this.row || -1;
-        out.col = spec?.col || this.col || -1;
-        out.url = spec?.url || this.url || '';
+        out.site.row = spec?.row ?? this.site.row ?? -1;
+        out.site.col = spec?.col ?? this.site.col ?? -1;
+        out.site.url = spec?.url ?? this.site.url ?? '';
         // TODO: should not be needed - update all VAL ctors to handle spec.mark
         out.mark.type = this.mark.type && (fullspec.mark?.type ?? true);
         out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true);
         return out;
     }
-    // TODO: should use Site
     place(v) {
-        v.row = this.row;
-        v.col = this.col;
-        v.url = this.url;
+        v.site.row = this.site.row;
+        v.site.col = this.site.col;
+        v.site.url = this.site.url;
         return v;
     }
-    // TODO: make Site work
-    get site() {
-        return new site_1.Site(this);
-    }
-    // NOTE: MUST not mutate! Val immutability is a critical assumption. 
+    // NOTE: MUST not mutate! Val immutability is a critical assumption.
     unify(_peer, _ctx) { return this; }
     // TODO: indicate marks in some way that is ignored by reparse.
     // Need an annotation/taggins syntax? a:{}/type ?
@@ -146,18 +134,18 @@ class BaseVal {
         return undefined;
     }
     notdone() {
-        this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
+        this.dc = DONE === this.dc ? DONE : this.dc + 1;
     }
     /*
     superior(): Val {
       return top()
     }
     */
-    [(_BaseVal_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
+    [(_Val_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
         s.push('/' + this.path.join('.') + '/');
         s.push([
-            type_1.DONE === this.dc ? 'D' : 'd' + this.dc,
+            DONE === this.dc ? 'D' : 'd' + this.dc,
             ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
         ].filter(n => null != n).join(','));
         let insp = this.inspection(node_util_1.inspect);
@@ -182,7 +170,7 @@ class BaseVal {
         return '';
     }
 }
-exports.BaseVal = BaseVal;
+exports.Val = Val;
 function inspectpeg(peg) {
     return pretty(!Array.isArray(peg) ? (0, node_util_1.inspect)(peg) :
         ('[' + peg.map(n => (0, node_util_1.inspect)(n)).join(',\n') + ']'));
@@ -192,4 +180,4 @@ function pretty(s) {
         .replace(/\[Object: null prototype\]/g, '')
         .replace(/\s+/g, ''));
 }
-//# sourceMappingURL=BaseVal.js.map
+//# sourceMappingURL=Val.js.map

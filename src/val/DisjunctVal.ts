@@ -12,6 +12,8 @@ import {
 } from '../type'
 
 import { AontuContext } from '../ctx'
+
+import { makeNilErr } from '../err'
 import { unite } from '../unify'
 
 import {
@@ -60,10 +62,10 @@ class DisjunctVal extends JunctionVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
 
-    const te = ctx.explain && explainOpen(ctx, trace, 'Disjunct', this, peer)
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Disjunct', this, peer)
 
     if (!this.prefsRanked) {
       this.rankPrefs(ctx)
@@ -81,11 +83,11 @@ class DisjunctVal extends JunctionVal {
       const cloneCtx = ctx?.clone({ err: [] })
 
       // // // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
-      oval[vI] = unite(cloneCtx, v, peer, 'dj-peer', ec(te, 'DIST:' + vI))
+      oval[vI] = unite(cloneCtx.clone({ explain: ec(te, 'DIST:' + vI) }), v, peer, 'dj-peer')
       // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
 
       if (0 < cloneCtx?.err.length) {
-        oval[vI] = NilVal.make(cloneCtx, '|:empty-dist', this)
+        oval[vI] = makeNilErr(cloneCtx, '|:empty-dist', this)
       }
 
       done = done && DONE === oval[vI].dc
@@ -124,7 +126,7 @@ class DisjunctVal extends JunctionVal {
       out = oval[0]
     }
     else if (0 == oval.length) {
-      return NilVal.make(ctx, '|:empty', this, peer)
+      return makeNilErr(ctx, '|:empty', this, peer)
     }
     else {
       out = new DisjunctVal({ peg: oval }, ctx)
@@ -262,9 +264,9 @@ class DisjunctVal extends JunctionVal {
 
     //     // TODO: refactor to use Site
     //     nil.path = this.path
-    //     nil.url = this.url
-    //     nil.row = this.row
-    //     nil.col = this.col
+    //     nil.site.url = this.url
+    //     nil.site.row = this.row
+    //     nil.site.col = this.col
 
     //     // descErr(nil, ctx)
 

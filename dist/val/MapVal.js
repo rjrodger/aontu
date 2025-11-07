@@ -5,9 +5,9 @@ exports.MapVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
+const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
-const NilVal_1 = require("./NilVal");
 const BagVal_1 = require("./BagVal");
 class MapVal extends BagVal_1.BagVal {
     constructor(spec, ctx) {
@@ -38,14 +38,11 @@ class MapVal extends BagVal_1.BagVal {
     }
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
-    unify(peer, ctx, explain) {
+    unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Map', this, peer);
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Map', this, peer);
         let done = true;
         let exit = false;
-        // to(trace, 'V=map', sc, pc]
-        // const te = ['V=map', sc, pc, null, '', []]
-        // trace?.push(te)
         // NOTE: not a clone! needs to be constructed.
         let out = (peer.isTop ? this : new MapVal({ peg: {} }, ctx));
         out.closed = this.closed;
@@ -53,7 +50,7 @@ class MapVal extends BagVal_1.BagVal {
         out.spread.cj = this.spread.cj;
         if (peer instanceof MapVal) {
             if (!this.closed && peer.closed) {
-                out = peer.unify(this, ctx, explain && (0, utility_1.ec)(te, 'PMC'));
+                out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'PMC') }));
                 exit = true;
             }
             // ensure determinism of unification
@@ -63,13 +60,13 @@ class MapVal extends BagVal_1.BagVal {
                 if (peerkeys.length < selfkeys.length
                     || (peerkeys.length === selfkeys.length
                         && peerkeys.join('~') < selfkeys.join('~'))) {
-                    out = peer.unify(this, ctx, (0, utility_1.ec)(te, 'SPC'));
+                    out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'SPC') }));
                     exit = true;
                 }
             }
             if (!exit) {
                 out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                    (0, unify_1.unite)(ctx, out.spread.cj, peer.spread.cj, 'map-self', (0, utility_1.ec)(te, 'SPR'))));
+                    (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'SPR') }), out.spread.cj, peer.spread.cj, 'map-self')));
             }
         }
         if (!exit) {
@@ -86,7 +83,7 @@ class MapVal extends BagVal_1.BagVal {
                 // console.log('MAPVAL-peg', key, te)
                 out.peg[key] =
                     // unite(keyctx, this.peg[key], key_spread_cj, 'map-own', tr(te, 'PEG'))
-                    (0, unify_1.unite)(keyctx, this.peg[key], key_spread_cj, 'map-own', (0, utility_1.ec)(te, 'PEG:' + key));
+                    (0, unify_1.unite)(keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }), this.peg[key], key_spread_cj, 'map-own');
                 // out.peg[key].mark.type = newtype = out.peg[key].mark.type || newtype
                 done = (done && type_1.DONE === out.peg[key].dc);
                 // console.log('MAPVAL-OWN', this.id, this.mark.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
@@ -96,11 +93,11 @@ class MapVal extends BagVal_1.BagVal {
             if (peer instanceof MapVal) {
                 // QQQ
                 // let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map', tr(te, 'PER')) as MapVal)
-                let upeer = (0, unify_1.unite)(ctx, peer, (0, top_1.top)(), 'map-peer-map', (0, utility_1.ec)(te, 'PER'));
+                let upeer = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }), peer, (0, top_1.top)(), 'map-peer-map');
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
                     if (this.closed && !allowedKeys.includes(peerkey)) {
-                        bad = NilVal_1.NilVal.make(ctx, 'closed', peerchild, undefined);
+                        bad = (0, err_1.makeNilErr)(ctx, 'closed', peerchild, undefined);
                     }
                     // key optionality is additive
                     if (upeer.optionalKeys.includes(peerkey) && !out.optionalKeys.includes(peerkey)) {
@@ -111,13 +108,13 @@ class MapVal extends BagVal_1.BagVal {
                         undefined === child ? peerchild :
                             child.isNil ? child :
                                 peerchild.isNil ? peerchild :
-                                    (0, unify_1.unite)(ctx.descend(peerkey), child, peerchild, 'map-peer', (0, utility_1.ec)(te, 'CHD'));
+                                    (0, unify_1.unite)(ctx.descend(peerkey).clone({ explain: (0, utility_1.ec)(te, 'CHD') }), child, peerchild, 'map-peer');
                     if (this.spread.cj) {
                         let key_ctx = ctx.descend(peerkey);
                         let key_spread_cj = spread_cj.clone(key_ctx);
                         oval = out.peg[peerkey] =
                             // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
-                            (0, unify_1.unite)(key_ctx, oval, key_spread_cj, 'map-peer-spread', (0, utility_1.ec)(te, 'PSP:' + peerkey));
+                            (0, unify_1.unite)(key_ctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }), oval, key_spread_cj, 'map-peer-spread');
                     }
                     (0, utility_1.propagateMarks)(this, oval);
                     // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
@@ -125,7 +122,7 @@ class MapVal extends BagVal_1.BagVal {
                 }
             }
             else if (!peer.isTop) {
-                out = NilVal_1.NilVal.make(ctx, 'map', this, peer);
+                out = (0, err_1.makeNilErr)(ctx, 'map', this, peer);
             }
             if (null != bad) {
                 out = bad;
@@ -190,7 +187,7 @@ class MapVal extends BagVal_1.BagVal {
             let val = this.peg[p].gen(ctx);
             if (undefined === val) {
                 if (!this.optionalKeys.includes(p)) {
-                    return NilVal_1.NilVal.make(ctx, 'required_mapkey', this.peg[p], undefined);
+                    return (0, err_1.makeNilErr)(ctx, 'required_mapkey', this.peg[p], undefined);
                 }
             }
             else {

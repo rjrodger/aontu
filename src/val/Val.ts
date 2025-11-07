@@ -1,46 +1,53 @@
-/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
-
+/* Copyright (c) 2022-2025 Richard Rodger, MIT License */
 
 import { inspect } from 'node:util'
 
-import type {
-  Val,
-  ValMark,
-  ValSpec,
-} from '../type'
-
-
-import {
-  DONE,
-  SPREAD,
-} from '../type'
-
-
-import {
-  AontuContext,
-} from '../ctx'
+import type { AontuContext } from '../ctx'
 
 import {
   Site
 } from '../site'
 
 
-/*
-import {
-  top
-} from './top'
-*/
+type ValMark = {
+  type: boolean,
+  hide: boolean,
+
+  // Custom marks must have _ prefix.
+  [name: `_${string}`]: boolean,
+}
+
+type ValSpec = {
+  peg?: any,
+  mark?: Partial<ValMark>,
+  kind?: any,
+  row?: number,
+  col?: number,
+  url?: string,
+  path?: string[],
+  id?: number,
+  src?: string,
+
+  // NilVal specific
+  why?: string,
+  msg?: string,
+  err?: any[] | any,
+
+  // RefVal specific
+  absolute?: boolean,
+  prefix?: boolean,
+}
 
 
+const DONE = -1
 
-// function top() { return null as unknown as Val }
+const SPREAD = Symbol('spread')
 
 
 let ID = 1000
 
 
-
-abstract class BaseVal implements Val {
+abstract class Val {
   isVal = true
 
   isTop = false
@@ -81,9 +88,7 @@ abstract class BaseVal implements Val {
   id: number
   dc: number = 0
   path: string[] = []
-  row: number = -1
-  col: number = -1
-  url: string = ''
+  site: Site = new Site()
 
   // Map of boolean flags.
   mark: ValMark = { type: false, hide: false }
@@ -98,8 +103,7 @@ abstract class BaseVal implements Val {
 
   uh: number[]
 
-  // TODO: implement!
-  // site: Site
+  deps?: any
 
   #ctx: any
 
@@ -163,9 +167,9 @@ abstract class BaseVal implements Val {
     let out = new (this as any)
       .constructor(fullspec, cloneCtx)
 
-    out.row = spec?.row || this.row || -1
-    out.col = spec?.col || this.col || -1
-    out.url = spec?.url || this.url || ''
+    out.site.row = spec?.row ?? this.site.row ?? -1
+    out.site.col = spec?.col ?? this.site.col ?? -1
+    out.site.url = spec?.url ?? this.site.url ?? ''
 
     // TODO: should not be needed - update all VAL ctors to handle spec.mark
     out.mark.type = this.mark.type && (fullspec.mark?.type ?? true)
@@ -175,21 +179,14 @@ abstract class BaseVal implements Val {
   }
 
 
-  // TODO: should use Site
   place(v: Val) {
-    v.row = this.row
-    v.col = this.col
-    v.url = this.url
+    v.site.row = this.site.row
+    v.site.col = this.site.col
+    v.site.url = this.site.url
     return v
   }
 
-
-  // TODO: make Site work
-  get site(): Site {
-    return new Site(this)
-  }
-
-  // NOTE: MUST not mutate! Val immutability is a critical assumption. 
+  // NOTE: MUST not mutate! Val immutability is a critical assumption.
   unify(_peer: Val, _ctx: AontuContext): Val { return this }
 
   // TODO: indicate marks in some way that is ignored by reparse.
@@ -275,6 +272,13 @@ function pretty(s: string) {
 }
 
 
+export type {
+  ValMark,
+  ValSpec,
+}
+
 export {
-  BaseVal,
+  Val,
+  DONE,
+  SPREAD,
 }

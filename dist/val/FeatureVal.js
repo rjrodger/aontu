@@ -2,9 +2,9 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FeatureVal = void 0;
-const BaseVal_1 = require("./BaseVal");
+const Val_1 = require("./Val");
 const top_1 = require("./top");
-class FeatureVal extends BaseVal_1.BaseVal {
+class FeatureVal extends Val_1.Val {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFeature = true;

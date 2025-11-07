@@ -5,7 +5,7 @@ declare class ConjunctVal extends JunctionVal {
     isConjunct: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     append(peer: Val): ConjunctVal;
-    unify(peer: Val, ctx: AontuContext, trace?: any[]): Val;
+    unify(peer: Val, ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     getJunctionSymbol(): string;
     gen(ctx?: AontuContext): undefined;

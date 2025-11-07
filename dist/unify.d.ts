@@ -1,7 +1,7 @@
 import type { Val } from './type';
 import { AontuContext } from './ctx';
 import { Lang } from './lang';
-declare const unite: (ctx: AontuContext, a: any, b: any, whence: string, explain?: any[]) => any;
+declare const unite: (ctx: AontuContext, a: any, b: any, whence: string) => any;
 declare class Unify {
     root: Val;
     res: Val;

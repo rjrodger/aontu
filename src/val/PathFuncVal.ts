@@ -10,6 +10,8 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 import { NilVal } from '../val/NilVal'
 import { RefVal } from '../val/RefVal'
 import { FuncBaseVal } from './FuncBaseVal'
@@ -47,7 +49,7 @@ class PathFuncVal extends FuncBaseVal {
         arg = this.place(new RefVal({ peg: [arg], absolute: false }))
       }
       else if (!arg.isRef) {
-        arg = NilVal.make(ctx, 'invalid-arg', this)
+        arg = makeNilErr(ctx, 'invalid-arg', this)
       }
     }
 
@@ -60,7 +62,7 @@ class PathFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    let out = args[0] ?? NilVal.make(ctx, 'arg', this)
+    let out = args[0] ?? makeNilErr(ctx, 'arg', this)
 
     return out
   }

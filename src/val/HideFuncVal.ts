@@ -10,7 +10,7 @@ import {
   AontuContext,
 } from '../ctx'
 
-import { NilVal } from '../val/NilVal'
+import { makeNilErr } from '../err'
 
 
 import {
@@ -48,8 +48,8 @@ class HideFuncVal extends FuncBaseVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, trace, 'HideFunc', this, peer)
+  unify(peer: Val, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'HideFunc', this, peer)
     let out: Val | undefined = this.resolved
 
     if (null == out) {
@@ -62,7 +62,7 @@ class HideFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    let out = args[0] ?? NilVal.make(ctx, 'arg', this)
+    let out = args[0] ?? makeNilErr(ctx, 'arg', this)
     if (!out.isNil) {
       out = out.clone(ctx)
       // out.mark.hide = true

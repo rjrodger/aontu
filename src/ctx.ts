@@ -94,7 +94,8 @@ class AontuContext {
   clone(cfg: {
     root?: Val,
     path?: string[],
-    err?: any[]
+    err?: any[],
+    explain?: any[]
   }): AontuContext {
     const ctx = Object.create(this)
     ctx.path = cfg.path ?? this.path
@@ -102,6 +103,7 @@ class AontuContext {
     ctx.var = Object.create(this.vars)
 
     ctx.err = cfg.err ?? ctx.err
+    ctx.explain = cfg.explain ?? ctx.explain
 
     return ctx
   }
@@ -114,7 +116,7 @@ class AontuContext {
   }
 
 
-  addopts(opts?: Partial<AontuOptions>) {
+  addopts(opts?: AontuOptions) {
     if (null != opts) {
       Object.assign(this.opts, opts)
     }
@@ -122,6 +124,9 @@ class AontuContext {
     this.collect = (this.opts.collect ?? null != this.opts.err) ?? this.collect
     this.err = this.opts.err ?? this.err
     this.fs = this.opts.fs ?? this.fs
+    this.explain = this.opts.explain ?? this.explain
+
+    this.src = ('string' === typeof this.opts.src ? this.opts.src : undefined) ?? this.src
 
     // TODO: rename srcpath to file
     this.srcpath = this.opts.path ?? this.srcpath
@@ -129,7 +134,9 @@ class AontuContext {
 
 
   adderr(err: NilVal) {
-    this.err.push(err)
+    if (!this.err.includes(err)) {
+      this.err.push(err)
+    }
     if (null == err.msg || '' == err.msg) {
       descErr(err, this)
     }

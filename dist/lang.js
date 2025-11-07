@@ -47,9 +47,9 @@ let AontuJsonic = function aontu(jsonic) {
     // TODO: refactor Val constructor
     // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
     let addsite = (v, r, ctx) => {
-        v.row = null == r.o0 ? -1 : r.o0.rI;
-        v.col = null == r.o0 ? -1 : r.o0.cI;
-        v.url = ctx.meta.multisource ? ctx.meta.multisource.path : '';
+        v.site.row = null == r.o0 ? -1 : r.o0.rI;
+        v.site.col = null == r.o0 ? -1 : r.o0.cI;
+        v.site.url = ctx.meta.multisource ? ctx.meta.multisource.path : '';
         v.path = r.k ? [...(r.k.path || [])] : [];
         return v;
     };
@@ -273,11 +273,11 @@ let AontuJsonic = function aontu(jsonic) {
             else if (null === valnode) {
                 valnode = addsite(new NullVal_1.NullVal({ peg: r.node }), r, ctx);
             }
-            if (null != valnode && 'object' === typeof valnode) {
+            if (null != valnode && 'object' === typeof valnode && valnode.site) {
                 let st = r.o0;
-                valnode.row = st.rI;
-                valnode.col = st.cI;
-                valnode.url = ctx.meta.multisource && ctx.meta.multisource.path;
+                valnode.site.row = st.rI;
+                valnode.site.col = st.cI;
+                valnode.site.url = ctx.meta.multisource && ctx.meta.multisource.path;
             }
             // else { ERROR? }
             r.node = valnode;

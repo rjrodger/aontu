@@ -23,13 +23,13 @@ const MapVal_1 = require("../dist/val/MapVal");
     (0, node_test_1.it)('unify', () => {
         let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('a:1,a:2', { collect: true });
-        (0, code_1.expect)(v0.err[0].why).equal('scalar');
+        (0, code_1.expect)(v0.err[0].why).equal('scalar_value');
         (0, code_1.expect)(typeof v0.err[0].msg).equal('string');
     });
     (0, node_test_1.it)('file-e01', async () => {
         let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.jsonic"', { collect: true });
-        (0, code_1.expect)(v0.err[0].why).equal('scalar');
+        (0, code_1.expect)(v0.err[0].why).equal('scalar_value');
         (0, code_1.expect)(typeof v0.err[0].msg).equal('string');
     });
     (0, node_test_1.it)('generate', () => {

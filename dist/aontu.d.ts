@@ -3,12 +3,12 @@ import { Lang } from './lang';
 import { AontuContext, AontuContextConfig } from './ctx';
 import { formatExplain } from './utility';
 declare class Aontu {
-    opts: Record<string, any>;
+    opts: AontuOptions;
     lang: Lang;
-    constructor(popts?: Partial<AontuOptions>);
-    ctx(arg?: AontuContextConfig): AontuContext;
-    parse(src: string, opts?: Partial<AontuOptions>, ac?: AontuContext): Val | undefined;
-    unify(src: string | Val, opts?: Partial<AontuOptions>, ac?: AontuContext | any): Val;
+    constructor(popts?: AontuOptions);
+    ctx(cfg?: AontuContextConfig): AontuContext;
+    parse(src: string, opts?: AontuOptions, ac?: AontuContext): Val | undefined;
+    unify(src: string | Val, opts?: AontuOptions, ac?: AontuContext | any): Val;
     generate(src: string, opts?: any, ac?: AontuContext): any;
 }
 declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;

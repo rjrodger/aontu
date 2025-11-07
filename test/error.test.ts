@@ -32,7 +32,7 @@ describe('error', function() {
   it('unify', () => {
     let a0 = new Aontu()
     let v0 = a0.unify('a:1,a:2', { collect: true })
-    expect(v0.err[0].why).equal('scalar')
+    expect(v0.err[0].why).equal('scalar_value')
     expect(typeof v0.err[0].msg).equal('string')
   })
 
@@ -40,7 +40,7 @@ describe('error', function() {
   it('file-e01', async () => {
     let a0 = new Aontu()
     let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.jsonic"', { collect: true })
-    expect(v0.err[0].why).equal('scalar')
+    expect(v0.err[0].why).equal('scalar_value')
     expect(typeof v0.err[0].msg).equal('string')
   })
 

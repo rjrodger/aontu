@@ -9,8 +9,9 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 import { ScalarVal } from './ScalarVal'
-import { NilVal } from './NilVal'
 
 import {
   explainOpen,
@@ -31,13 +32,12 @@ class NumberVal extends ScalarVal {
       throw new Error('not-number: ' + spec.peg)
     }
 
-    // super({ peg: spec.peg, kind: Number }, ctx)
     super({ ...spec, kind: Number }, ctx)
   }
 
 
-  unify(peer: any, ctx: AontuContext, trace?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, trace, 'Number', this, peer)
+  unify(peer: any, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Number', this, peer)
 
     let out: Val = this
 
@@ -55,7 +55,8 @@ class NumberVal extends ScalarVal {
         out = this
       }
       else {
-        out = NilVal.make(ctx, 'scalar', this, peer)
+        out = makeNilErr(ctx, 'scalar_' +
+          ((peer as any).kind === this.kind ? 'value' : 'kind'), this, peer)
       }
     }
     else {

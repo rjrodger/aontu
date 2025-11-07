@@ -2,7 +2,6 @@
 
 
 import type {
-  Val,
   ValSpec,
 } from '../type'
 
@@ -15,11 +14,11 @@ import {
 } from '../ctx'
 
 
-import { BaseVal } from './BaseVal'
+import { Val } from './Val'
 
 
 
-class NilVal extends BaseVal {
+class NilVal extends Val {
   isNil = true
 
   nil = true
@@ -41,9 +40,9 @@ class NilVal extends BaseVal {
 
     // Terms later in same file are considered the primary error location.
     if (null != av) {
-      nil.row = av.row
-      nil.col = av.col
-      nil.url = av.url
+      nil.site.row = av.site.row
+      nil.site.col = av.site.col
+      nil.site.url = av.site.url
 
       nil.primary = av
 
@@ -51,15 +50,15 @@ class NilVal extends BaseVal {
         nil.secondary = bv
 
         let bv_loc_wins =
-          (nil.url === bv.url) && (
-            (nil.row < bv.row) ||
-            (nil.row === bv.row && nil.col < bv.col)
+          (nil.site.url === bv.site.url) && (
+            (nil.site.row < bv.site.row) ||
+            (nil.site.row === bv.site.row && nil.site.col < bv.site.col)
           )
 
         if (bv_loc_wins) {
-          nil.row = bv.row
-          nil.col = bv.col
-          nil.url = bv.url
+          nil.site.row = bv.site.row
+          nil.site.col = bv.site.col
+          nil.site.url = bv.site.url
           nil.primary = bv
           nil.secondary = av
         }

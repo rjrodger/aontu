@@ -141,8 +141,7 @@ w1: b: {y:2,z:3} & $.q.a
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         (0, code_1.expect)(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } });
-        // FIX
-        // expect(a0.unify('a:{} &:{x:1}').gen(ctx)).toEqual({ a: { x: 1 } })
+        (0, code_1.expect)(a0.unify('a:{} &:{x:1}').gen(ctx)).equal({ a: { x: 1 } });
     });
     (0, node_test_1.test)('key-edges', () => {
         let ctx = makeCtx();

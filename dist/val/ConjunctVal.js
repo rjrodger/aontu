@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ConjunctVal = void 0;
 exports.norm = norm;
 const type_1 = require("../type");
+const err_1 = require("../err");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
-const NilVal_1 = require("./NilVal");
 const JunctionVal_1 = require("./JunctionVal");
 const utility_2 = require("../utility");
 const top_1 = require("./top");
@@ -38,9 +38,9 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         (0, utility_1.propagateMarks)(this, peer);
         return this;
     }
-    unify(peer, ctx, trace) {
+    unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
-        const te = ctx.explain && (0, utility_2.explainOpen)(ctx, trace, 'Conjunct', this, peer);
+        const te = ctx.explain && (0, utility_2.explainOpen)(ctx, ctx.explain, 'Conjunct', this, peer);
         let done = true;
         this.peg = norm(this.peg);
         // Unify each term of conjunct against peer
@@ -56,7 +56,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             this.peg[vI].mark.hide = newhide;
             // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
             upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
-                (0, unify_1.unite)(ctx, this.peg[vI], peer, 'cj-own', (0, utility_2.ec)(te, 'OWN'));
+                (0, unify_1.unite)(ctx.clone({ explain: (0, utility_2.ec)(te, 'OWN') }), this.peg[vI], peer, 'cj-own');
             upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type;
             upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide;
             // let prevdone = done
@@ -97,7 +97,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
                 t0 = t1;
             }
             else {
-                val = (0, unify_1.unite)(ctx, t0, t1, 'cj-peer-t0t1', (0, utility_2.ec)(te, 'DEF'));
+                val = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_2.ec)(te, 'DEF') }), t0, t1, 'cj-peer-t0t1');
                 done = done && type_1.DONE === val.dc;
                 newtype = this.mark.type || val.mark.type;
                 newhide = this.mark.hide || val.mark.hide;
@@ -146,13 +146,13 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
     }
     gen(ctx) {
         // Unresolved conjunct cannot be generated, so always an error.
-        let nil = NilVal_1.NilVal.make(ctx, 'conjunct', this, // (formatPath(this.peg, this.absolute) as any),
+        let nil = (0, err_1.makeNilErr)(ctx, 'conjunct', this, // (formatPath(this.peg, this.absolute) as any),
         undefined);
         // TODO: refactor to use Site
         nil.path = this.path;
-        nil.url = this.url;
-        nil.row = this.row;
-        nil.col = this.col;
+        nil.site.url = this.site.url;
+        nil.site.row = this.site.row;
+        nil.site.col = this.site.col;
         // descErr(nil, ctx)
         if (null == ctx) {
             //   // ctx.err.push(nil)

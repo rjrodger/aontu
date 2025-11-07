@@ -8,7 +8,6 @@ const unify_1 = require("../unify");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
-const NilVal_1 = require("./NilVal");
 const FeatureVal_1 = require("./FeatureVal");
 class OpBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
@@ -23,13 +22,13 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         this.peg.push(part);
     }
     make(ctx, _spec) {
-        return NilVal_1.NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'make');
+        return (0, err_1.makeNilErr)(ctx, 'op:' + this.opname(), this, undefined, 'make');
     }
     opname() {
         return 'op';
     }
-    unify(peer, ctx, trace) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'Op:' + this.opname(), this, peer);
+    unify(peer, ctx) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Op:' + this.opname(), this, peer);
         let out = this;
         if (this.id == peer.id) {
             return this;
@@ -57,7 +56,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
                 }
                 // TODO: should peer.isNil
                 else if (peer.isNil) {
-                    out = NilVal_1.NilVal.make(ctx, 'op[' + this.peg + ']', this, peer);
+                    out = (0, err_1.makeNilErr)(ctx, 'op[' + this.peg + ']', this, peer);
                 }
                 else if (this.canon === peer.canon) {
                     out = this;
@@ -69,7 +68,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             }
             else {
                 out = result.done && peer.isTop ? result :
-                    (0, unify_1.unite)(ctx, result, peer, 'op', (0, utility_1.ec)(te, 'RES'));
+                    (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }), result, peer, 'op');
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
@@ -77,9 +76,9 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             this.notdone();
             out = this.make(ctx, { peg: newpeg });
             // TODO: make should handle this using ctx?
-            out.row = this.row;
-            out.col = this.col;
-            out.url = this.url;
+            out.site.row = this.site.row;
+            out.site.col = this.site.col;
+            out.site.url = this.site.url;
             out.path = this.path;
             // why += 'top'
         }
@@ -92,9 +91,9 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             this.notdone();
             out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
             // TODO: make should handle this using ctx?
-            out.row = this.row;
-            out.col = this.col;
-            out.url = this.url;
+            out.site.row = this.site.row;
+            out.site.col = this.site.col;
+            out.site.url = this.site.url;
             out.path = this.path;
         }
         (0, utility_1.explainClose)(te, out);
@@ -110,7 +109,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         return out;
     }
     operate(ctx, _args) {
-        return NilVal_1.NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'operate');
+        return (0, err_1.makeNilErr)(ctx, 'op:' + this.opname(), this, undefined, 'operate');
     }
     get canon() {
         return 'op';
@@ -132,12 +131,12 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
     }
     gen(ctx) {
         // Unresolved op cannot be generated, so always an error.
-        let nil = NilVal_1.NilVal.make(ctx, 'op', this, undefined);
+        let nil = (0, err_1.makeNilErr)(ctx, 'op', this, undefined);
         // TODO: refactor to use Site
         nil.path = this.path;
-        nil.url = this.url;
-        nil.row = this.row;
-        nil.col = this.col;
+        nil.site.url = this.site.url;
+        nil.site.row = this.site.row;
+        nil.site.col = this.site.col;
         (0, err_1.descErr)(nil, ctx);
         if (ctx) {
             // ctx.err.push(nil)

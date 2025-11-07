@@ -10,9 +10,10 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 
 import { FuncBaseVal } from './FuncBaseVal'
-import { NilVal } from '../val/NilVal'
 import { BagVal } from '../val/BagVal'
 
 
@@ -41,7 +42,7 @@ class CloseFuncVal extends FuncBaseVal {
     const argval: any = args[0]
 
     if (null == argval) {
-      return NilVal.make(ctx, 'no_first_arg', this, undefined, 'close')
+      return makeNilErr(ctx, 'no_first_arg', this, undefined, 'close')
     }
 
     if (argval.isMap || argval.isList) {

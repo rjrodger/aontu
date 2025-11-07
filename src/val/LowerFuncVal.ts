@@ -10,6 +10,8 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 
 import { NilVal } from '../val/NilVal'
 import { ScalarKindVal } from '../val/ScalarKindVal'
@@ -47,7 +49,7 @@ class LowerFuncVal extends FuncBaseVal {
         undefined
     const out = this.place(
       null == peg ?
-        NilVal.make(ctx, 'invalid-arg', this) :
+        makeNilErr(ctx, 'invalid-arg', this) :
         makeScalar(peg)
     )
     return out

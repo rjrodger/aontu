@@ -34,6 +34,7 @@ class AontuContext {
         ctx.root = cfg.root ?? this.root;
         ctx.var = Object.create(this.vars);
         ctx.err = cfg.err ?? ctx.err;
+        ctx.explain = cfg.explain ?? ctx.explain;
         return ctx;
     }
     descend(key) {
@@ -49,11 +50,15 @@ class AontuContext {
         this.collect = (this.opts.collect ?? null != this.opts.err) ?? this.collect;
         this.err = this.opts.err ?? this.err;
         this.fs = this.opts.fs ?? this.fs;
+        this.explain = this.opts.explain ?? this.explain;
+        this.src = ('string' === typeof this.opts.src ? this.opts.src : undefined) ?? this.src;
         // TODO: rename srcpath to file
         this.srcpath = this.opts.path ?? this.srcpath;
     }
     adderr(err) {
-        this.err.push(err);
+        if (!this.err.includes(err)) {
+            this.err.push(err);
+        }
         if (null == err.msg || '' == err.msg) {
             (0, err_1.descErr)(err, this);
         }

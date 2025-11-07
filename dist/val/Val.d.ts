@@ -1,8 +1,30 @@
 import { inspect } from 'node:util';
-import type { Val, ValMark, ValSpec } from '../type';
-import { AontuContext } from '../ctx';
+import type { AontuContext } from '../ctx';
 import { Site } from '../site';
-declare abstract class BaseVal implements Val {
+type ValMark = {
+    type: boolean;
+    hide: boolean;
+    [name: `_${string}`]: boolean;
+};
+type ValSpec = {
+    peg?: any;
+    mark?: Partial<ValMark>;
+    kind?: any;
+    row?: number;
+    col?: number;
+    url?: string;
+    path?: string[];
+    id?: number;
+    src?: string;
+    why?: string;
+    msg?: string;
+    err?: any[] | any;
+    absolute?: boolean;
+    prefix?: boolean;
+};
+declare const DONE = -1;
+declare const SPREAD: unique symbol;
+declare abstract class Val {
     #private;
     isVal: boolean;
     isTop: boolean;
@@ -40,21 +62,19 @@ declare abstract class BaseVal implements Val {
     id: number;
     dc: number;
     path: string[];
-    row: number;
-    col: number;
-    url: string;
+    site: Site;
     mark: ValMark;
     peg: any;
     err: any[];
     explain: any[] | null;
     uh: number[];
+    deps?: any;
     constructor(spec: ValSpec, ctx?: AontuContext);
     ctx(): any;
     get done(): boolean;
     same(peer: Val): boolean;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     place(v: Val): Val;
-    get site(): Site;
     unify(_peer: Val, _ctx: AontuContext): Val;
     get canon(): string;
     errcanon(): string;
@@ -64,4 +84,5 @@ declare abstract class BaseVal implements Val {
     [inspect.custom](_d: number, _o: any, _inspect: any): string;
     inspection(_inspect: Function): string;
 }
-export { BaseVal, };
+export type { ValMark, ValSpec, };
+export { Val, DONE, SPREAD, };

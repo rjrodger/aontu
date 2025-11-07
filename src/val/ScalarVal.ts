@@ -1,7 +1,6 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 import type {
-  Val,
   ValSpec,
 } from '../type'
 
@@ -18,14 +17,14 @@ import {
   explainClose,
 } from '../utility'
 
-import { NilVal } from './NilVal'
-// import { RefVal } from './RefVal'
-import { BaseVal } from './BaseVal'
+import { makeNilErr } from '../err'
+
+import { Val } from './Val'
 import { ScalarKindVal } from './ScalarKindVal'
 
 
 
-class ScalarVal extends BaseVal {
+class ScalarVal extends Val {
   kind: any
   isScalar = true
   src: string
@@ -52,8 +51,8 @@ class ScalarVal extends BaseVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, explain, 'Scalar', this, peer)
+  unify(peer: Val, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Scalar', this, peer)
 
     let out: Val
 
@@ -65,7 +64,8 @@ class ScalarVal extends BaseVal {
       out = this
     }
     else {
-      out = NilVal.make(ctx, 'scalar', this, peer)
+      out = makeNilErr(ctx, 'scalar_' +
+        ((peer as any).kind === this.kind ? 'value' : 'kind'), this, peer)
     }
 
     explainClose(te, out)

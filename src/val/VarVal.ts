@@ -12,7 +12,8 @@ import {
 } from '../type'
 
 import {
-  descErr
+  descErr,
+  makeNilErr
 } from '../err'
 
 import {
@@ -50,8 +51,8 @@ class VarVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, explain, 'Var', this, peer)
+  unify(peer: Val, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Var', this, peer)
 
     let out: Val
 
@@ -65,7 +66,7 @@ class VarVal extends FeatureVal {
         nameVal = this.peg
       }
       else {
-        nameVal = this.peg.unify(peer, ctx, ec(te, 'PEG'))
+        nameVal = this.peg.unify(peer, ctx.clone({ explain: ec(te, 'PEG') }))
       }
     }
     else {
@@ -78,7 +79,7 @@ class VarVal extends FeatureVal {
       if (nameVal instanceof StringVal) {
         let found = ctx.vars[nameVal.peg]
         if (undefined === found) {
-          out = NilVal.make(ctx, 'unknown_var', this, peer)
+          out = makeNilErr(ctx, 'unknown_var', this, peer)
         }
 
         // TODO: support complex values
@@ -101,11 +102,11 @@ class VarVal extends FeatureVal {
           out = found
         }
         else {
-          out = NilVal.make(ctx, 'invalid_var_kind', this, peer)
+          out = makeNilErr(ctx, 'invalid_var_kind', this, peer)
         }
       }
       else {
-        out = NilVal.make(ctx, 'var[' + typeof nameVal + ']', this, peer)
+        out = makeNilErr(ctx, 'var[' + typeof nameVal + ']', this, peer)
       }
     }
     else {
@@ -136,7 +137,7 @@ class VarVal extends FeatureVal {
 
   gen(ctx?: AontuContext) {
     // Unresolved var cannot be generated, so always an error.
-    let nil = NilVal.make(
+    let nil = makeNilErr(
       ctx,
       'var',
       this,
@@ -145,9 +146,9 @@ class VarVal extends FeatureVal {
 
     // TODO: refactor to use Site
     nil.path = this.path
-    nil.url = this.url
-    nil.row = this.row
-    nil.col = this.col
+    nil.site.url = this.site.url
+    nil.site.row = this.site.row
+    nil.site.col = this.site.col
 
     descErr(nil, ctx)
 

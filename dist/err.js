@@ -2,14 +2,21 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AontuError = void 0;
+exports.getHint = getHint;
 exports.makeNilErr = makeNilErr;
 exports.descErr = descErr;
 const jsonic_1 = require("jsonic");
 const NilVal_1 = require("./val/NilVal");
+const hints_1 = require("./hints");
 const { errmsg } = jsonic_1.util;
-function makeNilErr(ac, code, details) {
-    const nilval = NilVal_1.NilVal.make(ac, code);
-    console.log('MAKE-NILVAL', nilval, nilval.err);
+function getHint(why) {
+    if (hints_1.hints[why]) {
+        return hints_1.hints[why];
+    }
+    return undefined;
+}
+function makeNilErr(ctx, why, av, bv, attempt) {
+    const nilval = NilVal_1.NilVal.make(ctx, why, av, bv, attempt);
     return nilval;
 }
 // TODO: move to utility?
@@ -32,9 +39,11 @@ function descErr(err, errctx) {
                         msg: 'Cannot ' +
                             attempt +
                             ' value' + (null == v2 ? '' : 's') +
-                            ' at path ' + valpath
+                            ' at path ' + valpath,
+                        hint: getHint(err.why)
                     }
                 }),
+                '\n',
                 (null != v1 && errmsg({
                     // TODO: color should come from jsonic config
                     color: { active: true, line: '\x1b[34m' },
@@ -44,10 +53,10 @@ function descErr(err, errctx) {
                         site: ''
                     },
                     smsg: 'value was: ' + v1.canon,
-                    file: resolveFile(v1.url),
+                    file: resolveFile(v1.site.url),
                     src: v1src,
-                    row: v1.row,
-                    col: v1.col,
+                    row: v1.site.row,
+                    col: v1.site.col,
                 })),
                 (null != v2 && errmsg({
                     // TODO: color should come from jsonic config
@@ -58,12 +67,16 @@ function descErr(err, errctx) {
                         site: ''
                     },
                     smsg: 'value was: ' + v2.canon,
-                    file: resolveFile(v2.url),
+                    file: resolveFile(v2.site.url),
                     src: v2src,
-                    row: v2.row,
-                    col: v2.col,
+                    row: v2.site.row,
+                    col: v2.site.col,
                 })),
-            ].filter(n => null != n && false !== n).join('\n');
+            ]
+                .filter((n) => null != n && false !== n)
+                .join('\n')
+                // TODO: update jsonic errmsg to avoid multiple empty lines
+                .replace(/\n\n/g, '\n');
         }
         return err;
     }
@@ -79,10 +92,15 @@ function resolveFile(url) {
 }
 function resolveSrc(v, errctx) {
     let src = undefined;
-    if (null != v?.url) {
-        const fileExists = errctx?.fs?.existsSync(v.url);
-        if (fileExists) {
-            src = errctx?.fs?.readFileSync(v.url, 'utf8') ?? undefined;
+    if (null != v?.site.url) {
+        try {
+            const fileExists = errctx?.fs?.existsSync(v.site.url);
+            if (fileExists) {
+                src = errctx?.fs?.readFileSync(v.site.url, 'utf8') ?? undefined;
+            }
+        }
+        catch (fe) {
+            // ignore as more important to report original error
         }
     }
     if (errctx && (undefined == src || '' === src)) {

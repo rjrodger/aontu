@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarKindVal = exports.Null = exports.Integer = void 0;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
+const err_1 = require("../err");
 // import { BaseVal } from './BaseVal'
 const FeatureVal_1 = require("./FeatureVal");
-const NilVal_1 = require("./NilVal");
 // A ScalarKind for integers. Number includes floats.
 class Integer {
 }
@@ -25,8 +25,8 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
         }
         this.dc = type_1.DONE;
     }
-    unify(peer, ctx, trace) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, trace, 'ScalarKind', this, peer);
+    unify(peer, ctx) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'ScalarKind', this, peer);
         const peerIsScalarVal = peer.isScalar;
         const peerIsScalarKind = peer.isScalarKind;
         let out = this;
@@ -39,7 +39,7 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
                 out = peer;
             }
             else {
-                out = NilVal_1.NilVal.make(ctx, 'no-scalar-unify', this, peer);
+                out = (0, err_1.makeNilErr)(ctx, 'no-scalar-unify', this, peer);
             }
         }
         else if (peerIsScalarKind) {
@@ -53,11 +53,11 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
                 out = this;
             }
             else {
-                out = NilVal_1.NilVal.make(ctx, 'scalar-type', this, peer);
+                out = (0, err_1.makeNilErr)(ctx, 'scalar-type', this, peer);
             }
         }
         else {
-            out = NilVal_1.NilVal.make(ctx, 'not-scalar-type', this, peer);
+            out = (0, err_1.makeNilErr)(ctx, 'not-scalar-type', this, peer);
         }
         ctx.explain && (0, utility_1.explainClose)(te, out);
         // console.log('SCALARKINDVAL', this.canon.peer.canon, '->', out.canon)

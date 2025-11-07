@@ -248,7 +248,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         });
         const i11 = lang.parse('(11)');
         (0, code_1.expect)(i11).include({
-            col: 1,
             dc: -1,
             err: [],
             isInteger: true,
@@ -257,9 +256,12 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
             isTop: false,
             path: [],
             peg: 11,
-            row: 1,
             kind: ScalarKindVal_1.Integer,
             uh: [],
+        });
+        (0, code_1.expect)(i11.site).include({
+            col: 1,
+            row: 1,
             url: undefined,
         });
     });
@@ -610,29 +612,33 @@ b: c2: {n:2}
         let pu0 = p0.unify(TOP, ctx);
         (0, code_1.expect)(pu0).include({
             dc: -1,
+        });
+        (0, code_1.expect)(pu0.site).include({
             row: -1,
             col: -1,
             url: '',
-            // FIX: use jest toMatchObject
-            // peg: {
-            //   dc: -1,
-            //   row: -1,
-            //   col: -1,
-            //   url: '',
-            //   peg: 'p0',
-            //   path: [],
-            //   kind: String,
-            // },
-            // path: [],
-            // pref: {
-            //   dc: -1,
-            //   row: -1,
-            //   col: -1,
-            //   url: '',
-            //   peg: 'p0',
-            //   path: [],
-            //   kind: String,
-            // }
+        });
+        (0, code_1.expect)(pu0).include({
+        // FIX: use jest toMatchObject
+        // peg: {
+        //   dc: -1,
+        //   row: -1,
+        //   col: -1,
+        //   url: '',
+        //   peg: 'p0',
+        //   path: [],
+        //   kind: String,
+        // },
+        // path: [],
+        // pref: {
+        //   dc: -1,
+        //   row: -1,
+        //   col: -1,
+        //   url: '',
+        //   peg: 'p0',
+        //   path: [],
+        //   kind: String,
+        // }
         });
         p0.peg = makeSK_String();
         (0, code_1.expect)(p0.canon).equal('*string');

@@ -2,7 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UpperFuncVal = void 0;
-const NilVal_1 = require("../val/NilVal");
+const err_1 = require("../err");
 const ScalarKindVal_1 = require("../val/ScalarKindVal");
 const valutil_1 = require("../val/valutil");
 const FuncBaseVal_1 = require("./FuncBaseVal");
@@ -23,7 +23,7 @@ class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
             'number' === typeof oldpeg ? Math.ceil(oldpeg) :
                 undefined;
         const out = this.place(null == peg ?
-            NilVal_1.NilVal.make(ctx, 'invalid-arg', this) :
+            (0, err_1.makeNilErr)(ctx, 'invalid-arg', this) :
             (0, valutil_1.makeScalar)(peg));
         return out;
     }

@@ -22,14 +22,14 @@ class PrefVal extends FeatureVal_1.FeatureVal {
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
-    unify(peer, ctx, explain) {
+    unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Pref', this, peer);
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Pref', this, peer);
         let done = true;
         let out = this;
         let why = '';
         if (!this.peg.done) {
-            const resolved = (0, unify_1.unite)(ctx, this.peg, (0, top_1.top)(), 'pref/resolve', (0, utility_1.ec)(te, 'RES'));
+            const resolved = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }), this.peg, (0, top_1.top)(), 'pref/resolve');
             // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
         }
@@ -44,7 +44,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
                 why += 'rank-lose';
             }
             else {
-                let peg = (0, unify_1.unite)(ctx, this.peg, peer.peg, 'pref-peer/' + this.id, (0, utility_1.ec)(te, 'PEER'));
+                let peg = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PEER') }), this.peg, peer.peg, 'pref-peer/' + this.id);
                 out = new PrefVal({ peg }, ctx);
                 why += 'rank-same';
             }
@@ -57,7 +57,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
             // }
             // else {
             //   why += 'unify'
-            out = (0, unify_1.unite)(ctx, this.superpeg, peer, 'pref-super/' + this.id, (0, utility_1.ec)(te, 'SUPER'));
+            out = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'SUPER') }), this.superpeg, peer, 'pref-super/' + this.id);
             if (out.same(this.superpeg)) {
                 out = this.peg;
                 why += 'same';

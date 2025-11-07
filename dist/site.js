@@ -7,11 +7,20 @@ class Site {
         this.row = -1;
         this.col = -1;
         this.url = '';
-        // TODO: logic to select most meaningful site if val has no site,
-        // but has peg children that do.
-        this.row = val.row;
-        this.col = val.col;
-        this.url = val.url;
+        if (val) {
+            if ('site' in val) {
+                // Val with site property
+                this.row = val.site?.row ?? -1;
+                this.col = val.site?.col ?? -1;
+                this.url = val.site?.url ?? '';
+            }
+            else {
+                // Plain object with row, col, url
+                this.row = val.row ?? -1;
+                this.col = val.col ?? -1;
+                this.url = val.url ?? '';
+            }
+        }
     }
 }
 exports.Site = Site;

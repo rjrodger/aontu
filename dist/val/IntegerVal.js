@@ -2,9 +2,9 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.IntegerVal = void 0;
+const err_1 = require("../err");
 const ScalarVal_1 = require("./ScalarVal");
 const ScalarKindVal_1 = require("./ScalarKindVal");
-const NilVal_1 = require("./NilVal");
 const utility_1 = require("../utility");
 class IntegerVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
@@ -16,12 +16,12 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
         super({ ...spec, kind: ScalarKindVal_1.Integer }, ctx);
         this.isInteger = true;
     }
-    unify(peer, ctx, explain) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Integer', this, peer);
+    unify(peer, ctx) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Integer', this, peer);
         let out = this;
         if (null != peer) {
             if (peer.isScalarKind) {
-                out = peer.unify(this, ctx, (0, utility_1.ec)(te, 'KND'));
+                out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'KND') }));
             }
             else if (peer.isScalar &&
                 peer.peg === this.peg) {
@@ -31,7 +31,8 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
                 out = this;
             }
             else {
-                out = NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
+                out = (0, err_1.makeNilErr)(ctx, 'scalar_' +
+                    (peer.kind === this.kind ? 'value' : 'kind'), this, peer);
             }
         }
         else {

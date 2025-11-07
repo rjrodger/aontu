@@ -50,17 +50,17 @@ class PrefVal extends FeatureVal {
 
   // PrefVal unify always returns a PrefVal
   // PrefVals can only be removed by becoming Nil in a Disjunct
-  unify(peer: Val, ctx: AontuContext, explain?: any[]): Val {
+  unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
 
-    const te = ctx.explain && explainOpen(ctx, explain, 'Pref', this, peer)
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Pref', this, peer)
     let done = true
     let out: Val = this
     let why = ''
 
 
     if (!this.peg.done) {
-      const resolved = unite(ctx, this.peg, top(), 'pref/resolve', ec(te, 'RES'))
+      const resolved = unite(ctx.clone({ explain: ec(te, 'RES') }), this.peg, top(), 'pref/resolve')
       // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
     }
@@ -77,7 +77,7 @@ class PrefVal extends FeatureVal {
         why += 'rank-lose'
       }
       else {
-        let peg = unite(ctx, this.peg, peer.peg, 'pref-peer/' + this.id, ec(te, 'PEER'))
+        let peg = unite(ctx.clone({ explain: ec(te, 'PEER') }), this.peg, peer.peg, 'pref-peer/' + this.id)
         out = new PrefVal({ peg }, ctx)
         why += 'rank-same'
       }
@@ -92,7 +92,7 @@ class PrefVal extends FeatureVal {
       // else {
       //   why += 'unify'
 
-      out = unite(ctx, this.superpeg, peer, 'pref-super/' + this.id, ec(te, 'SUPER'))
+      out = unite(ctx.clone({ explain: ec(te, 'SUPER') }), this.superpeg, peer, 'pref-super/' + this.id)
       if (out.same(this.superpeg)) {
         out = this.peg
         why += 'same'

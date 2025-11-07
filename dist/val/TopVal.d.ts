@@ -1,7 +1,7 @@
-import type { Val, ValSpec } from '../type';
+import type { ValSpec } from '../type';
 import { AontuContext } from '../ctx';
-import { BaseVal } from './BaseVal';
-declare class TopVal extends BaseVal {
+import { Val } from './Val';
+declare class TopVal extends Val {
     isTop: boolean;
     id: number;
     dc: number;

@@ -2,7 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MoveFuncVal = void 0;
-const NilVal_1 = require("../val/NilVal");
+const err_1 = require("../err");
 const utility_1 = require("../utility");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const CopyFuncVal_1 = require("./CopyFuncVal");
@@ -18,7 +18,7 @@ class MoveFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'move';
     }
     resolve(ctx, args) {
-        let out = args[0] ?? NilVal_1.NilVal.make(ctx, 'arg', this);
+        let out = args[0] ?? (0, err_1.makeNilErr)(ctx, 'arg', this);
         const orig = out;
         const origcanon = orig.canon;
         if (!orig.isNil) {

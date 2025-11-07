@@ -6,7 +6,7 @@ declare class FuncBaseVal extends FeatureVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
     validateArgs(args: Val[], min: number): void;
     make(ctx: AontuContext, _spec: ValSpec): Val;
-    unify(peer: Val, ctx: AontuContext, explain?: any[]): Val;
+    unify(peer: Val, ctx: AontuContext): Val;
     get canon(): string;
     funcname(): string;
     prepare(_ctx: AontuContext | undefined, args: Val[]): Val[];

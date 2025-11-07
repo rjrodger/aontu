@@ -2,8 +2,8 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefFuncVal = void 0;
+const err_1 = require("../err");
 const utility_1 = require("../utility");
-const NilVal_1 = require("../val/NilVal");
 const PrefVal_1 = require("../val/PrefVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
@@ -18,7 +18,7 @@ class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'pref';
     }
     resolve(ctx, args) {
-        let out = args[0] ?? NilVal_1.NilVal.make(ctx, 'arg', this);
+        let out = args[0] ?? (0, err_1.makeNilErr)(ctx, 'arg', this);
         if (!out.isNil) {
             out = out.clone(ctx);
             // Wrap every child val in a PrefVal

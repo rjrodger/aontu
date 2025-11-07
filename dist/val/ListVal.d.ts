@@ -9,7 +9,7 @@ declare class ListVal extends BagVal {
     constructor(spec: {
         peg: ValList;
     }, ctx?: AontuContext);
-    unify(peer: Val, ctx: AontuContext, explain?: any[] | false): Val;
+    unify(peer: Val, ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
     gen(ctx?: AontuContext): any;

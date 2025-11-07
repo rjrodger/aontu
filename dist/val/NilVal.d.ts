@@ -1,7 +1,7 @@
-import type { Val, ValSpec } from '../type';
+import type { ValSpec } from '../type';
 import { AontuContext } from '../ctx';
-import { BaseVal } from './BaseVal';
-declare class NilVal extends BaseVal {
+import { Val } from './Val';
+declare class NilVal extends Val {
     isNil: boolean;
     nil: boolean;
     why: any;

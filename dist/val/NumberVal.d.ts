@@ -4,6 +4,6 @@ import { ScalarVal } from './ScalarVal';
 declare class NumberVal extends ScalarVal {
     isNumber: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
-    unify(peer: any, ctx: AontuContext, trace?: any[]): Val;
+    unify(peer: any, ctx: AontuContext): Val;
 }
 export { NumberVal, };

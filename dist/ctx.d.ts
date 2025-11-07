@@ -38,9 +38,10 @@ declare class AontuContext {
         root?: Val;
         path?: string[];
         err?: any[];
+        explain?: any[];
     }): AontuContext;
     descend(key: string): AontuContext;
-    addopts(opts?: Partial<AontuOptions>): void;
+    addopts(opts?: AontuOptions): void;
     adderr(err: NilVal): void;
     errmsg(): string;
     find(path: string[]): Val | undefined;

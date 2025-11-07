@@ -5,8 +5,8 @@ exports.FuncBaseVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
+const err_1 = require("../err");
 const top_1 = require("./top");
-const NilVal_1 = require("../val/NilVal");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const FeatureVal_1 = require("../val/FeatureVal");
 class FuncBaseVal extends FeatureVal_1.FeatureVal {
@@ -23,10 +23,10 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         }
     }
     make(ctx, _spec) {
-        return NilVal_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'make');
+        return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'make');
     }
-    unify(peer, ctx, explain) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Func:' + this.funcname(), this, peer);
+    unify(peer, ctx) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer);
         // const sc = this.id + '=' + this.canon
         // const pc = peer.id + '=' + peer.canon
         let why = '';
@@ -46,7 +46,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
                     let newarg = arg;
                     if (!arg.done) {
-                        newarg = arg.unify((0, top_1.top)(), ctx, (0, utility_1.ec)(te, 'ARG'));
+                        newarg = arg.unify((0, top_1.top)(), ctx.clone({ explain: (0, utility_1.ec)(te, 'ARG') }));
                         newtype = newtype || newarg.mark.type;
                         newhide = newhide || newarg.mark.hide;
                         // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)
@@ -59,7 +59,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     const resolved = this.resolve(ctx, newpeg);
                     // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
                     out = resolved.done && peer.isTop ? resolved :
-                        (0, unify_1.unite)(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id, (0, utility_1.ec)(te, 'PEG'));
+                        (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }), resolved, peer, 'func-' + this.funcname() + '/' + this.id);
                     (0, utility_1.propagateMarks)(this, out);
                     // const unified =
                     //   unite(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id)
@@ -67,9 +67,9 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     // propagateMarks(unified, out)
                     // propagateMarks(this, out)
                     // TODO: make should handle this using ctx?
-                    out.row = this.row;
-                    out.col = this.col;
-                    out.url = this.url;
+                    out.site.row = this.site.row;
+                    out.site.col = this.site.col;
+                    out.site.url = this.site.url;
                     out.path = this.path;
                     why += 'pegdone';
                 }
@@ -77,9 +77,9 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     this.notdone();
                     out = this.make(ctx, { peg: newpeg, mark: { type: newtype, hide: newhide } });
                     // TODO: make should handle this using ctx?
-                    out.row = this.row;
-                    out.col = this.col;
-                    out.url = this.url;
+                    out.site.row = this.site.row;
+                    out.site.col = this.site.col;
+                    out.site.url = this.site.url;
                     out.path = this.path;
                     why += 'top';
                 }
@@ -94,9 +94,9 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                         peg: [this, peer], mark: { type: newtype, hide: newhide }
                     }, ctx);
                     // TODO: make should handle this using ctx?
-                    out.row = this.row;
-                    out.col = this.col;
-                    out.url = this.url;
+                    out.site.row = this.site.row;
+                    out.site.col = this.site.col;
+                    out.site.url = this.site.url;
                     out.path = this.path;
                     why += 'defer';
                 }
@@ -120,7 +120,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         return args;
     }
     resolve(ctx, _args) {
-        return NilVal_1.NilVal.make(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
+        return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
     }
 }
 exports.FuncBaseVal = FuncBaseVal;

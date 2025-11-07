@@ -17,11 +17,13 @@ class Aontu {
         this.opts = popts ?? {};
         this.lang = new lang_1.Lang(this.opts);
     }
-    ctx(arg) {
-        arg = arg ?? {};
-        const ac = new ctx_1.AontuContext(arg);
+    // Create a new context.
+    ctx(cfg) {
+        cfg = cfg ?? {};
+        const ac = new ctx_1.AontuContext(cfg);
         return ac;
     }
+    // Parse source into a matching Val AST, not yet unified.
     parse(src, opts, ac) {
         let out;
         let errs = [];
@@ -29,7 +31,7 @@ class Aontu {
             src = '';
         }
         ac = ac ?? this.ctx();
-        ac.addopts(opts);
+        ac.addopts({ ...(opts ?? {}), src });
         if ('string' !== typeof src) {
             out = (0, err_1.makeNilErr)(ac, 'parse_bad_src');
             errs.push(out);
@@ -42,11 +44,12 @@ class Aontu {
         handleErrors(errs, out, ac);
         return out;
     }
+    // Unify source or Val, returning a fully unified Val.
     unify(src, opts, ac) {
         let out;
         let errs = [];
         ac = ac ?? this.ctx();
-        ac.addopts(opts);
+        ac.addopts({ ...(opts ?? {}), src });
         let pval;
         if (null == src) {
             src = '';
@@ -78,11 +81,12 @@ class Aontu {
         handleErrors(errs, out, ac);
         return out;
     }
+    // Generate output structure from source, which must parse and fully unify.
     generate(src, opts, ac) {
         try {
             let out = undefined;
             ac = ac ?? this.ctx();
-            ac.addopts(opts);
+            ac.addopts({ ...(opts ?? {}), src });
             let pval = this.parse(src, undefined, ac);
             if (undefined !== pval && 0 === pval.err.length) {
                 let uval = this.unify(pval, undefined, ac);
@@ -110,6 +114,7 @@ class Aontu {
     }
 }
 exports.Aontu = Aontu;
+// Either throw an exception or add collected errors to result.
 function handleErrors(errs, out, ac) {
     errs.map((err) => ac.adderr(err));
     if (out) {
@@ -126,6 +131,7 @@ function handleErrors(errs, out, ac) {
         }
     }
 }
+// Perform parse of source code (minor customizations over Lang.parse).
 function runparse(src, lang, ctx) {
     const popts = {
         // src: ctx.src,
@@ -145,9 +151,7 @@ function runparse(src, lang, ctx) {
 }
 const util = {
     runparse,
-    // options: prepareOptions,
 };
 exports.util = util;
-// export default AontuOld
 exports.default = Aontu;
 //# sourceMappingURL=aontu.js.map

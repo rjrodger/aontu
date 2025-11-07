@@ -2,7 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PathFuncVal = void 0;
-const NilVal_1 = require("../val/NilVal");
+const err_1 = require("../err");
 const RefVal_1 = require("../val/RefVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 class PathFuncVal extends FuncBaseVal_1.FuncBaseVal {
@@ -26,7 +26,7 @@ class PathFuncVal extends FuncBaseVal_1.FuncBaseVal {
                 arg = this.place(new RefVal_1.RefVal({ peg: [arg], absolute: false }));
             }
             else if (!arg.isRef) {
-                arg = NilVal_1.NilVal.make(ctx, 'invalid-arg', this);
+                arg = (0, err_1.makeNilErr)(ctx, 'invalid-arg', this);
             }
         }
         args[0] = arg;
@@ -34,7 +34,7 @@ class PathFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return args;
     }
     resolve(ctx, args) {
-        let out = args[0] ?? NilVal_1.NilVal.make(ctx, 'arg', this);
+        let out = args[0] ?? (0, err_1.makeNilErr)(ctx, 'arg', this);
         return out;
     }
 }

@@ -9,6 +9,8 @@ import {
   AontuContext,
 } from '../ctx'
 
+import { makeNilErr } from '../err'
+
 import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
 import { NilVal } from './NilVal'
@@ -35,14 +37,14 @@ class IntegerVal extends ScalarVal {
     super({ ...spec, kind: Integer }, ctx)
   }
 
-  unify(peer: any, ctx: AontuContext, explain?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, explain, 'Integer', this, peer)
+  unify(peer: any, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Integer', this, peer)
 
     let out: Val = this
 
     if (null != peer) {
       if (peer.isScalarKind) {
-        out = peer.unify(this, ctx, ec(te, 'KND'))
+        out = peer.unify(this, ctx.clone({ explain: ec(te, 'KND') }))
       }
       else if (
         peer.isScalar &&
@@ -54,7 +56,8 @@ class IntegerVal extends ScalarVal {
         out = this
       }
       else {
-        out = NilVal.make(ctx, 'scalar', this, peer)
+        out = makeNilErr(ctx, 'scalar_' +
+          ((peer as any).kind === this.kind ? 'value' : 'kind'), this, peer)
       }
     }
     else {

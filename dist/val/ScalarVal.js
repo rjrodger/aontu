@@ -4,11 +4,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ScalarVal = void 0;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
-const NilVal_1 = require("./NilVal");
-// import { RefVal } from './RefVal'
-const BaseVal_1 = require("./BaseVal");
+const err_1 = require("../err");
+const Val_1 = require("./Val");
 const ScalarKindVal_1 = require("./ScalarKindVal");
-class ScalarVal extends BaseVal_1.BaseVal {
+class ScalarVal extends Val_1.Val {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isScalar = true;
@@ -24,8 +23,8 @@ class ScalarVal extends BaseVal_1.BaseVal {
         });
         return out;
     }
-    unify(peer, ctx, explain) {
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, explain, 'Scalar', this, peer);
+    unify(peer, ctx) {
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Scalar', this, peer);
         let out;
         // Exactly equal scalars are handled in unify.unite
         if (peer.isScalarKind) {
@@ -35,7 +34,8 @@ class ScalarVal extends BaseVal_1.BaseVal {
             out = this;
         }
         else {
-            out = NilVal_1.NilVal.make(ctx, 'scalar', this, peer);
+            out = (0, err_1.makeNilErr)(ctx, 'scalar_' +
+                (peer.kind === this.kind ? 'value' : 'kind'), this, peer);
         }
         (0, utility_1.explainClose)(te, out);
         return out;

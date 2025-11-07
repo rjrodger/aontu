@@ -18,11 +18,10 @@ import {
   explainClose,
 } from '../utility'
 
+import { makeNilErr } from '../err'
 
 // import { BaseVal } from './BaseVal'
 import { FeatureVal } from './FeatureVal'
-import { NilVal } from './NilVal'
-
 
 
 // A ScalarKind for integers. Number includes floats.
@@ -57,8 +56,8 @@ class ScalarKindVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, trace, 'ScalarKind', this, peer)
+  unify(peer: Val, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'ScalarKind', this, peer)
 
     const peerIsScalarVal = peer.isScalar
     const peerIsScalarKind = (peer as ScalarKindVal).isScalarKind
@@ -75,7 +74,7 @@ class ScalarKindVal extends FeatureVal {
         out = peer
       }
       else {
-        out = NilVal.make(ctx, 'no-scalar-unify', this, peer)
+        out = makeNilErr(ctx, 'no-scalar-unify', this, peer)
       }
     }
     else if (peerIsScalarKind) {
@@ -89,11 +88,11 @@ class ScalarKindVal extends FeatureVal {
         out = this
       }
       else {
-        out = NilVal.make(ctx, 'scalar-type', this, peer)
+        out = makeNilErr(ctx, 'scalar-type', this, peer)
       }
     }
     else {
-      out = NilVal.make(ctx, 'not-scalar-type', this, peer)
+      out = makeNilErr(ctx, 'not-scalar-type', this, peer)
     }
 
     ctx.explain && explainClose(te, out)

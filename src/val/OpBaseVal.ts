@@ -11,7 +11,8 @@ import {
 } from '../type'
 
 import {
-  descErr
+  descErr,
+  makeNilErr
 } from '../err'
 
 import { AontuContext } from '../ctx'
@@ -28,7 +29,6 @@ import {
 } from './top'
 
 import { ConjunctVal } from './ConjunctVal'
-import { NilVal } from './NilVal'
 import { FeatureVal } from './FeatureVal'
 
 
@@ -56,7 +56,7 @@ class OpBaseVal extends FeatureVal {
 
 
   make(ctx: AontuContext, _spec: ValSpec): Val {
-    return NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'make')
+    return makeNilErr(ctx, 'op:' + this.opname(), this, undefined, 'make')
   }
 
   opname() {
@@ -64,8 +64,8 @@ class OpBaseVal extends FeatureVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext, trace?: any[]): Val {
-    const te = ctx.explain && explainOpen(ctx, trace, 'Op:' + this.opname(), this, peer)
+  unify(peer: Val, ctx: AontuContext): Val {
+    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Op:' + this.opname(), this, peer)
     let out: Val = this
 
     if (this.id == peer.id) {
@@ -102,7 +102,7 @@ class OpBaseVal extends FeatureVal {
         }
         // TODO: should peer.isNil
         else if (peer.isNil) {
-          out = NilVal.make(ctx, 'op[' + this.peg + ']', this, peer)
+          out = makeNilErr(ctx, 'op[' + this.peg + ']', this, peer)
         }
 
         else if (this.canon === peer.canon) {
@@ -116,7 +116,7 @@ class OpBaseVal extends FeatureVal {
       }
       else {
         out = result.done && peer.isTop ? result :
-          unite(ctx, result, peer, 'op', ec(te, 'RES'))
+          unite(ctx.clone({ explain: ec(te, 'RES') }), result, peer, 'op')
       }
 
       out.dc = DONE === out.dc ? DONE : this.dc + 1
@@ -126,9 +126,9 @@ class OpBaseVal extends FeatureVal {
       out = this.make(ctx, { peg: newpeg })
 
       // TODO: make should handle this using ctx?
-      out.row = this.row
-      out.col = this.col
-      out.url = this.url
+      out.site.row = this.site.row
+      out.site.col = this.site.col
+      out.site.url = this.site.url
       out.path = this.path
 
       // why += 'top'
@@ -143,9 +143,9 @@ class OpBaseVal extends FeatureVal {
       out = new ConjunctVal({ peg: [this, peer] }, ctx)
 
       // TODO: make should handle this using ctx?
-      out.row = this.row
-      out.col = this.col
-      out.url = this.url
+      out.site.row = this.site.row
+      out.site.col = this.site.col
+      out.site.url = this.site.url
       out.path = this.path
     }
 
@@ -169,7 +169,7 @@ class OpBaseVal extends FeatureVal {
 
 
   operate(ctx: AontuContext, _args: Val[]): Val | undefined {
-    return NilVal.make(ctx, 'op:' + this.opname(), this, undefined, 'operate')
+    return makeNilErr(ctx, 'op:' + this.opname(), this, undefined, 'operate')
   }
 
 
@@ -197,7 +197,7 @@ class OpBaseVal extends FeatureVal {
 
   gen(ctx?: AontuContext) {
     // Unresolved op cannot be generated, so always an error.
-    let nil = NilVal.make(
+    let nil = makeNilErr(
       ctx,
       'op',
       this,
@@ -206,9 +206,9 @@ class OpBaseVal extends FeatureVal {
 
     // TODO: refactor to use Site
     nil.path = this.path
-    nil.url = this.url
-    nil.row = this.row
-    nil.col = this.col
+    nil.site.url = this.site.url
+    nil.site.row = this.site.row
+    nil.site.col = this.site.col
 
     descErr(nil, ctx)
 

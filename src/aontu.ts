@@ -12,24 +12,26 @@ import { makeNilErr, AontuError } from './err'
 
 
 class Aontu {
-  opts: Record<string, any> // AontuOptions
+  opts: AontuOptions
   lang: Lang
 
 
-  constructor(popts?: Partial<AontuOptions>) {
+  constructor(popts?: AontuOptions) {
     this.opts = popts ?? {}
     this.lang = new Lang(this.opts)
   }
 
 
-  ctx(arg?: AontuContextConfig): AontuContext {
-    arg = arg ?? {}
-    const ac = new AontuContext(arg)
+  // Create a new context.
+  ctx(cfg?: AontuContextConfig): AontuContext {
+    cfg = cfg ?? {}
+    const ac = new AontuContext(cfg)
     return ac
   }
 
 
-  parse(src: string, opts?: Partial<AontuOptions>, ac?: AontuContext): Val | undefined {
+  // Parse source into a matching Val AST, not yet unified.
+  parse(src: string, opts?: AontuOptions, ac?: AontuContext): Val | undefined {
     let out: Val | undefined
     let errs: any[] = []
 
@@ -38,7 +40,7 @@ class Aontu {
     }
 
     ac = ac ?? this.ctx()
-    ac.addopts(opts)
+    ac.addopts({ ...(opts ?? {}), src })
 
     if ('string' !== typeof src) {
       out = makeNilErr(ac, 'parse_bad_src')
@@ -57,12 +59,13 @@ class Aontu {
   }
 
 
-  unify(src: string | Val, opts?: Partial<AontuOptions>, ac?: AontuContext | any): Val {
+  // Unify source or Val, returning a fully unified Val.
+  unify(src: string | Val, opts?: AontuOptions, ac?: AontuContext | any): Val {
     let out: Val | undefined
     let errs: any[] = []
 
     ac = ac ?? this.ctx()
-    ac.addopts(opts)
+    ac.addopts({ ...(opts ?? {}), src })
 
     let pval: Val | undefined
 
@@ -105,12 +108,13 @@ class Aontu {
   }
 
 
+  // Generate output structure from source, which must parse and fully unify.
   generate(src: string, opts?: any, ac?: AontuContext): any {
     try {
       let out = undefined
 
       ac = ac ?? this.ctx()
-      ac.addopts(opts)
+      ac.addopts({ ...(opts ?? {}), src })
 
       let pval = this.parse(src, undefined, ac)
 
@@ -143,10 +147,12 @@ class Aontu {
       throw unex
     }
   }
-
 }
 
+
+// Either throw an exception or add collected errors to result.
 function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
+
   errs.map((err: any) => ac.adderr(err))
 
   if (out) {
@@ -166,6 +172,7 @@ function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
 }
 
 
+// Perform parse of source code (minor customizations over Lang.parse).
 function runparse(src: string, lang: Lang, ctx: AontuContext): Val {
   const popts = {
     // src: ctx.src,
@@ -191,8 +198,8 @@ function runparse(src: string, lang: Lang, ctx: AontuContext): Val {
 
 const util = {
   runparse,
-  // options: prepareOptions,
 }
+
 
 export {
   Aontu,
@@ -206,5 +213,5 @@ export {
   formatExplain
 }
 
-// export default AontuOld
+
 export default Aontu
