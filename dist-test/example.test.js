@@ -107,6 +107,24 @@ const G = (s) => A.generate(s);
         (0, code_1.expect)(() => G('m:close({x:number,y:Y}) n:move($.m)')).throw(/required/);
         (0, code_1.expect)(() => G('m:close({x:top,y:Y}) n:move($.m)')).throw(/required/);
     });
+    (0, node_test_1.test)('optionals-dive-examples', () => {
+        (0, code_1.expect)(G('x?:number,y:Y')).equal({ y: 'Y' });
+        (0, code_1.expect)(G('x?:top,y:Y')).equal({ y: 'Y' });
+        (0, code_1.expect)(G('x:a?:number x:a:1')).equal({ x: { a: 1 } });
+        (0, code_1.expect)(G('x:a?:number')).equal({ x: {} });
+        (0, code_1.expect)(G('x:{a?:number} x:{a:1}')).equal({ x: { a: 1 } });
+        (0, code_1.expect)(G('x:{a?:number}')).equal({ x: {} });
+        (0, code_1.expect)(G('{x:{a?:{b?:number}} x:{a:{b:1}}')).equal({ x: { a: { b: 1 } } });
+        (0, code_1.expect)(G('{x:{a?:{b?:number}} x:{a:{c:2}}')).equal({ x: { a: { c: 2 } } });
+        (0, code_1.expect)(G('{x:{a?:{b?:number}} x:{a:{}}')).equal({ x: {} });
+        (0, code_1.expect)(G('{x:{a?:{b?:number}} x:{c:2}}')).equal({ x: { c: 2 } });
+        (0, code_1.expect)(G('{x:{a?:{b?:number}} x:{}}')).equal({ x: {} });
+        (0, code_1.expect)(G('x:a?:b?:number x:a:b:1')).equal({ x: { a: { b: 1 } } });
+        (0, code_1.expect)(G('x:a?:b?:number x:a:{c:2}')).equal({ x: { a: { c: 2 } } });
+        (0, code_1.expect)(G('x:a?:b?:number x:a:{}')).equal({ x: {} });
+        (0, code_1.expect)(G('x:a?:b?:number x:{c:2}')).equal({ x: { c: 2 } });
+        (0, code_1.expect)(G('x:a?:b?:number x:{}')).equal({ x: {} });
+    });
     (0, node_test_1.test)('close-examples', () => {
         (0, code_1.expect)(G('x:close({a:1})')).equal({ x: { a: 1 } });
         (0, code_1.expect)(() => G('x:close({a:1}) x:{b:2}')).throws(/closed/);

@@ -133,6 +133,30 @@ describe('examples', function() {
   })
 
 
+  test('optionals-dive-examples', () => {
+    expect(G('x?:number,y:Y')).equal({ y: 'Y' })
+    expect(G('x?:top,y:Y')).equal({ y: 'Y' })
+
+    expect(G('x:a?:number x:a:1')).equal({ x: { a: 1 } })
+    expect(G('x:a?:number')).equal({ x: {} })
+    expect(G('x:{a?:number} x:{a:1}')).equal({ x: { a: 1 } })
+    expect(G('x:{a?:number}')).equal({ x: {} })
+
+    expect(G('{x:{a?:{b?:number}} x:{a:{b:1}}')).equal({ x: { a: { b: 1 } } })
+    expect(G('{x:{a?:{b?:number}} x:{a:{c:2}}')).equal({ x: { a: { c: 2 } } })
+    expect(G('{x:{a?:{b?:number}} x:{a:{}}')).equal({ x: {} })
+    expect(G('{x:{a?:{b?:number}} x:{c:2}}')).equal({ x: { c: 2 } })
+    expect(G('{x:{a?:{b?:number}} x:{}}')).equal({ x: {} })
+
+    expect(G('x:a?:b?:number x:a:b:1')).equal({ x: { a: { b: 1 } } })
+    expect(G('x:a?:b?:number x:a:{c:2}')).equal({ x: { a: { c: 2 } } })
+    expect(G('x:a?:b?:number x:a:{}')).equal({ x: {} })
+    expect(G('x:a?:b?:number x:{c:2}')).equal({ x: { c: 2 } })
+    expect(G('x:a?:b?:number x:{}')).equal({ x: {} })
+
+  })
+
+
   test('close-examples', () => {
     expect(G('x:close({a:1})')).equal({ x: { a: 1 } })
     expect(() => G('x:close({a:1}) x:{b:2}')).throws(/closed/)
