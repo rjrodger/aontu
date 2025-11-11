@@ -257,6 +257,13 @@ let AontuJsonic = function aontu(jsonic) {
                 b: 2,
                 g: 'pair,jsonic,top,aontu-optional',
             },
+            {
+                s: [OPTKEY, QM],
+                p: 'map',
+                b: 2,
+                n: { pk: 1 },
+                g: 'pair,jsonic,top,dive,aontu-optional',
+            },
         ])
             .bc((r, ctx) => {
             let valnode = r.node;

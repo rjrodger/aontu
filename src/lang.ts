@@ -363,6 +363,15 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
           b: 2,
           g: 'pair,jsonic,top,aontu-optional',
         },
+
+        {
+          s: [OPTKEY, QM],
+          p: 'map',
+          b: 2,
+          n: { pk: 1 },
+          g: 'pair,jsonic,top,dive,aontu-optional',
+        },
+
       ])
 
       .bc((r: Rule, ctx: JsonicContext) => {
