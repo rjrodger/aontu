@@ -32,6 +32,7 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
+import { empty } from './Val'
 
 
 class ListVal extends BagVal {
@@ -240,6 +241,7 @@ class ListVal extends BagVal {
     for (let i = 0; i < this.peg.length; i++) {
       const child = this.peg[i]
 
+      const optional = this.optionalKeys.includes('' + i)
 
       if (child.isScalar
         || child.isMap
@@ -249,7 +251,13 @@ class ListVal extends BagVal {
         || child.isDisjunct
         || child.isNil
       ) {
-        out.push(child.gen(ctx))
+        const cval = child.gen(ctx)
+
+        if (optional && empty(cval)) {
+          continue
+        }
+
+        out.push(cval)
       }
       else if (child.isNil) {
         ctx.adderr(child)

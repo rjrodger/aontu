@@ -33,9 +33,10 @@ class HideFuncVal extends FuncBaseVal {
     ctx?: AontuContext
   ) {
     super(spec, ctx)
+
+    // The function does not mark itself!
     this.mark.type = false
-    this.mark.hide = true
-    // console.log('HFV', this.id, this.peg?.[0]?.canon)
+    this.mark.hide = false
   }
 
 
@@ -48,6 +49,7 @@ class HideFuncVal extends FuncBaseVal {
   }
 
 
+  /*
   unify(peer: Val, ctx: AontuContext): Val {
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'HideFunc', this, peer)
     let out: Val | undefined = this.resolved
@@ -59,29 +61,19 @@ class HideFuncVal extends FuncBaseVal {
     explainClose(te, out)
     return out
   }
+  */
 
 
   resolve(ctx: AontuContext, args: Val[]) {
     let out = args[0] ?? makeNilErr(ctx, 'arg', this)
     if (!out.isNil) {
       out = out.clone(ctx)
-      // out.mark.hide = true
 
       walk(out, (_key: string | number | undefined, val: Val) => {
         val.mark.hide = true
         return val
       })
-
     }
-    // console.log('HIDE-RESOLVE', args[0]?.canon, '->', out.canon)
-
-    // TODO: since hide is self-erasing, we need this hack - find a better way
-
-    const origcanon = out.canon
-    Object.defineProperty(out, 'canon', {
-      get: () => 'hide(' + origcanon + ')',
-      configurable: true
-    })
 
     return out
   }

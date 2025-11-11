@@ -32,6 +32,7 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
+import { empty } from './Val'
 
 
 class MapVal extends BagVal {
@@ -275,6 +276,8 @@ class MapVal extends BagVal {
         continue
       }
 
+      const optional = this.optionalKeys.includes(p)
+
       if (child.isScalar
         || child.isMap
         || child.isList
@@ -283,9 +286,15 @@ class MapVal extends BagVal {
         || child.isDisjunct
         || child.isNil
       ) {
-        out[p] = child.gen(ctx)
+        const cval = child.gen(ctx)
+
+        if (optional && empty(cval)) {
+          continue
+        }
+
+        out[p] = cval
       }
-      else if (!this.optionalKeys.includes(p)) {
+      else if (!optional) {
         makeNilErr(
           ctx,
           this.closed ? 'mapval_required' : 'mapval_no_gen',

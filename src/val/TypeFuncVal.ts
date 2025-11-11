@@ -12,11 +12,10 @@ import {
 
 import { makeNilErr } from '../err'
 
-import { NilVal } from '../val/NilVal'
-
-
 import {
-  walk
+  walk,
+  explainOpen,
+  explainClose,
 } from '../utility'
 
 
@@ -33,10 +32,10 @@ class TypeFuncVal extends FuncBaseVal {
     ctx?: AontuContext
   ) {
     super(spec, ctx)
-    // this.mark.type = true
+
+    // The function does not mark itself!
     this.mark.type = false
     this.mark.hide = false
-    // console.log('TFV', this.id, this.peg?.[0]?.canon)
   }
 
 
@@ -53,27 +52,12 @@ class TypeFuncVal extends FuncBaseVal {
     let out = args[0] ?? makeNilErr(ctx, 'arg', this)
     if (!out.isNil) {
       out = out.clone(ctx)
-      // out.mark.type = true
 
       walk(out, (_key: string | number | undefined, val: Val) => {
         val.mark.type = true
         return val
       })
-
     }
-    // console.log('TYPE-RESOLVE', args[0]?.canon, '->', out.canon)
-
-    // TODO: since type is self-erasing, we need this hack - find a better way
-
-    /*
-    const origcanon = out.canon
-    Object.defineProperty(out, 'canon', {
-      get: () => 'type(' + origcanon + ')',
-      configurable: true
-    })
-    */
-
-    // console.log('TYPE-OUT', out.canon)
 
     return out
   }

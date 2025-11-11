@@ -9,6 +9,7 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const BagVal_1 = require("./BagVal");
+const Val_1 = require("./Val");
 class ListVal extends BagVal_1.BagVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -155,6 +156,7 @@ class ListVal extends BagVal_1.BagVal {
         }
         for (let i = 0; i < this.peg.length; i++) {
             const child = this.peg[i];
+            const optional = this.optionalKeys.includes('' + i);
             if (child.isScalar
                 || child.isMap
                 || child.isList
@@ -162,7 +164,11 @@ class ListVal extends BagVal_1.BagVal {
                 || child.isRef
                 || child.isDisjunct
                 || child.isNil) {
-                out.push(child.gen(ctx));
+                const cval = child.gen(ctx);
+                if (optional && (0, Val_1.empty)(cval)) {
+                    continue;
+                }
+                out.push(cval);
             }
             else if (child.isNil) {
                 ctx.adderr(child);

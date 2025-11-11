@@ -347,14 +347,23 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   const QM = jsonic.token.QM
 
-  // const KEY = jsonic.tokenSet.KEY
   const OPTKEY = [TX, ST, NR]
 
 
   jsonic.rule('val', (rs: RuleSpec) => {
 
     rs
-      .open([{ s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' }])
+      .open([
+        { s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' },
+
+        {
+          s: [OPTKEY, QM],
+          c: (r) => 0 == r.d,
+          p: 'map',
+          b: 2,
+          g: 'pair,jsonic,top,aontu-optional',
+        },
+      ])
 
       .bc((r: Rule, ctx: JsonicContext) => {
 
@@ -401,7 +410,11 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
   jsonic.rule('map', (rs: RuleSpec) => {
     rs
-      .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
+      .open([
+        { s: [CJ, CL], p: 'pair', b: 2, g: 'spread' },
+
+        { s: [OPTKEY, QM], p: 'pair', b: 2, g: 'pair,list,val,imp,jsonic,aontu-optional' },
+      ])
 
       .bc((r: Rule, ctx: JsonicContext) => {
         const optionalKeys = r.u.aontu_optional_keys ?? []

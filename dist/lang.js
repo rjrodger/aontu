@@ -245,11 +245,19 @@ let AontuJsonic = function aontu(jsonic) {
     const TX = jsonic.token.TX;
     const NR = jsonic.token.NR;
     const QM = jsonic.token.QM;
-    // const KEY = jsonic.tokenSet.KEY
     const OPTKEY = [TX, ST, NR];
     jsonic.rule('val', (rs) => {
         rs
-            .open([{ s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' }])
+            .open([
+            { s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' },
+            {
+                s: [OPTKEY, QM],
+                c: (r) => 0 == r.d,
+                p: 'map',
+                b: 2,
+                g: 'pair,jsonic,top,aontu-optional',
+            },
+        ])
             .bc((r, ctx) => {
             let valnode = r.node;
             let valtype = typeof valnode;
@@ -286,7 +294,10 @@ let AontuJsonic = function aontu(jsonic) {
     });
     jsonic.rule('map', (rs) => {
         rs
-            .open([{ s: [CJ, CL], p: 'pair', b: 2, g: 'spread' }])
+            .open([
+            { s: [CJ, CL], p: 'pair', b: 2, g: 'spread' },
+            { s: [OPTKEY, QM], p: 'pair', b: 2, g: 'pair,list,val,imp,jsonic,aontu-optional' },
+        ])
             .bc((r, ctx) => {
             const optionalKeys = r.u.aontu_optional_keys ?? [];
             let mo = r.node;

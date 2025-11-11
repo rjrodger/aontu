@@ -481,12 +481,12 @@ const G = (x) => A.generate(x);
     });
     (0, node_test_1.test)('hide-canon', () => {
         // Test canonical representation shows hide wrapping
-        const N = (x, ctx) => new unify_1.Unify(x, lang)
+        const N = (x, _ctx) => new unify_1.Unify(x, lang)
             .res.canon;
-        (0, code_1.expect)(N('hide(1)')).equal('hide(1)');
-        (0, code_1.expect)(N('hide(foo)')).equal('hide("foo")');
-        (0, code_1.expect)(N('hide({x:1})')).equal('hide({"x":1})');
-        (0, code_1.expect)(N('hide([1,2])')).equal('hide([1,2])');
+        (0, code_1.expect)(N('hide(1)')).equal('1');
+        (0, code_1.expect)(N('hide(foo)')).equal('"foo"');
+        (0, code_1.expect)(N('hide({x:1})')).equal('{"x":1}');
+        (0, code_1.expect)(N('hide([1,2])')).equal('[1,2]');
     });
     (0, node_test_1.test)('path-canon', () => {
         const N = (x) => new unify_1.Unify(x, lang).res.canon;

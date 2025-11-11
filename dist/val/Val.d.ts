@@ -84,5 +84,6 @@ declare abstract class Val {
     [inspect.custom](_d: number, _o: any, _inspect: any): string;
     inspection(_inspect: Function): string;
 }
+declare function empty(o: any): boolean;
 export type { ValMark, ValSpec, };
-export { Val, DONE, SPREAD, };
+export { Val, DONE, SPREAD, empty };

@@ -14,6 +14,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 var _Val_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SPREAD = exports.DONE = exports.Val = void 0;
+exports.empty = empty;
 const node_util_1 = require("node:util");
 const site_1 = require("../site");
 // import { AontuError, descErr, makeNilErr } from '../err'
@@ -176,5 +177,10 @@ function pretty(s) {
     return ((String(s))
         .replace(/\[Object: null prototype\]/g, '')
         .replace(/\s+/g, ''));
+}
+function empty(o) {
+    return ((Array.isArray(o) && 0 === o.length)
+        || (null != o && 'object' === typeof o && 0 === Object.keys(o).length)
+        || false);
 }
 //# sourceMappingURL=Val.js.map

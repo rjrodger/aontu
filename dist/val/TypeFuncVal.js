@@ -9,10 +9,9 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isTypeFunc = true;
-        // this.mark.type = true
+        // The function does not mark itself!
         this.mark.type = false;
         this.mark.hide = false;
-        // console.log('TFV', this.id, this.peg?.[0]?.canon)
     }
     make(_ctx, spec) {
         return new TypeFuncVal(spec);
@@ -24,22 +23,11 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
         let out = args[0] ?? (0, err_1.makeNilErr)(ctx, 'arg', this);
         if (!out.isNil) {
             out = out.clone(ctx);
-            // out.mark.type = true
             (0, utility_1.walk)(out, (_key, val) => {
                 val.mark.type = true;
                 return val;
             });
         }
-        // console.log('TYPE-RESOLVE', args[0]?.canon, '->', out.canon)
-        // TODO: since type is self-erasing, we need this hack - find a better way
-        /*
-        const origcanon = out.canon
-        Object.defineProperty(out, 'canon', {
-          get: () => 'type(' + origcanon + ')',
-          configurable: true
-        })
-        */
-        // console.log('TYPE-OUT', out.canon)
         return out;
     }
 }

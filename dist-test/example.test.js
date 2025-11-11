@@ -73,6 +73,51 @@ const G = (s) => A.generate(s);
             .equal({ a: { y: 11, z: 4 } });
         (0, code_1.expect)(() => G('x:type({}) x:{y?:number,z:*3} a:copy($.x) a:{y:11,z:Z}')).throws(/aontu/);
     });
+    (0, node_test_1.test)('optionals-examples', () => {
+        (0, code_1.expect)(G('{x?:number,y:Y}')).equal({ y: 'Y' });
+        (0, code_1.expect)(G('{x?:top,y:Y}')).equal({ y: 'Y' });
+        (0, code_1.expect)(() => G('{x:number,y:Y}')).throw(/no_gen/);
+        (0, code_1.expect)(() => G('{x:top,y:Y}')).throw(/no_gen/);
+        (0, code_1.expect)(G('m:{x?:number,y:Y} n:$.m')).equal({ m: { y: 'Y' }, n: { y: 'Y' } });
+        (0, code_1.expect)(G('m:{x?:top,y:Y}  n:$.m')).equal({ m: { y: 'Y' }, n: { y: 'Y' } });
+        (0, code_1.expect)(() => G('m:{x:number,y:Y} n:$.m')).throw(/no_gen/);
+        (0, code_1.expect)(() => G('m:{x:top,y:Y} n:$.m')).throw(/no_gen/);
+        (0, code_1.expect)(G('m:type({x?:number,y:Y}) n:$.m')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(G('m:type({x?:top,y:Y}) n:$.m')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(() => G('m:type({x:number,y:Y}) n:$.m')).throw(/no_gen/);
+        (0, code_1.expect)(() => G('m:type({x:top,y:Y}) n:$.m')).throw(/no_gen/);
+        (0, code_1.expect)(G('m:hide({x?:number,y:Y}) n:$.m')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(G('m:hide({x?:top,y:Y}) n:$.m')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(() => G('m:hide({x:number,y:Y}) n:$.m')).throw(/no_gen/);
+        (0, code_1.expect)(() => G('m:hide({x:top,y:Y}) n:$.m')).throw(/no_gen/);
+        (0, code_1.expect)(G('m:type({x?:number,y:Y}) n:copy($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(G('m:type({x?:top,y:Y}) n:copy($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(() => G('m:type({x:number,y:Y}) n:copy($.m)')).throw(/no_gen/);
+        (0, code_1.expect)(() => G('m:type({x:top,y:Y}) n:copy($.m)')).throw(/no_gen/);
+        (0, code_1.expect)(G('m:hide({x?:number,y:Y}) n:copy($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(G('m:hide({x?:top,y:Y}) n:copy($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(() => G('m:hide({x:number,y:Y}) n:copy($.m)')).throw(/no_gen/);
+        (0, code_1.expect)(() => G('m:hide({x:top,y:Y}) n:copy($.m)')).throw(/no_gen/);
+        (0, code_1.expect)(G('m:{x?:number,y:Y} n:move($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(G('m:{x?:top,y:Y} n:move($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(() => G('m:{x:number,y:Y} n:move($.m)')).throw(/no_gen/);
+        (0, code_1.expect)(() => G('m:{x:top,y:Y} n:move($.m)')).throw(/no_gen/);
+        (0, code_1.expect)(G('m:close({x?:number,y:Y}) n:move($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(G('m:close({x?:top,y:Y}) n:move($.m)')).equal({ n: { y: 'Y' } });
+        (0, code_1.expect)(() => G('m:close({x:number,y:Y}) n:move($.m)')).throw(/required/);
+        (0, code_1.expect)(() => G('m:close({x:top,y:Y}) n:move($.m)')).throw(/required/);
+    });
+    (0, node_test_1.test)('close-examples', () => {
+        (0, code_1.expect)(G('x:close({a:1})')).equal({ x: { a: 1 } });
+        (0, code_1.expect)(() => G('x:close({a:1}) x:{b:2}')).throws(/closed/);
+        (0, code_1.expect)(G('x:open(close({a:1})) x:{b:2}')).equal({ x: { a: 1, b: 2 } });
+        (0, code_1.expect)(() => G('x:close(open({a:1})) x:{b:2}')).throws(/closed/);
+        (0, code_1.expect)(G('x:close({a:number,b?:boolean}), x:{a:1,b:true}')).equal({ x: { a: 1, b: true } });
+        (0, code_1.expect)(G('x:close({a:number,b?:boolean}), x:{a:1}')).equal({ x: { a: 1 } });
+        (0, code_1.expect)(G('x:close({a:number,b?:boolean,c:string}), x:{a:1,c:C}'))
+            .equal({ x: { a: 1, c: 'C' } });
+        (0, code_1.expect)(G('x:close({a:1,b:{c:2}}) x:{a:1,b:{d:3}}')).equal({ x: { a: 1, b: { c: 2, d: 3 } } });
+    });
     /*
     test('all-expressions', () => {
       // Expression 1: a:1|2 a:2 - Parse error due to spaces, skip

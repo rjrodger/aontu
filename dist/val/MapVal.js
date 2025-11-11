@@ -9,6 +9,7 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const BagVal_1 = require("./BagVal");
+const Val_1 = require("./Val");
 class MapVal extends BagVal_1.BagVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -183,6 +184,7 @@ class MapVal extends BagVal_1.BagVal {
             if (child.mark.type || child.mark.hide) {
                 continue;
             }
+            const optional = this.optionalKeys.includes(p);
             if (child.isScalar
                 || child.isMap
                 || child.isList
@@ -190,9 +192,13 @@ class MapVal extends BagVal_1.BagVal {
                 || child.isRef
                 || child.isDisjunct
                 || child.isNil) {
-                out[p] = child.gen(ctx);
+                const cval = child.gen(ctx);
+                if (optional && (0, Val_1.empty)(cval)) {
+                    continue;
+                }
+                out[p] = cval;
             }
-            else if (!this.optionalKeys.includes(p)) {
+            else if (!optional) {
                 (0, err_1.makeNilErr)(ctx, this.closed ? 'mapval_required' : 'mapval_no_gen', child, undefined);
                 break;
             }

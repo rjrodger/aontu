@@ -271,6 +271,16 @@ function pretty(s: string) {
 }
 
 
+function empty(o: any) {
+  return (
+    (Array.isArray(o) && 0 === o.length)
+    || (null != o && 'object' === typeof o && 0 === Object.keys(o).length)
+    || false
+  )
+}
+
+
+
 export type {
   ValMark,
   ValSpec,
@@ -280,4 +290,5 @@ export {
   Val,
   DONE,
   SPREAD,
+  empty
 }
