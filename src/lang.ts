@@ -138,7 +138,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         },
         'nil': {
           val: (r: Rule, ctx: JsonicContext) =>
-            addsite(new NilVal('literal'), r, ctx)
+            addsite(new NilVal({ why: 'literal_nil' }), r, ctx)
         },
 
         // TODO: FIX: need a TOP instance to hold path
@@ -218,7 +218,6 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
       // $.a.b absolute path
       if (terms[0] instanceof RefVal) {
         terms[0].absolute = true
-        // // console.log('DOLLAR-PREFIX-PATH', terms)
         return terms[0]
       }
       return addsite(new VarVal({ peg: terms[0] }), r, ctx)
@@ -246,8 +245,7 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
         const funcval = funcMap[fname]
         const args = terms.slice(1)
         val = null == funcval ?
-          // TODO: fix error handling
-          new NilVal({ msg: 'Not a function: ' + fname }) :
+          new NilVal({ why: 'unknown_function' }) :
           new funcval({
             peg: args
           })

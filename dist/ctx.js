@@ -35,6 +35,7 @@ class AontuContext {
         ctx.var = Object.create(this.vars);
         ctx.err = cfg.err ?? ctx.err;
         ctx.explain = cfg.explain ?? ctx.explain;
+        ctx._pathstr = undefined;
         return ctx;
     }
     descend(key) {
@@ -56,11 +57,16 @@ class AontuContext {
         this.srcpath = this.opts.path ?? this.srcpath;
     }
     adderr(err) {
-        if (!this.err.includes(err)) {
-            this.err.push(err);
-        }
-        if (null == err.msg || '' == err.msg) {
-            (0, err_1.descErr)(err, this);
+        if (null != err && err.isNil) {
+            if (null == err.primary) {
+                err.primary = err;
+            }
+            if (!this.err.includes(err)) {
+                this.err.push(err);
+            }
+            if (null == err.msg || '' == err.msg) {
+                (0, err_1.descErr)(err, this);
+            }
         }
     }
     errmsg() {
@@ -89,6 +95,10 @@ class AontuContext {
             node = undefined;
         }
         return node;
+    }
+    get pathstr() {
+        return this._pathstr ??
+            (this._pathstr = this.path.map(p => p.replaceAll('.', '\\.')).join('.'));
     }
 }
 exports.AontuContext = AontuContext;

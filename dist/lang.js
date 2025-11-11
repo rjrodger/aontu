@@ -78,7 +78,7 @@ let AontuJsonic = function aontu(jsonic) {
                     val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: Boolean }), r, ctx)
                 },
                 'nil': {
-                    val: (r, ctx) => addsite(new NilVal_1.NilVal('literal'), r, ctx)
+                    val: (r, ctx) => addsite(new NilVal_1.NilVal({ why: 'literal_nil' }), r, ctx)
                 },
                 // TODO: FIX: need a TOP instance to hold path
                 'top': { val: () => (0, top_1.top)() },
@@ -141,7 +141,6 @@ let AontuJsonic = function aontu(jsonic) {
             // $.a.b absolute path
             if (terms[0] instanceof RefVal_1.RefVal) {
                 terms[0].absolute = true;
-                // // console.log('DOLLAR-PREFIX-PATH', terms)
                 return terms[0];
             }
             return addsite(new VarVal_1.VarVal({ peg: terms[0] }), r, ctx);
@@ -165,8 +164,7 @@ let AontuJsonic = function aontu(jsonic) {
                 const funcval = funcMap[fname];
                 const args = terms.slice(1);
                 val = null == funcval ?
-                    // TODO: fix error handling
-                    new NilVal_1.NilVal({ msg: 'Not a function: ' + fname }) :
+                    new NilVal_1.NilVal({ why: 'unknown_function' }) :
                     new funcval({
                         peg: args
                     });

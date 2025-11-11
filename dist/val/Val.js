@@ -16,6 +16,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SPREAD = exports.DONE = exports.Val = void 0;
 const node_util_1 = require("node:util");
 const site_1 = require("../site");
+// import { AontuError, descErr, makeNilErr } from '../err'
+// import { AontuError } from '../err'
 const DONE = -1;
 exports.DONE = DONE;
 const SPREAD = Symbol('spread');
@@ -136,11 +138,6 @@ class Val {
     notdone() {
         this.dc = DONE === this.dc ? DONE : this.dc + 1;
     }
-    /*
-    superior(): Val {
-      return top()
-    }
-    */
     [(_Val_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
         s.push('/' + this.path.join('.') + '/');

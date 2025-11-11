@@ -91,7 +91,7 @@ class Aontu {
             if (undefined !== pval && 0 === pval.err.length) {
                 let uval = this.unify(pval, undefined, ac);
                 if (undefined !== uval && 0 === uval.err.length) {
-                    out = uval.isNil ? undefined : uval.gen(ac);
+                    out = uval.isNil ? (ac.adderr(uval), undefined) : uval.gen(ac);
                     if (0 < ac.err.length) {
                         if (!ac.collect) {
                             throw new err_1.AontuError(ac.errmsg(), ac.err);
@@ -103,7 +103,7 @@ class Aontu {
             return out;
         }
         catch (err) {
-            if (err instanceof err_1.AontuError) {
+            if (err instanceof err_1.AontuError || true === err.aontu) {
                 throw err;
             }
             const unex = new err_1.AontuError('Aontu: unexpected error: ' + err.message);

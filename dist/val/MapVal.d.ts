@@ -11,6 +11,6 @@ declare class MapVal extends BagVal {
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
     inspection(inspect: Function): string;
-    gen(ctx?: AontuContext): any;
+    gen(ctx: AontuContext): any;
 }
 export { MapVal };

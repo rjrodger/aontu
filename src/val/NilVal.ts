@@ -16,6 +16,7 @@ import {
 
 import { Val } from './Val'
 
+import { AontuError, descErr } from '../err'
 
 
 class NilVal extends Val {
@@ -117,20 +118,20 @@ class NilVal extends Val {
   }
 
 
+  // TODO: custom canon? useful for unknown function errors
   get canon() {
     return 'nil'
   }
 
-  gen(ctx?: AontuContext) {
+
+  gen(ctx: AontuContext) {
     // Unresolved nil cannot be generated, so always an error.
 
-    if (Array.isArray(ctx?.err)) {
-      // ctx.err.push(this)
-      ctx.adderr(this)
-    }
-    else {
-      const err: any = new Error(this.msg)
-      err.aontu = true
+    this.why = this.why ?? 'nil_gen'
+    ctx.adderr(this)
+
+    if (!ctx.collect) {
+      const err = new AontuError(this.msg, [this])
       throw err
     }
 

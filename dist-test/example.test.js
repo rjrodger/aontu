@@ -64,7 +64,7 @@ const G = (s) => A.generate(s);
     });
     (0, node_test_1.test)('model-examples', () => {
         (0, code_1.expect)(G('x:type({}) x:{y:number} a:copy($.x) a:{y:1}')).equal({ a: { y: 1 } });
-        (0, code_1.expect)(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/aontu\/required/);
+        (0, code_1.expect)(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/no_gen/);
         (0, code_1.expect)(G('x:type({}) x:{y?:number} a:copy($.x) a:{}')).equal({ a: {} });
         (0, code_1.expect)(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{}')).equal({ a: { z: 2 } });
         (0, code_1.expect)(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{y:11}')).equal({ a: { y: 11, z: 2 } });

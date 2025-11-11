@@ -12,6 +12,6 @@ declare class ListVal extends BagVal {
     unify(peer: Val, ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    gen(ctx?: AontuContext): any;
+    gen(ctx: AontuContext): any;
 }
 export { ListVal, };

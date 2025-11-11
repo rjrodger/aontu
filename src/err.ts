@@ -148,6 +148,8 @@ function resolveSrc(v: Val, errctx?: ErrContext) {
 
 
 class AontuError extends Error {
+  aontu = true
+
   constructor(msg: string, errs?: NilVal[]) {
     super(msg)
     this.errs = () => errs ?? []

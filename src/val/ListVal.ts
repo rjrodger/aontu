@@ -77,7 +77,8 @@ class ListVal extends BagVal {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: AontuContext): Val {
-    peer = peer ?? top()
+    const TOP = top()
+    peer = peer ?? TOP
 
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'List', this, peer)
     let done: boolean = true
@@ -101,7 +102,8 @@ class ListVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx.clone({ explain: ec(te, 'SPR') }), out.spread.cj, peer.spread.cj, 'list-peer')
+            unite(ctx.clone({ explain: ec(te, 'SPR') }),
+              out.spread.cj, peer.spread.cj, 'list-peer')
           )
         )
       }
@@ -111,20 +113,25 @@ class ListVal extends BagVal {
     if (!exit) {
       out.dc = this.dc + 1
 
-      // if (this.spread.cj) {
-      //   out.spread.cj =
-      //     DONE !== this.spread.cj.dc ? unite(ctx, this.spread.cj) :
-      //       this.spread.cj
-      // }
-
-      let spread_cj = out.spread.cj || top()
+      let spread_cj = out.spread.cj || TOP
 
       // Always unify children first
       for (let key in this.peg) {
-        let keyctx = ctx.descend(key)
-        let key_spread_cj = spread_cj.clone(keyctx)
+        const keyctx = ctx.descend(key)
+        const key_spread_cj = spread_cj.clone(keyctx)
+        const child = this.peg[key]
 
-        out.peg[key] = unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }), this.peg[key], key_spread_cj, 'list-own')
+        propagateMarks(this, child)
+
+        out.peg[key] =
+          undefined === child ? key_spread_cj :
+            child.isNil ? child :
+              key_spread_cj.isNil ? key_spread_cj :
+                key_spread_cj.isTop && child.done ? child :
+                  child.isTop && key_spread_cj.done ? key_spread_cj :
+                    unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }),
+                      child, key_spread_cj, 'list-own')
+
         done = (done && DONE === out.peg[key].dc)
       }
 
@@ -132,7 +139,8 @@ class ListVal extends BagVal {
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof ListVal) {
-        let upeer: ListVal = (unite(ctx.clone({ explain: ec(te, 'PER') }), peer, top(), 'list-peer-list') as ListVal)
+        let upeer: ListVal = (unite(ctx.clone({ explain: ec(te, 'PER') }),
+          peer, TOP, 'list-peer-list') as ListVal)
 
         // NOTE: peerkey is the index
         for (let peerkey in upeer.peg) {
@@ -146,23 +154,24 @@ class ListVal extends BagVal {
 
           let oval = out.peg[peerkey] =
             undefined === child ? peerchild :
-              child.isNil ? child :
-                peerchild.isNil ? peerchild :
-                  unite(ctx.descend(peerkey).clone({ explain: ec(te, 'CHD') }), child, peerchild, 'list-peer')
+              child.isTop && peerchild.done ? peerchild :
+                child.isNil ? child :
+                  peerchild.isNil ? peerchild :
+                    unite(ctx.descend(peerkey).clone({ explain: ec(te, 'CHD') }),
+                      child, peerchild, 'list-peer')
 
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
             let key_spread_cj = spread_cj.clone(key_ctx)
 
-            // out.peg[peerkey] = unite(ctx, out.peg[peerkey], spread_cj)
             oval = out.peg[peerkey] =
-              // new ConjunctVal({ peg: [out.peg[peerkey], key_spread_cj] }, key_ctx)
-              // done = false
-              unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }), out.peg[peerkey], key_spread_cj, 'list-spread')
+              unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
+                out.peg[peerkey], key_spread_cj, 'list-spread')
           }
 
-          done = (done && DONE === oval.dc)
+          propagateMarks(this, oval)
 
+          done = (done && DONE === oval.dc)
         }
       }
       else if (!peer.isTop) {
@@ -221,25 +230,40 @@ class ListVal extends BagVal {
       ']'
   }
 
-  gen(ctx?: AontuContext) {
+
+  gen(ctx: AontuContext) {
     let out: any = []
     if (this.mark.type || this.mark.hide) {
       return undefined
     }
 
-    // console.log('LISTVAL-GEN', this.optionalKeys)
-
     for (let i = 0; i < this.peg.length; i++) {
-      let val = this.peg[i].gen(ctx)
-      if (undefined === val) {
-        if (!this.optionalKeys.includes('' + i)) {
-          return makeNilErr(ctx, 'required_listelem', this.peg[i], undefined)
-        }
+      const child = this.peg[i]
+
+
+      if (child.isScalar
+        || child.isMap
+        || child.isList
+        || child.isPref
+        || child.isRef
+        || child.isDisjunct
+        || child.isNil
+      ) {
+        out.push(child.gen(ctx))
       }
-      else {
-        out.push(val)
+      else if (child.isNil) {
+        ctx.adderr(child)
+      }
+      else if (!this.optionalKeys.includes('' + i)) {
+        makeNilErr(
+          ctx,
+          this.closed ? 'listval_required' : 'listval_no_gen',
+          child, undefined
+        )
+        break
       }
 
+      // else optional so we can ignore it
     }
 
     return out

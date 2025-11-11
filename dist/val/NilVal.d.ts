@@ -18,7 +18,7 @@ declare class NilVal extends Val {
     unify(_peer: Val, _ctx: AontuContext): this;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    gen(ctx?: AontuContext): undefined;
+    gen(ctx: AontuContext): undefined;
     superior(): Val;
     inspection(): any;
 }

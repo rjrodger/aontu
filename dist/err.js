@@ -111,6 +111,7 @@ function resolveSrc(v, errctx) {
 class AontuError extends Error {
     constructor(msg, errs) {
         super(msg);
+        this.aontu = true;
         this.errs = () => errs ?? [];
     }
 }

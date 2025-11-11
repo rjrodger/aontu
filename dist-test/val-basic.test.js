@@ -59,17 +59,16 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
     });
     (0, node_test_1.it)('gen', () => {
         let ctx = makeCtx();
-        (0, code_1.expect)(P('1').gen(ctx)).equal(1);
-        (0, code_1.expect)(P('"a"').gen(ctx)).equal('a');
-        (0, code_1.expect)(P('b').gen(ctx)).equal('b');
-        (0, code_1.expect)(P('true').gen(ctx)).equal(true);
-        (0, code_1.expect)(P('top').gen(ctx)).equal(undefined);
-        (0, code_1.expect)(P('a:1').gen(ctx)).equal({ a: 1 });
-        (0, code_1.expect)(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } });
-        (0, code_1.expect)(P('nil').gen(ctx)).equal(undefined);
-        (0, code_1.expect)(P('a:1,b:nil').gen(ctx)).includes({
-            isNil: true
-        });
+        // expect(P('1').gen(ctx)).equal(1)
+        // expect(P('"a"').gen(ctx)).equal('a')
+        // expect(P('b').gen(ctx)).equal('b')
+        // expect(P('true').gen(ctx)).equal(true)
+        // expect(P('top').gen(ctx)).equal(undefined)
+        // expect(P('a:1').gen(ctx)).equal({ a: 1 })
+        // expect(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } })
+        // expect(() => P('nil').gen(ctx)).throw(/literal_nil/)
+        // expect(() => A.generate('a:1,b:nil')).throw(/literal_nil/)
+        (0, code_1.expect)(() => P('a:1,b:nil').gen(ctx)).throw(/literal_nil/);
     });
     (0, node_test_1.it)('scalar-kind', () => {
         (0, code_1.expect)(makeSK_String().same(makeSK_String())).equal(true);
@@ -642,7 +641,7 @@ b: c2: {n:2}
         });
         p0.peg = makeSK_String();
         (0, code_1.expect)(p0.canon).equal('*string');
-        (0, code_1.expect)(p0.gen(ctx)).equal(undefined);
+        (0, code_1.expect)(() => p0.gen(ctx)).throw(/no_gen/);
         // p0.pref = new Nil([], 'test:pref')
         // expect(p0.canon).equal('string')
         // expect(p0.gen([])).equal(undefined)

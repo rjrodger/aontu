@@ -39,7 +39,8 @@ class MapVal extends BagVal_1.BagVal {
     // NOTE: order of keys is not preserved!
     // not possible in any case - consider {a,b} unify {b,a}
     unify(peer, ctx) {
-        peer = peer ?? (0, top_1.top)();
+        const TOP = (0, top_1.top)();
+        peer = peer ?? TOP;
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Map', this, peer);
         let done = true;
         let exit = false;
@@ -72,28 +73,26 @@ class MapVal extends BagVal_1.BagVal {
         if (!exit) {
             out.dc = this.dc + 1;
             // let newtype = this.type || peer.type
-            let spread_cj = out.spread.cj ?? (0, top_1.top)();
+            let spread_cj = out.spread.cj ?? TOP;
             // Always unify own children first
             for (let key in this.peg) {
-                let keyctx = ctx.descend(key);
-                let key_spread_cj = spread_cj.clone(keyctx);
-                // this.peg[key].mark.type = newtype = this.peg[key].mark.type || newtype
-                (0, utility_1.propagateMarks)(this, this.peg[key]);
-                // let t0 = tr(te, 'PEG:' + key)
-                // console.log('MAPVAL-peg', key, te)
+                const keyctx = ctx.descend(key);
+                const key_spread_cj = spread_cj.clone(keyctx);
+                const child = this.peg[key];
+                (0, utility_1.propagateMarks)(this, child);
                 out.peg[key] =
-                    // unite(keyctx, this.peg[key], key_spread_cj, 'map-own', tr(te, 'PEG'))
-                    (0, unify_1.unite)(keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }), this.peg[key], key_spread_cj, 'map-own');
-                // out.peg[key].mark.type = newtype = out.peg[key].mark.type || newtype
+                    undefined === child ? key_spread_cj :
+                        child.isNil ? child :
+                            key_spread_cj.isNil ? key_spread_cj :
+                                key_spread_cj.isTop && child.done ? child :
+                                    child.isTop && key_spread_cj.done ? key_spread_cj :
+                                        (0, unify_1.unite)(keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }), child, key_spread_cj, 'map-own');
                 done = (done && type_1.DONE === out.peg[key].dc);
-                // console.log('MAPVAL-OWN', this.id, this.mark.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
             }
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;
             if (peer instanceof MapVal) {
-                // QQQ
-                // let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map', tr(te, 'PER')) as MapVal)
-                let upeer = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }), peer, (0, top_1.top)(), 'map-peer-map');
+                let upeer = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }), peer, TOP, 'map-peer-map');
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
                     if (this.closed && !allowedKeys.includes(peerkey)) {
@@ -106,18 +105,17 @@ class MapVal extends BagVal_1.BagVal {
                     let child = out.peg[peerkey];
                     let oval = out.peg[peerkey] =
                         undefined === child ? peerchild :
-                            child.isNil ? child :
-                                peerchild.isNil ? peerchild :
-                                    (0, unify_1.unite)(ctx.descend(peerkey).clone({ explain: (0, utility_1.ec)(te, 'CHD') }), child, peerchild, 'map-peer');
+                            child.isTop && peerchild.done ? peerchild :
+                                child.isNil ? child :
+                                    peerchild.isNil ? peerchild :
+                                        (0, unify_1.unite)(ctx.descend(peerkey).clone({ explain: (0, utility_1.ec)(te, 'CHD') }), child, peerchild, 'map-peer');
                     if (this.spread.cj) {
                         let key_ctx = ctx.descend(peerkey);
                         let key_spread_cj = spread_cj.clone(key_ctx);
                         oval = out.peg[peerkey] =
-                            // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
                             (0, unify_1.unite)(key_ctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }), oval, key_spread_cj, 'map-peer-spread');
                     }
                     (0, utility_1.propagateMarks)(this, oval);
-                    // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
                     done = (done && type_1.DONE === oval.dc);
                 }
             }
@@ -181,18 +179,24 @@ class MapVal extends BagVal_1.BagVal {
             return undefined;
         }
         for (let p in this.peg) {
-            if (this.peg[p].mark.type || this.peg[p].mark.hide) {
+            const child = this.peg[p];
+            if (child.mark.type || child.mark.hide) {
                 continue;
             }
-            let val = this.peg[p].gen(ctx);
-            if (undefined === val) {
-                if (!this.optionalKeys.includes(p)) {
-                    return (0, err_1.makeNilErr)(ctx, 'required_mapkey', this.peg[p], undefined);
-                }
+            if (child.isScalar
+                || child.isMap
+                || child.isList
+                || child.isPref
+                || child.isRef
+                || child.isDisjunct
+                || child.isNil) {
+                out[p] = child.gen(ctx);
             }
-            else {
-                out[p] = val;
+            else if (!this.optionalKeys.includes(p)) {
+                (0, err_1.makeNilErr)(ctx, this.closed ? 'mapval_required' : 'mapval_no_gen', child, undefined);
+                break;
             }
+            // else optional so we can ignore it
         }
         return out;
     }

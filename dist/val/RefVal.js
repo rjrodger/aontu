@@ -126,7 +126,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
     find(ctx) {
         let out = undefined;
         if (this.path.join('.').startsWith(this.peg.join('.'))) {
-            out = (0, err_1.makeNilErr)(ctx, 'path-cycle', this);
+            out = (0, err_1.makeNilErr)(ctx, 'path_cycle', this);
         }
         else {
             let parts = [];
@@ -258,19 +258,11 @@ class RefVal extends FeatureVal_1.FeatureVal {
         // Unresolved ref cannot be generated, so always an error.
         let nil = (0, err_1.makeNilErr)(ctx, 'ref', this, // (formatPath(this.peg, this.absolute) as any),
         undefined);
-        // TODO: refactor to use Site
+        // TODO: refactor to use Site pointer
         nil.path = this.path;
         nil.site.url = this.site.url;
         nil.site.row = this.site.row;
         nil.site.col = this.site.col;
-        // descErr(nil, ctx)
-        if (null == ctx) {
-            //   // ctx.err.push(nil)
-            //   ctx.adderr(nil)
-            // }
-            // else {
-            throw new Error((null == nil.msg || '' === nil.msg) ? 'RefVal: unknown error' : nil.msg);
-        }
         return undefined;
     }
     inspection() {

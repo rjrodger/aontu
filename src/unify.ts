@@ -39,7 +39,19 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   let out = a
   let why = 'u'
 
-  const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '')
+  // const saw = a?.isTop && b?.isTop ? '' :
+  //   (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '')
+
+  const saw =
+    (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
+    '@' + ctx.pathstr
+
+  /*
+  if (10 < ctx.seen[saw]) {
+    console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '')
+    console.trace()
+  }
+  */
 
   if (MAXCYCLE < ctx.seen[saw]) {
     out = makeNilErr(ctx, 'cycle', a, b)

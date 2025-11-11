@@ -76,7 +76,8 @@ class MapVal extends BagVal {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: AontuContext): Val {
-    peer = peer ?? top()
+    const TOP = top()
+    peer = peer ?? TOP
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Map', this, peer)
 
     let done: boolean = true
@@ -128,37 +129,34 @@ class MapVal extends BagVal {
 
       // let newtype = this.type || peer.type
 
-      let spread_cj = out.spread.cj ?? top()
+      let spread_cj = out.spread.cj ?? TOP
 
       // Always unify own children first
       for (let key in this.peg) {
-        let keyctx = ctx.descend(key)
-        let key_spread_cj = spread_cj.clone(keyctx)
+        const keyctx = ctx.descend(key)
+        const key_spread_cj = spread_cj.clone(keyctx)
+        const child = this.peg[key]
 
-        // this.peg[key].mark.type = newtype = this.peg[key].mark.type || newtype
-
-        propagateMarks(this, this.peg[key])
-
-        // let t0 = tr(te, 'PEG:' + key)
-        // console.log('MAPVAL-peg', key, te)
+        propagateMarks(this, child)
 
         out.peg[key] =
-          // unite(keyctx, this.peg[key], key_spread_cj, 'map-own', tr(te, 'PEG'))
-          unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }), this.peg[key], key_spread_cj, 'map-own')
-
-        // out.peg[key].mark.type = newtype = out.peg[key].mark.type || newtype
+          undefined === child ? key_spread_cj :
+            child.isNil ? child :
+              key_spread_cj.isNil ? key_spread_cj :
+                key_spread_cj.isTop && child.done ? child :
+                  child.isTop && key_spread_cj.done ? key_spread_cj :
+                    unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }),
+                      child, key_spread_cj, 'map-own')
 
         done = (done && DONE === out.peg[key].dc)
-        // console.log('MAPVAL-OWN', this.id, this.mark.type, 'k=' + key, this.peg[key].canon, key_spread_cj.canon, '->', out.peg[key].canon)
       }
 
       const allowedKeys: string[] = this.closed ? Object.keys(this.peg) : []
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof MapVal) {
-        // QQQ
-        // let upeer: MapVal = (unite(ctx, peer, undefined, 'map-peer-map', tr(te, 'PER')) as MapVal)
-        let upeer: MapVal = (unite(ctx.clone({ explain: ec(te, 'PER') }), peer, top(), 'map-peer-map') as MapVal)
+        let upeer: MapVal = (unite(ctx.clone({ explain: ec(te, 'PER') }),
+          peer, TOP, 'map-peer-map') as MapVal)
 
         for (let peerkey in upeer.peg) {
           let peerchild = upeer.peg[peerkey]
@@ -176,21 +174,22 @@ class MapVal extends BagVal {
 
           let oval = out.peg[peerkey] =
             undefined === child ? peerchild :
-              child.isNil ? child :
-                peerchild.isNil ? peerchild :
-                  unite(ctx.descend(peerkey).clone({ explain: ec(te, 'CHD') }), child, peerchild, 'map-peer')
+              child.isTop && peerchild.done ? peerchild :
+                child.isNil ? child :
+                  peerchild.isNil ? peerchild :
+                    unite(ctx.descend(peerkey).clone({ explain: ec(te, 'CHD') }),
+                      child, peerchild, 'map-peer')
 
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
             let key_spread_cj = spread_cj.clone(key_ctx)
             oval = out.peg[peerkey] =
-              // unite(key_ctx, out.peg[peerkey], key_spread_cj, 'map-peer-spread')
-              unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }), oval, key_spread_cj, 'map-peer-spread')
+              unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
+                oval, key_spread_cj, 'map-peer-spread')
           }
 
           propagateMarks(this, oval)
 
-          // console.log('MAPVAL-PEER', peerkey, child?.canon, peerchild?.canon, '->', oval)
           done = (done && DONE === oval.dc)
         }
       }
@@ -264,26 +263,38 @@ class MapVal extends BagVal {
   }
 
 
-  gen(ctx?: AontuContext) {
+  gen(ctx: AontuContext) {
     let out: any = {}
     if (this.mark.type || this.mark.hide) {
       return undefined
     }
 
     for (let p in this.peg) {
-      if (this.peg[p].mark.type || this.peg[p].mark.hide) {
+      const child = this.peg[p]
+      if (child.mark.type || child.mark.hide) {
         continue
       }
 
-      let val = this.peg[p].gen(ctx)
-      if (undefined === val) {
-        if (!this.optionalKeys.includes(p)) {
-          return makeNilErr(ctx, 'required_mapkey', this.peg[p], undefined)
-        }
+      if (child.isScalar
+        || child.isMap
+        || child.isList
+        || child.isPref
+        || child.isRef
+        || child.isDisjunct
+        || child.isNil
+      ) {
+        out[p] = child.gen(ctx)
       }
-      else {
-        out[p] = val
+      else if (!this.optionalKeys.includes(p)) {
+        makeNilErr(
+          ctx,
+          this.closed ? 'mapval_required' : 'mapval_no_gen',
+          child, undefined
+        )
+        break
       }
+
+      // else optional so we can ignore it
     }
 
     return out

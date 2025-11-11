@@ -78,7 +78,7 @@ describe('examples', function() {
 
   test('model-examples', () => {
     expect(G('x:type({}) x:{y:number} a:copy($.x) a:{y:1}')).equal({ a: { y: 1 } })
-    expect(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/aontu\/required/)
+    expect(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/no_gen/)
     expect(G('x:type({}) x:{y?:number} a:copy($.x) a:{}')).equal({ a: {} })
     expect(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{}')).equal({ a: { z: 2 } })
     expect(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{y:11}')).equal({ a: { y: 11, z: 2 } })

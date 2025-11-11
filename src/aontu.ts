@@ -124,7 +124,7 @@ class Aontu {
 
         if (undefined !== uval && 0 === uval.err.length) {
 
-          out = uval.isNil ? undefined : uval.gen(ac as any)
+          out = uval.isNil ? (ac.adderr(uval as any), undefined) : uval.gen(ac as any)
 
           if (0 < ac.err.length) {
             if (!ac.collect) {
@@ -138,7 +138,7 @@ class Aontu {
       return out
     }
     catch (err: any) {
-      if (err instanceof AontuError) {
+      if (err instanceof AontuError || true === err.aontu) {
         throw err
       }
       const unex = new AontuError('Aontu: unexpected error: ' + err.message)

@@ -46,68 +46,13 @@ describe('error', function() {
 
 
   it('generate', () => {
-    let a0 = new Aontu()
-    let v0 = a0.unify('a:$.b')
+    let aontu = new Aontu()
 
+    expect(() => aontu.generate('a:$.b')).throw(/ref/)
 
-    try {
-      v0.gen(makeCtx())
-    }
-    catch (err: any) {
-      // expect(err.message).contain('Cannot')
-    }
-
-    let c0 = new AontuContext({ root: v0 })
-    let g0 = v0.gen(c0)
-    // expect(g0).equal({ a: undefined })
-
-    /*
-    expect(c0.err[0] as any).include({
-      path: ['a'],
-      row: 1,
-      col: 3,
-      nil: true,
-      why: 'ref',
-    })
-    expect(c0.err[0].primary as any).include({
-      peg: ['b'],
-      absolute: true
-      })
-      */
-  })
-
-
-  it('generate-file-e02', () => {
-    let ctx = makeCtx()
-    let a0 = new Aontu()
-    let v0 = a0.unify('@"' + __dirname + '/../test/error/e02.jsonic"')
-
-    try {
-      v0.gen(ctx)
-    }
-    catch (err: any) {
-      expect(err.message).contain('RefVal')
-    }
-
-    let v1 = a0.unify('@"' + __dirname + '/../test/error/e02.jsonic"')
-    let c1 = new AontuContext({ root: v1 })
-    let g1 = v1.gen(c1)
-    // expect(g1).equal({ a: undefined })
-    expect(g1).includes({ isNil: true })
-
-    /*
-    expect(c1.err[0] as any).include({
-      path: ['a'],
-      row: 1,
-      col: 4,
-      nil: true,
-      why: 'ref',
-    })
-    expect(c1.err[0].primary as any).include({
-      peg: ['b'],
-      absolute: true
-      })
-      */
+    expect(() =>
+      aontu.generate('@"' + __dirname + '/../test/error/e02.jsonic"'))
+      .throw(/ref/)
   })
 
 })

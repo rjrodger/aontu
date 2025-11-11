@@ -17,7 +17,16 @@ const unite = (ctx, a, b, whence) => {
     const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'unite', a, b);
     let out = a;
     let why = 'u';
-    const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '');
+    // const saw = a?.isTop && b?.isTop ? '' :
+    //   (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '')
+    const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
+        '@' + ctx.pathstr;
+    /*
+    if (10 < ctx.seen[saw]) {
+      console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '')
+      console.trace()
+    }
+    */
     if (MAXCYCLE < ctx.seen[saw]) {
         out = (0, err_1.makeNilErr)(ctx, 'cycle', a, b);
     }

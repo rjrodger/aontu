@@ -9,19 +9,31 @@ exports.hints = void 0;
  * Each value is a human-readable explanation of what the error means.
  */
 const hints = {
-    'scalar_value': 'Literal scalar values of the same kind can only unify if they are\n' +
+    scalar_value: 'Literal scalar values of the same kind can only unify if they are\n' +
         'exactly equal.' +
         '\n \nExamples:\n' +
         '  1 & 1   -> 1    # Does unify (equal Integers);\n' +
         '  a & a   -> a    # Does unify (equal Strings);\n' +
         '  1 & 2   -> nil  # Does not unify (unequal Integers);\n' +
         '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Number).',
-    'scalar_kind': 'Literal scalar values of different kinds cannot unify.' +
+    scalar_kind: 'Literal scalar values of different kinds cannot unify.' +
         '\n \nExamples:\n' +
         '  1 & 1   -> 1    # Does unify (equal Integers);\n' +
         '  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n' +
         '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Number).',
-    // 'scalar': 'Type mismatch: expected a scalar value but got a different type.',
+    nil_gen: 'The nil value was present after unification, and nil cannot be\n' +
+        'generated because nil is not a literal value.',
+    no_gen: 'This value was present after unification, and cannot be generated\n' +
+        'because it is not a literal value.',
+    // TODO: extend errors to have details so we can name the key
+    mapval_required: 'This map value is required.',
+    mapval_no_gen: 'This value was present after unification, and cannot be generated\n' +
+        'because it is not a literal value.',
+    listval_required: 'This list element is required.',
+    listval_no_gen: 'This list element was present after unification, and cannot be generated\n' +
+        'because it is not a literal value.',
+    unknown_function: 'This function name is not recognized.',
+    literal_nil: 'A literal nil cannot unify with any other value.',
     // Parsing errors
     'parse_bad_src': 'Invalid source provided for parsing. The source must be a non-empty string.',
     // Unification errors
@@ -44,11 +56,10 @@ const hints = {
     'unknown_var': 'Unknown variable reference. The variable has not been defined.',
     'invalid_var_kind': 'Invalid variable kind. The variable type does not match the expected kind.',
     // Path and reference errors
-    'path-cycle': 'Path cycle detected. The path contains a circular reference.',
+    path_cycle: 'Path cycle detected. The path contains a circular reference.',
     'ref': 'Reference resolution failed. Unable to resolve the reference to a value.',
     // Closure and state errors
     'closed': 'Cannot add to closed structure. The map or list is closed and does not accept new keys/elements.',
-    'required_mapkey': 'Required map key is missing. A non-optional map key has no value.',
     'required_listelem': 'Required list element is missing. A non-optional list element has no value.',
     // Junction errors (disjunction/conjection)
     '|:empty': 'Empty disjunction. The disjunction has no valid alternatives.',

@@ -16,7 +16,7 @@ declare class RefVal extends FeatureVal {
     same(peer: Val): boolean;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    gen(ctx?: AontuContext): undefined;
+    gen(ctx: AontuContext): undefined;
     inspection(): string;
 }
 export { RefVal, };

@@ -14,6 +14,9 @@ import { Val } from './Val'
 
 import { top } from './top'
 
+import { AontuError, descErr, makeNilErr } from '../err'
+
+
 abstract class FeatureVal extends Val {
   isFeature = true
 
@@ -27,6 +30,22 @@ abstract class FeatureVal extends Val {
 
   superior(): Val {
     return top()
+  }
+
+
+  gen(ctx: AontuContext) {
+    // Unresolved nil cannot be generated, so always an error.
+
+    let nerr = makeNilErr(ctx, 'no_gen', this)
+    descErr(nerr, ctx)
+    ctx?.adderr(nerr)
+
+    if (null == ctx || !ctx?.collect) {
+      const aerr = new AontuError(nerr.msg, [nerr])
+      throw aerr
+    }
+
+    return undefined
   }
 
 }

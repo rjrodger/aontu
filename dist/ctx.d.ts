@@ -33,6 +33,7 @@ declare class AontuContext {
     srcpath?: string;
     deps: Record<string, any>;
     opts: AontuOptions;
+    _pathstr: string | undefined;
     constructor(cfg: AontuContextConfig);
     clone(cfg: {
         root?: Val;
@@ -45,5 +46,6 @@ declare class AontuContext {
     adderr(err: NilVal): void;
     errmsg(): string;
     find(path: string[]): Val | undefined;
+    get pathstr(): string;
 }
 export { AontuContext, AontuContextConfig };

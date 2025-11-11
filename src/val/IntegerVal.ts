@@ -13,7 +13,6 @@ import { makeNilErr } from '../err'
 
 import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
-import { NilVal } from './NilVal'
 
 import {
   explainOpen,

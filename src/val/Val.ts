@@ -38,6 +38,9 @@ type ValSpec = {
   prefix?: boolean,
 }
 
+// import { AontuError, descErr, makeNilErr } from '../err'
+// import { AontuError } from '../err'
+
 
 const DONE = -1
 
@@ -210,11 +213,7 @@ abstract class Val {
 
 
   abstract superior(): Val
-  /*
-  superior(): Val {
-    return top()
-  }
-  */
+
 
   [inspect.custom](_d: number, _o: any, _inspect: any): string {
     let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]

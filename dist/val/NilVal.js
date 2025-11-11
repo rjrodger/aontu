@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NilVal = void 0;
 const type_1 = require("../type");
 const Val_1 = require("./Val");
+const err_1 = require("../err");
 class NilVal extends Val_1.Val {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
@@ -35,18 +36,16 @@ class NilVal extends Val_1.Val {
         out.msg = this.msg;
         return out;
     }
+    // TODO: custom canon? useful for unknown function errors
     get canon() {
         return 'nil';
     }
     gen(ctx) {
         // Unresolved nil cannot be generated, so always an error.
-        if (Array.isArray(ctx?.err)) {
-            // ctx.err.push(this)
-            ctx.adderr(this);
-        }
-        else {
-            const err = new Error(this.msg);
-            err.aontu = true;
+        this.why = this.why ?? 'nil_gen';
+        ctx.adderr(this);
+        if (!ctx.collect) {
+            const err = new err_1.AontuError(this.msg, [this]);
             throw err;
         }
         return undefined;

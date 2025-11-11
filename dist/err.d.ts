@@ -5,6 +5,7 @@ declare function getHint(why: any): string | undefined;
 declare function makeNilErr(ctx?: AontuContext, why?: any, av?: Val, bv?: Val, attempt?: string): NilVal;
 declare function descErr<NILS extends NilVal | NilVal[]>(err: NILS | any, errctx?: ErrContext): any;
 declare class AontuError extends Error {
+    aontu: boolean;
     constructor(msg: string, errs?: NilVal[]);
     errs: () => NilVal[];
 }

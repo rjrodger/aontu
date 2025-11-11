@@ -60,6 +60,8 @@ class AontuContext {
   deps: Record<string, any>
   opts: AontuOptions
 
+  _pathstr: string | undefined
+
 
   constructor(cfg: AontuContextConfig) {
     this.root = cfg.root
@@ -105,6 +107,8 @@ class AontuContext {
     ctx.err = cfg.err ?? ctx.err
     ctx.explain = cfg.explain ?? ctx.explain
 
+    ctx._pathstr = undefined
+
     return ctx
   }
 
@@ -134,11 +138,17 @@ class AontuContext {
 
 
   adderr(err: NilVal) {
-    if (!this.err.includes(err)) {
-      this.err.push(err)
-    }
-    if (null == err.msg || '' == err.msg) {
-      descErr(err, this)
+    if (null != err && err.isNil) {
+      if (null == err.primary) {
+        err.primary = err
+      }
+
+      if (!this.err.includes(err)) {
+        this.err.push(err)
+      }
+      if (null == err.msg || '' == err.msg) {
+        descErr(err, this)
+      }
     }
   }
 
@@ -174,6 +184,12 @@ class AontuContext {
     }
 
     return node
+  }
+
+
+  get pathstr() {
+    return this._pathstr ??
+      (this._pathstr = this.path.map(p => p.replaceAll('.', '\\.')).join('.'))
   }
 }
 

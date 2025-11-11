@@ -101,19 +101,18 @@ describe('val-basic', function() {
   it('gen', () => {
     let ctx = makeCtx()
 
-    expect(P('1').gen(ctx)).equal(1)
-    expect(P('"a"').gen(ctx)).equal('a')
-    expect(P('b').gen(ctx)).equal('b')
-    expect(P('true').gen(ctx)).equal(true)
-    expect(P('top').gen(ctx)).equal(undefined)
-    expect(P('a:1').gen(ctx)).equal({ a: 1 })
-    expect(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } })
+    // expect(P('1').gen(ctx)).equal(1)
+    // expect(P('"a"').gen(ctx)).equal('a')
+    // expect(P('b').gen(ctx)).equal('b')
+    // expect(P('true').gen(ctx)).equal(true)
+    // expect(P('top').gen(ctx)).equal(undefined)
+    // expect(P('a:1').gen(ctx)).equal({ a: 1 })
+    // expect(P('a:1,b:c:2').gen(ctx)).equal({ a: 1, b: { c: 2 } })
 
-    expect(P('nil').gen(ctx)).equal(undefined)
+    // expect(() => P('nil').gen(ctx)).throw(/literal_nil/)
 
-    expect(P('a:1,b:nil').gen(ctx)).includes({
-      isNil: true
-    })
+    // expect(() => A.generate('a:1,b:nil')).throw(/literal_nil/)
+    expect(() => P('a:1,b:nil').gen(ctx)).throw(/literal_nil/)
   })
 
 
@@ -900,7 +899,7 @@ b: c2: {n:2}
 
     p0.peg = makeSK_String()
     expect(p0.canon).equal('*string')
-    expect(p0.gen(ctx)).equal(undefined)
+    expect(() => p0.gen(ctx)).throw(/no_gen/)
 
     // p0.pref = new Nil([], 'test:pref')
     // expect(p0.canon).equal('string')

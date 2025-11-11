@@ -190,7 +190,7 @@ class RefVal extends FeatureVal {
     let out: Val | undefined = undefined
 
     if (this.path.join('.').startsWith(this.peg.join('.'))) {
-      out = makeNilErr(ctx, 'path-cycle', this)
+      out = makeNilErr(ctx, 'path_cycle', this)
     }
     else {
 
@@ -350,7 +350,7 @@ class RefVal extends FeatureVal {
   }
 
 
-  gen(ctx?: AontuContext) {
+  gen(ctx: AontuContext) {
     // Unresolved ref cannot be generated, so always an error.
     let nil = makeNilErr(
       ctx,
@@ -359,21 +359,11 @@ class RefVal extends FeatureVal {
       undefined,
     )
 
-    // TODO: refactor to use Site
+    // TODO: refactor to use Site pointer
     nil.path = this.path
     nil.site.url = this.site.url
     nil.site.row = this.site.row
     nil.site.col = this.site.col
-
-    // descErr(nil, ctx)
-
-    if (null == ctx) {
-      //   // ctx.err.push(nil)
-      //   ctx.adderr(nil)
-      // }
-      // else {
-      throw new Error((null == nil.msg || '' === nil.msg) ? 'RefVal: unknown error' : nil.msg)
-    }
 
     return undefined
   }
