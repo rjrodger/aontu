@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrefVal = void 0;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
+const err_1 = require("../err");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
 const FeatureVal_1 = require("./FeatureVal");
@@ -93,7 +94,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         let val = this.peg;
         if (val.isNil) {
             if (null == ctx) {
-                throw new Error(val.msg);
+                throw new err_1.AontuError(val.msg);
             }
         }
         return val.gen(ctx);

@@ -21,7 +21,7 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
         super(spec, ctx);
         this.isScalarKind = true;
         if (null == this.peg) {
-            throw new Error('ScalarKindVal spec.peg undefined');
+            throw new err_1.AontuError('ScalarKindVal spec.peg undefined');
         }
         this.dc = type_1.DONE;
     }

@@ -205,6 +205,7 @@ export {
   Aontu,
   AontuOptions,
   AontuContext,
+  AontuError,
 
   Val,
   Lang,

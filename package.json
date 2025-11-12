@@ -43,17 +43,12 @@
     "@jsonic/expr": "^2.0.0",
     "@jsonic/multisource": "^2.1.0",
     "@jsonic/path": "^1.5.1",
-    "jsonic": "^2.17.0"
+    "jsonic": "^2.18.0"
   },
   "devDependencies": {
     "@hapi/code": "^9.0.3",
-    "@types/node": "^24.10.0",
-    "aliasify": "^2.1.0",
-    "browserify": "^17.0.1",
-    "esbuild": "^0.25.12",
-    "memfs": "^4.50.0",
-    "serve": "^14.2.5",
-    "tinyify": "^4.0.0",
+    "@types/node": "^24.10.1",
+    "memfs": "^4.51.0",
     "typescript": "^5.9.3"
   },
   "aliasify": {

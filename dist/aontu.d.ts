@@ -2,6 +2,7 @@ import type { Val, AontuOptions } from './type';
 import { Lang } from './lang';
 import { AontuContext, AontuContextConfig } from './ctx';
 import { formatExplain } from './utility';
+import { AontuError } from './err';
 declare class Aontu {
     opts: AontuOptions;
     lang: Lang;
@@ -15,5 +16,5 @@ declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
     runparse: typeof runparse;
 };
-export { Aontu, AontuOptions, AontuContext, Val, Lang, runparse, util, formatExplain };
+export { Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain };
 export default Aontu;

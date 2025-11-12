@@ -10,7 +10,7 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
         if (!Number.isInteger(spec.peg)) {
             // TODO: use Nil?
-            throw new Error('not-integer: ' + spec.peg);
+            throw new err_1.AontuError('not-integer: ' + spec.peg);
         }
         // super({ peg: spec.peg, kind: Integer }, ctx)
         super({ ...spec, kind: ScalarKindVal_1.Integer }, ctx);

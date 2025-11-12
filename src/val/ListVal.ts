@@ -22,7 +22,7 @@ import {
   explainClose,
 } from '../utility'
 
-import { makeNilErr } from '../err'
+import { makeNilErr, AontuError } from '../err'
 
 
 import {
@@ -51,7 +51,7 @@ class ListVal extends BagVal {
     super(spec, ctx)
 
     if (null == this.peg) {
-      throw new Error('ListVal spec.peg undefined')
+      throw new AontuError('ListVal spec.peg undefined')
     }
 
     let spread = (this.peg as any)[SPREAD]

@@ -9,7 +9,7 @@ class NumberVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
         if (isNaN(spec.peg)) {
             // TODO: use Nil?
-            throw new Error('not-number: ' + spec.peg);
+            throw new err_1.AontuError('not-number: ' + spec.peg);
         }
         super({ ...spec, kind: Number }, ctx);
         this.isNumber = true;

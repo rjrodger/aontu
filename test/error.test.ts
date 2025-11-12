@@ -5,6 +5,7 @@ import { expect } from '@hapi/code'
 import { Aontu, AontuContext } from '../dist/aontu'
 
 import { MapVal } from '../dist/val/MapVal'
+import { AontuError } from '../dist/err'
 
 
 describe('error', function() {
@@ -26,6 +27,15 @@ describe('error', function() {
     expect(() => a0.parse('a::1')).throws(/syntax/)
     expect(() => a0.unify('a::1')).throws(/syntax/)
     expect(() => a0.generate('a::1')).throws(/syntax/)
+
+
+    try {
+      a0.generate('a:"x')
+    }
+    catch (e: any) {
+      expect(e.name).equal('AontuError')
+      expect(e instanceof AontuError).equal(true)
+    }
   })
 
 

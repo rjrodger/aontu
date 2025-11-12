@@ -12,7 +12,8 @@ import {
 
 import {
   descErr,
-  makeNilErr
+  makeNilErr,
+  AontuError
 } from '../err'
 
 import { AontuContext } from '../ctx'
@@ -217,7 +218,7 @@ class OpBaseVal extends FeatureVal {
       ctx.adderr(nil)
     }
     else {
-      throw new Error(nil.msg)
+      throw new AontuError(nil.msg)
     }
 
     return undefined

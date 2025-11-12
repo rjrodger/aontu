@@ -6,9 +6,9 @@ exports.norm = norm;
 const type_1 = require("../type");
 const err_1 = require("../err");
 const unify_1 = require("../unify");
-const utility_1 = require("../utility");
+const err_2 = require("../err");
 const JunctionVal_1 = require("./JunctionVal");
-const utility_2 = require("../utility");
+const utility_1 = require("../utility");
 const top_1 = require("./top");
 const CONJUNCT_ORDERING = {
     PrefVal: 30000,
@@ -40,7 +40,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
     }
     unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
-        const te = ctx.explain && (0, utility_2.explainOpen)(ctx, ctx.explain, 'Conjunct', this, peer);
+        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Conjunct', this, peer);
         let done = true;
         this.peg = norm(this.peg);
         // Unify each term of conjunct against peer
@@ -56,7 +56,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             this.peg[vI].mark.hide = newhide;
             // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
             upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
-                (0, unify_1.unite)(ctx.clone({ explain: (0, utility_2.ec)(te, 'OWN') }), this.peg[vI], peer, 'cj-own');
+                (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'OWN') }), this.peg[vI], peer, 'cj-own');
             upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type;
             upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide;
             // let prevdone = done
@@ -97,7 +97,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
                 t0 = t1;
             }
             else {
-                val = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_2.ec)(te, 'DEF') }), t0, t1, 'cj-peer-t0t1');
+                val = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'DEF') }), t0, t1, 'cj-peer-t0t1');
                 done = done && type_1.DONE === val.dc;
                 newtype = this.mark.type || val.mark.type;
                 newhide = this.mark.hide || val.mark.hide;
@@ -134,7 +134,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         }
         out.dc = done ? type_1.DONE : this.dc + 1;
         // console.log('CONJUNCT-unify', this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)
-        (0, utility_2.explainClose)(te, out);
+        (0, utility_1.explainClose)(te, out);
         return out;
     }
     clone(ctx, spec) {
@@ -155,11 +155,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         nil.site.col = this.site.col;
         // descErr(nil, ctx)
         if (null == ctx) {
-            //   // ctx.err.push(nil)
-            //   ctx.adderr(nil)
-            // }
-            // else {
-            throw new Error(nil.msg);
+            throw new err_2.AontuError(nil.msg);
         }
         return undefined;
     }

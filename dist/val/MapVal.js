@@ -18,7 +18,7 @@ class MapVal extends BagVal_1.BagVal {
             cj: undefined,
         };
         if (null == this.peg) {
-            throw new Error('MapVal spec.peg undefined');
+            throw new err_1.AontuError('MapVal spec.peg undefined');
         }
         this.mark.type = !!spec.mark?.type;
         this.mark.hide = !!spec.mark?.hide;

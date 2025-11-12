@@ -17,8 +17,8 @@ import { makeNilErr } from '../err'
 import { unite } from '../unify'
 
 import {
-  propagateMarks,
-} from '../utility'
+  AontuError
+} from '../err'
 
 
 import { JunctionVal } from './JunctionVal'
@@ -27,7 +27,9 @@ import {
   explainOpen,
   ec,
   explainClose,
+  propagateMarks,
 } from '../utility'
+
 
 
 import {
@@ -237,11 +239,7 @@ class ConjunctVal extends JunctionVal {
     // descErr(nil, ctx)
 
     if (null == ctx) {
-      //   // ctx.err.push(nil)
-      //   ctx.adderr(nil)
-      // }
-      // else {
-      throw new Error(nil.msg)
+      throw new AontuError(nil.msg)
     }
 
     return undefined

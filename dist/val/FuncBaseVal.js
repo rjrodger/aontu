@@ -18,7 +18,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     validateArgs(args, min) {
         if (min < args.length) {
             // TODO: this is an error as as a parse error, needs to be handled same way
-            throw new Error('The ' + this.funcname() + ' function needs at least ' +
+            throw new err_1.AontuError('The ' + this.funcname() + ' function needs at least ' +
                 min + ' argument' + (1 === min ? '' : 's') + '.');
         }
     }

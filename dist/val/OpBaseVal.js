@@ -143,7 +143,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             ctx.adderr(nil);
         }
         else {
-            throw new Error(nil.msg);
+            throw new err_1.AontuError(nil.msg);
         }
         return undefined;
     }

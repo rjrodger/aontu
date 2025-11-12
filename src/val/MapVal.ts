@@ -22,7 +22,7 @@ import {
   explainClose,
 } from '../utility'
 
-import { makeNilErr } from '../err'
+import { makeNilErr, AontuError } from '../err'
 
 import {
   top
@@ -49,7 +49,7 @@ class MapVal extends BagVal {
     super(spec, ctx)
 
     if (null == this.peg) {
-      throw new Error('MapVal spec.peg undefined')
+      throw new AontuError('MapVal spec.peg undefined')
     }
 
     this.mark.type = !!spec.mark?.type

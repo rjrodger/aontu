@@ -18,7 +18,7 @@ class ListVal extends BagVal_1.BagVal {
             cj: undefined,
         };
         if (null == this.peg) {
-            throw new Error('ListVal spec.peg undefined');
+            throw new err_1.AontuError('ListVal spec.peg undefined');
         }
         let spread = this.peg[type_1.SPREAD];
         delete this.peg[type_1.SPREAD];

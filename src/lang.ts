@@ -91,7 +91,7 @@ import { OpenFuncVal } from './val/OpenFuncVal'
 import { SuperFuncVal } from './val/SuperFuncVal'
 
 
-let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
+let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
 
   jsonic.use(Path)
 
@@ -109,6 +109,24 @@ let AontuJsonic: Plugin = function aontu(jsonic: Jsonic) {
 
 
   jsonic.options({
+    hint: {
+      unknown: `
+Since the error is unknown, this is probably a bug. Please consider
+posting a github issue - thanks!
+
+Code: {code}, Details: 
+{details}`,
+
+      unexpected: `
+The character(s) {src} were not expected at this point as they do not
+match the expected syntax. Use the # character to comment out lines to
+help isolate the syntax error.`,
+
+    },
+    errmsg: {
+      name: 'aontu',
+      suffix: false,
+    },
     fixed: {
       token: {
         '#QM': '?'
@@ -753,10 +771,6 @@ class Lang {
         throw e
       }
     }
-
-    // if (false === (global as any).aontu_warm) {
-    //   (global as any).aontu.time.langparse.push(performance.now() - start)
-    // }
 
     return val
   }

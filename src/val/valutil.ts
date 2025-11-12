@@ -1,5 +1,6 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
+import { AontuError } from '../err'
 import { ScalarVal } from './ScalarVal'
 import { NumberVal } from './NumberVal'
 import { StringVal } from './StringVal'
@@ -25,6 +26,6 @@ export function makeScalar(scalar: any): ScalarVal {
     return new NullVal(spec)
   }
   else {
-    throw new Error('Not a scalar: ' + scalar)
+    throw new AontuError('Not a scalar: ' + scalar)
   }
 }

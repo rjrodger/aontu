@@ -2,6 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.makeScalar = makeScalar;
+const err_1 = require("../err");
 const NumberVal_1 = require("./NumberVal");
 const StringVal_1 = require("./StringVal");
 const BooleanVal_1 = require("./BooleanVal");
@@ -23,7 +24,7 @@ function makeScalar(scalar) {
         return new NullVal_1.NullVal(spec);
     }
     else {
-        throw new Error('Not a scalar: ' + scalar);
+        throw new err_1.AontuError('Not a scalar: ' + scalar);
     }
 }
 //# sourceMappingURL=valutil.js.map

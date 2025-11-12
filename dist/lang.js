@@ -42,7 +42,7 @@ const PrefFuncVal_1 = require("./val/PrefFuncVal");
 const CloseFuncVal_1 = require("./val/CloseFuncVal");
 const OpenFuncVal_1 = require("./val/OpenFuncVal");
 const SuperFuncVal_1 = require("./val/SuperFuncVal");
-let AontuJsonic = function aontu(jsonic) {
+let AontuJsonic = function AontuLang(jsonic) {
     jsonic.use(path_1.Path);
     // TODO: refactor Val constructor
     // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
@@ -54,6 +54,22 @@ let AontuJsonic = function aontu(jsonic) {
         return v;
     };
     jsonic.options({
+        hint: {
+            unknown: `
+Since the error is unknown, this is probably a bug. Please consider
+posting a github issue - thanks!
+
+Code: {code}, Details: 
+{details}`,
+            unexpected: `
+The character(s) {src} were not expected at this point as they do not
+match the expected syntax. Use the # character to comment out lines to
+help isolate the syntax error.`,
+        },
+        errmsg: {
+            name: 'aontu',
+            suffix: false,
+        },
         fixed: {
             token: {
                 '#QM': '?'
@@ -546,9 +562,6 @@ class Lang {
                 throw e;
             }
         }
-        // if (false === (global as any).aontu_warm) {
-        //   (global as any).aontu.time.langparse.push(performance.now() - start)
-        // }
         return val;
     }
 }

@@ -11,6 +11,7 @@ import {
 
 import { AontuContext } from '../ctx'
 import { unite } from '../unify'
+import { AontuError } from '../err'
 
 import {
   explainOpen,
@@ -144,7 +145,7 @@ class PrefVal extends FeatureVal {
 
     if (val.isNil) {
       if (null == ctx) {
-        throw new Error(val.msg)
+        throw new AontuError(val.msg)
       }
     }
 

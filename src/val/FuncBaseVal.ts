@@ -21,7 +21,7 @@ import {
   explainOpen,
 } from '../utility'
 
-import { makeNilErr } from '../err'
+import { makeNilErr, AontuError } from '../err'
 
 import {
   top
@@ -47,7 +47,7 @@ class FuncBaseVal extends FeatureVal {
   validateArgs(args: Val[], min: number) {
     if (min < args.length) {
       // TODO: this is an error as as a parse error, needs to be handled same way
-      throw new Error('The ' + this.funcname() + ' function needs at least ' +
+      throw new AontuError('The ' + this.funcname() + ' function needs at least ' +
         min + ' argument' + (1 === min ? '' : 's') + '.')
     }
   }

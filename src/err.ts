@@ -152,7 +152,12 @@ class AontuError extends Error {
 
   constructor(msg: string, errs?: NilVal[]) {
     super(msg)
+    this.name = this.constructor.name
     this.errs = () => errs ?? []
+
+    this.stack = this.stack?.split('\n')
+      .filter(line => !line.match(/aontu\/(src|dist)\//))
+      .join('\n')
   }
 
   errs: () => NilVal[]

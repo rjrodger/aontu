@@ -9,7 +9,7 @@ import {
   AontuContext,
 } from '../ctx'
 
-import { makeNilErr } from '../err'
+import { makeNilErr, AontuError } from '../err'
 
 import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
@@ -30,7 +30,7 @@ class IntegerVal extends ScalarVal {
   ) {
     if (!Number.isInteger(spec.peg)) {
       // TODO: use Nil?
-      throw new Error('not-integer: ' + spec.peg)
+      throw new AontuError('not-integer: ' + spec.peg)
     }
     // super({ peg: spec.peg, kind: Integer }, ctx)
     super({ ...spec, kind: Integer }, ctx)

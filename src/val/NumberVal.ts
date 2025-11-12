@@ -9,7 +9,7 @@ import {
   AontuContext,
 } from '../ctx'
 
-import { makeNilErr } from '../err'
+import { makeNilErr, AontuError } from '../err'
 
 import { ScalarVal } from './ScalarVal'
 
@@ -29,7 +29,7 @@ class NumberVal extends ScalarVal {
   ) {
     if (isNaN(spec.peg)) {
       // TODO: use Nil?
-      throw new Error('not-number: ' + spec.peg)
+      throw new AontuError('not-number: ' + spec.peg)
     }
 
     super({ ...spec, kind: Number }, ctx)

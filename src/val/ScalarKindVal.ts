@@ -18,7 +18,7 @@ import {
   explainClose,
 } from '../utility'
 
-import { makeNilErr } from '../err'
+import { makeNilErr, AontuError } from '../err'
 
 // import { BaseVal } from './BaseVal'
 import { FeatureVal } from './FeatureVal'
@@ -49,7 +49,7 @@ class ScalarKindVal extends FeatureVal {
     super(spec, ctx)
 
     if (null == this.peg) {
-      throw new Error('ScalarKindVal spec.peg undefined')
+      throw new AontuError('ScalarKindVal spec.peg undefined')
     }
 
     this.dc = DONE

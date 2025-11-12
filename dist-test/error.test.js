@@ -5,6 +5,7 @@ const node_test_1 = require("node:test");
 const code_1 = require("@hapi/code");
 const aontu_1 = require("../dist/aontu");
 const MapVal_1 = require("../dist/val/MapVal");
+const err_1 = require("../dist/err");
 (0, node_test_1.describe)('error', function () {
     (0, node_test_1.it)('syntax', () => {
         let a0 = new aontu_1.Aontu();
@@ -19,6 +20,13 @@ const MapVal_1 = require("../dist/val/MapVal");
         (0, code_1.expect)(() => a0.parse('a::1')).throws(/syntax/);
         (0, code_1.expect)(() => a0.unify('a::1')).throws(/syntax/);
         (0, code_1.expect)(() => a0.generate('a::1')).throws(/syntax/);
+        try {
+            a0.generate('a:"x');
+        }
+        catch (e) {
+            (0, code_1.expect)(e.name).equal('AontuError');
+            (0, code_1.expect)(e instanceof err_1.AontuError).equal(true);
+        }
     });
     (0, node_test_1.it)('unify', () => {
         let a0 = new aontu_1.Aontu();
