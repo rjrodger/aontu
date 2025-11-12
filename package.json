@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.29.0",
+  "version": "0.30.1",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "browser": "dist/aontu.min.js",
@@ -25,11 +25,11 @@
     "version": "node -r fs -e \"v=require('./package.json').version;s=fs.readFileSync('./aontu.ts').toString();if(!s.includes('VERSION = \\''+v+'\\'')){s=s.replace(/VERSION = '.*?'/,'VERSION = \\''+v+'\\'');fs.writeFileSync('./aontu.ts',s)}\"",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
-    "repo-publish-quick": "npm run prettier && npm run build && npm run test && npm run repo-tag && npm publish --registry https://registry.npmjs.org "
+    "repo-publish-quick": "npm run build && npm run test && npm run repo-tag && npm publish --registry https://registry.npmjs.org "
   },
   "license": "MIT",
   "engines": {
-    "node": ">=16"
+    "node": ">=22"
   },
   "files": [
     "aontu.ts",
@@ -55,8 +55,7 @@
     "aliases": {
       "@jsonic/multisource/resolver/file": "@jsonic/multisource/dist/resolver/file.js",
       "@jsonic/multisource/resolver/pkg": "@jsonic/multisource/dist/resolver/pkg.js",
-      "@jsonic/multisource/resolver/mem": "@jsonic/multisource/dist/resolver/mem.js",
-      "@jsonic/jsonic-next/debug": "@jsonic/jsonic-next/dist/debug.js"
+      "@jsonic/multisource/resolver/mem": "@jsonic/multisource/dist/resolver/mem.js"
     }
   }
 }
