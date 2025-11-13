@@ -43,8 +43,8 @@ class TopVal extends Val {
     return peer.isTop
   }
 
-  unify(peer: Val, _ctx?: AontuContext): Val {
-    return peer
+  unify(peer: Val, ctx: AontuContext): Val {
+    return peer.unify(this, ctx)
   }
 
   get canon() { return 'top' }

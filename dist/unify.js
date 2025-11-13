@@ -19,14 +19,13 @@ const unite = (ctx, a, b, whence) => {
     let why = 'u';
     const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
         '@' + ctx.pathstr;
-    /*
-    if (10 < ctx.seen[saw]) {
-      console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '')
-      console.trace()
+    if (8 < ctx.seen[saw]) {
+        console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '');
+        // console.trace()
+        // process.exit()
     }
-    */
     if (MAXCYCLE < ctx.seen[saw]) {
-        // console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, ctx.cc)
+        console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc);
         out = (0, err_1.makeNilErr)(ctx, 'unify_cycle', a, b);
     }
     else {

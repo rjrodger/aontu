@@ -32,9 +32,9 @@ const PA = (x, ctx) => x.map(s => PL(s, ctx));
 // const D = (x: any) => console.dir(x, { depth: null })
 const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r))?.canon;
 const GC = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen(ctx);
-const N = (x, ctx) => new unify_1.Unify(x, lang).res.canon;
+const N = (x, _ctx) => new unify_1.Unify(x, lang).res.canon;
 const A = new __1.Aontu();
-const G = (s, ctx) => A.generate(s);
+const G = (s, _ctx) => A.generate(s);
 const makeSK_String = () => new ScalarKindVal_1.ScalarKindVal({ peg: String });
 const makeSK_Number = () => new ScalarKindVal_1.ScalarKindVal({ peg: Number });
 const makeSK_Integer = () => new ScalarKindVal_1.ScalarKindVal({ peg: ScalarKindVal_1.Integer });
@@ -449,14 +449,20 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         (0, code_1.expect)(tu(ctx, TOP, d100).canon).equal('1');
         // TODO: same for DisjunctVal
         (0, code_1.expect)(tu(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), TOP).canon).equal('top');
-        (0, code_1.expect)(tu(ctx, P('1 & .a'), TOP).canon).equal('.a&1');
-        (0, code_1.expect)(tu(ctx, P('.a & 1'), TOP).canon).equal('.a&1');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a'), TOP).canon).equal('.a&1');
-        (0, code_1.expect)(tu(ctx, P('1 & 2'), TOP).canon).equal('nil');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & 2'), TOP).canon).equal('nil');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & 2'), TOP).canon).equal('nil');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & .b'), TOP).canon).equal('.a&.b&1');
-        (0, code_1.expect)(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), TOP).canon).equal('.b&.a&1');
+        (0, code_1.expect)(A.parse('1 & .a')?.canon).equal('1&.a');
+        (0, code_1.expect)(A.unify('1 & .a')?.canon).equal('.a&1'); // canonical sorting
+        (0, code_1.expect)(() => A.generate('1 & .a')).throws(/conjunct/);
+        (0, code_1.expect)(A.parse('.a & 1')?.canon).equal('.a&1');
+        (0, code_1.expect)(A.unify('.a & 1')?.canon).equal('.a&1');
+        (0, code_1.expect)(() => A.generate('.a & 1')).throws(/conjunct/);
+        (0, code_1.expect)(A.parse('1 & 1 & .a')?.canon).equal('(1&1)&.a');
+        (0, code_1.expect)(A.parse('1 & 2')?.canon).equal('1&2');
+        (0, code_1.expect)(A.parse('1 & 1 & 2')?.canon).equal('(1&1)&2');
+        (0, code_1.expect)(A.parse('1 & 1 & .a & 2')?.canon).equal('((1&1)&.a)&2');
+        (0, code_1.expect)(A.parse('1 & 1 & .a & .b')?.canon).equal('((1&1)&.a)&.b');
+        (0, code_1.expect)(A.parse('1 & 1 & .a & 1 & .b & 1')?.canon).equal('((((1&1)&.a)&1)&.b)&1');
+        (0, code_1.expect)(A.parse('1 & 2 | 3')?.canon).equal('(1&2)|3');
+        (0, code_1.expect)(A.parse('1 | 2 & 3')?.canon).equal('1|(2&3)');
     });
     (0, node_test_1.it)('disjunct', () => {
         let ou = unify_2.unite;
@@ -538,7 +544,7 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
             root: m0
         });
         let m0u = m0.unify(TOP, c0);
-        (0, code_1.expect)(m0u.canon).equal('{"a":1,"b":1,"c":.x}');
+        (0, code_1.expect)(m0u.canon).equal('{"a":1,"b":1,"c":nil}');
         let m1 = P(`
   a: .b.c
   b: c: 1

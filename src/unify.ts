@@ -44,14 +44,15 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
     '@' + ctx.pathstr
 
   /*
-  if (10 < ctx.seen[saw]) {
+  if (8 < ctx.seen[saw]) {
     console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '')
-    console.trace()
+    // console.trace()
+    // process.exit()
   }
   */
 
   if (MAXCYCLE < ctx.seen[saw]) {
-    // console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, ctx.cc)
+    // console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
   else {

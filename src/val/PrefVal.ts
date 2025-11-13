@@ -69,7 +69,11 @@ class PrefVal extends FeatureVal {
 
     if (peer instanceof PrefVal) {
       why += 'pref-'
-      if (this.rank < peer.rank) {
+      if (this.id === peer.id) {
+        out = this
+        why += 'same'
+      }
+      else if (this.rank < peer.rank) {
         out = this
         why += 'rank-win'
       }
@@ -78,7 +82,8 @@ class PrefVal extends FeatureVal {
         why += 'rank-lose'
       }
       else {
-        let peg = unite(ctx.clone({ explain: ec(te, 'PEER') }), this.peg, peer.peg, 'pref-peer/' + this.id)
+        let peg = unite(ctx.clone({ explain: ec(te, 'PEER') }),
+          this.peg, peer.peg, 'pref-peer/' + this.id)
         out = new PrefVal({ peg }, ctx)
         why += 'rank-same'
       }
@@ -86,14 +91,8 @@ class PrefVal extends FeatureVal {
     else if (!peer.isTop) {
       why += 'super-'
 
-      // if (this.superpeg instanceof Nil) {
-      //   out = peer
-      //   why += 'nil'
-      // }
-      // else {
-      //   why += 'unify'
-
-      out = unite(ctx.clone({ explain: ec(te, 'SUPER') }), this.superpeg, peer, 'pref-super/' + this.id)
+      out = unite(ctx.clone({ explain: ec(te, 'SUPER') }),
+        this.superpeg, peer, 'pref-super/' + this.id)
       if (out.same(this.superpeg)) {
         out = this.peg
         why += 'same'

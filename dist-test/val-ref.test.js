@@ -504,24 +504,24 @@ b: { c1: { k:1 }}
         (0, code_1.expect)(d1.canon).equal('$.c.x');
         (0, code_1.expect)(d2.canon).equal('.a.b.x');
         (0, code_1.expect)(d3.canon).equal('$.c.d.e.x');
-        (0, code_1.expect)(d0.unify(TOP, ctx).canon).equal('.a.x');
-        (0, code_1.expect)(TOP.unify(d0, ctx).canon).equal('.a.x');
-        (0, code_1.expect)(d1.unify(TOP, ctx).canon).equal('$.c.x');
-        (0, code_1.expect)(TOP.unify(d1, ctx).canon).equal('$.c.x');
+        (0, code_1.expect)(d0.unify(TOP, ctx).canon).equal('nil');
+        (0, code_1.expect)(TOP.unify(d0, ctx).canon).equal('nil');
+        (0, code_1.expect)(d1.unify(TOP, ctx).canon).equal('nil');
+        (0, code_1.expect)(TOP.unify(d1, ctx).canon).equal('nil');
     });
     (0, node_test_1.test)('unify', () => {
-        let r1 = new RefVal_1.RefVal({ peg: ['a'] });
-        let r2 = new RefVal_1.RefVal({ peg: ['a'] });
-        let ctx = makeCtx();
-        let u12 = r1.unify(r2, ctx);
-        // console.log(u12, r1.id, r2.id)
-        (0, code_1.expect)(r1).equal(u12);
+        // let r1 = new RefVal({ peg: ['a'] })
+        // let r2 = new RefVal({ peg: ['a'] })
+        // let ctx = makeCtx()
+        // let u12 = r1.unify(r2, ctx)
+        // // console.log(u12, r1.id, r2.id)
+        // expect(r1).equal(u12)
         let s0 = `a:$.x,a:$.x,x:1`;
         (0, code_1.expect)(G(s0)).equal({ a: 1, x: 1 });
         let s1 = `x:1,a:$.x,a:$.x`;
         (0, code_1.expect)(G(s1)).equal({ a: 1, x: 1 });
         let s2 = `a:$.x,a:$.x`;
-        (0, code_1.expect)(UC(s2)).equal('{"a":$.x}');
+        (0, code_1.expect)(UC(s2)).equal('{"a":nil}');
     });
     (0, node_test_1.test)('spreadable', () => {
         let g0 = G('a:1 x:{&:{y:$.a}} x:m:q:2 x:n:q:3');

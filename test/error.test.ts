@@ -58,11 +58,11 @@ describe('error', function() {
   it('generate', () => {
     let aontu = new Aontu()
 
-    expect(() => aontu.generate('a:$.b')).throw(/ref/)
+    expect(() => aontu.generate('a:$.b')).throw(/no_path/)
 
     expect(() =>
       aontu.generate('@"' + __dirname + '/../test/error/e02.jsonic"'))
-      .throw(/ref/)
+      .throw(/no_path/)
   })
 
 })

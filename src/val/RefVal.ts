@@ -292,28 +292,44 @@ class RefVal extends FeatureVal {
 
       let node = ctx.root as Val
 
+      let nopath = false
+
       if (null != node) {
         for (; pI < refpath.length; pI++) {
           let part = refpath[pI]
+          // console.log('PART', pI, part, node)
 
           // descent += (' | ' + pI + '=' + node.canon) // Util.inspect(node))
 
-          if (null == node) {
-            break
-          }
-          else if (node.isMap) {
+          if (node.isMap) {
             node = node.peg[part]
           }
           else if (node.isList) {
             node = node.peg[part]
           }
+          else if (node.done) {
+            nopath = true
+            break;
+          }
           else {
             break;
           }
+
+          if (null == node) {
+            nopath = true
+            break
+          }
+
         }
       }
 
-      if (pI === refpath.length) {
+      // console.log('REFPATH', ctx.cc, pI, refpath, nopath, ctx.root, node)
+
+
+      if (nopath) {
+        out = makeNilErr(ctx, 'no_path', this)
+      }
+      else if (pI === refpath.length) {
         out = node
 
         // Types and hidden values are cloned and made concrete

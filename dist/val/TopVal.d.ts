@@ -7,7 +7,7 @@ declare class TopVal extends Val {
     dc: number;
     constructor(spec: ValSpec, ctx?: AontuContext);
     same(peer: Val): boolean;
-    unify(peer: Val, _ctx?: AontuContext): Val;
+    unify(peer: Val, ctx: AontuContext): Val;
     get canon(): string;
     superior(): Val;
     clone(_ctx: AontuContext, _spec?: ValSpec): this;

@@ -62,9 +62,9 @@ const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
 const GC = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
 
 
-const N = (x: string, ctx?: any) => new Unify(x, lang).res.canon
+const N = (x: string, _ctx?: any) => new Unify(x, lang).res.canon
 const A = new Aontu()
-const G = (s: string, ctx?: any) => A.generate(s)
+const G = (s: string, _ctx?: any) => A.generate(s)
 
 
 
@@ -635,18 +635,27 @@ describe('val-basic', function() {
     // TODO: same for DisjunctVal
     expect(tu(ctx, new ConjunctVal({ peg: [] }), TOP).canon).equal('top')
 
-    expect(tu(ctx, P('1 & .a'), TOP).canon).equal('.a&1')
-    expect(tu(ctx, P('.a & 1'), TOP).canon).equal('.a&1')
+    expect(A.parse('1 & .a')?.canon).equal('1&.a')
+    expect(A.unify('1 & .a')?.canon).equal('.a&1') // canonical sorting
+    expect(() => A.generate('1 & .a')).throws(/conjunct/)
 
-    expect(tu(ctx, P('1 & 1 & .a'), TOP).canon).equal('.a&1')
+    expect(A.parse('.a & 1')?.canon).equal('.a&1')
+    expect(A.unify('.a & 1')?.canon).equal('.a&1')
+    expect(() => A.generate('.a & 1')).throws(/conjunct/)
 
-    expect(tu(ctx, P('1 & 2'), TOP).canon).equal('nil')
-    expect(tu(ctx, P('1 & 1 & 2'), TOP).canon).equal('nil')
-    expect(tu(ctx, P('1 & 1 & .a & 2'), TOP).canon).equal('nil')
+    expect(A.parse('1 & 1 & .a')?.canon).equal('(1&1)&.a')
 
-    expect(tu(ctx, P('1 & 1 & .a & .b'), TOP).canon).equal('.a&.b&1')
+    expect(A.parse('1 & 2')?.canon).equal('1&2')
+    expect(A.parse('1 & 1 & 2')?.canon).equal('(1&1)&2')
+    expect(A.parse('1 & 1 & .a & 2')?.canon).equal('((1&1)&.a)&2')
 
-    expect(tu(ctx, P('1 & 1 & .a & 1 & .b & 1'), TOP).canon).equal('.b&.a&1')
+    expect(A.parse('1 & 1 & .a & .b')?.canon).equal('((1&1)&.a)&.b')
+
+    expect(A.parse('1 & 1 & .a & 1 & .b & 1')?.canon).equal('((((1&1)&.a)&1)&.b)&1')
+
+
+    expect(A.parse('1 & 2 | 3')?.canon).equal('(1&2)|3')
+    expect(A.parse('1 | 2 & 3')?.canon).equal('1|(2&3)')
   })
 
 
@@ -757,7 +766,7 @@ describe('val-basic', function() {
     })
 
     let m0u = m0.unify(TOP, c0)
-    expect(m0u.canon).equal('{"a":1,"b":1,"c":.x}')
+    expect(m0u.canon).equal('{"a":1,"b":1,"c":nil}')
 
 
     let m1 = (P(`

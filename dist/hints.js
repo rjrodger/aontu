@@ -35,6 +35,12 @@ const hints = {
     unknown_function: 'This function name is not recognized.',
     literal_nil: 'A literal nil cannot unify with any other value.',
     unify_cycle: 'Circular reference detected during unification.',
+    conjunct: 'This conjunction (& operator) could not be completed as some terms\n' +
+        'could not be resolved.',
+    no_path: 'The path reference could not be found.' +
+        '\n \nExamples:\n' +
+        '  a:1 b:$.a  -> a:1,b:1  # $.a is a valid path reference as a is a key of root ($).\n' +
+        '  a:$.b      -> nil      # $.b is not a valid path reference as there is no key b in root ($).\n',
     // Parsing errors
     'parse_bad_src': 'Invalid source provided for parsing. The source must be a non-empty string.',
     // Unification errors

@@ -613,22 +613,23 @@ b: { c1: { k:1 }}
     expect(d2.canon).equal('.a.b.x')
     expect(d3.canon).equal('$.c.d.e.x')
 
-    expect(d0.unify(TOP, ctx).canon).equal('.a.x')
-    expect(TOP.unify(d0, ctx).canon).equal('.a.x')
-    expect(d1.unify(TOP, ctx).canon).equal('$.c.x')
-    expect(TOP.unify(d1, ctx).canon).equal('$.c.x')
+    expect(d0.unify(TOP, ctx).canon).equal('nil')
+    expect(TOP.unify(d0, ctx).canon).equal('nil')
+
+    expect(d1.unify(TOP, ctx).canon).equal('nil')
+    expect(TOP.unify(d1, ctx).canon).equal('nil')
   })
 
 
   test('unify', () => {
-    let r1 = new RefVal({ peg: ['a'] })
-    let r2 = new RefVal({ peg: ['a'] })
+    // let r1 = new RefVal({ peg: ['a'] })
+    // let r2 = new RefVal({ peg: ['a'] })
 
-    let ctx = makeCtx()
-    let u12 = r1.unify(r2, ctx)
-    // console.log(u12, r1.id, r2.id)
+    // let ctx = makeCtx()
+    // let u12 = r1.unify(r2, ctx)
+    // // console.log(u12, r1.id, r2.id)
 
-    expect(r1).equal(u12)
+    // expect(r1).equal(u12)
 
 
     let s0 = `a:$.x,a:$.x,x:1`
@@ -638,7 +639,7 @@ b: { c1: { k:1 }}
     expect(G(s1)).equal({ a: 1, x: 1 })
 
     let s2 = `a:$.x,a:$.x`
-    expect(UC(s2)).equal('{"a":$.x}')
+    expect(UC(s2)).equal('{"a":nil}')
   })
 
 

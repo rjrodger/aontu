@@ -42,9 +42,9 @@ const err_1 = require("../dist/err");
     });
     (0, node_test_1.it)('generate', () => {
         let aontu = new aontu_1.Aontu();
-        (0, code_1.expect)(() => aontu.generate('a:$.b')).throw(/ref/);
+        (0, code_1.expect)(() => aontu.generate('a:$.b')).throw(/no_path/);
         (0, code_1.expect)(() => aontu.generate('@"' + __dirname + '/../test/error/e02.jsonic"'))
-            .throw(/ref/);
+            .throw(/no_path/);
     });
 });
 function makeCtx(r) {
