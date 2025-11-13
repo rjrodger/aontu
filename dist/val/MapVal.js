@@ -142,7 +142,13 @@ class MapVal extends BagVal_1.BagVal {
         out.peg = {};
         for (let entry of Object.entries(this.peg)) {
             out.peg[entry[0]] =
-                entry[1]?.isVal ? entry[1].clone(ctx, spec?.mark ? { mark: spec.mark } : {}) : entry[1];
+                entry[1]?.isVal ?
+                    // (entry[1] as Val).clone(ctx, spec?.mark ? { mark: spec.mark } : {}) :
+                    entry[1].clone(ctx, {
+                        mark: spec?.mark ?? {},
+                        path: [...out.path, entry[0]]
+                    }) :
+                    entry[1];
         }
         if (this.spread.cj) {
             out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {});
@@ -169,10 +175,10 @@ class MapVal extends BagVal_1.BagVal {
                     (this.peg[k]?.canon ?? this.peg[k])
             ])
                 .join(',') +
-            '}';
+            '}'; // + '<' + (this.mark.hide ? 'H' : '') + '>'
     }
-    inspection(inspect) {
-        return this.spread.cj ? '&:' + inspect(this.spread.cj) : '';
+    inspection(d) {
+        return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : '';
     }
     gen(ctx) {
         let out = {};

@@ -6,6 +6,7 @@ declare class MoveFuncVal extends FuncBaseVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
     make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
+    prepare(_ctx: AontuContext, _args: Val[]): null;
     resolve(ctx: AontuContext, args: Val[]): Val;
 }
 export { MoveFuncVal, };

@@ -27,7 +27,6 @@ import {
   top
 } from './top'
 
-import { NilVal } from '../val/NilVal'
 import { ConjunctVal } from '../val/ConjunctVal'
 import { FeatureVal } from '../val/FeatureVal'
 
@@ -59,6 +58,7 @@ class FuncBaseVal extends FeatureVal {
 
 
   unify(peer: Val, ctx: AontuContext): Val {
+    const TOP = top()
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer)
 
     // const sc = this.id + '=' + this.canon
@@ -71,6 +71,8 @@ class FuncBaseVal extends FeatureVal {
 
     // console.log('FBV', this.id, this.constructor.name, this.mark.type, this.peg?.canon, 'PEER', peer.id, peer.canon)
 
+    let pegdone = true
+
     if (this.id !== peer.id) {
 
       if (peer.isTop && (this.mark.type || this.mark.hide)) {
@@ -78,25 +80,34 @@ class FuncBaseVal extends FeatureVal {
       }
 
       else {
-        let pegdone = true
+
         let newpeg: Val[] = []
         let newtype = this.mark.type
         let newhide = this.mark.hide
 
-        this.peg = this.prepare(ctx, this.peg)
+        let pegprep = this.prepare(ctx, this.peg)
 
-        for (let arg of this.peg) {
-          // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
+        if (null === pegprep) {
+          pegdone = true
+          newpeg = this.peg
+        }
+        else {
+          this.peg = pegprep
 
-          let newarg = arg
-          if (!arg.done) {
-            newarg = arg.unify(top(), ctx.clone({ explain: ec(te, 'ARG') }))
-            newtype = newtype || newarg.mark.type
-            newhide = newhide || newarg.mark.hide
-            // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)
+          for (let arg of this.peg) {
+            // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
+
+            let newarg = arg
+            if (!arg.done) {
+              newarg = arg.unify(TOP, ctx.clone({ explain: ec(te, 'ARG') }))
+              newtype = newtype || newarg.mark.type
+              newhide = newhide || newarg.mark.hide
+              // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, arg.done, '->', newarg.canon, newarg.done)
+            }
+            // pegdone &&= arg.done
+            pegdone &&= newarg.done
+            newpeg.push(newarg)
           }
-          pegdone &&= arg.done
-          newpeg.push(newarg)
         }
 
         // console.log('FUNCBASE-PEG', this.id, pegdone, this.peg.map((p: any) => p?.canon))
@@ -106,14 +117,9 @@ class FuncBaseVal extends FeatureVal {
           // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
 
           out = resolved.done && peer.isTop ? resolved :
-            unite(ctx.clone({ explain: ec(te, 'PEG') }), resolved, peer, 'func-' + this.funcname() + '/' + this.id)
+            unite(ctx.clone({ explain: ec(te, 'PEG') }),
+              resolved, peer, 'func-' + this.funcname() + '/' + this.id)
           propagateMarks(this, out)
-
-          // const unified =
-          //   unite(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id)
-          // out = unified
-          // propagateMarks(unified, out)
-          // propagateMarks(this, out)
 
           // TODO: make should handle this using ctx?
           out.site.row = this.site.row
@@ -157,7 +163,7 @@ class FuncBaseVal extends FeatureVal {
       }
     }
 
-    // console.log('FUNC-UNIFY-OUT', this.funcname(), this.id, this.canon, 'W=', why, peer.id, peer.canon, 'O=', out.dc, out.id, out.canon)
+    // console.log('FUNC-UNIFY-OUT', ctx.cc, this.funcname(), this.id, this.canon, 'D=', pegdone, 'W=', why, peer.id, peer.canon, 'O=', out.dc, out.id, out.canon)
 
     explainClose(te, out)
 
@@ -180,12 +186,12 @@ class FuncBaseVal extends FeatureVal {
   }
 
 
-  prepare(_ctx: AontuContext | undefined, args: Val[]): Val[] {
+  prepare(_ctx: AontuContext, args: Val[]): Val[] | null {
     return args
   }
 
 
-  resolve(ctx: AontuContext | undefined, _args: Val[]): Val {
+  resolve(ctx: AontuContext, _args: Val[]): Val {
     return makeNilErr(ctx, 'func:' + this.funcname(), this, undefined, 'resolve')
   }
 

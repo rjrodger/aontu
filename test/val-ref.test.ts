@@ -713,6 +713,8 @@ b: { c1: { k:1 }}
 
 
   test('multi-spreadable-key', () => {
+    const c0 = makeCtx()
+
     expect(G('.$KEY')).equal('')
     expect(G('k:.$KEY')).equal({ k: '' })
     expect(G('a:k:.$KEY')).equal({ a: { k: 'a' } })
@@ -726,10 +728,12 @@ b: { c1: { k:1 }}
     expect(G('&:k:.$KEY a:{}')).equal({ a: { k: 'a' } })
     expect(G('&:k:.$KEY a:{} b:{}')).equal({ a: { k: 'a' }, b: { k: 'b' } })
 
+
+    expect(G('q:&:k:a q:&:p:2 q:a:{x:11}')).equal({ q: { a: { k: 'a', p: 2, x: 11 } } })
     expect(G('&:k:a &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } })
 
-    // expect(G('&:k:.$KEY &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } })
-    expect(G('&:k:key() &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } })
+    expect(G('q:&:k:key() q:&:p:2 q:a:{x:11}', c0)).equal({ q: { a: { k: 'a', p: 2, x: 11 } } })
+    expect(G('&:k:key() &:p:2 a:{x:11}', c0)).equal({ a: { k: 'a', p: 2, x: 11 } })
 
     // expect(G('&:k:.$KEY &:p:2 a:{x:11} b:{x:22}'))
     //   .equal({ a: { k: 'a', p: 2, x: 11 }, b: { k: 'b', p: 2, x: 22 } })

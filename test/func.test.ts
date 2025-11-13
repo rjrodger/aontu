@@ -604,7 +604,7 @@ describe('func', function() {
     expect(N('path("foo-bar")')).equal('path(.foo-bar)')
     expect(N('path("0.1.2")')).equal('path(.0.1.2)')
     expect(N('path()')).equal('nil')
-    expect(N('path("")')).equal('path(nil)')
+    expect(N('path("")')).equal('nil')
   })
 
 

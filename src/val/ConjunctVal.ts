@@ -84,6 +84,7 @@ class ConjunctVal extends JunctionVal {
 
     this.peg = norm(this.peg)
 
+    // console.log('\nCONJUNCT', ctx.cc, this.id, this.canon, peer.id, peer.canon)
 
     // Unify each term of conjunct against peer
     let upeer: Val[] = []
@@ -92,6 +93,7 @@ class ConjunctVal extends JunctionVal {
     let newhide = this.mark.hide || peer.mark.hide
 
     for (let vI = 0; vI < this.peg.length; vI++) {
+      // console.log('CONJUNCT-peg', vI, this.peg[vI].canon, this.peg[vI].mark)
       newtype = this.peg[vI].mark.type || newtype
       newhide = this.peg[vI].mark.hide || newhide
     }
@@ -103,6 +105,7 @@ class ConjunctVal extends JunctionVal {
 
       upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
         unite(ctx.clone({ explain: ec(te, 'OWN') }), this.peg[vI], peer, 'cj-own')
+
       upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type
       upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide
 
@@ -135,7 +138,7 @@ class ConjunctVal extends JunctionVal {
     for (let pI = 0; pI < upeer.length; pI++) {
       let t1 = upeer[pI + 1]
 
-      // console.log('CONJUNCT-TERMS-C', this.id, pI, t0, t1, 'OV=', outvals.map((v: Val) => v))
+      // console.log('CONJUNCT-TERMS-C', ctx.cc, this.id, pI, t0.id, t0.canon, t1?.id, t1?.canon, 'OV=', outvals.map((v: Val) => v.canon))
 
       if (null == t1) {
         outvals.push(t0)
@@ -158,6 +161,7 @@ class ConjunctVal extends JunctionVal {
 
       else {
         val = unite(ctx.clone({ explain: ec(te, 'DEF') }), t0, t1, 'cj-peer-t0t1')
+        // console.log('CONJUNCT-T', t0.canon, t1?.canon, '->', val.canon)
         done = done && DONE === val.dc
         newtype = this.mark.type || val.mark.type
         newhide = this.mark.hide || val.mark.hide
@@ -173,10 +177,6 @@ class ConjunctVal extends JunctionVal {
         else {
           t0 = val
         }
-        // TODO: t0 should become this to avoid unnecessary repasses
-        // outvals.push(val)
-
-        // pI++
       }
     }
 

@@ -73,14 +73,18 @@ function walk(
   if (null != child && !child.isVal) {
     if ('object' === typeof child) {
       for (let ckey in child) {
-        child[ckey] = walk(
-          child[ckey], before, after, maxdepth, ckey, out, [...(path || []), ckey])
+        if (child[ckey] && child[ckey].isVal) {
+          child[ckey] = walk(
+            child[ckey], before, after, maxdepth, ckey, out, [...(path || []), ckey])
+        }
       }
     }
     else if (Array.isArray(child)) {
       for (let i = 0; i < child.length; i++) {
-        child[i] = walk(
-          child[i], before, after, maxdepth, i, out, [...(path || []), '' + i])
+        if (child[i] && child[i].isVal) {
+          child[i] = walk(
+            child[i], before, after, maxdepth, i, out, [...(path || []), '' + i])
+        }
       }
     }
   }

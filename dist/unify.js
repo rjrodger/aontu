@@ -17,8 +17,6 @@ const unite = (ctx, a, b, whence) => {
     const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'unite', a, b);
     let out = a;
     let why = 'u';
-    // const saw = a?.isTop && b?.isTop ? '' :
-    //   (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '')
     const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
         '@' + ctx.pathstr;
     /*
@@ -28,7 +26,8 @@ const unite = (ctx, a, b, whence) => {
     }
     */
     if (MAXCYCLE < ctx.seen[saw]) {
-        out = (0, err_1.makeNilErr)(ctx, 'cycle', a, b);
+        // console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, ctx.cc)
+        out = (0, err_1.makeNilErr)(ctx, 'unify_cycle', a, b);
     }
     else {
         ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0);
@@ -85,9 +84,11 @@ const unite = (ctx, a, b, whence) => {
                 out = nout;
                 why += 'T';
             }
+            // console.log('UNITE', why, a?.canon, b?.canon, '->', out?.canon)
             uc++;
         }
         catch (err) {
+            // console.log(err)
             // TODO: handle unexpected
             out = (0, err_1.makeNilErr)(ctx, 'internal', a, b);
         }

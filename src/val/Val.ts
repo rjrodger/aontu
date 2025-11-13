@@ -38,8 +38,6 @@ type ValSpec = {
   prefix?: boolean,
 }
 
-// import { AontuError, descErr, makeNilErr } from '../err'
-// import { AontuError } from '../err'
 
 
 const DONE = -1
@@ -155,11 +153,16 @@ abstract class Val {
   clone(ctx: AontuContext, spec?: ValSpec): Val {
     let cloneCtx
 
-    let cut = this.path.indexOf('&')
-    cut = -1 < cut ? cut + 1 : ctx.path.length
-    cloneCtx = ctx.clone({
-      path: ctx.path.concat(this.path.slice(cut))
-    })
+    let path = spec?.path
+    if (null == path) {
+      let cut = this.path.indexOf('&')
+      cut = -1 < cut ? cut + 1 : ctx.path.length
+      path = ctx.path.concat(this.path.slice(cut))
+    }
+    // console.log('CLONE', path, this.canon)
+    // console.trace()
+
+    cloneCtx = ctx.clone({ path })
 
     let fullspec = {
       peg: this.peg,
@@ -215,7 +218,12 @@ abstract class Val {
   abstract superior(): Val
 
 
-  [inspect.custom](_d: number, _o: any, _inspect: any): string {
+  [inspect.custom](d: number, _opts: any, _inspect: any) {
+    return this.inspect(d)
+  }
+
+  inspect(d?: number): string {
+    d = null == d ? -1 : d
     let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]
 
     s.push('/' + this.path.join('.') + '/')
@@ -225,21 +233,23 @@ abstract class Val {
       ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
     ].filter(n => null != n).join(','))
 
-    let insp = this.inspection(inspect)
+    // let insp = this.inspection(inspect)
+    let insp = this.inspection(1 + d)
     if (null != insp && '' != insp) {
       s.push('/' + insp)
     }
 
     s.push('/')
 
-    if ('object' === typeof this.peg) {
-      s.push(inspectpeg(this.peg))
+    if (null != this.peg && 'object' === typeof this.peg &&
+      (Object.entries(this.peg)[0]?.[1] as any)?.isVal) {
+      s.push(inspectpeg(this.peg, 1 + d))
     }
     else if ('function' === typeof this.peg) {
       s.push(this.peg.name)
     }
     else {
-      s.push(this.peg)
+      s.push(this.peg?.toString?.() ?? '')
     }
 
     s.push('>')
@@ -250,23 +260,32 @@ abstract class Val {
   }
 
 
-  inspection(_inspect: Function) {
+  inspection(d?: number) {
     return ''
   }
 
 }
 
 
-function inspectpeg(peg: any) {
-  return pretty(!Array.isArray(peg) ? inspect(peg) :
-    ('[' + peg.map(n => inspect(n)).join(',\n') + ']'))
+function inspectpeg(peg: any, d: number) {
+  const indent = '  '.repeat(d)
+  return pretty(Array.isArray(peg) ?
+    ('[' + peg.map(n => '\n  ' + indent + (n.inspect?.(d) ?? n)).join(',') +
+      '\n' + indent + ']') :
+    ('{' +
+      Object.entries(peg).map((n: any) =>
+        '\n  ' + indent + n[0] + ': ' + // n[1].inspect(d)
+        (n[1].inspect(d) ?? '' + n[1])
+      ).join(',') +
+      '\n' + indent + '}')
+  )
 }
 
 function pretty(s: string) {
   return (
     (String(s))
       .replace(/\[Object: null prototype\]/g, '')
-      .replace(/\s+/g, '')
+    // .replace(/([^\n]) +/g, '$1')
   )
 }
 

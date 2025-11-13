@@ -53,6 +53,7 @@ const hints: Record<string, string> = {
   literal_nil:
     'A literal nil cannot unify with any other value.',
 
+  unify_cycle: 'Circular reference detected during unification.',
 
   // Parsing errors
   'parse_bad_src': 'Invalid source provided for parsing. The source must be a non-empty string.',
@@ -61,7 +62,7 @@ const hints: Record<string, string> = {
   'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
   'unify_no_res': 'Unification produced no result. The values could not be unified.',
   'unite': 'Failed to unite two values. The values are incompatible and cannot be unified.',
-  'cycle': 'Circular reference detected during unification. The unification process encountered a cycle.',
+
   'internal': 'Internal error during unification. This indicates an unexpected error in the unification process.',
 
   // Type mismatch errors

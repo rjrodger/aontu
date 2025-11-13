@@ -10,7 +10,7 @@ declare class MapVal extends BagVal {
     unify(peer: Val, ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    inspection(inspect: Function): string;
+    inspection(d?: number): string;
     gen(ctx: AontuContext): any;
 }
 export { MapVal };

@@ -43,11 +43,13 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Conjunct', this, peer);
         let done = true;
         this.peg = norm(this.peg);
+        // console.log('\nCONJUNCT', ctx.cc, this.id, this.canon, peer.id, peer.canon)
         // Unify each term of conjunct against peer
         let upeer = [];
         let newtype = this.mark.type || peer.mark.type;
         let newhide = this.mark.hide || peer.mark.hide;
         for (let vI = 0; vI < this.peg.length; vI++) {
+            // console.log('CONJUNCT-peg', vI, this.peg[vI].canon, this.peg[vI].mark)
             newtype = this.peg[vI].mark.type || newtype;
             newhide = this.peg[vI].mark.hide || newhide;
         }
@@ -80,7 +82,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
         // next_term:
         for (let pI = 0; pI < upeer.length; pI++) {
             let t1 = upeer[pI + 1];
-            // console.log('CONJUNCT-TERMS-C', this.id, pI, t0, t1, 'OV=', outvals.map((v: Val) => v))
+            // console.log('CONJUNCT-TERMS-C', ctx.cc, this.id, pI, t0.id, t0.canon, t1?.id, t1?.canon, 'OV=', outvals.map((v: Val) => v.canon))
             if (null == t1) {
                 outvals.push(t0);
                 newtype = this.mark.type || t0.mark.type;
@@ -98,6 +100,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             }
             else {
                 val = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'DEF') }), t0, t1, 'cj-peer-t0t1');
+                // console.log('CONJUNCT-T', t0.canon, t1?.canon, '->', val.canon)
                 done = done && type_1.DONE === val.dc;
                 newtype = this.mark.type || val.mark.type;
                 newhide = this.mark.hide || val.mark.hide;
@@ -112,9 +115,6 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
                 else {
                     t0 = val;
                 }
-                // TODO: t0 should become this to avoid unnecessary repasses
-                // outvals.push(val)
-                // pI++
             }
         }
         let out;

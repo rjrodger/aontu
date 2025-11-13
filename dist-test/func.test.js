@@ -497,7 +497,7 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(N('path("foo-bar")')).equal('path(.foo-bar)');
         (0, code_1.expect)(N('path("0.1.2")')).equal('path(.0.1.2)');
         (0, code_1.expect)(N('path()')).equal('nil');
-        (0, code_1.expect)(N('path("")')).equal('path(nil)');
+        (0, code_1.expect)(N('path("")')).equal('nil');
     });
     (0, node_test_1.test)('path-number', () => {
         const N = (x) => new unify_1.Unify(x, lang).res.canon;

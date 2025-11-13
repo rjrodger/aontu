@@ -43,21 +43,34 @@ class CopyFuncVal extends FuncBaseVal {
     return new CopyFuncVal(spec)
   }
 
+
   funcname() {
     return 'copy'
   }
 
-  resolve(ctx: AontuContext | undefined, args: Val[]) {
+  prepare(_ctx: AontuContext, _args: Val[]) {
+    return null
+  }
+
+
+  resolve(ctx: AontuContext, args: Val[]) {
     const val = args?.[0]
     const out = null == val || null == ctx ?
       makeNilErr(ctx, 'invalid-arg', this) :
-      val.clone(ctx, { mark: { type: false, hide: false } })
+      val.clone(ctx)
 
-    walk(out, (_key: string | number | undefined, val: Val) => {
-      val.mark.type = false
-      val.mark.hide = false
-      return val
-    })
+    // console.log('CR', out)
+
+    if (!out.isRef) {
+      walk(out, (_key: string | number | undefined, val: Val) => {
+        // console.log('WALK', val)
+        val.mark.type = false
+        val.mark.hide = false
+        return val
+      })
+    }
+
+    // console.log('COPY-RESOLVE', ctx.cc, val, out)
 
     return out
   }

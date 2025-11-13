@@ -172,23 +172,18 @@ describe('examples', function() {
     expect(G('x:close({a:1,b:{c:2}}) x:{a:1,b:{d:3}}')).equal({ x: { a: 1, b: { c: 2, d: 3 } } })
   })
 
+
+  test('move-examples', () => {
+    expect(G('x:&:{y:1,k:key()} x:a:z:2 x:c:move($.x.a)'))
+      .equal({ x: { c: { z: 2, y: 1, k: 'c' } } })
+  })
+
+
   /*
   test('all-expressions', () => {
-    // Expression 1: a:1|2 a:2 - Parse error due to spaces, skip
-    // Expression 135: *1|string a - Parse error, skip
-    // Expression 170: (number|*1)&number) - Parse error, skip
-    // Expression 385: foo: { bar: {} } zed: {} - Parse error, skip
-    // Expression 387: a::1 - Parse error, skip
-    // Expression 74: x:*1x:3 - Parse error, skip
-    // Expression 82: x:**1\ - malformed, skip
-    // For brevity, continuing with key expressions and patterns
-    // More test expressions following similar patterns...
-    // Remaining expressions continue with similar patterns...
     expect(() => G('(1|2)&3')).throws(/aontu/)
     expect(() => G('({a:1}|nil) & {a:2}')).throws(/aontu/)
     expect(() => G('({a:1}|x) & {a:2}')).throws(/aontu/)
-
-
     expect(() => G('1&2')).throws(/aontu/)
     expect(() => G('1|(number & string)')).throws(/aontu/)
     expect(() => G('1|number & string')).throws(/aontu/)

@@ -119,7 +119,8 @@ class MapVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx.clone({ explain: ec(te, 'SPR') }), out.spread.cj, peer.spread.cj, 'map-self')
+            unite(ctx.clone({ explain: ec(te, 'SPR') }),
+              out.spread.cj, peer.spread.cj, 'map-self')
           )
         )
       }
@@ -222,9 +223,16 @@ class MapVal extends BagVal {
   clone(ctx: AontuContext, spec?: ValSpec): Val {
     let out = (super.clone(ctx, spec) as MapVal)
     out.peg = {}
+
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, spec?.mark ? { mark: spec.mark } : {}) : entry[1]
+        (entry[1] as any)?.isVal ?
+          // (entry[1] as Val).clone(ctx, spec?.mark ? { mark: spec.mark } : {}) :
+          (entry[1] as Val).clone(ctx, {
+            mark: spec?.mark ?? {},
+            path: [...out.path, entry[0]]
+          }) :
+          entry[1]
     }
     if (this.spread.cj) {
       out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {})
@@ -255,12 +263,13 @@ class MapVal extends BagVal {
           (this.peg[k]?.canon ?? this.peg[k])
         ])
         .join(',') +
-      '}'
+      '}' // + '<' + (this.mark.hide ? 'H' : '') + '>'
+
   }
 
 
-  inspection(inspect: Function) {
-    return this.spread.cj ? '&:' + inspect(this.spread.cj) : ''
+  inspection(d?: number) {
+    return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : ''
   }
 
 

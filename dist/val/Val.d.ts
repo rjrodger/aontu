@@ -81,8 +81,9 @@ declare abstract class Val {
     gen(_ctx: AontuContext): any;
     notdone(): void;
     abstract superior(): Val;
-    [inspect.custom](_d: number, _o: any, _inspect: any): string;
-    inspection(_inspect: Function): string;
+    [inspect.custom](d: number, _opts: any, _inspect: any): string;
+    inspect(d?: number): string;
+    inspection(d?: number): string;
 }
 declare function empty(o: any): boolean;
 export type { ValMark, ValSpec, };

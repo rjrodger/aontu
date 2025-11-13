@@ -26,33 +26,42 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'make');
     }
     unify(peer, ctx) {
+        const TOP = (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer);
         // const sc = this.id + '=' + this.canon
         // const pc = peer.id + '=' + peer.canon
         let why = '';
         let out = this;
         // console.log('FBV', this.id, this.constructor.name, this.mark.type, this.peg?.canon, 'PEER', peer.id, peer.canon)
+        let pegdone = true;
         if (this.id !== peer.id) {
             if (peer.isTop && (this.mark.type || this.mark.hide)) {
                 this.dc = type_1.DONE;
             }
             else {
-                let pegdone = true;
                 let newpeg = [];
                 let newtype = this.mark.type;
                 let newhide = this.mark.hide;
-                this.peg = this.prepare(ctx, this.peg);
-                for (let arg of this.peg) {
-                    // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
-                    let newarg = arg;
-                    if (!arg.done) {
-                        newarg = arg.unify((0, top_1.top)(), ctx.clone({ explain: (0, utility_1.ec)(te, 'ARG') }));
-                        newtype = newtype || newarg.mark.type;
-                        newhide = newhide || newarg.mark.hide;
-                        // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, '->', newarg.canon)
+                let pegprep = this.prepare(ctx, this.peg);
+                if (null === pegprep) {
+                    pegdone = true;
+                    newpeg = this.peg;
+                }
+                else {
+                    this.peg = pegprep;
+                    for (let arg of this.peg) {
+                        // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
+                        let newarg = arg;
+                        if (!arg.done) {
+                            newarg = arg.unify(TOP, ctx.clone({ explain: (0, utility_1.ec)(te, 'ARG') }));
+                            newtype = newtype || newarg.mark.type;
+                            newhide = newhide || newarg.mark.hide;
+                            // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, arg.done, '->', newarg.canon, newarg.done)
+                        }
+                        // pegdone &&= arg.done
+                        pegdone &&= newarg.done;
+                        newpeg.push(newarg);
                     }
-                    pegdone &&= arg.done;
-                    newpeg.push(newarg);
                 }
                 // console.log('FUNCBASE-PEG', this.id, pegdone, this.peg.map((p: any) => p?.canon))
                 if (pegdone) {
@@ -61,11 +70,6 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     out = resolved.done && peer.isTop ? resolved :
                         (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }), resolved, peer, 'func-' + this.funcname() + '/' + this.id);
                     (0, utility_1.propagateMarks)(this, out);
-                    // const unified =
-                    //   unite(ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id)
-                    // out = unified
-                    // propagateMarks(unified, out)
-                    // propagateMarks(this, out)
                     // TODO: make should handle this using ctx?
                     out.site.row = this.site.row;
                     out.site.col = this.site.col;
@@ -102,7 +106,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                 }
             }
         }
-        // console.log('FUNC-UNIFY-OUT', this.funcname(), this.id, this.canon, 'W=', why, peer.id, peer.canon, 'O=', out.dc, out.id, out.canon)
+        // console.log('FUNC-UNIFY-OUT', ctx.cc, this.funcname(), this.id, this.canon, 'D=', pegdone, 'W=', why, peer.id, peer.canon, 'O=', out.dc, out.id, out.canon)
         (0, utility_1.explainClose)(te, out);
         return out;
     }

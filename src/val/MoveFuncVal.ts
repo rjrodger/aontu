@@ -22,6 +22,7 @@ import {
 
 import { FuncBaseVal } from './FuncBaseVal'
 import { CopyFuncVal } from './CopyFuncVal'
+import { PrefFuncVal } from './PrefFuncVal'
 
 
 
@@ -44,30 +45,33 @@ class MoveFuncVal extends FuncBaseVal {
     return 'move'
   }
 
+  prepare(_ctx: AontuContext, _args: Val[]) {
+    return null
+  }
 
   resolve(ctx: AontuContext, args: Val[]) {
     let out = args[0] ?? makeNilErr(ctx, 'arg', this)
 
     const orig = out
-    const origcanon = orig.canon
 
     if (!orig.isNil) {
       const src = orig.clone(ctx)
+
+      if (src.isRef) {
+        src.mark._hide_found = true
+      }
 
       walk(orig, (_key: string | number | undefined, val: Val) => {
         val.mark.hide = true
         return val
       })
 
-      out = new CopyFuncVal({ peg: [src] }, ctx)
+      // out = new CopyFuncVal({ peg: [src] }, ctx)
+      out = new PrefFuncVal({ peg: [src] }, ctx)
+      // out = src
     }
 
-    Object.defineProperty(out, 'canon', {
-      get: () => 'move(' + origcanon + ')',
-      configurable: true
-    })
-
-    // console.log('MOVE-resolve', out)
+    // console.log('MOVE-resolve', orig, out)
 
     return out
   }

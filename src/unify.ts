@@ -39,9 +39,6 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   let out = a
   let why = 'u'
 
-  // const saw = a?.isTop && b?.isTop ? '' :
-  //   (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '')
-
   const saw =
     (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
     '@' + ctx.pathstr
@@ -54,7 +51,8 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   */
 
   if (MAXCYCLE < ctx.seen[saw]) {
-    out = makeNilErr(ctx, 'cycle', a, b)
+    // console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, ctx.cc)
+    out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
   else {
     ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0)
@@ -124,9 +122,12 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         why += 'T'
       }
 
+      // console.log('UNITE', why, a?.canon, b?.canon, '->', out?.canon)
+
       uc++
     }
     catch (err: any) {
+      // console.log(err)
       // TODO: handle unexpected
       out = makeNilErr(ctx, 'internal', a, b)
     }

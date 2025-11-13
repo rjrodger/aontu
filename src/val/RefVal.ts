@@ -1,6 +1,8 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
+import Util from 'node:util'
+
 import {
   walk,
   explainOpen,
@@ -135,7 +137,7 @@ class RefVal extends FeatureVal {
 
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Ref', this, peer)
     let out: Val = this
-    // let why = 'id'
+    let why = 'id'
 
     if (this.id !== peer.id) {
 
@@ -152,34 +154,35 @@ class RefVal extends FeatureVal {
       else if (resolved instanceof RefVal) {
         if (peer.isTop) {
           out = this
-          // why = 'pt'
+          why = 'pt'
         }
         else if (peer.isNil) {
           out = makeNilErr(ctx, 'ref[' + this.peg + ']', this, peer)
-          // why = 'pn'
+          why = 'pn'
         }
 
         // same path
-        // else if (this.peg === peer.peg) {
         else if (this.canon === peer.canon) {
           out = this
-          // why = 'pp'
+          why = 'pp'
         }
 
         else {
           // Ensure RefVal done is incremented
           this.dc = DONE === this.dc ? DONE : this.dc + 1
           out = new ConjunctVal({ peg: [this, peer] }, ctx)
-          // why = 'cj'
+          why = 'cj'
         }
       }
       else {
         out = unite(ctx.clone({ explain: ec(te, 'RES') }), resolved, peer, 'ref')
-        // why = 'u'
+        why = 'u'
       }
 
       out.dc = DONE === out.dc ? DONE : this.dc + 1
     }
+
+    // console.log('REFVAL-UNIFY-OUT', ctx.cc, this.id, this.canon, this.done, 'P=', peer.id, peer.canon, peer.done, '->', out.id, out.canon, out.done)
 
     explainClose(te, out)
     return out
@@ -189,7 +192,15 @@ class RefVal extends FeatureVal {
   find(ctx: AontuContext) {
     let out: Val | undefined = undefined
 
-    if (this.path.join('.').startsWith(this.peg.join('.'))) {
+    const selfpath = this.path.join('.')
+    const pegpath = this.peg.join('.')
+    const isprefixpath = selfpath.startsWith(pegpath)
+
+    let refpath: string[] = []
+    let pI = 0
+    // let descent = ''
+
+    if (isprefixpath) {
       out = makeNilErr(ctx, 'path_cycle', this)
     }
     else {
@@ -248,8 +259,6 @@ class RefVal extends FeatureVal {
         }
       }
 
-      let refpath: string[] = []
-
       if (this.absolute) {
         refpath = parts
       }
@@ -282,11 +291,12 @@ class RefVal extends FeatureVal {
       }
 
       let node = ctx.root as Val
-      let pI = 0
 
       if (null != node) {
         for (; pI < refpath.length; pI++) {
           let part = refpath[pI]
+
+          // descent += (' | ' + pI + '=' + node.canon) // Util.inspect(node))
 
           if (null == node) {
             break
@@ -307,17 +317,43 @@ class RefVal extends FeatureVal {
         out = node
 
         // Types and hidden values are cloned and made concrete
-        if (null != out && (out.mark.type || out.mark.hide)) {
+        if (null != out) { //  && (out.mark.type || out.mark.hide)) {
+
+          // console.log('FOUND-A', out)
+
+          if (this.mark.type || this.mark.hide) {
+            out.mark.type = this.mark.type
+            out.mark.hide = this.mark.hide
+
+            // walk(out, (_key: string | number | undefined, val: Val) => {
+            //   val.mark.type = this.mark.type
+            //   val.mark.hide = this.mark.hide
+            //   return val
+            // })
+          }
+
+          if (this.mark._hide_found) {
+            out.mark.hide = true
+          }
+
+          // console.log('FOUND-B', out)
+
           out = out.clone(ctx)
 
+          // if (this.mark.type || this.mark.hide) {
           walk(out, (_key: string | number | undefined, val: Val) => {
             val.mark.type = false
             val.mark.hide = false
             return val
           })
+          //}
+
+          // onsole.log('FOUND-C', out)
         }
       }
     }
+
+    // console.log('REF-FIND', ctx.cc, this.id, selfpath, 'PEG=', pegpath, 'RP', pI, refpath.join('.'), descent, 'O=', out?.id, out?.canon, out?.done)
 
     return out
   }

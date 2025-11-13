@@ -17,8 +17,6 @@ exports.SPREAD = exports.DONE = exports.Val = void 0;
 exports.empty = empty;
 const node_util_1 = require("node:util");
 const site_1 = require("../site");
-// import { AontuError, descErr, makeNilErr } from '../err'
-// import { AontuError } from '../err'
 const DONE = -1;
 exports.DONE = DONE;
 const SPREAD = Symbol('spread');
@@ -99,11 +97,15 @@ class Val {
     }
     clone(ctx, spec) {
         let cloneCtx;
-        let cut = this.path.indexOf('&');
-        cut = -1 < cut ? cut + 1 : ctx.path.length;
-        cloneCtx = ctx.clone({
-            path: ctx.path.concat(this.path.slice(cut))
-        });
+        let path = spec?.path;
+        if (null == path) {
+            let cut = this.path.indexOf('&');
+            cut = -1 < cut ? cut + 1 : ctx.path.length;
+            path = ctx.path.concat(this.path.slice(cut));
+        }
+        // console.log('CLONE', path, this.canon)
+        // console.trace()
+        cloneCtx = ctx.clone({ path });
         let fullspec = {
             peg: this.peg,
             mark: { type: this.mark.type, hide: this.mark.hide },
@@ -139,44 +141,57 @@ class Val {
     notdone() {
         this.dc = DONE === this.dc ? DONE : this.dc + 1;
     }
-    [(_Val_ctx = new WeakMap(), node_util_1.inspect.custom)](_d, _o, _inspect) {
+    [(_Val_ctx = new WeakMap(), node_util_1.inspect.custom)](d, _opts, _inspect) {
+        return this.inspect(d);
+    }
+    inspect(d) {
+        d = null == d ? -1 : d;
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
         s.push('/' + this.path.join('.') + '/');
         s.push([
             DONE === this.dc ? 'D' : 'd' + this.dc,
             ...Object.entries(this.mark).filter(n => n[1]).map(n => n[0]).sort()
         ].filter(n => null != n).join(','));
-        let insp = this.inspection(node_util_1.inspect);
+        // let insp = this.inspection(inspect)
+        let insp = this.inspection(1 + d);
         if (null != insp && '' != insp) {
             s.push('/' + insp);
         }
         s.push('/');
-        if ('object' === typeof this.peg) {
-            s.push(inspectpeg(this.peg));
+        if (null != this.peg && 'object' === typeof this.peg &&
+            Object.entries(this.peg)[0]?.[1]?.isVal) {
+            s.push(inspectpeg(this.peg, 1 + d));
         }
         else if ('function' === typeof this.peg) {
             s.push(this.peg.name);
         }
         else {
-            s.push(this.peg);
+            s.push(this.peg?.toString?.() ?? '');
         }
         s.push('>');
         const out = s.join('');
         return out;
     }
-    inspection(_inspect) {
+    inspection(d) {
         return '';
     }
 }
 exports.Val = Val;
-function inspectpeg(peg) {
-    return pretty(!Array.isArray(peg) ? (0, node_util_1.inspect)(peg) :
-        ('[' + peg.map(n => (0, node_util_1.inspect)(n)).join(',\n') + ']'));
+function inspectpeg(peg, d) {
+    const indent = '  '.repeat(d);
+    return pretty(Array.isArray(peg) ?
+        ('[' + peg.map(n => '\n  ' + indent + (n.inspect?.(d) ?? n)).join(',') +
+            '\n' + indent + ']') :
+        ('{' +
+            Object.entries(peg).map((n) => '\n  ' + indent + n[0] + ': ' + // n[1].inspect(d)
+                (n[1].inspect(d) ?? '' + n[1])).join(',') +
+            '\n' + indent + '}'));
 }
 function pretty(s) {
     return ((String(s))
         .replace(/\[Object: null prototype\]/g, '')
-        .replace(/\s+/g, ''));
+    // .replace(/([^\n]) +/g, '$1')
+    );
 }
 function empty(o) {
     return ((Array.isArray(o) && 0 === o.length)

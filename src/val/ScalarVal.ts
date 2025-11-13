@@ -68,6 +68,8 @@ class ScalarVal extends Val {
         ((peer as any).kind === this.kind ? 'value' : 'kind'), this, peer)
     }
 
+    // console.log('SCALAR', this.canon, peer.canon, '->', out.canon)
+
     explainClose(te, out)
 
     return out
