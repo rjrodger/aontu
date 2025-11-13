@@ -45,6 +45,18 @@ describe('aontu', function() {
   })
 
 
+  test('clone', async () => {
+    let a0 = new Aontu()
+
+    const v0 = a0.unify('a:1')
+
+    const c0 = makeCtx()
+    const v0c = v0.clone(c0)
+
+    expect(v0.done).equal(v0c.done)
+  })
+
+
   test('happy', async () => {
     let ctx = makeCtx()
     let a0 = new Aontu()

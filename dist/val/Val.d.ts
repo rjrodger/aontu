@@ -83,7 +83,7 @@ declare abstract class Val {
     abstract superior(): Val;
     [inspect.custom](d: number, _opts: any, _inspect: any): string;
     inspect(d?: number): string;
-    inspection(d?: number): string;
+    inspection(_d?: number): string;
 }
 declare function empty(o: any): boolean;
 export type { ValMark, ValSpec, };

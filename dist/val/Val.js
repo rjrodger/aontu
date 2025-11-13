@@ -113,10 +113,11 @@ class Val {
         };
         let out = new this
             .constructor(fullspec, cloneCtx);
+        out.dc = this.done ? DONE : out.dc;
         out.site.row = spec?.row ?? this.site.row ?? -1;
         out.site.col = spec?.col ?? this.site.col ?? -1;
         out.site.url = spec?.url ?? this.site.url ?? '';
-        // TODO: should not be needed - update all VAL ctors to handle spec.mark
+        out.mark = Object.assign({}, this.mark, fullspec.mark ?? {});
         out.mark.type = this.mark.type && (fullspec.mark?.type ?? true);
         out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true);
         return out;
@@ -158,7 +159,10 @@ class Val {
             s.push('/' + insp);
         }
         s.push('/');
-        if (null != this.peg && 'object' === typeof this.peg &&
+        if (this.peg?.isVal) {
+            s.push(this.peg.inspect(1 + d));
+        }
+        else if (null != this.peg && 'object' === typeof this.peg &&
             Object.entries(this.peg)[0]?.[1]?.isVal) {
             s.push(inspectpeg(this.peg, 1 + d));
         }
@@ -172,7 +176,7 @@ class Val {
         const out = s.join('');
         return out;
     }
-    inspection(d) {
+    inspection(_d) {
         return '';
     }
 }

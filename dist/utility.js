@@ -71,16 +71,18 @@ key, parent, path) {
 }
 const T_NOTE = 0;
 const T_WHY = 1;
-const T_AVAL = 2;
-const T_BVAL = 3;
-const T_OVAL = 4;
-const T_CHILDREN = 5;
+const T_PATH = 2;
+const T_AVAL = 3;
+const T_BVAL = 4;
+const T_OVAL = 5;
+const T_CHILDREN = 6;
 function explainOpen(ctx, t, note, ac, bc) {
     if (false === t)
         return null;
     t = t ?? [null, 'root', null, null, null, null];
     t[T_WHY] = t[T_WHY] ?? '';
     t[T_NOTE] = (0 <= ctx.cc ? ctx.cc + '~' : '') + note;
+    t[T_PATH] = ['$', ctx.path.join('.')].filter(p => '' != p).join('.') + '  ';
     if (ac) {
         t[T_AVAL] = ac.id + (ac.done ? '' : '!') + '=' + ac.canon;
     }
@@ -101,7 +103,7 @@ function explainClose(t, out) {
     if (null == t)
         return;
     if (out) {
-        t[T_OVAL] = out.id + (out.done ? '' : '!') + '=' + out.canon;
+        t[T_OVAL] = '-> ' + out.id + (out.done ? '' : '!') + '=' + out.canon;
     }
 }
 function formatExplain(t, d) {

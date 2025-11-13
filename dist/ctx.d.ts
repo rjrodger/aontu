@@ -3,7 +3,7 @@ import { NilVal } from './val/NilVal';
 type AontuContextConfig = {
     cc?: number;
     err?: any[];
-    explain?: any[];
+    explain?: any[] | boolean | null;
     fs?: any;
     path?: string[];
     root?: Val;
@@ -39,7 +39,7 @@ declare class AontuContext {
         root?: Val;
         path?: string[];
         err?: any[];
-        explain?: any[];
+        explain?: any[] | boolean | null;
     }): AontuContext;
     descend(key: string): AontuContext;
     addopts(opts?: AontuOptions): void;

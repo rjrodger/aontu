@@ -27,6 +27,13 @@ const aontu_1 = require("../dist/aontu");
         (0, code_1.expect)(() => a0.generate('a::A')).throws(/unexpected char/);
         (0, code_1.expect)(() => a0.generate('a:A a:B')).throws(/Cannot unify value: "B" with value: "A"/);
     });
+    (0, node_test_1.test)('clone', async () => {
+        let a0 = new aontu_1.Aontu();
+        const v0 = a0.unify('a:1');
+        const c0 = makeCtx();
+        const v0c = v0.clone(c0);
+        (0, code_1.expect)(v0.done).equal(v0c.done);
+    });
     (0, node_test_1.test)('happy', async () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();

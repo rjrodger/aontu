@@ -15,7 +15,7 @@ class AontuContext {
         this.src = cfg.src;
         this.collect = cfg.collect ?? null != cfg.err;
         this.err = cfg.err ?? [];
-        this.explain = cfg.explain ?? null;
+        this.explain = Array.isArray(cfg.explain) ? cfg.explain : null;
         this.fs = cfg.fs ?? null;
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
@@ -34,7 +34,7 @@ class AontuContext {
         ctx.root = cfg.root ?? this.root;
         ctx.var = Object.create(this.vars);
         ctx.err = cfg.err ?? ctx.err;
-        ctx.explain = cfg.explain ?? ctx.explain;
+        ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain;
         ctx._pathstr = undefined;
         return ctx;
     }

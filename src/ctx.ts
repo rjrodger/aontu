@@ -20,7 +20,7 @@ import {
 type AontuContextConfig = {
   cc?: number
   err?: any[] // Omit<NilVal[], "push">
-  explain?: any[]
+  explain?: any[] | boolean | null
   fs?: any
   path?: string[]
   root?: Val
@@ -71,7 +71,7 @@ class AontuContext {
     this.collect = cfg.collect ?? null != cfg.err
 
     this.err = cfg.err ?? []
-    this.explain = cfg.explain ?? null
+    this.explain = Array.isArray(cfg.explain) ? cfg.explain : null
 
     this.fs = cfg.fs ?? null
 
@@ -97,7 +97,7 @@ class AontuContext {
     root?: Val,
     path?: string[],
     err?: any[],
-    explain?: any[]
+    explain?: any[] | boolean | null
   }): AontuContext {
     const ctx = Object.create(this)
     ctx.path = cfg.path ?? this.path
@@ -105,7 +105,7 @@ class AontuContext {
     ctx.var = Object.create(this.vars)
 
     ctx.err = cfg.err ?? ctx.err
-    ctx.explain = cfg.explain ?? ctx.explain
+    ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain
 
     ctx._pathstr = undefined
 

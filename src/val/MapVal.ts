@@ -77,6 +77,8 @@ class MapVal extends BagVal {
   // NOTE: order of keys is not preserved!
   // not possible in any case - consider {a,b} unify {b,a}
   unify(peer: Val, ctx: AontuContext): Val {
+    // console.log('MAPVAL-UNIFY', this.id, this.canon, peer.id, peer.canon)
+
     const TOP = top()
     peer = peer ?? TOP
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Map', this, peer)
@@ -92,7 +94,19 @@ class MapVal extends BagVal {
 
     out.spread.cj = this.spread.cj
 
+    // TODO: some spreads (no path refs etc) could self unified
+    /*
+    if (out.spread.cj && !out.spread.cj.mark._self_unified) {
+      // console.log('MAPVAL-SPR-START', out.spread.cj.mark)
+      out.spread.cj = out.spread.cj.unify(TOP, ctx.clone({ explain: ec(te, 'SPR-SELF-UNIFY') }))
+      out.spread.cj.mark._self_unified = true
+      // console.log('MAPVAL-SU', out.spread.cj.id, out.spread.cj.canon, out.spread.cj.done)
+    }
+    */
+
     if (peer instanceof MapVal) {
+      // console.log('MAPVAL-PEER-MAPVAL', this.id, this.canon, this.done, peer.id, peer.canon, peer.done)
+
       if (!this.closed && peer.closed) {
         out = peer.unify(this, ctx.clone({ explain: ec(te, 'PMC') })) as MapVal
         exit = true
@@ -125,6 +139,10 @@ class MapVal extends BagVal {
         )
       }
     }
+    else {
+      // console.log('MAPVAL-PEER-OTHER', this.id, this.canon, this.done, peer.id, peer.canon, peer.done)
+    }
+
 
     if (!exit) {
       out.dc = this.dc + 1
@@ -136,7 +154,10 @@ class MapVal extends BagVal {
       // Always unify own children first
       for (let key in this.peg) {
         const keyctx = ctx.descend(key)
+
         const key_spread_cj = spread_cj.clone(keyctx)
+        // console.log('MAPVAL-SPREAD', this.id, key, key_spread_cj.id, key_spread_cj.canon, key_spread_cj.done)
+
         const child = this.peg[key]
 
         propagateMarks(this, child)
@@ -147,7 +168,7 @@ class MapVal extends BagVal {
               key_spread_cj.isNil ? key_spread_cj :
                 key_spread_cj.isTop && child.done ? child :
                   child.isTop && key_spread_cj.done ? key_spread_cj :
-                    unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }),
+                    unite(keyctx.clone({ explain: ec(te, 'KEY:' + key) }),
                       child, key_spread_cj, 'map-own')
 
         done = (done && DONE === out.peg[key].dc)
@@ -185,6 +206,9 @@ class MapVal extends BagVal {
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
             let key_spread_cj = spread_cj.clone(key_ctx)
+
+            // console.log('MAPVAL-PEER-SPR', peerkey, key_spread_cj.id, key_spread_cj.canon, key_spread_cj.done)
+
             oval = out.peg[peerkey] =
               unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
                 oval, key_spread_cj, 'map-peer-spread')

@@ -59,13 +59,12 @@ class PrefVal extends FeatureVal {
     let out: Val = this
     let why = ''
 
-
     if (!this.peg.done) {
-      const resolved = unite(ctx.clone({ explain: ec(te, 'RES') }), this.peg, top(), 'pref/resolve')
+      const resolved = unite(ctx.clone({ explain: ctx.explain && ec(te, 'RES') }),
+        this.peg, top(), 'pref/resolve')
       // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
     }
-
 
     if (peer instanceof PrefVal) {
       why += 'pref-'
@@ -73,6 +72,13 @@ class PrefVal extends FeatureVal {
         out = this
         why += 'same'
       }
+
+      // Avoid MAXCYCLE errors
+      else if (this.peg.id === peer.peg.id) {
+        out = this
+        why += 'same-peg'
+      }
+
       else if (this.rank < peer.rank) {
         out = this
         why += 'rank-win'
@@ -82,16 +88,22 @@ class PrefVal extends FeatureVal {
         why += 'rank-lose'
       }
       else {
-        let peg = unite(ctx.clone({ explain: ec(te, 'PEER') }),
+        // console.log('PREF-PEER',
+        //   this.peg.id, this.peg, this.peg.done,
+        //   peer.peg.id, peer.peg, peer.peg.done,
+        // )
+
+        let peg = unite(ctx.clone({ explain: ctx.explain && ec(te, 'PREF-PEER') }),
           this.peg, peer.peg, 'pref-peer/' + this.id)
         out = new PrefVal({ peg }, ctx)
+        // console.log('PREF-RANK-SAME-OUT', peg, peg.done, out, out.done)
         why += 'rank-same'
       }
     }
     else if (!peer.isTop) {
       why += 'super-'
 
-      out = unite(ctx.clone({ explain: ec(te, 'SUPER') }),
+      out = unite(ctx.clone({ explain: ctx.explain && ec(te, 'SUPER') }),
         this.superpeg, peer, 'pref-super/' + this.id)
       if (out.same(this.superpeg)) {
         out = this.peg
@@ -108,7 +120,7 @@ class PrefVal extends FeatureVal {
 
     // console.log('PREFVAL-OUT', why, this.canon, peer.canon, '->', out.canon, out.done)
 
-    explainClose(te, out)
+    ctx.explain && explainClose(te, out)
 
     return out
   }

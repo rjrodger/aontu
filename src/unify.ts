@@ -43,14 +43,17 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
     (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
     '@' + ctx.pathstr
 
+
   /*
-  if (8 < ctx.seen[saw]) {
+  if (1 < ctx.seen[saw]) {
     console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '')
     // console.trace()
     // process.exit()
   }
   */
 
+  // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
+  // See for example PrefVal peg.id equality inspection.
   if (MAXCYCLE < ctx.seen[saw]) {
     // console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
     out = makeNilErr(ctx, 'unify_cycle', a, b)
@@ -117,13 +120,16 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         why += 'N'
       }
 
-      if (DONE !== out.dc && !unified) {
+      // console.log('UNITE-DONE', out.id, out.canon, out.done)
+
+      // if (DONE !== out.dc && !unified) {
+      if (!out.done && !unified) {
         let nout = out.unify(top(), ctx.clone({ explain: ec(te, 'ND') }))
         out = nout
         why += 'T'
       }
 
-      // console.log('UNITE', why, a?.canon, b?.canon, '->', out?.canon)
+      // console.log('UNITE', why, a?.id, a?.canon, a?.done, b?.id, b?.canon, b?.done, '->', out?.id, out?.canon, out?.done)
 
       uc++
     }
