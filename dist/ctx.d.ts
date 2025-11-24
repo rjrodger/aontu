@@ -39,6 +39,7 @@ declare class AontuContext {
         root?: Val;
         path?: string[];
         err?: any[];
+        collect?: boolean;
         explain?: any[] | boolean | null;
     }): AontuContext;
     descend(key: string): AontuContext;

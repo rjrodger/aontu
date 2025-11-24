@@ -26,8 +26,8 @@ import {
 } from './val/top'
 
 
-// TODO: relation to unify loops?
-const MAXCYCLE = 9
+// TODO: FIX: false positive when too many top unifications
+const MAXCYCLE = 999
 
 let uc = 0
 

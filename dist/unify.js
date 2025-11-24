@@ -8,8 +8,8 @@ const err_1 = require("./err");
 const lang_1 = require("./lang");
 const utility_1 = require("./utility");
 const top_1 = require("./val/top");
-// TODO: relation to unify loops?
-const MAXCYCLE = 9;
+// TODO: FIX: false positive when too many top unifications
+const MAXCYCLE = 999;
 let uc = 0;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done

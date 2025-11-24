@@ -97,6 +97,7 @@ class AontuContext {
     root?: Val,
     path?: string[],
     err?: any[],
+    collect?: boolean,
     explain?: any[] | boolean | null
   }): AontuContext {
     const ctx = Object.create(this)
@@ -104,6 +105,7 @@ class AontuContext {
     ctx.root = cfg.root ?? this.root
     ctx.var = Object.create(this.vars)
 
+    ctx.collect = null != cfg.collect ? !!cfg.collect : ctx.collect
     ctx.err = cfg.err ?? ctx.err
     ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain
 

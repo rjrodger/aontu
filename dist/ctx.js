@@ -33,6 +33,7 @@ class AontuContext {
         ctx.path = cfg.path ?? this.path;
         ctx.root = cfg.root ?? this.root;
         ctx.var = Object.create(this.vars);
+        ctx.collect = null != cfg.collect ? !!cfg.collect : ctx.collect;
         ctx.err = cfg.err ?? ctx.err;
         ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain;
         ctx._pathstr = undefined;

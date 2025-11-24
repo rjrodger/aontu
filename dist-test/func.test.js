@@ -488,6 +488,9 @@ const G = (x) => A.generate(x);
         (0, code_1.expect)(N('hide({x:1})')).equal('{"x":1}');
         (0, code_1.expect)(N('hide([1,2])')).equal('[1,2]');
     });
+    (0, node_test_1.test)('hide-top', () => {
+        (0, code_1.expect)(G('a:hide(top) b:1')).equal({ b: 1 });
+    });
     (0, node_test_1.test)('path-canon', () => {
         const N = (x) => new unify_1.Unify(x, lang).res.canon;
         (0, code_1.expect)(N('path("foo")')).equal('path(.foo)');

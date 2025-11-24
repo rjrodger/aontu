@@ -121,6 +121,7 @@ class Aontu {
       if (undefined !== pval && 0 === pval.err.length) {
 
         let uval = this.unify(pval, undefined, ac)
+        // console.log('AONTU-GENERATE-UVAL', uval.constructor, uval.mark)
 
         if (undefined !== uval && 0 === uval.err.length) {
 

@@ -197,6 +197,7 @@ class MapVal extends BagVal_1.BagVal {
         return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : '';
     }
     gen(ctx) {
+        // console.log('MAPVAL-gen')
         let out = {};
         if (this.mark.type || this.mark.hide) {
             return undefined;
@@ -207,15 +208,26 @@ class MapVal extends BagVal_1.BagVal {
                 continue;
             }
             const optional = this.optionalKeys.includes(p);
-            if (child.isScalar
+            // console.log('MAPVAL-gen-p', p, optional, child.isDisjunct, child)
+            // Optional unresolved disjuncts are not an error, just dropped.
+            if (child.isDisjunct && optional) {
+                const dctx = ctx.clone({ err: [], collect: true });
+                let cval = child.gen(dctx);
+                // console.log('CVAL', cval, ctx.err, dctx.err, child.err)
+                if (undefined === cval) {
+                    continue;
+                }
+                out[p] = cval;
+            }
+            else if (child.isScalar
                 || child.isMap
                 || child.isList
                 || child.isPref
                 || child.isRef
                 || child.isDisjunct
                 || child.isNil) {
-                const cval = child.gen(ctx);
-                if (optional && (0, Val_1.empty)(cval)) {
+                let cval = child.gen(ctx);
+                if (optional && (undefined === cval || (0, Val_1.empty)(cval))) {
                     continue;
                 }
                 out[p] = cval;

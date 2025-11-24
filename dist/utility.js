@@ -10,6 +10,10 @@ exports.explainClose = explainClose;
 exports.formatExplain = formatExplain;
 // Mark value in source is propagated to target (true ratchets).
 function propagateMarks(source, target) {
+    // Don't infect top!
+    if (source.isTop || target.isTop) {
+        return;
+    }
     for (let name in source.mark) {
         target.mark[name] = target.mark[name] || source.mark[name];
     }

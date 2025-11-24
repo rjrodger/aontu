@@ -157,7 +157,16 @@ class ListVal extends BagVal_1.BagVal {
         for (let i = 0; i < this.peg.length; i++) {
             const child = this.peg[i];
             const optional = this.optionalKeys.includes('' + i);
-            if (child.isScalar
+            // Optional unresolved disjuncts are not an error, just dropped.
+            if (child.isDisjunct && optional) {
+                const dctx = ctx.clone({ err: [] });
+                let cval = child.gen(dctx);
+                if (undefined === cval) {
+                    continue;
+                }
+                out.push(cval);
+            }
+            else if (child.isScalar
                 || child.isMap
                 || child.isList
                 || child.isPref

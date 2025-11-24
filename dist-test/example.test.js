@@ -124,6 +124,9 @@ const G = (s) => A.generate(s);
         (0, code_1.expect)(G('x:a?:b?:number x:a:{}')).equal({ x: {} });
         (0, code_1.expect)(G('x:a?:b?:number x:{c:2}')).equal({ x: { c: 2 } });
         (0, code_1.expect)(G('x:a?:b?:number x:{}')).equal({ x: {} });
+        (0, code_1.expect)(G('x?:string|number')).equal({});
+        (0, code_1.expect)(G('{x?:string|number}')).equal({});
+        (0, code_1.expect)(G('x:&:y?:string|number x:a:{}')).equal({ x: { a: {} } });
     });
     (0, node_test_1.test)('close-examples', () => {
         (0, code_1.expect)(G('x:close({a:1})')).equal({ x: { a: 1 } });

@@ -595,6 +595,12 @@ describe('func', function() {
   })
 
 
+  test('hide-top', () => {
+    expect(G('a:hide(top) b:1')).equal({ b: 1 })
+  })
+
+
+
   test('path-canon', () => {
     const N = (x: string) => new Unify(x, lang).res.canon
     expect(N('path("foo")')).equal('path(.foo)')

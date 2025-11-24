@@ -91,6 +91,7 @@ class Aontu {
             let pval = this.parse(src, undefined, ac);
             if (undefined !== pval && 0 === pval.err.length) {
                 let uval = this.unify(pval, undefined, ac);
+                // console.log('AONTU-GENERATE-UVAL', uval.constructor, uval.mark)
                 if (undefined !== uval && 0 === uval.err.length) {
                     out = uval.isNil ? (ac.adderr(uval), undefined) : uval.gen(ac);
                     if (0 < ac.err.length) {

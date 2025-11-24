@@ -7,6 +7,10 @@ import type { Val } from './type'
 
 // Mark value in source is propagated to target (true ratchets).
 function propagateMarks(source: Val, target: Val): void {
+  // Don't infect top!
+  if (source.isTop || target.isTop) {
+    return
+  }
   for (let name in source.mark) {
     (target.mark as any)[name] = (target.mark as any)[name] || (source.mark as any)[name]
   }

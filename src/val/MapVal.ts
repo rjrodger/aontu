@@ -298,6 +298,8 @@ class MapVal extends BagVal {
 
 
   gen(ctx: AontuContext) {
+    // console.log('MAPVAL-gen')
+
     let out: any = {}
     if (this.mark.type || this.mark.hide) {
       return undefined
@@ -305,13 +307,32 @@ class MapVal extends BagVal {
 
     for (let p in this.peg) {
       const child = this.peg[p]
+
       if (child.mark.type || child.mark.hide) {
         continue
       }
 
       const optional = this.optionalKeys.includes(p)
 
-      if (child.isScalar
+      // console.log('MAPVAL-gen-p', p, optional, child.isDisjunct, child)
+
+
+      // Optional unresolved disjuncts are not an error, just dropped.
+      if (child.isDisjunct && optional) {
+        const dctx = ctx.clone({ err: [], collect: true })
+
+        let cval = child.gen(dctx)
+
+        // console.log('CVAL', cval, ctx.err, dctx.err, child.err)
+
+        if (undefined === cval) {
+          continue
+        }
+
+        out[p] = cval
+      }
+
+      else if (child.isScalar
         || child.isMap
         || child.isList
         || child.isPref
@@ -319,9 +340,9 @@ class MapVal extends BagVal {
         || child.isDisjunct
         || child.isNil
       ) {
-        const cval = child.gen(ctx)
+        let cval = child.gen(ctx)
 
-        if (optional && empty(cval)) {
+        if (optional && (undefined === cval || empty(cval))) {
           continue
         }
 

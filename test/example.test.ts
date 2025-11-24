@@ -154,6 +154,9 @@ describe('examples', function() {
     expect(G('x:a?:b?:number x:{c:2}')).equal({ x: { c: 2 } })
     expect(G('x:a?:b?:number x:{}')).equal({ x: {} })
 
+    expect(G('x?:string|number')).equal({})
+    expect(G('{x?:string|number}')).equal({})
+    expect(G('x:&:y?:string|number x:a:{}')).equal({ x: { a: {} } })
   })
 
 
@@ -177,6 +180,9 @@ describe('examples', function() {
     expect(G('x:&:{y:1,k:key()} x:a:z:2 x:c:move($.x.a)'))
       .equal({ x: { c: { z: 2, y: 1, k: 'c' } } })
   })
+
+
+
 
 
   /*

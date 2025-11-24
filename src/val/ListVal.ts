@@ -243,7 +243,20 @@ class ListVal extends BagVal {
 
       const optional = this.optionalKeys.includes('' + i)
 
-      if (child.isScalar
+      // Optional unresolved disjuncts are not an error, just dropped.
+      if (child.isDisjunct && optional) {
+        const dctx = ctx.clone({ err: [] })
+
+        let cval = child.gen(dctx)
+
+        if (undefined === cval) {
+          continue
+        }
+
+        out.push(cval)
+      }
+
+      else if (child.isScalar
         || child.isMap
         || child.isList
         || child.isPref
