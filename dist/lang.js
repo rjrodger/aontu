@@ -6,6 +6,7 @@ exports.Site = exports.Lang = void 0;
 const jsonic_1 = require("jsonic");
 const debug_1 = require("jsonic/debug");
 const multisource_1 = require("@jsonic/multisource");
+// TODO: @jsonic/multisource should support virtual fs
 const file_1 = require("@jsonic/multisource/resolver/file");
 const pkg_1 = require("@jsonic/multisource/resolver/pkg");
 const mem_1 = require("@jsonic/multisource/resolver/mem");

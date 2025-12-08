@@ -21,9 +21,12 @@ type ValSpec = {
   peg?: any,
   mark?: Partial<ValMark>,
   kind?: any,
+
+
   row?: number,
   col?: number,
   url?: string,
+
   path?: string[],
   id?: number,
   src?: string,
@@ -92,7 +95,10 @@ abstract class Val {
   site: Site = new Site()
 
   // Map of boolean flags.
-  mark: ValMark = { type: false, hide: false }
+  mark: ValMark = {
+    type: false,
+    hide: false,
+  }
 
   // Actual native value.
   peg: any = undefined
@@ -227,6 +233,8 @@ abstract class Val {
   inspect(d?: number): string {
     d = null == d ? -1 : d
     let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id]
+
+    s.push('/@' + this.site?.row + ',' + this.site?.col)
 
     s.push('/' + this.path.join('.') + '/')
 

@@ -12,12 +12,13 @@ import { NilVal } from './val/NilVal'
 import { hints } from './hints'
 
 
-const { errmsg } = util
+const { errmsg, strinject } = util
 
 
-function getHint(why: any): string | undefined {
+function getHint(why: any, details?: Record<string, any>): string | undefined {
   if (hints[why]) {
-    return hints[why]
+    let txt = hints[why]
+    return details ? strinject(txt, details) : txt
   }
 
   return undefined
@@ -29,9 +30,10 @@ function makeNilErr(
   why?: any,
   av?: Val,
   bv?: Val,
-  attempt?: string
+  attempt?: string,
+  details?: Record<string, any>
 ): NilVal {
-  const nilval = NilVal.make(ctx, why, av, bv, attempt)
+  const nilval = NilVal.make(ctx, why, av, bv, attempt, details)
   return nilval
 }
 
@@ -54,6 +56,8 @@ function descErr<NILS extends NilVal | NilVal[]>(
       let valpath = (0 < path.length ? path.join('.') : '')
       let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify')
 
+      const details = err.details
+
       err.msg = [
         errmsg({
           color: { active: true },
@@ -64,7 +68,7 @@ function descErr<NILS extends NilVal | NilVal[]>(
               attempt +
               ' value' + (null == v2 ? '' : 's') +
               ' at path ' + valpath,
-            hint: getHint(err.why)
+            hint: getHint(err.why, err.details)
           }
         }),
 
@@ -78,7 +82,8 @@ function descErr<NILS extends NilVal | NilVal[]>(
               (null == v2 ? '' : ' with value: ' + v2.canon), // + ' #' + err.id,
             site: ''
           },
-          smsg: 'value was: ' + v1.canon,
+          smsg: (null == details?.key ? '' : 'key ' + details?.key + ' ') +
+            'value was: ' + v1.canon,
           file: resolveFile(v1.site.url),
           src: v1src,
           row: v1.site.row,
@@ -93,7 +98,8 @@ function descErr<NILS extends NilVal | NilVal[]>(
               ' with value: ' + v1.canon, // + ' #' + err.id,
             site: ''
           },
-          smsg: 'value was: ' + v2.canon,
+          smsg: (null == details?.key ? '' : 'key ' + details?.key + ' ') +
+            'value was: ' + v2.canon,
           file: resolveFile(v2.site.url),
           src: v2src,
           row: v2.site.row,

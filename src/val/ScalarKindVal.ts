@@ -74,7 +74,7 @@ class ScalarKindVal extends FeatureVal {
         out = peer
       }
       else {
-        out = makeNilErr(ctx, 'no-scalar-unify', this, peer)
+        out = makeNilErr(ctx, 'no_scalar_unify', this, peer)
       }
     }
     else if (peerIsScalarKind) {

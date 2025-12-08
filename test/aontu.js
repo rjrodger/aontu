@@ -1,5 +1,6 @@
 
 const Util = require('node:util')
+const Fs = require('fs')
 const { Aontu, formatExplain } = require('..')
 
 const args = {
@@ -19,6 +20,7 @@ const aontu = new Aontu({
   path: process.cwd(),
   debug: 'lang' === args.debug || 'trace' == args.trace,
   trace: 'trace' == args.trace,
+  fs: Fs
 })
 
 let err = []

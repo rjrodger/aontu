@@ -4,23 +4,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = void 0;
 class Site {
     constructor(val) {
-        this.row = -1;
-        this.col = -1;
-        this.url = '';
-        if (val) {
-            if ('site' in val) {
-                // Val with site property
-                this.row = val.site?.row ?? -1;
-                this.col = val.site?.col ?? -1;
-                this.url = val.site?.url ?? '';
-            }
-            else {
-                // Plain object with row, col, url
-                this.row = val.row ?? -1;
-                this.col = val.col ?? -1;
-                this.url = val.url ?? '';
-            }
-        }
+        const site = (val?.site ?? val);
+        this.row = site?.row ?? -1;
+        this.col = site?.col ?? -1;
+        this.url = site?.url ?? '';
     }
 }
 exports.Site = Site;

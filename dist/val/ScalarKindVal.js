@@ -39,7 +39,7 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
                 out = peer;
             }
             else {
-                out = (0, err_1.makeNilErr)(ctx, 'no-scalar-unify', this, peer);
+                out = (0, err_1.makeNilErr)(ctx, 'no_scalar_unify', this, peer);
             }
         }
         else if (peerIsScalarKind) {

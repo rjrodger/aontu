@@ -20,6 +20,7 @@ import {
   explainOpen,
   ec,
   explainClose,
+  items,
 } from '../utility'
 
 import { makeNilErr, AontuError } from '../err'
@@ -37,10 +38,6 @@ import { empty } from './Val'
 
 class ListVal extends BagVal {
   isList = true
-
-  spread = {
-    cj: (undefined as Val | undefined),
-  }
 
   constructor(
     spec: {
@@ -90,8 +87,9 @@ class ListVal extends BagVal {
 
     out.closed = this.closed
     out.optionalKeys = [...this.optionalKeys]
-
     out.spread.cj = this.spread.cj
+    out.site = this.site
+    out.from = this.from
 
     if (peer instanceof ListVal) {
       if (!this.closed && peer.closed) {
@@ -168,6 +166,8 @@ class ListVal extends BagVal {
             oval = out.peg[peerkey] =
               unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
                 out.peg[peerkey], key_spread_cj, 'list-spread')
+
+            oval.from = spread_cj
           }
 
           propagateMarks(this, oval)
@@ -190,6 +190,10 @@ class ListVal extends BagVal {
         propagateMarks(peer, out)
         propagateMarks(this, out)
       }
+    }
+
+    if (out.isBag) {
+      (out as BagVal).from = this.from
     }
 
     ctx.explain && explainClose(te, out)
@@ -231,64 +235,68 @@ class ListVal extends BagVal {
       ']'
   }
 
-
-  gen(ctx: AontuContext) {
-    let out: any = []
-    if (this.mark.type || this.mark.hide) {
-      return undefined
-    }
-
-    for (let i = 0; i < this.peg.length; i++) {
-      const child = this.peg[i]
-
-      const optional = this.optionalKeys.includes('' + i)
-
-      // Optional unresolved disjuncts are not an error, just dropped.
-      if (child.isDisjunct && optional) {
-        const dctx = ctx.clone({ err: [] })
-
-        let cval = child.gen(dctx)
-
-        if (undefined === cval) {
-          continue
+  /*
+    gen(ctx: AontuContext) {
+      let out: any = []
+      if (this.mark.type || this.mark.hide) {
+        return undefined
+      }
+  
+      // for (let i = 0; i < this.peg.length; i++) {
+      //   const child = this.peg[i]
+      for (let item of items(this.peg)) {
+        const i = item[0]
+        const child = item[1]
+  
+        const optional = this.optionalKeys.includes('' + i)
+  
+        // Optional unresolved disjuncts are not an error, just dropped.
+        if (child.isDisjunct && optional) {
+          const dctx = ctx.clone({ err: [] })
+  
+          let cval = child.gen(dctx)
+  
+          if (undefined === cval) {
+            continue
+          }
+  
+          out.push(cval)
         }
-
-        out.push(cval)
-      }
-
-      else if (child.isScalar
-        || child.isMap
-        || child.isList
-        || child.isPref
-        || child.isRef
-        || child.isDisjunct
-        || child.isNil
-      ) {
-        const cval = child.gen(ctx)
-
-        if (optional && empty(cval)) {
-          continue
+  
+        else if (child.isScalar
+          || child.isMap
+          || child.isList
+          || child.isPref
+          || child.isRef
+          || child.isDisjunct
+          || child.isNil
+        ) {
+          const cval = child.gen(ctx)
+  
+          if (optional && empty(cval)) {
+            continue
+          }
+  
+          out.push(cval)
         }
-
-        out.push(cval)
+        else if (child.isNil) {
+          ctx.adderr(child)
+        }
+        else if (!this.optionalKeys.includes('' + i)) {
+          makeNilErr(
+            ctx,
+            this.closed ? 'listval_required' : 'listval_no_gen',
+            child, undefined
+          )
+          break
+        }
+  
+        // else optional so we can ignore it
       }
-      else if (child.isNil) {
-        ctx.adderr(child)
+  
+      return out
       }
-      else if (!this.optionalKeys.includes('' + i)) {
-        makeNilErr(
-          ctx,
-          this.closed ? 'listval_required' : 'listval_no_gen',
-          child, undefined
-        )
-        break
-      }
-
-      // else optional so we can ignore it
-    }
-
-    return out
-  }
+      */
 }
 
 

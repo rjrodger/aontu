@@ -1,6 +1,7 @@
 "use strict";
 /* Copyright (c) 2023-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.items = items;
 exports.propagateMarks = propagateMarks;
 exports.formatPath = formatPath;
 exports.walk = walk;
@@ -127,6 +128,17 @@ function formatExplain(t, d) {
     }
     else {
         return indent + t;
+    }
+}
+function items(o) {
+    if (Array.isArray(o)) {
+        return o.map((n, i) => ([i, n]));
+    }
+    else if (null != o && 'object' === typeof o) {
+        return Object.entries(o);
+    }
+    else {
+        return [];
     }
 }
 //# sourceMappingURL=utility.js.map

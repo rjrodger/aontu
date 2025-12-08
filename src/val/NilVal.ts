@@ -16,7 +16,7 @@ import {
 
 import { Val } from './Val'
 
-import { AontuError, descErr } from '../err'
+import { AontuError } from '../err'
 
 
 class NilVal extends Val {
@@ -28,16 +28,24 @@ class NilVal extends Val {
   secondary?: Val
   msg: string = ''
   attempt?: string
+  details?: Record<string, any>
 
   // TODO: include Val generating nil, thus capture type
 
   // A Nil is an error - should not happen - unify failed
   // refactor ,make(spec,ctx)
-  static make = (ctx?: AontuContext, why?: any, av?: Val, bv?: Val, attempt?: string) => {
+  static make = (
+    ctx?: AontuContext,
+    why?: any,
+    av?: Val,
+    bv?: Val,
+    attempt?: string,
+    details?: Record<string, any>
+  ) => {
     let nil = new NilVal({ why }, ctx)
 
     nil.attempt = attempt
-    // TODO: this should be done lazily, for multiple terms
+    nil.details = details
 
     // Terms later in same file are considered the primary error location.
     if (null != av) {
@@ -46,6 +54,7 @@ class NilVal extends Val {
       nil.site.url = av.site.url
 
       nil.primary = av
+      nil.path = av.path
 
       if (null != bv) {
         nil.secondary = bv
@@ -62,6 +71,7 @@ class NilVal extends Val {
           nil.site.url = bv.site.url
           nil.primary = bv
           nil.secondary = av
+          nil.path = bv.path
         }
       }
     }

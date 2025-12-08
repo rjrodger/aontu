@@ -9,14 +9,10 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const BagVal_1 = require("./BagVal");
-const Val_1 = require("./Val");
 class ListVal extends BagVal_1.BagVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isList = true;
-        this.spread = {
-            cj: undefined,
-        };
         if (null == this.peg) {
             throw new err_1.AontuError('ListVal spec.peg undefined');
         }
@@ -49,6 +45,8 @@ class ListVal extends BagVal_1.BagVal {
         out.closed = this.closed;
         out.optionalKeys = [...this.optionalKeys];
         out.spread.cj = this.spread.cj;
+        out.site = this.site;
+        out.from = this.from;
         if (peer instanceof ListVal) {
             if (!this.closed && peer.closed) {
                 out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'PMC') }));
@@ -100,6 +98,7 @@ class ListVal extends BagVal_1.BagVal {
                         let key_spread_cj = spread_cj.clone(key_ctx);
                         oval = out.peg[peerkey] =
                             (0, unify_1.unite)(key_ctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }), out.peg[peerkey], key_spread_cj, 'list-spread');
+                        oval.from = spread_cj;
                     }
                     (0, utility_1.propagateMarks)(this, oval);
                     done = (done && type_1.DONE === oval.dc);
@@ -117,6 +116,9 @@ class ListVal extends BagVal_1.BagVal {
                 (0, utility_1.propagateMarks)(peer, out);
                 (0, utility_1.propagateMarks)(this, out);
             }
+        }
+        if (out.isBag) {
+            out.from = this.from;
         }
         ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;
@@ -148,47 +150,6 @@ class ListVal extends BagVal_1.BagVal {
                 k + '?:' + this.peg[k].canon :
                 this.peg[k].canon).join(',') +
             ']';
-    }
-    gen(ctx) {
-        let out = [];
-        if (this.mark.type || this.mark.hide) {
-            return undefined;
-        }
-        for (let i = 0; i < this.peg.length; i++) {
-            const child = this.peg[i];
-            const optional = this.optionalKeys.includes('' + i);
-            // Optional unresolved disjuncts are not an error, just dropped.
-            if (child.isDisjunct && optional) {
-                const dctx = ctx.clone({ err: [] });
-                let cval = child.gen(dctx);
-                if (undefined === cval) {
-                    continue;
-                }
-                out.push(cval);
-            }
-            else if (child.isScalar
-                || child.isMap
-                || child.isList
-                || child.isPref
-                || child.isRef
-                || child.isDisjunct
-                || child.isNil) {
-                const cval = child.gen(ctx);
-                if (optional && (0, Val_1.empty)(cval)) {
-                    continue;
-                }
-                out.push(cval);
-            }
-            else if (child.isNil) {
-                ctx.adderr(child);
-            }
-            else if (!this.optionalKeys.includes('' + i)) {
-                (0, err_1.makeNilErr)(ctx, this.closed ? 'listval_required' : 'listval_no_gen', child, undefined);
-                break;
-            }
-            // else optional so we can ignore it
-        }
-        return out;
     }
 }
 exports.ListVal = ListVal;

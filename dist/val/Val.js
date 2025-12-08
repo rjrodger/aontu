@@ -62,7 +62,10 @@ class Val {
         this.path = [];
         this.site = new site_1.Site();
         // Map of boolean flags.
-        this.mark = { type: false, hide: false };
+        this.mark = {
+            type: false,
+            hide: false,
+        };
         // Actual native value.
         this.peg = undefined;
         // TODO: used for top level result - not great
@@ -148,6 +151,7 @@ class Val {
     inspect(d) {
         d = null == d ? -1 : d;
         let s = ['<' + this.constructor.name.replace(/Val$/, '') + '/' + this.id];
+        s.push('/@' + this.site?.row + ',' + this.site?.col);
         s.push('/' + this.path.join('.') + '/');
         s.push([
             DONE === this.dc ? 'D' : 'd' + this.dc,

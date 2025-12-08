@@ -65,9 +65,24 @@ describe('error', function() {
       .throw(/no_path/)
   })
 
+
+  it('required', () => {
+    let a0 = new Aontu()
+
+    expect(a0.generate('a:string a:A')).equal({ a: 'A' })
+    expect(() => a0.generate('a:string')).throws(/mapval_no_gen/)
+    expect(() => a0.generate('a:string a:1')).throws(/no_scalar_unify/)
+
+    expect(a0.generate('x:&:s:string x:a:s:S')).equal({ x: { a: { s: 'S' } } })
+    expect(() => a0.generate('x:&:s:string x:a:s:1')).throws(/no_scalar_unify/)
+    expect(() => a0.generate('x:&:s:string x:a:{}')).throws(/mapval_spread_required/)
+
+    expect(a0.generate('x:[&:s:string] x:[{s:S}]')).equal({ x: [{ s: 'S' }] })
+    expect(() => a0.generate('x:[&:s:string] x:[{s:1}]')).throws(/no_scalar_unify/)
+
+    // NOT: map inside list!
+    expect(() => a0.generate('x:[&:s:string] x:[{}]')).throws(/mapval_spread_required/)
+  })
+
 })
 
-
-function makeCtx(r?: any) {
-  return new AontuContext({ root: r || new MapVal({ peg: {} }) })
-}

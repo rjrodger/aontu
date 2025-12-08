@@ -9,7 +9,8 @@ declare class NilVal extends Val {
     secondary?: Val;
     msg: string;
     attempt?: string;
-    static make: (ctx?: AontuContext, why?: any, av?: Val, bv?: Val, attempt?: string) => NilVal;
+    details?: Record<string, any>;
+    static make: (ctx?: AontuContext, why?: any, av?: Val, bv?: Val, attempt?: string, details?: Record<string, any>) => NilVal;
     constructor(spec?: {
         why?: string;
         msg?: string;

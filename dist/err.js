@@ -8,15 +8,16 @@ exports.descErr = descErr;
 const jsonic_1 = require("jsonic");
 const NilVal_1 = require("./val/NilVal");
 const hints_1 = require("./hints");
-const { errmsg } = jsonic_1.util;
-function getHint(why) {
+const { errmsg, strinject } = jsonic_1.util;
+function getHint(why, details) {
     if (hints_1.hints[why]) {
-        return hints_1.hints[why];
+        let txt = hints_1.hints[why];
+        return details ? strinject(txt, details) : txt;
     }
     return undefined;
 }
-function makeNilErr(ctx, why, av, bv, attempt) {
-    const nilval = NilVal_1.NilVal.make(ctx, why, av, bv, attempt);
+function makeNilErr(ctx, why, av, bv, attempt, details) {
+    const nilval = NilVal_1.NilVal.make(ctx, why, av, bv, attempt, details);
     return nilval;
 }
 // TODO: move to utility?
@@ -30,6 +31,7 @@ function descErr(err, errctx) {
             let path = ['$', ...err.path].filter((p) => null != p && '' != p);
             let valpath = (0 < path.length ? path.join('.') : '');
             let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify');
+            const details = err.details;
             err.msg = [
                 errmsg({
                     color: { active: true },
@@ -40,7 +42,7 @@ function descErr(err, errctx) {
                             attempt +
                             ' value' + (null == v2 ? '' : 's') +
                             ' at path ' + valpath,
-                        hint: getHint(err.why)
+                        hint: getHint(err.why, err.details)
                     }
                 }),
                 '\n',
@@ -52,7 +54,8 @@ function descErr(err, errctx) {
                             (null == v2 ? '' : ' with value: ' + v2.canon), // + ' #' + err.id,
                         site: ''
                     },
-                    smsg: 'value was: ' + v1.canon,
+                    smsg: (null == details?.key ? '' : 'key ' + details?.key + ' ') +
+                        'value was: ' + v1.canon,
                     file: resolveFile(v1.site.url),
                     src: v1src,
                     row: v1.site.row,
@@ -66,7 +69,8 @@ function descErr(err, errctx) {
                             ' with value: ' + v1.canon, // + ' #' + err.id,
                         site: ''
                     },
-                    smsg: 'value was: ' + v2.canon,
+                    smsg: (null == details?.key ? '' : 'key ' + details?.key + ' ') +
+                        'value was: ' + v2.canon,
                     file: resolveFile(v2.site.url),
                     src: v2src,
                     row: v2.site.row,

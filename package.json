@@ -16,7 +16,7 @@
   },
   "scripts": {
     "test": "node --enable-source-maps --test \"dist-test/**/*.test.js\"",
-    "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test \"dist-test/**/*.test.js\"",
+    "test-some": "node --enable-source-maps --test-name-pattern=\"$TEST_PATTERN\" --test \"dist-test/**/*.test.js\"",
     "watch": "tsc --build src test -w",
     "build": "tsc --build src test",
     "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",
@@ -45,7 +45,7 @@
   "devDependencies": {
     "@hapi/code": "^9.0.3",
     "@types/node": "^24.10.1",
-    "memfs": "^4.51.0",
+    "memfs": "^4.51.1",
     "typescript": "^5.9.3"
   },
   "aliasify": {

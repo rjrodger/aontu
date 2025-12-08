@@ -32,15 +32,10 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
-import { empty } from './Val'
 
 
 class MapVal extends BagVal {
   isMap = true
-
-  spread = {
-    cj: (undefined as Val | undefined),
-  }
 
   constructor(
     spec: ValSpec,
@@ -91,22 +86,11 @@ class MapVal extends BagVal {
 
     out.closed = this.closed
     out.optionalKeys = [...this.optionalKeys]
-
     out.spread.cj = this.spread.cj
-
-    // TODO: some spreads (no path refs etc) could self unified
-    /*
-    if (out.spread.cj && !out.spread.cj.mark._self_unified) {
-      // console.log('MAPVAL-SPR-START', out.spread.cj.mark)
-      out.spread.cj = out.spread.cj.unify(TOP, ctx.clone({ explain: ec(te, 'SPR-SELF-UNIFY') }))
-      out.spread.cj.mark._self_unified = true
-      // console.log('MAPVAL-SU', out.spread.cj.id, out.spread.cj.canon, out.spread.cj.done)
-    }
-    */
+    out.site = this.site
+    out.from = this.from
 
     if (peer instanceof MapVal) {
-      // console.log('MAPVAL-PEER-MAPVAL', this.id, this.canon, this.done, peer.id, peer.canon, peer.done)
-
       if (!this.closed && peer.closed) {
         out = peer.unify(this, ctx.clone({ explain: ec(te, 'PMC') })) as MapVal
         exit = true
@@ -207,11 +191,11 @@ class MapVal extends BagVal {
             let key_ctx = ctx.descend(peerkey)
             let key_spread_cj = spread_cj.clone(key_ctx)
 
-            // console.log('MAPVAL-PEER-SPR', peerkey, key_spread_cj.id, key_spread_cj.canon, key_spread_cj.done)
-
             oval = out.peg[peerkey] =
               unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
                 oval, key_spread_cj, 'map-peer-spread')
+
+            oval.from = spread_cj
           }
 
           propagateMarks(this, oval)
@@ -234,6 +218,10 @@ class MapVal extends BagVal {
         propagateMarks(peer, out)
         propagateMarks(this, out)
       }
+    }
+
+    if (out.isBag) {
+      (out as BagVal).from = this.from
     }
 
     // console.log('MAPVAL-OUT', this.id, this.closed, this.canon, 'P=', (peer as any).closed, peer.canon, '->', (out as any).closed, out.canon)
@@ -264,6 +252,8 @@ class MapVal extends BagVal {
 
     out.closed = this.closed
     out.optionalKeys = [...this.optionalKeys]
+
+    // out.from = this.from
 
     // console.log('MAPVAL-CLONE', this.canon, '->', out.canon)
     return out
@@ -296,72 +286,6 @@ class MapVal extends BagVal {
     return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : ''
   }
 
-
-  gen(ctx: AontuContext) {
-    // console.log('MAPVAL-gen')
-
-    let out: any = {}
-    if (this.mark.type || this.mark.hide) {
-      return undefined
-    }
-
-    for (let p in this.peg) {
-      const child = this.peg[p]
-
-      if (child.mark.type || child.mark.hide) {
-        continue
-      }
-
-      const optional = this.optionalKeys.includes(p)
-
-      // console.log('MAPVAL-gen-p', p, optional, child.isDisjunct, child)
-
-
-      // Optional unresolved disjuncts are not an error, just dropped.
-      if (child.isDisjunct && optional) {
-        const dctx = ctx.clone({ err: [], collect: true })
-
-        let cval = child.gen(dctx)
-
-        // console.log('CVAL', cval, ctx.err, dctx.err, child.err)
-
-        if (undefined === cval) {
-          continue
-        }
-
-        out[p] = cval
-      }
-
-      else if (child.isScalar
-        || child.isMap
-        || child.isList
-        || child.isPref
-        || child.isRef
-        || child.isDisjunct
-        || child.isNil
-      ) {
-        let cval = child.gen(ctx)
-
-        if (optional && (undefined === cval || empty(cval))) {
-          continue
-        }
-
-        out[p] = cval
-      }
-      else if (!optional) {
-        makeNilErr(
-          ctx,
-          this.closed ? 'mapval_required' : 'mapval_no_gen',
-          child, undefined
-        )
-        break
-      }
-
-      // else optional so we can ignore it
-    }
-
-    return out
-  }
 }
 
 

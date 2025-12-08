@@ -41,11 +41,17 @@ const hints: Record<string, string> = {
     'This value was present after unification, and cannot be generated\n' +
     'because it is not a literal value.',
 
+  mapval_spread_required:
+    'The value for key {key} is required (defined in spread).',
+
   listval_required: 'This list element is required.',
 
   listval_no_gen:
     'This list element was present after unification, and cannot be generated\n' +
     'because it is not a literal value.',
+
+  listval_spread_required:
+    'The value for key {key} is required (defined in spread).',
 
   unknown_function:
     'This function name is not recognized.',
@@ -77,7 +83,7 @@ const hints: Record<string, string> = {
   // Type mismatch errors
 
   'scalar-type': 'Scalar type mismatch. The scalar types are incompatible.',
-  'no-scalar-unify': 'Cannot unify scalar values. The scalar values have incompatible types.',
+  'no_scalar_unify': 'Cannot unify scalar values. The scalar values have incompatible types.',
   'not-scalar-type': 'Expected a scalar type but got a non-scalar type.',
   'map': 'Type mismatch: expected a map value but got a different type.',
   'list': 'Type mismatch: expected a list value but got a different type.',

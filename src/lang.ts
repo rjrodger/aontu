@@ -19,6 +19,8 @@ import {
   MultiSource
 } from '@jsonic/multisource'
 
+// TODO: @jsonic/multisource should support virtual fs
+
 import {
   makeFileResolver
 } from '@jsonic/multisource/resolver/file'

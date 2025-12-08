@@ -4,7 +4,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const code_1 = require("@hapi/code");
 const aontu_1 = require("../dist/aontu");
-const MapVal_1 = require("../dist/val/MapVal");
 const err_1 = require("../dist/err");
 (0, node_test_1.describe)('error', function () {
     (0, node_test_1.it)('syntax', () => {
@@ -46,8 +45,18 @@ const err_1 = require("../dist/err");
         (0, code_1.expect)(() => aontu.generate('@"' + __dirname + '/../test/error/e02.jsonic"'))
             .throw(/no_path/);
     });
+    (0, node_test_1.it)('required', () => {
+        let a0 = new aontu_1.Aontu();
+        (0, code_1.expect)(a0.generate('a:string a:A')).equal({ a: 'A' });
+        (0, code_1.expect)(() => a0.generate('a:string')).throws(/mapval_no_gen/);
+        (0, code_1.expect)(() => a0.generate('a:string a:1')).throws(/no_scalar_unify/);
+        (0, code_1.expect)(a0.generate('x:&:s:string x:a:s:S')).equal({ x: { a: { s: 'S' } } });
+        (0, code_1.expect)(() => a0.generate('x:&:s:string x:a:s:1')).throws(/no_scalar_unify/);
+        (0, code_1.expect)(() => a0.generate('x:&:s:string x:a:{}')).throws(/mapval_spread_required/);
+        (0, code_1.expect)(a0.generate('x:[&:s:string] x:[{s:S}]')).equal({ x: [{ s: 'S' }] });
+        (0, code_1.expect)(() => a0.generate('x:[&:s:string] x:[{s:1}]')).throws(/no_scalar_unify/);
+        // NOT: map inside list!
+        (0, code_1.expect)(() => a0.generate('x:[&:s:string] x:[{}]')).throws(/mapval_spread_required/);
+    });
 });
-function makeCtx(r) {
-    return new aontu_1.AontuContext({ root: r || new MapVal_1.MapVal({ peg: {} }) });
-}
 //# sourceMappingURL=error.test.js.map

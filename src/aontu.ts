@@ -25,6 +25,7 @@ class Aontu {
   // Create a new context.
   ctx(cfg?: AontuContextConfig): AontuContext {
     cfg = cfg ?? {}
+    cfg.fs = cfg.fs ?? this.opts.fs
     const ac = new AontuContext(cfg)
     return ac
   }

@@ -11,4 +11,5 @@ declare function explainOpen(ctx: any, t: any[] | undefined | null | false, note
 declare function ec(t: any[] | undefined | null, why: string): (string | null)[] | undefined;
 declare function explainClose(t: any[] | undefined | null, out?: Val): void;
 declare function formatExplain(t: any[], d?: number): string;
-export { propagateMarks, formatPath, walk, WalkApply, explainOpen, ec, explainClose, formatExplain, };
+declare function items(o: any): any[][];
+export { items, propagateMarks, formatPath, walk, WalkApply, explainOpen, ec, explainClose, formatExplain, };

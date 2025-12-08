@@ -175,8 +175,21 @@ function formatExplain(t: any[], d?: number) {
 }
 
 
+function items(o: any) {
+  if (Array.isArray(o)) {
+    return o.map((n: any, i: number) => ([i, n]))
+  }
+  else if (null != o && 'object' === typeof o) {
+    return Object.entries(o)
+  }
+  else {
+    return []
+  }
+}
+
 
 export {
+  items,
   propagateMarks,
   formatPath,
   walk,

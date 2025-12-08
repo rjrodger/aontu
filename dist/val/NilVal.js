@@ -61,16 +61,17 @@ exports.NilVal = NilVal;
 // TODO: include Val generating nil, thus capture type
 // A Nil is an error - should not happen - unify failed
 // refactor ,make(spec,ctx)
-NilVal.make = (ctx, why, av, bv, attempt) => {
+NilVal.make = (ctx, why, av, bv, attempt, details) => {
     let nil = new NilVal({ why }, ctx);
     nil.attempt = attempt;
-    // TODO: this should be done lazily, for multiple terms
+    nil.details = details;
     // Terms later in same file are considered the primary error location.
     if (null != av) {
         nil.site.row = av.site.row;
         nil.site.col = av.site.col;
         nil.site.url = av.site.url;
         nil.primary = av;
+        nil.path = av.path;
         if (null != bv) {
             nil.secondary = bv;
             let bv_loc_wins = (nil.site.url === bv.site.url) && ((nil.site.row < bv.site.row) ||
@@ -81,6 +82,7 @@ NilVal.make = (ctx, why, av, bv, attempt) => {
                 nil.site.url = bv.site.url;
                 nil.primary = bv;
                 nil.secondary = av;
+                nil.path = bv.path;
             }
         }
     }

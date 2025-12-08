@@ -6,25 +6,19 @@ import type {
 } from './type'
 
 
-class Site {
-  row: number = -1
-  col: number = -1
-  url: string = ''
+type SiteSpec = { row?: number, col?: number, url?: string }
 
-  constructor(val?: Val | { row?: number, col?: number, url?: string }) {
-    if (val) {
-      if ('site' in val) {
-        // Val with site property
-        this.row = val.site?.row ?? -1
-        this.col = val.site?.col ?? -1
-        this.url = val.site?.url ?? ''
-      } else {
-        // Plain object with row, col, url
-        this.row = val.row ?? -1
-        this.col = val.col ?? -1
-        this.url = val.url ?? ''
-      }
-    }
+class Site {
+  row: number
+  col: number
+  url: string
+
+  constructor(val?: Val | SiteSpec) {
+    const site = ((val as any)?.site ?? val) as SiteSpec
+
+    this.row = site?.row ?? -1
+    this.col = site?.col ?? -1
+    this.url = site?.url ?? ''
   }
 }
 
