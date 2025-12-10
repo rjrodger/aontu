@@ -1,7 +1,6 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
-
 import type {
   Val,
   ValSpec,
@@ -88,7 +87,11 @@ class MapVal extends BagVal {
     out.optionalKeys = [...this.optionalKeys]
     out.spread.cj = this.spread.cj
     out.site = this.site
-    out.from = this.from
+    out.from_spread = this.from_spread
+
+    if (this.spread.cj && null == out.from_spread) {
+      out.from_spread = this.spread.cj
+    }
 
     if (peer instanceof MapVal) {
       if (!this.closed && peer.closed) {
@@ -155,6 +158,12 @@ class MapVal extends BagVal {
                     unite(keyctx.clone({ explain: ec(te, 'KEY:' + key) }),
                       child, key_spread_cj, 'map-own')
 
+
+
+        if (this.spread.cj) {
+          out.from_spread = this.spread.cj
+        }
+
         done = (done && DONE === out.peg[key].dc)
       }
 
@@ -195,7 +204,7 @@ class MapVal extends BagVal {
               unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
                 oval, key_spread_cj, 'map-peer-spread')
 
-            oval.from = spread_cj
+            oval.from_spread = this.spread.cj
           }
 
           propagateMarks(this, oval)
@@ -221,10 +230,16 @@ class MapVal extends BagVal {
     }
 
     if (out.isBag) {
-      (out as BagVal).from = this.from
+      (out as BagVal).from_spread = this.from_spread
     }
 
-    // console.log('MAPVAL-OUT', this.id, this.closed, this.canon, 'P=', (peer as any).closed, peer.canon, '->', (out as any).closed, out.canon)
+    // console.log(
+    //   'MAPVAL-OUT', out.canon,
+    //   '\n  SELF', this,
+    //   '\n  PEER', peer,
+    //   '\n  OUT', out,
+    //   '\n  FROM', (out as any).spread.cj
+    // )
 
     ctx.explain && explainClose(te, out)
 

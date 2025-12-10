@@ -31,7 +31,7 @@ abstract class BagVal extends FeatureVal {
     cj: (undefined as Val | undefined),
   }
 
-  from?: Val
+  from_spread?: Val
 
 
   constructor(
@@ -39,6 +39,13 @@ abstract class BagVal extends FeatureVal {
     ctx?: AontuContext
   ) {
     super(spec, ctx)
+  }
+
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
+    const bag = super.clone(ctx, spec) as BagVal
+    bag.spread = this.spread
+    bag.from_spread = this.from_spread
+    return bag
   }
 
 
@@ -97,7 +104,8 @@ abstract class BagVal extends FeatureVal {
         let va = child
         let vb = undefined
 
-        if (this.from) {
+        // TODO from_spread only works for first level, fix it for deeper children
+        if (this.from_spread) {
           code = prefix + 'val_spread_required'
           vb = new NilVal()
           vb.path = child.path

@@ -17,6 +17,12 @@ class BagVal extends FeatureVal_1.FeatureVal {
             cj: undefined,
         };
     }
+    clone(ctx, spec) {
+        const bag = super.clone(ctx, spec);
+        bag.spread = this.spread;
+        bag.from_spread = this.from_spread;
+        return bag;
+    }
     gen(ctx) {
         let out = this.isMap ? {} : [];
         if (this.mark.type || this.mark.hide) {
@@ -59,7 +65,8 @@ class BagVal extends FeatureVal_1.FeatureVal {
                 let code = this.closed ? prefix + 'val_required' : prefix + 'val_no_gen';
                 let va = child;
                 let vb = undefined;
-                if (this.from) {
+                // TODO from_spread only works for first level, fix it for deeper children
+                if (this.from_spread) {
                     code = prefix + 'val_spread_required';
                     vb = new NilVal_1.NilVal();
                     vb.path = child.path;

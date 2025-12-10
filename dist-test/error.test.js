@@ -57,6 +57,11 @@ const err_1 = require("../dist/err");
         (0, code_1.expect)(() => a0.generate('x:[&:s:string] x:[{s:1}]')).throws(/no_scalar_unify/);
         // NOT: map inside list!
         (0, code_1.expect)(() => a0.generate('x:[&:s:string] x:[{}]')).throws(/mapval_spread_required/);
+        // TODO: better resolution of spresd children for error msgs
+        (0, code_1.expect)(a0.generate('x:&:&:s:string x:a:b:s:S'))
+            .equal({ x: { a: { b: { s: 'S' } } } });
+        // expect(() => a0.generate('x:&:&:s:string x:a:b:{}'))
+        //   .throws(/mapval_spread_required/)
     });
 });
 //# sourceMappingURL=error.test.js.map

@@ -82,6 +82,12 @@ describe('error', function() {
 
     // NOT: map inside list!
     expect(() => a0.generate('x:[&:s:string] x:[{}]')).throws(/mapval_spread_required/)
+
+    // TODO: better resolution of spresd children for error msgs
+    expect(a0.generate('x:&:&:s:string x:a:b:s:S'))
+      .equal({ x: { a: { b: { s: 'S' } } } })
+    // expect(() => a0.generate('x:&:&:s:string x:a:b:{}'))
+    //   .throws(/mapval_spread_required/)
   })
 
 })

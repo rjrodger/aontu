@@ -46,7 +46,7 @@ class ListVal extends BagVal_1.BagVal {
         out.optionalKeys = [...this.optionalKeys];
         out.spread.cj = this.spread.cj;
         out.site = this.site;
-        out.from = this.from;
+        out.from_spread = this.from_spread;
         if (peer instanceof ListVal) {
             if (!this.closed && peer.closed) {
                 out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'PMC') }));
@@ -98,7 +98,7 @@ class ListVal extends BagVal_1.BagVal {
                         let key_spread_cj = spread_cj.clone(key_ctx);
                         oval = out.peg[peerkey] =
                             (0, unify_1.unite)(key_ctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }), out.peg[peerkey], key_spread_cj, 'list-spread');
-                        oval.from = spread_cj;
+                        oval.from_spread = spread_cj;
                     }
                     (0, utility_1.propagateMarks)(this, oval);
                     done = (done && type_1.DONE === oval.dc);
@@ -118,7 +118,7 @@ class ListVal extends BagVal_1.BagVal {
             }
         }
         if (out.isBag) {
-            out.from = this.from;
+            out.from_spread = this.from_spread;
         }
         ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;

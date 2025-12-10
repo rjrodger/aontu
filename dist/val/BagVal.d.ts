@@ -9,8 +9,9 @@ declare abstract class BagVal extends FeatureVal {
     spread: {
         cj: Val | undefined;
     };
-    from?: Val;
+    from_spread?: Val;
     constructor(spec: ValSpec, ctx?: AontuContext);
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
     gen(ctx: AontuContext): any;
 }
 export { BagVal, };

@@ -89,7 +89,7 @@ class ListVal extends BagVal {
     out.optionalKeys = [...this.optionalKeys]
     out.spread.cj = this.spread.cj
     out.site = this.site
-    out.from = this.from
+    out.from_spread = this.from_spread
 
     if (peer instanceof ListVal) {
       if (!this.closed && peer.closed) {
@@ -167,7 +167,7 @@ class ListVal extends BagVal {
               unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
                 out.peg[peerkey], key_spread_cj, 'list-spread')
 
-            oval.from = spread_cj
+            oval.from_spread = spread_cj
           }
 
           propagateMarks(this, oval)
@@ -193,7 +193,7 @@ class ListVal extends BagVal {
     }
 
     if (out.isBag) {
-      (out as BagVal).from = this.from
+      (out as BagVal).from_spread = this.from_spread
     }
 
     ctx.explain && explainClose(te, out)
