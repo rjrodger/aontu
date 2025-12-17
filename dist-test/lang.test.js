@@ -130,7 +130,7 @@ let P = lang.parse.bind(lang);
         let t00d = new unify_1.Unify(t00dv);
         (0, code_1.expect)(t00d.res.canon).equal('{"D":{"a":1}}');
         (0, code_1.expect)(t00d.res.gen(ctx)).equal({ D: { a: 1 } });
-        let t01v = g0.parse('@"' + __dirname + '/../test/t01.jsonic"');
+        let t01v = g0.parse('@"' + __dirname + '/../test/t01.aontu"');
         (0, code_1.expect)(t01v.canon).equal('{}&{"a":1,"b":{"d":2},"c":3}');
         let t00m = g0.parse(`
     @"` + __dirname + `/../test/t00.jsonic"

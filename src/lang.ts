@@ -719,13 +719,11 @@ class Lang {
     this.jsonic
       .use(AontuJsonic)
       .use(MultiSource, {
-        // resolver: options?.resolver || includeFileResolver
-        resolver: options?.resolver || modelResolver
+        resolver: options?.resolver || modelResolver,
+        processor: {
+          aontu: 'jsonic'
+        }
       })
-
-    // if (false === (global as any).aontu_warm) {
-    //   (global as any).aontu.time.langctor.push(performance.now() - start)
-    // }
   }
 
 

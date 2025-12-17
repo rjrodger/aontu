@@ -206,7 +206,7 @@ describe('lang', function() {
     expect(t00d.res.gen(ctx)).equal({ D: { a: 1 } })
 
 
-    let t01v = g0.parse('@"' + __dirname + '/../test/t01.jsonic"')
+    let t01v = g0.parse('@"' + __dirname + '/../test/t01.aontu"')
     expect(t01v.canon).equal('{}&{"a":1,"b":{"d":2},"c":3}')
 
 
