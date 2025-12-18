@@ -13,6 +13,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFunc = true;
+        this.isGenable = true;
         // console.log('FBV', this.id, this.constructor.name, this.peg?.[0]?.canon)
     }
     validateArgs(args, min) {

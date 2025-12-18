@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { Val } from './Val';
 declare class NilVal extends Val {
     isNil: boolean;
+    isGenable: boolean;
     nil: boolean;
     why: any;
     primary?: Val;

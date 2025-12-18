@@ -89,6 +89,8 @@ abstract class Val {
   isTypeFunc = false
   isUpperFunc = false
 
+  isGenable = false
+
   id: number
   dc: number = 0
   path: string[] = []

@@ -95,6 +95,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
           || b.isRef
           || b.isPref
           || b.isFunc
+          || b.isExpect
         ) {
 
           out = b.unify(a, ctx.clone({ explain: ec(te, 'BW') }))

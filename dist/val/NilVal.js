@@ -9,6 +9,7 @@ class NilVal extends Val_1.Val {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
         this.isNil = true;
+        this.isGenable = true;
         this.nil = true;
         this.msg = '';
         if (spec && 'object' === typeof spec) {

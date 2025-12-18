@@ -4,14 +4,15 @@ import { Val } from './Val';
 import { FeatureVal } from './FeatureVal';
 declare abstract class BagVal extends FeatureVal {
     isBag: boolean;
+    isGenable: boolean;
     closed: boolean;
     optionalKeys: string[];
     spread: {
         cj: Val | undefined;
     };
-    from_spread?: Val;
     constructor(spec: ValSpec, ctx?: AontuContext);
     clone(ctx: AontuContext, spec?: ValSpec): Val;
+    handleExpectedVal(key: string, val: Val, parent: Val, ctx: AontuContext): Val;
     gen(ctx: AontuContext): any;
 }
 export { BagVal, };

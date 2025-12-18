@@ -17,6 +17,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isRef = true;
+        this.isGenable = true;
         this.absolute = false;
         this.prefix = false;
         this.peg = [];

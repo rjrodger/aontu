@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { JunctionVal } from './JunctionVal';
 declare class ConjunctVal extends JunctionVal {
     isConjunct: boolean;
+    isGenable: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     append(peer: Val): ConjunctVal;
     unify(peer: Val, ctx: AontuContext): Val;

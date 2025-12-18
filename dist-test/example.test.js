@@ -64,7 +64,7 @@ const G = (s) => A.generate(s);
     });
     (0, node_test_1.test)('model-examples', () => {
         (0, code_1.expect)(G('x:type({}) x:{y:number} a:copy($.x) a:{y:1}')).equal({ a: { y: 1 } });
-        (0, code_1.expect)(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/no_gen/);
+        (0, code_1.expect)(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/required/);
         (0, code_1.expect)(G('x:type({}) x:{y?:number} a:copy($.x) a:{}')).equal({ a: {} });
         (0, code_1.expect)(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{}')).equal({ a: { z: 2 } });
         (0, code_1.expect)(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{y:11}')).equal({ a: { y: 11, z: 2 } });
@@ -142,6 +142,10 @@ const G = (s) => A.generate(s);
     (0, node_test_1.test)('move-examples', () => {
         (0, code_1.expect)(G('x:&:{y:1,k:key()} x:a:z:2 x:c:move($.x.a)'))
             .equal({ x: { c: { z: 2, y: 1, k: 'c' } } });
+    });
+    (0, node_test_1.test)('spread-required-examples', () => {
+        (0, code_1.expect)(() => G('x:&:{m:string} x:a:{}')).throw(/required/);
+        (0, code_1.expect)(() => G('x:&:y:&:{m:string} x:a:y:b:{}')).throw(/required/);
     });
     /*
     test('all-expressions', () => {

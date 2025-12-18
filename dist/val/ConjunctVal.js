@@ -22,6 +22,7 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isConjunct = true;
+        this.isGenable = true;
         this.mark.type = !!spec.mark?.type;
         this.mark.hide = !!spec.mark?.hide;
         this.peg = (Array.isArray(this.peg) ? this.peg : [])

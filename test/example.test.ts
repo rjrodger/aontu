@@ -78,7 +78,7 @@ describe('examples', function() {
 
   test('model-examples', () => {
     expect(G('x:type({}) x:{y:number} a:copy($.x) a:{y:1}')).equal({ a: { y: 1 } })
-    expect(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/no_gen/)
+    expect(() => G('x:type({}) x:{y:number} a:copy($.x) a:{}')).throws(/required/)
     expect(G('x:type({}) x:{y?:number} a:copy($.x) a:{}')).equal({ a: {} })
     expect(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{}')).equal({ a: { z: 2 } })
     expect(G('x:type({}) x:{y?:number,z:2} a:copy($.x) a:{y:11}')).equal({ a: { y: 11, z: 2 } })
@@ -179,6 +179,13 @@ describe('examples', function() {
   test('move-examples', () => {
     expect(G('x:&:{y:1,k:key()} x:a:z:2 x:c:move($.x.a)'))
       .equal({ x: { c: { z: 2, y: 1, k: 'c' } } })
+  })
+
+
+
+  test('spread-required-examples', () => {
+    expect(() => G('x:&:{m:string} x:a:{}')).throw(/required/)
+    expect(() => G('x:&:y:&:{m:string} x:a:y:b:{}')).throw(/required/)
   })
 
 

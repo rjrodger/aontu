@@ -19,10 +19,12 @@ import { empty } from './Val'
 import { Val } from './Val'
 import { NilVal } from './NilVal'
 import { FeatureVal } from './FeatureVal'
+import { ExpectVal } from './ExpectVal'
 
 
 abstract class BagVal extends FeatureVal {
   isBag = true
+  isGenable = true
 
   closed: boolean = false
   optionalKeys: string[] = []
@@ -30,9 +32,6 @@ abstract class BagVal extends FeatureVal {
   spread = {
     cj: (undefined as Val | undefined),
   }
-
-  from_spread?: Val
-
 
   constructor(
     spec: ValSpec,
@@ -44,8 +43,18 @@ abstract class BagVal extends FeatureVal {
   clone(ctx: AontuContext, spec?: ValSpec): Val {
     const bag = super.clone(ctx, spec) as BagVal
     bag.spread = this.spread
-    bag.from_spread = this.from_spread
     return bag
+  }
+
+
+  handleExpectedVal(key: string, val: Val, parent: Val, ctx: AontuContext): Val {
+    if (val.isGenable) {
+      return val
+    }
+    const expectVal = new ExpectVal({ peg: val }, ctx)
+    expectVal.key = key
+    expectVal.parent = parent
+    return expectVal
   }
 
 
@@ -104,13 +113,13 @@ abstract class BagVal extends FeatureVal {
         let va = child
         let vb = undefined
 
-        // TODO from_spread only works for first level, fix it for deeper children
-        if (this.from_spread) {
+        if (va.isExpect) {
           code = prefix + 'val_spread_required'
-          vb = new NilVal()
-          vb.path = child.path
-          vb.site = this.site
-          vb.primary = this
+          if (va.parent) {
+            vb = new NilVal({}, ctx)
+            va.parent.place(vb)
+          }
+          va = va.peg
         }
 
         const details = { key: p }

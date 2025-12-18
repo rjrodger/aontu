@@ -21,6 +21,7 @@ import { AontuError } from '../err'
 
 class NilVal extends Val {
   isNil = true
+  isGenable = true
 
   nil = true
   why: any

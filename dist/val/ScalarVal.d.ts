@@ -4,6 +4,7 @@ import { Val } from './Val';
 declare class ScalarVal extends Val {
     kind: any;
     isScalar: boolean;
+    isGenable: boolean;
     src: string;
     constructor(spec: ValSpec, ctx?: AontuContext);
     clone(ctx: AontuContext, spec?: ValSpec): Val;

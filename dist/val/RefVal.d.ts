@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { FeatureVal } from './FeatureVal';
 declare class RefVal extends FeatureVal {
     isRef: boolean;
+    isGenable: boolean;
     absolute: boolean;
     prefix: boolean;
     constructor(spec: {

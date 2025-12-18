@@ -11,6 +11,7 @@ class ScalarVal extends Val_1.Val {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isScalar = true;
+        this.isGenable = true;
         this.kind = spec.kind;
         this.src = spec.src ?? '';
         this.dc = type_1.DONE;

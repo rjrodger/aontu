@@ -59,6 +59,7 @@ declare abstract class Val {
     isSuperFunc: boolean;
     isTypeFunc: boolean;
     isUpperFunc: boolean;
+    isGenable: boolean;
     id: number;
     dc: number;
     path: string[];

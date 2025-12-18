@@ -16,6 +16,7 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
     constructor(spec, ctx, _sites) {
         super(spec, ctx);
         this.isDisjunct = true;
+        this.isGenable = true;
         this.prefsRanked = false;
     }
     // NOTE: mutation!

@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { FeatureVal } from '../val/FeatureVal';
 declare class FuncBaseVal extends FeatureVal {
     isFunc: boolean;
+    isGenable: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     validateArgs(args: Val[], min: number): void;
     make(ctx: AontuContext, _spec: ValSpec): Val;

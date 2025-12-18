@@ -33,6 +33,7 @@ import { FeatureVal } from '../val/FeatureVal'
 
 class FuncBaseVal extends FeatureVal {
   isFunc = true
+  isGenable = true
 
   constructor(
     spec: ValSpec,

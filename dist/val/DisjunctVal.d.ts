@@ -5,6 +5,7 @@ import { PrefVal } from '../val/PrefVal';
 import { JunctionVal } from '../val/JunctionVal';
 declare class DisjunctVal extends JunctionVal {
     isDisjunct: boolean;
+    isGenable: boolean;
     prefsRanked: boolean;
     constructor(spec: {
         peg: Val[];

@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { FeatureVal } from './FeatureVal';
 declare class PrefVal extends FeatureVal {
     isPref: boolean;
+    isGenable: boolean;
     superpeg: Val;
     rank: number;
     constructor(spec: ValSpec, ctx?: AontuContext);

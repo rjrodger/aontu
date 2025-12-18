@@ -27,6 +27,7 @@ import { FeatureVal } from './FeatureVal'
 
 class PrefVal extends FeatureVal {
   isPref = true
+  isGenable = true
 
   superpeg: Val
   rank: number = 0

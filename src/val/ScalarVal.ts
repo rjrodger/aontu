@@ -26,7 +26,10 @@ import { ScalarKindVal } from './ScalarKindVal'
 
 class ScalarVal extends Val {
   kind: any
+
   isScalar = true
+  isGenable = true
+
   src: string
 
   constructor(

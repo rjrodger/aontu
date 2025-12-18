@@ -50,6 +50,7 @@ const CONJUNCT_ORDERING: Record<string, number> = {
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends JunctionVal {
   isConjunct = true
+  isGenable = true
 
   constructor(
     spec: ValSpec,

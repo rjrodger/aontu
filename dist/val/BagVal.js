@@ -7,10 +7,12 @@ const err_1 = require("../err");
 const Val_1 = require("./Val");
 const NilVal_1 = require("./NilVal");
 const FeatureVal_1 = require("./FeatureVal");
+const ExpectVal_1 = require("./ExpectVal");
 class BagVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isBag = true;
+        this.isGenable = true;
         this.closed = false;
         this.optionalKeys = [];
         this.spread = {
@@ -20,8 +22,16 @@ class BagVal extends FeatureVal_1.FeatureVal {
     clone(ctx, spec) {
         const bag = super.clone(ctx, spec);
         bag.spread = this.spread;
-        bag.from_spread = this.from_spread;
         return bag;
+    }
+    handleExpectedVal(key, val, parent, ctx) {
+        if (val.isGenable) {
+            return val;
+        }
+        const expectVal = new ExpectVal_1.ExpectVal({ peg: val }, ctx);
+        expectVal.key = key;
+        expectVal.parent = parent;
+        return expectVal;
     }
     gen(ctx) {
         let out = this.isMap ? {} : [];
@@ -65,13 +75,13 @@ class BagVal extends FeatureVal_1.FeatureVal {
                 let code = this.closed ? prefix + 'val_required' : prefix + 'val_no_gen';
                 let va = child;
                 let vb = undefined;
-                // TODO from_spread only works for first level, fix it for deeper children
-                if (this.from_spread) {
+                if (va.isExpect) {
                     code = prefix + 'val_spread_required';
-                    vb = new NilVal_1.NilVal();
-                    vb.path = child.path;
-                    vb.site = this.site;
-                    vb.primary = this;
+                    if (va.parent) {
+                        vb = new NilVal_1.NilVal({}, ctx);
+                        va.parent.place(vb);
+                    }
+                    va = va.peg;
                 }
                 const details = { key: p };
                 (0, err_1.makeNilErr)(ctx, code, va, vb, undefined, details);

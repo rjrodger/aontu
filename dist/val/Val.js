@@ -58,6 +58,7 @@ class Val {
         this.isSuperFunc = false;
         this.isTypeFunc = false;
         this.isUpperFunc = false;
+        this.isGenable = false;
         this.dc = 0;
         this.path = [];
         this.site = new site_1.Site();

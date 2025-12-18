@@ -39,6 +39,7 @@ import { JunctionVal } from '../val/JunctionVal'
 // TODO: move main logic to op/disjunct
 class DisjunctVal extends JunctionVal {
   isDisjunct = true
+  isGenable = true
 
   prefsRanked = false
 

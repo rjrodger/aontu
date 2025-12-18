@@ -87,11 +87,6 @@ class MapVal extends BagVal {
     out.optionalKeys = [...this.optionalKeys]
     out.spread.cj = this.spread.cj
     out.site = this.site
-    out.from_spread = this.from_spread
-
-    if (this.spread.cj && null == out.from_spread) {
-      out.from_spread = this.spread.cj
-    }
 
     if (peer instanceof MapVal) {
       if (!this.closed && peer.closed) {
@@ -143,9 +138,9 @@ class MapVal extends BagVal {
         const keyctx = ctx.descend(key)
 
         const key_spread_cj = spread_cj.clone(keyctx)
-        // console.log('MAPVAL-SPREAD', this.id, key, key_spread_cj.id, key_spread_cj.canon, key_spread_cj.done)
-
         const child = this.peg[key]
+
+        // console.log('MAPVAL-SPREAD', this.id, key, child, key_spread_cj.id, key_spread_cj.canon, key_spread_cj.done)
 
         propagateMarks(this, child)
 
@@ -157,12 +152,6 @@ class MapVal extends BagVal {
                   child.isTop && key_spread_cj.done ? key_spread_cj :
                     unite(keyctx.clone({ explain: ec(te, 'KEY:' + key) }),
                       child, key_spread_cj, 'map-own')
-
-
-
-        if (this.spread.cj) {
-          out.from_spread = this.spread.cj
-        }
 
         done = (done && DONE === out.peg[key].dc)
       }
@@ -189,7 +178,7 @@ class MapVal extends BagVal {
           let child = out.peg[peerkey]
 
           let oval = out.peg[peerkey] =
-            undefined === child ? peerchild :
+            undefined === child ? this.handleExpectedVal(peerkey, peerchild, this, ctx) :
               child.isTop && peerchild.done ? peerchild :
                 child.isNil ? child :
                   peerchild.isNil ? peerchild :
@@ -203,8 +192,6 @@ class MapVal extends BagVal {
             oval = out.peg[peerkey] =
               unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
                 oval, key_spread_cj, 'map-peer-spread')
-
-            oval.from_spread = this.spread.cj
           }
 
           propagateMarks(this, oval)
@@ -227,10 +214,6 @@ class MapVal extends BagVal {
         propagateMarks(peer, out)
         propagateMarks(this, out)
       }
-    }
-
-    if (out.isBag) {
-      (out as BagVal).from_spread = this.from_spread
     }
 
     // console.log(
