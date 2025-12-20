@@ -126,13 +126,14 @@ class RefVal extends FeatureVal_1.FeatureVal {
     }
     find(ctx) {
         let out = undefined;
-        const selfpath = this.path.join('.');
-        const pegpath = this.peg.join('.');
+        const selfpath = this.path.join('.') + '.'; // Append '.' to avoid partial matches
+        const pegpath = this.peg.join('.') + '.';
         const isprefixpath = selfpath.startsWith(pegpath);
         let refpath = [];
         let pI = 0;
         // let descent = ''
         if (isprefixpath) {
+            // console.log('SELFPATH', selfpath, 'PEGPATH', pegpath)
             out = (0, err_1.makeNilErr)(ctx, 'path_cycle', this);
         }
         else {

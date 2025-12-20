@@ -48,8 +48,8 @@ function descErr<NILS extends NilVal | NilVal[]>(
       let v1: any = err.primary
       let v2: any = err.secondary
 
-      let v1src = resolveSrc(v1, errctx)
-      let v2src = resolveSrc(v2, errctx)
+      let v1src = resolveSrc(v1, errctx, 'primary')
+      let v2src = resolveSrc(v2, errctx, 'secondary')
 
       let path = ['$', ...err.path].filter((p: any) => null != p && '' != p)
 
@@ -130,7 +130,7 @@ function resolveFile(url: string | undefined) {
 }
 
 
-function resolveSrc(v: Val, errctx?: ErrContext) {
+function resolveSrc(v: Val, errctx: ErrContext | undefined, position: string) {
   let src: string | undefined = undefined
 
   if (null != v?.site.url) {
@@ -141,13 +141,20 @@ function resolveSrc(v: Val, errctx?: ErrContext) {
       }
     }
     catch (fe: any) {
+      // console.log('AONTU-resolveSrc-ERROR', position, v, v.site.url, fe)
       // ignore as more important to report original error
     }
+  }
+  else {
+    // console.log(v)
+    // console.trace()
   }
 
   if (errctx && (undefined == src || '' === src)) {
     src = errctx.src ?? ''
   }
+
+  // console.log('AONTU-resolveSrc', position, v, v?.site.url, errctx?.fs, src?.length)
 
   return src
 }

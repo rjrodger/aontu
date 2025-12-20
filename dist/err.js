@@ -26,8 +26,8 @@ function descErr(err, errctx) {
         if (null == err.msg || '' === err.msg) {
             let v1 = err.primary;
             let v2 = err.secondary;
-            let v1src = resolveSrc(v1, errctx);
-            let v2src = resolveSrc(v2, errctx);
+            let v1src = resolveSrc(v1, errctx, 'primary');
+            let v2src = resolveSrc(v2, errctx, 'secondary');
             let path = ['$', ...err.path].filter((p) => null != p && '' != p);
             let valpath = (0 < path.length ? path.join('.') : '');
             let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify');
@@ -94,7 +94,7 @@ function resolveFile(url) {
     out = out === cwd || '' === out ? '<no-file>' : out;
     return out;
 }
-function resolveSrc(v, errctx) {
+function resolveSrc(v, errctx, position) {
     let src = undefined;
     if (null != v?.site.url) {
         try {
@@ -104,12 +104,18 @@ function resolveSrc(v, errctx) {
             }
         }
         catch (fe) {
+            // console.log('AONTU-resolveSrc-ERROR', position, v, v.site.url, fe)
             // ignore as more important to report original error
         }
+    }
+    else {
+        // console.log(v)
+        // console.trace()
     }
     if (errctx && (undefined == src || '' === src)) {
         src = errctx.src ?? '';
     }
+    // console.log('AONTU-resolveSrc', position, v, v?.site.url, errctx?.fs, src?.length)
     return src;
 }
 class AontuError extends Error {

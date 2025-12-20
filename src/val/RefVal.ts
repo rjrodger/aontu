@@ -193,8 +193,8 @@ class RefVal extends FeatureVal {
   find(ctx: AontuContext) {
     let out: Val | undefined = undefined
 
-    const selfpath = this.path.join('.')
-    const pegpath = this.peg.join('.')
+    const selfpath = this.path.join('.') + '.' // Append '.' to avoid partial matches
+    const pegpath = this.peg.join('.') + '.'
     const isprefixpath = selfpath.startsWith(pegpath)
 
     let refpath: string[] = []
@@ -202,6 +202,7 @@ class RefVal extends FeatureVal {
     // let descent = ''
 
     if (isprefixpath) {
+      // console.log('SELFPATH', selfpath, 'PEGPATH', pegpath)
       out = makeNilErr(ctx, 'path_cycle', this)
     }
     else {
