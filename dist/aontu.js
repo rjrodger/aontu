@@ -137,7 +137,6 @@ function handleErrors(errs, out, ac) {
 // Perform parse of source code (minor customizations over Lang.parse).
 function runparse(src, lang, ctx) {
     const popts = {
-        // src: ctx.src,
         deps: ctx.deps,
         fs: ctx.fs,
         path: ctx.opts.path

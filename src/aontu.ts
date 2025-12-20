@@ -177,7 +177,6 @@ function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
 // Perform parse of source code (minor customizations over Lang.parse).
 function runparse(src: string, lang: Lang, ctx: AontuContext): Val {
   const popts = {
-    // src: ctx.src,
     deps: ctx.deps,
     fs: ctx.fs,
     path: ctx.opts.path

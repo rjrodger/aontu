@@ -129,6 +129,7 @@ class AontuContext {
 
     this.collect = (this.opts.collect ?? null != this.opts.err) ?? this.collect
     this.err = this.opts.err ?? this.err
+    this.deps = this.opts.deps ?? this.deps
     this.fs = this.opts.fs ?? this.fs
     this.explain = this.opts.explain ?? this.explain
 
