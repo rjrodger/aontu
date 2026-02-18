@@ -520,7 +520,8 @@ class Lang {
             .use(multisource_1.MultiSource, {
             resolver: options?.resolver || modelResolver,
             processor: {
-                aontu: 'jsonic'
+                aontu: 'jsonic',
+                aon: 'jsonic',
             }
         });
     }

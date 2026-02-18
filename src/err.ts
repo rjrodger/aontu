@@ -151,7 +151,8 @@ function resolveSrc(v: Val, errctx: ErrContext | undefined, position: string) {
   }
 
   if (errctx && (undefined == src || '' === src)) {
-    src = errctx.src ?? ''
+    src = 'SOURCE-NOT-FOUND:' + (null != v?.site.url ? (' ' + v.site.url) : '') +
+      (null == errctx?.fs ? ' (NO-FS)' : '')
   }
 
   // console.log('AONTU-resolveSrc', position, v, v?.site.url, errctx?.fs, src?.length)

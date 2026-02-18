@@ -132,6 +132,8 @@ let P = lang.parse.bind(lang);
         (0, code_1.expect)(t00d.res.gen(ctx)).equal({ D: { a: 1 } });
         let t01v = g0.parse('@"' + __dirname + '/../test/t01.aontu"');
         (0, code_1.expect)(t01v.canon).equal('{}&{"a":1,"b":{"d":2},"c":3}');
+        let t02v = g0.parse('@"' + __dirname + '/../test/t02.aon"');
+        (0, code_1.expect)(t02v.canon).equal('{}&({"x":1}&{"y":2})');
         let t00m = g0.parse(`
     @"` + __dirname + `/../test/t00.jsonic"
     `);
