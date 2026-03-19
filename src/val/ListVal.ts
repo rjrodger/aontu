@@ -137,7 +137,7 @@ class ListVal extends BagVal {
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof ListVal) {
-        let upeer: ListVal = (unite(
+        let upeer: ListVal = peer.done ? peer as ListVal : (unite(
           te ? ctx.clone({ explain: ec(te, 'PER') }) : ctx,
           peer, TOP, 'list-peer-list') as ListVal)
 
@@ -183,7 +183,7 @@ class ListVal extends BagVal {
       }
 
       if (!out.isNil) {
-        out.uh.push(peer.id)
+        ;(out.uh ??= []).push(peer.id)
 
         out.dc = done ? DONE : out.dc
         propagateMarks(peer, out)

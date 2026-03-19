@@ -317,6 +317,245 @@ def: garage: {
             }
         });
     });
+    (0, node_test_1.test)('ref-heavy-wide', () => {
+        let a0 = new aontu_1.Aontu();
+        // Many sibling keys each referencing the same source
+        (0, code_1.expect)(a0.generate(`
+      src: 42
+      a: $.src
+      b: $.src
+      c: $.src
+      d: $.src
+      e: $.src
+      f: $.src
+      g: $.src
+      h: $.src
+    `)).equal({
+            src: 42, a: 42, b: 42, c: 42, d: 42, e: 42, f: 42, g: 42, h: 42
+        });
+        // Many refs pointing to different sources
+        (0, code_1.expect)(a0.generate(`
+      s1: 1, s2: 2, s3: 3, s4: 4, s5: 5, s6: 6, s7: 7, s8: 8
+      a: $.s1, b: $.s2, c: $.s3, d: $.s4
+      e: $.s5, f: $.s6, g: $.s7, h: $.s8
+    `)).equal({
+            s1: 1, s2: 2, s3: 3, s4: 4, s5: 5, s6: 6, s7: 7, s8: 8,
+            a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8,
+        });
+        // Wide refs to nested paths
+        (0, code_1.expect)(a0.generate(`
+      src: { x: 10, y: 20 }
+      a: $.src.x
+      b: $.src.y
+      c: $.src.x
+      d: $.src.y
+      e: $.src.x
+      f: $.src.y
+    `)).equal({
+            src: { x: 10, y: 20 },
+            a: 10, b: 20, c: 10, d: 20, e: 10, f: 20,
+        });
+    });
+    (0, node_test_1.test)('ref-heavy-deep', () => {
+        let a0 = new aontu_1.Aontu();
+        // Deep ref chain (each level references the next)
+        (0, code_1.expect)(a0.generate(`
+      a: { v: $.b.v }
+      b: { v: $.c.v }
+      c: { v: $.d.v }
+      d: { v: $.e.v }
+      e: { v: $.f.v }
+      f: { v: 99 }
+    `)).equal({
+            a: { v: 99 }, b: { v: 99 }, c: { v: 99 },
+            d: { v: 99 }, e: { v: 99 }, f: { v: 99 },
+        });
+        // Deep nesting with refs at each level
+        (0, code_1.expect)(a0.generate(`
+      root: {
+        a: { b: { c: { d: { val: 1 } } } }
+        r1: $.root.a.b.c.d.val
+        r2: $.root.a.b.c.d
+        r3: $.root.a.b.c
+        r4: $.root.a.b
+      }
+    `)).equal({
+            root: {
+                a: { b: { c: { d: { val: 1 } } } },
+                r1: 1,
+                r2: { val: 1 },
+                r3: { d: { val: 1 } },
+                r4: { c: { d: { val: 1 } } },
+            }
+        });
+        // Refs through 4 levels of nesting
+        (0, code_1.expect)(a0.generate(`
+      a: b: c: d: v: 7
+      x: $.a.b.c.d.v
+      y: $.a.b.c.d
+      z: $.a.b.c
+    `)).equal({
+            a: { b: { c: { d: { v: 7 } } } },
+            x: 7,
+            y: { v: 7 },
+            z: { d: { v: 7 } },
+        });
+    });
+    (0, node_test_1.test)('ref-heavy-cross', () => {
+        let a0 = new aontu_1.Aontu();
+        // Cross-referencing between siblings
+        (0, code_1.expect)(a0.generate(`
+      a: { x: 1, y: $.b.x }
+      b: { x: 2, y: $.a.x }
+    `)).equal({
+            a: { x: 1, y: 2 },
+            b: { x: 2, y: 1 },
+        });
+        // Multiple cross-refs in a wider structure
+        (0, code_1.expect)(a0.generate(`
+      p: { v: 10 }
+      q: { v: 20 }
+      r: { v: 30 }
+      a: { pv: $.p.v, qv: $.q.v, rv: $.r.v }
+      b: { pv: $.p.v, qv: $.q.v, rv: $.r.v }
+      c: { pv: $.p.v, qv: $.q.v, rv: $.r.v }
+    `)).equal({
+            p: { v: 10 }, q: { v: 20 }, r: { v: 30 },
+            a: { pv: 10, qv: 20, rv: 30 },
+            b: { pv: 10, qv: 20, rv: 30 },
+            c: { pv: 10, qv: 20, rv: 30 },
+        });
+        // Diamond: two paths merge at a common ref target
+        (0, code_1.expect)(a0.generate(`
+      base: { k: 1 }
+      left: $.base
+      right: $.base
+      merged: { l: $.left.k, r: $.right.k }
+    `)).equal({
+            base: { k: 1 },
+            left: { k: 1 },
+            right: { k: 1 },
+            merged: { l: 1, r: 1 },
+        });
+    });
+    (0, node_test_1.test)('ref-heavy-spread', () => {
+        let a0 = new aontu_1.Aontu();
+        // Ref spread adds template fields to each child
+        (0, code_1.expect)(a0.generate(`
+      tmpl: { version: 1 }
+      items: {
+        &: $.tmpl
+        a: { name: A }
+        b: { name: B }
+        c: { name: C }
+        d: { name: D }
+        e: { name: E }
+        f: { name: F }
+      }
+    `)).equal({
+            tmpl: { version: 1 },
+            items: {
+                a: { version: 1, name: 'A' }, b: { version: 1, name: 'B' },
+                c: { version: 1, name: 'C' }, d: { version: 1, name: 'D' },
+                e: { version: 1, name: 'E' }, f: { version: 1, name: 'F' },
+            }
+        });
+        // Ref spread adds common fields to varied children
+        (0, code_1.expect)(a0.generate(`
+      defaults: { color: red, active: true }
+      points: {
+        &: $.defaults
+        p1: { color: red, active: true, x: 1 }
+        p2: { color: red, active: true, x: 3 }
+        p3: { color: red, active: true, x: 5 }
+        p4: { color: red, active: true, x: 7 }
+      }
+    `)).equal({
+            defaults: { color: 'red', active: true },
+            points: {
+                p1: { color: 'red', active: true, x: 1 },
+                p2: { color: 'red', active: true, x: 3 },
+                p3: { color: 'red', active: true, x: 5 },
+                p4: { color: 'red', active: true, x: 7 },
+            }
+        });
+        // Nested ref spread: outer spread injects inner map fields
+        (0, code_1.expect)(a0.generate(`
+      inner: { enabled: true }
+      outer: {
+        &: { meta: $.inner }
+        row1: { meta: { enabled: true }, id: 1 }
+        row2: { meta: { enabled: true }, id: 2 }
+        row3: { meta: { enabled: true }, id: 3 }
+      }
+    `)).equal({
+            inner: { enabled: true },
+            outer: {
+                row1: { meta: { enabled: true }, id: 1 },
+                row2: { meta: { enabled: true }, id: 2 },
+                row3: { meta: { enabled: true }, id: 3 },
+            }
+        });
+    });
+    (0, node_test_1.test)('ref-heavy-combined', () => {
+        let a0 = new aontu_1.Aontu();
+        // Refs + spreads + deep nesting + cross-references
+        (0, code_1.expect)(a0.generate(`
+      config: {
+        db: { host: localhost, port: 5432 }
+        cache: { ttl: 60 }
+      }
+      services: {
+        &: { db_host: $.config.db.host }
+        api: { db_host: localhost, name: api }
+        web: { db_host: localhost, name: web }
+        worker: { db_host: localhost, name: worker }
+      }
+    `)).equal({
+            config: {
+                db: { host: 'localhost', port: 5432 },
+                cache: { ttl: 60 },
+            },
+            services: {
+                api: { db_host: 'localhost', name: 'api' },
+                web: { db_host: 'localhost', name: 'web' },
+                worker: { db_host: 'localhost', name: 'worker' },
+            }
+        });
+        // Forward refs with nested map targets
+        (0, code_1.expect)(a0.generate(`
+      a: { m: $.c.m }
+      b: { m: $.c.m }
+      c: { m: { x: 1, y: 2 } }
+    `)).equal({
+            a: { m: { x: 1, y: 2 } },
+            b: { m: { x: 1, y: 2 } },
+            c: { m: { x: 1, y: 2 } },
+        });
+        // Chain of refs where each adds a field
+        (0, code_1.expect)(a0.generate(`
+      base: { a: 1 }
+      step1: { a: $.base.a, b: 2 }
+      step2: { a: $.step1.a, b: $.step1.b, c: 3 }
+    `)).equal({
+            base: { a: 1 },
+            step1: { a: 1, b: 2 },
+            step2: { a: 1, b: 2, c: 3 },
+        });
+        // Many refs into the same deep path
+        (0, code_1.expect)(a0.generate(`
+      data: { level1: { level2: { level3: { val: 100 } } } }
+      r1: $.data.level1.level2.level3.val
+      r2: $.data.level1.level2.level3.val
+      r3: $.data.level1.level2.level3.val
+      r4: $.data.level1.level2.level3.val
+      r5: $.data.level1.level2.level3.val
+      r6: $.data.level1.level2.level3.val
+    `)).equal({
+            data: { level1: { level2: { level3: { val: 100 } } } },
+            r1: 100, r2: 100, r3: 100, r4: 100, r5: 100, r6: 100,
+        });
+    });
 });
 function makeCtx(r) {
     return new aontu_1.AontuContext({ root: r || new MapVal_1.MapVal({ peg: {} }) });

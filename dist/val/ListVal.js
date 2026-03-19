@@ -78,7 +78,7 @@ class ListVal extends BagVal_1.BagVal {
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;
             if (peer instanceof ListVal) {
-                let upeer = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }) : ctx, peer, TOP, 'list-peer-list');
+                let upeer = peer.done ? peer : (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }) : ctx, peer, TOP, 'list-peer-list');
                 // NOTE: peerkey is the index
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
@@ -109,7 +109,8 @@ class ListVal extends BagVal_1.BagVal {
                 out = bad;
             }
             if (!out.isNil) {
-                out.uh.push(peer.id);
+                ;
+                (out.uh ??= []).push(peer.id);
                 out.dc = done ? type_1.DONE : out.dc;
                 (0, utility_1.propagateMarks)(peer, out);
                 (0, utility_1.propagateMarks)(this, out);

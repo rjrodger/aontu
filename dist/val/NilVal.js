@@ -18,7 +18,7 @@ class NilVal extends Val_1.Val {
             this.err = spec ?
                 Array.isArray(spec.err) ? [...spec.err] :
                     null != spec.err ? [spec.err] :
-                        [] : [];
+                        Val_1.EMPTY_ERR : Val_1.EMPTY_ERR;
         }
         // Nil is always DONE, by definition.
         this.dc = type_1.DONE;

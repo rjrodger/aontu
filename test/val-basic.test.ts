@@ -358,7 +358,6 @@ describe('val-basic', function() {
     const i11 = lang.parse('(11)')
     expect(i11 as any).include({
       dc: -1,
-      err: [],
       isInteger: true,
       isScalar: true,
       isVal: true,
@@ -366,8 +365,11 @@ describe('val-basic', function() {
       path: [],
       peg: 11,
       kind: Integer,
-      uh: [],
     })
+    // uh is lazily initialized (undefined until first push)
+    expect((i11 as any).uh).equal(undefined)
+    // err uses shared EMPTY_ERR singleton
+    expect((i11 as any).err.length).equal(0)
     expect((i11 as any).site).include({
       col: 1,
       row: 1,

@@ -13,7 +13,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 };
 var _Val_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SPREAD = exports.DONE = exports.Val = void 0;
+exports.EMPTY_ERR = exports.SPREAD = exports.DONE = exports.Val = void 0;
 exports.empty = empty;
 const node_util_1 = require("node:util");
 const site_1 = require("../site");
@@ -21,8 +21,20 @@ const DONE = -1;
 exports.DONE = DONE;
 const SPREAD = Symbol('spread');
 exports.SPREAD = SPREAD;
+// Shared frozen empty array for lazy err initialization.
+// Most Vals never accumulate errors, so this avoids one allocation per Val.
+// Frozen to catch accidental mutation (e.g. push) - callers that need a
+// mutable error array must create their own.
+const EMPTY_ERR = Object.freeze([]);
+exports.EMPTY_ERR = EMPTY_ERR;
 let ID = 1000;
 class Val {
+    get site() {
+        return this._site ??= new site_1.Site();
+    }
+    set site(s) {
+        this._site = s;
+    }
     // TODO: Site needed in ctor
     constructor(spec, ctx) {
         this.isVal = true;
@@ -63,7 +75,6 @@ class Val {
         this.isGenable = false;
         this.dc = 0;
         this.path = [];
-        this.site = new site_1.Site();
         // Map of boolean flags.
         this.mark = {
             type: false,
@@ -71,9 +82,10 @@ class Val {
         };
         // Actual native value.
         this.peg = undefined;
-        // TODO: used for top level result - not great
-        // err: Omit<any[], "push"> = []
-        this.err = [];
+        // Lazy err: shared empty array avoids allocation per Val.
+        // Most Vals never accumulate errors. Only NilVal and top-level
+        // results assign a real error array.
+        this.err = EMPTY_ERR;
         this.explain = null;
         _Val_ctx.set(this, void 0);
         __classPrivateFieldSet(this, _Val_ctx, ctx, "f");
@@ -87,7 +99,6 @@ class Val {
         // TODO: make this work
         // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
         this.id = ++ID;
-        this.uh = [];
         this.mark.type = !!spec.mark?.type;
         this.mark.hide = !!spec.mark?.hide;
         // console.log('BV', this.id, this.constructor.name, this.peg?.canon)

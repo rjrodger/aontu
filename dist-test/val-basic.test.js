@@ -248,7 +248,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         const i11 = lang.parse('(11)');
         (0, code_1.expect)(i11).include({
             dc: -1,
-            err: [],
             isInteger: true,
             isScalar: true,
             isVal: true,
@@ -256,8 +255,11 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
             path: [],
             peg: 11,
             kind: ScalarKindVal_1.Integer,
-            uh: [],
         });
+        // uh is lazily initialized (undefined until first push)
+        (0, code_1.expect)(i11.uh).equal(undefined);
+        // err uses shared EMPTY_ERR singleton
+        (0, code_1.expect)(i11.err.length).equal(0);
         (0, code_1.expect)(i11.site).include({
             col: 1,
             row: 1,

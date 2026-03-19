@@ -24,6 +24,7 @@ type ValSpec = {
 };
 declare const DONE = -1;
 declare const SPREAD: unique symbol;
+declare const EMPTY_ERR: any[];
 declare abstract class Val {
     #private;
     isVal: boolean;
@@ -64,12 +65,14 @@ declare abstract class Val {
     id: number;
     dc: number;
     path: string[];
-    site: Site;
+    private _site?;
+    get site(): Site;
+    set site(s: Site);
     mark: ValMark;
     peg: any;
     err: any[];
     explain: any[] | null;
-    uh: number[];
+    uh?: number[];
     deps?: any;
     constructor(spec: ValSpec, ctx?: AontuContext);
     ctx(): any;
@@ -90,4 +93,4 @@ declare abstract class Val {
 }
 declare function empty(o: any): boolean;
 export type { ValMark, ValSpec, };
-export { Val, DONE, SPREAD, empty };
+export { Val, DONE, SPREAD, EMPTY_ERR, empty };

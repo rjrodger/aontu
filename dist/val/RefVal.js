@@ -127,9 +127,28 @@ class RefVal extends FeatureVal_1.FeatureVal {
     }
     find(ctx) {
         let out = undefined;
-        const selfpath = this.path.join('.') + '.'; // Append '.' to avoid partial matches
-        const pegpath = this.peg.join('.') + '.';
-        const isprefixpath = selfpath.startsWith(pegpath);
+        // Check if self.path starts with peg (cycle detection).
+        // Element-by-element comparison avoids string join+startsWith allocations.
+        let isprefixpath = this.peg.length <= this.path.length;
+        if (isprefixpath) {
+            for (let i = 0; i < this.peg.length; i++) {
+                if (this.peg[i] !== this.path[i]) {
+                    isprefixpath = false;
+                    break;
+                }
+            }
+        }
+        // Degenerate case: peg is all empty strings (e.g. path("")) and path is empty.
+        if (!isprefixpath && this.peg.length > 0 && this.path.length === 0) {
+            let allEmpty = true;
+            for (let i = 0; i < this.peg.length; i++) {
+                if ('' !== this.peg[i]) {
+                    allEmpty = false;
+                    break;
+                }
+            }
+            isprefixpath = allEmpty;
+        }
         let refpath = [];
         let pI = 0;
         // let descent = ''

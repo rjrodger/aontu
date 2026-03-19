@@ -47,6 +47,12 @@ const DONE = -1
 
 const SPREAD = Symbol('spread')
 
+// Shared frozen empty array for lazy err initialization.
+// Most Vals never accumulate errors, so this avoids one allocation per Val.
+// Frozen to catch accidental mutation (e.g. push) - callers that need a
+// mutable error array must create their own.
+const EMPTY_ERR: any[] = Object.freeze([]) as unknown as any[]
+
 
 let ID = 1000
 
@@ -97,7 +103,19 @@ abstract class Val {
   id: number
   dc: number = 0
   path: string[] = []
-  site: Site = new Site()
+
+  // Lazy site: allocated on first access via getter.
+  // Saves one Site allocation per Val in hot paths where
+  // site is replaced before first access (e.g. MapVal/ListVal.unify).
+  private _site?: Site
+
+  get site(): Site {
+    return this._site ??= new Site()
+  }
+
+  set site(s: Site) {
+    this._site = s
+  }
 
   // Map of boolean flags.
   mark: ValMark = {
@@ -108,12 +126,14 @@ abstract class Val {
   // Actual native value.
   peg: any = undefined
 
-  // TODO: used for top level result - not great
-  // err: Omit<any[], "push"> = []
-  err: any[] = []
+  // Lazy err: shared empty array avoids allocation per Val.
+  // Most Vals never accumulate errors. Only NilVal and top-level
+  // results assign a real error array.
+  err: any[] = EMPTY_ERR
   explain: any[] | null = null
 
-  uh: number[]
+  // Lazy uh: only allocated on first push in MapVal/ListVal.unify.
+  uh?: number[]
 
   deps?: any
 
@@ -136,8 +156,6 @@ abstract class Val {
     // TODO: make this work
     // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
     this.id = ++ID
-
-    this.uh = []
 
     this.mark.type = !!spec.mark?.type
     this.mark.hide = !!spec.mark?.hide
@@ -335,5 +353,6 @@ export {
   Val,
   DONE,
   SPREAD,
+  EMPTY_ERR,
   empty
 }

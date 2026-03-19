@@ -14,7 +14,7 @@ import {
 } from '../ctx'
 
 
-import { Val } from './Val'
+import { Val, EMPTY_ERR } from './Val'
 
 import { AontuError } from '../err'
 
@@ -101,7 +101,7 @@ class NilVal extends Val {
       this.err = spec ?
         Array.isArray(spec.err) ? [...spec.err] :
           null != spec.err ? [spec.err] :
-            [] : []
+            EMPTY_ERR : EMPTY_ERR
     }
 
     // Nil is always DONE, by definition.

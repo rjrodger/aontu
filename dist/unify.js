@@ -121,7 +121,9 @@ class Unify {
         this.cc = 0;
         this.root = root;
         this.res = root;
-        this.err = ctx?.err ?? root.err ?? [];
+        // Always use a fresh array for mutable error collection to avoid
+        // mutating the shared EMPTY_ERR singleton on Val instances.
+        this.err = ctx?.err ?? (root.err.length > 0 ? root.err : []);
         this.explain = ctx?.explain ?? root.explain ?? null;
         let res = root;
         let uctx;
