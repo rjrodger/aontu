@@ -13,6 +13,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         super(spec, ctx);
         this.isPref = true;
         this.isGenable = true;
+        this.cjo = 30000;
         this.rank = 0;
         // this.pref = spec.pref || spec.peg
         // this.superpeg = makeSuper(spec.peg)

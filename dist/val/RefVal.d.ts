@@ -4,6 +4,7 @@ import { FeatureVal } from './FeatureVal';
 declare class RefVal extends FeatureVal {
     isRef: boolean;
     isGenable: boolean;
+    cjo: number;
     absolute: boolean;
     prefix: boolean;
     constructor(spec: {

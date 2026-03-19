@@ -43,6 +43,8 @@ class Val {
         this.isConjunct = false;
         this.isDisjunct = false;
         this.isJunction = false;
+        // Conjunct sort order. Lower values sort first in norm().
+        this.cjo = 99999;
         this.isOp = false;
         this.isPlusOp = false;
         this.isFunc = false;

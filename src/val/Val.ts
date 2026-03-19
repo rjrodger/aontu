@@ -72,6 +72,9 @@ abstract class Val {
   isDisjunct = false
   isJunction = false
 
+  // Conjunct sort order. Lower values sort first in norm().
+  cjo = 99999
+
   isOp = false
   isPlusOp = false
 

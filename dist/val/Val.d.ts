@@ -44,6 +44,7 @@ declare abstract class Val {
     isConjunct: boolean;
     isDisjunct: boolean;
     isJunction: boolean;
+    cjo: number;
     isOp: boolean;
     isPlusOp: boolean;
     isFunc: boolean;

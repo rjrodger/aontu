@@ -29,8 +29,6 @@ import {
 // TODO: FIX: false positive when too many top unifications
 const MAXCYCLE = 999
 
-let uc = 0
-
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
@@ -49,12 +47,13 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
 
   // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
   // See for example PrefVal peg.id equality inspection.
-  if (MAXCYCLE < ctx.seen[saw]) {
-    // console.log('SAW', ctx.seen[saw], saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
+  const sawCount = ctx.seen[saw] ?? 0
+  if (MAXCYCLE < sawCount) {
+    // console.log('SAW', sawCount, saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
   else {
-    ctx.seen[saw] = 1 + (ctx.seen[saw] ?? 0)
+    ctx.seen[saw] = sawCount + 1
 
     try {
 
@@ -131,8 +130,6 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
       }
 
       // console.log('UNITE', why, a?.id, a?.canon, a?.done, b?.id, b?.canon, b?.done, '->', out?.id, out?.canon, out?.done)
-
-      uc++
     }
     catch (err: any) {
       // console.log(err)
@@ -209,6 +206,7 @@ class Unify {
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
+        uctx.seen = {}
         res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
 
         if (0 < uctx.err.length) {

@@ -78,7 +78,7 @@ class ListVal extends BagVal_1.BagVal {
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;
             if (peer instanceof ListVal) {
-                let upeer = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }), peer, TOP, 'list-peer-list');
+                let upeer = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }) : ctx, peer, TOP, 'list-peer-list');
                 // NOTE: peerkey is the index
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
@@ -86,17 +86,17 @@ class ListVal extends BagVal_1.BagVal {
                         bad = (0, err_1.makeNilErr)(ctx, 'closed', peerchild, undefined);
                     }
                     let child = out.peg[peerkey];
+                    const peerctx = ctx.descend(peerkey);
                     let oval = out.peg[peerkey] =
                         undefined === child ? peerchild :
                             child.isTop && peerchild.done ? peerchild :
                                 child.isNil ? child :
                                     peerchild.isNil ? peerchild :
-                                        (0, unify_1.unite)(ctx.descend(peerkey).clone({ explain: (0, utility_1.ec)(te, 'CHD') }), child, peerchild, 'list-peer');
+                                        (0, unify_1.unite)(te ? peerctx.clone({ explain: (0, utility_1.ec)(te, 'CHD') }) : peerctx, child, peerchild, 'list-peer');
                     if (this.spread.cj) {
-                        let key_ctx = ctx.descend(peerkey);
-                        let key_spread_cj = spread_cj.spreadClone(key_ctx);
+                        let key_spread_cj = spread_cj.spreadClone(peerctx);
                         oval = out.peg[peerkey] =
-                            (0, unify_1.unite)(key_ctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }), out.peg[peerkey], key_spread_cj, 'list-spread');
+                            (0, unify_1.unite)(te ? peerctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }) : peerctx, out.peg[peerkey], key_spread_cj, 'list-spread');
                     }
                     (0, utility_1.propagateMarks)(this, oval);
                     done = (done && type_1.DONE === oval.dc);

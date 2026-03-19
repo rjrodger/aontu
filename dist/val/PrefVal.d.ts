@@ -4,6 +4,7 @@ import { FeatureVal } from './FeatureVal';
 declare class PrefVal extends FeatureVal {
     isPref: boolean;
     isGenable: boolean;
+    cjo: number;
     superpeg: Val;
     rank: number;
     constructor(spec: ValSpec, ctx?: AontuContext);

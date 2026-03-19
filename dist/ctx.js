@@ -42,10 +42,11 @@ class AontuContext {
         return ctx;
     }
     descend(key) {
-        return this.clone({
-            root: this.root,
-            path: this.path.concat(key),
-        });
+        const ctx = Object.create(this);
+        ctx.path = this.path.concat(key);
+        ctx._pathstr = undefined;
+        ctx._pathidx = undefined;
+        return ctx;
     }
     addopts(opts) {
         if (null != opts) {

@@ -10,19 +10,13 @@ const err_2 = require("../err");
 const JunctionVal_1 = require("./JunctionVal");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
-const CONJUNCT_ORDERING = {
-    PrefVal: 30000,
-    RefVal: 32500,
-    DisjunctVal: 35000,
-    ConjunctVal: 40000,
-    Any: 99999
-};
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends JunctionVal_1.JunctionVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isConjunct = true;
         this.isGenable = true;
+        this.cjo = 40000;
         this.mark.type = !!spec.mark?.type;
         this.mark.hide = !!spec.mark?.hide;
         this.peg = (Array.isArray(this.peg) ? this.peg : [])
@@ -169,19 +163,28 @@ function norm(terms) {
     let expand = [];
     for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
         if (terms[tI].isConjunct) {
-            expand.push(...terms[tI].peg);
-            pI += terms[tI].peg.length - 1;
+            const cterms = terms[tI].peg;
+            for (let cI = 0; cI < cterms.length; cI++) {
+                expand[pI + cI] = cterms[cI];
+            }
+            pI += cterms.length - 1;
         }
         else {
             expand[pI] = terms[tI];
         }
     }
     // Consistent ordering ensures order independent unification.
-    expand = expand.sort((a, b) => {
-        const an = CONJUNCT_ORDERING[a.constructor.name] ?? CONJUNCT_ORDERING.Any;
-        const bn = CONJUNCT_ORDERING[b.constructor.name] ?? CONJUNCT_ORDERING.Any;
-        return an - bn;
-    });
+    // Skip sort when already in order (common case).
+    let sorted = true;
+    for (let i = 1; i < expand.length; i++) {
+        if (expand[i - 1].cjo > expand[i].cjo) {
+            sorted = false;
+            break;
+        }
+    }
+    if (!sorted) {
+        expand.sort((a, b) => a.cjo - b.cjo);
+    }
     // console.log('NORM', expand.map(t => t.canon).join(', '))
     return expand;
 }

@@ -40,6 +40,7 @@ import { JunctionVal } from '../val/JunctionVal'
 class DisjunctVal extends JunctionVal {
   isDisjunct = true
   isGenable = true
+  cjo = 35000
 
   prefsRanked = false
 

@@ -137,7 +137,8 @@ class ListVal extends BagVal {
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof ListVal) {
-        let upeer: ListVal = (unite(ctx.clone({ explain: ec(te, 'PER') }),
+        let upeer: ListVal = (unite(
+          te ? ctx.clone({ explain: ec(te, 'PER') }) : ctx,
           peer, TOP, 'list-peer-list') as ListVal)
 
         // NOTE: peerkey is the index
@@ -150,20 +151,21 @@ class ListVal extends BagVal {
 
           let child = out.peg[peerkey]
 
+          const peerctx = ctx.descend(peerkey)
+
           let oval = out.peg[peerkey] =
             undefined === child ? peerchild :
               child.isTop && peerchild.done ? peerchild :
                 child.isNil ? child :
                   peerchild.isNil ? peerchild :
-                    unite(ctx.descend(peerkey).clone({ explain: ec(te, 'CHD') }),
+                    unite(te ? peerctx.clone({ explain: ec(te, 'CHD') }) : peerctx,
                       child, peerchild, 'list-peer')
 
           if (this.spread.cj) {
-            let key_ctx = ctx.descend(peerkey)
-            let key_spread_cj = spread_cj.spreadClone(key_ctx)
+            let key_spread_cj = spread_cj.spreadClone(peerctx)
 
             oval = out.peg[peerkey] =
-              unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
+              unite(te ? peerctx.clone({ explain: ec(te, 'PSP:' + peerkey) }) : peerctx,
                 out.peg[peerkey], key_spread_cj, 'list-spread')
           }
 

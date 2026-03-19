@@ -37,20 +37,12 @@ import {
 } from './top'
 
 
-const CONJUNCT_ORDERING: Record<string, number> = {
-  PrefVal: 30000,
-  RefVal: 32500,
-  DisjunctVal: 35000,
-  ConjunctVal: 40000,
-  Any: 99999
-}
-
-
 
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends JunctionVal {
   isConjunct = true
   isGenable = true
+  cjo = 40000
 
   constructor(
     spec: ValSpec,
@@ -257,8 +249,11 @@ function norm(terms: Val[]): Val[] {
   let expand: Val[] = []
   for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
     if (terms[tI].isConjunct) {
-      expand.push(...terms[tI].peg)
-      pI += terms[tI].peg.length - 1
+      const cterms = terms[tI].peg
+      for (let cI = 0; cI < cterms.length; cI++) {
+        expand[pI + cI] = cterms[cI]
+      }
+      pI += cterms.length - 1
     }
     else {
       expand[pI] = terms[tI]
@@ -267,11 +262,18 @@ function norm(terms: Val[]): Val[] {
 
 
   // Consistent ordering ensures order independent unification.
-  expand = expand.sort((a: Val, b: Val) => {
-    const an = CONJUNCT_ORDERING[a.constructor.name] ?? CONJUNCT_ORDERING.Any
-    const bn = CONJUNCT_ORDERING[b.constructor.name] ?? CONJUNCT_ORDERING.Any
-    return an - bn
-  })
+  // Skip sort when already in order (common case).
+  let sorted = true
+  for (let i = 1; i < expand.length; i++) {
+    if (expand[i - 1].cjo > expand[i].cjo) {
+      sorted = false
+      break
+    }
+  }
+
+  if (!sorted) {
+    expand.sort((a: Val, b: Val) => a.cjo - b.cjo)
+  }
 
   // console.log('NORM', expand.map(t => t.canon).join(', '))
 

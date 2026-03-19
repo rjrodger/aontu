@@ -303,6 +303,159 @@ def: garage: {
     )
   })
 
+  test('deep-hierarchy', () => {
+    let ctx = makeCtx()
+    let a0 = new Aontu()
+
+    // Simple deep nesting
+    expect(a0.generate('a:b:c:d:e:1')).equal({ a: { b: { c: { d: { e: 1 } } } } })
+
+    // Deep nesting with merge at leaf
+    expect(a0.generate('a:b:c:d:1 a:b:c:e:2')).equal(
+      { a: { b: { c: { d: 1, e: 2 } } } }
+    )
+
+    // Deep nesting with merge at multiple levels
+    expect(a0.generate('a:b:c:1 a:b:d:2 a:e:3')).equal(
+      { a: { b: { c: 1, d: 2 }, e: 3 } }
+    )
+
+    // Deep nesting with type constraint
+    expect(a0.generate('a:b:c:d:e:number a:b:c:d:e:42')).equal(
+      { a: { b: { c: { d: { e: 42 } } } } }
+    )
+
+    // Deep ref through hierarchy
+    expect(a0.generate('a:b:c:1 d:$.a.b.c')).equal({ a: { b: { c: 1 } }, d: 1 })
+
+    // Deep ref to nested map
+    expect(a0.generate('a:b:{c:1,d:2} e:$.a.b')).equal(
+      { a: { b: { c: 1, d: 2 } }, e: { c: 1, d: 2 } }
+    )
+  })
+
+
+  test('deep-hierarchy-spread', () => {
+    let ctx = makeCtx()
+    let a0 = new Aontu()
+
+    // Spread at depth
+    expect(a0.generate('a:b:{&:string,c:C,d:D}')).equal(
+      { a: { b: { c: 'C', d: 'D' } } }
+    )
+
+    // Spread with nested map constraint at depth
+    expect(a0.generate('a:b:{&:{x:number},c:{x:1},d:{x:2}}')).equal(
+      { a: { b: { c: { x: 1 }, d: { x: 2 } } } }
+    )
+
+    // Deep spread with ref to type constraint (verify canon)
+    expect(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal(
+      '{"t":{"x":number},"a":{"b":{&:$.t,"c":{"x":1},"d":{"x":2}}}}'
+    )
+
+    // Deep spread with ref to concrete map
+    expect(a0.generate('t:{x:1} a:b:{&:$.t,c:{y:A},d:{y:B}}')).equal(
+      { t: { x: 1 }, a: { b: { c: { x: 1, y: 'A' }, d: { x: 1, y: 'B' } } } }
+    )
+
+    // Spread with $KEY at depth
+    expect(a0.generate('a:b:{&:{name:.$KEY},c:{},d:{}}')).equal(
+      { a: { b: { c: { name: 'c' }, d: { name: 'd' } } } }
+    )
+
+    // Nested maps with spread at inner level
+    expect(a0.generate(`
+      a: {
+        b: {
+          &: { y: string }
+          c: { y: Y }
+          d: { y: Z }
+        }
+        e: {
+          &: { z: number }
+          f: { z: 1 }
+          g: { z: 2 }
+        }
+      }
+    `)).equal({
+      a: {
+        b: {
+          c: { y: 'Y' },
+          d: { y: 'Z' },
+        },
+        e: {
+          f: { z: 1 },
+          g: { z: 2 },
+        },
+      }
+    })
+  })
+
+
+  test('deep-hierarchy-pref', () => {
+    let a0 = new Aontu()
+
+    // Pref at depth
+    expect(a0.generate('a:b:c:*1|number')).equal({ a: { b: { c: 1 } } })
+
+    // Override pref at depth
+    expect(a0.generate('a:b:c:*1|number a:b:c:2')).equal({ a: { b: { c: 2 } } })
+
+    // Spread with pref at depth
+    expect(a0.generate('a:b:{&:x:*1|number,c:{},d:{}}')).equal(
+      { a: { b: { c: { x: 1 }, d: { x: 1 } } } }
+    )
+
+    // Override spread pref at depth
+    expect(a0.generate('a:b:{&:x:*1|number,c:{x:2},d:{}}')).equal(
+      { a: { b: { c: { x: 2 }, d: { x: 1 } } } }
+    )
+  })
+
+
+  test('deep-hierarchy-wide', () => {
+    let a0 = new Aontu()
+
+    // Wide map at depth with spread
+    expect(a0.generate(`
+      root: level1: {
+        &: { v: number }
+        a: { v: 1 }
+        b: { v: 2 }
+        c: { v: 3 }
+        d: { v: 4 }
+        e: { v: 5 }
+        f: { v: 6 }
+        g: { v: 7 }
+        h: { v: 8 }
+      }
+    `)).equal({
+      root: {
+        level1: {
+          a: { v: 1 }, b: { v: 2 }, c: { v: 3 }, d: { v: 4 },
+          e: { v: 5 }, f: { v: 6 }, g: { v: 7 }, h: { v: 8 },
+        }
+      }
+    })
+
+    // Wide + deep with merge
+    expect(a0.generate(`
+      a:b:c:x:1
+      a:b:c:y:2
+      a:b:d:x:3
+      a:b:d:y:4
+      a:e:f:x:5
+      a:e:f:y:6
+    `)).equal({
+      a: {
+        b: { c: { x: 1, y: 2 }, d: { x: 3, y: 4 } },
+        e: { f: { x: 5, y: 6 } },
+      }
+    })
+  })
+
+
 })
 
 

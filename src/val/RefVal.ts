@@ -43,6 +43,7 @@ import { FeatureVal } from './FeatureVal'
 class RefVal extends FeatureVal {
   isRef = true
   isGenable = true
+  cjo = 32500
 
   absolute: boolean = false
   prefix: boolean = false

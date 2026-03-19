@@ -18,6 +18,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
         super(spec, ctx);
         this.isRef = true;
         this.isGenable = true;
+        this.cjo = 32500;
         this.absolute = false;
         this.prefix = false;
         this.peg = [];
