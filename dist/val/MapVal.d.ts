@@ -5,6 +5,7 @@ declare class MapVal extends BagVal {
     isMap: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     unify(peer: Val, ctx: AontuContext): Val;
+    spreadClone(ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
     inspection(d?: number): string;

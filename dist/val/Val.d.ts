@@ -75,6 +75,7 @@ declare abstract class Val {
     get done(): boolean;
     same(peer: Val): boolean;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
+    spreadClone(ctx: AontuContext): Val;
     place(v: Val): Val;
     unify(_peer: Val, _ctx: AontuContext): Val;
     get canon(): string;

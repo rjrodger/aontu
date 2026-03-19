@@ -17,15 +17,13 @@ const unite = (ctx, a, b, whence) => {
     const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'unite', a, b);
     let out = a;
     let why = 'u';
-    const saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
-        '@' + ctx.pathstr;
-    /*
-    if (1 < ctx.seen[saw]) {
-      console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '')
-      // console.trace()
-      // process.exit()
-    }
-    */
+    // Cycle-detection key. Use numeric path index for speed; fall back to
+    // full string key when debug is enabled so the saw value is human-readable.
+    const saw = ctx.opts.debug
+        ? (a ? a.id + (a.done ? '' : '*') : '') + '~' +
+            (b ? b.id + (b.done ? '' : '*') : '') + '@' + ctx.pathstr
+        : (a ? a.id + (a.done ? 'd' : '') : 0) + '~' +
+            (b ? b.id + (b.done ? 'd' : '') : 0) + '~' + ctx.pathidx;
     // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
     // See for example PrefVal peg.id equality inspection.
     if (MAXCYCLE < ctx.seen[saw]) {
@@ -54,12 +52,12 @@ const unite = (ctx, a, b, whence) => {
                     why = 'bn';
                 }
                 else if (a.isConjunct) {
-                    out = a.unify(b, ctx.clone({ explain: (0, utility_1.ec)(te, 'CJ') }));
+                    out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'CJ') }) : ctx);
                     unified = true;
                     why = 'acj';
                 }
                 else if (a.isExpect) {
-                    out = a.unify(b, ctx.clone({ explain: (0, utility_1.ec)(te, 'AE') }));
+                    out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'AE') }) : ctx);
                     unified = true;
                     why = 'ae';
                 }
@@ -69,7 +67,7 @@ const unite = (ctx, a, b, whence) => {
                     || b.isPref
                     || b.isFunc
                     || b.isExpect) {
-                    out = b.unify(a, ctx.clone({ explain: (0, utility_1.ec)(te, 'BW') }));
+                    out = b.unify(a, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'BW') }) : ctx);
                     unified = true;
                     why = 'bv';
                 }
@@ -79,7 +77,7 @@ const unite = (ctx, a, b, whence) => {
                     why = 'up';
                 }
                 else {
-                    out = a.unify(b, ctx.clone({ explain: (0, utility_1.ec)(te, 'GN') }));
+                    out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'GN') }) : ctx);
                     unified = true;
                     why = 'ab';
                 }
@@ -91,7 +89,7 @@ const unite = (ctx, a, b, whence) => {
             // console.log('UNITE-DONE', out.id, out.canon, out.done)
             // if (DONE !== out.dc && !unified) {
             if (!out.done && !unified) {
-                let nout = out.unify((0, top_1.top)(), ctx.clone({ explain: (0, utility_1.ec)(te, 'ND') }));
+                let nout = out.unify((0, top_1.top)(), te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'ND') }) : ctx);
                 out = nout;
                 why += 'T';
             }
@@ -153,7 +151,7 @@ class Unify {
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
-                res = unite(uctx.clone({ explain: (0, utility_1.ec)(te, 'run') }), res, (0, top_1.top)(), 'unify');
+                res = unite(te ? uctx.clone({ explain: (0, utility_1.ec)(te, 'run') }) : uctx, res, (0, top_1.top)(), 'unify');
                 if (0 < uctx.err.length) {
                     break;
                 }

@@ -25,6 +25,7 @@ class AontuContext {
         this.seen = cfg.seen ?? {};
         this.srcpath = cfg.srcpath ?? undefined;
         this.deps = cfg.deps ?? {};
+        this._pathmap = new Map();
         this.opts = (0, type_1.DEFAULT_OPTS)();
         this.addopts(cfg.opts);
     }
@@ -37,6 +38,7 @@ class AontuContext {
         ctx.err = cfg.err ?? ctx.err;
         ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain;
         ctx._pathstr = undefined;
+        ctx._pathidx = undefined;
         return ctx;
     }
     descend(key) {
@@ -97,6 +99,18 @@ class AontuContext {
             node = undefined;
         }
         return node;
+    }
+    get pathidx() {
+        if (undefined === this._pathidx) {
+            const key = this.path.join('\x00');
+            let idx = this._pathmap.get(key);
+            if (undefined === idx) {
+                idx = this._pathmap.size;
+                this._pathmap.set(key, idx);
+            }
+            this._pathidx = idx;
+        }
+        return this._pathidx;
     }
     get pathstr() {
         return this._pathstr ??

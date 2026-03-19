@@ -61,6 +61,8 @@ class AontuContext {
   opts: AontuOptions
 
   _pathstr: string | undefined
+  _pathidx: number | undefined
+  _pathmap: Map<string, number>
 
 
   constructor(cfg: AontuContextConfig) {
@@ -88,6 +90,8 @@ class AontuContext {
 
     this.deps = cfg.deps ?? {}
 
+    this._pathmap = new Map()
+
     this.opts = DEFAULT_OPTS()
     this.addopts(cfg.opts)
   }
@@ -110,6 +114,7 @@ class AontuContext {
     ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain
 
     ctx._pathstr = undefined
+    ctx._pathidx = undefined
 
     return ctx
   }
@@ -187,6 +192,20 @@ class AontuContext {
     }
 
     return node
+  }
+
+
+  get pathidx(): number {
+    if (undefined === this._pathidx) {
+      const key = this.path.join('\x00')
+      let idx = this._pathmap.get(key)
+      if (undefined === idx) {
+        idx = this._pathmap.size
+        this._pathmap.set(key, idx)
+      }
+      this._pathidx = idx
+    }
+    return this._pathidx
   }
 
 

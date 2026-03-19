@@ -195,6 +195,14 @@ abstract class Val {
   }
 
 
+  // Shallow clone for spread constraints: creates a new Val with the
+  // correct path context but shares non-path-dependent children.
+  // Override in MapVal/ListVal to avoid deep-cloning simple children.
+  spreadClone(ctx: AontuContext): Val {
+    return this.clone(ctx)
+  }
+
+
   place(v: Val) {
     v.site.row = this.site.row
     v.site.col = this.site.col

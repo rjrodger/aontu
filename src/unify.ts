@@ -39,18 +39,13 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   let out = a
   let why = 'u'
 
-  const saw =
-    (a ? a.id + (a.done ? '' : '*') : '') + '~' + (b ? b.id + (b.done ? '' : '*') : '') +
-    '@' + ctx.pathstr
-
-
-  /*
-  if (1 < ctx.seen[saw]) {
-    console.log('UNITE-SAW', ctx.cc, saw, ctx.seen[saw], 1 < ctx.seen[saw] ? (a?.canon + ' ~ ' + b?.canon) : '')
-    // console.trace()
-    // process.exit()
-  }
-  */
+  // Cycle-detection key. Use numeric path index for speed; fall back to
+  // full string key when debug is enabled so the saw value is human-readable.
+  const saw = ctx.opts.debug
+    ? (a ? a.id + (a.done ? '' : '*') : '') + '~' +
+      (b ? b.id + (b.done ? '' : '*') : '') + '@' + ctx.pathstr
+    : (a ? a.id + (a.done ? 'd' : '') : 0) + '~' +
+      (b ? b.id + (b.done ? 'd' : '') : 0) + '~' + ctx.pathidx
 
   // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
   // See for example PrefVal peg.id equality inspection.
@@ -85,12 +80,12 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
           why = 'bn'
         }
         else if (a.isConjunct) {
-          out = a.unify(b, ctx.clone({ explain: ec(te, 'CJ') }))
+          out = a.unify(b, te ? ctx.clone({ explain: ec(te, 'CJ') }) : ctx)
           unified = true
           why = 'acj'
         }
         else if (a.isExpect) {
-          out = a.unify(b, ctx.clone({ explain: ec(te, 'AE') }))
+          out = a.unify(b, te ? ctx.clone({ explain: ec(te, 'AE') }) : ctx)
           unified = true
           why = 'ae'
         }
@@ -103,7 +98,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
           || b.isExpect
         ) {
 
-          out = b.unify(a, ctx.clone({ explain: ec(te, 'BW') }))
+          out = b.unify(a, te ? ctx.clone({ explain: ec(te, 'BW') }) : ctx)
           unified = true
           why = 'bv'
         }
@@ -115,7 +110,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         }
 
         else {
-          out = a.unify(b, ctx.clone({ explain: ec(te, 'GN') }))
+          out = a.unify(b, te ? ctx.clone({ explain: ec(te, 'GN') }) : ctx)
           unified = true
           why = 'ab'
         }
@@ -130,7 +125,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
 
       // if (DONE !== out.dc && !unified) {
       if (!out.done && !unified) {
-        let nout = out.unify(top(), ctx.clone({ explain: ec(te, 'ND') }))
+        let nout = out.unify(top(), te ? ctx.clone({ explain: ec(te, 'ND') }) : ctx)
         out = nout
         why += 'T'
       }
@@ -214,7 +209,7 @@ class Unify {
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
-        res = unite(uctx.clone({ explain: ec(te, 'run') }), res, top(), 'unify')
+        res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
 
         if (0 < uctx.err.length) {
           break

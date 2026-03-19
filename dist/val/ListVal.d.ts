@@ -7,6 +7,7 @@ declare class ListVal extends BagVal {
         peg: ValList;
     }, ctx?: AontuContext);
     unify(peer: Val, ctx: AontuContext): Val;
+    spreadClone(ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
 }

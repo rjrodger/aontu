@@ -137,10 +137,8 @@ class MapVal extends BagVal {
       for (let key in this.peg) {
         const keyctx = ctx.descend(key)
 
-        const key_spread_cj = spread_cj.clone(keyctx)
+        const key_spread_cj = spread_cj.spreadClone(keyctx)
         const child = this.peg[key]
-
-        // console.log('MAPVAL-SPREAD', this.id, key, child, key_spread_cj.id, key_spread_cj.canon, key_spread_cj.done)
 
         propagateMarks(this, child)
 
@@ -187,7 +185,7 @@ class MapVal extends BagVal {
 
           if (this.spread.cj) {
             let key_ctx = ctx.descend(peerkey)
-            let key_spread_cj = spread_cj.clone(key_ctx)
+            let key_spread_cj = spread_cj.spreadClone(key_ctx)
 
             oval = out.peg[peerkey] =
               unite(key_ctx.clone({ explain: ec(te, 'PSP:' + peerkey) }),
@@ -225,6 +223,46 @@ class MapVal extends BagVal {
     // )
 
     ctx.explain && explainClose(te, out)
+
+    return out
+  }
+
+
+  // Spread clone: only deep-clone children that are path-dependent
+  // (isFunc, isRef). Share all other children directly to avoid
+  // N x M allocations for maps with N keys and M spread fields.
+  // Spread clone: when all children are ScalarKindVal (simple type
+  // constraints like `string`, `number`), share them directly to avoid
+  // N x M allocations. ScalarKindVal is safe to share: it is immutable,
+  // always done, never path-dependent, and never has marks mutated.
+  // For anything more complex, fall back to full deep clone.
+  spreadClone(ctx: AontuContext): Val {
+    let allScalarKind = true
+    for (let key in this.peg) {
+      if (!(this.peg[key] as any)?.isScalarKind) {
+        allScalarKind = false
+        break
+      }
+    }
+
+    if (!allScalarKind) {
+      return this.clone(ctx)
+    }
+
+    let out = (super.clone(ctx) as MapVal)
+    out.peg = {}
+
+    for (let entry of Object.entries(this.peg)) {
+      out.peg[entry[0]] = entry[1]
+    }
+
+    // Must create a new spread object to avoid mutating the original.
+    out.spread = {
+      cj: this.spread.cj ? this.spread.cj.spreadClone(ctx) : undefined,
+    }
+
+    out.closed = this.closed
+    out.optionalKeys = [...this.optionalKeys]
 
     return out
   }
