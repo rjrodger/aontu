@@ -254,6 +254,43 @@ describe('unify', function() {
   })
 
 
+  test('spread-pref-order-independent', () => {
+    // Spread with pref should be order independent.
+    // When empty map {} appears before the pref value *K, the spread constraint
+    // should still resolve correctly via the pref default.
+
+    // Working order: pref before empty map
+    expect(G('a:&:k:string a:x:k:*K a:x:{}')).equal({ a: { x: { k: 'K' } } })
+
+    // Failing order (bug): empty map before pref
+    expect(G('a:&:k:string a:x:{} a:x:k:*K')).equal({ a: { x: { k: 'K' } } })
+
+    // Additional order independence checks
+    expect(G('a:x:{} a:&:k:string a:x:k:*K')).equal({ a: { x: { k: 'K' } } })
+    expect(G('a:x:k:*K a:&:k:string a:x:{}')).equal({ a: { x: { k: 'K' } } })
+
+    // Verify concrete values still work in both orders with spread
+    expect(G('a:&:k:string a:x:{} a:x:k:K')).equal({ a: { x: { k: 'K' } } })
+    expect(G('a:&:k:string a:x:k:K a:x:{}')).equal({ a: { x: { k: 'K' } } })
+  })
+
+
+  test('spread-pref-ref-order-independent', () => {
+    // PrefVal wrapping RefVal should resolve against spread constraints.
+    // The PrefVal superpeg must be recomputed after the ref resolves.
+
+    // Pref+ref with spread, no empty map
+    expect(G('v:K a:&:k:string a:x:k:*$.v')).equal({ v: 'K', a: { x: { k: 'K' } } })
+
+    // Pref+ref with spread and empty map, both orders
+    expect(G('v:K a:&:k:string a:x:{} a:x:k:*$.v')).equal({ v: 'K', a: { x: { k: 'K' } } })
+    expect(G('v:K a:&:k:string a:x:k:*$.v a:x:{}')).equal({ v: 'K', a: { x: { k: 'K' } } })
+
+    // Forward ref (target defined after usage)
+    expect(G('a:&:k:string a:x:{} a:x:k:*$.v v:K')).equal({ v: 'K', a: { x: { k: 'K' } } })
+  })
+
+
 })
 
 

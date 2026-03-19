@@ -89,6 +89,11 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
           unified = true
           why = 'acj'
         }
+        else if (a.isExpect) {
+          out = a.unify(b, ctx.clone({ explain: ec(te, 'AE') }))
+          unified = true
+          why = 'ae'
+        }
         else if (
           b.isConjunct
           || b.isDisjunct

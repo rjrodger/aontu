@@ -1,4 +1,7 @@
 
+// NOTE: use @"...path..." as fisrt arg to load a file
+
+
 const Util = require('node:util')
 const Fs = require('fs')
 const { Aontu, formatExplain } = require('..')
@@ -27,6 +30,7 @@ let err = []
 // err.foo = 1
 
 let explain = null
+
 
 if(hasDebugArg) {
   console.log('> SRC:', args.src)

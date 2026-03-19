@@ -65,6 +65,7 @@ class PrefVal extends FeatureVal {
         this.peg, top(), 'pref/resolve')
       // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
+      this.superpeg = this.peg.superior()
     }
 
     if (peer instanceof PrefVal) {

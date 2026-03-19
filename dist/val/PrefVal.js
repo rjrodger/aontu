@@ -34,6 +34,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
             const resolved = (0, unify_1.unite)(ctx.clone({ explain: ctx.explain && (0, utility_1.ec)(te, 'RES') }), this.peg, (0, top_1.top)(), 'pref/resolve');
             // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
+            this.superpeg = this.peg.superior();
         }
         if (peer instanceof PrefVal) {
             why += 'pref-';

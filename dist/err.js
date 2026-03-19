@@ -112,9 +112,14 @@ function resolveSrc(v, errctx, position) {
         // console.log(v)
         // console.trace()
     }
-    if (errctx && (undefined == src || '' === src)) {
-        src = 'SOURCE-NOT-FOUND:' + (null != v?.site.url ? (' ' + v.site.url) : '') +
-            (null == errctx?.fs ? ' (NO-FS)' : '');
+    if (undefined == src || '' === src) {
+        if (errctx?.src) {
+            src = errctx.src;
+        }
+        else if (errctx) {
+            src = 'SOURCE-NOT-FOUND:' + (null != v?.site.url ? (' ' + v.site.url) : '') +
+                (null == errctx?.fs ? ' (NO-FS)' : '');
+        }
     }
     // console.log('AONTU-resolveSrc', position, v, v?.site.url, errctx?.fs, src?.length)
     return src;
