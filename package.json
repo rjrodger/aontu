@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "types": "dist/aontu.d.ts",
@@ -40,12 +40,12 @@
     "@jsonic/expr": "^2.0.0",
     "@jsonic/multisource": "^2.5.0",
     "@jsonic/path": "^1.5.1",
-    "jsonic": "^2.18.0"
+    "jsonic": "^2.19.0"
   },
   "devDependencies": {
     "@hapi/code": "^9.0.3",
     "@types/node": "^25.5.0",
-    "memfs": "^4.56.11",
+    "memfs": "^4.57.1",
     "typescript": "^5.9.3"
   },
   "aliasify": {
