@@ -15,7 +15,7 @@ import {
 } from '../dist/ctx'
 
 
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import { top } from '../dist/val/top'
 import { MapVal } from '../dist/val/MapVal'
 import { RefVal } from '../dist/val/RefVal'

@@ -18,7 +18,7 @@ import {
 
 
 
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import { MapVal } from '../dist/val/MapVal'
 
 import {

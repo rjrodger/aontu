@@ -14,7 +14,7 @@ import {
 import { MapVal } from '../dist/val/MapVal'
 import { NilVal } from '../dist/val/NilVal'
 
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import {
   unite,
 } from '../dist/unify'

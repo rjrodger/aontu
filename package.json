@@ -43,7 +43,6 @@
     "jsonic": "^2.19.0"
   },
   "devDependencies": {
-    "@hapi/code": "^9.0.3",
     "@types/node": "^25.5.0",
     "memfs": "^4.57.1",
     "typescript": "^5.9.3"

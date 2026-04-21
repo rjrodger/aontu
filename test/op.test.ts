@@ -1,7 +1,7 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
 import { describe, it } from 'node:test'
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 
 
 import {

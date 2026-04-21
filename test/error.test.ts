@@ -2,7 +2,7 @@
 
 import Fs from 'node:fs'
 import { describe, it } from 'node:test'
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import { Aontu, AontuContext } from '../dist/aontu'
 
 import { MapVal } from '../dist/val/MapVal'

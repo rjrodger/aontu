@@ -27,7 +27,7 @@ import {
 
 const TOP = top()
 
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import { MapVal } from '../dist/val/MapVal'
 
 let lang = new Lang()

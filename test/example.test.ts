@@ -1,7 +1,7 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 
 import { describe, test } from 'node:test'
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import { Unify } from '../dist/unify'
 import { Lang } from '../dist/lang'
 import { Aontu } from '..'

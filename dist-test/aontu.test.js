@@ -3,55 +3,55 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const memfs_1 = require("memfs");
-const code_1 = require("@hapi/code");
+const expect_1 = require("./expect");
 const MapVal_1 = require("../dist/val/MapVal");
 const aontu_1 = require("../dist/aontu");
 (0, node_test_1.describe)('aontu', function () {
     (0, node_test_1.test)('basic-api', async () => {
         let a0 = new aontu_1.Aontu();
         let p0 = a0.parse('a:number');
-        (0, code_1.expect)(p0?.canon).equal('{"a":number}');
+        (0, expect_1.expect)(p0?.canon).equal('{"a":number}');
         let v0 = a0.unify('a:1');
-        (0, code_1.expect)(v0?.canon).equal('{"a":1}');
+        (0, expect_1.expect)(v0?.canon).equal('{"a":1}');
         let v0a = a0.unify(v0);
-        (0, code_1.expect)(v0a?.canon).equal('{"a":1}');
+        (0, expect_1.expect)(v0a?.canon).equal('{"a":1}');
         let d0 = a0.generate('a:2');
-        (0, code_1.expect)(d0).equal({ a: 2 });
+        (0, expect_1.expect)(d0).equal({ a: 2 });
     });
     (0, node_test_1.test)('error-api', async () => {
         let a0 = new aontu_1.Aontu();
-        (0, code_1.expect)(() => a0.parse('a::number')).throws(/unexpected char/);
-        (0, code_1.expect)(a0.parse('a:number a:A').canon).equal('{"a":number&"A"}');
-        (0, code_1.expect)(() => a0.unify('a::1')).throws(/unexpected char/);
-        (0, code_1.expect)(() => a0.unify('a:1 a:2')).throws(/Cannot unify value: 2 with value: 1/);
-        (0, code_1.expect)(() => a0.generate('a::A')).throws(/unexpected char/);
-        (0, code_1.expect)(() => a0.generate('a:A a:B')).throws(/Cannot unify value: "B" with value: "A"/);
+        (0, expect_1.expect)(() => a0.parse('a::number')).throws(/unexpected char/);
+        (0, expect_1.expect)(a0.parse('a:number a:A').canon).equal('{"a":number&"A"}');
+        (0, expect_1.expect)(() => a0.unify('a::1')).throws(/unexpected char/);
+        (0, expect_1.expect)(() => a0.unify('a:1 a:2')).throws(/Cannot unify value: 2 with value: 1/);
+        (0, expect_1.expect)(() => a0.generate('a::A')).throws(/unexpected char/);
+        (0, expect_1.expect)(() => a0.generate('a:A a:B')).throws(/Cannot unify value: "B" with value: "A"/);
     });
     (0, node_test_1.test)('clone', async () => {
         let a0 = new aontu_1.Aontu();
         const v0 = a0.unify('a:1');
         const c0 = makeCtx();
         const v0c = v0.clone(c0);
-        (0, code_1.expect)(v0.done).equal(v0c.done);
+        (0, expect_1.expect)(v0.done).equal(v0c.done);
     });
     (0, node_test_1.test)('happy', async () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('a:1');
-        (0, code_1.expect)(v0.canon).equal('{"a":1}');
-        (0, code_1.expect)(a0.unify('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}');
-        (0, code_1.expect)(a0.unify('a:b:1,a:c:2').canon).equal('{"a":{"b":1,"c":2}}');
-        (0, code_1.expect)(a0.unify(`
+        (0, expect_1.expect)(v0.canon).equal('{"a":1}');
+        (0, expect_1.expect)(a0.unify('a:{b:1},a:{c:2}').canon).equal('{"a":{"b":1,"c":2}}');
+        (0, expect_1.expect)(a0.unify('a:b:1,a:c:2').canon).equal('{"a":{"b":1,"c":2}}');
+        (0, expect_1.expect)(a0.unify(`
 a:{b:1}
 a:{c:2}
 `).canon).equal('{"a":{"b":1,"c":2}}');
         let p0 = new aontu_1.Lang();
-        (0, code_1.expect)(p0.parse(`
+        (0, expect_1.expect)(p0.parse(`
 u: { x: 1, y: number}
 q: a: $.u
 w: b: $.q.a & {y:2,z:3}
 `).canon).equal('{"u":{"x":1,"y":number},"q":{"a":$.u},"w":{"b":$.q.a&{"y":2,"z":3}}}');
-        (0, code_1.expect)(a0.unify(`
+        (0, expect_1.expect)(a0.unify(`
 q: a: { x: 1 }
 w0: b: $.q.a & {y:2,z:3}
 w1: b: {y:2,z:3} & $.q.a
@@ -61,7 +61,7 @@ w1: b: {y:2,z:3} & $.q.a
             w1: { b: { x: 1, y: 2, z: 3 } },
         });
         // TODO: fix in jsonic
-        (0, code_1.expect)(a0.unify('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}');
+        (0, expect_1.expect)(a0.unify('{a:b:1\na:c:2}').canon).equal('{"a":{"b":1,"c":2}}');
     });
     // TODO: create ctx.test.ts
     /*
@@ -81,8 +81,8 @@ w1: b: {y:2,z:3} & $.q.a
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('@"' + __dirname + '/../test/t02.jsonic"');
-        (0, code_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}');
-        (0, code_1.expect)(v0.gen(ctx)).equal({
+        (0, expect_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}');
+        (0, expect_1.expect)(v0.gen(ctx)).equal({
             // sys: { ent: { name: undefined } },
             ent: {
                 foo: {
@@ -112,53 +112,53 @@ w1: b: {y:2,z:3} & $.q.a
             });
         }
         catch (err) {
-            (0, code_1.expect)(err.message).include('Cannot unify value: integer|*1 with value: true');
+            (0, expect_1.expect)(err.message).include('Cannot unify value: integer|*1 with value: true');
         }
     });
     (0, node_test_1.test)('map-spread', () => {
         let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}');
-        (0, code_1.expect)(v0.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
+        (0, expect_1.expect)(v0.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}');
-        (0, code_1.expect)(v1.canon).equal('{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}');
+        (0, expect_1.expect)(v1.canon).equal('{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}');
         let v10 = a0.unify('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}');
-        (0, code_1.expect)(v10.canon).equal('{"a":{&:{"x":1}},' +
+        (0, expect_1.expect)(v10.canon).equal('{"a":{&:{"x":1}},' +
             '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
             '"c":{&:{"x":2},"y":{"k":3,"x":2}}}');
     });
     (0, node_test_1.test)('empty-and-comments', () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
-        (0, code_1.expect)(a0.unify('').gen(ctx)).equal({});
-        (0, code_1.expect)(a0.unify(`
+        (0, expect_1.expect)(a0.unify('').gen(ctx)).equal({});
+        (0, expect_1.expect)(a0.unify(`
     # comment
     `).gen(ctx)).equal({});
-        (0, code_1.expect)(a0.unify(undefined).gen(ctx)).equal({});
-        (0, code_1.expect)(a0.parse('')?.isMap).equal(true);
-        (0, code_1.expect)(a0.parse(null)?.isMap).equal(true);
-        (0, code_1.expect)(a0.parse(undefined)?.isMap).equal(true);
-        (0, code_1.expect)(a0.unify('')?.isMap).equal(true);
-        (0, code_1.expect)(a0.unify(null)?.isMap).equal(true);
-        (0, code_1.expect)(a0.unify(undefined)?.isMap).equal(true);
-        (0, code_1.expect)(a0.generate('')).equal({});
-        (0, code_1.expect)(a0.generate(null)).equal({});
-        (0, code_1.expect)(a0.generate(undefined)).equal({});
+        (0, expect_1.expect)(a0.unify(undefined).gen(ctx)).equal({});
+        (0, expect_1.expect)(a0.parse('')?.isMap).equal(true);
+        (0, expect_1.expect)(a0.parse(null)?.isMap).equal(true);
+        (0, expect_1.expect)(a0.parse(undefined)?.isMap).equal(true);
+        (0, expect_1.expect)(a0.unify('')?.isMap).equal(true);
+        (0, expect_1.expect)(a0.unify(null)?.isMap).equal(true);
+        (0, expect_1.expect)(a0.unify(undefined)?.isMap).equal(true);
+        (0, expect_1.expect)(a0.generate('')).equal({});
+        (0, expect_1.expect)(a0.generate(null)).equal({});
+        (0, expect_1.expect)(a0.generate(undefined)).equal({});
     });
     (0, node_test_1.test)('spread-edges', () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
-        (0, code_1.expect)(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } });
-        (0, code_1.expect)(a0.unify('a:{} &:{x:1}').gen(ctx)).equal({ a: { x: 1 } });
+        (0, expect_1.expect)(a0.unify('a:b:{} a:&:{x:1}').gen(ctx)).equal({ a: { b: { x: 1 } } });
+        (0, expect_1.expect)(a0.unify('a:{} &:{x:1}').gen(ctx)).equal({ a: { x: 1 } });
     });
     (0, node_test_1.test)('key-edges', () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
-        (0, code_1.expect)(a0.unify('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } });
-        (0, code_1.expect)(a0.unify('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } });
-        (0, code_1.expect)(a0.unify('a:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { k: 'a' } });
-        (0, code_1.expect)(a0.unify('a:b:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } });
-        (0, code_1.expect)(a0.unify('x:1 a:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { k: 'a' } });
-        (0, code_1.expect)(a0.unify('x:1 a:b:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } });
+        (0, expect_1.expect)(a0.unify('a:{k:.$KEY}').gen(ctx)).equal({ a: { k: 'a' } });
+        (0, expect_1.expect)(a0.unify('a:b:{k:.$KEY}').gen(ctx)).equal({ a: { b: { k: 'b' } } });
+        (0, expect_1.expect)(a0.unify('a:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { k: 'a' } });
+        (0, expect_1.expect)(a0.unify('a:b:{k:.$KEY} x:1').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } });
+        (0, expect_1.expect)(a0.unify('x:1 a:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { k: 'a' } });
+        (0, expect_1.expect)(a0.unify('x:1 a:b:{k:.$KEY}').gen(ctx)).equal({ x: 1, a: { b: { k: 'b' } } });
     });
     (0, node_test_1.test)('practical-path-spread', () => {
         let ctx = makeCtx();
@@ -187,7 +187,7 @@ def: garage: {
   &: $.def.car
 }
 `);
-        (0, code_1.expect)(v0.gen(ctx)).equal({
+        (0, expect_1.expect)(v0.gen(ctx)).equal({
             micks: {
                 porsche: { doors: 4, color: 'silver' },
                 ferrari: { doors: 4, color: 'red' },
@@ -210,39 +210,39 @@ def: garage: {
         )
         */
         let v1 = a0.unify(`a:@"foo.jsonic"`, { fs, path: '/' });
-        (0, code_1.expect)(v1.canon).equal('{"a":{"f":11}}');
+        (0, expect_1.expect)(v1.canon).equal('{"a":{"f":11}}');
     });
     (0, node_test_1.test)('deep-hierarchy', () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         // Simple deep nesting
-        (0, code_1.expect)(a0.generate('a:b:c:d:e:1')).equal({ a: { b: { c: { d: { e: 1 } } } } });
+        (0, expect_1.expect)(a0.generate('a:b:c:d:e:1')).equal({ a: { b: { c: { d: { e: 1 } } } } });
         // Deep nesting with merge at leaf
-        (0, code_1.expect)(a0.generate('a:b:c:d:1 a:b:c:e:2')).equal({ a: { b: { c: { d: 1, e: 2 } } } });
+        (0, expect_1.expect)(a0.generate('a:b:c:d:1 a:b:c:e:2')).equal({ a: { b: { c: { d: 1, e: 2 } } } });
         // Deep nesting with merge at multiple levels
-        (0, code_1.expect)(a0.generate('a:b:c:1 a:b:d:2 a:e:3')).equal({ a: { b: { c: 1, d: 2 }, e: 3 } });
+        (0, expect_1.expect)(a0.generate('a:b:c:1 a:b:d:2 a:e:3')).equal({ a: { b: { c: 1, d: 2 }, e: 3 } });
         // Deep nesting with type constraint
-        (0, code_1.expect)(a0.generate('a:b:c:d:e:number a:b:c:d:e:42')).equal({ a: { b: { c: { d: { e: 42 } } } } });
+        (0, expect_1.expect)(a0.generate('a:b:c:d:e:number a:b:c:d:e:42')).equal({ a: { b: { c: { d: { e: 42 } } } } });
         // Deep ref through hierarchy
-        (0, code_1.expect)(a0.generate('a:b:c:1 d:$.a.b.c')).equal({ a: { b: { c: 1 } }, d: 1 });
+        (0, expect_1.expect)(a0.generate('a:b:c:1 d:$.a.b.c')).equal({ a: { b: { c: 1 } }, d: 1 });
         // Deep ref to nested map
-        (0, code_1.expect)(a0.generate('a:b:{c:1,d:2} e:$.a.b')).equal({ a: { b: { c: 1, d: 2 } }, e: { c: 1, d: 2 } });
+        (0, expect_1.expect)(a0.generate('a:b:{c:1,d:2} e:$.a.b')).equal({ a: { b: { c: 1, d: 2 } }, e: { c: 1, d: 2 } });
     });
     (0, node_test_1.test)('deep-hierarchy-spread', () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         // Spread at depth
-        (0, code_1.expect)(a0.generate('a:b:{&:string,c:C,d:D}')).equal({ a: { b: { c: 'C', d: 'D' } } });
+        (0, expect_1.expect)(a0.generate('a:b:{&:string,c:C,d:D}')).equal({ a: { b: { c: 'C', d: 'D' } } });
         // Spread with nested map constraint at depth
-        (0, code_1.expect)(a0.generate('a:b:{&:{x:number},c:{x:1},d:{x:2}}')).equal({ a: { b: { c: { x: 1 }, d: { x: 2 } } } });
+        (0, expect_1.expect)(a0.generate('a:b:{&:{x:number},c:{x:1},d:{x:2}}')).equal({ a: { b: { c: { x: 1 }, d: { x: 2 } } } });
         // Deep spread with ref to type constraint (verify canon)
-        (0, code_1.expect)(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal('{"t":{"x":number},"a":{"b":{&:$.t,"c":{"x":1},"d":{"x":2}}}}');
+        (0, expect_1.expect)(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal('{"t":{"x":number},"a":{"b":{&:$.t,"c":{"x":1},"d":{"x":2}}}}');
         // Deep spread with ref to concrete map
-        (0, code_1.expect)(a0.generate('t:{x:1} a:b:{&:$.t,c:{y:A},d:{y:B}}')).equal({ t: { x: 1 }, a: { b: { c: { x: 1, y: 'A' }, d: { x: 1, y: 'B' } } } });
+        (0, expect_1.expect)(a0.generate('t:{x:1} a:b:{&:$.t,c:{y:A},d:{y:B}}')).equal({ t: { x: 1 }, a: { b: { c: { x: 1, y: 'A' }, d: { x: 1, y: 'B' } } } });
         // Spread with $KEY at depth
-        (0, code_1.expect)(a0.generate('a:b:{&:{name:.$KEY},c:{},d:{}}')).equal({ a: { b: { c: { name: 'c' }, d: { name: 'd' } } } });
+        (0, expect_1.expect)(a0.generate('a:b:{&:{name:.$KEY},c:{},d:{}}')).equal({ a: { b: { c: { name: 'c' }, d: { name: 'd' } } } });
         // Nested maps with spread at inner level
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       a: {
         b: {
           &: { y: string }
@@ -271,18 +271,18 @@ def: garage: {
     (0, node_test_1.test)('deep-hierarchy-pref', () => {
         let a0 = new aontu_1.Aontu();
         // Pref at depth
-        (0, code_1.expect)(a0.generate('a:b:c:*1|number')).equal({ a: { b: { c: 1 } } });
+        (0, expect_1.expect)(a0.generate('a:b:c:*1|number')).equal({ a: { b: { c: 1 } } });
         // Override pref at depth
-        (0, code_1.expect)(a0.generate('a:b:c:*1|number a:b:c:2')).equal({ a: { b: { c: 2 } } });
+        (0, expect_1.expect)(a0.generate('a:b:c:*1|number a:b:c:2')).equal({ a: { b: { c: 2 } } });
         // Spread with pref at depth
-        (0, code_1.expect)(a0.generate('a:b:{&:x:*1|number,c:{},d:{}}')).equal({ a: { b: { c: { x: 1 }, d: { x: 1 } } } });
+        (0, expect_1.expect)(a0.generate('a:b:{&:x:*1|number,c:{},d:{}}')).equal({ a: { b: { c: { x: 1 }, d: { x: 1 } } } });
         // Override spread pref at depth
-        (0, code_1.expect)(a0.generate('a:b:{&:x:*1|number,c:{x:2},d:{}}')).equal({ a: { b: { c: { x: 2 }, d: { x: 1 } } } });
+        (0, expect_1.expect)(a0.generate('a:b:{&:x:*1|number,c:{x:2},d:{}}')).equal({ a: { b: { c: { x: 2 }, d: { x: 1 } } } });
     });
     (0, node_test_1.test)('deep-hierarchy-wide', () => {
         let a0 = new aontu_1.Aontu();
         // Wide map at depth with spread
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       root: level1: {
         &: { v: number }
         a: { v: 1 }
@@ -303,7 +303,7 @@ def: garage: {
             }
         });
         // Wide + deep with merge
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       a:b:c:x:1
       a:b:c:y:2
       a:b:d:x:3
@@ -320,7 +320,7 @@ def: garage: {
     (0, node_test_1.test)('ref-heavy-wide', () => {
         let a0 = new aontu_1.Aontu();
         // Many sibling keys each referencing the same source
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       src: 42
       a: $.src
       b: $.src
@@ -334,7 +334,7 @@ def: garage: {
             src: 42, a: 42, b: 42, c: 42, d: 42, e: 42, f: 42, g: 42, h: 42
         });
         // Many refs pointing to different sources
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       s1: 1, s2: 2, s3: 3, s4: 4, s5: 5, s6: 6, s7: 7, s8: 8
       a: $.s1, b: $.s2, c: $.s3, d: $.s4
       e: $.s5, f: $.s6, g: $.s7, h: $.s8
@@ -343,7 +343,7 @@ def: garage: {
             a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8,
         });
         // Wide refs to nested paths
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       src: { x: 10, y: 20 }
       a: $.src.x
       b: $.src.y
@@ -359,7 +359,7 @@ def: garage: {
     (0, node_test_1.test)('ref-heavy-deep', () => {
         let a0 = new aontu_1.Aontu();
         // Deep ref chain (each level references the next)
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       a: { v: $.b.v }
       b: { v: $.c.v }
       c: { v: $.d.v }
@@ -371,7 +371,7 @@ def: garage: {
             d: { v: 99 }, e: { v: 99 }, f: { v: 99 },
         });
         // Deep nesting with refs at each level
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       root: {
         a: { b: { c: { d: { val: 1 } } } }
         r1: $.root.a.b.c.d.val
@@ -389,7 +389,7 @@ def: garage: {
             }
         });
         // Refs through 4 levels of nesting
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       a: b: c: d: v: 7
       x: $.a.b.c.d.v
       y: $.a.b.c.d
@@ -404,7 +404,7 @@ def: garage: {
     (0, node_test_1.test)('ref-heavy-cross', () => {
         let a0 = new aontu_1.Aontu();
         // Cross-referencing between siblings
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       a: { x: 1, y: $.b.x }
       b: { x: 2, y: $.a.x }
     `)).equal({
@@ -412,7 +412,7 @@ def: garage: {
             b: { x: 2, y: 1 },
         });
         // Multiple cross-refs in a wider structure
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       p: { v: 10 }
       q: { v: 20 }
       r: { v: 30 }
@@ -426,7 +426,7 @@ def: garage: {
             c: { pv: 10, qv: 20, rv: 30 },
         });
         // Diamond: two paths merge at a common ref target
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       base: { k: 1 }
       left: $.base
       right: $.base
@@ -441,7 +441,7 @@ def: garage: {
     (0, node_test_1.test)('ref-heavy-spread', () => {
         let a0 = new aontu_1.Aontu();
         // Ref spread adds template fields to each child
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       tmpl: { version: 1 }
       items: {
         &: $.tmpl
@@ -461,7 +461,7 @@ def: garage: {
             }
         });
         // Ref spread adds common fields to varied children
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       defaults: { color: red, active: true }
       points: {
         &: $.defaults
@@ -480,7 +480,7 @@ def: garage: {
             }
         });
         // Nested ref spread: outer spread injects inner map fields
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       inner: { enabled: true }
       outer: {
         &: { meta: $.inner }
@@ -500,7 +500,7 @@ def: garage: {
     (0, node_test_1.test)('ref-heavy-combined', () => {
         let a0 = new aontu_1.Aontu();
         // Refs + spreads + deep nesting + cross-references
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       config: {
         db: { host: localhost, port: 5432 }
         cache: { ttl: 60 }
@@ -523,7 +523,7 @@ def: garage: {
             }
         });
         // Forward refs with nested map targets
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       a: { m: $.c.m }
       b: { m: $.c.m }
       c: { m: { x: 1, y: 2 } }
@@ -533,7 +533,7 @@ def: garage: {
             c: { m: { x: 1, y: 2 } },
         });
         // Chain of refs where each adds a field
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       base: { a: 1 }
       step1: { a: $.base.a, b: 2 }
       step2: { a: $.step1.a, b: $.step1.b, c: 3 }
@@ -543,7 +543,7 @@ def: garage: {
             step2: { a: 1, b: 2, c: 3 },
         });
         // Many refs into the same deep path
-        (0, code_1.expect)(a0.generate(`
+        (0, expect_1.expect)(a0.generate(`
       data: { level1: { level2: { level3: { val: 100 } } } }
       r1: $.data.level1.level2.level3.val
       r2: $.data.level1.level2.level3.val

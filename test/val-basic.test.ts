@@ -23,7 +23,7 @@ import {
   AontuContext,
 } from '../dist/ctx'
 
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import {
   unite
 } from '../dist/unify'

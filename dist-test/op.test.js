@@ -2,7 +2,7 @@
 /* Copyright (c) 2020-2025 Richard Rodger and other contributors, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
-const code_1 = require("@hapi/code");
+const expect_1 = require("./expect");
 const lang_1 = require("../dist/lang");
 const ctx_1 = require("../dist/ctx");
 const MapVal_1 = require("../dist/val/MapVal");
@@ -13,13 +13,13 @@ let P = (x, ctx) => PL(x, ctx);
 let PA = (x, ctx) => x.map(s => PL(s, ctx));
 (0, node_test_1.describe)('op', () => {
     (0, node_test_1.it)('happy', () => {
-        (0, code_1.expect)(unify_1.unite.name).equal('unite');
+        (0, expect_1.expect)(unify_1.unite.name).equal('unite');
         // expect(disjunct.name).equal('disjunct')
     });
     (0, node_test_1.it)('unite-conjunct', () => {
         let U = makeUnite();
         //expect(U('1&1')).equal('1')
-        (0, code_1.expect)(U('1&number')).equal('1');
+        (0, expect_1.expect)(U('1&number')).equal('1');
     });
 });
 function makeCtx(r) {

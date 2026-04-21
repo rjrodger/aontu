@@ -4,7 +4,7 @@
 import Fs from 'node:fs'
 import { describe, test } from 'node:test'
 import { memfs as Memfs } from 'memfs'
-import { expect } from '@hapi/code'
+import { expect } from './expect'
 import { MapVal } from '../dist/val/MapVal'
 
 import { Lang, util, Aontu, AontuContext } from '../dist/aontu'
