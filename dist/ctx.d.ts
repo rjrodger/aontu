@@ -45,6 +45,8 @@ declare class AontuContext {
     };
     _trialMode?: boolean;
     _childCache?: Map<string, AontuContext>;
+    _refCloneCache?: Map<string, Val>;
+    _uniteCache?: Map<string, Val>;
     constructor(cfg: AontuContextConfig);
     clone(cfg: {
         root?: Val;

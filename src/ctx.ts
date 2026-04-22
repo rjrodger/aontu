@@ -87,6 +87,18 @@ class AontuContext {
   // cached child is safe to reuse.
   _childCache?: Map<string, AontuContext>
 
+  // Per-iteration cache for RefVal.find() clone results.
+  // Key: "refId|targetId" — avoids repeated deep-clone + walk for
+  // the same (ref, resolved-target) pair within one fixpoint pass.
+  // Cleared at the start of each iteration (alongside `seen`).
+  _refCloneCache?: Map<string, Val>
+
+  // Per-iteration cache for unite() results when both operands are
+  // done. Key: "aId|bId". Done Vals have no unresolved refs, so
+  // their unification is path-independent and can be reused across
+  // different tree positions. Cleared per fixpoint iteration.
+  _uniteCache?: Map<string, Val>
+
 
   constructor(cfg: AontuContextConfig) {
     this.root = cfg.root

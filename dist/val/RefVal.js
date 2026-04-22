@@ -265,25 +265,26 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     if (this.mark.type || this.mark.hide) {
                         out.mark.type = this.mark.type;
                         out.mark.hide = this.mark.hide;
-                        // walk(out, (_key: string | number | undefined, val: Val) => {
-                        //   val.mark.type = this.mark.type
-                        //   val.mark.hide = this.mark.hide
-                        //   return val
-                        // })
                     }
                     if (this.mark._hide_found) {
                         out.mark.hide = true;
                     }
-                    // console.log('FOUND-B', out)
-                    out = out.clone(ctx);
-                    // if (this.mark.type || this.mark.hide) {
-                    (0, utility_1.walk)(out, (_key, val) => {
-                        val.mark.type = false;
-                        val.mark.hide = false;
-                        return val;
-                    });
-                    //}
-                    // onsole.log('FOUND-C', out)
+                    // Cache clone+walk results per (ref, target) per iteration.
+                    const cacheKey = this.id + '|' + out.id;
+                    const cache = ctx._refCloneCache;
+                    const cached = cache?.get(cacheKey);
+                    if (cached !== undefined) {
+                        out = cached;
+                    }
+                    else {
+                        out = out.clone(ctx);
+                        (0, utility_1.walk)(out, (_key, val) => {
+                            val.mark.type = false;
+                            val.mark.hide = false;
+                            return val;
+                        });
+                        cache?.set(cacheKey, out);
+                    }
                 }
             }
         }

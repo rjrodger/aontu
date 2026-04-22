@@ -638,11 +638,11 @@ describe('val-basic', function() {
     expect(tu(ctx, new ConjunctVal({ peg: [] }), TOP).canon).equal('top')
 
     expect(A.parse('1 & .a')?.canon).equal('1&.a')
-    expect(A.unify('1 & .a')?.canon).equal('.a&1') // canonical sorting
+    expect(A.unify('1 & .a')?.canon).equal('1&.a') // canonical sorting (pure before dynamic)
     expect(() => A.generate('1 & .a')).throws(/conjunct/)
 
     expect(A.parse('.a & 1')?.canon).equal('.a&1')
-    expect(A.unify('.a & 1')?.canon).equal('.a&1')
+    expect(A.unify('.a & 1')?.canon).equal('1&.a')
     expect(() => A.generate('.a & 1')).throws(/conjunct/)
 
     expect(A.parse('1 & 1 & .a')?.canon).equal('(1&1)&.a')

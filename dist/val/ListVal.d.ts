@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { BagVal } from './BagVal';
 declare class ListVal extends BagVal {
     isList: boolean;
+    _canonCache?: string;
     constructor(spec: {
         peg: ValList;
     }, ctx?: AontuContext);

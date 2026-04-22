@@ -69,7 +69,22 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             }
         }
         upeer = norm(upeer);
-        // console.log('CONJUNCT-UPEER', this.id, upeer.map((v: Val) => v.canon))
+        // Stable partition: fold pure terms first, spread-bearing terms
+        // last. Pure terms (no spreads, no path-dependent functions)
+        // unify cheaply. Dynamic terms are then folded in, applying
+        // spread constraints once to the merged result rather than
+        // incrementally at every intermediate fold step.
+        const pure = [];
+        const dyn = [];
+        for (const term of upeer) {
+            if (term.isPathDependent || hasSpreads(term)) {
+                dyn.push(term);
+            }
+            else {
+                pure.push(term);
+            }
+        }
+        upeer = pure.concat(dyn);
         // Unify terms against each other
         let outvals = [];
         let val;
@@ -187,5 +202,33 @@ function norm(terms) {
     }
     // console.log('NORM', expand.map(t => t.canon).join(', '))
     return expand;
+}
+// Check if a Val tree contains any spread constraints (spread.cj).
+// Cached on _hasSpreads for performance.
+function hasSpreads(v) {
+    if (v._hasSpreads !== undefined)
+        return v._hasSpreads;
+    let result = false;
+    if (v.spread?.cj != null) {
+        result = true;
+    }
+    else if (v.isMap || v.isList) {
+        for (const k in v.peg) {
+            if (v.peg[k]?.isVal && hasSpreads(v.peg[k])) {
+                result = true;
+                break;
+            }
+        }
+    }
+    else if (v.isJunction) {
+        for (const p of v.peg) {
+            if (p?.isVal && hasSpreads(p)) {
+                result = true;
+                break;
+            }
+        }
+    }
+    v._hasSpreads = result;
+    return result;
 }
 //# sourceMappingURL=ConjunctVal.js.map

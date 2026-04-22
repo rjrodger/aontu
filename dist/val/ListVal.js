@@ -60,6 +60,22 @@ class ListVal extends BagVal_1.BagVal {
         if (!exit) {
             out.dc = this.dc + 1;
             let spread_cj = out.spread.cj || TOP;
+            // Fast path: self-unify with TOP and no spread constraint.
+            // If all children are already done, the list is fully converged.
+            if (peer.isTop && (spread_cj.isTop || !spread_cj)) {
+                let allChildrenDone = true;
+                for (let key in this.peg) {
+                    if (type_1.DONE !== this.peg[key]?.dc) {
+                        allChildrenDone = false;
+                        break;
+                    }
+                }
+                if (allChildrenDone) {
+                    out.dc = type_1.DONE;
+                    ctx.explain && (0, utility_1.explainClose)(te, out);
+                    return out;
+                }
+            }
             // Always unify children first
             for (let key in this.peg) {
                 const keyctx = ctx.descend(key);
@@ -119,31 +135,17 @@ class ListVal extends BagVal_1.BagVal {
         ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;
     }
-    // Spread clone: only deep-clone children that are path-dependent
-    // (isFunc, isRef). Share all other children directly.
-    // Spread clone: when all children are ScalarKindVal (simple type
-    // constraints like `string`, `number`), share them directly to avoid
-    // N x M allocations. ScalarKindVal is safe to share: it is immutable,
-    // always done, never path-dependent, and never has marks mutated.
-    // For anything more complex, fall back to full deep clone.
+    // Spread clone: share path-independent children directly, clone
+    // only path-dependent ones. See MapVal.spreadClone for rationale.
     spreadClone(ctx) {
-        // B1: share directly when the spread tree has no path-dependent
-        // leaves. See MapVal.spreadClone for rationale.
         if (!this.isPathDependent)
             return this;
-        let allScalarKind = true;
-        for (let key in this.peg) {
-            if (!this.peg[key]?.isScalarKind) {
-                allScalarKind = false;
-                break;
-            }
-        }
-        if (!allScalarKind) {
-            return this.clone(ctx);
-        }
         let out = super.clone(ctx);
         for (let entry of Object.entries(this.peg)) {
-            out.peg[entry[0]] = entry[1];
+            const child = entry[1];
+            out.peg[entry[0]] = child?.isPathDependent
+                ? child.clone(ctx, { mark: {} })
+                : child;
         }
         // Must create a new spread object to avoid mutating the original.
         out.spread = {
@@ -168,9 +170,11 @@ class ListVal extends BagVal_1.BagVal {
         return out;
     }
     get canon() {
+        if (this._canonCache !== undefined)
+            return this._canonCache;
         // console.log('LISTVAL-CANON', this.optionalKeys)
         let keys = Object.keys(this.peg);
-        return '' +
+        const c = '' +
             // this.errcanon() +
             '[' +
             (this.spread.cj ? '&:' + this.spread.cj.canon +
@@ -180,6 +184,9 @@ class ListVal extends BagVal_1.BagVal {
                 k + '?:' + this.peg[k].canon :
                 this.peg[k].canon).join(',') +
             ']';
+        if (this.done)
+            this._canonCache = c;
+        return c;
     }
 }
 exports.ListVal = ListVal;

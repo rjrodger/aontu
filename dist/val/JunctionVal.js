@@ -21,10 +21,15 @@ class JunctionVal extends FeatureVal_1.FeatureVal {
         return out;
     }
     get canon() {
-        return this.peg.map((v) => {
+        if (this._canonCache !== undefined)
+            return this._canonCache;
+        const c = this.peg.map((v) => {
             return v.isJunction && Array.isArray(v.peg) && 1 < v.peg.length ?
                 '(' + v.canon + ')' : v.canon; // v.id + '=' + v.canon
         }).join(this.getJunctionSymbol()); // + '<' + (this.mark.hide ? 'H' : '') + '>'
+        if (this.done)
+            this._canonCache = c;
+        return c;
     }
 }
 exports.JunctionVal = JunctionVal;

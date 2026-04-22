@@ -26,6 +26,7 @@ import {
 } from './val/top'
 
 
+
 // TODO: FIX: false positive when too many top unifications
 const MAXCYCLE = 999
 
@@ -51,10 +52,17 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         if (a.id === b.id) return a
         if (a.constructor === b.constructor && a.peg === b.peg
             && !a.isNil && !b.isNil
-            && !a.isMap && !a.isList
             && !a.isConjunct && !a.isDisjunct
             && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
           return a
+        }
+
+        // Id-keyed cache: reuse results for the exact same Val pair.
+        const uc = ctx._uniteCache
+        if (uc !== undefined) {
+          const ucKey = a.id + '|' + b.id
+          const ucHit = uc.get(ucKey)
+          if (ucHit !== undefined) return ucHit
         }
       }
     }
@@ -169,6 +177,11 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
 
   ctx.explain && explainClose(te, out)
 
+  // Store in id-keyed cache when both operands were done.
+  if (a?.done && b?.done && out?.done && ctx._uniteCache !== undefined) {
+    ctx._uniteCache.set(a.id + '|' + b.id, out)
+  }
+
   return out
 }
 
@@ -238,6 +251,8 @@ class Unify {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
         uctx.seen = {}
+        uctx._refCloneCache = new Map()
+        uctx._uniteCache = new Map()
         res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
 
         if (0 < uctx.err.length) {

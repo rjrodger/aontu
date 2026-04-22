@@ -57,10 +57,10 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
         let m1 = UC('x:{a:$.y}&{b:2},y:1');
         (0, expect_1.expect)(m1).equal('{"x":{"a":1,"b":2},"y":1}');
         let s2 = 'x:{a:$.x.b}&{b:2}';
-        (0, expect_1.expect)(UC(s2)).equal('{"x":{"a":$.x.b,"b":2}}');
+        (0, expect_1.expect)(UC(s2)).equal('{"x":{"b":2,"a":$.x.b}}');
         (0, expect_1.expect)(G(s2)).equal({ "x": { "a": 2, "b": 2 } });
         let s3 = 'y:x:{a:$.y.x.b}&{b:2}';
-        (0, expect_1.expect)(UC(s3)).equal('{"y":{"x":{"a":$.y.x.b,"b":2}}}');
+        (0, expect_1.expect)(UC(s3)).equal('{"y":{"x":{"b":2,"a":$.y.x.b}}}');
         (0, expect_1.expect)(G(s3)).equal({ y: { x: { a: 2, b: 2 } } });
     });
     (0, node_test_1.test)('conjunct-spread', () => {

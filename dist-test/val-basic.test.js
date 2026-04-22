@@ -452,10 +452,10 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         // TODO: same for DisjunctVal
         (0, expect_1.expect)(tu(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), TOP).canon).equal('top');
         (0, expect_1.expect)(A.parse('1 & .a')?.canon).equal('1&.a');
-        (0, expect_1.expect)(A.unify('1 & .a')?.canon).equal('.a&1'); // canonical sorting
+        (0, expect_1.expect)(A.unify('1 & .a')?.canon).equal('1&.a'); // canonical sorting (pure before dynamic)
         (0, expect_1.expect)(() => A.generate('1 & .a')).throws(/conjunct/);
         (0, expect_1.expect)(A.parse('.a & 1')?.canon).equal('.a&1');
-        (0, expect_1.expect)(A.unify('.a & 1')?.canon).equal('.a&1');
+        (0, expect_1.expect)(A.unify('.a & 1')?.canon).equal('1&.a');
         (0, expect_1.expect)(() => A.generate('.a & 1')).throws(/conjunct/);
         (0, expect_1.expect)(A.parse('1 & 1 & .a')?.canon).equal('(1&1)&.a');
         (0, expect_1.expect)(A.parse('1 & 2')?.canon).equal('1&2');

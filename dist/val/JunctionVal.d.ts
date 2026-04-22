@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { FeatureVal } from './FeatureVal';
 declare abstract class JunctionVal extends FeatureVal {
     isJunction: boolean;
+    _canonCache?: string;
     constructor(spec: ValSpec, ctx?: AontuContext);
     append(peer: Val): JunctionVal;
     clone(ctx: AontuContext, spec?: ValSpec): Val;

@@ -120,7 +120,7 @@ w1: b: {y:2,z:3} & $.q.a
         let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}');
         (0, expect_1.expect)(v0.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}');
-        (0, expect_1.expect)(v1.canon).equal('{"c":{&:{"x":2},"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}');
+        (0, expect_1.expect)(v1.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v10 = a0.unify('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}');
         (0, expect_1.expect)(v10.canon).equal('{"a":{&:{"x":1}},' +
             '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +

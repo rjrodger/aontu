@@ -34,10 +34,17 @@ const unite = (ctx, a, b, whence) => {
                     return a;
                 if (a.constructor === b.constructor && a.peg === b.peg
                     && !a.isNil && !b.isNil
-                    && !a.isMap && !a.isList
                     && !a.isConjunct && !a.isDisjunct
                     && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
                     return a;
+                }
+                // Id-keyed cache: reuse results for the exact same Val pair.
+                const uc = ctx._uniteCache;
+                if (uc !== undefined) {
+                    const ucKey = a.id + '|' + b.id;
+                    const ucHit = uc.get(ucKey);
+                    if (ucHit !== undefined)
+                        return ucHit;
                 }
             }
         }
@@ -140,6 +147,10 @@ const unite = (ctx, a, b, whence) => {
         }
     }
     ctx.explain && (0, utility_1.explainClose)(te, out);
+    // Store in id-keyed cache when both operands were done.
+    if (a?.done && b?.done && out?.done && ctx._uniteCache !== undefined) {
+        ctx._uniteCache.set(a.id + '|' + b.id, out);
+    }
     return out;
 };
 exports.unite = unite;
@@ -191,6 +202,8 @@ class Unify {
                 // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
                 uctx.seen = {};
+                uctx._refCloneCache = new Map();
+                uctx._uniteCache = new Map();
                 res = unite(te ? uctx.clone({ explain: (0, utility_1.ec)(te, 'run') }) : uctx, res, (0, top_1.top)(), 'unify');
                 if (0 < uctx.err.length) {
                     break;

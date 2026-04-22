@@ -204,11 +204,11 @@ let P = lang.parse.bind(lang);
         let v3 = P('a:{&:number,z:3},a:{x:1},a:{y:2}');
         (0, expect_1.expect)(v3.canon).equal('{"a":{&:number,"z":3}&{"x":1}&{"y":2}}');
         let u3 = v3.unify(TOP, ctx);
-        (0, expect_1.expect)(u3.canon).equal('{"a":{&:number,"z":3,"x":1,"y":2}}');
+        (0, expect_1.expect)(u3.canon).equal('{"a":{&:number,"x":1,"y":2,"z":3}}');
         let v4 = P('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}');
         (0, expect_1.expect)(v4.canon).equal('{"b":{"a":{&:number,"z":3}&{"x":1}&{"y":2}}}');
         let u4 = v4.unify(TOP, ctx);
-        (0, expect_1.expect)(u4.canon).equal('{"b":{"a":{&:number,"z":3,"x":1,"y":2}}}');
+        (0, expect_1.expect)(u4.canon).equal('{"b":{"a":{&:number,"x":1,"y":2,"z":3}}}');
         // Must commute!
         let v5a = P('{&:{x:1}}&{a:{y:1}}');
         let u5a = v5a.unify(TOP, ctx);
@@ -222,7 +222,7 @@ let P = lang.parse.bind(lang);
         let u6 = v6.unify(TOP, ctx);
         (0, expect_1.expect)(u6.canon)
             .equal('{"b":{"a":{&:{"K":0},' +
-            '"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}');
+            '"x":{"X":1,"K":0},"y":{"Y":2,"K":0},"z":{"Z":3,"K":0}}}}');
     });
     (0, node_test_1.it)('pair-spreads', () => {
         let s1 = `a:b:c:1 z:2`;
