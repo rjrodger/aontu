@@ -7,7 +7,7 @@ import { Val, ErrContext } from './type'
 
 import { AontuContext } from './ctx'
 
-import { NilVal } from './val/NilVal'
+import { NilVal, TRIAL_NIL } from './val/NilVal'
 
 import { hints } from './hints'
 
@@ -33,6 +33,19 @@ function makeNilErr(
   attempt?: string,
   details?: Record<string, any>
 ): NilVal {
+  // C1-inner: when a DisjunctVal trial is in progress, failures are
+  // transient markers — none of the NilVal fields (site, path,
+  // primary, secondary, details) ever surface to the user because
+  // DisjunctVal replaces the oval entry with TRIAL_NIL and filters
+  // by isNil. Allocating a fresh NilVal per failure (~60k per
+  // foo-sdk run from IntegerVal/BooleanVal/ScalarVal.unify et al.)
+  // is pure waste. Short-circuit to the shared sentinel; push once
+  // to ctx.err so the caller's `trialErr.length > 0` check still
+  // signals failure.
+  if (ctx !== undefined && ctx._trialMode === true) {
+    if (ctx.err.length === 0) ctx.err.push(TRIAL_NIL)
+    return TRIAL_NIL
+  }
   const nilval = NilVal.make(ctx, why, av, bv, attempt, details)
   return nilval
 }
@@ -132,22 +145,31 @@ function resolveFile(url: string | undefined) {
 
 function resolveSrc(v: Val, errctx: ErrContext | undefined, position: string) {
   let src: string | undefined = undefined
+  const url = v?.site.url
 
-  if (null != v?.site.url) {
-    try {
-      const fileExists = errctx?.fs?.existsSync(v.site.url)
-      if (fileExists) {
-        src = errctx?.fs?.readFileSync(v.site.url, 'utf8') ?? undefined
+  // Cache reads on errctx for the lifetime of the error-formatting pass.
+  // When many NilVals share the same source file (common during batch
+  // descErr after unify), this avoids re-reading the same file N times.
+  const cache = errctx ? ((errctx as any)._srcCache ??= new Map<string, string>()) : null
+
+  if (null != url) {
+    if (cache && cache.has(url)) {
+      src = cache.get(url)
+    }
+    else {
+      try {
+        const fileExists = errctx?.fs?.existsSync(url)
+        if (fileExists) {
+          src = errctx?.fs?.readFileSync(url, 'utf8') ?? undefined
+        }
+      }
+      catch (fe: any) {
+        // ignore as more important to report original error
+      }
+      if (cache && null != src) {
+        cache.set(url, src)
       }
     }
-    catch (fe: any) {
-      // console.log('AONTU-resolveSrc-ERROR', position, v, v.site.url, fe)
-      // ignore as more important to report original error
-    }
-  }
-  else {
-    // console.log(v)
-    // console.trace()
   }
 
   if (undefined == src || '' === src) {
@@ -155,12 +177,10 @@ function resolveSrc(v: Val, errctx: ErrContext | undefined, position: string) {
       src = errctx.src
     }
     else if (errctx) {
-      src = 'SOURCE-NOT-FOUND:' + (null != v?.site.url ? (' ' + v.site.url) : '') +
+      src = 'SOURCE-NOT-FOUND:' + (null != url ? (' ' + url) : '') +
         (null == errctx?.fs ? ' (NO-FS)' : '')
     }
   }
-
-  // console.log('AONTU-resolveSrc', position, v, v?.site.url, errctx?.fs, src?.length)
 
   return src
 }

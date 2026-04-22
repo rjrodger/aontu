@@ -36,6 +36,15 @@ declare class AontuContext {
     _pathstr: string | undefined;
     _pathidx: number | undefined;
     _pathmap: Map<string, number>;
+    _pathTrie: Map<number, Map<string, {
+        idx: number;
+        path: string[];
+    }>>;
+    _pathidxNext: {
+        n: number;
+    };
+    _trialMode?: boolean;
+    _childCache?: Map<string, AontuContext>;
     constructor(cfg: AontuContextConfig);
     clone(cfg: {
         root?: Val;

@@ -177,7 +177,7 @@ class RefVal extends FeatureVal {
         }
       }
       else {
-        out = unite(ctx.clone({ explain: ec(te, 'RES') }), resolved, peer, 'ref')
+        out = unite(te ? ctx.clone({ explain: ec(te, 'RES') }) : ctx, resolved, peer, 'ref')
         why = 'u'
       }
 

@@ -37,42 +37,6 @@ class Val {
     }
     // TODO: Site needed in ctor
     constructor(spec, ctx) {
-        this.isVal = true;
-        this.isTop = false;
-        this.isNil = false;
-        this.isMap = false;
-        this.isList = false;
-        this.isScalar = false;
-        this.isScalarKind = false;
-        this.isRef = false;
-        this.isPref = false;
-        this.isVar = false;
-        this.isBag = false;
-        this.isNumber = false;
-        this.isInteger = false;
-        this.isString = false;
-        this.isBoolean = false;
-        this.isConjunct = false;
-        this.isDisjunct = false;
-        this.isJunction = false;
-        // Conjunct sort order. Lower values sort first in norm().
-        this.cjo = 99999;
-        this.isOp = false;
-        this.isPlusOp = false;
-        this.isFunc = false;
-        this.isCloseFunc = false;
-        this.isCopyFunc = false;
-        this.isHideFunc = false;
-        this.isMoveFunc = false;
-        this.isKeyFunc = false;
-        this.isLowerFunc = false;
-        this.isOpenFunc = false;
-        this.isPathFunc = false;
-        this.isPrefFunc = false;
-        this.isSuperFunc = false;
-        this.isTypeFunc = false;
-        this.isUpperFunc = false;
-        this.isGenable = false;
         this.dc = 0;
         this.path = [];
         // Map of boolean flags.
@@ -95,7 +59,10 @@ class Val {
             this.peg = this.peg.filter(n => undefined !== n);
             this.peg[SPREAD] = spread;
         }
-        this.path = ctx?.path || [];
+        // spec.path takes precedence over ctx.path: lets callers (notably
+        // Val.clone) specify the target path without paying for a full
+        // ctx.clone just to carry it.
+        this.path = spec?.path ?? ctx?.path ?? [];
         // TODO: make this work
         // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
         this.id = ++ID;
@@ -113,23 +80,24 @@ class Val {
         return null == peer ? false : this.id === peer.id;
     }
     clone(ctx, spec) {
-        let cloneCtx;
         let path = spec?.path;
         if (null == path) {
             let cut = this.path.indexOf('&');
             cut = -1 < cut ? cut + 1 : ctx.path.length;
             path = ctx.path.concat(this.path.slice(cut));
         }
-        // console.log('CLONE', path, this.canon)
-        // console.trace()
-        cloneCtx = ctx.clone({ path });
+        // Carry the target path via the spec instead of cloning ctx just
+        // to hold it: the Val constructor now reads spec.path first. This
+        // saves ~120k ctx.clone calls (two Object.create each) on a
+        // foo-sdk-sized model.
         let fullspec = {
             peg: this.peg,
             mark: { type: this.mark.type, hide: this.mark.hide },
-            ...(spec ?? {})
+            ...(spec ?? {}),
+            path,
         };
         let out = new this
-            .constructor(fullspec, cloneCtx);
+            .constructor(fullspec, ctx);
         out.dc = this.done ? DONE : out.dc;
         out.site.row = spec?.row ?? this.site.row ?? -1;
         out.site.col = spec?.col ?? this.site.col ?? -1;
@@ -144,6 +112,40 @@ class Val {
     // Override in MapVal/ListVal to avoid deep-cloning simple children.
     spreadClone(ctx) {
         return this.clone(ctx);
+    }
+    get isPathDependent() {
+        if (this._isPathDependent !== undefined)
+            return this._isPathDependent;
+        let dep = this.isRef || this.isKeyFunc || this.isPathFunc ||
+            this.isMoveFunc || this.isSuperFunc;
+        if (!dep) {
+            const peg = this.peg;
+            if (Array.isArray(peg)) {
+                for (let i = 0; i < peg.length; i++) {
+                    const c = peg[i];
+                    if (c && c.isVal && c.isPathDependent) {
+                        dep = true;
+                        break;
+                    }
+                }
+            }
+            else if (peg != null && typeof peg === 'object') {
+                for (const k in peg) {
+                    const c = peg[k];
+                    if (c && c.isVal && c.isPathDependent) {
+                        dep = true;
+                        break;
+                    }
+                }
+            }
+            if (!dep) {
+                const spreadCj = this.spread?.cj;
+                if (spreadCj && spreadCj.isPathDependent)
+                    dep = true;
+            }
+        }
+        this._isPathDependent = dep;
+        return dep;
     }
     place(v) {
         v.site.row = this.site.row;
@@ -205,6 +207,49 @@ class Val {
     }
 }
 exports.Val = Val;
+// Prototype-level defaults for Val's type-discriminator flags.
+// Keeping these on the prototype (instead of per-instance class-field
+// initializers) removes ~35 property writes from every Val construction
+// and eliminates the corresponding hidden-class transitions. Subclasses
+// override only the flags that differ, via their own class-field
+// initializers (e.g. `MapVal.isMap = true`).
+Object.assign(Val.prototype, {
+    isVal: true,
+    isTop: false,
+    isNil: false,
+    isMap: false,
+    isList: false,
+    isScalar: false,
+    isScalarKind: false,
+    isRef: false,
+    isPref: false,
+    isVar: false,
+    isBag: false,
+    isNumber: false,
+    isInteger: false,
+    isString: false,
+    isBoolean: false,
+    isConjunct: false,
+    isDisjunct: false,
+    isJunction: false,
+    cjo: 99999,
+    isOp: false,
+    isPlusOp: false,
+    isFunc: false,
+    isCloseFunc: false,
+    isCopyFunc: false,
+    isHideFunc: false,
+    isMoveFunc: false,
+    isKeyFunc: false,
+    isLowerFunc: false,
+    isOpenFunc: false,
+    isPathFunc: false,
+    isPrefFunc: false,
+    isSuperFunc: false,
+    isTypeFunc: false,
+    isUpperFunc: false,
+    isGenable: false,
+});
 function inspectpeg(peg, d) {
     const indent = '  '.repeat(d);
     return pretty(Array.isArray(peg) ?

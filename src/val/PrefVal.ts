@@ -62,7 +62,7 @@ class PrefVal extends FeatureVal {
     let why = ''
 
     if (!this.peg.done) {
-      const resolved = unite(ctx.clone({ explain: ctx.explain && ec(te, 'RES') }),
+      const resolved = unite(te ? ctx.clone({ explain: ec(te, 'RES') }) : ctx,
         this.peg, top(), 'pref/resolve')
       // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
@@ -96,7 +96,7 @@ class PrefVal extends FeatureVal {
         //   peer.peg.id, peer.peg, peer.peg.done,
         // )
 
-        let peg = unite(ctx.clone({ explain: ctx.explain && ec(te, 'PREF-PEER') }),
+        let peg = unite(te ? ctx.clone({ explain: ec(te, 'PREF-PEER') }) : ctx,
           this.peg, peer.peg, 'pref-peer/' + this.id)
         out = new PrefVal({ peg }, ctx)
         // console.log('PREF-RANK-SAME-OUT', peg, peg.done, out, out.done)
@@ -106,7 +106,7 @@ class PrefVal extends FeatureVal {
     else if (!peer.isTop) {
       why += 'super-'
 
-      out = unite(ctx.clone({ explain: ctx.explain && ec(te, 'SUPER') }),
+      out = unite(te ? ctx.clone({ explain: ec(te, 'SUPER') }) : ctx,
         this.superpeg, peer, 'pref-super/' + this.id)
       if (out.same(this.superpeg)) {
         out = this.peg

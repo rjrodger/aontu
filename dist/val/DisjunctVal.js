@@ -35,18 +35,43 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         // // // console.log('DISJUNCT-unify-A', this.id, this.canon)
         let done = true;
         let oval = [];
-        // Conjunction (&) distributes over disjunction (|)
+        // Conjunction (&) distributes over disjunction (|).
+        //
+        // Each member is tried against peer in isolation: if that trial
+        // produces any errors, the member fails and is marked with a NilVal.
+        // Previously this used `ctx?.clone({err: []})` per member - a
+        // per-iteration context clone (two Object.creates) just to hold a
+        // throwaway error array. For schemas with many disjunctions
+        // (e.g. `*true | boolean`, `method: GET | PUT | ...`) this was the
+        // single largest source of clones in the unify hot path.
+        //
+        // Swap-and-restore avoids the clone: the existing ctx's err array
+        // is saved, replaced with a fresh array for each trial, then
+        // restored. ctx mutation is scoped to this loop and fully undone
+        // before return.
+        const savedErr = ctx.err;
+        const savedTrialMode = ctx._trialMode;
+        // C1-inner: tell `makeNilErr` to return TRIAL_NIL in this scope
+        // instead of allocating per-failure NilVals. Save/restore so
+        // nested DisjunctVal trials (and the outer non-trial code) are
+        // not affected.
+        ctx._trialMode = true;
         for (let vI = 0; vI < this.peg.length; vI++) {
             const v = this.peg[vI];
-            const cloneCtx = ctx?.clone({ err: [] });
-            // // // console.log('DJ-DIST-A', this.peg[vI].canon, peer.canon)
-            oval[vI] = (0, unify_1.unite)(cloneCtx.clone({ explain: (0, utility_1.ec)(te, 'DIST:' + vI) }), v, peer, 'dj-peer');
-            // // // console.log('DJ-DIST-B', oval[vI].canon, cloneCtx?.err)
-            if (0 < cloneCtx?.err.length) {
-                oval[vI] = (0, err_1.makeNilErr)(cloneCtx, '|:empty-dist', this);
+            const trialErr = [];
+            ctx.err = trialErr;
+            oval[vI] = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'DIST:' + vI) }) : ctx, v, peer, 'dj-peer');
+            if (0 < trialErr.length) {
+                // C1: failed-trial marker is never user-visible — it just
+                // signals "this disjunct member doesn't match" and is
+                // filtered out before the result is built. Use the shared
+                // sentinel instead of allocating a fresh NilVal per trial.
+                oval[vI] = NilVal_1.TRIAL_NIL;
             }
             done = done && type_1.DONE === oval[vI].dc;
         }
+        ctx._trialMode = savedTrialMode;
+        ctx.err = savedErr;
         // // // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))
         // Remove duplicates, and normalize
         if (1 < oval.length) {
@@ -56,12 +81,13 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
                 }
             }
             // // // console.log('DISJUNCT-unify-C', this.id, oval.map(v => v.id + '=' + v.canon))
-            // TODO: not an error Nil!
-            let remove = new NilVal_1.NilVal();
+            // Dedup: duplicate Vals in the disjunct are replaced with the
+            // trial sentinel, which is filtered out a few lines below.
+            // (No need for a fresh NilVal — any isNil value gets filtered.)
             for (let vI = 0; vI < oval.length; vI++) {
                 for (let kI = vI + 1; kI < oval.length; kI++) {
                     if (oval[kI].same(oval[vI])) {
-                        oval[kI] = remove;
+                        oval[kI] = NilVal_1.TRIAL_NIL;
                     }
                 }
             }

@@ -100,7 +100,7 @@ class FuncBaseVal extends FeatureVal {
 
             let newarg = arg
             if (!arg.done) {
-              newarg = arg.unify(TOP, ctx.clone({ explain: ec(te, 'ARG') }))
+              newarg = arg.unify(TOP, te ? ctx.clone({ explain: ec(te, 'ARG') }) : ctx)
               newtype = newtype || newarg.mark.type
               newhide = newhide || newarg.mark.hide
               // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, arg.done, '->', newarg.canon, newarg.done)
@@ -118,7 +118,7 @@ class FuncBaseVal extends FeatureVal {
           // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
 
           out = resolved.done && peer.isTop ? resolved :
-            unite(ctx.clone({ explain: ec(te, 'PEG') }),
+            unite(te ? ctx.clone({ explain: ec(te, 'PEG') }) : ctx,
               resolved, peer, 'func-' + this.funcname() + '/' + this.id)
           propagateMarks(this, out)
 

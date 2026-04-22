@@ -92,7 +92,7 @@ class ListVal extends BagVal {
 
     if (peer instanceof ListVal) {
       if (!this.closed && peer.closed) {
-        out = peer.unify(this, ctx.clone({ explain: ec(te, 'PMC') })) as ListVal
+        out = peer.unify(this, te ? ctx.clone({ explain: ec(te, 'PMC') }) : ctx) as ListVal
         exit = true
       }
       else {
@@ -100,7 +100,7 @@ class ListVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx.clone({ explain: ec(te, 'SPR') }),
+            unite(te ? ctx.clone({ explain: ec(te, 'SPR') }) : ctx,
               out.spread.cj, peer.spread.cj, 'list-peer')
           )
         )
@@ -127,7 +127,7 @@ class ListVal extends BagVal {
               key_spread_cj.isNil ? key_spread_cj :
                 key_spread_cj.isTop && child.done ? child :
                   child.isTop && key_spread_cj.done ? key_spread_cj :
-                    unite(keyctx.clone({ explain: ec(te, 'PEG:' + key) }),
+                    unite(te ? keyctx.clone({ explain: ec(te, 'PEG:' + key) }) : keyctx,
                       child, key_spread_cj, 'list-own')
 
         done = (done && DONE === out.peg[key].dc)
@@ -205,6 +205,10 @@ class ListVal extends BagVal {
   // always done, never path-dependent, and never has marks mutated.
   // For anything more complex, fall back to full deep clone.
   spreadClone(ctx: AontuContext): Val {
+    // B1: share directly when the spread tree has no path-dependent
+    // leaves. See MapVal.spreadClone for rationale.
+    if (!this.isPathDependent) return this
+
     let allScalarKind = true
     for (let key in this.peg) {
       if (!(this.peg[key] as any)?.isScalarKind) {

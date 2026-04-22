@@ -13,6 +13,35 @@ const MAXCYCLE = 999;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
+    // Fast paths that don't recurse and so don't need cycle-detection:
+    // short-circuit before the saw-key build and seen-map lookup (which
+    // together cost ~2.5µs per call). Only return early when the result
+    // is already `done` — a non-done result would need the trailing
+    // top() unify below.
+    //
+    //   A6a: same ref, already done
+    //   A6b: different ref but same id + both done
+    //   P1:  exact-equal scalars that are already done (14% of calls
+    //        in foo-sdk, ~100% with a.done=true)
+    if (a !== undefined && a !== null) {
+        if (a === b) {
+            if (a.done)
+                return a;
+        }
+        else if (b !== undefined && b !== null) {
+            if (a.done && b.done) {
+                if (a.id === b.id)
+                    return a;
+                if (a.constructor === b.constructor && a.peg === b.peg
+                    && !a.isNil && !b.isNil
+                    && !a.isMap && !a.isList
+                    && !a.isConjunct && !a.isDisjunct
+                    && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
+                    return a;
+                }
+            }
+        }
+    }
     const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'unite', a, b);
     let out = a;
     let why = 'u';
@@ -34,69 +63,78 @@ const unite = (ctx, a, b, whence) => {
         ctx.seen[saw] = sawCount + 1;
         try {
             let unified = false;
-            if (b && (!a || a.isTop)) {
+            // Dispatch ladder. Structure note:
+            //   - `a == null` is degenerate (shouldn't happen in practice:
+            //     the top-level call seeds with a real Val). Kept for safety.
+            //   - TOP is the unit element: unifying with it returns the
+            //     other side. Handle both sides.
+            //   - Otherwise route by Val type. Complex Vals (Conjunct,
+            //     Disjunct, Ref, Pref, Func, Expect) have their own unify
+            //     that knows how to absorb the peer; prefer `a.unify` when
+            //     `a` is complex, else `b.unify` when `b` is complex. If
+            //     neither is complex and it's not a plain-scalar match, fall
+            //     through to the generic `a.unify` (concrete Val classes
+            //     each handle their own peer case).
+            if (a == null) {
                 out = b;
                 why = 'b';
             }
-            else if (a && (!b || b.isTop)) {
+            else if (b == null || b.isTop) {
                 out = a;
                 why = 'a';
             }
-            else if (a && b && !b.isTop) {
-                if (a.isNil) {
-                    out = update(a, b);
-                    why = 'an';
-                }
-                else if (b.isNil) {
-                    out = update(b, a);
-                    why = 'bn';
-                }
-                else if (a.isConjunct) {
-                    out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'CJ') }) : ctx);
-                    unified = true;
-                    why = 'acj';
-                }
-                else if (a.isExpect) {
-                    out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'AE') }) : ctx);
-                    unified = true;
-                    why = 'ae';
-                }
-                else if (b.isConjunct
-                    || b.isDisjunct
-                    || b.isRef
-                    || b.isPref
-                    || b.isFunc
-                    || b.isExpect) {
-                    out = b.unify(a, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'BW') }) : ctx);
-                    unified = true;
-                    why = 'bv';
-                }
-                // Exactly equal scalars.
-                else if (a.constructor === b.constructor && a.peg === b.peg) {
-                    out = update(a, b);
-                    why = 'up';
-                }
-                else {
-                    out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'GN') }) : ctx);
-                    unified = true;
-                    why = 'ab';
-                }
+            else if (a.isTop) {
+                out = b;
+                why = 'b';
+            }
+            else if (a.isNil) {
+                out = update(a, b);
+                why = 'an';
+            }
+            else if (b.isNil) {
+                out = update(b, a);
+                why = 'bn';
+            }
+            else if (a.isConjunct || a.isExpect) {
+                out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'AC') }) : ctx);
+                unified = true;
+                why = 'a*';
+            }
+            else if (b.isConjunct
+                || b.isDisjunct
+                || b.isRef
+                || b.isPref
+                || b.isFunc
+                || b.isExpect) {
+                out = b.unify(a, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'BW') }) : ctx);
+                unified = true;
+                why = 'bv';
+            }
+            // Exactly equal scalars (not caught by early fast-path — e.g.
+            // because a or b isn't .done yet).
+            else if (a.constructor === b.constructor && a.peg === b.peg) {
+                out = update(a, b);
+                why = 'up';
+            }
+            else {
+                out = a.unify(b, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'GN') }) : ctx);
+                unified = true;
+                why = 'ab';
             }
             if (!out || !out.unify) {
                 out = (0, err_1.makeNilErr)(ctx, 'unite', a, b, whence + '/nil');
                 why += 'N';
             }
-            // console.log('UNITE-DONE', out.id, out.canon, out.done)
-            // if (DONE !== out.dc && !unified) {
+            // Any non-done top-level result self-unifies with TOP to ensure
+            // its children finish converging. Skipped when `unified` is true
+            // because the branch that set `out = X.unify(Y, ctx)` already
+            // ran that Val's own unify logic.
             if (!out.done && !unified) {
-                let nout = out.unify((0, top_1.top)(), te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'ND') }) : ctx);
-                out = nout;
+                out = out.unify((0, top_1.top)(), te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'ND') }) : ctx);
                 why += 'T';
             }
-            // console.log('UNITE', why, a?.id, a?.canon, a?.done, b?.id, b?.canon, b?.done, '->', out?.id, out?.canon, out?.done)
         }
         catch (err) {
-            // console.log(err)
             // TODO: handle unexpected
             out = (0, err_1.makeNilErr)(ctx, 'internal', a, b);
         }

@@ -90,7 +90,7 @@ class MapVal extends BagVal {
 
     if (peer instanceof MapVal) {
       if (!this.closed && peer.closed) {
-        out = peer.unify(this, ctx.clone({ explain: ec(te, 'PMC') })) as MapVal
+        out = peer.unify(this, te ? ctx.clone({ explain: ec(te, 'PMC') }) : ctx) as MapVal
         exit = true
       }
 
@@ -105,7 +105,7 @@ class MapVal extends BagVal {
             && peerkeys.join('~') < selfkeys.join('~')
           )
         ) {
-          out = peer.unify(this, ctx.clone({ explain: ec(te, 'SPC') })) as MapVal
+          out = peer.unify(this, te ? ctx.clone({ explain: ec(te, 'SPC') }) : ctx) as MapVal
           exit = true
         }
 
@@ -115,7 +115,7 @@ class MapVal extends BagVal {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
             out.spread.cj =
-            unite(ctx.clone({ explain: ec(te, 'SPR') }),
+            unite(te ? ctx.clone({ explain: ec(te, 'SPR') }) : ctx,
               out.spread.cj, peer.spread.cj, 'map-self')
           )
         )
@@ -148,7 +148,7 @@ class MapVal extends BagVal {
               key_spread_cj.isNil ? key_spread_cj :
                 key_spread_cj.isTop && child.done ? child :
                   child.isTop && key_spread_cj.done ? key_spread_cj :
-                    unite(keyctx.clone({ explain: ec(te, 'KEY:' + key) }),
+                    unite(te ? keyctx.clone({ explain: ec(te, 'KEY:' + key) }) : keyctx,
                       child, key_spread_cj, 'map-own')
 
         done = (done && DONE === out.peg[key].dc)
@@ -230,15 +230,23 @@ class MapVal extends BagVal {
   }
 
 
-  // Spread clone: only deep-clone children that are path-dependent
-  // (isFunc, isRef). Share all other children directly to avoid
-  // N x M allocations for maps with N keys and M spread fields.
-  // Spread clone: when all children are ScalarKindVal (simple type
-  // constraints like `string`, `number`), share them directly to avoid
-  // N x M allocations. ScalarKindVal is safe to share: it is immutable,
-  // always done, never path-dependent, and never has marks mutated.
-  // For anything more complex, fall back to full deep clone.
+  // Spread clone: return a Val usable as the per-key spread constraint.
+  //
+  // Three tiers:
+  //   1. tree is path-independent (no RefVal/KeyFuncVal/PathFuncVal/
+  //      MoveFuncVal/SuperFuncVal anywhere below): return `this` directly.
+  //      Nothing in the unify path mutates the spread root, and no
+  //      child depends on its own stored .path, so sharing is safe.
+  //   2. top-level children are all ScalarKindVal: shallow clone
+  //      (share children, fresh MapVal wrapper).
+  //   3. otherwise: full deep clone via `this.clone(ctx)`.
+  //
+  // Tier 1 handles the foo-sdk common case of simple type-constraint
+  // spreads like `&:{active: *true | boolean, version: *'0.0.1' | string}`,
+  // which are cloned thousands of times per run.
   spreadClone(ctx: AontuContext): Val {
+    if (!this.isPathDependent) return this
+
     let allScalarKind = true
     for (let key in this.peg) {
       if (!(this.peg[key] as any)?.isScalarKind) {

@@ -26,6 +26,9 @@ class AontuContext {
         this.srcpath = cfg.srcpath ?? undefined;
         this.deps = cfg.deps ?? {};
         this._pathmap = new Map();
+        this._pathTrie = new Map();
+        this._pathidxNext = { n: 1 }; // 0 reserved for the root path
+        this._pathidx = 0;
         this.opts = (0, type_1.DEFAULT_OPTS)();
         this.addopts(cfg.opts);
     }
@@ -38,21 +41,62 @@ class AontuContext {
         ctx.err = cfg.err ?? ctx.err;
         ctx.explain = Array.isArray(cfg.explain) ? cfg.explain : ctx.explain;
         ctx._pathstr = undefined;
-        ctx._pathidx = undefined;
+        // Path didn't move unless cfg.path was supplied, so pathidx stays
+        // valid in the common case. For cfg.path-override (4 calls per
+        // run, fixpoint advances) fall back to the join-based lookup.
+        if (cfg.path !== undefined) {
+            ctx._pathidx = undefined;
+        }
         return ctx;
     }
     descend(key) {
+        // C3: reuse the child ctx from a previous descend with the same
+        // (parent, key). Saves one Object.create + several property
+        // writes per hit; ~48% hit rate on foo-sdk.
+        //
+        // NB: must use hasOwnProperty here — plain `this._childCache`
+        // would walk the prototype chain and read the *parent's* cache
+        // (ctxs are created via Object.create(parent)), so keys would
+        // cross-contaminate between sibling branches.
+        let childCache;
+        if (Object.prototype.hasOwnProperty.call(this, '_childCache')) {
+            childCache = this._childCache;
+            const cached = childCache.get(key);
+            if (cached !== undefined)
+                return cached;
+        }
+        else {
+            childCache = new Map();
+            this._childCache = childCache;
+        }
         const ctx = Object.create(this);
-        ctx.path = this.path.concat(key);
         ctx._pathstr = undefined;
-        ctx._pathidx = undefined;
+        // Trie doubles as both pathidx assignment and path-array cache.
+        // (parent_pathidx, key) uniquely identifies a descended path,
+        // and is visited many times across fixpoint passes. Caching the
+        // materialised array lets descend share references instead of
+        // allocating a fresh concat every time.
+        const parentIdx = this._pathidx;
+        let childMap = this._pathTrie.get(parentIdx);
+        if (childMap === undefined) {
+            childMap = new Map();
+            this._pathTrie.set(parentIdx, childMap);
+        }
+        let entry = childMap.get(key);
+        if (entry === undefined) {
+            entry = { idx: this._pathidxNext.n++, path: this.path.concat(key) };
+            childMap.set(key, entry);
+        }
+        ctx._pathidx = entry.idx;
+        ctx.path = entry.path;
+        childCache.set(key, ctx);
         return ctx;
     }
     addopts(opts) {
         if (null != opts) {
             Object.assign(this.opts, opts);
         }
-        this.collect = (this.opts.collect ?? null != this.opts.err) ?? this.collect;
+        this.collect = this.opts.collect ?? (null != this.opts.err || this.collect);
         this.err = this.opts.err ?? this.err;
         this.deps = this.opts.deps ?? this.deps;
         this.fs = this.opts.fs ?? this.fs;
@@ -69,15 +113,17 @@ class AontuContext {
             if (!this.err.includes(err)) {
                 this.err.push(err);
             }
-            if (null == err.msg || '' == err.msg) {
-                (0, err_1.descErr)(err, this);
-            }
+            // NOTE: error message formatting is deferred to errmsg() / NilVal.gen.
+            // Many NilVals are transient (disjunct member trials, etc.) and never
+            // surface to the user — eager descErr was a major hot path.
         }
     }
     errmsg() {
         // return this.errlist
         return this.err
-            .map((err) => err?.msg)
+            .map((err) => (err && (null == err.msg || '' === err.msg)
+            ? ((0, err_1.descErr)(err, this), err.msg)
+            : err?.msg))
             .filter(msg => null != msg)
             .join('\n------\n');
     }

@@ -21,7 +21,7 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
         let out = this;
         if (null != peer) {
             if (peer.isScalarKind) {
-                out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'KND') }));
+                out = peer.unify(this, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'KND') }) : ctx);
             }
             else if (peer.isScalar &&
                 peer.peg === this.peg) {

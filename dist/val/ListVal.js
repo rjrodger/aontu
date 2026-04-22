@@ -48,13 +48,13 @@ class ListVal extends BagVal_1.BagVal {
         out.site = this.site;
         if (peer instanceof ListVal) {
             if (!this.closed && peer.closed) {
-                out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'PMC') }));
+                out = peer.unify(this, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PMC') }) : ctx);
                 exit = true;
             }
             else {
                 out.closed = out.closed || peer.closed;
                 out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                    (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'SPR') }), out.spread.cj, peer.spread.cj, 'list-peer')));
+                    (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SPR') }) : ctx, out.spread.cj, peer.spread.cj, 'list-peer')));
             }
         }
         if (!exit) {
@@ -72,7 +72,7 @@ class ListVal extends BagVal_1.BagVal {
                             key_spread_cj.isNil ? key_spread_cj :
                                 key_spread_cj.isTop && child.done ? child :
                                     child.isTop && key_spread_cj.done ? key_spread_cj :
-                                        (0, unify_1.unite)(keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }), child, key_spread_cj, 'list-own');
+                                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, key_spread_cj, 'list-own');
                 done = (done && type_1.DONE === out.peg[key].dc);
             }
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
@@ -127,6 +127,10 @@ class ListVal extends BagVal_1.BagVal {
     // always done, never path-dependent, and never has marks mutated.
     // For anything more complex, fall back to full deep clone.
     spreadClone(ctx) {
+        // B1: share directly when the spread tree has no path-dependent
+        // leaves. See MapVal.spreadClone for rationale.
+        if (!this.isPathDependent)
+            return this;
         let allScalarKind = true;
         for (let key in this.peg) {
             if (!this.peg[key]?.isScalarKind) {

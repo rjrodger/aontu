@@ -43,7 +43,7 @@ class IntegerVal extends ScalarVal {
 
     if (null != peer) {
       if (peer.isScalarKind) {
-        out = peer.unify(this, ctx.clone({ explain: ec(te, 'KND') }))
+        out = peer.unify(this, te ? ctx.clone({ explain: ec(te, 'KND') }) : ctx)
       }
       else if (
         peer.isScalar &&

@@ -68,7 +68,7 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
             }
             else {
                 out = result.done && peer.isTop ? result :
-                    (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }), result, peer, 'op');
+                    (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }) : ctx, result, peer, 'op');
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }

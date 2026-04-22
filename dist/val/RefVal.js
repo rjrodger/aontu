@@ -116,7 +116,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 }
             }
             else {
-                out = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }), resolved, peer, 'ref');
+                out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }) : ctx, resolved, peer, 'ref');
                 why = 'u';
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;

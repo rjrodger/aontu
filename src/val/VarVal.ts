@@ -67,7 +67,7 @@ class VarVal extends FeatureVal {
         nameVal = this.peg
       }
       else {
-        nameVal = this.peg.unify(peer, ctx.clone({ explain: ec(te, 'PEG') }))
+        nameVal = this.peg.unify(peer, te ? ctx.clone({ explain: ec(te, 'PEG') }) : ctx)
       }
     }
     else {

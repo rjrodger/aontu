@@ -117,7 +117,7 @@ class OpBaseVal extends FeatureVal {
       }
       else {
         out = result.done && peer.isTop ? result :
-          unite(ctx.clone({ explain: ec(te, 'RES') }), result, peer, 'op')
+          unite(te ? ctx.clone({ explain: ec(te, 'RES') }) : ctx, result, peer, 'op')
       }
 
       out.dc = DONE === out.dc ? DONE : this.dc + 1

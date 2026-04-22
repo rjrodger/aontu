@@ -16,7 +16,7 @@ import {
 
 import { Val, EMPTY_ERR } from './Val'
 
-import { AontuError } from '../err'
+import { AontuError, descErr } from '../err'
 
 
 class NilVal extends Val {
@@ -142,6 +142,9 @@ class NilVal extends Val {
     ctx.adderr(this)
 
     if (!ctx.collect) {
+      if (null == this.msg || '' === this.msg) {
+        descErr(this, ctx)
+      }
       const err = new AontuError(this.msg, [this])
       throw err
     }
@@ -162,6 +165,19 @@ class NilVal extends Val {
 }
 
 
+// Shared sentinel for transient "this unification branch failed"
+// markers. Used by DisjunctVal.unify to flag failed member trials
+// (and to dedup results) without allocating a fresh NilVal per
+// failure. The sentinel is filtered out before the disjunct result
+// is constructed, so its .why / .site / .primary fields are never
+// inspected by user-visible code.
+//
+// Do NOT use this sentinel for errors that may surface: those need
+// real NilVals with proper site/path info for descErr formatting.
+const TRIAL_NIL = new NilVal({ why: '|:trial-nil' })
+
+
 export {
   NilVal,
+  TRIAL_NIL,
 }

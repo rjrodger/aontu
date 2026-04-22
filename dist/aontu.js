@@ -124,6 +124,13 @@ function handleErrors(errs, out, ac) {
         out.err.map((err) => ac.adderr(err));
     }
     if (0 < ac.err.length) {
+        // Error message formatting is deferred by adderr (many NilVals are
+        // transient). Materialize msgs here before the caller sees them.
+        for (const err of ac.err) {
+            if (null == err?.msg || '' === err.msg) {
+                (0, err_1.descErr)(err, ac);
+            }
+        }
         if (ac.collect) {
             if (out) {
                 out.err = ac.err;

@@ -32,7 +32,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         let out = this;
         let why = '';
         if (!this.peg.done) {
-            const resolved = (0, unify_1.unite)(ctx.clone({ explain: ctx.explain && (0, utility_1.ec)(te, 'RES') }), this.peg, (0, top_1.top)(), 'pref/resolve');
+            const resolved = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }) : ctx, this.peg, (0, top_1.top)(), 'pref/resolve');
             // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
             this.superpeg = this.peg.superior();
@@ -61,7 +61,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
                 //   this.peg.id, this.peg, this.peg.done,
                 //   peer.peg.id, peer.peg, peer.peg.done,
                 // )
-                let peg = (0, unify_1.unite)(ctx.clone({ explain: ctx.explain && (0, utility_1.ec)(te, 'PREF-PEER') }), this.peg, peer.peg, 'pref-peer/' + this.id);
+                let peg = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PREF-PEER') }) : ctx, this.peg, peer.peg, 'pref-peer/' + this.id);
                 out = new PrefVal({ peg }, ctx);
                 // console.log('PREF-RANK-SAME-OUT', peg, peg.done, out, out.done)
                 why += 'rank-same';
@@ -69,7 +69,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         }
         else if (!peer.isTop) {
             why += 'super-';
-            out = (0, unify_1.unite)(ctx.clone({ explain: ctx.explain && (0, utility_1.ec)(te, 'SUPER') }), this.superpeg, peer, 'pref-super/' + this.id);
+            out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SUPER') }) : ctx, this.superpeg, peer, 'pref-super/' + this.id);
             if (out.same(this.superpeg)) {
                 out = this.peg;
                 why += 'same';

@@ -58,47 +58,50 @@ let ID = 1000
 
 
 abstract class Val {
-  isVal = true
+  // Type-discriminator flags: defaults live on Val.prototype (see
+  // bottom of this file). Each subclass overrides only its own
+  // discriminator(s), so a plain Val instance writes zero flags.
+  declare isVal: boolean
 
-  isTop = false
-  isNil = false
-  isMap = false
-  isList = false
-  isScalar = false
-  isScalarKind = false
-  isRef = false
-  isPref = false
-  isVar = false
-  isBag = false
-  isNumber = false
-  isInteger = false
-  isString = false
-  isBoolean = false
-  isConjunct = false
-  isDisjunct = false
-  isJunction = false
+  declare isTop: boolean
+  declare isNil: boolean
+  declare isMap: boolean
+  declare isList: boolean
+  declare isScalar: boolean
+  declare isScalarKind: boolean
+  declare isRef: boolean
+  declare isPref: boolean
+  declare isVar: boolean
+  declare isBag: boolean
+  declare isNumber: boolean
+  declare isInteger: boolean
+  declare isString: boolean
+  declare isBoolean: boolean
+  declare isConjunct: boolean
+  declare isDisjunct: boolean
+  declare isJunction: boolean
 
   // Conjunct sort order. Lower values sort first in norm().
-  cjo = 99999
+  declare cjo: number
 
-  isOp = false
-  isPlusOp = false
+  declare isOp: boolean
+  declare isPlusOp: boolean
 
-  isFunc = false
-  isCloseFunc = false
-  isCopyFunc = false
-  isHideFunc = false
-  isMoveFunc = false
-  isKeyFunc = false
-  isLowerFunc = false
-  isOpenFunc = false
-  isPathFunc = false
-  isPrefFunc = false
-  isSuperFunc = false
-  isTypeFunc = false
-  isUpperFunc = false
+  declare isFunc: boolean
+  declare isCloseFunc: boolean
+  declare isCopyFunc: boolean
+  declare isHideFunc: boolean
+  declare isMoveFunc: boolean
+  declare isKeyFunc: boolean
+  declare isLowerFunc: boolean
+  declare isOpenFunc: boolean
+  declare isPathFunc: boolean
+  declare isPrefFunc: boolean
+  declare isSuperFunc: boolean
+  declare isTypeFunc: boolean
+  declare isUpperFunc: boolean
 
-  isGenable = false
+  declare isGenable: boolean
 
   id: number
   dc: number = 0
@@ -151,7 +154,10 @@ abstract class Val {
         ; (this.peg as any)[SPREAD] = spread
     }
 
-    this.path = ctx?.path || []
+    // spec.path takes precedence over ctx.path: lets callers (notably
+    // Val.clone) specify the target path without paying for a full
+    // ctx.clone just to carry it.
+    this.path = spec?.path ?? ctx?.path ?? []
 
     // TODO: make this work
     // this.id = spec?.id ?? (ctx ? ++ctx.vc : ++ID)
@@ -180,27 +186,26 @@ abstract class Val {
 
 
   clone(ctx: AontuContext, spec?: ValSpec): Val {
-    let cloneCtx
-
     let path = spec?.path
     if (null == path) {
       let cut = this.path.indexOf('&')
       cut = -1 < cut ? cut + 1 : ctx.path.length
       path = ctx.path.concat(this.path.slice(cut))
     }
-    // console.log('CLONE', path, this.canon)
-    // console.trace()
 
-    cloneCtx = ctx.clone({ path })
-
+    // Carry the target path via the spec instead of cloning ctx just
+    // to hold it: the Val constructor now reads spec.path first. This
+    // saves ~120k ctx.clone calls (two Object.create each) on a
+    // foo-sdk-sized model.
     let fullspec = {
       peg: this.peg,
       mark: { type: this.mark.type, hide: this.mark.hide },
-      ...(spec ?? {})
+      ...(spec ?? {}),
+      path,
     }
 
     let out = new (this as any)
-      .constructor(fullspec, cloneCtx)
+      .constructor(fullspec, ctx)
 
     out.dc = this.done ? DONE : out.dc
 
@@ -221,6 +226,42 @@ abstract class Val {
   // Override in MapVal/ListVal to avoid deep-cloning simple children.
   spreadClone(ctx: AontuContext): Val {
     return this.clone(ctx)
+  }
+
+
+  // True if this Val's unification result depends on its own `path`
+  // — i.e. the tree contains a RefVal, KeyFuncVal, PathFuncVal,
+  // MoveFuncVal, or SuperFuncVal. Used by MapVal/ListVal.spreadClone
+  // to share the spread constraint across keys when it's safe.
+  // Lazy + cached: the answer is a function of the Val's immutable
+  // structure, so we compute once per Val.
+  _isPathDependent?: boolean
+  get isPathDependent(): boolean {
+    if (this._isPathDependent !== undefined) return this._isPathDependent
+    let dep =
+      this.isRef || this.isKeyFunc || this.isPathFunc ||
+      this.isMoveFunc || this.isSuperFunc
+    if (!dep) {
+      const peg = this.peg
+      if (Array.isArray(peg)) {
+        for (let i = 0; i < peg.length; i++) {
+          const c = peg[i]
+          if (c && c.isVal && c.isPathDependent) { dep = true; break }
+        }
+      }
+      else if (peg != null && typeof peg === 'object') {
+        for (const k in peg) {
+          const c = (peg as any)[k]
+          if (c && c.isVal && c.isPathDependent) { dep = true; break }
+        }
+      }
+      if (!dep) {
+        const spreadCj = (this as any).spread?.cj as Val | undefined
+        if (spreadCj && spreadCj.isPathDependent) dep = true
+      }
+    }
+    this._isPathDependent = dep
+    return dep
   }
 
 
@@ -309,6 +350,56 @@ abstract class Val {
   }
 
 }
+
+
+// Prototype-level defaults for Val's type-discriminator flags.
+// Keeping these on the prototype (instead of per-instance class-field
+// initializers) removes ~35 property writes from every Val construction
+// and eliminates the corresponding hidden-class transitions. Subclasses
+// override only the flags that differ, via their own class-field
+// initializers (e.g. `MapVal.isMap = true`).
+Object.assign(Val.prototype, {
+  isVal: true,
+
+  isTop: false,
+  isNil: false,
+  isMap: false,
+  isList: false,
+  isScalar: false,
+  isScalarKind: false,
+  isRef: false,
+  isPref: false,
+  isVar: false,
+  isBag: false,
+  isNumber: false,
+  isInteger: false,
+  isString: false,
+  isBoolean: false,
+  isConjunct: false,
+  isDisjunct: false,
+  isJunction: false,
+
+  cjo: 99999,
+
+  isOp: false,
+  isPlusOp: false,
+
+  isFunc: false,
+  isCloseFunc: false,
+  isCopyFunc: false,
+  isHideFunc: false,
+  isMoveFunc: false,
+  isKeyFunc: false,
+  isLowerFunc: false,
+  isOpenFunc: false,
+  isPathFunc: false,
+  isPrefFunc: false,
+  isSuperFunc: false,
+  isTypeFunc: false,
+  isUpperFunc: false,
+
+  isGenable: false,
+})
 
 
 function inspectpeg(peg: any, d: number) {

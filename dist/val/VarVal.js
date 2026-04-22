@@ -29,7 +29,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
                 nameVal = this.peg;
             }
             else {
-                nameVal = this.peg.unify(peer, ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }));
+                nameVal = this.peg.unify(peer, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }) : ctx);
             }
         }
         else {

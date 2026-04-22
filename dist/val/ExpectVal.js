@@ -17,8 +17,8 @@ class ExpectVal extends FeatureVal_1.FeatureVal {
         let out = this;
         if (!peer.isTop) {
             this.peer = undefined === this.peer ? peer :
-                (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PEER') }), this.peer, peer, 'expect-peer');
-            const peeru = (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'EXPECT') }), this.peer, this.peg, 'expect-self');
+                (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PEER') }) : ctx, this.peer, peer, 'expect-peer');
+            const peeru = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'EXPECT') }) : ctx, this.peer, this.peg, 'expect-self');
             if (peeru.isGenable) {
                 out = peeru;
             }

@@ -54,7 +54,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                         // console.log('FUNCBASE-UNIFY-PEG-A', arg.canon)
                         let newarg = arg;
                         if (!arg.done) {
-                            newarg = arg.unify(TOP, ctx.clone({ explain: (0, utility_1.ec)(te, 'ARG') }));
+                            newarg = arg.unify(TOP, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'ARG') }) : ctx);
                             newtype = newtype || newarg.mark.type;
                             newhide = newhide || newarg.mark.hide;
                             // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, arg.done, '->', newarg.canon, newarg.done)
@@ -69,7 +69,7 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                     const resolved = this.resolve(ctx, newpeg);
                     // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
                     out = resolved.done && peer.isTop ? resolved :
-                        (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }), resolved, peer, 'func-' + this.funcname() + '/' + this.id);
+                        (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }) : ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id);
                     (0, utility_1.propagateMarks)(this, out);
                     // TODO: make should handle this using ctx?
                     out.site.row = this.site.row;

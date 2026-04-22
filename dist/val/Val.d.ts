@@ -80,6 +80,8 @@ declare abstract class Val {
     same(peer: Val): boolean;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     spreadClone(ctx: AontuContext): Val;
+    _isPathDependent?: boolean;
+    get isPathDependent(): boolean;
     place(v: Val): Val;
     unify(_peer: Val, _ctx: AontuContext): Val;
     get canon(): string;

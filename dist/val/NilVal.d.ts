@@ -24,4 +24,5 @@ declare class NilVal extends Val {
     superior(): Val;
     inspection(): any;
 }
-export { NilVal, };
+declare const TRIAL_NIL: NilVal;
+export { NilVal, TRIAL_NIL, };

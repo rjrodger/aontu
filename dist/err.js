@@ -17,6 +17,20 @@ function getHint(why, details) {
     return undefined;
 }
 function makeNilErr(ctx, why, av, bv, attempt, details) {
+    // C1-inner: when a DisjunctVal trial is in progress, failures are
+    // transient markers — none of the NilVal fields (site, path,
+    // primary, secondary, details) ever surface to the user because
+    // DisjunctVal replaces the oval entry with TRIAL_NIL and filters
+    // by isNil. Allocating a fresh NilVal per failure (~60k per
+    // foo-sdk run from IntegerVal/BooleanVal/ScalarVal.unify et al.)
+    // is pure waste. Short-circuit to the shared sentinel; push once
+    // to ctx.err so the caller's `trialErr.length > 0` check still
+    // signals failure.
+    if (ctx !== undefined && ctx._trialMode === true) {
+        if (ctx.err.length === 0)
+            ctx.err.push(NilVal_1.TRIAL_NIL);
+        return NilVal_1.TRIAL_NIL;
+    }
     const nilval = NilVal_1.NilVal.make(ctx, why, av, bv, attempt, details);
     return nilval;
 }
@@ -96,32 +110,39 @@ function resolveFile(url) {
 }
 function resolveSrc(v, errctx, position) {
     let src = undefined;
-    if (null != v?.site.url) {
-        try {
-            const fileExists = errctx?.fs?.existsSync(v.site.url);
-            if (fileExists) {
-                src = errctx?.fs?.readFileSync(v.site.url, 'utf8') ?? undefined;
+    const url = v?.site.url;
+    // Cache reads on errctx for the lifetime of the error-formatting pass.
+    // When many NilVals share the same source file (common during batch
+    // descErr after unify), this avoids re-reading the same file N times.
+    const cache = errctx ? (errctx._srcCache ??= new Map()) : null;
+    if (null != url) {
+        if (cache && cache.has(url)) {
+            src = cache.get(url);
+        }
+        else {
+            try {
+                const fileExists = errctx?.fs?.existsSync(url);
+                if (fileExists) {
+                    src = errctx?.fs?.readFileSync(url, 'utf8') ?? undefined;
+                }
+            }
+            catch (fe) {
+                // ignore as more important to report original error
+            }
+            if (cache && null != src) {
+                cache.set(url, src);
             }
         }
-        catch (fe) {
-            // console.log('AONTU-resolveSrc-ERROR', position, v, v.site.url, fe)
-            // ignore as more important to report original error
-        }
-    }
-    else {
-        // console.log(v)
-        // console.trace()
     }
     if (undefined == src || '' === src) {
         if (errctx?.src) {
             src = errctx.src;
         }
         else if (errctx) {
-            src = 'SOURCE-NOT-FOUND:' + (null != v?.site.url ? (' ' + v.site.url) : '') +
+            src = 'SOURCE-NOT-FOUND:' + (null != url ? (' ' + url) : '') +
                 (null == errctx?.fs ? ' (NO-FS)' : '');
         }
     }
-    // console.log('AONTU-resolveSrc', position, v, v?.site.url, errctx?.fs, src?.length)
     return src;
 }
 class AontuError extends Error {

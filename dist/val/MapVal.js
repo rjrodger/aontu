@@ -50,7 +50,7 @@ class MapVal extends BagVal_1.BagVal {
         out.site = this.site;
         if (peer instanceof MapVal) {
             if (!this.closed && peer.closed) {
-                out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'PMC') }));
+                out = peer.unify(this, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PMC') }) : ctx);
                 exit = true;
             }
             // ensure determinism of unification
@@ -60,13 +60,13 @@ class MapVal extends BagVal_1.BagVal {
                 if (peerkeys.length < selfkeys.length
                     || (peerkeys.length === selfkeys.length
                         && peerkeys.join('~') < selfkeys.join('~'))) {
-                    out = peer.unify(this, ctx.clone({ explain: (0, utility_1.ec)(te, 'SPC') }));
+                    out = peer.unify(this, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SPC') }) : ctx);
                     exit = true;
                 }
             }
             if (!exit) {
                 out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                    (0, unify_1.unite)(ctx.clone({ explain: (0, utility_1.ec)(te, 'SPR') }), out.spread.cj, peer.spread.cj, 'map-self')));
+                    (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SPR') }) : ctx, out.spread.cj, peer.spread.cj, 'map-self')));
             }
         }
         else {
@@ -88,7 +88,7 @@ class MapVal extends BagVal_1.BagVal {
                             key_spread_cj.isNil ? key_spread_cj :
                                 key_spread_cj.isTop && child.done ? child :
                                     child.isTop && key_spread_cj.done ? key_spread_cj :
-                                        (0, unify_1.unite)(keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }), child, key_spread_cj, 'map-own');
+                                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, key_spread_cj, 'map-own');
                 done = (done && type_1.DONE === out.peg[key].dc);
             }
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
@@ -145,15 +145,23 @@ class MapVal extends BagVal_1.BagVal {
         ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;
     }
-    // Spread clone: only deep-clone children that are path-dependent
-    // (isFunc, isRef). Share all other children directly to avoid
-    // N x M allocations for maps with N keys and M spread fields.
-    // Spread clone: when all children are ScalarKindVal (simple type
-    // constraints like `string`, `number`), share them directly to avoid
-    // N x M allocations. ScalarKindVal is safe to share: it is immutable,
-    // always done, never path-dependent, and never has marks mutated.
-    // For anything more complex, fall back to full deep clone.
+    // Spread clone: return a Val usable as the per-key spread constraint.
+    //
+    // Three tiers:
+    //   1. tree is path-independent (no RefVal/KeyFuncVal/PathFuncVal/
+    //      MoveFuncVal/SuperFuncVal anywhere below): return `this` directly.
+    //      Nothing in the unify path mutates the spread root, and no
+    //      child depends on its own stored .path, so sharing is safe.
+    //   2. top-level children are all ScalarKindVal: shallow clone
+    //      (share children, fresh MapVal wrapper).
+    //   3. otherwise: full deep clone via `this.clone(ctx)`.
+    //
+    // Tier 1 handles the foo-sdk common case of simple type-constraint
+    // spreads like `&:{active: *true | boolean, version: *'0.0.1' | string}`,
+    // which are cloned thousands of times per run.
     spreadClone(ctx) {
+        if (!this.isPathDependent)
+            return this;
         let allScalarKind = true;
         for (let key in this.peg) {
             if (!this.peg[key]?.isScalarKind) {

@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NilVal = void 0;
+exports.TRIAL_NIL = exports.NilVal = void 0;
 const type_1 = require("../type");
 const Val_1 = require("./Val");
 const err_1 = require("../err");
@@ -46,6 +46,9 @@ class NilVal extends Val_1.Val {
         this.why = this.why ?? 'nil_gen';
         ctx.adderr(this);
         if (!ctx.collect) {
+            if (null == this.msg || '' === this.msg) {
+                (0, err_1.descErr)(this, ctx);
+            }
             const err = new err_1.AontuError(this.msg, [this]);
             throw err;
         }
@@ -92,4 +95,15 @@ NilVal.make = (ctx, why, av, bv, attempt, details) => {
     }
     return nil;
 };
+// Shared sentinel for transient "this unification branch failed"
+// markers. Used by DisjunctVal.unify to flag failed member trials
+// (and to dedup results) without allocating a fresh NilVal per
+// failure. The sentinel is filtered out before the disjunct result
+// is constructed, so its .why / .site / .primary fields are never
+// inspected by user-visible code.
+//
+// Do NOT use this sentinel for errors that may surface: those need
+// real NilVals with proper site/path info for descErr formatting.
+const TRIAL_NIL = new NilVal({ why: '|:trial-nil' });
+exports.TRIAL_NIL = TRIAL_NIL;
 //# sourceMappingURL=NilVal.js.map

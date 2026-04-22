@@ -10,7 +10,7 @@ import { Unify } from './unify'
 import { AontuContext, AontuContextConfig } from './ctx'
 import { MapVal } from './val/MapVal'
 import { formatExplain } from './utility'
-import { makeNilErr, AontuError } from './err'
+import { makeNilErr, descErr, AontuError } from './err'
 
 
 
@@ -165,6 +165,14 @@ function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
   }
 
   if (0 < ac.err.length) {
+    // Error message formatting is deferred by adderr (many NilVals are
+    // transient). Materialize msgs here before the caller sees them.
+    for (const err of ac.err) {
+      if (null == err?.msg || '' === err.msg) {
+        descErr(err, ac)
+      }
+    }
+
     if (ac.collect) {
       if (out) {
         out.err = ac.err

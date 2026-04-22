@@ -97,7 +97,7 @@ class ConjunctVal extends JunctionVal {
       // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
 
       upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
-        unite(ctx.clone({ explain: ec(te, 'OWN') }), this.peg[vI], peer, 'cj-own')
+        unite(te ? ctx.clone({ explain: ec(te, 'OWN') }) : ctx, this.peg[vI], peer, 'cj-own')
 
       upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type
       upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide
@@ -153,7 +153,7 @@ class ConjunctVal extends JunctionVal {
 
 
       else {
-        val = unite(ctx.clone({ explain: ec(te, 'DEF') }), t0, t1, 'cj-peer-t0t1')
+        val = unite(te ? ctx.clone({ explain: ec(te, 'DEF') }) : ctx, t0, t1, 'cj-peer-t0t1')
         // console.log('CONJUNCT-T', t0.canon, t1?.canon, '->', val.canon)
         done = done && DONE === val.dc
         newtype = this.mark.type || val.mark.type
