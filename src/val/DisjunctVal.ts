@@ -73,14 +73,6 @@ class DisjunctVal extends JunctionVal {
       return this
     }
 
-    // Canon-keyed cache: when both are done, the result depends only
-    // on structure. Canon is cached per done Val.
-    if (this.done && peer.done && ctx._uniteCache !== undefined) {
-      const dcKey = 'D' + this.canon + '|||' + peer.canon
-      const dcHit = ctx._uniteCache.get(dcKey)
-      if (dcHit !== undefined) return dcHit
-    }
-
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Disjunct', this, peer)
 
     if (!this.prefsRanked) {
@@ -175,11 +167,6 @@ class DisjunctVal extends JunctionVal {
     }
 
     out.dc = done ? DONE : this.dc + 1
-
-    // Store in canon cache when both operands were done.
-    if (this.done && peer.done && out.done && ctx._uniteCache !== undefined) {
-      ctx._uniteCache.set('D' + this.canon + '|||' + peer.canon, out)
-    }
 
     // // // console.log('DISJUNCT-unify',
     //   this.id, sc, pc, '->', out.canon, 'D=' + out.dc, 'E=', this.err)

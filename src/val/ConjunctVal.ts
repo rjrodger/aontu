@@ -71,6 +71,11 @@ class ConjunctVal extends JunctionVal {
   unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
 
+    // Fast path: done conjunct self-unifying with TOP.
+    if (this.done && peer.isTop) {
+      return this
+    }
+
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Conjunct', this, peer)
 
     let done = true

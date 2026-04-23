@@ -35,6 +35,10 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
     }
     unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
+        // Fast path: done conjunct self-unifying with TOP.
+        if (this.done && peer.isTop) {
+            return this;
+        }
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Conjunct', this, peer);
         let done = true;
         this.peg = norm(this.peg);

@@ -4,7 +4,6 @@ import { BagVal } from './BagVal';
 declare class MapVal extends BagVal {
     isMap: boolean;
     _canonCache?: string;
-    _fingerprint?: number;
     constructor(spec: ValSpec, ctx?: AontuContext);
     unify(peer: Val, ctx: AontuContext): Val;
     spreadClone(ctx: AontuContext): Val;
@@ -12,5 +11,4 @@ declare class MapVal extends BagVal {
     get canon(): string;
     inspection(d?: number): string;
 }
-declare function valHash(v: any): number;
-export { MapVal, valHash, };
+export { MapVal, };

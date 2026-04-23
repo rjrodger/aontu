@@ -36,7 +36,6 @@ import { BagVal } from './BagVal'
 class MapVal extends BagVal {
   isMap = true
   _canonCache?: string
-  _fingerprint?: number
 
   constructor(
     spec: ValSpec,
@@ -78,17 +77,21 @@ class MapVal extends BagVal {
     const TOP = top()
     peer = peer ?? TOP
 
-    // Canon-keyed cache: when both maps are done, the unification
-    // result depends only on their structure, not instance identity.
-    // ~99.6% of done-map unifications in large models are redundant.
-    // Canon is cached per done Val via _canonCache, so O(1) after first use.
-    if (this.done && peer instanceof MapVal && peer.done) {
-      const uc = ctx._uniteCache
-      if (uc !== undefined) {
-        const ck = this.canon + '|||' + peer.canon
-        const cached = uc.get(ck)
-        if (cached !== undefined) return cached
+    // Fast path: both maps done, no spreads, peer's keys are a
+    // subset of this's keys with the same child references, and
+    // neither side has type/hide marks. No new information.
+    if (this.done && peer instanceof MapVal && peer.done
+        && !peer.spread.cj && !this.spread.cj
+        && !this.mark.type && !this.mark.hide
+        && !peer.mark.type && !peer.mark.hide) {
+      let canSkip = true
+      for (const k in peer.peg) {
+        if (this.peg[k] !== peer.peg[k]) {
+          canSkip = false
+          break
+        }
       }
+      if (canSkip) return this
     }
 
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Map', this, peer)
@@ -277,14 +280,6 @@ class MapVal extends BagVal {
 
     ctx.explain && explainClose(te, out)
 
-    // Store in canon cache when both operands were done.
-    if (this.done && peer instanceof MapVal && peer.done && !out.isNil) {
-      const uc = ctx._uniteCache
-      if (uc !== undefined) {
-        uc.set(this.canon + '|||' + peer.canon, out)
-      }
-    }
-
     return out
   }
 
@@ -402,64 +397,6 @@ class MapVal extends BagVal {
 }
 
 
-// Numeric structural hash for done Vals. Cached on _fingerprint.
-// O(1) per Val when children already have hashes (bottom-up).
-// Uses FNV-1a-like mixing for good distribution.
-function valHash(v: any): number {
-  if (v._fingerprint !== undefined) return v._fingerprint
-
-  let h = 2166136261 // FNV offset basis
-  if (v.isScalar || v.isScalarKind) {
-    const s = '' + v.peg
-    for (let i = 0; i < s.length; i++) h = (h ^ s.charCodeAt(i)) * 16777619
-    h = (h ^ (v.constructor.name.charCodeAt(0) * 31)) | 0
-  }
-  else if (v.isMap) {
-    for (const k in v.peg) {
-      const kc = k.charCodeAt(0) | (k.length << 8)
-      h = (h ^ kc) * 16777619
-      h = (h ^ valHash(v.peg[k])) * 16777619
-    }
-    if (v.spread?.cj) h = (h ^ valHash(v.spread.cj)) * 16777619
-    h = (h ^ 123) | 0 // map marker
-  }
-  else if (v.isList) {
-    for (const k in v.peg) {
-      h = (h ^ valHash(v.peg[k])) * 16777619
-    }
-    if (v.spread?.cj) h = (h ^ valHash(v.spread.cj)) * 16777619
-    h = (h ^ 456) | 0 // list marker
-  }
-  else if (v.isJunction) {
-    for (let i = 0; i < v.peg.length; i++) {
-      h = (h ^ valHash(v.peg[i])) * 16777619
-    }
-    h = (h ^ (v.isDisjunct ? 789 : 321)) | 0
-  }
-  else if (v.isRef) {
-    for (let i = 0; i < v.peg.length; i++) {
-      const p = v.peg[i]
-      if ('string' === typeof p) {
-        for (let j = 0; j < p.length; j++) h = (h ^ p.charCodeAt(j)) * 16777619
-      }
-    }
-    h = (h ^ 654) | 0
-  }
-  else if (v.isPref && v.peg?.isVal) {
-    h = (h ^ valHash(v.peg)) * 16777619
-    h = (h ^ 987) | 0
-  }
-  else {
-    h = v.id | 0
-  }
-
-  h = h | 0  // ensure 32-bit int
-  if (v.done) v._fingerprint = h
-  return h
-}
-
-
 export {
   MapVal,
-  valHash,
 }

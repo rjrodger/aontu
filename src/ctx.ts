@@ -94,10 +94,9 @@ class AontuContext {
   _refCloneCache?: Map<string, Val>
 
   // Per-iteration cache for unite() results when both operands are
-  // done. Key: "aId|bId". Done Vals have no unresolved refs, so
-  // their unification is path-independent and can be reused across
-  // different tree positions. Cleared per fixpoint iteration.
+  // done. Key: "aId|bId". Cleared per fixpoint iteration.
   _uniteCache?: Map<string, Val>
+
 
 
   constructor(cfg: AontuContextConfig) {
