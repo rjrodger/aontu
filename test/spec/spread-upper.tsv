@@ -1,0 +1,3 @@
+# SpreadVal with upper() function
+# input	parse_canon	unify_canon	gen
+a:{&:{u:upper(hello)},b:{x:1}}	~	~	{"a":{"b":{"x":1,"u":"HELLO"}}}

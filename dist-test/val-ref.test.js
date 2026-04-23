@@ -438,14 +438,14 @@ const TOP = (0, top_1.top)();
         // console.log('AAA', v0)
         // expect(v0.canon).equal('{"a":{"b":1},"c":$.a.b$KEY}')
         // expect(G(s0)).equal({ a: { b: 1 }, c: 'a' })
-        // let s1 = 'a:.$KEY'
+        // let s1 = 'a:key()'
         // expect(G(s1)).equal({ a: '' })
-        let s2 = 'a:b:.$KEY';
+        let s2 = 'a:b:key()';
         (0, expect_1.expect)(G(s2)).equal({ a: { b: 'a' } });
-        let s3 = 'a:b:c:.$KEY';
+        let s3 = 'a:b:c:key()';
         (0, expect_1.expect)(G(s3)).equal({ a: { b: { c: 'b' } } });
         let s4 = `
-a: { n: .$KEY, x:1 }
+a: { n: key(), x:1 }
 b: { c: $.a }
 `;
         (0, expect_1.expect)(G(s4)).equal({
@@ -455,23 +455,23 @@ b: { c: $.a }
             },
             b: {
                 c: {
-                    n: 'a', // NOTE: correct as `a` tree is a normal tree
+                    n: 'c', // key() re-resolves at the new location
                     x: 1,
                 },
             },
         });
         let s5 = `
-a: { &: { n: .$KEY } }
+a: { &: { n: key() } }
 `;
         (0, expect_1.expect)(G(s5)).equal({ a: {} });
         let s6 = `
-a: { &: { n: .$KEY } }
+a: { &: { n: key() } }
 a: { b0: {} }
 `;
         (0, expect_1.expect)(G(s6)).equal({ a: { b0: { n: 'b0' } } });
         let s10 = `
-b: { &: {n:.$KEY} }
-b: { c0: { k:0, m:.$KEY }}
+b: { &: {n:key()} }
+b: { c0: { k:0, m:key() }}
 b: { c1: { k:1 }}
 `;
         (0, expect_1.expect)(G(s10))
@@ -546,22 +546,22 @@ b: { c1: { k:1 }}
         });
     });
     (0, node_test_1.test)('multi-spreadable', () => {
-        (0, expect_1.expect)(P('&:a').canon).equal('{&:"a"}');
-        (0, expect_1.expect)(P('&:a:1').canon).equal('{&:{"a":1}}');
-        (0, expect_1.expect)(P('&:a:b:1').canon).equal('{&:{"a":{"b":1}}}');
-        (0, expect_1.expect)(P('&:a:b:c:1').canon).equal('{&:{"a":{"b":{"c":1}}}}');
-        (0, expect_1.expect)(P('&:a&:b').canon).equal('{&:"a"&"b"}');
-        (0, expect_1.expect)(P('&:a:1&:b:2').canon).equal('{&:{"a":1}&{"b":2}}');
-        (0, expect_1.expect)(P('&:a:b:1&:c:d:2').canon).equal('{&:{"a":{"b":1}}&{"c":{"d":2}}}');
+        (0, expect_1.expect)(P('&:a').canon).equal('{}&{&:"a"}');
+        (0, expect_1.expect)(P('&:a:1').canon).equal('{}&{&:"a":1}');
+        (0, expect_1.expect)(P('&:a:b:1').canon).equal('{}&{&:"a":{"b":1}}');
+        (0, expect_1.expect)(P('&:a:b:c:1').canon).equal('{}&{&:"a":{"b":{"c":1}}}');
+        (0, expect_1.expect)(P('&:a&:b').canon).equal('{}&{&:"a"&"b"}');
+        (0, expect_1.expect)(P('&:a:1&:b:2').canon).equal('{}&{&:{"a":1}&{"b":2}}');
+        (0, expect_1.expect)(P('&:a:b:1&:c:d:2').canon).equal('{}&{&:{"a":{"b":1}}&{"c":{"d":2}}}');
         (0, expect_1.expect)(P('&:a:b:c:1&:d:e:f:3').canon)
-            .equal('{&:{"a":{"b":{"c":1}}}&{"d":{"e":{"f":3}}}}');
-        (0, expect_1.expect)(P('&:a&:b&:c').canon).equal('{&:"a"&"b"&"c"}');
+            .equal('{}&{&:{"a":{"b":{"c":1}}}&{"d":{"e":{"f":3}}}}');
+        (0, expect_1.expect)(P('&:a&:b&:c').canon).equal('{}&{&:"a"&"b"&"c"}');
         (0, expect_1.expect)(P('&:a:1&:b:2&:c:3').canon)
-            .equal('{&:{"a":1}&{"b":2}&{"c":3}}');
+            .equal('{}&{&:{"a":1}&{"b":2}&{"c":3}}');
         (0, expect_1.expect)(P('&:a:b:1&:c:d:2&:e:f:3').canon)
-            .equal('{&:{"a":{"b":1}}&{"c":{"d":2}}&{"e":{"f":3}}}');
+            .equal('{}&{&:{"a":{"b":1}}&{"c":{"d":2}}&{"e":{"f":3}}}');
         (0, expect_1.expect)(P('&:a:b:c:1&:d:e:f:3&:g:h:i:3').canon)
-            .equal('{&:{"a":{"b":{"c":1}}}&' +
+            .equal('{}&{&:{"a":{"b":{"c":1}}}&' +
             '{"d":{"e":{"f":3}}}&{"g":{"h":{"i":3}}}}');
         (0, expect_1.expect)(G('x:&:k:string x:a:k:a x:b:k:b'))
             .equal({ x: { a: { k: 'a' }, b: { k: 'b' } } });
@@ -578,41 +578,41 @@ b: { c1: { k:1 }}
     });
     (0, node_test_1.test)('multi-spreadable-key', () => {
         const c0 = makeCtx();
-        (0, expect_1.expect)(G('.$KEY')).equal('');
-        (0, expect_1.expect)(G('k:.$KEY')).equal({ k: '' });
-        (0, expect_1.expect)(G('a:k:.$KEY')).equal({ a: { k: 'a' } });
-        (0, expect_1.expect)(G('a:b:k:.$KEY')).equal({ a: { b: { k: 'b' } } });
-        (0, expect_1.expect)(G('k:.$KEY k:string')).equal({ k: '' });
-        (0, expect_1.expect)(G('a:k:.$KEY a:k:a')).equal({ a: { k: 'a' } });
-        (0, expect_1.expect)(G('a:k:string a:k:.$KEY a:k:a')).equal({ a: { k: 'a' } });
-        (0, expect_1.expect)(G('&:k:.$KEY')).equal({});
-        (0, expect_1.expect)(G('&:k:.$KEY a:{}')).equal({ a: { k: 'a' } });
-        (0, expect_1.expect)(G('&:k:.$KEY a:{} b:{}')).equal({ a: { k: 'a' }, b: { k: 'b' } });
+        (0, expect_1.expect)(G('key()')).equal('');
+        (0, expect_1.expect)(G('k:key()')).equal({ k: '' });
+        (0, expect_1.expect)(G('a:k:key()')).equal({ a: { k: 'a' } });
+        (0, expect_1.expect)(G('a:b:k:key()')).equal({ a: { b: { k: 'b' } } });
+        (0, expect_1.expect)(G('k:key() k:string')).equal({ k: '' });
+        (0, expect_1.expect)(G('a:k:key() a:k:a')).equal({ a: { k: 'a' } });
+        (0, expect_1.expect)(G('a:k:string a:k:key() a:k:a')).equal({ a: { k: 'a' } });
+        (0, expect_1.expect)(G('&:k:key()')).equal({});
+        (0, expect_1.expect)(G('&:k:key() a:{}')).equal({ a: { k: 'a' } });
+        (0, expect_1.expect)(G('&:k:key() a:{} b:{}')).equal({ a: { k: 'a' }, b: { k: 'b' } });
         (0, expect_1.expect)(G('q:&:k:a q:&:p:2 q:a:{x:11}')).equal({ q: { a: { k: 'a', p: 2, x: 11 } } });
         (0, expect_1.expect)(G('&:k:a &:p:2 a:{x:11}')).equal({ a: { k: 'a', p: 2, x: 11 } });
         (0, expect_1.expect)(G('q:&:k:key() q:&:p:2 q:a:{x:11}', c0)).equal({ q: { a: { k: 'a', p: 2, x: 11 } } });
         (0, expect_1.expect)(G('&:k:key() &:p:2 a:{x:11}', c0)).equal({ a: { k: 'a', p: 2, x: 11 } });
-        // expect(G('&:k:.$KEY &:p:2 a:{x:11} b:{x:22}'))
+        // expect(G('&:k:key() &:p:2 a:{x:11} b:{x:22}'))
         //   .equal({ a: { k: 'a', p: 2, x: 11 }, b: { k: 'b', p: 2, x: 22 } })
         (0, expect_1.expect)(G('&:k:key() &:p:2 a:{x:11} b:{x:22}'))
             .equal({ a: { k: 'a', p: 2, x: 11 }, b: { k: 'b', p: 2, x: 22 } });
-        (0, expect_1.expect)(G('a:&:n:.$KEY a:b:{}'))
+        (0, expect_1.expect)(G('a:&:n:key() a:b:{}'))
             .equal({ a: { b: { n: 'b' } } });
-        (0, expect_1.expect)(G('a:&:b:&:n:.$KEY a:x:b:y:{}'))
+        (0, expect_1.expect)(G('a:&:b:&:n:key() a:x:b:y:{}'))
             .equal({ a: { x: { b: { y: { n: 'y' } } } } });
-        (0, expect_1.expect)(G('&:n:.$KEY a:{}'))
+        (0, expect_1.expect)(G('&:n:key() a:{}'))
             .equal({ a: { n: 'a' } });
-        (0, expect_1.expect)(G('&:a:&:n:.$KEY x:{a:{y:{}}}'))
+        (0, expect_1.expect)(G('&:a:&:n:key() x:{a:{y:{}}}'))
             .equal({ x: { a: { y: { n: 'y' } } } });
-        (0, expect_1.expect)(G('a:&:k:.$KEY a:b:{}')).equal({ a: { b: { k: 'b' } } });
-        (0, expect_1.expect)(G('a:&:k:.$KEY a:b:{c:1} x:&:k:.$KEY x:y:{d:2}'))
+        (0, expect_1.expect)(G('a:&:k:key() a:b:{}')).equal({ a: { b: { k: 'b' } } });
+        (0, expect_1.expect)(G('a:&:k:key() a:b:{c:1} x:&:k:key() x:y:{d:2}'))
             .equal({ a: { b: { k: 'b', c: 1 } }, x: { y: { k: 'y', d: 2 } } });
-        (0, expect_1.expect)(G('a:&:k:.$KEY a:b:{c:1} x:$.a x:y:{d:2}')).equal({
+        (0, expect_1.expect)(G('a:&:k:key() a:b:{c:1} x:$.a x:y:{d:2}')).equal({
             a: { b: { c: 1, k: 'b' } },
             x: { b: { c: 1, k: 'b' }, y: { d: 2, k: 'y' } }
         });
         (0, expect_1.expect)(G(`
-q: &: { n: .$KEY, m: &: { k: .$KEY } }
+q: &: { n: key(), m: &: { k: key() } }
 a: q: $.q
 a: q: v: { m: { w:{}, y:{} } }
 `)).equal({
@@ -627,7 +627,7 @@ a: q: v: { m: { w:{}, y:{} } }
 a: b: c: d: e: $.a.b.f
 
 a: b: f: &: {
-   n: .$KEY
+   n: key()
    p: *true | boolean
 }
 

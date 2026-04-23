@@ -1,0 +1,3 @@
+# SpreadVal with move() function
+# input	parse_canon	unify_canon	gen
+x:{&:{y:1,k:key()}} x:a:z:2 x:c:move($.x.a)	~	~	{"x":{"c":{"z":2,"y":1,"k":"c"}}}

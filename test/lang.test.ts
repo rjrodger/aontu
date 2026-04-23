@@ -283,57 +283,55 @@ describe('lang', function() {
     let ctx = makeCtx()
 
     let v0 = P('a:{&:{x:1,y:integer},b:{y:1},c:{y:2}}')
-    expect(v0.canon).equal('{"a":{&:{"x":1,"y":integer},"b":{"y":1},"c":{"y":2}}}')
+    expect(v0.canon).equal('{"a":{"b":{"y":1},"c":{"y":2}}&{&:"x":1,"y":integer}}')
 
     let u0 = v0.unify(TOP, ctx)
     expect(u0.canon)
-      .equal('{"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+      .equal('{"a":{"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
 
     let v1 = P('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}')
     expect(v1.canon)
-      .equal('{"k":{"x":1,"y":integer},"a":{&:$.k,"b":{"y":1},"c":{"y":2}}}')
+      .equal('{"k":{"x":1,"y":integer},"a":{"b":{"y":1},"c":{"y":2}}&{&:$.k}}')
 
     let c1 = makeCtx({ root: v1 })
     let u1a = v1.unify(TOP, c1)
 
     expect(u1a.canon).
-      equal('{"k":{"x":1,"y":integer},"a":{&:$.k,' +
-        '"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}')
+      equal('{"k":{"x":1,"y":integer},"a":{"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
 
 
     let v2 = P('a:{&:number},a:{x:1},a:{y:2}')
-    expect(v2.canon).equal('{"a":{&:number}&{"x":1}&{"y":2}}')
+    expect(v2.canon).equal('{"a":{}&{&:number}&{"x":1}&{"y":2}}')
     let u2 = v2.unify(TOP, ctx)
-    expect(u2.canon).equal('{"a":{&:number,"x":1,"y":2}}')
+    expect(u2.canon).equal('{"a":{"x":1,"y":2}}')
 
     let v3 = P('a:{&:number,z:3},a:{x:1},a:{y:2}')
-    expect(v3.canon).equal('{"a":{&:number,"z":3}&{"x":1}&{"y":2}}')
+    expect(v3.canon).equal('{"a":{"z":3}&{&:number}&{"x":1}&{"y":2}}')
     let u3 = v3.unify(TOP, ctx)
-    expect(u3.canon).equal('{"a":{&:number,"x":1,"y":2,"z":3}}')
+    expect(u3.canon).equal('{"a":{"z":3,"x":1,"y":2}}')
 
     let v4 = P('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}')
-    expect(v4.canon).equal('{"b":{"a":{&:number,"z":3}&{"x":1}&{"y":2}}}')
+    expect(v4.canon).equal('{"b":{"a":{"z":3}&{&:number}&{"x":1}&{"y":2}}}')
     let u4 = v4.unify(TOP, ctx)
-    expect(u4.canon).equal('{"b":{"a":{&:number,"x":1,"y":2,"z":3}}}')
+    expect(u4.canon).equal('{"b":{"a":{"z":3,"x":1,"y":2}}}')
 
     // Must commute!
 
     let v5a = P('{&:{x:1}}&{a:{y:1}}')
     let u5a = v5a.unify(TOP, ctx)
-    expect(u5a.canon).equal('{&:{"x":1},"a":{"y":1,"x":1}}')
+    expect(u5a.canon).equal('{"a":{"y":1,"x":1}}')
 
     let v5b = P('{a:{y:1}}&{&:{x:1}}')
     let u5b = v5b.unify(TOP, ctx)
-    expect(u5b.canon).equal('{&:{"x":1},"a":{"y":1,"x":1}}')
+    expect(u5b.canon).equal('{"a":{"y":1,"x":1}}')
 
 
     let v6 = P('b:{a:{&:{K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}')
     expect(v6.canon)
-      .equal('{"b":{"a":{&:{"K":0},"z":{"Z":3}}&{"x":{"X":1}}&{"y":{"Y":2}}}}')
+      .equal('{"b":{"a":{"z":{"Z":3}}&{&:"K":0}&{"x":{"X":1}}&{"y":{"Y":2}}}}')
     let u6 = v6.unify(TOP, ctx)
     expect(u6.canon)
-      .equal('{"b":{"a":{&:{"K":0},' +
-        '"x":{"X":1,"K":0},"y":{"Y":2,"K":0},"z":{"Z":3,"K":0}}}}')
+      .equal('{"b":{"a":{"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}')
 
   })
 
@@ -343,43 +341,43 @@ describe('lang', function() {
     expect(P(s1).canon).equal('{"a":{"b":{"c":1}},"z":2}')
 
     let s1_1 = `a:&:b:1 z:2`
-    expect(P(s1_1).canon).equal('{"a":{&:{"b":1}},"z":2}')
+    expect(P(s1_1).canon).equal('{"a":{}&{&:"b":1},"z":2}')
 
     let s1_2 = `a:&:{b:1} z:2`
-    expect(P(s1_2).canon).equal('{"a":{&:{"b":1}},"z":2}')
+    expect(P(s1_2).canon).equal('{"a":{}&{&:"b":1},"z":2}')
 
     let s1_3 = `a:{&:{b:1}} z:2`
-    expect(P(s1_3).canon).equal('{"a":{&:{"b":1}},"z":2}')
+    expect(P(s1_3).canon).equal('{"a":{}&{&:"b":1},"z":2}')
 
     let s1_4 = `{a:{&:{b:1}} z:2}`
-    expect(P(s1_4).canon).equal('{"a":{&:{"b":1}},"z":2}')
+    expect(P(s1_4).canon).equal('{"a":{}&{&:"b":1},"z":2}')
 
     let s2 = `a:&:b:&:1 z:2`
-    expect(P(s2).canon).equal('{"a":{&:{"b":{&:1}}},"z":2}')
+    expect(P(s2).canon).equal('{"a":{}&{&:"b":{}&{&:1}},"z":2}')
 
     let s2_1 = `a:&:b:{&:1} z:2`
-    expect(P(s2_1).canon).equal('{"a":{&:{"b":{&:1}}},"z":2}')
+    expect(P(s2_1).canon).equal('{"a":{}&{&:"b":{}&{&:1}},"z":2}')
 
     let s2_2 = `a:&:{b:{&:1}} z:2`
-    expect(P(s2_2).canon).equal('{"a":{&:{"b":{&:1}}},"z":2}')
+    expect(P(s2_2).canon).equal('{"a":{}&{&:"b":{}&{&:1}},"z":2}')
 
     let s2_3 = `a:{&:{b:{&:1}}} z:2`
-    expect(P(s2_3).canon).equal('{"a":{&:{"b":{&:1}}},"z":2}')
+    expect(P(s2_3).canon).equal('{"a":{}&{&:"b":{}&{&:1}},"z":2}')
 
     let s2_4 = `{a:{&:{b:{&:1}}} z:2}`
-    expect(P(s2_4).canon).equal('{"a":{&:{"b":{&:1}}},"z":2}')
+    expect(P(s2_4).canon).equal('{"a":{}&{&:"b":{}&{&:1}},"z":2}')
 
     let s3 = `a:&:b:&:c:1 z:2`
-    expect(P(s3).canon).equal('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+    expect(P(s3).canon).equal('{"a":{}&{&:"b":{}&{&:"c":1}},"z":2}')
 
     let s4 = `a:&:b:&:{c:1} z:2`
-    expect(P(s4).canon).equal('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+    expect(P(s4).canon).equal('{"a":{}&{&:"b":{}&{&:"c":1}},"z":2}')
 
     let s5 = `a:&:{b:&:c:1} z:2`
-    expect(P(s5).canon).equal('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+    expect(P(s5).canon).equal('{"a":{}&{&:"b":{}&{&:"c":1}},"z":2}')
 
     let s6 = `a:&:{b:&:{c:1}} z:2`
-    expect(P(s6).canon).equal('{"a":{&:{"b":{&:{"c":1}}}},"z":2}')
+    expect(P(s6).canon).equal('{"a":{}&{&:"b":{}&{&:"c":1}},"z":2}')
   })
 
 
@@ -400,23 +398,23 @@ describe('lang', function() {
     let ctx = makeCtx()
 
     let v0 = P('a:b &:string')
-    expect(v0.canon).equal('{&:string,"a":"b"}')
+    expect(v0.canon).equal('{"a":"b"}&{&:string}')
     expect(v0.gen(ctx)).equal({ a: 'b' })
 
     let v1 = P(' &:string a:b &:string')
-    expect(v1.canon).equal('{&:string&string,"a":"b"}')
+    expect(v1.canon).equal('{"a":"b"}&{&:string&string}')
     expect(v1.gen(ctx)).equal({ a: 'b' })
 
     let v2 = P(' &:string &:string a:b &:string')
-    expect(v2.canon).equal('{&:string&string&string,"a":"b"}')
+    expect(v2.canon).equal('{"a":"b"}&{&:string&string&string}')
     expect(v2.gen(ctx)).equal({ a: 'b' })
 
     let v3 = P('&:string &:string a:b &:string &:string')
-    expect(v3.canon).equal('{&:string&string&string&string,"a":"b"}')
+    expect(v3.canon).equal('{"a":"b"}&{&:string&string&string&string}')
     expect(v3.gen(ctx)).equal({ a: 'b' })
 
     let v4 = P('a:&:string')
-    expect(v4.canon).equal('{"a":{&:string}}')
+    expect(v4.canon).equal('{"a":{}&{&:string}}')
     expect(v4.gen(ctx)).equal({ a: {} })
 
     let v5 = P('a:b:c a:d:e')
@@ -424,23 +422,23 @@ describe('lang', function() {
     expect(v5.unify(TOP, makeCtx()).gen(ctx)).equal({ a: { b: 'c', d: 'e' } })
 
     let v6 = P('a:b:c a:&:string')
-    expect(v6.canon).equal('{"a":{"b":"c"}&{&:string}}')
+    expect(v6.canon).equal('{"a":{"b":"c"}&({}&{&:string})}')
     expect(v6.unify(TOP, makeCtx()).gen(ctx)).equal({ a: { b: 'c' } })
 
     let v7 = P('a:&:c a:&:string')
-    expect(v7.canon).equal('{"a":{&:"c"}&{&:string}}')
+    expect(v7.canon).equal('{"a":{}&{&:"c"}&({}&{&:string})}')
     expect(v7.unify(TOP, makeCtx()).gen(ctx)).equal({ a: {} })
 
     let v8 = P('a:&:c a:&:string a:b:c')
-    expect(v8.canon).equal('{"a":{&:"c"}&{&:string}&{"b":"c"}}')
+    expect(v8.canon).equal('{"a":{}&{&:"c"}&({}&{&:string})&{"b":"c"}}')
     expect(v8.unify(TOP, makeCtx()).gen(ctx)).equal({ a: { b: 'c' } })
 
     let v9 = P('&:c &:string')
-    expect(v9.canon).equal('{&:"c"&string}')
+    expect(v9.canon).equal('{}&{&:"c"&string}')
     expect(v9.unify(TOP, makeCtx()).gen(ctx)).equal({})
 
     let v10 = P('&:b &:string a:b')
-    expect(v10.canon).equal('{&:"b"&string,"a":"b"}')
+    expect(v10.canon).equal('{"a":"b"}&{&:"b"&string}')
     expect(v10.unify(TOP, makeCtx()).gen(ctx)).equal({ a: 'b' })
   })
 

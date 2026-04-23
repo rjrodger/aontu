@@ -22,7 +22,7 @@ class AontuContext {
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
         this.vars = cfg.vars ?? this.vars;
         this.seenI = cfg.seenI ?? 0;
-        this.seen = cfg.seen ?? {};
+        this.seen = cfg.seen ?? new Map();
         this.srcpath = cfg.srcpath ?? undefined;
         this.deps = cfg.deps ?? {};
         this._pathmap = new Map();

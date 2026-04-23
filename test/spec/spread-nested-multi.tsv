@@ -1,0 +1,4 @@
+# Nested spreads with multiple children at each level
+# input	parse_canon	unify_canon	gen
+a:{&:{m:{&:{x:1}}},b:{m:{c:{y:2},d:{y:3}}},e:{m:{f:{y:4}}}}	~	~	{"a":{"b":{"m":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}},"e":{"m":{"f":{"y":4,"x":1}}}}}
+a:{&:{m:{&:{x:*1|number}}},b:{m:{c:{},d:{x:2}}}}	~	~	{"a":{"b":{"m":{"c":{"x":1},"d":{"x":2}}}}}

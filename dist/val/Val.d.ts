@@ -38,6 +38,7 @@ declare abstract class Val {
     isPref: boolean;
     isVar: boolean;
     isBag: boolean;
+    isSpread: boolean;
     isNumber: boolean;
     isInteger: boolean;
     isString: boolean;

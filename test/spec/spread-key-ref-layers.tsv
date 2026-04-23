@@ -1,0 +1,25 @@
+# key() through multiple layers of references
+# key() re-resolves at each destination location
+# input	parse_canon	unify_canon	gen
+
+# Direct ref chains: key() resolves to the destination key at each level
+q:{k:key()},a:$.q	~	~	{"q":{"k":"q"},"a":{"k":"a"}}
+q:{k:key()},r:$.q,a:$.r	~	~	{"q":{"k":"q"},"r":{"k":"r"},"a":{"k":"a"}}
+q:{k:key()},r:$.q,s:$.r,a:$.s	~	~	{"q":{"k":"q"},"r":{"k":"r"},"s":{"k":"s"},"a":{"k":"a"}}
+q:{k:key()},r:$.q,s:$.r,t:$.s,a:$.t	~	~	{"q":{"k":"q"},"r":{"k":"r"},"s":{"k":"s"},"t":{"k":"t"},"a":{"k":"a"}}
+
+# Ref chains used as spread constraints
+q:{k:key()},a:{&:$.q,b:{x:1}}	~	~	{"q":{"k":"q"},"a":{"b":{"k":"b","x":1}}}
+q:{k:key()},r:$.q,a:{&:$.r,b:{x:1}}	~	~	{"q":{"k":"q"},"r":{"k":"r"},"a":{"b":{"k":"b","x":1}}}
+q:{k:key()},r:$.q,s:$.r,a:{&:$.s,b:{x:1}}	~	~	{"q":{"k":"q"},"r":{"k":"r"},"s":{"k":"s"},"a":{"b":{"k":"b","x":1}}}
+
+# Spread ref with multiple children
+q:{k:key()},r:$.q,a:{&:$.r,b:{x:1},c:{x:2}}	~	~	{"q":{"k":"q"},"r":{"k":"r"},"a":{"b":{"k":"b","x":1},"c":{"k":"c","x":2}}}
+
+# Nested maps inside ref: key() resolves to inner field name
+q:{m:{k:key()}},a:{&:$.q,b:{m:{x:1}}}	~	~	{"q":{"m":{"k":"m"}},"a":{"b":{"m":{"k":"m","x":1}}}}
+q:{m:{k:key()}},r:$.q,a:{&:$.r,b:{m:{x:1}}}	~	~	{"q":{"m":{"k":"m"}},"r":{"m":{"k":"m"}},"a":{"b":{"m":{"k":"m","x":1}}}}
+
+# Ref with extra (non-key) fields
+q:{k:key(),p:1},a:$.q,b:$.q	~	~	{"q":{"k":"q","p":1},"a":{"k":"a","p":1},"b":{"k":"b","p":1}}
+q:{k:key(),p:1},r:$.q,a:$.r,b:$.r	~	~	{"q":{"k":"q","p":1},"r":{"k":"r","p":1},"a":{"k":"a","p":1},"b":{"k":"b","p":1}}

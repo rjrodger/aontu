@@ -56,7 +56,10 @@ class Val {
         this.peg = spec?.peg;
         if (Array.isArray(this.peg)) {
             let spread = this.peg[SPREAD];
-            this.peg = this.peg.filter(n => undefined !== n);
+            if (this.peg.includes(undefined)) {
+                this.peg = this.peg.filter(n => undefined !== n);
+            }
+            ;
             this.peg[SPREAD] = spread;
         }
         // spec.path takes precedence over ctx.path: lets callers (notably
@@ -225,6 +228,7 @@ Object.assign(Val.prototype, {
     isPref: false,
     isVar: false,
     isBag: false,
+    isSpread: false,
     isNumber: false,
     isInteger: false,
     isString: false,

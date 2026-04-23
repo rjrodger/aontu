@@ -1,0 +1,6 @@
+# SpreadVal against scalar children
+# input	parse_canon	unify_canon	gen
+a:{&:number,x:1}	{"a":{"x":1}&{&:number}}	{"a":{"x":1}}	{"a":{"x":1}}
+a:{&:string,x:hello}	{"a":{"x":"hello"}&{&:string}}	{"a":{"x":"hello"}}	{"a":{"x":"hello"}}
+a:{&:integer,x:1}	{"a":{"x":1}&{&:integer}}	{"a":{"x":1}}	{"a":{"x":1}}
+a:{&:boolean,x:true}	{"a":{"x":true}&{&:boolean}}	{"a":{"x":true}}	{"a":{"x":true}}

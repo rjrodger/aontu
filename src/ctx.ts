@@ -24,7 +24,7 @@ type AontuContextConfig = {
   fs?: any
   path?: string[]
   root?: Val
-  seen?: Record<string, number>
+  seen?: Map<string, number>
   seenI?: number
   src?: string
   srcpath?: string
@@ -46,7 +46,7 @@ class AontuContext {
   fs?: FST
 
   seenI: number
-  seen: Record<string, number>
+  seen: Map<string, number>
 
   collect: boolean
 
@@ -118,7 +118,7 @@ class AontuContext {
 
     this.vars = cfg.vars ?? this.vars
     this.seenI = cfg.seenI ?? 0
-    this.seen = cfg.seen ?? {}
+    this.seen = cfg.seen ?? new Map()
 
     this.srcpath = cfg.srcpath ?? undefined
 

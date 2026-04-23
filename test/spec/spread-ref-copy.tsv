@@ -1,0 +1,23 @@
+# Spread propagation via ref copy and new children
+# input	parse_canon	unify_canon	gen
+
+# Base: spread applied to existing children
+a:{&:{x:1},c:{y:2}}	~	~	{"a":{"c":{"y":2,"x":1}}}
+
+# Ref copies, existing children get spread
+a:{&:{x:1},c:{y:2}},b:$.a	~	~	{"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1}}}
+
+# Ref copy, new child added at destination gets spread
+a:{&:{x:1},c:{y:2}},b:$.a,b:{d:{y:3}}	~	~	{"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}
+
+# Multiple spreads on source, ref copy with new child
+a:{&:{x:1}},a:{&:{p:2}},a:{c:{y:3}},b:$.a,b:{d:{y:4}}	~	~	{"a":{"c":{"y":3,"x":1,"p":2}},"b":{"c":{"y":3,"x":1,"p":2},"d":{"y":4,"x":1,"p":2}}}
+
+# Spread with ref constraint, ref copy with new child
+q:{x:1},a:{&:$.q,c:{y:2}},b:$.a,b:{d:{y:3}}	~	~	{"q":{"x":1},"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}
+
+# Same-level: spread applied via conjunct fold
+b:{&:{x:1},c:{y:2}},b:{d:{y:3}}	~	~	{"b":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}
+
+# Chain ref copy
+a:{&:{x:1},c:{y:2}},b:$.a,c:$.b,c:{d:{y:3}}	~	~	{"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1}},"c":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}

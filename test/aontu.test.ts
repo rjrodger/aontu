@@ -171,20 +171,20 @@ w1: b: {y:2,z:3} & $.q.a
 
     let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}') as any
     expect(v0.canon).equal(
-      '{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
+      '{"c":{"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
     )
 
     let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}') as any
 
     expect(v1.canon).equal(
-      '{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
+      '{"c":{"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
     )
 
     let v10 = a0.unify('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}') as any
     expect(v10.canon).equal(
-      '{"a":{&:{"x":1}},' +
-      '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
-      '"c":{&:{"x":2},"y":{"k":3,"x":2}}}'
+      '{"a":{}&{&:"x":1},' +
+      '"b":{"y":{"k":2,"x":1}},' +
+      '"c":{"y":{"k":3,"x":2}}}'
     )
   })
 
@@ -351,7 +351,7 @@ def: garage: {
 
     // Deep spread with ref to type constraint (verify canon)
     expect(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal(
-      '{"t":{"x":number},"a":{"b":{&:$.t,"c":{"x":1},"d":{"x":2}}}}'
+      '{"t":{"x":number},"a":{"b":{"c":{"x":1},"d":{"x":2}}}}'
     )
 
     // Deep spread with ref to concrete map

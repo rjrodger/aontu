@@ -9,6 +9,6 @@ declare class MapVal extends BagVal {
     spreadClone(ctx: AontuContext): Val;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;
-    inspection(d?: number): string;
+    inspection(_d?: number): string;
 }
 export { MapVal, };

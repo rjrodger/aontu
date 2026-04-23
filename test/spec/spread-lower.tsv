@@ -1,0 +1,3 @@
+# SpreadVal with lower() function
+# input	parse_canon	unify_canon	gen
+a:{&:{l:lower(HELLO)},b:{x:1}}	~	~	{"a":{"b":{"x":1,"l":"hello"}}}

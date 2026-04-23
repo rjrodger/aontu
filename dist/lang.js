@@ -8,6 +8,7 @@ const debug_1 = require("jsonic/debug");
 const multisource_1 = require("@jsonic/multisource");
 // TODO: @jsonic/multisource should support virtual fs
 const file_1 = require("@jsonic/multisource/resolver/file");
+const multisource_2 = require("@jsonic/multisource");
 const pkg_1 = require("@jsonic/multisource/resolver/pkg");
 const mem_1 = require("@jsonic/multisource/resolver/mem");
 const expr_1 = require("@jsonic/expr");
@@ -43,6 +44,7 @@ const PrefFuncVal_1 = require("./val/PrefFuncVal");
 const CloseFuncVal_1 = require("./val/CloseFuncVal");
 const OpenFuncVal_1 = require("./val/OpenFuncVal");
 const SuperFuncVal_1 = require("./val/SuperFuncVal");
+const SpreadVal_1 = require("./val/SpreadVal");
 let AontuJsonic = function AontuLang(jsonic) {
     jsonic.use(path_1.Path);
     // TODO: refactor Val constructor
@@ -54,6 +56,15 @@ let AontuJsonic = function AontuLang(jsonic) {
         v.path = r.k ? [...(r.k.path || [])] : [];
         return v;
     };
+    // Helper: create a SpreadVal from the raw SPREAD symbol data.
+    function makeSpreadVal(rawSpread) {
+        const constraint = Array.isArray(rawSpread.v)
+            ? (rawSpread.v.length > 1
+                ? new ConjunctVal_1.ConjunctVal({ peg: rawSpread.v })
+                : rawSpread.v[0])
+            : rawSpread.v;
+        return new SpreadVal_1.SpreadVal({ peg: constraint });
+    }
     jsonic.options({
         hint: {
             unknown: `
@@ -325,19 +336,34 @@ help isolate the syntax error.`,
             .bc((r, ctx) => {
             const optionalKeys = r.u.aontu_optional_keys ?? [];
             let mo = r.node;
+            // Extract spread constraint before creating MapVal.
+            // If a spread exists, wrap: ConjunctVal([MapVal, SpreadVal])
+            const rawSpread = mo[type_1.SPREAD];
+            if (rawSpread) {
+                delete mo[type_1.SPREAD];
+            }
             //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
             if (mo.___merge) {
                 let mop = { ...mo };
                 delete mop.___merge;
-                // TODO: needs addpath?
                 let mopv = new MapVal_1.MapVal({ peg: mop });
                 mopv.optionalKeys = optionalKeys;
-                r.node =
-                    addsite(new ConjunctVal_1.ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx);
+                let terms = [mopv, ...mo.___merge];
+                if (rawSpread && '&' === rawSpread.o) {
+                    terms.push(makeSpreadVal(rawSpread));
+                }
+                r.node = addsite(new ConjunctVal_1.ConjunctVal({ peg: terms }), r, ctx);
             }
             else {
-                r.node = addsite(new MapVal_1.MapVal({ peg: mo }), r, ctx);
-                r.node.optionalKeys = optionalKeys;
+                let mapVal = new MapVal_1.MapVal({ peg: mo });
+                mapVal.optionalKeys = optionalKeys;
+                if (rawSpread && '&' === rawSpread.o) {
+                    const spreadVal = makeSpreadVal(rawSpread);
+                    r.node = addsite(new ConjunctVal_1.ConjunctVal({ peg: [mapVal, spreadVal] }), r, ctx);
+                }
+                else {
+                    r.node = addsite(mapVal, r, ctx);
+                }
             }
             return undefined;
         })
@@ -350,18 +376,33 @@ help isolate the syntax error.`,
             .bc((r, ctx) => {
             const optionalKeys = r.u.aontu_optional_keys ?? [];
             let ao = r.node;
+            // Extract spread from list before creating ListVal.
+            const rawSpread = ao[type_1.SPREAD];
+            if (rawSpread) {
+                delete ao[type_1.SPREAD];
+            }
             if (ao.___merge) {
                 let aop = [...ao];
                 delete aop.___merge;
-                // TODO: needs addpath?
                 let aopv = new ListVal_1.ListVal({ peg: aop });
                 aopv.optionalKeys = optionalKeys;
+                let terms = [aopv, ...ao.___merge];
+                if (rawSpread && '&' === rawSpread.o) {
+                    terms.push(makeSpreadVal(rawSpread));
+                }
                 r.node =
-                    addsite(new ConjunctVal_1.ConjunctVal({ peg: [aopv, ...ao.___merge] }), r, ctx);
+                    addsite(new ConjunctVal_1.ConjunctVal({ peg: terms }), r, ctx);
             }
             else {
-                r.node = addsite(new ListVal_1.ListVal({ peg: ao }), r, ctx);
-                r.node.optionalKeys = optionalKeys;
+                let listVal = new ListVal_1.ListVal({ peg: ao });
+                listVal.optionalKeys = optionalKeys;
+                if (rawSpread && '&' === rawSpread.o) {
+                    const spreadVal = makeSpreadVal(rawSpread);
+                    r.node = addsite(new ConjunctVal_1.ConjunctVal({ peg: [listVal, spreadVal] }), r, ctx);
+                }
+                else {
+                    r.node = addsite(listVal, r, ctx);
+                }
             }
             return undefined;
         });
@@ -404,11 +445,13 @@ help isolate the syntax error.`,
                 g: 'aontu-optional-pair'
             }
         ])
-            // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
+            // Spread children inherit the parent path directly.
+            // The path gets adjusted correctly when SpreadVal applies
+            // the constraint via spreadClone(keyctx).
             .ao((r) => {
             if (0 < r.d && r.u.spread) {
-                r.child.k.path = [...r.k.path, '&'];
-                r.child.k.key = '&';
+                r.child.k.path = r.k.path;
+                r.child.k.key = r.k.key;
             }
         })
             .bc((rule) => {
@@ -472,10 +515,14 @@ function makeModelResolver(options) {
     let memResolver = (0, mem_1.makeMemResolver)({
         ...(options.resolver?.mem || {})
     });
-    // TODO: make this consistent with other resolvers
-    let fileResolver = (0, file_1.makeFileResolver)((spec) => {
+    const pathfinder = (spec) => {
         return 'string' === typeof spec ? spec : spec?.peg;
-    });
+    };
+    let preload;
+    if (options.preload) {
+        preload = (0, multisource_2.preloadFiles)(options.preload);
+    }
+    let fileResolver = (0, file_1.makeFileResolver)(preload ? { pathfinder, preload } : pathfinder);
     let pkgResolver = (0, pkg_1.makePkgResolver)({
         require: useRequire,
         ...(options.resolver?.pkg || {})

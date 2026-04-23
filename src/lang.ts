@@ -26,6 +26,10 @@ import {
 } from '@jsonic/multisource/resolver/file'
 
 import {
+  preloadFiles
+} from '@jsonic/multisource'
+
+import {
   makePkgResolver
 } from '@jsonic/multisource/resolver/pkg'
 
@@ -91,6 +95,7 @@ import { PrefFuncVal } from './val/PrefFuncVal'
 import { CloseFuncVal } from './val/CloseFuncVal'
 import { OpenFuncVal } from './val/OpenFuncVal'
 import { SuperFuncVal } from './val/SuperFuncVal'
+import { SpreadVal } from './val/SpreadVal'
 
 
 let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
@@ -107,6 +112,17 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
     v.path = r.k ? [...(r.k.path || [])] : []
 
     return v
+  }
+
+
+  // Helper: create a SpreadVal from the raw SPREAD symbol data.
+  function makeSpreadVal(rawSpread: any): SpreadVal {
+    const constraint = Array.isArray(rawSpread.v)
+      ? (rawSpread.v.length > 1
+        ? new ConjunctVal({ peg: rawSpread.v })
+        : rawSpread.v[0])
+      : rawSpread.v
+    return new SpreadVal({ peg: constraint })
   }
 
 
@@ -450,21 +466,40 @@ help isolate the syntax error.`,
 
         let mo = r.node
 
+        // Extract spread constraint before creating MapVal.
+        // If a spread exists, wrap: ConjunctVal([MapVal, SpreadVal])
+        const rawSpread = (mo as any)[SPREAD]
+        if (rawSpread) {
+          delete (mo as any)[SPREAD]
+        }
+
         //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
         if (mo.___merge) {
           let mop = { ...mo }
           delete mop.___merge
 
-          // TODO: needs addpath?
           let mopv = new MapVal({ peg: mop })
           mopv.optionalKeys = optionalKeys
 
-          r.node =
-            addsite(new ConjunctVal({ peg: [mopv, ...mo.___merge] }), r, ctx)
+          let terms = [mopv, ...mo.___merge]
+          if (rawSpread && '&' === rawSpread.o) {
+            terms.push(makeSpreadVal(rawSpread))
+          }
+
+          r.node = addsite(new ConjunctVal({ peg: terms }), r, ctx)
         }
         else {
-          r.node = addsite(new MapVal({ peg: mo }), r, ctx)
-          r.node.optionalKeys = optionalKeys
+          let mapVal = new MapVal({ peg: mo })
+          mapVal.optionalKeys = optionalKeys
+
+          if (rawSpread && '&' === rawSpread.o) {
+            const spreadVal = makeSpreadVal(rawSpread)
+            r.node = addsite(
+              new ConjunctVal({ peg: [mapVal, spreadVal] }), r, ctx)
+          }
+          else {
+            r.node = addsite(mapVal, r, ctx)
+          }
         }
 
         return undefined
@@ -486,20 +521,39 @@ help isolate the syntax error.`,
 
         let ao = r.node
 
+        // Extract spread from list before creating ListVal.
+        const rawSpread = (ao as any)[SPREAD]
+        if (rawSpread) {
+          delete (ao as any)[SPREAD]
+        }
+
         if (ao.___merge) {
           let aop = [...ao]
           delete (aop as any).___merge
 
-          // TODO: needs addpath?
           let aopv = new ListVal({ peg: aop })
           aopv.optionalKeys = optionalKeys
 
+          let terms = [aopv, ...ao.___merge]
+          if (rawSpread && '&' === rawSpread.o) {
+            terms.push(makeSpreadVal(rawSpread))
+          }
+
           r.node =
-            addsite(new ConjunctVal({ peg: [aopv, ...ao.___merge] }), r, ctx)
+            addsite(new ConjunctVal({ peg: terms }), r, ctx)
         }
         else {
-          r.node = addsite(new ListVal({ peg: ao }), r, ctx)
-          r.node.optionalKeys = optionalKeys
+          let listVal = new ListVal({ peg: ao })
+          listVal.optionalKeys = optionalKeys
+
+          if (rawSpread && '&' === rawSpread.o) {
+            const spreadVal = makeSpreadVal(rawSpread)
+            r.node = addsite(
+              new ConjunctVal({ peg: [listVal, spreadVal] }), r, ctx)
+          }
+          else {
+            r.node = addsite(listVal, r, ctx)
+          }
         }
 
         return undefined
@@ -555,11 +609,13 @@ help isolate the syntax error.`,
         }
       ])
 
-      // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
+      // Spread children inherit the parent path directly.
+      // The path gets adjusted correctly when SpreadVal applies
+      // the constraint via spreadClone(keyctx).
       .ao((r) => {
         if (0 < r.d && r.u.spread) {
-          r.child.k.path = [...r.k.path, '&']
-          r.child.k.key = '&'
+          r.child.k.path = r.k.path
+          r.child.k.key = r.k.key
         }
       })
 
@@ -647,10 +703,18 @@ function makeModelResolver(options: any) {
     ...(options.resolver?.mem || {})
   })
 
-  // TODO: make this consistent with other resolvers
-  let fileResolver = makeFileResolver((spec: any) => {
+  const pathfinder = (spec: any) => {
     return 'string' === typeof spec ? spec : spec?.peg
-  })
+  }
+
+  let preload: { [fullpath: string]: string } | undefined
+  if (options.preload) {
+    preload = preloadFiles(options.preload)
+  }
+
+  let fileResolver = makeFileResolver(
+    preload ? { pathfinder, preload } : pathfinder
+  )
 
   let pkgResolver = makePkgResolver({
     require: useRequire,

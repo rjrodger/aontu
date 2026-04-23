@@ -3,7 +3,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const __1 = require("..");
-const type_1 = require("../dist/type");
 const lang_1 = require("../dist/lang");
 const unify_1 = require("../dist/unify");
 const ctx_1 = require("../dist/ctx");
@@ -16,6 +15,7 @@ const MapVal_1 = require("../dist/val/MapVal");
 const NilVal_1 = require("../dist/val/NilVal");
 const PrefVal_1 = require("../dist/val/PrefVal");
 const RefVal_1 = require("../dist/val/RefVal");
+const SpreadVal_1 = require("../dist/val/SpreadVal");
 const VarVal_1 = require("../dist/val/VarVal");
 const NumberVal_1 = require("../dist/val/NumberVal");
 const StringVal_1 = require("../dist/val/StringVal");
@@ -369,29 +369,37 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
     });
     (0, node_test_1.it)('map-spread', () => {
         let ctx = makeCtx();
-        let m0 = new MapVal_1.MapVal({
-            peg: {
-                [type_1.SPREAD]: { o: '&', v: P('{x:1}') },
-                a: P('{ y: 1 }'),
-                b: P('{ y: 2 }'),
-            }
+        let m0 = new ConjunctVal_1.ConjunctVal({
+            peg: [
+                new MapVal_1.MapVal({
+                    peg: {
+                        a: P('{ y: 1 }'),
+                        b: P('{ y: 2 }'),
+                    }
+                }),
+                new SpreadVal_1.SpreadVal({ peg: P('{x:1}') }),
+            ]
         });
-        (0, expect_1.expect)(m0.canon).equal('{&:{"x":1},"a":{"y":1},"b":{"y":2}}');
+        (0, expect_1.expect)(m0.canon).equal('{"a":{"y":1},"b":{"y":2}}&{&:"x":1}');
         let u0 = m0.unify(TOP, ctx);
-        (0, expect_1.expect)(u0.canon).equal('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}');
+        (0, expect_1.expect)(u0.canon).equal('{"a":{"y":1,"x":1},"b":{"y":2,"x":1}}');
     });
     (0, node_test_1.it)('list-spread', () => {
         let ctx = makeCtx();
-        let vals = [
-            P('{ y: 1 }'),
-            P('{ y: 2 }'),
-        ];
-        vals[type_1.SPREAD] = { o: '&', v: P('{x:1}') };
-        let l0 = new ListVal_1.ListVal({ peg: vals });
-        // console.log(l0)
-        (0, expect_1.expect)(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]');
+        let l0 = new ConjunctVal_1.ConjunctVal({
+            peg: [
+                new ListVal_1.ListVal({
+                    peg: [
+                        P('{ y: 1 }'),
+                        P('{ y: 2 }'),
+                    ]
+                }),
+                new SpreadVal_1.SpreadVal({ peg: P('{x:1}') }),
+            ]
+        });
+        (0, expect_1.expect)(l0.canon).equal('[{"y":1},{"y":2}]&{&:"x":1}');
         let u0 = l0.unify(TOP, ctx);
-        (0, expect_1.expect)(u0.canon).equal('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]');
+        (0, expect_1.expect)(u0.canon).equal('[{"y":1,"x":1},{"y":2,"x":1}]');
     });
     (0, node_test_1.it)('var', () => {
         // TODO: make Aontu.generate support this
@@ -564,16 +572,16 @@ b: c1: {n:1}
 b: c2: {n:2}
 `);
         (0, expect_1.expect)(m2.canon)
-            .equal('{"a":{"x":1},"b":{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}');
+            .equal('{"a":{"x":1},"b":{}&{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}');
         (0, expect_1.expect)(m2.peg.b.constructor.name).equal('ConjunctVal');
-        (0, expect_1.expect)(m2.peg.b.peg.length).equal(4);
+        (0, expect_1.expect)(m2.peg.b.peg.length).equal(5);
         let c2 = new ctx_1.AontuContext({
             root: m2
         });
         let m2u = m2.unify(TOP, c2);
         (0, expect_1.expect)(m2u.canon)
             // .equal('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
-            .equal('{"a":{"x":1},"b":{&:$.a,"c0":{"x":1,"n":0},"c1":{"x":1,"n":1},"c2":{"x":1,"n":2}}}');
+            .equal('{"a":{"x":1},"b":{"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}');
     });
     (0, node_test_1.it)('repeat-spread', () => {
         let ctx = makeCtx();
@@ -583,10 +591,10 @@ b: c2: {n:2}
         (0, expect_1.expect)(G('p:a:&:&:n:1 p:a:b:c:{}', ctx)).equal({
             p: { a: { b: { c: { n: 1 } } } }
         });
-        (0, expect_1.expect)(G('p:a:b:&:n:.$KEY p:a:b:c:{}', ctx)).equal({
+        (0, expect_1.expect)(G('p:a:b:&:n:key() p:a:b:c:{}', ctx)).equal({
             p: { a: { b: { c: { n: 'c' } } } }
         });
-        (0, expect_1.expect)(G('p:a:&:&:n:.$KEY p:a:b:c:{}', ctx)).equal({
+        (0, expect_1.expect)(G('p:a:&:&:n:key() p:a:b:c:{}', ctx)).equal({
             p: { a: { b: { c: { n: 'c' } } } }
         });
     });

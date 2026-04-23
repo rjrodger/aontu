@@ -45,24 +45,28 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   //        in foo-sdk, ~100% with a.done=true)
   if (a !== undefined && a !== null) {
     if (a === b) {
-      if (a.done) return a
+      if (a.done && !(a._spread?.length > 0)) return a
     }
     else if (b !== undefined && b !== null) {
       if (a.done && b.done) {
-        if (a.id === b.id) return a
-        if (a.constructor === b.constructor && a.peg === b.peg
-            && !a.isNil && !b.isNil
-            && !a.isConjunct && !a.isDisjunct
-            && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
-          return a
-        }
+        // Skip fast-paths when a has _spread — MapVal.unify must
+        // run so its re-apply logic can apply spreads to new peer keys.
+        if (!(a._spread?.length > 0)) {
+          if (a.id === b.id) return a
+          if (a.constructor === b.constructor && a.peg === b.peg
+              && !a.isNil && !b.isNil
+              && !a.isConjunct && !a.isDisjunct
+              && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
+            return a
+          }
 
-        // Id-keyed cache: reuse results for the exact same Val pair.
-        const uc = ctx._uniteCache
-        if (uc !== undefined) {
-          const ucKey = a.id + '|' + b.id
-          const ucHit = uc.get(ucKey)
-          if (ucHit !== undefined) return ucHit
+          // Id-keyed cache: reuse results for the exact same Val pair.
+          const uc = ctx._uniteCache
+          if (uc !== undefined) {
+            const ucKey = a.id + '|' + b.id
+            const ucHit = uc.get(ucKey)
+            if (ucHit !== undefined) return ucHit
+          }
         }
       }
     }
@@ -75,21 +79,25 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
 
   // Cycle-detection key. Use numeric path index for speed; fall back to
   // full string key when debug is enabled so the saw value is human-readable.
-  const saw = ctx.opts.debug
-    ? (a ? a.id + (a.done ? '' : '*') : '') + '~' +
+  let saw: string
+  if (ctx.opts.debug) {
+    saw = (a ? a.id + (a.done ? '' : '*') : '') + '~' +
       (b ? b.id + (b.done ? '' : '*') : '') + '@' + ctx.pathstr
-    : (a ? a.id + (a.done ? 'd' : '') : 0) + '~' +
+  }
+  else {
+    saw = (a ? a.id + (a.done ? 'd' : '') : 0) + '~' +
       (b ? b.id + (b.done ? 'd' : '') : 0) + '~' + ctx.pathidx
+  }
 
   // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
   // See for example PrefVal peg.id equality inspection.
-  const sawCount = ctx.seen[saw] ?? 0
+  const sawCount = ctx.seen.get(saw) ?? 0
   if (MAXCYCLE < sawCount) {
     // console.log('SAW', sawCount, saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
   else {
-    ctx.seen[saw] = sawCount + 1
+    ctx.seen.set(saw, sawCount + 1)
 
     try {
       let unified = false
@@ -126,7 +134,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         out = update(b, a)
         why = 'bn'
       }
-      else if (a.isConjunct || a.isExpect) {
+      else if (a.isConjunct || a.isExpect || a.isSpread) {
         out = a.unify(b, te ? ctx.clone({ explain: ec(te, 'AC') }) : ctx)
         unified = true
         why = 'a*'
@@ -138,6 +146,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         || b.isPref
         || b.isFunc
         || b.isExpect
+        || b.isSpread
       ) {
         out = b.unify(a, te ? ctx.clone({ explain: ec(te, 'BW') }) : ctx)
         unified = true
@@ -178,7 +187,10 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   ctx.explain && explainClose(te, out)
 
   // Store in id-keyed cache when both operands were done.
-  if (a?.done && b?.done && out?.done && ctx._uniteCache !== undefined) {
+  // Don't cache when a has _spread — future calls with different
+  // b may need the spread re-applied to new keys.
+  if (a?.done && b?.done && out?.done && ctx._uniteCache !== undefined
+      && !(a._spread?.length > 0)) {
     ctx._uniteCache.set(a.id + '|' + b.id, out)
   }
 
@@ -250,7 +262,7 @@ class Unify {
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
-        uctx.seen = {}
+        uctx.seen = new Map()
         uctx._refCloneCache = new Map()
         uctx._uniteCache = new Map()
         res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')

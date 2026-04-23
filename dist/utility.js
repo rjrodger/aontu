@@ -15,8 +15,12 @@ function propagateMarks(source, target) {
     if (source.isTop || target.isTop) {
         return;
     }
-    for (let name in source.mark) {
-        target.mark[name] = target.mark[name] || source.mark[name];
+    const sm = source.mark;
+    if (!sm.type && !sm.hide)
+        return;
+    const tm = target.mark;
+    for (let name in sm) {
+        tm[name] = tm[name] || sm[name];
     }
 }
 function formatPath(path, absolute) {

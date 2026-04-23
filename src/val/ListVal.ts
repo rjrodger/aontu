@@ -9,7 +9,6 @@ import type {
 
 import {
   DONE,
-  SPREAD,
 } from '../type'
 
 import { AontuContext } from '../ctx'
@@ -30,7 +29,6 @@ import {
   top
 } from './top'
 
-import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
 import { empty } from './Val'
@@ -52,24 +50,6 @@ class ListVal extends BagVal {
       throw new AontuError('ListVal spec.peg undefined')
     }
 
-    let spread = (this.peg as any)[SPREAD]
-    delete (this.peg as any)[SPREAD]
-
-    if (spread) {
-      if ('&' === spread.o) {
-
-        // TODO: handle existing spread!
-        this.spread.cj =
-          Array.isArray(spread.v) ?
-            1 < spread.v.length ?
-              new ConjunctVal({ peg: spread.v }, ctx) :
-              spread.v[0] :
-            spread.v
-
-        // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-        // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
-      }
-    }
   }
 
 
@@ -87,8 +67,7 @@ class ListVal extends BagVal {
     let out: ListVal | NilVal = (peer.isTop ? this : new ListVal({ peg: [] }, ctx))
 
     out.closed = this.closed
-    out.optionalKeys = [...this.optionalKeys]
-    out.spread.cj = this.spread.cj
+    out.optionalKeys = 0 < this.optionalKeys.length ? [...this.optionalKeys] : this.optionalKeys
     out.site = this.site
 
     if (peer instanceof ListVal) {
@@ -98,13 +77,6 @@ class ListVal extends BagVal {
       }
       else {
         out.closed = out.closed || peer.closed
-        out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
-          null == peer.spread.cj ? out.spread.cj : (
-            out.spread.cj =
-            unite(te ? ctx.clone({ explain: ec(te, 'SPR') }) : ctx,
-              out.spread.cj, peer.spread.cj, 'list-peer')
-          )
-        )
       }
     }
 
@@ -112,11 +84,8 @@ class ListVal extends BagVal {
     if (!exit) {
       out.dc = this.dc + 1
 
-      let spread_cj = out.spread.cj || TOP
-
-      // Fast path: self-unify with TOP and no spread constraint.
-      // If all children are already done, the list is fully converged.
-      if (peer.isTop && (spread_cj.isTop || !spread_cj)) {
+      // Fast path: self-unify with TOP.
+      if (peer.isTop) {
         let allChildrenDone = true
         for (let key in this.peg) {
           if (DONE !== this.peg[key]?.dc) {
@@ -131,27 +100,23 @@ class ListVal extends BagVal {
         }
       }
 
-      // Always unify children first
+      // Unify own children
       for (let key in this.peg) {
         const keyctx = ctx.descend(key)
-        const key_spread_cj = spread_cj.spreadClone(keyctx)
         const child = this.peg[key]
 
         propagateMarks(this, child)
 
         out.peg[key] =
-          undefined === child ? key_spread_cj :
+          undefined === child ? top() :
             child.isNil ? child :
-              key_spread_cj.isNil ? key_spread_cj :
-                key_spread_cj.isTop && child.done ? child :
-                  child.isTop && key_spread_cj.done ? key_spread_cj :
-                    unite(te ? keyctx.clone({ explain: ec(te, 'PEG:' + key) }) : keyctx,
-                      child, key_spread_cj, 'list-own')
+              child.done ? child :
+                unite(te ? keyctx.clone({ explain: ec(te, 'PEG:' + key) }) : keyctx,
+                  child, top(), 'list-own')
 
         done = (done && DONE === out.peg[key].dc)
       }
 
-      const allowedKeys: string[] = this.closed ? Object.keys(this.peg) : []
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof ListVal) {
@@ -159,11 +124,10 @@ class ListVal extends BagVal {
           te ? ctx.clone({ explain: ec(te, 'PER') }) : ctx,
           peer, TOP, 'list-peer-list') as ListVal)
 
-        // NOTE: peerkey is the index
         for (let peerkey in upeer.peg) {
           let peerchild = upeer.peg[peerkey]
 
-          if (this.closed && !allowedKeys.includes(peerkey)) {
+          if (this.closed && !(peerkey in this.peg)) {
             bad = makeNilErr(ctx, 'closed', peerchild, undefined)
           }
 
@@ -178,14 +142,6 @@ class ListVal extends BagVal {
                     peerchild.isNil ? peerchild :
                       unite(te ? peerctx.clone({ explain: ec(te, 'CHD') }) : peerctx,
                         child, peerchild, 'list-peer')
-
-          if (this.spread.cj) {
-            let key_spread_cj = spread_cj.spreadClone(peerctx)
-
-            oval = out.peg[peerkey] =
-              unite(te ? peerctx.clone({ explain: ec(te, 'PSP:' + peerkey) }) : peerctx,
-                out.peg[peerkey], key_spread_cj, 'list-spread')
-          }
 
           propagateMarks(this, oval)
 
@@ -229,11 +185,6 @@ class ListVal extends BagVal {
         : child
     }
 
-    // Must create a new spread object to avoid mutating the original.
-    out.spread = {
-      cj: this.spread.cj ? this.spread.cj.spreadClone(ctx) : undefined,
-    }
-
     out.closed = this.closed
     out.optionalKeys = [...this.optionalKeys]
 
@@ -247,10 +198,6 @@ class ListVal extends BagVal {
       out.peg[entry[0]] =
         (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, spec?.mark ? { mark: spec.mark } : {}) : entry[1]
     }
-    if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {})
-    }
-
     out.closed = this.closed
     out.optionalKeys = [...this.optionalKeys]
 
@@ -266,8 +213,6 @@ class ListVal extends BagVal {
     const c = '' +
       // this.errcanon() +
       '[' +
-      (this.spread.cj ? '&:' + this.spread.cj.canon +
-        (0 < keys.length ? ',' : '') : '') +
       keys
         .map(k => this.optionalKeys.includes(k) ?
           k + '?:' + this.peg[k].canon :

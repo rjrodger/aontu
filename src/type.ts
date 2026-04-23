@@ -30,6 +30,11 @@ type AontuOptions = {
   collect?: boolean // Collect errors into an errs property, rather than throw them.
   err?: any[]
   explain?: any[]
+  preload?: {          // Preload files into memory before parsing.
+    folders: string[]  // Folders to scan.
+    ext?: string[]     // Extensions (default: ['.jsonic', '.json']).
+    recursive?: boolean // Recurse into subfolders (default: false).
+  }
 }
 
 

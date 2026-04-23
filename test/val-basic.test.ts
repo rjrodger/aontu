@@ -36,6 +36,7 @@ import { MapVal } from '../dist/val/MapVal'
 import { NilVal } from '../dist/val/NilVal'
 import { PrefVal } from '../dist/val/PrefVal'
 import { RefVal } from '../dist/val/RefVal'
+import { SpreadVal } from '../dist/val/SpreadVal'
 import { VarVal } from '../dist/val/VarVal'
 
 import { NumberVal } from '../dist/val/NumberVal'
@@ -521,18 +522,22 @@ describe('val-basic', function() {
   it('map-spread', () => {
     let ctx = makeCtx()
 
-    let m0 = new MapVal({
-      peg: {
-        [SPREAD]: { o: '&', v: P('{x:1}') },
-        a: P('{ y: 1 }'),
-        b: P('{ y: 2 }'),
-      }
+    let m0 = new ConjunctVal({
+      peg: [
+        new MapVal({
+          peg: {
+            a: P('{ y: 1 }'),
+            b: P('{ y: 2 }'),
+          }
+        }),
+        new SpreadVal({ peg: P('{x:1}') }),
+      ]
     })
 
-    expect(m0.canon).equal('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
+    expect(m0.canon).equal('{"a":{"y":1},"b":{"y":2}}&{&:"x":1}')
 
     let u0 = m0.unify(TOP, ctx)
-    expect(u0.canon).equal('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+    expect(u0.canon).equal('{"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
 
   })
 
@@ -540,20 +545,22 @@ describe('val-basic', function() {
   it('list-spread', () => {
     let ctx = makeCtx()
 
-    let vals: any = [
-      P('{ y: 1 }'),
-      P('{ y: 2 }'),
-    ]
-    vals[SPREAD] = { o: '&', v: P('{x:1}') }
+    let l0 = new ConjunctVal({
+      peg: [
+        new ListVal({
+          peg: [
+            P('{ y: 1 }'),
+            P('{ y: 2 }'),
+          ]
+        }),
+        new SpreadVal({ peg: P('{x:1}') }),
+      ]
+    })
 
-
-    let l0 = new ListVal({ peg: vals })
-    // console.log(l0)
-
-    expect(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]')
+    expect(l0.canon).equal('[{"y":1},{"y":2}]&{&:"x":1}')
 
     let u0 = l0.unify(TOP, ctx)
-    expect(u0.canon).equal('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]')
+    expect(u0.canon).equal('[{"y":1,"x":1},{"y":2,"x":1}]')
 
   })
 
@@ -794,10 +801,10 @@ b: c2: {n:2}
       ,) as MapVal)
 
     expect(m2.canon)
-      .equal('{"a":{"x":1},"b":{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}')
+      .equal('{"a":{"x":1},"b":{}&{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}')
 
     expect(m2.peg.b.constructor.name).equal('ConjunctVal')
-    expect(m2.peg.b.peg.length).equal(4)
+    expect(m2.peg.b.peg.length).equal(5)
 
     let c2 = new AontuContext({
       root: m2
@@ -806,7 +813,7 @@ b: c2: {n:2}
     let m2u = m2.unify(TOP, c2)
     expect(m2u.canon)
       // .equal('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
-      .equal('{"a":{"x":1},"b":{&:$.a,"c0":{"x":1,"n":0},"c1":{"x":1,"n":1},"c2":{"x":1,"n":2}}}')
+      .equal('{"a":{"x":1},"b":{"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
 
   })
 
@@ -824,11 +831,11 @@ b: c2: {n:2}
       p: { a: { b: { c: { n: 1 } } } }
     })
 
-    expect(G('p:a:b:&:n:.$KEY p:a:b:c:{}', ctx)).equal({
+    expect(G('p:a:b:&:n:key() p:a:b:c:{}', ctx)).equal({
       p: { a: { b: { c: { n: 'c' } } } }
     })
 
-    expect(G('p:a:&:&:n:.$KEY p:a:b:c:{}', ctx)).equal({
+    expect(G('p:a:&:&:n:key() p:a:b:c:{}', ctx)).equal({
       p: { a: { b: { c: { n: 'c' } } } }
     })
   })

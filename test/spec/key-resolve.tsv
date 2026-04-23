@@ -1,0 +1,38 @@
+# key() resolution in various contexts
+# key() resolves to the parent map key of the containing map
+# input	parse_canon	unify_canon	gen
+
+# Basic resolution
+a:{k:key()}	~	~	{"a":{"k":"a"}}
+a:{b:{k:key()}}	~	~	{"a":{"b":{"k":"b"}}}
+a:{b:{c:{k:key()}}}	~	~	{"a":{"b":{"c":{"k":"c"}}}}
+a:b:c:d:k:key()	~	~	{"a":{"b":{"c":{"d":{"k":"d"}}}}}
+
+# key() at root or as direct value — no parent map key, resolves to ""
+key()	~	~	""
+a:key()	~	~	{"a":""}
+{k:key()}	~	~	{"k":""}
+k:key()	~	~	{"k":""}
+
+# key() alongside other fields
+a:{k:key(),x:1}	~	~	{"a":{"k":"a","x":1}}
+a:{k:key(),m:key()}	~	~	{"a":{"k":"a","m":"a"}}
+
+# key() with type constraint
+a:{k:key()&string}	~	~	{"a":{"k":"a"}}
+
+# key() in list element
+[key()]	~	~	[""]
+
+# key() in spread (level 1) — resolves to applied child key
+&:{k:key()} a:{x:1}	~	~	{"a":{"x":1,"k":"a"}}
+&:{k:key()} a:{x:1} b:{x:2}	~	~	{"a":{"x":1,"k":"a"},"b":{"x":2,"k":"b"}}
+
+# key() added by merge
+a:{x:1} a:{k:key()}	~	~	{"a":{"x":1,"k":"a"}}
+
+# key() copied via ref — re-resolves at destination
+a:{k:key()},b:$.a	~	~	{"a":{"k":"a"},"b":{"k":"b"}}
+
+# key() in empty spread — preserved, generates empty
+{&:{k:key()}}	~	~	{}

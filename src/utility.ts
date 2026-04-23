@@ -11,8 +11,11 @@ function propagateMarks(source: Val, target: Val): void {
   if (source.isTop || target.isTop) {
     return
   }
-  for (let name in source.mark) {
-    (target.mark as any)[name] = (target.mark as any)[name] || (source.mark as any)[name]
+  const sm = source.mark as any
+  if (!sm.type && !sm.hide) return
+  const tm = target.mark as any
+  for (let name in sm) {
+    tm[name] = tm[name] || sm[name]
   }
 }
 

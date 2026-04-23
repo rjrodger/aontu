@@ -118,13 +118,13 @@ w1: b: {y:2,z:3} & $.q.a
     (0, node_test_1.test)('map-spread', () => {
         let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}');
-        (0, expect_1.expect)(v0.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
+        (0, expect_1.expect)(v0.canon).equal('{"c":{"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}');
-        (0, expect_1.expect)(v1.canon).equal('{"c":{&:{"x":2},"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
+        (0, expect_1.expect)(v1.canon).equal('{"c":{"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}');
         let v10 = a0.unify('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}');
-        (0, expect_1.expect)(v10.canon).equal('{"a":{&:{"x":1}},' +
-            '"b":{&:{"x":1},"y":{"k":2,"x":1}},' +
-            '"c":{&:{"x":2},"y":{"k":3,"x":2}}}');
+        (0, expect_1.expect)(v10.canon).equal('{"a":{}&{&:"x":1},' +
+            '"b":{"y":{"k":2,"x":1}},' +
+            '"c":{"y":{"k":3,"x":2}}}');
     });
     (0, node_test_1.test)('empty-and-comments', () => {
         let ctx = makeCtx();
@@ -236,7 +236,7 @@ def: garage: {
         // Spread with nested map constraint at depth
         (0, expect_1.expect)(a0.generate('a:b:{&:{x:number},c:{x:1},d:{x:2}}')).equal({ a: { b: { c: { x: 1 }, d: { x: 2 } } } });
         // Deep spread with ref to type constraint (verify canon)
-        (0, expect_1.expect)(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal('{"t":{"x":number},"a":{"b":{&:$.t,"c":{"x":1},"d":{"x":2}}}}');
+        (0, expect_1.expect)(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal('{"t":{"x":number},"a":{"b":{"c":{"x":1},"d":{"x":2}}}}');
         // Deep spread with ref to concrete map
         (0, expect_1.expect)(a0.generate('t:{x:1} a:b:{&:$.t,c:{y:A},d:{y:B}}')).equal({ t: { x: 1 }, a: { b: { c: { x: 1, y: 'A' }, d: { x: 1, y: 'B' } } } });
         // Spread with $KEY at depth

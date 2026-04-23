@@ -1,0 +1,3 @@
+# SpreadVal with map children that contain lists (spread doesn't apply to list children)
+# input	parse_canon	unify_canon	gen
+a:{&:{x:1},b:{y:[1,2,3]}}	~	~	{"a":{"b":{"y":[1,2,3],"x":1}}}

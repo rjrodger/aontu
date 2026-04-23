@@ -1,0 +1,3 @@
+# SpreadVal with type() function (type constraints)
+# input	parse_canon	unify_canon	gen
+sys:type({x:number}),a:{&:$.sys,b:{x:1}}	~	~	{"a":{"b":{"x":1}}}

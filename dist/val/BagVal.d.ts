@@ -7,9 +7,7 @@ declare abstract class BagVal extends FeatureVal {
     isGenable: boolean;
     closed: boolean;
     optionalKeys: string[];
-    spread: {
-        cj: Val | undefined;
-    };
+    _spread: Val[];
     constructor(spec: ValSpec, ctx?: AontuContext);
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     handleExpectedVal(key: string, val: Val, parent: Val, ctx: AontuContext): Val;

@@ -1,0 +1,4 @@
+# SpreadVal with ref ($.path) constraint
+# input	parse_canon	unify_canon	gen
+q:{x:1},a:{&:$.q,b:{y:2}}	~	~	{"q":{"x":1},"a":{"b":{"x":1,"y":2}}}
+q:{x:1},a:{&:$.q,b:{y:2},c:{y:3}}	~	~	{"q":{"x":1},"a":{"b":{"x":1,"y":2},"c":{"x":1,"y":3}}}

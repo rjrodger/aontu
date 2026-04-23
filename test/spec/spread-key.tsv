@@ -1,0 +1,4 @@
+# SpreadVal with key() function
+# input	parse_canon	unify_canon	gen
+a:{&:{k:key()},b:{x:1}}	~	~	{"a":{"b":{"x":1,"k":"b"}}}
+a:{&:{k:key()},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1,"k":"b"},"c":{"x":2,"k":"c"}}}

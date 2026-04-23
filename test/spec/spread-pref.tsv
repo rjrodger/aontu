@@ -1,0 +1,5 @@
+# SpreadVal with pref (default value) constraint
+# input	parse_canon	unify_canon	gen
+a:{&:{x:*1|number},b:{x:2}}	~	~	{"a":{"b":{"x":2}}}
+a:{&:{x:*1|number},b:{}}	~	~	{"a":{"b":{"x":1}}}
+a:{&:{x:*true|boolean},b:{x:false}}	~	~	{"a":{"b":{"x":false}}}

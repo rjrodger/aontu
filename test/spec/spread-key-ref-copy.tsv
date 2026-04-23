@@ -1,0 +1,4 @@
+# key() behavior when copied via ref — re-resolves at new location
+# input	parse_canon	unify_canon	gen
+a:{n:key(),x:1}	~	~	{"a":{"n":"a","x":1}}
+a:{n:key(),x:1},b:{c:$.a}	~	~	{"a":{"n":"a","x":1},"b":{"c":{"n":"c","x":1}}}

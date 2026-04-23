@@ -18,6 +18,11 @@ type AontuOptions = {
     collect?: boolean;
     err?: any[];
     explain?: any[];
+    preload?: {
+        folders: string[];
+        ext?: string[];
+        recursive?: boolean;
+    };
 };
 declare const DEFAULT_OPTS: () => AontuOptions;
 type ValMap = {

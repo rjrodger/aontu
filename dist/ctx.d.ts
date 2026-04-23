@@ -7,7 +7,7 @@ type AontuContextConfig = {
     fs?: any;
     path?: string[];
     root?: Val;
-    seen?: Record<string, number>;
+    seen?: Map<string, number>;
     seenI?: number;
     src?: string;
     srcpath?: string;
@@ -26,7 +26,7 @@ declare class AontuContext {
     src?: string;
     fs?: FST;
     seenI: number;
-    seen: Record<string, number>;
+    seen: Map<string, number>;
     collect: boolean;
     err: any[];
     explain: any[] | null;

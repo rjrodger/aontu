@@ -1,0 +1,3 @@
+# SpreadVal with hide() function
+# input	parse_canon	unify_canon	gen
+a:{&:{h:hide(1)},b:{x:2}}	~	~	{"a":{"b":{"x":2}}}

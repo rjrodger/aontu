@@ -1,0 +1,19 @@
+# Spread applied to empty children and children added via separate terms
+# input	parse_canon	unify_canon	gen
+
+# Direct spread on empty child (works)
+a:{&:{x:1},b:{}}	~	~	{"a":{"b":{"x":1}}}
+a:{&:{x:1},b:{},c:{}}	~	~	{"a":{"b":{"x":1},"c":{"x":1}}}
+a:{&:{x:1},b:{},c:{y:2}}	~	~	{"a":{"b":{"x":1},"c":{"y":2,"x":1}}}
+
+# Spread via ref on empty child (works)
+q:{x:1},a:{&:$.q,b:{}}	~	~	{"q":{"x":1},"a":{"b":{"x":1}}}
+
+# Spread with pref on empty child (works)
+a:{&:{x:*1|number},b:{}}	~	~	{"a":{"b":{"x":1}}}
+
+# Top-level: spread + children in separate terms (works)
+b:{&:{x:1}} b:{c:{}} b:d:{}	~	~	{"b":{"c":{"x":1},"d":{"x":1}}}
+
+# Nested: spread + children in separate terms (KNOWN BUG — d missing spread)
+# a:b:{&:{x:1}} a:b:{c:{}} a:b:d:{}	~	~	{"a":{"b":{"c":{"x":1},"d":{"x":1}}}}

@@ -1,0 +1,6 @@
+# key() in nested spreads — tests path resolution at all nesting levels
+# input	parse_canon	unify_canon	gen
+a:{&:{k:key()},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1,"k":"b"},"c":{"x":2,"k":"c"}}}
+a:{&:{m:{&:{k:key()}}},b:{m:{c:{x:1}}}}	~	~	{"a":{"b":{"m":{"c":{"x":1,"k":"c"}}}}}
+a:{&:{k1:key(),m:{&:{k2:key()}}},b:{m:{c:{x:1}}}}	~	~	{"a":{"b":{"m":{"c":{"x":1,"k2":"c"}},"k1":"b"}}}
+a:{&:{m:{&:{n:{&:{k:key()}}}}},b:{m:{c:{n:{d:{x:1}}}}}}	~	~	{"a":{"b":{"m":{"c":{"n":{"d":{"x":1,"k":"d"}}}}}}}

@@ -73,6 +73,7 @@ abstract class Val {
   declare isPref: boolean
   declare isVar: boolean
   declare isBag: boolean
+  declare isSpread: boolean
   declare isNumber: boolean
   declare isInteger: boolean
   declare isString: boolean
@@ -150,8 +151,10 @@ abstract class Val {
 
     if (Array.isArray(this.peg)) {
       let spread = (this.peg as any)[SPREAD]
-      this.peg = this.peg.filter(n => undefined !== n)
-        ; (this.peg as any)[SPREAD] = spread
+      if (this.peg.includes(undefined)) {
+        this.peg = this.peg.filter(n => undefined !== n)
+      }
+      ;(this.peg as any)[SPREAD] = spread
     }
 
     // spec.path takes precedence over ctx.path: lets callers (notably
@@ -371,6 +374,7 @@ Object.assign(Val.prototype, {
   isPref: false,
   isVar: false,
   isBag: false,
+  isSpread: false,
   isNumber: false,
   isInteger: false,
   isString: false,

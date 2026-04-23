@@ -7,7 +7,6 @@ const unify_1 = require("../unify");
 const utility_1 = require("../utility");
 const err_1 = require("../err");
 const top_1 = require("./top");
-const ConjunctVal_1 = require("./ConjunctVal");
 const BagVal_1 = require("./BagVal");
 class ListVal extends BagVal_1.BagVal {
     constructor(spec, ctx) {
@@ -15,21 +14,6 @@ class ListVal extends BagVal_1.BagVal {
         this.isList = true;
         if (null == this.peg) {
             throw new err_1.AontuError('ListVal spec.peg undefined');
-        }
-        let spread = this.peg[type_1.SPREAD];
-        delete this.peg[type_1.SPREAD];
-        if (spread) {
-            if ('&' === spread.o) {
-                // TODO: handle existing spread!
-                this.spread.cj =
-                    Array.isArray(spread.v) ?
-                        1 < spread.v.length ?
-                            new ConjunctVal_1.ConjunctVal({ peg: spread.v }, ctx) :
-                            spread.v[0] :
-                        spread.v;
-                // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
-                // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
-            }
         }
     }
     // NOTE: order of keys is not preserved!
@@ -43,8 +27,7 @@ class ListVal extends BagVal_1.BagVal {
         // NOTE: not a clone! needs to be constructed.
         let out = (peer.isTop ? this : new ListVal({ peg: [] }, ctx));
         out.closed = this.closed;
-        out.optionalKeys = [...this.optionalKeys];
-        out.spread.cj = this.spread.cj;
+        out.optionalKeys = 0 < this.optionalKeys.length ? [...this.optionalKeys] : this.optionalKeys;
         out.site = this.site;
         if (peer instanceof ListVal) {
             if (!this.closed && peer.closed) {
@@ -53,16 +36,12 @@ class ListVal extends BagVal_1.BagVal {
             }
             else {
                 out.closed = out.closed || peer.closed;
-                out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (out.spread.cj =
-                    (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SPR') }) : ctx, out.spread.cj, peer.spread.cj, 'list-peer')));
             }
         }
         if (!exit) {
             out.dc = this.dc + 1;
-            let spread_cj = out.spread.cj || TOP;
-            // Fast path: self-unify with TOP and no spread constraint.
-            // If all children are already done, the list is fully converged.
-            if (peer.isTop && (spread_cj.isTop || !spread_cj)) {
+            // Fast path: self-unify with TOP.
+            if (peer.isTop) {
                 let allChildrenDone = true;
                 for (let key in this.peg) {
                     if (type_1.DONE !== this.peg[key]?.dc) {
@@ -76,29 +55,24 @@ class ListVal extends BagVal_1.BagVal {
                     return out;
                 }
             }
-            // Always unify children first
+            // Unify own children
             for (let key in this.peg) {
                 const keyctx = ctx.descend(key);
-                const key_spread_cj = spread_cj.spreadClone(keyctx);
                 const child = this.peg[key];
                 (0, utility_1.propagateMarks)(this, child);
                 out.peg[key] =
-                    undefined === child ? key_spread_cj :
+                    undefined === child ? (0, top_1.top)() :
                         child.isNil ? child :
-                            key_spread_cj.isNil ? key_spread_cj :
-                                key_spread_cj.isTop && child.done ? child :
-                                    child.isTop && key_spread_cj.done ? key_spread_cj :
-                                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, key_spread_cj, 'list-own');
+                            child.done ? child :
+                                (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, (0, top_1.top)(), 'list-own');
                 done = (done && type_1.DONE === out.peg[key].dc);
             }
-            const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;
             if (peer instanceof ListVal) {
                 let upeer = peer.done ? peer : (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PER') }) : ctx, peer, TOP, 'list-peer-list');
-                // NOTE: peerkey is the index
                 for (let peerkey in upeer.peg) {
                     let peerchild = upeer.peg[peerkey];
-                    if (this.closed && !allowedKeys.includes(peerkey)) {
+                    if (this.closed && !(peerkey in this.peg)) {
                         bad = (0, err_1.makeNilErr)(ctx, 'closed', peerchild, undefined);
                     }
                     let child = out.peg[peerkey];
@@ -109,11 +83,6 @@ class ListVal extends BagVal_1.BagVal {
                                 child.isNil ? child :
                                     peerchild.isNil ? peerchild :
                                         (0, unify_1.unite)(te ? peerctx.clone({ explain: (0, utility_1.ec)(te, 'CHD') }) : peerctx, child, peerchild, 'list-peer');
-                    if (this.spread.cj) {
-                        let key_spread_cj = spread_cj.spreadClone(peerctx);
-                        oval = out.peg[peerkey] =
-                            (0, unify_1.unite)(te ? peerctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }) : peerctx, out.peg[peerkey], key_spread_cj, 'list-spread');
-                    }
                     (0, utility_1.propagateMarks)(this, oval);
                     done = (done && type_1.DONE === oval.dc);
                 }
@@ -147,10 +116,6 @@ class ListVal extends BagVal_1.BagVal {
                 ? child.clone(ctx, { mark: {} })
                 : child;
         }
-        // Must create a new spread object to avoid mutating the original.
-        out.spread = {
-            cj: this.spread.cj ? this.spread.cj.spreadClone(ctx) : undefined,
-        };
         out.closed = this.closed;
         out.optionalKeys = [...this.optionalKeys];
         return out;
@@ -160,9 +125,6 @@ class ListVal extends BagVal_1.BagVal {
         for (let entry of Object.entries(this.peg)) {
             out.peg[entry[0]] =
                 entry[1]?.isVal ? entry[1].clone(ctx, spec?.mark ? { mark: spec.mark } : {}) : entry[1];
-        }
-        if (this.spread.cj) {
-            out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {});
         }
         out.closed = this.closed;
         out.optionalKeys = [...this.optionalKeys];
@@ -177,8 +139,6 @@ class ListVal extends BagVal_1.BagVal {
         const c = '' +
             // this.errcanon() +
             '[' +
-            (this.spread.cj ? '&:' + this.spread.cj.canon +
-                (0 < keys.length ? ',' : '') : '') +
             keys
                 .map(k => this.optionalKeys.includes(k) ?
                 k + '?:' + this.peg[k].canon :

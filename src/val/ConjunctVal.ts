@@ -179,7 +179,7 @@ class ConjunctVal extends JunctionVal {
         newtype = this.mark.type || val.mark.type
         newhide = this.mark.hide || val.mark.hide
 
-        // Unite was just a conjunt anyway, so discard.
+        // Unite was just a conjunct anyway, so discard.
         if (val.isConjunct) {
           outvals.push(t0)
           t0 = t1
@@ -235,6 +235,15 @@ class ConjunctVal extends JunctionVal {
 
 
   gen(ctx?: AontuContext) {
+    // If this conjunct contains a SpreadVal + a generable Val,
+    // gen the generable Val (spread is an unresolved constraint
+    // that's a no-op at gen time — e.g., empty map with spread).
+    if (this.peg.length === 2) {
+      const [a, b] = this.peg
+      if (a.isSpread && b.isGenable) return b.gen(ctx as any)
+      if (b.isSpread && a.isGenable) return a.gen(ctx as any)
+    }
+
     // Unresolved conjunct cannot be generated, so always an error.
     let nil = makeNilErr(
       ctx,
@@ -267,18 +276,17 @@ class ConjunctVal extends JunctionVal {
 function norm(terms: Val[]): Val[] {
 
   let expand: Val[] = []
-  for (let tI = 0, pI = 0; tI < terms.length; tI++, pI++) {
-    if (terms[tI].isConjunct) {
-      const cterms = terms[tI].peg
-      for (let cI = 0; cI < cterms.length; cI++) {
-        expand[pI + cI] = cterms[cI]
+  function flattenTerms(terms: Val[]) {
+    for (let tI = 0; tI < terms.length; tI++) {
+      if (terms[tI].isConjunct) {
+        flattenTerms(terms[tI].peg)
       }
-      pI += cterms.length - 1
-    }
-    else {
-      expand[pI] = terms[tI]
+      else {
+        expand.push(terms[tI])
+      }
     }
   }
+  flattenTerms(terms)
 
 
   // Consistent ordering ensures order independent unification.

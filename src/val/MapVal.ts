@@ -8,7 +8,6 @@ import type {
 
 import {
   DONE,
-  SPREAD,
 } from '../type'
 
 import { AontuContext } from '../ctx'
@@ -28,7 +27,6 @@ import {
 } from './top'
 
 
-import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
 
@@ -49,23 +47,6 @@ class MapVal extends BagVal {
 
     this.mark.type = !!spec.mark?.type
     this.mark.hide = !!spec.mark?.hide
-
-    let spread = (this.peg as any)[SPREAD]
-    delete (this.peg as any)[SPREAD]
-
-    if (spread) {
-      if ('&' === spread.o) {
-        // TODO: handle existing spread!
-        this.spread.cj =
-          Array.isArray(spread.v) ?
-            1 < spread.v.length ?
-              new ConjunctVal({ peg: spread.v }, ctx) :
-              spread.v[0] :
-            spread.v
-      }
-    }
-
-    // console.log('MAPVAL-ctor', this.type, spec)
   }
 
 
@@ -81,7 +62,7 @@ class MapVal extends BagVal {
     // subset of this's keys with the same child references, and
     // neither side has type/hide marks. No new information.
     if (this.done && peer instanceof MapVal && peer.done
-        && !peer.spread.cj && !this.spread.cj
+        && 0 === peer._spread.length && 0 === this._spread.length
         && !this.mark.type && !this.mark.hide
         && !peer.mark.type && !peer.mark.hide) {
       let canSkip = true
@@ -103,9 +84,9 @@ class MapVal extends BagVal {
     let out: MapVal | NilVal = (peer.isTop ? this : new MapVal({ peg: {} }, ctx))
 
     out.closed = this.closed
-    out.optionalKeys = [...this.optionalKeys]
-    out.spread.cj = this.spread.cj
+    out.optionalKeys = 0 < this.optionalKeys.length ? [...this.optionalKeys] : this.optionalKeys
     out.site = this.site
+    if (0 < this._spread.length) (out as MapVal)._spread = this._spread
 
     if (peer instanceof MapVal) {
       if (!this.closed && peer.closed) {
@@ -127,35 +108,16 @@ class MapVal extends BagVal {
           out = peer.unify(this, te ? ctx.clone({ explain: ec(te, 'SPC') }) : ctx) as MapVal
           exit = true
         }
-
       }
-
-      if (!exit) {
-        out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
-          null == peer.spread.cj ? out.spread.cj : (
-            out.spread.cj =
-            unite(te ? ctx.clone({ explain: ec(te, 'SPR') }) : ctx,
-              out.spread.cj, peer.spread.cj, 'map-self')
-          )
-        )
-      }
-    }
-    else {
-      // console.log('MAPVAL-PEER-OTHER', this.id, this.canon, this.done, peer.id, peer.canon, peer.done)
     }
 
 
     if (!exit) {
       out.dc = this.dc + 1
 
-      // let newtype = this.type || peer.type
-
-      let spread_cj = out.spread.cj ?? TOP
-
-      // Fast path: self-unify with TOP and no spread constraint.
-      // If all children are already done, the map is fully converged
-      // and we can skip the per-key unite loop entirely.
-      if (peer.isTop && spread_cj.isTop) {
+      // Fast path: self-unify with TOP.
+      // If all children are already done, the map is fully converged.
+      if (peer.isTop) {
         let allChildrenDone = true
         for (let key in this.peg) {
           if (DONE !== this.peg[key]?.dc) {
@@ -170,45 +132,23 @@ class MapVal extends BagVal {
         }
       }
 
-      // Always unify own children first
+      // Unify own children
       for (let key in this.peg) {
         const child = this.peg[key]
-
-        // When the child is already done AND the spread hasn't changed
-        // from what `this` already carries (meaning the child was
-        // produced under this spread in a prior step), re-applying
-        // it is redundant. Use id equality to handle unified spreads
-        // that preserve the original's identity.
-        if (child?.done && this.spread.cj != null
-            && (this.spread.cj === spread_cj
-                || this.spread.cj.id === spread_cj.id
-                || (this.spread.cj.done && spread_cj.done
-                    && this.spread.cj.canon === spread_cj.canon))) {
-          propagateMarks(this, child)
-          out.peg[key] = child
-          // done stays true (child.dc === DONE)
-          continue
-        }
-
         const keyctx = ctx.descend(key)
-
-        const key_spread_cj = spread_cj.spreadClone(keyctx)
 
         propagateMarks(this, child)
 
         out.peg[key] =
-          undefined === child ? key_spread_cj :
+          undefined === child ? top() :
             child.isNil ? child :
-              key_spread_cj.isNil ? key_spread_cj :
-                key_spread_cj.isTop && child.done ? child :
-                  child.isTop && key_spread_cj.done ? key_spread_cj :
-                    unite(te ? keyctx.clone({ explain: ec(te, 'KEY:' + key) }) : keyctx,
-                      child, key_spread_cj, 'map-own')
+              child.done ? child :
+                unite(te ? keyctx.clone({ explain: ec(te, 'KEY:' + key) }) : keyctx,
+                  child, top(), 'map-own')
 
         done = (done && DONE === out.peg[key].dc)
       }
 
-      const allowedKeys: string[] = this.closed ? Object.keys(this.peg) : []
       let bad: NilVal | undefined = undefined
 
       if (peer instanceof MapVal) {
@@ -219,12 +159,14 @@ class MapVal extends BagVal {
         for (let peerkey in upeer.peg) {
           let peerchild = upeer.peg[peerkey]
 
-          if (this.closed && !allowedKeys.includes(peerkey)) {
+          if (this.closed && !(peerkey in this.peg)) {
             bad = makeNilErr(ctx, 'closed', peerchild, undefined)
           }
 
           // key optionality is additive
-          if (upeer.optionalKeys.includes(peerkey) && !out.optionalKeys.includes(peerkey)) {
+          if (0 < upeer.optionalKeys.length
+              && upeer.optionalKeys.includes(peerkey)
+              && !out.optionalKeys.includes(peerkey)) {
             out.optionalKeys.push(peerkey)
           }
 
@@ -240,12 +182,10 @@ class MapVal extends BagVal {
                       unite(te ? peerctx.clone({ explain: ec(te, 'CHD') }) : peerctx,
                         child, peerchild, 'map-peer')
 
-          if (this.spread.cj) {
-            let key_spread_cj = spread_cj.spreadClone(peerctx)
-
-            oval = out.peg[peerkey] =
-              unite(te ? peerctx.clone({ explain: ec(te, 'PSP:' + peerkey) }) : peerctx,
-                oval, key_spread_cj, 'map-peer-spread')
+          // Propagate _spread from child to result so spreads
+          // survive nested merges via ref copies.
+          if (child?._spread?.length > 0 && oval?.isBag && !oval._spread?.length) {
+            oval._spread = child._spread
           }
 
           propagateMarks(this, oval)
@@ -264,19 +204,37 @@ class MapVal extends BagVal {
       if (!out.isNil) {
         ;(out.uh ??= []).push(peer.id)
 
+        // Apply inherited spreads to new peer keys.
+        // _spread is set by SpreadVal after application and
+        // inherited by BagVal.clone during ref resolution.
+        if (0 < this._spread.length && peer instanceof MapVal) {
+          for (const sv of this._spread) {
+            for (const peerkey in peer.peg) {
+              if (!(peerkey in this.peg)) {
+                // New key from peer — apply each spread
+                const peerctx = ctx.descend(peerkey)
+                let key_spread = sv.peg.spreadClone(peerctx)
+                if (!key_spread.done) {
+                  key_spread = unite(peerctx, key_spread, top(), 'spread-reapply-resolve')
+                }
+                const child = out.peg[peerkey]
+                if (child && !child.isNil && !key_spread.isTop) {
+                  out.peg[peerkey] = unite(
+                    te ? peerctx.clone({ explain: ec(te, 'SRA:' + peerkey) }) : peerctx,
+                    child, key_spread, 'spread-reapply')
+                  done = done && (DONE === out.peg[peerkey].dc)
+                }
+              }
+            }
+          }
+          ;(out as MapVal)._spread = this._spread
+        }
+
         out.dc = done ? DONE : out.dc
         propagateMarks(peer, out)
         propagateMarks(this, out)
       }
     }
-
-    // console.log(
-    //   'MAPVAL-OUT', out.canon,
-    //   '\n  SELF', this,
-    //   '\n  PEER', peer,
-    //   '\n  OUT', out,
-    //   '\n  FROM', (out as any).spread.cj
-    // )
 
     ctx.explain && explainClose(te, out)
 
@@ -284,25 +242,8 @@ class MapVal extends BagVal {
   }
 
 
-  // Spread clone: return a Val usable as the per-key spread constraint.
-  //
-  // Four tiers:
-  //   1. tree is path-independent (no RefVal/KeyFuncVal/PathFuncVal/
-  //      MoveFuncVal/SuperFuncVal anywhere below): return `this` directly.
-  //      Nothing in the unify path mutates the spread root, and no
-  //      child depends on its own stored .path, so sharing is safe.
-  //   2. top-level children are all ScalarKindVal: shallow clone
-  //      (share children, fresh MapVal wrapper).
-  //   3. selective clone: share path-independent children directly,
-  //      clone only path-dependent ones. Avoids deep-cloning the
-  //      entire tree when only a few children need path adjustment
-  //      (e.g. a spread with `name: key()` and 6 other static fields).
-  //   4. full deep clone via `this.clone(ctx)` — unreachable now but
-  //      kept as the logical fallback.
-  //
-  // Tier 1 handles the foo-sdk common case of simple type-constraint
-  // spreads like `&:{active: *true | boolean, version: *'0.0.1' | string}`,
-  // which are cloned thousands of times per run.
+  // Optimized clone for use as a spread constraint: share
+  // path-independent children, clone only path-dependent ones.
   spreadClone(ctx: AontuContext): Val {
     if (!this.isPathDependent) return this
 
@@ -315,8 +256,6 @@ class MapVal extends BagVal {
         out.peg[entry[0]] = child.clone(ctx, { path: [...out.path, entry[0]] })
       }
       else if (child?.isVal) {
-        // Share the Val but give it a fresh mark object so
-        // propagateMarks doesn't mutate the original.
         const wrapper = Object.create(child)
         wrapper.mark = { ...child.mark }
         out.peg[entry[0]] = wrapper
@@ -326,13 +265,8 @@ class MapVal extends BagVal {
       }
     }
 
-    // Must create a new spread object to avoid mutating the original.
-    out.spread = {
-      cj: this.spread.cj ? this.spread.cj.spreadClone(ctx) : undefined,
-    }
-
     out.closed = this.closed
-    out.optionalKeys = [...this.optionalKeys]
+    out.optionalKeys = 0 < this.optionalKeys.length ? [...this.optionalKeys] : this.optionalKeys
 
     return out
   }
@@ -345,23 +279,16 @@ class MapVal extends BagVal {
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
         (entry[1] as any)?.isVal ?
-          // (entry[1] as Val).clone(ctx, spec?.mark ? { mark: spec.mark } : {}) :
           (entry[1] as Val).clone(ctx, {
             mark: spec?.mark ?? {},
             path: [...out.path, entry[0]]
           }) :
           entry[1]
     }
-    if (this.spread.cj) {
-      out.spread.cj = this.spread.cj.clone(ctx, spec?.mark ? { mark: spec.mark } : {})
-    }
 
     out.closed = this.closed
     out.optionalKeys = [...this.optionalKeys]
 
-    // out.from = this.from
-
-    // console.log('MAPVAL-CLONE', this.canon, '->', out.canon)
     return out
   }
 
@@ -370,12 +297,7 @@ class MapVal extends BagVal {
     if (this._canonCache !== undefined) return this._canonCache
     let keys = Object.keys(this.peg)
     const c = '' +
-      // this.errcanon() +
-      // (this.mark.type ? '<type>' : '') +
-      // (this.id + '=') +
       '{' +
-      (this.spread.cj ? '&:' + this.spread.cj.canon +
-        (0 < keys.length ? ',' : '') : '') +
       keys
         .map(k => [
           JSON.stringify(k) +
@@ -384,14 +306,14 @@ class MapVal extends BagVal {
           (this.peg[k]?.canon ?? this.peg[k])
         ])
         .join(',') +
-      '}' // + '<' + (this.mark.hide ? 'H' : '') + '>'
+      '}'
     if (this.done) this._canonCache = c
     return c
   }
 
 
-  inspection(d?: number) {
-    return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : ''
+  inspection(_d?: number) {
+    return ''
   }
 
 }

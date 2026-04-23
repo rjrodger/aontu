@@ -1,0 +1,3 @@
+# SpreadVal with copy() function
+# input	parse_canon	unify_canon	gen
+a:{x:1},b:{&:copy($.a),c:{y:2}}	~	~	{"a":{"x":1},"b":{"c":{"x":1,"y":2}}}

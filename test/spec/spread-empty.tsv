@@ -1,0 +1,6 @@
+# SpreadVal with empty containers
+# input	parse_canon	unify_canon	gen
+{&:{x:1}}	~	~	{}
+&:{x:1}	~	~	{}
+{&:number}	~	~	{}
+a:{&:{x:1}}	~	~	{"a":{}}
