@@ -292,28 +292,27 @@ describe('unify', function() {
 
 
   test('multi-pass-ref-chain', () => {
-    // A forward ref chain of length N requires N-1 fixpoint passes.
-    // Each pass resolves one link in the chain.
+    // Paths are resolved in preprocessing, so chains resolve in 1 pass.
 
-    // 2-chain: 1 pass
+    // 2-chain
     expect(G('a:$.b b:1')).equal({ a: 1, b: 1 })
 
-    // 4-chain: 3 passes
+    // 4-chain
     expect(G('a:$.b b:$.c c:$.d d:1')).equal(
       { a: 1, b: 1, c: 1, d: 1 }
     )
 
-    // 8-chain: 7 passes (exercises most of the 9-pass limit)
+    // 8-chain
     expect(G('a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:1')).equal(
       { a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1 }
     )
 
-    // Verify via Unify that 8-chain actually needs 7 passes
+    // Paths resolved in preprocessing — only 1 fixpoint pass needed
     const u8 = new Unify('a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:1', lang)
-    expect(u8.cc).equal(7)
+    expect(u8.cc).equal(1)
     expect(u8.res.done).equal(true)
 
-    // 10-chain: 9 passes (hits the maximum, still converges)
+    // 10-chain
     expect(G('a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:1')).equal(
       { a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1, i: 1, j: 1 }
     )
@@ -321,14 +320,14 @@ describe('unify', function() {
 
 
   test('multi-pass-nested-ref-chain', () => {
-    // Forward ref chain through nested map paths also requires N-1 passes.
+    // Paths resolved in preprocessing — nested chains also resolve in 1 pass.
 
-    // 4-chain through nested paths: 3 passes
+    // 4-chain through nested paths
     expect(G('a:{v:$.b.v} b:{v:$.c.v} c:{v:$.d.v} d:{v:1}')).equal(
       { a: { v: 1 }, b: { v: 1 }, c: { v: 1 }, d: { v: 1 } }
     )
 
-    // 8-chain through nested paths: 7 passes
+    // 8-chain through nested paths
     const src8 = [
       'a:{v:$.b.v}', 'b:{v:$.c.v}', 'c:{v:$.d.v}', 'd:{v:$.e.v}',
       'e:{v:$.f.v}', 'f:{v:$.g.v}', 'g:{v:$.h.v}', 'h:{v:1}',
@@ -339,7 +338,7 @@ describe('unify', function() {
     })
 
     const u8 = new Unify(src8, lang)
-    expect(u8.cc).equal(7)
+    expect(u8.cc).equal(1)
     expect(u8.res.done).equal(true)
   })
 
@@ -349,9 +348,10 @@ describe('unify', function() {
     // The spread can only apply after the ref chain resolves.
 
     // 6-ref chain + spread with type constraint (verify via canon)
+    // Paths resolved in preprocessing — ref chains resolve before fixpoint loop
     const u6 = new Unify(
       't:$.u u:$.v v:$.w w:$.x x:$.y y:string m:{&:$.t,a:A,b:B}', lang)
-    expect(u6.cc).greaterThan(4)
+    expect(u6.cc).equal(1)
     expect(u6.res.done).equal(true)
 
     // 4-ref chain + spread with concrete value
@@ -360,7 +360,7 @@ describe('unify', function() {
     )
 
     const u4 = new Unify('t:$.u u:$.v v:$.w w:1 m:{x:$.t}', lang)
-    expect(u4.cc).greaterThan(2)
+    expect(u4.cc).equal(1)
     expect(u4.res.done).equal(true)
   })
 

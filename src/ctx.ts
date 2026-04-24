@@ -41,6 +41,7 @@ class AontuContext {
   path: string[]  // Path to current Val.
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
+  sc: number = 0  // Unresolved spread count
   vars: Record<string, Val> = {}
   src?: string
   fs?: FST
@@ -87,9 +88,9 @@ class AontuContext {
   // cached child is safe to reuse.
   _childCache?: Map<string, AontuContext>
 
-  // Per-iteration cache for RefVal.find() clone results.
-  // Key: "refId|targetId" — avoids repeated deep-clone + walk for
-  // the same (ref, resolved-target) pair within one fixpoint pass.
+  // Per-iteration cache for PathVal.find() clone results.
+  // Key: "pathId|targetId" — avoids repeated deep-clone + walk for
+  // the same (path, resolved-target) pair within one fixpoint pass.
   // Cleared at the start of each iteration (alongside `seen`).
   _refCloneCache?: Map<string, Val>
 

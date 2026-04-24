@@ -41,53 +41,37 @@ const node_test_1 = require("node:test");
 const node_assert_1 = __importDefault(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
 const Path = __importStar(require("node:path"));
-const __1 = require("..");
+const lang_1 = require("../dist/lang");
 const SPEC_DIR = Path.resolve(__dirname, '..', 'test', 'spec');
-function loadSpec(filename) {
+function loadPathsSpec(filename) {
     const content = Fs.readFileSync(Path.join(SPEC_DIR, filename), 'utf8');
     const rows = [];
     for (const line of content.split('\n')) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#'))
             continue;
-        const [input, parse, unify, gen] = trimmed.split('\t');
+        const [input, countStr, canons] = trimmed.split('\t');
         rows.push({
             input,
-            parse: parse === '~' ? undefined : parse,
-            unify: unify === '~' ? undefined : unify,
-            gen: gen === '~' ? undefined : gen,
+            count: parseInt(countStr, 10),
+            canons: canons ? canons.split(',') : [],
         });
     }
     return rows;
 }
-function runSpec(filename) {
-    const specs = loadSpec(filename);
-    const a = new __1.Aontu();
+(0, node_test_1.describe)('paths', () => {
+    const specs = loadPathsSpec('paths.tsv');
     for (const spec of specs) {
-        (0, node_test_1.test)(`${filename}: ${spec.input}`, () => {
-            if (spec.parse) {
-                const parsed = a.parse(spec.input);
-                node_assert_1.default.strictEqual(parsed?.canon, spec.parse, `parse canon mismatch for: ${spec.input}`);
+        (0, node_test_1.test)(`paths.tsv: ${spec.input}`, () => {
+            const lang = new lang_1.Lang();
+            lang.parse(spec.input);
+            node_assert_1.default.strictEqual(lang.paths.length, spec.count, `path count mismatch for: ${spec.input} ` +
+                `(got [${lang.paths.map((p) => p.canon)}])`);
+            if (spec.canons.length > 0) {
+                const actualCanons = lang.paths.map((p) => p.canon);
+                node_assert_1.default.deepStrictEqual(actualCanons, spec.canons, `path canons mismatch for: ${spec.input}`);
             }
-            if (spec.unify) {
-                const unified = a.unify(spec.input);
-                node_assert_1.default.strictEqual(unified?.canon, spec.unify, `unify canon mismatch for: ${spec.input}`);
-            }
-            if (spec.gen) {
-                const generated = a.generate(spec.input, { errs: [] });
-                node_assert_1.default.deepStrictEqual(generated, JSON.parse(spec.gen), `gen mismatch for: ${spec.input}`);
-            }
-        });
-    }
-}
-(0, node_test_1.describe)('spread-spec', () => {
-    const specFiles = Fs.readdirSync(SPEC_DIR)
-        .filter(f => f.endsWith('.tsv') && f !== 'paths.tsv')
-        .sort();
-    for (const file of specFiles) {
-        (0, node_test_1.describe)(file.replace('.tsv', ''), () => {
-            runSpec(file);
         });
     }
 });
-//# sourceMappingURL=spread-spec.test.js.map
+//# sourceMappingURL=paths.test.js.map

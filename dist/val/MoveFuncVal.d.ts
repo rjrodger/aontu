@@ -1,5 +1,6 @@
 import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
+import { NilVal } from '../val/NilVal';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class MoveFuncVal extends FuncBaseVal {
     isMoveFunc: boolean;
@@ -7,6 +8,6 @@ declare class MoveFuncVal extends FuncBaseVal {
     make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
     prepare(_ctx: AontuContext, _args: Val[]): null;
-    resolve(ctx: AontuContext, args: Val[]): Val;
+    resolve(ctx: AontuContext, args: Val[]): Val | NilVal;
 }
 export { MoveFuncVal, };

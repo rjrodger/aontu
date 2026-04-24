@@ -79,7 +79,8 @@ import { NilVal } from './val/NilVal'
 import { NullVal } from './val/NullVal'
 import { NumberVal } from './val/NumberVal'
 import { PrefVal } from './val/PrefVal'
-import { RefVal } from './val/RefVal'
+import { PathVal } from './val/PathVal'
+// RefVal replaced by PathVal — see RefVal.ts.old
 import { StringVal } from './val/StringVal'
 import { VarVal } from './val/VarVal'
 import { PlusOpVal } from './val/PlusOpVal'
@@ -239,12 +240,25 @@ help isolate the syntax error.`,
       addsite(new DisjunctVal({ peg: terms }), r, ctx),
 
     'dot-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
-      return addsite(new RefVal({ peg: terms, prefix: true }), r, ctx)
+      const pv = addsite(new PathVal({ peg: terms, prefix: true }), r, ctx)
+      if (ctx.meta.paths) { ctx.meta.paths.push(pv) }
+      return pv
     },
 
     'dot-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
-      // // console.log('DOT-INFIX-OP', terms)
-      return addsite(new RefVal({ peg: terms }), r, ctx)
+      const paths = ctx.meta.paths
+      if (paths) {
+        // Remove consumed intermediates
+        for (const t of terms) {
+          if (t instanceof PathVal) {
+            const idx = paths.indexOf(t)
+            if (idx >= 0) paths.splice(idx, 1)
+          }
+        }
+      }
+      const pv = addsite(new PathVal({ peg: terms }), r, ctx)
+      if (paths) { paths.push(pv) }
+      return pv
     },
 
     'star-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) =>
@@ -252,7 +266,7 @@ help isolate the syntax error.`,
 
     'dollar-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       // $.a.b absolute path
-      if (terms[0] instanceof RefVal) {
+      if (terms[0] instanceof PathVal) {
         terms[0].absolute = true
         return terms[0]
       }
@@ -287,6 +301,9 @@ help isolate the syntax error.`,
           })
       }
       const out = addsite(val, r, ctx)
+      if (out.isKeyFunc && ctx.meta.keys) {
+        ctx.meta.keys.push(out)
+      }
       return out
     },
   }
@@ -763,6 +780,8 @@ class Lang {
   jsonic: Jsonic
   opts: AontuOptions
   idcount: number | undefined
+  paths: PathVal[] = []
+  keys: KeyFuncVal[] = []
 
 
   constructor(options?: Partial<AontuOptions>) {
@@ -796,9 +815,14 @@ class Lang {
     // const start = performance.now()
 
     // JSONIC-UPDATE - check meta
+    this.paths = []
+    this.keys = []
+
     let jm: any = {
       fs: opts?.fs,
       fileName: opts?.path ?? this.opts.path,
+      paths: this.paths,
+      keys: this.keys,
       multisource: {
         path: opts?.path ?? this.opts.path,
         deps: (opts && opts.deps) || undefined
@@ -843,5 +867,7 @@ class Lang {
 
 export {
   Lang,
+  PathVal,
+  KeyFuncVal,
   Site,
 }

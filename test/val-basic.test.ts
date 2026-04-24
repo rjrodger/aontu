@@ -35,7 +35,7 @@ import { ListVal } from '../dist/val/ListVal'
 import { MapVal } from '../dist/val/MapVal'
 import { NilVal } from '../dist/val/NilVal'
 import { PrefVal } from '../dist/val/PrefVal'
-import { RefVal } from '../dist/val/RefVal'
+import { PathVal } from '../dist/val/PathVal'
 import { SpreadVal } from '../dist/val/SpreadVal'
 import { VarVal } from '../dist/val/VarVal'
 
@@ -59,7 +59,7 @@ const PL = lang.parse.bind(lang)
 const P = (x: string, ctx?: any) => PL(x, ctx)
 const PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
 // const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r))?.canon
+const UC = (s: string) => new Unify(s, lang).res?.canon
 const GC = (x: string, ctx?: any) => new Unify(x, undefined, ctx).res.gen(ctx)
 
 
@@ -596,15 +596,6 @@ describe('val-basic', function() {
     let d5 = new ConjunctVal({ peg: PA(['{a:1}']) })
     let d6 = new ConjunctVal({ peg: PA(['{a:1}', '{b:2}']) })
 
-    // let d100 = new ConjunctVal([makeIntegerVal(1), new RefVal({peg:'/x')])
-    let d100 =
-      new ConjunctVal({
-        peg: [
-          makeIntegerVal(1),
-          new RefVal({ peg: ['x'], absolute: true })
-        ]
-      })
-
     expect(d0.canon).equal('1')
     expect(d1.canon).equal('1&1')
     expect(d2.canon).equal('1&2')
@@ -636,21 +627,19 @@ describe('val-basic', function() {
     expect(tu(ctx, d3, TOP).canon).equal('1')
     expect(tu(ctx, TOP, d3).canon).equal('1')
 
-
-    // TODO: term order is swapped by ConjunctVal impl - should be preserved
-    expect(tu(ctx, d100, TOP).canon).equal('1')
-    expect(tu(ctx, TOP, d100).canon).equal('1')
+    // Conjunct with path ref — go through Unify
+    expect(UC('x:1, y: 1 & $.x')).equal('{"x":1,"y":1}')
+    expect(UC('x:1, y: $.x & 1')).equal('{"x":1,"y":1}')
 
     // TODO: same for DisjunctVal
     expect(tu(ctx, new ConjunctVal({ peg: [] }), TOP).canon).equal('top')
 
     expect(A.parse('1 & .a')?.canon).equal('1&.a')
-    expect(A.unify('1 & .a')?.canon).equal('1&.a') // canonical sorting (pure before dynamic)
-    expect(() => A.generate('1 & .a')).throws(/conjunct/)
+    // Dangling relative path — unify throws (path can't resolve at root)
+    expect(() => A.unify('1 & .a')).throws(/no_path/)
 
     expect(A.parse('.a & 1')?.canon).equal('.a&1')
-    expect(A.unify('.a & 1')?.canon).equal('1&.a')
-    expect(() => A.generate('.a & 1')).throws(/conjunct/)
+    expect(() => A.unify('.a & 1')).throws(/no_path/)
 
     expect(A.parse('1 & 1 & .a')?.canon).equal('(1&1)&.a')
 
@@ -762,59 +751,25 @@ describe('val-basic', function() {
 
 
   it('unify', () => {
-    let m0 = (P(`
-  a: 1
-  b: .a
-  c: .x
-  `, { xlog: -1 }) as MapVal)
+    // Relative sibling paths
+    expect(UC('a:1,b:.a,c:.x')).equal('{"a":1,"b":1,"c":nil}')
+    expect(UC('a:.b.c,b:c:1')).equal('{"a":1,"b":{"c":1}}')
 
-    expect(m0.canon).equal('{"a":1,"b":.a,"c":.x}')
-
-    let c0 = new AontuContext({
-      root: m0
-    })
-
-    let m0u = m0.unify(TOP, c0)
-    expect(m0u.canon).equal('{"a":1,"b":1,"c":nil}')
-
-
-    let m1 = (P(`
-  a: .b.c
-  b: c: 1
-  `, { xlog: -1 }) as MapVal)
-
-    let c1 = new AontuContext({
-      root: m1
-    })
-
-    let m1u = m1.unify(TOP, c1)
-    expect(m1u.canon).equal('{"a":1,"b":{"c":1}}')
-
-
-    let m2 = (P(`
+    // Spread with absolute path
+    expect(G(`
 a: {x:1}
 b: { &: $.a }
 b: c0: {n:0}
 b: c1: {n:1}
 b: c2: {n:2}
-`
-      ,) as MapVal)
-
-    expect(m2.canon)
-      .equal('{"a":{"x":1},"b":{}&{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}')
-
-    expect(m2.peg.b.constructor.name).equal('ConjunctVal')
-    expect(m2.peg.b.peg.length).equal(5)
-
-    let c2 = new AontuContext({
-      root: m2
+`)).equal({
+      a: { x: 1 },
+      b: {
+        c0: { n: 0, x: 1 },
+        c1: { n: 1, x: 1 },
+        c2: { n: 2, x: 1 },
+      }
     })
-
-    let m2u = m2.unify(TOP, c2)
-    expect(m2u.canon)
-      // .equal('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
-      .equal('{"a":{"x":1},"b":{"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
-
   })
 
 

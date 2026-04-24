@@ -29,11 +29,6 @@ abstract class BagVal extends FeatureVal {
   closed: boolean = false
   optionalKeys: string[] = []
 
-  // Opaque spread storage — MapVal/ListVal don't use this during
-  // unification. SpreadVal sets it after application so that ref
-  // copies and future merges can re-apply the spread to new children.
-  _spread: Val[] = []
-
   constructor(
     spec: ValSpec,
     ctx?: AontuContext
@@ -43,9 +38,6 @@ abstract class BagVal extends FeatureVal {
 
   clone(ctx: AontuContext, spec?: ValSpec): Val {
     const bag = super.clone(ctx, spec) as BagVal
-    if (this._spread.length > 0) {
-      bag._spread = this._spread
-    }
     return bag
   }
 
@@ -95,7 +87,7 @@ abstract class BagVal extends FeatureVal {
         || child.isMap
         || child.isList
         || child.isPref
-        || child.isRef
+        || child.isPath
         || child.isDisjunct
         || child.isConjunct
         || child.isNil

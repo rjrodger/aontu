@@ -91,6 +91,20 @@ class SpreadVal extends FeatureVal {
       out.dc = this.dc + 1
     }
 
+    // Track unresolved spread count.
+    // cc=0: increment for spreads that don't vanish.
+    // cc>0: decrement when a spread vanishes.
+    if (0 === ctx.cc) {
+      if (out.isSpread && !out.done) {
+        ctx.sc++
+      }
+    }
+    else if (ctx.sc > 0) {
+      if (!(out.isSpread && !out.done)) {
+        ctx.sc--
+      }
+    }
+
     ctx.explain && explainClose(te, out)
     return out
   }
@@ -131,6 +145,11 @@ class SpreadVal extends FeatureVal {
         key_spread = unite(keyctx, key_spread, top(), 'spread-resolve')
       }
 
+      // Clear type/hide marks on the spread constraint — it constrains
+      // but should not mark the children as type/hidden.
+      key_spread.mark.type = false
+      key_spread.mark.hide = false
+
       propagateMarks(map, child)
 
       out.peg[key] =
@@ -148,12 +167,9 @@ class SpreadVal extends FeatureVal {
     out.dc = done ? DONE : map.dc + 1
 
     propagateMarks(map, out)
-    propagateMarks(this, out)
-
-    // Stamp applied spreads so ref copies carry them.
-    // Merge with any spreads already on the map.
-    out._spread = map._spread.length > 0
-      ? [...map._spread, this] : [this]
+    // NOTE: do not propagate type/hide marks from the spread constraint
+    // to the output — a type spread constrains children but doesn't
+    // make them type-invisible.
 
     return out
   }
@@ -201,10 +217,6 @@ class SpreadVal extends FeatureVal {
     out.dc = done ? DONE : list.dc + 1
 
     propagateMarks(list, out)
-    propagateMarks(this, out)
-
-    out._spread = list._spread.length > 0
-      ? [...list._spread, this] : [this]
 
     return out
   }

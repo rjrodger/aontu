@@ -27,9 +27,10 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
             (0, err_1.makeNilErr)(ctx, 'invalid-arg', this) :
             val.clone(ctx);
         // console.log('CR', out)
-        if (!out.isRef) {
+        if (!out.isPath) {
+            out.mark.type = false;
+            out.mark.hide = false;
             (0, utility_1.walk)(out, (_key, val) => {
-                // console.log('WALK', val)
                 val.mark.type = false;
                 val.mark.hide = false;
                 return val;

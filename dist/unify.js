@@ -5,11 +5,13 @@ exports.unite = exports.Unify = void 0;
 const ctx_1 = require("./ctx");
 const type_1 = require("./type");
 const err_1 = require("./err");
+const StringVal_1 = require("./val/StringVal");
+const PathVal_1 = require("./val/PathVal");
 const lang_1 = require("./lang");
 const utility_1 = require("./utility");
 const top_1 = require("./val/top");
 // TODO: FIX: false positive when too many top unifications
-const MAXCYCLE = 999;
+const MAXCYCLE = 9999;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
@@ -25,30 +27,26 @@ const unite = (ctx, a, b, whence) => {
     //        in foo-sdk, ~100% with a.done=true)
     if (a !== undefined && a !== null) {
         if (a === b) {
-            if (a.done && !(a._spread?.length > 0))
+            if (a.done)
                 return a;
         }
         else if (b !== undefined && b !== null) {
             if (a.done && b.done) {
-                // Skip fast-paths when a has _spread — MapVal.unify must
-                // run so its re-apply logic can apply spreads to new peer keys.
-                if (!(a._spread?.length > 0)) {
-                    if (a.id === b.id)
-                        return a;
-                    if (a.constructor === b.constructor && a.peg === b.peg
-                        && !a.isNil && !b.isNil
-                        && !a.isConjunct && !a.isDisjunct
-                        && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
-                        return a;
-                    }
-                    // Id-keyed cache: reuse results for the exact same Val pair.
-                    const uc = ctx._uniteCache;
-                    if (uc !== undefined) {
-                        const ucKey = a.id + '|' + b.id;
-                        const ucHit = uc.get(ucKey);
-                        if (ucHit !== undefined)
-                            return ucHit;
-                    }
+                if (a.id === b.id)
+                    return a;
+                if (a.constructor === b.constructor && a.peg === b.peg
+                    && !a.isNil && !b.isNil
+                    && !a.isConjunct && !a.isDisjunct
+                    && !a.isPath && !a.isPref && !a.isFunc && !a.isExpect) {
+                    return a;
+                }
+                // Id-keyed cache: reuse results for the exact same Val pair.
+                const uc = ctx._uniteCache;
+                if (uc !== undefined) {
+                    const ucKey = a.id + '|' + b.id;
+                    const ucHit = uc.get(ucKey);
+                    if (ucHit !== undefined)
+                        return ucHit;
                 }
             }
         }
@@ -117,7 +115,7 @@ const unite = (ctx, a, b, whence) => {
             }
             else if (b.isConjunct
                 || b.isDisjunct
-                || b.isRef
+                || b.isPath
                 || b.isPref
                 || b.isFunc
                 || b.isExpect
@@ -157,10 +155,7 @@ const unite = (ctx, a, b, whence) => {
     }
     ctx.explain && (0, utility_1.explainClose)(te, out);
     // Store in id-keyed cache when both operands were done.
-    // Don't cache when a has _spread — future calls with different
-    // b may need the spread re-applied to new keys.
-    if (a?.done && b?.done && out?.done && ctx._uniteCache !== undefined
-        && !(a._spread?.length > 0)) {
+    if (a?.done && b?.done && out?.done && ctx._uniteCache !== undefined) {
         ctx._uniteCache.set(a.id + '|' + b.id, out);
     }
     return out;
@@ -169,6 +164,250 @@ exports.unite = unite;
 function update(x, _y) {
     // TODO: update x with y.site
     return x;
+}
+// Resolve all PathVals using the pre-collected paths list.
+// Mutates the tree in place, replacing each PathVal with its cloned target.
+function resolvePaths(root, ctx, paths) {
+    for (const pv of paths) {
+        if (pv.done)
+            continue;
+        // Resolve: find target, following chains
+        let found = pv.find(ctx);
+        if (found == null || found.isNil)
+            continue;
+        // Skip if target or container contains a mark-setting function
+        // (type/hide/move) — let unification resolve it first.
+        if (hasMarkFunc(found))
+            continue;
+        if (hasMarkFuncAtPath(root, pv.path))
+            continue;
+        while (found instanceof PathVal_1.PathVal) {
+            if (found.done && found._resolved) {
+                found = found._resolved;
+                break;
+            }
+            const next = found.find(ctx);
+            if (next == null || next.isNil)
+                break;
+            found.dc = type_1.DONE;
+            found._resolved = next;
+            found = next;
+        }
+        // If found value is a key() function, set its path to the
+        // destination so it evaluates at the right position.
+        if (found.isKeyFunc) {
+            found.path = pv.path;
+        }
+        pv.dc = type_1.DONE;
+        pv._resolved = found;
+        // Replace PathVal in tree using its path
+        replaceAtPath(root, pv.path, pv, found);
+        // Walk the placed value to resolve any PathVals cloned into it
+        resolveNestedPaths(found, ctx);
+    }
+}
+// Check if a value contains a type() or hide() function.
+// Check if the value AT the path position is inside a mark-setting function.
+function hasMarkFuncAtPath(root, path) {
+    let node = root;
+    for (let i = 0; i < path.length; i++) {
+        const part = path[i];
+        if (node.isMap || node.isList) {
+            node = node.peg[part];
+        }
+        else if (node.isConjunct || node.isDisjunct) {
+            let found = null;
+            const stack = [...node.peg];
+            while (stack.length > 0) {
+                const term = stack.pop();
+                if (term?.isConjunct || term?.isDisjunct) {
+                    stack.push(...term.peg);
+                }
+                else if ((term?.isMap || term?.isList) && term.peg[part] != null) {
+                    found = term.peg[part];
+                    break;
+                }
+            }
+            node = found;
+        }
+        else {
+            return false;
+        }
+        if (node == null)
+            return false;
+    }
+    return hasMarkFunc(node);
+}
+function hasMarkFunc(val) {
+    if (val == null || !val.isVal)
+        return false;
+    if (val.isTypeFunc || val.isHideFunc || val.isMoveFunc)
+        return true;
+    if (val.isConjunct || val.isDisjunct) {
+        for (const t of val.peg) {
+            if (hasMarkFunc(t))
+                return true;
+        }
+    }
+    return false;
+}
+// Resolve any PathVals found inside a value (e.g. cloned subtrees).
+// Iterative stack-based walk — no recursion.
+function resolveNestedPaths(val, ctx) {
+    const stack = [val];
+    while (stack.length > 0) {
+        const v = stack.pop();
+        if (v == null || !v.isVal)
+            continue;
+        if (v.isMap || v.isList) {
+            for (const k in v.peg) {
+                const child = v.peg[k];
+                if (child instanceof PathVal_1.PathVal && !child.done) {
+                    const found = child.find(ctx);
+                    if (found != null && !found.isNil) {
+                        v.peg[k] = found;
+                        child.dc = type_1.DONE;
+                        child._resolved = found;
+                        stack.push(found);
+                    }
+                }
+                else if (child?.isVal) {
+                    stack.push(child);
+                }
+            }
+        }
+        else if (v.isConjunct || v.isDisjunct) {
+            for (let i = 0; i < v.peg.length; i++) {
+                const child = v.peg[i];
+                if (child instanceof PathVal_1.PathVal && !child.done) {
+                    const found = child.find(ctx);
+                    if (found != null && !found.isNil) {
+                        v.peg[i] = found;
+                        child.dc = type_1.DONE;
+                        child._resolved = found;
+                        stack.push(found);
+                    }
+                }
+                else if (child?.isVal) {
+                    stack.push(child);
+                }
+            }
+        }
+        else if (v.isFeature) {
+            if (v.peg instanceof PathVal_1.PathVal && !v.peg.done) {
+                const found = v.peg.find(ctx);
+                if (found != null && !found.isNil) {
+                    v.peg.dc = type_1.DONE;
+                    v.peg._resolved = found;
+                    v.peg = found;
+                    stack.push(found);
+                }
+            }
+            else if (Array.isArray(v.peg)) {
+                for (let i = 0; i < v.peg.length; i++) {
+                    if (v.peg[i]?.isVal)
+                        stack.push(v.peg[i]);
+                }
+            }
+            else if (v.peg?.isVal) {
+                stack.push(v.peg);
+            }
+        }
+    }
+}
+// Replace target Val in the tree, using path to navigate and a stack
+// to search through junctions, features, and nested structures.
+// No recursion — uses a single loop with an explicit stack.
+function replaceAtPath(root, path, target, replacement, intoSpreads = true) {
+    let node = root;
+    // Descend through map/list using path segments.
+    // When a non-map/list is encountered (junction, feature),
+    // push its children onto the search stack and stop descending.
+    let pi = 0;
+    for (; pi < path.length; pi++) {
+        if (node.isMap || node.isList) {
+            const child = node.peg[path[pi]];
+            if (child == null)
+                break;
+            // Last segment: check for direct replacement
+            if (pi === path.length - 1) {
+                if (child === target) {
+                    node.peg[path[pi]] = replacement;
+                    return true;
+                }
+                // Target not at this position — search within child
+                node = child;
+                pi++;
+                break;
+            }
+            node = child;
+        }
+        else {
+            // Hit a non-navigable node — search it
+            break;
+        }
+    }
+    // If path fully consumed with no match, or hit a junction/feature,
+    // search the current node using a stack.
+    const stack = [node];
+    while (stack.length > 0) {
+        const val = stack.pop();
+        if (val == null || !val.isVal)
+            continue;
+        if (val.isMap || val.isList) {
+            for (const k in val.peg) {
+                if (val.peg[k] === target) {
+                    val.peg[k] = replacement;
+                    return true;
+                }
+                if (val.peg[k]?.isVal)
+                    stack.push(val.peg[k]);
+            }
+        }
+        else if (val.isConjunct || val.isDisjunct) {
+            for (let i = 0; i < val.peg.length; i++) {
+                if (val.peg[i] === target) {
+                    val.peg[i] = replacement;
+                    return true;
+                }
+                stack.push(val.peg[i]);
+            }
+        }
+        else if (val.isFeature) {
+            if (val.peg === target) {
+                val.peg = replacement;
+                return true;
+            }
+            if (intoSpreads || !val.isSpread) {
+                if (Array.isArray(val.peg)) {
+                    for (let i = 0; i < val.peg.length; i++) {
+                        if (val.peg[i] === target) {
+                            val.peg[i] = replacement;
+                            return true;
+                        }
+                        if (val.peg[i]?.isVal)
+                            stack.push(val.peg[i]);
+                    }
+                }
+                else if (val.peg?.isVal) {
+                    stack.push(val.peg);
+                }
+            }
+        }
+    }
+    return false;
+}
+// Resolve all KeyFuncVals (not inside spreads) to StringVals.
+// Uses the KeyFuncVal's path to determine the key name.
+function resolveKeys(root, keys) {
+    for (const kv of keys) {
+        const resolved = kv.resolve(null, kv.peg);
+        if (resolved instanceof StringVal_1.StringVal) {
+            resolved.dc = type_1.DONE;
+            resolved.path = kv.path;
+            replaceAtPath(root, kv.path, kv, resolved, false);
+        }
+    }
 }
 class Unify {
     constructor(root, lang, ctx, src) {
@@ -206,9 +445,18 @@ class Unify {
             // uctx.seterr(this.err)
             uctx.err = this.err;
             uctx.explain = this.explain;
+            // Path resolution phase: replace all PathVals with cloned targets.
+            // Pure structural replacement — no unification.
+            resolvePaths(res, uctx, this.lang.paths);
+            uctx = uctx.clone({ root: res });
+            // Key resolution phase: replace key() functions (not in spreads)
+            // with their resolved StringVal.
+            resolveKeys(res, this.lang.keys);
             const explain = null == ctx?.explain ? undefined : ctx?.explain;
             const te = explain && (0, utility_1.explainOpen)(uctx, explain, 'root', res);
             // NOTE: if true === res.done already, then this loop never needs to run.
+            // RefVals defer on cc=0 and while ctx.sc > 0.
+            // SpreadVal.unify maintains ctx.sc via increment/decrement.
             let maxcc = 9; // 99
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 // console.log('CC', this.cc, res.canon)

@@ -18,7 +18,6 @@ import { ConjunctVal } from '../val/ConjunctVal'
 
 import { FuncBaseVal } from './FuncBaseVal'
 
-
 class KeyFuncVal extends FuncBaseVal {
   isKeyFunc = true
 
@@ -41,14 +40,12 @@ class KeyFuncVal extends FuncBaseVal {
 
 
   unify(peer: Val, ctx: AontuContext): Val {
-    // TODO: this delay makes keys in spreads and refs work, but it is a hack - find a better way.
     let out: Val = this
 
     if (ctx.cc < 3) {
       this.notdone()
 
       if (peer.isTop || (peer.id === this.id)) {
-        // TODO: clone needed to avoid triggering unify_cycle - find a better way
         out = this.clone(ctx)
       }
       else if (peer.isNil) {

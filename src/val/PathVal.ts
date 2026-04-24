@@ -1,14 +1,4 @@
-/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
-
-
-import Util from 'node:util'
-
-import {
-  walk,
-  explainOpen,
-  ec,
-  explainClose,
-} from '../utility'
+/* Copyright (c) 2025 Richard Rodger, MIT License */
 
 
 import type {
@@ -16,38 +6,40 @@ import type {
   ValSpec,
 } from '../type'
 
-
 import {
   DONE,
 } from '../type'
 
-import { AontuContext } from '../ctx'
+import {
+  walk,
+} from '../utility'
 
-import { makeNilErr } from '../err'
+import { AontuContext } from '../ctx'
 import { unite } from '../unify'
 
+import { makeNilErr } from '../err'
 
 import {
   top
 } from './top'
 
-
 import { StringVal } from './StringVal'
 import { IntegerVal } from './IntegerVal'
 import { NumberVal } from './NumberVal'
-import { ConjunctVal } from './ConjunctVal'
 import { VarVal } from './VarVal'
+import { ConjunctVal } from './ConjunctVal'
+import { DisjunctVal } from './DisjunctVal'
 import { FeatureVal } from './FeatureVal'
 
 
-
-class RefVal extends FeatureVal {
-  isRef = true
+class PathVal extends FeatureVal {
+  isPath = true
   isGenable = true
   cjo = 32500
 
   absolute: boolean = false
   prefix: boolean = false
+  _resolved: Val | undefined = undefined
 
   constructor(
     spec: {
@@ -68,15 +60,11 @@ class RefVal extends FeatureVal {
     for (let pI = 0; pI < spec.peg.length; pI++) {
       this.append(spec.peg[pI])
     }
-
-    //console.log('RefVal', this.id, this.peg)
   }
 
 
   append(part: any) {
     let partval
-
-    // console.log('APPEND', part)
 
     if ('string' === typeof part) {
       partval = part
@@ -89,16 +77,11 @@ class RefVal extends FeatureVal {
     }
 
     else if (part instanceof IntegerVal) {
-      // partval = '' + part.peg
       partval = part.src
       this.peg.push(partval)
     }
 
-    // TODO: this is a bit of a hack, review
-    // Seems like a fundamental ambiguity?
-    // Resolved by path function
     else if (part instanceof NumberVal) {
-      // let partvals: string[] = part.peg.toFixed(11).replace(/(\.0)?0+$/, '$1').split('.')
       let partvals: string[] = part.src.split('.')
       this.peg.push(...partvals)
     }
@@ -108,7 +91,7 @@ class RefVal extends FeatureVal {
       this.peg.push(partval)
     }
 
-    else if (part instanceof RefVal) {
+    else if (part instanceof PathVal) {
       if (part.absolute) {
         this.absolute = true
       }
@@ -138,56 +121,23 @@ class RefVal extends FeatureVal {
   unify(peer: Val, ctx: AontuContext): Val {
     peer = peer ?? top()
 
-    const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Ref', this, peer)
+    // Already resolved (e.g. path value from path() function) — skip find
+    if (this.done) return this
+
     let out: Val = this
-    let why = 'id'
+    const found = this.find(ctx)
 
-    if (this.id !== peer.id) {
-
-      // TODO: not resolved when all Vals in path are done is an error
-      // as path cannot be found
-      // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
-      let found: Val | undefined = null == ctx ? this : this.find(ctx)
-
-      const resolved = found ?? this
-
-      if (null == resolved && this.canon === peer.canon) {
-        out = this
-      }
-      else if (resolved instanceof RefVal) {
-        if (peer.isTop) {
-          out = this
-          why = 'pt'
-        }
-        else if (peer.isNil) {
-          out = makeNilErr(ctx, 'ref[' + this.peg + ']', this, peer)
-          why = 'pn'
-        }
-
-        // same path
-        else if (this.canon === peer.canon) {
-          out = this
-          why = 'pp'
-        }
-
-        else {
-          // Ensure RefVal done is incremented
-          this.dc = DONE === this.dc ? DONE : this.dc + 1
-          out = new ConjunctVal({ peg: [this, peer] }, ctx)
-          why = 'cj'
-        }
-      }
-      else {
-        out = unite(te ? ctx.clone({ explain: ec(te, 'RES') }) : ctx, resolved, peer, 'ref')
-        why = 'u'
-      }
-
-      out.dc = DONE === out.dc ? DONE : this.dc + 1
+    if (found != null && !found.isNil) {
+      out = unite(ctx, found, peer, 'path')
+    }
+    else if (found?.isNil) {
+      out = found
+    }
+    else {
+      // Not yet resolvable — increment dc to signal not done
+      this.dc = DONE === this.dc ? DONE : this.dc + 1
     }
 
-    // console.log('REFVAL-UNIFY-OUT', ctx.cc, this.id, this.canon, this.done, 'P=', peer.id, peer.canon, peer.done, '->', out.id, out.canon, out.done)
-
-    explainClose(te, out)
     return out
   }
 
@@ -310,7 +260,7 @@ class RefVal extends FeatureVal {
         return sv
       }
 
-      let node = ctx.root as Val
+      let node: Val | null = ctx.root as Val
 
       let nopath = false
 
@@ -326,6 +276,36 @@ class RefVal extends FeatureVal {
           }
           else if (node.isList) {
             node = node.peg[part]
+          }
+          else if (node.isConjunct || node.isDisjunct) {
+            // Collect matching children from all junction terms,
+            // flattening nested conjuncts and disjuncts.
+            // Spreads match any key — their peg is always included.
+            const matches: Val[] = []
+            const stack = [...node.peg]
+            while (stack.length > 0) {
+              const term = stack.pop()!
+              if (term.isConjunct || term.isDisjunct) {
+                stack.push(...term.peg)
+              }
+              else if (term.isSpread) {
+                matches.push(term.peg)
+              }
+              else if ((term.isMap || term.isList) && term.peg[part] != null) {
+                matches.push(term.peg[part])
+              }
+            }
+            if (matches.length === 1) {
+              node = matches[0]
+            }
+            else if (matches.length > 1) {
+              node = node.isConjunct
+                ? new ConjunctVal({ peg: matches })
+                : new DisjunctVal({ peg: matches })
+            }
+            else {
+              node = null
+            }
           }
           else if (node.done) {
             nopath = true
@@ -349,7 +329,7 @@ class RefVal extends FeatureVal {
       if (nopath) {
         out = makeNilErr(ctx, 'no_path', this)
       }
-      else if (pI === refpath.length) {
+      else if (pI === refpath.length && node != null) {
         out = node
 
         // Types and hidden values are cloned and made concrete
@@ -375,6 +355,8 @@ class RefVal extends FeatureVal {
           }
           else {
             out = out.clone(ctx)
+            out.mark.type = false
+            out.mark.hide = false
 
             walk(out, (_key: string | number | undefined, val: Val) => {
               val.mark.type = false
@@ -394,6 +376,7 @@ class RefVal extends FeatureVal {
   }
 
 
+
   same(peer: Val): boolean {
     return null == peer ? false : this.peg === peer.peg
   }
@@ -404,7 +387,7 @@ class RefVal extends FeatureVal {
       peg: this.peg,
       absolute: this.absolute,
       ...(spec || {})
-    }) as RefVal)
+    }) as PathVal)
     return out
   }
 
@@ -413,7 +396,6 @@ class RefVal extends FeatureVal {
     let str =
       (this.absolute ? '$' : '') +
       (0 < this.peg.length ? '.' : '') +
-      // this.peg.join(this.sep)
       this.peg.map((p: any) => '.' === p ? '' :
         (p.isVal ? p.canon : '' + p))
         .join('.')
@@ -422,15 +404,13 @@ class RefVal extends FeatureVal {
 
 
   gen(ctx: AontuContext) {
-    // Unresolved ref cannot be generated, so always an error.
     let nil = makeNilErr(
       ctx,
       'ref',
-      this, // (formatPath(this.peg, this.absolute) as any),
+      this,
       undefined,
     )
 
-    // TODO: refactor to use Site pointer
     nil.path = this.path
     nil.site.url = this.site.url
     nil.site.row = this.site.row
@@ -451,5 +431,5 @@ class RefVal extends FeatureVal {
 
 
 export {
-  RefVal,
+  PathVal,
 }

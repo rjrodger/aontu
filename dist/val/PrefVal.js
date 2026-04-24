@@ -7,6 +7,7 @@ const unify_1 = require("../unify");
 const err_1 = require("../err");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
+const ConjunctVal_1 = require("./ConjunctVal");
 const FeatureVal_1 = require("./FeatureVal");
 class PrefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
@@ -33,8 +34,11 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         let why = '';
         if (!this.peg.done) {
             const resolved = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }) : ctx, this.peg, (0, top_1.top)(), 'pref/resolve');
-            // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
+            this.superpeg = this.peg.superior();
+        }
+        else if (this.superpeg.isTop && !this.peg.isTop) {
+            // Stale superpeg from pre-resolved PathVal — recalculate
             this.superpeg = this.peg.superior();
         }
         if (peer instanceof PrefVal) {
@@ -69,10 +73,19 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         }
         else if (!peer.isTop) {
             why += 'super-';
-            out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SUPER') }) : ctx, this.superpeg, peer, 'pref-super/' + this.id);
-            if (out.same(this.superpeg)) {
-                out = this.peg;
-                why += 'same';
+            // If peg is unresolved (e.g. deferred ref), don't decide yet —
+            // preserve both sides so a later pass can resolve.
+            if (!this.peg.done) {
+                out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
+                done = false;
+                why += 'defer';
+            }
+            else {
+                out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SUPER') }) : ctx, this.superpeg, peer, 'pref-super/' + this.id);
+                if (out.same(this.superpeg)) {
+                    out = this.peg;
+                    why += 'same';
+                }
             }
             // }
         }

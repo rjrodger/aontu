@@ -13,7 +13,7 @@ const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 // const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r)).canon;
+const UC = (s) => new unify_1.Unify(s, lang).res.canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
 // const V = (x: any) => console.dir(x, { depth: null })
 (0, node_test_1.describe)('val-conjunct', function () {
@@ -57,10 +57,10 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
         let m1 = UC('x:{a:$.y}&{b:2},y:1');
         (0, expect_1.expect)(m1).equal('{"x":{"a":1,"b":2},"y":1}');
         let s2 = 'x:{a:$.x.b}&{b:2}';
-        (0, expect_1.expect)(UC(s2)).equal('{"x":{"b":2,"a":$.x.b}}');
+        (0, expect_1.expect)(UC(s2)).equal('{"x":{"a":2,"b":2}}');
         (0, expect_1.expect)(G(s2)).equal({ "x": { "a": 2, "b": 2 } });
         let s3 = 'y:x:{a:$.y.x.b}&{b:2}';
-        (0, expect_1.expect)(UC(s3)).equal('{"y":{"x":{"b":2,"a":$.y.x.b}}}');
+        (0, expect_1.expect)(UC(s3)).equal('{"y":{"x":{"a":2,"b":2}}}');
         (0, expect_1.expect)(G(s3)).equal({ y: { x: { a: 2, b: 2 } } });
     });
     (0, node_test_1.test)('conjunct-spread', () => {

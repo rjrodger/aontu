@@ -24,7 +24,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
         if (this.peg.isVal) {
             // $.a.b.c - convert path to absolute
             // if (this.peg instanceof RefVal) {
-            if (this.peg.isRef) {
+            if (this.peg.isPath) {
                 this.peg.absolute = true;
                 nameVal = this.peg;
             }
@@ -37,7 +37,7 @@ class VarVal extends FeatureVal_1.FeatureVal {
             nameVal = new StringVal_1.StringVal({ peg: '' + this.peg }, ctx);
         }
         // if (!(nameVal instanceof RefVal) && DONE === nameVal.dc) {
-        if (!(nameVal.isRef) && type_1.DONE === nameVal.dc) {
+        if (!(nameVal.isPath) && type_1.DONE === nameVal.dc) {
             if (nameVal instanceof StringVal_1.StringVal) {
                 let found = ctx.vars[nameVal.peg];
                 if (undefined === found) {

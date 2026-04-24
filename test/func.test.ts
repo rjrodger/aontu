@@ -603,12 +603,12 @@ describe('func', function() {
 
   test('path-canon', () => {
     const N = (x: string) => new Unify(x, lang).res.canon
-    expect(N('path("foo")')).equal('path(.foo)')
-    expect(N('path("foo.bar")')).equal('path(.foo.bar)')
-    expect(N('path("a.b.c")')).equal('path(.a.b.c)')
-    expect(N('path("foo_bar")')).equal('path(.foo_bar)')
-    expect(N('path("foo-bar")')).equal('path(.foo-bar)')
-    expect(N('path("0.1.2")')).equal('path(.0.1.2)')
+    expect(N('path("foo")')).equal('.foo')
+    expect(N('path("foo.bar")')).equal('.foo.bar')
+    expect(N('path("a.b.c")')).equal('.a.b.c')
+    expect(N('path("foo_bar")')).equal('.foo_bar')
+    expect(N('path("foo-bar")')).equal('.foo-bar')
+    expect(N('path("0.1.2")')).equal('.0.1.2')
     expect(N('path()')).equal('nil')
     expect(N('path("")')).equal('nil')
   })
@@ -617,20 +617,20 @@ describe('func', function() {
   test('path-number', () => {
     const N = (x: string) => new Unify(x, lang).res.canon
 
-    expect(N('path(0.2)')).equal('path(.0.2)')
-    expect(N('path(1.2)')).equal('path(.1.2)')
-    expect(N('path(1.2.3)')).equal('path(.1.2.3)')
-    expect(N('path(1.2.3.4)')).equal('path(.1.2.3.4)')
+    expect(N('path(0.2)')).equal('.0.2')
+    expect(N('path(1.2)')).equal('.1.2')
+    expect(N('path(1.2.3)')).equal('.1.2.3')
+    expect(N('path(1.2.3.4)')).equal('.1.2.3.4')
 
-    expect(N('path(0.1.2)')).equal('path(.0.1.2)')
-    expect(N('path(0.1.2.3)')).equal('path(.0.1.2.3)')
-    expect(N('path(0.1.2.3.4)')).equal('path(.0.1.2.3.4)')
+    expect(N('path(0.1.2)')).equal('.0.1.2')
+    expect(N('path(0.1.2.3)')).equal('.0.1.2.3')
+    expect(N('path(0.1.2.3.4)')).equal('.0.1.2.3.4')
 
-    expect(N('path(1.0)')).equal('path(.1.0)')
-    expect(N('path(10.20)')).equal('path(.10.20)')
-    expect(N('path(3.14)')).equal('path(.3.14)')
+    expect(N('path(1.0)')).equal('.1.0')
+    expect(N('path(10.20)')).equal('.10.20')
+    expect(N('path(3.14)')).equal('.3.14')
 
-    expect(N('path(.1)')).equal('path(.1)')
+    expect(N('path(.1)')).equal('.1')
   })
 
 })

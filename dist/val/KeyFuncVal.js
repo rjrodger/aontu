@@ -18,12 +18,10 @@ class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'key';
     }
     unify(peer, ctx) {
-        // TODO: this delay makes keys in spreads and refs work, but it is a hack - find a better way.
         let out = this;
         if (ctx.cc < 3) {
             this.notdone();
             if (peer.isTop || (peer.id === this.id)) {
-                // TODO: clone needed to avoid triggering unify_cycle - find a better way
                 out = this.clone(ctx);
             }
             else if (peer.isNil) {

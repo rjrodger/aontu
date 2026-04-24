@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Site = exports.Lang = void 0;
+exports.Site = exports.KeyFuncVal = exports.PathVal = exports.Lang = void 0;
 // import { performance } from 'node:perf_hooks'
 const jsonic_1 = require("jsonic");
 const debug_1 = require("jsonic/debug");
@@ -28,7 +28,9 @@ const NilVal_1 = require("./val/NilVal");
 const NullVal_1 = require("./val/NullVal");
 const NumberVal_1 = require("./val/NumberVal");
 const PrefVal_1 = require("./val/PrefVal");
-const RefVal_1 = require("./val/RefVal");
+const PathVal_1 = require("./val/PathVal");
+Object.defineProperty(exports, "PathVal", { enumerable: true, get: function () { return PathVal_1.PathVal; } });
+// RefVal replaced by PathVal — see RefVal.ts.old
 const StringVal_1 = require("./val/StringVal");
 const VarVal_1 = require("./val/VarVal");
 const PlusOpVal_1 = require("./val/PlusOpVal");
@@ -36,6 +38,7 @@ const UpperFuncVal_1 = require("./val/UpperFuncVal");
 const LowerFuncVal_1 = require("./val/LowerFuncVal");
 const CopyFuncVal_1 = require("./val/CopyFuncVal");
 const KeyFuncVal_1 = require("./val/KeyFuncVal");
+Object.defineProperty(exports, "KeyFuncVal", { enumerable: true, get: function () { return KeyFuncVal_1.KeyFuncVal; } });
 const TypeFuncVal_1 = require("./val/TypeFuncVal");
 const HideFuncVal_1 = require("./val/HideFuncVal");
 const MoveFuncVal_1 = require("./val/MoveFuncVal");
@@ -158,16 +161,34 @@ help isolate the syntax error.`,
         'conjunct-infix': (r, ctx, _op, terms) => addsite(new ConjunctVal_1.ConjunctVal({ peg: terms }), r, ctx),
         'disjunct-infix': (r, ctx, _op, terms) => addsite(new DisjunctVal_1.DisjunctVal({ peg: terms }), r, ctx),
         'dot-prefix': (r, ctx, _op, terms) => {
-            return addsite(new RefVal_1.RefVal({ peg: terms, prefix: true }), r, ctx);
+            const pv = addsite(new PathVal_1.PathVal({ peg: terms, prefix: true }), r, ctx);
+            if (ctx.meta.paths) {
+                ctx.meta.paths.push(pv);
+            }
+            return pv;
         },
         'dot-infix': (r, ctx, _op, terms) => {
-            // // console.log('DOT-INFIX-OP', terms)
-            return addsite(new RefVal_1.RefVal({ peg: terms }), r, ctx);
+            const paths = ctx.meta.paths;
+            if (paths) {
+                // Remove consumed intermediates
+                for (const t of terms) {
+                    if (t instanceof PathVal_1.PathVal) {
+                        const idx = paths.indexOf(t);
+                        if (idx >= 0)
+                            paths.splice(idx, 1);
+                    }
+                }
+            }
+            const pv = addsite(new PathVal_1.PathVal({ peg: terms }), r, ctx);
+            if (paths) {
+                paths.push(pv);
+            }
+            return pv;
         },
         'star-prefix': (r, ctx, _op, terms) => addsite(new PrefVal_1.PrefVal({ peg: terms[0] }), r, ctx),
         'dollar-prefix': (r, ctx, _op, terms) => {
             // $.a.b absolute path
-            if (terms[0] instanceof RefVal_1.RefVal) {
+            if (terms[0] instanceof PathVal_1.PathVal) {
                 terms[0].absolute = true;
                 return terms[0];
             }
@@ -198,6 +219,9 @@ help isolate the syntax error.`,
                     });
             }
             const out = addsite(val, r, ctx);
+            if (out.isKeyFunc && ctx.meta.keys) {
+                ctx.meta.keys.push(out);
+            }
             return out;
         },
     };
@@ -554,6 +578,8 @@ function makeModelResolver(options) {
 class Lang {
     constructor(options) {
         // const start = performance.now()
+        this.paths = [];
+        this.keys = [];
         this.opts = Object.assign((0, type_1.DEFAULT_OPTS)(), options);
         const modelResolver = makeModelResolver(this.opts);
         this.jsonic = jsonic_1.Jsonic.make();
@@ -575,9 +601,13 @@ class Lang {
     parse(src, opts) {
         // const start = performance.now()
         // JSONIC-UPDATE - check meta
+        this.paths = [];
+        this.keys = [];
         let jm = {
             fs: opts?.fs,
             fileName: opts?.path ?? this.opts.path,
+            paths: this.paths,
+            keys: this.keys,
             multisource: {
                 path: opts?.path ?? this.opts.path,
                 deps: (opts && opts.deps) || undefined

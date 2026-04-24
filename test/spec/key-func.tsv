@@ -1,0 +1,32 @@
+# key() function tests
+# input	parse_canon	unify_canon	gen
+# Basic key() in maps
+a:{k:key()}	~	~	{"a":{"k":"a"}}
+a:{b:{k:key()}}	~	~	{"a":{"b":{"k":"b"}}}
+a:{b:{c:{k:key()}}}	~	~	{"a":{"b":{"c":{"k":"c"}}}}
+a:{k:key()},b:{k:key()}	~	~	{"a":{"k":"a"},"b":{"k":"b"}}
+a:{k:key(),m:1}	~	~	{"a":{"k":"a","m":1}}
+# key() with absolute path copy
+a:{k:key()},b:$.a	~	~	{"a":{"k":"a"},"b":{"k":"b"}}
+a:{k:key()},b:$.a.k	~	~	{"a":{"k":"a"},"b":""}
+a:{b:{k:key()}},c:$.a.b.k	~	~	{"a":{"b":{"k":"b"}},"c":""}
+a:{k:key()},b:$.a,c:$.a.k	~	~	{"a":{"k":"a"},"b":{"k":"b"},"c":""}
+# key() with path chain
+q:{k:key()},a:$.q	~	~	{"q":{"k":"q"},"a":{"k":"a"}}
+q:{k:key()},r:$.q,a:$.r	~	~	{"q":{"k":"q"},"r":{"k":"r"},"a":{"k":"a"}}
+# key() in spread - re-evaluates per child
+&:{k:key()},a:{x:1}	~	~	{"a":{"x":1,"k":"a"}}
+&:{k:key()},a:{x:1},b:{x:2}	~	~	{"a":{"x":1,"k":"a"},"b":{"x":2,"k":"b"}}
+a:{&:{k:key()},b:{x:1}}	~	~	{"a":{"b":{"x":1,"k":"b"}}}
+a:{&:{k:key()},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1,"k":"b"},"c":{"x":2,"k":"c"}}}
+# key() in spread with path ref - cloned key() re-evaluates per child
+q:{k:key()},a:{&:$.q,b:{x:1}}	~	~	{"q":{"k":"q"},"a":{"b":{"x":1,"k":"b"}}}
+q:{k:key()},a:{&:$.q,b:{x:1},c:{x:2}}	~	~	{"q":{"k":"q"},"a":{"b":{"x":1,"k":"b"},"c":{"x":2,"k":"c"}}}
+# key() with conjunct
+a:{k:key()}&{m:1}	~	~	{"a":{"k":"a","m":1}}
+a:{b:{k:key()}}&{b:{m:1}}	~	~	{"a":{"b":{"k":"b","m":1}}}
+# key() with disjunct
+a:{k:key()}|{m:1}	~	~	{"a":{"k":"a","m":1}}
+# key() in spread with conjunct
+a:{&:{k:key()}}&{b:{x:1}}	~	~	{"a":{"b":{"x":1,"k":"b"}}}
+a:{&:{k:key()},b:{x:1}}&{c:{x:2}}	~	~	{"a":{"b":{"x":1,"k":"b"},"c":{"x":2,"k":"c"}}}

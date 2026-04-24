@@ -8,78 +8,74 @@ const ctx_1 = require("../dist/ctx");
 const expect_1 = require("./expect");
 const top_1 = require("../dist/val/top");
 const MapVal_1 = require("../dist/val/MapVal");
-const RefVal_1 = require("../dist/val/RefVal");
+const PathVal_1 = require("../dist/val/PathVal");
 const lang = new lang_1.Lang();
 const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
-const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r)).canon;
+const UC = (s) => new unify_1.Unify(s, lang).res.canon;
 const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
 const TOP = (0, top_1.top)();
 (0, node_test_1.describe)('val-ref', function () {
     (0, node_test_1.test)('construct', () => {
-        let r0 = new RefVal_1.RefVal({ peg: [], absolute: true });
+        let r0 = new PathVal_1.PathVal({ peg: [], absolute: true });
         (0, expect_1.expect)(r0.canon).equal('$');
         (0, expect_1.expect)(r0).include({
             path: [],
             absolute: true,
             peg: []
         });
-        let r1 = new RefVal_1.RefVal({ peg: ['a'], absolute: true });
+        let r1 = new PathVal_1.PathVal({ peg: ['a'], absolute: true });
         (0, expect_1.expect)(r1.canon).equal('$.a');
         (0, expect_1.expect)(r1).include({
             path: [],
             absolute: true,
             peg: ['a']
         });
-        let r2 = new RefVal_1.RefVal({ peg: ['a', 'b'], absolute: true });
+        let r2 = new PathVal_1.PathVal({ peg: ['a', 'b'], absolute: true });
         (0, expect_1.expect)(r2.canon).equal('$.a.b');
         (0, expect_1.expect)(r2).include({
             path: [],
             absolute: true,
             peg: ['a', 'b']
         });
-        let r3 = new RefVal_1.RefVal({ peg: ['a'] });
-        // console.log(r0)
+        let r3 = new PathVal_1.PathVal({ peg: ['a'] });
         (0, expect_1.expect)(r3.canon).equal('.a');
         (0, expect_1.expect)(r3).include({
             path: [],
             absolute: false,
             peg: ['a']
         });
-        let r4 = new RefVal_1.RefVal({ peg: ['a', 'b'] });
-        // console.log(r0)
+        let r4 = new PathVal_1.PathVal({ peg: ['a', 'b'] });
         (0, expect_1.expect)(r4.canon).equal('.a.b');
         (0, expect_1.expect)(r4).include({
             path: [],
             absolute: false,
             peg: ['a', 'b']
         });
-        let r5 = new RefVal_1.RefVal({ peg: ['a', 'b', 'c'] });
-        // console.log(r0)
+        let r5 = new PathVal_1.PathVal({ peg: ['a', 'b', 'c'] });
         (0, expect_1.expect)(r5.canon).equal('.a.b.c');
         (0, expect_1.expect)(r5).include({
             path: [],
             absolute: false,
             peg: ['a', 'b', 'c']
         });
-        let r6 = new RefVal_1.RefVal({ peg: ['a', 'b', 'c'], absolute: true });
-        // console.log(r0)
+        let r6 = new PathVal_1.PathVal({ peg: ['a', 'b', 'c'], absolute: true });
         (0, expect_1.expect)(r6.canon).equal('$.a.b.c');
         (0, expect_1.expect)(r6).include({
             path: [],
             absolute: true,
             peg: ['a', 'b', 'c']
         });
-        let r7 = new RefVal_1.RefVal({ peg: [] });
+        let r7 = new PathVal_1.PathVal({ peg: [] });
         (0, expect_1.expect)(r7.canon).equal('');
         (0, expect_1.expect)(r7).include({
             path: [],
             absolute: false,
             peg: []
         });
-        let r8 = new RefVal_1.RefVal({
+        let r8 = new PathVal_1.PathVal({
             peg: [
-                new RefVal_1.RefVal({ peg: ['a'] }),
+                new PathVal_1.PathVal({ peg: ['a'] }),
                 'b'
             ]
         });
@@ -89,10 +85,10 @@ const TOP = (0, top_1.top)();
             absolute: false,
             peg: ['a', 'b']
         });
-        let r9 = new RefVal_1.RefVal({
+        let r9 = new PathVal_1.PathVal({
             peg: [
                 'a',
-                new RefVal_1.RefVal({ peg: ['b'] }),
+                new PathVal_1.PathVal({ peg: ['b'] }),
             ]
         });
         (0, expect_1.expect)(r9.canon).equal('.a.b');
@@ -101,10 +97,10 @@ const TOP = (0, top_1.top)();
             absolute: false,
             peg: ['a', 'b']
         });
-        let r10 = new RefVal_1.RefVal({
+        let r10 = new PathVal_1.PathVal({
             peg: [
-                new RefVal_1.RefVal({ peg: ['a'] }),
-                new RefVal_1.RefVal({ peg: ['b'] }),
+                new PathVal_1.PathVal({ peg: ['a'] }),
+                new PathVal_1.PathVal({ peg: ['b'] }),
             ]
         });
         (0, expect_1.expect)(r10.canon).equal('.a.b');
@@ -113,36 +109,34 @@ const TOP = (0, top_1.top)();
             absolute: false,
             peg: ['a', 'b']
         });
-        let r11 = new RefVal_1.RefVal({
+        let r11 = new PathVal_1.PathVal({
             peg: [
-                new RefVal_1.RefVal({ peg: ['a'], absolute: true }),
+                new PathVal_1.PathVal({ peg: ['a'], absolute: true }),
                 'b'
             ]
         });
         (0, expect_1.expect)(r11.canon).equal('$.a.b');
         (0, expect_1.expect)(r11).include({
-            // canon: '$.a.b',
             path: [],
             absolute: true,
             peg: ['a', 'b']
         });
-        let r12 = new RefVal_1.RefVal({
+        let r12 = new PathVal_1.PathVal({
             peg: [
                 'a',
-                new RefVal_1.RefVal({ peg: ['b'], absolute: true }),
+                new PathVal_1.PathVal({ peg: ['b'], absolute: true }),
             ]
         });
         (0, expect_1.expect)(r12.canon).equal('$.a.b');
         (0, expect_1.expect)(r12).include({
-            // canon: '$.a.b',
             path: [],
             absolute: true,
             peg: ['a', 'b']
         });
-        let r13 = new RefVal_1.RefVal({
+        let r13 = new PathVal_1.PathVal({
             peg: [
-                new RefVal_1.RefVal({ peg: ['a'], absolute: true }),
-                new RefVal_1.RefVal({ peg: ['b'], absolute: true }),
+                new PathVal_1.PathVal({ peg: ['a'], absolute: true }),
+                new PathVal_1.PathVal({ peg: ['b'], absolute: true }),
             ]
         });
         (0, expect_1.expect)(r13.canon).equal('$.a.b');
@@ -151,6 +145,18 @@ const TOP = (0, top_1.top)();
             absolute: true,
             peg: ['a', 'b']
         });
+    });
+    (0, node_test_1.test)('pathval-unify-resolves', () => {
+        // No target in root — find returns nil
+        const ctx = makeCtx();
+        const pv = new PathVal_1.PathVal({ peg: ['a'], absolute: true });
+        const result = pv.unify(TOP, ctx);
+        (0, expect_1.expect)(result.isNil).equal(true);
+        // With target — resolves to value
+        const ctx2 = makeCtx(new MapVal_1.MapVal({ peg: { a: new MapVal_1.MapVal({ peg: { x: P('1') } }) } }));
+        const pv2 = new PathVal_1.PathVal({ peg: ['a'], absolute: true });
+        const result2 = pv2.unify(TOP, ctx2);
+        (0, expect_1.expect)(result2.canon).equal('{"x":1}');
     });
     (0, node_test_1.test)('parse', () => {
         let p0 = P('.a');
@@ -355,7 +361,7 @@ const TOP = (0, top_1.top)();
     });
     (0, node_test_1.test)('clone', () => {
         let c0 = makeCtx(null, ['x']);
-        let r0 = new RefVal_1.RefVal({ peg: ['a'], absolute: true }, c0);
+        let r0 = new PathVal_1.PathVal({ peg: ['a'], absolute: true }, c0);
         (0, expect_1.expect)(r0.canon).equal('$.a');
         (0, expect_1.expect)(r0).include({
             path: ['x'],
@@ -488,10 +494,10 @@ b: { c1: { k:1 }}
     });
     (0, node_test_1.test)('ref', () => {
         let ctx = makeCtx();
-        let d0 = new RefVal_1.RefVal({ peg: ['a'] });
-        let d1 = new RefVal_1.RefVal({ peg: ['c'], absolute: true });
-        let d2 = new RefVal_1.RefVal({ peg: ['a', 'b'] });
-        let d3 = new RefVal_1.RefVal({ peg: ['c', 'd', 'e'], absolute: true });
+        let d0 = new PathVal_1.PathVal({ peg: ['a'] });
+        let d1 = new PathVal_1.PathVal({ peg: ['c'], absolute: true });
+        let d2 = new PathVal_1.PathVal({ peg: ['a', 'b'] });
+        let d3 = new PathVal_1.PathVal({ peg: ['c', 'd', 'e'], absolute: true });
         (0, expect_1.expect)(d0.canon).equal('.a');
         (0, expect_1.expect)(d1.canon).equal('$.c');
         (0, expect_1.expect)(d2.canon).equal('.a.b');
@@ -504,14 +510,13 @@ b: { c1: { k:1 }}
         (0, expect_1.expect)(d1.canon).equal('$.c.x');
         (0, expect_1.expect)(d2.canon).equal('.a.b.x');
         (0, expect_1.expect)(d3.canon).equal('$.c.d.e.x');
-        (0, expect_1.expect)(d0.unify(TOP, ctx).canon).equal('nil');
-        (0, expect_1.expect)(TOP.unify(d0, ctx).canon).equal('nil');
-        (0, expect_1.expect)(d1.unify(TOP, ctx).canon).equal('nil');
-        (0, expect_1.expect)(TOP.unify(d1, ctx).canon).equal('nil');
+        // PathVal.unify always fails — paths are resolved in preprocessing
+        (0, expect_1.expect)(d0.unify(TOP, ctx).isNil).equal(true);
+        (0, expect_1.expect)(d1.unify(TOP, ctx).isNil).equal(true);
     });
     (0, node_test_1.test)('unify', () => {
-        // let r1 = new RefVal({ peg: ['a'] })
-        // let r2 = new RefVal({ peg: ['a'] })
+        // let r1 = new PathVal({ peg: ['a'] })
+        // let r2 = new PathVal({ peg: ['a'] })
         // let ctx = makeCtx()
         // let u12 = r1.unify(r2, ctx)
         // // console.log(u12, r1.id, r2.id)
@@ -575,6 +580,26 @@ b: { c1: { k:1 }}
             .equal({ a: { k: 1 }, b: { k: 1 } });
         (0, expect_1.expect)(G('&:k:1 &:p:2 a:{k:1,p:2} b:{k:1,p:2}'))
             .equal({ a: { k: 1, p: 2 }, b: { k: 1, p: 2 } });
+    });
+    (0, node_test_1.test)('spread-ref', () => {
+        (0, expect_1.expect)(G('x:&:p:$.z,x:{a:{},b:{}},z:1'))
+            .equal({ x: { a: { p: 1 }, b: { p: 1 } }, z: 1 });
+        (0, expect_1.expect)(G('x:&:$.z,x:{a:{},b:{}},z:p:1'))
+            .equal({ x: { a: { p: 1 }, b: { p: 1 } }, z: { p: 1 } });
+        (0, expect_1.expect)(G('x:&:&:p:$.z,x:{a:{q:{}},b:{r:{}}},z:1'))
+            .equal({ x: { a: { q: { p: 1 } }, b: { r: { p: 1 } } }, z: 1 });
+        (0, expect_1.expect)(G('x:&:&:$.z,x:{a:{q:{}},b:{r:{}}},z:p:1'))
+            .equal({ x: { a: { q: { p: 1 } }, b: { r: { p: 1 } } }, z: { p: 1 } });
+        (0, expect_1.expect)(G('x:&:p:$.z,x:{a:{},b:{}},z:1,y:$.x.a.p'))
+            .equal({ x: { a: { p: 1 }, b: { p: 1 } }, z: 1, y: 1 });
+        (0, expect_1.expect)(G('x:&:p:$.z,x:{a:{},b:{}},z:1,y:&:$.x.a,y:m:{}'))
+            .equal({ x: { a: { p: 1 }, b: { p: 1 } }, z: 1, y: { m: { p: 1 } } });
+        (0, expect_1.expect)(G('x:&:p:$.z,x:{a:{k:key()},b:{k:key()}},z:1'))
+            .equal({ x: { a: { p: 1, k: 'a' }, b: { p: 1, k: 'b' } }, z: 1 });
+        (0, expect_1.expect)(G('x:&:{p:$.z,k:key()},x:{a:{},b:{}},z:1'))
+            .equal({ x: { a: { p: 1, k: 'a' }, b: { p: 1, k: 'b' } }, z: 1 });
+        (0, expect_1.expect)(G('x:&:{p:$.z,k:$.k},x:{a:{},b:{}},z:1,k:key()'))
+            .equal({ x: { a: { p: 1, k: 'a' }, b: { p: 1, k: 'b' } }, z: 1, k: '' });
     });
     (0, node_test_1.test)('multi-spreadable-key', () => {
         const c0 = makeCtx();

@@ -32,7 +32,7 @@ const lang = new Lang()
 const PL = lang.parse.bind(lang)
 const P = (x: string, ctx?: any) => PL(x, ctx)
 // const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s: string, r?: any) => (r = P(s)).unify(TOP, makeCtx(r)).canon
+const UC = (s: string) => new Unify(s, lang).res.canon
 const G = (x: string, ctx?: any) => new Unify(x, lang).res.gen(ctx)
 // const V = (x: any) => console.dir(x, { depth: null })
 
@@ -101,11 +101,11 @@ describe('val-conjunct', function() {
     expect(m1).equal('{"x":{"a":1,"b":2},"y":1}')
 
     let s2 = 'x:{a:$.x.b}&{b:2}'
-    expect(UC(s2)).equal('{"x":{"b":2,"a":$.x.b}}')
+    expect(UC(s2)).equal('{"x":{"a":2,"b":2}}')
     expect(G(s2)).equal({ "x": { "a": 2, "b": 2 } })
 
     let s3 = 'y:x:{a:$.y.x.b}&{b:2}'
-    expect(UC(s3)).equal('{"y":{"x":{"b":2,"a":$.y.x.b}}}')
+    expect(UC(s3)).equal('{"y":{"x":{"a":2,"b":2}}}')
     expect(G(s3)).equal({ y: { x: { a: 2, b: 2 } } })
 
   })

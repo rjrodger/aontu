@@ -9,6 +9,7 @@ const err_1 = require("./err");
 class AontuContext {
     constructor(cfg) {
         this.cc = -1;
+        this.sc = 0; // Unresolved spread count
         this.vars = {};
         this.root = cfg.root;
         this.path = [...(cfg.path ?? [])];

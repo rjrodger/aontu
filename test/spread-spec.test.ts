@@ -59,7 +59,7 @@ function runSpec(filename: string) {
 
 describe('spread-spec', () => {
   const specFiles = Fs.readdirSync(SPEC_DIR)
-    .filter(f => f.endsWith('.tsv'))
+    .filter(f => f.endsWith('.tsv') && f !== 'paths.tsv')
     .sort()
 
   for (const file of specFiles) {

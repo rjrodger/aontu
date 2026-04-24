@@ -62,7 +62,6 @@ class MapVal extends BagVal {
     // subset of this's keys with the same child references, and
     // neither side has type/hide marks. No new information.
     if (this.done && peer instanceof MapVal && peer.done
-        && 0 === peer._spread.length && 0 === this._spread.length
         && !this.mark.type && !this.mark.hide
         && !peer.mark.type && !peer.mark.hide) {
       let canSkip = true
@@ -86,7 +85,6 @@ class MapVal extends BagVal {
     out.closed = this.closed
     out.optionalKeys = 0 < this.optionalKeys.length ? [...this.optionalKeys] : this.optionalKeys
     out.site = this.site
-    if (0 < this._spread.length) (out as MapVal)._spread = this._spread
 
     if (peer instanceof MapVal) {
       if (!this.closed && peer.closed) {
@@ -182,12 +180,6 @@ class MapVal extends BagVal {
                       unite(te ? peerctx.clone({ explain: ec(te, 'CHD') }) : peerctx,
                         child, peerchild, 'map-peer')
 
-          // Propagate _spread from child to result so spreads
-          // survive nested merges via ref copies.
-          if (child?._spread?.length > 0 && oval?.isBag && !oval._spread?.length) {
-            oval._spread = child._spread
-          }
-
           propagateMarks(this, oval)
 
           done = (done && DONE === oval.dc)
@@ -203,32 +195,6 @@ class MapVal extends BagVal {
 
       if (!out.isNil) {
         ;(out.uh ??= []).push(peer.id)
-
-        // Apply inherited spreads to new peer keys.
-        // _spread is set by SpreadVal after application and
-        // inherited by BagVal.clone during ref resolution.
-        if (0 < this._spread.length && peer instanceof MapVal) {
-          for (const sv of this._spread) {
-            for (const peerkey in peer.peg) {
-              if (!(peerkey in this.peg)) {
-                // New key from peer — apply each spread
-                const peerctx = ctx.descend(peerkey)
-                let key_spread = sv.peg.spreadClone(peerctx)
-                if (!key_spread.done) {
-                  key_spread = unite(peerctx, key_spread, top(), 'spread-reapply-resolve')
-                }
-                const child = out.peg[peerkey]
-                if (child && !child.isNil && !key_spread.isTop) {
-                  out.peg[peerkey] = unite(
-                    te ? peerctx.clone({ explain: ec(te, 'SRA:' + peerkey) }) : peerctx,
-                    child, key_spread, 'spread-reapply')
-                  done = done && (DONE === out.peg[peerkey].dc)
-                }
-              }
-            }
-          }
-          ;(out as MapVal)._spread = this._spread
-        }
 
         out.dc = done ? DONE : out.dc
         propagateMarks(peer, out)

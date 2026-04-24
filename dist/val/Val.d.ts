@@ -34,7 +34,7 @@ declare abstract class Val {
     isList: boolean;
     isScalar: boolean;
     isScalarKind: boolean;
-    isRef: boolean;
+    isPath: boolean;
     isPref: boolean;
     isVar: boolean;
     isBag: boolean;

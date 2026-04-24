@@ -61,9 +61,10 @@ class CopyFuncVal extends FuncBaseVal {
 
     // console.log('CR', out)
 
-    if (!out.isRef) {
+    if (!out.isPath) {
+      out.mark.type = false
+      out.mark.hide = false
       walk(out, (_key: string | number | undefined, val: Val) => {
-        // console.log('WALK', val)
         val.mark.type = false
         val.mark.hide = false
         return val

@@ -14,7 +14,6 @@ const ListVal_1 = require("../dist/val/ListVal");
 const MapVal_1 = require("../dist/val/MapVal");
 const NilVal_1 = require("../dist/val/NilVal");
 const PrefVal_1 = require("../dist/val/PrefVal");
-const RefVal_1 = require("../dist/val/RefVal");
 const SpreadVal_1 = require("../dist/val/SpreadVal");
 const VarVal_1 = require("../dist/val/VarVal");
 const NumberVal_1 = require("../dist/val/NumberVal");
@@ -30,7 +29,7 @@ const PL = lang.parse.bind(lang);
 const P = (x, ctx) => PL(x, ctx);
 const PA = (x, ctx) => x.map(s => PL(s, ctx));
 // const D = (x: any) => console.dir(x, { depth: null })
-const UC = (s, r) => (r = P(s)).unify(TOP, makeCtx(r))?.canon;
+const UC = (s) => new unify_1.Unify(s, lang).res?.canon;
 const GC = (x, ctx) => new unify_1.Unify(x, undefined, ctx).res.gen(ctx);
 const N = (x, _ctx) => new unify_1.Unify(x, lang).res.canon;
 const A = new __1.Aontu();
@@ -424,13 +423,6 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         let d4 = new ConjunctVal_1.ConjunctVal({ peg: PA(['1', 'number', 'integer']) });
         let d5 = new ConjunctVal_1.ConjunctVal({ peg: PA(['{a:1}']) });
         let d6 = new ConjunctVal_1.ConjunctVal({ peg: PA(['{a:1}', '{b:2}']) });
-        // let d100 = new ConjunctVal([makeIntegerVal(1), new RefVal({peg:'/x')])
-        let d100 = new ConjunctVal_1.ConjunctVal({
-            peg: [
-                makeIntegerVal(1),
-                new RefVal_1.RefVal({ peg: ['x'], absolute: true })
-            ]
-        });
         (0, expect_1.expect)(d0.canon).equal('1');
         (0, expect_1.expect)(d1.canon).equal('1&1');
         (0, expect_1.expect)(d2.canon).equal('1&2');
@@ -454,17 +446,16 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
             .equal('nil');
         (0, expect_1.expect)(tu(ctx, d3, TOP).canon).equal('1');
         (0, expect_1.expect)(tu(ctx, TOP, d3).canon).equal('1');
-        // TODO: term order is swapped by ConjunctVal impl - should be preserved
-        (0, expect_1.expect)(tu(ctx, d100, TOP).canon).equal('1');
-        (0, expect_1.expect)(tu(ctx, TOP, d100).canon).equal('1');
+        // Conjunct with path ref — go through Unify
+        (0, expect_1.expect)(UC('x:1, y: 1 & $.x')).equal('{"x":1,"y":1}');
+        (0, expect_1.expect)(UC('x:1, y: $.x & 1')).equal('{"x":1,"y":1}');
         // TODO: same for DisjunctVal
         (0, expect_1.expect)(tu(ctx, new ConjunctVal_1.ConjunctVal({ peg: [] }), TOP).canon).equal('top');
         (0, expect_1.expect)(A.parse('1 & .a')?.canon).equal('1&.a');
-        (0, expect_1.expect)(A.unify('1 & .a')?.canon).equal('1&.a'); // canonical sorting (pure before dynamic)
-        (0, expect_1.expect)(() => A.generate('1 & .a')).throws(/conjunct/);
+        // Dangling relative path — unify throws (path can't resolve at root)
+        (0, expect_1.expect)(() => A.unify('1 & .a')).throws(/no_path/);
         (0, expect_1.expect)(A.parse('.a & 1')?.canon).equal('.a&1');
-        (0, expect_1.expect)(A.unify('.a & 1')?.canon).equal('1&.a');
-        (0, expect_1.expect)(() => A.generate('.a & 1')).throws(/conjunct/);
+        (0, expect_1.expect)(() => A.unify('.a & 1')).throws(/no_path/);
         (0, expect_1.expect)(A.parse('1 & 1 & .a')?.canon).equal('(1&1)&.a');
         (0, expect_1.expect)(A.parse('1 & 2')?.canon).equal('1&2');
         (0, expect_1.expect)(A.parse('1 & 1 & 2')?.canon).equal('(1&1)&2');
@@ -544,44 +535,24 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         let u1b = u1a.unify(TOP, new ctx_1.AontuContext({ root: u1a }));
     });
     (0, node_test_1.it)('unify', () => {
-        let m0 = P(`
-  a: 1
-  b: .a
-  c: .x
-  `, { xlog: -1 });
-        (0, expect_1.expect)(m0.canon).equal('{"a":1,"b":.a,"c":.x}');
-        let c0 = new ctx_1.AontuContext({
-            root: m0
-        });
-        let m0u = m0.unify(TOP, c0);
-        (0, expect_1.expect)(m0u.canon).equal('{"a":1,"b":1,"c":nil}');
-        let m1 = P(`
-  a: .b.c
-  b: c: 1
-  `, { xlog: -1 });
-        let c1 = new ctx_1.AontuContext({
-            root: m1
-        });
-        let m1u = m1.unify(TOP, c1);
-        (0, expect_1.expect)(m1u.canon).equal('{"a":1,"b":{"c":1}}');
-        let m2 = P(`
+        // Relative sibling paths
+        (0, expect_1.expect)(UC('a:1,b:.a,c:.x')).equal('{"a":1,"b":1,"c":nil}');
+        (0, expect_1.expect)(UC('a:.b.c,b:c:1')).equal('{"a":1,"b":{"c":1}}');
+        // Spread with absolute path
+        (0, expect_1.expect)(G(`
 a: {x:1}
 b: { &: $.a }
 b: c0: {n:0}
 b: c1: {n:1}
 b: c2: {n:2}
-`);
-        (0, expect_1.expect)(m2.canon)
-            .equal('{"a":{"x":1},"b":{}&{&:$.a}&{"c0":{"n":0}}&{"c1":{"n":1}}&{"c2":{"n":2}}}');
-        (0, expect_1.expect)(m2.peg.b.constructor.name).equal('ConjunctVal');
-        (0, expect_1.expect)(m2.peg.b.peg.length).equal(5);
-        let c2 = new ctx_1.AontuContext({
-            root: m2
+`)).equal({
+            a: { x: 1 },
+            b: {
+                c0: { n: 0, x: 1 },
+                c1: { n: 1, x: 1 },
+                c2: { n: 2, x: 1 },
+            }
         });
-        let m2u = m2.unify(TOP, c2);
-        (0, expect_1.expect)(m2u.canon)
-            // .equal('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
-            .equal('{"a":{"x":1},"b":{"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}');
     });
     (0, node_test_1.it)('repeat-spread', () => {
         let ctx = makeCtx();

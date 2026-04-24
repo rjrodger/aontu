@@ -91,7 +91,7 @@ if('explain' === args.explain) {
 
 if(0 < err.length) {
   console.log('> ERRORS: '+err.length)
-  err.map(err=>console.error(err.msg))
+  err.map(err=>console.error(err))
 }
 
 

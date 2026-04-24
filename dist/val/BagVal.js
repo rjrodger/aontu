@@ -15,16 +15,9 @@ class BagVal extends FeatureVal_1.FeatureVal {
         this.isGenable = true;
         this.closed = false;
         this.optionalKeys = [];
-        // Opaque spread storage — MapVal/ListVal don't use this during
-        // unification. SpreadVal sets it after application so that ref
-        // copies and future merges can re-apply the spread to new children.
-        this._spread = [];
     }
     clone(ctx, spec) {
         const bag = super.clone(ctx, spec);
-        if (this._spread.length > 0) {
-            bag._spread = this._spread;
-        }
         return bag;
     }
     handleExpectedVal(key, val, parent, ctx) {
@@ -61,7 +54,7 @@ class BagVal extends FeatureVal_1.FeatureVal {
                 || child.isMap
                 || child.isList
                 || child.isPref
-                || child.isRef
+                || child.isPath
                 || child.isDisjunct
                 || child.isConjunct
                 || child.isNil) {

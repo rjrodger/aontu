@@ -119,7 +119,7 @@ class Val {
     get isPathDependent() {
         if (this._isPathDependent !== undefined)
             return this._isPathDependent;
-        let dep = this.isRef || this.isKeyFunc || this.isPathFunc ||
+        let dep = this.isPath || this.isKeyFunc || this.isPathFunc ||
             this.isMoveFunc || this.isSuperFunc;
         if (!dep) {
             const peg = this.peg;
@@ -140,11 +140,6 @@ class Val {
                         break;
                     }
                 }
-            }
-            if (!dep) {
-                const spreadCj = this.spread?.cj;
-                if (spreadCj && spreadCj.isPathDependent)
-                    dep = true;
             }
         }
         this._isPathDependent = dep;
@@ -224,7 +219,7 @@ Object.assign(Val.prototype, {
     isList: false,
     isScalar: false,
     isScalarKind: false,
-    isRef: false,
+    isPath: false,
     isPref: false,
     isVar: false,
     isBag: false,

@@ -1,0 +1,25 @@
+import type { Val, ValSpec } from '../type';
+import { AontuContext } from '../ctx';
+import { FeatureVal } from './FeatureVal';
+declare class PathVal extends FeatureVal {
+    isPath: boolean;
+    isGenable: boolean;
+    cjo: number;
+    absolute: boolean;
+    prefix: boolean;
+    _resolved: Val | undefined;
+    constructor(spec: {
+        peg: any[];
+        absolute?: boolean;
+        prefix?: boolean;
+    }, ctx?: AontuContext);
+    append(part: any): void;
+    unify(peer: Val, ctx: AontuContext): Val;
+    find(ctx: AontuContext): Val | undefined;
+    same(peer: Val): boolean;
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
+    get canon(): string;
+    gen(ctx: AontuContext): undefined;
+    inspection(): string;
+}
+export { PathVal, };

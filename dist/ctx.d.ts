@@ -22,6 +22,7 @@ declare class AontuContext {
     path: string[];
     vc: number;
     cc: number;
+    sc: number;
     vars: Record<string, Val>;
     src?: string;
     fs?: FST;

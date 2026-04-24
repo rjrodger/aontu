@@ -7,13 +7,17 @@ import type {
 } from '../type'
 
 import {
+  DONE,
+} from '../type'
+
+import {
   AontuContext,
 } from '../ctx'
 
 import { makeNilErr } from '../err'
 
 import { NilVal } from '../val/NilVal'
-import { RefVal } from '../val/RefVal'
+import { PathVal } from '../val/PathVal'
 import { FuncBaseVal } from './FuncBaseVal'
 
 
@@ -45,12 +49,26 @@ class PathFuncVal extends FuncBaseVal {
     let arg = args[0]
 
     if (0 === this.prepared) {
-      if (arg.isScalar) {
-        arg = this.place(new RefVal({ peg: [arg], absolute: false }))
+      if (arg instanceof PathVal) {
+        // PathVal from dotted arg — resolve via find().
+        const found = arg.find(ctx)
+        if (found != null && !found.isNil) {
+          arg = found
+        }
+        else {
+          arg.dc = DONE
+        }
       }
-      else if (!arg.isRef) {
+      else if (arg.isScalar && arg.peg != null && arg.peg !== ''
+        && ('string' === typeof arg.peg || arg.isNumber)) {
+        // String or number arg like path("foo") or path(0.2) — create a path value
+        arg = this.place(new PathVal({ peg: [arg], absolute: false })) as PathVal
+        arg.dc = DONE
+      }
+      else if (arg.isNil || (arg.isScalar && (arg.peg === '' || arg.peg == null))) {
         arg = makeNilErr(ctx, 'invalid-arg', this)
       }
+      // else: already resolved by preprocessing — pass through
     }
 
     args[0] = arg
@@ -63,6 +81,13 @@ class PathFuncVal extends FuncBaseVal {
 
   resolve(ctx: AontuContext, args: Val[]) {
     let out = args[0] ?? makeNilErr(ctx, 'arg', this)
+
+    if (out instanceof PathVal) {
+      const found = out.find(ctx)
+      if (found != null && !found.isNil) {
+        out = found
+      }
+    }
 
     return out
   }

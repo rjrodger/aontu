@@ -161,12 +161,12 @@ class ConjunctVal extends JunctionVal {
 
       // Can't unite with a RefVal, unless also a RefVal with same path.
       // else if (t0 instanceof RefVal && !(t1 instanceof RefVal)) {
-      else if (t0.isRef && !(t1.isRef)) {
+      else if (t0.isPath && !(t1.isPath)) {
         outvals.push(t0)
         t0 = t1
       }
 
-      else if (t1.isRef && !(t0.isRef)) {
+      else if (t1.isPath && !(t0.isPath)) {
         outvals.push(t0)
         t0 = t1
       }
@@ -310,12 +310,12 @@ function norm(terms: Val[]): Val[] {
 }
 
 
-// Check if a Val tree contains any spread constraints (spread.cj).
+// Check if a Val tree contains any SpreadVal constraints.
 // Cached on _hasSpreads for performance.
 function hasSpreads(v: any): boolean {
   if (v._hasSpreads !== undefined) return v._hasSpreads
   let result = false
-  if (v.spread?.cj != null) {
+  if (v.isSpread) {
     result = true
   }
   else if (v.isMap || v.isList) {

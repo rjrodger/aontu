@@ -51,6 +51,19 @@ class SpreadVal extends FeatureVal_1.FeatureVal {
             out = new ConjunctVal_1.ConjunctVal({ peg: [peer, this] }, ctx);
             out.dc = this.dc + 1;
         }
+        // Track unresolved spread count.
+        // cc=0: increment for spreads that don't vanish.
+        // cc>0: decrement when a spread vanishes.
+        if (0 === ctx.cc) {
+            if (out.isSpread && !out.done) {
+                ctx.sc++;
+            }
+        }
+        else if (ctx.sc > 0) {
+            if (!(out.isSpread && !out.done)) {
+                ctx.sc--;
+            }
+        }
         ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;
     }
@@ -83,6 +96,10 @@ class SpreadVal extends FeatureVal_1.FeatureVal {
             if (!key_spread.done) {
                 key_spread = (0, unify_1.unite)(keyctx, key_spread, (0, top_1.top)(), 'spread-resolve');
             }
+            // Clear type/hide marks on the spread constraint — it constrains
+            // but should not mark the children as type/hidden.
+            key_spread.mark.type = false;
+            key_spread.mark.hide = false;
             (0, utility_1.propagateMarks)(map, child);
             out.peg[key] =
                 undefined === child ? key_spread :
@@ -95,11 +112,9 @@ class SpreadVal extends FeatureVal_1.FeatureVal {
         }
         out.dc = done ? type_1.DONE : map.dc + 1;
         (0, utility_1.propagateMarks)(map, out);
-        (0, utility_1.propagateMarks)(this, out);
-        // Stamp applied spreads so ref copies carry them.
-        // Merge with any spreads already on the map.
-        out._spread = map._spread.length > 0
-            ? [...map._spread, this] : [this];
+        // NOTE: do not propagate type/hide marks from the spread constraint
+        // to the output — a type spread constrains children but doesn't
+        // make them type-invisible.
         return out;
     }
     // Apply this spread constraint to each element in a ListVal.
@@ -133,9 +148,6 @@ class SpreadVal extends FeatureVal_1.FeatureVal {
         }
         out.dc = done ? type_1.DONE : list.dc + 1;
         (0, utility_1.propagateMarks)(list, out);
-        (0, utility_1.propagateMarks)(this, out);
-        out._spread = list._spread.length > 0
-            ? [...list._spread, this] : [this];
         return out;
     }
     clone(ctx, spec) {

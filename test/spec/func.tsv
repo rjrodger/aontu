@@ -1,0 +1,12 @@
+# Function tests - type(), copy(), etc. in various contexts
+# input	parse_canon	unify_canon	gen
+# type() in spread - constrains but does not mark children as type-invisible
+a:{&:type({x:number}),b:{x:1}}	~	~	{"a":{"b":{"x":1}}}
+a:{&:type({x:number}),b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1},"c":{"x":2}}}
+a:{&:type({x:number,y:string}),b:{x:1,y:hello}}	~	~	{"a":{"b":{"x":1,"y":"hello"}}}
+a:{&:type({x:number}),b:{x:1,z:A}}	~	~	{"a":{"b":{"x":1,"z":"A"}}}
+# type() in spread with path ref
+sys:type({x:number}),a:{&:$.sys,b:{x:1}}	~	~	{"a":{"b":{"x":1}}}
+sys:type({x:number}),a:{&:$.sys,b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1},"c":{"x":2}}}
+# plain spread (no type) for comparison
+a:{&:{x:number},b:{x:1}}	~	~	{"a":{"b":{"x":1}}}

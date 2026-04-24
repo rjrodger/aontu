@@ -22,6 +22,7 @@ import {
 
 import { top } from './top'
 
+import { ConjunctVal } from './ConjunctVal'
 import { FeatureVal } from './FeatureVal'
 
 
@@ -64,8 +65,11 @@ class PrefVal extends FeatureVal {
     if (!this.peg.done) {
       const resolved = unite(te ? ctx.clone({ explain: ec(te, 'RES') }) : ctx,
         this.peg, top(), 'pref/resolve')
-      // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
+      this.superpeg = this.peg.superior()
+    }
+    else if (this.superpeg.isTop && !this.peg.isTop) {
+      // Stale superpeg from pre-resolved PathVal — recalculate
       this.superpeg = this.peg.superior()
     }
 
@@ -106,11 +110,20 @@ class PrefVal extends FeatureVal {
     else if (!peer.isTop) {
       why += 'super-'
 
-      out = unite(te ? ctx.clone({ explain: ec(te, 'SUPER') }) : ctx,
-        this.superpeg, peer, 'pref-super/' + this.id)
-      if (out.same(this.superpeg)) {
-        out = this.peg
-        why += 'same'
+      // If peg is unresolved (e.g. deferred ref), don't decide yet —
+      // preserve both sides so a later pass can resolve.
+      if (!this.peg.done) {
+        out = new ConjunctVal({ peg: [this, peer] }, ctx)
+        done = false
+        why += 'defer'
+      }
+      else {
+        out = unite(te ? ctx.clone({ explain: ec(te, 'SUPER') }) : ctx,
+          this.superpeg, peer, 'pref-super/' + this.id)
+        if (out.same(this.superpeg)) {
+          out = this.peg
+          why += 'same'
+        }
       }
 
       // }

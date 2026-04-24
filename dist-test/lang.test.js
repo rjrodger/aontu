@@ -192,8 +192,8 @@ let P = lang.parse.bind(lang);
         let v1 = P('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}');
         (0, expect_1.expect)(v1.canon)
             .equal('{"k":{"x":1,"y":integer},"a":{"b":{"y":1},"c":{"y":2}}&{&:$.k}}');
-        let c1 = makeCtx({ root: v1 });
-        let u1a = v1.unify(TOP, c1);
+        // Go through Unify to trigger path pre-resolution
+        let u1a = new unify_1.Unify('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}', lang).res;
         (0, expect_1.expect)(u1a.canon).
             equal('{"k":{"x":1,"y":integer},"a":{"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}');
         let v2 = P('a:{&:number},a:{x:1},a:{y:2}');

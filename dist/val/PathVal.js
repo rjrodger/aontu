@@ -1,26 +1,28 @@
 "use strict";
-/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
+/* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RefVal = void 0;
-const utility_1 = require("../utility");
+exports.PathVal = void 0;
 const type_1 = require("../type");
-const err_1 = require("../err");
+const utility_1 = require("../utility");
 const unify_1 = require("../unify");
+const err_1 = require("../err");
 const top_1 = require("./top");
 const StringVal_1 = require("./StringVal");
 const IntegerVal_1 = require("./IntegerVal");
 const NumberVal_1 = require("./NumberVal");
-const ConjunctVal_1 = require("./ConjunctVal");
 const VarVal_1 = require("./VarVal");
+const ConjunctVal_1 = require("./ConjunctVal");
+const DisjunctVal_1 = require("./DisjunctVal");
 const FeatureVal_1 = require("./FeatureVal");
-class RefVal extends FeatureVal_1.FeatureVal {
+class PathVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isRef = true;
+        this.isPath = true;
         this.isGenable = true;
         this.cjo = 32500;
         this.absolute = false;
         this.prefix = false;
+        this._resolved = undefined;
         this.peg = [];
         this.absolute = true === this.absolute ? true : // absolute sticks
             true === spec.absolute ? true : false;
@@ -28,11 +30,9 @@ class RefVal extends FeatureVal_1.FeatureVal {
         for (let pI = 0; pI < spec.peg.length; pI++) {
             this.append(spec.peg[pI]);
         }
-        //console.log('RefVal', this.id, this.peg)
     }
     append(part) {
         let partval;
-        // console.log('APPEND', part)
         if ('string' === typeof part) {
             partval = part;
             this.peg.push(partval);
@@ -42,15 +42,10 @@ class RefVal extends FeatureVal_1.FeatureVal {
             this.peg.push(partval);
         }
         else if (part instanceof IntegerVal_1.IntegerVal) {
-            // partval = '' + part.peg
             partval = part.src;
             this.peg.push(partval);
         }
-        // TODO: this is a bit of a hack, review
-        // Seems like a fundamental ambiguity?
-        // Resolved by path function
         else if (part instanceof NumberVal_1.NumberVal) {
-            // let partvals: string[] = part.peg.toFixed(11).replace(/(\.0)?0+$/, '$1').split('.')
             let partvals = part.src.split('.');
             this.peg.push(...partvals);
         }
@@ -58,7 +53,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
             partval = part;
             this.peg.push(partval);
         }
-        else if (part instanceof RefVal) {
+        else if (part instanceof PathVal) {
             if (part.absolute) {
                 this.absolute = true;
             }
@@ -82,58 +77,21 @@ class RefVal extends FeatureVal_1.FeatureVal {
     }
     unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
-        // TEMPORARY: nerf RefVals to verify spread-first resolution
-        return (0, err_1.makeNilErr)(ctx, 'ref_test_block', this, peer);
-        const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Ref', this, peer);
+        // Already resolved (e.g. path value from path() function) — skip find
+        if (this.done)
+            return this;
         let out = this;
-        let why = 'id';
-        // Defer ref resolution on first pass and while spreads remain
-        if (0 === ctx.cc || 0 < ctx.sc) {
-            if (!peer.isTop && this.id !== peer.id) {
-                out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
-            }
-            out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
-            (0, utility_1.explainClose)(te, out);
-            return out;
+        const found = this.find(ctx);
+        if (found != null && !found.isNil) {
+            out = (0, unify_1.unite)(ctx, found, peer, 'path');
         }
-        if (this.id !== peer.id) {
-            // TODO: not resolved when all Vals in path are done is an error
-            // as path cannot be found
-            // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
-            let found = null == ctx ? this : this.find(ctx);
-            const resolved = found ?? this;
-            if (null == resolved && this.canon === peer.canon) {
-                out = this;
-            }
-            else if (resolved instanceof RefVal) {
-                if (peer.isTop) {
-                    out = this;
-                    why = 'pt';
-                }
-                else if (peer.isNil) {
-                    out = (0, err_1.makeNilErr)(ctx, 'ref[' + this.peg + ']', this, peer);
-                    why = 'pn';
-                }
-                // same path
-                else if (this.canon === peer.canon) {
-                    out = this;
-                    why = 'pp';
-                }
-                else {
-                    // Ensure RefVal done is incremented
-                    this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
-                    out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
-                    why = 'cj';
-                }
-            }
-            else {
-                out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }) : ctx, resolved, peer, 'ref');
-                why = 'u';
-            }
-            out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
+        else if (found?.isNil) {
+            out = found;
         }
-        // console.log('REFVAL-UNIFY-OUT', ctx.cc, this.id, this.canon, this.done, 'P=', peer.id, peer.canon, peer.done, '->', out.id, out.canon, out.done)
-        (0, utility_1.explainClose)(te, out);
+        else {
+            // Not yet resolvable — increment dc to signal not done
+            this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
+        }
         return out;
     }
     find(ctx) {
@@ -251,6 +209,36 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     else if (node.isList) {
                         node = node.peg[part];
                     }
+                    else if (node.isConjunct || node.isDisjunct) {
+                        // Collect matching children from all junction terms,
+                        // flattening nested conjuncts and disjuncts.
+                        // Spreads match any key — their peg is always included.
+                        const matches = [];
+                        const stack = [...node.peg];
+                        while (stack.length > 0) {
+                            const term = stack.pop();
+                            if (term.isConjunct || term.isDisjunct) {
+                                stack.push(...term.peg);
+                            }
+                            else if (term.isSpread) {
+                                matches.push(term.peg);
+                            }
+                            else if ((term.isMap || term.isList) && term.peg[part] != null) {
+                                matches.push(term.peg[part]);
+                            }
+                        }
+                        if (matches.length === 1) {
+                            node = matches[0];
+                        }
+                        else if (matches.length > 1) {
+                            node = node.isConjunct
+                                ? new ConjunctVal_1.ConjunctVal({ peg: matches })
+                                : new DisjunctVal_1.DisjunctVal({ peg: matches });
+                        }
+                        else {
+                            node = null;
+                        }
+                    }
                     else if (node.done) {
                         nopath = true;
                         break;
@@ -268,7 +256,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
             if (nopath) {
                 out = (0, err_1.makeNilErr)(ctx, 'no_path', this);
             }
-            else if (pI === refpath.length) {
+            else if (pI === refpath.length && node != null) {
                 out = node;
                 // Types and hidden values are cloned and made concrete
                 if (null != out) { //  && (out.mark.type || out.mark.hide)) {
@@ -289,6 +277,8 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     }
                     else {
                         out = out.clone(ctx);
+                        out.mark.type = false;
+                        out.mark.hide = false;
                         (0, utility_1.walk)(out, (_key, val) => {
                             val.mark.type = false;
                             val.mark.hide = false;
@@ -316,17 +306,13 @@ class RefVal extends FeatureVal_1.FeatureVal {
     get canon() {
         let str = (this.absolute ? '$' : '') +
             (0 < this.peg.length ? '.' : '') +
-            // this.peg.join(this.sep)
             this.peg.map((p) => '.' === p ? '' :
                 (p.isVal ? p.canon : '' + p))
                 .join('.');
         return str;
     }
     gen(ctx) {
-        // Unresolved ref cannot be generated, so always an error.
-        let nil = (0, err_1.makeNilErr)(ctx, 'ref', this, // (formatPath(this.peg, this.absolute) as any),
-        undefined);
-        // TODO: refactor to use Site pointer
+        let nil = (0, err_1.makeNilErr)(ctx, 'ref', this, undefined);
         nil.path = this.path;
         nil.site.url = this.site.url;
         nil.site.row = this.site.row;
@@ -340,5 +326,5 @@ class RefVal extends FeatureVal_1.FeatureVal {
         ].filter(p => '' != p).join(',');
     }
 }
-exports.RefVal = RefVal;
-//# sourceMappingURL=RefVal.js.map
+exports.PathVal = PathVal;
+//# sourceMappingURL=PathVal.js.map

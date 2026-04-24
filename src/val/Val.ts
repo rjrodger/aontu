@@ -69,7 +69,7 @@ abstract class Val {
   declare isList: boolean
   declare isScalar: boolean
   declare isScalarKind: boolean
-  declare isRef: boolean
+  declare isPath: boolean
   declare isPref: boolean
   declare isVar: boolean
   declare isBag: boolean
@@ -242,7 +242,7 @@ abstract class Val {
   get isPathDependent(): boolean {
     if (this._isPathDependent !== undefined) return this._isPathDependent
     let dep =
-      this.isRef || this.isKeyFunc || this.isPathFunc ||
+      this.isPath || this.isKeyFunc || this.isPathFunc ||
       this.isMoveFunc || this.isSuperFunc
     if (!dep) {
       const peg = this.peg
@@ -257,10 +257,6 @@ abstract class Val {
           const c = (peg as any)[k]
           if (c && c.isVal && c.isPathDependent) { dep = true; break }
         }
-      }
-      if (!dep) {
-        const spreadCj = (this as any).spread?.cj as Val | undefined
-        if (spreadCj && spreadCj.isPathDependent) dep = true
       }
     }
     this._isPathDependent = dep
@@ -370,7 +366,7 @@ Object.assign(Val.prototype, {
   isList: false,
   isScalar: false,
   isScalarKind: false,
-  isRef: false,
+  isPath: false,
   isPref: false,
   isVar: false,
   isBag: false,
