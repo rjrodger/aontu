@@ -53,8 +53,8 @@ a:{b?:*1|number,b:2}	~	~	{"a":{"b":2}}
 a:{b?:*1|number}	~	~	{"a":{"b":1}}
 # pref in spread combined with key()
 a:{&:{k:*none|string,n:key()},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1,"k":"none","n":"b"},"c":{"x":2,"k":"none","n":"c"}}}
-# TODO: parse error - *1|number inside type({...}) confuses parser, | closes map early
-# a:{&:type({x:*1|number}),b:{},c:{x:2}} should give {"a":{"b":{"x":1},"c":{"x":2}}}
+# type() in spread with pref defaults inside braces - previously a parse error
+a:{&:type({x:*1|number}),b:{},c:{x:2}}	~	~	{"a":{"b":{"x":1},"c":{"x":2}}}
 # Optional key with type constraint - unsatisfied is dropped
 a:{b?:{x:number},c:{x:1}}	~	~	{"a":{"c":{"x":1}}}
 # type() in spread with pref defaults - pref applied through type constraint
