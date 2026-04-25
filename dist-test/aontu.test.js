@@ -212,6 +212,36 @@ def: garage: {
         let v1 = a0.unify(`a:@"foo.jsonic"`, { fs, path: '/' });
         (0, expect_1.expect)(v1.canon).equal('{"a":{"f":11}}');
     });
+    (0, node_test_1.test)('import-spread-key', () => {
+        let a0 = new aontu_1.Aontu();
+        const gen = (src, files) => {
+            const mfs = (0, memfs_1.memfs)(files);
+            const fs = mfs.fs;
+            return a0.generate(src, { errs: [], fs, path: '/' });
+        };
+        // Spread defined in imported file applies to main file
+        (0, expect_1.expect)(gen('@"def.jsonic" a:{x:1} b:{x:2}', { 'def.jsonic': '{&:{x:number}}' }))
+            .equal({ a: { x: 1 }, b: { x: 2 } });
+        // key() in imported spread re-evaluates per child in main file
+        (0, expect_1.expect)(gen('@"def.jsonic" a:{y:1} b:{y:2}', { 'def.jsonic': '{&:{k:key()}}' }))
+            .equal({ a: { y: 1, k: 'a' }, b: { y: 2, k: 'b' } });
+        // Pref default from imported spread applies to main file
+        (0, expect_1.expect)(gen('@"def.jsonic" a:{} b:{x:2}', { 'def.jsonic': '{&:{x:*1|number}}' }))
+            .equal({ a: { x: 1 }, b: { x: 2 } });
+        // Path ref across imported file
+        (0, expect_1.expect)(gen('@"def.jsonic" a:$.q', { 'def.jsonic': 'q:{x:1}' }))
+            .equal({ a: { x: 1 }, q: { x: 1 } });
+        // Spread + key() from import with multiple children
+        (0, expect_1.expect)(gen('@"s.jsonic" a:{n:1} b:{n:2} c:{n:3}', { 's.jsonic': '{&:{k:key(),n:number}}' }))
+            .equal({
+            a: { n: 1, k: 'a' },
+            b: { n: 2, k: 'b' },
+            c: { n: 3, k: 'c' },
+        });
+        // Nested import: both files contribute spreads
+        (0, expect_1.expect)(gen('@"a.jsonic" b:{x:2,y:hello}', { 'a.jsonic': '@"b.jsonic" &:{y:string}', 'b.jsonic': '&:{x:number}' }))
+            .equal({ b: { x: 2, y: 'hello' } });
+    });
     (0, node_test_1.test)('deep-hierarchy', () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();

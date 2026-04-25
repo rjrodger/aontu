@@ -1,5 +1,37 @@
-# Function tests - type(), copy(), etc. in various contexts
+# Function tests - type(), copy(), move(), upper(), lower(), key(), path(), hide(), pref
 # input	parse_canon	unify_canon	gen
+# copy() - clones a value
+a:{x:1,y:2},b:copy($.a)	~	~	{"a":{"x":1,"y":2},"b":{"x":1,"y":2}}
+a:{x:1},b:copy($.a),b:{y:2}	~	~	{"a":{"x":1},"b":{"x":1,"y":2}}
+a:{x:1},b:copy($.a),c:copy($.a)	~	~	{"a":{"x":1},"b":{"x":1},"c":{"x":1}}
+# copy() strips type/hide marks
+x:type({}) x:y:1 a:copy($.x)	~	~	{"a":{"y":1}}
+x:type({y:number}) x:y:1 a:copy($.x)	~	~	{"a":{"y":1}}
+x:hide({}) x:y:1 a:copy($.x)	~	~	{"a":{"y":1}}
+# move() - clones value and hides source
+a:{x:1,y:2},b:move($.a.x)	~	~	{"a":{"y":2},"b":1}
+a:{x:1,y:2,z:3},b:move($.a.y)	~	~	{"a":{"x":1,"z":3},"b":2}
+# upper() / lower()
+a:upper(hello)	~	~	{"a":"HELLO"}
+a:lower(HELLO)	~	~	{"a":"hello"}
+a:upper(hello),b:lower(WORLD)	~	~	{"a":"HELLO","b":"world"}
+# upper/lower with path ref
+x:hello,a:upper($.x)	~	~	{"x":"hello","a":"HELLO"}
+x:HELLO,a:lower($.x)	~	~	{"x":"HELLO","a":"hello"}
+# key() - returns current key name
+a:{k:key()}	~	~	{"a":{"k":"a"}}
+a:{b:{k:key()}}	~	~	{"a":{"b":{"k":"b"}}}
+# key() in spread - re-evaluates per child
+&:{k:key()},a:{x:1},b:{x:2}	~	~	{"a":{"x":1,"k":"a"},"b":{"x":2,"k":"b"}}
+a:{&:{k:key()},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1,"k":"b"},"c":{"x":2,"k":"c"}}}
+# path() - resolves a path reference
+a:1,b:path(a)	~	~	{"a":1,"b":1}
+# hide() - hides a value from gen output
+a:hide(1),b:2	~	~	{"b":2}
+a:hide({x:1}),b:2	~	~	{"b":2}
+# type() - marks value as type (hidden from gen)
+a:type({x:number}),a:{x:1}	~	~	{}
+a:type({}),a:{y:1}	~	~	{}
 # type() in spread - constrains but does not mark children as type-invisible
 a:{&:type({x:number}),b:{x:1}}	~	~	{"a":{"b":{"x":1}}}
 a:{&:type({x:number}),b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1},"c":{"x":2}}}
@@ -8,5 +40,7 @@ a:{&:type({x:number}),b:{x:1,z:A}}	~	~	{"a":{"b":{"x":1,"z":"A"}}}
 # type() in spread with path ref
 sys:type({x:number}),a:{&:$.sys,b:{x:1}}	~	~	{"a":{"b":{"x":1}}}
 sys:type({x:number}),a:{&:$.sys,b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1},"c":{"x":2}}}
-# plain spread (no type) for comparison
-a:{&:{x:number},b:{x:1}}	~	~	{"a":{"b":{"x":1}}}
+# pref - preferred value with type constraint
+a:*1|number	~	~	{"a":1}
+a:*1|number,a:2	~	~	{"a":2}
+a:*hello|string,a:world	~	~	{"a":"world"}

@@ -42,6 +42,7 @@ class AontuContext {
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
   sc: number = 0  // Unresolved spread count
+
   vars: Record<string, Val> = {}
   src?: string
   fs?: FST

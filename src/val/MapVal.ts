@@ -199,6 +199,7 @@ class MapVal extends BagVal {
         out.dc = done ? DONE : out.dc
         propagateMarks(peer, out)
         propagateMarks(this, out)
+
       }
     }
 

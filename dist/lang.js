@@ -230,10 +230,10 @@ help isolate the syntax error.`,
         op: {
             // disjunct < conjunct: c & b | a -> (c & b) | a
             'conjunct': {
-                infix: true, src: '&', left: 16_000_000, right: 17_000_000
+                infix: true, src: '&', left: 16_000_000, right: 17_000_000,
             },
             'disjunct': {
-                infix: true, src: '|', left: 14_000_000, right: 15_000_000
+                infix: true, src: '|', left: 14_000_000, right: 15_000_000,
             },
             'plus-infix': {
                 src: '+',
@@ -266,7 +266,6 @@ help isolate the syntax error.`,
                 paren: true,
                 preval: {
                     active: true,
-                    // allow: ['floor'], //Object.keys(funcMap)
                 },
                 osrc: '(',
                 csrc: ')',

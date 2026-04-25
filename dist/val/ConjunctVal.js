@@ -10,6 +10,58 @@ const err_2 = require("../err");
 const JunctionVal_1 = require("./JunctionVal");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
+const MapVal_1 = require("./MapVal");
+// Shallow merge two MapVals: combine keys without deep unification.
+// For shared keys, merge child terms from both maps into one ConjunctVal
+// so spreads at that level see all children from both terms.
+function shallowMerge(a, b, ctx) {
+    const out = new MapVal_1.MapVal({ peg: {} }, ctx);
+    out.site = a.site;
+    out.closed = a.closed || b.closed;
+    out.optionalKeys = [...a.optionalKeys];
+    for (const k of b.optionalKeys) {
+        if (!out.optionalKeys.includes(k))
+            out.optionalKeys.push(k);
+    }
+    let done = true;
+    // Copy all keys from a
+    for (const k in a.peg) {
+        out.peg[k] = a.peg[k];
+    }
+    // Merge keys from b
+    for (const k in b.peg) {
+        if (k in out.peg) {
+            const av = out.peg[k];
+            const bv = b.peg[k];
+            // Flatten both sides' terms into a single ConjunctVal
+            const terms = [];
+            if (av.isConjunct) {
+                terms.push(...av.peg);
+            }
+            else {
+                terms.push(av);
+            }
+            if (bv.isConjunct) {
+                terms.push(...bv.peg);
+            }
+            else {
+                terms.push(bv);
+            }
+            out.peg[k] = new ConjunctVal({ peg: terms }, ctx);
+            done = false;
+        }
+        else {
+            out.peg[k] = b.peg[k];
+        }
+    }
+    for (const k in out.peg) {
+        done = done && (type_1.DONE === out.peg[k]?.dc);
+    }
+    out.dc = done ? type_1.DONE : 1;
+    (0, utility_1.propagateMarks)(a, out);
+    (0, utility_1.propagateMarks)(b, out);
+    return out;
+}
 // TODO: move main logic to op/conjunct
 class ConjunctVal extends JunctionVal_1.JunctionVal {
     constructor(spec, ctx) {
@@ -56,8 +108,13 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             this.peg[vI].mark.type = newtype;
             this.peg[vI].mark.hide = newhide;
             // console.log('CONJUNCT-TERM', this.id, vI, this.peg[vI].canon)
+            // Defer unify-with-TOP for map terms with spreads when other
+            // map terms exist — the shallow merge fold handles them instead.
+            const hasMapPeers = this.peg.length > 1 && this.peg[vI].isMap &&
+                this.peg.some((p, i) => i !== vI && p.isMap);
             upeer[vI] = (this.peg[vI].done && peer.isTop) ? this.peg[vI] :
-                (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'OWN') }) : ctx, this.peg[vI], peer, 'cj-own');
+                (hasMapPeers && hasSpreads(this.peg[vI])) ? this.peg[vI] :
+                    (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'OWN') }) : ctx, this.peg[vI], peer, 'cj-own');
             upeer[vI].mark.type = newtype = newtype || upeer[vI].mark.type;
             upeer[vI].mark.hide = newhide = newhide || upeer[vI].mark.hide;
             // let prevdone = done
@@ -111,6 +168,16 @@ class ConjunctVal extends JunctionVal_1.JunctionVal {
             else if (t1.isPath && !(t0.isPath)) {
                 outvals.push(t0);
                 t0 = t1;
+            }
+            // Shallow merge: when both are maps AND the conjunct contains spreads,
+            // combine keys into inner ConjunctVals instead of deep unification.
+            // This ensures spreads see ALL children across terms before being applied.
+            else if (t0.isMap && t1.isMap && (hasSpreads(t0) || hasSpreads(t1))) {
+                const merged = shallowMerge(t0, t1, ctx);
+                done = done && type_1.DONE === merged.dc;
+                newtype = this.mark.type || merged.mark.type;
+                newhide = this.mark.hide || merged.mark.hide;
+                t0 = merged;
             }
             else {
                 val = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'DEF') }) : ctx, t0, t1, 'cj-peer-t0t1');

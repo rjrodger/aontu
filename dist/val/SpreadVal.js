@@ -96,10 +96,18 @@ class SpreadVal extends FeatureVal_1.FeatureVal {
             if (!key_spread.done) {
                 key_spread = (0, unify_1.unite)(keyctx, key_spread, (0, top_1.top)(), 'spread-resolve');
             }
-            // Clear type/hide marks on the spread constraint — it constrains
-            // but should not mark the children as type/hidden.
+            // Clear type marks on the spread constraint root and its
+            // direct children — type() constrains but should not mark
+            // children as type-invisible.
             key_spread.mark.type = false;
             key_spread.mark.hide = false;
+            if (key_spread.isMap) {
+                for (const k in key_spread.peg) {
+                    if (key_spread.peg[k]?.isVal) {
+                        key_spread.peg[k].mark.type = false;
+                    }
+                }
+            }
             (0, utility_1.propagateMarks)(map, child);
             out.peg[key] =
                 undefined === child ? key_spread :

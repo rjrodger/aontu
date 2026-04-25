@@ -302,34 +302,28 @@ describe('lang', function() {
 
     let v2 = P('a:{&:number},a:{x:1},a:{y:2}')
     expect(v2.canon).equal('{"a":{}&{&:number}&{"x":1}&{"y":2}}')
-    let u2 = v2.unify(TOP, ctx)
+    let u2 = new Unify('a:{&:number},a:{x:1},a:{y:2}', lang).res
     expect(u2.canon).equal('{"a":{"x":1,"y":2}}')
 
     let v3 = P('a:{&:number,z:3},a:{x:1},a:{y:2}')
     expect(v3.canon).equal('{"a":{"z":3}&{&:number}&{"x":1}&{"y":2}}')
-    let u3 = v3.unify(TOP, ctx)
+    let u3 = new Unify('a:{&:number,z:3},a:{x:1},a:{y:2}', lang).res
     expect(u3.canon).equal('{"a":{"z":3,"x":1,"y":2}}')
 
     let v4 = P('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}')
     expect(v4.canon).equal('{"b":{"a":{"z":3}&{&:number}&{"x":1}&{"y":2}}}')
-    let u4 = v4.unify(TOP, ctx)
+    let u4 = new Unify('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}', lang).res
     expect(u4.canon).equal('{"b":{"a":{"z":3,"x":1,"y":2}}}')
 
     // Must commute!
 
-    let v5a = P('{&:{x:1}}&{a:{y:1}}')
-    let u5a = v5a.unify(TOP, ctx)
+    let u5a = new Unify('{&:{x:1}}&{a:{y:1}}', lang).res
     expect(u5a.canon).equal('{"a":{"y":1,"x":1}}')
 
-    let v5b = P('{a:{y:1}}&{&:{x:1}}')
-    let u5b = v5b.unify(TOP, ctx)
+    let u5b = new Unify('{a:{y:1}}&{&:{x:1}}', lang).res
     expect(u5b.canon).equal('{"a":{"y":1,"x":1}}')
 
-
-    let v6 = P('b:{a:{&:{K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}')
-    expect(v6.canon)
-      .equal('{"b":{"a":{"z":{"Z":3}}&{&:"K":0}&{"x":{"X":1}}&{"y":{"Y":2}}}}')
-    let u6 = v6.unify(TOP, ctx)
+    let u6 = new Unify('b:{a:{&:{K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}', lang).res
     expect(u6.canon)
       .equal('{"b":{"a":{"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}')
 

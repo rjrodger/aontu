@@ -92,7 +92,10 @@ abstract class BagVal extends FeatureVal {
         || child.isConjunct
         || child.isNil
       ) {
-        let cval = child.gen(ctx)
+        // Optional keys: use separate error context so gen errors
+        // don't propagate when the key is dropped.
+        const genctx = optional ? ctx.clone({ err: [], collect: true }) : ctx
+        let cval = child.gen(genctx)
 
         if (optional && (undefined === cval || empty(cval))) {
           continue

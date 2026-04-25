@@ -1,0 +1,73 @@
+# Validation tests - required fields, optional fields, spread constraints
+# input	parse_canon	unify_canon	gen
+# Spread required - concrete values satisfy the constraint
+a:{&:{x:number},b:{x:1}}	~	~	{"a":{"b":{"x":1}}}
+a:{&:{x:number},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1},"c":{"x":2}}}
+a:{&:{x:number,y:string},b:{x:1,y:hello}}	~	~	{"a":{"b":{"x":1,"y":"hello"}}}
+# Spread with pref default - default satisfies the constraint
+a:{&:{x:*1|number},b:{}}	~	~	{"a":{"b":{"x":1}}}
+a:{&:{x:*1|number},b:{x:2}}	~	~	{"a":{"b":{"x":2}}}
+a:{&:{x:*1|number},b:{},c:{x:3}}	~	~	{"a":{"b":{"x":1},"c":{"x":3}}}
+# Multiple spread constraints
+a:{&:{x:number},&:{y:string},b:{x:1,y:hello}}	~	~	{"a":{"b":{"x":1,"y":"hello"}}}
+# Nested spread required
+a:{&:{m:{x:number}},b:{m:{x:1}}}	~	~	{"a":{"b":{"m":{"x":1}}}}
+# Spread with path ref
+q:{x:*1|number},a:{&:$.q,b:{},c:{x:2}}	~	~	{"q":{"x":1},"a":{"b":{"x":1},"c":{"x":2}}}
+q:{x:*1|number},a:{&:$.q,b:{x:3}}	~	~	{"q":{"x":1},"a":{"b":{"x":3}}}
+# Spread with extra keys - constraint plus additional data
+a:{&:{x:number},b:{x:1,y:hello}}	~	~	{"a":{"b":{"x":1,"y":"hello"}}}
+a:{&:{x:number},b:{x:1,y:hello},c:{x:2,z:true}}	~	~	{"a":{"b":{"x":1,"y":"hello"},"c":{"x":2,"z":true}}}
+# Optional key with value provided
+a:{b?:{x:number},b:{x:1}}	~	~	{"a":{"b":{"x":1}}}
+# Spread pref override
+a:{&:{x:*1|number},b:{x:2},c:{}}	~	~	{"a":{"b":{"x":2},"c":{"x":1}}}
+# Deep nested spread
+a:{b:{&:{x:number},c:{x:1},d:{x:2}}}	~	~	{"a":{"b":{"c":{"x":1},"d":{"x":2}}}}
+# Spread with boolean constraint
+a:{&:{ok:boolean},b:{ok:true},c:{ok:false}}	~	~	{"a":{"b":{"ok":true},"c":{"ok":false}}}
+# Spread with pref boolean
+a:{&:{ok:*true|boolean},b:{},c:{ok:false}}	~	~	{"a":{"b":{"ok":true},"c":{"ok":false}}}
+# Combined: functions with optional/required fields
+# copy of type-constrained map - strips type mark
+a:type({x:number}),a:{x:1,y:2},b:copy($.a),b:{z:3}	~	~	{"b":{"x":1,"y":2,"z":3}}
+# copy of spread-constrained children
+a:{&:{x:*1|number},b:{},c:{x:2}},d:copy($.a.b)	~	~	{"a":{"b":{"x":1},"c":{"x":2}},"d":{"x":1}}
+a:{&:{x:*1|number},b:{},c:{x:2}},d:copy($.a.c)	~	~	{"a":{"b":{"x":1},"c":{"x":2}},"d":{"x":2}}
+# multiple move operations
+a:{x:1,y:2,z:3},b:move($.a.x),c:move($.a.z)	~	~	{"a":{"y":2},"b":1,"c":3}
+# key() with type constraint in spread
+a:{&:type({k:string}),b:{k:key()},c:{k:key()}}	~	~	{"a":{"b":{"k":"b"},"c":{"k":"c"}}}
+# key() with pref in spread - default overridden by key()
+a:{&:{k:*none|string},b:{k:key()},c:{}}	~	~	{"a":{"b":{"k":"b"},"c":{"k":"none"}}}
+# upper/lower in spread
+a:{&:{u:upper(hello)},b:{x:1}}	~	~	{"a":{"b":{"x":1,"u":"HELLO"}}}
+a:{&:{l:lower(HELLO)},b:{x:1}}	~	~	{"a":{"b":{"x":1,"l":"hello"}}}
+# copy from spread-constrained map via path ref
+q:{x:*1|number},a:{&:$.q,b:{},c:{x:2}},d:copy($.a.b)	~	~	{"q":{"x":1},"a":{"b":{"x":1},"c":{"x":2}},"d":{"x":1}}
+# hide inside spread - hides individual values
+a:{&:{x:number},b:{x:hide(1)},c:{x:2}}	~	~	{"a":{"b":{},"c":{"x":2}}}
+# optional key with pref - value provided
+a:{b?:*1|number,b:2}	~	~	{"a":{"b":2}}
+# optional key with pref - default used
+a:{b?:*1|number}	~	~	{"a":{"b":1}}
+# pref in spread combined with key()
+a:{&:{k:*none|string,n:key()},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1,"k":"none","n":"b"},"c":{"x":2,"k":"none","n":"c"}}}
+# TODO: parse error - *1|number inside type({...}) confuses parser, | closes map early
+# a:{&:type({x:*1|number}),b:{},c:{x:2}} should give {"a":{"b":{"x":1},"c":{"x":2}}}
+# Optional key with type constraint - unsatisfied is dropped
+a:{b?:{x:number},c:{x:1}}	~	~	{"a":{"c":{"x":1}}}
+# type() in spread with pref defaults - pref applied through type constraint
+a:{&:type(x:*1|number),b:{},c:{x:2}}	~	~	{"a":{"b":{"x":1},"c":{"x":2}}}
+# Spread applies across outer conjunct fold
+# When spread+child are in one conjunct term and more children in another,
+# the spread must apply to ALL children from ALL conjunct terms.
+{a:{&:{n:key()},b:{x:1}}}&{a:{c:{x:2}}}	~	~	{"a":{"b":{"x":1,"n":"b"},"c":{"x":2,"n":"c"}}}
+# Spread with plain value across conjunct
+{a:{&:{n:1},b:{x:1}}}&{a:{c:{x:2}}}	~	~	{"a":{"b":{"x":1,"n":1},"c":{"x":2,"n":1}}}
+# Multiple children in second conjunct term
+{a:{&:{n:key()},b:{x:1}}}&{a:{c:{x:2},d:{x:3}}}	~	~	{"a":{"b":{"x":1,"n":"b"},"c":{"x":2,"n":"c"},"d":{"x":3,"n":"d"}}}
+# Spread in second conjunct term
+{a:{b:{x:1}}}&{a:{&:{n:key()},c:{x:2}}}	~	~	{"a":{"b":{"x":1,"n":"b"},"c":{"x":2,"n":"c"}}}
+# Spreads in both conjunct terms
+{a:{&:{n:key()},b:{x:1}}}&{a:{&:{m:1},c:{x:2}}}	~	~	{"a":{"b":{"x":1,"n":"b","m":1},"c":{"x":2,"n":"c","m":1}}}

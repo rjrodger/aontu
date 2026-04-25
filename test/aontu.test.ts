@@ -303,6 +303,50 @@ def: garage: {
     )
   })
 
+  test('import-spread-key', () => {
+    let a0 = new Aontu()
+    const gen = (src: string, files: Record<string, string>) => {
+      const mfs = Memfs(files)
+      const fs = mfs.fs as unknown as FST
+      return a0.generate(src, { errs: [], fs, path: '/' })
+    }
+
+    // Spread defined in imported file applies to main file
+    expect(gen('@"def.jsonic" a:{x:1} b:{x:2}',
+      { 'def.jsonic': '{&:{x:number}}' }))
+      .equal({ a: { x: 1 }, b: { x: 2 } })
+
+    // key() in imported spread re-evaluates per child in main file
+    expect(gen('@"def.jsonic" a:{y:1} b:{y:2}',
+      { 'def.jsonic': '{&:{k:key()}}' }))
+      .equal({ a: { y: 1, k: 'a' }, b: { y: 2, k: 'b' } })
+
+    // Pref default from imported spread applies to main file
+    expect(gen('@"def.jsonic" a:{} b:{x:2}',
+      { 'def.jsonic': '{&:{x:*1|number}}' }))
+      .equal({ a: { x: 1 }, b: { x: 2 } })
+
+    // Path ref across imported file
+    expect(gen('@"def.jsonic" a:$.q',
+      { 'def.jsonic': 'q:{x:1}' }))
+      .equal({ a: { x: 1 }, q: { x: 1 } })
+
+    // Spread + key() from import with multiple children
+    expect(gen('@"s.jsonic" a:{n:1} b:{n:2} c:{n:3}',
+      { 's.jsonic': '{&:{k:key(),n:number}}' }))
+      .equal({
+        a: { n: 1, k: 'a' },
+        b: { n: 2, k: 'b' },
+        c: { n: 3, k: 'c' },
+      })
+
+    // Nested import: both files contribute spreads
+    expect(gen('@"a.jsonic" b:{x:2,y:hello}',
+      { 'a.jsonic': '@"b.jsonic" &:{y:string}', 'b.jsonic': '&:{x:number}' }))
+      .equal({ b: { x: 2, y: 'hello' } })
+  })
+
+
   test('deep-hierarchy', () => {
     let ctx = makeCtx()
     let a0 = new Aontu()

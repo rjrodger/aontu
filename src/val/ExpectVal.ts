@@ -51,11 +51,25 @@ class ExpectVal extends FeatureVal {
       this.peer = undefined === this.peer ? peer :
         unite(te ? ctx.clone({ explain: ec(te, 'PEER') }) : ctx, this.peer, peer, 'expect-peer')
 
-      const peeru =
-        unite(te ? ctx.clone({ explain: ec(te, 'EXPECT') }) : ctx, this.peer, this.peg, 'expect-self')
+      // Unwrap nested ExpectVals to prevent infinite recursion
+      let peg = this.peg
+      while (peg?.isExpect) {
+        peg = peg.peg
+      }
 
-      if (peeru.isGenable) {
-        out = peeru
+      // Guard against re-entrant recursion
+      if ((this as any)._expectDepth > 0) {
+        out.dc = this.dc + 1
+      }
+      else {
+        (this as any)._expectDepth = ((this as any)._expectDepth || 0) + 1
+        const peeru =
+          unite(te ? ctx.clone({ explain: ec(te, 'EXPECT') }) : ctx, this.peer, peg, 'expect-self')
+        ;(this as any)._expectDepth--
+
+        if (peeru.isGenable) {
+          out = peeru
+        }
       }
     }
 

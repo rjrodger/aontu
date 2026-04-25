@@ -23,6 +23,7 @@ import { unite } from '../unify'
 
 import {
   propagateMarks,
+  walk,
   explainOpen,
   ec,
   explainClose,
@@ -145,10 +146,18 @@ class SpreadVal extends FeatureVal {
         key_spread = unite(keyctx, key_spread, top(), 'spread-resolve')
       }
 
-      // Clear type/hide marks on the spread constraint — it constrains
-      // but should not mark the children as type/hidden.
+      // Clear type marks on the spread constraint root and its
+      // direct children — type() constrains but should not mark
+      // children as type-invisible.
       key_spread.mark.type = false
       key_spread.mark.hide = false
+      if (key_spread.isMap) {
+        for (const k in key_spread.peg) {
+          if (key_spread.peg[k]?.isVal) {
+            key_spread.peg[k].mark.type = false
+          }
+        }
+      }
 
       propagateMarks(map, child)
 
