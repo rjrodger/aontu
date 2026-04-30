@@ -1,0 +1,6 @@
+github.com/jsonicjs/expr/go v0.1.1 h1:VwdeIcCoP0wjoc+8P0Xsh+LeNaEt07fVfx6v6h0qt3A=
+github.com/jsonicjs/expr/go v0.1.1/go.mod h1:4Rg6xyzWuyrSFrQCYUH60yBN6kA5LKPwHe85kOgqjXk=
+github.com/jsonicjs/jsonic/go v0.1.21 h1:H/XfAWFu5wyThpEGK2JzDbYDLXl5bf+xBfQQbvTJqHM=
+github.com/jsonicjs/jsonic/go v0.1.21/go.mod h1:ObNKlCG7esWoi4AHCpdgkILvPINV8bpvkbCd4llGGUg=
+github.com/jsonicjs/path/go v0.1.1 h1:UVfQco4QjKkZjy8inVhTzLin49sCug4WNNdhSyGJA/I=
+github.com/jsonicjs/path/go v0.1.1/go.mod h1:CFfim7zFD7cB1QLnF9wR/O3gqYucquMV092ynLPR/wI=

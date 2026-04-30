@@ -1,0 +1,38 @@
+# Lang parity tests: TS/Go must produce identical results
+# Tests features of the parser+unify+gen pipeline
+# input	parse_canon	unify_canon	gen
+# Pref (star prefix)
+a:*1|number	~	~	{"a":1}
+a:*1|number,a:2	~	~	{"a":2}
+a:*hello|string	~	~	{"a":"hello"}
+a:*hello|string,a:world	~	~	{"a":"world"}
+# Disjunct with constraint
+a:1|2,a:1	~	~	{"a":1}
+a:1|2,a:2	~	~	{"a":2}
+# Type constraint
+a:number,a:42	~	~	{"a":42}
+a:string,a:hello	~	~	{"a":"hello"}
+a:boolean,a:true	~	~	{"a":true}
+a:integer,a:7	~	~	{"a":7}
+# Functions: upper and lower
+a:upper(hello)	~	~	{"a":"HELLO"}
+a:lower(HELLO)	~	~	{"a":"hello"}
+# Function: copy
+a:{x:1},b:copy($.a)	~	~	{"a":{"x":1},"b":{"x":1}}
+# Path with conjunct
+q:a:{x:1},w:b:$.q.a&{y:2}	~	~	{"q":{"a":{"x":1}},"w":{"b":{"x":1,"y":2}}}
+# Spread with path ref
+q:{x:*1|number},a:{&:$.q,b:{},c:{x:2}}	~	~	{"q":{"x":1},"a":{"b":{"x":1},"c":{"x":2}}}
+# Negative number
+a:-1	~	~	{"a":-1}
+a:-42	~	~	{"a":-42}
+# Plus operator
+a:1+2	~	~	{"a":3}
+# Nested map with spread and key
+a:{&:{n:key()},b:{x:1},c:{x:2}}	~	~	{"a":{"b":{"x":1,"n":"b"},"c":{"x":2,"n":"c"}}}
+# Boolean and null values
+a:true,b:false,c:null	~	~	{"a":true,"b":false,"c":null}
+# List
+a:[1,2,3]	~	~	{"a":[1,2,3]}
+# Nested list
+a:[{x:1},{x:2}]	~	~	{"a":[{"x":1},{"x":2}]}

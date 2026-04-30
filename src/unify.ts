@@ -206,8 +206,14 @@ function resolvePaths(root: Val, ctx: AontuContext, paths: PathVal[]) {
   for (const pv of paths) {
     if (pv.done) continue
 
-    // Resolve: find target, following chains
+    // Resolve: find target, following chains.
+    // Suppress errors during pre-resolution — intermediate PathVals
+    // (from multi-dot expressions like ..a.q) may fail here but the
+    // final PathVal resolves correctly during unification.
+    const savedErr = ctx.err
+    ctx.err = []
     let found: any = pv.find(ctx)
+    ctx.err = savedErr
     if (found == null || found.isNil) continue
 
     // Skip if target or container contains a mark-setting function

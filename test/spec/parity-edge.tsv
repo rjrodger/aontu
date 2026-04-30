@@ -1,0 +1,14 @@
+# Parity edge cases: integer vs number, deferred merge, numeric path segments
+# input	parse_canon	unify_canon	gen
+# Integer vs Number: 1.0 in source has dot, must be NumberVal not IntegerVal
+a:number,a:1.0	~	~	{"a":1}
+a:integer,a:1	~	~	{"a":1}
+a:number,a:1	~	~	{"a":1}
+a:number,a:1.5	~	~	{"a":1.5}
+# Numeric path segments: $.a.1 indexes into list
+a:[10,20,30],b:$.a.1	~	~	{"a":[10,20,30],"b":20}
+a:[10,20,30],b:$.a.0	~	~	{"a":[10,20,30],"b":10}
+a:[10,20,30],b:$.a.2	~	~	{"a":[10,20,30],"b":30}
+# Deferred merge: map merge across statements
+a:{x:1},a:{y:2}	~	~	{"a":{"x":1,"y":2}}
+a:{x:1},a:{x:1,y:2}	~	~	{"a":{"x":1,"y":2}}

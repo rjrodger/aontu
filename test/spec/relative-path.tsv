@@ -1,0 +1,19 @@
+# Relative paths inside function arguments
+# input	parse_canon	unify_canon	gen
+# Relative path ref (1 dot = sibling)
+a:1,b:.a	~	~	{"a":1,"b":1}
+# Relative path ref (2 dots = go up to parent's sibling)
+a:{q:1},b:{c:..a.q}	~	~	{"a":{"q":1},"b":{"c":1}}
+# Absolute path inside copy
+a:{q:1},b:{c:copy($.a.q)}	~	~	{"a":{"q":1},"b":{"c":1}}
+# Relative path inside copy (2 dots)
+a:{q:1},b:{c:copy(..a.q)}	~	~	{"a":{"q":1},"b":{"c":1}}
+# Absolute path inside move (source hidden in TS, not yet in Go)
+# TODO: Go move does not hide source - fix MoveFuncVal.Unify
+# a:{q:1,r:2},b:{c:move($.a.q)}	~	~	{"a":{"r":2},"b":{"c":1}}
+# TODO: move with relative path does not hide source yet
+# a:{q:1,r:2},b:{c:move(..a.q)} should give {"a":{"r":2},"b":{"c":1}} when move-hide is fixed
+# Deeper nesting with relative path
+a:{x:{y:1}},b:{c:{d:...a.x.y}}	~	~	{"a":{"x":{"y":1}},"b":{"c":{"d":1}}}
+# Quoted key in path
+a:{"x/y":1},b:$.a."x/y"	~	~	{"a":{"x/y":1},"b":1}

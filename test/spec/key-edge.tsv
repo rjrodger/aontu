@@ -1,0 +1,8 @@
+# key() edge cases
+# input	parse_canon	unify_canon	gen
+a:{k:key()}	~	~	{"a":{"k":"a"}}
+a:b:{k:key()}	~	~	{"a":{"b":{"k":"b"}}}
+x:1,a:{k:key()}	~	~	{"x":1,"a":{"k":"a"}}
+x:1,a:b:{k:key()}	~	~	{"x":1,"a":{"b":{"k":"b"}}}
+a:{k:key()},x:1	~	~	{"a":{"k":"a"},"x":1}
+a:b:{k:key()},x:1	~	~	{"a":{"b":{"k":"b"}},"x":1}
