@@ -3,7 +3,7 @@
 // Package aontu implements a lattice-based unification engine.
 package aontu
 
-const Version = "0.1.0"
+const Version = "0.1.1"
 const DefaultMaxCC = 9
 
 // Aontu is the main entry point for parsing, unifying, and generating.
