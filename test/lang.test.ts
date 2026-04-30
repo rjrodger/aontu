@@ -168,16 +168,16 @@ describe('lang', function() {
     let t00xA = g0.parse('A:11,x:@"' + __dirname + '/../test/t00.jsonic"')
     expect(t00xA.canon).equal('{"A":11,"x":{"a":1}}')
     let t00xB = g0.parse('x:@"' + __dirname + '/../test/t00.jsonic",B:22')
-    expect(t00xB.canon).equal('{"x":{"a":1},"B":22}')
+    expect(t00xB.canon).equal('{"B":22,"x":{"a":1}}')
     let t00xAB = g0.parse('A:11,x:@"' + __dirname + '/../test/t00.jsonic",B:22')
-    expect(t00xAB.canon).equal('{"A":11,"x":{"a":1},"B":22}')
+    expect(t00xAB.canon).equal('{"A":11,"B":22,"x":{"a":1}}')
 
     let t00xAs = g0.parse('A:11 x:@"' + __dirname + '/../test/t00.jsonic"')
     expect(t00xAs.canon).equal('{"A":11,"x":{"a":1}}')
     let t00xBs = g0.parse('x:@"' + __dirname + '/../test/t00.jsonic" B:22')
-    expect(t00xBs.canon).equal('{"x":{"a":1},"B":22}')
+    expect(t00xBs.canon).equal('{"B":22,"x":{"a":1}}')
     let t00xABs = g0.parse('A:11 x:@"' + __dirname + '/../test/t00.jsonic" B:22')
-    expect(t00xABs.canon).equal('{"A":11,"x":{"a":1},"B":22}')
+    expect(t00xABs.canon).equal('{"A":11,"B":22,"x":{"a":1}}')
 
 
     let t00v = g0.parse('@"' + __dirname + '/../test/t00.jsonic"')
@@ -287,17 +287,17 @@ describe('lang', function() {
 
     let u0 = v0.unify(TOP, ctx)
     expect(u0.canon)
-      .equal('{"a":{"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+      .equal('{"a":{"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}')
 
     let v1 = P('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}')
     expect(v1.canon)
-      .equal('{"k":{"x":1,"y":integer},"a":{"b":{"y":1},"c":{"y":2}}&{&:$.k}}')
+      .equal('{"a":{"b":{"y":1},"c":{"y":2}}&{&:$.k},"k":{"x":1,"y":integer}}')
 
     // Go through Unify to trigger path pre-resolution
     let u1a = new Unify('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}', lang).res
 
     expect(u1a.canon).
-      equal('{"k":{"x":1,"y":integer},"a":{"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}')
+      equal('{"a":{"b":{"x":1,"y":1},"c":{"x":1,"y":2}},"k":{"x":1,"y":integer}}')
 
 
     let v2 = P('a:{&:number},a:{x:1},a:{y:2}')
@@ -308,24 +308,24 @@ describe('lang', function() {
     let v3 = P('a:{&:number,z:3},a:{x:1},a:{y:2}')
     expect(v3.canon).equal('{"a":{"z":3}&{&:number}&{"x":1}&{"y":2}}')
     let u3 = new Unify('a:{&:number,z:3},a:{x:1},a:{y:2}', lang).res
-    expect(u3.canon).equal('{"a":{"z":3,"x":1,"y":2}}')
+    expect(u3.canon).equal('{"a":{"x":1,"y":2,"z":3}}')
 
     let v4 = P('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}')
     expect(v4.canon).equal('{"b":{"a":{"z":3}&{&:number}&{"x":1}&{"y":2}}}')
     let u4 = new Unify('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}', lang).res
-    expect(u4.canon).equal('{"b":{"a":{"z":3,"x":1,"y":2}}}')
+    expect(u4.canon).equal('{"b":{"a":{"x":1,"y":2,"z":3}}}')
 
     // Must commute!
 
     let u5a = new Unify('{&:{x:1}}&{a:{y:1}}', lang).res
-    expect(u5a.canon).equal('{"a":{"y":1,"x":1}}')
+    expect(u5a.canon).equal('{"a":{"x":1,"y":1}}')
 
     let u5b = new Unify('{a:{y:1}}&{&:{x:1}}', lang).res
-    expect(u5b.canon).equal('{"a":{"y":1,"x":1}}')
+    expect(u5b.canon).equal('{"a":{"x":1,"y":1}}')
 
     let u6 = new Unify('b:{a:{&:{K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}', lang).res
     expect(u6.canon)
-      .equal('{"b":{"a":{"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}')
+      .equal('{"b":{"a":{"x":{"K":0,"X":1},"y":{"K":0,"Y":2},"z":{"K":0,"Z":3}}}}')
 
   })
 

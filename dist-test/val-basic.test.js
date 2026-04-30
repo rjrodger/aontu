@@ -381,7 +381,7 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         });
         (0, expect_1.expect)(m0.canon).equal('{"a":{"y":1},"b":{"y":2}}&{&:"x":1}');
         let u0 = m0.unify(TOP, ctx);
-        (0, expect_1.expect)(u0.canon).equal('{"a":{"y":1,"x":1},"b":{"y":2,"x":1}}');
+        (0, expect_1.expect)(u0.canon).equal('{"a":{"x":1,"y":1},"b":{"x":1,"y":2}}');
     });
     (0, node_test_1.it)('list-spread', () => {
         let ctx = makeCtx();
@@ -398,7 +398,7 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         });
         (0, expect_1.expect)(l0.canon).equal('[{"y":1},{"y":2}]&{&:"x":1}');
         let u0 = l0.unify(TOP, ctx);
-        (0, expect_1.expect)(u0.canon).equal('[{"y":1,"x":1},{"y":2,"x":1}]');
+        (0, expect_1.expect)(u0.canon).equal('[{"x":1,"y":1},{"x":1,"y":2}]');
     });
     (0, node_test_1.it)('var', () => {
         // TODO: make Aontu.generate support this

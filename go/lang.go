@@ -129,6 +129,9 @@ func NewLang(opts *AontuOptions) *Lang {
 	// Add grammar rules for val, map, list, pair, elem.
 	l.installRules(j)
 
+	// Install @"path" file-import directive (multisource parity).
+	installMultiSource(l, j)
+
 	l.jsonic = j
 	return l
 }

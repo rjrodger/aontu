@@ -83,7 +83,7 @@ q: a: $.u
 w: b: $.q.a & {y:2,z:3}
 `).canon
     ).equal(
-      '{"u":{"x":1,"y":number},"q":{"a":$.u},"w":{"b":$.q.a&{"y":2,"z":3}}}'
+      '{"q":{"a":$.u},"u":{"x":1,"y":number},"w":{"b":$.q.a&{"y":2,"z":3}}}'
     )
 
     expect(
@@ -125,7 +125,7 @@ w1: b: {y:2,z:3} & $.q.a
     let v0 = a0.unify('@"' + __dirname + '/../test/t02.jsonic"') as any
 
     expect(v0.canon).equal(
-      '{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}'
+      '{"ent":{"bar":{"fields":{"f0":{"kind":"Number"}},"name":"bar"},"foo":{"fields":{"f0":{"kind":"String"}},"name":"foo"}},"sys":{"ent":{"name":string}}}'
     )
 
     expect(v0.gen(ctx)).equal({
@@ -177,7 +177,7 @@ w1: b: {y:2,z:3} & $.q.a
     let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}') as any
 
     expect(v1.canon).equal(
-      '{"c":{"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}'
+      '{"c":{"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}'
     )
 
     let v10 = a0.unify('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}') as any
@@ -395,7 +395,7 @@ def: garage: {
 
     // Deep spread with ref to type constraint (verify canon)
     expect(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal(
-      '{"t":{"x":number},"a":{"b":{"c":{"x":1},"d":{"x":2}}}}'
+      '{"a":{"b":{"c":{"x":1},"d":{"x":2}}},"t":{"x":number}}'
     )
 
     // Deep spread with ref to concrete map

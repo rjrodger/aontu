@@ -50,7 +50,7 @@ a:{c:2}
 u: { x: 1, y: number}
 q: a: $.u
 w: b: $.q.a & {y:2,z:3}
-`).canon).equal('{"u":{"x":1,"y":number},"q":{"a":$.u},"w":{"b":$.q.a&{"y":2,"z":3}}}');
+`).canon).equal('{"q":{"a":$.u},"u":{"x":1,"y":number},"w":{"b":$.q.a&{"y":2,"z":3}}}');
         (0, expect_1.expect)(a0.unify(`
 q: a: { x: 1 }
 w0: b: $.q.a & {y:2,z:3}
@@ -81,7 +81,7 @@ w1: b: {y:2,z:3} & $.q.a
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         let v0 = a0.unify('@"' + __dirname + '/../test/t02.jsonic"');
-        (0, expect_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}');
+        (0, expect_1.expect)(v0.canon).equal('{"ent":{"bar":{"fields":{"f0":{"kind":"Number"}},"name":"bar"},"foo":{"fields":{"f0":{"kind":"String"}},"name":"foo"}},"sys":{"ent":{"name":string}}}');
         (0, expect_1.expect)(v0.gen(ctx)).equal({
             // sys: { ent: { name: undefined } },
             ent: {
@@ -120,7 +120,7 @@ w1: b: {y:2,z:3} & $.q.a
         let v0 = a0.unify('c:{&:{x:2},y:{k:3},z:{k:4}}');
         (0, expect_1.expect)(v0.canon).equal('{"c":{"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v1 = a0.unify('c:{&:{x:2},z:{k:4}},c:{y:{k:3}}');
-        (0, expect_1.expect)(v1.canon).equal('{"c":{"z":{"k":4,"x":2},"y":{"k":3,"x":2}}}');
+        (0, expect_1.expect)(v1.canon).equal('{"c":{"y":{"k":3,"x":2},"z":{"k":4,"x":2}}}');
         let v10 = a0.unify('a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}');
         (0, expect_1.expect)(v10.canon).equal('{"a":{}&{&:"x":1},' +
             '"b":{"y":{"k":2,"x":1}},' +
@@ -266,7 +266,7 @@ def: garage: {
         // Spread with nested map constraint at depth
         (0, expect_1.expect)(a0.generate('a:b:{&:{x:number},c:{x:1},d:{x:2}}')).equal({ a: { b: { c: { x: 1 }, d: { x: 2 } } } });
         // Deep spread with ref to type constraint (verify canon)
-        (0, expect_1.expect)(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal('{"t":{"x":number},"a":{"b":{"c":{"x":1},"d":{"x":2}}}}');
+        (0, expect_1.expect)(a0.unify('t:{x:number} a:b:{&:$.t,c:{x:1},d:{x:2}}').canon).equal('{"a":{"b":{"c":{"x":1},"d":{"x":2}}},"t":{"x":number}}');
         // Deep spread with ref to concrete map
         (0, expect_1.expect)(a0.generate('t:{x:1} a:b:{&:$.t,c:{y:A},d:{y:B}}')).equal({ t: { x: 1 }, a: { b: { c: { x: 1, y: 'A' }, d: { x: 1, y: 'B' } } } });
         (0, expect_1.expect)(a0.generate('a:b:{&:{name:key()},c:{},d:{}}')).equal({ a: { b: { c: { name: 'c' }, d: { name: 'd' } } } });

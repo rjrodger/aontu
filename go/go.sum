@@ -1,6 +1,6 @@
-github.com/jsonicjs/expr/go v0.1.1 h1:VwdeIcCoP0wjoc+8P0Xsh+LeNaEt07fVfx6v6h0qt3A=
-github.com/jsonicjs/expr/go v0.1.1/go.mod h1:4Rg6xyzWuyrSFrQCYUH60yBN6kA5LKPwHe85kOgqjXk=
-github.com/jsonicjs/jsonic/go v0.1.21 h1:H/XfAWFu5wyThpEGK2JzDbYDLXl5bf+xBfQQbvTJqHM=
-github.com/jsonicjs/jsonic/go v0.1.21/go.mod h1:ObNKlCG7esWoi4AHCpdgkILvPINV8bpvkbCd4llGGUg=
-github.com/jsonicjs/path/go v0.1.1 h1:UVfQco4QjKkZjy8inVhTzLin49sCug4WNNdhSyGJA/I=
-github.com/jsonicjs/path/go v0.1.1/go.mod h1:CFfim7zFD7cB1QLnF9wR/O3gqYucquMV092ynLPR/wI=
+github.com/jsonicjs/expr/go v0.1.2 h1:bBQoGlVRJy86gANbGMciyyGCQ/Y3c2AUTHnmgIk77bY=
+github.com/jsonicjs/expr/go v0.1.2/go.mod h1:6kmd1o4p4/FL4DVuCxwYAqX5YRYjF20hbIrHQM81Qoc=
+github.com/jsonicjs/jsonic/go v0.1.22 h1:sam238fTyjDq0nby9TYS+aCCHprLl91ArQPWLCg2O0Y=
+github.com/jsonicjs/jsonic/go v0.1.22/go.mod h1:ObNKlCG7esWoi4AHCpdgkILvPINV8bpvkbCd4llGGUg=
+github.com/jsonicjs/path/go v0.1.2 h1:Pk7PZIiRq64iodssEVtaJw+4jHiJe84aFtmKDUasXAo=
+github.com/jsonicjs/path/go v0.1.2/go.mod h1:ffXuSMg950pdfU3wapeK6QnyvZrV5yHFSj4ifwmsgmU=

@@ -182,7 +182,7 @@ class MapVal extends BagVal_1.BagVal {
     get canon() {
         if (this._canonCache !== undefined)
             return this._canonCache;
-        let keys = Object.keys(this.peg);
+        let keys = Object.keys(this.peg).sort();
         const c = '' +
             '{' +
             keys

@@ -252,7 +252,7 @@ describe('op', () => {
     expect(U('{a:false}    {a:boolean}')).equal('{"a":false}')
 
     expect(U('{a:1}        {b:2}')).equal('{"a":1,"b":2}')
-    expect(U('{b:2}        {a:1}')).equal('{"b":2,"a":1}')
+    expect(U('{b:2}        {a:1}')).equal('{"a":1,"b":2}')
   })
 })
 
