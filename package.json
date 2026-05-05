@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.43.0",
+  "version": "0.44.0",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "types": "dist/aontu.d.ts",
@@ -36,7 +36,7 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@jsonic/expr": "2.2.0",
+    "@jsonic/expr": "2.3.2",
     "@jsonic/multisource": "2.7.0",
     "@jsonic/path": "2.1.0",
     "jsonic": "2.28.0"
