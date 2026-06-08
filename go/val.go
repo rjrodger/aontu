@@ -178,6 +178,10 @@ func (n *NilVal) Message() string {
 			b.WriteString(n.secondary.Canon())
 		}
 	}
+	if hint := hints[n.why]; hint != "" {
+		b.WriteString("\n")
+		b.WriteString(hint)
+	}
 	n.msg = b.String()
 	return n.msg
 }

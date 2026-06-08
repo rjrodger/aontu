@@ -161,6 +161,10 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		out := clonePath(args[0], cp(f.path))
 		walkMark(out, false, false, true, true)
 		return out
+	case "close":
+		return setClosed(ctx, f, args, true)
+	case "open":
+		return setClosed(ctx, f, args, false)
 	case "super":
 		return f.superior()
 	}
@@ -195,6 +199,20 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 		return newNumber(math.Floor(fv))
 	}
 	return makeNilErr(ctx, "invalid-arg", args[0], nil)
+}
+
+// setClosed implements close()/open(): mark a map or list as (not) closed.
+func setClosed(ctx *Ctx, f *FuncVal, args []Val, closed bool) Val {
+	if len(args) == 0 {
+		return makeNilErr(ctx, "no_first_arg", f, nil)
+	}
+	switch v := args[0].(type) {
+	case *MapVal:
+		v.closed = closed
+	case *ListVal:
+		v.closed = closed
+	}
+	return args[0]
 }
 
 // keyFunc returns the key `move` levels up the path (KeyFuncVal.resolve).

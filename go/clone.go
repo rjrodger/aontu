@@ -72,6 +72,7 @@ func clonePath(v Val, path []string) Val {
 		out := newMap()
 		out.dc = n.dc
 		out.path = cp(path)
+		out.closed = n.closed
 		copyMarks(out, n)
 		for _, k := range n.keys {
 			out.set(k, clonePath(n.peg[k], append(cp(path), k)))
@@ -81,6 +82,7 @@ func clonePath(v Val, path []string) Val {
 		out := &ListVal{}
 		out.dc = n.dc
 		out.path = cp(path)
+		out.closed = n.closed
 		copyMarks(out, n)
 		for i, e := range n.peg {
 			out.peg = append(out.peg, clonePath(e, append(cp(path), itoa(i))))

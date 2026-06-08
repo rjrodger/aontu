@@ -8,8 +8,9 @@ import "strings"
 // order is preserved for canon output and generation.
 type MapVal struct {
 	base
-	keys []string
-	peg  map[string]Val
+	keys   []string
+	peg    map[string]Val
+	closed bool // close() — no keys beyond those present may be added
 }
 
 func newMap() *MapVal {
@@ -85,7 +86,13 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil {
 		peer = top()
 	}
+	// Let the closed side drive, so its key restriction is enforced
+	// deterministically (mirrors MapVal.unify).
+	if pm, ok := peer.(*MapVal); ok && !m.closed && pm.closed {
+		return pm.Unify(m, ctx)
+	}
 	out := newMap()
+	out.closed = m.closed
 	done := true
 
 	// Unify own children towards TOP first (drives convergence).
@@ -98,8 +105,12 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 
 	if pm, ok := peer.(*MapVal); ok {
+		out.closed = m.closed || pm.closed
 		for _, pk := range pm.keys {
 			pc := pm.peg[pk]
+			if _, allowed := m.peg[pk]; m.closed && !allowed {
+				return makeNilErr(ctx, "closed", pc, nil)
+			}
 			if ex, ok := out.peg[pk]; ok {
 				uv := unite(ctx, ex, pc)
 				out.set(pk, uv)

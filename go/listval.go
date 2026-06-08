@@ -8,7 +8,8 @@ import "strings"
 // element-wise by index; a longer peer extends the result.
 type ListVal struct {
 	base
-	peg []Val
+	peg    []Val
+	closed bool
 }
 
 func newList(elems []Val) *ListVal {
@@ -52,7 +53,11 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil {
 		peer = top()
 	}
+	if pl, ok := peer.(*ListVal); ok && !l.closed && pl.closed {
+		return pl.Unify(l, ctx)
+	}
 	out := &ListVal{}
+	out.closed = l.closed
 	done := true
 
 	for _, e := range l.peg {
@@ -64,7 +69,11 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 
 	if pl, ok := peer.(*ListVal); ok {
+		out.closed = l.closed || pl.closed
 		for i, pe := range pl.peg {
+			if l.closed && i >= len(l.peg) {
+				return makeNilErr(ctx, "closed", pe, nil)
+			}
 			if i < len(out.peg) {
 				uv := unite(ctx, out.peg[i], pe)
 				out.peg[i] = uv
