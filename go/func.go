@@ -137,7 +137,9 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		if len(args) == 0 {
 			return makeNilErr(ctx, "invalid-arg", f, nil)
 		}
-		return clonePath(args[0], cp(f.path))
+		out := clonePath(args[0], cp(f.path))
+		walkMark(out, true, false, true, false) // copy clears marks
+		return out
 	case "key":
 		return keyFunc(f)
 	case "pref":
@@ -145,6 +147,20 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
 		return walkPref(clonePath(args[0], cp(f.path)))
+	case "type":
+		if len(args) == 0 {
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		out := clonePath(args[0], cp(f.path))
+		walkMark(out, true, true, false, false)
+		return out
+	case "hide":
+		if len(args) == 0 {
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		out := clonePath(args[0], cp(f.path))
+		walkMark(out, false, false, true, true)
+		return out
 	case "super":
 		return f.superior()
 	}

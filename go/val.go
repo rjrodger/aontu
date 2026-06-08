@@ -49,15 +49,24 @@ type Val interface {
 	// vpath is the path from the root to this Val, used by references.
 	vpath() []string
 	setvpath(p []string)
+
+	// Marks: type values are constraints, hidden values are excluded
+	// from generation. Both are skipped when generating a containing map.
+	markedType() bool
+	markedHide() bool
+	setMarkType(v bool)
+	setMarkHide(v bool)
 }
 
 // base provides the shared, defaulted Val state. Concrete Val types
 // embed it and override Canon/Gen/Unify/superior (and cjo/Nil where
 // they differ).
 type base struct {
-	dc   int
-	sp   int      // source position (byte offset), used to order error operands
-	path []string // path from root (for reference resolution)
+	dc    int
+	sp    int      // source position (byte offset), used to order error operands
+	path  []string // path from root (for reference resolution)
+	mtype bool     // type mark
+	mhide bool     // hide mark
 }
 
 func (b *base) Dc() int             { return b.dc }
@@ -68,6 +77,11 @@ func (b *base) setPos(p int)        { b.sp = p }
 func (b *base) cjo() int            { return 99999 }
 func (b *base) vpath() []string     { return b.path }
 func (b *base) setvpath(p []string) { b.path = p }
+
+func (b *base) markedType() bool   { return b.mtype }
+func (b *base) markedHide() bool   { return b.mhide }
+func (b *base) setMarkType(v bool) { b.mtype = v }
+func (b *base) setMarkHide(v bool) { b.mhide = v }
 
 // notdone advances the done-counter without marking DONE.
 func (b *base) notdone() {

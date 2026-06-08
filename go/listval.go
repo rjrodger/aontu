@@ -31,8 +31,14 @@ func (l *ListVal) Canon() string {
 }
 
 func (l *ListVal) Gen(ctx *Ctx) (any, error) {
+	if l.mtype || l.mhide {
+		return nil, nil
+	}
 	out := make([]any, 0, len(l.peg))
 	for _, e := range l.peg {
+		if e.markedType() || e.markedHide() {
+			continue
+		}
 		ev, err := e.Gen(ctx)
 		if err != nil {
 			return nil, err

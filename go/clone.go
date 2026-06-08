@@ -50,7 +50,12 @@ func setPaths(v Val, path []string) {
 func clonePath(v Val, path []string) Val {
 	switch n := v.(type) {
 	case *TopVal:
-		return n
+		// Return a fresh TOP so marks (e.g. hide(top)) don't leak onto
+		// the shared singleton.
+		out := newTop()
+		out.path = cp(path)
+		copyMarks(out, n)
+		return out
 	case *NilVal:
 		c := *n
 		c.path = cp(path)
@@ -67,6 +72,7 @@ func clonePath(v Val, path []string) Val {
 		out := newMap()
 		out.dc = n.dc
 		out.path = cp(path)
+		copyMarks(out, n)
 		for _, k := range n.keys {
 			out.set(k, clonePath(n.peg[k], append(cp(path), k)))
 		}
@@ -75,6 +81,7 @@ func clonePath(v Val, path []string) Val {
 		out := &ListVal{}
 		out.dc = n.dc
 		out.path = cp(path)
+		copyMarks(out, n)
 		for i, e := range n.peg {
 			out.peg = append(out.peg, clonePath(e, append(cp(path), itoa(i))))
 		}
@@ -83,6 +90,7 @@ func clonePath(v Val, path []string) Val {
 		out := newConjunct(nil)
 		out.dc = n.dc
 		out.path = cp(path)
+		copyMarks(out, n)
 		for _, t := range n.peg {
 			out.peg = append(out.peg, clonePath(t, path))
 		}
@@ -91,6 +99,7 @@ func clonePath(v Val, path []string) Val {
 		out := newDisjunct(nil)
 		out.dc = n.dc
 		out.path = cp(path)
+		copyMarks(out, n)
 		for _, t := range n.peg {
 			out.peg = append(out.peg, clonePath(t, path))
 		}
@@ -100,12 +109,14 @@ func clonePath(v Val, path []string) Val {
 		out.dc = n.dc
 		out.rank = n.rank
 		out.path = cp(path)
+		copyMarks(out, n)
 		return out
 	case *RefVal:
 		out := &RefVal{absolute: n.absolute, prefix: n.prefix}
 		out.dc = n.dc
 		out.sp = n.sp
 		out.path = cp(path)
+		copyMarks(out, n)
 		out.peg = append([]any{}, n.peg...)
 		return out
 	case *VarVal:
@@ -113,11 +124,13 @@ func clonePath(v Val, path []string) Val {
 		out.dc = n.dc
 		out.sp = n.sp
 		out.path = cp(path)
+		copyMarks(out, n)
 		return out
 	case *PlusOpVal:
 		out := &PlusOpVal{}
 		out.dc = n.dc
 		out.path = cp(path)
+		copyMarks(out, n)
 		for _, t := range n.peg {
 			out.peg = append(out.peg, clonePath(t, path))
 		}
@@ -126,6 +139,7 @@ func clonePath(v Val, path []string) Val {
 		out := &FuncVal{name: n.name}
 		out.dc = n.dc
 		out.path = cp(path)
+		copyMarks(out, n)
 		for _, a := range n.peg {
 			out.peg = append(out.peg, clonePath(a, path))
 		}

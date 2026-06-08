@@ -62,9 +62,17 @@ func (m *MapVal) Canon() string {
 }
 
 func (m *MapVal) Gen(ctx *Ctx) (any, error) {
+	if m.mtype || m.mhide {
+		return nil, nil
+	}
 	out := map[string]any{}
 	for _, k := range m.keys {
-		cv, err := m.peg[k].Gen(ctx)
+		child := m.peg[k]
+		// Type and hidden values are excluded from generation.
+		if child.markedType() || child.markedHide() {
+			continue
+		}
+		cv, err := child.Gen(ctx)
 		if err != nil {
 			return nil, err
 		}

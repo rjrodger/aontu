@@ -285,6 +285,11 @@ func asVal(node any) Val {
 	switch n := node.(type) {
 	case Val:
 		return n
+	case *jsonic.ListRef:
+		// A top-level expression is returned as an unevaluated expr
+		// wrapper; evaluate it (map-value expressions are already
+		// evaluated during parse).
+		return asVal(expr.Evaluation(nil, nil, n, evaluate))
 	case map[string]any:
 		mv := newMap()
 		ord, _ := n[orderKey].([]string)
