@@ -1,0 +1,9 @@
+# Lists
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+list	gen	a:[1,2,3]	{"a":[1,2,3]}
+list-canon	canon	a:[1,2,3]	{"a":[1,2,3]}
+list-empty	gen	a:[]	{"a":[]}
+list-mixed	gen	a:[1,two,true]	{"a":[1,"two",true]}
+list-nested	gen	a:[[1,2],[3,4]]	{"a":[[1,2],[3,4]]}
+list-maps	gen	a:[{x:1},{y:2}]	{"a":[{"x":1},{"y":2}]}
+list-ws-sep	gen	a:[1 2 3]	{"a":[1,2,3]}

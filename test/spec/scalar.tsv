@@ -1,0 +1,20 @@
+# Shared aontu unit tests. Columns (tab-separated): name<TAB>mode<TAB>src<TAB>expect
+# mode: canon = unify(src).canon == expect ; gen = generate(src) deep-equals JSON(expect) ; err = generate(src) errors, message contains expect
+# Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash. Lines starting with # and blank lines are ignored.
+int	gen	a:1	{"a":1}
+int-canon	canon	a:1	{"a":1}
+neg-int	gen	a:-5	{"a":-5}
+zero	gen	a:0	{"a":0}
+num	gen	a:1.5	{"a":1.5}
+num-neg	gen	a:-2.5	{"a":-2.5}
+str-bare	gen	a:hello	{"a":"hello"}
+str-quote	gen	a:"hi there"	{"a":"hi there"}
+bool-true	gen	a:true	{"a":true}
+bool-false	gen	a:false	{"a":false}
+null	gen	a:null	{"a":null}
+kind-number	canon	a:number	{"a":number}
+kind-string	canon	a:string	{"a":string}
+kind-integer	canon	a:integer	{"a":integer}
+kind-boolean	canon	a:boolean	{"a":boolean}
+multi	gen	a:1 b:2 c:3	{"a":1,"b":2,"c":3}
+multi-canon	canon	x:1 y:two z:true	{"x":1,"y":"two","z":true}

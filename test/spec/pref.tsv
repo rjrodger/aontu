@@ -1,0 +1,9 @@
+# Preference / default (*)
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+gen	gen	a:*1|number	{"a":1}
+canon	canon	a:*1|number	{"a":*1|number}
+alone	gen	a:*5	{"a":5}
+default-str	gen	a:*green|string	{"a":"green"}
+override	gen	a:*1|number\na:2	{"a":2}
+deep	gen	a:b:c:*1|number	{"a":{"b":{"c":1}}}
+deep-override	gen	a:b:c:*1|number\na:b:c:2	{"a":{"b":{"c":2}}}

@@ -1,0 +1,13 @@
+# Conjunction (&): unification of values
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+scalar-kind	gen	a:1 & integer	{"a":1}
+scalar-kind-canon	canon	a:1 & integer	{"a":1}
+num-int	gen	a:number & 2	{"a":2}
+kind-narrow	canon	a:number & integer	{"a":integer}
+str-kind	gen	a:hello & string	{"a":"hello"}
+bool-kind	gen	a:true & boolean	{"a":true}
+equal-int	gen	a:1 & 1	{"a":1}
+equal-str	gen	a:foo & foo	{"a":"foo"}
+map-merge	gen	a:{x:1} & {y:2}	{"a":{"x":1,"y":2}}
+map-merge-canon	canon	a:{x:1} & {y:2}	{"a":{"x":1,"y":2}}
+map-deep-merge	gen	a:{x:{p:1}} & {x:{q:2}}	{"a":{"x":{"p":1,"q":2}}}
