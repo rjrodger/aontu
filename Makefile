@@ -1,4 +1,4 @@
-.PHONY: all build test clean build-ts build-go test-ts test-go clean-ts clean-go publish-go tags-go reset
+.PHONY: all build test clean build-ts build-go test-ts test-go clean-ts clean-go publish-go tags-go reset cov cov-ts cov-go
 
 all: build test
 
@@ -7,6 +7,15 @@ build: build-ts build-go
 test: test-ts test-go
 
 clean: clean-ts clean-go
+
+# Test coverage (see docs/test-coverage.md)
+cov: cov-ts cov-go
+
+cov-ts:
+	cd ts && npm run test-cov
+
+cov-go:
+	cd go && go test -cover -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | tail -1
 
 # TypeScript (canonical implementation, package lives in ts/)
 build-ts:

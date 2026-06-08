@@ -46,3 +46,31 @@ test/spec/   shared *.tsv unit tests both implementations must satisfy
 docs/        documentation
 ```
 
+## Command line
+
+Both implementations ship an `aontu` command that evaluates a file (or
+stdin) and prints the result, or starts a REPL when run with no file:
+
+```sh
+aontu config.aontu            # evaluate a file -> JSON
+aontu --canon config.aontu    # canonical form instead
+echo 'a:1 b:$.a' | aontu      # read from stdin
+aontu                         # no file on a terminal -> REPL
+```
+
+Install with `npm i -g aontu` (Node) or
+`go install github.com/rjrodger/aontu/go/cmd/aontu@latest` (Go). From a
+clone: `node ts/dist/cli.js …` or, inside `go/`, `go run ./cmd/aontu …`.
+
+## Documentation
+
+Full documentation is in [`docs/`](docs/):
+
+- [Documentation home](docs/index.md) — start here
+- [Tutorial](docs/tutorial.md) — learn Aontu step by step
+- [How-to guides](docs/how-to.md) — task-focused recipes
+- [Language reference](docs/reference-language.md) — every construct and rule
+- [API reference](docs/reference-api.md) — TypeScript & Go APIs, and the CLI
+- [Explanation](docs/explanation.md) — how and why the unifier works
+- [Test coverage](docs/test-coverage.md) — how it is measured, and the numbers
+
