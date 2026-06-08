@@ -23,3 +23,8 @@ test/coverage.html
 
 coverage
 *.off
+
+# Go
+*.test
+*.cover
+go/coverage.out

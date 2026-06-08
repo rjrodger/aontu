@@ -1,0 +1,60 @@
+# Proposed dual-language CI workflow.
+#
+# This is the intended replacement for .github/workflows/build.yml once
+# the repo moved to the ts/ + go/ layout: the previous workflow ran
+# `npm install` at the repo root, which no longer has a package.json.
+#
+# It was NOT committed directly to .github/workflows/ because updating a
+# workflow file requires the GitHub OAuth "workflow" scope. To apply it,
+# copy this file over .github/workflows/build.yml and push from an
+# account/token that has the workflow scope:
+#
+#     cp docs/ci-build.yml .github/workflows/build.yml
+#     git add .github/workflows/build.yml && git commit -m "ci: dual TS/Go build"
+#
+# It runs two independent jobs (mirroring voxgig/util): a TypeScript
+# matrix in ts/, and a Go job (build, vet, test) in go/.
+
+name: build
+
+on: ['push', 'pull_request']
+
+jobs:
+  build-ts:
+    name: TypeScript
+    timeout-minutes: 6
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node-version: [24.x, latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: ts
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm install
+      - run: npm run build
+      - run: npm test
+
+  build-go:
+    name: Go
+    timeout-minutes: 6
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...
