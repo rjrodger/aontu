@@ -10,6 +10,7 @@ type Ctx struct {
 	root  Val
 	err   []*NilVal
 	depth int // unite recursion depth (cycle guard)
+	cc    int // current fixpoint pass (for late-resolving funcs)
 }
 
 func (c *Ctx) adderr(n *NilVal) {

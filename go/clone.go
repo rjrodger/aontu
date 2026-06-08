@@ -33,6 +33,14 @@ func setPaths(v Val, path []string) {
 		}
 	case *PrefVal:
 		setPaths(n.peg, path)
+	case *PlusOpVal:
+		for _, t := range n.peg {
+			setPaths(t, path)
+		}
+	case *FuncVal:
+		for _, a := range n.peg {
+			setPaths(a, path)
+		}
 	}
 }
 
@@ -105,6 +113,22 @@ func clonePath(v Val, path []string) Val {
 		out.dc = n.dc
 		out.sp = n.sp
 		out.path = cp(path)
+		return out
+	case *PlusOpVal:
+		out := &PlusOpVal{}
+		out.dc = n.dc
+		out.path = cp(path)
+		for _, t := range n.peg {
+			out.peg = append(out.peg, clonePath(t, path))
+		}
+		return out
+	case *FuncVal:
+		out := &FuncVal{name: n.name}
+		out.dc = n.dc
+		out.path = cp(path)
+		for _, a := range n.peg {
+			out.peg = append(out.peg, clonePath(a, path))
+		}
 		return out
 	}
 	return v

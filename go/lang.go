@@ -83,6 +83,13 @@ func makeLang() (*jsonic.Jsonic, error) {
 			// Override the default `+` (addition) precedence to match the
 			// aontu plus operator (binds tighter than & and |).
 			"addition": map[string]interface{}{"infix": true, "src": "+", "left": 20000000, "right": 21000000},
+			// Replace the default grouping paren with a preval-active
+			// function paren: `name(args)` is a call, `(expr)` is grouping.
+			"plain": nil,
+			"func": map[string]interface{}{
+				"paren": true, "osrc": "(", "csrc": ")",
+				"preval": map[string]interface{}{"active": true},
+			},
 		},
 		"evaluate": evaluate,
 	}); err != nil {
@@ -230,9 +237,17 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		return newVar(terms[0])
 	case "addition-infix":
 		return newPlusOp(asVal(terms[0]), asVal(terms[1]))
-	case "plain-paren":
-		// Parenthesised grouping: return the inner expression.
+	case "func-paren":
+		// `name(args)` is a function call (preval injects the name);
+		// `(expr)` with no preval is parenthesised grouping.
 		if len(terms) > 0 {
+			if name, ok := terms[0].(string); ok && funcSet[name] {
+				args := make([]Val, 0, len(terms)-1)
+				for _, t := range terms[1:] {
+					args = append(args, asVal(t))
+				}
+				return newFunc(name, args)
+			}
 			return asVal(terms[len(terms)-1])
 		}
 		return newMap()

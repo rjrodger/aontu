@@ -69,6 +69,13 @@ func (b *base) cjo() int            { return 99999 }
 func (b *base) vpath() []string     { return b.path }
 func (b *base) setvpath(p []string) { b.path = p }
 
+// notdone advances the done-counter without marking DONE.
+func (b *base) notdone() {
+	if b.dc != DONE {
+		b.dc++
+	}
+}
+
 // --- type predicate helpers (mirror the TS isX flags) ---
 
 func isTop(v Val) bool      { _, ok := v.(*TopVal); return ok }
@@ -77,6 +84,7 @@ func isDisjunct(v Val) bool { _, ok := v.(*DisjunctVal); return ok }
 func isPref(v Val) bool     { _, ok := v.(*PrefVal); return ok }
 func isRef(v Val) bool      { _, ok := v.(*RefVal); return ok }
 func isVar(v Val) bool      { _, ok := v.(*VarVal); return ok }
+func isFunc(v Val) bool     { _, ok := v.(*FuncVal); return ok }
 
 // TopVal is the unit of the lattice: unifying with TOP yields the
 // other operand. There is conceptually only one TOP.

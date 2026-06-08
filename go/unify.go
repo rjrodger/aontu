@@ -36,7 +36,7 @@ func unite(ctx *Ctx, a, b Val) Val {
 	if isConjunct(a) {
 		return a.Unify(b, ctx)
 	}
-	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) {
+	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) {
 		return b.Unify(a, ctx)
 	}
 	return a.Unify(b, ctx)
@@ -55,6 +55,7 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 	for cc := 0; cc < 9 && res.Dc() != DONE; cc++ {
 		ctx.root = res
 		ctx.depth = 0
+		ctx.cc = cc
 		res = unite(ctx, res, top())
 		if len(ctx.err) > 0 {
 			break

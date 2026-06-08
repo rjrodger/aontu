@@ -103,13 +103,15 @@ Unification/generation currently covers the **core lattice**: scalars,
 scalar kinds (type constraints), maps (incl. implicit nesting and
 duplicate-key merge), lists, conjunction (`&`), disjunction (`|`),
 preference/defaults (`*`), references (`$.a.b`, incl. relative `.x.a`,
-`$KEY`, cross- and chained refs) and the `+` operator (incl.
-parenthesised grouping), plus `parse`, `unify`, `generate` and `canon`.
+`$KEY`, cross- and chained refs), the `+` operator (incl. parenthesised
+grouping) and the value-producing built-in functions (`upper`, `lower`,
+`copy`, `key`, `pref`, `super`), plus `parse`, `unify`, `generate` and
+`canon`.
 
-Still being ported to Go: spreads (`&:`) and the built-in functions —
-these now *parse* but do not yet fully unify/generate. The shared spec
-is scoped to what both implementations pass; grow it as the Go port
-grows.
+Still being ported to Go: spreads (`&:`), the marking functions
+(`type`, `hide`) and `close`/`open`/`move`/`path` — these now *parse*
+but do not yet fully unify/generate. The shared spec is scoped to what
+both implementations pass; grow it as the Go port grows.
 
 ## Conventions
 
