@@ -99,19 +99,19 @@ implements. The Go **parser** is built on the official Go ports of jsonic
 and its `expr`/`path` plugins (`github.com/jsonicjs/...`) — the same stack
 as `ts/src/lang.ts` — so the surface syntax parses in parity.
 
-Unification/generation currently covers the **core lattice**: scalars,
-scalar kinds (type constraints), maps (incl. implicit nesting and
-duplicate-key merge), lists, conjunction (`&`), disjunction (`|`),
-preference/defaults (`*`), references (`$.a.b`, incl. relative `.x.a`,
-`$KEY`, cross- and chained refs), the `+` operator (incl. parenthesised
-grouping) and the value-producing built-in functions (`upper`, `lower`,
-`copy`, `key`, `pref`, `super`), plus `parse`, `unify`, `generate` and
-`canon`.
+Unification/generation covers nearly the whole language: scalars, scalar
+kinds (type constraints), maps (implicit nesting, duplicate-key merge,
+spreads `&:`, optional keys `a?:`, `close`/`open`), lists, conjunction
+(`&`), disjunction (`|`), preference/defaults (`*`), references (`$.a.b`,
+relative `.x.a`, `$KEY`, cross/chained refs), the `+` operator (and
+parenthesised grouping), the built-in functions (`upper`, `lower`,
+`copy`, `key`, `pref`, `super`, `type`, `hide`, `close`, `open`) and
+type/hide marks — plus `parse`, `unify`, `generate` and `canon`.
 
-Still being ported to Go: spreads (`&:`), the marking functions
-(`type`, `hide`) and `close`/`open`/`move`/`path` — these now *parse*
-but do not yet fully unify/generate. The shared spec is scoped to what
-both implementations pass; grow it as the Go port grows.
+Still TypeScript-only: the `move()`/`path()` functions, list spreads,
+generic `$var` variables, and file/source resolution (`@"file"`, via
+the multisource plugin). The shared spec is scoped to what both
+implementations pass; grow it as the Go port grows.
 
 ## Conventions
 

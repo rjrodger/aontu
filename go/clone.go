@@ -76,6 +76,7 @@ func clonePath(v Val, path []string) Val {
 		out.dc = n.dc
 		out.path = cp(path)
 		out.closed = n.closed
+		out.optional = append([]string{}, n.optional...)
 		if n.spread != nil {
 			out.spread = clonePath(n.spread, path)
 		}

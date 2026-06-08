@@ -8,10 +8,20 @@ import "strings"
 // order is preserved for canon output and generation.
 type MapVal struct {
 	base
-	keys   []string
-	peg    map[string]Val
-	closed bool // close() — no keys beyond those present may be added
-	spread Val  // &: spread constraint applied to every key (nil if none)
+	keys     []string
+	peg      map[string]Val
+	closed   bool     // close() — no keys beyond those present may be added
+	spread   Val      // &: spread constraint applied to every key (nil if none)
+	optional []string // keys marked optional (a?:1) — dropped if unresolved
+}
+
+func (m *MapVal) isOptional(k string) bool {
+	for _, o := range m.optional {
+		if o == k {
+			return true
+		}
+	}
+	return false
 }
 
 func newMap() *MapVal {
@@ -90,13 +100,32 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 		if child.markedType() || child.markedHide() {
 			continue
 		}
+		optional := m.isOptional(k)
 		cv, err := child.Gen(ctx)
 		if err != nil {
+			// An optional key that does not resolve is dropped, not an error.
+			if optional {
+				continue
+			}
 			return nil, err
+		}
+		if optional && (cv == nil || isEmptyGen(cv)) {
+			continue
 		}
 		out[k] = cv
 	}
 	return out, nil
+}
+
+// isEmptyGen reports whether a generated value is an empty map or list.
+func isEmptyGen(v any) bool {
+	switch n := v.(type) {
+	case map[string]any:
+		return len(n) == 0
+	case []any:
+		return len(n) == 0
+	}
+	return false
 }
 
 func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
@@ -112,14 +141,20 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	out.closed = m.closed
 	out.path = cp(m.path)
 	out.spread = m.spread
+	out.optional = append([]string{}, m.optional...)
 	done := true
 
-	// Combine spreads from both sides.
+	// Combine spreads and optional keys (additive) from both sides.
 	if pm, ok := peer.(*MapVal); ok {
 		if out.spread == nil {
 			out.spread = pm.spread
 		} else if pm.spread != nil {
 			out.spread = unite(ctx, out.spread, pm.spread)
+		}
+		for _, ok := range pm.optional {
+			if !out.isOptional(ok) {
+				out.optional = append(out.optional, ok)
+			}
 		}
 	}
 	var spreadCj Val = top()

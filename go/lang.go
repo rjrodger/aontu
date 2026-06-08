@@ -36,6 +36,7 @@ import (
 // with real keys.
 const orderKey = "\x00aontu_order"
 const spreadKey = "\x00aontu_spread"
+const optionalKey = "\x00aontu_optional"
 
 var theLang = mustMakeLang()
 
@@ -102,9 +103,12 @@ func makeLang() (*jsonic.Jsonic, error) {
 		return nil, err
 	}
 
-	// The `&` operator token, used to recognise the &: spread syntax.
+	// The `&` operator token (for &: spread) and the `?` token (for
+	// optional keys, a?:1).
 	cj := j.Token("#E&")
 	cl := jsonic.TinCL
+	qm := j.Token("#QM", "?")
+	optkey := []jsonic.Tin{jsonic.TinTX, jsonic.TinST, jsonic.TinNR}
 
 	// val: a leading `&:` is an implicit spread map (a:&:{x:1}); push to
 	// map without consuming. Otherwise wrap scalar leaves into Vals.
@@ -132,6 +136,8 @@ func makeLang() (*jsonic.Jsonic, error) {
 	j.Rule("pair", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.Open = append([]*jsonic.AltSpec{
 			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+			// `key ? : value` — optional key.
+			{S: [][]jsonic.Tin{optkey, {qm}, {cl}}, P: "val", U: map[string]any{"optional": true}, G: "optional"},
 		}, rs.Open...)
 		rs.AC = append(rs.AC, trackOrder)
 	})
@@ -213,7 +219,19 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 		}
 		return
 	}
+
 	key := keyOf(r.O0)
+
+	// An optional pair (key?:value): the custom alt bypasses jsonic's
+	// value storage, so store the value ourselves and record the key.
+	if r.U["optional"] == true {
+		opt, _ := m[optionalKey].([]string)
+		m[optionalKey] = append(opt, key)
+		if r.Child != nil {
+			m[key] = r.Child.Node
+		}
+	}
+
 	ord, _ := m[orderKey].([]string)
 	for _, k := range ord {
 		if k == key {
@@ -331,6 +349,9 @@ func asVal(node any) Val {
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
 			mv.spread = sp.(Val)
+		}
+		if opt, ok := n[optionalKey].([]string); ok {
+			mv.optional = opt
 		}
 		ord, _ := n[orderKey].([]string)
 		for _, k := range ord {

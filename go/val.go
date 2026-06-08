@@ -8,11 +8,13 @@
 // is validated against the shared test specs in ../test/spec (run by
 // both implementations).
 //
-// Coverage note: this port implements the core of the lattice —
-// scalars, scalar kinds (type constraints), maps, lists, conjunction
-// (&), disjunction (|), preference/defaults (*) and references
-// ($.a.b) — the subset exercised by the shared spec. Spreads (&:) and
-// the built-in functions are still being ported.
+// Coverage note: this port covers nearly the whole language — scalars,
+// scalar kinds, maps (nesting, merge, spreads &:, optional keys,
+// close/open), lists, conjunction (&), disjunction (|), preference (*),
+// references ($.a.b / .x.a / $KEY), the + operator, the built-in
+// functions (upper/lower/copy/key/pref/super/type/hide/close/open) and
+// type/hide marks. Still TypeScript-only: move()/path(), list spreads
+// and file/source resolution (@"file").
 package aontu
 
 import "strings"
