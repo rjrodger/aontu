@@ -11,3 +11,8 @@ add-field	gen	base:{a:1} step1:{a:$.base.a,b:2}	{"base":{"a":1},"step1":{"a":1,"
 ref-and-merge	gen	q:a:{x:1} w:b:$.q.a & {y:2,z:3}	{"q":{"a":{"x":1}},"w":{"b":{"x":1,"y":2,"z":3}}}
 list-index	gen	a:[10,20,30] b:$.a.1	{"a":[10,20,30],"b":20}
 no-path	err	a:$.nope	Cannot resolve value: $.nope
+relative	gen	z:x:{a:62} z:y:.x.a	{"z":{"x":{"a":62},"y":62}}
+relative-add	gen	x:{a:4} y:.x.a	{"x":{"a":4},"y":4}
+key	gen	a:{k:.$KEY}	{"a":{"k":"a"}}
+key-deep	gen	a:b:{k:.$KEY}	{"a":{"b":{"k":"b"}}}
+key-sibling	gen	x:1 a:{k:.$KEY}	{"x":1,"a":{"k":"a"}}

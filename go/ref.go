@@ -115,24 +115,60 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 	}
 
 	parts := make([]string, 0, len(rv.peg))
-	for _, p := range rv.peg {
+	var modes []string
+	for i, p := range rv.peg {
+		if vv, ok := p.(*VarVal); ok {
+			switch name := varName(vv); name {
+			case "KEY":
+				if i != len(rv.peg)-1 {
+					return nil
+				}
+				modes = append(modes, "KEY")
+			case "SELF":
+				if i != 0 {
+					return nil
+				}
+				modes = append(modes, "SELF")
+			case "PARENT":
+				if i != 0 {
+					return nil
+				}
+				modes = append(modes, "PARENT")
+			default:
+				// Generic variable lookup is not yet supported.
+				return nil
+			}
+			continue
+		}
 		s, ok := p.(string)
 		if !ok {
-			// VarVal part ($KEY etc.) — not yet resolvable.
 			return nil
 		}
 		parts = append(parts, s)
+	}
+
+	// $KEY resolves to the enclosing key (the path segment above this node).
+	if containsStr(modes, "KEY") {
+		key := ""
+		if len(rv.path) >= 2 {
+			key = rv.path[len(rv.path)-2]
+		}
+		return newString(key)
 	}
 
 	var refpath []string
 	if rv.absolute {
 		refpath = parts
 	} else {
-		base := rv.path
-		if len(base) > 0 {
-			base = base[:len(base)-1]
+		end := len(rv.path) - 1
+		if containsStr(modes, "SELF") {
+			end = 0
 		}
-		refpath = append(append([]string{}, base...), parts...)
+		if end < 0 {
+			end = 0
+		}
+		base := append([]string{}, rv.path[:end]...)
+		refpath = append(base, parts...)
 	}
 	refpath = reduceDots(refpath)
 
@@ -175,6 +211,27 @@ func (rv *RefVal) isPrefixPath() bool {
 		}
 	}
 	return true
+}
+
+func varName(vv *VarVal) string {
+	switch p := vv.peg.(type) {
+	case string:
+		return p
+	case *ScalarVal:
+		if p.kind == KindString {
+			return p.peg.(string)
+		}
+	}
+	return ""
+}
+
+func containsStr(ss []string, s string) bool {
+	for _, x := range ss {
+		if x == s {
+			return true
+		}
+	}
+	return false
 }
 
 // reduceDots collapses parent-navigation markers (".").
