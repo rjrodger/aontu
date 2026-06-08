@@ -80,6 +80,9 @@ func makeLang() (*jsonic.Jsonic, error) {
 			"dollar-prefix": map[string]interface{}{"prefix": true, "src": "$", "right": 31000000},
 			"dot-infix":     map[string]interface{}{"infix": true, "src": ".", "left": 25000000, "right": 24000000},
 			"dot-prefix":    map[string]interface{}{"prefix": true, "src": ".", "right": 24000000},
+			// Override the default `+` (addition) precedence to match the
+			// aontu plus operator (binds tighter than & and |).
+			"addition": map[string]interface{}{"infix": true, "src": "+", "left": 20000000, "right": 21000000},
 		},
 		"evaluate": evaluate,
 	}); err != nil {
@@ -225,6 +228,14 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			return r0
 		}
 		return newVar(terms[0])
+	case "addition-infix":
+		return newPlusOp(asVal(terms[0]), asVal(terms[1]))
+	case "plain-paren":
+		// Parenthesised grouping: return the inner expression.
+		if len(terms) > 0 {
+			return asVal(terms[len(terms)-1])
+		}
+		return newMap()
 	}
 	return newNil("unknown_op")
 }
