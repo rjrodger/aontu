@@ -27,6 +27,8 @@ import { Aontu } from '../dist/aontu'
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec')
 
 
+const FIXTURES_DIR = Path.join(SPEC_DIR, 'files')
+
 type Row = {
   file: string
   name: string
@@ -72,7 +74,9 @@ function loadRows(): Row[] {
         file,
         name: parts[0],
         mode: parts[1],
-        src: unescape(parts[2]),
+        // __FIXTURES__ -> absolute test/spec/files dir, so file-loading
+        // (@"file") rows resolve to the shared fixtures from any cwd.
+        src: unescape(parts[2]).replaceAll('__FIXTURES__', FIXTURES_DIR),
         expect: unescape(parts[3]),
       })
     }

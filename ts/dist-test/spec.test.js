@@ -55,6 +55,7 @@ const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
 // test/spec lives at the repo root, two levels up from ts/dist-test.
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec');
+const FIXTURES_DIR = Path.join(SPEC_DIR, 'files');
 function unescape(s) {
     let out = '';
     for (let i = 0; i < s.length; i++) {
@@ -88,7 +89,9 @@ function loadRows() {
                 file,
                 name: parts[0],
                 mode: parts[1],
-                src: unescape(parts[2]),
+                // __FIXTURES__ -> absolute test/spec/files dir, so file-loading
+                // (@"file") rows resolve to the shared fixtures from any cwd.
+                src: unescape(parts[2]).replaceAll('__FIXTURES__', FIXTURES_DIR),
                 expect: unescape(parts[3]),
             });
         }

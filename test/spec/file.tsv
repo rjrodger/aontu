@@ -1,0 +1,10 @@
+# File/source resolution (@"file"). __FIXTURES__ is replaced by the abs test/spec/files dir.
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err
+load-top	gen	@"__FIXTURES__/foo.jsonic"	{"f":11}
+load-nested	gen	a:@"__FIXTURES__/foo.jsonic"	{"a":{"f":11}}
+load-merge	gen	b:1 a:@"__FIXTURES__/foo.jsonic"	{"b":1,"a":{"f":11}}
+load-car	gen	car:@"__FIXTURES__/car.jsonic"	{"car":{"color":"silver","doors":4}}
+load-unify	gen	car:@"__FIXTURES__/car.jsonic" car:{doors:number,wheels:4}	{"car":{"color":"silver","doors":4,"wheels":4}}
+load-refs	gen	@"__FIXTURES__/refs.jsonic"	{"a":{"x":1},"b":1}
+load-spread	gen	@"__FIXTURES__/spread.jsonic"	{"one":{"active":true},"two":{"active":true}}
+load-conflict	err	car:@"__FIXTURES__/car.jsonic" car:{doors:5}	Cannot unify

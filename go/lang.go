@@ -7,6 +7,7 @@ import (
 
 	expr "github.com/jsonicjs/expr/go"
 	jsonic "github.com/jsonicjs/jsonic/go"
+	multisource "github.com/jsonicjs/multisource/go"
 	path "github.com/jsonicjs/path/go"
 )
 
@@ -26,10 +27,9 @@ import (
 //   3. convert map[string]any -> MapVal and []any -> ListVal in a final
 //      post-walk (asVal).
 //
-// Coverage: the op table wires conjunction (&), disjunction (|),
-// preference (*) and references ($ / . path operators). Spreads, the +
-// operator and the built-in functions are added incrementally (see
-// AGENTS.md).
+// The grammar layers the expr operators (& | * $ . +), the path plugin,
+// custom rules for &: spreads and a?: optional keys, and the multisource
+// plugin for @"file" loading — the same stack and order as ts/src/lang.ts.
 
 // orderKey is the sentinel map entry holding insertion order, spreadKey
 // holds the &: spread value. The NUL prefix keeps them from colliding
@@ -151,6 +151,13 @@ func makeLang() (*jsonic.Jsonic, error) {
 		rs.AC = append(rs.AC, elemSpread)
 	})
 
+	// @"file" source loading — registered last so the multisource
+	// directive layers over the aontu grammar (mirrors the ts/src/lang.ts
+	// order: AontuJsonic then MultiSource).
+	if err := j.Use(multisource.MultiSource, msOptions("")); err != nil {
+		return nil, err
+	}
+
 	return j, nil
 }
 
@@ -196,6 +203,12 @@ func valDef(mk func(sp int) Val) *jsonic.ValueDef {
 // wrapLeaf converts a plain scalar leaf (number/string/bool) produced by
 // jsonic into the matching Val, recording the source byte offset.
 func wrapLeaf(r *jsonic.Rule, _ *jsonic.Context) {
+	// Leave the @"path" argument of the multisource directive as a raw
+	// string so the directive can read it (it extracts the path itself,
+	// unlike the TS resolver which reads StringVal.peg).
+	if r.Parent != nil && r.Parent.Name == "multisource" {
+		return
+	}
 	sp := -1
 	src := ""
 	if r.ON > 0 {
@@ -383,7 +396,13 @@ func asVal(node any) Val {
 		}
 		ord, _ := n[orderKey].([]string)
 		for _, k := range ord {
-			mv.set(k, asVal(n[k]))
+			// Skip an order entry with no value: the multisource mark "@"
+			// is recorded in order but injects its content under real keys.
+			v, ok := n[k]
+			if !ok {
+				continue
+			}
+			mv.set(k, asVal(v))
 		}
 		return mv
 	case []any:

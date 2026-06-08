@@ -32,6 +32,13 @@ func TestSpec(t *testing.T) {
 		t.Fatalf("cannot read spec dir %s: %v", specDir, err)
 	}
 
+	// Absolute fixtures dir, so file-loading (@"file") rows resolve the
+	// same shared fixtures from any cwd.
+	fixturesDir, err := filepath.Abs(filepath.Join(specDir, "files"))
+	if err != nil {
+		t.Fatalf("fixtures dir: %v", err)
+	}
+
 	var files []string
 	for _, e := range entries {
 		if strings.HasSuffix(e.Name(), ".tsv") {
@@ -59,7 +66,7 @@ func TestSpec(t *testing.T) {
 			}
 			name := parts[0]
 			mode := parts[1]
-			src := unescapeSpec(parts[2])
+			src := strings.ReplaceAll(unescapeSpec(parts[2]), "__FIXTURES__", fixturesDir)
 			expect := unescapeSpec(parts[3])
 			total++
 
