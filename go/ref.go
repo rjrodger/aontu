@@ -305,6 +305,25 @@ func (vv *VarVal) Canon() string {
 }
 
 func (vv *VarVal) Unify(peer Val, ctx *Ctx) Val {
+	if peer == nil {
+		peer = top()
+	}
+	// $.a.b form: an absolute path reference.
+	if rv, ok := vv.peg.(*RefVal); ok {
+		rv.absolute = true
+		return rv.Unify(peer, ctx)
+	}
+	// $name form: look the variable up in the context (mirrors
+	// VarVal.unify in ts/src/val/VarVal.ts).
+	name := varName(vv)
+	if name == "" {
+		return makeNilErr(ctx, "var", vv, peer)
+	}
+	if ctx.vars != nil {
+		if found, ok := ctx.vars[name]; ok {
+			return clonePath(found, cp(vv.path))
+		}
+	}
 	return makeNilErr(ctx, "unknown_var", vv, peer)
 }
 

@@ -12,6 +12,7 @@ type Ctx struct {
 	depth  int             // unite recursion depth (cycle guard)
 	cc     int             // current fixpoint pass (for late-resolving funcs)
 	hidden map[string]bool // source paths hidden by move()
+	vars   map[string]Val  // user-provided variables, resolved by $name
 }
 
 func (c *Ctx) hide(path []string) {

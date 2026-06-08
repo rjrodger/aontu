@@ -104,11 +104,19 @@ scalars, scalar kinds (type constraints), maps (implicit nesting,
 duplicate-key merge, spreads `&:`, optional keys `a?:`, `close`/`open`),
 lists (incl. `&:` spreads), conjunction (`&`), disjunction (`|`),
 preference/defaults (`*`), references (`$.a.b`, relative `.x.a`, `$KEY`,
-cross/chained refs), the `+` operator (and parenthesised grouping), all
-twelve built-in functions (`upper`, `lower`, `copy`, `key`, `pref`,
-`super`, `type`, `hide`, `close`, `open`, `move`, `path`), type/hide
-marks, and `@"file"` source loading via the multisource plugin — plus
-`parse`, `unify`, `generate` and `canon`.
+cross/chained refs), `$name` variables, the `+` operator (and
+parenthesised grouping), all twelve built-in functions (`upper`,
+`lower`, `copy`, `key`, `pref`, `super`, `type`, `hide`, `close`,
+`open`, `move`, `path`), type/hide marks, and `@"file"` source loading
+via the multisource plugin — plus `parse`, `unify`, `generate` and
+`canon`.
+
+Both use the **same `jsonicjs` plugins**: TS `jsonic` +
+`@jsonic/{expr,path,multisource,directive}`; Go
+`github.com/jsonicjs/{jsonic,expr,path,multisource,directive}/go` — the
+official Go ports. `$var` variables are supplied via the runner context
+(`ctx.vars` in TS, `Aontu.GenerateVars(src, vars)` in Go); the shared
+`test/spec/var.tsv` rows are checked with the same variable set in both.
 
 Both implementations use the same `jsonicjs` Go/TS stack (jsonic + expr +
 path + multisource), so the parser and semantics stay in lock-step. The

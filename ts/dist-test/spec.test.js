@@ -53,6 +53,10 @@ const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
 const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
+const IntegerVal_1 = require("../dist/val/IntegerVal");
+const StringVal_1 = require("../dist/val/StringVal");
+const BooleanVal_1 = require("../dist/val/BooleanVal");
+const MapVal_1 = require("../dist/val/MapVal");
 // test/spec lives at the repo root, two levels up from ts/dist-test.
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec');
 const FIXTURES_DIR = Path.join(SPEC_DIR, 'files');
@@ -107,14 +111,16 @@ function loadRows() {
     for (const row of rows) {
         (0, node_test_1.test)(`${row.file}:${row.name}`, () => {
             const a0 = new aontu_1.Aontu();
+            // Fresh context per row carrying the shared $var test variables.
+            const ctx = makeVarsCtx(a0);
             if ('canon' === row.mode) {
-                Assert.strictEqual(a0.unify(row.src).canon, row.expect);
+                Assert.strictEqual(a0.unify(row.src, undefined, ctx).canon, row.expect);
             }
             else if ('gen' === row.mode) {
-                Assert.deepStrictEqual(a0.generate(row.src), JSON.parse(row.expect));
+                Assert.deepStrictEqual(a0.generate(row.src, undefined, ctx), JSON.parse(row.expect));
             }
             else if ('err' === row.mode) {
-                Assert.throws(() => a0.generate(row.src), (err) => {
+                Assert.throws(() => a0.generate(row.src, undefined, makeVarsCtx(a0)), (err) => {
                     const msg = String(err && err.message);
                     Assert.ok(msg.includes(row.expect), `expected error containing "${row.expect}", got: ${msg}`);
                     return true;
@@ -126,4 +132,13 @@ function loadRows() {
         });
     }
 });
+// The $var test variables, shared with the Go runner (go/spec_test.go).
+function makeVarsCtx(a0) {
+    const ctx = a0.ctx();
+    ctx.vars.foo = new IntegerVal_1.IntegerVal({ peg: 11 });
+    ctx.vars.bar = new StringVal_1.StringVal({ peg: 'hello' });
+    ctx.vars.flag = new BooleanVal_1.BooleanVal({ peg: true });
+    ctx.vars.obj = new MapVal_1.MapVal({ peg: { x: new IntegerVal_1.IntegerVal({ peg: 1 }) } });
+    return ctx;
+}
 //# sourceMappingURL=spec.test.js.map

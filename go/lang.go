@@ -325,12 +325,13 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 	case "dot-infix":
 		return newRef(terms, false)
 	case "dollar-prefix":
-		// $.a.b -> absolute reference; $name -> variable.
+		// $.a.b -> absolute reference; $name -> variable (the name is
+		// wrapped as a StringVal so canon renders as $"name").
 		if r0, ok := terms[0].(*RefVal); ok {
 			r0.absolute = true
 			return r0
 		}
-		return newVar(terms[0])
+		return newVar(asVal(terms[0]))
 	case "addition-infix":
 		return newPlusOp(asVal(terms[0]), asVal(terms[1]))
 	case "func-paren":
