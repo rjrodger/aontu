@@ -23,6 +23,9 @@ func setPaths(v Val, path []string) {
 			setPaths(n.peg[k], append(cp(path), k))
 		}
 	case *ListVal:
+		if n.spread != nil {
+			setPaths(n.spread, path)
+		}
 		for i, e := range n.peg {
 			setPaths(e, append(cp(path), itoa(i)))
 		}
@@ -90,6 +93,9 @@ func clonePath(v Val, path []string) Val {
 		out.dc = n.dc
 		out.path = cp(path)
 		out.closed = n.closed
+		if n.spread != nil {
+			out.spread = clonePath(n.spread, path)
+		}
 		copyMarks(out, n)
 		for i, e := range n.peg {
 			out.peg = append(out.peg, clonePath(e, append(cp(path), itoa(i))))

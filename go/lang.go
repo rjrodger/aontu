@@ -142,7 +142,35 @@ func makeLang() (*jsonic.Jsonic, error) {
 		rs.AC = append(rs.AC, trackOrder)
 	})
 
+	// elem: a `&:value` list element is a spread; jsonic appends it as a
+	// normal element, so replace it with a marker that asVal extracts.
+	j.Rule("elem", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.Open = append([]*jsonic.AltSpec{
+			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+		}, rs.Open...)
+		rs.AC = append(rs.AC, elemSpread)
+	})
+
 	return j, nil
+}
+
+// listSpread marks the &: spread value within a parsed list slice.
+type listSpread struct{ val Val }
+
+func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
+	if r.U["spread"] != true {
+		return
+	}
+	list, ok := r.Node.([]any)
+	if !ok || len(list) == 0 {
+		return
+	}
+	sv := asVal(r.Child.Node)
+	if ls, ok := list[len(list)-1].(*listSpread); ok {
+		ls.val = mergeVals(ls.val, sv)
+		return
+	}
+	list[len(list)-1] = &listSpread{val: sv}
 }
 
 func kindDef(k Kind) *jsonic.ValueDef {
@@ -359,11 +387,19 @@ func asVal(node any) Val {
 		}
 		return mv
 	case []any:
-		elems := make([]Val, 0, len(n))
+		lv := &ListVal{}
 		for _, e := range n {
-			elems = append(elems, asVal(e))
+			if ls, ok := e.(*listSpread); ok {
+				if lv.spread == nil {
+					lv.spread = ls.val
+				} else {
+					lv.spread = mergeVals(lv.spread, ls.val)
+				}
+				continue
+			}
+			lv.peg = append(lv.peg, asVal(e))
 		}
-		return newList(elems)
+		return lv
 	case float64:
 		// Source text is unavailable here (e.g. expr operands); treat an
 		// integral value as an integer.
