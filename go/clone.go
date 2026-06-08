@@ -16,6 +16,9 @@ func setPaths(v Val, path []string) {
 	v.setvpath(path)
 	switch n := v.(type) {
 	case *MapVal:
+		if n.spread != nil {
+			setPaths(n.spread, path)
+		}
 		for _, k := range n.keys {
 			setPaths(n.peg[k], append(cp(path), k))
 		}
@@ -73,6 +76,9 @@ func clonePath(v Val, path []string) Val {
 		out.dc = n.dc
 		out.path = cp(path)
 		out.closed = n.closed
+		if n.spread != nil {
+			out.spread = clonePath(n.spread, path)
+		}
 		copyMarks(out, n)
 		for _, k := range n.keys {
 			out.set(k, clonePath(n.peg[k], append(cp(path), k)))

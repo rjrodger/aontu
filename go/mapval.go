@@ -11,6 +11,7 @@ type MapVal struct {
 	keys   []string
 	peg    map[string]Val
 	closed bool // close() — no keys beyond those present may be added
+	spread Val  // &: spread constraint applied to every key (nil if none)
 }
 
 func newMap() *MapVal {
@@ -50,6 +51,13 @@ func (m *MapVal) superior() Val { return top() }
 func (m *MapVal) Canon() string {
 	var b strings.Builder
 	b.WriteByte('{')
+	if m.spread != nil {
+		b.WriteString("&:")
+		b.WriteString(m.spread.Canon())
+		if len(m.keys) > 0 {
+			b.WriteByte(',')
+		}
+	}
 	for i, k := range m.keys {
 		if i > 0 {
 			b.WriteByte(',')
@@ -60,6 +68,15 @@ func (m *MapVal) Canon() string {
 	}
 	b.WriteByte('}')
 	return b.String()
+}
+
+// spreadCloneFor returns a per-key copy of the spread constraint (TOP
+// needs no cloning).
+func spreadCloneFor(s Val, path []string) Val {
+	if isTop(s) {
+		return s
+	}
+	return clonePath(s, path)
 }
 
 func (m *MapVal) Gen(ctx *Ctx) (any, error) {
@@ -93,11 +110,27 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 	out := newMap()
 	out.closed = m.closed
+	out.path = cp(m.path)
+	out.spread = m.spread
 	done := true
 
-	// Unify own children towards TOP first (drives convergence).
+	// Combine spreads from both sides.
+	if pm, ok := peer.(*MapVal); ok {
+		if out.spread == nil {
+			out.spread = pm.spread
+		} else if pm.spread != nil {
+			out.spread = unite(ctx, out.spread, pm.spread)
+		}
+	}
+	var spreadCj Val = top()
+	if out.spread != nil {
+		spreadCj = out.spread
+	}
+
+	// Own children: each is unified with a fresh clone of the spread.
 	for _, k := range m.keys {
-		cv := unite(ctx, m.peg[k], top())
+		child := m.peg[k]
+		cv := unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k)))
 		out.set(k, cv)
 		if cv.Dc() != DONE {
 			done = false
@@ -111,18 +144,19 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			if _, allowed := m.peg[pk]; m.closed && !allowed {
 				return makeNilErr(ctx, "closed", pc, nil)
 			}
+			var uv Val
 			if ex, ok := out.peg[pk]; ok {
-				uv := unite(ctx, ex, pc)
-				out.set(pk, uv)
-				if uv.Dc() != DONE {
-					done = false
-				}
+				uv = unite(ctx, ex, pc)
 			} else {
-				uv := unite(ctx, pc, top())
-				out.set(pk, uv)
-				if uv.Dc() != DONE {
-					done = false
-				}
+				uv = unite(ctx, pc, top())
+			}
+			// A spread on the receiving map also applies to peer keys.
+			if m.spread != nil {
+				uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(m.path), pk)))
+			}
+			out.set(pk, uv)
+			if uv.Dc() != DONE {
+				done = false
 			}
 		}
 	} else if !isTop(peer) {

@@ -31,9 +31,11 @@ import (
 // operator and the built-in functions are added incrementally (see
 // AGENTS.md).
 
-// orderKey is the sentinel map entry holding insertion order. The NUL
-// prefix keeps it from colliding with real keys.
+// orderKey is the sentinel map entry holding insertion order, spreadKey
+// holds the &: spread value. The NUL prefix keeps them from colliding
+// with real keys.
 const orderKey = "\x00aontu_order"
+const spreadKey = "\x00aontu_spread"
 
 var theLang = mustMakeLang()
 
@@ -100,13 +102,37 @@ func makeLang() (*jsonic.Jsonic, error) {
 		return nil, err
 	}
 
-	// val: wrap scalar leaves into Vals, capturing source position.
+	// The `&` operator token, used to recognise the &: spread syntax.
+	cj := j.Token("#E&")
+	cl := jsonic.TinCL
+
+	// val: a leading `&:` is an implicit spread map (a:&:{x:1}); push to
+	// map without consuming. Otherwise wrap scalar leaves into Vals.
 	j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.Open = append([]*jsonic.AltSpec{
+			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
+		}, rs.Open...)
+		// On close, a following `&:` belongs to the enclosing map as a
+		// spread, not a conjunct — backtrack so the map can take it.
+		rs.Close = append([]*jsonic.AltSpec{
+			{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
+		}, rs.Close...)
 		rs.AC = append(rs.AC, wrapLeaf)
 	})
 
-	// pair: record key order on the enclosing map node.
+	// map: a leading `&:` pushes to pair without consuming.
+	j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.Open = append([]*jsonic.AltSpec{
+			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, G: "spread"},
+		}, rs.Open...)
+	})
+
+	// pair: `&:value` is a spread (stored on the enclosing map);
+	// otherwise record key order.
 	j.Rule("pair", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.Open = append([]*jsonic.AltSpec{
+			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+		}, rs.Open...)
 		rs.AC = append(rs.AC, trackOrder)
 	})
 
@@ -174,6 +200,17 @@ func numberVal(n float64, src string, sp int) Val {
 func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	m, ok := r.Node.(map[string]any)
 	if !ok {
+		return
+	}
+	// A &: spread pair: store the spread value (merge multiple spreads
+	// into a conjunct) rather than recording it as a key.
+	if r.U["spread"] == true {
+		sv := asVal(r.Child.Node)
+		if existing, ok := m[spreadKey]; ok {
+			m[spreadKey] = mergeVals(existing.(Val), sv)
+		} else {
+			m[spreadKey] = sv
+		}
 		return
 	}
 	key := keyOf(r.O0)
@@ -292,6 +329,9 @@ func asVal(node any) Val {
 		return asVal(expr.Evaluation(nil, nil, n, evaluate))
 	case map[string]any:
 		mv := newMap()
+		if sp, ok := n[spreadKey]; ok {
+			mv.spread = sp.(Val)
+		}
 		ord, _ := n[orderKey].([]string)
 		for _, k := range ord {
 			mv.set(k, asVal(n[k]))
