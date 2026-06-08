@@ -21,11 +21,17 @@ import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
 import { Aontu } from '../dist/aontu'
+import { IntegerVal } from '../dist/val/IntegerVal'
+import { StringVal } from '../dist/val/StringVal'
+import { BooleanVal } from '../dist/val/BooleanVal'
+import { MapVal } from '../dist/val/MapVal'
 
 
 // test/spec lives at the repo root, two levels up from ts/dist-test.
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec')
 
+
+const FIXTURES_DIR = Path.join(SPEC_DIR, 'files')
 
 type Row = {
   file: string
@@ -72,7 +78,9 @@ function loadRows(): Row[] {
         file,
         name: parts[0],
         mode: parts[1],
-        src: unescape(parts[2]),
+        // __FIXTURES__ -> absolute test/spec/files dir, so file-loading
+        // (@"file") rows resolve to the shared fixtures from any cwd.
+        src: unescape(parts[2]).replaceAll('__FIXTURES__', FIXTURES_DIR),
         expect: unescape(parts[3]),
       })
     }
@@ -93,16 +101,19 @@ describe('spec', () => {
   for (const row of rows) {
     test(`${row.file}:${row.name}`, () => {
       const a0 = new Aontu()
+      // Fresh context per row carrying the shared $var test variables.
+      const ctx = makeVarsCtx(a0)
 
       if ('canon' === row.mode) {
-        Assert.strictEqual(a0.unify(row.src).canon, row.expect)
+        Assert.strictEqual(a0.unify(row.src, undefined, ctx).canon, row.expect)
       }
       else if ('gen' === row.mode) {
-        Assert.deepStrictEqual(a0.generate(row.src), JSON.parse(row.expect))
+        Assert.deepStrictEqual(
+          a0.generate(row.src, undefined, ctx), JSON.parse(row.expect))
       }
       else if ('err' === row.mode) {
         Assert.throws(
-          () => a0.generate(row.src),
+          () => a0.generate(row.src, undefined, makeVarsCtx(a0)),
           (err: any) => {
             const msg = String(err && err.message)
             Assert.ok(
@@ -119,3 +130,14 @@ describe('spec', () => {
     })
   }
 })
+
+
+// The $var test variables, shared with the Go runner (go/spec_test.go).
+function makeVarsCtx(a0: Aontu): any {
+  const ctx = a0.ctx()
+  ctx.vars.foo = new IntegerVal({ peg: 11 })
+  ctx.vars.bar = new StringVal({ peg: 'hello' })
+  ctx.vars.flag = new BooleanVal({ peg: true })
+  ctx.vars.obj = new MapVal({ peg: { x: new IntegerVal({ peg: 1 }) } })
+  return ctx
+}

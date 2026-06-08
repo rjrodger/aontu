@@ -31,6 +31,12 @@ func (p *PrefVal) Gen(ctx *Ctx) (any, error) {
 }
 
 func (p *PrefVal) Unify(peer Val, ctx *Ctx) Val {
+	// Resolve the preferred value (e.g. a function) before comparing.
+	if p.peg.Dc() != DONE {
+		p.peg = unite(ctx, p.peg, top())
+		p.superpeg = p.peg.superior()
+	}
+
 	if peer == nil || isTop(peer) {
 		p.setDc(DONE)
 		return p

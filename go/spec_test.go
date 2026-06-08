@@ -32,6 +32,13 @@ func TestSpec(t *testing.T) {
 		t.Fatalf("cannot read spec dir %s: %v", specDir, err)
 	}
 
+	// Absolute fixtures dir, so file-loading (@"file") rows resolve the
+	// same shared fixtures from any cwd.
+	fixturesDir, err := filepath.Abs(filepath.Join(specDir, "files"))
+	if err != nil {
+		t.Fatalf("fixtures dir: %v", err)
+	}
+
 	var files []string
 	for _, e := range entries {
 		if strings.HasSuffix(e.Name(), ".tsv") {
@@ -59,15 +66,16 @@ func TestSpec(t *testing.T) {
 			}
 			name := parts[0]
 			mode := parts[1]
-			src := unescapeSpec(parts[2])
+			src := strings.ReplaceAll(unescapeSpec(parts[2]), "__FIXTURES__", fixturesDir)
 			expect := unescapeSpec(parts[3])
 			total++
 
 			t.Run(file+":"+name, func(t *testing.T) {
 				a := New()
+				vars := specVars()
 				switch mode {
 				case "canon":
-					v, err := a.Unify(src)
+					v, err := a.UnifyVars(src, vars)
 					if err != nil {
 						t.Fatalf("unify error: %v\n src: %q", err, src)
 					}
@@ -75,7 +83,7 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("canon mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
 					}
 				case "gen":
-					got, err := a.Generate(src)
+					got, err := a.GenerateVars(src, vars)
 					if err != nil {
 						t.Fatalf("generate error: %v\n src: %q", err, src)
 					}
@@ -84,7 +92,7 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("gen mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, string(gj))
 					}
 				case "err":
-					_, err := a.Generate(src)
+					_, err := a.GenerateVars(src, vars)
 					if err == nil {
 						t.Fatalf("expected error containing %q, got none\n src: %q", expect, src)
 					}
@@ -100,6 +108,19 @@ func TestSpec(t *testing.T) {
 
 	if total == 0 {
 		t.Fatalf("no spec rows loaded from %s", specDir)
+	}
+}
+
+// specVars are the $var test variables, shared with the TypeScript
+// runner (ts/test/spec.test.ts).
+func specVars() map[string]Val {
+	obj := newMap()
+	obj.set("x", newInteger(1))
+	return map[string]Val{
+		"foo":  newInteger(11),
+		"bar":  newString("hello"),
+		"flag": newBoolean(true),
+		"obj":  obj,
 	}
 }
 

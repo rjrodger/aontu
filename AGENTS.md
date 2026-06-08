@@ -95,14 +95,32 @@ that both implementations satisfy.
 ## Implementation parity & Go coverage
 
 TypeScript is canonical; the Go port is kept in parity for the subset it
-implements. The Go port currently covers the **core lattice**: scalars,
-scalar kinds (type constraints), maps (incl. implicit nesting and
-duplicate-key merge), lists, conjunction (`&`), disjunction (`|`) and
-preference/defaults (`*`), plus `parse`, `unify`, `generate` and `canon`.
+implements. The Go **parser** is built on the official Go ports of jsonic
+and its `expr`/`path` plugins (`github.com/jsonicjs/...`) — the same stack
+as `ts/src/lang.ts` — so the surface syntax parses in parity.
 
-Not yet ported to Go (TypeScript-only for now): references (`$.a.b`),
-spreads (`&:`), and the built-in functions. The shared spec is scoped to
-what both implementations pass; grow it as the Go port grows.
+The Go port has **full parity** with the canonical TypeScript language:
+scalars, scalar kinds (type constraints), maps (implicit nesting,
+duplicate-key merge, spreads `&:`, optional keys `a?:`, `close`/`open`),
+lists (incl. `&:` spreads), conjunction (`&`), disjunction (`|`),
+preference/defaults (`*`), references (`$.a.b`, relative `.x.a`, `$KEY`,
+cross/chained refs), `$name` variables, the `+` operator (and
+parenthesised grouping), all twelve built-in functions (`upper`,
+`lower`, `copy`, `key`, `pref`, `super`, `type`, `hide`, `close`,
+`open`, `move`, `path`), type/hide marks, and `@"file"` source loading
+via the multisource plugin — plus `parse`, `unify`, `generate` and
+`canon`.
+
+Both use the **same `jsonicjs` plugins**: TS `jsonic` +
+`@jsonic/{expr,path,multisource,directive}`; Go
+`github.com/jsonicjs/{jsonic,expr,path,multisource,directive}/go` — the
+official Go ports. `$var` variables are supplied via the runner context
+(`ctx.vars` in TS, `Aontu.GenerateVars(src, vars)` in Go); the shared
+`test/spec/var.tsv` rows are checked with the same variable set in both.
+
+Both implementations use the same `jsonicjs` Go/TS stack (jsonic + expr +
+path + multisource), so the parser and semantics stay in lock-step. The
+shared spec is the contract; grow it whenever either side changes.
 
 ## Conventions
 

@@ -1,0 +1,18 @@
+# References ($.a.b absolute paths). Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err
+basic	gen	a:1 b:$.a	{"a":1,"b":1}
+basic-canon	canon	a:1 b:$.a	{"a":1,"b":1}
+fanout	gen	src:42\na:$.src\nb:$.src\nc:$.src	{"src":42,"a":42,"b":42,"c":42}
+nested-field	gen	src:{x:10,y:20}\na:$.src.x\nb:$.src.y	{"src":{"x":10,"y":20},"a":10,"b":20}
+deep-path	gen	a:b:c:1 d:$.a.b.c	{"a":{"b":{"c":1}},"d":1}
+ref-to-map	gen	a:b:{c:1,d:2} e:$.a.b	{"a":{"b":{"c":1,"d":2}},"e":{"c":1,"d":2}}
+cross	gen	a:{x:1,y:$.b.x} b:{x:2,y:$.a.x}	{"a":{"x":1,"y":2},"b":{"x":2,"y":1}}
+chain	gen	a:{v:$.b.v} b:{v:$.c.v} c:{v:99}	{"a":{"v":99},"b":{"v":99},"c":{"v":99}}
+add-field	gen	base:{a:1} step1:{a:$.base.a,b:2}	{"base":{"a":1},"step1":{"a":1,"b":2}}
+ref-and-merge	gen	q:a:{x:1} w:b:$.q.a & {y:2,z:3}	{"q":{"a":{"x":1}},"w":{"b":{"x":1,"y":2,"z":3}}}
+list-index	gen	a:[10,20,30] b:$.a.1	{"a":[10,20,30],"b":20}
+no-path	err	a:$.nope	Cannot resolve value: $.nope
+relative	gen	z:x:{a:62} z:y:.x.a	{"z":{"x":{"a":62},"y":62}}
+relative-add	gen	x:{a:4} y:.x.a	{"x":{"a":4},"y":4}
+key	gen	a:{k:.$KEY}	{"a":{"k":"a"}}
+key-deep	gen	a:b:{k:.$KEY}	{"a":{"b":{"k":"b"}}}
+key-sibling	gen	x:1 a:{k:.$KEY}	{"x":1,"a":{"k":"a"}}

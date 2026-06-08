@@ -1,0 +1,8 @@
+# Optional keys (a?:1) — dropped from output when unresolved. Columns: name<TAB>mode<TAB>src<TAB>expect
+drop-type	gen	{x?:number,y:Y}	{"y":"Y"}
+drop-top	gen	{x?:top,y:Y}	{"y":"Y"}
+drop-ref	gen	m:{x?:number,y:Y} n:$.m	{"m":{"y":"Y"},"n":{"y":"Y"}}
+fill	gen	a:{x?:number} a:{x:11}	{"a":{"x":11}}
+partial-empty	gen	a:{y?:number,z:2} a:{}	{"a":{"z":2}}
+partial-fill	gen	a:{y?:number,z:2} a:{y:11}	{"a":{"y":11,"z":2}}
+default-kept	gen	a:{y?:number,z:*3} a:{y:11}	{"a":{"y":11,"z":3}}

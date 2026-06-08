@@ -8,11 +8,13 @@
 // is validated against the shared test specs in ../test/spec (run by
 // both implementations).
 //
-// Coverage note: this port implements the core of the lattice —
-// scalars, scalar kinds (type constraints), maps, lists, conjunction
-// (&), disjunction (|) and preference/defaults (*) — which is the
-// subset exercised by the shared spec. References ($.a.b), spreads
-// (&:) and the built-in functions remain TypeScript-only for now.
+// Coverage note: this port has full parity with the TypeScript language
+// — scalars, scalar kinds, maps (nesting, merge, spreads &:, optional
+// keys, close/open), lists (incl. &: spreads), conjunction (&),
+// disjunction (|), preference (*), references ($.a.b / .x.a / $KEY),
+// $name variables, the + operator, all twelve built-in functions
+// (upper/lower/copy/key/pref/super/type/hide/close/open/move/path),
+// type/hide marks and @"file" source loading.
 package aontu
 
 import "strings"
@@ -45,22 +47,50 @@ type Val interface {
 	setPos(p int)
 	cjo() int
 	superior() Val
+
+	// vpath is the path from the root to this Val, used by references.
+	vpath() []string
+	setvpath(p []string)
+
+	// Marks: type values are constraints, hidden values are excluded
+	// from generation. Both are skipped when generating a containing map.
+	markedType() bool
+	markedHide() bool
+	setMarkType(v bool)
+	setMarkHide(v bool)
 }
 
 // base provides the shared, defaulted Val state. Concrete Val types
 // embed it and override Canon/Gen/Unify/superior (and cjo/Nil where
 // they differ).
 type base struct {
-	dc int
-	sp int // source position (byte offset), used to order error operands
+	dc    int
+	sp    int      // source position (byte offset), used to order error operands
+	path  []string // path from root (for reference resolution)
+	mtype bool     // type mark
+	mhide bool     // hide mark
 }
 
-func (b *base) Dc() int      { return b.dc }
-func (b *base) Nil() bool    { return false }
-func (b *base) setDc(dc int) { b.dc = dc }
-func (b *base) pos() int     { return b.sp }
-func (b *base) setPos(p int) { b.sp = p }
-func (b *base) cjo() int     { return 99999 }
+func (b *base) Dc() int             { return b.dc }
+func (b *base) Nil() bool           { return false }
+func (b *base) setDc(dc int)        { b.dc = dc }
+func (b *base) pos() int            { return b.sp }
+func (b *base) setPos(p int)        { b.sp = p }
+func (b *base) cjo() int            { return 99999 }
+func (b *base) vpath() []string     { return b.path }
+func (b *base) setvpath(p []string) { b.path = p }
+
+func (b *base) markedType() bool   { return b.mtype }
+func (b *base) markedHide() bool   { return b.mhide }
+func (b *base) setMarkType(v bool) { b.mtype = v }
+func (b *base) setMarkHide(v bool) { b.mhide = v }
+
+// notdone advances the done-counter without marking DONE.
+func (b *base) notdone() {
+	if b.dc != DONE {
+		b.dc++
+	}
+}
 
 // --- type predicate helpers (mirror the TS isX flags) ---
 
@@ -68,6 +98,9 @@ func isTop(v Val) bool      { _, ok := v.(*TopVal); return ok }
 func isConjunct(v Val) bool { _, ok := v.(*ConjunctVal); return ok }
 func isDisjunct(v Val) bool { _, ok := v.(*DisjunctVal); return ok }
 func isPref(v Val) bool     { _, ok := v.(*PrefVal); return ok }
+func isRef(v Val) bool      { _, ok := v.(*RefVal); return ok }
+func isVar(v Val) bool      { _, ok := v.(*VarVal); return ok }
+func isFunc(v Val) bool     { _, ok := v.(*FuncVal); return ok }
 
 // TopVal is the unit of the lattice: unifying with TOP yields the
 // other operand. There is conceptually only one TOP.
@@ -146,6 +179,10 @@ func (n *NilVal) Message() string {
 			b.WriteString(" with value: ")
 			b.WriteString(n.secondary.Canon())
 		}
+	}
+	if hint := hints[n.why]; hint != "" {
+		b.WriteString("\n")
+		b.WriteString(hint)
 	}
 	n.msg = b.String()
 	return n.msg

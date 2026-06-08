@@ -1,0 +1,10 @@
+# Plus operator (+) and parenthesised grouping. Columns: name<TAB>mode<TAB>src<TAB>expect
+int-add	gen	x:1+2	{"x":3}
+int-add3	gen	x:1+2+3	{"x":6}
+num-add	gen	x:1.5+2	{"x":3.5}
+str-concat	gen	x:a+b	{"x":"ab"}
+str-concat3	gen	x:a+b+c	{"x":"abc"}
+group	gen	x:(1)	{"x":1}
+group-add	gen	x:(1+2)	{"x":3}
+group-pos	gen	x:(+3+4)	{"x":7}
+deep-add	gen	a:b:c:10+5	{"a":{"b":{"c":15}}}

@@ -102,6 +102,21 @@ func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {
 	} else {
 		out.setDc(c.dc + 1)
 	}
+
+	// Marks propagate from the conjunct and its terms to the result, so
+	// e.g. type({}) & {y:1} stays a type value (excluded from gen).
+	mt := c.mtype || peer.markedType()
+	mh := c.mhide || peer.markedHide()
+	for _, t := range upeer {
+		mt = mt || t.markedType()
+		mh = mh || t.markedHide()
+	}
+	if mt {
+		out.setMarkType(true)
+	}
+	if mh {
+		out.setMarkHide(true)
+	}
 	return out
 }
 

@@ -1,0 +1,10 @@
+# Variables ($name) resolved from the runner-provided vars: foo=11, bar="hello", flag=true, obj={x:1}.
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err
+int	gen	a:$foo	{"a":11}
+str	gen	a:$bar	{"a":"hello"}
+bool	gen	a:$flag	{"a":true}
+obj	gen	a:$obj	{"a":{"x":1}}
+constraint	gen	a:$foo & number	{"a":11}
+multi	gen	x:$foo y:$bar z:$flag	{"x":11,"y":"hello","z":true}
+canon	canon	a:$foo	{"a":11}
+unknown	err	a:$nope	Cannot

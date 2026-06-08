@@ -1,0 +1,10 @@
+# close()/open() — closed maps and lists. Columns: name<TAB>mode<TAB>src<TAB>expect
+close-map	gen	close({x:1})	{"x":1}
+close-match	gen	close({x:1}) & {x:1}	{"x":1}
+close-narrow	gen	close({x:1}) & {x:number}	{"x":1}
+close-scalar	gen	close(42)	42
+close-list	gen	close([1,2])	[1,2]
+close-path	gen	x:{a:1} y:close($.x)	{"x":{"a":1},"y":{"a":1}}
+open-reopen	gen	open(close({x:1})) & {y:2}	{"x":1,"y":2}
+close-extra	err	close({x:1}) & {y:2}	closed
+close-list-extra	err	close([1,2]) & [3,4,5]	closed

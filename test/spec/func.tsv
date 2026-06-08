@@ -1,0 +1,29 @@
+# Built-in functions: upper lower copy key pref. Columns: name<TAB>mode<TAB>src<TAB>expect
+upper-str	gen	x:upper(abc)	{"x":"ABC"}
+lower-str	gen	x:lower(ABC)	{"x":"abc"}
+upper-num	gen	x:upper(1.1)	{"x":2}
+lower-num	gen	x:lower(1.9)	{"x":1}
+lower-neg	gen	x:lower(-1.1)	{"x":-2}
+upper-neg	gen	x:upper(-1.9)	{"x":-1}
+upper-expr	gen	x:upper(a)+b	{"x":"Ab"}
+lower-expr	gen	x:lower(1.1)+2	{"x":3}
+upper-deep	gen	x:{y:upper(b)}	{"x":{"y":"B"}}
+upper-path	gen	x:foo y:upper($.x)	{"x":"foo","y":"FOO"}
+lower-list	gen	x:[lower(A),lower(B)]	{"x":["a","b"]}
+copy-scalar	gen	x:copy(1)	{"x":1}
+copy-map	gen	x:copy({a:1,b:2})	{"x":{"a":1,"b":2}}
+copy-path	gen	x:{a:1,b:2} y:copy($.x)	{"x":{"a":1,"b":2},"y":{"a":1,"b":2}}
+key-basic	gen	a:b:c:key()	{"a":{"b":{"c":"b"}}}
+key-one	gen	a:b:key()	{"a":{"b":"a"}}
+key-arg0	gen	a:b:c:key(0)	{"a":{"b":{"c":"c"}}}
+key-arg2	gen	a:b:c:key(2)	{"a":{"b":{"c":"a"}}}
+pref-scalar	gen	x:pref(1)	{"x":1}
+pref-map	gen	x:pref({a:1})	{"x":{"a":1}}
+pref-override	gen	x:pref(2),x:3	{"x":3}
+pref-canon	canon	x:pref(1)	{"x":*1}
+pref-func	gen	x:*upper(foo)	{"x":"FOO"}
+path-ref	gen	z:x:{a:64} z:y:path(x.a)	{"z":{"x":{"a":64},"y":64}}
+path-abs	gen	z:x:{a:65} z:y:path($.z.x.a)	{"z":{"x":{"a":65},"y":65}}
+move-basic	gen	m:{x?:number,y:Y} n:move($.m)	{"n":{"y":"Y"}}
+move-top	gen	m:{x?:top,y:Y} n:move($.m)	{"n":{"y":"Y"}}
+move-closed	gen	m:close({x?:number,y:Y}) n:move($.m)	{"n":{"y":"Y"}}
