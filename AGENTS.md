@@ -13,10 +13,11 @@ that, this repo adds a **shared, data-driven test suite** so both
 implementations are checked against the same cases.
 
 > **CI note:** the intended two-job (TypeScript + Go) GitHub Actions
-> workflow lives in [`docs/ci-build.yml`](docs/ci-build.yml). Updating
+> workflow is provided as a full `.github` tree under
+> [`ci/`](ci/) (`ci/.github/workflows/build.yml`). Updating
 > `.github/workflows/` requires the GitHub `workflow` OAuth scope, so
-> copy that file over `.github/workflows/build.yml` and push from an
-> account that has the scope to enable it.
+> copy `ci/.github` over the repo's `.github` and push from an account
+> that has the scope to enable it.
 
 ## Repository layout
 

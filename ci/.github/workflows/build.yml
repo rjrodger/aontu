@@ -1,19 +1,9 @@
-# Proposed dual-language CI workflow.
+# Dual-language build: a TypeScript matrix and a Go job.
 #
-# This is the intended replacement for .github/workflows/build.yml once
-# the repo moved to the ts/ + go/ layout: the previous workflow ran
-# `npm install` at the repo root, which no longer has a package.json.
-#
-# It was NOT committed directly to .github/workflows/ because updating a
-# workflow file requires the GitHub OAuth "workflow" scope. To apply it,
-# copy this file over .github/workflows/build.yml and push from an
-# account/token that has the workflow scope:
-#
-#     cp docs/ci-build.yml .github/workflows/build.yml
-#     git add .github/workflows/build.yml && git commit -m "ci: dual TS/Go build"
-#
-# It runs two independent jobs (mirroring voxgig/util): a TypeScript
-# matrix in ts/, and a Go job (build, vet, test) in go/.
+# This is the intended .github/workflows/build.yml for the ts/ + go/
+# layout. It lives under the top-level ci/ folder (copy ci/.github over
+# the repo's .github) because updating .github/workflows/ directly
+# requires the GitHub "workflow" OAuth scope.
 
 name: build
 
