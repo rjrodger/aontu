@@ -1,0 +1,9 @@
+# Disjunction (|): alternatives
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+basic-canon	canon	a:1|2	{"a":1|2}
+kind-canon	canon	a:string|number	{"a":string|number}
+str-or-canon	canon	a:x|y	{"a":"x"|"y"}
+three-canon	canon	a:1|2|3	{"a":1|2|3}
+unify-pick	gen	a:1\na:1|2	{"a":1}
+unify-pick-canon	canon	a:2\na:1|2	{"a":2}
+kind-pick	gen	a:2\na:string|number	{"a":2}

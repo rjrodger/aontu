@@ -16,3 +16,33 @@
 This unifier is heavily inspired by [Cue Lang](https://cuelang.org/)
 and may be regarded as a purpose-specific dialect.
 
+
+## Implementations
+
+Aontu ships two implementations, kept in parity (structure inspired by
+[`voxgig/util`](https://github.com/voxgig/util)):
+
+- **TypeScript** in [`ts/`](ts/) — the canonical implementation
+  (published to npm as `aontu`).
+- **Go** in [`go/`](go/) — a port (`github.com/rjrodger/aontu/go`) that
+  mirrors the core unification semantics.
+
+Both are checked against a single, language-agnostic test suite in
+[`test/spec/`](test/spec/) (tab-separated cases run by both
+implementations). See [AGENTS.md](AGENTS.md) and
+[docs/shared-spec.md](docs/shared-spec.md).
+
+```sh
+make build   # build both (ts + go)
+make test    # test both against the shared spec
+```
+
+### Repository layout
+
+```
+ts/          canonical TypeScript implementation (src, test, dist, dist-test)
+go/          Go port (package aontu)
+test/spec/   shared *.tsv unit tests both implementations must satisfy
+docs/        documentation
+```
+

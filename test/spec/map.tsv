@@ -1,0 +1,15 @@
+# Maps: braces, implicit nesting, duplicate-key merge
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+empty	gen		{}
+empty-canon	canon		{}
+comment-only	gen	# just a comment	{}
+brace	gen	a:{b:1,c:2}	{"a":{"b":1,"c":2}}
+nest	gen	a:b:1	{"a":{"b":1}}
+nest3	gen	a:b:c:1	{"a":{"b":{"c":1}}}
+merge	canon	a:{b:1},a:{c:2}	{"a":{"b":1,"c":2}}
+merge-dotted	canon	a:b:1,a:c:2	{"a":{"b":1,"c":2}}
+merge-gen	gen	a:b:1 a:c:2	{"a":{"b":1,"c":2}}
+deep	gen	a:b:c:d:e:1	{"a":{"b":{"c":{"d":{"e":1}}}}}
+deep-merge	gen	a:b:c:1 a:b:d:2 a:e:3	{"a":{"b":{"c":1,"d":2},"e":3}}
+wide-merge	gen	a:b:c:x:1\na:b:c:y:2\na:b:d:x:3	{"a":{"b":{"c":{"x":1,"y":2},"d":{"x":3}}}}
+type-narrow-deep	gen	a:b:c:d:e:number\na:b:c:d:e:42	{"a":{"b":{"c":{"d":{"e":42}}}}}
