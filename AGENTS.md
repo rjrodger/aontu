@@ -95,14 +95,19 @@ that both implementations satisfy.
 ## Implementation parity & Go coverage
 
 TypeScript is canonical; the Go port is kept in parity for the subset it
-implements. The Go port currently covers the **core lattice**: scalars,
+implements. The Go **parser** is built on the official Go ports of jsonic
+and its `expr`/`path` plugins (`github.com/jsonicjs/...`) — the same stack
+as `ts/src/lang.ts` — so the surface syntax parses in parity.
+
+Unification/generation currently covers the **core lattice**: scalars,
 scalar kinds (type constraints), maps (incl. implicit nesting and
 duplicate-key merge), lists, conjunction (`&`), disjunction (`|`) and
 preference/defaults (`*`), plus `parse`, `unify`, `generate` and `canon`.
 
-Not yet ported to Go (TypeScript-only for now): references (`$.a.b`),
-spreads (`&:`), and the built-in functions. The shared spec is scoped to
-what both implementations pass; grow it as the Go port grows.
+Still being ported to Go: references (`$.a.b`), spreads (`&:`), the `+`
+operator and the built-in functions — these now *parse* but do not yet
+fully unify/generate. The shared spec is scoped to what both
+implementations pass; grow it as the Go port grows.
 
 ## Conventions
 
