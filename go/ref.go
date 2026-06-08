@@ -12,9 +12,10 @@ import (
 // ts/src/val/RefVal.ts.
 type RefVal struct {
 	base
-	peg      []any // path parts: string or *VarVal
-	absolute bool
-	prefix   bool
+	peg       []any // path parts: string or *VarVal
+	absolute  bool
+	prefix    bool
+	hideFound bool // move(): hide the resolution target in place
 }
 
 func newRef(terms []any, prefix bool) *RefVal {
@@ -195,6 +196,10 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		}
 	}
 
+	// move(): hide the source location, but keep the moved copy visible.
+	if rv.hideFound {
+		ctx.hide(refpath)
+	}
 	return clonePath(node, cp(rv.path))
 }
 

@@ -100,6 +100,10 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 		if child.markedType() || child.markedHide() {
 			continue
 		}
+		// A key whose source was moved away is hidden.
+		if ctx != nil && ctx.isHidden(append(cp(m.path), k)) {
+			continue
+		}
 		optional := m.isOptional(k)
 		cv, err := child.Gen(ctx)
 		if err != nil {
@@ -202,6 +206,11 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		out.setDc(DONE)
 	} else {
 		out.setDc(m.dc + 1)
+	}
+	// Marks on the map itself survive unification.
+	propagateMarks(m, out)
+	if !isTop(peer) {
+		propagateMarks(peer, out)
 	}
 	return out
 }

@@ -127,7 +127,7 @@ func clonePath(v Val, path []string) Val {
 		copyMarks(out, n)
 		return out
 	case *RefVal:
-		out := &RefVal{absolute: n.absolute, prefix: n.prefix}
+		out := &RefVal{absolute: n.absolute, prefix: n.prefix, hideFound: n.hideFound}
 		out.dc = n.dc
 		out.sp = n.sp
 		out.path = cp(path)

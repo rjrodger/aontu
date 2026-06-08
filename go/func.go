@@ -74,17 +74,23 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	var out Val = f
 	pegdone := true
 	newpeg := make([]Val, 0, len(f.peg))
-	for _, arg := range f.peg {
-		na := arg
-		if arg.Dc() != DONE {
-			na = unite(ctx, arg, top())
+	// move() operates on the raw reference argument (it must not be
+	// resolved first), mirroring MoveFuncVal.prepare returning null.
+	if f.name == "move" {
+		newpeg = f.peg
+	} else {
+		for _, arg := range f.peg {
+			na := arg
+			if arg.Dc() != DONE {
+				na = unite(ctx, arg, top())
+			}
+			if na.Dc() != DONE {
+				pegdone = false
+			}
+			newpeg = append(newpeg, na)
 		}
-		if na.Dc() != DONE {
-			pegdone = false
-		}
-		newpeg = append(newpeg, na)
+		f.peg = newpeg
 	}
-	f.peg = newpeg
 
 	if pegdone {
 		result := f.resolve(ctx, newpeg)
@@ -165,8 +171,26 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		return setClosed(ctx, f, args, true)
 	case "open":
 		return setClosed(ctx, f, args, false)
+	case "path":
+		// path(x.a) / path($.a.b): the argument is (or resolves via) a
+		// reference; return the resolved value.
+		if len(args) == 0 {
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		return args[0]
 	case "super":
 		return f.superior()
+	case "move":
+		// Move the referenced value here, hiding it at the source.
+		if len(args) == 0 {
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		if rv, ok := args[0].(*RefVal); ok {
+			src := clonePath(rv, cp(rv.path)).(*RefVal)
+			src.hideFound = true
+			return walkPref(src)
+		}
+		return clonePath(args[0], cp(f.path))
 	}
 	return makeNilErr(ctx, "func:"+f.name, f, nil)
 }

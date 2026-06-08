@@ -25,23 +25,34 @@ func (a *Aontu) Unify(src string) (Val, error) {
 	if err != nil {
 		return v, err
 	}
+	res, _, err := a.unifyCtx(v)
+	return res, err
+}
+
+// unifyCtx runs the fixpoint loop and returns the result with its
+// context (which carries move()-hidden paths used by generation).
+func (a *Aontu) unifyCtx(v Val) (Val, *Ctx, error) {
 	ctx := &Ctx{root: v}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
 	if len(ctx.err) > 0 {
-		return res, &AontuError{Msg: ctx.errmsg()}
+		return res, ctx, &AontuError{Msg: ctx.errmsg()}
 	}
-	return res, nil
+	return res, ctx, nil
 }
 
 // Generate parses, unifies and generates the native output value,
 // which must fully resolve to concrete values.
 func (a *Aontu) Generate(src string) (any, error) {
-	res, err := a.Unify(src)
+	v, perr := parse(src)
+	if perr != nil {
+		return nil, perr
+	}
+	res, ctx, err := a.unifyCtx(v)
 	if err != nil {
 		return nil, err
 	}
-	out, gerr := res.Gen(&Ctx{root: res})
+	out, gerr := res.Gen(ctx)
 	if gerr != nil {
 		return nil, gerr
 	}

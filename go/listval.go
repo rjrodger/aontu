@@ -120,5 +120,9 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	} else {
 		out.setDc(l.dc + 1)
 	}
+	propagateMarks(l, out)
+	if !isTop(peer) {
+		propagateMarks(peer, out)
+	}
 	return out
 }

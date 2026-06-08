@@ -7,10 +7,26 @@ import "strings"
 // Ctx carries unification state: the root Val (for path resolution,
 // once references are ported) and the collected error list.
 type Ctx struct {
-	root  Val
-	err   []*NilVal
-	depth int // unite recursion depth (cycle guard)
-	cc    int // current fixpoint pass (for late-resolving funcs)
+	root   Val
+	err    []*NilVal
+	depth  int             // unite recursion depth (cycle guard)
+	cc     int             // current fixpoint pass (for late-resolving funcs)
+	hidden map[string]bool // source paths hidden by move()
+}
+
+func (c *Ctx) hide(path []string) {
+	if c.hidden == nil {
+		c.hidden = map[string]bool{}
+	}
+	c.hidden[pathKey(path)] = true
+}
+
+func (c *Ctx) isHidden(path []string) bool {
+	return c.hidden != nil && c.hidden[pathKey(path)]
+}
+
+func pathKey(path []string) string {
+	return strings.Join(path, "\x00")
 }
 
 func (c *Ctx) adderr(n *NilVal) {
