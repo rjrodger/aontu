@@ -26,9 +26,10 @@ import (
 //   3. convert map[string]any -> MapVal and []any -> ListVal in a final
 //      post-walk (asVal).
 //
-// Coverage: the op table currently wires conjunction (&), disjunction
-// (|) and preference (*). References, spreads, the + operator and the
-// built-in functions are added incrementally (see AGENTS.md).
+// Coverage: the op table wires conjunction (&), disjunction (|),
+// preference (*) and references ($ / . path operators). Spreads, the +
+// operator and the built-in functions are added incrementally (see
+// AGENTS.md).
 
 // orderKey is the sentinel map entry holding insertion order. The NUL
 // prefix keeps it from colliding with real keys.
@@ -73,9 +74,12 @@ func makeLang() (*jsonic.Jsonic, error) {
 
 	if err := j.Use(expr.Expr, map[string]interface{}{
 		"op": map[string]interface{}{
-			"conjunct": map[string]interface{}{"infix": true, "src": "&", "left": 16000000, "right": 17000000},
-			"disjunct": map[string]interface{}{"infix": true, "src": "|", "left": 14000000, "right": 15000000},
-			"star":     map[string]interface{}{"prefix": true, "src": "*", "right": 24000000},
+			"conjunct":      map[string]interface{}{"infix": true, "src": "&", "left": 16000000, "right": 17000000},
+			"disjunct":      map[string]interface{}{"infix": true, "src": "|", "left": 14000000, "right": 15000000},
+			"star":          map[string]interface{}{"prefix": true, "src": "*", "right": 24000000},
+			"dollar-prefix": map[string]interface{}{"prefix": true, "src": "$", "right": 31000000},
+			"dot-infix":     map[string]interface{}{"infix": true, "src": ".", "left": 25000000, "right": 24000000},
+			"dot-prefix":    map[string]interface{}{"prefix": true, "src": ".", "right": 24000000},
 		},
 		"evaluate": evaluate,
 	}); err != nil {
@@ -210,6 +214,17 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		return negate(terms[0])
 	case "positive-prefix":
 		return asVal(terms[0])
+	case "dot-prefix":
+		return newRef(terms, true)
+	case "dot-infix":
+		return newRef(terms, false)
+	case "dollar-prefix":
+		// $.a.b -> absolute reference; $name -> variable.
+		if r0, ok := terms[0].(*RefVal); ok {
+			r0.absolute = true
+			return r0
+		}
+		return newVar(terms[0])
 	}
 	return newNil("unknown_op")
 }
@@ -280,5 +295,7 @@ func parse(src string) (Val, error) {
 	if out == nil {
 		return newMap(), nil
 	}
-	return asVal(out), nil
+	root := asVal(out)
+	setPaths(root, []string{})
+	return root, nil
 }

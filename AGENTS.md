@@ -101,13 +101,14 @@ as `ts/src/lang.ts` — so the surface syntax parses in parity.
 
 Unification/generation currently covers the **core lattice**: scalars,
 scalar kinds (type constraints), maps (incl. implicit nesting and
-duplicate-key merge), lists, conjunction (`&`), disjunction (`|`) and
-preference/defaults (`*`), plus `parse`, `unify`, `generate` and `canon`.
+duplicate-key merge), lists, conjunction (`&`), disjunction (`|`),
+preference/defaults (`*`) and references (`$.a.b`, incl. nested-path,
+cross- and chained refs), plus `parse`, `unify`, `generate` and `canon`.
 
-Still being ported to Go: references (`$.a.b`), spreads (`&:`), the `+`
-operator and the built-in functions — these now *parse* but do not yet
-fully unify/generate. The shared spec is scoped to what both
-implementations pass; grow it as the Go port grows.
+Still being ported to Go: spreads (`&:`), the `+` operator and the
+built-in functions — these now *parse* but do not yet fully
+unify/generate. The shared spec is scoped to what both implementations
+pass; grow it as the Go port grows.
 
 ## Conventions
 

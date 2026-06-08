@@ -7,8 +7,9 @@ import "strings"
 // Ctx carries unification state: the root Val (for path resolution,
 // once references are ported) and the collected error list.
 type Ctx struct {
-	root Val
-	err  []*NilVal
+	root  Val
+	err   []*NilVal
+	depth int // unite recursion depth (cycle guard)
 }
 
 func (c *Ctx) adderr(n *NilVal) {
