@@ -8,13 +8,13 @@
 // is validated against the shared test specs in ../test/spec (run by
 // both implementations).
 //
-// Coverage note: this port covers nearly the whole language — scalars,
-// scalar kinds, maps (nesting, merge, spreads &:, optional keys,
-// close/open), lists, conjunction (&), disjunction (|), preference (*),
-// references ($.a.b / .x.a / $KEY), the + operator, the built-in
-// functions (upper/lower/copy/key/pref/super/type/hide/close/open) and
-// type/hide marks. Still TypeScript-only: move()/path(), list spreads
-// and file/source resolution (@"file").
+// Coverage note: this port covers the whole language — scalars, scalar
+// kinds, maps (nesting, merge, spreads &:, optional keys, close/open),
+// lists (incl. &: spreads), conjunction (&), disjunction (|),
+// preference (*), references ($.a.b / .x.a / $KEY), the + operator and
+// all twelve built-in functions (upper/lower/copy/key/pref/super/type/
+// hide/close/open/move/path) plus type/hide marks. Still TypeScript-only:
+// file/source resolution (@"file").
 package aontu
 
 import "strings"
