@@ -32,6 +32,43 @@ func TestRelativeSourceLoadWithBase(t *testing.T) {
 	}
 }
 
+// TestNestedRelativeSourceLoad checks that a relative @"file" load inside
+// a loaded file resolves against that file's own directory — across
+// directories (parent in dir, child+grand in a subdir).
+func TestNestedRelativeSourceLoad(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write := func(p, s string) {
+		if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(dir, "main.aontu"), "top: 1\nchild: @\"./sub/child.aontu\"\n")
+	write(filepath.Join(sub, "child.aontu"), "mid: 2\ngrand: @\"./grand.aontu\"\n")
+	write(filepath.Join(sub, "grand.aontu"), "{ v: 99 }\n")
+
+	src, err := os.ReadFile(filepath.Join(dir, "main.aontu"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := NewWithBase(dir).Generate(string(src))
+	if err != nil {
+		t.Fatalf("generate: %v", err)
+	}
+	m := out.(map[string]any)
+	child, ok := m["child"].(map[string]any)
+	if !ok {
+		t.Fatalf("child: want map, got %v", m["child"])
+	}
+	grand, ok := child["grand"].(map[string]any)
+	if !ok || grand["v"] != int64(99) {
+		t.Fatalf("nested relative load: want grand {v:99}, got %v", child["grand"])
+	}
+}
+
 // TestAbsoluteSourceLoadIgnoresBase confirms an absolute @"file" load
 // resolves regardless of (even a bogus) base.
 func TestAbsoluteSourceLoadIgnoresBase(t *testing.T) {

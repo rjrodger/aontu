@@ -360,8 +360,11 @@ car:@"car.jsonic" car:{wheels:4}    → merges loaded + local
 
 A **relative** path resolves against a configurable base directory: the
 `aontu` CLI sets it to the entry file's directory, and the Go API exposes
-it via `NewWithBase` (the TypeScript API via the `path` option). Absolute
-paths ignore the base. Resolution tries, in order, an in-memory resolver,
+it via `NewWithBase` (the TypeScript API via the `path` option). A
+relative load *inside* a loaded file resolves against **that file's own
+directory**, so a chain of files (a → b → c) each resolves relative to
+itself. Absolute paths ignore the base. Resolution tries, in order, an
+in-memory resolver,
 the filesystem, then package resolution (see
 [API reference](reference-api.md#options)). A conflict between a loaded
 value and a local one is a normal unification

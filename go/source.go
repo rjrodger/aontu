@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	jsonic "github.com/jsonicjs/jsonic/go"
 	multisource "github.com/jsonicjs/multisource/go"
 )
 
@@ -43,6 +44,32 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 	return res
 }
 
+// jsonicProcessor parses loaded source content with jsonic. Unlike the
+// stock multisource.JsonicProcessor (which reuses the calling parser and
+// thus its base), it parses each loaded file with a parser whose base is
+// that file's own directory, so a relative @"file" load *inside* a
+// loaded file resolves relative to that file — matching the canonical
+// TypeScript @jsonic/multisource behaviour. res.Full is the absolute
+// path of the resolved file (set by fileResolver).
+func jsonicProcessor(res *multisource.Resolution, _ *multisource.MultiSourceOptions, j *jsonic.Jsonic) {
+	if res.Src == "" {
+		res.Val = nil
+		return
+	}
+	lang := j
+	if res.Full != "" {
+		if l, err := langForBase(filepath.Dir(res.Full)); err == nil {
+			lang = l
+		}
+	}
+	val, err := lang.Parse(res.Src)
+	if err != nil {
+		res.Val = res.Src
+		return
+	}
+	res.Val = val
+}
+
 // msOptions builds the multisource plugin options for the aontu grammar.
 func msOptions(base string) map[string]any {
 	return map[string]any{
@@ -50,10 +77,10 @@ func msOptions(base string) map[string]any {
 			Resolver: fileResolver,
 			Path:     base,
 			Processor: map[string]multisource.Processor{
-				"":       multisource.JsonicProcessor,
-				"jsonic": multisource.JsonicProcessor,
-				"aon":    multisource.JsonicProcessor,
-				"aontu":  multisource.JsonicProcessor,
+				"":       jsonicProcessor,
+				"jsonic": jsonicProcessor,
+				"aon":    jsonicProcessor,
+				"aontu":  jsonicProcessor,
 			},
 			ImplicitExt: []string{".jsonic", ".aon", ".aontu"},
 		},

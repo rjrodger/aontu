@@ -39,10 +39,19 @@ const orderKey = "\x00aontu_order"
 const spreadKey = "\x00aontu_spread"
 const optionalKey = "\x00aontu_optional"
 
-// theLang is the default parser, resolving relative @"file" loads from
-// the process working directory (base ""). Parsers for other bases are
-// built on demand and cached by langForBase.
-var theLang = mustMakeLang("")
+// The default parser (base "") resolves relative @"file" loads from the
+// process working directory. It is initialised lazily, not as a package
+// var: its construction transitively references langForBase (via the
+// loaded-source processor), which would otherwise be an init cycle.
+var (
+	defaultLangOnce sync.Once
+	defaultLangInst *jsonic.Jsonic
+)
+
+func defaultLang() *jsonic.Jsonic {
+	defaultLangOnce.Do(func() { defaultLangInst = mustMakeLang("") })
+	return defaultLangInst
+}
 
 // langCache memoises base -> parser. The multisource base path is baked
 // into the jsonic instance when the plugin is applied (it is captured in
@@ -54,10 +63,10 @@ var (
 )
 
 // langForBase returns a parser whose relative @"file" loads resolve
-// against base. Base "" reuses the shared singleton.
+// against base. Base "" reuses the shared default parser.
 func langForBase(base string) (*jsonic.Jsonic, error) {
 	if base == "" {
-		return theLang, nil
+		return defaultLang(), nil
 	}
 	langCacheMu.Lock()
 	defer langCacheMu.Unlock()
