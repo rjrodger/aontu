@@ -14,7 +14,7 @@ import (
 // fileResolver resolves an @"path" reference by reading from disk,
 // mirroring makeFileResolver in @jsonic/multisource (resolver/file.ts):
 // resolve the full path, try it, then the implicit-extension potentials.
-func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOptions) multisource.Resolution {
+func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOptions, _ *jsonic.Context) multisource.Resolution {
 	res := multisource.Resolution{PathSpec: spec}
 
 	var potentials []string
@@ -44,43 +44,21 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 	return res
 }
 
-// jsonicProcessor parses loaded source content with jsonic. Unlike the
-// stock multisource.JsonicProcessor (which reuses the calling parser and
-// thus its base), it parses each loaded file with a parser whose base is
-// that file's own directory, so a relative @"file" load *inside* a
-// loaded file resolves relative to that file — matching the canonical
-// TypeScript @jsonic/multisource behaviour. res.Full is the absolute
-// path of the resolved file (set by fileResolver).
-func jsonicProcessor(res *multisource.Resolution, _ *multisource.MultiSourceOptions, j *jsonic.Jsonic) {
-	if res.Src == "" {
-		res.Val = nil
-		return
-	}
-	lang := j
-	if res.Full != "" {
-		if l, err := langForBase(filepath.Dir(res.Full)); err == nil {
-			lang = l
-		}
-	}
-	val, err := lang.Parse(res.Src)
-	if err != nil {
-		res.Val = res.Src
-		return
-	}
-	res.Val = val
-}
-
 // msOptions builds the multisource plugin options for the aontu grammar.
+// As of multisource/go v0.1.6 the plugin resolves relative @"file" loads
+// inside a loaded file against that file's own directory (via the jsonic
+// context meta), matching the canonical TypeScript @jsonic/multisource,
+// so the stock JsonicProcessor is used directly.
 func msOptions(base string) map[string]any {
 	return map[string]any{
 		"_opts": &multisource.MultiSourceOptions{
 			Resolver: fileResolver,
 			Path:     base,
 			Processor: map[string]multisource.Processor{
-				"":       jsonicProcessor,
-				"jsonic": jsonicProcessor,
-				"aon":    jsonicProcessor,
-				"aontu":  jsonicProcessor,
+				"":       multisource.JsonicProcessor,
+				"jsonic": multisource.JsonicProcessor,
+				"aon":    multisource.JsonicProcessor,
+				"aontu":  multisource.JsonicProcessor,
 			},
 			ImplicitExt: []string{".jsonic", ".aon", ".aontu"},
 		},
