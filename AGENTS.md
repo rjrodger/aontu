@@ -32,17 +32,26 @@ implementations are checked against the same cases.
 ├── test/
 │   └── spec/            # shared test cases — *.tsv (language-agnostic)
 ├── ts/                  # canonical TypeScript implementation
-│   ├── package.json
-│   ├── src/             # source (+ src/tsconfig.json -> ../dist)
+│   ├── package.json     # `bin`: aontu -> dist/cli.js
+│   ├── src/             # source incl. cli.ts (+ src/tsconfig.json -> ../dist)
 │   ├── test/            # tests (+ test/tsconfig.json -> ../dist-test)
-│   ├── dist/            # committed compiled JS + .d.ts
+│   ├── dist/            # committed compiled JS + .d.ts (incl. cli.js)
 │   └── dist-test/       # committed compiled tests (the run target)
 └── go/                  # Go port
     ├── go.mod           # module github.com/rjrodger/aontu/go
     ├── *.go             # package aontu
+    ├── cmd/aontu/       # `aontu` CLI (package main, file/stdin/REPL)
     ├── aontu_test.go    # Go-native sanity tests
     └── spec_test.go     # runs the shared test/spec/*.tsv suite
 ```
+
+Both implementations also ship an `aontu` command-line tool
+(`ts/src/cli.ts`, `go/cmd/aontu`) that evaluates a file or stdin and
+starts a REPL when given no file. See
+[`docs/reference-api.md`](docs/reference-api.md#command-line-interface).
+Long-form documentation lives under [`docs/`](docs/) (start at
+`docs/index.md`); measure coverage with `make cov` (see
+`docs/test-coverage.md`).
 
 ## Build & test
 
