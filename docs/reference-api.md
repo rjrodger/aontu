@@ -277,14 +277,33 @@ Concrete exported types: `TopVal`, `NilVal`, `ScalarVal`,
 
 ### Variables in Go
 
-`UnifyVars`/`GenerateVars` accept a `map[string]Val`. **The helper
-constructors that build `Val` values (`newInteger`, `newString`,
-`newMap`, …) are package-internal**, so populating that map from outside
-the package is not currently ergonomic — in practice the variable-bearing
-path is exercised by the in-package shared-spec runner
-(`go/spec_test.go`, which binds `foo/bar/flag/obj`). External callers
-typically pass `nil` vars (or use `Unify`/`Generate`). Exporting value
-constructors would be needed to build variables from another package.
+`UnifyVars`/`GenerateVars` accept a `map[string]Val`. Build the values
+with the exported constructors:
+
+| Constructor | Returns |
+|-------------|---------|
+| `NewString(s string) Val`        | string scalar |
+| `NewInteger(i int64) Val`        | integer scalar |
+| `NewNumber(f float64) Val`       | number (float) scalar |
+| `NewBoolean(b bool) Val`         | boolean scalar |
+| `NewNull() Val`                  | null scalar |
+| `NewScalarKind(k Kind) Val`      | type constraint (`KindString`, `KindNumber`, `KindInteger`, `KindBoolean`) |
+| `NewMap(map[string]Val) Val`     | map (keys inserted in sorted order) |
+| `NewList([]Val) Val`             | list |
+
+```go
+vars := map[string]aontu.Val{
+    "port": aontu.NewInteger(8080),
+    "host": aontu.NewString("localhost"),
+    "obj":  aontu.NewMap(map[string]aontu.Val{"x": aontu.NewInteger(1)}),
+}
+out, err := aontu.New().GenerateVars(
+    "server: { host: $host, port: $port }", vars)
+// out == map[string]any{"server": map[string]any{"host":"localhost","port":8080}}
+```
+
+Pass `nil` vars when a model uses no `$name` variables. An undefined
+`$name` is a `Cannot resolve` error.
 
 ---
 

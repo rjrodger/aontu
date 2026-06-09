@@ -40,7 +40,7 @@ cd go && go tool cover -html=coverage.out      # annotated source in a browser
 | TypeScript     | lines (Node `--experimental-test-coverage`) | **94.3 %** |
 | TypeScript     | branches | **88.2 %** |
 | TypeScript     | functions | **89.6 %** |
-| Go — library (`package aontu`) | statements (`go test -cover`) | **77.5 %** |
+| Go — library (`package aontu`) | statements (`go test -cover`) | **78.5 %** |
 | Go — CLI (`cmd/aontu`)         | statements | **44.4 %** |
 
 Both suites pass in full: **TypeScript 360/360 tests**, **Go all tests**
@@ -103,7 +103,9 @@ and `go/spec_test.go`'s `TestSpec` runs all 183 shared rows as subtests.
 The Go library suite is therefore **shared-spec-dominated**: it
 guarantees parity but adds comparatively few Go-specific cases.
 `go/cmd/aontu/main_test.go` separately covers the CLI's `render` and
-`repl` logic (JSON/canon/error rendering and a scripted REPL session).
+`repl` logic (JSON/canon/error rendering and a scripted REPL session),
+and `go/construct_test.go` exercises the exported value constructors via
+`GenerateVars`/`UnifyVars` (the external-caller variable path).
 
 ## Where the coverage goes
 

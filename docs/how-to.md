@@ -232,11 +232,14 @@ ctx.vars.port = new IntegerVal({ peg: 8080 })
 aontu.generate('server: { port: $port }', undefined, ctx) // { server: { port: 8080 } }
 ```
 
-Go — pass a `map[string]Val`:
+Go — build a `map[string]Val` with the exported constructors
+(`NewInteger`, `NewString`, `NewNumber`, `NewBoolean`, `NewNull`,
+`NewScalarKind`, `NewMap`, `NewList`):
 
 ```go
-vars := map[string]aontu.Val{"port": /* an integer Val */}
+vars := map[string]aontu.Val{"port": aontu.NewInteger(8080)}
 out, err := aontu.New().GenerateVars("server: { port: $port }", vars)
+// out == map[string]any{"server": map[string]any{"port": 8080}}
 ```
 
 An undefined `$name` is a `Cannot resolve` error.

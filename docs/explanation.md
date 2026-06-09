@@ -217,10 +217,6 @@ TypeScript seen-map.
   [`IDEAS.md`](../IDEAS.md) file sketches what custom functions, piping,
   and placeholder arguments might look like, but they are not
   implemented.
-- **Go variable construction is internal.** The `$name` variable map is
-  accepted by `GenerateVars`/`UnifyVars`, but the value constructors
-  needed to populate it are package-private today, so that path is mainly
-  used in-package.
 - **The fixpoint is bounded.** Extremely self-referential models hit the
   pass/cycle limits and surface a cycle error rather than diverging —
   correct, but it means some legal-looking models are rejected for
