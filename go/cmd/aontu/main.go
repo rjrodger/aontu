@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	aontu "github.com/rjrodger/aontu/go"
@@ -70,6 +71,18 @@ func emit(a *aontu.Aontu, src, mode string) int {
 	}
 	fmt.Println(text)
 	return 0
+}
+
+// aontuForFile builds an Aontu whose relative @"file" loads resolve
+// against the directory containing file, so `aontu /path/to/main.aontu`
+// works regardless of the current working directory (matching the
+// TypeScript CLI, which passes the resolved entry path).
+func aontuForFile(file string) *aontu.Aontu {
+	abs, err := filepath.Abs(file)
+	if err != nil {
+		abs = file
+	}
+	return aontu.NewWithBase(filepath.Dir(abs))
 }
 
 // stdinIsPipe reports whether stdin is piped/redirected (not a terminal).
@@ -146,16 +159,17 @@ func main() {
 		}
 	}
 
-	a := aontu.New()
-
 	if file != "" {
 		src, err := os.ReadFile(file)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "aontu: cannot read %s: %v\n", file, err)
 			os.Exit(1)
 		}
-		os.Exit(emit(a, string(src), mode))
+		// Resolve relative @"file" loads against the entry file's dir.
+		os.Exit(emit(aontuForFile(file), string(src), mode))
 	}
+
+	a := aontu.New()
 
 	if stdinIsPipe() {
 		src, _ := io.ReadAll(os.Stdin)

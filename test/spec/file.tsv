@@ -8,3 +8,5 @@ load-unify	gen	car:@"__FIXTURES__/car.jsonic" car:{doors:number,wheels:4}	{"car"
 load-refs	gen	@"__FIXTURES__/refs.jsonic"	{"a":{"x":1},"b":1}
 load-spread	gen	@"__FIXTURES__/spread.jsonic"	{"one":{"active":true},"two":{"active":true}}
 load-conflict	err	car:@"__FIXTURES__/car.jsonic" car:{doors:5}	Cannot unify
+# Relative @"./x" inside a loaded file resolves against that file directory (parent->child->grand).
+load-rel-chain	gen	@"__FIXTURES__/nest_parent.jsonic"	{"a":1,"child":{"b":2,"grand":{"c":3}}}

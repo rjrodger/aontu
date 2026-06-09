@@ -43,7 +43,7 @@ cd go && go tool cover -html=coverage.out      # annotated source in a browser
 | Go — library (`package aontu`) | statements (`go test -cover`) | **78.5 %** |
 | Go — CLI (`cmd/aontu`)         | statements | **44.4 %** |
 
-Both suites pass in full: **TypeScript 360/360 tests**, **Go all tests**
+Both suites pass in full: **TypeScript 361/361 tests**, **Go all tests**
 (library + CLI + shared spec), via `make test`.
 
 The `cmd/aontu` figure is lower because its uncovered lines are the
@@ -59,14 +59,14 @@ in-process tool does not count).
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **183 cases across 16 files** — is run by *both*
+`test/spec/*.tsv` — **184 cases across 16 files** — is run by *both*
 implementations and is the contract that defines shared behaviour:
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
 | `func.tsv`     | 28 | `plus.tsv`     | 9 |
 | `scalar.tsv`   | 17 | `close.tsv`    | 9 |
-| `ref.tsv`      | 17 | `file.tsv`     | 8 |
+| `ref.tsv`      | 17 | `file.tsv`     | 9 |
 | `spread.tsv`   | 16 | `var.tsv`      | 8 |
 | `marks.tsv`    | 15 | `disjunct.tsv` | 7 |
 | `map.tsv`      | 13 | `list.tsv`     | 7 |
@@ -99,7 +99,7 @@ of the 350-test suite — rich, implementation-specific cases:
 
 `go/aontu_test.go` adds five sanity tests — `TestBasicCanon`,
 `TestParseCanon`, `TestGenerate`, `TestConflictErrors`, `TestEmpty` —
-and `go/spec_test.go`'s `TestSpec` runs all 183 shared rows as subtests.
+and `go/spec_test.go`'s `TestSpec` runs all 184 shared rows as subtests.
 The Go library suite is therefore **shared-spec-dominated**: it
 guarantees parity but adds comparatively few Go-specific cases.
 `go/cmd/aontu/main_test.go` separately covers the CLI's `render` and

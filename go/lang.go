@@ -4,6 +4,7 @@ package aontu
 
 import (
 	"strings"
+	"sync"
 
 	expr "github.com/jsonicjs/expr/go"
 	jsonic "github.com/jsonicjs/jsonic/go"
@@ -38,19 +39,50 @@ const orderKey = "\x00aontu_order"
 const spreadKey = "\x00aontu_spread"
 const optionalKey = "\x00aontu_optional"
 
-var theLang = mustMakeLang()
+// theLang is the default parser (base ""), resolving relative @"file"
+// loads from the process working directory.
+var theLang = mustMakeLang("")
+
+// langCache memoises base -> parser. multisource resolves a top-level
+// load's relative path against opts.Path, which is fixed when the plugin
+// is applied, so each distinct non-empty entry base needs its own parser.
+// (Nested loads inside a loaded file are rebased per-file by multisource
+// itself, via the jsonic context meta.)
+var (
+	langCacheMu sync.Mutex
+	langCache   = map[string]*jsonic.Jsonic{}
+)
+
+// langForBase returns a parser whose relative @"file" loads resolve
+// against base. Base "" reuses the shared default parser.
+func langForBase(base string) (*jsonic.Jsonic, error) {
+	if base == "" {
+		return theLang, nil
+	}
+	langCacheMu.Lock()
+	defer langCacheMu.Unlock()
+	if j, ok := langCache[base]; ok {
+		return j, nil
+	}
+	j, err := makeLang(base)
+	if err != nil {
+		return nil, err
+	}
+	langCache[base] = j
+	return j, nil
+}
 
 func boolPtr(b bool) *bool { return &b }
 
-func mustMakeLang() *jsonic.Jsonic {
-	j, err := makeLang()
+func mustMakeLang(base string) *jsonic.Jsonic {
+	j, err := makeLang(base)
 	if err != nil {
 		panic("aontu: jsonic grammar setup failed: " + err.Error())
 	}
 	return j
 }
 
-func makeLang() (*jsonic.Jsonic, error) {
+func makeLang(base string) (*jsonic.Jsonic, error) {
 	j := jsonic.Make(jsonic.Options{
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
@@ -154,7 +186,7 @@ func makeLang() (*jsonic.Jsonic, error) {
 	// @"file" source loading — registered last so the multisource
 	// directive layers over the aontu grammar (mirrors the ts/src/lang.ts
 	// order: AontuJsonic then MultiSource).
-	if err := j.Use(multisource.MultiSource, msOptions("")); err != nil {
+	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil {
 		return nil, err
 	}
 
@@ -434,9 +466,20 @@ func asVal(node any) Val {
 	return newNil("parse_unknown")
 }
 
-// parse parses source into a (not yet unified) Val.
+// parse parses source into a (not yet unified) Val, resolving relative
+// @"file" loads from the process working directory.
 func parse(src string) (Val, error) {
-	out, err := theLang.Parse(src)
+	return parseBase(src, "")
+}
+
+// parseBase is parse with an explicit base directory for resolving
+// relative @"file" loads.
+func parseBase(src, base string) (Val, error) {
+	lang, err := langForBase(base)
+	if err != nil {
+		return newMap(), &AontuError{Msg: err.Error()}
+	}
+	out, err := lang.Parse(src)
 	if err != nil {
 		return newMap(), &AontuError{Msg: err.Error()}
 	}
