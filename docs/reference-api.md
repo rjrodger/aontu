@@ -45,6 +45,8 @@ Options:
 **Behaviour**
 
 - **File:** `aontu config.aontu` reads, unifies and prints the file.
+  Relative `@"file"` loads inside it resolve against the file's own
+  directory, so it works from any working directory.
 - **Stdin:** `echo 'a:1 b:$.a' | aontu` reads source from the pipe.
 - **REPL:** `aontu` with no file on a terminal starts an interactive
   loop; each line is evaluated and printed.
@@ -226,8 +228,21 @@ import aontu "github.com/rjrodger/aontu/go"
 ### type `Aontu`
 
 ```go
-func New() *Aontu
+func New() *Aontu                 // relative @"file" loads resolve from the cwd
+func NewWithBase(base string) *Aontu  // …resolve from base (a directory)
 ```
+
+Use `NewWithBase` when a source's relative `@"file"` loads should resolve
+from somewhere other than the process working directory — typically the
+directory of an entry file:
+
+```go
+abs, _ := filepath.Abs(file)
+a := aontu.NewWithBase(filepath.Dir(abs))
+```
+
+Absolute `@"file"` paths are unaffected by the base. (The `aontu` CLI
+does exactly this for a file argument.)
 
 | Method | Signature | Notes |
 |--------|-----------|-------|

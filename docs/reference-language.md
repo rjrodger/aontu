@@ -358,9 +358,13 @@ a:@"foo.jsonic"                     → {"a":{"f":11}}      (nested)
 car:@"car.jsonic" car:{wheels:4}    → merges loaded + local
 ```
 
-Resolution tries, in order, an in-memory resolver, the filesystem, then
-package resolution (see [API reference](reference-api.md#options)). A
-conflict between a loaded value and a local one is a normal unification
+A **relative** path resolves against a configurable base directory: the
+`aontu` CLI sets it to the entry file's directory, and the Go API exposes
+it via `NewWithBase` (the TypeScript API via the `path` option). Absolute
+paths ignore the base. Resolution tries, in order, an in-memory resolver,
+the filesystem, then package resolution (see
+[API reference](reference-api.md#options)). A conflict between a loaded
+value and a local one is a normal unification
 error.
 
 ## Operator precedence

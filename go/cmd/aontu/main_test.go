@@ -3,6 +3,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -49,6 +51,34 @@ func TestReplSession(t *testing.T) {
 	}
 	if !strings.Contains(s, `{"a":1|2}`) {
 		t.Fatalf("repl canon output missing:\n%s", s)
+	}
+}
+
+// TestAontuForFileRelativeLoad checks the file-evaluation path resolves
+// a relative @"file" load against the entry file's directory (the fix
+// for `aontu /path/to/main.aontu` failing from another cwd).
+func TestAontuForFileRelativeLoad(t *testing.T) {
+	dir := t.TempDir()
+	mainPath := filepath.Join(dir, "main.aontu")
+	if err := os.WriteFile(mainPath,
+		[]byte("parent: 1\nchild: @\"./child.aontu\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "child.aontu"),
+		[]byte("{ x: 2 }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	src, err := os.ReadFile(mainPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := render(aontuForFile(mainPath), string(src), "json")
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if !strings.Contains(out, `"x": 2`) {
+		t.Fatalf("relative @\"file\" load not resolved by aontuForFile:\n%s", out)
 	}
 }
 
