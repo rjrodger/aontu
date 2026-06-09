@@ -38,6 +38,10 @@ func TestSpec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fixtures dir: %v", err)
 	}
+	// Use forward slashes even on Windows: this path is spliced into Aontu
+	// source as a quoted @"..." load target, where backslashes would be parsed
+	// as string escapes (\t -> tab, \a -> a, ...) and corrupt the path.
+	fixturesDir = filepath.ToSlash(fixturesDir)
 
 	var files []string
 	for _, e := range entries {

@@ -31,7 +31,10 @@ import { MapVal } from '../dist/val/MapVal'
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec')
 
 
-const FIXTURES_DIR = Path.join(SPEC_DIR, 'files')
+// Use forward slashes even on Windows: this path is spliced into Aontu
+// source as a quoted @"..." load target, where backslashes would be parsed
+// as string escapes (\t -> tab, \a -> a, ...) and corrupt the path.
+const FIXTURES_DIR = Path.join(SPEC_DIR, 'files').replaceAll('\\', '/')
 
 type Row = {
   file: string

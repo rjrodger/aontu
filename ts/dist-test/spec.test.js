@@ -59,7 +59,10 @@ const BooleanVal_1 = require("../dist/val/BooleanVal");
 const MapVal_1 = require("../dist/val/MapVal");
 // test/spec lives at the repo root, two levels up from ts/dist-test.
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec');
-const FIXTURES_DIR = Path.join(SPEC_DIR, 'files');
+// Use forward slashes even on Windows: this path is spliced into Aontu
+// source as a quoted @"..." load target, where backslashes would be parsed
+// as string escapes (\t -> tab, \a -> a, ...) and corrupt the path.
+const FIXTURES_DIR = Path.join(SPEC_DIR, 'files').replaceAll('\\', '/');
 function unescape(s) {
     let out = '';
     for (let i = 0; i < s.length; i++) {
