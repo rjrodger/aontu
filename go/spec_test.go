@@ -57,6 +57,9 @@ func TestSpec(t *testing.T) {
 			t.Fatalf("read %s: %v", file, err)
 		}
 		for _, line := range strings.Split(string(data), "\n") {
+			// Tolerate CRLF checkouts (e.g. Windows) by dropping any trailing
+			// \r so the last field never carries a stray carriage return.
+			line = strings.TrimSuffix(line, "\r")
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}

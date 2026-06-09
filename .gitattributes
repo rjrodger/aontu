@@ -1,0 +1,4 @@
+# Keep shared spec data and fixtures as LF on every platform so the
+# data-driven test suite parses identically on Windows checkouts.
+*.tsv text eol=lf
+test/spec/files/** text eol=lf

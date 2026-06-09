@@ -81,7 +81,9 @@ function loadRows() {
         .sort();
     for (const file of files) {
         const text = Fs.readFileSync(Path.join(SPEC_DIR, file), 'utf8');
-        for (const line of text.split('\n')) {
+        // Split on \n and tolerate CRLF checkouts (e.g. Windows) by dropping
+        // any trailing \r so the last field never carries a stray carriage return.
+        for (const line of text.split('\n').map((l) => l.replace(/\r$/, ''))) {
             if ('' === line || line.startsWith('#')) {
                 continue;
             }
