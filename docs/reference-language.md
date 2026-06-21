@@ -39,8 +39,9 @@ the [Explanation](explanation.md).
 
 ## Lexical structure
 
-Aontu source is parsed by [jsonic](https://github.com/rjrodger/jsonic)
-with Aontu-specific plugins, so the surface syntax is "relaxed JSON".
+Aontu source is parsed by
+[`@tabnas/jsonic`](https://github.com/tabnas/jsonic) with Aontu-specific
+plugins, so the surface syntax is "relaxed JSON".
 
 - **Whitespace** separates tokens; newlines and commas are
   interchangeable separators. `a:1 b:2`, `a:1, b:2`, and `a:1\nb:2` are
@@ -352,10 +353,15 @@ open(close({x:1})) & {y:2} → {"x":1,"y":2}  (open lifts the seal)
 `@"path"` loads and parses another source file, then unifies the result
 in place — so external files merge like any other value.
 
+Source files use the `.aon` extension (preferred) or `.aontu`. When the
+path has no extension, those two are tried in turn, so `@"foo"` resolves
+`foo.aon` then `foo.aontu`.
+
 ```
-@"foo.jsonic"                       → {"f":11}            (top level)
-a:@"foo.jsonic"                     → {"a":{"f":11}}      (nested)
-car:@"car.jsonic" car:{wheels:4}    → merges loaded + local
+@"foo.aon"                       → {"f":11}            (top level)
+a:@"foo.aon"                     → {"a":{"f":11}}      (nested)
+car:@"car.aon" car:{wheels:4}    → merges loaded + local
+@"foo"                           → {"f":11}            (implicit .aon/.aontu)
 ```
 
 A **relative** path resolves against a configurable base directory: the

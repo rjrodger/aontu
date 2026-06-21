@@ -6,16 +6,16 @@ import (
 	"strings"
 	"sync"
 
-	expr "github.com/jsonicjs/expr/go"
-	jsonic "github.com/jsonicjs/jsonic/go"
-	multisource "github.com/jsonicjs/multisource/go"
-	path "github.com/jsonicjs/path/go"
+	expr "github.com/tabnas/expr/go"
+	jsonic "github.com/tabnas/jsonic/go"
+	multisource "github.com/tabnas/multisource/go"
+	path "github.com/tabnas/path/go"
 )
 
-// The parser is built on the official Go ports of jsonic and its expr
-// and path plugins — the same stack the canonical TypeScript parser
-// (ts/src/lang.ts) uses. This keeps syntax in parity instead of
-// maintaining a divergent hand-written parser.
+// The parser is built on the Go ports of the @tabnas parser stack
+// (@tabnas/jsonic and its expr and path plugins) — the same stack the
+// canonical TypeScript parser (ts/src/lang.ts) uses. This keeps syntax in
+// parity instead of maintaining a divergent hand-written parser.
 //
 // Construction model (important): the Go jsonic port emits plain Go
 // values (map[string]any, []any, float64, string, bool, nil) and shares
@@ -33,11 +33,15 @@ import (
 // plugin for @"file" loading — the same stack and order as ts/src/lang.ts.
 
 // orderKey is the sentinel map entry holding insertion order, spreadKey
-// holds the &: spread value. The NUL prefix keeps them from colliding
-// with real keys.
-const orderKey = "\x00aontu_order"
-const spreadKey = "\x00aontu_spread"
-const optionalKey = "\x00aontu_optional"
+// holds the &: spread value. The reserved prefix keeps them from
+// colliding with real keys; a source key carrying the prefix is rejected
+// (see trackOrder) rather than silently corrupting the map. (The TS
+// implementation stores this state under a Symbol, so it is immune; this
+// guard keeps the Go behaviour safe for the same exotic input.)
+const reservedKeyPrefix = "\x00aontu_"
+const orderKey = reservedKeyPrefix + "order"
+const spreadKey = reservedKeyPrefix + "spread"
+const optionalKey = reservedKeyPrefix + "optional"
 
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
@@ -52,6 +56,11 @@ var (
 	langCacheMu sync.Mutex
 	langCache   = map[string]*jsonic.Jsonic{}
 )
+
+// maxLangCache bounds the number of cached per-base parsers (see
+// langForBase) so a long-running process cannot grow the cache without
+// limit.
+const maxLangCache = 256
 
 // langForBase returns a parser whose relative @"file" loads resolve
 // against base. Base "" reuses the shared default parser.
@@ -68,7 +77,13 @@ func langForBase(base string) (*jsonic.Jsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	langCache[base] = j
+	// Bound memory in long-running hosts (e.g. the LSP) that may resolve
+	// many distinct bases over their lifetime: once the cache is full,
+	// stop adding rather than growing without limit. Bases past the cap
+	// are rebuilt per call (slower) but never leak.
+	if len(langCache) < maxLangCache {
+		langCache[base] = j
+	}
 	return j, nil
 }
 
@@ -102,6 +117,14 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			// Duplicate keys combine into a conjunct (mirrors the jsonic
 			// merge in ts/src/lang.ts), e.g. `a:1 a:2` -> `a:1&2`.
 			Merge: func(prev, val any, r *jsonic.Rule, ctx *jsonic.Context) any {
+				// A new key (prev == nil) has nothing to unify — take the
+				// value as-is. (asVal(nil) is an empty MapVal, so merging
+				// would wrongly yield `{} & val`.) tabnas's multisource calls
+				// this for every key of a top-level @"file" load, including
+				// new ones, so this guard is required for source loading.
+				if prev == nil {
+					return val
+				}
 				return mergeVals(asVal(prev), asVal(val))
 			},
 		},
@@ -145,47 +168,44 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 	// val: a leading `&:` is an implicit spread map (a:&:{x:1}); push to
 	// map without consuming. Otherwise wrap scalar leaves into Vals.
 	j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
-		}, rs.Open...)
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
+		)
 		// On close, a following `&:` belongs to the enclosing map as a
 		// spread, not a conjunct — backtrack so the map can take it.
-		rs.Close = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
-		}, rs.Close...)
-		rs.AC = append(rs.AC, wrapLeaf)
+		rs.PrependClose(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
+		)
+		rs.AddAC(wrapLeaf)
 	})
 
 	// map: a leading `&:` pushes to pair without consuming.
 	j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, G: "spread"},
-		}, rs.Open...)
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, G: "spread"},
+		)
 	})
 
 	// pair: `&:value` is a spread (stored on the enclosing map);
 	// otherwise record key order.
 	j.Rule("pair", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
 			// `key ? : value` — optional key.
-			{S: [][]jsonic.Tin{optkey, {qm}, {cl}}, P: "val", U: map[string]any{"optional": true}, G: "optional"},
-		}, rs.Open...)
-		rs.AC = append(rs.AC, trackOrder)
+			&jsonic.AltSpec{S: [][]jsonic.Tin{optkey, {qm}, {cl}}, P: "val", U: map[string]any{"optional": true}, G: "optional"},
+		)
+		rs.AddAC(trackOrder)
 	})
 
 	// elem: a `&:value` list element is a spread; jsonic appends it as a
 	// normal element, so replace it with a marker that asVal extracts.
 	j.Rule("elem", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
-		}, rs.Open...)
-		rs.AC = append(rs.AC, elemSpread)
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+		)
+		rs.AddAC(elemSpread)
 	})
 
-	// @"file" source loading — registered last so the multisource
-	// directive layers over the aontu grammar (mirrors the ts/src/lang.ts
-	// order: AontuJsonic then MultiSource).
 	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil {
 		return nil, err
 	}
@@ -295,6 +315,15 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 
 	key := keyOf(r.O0)
 
+	// Reject a source key in the reserved sentinel namespace: it would
+	// collide with the order/spread/optional entries above and silently
+	// corrupt the map. The parser's recover turns this panic into a
+	// normal parse error (it never crashes the process).
+	if strings.HasPrefix(key, reservedKeyPrefix) {
+		panic("aontu: map key may not begin with the reserved prefix " +
+			`"\x00aontu_"`)
+	}
+
 	// An optional pair (key?:value): the custom alt bypasses jsonic's
 	// value storage, so store the value ourselves and record the key.
 	if r.U["optional"] == true {
@@ -353,14 +382,25 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 	case "positive-prefix":
 		return asVal(terms[0])
 	case "dot-prefix":
-		return newRef(terms, true)
+		rv := newRef(terms, true)
+		if r.ON > 0 {
+			rv.sp = r.O0.SI
+		}
+		return rv
 	case "dot-infix":
-		return newRef(terms, false)
+		rv := newRef(terms, false)
+		if r.ON > 0 {
+			rv.sp = r.O0.SI
+		}
+		return rv
 	case "dollar-prefix":
 		// $.a.b -> absolute reference; $name -> variable (the name is
 		// wrapped as a StringVal so canon renders as $"name").
 		if r0, ok := terms[0].(*RefVal); ok {
 			r0.absolute = true
+			if r.ON > 0 {
+				r0.sp = r.O0.SI
+			}
 			return r0
 		}
 		return newVar(asVal(terms[0]))
@@ -375,7 +415,11 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		if len(terms) > 0 {
 			if name, ok := terms[0].(string); ok {
 				if !funcSet[name] {
-					return newNil("unknown_function")
+					n := newNil("unknown_function")
+					if r.ON > 0 {
+						n.sp = r.O0.SI
+					}
+					return n
 				}
 				args := make([]Val, 0, len(terms)-1)
 				for _, t := range terms[1:] {
@@ -414,9 +458,22 @@ func toVals(terms []interface{}) []Val {
 	return out
 }
 
+// maxNodeDepth bounds asVal's recursion so pathologically deep input
+// (thousands of nested {}/[]) yields a clean error instead of a fatal,
+// unrecoverable Go stack overflow. Because every Val tree is built by
+// asVal, this also transitively bounds the depth that setPaths and
+// clonePath (which walk asVal's output) ever recurse to, so they cannot
+// overflow either. Real configs are orders of magnitude shallower.
+const maxNodeDepth = 10000
+
 // asVal converts a parsed jsonic node into a Val. Containers are
 // converted recursively; map order comes from the order sentinel.
-func asVal(node any) Val {
+func asVal(node any) Val { return asValDepth(node, 0) }
+
+func asValDepth(node any, depth int) Val {
+	if depth > maxNodeDepth {
+		return newNil("max_depth")
+	}
 	switch n := node.(type) {
 	case Val:
 		return n
@@ -424,7 +481,7 @@ func asVal(node any) Val {
 		// A top-level expression is returned as an unevaluated expr
 		// wrapper; evaluate it (map-value expressions are already
 		// evaluated during parse).
-		return asVal(expr.Evaluation(nil, nil, n, evaluate))
+		return asValDepth(expr.Evaluation(nil, nil, n, evaluate), depth+1)
 	case map[string]any:
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
@@ -441,7 +498,7 @@ func asVal(node any) Val {
 			if !ok {
 				continue
 			}
-			mv.set(k, asVal(v))
+			mv.set(k, asValDepth(v, depth+1))
 		}
 		return mv
 	case []any:
@@ -455,7 +512,7 @@ func asVal(node any) Val {
 				}
 				continue
 			}
-			lv.peg = append(lv.peg, asVal(e))
+			lv.peg = append(lv.peg, asValDepth(e, depth+1))
 		}
 		return lv
 	case float64:

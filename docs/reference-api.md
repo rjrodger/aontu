@@ -142,9 +142,9 @@ into a context.
 | `collect`  | `boolean`   | Collect errors onto `result.err` instead of throwing. |
 | `err`      | `any[]`     | Pre-existing array to accumulate errors into (implies `collect`). |
 | `explain`  | `any[]`     | Capture a structured trace of the unification. |
-| `debug` / `trace` | `boolean` | Enable jsonic debug / parse tracing. |
+| `debug` / `trace` | `boolean` | Enable parser debug / parse tracing. |
 | `deps`     | `object`    | Dependency record populated by `@"…"` loads. |
-| `log`      | `number`    | jsonic log verbosity. |
+| `log`      | `number`    | Parser log verbosity. |
 
 `@"…"` resolution tries an **in-memory** resolver, then the
 **filesystem**, then **package** resolution, in that order.
@@ -332,9 +332,9 @@ references (`$.a.b`, `.x.a`, `.$KEY`), `$name` variables, the `+`
 operator, all twelve functions, `type`/`hide` marks, and `@"…"` source
 loading — plus `parse` / `unify` / `generate` and the canonical form.
 
-The shared parser stack is identical: TypeScript uses `jsonic` +
-`@jsonic/{expr,path,multisource,directive}`; Go uses the official ports
-`github.com/jsonicjs/{jsonic,expr,path,multisource,directive}/go`. See
+The shared parser stack is identical: TypeScript uses `@tabnas/jsonic` +
+`@tabnas/{expr,path,multisource,directive,debug}`; Go uses the ports
+`github.com/tabnas/{jsonic,expr,path,multisource,directive}/go`. See
 the [Explanation](explanation.md#two-implementations-one-behaviour) for
 how parity is maintained, and [Test coverage](test-coverage.md) for what
 each suite exercises.

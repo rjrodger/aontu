@@ -1,4 +1,4 @@
-import { Jsonic } from 'jsonic';
+import { Jsonic } from '@tabnas/jsonic';
 import type { Val, AontuOptions } from './type';
 import { Site } from './site';
 declare class Lang {

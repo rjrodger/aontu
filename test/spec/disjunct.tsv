@@ -9,3 +9,6 @@ unify-pick-canon	canon	a:2\na:1|2	{"a":2}
 kind-pick	gen	a:2\na:string|number	{"a":2}
 conj-commute	gen	x:(1|2) & 2	{"x":2}
 conj-commute-rev	gen	x:2 & (1|2)	{"x":2}
+# pref defaults fold across ALL pref members even when not the leading entry (regression)
+pref-fold-nonleading	gen	a:1 | *{x:1} | *{y:2}	{"a":{"x":1,"y":2}}
+pref-fold	gen	a:*{x:1} | *{y:2}	{"a":{"x":1,"y":2}}

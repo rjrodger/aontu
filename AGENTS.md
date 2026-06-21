@@ -28,19 +28,23 @@ implementations are checked against the same cases.
 ├── Makefile             # fans out to ts/ and go/
 ├── README.md
 ├── docs/
+│   ├── lsp.md           # language server reference
 │   └── shared-spec.md   # the shared TSV test format
+├── editors/             # editor plugins (VS Code, Emacs, Vim) → aontu-lsp
 ├── test/
 │   └── spec/            # shared test cases — *.tsv (language-agnostic)
 ├── ts/                  # canonical TypeScript implementation
-│   ├── package.json     # `bin`: aontu -> dist/cli.js
-│   ├── src/             # source incl. cli.ts (+ src/tsconfig.json -> ../dist)
+│   ├── package.json     # `bin`: aontu -> dist/cli.js, aontu-lsp -> dist/lsp-server.js
+│   ├── src/             # source incl. cli.ts, lsp.ts, lsp-server.ts (+ src/tsconfig.json -> ../dist)
 │   ├── test/            # tests (+ test/tsconfig.json -> ../dist-test)
 │   ├── dist/            # committed compiled JS + .d.ts (incl. cli.js)
 │   └── dist-test/       # committed compiled tests (the run target)
 └── go/                  # Go port
     ├── go.mod           # module github.com/rjrodger/aontu/go
-    ├── *.go             # package aontu
+    ├── *.go             # package aontu (incl. check.go: Check -> []Problem)
+    ├── lsp/             # LSP library (Diagnostics + Handler)
     ├── cmd/aontu/       # `aontu` CLI (package main, file/stdin/REPL)
+    ├── cmd/aontu-lsp/   # `aontu-lsp` Language Server (stdio)
     ├── aontu_test.go    # Go-native sanity tests
     └── spec_test.go     # runs the shared test/spec/*.tsv suite
 ```
@@ -49,6 +53,17 @@ Both implementations also ship an `aontu` command-line tool
 (`ts/src/cli.ts`, `go/cmd/aontu`) that evaluates a file or stdin and
 starts a REPL when given no file. See
 [`docs/reference-api.md`](docs/reference-api.md#command-line-interface).
+
+Both also ship an `aontu-lsp` Language Server that reports unification
+diagnostics over stdio. The LSP logic is a reusable library separate from
+the server: analysis (`computeDiagnostics` in `ts/src/lsp.ts`;
+`lsp.Diagnostics` over `aontu.Check` in `go/lsp`) and a transport-agnostic
+handler (`LspHandler` / `lsp.Handler`), with a thin stdio server on top
+(`ts/src/lsp-server.ts`, `go/cmd/aontu-lsp`). The two servers are kept in
+parity (same capabilities — diagnostics, hover, completion — and identical
+output text). The library does not depend on the server, so third parties
+can reuse it with their own transport. Editor plugins live in
+[`editors/`](editors/). Full reference: [`docs/lsp.md`](docs/lsp.md).
 Long-form documentation lives under [`docs/`](docs/) (start at
 `docs/index.md`); measure coverage with `make cov` (see
 `docs/test-coverage.md`).
@@ -104,9 +119,10 @@ that both implementations satisfy.
 ## Implementation parity & Go coverage
 
 TypeScript is canonical; the Go port is kept in parity for the subset it
-implements. The Go **parser** is built on the official Go ports of jsonic
-and its `expr`/`path` plugins (`github.com/jsonicjs/...`) — the same stack
-as `ts/src/lang.ts` — so the surface syntax parses in parity.
+implements. The Go **parser** is built on the Go ports of the `@tabnas`
+parser stack and its `expr`/`path` plugins (`github.com/tabnas/...`) —
+the same stack as `ts/src/lang.ts` — so the surface syntax parses in
+parity.
 
 The Go port has **full parity** with the canonical TypeScript language:
 scalars, scalar kinds (type constraints), maps (implicit nesting,
@@ -120,16 +136,25 @@ parenthesised grouping), all twelve built-in functions (`upper`,
 via the multisource plugin — plus `parse`, `unify`, `generate` and
 `canon`.
 
-Both use the **same `jsonicjs` plugins**: TS `jsonic` +
-`@jsonic/{expr,path,multisource,directive}`; Go
-`github.com/jsonicjs/{jsonic,expr,path,multisource,directive}/go` — the
-official Go ports. `$var` variables are supplied via the runner context
+Both use the **same `@tabnas` parser stack**: TS `@tabnas/jsonic` +
+`@tabnas/{expr,path,multisource,directive,debug}`; Go
+`github.com/tabnas/{jsonic,expr,path,multisource,directive}/go` — the Go
+ports. `$var` variables are supplied via the runner context
 (`ctx.vars` in TS, `Aontu.GenerateVars(src, vars)` in Go); the shared
 `test/spec/var.tsv` rows are checked with the same variable set in both.
 
-Both implementations use the same `jsonicjs` Go/TS stack (jsonic + expr +
+Both implementations use the same `@tabnas` Go/TS stack (jsonic + expr +
 path + multisource), so the parser and semantics stay in lock-step. The
 shared spec is the contract; grow it whenever either side changes.
+
+**Pin the `@tabnas` versions exactly** (`ts/package.json`, `go/go.mod`).
+The spread (`&:`) and optional-key (`a?:`) rules depend on `@tabnas`
+parser *internals*, not just its public API: the parent-seeded node that
+descended rules share (hence the explicit `r.node = {}` resets in both
+`lang.ts` and `lang.go`), the `B:`/`b:` backtrack accounting, and the
+order plugins are applied. A minor `@tabnas` bump can change these
+silently with no compile error — only the shared spec catches it — so
+upgrade deliberately and run `make test` before loosening any pin.
 
 ## Conventions
 

@@ -40,12 +40,14 @@ class VarVal extends FeatureVal_1.FeatureVal {
         if (!(nameVal.isRef) && type_1.DONE === nameVal.dc) {
             if (nameVal instanceof StringVal_1.StringVal) {
                 let found = ctx.vars[nameVal.peg];
+                // TODO: support complex values
+                const ft = typeof found;
+                // Single ladder: a missing var must report `unknown_var` and not
+                // fall through to the `invalid_var_kind` default below.
                 if (undefined === found) {
                     out = (0, err_1.makeNilErr)(ctx, 'unknown_var', this, peer);
                 }
-                // TODO: support complex values
-                const ft = typeof found;
-                if (null === found) {
+                else if (null === found) {
                     out = this.place(new NullVal_1.NullVal({ peg: null }));
                 }
                 else if ('string' === ft) {

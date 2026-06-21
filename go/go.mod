@@ -3,10 +3,14 @@ module github.com/rjrodger/aontu/go
 go 1.24.7
 
 require (
-	github.com/jsonicjs/expr/go v0.1.3
-	github.com/jsonicjs/jsonic/go v0.1.22
-	github.com/jsonicjs/multisource/go v0.1.6
-	github.com/jsonicjs/path/go v0.1.2
+	github.com/tabnas/expr/go v0.2.0
+	github.com/tabnas/jsonic/go v0.2.0
+	github.com/tabnas/multisource/go v0.3.0
+	github.com/tabnas/path/go v0.2.0
 )
 
-require github.com/jsonicjs/directive/go v0.1.4 // indirect
+require (
+	github.com/tabnas/directive/go v0.2.0 // indirect
+	github.com/tabnas/json/go v0.2.0 // indirect
+	github.com/tabnas/parser/go v0.2.0 // indirect
+)

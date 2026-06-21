@@ -50,7 +50,7 @@ describe('error', function() {
 
   it('file-e01', async () => {
     let a0 = new Aontu()
-    let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.jsonic"', { collect: true })
+    let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.aon"', { collect: true })
     expect(v0.err[0].why).equal('scalar_value')
     expect(typeof v0.err[0].msg).equal('string')
   })
@@ -62,7 +62,7 @@ describe('error', function() {
     expect(() => aontu.generate('a:$.b')).throw(/no_path/)
 
     expect(() =>
-      aontu.generate('@"' + __dirname + '/../test/error/e02.jsonic"'))
+      aontu.generate('@"' + __dirname + '/../test/error/e02.aon"'))
       .throw(/no_path/)
   })
 
@@ -130,23 +130,23 @@ describe('error', function() {
     // File source: error message should show the file content.
     let a0 = new Aontu({ fs: Fs })
     let v0 = a0.unify(
-      '@"' + __dirname + '/../test/error/e01.jsonic"',
+      '@"' + __dirname + '/../test/error/e01.aon"',
       { collect: true }
     )
     expect(v0.err[0].why).equal('scalar_value')
     expect(v0.err[0].msg).to.not.contain('SOURCE-NOT-FOUND')
-    // e01.jsonic contains "a: 1\na: 2\n" — error should show the file content
+    // e01.aon contains "a: 1\na: 2\n" — error should show the file content
     expect(v0.err[0].msg).to.contain('a: 1')
     expect(v0.err[0].msg).to.contain('a: 2')
   })
 
 
   it('error-source-file-cross', () => {
-    // Cross-file error: e03.jsonic imports e04.jsonic, conflicting on key a.
+    // Cross-file error: e03.aon imports e04.aon, conflicting on key a.
     // Error message should show file content, not SOURCE-NOT-FOUND.
     let a0 = new Aontu({ fs: Fs })
     let v0 = a0.unify(
-      '@"' + __dirname + '/../test/error/e03.jsonic"',
+      '@"' + __dirname + '/../test/error/e03.aon"',
       { collect: true }
     )
     expect(v0.err[0].why).equal('scalar_value')

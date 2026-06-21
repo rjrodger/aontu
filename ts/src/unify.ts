@@ -162,8 +162,16 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
       }
     }
     catch (err: any) {
-      // TODO: handle unexpected
-      out = makeNilErr(ctx, 'internal', a, b)
+      // This catch-all converts an unexpected exception into an 'internal'
+      // Nil so one bad node doesn't crash a whole unify. To avoid fully
+      // masking regressions, preserve the original error message (and a
+      // RangeError flag — i.e. stack overflow from runaway recursion) on
+      // the Nil's details so it surfaces in the formatted error rather
+      // than vanishing. See err.ts (descErr) for how details render.
+      out = makeNilErr(ctx, 'internal', a, b, undefined, {
+        error: String(err?.message ?? err),
+        ...(err instanceof RangeError ? { overflow: true } : {}),
+      })
     }
   }
 

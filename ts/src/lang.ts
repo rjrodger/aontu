@@ -5,42 +5,43 @@
 
 import {
   Jsonic,
+  Tabnas,
   Plugin,
   Rule,
   RuleSpec,
   Context as JsonicContext,
   JsonicError,
-} from 'jsonic'
+} from '@tabnas/jsonic'
 
 
-import { Debug } from 'jsonic/debug'
+import { Debug } from '@tabnas/debug'
 
 import {
   MultiSource
-} from '@jsonic/multisource'
+} from '@tabnas/multisource'
 
-// TODO: @jsonic/multisource should support virtual fs
+// TODO: @tabnas/multisource should support virtual fs
 
 import {
   makeFileResolver
-} from '@jsonic/multisource/resolver/file'
+} from '@tabnas/multisource/resolver/file'
 
 import {
   makePkgResolver
-} from '@jsonic/multisource/resolver/pkg'
+} from '@tabnas/multisource/resolver/pkg'
 
 import {
   makeMemResolver
-} from '@jsonic/multisource/resolver/mem'
+} from '@tabnas/multisource/resolver/mem'
 
 import {
   Expr,
   Op,
-} from '@jsonic/expr'
+} from '@tabnas/expr'
 
 import {
   Path
-} from '@jsonic/path'
+} from '@tabnas/path'
 
 import type {
   Val,
@@ -93,9 +94,11 @@ import { OpenFuncVal } from './val/OpenFuncVal'
 import { SuperFuncVal } from './val/SuperFuncVal'
 
 
+const asPlugin = (p: unknown): Plugin => p as Plugin
+
 let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
 
-  jsonic.use(Path)
+  jsonic.use(asPlugin(Path))
 
   // TODO: refactor Val constructor
   // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
@@ -279,7 +282,7 @@ help isolate the syntax error.`,
 
 
   jsonic
-    .use(Expr, {
+    .use(asPlugin(Expr), {
       op: {
         // disjunct < conjunct: c & b | a -> (c & b) | a
         'conjunct': {
@@ -376,13 +379,23 @@ help isolate the syntax error.`,
 
     rs
       .open([
-        { s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' },
+        {
+          s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 },
+          // @tabnas seeds a descended rule's node from its parent; without
+          // a fresh node here the nested spread map (`a:&:{x:1}`) would
+          // share the parent map's node object and self-reference.
+          a: (r: Rule) => { r.node = {} },
+          g: 'spread'
+        },
 
         {
           s: [OPTKEY, QM],
           c: (r) => 0 == r.d,
           p: 'map',
           b: 2,
+          // Fresh node (see spread alt above): the optional dive descends
+          // to a map and must not share the parent's node object.
+          a: (r: Rule) => { r.node = {} },
           g: 'pair,jsonic,top,aontu-optional',
         },
 
@@ -391,12 +404,13 @@ help isolate the syntax error.`,
           p: 'map',
           b: 2,
           n: { pk: 1 },
+          a: (r: Rule) => { r.node = {} },
           g: 'pair,jsonic,top,dive,aontu-optional',
         },
 
       ])
 
-      .bc((r: Rule, ctx: JsonicContext) => {
+      .ac((r: Rule, ctx: JsonicContext) => {
 
         let valnode: Val = r.node
         let valtype = typeof valnode
@@ -557,7 +571,7 @@ help isolate the syntax error.`,
         }
       ])
 
-      // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
+      // NOTE: manually adjust path - @tabnas/path ignores as not pair:true
       .ao((r) => {
         if (0 < r.d && r.u.spread) {
           r.child.k.path = [...r.k.path, '&']
@@ -642,6 +656,13 @@ help isolate the syntax error.`,
 
 
 
+// SECURITY: the default resolver reads any file/package the process can
+// reach — @"path" follows relative paths (`@"../../etc/passwd"`) and
+// symlinks with no containment check, and @"pkg" can require() arbitrary
+// installed modules. This is intentional for the CLI, but it means a
+// `.aon` source can read referenced files; the LSP uses this same
+// resolver, so treat opening an untrusted source as running it. Pass a
+// confined `options.resolver` to restrict reads in less-trusted contexts.
 function makeModelResolver(options: any) {
   const useRequire = options.require || require
 
@@ -664,7 +685,7 @@ function makeModelResolver(options: any) {
     popts: any,
     rule: Rule,
     ctx: JsonicContext,
-    jsonic: Jsonic
+    jsonic: Tabnas
   ) {
 
     let path = 'string' === typeof spec ? spec : spec?.peg
@@ -713,20 +734,25 @@ class Lang {
     this.jsonic = Jsonic.make()
 
     if (this.opts.debug) {
-      this.jsonic.use(Debug, {
+      this.jsonic.use(asPlugin(Debug), {
         trace: this.opts.trace
       })
     }
 
     this.jsonic
-      .use(AontuJsonic)
-      .use(MultiSource, {
+      .use(asPlugin(MultiSource), {
         resolver: options?.resolver || modelResolver,
+        // `.aon` is the preferred Aontu source extension; `.aontu` also
+        // works. `.jsonic` is retired (no longer auto-resolved); the
+        // default `['jsonic','jsc','json','js']` is overridden here.
+        // (Upstream option name is the misspelled `implictExt`.)
+        implictExt: ['aon', 'aontu'],
         processor: {
           aontu: 'jsonic',
           aon: 'jsonic',
         }
       })
+      .use(AontuJsonic)
   }
 
 

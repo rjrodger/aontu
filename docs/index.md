@@ -29,6 +29,12 @@ open it. Reach for the part that matches your need:
 | **Look up** exact syntax, semantics, options, or API surface  | [Language reference](reference-language.md) · [API reference](reference-api.md) |
 | **Understand** how and why the engine works the way it does    | [Explanation](explanation.md) |
 
+Tooling:
+
+- [Language Server (LSP)](lsp.md) — the `aontu-lsp` diagnostics server
+  (TypeScript and Go), how to wire it into an editor, and the reusable
+  LSP library API.
+
 Two further documents support the project itself:
 
 - [Test coverage](test-coverage.md) — how coverage is measured for both

@@ -29,6 +29,12 @@ func New() *Aontu { return &Aontu{} }
 func NewWithBase(base string) *Aontu { return &Aontu{base: base} }
 
 // Parse parses source into a Val AST, not yet unified.
+//
+// NOTE: the returned Val is SINGLE-USE. Unify/Generate refine the tree
+// in place (see unifyRoot), so do not Unify/Generate the same Val more
+// than once and do not use it from multiple goroutines. The Unify/
+// Generate entry points re-parse per call, so this only matters if you
+// hold a Parse result yourself; call Parse again for a fresh tree.
 func (a *Aontu) Parse(src string) (Val, error) {
 	return parseBase(src, a.base)
 }

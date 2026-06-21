@@ -79,13 +79,15 @@ class VarVal extends FeatureVal {
     if (!(nameVal.isRef) && DONE === nameVal.dc) {
       if (nameVal instanceof StringVal) {
         let found = ctx.vars[nameVal.peg]
-        if (undefined === found) {
-          out = makeNilErr(ctx, 'unknown_var', this, peer)
-        }
 
         // TODO: support complex values
         const ft = typeof found
-        if (null === found) {
+        // Single ladder: a missing var must report `unknown_var` and not
+        // fall through to the `invalid_var_kind` default below.
+        if (undefined === found) {
+          out = makeNilErr(ctx, 'unknown_var', this, peer)
+        }
+        else if (null === found) {
           out = this.place(new NullVal({ peg: null }))
         }
         else if ('string' === ft) {

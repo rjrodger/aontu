@@ -204,7 +204,7 @@ Load another source file with `@"path"`. The loaded value unifies in
 place, so a base file and an override file merge naturally:
 
 ```aontu
-car: @"./car.jsonic"            # { color: silver, doors: 4 }
+car: @"./car.aon"               # { color: silver, doors: 4 }
 car: { doors: number, wheels: 4 }
 ```
 

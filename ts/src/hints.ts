@@ -109,6 +109,8 @@ const hints: Record<string, string> = {
   '|:empty': 'Empty disjunction. The disjunction has no valid alternatives.',
   '|:empty-dist': 'Empty disjunction distribution. All alternatives in the disjunction are invalid.',
 
+  'max_depth': 'Input nesting is too deep to process safely.',
+
   // Function errors (dynamic patterns)
   'func': 'Function operation failed. See the specific function name for details.',
   'make': 'Failed to create a new value. The make operation could not construct the value.',

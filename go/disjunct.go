@@ -99,7 +99,10 @@ func (d *DisjunctVal) Gen(ctx *Ctx) (any, error) {
 	}
 	val := vals[0]
 	for i := 1; i < len(vals); i++ {
-		val = val.Unify(d.peg[i], ctx)
+		// Index `vals`, not `d.peg`: when the pref members are not the
+		// leading entries the two slices differ, and folding against
+		// d.peg[i] would unify the wrong (or a repeated) member.
+		val = val.Unify(vals[i], ctx)
 	}
 	return val.Gen(ctx)
 }

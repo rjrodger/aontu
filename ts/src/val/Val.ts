@@ -54,6 +54,12 @@ const SPREAD = Symbol('spread')
 const EMPTY_ERR: any[] = Object.freeze([]) as unknown as any[]
 
 
+// Process-global, monotonic Val id source. Correctness only requires ids
+// to be unique within a single unify run (fast-path identity checks,
+// `same()`), which holds. It is NOT reset between generate() calls, so in
+// a long-running host (e.g. the LSP) it grows for the process lifetime;
+// that is acceptable — an id is a small number and is never used as a
+// memory key. TODO: switch to the per-run ctx.vc counter (see ctx.ts).
 let ID = 1000
 
 
@@ -80,6 +86,7 @@ abstract class Val {
   declare isBoolean: boolean
   declare isConjunct: boolean
   declare isDisjunct: boolean
+  declare isExpect: boolean
   declare isJunction: boolean
 
   // Conjunct sort order. Lower values sort first in norm().
@@ -273,7 +280,14 @@ abstract class Val {
     return v
   }
 
-  // NOTE: MUST not mutate! Val immutability is a critical assumption.
+  // CONTRACT: implementations should treat `this` and `peer` as
+  // immutable and return a new Val. KNOWN EXCEPTION: the MapVal/ListVal
+  // fast-path for a TOP peer returns and refines `this` in place (an
+  // intentional optimization for the fixpoint loop). The practical
+  // consequence is that a parsed/unified tree is SINGLE-USE — do not
+  // re-unify or re-generate the same Val, and do not share it across
+  // threads. The public Aontu.unify/generate entry points re-parse per
+  // call, so this only matters if you hold and reuse a Val yourself.
   unify(_peer: Val, _ctx: AontuContext): Val { return this }
 
   // TODO: indicate marks in some way that is ignored by reparse.
@@ -379,6 +393,7 @@ Object.assign(Val.prototype, {
   isBoolean: false,
   isConjunct: false,
   isDisjunct: false,
+  isExpect: false,
   isJunction: false,
 
   cjo: 99999,

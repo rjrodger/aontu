@@ -54,24 +54,30 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         // C1-inner: tell `makeNilErr` to return TRIAL_NIL in this scope
         // instead of allocating per-failure NilVals. Save/restore so
         // nested DisjunctVal trials (and the outer non-trial code) are
-        // not affected.
+        // not affected. The restore lives in `finally`: if a trial throws,
+        // leaving ctx._trialMode=true would collapse every subsequent real
+        // error in this ctx to the shared TRIAL_NIL sentinel.
         ctx._trialMode = true;
-        for (let vI = 0; vI < this.peg.length; vI++) {
-            const v = this.peg[vI];
-            const trialErr = [];
-            ctx.err = trialErr;
-            oval[vI] = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'DIST:' + vI) }) : ctx, v, peer, 'dj-peer');
-            if (0 < trialErr.length) {
-                // C1: failed-trial marker is never user-visible — it just
-                // signals "this disjunct member doesn't match" and is
-                // filtered out before the result is built. Use the shared
-                // sentinel instead of allocating a fresh NilVal per trial.
-                oval[vI] = NilVal_1.TRIAL_NIL;
+        try {
+            for (let vI = 0; vI < this.peg.length; vI++) {
+                const v = this.peg[vI];
+                const trialErr = [];
+                ctx.err = trialErr;
+                oval[vI] = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'DIST:' + vI) }) : ctx, v, peer, 'dj-peer');
+                if (0 < trialErr.length) {
+                    // C1: failed-trial marker is never user-visible — it just
+                    // signals "this disjunct member doesn't match" and is
+                    // filtered out before the result is built. Use the shared
+                    // sentinel instead of allocating a fresh NilVal per trial.
+                    oval[vI] = NilVal_1.TRIAL_NIL;
+                }
+                done = done && type_1.DONE === oval[vI].dc;
             }
-            done = done && type_1.DONE === oval[vI].dc;
         }
-        ctx._trialMode = savedTrialMode;
-        ctx.err = savedErr;
+        finally {
+            ctx._trialMode = savedTrialMode;
+            ctx.err = savedErr;
+        }
         // // // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))
         // Remove duplicates, and normalize
         if (1 < oval.length) {
@@ -178,7 +184,10 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
             // TODO: over unifies complex types like maps
             // ({x:1}|{y:2})&{z:3} should be {"x":1,"z":3}|{"y":2,"z":3} not { x:1, z:3, y:2 }
             for (let vI = 1; vI < vals.length; vI++) {
-                let valnext = val.unify(this.peg[vI], ctx);
+                // Index `vals`, not `this.peg`: when the pref members are not the
+                // leading entries the two arrays differ, and folding against
+                // this.peg[vI] would unify the wrong (or a repeated) member.
+                let valnext = val.unify(vals[vI], ctx);
                 // // // console.log('DJ-GEN-VALS-NEXT', valnext.canon)
                 val = valnext;
             }

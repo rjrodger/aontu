@@ -5,6 +5,14 @@
 import type { Val } from './type'
 
 
+// Default walk() depth limit. High enough that real configs are never
+// silently truncated (the old default of 32 dropped marks on deeply
+// nested refs/funcs → wrong output), while still bounding runaway or
+// accidentally-cyclic walks (walk has no cycle detection). Pass null for
+// truly unbounded.
+const WALK_DEFAULT_MAXDEPTH = 9999
+
+
 // Mark value in source is propagated to target (true ratchets).
 function propagateMarks(source: Val, target: Val): void {
   // Don't infect top!
@@ -53,7 +61,8 @@ function walk(
   // After descending into a node.
   after?: WalkApply,
 
-  // Maximum recursive depth, default: 32. Use null for infinite depth.
+  // Maximum recursive depth, default: WALK_DEFAULT_MAXDEPTH. Use null for
+  // infinite depth.
   maxdepth?: number | null,
 
   // These arguments are used for recursive state.
@@ -63,7 +72,7 @@ function walk(
 ): Val {
   let out = null == before ? val : before(key, val, parent, path || [])
 
-  maxdepth = null != maxdepth && 0 <= maxdepth ? maxdepth : 32
+  maxdepth = null != maxdepth && 0 <= maxdepth ? maxdepth : WALK_DEFAULT_MAXDEPTH
   if (null != maxdepth && 0 === maxdepth) {
     return out
   }
