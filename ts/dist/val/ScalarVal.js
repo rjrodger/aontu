@@ -51,7 +51,9 @@ class ScalarVal extends Val_1.Val {
         return peer?.isScalar ? peer.peg === this.peg : super.same(peer);
     }
     gen(_ctx) {
-        return this.peg;
+        // Normalize negative zero to 0 for deterministic output (JSON has
+        // no -0, and the Go port produces 0).
+        return Object.is(this.peg, -0) ? 0 : this.peg;
     }
     superior() {
         return this.place(new ScalarKindVal_1.ScalarKindVal({

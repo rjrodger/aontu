@@ -24,6 +24,7 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
                 out = peer.unify(this, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'KND') }) : ctx);
             }
             else if (peer.isScalar &&
+                peer.kind === this.kind &&
                 peer.peg === this.peg) {
                 out = this;
             }

@@ -19,3 +19,4 @@ kind-boolean	canon	a:boolean	{"a":boolean}
 multi	gen	a:1 b:2 c:3	{"a":1,"b":2,"c":3}
 multi-canon	canon	x:1 y:two z:true	{"x":1,"y":"two","z":true}
 float-integral	gen	x:1.0	{"x":1}
+neg-zero	gen	x:-0	{"x":0}

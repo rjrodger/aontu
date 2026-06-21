@@ -157,12 +157,17 @@ The shared spec only contains rows that pass identically in both
 implementations. A few behaviours deliberately differ and must **not**
 be added to `test/spec/*.tsv`:
 
-- **Numbers.** JavaScript has a single number type, so the canonical TS
-  treats `1` and `1.0` as equal (`1 & 1.0` → `1`) and preserves negative
-  zero (`-0` stays `-0`). The Go port keeps distinct `integer`/`number`
-  kinds, so `1 & 1.0` fails to unify (kind mismatch) and `-0` normalises
-  to `0`. Large/small magnitudes also format via Go's `%g` rather than
-  JS `Number.toString`.
+- **Numeric canon formatting (range-limited).** `integer` and `number`
+  are distinct kinds in **both** implementations: a concrete `integer`
+  and `number` do not unify (`1 & 1.0` → error), and `-0` normalises to
+  `0` everywhere. The one remaining number divergence is *canon string
+  formatting at extreme magnitudes*: TS uses `Number.toString`, Go uses
+  `%g`, which differ in the exponential threshold and exponent padding
+  (e.g. TS `100000000000000000000` / `1e-7` vs Go `1e+20` / `1e-07`).
+  Numeric canon parity is therefore guaranteed only for the **decimal
+  subset** — `0` and finite numbers in roughly `1e-6 ≤ |x| < 1e20`,
+  which render as plain decimals identically in both. Keep shared-spec
+  numeric `canon` rows inside this range.
 - **Error message text.** Go's `hints` are abbreviated versions of the TS
   hints, and TS additionally renders source frames. Only the substring
   asserted by an `err`-mode spec row is contractual; full error text is

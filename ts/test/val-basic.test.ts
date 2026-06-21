@@ -316,8 +316,11 @@ describe('val-basic', function() {
     expect(ti0.unify(x0, ctx).isNil).equal(true)
 
 
-    expect(x0.unify(n0, ctx).mark$).equal('n0')
-    expect(n0.unify(x0, ctx).mark$).equal('n0')
+    // Integer and Number are distinct kinds: 11 (integer) & 11.0
+    // (number) no longer cross-unify (CUE-faithful number model; see
+    // AGENTS.md "Known TS/Go divergences").
+    expect(x0.unify(n0, ctx).isNil).equal(true)
+    expect(n0.unify(x0, ctx).isNil).equal(true)
 
 
     let x2: any = makeNumberVal(2.2)
@@ -421,8 +424,9 @@ describe('val-basic', function() {
     expect(tu(ctx, t1, t0)).equal(t0)
 
     let x0 = makeNumberVal(0)
-    expect(tu(ctx, n0, x0)).equal(n0)
-    expect(tu(ctx, x0, n0)).equal(n0)
+    // Integer 0 and Number 0 are distinct kinds and do not unify.
+    expect(tu(ctx, n0, x0).isNil).exist()
+    expect(tu(ctx, x0, n0).isNil).exist()
 
     expect(n0.same(n0)).equal(true)
     expect(makeIntegerVal(11).same(makeIntegerVal(11))).equal(true)

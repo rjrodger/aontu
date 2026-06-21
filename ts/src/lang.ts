@@ -250,6 +250,8 @@ help isolate the syntax error.`,
     'negative-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[0]
       val.peg = -1 * val.peg
+      // Normalize -0 to 0 (keeps the AST and canon free of negative zero).
+      if (0 === val.peg) val.peg = 0
       return addsite(val, r, ctx)
     },
 

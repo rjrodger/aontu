@@ -12,3 +12,4 @@ map-merge	gen	a:{x:1} & {y:2}	{"a":{"x":1,"y":2}}
 map-merge-canon	canon	a:{x:1} & {y:2}	{"a":{"x":1,"y":2}}
 map-deep-merge	gen	a:{x:{p:1}} & {x:{q:2}}	{"a":{"x":{"p":1,"q":2}}}
 kind-commute	gen	a:integer & 1	{"a":1}
+int-float-conflict	err	x:1 & 1.0	Literal scalar values of different kinds cannot unify.
