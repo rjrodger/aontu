@@ -367,10 +367,16 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 	case "addition-infix":
 		return newPlusOp(asVal(terms[0]), asVal(terms[1]))
 	case "func-paren":
-		// `name(args)` is a function call (preval injects the name);
-		// `(expr)` with no preval is parenthesised grouping.
+		// preval injects the function name as a raw string term[0] for
+		// `name(args)`; plain `(expr)` grouping has the inner Val in
+		// term[0] (no name preval). So a string term[0] means a call —
+		// an unrecognised name is an error, not grouping (mirrors the
+		// `unknown_function` NilVal in ts/src/lang.ts func-paren).
 		if len(terms) > 0 {
-			if name, ok := terms[0].(string); ok && funcSet[name] {
+			if name, ok := terms[0].(string); ok {
+				if !funcSet[name] {
+					return newNil("unknown_function")
+				}
 				args := make([]Val, 0, len(terms)-1)
 				for _, t := range terms[1:] {
 					args = append(args, asVal(t))
