@@ -26,6 +26,11 @@ class Aontu {
         return ac;
     }
     // Parse source into a matching Val AST, not yet unified.
+    //
+    // NOTE: the returned Val is SINGLE-USE — unify()/generate() refine the
+    // tree in place (see Val.unify), so do not unify or generate the same
+    // parsed Val more than once, and do not share it across threads. Call
+    // parse() again for a fresh tree.
     parse(src, opts, ac) {
         let out;
         let errs = [];

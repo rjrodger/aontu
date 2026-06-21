@@ -159,7 +159,14 @@ class Val {
         v.site.url = this.site.url;
         return v;
     }
-    // NOTE: MUST not mutate! Val immutability is a critical assumption.
+    // CONTRACT: implementations should treat `this` and `peer` as
+    // immutable and return a new Val. KNOWN EXCEPTION: the MapVal/ListVal
+    // fast-path for a TOP peer returns and refines `this` in place (an
+    // intentional optimization for the fixpoint loop). The practical
+    // consequence is that a parsed/unified tree is SINGLE-USE — do not
+    // re-unify or re-generate the same Val, and do not share it across
+    // threads. The public Aontu.unify/generate entry points re-parse per
+    // call, so this only matters if you hold and reuse a Val yourself.
     unify(_peer, _ctx) { return this; }
     // TODO: indicate marks in some way that is ignored by reparse.
     // Need an annotation/taggins syntax? a:{}/type ?

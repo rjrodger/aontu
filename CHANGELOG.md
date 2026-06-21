@@ -9,6 +9,21 @@ which implementation each change affects.
 
 ### Fixed — fragility audit
 
+- **Deep-structure marks (TypeScript)**: `walk()` defaulted to a depth
+  limit of 32 and silently returned partial, so `$ref`/function
+  mark-clearing missed marks on structures nested deeper than 32 levels
+  (wrong gen output). The default is now high enough that real configs
+  are never truncated while still bounding accidentally-cyclic walks.
+- **Deep-input safety (Go)**: `asVal` now bounds its recursion
+  (`maxNodeDepth`), so pathologically deep input yields a clean
+  `max_depth` error instead of an unrecoverable stack overflow; this
+  also transitively bounds `setPaths`/`clonePath`. (Extremely deep input
+  can still exhaust the underlying `@tabnas` parser, which has no depth
+  option — a dependency limit.)
+- **Trial-mode exception safety (TypeScript)**: `DisjunctVal.unify`
+  restores the swapped `ctx.err`/`ctx._trialMode` in a `finally`, so a
+  throw inside a member trial can no longer leak `_trialMode=true` (which
+  would collapse later real errors to the shared `TRIAL_NIL` sentinel).
 - **Disjunct defaults (TypeScript and Go)**: when generating a disjunction
   with preference (`*`) members, the fold over the preferred members
   indexed the unfiltered member list, so prefs that were not the leading
@@ -33,6 +48,11 @@ which implementation each change affects.
 - **Go**: the per-base parser cache (`langForBase`) is now bounded
   (`maxLangCache`) so long-running hosts (e.g. the LSP) cannot grow it
   without limit.
+- Documented that a `parse()`/`Parse()` result is **single-use**:
+  `unify`/`generate` refine the tree in place (the MapVal/ListVal TOP
+  fast-path returns `this`), so the same Val must not be re-unified,
+  re-generated, or shared across threads. The public entry points
+  re-parse per call, so this only affects callers that hold a parsed Val.
 - Documented the security model of the `@"file"`/`@"pkg"` resolvers
   (they read any reachable file/module; supply a confined resolver in
   less-trusted contexts), the process-global Val id counter's growth, and

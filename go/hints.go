@@ -17,4 +17,5 @@ var hints = map[string]string{
 	"list":             "Type mismatch: expected a list value but got a different type.",
 	"unify_cycle":      "Circular reference detected during unification.",
 	"unknown_function": "This function name is not recognized.",
+	"max_depth":        "Input nesting is too deep to process safely.",
 }

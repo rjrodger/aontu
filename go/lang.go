@@ -445,9 +445,22 @@ func toVals(terms []interface{}) []Val {
 	return out
 }
 
+// maxNodeDepth bounds asVal's recursion so pathologically deep input
+// (thousands of nested {}/[]) yields a clean error instead of a fatal,
+// unrecoverable Go stack overflow. Because every Val tree is built by
+// asVal, this also transitively bounds the depth that setPaths and
+// clonePath (which walk asVal's output) ever recurse to, so they cannot
+// overflow either. Real configs are orders of magnitude shallower.
+const maxNodeDepth = 10000
+
 // asVal converts a parsed jsonic node into a Val. Containers are
 // converted recursively; map order comes from the order sentinel.
-func asVal(node any) Val {
+func asVal(node any) Val { return asValDepth(node, 0) }
+
+func asValDepth(node any, depth int) Val {
+	if depth > maxNodeDepth {
+		return newNil("max_depth")
+	}
 	switch n := node.(type) {
 	case Val:
 		return n
@@ -455,7 +468,7 @@ func asVal(node any) Val {
 		// A top-level expression is returned as an unevaluated expr
 		// wrapper; evaluate it (map-value expressions are already
 		// evaluated during parse).
-		return asVal(expr.Evaluation(nil, nil, n, evaluate))
+		return asValDepth(expr.Evaluation(nil, nil, n, evaluate), depth+1)
 	case map[string]any:
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
@@ -472,7 +485,7 @@ func asVal(node any) Val {
 			if !ok {
 				continue
 			}
-			mv.set(k, asVal(v))
+			mv.set(k, asValDepth(v, depth+1))
 		}
 		return mv
 	case []any:
@@ -486,7 +499,7 @@ func asVal(node any) Val {
 				}
 				continue
 			}
-			lv.peg = append(lv.peg, asVal(e))
+			lv.peg = append(lv.peg, asValDepth(e, depth+1))
 		}
 		return lv
 	case float64:
