@@ -7,10 +7,20 @@ which implementation each change affects.
 
 ## Unreleased — TypeScript 0.47.0, Go 0.1.4
 
-### Changed — parser packages (TypeScript)
+### Changed — parser packages (TypeScript and Go)
 
-- Migrated the TypeScript parser from the `@jsonic`/`jsonic` packages to
-  the `@tabnas` packages (`@tabnas/jsonic`, `@tabnas/expr`,
+- **Go**: migrated the parser from the `github.com/jsonicjs/*` Go modules
+  to the `github.com/tabnas/*` modules (`tabnas/jsonic`, `tabnas/expr`,
+  `tabnas/multisource`, `tabnas/path`, `tabnas/directive`). Behaviour
+  unchanged; the full suite passes. Adaptations: the `RuleSpec` API moved
+  from exported slice fields to methods (`PrependOpen`/`AddClose`/`AddAC`);
+  and the map `Merge` now returns the value as-is for a new key
+  (`prev == nil`) — `tabnas/multisource` calls `Merge` for every key of a
+  top-level `@"file"` load, and `asVal(nil)` is an empty map, so the old
+  code wrongly produced `{} & val` and dropped the loaded keys.
+
+- **TypeScript**: migrated the parser from the `@jsonic`/`jsonic` packages
+  to the `@tabnas` packages (`@tabnas/jsonic`, `@tabnas/expr`,
   `@tabnas/multisource`, `@tabnas/path`, `@tabnas/directive`,
   `@tabnas/debug`). Behaviour is unchanged — the full suite (393 tests)
   passes. Three integration points needed adapting to `@tabnas`'s parser:

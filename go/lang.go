@@ -6,16 +6,16 @@ import (
 	"strings"
 	"sync"
 
-	expr "github.com/jsonicjs/expr/go"
-	jsonic "github.com/jsonicjs/jsonic/go"
-	multisource "github.com/jsonicjs/multisource/go"
-	path "github.com/jsonicjs/path/go"
+	expr "github.com/tabnas/expr/go"
+	jsonic "github.com/tabnas/jsonic/go"
+	multisource "github.com/tabnas/multisource/go"
+	path "github.com/tabnas/path/go"
 )
 
-// The parser is built on the official Go ports of jsonic and its expr
-// and path plugins — the same stack the canonical TypeScript parser
-// (ts/src/lang.ts) uses. This keeps syntax in parity instead of
-// maintaining a divergent hand-written parser.
+// The parser is built on the Go ports of the @tabnas parser stack
+// (@tabnas/jsonic and its expr and path plugins) — the same stack the
+// canonical TypeScript parser (ts/src/lang.ts) uses. This keeps syntax in
+// parity instead of maintaining a divergent hand-written parser.
 //
 // Construction model (important): the Go jsonic port emits plain Go
 // values (map[string]any, []any, float64, string, bool, nil) and shares
@@ -102,6 +102,14 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			// Duplicate keys combine into a conjunct (mirrors the jsonic
 			// merge in ts/src/lang.ts), e.g. `a:1 a:2` -> `a:1&2`.
 			Merge: func(prev, val any, r *jsonic.Rule, ctx *jsonic.Context) any {
+				// A new key (prev == nil) has nothing to unify — take the
+				// value as-is. (asVal(nil) is an empty MapVal, so merging
+				// would wrongly yield `{} & val`.) tabnas's multisource calls
+				// this for every key of a top-level @"file" load, including
+				// new ones, so this guard is required for source loading.
+				if prev == nil {
+					return val
+				}
 				return mergeVals(asVal(prev), asVal(val))
 			},
 		},
@@ -145,47 +153,44 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 	// val: a leading `&:` is an implicit spread map (a:&:{x:1}); push to
 	// map without consuming. Otherwise wrap scalar leaves into Vals.
 	j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
-		}, rs.Open...)
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
+		)
 		// On close, a following `&:` belongs to the enclosing map as a
 		// spread, not a conjunct — backtrack so the map can take it.
-		rs.Close = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
-		}, rs.Close...)
-		rs.AC = append(rs.AC, wrapLeaf)
+		rs.PrependClose(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
+		)
+		rs.AddAC(wrapLeaf)
 	})
 
 	// map: a leading `&:` pushes to pair without consuming.
 	j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, G: "spread"},
-		}, rs.Open...)
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, G: "spread"},
+		)
 	})
 
 	// pair: `&:value` is a spread (stored on the enclosing map);
 	// otherwise record key order.
 	j.Rule("pair", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
 			// `key ? : value` — optional key.
-			{S: [][]jsonic.Tin{optkey, {qm}, {cl}}, P: "val", U: map[string]any{"optional": true}, G: "optional"},
-		}, rs.Open...)
-		rs.AC = append(rs.AC, trackOrder)
+			&jsonic.AltSpec{S: [][]jsonic.Tin{optkey, {qm}, {cl}}, P: "val", U: map[string]any{"optional": true}, G: "optional"},
+		)
+		rs.AddAC(trackOrder)
 	})
 
 	// elem: a `&:value` list element is a spread; jsonic appends it as a
 	// normal element, so replace it with a marker that asVal extracts.
 	j.Rule("elem", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.Open = append([]*jsonic.AltSpec{
-			{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
-		}, rs.Open...)
-		rs.AC = append(rs.AC, elemSpread)
+		rs.PrependOpen(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+		)
+		rs.AddAC(elemSpread)
 	})
 
-	// @"file" source loading — registered last so the multisource
-	// directive layers over the aontu grammar (mirrors the ts/src/lang.ts
-	// order: AontuJsonic then MultiSource).
 	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil {
 		return nil, err
 	}
