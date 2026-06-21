@@ -1,0 +1,4 @@
+# Spread cases salvaged from the perf0 branch (spread-nested-multi.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-nested-multi-1	gen	a:{&:{m:{&:{x:1}}},b:{m:{c:{y:2},d:{y:3}}},e:{m:{f:{y:4}}}}	{"a":{"b":{"m":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}},"e":{"m":{"f":{"y":4,"x":1}}}}}
+spread-nested-multi-2	gen	a:{&:{m:{&:{x:*1|number}}},b:{m:{c:{},d:{x:2}}}}	{"a":{"b":{"m":{"c":{"x":1},"d":{"x":2}}}}}

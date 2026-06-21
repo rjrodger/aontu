@@ -1,0 +1,5 @@
+# Spread cases salvaged from the perf0 branch (spread-conjunct.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-conjunct-1	gen	{&:{x:1}}&{a:{y:2}}	{"a":{"y":2,"x":1}}
+spread-conjunct-2	gen	{a:{y:2}}&{&:{x:1}}	{"a":{"y":2,"x":1}}
+spread-conjunct-3	gen	{&:{x:1}}&{a:{y:2}}&{b:{z:3}}	{"a":{"y":2,"x":1},"b":{"z":3,"x":1}}

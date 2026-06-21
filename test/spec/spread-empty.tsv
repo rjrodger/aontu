@@ -1,0 +1,6 @@
+# Spread cases salvaged from the perf0 branch (spread-empty.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-empty-1	gen	{&:{x:1}}	{}
+spread-empty-2	gen	&:{x:1}	{}
+spread-empty-3	gen	{&:number}	{}
+spread-empty-4	gen	a:{&:{x:1}}	{"a":{}}

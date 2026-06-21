@@ -1,0 +1,10 @@
+# Spread cases salvaged from the perf0 branch (spread-key-all.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-key-all-1	gen	a:{k:key()}	{"a":{"k":"a"}}
+spread-key-all-2	gen	a:{b:{k:key()}}	{"a":{"b":{"k":"b"}}}
+spread-key-all-3	gen	a:{b:{c:{k:key()}}}	{"a":{"b":{"c":{"k":"c"}}}}
+spread-key-all-4	gen	q:{k:key()},a:$.q	{"q":{"k":"q"},"a":{"k":"a"}}
+spread-key-all-5	gen	&:{k:key()} a:{x:1}	{"a":{"x":1,"k":"a"}}
+spread-key-all-6	gen	&:{k:key()} a:{x:1} b:{x:2}	{"a":{"x":1,"k":"a"},"b":{"x":2,"k":"b"}}
+spread-key-all-7	gen	p:{&:{k:key()},a:{x:1},b:{x:2}}	{"p":{"a":{"x":1,"k":"a"},"b":{"x":2,"k":"b"}}}
+spread-key-all-10	gen	&:{k:key()} &:{p:2} a:{x:1} b:{x:2}	{"a":{"p":2,"x":1,"k":"a"},"b":{"p":2,"x":2,"k":"b"}}

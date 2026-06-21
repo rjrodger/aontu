@@ -1,0 +1,5 @@
+# Spread cases salvaged from the perf0 branch (spread-pref.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-pref-1	gen	a:{&:{x:*1|number},b:{x:2}}	{"a":{"b":{"x":2}}}
+spread-pref-2	gen	a:{&:{x:*1|number},b:{}}	{"a":{"b":{"x":1}}}
+spread-pref-3	gen	a:{&:{x:*true|boolean},b:{x:false}}	{"a":{"b":{"x":false}}}

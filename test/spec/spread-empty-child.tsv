@@ -1,0 +1,8 @@
+# Spread cases salvaged from the perf0 branch (spread-empty-child.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-empty-child-1	gen	a:{&:{x:1},b:{}}	{"a":{"b":{"x":1}}}
+spread-empty-child-2	gen	a:{&:{x:1},b:{},c:{}}	{"a":{"b":{"x":1},"c":{"x":1}}}
+spread-empty-child-3	gen	a:{&:{x:1},b:{},c:{y:2}}	{"a":{"b":{"x":1},"c":{"y":2,"x":1}}}
+spread-empty-child-4	gen	q:{x:1},a:{&:$.q,b:{}}	{"q":{"x":1},"a":{"b":{"x":1}}}
+spread-empty-child-5	gen	a:{&:{x:*1|number},b:{}}	{"a":{"b":{"x":1}}}
+spread-empty-child-6	gen	b:{&:{x:1}} b:{c:{}} b:d:{}	{"b":{"c":{"x":1},"d":{"x":1}}}

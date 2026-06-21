@@ -1,0 +1,5 @@
+# Spread cases salvaged from the perf0 branch (spread-map.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-map-1	gen	a:{&:{x:1},b:{y:2}}	{"a":{"b":{"y":2,"x":1}}}
+spread-map-2	gen	a:{&:{x:1},b:{y:2},c:{y:3}}	{"a":{"b":{"y":2,"x":1},"c":{"y":3,"x":1}}}
+spread-map-3	gen	a:{&:{x:1,z:2},b:{y:3}}	{"a":{"b":{"y":3,"x":1,"z":2}}}

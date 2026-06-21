@@ -1,0 +1,10 @@
+# Spread cases salvaged from the perf0 branch (spread-key-ref-layers.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-key-ref-layers-1	gen	q:{k:key()},a:$.q	{"q":{"k":"q"},"a":{"k":"a"}}
+spread-key-ref-layers-2	gen	q:{k:key()},r:$.q,a:$.r	{"q":{"k":"q"},"r":{"k":"r"},"a":{"k":"a"}}
+spread-key-ref-layers-3	gen	q:{k:key()},r:$.q,s:$.r,a:$.s	{"q":{"k":"q"},"r":{"k":"r"},"s":{"k":"s"},"a":{"k":"a"}}
+spread-key-ref-layers-4	gen	q:{k:key()},r:$.q,s:$.r,t:$.s,a:$.t	{"q":{"k":"q"},"r":{"k":"r"},"s":{"k":"s"},"t":{"k":"t"},"a":{"k":"a"}}
+spread-key-ref-layers-9	gen	q:{m:{k:key()}},a:{&:$.q,b:{m:{x:1}}}	{"q":{"m":{"k":"m"}},"a":{"b":{"m":{"k":"m","x":1}}}}
+spread-key-ref-layers-10	gen	q:{m:{k:key()}},r:$.q,a:{&:$.r,b:{m:{x:1}}}	{"q":{"m":{"k":"m"}},"r":{"m":{"k":"m"}},"a":{"b":{"m":{"k":"m","x":1}}}}
+spread-key-ref-layers-11	gen	q:{k:key(),p:1},a:$.q,b:$.q	{"q":{"k":"q","p":1},"a":{"k":"a","p":1},"b":{"k":"b","p":1}}
+spread-key-ref-layers-12	gen	q:{k:key(),p:1},r:$.q,a:$.r,b:$.r	{"q":{"k":"q","p":1},"r":{"k":"r","p":1},"a":{"k":"a","p":1},"b":{"k":"b","p":1}}

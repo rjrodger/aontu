@@ -1,0 +1,3 @@
+# Spread cases salvaged from the perf0 branch (spread-nested-key.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-nested-key-1	gen	a:{&:{k:key()},b:{x:1},c:{x:2}}	{"a":{"b":{"x":1,"k":"b"},"c":{"x":2,"k":"c"}}}

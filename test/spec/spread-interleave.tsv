@@ -1,0 +1,10 @@
+# Spread cases salvaged from the perf0 branch (spread-interleave.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-interleave-1	gen	{&:{x:1}}&{a:{y:2}}&{b:{z:3}}	{"a":{"y":2,"x":1},"b":{"z":3,"x":1}}
+spread-interleave-2	gen	{a:{y:2}}&{&:{x:1}}&{b:{z:3}}	{"a":{"y":2,"x":1},"b":{"z":3,"x":1}}
+spread-interleave-3	gen	{a:{y:2}}&{b:{z:3}}&{&:{x:1}}	{"a":{"y":2,"x":1},"b":{"z":3,"x":1}}
+spread-interleave-4	gen	{&:{x:1}}&{&:{p:2}}&{a:{y:3}}	{"a":{"y":3,"x":1,"p":2}}
+spread-interleave-5	gen	{a:{y:3}}&{&:{x:1}}&{&:{p:2}}	{"a":{"y":3,"x":1,"p":2}}
+spread-interleave-6	gen	{&:{x:1}}&{a:{y:2}}&{&:{p:3}}&{b:{z:4}}	{"a":{"y":2,"x":1,"p":3},"b":{"z":4,"x":1,"p":3}}
+spread-interleave-7	gen	q:&:k:a q:&:p:2 q:a:{x:11}	{"q":{"a":{"k":"a","p":2,"x":11}}}
+spread-interleave-11	gen	a:{&:{x:1}} a:{b:{y:2}} a:{&:{p:3}} a:{c:{z:4}}	{"a":{"b":{"y":2,"x":1,"p":3},"c":{"z":4,"x":1,"p":3}}}
