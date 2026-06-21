@@ -77,8 +77,8 @@ Token; see the [vsce docs](https://code.visualstudio.com/api/working-with-extens
 npm run publish         # vsce publish
 ```
 
-> Note: `vsce` will warn if no `LICENSE` file is present in this directory
-> and if no `icon` is set; both are optional for packaging.
+This directory ships a `LICENSE` (MIT) and a 128×128 `icon.png`, so `vsce`
+packages cleanly without the usual warnings.
 
 ## How it works
 

@@ -8,6 +8,7 @@
   "repository": { "type": "git", "url": "git://github.com/rjrodger/aontu.git" },
   "engines": { "vscode": "^1.75.0" },
   "categories": ["Programming Languages"],
+  "icon": "icon.png",
   "activationEvents": ["onLanguage:aontu"],
   "main": "./out/extension.js",
   "contributes": {
