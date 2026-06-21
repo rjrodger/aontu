@@ -47,6 +47,7 @@ class IntegerVal extends ScalarVal {
       }
       else if (
         peer.isScalar &&
+        peer.kind === this.kind &&
         peer.peg === this.peg
       ) {
         out = this

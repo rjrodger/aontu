@@ -12,7 +12,7 @@ const FeatureVal_1 = require("./FeatureVal");
 class OpBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
-        this.isPlusOp = true;
+        this.isOp = true;
         this.peg = [];
         for (let pI = 0; pI < spec.peg.length; pI++) {
             this.append(spec.peg[pI]);

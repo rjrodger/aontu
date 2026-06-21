@@ -65,6 +65,7 @@ abstract class Val {
 
   declare isTop: boolean
   declare isNil: boolean
+  declare isNull: boolean
   declare isMap: boolean
   declare isList: boolean
   declare isScalar: boolean
@@ -363,6 +364,7 @@ Object.assign(Val.prototype, {
 
   isTop: false,
   isNil: false,
+  isNull: false,
   isMap: false,
   isList: false,
   isScalar: false,

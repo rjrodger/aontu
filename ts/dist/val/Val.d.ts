@@ -30,6 +30,7 @@ declare abstract class Val {
     isVal: boolean;
     isTop: boolean;
     isNil: boolean;
+    isNull: boolean;
     isMap: boolean;
     isList: boolean;
     isScalar: boolean;

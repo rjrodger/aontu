@@ -47,9 +47,12 @@ class NumberVal extends ScalarVal {
       }
       else if (
         peer.isScalar &&
+        peer.kind === this.kind &&
         peer.peg === this.peg
       ) {
-        out = peer.isInteger ? peer : this
+        // Same kind (both Number) and equal value: integer/float no
+        // longer cross-unify, so peer is necessarily a NumberVal here.
+        out = this
       }
       else if (peer.isTop) {
         out = this

@@ -99,6 +99,9 @@ func stdinIsPipe() bool {
 func repl(a *aontu.Aontu, mode string, in io.Reader, out io.Writer) {
 	fmt.Fprintf(out, "Aontu v%s REPL — :help for commands, :quit to exit\n", aontu.Version)
 	sc := bufio.NewScanner(in)
+	// Raise the line cap well above bufio's 64KB default so a long
+	// pasted source line is not silently truncated.
+	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
 	fmt.Fprint(out, "aontu> ")
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -132,6 +135,9 @@ func repl(a *aontu.Aontu, mode string, in io.Reader, out io.Writer) {
 			fmt.Fprintln(out, text)
 		}
 		fmt.Fprint(out, "aontu> ")
+	}
+	if err := sc.Err(); err != nil {
+		fmt.Fprintln(out, "aontu: input error:", err)
 	}
 	fmt.Fprintln(out)
 }
@@ -172,7 +178,11 @@ func main() {
 	a := aontu.New()
 
 	if stdinIsPipe() {
-		src, _ := io.ReadAll(os.Stdin)
+		src, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "aontu: cannot read stdin: %v\n", err)
+			os.Exit(1)
+		}
 		os.Exit(emit(a, string(src), mode))
 	}
 

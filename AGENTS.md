@@ -138,3 +138,41 @@ shared spec is the contract; grow it whenever either side changes.
   Run `go vet ./...` and `gofmt` before committing.
 - Go module releases (a Go module in a subdirectory) use git tags of the
   form `go/vX.Y.Z`.
+
+### Mutation caveat (both implementations)
+
+Although `Val.unify` is documented "MUST not mutate", the fixpoint
+driver relies on `unify` mutating the result/`this` in place on the
+self-unify-with-TOP path (e.g. `MapVal`/`ListVal` write back their
+children, `Conjunct`/`Disjunct`/`Ref`/`Pref`/`Func` advance their own
+`dc`/`peg`). This is safe **only** because a `Val` tree is unified once,
+in place, and is not shared across independent unifications. Do not
+cache, reuse, or unify the same parsed `Val` (or a node reachable from
+it) in two different `unify` runs — clone first. The same constraint
+applies to the Go port. Treat parsed `Val`s as single-use.
+
+### Known TS/Go divergences
+
+The shared spec only contains rows that pass identically in both
+implementations. A few behaviours deliberately differ and must **not**
+be added to `test/spec/*.tsv`:
+
+- **Numeric canon formatting (range-limited).** `integer` and `number`
+  are distinct kinds in **both** implementations: a concrete `integer`
+  and `number` do not unify (`1 & 1.0` → error), and `-0` normalises to
+  `0` everywhere. The one remaining number divergence is *canon string
+  formatting at extreme magnitudes*: TS uses `Number.toString`, Go uses
+  `%g`, which differ in the exponential threshold and exponent padding
+  (e.g. TS `100000000000000000000` / `1e-7` vs Go `1e+20` / `1e-07`).
+  Numeric canon parity is therefore guaranteed only for the **decimal
+  subset** — `0` and finite numbers in roughly `1e-6 ≤ |x| < 1e20`,
+  which render as plain decimals identically in both. Keep shared-spec
+  numeric `canon` rows inside this range.
+- **Error message text.** Go's `hints` are abbreviated versions of the TS
+  hints, and TS additionally renders source frames. Only the substring
+  asserted by an `err`-mode spec row is contractual; full error text is
+  not in parity.
+- **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
+  `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
+  Go; this is invisible to the shared spec (which is unify-level).
+

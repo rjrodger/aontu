@@ -165,14 +165,27 @@ func jsonString(s string) string {
 			b.WriteString(`\"`)
 		case '\\':
 			b.WriteString(`\\`)
+		case '\b':
+			b.WriteString(`\b`)
+		case '\f':
+			b.WriteString(`\f`)
 		case '\n':
 			b.WriteString(`\n`)
-		case '\t':
-			b.WriteString(`\t`)
 		case '\r':
 			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
 		default:
-			b.WriteRune(r)
+			// Other control characters become \u00XX, matching
+			// JavaScript's JSON.stringify.
+			if r < 0x20 {
+				const hexd = "0123456789abcdef"
+				b.WriteString(`\u00`)
+				b.WriteByte(hexd[(r>>4)&0xf])
+				b.WriteByte(hexd[r&0xf])
+			} else {
+				b.WriteRune(r)
+			}
 		}
 	}
 	b.WriteByte('"')

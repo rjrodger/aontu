@@ -23,7 +23,7 @@ import { FuncBaseVal } from './FuncBaseVal'
 
 
 class LowerFuncVal extends FuncBaseVal {
-  isLower = true
+  isLowerFunc = true
 
   constructor(
     spec: ValSpec,
