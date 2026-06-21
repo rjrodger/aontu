@@ -119,9 +119,10 @@ that both implementations satisfy.
 ## Implementation parity & Go coverage
 
 TypeScript is canonical; the Go port is kept in parity for the subset it
-implements. The Go **parser** is built on the official Go ports of jsonic
-and its `expr`/`path` plugins (`github.com/jsonicjs/...`) — the same stack
-as `ts/src/lang.ts` — so the surface syntax parses in parity.
+implements. The Go **parser** is built on the Go ports of the `@tabnas`
+parser stack and its `expr`/`path` plugins (`github.com/tabnas/...`) —
+the same stack as `ts/src/lang.ts` — so the surface syntax parses in
+parity.
 
 The Go port has **full parity** with the canonical TypeScript language:
 scalars, scalar kinds (type constraints), maps (implicit nesting,
@@ -135,14 +136,14 @@ parenthesised grouping), all twelve built-in functions (`upper`,
 via the multisource plugin — plus `parse`, `unify`, `generate` and
 `canon`.
 
-Both use the **same `jsonicjs` plugins**: TS `jsonic` +
-`@jsonic/{expr,path,multisource,directive}`; Go
-`github.com/jsonicjs/{jsonic,expr,path,multisource,directive}/go` — the
-official Go ports. `$var` variables are supplied via the runner context
+Both use the **same `@tabnas` parser stack**: TS `@tabnas/jsonic` +
+`@tabnas/{expr,path,multisource,directive,debug}`; Go
+`github.com/tabnas/{jsonic,expr,path,multisource,directive}/go` — the Go
+ports. `$var` variables are supplied via the runner context
 (`ctx.vars` in TS, `Aontu.GenerateVars(src, vars)` in Go); the shared
 `test/spec/var.tsv` rows are checked with the same variable set in both.
 
-Both implementations use the same `jsonicjs` Go/TS stack (jsonic + expr +
+Both implementations use the same `@tabnas` Go/TS stack (jsonic + expr +
 path + multisource), so the parser and semantics stay in lock-step. The
 shared spec is the contract; grow it whenever either side changes.
 

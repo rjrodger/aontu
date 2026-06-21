@@ -39,8 +39,9 @@ the [Explanation](explanation.md).
 
 ## Lexical structure
 
-Aontu source is parsed by [jsonic](https://github.com/rjrodger/jsonic)
-with Aontu-specific plugins, so the surface syntax is "relaxed JSON".
+Aontu source is parsed by
+[`@tabnas/jsonic`](https://github.com/tabnas/jsonic) with Aontu-specific
+plugins, so the surface syntax is "relaxed JSON".
 
 - **Whitespace** separates tokens; newlines and commas are
   interchangeable separators. `a:1 b:2`, `a:1, b:2`, and `a:1\nb:2` are

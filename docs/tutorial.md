@@ -72,8 +72,8 @@ it in whichever language you prefer.
 ## 2. Objects are just keys and values
 
 Aontu source looks like relaxed JSON (it is parsed by
-[jsonic](https://github.com/rjrodger/jsonic), so quotes, commas, and
-braces are mostly optional):
+[`@tabnas/jsonic`](https://github.com/tabnas/jsonic), so quotes, commas,
+and braces are mostly optional):
 
 ```aontu
 name: Mercury

@@ -64,11 +64,11 @@ source text ──parse──▶ Val AST ──unify (fixpoint)──▶ unified
                                                               └──canon──▶ source-like text
 ```
 
-1. **Parse.** [jsonic](https://github.com/rjrodger/jsonic) plus the
-   `expr`, `path`, `multisource`, and `directive` plugins turn relaxed
+1. **Parse.** [`@tabnas/jsonic`](https://github.com/tabnas/jsonic) plus
+   the `expr`, `path`, `multisource`, and `directive` plugins turn relaxed
    JSON-with-operators into a tree of `Val` nodes — `MapVal`,
    `ConjunctVal`, `RefVal`, `ScalarKindVal`, and so on. Operators like
-   `&`, `|`, `*`, `.`, `+` are configured as jsonic expression operators
+   `&`, `|`, `*`, `.`, `+` are configured as parser expression operators
    with explicit binding powers, which is how precedence is defined (see
    [`ts/src/lang.ts`](../ts/src/lang.ts)).
 
@@ -162,9 +162,9 @@ the *same* results — canonical form, generated JSON, or error substring.
 
 Two things make this work in practice:
 
-1. **The same parser stack.** Both sides use the jsonicjs family
+1. **The same parser stack.** Both sides use the `@tabnas` family
    (`jsonic` + `expr` + `path` + `multisource` + `directive`), TypeScript
-   natively and Go via the official ports. Surface syntax therefore
+   natively and Go via the matching Go ports. Surface syntax therefore
    parses identically, so the spec can exercise real syntax rather than a
    lowest common denominator.
 
