@@ -39,7 +39,9 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -p ./ -w",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
@@ -47,6 +49,7 @@
   "devDependencies": {
     "@types/vscode": "^1.75.0",
     "@types/node": "^22",
+    "@vscode/vsce": "^3.2.0",
     "typescript": "^5"
   }
 }

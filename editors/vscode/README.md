@@ -45,6 +45,41 @@ installing the binary:
 To use the Go server, set `aontu.server.command` to the built `aontu-lsp`
 binary's absolute path.
 
+## Packaging (.vsix)
+
+A `.vsix` is the single installable bundle for a VS Code extension (a ZIP
+of the manifest, compiled `out/`, and assets). Build one with
+[`@vscode/vsce`](https://github.com/microsoft/vscode-vsce), which is a dev
+dependency:
+
+```sh
+cd editors/vscode
+npm install
+npm run package          # → aontu-<version>.vsix (runs compile first)
+```
+
+`npm run package` invokes `vsce package`; the `vscode:prepublish` script
+compiles the TypeScript beforehand, so the produced `.vsix` contains the
+built `out/extension.js`.
+
+Install the bundle without the Marketplace:
+
+```sh
+code --install-extension aontu-0.1.0.vsix
+```
+
+…or in VS Code: **Extensions** panel → **⋯** → **Install from VSIX…**.
+
+To publish to the Marketplace (requires a publisher and a Personal Access
+Token; see the [vsce docs](https://code.visualstudio.com/api/working-with-extensions/publishing-extension)):
+
+```sh
+npm run publish         # vsce publish
+```
+
+> Note: `vsce` will warn if no `LICENSE` file is present in this directory
+> and if no `icon` is set; both are optional for packaging.
+
 ## How it works
 
 This extension is a thin LSP client (`src/extension.ts`); all language
