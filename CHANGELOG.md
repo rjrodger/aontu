@@ -7,6 +7,27 @@ which implementation each change affects.
 
 ## Unreleased — TypeScript 0.47.0, Go 0.1.4
 
+### Added — Language Server (LSP)
+
+- New `aontu-lsp` Language Server in both implementations, reporting
+  unification diagnostics over stdio (TypeScript `bin` `aontu-lsp` →
+  `dist/lsp-server.js`; Go `go/cmd/aontu-lsp`). The two servers are kept
+  in parity: same capabilities and identical diagnostic text.
+- The LSP logic is exposed as a reusable library, separate from serving:
+  - analysis — `computeDiagnostics(src)` (`ts/src/lsp.ts`) and
+    `lsp.Diagnostics(src)` (`go/lsp`, built on the new
+    `aontu.Check(src) []Problem` in `package aontu`);
+  - a transport-agnostic protocol handler — `LspHandler` (TS) /
+    `lsp.Handler` (Go);
+  - a thin stdio JSON-RPC server on top.
+- Diagnostics report genuine errors only (conflicts, unresolved
+  references, unknown functions, syntax errors); valid non-concrete
+  schemas such as `a:string` produce none. Full documentation in
+  `docs/lsp.md`.
+- (Go) Reference, dot, and unknown-function NilVals now carry source byte
+  offsets, so `no_path` and `unknown_function` diagnostics are positioned
+  precisely (matching TS).
+
 ### Breaking (TypeScript)
 
 - **Number model is now CUE-faithful and matches the Go port.** `integer`

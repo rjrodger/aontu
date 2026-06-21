@@ -32,15 +32,17 @@ implementations are checked against the same cases.
 ├── test/
 │   └── spec/            # shared test cases — *.tsv (language-agnostic)
 ├── ts/                  # canonical TypeScript implementation
-│   ├── package.json     # `bin`: aontu -> dist/cli.js
-│   ├── src/             # source incl. cli.ts (+ src/tsconfig.json -> ../dist)
+│   ├── package.json     # `bin`: aontu -> dist/cli.js, aontu-lsp -> dist/lsp-server.js
+│   ├── src/             # source incl. cli.ts, lsp.ts, lsp-server.ts (+ src/tsconfig.json -> ../dist)
 │   ├── test/            # tests (+ test/tsconfig.json -> ../dist-test)
 │   ├── dist/            # committed compiled JS + .d.ts (incl. cli.js)
 │   └── dist-test/       # committed compiled tests (the run target)
 └── go/                  # Go port
     ├── go.mod           # module github.com/rjrodger/aontu/go
-    ├── *.go             # package aontu
+    ├── *.go             # package aontu (incl. check.go: Check -> []Problem)
+    ├── lsp/             # LSP library (Diagnostics + Handler)
     ├── cmd/aontu/       # `aontu` CLI (package main, file/stdin/REPL)
+    ├── cmd/aontu-lsp/   # `aontu-lsp` Language Server (stdio)
     ├── aontu_test.go    # Go-native sanity tests
     └── spec_test.go     # runs the shared test/spec/*.tsv suite
 ```
@@ -49,6 +51,15 @@ Both implementations also ship an `aontu` command-line tool
 (`ts/src/cli.ts`, `go/cmd/aontu`) that evaluates a file or stdin and
 starts a REPL when given no file. See
 [`docs/reference-api.md`](docs/reference-api.md#command-line-interface).
+
+Both also ship an `aontu-lsp` Language Server that reports unification
+diagnostics over stdio. The LSP logic is a reusable library separate from
+the server: analysis (`computeDiagnostics` in `ts/src/lsp.ts`;
+`lsp.Diagnostics` over `aontu.Check` in `go/lsp`) and a transport-agnostic
+handler (`LspHandler` / `lsp.Handler`), with a thin stdio server on top
+(`ts/src/lsp-server.ts`, `go/cmd/aontu-lsp`). The two servers are kept in
+parity (same capabilities and diagnostic text). Full reference:
+[`docs/lsp.md`](docs/lsp.md).
 Long-form documentation lives under [`docs/`](docs/) (start at
 `docs/index.md`); measure coverage with `make cov` (see
 `docs/test-coverage.md`).

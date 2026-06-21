@@ -5,7 +5,8 @@
   "type": "commonjs",
   "types": "dist/aontu.d.ts",
   "bin": {
-    "aontu": "dist/cli.js"
+    "aontu": "dist/cli.js",
+    "aontu-lsp": "dist/lsp-server.js"
   },
   "description": "Unifier.",
   "homepage": "https://github.com/rjrodger/aontu",

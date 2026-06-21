@@ -353,14 +353,25 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 	case "positive-prefix":
 		return asVal(terms[0])
 	case "dot-prefix":
-		return newRef(terms, true)
+		rv := newRef(terms, true)
+		if r.ON > 0 {
+			rv.sp = r.O0.SI
+		}
+		return rv
 	case "dot-infix":
-		return newRef(terms, false)
+		rv := newRef(terms, false)
+		if r.ON > 0 {
+			rv.sp = r.O0.SI
+		}
+		return rv
 	case "dollar-prefix":
 		// $.a.b -> absolute reference; $name -> variable (the name is
 		// wrapped as a StringVal so canon renders as $"name").
 		if r0, ok := terms[0].(*RefVal); ok {
 			r0.absolute = true
+			if r.ON > 0 {
+				r0.sp = r.O0.SI
+			}
 			return r0
 		}
 		return newVar(asVal(terms[0]))
@@ -375,7 +386,11 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		if len(terms) > 0 {
 			if name, ok := terms[0].(string); ok {
 				if !funcSet[name] {
-					return newNil("unknown_function")
+					n := newNil("unknown_function")
+					if r.ON > 0 {
+						n.sp = r.O0.SI
+					}
+					return n
 				}
 				args := make([]Val, 0, len(terms)-1)
 				for _, t := range terms[1:] {
