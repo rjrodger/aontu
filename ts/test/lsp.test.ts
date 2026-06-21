@@ -5,9 +5,16 @@ import * as Assert from 'node:assert'
 
 import {
   computeDiagnostics,
+  computeHover,
+  computeCompletions,
   LspHandler,
+  BUILTIN_FUNCS,
   SEVERITY_ERROR,
+  COMPLETION_FUNCTION,
+  COMPLETION_KEYWORD,
 } from '../dist/lsp'
+
+import { Aontu } from '../dist/aontu'
 
 import { FrameCodec } from '../dist/lsp-server'
 
@@ -61,7 +68,95 @@ describe('lsp-diagnostics', () => {
 })
 
 
+describe('lsp-hover', () => {
+
+  test('hover-scalar-shows-value-and-kind', () => {
+    const h = computeHover('port: 8080', { line: 0, character: 7 })
+    Assert.ok(h)
+    Assert.match(h!.contents.value, /8080/)
+    Assert.match(h!.contents.value, /integer/)
+    Assert.deepEqual(h!.range!.start, { line: 0, character: 6 })
+    Assert.deepEqual(h!.range!.end, { line: 0, character: 10 })
+  })
+
+  test('hover-type', () => {
+    const h = computeHover('a:{x:string}', { line: 0, character: 5 })
+    Assert.ok(h)
+    Assert.match(h!.contents.value, /string/)
+    Assert.match(h!.contents.value, /type/)
+  })
+
+  test('hover-resolved-reference', () => {
+    // b resolves to 1; hovering the definition shows the resolved value.
+    const h = computeHover('a:1\nb:$.a', { line: 0, character: 2 })
+    Assert.ok(h)
+    Assert.match(h!.contents.value, /1/)
+  })
+
+  test('hover-miss-returns-null', () => {
+    Assert.equal(computeHover('port: 8080', { line: 5, character: 0 }), null)
+  })
+
+})
+
+
+describe('lsp-completion', () => {
+
+  test('completion-list', () => {
+    const c = computeCompletions()
+    Assert.equal(c.length, 20) // 12 funcs + 4 kinds + 4 literals
+    const byLabel = new Map(c.map(i => [i.label, i]))
+    Assert.equal(byLabel.get('upper')?.kind, COMPLETION_FUNCTION)
+    Assert.equal(byLabel.get('string')?.kind, COMPLETION_KEYWORD)
+    for (const want of ['close', 'upper', 'path', 'string', 'integer', 'true', 'null', 'top']) {
+      Assert.ok(byLabel.has(want), 'missing ' + want)
+    }
+  })
+
+  test('builtin-funcs-match-engine', () => {
+    // Drift guard: every BUILTIN_FUNCS name must be recognised by the
+    // parser, and a bogus name must not be.
+    Assert.equal(BUILTIN_FUNCS.length, 12)
+    const a = new Aontu()
+    for (const name of BUILTIN_FUNCS) {
+      const errs = computeDiagnostics('x:' + name + '(1)')
+        .filter(d => d.code === 'unknown_function')
+      Assert.equal(errs.length, 0, name + ' should be a known function')
+    }
+    const bogus = computeDiagnostics('x:notafunc(1)')
+      .filter(d => d.code === 'unknown_function')
+    Assert.equal(bogus.length, 1, 'bogus function should be unknown')
+  })
+
+})
+
+
 describe('lsp-handler', () => {
+
+  test('initialize-advertises-hover-and-completion', () => {
+    const h = new LspHandler()
+    const outs = h.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })
+    Assert.equal(outs[0].result.capabilities.hoverProvider, true)
+    Assert.ok(outs[0].result.capabilities.completionProvider)
+  })
+
+  test('handler-hover-and-completion', () => {
+    const h = new LspHandler()
+    h.handle({
+      method: 'textDocument/didOpen',
+      params: { textDocument: { uri: 'file:///t.aontu', text: 'port: 8080' } },
+    })
+    const hov = h.handle({
+      id: 5, method: 'textDocument/hover',
+      params: { textDocument: { uri: 'file:///t.aontu' }, position: { line: 0, character: 7 } },
+    })
+    Assert.match(hov[0].result.contents.value, /8080/)
+
+    const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} })
+    Assert.equal(comp[0].result.length, 20)
+  })
+
+
 
   test('initialize-advertises-capabilities', () => {
     const h = new LspHandler()
@@ -131,7 +226,7 @@ describe('lsp-handler', () => {
 
   test('unknown-request-is-method-not-found', () => {
     const h = new LspHandler()
-    const outs = h.handle({ id: 3, method: 'textDocument/hover' })
+    const outs = h.handle({ id: 3, method: 'textDocument/definition' })
     Assert.equal(outs.length, 1)
     Assert.equal(outs[0].error?.code, -32601)
     // Unknown notification (no id) is ignored.

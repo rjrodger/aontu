@@ -63,6 +63,101 @@ func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
 	return out
 }
 
+// ValueSpan locates a concrete value in source: the byte offset and the
+// byte length of its canonical form, plus that canon and a short kind
+// label. Containers (maps/lists) are excluded — their source span is not
+// reliably reconstructable from a single position — so spans describe
+// scalars, scalar kinds, references, etc. Used for LSP hover (go/lsp).
+type ValueSpan struct {
+	Pos   int
+	Len   int
+	Canon string
+	Kind  string
+}
+
+// Spans parses and unifies src and returns a ValueSpan for every
+// positioned non-container value in the result, so tooling can locate the
+// value under a cursor. Returns nil on a parse error.
+func (a *Aontu) Spans(src string) []ValueSpan {
+	v, perr := parseBase(src, a.base)
+	if perr != nil {
+		return nil
+	}
+	ctx := &Ctx{root: v}
+	res := unifyRoot(v, ctx)
+	ctx.root = res
+
+	var out []ValueSpan
+	collectSpans(res, &out, map[Val]bool{})
+	return out
+}
+
+func collectSpans(v Val, out *[]ValueSpan, seen map[Val]bool) {
+	if v == nil || seen[v] {
+		return
+	}
+	seen[v] = true
+
+	switch t := v.(type) {
+	case *MapVal:
+		for _, k := range t.keys {
+			collectSpans(t.peg[k], out, seen)
+		}
+		if t.spread != nil {
+			collectSpans(t.spread, out, seen)
+		}
+		return
+	case *ListVal:
+		for _, e := range t.peg {
+			collectSpans(e, out, seen)
+		}
+		if t.spread != nil {
+			collectSpans(t.spread, out, seen)
+		}
+		return
+	case *ConjunctVal:
+		for _, e := range t.peg {
+			collectSpans(e, out, seen)
+		}
+	case *DisjunctVal:
+		for _, e := range t.peg {
+			collectSpans(e, out, seen)
+		}
+	}
+
+	if p := v.pos(); p >= 0 {
+		c := v.Canon()
+		if len(c) > 0 {
+			*out = append(*out, ValueSpan{Pos: p, Len: len(c), Canon: c, Kind: valKind(v)})
+		}
+	}
+}
+
+// valKind is a short human label for a Val's kind, shown in hovers.
+func valKind(v Val) string {
+	switch t := v.(type) {
+	case *ScalarVal:
+		return t.kind.String()
+	case *ScalarKindVal:
+		return "type"
+	case *RefVal:
+		return "reference"
+	case *NilVal:
+		return "error"
+	case *ConjunctVal:
+		return "conjunct"
+	case *DisjunctVal:
+		return "disjunct"
+	case *PrefVal:
+		return "pref"
+	case *FuncVal:
+		return "function"
+	case *TopVal:
+		return "top"
+	}
+	return "value"
+}
+
 // collectNils walks a unified Val tree, appending every reachable NilVal
 // exactly once (deduplicated by identity). A NilVal in the result always
 // represents an error; valid non-concrete values (scalar kinds, refs,

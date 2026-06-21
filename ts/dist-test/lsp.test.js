@@ -37,6 +37,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const lsp_1 = require("../dist/lsp");
+const aontu_1 = require("../dist/aontu");
 const lsp_server_1 = require("../dist/lsp-server");
 (0, node_test_1.describe)('lsp-diagnostics', () => {
     (0, node_test_1.test)('valid-documents-have-no-diagnostics', () => {
@@ -79,7 +80,78 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.deepEqual(d[0].range.start, { line: 1, character: 6 });
     });
 });
+(0, node_test_1.describe)('lsp-hover', () => {
+    (0, node_test_1.test)('hover-scalar-shows-value-and-kind', () => {
+        const h = (0, lsp_1.computeHover)('port: 8080', { line: 0, character: 7 });
+        Assert.ok(h);
+        Assert.match(h.contents.value, /8080/);
+        Assert.match(h.contents.value, /integer/);
+        Assert.deepEqual(h.range.start, { line: 0, character: 6 });
+        Assert.deepEqual(h.range.end, { line: 0, character: 10 });
+    });
+    (0, node_test_1.test)('hover-type', () => {
+        const h = (0, lsp_1.computeHover)('a:{x:string}', { line: 0, character: 5 });
+        Assert.ok(h);
+        Assert.match(h.contents.value, /string/);
+        Assert.match(h.contents.value, /type/);
+    });
+    (0, node_test_1.test)('hover-resolved-reference', () => {
+        // b resolves to 1; hovering the definition shows the resolved value.
+        const h = (0, lsp_1.computeHover)('a:1\nb:$.a', { line: 0, character: 2 });
+        Assert.ok(h);
+        Assert.match(h.contents.value, /1/);
+    });
+    (0, node_test_1.test)('hover-miss-returns-null', () => {
+        Assert.equal((0, lsp_1.computeHover)('port: 8080', { line: 5, character: 0 }), null);
+    });
+});
+(0, node_test_1.describe)('lsp-completion', () => {
+    (0, node_test_1.test)('completion-list', () => {
+        const c = (0, lsp_1.computeCompletions)();
+        Assert.equal(c.length, 20); // 12 funcs + 4 kinds + 4 literals
+        const byLabel = new Map(c.map(i => [i.label, i]));
+        Assert.equal(byLabel.get('upper')?.kind, lsp_1.COMPLETION_FUNCTION);
+        Assert.equal(byLabel.get('string')?.kind, lsp_1.COMPLETION_KEYWORD);
+        for (const want of ['close', 'upper', 'path', 'string', 'integer', 'true', 'null', 'top']) {
+            Assert.ok(byLabel.has(want), 'missing ' + want);
+        }
+    });
+    (0, node_test_1.test)('builtin-funcs-match-engine', () => {
+        // Drift guard: every BUILTIN_FUNCS name must be recognised by the
+        // parser, and a bogus name must not be.
+        Assert.equal(lsp_1.BUILTIN_FUNCS.length, 12);
+        const a = new aontu_1.Aontu();
+        for (const name of lsp_1.BUILTIN_FUNCS) {
+            const errs = (0, lsp_1.computeDiagnostics)('x:' + name + '(1)')
+                .filter(d => d.code === 'unknown_function');
+            Assert.equal(errs.length, 0, name + ' should be a known function');
+        }
+        const bogus = (0, lsp_1.computeDiagnostics)('x:notafunc(1)')
+            .filter(d => d.code === 'unknown_function');
+        Assert.equal(bogus.length, 1, 'bogus function should be unknown');
+    });
+});
 (0, node_test_1.describe)('lsp-handler', () => {
+    (0, node_test_1.test)('initialize-advertises-hover-and-completion', () => {
+        const h = new lsp_1.LspHandler();
+        const outs = h.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+        Assert.equal(outs[0].result.capabilities.hoverProvider, true);
+        Assert.ok(outs[0].result.capabilities.completionProvider);
+    });
+    (0, node_test_1.test)('handler-hover-and-completion', () => {
+        const h = new lsp_1.LspHandler();
+        h.handle({
+            method: 'textDocument/didOpen',
+            params: { textDocument: { uri: 'file:///t.aontu', text: 'port: 8080' } },
+        });
+        const hov = h.handle({
+            id: 5, method: 'textDocument/hover',
+            params: { textDocument: { uri: 'file:///t.aontu' }, position: { line: 0, character: 7 } },
+        });
+        Assert.match(hov[0].result.contents.value, /8080/);
+        const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} });
+        Assert.equal(comp[0].result.length, 20);
+    });
     (0, node_test_1.test)('initialize-advertises-capabilities', () => {
         const h = new lsp_1.LspHandler();
         const outs = h.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
@@ -141,7 +213,7 @@ const lsp_server_1 = require("../dist/lsp-server");
     });
     (0, node_test_1.test)('unknown-request-is-method-not-found', () => {
         const h = new lsp_1.LspHandler();
-        const outs = h.handle({ id: 3, method: 'textDocument/hover' });
+        const outs = h.handle({ id: 3, method: 'textDocument/definition' });
         Assert.equal(outs.length, 1);
         Assert.equal(outs[0].error?.code, -32601);
         // Unknown notification (no id) is ignored.

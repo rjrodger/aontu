@@ -151,6 +151,28 @@ func (h *Handler) Handle(m Message) []Out {
 		// Clear diagnostics for the closed document.
 		return []Out{publishDiagnosticsMsg(p.TextDocument.URI, []Diagnostic{})}
 
+	case "textDocument/hover":
+		var p struct {
+			TextDocument struct {
+				URI string `json:"uri"`
+			} `json:"textDocument"`
+			Position struct {
+				Line      int `json:"line"`
+				Character int `json:"character"`
+			} `json:"position"`
+		}
+		if err := json.Unmarshal(m.Params, &p); err != nil {
+			return []Out{newResponse(m.ID, nil)}
+		}
+		text, ok := h.docs[p.TextDocument.URI]
+		if !ok {
+			return []Out{newResponse(m.ID, nil)}
+		}
+		return []Out{newResponse(m.ID, Hover(text, p.Position.Line, p.Position.Character))}
+
+	case "textDocument/completion":
+		return []Out{newResponse(m.ID, Completions())}
+
 	default:
 		// Unknown request (has an id): reply method-not-found. Unknown
 		// notification: ignore.
@@ -179,7 +201,9 @@ func initializeResult() map[string]any {
 	return map[string]any{
 		"capabilities": map[string]any{
 			// 1 = TextDocumentSyncKind.Full
-			"textDocumentSync": 1,
+			"textDocumentSync":   1,
+			"hoverProvider":      true,
+			"completionProvider": map[string]any{},
 		},
 		"serverInfo": map[string]any{
 			"name":    "aontu-lsp",

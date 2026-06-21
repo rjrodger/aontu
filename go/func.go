@@ -4,6 +4,7 @@ package aontu
 
 import (
 	"math"
+	"sort"
 	"strings"
 )
 
@@ -13,6 +14,17 @@ var funcSet = map[string]bool{
 	"upper": true, "lower": true, "copy": true, "key": true,
 	"pref": true, "super": true, "type": true, "hide": true,
 	"move": true, "path": true, "close": true, "open": true,
+}
+
+// BuiltinFuncNames returns the recognised built-in function names in
+// sorted order. Exposed for tooling (e.g. LSP completion in go/lsp).
+func BuiltinFuncNames() []string {
+	names := make([]string, 0, len(funcSet))
+	for n := range funcSet {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // FuncVal is a built-in function call (e.g. `upper(x)`). It follows the

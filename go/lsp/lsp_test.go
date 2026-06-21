@@ -193,7 +193,7 @@ func TestHandlerExitWithoutShutdown(t *testing.T) {
 
 func TestHandlerUnknownRequest(t *testing.T) {
 	h := NewHandler()
-	outs := h.Handle(Message{ID: json.RawMessage("3"), Method: "textDocument/hover"})
+	outs := h.Handle(Message{ID: json.RawMessage("3"), Method: "textDocument/definition"})
 	if len(outs) != 1 || outs[0].Error == nil || outs[0].Error.Code != -32601 {
 		t.Fatalf("expected method-not-found error, got %+v", outs)
 	}

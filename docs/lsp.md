@@ -26,7 +26,14 @@ to wire the server into an editor.
 
 ## What it does
 
-The server provides **diagnostics**: open or edit an Aontu document and it
+The server provides three features:
+
+- **Diagnostics** — unification problems published as you edit.
+- **Hover** — the resolved value and kind under the cursor.
+- **Completion** — the built-in functions, scalar-kind keywords and
+  literals.
+
+**Diagnostics**: open or edit an Aontu document and it
 publishes a list of problems, each with a precise source range, severity,
 an engine error code (`code`), and a human-readable message.
 
@@ -46,6 +53,17 @@ This distinction is deliberate: Aontu documents are frequently schemas or
 partial fragments, which are *not concrete* but are *not errors*. The
 server flags only contradictions and unresolved/unknown constructs. See
 [How diagnostics are computed](#how-diagnostics-are-computed).
+
+**Hover** reads the *unified* tree, so hovering a value shows what it
+resolves to: e.g. hovering `8080` in `port: 8080` shows `8080` with kind
+*integer*; hovering `string` in a schema shows kind *type*. Hover targets
+concrete values (scalars, kinds, references), not containers.
+
+**Completion** offers a context-free list (clients filter by the typed
+prefix): the twelve built-in functions (`upper`, `lower`, `copy`, `key`,
+`pref`, `super`, `type`, `hide`, `move`, `path`, `close`, `open`), the
+scalar-kind keywords (`string`, `number`, `integer`, `boolean`) and the
+literals (`true`, `false`, `null`, `top`).
 
 
 ## Architecture: library vs. server
@@ -224,6 +242,23 @@ computeDiagnostics('a:1\na:2')
 computeDiagnostics('a:string') // []  (valid schema)
 ```
 
+#### `computeHover(src, position) => Hover | null`
+
+Resolve the value at a 0-based `{ line, character }` position and describe
+it, or `null` if the position is not over a concrete value.
+
+```ts
+computeHover('port: 8080', { line: 0, character: 7 })
+// { contents: { kind: 'markdown', value: '```aontu\n8080\n```\n\n*integer*' },
+//   range: { start: { line: 0, character: 6 }, end: { line: 0, character: 10 } } }
+```
+
+#### `computeCompletions() => CompletionItem[]`
+
+Return the context-free completion list (built-in functions, scalar-kind
+keywords, literals). `CompletionItem` is `{ label, kind?, detail? }`. The
+exported `BUILTIN_FUNCS` is the function-name list.
+
 #### `class LspHandler`
 
 The transport-agnostic protocol state machine. Construct one per session
@@ -279,6 +314,19 @@ d := lsp.Diagnostics("a:1\na:2")
 lsp.Diagnostics("a:string") // len 0 (valid schema)
 ```
 
+#### `func Hover(src string, line, character int) *HoverResult`
+
+Resolve the value at a 0-based position, or `nil`. `HoverResult` is
+`{ Contents MarkupContent; Range *Range }`. Built on the core
+`(*aontu.Aontu).Spans(src) []aontu.ValueSpan`, which lists positioned
+non-container values.
+
+#### `func Completions() []CompletionItem`
+
+The context-free completion list. `CompletionItem` is
+`{ Label string; Kind int; Detail string }`. The function names come from
+the engine via `aontu.BuiltinFuncNames()`.
+
 #### `type Handler`
 
 The transport-agnostic protocol state machine (mirrors `LspHandler`).
@@ -307,15 +355,18 @@ positions.
 ## Protocol surface
 
 `textDocumentSync` is **Full** (the client sends the whole document on
-each change).
+each change). Advertised capabilities: `textDocumentSync: 1`,
+`hoverProvider: true`, `completionProvider: {}`.
 
 | Method | Kind | Behaviour |
 |--------|------|-----------|
-| `initialize` | request | Replies with `{ capabilities: { textDocumentSync: 1 }, serverInfo: { name: "aontu-lsp", version } }`. |
+| `initialize` | request | Replies with `{ capabilities: { textDocumentSync: 1, hoverProvider: true, completionProvider: {} }, serverInfo: { name: "aontu-lsp", version } }`. |
 | `initialized` | notification | Ignored. |
 | `textDocument/didOpen` | notification | Stores the document, publishes diagnostics. |
 | `textDocument/didChange` | notification | Replaces the document with the last content change (Full sync), publishes diagnostics. |
 | `textDocument/didClose` | notification | Drops the document, publishes an empty diagnostic list (clears markers). |
+| `textDocument/hover` | request | Replies with a hover for the value at the position, or `null`. |
+| `textDocument/completion` | request | Replies with the completion item list. |
 | `textDocument/publishDiagnostics` | notification (server→client) | Carries `{ uri, diagnostics }`. |
 | `shutdown` | request | Replies `result: null`, arms a clean exit. |
 | `exit` | notification | Stops the server. Exit code `0` if `shutdown` came first, else `1`. |
@@ -385,16 +436,20 @@ Both libraries are unit-tested (`ts/test/lsp.test.ts`,
 
 ## Limitations and extension points
 
-Current scope is diagnostics only. The layered design makes additions
-localised — most new features are implemented once in the analysis layer
-(layer 1) and advertised in `initialize` (layer 2):
+Current scope is diagnostics, hover and completion. The layered design
+makes additions localised — most new features are implemented once in the
+analysis layer (layer 1) and advertised in `initialize` (layer 2):
 
-- **Hover / type-at-point** — resolve the value at a cursor position and
-  return its canon. Requires a position→path mapping (not yet built);
-  add a `hover(src, position)` to the analysis layer and a
-  `textDocument/hover` case to the handler.
-- **Completion** — suggest keys/known function names. Add to the analysis
-  layer and advertise `completionProvider`.
+- **Hover** targets concrete values (scalars, kinds, references), not
+  containers, and uses canon length to size the hit span on a single
+  line; a value resolved from a reference is shown at its definition
+  site. Hovering a multi-line container or the cursor exactly on a `{`
+  brace may not resolve.
+- **Completion** is context-free (no cursor→path awareness yet): it does
+  not suggest sibling keys. Adding key completion needs a position→path
+  mapping in the analysis layer.
+- **Go-time-out / cancellation, go-to-definition, rename** — not
+  implemented; unknown requests get a `-32601` reply.
 - **Incremental sync** — the server uses Full document sync for
   simplicity; range-based incremental edits could be added in the handler
   without touching the analysis layer.

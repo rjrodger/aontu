@@ -36,6 +36,14 @@ which implementation each change affects.
   references, unknown functions, syntax errors); valid non-concrete
   schemas such as `a:string` produce none. Full documentation in
   `docs/lsp.md`.
+- **Hover** (`textDocument/hover`): resolves the value under the cursor
+  from the unified tree and shows its canon and kind. Library:
+  `computeHover` (TS) / `lsp.Hover` (Go), built on the new
+  `(*aontu.Aontu).Spans` core API.
+- **Completion** (`textDocument/completion`): the built-in functions,
+  scalar-kind keywords and literals. Library: `computeCompletions` (TS) /
+  `lsp.Completions` (Go); function names sourced from the engine
+  (`aontu.BuiltinFuncNames`).
 - (Go) Reference, dot, and unknown-function NilVals now carry source byte
   offsets, so `no_path` and `unknown_function` diagnostics are positioned
   precisely (matching TS).
