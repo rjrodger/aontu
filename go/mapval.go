@@ -138,8 +138,20 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 	// Let the closed side drive, so its key restriction is enforced
 	// deterministically (mirrors MapVal.unify).
-	if pm, ok := peer.(*MapVal); ok && !m.closed && pm.closed {
-		return pm.Unify(m, ctx)
+	if pm, ok := peer.(*MapVal); ok {
+		if !m.closed && pm.closed {
+			return pm.Unify(m, ctx)
+		}
+		// Both closed: pick a deterministic driver (fewer keys, then
+		// lexicographic key order) so the result is independent of
+		// operand order (mirrors ts/src/val/MapVal.ts).
+		if m.closed && pm.closed {
+			if len(pm.keys) < len(m.keys) ||
+				(len(pm.keys) == len(m.keys) &&
+					strings.Join(pm.keys, "~") < strings.Join(m.keys, "~")) {
+				return pm.Unify(m, ctx)
+			}
+		}
 	}
 	out := newMap()
 	out.closed = m.closed

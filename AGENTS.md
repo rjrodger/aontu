@@ -138,3 +138,15 @@ shared spec is the contract; grow it whenever either side changes.
   Run `go vet ./...` and `gofmt` before committing.
 - Go module releases (a Go module in a subdirectory) use git tags of the
   form `go/vX.Y.Z`.
+
+### Mutation caveat (both implementations)
+
+Although `Val.unify` is documented "MUST not mutate", the fixpoint
+driver relies on `unify` mutating the result/`this` in place on the
+self-unify-with-TOP path (e.g. `MapVal`/`ListVal` write back their
+children, `Conjunct`/`Disjunct`/`Ref`/`Pref`/`Func` advance their own
+`dc`/`peg`). This is safe **only** because a `Val` tree is unified once,
+in place, and is not shared across independent unifications. Do not
+cache, reuse, or unify the same parsed `Val` (or a node reachable from
+it) in two different `unify` runs — clone first. The same constraint
+applies to the Go port. Treat parsed `Val`s as single-use.

@@ -217,6 +217,7 @@ Object.assign(Val.prototype, {
     isVal: true,
     isTop: false,
     isNil: false,
+    isNull: false,
     isMap: false,
     isList: false,
     isScalar: false,

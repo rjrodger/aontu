@@ -15,3 +15,5 @@ wide	gen	root:level1:{&:{v:number},a:{v:1},b:{v:2},c:{v:3}}	{"root":{"level1":{"
 list-spread	gen	x:[&:{x:1},{y:1},{y:2}]	{"x":[{"y":1,"x":1},{"y":2,"x":1}]}
 list-spread-canon	canon	[&:{x:1},{y:1},{y:2}]	[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]
 list-spread-kind	gen	x:[&:s:string] x:[{s:S}]	{"x":[{"s":"S"}]}
+pref-order	gen	a:{&:{v:*1|integer}, p:{}, q:{v:5}}	{"a":{"p":{"v":1},"q":{"v":5}}}
+pref-order-rev	gen	a:{q:{v:5}, p:{}, &:{v:*1|integer}}	{"a":{"p":{"v":1},"q":{"v":5}}}

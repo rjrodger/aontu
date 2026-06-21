@@ -16,3 +16,5 @@ relative-add	gen	x:{a:4} y:.x.a	{"x":{"a":4},"y":4}
 key	gen	a:{k:.$KEY}	{"a":{"k":"a"}}
 key-deep	gen	a:b:{k:.$KEY}	{"a":{"b":{"k":"b"}}}
 key-sibling	gen	x:1 a:{k:.$KEY}	{"x":1,"a":{"k":"a"}}
+forward-ref	gen	x:$.a\na:7	{"x":7,"a":7}
+chain-reverse	gen	c:42\nb:$.c\na:$.b	{"a":42,"b":42,"c":42}
