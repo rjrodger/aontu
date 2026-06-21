@@ -7,6 +7,18 @@ which implementation each change affects.
 
 ## Unreleased — TypeScript 0.47.0, Go 0.1.4
 
+### Changed — source file extensions
+
+- `.aon` is now the **preferred** Aontu source extension; `.aontu` also
+  works. Both are tried (in that order) for extension-less `@"path"`
+  loads.
+- **`.jsonic` is retired**: it is no longer in the implicit-extension
+  search or the resolver's processor configuration in either
+  implementation. (An explicitly named file still parses via the default
+  processor, but `.jsonic` is no longer a recognised Aontu extension.)
+- All shared-spec and test fixtures renamed from `.jsonic` to `.aon`;
+  docs updated accordingly.
+
 ### Added — Language Server (LSP)
 
 - New `aontu-lsp` Language Server in both implementations, reporting

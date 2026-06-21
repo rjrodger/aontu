@@ -118,9 +118,9 @@ from a client's point of view.
 
 ## Editor configuration
 
-Associate the language server with `.aontu` files (the engine also reads
-`.aon`/`.jsonic`, but `.aontu` is the canonical extension). The server has
-no configuration options.
+Associate the language server with Aontu source files. `.aon` is the
+preferred extension and `.aontu` also works (`.jsonic` is retired). The
+server has no configuration options.
 
 ### VS Code
 

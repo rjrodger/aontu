@@ -722,6 +722,11 @@ class Lang {
       .use(AontuJsonic)
       .use(MultiSource, {
         resolver: options?.resolver || modelResolver,
+        // `.aon` is the preferred Aontu source extension; `.aontu` also
+        // works. `.jsonic` is retired (no longer auto-resolved); the
+        // default `['jsonic','jsc','json','js']` is overridden here.
+        // (Upstream option name is the misspelled `implictExt`.)
+        implictExt: ['aon', 'aontu'],
         processor: {
           aontu: 'jsonic',
           aon: 'jsonic',

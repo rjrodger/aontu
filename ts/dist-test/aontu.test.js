@@ -80,7 +80,7 @@ w1: b: {y:2,z:3} & $.q.a
     (0, node_test_1.test)('file', async () => {
         let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
-        let v0 = a0.unify('@"' + __dirname + '/../test/t02.jsonic"');
+        let v0 = a0.unify('@"' + __dirname + '/../test/t02sys.aon"');
         (0, expect_1.expect)(v0.canon).equal('{"sys":{"ent":{"name":string}},"ent":{"foo":{"name":"foo","fields":{"f0":{"kind":"String"}}},"bar":{"name":"bar","fields":{"f0":{"kind":"Number"}}}}}');
         (0, expect_1.expect)(v0.gen(ctx)).equal({
             // sys: { ent: { name: undefined } },
@@ -107,7 +107,7 @@ w1: b: {y:2,z:3} & $.q.a
     (0, node_test_1.test)('pref', async () => {
         let a0 = new aontu_1.Aontu();
         try {
-            a0.unify('@"' + __dirname + '/../test/t03.jsonic"', {
+            a0.unify('@"' + __dirname + '/../test/t03uxc.aon"', {
                 base: __dirname,
             });
         }
@@ -199,17 +199,17 @@ def: garage: {
     (0, node_test_1.test)('virtual-fs', () => {
         let a0 = new aontu_1.Aontu();
         const mfs = (0, memfs_1.memfs)({
-            'foo.jsonic': '{f:11}'
+            'foo.aon': '{f:11}'
         });
         const fs = mfs.fs;
         fs.aaa = 1;
         /*
-        let v0 = a0.unify(`a:@"/foo.jsonic"`, { fs })
+        let v0 = a0.unify(`a:@"/foo.aon"`, { fs })
         expect(v0.canon).equal(
           '{"a":{"f":11}}'
         )
         */
-        let v1 = a0.unify(`a:@"foo.jsonic"`, { fs, path: '/' });
+        let v1 = a0.unify(`a:@"foo.aon"`, { fs, path: '/' });
         (0, expect_1.expect)(v1.canon).equal('{"a":{"f":11}}');
     });
     (0, node_test_1.test)('deep-hierarchy', () => {

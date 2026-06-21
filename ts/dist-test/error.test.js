@@ -39,14 +39,14 @@ const err_1 = require("../dist/err");
     });
     (0, node_test_1.it)('file-e01', async () => {
         let a0 = new aontu_1.Aontu();
-        let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.jsonic"', { collect: true });
+        let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.aon"', { collect: true });
         (0, expect_1.expect)(v0.err[0].why).equal('scalar_value');
         (0, expect_1.expect)(typeof v0.err[0].msg).equal('string');
     });
     (0, node_test_1.it)('generate', () => {
         let aontu = new aontu_1.Aontu();
         (0, expect_1.expect)(() => aontu.generate('a:$.b')).throw(/no_path/);
-        (0, expect_1.expect)(() => aontu.generate('@"' + __dirname + '/../test/error/e02.jsonic"'))
+        (0, expect_1.expect)(() => aontu.generate('@"' + __dirname + '/../test/error/e02.aon"'))
             .throw(/no_path/);
     });
     (0, node_test_1.it)('required', () => {
@@ -98,18 +98,18 @@ const err_1 = require("../dist/err");
     (0, node_test_1.it)('error-source-file', () => {
         // File source: error message should show the file content.
         let a0 = new aontu_1.Aontu({ fs: node_fs_1.default });
-        let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.jsonic"', { collect: true });
+        let v0 = a0.unify('@"' + __dirname + '/../test/error/e01.aon"', { collect: true });
         (0, expect_1.expect)(v0.err[0].why).equal('scalar_value');
         (0, expect_1.expect)(v0.err[0].msg).to.not.contain('SOURCE-NOT-FOUND');
-        // e01.jsonic contains "a: 1\na: 2\n" — error should show the file content
+        // e01.aon contains "a: 1\na: 2\n" — error should show the file content
         (0, expect_1.expect)(v0.err[0].msg).to.contain('a: 1');
         (0, expect_1.expect)(v0.err[0].msg).to.contain('a: 2');
     });
     (0, node_test_1.it)('error-source-file-cross', () => {
-        // Cross-file error: e03.jsonic imports e04.jsonic, conflicting on key a.
+        // Cross-file error: e03.aon imports e04.aon, conflicting on key a.
         // Error message should show file content, not SOURCE-NOT-FOUND.
         let a0 = new aontu_1.Aontu({ fs: node_fs_1.default });
-        let v0 = a0.unify('@"' + __dirname + '/../test/error/e03.jsonic"', { collect: true });
+        let v0 = a0.unify('@"' + __dirname + '/../test/error/e03.aon"', { collect: true });
         (0, expect_1.expect)(v0.err[0].why).equal('scalar_value');
         (0, expect_1.expect)(v0.err[0].msg).to.not.contain('SOURCE-NOT-FOUND');
     });

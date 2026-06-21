@@ -55,12 +55,13 @@ func msOptions(base string) map[string]any {
 			Resolver: fileResolver,
 			Path:     base,
 			Processor: map[string]multisource.Processor{
-				"":       multisource.JsonicProcessor,
-				"jsonic": multisource.JsonicProcessor,
-				"aon":    multisource.JsonicProcessor,
-				"aontu":  multisource.JsonicProcessor,
+				"":      multisource.JsonicProcessor,
+				"aon":   multisource.JsonicProcessor,
+				"aontu": multisource.JsonicProcessor,
 			},
-			ImplicitExt: []string{".jsonic", ".aon", ".aontu"},
+			// `.aon` is the preferred Aontu source extension; `.aontu`
+			// also works. `.jsonic` is retired (no longer auto-resolved).
+			ImplicitExt: []string{".aon", ".aontu"},
 		},
 	}
 }
