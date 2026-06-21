@@ -147,6 +147,15 @@ Both implementations use the same `@tabnas` Go/TS stack (jsonic + expr +
 path + multisource), so the parser and semantics stay in lock-step. The
 shared spec is the contract; grow it whenever either side changes.
 
+**Pin the `@tabnas` versions exactly** (`ts/package.json`, `go/go.mod`).
+The spread (`&:`) and optional-key (`a?:`) rules depend on `@tabnas`
+parser *internals*, not just its public API: the parent-seeded node that
+descended rules share (hence the explicit `r.node = {}` resets in both
+`lang.ts` and `lang.go`), the `B:`/`b:` backtrack accounting, and the
+order plugins are applied. A minor `@tabnas` bump can change these
+silently with no compile error — only the shared spec catches it — so
+upgrade deliberately and run `make test` before loosening any pin.
+
 ## Conventions
 
 - Keep new TypeScript code in the style of the surrounding `ts/src` files.

@@ -53,6 +53,11 @@ var (
 	langCache   = map[string]*jsonic.Jsonic{}
 )
 
+// maxLangCache bounds the number of cached per-base parsers (see
+// langForBase) so a long-running process cannot grow the cache without
+// limit.
+const maxLangCache = 256
+
 // langForBase returns a parser whose relative @"file" loads resolve
 // against base. Base "" reuses the shared default parser.
 func langForBase(base string) (*jsonic.Jsonic, error) {
@@ -68,7 +73,13 @@ func langForBase(base string) (*jsonic.Jsonic, error) {
 	if err != nil {
 		return nil, err
 	}
-	langCache[base] = j
+	// Bound memory in long-running hosts (e.g. the LSP) that may resolve
+	// many distinct bases over their lifetime: once the cache is full,
+	// stop adding rather than growing without limit. Bases past the cap
+	// are rebuilt per call (slower) but never leak.
+	if len(langCache) < maxLangCache {
+		langCache[base] = j
+	}
 	return j, nil
 }
 

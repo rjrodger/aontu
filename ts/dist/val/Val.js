@@ -27,6 +27,12 @@ exports.SPREAD = SPREAD;
 // mutable error array must create their own.
 const EMPTY_ERR = Object.freeze([]);
 exports.EMPTY_ERR = EMPTY_ERR;
+// Process-global, monotonic Val id source. Correctness only requires ids
+// to be unique within a single unify run (fast-path identity checks,
+// `same()`), which holds. It is NOT reset between generate() calls, so in
+// a long-running host (e.g. the LSP) it grows for the process lifetime;
+// that is acceptable — an id is a small number and is never used as a
+// memory key. TODO: switch to the per-run ctx.vc counter (see ctx.ts).
 let ID = 1000;
 class Val {
     get site() {
@@ -232,6 +238,7 @@ Object.assign(Val.prototype, {
     isBoolean: false,
     isConjunct: false,
     isDisjunct: false,
+    isExpect: false,
     isJunction: false,
     cjo: 99999,
     isOp: false,

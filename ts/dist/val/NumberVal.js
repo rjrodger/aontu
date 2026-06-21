@@ -7,7 +7,9 @@ const ScalarVal_1 = require("./ScalarVal");
 const utility_1 = require("../utility");
 class NumberVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
-        if (isNaN(spec.peg)) {
+        // Number.isFinite (not the coercing global isNaN, which lets null/''
+        // through as "numbers") — only an actual finite number is valid.
+        if (!Number.isFinite(spec.peg)) {
             // TODO: use Nil?
             throw new err_1.AontuError('not-number: ' + spec.peg);
         }

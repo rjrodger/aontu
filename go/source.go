@@ -14,6 +14,14 @@ import (
 // fileResolver resolves an @"path" reference by reading from disk,
 // mirroring makeFileResolver in @tabnas/multisource (resolver/file.ts):
 // resolve the full path, try it, then the implicit-extension potentials.
+//
+// SECURITY: @"path" reads any file the process can read — relative paths
+// (`@"../../etc/passwd"`) and symlinks are followed with no containment
+// check. This is intentional for the CLI, but it means a `.aon` source
+// can exfiltrate referenced files; the LSP backs onto this same resolver,
+// so treat opening an untrusted source as you would running it. If you
+// embed aontu in a less-trusted context, supply a custom resolver via
+// MultiSourceOptions that confines reads to an allowed root.
 func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOptions, _ *jsonic.Context) multisource.Resolution {
 	res := multisource.Resolution{PathSpec: spec}
 

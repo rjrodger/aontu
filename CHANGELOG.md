@@ -7,6 +7,38 @@ which implementation each change affects.
 
 ## Unreleased — TypeScript 0.47.0, Go 0.1.4
 
+### Fixed — fragility audit
+
+- **Disjunct defaults (TypeScript and Go)**: when generating a disjunction
+  with preference (`*`) members, the fold over the preferred members
+  indexed the unfiltered member list, so prefs that were not the leading
+  alternatives were skipped (`1 | *{x:1} | *{y:2}` produced `{x:1}`
+  instead of `{x:1,y:2}`). Both implementations now fold over the filtered
+  list. Regression rows added to `test/spec/disjunct.tsv`.
+- **`unknown_var` diagnostic (TypeScript)**: an undefined `$var` reported
+  `invalid_var_kind` because the `unknown_var` branch fell through the
+  `typeof` ladder; it now reports `unknown_var`. (Go already reported it
+  correctly.)
+- **`NumberVal` validation (TypeScript)**: the constructor used the
+  coercing global `isNaN`, which accepts `null`/`''` as numbers; it now
+  uses `Number.isFinite`, matching `IntegerVal`.
+- **Robustness (TypeScript)**: `isExpect` is now declared/defaulted on the
+  `Val` prototype like every other type discriminator (previously it
+  worked only because `undefined` is falsy); the unify catch-all now
+  preserves the original error message (and flags stack-overflow
+  `RangeError`s) on the `internal` Nil instead of discarding it.
+
+### Changed — hardening & docs (fragility audit)
+
+- **Go**: the per-base parser cache (`langForBase`) is now bounded
+  (`maxLangCache`) so long-running hosts (e.g. the LSP) cannot grow it
+  without limit.
+- Documented the security model of the `@"file"`/`@"pkg"` resolvers
+  (they read any reachable file/module; supply a confined resolver in
+  less-trusted contexts), the process-global Val id counter's growth, and
+  the requirement to pin `@tabnas` versions exactly because the spread /
+  optional rules depend on parser internals.
+
 ### Changed — parser packages (TypeScript and Go)
 
 - **Go**: migrated the parser from the `github.com/jsonicjs/*` Go modules

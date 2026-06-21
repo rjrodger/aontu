@@ -257,7 +257,10 @@ class DisjunctVal extends JunctionVal {
       // TODO: over unifies complex types like maps
       // ({x:1}|{y:2})&{z:3} should be {"x":1,"z":3}|{"y":2,"z":3} not { x:1, z:3, y:2 }
       for (let vI = 1; vI < vals.length; vI++) {
-        let valnext = val.unify(this.peg[vI], ctx)
+        // Index `vals`, not `this.peg`: when the pref members are not the
+        // leading entries the two arrays differ, and folding against
+        // this.peg[vI] would unify the wrong (or a repeated) member.
+        let valnext = val.unify(vals[vI], ctx)
         // // // console.log('DJ-GEN-VALS-NEXT', valnext.canon)
         val = valnext
       }

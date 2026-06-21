@@ -27,7 +27,9 @@ class NumberVal extends ScalarVal {
     spec: ValSpec,
     ctx?: AontuContext
   ) {
-    if (isNaN(spec.peg)) {
+    // Number.isFinite (not the coercing global isNaN, which lets null/''
+    // through as "numbers") — only an actual finite number is valid.
+    if (!Number.isFinite(spec.peg)) {
       // TODO: use Nil?
       throw new AontuError('not-number: ' + spec.peg)
     }

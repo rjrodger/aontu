@@ -482,6 +482,13 @@ help isolate the syntax error.`,
         return rs;
     });
 };
+// SECURITY: the default resolver reads any file/package the process can
+// reach — @"path" follows relative paths (`@"../../etc/passwd"`) and
+// symlinks with no containment check, and @"pkg" can require() arbitrary
+// installed modules. This is intentional for the CLI, but it means a
+// `.aon` source can read referenced files; the LSP uses this same
+// resolver, so treat opening an untrusted source as running it. Pass a
+// confined `options.resolver` to restrict reads in less-trusted contexts.
 function makeModelResolver(options) {
     const useRequire = options.require || require;
     let memResolver = (0, mem_1.makeMemResolver)({
