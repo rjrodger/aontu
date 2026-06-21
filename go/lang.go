@@ -33,11 +33,15 @@ import (
 // plugin for @"file" loading — the same stack and order as ts/src/lang.ts.
 
 // orderKey is the sentinel map entry holding insertion order, spreadKey
-// holds the &: spread value. The NUL prefix keeps them from colliding
-// with real keys.
-const orderKey = "\x00aontu_order"
-const spreadKey = "\x00aontu_spread"
-const optionalKey = "\x00aontu_optional"
+// holds the &: spread value. The reserved prefix keeps them from
+// colliding with real keys; a source key carrying the prefix is rejected
+// (see trackOrder) rather than silently corrupting the map. (The TS
+// implementation stores this state under a Symbol, so it is immune; this
+// guard keeps the Go behaviour safe for the same exotic input.)
+const reservedKeyPrefix = "\x00aontu_"
+const orderKey = reservedKeyPrefix + "order"
+const spreadKey = reservedKeyPrefix + "spread"
+const optionalKey = reservedKeyPrefix + "optional"
 
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
@@ -310,6 +314,15 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	}
 
 	key := keyOf(r.O0)
+
+	// Reject a source key in the reserved sentinel namespace: it would
+	// collide with the order/spread/optional entries above and silently
+	// corrupt the map. The parser's recover turns this panic into a
+	// normal parse error (it never crashes the process).
+	if strings.HasPrefix(key, reservedKeyPrefix) {
+		panic("aontu: map key may not begin with the reserved prefix " +
+			`"\x00aontu_"`)
+	}
 
 	// An optional pair (key?:value): the custom alt bypasses jsonic's
 	// value storage, so store the value ourselves and record the key.

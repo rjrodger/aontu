@@ -55,3 +55,24 @@ func TestEmpty(t *testing.T) {
 		t.Fatalf("expected empty map, got %#v", out)
 	}
 }
+
+// A source key in the reserved sentinel namespace must be rejected with a
+// clean error (not a crash, and not silent corruption of the map). The TS
+// implementation stores this state under a Symbol and is immune, so this
+// is a Go-only guard and lives here rather than in the shared spec.
+func TestReservedKeyPrefixRejected(t *testing.T) {
+	for _, src := range []string{
+		"\x00aontu_order:1",
+		"\x00aontu_spread:1",
+		"\x00aontu_optional:1",
+		"a:1 \x00aontu_order:2",
+	} {
+		if _, err := New().Generate(src); err == nil {
+			t.Fatalf("expected error for reserved key in %q, got none", src)
+		}
+	}
+	// A normal key is unaffected.
+	if out, err := New().Generate("normal:1"); err != nil {
+		t.Fatalf("normal key errored: %v (out=%v)", err, out)
+	}
+}

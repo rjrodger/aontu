@@ -48,6 +48,11 @@ which implementation each change affects.
 - **Go**: the per-base parser cache (`langForBase`) is now bounded
   (`maxLangCache`) so long-running hosts (e.g. the LSP) cannot grow it
   without limit.
+- **Go**: a source map key in the reserved sentinel namespace (prefix
+  `\x00aontu_`, used internally for key order / spreads / optional keys)
+  is now rejected with a clean parse error instead of silently colliding
+  with that internal state. (The TS implementation stores the state under
+  a `Symbol` and is already immune.)
 - Documented that a `parse()`/`Parse()` result is **single-use**:
   `unify`/`generate` refine the tree in place (the MapVal/ListVal TOP
   fast-path returns `this`), so the same Val must not be re-unified,
