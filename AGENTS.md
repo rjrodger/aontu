@@ -150,3 +150,24 @@ in place, and is not shared across independent unifications. Do not
 cache, reuse, or unify the same parsed `Val` (or a node reachable from
 it) in two different `unify` runs — clone first. The same constraint
 applies to the Go port. Treat parsed `Val`s as single-use.
+
+### Known TS/Go divergences
+
+The shared spec only contains rows that pass identically in both
+implementations. A few behaviours deliberately differ and must **not**
+be added to `test/spec/*.tsv`:
+
+- **Numbers.** JavaScript has a single number type, so the canonical TS
+  treats `1` and `1.0` as equal (`1 & 1.0` → `1`) and preserves negative
+  zero (`-0` stays `-0`). The Go port keeps distinct `integer`/`number`
+  kinds, so `1 & 1.0` fails to unify (kind mismatch) and `-0` normalises
+  to `0`. Large/small magnitudes also format via Go's `%g` rather than
+  JS `Number.toString`.
+- **Error message text.** Go's `hints` are abbreviated versions of the TS
+  hints, and TS additionally renders source frames. Only the substring
+  asserted by an `err`-mode spec row is contractual; full error text is
+  not in parity.
+- **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
+  `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
+  Go; this is invisible to the shared spec (which is unify-level).
+
