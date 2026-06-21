@@ -1,7 +1,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
 
-import { util } from 'jsonic'
+import { util } from '@tabnas/jsonic'
 
 import { Val, ErrContext } from './type'
 

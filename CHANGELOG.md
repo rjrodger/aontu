@@ -7,6 +7,27 @@ which implementation each change affects.
 
 ## Unreleased — TypeScript 0.47.0, Go 0.1.4
 
+### Changed — parser packages (TypeScript)
+
+- Migrated the TypeScript parser from the `@jsonic`/`jsonic` packages to
+  the `@tabnas` packages (`@tabnas/jsonic`, `@tabnas/expr`,
+  `@tabnas/multisource`, `@tabnas/path`, `@tabnas/directive`,
+  `@tabnas/debug`). Behaviour is unchanged — the full suite (393 tests)
+  passes. Three integration points needed adapting to `@tabnas`'s parser:
+  - the parser core is split into `@tabnas/parser` + `@tabnas/jsonic`, so
+    plugin `Plugin` types are reconciled via a small `asPlugin` cast and
+    the model resolver is typed against `Tabnas`;
+  - literal scalars are wrapped into Vals in the `val` rule's *after-close*
+    (`.ac`) hook rather than before-close, because `@tabnas` re-resolves
+    the scalar token during before-close;
+  - `MultiSource` is applied before the grammar customisation so the `@`
+    directive's `val` alt survives, and the spread/optional `val→map`
+    dives reset to a fresh node (`@tabnas` parent-seeds a descended node,
+    which otherwise made nested `&:`/`?:` maps share — and self-reference —
+    their parent's node).
+- Requires Node.js >= 24 (the `@tabnas` packages require it; CI already
+  runs node 24.x).
+
 ### Changed — source file extensions
 
 - `.aon` is now the **preferred** Aontu source extension; `.aontu` also

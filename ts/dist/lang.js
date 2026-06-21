@@ -3,15 +3,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
 // import { performance } from 'node:perf_hooks'
-const jsonic_1 = require("jsonic");
-const debug_1 = require("jsonic/debug");
-const multisource_1 = require("@jsonic/multisource");
-// TODO: @jsonic/multisource should support virtual fs
-const file_1 = require("@jsonic/multisource/resolver/file");
-const pkg_1 = require("@jsonic/multisource/resolver/pkg");
-const mem_1 = require("@jsonic/multisource/resolver/mem");
-const expr_1 = require("@jsonic/expr");
-const path_1 = require("@jsonic/path");
+const jsonic_1 = require("@tabnas/jsonic");
+const debug_1 = require("@tabnas/debug");
+const multisource_1 = require("@tabnas/multisource");
+// TODO: @tabnas/multisource should support virtual fs
+const file_1 = require("@tabnas/multisource/resolver/file");
+const pkg_1 = require("@tabnas/multisource/resolver/pkg");
+const mem_1 = require("@tabnas/multisource/resolver/mem");
+const expr_1 = require("@tabnas/expr");
+const path_1 = require("@tabnas/path");
 const type_1 = require("./type");
 const site_1 = require("./site");
 Object.defineProperty(exports, "Site", { enumerable: true, get: function () { return site_1.Site; } });
@@ -43,8 +43,9 @@ const PrefFuncVal_1 = require("./val/PrefFuncVal");
 const CloseFuncVal_1 = require("./val/CloseFuncVal");
 const OpenFuncVal_1 = require("./val/OpenFuncVal");
 const SuperFuncVal_1 = require("./val/SuperFuncVal");
+const asPlugin = (p) => p;
 let AontuJsonic = function AontuLang(jsonic) {
-    jsonic.use(path_1.Path);
+    jsonic.use(asPlugin(path_1.Path));
     // TODO: refactor Val constructor
     // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
     let addsite = (v, r, ctx) => {
@@ -194,7 +195,7 @@ help isolate the syntax error.`,
         },
     };
     jsonic
-        .use(expr_1.Expr, {
+        .use(asPlugin(expr_1.Expr), {
         op: {
             // disjunct < conjunct: c & b | a -> (c & b) | a
             'conjunct': {
@@ -269,12 +270,22 @@ help isolate the syntax error.`,
     jsonic.rule('val', (rs) => {
         rs
             .open([
-            { s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 }, g: 'spread' },
+            {
+                s: [CJ, CL], p: 'map', b: 2, n: { pk: 1 },
+                // @tabnas seeds a descended rule's node from its parent; without
+                // a fresh node here the nested spread map (`a:&:{x:1}`) would
+                // share the parent map's node object and self-reference.
+                a: (r) => { r.node = {}; },
+                g: 'spread'
+            },
             {
                 s: [OPTKEY, QM],
                 c: (r) => 0 == r.d,
                 p: 'map',
                 b: 2,
+                // Fresh node (see spread alt above): the optional dive descends
+                // to a map and must not share the parent's node object.
+                a: (r) => { r.node = {}; },
                 g: 'pair,jsonic,top,aontu-optional',
             },
             {
@@ -282,10 +293,11 @@ help isolate the syntax error.`,
                 p: 'map',
                 b: 2,
                 n: { pk: 1 },
+                a: (r) => { r.node = {}; },
                 g: 'pair,jsonic,top,dive,aontu-optional',
             },
         ])
-            .bc((r, ctx) => {
+            .ac((r, ctx) => {
             let valnode = r.node;
             let valtype = typeof valnode;
             if ('string' === valtype) {
@@ -407,7 +419,7 @@ help isolate the syntax error.`,
                 g: 'aontu-optional-pair'
             }
         ])
-            // NOTE: manually adjust path - @jsonic/path ignores as not pair:true
+            // NOTE: manually adjust path - @tabnas/path ignores as not pair:true
             .ao((r) => {
             if (0 < r.d && r.u.spread) {
                 r.child.k.path = [...r.k.path, '&'];
@@ -514,13 +526,12 @@ class Lang {
         const modelResolver = makeModelResolver(this.opts);
         this.jsonic = jsonic_1.Jsonic.make();
         if (this.opts.debug) {
-            this.jsonic.use(debug_1.Debug, {
+            this.jsonic.use(asPlugin(debug_1.Debug), {
                 trace: this.opts.trace
             });
         }
         this.jsonic
-            .use(AontuJsonic)
-            .use(multisource_1.MultiSource, {
+            .use(asPlugin(multisource_1.MultiSource), {
             resolver: options?.resolver || modelResolver,
             // `.aon` is the preferred Aontu source extension; `.aontu` also
             // works. `.jsonic` is retired (no longer auto-resolved); the
@@ -531,7 +542,8 @@ class Lang {
                 aontu: 'jsonic',
                 aon: 'jsonic',
             }
-        });
+        })
+            .use(AontuJsonic);
     }
     parse(src, opts) {
         // const start = performance.now()

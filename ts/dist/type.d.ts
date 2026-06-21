@@ -1,5 +1,5 @@
 import * as Fs from 'node:fs';
-import { Resolver } from '@jsonic/multisource';
+import { Resolver } from '@tabnas/multisource';
 import { Val, DONE, SPREAD } from './val/Val';
 import type { ValMark, ValSpec } from './val/Val';
 type FST = typeof Fs;

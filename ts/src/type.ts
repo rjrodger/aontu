@@ -4,7 +4,7 @@ import * as Fs from 'node:fs'
 
 // TODO: refactor these out
 
-import { Resolver } from '@jsonic/multisource'
+import { Resolver } from '@tabnas/multisource'
 
 import { AontuContext } from './ctx'
 import { Val, DONE, SPREAD } from './val/Val'
