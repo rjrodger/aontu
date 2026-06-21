@@ -48,6 +48,19 @@ which implementation each change affects.
   offsets, so `no_path` and `unknown_function` diagnostics are positioned
   precisely (matching TS).
 
+### Added — editor plugins
+
+- `editors/` now contains thin LSP-client plugins that launch `aontu-lsp`:
+  **VS Code** (`editors/vscode`), **Emacs** (`editors/emacs`, Eglot and
+  lsp-mode, with a major mode + syntax), and **Vim/Neovim**
+  (`editors/vim`, filetype/syntax + Neovim built-in LSP autostart). All
+  associate `.aon` and `.aontu`.
+- The LSP **library is server-independent** in both languages (Go `lsp`
+  package does not import `cmd/aontu-lsp`; TS `lsp.ts` does not import
+  `lsp-server.ts`), so third parties can reuse the analysis + handler with
+  their own transport. Documented under "Bring your own server" in
+  `docs/lsp.md`.
+
 ### Breaking (TypeScript)
 
 - **Number model is now CUE-faithful and matches the Go port.** `integer`

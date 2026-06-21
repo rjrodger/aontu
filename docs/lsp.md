@@ -105,6 +105,25 @@ You can consume any layer directly:
   socket or an in-process channel) by feeding it decoded JSON-RPC objects;
 - run **layer 3** as a ready-made stdio server for an editor.
 
+### Bring your own server
+
+The library (layers 1–2) does **not** depend on the bundled stdio server,
+so a third party can build a server on a different transport while reusing
+all the analysis and protocol logic:
+
+- **Go**: import `github.com/rjrodger/aontu/go/lsp`. The package has no
+  dependency on `cmd/aontu-lsp` (verifiable with
+  `go list -deps ./lsp | grep cmd` → empty). Drive `lsp.NewHandler()` with
+  decoded `lsp.Message` values and write back the returned `lsp.Out`s over
+  whatever transport you like.
+- **TypeScript**: import `aontu/dist/lsp` (or `ts/src/lsp.ts`). It does
+  not import `lsp-server.ts`; the dependency is one-way (server →
+  library). Drive `new LspHandler()` with message objects.
+
+In both, `computeDiagnostics`/`Diagnostics`, `computeHover`/`Hover`, and
+`computeCompletions`/`Completions` are also usable standalone, with no
+JSON-RPC at all.
+
 
 ## Running the server
 
@@ -135,6 +154,12 @@ from a client's point of view.
 
 
 ## Editor configuration
+
+Ready-made plugins for **VS Code**, **Emacs** and **Vim/Neovim** live in
+[`editors/`](../editors/) — each is a thin client that launches
+`aontu-lsp`. Install instructions are in the per-editor READMEs. The
+snippets below show the minimal manual wiring if you prefer to configure a
+client yourself.
 
 Associate the language server with Aontu source files. `.aon` is the
 preferred extension and `.aontu` also works (`.jsonic` is retired). The

@@ -1,0 +1,52 @@
+{
+  "name": "aontu",
+  "displayName": "Aontu",
+  "description": "Aontu language support: diagnostics, hover and completion via the Aontu language server (aontu-lsp).",
+  "version": "0.1.0",
+  "publisher": "rjrodger",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git://github.com/rjrodger/aontu.git" },
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:aontu"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "aontu",
+        "aliases": ["Aontu", "aontu"],
+        "extensions": [".aon", ".aontu"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "configuration": {
+      "title": "Aontu",
+      "properties": {
+        "aontu.server.command": {
+          "type": "string",
+          "default": "aontu-lsp",
+          "description": "Command used to launch the Aontu language server. Use an absolute path, or `node` with `aontu.server.args` pointing at dist/lsp-server.js."
+        },
+        "aontu.server.args": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Arguments passed to the Aontu language server command."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -p ./ -w",
+    "vscode:prepublish": "npm run compile"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@types/node": "^22",
+    "typescript": "^5"
+  }
+}

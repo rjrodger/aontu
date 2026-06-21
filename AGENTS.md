@@ -28,7 +28,9 @@ implementations are checked against the same cases.
 ├── Makefile             # fans out to ts/ and go/
 ├── README.md
 ├── docs/
+│   ├── lsp.md           # language server reference
 │   └── shared-spec.md   # the shared TSV test format
+├── editors/             # editor plugins (VS Code, Emacs, Vim) → aontu-lsp
 ├── test/
 │   └── spec/            # shared test cases — *.tsv (language-agnostic)
 ├── ts/                  # canonical TypeScript implementation
@@ -58,8 +60,10 @@ the server: analysis (`computeDiagnostics` in `ts/src/lsp.ts`;
 `lsp.Diagnostics` over `aontu.Check` in `go/lsp`) and a transport-agnostic
 handler (`LspHandler` / `lsp.Handler`), with a thin stdio server on top
 (`ts/src/lsp-server.ts`, `go/cmd/aontu-lsp`). The two servers are kept in
-parity (same capabilities and diagnostic text). Full reference:
-[`docs/lsp.md`](docs/lsp.md).
+parity (same capabilities — diagnostics, hover, completion — and identical
+output text). The library does not depend on the server, so third parties
+can reuse it with their own transport. Editor plugins live in
+[`editors/`](editors/). Full reference: [`docs/lsp.md`](docs/lsp.md).
 Long-form documentation lives under [`docs/`](docs/) (start at
 `docs/index.md`); measure coverage with `make cov` (see
 `docs/test-coverage.md`).
