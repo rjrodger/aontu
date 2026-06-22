@@ -101,15 +101,15 @@ let P = lang.parse.bind(lang);
         let t00xA = g0.parse('A:11,x:@"' + __dirname + '/../test/t00.aon"');
         (0, expect_1.expect)(t00xA.canon).equal('{"A":11,"x":{"a":1}}');
         let t00xB = g0.parse('x:@"' + __dirname + '/../test/t00.aon",B:22');
-        (0, expect_1.expect)(t00xB.canon).equal('{"x":{"a":1},"B":22}');
+        (0, expect_1.expect)(t00xB.canon).equal('{"B":22,"x":{"a":1}}');
         let t00xAB = g0.parse('A:11,x:@"' + __dirname + '/../test/t00.aon",B:22');
-        (0, expect_1.expect)(t00xAB.canon).equal('{"A":11,"x":{"a":1},"B":22}');
+        (0, expect_1.expect)(t00xAB.canon).equal('{"A":11,"B":22,"x":{"a":1}}');
         let t00xAs = g0.parse('A:11 x:@"' + __dirname + '/../test/t00.aon"');
         (0, expect_1.expect)(t00xAs.canon).equal('{"A":11,"x":{"a":1}}');
         let t00xBs = g0.parse('x:@"' + __dirname + '/../test/t00.aon" B:22');
-        (0, expect_1.expect)(t00xBs.canon).equal('{"x":{"a":1},"B":22}');
+        (0, expect_1.expect)(t00xBs.canon).equal('{"B":22,"x":{"a":1}}');
         let t00xABs = g0.parse('A:11 x:@"' + __dirname + '/../test/t00.aon" B:22');
-        (0, expect_1.expect)(t00xABs.canon).equal('{"A":11,"x":{"a":1},"B":22}');
+        (0, expect_1.expect)(t00xABs.canon).equal('{"A":11,"B":22,"x":{"a":1}}');
         let t00v = g0.parse('@"' + __dirname + '/../test/t00.aon"');
         (0, expect_1.expect)(t00v.canon).equal('{}&{"a":1}');
         let t00 = new unify_1.Unify(t00v);
@@ -188,15 +188,15 @@ let P = lang.parse.bind(lang);
         (0, expect_1.expect)(v0.canon).equal('{"a":{&:{"x":1,"y":integer},"b":{"y":1},"c":{"y":2}}}');
         let u0 = v0.unify(TOP, ctx);
         (0, expect_1.expect)(u0.canon)
-            .equal('{"a":{&:{"x":1,"y":integer},"b":{"y":1,"x":1},"c":{"y":2,"x":1}}}');
+            .equal('{"a":{&:{"x":1,"y":integer},"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}');
         let v1 = P('k:{x:1,y:integer},a:{&:$.k,b:{y:1},c:{y:2}}');
         (0, expect_1.expect)(v1.canon)
-            .equal('{"k":{"x":1,"y":integer},"a":{&:$.k,"b":{"y":1},"c":{"y":2}}}');
+            .equal('{"a":{&:$.k,"b":{"y":1},"c":{"y":2}},"k":{"x":1,"y":integer}}');
         let c1 = makeCtx({ root: v1 });
         let u1a = v1.unify(TOP, c1);
         (0, expect_1.expect)(u1a.canon).
-            equal('{"k":{"x":1,"y":integer},"a":{&:$.k,' +
-            '"b":{"x":1,"y":1},"c":{"x":1,"y":2}}}');
+            equal('{"a":{&:$.k,"b":{"x":1,"y":1},"c":{"x":1,"y":2}},' +
+            '"k":{"x":1,"y":integer}}');
         let v2 = P('a:{&:number},a:{x:1},a:{y:2}');
         (0, expect_1.expect)(v2.canon).equal('{"a":{&:number}&{"x":1}&{"y":2}}');
         let u2 = v2.unify(TOP, ctx);
@@ -204,25 +204,25 @@ let P = lang.parse.bind(lang);
         let v3 = P('a:{&:number,z:3},a:{x:1},a:{y:2}');
         (0, expect_1.expect)(v3.canon).equal('{"a":{&:number,"z":3}&{"x":1}&{"y":2}}');
         let u3 = v3.unify(TOP, ctx);
-        (0, expect_1.expect)(u3.canon).equal('{"a":{&:number,"z":3,"x":1,"y":2}}');
+        (0, expect_1.expect)(u3.canon).equal('{"a":{&:number,"x":1,"y":2,"z":3}}');
         let v4 = P('b:{a:{&:number,z:3},a:{x:1},a:{y:2}}');
         (0, expect_1.expect)(v4.canon).equal('{"b":{"a":{&:number,"z":3}&{"x":1}&{"y":2}}}');
         let u4 = v4.unify(TOP, ctx);
-        (0, expect_1.expect)(u4.canon).equal('{"b":{"a":{&:number,"z":3,"x":1,"y":2}}}');
+        (0, expect_1.expect)(u4.canon).equal('{"b":{"a":{&:number,"x":1,"y":2,"z":3}}}');
         // Must commute!
         let v5a = P('{&:{x:1}}&{a:{y:1}}');
         let u5a = v5a.unify(TOP, ctx);
-        (0, expect_1.expect)(u5a.canon).equal('{&:{"x":1},"a":{"y":1,"x":1}}');
+        (0, expect_1.expect)(u5a.canon).equal('{&:{"x":1},"a":{"x":1,"y":1}}');
         let v5b = P('{a:{y:1}}&{&:{x:1}}');
         let u5b = v5b.unify(TOP, ctx);
-        (0, expect_1.expect)(u5b.canon).equal('{&:{"x":1},"a":{"y":1,"x":1}}');
+        (0, expect_1.expect)(u5b.canon).equal('{&:{"x":1},"a":{"x":1,"y":1}}');
         let v6 = P('b:{a:{&:{K:0},z:{Z:3}},a:{x:{X:1}},a:{y:{Y:2}}}');
         (0, expect_1.expect)(v6.canon)
             .equal('{"b":{"a":{&:{"K":0},"z":{"Z":3}}&{"x":{"X":1}}&{"y":{"Y":2}}}}');
         let u6 = v6.unify(TOP, ctx);
         (0, expect_1.expect)(u6.canon)
             .equal('{"b":{"a":{&:{"K":0},' +
-            '"z":{"Z":3,"K":0},"x":{"X":1,"K":0},"y":{"Y":2,"K":0}}}}');
+            '"x":{"K":0,"X":1},"y":{"K":0,"Y":2},"z":{"K":0,"Z":3}}}}');
     });
     (0, node_test_1.it)('pair-spreads', () => {
         let s1 = `a:b:c:1 z:2`;

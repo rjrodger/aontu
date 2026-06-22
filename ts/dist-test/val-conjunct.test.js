@@ -42,7 +42,7 @@ const G = (x, ctx) => new unify_1.Unify(x, lang).res.gen(ctx);
         (0, expect_1.expect)(u0).equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}}');
         let u1 = UC('a:{x:1}|{y:2},a:{z:3}|{q:4}');
         (0, expect_1.expect)(u1)
-            .equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}|{"x":1,"q":4}|{"y":2,"q":4}}');
+            .equal('{"a":{"x":1,"z":3}|{"y":2,"z":3}|{"q":4,"x":1}|{"q":4,"y":2}}');
         let u2 = UC('a:*1|number,a:*2|number');
         (0, expect_1.expect)(u2).equal('{"a":2|1|number}');
         // TODO: fix syntax (*)

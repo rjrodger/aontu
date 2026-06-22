@@ -213,7 +213,7 @@ let PA = (x, ctx) => x.map(s => PL(s, ctx));
         (0, expect_1.expect)(U('{a:false}    {a:string}')).equal('{"a":nil}');
         (0, expect_1.expect)(U('{a:false}    {a:boolean}')).equal('{"a":false}');
         (0, expect_1.expect)(U('{a:1}        {b:2}')).equal('{"a":1,"b":2}');
-        (0, expect_1.expect)(U('{b:2}        {a:1}')).equal('{"b":2,"a":1}');
+        (0, expect_1.expect)(U('{b:2}        {a:1}')).equal('{"a":1,"b":2}');
     });
 });
 function makeCtx(r) {

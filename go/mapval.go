@@ -2,7 +2,10 @@
 
 package aontu
 
-import "strings"
+import (
+	"sort"
+	"strings"
+)
 
 // MapVal is an ordered map of string keys to child Vals. Insertion
 // order is preserved for canon output and generation.
@@ -68,7 +71,14 @@ func (m *MapVal) Canon() string {
 			b.WriteByte(',')
 		}
 	}
-	for i, k := range m.keys {
+	// Keys are emitted alphabetically so the canonical form is independent
+	// of insertion/unification order (matching the TypeScript canon and the
+	// JSON marshaling, which also sorts keys). A copy is sorted so the
+	// internal m.keys order — used by the determinism driver in Unify —
+	// is left untouched.
+	keys := append([]string(nil), m.keys...)
+	sort.Strings(keys)
+	for i, k := range keys {
 		if i > 0 {
 			b.WriteByte(',')
 		}
