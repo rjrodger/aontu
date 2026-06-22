@@ -1,0 +1,4 @@
+# Spread cases salvaged from the perf0 branch (spread-key-ref-copy.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-key-ref-copy-1	gen	a:{n:key(),x:1}	{"a":{"n":"a","x":1}}
+spread-key-ref-copy-2	gen	a:{n:key(),x:1},b:{c:$.a}	{"a":{"n":"a","x":1},"b":{"c":{"n":"c","x":1}}}

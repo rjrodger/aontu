@@ -1,0 +1,9 @@
+# Spread cases salvaged from the perf0 branch (spread-ref-copy.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-ref-copy-1	gen	a:{&:{x:1},c:{y:2}}	{"a":{"c":{"y":2,"x":1}}}
+spread-ref-copy-2	gen	a:{&:{x:1},c:{y:2}},b:$.a	{"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1}}}
+spread-ref-copy-3	gen	a:{&:{x:1},c:{y:2}},b:$.a,b:{d:{y:3}}	{"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}
+spread-ref-copy-4	gen	a:{&:{x:1}},a:{&:{p:2}},a:{c:{y:3}},b:$.a,b:{d:{y:4}}	{"a":{"c":{"y":3,"x":1,"p":2}},"b":{"c":{"y":3,"x":1,"p":2},"d":{"y":4,"x":1,"p":2}}}
+spread-ref-copy-5	gen	q:{x:1},a:{&:$.q,c:{y:2}},b:$.a,b:{d:{y:3}}	{"q":{"x":1},"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}
+spread-ref-copy-6	gen	b:{&:{x:1},c:{y:2}},b:{d:{y:3}}	{"b":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}
+spread-ref-copy-7	gen	a:{&:{x:1},c:{y:2}},b:$.a,c:$.b,c:{d:{y:3}}	{"a":{"c":{"y":2,"x":1}},"b":{"c":{"y":2,"x":1}},"c":{"c":{"y":2,"x":1},"d":{"y":3,"x":1}}}

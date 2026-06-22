@@ -1,0 +1,3 @@
+# Spread cases salvaged from the perf0 branch (spread-list.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-list-1	gen	a:{&:{x:1},b:{y:[1,2,3]}}	{"a":{"b":{"y":[1,2,3],"x":1}}}

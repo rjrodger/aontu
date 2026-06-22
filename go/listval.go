@@ -83,7 +83,7 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 
 	for i, e := range l.peg {
-		ev := unite(ctx, e, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i))))
+		ev := unite(ctx, e, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
 		out.peg = append(out.peg, ev)
 		if ev.Dc() != DONE {
 			done = false
@@ -103,7 +103,7 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 			} else {
 				uv = unite(ctx, pe, top())
 				if l.spread != nil {
-					uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i))))
+					uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
 				}
 				out.peg = append(out.peg, uv)
 			}

@@ -1,0 +1,3 @@
+# Spread cases salvaged from the perf0 branch (spread-hide.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-hide-1	gen	a:{&:{h:hide(1)},b:{x:2}}	{"a":{"b":{"x":2}}}

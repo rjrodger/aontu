@@ -1,0 +1,4 @@
+# Spread cases salvaged from the perf0 branch (spread-disjunct.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-disjunct-1	gen	a:{&:{x:1|2},b:{x:1}}	{"a":{"b":{"x":1}}}
+spread-disjunct-2	gen	a:{&:{x:1|2},b:{x:2}}	{"a":{"b":{"x":2}}}

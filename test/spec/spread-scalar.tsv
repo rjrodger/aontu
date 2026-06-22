@@ -1,0 +1,6 @@
+# Spread cases salvaged from the perf0 branch (spread-scalar.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-scalar-1	gen	a:{&:number,x:1}	{"a":{"x":1}}
+spread-scalar-2	gen	a:{&:string,x:hello}	{"a":{"x":"hello"}}
+spread-scalar-3	gen	a:{&:integer,x:1}	{"a":{"x":1}}
+spread-scalar-4	gen	a:{&:boolean,x:true}	{"a":{"x":true}}

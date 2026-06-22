@@ -1,0 +1,9 @@
+# Spread cases salvaged from the perf0 branch (spread-nested.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-nested-1	gen	a:{&:{x:1},b:{y:2}}	{"a":{"b":{"y":2,"x":1}}}
+spread-nested-2	gen	a:{&:{m:{&:{x:1}}},b:{m:{c:{y:2}}}}	{"a":{"b":{"m":{"c":{"y":2,"x":1}}}}}
+spread-nested-3	gen	a:{&:{m:{&:{n:{&:{x:1}}}}},b:{m:{c:{n:{d:{y:2}}}}}}	{"a":{"b":{"m":{"c":{"n":{"d":{"y":2,"x":1}}}}}}}
+spread-nested-4	gen	a:{&:{m:{&:{n:{&:{p:{&:{x:1}}}}}}},b:{m:{c:{n:{d:{p:{e:{y:2}}}}}}}}	{"a":{"b":{"m":{"c":{"n":{"d":{"p":{"e":{"y":2,"x":1}}}}}}}}}
+spread-nested-5	gen	a:{&:{m:{&:{n:{&:{p:{&:{q:{&:{x:1}}}}}}}}},b:{m:{c:{n:{d:{p:{e:{q:{f:{y:2}}}}}}}}}}	{"a":{"b":{"m":{"c":{"n":{"d":{"p":{"e":{"q":{"f":{"y":2,"x":1}}}}}}}}}}}
+spread-nested-6	gen	a:{&:{m:{&:{n:{&:{p:{&:{q:{&:{r:{&:{x:1}}}}}}}}}}},b:{m:{c:{n:{d:{p:{e:{q:{f:{r:{g:{y:2}}}}}}}}}}}}	{"a":{"b":{"m":{"c":{"n":{"d":{"p":{"e":{"q":{"f":{"r":{"g":{"y":2,"x":1}}}}}}}}}}}}}
+spread-nested-7	gen	a:{&:{m:{&:{n:{&:{p:{&:{q:{&:{r:{&:{s:{&:{x:1}}}}}}}}}}}}},b:{m:{c:{n:{d:{p:{e:{q:{f:{r:{g:{s:{h:{y:2}}}}}}}}}}}}}}	{"a":{"b":{"m":{"c":{"n":{"d":{"p":{"e":{"q":{"f":{"r":{"g":{"s":{"h":{"y":2,"x":1}}}}}}}}}}}}}}}

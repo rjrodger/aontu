@@ -1,0 +1,3 @@
+# Spread cases salvaged from the perf0 branch (spread-upper.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-upper-1	gen	a:{&:{u:upper(hello)},b:{x:1}}	{"a":{"b":{"x":1,"u":"HELLO"}}}

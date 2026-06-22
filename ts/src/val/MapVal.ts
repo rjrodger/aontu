@@ -16,6 +16,7 @@ import { unite } from '../unify'
 
 import {
   propagateMarks,
+  walk,
   explainOpen,
   ec,
   explainClose,
@@ -31,6 +32,13 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
+
+
+// Per-RefVal structural snapshot of a ref spread (see MapVal.unify). A
+// module-level WeakMap keyed by the (per-parse) RefVal: persists across
+// fixpoint passes without polluting the RefVal (so clones don't inherit
+// it) and is GC'd with the parse.
+const SPREAD_SNAP = new WeakMap<Val, Val>()
 
 
 class MapVal extends BagVal {
@@ -114,9 +122,16 @@ class MapVal extends BagVal {
       if (!exit) {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
-            out.spread.cj =
-            unite(te ? ctx.clone({ explain: ec(te, 'SPR') }) : ctx,
-              out.spread.cj, peer.spread.cj, 'map-self')
+            // Combine two distinct spread constraints structurally (deferred
+            // via a ConjunctVal) rather than unifying in place. A spread is
+            // a template applied per destination key; unifying here resolves
+            // its key()/path() at the template's own (intermediate) path,
+            // producing spurious values. Identical templates (same canon)
+            // collapse to one — otherwise the conjunct grows every fixpoint
+            // pass since the spread re-combines each pass.
+            out.spread.cj = out.spread.cj.canon === peer.spread.cj.canon ?
+              out.spread.cj :
+              new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
           )
         )
       }
@@ -132,6 +147,51 @@ class MapVal extends BagVal {
       // let newtype = this.type || peer.type
 
       let spread_cj = out.spread.cj ?? TOP
+
+      // Snapshot a path-dependent *ref* spread to its structural target
+      // once (while inner key()/path() funcs are still unresolved), so
+      // later fixpoint passes don't re-resolve the ref against the mutated
+      // tree and capture the target's own resolved key()/path() literals,
+      // which would leak the source key into the spread destination.
+      if (spread_cj.isRef && (spread_cj as any).find) {
+        let snap: Val | undefined = SPREAD_SNAP.get(spread_cj)
+        if (undefined === snap) {
+          let tgt: Val | undefined = (spread_cj as any).find(ctx)
+          // A ref to a type() resolves to its inner template (see the
+          // unwrap below) — snapshot that, so a type-wrapped ref behaves
+          // like a plain-map ref spread (key() captured unresolved, then
+          // resolved at the destination).
+          if (tgt && (tgt as any).isTypeFunc) tgt = (tgt as any).peg?.[0]
+          // Only snapshot a found, path-dependent target (contains
+          // key()/path()/ref). If the target is not present yet (it may be
+          // introduced by a later conjunct/merge), do NOT cache — retry on
+          // the next fixpoint pass (otherwise we'd freeze the unresolved
+          // ref and never snapshot the real target).
+          if (tgt && tgt.isVal && tgt.isPathDependent) {
+            snap = tgt.clone(ctx)
+            // Clear TYPE marks on the snapshot (recursively): a type()
+            // template constrains values but must not make the spread
+            // destination type-invisible at any depth. HIDE marks are
+            // preserved — a hide() spread is meant to hide the destination
+            // field (see spread-hide).
+            walk(snap, (_k: any, v: Val) => {
+              v.mark.type = false
+              return v
+            })
+            SPREAD_SNAP.set(spread_cj, snap)
+          }
+        }
+        if (snap) spread_cj = snap
+      }
+
+      // A type() used as a spread applies as its inner template: emit the
+      // (constrained) values at each destination rather than marking the
+      // destination as a type. I.e. `&:type({k:key(),x:number})` behaves
+      // like the non-type spread `&:{k:key(),x:number}` — key() resolves
+      // to the destination key, kinds constrain, fields are emitted.
+      if ((spread_cj as any).isTypeFunc) {
+        spread_cj = (spread_cj as any).peg?.[0] ?? TOP
+      }
 
       // Always unify own children first
       for (let key in this.peg) {
