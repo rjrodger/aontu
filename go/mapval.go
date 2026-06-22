@@ -96,13 +96,13 @@ func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	if c.Dc() != DONE {
 		c = unite(ctx, c, top())
 	}
-	c.setMarkType(false)
-	c.setMarkHide(false)
-	if m, ok := c.(*MapVal); ok {
-		for _, k := range m.keys {
-			m.peg[k].setMarkType(false)
-		}
-	}
+	// Clear TYPE marks on the whole resolved clone (recursively): a type()
+	// spread constrains values but must not make the destination — at any
+	// depth — type-invisible (clearing only direct children leaves nested
+	// marks like `type({m:{x:number}})` intact, silently dropping them).
+	// HIDE marks are preserved: a hide() spread (`&:{h:hide(1)}`) is meant
+	// to hide the spread field at the destination.
+	walkMark(c, true, false, false, false)
 	return c
 }
 

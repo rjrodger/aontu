@@ -99,12 +99,27 @@ class MapVal extends BagVal_1.BagVal {
                 let snap = SPREAD_SNAP.get(spread_cj);
                 if (undefined === snap) {
                     const tgt = spread_cj.find(ctx);
-                    // Only snapshot a path-dependent target (contains key()/path()/
-                    // ref); a plain target is fine to re-resolve per pass.
-                    snap = (tgt && tgt.isVal && tgt.isPathDependent) ? tgt.clone(ctx) : spread_cj;
-                    SPREAD_SNAP.set(spread_cj, snap);
+                    // Only snapshot a found, path-dependent target (contains
+                    // key()/path()/ref). If the target is not present yet (it may be
+                    // introduced by a later conjunct/merge), do NOT cache — retry on
+                    // the next fixpoint pass (otherwise we'd freeze the unresolved
+                    // ref and never snapshot the real target).
+                    if (tgt && tgt.isVal && tgt.isPathDependent) {
+                        snap = tgt.clone(ctx);
+                        // Clear TYPE marks on the snapshot (recursively): a type()
+                        // template constrains values but must not make the spread
+                        // destination type-invisible at any depth. HIDE marks are
+                        // preserved — a hide() spread is meant to hide the destination
+                        // field (see spread-hide).
+                        (0, utility_1.walk)(snap, (_k, v) => {
+                            v.mark.type = false;
+                            return v;
+                        });
+                        SPREAD_SNAP.set(spread_cj, snap);
+                    }
                 }
-                spread_cj = snap;
+                if (snap)
+                    spread_cj = snap;
             }
             // Always unify own children first
             for (let key in this.peg) {
