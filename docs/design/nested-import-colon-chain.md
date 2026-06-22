@@ -1,7 +1,9 @@
 # Design note: colon-chain nested `@"file"` import drops the import (Go port)
 
-Status: **open defect in the Go port** — root cause is upstream, in the
-`@tabnas/jsonic/go` parser, not in aontu's own Go source.
+Status: **resolved** — fixed upstream in `@tabnas/multisource/go` v0.3.1
+(pinned in `go/go.mod`). Covered by the shared-spec regression
+`file.tsv:load-colon-chain`. The analysis below is kept as a record of
+the defect and its root cause.
 
 This note records a parity defect found while validating `aql:model`
 (and `voxgig/model`) against a canonical TypeScript-based test model. A
@@ -15,15 +17,18 @@ to a single rule.
 In the **Go** implementation, a *colon-chain* (nested-path) key whose
 value is a bare `@"file"` import silently resolves to `{}` (the import is
 lost) instead of loading the file. The **TypeScript** (canonical)
-implementation handles the same source correctly. Braced nesting works
-in both, at any depth, and is the supported workaround until the upstream
-parser is fixed.
+implementation handles the same source correctly.
 
-| Form                                       | TypeScript | Go      |
-|--------------------------------------------|------------|---------|
-| `x: @"minor.aon"`                          | ✅ loads    | ✅ loads |
-| `struct: { minor: @"minor.aon" }` (braced) | ✅ loads    | ✅ loads |
-| `struct: minor: @"minor.aon"` (colon-chain)| ✅ loads    | ❌ `{}`  |
+This was **fixed upstream in `@tabnas/multisource/go` v0.3.1**; the table
+below shows the Go behaviour **before** that bump (TypeScript was always
+correct). Braced nesting worked in both at any depth throughout, and
+remains the recommended form.
+
+| Form                                       | TypeScript | Go (≤ v0.3.0) | Go (≥ v0.3.1) |
+|--------------------------------------------|------------|---------------|---------------|
+| `x: @"minor.aon"`                          | ✅ loads    | ✅ loads       | ✅ loads       |
+| `struct: { minor: @"minor.aon" }` (braced) | ✅ loads    | ✅ loads       | ✅ loads       |
+| `struct: minor: @"minor.aon"` (colon-chain)| ✅ loads    | ❌ `{}`        | ✅ loads       |
 
 ## Reproduction
 
@@ -120,28 +125,28 @@ post-parse repair inside aontu.
   not involved; the import is already mis-placed in the jsonic node tree
   before aontu's `asVal` conversion runs.
 
-## Where the fix belongs
+## Resolution
 
-The fix belongs **upstream in `@tabnas/jsonic/go`** (the colon-chain
-implicit-map construction), or, failing that, in the
-`@tabnas/multisource/go` `custom` grammar so the bare-`@` injection
-handles arbitrary depth and a colon-chain value opens the directive as a
-value rather than a top-level mark. aontu pins these parser versions
-exactly (`go/go.mod`), and the spread/optional rules depend on parser
-internals (see `AGENTS.md`), so any version bump must be made
-deliberately and validated against the full shared spec.
+The fix landed **upstream in `@tabnas/multisource/go` v0.3.1**, which
+makes the bare-`@` injection / colon-chain value handling work at
+arbitrary depth. aontu's `go/go.mod` pins that version, and the change was
+validated against the full shared spec plus the new regression row
+`test/spec/file.tsv:load-colon-chain` (`a:b:@"…/foo.aon"` →
+`{"a":{"b":{"f":11}}}`), which passes in both implementations.
 
-Until then, aontu's Go port carries this as a known divergence (see the
-"Known TS/Go divergences" section of `AGENTS.md`).
+aontu pins these parser versions exactly (`go/go.mod`), and the
+spread/optional rules depend on parser internals (see `AGENTS.md`), so any
+future parser bump must still be made deliberately and validated against
+the full shared spec.
 
-## Workaround
+## Workaround (pre-v0.3.1)
 
-Use **braced nesting** instead of a colon-chain for an imported value. It
-is equivalent, works in both implementations at any depth, and loads the
-file correctly:
+Before the upstream fix, the supported form was **braced nesting** instead
+of a colon-chain for an imported value. It is equivalent, works in both
+implementations at any depth, and remains a fine style:
 
 ```aontu
-# Instead of:   struct: minor: @"minor.aon"
+# Equivalent to:   struct: minor: @"minor.aon"
 struct: { minor: @"minor.aon" }
 ```
 
