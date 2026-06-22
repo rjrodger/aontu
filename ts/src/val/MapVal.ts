@@ -33,6 +33,13 @@ import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
 
 
+// Per-RefVal structural snapshot of a ref spread (see MapVal.unify). A
+// module-level WeakMap keyed by the (per-parse) RefVal: persists across
+// fixpoint passes without polluting the RefVal (so clones don't inherit
+// it) and is GC'd with the parse.
+const SPREAD_SNAP = new WeakMap<Val, Val>()
+
+
 class MapVal extends BagVal {
   isMap = true
 
@@ -132,6 +139,23 @@ class MapVal extends BagVal {
       // let newtype = this.type || peer.type
 
       let spread_cj = out.spread.cj ?? TOP
+
+      // Snapshot a path-dependent *ref* spread to its structural target
+      // once (while inner key()/path() funcs are still unresolved), so
+      // later fixpoint passes don't re-resolve the ref against the mutated
+      // tree and capture the target's own resolved key()/path() literals,
+      // which would leak the source key into the spread destination.
+      if (spread_cj.isRef && (spread_cj as any).find) {
+        let snap: Val | undefined = SPREAD_SNAP.get(spread_cj)
+        if (undefined === snap) {
+          const tgt: Val | undefined = (spread_cj as any).find(ctx)
+          // Only snapshot a path-dependent target (contains key()/path()/
+          // ref); a plain target is fine to re-resolve per pass.
+          snap = (tgt && tgt.isVal && tgt.isPathDependent) ? tgt.clone(ctx) : spread_cj
+          SPREAD_SNAP.set(spread_cj, snap)
+        }
+        spread_cj = snap
+      }
 
       // Always unify own children first
       for (let key in this.peg) {
