@@ -81,12 +81,29 @@ func (m *MapVal) Canon() string {
 }
 
 // spreadCloneFor returns a per-key copy of the spread constraint (TOP
-// needs no cloning).
-func spreadCloneFor(s Val, path []string) Val {
+// needs no cloning), resolved at the destination and with constraint
+// marks cleared.
+func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	if isTop(s) {
 		return s
 	}
-	return clonePath(s, path)
+	c := clonePath(s, path)
+	// Resolve the spread (e.g. a ref or a path-dependent func) at the
+	// destination first, THEN clear marks on the resolved root and its
+	// direct children: a type()/hide() spread constrains values but must
+	// not make the destination type-/gen-invisible (mirrors
+	// SpreadVal.applyToMap in perf0 and the TS spread handling).
+	if c.Dc() != DONE {
+		c = unite(ctx, c, top())
+	}
+	c.setMarkType(false)
+	c.setMarkHide(false)
+	if m, ok := c.(*MapVal); ok {
+		for _, k := range m.keys {
+			m.peg[k].setMarkType(false)
+		}
+	}
+	return c
 }
 
 func (m *MapVal) Gen(ctx *Ctx) (any, error) {
@@ -188,7 +205,7 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	// Own children: each is unified with a fresh clone of the spread.
 	for _, k := range m.keys {
 		child := m.peg[k]
-		cv := unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k)))
+		cv := unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k), ctx))
 		out.set(k, cv)
 		if cv.Dc() != DONE {
 			done = false
@@ -210,7 +227,7 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 			// A spread on the receiving map also applies to peer keys.
 			if m.spread != nil {
-				uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(m.path), pk)))
+				uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(m.path), pk), ctx))
 			}
 			out.set(pk, uv)
 			if uv.Dc() != DONE {

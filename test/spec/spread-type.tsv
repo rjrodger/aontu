@@ -1,0 +1,3 @@
+# Spread cases salvaged from the perf0 branch (spread-type.tsv).
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
+spread-type-1	gen	sys:type({x:number}),a:{&:$.sys,b:{x:1}}	{"a":{"b":{"x":1}}}
