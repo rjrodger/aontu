@@ -208,4 +208,13 @@ be added to `test/spec/*.tsv`:
 - **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
   `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
   Go; this is invisible to the shared spec (which is unify-level).
+- **Colon-chain nested `@"file"` import (Go).** A colon-chain key whose
+  value is a bare import — `struct: minor: @"file"` — loads correctly in
+  TS but resolves to `{}` in Go: the Go `@tabnas/jsonic` port flattens
+  the colon-chain, so the import is parsed as a top-level bare mark and
+  hoisted to the root instead of becoming the nested value. The braced
+  form `struct: { minor: @"file" }` works identically in both and is the
+  workaround. Root cause is upstream (the pinned `@tabnas/jsonic/go`
+  parser), not aontu's own Go source. Full analysis:
+  [`docs/design/nested-import-colon-chain.md`](docs/design/nested-import-colon-chain.md).
 
