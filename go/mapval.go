@@ -164,8 +164,15 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	if pm, ok := peer.(*MapVal); ok {
 		if out.spread == nil {
 			out.spread = pm.spread
-		} else if pm.spread != nil {
-			out.spread = unite(ctx, out.spread, pm.spread)
+		} else if pm.spread != nil && out.spread.Canon() != pm.spread.Canon() {
+			// Combine two distinct spread constraints structurally (deferred
+			// via a conjunct) rather than unifying in place. A spread is a
+			// template applied per destination key; unifying here resolves
+			// its key()/path() at the template's own (intermediate) path,
+			// producing spurious values. Identical templates (same canon)
+			// collapse to one — otherwise the conjunct grows every fixpoint
+			// pass (unbounded) since the spread re-combines each pass.
+			out.spread = newConjunct([]Val{out.spread, pm.spread})
 		}
 		for _, ok := range pm.optional {
 			if !out.isOptional(ok) {

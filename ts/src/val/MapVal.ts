@@ -121,9 +121,16 @@ class MapVal extends BagVal {
       if (!exit) {
         out.spread.cj = null == out.spread.cj ? peer.spread.cj : (
           null == peer.spread.cj ? out.spread.cj : (
-            out.spread.cj =
-            unite(te ? ctx.clone({ explain: ec(te, 'SPR') }) : ctx,
-              out.spread.cj, peer.spread.cj, 'map-self')
+            // Combine two distinct spread constraints structurally (deferred
+            // via a ConjunctVal) rather than unifying in place. A spread is
+            // a template applied per destination key; unifying here resolves
+            // its key()/path() at the template's own (intermediate) path,
+            // producing spurious values. Identical templates (same canon)
+            // collapse to one — otherwise the conjunct grows every fixpoint
+            // pass since the spread re-combines each pass.
+            out.spread.cj = out.spread.cj.canon === peer.spread.cj.canon ?
+              out.spread.cj :
+              new ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)
           )
         )
       }
