@@ -80,6 +80,93 @@ func (m *MapVal) Canon() string {
 	return b.String()
 }
 
+// unwrapTypeSpread maps a type() used as a spread to its inner template:
+// the spread should emit constrained values at each destination, not mark
+// the destination as a type. The func's argument (peg[0]) is the
+// parse-time template, so any key()/path() inside is still structural and
+// will resolve at the destination (via spreadCloneFor's clonePath). A ref
+// to a type() is resolved to the same template, so a type-wrapped ref
+// spread behaves like a plain-map ref spread.
+func unwrapTypeSpread(s Val, ctx *Ctx) Val {
+	if rv, ok := s.(*RefVal); ok {
+		if ctx.typeSnap != nil {
+			if snap, ok := ctx.typeSnap[rv]; ok {
+				return snap
+			}
+		}
+		tgt := rv.find(ctx)
+		if fv, ok := tgt.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
+			inner := fv.peg[0]
+			// Cache the inner template only while it is still structural
+			// (key()/path() unresolved). The func's arg mutates as the
+			// source resolves across fixpoint passes, so caching the first
+			// path-dependent form avoids re-reading the source-resolved
+			// value (which would leak the source key into the destination).
+			if hasPathFunc(inner) {
+				if ctx.typeSnap == nil {
+					ctx.typeSnap = map[*RefVal]Val{}
+				}
+				ctx.typeSnap[rv] = inner
+			}
+			return inner
+		}
+		return s
+	}
+	if fv, ok := s.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
+		return fv.peg[0]
+	}
+	return s
+}
+
+// hasPathFunc reports whether v contains an unresolved path-dependent
+// function (key/path/move/super) or a ref, anywhere in its structure.
+func hasPathFunc(v Val) bool {
+	switch n := v.(type) {
+	case *FuncVal:
+		switch n.name {
+		case "key", "path", "move", "super":
+			return true
+		}
+		for _, a := range n.peg {
+			if hasPathFunc(a) {
+				return true
+			}
+		}
+	case *RefVal:
+		return true
+	case *MapVal:
+		if n.spread != nil && hasPathFunc(n.spread) {
+			return true
+		}
+		for _, k := range n.keys {
+			if hasPathFunc(n.peg[k]) {
+				return true
+			}
+		}
+	case *ListVal:
+		for _, e := range n.peg {
+			if hasPathFunc(e) {
+				return true
+			}
+		}
+	case *ConjunctVal:
+		for _, t := range n.peg {
+			if hasPathFunc(t) {
+				return true
+			}
+		}
+	case *DisjunctVal:
+		for _, t := range n.peg {
+			if hasPathFunc(t) {
+				return true
+			}
+		}
+	case *PrefVal:
+		return hasPathFunc(n.peg)
+	}
+	return false
+}
+
 // spreadCloneFor returns a per-key copy of the spread constraint (TOP
 // needs no cloning), resolved at the destination and with constraint
 // marks cleared.
@@ -201,6 +288,7 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	if out.spread != nil {
 		spreadCj = out.spread
 	}
+	spreadCj = unwrapTypeSpread(spreadCj, ctx)
 
 	// Own children: each is unified with a fresh clone of the spread.
 	for _, k := range m.keys {

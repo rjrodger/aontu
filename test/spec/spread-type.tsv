@@ -1,3 +1,7 @@
-# Spread cases salvaged from the perf0 branch (spread-type.tsv).
+# Spread cases salvaged from the perf0 branch (spread-type.tsv) + type()-spread
+# "apply" semantics (a type() spread emits constrained values at the destination).
 # Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: gen
 spread-type-1	gen	sys:type({x:number}),a:{&:$.sys,b:{x:1}}	{"a":{"b":{"x":1}}}
+spread-type-key-ref	gen	sys:type({k:key(),x:number}),a:{&:$.sys,b:{x:1}}	{"a":{"b":{"k":"b","x":1}}}
+spread-type-key-inline	gen	a:{&:type({k:key(),x:number}),b:{x:1}}	{"a":{"b":{"k":"b","x":1}}}
+spread-type-nested	gen	sys:type({m:{x:number}}),a:{&:$.sys,b:{m:{x:5}}}	{"a":{"b":{"m":{"x":5}}}}

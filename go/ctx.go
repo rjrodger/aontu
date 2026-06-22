@@ -13,6 +13,11 @@ type Ctx struct {
 	cc     int             // current fixpoint pass (for late-resolving funcs)
 	hidden map[string]bool // source paths hidden by move()
 	vars   map[string]Val  // user-provided variables, resolved by $name
+	// typeSnap caches the structural inner template of a type() reached
+	// via a ref spread (unwrapTypeSpread), captured while its key()/path()
+	// are still unresolved so later passes don't re-read the source-
+	// resolved form. Keyed by the (per-parse) RefVal; lives for the run.
+	typeSnap map[*RefVal]Val
 }
 
 func (c *Ctx) hide(path []string) {

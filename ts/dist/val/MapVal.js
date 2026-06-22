@@ -98,7 +98,13 @@ class MapVal extends BagVal_1.BagVal {
             if (spread_cj.isRef && spread_cj.find) {
                 let snap = SPREAD_SNAP.get(spread_cj);
                 if (undefined === snap) {
-                    const tgt = spread_cj.find(ctx);
+                    let tgt = spread_cj.find(ctx);
+                    // A ref to a type() resolves to its inner template (see the
+                    // unwrap below) — snapshot that, so a type-wrapped ref behaves
+                    // like a plain-map ref spread (key() captured unresolved, then
+                    // resolved at the destination).
+                    if (tgt && tgt.isTypeFunc)
+                        tgt = tgt.peg?.[0];
                     // Only snapshot a found, path-dependent target (contains
                     // key()/path()/ref). If the target is not present yet (it may be
                     // introduced by a later conjunct/merge), do NOT cache — retry on
@@ -120,6 +126,14 @@ class MapVal extends BagVal_1.BagVal {
                 }
                 if (snap)
                     spread_cj = snap;
+            }
+            // A type() used as a spread applies as its inner template: emit the
+            // (constrained) values at each destination rather than marking the
+            // destination as a type. I.e. `&:type({k:key(),x:number})` behaves
+            // like the non-type spread `&:{k:key(),x:number}` — key() resolves
+            // to the destination key, kinds constrain, fields are emitted.
+            if (spread_cj.isTypeFunc) {
+                spread_cj = spread_cj.peg?.[0] ?? TOP;
             }
             // Always unify own children first
             for (let key in this.peg) {
