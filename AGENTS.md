@@ -156,6 +156,14 @@ order plugins are applied. A minor `@tabnas` bump can change these
 silently with no compile error — only the shared spec catches it — so
 upgrade deliberately and run `make test` before loosening any pin.
 
+**Known divergence (minor):** consecutive *bare* spreads at one map level
+— `&:k:a &:p:2` (vs the braced `&:{k:a} &:{p:2}`) — parse differently on
+Go: the first bare spread's implicit-map value absorbs the following
+`&:` as a nested spread, where TS keeps them as two sibling spreads. This
+is an `@tabnas`-Go implicit-map/spread boundary quirk (plain implicit-map
+closing — `a:k:1 b:2` — is correct on both). The braced form works
+identically on both; the affected rows are kept out of the shared spec.
+
 ## Conventions
 
 - Keep new TypeScript code in the style of the surrounding `ts/src` files.
