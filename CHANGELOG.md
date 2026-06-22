@@ -5,7 +5,26 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/rjrodger/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
-## Unreleased — TypeScript 0.47.0, Go 0.1.4
+## Go 0.1.4 — 2026-06-22 · TypeScript 0.47.0 (unreleased)
+
+### Fixed — spreads & `type()` (TypeScript and Go)
+
+- **`key()` through spreads (TypeScript and Go)**: `key()` (and other
+  path-dependent functions) no longer leak the *source* key when a spread
+  is applied through a `$ref` (`&:$.ref`) or through nested maps — they
+  resolve to the destination key at each level. The TypeScript behaviour
+  was brought to full Go parity.
+- **`type()` spreads now apply (TypeScript and Go)**: a `type()` used as a
+  spread emits its constrained values at the destination rather than
+  marking the destination as a type, so `&:type({k:key(),x:number})`
+  behaves like the non-type spread `&:{k:key(),x:number}` (`key()`
+  resolves to the destination key, kinds constrain, fields are emitted).
+  This holds for both inline and `$ref` spreads and for nested types;
+  previously an inline `type()` spread dropped the child in TypeScript and
+  a `type()`+`key()` spread errored in Go. Type/hide marks on applied
+  spreads are cleared recursively.
+- Salvaged the `perf0` spread spec corpus into the shared
+  `test/spec/spread-*.tsv` suite, run by both implementations.
 
 ### Fixed — fragility audit
 
