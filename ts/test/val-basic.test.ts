@@ -536,7 +536,7 @@ describe('val-basic', function() {
     expect(m0.canon).equal('{&:{"x":1},"a":{"y":1},"b":{"y":2}}')
 
     let u0 = m0.unify(TOP, ctx)
-    expect(u0.canon).equal('{&:{"x":1},"a":{"y":1,"x":1},"b":{"y":2,"x":1}}')
+    expect(u0.canon).equal('{&:{"x":1},"a":{"x":1,"y":1},"b":{"x":1,"y":2}}')
 
   })
 
@@ -557,7 +557,7 @@ describe('val-basic', function() {
     expect(l0.canon).equal('[&:{"x":1},{"y":1},{"y":2}]')
 
     let u0 = l0.unify(TOP, ctx)
-    expect(u0.canon).equal('[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]')
+    expect(u0.canon).equal('[&:{"x":1},{"x":1,"y":1},{"x":1,"y":2}]')
 
   })
 
@@ -810,7 +810,7 @@ b: c2: {n:2}
     let m2u = m2.unify(TOP, c2)
     expect(m2u.canon)
       // .equal('{"a":{"x":1},"b":{&:{"x":1},"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
-      .equal('{"a":{"x":1},"b":{&:$.a,"c0":{"x":1,"n":0},"c1":{"x":1,"n":1},"c2":{"x":1,"n":2}}}')
+      .equal('{"a":{"x":1},"b":{&:$.a,"c0":{"n":0,"x":1},"c1":{"n":1,"x":1},"c2":{"n":2,"x":1}}}')
 
   })
 

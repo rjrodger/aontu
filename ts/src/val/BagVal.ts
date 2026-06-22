@@ -65,7 +65,18 @@ abstract class BagVal extends FeatureVal {
       return undefined
     }
 
-    for (let item of items(this.peg)) {
+    // Maps emit their keys alphabetically so the generated output is
+    // independent of insertion/unification order (and matches the Go
+    // port, whose JSON marshaling also sorts map keys). Lists keep their
+    // numeric index order.
+    let entries = items(this.peg)
+    if (this.isMap) {
+      entries = entries
+        .slice()
+        .sort((a: any, b: any) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    }
+
+    for (let item of entries) {
       const p = item[0]
       const child = item[1]
 

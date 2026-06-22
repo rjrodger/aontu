@@ -12,8 +12,8 @@ top-level	gen	a:{} &:{x:1}	{"a":{"x":1}}
 multi-source	gen	a:{&:{x:1}},b:.a,b:{y:{k:2}},c:{&:{x:2}},c:{y:{k:3}}	{"a":{},"b":{"y":{"k":2,"x":1}},"c":{"y":{"k":3,"x":2}}}
 func	gen	a:{&:x:lower(2.9)} a:{b:{y:1},c:{y:2}}	{"a":{"b":{"x":2,"y":1},"c":{"x":2,"y":2}}}
 wide	gen	root:level1:{&:{v:number},a:{v:1},b:{v:2},c:{v:3}}	{"root":{"level1":{"a":{"v":1},"b":{"v":2},"c":{"v":3}}}}
-list-spread	gen	x:[&:{x:1},{y:1},{y:2}]	{"x":[{"y":1,"x":1},{"y":2,"x":1}]}
-list-spread-canon	canon	[&:{x:1},{y:1},{y:2}]	[&:{"x":1},{"y":1,"x":1},{"y":2,"x":1}]
+list-spread	gen	x:[&:{x:1},{y:1},{y:2}]	{"x":[{"x":1,"y":1},{"x":1,"y":2}]}
+list-spread-canon	canon	[&:{x:1},{y:1},{y:2}]	[&:{"x":1},{"x":1,"y":1},{"x":1,"y":2}]
 list-spread-kind	gen	x:[&:s:string] x:[{s:S}]	{"x":[{"s":"S"}]}
 pref-order	gen	a:{&:{v:*1|integer}, p:{}, q:{v:5}}	{"a":{"p":{"v":1},"q":{"v":5}}}
 pref-order-rev	gen	a:{q:{v:5}, p:{}, &:{v:*1|integer}}	{"a":{"p":{"v":1},"q":{"v":5}}}

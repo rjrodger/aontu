@@ -42,6 +42,13 @@ Two further documents support the project itself:
 - [Shared test specification](shared-spec.md) — the format of the
   cross-language `test/spec/*.tsv` suite.
 
+Design notes (deeper analyses of specific behaviours and known defects)
+live in [`design/`](design/):
+
+- [Colon-chain nested `@"file"` import](design/nested-import-colon-chain.md)
+  — a Go-port parity defect (and its workaround) where a colon-chain
+  imported value is dropped.
+
 ### Why the split?
 
 The four kinds of document answer four different questions and are kept

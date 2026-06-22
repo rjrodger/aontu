@@ -367,7 +367,10 @@ class MapVal extends BagVal {
 
 
   get canon() {
-    let keys = Object.keys(this.peg)
+    // Keys are emitted alphabetically so the canonical form is
+    // independent of insertion/unification order (and matches the Go
+    // port, whose JSON marshaling also sorts keys).
+    let keys = Object.keys(this.peg).sort()
     return '' +
       // this.errcanon() +
       // (this.mark.type ? '<type>' : '') +
