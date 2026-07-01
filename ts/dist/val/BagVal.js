@@ -71,7 +71,15 @@ class BagVal extends FeatureVal_1.FeatureVal {
                 || child.isRef
                 || child.isDisjunct
                 || child.isNil) {
-                let cval = child.gen(ctx);
+                // An optional child is generated in an isolated collect context so an
+                // unresolved inner value (a bare type that survived unification, e.g.
+                // an absent optional sub-map's `field: string`) is dropped rather than
+                // raised: the optional subtree is simply omitted. Without isolation
+                // such inner errors pollute the shared ctx.err and make generate()
+                // throw even though the key is skipped below. Mirrors the
+                // optional-disjunct path above.
+                const cctx = optional ? ctx.clone({ err: [], collect: true }) : ctx;
+                let cval = child.gen(cctx);
                 if (optional && (undefined === cval || (0, Val_1.empty)(cval))) {
                     continue;
                 }

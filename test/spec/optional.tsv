@@ -6,3 +6,5 @@ fill	gen	a:{x?:number} a:{x:11}	{"a":{"x":11}}
 partial-empty	gen	a:{y?:number,z:2} a:{}	{"a":{"z":2}}
 partial-fill	gen	a:{y?:number,z:2} a:{y:11}	{"a":{"y":11,"z":2}}
 default-kept	gen	a:{y?:number,z:*3} a:{y:11}	{"a":{"y":11,"z":3}}
+drop-nested-map	gen	{id?:{field:string},y:Y}	{"y":"Y"}
+keep-nested-fill	gen	a:{id?:{field:string},z:2} a:{id:{field:F1}}	{"a":{"id":{"field":"F1"},"z":2}}
