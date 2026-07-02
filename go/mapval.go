@@ -279,14 +279,15 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		if out.spread == nil {
 			out.spread = pm.spread
 		} else if pm.spread != nil && out.spread.Canon() != pm.spread.Canon() {
-			// Combine two distinct spread constraints structurally (deferred
-			// via a conjunct) rather than unifying in place. A spread is a
-			// template applied per destination key; unifying here resolves
-			// its key()/path() at the template's own (intermediate) path,
-			// producing spurious values. Identical templates (same canon)
-			// collapse to one — otherwise the conjunct grows every fixpoint
-			// pass (unbounded) since the spread re-combines each pass.
-			out.spread = newConjunct([]Val{out.spread, pm.spread})
+			// Combine two spread constraints. Identical templates (same canon)
+			// collapse to one: re-unifying resolves key()/path() at the shared
+			// intermediate path, producing spurious values (f1bb1063). Distinct
+			// templates are unified in place — unite is idempotent, whereas
+			// deferring the distinct case into newConjunct (as f1bb1063 did)
+			// re-wraps every fixpoint pass, growing the conjunct without bound
+			// and non-terminating on real models (the apidef/sdkgen entity
+			// schemas each contribute a `&:` spread with `name: key()`).
+			out.spread = unite(ctx, out.spread, pm.spread)
 		}
 		for _, ok := range pm.optional {
 			if !out.isOptional(ok) {

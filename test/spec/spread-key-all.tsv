@@ -10,3 +10,4 @@ spread-key-all-7	gen	p:{&:{k:key()},a:{x:1},b:{x:2}}	{"p":{"a":{"x":1,"k":"a"},"
 spread-key-all-8	gen	q:{k:key()},a:{&:$.q,b:{x:1},c:{x:2}}	{"q":{"k":"q"},"a":{"b":{"k":"b","x":1},"c":{"k":"c","x":2}}}
 spread-key-all-9	gen	q:{k:key()},a:{&:{m:{&:$.q}},b:{m:{c:{x:1}}}}	{"q":{"k":"q"},"a":{"b":{"m":{"c":{"x":1,"k":"c"}}}}}
 spread-key-all-10	gen	&:{k:key()} &:{p:2} a:{x:1} b:{x:2}	{"a":{"p":2,"x":1,"k":"a"},"b":{"p":2,"x":2,"k":"b"}}
+spread-key-all-11	gen	x:{ &:{n:key()} a:{} b:{} } x:{ &:{m:1} }	{"x":{"a":{"m":1,"n":"a"},"b":{"m":1,"n":"b"}}}

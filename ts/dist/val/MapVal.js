@@ -70,17 +70,20 @@ class MapVal extends BagVal_1.BagVal {
                 }
             }
             if (!exit) {
-                out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj : (
-                // Combine two distinct spread constraints structurally (deferred
-                // via a ConjunctVal) rather than unifying in place. A spread is
-                // a template applied per destination key; unifying here resolves
-                // its key()/path() at the template's own (intermediate) path,
-                // producing spurious values. Identical templates (same canon)
-                // collapse to one — otherwise the conjunct grows every fixpoint
-                // pass since the spread re-combines each pass.
-                out.spread.cj = out.spread.cj.canon === peer.spread.cj.canon ?
-                    out.spread.cj :
-                    new ConjunctVal_1.ConjunctVal({ peg: [out.spread.cj, peer.spread.cj] }, ctx)));
+                // Combine two spread constraints. Identical templates (same canon)
+                // collapse to one: re-unifying them resolves key()/path() at the
+                // shared intermediate path, producing spurious values (f1bb1063).
+                // Distinct templates are unified in place — unite is idempotent,
+                // whereas deferring the distinct case into a fresh ConjunctVal (as
+                // f1bb1063 did) re-wraps every fixpoint pass, growing the conjunct
+                // without bound and non-terminating on real models (the apidef +
+                // sdkgen entity schemas each contribute a `&:` spread with name:key(),
+                // combined here). unite resolves key()/path() at each destination via
+                // spreadClone below, so nested + sibling key() cases stay correct
+                // (test/spec/spread-nested-key, spread-key-all).
+                out.spread.cj = null == out.spread.cj ? peer.spread.cj : (null == peer.spread.cj ? out.spread.cj :
+                    out.spread.cj.canon === peer.spread.cj.canon ? out.spread.cj :
+                        (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SPR') }) : ctx, out.spread.cj, peer.spread.cj, 'map-self'));
             }
         }
         else {
