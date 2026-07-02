@@ -34,11 +34,52 @@ import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
 
 
-// Per-RefVal structural snapshot of a ref spread (see MapVal.unify). A
-// module-level WeakMap keyed by the (per-parse) RefVal: persists across
-// fixpoint passes without polluting the RefVal (so clones don't inherit
-// it) and is GC'd with the parse.
-const SPREAD_SNAP = new WeakMap<Val, Val>()
+// Structural snapshots of ref spreads (see MapVal.unify), keyed by the
+// ref's canon + source site rather than object identity: spread
+// application clones templates (and the refs inside them) freely, and a
+// clone must find the snapshot its parse-origin ref captured on an early
+// pass. The map lives on the unify root ctx (see Unify), so it persists
+// across fixpoint passes and is GC'd with the run.
+function spreadSnapKey(cj: any): string {
+  return cj.canon + '~' + (cj.site?.row ?? -1) + ':' + (cj.site?.col ?? -1)
+}
+
+// Snapshot a path-dependent ref spread to its structural target once,
+// while inner key()/path() funcs in the target are still unresolved (see
+// the call site comments in MapVal.unify). Shared by the direct
+// application path and the deferred-spread early-snapshot walk.
+function snapshotRefSpread(cj: any, ctx: AontuContext): Val | undefined {
+  let snapmap: Map<string, Val> | undefined = (ctx as any).snapmap
+  if (undefined === snapmap) {
+    // Direct Val.unify use without a Unify run: degrade to a ctx-local
+    // map (snapshots then live only for that subtree, as before).
+    snapmap = new Map()
+    ; (ctx as any).snapmap = snapmap
+  }
+  const sk = spreadSnapKey(cj)
+  let snap: Val | undefined = snapmap.get(sk)
+  if (undefined === snap) {
+    let tgt: Val | undefined = cj.find(ctx)
+    // A ref to a type() resolves to its inner template — snapshot that,
+    // so a type-wrapped ref behaves like a plain-map ref spread.
+    if (tgt && (tgt as any).isTypeFunc) tgt = (tgt as any).peg?.[0]
+    // Only snapshot a found, path-dependent target. If the target is not
+    // present yet (it may be introduced by a later conjunct/merge), do
+    // NOT cache — retry on the next fixpoint pass.
+    if (tgt && tgt.isVal && tgt.isPathDependent) {
+      snap = tgt.clone(ctx)
+      // Clear TYPE marks on the snapshot (recursively): a type() template
+      // constrains values but must not make the spread destination
+      // type-invisible at any depth. HIDE marks are preserved.
+      walk(snap, (_k: any, v: Val) => {
+        v.mark.type = false
+        return v
+      })
+      snapmap.set(sk, snap)
+    }
+  }
+  return snap
+}
 
 
 class MapVal extends BagVal {
@@ -157,33 +198,7 @@ class MapVal extends BagVal {
       // tree and capture the target's own resolved key()/path() literals,
       // which would leak the source key into the spread destination.
       if (spread_cj.isRef && (spread_cj as any).find) {
-        let snap: Val | undefined = SPREAD_SNAP.get(spread_cj)
-        if (undefined === snap) {
-          let tgt: Val | undefined = (spread_cj as any).find(ctx)
-          // A ref to a type() resolves to its inner template (see the
-          // unwrap below) — snapshot that, so a type-wrapped ref behaves
-          // like a plain-map ref spread (key() captured unresolved, then
-          // resolved at the destination).
-          if (tgt && (tgt as any).isTypeFunc) tgt = (tgt as any).peg?.[0]
-          // Only snapshot a found, path-dependent target (contains
-          // key()/path()/ref). If the target is not present yet (it may be
-          // introduced by a later conjunct/merge), do NOT cache — retry on
-          // the next fixpoint pass (otherwise we'd freeze the unresolved
-          // ref and never snapshot the real target).
-          if (tgt && tgt.isVal && tgt.isPathDependent) {
-            snap = tgt.clone(ctx)
-            // Clear TYPE marks on the snapshot (recursively): a type()
-            // template constrains values but must not make the spread
-            // destination type-invisible at any depth. HIDE marks are
-            // preserved — a hide() spread is meant to hide the destination
-            // field (see spread-hide).
-            walk(snap, (_k: any, v: Val) => {
-              v.mark.type = false
-              return v
-            })
-            SPREAD_SNAP.set(spread_cj, snap)
-          }
-        }
+        const snap = snapshotRefSpread(spread_cj, ctx)
         if (snap) spread_cj = snap
       }
 
@@ -198,23 +213,48 @@ class MapVal extends BagVal {
 
       // Always unify own children first
       for (let key in this.peg) {
-        const keyctx = ctx.descend(key)
-
-        const key_spread_cj = spread_cj.spreadClone(keyctx)
         const child = this.peg[key]
+        const keyctx = ctx.descend(key)
 
         propagateMarks(this, child)
 
-        out.peg[key] =
-          undefined === child ? key_spread_cj :
-            child.isNil ? child :
-              key_spread_cj.isNil ? key_spread_cj :
-                key_spread_cj.isTop && child.done ? child :
-                  child.isTop && key_spread_cj.done ? key_spread_cj :
-                    unite(te ? keyctx.clone({ explain: ec(te, 'KEY:' + key) }) : keyctx,
-                      child, key_spread_cj, 'map-own')
+        // Apply the spread constraint ONCE per child (marked with the
+        // constraint's id below): the first application merges the
+        // template into the child (with key()/path() placeholders that
+        // resolve in place on later passes), so the constraint content
+        // is inside the child from then on and only self-unification is
+        // needed to progress it. Re-applying on every fixpoint pass and
+        // every conjunct-fold step is the identity (unite is idempotent)
+        // but costs O(keys) deep template clones per pass on large
+        // models — the dominant cost on generated-SDK model trees.
+        let oval: Val
+        if (undefined !== child && !spread_cj.isTop
+          && (child as any)._spr === (spread_cj as any).id) {
+          oval = child.done ? child :
+            unite(te ? keyctx.clone({ explain: ec(te, 'KEY:' + key) }) : keyctx,
+              child, TOP, 'map-own')
+          ; (oval as any)._spr = (spread_cj as any).id
+        }
+        else {
+          const key_spread_cj = spread_cj.spreadClone(keyctx)
 
-        done = (done && DONE === out.peg[key].dc)
+          oval =
+            undefined === child ? key_spread_cj :
+              child.isNil ? child :
+                key_spread_cj.isNil ? key_spread_cj :
+                  key_spread_cj.isTop && child.done ? child :
+                    child.isTop && key_spread_cj.done ? key_spread_cj :
+                      unite(te ? keyctx.clone({ explain: ec(te, 'KEY:' + key) }) : keyctx,
+                        child, key_spread_cj, 'map-own')
+
+          if (!spread_cj.isTop && !oval.isNil) {
+            ; (oval as any)._spr = (spread_cj as any).id
+          }
+        }
+
+        out.peg[key] = oval
+
+        done = (done && DONE === oval.dc)
       }
 
       const allowedKeys: string[] = this.closed ? Object.keys(this.peg) : []
@@ -250,11 +290,20 @@ class MapVal extends BagVal {
                       child, peerchild, 'map-peer')
 
           if (this.spread.cj) {
-            let key_spread_cj = spread_cj.spreadClone(peerctx)
+            // Same apply-once discipline as the own-key loop: once the
+            // constraint is merged into the value (marked with the
+            // constraint's id), later passes only self-unify.
+            if ((oval as any)._spr !== (spread_cj as any).id) {
+              let key_spread_cj = spread_cj.spreadClone(peerctx)
 
-            oval = out.peg[peerkey] =
-              unite(te ? peerctx.clone({ explain: ec(te, 'PSP:' + peerkey) }) : peerctx,
-                oval, key_spread_cj, 'map-peer-spread')
+              oval = out.peg[peerkey] =
+                unite(te ? peerctx.clone({ explain: ec(te, 'PSP:' + peerkey) }) : peerctx,
+                  oval, key_spread_cj, 'map-peer-spread')
+
+              if (!spread_cj.isTop && !oval.isNil) {
+                ; (oval as any)._spr = (spread_cj as any).id
+              }
+            }
           }
 
           propagateMarks(this, oval)

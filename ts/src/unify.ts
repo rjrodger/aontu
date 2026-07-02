@@ -157,8 +157,25 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
       // because the branch that set `out = X.unify(Y, ctx)` already
       // ran that Val's own unify logic.
       if (!out.done && !unified) {
-        out = out.unify(top(), te ? ctx.clone({ explain: ec(te, 'ND') }) : ctx)
-        why += 'T'
+        // Once per pass per (Val, path): within a single fixpoint pass
+        // nothing external to the subtree changes, so repeating the TOP
+        // self-unify — which conjunct folds otherwise trigger once per
+        // fold term — is pure re-work, and on large models (hundreds of
+        // sibling terms) the repeats trip the MAXCYCLE guard as a false
+        // positive. The path is part of the key: a shared Val can
+        // resolve path-dependent content differently per location.
+        if (undefined !== ctx.cc
+          && (out as any)._tcc === ctx.cc && (out as any)._tpi === ctx.pathidx) {
+          why += 't'
+        }
+        else {
+          out = out.unify(top(), te ? ctx.clone({ explain: ec(te, 'ND') }) : ctx)
+          if (!out.done && undefined !== ctx.cc) {
+            ; (out as any)._tcc = ctx.cc
+            ; (out as any)._tpi = ctx.pathidx
+          }
+          why += 'T'
+        }
       }
     }
     catch (err: any) {
@@ -236,6 +253,10 @@ class Unify {
       // uctx.seterr(this.err)
       uctx.err = this.err
       uctx.explain = this.explain
+
+      // Ref-spread snapshot store (see snapshotRefSpread in MapVal):
+      // keyed by ref canon + source site, shared across all passes.
+      ; (uctx as any).snapmap = new Map()
 
       const explain = null == ctx?.explain ? undefined : ctx?.explain
       const te = explain && explainOpen(uctx, explain, 'root', res)

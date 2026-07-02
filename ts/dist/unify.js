@@ -130,8 +130,26 @@ const unite = (ctx, a, b, whence) => {
             // because the branch that set `out = X.unify(Y, ctx)` already
             // ran that Val's own unify logic.
             if (!out.done && !unified) {
-                out = out.unify((0, top_1.top)(), te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'ND') }) : ctx);
-                why += 'T';
+                // Once per pass per (Val, path): within a single fixpoint pass
+                // nothing external to the subtree changes, so repeating the TOP
+                // self-unify — which conjunct folds otherwise trigger once per
+                // fold term — is pure re-work, and on large models (hundreds of
+                // sibling terms) the repeats trip the MAXCYCLE guard as a false
+                // positive. The path is part of the key: a shared Val can
+                // resolve path-dependent content differently per location.
+                if (undefined !== ctx.cc
+                    && out._tcc === ctx.cc && out._tpi === ctx.pathidx) {
+                    why += 't';
+                }
+                else {
+                    out = out.unify((0, top_1.top)(), te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'ND') }) : ctx);
+                    if (!out.done && undefined !== ctx.cc) {
+                        ;
+                        out._tcc = ctx.cc;
+                        out._tpi = ctx.pathidx;
+                    }
+                    why += 'T';
+                }
             }
         }
         catch (err) {
@@ -191,6 +209,7 @@ class Unify {
             // uctx.seterr(this.err)
             uctx.err = this.err;
             uctx.explain = this.explain;
+            uctx.snapmap = new Map();
             const explain = null == ctx?.explain ? undefined : ctx?.explain;
             const te = explain && (0, utility_1.explainOpen)(uctx, explain, 'root', res);
             // NOTE: if true === res.done already, then this loop never needs to run.
