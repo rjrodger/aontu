@@ -27,6 +27,7 @@
     "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "version": "node -r fs -e \"v=require('./package.json').version;s=fs.readFileSync('./aontu.ts').toString();if(!s.includes('VERSION = \\''+v+'\\'')){s=s.replace(/VERSION = '.*?'/,'VERSION = \\''+v+'\\'');fs.writeFileSync('./aontu.ts',s)}\"",
+    "repo-bump": "npm version patch --no-git-tag-version && node -e \"console.log('bumped to v' + require('./package.json').version + ' (package.json only - commit via repo-tag / repo-release)')\"",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
     "repo-tag-dry": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo \"[dry-run] TAG: v$REPO_VERSION\" && if git rev-parse -q --verify refs/tags/v$REPO_VERSION >/dev/null; then echo \"[dry-run] WARNING: tag v$REPO_VERSION already exists - bump the version first\"; else echo \"[dry-run] would commit -a, push, tag v$REPO_VERSION and push --tags; nothing done\"; fi && git status --short",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
