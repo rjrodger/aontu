@@ -1,6 +1,6 @@
 {
   "name": "aontu",
-  "version": "0.47.0",
+  "version": "0.48.1",
   "main": "dist/aontu.js",
   "type": "commonjs",
   "types": "dist/aontu.d.ts",
@@ -32,7 +32,7 @@
     "repo-tag-dry": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo \"[dry-run] TAG: v$REPO_VERSION\" && if git rev-parse -q --verify refs/tags/v$REPO_VERSION >/dev/null; then echo \"[dry-run] WARNING: tag v$REPO_VERSION already exists - bump the version first\"; else echo \"[dry-run] would commit -a, push, tag v$REPO_VERSION and push --tags; nothing done\"; fi && git status --short",
     "repo-publish": "npm run clean && npm i && npm run repo-publish-quick",
     "repo-publish-dry": "npm run clean && npm i && npm run repo-publish-quick-dry",
-    "repo-publish-quick": "npm run build && npm run test && npm publish --registry https://registry.npmjs.org --access=public",
+    "repo-publish-quick": "npm run build && npm run test && npm run repo-tag && npm publish --registry https://registry.npmjs.org --access=public",
     "repo-publish-quick-dry": "npm run build && npm run test && ( npm publish --dry-run --registry https://registry.npmjs.org --access=public || echo \"[dry-run] npm publish refused (see npm error above) - usually the version is already published; bump package.json before a real release\" )",
     "repo-release": "npm run repo-publish && npm run repo-tag",
     "repo-release-dry": "npm run repo-publish-quick-dry && npm run repo-tag-dry"
@@ -55,8 +55,8 @@
     "@tabnas/path": "0.2.0"
   },
   "devDependencies": {
-    "@types/node": "25.9.2",
-    "memfs": "4.57.6",
+    "@types/node": "26.1.0",
+    "memfs": "4.59.0",
     "typescript": "6.0.3"
   },
   "aliasify": {
