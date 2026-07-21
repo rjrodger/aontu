@@ -3,7 +3,7 @@
 package aontu
 
 // Version is the Aontu Go module version.
-const Version = "0.1.4"
+const Version = "0.1.5"
 
 // Aontu is the top-level entry point, mirroring the TypeScript Aontu
 // class (ts/src/aontu.ts).
