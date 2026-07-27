@@ -72,6 +72,14 @@ help isolate the syntax error.`,
             name: 'aontu',
             suffix: false,
         },
+        comment: {
+            def: {
+                // Only # line comments are valid Aontu syntax; drop the jsonic
+                // defaults `//` and `/* */` (the Go port is hash-only).
+                slash: null,
+                multi: null,
+            },
+        },
         fixed: {
             token: {
                 '#QM': '?'
