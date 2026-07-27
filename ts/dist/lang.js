@@ -46,6 +46,19 @@ const SuperFuncVal_1 = require("./val/SuperFuncVal");
 const asPlugin = (p) => p;
 let AontuJsonic = function AontuLang(jsonic) {
     jsonic.use(asPlugin(path_1.Path));
+    // Only # line comments are valid Aontu syntax (see
+    // docs/reference-language.md; go/lang.go sets the same). Clear the
+    // underlying jsonic comment markers entirely, then define # directly,
+    // so the comment set is hash-only regardless of those defaults.
+    jsonic.options({ comment: { def: null } });
+    jsonic.options({
+        comment: {
+            lex: true,
+            def: {
+                hash: { line: true, start: '#', lex: true },
+            },
+        },
+    });
     // TODO: refactor Val constructor
     // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
     let addsite = (v, r, ctx) => {
@@ -71,14 +84,6 @@ help isolate the syntax error.`,
         errmsg: {
             name: 'aontu',
             suffix: false,
-        },
-        comment: {
-            def: {
-                // Only # line comments are valid Aontu syntax; drop the jsonic
-                // defaults `//` and `/* */` (the Go port is hash-only).
-                slash: null,
-                multi: null,
-            },
         },
         fixed: {
             token: {

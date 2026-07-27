@@ -99,6 +99,17 @@ func mustMakeLang(base string) *jsonic.Jsonic {
 
 func makeLang(base string) (*jsonic.Jsonic, error) {
 	j := jsonic.Make(jsonic.Options{
+		// Only # line comments are valid Aontu syntax (see
+		// docs/reference-language.md; ts/src/lang.ts sets the same). A
+		// non-nil Def replaces the parser's comment marker defaults
+		// (#, //, /* */) wholesale, so the comment set is hash-only
+		// regardless of those defaults.
+		Comment: &jsonic.CommentOptions{
+			Lex: boolPtr(true),
+			Def: map[string]*jsonic.CommentDef{
+				"hash": {Line: true, Start: "#"},
+			},
+		},
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.ValueDef{
