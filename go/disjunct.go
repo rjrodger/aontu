@@ -9,7 +9,8 @@ import "strings"
 // against each member, dropping members that fail.
 type DisjunctVal struct {
 	base
-	peg []Val
+	peg         []Val
+	prefsRanked bool
 }
 
 func newDisjunct(members []Val) *DisjunctVal {
@@ -30,6 +31,10 @@ func (d *DisjunctVal) Canon() string {
 func (d *DisjunctVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil {
 		peer = top()
+	}
+
+	if !d.prefsRanked {
+		d.rankPrefs(ctx)
 	}
 
 	done := true
@@ -105,6 +110,70 @@ func (d *DisjunctVal) Gen(ctx *Ctx) (any, error) {
 		val = val.Unify(vals[i], ctx)
 	}
 	return val.Gen(ctx)
+}
+
+// rankPrefs merges and filters PrefVal members before member trials
+// (DisjunctVal.rankPrefs in TS): equal-rank prefs unify into one
+// (`*{x:1} | *{y:2}` -> `*{x:1,y:2}`), a lower-rank pref supersedes a
+// higher-rank one, and a nested disjunct that collapses to a single
+// pref replaces itself in place. Returns the single remaining PrefVal
+// (or the nil from a failed pref merge) for nested-collapse callers;
+// nil otherwise.
+func (d *DisjunctVal) rankPrefs(ctx *Ctx) Val {
+	var lastpref *PrefVal
+	lastprefI := -1
+
+	for vI := 0; vI < len(d.peg); vI++ {
+		switch v := d.peg[vI].(type) {
+		case *PrefVal:
+			if lastpref != nil {
+				if v.rank == lastpref.rank {
+					u := v.Unify(lastpref, ctx)
+					if u.Nil() {
+						return u
+					}
+					d.peg[lastprefI] = u
+					if up, ok := u.(*PrefVal); ok {
+						lastpref = up
+					}
+					d.peg[vI] = nil
+				} else if v.rank < lastpref.rank {
+					d.peg[lastprefI] = nil
+					lastpref = v
+					lastprefI = vI
+				} else {
+					d.peg[vI] = nil
+				}
+			} else {
+				lastpref = v
+				lastprefI = vI
+			}
+		case *DisjunctVal:
+			if sub := v.rankPrefs(ctx); sub != nil {
+				if sp, ok := sub.(*PrefVal); ok {
+					d.peg[vI] = sp
+					lastpref = sp
+					lastprefI = vI
+				}
+			}
+		}
+	}
+
+	kept := d.peg[:0]
+	for _, p := range d.peg {
+		if p != nil {
+			kept = append(kept, p)
+		}
+	}
+	d.peg = kept
+	d.prefsRanked = true
+
+	if len(d.peg) == 1 {
+		if p, ok := d.peg[0].(*PrefVal); ok {
+			return p
+		}
+	}
+	return nil
 }
 
 // dedup removes structurally-equal Vals, keeping first occurrence.

@@ -1,0 +1,12 @@
+# Dangling operators: unfilled junction terms drop; a missing required
+# operand is an incomplete_expression nil (error on generate)
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+conjunct-trailing	gen	a:1&	{"a":1}
+disjunct-trailing	gen	a:1|	{"a":1}
+conjunct-trailing-canon	canon	a:1&	{"a":1}
+dollar-alone-err	err	a:$	Cannot resolve value
+dollar-alone-canon	canon	a:$	{"a":nil}
+dot-alone-err	err	a:.	Cannot resolve value
+star-alone-err	err	a:*	Cannot resolve value
+plus-trailing-err	err	a:1+	Cannot resolve value
+empty-paren-err	err	a:()	Cannot resolve value

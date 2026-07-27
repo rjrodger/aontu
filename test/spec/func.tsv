@@ -28,3 +28,4 @@ move-basic	gen	m:{x?:number,y:Y} n:move($.m)	{"n":{"y":"Y"}}
 move-top	gen	m:{x?:top,y:Y} n:move($.m)	{"n":{"y":"Y"}}
 move-closed	gen	m:close({x?:number,y:Y}) n:move($.m)	{"n":{"y":"Y"}}
 unknown-func	err	x:foo(1)	This function name is not recognized.
+move-pref-canon	canon	m:{x?:number,y:Y} n:move($.m)	{"m":{"x"?:number,"y":"Y"},"n":{"x"?:number,"y":*"Y"}}

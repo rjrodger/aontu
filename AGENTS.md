@@ -156,13 +156,15 @@ order plugins are applied. A minor `@tabnas` bump can change these
 silently with no compile error — only the shared spec catches it — so
 upgrade deliberately and run `make test` before loosening any pin.
 
-**Known divergence (minor):** consecutive *bare* spreads at one map level
-— `&:k:a &:p:2` (vs the braced `&:{k:a} &:{p:2}`) — parse differently on
-Go: the first bare spread's implicit-map value absorbs the following
-`&:` as a nested spread, where TS keeps them as two sibling spreads. This
-is an `@tabnas`-Go implicit-map/spread boundary quirk (plain implicit-map
-closing — `a:k:1 b:2` — is correct on both). The braced form works
-identically on both; the affected rows are kept out of the shared spec.
+> **Previously divergent, now fixed:** consecutive spreads at one map
+> level — bare (`&:k:a &:p:2`) and space-separated braced
+> (`x:{&:{k:a} &:{p:2}}`) — used to parse differently (Go nested the
+> second bare spread inside the first's template; TS mis-attached a
+> nested braced sibling spread to the root). Both grammars now gate the
+> sibling-spread pair-close alt on the `pk`/`dmap` counters (see the
+> pair close alts in `ts/src/lang.ts` and `go/lang.go`), so consecutive
+> spreads are siblings on the enclosing map at any depth; covered by the
+> `spread.tsv:sibling-*` shared-spec rows.
 
 ## Conventions
 
@@ -190,17 +192,6 @@ The shared spec only contains rows that pass identically in both
 implementations. A few behaviours deliberately differ and must **not**
 be added to `test/spec/*.tsv`:
 
-- **Numeric canon formatting (range-limited).** `integer` and `number`
-  are distinct kinds in **both** implementations: a concrete `integer`
-  and `number` do not unify (`1 & 1.0` → error), and `-0` normalises to
-  `0` everywhere. The one remaining number divergence is *canon string
-  formatting at extreme magnitudes*: TS uses `Number.toString`, Go uses
-  `%g`, which differ in the exponential threshold and exponent padding
-  (e.g. TS `100000000000000000000` / `1e-7` vs Go `1e+20` / `1e-07`).
-  Numeric canon parity is therefore guaranteed only for the **decimal
-  subset** — `0` and finite numbers in roughly `1e-6 ≤ |x| < 1e20`,
-  which render as plain decimals identically in both. Keep shared-spec
-  numeric `canon` rows inside this range.
 - **Error message text.** Go's `hints` are abbreviated versions of the TS
   hints, and TS additionally renders source frames. Only the substring
   asserted by an `err`-mode spec row is contractual; full error text is
@@ -208,6 +199,27 @@ be added to `test/spec/*.tsv`:
 - **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
   `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
   Go; this is invisible to the shared spec (which is unify-level).
+- **Canon of move()-hidden ghost nodes with a `key()` spread.** In
+  `x:{&:{y:1,k:key()}} x:a:z:2 x:c:move($.x.a)` the moved-away (hidden)
+  map `a` renders `k:key()` in TS canon but `k:"a"` in Go: TS spread
+  clones *share* the template's child Vals, and `key()` deliberately
+  clones instead of resolving in place, so the ghost keeps the pending
+  func. Generated output is identical (the node is hidden); only the
+  unify-canon of the invisible node differs.
+- **Canon of invalid sources.** A source that fails in both
+  implementations may fail at different stages — e.g. `k-x:1` (bare key
+  containing `-`) is a parse error in TS but parses to a list holding an
+  error nil in Go. `generate` errors in both; only `unify(src).canon` of
+  such an *invalid* source differs, which the spec (whose canon rows are
+  valid sources) never observes.
+
+> **Previously divergent, now fixed:** numeric canon formatting at
+> extreme magnitudes. Go's `formatNumber` (go/scalar.go) now reproduces
+> JavaScript `Number.toString` exactly — fixed notation for decimal
+> exponents in [-6, 20], exponential with an unpadded signed exponent
+> outside (`1e+21`, `1e-7`) — pinned by `go/scalar_format_test.go` and
+> the `scalar.tsv` extreme-magnitude canon rows. Numeric canon rows no
+> longer need to stay inside the old "safe decimal subset".
 
 > **Previously divergent, now fixed:** a colon-chain key whose value was a
 > bare import — `struct: minor: @"file"` — used to resolve to `{}` in Go

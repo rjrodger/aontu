@@ -193,16 +193,21 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 	case "super":
 		return f.superior()
 	case "move":
-		// Move the referenced value here, hiding it at the source.
+		// Move the referenced value here, hiding it at the source. The
+		// moved copy arrives as *preferences* (mirrors MoveFuncVal in
+		// TS, which wraps the clone in a PrefFuncVal): a deferred pref()
+		// for a ref source (walkPref on the raw ref would be lost once
+		// it resolves), a direct walkPref otherwise.
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
 		if rv, ok := args[0].(*RefVal); ok {
 			src := clonePath(rv, cp(rv.path)).(*RefVal)
 			src.hideFound = true
-			return walkPref(src)
+			src.prefFound = true
+			return src
 		}
-		return clonePath(args[0], cp(f.path))
+		return walkPref(clonePath(args[0], cp(f.path)))
 	}
 	return makeNilErr(ctx, "func:"+f.name, f, nil)
 }

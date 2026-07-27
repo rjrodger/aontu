@@ -17,3 +17,8 @@ list-spread-canon	canon	[&:{x:1},{y:1},{y:2}]	[&:{"x":1},{"x":1,"y":1},{"x":1,"y
 list-spread-kind	gen	x:[&:s:string] x:[{s:S}]	{"x":[{"s":"S"}]}
 pref-order	gen	a:{&:{v:*1|integer}, p:{}, q:{v:5}}	{"a":{"p":{"v":1},"q":{"v":5}}}
 pref-order-rev	gen	a:{q:{v:5}, p:{}, &:{v:*1|integer}}	{"a":{"p":{"v":1},"q":{"v":5}}}
+sibling-braced	gen	x:{&:{k:a} &:{p:2}} x:{m:{},n:{}}	{"x":{"m":{"k":"a","p":2},"n":{"k":"a","p":2}}}
+sibling-braced-canon	canon	x:{&:{k:a} &:{p:2}}	{"x":{&:{"k":"a"}&{"p":2}}}
+sibling-bare-canon	canon	&:k:a &:p:2	{&:{"k":"a"}&{"p":2}}
+sibling-bare-apply	gen	&:k:a &:p:2 m:{v:9}	{"m":{"k":"a","p":2,"v":9}}
+template-func-canon	canon	a:{&:{l:lower(HELLO)},b:{x:1}}	{"a":{&:{"l":"hello"},"b":{"l":"hello","x":1}}}

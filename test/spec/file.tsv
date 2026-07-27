@@ -12,3 +12,4 @@ load-spread	gen	@"__FIXTURES__/spread.aon"	{"one":{"active":true},"two":{"active
 load-conflict	err	car:@"__FIXTURES__/car.aon" car:{doors:5}	Cannot unify
 # Relative @"./x" inside a loaded file resolves against that file directory (parent->child->grand).
 load-rel-chain	gen	@"__FIXTURES__/nest_parent.aon"	{"a":1,"child":{"b":2,"grand":{"c":3}}}
+load-not-found	err	a:@"nope-no-such-file"	source not found: nope-no-such-file

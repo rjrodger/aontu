@@ -1,0 +1,7 @@
+# Elided values and elements are null (as in the underlying jsonic)
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+value-elide	gen	a:	{"a":null}
+elem-elide	gen	[,]	[null]
+elem-elide-nested	gen	a:[,]	{"a":[null]}
+lead-comma	gen	,a:1	[null]
+empty-pair-map	gen	{,}	{}

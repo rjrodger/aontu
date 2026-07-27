@@ -192,9 +192,24 @@ func jsonString(s string) string {
 	return b.String()
 }
 
-// formatNumber renders a float64 the way JavaScript's Number.toString
-// does for the simple cases in the spec (e.g. 1.5, -2.5, integral
-// floats collapse to "1").
+// formatNumber renders a float64 exactly the way JavaScript's
+// Number.toString does: fixed decimal notation for exponents in
+// [-6, 20], otherwise exponential with an unpadded, always-signed
+// exponent ("1e+21", "1e-7" — not Go's "1e+21"/"1e-07"). This keeps
+// numeric canon output identical to the TS implementation at every
+// magnitude.
 func formatNumber(f float64) string {
-	return strconv.FormatFloat(f, 'g', -1, 64)
+	mant := strconv.FormatFloat(f, 'e', -1, 64)
+	i := strings.IndexByte(mant, 'e')
+	digits := mant[:i]
+	exp, _ := strconv.Atoi(mant[i+1:])
+	if exp >= -6 && exp <= 20 {
+		return strconv.FormatFloat(f, 'f', -1, 64)
+	}
+	sign := "+"
+	if exp < 0 {
+		sign = "-"
+		exp = -exp
+	}
+	return digits + "e" + sign + strconv.Itoa(exp)
 }

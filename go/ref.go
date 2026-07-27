@@ -16,6 +16,7 @@ type RefVal struct {
 	absolute  bool
 	prefix    bool
 	hideFound bool // move(): hide the resolution target in place
+	prefFound bool // move(): deliver the resolved copy as preferences
 }
 
 func newRef(terms []any, prefix bool) *RefVal {
@@ -200,7 +201,21 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 	if rv.hideFound {
 		ctx.hide(refpath)
 	}
-	return clonePath(node, cp(rv.path))
+	out := clonePath(node, cp(rv.path))
+	// move(): the moved copy arrives as *preferences* (mirrors the
+	// PrefFuncVal wrap in TS MoveFuncVal.resolve). A target that is
+	// itself still unresolved (e.g. a close() func) defers behind a
+	// pref() func so the wrap lands on the final value.
+	if rv.prefFound {
+		if out.Dc() != DONE {
+			nf := newFunc("pref", []Val{out})
+			nf.path = cp(rv.path)
+			nf.sp = rv.sp
+			return nf
+		}
+		out = walkPref(out)
+	}
+	return out
 }
 
 // isPrefixPath reports whether the reference path is a prefix of this

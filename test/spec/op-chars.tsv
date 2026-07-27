@@ -1,0 +1,13 @@
+# Operator characters: + & | * . $ ? are operators; / and % are plain text
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+slash-text	gen	a:6/2	{"a":"6/2"}
+percent-text	gen	a:6%2	{"a":"6%2"}
+minus-infix-err	err	a:6-2	unexpected character(s): -
+star-infix-err	err	a:6*2	unexpected character(s): *
+negative	gen	a:-1	{"a":-1}
+positive	gen	a:+1	{"a":1}
+plus	gen	a:1+2	{"a":3}
+paren-group	gen	a:(1)	{"a":1}
+quote-in-text	gen	a:x"y	{"a":"x\\"y"}
+backtick-in-text	gen	x:tail`	{"x":"tail`"}
+backtick-in-text-canon	canon	x:tail`	{"x":"tail`"}

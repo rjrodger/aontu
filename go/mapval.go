@@ -83,6 +83,9 @@ func (m *MapVal) Canon() string {
 			b.WriteByte(',')
 		}
 		b.WriteString(jsonString(k))
+		if m.isOptional(k) {
+			b.WriteByte('?')
+		}
 		b.WriteByte(':')
 		b.WriteString(m.peg[k].Canon())
 	}
@@ -126,6 +129,27 @@ func unwrapTypeSpread(s Val, ctx *Ctx) Val {
 		return fv.peg[0]
 	}
 	return s
+}
+
+// advanceSpreadTemplate resolves the path-independent children of a
+// `&:` spread template in place (`&:{h:hide(1)}` -> `&:{h:1}`), so the
+// template's canon matches the TS implementation. In TS the per-key
+// spread clones share child Vals with the template and unify mutates
+// them in place, so resolvable funcs (upper/lower/hide/...) settle
+// inside the template too; path-dependent children (key(), path(),
+// refs — anything hasPathFunc flags) deliberately stay unresolved
+// there, exactly as in TS where key() clones instead of mutating.
+func advanceSpreadTemplate(s Val, ctx *Ctx) {
+	tm, ok := s.(*MapVal)
+	if !ok {
+		return
+	}
+	for _, k := range tm.keys {
+		child := tm.peg[k]
+		if child.Dc() != DONE && !hasPathFunc(child) {
+			tm.set(k, unite(ctx, child, top()))
+		}
+	}
 }
 
 // hasPathFunc reports whether v contains an unresolved path-dependent
@@ -295,6 +319,8 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	}
+	advanceSpreadTemplate(out.spread, ctx)
+
 	var spreadCj Val = top()
 	if out.spread != nil {
 		spreadCj = out.spread

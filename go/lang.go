@@ -3,8 +3,11 @@
 package aontu
 
 import (
+	"reflect"
+	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	expr "github.com/tabnas/expr/go"
 	jsonic "github.com/tabnas/jsonic/go"
@@ -110,6 +113,9 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 				"hash": {Line: true, Start: "#"},
 			},
 		},
+		// See tsTextCheck: unquoted text must run through quote chars
+		// (`x:tail` + "`" is the text "tail`"), as in the TS lexer.
+		Text: &jsonic.TextOptions{Check: tsTextCheck},
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.ValueDef{
@@ -155,6 +161,14 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			// Replace the default grouping paren with a preval-active
 			// function paren: `name(args)` is a call, `(expr)` is grouping.
 			"plain": nil,
+			// Disable the default arithmetic infix ops (mirrors
+			// ts/src/lang.ts): only + is an Aontu operator. With these
+			// removed, / and % are plain text chars (`a:6/2` is the bare
+			// string "6/2") and infix - and * are syntax errors.
+			"subtraction":    nil,
+			"multiplication": nil,
+			"division":       nil,
+			"remainder":      nil,
 			"func": map[string]interface{}{
 				"paren": true, "osrc": "(", "csrc": ")",
 				"preval": map[string]interface{}{"active": true},
@@ -169,6 +183,26 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		return nil, err
 	}
 
+	// A dangling operator at end of input (`a:1&`, `a:$`, `a:.`) makes
+	// the pinned @tabnas/expr Go port build a self-referential term: the
+	// expression slice contains its own ListRef wrapper. Its recursive
+	// evaluation (run in the expr rule's own after-close action) would
+	// then recurse forever — a fatal, unrecoverable stack overflow. The
+	// TS plugin instead drops such unfilled terms. Prepend an action
+	// that snips the back-edges first, restoring the TS shape; the
+	// evaluate() guards below then map any now-missing operand to an
+	// `incomplete_expression` nil (mirroring ts/src/lang.ts).
+	j.Rule("expr", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.PrependAC(func(r *jsonic.Rule, ctx *jsonic.Context) {
+			if r.N["expr"] < 1 {
+				parent := r.Parent
+				if parent != nil && parent != jsonic.NoRule {
+					parent.Node = snipExprCycles(parent.Node)
+				}
+			}
+		})
+	})
+
 	// The `&` operator token (for &: spread) and the `?` token (for
 	// optional keys, a?:1).
 	cj := j.Token("#E&")
@@ -178,9 +212,25 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 
 	// val: a leading `&:` is an implicit spread map (a:&:{x:1}); push to
 	// map without consuming. Otherwise wrap scalar leaves into Vals.
+	// An optional key at the top level (`a?:1` with no braces) needs the
+	// val rule to dive into a map on seeing `key ?`, with a fresh node
+	// so the descended map does not share the parent's node object
+	// (mirrors the two OPTKEY,QM val alts in ts/src/lang.ts).
+	freshMapNode := func(r *jsonic.Rule, _ *jsonic.Context) { r.Node = map[string]any{} }
+
 	j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependOpen(
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{optkey, {qm}},
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.D == 0 },
+				P: "map", B: 2, A: freshMapNode, G: "optional",
+			},
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{optkey, {qm}},
+				P: "map", B: 2, N: map[string]int{"pk": 1}, A: freshMapNode,
+				G: "optional,dive",
+			},
 		)
 		// On close, a following `&:` belongs to the enclosing map as a
 		// spread, not a conjunct — backtrack so the map can take it.
@@ -190,10 +240,18 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		rs.AddAC(wrapLeaf)
 	})
 
-	// map: a leading `&:` pushes to pair without consuming.
+	// map: a leading `&:` pushes to pair without consuming; `key ?` is
+	// an optional-key pair (for the top-level `a?:1` dive from val).
+	// On close, a `&:` bubbles up (mirrors the map close in
+	// ts/src/lang.ts) so a sibling spread after an implicit colon-chain
+	// map reattaches at the right level (see the pair close alts).
 	j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependOpen(
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, G: "spread"},
+			&jsonic.AltSpec{S: [][]jsonic.Tin{optkey, {qm}}, P: "pair", B: 2, G: "optional"},
+		)
+		rs.PrependClose(
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
 		)
 	})
 
@@ -204,6 +262,23 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
 			// `key ? : value` — optional key.
 			&jsonic.AltSpec{S: [][]jsonic.Tin{optkey, {qm}, {cl}}, P: "val", U: map[string]any{"optional": true}, G: "optional"},
+		)
+		rs.PrependClose(
+			// A following `&:` starts a sibling spread pair in the
+			// current map: directly inside a braced map (pk<=0) at any
+			// depth, or in the implicit top-level map (dmap<=1). Inside
+			// an implicit colon-chain map (pk>0) it bubbles up instead
+			// (second alt), so `&:k:a &:p:2` yields two sibling spreads
+			// on the enclosing map, not a spread nested in the first
+			// spread's template (mirrors the pair close in ts/src/lang.ts).
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{{cj}, {cl}},
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
+					return r.N["pk"] <= 0 || r.N["dmap"] <= 1
+				},
+				R: "pair", B: 2, G: "spread",
+			},
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
 		)
 		rs.AddAC(trackOrder)
 	})
@@ -282,6 +357,16 @@ func wrapLeaf(r *jsonic.Rule, _ *jsonic.Context) {
 	case float64:
 		r.Node = numberVal(n, src, sp)
 	case string:
+		// An overflowing numeric literal (1e999) fails Go's float
+		// parsing and falls back to text; in TS it lexes to Infinity,
+		// which is a not_number error nil. Match that — but only for
+		// unquoted text (a quoted "1e999" stays a string).
+		if r.ON > 0 && r.O0.Tin == jsonic.TinTX && n == src && overflowsFloat(src) {
+			e := newNil("not_number")
+			e.sp = sp
+			r.Node = e
+			return
+		}
 		v := newString(n)
 		v.sp = sp
 		r.Node = v
@@ -290,6 +375,18 @@ func wrapLeaf(r *jsonic.Rule, _ *jsonic.Context) {
 		v.sp = sp
 		r.Node = v
 	}
+}
+
+// overflowsFloat reports whether src is a numeric literal whose value
+// overflows a float64 (strconv rejects it with ErrRange; JS lexes it as
+// Infinity).
+func overflowsFloat(src string) bool {
+	_, err := strconv.ParseFloat(src, 64)
+	if err == nil {
+		return false
+	}
+	ne, ok := err.(*strconv.NumError)
+	return ok && ne.Err == strconv.ErrRange
 }
 
 // numberVal picks IntegerVal vs NumberVal: a number is an integer when
@@ -366,6 +463,155 @@ func keyOf(t *jsonic.Token) string {
 	return t.Src
 }
 
+// tsTextCheck reproduces the TS lexer's treatment of quote characters
+// inside unquoted text. The TS text matcher's ender set is space, line,
+// ender, fixed and comment starters — NOT string quote chars — so
+// `x:tail` + "`" lexes as the text "tail`". The Go port's text matcher
+// also stops at StringChars, which would then hand the stray quote to
+// the string matcher (unterminated-string error). When a quote appears
+// mid-text, emit the full TS-style text token here; otherwise defer to
+// the default matcher (which also handles value keywords). A quote at
+// the *start* of a value never reaches the text stage — the string
+// matcher runs first — so string literals are unaffected.
+func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
+	cfg := l.Config
+	src := l.Src
+	pnt := l.Cursor()
+	start := pnt.SI
+	if start >= pnt.Len {
+		return nil
+	}
+
+	sI := start
+	sawQuote := false
+	for sI < len(src) {
+		ch, chSize := utf8.DecodeRuneInString(src[sI:])
+		if (cfg.SpaceLex && cfg.SpaceChars[ch]) ||
+			(cfg.LineLex && cfg.LineChars[ch]) ||
+			cfg.EnderChars[ch] {
+			break
+		}
+		rest := src[sI:]
+		fixed := false
+		for _, fs := range cfg.FixedSorted {
+			if strings.HasPrefix(rest, fs) {
+				fixed = true
+				break
+			}
+		}
+		if fixed {
+			break
+		}
+		if cfg.CommentLex {
+			cmt := false
+			for _, cs := range cfg.CommentLine {
+				if strings.HasPrefix(rest, cs) {
+					cmt = true
+					break
+				}
+			}
+			if !cmt {
+				for _, cb := range cfg.CommentBlock {
+					if strings.HasPrefix(rest, cb[0]) {
+						cmt = true
+						break
+					}
+				}
+			}
+			if cmt {
+				break
+			}
+		}
+		if cfg.StringLex && cfg.StringChars[ch] {
+			sawQuote = true
+		}
+		sI += chSize
+	}
+
+	// No mid-text quote: the default text matcher produces the same
+	// token (and handles value keywords).
+	if !sawQuote || sI == start {
+		return nil
+	}
+
+	msrc := src[start:sI]
+	tkn := l.Token("#TX", jsonic.TinTX, msrc, msrc)
+	pnt.SI += len(msrc)
+	pnt.CI += utf8.RuneCountInString(msrc)
+	return &jsonic.LexCheckResult{Done: true, Token: tkn}
+}
+
+// snipExprCycles removes cyclic back-edges from an expression tree: a
+// dangling trailing operator makes the expr Go port append the
+// expression's own ListRef wrapper (or slice) as its final term. Only
+// true back-edges (an ancestor of the current walk) are dropped —
+// legitimately shared nodes are untouched. See the expr rule action in
+// makeLang.
+func snipExprCycles(node any) any {
+	out, _ := snipWalk(node, map[any]bool{})
+	return out
+}
+
+// snipWalk returns (node, keep); keep is false when node is an ancestor
+// back-edge and must be dropped by the caller. Slices are identified by
+// their data pointer (only when non-empty: empty slices can share a
+// zero-size allocation and must not alias each other).
+func snipWalk(node any, seen map[any]bool) (any, bool) {
+	switch v := node.(type) {
+	case *jsonic.ListRef:
+		if v == nil {
+			return node, true
+		}
+		if seen[node] {
+			return nil, false
+		}
+		seen[node] = true
+		nv, keep := snipWalk(v.Val, seen)
+		delete(seen, node)
+		if keep {
+			v.Val, _ = nv.([]any)
+		} else {
+			v.Val = nil
+		}
+		return v, true
+	case []any:
+		var key any
+		if len(v) > 0 {
+			key = reflect.ValueOf(v).Pointer()
+			if seen[key] {
+				return nil, false
+			}
+			seen[key] = true
+		}
+		out := make([]any, 0, len(v))
+		for _, e := range v {
+			ne, keep := snipWalk(e, seen)
+			if keep {
+				out = append(out, ne)
+			}
+		}
+		if key != nil {
+			delete(seen, key)
+		}
+		return out, true
+	default:
+		return node, true
+	}
+}
+
+// incompleteNil is the evaluate() result for an operator whose required
+// operand is missing (`a:$`, `a:1+`, `a:*` — a dangling operator whose
+// unfilled term was snipped). Unify surfaces it as a "Cannot resolve
+// value" error, mirroring the incomplete_expression NilVal in
+// ts/src/lang.ts.
+func incompleteNil(r *jsonic.Rule) Val {
+	n := newNil("incomplete_expression")
+	if r != nil && r.ON > 0 {
+		n.sp = r.O0.SI
+	}
+	return n
+}
+
 // evaluate builds Val nodes for the expr operators.
 func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interface{}) interface{} {
 	switch op.Name {
@@ -384,27 +630,45 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		}
 		return d
 	case "star-prefix":
+		if len(terms) < 1 {
+			return incompleteNil(r)
+		}
 		inner := asVal(terms[0])
 		pv := newPref(inner)
 		pv.sp = inner.pos()
 		return pv
 	case "negative-prefix":
+		if len(terms) < 1 {
+			return incompleteNil(r)
+		}
 		return negate(terms[0])
 	case "positive-prefix":
+		if len(terms) < 1 {
+			return incompleteNil(r)
+		}
 		return asVal(terms[0])
 	case "dot-prefix":
+		if len(terms) < 1 {
+			return incompleteNil(r)
+		}
 		rv := newRef(terms, true)
 		if r.ON > 0 {
 			rv.sp = r.O0.SI
 		}
 		return rv
 	case "dot-infix":
+		if len(terms) < 1 {
+			return incompleteNil(r)
+		}
 		rv := newRef(terms, false)
 		if r.ON > 0 {
 			rv.sp = r.O0.SI
 		}
 		return rv
 	case "dollar-prefix":
+		if len(terms) < 1 {
+			return incompleteNil(r)
+		}
 		// $.a.b -> absolute reference; $name -> variable (the name is
 		// wrapped as a StringVal so canon renders as $"name").
 		if r0, ok := terms[0].(*RefVal); ok {
@@ -416,6 +680,9 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		}
 		return newVar(asVal(terms[0]))
 	case "addition-infix":
+		if len(terms) < 2 {
+			return incompleteNil(r)
+		}
 		return newPlusOp(asVal(terms[0]), asVal(terms[1]))
 	case "func-paren":
 		// preval injects the function name as a raw string term[0] for
@@ -440,7 +707,8 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			}
 			return asVal(terms[len(terms)-1])
 		}
-		return newMap()
+		// `a:()` — grouping parens with nothing inside.
+		return incompleteNil(r)
 	}
 	return newNil("unknown_op")
 }
@@ -491,8 +759,9 @@ func asValDepth(node any, depth int) Val {
 	case *jsonic.ListRef:
 		// A top-level expression is returned as an unevaluated expr
 		// wrapper; evaluate it (map-value expressions are already
-		// evaluated during parse).
-		return asValDepth(expr.Evaluation(nil, nil, n, evaluate), depth+1)
+		// evaluated during parse). Snip any cyclic dangling-operator
+		// back-edges first (see the expr rule action in makeLang).
+		return asValDepth(expr.Evaluation(nil, nil, snipExprCycles(n), evaluate), depth+1)
 	case map[string]any:
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
@@ -535,7 +804,10 @@ func asValDepth(node any, depth int) Val {
 	case bool:
 		return newBoolean(n)
 	case nil:
-		return newMap()
+		// An elided value or element (`a:`, `[,]`) is null in jsonic;
+		// mirror the TS NullVal conversion. (An empty *source* still
+		// yields {} — see the out == nil branch in parseBase.)
+		return newNull()
 	}
 	return newNil("parse_unknown")
 }
@@ -562,5 +834,69 @@ func parseBase(src, base string) (Val, error) {
 	}
 	root := asVal(out)
 	setPaths(root, []string{})
+	// A failed @"file" load is a parse error in TS (the multisource
+	// plugin raises multisource_not_found during the parse); mirror that
+	// by surfacing the injected not-found nil (see source.go) here.
+	if nf := findNotFoundNil(root); nf != nil {
+		return newMap(), &AontuError{Msg: nf.msg}
+	}
 	return root, nil
+}
+
+// findNotFoundNil walks a parsed Val tree for a multisource_not_found
+// nil injected by notFoundProcessor (source.go).
+func findNotFoundNil(v Val) *NilVal {
+	switch t := v.(type) {
+	case *NilVal:
+		if t.why == "multisource_not_found" {
+			return t
+		}
+	case *MapVal:
+		if t.spread != nil {
+			if n := findNotFoundNil(t.spread); n != nil {
+				return n
+			}
+		}
+		for _, k := range t.keys {
+			if n := findNotFoundNil(t.peg[k]); n != nil {
+				return n
+			}
+		}
+	case *ListVal:
+		if t.spread != nil {
+			if n := findNotFoundNil(t.spread); n != nil {
+				return n
+			}
+		}
+		for _, e := range t.peg {
+			if n := findNotFoundNil(e); n != nil {
+				return n
+			}
+		}
+	case *ConjunctVal:
+		for _, e := range t.peg {
+			if n := findNotFoundNil(e); n != nil {
+				return n
+			}
+		}
+	case *DisjunctVal:
+		for _, e := range t.peg {
+			if n := findNotFoundNil(e); n != nil {
+				return n
+			}
+		}
+	case *PrefVal:
+		if t.peg != nil {
+			if n := findNotFoundNil(t.peg); n != nil {
+				return n
+			}
+		}
+	case *FuncVal:
+		for _, e := range t.peg {
+			if n := findNotFoundNil(e); n != nil {
+				return n
+			}
+		}
+	}
+	return nil
 }
