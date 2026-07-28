@@ -11,6 +11,8 @@ const BooleanVal_1 = require("./BooleanVal");
 const NumberVal_1 = require("./NumberVal");
 const IntegerVal_1 = require("./IntegerVal");
 const utility_1 = require("../utility");
+const unify_1 = require("../unify");
+const top_1 = require("./top");
 // TODO: KEY, SELF, PARENT are reserved names - error
 class VarVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
@@ -29,7 +31,12 @@ class VarVal extends FeatureVal_1.FeatureVal {
                 nameVal = this.peg;
             }
             else {
-                nameVal = this.peg.unify(peer, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }) : ctx);
+                // Resolve the NAME against TOP only — the peer applies to the
+                // variable's resolved VALUE below, not to its name (so
+                // `k1:$flag &:boolean` checks the boolean value of $flag
+                // against the spread, instead of unifying the string "flag"
+                // with it).
+                nameVal = this.peg.unify((0, top_1.top)(), te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }) : ctx);
             }
         }
         else {
@@ -66,6 +73,13 @@ class VarVal extends FeatureVal_1.FeatureVal {
                 }
                 else {
                     out = (0, err_1.makeNilErr)(ctx, 'invalid_var_kind', this, peer);
+                }
+                // A non-TOP peer (e.g. a spread constraint unified against the
+                // var) applies to the RESOLVED value rather than being silently
+                // dropped (mirrors VarVal.Unify in go/varval — the resolved
+                // value unites with the peer).
+                if (!out.isNil && null != peer && !peer.isTop) {
+                    out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'VAL') }) : ctx, out, peer, 'var-val');
                 }
             }
             else {

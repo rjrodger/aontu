@@ -16,7 +16,6 @@ type RefVal struct {
 	absolute  bool
 	prefix    bool
 	hideFound bool // move(): hide the resolution target in place
-	prefFound bool // move(): deliver the resolved copy as preferences
 	copyFound bool // copy(): clear all marks on the resolved copy
 }
 
@@ -226,17 +225,25 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		}
 	}
 
-	// move(): hide the source location, but keep the moved copy visible.
+	// A ref carrying marks transfers them onto the found node in place
+	// (mirrors the mark assignment on `out` before the clone in TS
+	// RefVal.find).
+	if rv.mtype || rv.mhide {
+		node.setMarkType(rv.mtype)
+		node.setMarkHide(rv.mhide)
+	}
+	// move(): hide the source node in place — the mark lands on the
+	// node's ROOT only; the bag unify loops ratchet it down one level
+	// per pass, progressively freezing pending funcs in the ghost
+	// (mirrors `out.mark.hide = true` for _hide_found in TS).
 	if rv.hideFound {
-		ctx.hide(refpath)
+		node.setMarkHide(true)
 	}
 	out := clonePath(node, cp(rv.path))
 	// A resolved reference's clone is concrete: clear type/hide marks
 	// on the whole clone, root included (mirrors the mark-clearing
-	// walk in TS RefVal.find). Note the resulting order dependence is
-	// TS's own: a ref that resolves while its target is still a
-	// pending hide()/type() func clones the func, whose resolution
-	// re-marks at the destination.
+	// walk in TS RefVal.find). With shared func-clone args this also
+	// clears marks on innards shared with the source — as in TS.
 	walkMark(out, true, false, true, false)
 	// copy(): the copied root's path is fully replaced by the
 	// destination (TS FuncBaseVal sets out.path = this.path on the
@@ -245,19 +252,6 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 	// [y] path (""), not [y,a,k].
 	if rv.copyFound {
 		forceRootPath(out, cp(rv.path))
-	}
-	// move(): the moved copy arrives as *preferences* (mirrors the
-	// PrefFuncVal wrap in TS MoveFuncVal.resolve). A target that is
-	// itself still unresolved (e.g. a close() func) defers behind a
-	// pref() func so the wrap lands on the final value.
-	if rv.prefFound {
-		if out.Dc() != DONE {
-			nf := newFunc("pref", []Val{out})
-			nf.path = cp(rv.path)
-			nf.sp = rv.sp
-			return nf
-		}
-		out = walkPref(out)
 	}
 	return out
 }

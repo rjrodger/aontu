@@ -41,28 +41,37 @@ func (p *PrefVal) Unify(peer Val, ctx *Ctx) Val {
 		p.superpeg = p.peg.superior()
 	}
 
-	if peer == nil || isTop(peer) {
-		p.setDc(DONE)
-		return p
-	}
-
-	if pp, ok := peer.(*PrefVal); ok {
-		if p.rank < pp.rank {
-			return p
+	var out Val
+	switch pp := peer.(type) {
+	case nil:
+		out = p
+	case *PrefVal:
+		switch {
+		case p.rank < pp.rank:
+			out = p
+		case pp.rank < p.rank:
+			out = pp
+		default:
+			out = newPref(unite(ctx, p.peg, pp.peg))
 		}
-		if pp.rank < p.rank {
-			return pp
+	default:
+		if isTop(peer) {
+			out = p
+		} else {
+			// Peer is a concrete or kind value. Unify the preferred
+			// value's type with peer: if peer is type-compatible (result
+			// is still the type), the preference value wins; otherwise
+			// peer narrows it.
+			out = unite(ctx, p.superpeg, peer)
+			if valSame(out, p.superpeg) {
+				out = p.peg
+			}
 		}
-		merged := unite(ctx, p.peg, pp.peg)
-		return newPref(merged)
 	}
-
-	// Peer is a concrete or kind value. Unify the preferred value's
-	// type with peer: if peer is type-compatible (result is still the
-	// type), the preference value wins; otherwise peer narrows it.
-	out := unite(ctx, p.superpeg, peer)
-	if valSame(out, p.superpeg) {
-		return p.peg
-	}
+	// TS PrefVal.unify stamps DONE on every result (its `done` flag is
+	// never cleared) — even a stuck conjunct from the superior-unify
+	// (`&:*hello, b:key()` leaves b as key()&string DONE, never
+	// re-driven). Mirror that exactly.
+	out.setDc(DONE)
 	return out
 }

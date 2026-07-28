@@ -18,6 +18,13 @@ func setPaths(v Val, path []string) {
 	case *MapVal:
 		if n.spread != nil {
 			setPaths(n.spread, path)
+			// The spread constraint's ROOT is pathed under a literal
+			// "&" segment (TS parses spreads at `x.&`): a relative ref
+			// used as a spread (`&:.y`) then resolves one level deeper
+			// than the map — through the map's own pending value — and
+			// correctly stays unresolved instead of finding the
+			// enclosing node itself.
+			n.spread.setvpath(append(cp(path), "&"))
 		}
 		for _, k := range n.keys {
 			setPaths(n.peg[k], append(cp(path), k))
@@ -25,6 +32,7 @@ func setPaths(v Val, path []string) {
 	case *ListVal:
 		if n.spread != nil {
 			setPaths(n.spread, path)
+			n.spread.setvpath(append(cp(path), "&"))
 		}
 		for i, e := range n.peg {
 			setPaths(e, append(cp(path), itoa(i)))
@@ -65,6 +73,60 @@ func overlayPath(dest, orig []string) []string {
 	copy(out, dest)
 	copy(out[len(dest):], orig[len(dest):])
 	return out
+}
+
+// repathArg re-paths a (possibly shared) func-arg tree to the driving
+// location, mirroring the effective paths a TS ctx re-descent would
+// assign: the node's own path is OVERLAID on the base (tails beyond the
+// base survive, as in Val.clone's ctx-cut), while bag children descend
+// with a clean base+key (ctx.descend). The stored paths of a shared
+// tree therefore always reflect the LAST driver, which is exactly the
+// TS behaviour for shared clones.
+//
+// Exception: a key() func whose delay window has closed (cc >= 3) keeps
+// its stored path. In TS paths are only ever written by clones, and
+// key()'s ctx-repathing clone happens exclusively in its cc < 3 delay
+// window — at cc >= 3 it resolves with the LAST delay-clone's path, no
+// matter which driver reaches it first.
+func repathArg(v Val, base []string, cc int) {
+	if fv, ok := v.(*FuncVal); ok && fv.name == "key" && cc >= 3 {
+		return
+	}
+	v.setvpath(overlayPath(base, v.vpath()))
+	switch n := v.(type) {
+	case *MapVal:
+		if n.spread != nil {
+			repathArg(n.spread, base, cc)
+		}
+		for _, k := range n.keys {
+			repathArg(n.peg[k], append(cp(base), k), cc)
+		}
+	case *ListVal:
+		if n.spread != nil {
+			repathArg(n.spread, base, cc)
+		}
+		for i, e := range n.peg {
+			repathArg(e, append(cp(base), itoa(i)), cc)
+		}
+	case *ConjunctVal:
+		for _, t := range n.peg {
+			repathArg(t, base, cc)
+		}
+	case *DisjunctVal:
+		for _, t := range n.peg {
+			repathArg(t, base, cc)
+		}
+	case *PrefVal:
+		repathArg(n.peg, base, cc)
+	case *PlusOpVal:
+		for _, t := range n.peg {
+			repathArg(t, base, cc)
+		}
+	case *FuncVal:
+		for _, a := range n.peg {
+			repathArg(a, base, cc)
+		}
+	}
 }
 
 // clonePath deep-clones a Val, rebasing the subtree at the given path
@@ -137,14 +199,19 @@ func clonePath(v Val, path []string) Val {
 		}
 		return out
 	case *PrefVal:
-		out := newPref(clonePath(n.peg, path))
+		// The peg is SHARED, not cloned (TS PrefVal.clone inherits
+		// Val.clone's `peg: this.peg`): a cloned pref spread template
+		// resolves its inner value at the TEMPLATE's own paths — e.g. a
+		// `.K` ref inside `&:*[$obj,.K,0]` resolves (and errors) against
+		// the template location, exactly as in TS.
+		out := &PrefVal{peg: n.peg, superpeg: n.superpeg, rank: n.rank}
 		out.dc = n.dc
-		out.rank = n.rank
+		out.sp = n.sp
 		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		return out
 	case *RefVal:
-		out := &RefVal{absolute: n.absolute, prefix: n.prefix, hideFound: n.hideFound, prefFound: n.prefFound, copyFound: n.copyFound}
+		out := &RefVal{absolute: n.absolute, prefix: n.prefix, hideFound: n.hideFound, copyFound: n.copyFound}
 		out.dc = n.dc
 		out.sp = n.sp
 		out.path = overlayPath(path, n.path)
@@ -170,15 +237,19 @@ func clonePath(v Val, path []string) Val {
 	case *FuncVal:
 		out := &FuncVal{name: n.name}
 		out.dc = n.dc
+		out.sp = n.sp
 		out.path = overlayPath(path, n.path)
-		// The spread-material stamp survives cloning (the key() delay
-		// path re-clones each pass; a spread-delivered func must still
-		// be recognisable when it later freezes in a hidden subtree).
 		out.spr = n.spr
 		copyMarks(out, n)
-		for _, a := range n.peg {
-			out.peg = append(out.peg, clonePath(a, path))
-		}
+		// The args are SHARED, not cloned (TS Val.clone passes
+		// `peg: this.peg` by reference): a moved/copied pending func and
+		// its source display the same arg objects, so the destination's
+		// resolution of a shared arg map shows through in the frozen
+		// source's canon (the ghost-innard sharing artifacts). The args
+		// are re-pathed to the clone's location when the clone resolves
+		// them (see FuncVal.Unify), mirroring the ctx-path-driven
+		// re-descent in TS.
+		out.peg = n.peg
 		return out
 	}
 	return v

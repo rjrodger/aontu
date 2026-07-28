@@ -81,37 +81,42 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		case peer.Nil():
 			return peer
 		default:
+			// Identical key() at the same path collapses (the
+			// peer.isKeyFunc same-path same-arg check in TS
+			// KeyFuncVal.unify): `key()&key()` folds to one pending
+			// key() during the delay window.
+			if pf, ok := peer.(*FuncVal); ok && pf.name == "key" &&
+				pathEq(pf.path, f.path) && keyArgEq(pf, f) {
+				return f
+			}
 			return newConjunct([]Val{f, peer})
 		}
 	}
 
-	// A marked func — or a pending func delivered by a spread into a
-	// move()-hidden subtree — freezes against TOP instead of resolving
-	// (mirrors the `peer.isTop && (mark.type || mark.hide) -> dc =
-	// DONE` shortcut in TS FuncBaseVal.unify; in TS the ghost's
-	// spread-delivered func shares the never-resolved template object,
-	// which the path check reproduces for the Go port's deep clones).
-	// With the apply-once spread discipline in MapVal.Unify, a hidden
-	// ghost's children only ever self-unify against TOP, so this is
-	// the exact point its pending funcs freeze.
-	// (The timing matters and matches TS: funcs that resolve before the
-	// move()'s hide lands — e.g. upper() at pass 0 — are already done
-	// and never reach this check; the stragglers key() [delayed past
-	// cc 3] and chained-move prefs are exactly what TS leaves pending
-	// in ghosts.)
-	if isTop(peer) &&
-		(f.mtype || f.mhide ||
-			(ctx != nil && ctx.isHiddenPrefix(f.path))) {
+	// A marked func freezes against TOP instead of resolving (the
+	// `peer.isTop && (mark.type || mark.hide) -> dc = DONE` shortcut in
+	// TS FuncBaseVal.unify). The hide mark arrives either directly
+	// (hide()/type() marks, the move() hide-found mark on the source
+	// root) or via the bag mark ratchet pushing a parent's mark down
+	// one level per pass. A frozen func still RESOLVES against a
+	// non-TOP peer (e.g. a spread clone applied to a hidden child) —
+	// the freeze is TOP-only, exactly as in TS.
+	if isTop(peer) && (f.mtype || f.mhide) {
 		f.setDc(DONE)
 		return f
 	}
 
-	// A frozen func stays frozen: folding it against TOP or an
-	// identical pending func (`key() & key()` in a hidden ghost, where
-	// both conjunct members froze in the member pass) keeps the
-	// pending form rather than re-resolving it.
-	if f.dc == DONE && (isTop(peer) || f.Canon() == peer.Canon()) {
-		return f
+	// Re-path args to this func's location before resolving them: func
+	// clones share their args with the source (see clonePath), and in
+	// TS the driving ctx re-descends the shared tree at the
+	// destination's path each pass. The Go port keeps paths on the
+	// Vals, so the driver re-paths in place — last driver wins, as in
+	// TS. The overlay semantics (see repathArg) preserve path tails
+	// beyond the driving base, exactly like ctx-based Val.clone.
+	if f.name != "move" && f.name != "copy" {
+		for _, arg := range f.peg {
+			repathArg(arg, f.path, ctx.cc)
+		}
 	}
 
 	// Resolve operands into a scratch slice WITHOUT writing them back:
@@ -120,6 +125,8 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	var out Val = f
 	pegdone := true
 	newpeg := make([]Val, 0, len(f.peg))
+	newtype := f.mtype
+	newhide := f.mhide
 	// move() and copy() operate on raw arguments (they must not be
 	// resolved first), mirroring MoveFuncVal.prepare and
 	// CopyFuncVal.prepare returning null in TS — copy(expr) clones the
@@ -132,6 +139,11 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 			na := arg
 			if arg.Dc() != DONE {
 				na = unite(ctx, arg, top())
+				// Marks surfacing on resolved args infect the rebuilt
+				// pending func (the newtype/newhide accumulation in TS
+				// FuncBaseVal.unify).
+				newtype = newtype || na.markedType()
+				newhide = newhide || na.markedHide()
 			}
 			if na.Dc() != DONE {
 				pegdone = false
@@ -164,11 +176,23 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		} else {
 			out = unite(ctx, result, peer)
 		}
+		// The func's marks survive onto its resolution (the
+		// propagateMarks(this, out) in TS FuncBaseVal.unify) — e.g. a
+		// hide-marked pending func that resolves against a spread peer
+		// yields a hidden value.
+		if out != Val(f) && !isTop(out) {
+			propagateMarks(f, out)
+		}
 	} else if isTop(peer) {
 		f.notdone()
-		out = newFunc(f.name, newpeg)
-		out.(*FuncVal).path = cp(f.path)
-		out.(*FuncVal).dc = f.dc
+		nf := newFunc(f.name, newpeg)
+		nf.path = cp(f.path)
+		nf.dc = f.dc
+		nf.sp = f.sp
+		nf.spr = f.spr
+		nf.mtype = newtype
+		nf.mhide = newhide
+		out = nf
 	} else if peer.Nil() {
 		f.notdone()
 		out = peer
@@ -183,6 +207,37 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	return out
 }
 
+// pathEq reports whether two paths are identical.
+func pathEq(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// keyArgEq reports whether two key() funcs have the same move-count
+// argument (mirrors the `peer.peg?.[0]?.peg === this.peg?.[0]?.peg`
+// check in TS KeyFuncVal.unify).
+func keyArgEq(a, b *FuncVal) bool {
+	av, aok := keyArgVal(a)
+	bv, bok := keyArgVal(b)
+	return aok == bok && av == bv
+}
+
+func keyArgVal(f *FuncVal) (int64, bool) {
+	if len(f.peg) > 0 {
+		if sv, ok := f.peg[0].(*ScalarVal); ok && sv.kind == KindInteger {
+			return sv.peg.(int64), true
+		}
+	}
+	return 0, false
+}
+
 // resolve dispatches to the named function's implementation.
 func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 	switch f.name {
@@ -195,9 +250,11 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 			return makeNilErr(ctx, "invalid-arg", f, nil)
 		}
 		// Raw-ref argument: the target may not exist yet, so defer the
-		// mark clearing to resolution via the copyFound flag.
+		// mark clearing to resolution via the copyFound flag. The clone
+		// is re-pathed to the copy()'s own location (the ctx-path clone
+		// in TS), since a shared raw arg may carry a stale path.
 		if rv, ok := args[0].(*RefVal); ok {
-			src := clonePath(rv, cp(rv.path)).(*RefVal)
+			src := clonePath(rv, cp(f.path)).(*RefVal)
 			src.copyFound = true
 			return src
 		}
@@ -240,24 +297,22 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		return f.superior()
 	case "move":
 		// Move the referenced value here, hiding it at the source. The
-		// moved copy arrives as *preferences* (mirrors MoveFuncVal in
-		// TS, which wraps the clone in a PrefFuncVal): a deferred pref()
-		// for a ref source (walkPref on the raw ref would be lost once
-		// it resolves), a direct walkPref otherwise.
+		// moved copy always arrives behind a pref() func (exactly the
+		// PrefFuncVal wrap in TS MoveFuncVal.resolve), so the pref walk
+		// runs on the RESOLVED value. A ref argument carries the
+		// hide-found flag so resolution hides the source node in place.
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
-		if rv, ok := args[0].(*RefVal); ok {
-			src := clonePath(rv, cp(rv.path)).(*RefVal)
-			src.hideFound = true
-			src.prefFound = true
-			return src
+		src := clonePath(args[0], cp(f.path))
+		if rv, ok := src.(*RefVal); ok {
+			rv.hideFound = true
 		}
-		// Non-ref argument: defer behind a pref() func (exactly the
-		// PrefFuncVal wrap in TS MoveFuncVal.resolve) so the pref walk
-		// runs on the RESOLVED value — a raw func argument
-		// (`move(upper(aa))`) must end up as *"AA", not unwrapped.
-		nf := newFunc("pref", []Val{clonePath(args[0], cp(f.path))})
+		// Hide the raw argument in place (the walk(orig, mark.hide) in
+		// TS MoveFuncVal.resolve): for a literal argument the arg IS
+		// the source being moved away.
+		walkMark(args[0], false, false, true, true)
+		nf := newFunc("pref", []Val{src})
 		nf.path = cp(f.path)
 		nf.sp = f.sp
 		return nf

@@ -80,10 +80,18 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	if pl, ok := peer.(*ListVal); ok && !l.closed && pl.closed {
 		return pl.Unify(l, ctx)
 	}
-	out := &ListVal{}
-	out.closed = l.closed
-	out.path = cp(l.path)
-	out.spread = l.spread
+	// A TOP peer refines the list IN PLACE (mirrors `out = peer.isTop ?
+	// this : new ListVal(...)` in TS ListVal.unify) — see the matching
+	// comment in MapVal.Unify.
+	var out *ListVal
+	if isTop(peer) {
+		out = l
+	} else {
+		out = &ListVal{}
+		out.closed = l.closed
+		out.path = cp(l.path)
+		out.spread = l.spread
+	}
 	done := true
 
 	if pl, ok := peer.(*ListVal); ok {
@@ -98,19 +106,21 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		spreadCj = out.spread
 	}
 
+	inplace := out == l
 	for i, e := range l.peg {
+		// List marks ratchet onto elements each pass (the
+		// propagateMarks(this, child) in TS ListVal.unify).
+		if l.mtype && !e.markedType() {
+			e.setMarkType(true)
+		}
+		if l.mhide && !e.markedHide() {
+			e.setMarkHide(true)
+		}
 		ev := unite(ctx, e, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
-		out.peg = append(out.peg, ev)
-		// Write the resolved element back into the receiver too: TS
-		// bags evolve in place (see the mutation caveat in AGENTS.md),
-		// so a list embedded in a stuck op/func shows its children's
-		// resolution in canon even though the op discards the unify
-		// return value. Vals are single-use, so this is safe — except
-		// for path-dependent elements (key(), refs), which must stay
-		// pending for per-destination spread re-resolution (see the
-		// matching guard in MapVal.Unify).
-		if !hasPathFunc(e) {
-			l.peg[i] = ev
+		if inplace {
+			out.peg[i] = ev
+		} else {
+			out.peg = append(out.peg, ev)
 		}
 		if ev.Dc() != DONE {
 			done = false
@@ -119,6 +129,13 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 
 	if pl, ok := peer.(*ListVal); ok {
 		out.closed = l.closed || pl.closed
+		// Self-unify the peer against TOP first (the `upeer` step in TS
+		// ListVal.unify) — see the matching comment in MapVal.Unify.
+		if pl.Dc() != DONE {
+			if upl, uok := unite(ctx, pl, top()).(*ListVal); uok {
+				pl = upl
+			}
+		}
 		for i, pe := range pl.peg {
 			if l.closed && i >= len(l.peg) {
 				return makeNilErr(ctx, "closed", pe, nil)

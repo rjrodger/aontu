@@ -422,6 +422,24 @@ help isolate the syntax error.`,
   const OPTKEY = [TX, ST, NR]
 
 
+  jsonic.rule('expr', (rs: RuleSpec) => {
+    rs.close([
+      // A `&` followed by `:` after an expression value belongs to the
+      // enclosing map as a spread, not to the expression as a conjunct
+      // — backtrack both tokens so the expression completes (and
+      // evaluates to a Val) and the map's spread alts take over. This
+      // is what makes `k1:$flag &:boolean` parse: without it the expr
+      // plugin consumes the `&` as an infix conjunct, chokes on the
+      // `:`, and leaves the raw unevaluated expr node in the map
+      // (mirrors the expr-rule PrependClose in go/lang.go). The
+      // `n: { expr: 0 }` reset matches the plugin's own expr-end alts —
+      // the evaluation after-close only fires when the counter is 0.
+      { s: [CJ, CL], b: 2, n: { expr: 0 }, g: 'expr,expr-end,spread' },
+    ])
+    return rs
+  })
+
+
   jsonic.rule('val', (rs: RuleSpec) => {
 
     rs

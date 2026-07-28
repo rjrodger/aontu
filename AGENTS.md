@@ -199,27 +199,27 @@ be added to `test/spec/*.tsv`:
 - **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
   `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
   Go; this is invisible to the shared spec (which is unify-level).
-- **Move-corner clone-timing artifacts.** TS's ref/move clones are
-  taken at whatever resolution state the target is in *at clone time*
-  and share objects with the source, so a handful of move() corner
-  renderings depend on TS's pass ordering: refs INTO a moved-away
-  ghost (`y:$.x.a.k` reads the source-resolved key in TS, empty in
-  Go), the inner keys of a hide()/type()-func-wrapped ghost (TS shows
-  the destination's resolution via the shared object), chained-move
-  intermediate ghosts (the frozen pref() arg renders at a different
-  resolution stage), and gen visibility when a hide()-marked map is
-  moved in one statement order but not the other. Both suites cover
-  the deterministic ghost behaviours (see marks.tsv/func.tsv); these
-  order-dependent corners stay out of the shared spec.
-
 > **Previously divergent, now fixed:** the canon of move()-hidden ghost
-> nodes. The spread constraint now applies once per child in Go
-> (mirroring the `_spr` stamp in TS MapVal.unify), map marks ratchet
-> onto children each pass, and a pending func inside a hidden subtree
-> freezes against TOP (the TS FuncBaseVal marked-func freeze), so a
-> moved-away ghost keeps `key()` pending in canon exactly as TS does —
-> whether the func was spread-delivered or directly written. Covered by
-> the func.tsv ghost rows.
+> nodes, including the object-sharing artifacts. The Go port now
+> mirrors TS's clone-graph sharing directly: func clones share their
+> args array (TS `Val.clone` passes `peg` by reference) and pref clones
+> share their peg, a TOP-peer map/list unify refines the bag IN PLACE
+> (the `out = peer.isTop ? this : new ...` fast-path), and a driving
+> func re-paths its (possibly shared) args to its own location each
+> pass (`repathArg`, the equivalent of TS's ctx-path re-descent — with
+> key()'s stored path frozen once its cc<3 delay window closes). Hiding
+> is mark-based: move() sets the hide mark on the found source node's
+> ROOT only (TS `_hide_found`), bag unifies ratchet marks down one
+> level per pass, and a marked func freezes against TOP but still
+> resolves against a non-TOP peer (spread clones re-driving hidden
+> children behave exactly as in TS). Chained moves wrap the moved copy
+> in a pref() func immediately (TS MoveFuncVal), so intermediate frozen
+> ghosts render `pref($.x.a)` / `pref({"k":"c"})` identically. Ref
+> spreads are snapshotted once per canon+site (the TS snapshotRefSpread
+> port), and spread constraint roots are pathed under a literal `&`
+> segment so relative refs used as spreads resolve one level deeper,
+> as in TS. Covered by the func.tsv ghost/move-chain rows and the
+> spread.tsv close-template rows.
 - **Canon of invalid sources.** A source that fails in both
   implementations may fail at different stages — e.g. `k-x:1` (bare key
   containing `-`) is a parse error in TS but parses to a list holding an
@@ -233,11 +233,16 @@ be added to `test/spec/*.tsv`:
   juxtapositions (`1'00]...`, `"q k""?:...`) — one side errors, the
   other parses to a (differently shaped) junk value. Well-formed
   sources are unaffected.
-- **Root-level scalar spreads over `$var` keys.** `k1:$flag &:boolean`
-  raises an internal error in TS but unifies correctly in Go (the TS
-  root-spread machinery mishandles the resolved var). Here the Go
-  behaviour is the sensible one; the TS fix needs deeper unify-internal
-  work, so these rows stay out of the shared spec.
+> **Previously divergent, now fixed:** root-level spreads over `$var`
+> (and other expression) keys. `k1:$flag &:boolean` used to raise an
+> internal error in TS: the expr plugin consumed the `&` as an infix
+> conjunct, choked on the `:`, and left a raw unevaluated expr node in
+> the map. Both grammars now close an open expression when `&` `:`
+> follows (backtracking so the enclosing map takes the spread), and TS
+> VarVal.unify resolves the variable's NAME against TOP only, applying
+> the peer constraint to the resolved VALUE (previously the constraint
+> was unified with the name string, inverting the check). Covered by
+> the var.tsv spread rows.
 
 > **Previously divergent, now fixed:** numeric canon formatting at
 > extreme magnitudes. Go's `formatNumber` (go/scalar.go) now reproduces

@@ -41,6 +41,12 @@ func walkMark(v Val, setType, typeVal, setHide, hideVal bool) {
 		}
 	case *PrefVal:
 		walkMark(n.peg, setType, typeVal, setHide, hideVal)
+	case *FuncVal:
+		// TS walk recurses into a func's peg array, so mark walks reach
+		// (possibly shared) arg trees too.
+		for _, a := range n.peg {
+			walkMark(a, setType, typeVal, setHide, hideVal)
+		}
 	}
 }
 

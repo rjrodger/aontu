@@ -93,113 +93,38 @@ func (m *MapVal) Canon() string {
 	return b.String()
 }
 
-// unwrapTypeSpread maps a type() used as a spread to its inner template:
-// the spread should emit constrained values at each destination, not mark
-// the destination as a type. The func's argument (peg[0]) is the
-// parse-time template, so any key()/path() inside is still structural and
-// will resolve at the destination (via spreadCloneFor's clonePath). A ref
-// to a type() is resolved to the same template, so a type-wrapped ref
-// spread behaves like a plain-map ref spread.
-func unwrapTypeSpread(s Val, ctx *Ctx) Val {
-	if rv, ok := s.(*RefVal); ok {
-		if ctx.typeSnap != nil {
-			if snap, ok := ctx.typeSnap[rv]; ok {
-				return snap
-			}
-		}
-		tgt := rv.find(ctx)
-		if fv, ok := tgt.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
-			inner := fv.peg[0]
-			// Cache the inner template only while it is still structural
-			// (key()/path() unresolved). The func's arg mutates as the
-			// source resolves across fixpoint passes, so caching the first
-			// path-dependent form avoids re-reading the source-resolved
-			// value (which would leak the source key into the destination).
-			if hasPathFunc(inner) {
-				if ctx.typeSnap == nil {
-					ctx.typeSnap = map[*RefVal]Val{}
-				}
-				ctx.typeSnap[rv] = inner
-			}
-			return inner
-		}
-		return s
+// snapshotRefSpread snapshots a path-dependent *ref* spread to its
+// structural target once, while inner key()/path() funcs are still
+// unresolved (port of snapshotRefSpread in ts/src/val/MapVal.ts). Later
+// fixpoint passes reuse the snapshot instead of re-resolving the ref
+// against the mutated tree, which would leak the source's resolved
+// key()/path() literals into the spread destinations. Keyed by canon +
+// source position (clones of the ref must find the same snapshot).
+func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
+	if ctx.snapmap == nil {
+		ctx.snapmap = map[string]Val{}
 	}
-	if fv, ok := s.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
-		return fv.peg[0]
+	sk := cj.Canon() + "~" + itoa(cj.sp)
+	if snap, ok := ctx.snapmap[sk]; ok {
+		return snap
 	}
-	return s
-}
-
-// advanceSpreadTemplate resolves the path-independent children of a
-// `&:` spread template in place (`&:{h:hide(1)}` -> `&:{h:1}`), so the
-// template's canon matches the TS implementation. In TS the per-key
-// spread clones share child Vals with the template and unify mutates
-// them in place, so resolvable funcs (upper/lower/hide/...) settle
-// inside the template too; path-dependent children (key(), path(),
-// refs — anything hasPathFunc flags) deliberately stay unresolved
-// there, exactly as in TS where key() clones instead of mutating.
-func advanceSpreadTemplate(s Val, ctx *Ctx) {
-	tm, ok := s.(*MapVal)
-	if !ok {
-		return
+	tgt := cj.find(ctx)
+	// A ref to a type() resolves to its inner template — snapshot that,
+	// so a type-wrapped ref spread behaves like a plain-map ref spread.
+	if fv, ok := tgt.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
+		tgt = fv.peg[0]
 	}
-	// A template containing ANY path-dependent func (key(), path(),
-	// refs) stays raw wholesale — in TS such templates go through the
-	// snapshot path and never leak resolution, even for their
-	// path-independent siblings (`&:{k:key(),u:upper(q)}` keeps
-	// upper("q") raw too).
-	if hasPathFunc(tm) {
-		return
+	// Only snapshot a found, path-dependent target; otherwise retry on
+	// a later pass.
+	if tgt != nil && !tgt.Nil() && hasPathFunc(tgt) {
+		snap := clonePath(tgt, cp(cj.path))
+		// Clear TYPE marks on the snapshot: a type() template constrains
+		// values but must not make the destination type-invisible.
+		walkMark(snap, true, false, false, false)
+		ctx.snapmap[sk] = snap
+		return snap
 	}
-	for _, k := range tm.keys {
-		child := tm.peg[k]
-		if child.Dc() != DONE && !hasPathFunc(child) {
-			// Resolve in trial isolation: in TS the template is never
-			// unified as a whole (resolution leaks in via shared child
-			// objects), so a conflict inside the template (e.g. a
-			// duplicate template key `*"q" & null`) must not raise
-			// here — the application sites report their own errors.
-			saved := ctx.err
-			ctx.err = nil
-			rv := unite(ctx, child, top())
-			failed := len(ctx.err) > 0 || rv.Nil()
-			ctx.err = saved
-			if !failed {
-				tm.set(k, rv)
-			}
-		}
-	}
-}
-
-// markSprFuncs stamps every FuncVal in a spread clone with the spread's
-// identity (see spreadCloneFor).
-func markSprFuncs(v Val, s Val) {
-	switch n := v.(type) {
-	case *FuncVal:
-		n.spr = s
-		for _, a := range n.peg {
-			markSprFuncs(a, s)
-		}
-	case *MapVal:
-		for _, k := range n.keys {
-			markSprFuncs(n.peg[k], s)
-		}
-	case *ListVal:
-		for _, e := range n.peg {
-			markSprFuncs(e, s)
-		}
-	case *ConjunctVal:
-		for _, t := range n.peg {
-			markSprFuncs(t, s)
-		}
-	case *DisjunctVal:
-		for _, t := range n.peg {
-			markSprFuncs(t, s)
-		}
-	case *PrefVal:
-		markSprFuncs(n.peg, s)
-	}
+	return nil
 }
 
 // hasPathFunc reports whether v contains an unresolved path-dependent
@@ -251,36 +176,33 @@ func hasPathFunc(v Val) bool {
 	return false
 }
 
-// spreadCloneFor returns a per-key copy of the spread constraint (TOP
-// needs no cloning), resolved at the destination and with constraint
-// marks cleared.
+// spreadCloneFor returns a per-key copy of the spread constraint,
+// following the spreadClone tiers in TS MapVal/Val:
+//   - TOP needs no cloning;
+//   - a path-independent constraint (no key()/path()/move()/super()/ref
+//     anywhere below) is SHARED — nothing in the unify path depends on
+//     its stored paths, and sharing lets the template advance in place
+//     as destinations resolve it (the TS tier-1 `return this`);
+//   - otherwise a clone re-pathed to the destination (for funcs the
+//     clone shares its args — Val.clone semantics — so e.g. a
+//     close({k:key()}) spread's template map is shared across all
+//     destinations, exactly as in TS).
 func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	if isTop(s) {
 		return s
 	}
-	c := clonePath(s, path)
-	// Resolve the spread (e.g. a ref or a path-dependent func) at the
-	// destination first, THEN clear marks on the resolved root and its
-	// direct children: a type()/hide() spread constrains values but must
-	// not make the destination type-/gen-invisible (mirrors
-	// SpreadVal.applyToMap in perf0 and the TS spread handling).
-	if c.Dc() != DONE {
-		c = unite(ctx, c, top())
+	// The share-when-path-independent tier exists only on bags (TS
+	// overrides spreadClone on MapVal/ListVal alone); every other
+	// constraint kind — prefs, funcs, refs, junctions — clones per
+	// application (Val.spreadClone = this.clone), so e.g. a `*open(x)`
+	// template is never resolved in place by its applications.
+	switch s.(type) {
+	case *MapVal, *ListVal:
+		if !hasPathFunc(s) {
+			return s
+		}
 	}
-	// Clear TYPE marks on the whole resolved clone (recursively): a type()
-	// spread constrains values but must not make the destination — at any
-	// depth — type-invisible (clearing only direct children leaves nested
-	// marks like `type({m:{x:number}})` intact, silently dropping them).
-	// HIDE marks are preserved: a hide() spread (`&:{h:hide(1)}`) is meant
-	// to hide the spread field at the destination.
-	walkMark(c, true, false, false, false)
-	// Stamp the clone's funcs as spread material: in TS these objects
-	// are shared with the never-resolving template, so when they end up
-	// in a move()-hidden ghost they render pending; the stamp lets
-	// FuncVal.Unify reproduce that freeze for the Go port's deep clones
-	// (directly-written funcs in a ghost stay unstamped and resolve).
-	markSprFuncs(c, s)
-	return c
+	return clonePath(s, path)
 }
 
 func (m *MapVal) Gen(ctx *Ctx) (any, error) {
@@ -296,12 +218,10 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 	sort.Strings(keys)
 	for _, k := range keys {
 		child := m.peg[k]
-		// Type and hidden values are excluded from generation.
+		// Type and hidden values are excluded from generation (a key
+		// whose source was moved away carries the hide mark set by
+		// RefVal.find's hide-found handling).
 		if child.markedType() || child.markedHide() {
-			continue
-		}
-		// A key whose source was moved away is hidden.
-		if ctx != nil && ctx.isHidden(append(cp(m.path), k)) {
 			continue
 		}
 		optional := m.isOptional(k)
@@ -414,11 +334,20 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	}
-	out := newMap()
-	out.closed = m.closed
-	out.path = cp(m.path)
-	out.spread = m.spread
-	out.optional = append([]string{}, m.optional...)
+	// A TOP peer refines the map IN PLACE (the `out = peer.isTop ? this
+	// : new MapVal(...)` fast-path in TS MapVal.unify): children write
+	// back into m.peg, so shared references to this map — a frozen
+	// func's arg, a spread template — observe the refinement.
+	var out *MapVal
+	if isTop(peer) {
+		out = m
+	} else {
+		out = newMap()
+		out.closed = m.closed
+		out.path = cp(m.path)
+		out.spread = m.spread
+		out.optional = append([]string{}, m.optional...)
+	}
 	done := true
 
 	// Combine spreads and optional keys (additive) from both sides.
@@ -442,13 +371,25 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	}
-	advanceSpreadTemplate(out.spread, ctx)
 
 	var spreadCj Val = top()
 	if out.spread != nil {
 		spreadCj = out.spread
 	}
-	spreadCj = unwrapTypeSpread(spreadCj, ctx)
+	// Snapshot a path-dependent ref spread to its structural target once
+	// (see snapshotRefSpread), so later passes don't capture the
+	// source's own resolved key()/path() literals.
+	if rv, ok := spreadCj.(*RefVal); ok {
+		if snap := snapshotRefSpread(rv, ctx); snap != nil {
+			spreadCj = snap
+		}
+	}
+	// A type() used as a spread applies as its inner template: values
+	// are emitted (and constrained) at each destination rather than
+	// marking the destination as a type.
+	if fv, ok := spreadCj.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
+		spreadCj = fv.peg[0]
+	}
 
 	// Own children. The spread constraint applies ONCE per child
 	// (mirrors the `_spr` stamp in TS MapVal.unify): the first
@@ -481,17 +422,6 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 		out.set(k, cv)
-		// Write the resolved child back into the receiver too: TS bags
-		// evolve in place (see the mutation caveat in AGENTS.md), so a
-		// map embedded in a stuck op/func shows its children's
-		// resolution in canon even though the op discards the unify
-		// return value. Vals are single-use, so this is safe — except
-		// for path-dependent children (key(), refs): those must stay
-		// pending in the receiver so a ref spread's snapshot clones the
-		// unresolved form and re-resolves per destination.
-		if !hasPathFunc(child) {
-			m.peg[k] = cv
-		}
 		if cv.Dc() != DONE {
 			done = false
 		}
@@ -499,6 +429,15 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 
 	if pm, ok := peer.(*MapVal); ok {
 		out.closed = m.closed || pm.closed
+		// Self-unify the peer against TOP first (the `upeer` step in TS
+		// MapVal.unify): a shared peer — e.g. a tier-1 spread template —
+		// refines in place, so its resolvable children advance where the
+		// template itself is stored too.
+		if pm.Dc() != DONE {
+			if upm, uok := unite(ctx, pm, top()).(*MapVal); uok {
+				pm = upm
+			}
+		}
 		for _, pk := range pm.keys {
 			pc := pm.peg[pk]
 			if _, allowed := m.peg[pk]; m.closed && !allowed {

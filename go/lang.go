@@ -210,6 +210,24 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 	// optional keys, a?:1).
 	cj := j.Token("#E&")
 	cl := jsonic.TinCL
+
+	// expr: a `&` followed by `:` after an expression value belongs to
+	// the enclosing map as a spread, not to the expression as a conjunct
+	// — backtrack both tokens so the expression completes (and
+	// evaluates) and the map's spread alts take over. This makes infix
+	// expressions before a spread parse (`zz:-2.5+-2.5 &:string`),
+	// matching the expr-rule close alt in ts/src/lang.ts. The
+	// expr-counter reset mirrors the plugin's own expr-end alts, whose
+	// evaluation after-close only runs at counter zero.
+	j.Rule("expr", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.PrependClose(
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{{cj}, {cl}}, B: 2,
+				N: map[string]int{"expr": 0},
+				G: "expr,expr-end,spread",
+			},
+		)
+	})
 	qm := j.Token("#QM", "?")
 	optkey := []jsonic.Tin{jsonic.TinTX, jsonic.TinST, jsonic.TinNR}
 
@@ -415,7 +433,14 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	// A &: spread pair: store the spread value (merge multiple spreads
 	// into a conjunct) rather than recording it as a key.
 	if r.U["spread"] == true {
-		sv := asVal(r.Child.Node)
+		cn := r.Child.Node
+		// An elided spread value (`x:$obj&:` at end of input) never
+		// became a node — TS's MapVal constructor drops the falsy
+		// spread entirely, so store nothing.
+		if cn == nil || jsonic.IsUndefined(cn) {
+			return
+		}
+		sv := asVal(cn)
 		if existing, ok := m[spreadKey]; ok {
 			m[spreadKey] = mergeVals(existing.(Val), sv)
 		} else {

@@ -22,3 +22,5 @@ sibling-braced-canon	canon	x:{&:{k:a} &:{p:2}}	{"x":{&:{"k":"a"}&{"p":2}}}
 sibling-bare-canon	canon	&:k:a &:p:2	{&:{"k":"a"}&{"p":2}}
 sibling-bare-apply	gen	&:k:a &:p:2 m:{v:9}	{"m":{"k":"a","p":2,"v":9}}
 template-func-canon	canon	a:{&:{l:lower(HELLO)},b:{x:1}}	{"a":{&:{"l":"hello"},"b":{"l":"hello","x":1}}}
+spread-close-template-canon	canon	x:{&:close({k:key()})} x:a:{} x:c:move($.x.a)	{"x":{&:close({"k":"c"}),"a":{"k":"c"},"c":{"k":"c"}}}
+spread-hidden-key-resolves-canon	canon	x:{&:{k:key(),w:0}} x:a:z:1 x:c:move($.x.a) x:d:{m:move($.x.c)}	{"x":{&:{"k":key(),"w":0},"a":{"k":key(),"w":0,"z":1},"c":{"k":"c","w":0,"z":*1},"d":{"k":"d","m":{"k":*"m","w":*0,"z":**1},"w":0}}}
