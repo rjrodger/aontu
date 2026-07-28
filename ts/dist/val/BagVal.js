@@ -55,6 +55,17 @@ class BagVal extends FeatureVal_1.FeatureVal {
                 continue;
             }
             const optional = this.optionalKeys.includes('' + p);
+            // Lists append compactly: a skipped element (hidden, dropped
+            // optional) must not leave a hole/null at its index (matches the
+            // Go port, which also drops skipped elements).
+            const put = (v) => {
+                if (this.isMap) {
+                    out[p] = v;
+                }
+                else {
+                    out.push(v);
+                }
+            };
             // Optional unresolved disjuncts are not an error, just dropped.
             if (child.isDisjunct && optional) {
                 const dctx = ctx.clone({ err: [], collect: true });
@@ -62,7 +73,7 @@ class BagVal extends FeatureVal_1.FeatureVal {
                 if (undefined === cval) {
                     continue;
                 }
-                out[p] = cval;
+                put(cval);
             }
             else if (child.isScalar
                 || child.isMap
@@ -83,7 +94,14 @@ class BagVal extends FeatureVal_1.FeatureVal {
                 if (optional && (undefined === cval || (0, Val_1.empty)(cval))) {
                     continue;
                 }
-                out[p] = cval;
+                // A child that generates nothing contributes nothing: setting
+                // `undefined` would leave husk entries like {"q k": undefined}
+                // (the Go port also drops such children). Any real failure has
+                // already been recorded on ctx and raises below.
+                if (undefined === cval) {
+                    continue;
+                }
+                put(cval);
             }
             else if (child.isNil) {
                 ctx.adderr(child);

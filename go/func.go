@@ -58,7 +58,9 @@ func (f *FuncVal) Canon() string {
 }
 
 func (f *FuncVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: " + f.Canon()}
+	// Silent (mirrors KeyFuncVal.gen and the FuncBaseVal pattern in
+	// TS): the enclosing bag reports unresolved funcs.
+	return nil, nil
 }
 
 func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
@@ -83,6 +85,9 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		}
 	}
 
+	// Resolve operands into a scratch slice WITHOUT writing them back:
+	// a stuck func keeps its original operands in canon (mirrors TS
+	// FuncBaseVal/OpBaseVal, which only pass resolved args to resolve).
 	var out Val = f
 	pegdone := true
 	newpeg := make([]Val, 0, len(f.peg))
@@ -101,7 +106,6 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 			newpeg = append(newpeg, na)
 		}
-		f.peg = newpeg
 	}
 
 	if pegdone {

@@ -33,6 +33,10 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 		return o
 	}
 
+	// Resolve operands into a scratch slice WITHOUT writing them back:
+	// a stuck op keeps its original operands (`$flag+[...]` renders the
+	// unresolved $flag), matching TS OpBaseVal.unify, which also only
+	// passes the resolved args to operate().
 	var out Val = o
 	pegdone := true
 	newpeg := make([]Val, len(o.peg))
@@ -45,10 +49,9 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 			pegdone = false
 		}
 	}
-	o.peg = newpeg
 
 	if pegdone {
-		result := o.operate()
+		result := o.operate(newpeg)
 		if result == nil {
 			switch {
 			case isTop(peer):
@@ -77,25 +80,33 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 	return out
 }
 
-// operate computes the result once both operands are concrete.
-func (o *PlusOpVal) operate() Val {
-	a := primatize(o.peg[0])
-	b := primatize(o.peg[1])
+// operate computes the result once both operands are concrete. Only
+// concrete scalar operands are valid (mirrors PlusOpVal.operate in TS):
+// kinds, maps, lists, null, top and funcs do not coerce — the op stays
+// unresolved and generate() reports it.
+func (o *PlusOpVal) operate(args []Val) Val {
+	a := primatize(args[0])
+	b := primatize(args[1])
+	if a == nil || b == nil {
+		return nil
+	}
+
+	ab, abool := a.(bool)
+	bb, bbool := b.(bool)
+	_, astr := a.(string)
+	_, bstr := b.(string)
 
 	var peg any
 	switch {
-	case a == nil && b != nil:
-		peg = b
-	case b == nil && a != nil:
-		peg = a
+	case abool && bbool:
+		peg = ab || bb
+	case astr || bstr:
+		peg = primStr(a) + primStr(b)
+	case abool || bbool:
+		// boolean mixed with a number does not coerce (no 0/1).
+		return nil
 	default:
-		ab, aok := a.(bool)
-		bb, bok := b.(bool)
-		if aok && bok {
-			peg = ab || bb
-		} else {
-			peg = plusAdd(a, b)
-		}
+		peg = plusAdd(a, b)
 	}
 
 	switch p := peg.(type) {
@@ -114,8 +125,16 @@ func (o *PlusOpVal) operate() Val {
 	return nil
 }
 
-// primatize extracts the native value of a scalar operand.
+// primatize extracts the native value of a scalar operand. A pref
+// operand contributes its preferred value (`pref(1)+2`).
 func primatize(v Val) any {
+	for {
+		pv, ok := v.(*PrefVal)
+		if !ok {
+			break
+		}
+		v = pv.peg
+	}
 	if sv, ok := v.(*ScalarVal); ok {
 		return sv.peg
 	}

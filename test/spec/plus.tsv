@@ -8,3 +8,8 @@ group	gen	x:(1)	{"x":1}
 group-add	gen	x:(1+2)	{"x":3}
 group-pos	gen	x:(+3+4)	{"x":7}
 deep-add	gen	a:b:c:10+5	{"a":{"b":{"c":15}}}
+bool-or	gen	x:true+false	{"x":true}
+str-num-concat	gen	x:a+1	{"x":"a1"}
+qstr-num-concat	gen	x:"q"+0.001	{"x":"q0.001"}
+pref-operand	gen	x:pref(1)+2	{"x":3}
+top-operand-err	err	x:top+1	Cannot resolve value

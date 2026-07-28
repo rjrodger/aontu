@@ -8,3 +8,6 @@ constraint	gen	a:$foo & number	{"a":11}
 multi	gen	x:$foo y:$bar z:$flag	{"x":11,"y":"hello","z":true}
 canon	canon	a:$foo	{"a":11}
 unknown	err	a:$nope	Cannot
+var-plus	gen	x:$foo+1	{"x":12}
+var-pref-kind-narrow	gen	x:*integer&$bar	{"x":"hello"}
+var-unknown-ref-part	err	K:$ba.r	Cannot unify

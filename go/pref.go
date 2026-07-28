@@ -22,8 +22,12 @@ func newPref(v Val) *PrefVal {
 	return p
 }
 
-func (p *PrefVal) cjo() int      { return 30000 }
-func (p *PrefVal) superior() Val { return p.peg.superior() }
+func (p *PrefVal) cjo() int { return 30000 }
+
+// superior of a pref is TOP (TS PrefVal inherits FeatureVal's
+// superior): a nested pref peg (`**hello & false`) lets the concrete
+// peer win instead of clashing with the inner value's kind.
+func (p *PrefVal) superior() Val { return top() }
 func (p *PrefVal) Canon() string { return "*" + p.peg.Canon() }
 
 func (p *PrefVal) Gen(ctx *Ctx) (any, error) {

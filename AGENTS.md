@@ -212,6 +212,18 @@ be added to `test/spec/*.tsv`:
   error nil in Go. `generate` errors in both; only `unify(src).canon` of
   such an *invalid* source differs, which the spec (whose canon rows are
   valid sources) never observes.
+- **Malformed-input acceptance edges.** Fuzzing surfaced a residual
+  family of *degenerate* inputs where the two parsers disagree about
+  whether to accept at all: nested implicit lists from adjacent values
+  in expression positions (`pref(1-3)`, `close(([]%))`), and stray-quote
+  juxtapositions (`1'00]...`, `"q k""?:...`) — one side errors, the
+  other parses to a (differently shaped) junk value. Well-formed
+  sources are unaffected.
+- **Root-level scalar spreads over `$var` keys.** `k1:$flag &:boolean`
+  raises an internal error in TS but unifies correctly in Go (the TS
+  root-spread machinery mishandles the resolved var). Here the Go
+  behaviour is the sensible one; the TS fix needs deeper unify-internal
+  work, so these rows stay out of the shared spec.
 
 > **Previously divergent, now fixed:** numeric canon formatting at
 > extreme magnitudes. Go's `formatNumber` (go/scalar.go) now reproduces

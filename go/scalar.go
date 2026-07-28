@@ -118,7 +118,10 @@ func newScalarKind(k Kind) *ScalarKindVal {
 	return v
 }
 
-func (k *ScalarKindVal) superior() Val { return k }
+// superior of a kind is TOP (TS ScalarKindVal inherits FeatureVal's
+// superior): a pref whose peg is a kind (`*integer & "hello"`) lets any
+// concrete peer narrow it rather than clashing with the kind.
+func (k *ScalarKindVal) superior() Val { return top() }
 func (k *ScalarKindVal) Canon() string { return k.kind.String() }
 
 func (k *ScalarKindVal) Gen(ctx *Ctx) (any, error) {

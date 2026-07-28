@@ -112,15 +112,20 @@ func newTop() *TopVal {
 	return t
 }
 
-var theTop = newTop()
-
-func top() *TopVal { return theTop }
+// A fresh instance per call (mirrors ts/src/val/top.ts): unify mutates
+// Vals in place — setPaths writes paths, move() hide-walks set marks —
+// so a shared TOP singleton could be corrupted by one parse and change
+// the behaviour of every later parse in the same process.
+func top() *TopVal { return newTop() }
 
 func (t *TopVal) Canon() string { return "top" }
 func (t *TopVal) superior() Val { return t }
 
 func (t *TopVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: top"}
+	// Silent (mirrors TopVal.gen returning undefined in TS): the
+	// enclosing bag decides whether an unresolved top is an error
+	// (direct child) or dropped (under a pref / optional subtree).
+	return nil, nil
 }
 
 func (t *TopVal) Unify(peer Val, ctx *Ctx) Val {

@@ -147,7 +147,19 @@ func advanceSpreadTemplate(s Val, ctx *Ctx) {
 	for _, k := range tm.keys {
 		child := tm.peg[k]
 		if child.Dc() != DONE && !hasPathFunc(child) {
-			tm.set(k, unite(ctx, child, top()))
+			// Resolve in trial isolation: in TS the template is never
+			// unified as a whole (resolution leaks in via shared child
+			// objects), so a conflict inside the template (e.g. a
+			// duplicate template key `*"q" & null`) must not raise
+			// here — the application sites report their own errors.
+			saved := ctx.err
+			ctx.err = nil
+			rv := unite(ctx, child, top())
+			failed := len(ctx.err) > 0 || rv.Nil()
+			ctx.err = saved
+			if !failed {
+				tm.set(k, rv)
+			}
 		}
 	}
 }
@@ -232,7 +244,13 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 		return nil, nil
 	}
 	out := map[string]any{}
-	for _, k := range m.keys {
+	// Iterate alphabetically (mirrors the entries sort in TS
+	// BagVal.gen): the JSON output is order-independent, but the
+	// collect-mode truncating break must keep the same sorted prefix
+	// in both implementations.
+	keys := append([]string(nil), m.keys...)
+	sort.Strings(keys)
+	for _, k := range keys {
 		child := m.peg[k]
 		// Type and hidden values are excluded from generation.
 		if child.markedType() || child.markedHide() {
@@ -243,20 +261,81 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			continue
 		}
 		optional := m.isOptional(k)
-		cv, err := child.Gen(ctx)
+
+		// Non-generable child kinds (top, kinds, funcs, vars, ops,
+		// conjuncts) fail at the bag level (mirrors the branch list in
+		// TS BagVal.gen): dropped when optional, a truncating break
+		// under collect, an error otherwise.
+		if !genable(child) {
+			if optional {
+				continue
+			}
+			if ctx != nil && ctx.collect {
+				break
+			}
+			return nil, &AontuError{Msg: "Cannot resolve value: " + child.Canon()}
+		}
+
+		// An optional child generates in an isolated collect context so
+		// inner failures drop parts of the subtree rather than raising.
+		gctx := ctx
+		if optional && ctx != nil && !ctx.collect {
+			c2 := *ctx
+			c2.err = nil
+			c2.collect = true
+			gctx = &c2
+		}
+
+		cv, err := child.Gen(gctx)
 		if err != nil {
 			// An optional key that does not resolve is dropped, not an error.
 			if optional {
 				continue
 			}
+			if ctx != nil && ctx.collect {
+				continue
+			}
 			return nil, err
 		}
+		// A JSON null child survives even when optional (`b?:null` keeps
+		// b: null); other nils and optional empties contribute nothing.
+		if cv == nil && gensNull(child) {
+			out[k] = nil
+			continue
+		}
 		if optional && (cv == nil || isEmptyGen(cv)) {
+			continue
+		}
+		// A nil from a child that doesn't stand for JSON null (a pref
+		// of top, a silent leaf) contributes nothing.
+		if cv == nil {
 			continue
 		}
 		out[k] = cv
 	}
 	return out, nil
+}
+
+// genable mirrors the generable-child branch list in TS BagVal.gen.
+func genable(v Val) bool {
+	switch v.(type) {
+	case *ScalarVal, *MapVal, *ListVal, *PrefVal, *RefVal,
+		*DisjunctVal, *NilVal:
+		return true
+	}
+	return false
+}
+
+// gensNull reports whether a child's generated nil means JSON null
+// (rather than "nothing to contribute").
+func gensNull(v Val) bool {
+	switch n := v.(type) {
+	case *ScalarVal:
+		return n.kind == KindNull
+	case *PrefVal:
+		return gensNull(n.peg)
+	}
+	return false
 }
 
 // isEmptyGen reports whether a generated value is an empty map or list.
@@ -332,6 +411,17 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		child := m.peg[k]
 		cv := unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k), ctx))
 		out.set(k, cv)
+		// Write the resolved child back into the receiver too: TS bags
+		// evolve in place (see the mutation caveat in AGENTS.md), so a
+		// map embedded in a stuck op/func shows its children's
+		// resolution in canon even though the op discards the unify
+		// return value. Vals are single-use, so this is safe — except
+		// for path-dependent children (key(), refs): those must stay
+		// pending in the receiver so a ref spread's snapshot clones the
+		// unresolved form and re-resolves per destination.
+		if !hasPathFunc(child) {
+			m.peg[k] = cv
+		}
 		if cv.Dc() != DONE {
 			done = false
 		}

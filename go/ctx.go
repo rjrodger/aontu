@@ -13,6 +13,10 @@ type Ctx struct {
 	cc     int             // current fixpoint pass (for late-resolving funcs)
 	hidden map[string]bool // source paths hidden by move()
 	vars   map[string]Val  // user-provided variables, resolved by $name
+	// collect: generation inside an optional subtree — failures are
+	// isolated (skipped/partial output) instead of raised, mirroring
+	// the cctx clone({err: [], collect: true}) in TS BagVal.gen.
+	collect bool
 	// typeSnap caches the structural inner template of a type() reached
 	// via a ref spread (unwrapTypeSpread), captured while its key()/path()
 	// are still unresolved so later passes don't re-read the source-

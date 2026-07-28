@@ -289,10 +289,17 @@ help isolate the syntax error.`,
       if (!(val instanceof IntegerVal) && !(val instanceof NumberVal)) {
         return addsite(new NilVal({ why: 'negative' }), r, ctx)
       }
-      val.peg = -1 * val.peg
+      // Build a fresh Val rather than mutating in place: the expr plugin
+      // can evaluate the same node twice (e.g. inside `*-1` or a
+      // disjunct member), and an in-place `peg = -peg` applied twice
+      // silently un-negates the number.
+      let peg = -1 * val.peg
       // Normalize -0 to 0 (keeps the AST and canon free of negative zero).
-      if (0 === val.peg) val.peg = 0
-      return addsite(val, r, ctx)
+      if (0 === peg) peg = 0
+      const out = val instanceof IntegerVal
+        ? new IntegerVal({ peg })
+        : new NumberVal({ peg })
+      return addsite(out, r, ctx)
     },
 
     'positive-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
@@ -791,6 +798,43 @@ function makeModelResolver(options: any) {
 }
 
 
+// rawToVal converts a raw parse node (or raw elements inside one) into
+// the matching Val. Used for implicit top-level lists, whose nodes skip
+// the aontu val rule conversions (mirrors asVal in go/lang.go; like
+// there, source text is unavailable, so an integral number is an
+// integer).
+function rawToVal(n: any): Val {
+  if (null == n) {
+    return new NullVal({ peg: null })
+  }
+  if (true === n.isVal) {
+    return n
+  }
+  if (Array.isArray(n)) {
+    return new ListVal({ peg: n.map(rawToVal) })
+  }
+  const t = typeof n
+  if ('string' === t) {
+    return new StringVal({ peg: n })
+  }
+  if ('number' === t) {
+    return Number.isInteger(n) ?
+      new IntegerVal({ peg: n }) : new NumberVal({ peg: n })
+  }
+  if ('boolean' === t) {
+    return new BooleanVal({ peg: n })
+  }
+  if ('object' === t) {
+    const peg: Record<string, Val> = {}
+    for (const k in n) {
+      peg[k] = rawToVal(n[k])
+    }
+    return new MapVal({ peg })
+  }
+  return new NilVal({ why: 'parse_unknown' })
+}
+
+
 class Lang {
   jsonic: Jsonic
   opts: AontuOptions
@@ -857,6 +901,14 @@ class Lang {
 
     try {
       val = this.jsonic(src, jm)
+
+      // An implicit top-level list (`a b`, `1,2`) is built by the core
+      // jsonic grammar without passing through the aontu val/list rules,
+      // so the root (and its elements) arrive as raw JS values. Convert
+      // them the same way the Go port's asVal post-walk does.
+      if (null != val && true !== (val as any).isVal) {
+        val = rawToVal(val)
+      }
     }
     catch (e: any) {
       if (e instanceof JsonicError || 'JsonicError' === e.constructor.name) {

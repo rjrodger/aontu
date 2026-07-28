@@ -11,3 +11,9 @@ keep-nested-fill	gen	a:{id?:{field:string},z:2} a:{id:{field:F1}}	{"a":{"id":{"f
 top-optional	gen	a?:1	{"a":1}
 top-optional-canon	canon	a?:1	{"a"?:1}
 optional-merge-canon	canon	a:{x?:number} a:{x:11}	{"a":{"x"?:11}}
+optional-null-kept	gen	b?:null	{"b":null}
+optional-null-kept-canon	canon	b?:null	{"b"?:null}
+optional-elided	gen	a?:	{"a":null}
+optional-partial-subtree	gen	a?:{x:1,y:top}	{"a":{"x":1}}
+optional-dup-merge	gen	a:1 a?:1	{"a":1}
+optional-dup-conflict	err	a:1 a?:2	Cannot unify value

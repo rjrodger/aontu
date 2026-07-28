@@ -19,24 +19,39 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
         return 'plus';
     }
     operate(_ctx, args) {
-        let a = this.primatize(args[0]?.peg);
-        let b = this.primatize(args[1]?.peg);
-        let peg = undefined;
-        if (undefined === a && undefined !== b) {
-            peg = b;
+        // Only concrete scalar operands are valid: anything else (kinds,
+        // maps, lists, null, top, funcs) must not coerce — the JS `+` would
+        // leak internals like "[object Object]" into output. A non-scalar
+        // operand leaves the op unresolved, which generate() reports.
+        const prim = (v) => {
+            // A pref operand contributes its preferred value (`pref(1)+2`).
+            while (v?.isPref) {
+                v = v.peg;
+            }
+            const p = v?.isVal && v.isScalar ? v.peg : undefined;
+            const t = typeof p;
+            return 'string' === t || 'number' === t || 'boolean' === t ? p : undefined;
+        };
+        let a = prim(args[0]);
+        let b = prim(args[1]);
+        if (undefined === a || undefined === b) {
+            return undefined;
         }
-        else if (undefined === b && undefined !== a) {
-            peg = a;
+        const at = typeof a;
+        const bt = typeof b;
+        let peg = undefined;
+        if ('boolean' === at && 'boolean' === bt) {
+            peg = a || b;
+        }
+        else if ('string' === at || 'string' === bt) {
+            peg = String(a) + String(b);
+        }
+        else if ('boolean' === at || 'boolean' === bt) {
+            // boolean mixed with a number does not coerce (no JS 0/1).
+            return undefined;
         }
         else {
-            const at = typeof a;
-            const bt = typeof b;
-            if ('boolean' === at && 'boolean' === bt) {
-                peg = a || b;
-            }
-            else {
-                peg = a + b;
-            }
+            peg = a + b;
         }
         let pegtype = typeof peg;
         let out = undefined;

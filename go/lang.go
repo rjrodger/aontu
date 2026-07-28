@@ -434,11 +434,21 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 
 	// An optional pair (key?:value): the custom alt bypasses jsonic's
 	// value storage, so store the value ourselves and record the key.
+	// A duplicate key merges into a conjunct exactly like the Map.Merge
+	// option does for normal pairs (`a:1 a?:2` -> `a:1&2`).
 	if r.U["optional"] == true {
 		opt, _ := m[optionalKey].([]string)
 		m[optionalKey] = append(opt, key)
+		var cn any
 		if r.Child != nil {
-			m[key] = r.Child.Node
+			cn = r.Child.Node
+		}
+		// An elided optional value (`a?:`) is null, like `a:` (the nil
+		// becomes a NullVal in asVal).
+		if prev, ok := m[key]; ok && prev != nil {
+			m[key] = mergeVals(asVal(prev), asVal(cn))
+		} else {
+			m[key] = cn
 		}
 	}
 
@@ -614,6 +624,23 @@ func incompleteNil(r *jsonic.Rule) Val {
 
 // evaluate builds Val nodes for the expr operators.
 func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interface{}) interface{} {
+	// Top-level expression wrappers are evaluated outside any rule
+	// (expr.Evaluation(nil, nil, ...) in asValDepth); the NoRule
+	// sentinel keeps the r.ON source-position guards safe.
+	if r == nil {
+		r = jsonic.NoRule
+	}
+	// Drop unfilled (nil) operator terms — a dangling `*` in a list
+	// leaves a nil term rather than a cyclic one — so the
+	// missing-operand guards below fire exactly as the dropUnfilled
+	// filter does in ts/src/lang.ts.
+	kept := make([]interface{}, 0, len(terms))
+	for _, t := range terms {
+		if t != nil {
+			kept = append(kept, t)
+		}
+	}
+	terms = kept
 	switch op.Name {
 	case "conjunct-infix":
 		vals := toVals(terms)
@@ -757,6 +784,11 @@ func asValDepth(node any, depth int) Val {
 	case Val:
 		return n
 	case *jsonic.ListRef:
+		// An empty expression wrapper is an elided value (`a?:` with
+		// nothing after the colon) — null, like a plain `a:`.
+		if len(n.Val) == 0 && n.Child == nil {
+			return newNull()
+		}
 		// A top-level expression is returned as an unevaluated expr
 		// wrapper; evaluate it (map-value expressions are already
 		// evaluated during parse). Snip any cyclic dangling-operator
@@ -807,6 +839,11 @@ func asValDepth(node any, depth int) Val {
 		// An elided value or element (`a:`, `[,]`) is null in jsonic;
 		// mirror the TS NullVal conversion. (An empty *source* still
 		// yields {} — see the out == nil branch in parseBase.)
+		return newNull()
+	}
+	// The jsonic Undefined sentinel marks a missing value (`a?:` with
+	// nothing after the colon) — null, like an elided plain value.
+	if jsonic.IsUndefined(node) {
 		return newNull()
 	}
 	return newNil("parse_unknown")

@@ -137,8 +137,36 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 				}
 				modes = append(modes, "PARENT")
 			default:
-				// Generic variable lookup is not yet supported.
-				return nil
+				// Generic variable part ($name.r): resolve via the
+				// variable table (mirrors the part.unify(top())
+				// resolution in ts RefVal.find); an unknown variable is
+				// an error (recorded by VarVal.Unify via makeNilErr).
+				pv := vv.Unify(top(), ctx)
+				if pv.Nil() {
+					return pv
+				}
+				sv, ok := pv.(*ScalarVal)
+				if !ok {
+					// A non-scalar variable is not a usable path part
+					// (TS coerces to a string that never matches).
+					return makeNilErr(ctx, "no_path", rv, nil)
+				}
+				switch sv.kind {
+				case KindString:
+					parts = append(parts, sv.peg.(string))
+				case KindInteger:
+					parts = append(parts, strconv.FormatInt(sv.peg.(int64), 10))
+				case KindNumber:
+					parts = append(parts, formatNumber(sv.peg.(float64)))
+				case KindBoolean:
+					if sv.peg.(bool) {
+						parts = append(parts, "true")
+					} else {
+						parts = append(parts, "false")
+					}
+				default:
+					return makeNilErr(ctx, "no_path", rv, nil)
+				}
 			}
 			continue
 		}
@@ -336,12 +364,21 @@ func (vv *VarVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 	if ctx.vars != nil {
 		if found, ok := ctx.vars[name]; ok {
-			return clonePath(found, cp(vv.path))
+			// Unify the resolved value with the peer so a constraint
+			// unified against the var (e.g. a spread clone) applies to
+			// its value rather than being silently dropped.
+			out := clonePath(found, cp(vv.path))
+			if peer != nil && !isTop(peer) {
+				return unite(ctx, out, peer)
+			}
+			return out
 		}
 	}
 	return makeNilErr(ctx, "unknown_var", vv, peer)
 }
 
 func (vv *VarVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: " + vv.Canon()}
+	// Silent (mirrors the TS FeatureVal gen pattern): the enclosing
+	// bag reports unresolved vars.
+	return nil, nil
 }

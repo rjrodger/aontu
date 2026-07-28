@@ -48,9 +48,25 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 		if e.markedType() || e.markedHide() {
 			continue
 		}
+		// Mirrors the MapVal.Gen child handling (which mirrors TS
+		// BagVal.gen): non-generable elements error at the bag level
+		// (or truncate under collect); a nil that doesn't stand for
+		// JSON null contributes nothing.
+		if !genable(e) {
+			if ctx != nil && ctx.collect {
+				break
+			}
+			return nil, &AontuError{Msg: "Cannot resolve value: " + e.Canon()}
+		}
 		ev, err := e.Gen(ctx)
 		if err != nil {
+			if ctx != nil && ctx.collect {
+				continue
+			}
 			return nil, err
+		}
+		if ev == nil && !gensNull(e) {
+			continue
 		}
 		out = append(out, ev)
 	}
@@ -85,6 +101,17 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	for i, e := range l.peg {
 		ev := unite(ctx, e, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
 		out.peg = append(out.peg, ev)
+		// Write the resolved element back into the receiver too: TS
+		// bags evolve in place (see the mutation caveat in AGENTS.md),
+		// so a list embedded in a stuck op/func shows its children's
+		// resolution in canon even though the op discards the unify
+		// return value. Vals are single-use, so this is safe — except
+		// for path-dependent elements (key(), refs), which must stay
+		// pending for per-destination spread re-resolution (see the
+		// matching guard in MapVal.Unify).
+		if !hasPathFunc(e) {
+			l.peg[i] = ev
+		}
 		if ev.Dc() != DONE {
 			done = false
 		}
