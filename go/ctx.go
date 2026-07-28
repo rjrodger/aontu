@@ -35,6 +35,24 @@ func (c *Ctx) isHidden(path []string) bool {
 	return c.hidden != nil && c.hidden[pathKey(path)]
 }
 
+// isHiddenPrefix reports whether path or any ancestor of it has been
+// hidden by move(). Used by the FuncVal freeze shortcut: a func inside
+// a moved-away (hidden) subtree freezes as pending instead of
+// resolving (in TS the hide mark reaches the func object itself and
+// FuncBaseVal.unify freezes marked funcs against TOP; the Go port
+// tracks hiding by path, so the ancestor check is the equivalent).
+func (c *Ctx) isHiddenPrefix(path []string) bool {
+	if c.hidden == nil {
+		return false
+	}
+	for i := 1; i <= len(path); i++ {
+		if c.hidden[pathKey(path[:i])] {
+			return true
+		}
+	}
+	return false
+}
+
 func pathKey(path []string) string {
 	return strings.Join(path, "\x00")
 }

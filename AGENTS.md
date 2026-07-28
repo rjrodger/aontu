@@ -199,13 +199,27 @@ be added to `test/spec/*.tsv`:
 - **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
   `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
   Go; this is invisible to the shared spec (which is unify-level).
-- **Canon of move()-hidden ghost nodes with a `key()` spread.** In
-  `x:{&:{y:1,k:key()}} x:a:z:2 x:c:move($.x.a)` the moved-away (hidden)
-  map `a` renders `k:key()` in TS canon but `k:"a"` in Go: TS spread
-  clones *share* the template's child Vals, and `key()` deliberately
-  clones instead of resolving in place, so the ghost keeps the pending
-  func. Generated output is identical (the node is hidden); only the
-  unify-canon of the invisible node differs.
+- **Move-corner clone-timing artifacts.** TS's ref/move clones are
+  taken at whatever resolution state the target is in *at clone time*
+  and share objects with the source, so a handful of move() corner
+  renderings depend on TS's pass ordering: refs INTO a moved-away
+  ghost (`y:$.x.a.k` reads the source-resolved key in TS, empty in
+  Go), the inner keys of a hide()/type()-func-wrapped ghost (TS shows
+  the destination's resolution via the shared object), chained-move
+  intermediate ghosts (the frozen pref() arg renders at a different
+  resolution stage), and gen visibility when a hide()-marked map is
+  moved in one statement order but not the other. Both suites cover
+  the deterministic ghost behaviours (see marks.tsv/func.tsv); these
+  order-dependent corners stay out of the shared spec.
+
+> **Previously divergent, now fixed:** the canon of move()-hidden ghost
+> nodes. The spread constraint now applies once per child in Go
+> (mirroring the `_spr` stamp in TS MapVal.unify), map marks ratchet
+> onto children each pass, and a pending func inside a hidden subtree
+> freezes against TOP (the TS FuncBaseVal marked-func freeze), so a
+> moved-away ghost keeps `key()` pending in canon exactly as TS does —
+> whether the func was spread-delivered or directly written. Covered by
+> the func.tsv ghost rows.
 - **Canon of invalid sources.** A source that fails in both
   implementations may fail at different stages — e.g. `k-x:1` (bare key
   containing `-`) is a parse error in TS but parses to a list holding an

@@ -85,6 +85,35 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		}
 	}
 
+	// A marked func — or a pending func delivered by a spread into a
+	// move()-hidden subtree — freezes against TOP instead of resolving
+	// (mirrors the `peer.isTop && (mark.type || mark.hide) -> dc =
+	// DONE` shortcut in TS FuncBaseVal.unify; in TS the ghost's
+	// spread-delivered func shares the never-resolved template object,
+	// which the path check reproduces for the Go port's deep clones).
+	// With the apply-once spread discipline in MapVal.Unify, a hidden
+	// ghost's children only ever self-unify against TOP, so this is
+	// the exact point its pending funcs freeze.
+	// (The timing matters and matches TS: funcs that resolve before the
+	// move()'s hide lands — e.g. upper() at pass 0 — are already done
+	// and never reach this check; the stragglers key() [delayed past
+	// cc 3] and chained-move prefs are exactly what TS leaves pending
+	// in ghosts.)
+	if isTop(peer) &&
+		(f.mtype || f.mhide ||
+			(ctx != nil && ctx.isHiddenPrefix(f.path))) {
+		f.setDc(DONE)
+		return f
+	}
+
+	// A frozen func stays frozen: folding it against TOP or an
+	// identical pending func (`key() & key()` in a hidden ghost, where
+	// both conjunct members froze in the member pass) keeps the
+	// pending form rather than re-resolving it.
+	if f.dc == DONE && (isTop(peer) || f.Canon() == peer.Canon()) {
+		return f
+	}
+
 	// Resolve operands into a scratch slice WITHOUT writing them back:
 	// a stuck func keeps its original operands in canon (mirrors TS
 	// FuncBaseVal/OpBaseVal, which only pass resolved args to resolve).
@@ -224,7 +253,14 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 			src.prefFound = true
 			return src
 		}
-		return walkPref(clonePath(args[0], cp(f.path)))
+		// Non-ref argument: defer behind a pref() func (exactly the
+		// PrefFuncVal wrap in TS MoveFuncVal.resolve) so the pref walk
+		// runs on the RESOLVED value — a raw func argument
+		// (`move(upper(aa))`) must end up as *"AA", not unwrapped.
+		nf := newFunc("pref", []Val{clonePath(args[0], cp(f.path))})
+		nf.path = cp(f.path)
+		nf.sp = f.sp
+		return nf
 	}
 	return makeNilErr(ctx, "func:"+f.name, f, nil)
 }
@@ -275,6 +311,7 @@ func setClosed(ctx *Ctx, f *FuncVal, args []Val, closed bool) Val {
 
 // keyFunc returns the key `move` levels up the path (KeyFuncVal.resolve).
 func keyFunc(f *FuncVal) Val {
+
 	move := 1
 	if len(f.peg) > 0 {
 		if sv, ok := f.peg[0].(*ScalarVal); ok && sv.kind == KindInteger {

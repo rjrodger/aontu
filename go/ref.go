@@ -231,11 +231,20 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		ctx.hide(refpath)
 	}
 	out := clonePath(node, cp(rv.path))
-	// copy(): the copied value is fully concrete — clear type/hide
-	// marks on the whole clone (the raw-ref counterpart of the
-	// walkMark in evaluate's copy case).
+	// A resolved reference's clone is concrete: clear type/hide marks
+	// on the whole clone, root included (mirrors the mark-clearing
+	// walk in TS RefVal.find). Note the resulting order dependence is
+	// TS's own: a ref that resolves while its target is still a
+	// pending hide()/type() func clones the func, whose resolution
+	// re-marks at the destination.
+	walkMark(out, true, false, true, false)
+	// copy(): the copied root's path is fully replaced by the
+	// destination (TS FuncBaseVal sets out.path = this.path on the
+	// resolved copy), unlike the transplant overlay that keeps deeper
+	// source tails — `y:copy($.x.a.k)` resolves key() against the bare
+	// [y] path (""), not [y,a,k].
 	if rv.copyFound {
-		walkMark(out, true, false, true, false)
+		forceRootPath(out, cp(rv.path))
 	}
 	// move(): the moved copy arrives as *preferences* (mirrors the
 	// PrefFuncVal wrap in TS MoveFuncVal.resolve). A target that is

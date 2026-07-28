@@ -69,6 +69,43 @@ type base struct {
 	path  []string // path from root (for reference resolution)
 	mtype bool     // type mark
 	mhide bool     // hide mark
+	// spr records the identity of the spread constraint already merged
+	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
+	// applies ONCE per child, and later passes only self-unify.
+	spr Val
+}
+
+func (b *base) setVpath(p []string) { b.path = p }
+
+func (b *base) getSpr() Val  { return b.spr }
+func (b *base) setSpr(s Val) { b.spr = s }
+
+// sprVal is implemented by every Val via the embedded base.
+type sprVal interface {
+	getSpr() Val
+	setSpr(Val)
+}
+
+func sprOf(v Val) Val {
+	if s, ok := v.(sprVal); ok {
+		return s.getSpr()
+	}
+	return nil
+}
+
+// forceRootPath replaces a Val's own path (root only — children keep
+// their clone-time paths). Used by the copy() resolution, whose root
+// path is fully truncated to the destination in TS.
+func forceRootPath(v Val, p []string) {
+	if b, ok := v.(interface{ setVpath([]string) }); ok {
+		b.setVpath(p)
+	}
+}
+
+func setSprOn(v Val, s Val) {
+	if h, ok := v.(sprVal); ok {
+		h.setSpr(s)
+	}
 }
 
 func (b *base) Dc() int             { return b.dc }

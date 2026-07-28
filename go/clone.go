@@ -50,6 +50,23 @@ func setPaths(v Val, path []string) {
 	}
 }
 
+// overlayPath rebases a cloned node's path: the destination walk path
+// overwrites the leading segments of the node's original path, and the
+// original TAIL beyond the destination's length is kept (the TS
+// Val.clone path behaviour). A transplant to a SHALLOWER destination
+// therefore keeps trailing source segments — `x:a:{k:key()} y:$.x.a`
+// gives y's key() the path [y,k,k] (dest [y,k] + orig tail [k]), so
+// key(1) resolves to "k", exactly as in TS.
+func overlayPath(dest, orig []string) []string {
+	if len(orig) <= len(dest) {
+		return cp(dest)
+	}
+	out := make([]string, len(orig))
+	copy(out, dest)
+	copy(out[len(dest):], orig[len(dest):])
+	return out
+}
+
 // clonePath deep-clones a Val, rebasing the subtree at the given path
 // (mirrors Val.clone in ts/src/val/Val.ts, used when a reference
 // resolves to a target). Done-state is preserved.
@@ -59,7 +76,7 @@ func clonePath(v Val, path []string) Val {
 		// Return a fresh TOP so marks (e.g. hide(top)) don't leak onto
 		// the shared singleton.
 		out := newTop()
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		return out
 	case *NilVal:
@@ -77,7 +94,7 @@ func clonePath(v Val, path []string) Val {
 	case *MapVal:
 		out := newMap()
 		out.dc = n.dc
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		out.closed = n.closed
 		out.optional = append([]string{}, n.optional...)
 		if n.spread != nil {
@@ -91,7 +108,7 @@ func clonePath(v Val, path []string) Val {
 	case *ListVal:
 		out := &ListVal{}
 		out.dc = n.dc
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		out.closed = n.closed
 		if n.spread != nil {
 			out.spread = clonePath(n.spread, path)
@@ -104,7 +121,7 @@ func clonePath(v Val, path []string) Val {
 	case *ConjunctVal:
 		out := newConjunct(nil)
 		out.dc = n.dc
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		for _, t := range n.peg {
 			out.peg = append(out.peg, clonePath(t, path))
@@ -113,7 +130,7 @@ func clonePath(v Val, path []string) Val {
 	case *DisjunctVal:
 		out := newDisjunct(nil)
 		out.dc = n.dc
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		for _, t := range n.peg {
 			out.peg = append(out.peg, clonePath(t, path))
@@ -123,14 +140,14 @@ func clonePath(v Val, path []string) Val {
 		out := newPref(clonePath(n.peg, path))
 		out.dc = n.dc
 		out.rank = n.rank
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		return out
 	case *RefVal:
 		out := &RefVal{absolute: n.absolute, prefix: n.prefix, hideFound: n.hideFound, prefFound: n.prefFound, copyFound: n.copyFound}
 		out.dc = n.dc
 		out.sp = n.sp
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		out.peg = append([]any{}, n.peg...)
 		return out
@@ -138,13 +155,13 @@ func clonePath(v Val, path []string) Val {
 		out := &VarVal{peg: n.peg}
 		out.dc = n.dc
 		out.sp = n.sp
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		return out
 	case *PlusOpVal:
 		out := &PlusOpVal{}
 		out.dc = n.dc
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
 		copyMarks(out, n)
 		for _, t := range n.peg {
 			out.peg = append(out.peg, clonePath(t, path))
@@ -153,7 +170,11 @@ func clonePath(v Val, path []string) Val {
 	case *FuncVal:
 		out := &FuncVal{name: n.name}
 		out.dc = n.dc
-		out.path = cp(path)
+		out.path = overlayPath(path, n.path)
+		// The spread-material stamp survives cloning (the key() delay
+		// path re-clones each pass; a spread-delivered func must still
+		// be recognisable when it later freezes in a hidden subtree).
+		out.spr = n.spr
 		copyMarks(out, n)
 		for _, a := range n.peg {
 			out.peg = append(out.peg, clonePath(a, path))

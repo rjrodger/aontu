@@ -144,6 +144,14 @@ func advanceSpreadTemplate(s Val, ctx *Ctx) {
 	if !ok {
 		return
 	}
+	// A template containing ANY path-dependent func (key(), path(),
+	// refs) stays raw wholesale — in TS such templates go through the
+	// snapshot path and never leak resolution, even for their
+	// path-independent siblings (`&:{k:key(),u:upper(q)}` keeps
+	// upper("q") raw too).
+	if hasPathFunc(tm) {
+		return
+	}
 	for _, k := range tm.keys {
 		child := tm.peg[k]
 		if child.Dc() != DONE && !hasPathFunc(child) {
@@ -161,6 +169,36 @@ func advanceSpreadTemplate(s Val, ctx *Ctx) {
 				tm.set(k, rv)
 			}
 		}
+	}
+}
+
+// markSprFuncs stamps every FuncVal in a spread clone with the spread's
+// identity (see spreadCloneFor).
+func markSprFuncs(v Val, s Val) {
+	switch n := v.(type) {
+	case *FuncVal:
+		n.spr = s
+		for _, a := range n.peg {
+			markSprFuncs(a, s)
+		}
+	case *MapVal:
+		for _, k := range n.keys {
+			markSprFuncs(n.peg[k], s)
+		}
+	case *ListVal:
+		for _, e := range n.peg {
+			markSprFuncs(e, s)
+		}
+	case *ConjunctVal:
+		for _, t := range n.peg {
+			markSprFuncs(t, s)
+		}
+	case *DisjunctVal:
+		for _, t := range n.peg {
+			markSprFuncs(t, s)
+		}
+	case *PrefVal:
+		markSprFuncs(n.peg, s)
 	}
 }
 
@@ -236,6 +274,12 @@ func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	// HIDE marks are preserved: a hide() spread (`&:{h:hide(1)}`) is meant
 	// to hide the spread field at the destination.
 	walkMark(c, true, false, false, false)
+	// Stamp the clone's funcs as spread material: in TS these objects
+	// are shared with the never-resolving template, so when they end up
+	// in a move()-hidden ghost they render pending; the stamp lets
+	// FuncVal.Unify reproduce that freeze for the Go port's deep clones
+	// (directly-written funcs in a ghost stay unstamped and resolve).
+	markSprFuncs(c, s)
 	return c
 }
 
@@ -406,10 +450,36 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 	spreadCj = unwrapTypeSpread(spreadCj, ctx)
 
-	// Own children: each is unified with a fresh clone of the spread.
+	// Own children. The spread constraint applies ONCE per child
+	// (mirrors the `_spr` stamp in TS MapVal.unify): the first
+	// application merges the template into the child, so later passes
+	// only self-unify against TOP — where pending funcs in hidden
+	// subtrees freeze (see FuncVal.Unify) instead of being re-fed
+	// template clones, and already-resolved values are not re-clobbered.
 	for _, k := range m.keys {
 		child := m.peg[k]
-		cv := unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k), ctx))
+		// Map marks ratchet onto children each pass (the
+		// propagateMarks(this, child) in TS MapVal.unify).
+		if m.mtype && !child.markedType() {
+			child.setMarkType(true)
+		}
+		if m.mhide && !child.markedHide() {
+			child.setMarkHide(true)
+		}
+		var cv Val
+		if !isTop(spreadCj) && sprOf(child) == spreadCj {
+			if child.Dc() == DONE {
+				cv = child
+			} else {
+				cv = unite(ctx, child, top())
+			}
+			setSprOn(cv, spreadCj)
+		} else {
+			cv = unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k), ctx))
+			if !isTop(spreadCj) && !cv.Nil() {
+				setSprOn(cv, spreadCj)
+			}
+		}
 		out.set(k, cv)
 		// Write the resolved child back into the receiver too: TS bags
 		// evolve in place (see the mutation caveat in AGENTS.md), so a
@@ -440,9 +510,14 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			} else {
 				uv = unite(ctx, pc, top())
 			}
-			// A spread on the receiving map also applies to peer keys.
-			if m.spread != nil {
+			// A spread on the receiving map also applies to peer keys —
+			// once per child, same apply-once discipline as the own-key
+			// loop (the peer-loop `_spr` stamp in TS MapVal.unify).
+			if m.spread != nil && sprOf(uv) != spreadCj {
 				uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(m.path), pk), ctx))
+				if !isTop(spreadCj) && !uv.Nil() {
+					setSprOn(uv, spreadCj)
+				}
 			}
 			out.set(pk, uv)
 			if uv.Dc() != DONE {
