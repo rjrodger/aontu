@@ -33,6 +33,10 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 		return o
 	}
 
+	// Operands are driven at the op's own location (TS drives them with
+	// the same undescended ctx; the slot hint is single-use per unite).
+	slot := ctx.slot
+
 	// Resolve operands into a scratch slice WITHOUT writing them back:
 	// a stuck op keeps its original operands (`$flag+[...]` renders the
 	// unresolved $flag), matching TS OpBaseVal.unify, which also only
@@ -42,6 +46,7 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 	newpeg := make([]Val, len(o.peg))
 	for i, arg := range o.peg {
 		if arg.Dc() != DONE {
+			ctx.slot = slot
 			arg = unite(ctx, arg, top())
 		}
 		newpeg[i] = arg

@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"math"
 	"strconv"
 	"strings"
 )
@@ -211,6 +212,18 @@ func jsonString(s string) string {
 // numeric canon output identical to the TS implementation at every
 // magnitude.
 func formatNumber(f float64) string {
+	// Non-finite values render as JS Number.toString does; they cannot
+	// arrive via the parser (an overflowing literal becomes not_number)
+	// but are reachable through the exported NewNumber constructor.
+	if math.IsNaN(f) {
+		return "NaN"
+	}
+	if math.IsInf(f, 1) {
+		return "Infinity"
+	}
+	if math.IsInf(f, -1) {
+		return "-Infinity"
+	}
 	mant := strconv.FormatFloat(f, 'e', -1, 64)
 	i := strings.IndexByte(mant, 'e')
 	digits := mant[:i]

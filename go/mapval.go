@@ -138,7 +138,34 @@ func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 // ref) counts as path-INdependent, so such a spread template is shared
 // (tier 1) and advances in place; only `*<pref>` chains see through one
 // level. Faithfully mirrored here — do not "fix" the recursion.
+//
+// Like the TS getter, the answer is memoized per Val (base.pdep): an
+// in-place refinement can resolve a key()/ref after the first
+// classification, and the clone-vs-share decision must stay stable
+// across passes.
 func hasPathFunc(v Val) bool {
+	switch v.(type) {
+	case *MapVal, *ListVal, *FuncVal, *ConjunctVal, *DisjunctVal, *PrefVal:
+		if pc, ok := v.(pdepVal); ok {
+			switch pc.getPdep() {
+			case 1:
+				return true
+			case 2:
+				return false
+			}
+			dep := computePathFunc(v)
+			if dep {
+				pc.setPdep(1)
+			} else {
+				pc.setPdep(2)
+			}
+			return dep
+		}
+	}
+	return computePathFunc(v)
+}
+
+func computePathFunc(v Val) bool {
 	switch n := v.(type) {
 	case *RefVal:
 		return true

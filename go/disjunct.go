@@ -33,6 +33,11 @@ func (d *DisjunctVal) Unify(peer Val, ctx *Ctx) Val {
 		peer = top()
 	}
 
+	// Members are driven at the disjunct's own location (TS trials each
+	// branch with the same undescended ctx; the slot hint is single-use
+	// per unite).
+	slot := ctx.slot
+
 	if !d.prefsRanked {
 		d.rankPrefs(ctx)
 	}
@@ -46,6 +51,7 @@ func (d *DisjunctVal) Unify(peer Val, ctx *Ctx) Val {
 		saved := ctx.err
 		trial := []*NilVal{}
 		ctx.err = trial
+		ctx.slot = slot
 		r := unite(ctx, m, peer)
 		failed := len(ctx.err) > 0 || r.Nil()
 		ctx.err = saved

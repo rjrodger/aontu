@@ -194,9 +194,13 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		// The func's marks survive onto its resolution (the
 		// propagateMarks(this, out) in TS FuncBaseVal.unify) — e.g. a
 		// hide-marked pending func that resolves against a spread peer
-		// yields a hidden value.
+		// yields a hidden value. TS also assigns the func's own path to
+		// the result (`out.path = this.path`), so a copy()/move() clone
+		// delivered through a transplanted func lands at the func's
+		// location rather than keeping a stale overlay-tailed path.
 		if out != Val(f) && !isTop(out) {
 			propagateMarks(f, out)
+			out.setvpath(cp(f.path))
 		}
 	} else if isTop(peer) {
 		f.notdone()
@@ -213,7 +217,9 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		out = peer
 	} else {
 		f.notdone()
-		out = newConjunct([]Val{f, peer})
+		cj := newConjunct([]Val{f, peer})
+		cj.path = cp(f.path) // TS defer branch: out.path = this.path
+		out = cj
 	}
 
 	if out.Dc() != DONE {

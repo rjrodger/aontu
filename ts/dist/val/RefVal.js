@@ -198,7 +198,10 @@ class RefVal extends FeatureVal_1.FeatureVal {
                             return;
                         }
                         else {
-                            part = '' + part.peg;
+                            // The resolved variable IS a path segment: $seg.r with
+                            // seg="x" reads ...x.r (previously the coerced value was
+                            // dropped, silently reading the path without it).
+                            parts.push('' + part.peg);
                         }
                     }
                 }

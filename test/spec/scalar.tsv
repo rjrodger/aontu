@@ -27,3 +27,6 @@ tiny-fixed-canon	canon	a:0.000001	{"a":0.000001}
 exp-neg-canon	canon	a:1e-7	{"a":1e-7}
 number-overflow-err	err	a:1e999	Cannot resolve value
 number-neg-overflow-err	err	a:-1e999	Cannot resolve value
+hex-big	gen	a:0xffffffffffffffff	{"a":18446744073709552000}
+hex-big-canon	canon	a:0xffffffffffffffff	{"a":18446744073709552000}
+hex-huge	gen	a:0x10000000000000000000000000000000	{"a":2.1267647932558654e+37}

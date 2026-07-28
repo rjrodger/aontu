@@ -252,8 +252,11 @@ be added to `test/spec/*.tsv`:
 > was unified with the name string, inverting the check). TS unite's
 > dispatch ladder also gained the `isVar` case Go already had, so
 > conjunct-driven constraints reach VarVal.unify instead of failing in
-> ScalarKindVal (`p1:$foo &:integer&number`). Covered by the var.tsv
-> spread rows.
+> ScalarKindVal (`p1:$foo &:integer&number`). TS RefVal.find now pushes
+> a resolved variable path segment (`$seg.r` with seg="x" reads
+> `...x.r`; previously the coerced value was silently dropped and the
+> path read without it — Go's interpolation was already correct).
+> Covered by the var.tsv spread and path-segment rows.
 
 > **Previously divergent, now fixed:** numeric canon formatting at
 > extreme magnitudes. Go's `formatNumber` (go/scalar.go) now reproduces

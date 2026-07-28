@@ -73,12 +73,29 @@ type base struct {
 	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
 	// applies ONCE per child, and later passes only self-unify.
 	spr Val
+	// pdep caches the hasPathFunc classification (0 unknown, 1 yes,
+	// 2 no), mirroring the memoized `_isPathDependent` getter in TS
+	// Val: in-place refinement can resolve a key()/ref after first
+	// classification, and the cached answer must survive that, so the
+	// spread clone-vs-share decision stays stable across passes.
+	// Clones start unclassified, as in TS (clonePath builds fresh
+	// structs for every composite kind).
+	pdep int8
 }
 
 func (b *base) setVpath(p []string) { b.path = p }
 
 func (b *base) getSpr() Val  { return b.spr }
 func (b *base) setSpr(s Val) { b.spr = s }
+
+func (b *base) getPdep() int8  { return b.pdep }
+func (b *base) setPdep(p int8) { b.pdep = p }
+
+// pdepVal is implemented by every Val via the embedded base.
+type pdepVal interface {
+	getPdep() int8
+	setPdep(int8)
+}
 
 // sprVal is implemented by every Val via the embedded base.
 type sprVal interface {

@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -617,19 +618,68 @@ func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 		return nil
 	}
 	if fullNumeric(l.Src[start:sI]) {
+		// A base-prefixed integer beyond int64 (0xffffffffffffffff)
+		// overflows the standard number matcher into a text fallback,
+		// but is a finite float in JS — construct the numeric token
+		// here with the JS value (big-int digits, float64 precision).
+		src := l.Src[start:sI]
+		s := strings.ReplaceAll(src, "_", "")
+		if basedNumeric(s) {
+			if _, ierr := strconv.ParseInt(s, 0, 64); ierr != nil {
+				if f, ok := basedFloat(s); ok {
+					tkn := l.Token("#NR", jsonic.TinNR, f, src)
+					pnt.SI = sI
+					pnt.CI += sI - start
+					return &jsonic.LexCheckResult{Done: true, Token: tkn}
+				}
+			}
+		}
 		return nil
 	}
 	// Not a complete number: let the text matcher take the extent.
 	return &jsonic.LexCheckResult{Done: true, Token: nil}
 }
 
+// basedFloat evaluates a syntactically valid base-prefixed integer
+// literal of any magnitude to the float64 JS would produce.
+func basedFloat(s string) (float64, bool) {
+	neg := false
+	if s[0] == '+' || s[0] == '-' {
+		neg = s[0] == '-'
+		s = s[1:]
+	}
+	var b int
+	switch s[1] {
+	case 'x', 'X':
+		b = 16
+	case 'o', 'O':
+		b = 8
+	default:
+		b = 2
+	}
+	bi, ok := new(big.Int).SetString(s[2:], b)
+	if !ok {
+		return 0, false
+	}
+	f, _ := new(big.Float).SetInt(bi).Float64()
+	if neg {
+		f = -f
+	}
+	return f, true
+}
+
 // fullNumeric reports whether src parses in its entirety as a numeric
 // literal (decimal/exponent, hex/octal/binary, or with _ separators).
-// An overflowing literal still counts (it becomes not_number later).
+// An overflowing literal still counts (it becomes not_number later),
+// and base-prefixed integers beyond int64 are still numeric (JS
+// Number('0xffffffffffffffff') is a finite float).
 func fullNumeric(src string) bool {
 	s := strings.ReplaceAll(src, "_", "")
 	if s == "" {
 		return false
+	}
+	if basedNumeric(s) {
+		return true
 	}
 	_, err := strconv.ParseFloat(s, 64)
 	if err == nil {
@@ -640,6 +690,36 @@ func fullNumeric(src string) bool {
 	}
 	_, ierr := strconv.ParseInt(s, 0, 64)
 	return ierr == nil
+}
+
+// basedNumeric reports whether s is a syntactically valid base-prefixed
+// (0x/0o/0b) integer literal of ANY magnitude, with optional sign.
+func basedNumeric(s string) bool {
+	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
+		s = s[1:]
+	}
+	if len(s) < 3 || s[0] != '0' {
+		return false
+	}
+	var ok func(byte) bool
+	switch s[1] {
+	case 'x', 'X':
+		ok = func(c byte) bool {
+			return '0' <= c && c <= '9' || 'a' <= c && c <= 'f' || 'A' <= c && c <= 'F'
+		}
+	case 'o', 'O':
+		ok = func(c byte) bool { return '0' <= c && c <= '7' }
+	case 'b', 'B':
+		ok = func(c byte) bool { return c == '0' || c == '1' }
+	default:
+		return false
+	}
+	for i := 2; i < len(s); i++ {
+		if !ok(s[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // snipExprCycles removes cyclic back-edges from an expression tree: a
