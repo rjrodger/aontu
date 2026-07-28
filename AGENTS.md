@@ -218,8 +218,16 @@ be added to `test/spec/*.tsv`:
 > spreads are snapshotted once per canon+site (the TS snapshotRefSpread
 > port), and spread constraint roots are pathed under a literal `&`
 > segment so relative refs used as spreads resolve one level deeper,
-> as in TS. Covered by the func.tsv ghost/move-chain rows and the
-> spread.tsv close-template rows.
+> as in TS. A ctx `slot` hint threads the TS ctx.path through unify
+> (bag child loops, func arg loops, junction folds), so shared clones
+> whose stored paths carry transplant overlay tails are driven at
+> their actual slot — a close() ghost moved to a SHALLOWER destination
+> re-keys as in TS. Go's hasPathFunc mirrors the TS isPathDependent
+> getter including its recursion quirks (a pref-wrapped func's args
+> array is invisible to the property walk, so `&:{q:*copy($.z)}`
+> templates are shared and advance in place). Covered by the func.tsv
+> ghost/move-chain rows and the spread.tsv close-template and
+> template-pref-copy rows.
 - **Canon of invalid sources.** A source that fails in both
   implementations may fail at different stages — e.g. `k-x:1` (bare key
   containing `-`) is a parse error in TS but parses to a list holding an
@@ -241,8 +249,11 @@ be added to `test/spec/*.tsv`:
 > follows (backtracking so the enclosing map takes the spread), and TS
 > VarVal.unify resolves the variable's NAME against TOP only, applying
 > the peer constraint to the resolved VALUE (previously the constraint
-> was unified with the name string, inverting the check). Covered by
-> the var.tsv spread rows.
+> was unified with the name string, inverting the check). TS unite's
+> dispatch ladder also gained the `isVar` case Go already had, so
+> conjunct-driven constraints reach VarVal.unify instead of failing in
+> ScalarKindVal (`p1:$foo &:integer&number`). Covered by the var.tsv
+> spread rows.
 
 > **Previously divergent, now fixed:** numeric canon formatting at
 > extreme magnitudes. Go's `formatNumber` (go/scalar.go) now reproduces

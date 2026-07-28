@@ -25,6 +25,15 @@ type Ctx struct {
 	// snapshotRefSpread in mapval.go), keyed by the ref's canon + source
 	// position — mirroring the snapmap on the TS unify root ctx.
 	snapmap map[string]Val
+	// slot is the location the next Unify target is being driven at —
+	// the TS ctx.path equivalent. Producers (bag child loops, func arg
+	// loops, junction folds) set it right before a unite call; unite
+	// scopes it to the single dispatched Unify; consumers (FuncVal,
+	// MapVal, ListVal) read it at entry. nil means "unknown — fall back
+	// to the Val's own stored path", which is correct whenever the Val
+	// actually sits at its slot (everything except shared/transplanted
+	// clones, whose stored paths carry overlay tails).
+	slot []string
 }
 
 func (c *Ctx) adderr(n *NilVal) {

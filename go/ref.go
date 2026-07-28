@@ -84,6 +84,10 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 		return rv
 	}
 
+	// The resolved target is driven at the ref's location (TS unites it
+	// with the ref's own ctx).
+	slot := ctx.slot
+
 	var out Val
 	found := rv.find(ctx)
 	if found == nil {
@@ -99,6 +103,10 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 			out = newConjunct([]Val{rv, peer})
 		}
 	} else {
+		if slot == nil {
+			slot = rv.path
+		}
+		ctx.slot = slot
 		out = unite(ctx, found, peer)
 	}
 

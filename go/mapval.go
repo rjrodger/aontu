@@ -127,10 +127,21 @@ func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 	return nil
 }
 
-// hasPathFunc reports whether v contains an unresolved path-dependent
-// function (key/path/move/super) or a ref, anywhere in its structure.
+// hasPathFunc reports whether v's unification depends on its own path —
+// the exact port of the TS `isPathDependent` getter, INCLUDING its
+// recursion quirks. TS walks `this.peg`: an ARRAY peg (func args,
+// junction members, list elements) recurses into Val elements; an
+// OBJECT peg recurses into Val-valued properties — for a bag that is
+// the children map, but for a PrefVal the peg IS a Val, so the walk
+// only reaches the inner Val's Val-typed properties. The observable
+// consequence: `*copy($.z)` (pref of a func whose args ARRAY hides the
+// ref) counts as path-INdependent, so such a spread template is shared
+// (tier 1) and advances in place; only `*<pref>` chains see through one
+// level. Faithfully mirrored here — do not "fix" the recursion.
 func hasPathFunc(v Val) bool {
 	switch n := v.(type) {
+	case *RefVal:
+		return true
 	case *FuncVal:
 		switch n.name {
 		case "key", "path", "move", "super":
@@ -141,22 +152,23 @@ func hasPathFunc(v Val) bool {
 				return true
 			}
 		}
-	case *RefVal:
-		return true
 	case *MapVal:
-		if n.spread != nil && hasPathFunc(n.spread) {
-			return true
-		}
 		for _, k := range n.keys {
 			if hasPathFunc(n.peg[k]) {
 				return true
 			}
+		}
+		if n.spread != nil && hasPathFunc(n.spread) {
+			return true
 		}
 	case *ListVal:
 		for _, e := range n.peg {
 			if hasPathFunc(e) {
 				return true
 			}
+		}
+		if n.spread != nil && hasPathFunc(n.spread) {
+			return true
 		}
 	case *ConjunctVal:
 		for _, t := range n.peg {
@@ -171,7 +183,14 @@ func hasPathFunc(v Val) bool {
 			}
 		}
 	case *PrefVal:
-		return hasPathFunc(n.peg)
+		// TS's property-walk over a Val-typed peg reaches only the
+		// inner Val's Val-typed properties: a nested PrefVal's own peg
+		// is one, but a func's args array / a ref's parts / a bag's
+		// children map are not.
+		if inner, ok := n.peg.(*PrefVal); ok {
+			return hasPathFunc(inner.peg)
+		}
+		return false
 	}
 	return false
 }
@@ -334,6 +353,15 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	}
+	// The location this map is being driven at (the TS ctx.path): the
+	// caller's slot hint when present, else the map's own path. Child
+	// drives descend from it (ctx.descend), which matters when a shared
+	// clone with an overlay-tailed stored path is driven as a func arg.
+	dbase := ctx.slot
+	if dbase == nil {
+		dbase = m.path
+	}
+
 	// A TOP peer refines the map IN PLACE (the `out = peer.isTop ? this
 	// : new MapVal(...)` fast-path in TS MapVal.unify): children write
 	// back into m.peg, so shared references to this map — a frozen
@@ -407,16 +435,20 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		if m.mhide && !child.markedHide() {
 			child.setMarkHide(true)
 		}
+		kslot := append(cp(dbase), k)
 		var cv Val
 		if !isTop(spreadCj) && sprOf(child) == spreadCj {
 			if child.Dc() == DONE {
 				cv = child
 			} else {
+				ctx.slot = kslot
 				cv = unite(ctx, child, top())
 			}
 			setSprOn(cv, spreadCj)
 		} else {
-			cv = unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k), ctx))
+			sc := spreadCloneFor(spreadCj, kslot, ctx)
+			ctx.slot = kslot
+			cv = unite(ctx, child, sc)
 			if !isTop(spreadCj) && !cv.Nil() {
 				setSprOn(cv, spreadCj)
 			}
@@ -434,6 +466,7 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		// refines in place, so its resolvable children advance where the
 		// template itself is stored too.
 		if pm.Dc() != DONE {
+			ctx.slot = dbase
 			if upm, uok := unite(ctx, pm, top()).(*MapVal); uok {
 				pm = upm
 			}
@@ -443,17 +476,22 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			if _, allowed := m.peg[pk]; m.closed && !allowed {
 				return makeNilErr(ctx, "closed", pc, nil)
 			}
+			pkslot := append(cp(dbase), pk)
 			var uv Val
 			if ex, ok := out.peg[pk]; ok {
+				ctx.slot = pkslot
 				uv = unite(ctx, ex, pc)
 			} else {
+				ctx.slot = pkslot
 				uv = unite(ctx, pc, top())
 			}
 			// A spread on the receiving map also applies to peer keys —
 			// once per child, same apply-once discipline as the own-key
 			// loop (the peer-loop `_spr` stamp in TS MapVal.unify).
 			if m.spread != nil && sprOf(uv) != spreadCj {
-				uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(m.path), pk), ctx))
+				sc := spreadCloneFor(spreadCj, pkslot, ctx)
+				ctx.slot = pkslot
+				uv = unite(ctx, uv, sc)
 				if !isTop(spreadCj) && !uv.Nil() {
 					setSprOn(uv, spreadCj)
 				}

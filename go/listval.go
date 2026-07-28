@@ -106,6 +106,12 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		spreadCj = out.spread
 	}
 
+	// Driven base (see the matching comment in MapVal.Unify).
+	dbase := ctx.slot
+	if dbase == nil {
+		dbase = l.path
+	}
+
 	inplace := out == l
 	for i, e := range l.peg {
 		// List marks ratchet onto elements each pass (the
@@ -116,7 +122,10 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		if l.mhide && !e.markedHide() {
 			e.setMarkHide(true)
 		}
-		ev := unite(ctx, e, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
+		islot := append(cp(dbase), itoa(i))
+		sc := spreadCloneFor(spreadCj, islot, ctx)
+		ctx.slot = islot
+		ev := unite(ctx, e, sc)
 		if inplace {
 			out.peg[i] = ev
 		} else {
@@ -132,6 +141,7 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		// Self-unify the peer against TOP first (the `upeer` step in TS
 		// ListVal.unify) — see the matching comment in MapVal.Unify.
 		if pl.Dc() != DONE {
+			ctx.slot = dbase
 			if upl, uok := unite(ctx, pl, top()).(*ListVal); uok {
 				pl = upl
 			}
@@ -140,14 +150,19 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 			if l.closed && i >= len(l.peg) {
 				return makeNilErr(ctx, "closed", pe, nil)
 			}
+			islot := append(cp(dbase), itoa(i))
 			var uv Val
 			if i < len(out.peg) {
+				ctx.slot = islot
 				uv = unite(ctx, out.peg[i], pe)
 				out.peg[i] = uv
 			} else {
+				ctx.slot = islot
 				uv = unite(ctx, pe, top())
 				if l.spread != nil {
-					uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
+					sc := spreadCloneFor(spreadCj, islot, ctx)
+					ctx.slot = islot
+					uv = unite(ctx, uv, sc)
 				}
 				out.peg = append(out.peg, uv)
 			}

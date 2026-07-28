@@ -104,6 +104,7 @@ const unite = (ctx, a, b, whence) => {
                 || b.isDisjunct
                 || b.isRef
                 || b.isPref
+                || b.isVar
                 || b.isFunc
                 || b.isExpect) {
                 out = b.unify(a, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'BW') }) : ctx);

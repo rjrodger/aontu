@@ -35,8 +35,12 @@ func (p *PrefVal) Gen(ctx *Ctx) (any, error) {
 }
 
 func (p *PrefVal) Unify(peer Val, ctx *Ctx) Val {
+	// The peg is driven at the pref's own location (TS resolves it with
+	// the same undescended ctx).
+	slot := ctx.slot
 	// Resolve the preferred value (e.g. a function) before comparing.
 	if p.peg.Dc() != DONE {
+		ctx.slot = slot
 		p.peg = unite(ctx, p.peg, top())
 		p.superpeg = p.peg.superior()
 	}

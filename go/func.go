@@ -71,13 +71,24 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		return f
 	}
 
+	// The location this func is being driven at (the TS ctx.path): the
+	// caller's slot hint when present, else the func's own stored path
+	// — identical except for shared/transplanted clones, whose stored
+	// paths carry overlay tails that the driving ctx does not.
+	base := ctx.slot
+	if base == nil {
+		base = f.path
+	}
+
 	// key() resolves late so that spreads/refs settle the path first
 	// (KeyFuncVal.unify hack).
 	if f.name == "key" && ctx.cc < 3 {
 		f.notdone()
 		switch {
 		case isTop(peer):
-			return clonePath(f, cp(f.path))
+			// The delay clone re-paths via the driving ctx (TS
+			// `this.clone(ctx)` — overlay of the stored path on ctx.path).
+			return clonePath(f, overlayPath(base, f.path))
 		case peer.Nil():
 			return peer
 		default:
@@ -115,7 +126,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	// beyond the driving base, exactly like ctx-based Val.clone.
 	if f.name != "move" && f.name != "copy" {
 		for _, arg := range f.peg {
-			repathArg(arg, f.path, ctx.cc)
+			repathArg(arg, base, ctx.cc)
 		}
 	}
 
@@ -138,6 +149,9 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		for _, arg := range f.peg {
 			na := arg
 			if arg.Dc() != DONE {
+				// Args are driven at the func's location (TS drives them
+				// with the func's own ctx, undescended).
+				ctx.slot = base
 				na = unite(ctx, arg, top())
 				// Marks surfacing on resolved args infect the rebuilt
 				// pending func (the newtype/newhide accumulation in TS
@@ -153,7 +167,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 
 	if pegdone {
-		result := f.resolve(ctx, newpeg)
+		result := f.resolve(ctx, base, newpeg)
 		if result == nil {
 			result = f
 		}
@@ -174,6 +188,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		} else if result.Dc() == DONE && isTop(peer) {
 			out = result
 		} else {
+			ctx.slot = base
 			out = unite(ctx, result, peer)
 		}
 		// The func's marks survive onto its resolution (the
@@ -238,8 +253,10 @@ func keyArgVal(f *FuncVal) (int64, bool) {
 	return 0, false
 }
 
-// resolve dispatches to the named function's implementation.
-func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
+// resolve dispatches to the named function's implementation. base is
+// the location the func is being driven at (see Unify) — resolution
+// clones re-path to it, mirroring the ctx-path clones in TS.
+func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 	switch f.name {
 	case "upper":
 		return upperLower(ctx, args, true)
@@ -254,11 +271,11 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		// is re-pathed to the copy()'s own location (the ctx-path clone
 		// in TS), since a shared raw arg may carry a stale path.
 		if rv, ok := args[0].(*RefVal); ok {
-			src := clonePath(rv, cp(f.path)).(*RefVal)
+			src := clonePath(rv, cp(base)).(*RefVal)
 			src.copyFound = true
 			return src
 		}
-		out := clonePath(args[0], cp(f.path))
+		out := clonePath(args[0], cp(base))
 		walkMark(out, true, false, true, false) // copy clears marks
 		return out
 	case "key":
@@ -267,19 +284,19 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
-		return walkPref(clonePath(args[0], cp(f.path)))
+		return walkPref(clonePath(args[0], cp(base)))
 	case "type":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
-		out := clonePath(args[0], cp(f.path))
+		out := clonePath(args[0], cp(base))
 		walkMark(out, true, true, false, false)
 		return out
 	case "hide":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
-		out := clonePath(args[0], cp(f.path))
+		out := clonePath(args[0], cp(base))
 		walkMark(out, false, false, true, true)
 		return out
 	case "close":
@@ -304,7 +321,7 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
-		src := clonePath(args[0], cp(f.path))
+		src := clonePath(args[0], cp(base))
 		if rv, ok := src.(*RefVal); ok {
 			rv.hideFound = true
 		}
@@ -313,7 +330,7 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 		// the source being moved away.
 		walkMark(args[0], false, false, true, true)
 		nf := newFunc("pref", []Val{src})
-		nf.path = cp(f.path)
+		nf.path = cp(base)
 		nf.sp = f.sp
 		return nf
 	}
