@@ -14,3 +14,6 @@ pref-top-dropped-canon	canon	K:*top	{"K":*top}
 pref-top-list-dropped	gen	l:[*top]	{"l":[]}
 pref-nested-concrete-wins	gen	k1:**hello&false	{"k1":false}
 pref-dangling-err	err	y:[*]	Cannot resolve value
+pref-disjunct-rank	gen	x:pref(*1e3|hello)	{"x":"hello"}
+pref-disjunct-rank-canon	canon	x:pref(*1e3|hello)	{"x":**1000|*"hello"}
+pref-kind-disjunct	gen	x:pref(boolean|11)	{"x":11}

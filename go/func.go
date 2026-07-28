@@ -91,9 +91,12 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	var out Val = f
 	pegdone := true
 	newpeg := make([]Val, 0, len(f.peg))
-	// move() operates on the raw reference argument (it must not be
-	// resolved first), mirroring MoveFuncVal.prepare returning null.
-	if f.name == "move" {
+	// move() and copy() operate on raw arguments (they must not be
+	// resolved first), mirroring MoveFuncVal.prepare and
+	// CopyFuncVal.prepare returning null in TS — copy(expr) clones the
+	// raw expression immediately and the clone resolves at the
+	// destination.
+	if f.name == "move" || f.name == "copy" {
 		newpeg = f.peg
 	} else {
 		for _, arg := range f.peg {
@@ -113,7 +116,10 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		if result == nil {
 			result = f
 		}
-		if _, ok := result.(*FuncVal); ok {
+		// Only the func ITSELF signals "still pending" — a resolve that
+		// returns a *different* func (copy of a raw func argument)
+		// produced a real value that must unify onward.
+		if result == Val(f) {
 			switch {
 			case isTop(peer):
 				out = f
@@ -158,6 +164,13 @@ func (f *FuncVal) resolve(ctx *Ctx, args []Val) Val {
 	case "copy":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "invalid-arg", f, nil)
+		}
+		// Raw-ref argument: the target may not exist yet, so defer the
+		// mark clearing to resolution via the copyFound flag.
+		if rv, ok := args[0].(*RefVal); ok {
+			src := clonePath(rv, cp(rv.path)).(*RefVal)
+			src.copyFound = true
+			return src
 		}
 		out := clonePath(args[0], cp(f.path))
 		walkMark(out, true, false, true, false) // copy clears marks
@@ -277,6 +290,10 @@ func keyFunc(f *FuncVal) Val {
 }
 
 // walkPref wraps every scalar/pref leaf in a PrefVal (PrefFuncVal.resolve).
+// Junction members are wrapped too: `pref(*1e3|hello)` becomes
+// `**1e3|*hello`, whose rank rules pick *hello (mirrors the TS walk,
+// which visits disjunct/conjunct members). Kinds stay unwrapped, so
+// `pref(boolean|11)` leaves the kind as a plain member.
 func walkPref(v Val) Val {
 	switch n := v.(type) {
 	case *ScalarVal:
@@ -289,6 +306,16 @@ func walkPref(v Val) Val {
 		}
 		return n
 	case *ListVal:
+		for i := range n.peg {
+			n.peg[i] = walkPref(n.peg[i])
+		}
+		return n
+	case *DisjunctVal:
+		for i := range n.peg {
+			n.peg[i] = walkPref(n.peg[i])
+		}
+		return n
+	case *ConjunctVal:
 		for i := range n.peg {
 			n.peg[i] = walkPref(n.peg[i])
 		}

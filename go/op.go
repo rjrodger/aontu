@@ -67,7 +67,13 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 			out = unite(ctx, result, peer)
 		}
 	} else if isTop(peer) {
-		out = o
+		// Rebuild with the resolved-so-far operands (mirrors the
+		// `out = this.make(ctx, { peg: newpeg })` not-pegdone branch in
+		// TS OpBaseVal.unify) so canon shows partial arg resolution.
+		np := newPlusOp(newpeg[0], newpeg[1])
+		np.path = cp(o.path)
+		np.sp = o.sp
+		out = np
 	} else if peer.Nil() {
 		out = peer
 	} else {

@@ -94,6 +94,15 @@ func (s *ScalarVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 	if ps, ok := peer.(*ScalarVal); ok {
 		if ps.kind == s.kind && ps.peg == s.peg {
+			// Marks ratchet true across a unify (TS propagateMarks): a
+			// hide()/type() spread clone marks the destination value
+			// (`K:true &:hide($flag)` hides K).
+			if ps.mtype {
+				s.mtype = true
+			}
+			if ps.mhide {
+				s.mhide = true
+			}
 			return s
 		}
 		code := "scalar_kind"

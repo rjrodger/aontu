@@ -634,6 +634,12 @@ function rawToVal(n) {
         return new BooleanVal_1.BooleanVal({ peg: n });
     }
     if ('object' === t) {
+        // An expr-plugin internal (operator descriptor) leaking through a
+        // degenerate parse (`k2.b K:1`) is not data — reject it rather
+        // than emitting raw internals in generated output.
+        if (undefined !== n.OP_MARK) {
+            return new NilVal_1.NilVal({ why: 'parse_unknown' });
+        }
         const peg = {};
         for (const k in n) {
             peg[k] = rawToVal(n[k]);

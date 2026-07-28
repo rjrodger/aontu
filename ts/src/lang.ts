@@ -825,6 +825,12 @@ function rawToVal(n: any): Val {
     return new BooleanVal({ peg: n })
   }
   if ('object' === t) {
+    // An expr-plugin internal (operator descriptor) leaking through a
+    // degenerate parse (`k2.b K:1`) is not data — reject it rather
+    // than emitting raw internals in generated output.
+    if (undefined !== (n as any).OP_MARK) {
+      return new NilVal({ why: 'parse_unknown' })
+    }
     const peg: Record<string, Val> = {}
     for (const k in n) {
       peg[k] = rawToVal(n[k])

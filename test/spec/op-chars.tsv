@@ -11,3 +11,5 @@ paren-group	gen	a:(1)	{"a":1}
 quote-in-text	gen	a:x"y	{"a":"x\\"y"}
 backtick-in-text	gen	x:tail`	{"x":"tail`"}
 backtick-in-text-canon	canon	x:tail`	{"x":"tail`"}
+num-quote-juxta	gen	a:100'b'	{"a":"100'b'"}
+dotted-bare-key-err	err	k2.b K:1	Cannot resolve value

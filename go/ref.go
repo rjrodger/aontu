@@ -17,6 +17,7 @@ type RefVal struct {
 	prefix    bool
 	hideFound bool // move(): hide the resolution target in place
 	prefFound bool // move(): deliver the resolved copy as preferences
+	copyFound bool // copy(): clear all marks on the resolved copy
 }
 
 func newRef(terms []any, prefix bool) *RefVal {
@@ -230,6 +231,12 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		ctx.hide(refpath)
 	}
 	out := clonePath(node, cp(rv.path))
+	// copy(): the copied value is fully concrete — clear type/hide
+	// marks on the whole clone (the raw-ref counterpart of the
+	// walkMark in evaluate's copy case).
+	if rv.copyFound {
+		walkMark(out, true, false, true, false)
+	}
 	// move(): the moved copy arrives as *preferences* (mirrors the
 	// PrefFuncVal wrap in TS MoveFuncVal.resolve). A target that is
 	// itself still unresolved (e.g. a close() func) defers behind a

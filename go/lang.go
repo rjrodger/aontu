@@ -116,6 +116,9 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		// See tsTextCheck: unquoted text must run through quote chars
 		// (`x:tail` + "`" is the text "tail`"), as in the TS lexer.
 		Text: &jsonic.TextOptions{Check: tsTextCheck},
+		// See tsNumCheck: a numeric prefix of a larger text token is
+		// not a number ("100'sq'" is one text token), as in TS.
+		Number: &jsonic.NumberOptions{Check: tsNumCheck},
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.ValueDef{
@@ -484,14 +487,36 @@ func keyOf(t *jsonic.Token) string {
 // the *start* of a value never reaches the text stage — the string
 // matcher runs first — so string literals are unaffected.
 func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
-	cfg := l.Config
-	src := l.Src
 	pnt := l.Cursor()
 	start := pnt.SI
 	if start >= pnt.Len {
 		return nil
 	}
 
+	sI, sawQuote := scanTextExtent(l, start, false)
+
+	// No mid-text quote: the default text matcher produces the same
+	// token (and handles value keywords).
+	if !sawQuote || sI == start {
+		return nil
+	}
+
+	msrc := l.Src[start:sI]
+	tkn := l.Token("#TX", jsonic.TinTX, msrc, msrc)
+	pnt.SI += len(msrc)
+	pnt.CI += utf8.RuneCountInString(msrc)
+	return &jsonic.LexCheckResult{Done: true, Token: tkn}
+}
+
+// scanTextExtent scans forward from start using the TS lexer's text
+// ender set — space, line, ender, fixed tokens and comment starters,
+// but NOT quote chars — returning the extent end and whether a quote
+// char was passed through. With expo set, an exponent sign continues
+// the scan (`1e-7` — number-check extents only; plain text stops at
+// the fixed `-`).
+func scanTextExtent(l *jsonic.Lex, start int, expo bool) (int, bool) {
+	cfg := l.Config
+	src := l.Src
 	sI := start
 	sawQuote := false
 	for sI < len(src) {
@@ -510,6 +535,17 @@ func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 			}
 		}
 		if fixed {
+			// An exponent sign is part of a numeric token (`1e-7`), not
+			// a fixed operator token — the TS number pattern consumes
+			// it before the ender check.
+			if expo && (ch == '-' || ch == '+') && sI > start && sI+chSize < len(src) {
+				prev := src[sI-1]
+				next := src[sI+chSize]
+				if (prev == 'e' || prev == 'E') && next >= '0' && next <= '9' {
+					sI += chSize
+					continue
+				}
+			}
 			break
 		}
 		if cfg.CommentLex {
@@ -537,18 +573,48 @@ func tsTextCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 		}
 		sI += chSize
 	}
+	return sI, sawQuote
+}
 
-	// No mid-text quote: the default text matcher produces the same
-	// token (and handles value keywords).
-	if !sawQuote || sI == start {
+// tsNumCheck suppresses the number matcher when the full TS-style text
+// extent at this position is not entirely numeric: the TS lexer only
+// lexes a number when the whole token is one, whereas the Go port's
+// matcher would take the numeric prefix ("100'sq'" must be the single
+// text token "100'sq'", not the number 100 followed by 'sq').
+func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
+	pnt := l.Cursor()
+	start := pnt.SI
+	if start >= pnt.Len {
 		return nil
 	}
+	sI, _ := scanTextExtent(l, start, true)
+	if sI == start {
+		return nil
+	}
+	if fullNumeric(l.Src[start:sI]) {
+		return nil
+	}
+	// Not a complete number: let the text matcher take the extent.
+	return &jsonic.LexCheckResult{Done: true, Token: nil}
+}
 
-	msrc := src[start:sI]
-	tkn := l.Token("#TX", jsonic.TinTX, msrc, msrc)
-	pnt.SI += len(msrc)
-	pnt.CI += utf8.RuneCountInString(msrc)
-	return &jsonic.LexCheckResult{Done: true, Token: tkn}
+// fullNumeric reports whether src parses in its entirety as a numeric
+// literal (decimal/exponent, hex/octal/binary, or with _ separators).
+// An overflowing literal still counts (it becomes not_number later).
+func fullNumeric(src string) bool {
+	s := strings.ReplaceAll(src, "_", "")
+	if s == "" {
+		return false
+	}
+	_, err := strconv.ParseFloat(s, 64)
+	if err == nil {
+		return true
+	}
+	if ne, ok := err.(*strconv.NumError); ok && ne.Err == strconv.ErrRange {
+		return true
+	}
+	_, ierr := strconv.ParseInt(s, 0, 64)
+	return ierr == nil
 }
 
 // snipExprCycles removes cyclic back-edges from an expression tree: a
