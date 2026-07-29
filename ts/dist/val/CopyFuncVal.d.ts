@@ -9,6 +9,6 @@ declare class CopyFuncVal extends FuncBaseVal {
     make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
     prepare(_ctx: AontuContext, _args: Val[]): null;
-    resolve(ctx: AontuContext, args: Val[]): Val | NilVal;
+    resolve(ctx: AontuContext, args: Val[]): NilVal | Val;
 }
 export { CopyFuncVal, };

@@ -49,7 +49,24 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 			return res
 		}
 	}
+	// A missing source must be an error, not a silently dropped load
+	// (the multisource plugin injects nil for Found=false). Report it as
+	// "found" with the notfound kind; its processor injects an error nil
+	// whose message matches the TS multisource_not_found error, and
+	// parseBase turns that into a parse failure.
+	res.Kind = notFoundKind
+	res.Found = true
 	return res
+}
+
+// notFoundKind marks a Resolution for a source that could not be found.
+const notFoundKind = "aontu-notfound"
+
+// notFoundProcessor injects the not-found error nil (see fileResolver).
+func notFoundProcessor(res *multisource.Resolution, _ *multisource.MultiSourceOptions, _ *jsonic.Context, _ *jsonic.Jsonic) {
+	n := newNil("multisource_not_found")
+	n.msg = "source not found: " + res.Path
+	res.Val = n
 }
 
 // msOptions builds the multisource plugin options for the aontu grammar.
@@ -63,9 +80,10 @@ func msOptions(base string) map[string]any {
 			Resolver: fileResolver,
 			Path:     base,
 			Processor: map[string]multisource.Processor{
-				"":      multisource.JsonicProcessor,
-				"aon":   multisource.JsonicProcessor,
-				"aontu": multisource.JsonicProcessor,
+				"":           multisource.JsonicProcessor,
+				"aon":        multisource.JsonicProcessor,
+				"aontu":      multisource.JsonicProcessor,
+				notFoundKind: notFoundProcessor,
 			},
 			// `.aon` is the preferred Aontu source extension; `.aontu`
 			// also works. `.jsonic` is retired (no longer auto-resolved).

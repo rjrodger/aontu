@@ -7,3 +7,13 @@ default-str	gen	a:*green|string	{"a":"green"}
 override	gen	a:*1|number\na:2	{"a":2}
 deep	gen	a:b:c:*1|number	{"a":{"b":{"c":1}}}
 deep-override	gen	a:b:c:*1|number\na:b:c:2	{"a":{"b":{"c":2}}}
+pref-disjunct-fold	gen	a:*{x:1} | *{y:2}	{"a":{"x":1,"y":2}}
+pref-disjunct-fold-canon	canon	a:*{x:1} | *{y:2}	{"a":*{"x":1,"y":2}}
+pref-top-dropped	gen	K:*top	{}
+pref-top-dropped-canon	canon	K:*top	{"K":*top}
+pref-top-list-dropped	gen	l:[*top]	{"l":[]}
+pref-nested-concrete-wins	gen	k1:**hello&false	{"k1":false}
+pref-dangling-err	err	y:[*]	Cannot resolve value
+pref-disjunct-rank	gen	x:pref(*1e3|hello)	{"x":"hello"}
+pref-disjunct-rank-canon	canon	x:pref(*1e3|hello)	{"x":**1000|*"hello"}
+pref-kind-disjunct	gen	x:pref(boolean|11)	{"x":11}

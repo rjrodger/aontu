@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"math"
 	"strconv"
 	"strings"
 )
@@ -94,6 +95,15 @@ func (s *ScalarVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 	if ps, ok := peer.(*ScalarVal); ok {
 		if ps.kind == s.kind && ps.peg == s.peg {
+			// Marks ratchet true across a unify (TS propagateMarks): a
+			// hide()/type() spread clone marks the destination value
+			// (`K:true &:hide($flag)` hides K).
+			if ps.mtype {
+				s.mtype = true
+			}
+			if ps.mhide {
+				s.mhide = true
+			}
 			return s
 		}
 		code := "scalar_kind"
@@ -118,7 +128,10 @@ func newScalarKind(k Kind) *ScalarKindVal {
 	return v
 }
 
-func (k *ScalarKindVal) superior() Val { return k }
+// superior of a kind is TOP (TS ScalarKindVal inherits FeatureVal's
+// superior): a pref whose peg is a kind (`*integer & "hello"`) lets any
+// concrete peer narrow it rather than clashing with the kind.
+func (k *ScalarKindVal) superior() Val { return top() }
 func (k *ScalarKindVal) Canon() string { return k.kind.String() }
 
 func (k *ScalarKindVal) Gen(ctx *Ctx) (any, error) {
@@ -192,9 +205,36 @@ func jsonString(s string) string {
 	return b.String()
 }
 
-// formatNumber renders a float64 the way JavaScript's Number.toString
-// does for the simple cases in the spec (e.g. 1.5, -2.5, integral
-// floats collapse to "1").
+// formatNumber renders a float64 exactly the way JavaScript's
+// Number.toString does: fixed decimal notation for exponents in
+// [-6, 20], otherwise exponential with an unpadded, always-signed
+// exponent ("1e+21", "1e-7" — not Go's "1e+21"/"1e-07"). This keeps
+// numeric canon output identical to the TS implementation at every
+// magnitude.
 func formatNumber(f float64) string {
-	return strconv.FormatFloat(f, 'g', -1, 64)
+	// Non-finite values render as JS Number.toString does; they cannot
+	// arrive via the parser (an overflowing literal becomes not_number)
+	// but are reachable through the exported NewNumber constructor.
+	if math.IsNaN(f) {
+		return "NaN"
+	}
+	if math.IsInf(f, 1) {
+		return "Infinity"
+	}
+	if math.IsInf(f, -1) {
+		return "-Infinity"
+	}
+	mant := strconv.FormatFloat(f, 'e', -1, 64)
+	i := strings.IndexByte(mant, 'e')
+	digits := mant[:i]
+	exp, _ := strconv.Atoi(mant[i+1:])
+	if exp >= -6 && exp <= 20 {
+		return strconv.FormatFloat(f, 'f', -1, 64)
+	}
+	sign := "+"
+	if exp < 0 {
+		sign = "-"
+		exp = -exp
+	}
+	return digits + "e" + sign + strconv.Itoa(exp)
 }

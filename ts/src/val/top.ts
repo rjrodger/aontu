@@ -3,10 +3,13 @@
 
 import { TopVal } from './TopVal'
 
-const TOP = new TopVal({})
 
-
+// A fresh instance per call: unify mutates Vals in place (paths, marks,
+// site via addsite for a literal `top` in source), so a shared TOP
+// singleton is silently corrupted by one parse and poisons every later
+// parse in the same process (e.g. a hide() walk marking the shared TOP
+// hid every subsequent unresolved top).
 export function top(): TopVal {
-  return TOP
+  return new TopVal({})
 }
 

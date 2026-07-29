@@ -16,6 +16,7 @@ type RefVal struct {
 	absolute  bool
 	prefix    bool
 	hideFound bool // move(): hide the resolution target in place
+	copyFound bool // copy(): clear all marks on the resolved copy
 }
 
 func newRef(terms []any, prefix bool) *RefVal {
@@ -83,6 +84,10 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 		return rv
 	}
 
+	// The resolved target is driven at the ref's location (TS unites it
+	// with the ref's own ctx).
+	slot := ctx.slot
+
 	var out Val
 	found := rv.find(ctx)
 	if found == nil {
@@ -98,6 +103,10 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 			out = newConjunct([]Val{rv, peer})
 		}
 	} else {
+		if slot == nil {
+			slot = rv.path
+		}
+		ctx.slot = slot
 		out = unite(ctx, found, peer)
 	}
 
@@ -136,8 +145,36 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 				}
 				modes = append(modes, "PARENT")
 			default:
-				// Generic variable lookup is not yet supported.
-				return nil
+				// Generic variable part ($name.r): resolve via the
+				// variable table (mirrors the part.unify(top())
+				// resolution in ts RefVal.find); an unknown variable is
+				// an error (recorded by VarVal.Unify via makeNilErr).
+				pv := vv.Unify(top(), ctx)
+				if pv.Nil() {
+					return pv
+				}
+				sv, ok := pv.(*ScalarVal)
+				if !ok {
+					// A non-scalar variable is not a usable path part
+					// (TS coerces to a string that never matches).
+					return makeNilErr(ctx, "no_path", rv, nil)
+				}
+				switch sv.kind {
+				case KindString:
+					parts = append(parts, sv.peg.(string))
+				case KindInteger:
+					parts = append(parts, strconv.FormatInt(sv.peg.(int64), 10))
+				case KindNumber:
+					parts = append(parts, formatNumber(sv.peg.(float64)))
+				case KindBoolean:
+					if sv.peg.(bool) {
+						parts = append(parts, "true")
+					} else {
+						parts = append(parts, "false")
+					}
+				default:
+					return makeNilErr(ctx, "no_path", rv, nil)
+				}
 			}
 			continue
 		}
@@ -196,11 +233,35 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		}
 	}
 
-	// move(): hide the source location, but keep the moved copy visible.
-	if rv.hideFound {
-		ctx.hide(refpath)
+	// A ref carrying marks transfers them onto the found node in place
+	// (mirrors the mark assignment on `out` before the clone in TS
+	// RefVal.find).
+	if rv.mtype || rv.mhide {
+		node.setMarkType(rv.mtype)
+		node.setMarkHide(rv.mhide)
 	}
-	return clonePath(node, cp(rv.path))
+	// move(): hide the source node in place — the mark lands on the
+	// node's ROOT only; the bag unify loops ratchet it down one level
+	// per pass, progressively freezing pending funcs in the ghost
+	// (mirrors `out.mark.hide = true` for _hide_found in TS).
+	if rv.hideFound {
+		node.setMarkHide(true)
+	}
+	out := clonePath(node, cp(rv.path))
+	// A resolved reference's clone is concrete: clear type/hide marks
+	// on the whole clone, root included (mirrors the mark-clearing
+	// walk in TS RefVal.find). With shared func-clone args this also
+	// clears marks on innards shared with the source — as in TS.
+	walkMark(out, true, false, true, false)
+	// copy(): the copied root's path is fully replaced by the
+	// destination (TS FuncBaseVal sets out.path = this.path on the
+	// resolved copy), unlike the transplant overlay that keeps deeper
+	// source tails — `y:copy($.x.a.k)` resolves key() against the bare
+	// [y] path (""), not [y,a,k].
+	if rv.copyFound {
+		forceRootPath(out, cp(rv.path))
+	}
+	return out
 }
 
 // isPrefixPath reports whether the reference path is a prefix of this
@@ -321,12 +382,21 @@ func (vv *VarVal) Unify(peer Val, ctx *Ctx) Val {
 	}
 	if ctx.vars != nil {
 		if found, ok := ctx.vars[name]; ok {
-			return clonePath(found, cp(vv.path))
+			// Unify the resolved value with the peer so a constraint
+			// unified against the var (e.g. a spread clone) applies to
+			// its value rather than being silently dropped.
+			out := clonePath(found, cp(vv.path))
+			if peer != nil && !isTop(peer) {
+				return unite(ctx, out, peer)
+			}
+			return out
 		}
 	}
 	return makeNilErr(ctx, "unknown_var", vv, peer)
 }
 
 func (vv *VarVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: " + vv.Canon()}
+	// Silent (mirrors the TS FeatureVal gen pattern): the enclosing
+	// bag reports unresolved vars.
+	return nil, nil
 }

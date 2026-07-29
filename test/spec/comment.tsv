@@ -1,0 +1,8 @@
+# Comments: only # line comments are valid Aontu syntax
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
+hash-trailing	gen	a:1 # comment	{"a":1}
+hash-lines	gen	# header\na:1\n# footer	{"a":1}
+hash-canon	canon	a:1 # comment	{"a":1}
+hash-in-string	gen	a:"x # y"	{"a":"x # y"}
+slash-line-err	err	a:1 // comment	unexpected character(s): /
+slash-block-err	err	a:1 /* comment */ b:2	unexpected character(s): /

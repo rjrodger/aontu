@@ -22,8 +22,12 @@ func newPref(v Val) *PrefVal {
 	return p
 }
 
-func (p *PrefVal) cjo() int      { return 30000 }
-func (p *PrefVal) superior() Val { return p.peg.superior() }
+func (p *PrefVal) cjo() int { return 30000 }
+
+// superior of a pref is TOP (TS PrefVal inherits FeatureVal's
+// superior): a nested pref peg (`**hello & false`) lets the concrete
+// peer win instead of clashing with the inner value's kind.
+func (p *PrefVal) superior() Val { return top() }
 func (p *PrefVal) Canon() string { return "*" + p.peg.Canon() }
 
 func (p *PrefVal) Gen(ctx *Ctx) (any, error) {
@@ -31,34 +35,47 @@ func (p *PrefVal) Gen(ctx *Ctx) (any, error) {
 }
 
 func (p *PrefVal) Unify(peer Val, ctx *Ctx) Val {
+	// The peg is driven at the pref's own location (TS resolves it with
+	// the same undescended ctx).
+	slot := ctx.slot
 	// Resolve the preferred value (e.g. a function) before comparing.
 	if p.peg.Dc() != DONE {
+		ctx.slot = slot
 		p.peg = unite(ctx, p.peg, top())
 		p.superpeg = p.peg.superior()
 	}
 
-	if peer == nil || isTop(peer) {
-		p.setDc(DONE)
-		return p
-	}
-
-	if pp, ok := peer.(*PrefVal); ok {
-		if p.rank < pp.rank {
-			return p
+	var out Val
+	switch pp := peer.(type) {
+	case nil:
+		out = p
+	case *PrefVal:
+		switch {
+		case p.rank < pp.rank:
+			out = p
+		case pp.rank < p.rank:
+			out = pp
+		default:
+			out = newPref(unite(ctx, p.peg, pp.peg))
 		}
-		if pp.rank < p.rank {
-			return pp
+	default:
+		if isTop(peer) {
+			out = p
+		} else {
+			// Peer is a concrete or kind value. Unify the preferred
+			// value's type with peer: if peer is type-compatible (result
+			// is still the type), the preference value wins; otherwise
+			// peer narrows it.
+			out = unite(ctx, p.superpeg, peer)
+			if valSame(out, p.superpeg) {
+				out = p.peg
+			}
 		}
-		merged := unite(ctx, p.peg, pp.peg)
-		return newPref(merged)
 	}
-
-	// Peer is a concrete or kind value. Unify the preferred value's
-	// type with peer: if peer is type-compatible (result is still the
-	// type), the preference value wins; otherwise peer narrows it.
-	out := unite(ctx, p.superpeg, peer)
-	if valSame(out, p.superpeg) {
-		return p.peg
-	}
+	// TS PrefVal.unify stamps DONE on every result (its `done` flag is
+	// never cleared) — even a stuck conjunct from the superior-unify
+	// (`&:*hello, b:key()` leaves b as key()&string DONE, never
+	// re-driven). Mirror that exactly.
+	out.setDc(DONE)
 	return out
 }

@@ -69,6 +69,60 @@ type base struct {
 	path  []string // path from root (for reference resolution)
 	mtype bool     // type mark
 	mhide bool     // hide mark
+	// spr records the identity of the spread constraint already merged
+	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
+	// applies ONCE per child, and later passes only self-unify.
+	spr Val
+	// pdep caches the hasPathFunc classification (0 unknown, 1 yes,
+	// 2 no), mirroring the memoized `_isPathDependent` getter in TS
+	// Val: in-place refinement can resolve a key()/ref after first
+	// classification, and the cached answer must survive that, so the
+	// spread clone-vs-share decision stays stable across passes.
+	// Clones start unclassified, as in TS (clonePath builds fresh
+	// structs for every composite kind).
+	pdep int8
+}
+
+func (b *base) setVpath(p []string) { b.path = p }
+
+func (b *base) getSpr() Val  { return b.spr }
+func (b *base) setSpr(s Val) { b.spr = s }
+
+func (b *base) getPdep() int8  { return b.pdep }
+func (b *base) setPdep(p int8) { b.pdep = p }
+
+// pdepVal is implemented by every Val via the embedded base.
+type pdepVal interface {
+	getPdep() int8
+	setPdep(int8)
+}
+
+// sprVal is implemented by every Val via the embedded base.
+type sprVal interface {
+	getSpr() Val
+	setSpr(Val)
+}
+
+func sprOf(v Val) Val {
+	if s, ok := v.(sprVal); ok {
+		return s.getSpr()
+	}
+	return nil
+}
+
+// forceRootPath replaces a Val's own path (root only — children keep
+// their clone-time paths). Used by the copy() resolution, whose root
+// path is fully truncated to the destination in TS.
+func forceRootPath(v Val, p []string) {
+	if b, ok := v.(interface{ setVpath([]string) }); ok {
+		b.setVpath(p)
+	}
+}
+
+func setSprOn(v Val, s Val) {
+	if h, ok := v.(sprVal); ok {
+		h.setSpr(s)
+	}
 }
 
 func (b *base) Dc() int             { return b.dc }
@@ -112,15 +166,20 @@ func newTop() *TopVal {
 	return t
 }
 
-var theTop = newTop()
-
-func top() *TopVal { return theTop }
+// A fresh instance per call (mirrors ts/src/val/top.ts): unify mutates
+// Vals in place — setPaths writes paths, move() hide-walks set marks —
+// so a shared TOP singleton could be corrupted by one parse and change
+// the behaviour of every later parse in the same process.
+func top() *TopVal { return newTop() }
 
 func (t *TopVal) Canon() string { return "top" }
 func (t *TopVal) superior() Val { return t }
 
 func (t *TopVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: top"}
+	// Silent (mirrors TopVal.gen returning undefined in TS): the
+	// enclosing bag decides whether an unresolved top is an error
+	// (direct child) or dropped (under a pref / optional subtree).
+	return nil, nil
 }
 
 func (t *TopVal) Unify(peer Val, ctx *Ctx) Val {

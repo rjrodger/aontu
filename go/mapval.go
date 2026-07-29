@@ -83,6 +83,9 @@ func (m *MapVal) Canon() string {
 			b.WriteByte(',')
 		}
 		b.WriteString(jsonString(k))
+		if m.isOptional(k) {
+			b.WriteByte('?')
+		}
 		b.WriteByte(':')
 		b.WriteString(m.peg[k].Canon())
 	}
@@ -90,48 +93,82 @@ func (m *MapVal) Canon() string {
 	return b.String()
 }
 
-// unwrapTypeSpread maps a type() used as a spread to its inner template:
-// the spread should emit constrained values at each destination, not mark
-// the destination as a type. The func's argument (peg[0]) is the
-// parse-time template, so any key()/path() inside is still structural and
-// will resolve at the destination (via spreadCloneFor's clonePath). A ref
-// to a type() is resolved to the same template, so a type-wrapped ref
-// spread behaves like a plain-map ref spread.
-func unwrapTypeSpread(s Val, ctx *Ctx) Val {
-	if rv, ok := s.(*RefVal); ok {
-		if ctx.typeSnap != nil {
-			if snap, ok := ctx.typeSnap[rv]; ok {
-				return snap
-			}
-		}
-		tgt := rv.find(ctx)
-		if fv, ok := tgt.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
-			inner := fv.peg[0]
-			// Cache the inner template only while it is still structural
-			// (key()/path() unresolved). The func's arg mutates as the
-			// source resolves across fixpoint passes, so caching the first
-			// path-dependent form avoids re-reading the source-resolved
-			// value (which would leak the source key into the destination).
-			if hasPathFunc(inner) {
-				if ctx.typeSnap == nil {
-					ctx.typeSnap = map[*RefVal]Val{}
-				}
-				ctx.typeSnap[rv] = inner
-			}
-			return inner
-		}
-		return s
+// snapshotRefSpread snapshots a path-dependent *ref* spread to its
+// structural target once, while inner key()/path() funcs are still
+// unresolved (port of snapshotRefSpread in ts/src/val/MapVal.ts). Later
+// fixpoint passes reuse the snapshot instead of re-resolving the ref
+// against the mutated tree, which would leak the source's resolved
+// key()/path() literals into the spread destinations. Keyed by canon +
+// source position (clones of the ref must find the same snapshot).
+func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
+	if ctx.snapmap == nil {
+		ctx.snapmap = map[string]Val{}
 	}
-	if fv, ok := s.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
-		return fv.peg[0]
+	sk := cj.Canon() + "~" + itoa(cj.sp)
+	if snap, ok := ctx.snapmap[sk]; ok {
+		return snap
 	}
-	return s
+	tgt := cj.find(ctx)
+	// A ref to a type() resolves to its inner template — snapshot that,
+	// so a type-wrapped ref spread behaves like a plain-map ref spread.
+	if fv, ok := tgt.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
+		tgt = fv.peg[0]
+	}
+	// Only snapshot a found, path-dependent target; otherwise retry on
+	// a later pass.
+	if tgt != nil && !tgt.Nil() && hasPathFunc(tgt) {
+		snap := clonePath(tgt, cp(cj.path))
+		// Clear TYPE marks on the snapshot: a type() template constrains
+		// values but must not make the destination type-invisible.
+		walkMark(snap, true, false, false, false)
+		ctx.snapmap[sk] = snap
+		return snap
+	}
+	return nil
 }
 
-// hasPathFunc reports whether v contains an unresolved path-dependent
-// function (key/path/move/super) or a ref, anywhere in its structure.
+// hasPathFunc reports whether v's unification depends on its own path —
+// the exact port of the TS `isPathDependent` getter, INCLUDING its
+// recursion quirks. TS walks `this.peg`: an ARRAY peg (func args,
+// junction members, list elements) recurses into Val elements; an
+// OBJECT peg recurses into Val-valued properties — for a bag that is
+// the children map, but for a PrefVal the peg IS a Val, so the walk
+// only reaches the inner Val's Val-typed properties. The observable
+// consequence: `*copy($.z)` (pref of a func whose args ARRAY hides the
+// ref) counts as path-INdependent, so such a spread template is shared
+// (tier 1) and advances in place; only `*<pref>` chains see through one
+// level. Faithfully mirrored here — do not "fix" the recursion.
+//
+// Like the TS getter, the answer is memoized per Val (base.pdep): an
+// in-place refinement can resolve a key()/ref after the first
+// classification, and the clone-vs-share decision must stay stable
+// across passes.
 func hasPathFunc(v Val) bool {
+	switch v.(type) {
+	case *MapVal, *ListVal, *FuncVal, *ConjunctVal, *DisjunctVal, *PrefVal:
+		if pc, ok := v.(pdepVal); ok {
+			switch pc.getPdep() {
+			case 1:
+				return true
+			case 2:
+				return false
+			}
+			dep := computePathFunc(v)
+			if dep {
+				pc.setPdep(1)
+			} else {
+				pc.setPdep(2)
+			}
+			return dep
+		}
+	}
+	return computePathFunc(v)
+}
+
+func computePathFunc(v Val) bool {
 	switch n := v.(type) {
+	case *RefVal:
+		return true
 	case *FuncVal:
 		switch n.name {
 		case "key", "path", "move", "super":
@@ -142,22 +179,23 @@ func hasPathFunc(v Val) bool {
 				return true
 			}
 		}
-	case *RefVal:
-		return true
 	case *MapVal:
-		if n.spread != nil && hasPathFunc(n.spread) {
-			return true
-		}
 		for _, k := range n.keys {
 			if hasPathFunc(n.peg[k]) {
 				return true
 			}
+		}
+		if n.spread != nil && hasPathFunc(n.spread) {
+			return true
 		}
 	case *ListVal:
 		for _, e := range n.peg {
 			if hasPathFunc(e) {
 				return true
 			}
+		}
+		if n.spread != nil && hasPathFunc(n.spread) {
+			return true
 		}
 	case *ConjunctVal:
 		for _, t := range n.peg {
@@ -172,35 +210,45 @@ func hasPathFunc(v Val) bool {
 			}
 		}
 	case *PrefVal:
-		return hasPathFunc(n.peg)
+		// TS's property-walk over a Val-typed peg reaches only the
+		// inner Val's Val-typed properties: a nested PrefVal's own peg
+		// is one, but a func's args array / a ref's parts / a bag's
+		// children map are not.
+		if inner, ok := n.peg.(*PrefVal); ok {
+			return hasPathFunc(inner.peg)
+		}
+		return false
 	}
 	return false
 }
 
-// spreadCloneFor returns a per-key copy of the spread constraint (TOP
-// needs no cloning), resolved at the destination and with constraint
-// marks cleared.
+// spreadCloneFor returns a per-key copy of the spread constraint,
+// following the spreadClone tiers in TS MapVal/Val:
+//   - TOP needs no cloning;
+//   - a path-independent constraint (no key()/path()/move()/super()/ref
+//     anywhere below) is SHARED — nothing in the unify path depends on
+//     its stored paths, and sharing lets the template advance in place
+//     as destinations resolve it (the TS tier-1 `return this`);
+//   - otherwise a clone re-pathed to the destination (for funcs the
+//     clone shares its args — Val.clone semantics — so e.g. a
+//     close({k:key()}) spread's template map is shared across all
+//     destinations, exactly as in TS).
 func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	if isTop(s) {
 		return s
 	}
-	c := clonePath(s, path)
-	// Resolve the spread (e.g. a ref or a path-dependent func) at the
-	// destination first, THEN clear marks on the resolved root and its
-	// direct children: a type()/hide() spread constrains values but must
-	// not make the destination type-/gen-invisible (mirrors
-	// SpreadVal.applyToMap in perf0 and the TS spread handling).
-	if c.Dc() != DONE {
-		c = unite(ctx, c, top())
+	// The share-when-path-independent tier exists only on bags (TS
+	// overrides spreadClone on MapVal/ListVal alone); every other
+	// constraint kind — prefs, funcs, refs, junctions — clones per
+	// application (Val.spreadClone = this.clone), so e.g. a `*open(x)`
+	// template is never resolved in place by its applications.
+	switch s.(type) {
+	case *MapVal, *ListVal:
+		if !hasPathFunc(s) {
+			return s
+		}
 	}
-	// Clear TYPE marks on the whole resolved clone (recursively): a type()
-	// spread constrains values but must not make the destination — at any
-	// depth — type-invisible (clearing only direct children leaves nested
-	// marks like `type({m:{x:number}})` intact, silently dropping them).
-	// HIDE marks are preserved: a hide() spread (`&:{h:hide(1)}`) is meant
-	// to hide the spread field at the destination.
-	walkMark(c, true, false, false, false)
-	return c
+	return clonePath(s, path)
 }
 
 func (m *MapVal) Gen(ctx *Ctx) (any, error) {
@@ -208,31 +256,96 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 		return nil, nil
 	}
 	out := map[string]any{}
-	for _, k := range m.keys {
+	// Iterate alphabetically (mirrors the entries sort in TS
+	// BagVal.gen): the JSON output is order-independent, but the
+	// collect-mode truncating break must keep the same sorted prefix
+	// in both implementations.
+	keys := append([]string(nil), m.keys...)
+	sort.Strings(keys)
+	for _, k := range keys {
 		child := m.peg[k]
-		// Type and hidden values are excluded from generation.
+		// Type and hidden values are excluded from generation (a key
+		// whose source was moved away carries the hide mark set by
+		// RefVal.find's hide-found handling).
 		if child.markedType() || child.markedHide() {
 			continue
 		}
-		// A key whose source was moved away is hidden.
-		if ctx != nil && ctx.isHidden(append(cp(m.path), k)) {
-			continue
-		}
 		optional := m.isOptional(k)
-		cv, err := child.Gen(ctx)
+
+		// Non-generable child kinds (top, kinds, funcs, vars, ops,
+		// conjuncts) fail at the bag level (mirrors the branch list in
+		// TS BagVal.gen): dropped when optional, a truncating break
+		// under collect, an error otherwise.
+		if !genable(child) {
+			if optional {
+				continue
+			}
+			if ctx != nil && ctx.collect {
+				break
+			}
+			return nil, &AontuError{Msg: "Cannot resolve value: " + child.Canon()}
+		}
+
+		// An optional child generates in an isolated collect context so
+		// inner failures drop parts of the subtree rather than raising.
+		gctx := ctx
+		if optional && ctx != nil && !ctx.collect {
+			c2 := *ctx
+			c2.err = nil
+			c2.collect = true
+			gctx = &c2
+		}
+
+		cv, err := child.Gen(gctx)
 		if err != nil {
 			// An optional key that does not resolve is dropped, not an error.
 			if optional {
 				continue
 			}
+			if ctx != nil && ctx.collect {
+				continue
+			}
 			return nil, err
 		}
+		// A JSON null child survives even when optional (`b?:null` keeps
+		// b: null); other nils and optional empties contribute nothing.
+		if cv == nil && gensNull(child) {
+			out[k] = nil
+			continue
+		}
 		if optional && (cv == nil || isEmptyGen(cv)) {
+			continue
+		}
+		// A nil from a child that doesn't stand for JSON null (a pref
+		// of top, a silent leaf) contributes nothing.
+		if cv == nil {
 			continue
 		}
 		out[k] = cv
 	}
 	return out, nil
+}
+
+// genable mirrors the generable-child branch list in TS BagVal.gen.
+func genable(v Val) bool {
+	switch v.(type) {
+	case *ScalarVal, *MapVal, *ListVal, *PrefVal, *RefVal,
+		*DisjunctVal, *NilVal:
+		return true
+	}
+	return false
+}
+
+// gensNull reports whether a child's generated nil means JSON null
+// (rather than "nothing to contribute").
+func gensNull(v Val) bool {
+	switch n := v.(type) {
+	case *ScalarVal:
+		return n.kind == KindNull
+	case *PrefVal:
+		return gensNull(n.peg)
+	}
+	return false
 }
 
 // isEmptyGen reports whether a generated value is an empty map or list.
@@ -267,11 +380,29 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	}
-	out := newMap()
-	out.closed = m.closed
-	out.path = cp(m.path)
-	out.spread = m.spread
-	out.optional = append([]string{}, m.optional...)
+	// The location this map is being driven at (the TS ctx.path): the
+	// caller's slot hint when present, else the map's own path. Child
+	// drives descend from it (ctx.descend), which matters when a shared
+	// clone with an overlay-tailed stored path is driven as a func arg.
+	dbase := ctx.slot
+	if dbase == nil {
+		dbase = m.path
+	}
+
+	// A TOP peer refines the map IN PLACE (the `out = peer.isTop ? this
+	// : new MapVal(...)` fast-path in TS MapVal.unify): children write
+	// back into m.peg, so shared references to this map — a frozen
+	// func's arg, a spread template — observe the refinement.
+	var out *MapVal
+	if isTop(peer) {
+		out = m
+	} else {
+		out = newMap()
+		out.closed = m.closed
+		out.path = cp(m.path)
+		out.spread = m.spread
+		out.optional = append([]string{}, m.optional...)
+	}
 	done := true
 
 	// Combine spreads and optional keys (additive) from both sides.
@@ -295,16 +426,60 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			}
 		}
 	}
+
 	var spreadCj Val = top()
 	if out.spread != nil {
 		spreadCj = out.spread
 	}
-	spreadCj = unwrapTypeSpread(spreadCj, ctx)
+	// Snapshot a path-dependent ref spread to its structural target once
+	// (see snapshotRefSpread), so later passes don't capture the
+	// source's own resolved key()/path() literals.
+	if rv, ok := spreadCj.(*RefVal); ok {
+		if snap := snapshotRefSpread(rv, ctx); snap != nil {
+			spreadCj = snap
+		}
+	}
+	// A type() used as a spread applies as its inner template: values
+	// are emitted (and constrained) at each destination rather than
+	// marking the destination as a type.
+	if fv, ok := spreadCj.(*FuncVal); ok && fv.name == "type" && len(fv.peg) > 0 {
+		spreadCj = fv.peg[0]
+	}
 
-	// Own children: each is unified with a fresh clone of the spread.
+	// Own children. The spread constraint applies ONCE per child
+	// (mirrors the `_spr` stamp in TS MapVal.unify): the first
+	// application merges the template into the child, so later passes
+	// only self-unify against TOP — where pending funcs in hidden
+	// subtrees freeze (see FuncVal.Unify) instead of being re-fed
+	// template clones, and already-resolved values are not re-clobbered.
 	for _, k := range m.keys {
 		child := m.peg[k]
-		cv := unite(ctx, child, spreadCloneFor(spreadCj, append(cp(m.path), k), ctx))
+		// Map marks ratchet onto children each pass (the
+		// propagateMarks(this, child) in TS MapVal.unify).
+		if m.mtype && !child.markedType() {
+			child.setMarkType(true)
+		}
+		if m.mhide && !child.markedHide() {
+			child.setMarkHide(true)
+		}
+		kslot := append(cp(dbase), k)
+		var cv Val
+		if !isTop(spreadCj) && sprOf(child) == spreadCj {
+			if child.Dc() == DONE {
+				cv = child
+			} else {
+				ctx.slot = kslot
+				cv = unite(ctx, child, top())
+			}
+			setSprOn(cv, spreadCj)
+		} else {
+			sc := spreadCloneFor(spreadCj, kslot, ctx)
+			ctx.slot = kslot
+			cv = unite(ctx, child, sc)
+			if !isTop(spreadCj) && !cv.Nil() {
+				setSprOn(cv, spreadCj)
+			}
+		}
 		out.set(k, cv)
 		if cv.Dc() != DONE {
 			done = false
@@ -313,20 +488,40 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 
 	if pm, ok := peer.(*MapVal); ok {
 		out.closed = m.closed || pm.closed
+		// Self-unify the peer against TOP first (the `upeer` step in TS
+		// MapVal.unify): a shared peer — e.g. a tier-1 spread template —
+		// refines in place, so its resolvable children advance where the
+		// template itself is stored too.
+		if pm.Dc() != DONE {
+			ctx.slot = dbase
+			if upm, uok := unite(ctx, pm, top()).(*MapVal); uok {
+				pm = upm
+			}
+		}
 		for _, pk := range pm.keys {
 			pc := pm.peg[pk]
 			if _, allowed := m.peg[pk]; m.closed && !allowed {
 				return makeNilErr(ctx, "closed", pc, nil)
 			}
+			pkslot := append(cp(dbase), pk)
 			var uv Val
 			if ex, ok := out.peg[pk]; ok {
+				ctx.slot = pkslot
 				uv = unite(ctx, ex, pc)
 			} else {
+				ctx.slot = pkslot
 				uv = unite(ctx, pc, top())
 			}
-			// A spread on the receiving map also applies to peer keys.
-			if m.spread != nil {
-				uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(m.path), pk), ctx))
+			// A spread on the receiving map also applies to peer keys —
+			// once per child, same apply-once discipline as the own-key
+			// loop (the peer-loop `_spr` stamp in TS MapVal.unify).
+			if m.spread != nil && sprOf(uv) != spreadCj {
+				sc := spreadCloneFor(spreadCj, pkslot, ctx)
+				ctx.slot = pkslot
+				uv = unite(ctx, uv, sc)
+				if !isTop(spreadCj) && !uv.Nil() {
+					setSprOn(uv, spreadCj)
+				}
 			}
 			out.set(pk, uv)
 			if uv.Dc() != DONE {

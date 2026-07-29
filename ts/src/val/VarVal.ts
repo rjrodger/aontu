@@ -38,6 +38,10 @@ import {
   explainClose,
 } from '../utility'
 
+import { unite } from '../unify'
+
+import { top } from './top'
+
 
 // TODO: KEY, SELF, PARENT are reserved names - error
 
@@ -67,7 +71,12 @@ class VarVal extends FeatureVal {
         nameVal = this.peg
       }
       else {
-        nameVal = this.peg.unify(peer, te ? ctx.clone({ explain: ec(te, 'PEG') }) : ctx)
+        // Resolve the NAME against TOP only — the peer applies to the
+        // variable's resolved VALUE below, not to its name (so
+        // `k1:$flag &:boolean` checks the boolean value of $flag
+        // against the spread, instead of unifying the string "flag"
+        // with it).
+        nameVal = this.peg.unify(top(), te ? ctx.clone({ explain: ec(te, 'PEG') }) : ctx)
       }
     }
     else {
@@ -106,6 +115,15 @@ class VarVal extends FeatureVal {
         }
         else {
           out = makeNilErr(ctx, 'invalid_var_kind', this, peer)
+        }
+
+        // A non-TOP peer (e.g. a spread constraint unified against the
+        // var) applies to the RESOLVED value rather than being silently
+        // dropped (mirrors VarVal.Unify in go/varval — the resolved
+        // value unites with the peer).
+        if (!out.isNil && null != peer && !peer.isTop) {
+          out = unite(te ? ctx.clone({ explain: ec(te, 'VAL') }) : ctx,
+            out, peer, 'var-val')
         }
       }
       else {

@@ -156,13 +156,15 @@ order plugins are applied. A minor `@tabnas` bump can change these
 silently with no compile error — only the shared spec catches it — so
 upgrade deliberately and run `make test` before loosening any pin.
 
-**Known divergence (minor):** consecutive *bare* spreads at one map level
-— `&:k:a &:p:2` (vs the braced `&:{k:a} &:{p:2}`) — parse differently on
-Go: the first bare spread's implicit-map value absorbs the following
-`&:` as a nested spread, where TS keeps them as two sibling spreads. This
-is an `@tabnas`-Go implicit-map/spread boundary quirk (plain implicit-map
-closing — `a:k:1 b:2` — is correct on both). The braced form works
-identically on both; the affected rows are kept out of the shared spec.
+> **Previously divergent, now fixed:** consecutive spreads at one map
+> level — bare (`&:k:a &:p:2`) and space-separated braced
+> (`x:{&:{k:a} &:{p:2}}`) — used to parse differently (Go nested the
+> second bare spread inside the first's template; TS mis-attached a
+> nested braced sibling spread to the root). Both grammars now gate the
+> sibling-spread pair-close alt on the `pk`/`dmap` counters (see the
+> pair close alts in `ts/src/lang.ts` and `go/lang.go`), so consecutive
+> spreads are siblings on the enclosing map at any depth; covered by the
+> `spread.tsv:sibling-*` shared-spec rows.
 
 ## Conventions
 
@@ -190,17 +192,6 @@ The shared spec only contains rows that pass identically in both
 implementations. A few behaviours deliberately differ and must **not**
 be added to `test/spec/*.tsv`:
 
-- **Numeric canon formatting (range-limited).** `integer` and `number`
-  are distinct kinds in **both** implementations: a concrete `integer`
-  and `number` do not unify (`1 & 1.0` → error), and `-0` normalises to
-  `0` everywhere. The one remaining number divergence is *canon string
-  formatting at extreme magnitudes*: TS uses `Number.toString`, Go uses
-  `%g`, which differ in the exponential threshold and exponent padding
-  (e.g. TS `100000000000000000000` / `1e-7` vs Go `1e+20` / `1e-07`).
-  Numeric canon parity is therefore guaranteed only for the **decimal
-  subset** — `0` and finite numbers in roughly `1e-6 ≤ |x| < 1e20`,
-  which render as plain decimals identically in both. Keep shared-spec
-  numeric `canon` rows inside this range.
 - **Error message text.** Go's `hints` are abbreviated versions of the TS
   hints, and TS additionally renders source frames. Only the substring
   asserted by an `err`-mode spec row is contractual; full error text is
@@ -208,6 +199,72 @@ be added to `test/spec/*.tsv`:
 - **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
   `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
   Go; this is invisible to the shared spec (which is unify-level).
+> **Previously divergent, now fixed:** the canon of move()-hidden ghost
+> nodes, including the object-sharing artifacts. The Go port now
+> mirrors TS's clone-graph sharing directly: func clones share their
+> args array (TS `Val.clone` passes `peg` by reference) and pref clones
+> share their peg, a TOP-peer map/list unify refines the bag IN PLACE
+> (the `out = peer.isTop ? this : new ...` fast-path), and a driving
+> func re-paths its (possibly shared) args to its own location each
+> pass (`repathArg`, the equivalent of TS's ctx-path re-descent — with
+> key()'s stored path frozen once its cc<3 delay window closes). Hiding
+> is mark-based: move() sets the hide mark on the found source node's
+> ROOT only (TS `_hide_found`), bag unifies ratchet marks down one
+> level per pass, and a marked func freezes against TOP but still
+> resolves against a non-TOP peer (spread clones re-driving hidden
+> children behave exactly as in TS). Chained moves wrap the moved copy
+> in a pref() func immediately (TS MoveFuncVal), so intermediate frozen
+> ghosts render `pref($.x.a)` / `pref({"k":"c"})` identically. Ref
+> spreads are snapshotted once per canon+site (the TS snapshotRefSpread
+> port), and spread constraint roots are pathed under a literal `&`
+> segment so relative refs used as spreads resolve one level deeper,
+> as in TS. A ctx `slot` hint threads the TS ctx.path through unify
+> (bag child loops, func arg loops, junction folds), so shared clones
+> whose stored paths carry transplant overlay tails are driven at
+> their actual slot — a close() ghost moved to a SHALLOWER destination
+> re-keys as in TS. Go's hasPathFunc mirrors the TS isPathDependent
+> getter including its recursion quirks (a pref-wrapped func's args
+> array is invisible to the property walk, so `&:{q:*copy($.z)}`
+> templates are shared and advance in place). Covered by the func.tsv
+> ghost/move-chain rows and the spread.tsv close-template and
+> template-pref-copy rows.
+- **Canon of invalid sources.** A source that fails in both
+  implementations may fail at different stages — e.g. `k-x:1` (bare key
+  containing `-`) is a parse error in TS but parses to a list holding an
+  error nil in Go. `generate` errors in both; only `unify(src).canon` of
+  such an *invalid* source differs, which the spec (whose canon rows are
+  valid sources) never observes.
+- **Malformed-input acceptance edges.** Fuzzing surfaced a residual
+  family of *degenerate* inputs where the two parsers disagree about
+  whether to accept at all: nested implicit lists from adjacent values
+  in expression positions (`pref(1-3)`, `close(([]%))`), and stray-quote
+  juxtapositions (`1'00]...`, `"q k""?:...`) — one side errors, the
+  other parses to a (differently shaped) junk value. Well-formed
+  sources are unaffected.
+> **Previously divergent, now fixed:** root-level spreads over `$var`
+> (and other expression) keys. `k1:$flag &:boolean` used to raise an
+> internal error in TS: the expr plugin consumed the `&` as an infix
+> conjunct, choked on the `:`, and left a raw unevaluated expr node in
+> the map. Both grammars now close an open expression when `&` `:`
+> follows (backtracking so the enclosing map takes the spread), and TS
+> VarVal.unify resolves the variable's NAME against TOP only, applying
+> the peer constraint to the resolved VALUE (previously the constraint
+> was unified with the name string, inverting the check). TS unite's
+> dispatch ladder also gained the `isVar` case Go already had, so
+> conjunct-driven constraints reach VarVal.unify instead of failing in
+> ScalarKindVal (`p1:$foo &:integer&number`). TS RefVal.find now pushes
+> a resolved variable path segment (`$seg.r` with seg="x" reads
+> `...x.r`; previously the coerced value was silently dropped and the
+> path read without it — Go's interpolation was already correct).
+> Covered by the var.tsv spread and path-segment rows.
+
+> **Previously divergent, now fixed:** numeric canon formatting at
+> extreme magnitudes. Go's `formatNumber` (go/scalar.go) now reproduces
+> JavaScript `Number.toString` exactly — fixed notation for decimal
+> exponents in [-6, 20], exponential with an unpadded signed exponent
+> outside (`1e+21`, `1e-7`) — pinned by `go/scalar_format_test.go` and
+> the `scalar.tsv` extreme-magnitude canon rows. Numeric canon rows no
+> longer need to stay inside the old "safe decimal subset".
 
 > **Previously divergent, now fixed:** a colon-chain key whose value was a
 > bare import — `struct: minor: @"file"` — used to resolve to `{}` in Go

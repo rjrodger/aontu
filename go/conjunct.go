@@ -37,6 +37,10 @@ func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil {
 		peer = top()
 	}
+	// The conjunct's members are driven at the conjunct's own location
+	// (TS folds with the same undescended ctx).
+	slot := ctx.slot
+
 	terms := norm(c.peg)
 	done := true
 
@@ -46,6 +50,7 @@ func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {
 		if t.Dc() == DONE && isTop(peer) {
 			upeer[i] = t
 		} else {
+			ctx.slot = slot
 			upeer[i] = unite(ctx, t, peer)
 		}
 		if upeer[i].Dc() != DONE {
@@ -73,6 +78,7 @@ func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {
 			outvals = append(outvals, t0)
 			continue
 		}
+		ctx.slot = slot
 		val := unite(ctx, t0, t1)
 		if val.Dc() != DONE {
 			done = false

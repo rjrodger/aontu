@@ -4,35 +4,36 @@ package aontu
 
 import "strings"
 
+// hide marking is mark-based (see RefVal.find and FuncVal.Unify): the
+// move() machinery sets the hide mark on the found source node and the
+// bag unify loops ratchet marks down one level per pass, mirroring the
+// TS _hide_found + propagateMarks flow.
+
 // Ctx carries unification state: the root Val (for path resolution,
 // once references are ported) and the collected error list.
 type Ctx struct {
-	root   Val
-	err    []*NilVal
-	depth  int             // unite recursion depth (cycle guard)
-	cc     int             // current fixpoint pass (for late-resolving funcs)
-	hidden map[string]bool // source paths hidden by move()
-	vars   map[string]Val  // user-provided variables, resolved by $name
-	// typeSnap caches the structural inner template of a type() reached
-	// via a ref spread (unwrapTypeSpread), captured while its key()/path()
-	// are still unresolved so later passes don't re-read the source-
-	// resolved form. Keyed by the (per-parse) RefVal; lives for the run.
-	typeSnap map[*RefVal]Val
-}
-
-func (c *Ctx) hide(path []string) {
-	if c.hidden == nil {
-		c.hidden = map[string]bool{}
-	}
-	c.hidden[pathKey(path)] = true
-}
-
-func (c *Ctx) isHidden(path []string) bool {
-	return c.hidden != nil && c.hidden[pathKey(path)]
-}
-
-func pathKey(path []string) string {
-	return strings.Join(path, "\x00")
+	root  Val
+	err   []*NilVal
+	depth int            // unite recursion depth (cycle guard)
+	cc    int            // current fixpoint pass (for late-resolving funcs)
+	vars  map[string]Val // user-provided variables, resolved by $name
+	// collect: generation inside an optional subtree — failures are
+	// isolated (skipped/partial output) instead of raised, mirroring
+	// the cctx clone({err: [], collect: true}) in TS BagVal.gen.
+	collect bool
+	// snapmap caches structural snapshots of ref spreads (see
+	// snapshotRefSpread in mapval.go), keyed by the ref's canon + source
+	// position — mirroring the snapmap on the TS unify root ctx.
+	snapmap map[string]Val
+	// slot is the location the next Unify target is being driven at —
+	// the TS ctx.path equivalent. Producers (bag child loops, func arg
+	// loops, junction folds) set it right before a unite call; unite
+	// scopes it to the single dispatched Unify; consumers (FuncVal,
+	// MapVal, ListVal) read it at entry. nil means "unknown — fall back
+	// to the Val's own stored path", which is correct whenever the Val
+	// actually sits at its slot (everything except shared/transplanted
+	// clones, whose stored paths carry overlay tails).
+	slot []string
 }
 
 func (c *Ctx) adderr(n *NilVal) {

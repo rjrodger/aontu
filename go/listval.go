@@ -48,9 +48,25 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 		if e.markedType() || e.markedHide() {
 			continue
 		}
+		// Mirrors the MapVal.Gen child handling (which mirrors TS
+		// BagVal.gen): non-generable elements error at the bag level
+		// (or truncate under collect); a nil that doesn't stand for
+		// JSON null contributes nothing.
+		if !genable(e) {
+			if ctx != nil && ctx.collect {
+				break
+			}
+			return nil, &AontuError{Msg: "Cannot resolve value: " + e.Canon()}
+		}
 		ev, err := e.Gen(ctx)
 		if err != nil {
+			if ctx != nil && ctx.collect {
+				continue
+			}
 			return nil, err
+		}
+		if ev == nil && !gensNull(e) {
+			continue
 		}
 		out = append(out, ev)
 	}
@@ -64,10 +80,18 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	if pl, ok := peer.(*ListVal); ok && !l.closed && pl.closed {
 		return pl.Unify(l, ctx)
 	}
-	out := &ListVal{}
-	out.closed = l.closed
-	out.path = cp(l.path)
-	out.spread = l.spread
+	// A TOP peer refines the list IN PLACE (mirrors `out = peer.isTop ?
+	// this : new ListVal(...)` in TS ListVal.unify) — see the matching
+	// comment in MapVal.Unify.
+	var out *ListVal
+	if isTop(peer) {
+		out = l
+	} else {
+		out = &ListVal{}
+		out.closed = l.closed
+		out.path = cp(l.path)
+		out.spread = l.spread
+	}
 	done := true
 
 	if pl, ok := peer.(*ListVal); ok {
@@ -82,9 +106,31 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		spreadCj = out.spread
 	}
 
+	// Driven base (see the matching comment in MapVal.Unify).
+	dbase := ctx.slot
+	if dbase == nil {
+		dbase = l.path
+	}
+
+	inplace := out == l
 	for i, e := range l.peg {
-		ev := unite(ctx, e, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
-		out.peg = append(out.peg, ev)
+		// List marks ratchet onto elements each pass (the
+		// propagateMarks(this, child) in TS ListVal.unify).
+		if l.mtype && !e.markedType() {
+			e.setMarkType(true)
+		}
+		if l.mhide && !e.markedHide() {
+			e.setMarkHide(true)
+		}
+		islot := append(cp(dbase), itoa(i))
+		sc := spreadCloneFor(spreadCj, islot, ctx)
+		ctx.slot = islot
+		ev := unite(ctx, e, sc)
+		if inplace {
+			out.peg[i] = ev
+		} else {
+			out.peg = append(out.peg, ev)
+		}
 		if ev.Dc() != DONE {
 			done = false
 		}
@@ -92,18 +138,31 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 
 	if pl, ok := peer.(*ListVal); ok {
 		out.closed = l.closed || pl.closed
+		// Self-unify the peer against TOP first (the `upeer` step in TS
+		// ListVal.unify) — see the matching comment in MapVal.Unify.
+		if pl.Dc() != DONE {
+			ctx.slot = dbase
+			if upl, uok := unite(ctx, pl, top()).(*ListVal); uok {
+				pl = upl
+			}
+		}
 		for i, pe := range pl.peg {
 			if l.closed && i >= len(l.peg) {
 				return makeNilErr(ctx, "closed", pe, nil)
 			}
+			islot := append(cp(dbase), itoa(i))
 			var uv Val
 			if i < len(out.peg) {
+				ctx.slot = islot
 				uv = unite(ctx, out.peg[i], pe)
 				out.peg[i] = uv
 			} else {
+				ctx.slot = islot
 				uv = unite(ctx, pe, top())
 				if l.spread != nil {
-					uv = unite(ctx, uv, spreadCloneFor(spreadCj, append(cp(l.path), itoa(i)), ctx))
+					sc := spreadCloneFor(spreadCj, islot, ctx)
+					ctx.slot = islot
+					uv = unite(ctx, uv, sc)
 				}
 				out.peg = append(out.peg, uv)
 			}

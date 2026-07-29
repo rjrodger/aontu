@@ -41,25 +41,42 @@ class PlusOpVal extends OpBaseVal {
 
 
   operate(_ctx: AontuContext, args: Val[]) {
-    let a: any = this.primatize(args[0]?.peg)
-    let b: any = this.primatize(args[1]?.peg)
+    // Only concrete scalar operands are valid: anything else (kinds,
+    // maps, lists, null, top, funcs) must not coerce — the JS `+` would
+    // leak internals like "[object Object]" into output. A non-scalar
+    // operand leaves the op unresolved, which generate() reports.
+    const prim = (v: any) => {
+      // A pref operand contributes its preferred value (`pref(1)+2`).
+      while (v?.isPref) {
+        v = v.peg
+      }
+      const p = v?.isVal && v.isScalar ? v.peg : undefined
+      const t = typeof p
+      return 'string' === t || 'number' === t || 'boolean' === t ? p : undefined
+    }
+    let a: any = prim(args[0])
+    let b: any = prim(args[1])
+
+    if (undefined === a || undefined === b) {
+      return undefined
+    }
+
+    const at = typeof a
+    const bt = typeof b
 
     let peg = undefined
-    if (undefined === a && undefined !== b) {
-      peg = b
+    if ('boolean' === at && 'boolean' === bt) {
+      peg = a || b
     }
-    else if (undefined === b && undefined !== a) {
-      peg = a
+    else if ('string' === at || 'string' === bt) {
+      peg = String(a) + String(b)
+    }
+    else if ('boolean' === at || 'boolean' === bt) {
+      // boolean mixed with a number does not coerce (no JS 0/1).
+      return undefined
     }
     else {
-      const at = typeof a
-      const bt = typeof b
-      if ('boolean' === at && 'boolean' === bt) {
-        peg = a || b
-      }
-      else {
-        peg = a + b
-      }
+      peg = a + b
     }
 
     let pegtype = typeof peg

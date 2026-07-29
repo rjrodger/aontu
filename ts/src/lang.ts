@@ -100,6 +100,20 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
 
   jsonic.use(asPlugin(Path))
 
+  // Only # line comments are valid Aontu syntax (see
+  // docs/reference-language.md; go/lang.go sets the same). Clear the
+  // underlying jsonic comment markers entirely, then define # directly,
+  // so the comment set is hash-only regardless of those defaults.
+  jsonic.options({ comment: { def: null } })
+  jsonic.options({
+    comment: {
+      lex: true,
+      def: {
+        hash: { line: true, start: '#', lex: true },
+      },
+    },
+  })
+
   // TODO: refactor Val constructor
   // let addsite = (v: Val, p: string[]) => (v.path = [...(p || [])], v)
   let addsite = (v: Val, r: Rule, ctx: JsonicContext) => {
@@ -218,26 +232,42 @@ help isolate the syntax error.`,
   }
 
 
+  // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
+  // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
+  // and `a:1|` are just 1); ops missing a required operand become an
+  // incomplete_expression nil, surfaced by generate() as a "Cannot
+  // resolve value" error (the Go port mirrors this in lang.go).
+  const dropUnfilled = (terms: any) => terms.filter((t: any) => null != t)
+
+  const incompleteNil = (r: Rule, ctx: JsonicContext) =>
+    addsite(new NilVal({ why: 'incomplete_expression' }), r, ctx)
+
   let opmap: any = {
     'conjunct-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) =>
-      addsite(new ConjunctVal({ peg: terms }), r, ctx),
+      addsite(new ConjunctVal({ peg: dropUnfilled(terms) }), r, ctx),
 
     'disjunct-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) =>
-      addsite(new DisjunctVal({ peg: terms }), r, ctx),
+      addsite(new DisjunctVal({ peg: dropUnfilled(terms) }), r, ctx),
 
     'dot-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      terms = dropUnfilled(terms)
+      if (0 === terms.length) return incompleteNil(r, ctx)
       return addsite(new RefVal({ peg: terms, prefix: true }), r, ctx)
     },
 
     'dot-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
-      // // console.log('DOT-INFIX-OP', terms)
+      terms = dropUnfilled(terms)
+      if (0 === terms.length) return incompleteNil(r, ctx)
       return addsite(new RefVal({ peg: terms }), r, ctx)
     },
 
-    'star-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) =>
-      addsite(new PrefVal({ peg: terms[0] }), r, ctx),
+    'star-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      if (null == terms[0]) return incompleteNil(r, ctx)
+      return addsite(new PrefVal({ peg: terms[0] }), r, ctx)
+    },
 
     'dollar-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      if (null == terms[0]) return incompleteNil(r, ctx)
       // $.a.b absolute path
       if (terms[0] instanceof RefVal) {
         terms[0].absolute = true
@@ -247,19 +277,34 @@ help isolate the syntax error.`,
     },
 
     'plus-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      if (null == terms[0] || null == terms[1]) return incompleteNil(r, ctx)
       return addsite(new PlusOpVal({ peg: [terms[0], terms[1]] }), r, ctx)
     },
 
     'negative-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[0]
-      val.peg = -1 * val.peg
+      if (null == val) return incompleteNil(r, ctx)
+      // Negating a non-numeric operand (`k-x` splits into k, -x) is an
+      // error nil, not NaN (mirrors negate() in go/lang.go).
+      if (!(val instanceof IntegerVal) && !(val instanceof NumberVal)) {
+        return addsite(new NilVal({ why: 'negative' }), r, ctx)
+      }
+      // Build a fresh Val rather than mutating in place: the expr plugin
+      // can evaluate the same node twice (e.g. inside `*-1` or a
+      // disjunct member), and an in-place `peg = -peg` applied twice
+      // silently un-negates the number.
+      let peg = -1 * val.peg
       // Normalize -0 to 0 (keeps the AST and canon free of negative zero).
-      if (0 === val.peg) val.peg = 0
-      return addsite(val, r, ctx)
+      if (0 === peg) peg = 0
+      const out = val instanceof IntegerVal
+        ? new IntegerVal({ peg })
+        : new NumberVal({ peg })
+      return addsite(out, r, ctx)
     },
 
     'positive-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[0]
+      if (null == val) return incompleteNil(r, ctx)
       return addsite(val, r, ctx)
     },
 
@@ -275,6 +320,8 @@ help isolate the syntax error.`,
             peg: args
           })
       }
+      // `a:()` — grouping parens with nothing inside.
+      if (null == val) return incompleteNil(r, ctx)
       const out = addsite(val, r, ctx)
       return out
     },
@@ -375,6 +422,24 @@ help isolate the syntax error.`,
   const OPTKEY = [TX, ST, NR]
 
 
+  jsonic.rule('expr', (rs: RuleSpec) => {
+    rs.close([
+      // A `&` followed by `:` after an expression value belongs to the
+      // enclosing map as a spread, not to the expression as a conjunct
+      // — backtrack both tokens so the expression completes (and
+      // evaluates to a Val) and the map's spread alts take over. This
+      // is what makes `k1:$flag &:boolean` parse: without it the expr
+      // plugin consumes the `&` as an infix conjunct, chokes on the
+      // `:`, and leaves the raw unevaluated expr node in the map
+      // (mirrors the expr-rule PrependClose in go/lang.go). The
+      // `n: { expr: 0 }` reset matches the plugin's own expr-end alts —
+      // the evaluation after-close only fires when the counter is 0.
+      { s: [CJ, CL], b: 2, n: { expr: 0 }, g: 'expr,expr-end,spread' },
+    ])
+    return rs
+  })
+
+
   jsonic.rule('val', (rs: RuleSpec) => {
 
     rs
@@ -419,8 +484,13 @@ help isolate the syntax error.`,
           valnode = addsite(new StringVal({ peg: r.node }), r, ctx)
         }
         else if ('number' === valtype) {
+          // An overflowing literal (1e999) lexes to Infinity; that is an
+          // error value, not a number (mirrors not_number in go/lang.go).
+          if (!Number.isFinite(r.node)) {
+            valnode = addsite(new NilVal({ why: 'not_number' }), r, ctx)
+          }
           // 1.0 in source is *not* an integer
-          if (Number.isInteger(r.node) && !r.o0.src.includes('.')) {
+          else if (Number.isInteger(r.node) && !r.o0.src.includes('.')) {
             valnode = addsite(new IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx)
           }
           else {
@@ -466,6 +536,14 @@ help isolate the syntax error.`,
 
         let mo = r.node
 
+        // An elided value (`a:`) leaves a raw null/undefined that never
+        // passed through the val rule; make it an explicit NullVal.
+        for (const k in mo) {
+          if (null == mo[k] && '___merge' !== k) {
+            mo[k] = addsite(new NullVal({ peg: null }), r, ctx)
+          }
+        }
+
         //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
         if (mo.___merge) {
           let mop = { ...mo }
@@ -501,6 +579,14 @@ help isolate the syntax error.`,
         const optionalKeys = r.u.aontu_optional_keys ?? []
 
         let ao = r.node
+
+        // An elided element (`[,]`) is a raw null that never passed
+        // through the val rule; make it an explicit NullVal.
+        for (let i = 0; i < ao.length; i++) {
+          if (null == ao[i]) {
+            ao[i] = addsite(new NullVal({ peg: null }), r, ctx)
+          }
+        }
 
         if (ao.___merge) {
           let aop = [...ao]
@@ -593,7 +679,12 @@ help isolate the syntax error.`,
       })
 
       .close([
-        { s: [CJ, CL], c: (r) => r.lte('dmap', 1), r: 'pair', b: 2, g: 'spread,json,pair' },
+        // A following `&:` starts a sibling spread pair in the current
+        // map: directly inside a braced map (pk<=0) at any depth, or in
+        // the implicit top-level map (dmap<=1). Inside an implicit
+        // colon-chain map (pk>0) it bubbles up instead (second alt), so
+        // `a:b:1 &:2` attaches the spread to a's map, not b's.
+        { s: [CJ, CL], c: (r) => r.lte('pk', 0) || r.lte('dmap', 1), r: 'pair', b: 2, g: 'spread,json,pair' },
         { s: [CJ, CL], b: 2, g: 'spread,json,more' }
       ])
 
@@ -689,6 +780,13 @@ function makeModelResolver(options: any) {
   ) {
 
     let path = 'string' === typeof spec ? spec : spec?.peg
+
+    // A bare `@` with no path (`a:@`) has nothing to resolve; report
+    // not-found instead of crashing in the underlying resolvers.
+    if (null == path || '' === path) {
+      return { found: false, path: '' + (path ?? ''), search: [] }
+    }
+
     let search: any = []
     let res = memResolver(path, popts, rule, ctx, jsonic)
     res.path = path
@@ -715,6 +813,49 @@ function makeModelResolver(options: any) {
     res.search = search.concat(res.search)
     return res
   }
+}
+
+
+// rawToVal converts a raw parse node (or raw elements inside one) into
+// the matching Val. Used for implicit top-level lists, whose nodes skip
+// the aontu val rule conversions (mirrors asVal in go/lang.go; like
+// there, source text is unavailable, so an integral number is an
+// integer).
+function rawToVal(n: any): Val {
+  if (null == n) {
+    return new NullVal({ peg: null })
+  }
+  if (true === n.isVal) {
+    return n
+  }
+  if (Array.isArray(n)) {
+    return new ListVal({ peg: n.map(rawToVal) })
+  }
+  const t = typeof n
+  if ('string' === t) {
+    return new StringVal({ peg: n })
+  }
+  if ('number' === t) {
+    return Number.isInteger(n) ?
+      new IntegerVal({ peg: n }) : new NumberVal({ peg: n })
+  }
+  if ('boolean' === t) {
+    return new BooleanVal({ peg: n })
+  }
+  if ('object' === t) {
+    // An expr-plugin internal (operator descriptor) leaking through a
+    // degenerate parse (`k2.b K:1`) is not data — reject it rather
+    // than emitting raw internals in generated output.
+    if (undefined !== (n as any).OP_MARK) {
+      return new NilVal({ why: 'parse_unknown' })
+    }
+    const peg: Record<string, Val> = {}
+    for (const k in n) {
+      peg[k] = rawToVal(n[k])
+    }
+    return new MapVal({ peg })
+  }
+  return new NilVal({ why: 'parse_unknown' })
 }
 
 
@@ -784,6 +925,14 @@ class Lang {
 
     try {
       val = this.jsonic(src, jm)
+
+      // An implicit top-level list (`a b`, `1,2`) is built by the core
+      // jsonic grammar without passing through the aontu val/list rules,
+      // so the root (and its elements) arrive as raw JS values. Convert
+      // them the same way the Go port's asVal post-walk does.
+      if (null != val && true !== (val as any).isVal) {
+        val = rawToVal(val)
+      }
     }
     catch (e: any) {
       if (e instanceof JsonicError || 'JsonicError' === e.constructor.name) {

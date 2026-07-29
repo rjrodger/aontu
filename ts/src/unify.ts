@@ -128,6 +128,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         || b.isDisjunct
         || b.isRef
         || b.isPref
+        || b.isVar
         || b.isFunc
         || b.isExpect
       ) {

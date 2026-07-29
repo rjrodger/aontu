@@ -15,6 +15,18 @@ func unite(ctx *Ctx, a, b Val) Val {
 		return makeNilErr(ctx, "unify_cycle", a, b)
 	}
 
+	// Scope the caller's slot hint to the single dispatched Unify call:
+	// nested unites inside that Unify see only the slots the Unify
+	// itself sets, and a hint never leaks across sibling drives.
+	slot := ctx.slot
+	ctx.slot = nil
+	drive := func(v Val, peer Val) Val {
+		ctx.slot = slot
+		out := v.Unify(peer, ctx)
+		ctx.slot = nil
+		return out
+	}
+
 	if a == nil {
 		return b
 	}
@@ -22,9 +34,10 @@ func unite(ctx *Ctx, a, b Val) Val {
 		if a.Dc() == DONE {
 			return a
 		}
-		return a.Unify(top(), ctx)
+		return drive(a, top())
 	}
 	if isTop(a) {
+		ctx.slot = slot
 		return unite(ctx, b, top())
 	}
 	if a.Nil() {
@@ -34,12 +47,12 @@ func unite(ctx *Ctx, a, b Val) Val {
 		return b
 	}
 	if isConjunct(a) {
-		return a.Unify(b, ctx)
+		return drive(a, b)
 	}
 	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) {
-		return b.Unify(a, ctx)
+		return drive(b, a)
 	}
-	return a.Unify(b, ctx)
+	return drive(a, b)
 }
 
 const maxUniteDepth = 2000
