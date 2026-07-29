@@ -114,6 +114,10 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			},
 		},
 		Map: &jsonic.MapOptions{
+			// aontu builds its own Val AST and tracks map key order itself
+			// (trackOrder), so it wants plain map[string]any object nodes, not
+			// the parser's insertion-ordered OrderedMap default.
+			Plain: boolPtr(true),
 			// Duplicate keys combine into a conjunct (mirrors the jsonic
 			// merge in ts/src/lang.ts), e.g. `a:1 a:2` -> `a:1&2`.
 			Merge: func(prev, val any, r *jsonic.Rule, ctx *jsonic.Context) any {
