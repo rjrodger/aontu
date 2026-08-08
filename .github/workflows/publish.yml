@@ -1,0 +1,49 @@
+# Publish the `aontu` npm package using npm trusted publishing (OIDC).
+#
+# No NPM_TOKEN: the `id-token: write` permission lets npm exchange a GitHub
+# OIDC token for a short-lived publish credential. The trusted publisher must
+# be registered on npmjs.com against THIS filename (publish.yml) — renaming
+# this file breaks publishing until the npm-side config is updated to match.
+#
+# Provenance is attached automatically; no --provenance flag needed.
+#
+# Release flow: bump the version and push a v* tag (npm run repo-bump, then
+# npm run repo-tag). Do NOT run repo-publish locally — it publishes over a
+# token and bypasses OIDC entirely.
+
+name: publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: npm publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: ts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing requires npm >= 11.5.1.
+      - name: Use a trusted-publishing capable npm
+        run: npm install -g npm@latest
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      - name: Publish to npm
+        run: npm publish
