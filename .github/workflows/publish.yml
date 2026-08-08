@@ -41,7 +41,8 @@ jobs:
       - name: Use a trusted-publishing capable npm
         run: npm install -g npm@latest
 
-      - run: npm ci
+      # npm install, not npm ci: package-lock.json is gitignored in this repo.
+      - run: npm install
       - run: npm run build
       - run: npm test
 
