@@ -13,6 +13,15 @@ import { formatExplain } from './utility'
 import { makeNilErr, descErr, AontuError } from './err'
 
 
+// VERSION is the Aontu npm package version, and mirrors
+// go/aontu.go's `Version` (which tracks the Go module version
+// separately — the two version series are independent).
+//
+// Kept in step with package.json by the `version` npm lifecycle script,
+// which runs on `npm version` / `npm run repo-bump`. version.test.ts
+// fails if the two ever drift.
+const VERSION = '0.49.0'
+
 
 class Aontu {
   opts: AontuOptions
@@ -219,6 +228,8 @@ const util = {
 
 
 export {
+  VERSION,
+
   Aontu,
   AontuOptions,
   AontuContext,

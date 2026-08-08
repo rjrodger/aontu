@@ -40,7 +40,11 @@ clean-go:
 # Publish Go module: make publish-go V=0.1.2
 publish-go: test-go
 	@test -n "$(V)" || (echo "Usage: make publish-go V=x.y.z" && exit 1)
-	sed -i '' 's/^const Version = ".*"/const Version = "$(V)"/' go/aontu.go
+	# Portable in-place edit: `sed -i ''` is BSD/macOS only and fails on
+	# GNU sed (it reads '' as the script), which left Version stale.
+	perl -pi -e 's/^const Version = ".*"/const Version = "$(V)"/' go/aontu.go
+	@grep -q '^const Version = "$(V)"' go/aontu.go || \
+	  (echo "publish-go: failed to set Version in go/aontu.go" && exit 1)
 	git add go/aontu.go
 	git commit -m "go: v$(V)"
 	git tag go/v$(V)

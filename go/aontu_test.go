@@ -2,7 +2,10 @@
 
 package aontu
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+)
 
 func TestBasicCanon(t *testing.T) {
 	v, err := New().Unify("a:1")
@@ -74,5 +77,15 @@ func TestReservedKeyPrefixRejected(t *testing.T) {
 	// A normal key is unaffected.
 	if out, err := New().Generate("normal:1"); err != nil {
 		t.Fatalf("normal key errored: %v (out=%v)", err, out)
+	}
+}
+
+// TestVersionFormat guards the Version constant, which `make publish-go
+// V=x.y.z` rewrites. The rewrite used a BSD-only `sed -i ''` that silently
+// no-opped on GNU sed, so a malformed or stale constant could ship. Mirrors
+// ts/test/version.test.ts.
+func TestVersionFormat(t *testing.T) {
+	if !regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(Version) {
+		t.Fatalf("Version is not a plain semver triple: %q", Version)
 	}
 }
