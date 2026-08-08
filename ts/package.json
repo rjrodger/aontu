@@ -47,12 +47,12 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@tabnas/debug": "0.2.5",
-    "@tabnas/directive": "0.2.1",
-    "@tabnas/expr": "0.2.3",
-    "@tabnas/jsonic": "0.3.1",
-    "@tabnas/multisource": "0.3.2",
-    "@tabnas/path": "0.2.1"
+    "@tabnas/debug": "0.2.9",
+    "@tabnas/directive": "0.4.2",
+    "@tabnas/expr": "0.4.2",
+    "@tabnas/jsonic": "0.4.3",
+    "@tabnas/multisource": "0.4.4",
+    "@tabnas/path": "0.2.3"
   },
   "devDependencies": {
     "@types/node": "26.1.1",
