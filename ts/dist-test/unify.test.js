@@ -138,7 +138,7 @@ const G = (s) => A.generate(s);
         (0, expect_1.expect)(G('a&(a|b)&a')).equal('a');
         (0, expect_1.expect)(G('a|b&a')).equal('a');
         (0, expect_1.expect)(G('a|(b&a)')).equal('a');
-        (0, expect_1.expect)(G('(a|b)&a)')).equal('a');
+        (0, expect_1.expect)(G('(a|b)&a')).equal('a');
         (0, expect_1.expect)(N('a&a|b')).equal('"a"|"b"');
         (0, expect_1.expect)(() => G('a&a|b')).throws(/aontu\/scalar/);
         (0, expect_1.expect)(G('a&a|b&a')).equal('a');

@@ -216,7 +216,7 @@ describe('unify', function() {
 
     expect(G('a|b&a')).equal('a')
     expect(G('a|(b&a)')).equal('a')
-    expect(G('(a|b)&a)')).equal('a')
+    expect(G('(a|b)&a')).equal('a')
 
     expect(N('a&a|b')).equal('"a"|"b"')
     expect(() => G('a&a|b')).throws(/aontu\/scalar/)
