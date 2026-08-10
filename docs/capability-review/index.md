@@ -30,12 +30,17 @@ semantics embeddable in Node agent harnesses and Go gateways.
 
 But today, "type safety through unification" cashes out as **five
 scalar kinds, literal equality, disjunction-enums, and closedness** —
-`a: number > 0` is a parse error (verified live), there is no regex, no
-length or cardinality constraint, no cross-field invariant. And the
-language is an *evaluator of its own files*, not yet a *service other
-things are checked against*: the CLI evaluates one file to JSON; there
-is no way to validate external data, query a path, ask why a value
-holds, or check that v2 of a schema still honours v1.
+`a: number > 0` is a parse error (verified live), there is no regex,
+and no length or cardinality constraint. Cross-field *equality* is
+expressible through references (`b: $.a` conflicts if `b` is pinned
+elsewhere), but no cross-field inequality or general predicate is.
+And the language is an *evaluator of its own files*, not yet a
+*service other things are checked against*: `@"file"` can load and
+unify external data and the TS API exposes `ctx.find(path)`, but
+there is no dedicated validation verb with a structured report
+contract, no CLI query surface or token-efficient projections, no way
+to ask why a value holds, and no check that v2 of a schema still
+honours v1.
 
 The industry context sharpens the stakes. The 2024–26
 spec-driven-development movement (GitHub Spec Kit, AWS Kiro, OpenAI's
@@ -183,7 +188,12 @@ it (`@"pkg"` can `require()` arbitrary modules; the LSP inherits
 this), and the fixpoint's hard 9-pass bound means models that need a
 tenth pass silently stop refining rather than erroring distinctly.
 Hermeticity — same file set + same `$` bindings ⇒ identical output —
-is probably true de facto but is undocumented and untested. The work:
+is currently *false* under the default resolver: a package include
+can execute a module whose export derives from time, environment, or
+filesystem state, so identical sources can produce different results.
+It holds only under confined resolvers (memory/filesystem), and
+resolver confinement is therefore part of *establishing* the
+guarantee, not merely documenting it. The work:
 write the guarantees down, pin them in the spec suite (including
 byte-identical canonical output across TS and Go), give the evaluator
 API a capability surface, adopt import-sandbox rules before `@"…"`
@@ -199,8 +209,15 @@ versioned modules with lockfiles, distributed over OCI registries.
 The differentiator on top: Dhall-style **semantic integrity hashes
 computed over Aontu's canonical form**. A pin hashes the *meaning*,
 not the bytes — refactors and comments don't break it; any semantic
-change anywhere in the transitive closure does. Aontu's existing canon
-makes this nearly free, and no unification-family language has it.
+change anywhere in the transitive closure does. One honest caveat the
+design must resolve: canon today is deterministic *syntax*, not a
+unique semantic normal form (`number|integer` denotes the same value
+set as `number` — `DisjunctVal` drops only `same()` alternatives —
+yet the two canon differently), so hashing requires either a
+subsumption-based minimisation step before the hash or the weaker,
+clearly-labelled claim of a canonical-text hash. Aontu's existing
+canon still makes either variant nearly free, and no
+unification-family language has it.
 
 ### G7 — A machine-facing access surface
 
