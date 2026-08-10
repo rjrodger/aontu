@@ -48,7 +48,14 @@ class ScalarVal extends Val_1.Val {
                 this.peg.toString();
     }
     same(peer) {
-        return peer?.isScalar ? peer.peg === this.peg : super.same(peer);
+        // Two concrete scalars are the same only when KIND and value both
+        // match. Comparing peg alone is a leftover from before integer and
+        // number were distinct kinds; without the kind test `1|1.0` would
+        // collapse to a single alternative and `(1|1.0) & 1.0` could pick
+        // the integer.
+        return peer?.isScalar ?
+            (peer.kind === this.kind && peer.peg === this.peg) :
+            super.same(peer);
     }
     gen(_ctx) {
         // Normalize negative zero to 0 for deterministic output (JSON has

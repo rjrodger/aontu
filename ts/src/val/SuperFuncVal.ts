@@ -34,7 +34,20 @@ class SuperFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(_ctx: AontuContext, _args: Val[]) {
+  resolve(_ctx: AontuContext, args: Val[]) {
+    // super(x) is the lattice-superior of its ARGUMENT, not of the
+    // super() call itself: super(1) -> integer, super(1.5) -> number,
+    // super(a) -> string, super(true) -> boolean. Returning the
+    // function's own superior (top) is what made super() inert.
+    const arg: any = args?.[0]
+    if (arg?.isVal) {
+      const sup = arg.superior()
+      // Where the argument has no meaningful superior (superior()
+      // defaults to top), fall back to the previous behaviour.
+      if (null != sup && true !== sup.isTop) {
+        return this.place(sup)
+      }
+    }
     return this.place(this.superior())
   }
 

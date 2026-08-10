@@ -70,7 +70,7 @@ func (s *ScalarVal) Canon() string {
 	case KindInteger:
 		return strconv.FormatInt(s.peg.(int64), 10)
 	case KindNumber:
-		return formatNumber(s.peg.(float64))
+		return canonNumber(s.peg.(float64))
 	case KindBoolean:
 		if s.peg.(bool) {
 			return "true"
@@ -83,6 +83,14 @@ func (s *ScalarVal) Canon() string {
 }
 
 func (s *ScalarVal) Gen(ctx *Ctx) (any, error) {
+	// Negative zero never reaches generated output. (Unary minus already
+	// normalises it away, but `+` and the NewNumber API can still build
+	// one, so the generate path normalises too.)
+	if s.kind == KindNumber {
+		if f, ok := s.peg.(float64); ok && f == 0 {
+			return float64(0), nil
+		}
+	}
 	return s.peg, nil
 }
 
@@ -212,6 +220,11 @@ func jsonString(s string) string {
 // numeric canon output identical to the TS implementation at every
 // magnitude.
 func formatNumber(f float64) string {
+	// Both zeros render as "0" — negative zero never survives into
+	// output. (JS agrees: String(-0) is "0".)
+	if f == 0 {
+		return "0"
+	}
 	// Non-finite values render as JS Number.toString does; they cannot
 	// arrive via the parser (an overflowing literal becomes not_number)
 	// but are reachable through the exported NewNumber constructor.
@@ -237,4 +250,24 @@ func formatNumber(f float64) string {
 		exp = -exp
 	}
 	return digits + "e" + sign + strconv.Itoa(exp)
+}
+
+// canonNumber renders a number-kind scalar for CANON, where the output
+// must reparse to a value of the same kind. formatNumber alone would
+// render 1.0 as "1", which reparses as an integer, so a rendering that
+// carries neither a fraction nor an exponent gains a ".0" suffix:
+//
+//	1.0 -> "1.0"   0.0 -> "0.0"   1e20 -> "100000000000000000000.0"
+//	1e21 -> "1e+21"   0.000001 -> "0.000001"   NaN/Infinity -> unchanged
+//
+// This is the canon path ONLY. String coercion inside `+` keeps plain
+// JS parity ("a"+1.0 is "a1") and so goes through formatNumber, which
+// must not pick up the suffix.
+func canonNumber(f float64) string {
+	s := formatNumber(f)
+	// '.' fraction, 'e'/'E' exponent, 'N' NaN, 'I' Infinity.
+	if strings.ContainsAny(s, ".eENI") {
+		return s
+	}
+	return s + ".0"
 }

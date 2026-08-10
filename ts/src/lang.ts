@@ -75,6 +75,7 @@ import { MapVal } from './val/MapVal'
 import { NilVal } from './val/NilVal'
 import { NullVal } from './val/NullVal'
 import { NumberVal } from './val/NumberVal'
+import { isIntegerKind } from './val/numkind'
 import { PrefVal } from './val/PrefVal'
 import { RefVal } from './val/RefVal'
 import { StringVal } from './val/StringVal'
@@ -111,6 +112,33 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
       def: {
         hash: { line: true, start: '#', lex: true },
       },
+    },
+  })
+
+  // Digit separators are legal only as a SINGLE separator BETWEEN
+  // digits (the rule test/spec/engine-parity.tsv records as the engine's
+  // adjudication; pinned by the sep-* rows in
+  // test/spec/number-model.tsv). The engine's number matcher
+  // enforces most of that already — `1_`, `_1`, `1_.5`, `1._5`, `1e_2`,
+  // `1e2_` all fall through to text — but two gaps remain: a REPEATED
+  // separator (`1__0` lexed as 10) and a separator at the edge of a
+  // base-prefixed digit run (`0x_ff`, `0xff_` lexed as 255). Both
+  // silently accept a typo as a different number, so aontu declines the
+  // whole run instead and it lexes as text ("1__0"), exactly as `1_`
+  // already does.
+  //
+  // `number.exclude` is tested against the matched number source and,
+  // when it matches, makes the matcher decline the entire span. Kept in
+  // lock-step with sepInvalid in go/lang.go, which is wired to the
+  // equivalent `Number.Exclude` hook (and to the Check hook, which
+  // constructs big base-prefixed tokens itself and so bypasses Exclude).
+  jsonic.options({
+    number: {
+      // `__` repeated separator; `0x_`/`0o_`/`0b_` separator opening a
+      // base-prefixed run; `_` closing any run. The prefix letter is
+      // matched case-insensitively so the rule does not depend on which
+      // prefix spellings the engine accepts.
+      exclude: /__|^[-+]?0[xXoObB]_|_$/,
     },
   })
 
@@ -296,7 +324,11 @@ help isolate the syntax error.`,
       let peg = -1 * val.peg
       // Normalize -0 to 0 (keeps the AST and canon free of negative zero).
       if (0 === peg) peg = 0
-      const out = val instanceof IntegerVal
+      // Negation never narrows the kind: a number stays a number. An
+      // integer stays an integer unless the negation leaves the int64
+      // range (only -(-2^63), which no literal can express), in which
+      // case it widens to a number rather than failing.
+      const out = val instanceof IntegerVal && isIntegerKind(peg)
         ? new IntegerVal({ peg })
         : new NumberVal({ peg })
       return addsite(out, r, ctx)
@@ -345,6 +377,28 @@ help isolate the syntax error.`,
           infix: true,
           left: 20_000_000,
           right: 21_000_000,
+        },
+
+        // Re-base the unary prefixes for the same reason. Every aontu
+        // operator sits far above the @tabnas/expr defaults, so the
+        // default prefix binding power of 4_000_000 left unary `-`/`+`
+        // LOOSER than every infix operator: `-1 & integer` parsed as
+        // `-(1 & integer)`, and negative-prefix (below) then rejected
+        // the composite operand as a `negative` error nil (likewise
+        // `-2+3`, `-1|2`). Unary minus must bind tighter than `+`, `&`
+        // and `|` — but still looser than `.` (dot-infix left is
+        // 25_000_000), so `-0xFF.5` stays `-(0xFF.5)` and `$`.
+        // Kept in lock-step with the op table in go/lang.go.
+        'negative': {
+          src: '-',
+          prefix: true,
+          right: 22_000_000,
+        },
+
+        'positive': {
+          src: '+',
+          prefix: true,
+          right: 22_000_000,
         },
 
         'dollar-prefix': {
@@ -489,8 +543,11 @@ help isolate the syntax error.`,
           if (!Number.isFinite(r.node)) {
             valnode = addsite(new NilVal({ why: 'not_number' }), r, ctx)
           }
-          // 1.0 in source is *not* an integer
-          else if (Number.isInteger(r.node) && !r.o0.src.includes('.')) {
+          // A literal is integer kind only if its source has no '.', its
+          // value is integral, and it fits the int64 range: `1.0` is a
+          // number, and so are 1e21, 0x7fffffffffffffff and
+          // 0xffffffffffffffff (see isIntegerKind).
+          else if (isIntegerKind(r.node, r.o0.src)) {
             valnode = addsite(new IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx)
           }
           else {
@@ -836,7 +893,10 @@ function rawToVal(n: any): Val {
     return new StringVal({ peg: n })
   }
   if ('number' === t) {
-    return Number.isInteger(n) ?
+    // No source text here, so the "no '.'" condition is vacuous and the
+    // integral + int64-range conditions decide (same helper as the val
+    // rule, so the two paths cannot drift).
+    return isIntegerKind(n) ?
       new IntegerVal({ peg: n }) : new NumberVal({ peg: n })
   }
   if ('boolean' === t) {

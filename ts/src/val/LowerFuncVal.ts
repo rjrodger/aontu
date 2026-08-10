@@ -15,7 +15,7 @@ import { makeNilErr } from '../err'
 
 import { NilVal } from '../val/NilVal'
 import { ScalarKindVal } from '../val/ScalarKindVal'
-import { makeScalar } from '../val/valutil'
+import { makeScalarLike } from '../val/valutil'
 
 
 
@@ -43,14 +43,19 @@ class LowerFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext | undefined, args: Val[]) {
-    const oldpeg = args?.[0].peg
+    const arg = args?.[0]
+    const oldpeg = arg.peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
       'number' === typeof oldpeg ? Math.floor(oldpeg) :
         undefined
     const out = this.place(
       null == peg ?
         makeNilErr(ctx, 'invalid-arg', this) :
-        makeScalar(peg)
+        // The floor keeps the ARGUMENT's kind (lower(2) is an integer 2,
+        // lower(1.9) is a number 1) — the function must not narrow
+        // number to integer, and this also makes the actual result kind
+        // agree with the superior() advertised below.
+        makeScalarLike(peg, arg)
     )
     return out
   }

@@ -1,0 +1,82 @@
+# THE PARITY LEDGER -- known TypeScript/Go divergences. THIS FILE SHOULD
+# NORMALLY BE EMPTY OF ROWS.
+#
+# test/spec/*.tsv is the contract: a row lives there only once BOTH
+# implementations satisfy it. This file is the debt register for the
+# opposite case -- a behaviour where the two ports are known to DISAGREE,
+# recorded so the disagreement is visible and tracked instead of being
+# rediscovered, and so nobody baselines one engine's output as the shared
+# contract by accident.
+#
+# It is deliberately a .tsv living beside the suite, so it is read
+# whenever the spec is read. Both runners (ts/test/spec.test.ts and
+# go/spec_test.go) glob test/spec/*.tsv and skip comment and blank lines,
+# so a file of comments contributes zero rows and asserts nothing.
+#
+# HOW TO USE IT
+#
+# A divergence is a BUG, not a feature. The default response is to fix
+# the engine, not to write here. Add an entry ONLY when the divergence
+# cannot be fixed from this repository right now -- e.g. it originates in
+# a pinned @tabnas dependency, or the correct behaviour is an open
+# language-design question.
+#
+# An entry MUST carry:
+#   1. an issue reference (the tracking issue for the fix), and
+#   2. a reason it is not simply fixed, and
+#   3. the exact divergent inputs and BOTH engines' outputs.
+#
+# An entry is removed -- not amended -- when the divergence is fixed, and
+# the behaviour then earns real rows in the appropriate spec file.
+#
+# Entries carry NO data rows: a row here would be executed by both
+# runners and, by definition, could not pass in both. Everything below is
+# commentary.
+#
+# ---------------------------------------------------------------------
+#
+# 1. INTEGER-KIND VALUES ABOVE 2^53 THAT NEED MORE THAN 17 SIGNIFICANT
+#    DIGITS TO WRITE EXACTLY
+#    issue: TODO -- file before merging.
+#    reason: this is the storage difference between the two ports, not a
+#      local formatting slip. TS holds an integer-kind peg as a JS
+#      number (a float64) and renders it with Number.toString, which
+#      emits the SHORTEST decimal that round-trips (at most 17
+#      significant digits). Go holds it as an int64 and renders the
+#      exact value with strconv.FormatInt. Both denote the same float64,
+#      but the text differs. Closing it means choosing a single
+#      rendering for the whole (2^53, 2^63) window -- a language
+#      decision about what an integer-kind value IS -- and then changing
+#      one port's storage or the other's formatter.
+#    detail: only integer KIND is affected. A number-kind value goes
+#      through the shared JS-Number.toString formatter in both ports
+#      (go/scalar.go formatNumber), so the extreme-magnitude rows in
+#      scalar.tsv and number-model.tsv are unaffected -- including
+#      0x7fffffffffffffff, which R1 makes number kind precisely because
+#      it rounds up to 2^63.
+#      Values whose exact digits fit in 17 significant digits agree:
+#      x:9007199254740992     both -> {"x":9007199254740992}
+#      x:123456789012345678   both -> {"x":123456789012345680}
+#      Values needing more do not:
+#      x:1152921504606846976  ts -> {"x":1152921504606847000}
+#                             go -> {"x":1152921504606846976}
+#      x:9223372036854774784  ts -> {"x":9223372036854775000}
+#                             go -> {"x":9223372036854774784}
+#      (Same divergence in gen and in canon.)
+#    resolution already designed: the capability review commits to
+#      making a lossy integer literal a located error rather than a
+#      silently rounded value -- see the "Numbers: decide and bound the
+#      defect" section of docs/capability-review/g1-constraint-algebra.md
+#      and its Phase 6. Every input in this window is exactly such a
+#      literal, so that change removes the divergence by refusing the
+#      input in both ports, instead of picking a rendering for a value
+#      neither port can represent faithfully. Do not close this entry by
+#      choosing a renderer; close it by landing that error.
+#
+# ---------------------------------------------------------------------
+#
+# NOT recorded here, because they are already documented as deliberate,
+# permanent non-parity in AGENTS.md ("Known TS/Go divergences"): error
+# MESSAGE text, parse-level (non-unify) canon, the canon of sources that
+# are invalid in both ports, and the malformed-input acceptance edges.
+# Only the substring an err-mode spec row asserts is contractual.

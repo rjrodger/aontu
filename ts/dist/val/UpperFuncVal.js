@@ -18,13 +18,18 @@ class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return 'upper';
     }
     resolve(ctx, args) {
-        const oldpeg = args?.[0].peg;
+        const arg = args?.[0];
+        const oldpeg = arg.peg;
         const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() :
             'number' === typeof oldpeg ? Math.ceil(oldpeg) :
                 undefined;
         const out = this.place(null == peg ?
             (0, err_1.makeNilErr)(ctx, 'invalid-arg', this) :
-            (0, valutil_1.makeScalar)(peg));
+            // The ceiling keeps the ARGUMENT's kind (upper(2) is an integer
+            // 2, upper(1.1) is a number 2) — the function must not narrow
+            // number to integer, and this also makes the actual result kind
+            // agree with the superior() advertised below.
+            (0, valutil_1.makeScalarLike)(peg, arg));
         return out;
     }
     superior() {

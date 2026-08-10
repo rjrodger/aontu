@@ -317,6 +317,19 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		}
 		return args[0]
 	case "super":
+		// super(x) is the lattice-superior of its ARGUMENT, not of the
+		// super() call itself: super(1) -> integer, super(1.5) ->
+		// number, super(a) -> string, super(true) -> boolean.
+		// Returning the func's own superior (top) is what made super()
+		// inert.
+		if len(args) > 0 && args[0] != nil {
+			if sup := args[0].superior(); sup != nil && !isTop(sup) {
+				// Where the argument has no meaningful superior,
+				// superior() answers top and we fall through to the
+				// previous behaviour.
+				return sup
+			}
+		}
 		return f.superior()
 	case "move":
 		// Move the referenced value here, hiding it at the source. The
@@ -365,10 +378,18 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 		} else {
 			fv = sv.peg.(float64)
 		}
+		res := math.Floor(fv)
 		if up {
-			return newNumber(math.Ceil(fv))
+			res = math.Ceil(fv)
 		}
-		return newNumber(math.Floor(fv))
+		// The ceiling/floor keeps the ARGUMENT's kind (upper(2) is an
+		// integer 2, upper(1.1) is a number 2): the function must not
+		// narrow number to integer. This also makes the actual result
+		// kind agree with the superior() this func advertises.
+		if sv.kind == KindInteger && isIntegerKind(res, "") {
+			return newInteger(int64(res))
+		}
+		return newNumber(res)
 	}
 	return makeNilErr(ctx, "invalid-arg", args[0], nil)
 }

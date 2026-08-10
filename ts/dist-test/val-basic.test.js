@@ -345,23 +345,27 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         let t0 = makeSK_String();
         (0, expect_1.expect)(tu(ctx, m0, t0).isNil).exist();
         (0, expect_1.expect)(tu(ctx, t0, m0).isNil).exist();
+        // NOTE: makeNumberVal builds a NUMBER-kind 1, and number-kind canon
+        // round-trips its kind, so it renders as `1.0` (an unsuffixed `1`
+        // would reparse as an integer). An integer-kind 1 still canons as
+        // `1` — see test/spec/number-model.tsv.
         let m1 = new MapVal_1.MapVal({ peg: { a: makeNumberVal(1) } });
         // print(m1, 'm1')
-        (0, expect_1.expect)(m1.canon).equal('{"a":1}');
+        (0, expect_1.expect)(m1.canon).equal('{"a":1.0}');
         let m1u = m1.unify(TOP, ctx);
         // print(m1u, 'm1u')
-        (0, expect_1.expect)(m1u.canon).equal('{"a":1}');
+        (0, expect_1.expect)(m1u.canon).equal('{"a":1.0}');
         let u01 = m0.unify(m1, ctx);
         // print(u01, 'u01')
-        (0, expect_1.expect)(u01.canon).equal('{"a":1}');
-        (0, expect_1.expect)(m1u.canon).equal('{"a":1}');
+        (0, expect_1.expect)(u01.canon).equal('{"a":1.0}');
+        (0, expect_1.expect)(m1u.canon).equal('{"a":1.0}');
         (0, expect_1.expect)(m0.canon).equal('{}');
-        (0, expect_1.expect)(m1.canon).equal('{"a":1}');
+        (0, expect_1.expect)(m1.canon).equal('{"a":1.0}');
         let u02 = m1.unify(m0, ctx);
         // print(u02, 'u02')
-        (0, expect_1.expect)(u02.canon).equal('{"a":1}');
+        (0, expect_1.expect)(u02.canon).equal('{"a":1.0}');
         (0, expect_1.expect)(m0.canon).equal('{}');
-        (0, expect_1.expect)(m1.canon).equal('{"a":1}');
+        (0, expect_1.expect)(m1.canon).equal('{"a":1.0}');
     });
     (0, node_test_1.it)('map', () => {
         let ou = unify_2.unite;

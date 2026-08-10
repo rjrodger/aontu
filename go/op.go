@@ -96,8 +96,14 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 // kinds, maps, lists, null, top and funcs do not coerce — the op stays
 // unresolved and generate() reports it.
 func (o *PlusOpVal) operate(args []Val) Val {
-	a := primatize(args[0])
-	b := primatize(args[1])
+	// Keep the operand Vals, not just their native values: the result
+	// kind is decided by the operand KINDS (R5 kind contagion), not by
+	// the result value. A pref operand contributes its preferred value,
+	// and therefore that value's kind too.
+	av := unpref(args[0])
+	bv := unpref(args[1])
+	a := primatize(av)
+	b := primatize(bv)
 	if a == nil || b == nil {
 		return nil
 	}
@@ -128,7 +134,13 @@ func (o *PlusOpVal) operate(args []Val) Val {
 	case int64:
 		return newInteger(p)
 	case float64:
-		if p == float64(int64(p)) {
+		// Kind contagion: `+` must not introduce a kind narrower than
+		// its operands. The result is integer kind only when BOTH
+		// operands are integer kind AND the sum is itself of integer
+		// kind (the sum of two integers can leave the int64 range).
+		// Deriving the kind from the result value alone would make
+		// 1.5+1.5 an integer.
+		if isIntegerScalar(av) && isIntegerScalar(bv) && isIntegerKind(p, "") {
 			return newInteger(int64(p))
 		}
 		return newNumber(p)
@@ -136,17 +148,28 @@ func (o *PlusOpVal) operate(args []Val) Val {
 	return nil
 }
 
-// primatize extracts the native value of a scalar operand. A pref
-// operand contributes its preferred value (`pref(1)+2`).
-func primatize(v Val) any {
+// unpref unwraps pref() layers: a pref operand contributes its preferred
+// value (`pref(1)+2`).
+func unpref(v Val) Val {
 	for {
 		pv, ok := v.(*PrefVal)
 		if !ok {
-			break
+			return v
 		}
 		v = pv.peg
 	}
-	if sv, ok := v.(*ScalarVal); ok {
+}
+
+// isIntegerScalar reports whether an (already unpref'd) operand is a
+// concrete scalar of integer kind.
+func isIntegerScalar(v Val) bool {
+	sv, ok := v.(*ScalarVal)
+	return ok && sv.kind == KindInteger
+}
+
+// primatize extracts the native value of a scalar operand.
+func primatize(v Val) any {
+	if sv, ok := unpref(v).(*ScalarVal); ok {
 		return sv.peg
 	}
 	return nil

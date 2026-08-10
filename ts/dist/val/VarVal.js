@@ -10,6 +10,7 @@ const NullVal_1 = require("./NullVal");
 const BooleanVal_1 = require("./BooleanVal");
 const NumberVal_1 = require("./NumberVal");
 const IntegerVal_1 = require("./IntegerVal");
+const numkind_1 = require("./numkind");
 const utility_1 = require("../utility");
 const unify_1 = require("../unify");
 const top_1 = require("./top");
@@ -64,7 +65,12 @@ class VarVal extends FeatureVal_1.FeatureVal {
                     out = new BooleanVal_1.BooleanVal({ peg: found });
                 }
                 else if ('number' === ft) {
-                    out = Number.isInteger(found) ?
+                    // A raw var binding carries no source text, so the integral +
+                    // int64-range conditions decide the kind (same helper as the
+                    // val rule and rawToVal).
+                    // (ctx.vars is declared as Record<string, Val> but also
+                    // carries raw scalars, which is what `ft` has just proven.)
+                    out = (0, numkind_1.isIntegerKind)(found) ?
                         new IntegerVal_1.IntegerVal({ peg: found }) :
                         new NumberVal_1.NumberVal({ peg: found });
                 }

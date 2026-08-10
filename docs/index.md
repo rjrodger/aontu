@@ -48,6 +48,9 @@ live in [`design/`](design/):
 - [Colon-chain nested `@"file"` import](design/nested-import-colon-chain.md)
   — a Go-port parity defect (and its workaround) where a colon-chain
   imported value is dropped.
+- [The number model](design/number-model.md) — two numeric kinds over
+  one IEEE-754 representation: how a literal is classified, how kind
+  travels through operators and canon, and the edges that remain.
 
 Forward-looking design work lives in
 [`capability-review/`](capability-review/index.md): a survey of what

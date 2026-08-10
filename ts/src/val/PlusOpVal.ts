@@ -17,6 +17,7 @@ import { IntegerVal } from '../val/IntegerVal'
 import { NumberVal } from '../val/NumberVal'
 import { StringVal } from '../val/StringVal'
 import { BooleanVal } from '../val/BooleanVal'
+import { isIntegerKind } from '../val/numkind'
 import { OpBaseVal } from './OpBaseVal'
 
 
@@ -45,17 +46,23 @@ class PlusOpVal extends OpBaseVal {
     // maps, lists, null, top, funcs) must not coerce — the JS `+` would
     // leak internals like "[object Object]" into output. A non-scalar
     // operand leaves the op unresolved, which generate() reports.
-    const prim = (v: any) => {
-      // A pref operand contributes its preferred value (`pref(1)+2`).
+    const operand = (v: any) => {
+      // A pref operand contributes its preferred value (`pref(1)+2`),
+      // and therefore that value's kind too.
       while (v?.isPref) {
         v = v.peg
       }
+      return v
+    }
+    const prim = (v: any) => {
       const p = v?.isVal && v.isScalar ? v.peg : undefined
       const t = typeof p
       return 'string' === t || 'number' === t || 'boolean' === t ? p : undefined
     }
-    let a: any = prim(args[0])
-    let b: any = prim(args[1])
+    const av: any = operand(args[0])
+    const bv: any = operand(args[1])
+    let a: any = prim(av)
+    let b: any = prim(bv)
 
     if (undefined === a || undefined === b) {
       return undefined
@@ -90,7 +97,17 @@ class PlusOpVal extends OpBaseVal {
       out = new BooleanVal({ peg })
     }
     else if ('number' === pegtype) {
-      out = Number.isInteger(peg) ? new IntegerVal({ peg }) : new NumberVal({ peg })
+      // Kind contagion: `+` must not introduce a kind narrower than its
+      // operands. The result is integer kind only when BOTH operands
+      // are integer kind AND the sum is itself integer kind (integral
+      // and inside int64 — the sum of two integers can leave the
+      // range). Deriving the kind from the result value alone would
+      // make 1.5+1.5 an integer.
+      out = av instanceof IntegerVal &&
+        bv instanceof IntegerVal &&
+        isIntegerKind(peg) ?
+        new IntegerVal({ peg }) :
+        new NumberVal({ peg })
     }
 
     return out

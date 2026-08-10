@@ -13,6 +13,7 @@ import { makeNilErr, AontuError } from '../err'
 
 import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
+import { isIntegerKind } from './numkind'
 
 import {
   explainOpen,
@@ -28,9 +29,13 @@ class IntegerVal extends ScalarVal {
     spec: ValSpec,
     ctx?: AontuContext
   ) {
-    if (!Number.isInteger(spec.peg)) {
-      // TODO: use Nil?
-      throw new AontuError('not-integer: ' + spec.peg)
+    // An IntegerVal must hold a value of *integer kind*: integral AND
+    // within the int64 range, so it can never hold something the Go
+    // port's int64 storage could not (see isIntegerKind). Every
+    // construction site pre-checks with the same helper, so reaching
+    // here is a programming error, not user input — hence a throw.
+    if (!isIntegerKind(spec.peg)) {
+      throw new AontuError('not-integer-kind: ' + spec.peg)
     }
     // super({ peg: spec.peg, kind: Integer }, ctx)
     super({ ...spec, kind: Integer }, ctx)

@@ -15,7 +15,7 @@ import { makeNilErr } from '../err'
 
 import { NilVal } from '../val/NilVal'
 import { ScalarKindVal } from '../val/ScalarKindVal'
-import { makeScalar } from '../val/valutil'
+import { makeScalarLike } from '../val/valutil'
 
 
 
@@ -43,14 +43,19 @@ class UpperFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext | undefined, args: Val[]) {
-    const oldpeg = args?.[0].peg
+    const arg = args?.[0]
+    const oldpeg = arg.peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() :
       'number' === typeof oldpeg ? Math.ceil(oldpeg) :
         undefined
     const out = this.place(
       null == peg ?
         makeNilErr(ctx, 'invalid-arg', this) :
-        makeScalar(peg)
+        // The ceiling keeps the ARGUMENT's kind (upper(2) is an integer
+        // 2, upper(1.1) is a number 2) — the function must not narrow
+        // number to integer, and this also makes the actual result kind
+        // agree with the superior() advertised below.
+        makeScalarLike(peg, arg)
     )
     return out
   }

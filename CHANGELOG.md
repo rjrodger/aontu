@@ -179,6 +179,117 @@ which implementation each change affects.
 - **Negative zero normalises to `0`** in generated output and the AST,
   matching the Go port (JSON has no `-0`). Previously TS preserved `-0`.
 
+### Breaking — number model (TypeScript and Go)
+
+The kind of a numeric literal, the canonical rendering of a number, and
+the result kind of `+`, `upper()`, `lower()` and `super()` are now a
+single contract, identical in both implementations and pinned by the
+101 rows of the new `test/spec/number-model.tsv`. Everywhere the two
+ports previously disagreed about a number, they now agree. Full
+rationale in `docs/design/number-model.md`; the rules are stated in
+`docs/reference-language.md`.
+
+- **A numeric literal has `integer` kind only if it fits int64.** The
+  rule is now: the source text contains no `.`, **and** the value is
+  integral, **and** the value lies in
+  `-9223372036854775808 ≤ n < 9223372036854775808`. The upper bound is
+  exclusive because 2^63−1 is not representable as an IEEE-754 double
+  — it rounds up to 2^63. So `1e21`, `100000000000000000000`,
+  `0x7fffffffffffffff` and `0xffffffffffffffff` are `number` kind and
+  **no longer unify with `integer`**; `1e3` and `9007199254740992` are
+  still `integer`, and `1.0` is still `number`. TypeScript previously
+  called all of those `integer` (it tested only for an integral value),
+  while Go called them `number` — so `1e21 & integer` succeeded in one
+  port and errored in the other. Go reached its answer via
+  `n == float64(int64(n))`, and converting an out-of-range float64 to
+  an int64 is *implementation-dependent* per the Go spec, so it was not
+  guaranteed either; the bound is now compared against the float64
+  limits explicitly, before any conversion. *If you constrain a value
+  of that magnitude, write `& number` instead of `& integer`.* The rule
+  now lives in one helper per port (`ts/src/val/numkind.ts`,
+  `isIntegerKind` in `go/lang.go`) and is applied at **every**
+  construction site — parsed literal, `$var` binding, raw value from
+  the API — so the same number can no longer acquire different kinds by
+  different routes.
+
+- **Canon renders a number-kind value with a fraction or an exponent.**
+  Canon must reparse to a value of the same kind, so a number-kind
+  value whose shortest rendering carries neither a `.` nor an exponent
+  now gains a `.0` suffix: `1.0` canons as `1.0` (was `1`), `0.0` as
+  `0.0`, and `1e20` as `100000000000000000000.0`. Already-unambiguous
+  renderings are untouched (`1e21` → `1e+21`, `0.000001` →
+  `0.000001`), and integer-kind canon is unchanged (`1000`). *Anything
+  that compares canon text will see new output* — two rows in
+  `test/spec/scalar.tsv` flipped accordingly. **Generation is
+  unaffected** (`generate` still yields `1` for `1.0`), and so is
+  string coercion inside `+`: `a+1.0` is still `"a1"`, never `"a1.0"`.
+
+- **`+` no longer narrows the kind of its operands.** A numeric sum has
+  `integer` kind only when **both** operands are of `integer` kind and
+  the sum itself satisfies the literal rule; otherwise the result is
+  `number` kind. Both ports previously re-derived the kind from the
+  result value alone, so `1.5+1.5` produced an `integer` `3` and
+  `(1.5+1.5) & integer` succeeded — **it now errors**. `1+1.0` is
+  likewise `number`. `1+2` is still `integer`, and a `*`-preferred
+  operand contributes its preferred value's kind. *Replace
+  `& integer` with `& number` on any sum that can take a fractional
+  operand.*
+
+- **`super(x)` is no longer inert.** It returned the `super()`
+  function's own superior — `top` — so it unified with anything. It now
+  returns the lattice-superior of its **argument**: `super(1)` →
+  `integer`, `super(1.5)` → `number`, `super(a)` → `string`,
+  `super(true)` → `boolean`. Where the argument has no meaningful
+  superior (a map, a list, a bare kind, `top`) the result is still
+  `top`. *A `super()` that was previously a no-op will now constrain* —
+  `super(1) & 2.5` is a conflict where it used to succeed. (The
+  language reference's `super(1)` → `number` example was wrong under
+  the documented lattice — `number ⊐ integer ⊐ 1` — and has been
+  corrected to `integer`.)
+
+- **Malformed digit separators are rejected instead of silently
+  accepted.** A `_` is legal only as a *single* separator *between*
+  digits. A run that breaks the rule is no longer a number at all: it
+  falls through to text, so `1__0` is the string `"1__0"` (was `10`)
+  and `0x_ff` / `0xff_` are strings (were `255`). A typo now surfaces
+  as a string rather than becoming a different number. `1_000_000`,
+  `0xf_f`, `1_0.5_1` and `1e1_0` are unaffected.
+
+### Fixed — number model (TypeScript and Go)
+
+- **Unary `-` bound looser than every infix operator (TypeScript and
+  Go).** Every aontu operator is re-based far above the `@tabnas/expr`
+  defaults, but the unary prefixes were not, so `-1 & integer` parsed
+  as `-(1 & integer)` — whose operand is an unresolved conjunction,
+  which negation rejects. `-1 & integer`, `-2+3` and `-1|2` therefore
+  all collapsed to `nil` in **both** ports; they now yield `-1`, `1`
+  and `-1|2`. Unary `-`/`+` now bind tighter than `+`, `&` and `|`, and
+  looser than `.`.
+- **`upper()` / `lower()` narrowed an integer argument (TypeScript and
+  Go).** Both returned a plain number-kind value, so `upper(2) &
+  integer` errored. The ceiling/floor now keeps the **argument's**
+  kind: `upper(2)` is an `integer` `2`, `upper(1.1)` a `number` `2`.
+  This also makes the actual result kind agree with the `superior()`
+  these functions already advertised.
+- **`1|1.0` collapsed to a single alternative (TypeScript).**
+  `ScalarVal.same` compared only the value — a leftover from before
+  `integer` and `number` became distinct kinds — so disjunct
+  deduplication merged the two branches and `(1|1.0) & 1.0` then
+  errored. It now compares kind as well, so `1|1.0` keeps both
+  alternatives and `(1|1.0) & 1.0` resolves to the float. (Go's
+  `valSame` already compared kind; its canon for `1|1.0` was the
+  ambiguous `1|1`, which the canon rule above resolves to `1|1.0`.)
+- **Negative zero survived in Go.** `-0.0` generated `-0` and canoned
+  as `-0`. Unary minus now yields positive zero for both kinds, the
+  generate path normalises `-0` to `0`, and the number formatter
+  renders both zeros as `0` — the three things TypeScript already did.
+  `-0` generates `0` and canons as `0`; `-0.0` generates `0` and canons
+  as `0.0`.
+- **Negating the int64 minimum wrapped in Go.** `negate` applied
+  two's-complement wrap-around to `math.MinInt64` (reachable only
+  through the `NewInteger` API — no literal can express it). It now
+  widens to a `number` instead.
+
 ### Fixed (Go)
 
 - Unknown function calls now error with `unknown_function` instead of
@@ -211,3 +322,21 @@ which implementation each change affects.
   formatting is guaranteed only for a documented decimal subset
   (`0` and roughly `1e-6 ≤ |x| < 1e20`), error message text, and
   parse-level canon.
+- New shared spec file `test/spec/number-model.tsv` (101 rows) pins the
+  number model end to end: kind classification and the int64 bound,
+  negative zero, kind-aware scalar identity, kind-preserving canon,
+  kind contagion through `+` / `upper()` / `lower()`, `super()`, and
+  the lexical edges (base prefixes, digit separators, exponents,
+  leading zeros, numeric map keys, unary minus).
+- New `test/spec/divergent.tsv` — a parity ledger recording behaviours
+  where the two ports are known to disagree, so a divergence is tracked
+  rather than rediscovered or accidentally baselined as the contract.
+  Every entry is commentary (a row here could not pass in both ports by
+  definition, so the file contributes none), and it currently records
+  two: upper-case base prefixes (`0X1F`), and integer-kind values above
+  2^53 that need more than 17 significant digits to write exactly.
+- `docs/reference-language.md` states the number model: the three-part
+  integer-kind rule and what falls outside int64, the kind-preserving
+  results of `+`, `upper()`, `lower()` and `super()`, and the canonical
+  rendering of number-kind values. New design note
+  `docs/design/number-model.md` carries the rationale.

@@ -20,7 +20,7 @@ multi	gen	a:1 b:2 c:3	{"a":1,"b":2,"c":3}
 multi-canon	canon	x:1 y:two z:true	{"x":1,"y":"two","z":true}
 float-integral	gen	x:1.0	{"x":1}
 neg-zero	gen	x:-0	{"x":0}
-big-fixed-canon	canon	a:100000000000000000000	{"a":100000000000000000000}
+big-fixed-canon	canon	a:100000000000000000000	{"a":100000000000000000000.0}
 exp-pos-canon	canon	a:1e21	{"a":1e+21}
 exp-pos-frac-canon	canon	a:1.5e21	{"a":1.5e+21}
 tiny-fixed-canon	canon	a:0.000001	{"a":0.000001}
@@ -28,5 +28,5 @@ exp-neg-canon	canon	a:1e-7	{"a":1e-7}
 number-overflow-err	err	a:1e999	Cannot resolve value
 number-neg-overflow-err	err	a:-1e999	Cannot resolve value
 hex-big	gen	a:0xffffffffffffffff	{"a":18446744073709552000}
-hex-big-canon	canon	a:0xffffffffffffffff	{"a":18446744073709552000}
+hex-big-canon	canon	a:0xffffffffffffffff	{"a":18446744073709552000.0}
 hex-huge	gen	a:0x10000000000000000000000000000000	{"a":2.1267647932558654e+37}
