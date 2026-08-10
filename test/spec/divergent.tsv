@@ -37,17 +37,17 @@
 #
 # 1. INTEGER-KIND VALUES ABOVE 2^53 THAT NEED MORE THAN 17 SIGNIFICANT
 #    DIGITS TO WRITE EXACTLY
-#    issue: TODO -- file before merging.
+#    issue: #21
 #    reason: this is the storage difference between the two ports, not a
 #      local formatting slip. TS holds an integer-kind peg as a JS
 #      number (a float64) and renders it with Number.toString, which
 #      emits the SHORTEST decimal that round-trips (at most 17
 #      significant digits). Go holds it as an int64 and renders the
 #      exact value with strconv.FormatInt. Both denote the same float64,
-#      but the text differs. Closing it means choosing a single
-#      rendering for the whole (2^53, 2^63) window -- a language
-#      decision about what an integer-kind value IS -- and then changing
-#      one port's storage or the other's formatter.
+#      but the text differs. Neither rendering is right: the value the
+#      source asked for is not the value either port holds, so making
+#      the two agree on text would only agree on a wrong number. That
+#      is why this is not fixed in place -- see the resolution below.
 #    detail: only integer KIND is affected. A number-kind value goes
 #      through the shared JS-Number.toString formatter in both ports
 #      (go/scalar.go formatNumber), so the extreme-magnitude rows in
