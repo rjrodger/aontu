@@ -91,8 +91,8 @@ equivalent in CUE:
   research upgrades this from a convenience to an economic asset: it is
   the seed of semantic hashing (G6), semantic diff, and
   prompt-cache-stable serialisation.
-- **Dual TS + Go implementations with the TSV spec contract** — 44 spec
-  files, ~410 rows, run identically by both. The suite is itself a
+- **Dual TS + Go implementations with the TSV spec contract** — 45 spec
+  files, ~426 rows, run identically by both. The suite is itself a
   machine-readable ground truth an LLM can be taught from, and the
   parity method (spec rows first, both implementations follow) is
   exactly how every capability below should land.
@@ -310,7 +310,7 @@ Checked against this repository at review time (TS v0.49.0 line):
   internal spread-required machinery, not a user-callable function.)
 - Scalar constraints are kind-only; `a: number > 0` fails to parse
   (verified by running the CLI).
-- 44 shared spec files under `test/spec/` (~410 rows; modes
+- 45 shared spec files under `test/spec/` (~426 rows; modes
   `canon`/`gen`/`err`); the Go runner executes every row with no skip
   list.
 - The fixpoint is bounded at `maxcc = 9` passes (`ts/src/unify.ts`);

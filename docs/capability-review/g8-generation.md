@@ -1,0 +1,522 @@
+# G8: Generation and abstraction, on the total side of the fork
+
+*Status: design proposal, part of the
+[capability review](index.md) (August 2026). This document expands gap
+G8 — producing N similar children from data without copies that drift,
+while keeping the guarantee that Aontu evaluation always terminates.
+It resolves the fork sketched in IDEAS.md: total generator combinators
+(`each`/`pack`/`filter`/`match`), placeholder arguments, and pipe
+sugar are adopted; user-defined functions and recursion are refused.*
+
+## Problem
+
+Producing N similar children from data — one block per service, per
+region, per replica — is the bread-and-butter of systems definition.
+Aontu's spread (`&:`) applies a template to children that already
+exist; nothing in the language can *generate* a child, compute a key
+from data, or select a subset. The result is that humans and agents
+copy-paste, and the copies drift — which defeats ground-truth-ness
+from the inside: a definition whose parts must be kept consistent by
+hand is exactly the markdown failure mode the review's verdict
+describes.
+
+First failing example. A team's ground truth names its services once,
+and wants one deployment block per service:
+
+```aon
+# services.aon — the list is the truth
+names: [web, auth, billing]
+
+# ...but the map must be written by hand, one copy per service
+deploy: {
+  web:     { image: "acme/web:1.4.2",     replicas: 2, port: 8080 }
+  auth:    { image: "acme/auth:1.4.2",    replicas: 2, port: 8080 }
+  billing: { image: "acme/billing:1.4.2", replicas: 2, port: 8080 }
+}
+```
+
+`names` and `deploy` have no mechanical link. Adding `search` to
+`names` changes nothing; an agent asked to "add the search service"
+must edit two places and infer the copy-paste pattern from examples.
+The spread cannot help: `deploy: {&:{replicas:2, port:8080}}` applies
+its template only to keys that exist, and no key exists until someone
+writes it. What the author wants to write — one template, keys drawn
+from the data — is not expressible today.
+
+Second failing example, and this one is *wrong behaviour*, not a
+missing feature. An agent that needs a conditional today reaches for
+the only branching construct the language has, disjunction:
+
+```aon
+# storage.aon — "either local or s3, then pick local"
+store: ({kind: local, path: "/var/data"} | {kind: s3, bucket: b1})
+       & {enabled: true}
+```
+
+Generation of this value is defective: `DisjunctVal.gen` folds the
+disjunct members together instead of distributing the conjunct, so
+`({x:1}|{y:2})&{z:3}` produces the merged chimera `{x:1,y:2,z:3}`
+rather than a choice — the code admits it in a comment
+(ts/src/val/DisjunctVal.ts, ~line 263). A user or agent emulating
+"match" via disjunction can silently receive a map containing *both*
+branches. The language needs a bounded, correct conditional, and the
+defect must be fixed before anything is built near it.
+
+Third, subset selection is inexpressible: "the services with
+`debug: true` get a sidecar" has no spelling. The author enumerates
+the debug services by hand — a second copy of information the
+definition already contains, and a second thing that drifts.
+
+For the agent mission these are one disease. An agent's edits are
+only trustworthy when every fact lives in one place; every manual
+copy is a place where an agent (or a human) can make the definition
+disagree with itself without any conflict being detected.
+
+## Current state
+
+What exists is a solid substrate, and most of it is reusable:
+
+- **Twelve builtins, hard-wired.** The parser's `funcMap`
+  (ts/src/lang.ts, ~line 219) maps `upper`, `lower`, `copy`, `key`,
+  `type`, `hide`, `move`, `path`, `pref`, `close`, `open`, `super` to
+  Val classes. There are no user-defined functions
+  (docs/reference-language.md). Adding a combinator is adding a class
+  and one `funcMap` entry — no grammar change.
+- **Functions already defer.** `FuncBaseVal.unify`
+  (ts/src/val/FuncBaseVal.ts) unifies its arguments each fixpoint
+  pass and calls `resolve()` only when all are done; until then the
+  call survives as itself or inside a `ConjunctVal`. This is
+  proto-residuation: the firing discipline a generator needs already
+  exists in embryo. `OpBaseVal` (ts/src/val/OpBaseVal.ts) does the
+  same for the one operator, `+` (`PlusOpVal`).
+- **The spread machinery.** `MapVal` (ts/src/val/MapVal.ts) holds the
+  template in `spread.cj`, applies it once per child (the `_spr`
+  apply-once marking), clones it per destination with a three-tier
+  `spreadClone`, and snapshots path-dependent ref templates
+  (`snapshotRefSpread`) so `key()`/`path()` resolve at the
+  destination, not the source. This is the most intricate part of the
+  engine, and the most heavily pinned: spread.tsv plus 24
+  spread-*.tsv files — over half of the shared spec suite — are
+  spread variants. Generated children must flow through exactly this
+  machinery.
+- **The strain is visible.** `KeyFuncVal.unify`
+  (ts/src/val/KeyFuncVal.ts) special-cases `ctx.cc < 3` to delay
+  resolution so keys inside spreads and refs resolve at their
+  destination, under a comment: "this delay makes keys in spreads and
+  refs work, but it is a hack - find a better way". Generation will
+  multiply the situations where a value must wait for its
+  surroundings; an ad-hoc pass-count check does not scale to them.
+- **Bounded fixpoint.** The unify loop runs at most `maxcc = 9`
+  passes (ts/src/unify.ts, with `MAXCYCLE = 999` guarding repeated
+  node visits). Generators consume passes; the interaction with the
+  bound is a design obligation, and the budget story is owned by
+  [G5](g5-trust-contract.md).
+- **Trial unification exists.** `ctx._trialMode` (ts/src/ctx.ts) lets
+  `DisjunctVal` try alternatives without recording errors — the
+  mechanism `filter` and `match` need to test unifiability.
+- **Token reservation is already enforced.** test/spec/op-chars.tsv
+  pins `6/2` and `6%2` as plain text and `6-2`/`6*2` as parse errors:
+  the grammar is deliberately holding `-` `*` `/` `%` free, matching
+  IDEAS.md's stated principle — "in general prefer using new
+  functions instead of creating new tokens or syntax!".
+- **IDEAS.md is sketches only.** Placeholder args (`upper(_)`,
+  `_+2`), function ranking, maths-as-functions, `replace()`,
+  namespaced `def()`, `match()`, `each`/`pack`/`filter`, and `|>`
+  piping are all unimplemented, and the recursion the `def()` sketch
+  implies is exactly what this document refuses.
+
+What structurally blocks the capability: (1) no Val can create map
+keys that were not in some source text — `MapVal.unify` only iterates
+its own and its peer's existing keys; (2) `_` is ordinary text to the
+parser, so placeholders do not parse; (3) evaluation staging is
+ad hoc (the `cc < 3` hack) rather than a rule; (4) the Go port
+(go/func.go, go/mapval.go, go/unify.go) mirrors all of the above and
+must move in lockstep.
+
+## Prior art
+
+Every surveyed language that generates structure from data does it in
+one of three ways, and the safety record tracks the choice.
+
+**Comprehension syntax** — CUE (`for x in a if x > 1 { ... }`, with
+interpolated field names), Pkl (`for`/`when` object generators),
+Jsonnet and Starlark (Python-style comprehensions), Terraform
+(`for_each`/`dynamic`). These are total when iteration is over finite
+data, which all of them enforce. The cost is grammar: keywords,
+scoping rules, and — in CUE's documented history — interactions with
+closedness and defaults that contributed to a multi-year evaluator
+rewrite, and a surface area its highest-profile adopter (Dagger)
+cited when dropping it. Terraform contributes the key determinism
+lesson: its index-keyed `count` churns every downstream instance when
+a list reorders, which is why `for_each` over *maps with stable keys*
+replaced it as best practice — generated children must be keyed by
+data, not by position.
+
+**Total combinators** — Dhall (folds, no recursion: "if an expression
+type-checks then evaluating it always succeeds in finite time"),
+Starlark (no recursion, no `while`, deterministic iteration). This is
+the camp whose guarantee — evaluation terminates by construction —
+every credible unattended-evaluation story lands on (Dhall, Starlark,
+CEL, Cedar). CEL adds the backstop: a statically estimated cost
+budget even for total programs, which is G5's territory.
+
+**User-defined functions** — Jsonnet (Turing-complete, by design),
+Nickel, KCL. CUE's deliberate refusal of user functions is the
+counter-position: every file stays analysable without executing
+anything, and evaluation stays hermetic and order-independent. The
+Nickel ecosystem contributes a warning ("union and intersection
+contracts are hard, actually"): the moment function values cross into
+the data plane, otherwise-simple semantics (disjunction, export)
+become subtle. Functions should not become values.
+
+For the placeholder idea specifically, LIFE's residuation (Aït-Kaci &
+Podelski, TOPLAS 1994) is exact prior art: a function whose arguments
+are insufficiently instantiated suspends as a passive constraint and
+fires when unification concretises them. [G1](g1-constraint-algebra.md)
+adopts residuation for bounds with cross-field references; G8 reuses
+the same account rather than inventing a second staging story.
+
+## Design space
+
+**A. Generation lives in tooling, not the language.** The
+[G7](g7-machine-access.md) surface (or any external script) expands a
+data list into children and patches them in; the language stays as it
+is. Rejected: the expanded output is a second artifact, and the copies
+drifting *is the disease* — the moment generated children are
+materialised outside the definition, editing the data no longer
+changes them, and validation (G2) checks the copies rather than the
+rule. Single-source requires the generator to live where the data
+lives.
+
+**B. CUE-style comprehension syntax.** `for`/`if` clauses, computed
+keys via interpolation. Proven semantics, familiar to CUE users.
+Rejected: it adds keywords and string-interpolation tokens to a
+JSON-superset grammar whose smallness the review names as a moat —
+grammar size is acquisition cost for LLMs; it contradicts the
+project's own stated principle (functions over tokens); the spread
+and optional-key grammar already depends on parser internals fragile
+enough that AGENTS.md warns a minor @tabnas bump can silently change
+them; and it walks straight into the trap the index names
+surface-area creep toward CUE.
+
+**C. Total generator combinators as builtin functions.** `each`,
+`pack`, `filter`, `match` join the twelve builtins; placeholder `_`
+gives templates residuated per-child computation; `|>` is optional
+parse-time sugar. Combinators iterate only finite, settled data and
+cannot recurse, so totality is structural; G5's budgets remain a
+backstop, not the guarantee. Costs: argument-position conventions are
+less pretty than syntax; deep nesting of calls is noisier than
+comprehensions; the staging rule must be made principled first.
+
+**D. `def()` — namespaced user functions without recursion.** The
+IDEAS.md sketch, restricted to non-recursive bodies to preserve
+totality. Deferred entirely, not merely postponed to a phase:
+Aontu already has an abstraction mechanism native to its semantics —
+a named, `hide()`-marked template applied by spread, reference, or
+(with this design) a combinator, with `_` supplying the per-use
+argument. `def()` adds call syntax, a namespace scheme, arity errors,
+and a static no-recursion check (including recursion through mutual
+references), for expressive power the combinator-plus-template layer
+already covers. It is the first step onto the complexity clock's
+general-purpose slope, and CUE's refusal of it is one of that
+language's decisions the survey endorses. Revisit criteria are in
+Open questions.
+
+**E. A pre-unification macro stage.** Generation runs as an explicit
+expansion phase before unification, keeping the fixpoint untouched.
+Rejected: the data a generator consumes is itself assembled by
+unification — `names` may be merged from three files, constrained by
+a schema, and completed by a `$var` binding — so generation must be
+able to observe unification results. A separate stage either forbids
+that (crippling) or runs the evaluator twice with subtly different
+semantics (two mental models, two canon stories).
+
+**Recommendation: C.** It honours the language's own design
+principle, adds zero grammar beyond `_` (and optionally `|>`), reuses
+the existing function-deferral and spread machinery, keeps every file
+statically analysable (a combinator call is data — a named node in
+the tree — not code), and keeps the termination guarantee structural.
+A is refused on single-source grounds, B on grammar-size grounds, D
+on complexity-clock grounds, E on staging grounds.
+
+## Proposed design
+
+Four combinators join `funcMap`. Signatures are data-first (the
+subject reads first, as in `close(x)` and `copy(x)` today), and the
+pipe — if adopted — inserts the piped value as *first* argument,
+Elixir-style. This deviates from the IDEAS.md sketch (data-last,
+F#-style); the deviation is deliberate: without pipes, data-first
+calls read as "pack these names into this template", and pipes must
+follow the calls, not the reverse.
+
+**`pack(data, tmpl)` — data to keyed children (map).** For each child
+of `data`, produce one child of the result map. Keys: for a list of
+strings, the strings themselves; for a map, its keys. Each generated
+child is `tmpl` cloned per destination — exactly a spread template
+application, reusing `spreadClone` and the snapshot discipline — so
+`key()` resolves to the generated key and `_` (below) unifies with
+the source child value. Duplicate generated keys are not an error:
+the colliding children unify, exactly as duplicate source keys merge
+today (test/spec/map.tsv), so conflicts surface as located two-site
+errors. The first failing example becomes:
+
+```aon
+# services.aon — single source
+names: [web, auth, billing]
+
+deploy: close(pack($.names, {
+  image: "acme/" + key() + ":1.4.2"
+  replicas: *2 | integer
+  port: *8080 | integer
+}))
+
+# an override composes by ordinary unification
+deploy: billing: replicas: 4
+```
+
+**`each(data, tmpl)` — data to a list.** One element per child of
+`data`, in source order for lists and sorted-key order for maps
+(matching canon's key ordering, `MapVal.canon`, and the Go port's
+JSON marshalling — generated order must be identical across
+implementations and runs). `tmpl` unifies with each element; omitted,
+`each(m)` converts a map's children to a list.
+
+**`filter(data, cond)` — subset by unifiability.** Children of
+`data` that unify with `cond` are kept (keys preserved for maps,
+order preserved for lists); children that fail are dropped, not
+errors — the test runs under trial mode (`ctx._trialMode`,
+ts/src/ctx.ts), the same mechanism disjunction uses. `cond` is any
+Aontu value, so [G1](g1-constraint-algebra.md) atoms compose:
+`filter($.deploy, {replicas: min(3)})` once G1 lands.
+
+```aon
+# sidecars for exactly the debug services — no hand-kept list
+debugged: filter($.services, {debug: true})
+sidecars: pack($.debugged, { image: "acme/debug:1.0" })
+```
+
+(`pack` over a map keys the generated children by the source map's
+keys, so the sidecar map mirrors the debugged service names
+directly.)
+
+**`match(v, p1, r1, p2, r2, ..., d?)` — bounded conditional.**
+Alternating pattern/result arguments, optional trailing default. The
+first pattern (in argument order) that `v` successfully unifies with
+— trial mode again — selects its result, which is `v & p_i & r_i`.
+No pattern matching and no default is a located error whose report
+lists the patterns tried (the admissible-alternatives shape,
+reported via the [G2](g2-validation-verb.md) error contract). The
+bounds that keep `match` from becoming a general conditional: the
+scrutinee is matched by *unifiability only* — there are no boolean
+guards, no comparisons beyond what G1 atoms already are, no
+fallthrough (first match wins, in a spec-pinned order), and the whole
+form is total. `match` is the correct spelling of what the second
+failing example reached for; the `DisjunctVal.gen` distribution
+defect gets fixed independently (it is a bug, not a feature gap), but
+`match` removes the incentive to lean on it.
+
+**Placeholder `_`.** `_` parses to a `PlaceVal`
+(ts/src/val/PlaceVal.ts, new). A function or operator with a
+placeholder argument residuates on its *unification peer*: the peer
+fills the hole, and the call's result is the unification result —
+`upper(_) & foo → "FOO"`, `x:&:{m: _+2} x:a:m:1 → a.m:3`, exactly the
+IDEAS.md sketch. Inside `pack`/`each`/`filter` templates, `_` binds
+the current source child. The semantics are residuation as specified
+by [G1](g1-constraint-algebra.md) (which owns the mechanism for
+bounds); G8 adds no second scheduling story. Two placeheld functions
+meeting (`upper(_) & lower(_)`) is a located error; IDEAS.md's
+`rank()` resolution is refused (Boundary). Note one compatibility
+cost: today `_` is plain text (`a:_` is the string `"_"`), so
+reserving it is a breaking change that must be flagged and
+spec-pinned.
+
+**String construction stays function-based.** `+` concatenation
+already composes with functions and references
+(docs/reference-language.md: `upper(a)+b → "Ab"`), and combined with
+`key()` inside generated children it covers computed names, as in the
+`image` line above. Interpolation syntax (`"acme/\(name)"`) is
+refused: it adds lexer states and canon escaping rules to buy a
+second spelling of something the language has — and `+` chains are
+the easier form for constrained generation of Aontu by models.
+
+**The staging rule (replacing the delay hack).** One rule, spec-
+pinned, governs when generation happens: *a generator residuates
+until its data argument is settled (DONE), then fires exactly once,
+and its output replaces it.* "Fires once" reuses the spread's
+apply-once discipline (`_spr` marking in ts/src/val/MapVal.ts).
+Termination is structural: firing strictly decreases the number of
+unfired generator instances; a template may textually contain further
+generator calls, but clones are one per settled data child and
+nesting depth is fixed by the source text, so total firings are
+bounded by a product of finite, already-settled data sizes — no
+recursion can arise. The same settled-argument rule, stated once in
+ts/src/unify.ts / FuncBaseVal, replaces `KeyFuncVal`'s `cc < 3`
+check; that refactor lands *before* any combinator, as a
+zero-behaviour-change phase gated on the full existing suite.
+Generators consume fixpoint passes; per G5, exhausting the pass
+budget with generators still unfired is a distinct semantic error
+("budget exhausted", G5's contract), never silent truncation. The
+budget itself — whether `maxcc = 9` scales with generator firings —
+is G5's decision.
+
+**Composition with the template machinery.** Once fired, generated
+children are ordinary children: a destination map's `&:` spread
+applies to them (and to children generated later by a sibling
+conjunct — the apply-once marking already handles late-arriving
+keys); `close()` counts them as allowed keys, so `close(pack(...))`
+seals the generated shape; `key()` and relative references resolve at
+the generated paths via the existing snapshot machinery. Each of
+these interactions gets its own spec file, in the style of the
+spread-*.tsv corpus, because 25 shared spec files exist precisely
+because this machinery is where behaviour hides.
+
+**Canonical form.** An unfired generator canons as its call —
+`pack($.names,{"image":...})` — which reparses to the same value, so
+`parse(canon(v)) == v` holds for incomplete models. A fired generator
+canons as its output structure, exactly as `lower(HELLO)` already
+canons as `"hello"` once resolved (test/spec/spread.tsv,
+template-func-canon). `_` canons as `_`. `|>`, if adopted, never
+appears in canon: it is parse-time sugar, desugared before the tree
+exists, so canon and the Go parser are untouched by it.
+
+**API/CLI surface.** None new. The combinators are language-level;
+evaluation, `--canon`, and the G2/G7 verbs see generated children as
+ordinary values. The LSP inherits hover/diagnostics for the new Vals
+through the existing document pipeline (ts/src/lsp.ts).
+
+## Boundary: what we will not do
+
+- **No recursion, anywhere** — the termination guarantee is the
+  product; this is the review's first trap to refuse
+  (Turing-completeness).
+- **No `def()` user functions in this design** — named hidden
+  templates plus `_` cover the demonstrated need at a fraction of the
+  analysability cost; deferred entirely, with revisit criteria below.
+- **No comprehension keywords (`for`/`if`/`in`)** — grammar size is
+  LLM acquisition cost and parser risk; the index's
+  surface-creep-toward-CUE trap.
+- **No string interpolation syntax** — `+` and functions already
+  construct strings; one spelling per meaning.
+- **No computed-key syntax** — keys computed from data are `pack`'s
+  job; a key-position expression grammar is a large change for no
+  added power.
+- **No boolean guards or comparisons in `match`** — matching is by
+  unifiability only, or `match` becomes a general conditional that
+  harms analysability.
+- **No `rank()` for competing placeheld functions** — an ordering
+  channel between functions is a second preference system; the
+  conflict stays an error until real models demand otherwise.
+- **No new operator tokens** — `-` `*` `/` `%` stay reserved
+  (test/spec/op-chars.tsv); maths beyond `+` arrives, if ever, as
+  functions, and is outside G8.
+- **No lazy-evaluation redesign** — generation works inside the
+  existing strict fixpoint; changing the evaluation strategy is a
+  different, larger project.
+
+## Risks
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Generator/spread interaction regresses the spread corpus (25 spec files) | Medium | High | Land the staging refactor (Phase 0) with zero behaviour change first; add gen-x-spread/close/key spec files before code; property-test commutativity and idempotence over generator-bearing values |
+| Fixpoint budget (`maxcc = 9`) exhausted by nested generators, surfacing as wrong "cannot resolve" errors | Medium | High | Settled-argument rule makes firing eager; budget exhaustion is a distinct G5 error, never silence; spec rows pin nesting depths 2-3 |
+| TS/Go divergence in generated key order, trial-mode behaviour, or clone-graph artifacts | Medium | High | Order pinned to sorted keys (already canon's and Go marshalling's order); every behaviour lands as shared TSV rows first; AGENTS.md parity discipline (no Go skip list) unchanged |
+| Canon round-trip breaks for unfired generators or `_` | Low | High | Canon rows in the same TSV files as gen rows from Phase 1; `parse(canon(v)) == v` asserted for unfired forms explicitly |
+| Reserving `_` breaks existing documents using it as text | Low | Medium | Breaking-change flag in CHANGELOG; a spec row pins the new parse; migration is mechanical (quote `"_"`) |
+| `filter`/`match` inherit the DisjunctVal.gen distribution defect through trial unification | Medium | Medium | Fix or fence the defect (ts/src/val/DisjunctVal.ts) before Phase 2; add spec rows for match-over-disjunct scrutinees |
+| Performance: pack/each clone templates per child on large data (the known dominant cost of spread application) | Medium | Medium | Reuse tiered `spreadClone` and apply-once `_spr` discipline; perf-annotate spec fixtures; G5 budgets cap runaway cost |
+| Placeholder parsing destabilises the fragile @tabnas grammar (AGENTS.md warning) | Medium | Medium | `_` lands in its own phase with exact-pinned parser versions; op-chars.tsv-style rows pin every adjacent token interaction |
+| Adoption: combinator calls read worse than comprehensions to CUE-trained users | Medium | Low | Documentation leads with the drift argument; `|>` sugar recovers left-to-right reading; grammar smallness is the trade being bought |
+| `match` grows into a general conditional through user pressure | Medium | Medium | Boundary is explicit; unifiability-only is spec-pinned; feature requests route to G1 atoms, not guards |
+
+## Implementation plan
+
+Spec-first throughout: every behaviour lands as test/spec/*.tsv rows
+agreed before code; TypeScript (canonical) implements; the Go port
+follows to green on the identical rows. At every phase, all existing
+spec rows and the canon round-trip (`parse(canon(v)) == v`) must not
+regress; the spread corpus is the regression canary.
+
+**Phase 0 — staging rule (S).** Replace the `KeyFuncVal` `cc < 3`
+delay with the settled-argument residuation rule in the shared
+function base; zero behaviour change, gated on the full 44-file
+suite. Files: ts/src/val/FuncBaseVal.ts, ts/src/val/KeyFuncVal.ts,
+ts/src/unify.ts; go/func.go, go/unify.go. No new spec rows; the
+existing spread-key*.tsv files are the acceptance test. Fix or fence
+the DisjunctVal.gen distribution defect (ts/src/val/DisjunctVal.ts,
+go/disjunct.go) here, with its own rows in disjunct.tsv.
+
+**Phase 1 — `pack` and `each` (M).** New spec files gen-pack.tsv,
+gen-each.tsv (gen + canon + err rows: list/map data, unfired canon,
+non-bag-data errors, duplicate-key merge), plus composition files
+gen-spread.tsv, gen-close.tsv, gen-key.tsv mirroring the spread-*
+corpus style. Files: ts/src/val/PackFuncVal.ts,
+ts/src/val/EachFuncVal.ts (new), ts/src/lang.ts (`funcMap`),
+ts/src/val/MapVal.ts (generated-children admission and apply-once
+interaction); go/func.go, go/mapval.go, go/lang.go.
+
+**Phase 2 — `filter` and `match` (M).** Requires Phase 0's defect
+fix. Spec files gen-filter.tsv, gen-match.tsv, including
+match-no-arm error rows asserting the tried-alternatives report
+substring (format owned by G2). Files: ts/src/val/FilterFuncVal.ts,
+ts/src/val/MatchFuncVal.ts, ts/src/ctx.ts (trial-mode surface);
+go/func.go, go/ctx.go.
+
+**Phase 3 — placeholder `_` (M/L; the parser phase).** Spec file
+place.tsv: `upper(_) & foo`, `_+2` in spread templates, `_` binding
+inside pack/each templates, the `upper(_) & lower(_)` error, canon of
+unfired placeheld forms, and rows pinning that quoted `"_"` stays a
+string. Files: ts/src/val/PlaceVal.ts (new), ts/src/lang.ts
+(expr-plugin operator config), ts/src/val/FuncBaseVal.ts,
+ts/src/val/OpBaseVal.ts (residuation on peer); go/lang.go, go/op.go,
+go/func.go. Sequenced after G1's residuation machinery so the two
+gaps share one implementation.
+
+**Phase 4 — `|>` sugar (S, optional).** Parse-time desugaring only;
+spec file pipe.tsv whose canon rows all show desugared call forms,
+proving canon never emits the token. Files: ts/src/lang.ts;
+go/lang.go. May be dropped without loss if Phase 1-3 adoption shows
+call nesting is acceptable.
+
+Sequencing within the review: index.md places G8 in Phase C. Phase 0
+here is a pure engine cleanup with independent value (it removes a
+documented hack) and can land earlier without committing to the
+combinators.
+
+## Open questions
+
+- **Keying `pack` over lists of maps.** A list of service *records*
+  (not strings) has no evident key. Options: require a key field by
+  convention (`pack(data, tmpl)` errors unless children carry a
+  designated field), a key-selector argument
+  (`pack(data, keytmpl, tmpl)`), or refuse list-of-maps data and
+  make authors `pack` over the extracted names. Decided by: the
+  Terraform stable-keys lesson (keys must be data, not position)
+  versus keeping the arity small; real model corpora should pick.
+- **`_` scoping under nesting.** When a `pack` template contains an
+  `each`, which generator's child does an inner `_` bind? Innermost-
+  binder lexical scoping is the presumption, but the alternative
+  (an explicit depth argument mirroring `key(n)`) is more
+  Aontu-like. Decided by: whether nested-generator models occur in
+  practice before Phase 3 lands.
+- **What `filter`'s trial observes.** Does `{replicas: *2|integer}`
+  in a candidate satisfy `cond` `{replicas: 2}` (default considered)
+  or not (only asserted structure counts)? Same question for
+  closedness. Decided by: consistency with how disjunct trials treat
+  defaults today, and by G3's subsumption semantics — `filter` must
+  not become an accidental second subsumption with different answers.
+- **Whether generator firings share `maxcc` or get their own budget
+  dimension.** Owned by G5; G8's need is only that exhaustion is a
+  distinct error. Decided by: measurement on nested-generation
+  fixtures once Phase 1 exists.
+- **`match` result shape.** Is the selected result `v & p_i & r_i`
+  (scrutinee flows into the result, as proposed) or `r_i` alone
+  (pure selection)? The former is more lattice-natural and keeps
+  observed-value guarantees; the latter is easier to explain.
+  Decided by: which one composes with `pack` templates without
+  surprises in the Phase 2 spec drafts.
+- **`def()` revisit criteria.** Reopen only if (a) real models show
+  named templates plus `_` failing to express a recurring
+  abstraction, and (b) the proposed `def()` remains checkably
+  non-recursive including through references, and (c) G5's budget
+  and G6's module identity stories are in place to carry it. Absent
+  all three, the refusal stands.
