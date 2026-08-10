@@ -1,0 +1,35 @@
+# Engine-parity regression classes, from the boru differential-probe report
+# against @tabnas/parser + @tabnas/jsonic (fixed upstream in parser 0.8.0 /
+# jsonic 0.6.0). These pin how each class manifests through aontu's OWN
+# semantics — where the engine's old defects variously fabricated list
+# elements, destroyed characters, or silently swallowed separators, aontu
+# must instead give either a clean value or a clean aontu error.
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err
+#
+# Base-prefixed run with a dot continuation: lexes as TEXT whole (engine
+# adjudication), and a bare dotted word in aontu is a path REFERENCE — so
+# these resolve like any other unresolvable ref: a clean no_path/negative
+# error, identical to a:[zz.qq]. The old TS engine fabricated elements here
+# ([0xFF.5] parsed as [[],"xFF.5"]) and destroyed the leading character.
+prefix-dot-ref-err	err	a:[0xFF.5]	Cannot resolve value
+prefix-dot-ref-err2	err	a:[0xFF.5,2]	Cannot resolve value
+prefix-dot-ref-neg	err	a:[-0xFF.5,9]	Cannot resolve value
+prefix-dot-ref-same	err	a:[zz.qq]	Cannot resolve value
+# Separator at a run edge: not a number (engine adjudication: separators
+# only between digits). The old Go engine parsed +_1 as the NUMBER 1,
+# silently changing user data; 1_ as 1.
+sep-edge-str	gen	f:1_	{"f":"1_"}
+sep-edge-list	gen	g:[1_,2]	{"g":["1_",2]}
+# Unary + on a non-number is aontu's expr semantics (the operator yields
+# its operand), NOT character corruption: +x behaves identically.
+sep-edge-unary	gen	b:+_1	{"b":"_1"}
+unary-plus-word	gen	h:+x	{"h":"x"}
+unary-plus-num	gen	h:+1	{"h":1}
+# Protected baselines: interior separators and base-prefixed literals.
+baseline-sep	gen	d:1_000	{"d":1000}
+baseline-hex	gen	e:0xFF	{"e":255}
+baseline-hex-list	gen	a2:[0xFF,2]	{"a2":[255,2]}
+# Integer-like keys: generated JSON enumerates them ascending (a JS/plain
+# representation semantic on both ports; source order is not preserved in
+# gen output).
+intkey-order	gen	c:{2:9,1:8}	{"c":{"1":8,"2":9}}

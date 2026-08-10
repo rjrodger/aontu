@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"math"
 	"math/big"
 	"reflect"
 	"strconv"
@@ -123,7 +124,16 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		Text: &jsonic.TextOptions{Check: tsTextCheck},
 		// See tsNumCheck: a numeric prefix of a larger text token is
 		// not a number ("100'sq'" is one text token), as in TS.
-		Number: &jsonic.NumberOptions{Check: tsNumCheck},
+		Number: &jsonic.NumberOptions{
+			// Sep must be restated: passing any NumberOptions with an
+			// empty Sep DISABLES separators ("Empty string disables" —
+			// the strict-JSON grammars depend on that), so this struct
+			// had turned them off and `1_000` unified to the STRING
+			// "1_000" while the TS port (whose option merge keeps the
+			// default) gave 1000. Caught by test/spec/engine-parity.tsv.
+			Sep:   "_",
+			Check: tsNumCheck,
+		},
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.ValueDef{
@@ -277,7 +287,17 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 	// map reattaches at the right level (see the pair close alts).
 	j.Rule("map", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependOpen(
-			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, G: "spread"},
+			// N pk:1 — the implicit map created for a `&:`-led pair value
+			// must carry the pair-key depth counter, as the map created
+			// for `q:a:1` does. TS reaches this map through jsonic's
+			// implicit-map val alt, which sets pk; Go reaches it through
+			// THIS alt, which did not — so at the spread pair's close pk
+			// read 0, the keep-closing-until-pk=0 alt never fired, and
+			// the unconditional continue-pair fallback swallowed the next
+			// top-level pair into the spread's map: `q:&:{k:1} q:a:2`
+			// grew a nested "q" inside q. Traced by diffing r.n at map-BO
+			// across ports: TS {dmap:2,pk:1}, Go {dmap:2}.
+			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "pair", B: 2, N: map[string]int{"pk": 1}, G: "spread"},
 			&jsonic.AltSpec{S: [][]jsonic.Tin{optkey, {qm}}, P: "pair", B: 2, G: "optional"},
 		)
 		rs.PrependClose(
@@ -385,6 +405,17 @@ func wrapLeaf(r *jsonic.Rule, _ *jsonic.Context) {
 	}
 	switch n := r.Node.(type) {
 	case float64:
+		// The engine now saturates an overflowing literal to ±Inf (1e999
+		// lexes as a NUMBER on both ports, matching JS unary +), so the
+		// text-fallback branch below never sees it. A non-finite number
+		// is a not_number error nil, exactly as the TS ac maps
+		// !Number.isFinite (ts/src/lang.ts).
+		if math.IsInf(n, 0) || math.IsNaN(n) {
+			e := newNil("not_number")
+			e.sp = sp
+			r.Node = e
+			return
+		}
 		r.Node = numberVal(n, src, sp)
 	case string:
 		// An overflowing numeric literal (1e999) fails Go's float
@@ -435,8 +466,20 @@ func numberVal(n float64, src string, sp int) Val {
 // trackOrder appends this pair's key to the enclosing map's insertion
 // order (first occurrence wins; duplicates are merged by value).
 func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
-	m, ok := r.Node.(map[string]any)
-	if !ok {
+	// The enclosing map is the parent (map rule)'s node. The old engine
+	// left r.Node as that map at after-close time for every pair shape;
+	// the reworked engine adopts a dive pair's child value into r.Node at
+	// close, so reading r.Node directly wrote the pair's key into its own
+	// value map. The parent's node is the enclosing map in every shape on
+	// both engines.
+	var m map[string]any
+	if r.Parent != nil {
+		m, _ = r.Parent.Node.(map[string]any)
+	}
+	if m == nil {
+		m, _ = r.Node.(map[string]any)
+	}
+	if m == nil {
 		return
 	}
 	// A &: spread pair: store the spread value (merge multiple spreads
@@ -458,7 +501,14 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 		return
 	}
 
-	key := keyOf(r.O0)
+	// jsonic 0.6.0 maintains the pair key on r.U["key"], exactly as the
+	// TS grammar does — and it is the only correct source for a path-dive
+	// pair (`q:a:{x:11}`), whose rule's O0 token is the outer key. Fall
+	// back to the token only for alts that bypass jsonic's key capture.
+	key, _ := r.U["key"].(string)
+	if "" == key {
+		key = keyOf(r.O0)
+	}
 
 	// Reject a source key in the reserved sentinel namespace: it would
 	// collide with the order/spread/optional entries above and silently
