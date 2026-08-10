@@ -572,3 +572,9 @@ meaning of any existing document**. Every `1`, `1.0` and `1e21` already
 written keeps its kind, its value and its canon. That property is what
 makes the change affordable later, and it is the reason not to
 pre-emptively build the tower now.
+
+*Update: the door is being walked through. The decision to mirror
+boru's structure — and the full design, including the places where
+unification forces deviations from boru — is worked out in
+[number-tower.md](number-tower.md). The rules in this document stand;
+the tower extends them.*
