@@ -97,7 +97,7 @@ func stdinIsPipe() bool {
 // repl reads source lines from in, evaluating each and writing results
 // to out, until EOF or a :quit/:exit command.
 func repl(a *aontu.Aontu, mode string, in io.Reader, out io.Writer) {
-	fmt.Fprintf(out, "Aontu v%s REPL — :help for commands, :quit to exit\n", aontu.Version)
+	fmt.Fprintf(out, "Aontu v%s REPL — :help for commands, :quit to exit\n", aontu.VERSION)
 	sc := bufio.NewScanner(in)
 	// Raise the line cap well above bufio's 64KB default so a long
 	// pasted source line is not silently truncated.
@@ -154,7 +154,7 @@ func main() {
 			fmt.Print(helpText)
 			return
 		case "-v", "--version":
-			fmt.Println(aontu.Version)
+			fmt.Println(aontu.VERSION)
 			return
 		default:
 			if strings.HasPrefix(arg, "-") {

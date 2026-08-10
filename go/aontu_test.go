@@ -80,12 +80,12 @@ func TestReservedKeyPrefixRejected(t *testing.T) {
 	}
 }
 
-// TestVersionFormat guards the Version constant, which `make publish-go
-// V=x.y.z` rewrites. The rewrite used a BSD-only `sed -i ''` that silently
-// no-opped on GNU sed, so a malformed or stale constant could ship. Mirrors
-// ts/test/version.test.ts.
+// TestVersionFormat guards the VERSION constant, which `make publish-go
+// V=x.y.z` rewrites. That rewrite used a BSD-only in-place sed form that
+// no-opped silently on GNU sed, so a malformed or stale constant could ship.
+// Mirrors ts/test/version.test.ts.
 func TestVersionFormat(t *testing.T) {
-	if !regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(Version) {
-		t.Fatalf("Version is not a plain semver triple: %q", Version)
+	if !regexp.MustCompile(`^\d+\.\d+\.\d+$`).MatchString(VERSION) {
+		t.Fatalf("VERSION is not a plain semver triple: %q", VERSION)
 	}
 }
