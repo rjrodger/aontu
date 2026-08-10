@@ -41,43 +41,89 @@ super-float-value-unify	gen	x:super(1.5) & 2.5	{"x":2.5}
 super-float-value-unify-integer-err	err	x:super(1.5) & 2	Cannot unify scalar values
 #
 # ---------------------------------------------------------------------
-# PHASE 0 BASELINE -- what `0d...` means TODAY, before the exact leaves.
+# PHASE 2 -- the exact leaves. `0d` opts a literal into an exact leaf:
+# digits only is biginteger, a `.` or an exponent makes it bigdecimal.
+# (These sources were ordinary bare text before this phase; the Phase 0
+# baseline rows that pinned that are gone, replaced by the rows below --
+# the deliberate, visible flip the baseline existed to expose.)
 #
-# Phase 2 turns these sources into biginteger/bigdecimal literals, so
-# every row below is expected to FLIP then, deliberately and visibly.
-# They are pinned now for the opposite reason: so that Phase 1 (a change
-# to the kind lattice, not to the lexer) can be shown not to have
-# touched them by accident.
-0d-int-canon	canon	x:0d12	{"x":"0d12"}
-0d-int-gen	gen	x:0d12	{"x":"0d12"}
-0d-separator-canon	canon	x:0d1_000	{"x":"0d1_000"}
-0d-upper-canon	canon	x:0D12	{"x":"0D12"}
-0d-zero-canon	canon	x:0d0	{"x":"0d0"}
-0d-bare-canon	canon	x:0d	{"x":"0d"}
-0d-exponent-canon	canon	x:0d1e3	{"x":"0d1e3"}
-0d-nondigits-canon	canon	x:0dabc	{"x":"0dabc"}
-0d-list-gen	gen	x:[0d12]	{"x":["0d12"]}
-0d-list-canon	canon	x:[0d12]	{"x":["0d12"]}
-0d-map-key-gen	gen	x:{0d12:1}	{"x":{"0d12":1}}
-# Bare text, so `+` concatenates it as a string rather than adding.
-0d-plus-concatenates	gen	x:0d5+1	{"x":"0d51"}
-# The dotted forms are NOT strings today: the `.` splits them into a
-# member-access path, which resolves to nothing. Phase 2's matcher has
-# to claim these back (design D3).
-0d-dotted-err	err	x:0d1.5	Cannot resolve value
-0d-dotted-exponent-err	err	x:0d1.5e2	Cannot resolve value
-0d-dot-adjacent-err	err	x:0d1.e2	Cannot resolve value
-# A leading minus reaches unary negation, which refuses a string operand.
-0d-negative-err	err	x:-0d5	Cannot resolve value
-0d-negative-canon	canon	x:-0d5	{"x":nil}
-# boru's `0d-5` accident is a parse error here, in both ports (D3).
-0d-suffix-sign-err	err	x:0d-5	unexpected character
-# The other two reserved-word-to-be spellings are still bare text.
-biginteger-word-canon	canon	x:biginteger	{"x":"biginteger"}
-bigdecimal-word-canon	canon	x:bigdecimal	{"x":"bigdecimal"}
-bigword-list-gen	gen	x:[biginteger,bigdecimal]	{"x":["biginteger","bigdecimal"]}
+# One value, one rendering (D4): scale is presentation, not identity, so
+# a trailing zero and an exponent form normalise away at parse. An
+# INTEGRAL BIGDECIMAL still renders one decimal place, because the `0d`
+# prefix names the family and not the leaf -- without the marker,
+# canon(0d1e3) would reparse as a biginteger.
+bigint-canon	canon	x:0d5	{"x":0d5}
+bigint-zero-canon	canon	x:0d0	{"x":0d0}
+bigint-large-canon	canon	x:0d123456789012345678901234567890	{"x":0d123456789012345678901234567890}
+bigint-separator-canon	canon	x:0d1_000	{"x":0d1000}
+bigint-upper-prefix-canon	canon	x:0D12	{"x":0d12}
+bigint-negative-canon	canon	x:-0d5	{"x":-0d5}
+bigdec-canon	canon	x:0d1.5	{"x":0d1.5}
+bigdec-negative-canon	canon	x:-0d1.5	{"x":-0d1.5}
+bigdec-trailing-zero-canon	canon	x:0d0.10	{"x":0d0.1}
+bigdec-exponent-canon	canon	x:0d1e3	{"x":0d1000.0}
+bigdec-exponent-frac-canon	canon	x:0d1.5e2	{"x":0d150.0}
+bigdec-negative-exponent-canon	canon	x:0d1e-1	{"x":0d0.1}
+bigdec-integral-marker-canon	canon	x:0d1000.0	{"x":0d1000.0}
+bigdec-exact-tenth-canon	canon	x:0d0.1	{"x":0d0.1}
+bigint-list-canon	canon	x:[0d1,0d2]	{"x":[0d1,0d2]}
 #
-# ---------------------------------------------------------------------
+# R2 extends to the exact leaves: negative zero never survives.
+bigint-negative-zero-canon	canon	x:-0d0	{"x":0d0}
+bigdec-negative-zero-canon	canon	x:-0d0.0	{"x":0d0.0}
+#
+# The two new kind keywords, and the supertype above them.
+bigint-kind-canon	canon	a:biginteger	{"a":biginteger}
+bigdec-kind-canon	canon	a:bigdecimal	{"a":bigdecimal}
+number-meet-bigint-canon	canon	a:number & biginteger	{"a":biginteger}
+number-meet-bigdec-canon	canon	a:number & bigdecimal	{"a":bigdecimal}
+bigint-meet-bigdec-err	err	a:biginteger & bigdecimal	Cannot unify
+bigint-meet-integer-err	err	a:biginteger & integer	Cannot unify
+bigdec-meet-float-err	err	a:bigdecimal & float	Cannot unify
+bigint-admits-bigint-canon	canon	a:0d5 & biginteger	{"a":0d5}
+bigdec-admits-bigdec-canon	canon	a:0d1.5 & bigdecimal	{"a":0d1.5}
+bigint-rejects-bigdec-err	err	a:0d1.5 & biginteger	Cannot unify
+number-admits-bigint-canon	canon	a:0d5 & number	{"a":0d5}
+number-admits-bigdec-canon	canon	a:0d1.5 & number	{"a":0d1.5}
+#
+# The super() ladder reaches the new leaves.
+super-bigint-canon	canon	x:super(0d5)	{"x":biginteger}
+super-bigdec-canon	canon	x:super(0d1.5)	{"x":bigdecimal}
+super-bigint-kind-canon	canon	x:super(biginteger)	{"x":number}
+super-bigdec-kind-canon	canon	x:super(bigdecimal)	{"x":number}
+#
+# D2: the leaves are DISJOINT. A value of one leaf never unifies with a
+# numerically equal value of another -- a cross-leaf result would have
+# to pick a kind, which is the ambiguity that makes `1 & 1.0` an error.
+int-vs-bigint-err	err	x:5 & 0d5	Cannot unify
+float-vs-bigdec-err	err	x:1.5 & 0d1.5	Cannot unify
+bigint-vs-bigdec-err	err	x:0d5 & 0d5.0	Cannot unify
+#
+# D6: the exactness budget is enforced at PARSE, so a one-digit
+# coefficient with an enormous exponent is refused before anything tries
+# to render it in plain form.
+bigdec-scale-budget-err	err	x:0d1e1000000000	exactness budget
+#
+# PHASE 3 -- identity is kind AND value. For the exact leaves that means
+# comparing the NUMBER, never the pointer holding it: the large-value
+# rows below are what catch a Go implementation that compares *big.Int
+# addresses.
+bigint-same-canon	canon	x:0d5 & 0d5	{"x":0d5}
+bigint-differs-err	err	x:0d5 & 0d6	Cannot unify
+bigint-large-same-canon	canon	x:0d123456789012345678901234567890 & 0d123456789012345678901234567890	{"x":0d123456789012345678901234567890}
+bigint-large-differs-err	err	x:0d123456789012345678901234567890 & 0d123456789012345678901234567891	Cannot unify
+bigdec-same-canon	canon	x:0d1.5 & 0d1.5	{"x":0d1.5}
+bigdec-scale-same-canon	canon	x:0d0.10 & 0d0.1	{"x":0d0.1}
+bigdec-differs-err	err	x:0d1.5 & 0d1.6	Cannot unify
+bigint-disjunct-dedup-canon	canon	x:0d1|0d1	{"x":0d1}
+bigint-disjunct-canon	canon	x:0d1|0d2	{"x":0d1|0d2}
+bigint-bigdec-disjunct-canon	canon	x:0d1|0d1.0	{"x":0d1|0d1.0}
+bigint-bigdec-disjunct-pick-canon	canon	x:(0d1|0d1.0) & 0d1.0	{"x":0d1.0}
+#
+# The other two reserved words are kind keywords now, not bare text.
+bigint-word-canon	canon	x:biginteger	{"x":biginteger}
+bigdec-word-canon	canon	x:bigdecimal	{"x":bigdecimal}
+#
 # PHASE 0 -- the byte-exact `gens` mode.
 #
 # `gen` compares through a JSON decode, so both sides land in float64 and
