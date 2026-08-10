@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"math"
 	"math/big"
 	"strings"
 	"testing"
@@ -344,6 +345,206 @@ func TestCanonRoundTrips(t *testing.T) {
 		}
 		if got := joint.Canon(); got != canon {
 			t.Errorf("%q & its own canon = %s, want %s", lit, got, canon)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------
+// Phase 4 — arithmetic (D6). The shared TSV rows pin the ladder itself;
+// what follows is what canon text cannot reach: the checked int64 add,
+// the budget applied to a RESULT, and the exact ceiling/floor arithmetic
+// underneath upper()/lower().
+
+// TestDecimalAddIsExact pins the addition itself: align the scales, add
+// the coefficients, renormalise. No rounding, at any scale difference.
+func TestDecimalAddIsExact(t *testing.T) {
+	cases := []struct{ a, b, want string }{
+		{"0.1", "0.2", "0.3"},   // the headline: not 0.30000000000000004
+		{"1.5", "1.5", "3.0"},   // integral results keep one decimal place
+		{"0.25", "0.75", "1.0"}, //
+		{"1.0", "-1.0", "0.0"},  // and zero is the one normal zero
+		{"1e-10", "1", "1.0000000001"},
+		{"1234567890123456789012345678901234.5", "0.5", "1234567890123456789012345678901235.0"},
+	}
+	for _, c := range cases {
+		a := mustDecimal(t, c.a).(*ScalarVal).peg.(*Decimal)
+		b := mustDecimal(t, c.b).(*ScalarVal).peg.(*Decimal)
+		if got := a.add(b).digits(); got != c.want {
+			t.Errorf("%s + %s = %s, want %s", c.a, c.b, got, c.want)
+		}
+		// Addition is commutative, and the normal form makes that
+		// testable as text equality.
+		if got := b.add(a).digits(); got != c.want {
+			t.Errorf("%s + %s = %s, want %s", c.b, c.a, got, c.want)
+		}
+	}
+}
+
+// TestExactLadderPromotion walks the operand cross-product the ladder
+// covers, in both orders: the widest operand wins, and a result NEVER
+// demotes to a narrower leaf even when its value would fit.
+func TestExactLadderPromotion(t *testing.T) {
+	for src, want := range map[string]string{
+		"x:0d5+-0d2":        `{"x":0d3}`,   // stays a biginteger
+		"x:0d1+0d2+0d3":     `{"x":0d6}`,   // and chains
+		"x:1+0d2+0d0.5":     `{"x":0d3.5}`, // promoting once more mid-chain
+		"x:0d2.5+0d2.5":     `{"x":0d5.0}`, // an integral bigdecimal keeps its place
+		"x:0d0.5+-0d0.5":    `{"x":0d0.0}`,
+		"x:pref(0d5)+0d1":   `{"x":0d6}`, // a pref contributes its value's kind
+		"x:0d5+0d0":         `{"x":0d5}`,
+		"x:0d0.1+0d0":       `{"x":0d0.1}`,
+		"x:(0d1|0d2) & 0d1": `{"x":0d1}`,
+		"x:0d99999999999999999999999999999999+0d1": `{"x":0d100000000000000000000000000000000}`,
+	} {
+		v, err := New().Unify(src)
+		if err != nil {
+			t.Fatalf("%q: %v", src, err)
+		}
+		if got := v.Canon(); got != want {
+			t.Errorf("%q canon = %s, want %s", src, got, want)
+		}
+	}
+}
+
+// TestIntegerSumStorageContract is the reason integer + integer stopped
+// going through binary64: the sum is computed exactly, and then has to
+// FIT — integral, inside the int64 window, and exactly representable in
+// binary64. Go's int64 holds sums a JS number cannot, so the last clause
+// is what stops the two ports diverging on precisely these values.
+func TestIntegerSumStorageContract(t *testing.T) {
+	ok := []struct {
+		x, y int64
+		want int64
+	}{
+		{1, 2, 3},
+		{-2, 3, 1},
+		{1 << 52, 1 << 52, 1 << 53},        // 2^53 is representable
+		{(1 << 53) - 1, 1, 1 << 53},        //
+		{-(1 << 53), 0, -(1 << 53)},        //
+		{math.MinInt64, 0, math.MinInt64},  // -2^63 is exactly representable
+		{math.MinInt64 / 2, 0, -(1 << 62)}, //
+	}
+	for _, c := range ok {
+		out := integerPlus(nil, newInteger(c.x), newInteger(c.y))
+		sv, is := out.(*ScalarVal)
+		if !is || sv.kind != KindInteger {
+			t.Errorf("%d+%d = %s, want an integer", c.x, c.y, out.Canon())
+			continue
+		}
+		if got := sv.peg.(int64); got != c.want {
+			t.Errorf("%d+%d = %d, want %d", c.x, c.y, got, c.want)
+		}
+	}
+
+	bad := [][2]int64{
+		{1 << 52, (1 << 52) + 1},             // 2^53+1: exact, but not in binary64
+		{math.MaxInt64, 1},                   // wraps: the checked add catches it
+		{math.MaxInt64, math.MaxInt64},       //
+		{math.MinInt64, -1},                  // and in the other direction
+		{math.MinInt64, math.MinInt64},       // a wrap that lands exactly on 0
+		{1 << 62, 1 << 62},                   // 2^63: out of the int64 window
+		{math.MaxInt64 - 1, 0},               // in range, but binary64 rounds it up
+		{4503599627370496, 4503599627370497}, // the spec row, at the boundary
+	}
+	for _, c := range bad {
+		out := integerPlus(nil, newInteger(c[0]), newInteger(c[1]))
+		nv, isnil := out.(*NilVal)
+		if !isnil {
+			t.Errorf("%d+%d = %s, want a located error", c[0], c[1], out.Canon())
+			continue
+		}
+		if !strings.Contains(nv.Message(), "exactly representable") {
+			t.Errorf("%d+%d error = %q, want the storage-contract hint", c[0], c[1], nv.Message())
+		}
+	}
+}
+
+// TestExactPlusRefusals: every pairing `+` must refuse rather than
+// answer. A float mix is a hard error in BOTH orders (a Big type never
+// silently becomes a binary float); a non-numeric peer does not coerce
+// and simply leaves the op unresolved, exactly as it did before.
+func TestExactPlusRefusals(t *testing.T) {
+	for _, src := range []string{
+		"x:1.0+0d2", "x:0d2+1.0", "x:1.0+0d0.5", "x:0d0.5+1.0",
+		"x:0d1e3+1.5", "x:-0d5+0.0",
+	} {
+		_, err := New().Generate(src)
+		if err == nil {
+			t.Errorf("%q must refuse the float mix", src)
+			continue
+		}
+		if !strings.Contains(err.Error(), "cannot mix") {
+			t.Errorf("%q error = %q, want the mix refusal", src, err)
+		}
+	}
+
+	// Not an error, but not an answer either: the op stays unresolved
+	// and generate() reports it, which is what these pairs did before
+	// the exact leaves joined `+`.
+	for _, src := range []string{
+		"x:0d5+true", "x:0d5+null", "x:0d5+top", "x:0d5+integer",
+		"x:true+0d0.5", "x:0d5+[1]",
+	} {
+		if _, err := New().Generate(src); err == nil {
+			t.Errorf("%q must not resolve", src)
+		}
+	}
+}
+
+// TestExactBudgetAppliesToResults: D6's budget bounds what arithmetic
+// may produce, not just what a literal may say. Scale alignment is the
+// route to a blow-up — both operands are inside the budget, their exact
+// sum is not — and the answer is a refusal, never a rounded value.
+func TestExactBudgetAppliesToResults(t *testing.T) {
+	src := "x:0d1e-" + itoa(decimalMaxScale) + "+0d1e" + itoa(decimalMaxScale)
+	_, err := New().Generate(src)
+	if err == nil {
+		t.Fatalf("%.20s… must exceed the budget", src)
+	}
+	if !strings.Contains(err.Error(), "exceeds the exactness budget") {
+		t.Errorf("%.20s… error = %.120q, want the budget refusal", src, err)
+	}
+
+	// The biginteger leaf has no scale and therefore no budget: an exact
+	// integer sum of any length is representable.
+	long := strings.Repeat("9", decimalMaxCoeffDigits+100)
+	v, err := New().Unify("x:0d" + long + "+0d1")
+	if err != nil {
+		t.Fatalf("long biginteger sum: %v", err)
+	}
+	if got := v.Canon(); !strings.HasPrefix(got, `{"x":0d1000`) ||
+		len(got) != len(long)+len(`{"x":0d}`)+1 {
+		t.Errorf("long biginteger sum canon = %.30s… (len %d)", got, len(got))
+	}
+}
+
+// TestUpperLowerExactLeaves pins the exact ceiling/floor: coefficient
+// arithmetic, no float64 anywhere near it, and the ARGUMENT's kind kept
+// (R5) — so an integral result still renders its bigdecimal place.
+func TestUpperLowerExactLeaves(t *testing.T) {
+	for src, want := range map[string]string{
+		"x:upper(0d1.1)":  `{"x":0d2.0}`,
+		"x:lower(0d1.9)":  `{"x":0d1.0}`,
+		"x:upper(0d2.0)":  `{"x":0d2.0}`, // already integral: no step
+		"x:lower(0d2.0)":  `{"x":0d2.0}`,
+		"x:upper(-0d1.1)": `{"x":-0d1.0}`, // truncation IS the ceiling here
+		"x:lower(-0d1.1)": `{"x":-0d2.0}`,
+		"x:upper(0d0.5)":  `{"x":0d1.0}`,
+		"x:lower(0d0.5)":  `{"x":0d0.0}`,
+		"x:lower(-0d0.5)": `{"x":-0d1.0}`,
+		"x:upper(0d5)":    `{"x":0d5}`, // an exact integer is its own ceiling
+		"x:lower(-0d5)":   `{"x":-0d5}`,
+		// The exactness is the point: a value no binary64 can hold keeps
+		// every digit through the ceiling.
+		"x:lower(0d123456789012345678901234567890.9)": `{"x":0d123456789012345678901234567890.0}`,
+		"x:upper(0d123456789012345678901234567890.1)": `{"x":0d123456789012345678901234567891.0}`,
+	} {
+		v, err := New().Unify(src)
+		if err != nil {
+			t.Fatalf("%q: %v", src, err)
+		}
+		if got := v.Canon(); got != want {
+			t.Errorf("%q canon = %s, want %s", src, got, want)
 		}
 	}
 }

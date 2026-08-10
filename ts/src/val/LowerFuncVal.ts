@@ -16,6 +16,7 @@ import { makeNilErr } from '../err'
 import { NilVal } from '../val/NilVal'
 import { ScalarKindVal } from '../val/ScalarKindVal'
 import { makeScalarLike } from '../val/valutil'
+import { Decimal } from '../val/Decimal'
 
 
 
@@ -51,7 +52,14 @@ class LowerFuncVal extends FuncBaseVal {
     const oldpeg = arg?.peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
       'number' === typeof oldpeg ? Math.floor(oldpeg) :
-        undefined
+        // The exact leaves take an EXACT floor and keep their kind: a
+        // biginteger is already integral so it is its own floor, and a
+        // bigdecimal floors by coefficient arithmetic. Math.floor is not
+        // an option for either — it would round the value into binary64
+        // first, which is the loss the `0d` leaves exist to refuse.
+        'bigint' === typeof oldpeg ? oldpeg :
+          oldpeg instanceof Decimal ? oldpeg.floor() :
+            undefined
     const out = this.place(
       null == peg ?
         makeNilErr(ctx, 'invalid-arg', this) :

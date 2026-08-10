@@ -10,9 +10,13 @@ import (
 // The exact base-10 decimal leaf of the number tower
 // (docs/design/number-tower.md, D8). No dependency: apd exists to ROUND
 // and this language never rounds, so a coefficient plus a scale — with
-// exact comparison and rendering — is the whole of what Phase 2 needs.
-// Arithmetic (D6's exact ladder) belongs to Phase 4 and is deliberately
-// absent here.
+// exact comparison, rendering and arithmetic — is the whole of it.
+//
+// D6's arithmetic is EXACT-ALWAYS: add aligns scales and adds
+// coefficients, ceil/floor are coefficient division. There is no
+// rounding mode and no precision context anywhere in this file, which is
+// exactly why the budget below has to be a refusal — at the limit, an
+// engine that cannot round has nothing to fall back on.
 
 // Decimal is an exact base-10 decimal value: coeff * 10^-scale.
 //
@@ -25,8 +29,8 @@ type Decimal struct {
 	scale int32
 }
 
-// D6's exactness budget, enforced at parse (parseExactLiteral). Both
-// halves are load-bearing:
+// D6's exactness budget, enforced at parse (exactDecimal) and on every
+// computed RESULT (overBudget). Both halves are load-bearing:
 //
 //   - coefficient digits bound the size of the exact integer we hold;
 //   - the ABSOLUTE scale bounds what plain-form rendering has to
@@ -100,6 +104,70 @@ func (d *Decimal) neg() *Decimal {
 	return &Decimal{coeff: new(big.Int).Neg(d.coeff), scale: d.scale}
 }
 
+// add returns the EXACT sum: align the two scales, add the coefficients,
+// renormalise (D6). No rounding mode, no precision context, no float64 —
+// `0d0.1 + 0d0.2` is `0d0.3` and not 0.30000000000000004, which is the
+// whole reason the exact leaves exist.
+//
+// The result may still be over the exactness budget (scale alignment can
+// inflate a coefficient), so callers must ask overBudget before handing
+// the sum to a value: the budget bounds results as well as literals.
+func (d *Decimal) add(o *Decimal) *Decimal {
+	a, b := d.coeff, o.coeff
+	scale := d.scale
+	switch {
+	case d.scale < o.scale:
+		a = shiftUp(a, int64(o.scale)-int64(d.scale))
+		scale = o.scale
+	case o.scale < d.scale:
+		b = shiftUp(b, int64(d.scale)-int64(o.scale))
+	}
+	return newDecimal(new(big.Int).Add(a, b), scale)
+}
+
+// ceilFloor returns the exact ceiling (up) or floor of the decimal, as a
+// decimal — upper()/lower() keep the ARGUMENT's kind (R5), so the result
+// is still a bigdecimal and still renders its single decimal place:
+// upper(0d1.1) is `0d2.0`.
+//
+// It is coefficient arithmetic, with no float64 anywhere near it: a
+// binary64 round trip would defeat the leaf on exactly the values it
+// exists for.
+func (d *Decimal) ceilFloor(up bool) *Decimal {
+	// The normal form guarantees scale >= 1, so the divisor is >= 10.
+	q, r := new(big.Int), new(big.Int)
+	q.QuoRem(d.coeff, pow10(int64(d.scale)), r)
+	// QuoRem truncates TOWARD ZERO and gives the remainder the dividend's
+	// sign, so truncation is already the floor for a positive value and
+	// already the ceiling for a negative one: only the other direction
+	// needs the step.
+	switch {
+	case up && r.Sign() > 0:
+		q.Add(q, big.NewInt(1))
+	case !up && r.Sign() < 0:
+		q.Sub(q, big.NewInt(1))
+	}
+	// Scale 0 is not a normal form: newDecimal folds it back to the one
+	// decimal place the leaf marker requires.
+	return newDecimal(q, 0)
+}
+
+// overBudget reports whether a COMPUTED decimal is outside D6's exactness
+// budget. The budget applies to results exactly as it applies to
+// literals: an exact result over either bound is refused, never rounded
+// and never quietly expanded.
+//
+// Both halves are checked on the NORMAL form, which is the form that has
+// to be rendered. Addition never raises the scale above the wider
+// operand's, so in practice it is the coefficient half that fires — for
+// instance on the scale-alignment blow-up `0d1e-4096 + 0d1e4096`.
+func (d *Decimal) overBudget() bool {
+	if decimalMaxScale < d.scale || d.scale < -decimalMaxScale {
+		return true
+	}
+	return decimalMaxCoeffDigits < len(new(big.Int).Abs(d.coeff).String())
+}
+
 // cmp compares two decimals numerically: -1, 0 or +1. Scales are aligned
 // first, so the comparison is about the NUMBER and never about the
 // pointer holding it (D2) — even for decimals built outside the parser's
@@ -122,7 +190,12 @@ func (d *Decimal) equal(o *Decimal) bool { return d.cmp(o) == 0 }
 
 // shiftUp returns n * 10^by (by >= 0), leaving n untouched.
 func shiftUp(n *big.Int, by int64) *big.Int {
-	return new(big.Int).Mul(n, new(big.Int).Exp(big.NewInt(10), big.NewInt(by), nil))
+	return new(big.Int).Mul(n, pow10(by))
+}
+
+// pow10 returns 10^n as an exact integer (n >= 0).
+func pow10(n int64) *big.Int {
+	return new(big.Int).Exp(big.NewInt(10), big.NewInt(n), nil)
 }
 
 // digits renders the decimal in PLAIN form at every magnitude — never

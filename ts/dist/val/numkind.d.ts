@@ -1,2 +1,3 @@
 declare function isIntegerKind(n: number, src?: string): boolean;
-export { isIntegerKind, };
+declare function isIntegerStorable(n: bigint): boolean;
+export { isIntegerKind, isIntegerStorable, };

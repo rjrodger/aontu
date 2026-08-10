@@ -4,6 +4,7 @@ package aontu
 
 import (
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 )
@@ -402,6 +403,16 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 			return newInteger(int64(res))
 		}
 		return newFloat(res)
+	case KindBigInteger:
+		// An exact integer is its own ceiling and floor. The value is
+		// rebuilt rather than shared so the result is a fresh Val with
+		// its own peg, matching every other branch here.
+		return newBigInteger(new(big.Int).Set(sv.peg.(*big.Int)))
+	case KindBigDecimal:
+		// Exact ceiling/floor by coefficient arithmetic (D6) — no
+		// float64 goes near it — keeping the argument's BIGDECIMAL kind
+		// (R5), so upper(0d1.1) is `0d2.0` and not `0d2`.
+		return newBigDecimal(sv.peg.(*Decimal).ceilFloor(up))
 	}
 	return makeNilErr(ctx, "invalid-arg", args[0], nil)
 }

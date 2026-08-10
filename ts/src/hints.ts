@@ -83,13 +83,41 @@ const hints: Record<string, string> = {
   // Type mismatch errors
 
   decimal_budget:
-    'This exact decimal literal exceeds the exactness budget: at most\n' +
-    '4096 coefficient digits and an absolute scale of at most 4096.\n' +
-    'Aontu never rounds, so a literal beyond the budget is refused\n' +
+    'This exact decimal exceeds the exactness budget: at most 4096\n' +
+    'coefficient digits and an absolute scale of at most 4096. The\n' +
+    'budget applies to computed results as well as to literals.\n' +
+    'Aontu never rounds, so a value beyond the budget is refused\n' +
     'rather than approximated.' +
     '\n \nExamples:\n' +
-    '  0d1e1000000000 -> nil  # Scale far beyond the budget;\n' +
-    '  0d1e-1         -> 0d0.1  # Well within it.',
+    '  0d1e1000000000    -> nil  # Scale far beyond the budget;\n' +
+    '  0d1e4000+0d1e-4000 -> nil  # An exact sum too wide to hold;\n' +
+    '  0d1e-1            -> 0d0.1  # Well within it.',
+
+  exact_float_mix:
+    'Aontu cannot mix an exact number with a binary float.\n' +
+    'Here the operands are {left} and {right}, in that order.\n' +
+    'A big type never silently becomes a binary float, in either\n' +
+    'operand order -- binary64 cannot hold every exact value, so the\n' +
+    'promotion would throw away the exactness the `0d` leaves exist to\n' +
+    'guarantee. Write both operands in the same family (`0d1.0` for the\n' +
+    'float, or a plain integer for the big).' +
+    '\n \nExamples:\n' +
+    '  0d2 + 0d0.5 -> 0d2.5  # Exact with exact (widest leaf wins);\n' +
+    '  1 + 0d0.5   -> 0d1.5  # integer is on the exact ladder;\n' +
+    '  1 + 2.0     -> 3.0    # ... and float still mixes with integer;\n' +
+    '  1.0 + 0d2   -> nil    # float with biginteger;\n' +
+    '  0d0.5 + 1.0 -> nil    # ... and the same the other way round.',
+
+  inexact_integer_sum:
+    'The `integer` leaf holds a value only when it is integral, within\n' +
+    'the int64 range, and exactly representable in binary64. This sum\n' +
+    'is not: {sum}.\n' +
+    'Aontu adds integers exactly and refuses to store a rounded answer\n' +
+    '-- write `0d<digits>` for an exact integer beyond that window.' +
+    '\n \nExamples:\n' +
+    '  4503599627370496 + 4503599627370496 -> 9007199254740992  # Exact;\n' +
+    '  4503599627370496 + 4503599627370497 -> nil    # 2^53+1 is not;\n' +
+    '  0d4503599627370496 + 0d4503599627370497 -> 0d9007199254740993.',
 
   'scalar-type':
     'Scalar kinds only unify when one contains the other. `number` is\n' +

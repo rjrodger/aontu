@@ -16,6 +16,7 @@ import { makeNilErr } from '../err'
 import { NilVal } from '../val/NilVal'
 import { ScalarKindVal } from '../val/ScalarKindVal'
 import { makeScalarLike } from '../val/valutil'
+import { Decimal } from '../val/Decimal'
 
 
 
@@ -51,7 +52,14 @@ class UpperFuncVal extends FuncBaseVal {
     const oldpeg = arg?.peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toUpperCase() :
       'number' === typeof oldpeg ? Math.ceil(oldpeg) :
-        undefined
+        // The exact leaves take an EXACT ceiling and keep their kind: a
+        // biginteger is already integral so it is its own ceiling, and a
+        // bigdecimal ceils by coefficient arithmetic. Math.ceil is not
+        // an option for either — it would round the value into binary64
+        // first, which is the loss the `0d` leaves exist to refuse.
+        'bigint' === typeof oldpeg ? oldpeg :
+          oldpeg instanceof Decimal ? oldpeg.ceil() :
+            undefined
     const out = this.place(
       null == peg ?
         makeNilErr(ctx, 'invalid-arg', this) :

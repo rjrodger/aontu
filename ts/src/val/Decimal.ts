@@ -8,11 +8,14 @@
  *
  *   value = unscaled / 10^scale
  *
- * with `unscaled` a native bigint and `scale` a plain integer. There is
- * NO arithmetic here beyond negation: aontu's numeric operator surface
+ * with `unscaled` a native bigint and `scale` a plain integer. Every
+ * operation here is EXACT: aontu's whole numeric operator surface
  * (`+`, `upper()`, `lower()`, unary minus) is exact, so no rounding
- * context, precision or rounding mode exists anywhere in this file. The
- * `+` ladder lands in a later phase.
+ * context, precision or rounding mode exists anywhere in this file --
+ * addition aligns scales and adds coefficients, and ceiling/floor is
+ * coefficient arithmetic that never lets a float64 near the value.
+ * Where an exact answer will not fit the budget the answer is refused,
+ * never rounded (see decimalOverBudget).
  *
  * D4 -- ONE VALUE, ONE RENDERING. In a unifier canon must be a function
  * of the value, so scale is presentation and not identity: `0d0.10`,
@@ -74,6 +77,13 @@ function pow10(n: number): bigint {
 function overBudget(coeffDigits: number, scale: number): boolean {
   return DECIMAL_COEFFICIENT_BUDGET < coeffDigits ||
     !(Math.abs(scale) <= DECIMAL_SCALE_BUDGET)
+}
+
+
+// The decimal digit count of a coefficient, sign ignored (zero counts as
+// one digit). Only the budget test needs it.
+function coeffDigits(unscaled: bigint): number {
+  return (unscaled < 0n ? -unscaled : unscaled).toString().length
 }
 
 
@@ -145,6 +155,63 @@ class Decimal {
   }
 
 
+  // D6 -- EXACT ADDITION. Align the scales, add the coefficients. That
+  // is the entire algorithm: there is no rounding mode to consult and no
+  // precision to run out of, which is why `0d0.1 + 0d0.2` is exactly
+  // `0d0.3` here and 0.30000000000000004 in binary64.
+  //
+  // The work is bounded because both operands are within the parse-time
+  // budget, so alignment can inflate a coefficient only by the scale
+  // span. The RESULT, however, can be over budget even when both
+  // operands are inside it (`0d1e4000 + 0d1e-4000` needs 8001
+  // coefficient digits), so every caller must test the result with
+  // decimalOverBudget() and report `decimal_budget` rather than store
+  // it. Refusal is the only honest answer at the limit: rounding to fit
+  // is exactly what this leaf exists to prevent.
+  add(peer: Decimal): Decimal {
+    const scale = this.scale < peer.scale ? peer.scale : this.scale
+    const a = this.unscaled * pow10(scale - this.scale)
+    const b = peer.unscaled * pow10(scale - peer.scale)
+    return new Decimal(a + b, scale)
+  }
+
+
+  // Exact ceiling and floor, for `upper()`/`lower()`. Coefficient
+  // arithmetic only -- Math.ceil of this value would mean rounding it to
+  // binary64 first, which for a leaf that exists to escape binary64 is
+  // no answer at all.
+  //
+  // The leaf is kept (R5 contagion): the result is a bigdecimal whose
+  // value happens to be integral, so it keeps the one decimal place the
+  // family marker requires -- `upper(0d1.1)` is `0d2.0`, not `0d2`.
+  //
+  // Neither can leave the exactness budget: with scale >= 1 the integer
+  // part drops `scale` digits and normalisation adds one back, so the
+  // coefficient never grows. That is why these return a Decimal
+  // directly while add() makes its caller check.
+  ceil(): Decimal {
+    return new Decimal(this.intPart(1n), 0)
+  }
+
+
+  floor(): Decimal {
+    return new Decimal(this.intPart(-1n), 0)
+  }
+
+
+  // The integer part, stepped one in the direction of `dir` when a
+  // remainder of that sign was discarded. bigint division truncates
+  // toward zero and the remainder carries the dividend's sign, so
+  // truncation already IS the floor of a positive and the ceiling of a
+  // negative; only the other half of each case needs the step.
+  private intPart(dir: bigint): bigint {
+    const p = pow10(this.scale)
+    const q = this.unscaled / p
+    const r = this.unscaled % p
+    return 0n !== r && (0n < r) === (0n < dir) ? q + dir : q
+  }
+
+
   isZero(): boolean {
     return 0n === this.unscaled
   }
@@ -201,6 +268,32 @@ class Decimal {
     const unscaled = BigInt(m[2] + frac)
     return new Decimal('-' === m[1] ? -unscaled : unscaled, scale)
   }
+}
+
+
+// D6 -- THE BUDGET APPLIES TO RESULTS, NOT JUST LITERALS. True when a
+// Decimal produced by arithmetic is over either bound and so must be
+// refused with `decimal_budget`.
+//
+// The test is applied to the NORMAL form -- the representation the value
+// is actually stored and rendered in -- rather than to some minimal
+// re-derived source form. That keeps the rule cheap and mechanical
+// enough for the Go port to mirror exactly (count the coefficient's
+// digits, read the scale), and it bounds precisely the thing the bound
+// exists to bound: the digits plain-form rendering will have to
+// materialise.
+//
+// One consequence is worth naming: a literal is budget-checked on its
+// SOURCE form, so an extreme literal whose normal form is wider than its
+// source (`0d1e4096` -- one written digit, 4098 normalised ones) parses
+// but cannot take part in arithmetic. Both bounds are deliberately far
+// beyond any real document, and the alternative -- re-deriving a minimal
+// form per operation -- only moves the same edge somewhere else
+// (`0d100e4096` has minimal scale -4098, over the bound its source form
+// was under), at the cost of a second normal form that both ports would
+// then have to agree on digit for digit.
+function decimalOverBudget(d: Decimal): boolean {
+  return overBudget(coeffDigits(d.unscaled), d.scale)
 }
 
 
@@ -287,5 +380,6 @@ export {
   DECIMAL_COEFFICIENT_BUDGET,
   DECIMAL_SCALE_BUDGET,
   Decimal,
+  decimalOverBudget,
   readBigLiteral,
 }
