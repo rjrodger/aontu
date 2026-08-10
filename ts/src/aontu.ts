@@ -20,7 +20,7 @@ import { makeNilErr, descErr, AontuError } from './err'
 // Kept in step with package.json by the `version` npm lifecycle script,
 // which runs on `npm version` / `npm run repo-bump`. version.test.ts
 // fails if the two ever drift.
-const VERSION = '0.50.0'
+const VERSION = '0.50.1'
 
 
 class Aontu {
