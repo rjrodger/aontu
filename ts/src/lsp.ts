@@ -322,6 +322,8 @@ function valKind(val: any): string {
   // NumberVal is the binary64 leaf, whose kind keyword is `float`;
   // `number` is the supertype and never labels a concrete value.
   if (val.isNumber) return 'float'
+  if (val.isBigInteger) return 'biginteger'
+  if (val.isBigDecimal) return 'bigdecimal'
   if (val.isString) return 'string'
   if (val.isBoolean) return 'boolean'
   if (val.isScalar) return 'scalar'
@@ -349,9 +351,11 @@ const BUILTIN_FUNCS = [
 ]
 
 // Scalar-kind and literal keywords.
-// `number` is the numeric supertype; `integer` and `float` are its
-// leaves. New leaves join this list as they land.
-const KIND_KEYWORDS = ['string', 'number', 'integer', 'float', 'boolean']
+// `number` is the numeric supertype; `integer`, `float`, `biginteger`
+// and `bigdecimal` are its leaves. New leaves join this list as they land.
+const KIND_KEYWORDS = [
+  'string', 'number', 'integer', 'float', 'biginteger', 'bigdecimal', 'boolean',
+]
 const LITERAL_KEYWORDS = ['true', 'false', 'null', 'top']
 
 

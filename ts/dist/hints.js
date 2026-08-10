@@ -51,10 +51,18 @@ const hints = {
     'unite': 'Failed to unite two values. The values are incompatible and cannot be unified.',
     'internal': 'Internal error during unification. This indicates an unexpected error in the unification process.',
     // Type mismatch errors
+    decimal_budget: 'This exact decimal literal exceeds the exactness budget: at most\n' +
+        '4096 coefficient digits and an absolute scale of at most 4096.\n' +
+        'Aontu never rounds, so a literal beyond the budget is refused\n' +
+        'rather than approximated.' +
+        '\n \nExamples:\n' +
+        '  0d1e1000000000 -> nil  # Scale far beyond the budget;\n' +
+        '  0d1e-1         -> 0d0.1  # Well within it.',
     'scalar-type': 'Scalar kinds only unify when one contains the other. `number` is\n' +
-        'the supertype of the numeric leaves (integer, float), so meeting it\n' +
-        'with a leaf gives that leaf; two distinct leaves describe disjoint\n' +
-        'sets of values and so have no common lower bound.' +
+        'the supertype of the numeric leaves (integer, float, biginteger,\n' +
+        'bigdecimal), so meeting it with a leaf gives that leaf; two distinct\n' +
+        'leaves describe disjoint sets of values and so have no common lower\n' +
+        'bound.' +
         '\n \nExamples:\n' +
         '  number & integer -> integer  # Does unify (integer is a number);\n' +
         '  number & number  -> number   # Does unify (same kind);\n' +

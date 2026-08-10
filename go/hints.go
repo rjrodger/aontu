@@ -14,9 +14,17 @@ var hints = map[string]string{
 	// supertype meets a kind below it to give that lower kind, and two
 	// distinct leaves are disjoint.
 	"scalar-type": "Scalar kinds only unify when one contains the other. `number` is " +
-		"the supertype of the numeric leaves (integer, float), so meeting it " +
-		"with a leaf gives that leaf; two distinct leaves describe disjoint " +
-		"sets of values and so have no common lower bound.",
+		"the supertype of the numeric leaves (integer, float, biginteger, " +
+		"bigdecimal), so meeting it with a leaf gives that leaf; two distinct " +
+		"leaves describe disjoint sets of values and so have no common lower " +
+		"bound.",
+	// D6's exactness budget. The exact leaves never round and never
+	// silently expand, so a literal outside the budget is refused.
+	"decimal_budget": "This exact decimal literal exceeds the exactness budget: at most " +
+		"4096 coefficient digits and an absolute scale of at most 4096. " +
+		"Aontu never rounds, so a literal beyond the budget is refused " +
+		"rather than approximated.",
+	"decimal_syntax":   "This 0d literal is not a valid exact number.",
 	"no_path":          "The path reference could not be found.",
 	"path_cycle":       "Path cycle detected. The path contains a circular reference.",
 	"closed":           "Cannot add to closed structure. The map or list is closed and does not accept new keys/elements.",

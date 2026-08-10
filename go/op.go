@@ -170,8 +170,19 @@ func isIntegerScalar(v Val) bool {
 }
 
 // primatize extracts the native value of a scalar operand.
+//
+// The tower's exact leaves are deliberately EXCLUDED: `+` over them (the
+// exact ladder, the float-plus-big refusal, and string concatenation of
+// exact digits) is D6, which Phase 4 owns. Until then an exact operand
+// makes operate() decline, so the op stays unresolved and generate()
+// reports it — rather than reaching plusAdd, where primFloat would read
+// a *big.Int as 0 and primStr would render it as the empty string. Two
+// silent wrong answers is exactly what this gate exists to prevent.
 func primatize(v Val) any {
 	if sv, ok := unpref(v).(*ScalarVal); ok {
+		if sv.kind == KindBigInteger || sv.kind == KindBigDecimal {
+			return nil
+		}
 		return sv.peg
 	}
 	return nil

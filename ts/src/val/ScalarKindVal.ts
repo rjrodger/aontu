@@ -36,8 +36,8 @@ import { FeatureVal } from './FeatureVal'
 //   number                       (the global Number constructor)
 //   |- integer     Integer       int64-window exact
 //   |- float       Float         IEEE-754 binary64
-//   |- biginteger  (Phase 2)     exact, opt-in via 0d
-//   |- bigdecimal  (Phase 2)     exact, opt-in via 0d
+//   |- biginteger  BigInteger    exact, opt-in via 0d
+//   |- bigdecimal  BigDecimal    exact, opt-in via 0d
 //
 // The global `Number` constructor is the marker for the SUPERTYPE only:
 // no concrete ScalarVal ever carries it. A binary64 value is FLOAT kind
@@ -53,6 +53,14 @@ class Integer { }
 // A ScalarKind for IEEE-754 binary64 values.
 class Float { }
 
+// A ScalarKind for the unbounded exact integers, reached only by a `0d`
+// literal with no fraction and no exponent.
+class BigInteger { }
+
+// A ScalarKind for the exact base-10 decimals, reached only by a `0d`
+// literal carrying a `.` or an exponent.
+class BigDecimal { }
+
 // A ScalarKind for null.
 class Null { }
 
@@ -61,10 +69,12 @@ class Null { }
 // this table sits directly under top (string, boolean, null -- and
 // `number` itself, which is the root of the numeric family).
 //
-// Adding a leaf is one row: `[BigInteger, Number]`.
+// Adding a leaf is one row.
 const KIND_PARENT = new Map<any, any>([
   [Integer, Number],
   [Float, Number],
+  [BigInteger, Number],
+  [BigDecimal, Number],
 ])
 
 
@@ -106,6 +116,8 @@ type ScalarConstructor =
   BooleanConstructor |
   (typeof Integer) |
   (typeof Float) |
+  (typeof BigInteger) |
+  (typeof BigDecimal) |
   (typeof Null) |
   (typeof Integer.constructor)
 
@@ -205,6 +217,8 @@ class ScalarKindVal extends FeatureVal {
 
 
 export {
+  BigDecimal,
+  BigInteger,
   Float,
   Integer,
   Null,

@@ -93,8 +93,18 @@ class ScalarVal extends Val {
     // collapse to a single alternative and `(1|1.0) & 1.0` could pick
     // the integer.
     return peer?.isScalar ?
-      (peer.kind === this.kind && peer.peg === this.peg) :
+      (peer.kind === this.kind && this.samePeg(peer.peg)) :
       super.same(peer)
+  }
+
+
+  // Value comparison for this leaf's peg (D2: identity is kind AND
+  // value, NEVER the identity of the object holding the value). `===` is
+  // right for every peg that is a primitive -- including a bigint, where
+  // two separately built copies of the same number compare equal -- and
+  // wrong for a peg that is an object, so BigDecimalVal overrides it.
+  samePeg(peg: any): boolean {
+    return peg === this.peg
   }
 
 

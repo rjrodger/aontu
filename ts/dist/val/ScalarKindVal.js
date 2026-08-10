@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ScalarKindVal = exports.Null = exports.Integer = exports.Float = void 0;
+exports.ScalarKindVal = exports.Null = exports.Integer = exports.Float = exports.BigInteger = exports.BigDecimal = void 0;
 exports.kindFamily = kindFamily;
 exports.kindParent = kindParent;
 exports.kindSubsumes = kindSubsumes;
@@ -22,8 +22,8 @@ const FeatureVal_1 = require("./FeatureVal");
 //   number                       (the global Number constructor)
 //   |- integer     Integer       int64-window exact
 //   |- float       Float         IEEE-754 binary64
-//   |- biginteger  (Phase 2)     exact, opt-in via 0d
-//   |- bigdecimal  (Phase 2)     exact, opt-in via 0d
+//   |- biginteger  BigInteger    exact, opt-in via 0d
+//   |- bigdecimal  BigDecimal    exact, opt-in via 0d
 //
 // The global `Number` constructor is the marker for the SUPERTYPE only:
 // no concrete ScalarVal ever carries it. A binary64 value is FLOAT kind
@@ -40,6 +40,16 @@ exports.Integer = Integer;
 class Float {
 }
 exports.Float = Float;
+// A ScalarKind for the unbounded exact integers, reached only by a `0d`
+// literal with no fraction and no exponent.
+class BigInteger {
+}
+exports.BigInteger = BigInteger;
+// A ScalarKind for the exact base-10 decimals, reached only by a `0d`
+// literal carrying a `.` or an exponent.
+class BigDecimal {
+}
+exports.BigDecimal = BigDecimal;
 // A ScalarKind for null.
 class Null {
 }
@@ -48,10 +58,12 @@ exports.Null = Null;
 // this table sits directly under top (string, boolean, null -- and
 // `number` itself, which is the root of the numeric family).
 //
-// Adding a leaf is one row: `[BigInteger, Number]`.
+// Adding a leaf is one row.
 const KIND_PARENT = new Map([
     [Integer, Number],
     [Float, Number],
+    [BigInteger, Number],
+    [BigDecimal, Number],
 ]);
 // The immediate lattice superior of a kind marker, or undefined when the
 // marker's superior is top.

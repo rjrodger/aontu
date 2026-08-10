@@ -157,9 +157,13 @@ func Completions() []CompletionItem {
 	for _, f := range aontu.BuiltinFuncNames() {
 		out = append(out, CompletionItem{Label: f, Kind: CompletionFunction, Detail: "Aontu built-in function"})
 	}
-	// Kind keywords: `number` is the numeric supertype, `integer` and
-	// `float` its leaves (see the Kind lattice in go/scalar.go).
-	for _, k := range []string{"string", "number", "integer", "float", "boolean"} {
+	// Kind keywords: `number` is the numeric supertype, with `integer`,
+	// `float`, `biginteger` and `bigdecimal` as its leaves (see the Kind
+	// lattice in go/scalar.go). The two exact leaves are reached only by
+	// the `0d` literal syntax, so their keywords are the only way a
+	// schema can name them.
+	for _, k := range []string{"string", "number", "integer", "float",
+		"biginteger", "bigdecimal", "boolean"} {
 		out = append(out, CompletionItem{Label: k, Kind: CompletionKeyword, Detail: "scalar kind"})
 	}
 	for _, k := range []string{"true", "false", "null", "top"} {

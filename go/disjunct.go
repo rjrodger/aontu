@@ -207,7 +207,10 @@ func valSame(a, b Val) bool {
 	}
 	if as, ok := a.(*ScalarVal); ok {
 		if bs, ok := b.(*ScalarVal); ok {
-			return as.kind == bs.kind && as.peg == bs.peg
+			// Per-kind VALUE comparison (D2). A bare `as.peg == bs.peg`
+			// compares *big.Int / *Decimal addresses, so `0d1|0d1` would
+			// keep both members instead of deduping to one.
+			return as.kind == bs.kind && scalarPegSame(as.kind, as.peg, bs.peg)
 		}
 		return false
 	}

@@ -4,6 +4,7 @@ package aontu
 
 import (
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -15,13 +16,14 @@ import (
 //	number                pure supertype: the set of all numeric values
 //	|- integer            int64-window exact
 //	|- float              IEEE-754 binary64
+//	|- biginteger         unbounded exact integer   (opt-in via 0d)
+//	|- bigdecimal         exact base-10 decimal     (opt-in via 0d)
 //
 // KindNumber is a SUPERTYPE only: it names no representation and is
 // carried by a ScalarKindVal (the `number` keyword) alone — a concrete
 // ScalarVal always carries a numeric LEAF kind. The leaves are pairwise
-// disjoint; the tower's two further leaves (biginteger, bigdecimal) join
-// them below, and the only places that need to learn about them are
-// numericLeafKinds and the Kind.String switch.
+// disjoint: `5 & 0d5` is an error, exactly as `1 & 1.0` is, because a
+// cross-leaf result would have to pick a kind (D2).
 type Kind int
 
 const (
@@ -34,6 +36,8 @@ const (
 	// adding one.
 	KindInteger
 	KindFloat
+	KindBigInteger
+	KindBigDecimal
 	KindBoolean
 	KindNull
 )
@@ -48,6 +52,10 @@ func (k Kind) String() string {
 		return "integer"
 	case KindFloat:
 		return "float"
+	case KindBigInteger:
+		return "biginteger"
+	case KindBigDecimal:
+		return "bigdecimal"
 	case KindBoolean:
 		return "boolean"
 	case KindNull:
@@ -61,11 +69,12 @@ func (k Kind) String() string {
 // numericLeafKinds is the set of concrete numeric kinds sitting directly
 // under `number`. Every leaf here is a set of values disjoint from every
 // other leaf, so two distinct leaves have no common lower bound and
-// cannot unify (`float & integer` is an error). The tower adds
-// biginteger and bigdecimal to this set.
+// cannot unify (`float & integer` is an error).
 var numericLeafKinds = map[Kind]bool{
-	KindInteger: true,
-	KindFloat:   true,
+	KindInteger:    true,
+	KindFloat:      true,
+	KindBigInteger: true,
+	KindBigDecimal: true,
 }
 
 // kindSubsumes reports whether kind sup is a strict supertype of kind
@@ -108,7 +117,14 @@ func kindFamily(k Kind) Kind {
 }
 
 // ScalarVal is a concrete scalar literal: a native value tagged with
-// its Kind. peg holds string | int64 | float64 | bool | nil.
+// its Kind. peg holds string | int64 | float64 | bool | nil, or one of
+// the tower's exact pegs: *big.Int (biginteger) and *Decimal
+// (bigdecimal).
+//
+// The two exact pegs are POINTERS, and pointers are IMMUTABLE here (D8):
+// clones share them and nothing mutates them in place. That also means
+// `==` on a peg is an ADDRESS comparison for those kinds — every
+// identity test must go through scalarPegSame instead (D2).
 type ScalarVal struct {
 	base
 	kind Kind
@@ -126,8 +142,47 @@ func newFloat(f float64) *ScalarVal {
 	v.dc = DONE
 	return v
 }
+
+// newBigInteger takes ownership of n (callers pass a freshly built
+// big.Int; the peg is never mutated afterwards).
+func newBigInteger(n *big.Int) *ScalarVal {
+	v := &ScalarVal{kind: KindBigInteger, peg: n}
+	v.dc = DONE
+	return v
+}
+
+// newBigDecimal takes a Decimal already in normal form (newDecimal).
+func newBigDecimal(d *Decimal) *ScalarVal {
+	v := &ScalarVal{kind: KindBigDecimal, peg: d}
+	v.dc = DONE
+	return v
+}
+
 func newBoolean(b bool) *ScalarVal { v := &ScalarVal{kind: KindBoolean, peg: b}; v.dc = DONE; return v }
 func newNull() *ScalarVal          { v := &ScalarVal{kind: KindNull, peg: nil}; v.dc = DONE; return v }
+
+// scalarPegSame reports whether two scalars of the SAME kind hold the
+// same VALUE (D2: identity is kind and value).
+//
+// The exact leaves must not fall through to `==`: a *big.Int or a
+// *Decimal compares by ADDRESS there, so two separately parsed copies of
+// the same literal would look distinct — silently breaking unification
+// (`0d5 & 0d5`) and disjunct dedup. Every other peg type held by a
+// ScalarVal (string, int64, float64, bool, nil) is comparable and
+// compares by value.
+func scalarPegSame(kind Kind, a, b any) bool {
+	switch kind {
+	case KindBigInteger:
+		an, aok := a.(*big.Int)
+		bn, bok := b.(*big.Int)
+		return aok && bok && an.Cmp(bn) == 0
+	case KindBigDecimal:
+		ad, aok := a.(*Decimal)
+		bd, bok := b.(*Decimal)
+		return aok && bok && ad.equal(bd)
+	}
+	return a == b
+}
 
 func (s *ScalarVal) superior() Val { return newScalarKind(s.kind) }
 
@@ -139,6 +194,14 @@ func (s *ScalarVal) Canon() string {
 		return strconv.FormatInt(s.peg.(int64), 10)
 	case KindFloat:
 		return canonNumber(s.peg.(float64))
+	case KindBigInteger:
+		// Sign before the marker (`-0d5`): D3 rejects `0d-5`, so canon
+		// must not emit it.
+		return markExact(bigIntDigits(s.peg.(*big.Int)))
+	case KindBigDecimal:
+		// Always one decimal place at minimum, so canon reparses as a
+		// bigdecimal and not as a biginteger (D4).
+		return s.peg.(*Decimal).Canon()
 	case KindBoolean:
 		if s.peg.(bool) {
 			return "true"
@@ -170,7 +233,9 @@ func (s *ScalarVal) Unify(peer Val, ctx *Ctx) Val {
 		return sk.Unify(s, ctx)
 	}
 	if ps, ok := peer.(*ScalarVal); ok {
-		if ps.kind == s.kind && ps.peg == s.peg {
+		// Identity is kind AND value (D2). scalarPegSame, not `==`: the
+		// exact leaves hold pointers, and `==` would compare addresses.
+		if ps.kind == s.kind && scalarPegSame(s.kind, ps.peg, s.peg) {
 			// Marks ratchet true across a unify (TS propagateMarks): a
 			// hide()/type() spread clone marks the destination value
 			// (`K:true &:hide($flag)` hides K).

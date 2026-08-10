@@ -16,14 +16,16 @@ import (
 // silently produce, for example, `{"a":}` from a canon.
 func TestKindStringNeverEmpty(t *testing.T) {
 	want := map[Kind]string{
-		KindTop:     "top",
-		KindNil:     "nil",
-		KindString:  "string",
-		KindNumber:  "number",
-		KindInteger: "integer",
-		KindFloat:   "float",
-		KindBoolean: "boolean",
-		KindNull:    "null",
+		KindTop:        "top",
+		KindNil:        "nil",
+		KindString:     "string",
+		KindNumber:     "number",
+		KindInteger:    "integer",
+		KindFloat:      "float",
+		KindBigInteger: "biginteger",
+		KindBigDecimal: "bigdecimal",
+		KindBoolean:    "boolean",
+		KindNull:       "null",
 	}
 	for k, w := range want {
 		if got := k.String(); got != w {
@@ -43,7 +45,8 @@ func TestKindStringNeverEmpty(t *testing.T) {
 // on: `number` is a pure supertype of the numeric leaves, the leaves are
 // pairwise disjoint, and non-numeric kinds sit directly under top.
 func TestKindLattice(t *testing.T) {
-	for _, leaf := range []Kind{KindInteger, KindFloat} {
+	leaves := []Kind{KindInteger, KindFloat, KindBigInteger, KindBigDecimal}
+	for _, leaf := range leaves {
 		if p, ok := kindParent(leaf); !ok || p != KindNumber {
 			t.Errorf("kindParent(%s) = (%s, %v), want (number, true)", leaf, p, ok)
 		}
@@ -66,9 +69,21 @@ func TestKindLattice(t *testing.T) {
 			t.Errorf("number must not subsume %s", k)
 		}
 	}
-	// Distinct leaves are disjoint sets: no common lower bound.
-	if kindSubsumes(KindInteger, KindFloat) || kindSubsumes(KindFloat, KindInteger) {
-		t.Error("integer and float must be disjoint")
+	// Distinct leaves are disjoint sets: no common lower bound. This is
+	// the whole of D2 at the kind level — integer/float/biginteger/
+	// bigdecimal never subsume one another, so `5 & 0d5` can only be an
+	// error.
+	for _, a := range leaves {
+		for _, b := range leaves {
+			if a != b && kindSubsumes(a, b) {
+				t.Errorf("%s must not subsume %s: the numeric leaves are disjoint", a, b)
+			}
+		}
+		// Every leaf's family root is `number`, so a preference of any
+		// leaf is overridable by a peer of any other (PrefVal.familypeg).
+		if fam := kindFamily(a); fam != KindNumber {
+			t.Errorf("kindFamily(%s) = %s, want number", a, fam)
+		}
 	}
 }
 
