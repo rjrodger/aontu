@@ -1,7 +1,6 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.INT64_LIMIT = exports.INT64_MIN = void 0;
 exports.isIntegerKind = isIntegerKind;
 /*
  * Numeric kind classification, shared by every site that turns a raw
@@ -19,9 +18,7 @@ exports.isIntegerKind = isIntegerKind;
 // why the upper bound is exclusive and 0x7fffffffffffffff correctly
 // falls outside.
 const INT64_MIN = -9223372036854775808.0;
-exports.INT64_MIN = INT64_MIN;
 const INT64_LIMIT = 9223372036854775808.0;
-exports.INT64_LIMIT = INT64_LIMIT;
 // True when a numeric literal has *integer* kind. All three conditions
 // must hold:
 //   (a) the source text, when there is any, contains no '.'

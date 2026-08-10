@@ -45,8 +45,8 @@ function isIntegerKind(n: number, src?: string): boolean {
 }
 
 
+// INT64_MIN and INT64_LIMIT stay module-local: they are the rule's
+// working parts, not API, and every caller wants isIntegerKind.
 export {
-  INT64_MIN,
-  INT64_LIMIT,
   isIntegerKind,
 }

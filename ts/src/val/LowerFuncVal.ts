@@ -43,8 +43,12 @@ class LowerFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext | undefined, args: Val[]) {
+    // A missing argument (`lower()`) must produce an invalid-arg error
+    // value, as the Go port does — reading .peg off nothing threw a
+    // TypeError that the unifier could only report as an opaque
+    // internal error.
     const arg = args?.[0]
-    const oldpeg = arg.peg
+    const oldpeg = arg?.peg
     const peg = 'string' === typeof oldpeg ? oldpeg.toLowerCase() :
       'number' === typeof oldpeg ? Math.floor(oldpeg) :
         undefined

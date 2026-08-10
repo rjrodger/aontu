@@ -173,3 +173,10 @@ exp-signed-integer	gen	x:1e+3 & integer	{"x":1000}
 exp-underflow-canon	canon	x:1e-400	{"x":0}
 exp-underflow-integer	gen	x:1e-400 & integer	{"x":0}
 exp-overflow-err	err	x:1e400	Cannot resolve value
+#
+# A numeric builtin called with no argument is an invalid-arg error
+# value, not an internal error: reading the argument off nothing used
+# to throw in TypeScript, which the unifier could only report as an
+# opaque internal failure while Go reported it cleanly.
+upper-no-arg-err	err	x:upper()	Cannot resolve value
+lower-no-arg-err	err	x:lower()	Cannot resolve value
