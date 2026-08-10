@@ -3,7 +3,7 @@ import { Lang } from './lang';
 import { AontuContext, AontuContextConfig } from './ctx';
 import { formatExplain } from './utility';
 import { AontuError } from './err';
-declare const VERSION = "0.49.0";
+declare const VERSION = "0.50.0";
 declare class Aontu {
     opts: AontuOptions;
     lang: Lang;
