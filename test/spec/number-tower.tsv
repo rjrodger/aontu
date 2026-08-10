@@ -464,3 +464,37 @@ bigdec-disjunct-dedup-canon	canon	x:0d1.5|0d1.5	{"x":0d1.5}
 bigdec-disjunct-dedup-scale-canon	canon	x:0d1.0|0d1.00	{"x":0d1.0}
 bigdec-disjunct-dedup-trailing-canon	canon	x:0d1.50|0d1.5	{"x":0d1.5}
 bigint-disjunct-pick-canon	canon	x:(0d1|0d2)&0d2	{"x":0d2}
+#
+# PHASE 5 -- generate. The exact leaves reach JSON as exact digits: a
+# JSON number is arbitrary-precision text, so the format was never the
+# obstacle -- only JavaScript's serialiser, which throws on a bigint.
+# These are `gens` rows (byte-exact) because that is the whole point:
+# `gen` decodes through float64 and would compare two different exact
+# integers as equal.
+gens-bigint	gens	x:0d5	{"x":5}
+gens-bigint-negative	gens	x:-0d5	{"x":-5}
+gens-bigint-large	gens	x:0d123456789012345678901234567890	{"x":123456789012345678901234567890}
+gens-bigint-above-pow53	gens	x:0d9007199254740993	{"x":9007199254740993}
+gens-bigdec	gens	x:0d0.1	{"x":0.1}
+gens-bigdec-integral	gens	x:0d1e3	{"x":1000.0}
+gens-bigdec-negative	gens	x:-0d1.5	{"x":-1.5}
+gens-bigint-list	gens	x:[0d1,0d2]	{"x":[1,2]}
+gens-bigdec-exact-sum	gens	x:0d0.1+0d0.2	{"x":0.3}
+gens-bigint-nested	gens	x:{y:0d7}	{"x":{"y":7}}
+#
+# PHASE 6 -- a lossy integer literal is refused, not rounded. The rule
+# is EXACTNESS, not magnitude: a huge literal that lands exactly on a
+# binary64 value is still a value. (0x10...0 is 2^124, a power of two,
+# so it is exact -- which is why it is NOT among the flipped rows,
+# contrary to what the design and G1 both said before this phase
+# checked the arithmetic.)
+lossy-decimal-literal-err	err	x:9007199254740993	exactly representable
+lossy-decimal-literal-hints-0d	err	x:9007199254740993	0d
+lossy-hex-literal-err	err	x:0xffffffffffffffff	exactly representable
+lossy-int64-max-literal-err	err	x:0x7fffffffffffffff	exactly representable
+exact-pow53-literal	gens	x:9007199254740992	{"x":9007199254740992}
+exact-pow124-literal-canon	canon	x:0x10000000000000000000000000000000	{"x":2.1267647932558654e+37}
+exact-pow20-literal-canon	canon	x:100000000000000000000	{"x":100000000000000000000.0}
+#
+# The refusal has an exact escape: write it as a 0d literal.
+lossy-literal-escape-canon	canon	x:0d9007199254740993	{"x":0d9007199254740993}
