@@ -40,6 +40,14 @@ var hints = map[string]string{
 		"as an integer: the integer leaf holds only int64-window values that a " +
 		"binary64 carries exactly. Aontu never rounds a sum, so write the " +
 		"operands as `0d<digits>` for an exact integer instead.",
+	// D7's lossy literals. The rule is EXACTNESS, not magnitude: a huge
+	// literal that lands exactly on a binary64 value (2^124, 10^20, 1e21)
+	// is still a value; what is refused is a literal that would have to
+	// CHANGE to be stored (2^53+1, 2^63-1, 2^64-1).
+	"lossy_integer_literal": "This integer literal is not exactly representable as a " +
+		"binary64 value, so storing it would silently round it to a different " +
+		"number. Aontu never rounds a literal, so write it as `0d<digits>` — " +
+		"the exact integer leaf holds it unchanged at any size.",
 	"no_path":          "The path reference could not be found.",
 	"path_cycle":       "Path cycle detected. The path contains a circular reference.",
 	"closed":           "Cannot add to closed structure. The map or list is closed and does not accept new keys/elements.",

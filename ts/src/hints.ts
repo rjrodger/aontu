@@ -93,6 +93,20 @@ const hints: Record<string, string> = {
     '  0d1e4000+0d1e-4000 -> nil  # An exact sum too wide to hold;\n' +
     '  0d1e-1            -> 0d0.1  # Well within it.',
 
+  lossy_integer_literal:
+    'This integer literal, {src}, is not exactly representable in\n' +
+    'binary64, so storing it would silently round it to a DIFFERENT\n' +
+    'number. Aontu refuses rather than corrupts: write it as a `0d`\n' +
+    'literal to get the exact integer.\n' +
+    'The rule is exactness, not magnitude -- a literal far outside the\n' +
+    'int64 window is still a value when it lands exactly on a binary64.' +
+    '\n \nExamples:\n' +
+    '  9007199254740992   -> 9007199254740992    # 2^53, exact;\n' +
+    '  9007199254740993   -> nil                 # 2^53+1 is not;\n' +
+    '  0d9007199254740993 -> 0d9007199254740993  # ... the exact escape;\n' +
+    '  0x7fffffffffffffff -> nil    # 2^63-1 rounds up to 2^63;\n' +
+    '  100000000000000000000 -> 1e20 # 10^20 is huge and exact.',
+
   exact_float_mix:
     'Aontu cannot mix an exact number with a binary float.\n' +
     'Here the operands are {left} and {right}, in that order.\n' +

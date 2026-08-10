@@ -186,11 +186,11 @@ func integerPlus(ctx *Ctx, av, bv Val) Val {
 		return makeNilErr(ctx, "inexact_integer_sum", av, bv)
 	}
 
-	// R1's storage test, applied to the result. isIntegerKind bounds the
-	// value against the float64 limits FIRST, so the round trip below
-	// cannot hit Go's implementation-defined out-of-range conversion.
-	f := float64(sum)
-	if !isIntegerKind(f, "") || int64(f) != sum {
+	// R1's storage test, applied to the result — reaching the SAME
+	// exactness predicate D7's lossy-literal refusal asks of a literal
+	// (isExactInBinary64, inside isIntegerStorable), so a literal and a
+	// computed sum cannot disagree about what "exact" means.
+	if !isIntegerStorable(big.NewInt(sum)) {
 		return makeNilErr(ctx, "inexact_integer_sum", av, bv)
 	}
 	return newInteger(sum)

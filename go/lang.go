@@ -538,6 +538,162 @@ func isIntegerKind(n float64, src string) bool {
 	return n == math.Trunc(n) && int64MinFloat <= n && n < int64LimitFloat
 }
 
+// isExactInBinary64 reports whether an exact integer is carried EXACTLY
+// by a binary64 — the single exactness question D6's sum contract and
+// D7's literal rule both ask, so that a literal and a computed sum can
+// never disagree about what "exact" means. (Same name, same job, in
+// ts/src/val/numkind.ts.)
+//
+// THE RULE IS EXACTNESS, NOT MAGNITUDE. 2^124 is a power of two and so
+// survives a binary64 unharmed however big it looks
+// (0x10000000000000000000000000000000 is still a value); 10^20 and 10^21
+// are exact too, because their odd part fits in 53 bits. What fails is
+// 2^53+1, 2^63-1 (which rounds UP to 2^63) and 2^64-1 — values that
+// would have to change to be stored.
+//
+// big.Float.SetInt is exact by construction (it takes whatever precision
+// the integer needs), so Float64's reported accuracy is exactly the
+// question: Exact means the conversion lost nothing. An integer too big
+// for a binary64 converts to ±Inf with accuracy Above/Below, so the
+// overflow case needs no separate test.
+func isExactInBinary64(n *big.Int) bool {
+	_, acc := new(big.Float).SetInt(n).Float64()
+	return acc == big.Exact
+}
+
+// isIntegerStorable reports whether an exact integer can be held by the
+// `integer` leaf: inside the int64 window AND carried exactly by a
+// binary64 (D6's storage contract, applied to a computed sum in
+// integerPlus).
+//
+// IsInt64 is exactly the R1 window: the bounds are [-2^63, 2^63) over
+// the reals, and over the integers that is [-2^63, 2^63-1].
+//
+// The binary64 half is the parity-critical one: Go's int64 holds sums
+// TypeScript's double cannot, so a test written only against the window
+// would let this port store 9007199254740993 while the canonical port
+// silently stored …992. Kept in lock-step with isIntegerStorable in
+// ts/src/val/numkind.ts, which asks the same two questions of a bigint.
+func isIntegerStorable(n *big.Int) bool {
+	return n.IsInt64() && isExactInBinary64(n)
+}
+
+// pow53Float is 2^53, the magnitude at and above which a binary64 stops
+// being able to hold every integer. See numberVal's D7 gate.
+const pow53Float = 9007199254740992.0
+
+// maxIntegerLiteralExponent bounds the `e<n>` exponent that
+// isLossyIntegerLiteral will materialise as zeros — a scale bomb
+// (`1e1000000000`) must never be expanded just to be measured.
+//
+// It costs nothing to decline above it: a non-zero coefficient at an
+// exponent this large is beyond every finite binary64 (max ~1.8e308), so
+// wrapLeaf has ALREADY turned the literal into a not_number error nil
+// before numberVal is reached. (The canonical port refuses the same
+// literal as lossy instead, since its lexer hands over an Infinity
+// rather than declining first; both ports error, which is the
+// contractual part — the message text is not, see AGENTS.md.)
+const maxIntegerLiteralExponent = 400
+
+// isLossyIntegerLiteral reports whether src is an integer-source literal
+// whose exact value a binary64 cannot hold — the D7 test, mirroring
+// isLossyIntegerLiteral in ts/src/val/numkind.ts.
+//
+// WHICH LITERALS ARE IN SCOPE. An integer-source literal is one that
+// denotes an exact integer:
+//
+//   - plain decimal digits (`9007199254740993`), with the landed `_`
+//     separator rule;
+//   - a base-prefixed run (`0x…`, `0o…`, `0b…`);
+//   - either of those with a NON-NEGATIVE exponent (`1e21`), which still
+//     denotes an integer.
+//
+// Everything else is out of scope and unchanged. A '.' in the source
+// makes it a float literal by R1's condition (a), so it is not an
+// integer source at all; a NEGATIVE exponent (`2e-1`, `1e-400`) denotes
+// a fraction — `1e-400` is exactly 0 today, a landed row — and D7 is not
+// about fractions. An empty src is a construction site with no source
+// text (operator results, raw implicit-list values), and D7 is about
+// literals. The `0d` family never reaches here: it has its own matcher
+// and its own exact leaves.
+//
+// The value is re-derived from the SOURCE TEXT and not read off the
+// lexed float64, because that float64 is the rounded value this rule
+// exists to detect: comparing it with itself would always agree.
+func isLossyIntegerLiteral(src string) bool {
+	s := strings.ReplaceAll(src, "_", "")
+	// A literal token carries no sign (`-1` is unary minus applied to
+	// `1`), and the sign is irrelevant to exactness anyway — binary64 is
+	// sign-symmetric — but accept one so the test does not depend on
+	// that. (The matcher's own patterns admit a sign.)
+	if 0 < len(s) && (s[0] == '+' || s[0] == '-') {
+		s = s[1:]
+	}
+	if s == "" || strings.Contains(s, ".") {
+		return false
+	}
+
+	var exact *big.Int
+
+	if basedNumeric(s) {
+		base := 16
+		switch s[1] {
+		case 'o', 'O':
+			base = 8
+		case 'b', 'B':
+			base = 2
+		}
+		n, ok := new(big.Int).SetString(s[2:], base)
+		if !ok {
+			return false
+		}
+		exact = n
+	} else {
+		digits, exp := s, 0
+		if i := strings.IndexAny(s, "eE"); 0 <= i {
+			e, err := strconv.Atoi(s[i+1:])
+			if err != nil {
+				// An exponent too long for an int is beyond any bound this
+				// rule would accept anyway.
+				return false
+			}
+			digits, exp = s[:i], e
+		}
+		if !allDigits(digits) || exp < 0 {
+			return false
+		}
+		n, ok := new(big.Int).SetString(digits, 10)
+		if !ok {
+			return false
+		}
+		// Zero at any exponent is zero, and zero is exact — test it
+		// before the exponent bound, which would otherwise have to have
+		// an opinion about `0e500`.
+		if n.Sign() == 0 {
+			return false
+		}
+		if maxIntegerLiteralExponent < exp {
+			return false
+		}
+		exact = n.Mul(n, pow10(int64(exp)))
+	}
+
+	return !isExactInBinary64(exact)
+}
+
+// allDigits reports whether s is a non-empty run of decimal digits.
+func allDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || '9' < s[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // exactLiteralRe matches a `0d` exact-leaf literal (D3):
 //
 //	0[dD] digits [ . digits ] [ (e|E) [+-] digits ]
@@ -686,7 +842,26 @@ func stripSeps(s string) string { return strings.ReplaceAll(s, "_", "") }
 // is the literal's source text, or "" where there is none. The result is
 // always a numeric LEAF: no ScalarVal ever carries the KindNumber
 // supertype.
+//
+// D7 — A LOSSY INTEGER LITERAL IS REFUSED, NOT ROUNDED. An
+// integer-source literal (decimal or base-prefixed, no '.') whose value a
+// binary64 cannot hold exactly becomes a located parse-time error whose
+// hint names the escape: write it as a `0d` literal, which holds it
+// exactly. Refusal over corruption — `x:9007199254740993` used to
+// generate …992 with no signal at all.
 func numberVal(n float64, src string, sp int) Val {
+	// The gate is an optimisation, not part of the rule: every integral
+	// value strictly inside the 2^53 window is exact, and an inexact
+	// integer literal always ROUNDS TO at least 2^53 in magnitude, so
+	// isLossyIntegerLiteral could only answer true above it. Ordinary
+	// numbers — every literal in a real config — therefore never touch
+	// the big.Int path. (The canonical port has no such gate; it changes
+	// no answer, only the work done to reach it.)
+	if pow53Float <= math.Abs(n) && isLossyIntegerLiteral(src) {
+		e := newNil("lossy_integer_literal")
+		e.sp = sp
+		return e
+	}
 	if isIntegerKind(n, src) {
 		v := newInteger(int64(n))
 		v.sp = sp

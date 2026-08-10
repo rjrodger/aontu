@@ -78,9 +78,15 @@ function version() {
 // message. Never throws.
 function evalSource(aontu, src, mode) {
     try {
+        // exactJSON, not JSON.stringify: a document using the `0d` exact
+        // leaves generates bigints and Decimals, which JSON.stringify cannot
+        // write (D9). The CLI prints INDENTED JSON and the shared suite's
+        // `gens` mode prints COMPACT JSON, but both go through this one
+        // emitter -- an indent argument rather than a second implementation,
+        // so the two cannot drift from each other or from the Go port.
         const text = 'canon' === mode
             ? aontu.unify(src).canon
-            : JSON.stringify(aontu.generate(src), null, 2);
+            : (0, aontu_1.exactJSON)(aontu.generate(src), 2);
         return { ok: true, text };
     }
     catch (err) {

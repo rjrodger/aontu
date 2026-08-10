@@ -30,7 +30,7 @@ import * as Assert from 'node:assert'
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
-import { Aontu } from '../dist/aontu'
+import { Aontu, exactJSON } from '../dist/aontu'
 import { IntegerVal } from '../dist/val/IntegerVal'
 import { StringVal } from '../dist/val/StringVal'
 import { BooleanVal } from '../dist/val/BooleanVal'
@@ -200,13 +200,17 @@ describe('spec-gens-mode', () => {
 // Go's encoding/json Marshal is compact for the same reason, so the two
 // runners produce the same bytes for the same value.
 //
-// JSON.stringify is the emitter today because every generated value is a
-// JSON primitive. When the exact leaves land, generate() can return a
-// bigint (which JSON.stringify throws on) and a Decimal, and this call
-// becomes the library's exact JSON emitter -- that swap is the whole
-// reason `gens` exists, so keep the call site to exactly one place.
+// The emitter is aontu's own public `exactJSON` export (D9), not
+// JSON.stringify: the exact leaves generate a bigint (which
+// JSON.stringify throws on) and a Decimal, and writing their digits as
+// raw JSON numbers is the whole reason `gens` exists. Called with no
+// indent argument, which is exactJSON's compact form -- the same bytes
+// Go's compact encoder produces.
+//
+// The CLI calls the same export with an indent, so a `gens` row and the
+// command line cannot disagree about anything but whitespace.
 function genJSON(v: any): string {
-  return JSON.stringify(v)
+  return exactJSON(v)
 }
 
 

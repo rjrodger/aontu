@@ -538,10 +538,27 @@ help isolate the syntax error.`,
                 if (!Number.isFinite(r.node)) {
                     valnode = addsite(new NilVal_1.NilVal({ why: 'not_number' }), r, ctx);
                 }
+                // D7 -- A LOSSY INTEGER LITERAL IS REFUSED, NOT ROUNDED. The
+                // token above is already a double, so a literal the double
+                // cannot hold exactly (2^53+1, 0x7fffffffffffffff,
+                // 0xffffffffffffffff) has ALREADY become a different number by
+                // the time it gets here. Storing it would mean the document
+                // silently means something other than what it says, so the
+                // literal becomes a located error whose hint names the escape:
+                // write it `0d…` and get the exact value.
+                //
+                // The rule is EXACTNESS, not magnitude -- 10^20 and 2^124 are
+                // both far outside the int64 window and both land exactly on a
+                // binary64, so both stay values (see isLossyIntegerLiteral).
+                else if ((0, numkind_1.isLossyIntegerLiteral)(r.node, r.o0.src)) {
+                    const nil = new NilVal_1.NilVal({ why: 'lossy_integer_literal' });
+                    nil.details = { src: r.o0.src };
+                    valnode = addsite(nil, r, ctx);
+                }
                 // A literal is integer kind only if its source has no '.', its
                 // value is integral, and it fits the int64 range: `1.0` is a
-                // number, and so are 1e21, 0x7fffffffffffffff and
-                // 0xffffffffffffffff (see isIntegerKind).
+                // number, and so are 1e21 and 100000000000000000000 (see
+                // isIntegerKind).
                 else if ((0, numkind_1.isIntegerKind)(r.node, r.o0.src)) {
                     valnode = addsite(new IntegerVal_1.IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx);
                 }

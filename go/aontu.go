@@ -75,6 +75,26 @@ func (a *Aontu) unifyCtx(v Val, vars map[string]Val) (Val, *Ctx, error) {
 
 // Generate parses, unifies and generates the native output value,
 // which must fully resolve to concrete values.
+//
+// The native types are:
+//
+//	map        map[string]any
+//	list       []any
+//	string     string
+//	integer    int64
+//	float      float64
+//	biginteger *math/big.Int
+//	bigdecimal *Decimal
+//	boolean    bool
+//	null       nil
+//
+// The last two numeric rows are the number tower's exact leaves, reached
+// only by a `0d` literal or the NewBigInteger/NewBigDecimal
+// constructors: a document that writes no `0d` generates exactly what it
+// always did. Both are pointers, and both marshal as EXACT DIGITS in a
+// raw JSON number, so encoding/json (json.Marshal, json.MarshalIndent)
+// round-trips an exact value without loss — no conversion step and no
+// custom encoder needed on the Go side.
 func (a *Aontu) Generate(src string) (any, error) {
 	return a.GenerateVars(src, nil)
 }

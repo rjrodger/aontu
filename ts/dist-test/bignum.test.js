@@ -332,4 +332,97 @@ const canon = (src) => new aontu_1.Aontu().unify(src).canon;
         Assert.equal(canon('x:q+0d' + '9'.repeat(40)), '{"x":"q' + '9'.repeat(40) + '"}');
     });
 });
+// D7 -- a lossy integer literal is refused, not rounded. The shared
+// rows are in test/spec/number-tower.tsv; what is here is the boundary
+// of the rule, which those rows sample rather than map.
+(0, node_test_1.describe)('lossy-integer-literal', () => {
+    // The engine passes the LEXED double alongside the source (the double
+    // is only ever a fast path -- the verdict comes from the text), so
+    // reproduce that here.
+    const lossy = (src) => (0, numkind_1.isLossyIntegerLiteral)(Number(src.replace(/_/g, '')), src);
+    const genErr = (src) => {
+        try {
+            new aontu_1.Aontu().generate(src);
+        }
+        catch (e) {
+            return String(e.message);
+        }
+        return '';
+    };
+    (0, node_test_1.test)('the-rule-is-exactness-not-magnitude', () => {
+        // Refused: the double cannot hold these, so the parsed token is
+        // ALREADY a different number by the time a Val is built.
+        for (const src of [
+            '9007199254740993', // 2^53+1
+            '0x7fffffffffffffff', // 2^63-1, which rounds UP to 2^63
+            '0xffffffffffffffff', // 2^64-1
+            '0o777777777777777777777', // 2^63-1 again, in octal
+            '9007199254740993',
+            '18446744073709551615', // 2^64-1 in decimal
+        ]) {
+            Assert.ok(lossy(src), 'expected lossy: ' + src);
+            Assert.match(genErr('x:' + src), /exactly representable/);
+        }
+        // Kept: every one of these is far outside the int64 window and
+        // lands EXACTLY on a binary64, so magnitude alone decides nothing.
+        for (const src of [
+            '9007199254740992', // 2^53
+            '9007199254740994', // 2^53+2
+            '0x10000000000000000000000000000000', // 2^124, a power of two
+            '100000000000000000000', // 10^20
+            '1e21',
+            '18446744073709551616', // 2^64
+            '0x8000000000000000', // 2^63
+            '1_0e1_0', // separators and an exponent
+        ]) {
+            Assert.ok(!lossy(src), 'expected exact: ' + src);
+            Assert.doesNotThrow(() => new aontu_1.Aontu().generate('x:' + src));
+        }
+    });
+    (0, node_test_1.test)('a-float-source-is-out-of-scope', () => {
+        // A `.` makes it a float literal by R1, and a NEGATIVE exponent
+        // denotes a fraction: neither is an integer source, and testing
+        // either for binary64 exactness would refuse `0.1` and `2e-1` --
+        // which is emphatically not what D7 is about.
+        for (const src of ['0.1', '1.5', '2e-1', '1e-7', '1e-400', '0e500']) {
+            Assert.ok(!lossy(src), 'expected out of scope: ' + src);
+        }
+        Assert.equal(canon('x:2e-1'), '{"x":0.2}');
+        Assert.equal(canon('x:1e-400'), '{"x":0}');
+    });
+    (0, node_test_1.test)('the-hint-names-the-0d-escape', () => {
+        const msg = genErr('x:9007199254740993');
+        Assert.match(msg, /lossy_integer_literal/);
+        Assert.match(msg, /exactly representable/);
+        // The escape has to be nameable, and it has to work.
+        Assert.match(msg, /0d/);
+        // The literal itself is quoted back, so the error names the culprit
+        // when a document has several numbers on one line.
+        Assert.match(msg, /9007199254740993/);
+        Assert.equal(canon('x:0d9007199254740993'), '{"x":0d9007199254740993}');
+    });
+    (0, node_test_1.test)('the-refusal-is-located-and-reaches-every-literal-position', () => {
+        // A list element and a nested map value go through the same val
+        // rule as a top-level pair, so all three refuse.
+        Assert.match(genErr('x:[1,9007199254740993]'), /exactly representable/);
+        Assert.match(genErr('x:{y:0xffffffffffffffff}'), /exactly representable/);
+        // Located: the message points at the literal's line.
+        Assert.match(genErr('a:1\nb:9007199254740993'), /2 \|/);
+    });
+    (0, node_test_1.test)('a-literal-and-a-computed-sum-agree-about-exactness', () => {
+        // Both ask isExactInBinary64, so the same value cannot be a legal
+        // literal and an illegal sum (or the reverse).
+        Assert.ok((0, numkind_1.isExactInBinary64)(9007199254740992n));
+        Assert.ok(!(0, numkind_1.isExactInBinary64)(9007199254740993n));
+        // Total, not partial: a value far past binary64's range converts to
+        // Infinity, and BigInt(Infinity) throws rather than returning false.
+        Assert.ok(!(0, numkind_1.isExactInBinary64)(10n ** 400n));
+        Assert.ok(!(0, numkind_1.isExactInBinary64)(-(10n ** 400n)));
+        // The int64 window belongs to the SUM rule only: 10^20 is storable
+        // nowhere as an integer, yet is a perfectly good float-kind literal.
+        Assert.ok(!(0, numkind_1.isIntegerStorable)(100000000000000000000n));
+        Assert.ok((0, numkind_1.isExactInBinary64)(100000000000000000000n));
+        Assert.ok(!lossy('100000000000000000000'));
+    });
+});
 //# sourceMappingURL=bignum.test.js.map

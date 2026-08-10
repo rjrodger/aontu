@@ -138,7 +138,9 @@ reasoning behind them is in
 
 1. Pick (or add) a thematic file. `scalar.tsv`, `map.tsv`, `list.tsv`,
    `conjunct.tsv`, `disjunct.tsv`, `pref.tsv` and `error.tsv` cover the
-   core language; `number-model.tsv` covers the numeric kind rules; and
+   core language; `number-model.tsv` covers the numeric kind rules,
+   `number-tower.tsv` the exact leaves the tower adds to them, and
+   `number-cross-product.tsv` the closed ordered-pair table for `+`; and
    `spread.tsv` plus the `spread-*.tsv` family take one spread topic per
    file.
 2. Pick the mode that can actually fail for the behaviour you are

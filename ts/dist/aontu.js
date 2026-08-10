@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
+exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
 exports.runparse = runparse;
 const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
@@ -9,6 +9,10 @@ const unify_1 = require("./unify");
 const ctx_1 = require("./ctx");
 Object.defineProperty(exports, "AontuContext", { enumerable: true, get: function () { return ctx_1.AontuContext; } });
 const MapVal_1 = require("./val/MapVal");
+const Decimal_1 = require("./val/Decimal");
+Object.defineProperty(exports, "Decimal", { enumerable: true, get: function () { return Decimal_1.Decimal; } });
+const exactjson_1 = require("./exactjson");
+Object.defineProperty(exports, "exactJSON", { enumerable: true, get: function () { return exactjson_1.exactJSON; } });
 const utility_1 = require("./utility");
 Object.defineProperty(exports, "formatExplain", { enumerable: true, get: function () { return utility_1.formatExplain; } });
 const err_1 = require("./err");
@@ -98,6 +102,18 @@ class Aontu {
         return out;
     }
     // Generate output structure from source, which must parse and fully unify.
+    //
+    // The result is made of NATIVE values, and D9 puts two beyond what
+    // `JSON.stringify` can write: a `biginteger` (a `0d` literal with no
+    // fraction or exponent) generates as a native `bigint`, and a
+    // `bigdecimal` generates as a `Decimal`. Both are exact at any
+    // magnitude, which is the whole point of the leaves -- and both are
+    // confined to documents that opt in, so a `0d`-free document generates
+    // exactly what it always did.
+    //
+    // Serialise the result with `exactJSON` (exported alongside this
+    // class), NOT with `JSON.stringify`: the latter throws on a bigint and
+    // has no way to write exact digits as a JSON number.
     generate(src, opts, ac) {
         try {
             let out = undefined;

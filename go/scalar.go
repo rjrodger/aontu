@@ -213,6 +213,23 @@ func (s *ScalarVal) Canon() string {
 	return ""
 }
 
+// Gen returns the NATIVE Go value for this scalar: string, int64
+// (integer), float64 (float), bool, nil — and, for the tower's exact
+// leaves, *big.Int (biginteger) and *Decimal (bigdecimal).
+//
+// The two exact leaves are POINTERS, and that is a requirement rather
+// than a convenience (D9): a non-pointer big.Int sitting in an `any`
+// marshals as `{}`, silently emitting an empty object where an exact
+// number should be. As pointers, encoding/json calls their MarshalJSON
+// and both reach JSON as EXACT DIGITS in a raw JSON number — JSON
+// numbers are arbitrary-precision text, so nothing is lost on the way
+// out. (Only JavaScript's serialiser needs help here, which is why the
+// canonical port ships its own emitter.)
+//
+// Byte-exact serialisation cannot check any of this on its own: a
+// biginteger and an integer can produce the SAME text while generate
+// returned the wrong runtime type. The concrete types above are pinned
+// by TestGenerateNativeExactTypes.
 func (s *ScalarVal) Gen(ctx *Ctx) (any, error) {
 	// Negative zero never reaches generated output. (Unary minus already
 	// normalises it away, but `+` and the NewNumber API can still build
@@ -221,6 +238,16 @@ func (s *ScalarVal) Gen(ctx *Ctx) (any, error) {
 		if f, ok := s.peg.(float64); ok && f == 0 {
 			return float64(0), nil
 		}
+	}
+	if s.kind == KindBigInteger {
+		// A COPY leaves the engine, because a *big.Int is mutable and the
+		// peg is not: handing the peg itself out would let a consumer
+		// mutate a value the AST (and any $var bound to it) still holds.
+		// NewBigInteger copies on the way in for the same reason. A
+		// *Decimal needs no copy — its fields are unexported and nothing
+		// ever mutates one — so, like TypeScript's Decimal instance, it
+		// goes out as it is.
+		return new(big.Int).Set(s.peg.(*big.Int)), nil
 	}
 	return s.peg, nil
 }
