@@ -1,0 +1,357 @@
+# Capability review: Aontu as a systems ground truth for agents
+
+*Status: review (August 2026). This document records a survey of the
+literature, comparable languages, and industry practice, asking one
+question: what fundamental capabilities does Aontu lack to fulfil its
+stated purpose — a systems-definition language and ground truth for
+agents? Each identified gap has a companion design document (G1–G8,
+linked below) with alternatives, boundaries, risks, and an
+implementation plan.*
+
+Method: a ten-agent survey — three codebase analysts over this
+repository, six researchers (CUE; Nickel/Dhall/Pkl/KCL/Jsonnet/Starlark;
+refinement types and formal methods; ontologies and MBSE; agent-industry
+practice; developer tooling and visualisation), plus an adversarial
+fact-checking pass over the combined findings.
+
+## The verdict in brief
+
+Aontu's kernel is the right bet, and the survey validates it from
+several independent directions. The lattice guarantee — any observed
+field value holds for the final result; merging is commutative,
+idempotent, and fails loudly on conflict — is exactly the property that
+makes a definition trustworthy in a way markdown can never be. The
+closed-world validation stance is the one the semantic-web community
+needed two separate languages (OWL, then SHACL) to reach; Aontu has it
+as a per-node dial. The JSON-superset surface means agent-emitted JSON
+is already valid Aontu. And the dual TypeScript/Go implementation with a
+shared machine-readable spec suite is an unusual asset: the same
+semantics embeddable in Node agent harnesses and Go gateways.
+
+But today, "type safety through unification" cashes out as **five
+scalar kinds, literal equality, disjunction-enums, and closedness** —
+`a: number > 0` is a parse error (verified live), there is no regex,
+and no length or cardinality constraint. Cross-field *equality* is
+expressible through references (`b: $.a` conflicts if `b` is pinned
+elsewhere), but no cross-field inequality or general predicate is.
+And the language is an *evaluator of its own files*, not yet a
+*service other things are checked against*: `@"file"` can load and
+unify external data and the TS API exposes `ctx.find(path)`, but
+there is no dedicated validation verb with a structured report
+contract, no CLI query surface or token-efficient projections, no way
+to ask why a value holds, and no check that v2 of a schema still
+honours v1.
+
+The industry context sharpens the stakes. The 2024–26
+spec-driven-development movement (GitHub Spec Kit, AWS Kiro, OpenAI's
+Model Spec, AGENTS.md, Agent Skills) chose structured *markdown* — and
+its acknowledged weakness is that prose specs cannot detect
+contradiction, drift, or type error; OpenAI had to build an entire
+LLM-graded eval harness just to measure compliance with its own spec.
+The enforcement camp (OPA/Rego, Cedar, Kubernetes CEL) proves that
+deterministic, non-Turing-complete, analysable languages are what
+actually gets deployed at decision boundaries — AWS chose Cedar for
+agent authorisation explicitly for determinism and analysability.
+**Nobody has fused the two: a language that is simultaneously the spec
+agents read and the gate that validates their output.** That is the
+position Aontu targets, and the survey's clearest conclusion is that
+the fusion is won or lost on the capabilities below — mostly
+infrastructure around the lattice, not syntax on top of it.
+
+## The eight fundamental gaps
+
+| # | Gap | Why it changes what the language is | Design doc |
+|---|-----|-------------------------------------|------------|
+| G1 | A real constraint algebra | Makes "type safety through unification" true beyond five kinds; everything else is downstream | [g1-constraint-algebra.md](g1-constraint-algebra.md) |
+| G2 | The validation verb | Turns Aontu from expression evaluator into agent guardrail (emit → validate → repair) | [g2-validation-verb.md](g2-validation-verb.md) |
+| G3 | Subsumption as a query; schema evolution | Ground truth is a claim about time; the lattice makes compatibility checking nearly free | [g3-subsumption-evolution.md](g3-subsumption-evolution.md) |
+| G4 | Identity and typed relations | Systems are graphs; Aontu documents are trees with document-scoped paths | [g4-identity-relations.md](g4-identity-relations.md) |
+| G5 | A specified trust contract | Hermeticity, termination, determinism, sandboxing — constitutive for unattended agent evaluation | [g5-trust-contract.md](g5-trust-contract.md) |
+| G6 | A distribution layer | Versioned, integrity-hashed, pinnable modules; truth must be shareable and tamper-evident | [g6-distribution.md](g6-distribution.md) |
+| G7 | A machine-facing access surface | Query, provenance, patch, MCP — agents consume slices, not whole evaluated blobs | [g7-machine-access.md](g7-machine-access.md) |
+| G8 | Generation, on the total side of the fork | N children from data without copies that drift — and without losing the termination guarantee | [g8-generation.md](g8-generation.md) |
+
+## What Aontu already has right
+
+These are assets the review recommends protecting — several have no
+equivalent in CUE:
+
+- **The lattice kernel** — schema, defaults, and data as one kind of
+  value; order-independent merge engineered deliberately (conjunct-term
+  sorting, canonical closed-map unify direction) and pinned by the
+  shared spec.
+- **Closed-world validation with a per-node dial** — `close()`/`open()`,
+  including closed *lists*, which CUE's structs don't cover.
+- **JSON-superset surface** — any JSON document is valid Aontu, so
+  agent output can be unified directly against a definition with no
+  conversion. This is the substrate for a `vet` operation (G2) and
+  dramatically lowers the LLM learning cliff for a low-resource
+  language.
+- **Canonical form** — a deterministic, reparseable normal form. The
+  research upgrades this from a convenience to an economic asset: it is
+  the seed of semantic hashing (G6), semantic diff, and
+  prompt-cache-stable serialisation.
+- **Dual TS + Go implementations with the TSV spec contract** — 45 spec
+  files, ~426 rows, run identically by both. The suite is itself a
+  machine-readable ground truth an LLM can be taught from, and the
+  parity method (spec rows first, both implementations follow) is
+  exactly how every capability below should land.
+- **Ranked preferences** — defaults of defaults (`**` outranks `*`),
+  richer than CUE's single level and a natural fit for layered system
+  definitions (org < team < service).
+- **Spreads** (`&:`) that work on lists, cross-statement, and via
+  referenced templates — beyond CUE's pattern constraints in several
+  directions.
+- **Native variant modelling** — disjunction is a variation point,
+  preference is the default variant. SysML v2 had to bolt on
+  `variation`/`variant` keywords for what Aontu's core already
+  expresses compositionally.
+- **In-memory resolver and host-injected `$name` variables** — good
+  bones for sandboxed, parameterised agent evaluation.
+
+## The gaps, in summary
+
+Each summary below is expanded — with alternatives considered, an
+explicit boundary of things we will not do, a risk assessment, and an
+implementation plan — in its companion document.
+
+### G1 — A real constraint algebra
+
+The single highest-leverage gap, and the one the language's central
+claim rests on. What is needed is not just `number > 0` but a
+*vocabulary of constraint atoms that are lattice citizens*: numeric
+bounds, regex patterns, string/list/map length and cardinality
+("between 2 and 5 replicas", "exactly one primary"), scalar negation,
+and cross-field inequalities via existing path references. The
+liquid-types lesson: no SMT solver is needed — a closed vocabulary of
+predicate constructors, each with meet, emptiness, and subsumption
+rules written down. Interval intersection decides `>5 & <3 → nil` at
+schema-composition time — something evaluate-only systems (CEL, KCL,
+Nickel contracts) can never do. For arbitrary domain rules beyond the
+algebra, the escape hatch is an evaluate-only predicate with an
+author-attached failure message, honestly reported as evaluate-only.
+A related defect: both implementations pin numbers to IEEE-754 double
+semantics, so int64-scale values silently lose precision; CUE
+deliberately uses arbitrary-precision decimals.
+
+### G2 — The validation verb
+
+The canonical agent loop — *emit, validate, repair* — currently has no
+entry point: the CLI evaluates one file to JSON, full stop. Because
+Aontu is a JSON superset, `aontu vet schema.aon candidate.json` is
+nearly free to implement (unify + closedness + report), and it changes
+the language's identity from evaluator to gate. The same verb, pointed
+at a live system dump, is drift detection. The output contract matters
+as much as the verb: stable error codes, JSON and SARIF output,
+severities, author-attached messages, and errors that state **what
+would have unified** — repair-loop studies find admissible
+alternatives, not failure location, drive an agent's ability to
+self-correct.
+
+### G3 — Subsumption as a first-class query; schema evolution
+
+Ground truth is a claim about *time*: agents act on stale snapshots,
+and the truth evolves. Aontu's lattice makes the principled version of
+compatibility checking nearly free: new schema subsumes old ⇒ backward
+compatible; the reverse ⇒ forward compatible; both ⇒ full. Exposing
+subsumption — as a builtin, a CLI verb
+(`aontu breaking --against git#main system.aon`), and a library call —
+powers versioned evolution, default-validity checking, CUE-style trim,
+and the entailment queries agents actually need. Paired with a
+deprecation mark surfaced at point of use, it gives shared schemas a
+complete evolution story. The fact-check pass ranked this Aontu's most
+defensible differentiator.
+
+### G4 — Cross-document identity and first-class typed relations
+
+Systems are graphs; Aontu documents are trees with document-scoped
+paths. Today the language cannot say "this `dependsOn` target must
+exist and be a Service", cannot declare or check an inverse relation,
+cannot forbid a cyclic dependency path, and cannot merge two files
+that describe the same real-world entity unless they share a tree
+path. The adoptable shape, without abandoning the JSON tree: a stable
+identity mark on any node, a reference constraint with referential
+integrity checked at unification time, and path constraints. Notably,
+unification gives cross-document identity cleaner semantics than the
+semantic web ever had: declaring two nodes the same entity means
+unifying them, so a contradiction is a hard, located error rather than
+the silent corruption of `owl:sameAs`. Ports/interfaces/connections —
+the recurring MBSE primitives — need no new syntax: ship them as a
+blessed standard-library schema vocabulary.
+
+### G5 — A specified trust contract
+
+For an artifact that agents evaluate unattended, safety guarantees are
+not hardening — they are constitutive. Today the gap is real: the
+default resolver makes opening an untrusted file equivalent to running
+it (`@"pkg"` can `require()` arbitrary modules; the LSP inherits
+this), and the fixpoint's hard 9-pass bound means models that need a
+tenth pass silently stop refining rather than erroring distinctly.
+Hermeticity — same file set + same `$` bindings ⇒ identical output —
+is currently *false* under the default resolver: a package include
+can execute a module whose export derives from time, environment, or
+filesystem state, so identical sources can produce different results.
+It holds only under confined resolvers (memory/filesystem), and
+resolver confinement is therefore part of *establishing* the
+guarantee, not merely documenting it. The work:
+write the guarantees down, pin them in the spec suite (including
+byte-identical canonical output across TS and Go), give the evaluator
+API a capability surface, adopt import-sandbox rules before `@"…"`
+ever goes remote, and make evaluation bounds semantic errors rather
+than silent truncation.
+
+### G6 — A distribution layer
+
+Textual file inclusion is a single-project mechanism. Ground truth
+must be shareable across repos, teams, and agent sessions, and
+tamper-evident when it travels. The ecosystem default is settled —
+versioned modules with lockfiles, distributed over OCI registries.
+The differentiator on top: Dhall-style **semantic integrity hashes
+computed over Aontu's canonical form**. A pin hashes the *meaning*,
+not the bytes — refactors and comments don't break it; any semantic
+change anywhere in the transitive closure does. One honest caveat the
+design must resolve: canon today is deterministic *syntax*, not a
+unique semantic normal form (`number|integer` denotes the same value
+set as `number` — `DisjunctVal` drops only `same()` alternatives —
+yet the two canon differently), so hashing requires either a
+subsumption-based minimisation step before the hash or the weaker,
+clearly-labelled claim of a canonical-text hash. Aontu's existing
+canon still makes either variant nearly free, and no
+unification-family language has it.
+
+### G7 — A machine-facing access surface
+
+Agents do not consume ground truth by evaluating whole files into one
+JSON blob — they retrieve task-sized slices and patch by path. Three
+surfaces are missing: **query** (`aontu get $.services.auth --canon`
+returning the evaluated fragment, plus token-efficient projections),
+**positive provenance** (`aontu why $.path` — today sites are tracked
+only for errors; extending site-tracking to successful unifications is
+far easier to build now than to retrofit later, as CUE's history
+shows), and **semantic patch** (set a path through unification with
+re-validation — which also requires a comment-preserving,
+format-preserving rewrite story that canon alone cannot provide).
+Delivery matters as much as capability: an official MCP server
+(validate/query/why/diff/canon), an AGENTS.md stanza, an official
+skill, and a published machine-consumable grammar for constrained
+decoding.
+
+### G8 — Generation and abstraction, resolved on the total side
+
+Producing N similar children from data — one block per service, per
+region, per replica — is the bread-and-butter of systems definition.
+Without it, humans and agents copy-paste, and the copies drift, which
+defeats ground-truth-ness from inside. Aontu's spread applies a schema
+to children that exist; nothing can *generate* children, compute a
+key, or interpolate a string. This is also the language's deepest
+identity question: every credible safety story surveyed (Dhall,
+Starlark, CEL, Cedar) lands on the same side — a ground truth
+evaluated unattended by agents must terminate by construction. Take
+comprehension power from total combinators
+(`each`/`pack`/`filter`/`match`) and bounded evaluation budgets, and
+treat "Aontu evaluation always terminates, deterministically" as a
+headline, spec-guaranteed feature.
+
+## Traps to refuse
+
+The survey found as much evidence about what *not* to build. Each of
+these is a documented failure mode in an adjacent system:
+
+- **Turing-completeness.** Recursive user functions trade away the
+  termination guarantee that makes unattended agent evaluation safe.
+- **SMT solvers in the checker.** Documented proof flakiness and
+  solver-version nondeterminism (F*) are disqualifying for a
+  dual-implementation language whose product is deterministic answers.
+- **Temporal/behavioural logic in the language.** "Replicas eventually
+  converge" is inexpressible in a value lattice by construction.
+  Represent state machines as ordinary Aontu data and export to
+  TLA+/P — be the structural front end, not the model checker.
+- **General negation/complement.** Sound only atop semantic-subtyping
+  machinery that costs months across two implementations. Scalar-level
+  negation (`!=`, not-in-set) composes fine within the bounds algebra.
+- **Surface-area creep toward CUE.** Every stratum CUE added raised
+  its floor; its highest-profile adopter (Dagger) dropped it as users'
+  number-one complaint. Aontu's small, JSON-superset surface is a
+  moat — especially for LLMs, where grammar size is acquisition cost.
+  Also heed CUE's deepest scar before deepening types: pin down the
+  interactions of `*`, closedness, and spreads in the spec suite
+  first; those are the non-lattice-pure features that forced CUE's
+  multi-year evaluator rewrite.
+- **Ignoring the null hypothesis.** The strongest competitor for
+  "ground truth for agents" is JSON Schema 2020-12 plus prose. Aontu's
+  answer must be stated explicitly and delivered mechanically:
+  merge-as-unification, subsumption-as-compatibility, located two-site
+  conflicts, semantic hashing — the things JSON Schema structurally
+  cannot do.
+
+## Sequencing
+
+| Phase | Capabilities | Rationale |
+|-------|--------------|-----------|
+| A — make the claim true | G1 constraint algebra core (bounds, regex, length/count) · G2 `vet` with structured reports, stable codes, admissible-alternative errors · G5 trust contract written and spec-pinned | These convert "type safety through unification" from positioning into fact, and open the emit → validate → repair loop |
+| B — differentiate | G3 `subsume`/`breaking` · G6 canon-hash pinning · G7 `get`/`why` + MCP server + published grammar + skill | Each is nearly free given the lattice and canon, and no competitor has the principled version |
+| C — scale | G4 identity/relations + stdlib vocabulary · G6 full module registry · G8 total generation combinators · incremental LSP · views/diagram exporters · JSON Schema interop | Ecosystem weight; several depend on Phase A |
+
+The exception: the G7 query/MCP surface depends on nothing and is the
+cheapest adoption wedge — it could ship first, wrapping today's
+evaluator, and every later capability becomes another tool on the same
+server. Throughout, the existing method is the right one: every
+capability lands as TSV spec rows first, both implementations follow,
+and property-based differential testing guards the algebra as the Val
+zoo grows.
+
+## Verified codebase facts referenced by the design documents
+
+Checked against this repository at review time (TS v0.49.0 line):
+
+- Exactly 12 builtin functions, hard-wired in the parser's `funcMap`
+  (`ts/src/lang.ts`): `upper`, `lower`, `copy`, `key`, `type`, `hide`,
+  `move`, `path`, `pref`, `close`, `open`, `super`. (`ExpectVal` is
+  internal spread-required machinery, not a user-callable function.)
+- Scalar constraints are kind-only; `a: number > 0` fails to parse
+  (verified by running the CLI).
+- 45 shared spec files under `test/spec/` (~426 rows; modes
+  `canon`/`gen`/`err`); the Go runner executes every row with no skip
+  list.
+- The fixpoint is bounded at `maxcc = 9` passes (`ts/src/unify.ts`);
+  `MAXCYCLE = 999`.
+- The resolver security posture is documented in code
+  (`ts/src/lang.ts`, "treat opening an untrusted source as running
+  it").
+- Disjunct generation has a known distribution defect, acknowledged in
+  a code comment (`ts/src/val/DisjunctVal.ts`).
+- Both implementations use IEEE-754 double number semantics (Go
+  reproduces JS `Number.toString`).
+- Parsed/unified trees are single-use (documented mutation caveat);
+  the LSP re-parses and re-unifies whole documents per change.
+
+## Key sources
+
+- CUE: language spec, "The Logic of CUE", modules design,
+  evaluator-rewrite discussions, error-message threads; Dagger's
+  "Ending CUE support".
+- Config languages: Nickel manual and programmable-LSP posts; Dhall
+  safety guarantees and semantic integrity checks; Pkl language
+  reference and evaluator allowlists; KCL validation/package docs;
+  Jsonnet design; Starlark design; NixOS module system; Hadlow's
+  Configuration Complexity Clock.
+- Formal methods: Liquid Types (PLDI '08) and the Jhala–Vazou
+  refinement-types tutorial; PVS predicate subtyping; Dependent ML;
+  Kubernetes CEL admission policy; semantic subtyping
+  (Frisch/Castagna); LIFE residuation (Aït-Kaci & Podelski); Ivy's
+  decidable-fragment discipline; Alloy; the S3 ShardStore
+  lightweight-formal-methods paper; "Union and intersection contracts
+  are hard, actually".
+- KR & systems modelling: JSON-LD, SHACL, OWL; the `owl:sameAs`
+  literature; SysML v2 spec and API; Structurizr (incl. its MCP
+  server); Azure DTDL; AADL; Confluent schema evolution; buf breaking;
+  Open Data Contract Standard; GraphRAG grounding literature.
+- Agent industry: GitHub Spec Kit; AWS Kiro; OpenAI Model Spec and
+  evals; AGENTS.md / Agent Skills / llms.txt post-mortems; Anthropic
+  context-engineering and code-execution-with-MCP; grammar-constrained
+  decoding (llguidance, XGrammar, CFG tools); structured-feedback
+  repair studies; OPA/Cedar/CEL at the agent boundary; Context7.
+- DevX: CUE LSP wiki; Nickel nls; gopls scalability; rust-analyzer
+  inlay hints; Elm and Rust error-message design; `nix why-depends`;
+  Terraform plan/phantom-diff analyses; D2/Mermaid; Backstage catalog;
+  difftastic/dyff; SARIF.

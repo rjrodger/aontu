@@ -49,6 +49,14 @@ live in [`design/`](design/):
   — a Go-port parity defect (and its workaround) where a colon-chain
   imported value is dropped.
 
+Forward-looking design work lives in
+[`capability-review/`](capability-review/index.md): a survey of what
+Aontu lacks to serve as a systems-definition ground truth for agents,
+with eight companion design documents (G1–G8) covering the constraint
+algebra, the validation verb, subsumption and schema evolution,
+identity and relations, the trust contract, distribution, the
+machine-facing access surface, and generation.
+
 ### Why the split?
 
 The four kinds of document answer four different questions and are kept
