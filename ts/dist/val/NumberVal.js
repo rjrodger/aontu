@@ -44,6 +44,22 @@ class NumberVal extends ScalarVal_1.ScalarVal {
         (0, utility_1.explainClose)(te, out);
         return out;
     }
+    // Canon must round-trip kind: reparsing the canon of a number-kind
+    // value has to yield a number-kind value again. A rendering with no
+    // '.' and no exponent (1 -> "1") would reparse as an integer, so it
+    // gains a ".0" suffix. Renderings that already carry a fraction, an
+    // exponent, or are NaN/Infinity are left alone.
+    //
+    // This is the CANON path only. String coercion inside `+` keeps plain
+    // JS parity ("a"+1.0 is "a1"), so it must not pick up the suffix.
+    get canon() {
+        const s = super.canon;
+        return (s.includes('.') ||
+            s.includes('e') ||
+            s.includes('E') ||
+            s.includes('N') ||
+            s.includes('I')) ? s : s + '.0';
+    }
 }
 exports.NumberVal = NumberVal;
 //# sourceMappingURL=NumberVal.js.map

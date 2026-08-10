@@ -1,0 +1,182 @@
+# Shared aontu unit tests: the number model. Columns (tab-separated): name<TAB>mode<TAB>src<TAB>expect
+# mode: canon = unify(src).canon == expect ; gen = generate(src) deep-equals JSON(expect) ; err = generate(src) errors, message contains expect
+#
+# See docs/design/number-model.md for the rules these rows pin.
+#
+# R1: a numeric literal has integer kind iff its source has no '.', its
+# value is integral, and it lies within the int64 range. Otherwise it is
+# number kind. (aontu has no negative literals -- '-' is an operator --
+# so the int64 minimum is not expressible as an integer-kind literal.)
+exp-whole-integer	gen	x:1e3 & integer	{"x":1000}
+pow53-integer	gen	x:9007199254740992 & integer	{"x":9007199254740992}
+exp-out-of-int64-err	err	x:1e21 & integer	Cannot unify scalar values
+dec-out-of-int64-err	err	x:100000000000000000000 & integer	Cannot unify scalar values
+hex-max-int64-err	err	x:0x7fffffffffffffff & integer	Cannot unify scalar values
+neg-int64-min-err	err	x:-9223372036854775808 & integer	Cannot unify scalar values
+#
+# A literal above 2^53 is stored in IEEE-754 double precision and is
+# therefore not exact; both implementations agree on the rounded value.
+lossy-above-pow53	gen	x:9007199254740993	{"x":9007199254740992}
+#
+# R2: negative zero never survives into the AST, generated output, or canon.
+neg-zero-int	gen	x:-0	{"x":0}
+neg-zero-float	gen	x:-0.0	{"x":0}
+neg-zero-int-canon	canon	x:-0	{"x":0}
+neg-zero-float-canon	canon	x:-0.0	{"x":0.0}
+#
+# R3: concrete scalars are identical only when kind and value both match,
+# so an integer and a float disjunct member are distinct alternatives.
+int-float-disjunct-canon	canon	x:1|1.0	{"x":1|1.0}
+int-float-disjunct-pick-float	gen	x:(1|1.0) & 1.0	{"x":1}
+int-float-disjunct-pick-float-canon	canon	x:(1|1.0) & 1.0	{"x":1.0}
+int-float-disjunct-pick-int	gen	x:(1.0|1) & 1	{"x":1}
+int-float-disjunct-pick-int-canon	canon	x:(1.0|1) & 1	{"x":1}
+#
+# R4: canon round-trips kind -- a number-kind value always renders with a
+# fraction or an exponent, so parse(canon(v)) preserves the kind of v.
+float-integral-canon	canon	x:1.0	{"x":1.0}
+float-zero-canon	canon	x:0.0	{"x":0.0}
+float-frac-canon	canon	x:1.5	{"x":1.5}
+float-exp-canon	canon	x:1e21	{"x":1e+21}
+float-trailing-dot-canon	canon	x:1.	{"x":1.0}
+#
+# R5: kind contagion -- no operator or function introduces a narrower kind
+# than its operands. integer+integer is integer; any number operand makes
+# the result a number; upper()/lower() preserve the argument's kind.
+int-add-canon	canon	x:1+2	{"x":3}
+int-add-unify-integer	gen	x:(1+2) & integer	{"x":3}
+float-add-integral-canon	canon	x:1.5+1.5	{"x":3.0}
+float-add-unify-integer-err	err	x:(1.5+1.5) & integer	Cannot unify scalar values
+mixed-add-canon	canon	x:1+1.0	{"x":2.0}
+upper-int-canon	canon	x:upper(2)	{"x":2}
+upper-int-unify-integer	gen	x:upper(2) & integer	{"x":2}
+upper-num-canon	canon	x:upper(1.1)	{"x":2.0}
+lower-num-canon	canon	x:lower(1.9)	{"x":1.0}
+upper-num-unify-number	gen	x:upper(1.1) & number	{"x":2}
+upper-num-unify-integer-err	err	x:upper(1.1) & integer	Cannot unify scalar values
+#
+# R6: super(x) is the lattice-superior of its argument -- the kind of a
+# concrete scalar. (1 is an integer literal, so super(1) is integer.)
+super-int-canon	canon	x:super(1)	{"x":integer}
+super-float-canon	canon	x:super(1.5)	{"x":number}
+super-string-canon	canon	x:super(a)	{"x":string}
+super-bool-canon	canon	x:super(true)	{"x":boolean}
+super-int-unify	gen	x:super(1) & 2	{"x":2}
+super-int-unify-float-err	err	x:super(1) & 2.5	Cannot unify scalar values
+#
+# NaN and Infinity are NOT numeric literals in aontu: they carry no
+# special lexing, so they are bare text and unify as strings. (There
+# is no way to write a non-finite number: an overflowing literal is a
+# not_number error nil instead.)
+nan-text	gen	x:NaN	{"x":"NaN"}
+infinity-text	gen	x:Infinity	{"x":"Infinity"}
+nan-unify-string	gen	x:NaN & string	{"x":"NaN"}
+infinity-unify-string	gen	x:Infinity & string	{"x":"Infinity"}
+nan-unify-number-err	err	x:NaN & number	Cannot unify scalar values
+nan-disjunct-canon	canon	x:NaN|1	{"x":"NaN"|1}
+nan-plus	gen	x:NaN+1	{"x":"NaN1"}
+infinity-plus	gen	x:Infinity+1	{"x":"Infinity1"}
+nan-upper	gen	x:upper(NaN)	{"x":"NAN"}
+neg-infinity-err	err	x:-Infinity	Cannot resolve value
+#
+# Leading zeros are decimal, never octal (08 and 09 are 8 and 9, not
+# errors). A LEADING dot is not a numeric literal at all -- a bare
+# dotted word is a relative path reference, so .5 is an unresolvable
+# ref rather than 0.5.
+leading-zero	gen	x:01	{"x":1}
+leading-zeros	gen	x:007	{"x":7}
+leading-zero-not-octal	gen	x:08	{"x":8}
+leading-zero-integer	gen	x:010 & integer	{"x":10}
+leading-zero-float	gen	x:01.5	{"x":1.5}
+leading-dot-err	err	x:.5	Cannot resolve value
+#
+# A numeric map KEY is not a number: the key keeps its source text
+# verbatim, so it is never normalised through the number model.
+key-int	gen	1:x	{"1":"x"}
+key-float	gen	1.5:x	{"1.5":"x"}
+key-float-canon	canon	1.5:x	{"1.5":"x"}
+key-hex	gen	0x10:x	{"0x10":"x"}
+key-exp	gen	1e3:x	{"1e3":"x"}
+key-leading-zero	gen	01:x	{"01":"x"}
+#
+# There are no negative literals: `-` is a prefix operator. It binds
+# TIGHTER than `+`, `&` and `|` (and looser than `.`), so `-1 & -1` is
+# `(-1) & (-1)`, not `-(1 & -1)`. Negation never narrows the kind.
+neg-conjunct	gen	a:-1 & -1	{"a":-1}
+neg-conjunct-paren	gen	a:(-1) & -1	{"a":-1}
+neg-conjunct-integer	gen	a:-1 & integer	{"a":-1}
+neg-disjunct-canon	canon	a:-1|2	{"a":-1|2}
+neg-plus	gen	a:-2+3	{"a":1}
+plus-neg	gen	a:2+-3	{"a":-1}
+neg-neg	gen	a:--1	{"a":1}
+neg-float-canon	canon	a:-1.5	{"a":-1.5}
+#
+# Base prefixes (hex/octal/binary) are LOWER CASE ONLY: an upper-case
+# prefix is not a number at all, it is text. That follows the canonical
+# TypeScript lexer, whose number matcher spells the prefixes in lower
+# case; the Go engine declines the same sources (numberExcluded in
+# go/lang.go) so the two agree. Note it is the prefix LETTER only -- an
+# upper-case exponent marker is accepted by both (exp-upper-canon).
+# A based literal has no '.', so R1(b)+(c) alone decide its kind:
+# 0x7fffffffffffffff rounds up to 2^63 and so is number kind, which is
+# why it cannot unify with `integer`.
+hex-lower	gen	x:0x1f	{"x":31}
+octal-lower	gen	x:0o17	{"x":15}
+binary-lower	gen	x:0b1010	{"x":10}
+hex-integer	gen	x:0xff & integer	{"x":255}
+octal-integer	gen	x:0o17 & integer	{"x":15}
+binary-integer	gen	x:0b1010 & integer	{"x":10}
+hex-zero	gen	x:0x0	{"x":0}
+hex-max-int64-canon	canon	x:0x7fffffffffffffff	{"x":9223372036854776000.0}
+hex-pow63-integer-err	err	x:0x8000000000000000 & integer	Cannot unify scalar values
+base-upper-hex-text	gen	x:0X1F	{"x":"0X1F"}
+base-upper-octal-text	gen	x:0O17	{"x":"0O17"}
+base-upper-binary-text	gen	x:0B1010	{"x":"0B1010"}
+base-upper-hex-big-text	gen	x:0Xffffffffffffffff	{"x":"0Xffffffffffffffff"}
+base-upper-in-list-text	gen	x:[0X1F,1]	{"x":["0X1F",1]}
+base-upper-hex-string	gen	x:0X1F & string	{"x":"0X1F"}
+#
+# Digit separators are legal only as a SINGLE separator BETWEEN
+# digits. A run that breaks the rule is not a number at all: the whole
+# run falls through to text, so a typo surfaces as a string rather
+# than silently becoming a different number (1__0 is "1__0", not 10).
+# The base-prefixed edge cases are pinned at both magnitudes because
+# a literal beyond int64 takes a separate lexer path in the Go port.
+sep-between-digits	gen	x:1_0	{"x":10}
+sep-grouped	gen	x:1_000_000	{"x":1000000}
+sep-integer	gen	x:1_0 & integer	{"x":10}
+sep-hex	gen	x:0xf_f	{"x":255}
+sep-hex-big	gen	x:0xff_ffffffffffffff	{"x":18446744073709552000}
+sep-fraction	gen	x:1_0.5_1	{"x":10.51}
+sep-exponent	gen	x:1e1_0	{"x":10000000000}
+sep-repeated-text	gen	x:1__0	{"x":"1__0"}
+sep-leading-text	gen	x:_1	{"x":"_1"}
+sep-prefix-edge-text	gen	x:0x_ff	{"x":"0x_ff"}
+sep-suffix-edge-text	gen	x:0xff_	{"x":"0xff_"}
+sep-prefix-edge-big-text	gen	x:0x_ffffffffffffffff	{"x":"0x_ffffffffffffffff"}
+sep-exponent-edge-text	gen	x:1e_2	{"x":"1e_2"}
+#
+# Exponent forms. The exponent marker may be upper or lower case and
+# its sign is optional; an exponent alone never makes a literal number
+# kind (R1 looks for a '.', not an 'e'), so 1e3 and even the
+# UNDERFLOWING 1e-400 -- which is exactly 0 -- are integer kind and
+# canon them without a ".0". An OVERFLOWING literal is a not_number
+# error nil instead.
+exp-signed-canon	canon	x:1e+21	{"x":1e+21}
+exp-upper-canon	canon	x:1E21	{"x":1e+21}
+exp-small-neg-canon	canon	x:1e-7	{"x":1e-7}
+exp-frac-value-canon	canon	x:2e-1	{"x":0.2}
+exp-subnormal-canon	canon	x:1e-323	{"x":1e-323}
+exp-zero-integer	gen	x:1e0 & integer	{"x":1}
+exp-upper-integer	gen	x:1E3 & integer	{"x":1000}
+exp-signed-integer	gen	x:1e+3 & integer	{"x":1000}
+exp-underflow-canon	canon	x:1e-400	{"x":0}
+exp-underflow-integer	gen	x:1e-400 & integer	{"x":0}
+exp-overflow-err	err	x:1e400	Cannot resolve value
+#
+# A numeric builtin called with no argument is an invalid-arg error
+# value, not an internal error: reading the argument off nothing used
+# to throw in TypeScript, which the unifier could only report as an
+# opaque internal failure while Go reported it cleanly.
+upper-no-arg-err	err	x:upper()	Cannot resolve value
+lower-no-arg-err	err	x:lower()	Cannot resolve value

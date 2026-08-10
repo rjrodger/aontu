@@ -143,14 +143,23 @@ What exists and is reusable:
   both runners (ts/test/spec.test.ts, go/spec_test.go), and the Go
   runner has no skip list. `gen` rows, however, compare deep-equal
   JSON *values*, not serialised bytes — byte-identical generated
-  output is true in practice and guaranteed nowhere.
-- **A parity method to extend.** 45 shared spec files (~426 rows,
-  modes `canon`/`gen`/`err`); test/spec/engine-parity.tsv is
-  precedent for pinning whole regression *classes*, and
+  output is true in practice and guaranteed nowhere. `gen` rows are
+  also **kind-blind**: JSON cannot distinguish an `integer` 1 from a
+  `number` 1.0, so a whole class of semantic divergence is invisible
+  to the mode most rows use. That is not hypothetical — it is how
+  the two ports came to classify the same numeric literal
+  differently (`a:1e21 & integer` succeeded in TypeScript and failed
+  in Go) while both passed the shared suite.
+- **A parity method to extend.** 46 row-bearing shared spec files
+  (527 rows, modes `canon`/`gen`/`err`); test/spec/engine-parity.tsv
+  is precedent for pinning whole regression *classes*, and
   test/spec/var.tsv for a spec file with fixed runner-side
   configuration (a shared variable set) — the pattern a
-  trust-profile spec file needs. Per AGENTS.md, only the asserted
-  substring of an error message is contractual.
+  trust-profile spec file needs. test/spec/divergent.tsv is a
+  47th file that asserts nothing: it is the parity ledger, comments
+  only, recording behaviours the two ports are known to disagree
+  about. Per AGENTS.md, only the asserted substring of an error
+  message is contractual.
 - **Dependency plumbing.** A `deps` record is threaded through parse
   (ts/src/aontu.ts, ts/src/lang.ts) — the skeleton of an evaluation
   manifest — but it arrives empty in the paths exercised while
@@ -405,9 +414,28 @@ the default is a separate, spec-guarded decision (Open questions).
 
 ### Determinism, pinned
 
-- **Canon**: already byte-pinned per row by strict string equality in
-  both runners — the contract documents this as a guarantee rather
-  than an implementation habit.
+Clause 3 is a claim about *two* implementations, so the method that
+tests it is part of the contract rather than a matter of taste. That
+method was itself the gap the number-model defects hid in: a suite
+both ports passed still carried a silent kind divergence, because
+the mode most rows use compares JSON and JSON has no kinds. Three
+disciplines close it, and each has a precedent in boru
+(github.com/boru-lang/boru), whose parity method is the stricter
+one — independently written runners over a shared corpus, a
+`make crossdiff` that diffs full value streams row for row, a
+parity-probe rule for authoring rows, and a divergence ledger that
+is currently empty.
+
+- **Canon, the typed assertion surface**: already byte-pinned per
+  row by strict string equality in both runners — the contract
+  documents this as a guarantee rather than an implementation habit
+  — and, since canon round-trips kind (docs/design/number-model.md,
+  rule R4: a number-kind scalar always renders with a fraction or an
+  exponent), a `canon` row pins the *kind* of a value where a `gen`
+  row structurally cannot. The division goes into the contract:
+  `gen` proves the JSON an agent receives, `canon` proves the value
+  the engine holds, and any behaviour that carries a kind earns a
+  canon row, not only a gen row.
 - **Generated JSON**: a new spec mode `gens` (docs/shared-spec.md;
   runners ts/test/spec.test.ts, go/spec_test.go) asserts the
   *serialised* generated output byte-for-byte: stable key order
@@ -418,6 +446,27 @@ the default is a separate, spec-guarded decision (Open questions).
 - **Repeatability**: a property row class — evaluate the same source
   twice (fresh parse each time, honouring the single-use contract)
   and require byte-equal canon and `gens` output.
+- **Parity probes, not baselines**: a row's expected value must be
+  obtained from **both** engines before it is written down. Running
+  one implementation, recording its answer, and porting until the
+  other agrees promotes whichever engine was asked first to ground
+  truth — which is exactly how two different numeric kind rules
+  survived a shared suite. The rule costs nothing to adopt (it is an
+  authoring discipline, not machinery) and belongs in AGENTS.md
+  beside the existing spec-rows-first instruction.
+- **The divergence ledger, reviewed and normally empty**:
+  test/spec/divergent.tsv is the debt register for the opposite
+  case — a behaviour where the ports are known to disagree and the
+  disagreement cannot be fixed from this repository today. It
+  carries commentary only (an executable row could not pass in both
+  runners by definition), and each entry must name a tracking issue,
+  a reason it is not simply fixed, and both engines' outputs. Its
+  normal state is empty; a non-empty ledger is a standing review
+  item, not a settled fact. Its two current entries — upper-case
+  base prefixes, and integer-kind rendering above 2^53 — are each a
+  tracked bug. The ledger's value is negative: it stops a divergence
+  being rediscovered, and stops anyone baselining one engine's
+  output as the shared contract by accident.
 - **Single-use trees as API contract**: the mutation caveat moves
   from code comment to docs/reference-api.md as a named rule
   ("evaluation consumes the tree"), with a debug-mode guard (a
@@ -528,7 +577,7 @@ remote resolver — so the ecosystem never has a permissive interlude:
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
 | Default flip breaks CLI/library users relying on `@"pkg"` or parent-relative includes | High | Medium | Warning window that prints the exact future-required flag on every escaping resolution; entry-root default keeps relative-include projects working; `--trust system` remains |
-| Reifying the pass budget perturbs existing models (pass index is semantic: KeyFuncVal `cc >= 3` hack) | Medium | High | `budget.passes` default stays 9; all 45 spec files must pass unchanged before and after; KeyFuncVal behaviour pinned by spec rows prior to any change |
+| Reifying the pass budget perturbs existing models (pass index is semantic: KeyFuncVal `cc >= 3` hack) | Medium | High | `budget.passes` default stays 9; all 527 shared spec rows must pass unchanged before and after; KeyFuncVal behaviour pinned by spec rows prior to any change |
 | `unify_cycle` false-positive fix changes which large models error | Medium | Medium | Fix lands behind the distinct code with a generated-SDK-scale row corpus; both implementations run the corpus with no skip list |
 | Byte-pinning `gens` exposes latent TS/Go serialisation divergence (numbers, escaping) | Medium | Medium | Go already mirrors `Number.toString` (go/scalar_format_test.go); introduce `gens` rows incrementally, numbers first; divergences become fixes, not suite carve-outs |
 | Root-confinement path handling diverges across OS/implementations (symlinks, case, realpath) | Medium | High | Confinement = realpath then prefix check, specified in docs/trust.md; include-trust.tsv exercises traversal and symlink escapes; Windows caveats documented |
@@ -541,8 +590,8 @@ remote resolver — so the ecosystem never has a permissive interlude:
 
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, Go port follows.
-Nothing may regress at any phase: the 44 existing spec files
-(~426 rows), the error.tsv substring assertions, canon round-trip
+Nothing may regress at any phase: the 527 rows of the shared suite,
+the error.tsv substring assertions, canon round-trip
 `parse(canon(v)) == v`, and byte-equal canon rows across TS and Go.
 
 **Phase 1 — write the contract (S).**

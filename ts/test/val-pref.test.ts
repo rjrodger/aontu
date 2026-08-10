@@ -22,8 +22,11 @@ import { NullVal } from '../dist/val/NullVal'
 describe('val-pref', function() {
 
   test('construct', () => {
+    // A NUMBER-kind 1 canons as `1.0`: number-kind canon round-trips its
+    // kind, so it always carries a fraction or an exponent (an
+    // unsuffixed `1` would reparse as an integer).
     let r0 = new PrefVal({ peg: new NumberVal({ peg: 1 }) })
-    expect(r0.canon).equal('*1')
+    expect(r0.canon).equal('*1.0')
     expect(r0.rank).equal(0)
 
     let r1 = new PrefVal({ peg: new StringVal({ peg: 'a' }) })

@@ -485,27 +485,31 @@ describe('val-basic', function() {
     expect(tu(ctx, t0, m0).isNil).exist()
 
 
+    // NOTE: makeNumberVal builds a NUMBER-kind 1, and number-kind canon
+    // round-trips its kind, so it renders as `1.0` (an unsuffixed `1`
+    // would reparse as an integer). An integer-kind 1 still canons as
+    // `1` — see test/spec/number-model.tsv.
     let m1 = new MapVal({ peg: { a: makeNumberVal(1) } })
     // print(m1, 'm1')
-    expect(m1.canon).equal('{"a":1}')
+    expect(m1.canon).equal('{"a":1.0}')
 
     let m1u = m1.unify(TOP, ctx)
     // print(m1u, 'm1u')
-    expect(m1u.canon).equal('{"a":1}')
+    expect(m1u.canon).equal('{"a":1.0}')
 
 
     let u01 = m0.unify(m1, ctx)
     // print(u01, 'u01')
-    expect(u01.canon).equal('{"a":1}')
-    expect(m1u.canon).equal('{"a":1}')
+    expect(u01.canon).equal('{"a":1.0}')
+    expect(m1u.canon).equal('{"a":1.0}')
     expect(m0.canon).equal('{}')
-    expect(m1.canon).equal('{"a":1}')
+    expect(m1.canon).equal('{"a":1.0}')
 
     let u02 = m1.unify(m0, ctx)
     // print(u02, 'u02')
-    expect(u02.canon).equal('{"a":1}')
+    expect(u02.canon).equal('{"a":1.0}')
     expect(m0.canon).equal('{}')
-    expect(m1.canon).equal('{"a":1}')
+    expect(m1.canon).equal('{"a":1.0}')
 
   })
 

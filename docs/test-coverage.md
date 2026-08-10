@@ -43,7 +43,7 @@ cd go && go tool cover -html=coverage.out      # annotated source in a browser
 | Go — library (`package aontu`) | statements (`go test -cover`) | **78.5 %** |
 | Go — CLI (`cmd/aontu`)         | statements | **44.4 %** |
 
-Both suites pass in full: **TypeScript 361/361 tests**, **Go all tests**
+Both suites pass in full: **TypeScript 733/733 tests**, **Go all tests**
 (library + CLI + shared spec), via `make test`.
 
 The `cmd/aontu` figure is lower because its uncovered lines are the
@@ -59,19 +59,27 @@ in-process tool does not count).
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **184 cases across 16 files** — is run by *both*
+`test/spec/*.tsv` — **533 cases across 47 files** — is run by *both*
 implementations and is the contract that defines shared behaviour:
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
-| `func.tsv`     | 28 | `plus.tsv`     | 9 |
-| `scalar.tsv`   | 17 | `close.tsv`    | 9 |
-| `ref.tsv`      | 17 | `file.tsv`     | 9 |
-| `spread.tsv`   | 16 | `var.tsv`      | 8 |
-| `marks.tsv`    | 15 | `disjunct.tsv` | 7 |
-| `map.tsv`      | 13 | `list.tsv`     | 7 |
-| `conjunct.tsv` | 11 | `optional.tsv` | 7 |
-| `pref.tsv`     |  7 | `error.tsv`    | 4 |
+| `number-model.tsv`  | 101 | `map.tsv`        | 13 |
+| `func.tsv`          |  55 | `op-chars.tsv`   | 13 |
+| `scalar.tsv`        |  29 | `disjunct.tsv`   | 11 |
+| `var.tsv`           |  21 | `file.tsv`       | 11 |
+| `ref.tsv`           |  19 | `close.tsv`      |  9 |
+| `optional.tsv`      |  18 | `incomplete.tsv` |  9 |
+| `marks.tsv`         |  17 | `error.tsv`      |  7 |
+| `pref.tsv`          |  17 | `list.tsv`       |  7 |
+| `plus.tsv`          |  14 | `comment.tsv`    |  6 |
+| `conjunct.tsv`      |  13 | `elision.tsv`    |  5 |
+| `engine-parity.tsv` |  13 | `divergent.tsv`  |  0 |
+
+plus the `spread*.tsv` family — **25 files, 119 cases**, one spread
+topic per file. `divergent.tsv` is the divergence ledger: commentary
+only, no data rows, so it contributes zero cases (see
+[the shared spec](shared-spec.md#the-divergence-ledger)).
 
 Each row asserts a canonical form (`canon`), a generated value (`gen`),
 or an error substring (`err`). Because both implementations load the same
@@ -80,8 +88,10 @@ rows, every line of language behaviour described in the
 
 ### TypeScript-native tests
 
-In addition to the shared spec, `ts/test/*.test.ts` contributes the bulk
-of the 350-test suite — rich, implementation-specific cases:
+The shared spec accounts for 534 of the 733 TypeScript tests (533 rows
+plus a sanity check that the rows loaded). On top of it,
+`ts/test/*.test.ts` contributes the remaining ~200 — rich,
+implementation-specific cases:
 
 | Suite | Focus |
 |-------|-------|
@@ -97,9 +107,10 @@ of the 350-test suite — rich, implementation-specific cases:
 
 ### Go-native tests
 
-`go/aontu_test.go` adds five sanity tests — `TestBasicCanon`,
-`TestParseCanon`, `TestGenerate`, `TestConflictErrors`, `TestEmpty` —
-and `go/spec_test.go`'s `TestSpec` runs all 184 shared rows as subtests.
+`go/aontu_test.go` adds seven sanity tests — `TestBasicCanon`,
+`TestParseCanon`, `TestGenerate`, `TestConflictErrors`, `TestEmpty`,
+`TestReservedKeyPrefixRejected`, `TestVersionFormat` — and
+`go/spec_test.go`'s `TestSpec` runs all 533 shared rows as subtests.
 The Go library suite is therefore **shared-spec-dominated**: it
 guarantees parity but adds comparatively few Go-specific cases.
 `go/cmd/aontu/main_test.go` separately covers the CLI's `render` and
@@ -154,9 +165,9 @@ every feature is pinned by the shared spec, which passes on both sides.
 The headline difference (TS ~95 % vs Go ~78 %) is explained by **suite
 composition, not by behavioural blind spots**:
 
-- The TypeScript side carries ~350 targeted tests that walk private
+- The TypeScript side carries ~200 targeted tests that walk private
   branches, debug/inspect output, and option permutations.
-- The Go side is intentionally a port and leans on the 183-row shared
+- The Go side is intentionally a port and leans on the 533-row shared
   spec plus a handful of sanity tests; its remaining uncovered code is
   mostly internal lattice/diagnostic helpers.
 

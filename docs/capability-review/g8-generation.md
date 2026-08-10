@@ -6,7 +6,9 @@ G8 — producing N similar children from data without copies that drift,
 while keeping the guarantee that Aontu evaluation always terminates.
 It resolves the fork sketched in IDEAS.md: total generator combinators
 (`each`/`pack`/`filter`/`match`), placeholder arguments, and pipe
-sugar are adopted; user-defined functions and recursion are refused.*
+sugar are adopted; user-defined functions and recursion are refused.
+The arithmetic semantics for IDEAS.md's maths-as-functions are
+pre-registered here, not designed.*
 
 ## Problem
 
@@ -379,6 +381,64 @@ template-func-canon). `_` canons as `_`. `|>`, if adopted, never
 appears in canon: it is parse-time sugar, desugared before the tree
 exists, so canon and the Go parser are untouched by it.
 
+### Arithmetic semantics, pre-registered
+
+IDEAS.md sketches maths as functions — `add(x,y)`, `sub`, `mul`,
+`div`, `mod`, `rem` — rather than as operator tokens, and the
+[Boundary](#boundary-what-we-will-not-do) below keeps `-` `*` `/`
+`%` reserved. Designing those functions is not this document's work,
+but the *semantics* they must have can be settled now, at no cost,
+so whoever lands them inherits one decision instead of making six
+under deadline. All of it is prior art from the same author family:
+boru (github.com/boru-lang/boru, MIT) ships these rules and pins
+them in lang/spec/arithmetic.tsv and
+lang/spec/numeric-cross-product.tsv, whose rows translate directly
+into test/spec/*.tsv.
+
+1. **Checked integer arithmetic.** `add`, `sub`, `mul` and `pow`
+   over two integer-kind operands raise a **located overflow error**
+   when the exact result leaves the integer range — never a
+   two's-complement wrap, and never a silent degradation to
+   `number`. Both of those are answers that look right and are not,
+   which is the failure mode the number model exists to refuse
+   (docs/design/number-model.md). boru arrived here after shipping
+   the opposite: its design/INTEGER-OVERFLOW-STRATEGY.5.md records
+   three contradictory silent behaviours in one language, and
+   concludes that documentation cannot be the fix for a silent wrong
+   answer.
+2. **Integer division truncates toward zero.** `div(-7, 2)` is `-3`,
+   not `-4`. Truncation rather than floor, stated once and
+   spec-pinned, not left to whichever host language's `/` each port
+   happens to call.
+3. **Division or modulo by zero is a hard error for exact kinds.** A
+   ground-truth language has no business manufacturing infinity: a
+   definition that divides by zero is wrong, and the evaluator
+   should say so with a located nil. Aontu cannot even represent the
+   alternative — there is no way to write a non-finite number, an
+   overflowing literal being a `not_number` error nil — so
+   propagating one out of arithmetic would invent a value no
+   generated JSON could carry.
+4. **IEEE semantics only where a `number` operand is present.** With
+   a number-kind operand the operation follows IEEE-754 binary64,
+   with the JSON-superset constraint still biting: an infinite or
+   NaN result is a located error, not a value, unless and until
+   Aontu gains a notation for them (docs/design/number-model.md,
+   known edge 4). This is the one point where Aontu must depart from
+   boru, which has `inf`/`nan` literals precisely because it is not
+   a JSON superset.
+5. **Kind contagion extends to every new operator.** Rule R5 — no
+   operator or function may introduce a kind narrower than its
+   inputs — is written up for `+` and for `upper()`/`lower()`
+   because those are the operations that exist today; it is a rule
+   about operations, not about `+`. An integer-kind result requires
+   integer-kind operands *and* a result that satisfies the kind
+   rule; any number-kind operand makes the result number kind. Each
+   arithmetic function therefore lands with its own cross-product
+   rows — every kind combination, asserting value *and* kind — in
+   the manner of numeric-cross-product.tsv, and those are canon
+   rows: per [G5](g5-trust-contract.md), a gen row cannot see a
+   kind.
+
 **API/CLI surface.** None new. The combinators are language-level;
 evaluation, `--canon`, and the G2/G7 verbs see generated children as
 ordinary values. The LSP inherits hover/diagnostics for the new Vals
@@ -408,7 +468,10 @@ through the existing document pipeline (ts/src/lsp.ts).
   conflict stays an error until real models demand otherwise.
 - **No new operator tokens** — `-` `*` `/` `%` stay reserved
   (test/spec/op-chars.tsv); maths beyond `+` arrives, if ever, as
-  functions, and is outside G8.
+  functions, and designing them is outside G8. This document
+  pre-registers the semantics those functions must have
+  ([above](#arithmetic-semantics-pre-registered)); it does not
+  build them.
 - **No lazy-evaluation redesign** — generation works inside the
   existing strict fixpoint; changing the evaluation strategy is a
   different, larger project.
@@ -438,7 +501,7 @@ regress; the spread corpus is the regression canary.
 
 **Phase 0 — staging rule (S).** Replace the `KeyFuncVal` `cc < 3`
 delay with the settled-argument residuation rule in the shared
-function base; zero behaviour change, gated on the full 44-file
+function base; zero behaviour change, gated on the full 527-row
 suite. Files: ts/src/val/FuncBaseVal.ts, ts/src/val/KeyFuncVal.ts,
 ts/src/unify.ts; go/func.go, go/unify.go. No new spec rows; the
 existing spread-key*.tsv files are the acceptance test. Fix or fence

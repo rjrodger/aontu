@@ -128,9 +128,14 @@ missing:
 - **Located errors.** `NilVal.make` (`ts/src/val/NilVal.ts`) carries
   a primary and secondary site, later-in-source first — the natural
   carrier for "constraint at site A rejected value at site B".
-- **Numbers.** Both implementations pin IEEE-754 double semantics;
-  `go/scalar.go` reimplements JS `Number.toString` formatting so
-  canon output is byte-identical.
+- **Numbers.** Both implementations pin IEEE-754 double semantics
+  under two kinds, `integer` and `number`, classified by one shared
+  predicate (`isIntegerKind` — `ts/src/val/numkind.ts`, `go/lang.go`);
+  `go/scalar.go` reimplements JS `Number.toString` formatting, and the
+  canon path adds a `.0` suffix to number-kind values so canon
+  round-trips kind. The model and the six rules that make it well
+  defined are recorded in `docs/design/number-model.md` and pinned by
+  the 101 rows of `test/spec/number-model.tsv`.
 
 Structurally blocking: there is no `Val` kind that can represent a
 residual scalar predicate; there is no regex anywhere in the
@@ -390,22 +395,75 @@ is present.
 Decision: Aontu **keeps IEEE-754 double semantics** — and removes
 the *silent* part of the defect. An integer-kind literal whose
 double representation is not exact becomes a located parse-time
-error (`lossy integer literal`) instead of rounding. Float literals
-and exponent forms are untouched: approximation is expected of
-`number`. The language contract becomes explicit: integers are exact
-in [−2^53, 2^53]; the bounds algebra compares exactly within that
+error (`lossy integer literal`) instead of rounding. Number-kind
+literals are untouched: approximation is expected of `number`. The
+language contract becomes explicit: integers are exact in
+[−2^53, 2^53]; the bounds algebra compares exactly within that
 range; outside it, the definition refuses to pretend.
 
-This flips three existing spec rows (`hex-big`, `hex-big-canon`,
-`hex-huge` in `test/spec/scalar.tsv`) to `err` — the only
-deliberate row changes in this design, sequenced as a breaking
-change under [G3](g3-subsumption-evolution.md)'s process. Migrating to
-arbitrary-precision decimals (CUE's choice) is explicitly out of
-scope: it would touch every scalar path in two implementations,
-destabilise the canon formatting that `go/scalar.go` painstakingly
-matches to JS `Number.toString`, and invalidate canon-hash pinning
+**The contract is now welded to the kind rule, not advisory.** Since
+this document was drafted the number model has landed
+(`docs/design/number-model.md`, pinned by the 101 rows of
+`test/spec/number-model.tsv`), and its first rule decides exactly
+which literals the exactness contract binds. A numeric literal is
+integer kind if and only if its source text contains no `.`, its
+value is integral, and its value lies within the int64 range — the
+last tested against the exact `float64` bounds
+(`n >= -9223372036854775808.0 && n < 9223372036854775808.0`), never
+by round-tripping through `int64`, whose out-of-range behaviour the
+Go specification leaves implementation-defined. One predicate,
+`isIntegerKind` (`ts/src/val/numkind.ts`, `go/lang.go`), runs at
+every construction site in both ports. So "which values must be
+exact" is a mechanically checkable question with one answer, and the
+two implementations agree by construction rather than by accident:
+before the rule landed, `a: 1e21 & integer` succeeded in TypeScript
+and failed in Go — a silent, magnitude-dependent parity break in the
+very stratum the bounds algebra will compare over.
+
+The rule also relocates this design's remaining work.
+`0xffffffffffffffff`, `0x10000000000000000000000000000000` and
+`100000000000000000000` all sit outside the int64 window, so they
+are *number* kind, and the lossy-literal error does not reach them
+at all — approximation is what `number` promises, and their
+`test/spec/scalar.tsv` rows stand. What is left for Phase 6 is the
+band the kind rule deliberately admits: integer-kind literals in
+(2^53, 2^63), in range yet already rounded before any rule sees
+them. The suite pins that band as agreed-but-wrong behaviour in one
+row — `number-model.tsv`, `lossy-above-pow53`, where
+`x:9007199254740993` generates `9007199254740992` in both ports.
+Phase 6 is what turns that row loud.
+
+**Canon now round-trips kind, which this design depends on more than
+the original text admitted.** Residual constraint atoms must survive
+canon — `parse(canon(v)) == v` is asserted throughout this design,
+for every atom and every normalisation rule — and until R4 an
+integral number-kind value did not: `x:1.0` canoned to `{"x":1}`,
+which reparses as an *integer*. A number-kind scalar now always
+renders with a fraction or an exponent (`1.0`, `0.0`,
+`100000000000000000000.0`; `1e+21` unchanged), so a bound's argument
+keeps its kind across a round trip and `min(1)` and `min(1.0)` are
+distinguishable in canonical text. The suffix belongs to canon
+alone: string coercion inside `+` keeps JavaScript parity, so
+`"a"+1.0` is still `"a1"`.
+
+There is a knock-on for [G6](g6-distribution.md)'s canon hashing.
+Two semantically different values no longer share canon text, which
+retires one instance of the "canon is not semantically complete"
+gap its hash form has to close — and it is the dangerous direction,
+a false "unchanged". G6 owns that definition; this is a note that
+the ground under it moved favourably, not a redesign of it.
+
+Sequencing: Phase 6 is a breaking row change under
+[G3](g3-subsumption-evolution.md)'s process — the only deliberate
+row change in this design. Migrating to arbitrary-precision
+decimals (CUE's choice) is explicitly out of scope: it would touch
+every scalar path in two implementations, destabilise the canon
+formatting that `go/scalar.go` painstakingly matches to JS
+`Number.toString`, and invalidate canon-hash pinning
 ([G6](g6-distribution.md)) for every existing document. Loud
-refusal now preserves the option later.
+refusal now preserves the option later — see
+[Boundary](#boundary-what-we-will-not-do) for the shape that option
+takes.
 
 ### API/CLI surface
 
@@ -429,6 +487,13 @@ something worth exposing.
 - **No arbitrary-precision decimal migration.** Bounded instead by
   loud lossy-literal errors and an explicit exactness contract; full
   migration would destabilise canon, parity, and semantic hashing.
+  The door that stays open is an **opt-in literal prefix** in the
+  manner of boru's `0d` (`docs/design/number-model.md`): an exact
+  leaf reachable only through new literal syntax adds a kind without
+  changing the meaning, the value, or the canon of any literal
+  already written. That property is why refusing the migration now
+  costs nothing later — the refusal is a decision not to widen the
+  default number, not a decision against exactness.
 - **No time/format/net validator library.** That is the later
   stdlib stratum in CUE's demand ordering, and its hermeticity
   questions belong to [G5](g5-trust-contract.md).
@@ -454,17 +519,18 @@ something worth exposing.
 | Conjunct sort instability diverges between implementations | Low | Medium | Result defined by normalisation, not order; `sort.SliceStable` in `go/conjunct.go`; parity rows with mixed-band conjuncts |
 | Surface creep: 9 new builtins (12 → 21) | Medium | Medium | One family, one reference section, zero grammar change; demand-ordered phases allow stopping after bounds+regex |
 | Agents emit CUE spellings (`>0`, `=~`) | High | Low | Targeted parse hints in `ts/src/hints.ts` / `go/hints.go`; published grammar and examples via G7 |
-| Breaking spec-row change for lossy hex literals | Certain | Low | Single, deliberate, documented change; assessed with G3's breaking check once it exists |
+| Breaking spec-row change for lossy integer literals above 2^53 | Certain | Low | One row (`number-model.tsv`, `lossy-above-pow53`); single, deliberate, documented change; assessed with G3's breaking check once it exists |
 | Performance: per-pass regex recompilation, interval churn | Low | Medium | Compile-once cache keyed on pattern; intervals are O(1) merges; add perf-sensitive rows to the parity suite |
 
 ## Implementation plan
 
 Every phase is spec-first: TSV rows are authored and reviewed before
 any implementation, TypeScript (canonical) lands first, the Go port
-follows, and `make test` runs both. Nothing may regress: all 44
-existing spec files (~426 rows) except the three rows Phase 6
-deliberately amends, and the canon round-trip property
-`parse(canon(v)) == v` throughout.
+follows, and `make test` runs both. Nothing may regress: all 527
+rows of the shared suite (46 row-bearing files;
+`test/spec/divergent.tsv` is the parity ledger and carries none)
+except the single row Phase 6 deliberately amends, and the canon
+round-trip property `parse(canon(v)) == v` throughout.
 
 1. **Phase 0 — algebra on paper (S).** Write the pairwise meet /
    emptiness / subsumption tables and the canonical atom order into
@@ -497,9 +563,14 @@ deliberately amends, and the canon round-trip property
    `NilVal.details`; rows asserting evaluate-only reporting; the
    report rendering itself waits for G2.
 7. **Phase 6 — number exactness (S).** Lossy-integer-literal error
-   in `ts/src/lang.ts` number handling and `go/lang.go`; amend
-   `scalar.tsv` rows `hex-big`, `hex-big-canon`, and `hex-huge` to
-   `err` mode — the one sanctioned regression, in its own commit.
+   beside `isIntegerKind` in `ts/src/lang.ts` and `go/lang.go`: a
+   literal that passes the integer-kind test but whose value is not
+   exactly representable — the (2^53, 2^63) band — becomes a
+   located nil instead of a rounded value. Amend
+   `number-model.tsv` row `lossy-above-pow53` to `err` mode — the
+   one sanctioned regression, in its own commit. The `scalar.tsv`
+   extreme-magnitude rows are untouched: the kind rule makes those
+   literals number kind, so the error never reaches them.
 
 Ongoing, per the review's method: property-based differential
 testing of the algebra laws (commutativity, idempotence,

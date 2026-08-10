@@ -30,6 +30,7 @@ import { NullVal } from './NullVal'
 import { BooleanVal } from './BooleanVal'
 import { NumberVal } from './NumberVal'
 import { IntegerVal } from './IntegerVal'
+import { isIntegerKind } from './numkind'
 
 
 import {
@@ -106,7 +107,12 @@ class VarVal extends FeatureVal {
           out = new BooleanVal({ peg: found })
         }
         else if ('number' === ft) {
-          out = Number.isInteger(found) ?
+          // A raw var binding carries no source text, so the integral +
+          // int64-range conditions decide the kind (same helper as the
+          // val rule and rawToVal).
+          // (ctx.vars is declared as Record<string, Val> but also
+          // carries raw scalars, which is what `ft` has just proven.)
+          out = isIntegerKind(found as unknown as number) ?
             new IntegerVal({ peg: found }) :
             new NumberVal({ peg: found })
         }

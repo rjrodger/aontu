@@ -28,11 +28,13 @@ implementations are checked against the same cases.
 ├── Makefile             # fans out to ts/ and go/
 ├── README.md
 ├── docs/
+│   ├── design/          # design notes — the why behind settled decisions
 │   ├── lsp.md           # language server reference
 │   └── shared-spec.md   # the shared TSV test format
 ├── editors/             # editor plugins (VS Code, Emacs, Vim) → aontu-lsp
 ├── test/
 │   └── spec/            # shared test cases — *.tsv (language-agnostic)
+│       └── divergent.tsv  # the parity ledger (commentary only, no rows)
 ├── ts/                  # canonical TypeScript implementation
 │   ├── package.json     # `bin`: aontu -> dist/cli.js, aontu-lsp -> dist/lsp-server.js
 │   ├── src/             # source incl. cli.ts, lsp.ts, lsp-server.ts (+ src/tsconfig.json -> ../dist)
@@ -106,15 +108,87 @@ Escapes in `src`/`expect`: `\n` → newline, `\t` → tab, `\\` → backslash.
 Lines starting with `#` and blank lines are ignored. See
 [`docs/shared-spec.md`](docs/shared-spec.md) for details.
 
+Pick the mode that can actually fail: `gen` compares through JSON and is
+therefore blind to the `integer`/`number` kind distinction, so a
+behaviour that distinguishes kinds must be pinned by `canon` or `err` —
+see [Choosing a mode](docs/shared-spec.md#choosing-a-mode).
+
 ### Adding a behaviour
 
-1. Add a row to the appropriate `test/spec/*.tsv` file.
+1. Add a row to the appropriate `test/spec/*.tsv` file, with its
+   expected value obtained by the [parity probe](#the-parity-probe)
+   below — never copied out of one engine.
 2. Make it pass in the canonical implementation (`ts/src`), rebuild,
    and run `make test-ts`.
 3. Make it pass in the Go port (`go/`) and run `make test-go`.
 
 A behaviour is only "shared" once it passes in **both** — only add rows
 that both implementations satisfy.
+
+### The parity probe
+
+**An expected value in a shared spec row must be obtained by running
+both implementations and requiring them to agree.** Two command lines,
+from the repository root:
+
+```sh
+echo 'x:1.0' | node ts/dist/cli.js -c
+(cd go && echo 'x:1.0' | go run ./cmd/aontu -c)
+```
+
+Both print `{"x":1.0}`, so that is the `canon` expectation and the row
+may be written. Drop `-c` from both for a `gen` row — the CLIs then
+print generated JSON. For an `err` row, probe the same way and assert a
+substring that **both** messages contain; error wording itself is not in
+parity (see [Known TS/Go divergences](#known-tsgo-divergences)).
+
+The TypeScript CLI runs the committed build, so run `make build-ts`
+before probing if `ts/src` has changed, or the probe answers for the old
+code.
+
+Writing the expectation from one engine's output is how a divergence
+gets baselined as the contract. The row then passes on the side it was
+copied from and fails on the other, and the obvious next move — "make
+the other side match" — quietly changes whichever engine happened to be
+right. Nothing in the suite can warn you, because a row that was never
+probed carries no record of having been agreed. Probing costs two
+commands; the alternative costs a wrong contract that looks green.
+
+### The divergence ledger
+
+When a probe shows the two engines disagreeing, that is a **bug**, and
+the default response is to fix the engine.
+[`test/spec/divergent.tsv`](test/spec/divergent.tsv) is the debt
+register for the case where it cannot be fixed from this repository
+right now — the behaviour originates in a pinned `@tabnas` dependency,
+or which side is correct is an open language-design question.
+
+It lives beside the suite, as a `.tsv`, so it is read whenever the spec
+is read — but it carries **no data rows**. A row there would be executed
+by both runners and, by definition, could not pass in both, so
+everything in the file is commentary; both runners skip comment and
+blank lines, and the file therefore contributes zero cases.
+
+Adding an entry is a deliberate, reviewed act, **not** a way to silence
+a failing row. An entry must carry an issue reference, the reason it is
+not simply fixed, and the exact divergent inputs together with *both*
+engines' outputs. An entry is removed — not amended — when the
+divergence is fixed, and the behaviour then earns real rows in the
+appropriate spec file.
+
+The ledger is not the same list as
+[Known TS/Go divergences](#known-tsgo-divergences) below. Those differ
+deliberately and permanently and are never going to be pinned, so they
+are not tracked as debt.
+
+[`docs/design/number-model.md`](docs/design/number-model.md) is the
+worked example of what this discipline catches. TypeScript classified a
+numeric literal's kind with no range condition at all, while Go used a
+`float64` → `int64` round-trip, so `a:1e21 & integer` **succeeded in
+TypeScript and failed in Go** — a silent, magnitude-dependent parity
+break that no existing row observed, because no row at that magnitude
+had ever been asked of both engines. The review that found it produced
+`test/spec/number-model.tsv` and the ledger's two current entries.
 
 ## Implementation parity & Go coverage
 
@@ -190,7 +264,10 @@ applies to the Go port. Treat parsed `Val`s as single-use.
 
 The shared spec only contains rows that pass identically in both
 implementations. A few behaviours deliberately differ and must **not**
-be added to `test/spec/*.tsv`:
+be added to `test/spec/*.tsv`. These are permanent, so they are not
+entered in the divergence ledger
+([`test/spec/divergent.tsv`](test/spec/divergent.tsv)), which tracks
+only divergences that are expected to be fixed:
 
 - **Error message text.** Go's `hints` are abbreviated versions of the TS
   hints, and TS additionally renders source frames. Only the substring
@@ -265,6 +342,28 @@ be added to `test/spec/*.tsv`:
 > outside (`1e+21`, `1e-7`) — pinned by `go/scalar_format_test.go` and
 > the `scalar.tsv` extreme-magnitude canon rows. Numeric canon rows no
 > longer need to stay inside the old "safe decimal subset".
+
+> **Previously divergent, now fixed:** the classification of numeric
+> kinds. TypeScript decided a literal's kind with no range condition at
+> all, and Go with a `float64` → `int64` round-trip (whose out-of-range
+> behaviour the Go specification leaves implementation-dependent), so
+> `a:1e21 & integer` succeeded in TS and failed in Go. Both ports now
+> share one predicate — `isIntegerKind` (`ts/src/val/numkind.ts`,
+> `go/lang.go`), comparing against the exact `float64` bounds and
+> applied at every construction site, including the raw/implicit-list
+> path where there is no source text. Five further rules landed with it:
+> negative zero never reaches the AST, generated output or canon; scalar
+> identity compares kind as well as value, so `1|1.0` keeps both
+> alternatives; number-kind canon always carries a fraction or an
+> exponent, so it reparses to the same kind (this flipped `scalar.tsv`'s
+> `big-fixed-canon` and `hex-big-canon` to a `.0` suffix); `+`,
+> `upper()` and `lower()` never narrow their operands' kind; and
+> `super(x)` lifts its argument rather than itself. The `.0` suffix is
+> canon-only — `+`'s string coercion keeps JS parity (`"a"+1.0` is
+> `"a1"`), so `go/scalar_format_test.go` passes unchanged. Pinned by
+> `test/spec/number-model.tsv`; what remains unresolved is entry 2 of
+> the divergence ledger. Background:
+> [`docs/design/number-model.md`](docs/design/number-model.md).
 
 > **Previously divergent, now fixed:** a colon-chain key whose value was a
 > bare import — `struct: minor: @"file"` — used to resolve to `{}` in Go

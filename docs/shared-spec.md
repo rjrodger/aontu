@@ -37,7 +37,10 @@ name <TAB> mode <TAB> src <TAB> expect
 | `err`   | `generate(src)` must raise an error whose message contains `expect` |
 
 For `gen`, the generated value and the expected JSON are compared
-structurally (numeric type and object key order do not matter).
+structurally (numeric type and object key order do not matter). That
+comparison is weaker than it looks, and choosing the wrong mode because
+of it is the commonest way to write a row that cannot fail — see
+[Choosing a mode](#choosing-a-mode).
 
 ### Escapes
 
@@ -66,12 +69,88 @@ a:2
 
 and expects `{ "a": 2 }`.
 
+## Choosing a mode
+
+**`gen` compares through JSON and is therefore blind to the
+`integer`/`number` kind distinction; `canon` is kind-faithful.** This is
+the single most useful thing to know about the suite.
+
+Aontu has two numeric kinds over one representation, and JSON has only
+one number type. A `gen` row round-trips the result through JSON, so the
+kind is gone before the comparison happens. Canon, by contrast, must
+reparse to a value of the *same* kind, so a number-kind scalar always
+renders with a fraction or an exponent:
+
+| Source  | `gen`     | `canon`     |
+|---------|-----------|-------------|
+| `x:1`   | `{"x":1}` | `{"x":1}`   |
+| `x:1.0` | `{"x":1}` | `{"x":1.0}` |
+
+The two sources are indistinguishable in the middle column and distinct
+in the right-hand one. So:
+
+> **A behaviour that distinguishes numeric kinds MUST be pinned by a
+> `canon` row or an `err` row — never by `gen` alone.**
+
+A `gen` row accepts whichever kind the implementation happens to
+produce. It stays green while the kind is wrong, which is exactly how a
+kind defect survives a passing suite — and how one port can drift from
+the other without any row noticing.
+
+- Use `canon` when the point is which kind is *produced*: `x:1.5+1.5`
+  canons to `{"x":3.0}`, whereas its `gen` value is `{"x":3}` — which
+  would pass just as happily if the sum had wrongly come out an
+  integer.
+- Use `err` when the point is that a kind is *rejected*:
+  `x:(1.5+1.5) & integer` must fail.
+- `gen` remains the right mode for a *value*, and the only mode that
+  checks the JSON a caller actually receives.
+
+The same blindness applies to everything else JSON flattens — `gen`
+ignores object key order too — but numeric kind is the case that bites,
+because it is invisible rather than merely unordered.
+
+The kind rules themselves are pinned by
+[`test/spec/number-model.tsv`](../test/spec/number-model.tsv); the
+reasoning behind them is in
+[`docs/design/number-model.md`](design/number-model.md).
+
 ## Adding cases
 
-1. Pick (or add) a thematic file — `scalar.tsv`, `map.tsv`, `list.tsv`,
-   `conjunct.tsv`, `disjunct.tsv`, `pref.tsv`, `error.tsv`.
-2. Append a row. Validate against the canonical TypeScript
-   implementation first (`make test-ts`), then the Go port
-   (`make test-go`).
-3. Only commit rows that pass in **both** implementations — the spec
+1. Pick (or add) a thematic file. `scalar.tsv`, `map.tsv`, `list.tsv`,
+   `conjunct.tsv`, `disjunct.tsv`, `pref.tsv` and `error.tsv` cover the
+   core language; `number-model.tsv` covers the numeric kind rules; and
+   `spread.tsv` plus the `spread-*.tsv` family take one spread topic per
+   file.
+2. Pick the mode that can actually fail for the behaviour you are
+   pinning — see [Choosing a mode](#choosing-a-mode).
+3. **Obtain the expected value by running both implementations and
+   requiring them to agree.** Never copy it out of one engine: that
+   baselines a divergence as the contract. From the repository root:
+
+   ```sh
+   echo 'x:1.0' | node ts/dist/cli.js -c
+   (cd go && echo 'x:1.0' | go run ./cmd/aontu -c)
+   ```
+
+   Drop `-c` from both for a `gen` row. The TypeScript CLI runs the
+   committed build, so run `make build-ts` first if `ts/src` has
+   changed.
+4. Append the row, then run `make test-ts` and `make test-go`.
+5. Only commit rows that pass in **both** implementations — the spec
    defines shared, agreed behaviour.
+
+## The divergence ledger
+
+[`test/spec/divergent.tsv`](../test/spec/divergent.tsv) is the opposite
+register: behaviours where the two ports are known to **disagree** and
+which cannot be fixed from this repository right now — because the cause
+is in a pinned dependency, or because which side is correct is still an
+open question.
+
+It lives beside the suite so it is read whenever the spec is read, but
+it carries no data rows. A row there would be executed by both runners
+and, by definition, could not pass in both, so the file is entirely
+commentary and contributes zero cases. Recording a divergence there is a
+deliberate, reviewed act rather than a way to quieten a failing row; the
+rules for an entry are in [`AGENTS.md`](../AGENTS.md).

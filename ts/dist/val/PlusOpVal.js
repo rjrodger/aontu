@@ -6,6 +6,7 @@ const IntegerVal_1 = require("../val/IntegerVal");
 const NumberVal_1 = require("../val/NumberVal");
 const StringVal_1 = require("../val/StringVal");
 const BooleanVal_1 = require("../val/BooleanVal");
+const numkind_1 = require("../val/numkind");
 const OpBaseVal_1 = require("./OpBaseVal");
 class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     constructor(spec, ctx) {
@@ -23,17 +24,23 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
         // maps, lists, null, top, funcs) must not coerce — the JS `+` would
         // leak internals like "[object Object]" into output. A non-scalar
         // operand leaves the op unresolved, which generate() reports.
-        const prim = (v) => {
-            // A pref operand contributes its preferred value (`pref(1)+2`).
+        const operand = (v) => {
+            // A pref operand contributes its preferred value (`pref(1)+2`),
+            // and therefore that value's kind too.
             while (v?.isPref) {
                 v = v.peg;
             }
+            return v;
+        };
+        const prim = (v) => {
             const p = v?.isVal && v.isScalar ? v.peg : undefined;
             const t = typeof p;
             return 'string' === t || 'number' === t || 'boolean' === t ? p : undefined;
         };
-        let a = prim(args[0]);
-        let b = prim(args[1]);
+        const av = operand(args[0]);
+        const bv = operand(args[1]);
+        let a = prim(av);
+        let b = prim(bv);
         if (undefined === a || undefined === b) {
             return undefined;
         }
@@ -62,7 +69,17 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
             out = new BooleanVal_1.BooleanVal({ peg });
         }
         else if ('number' === pegtype) {
-            out = Number.isInteger(peg) ? new IntegerVal_1.IntegerVal({ peg }) : new NumberVal_1.NumberVal({ peg });
+            // Kind contagion: `+` must not introduce a kind narrower than its
+            // operands. The result is integer kind only when BOTH operands
+            // are integer kind AND the sum is itself integer kind (integral
+            // and inside int64 — the sum of two integers can leave the
+            // range). Deriving the kind from the result value alone would
+            // make 1.5+1.5 an integer.
+            out = av instanceof IntegerVal_1.IntegerVal &&
+                bv instanceof IntegerVal_1.IntegerVal &&
+                (0, numkind_1.isIntegerKind)(peg) ?
+                new IntegerVal_1.IntegerVal({ peg }) :
+                new NumberVal_1.NumberVal({ peg });
         }
         return out;
     }

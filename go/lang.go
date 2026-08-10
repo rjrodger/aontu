@@ -131,8 +131,14 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			// had turned them off and `1_000` unified to the STRING
 			// "1_000" while the TS port (whose option merge keeps the
 			// default) gave 1000. Caught by test/spec/engine-parity.tsv.
-			Sep:   "_",
-			Check: tsNumCheck,
+			Sep: "_",
+			// See sepInvalid: a separator is legal only as a SINGLE
+			// separator BETWEEN digits, and the engine's matcher leaves
+			// two gaps (`1__0`, `0x_ff`). Exclude is the exact analogue
+			// of the TS `number.exclude` RegExp — same matched source,
+			// same "decline the whole run to text" outcome.
+			Exclude: numberExcluded,
+			Check:   tsNumCheck,
 		},
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
@@ -180,6 +186,25 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			// Override the default `+` (addition) precedence to match the
 			// aontu plus operator (binds tighter than & and |).
 			"addition": map[string]interface{}{"infix": true, "src": "+", "left": 20000000, "right": 21000000},
+			// Re-base unary minus for the same reason. Every aontu
+			// operator sits far above the @tabnas/expr defaults, so the
+			// default prefix binding power (4000000) left unary `-`
+			// LOOSER than every infix operator: `-5 & integer` parsed as
+			// `-(5 & integer)`, whose operand is an unresolved
+			// ConjunctVal, which negate() rejects — so every such
+			// expression collapsed to a `negative` nil (likewise `-2+3`,
+			// `-1|2`). Unary minus must bind TIGHTER than `+`, `&` and
+			// `|`: 22000000 sits above addition (20/21M) and below star
+			// / dot-prefix (24M), so `-0xFF.5` still parses as
+			// `-(0xFF.5)`.
+			//
+			// Unary plus is raised with it. positive-prefix is the
+			// identity in both ports, so its binding power is not
+			// observable either way; the entry exists so the two op
+			// tables are literally the same table, and a reader diffing
+			// them never has to work out whether a difference matters.
+			"negative": map[string]interface{}{"prefix": true, "src": "-", "right": 22000000},
+			"positive": map[string]interface{}{"prefix": true, "src": "+", "right": 22000000},
 			// Replace the default grouping paren with a preval-active
 			// function paren: `name(args)` is a call, `(expr)` is grouping.
 			"plain": nil,
@@ -450,10 +475,47 @@ func overflowsFloat(src string) bool {
 	return ok && ne.Err == strconv.ErrRange
 }
 
-// numberVal picks IntegerVal vs NumberVal: a number is an integer when
-// its source has no decimal point (mirrors ts/src/lang.ts).
+// The int64 range, as exact float64 bounds. -2^63 and 2^63 are both
+// exactly representable as a float64; 2^63-1 is NOT (it rounds up to
+// 2^63), which is why the upper bound is exclusive — and why the hex
+// literal 0x7fffffffffffffff correctly falls outside the range.
+const (
+	int64MinFloat   = -9223372036854775808.0
+	int64LimitFloat = 9223372036854775808.0
+)
+
+// isIntegerKind reports whether a numeric value has *integer* kind. All
+// three conditions must hold:
+//
+//	(a) the source text, when there is any, contains no '.'
+//	(b) the value is integral
+//	(c) the value lies within the int64 range
+//
+// Pass src == "" at construction sites with no source text (raw values
+// from an implicit top-level list, operator results); condition (a) is
+// then vacuous and (b)+(c) decide.
+//
+// The range test is deliberately NOT written as `n == float64(int64(n))`:
+// converting an out-of-range float64 to an int64 is implementation-
+// dependent in Go, and that accident is exactly what used to make this
+// port disagree with TypeScript about 1e21, 0x7fffffffffffffff and
+// friends. Compare against the float64 bounds first, convert after.
+//
+// Kept in lock-step with isIntegerKind in ts/src/val/numkind.ts.
+func isIntegerKind(n float64, src string) bool {
+	if strings.Contains(src, ".") {
+		return false
+	}
+	// NaN fails the Trunc test; ±Inf fails the range test. So a
+	// non-finite value is never of integer kind.
+	return n == math.Trunc(n) && int64MinFloat <= n && n < int64LimitFloat
+}
+
+// numberVal picks an integer-kind vs a number-kind ScalarVal for a
+// parsed numeric literal (mirrors ts/src/lang.ts). src is the literal's
+// source text, or "" where there is none.
 func numberVal(n float64, src string, sp int) Val {
-	if !strings.Contains(src, ".") && n == float64(int64(n)) {
+	if isIntegerKind(n, src) {
 		v := newInteger(int64(n))
 		v.sp = sp
 		return v
@@ -681,6 +743,14 @@ func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 		// but is a finite float in JS — construct the numeric token
 		// here with the JS value (big-int digits, float64 precision).
 		src := l.Src[start:sI]
+		// This branch builds the token itself and so never reaches the
+		// Number.Exclude hook — apply the separator rule here too, or a
+		// big base-prefixed literal would keep accepting `0x_...` after
+		// the small ones stopped (and diverge from TS, which excludes
+		// every magnitude in one place).
+		if numberExcluded(src) {
+			return &jsonic.LexCheckResult{Done: true, Token: nil}
+		}
 		s := strings.ReplaceAll(src, "_", "")
 		if basedNumeric(s) {
 			if _, ierr := strconv.ParseInt(s, 0, 64); ierr != nil {
@@ -696,6 +766,88 @@ func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 	}
 	// Not a complete number: let the text matcher take the extent.
 	return &jsonic.LexCheckResult{Done: true, Token: nil}
+}
+
+// sepInvalid reports whether a matched number source breaks the digit
+// separator rule: a separator is legal only as a SINGLE separator
+// BETWEEN digits (the rule test/spec/engine-parity.tsv records as the
+// engine's adjudication; pinned by the sep-* rows in
+// test/spec/number-model.tsv).
+//
+// The engine's number matcher enforces most of that already — `1_`,
+// `_1`, `1_.5`, `1._5`, `1e_2`, `1e2_` all fall through to text — but
+// two gaps remain: a REPEATED separator (`1__0` lexed as 10) and a
+// separator at the edge of a base-prefixed digit run (`0x_ff`, `0xff_`
+// lexed as 255). Both silently accept a typo as a different number, so
+// the whole run is declined and lexes as text ("1__0"), exactly as `1_`
+// already does.
+//
+// Kept in lock-step with the `number.exclude` RegExp in ts/src/lang.ts,
+// which is /__|^[-+]?0[xXoObB]_|_$/. The prefix letter is matched in
+// both cases so the rule does not depend on which prefix spellings the
+// engine accepts.
+// numberExcluded reports whether a matched number source must be
+// declined by the Go engine so that it lexes as text, matching the
+// canonical TypeScript engine. Two independent reasons, below.
+func numberExcluded(msrc string) bool {
+	return sepInvalid(msrc) || upperBasePrefix(msrc)
+}
+
+// upperBasePrefix reports whether a matched number source carries an
+// UPPER-CASE base prefix (0X, 0O, 0B).
+//
+// The canonical TypeScript engine's number matcher spells the base
+// prefixes lower-case only, so `0X1F` never matches there and falls
+// through to text. The Go matcher accepts either case, which made
+// `a:0X1F` the string "0X1F" in TypeScript and the number 31 in Go —
+// a silent value-level divergence, the worst failure mode there is.
+//
+// TypeScript is the canonical implementation (AGENTS.md), so Go follows
+// it: both engines now read an upper-case prefix as text, pinned by the
+// base-upper-* rows in test/spec/number-model.tsv.
+//
+// This is deliberately a lexer quirk being mirrored, not a language
+// decision defended on its merits: JavaScript itself accepts 0X1F, so
+// if the upstream @tabnas TypeScript lexer ever gains the upper-case
+// spellings, delete this function and let BOTH engines accept them —
+// the spec rows will fail loudly and say so. The prefix LETTER is the
+// only thing at issue: an upper-case exponent marker (1E21) is accepted
+// by both engines and is pinned by exp-upper-canon.
+func upperBasePrefix(msrc string) bool {
+	s := msrc
+	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
+		s = s[1:]
+	}
+	if len(s) > 1 && s[0] == '0' {
+		switch s[1] {
+		case 'X', 'O', 'B':
+			return true
+		}
+	}
+	return false
+}
+
+func sepInvalid(msrc string) bool {
+	// Repeated separator, anywhere.
+	if strings.Contains(msrc, "__") {
+		return true
+	}
+	// Separator closing a run.
+	if strings.HasSuffix(msrc, "_") {
+		return true
+	}
+	// Separator opening a base-prefixed run: [+-]? '0' [xXoObB] '_'.
+	s := msrc
+	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
+		s = s[1:]
+	}
+	if len(s) > 2 && s[0] == '0' && s[2] == '_' {
+		switch s[1] {
+		case 'x', 'X', 'o', 'O', 'b', 'B':
+			return true
+		}
+	}
+	return false
 }
 
 // basedFloat evaluates a syntactically valid base-prefixed integer
@@ -969,20 +1121,41 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 	return newNil("unknown_op")
 }
 
-// negate returns the arithmetic negation of a numeric operand.
+// negate returns the arithmetic negation of a numeric operand. It never
+// narrows the kind (an integer stays an integer, a number stays a
+// number) and never yields negative zero.
 func negate(t any) Val {
 	switch v := t.(type) {
 	case float64:
-		return numberVal(-v, "", -1)
+		return numberVal(negZero(-v), "", -1)
 	case *ScalarVal:
 		switch v.kind {
 		case KindInteger:
-			return newInteger(-v.peg.(int64))
+			i := v.peg.(int64)
+			if i == math.MinInt64 {
+				// -(-2^63) leaves the int64 range, so it cannot stay
+				// integer kind; widen to a number rather than wrapping.
+				// (No literal can express -2^63 as an integer, so this
+				// is only reachable through the NewInteger API.)
+				return newNumber(-float64(i))
+			}
+			// int64 has no negative zero, so -0 cannot arise here.
+			return newInteger(-i)
 		case KindNumber:
-			return newNumber(-v.peg.(float64))
+			return newNumber(negZero(-v.peg.(float64)))
 		}
 	}
 	return newNil("negative")
+}
+
+// negZero normalises negative zero to positive zero. Negative zero never
+// survives into the AST: unary minus applied to a zero of either kind
+// yields positive zero.
+func negZero(f float64) float64 {
+	if f == 0 {
+		return 0
+	}
+	return f
 }
 
 func toVals(terms []interface{}) []Val {
@@ -1057,8 +1230,11 @@ func asValDepth(node any, depth int) Val {
 		}
 		return lv
 	case float64:
-		// Source text is unavailable here (e.g. expr operands); treat an
-		// integral value as an integer.
+		// Source text is unavailable here (raw values from the implicit
+		// top-level list, expr operands), so the "no '.'" condition of
+		// isIntegerKind is vacuous and the integral + int64-range
+		// conditions decide. Routed through numberVal so this path can
+		// never drift from the parsed-literal one.
 		return numberVal(n, "", -1)
 	case string:
 		return newString(n)

@@ -5,5 +5,6 @@ declare class NumberVal extends ScalarVal {
     isNumber: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     unify(peer: any, ctx: AontuContext): Val;
+    get canon(): any;
 }
 export { NumberVal, };

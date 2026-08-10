@@ -13,8 +13,11 @@ const BooleanVal_1 = require("../dist/val/BooleanVal");
 const NullVal_1 = require("../dist/val/NullVal");
 (0, node_test_1.describe)('val-pref', function () {
     (0, node_test_1.test)('construct', () => {
+        // A NUMBER-kind 1 canons as `1.0`: number-kind canon round-trips its
+        // kind, so it always carries a fraction or an exponent (an
+        // unsuffixed `1` would reparse as an integer).
         let r0 = new PrefVal_1.PrefVal({ peg: new NumberVal_1.NumberVal({ peg: 1 }) });
-        (0, expect_1.expect)(r0.canon).equal('*1');
+        (0, expect_1.expect)(r0.canon).equal('*1.0');
         (0, expect_1.expect)(r0.rank).equal(0);
         let r1 = new PrefVal_1.PrefVal({ peg: new StringVal_1.StringVal({ peg: 'a' }) });
         (0, expect_1.expect)(r1.canon).equal('*"a"');

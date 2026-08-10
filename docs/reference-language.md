@@ -52,9 +52,17 @@ plugins, so the surface syntax is "relaxed JSON".
   separators or operator characters.
 - **Bare strings** need no quotes (`name: Mercury`). Quote with `"…"` or
   `'…'` to include spaces or special characters (`name: "hi there"`).
-- **Numbers** are JSON numbers. A literal containing `.` is a `number`
-  (float); an integral literal with no `.` is an `integer` (so `1` is an
-  integer but `1.0` is a number).
+- **Numbers** are JSON numbers, stored as IEEE-754 doubles. A literal
+  has `integer` kind only when its source has no `.`, its value is
+  integral, *and* the value fits the int64 range; otherwise it has
+  `number` kind (so `1` is an integer, `1.0` is a number, and so is
+  `1e21`). The rule is stated in full under
+  [Scalar kinds](#scalar-kinds-types).
+- **Other numeric forms.** Hexadecimal (`0x1f`), octal (`0o17`) and
+  binary (`0b1010`) literals use lower-case prefixes. `_` may separate
+  digits (`1_000_000`), but only singly and only *between* digits — a
+  run that breaks the rule is not a number at all, so `1__0` is the
+  string `"1__0"`, not `10`.
 - **Booleans** are `true` / `false`; **null** is `null`.
 
 ## The value lattice
@@ -66,10 +74,11 @@ most specific:
                 top            (fits anything)
         ┌────────┼─────────┐
      string   number    boolean …      (kinds / types)
-        │     ┌──┴──┐
-     "ada"  integer 1.5                 (concrete scalars)
-        │      │
-        └──────┴── …  concrete values
+        │    ┌───┴───┐     │
+        │ integer    │     │           (integer is the more
+        │    │       │     │            specific numeric kind)
+      "ada"  1      1.5  true          (concrete scalars)
+        └────┴───────┴─────┘
                 ⊥  nil / bottom         (no value — a conflict)
 ```
 
@@ -106,18 +115,74 @@ A bare kind name is a *type*: the set of all scalars of that kind.
 | Kind      | Matches                              |
 |-----------|--------------------------------------|
 | `string`  | any string                           |
-| `number`  | any number (including integers)      |
-| `integer` | any number with no fractional part   |
+| `number`  | any numeric value (`integer` included) |
+| `integer` | any value of *integer kind* (below)  |
 | `boolean` | `true` or `false`                    |
 | `top`     | any value at all                     |
+
+### Integer kind and number kind
+
+Every numeric value carries a **kind**, fixed when the value is built,
+and it is the kind — not the magnitude — that decides what the value
+unifies with. A numeric literal has **integer** kind if, and only if,
+all three of these hold:
+
+1. its source text contains no `.`;
+2. its value is integral (no fractional part);
+3. its value lies within the int64 range, that is
+   `-9223372036854775808 ≤ n < 9223372036854775808`.
+
+Anything else has **number** kind. The upper bound is *exclusive*
+because numeric values are IEEE-754 doubles and 2^63−1 cannot be
+represented in one: it rounds up to 2^63, and so falls outside the
+range.
+
+```
+1                      → integer   (no '.', integral, in range)
+1e3                    → integer   (1000 — an exponent is not a '.')
+9007199254740992       → integer
+1.0                    → number    (rule 1: the source has a '.')
+1.5                    → number    (rules 1 and 2)
+1e21                   → number    (rule 3: beyond int64)
+100000000000000000000  → number    (rule 3)
+0x7fffffffffffffff     → number    (rule 3: rounds up to 2^63)
+0xffffffffffffffff     → number    (rule 3)
+```
+
+Points worth knowing:
+
+- The same rule applies wherever a numeric value is built — a parsed
+  literal, a `$var` binding, a raw value handed to the API — so a given
+  number never has two different kinds depending on where it came from.
+  Where there is no source text, condition 1 is vacuous and conditions
+  2 and 3 decide.
+- A literal that overflows the double range entirely (`1e999`) is not a
+  number at all; it is an error. One that *underflows* to exactly zero
+  (`1e-400`) is integer-kind `0`.
+- Aontu has no negative literals: `-` is a prefix operator applied to a
+  positive literal. The int64 *minimum* therefore cannot be written as
+  an integer-kind literal — `-9223372036854775808` negates the
+  number-kind literal `9223372036854775808`, and stays number kind.
 
 Unification rules:
 
 - **kind & matching scalar → the scalar.** `number & 2` → `2`;
   `string & hello` → `"hello"`; `1 & integer` → `1`.
-- **kind & non-matching scalar → conflict.** `1 & string` → error.
+- **kind & non-matching scalar → conflict.** `1 & string` → error;
+  `1.0 & integer` → error (`1.0` is number kind whatever its value),
+  and so is `1e21 & integer`.
 - **kind & kind:** equal kinds unify to themselves; `number & integer` →
   `integer` (integer is the more specific); unrelated kinds conflict.
+- **scalar & scalar:** two concrete numbers are the same only when kind
+  *and* value match. So `1 & 1.0` is a conflict, and `1|1.0` is a real
+  two-branch disjunction — `(1|1.0) & 1.0` selects the number.
+
+No operator or function narrows a kind: see
+[`+`](#the--operator-and-grouping) and
+[`upper()`/`lower()`](#functions). For the reasoning behind the model —
+why the bound is int64, why canon carries a `.0`, and how the two
+implementations are held in step — see the
+[number model design note](design/number-model.md).
 
 ## Maps
 
@@ -294,6 +359,27 @@ x:(+3+4)     → {"x":7}
 a:b:c:10+5   → {"a":{"b":{"c":15}}}
 ```
 
+**Result kind.** `+` never introduces a kind narrower than its
+operands. Two numerics add to an `integer` only when *both* operands
+are of integer kind **and** the sum is itself of integer kind (integral
+and within int64); otherwise the result is a `number`. A `*`-preferred
+operand contributes its preferred value's kind.
+
+```
+x:1+2                 → integer 3    canon {"x":3}
+x:1+1.0               → number 2     canon {"x":2.0}
+x:1.5+1.5             → number 3     canon {"x":3.0}
+x:(1+2) & integer     → {"x":3}
+x:(1.5+1.5) & integer → error        (the sum is number kind)
+```
+
+String concatenation is unchanged, and a numeric operand coerces with
+plain JavaScript rules: `x:a+1.0` → `"a1"`, not `"a1.0"`.
+
+Unary `-` negates a numeric operand. It binds tighter than `+`, `&` and
+`|` — `-1 & integer` is `(-1) & integer` — and, like `+`, never narrows
+the kind and never yields `-0`.
+
 ## Functions
 
 Aontu provides a fixed set of twelve built-in functions. There are no
@@ -301,18 +387,35 @@ user-defined functions.
 
 | Function    | Effect | Example |
 |-------------|--------|---------|
-| `upper(x)`  | uppercase a string; **ceiling** of a number | `upper(abc)`→`"ABC"`, `upper(1.1)`→`2`, `upper(-1.9)`→`-1` |
-| `lower(x)`  | lowercase a string; **floor** of a number   | `lower(ABC)`→`"abc"`, `lower(1.9)`→`1`, `lower(-1.1)`→`-2` |
+| `upper(x)`  | uppercase a string; **ceiling** of a number, keeping the argument's kind | `upper(abc)`→`"ABC"`, `upper(2)`→ integer `2`, `upper(1.1)`→ number `2`, `upper(-1.9)`→`-1` |
+| `lower(x)`  | lowercase a string; **floor** of a number, keeping the argument's kind   | `lower(ABC)`→`"abc"`, `lower(2)`→ integer `2`, `lower(1.9)`→ number `1`, `lower(-1.1)`→`-2` |
 | `copy(x)`   | deep copy of a value or referenced node; clears `type`/`hide` marks | `copy({a:1,b:2})`→`{a:1,b:2}`; `copy($.x)` |
 | `key(n)`    | the ancestor key `n` levels up (`0` = own key, default `1` = parent) | at `a:b:c`: `key()`→`"b"`, `key(0)`→`"c"`, `key(2)`→`"a"` |
 | `pref(x)`   | mark `x` as preferred (same as `*x`)          | `pref(1)` canon `*1`; `pref(2),x:3`→`3` |
-| `super(x)`  | the lattice-superior (generalisation/type) of `x` | `super(1)` → `number` |
+| `super(x)`  | the lattice-superior (generalisation/type) of `x` — for a concrete scalar, its kind | `super(1)` → `integer`, `super(1.5)` → `number` |
 | `type(x)`   | mark `x` as a type/schema value               | `type(1) & number`→`1` |
 | `hide(x)`   | mark `x` as hidden                            | `hide(world) & string`→`"world"` |
 | `close(x)`  | seal a map/list against extra keys            | see [closed values](#closed-values-close--open) |
 | `open(x)`   | reverse a `close`                             | `open(close({x:1})) & {y:2}`→`{x:1,y:2}` |
 | `move(p)`   | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
 | `path(p)`   | resolve a path expression (function form of a reference) | `path(x.a)` (relative), `path($.z.x.a)` (absolute) |
+
+`super(x)` lifts its **argument** one step up the lattice, so for a
+concrete scalar it yields that scalar's kind:
+
+```
+x:super(1)      → integer      x:super(a)     → string
+x:super(1.5)    → number       x:super(true)  → boolean
+```
+
+Being a kind, the result then constrains: `x:super(1) & 2` → `2`, while
+`x:super(1) & 2.5` is a conflict. Where the argument has no meaningful
+superior — a map, a list, a bare kind, `top` — the result is `top`.
+
+`upper()` and `lower()` round a number without narrowing it: the result
+carries the *argument's* kind, so `upper(2)` is an integer `2` (and
+unifies with `integer`) while `upper(1.1)` is a number `2` (and does
+not).
 
 Functions compose with operators and references:
 `upper(a)+b`→`"Ab"`, `lower(1.1)+2`→`3`, `x:foo y:upper($.x)`→`y:"FOO"`,
@@ -385,6 +488,7 @@ From tightest to loosest binding (higher binding power binds first):
 | `$` (variable/abs)  | prefix      | tightest |
 | `.` (path)          | prefix/infix |       |
 | `*` (preference)    | prefix      |       |
+| `-` / `+` (unary)   | prefix      | `-1 & integer` ≡ `(-1) & integer` |
 | `+` (add/concat)    | infix       |       |
 | `&` (conjunction)   | infix       | binds tighter than `\|` |
 | `\|` (disjunction)  | infix       | loosest |
@@ -402,6 +506,21 @@ constraints, defaults, and open disjunctions. Rules:
   `{"a":{"b":1,"c":2}}`. Lists as `[v,…]`.
 - Strings are quoted (`"hello"`); numbers, booleans and `null` render
   literally; `top` renders as `top`.
+- **Numbers render so that canon reparses to the same kind.** An
+  integer-kind value renders plainly (`1000`). A number-kind value
+  always carries a fraction or an exponent, so a `.0` suffix is
+  appended when the shortest rendering has neither:
+
+  ```
+  1.0    → 1.0        1e21     → 1e+21        (already exponential)
+  0.0    → 0.0        0.000001 → 0.000001     (already fractional)
+  1e20   → 100000000000000000000.0
+  ```
+
+  This applies to **canon only**. String concatenation is unaffected:
+  `a+1.0` is still `"a1"`.
+- Negative zero never appears: it normalises to `0` (integer kind) or
+  `0.0` (number kind), in canon and in generated output alike.
 - Kinds render lowercase: `number`, `string`, `integer`, `boolean`.
 - Conjunction: `a&b` (e.g. `number&"A"`). Disjunction: `a|b`
   (e.g. `1|2`, `string|number`). Preference: `*x` (e.g. `*1|number`).

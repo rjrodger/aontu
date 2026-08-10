@@ -5,12 +5,17 @@ exports.IntegerVal = void 0;
 const err_1 = require("../err");
 const ScalarVal_1 = require("./ScalarVal");
 const ScalarKindVal_1 = require("./ScalarKindVal");
+const numkind_1 = require("./numkind");
 const utility_1 = require("../utility");
 class IntegerVal extends ScalarVal_1.ScalarVal {
     constructor(spec, ctx) {
-        if (!Number.isInteger(spec.peg)) {
-            // TODO: use Nil?
-            throw new err_1.AontuError('not-integer: ' + spec.peg);
+        // An IntegerVal must hold a value of *integer kind*: integral AND
+        // within the int64 range, so it can never hold something the Go
+        // port's int64 storage could not (see isIntegerKind). Every
+        // construction site pre-checks with the same helper, so reaching
+        // here is a programming error, not user input — hence a throw.
+        if (!(0, numkind_1.isIntegerKind)(spec.peg)) {
+            throw new err_1.AontuError('not-integer-kind: ' + spec.peg);
         }
         // super({ peg: spec.peg, kind: Integer }, ctx)
         super({ ...spec, kind: ScalarKindVal_1.Integer }, ctx);
