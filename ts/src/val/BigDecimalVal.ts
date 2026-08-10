@@ -49,7 +49,10 @@ class BigDecimalVal extends ScalarVal {
       try {
         peg = Decimal.fromString(peg)
       }
-      catch (e: any) {
+      catch {
+        // Includes a budget refusal (Decimal.fromString enforces D6),
+        // so an over-budget string cannot enter through this route
+        // either.
         throw new AontuError('not-bigdecimal: ' + spec.peg)
       }
     }

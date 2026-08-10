@@ -170,6 +170,23 @@ const canon = (src) => new aontu_1.Aontu().unify(src).canon;
         Assert.equal(canon('x:"0d5"'), '{"x":"0d5"}');
         Assert.equal(canon('x:0d5.0'), '{"x":0d5.0}');
     });
+    (0, node_test_1.test)('budget-is-enforced-on-the-exact-input-api-too', () => {
+        // The literal path and the exact-input API (D8) must obey the SAME
+        // bound. They did not: Decimal.fromString normalised first, so
+        // `1e200000` quietly built a 200,002-digit coefficient and
+        // `1e1000000000` would have exhausted memory -- through the very
+        // API the design offers as the exact route. The Go port bounds
+        // this path already (NewBigDecimal shares the literal checker), so
+        // the gap was a cross-port divergence as well as a hazard.
+        Assert.throws(() => Decimal_1.Decimal.fromString('1e1000000000'), /decimal-budget/);
+        Assert.throws(() => Decimal_1.Decimal.fromString('1e200000'), /decimal-budget/);
+        Assert.throws(() => Decimal_1.Decimal.fromString('1.' + '2'.repeat(Decimal_1.DECIMAL_COEFFICIENT_BUDGET)), /decimal-budget/);
+        // And through the Val constructor that accepts text.
+        Assert.throws(() => new BigDecimalVal_1.BigDecimalVal({ peg: '1e1000000000' }), /not-bigdecimal/);
+        // At the limit it is still a value, so the bound is inclusive here
+        // exactly as it is for a literal.
+        Assert.equal(Decimal_1.Decimal.fromString('1e-' + Decimal_1.DECIMAL_SCALE_BUDGET).scale, Decimal_1.DECIMAL_SCALE_BUDGET);
+    });
     (0, node_test_1.test)('budget-is-enforced-at-parse', () => {
         // The scale bound is the load-bearing half: this coefficient is ONE
         // digit, so a coefficient-only check never fires, yet plain-form

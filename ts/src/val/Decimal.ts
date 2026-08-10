@@ -56,6 +56,27 @@ function pow10(n: number): bigint {
 }
 
 
+// True when a decimal's SOURCE form is over either budget bound.
+//
+// Every route that builds a Decimal from text must ask this BEFORE
+// constructing one, because normalising an over-budget value is itself
+// the resource event the bound exists to prevent: the constructor folds
+// a negative scale by multiplying the coefficient by 10^-scale, so
+// `1e1000000000` would try to build a billion-digit bigint.
+//
+// Written once and used by both routes -- the `0d` literal and the
+// exact-input API -- because the Go port bounds both (NewBigDecimal
+// shares the literal path's checker) and a TypeScript route that did not
+// would be a silent cross-port divergence as well as a hazard.
+//
+// `scale` may be Infinity or NaN when the exponent digits overflow a JS
+// number; the comparison is written so that either answers "over".
+function overBudget(coeffDigits: number, scale: number): boolean {
+  return DECIMAL_COEFFICIENT_BUDGET < coeffDigits ||
+    !(Math.abs(scale) <= DECIMAL_SCALE_BUDGET)
+}
+
+
 class Decimal {
   // value = unscaled / 10^scale, always in minimal form (see above).
   readonly unscaled: bigint
@@ -166,8 +187,19 @@ class Decimal {
     }
     const frac = m[3] ?? ''
     const exp = null == m[4] ? 0 : Number(m[4])
+    const scale = frac.length - exp
+
+    // The same bound the `0d` literal obeys (D6). Without it this API
+    // route reached the resource exhaustion the budget exists to
+    // prevent -- `fromString('1e1000000000')` would normalise by
+    // building a billion-digit coefficient -- and disagreed with the Go
+    // port, whose NewBigDecimal shares the literal path's checker.
+    if (overBudget(m[2].length + frac.length, scale)) {
+      throw new Error('decimal-budget: ' + src)
+    }
+
     const unscaled = BigInt(m[2] + frac)
-    return new Decimal('-' === m[1] ? -unscaled : unscaled, frac.length - exp)
+    return new Decimal('-' === m[1] ? -unscaled : unscaled, scale)
   }
 }
 
@@ -238,8 +270,7 @@ function readBigLiteral(m: RegExpExecArray | (string | undefined)[]): BigLiteral
   // exists to prevent. Coefficient digits are counted as written
   // (leading zeros included) so the two ports need not agree on any
   // cleverer rule.
-  if (DECIMAL_COEFFICIENT_BUDGET < intd.length + fracLen ||
-    !(Math.abs(scale) <= DECIMAL_SCALE_BUDGET)) {
+  if (overBudget(intd.length + fracLen, scale)) {
     return { leaf: 'error', code: 'decimal_budget' }
   }
 

@@ -27,7 +27,10 @@ class BigDecimalVal extends ScalarVal_1.ScalarVal {
             try {
                 peg = Decimal_1.Decimal.fromString(peg);
             }
-            catch (e) {
+            catch {
+                // Includes a budget refusal (Decimal.fromString enforces D6),
+                // so an over-budget string cannot enter through this route
+                // either.
                 throw new err_1.AontuError('not-bigdecimal: ' + spec.peg);
             }
         }
