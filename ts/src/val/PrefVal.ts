@@ -90,7 +90,10 @@ class PrefVal extends FeatureVal {
     const sup: any = peg.superior()
     this.superpeg = sup
 
-    if (true === sup?.isScalarKind) {
+    // No optional chain: superior() is contractually non-null (every
+    // Val returns one, a NilVal returning itself), so guarding against
+    // nullish here would claim a possibility the type does not have.
+    if (true === sup.isScalarKind) {
       const family = kindFamily(sup.peg)
       // The gate stands in for the preferred value in any conflict it
       // reports, so it must carry the same site and path as the type it
