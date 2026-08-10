@@ -237,3 +237,52 @@ pref-integer-narrowed-by-float-canon	canon	a:*1 & float	{"a":float}
 pref-float-kind-peg-yields-peer	gen	a:*float & "hello"	{"a":"hello"}
 # Outside the family it is a conflict, not an override.
 pref-cross-family-err	err	a:*lower(1.1) & a	Cannot unify
+#
+# PHASE 4 -- arithmetic. The exact ladder is integer < biginteger <
+# bigdecimal: a mixed EXACT operation promotes to the widest operand and
+# is computed exactly. `float` is off that ladder, keeping its classic
+# contagion against `integer` only.
+int-plus-bigint-canon	canon	x:1+0d2	{"x":0d3}
+bigint-plus-int-canon	canon	x:0d2+1	{"x":0d3}
+bigint-plus-bigint-canon	canon	x:0d2+0d3	{"x":0d5}
+bigint-plus-bigdec-canon	canon	x:0d2+0d0.5	{"x":0d2.5}
+int-plus-bigdec-canon	canon	x:1+0d0.5	{"x":0d1.5}
+bigdec-plus-int-canon	canon	x:0d0.5+1	{"x":0d1.5}
+bigdec-plus-bigdec-canon	canon	x:0d0.25+0d0.75	{"x":0d1.0}
+bigint-large-plus-canon	canon	x:0d99999999999999999999+0d1	{"x":0d100000000000000000000}
+bigint-plus-negative-canon	canon	x:0d5+-0d2	{"x":0d3}
+#
+# The headline the exact leaves exist for: this is 0.30000000000000004
+# in binary64, and exactly 0d0.3 here.
+bigdec-exact-tenths-canon	canon	x:0d0.1+0d0.2	{"x":0d0.3}
+#
+# A Big leaf never silently becomes a binary float, in EITHER direction
+# (boru's rule, mirrored): the mix is a hard error, not a promotion.
+float-plus-bigint-err	err	x:1.0+0d2	cannot mix
+bigint-plus-float-err	err	x:0d2+1.0	cannot mix
+float-plus-bigdec-err	err	x:1.0+0d0.5	cannot mix
+bigdec-plus-float-err	err	x:0d0.5+1.0	cannot mix
+int-plus-float-canon	canon	x:1+2.0	{"x":3.0}
+#
+# integer + integer is computed EXACTLY and its result must satisfy the
+# R1 storage contract. Binary64 addition silently rounded sums of exact
+# operands, which the tower's exact-or-error creed cannot tolerate.
+int-plus-int-exact-canon	canon	x:4503599627370496+4503599627370496	{"x":9007199254740992}
+int-plus-int-inexact-err	err	x:4503599627370496+4503599627370497	exactly representable
+#
+# String concatenation renders the digits, never the `0d` marker --
+# matching the existing rule that concatenation is about digits and not
+# kind decoration.
+str-plus-bigint-canon	canon	x:q+0d5	{"x":"q5"}
+str-plus-bigdec-canon	canon	x:q+0d0.1	{"x":"q0.1"}
+bigint-plus-str-canon	canon	x:0d5+q	{"x":"5q"}
+bigdec-plus-str-canon	canon	x:0d0.1+q	{"x":"0.1q"}
+#
+# upper()/lower() are exact ceiling/floor on the new leaves and keep the
+# argument's kind (R5 contagion).
+upper-bigdec-canon	canon	x:upper(0d1.1)	{"x":0d2.0}
+lower-bigdec-canon	canon	x:lower(0d1.9)	{"x":0d1.0}
+lower-bigdec-negative-canon	canon	x:lower(-0d1.1)	{"x":-0d2.0}
+upper-bigint-canon	canon	x:upper(0d5)	{"x":0d5}
+upper-bigdec-unify-bigdec-canon	canon	x:upper(0d1.1) & bigdecimal	{"x":0d2.0}
+upper-bigdec-unify-integer-err	err	x:upper(0d1.1) & integer	Cannot unify
