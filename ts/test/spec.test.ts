@@ -11,8 +11,18 @@
  * TSV columns (tab-separated): name <TAB> mode <TAB> src <TAB> expect
  *   mode=canon : unify(src).canon must equal expect
  *   mode=gen   : generate(src) must deep-equal JSON.parse(expect)
+ *   mode=gens  : generate(src), serialised to COMPACT JSON, must equal
+ *                expect BYTE-FOR-BYTE
  *   mode=err   : generate(src) must throw, message must contain expect
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
+ *
+ * gen vs gens: `gen` compares through a JSON decode, so both sides land
+ * in float64 and two distinct exact integers above 2^53 compare EQUAL.
+ * `gens` compares the serialised text instead, so it can pin exactness
+ * (and key order, and integer-vs-float rendering) that `gen` cannot see.
+ * The two runners must agree byte-for-byte on the same row: compact
+ * output (no indentation, no spaces), keys in the engine's existing
+ * generated order.
  */
 
 import { describe, test } from 'node:test'
@@ -104,37 +114,100 @@ describe('spec', () => {
   })
 
   for (const row of rows) {
-    test(`${row.file}:${row.name}`, () => {
-      const a0 = new Aontu()
-      // Fresh context per row carrying the shared $var test variables.
-      const ctx = makeVarsCtx(a0)
-
-      if ('canon' === row.mode) {
-        Assert.strictEqual(a0.unify(row.src, undefined, ctx).canon, row.expect)
-      }
-      else if ('gen' === row.mode) {
-        Assert.deepStrictEqual(
-          a0.generate(row.src, undefined, ctx), JSON.parse(row.expect))
-      }
-      else if ('err' === row.mode) {
-        Assert.throws(
-          () => a0.generate(row.src, undefined, makeVarsCtx(a0)),
-          (err: any) => {
-            const msg = String(err && err.message)
-            Assert.ok(
-              msg.includes(row.expect),
-              `expected error containing "${row.expect}", got: ${msg}`
-            )
-            return true
-          }
-        )
-      }
-      else {
-        throw new Error('unknown spec mode: ' + row.mode)
-      }
-    })
+    test(`${row.file}:${row.name}`, () => runRow(row))
   }
 })
+
+
+// Execute one spec row. Shared by the TSV-driven tests above and the
+// gens-mode self-test below, so both go through the same comparison.
+function runRow(row: Omit<Row, 'file'>): void {
+  const a0 = new Aontu()
+  // Fresh context per row carrying the shared $var test variables.
+  const ctx = makeVarsCtx(a0)
+
+  if ('canon' === row.mode) {
+    Assert.strictEqual(a0.unify(row.src, undefined, ctx).canon, row.expect)
+  }
+  else if ('gen' === row.mode) {
+    Assert.deepStrictEqual(
+      a0.generate(row.src, undefined, ctx), JSON.parse(row.expect))
+  }
+  else if ('gens' === row.mode) {
+    Assert.strictEqual(genJSON(a0.generate(row.src, undefined, ctx)), row.expect)
+  }
+  else if ('err' === row.mode) {
+    Assert.throws(
+      () => a0.generate(row.src, undefined, makeVarsCtx(a0)),
+      (err: any) => {
+        const msg = String(err && err.message)
+        Assert.ok(
+          msg.includes(row.expect),
+          `expected error containing "${row.expect}", got: ${msg}`
+        )
+        return true
+      }
+    )
+  }
+  else {
+    throw new Error('unknown spec mode: ' + row.mode)
+  }
+}
+
+
+// The `gens` mode is byte-exact machinery with no shared rows using it
+// yet (it exists so Phase 2's exact leaves CAN be asserted). Prove the
+// mode itself here, against the same runRow path the TSV rows take, so
+// it is known-good before anything depends on it.
+describe('spec-gens-mode', () => {
+
+  test('gens-compares-bytes', () => {
+    runRow({ name: 'g1', mode: 'gens', src: 'a:1', expect: '{"a":1}' })
+    // Compact: no spaces, no indentation, keys in the engine's generated
+    // order -- which is sorted, and matches Go's encoding/json for a map.
+    runRow({
+      name: 'g2', mode: 'gens',
+      src: 'b:2\na:1\nc:[1,{d:x}]',
+      expect: '{"a":1,"b":2,"c":[1,{"d":"x"}]}',
+    })
+    // Byte-exact, so integer 1 and float 1.0 both serialise as `1` --
+    // gens pins the BYTES, canon pins the kind. Neither replaces the other.
+    runRow({ name: 'g3', mode: 'gens', src: 'a:1.0', expect: '{"a":1}' })
+    runRow({ name: 'g4', mode: 'gens', src: 'a:1.5', expect: '{"a":1.5}' })
+    runRow({ name: 'g5', mode: 'gens', src: 'a:x', expect: '{"a":"x"}' })
+  })
+
+  test('gens-fails-on-any-byte-difference', () => {
+    // A whitespace or ordering difference must fail: the point of the
+    // mode is that it does not decode before comparing.
+    Assert.throws(() => runRow(
+      { name: 'g6', mode: 'gens', src: 'a:1', expect: '{"a": 1}' }))
+    Assert.throws(() => runRow(
+      { name: 'g7', mode: 'gens', src: 'b:2\na:1', expect: '{"b":2,"a":1}' }))
+  })
+
+  test('unknown-mode-still-fails-loudly', () => {
+    Assert.throws(
+      () => runRow({ name: 'g8', mode: 'genz', src: 'a:1', expect: '{"a":1}' }),
+      /unknown spec mode: genz/)
+  })
+
+})
+
+
+// Serialise a generated value for `gens` rows: compact JSON (no
+// indentation, no spaces), keys in the order generate() produced them.
+// Go's encoding/json Marshal is compact for the same reason, so the two
+// runners produce the same bytes for the same value.
+//
+// JSON.stringify is the emitter today because every generated value is a
+// JSON primitive. When the exact leaves land, generate() can return a
+// bigint (which JSON.stringify throws on) and a Decimal, and this call
+// becomes the library's exact JSON emitter -- that swap is the whole
+// reason `gens` exists, so keep the call site to exactly one place.
+function genJSON(v: any): string {
+  return JSON.stringify(v)
+}
 
 
 // The $var test variables, shared with the Go runner (go/spec_test.go).

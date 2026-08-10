@@ -24,7 +24,7 @@ name <TAB> mode <TAB> src <TAB> expect
 | column   | meaning                                                        |
 |----------|----------------------------------------------------------------|
 | `name`   | short identifier for the case (unique within its file)         |
-| `mode`   | `canon`, `gen` or `err` (see below)                            |
+| `mode`   | `canon`, `gen`, `gens` or `err` (see below)                    |
 | `src`    | Aontu source text to evaluate                                  |
 | `expect` | the expected result, interpreted according to `mode`          |
 
@@ -34,6 +34,7 @@ name <TAB> mode <TAB> src <TAB> expect
 |---------|-----------------------------------------------------------------|
 | `canon` | `unify(src)` then its canonical form must equal `expect`        |
 | `gen`   | `generate(src)` must deep-equal `JSON.parse(expect)`            |
+| `gens`  | `generate(src)` serialised as compact JSON must equal `expect` **byte for byte** |
 | `err`   | `generate(src)` must raise an error whose message contains `expect` |
 
 For `gen`, the generated value and the expected JSON are compared
@@ -41,6 +42,19 @@ structurally (numeric type and object key order do not matter). That
 comparison is weaker than it looks, and choosing the wrong mode because
 of it is the commonest way to write a row that cannot fail — see
 [Choosing a mode](#choosing-a-mode).
+
+`gens` is the byte-exact counterpart: no decode happens on either side,
+so the row pins the serialised text — digits, exponent form, key order,
+string escaping and all. Because `gen` normalises both sides through
+JSON, every number lands in a `float64` and two distinct exact integers
+above 2^53 compare *equal*; `gens` is the mode that can tell them apart,
+and the one the number tower's exact leaves are pinned with
+([`docs/design/number-tower.md`](design/number-tower.md), D10). The
+serialisation contract both runners implement is: compact (no
+indentation, no spaces), keys in the order `generate` produced them
+(alphabetical in both ports), and no HTML escaping of `<`, `>` or `&`.
+`gens` pins bytes, `canon` pins kinds — an integral float serialises as
+`1` under `gens` and canons as `1.0`, so neither mode replaces the other.
 
 ### Escapes
 
@@ -72,22 +86,23 @@ and expects `{ "a": 2 }`.
 ## Choosing a mode
 
 **`gen` compares through JSON and is therefore blind to the
-`integer`/`number` kind distinction; `canon` is kind-faithful.** This is
+`integer`/`float` kind distinction; `canon` is kind-faithful.** This is
 the single most useful thing to know about the suite.
 
-Aontu has two numeric kinds over one representation, and JSON has only
-one number type. A `gen` row round-trips the result through JSON, so the
-kind is gone before the comparison happens. Canon, by contrast, must
-reparse to a value of the *same* kind, so a number-kind scalar always
+Aontu has two numeric leaf kinds over one representation, and JSON has
+only one number type. A `gen` row round-trips the result through JSON, so
+the kind is gone before the comparison happens. Canon, by contrast, must
+reparse to a value of the *same* kind, so a float-kind scalar always
 renders with a fraction or an exponent:
 
-| Source  | `gen`     | `canon`     |
-|---------|-----------|-------------|
-| `x:1`   | `{"x":1}` | `{"x":1}`   |
-| `x:1.0` | `{"x":1}` | `{"x":1.0}` |
+| Source  | `gen`     | `gens`    | `canon`     |
+|---------|-----------|-----------|-------------|
+| `x:1`   | `{"x":1}` | `{"x":1}` | `{"x":1}`   |
+| `x:1.0` | `{"x":1}` | `{"x":1}` | `{"x":1.0}` |
 
-The two sources are indistinguishable in the middle column and distinct
-in the right-hand one. So:
+The two sources are indistinguishable in the two middle columns —
+`gens` pins bytes, and the bytes of an integral float are those of an
+integer — and distinct only in the right-hand one. So:
 
 > **A behaviour that distinguishes numeric kinds MUST be pinned by a
 > `canon` row or an `err` row — never by `gen` alone.**
@@ -105,6 +120,10 @@ the other without any row noticing.
   `x:(1.5+1.5) & integer` must fail.
 - `gen` remains the right mode for a *value*, and the only mode that
   checks the JSON a caller actually receives.
+- Use `gens` when the point is the exact *bytes*: which digits are
+  emitted, which exponent form, which key order, how a string is
+  escaped. It is the only mode that can distinguish two exact integers
+  above 2^53, since `gen` collapses both to the same `float64`.
 
 The same blindness applies to everything else JSON flattens — `gen`
 ignores object key order too — but numeric kind is the case that bites,
@@ -136,6 +155,13 @@ reasoning behind them is in
    Drop `-c` from both for a `gen` row. The TypeScript CLI runs the
    committed build, so run `make build-ts` first if `ts/src` has
    changed.
+
+   Neither CLI prints compact JSON, so a `gens` expectation cannot be
+   read off these two commands. Probe it through each engine's library
+   instead — `JSON.stringify(new Aontu().generate(src))` in TypeScript,
+   `Generate(src)` through an `encoding/json` encoder with
+   `SetEscapeHTML(false)` in Go — and require the two texts to be
+   byte-identical before writing the row.
 4. Append the row, then run `make test-ts` and `make test-go`.
 5. Only commit rows that pass in **both** implementations — the spec
    defines shared, agreed behaviour.

@@ -126,11 +126,17 @@ help isolate the syntax error.`,
                 'string': {
                     val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: String }), r, ctx)
                 },
+                // `number` is a pure supertype: it matches a concrete value of
+                // any numeric leaf and never tags one itself. `integer` and
+                // `float` are the leaves (see ScalarKindVal for the lattice).
                 'number': {
                     val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: Number }), r, ctx)
                 },
                 'integer': {
                     val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: ScalarKindVal_1.Integer }), r, ctx)
+                },
+                'float': {
+                    val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: ScalarKindVal_1.Float }), r, ctx)
                 },
                 'boolean': {
                     val: (r, ctx) => addsite(new ScalarKindVal_1.ScalarKindVal({ peg: Boolean }), r, ctx)

@@ -102,6 +102,7 @@ Tab-separated columns: `name <TAB> mode <TAB> src <TAB> expect`
 |---------|-------------------------------------------------------|
 | `canon` | `unify(src).canon` equals `expect`                    |
 | `gen`   | `generate(src)` deep-equals `JSON(expect)`            |
+| `gens`  | `generate(src)` as compact JSON equals `expect` byte for byte |
 | `err`   | `generate(src)` errors, message contains `expect`     |
 
 Escapes in `src`/`expect`: `\n` → newline, `\t` → tab, `\\` → backslash.
@@ -109,9 +110,11 @@ Lines starting with `#` and blank lines are ignored. See
 [`docs/shared-spec.md`](docs/shared-spec.md) for details.
 
 Pick the mode that can actually fail: `gen` compares through JSON and is
-therefore blind to the `integer`/`number` kind distinction, so a
-behaviour that distinguishes kinds must be pinned by `canon` or `err` —
-see [Choosing a mode](docs/shared-spec.md#choosing-a-mode).
+therefore blind to the `integer`/`float` kind distinction, so a
+behaviour that distinguishes kinds must be pinned by `canon` or `err`,
+and one that turns on the exact serialised bytes (which digits, which
+exponent form, which key order) by `gens` — see
+[Choosing a mode](docs/shared-spec.md#choosing-a-mode).
 
 ### Adding a behaviour
 

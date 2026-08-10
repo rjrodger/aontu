@@ -139,11 +139,13 @@ func (o *PlusOpVal) operate(args []Val) Val {
 		// operands are integer kind AND the sum is itself of integer
 		// kind (the sum of two integers can leave the int64 range).
 		// Deriving the kind from the result value alone would make
-		// 1.5+1.5 an integer.
+		// 1.5+1.5 an integer. Otherwise the result is the binary64
+		// FLOAT leaf — never the `number` supertype, which no concrete
+		// value carries.
 		if isIntegerScalar(av) && isIntegerScalar(bv) && isIntegerKind(p, "") {
 			return newInteger(int64(p))
 		}
-		return newNumber(p)
+		return newFloat(p)
 	}
 	return nil
 }

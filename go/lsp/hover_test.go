@@ -46,9 +46,9 @@ func TestHoverMiss(t *testing.T) {
 
 func TestCompletionsList(t *testing.T) {
 	c := Completions()
-	// 12 functions + 4 kinds + 4 literals.
-	if len(c) != 20 {
-		t.Fatalf("expected 20 completions, got %d", len(c))
+	// 12 functions + 5 kinds + 4 literals.
+	if len(c) != 21 {
+		t.Fatalf("expected 21 completions, got %d", len(c))
 	}
 	byLabel := map[string]CompletionItem{}
 	for _, it := range c {
@@ -60,7 +60,7 @@ func TestCompletionsList(t *testing.T) {
 	if byLabel["string"].Kind != CompletionKeyword {
 		t.Errorf("string kind = %d, want Keyword", byLabel["string"].Kind)
 	}
-	for _, want := range []string{"close", "upper", "path", "string", "integer", "true", "null", "top"} {
+	for _, want := range []string{"close", "upper", "path", "string", "number", "integer", "float", "true", "null", "top"} {
 		if _, ok := byLabel[want]; !ok {
 			t.Errorf("missing completion %q", want)
 		}
@@ -116,8 +116,8 @@ func TestHandlerCompletion(t *testing.T) {
 	if err := json.Unmarshal(outs[0].Result, &items); err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 20 {
-		t.Errorf("expected 20 completion items, got %d", len(items))
+	if len(items) != 21 {
+		t.Errorf("expected 21 completion items, got %d", len(items))
 	}
 }
 

@@ -1,5 +1,6 @@
 # Shared aontu unit tests: the number tower. Columns (tab-separated): name<TAB>mode<TAB>src<TAB>expect
 # mode: canon = unify(src).canon == expect ; gen = generate(src) deep-equals JSON(expect) ; err = generate(src) errors, message contains expect
+# mode: gens = generate(src) serialised as COMPACT JSON == expect, BYTE FOR BYTE
 #
 # See docs/design/number-tower.md for the design these rows pin. The
 # tower makes `number` a pure supertype over four disjoint leaves:
@@ -38,3 +39,155 @@ super-float-kind-canon	canon	x:super(float)	{"x":number}
 super-number-kind-canon	canon	x:super(number)	{"x":top}
 super-float-value-unify	gen	x:super(1.5) & 2.5	{"x":2.5}
 super-float-value-unify-integer-err	err	x:super(1.5) & 2	Cannot unify scalar values
+#
+# ---------------------------------------------------------------------
+# PHASE 0 BASELINE -- what `0d...` means TODAY, before the exact leaves.
+#
+# Phase 2 turns these sources into biginteger/bigdecimal literals, so
+# every row below is expected to FLIP then, deliberately and visibly.
+# They are pinned now for the opposite reason: so that Phase 1 (a change
+# to the kind lattice, not to the lexer) can be shown not to have
+# touched them by accident.
+0d-int-canon	canon	x:0d12	{"x":"0d12"}
+0d-int-gen	gen	x:0d12	{"x":"0d12"}
+0d-separator-canon	canon	x:0d1_000	{"x":"0d1_000"}
+0d-upper-canon	canon	x:0D12	{"x":"0D12"}
+0d-zero-canon	canon	x:0d0	{"x":"0d0"}
+0d-bare-canon	canon	x:0d	{"x":"0d"}
+0d-exponent-canon	canon	x:0d1e3	{"x":"0d1e3"}
+0d-nondigits-canon	canon	x:0dabc	{"x":"0dabc"}
+0d-list-gen	gen	x:[0d12]	{"x":["0d12"]}
+0d-list-canon	canon	x:[0d12]	{"x":["0d12"]}
+0d-map-key-gen	gen	x:{0d12:1}	{"x":{"0d12":1}}
+# Bare text, so `+` concatenates it as a string rather than adding.
+0d-plus-concatenates	gen	x:0d5+1	{"x":"0d51"}
+# The dotted forms are NOT strings today: the `.` splits them into a
+# member-access path, which resolves to nothing. Phase 2's matcher has
+# to claim these back (design D3).
+0d-dotted-err	err	x:0d1.5	Cannot resolve value
+0d-dotted-exponent-err	err	x:0d1.5e2	Cannot resolve value
+0d-dot-adjacent-err	err	x:0d1.e2	Cannot resolve value
+# A leading minus reaches unary negation, which refuses a string operand.
+0d-negative-err	err	x:-0d5	Cannot resolve value
+0d-negative-canon	canon	x:-0d5	{"x":nil}
+# boru's `0d-5` accident is a parse error here, in both ports (D3).
+0d-suffix-sign-err	err	x:0d-5	unexpected character
+# The other two reserved-word-to-be spellings are still bare text.
+biginteger-word-canon	canon	x:biginteger	{"x":"biginteger"}
+bigdecimal-word-canon	canon	x:bigdecimal	{"x":"bigdecimal"}
+bigword-list-gen	gen	x:[biginteger,bigdecimal]	{"x":["biginteger","bigdecimal"]}
+#
+# ---------------------------------------------------------------------
+# PHASE 0 -- the byte-exact `gens` mode.
+#
+# `gen` compares through a JSON decode, so both sides land in float64 and
+# two distinct exact integers above 2^53 compare EQUAL. `gens` compares
+# the serialised TEXT, which is what Phase 2's exact leaves need. These
+# rows use only ordinary values: their job is to prove the two runners
+# emit the same bytes -- compact, no spaces, keys in generated order --
+# before anything exotic depends on that.
+gens-integer	gens	a:1	{"a":1}
+gens-integer-negative	gens	a:-7	{"a":-7}
+gens-float-fraction	gens	a:1.5	{"a":1.5}
+gens-float-negative	gens	a:-2.25	{"a":-2.25}
+# An integral float serialises as `1`: gens pins the BYTES, canon pins
+# the kind (`a:1.0` canons as {"a":1.0}). Neither mode replaces the other.
+gens-float-integral	gens	a:1.0	{"a":1}
+gens-string	gens	a:x	{"a":"x"}
+gens-string-spaces	gens	a:"x y"	{"a":"x y"}
+# Go's encoder escapes <, > and & by default and JS's does not, so this
+# row pins the choice that makes the two runners agree.
+gens-string-html	gens	a:"<b>&</b>"	{"a":"<b>&</b>"}
+gens-boolean-null	gens	a:true\nb:null	{"a":true,"b":null}
+gens-map-nested	gens	a:{b:{c:1,d:x}}	{"a":{"b":{"c":1,"d":"x"}}}
+gens-map-empty	gens	a:{}	{"a":{}}
+gens-list	gens	a:[1,2.5,q]	{"a":[1,2.5,"q"]}
+gens-list-empty	gens	a:[]	{"a":[]}
+# Compact and alphabetical in both ports, whatever the source order.
+gens-compact-key-order	gens	b:2\na:1\nc:[1,{d:x}]	{"a":1,"b":2,"c":[1,{"d":"x"}]}
+# Number rendering has to agree byte for byte at the edges of the
+# fixed-notation window, exponent sign and all.
+gens-exponent-big	gens	a:1e21	{"a":1e+21}
+gens-exponent-small	gens	a:1e-7	{"a":1e-7}
+gens-fixed-edge	gens	a:1e20	{"a":100000000000000000000}
+gens-float-repr	gens	a:0.1	{"a":0.1}
+# R2: negative zero never reaches generated output.
+gens-negative-zero	gens	a:-0.0	{"a":0}
+# The digits `gen` cannot see: this and 9007199254740993 decode to the
+# same float64, so only gens can tell them apart (Phase 2 relies on it).
+gens-exact-pow53	gens	a:9007199254740992	{"a":9007199254740992}
+#
+# ---------------------------------------------------------------------
+# PHASE 1 -- lattice behaviour the contract rows above left unpinned.
+#
+# Kind meets in the other order, and against the non-numeric neighbours.
+integer-meet-number-canon	canon	a:integer & number	{"a":integer}
+float-meet-number-canon	canon	a:float & number	{"a":float}
+integer-meet-float-err	err	a:integer & float	Cannot unify
+number-meet-string-err	err	a:number & string	Cannot unify
+float-meet-string-err	err	a:float & string	Cannot unify
+float-meet-top-canon	canon	a:float & top	{"a":float}
+number-meet-top-canon	canon	a:top & number	{"a":number}
+# `number` is a pure supertype, so meeting it with BOTH leaves is still
+# a meet of two disjoint leaves.
+number-meet-both-leaves-err	err	a:number & integer & float	Cannot unify
+number-meet-leaf-value-canon	canon	a:1.5 & number & float	{"a":1.5}
+# A bare kind cannot generate -- `float` behaves exactly as `number` does.
+float-bare-generate-err	err	a:float	Cannot resolve value
+number-bare-generate-err	err	a:number	Cannot resolve value
+# `number` admits every route to an integer value, not just decimal ones.
+number-admits-hex	gen	a:0x1f & number	{"a":31}
+number-admits-binary	gen	a:0b1010 & number	{"a":10}
+# The R1 window decides the leaf, and the leaf decides the meet.
+float-admits-above-window	gen	a:1e21 & float	{"a":1e+21}
+integer-rejects-above-window-err	err	a:1e21 & integer	Cannot unify
+float-admits-negative	gen	a:-1.5 & float	{"a":-1.5}
+float-admits-negative-zero-canon	canon	a:-0.0 & float	{"a":0.0}
+integer-rejects-integral-float-err	err	a:0.0 & integer	Cannot unify
+#
+# super() beyond the numeric family, and two rungs at once.
+super-string-kind-canon	canon	x:super(string)	{"x":top}
+super-boolean-kind-canon	canon	x:super(boolean)	{"x":top}
+super-integer-two-rungs-canon	canon	x:super(super(1))	{"x":number}
+super-float-two-rungs-canon	canon	x:super(super(1.5))	{"x":number}
+super-number-three-rungs-canon	canon	x:super(super(number))	{"x":top}
+#
+# `float` and `number` inside disjuncts and as type constraints.
+float-disjunct-canon	canon	a:float|integer	{"a":float|integer}
+float-disjunct-admits-float	gen	a:1.5 & (float|integer)	{"a":1.5}
+float-disjunct-admits-integer	gen	a:1 & (float|integer)	{"a":1}
+number-float-disjunct-canon	canon	a:number|float	{"a":number|float}
+number-disjunct-admits-float	gen	a:1.5 & (number|string)	{"a":1.5}
+float-pref-disjunct-canon	canon	a:*float|integer	{"a":*float|integer}
+float-type-mark-canon	canon	a:type(float)	{"a":float}
+float-spread-constraint	gen	a:1.5 &: float	{"a":1.5}
+number-spread-constraint	gen	a:{b:1.5} &: {b:number}	{"a":{"b":1.5}}
+#
+# `float` is a VALUE keyword only: as a map key, and quoted, it is text.
+float-as-map-key	gen	float:1	{"float":1}
+float-as-map-key-canon	canon	float:1	{"float":1}
+float-quoted-is-string	gen	a:"float"	{"a":"float"}
+float-key-and-kind-canon	canon	x:float\nfloat:1	{"float":1,"x":float}
+float-list-quoted-vs-kind-canon	canon	a:["float",float]	{"a":["float",float]}
+#
+# Preference (*) against the split leaves. A preference is a DEFAULT, so
+# a concrete peer of the same FAMILY overrides it -- the tower must not
+# turn "a float default overridden by an integer" into a conflict just
+# because the two leaves stopped being comparable. (Phase 1 broke
+# exactly this in the Go port; these rows are the guard.)
+pref-float-overridden-by-integer	gen	a:*2.2 & 3	{"a":3}
+pref-integer-overridden-by-float	gen	a:*2 & 3.0	{"a":3}
+pref-integer-overridden-by-float-canon	canon	a:*2 & 3.0	{"a":3.0}
+pref-func-float-overridden-by-integer	gen	a:*lower(2.2) & 3	{"a":3}
+pref-func-float-overridden-by-integer-upper	gen	a:*upper(1.1) & 3	{"a":3}
+# A kind peer that the default already satisfies leaves it standing...
+pref-float-kept-by-number	gen	a:*1.5 & number	{"a":1.5}
+pref-float-kept-by-float	gen	a:*1.5 & float	{"a":1.5}
+pref-integer-kept-by-number	gen	a:*1 & number	{"a":1}
+# ...and a kind peer from the other leaf replaces it with the constraint.
+pref-float-narrowed-by-integer-canon	canon	a:*1.5 & integer	{"a":integer}
+pref-integer-narrowed-by-float-canon	canon	a:*1 & float	{"a":float}
+# A preference whose peg is itself a kind constrains nothing.
+pref-float-kind-peg-yields-peer	gen	a:*float & "hello"	{"a":"hello"}
+# Outside the family it is a conflict, not an override.
+pref-cross-family-err	err	a:*lower(1.1) & a	Cannot unify

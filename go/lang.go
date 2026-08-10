@@ -143,9 +143,13 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.ValueDef{
-				"string":  kindDef(KindString),
+				"string": kindDef(KindString),
+				// `number` is the numeric SUPERTYPE (it admits any
+				// numeric leaf); `float` names the binary64 leaf that
+				// `number` used to name. See scalar.go's Kind lattice.
 				"number":  kindDef(KindNumber),
 				"integer": kindDef(KindInteger),
+				"float":   kindDef(KindFloat),
 				"boolean": kindDef(KindBoolean),
 				"top":     valDef(func(int) Val { return top() }),
 				"nil":     valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
@@ -511,16 +515,18 @@ func isIntegerKind(n float64, src string) bool {
 	return n == math.Trunc(n) && int64MinFloat <= n && n < int64LimitFloat
 }
 
-// numberVal picks an integer-kind vs a number-kind ScalarVal for a
-// parsed numeric literal (mirrors ts/src/lang.ts). src is the literal's
-// source text, or "" where there is none.
+// numberVal picks an integer-kind vs a float-kind (IEEE-754 binary64)
+// ScalarVal for a parsed numeric literal (mirrors ts/src/lang.ts). src
+// is the literal's source text, or "" where there is none. The result is
+// always a numeric LEAF: no ScalarVal ever carries the KindNumber
+// supertype.
 func numberVal(n float64, src string, sp int) Val {
 	if isIntegerKind(n, src) {
 		v := newInteger(int64(n))
 		v.sp = sp
 		return v
 	}
-	v := newNumber(n)
+	v := newFloat(n)
 	v.sp = sp
 	return v
 }
@@ -1122,8 +1128,10 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 }
 
 // negate returns the arithmetic negation of a numeric operand. It never
-// narrows the kind (an integer stays an integer, a number stays a
-// number) and never yields negative zero.
+// narrows the kind (an integer stays an integer, a float stays a float)
+// and never yields negative zero. A non-numeric operand — and, when the
+// tower's exact leaves land, any numeric leaf not handled here — falls
+// through to the `negative` nil rather than being silently mishandled.
 func negate(t any) Val {
 	switch v := t.(type) {
 	case float64:
@@ -1134,15 +1142,15 @@ func negate(t any) Val {
 			i := v.peg.(int64)
 			if i == math.MinInt64 {
 				// -(-2^63) leaves the int64 range, so it cannot stay
-				// integer kind; widen to a number rather than wrapping.
+				// integer kind; widen to a float rather than wrapping.
 				// (No literal can express -2^63 as an integer, so this
 				// is only reachable through the NewInteger API.)
-				return newNumber(-float64(i))
+				return newFloat(-float64(i))
 			}
 			// int64 has no negative zero, so -0 cannot arise here.
 			return newInteger(-i)
-		case KindNumber:
-			return newNumber(negZero(-v.peg.(float64)))
+		case KindFloat:
+			return newFloat(negZero(-v.peg.(float64)))
 		}
 	}
 	return newNil("negative")

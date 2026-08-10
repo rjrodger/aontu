@@ -8,6 +8,7 @@ const err_1 = require("../err");
 const utility_1 = require("../utility");
 const top_1 = require("./top");
 const FeatureVal_1 = require("./FeatureVal");
+const ScalarKindVal_1 = require("./ScalarKindVal");
 class PrefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -20,8 +21,37 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         if (spec.peg instanceof PrefVal) {
             this.rank = 1 + spec.peg.rank;
         }
-        this.superpeg = this.peg.superior();
+        this.resuper();
         // console.log('PVC', this.peg.canon, this.superpeg.canon)
+    }
+    // Recompute the type yardstick and the override gate from the current
+    // peg. Called again whenever the peg resolves (e.g. a ref).
+    resuper() {
+        const peg = this.peg;
+        // A preference whose peg is ITSELF a kind (`*integer`) constrains
+        // nothing: there is no type-of-a-type in this lattice, so any peer
+        // wins. (Pinned by test/spec/var.tsv:var-pref-kind-narrow. Before
+        // the tower this fell out of a ScalarKindVal's superior being top;
+        // now that a leaf kind lifts to `number`, it has to be said.)
+        if (true === peg.isScalarKind) {
+            this.superpeg = (0, top_1.top)();
+            this.familypeg = this.superpeg;
+            return;
+        }
+        const sup = peg.superior();
+        this.superpeg = sup;
+        if (true === sup?.isScalarKind) {
+            const family = (0, ScalarKindVal_1.kindFamily)(sup.peg);
+            // The gate stands in for the preferred value in any conflict it
+            // reports, so it must carry the same site and path as the type it
+            // widens -- otherwise NilVal.make picks a different primary and
+            // the error moves to the wrong path.
+            this.familypeg = family === sup.peg ?
+                sup : sup.place(new ScalarKindVal_1.ScalarKindVal({ peg: family, path: sup.path }));
+        }
+        else {
+            this.familypeg = sup;
+        }
     }
     // PrefVal unify always returns a PrefVal
     // PrefVals can only be removed by becoming Nil in a Disjunct
@@ -35,7 +65,7 @@ class PrefVal extends FeatureVal_1.FeatureVal {
             const resolved = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }) : ctx, this.peg, (0, top_1.top)(), 'pref/resolve');
             // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
             this.peg = resolved;
-            this.superpeg = this.peg.superior();
+            this.resuper();
         }
         if (peer instanceof PrefVal) {
             why += 'pref-';
@@ -69,8 +99,11 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         }
         else if (!peer.isTop) {
             why += 'super-';
-            out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SUPER') }) : ctx, this.superpeg, peer, 'pref-super/' + this.id);
-            if (out.same(this.superpeg)) {
+            out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'SUPER') }) : ctx, this.familypeg, peer, 'pref-super/' + this.id);
+            // The peer added nothing beyond a type the preferred value already
+            // satisfies (`*1 & integer`, `*1 & number`), so the preference
+            // stands. Anything else is a concrete override and wins.
+            if (out.same(this.superpeg) || out.same(this.familypeg)) {
                 out = this.peg;
                 why += 'same';
             }

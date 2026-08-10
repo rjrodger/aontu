@@ -79,6 +79,33 @@ const NullVal_1 = require("../dist/val/NullVal");
         (0, expect_1.expect)(G('*lower(1.1)&2')).equal(2);
         (0, expect_1.expect)(() => G('*lower(1.1)&a')).throws(/Cannot unify/);
     });
+    (0, node_test_1.test)('numeric-family-override', () => {
+        let a0 = new aontu_1.Aontu();
+        let G = a0.generate.bind(a0);
+        // A preference is a DEFAULT, and a concrete peer of the same FAMILY
+        // overrides it. `integer` and `float` are disjoint leaves under
+        // `number` (the tower), but both are numbers, so the override works
+        // in both directions -- before the tower `*1.0 & 2` worked and
+        // `*1 & 2.0` was an error, purely because `number` was then both the
+        // binary64 leaf and the parent of `integer`.
+        (0, expect_1.expect)(G('x:*1.0 & 2')).equal({ x: 2 });
+        (0, expect_1.expect)(G('x:*1 & 2.0')).equal({ x: 2 });
+        (0, expect_1.expect)(G('x:*1 & 2.5')).equal({ x: 2.5 });
+        // A peer of another family is still a conflict, not an override.
+        (0, expect_1.expect)(() => G('x:*1 & a')).throws(/Cannot unify/);
+        (0, expect_1.expect)(() => G('x:*1.5 & true')).throws(/Cannot unify/);
+        (0, expect_1.expect)(() => G('x:*a & 1')).throws(/Cannot unify/);
+        // A peer that only restates a kind the preferred value already
+        // satisfies leaves the preference standing.
+        (0, expect_1.expect)(G('x:*1 & integer')).equal({ x: 1 });
+        (0, expect_1.expect)(G('x:*1 & number')).equal({ x: 1 });
+        (0, expect_1.expect)(G('x:*1.5 & float')).equal({ x: 1.5 });
+        (0, expect_1.expect)(G('x:*1.5 & number')).equal({ x: 1.5 });
+        // A preference whose peg is ITSELF a kind constrains nothing, so any
+        // peer wins (pinned by test/spec/var.tsv:var-pref-kind-narrow).
+        (0, expect_1.expect)(G('x:*integer & a')).equal({ x: 'a' });
+        (0, expect_1.expect)(G('x:*float & 1')).equal({ x: 1 });
+    });
     /*
       test('parse', () => {
         let p0 = P('.a')

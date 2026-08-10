@@ -15,12 +15,12 @@ const hints = {
         '  1 & 1   -> 1    # Does unify (equal Integers);\n' +
         '  a & a   -> a    # Does unify (equal Strings);\n' +
         '  1 & 2   -> nil  # Does not unify (unequal Integers);\n' +
-        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Number).',
+        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).',
     scalar_kind: 'Literal scalar values of different kinds cannot unify.' +
         '\n \nExamples:\n' +
         '  1 & 1   -> 1    # Does unify (equal Integers);\n' +
         '  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n' +
-        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Number).',
+        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).',
     nil_gen: 'The nil value was present after unification, and nil cannot be\n' +
         'generated because nil is not a literal value.',
     no_gen: 'This value was present after unification, and cannot be generated\n' +
@@ -51,8 +51,20 @@ const hints = {
     'unite': 'Failed to unite two values. The values are incompatible and cannot be unified.',
     'internal': 'Internal error during unification. This indicates an unexpected error in the unification process.',
     // Type mismatch errors
-    'scalar-type': 'Scalar type mismatch. The scalar types are incompatible.',
-    'no_scalar_unify': 'Cannot unify scalar values. The scalar values have incompatible types.',
+    'scalar-type': 'Scalar kinds only unify when one contains the other. `number` is\n' +
+        'the supertype of the numeric leaves (integer, float), so meeting it\n' +
+        'with a leaf gives that leaf; two distinct leaves describe disjoint\n' +
+        'sets of values and so have no common lower bound.' +
+        '\n \nExamples:\n' +
+        '  number & integer -> integer  # Does unify (integer is a number);\n' +
+        '  number & number  -> number   # Does unify (same kind);\n' +
+        '  float & integer  -> nil      # Does not unify (disjoint leaves).',
+    'no_scalar_unify': 'Cannot unify scalar values. The scalar values have incompatible types.' +
+        '\n \nExamples:\n' +
+        '  number & 1    -> 1    # Does unify (1 is a number);\n' +
+        '  integer & 1   -> 1    # Does unify (1 is an integer);\n' +
+        '  float & 1     -> nil  # Does not unify (1 is an integer, not a float);\n' +
+        '  integer & 1.5 -> nil  # Does not unify (1.5 is a float, not an integer).',
     'not-scalar-type': 'Expected a scalar type but got a non-scalar type.',
     'map': 'Type mismatch: expected a map value but got a different type.',
     'list': 'Type mismatch: expected a list value but got a different type.',

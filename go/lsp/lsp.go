@@ -157,7 +157,9 @@ func Completions() []CompletionItem {
 	for _, f := range aontu.BuiltinFuncNames() {
 		out = append(out, CompletionItem{Label: f, Kind: CompletionFunction, Detail: "Aontu built-in function"})
 	}
-	for _, k := range []string{"string", "number", "integer", "boolean"} {
+	// Kind keywords: `number` is the numeric supertype, `integer` and
+	// `float` its leaves (see the Kind lattice in go/scalar.go).
+	for _, k := range []string{"string", "number", "integer", "float", "boolean"} {
 		out = append(out, CompletionItem{Label: k, Kind: CompletionKeyword, Detail: "scalar kind"})
 	}
 	for _, k := range []string{"true", "false", "null", "top"} {

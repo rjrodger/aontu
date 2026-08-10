@@ -104,11 +104,12 @@ describe('lsp-completion', () => {
 
   test('completion-list', () => {
     const c = computeCompletions()
-    Assert.equal(c.length, 20) // 12 funcs + 4 kinds + 4 literals
+    Assert.equal(c.length, 21) // 12 funcs + 5 kinds + 4 literals
     const byLabel = new Map(c.map(i => [i.label, i]))
     Assert.equal(byLabel.get('upper')?.kind, COMPLETION_FUNCTION)
     Assert.equal(byLabel.get('string')?.kind, COMPLETION_KEYWORD)
-    for (const want of ['close', 'upper', 'path', 'string', 'integer', 'true', 'null', 'top']) {
+    for (const want of
+      ['close', 'upper', 'path', 'string', 'integer', 'float', 'true', 'null', 'top']) {
       Assert.ok(byLabel.has(want), 'missing ' + want)
     }
   })
@@ -153,7 +154,7 @@ describe('lsp-handler', () => {
     Assert.match(hov[0].result.contents.value, /8080/)
 
     const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} })
-    Assert.equal(comp[0].result.length, 20)
+    Assert.equal(comp[0].result.length, 21)
   })
 
 

@@ -3,14 +3,20 @@ import { AontuContext } from '../ctx';
 import { FeatureVal } from './FeatureVal';
 declare class Integer {
 }
+declare class Float {
+}
 declare class Null {
 }
-type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer.constructor);
+declare function kindParent(kind: any): any;
+declare function kindFamily(kind: any): any;
+declare function kindSubsumes(sup: any, sub: any): boolean;
+type ScalarConstructor = StringConstructor | NumberConstructor | BooleanConstructor | (typeof Integer) | (typeof Float) | (typeof Null) | (typeof Integer.constructor);
 declare class ScalarKindVal extends FeatureVal {
     isScalarKind: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     unify(peer: Val, ctx: AontuContext): Val;
     get canon(): any;
+    superior(): Val;
     same(peer: any): boolean;
 }
-export { Integer, Null, ScalarConstructor, ScalarKindVal, };
+export { Float, Integer, Null, ScalarConstructor, ScalarKindVal, kindFamily, kindParent, kindSubsumes, };

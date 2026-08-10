@@ -26,8 +26,11 @@ func NewString(s string) Val { return newString(s) }
 // NewInteger returns an integer scalar value.
 func NewInteger(i int64) Val { return newInteger(i) }
 
-// NewNumber returns a floating-point number scalar value.
-func NewNumber(f float64) Val { return newNumber(f) }
+// NewNumber returns a scalar value of the `float` kind — the IEEE-754
+// binary64 leaf of the number lattice. (The name is kept for API
+// compatibility; the kind it builds is KindFloat, not the KindNumber
+// supertype, which no concrete value carries.)
+func NewNumber(f float64) Val { return newFloat(f) }
 
 // NewBoolean returns a boolean scalar value.
 func NewBoolean(b bool) Val { return newBoolean(b) }
@@ -36,9 +39,11 @@ func NewBoolean(b bool) Val { return newBoolean(b) }
 func NewNull() Val { return newNull() }
 
 // NewScalarKind returns a scalar-kind (type constraint) value — the
-// equivalent of bare `string`, `number`, `integer` or `boolean` in
-// source. Use the exported Kind constants (KindString, KindNumber,
-// KindInteger, KindBoolean).
+// equivalent of bare `string`, `number`, `integer`, `float` or
+// `boolean` in source. Use the exported Kind constants: KindString,
+// KindBoolean, KindNull, and the numeric lattice KindNumber (the
+// supertype, admitting any numeric leaf), KindInteger and KindFloat
+// (the leaves).
 func NewScalarKind(k Kind) Val { return newScalarKind(k) }
 
 // NewMap returns a map value built from fields. Keys are inserted in

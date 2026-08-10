@@ -63,7 +63,7 @@ import {
 
 
 
-import { ScalarKindVal, Integer } from './val/ScalarKindVal'
+import { ScalarKindVal, Float, Integer } from './val/ScalarKindVal'
 
 
 import { BooleanVal } from './val/BooleanVal'
@@ -189,6 +189,9 @@ help isolate the syntax error.`,
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: String }), r, ctx)
         },
+        // `number` is a pure supertype: it matches a concrete value of
+        // any numeric leaf and never tags one itself. `integer` and
+        // `float` are the leaves (see ScalarKindVal for the lattice).
         'number': {
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: Number }), r, ctx)
@@ -196,6 +199,10 @@ help isolate the syntax error.`,
         'integer': {
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: Integer }), r, ctx)
+        },
+        'float': {
+          val: (r: Rule, ctx: JsonicContext) =>
+            addsite(new ScalarKindVal({ peg: Float }), r, ctx)
         },
         'boolean': {
           val: (r: Rule, ctx: JsonicContext) =>

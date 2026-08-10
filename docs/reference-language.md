@@ -55,7 +55,7 @@ plugins, so the surface syntax is "relaxed JSON".
 - **Numbers** are JSON numbers, stored as IEEE-754 doubles. A literal
   has `integer` kind only when its source has no `.`, its value is
   integral, *and* the value fits the int64 range; otherwise it has
-  `number` kind (so `1` is an integer, `1.0` is a number, and so is
+  `float` kind (so `1` is an integer, `1.0` is a float, and so is
   `1e21`). The rule is stated in full under
   [Scalar kinds](#scalar-kinds-types).
 - **Other numeric forms.** Hexadecimal (`0x1f`), octal (`0o17`) and
@@ -115,12 +115,13 @@ A bare kind name is a *type*: the set of all scalars of that kind.
 | Kind      | Matches                              |
 |-----------|--------------------------------------|
 | `string`  | any string                           |
-| `number`  | any numeric value (`integer` included) |
+| `number`  | any numeric value — the supertype of every numeric leaf |
+| `float`   | any value of *float kind* (below)    |
 | `integer` | any value of *integer kind* (below)  |
 | `boolean` | `true` or `false`                    |
 | `top`     | any value at all                     |
 
-### Integer kind and number kind
+### Integer kind and float kind
 
 Every numeric value carries a **kind**, fixed when the value is built,
 and it is the kind — not the magnitude — that decides what the value
@@ -132,7 +133,10 @@ all three of these hold:
 3. its value lies within the int64 range, that is
    `-9223372036854775808 ≤ n < 9223372036854775808`.
 
-Anything else has **number** kind. The upper bound is *exclusive*
+Anything else has **float** kind. `number` is not a leaf: it is the
+supertype naming *any* numeric value, so `number` admits an integer
+and a float alike, while `float` admits only the latter. The upper
+bound is *exclusive*
 because numeric values are IEEE-754 doubles and 2^63−1 cannot be
 represented in one: it rounds up to 2^63, and so falls outside the
 range.
@@ -141,12 +145,12 @@ range.
 1                      → integer   (no '.', integral, in range)
 1e3                    → integer   (1000 — an exponent is not a '.')
 9007199254740992       → integer
-1.0                    → number    (rule 1: the source has a '.')
-1.5                    → number    (rules 1 and 2)
-1e21                   → number    (rule 3: beyond int64)
-100000000000000000000  → number    (rule 3)
-0x7fffffffffffffff     → number    (rule 3: rounds up to 2^63)
-0xffffffffffffffff     → number    (rule 3)
+1.0                    → float     (rule 1: the source has a '.')
+1.5                    → float     (rules 1 and 2)
+1e21                   → float     (rule 3: beyond int64)
+100000000000000000000  → float     (rule 3)
+0x7fffffffffffffff     → float     (rule 3: rounds up to 2^63)
+0xffffffffffffffff     → float     (rule 3)
 ```
 
 Points worth knowing:

@@ -12,6 +12,7 @@ import {
 import { makeNilErr, AontuError } from '../err'
 
 import { ScalarVal } from './ScalarVal'
+import { Float } from './ScalarKindVal'
 
 import {
   explainOpen,
@@ -20,6 +21,10 @@ import {
 
 
 
+// The IEEE-754 binary64 leaf of the number tower. Its KIND is Float (the
+// keyword `float`), not the `number` supertype: `number` names the family
+// of numeric leaves and never tags a concrete value. The class name is
+// historical -- `number` used to name this leaf.
 class NumberVal extends ScalarVal {
   isNumber = true
 
@@ -34,7 +39,7 @@ class NumberVal extends ScalarVal {
       throw new AontuError('not-number: ' + spec.peg)
     }
 
-    super({ ...spec, kind: Number }, ctx)
+    super({ ...spec, kind: Float }, ctx)
   }
 
 
@@ -52,7 +57,7 @@ class NumberVal extends ScalarVal {
         peer.kind === this.kind &&
         peer.peg === this.peg
       ) {
-        // Same kind (both Number) and equal value: integer/float no
+        // Same kind (both Float) and equal value: integer/float no
         // longer cross-unify, so peer is necessarily a NumberVal here.
         out = this
       }
@@ -74,8 +79,8 @@ class NumberVal extends ScalarVal {
   }
 
 
-  // Canon must round-trip kind: reparsing the canon of a number-kind
-  // value has to yield a number-kind value again. A rendering with no
+  // Canon must round-trip kind: reparsing the canon of a float-kind
+  // value has to yield a float-kind value again. A rendering with no
   // '.' and no exponent (1 -> "1") would reparse as an integer, so it
   // gains a ".0" suffix. Renderings that already carry a fraction, an
   // exponent, or are NaN/Infinity are left alone.

@@ -329,6 +329,22 @@ pinned with baseline rows first):
    `bigdecimal` change meaning. Verified: nothing in the repository,
    suite, docs, or editor files uses any of them meaningfully today;
    real-world documents using them as bare strings must quote them.
+   Note the concrete shape this takes for a *reference*: `a:$.float`
+   against a `float:` key now fails exactly as `a:$.number` already
+   does — the pre-existing keyword-versus-path behaviour, reached by
+   one more word.
+
+   *Landed in Phase 1 (implementation note).* A preference is
+   overridden by a peer of a **sibling numeric leaf**, where before it
+   was not: `a:*2 & 3.0` was an error and now yields `3.0`. This is a
+   loosening, and it removes an asymmetry that existed only because
+   `number` was simultaneously the binary64 leaf and `integer`'s
+   parent — the mirror case `a:*2.2 & 3` already worked. `PrefVal`
+   therefore gates an override on the *family* (`number`) rather than
+   the leaf; gating on the leaf instead would tighten four behaviours
+   that both ports agreed on before the tower, breaking landed rows
+   (`var.tsv:var-pref-kind-narrow` among them). Pinned by the
+   `pref-*` rows in number-tower.tsv, in both ports.
 2. `super(1.5)` flips from `number` to `float` (one landed row).
 3. **Lossy integer literals become errors (D7)** — and this reaches
    further than the four flipped spec rows (`hex-big`,

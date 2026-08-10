@@ -43,7 +43,7 @@ func (rv *RefVal) append(part any) {
 			rv.peg = append(rv.peg, p.peg.(string))
 		case KindInteger:
 			rv.peg = append(rv.peg, strconv.FormatInt(p.peg.(int64), 10))
-		case KindNumber:
+		case KindFloat:
 			for _, s := range strings.Split(formatNumber(p.peg.(float64)), ".") {
 				rv.peg = append(rv.peg, s)
 			}
@@ -164,7 +164,7 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 					parts = append(parts, sv.peg.(string))
 				case KindInteger:
 					parts = append(parts, strconv.FormatInt(sv.peg.(int64), 10))
-				case KindNumber:
+				case KindFloat:
 					parts = append(parts, formatNumber(sv.peg.(float64)))
 				case KindBoolean:
 					if sv.peg.(bool) {

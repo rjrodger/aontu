@@ -137,6 +137,9 @@ func collectSpans(v Val, out *[]ValueSpan, seen map[Val]bool) {
 func valKind(v Val) string {
 	switch t := v.(type) {
 	case *ScalarVal:
+		// A concrete value always carries a numeric LEAF kind, so a
+		// binary64 value hovers as "float"; "number" is the supertype
+		// and labels a ScalarKindVal (reported as "type") only.
 		return t.kind.String()
 	case *ScalarKindVal:
 		return "type"
