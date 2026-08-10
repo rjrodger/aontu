@@ -58,7 +58,7 @@ upper-num-unify-integer-err	err	x:upper(1.1) & integer	Cannot unify scalar value
 # R6: super(x) is the lattice-superior of its argument -- the kind of a
 # concrete scalar. (1 is an integer literal, so super(1) is integer.)
 super-int-canon	canon	x:super(1)	{"x":integer}
-super-float-canon	canon	x:super(1.5)	{"x":number}
+super-float-canon	canon	x:super(1.5)	{"x":float}
 super-string-canon	canon	x:super(a)	{"x":string}
 super-bool-canon	canon	x:super(true)	{"x":boolean}
 super-int-unify	gen	x:super(1) & 2	{"x":2}

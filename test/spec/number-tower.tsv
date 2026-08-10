@@ -1,0 +1,40 @@
+# Shared aontu unit tests: the number tower. Columns (tab-separated): name<TAB>mode<TAB>src<TAB>expect
+# mode: canon = unify(src).canon == expect ; gen = generate(src) deep-equals JSON(expect) ; err = generate(src) errors, message contains expect
+#
+# See docs/design/number-tower.md for the design these rows pin. The
+# tower makes `number` a pure supertype over four disjoint leaves:
+#
+#   number
+#   |- integer      int64-window exact
+#   |- float        IEEE-754 binary64   (was spelled `number`)
+#   |- biginteger   exact, opt-in via 0d
+#   |- bigdecimal   exact, opt-in via 0d
+#
+# PHASE 1 -- the kind lattice. `float` names the binary64 leaf; `number`
+# no longer names it, it names the family.
+float-kind-canon	canon	a:float	{"a":float}
+float-admits-float	gen	a:1.5 & float	{"a":1.5}
+float-admits-integral-float	gen	a:1.0 & float	{"a":1}
+float-admits-integral-float-canon	canon	a:1.0 & float	{"a":1.0}
+float-rejects-integer-err	err	a:1 & float	Cannot unify scalar values
+integer-rejects-float-err	err	a:1.5 & integer	Cannot unify scalar values
+#
+# `number` admits every numeric leaf, and meeting it with a leaf yields
+# that leaf. Two distinct leaves have no common lower bound.
+number-admits-integer	gen	a:1 & number	{"a":1}
+number-admits-float	gen	a:1.5 & number	{"a":1.5}
+number-meet-integer-canon	canon	a:number & integer	{"a":integer}
+number-meet-float-canon	canon	a:number & float	{"a":float}
+number-meet-number-canon	canon	a:number & number	{"a":number}
+float-meet-integer-err	err	a:float & integer	Cannot unify
+float-meet-float-canon	canon	a:float & float	{"a":float}
+#
+# The super() ladder gains a real rung: a concrete value lifts to its
+# leaf, a leaf lifts to number, and number lifts to top.
+super-float-value-canon	canon	x:super(1.5)	{"x":float}
+super-integer-value-canon	canon	x:super(1)	{"x":integer}
+super-integer-kind-canon	canon	x:super(integer)	{"x":number}
+super-float-kind-canon	canon	x:super(float)	{"x":number}
+super-number-kind-canon	canon	x:super(number)	{"x":top}
+super-float-value-unify	gen	x:super(1.5) & 2.5	{"x":2.5}
+super-float-value-unify-integer-err	err	x:super(1.5) & 2	Cannot unify scalar values
