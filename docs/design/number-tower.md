@@ -146,14 +146,21 @@ pinned in the spec phase.
 ### D4 — one value, one rendering: normalise at parse
 
 `0d0.10`, `0d0.1`, and `0d1e-1` all parse to the same value, whose
-canon is `0d0.1`. `0d1.5e2` parses to canon `0d150`; `0d1e3` to
-`0d1000` (biginteger? no — its source has an exponent, so it is
-bigdecimal `0d1000`; kind is decided by source, value by
-normalisation). Rendering is boru's otherwise: sign before the
+canon is `0d0.1`. Rendering is boru's otherwise: sign before the
 marker (`-0d5`), plain form at every magnitude, never scientific.
-Canon round-trips kind by construction — the `0d` prefix is
-self-identifying, so the R4 `.0`-suffix device is not needed for the
-new leaves.
+
+The `0d` prefix identifies the *family*, not the leaf, so the R4
+`.0`-suffix device recurs for the leaf split: an **integral
+bigdecimal always renders with one decimal place**. `0d1.5e2` (its
+source has an exponent, so it is bigdecimal by D3) has value 150 and
+canon `0d150.0`; `0d1e3` canons as `0d1000.0`; plain `0d1000` stays
+biginteger and canons as `0d1000`. Without the marker,
+`parse(canon(0d1e3))` would come back as a *biginteger* — a
+kind-flipping canon of exactly the sort R4 exists to prevent.
+Normalisation is therefore: strip fraction to minimal scale, fold
+exponents, but never below one decimal place for a bigdecimal.
+(Bigdecimal 1000 and biginteger 1000 are distinct lattice points —
+kinds are disjoint per D2 — so their canons must differ.)
 
 ### D5 — negative zero: R2 extends to the tower
 
@@ -175,20 +182,47 @@ The `+` promotion rules mirror boru's tower with one substitution
 - **float ⊕ big is a hard error, both orders** — "a Big type never
   silently becomes a binary Float" (boru's rule, mirrored verbatim;
   its two-sided error message naming both leaves is worth copying);
-- `integer + integer` keeps today's semantics exactly (R5).
+- `integer + integer` is **computed exactly** and its result must
+  satisfy the R1 storage contract (integral, int64 range, *and*
+  exactly representable in binary64) or it is a located error with
+  the `0d` hint. Today's float64 addition silently rounds sums of
+  exact operands — `4503599627370496 + 4503599627370497` yields
+  `9007199254740992` instead of `…993` — which the tower's
+  exact-or-error creed cannot tolerate. TypeScript computes the sum
+  in `bigint`, Go in checked `int64` (boru's checked-add precedent);
+  both then apply the same storage test, so a sum Go could hold but
+  TypeScript could not (double-inexact above 2^53) errors in *both*
+  ports rather than diverging. Result kind is unchanged R5.
+
+String concatenation is defined for the new leaves and uses the
+**plain digit rendering, without the `0d` marker** — `"x" + 0d5` →
+`"x5"`, `"q" + 0d0.1` → `"q0.1"` — matching the existing rule that
+concatenation renders digits, not kind decoration (`"q" + 0.001` is
+`"q0.001"`, and the R4 canon suffix never leaks into strings). This
+must be stated because the audit shows both ports would otherwise
+fail differently: TypeScript's `+` would leave the op unresolved
+while Go's `primStr` would coerce a big peg to the empty string — a
+silent divergence. The string × leaf pairs join the cross-product
+rows.
 
 `upper()`/`lower()` on the big leaves are exact ceiling/floor and
 keep the argument's kind (R5). Unary minus negates exactly. Results
 never demote (`0d7 + -0d2` is biginteger `0d5`, mirroring boru).
 
-Where boru consults its 34-digit context, Aontu instead enforces a
-**coefficient budget**: a fixed, spec-pinned limit on result
-coefficient digits (proposed: 4096). An operation whose exact result
-would exceed it is a located error (`decimal_budget`), never a
-rounded value. The budget exists because scale alignment can inflate
-coefficients without bound (`0d1e4000 + 0d1e-4000`); it is a
-resource guarantee in the G5 family — deterministic, identical in
-both ports, and pinned by spec rows at the boundary.
+Where boru consults its 34-digit context, Aontu instead enforces an
+**exactness budget**: a fixed, spec-pinned limit on *both* the
+coefficient digits *and* the absolute scale of any bigdecimal
+(proposed: 4096 each), enforced at parse time, through every
+operation, and at render. A literal or an exact result that exceeds
+either bound is a located error (`decimal_budget`), never a rounded
+value. Both bounds are needed: scale alignment can inflate
+coefficients without bound (`0d1e4000 + 0d1e-4000`), and a
+one-digit-coefficient literal like `0d1e1000000000` would otherwise
+sail past a result-coefficient check only to demand a gigabyte of
+zeros at plain-form render time (and overflow an `int32` scale
+field) without any arithmetic occurring. The budget is a resource
+guarantee in the G5 family — deterministic, identical in both ports,
+and pinned by spec rows at both boundaries.
 
 ### D7 — lossy literals become errors with a migration path
 
@@ -200,11 +234,16 @@ integer"*. Boru's equivalent error suggests only an approximate
 float, even though its own `0d` form would be exact (verified); Aontu
 should not repeat that missed opportunity.
 
-This flips the three sanctioned rows (`hex-big`, `hex-big-canon`,
-`hex-huge`) to `err`, and **resolves issue #21** exactly as its
-ledger entry prescribes: the divergent (2^53, 2^63) window becomes a
-refusal in both ports, and the ledger entry is deleted rather than
-answered with a renderer choice.
+This flips four rows to `err`: the three G1-sanctioned hex rows
+(`hex-big`, `hex-big-canon`, `hex-huge`) **and**
+`number-model.tsv:lossy-above-pow53`, whose source
+`9007199254740993` pins today's silent rounding and is precisely the
+behaviour D7 abolishes — leaving it in `gen` mode would make a
+correct D7 implementation fail the shared contract. Together these
+**resolve issue #21** exactly as its ledger entry prescribes: the
+divergent (2^53, 2^63) window becomes a refusal in both ports, and
+the ledger entry is deleted rather than answered with a renderer
+choice.
 
 ### D8 — representation: no new dependencies
 
@@ -222,6 +261,19 @@ answered with a renderer choice.
 - Pointer pegs are treated as immutable, matching the engine's
   existing immutability contract (clones share them; nothing may
   mutate them in place).
+- **Programmatic construction obeys the same storage contract.**
+  Today Go's `NewInteger` accepts any `int64` while TypeScript's
+  `IntegerVal` holds a JS number — so the nominal value
+  `9007199254740993` is exact in Go and silently `…992` in the
+  canonical port, a parity hole no parse-time rule can see. Under
+  the tower, Go's `NewInteger` rejects an int64 that is not exactly
+  representable in binary64 (the R1 storage test, applied to API
+  input), and both ports gain exact-input constructors for the big
+  leaves (`NewBigInteger`/`NewBigDecimal` in Go; `bigint`- and
+  string-accepting constructors in TypeScript, where a `number`
+  argument is already rounded before the library can inspect it).
+  Exact values above 2^53 enter through the big leaves or not at
+  all — in both ports alike.
 
 ### D9 — the generate contract (the hard consumer-facing change)
 
@@ -232,9 +284,24 @@ number** — verified: `encoding/json` already does this for
 works unchanged. TypeScript returns `bigint` for biginteger and a
 `Decimal` instance for bigdecimal — and `JSON.stringify` **throws on
 bigint** (verified; a replacer cannot emit an unquoted number), so
-the TS CLI and any JSON-emitting consumer needs Aontu's own exact
-JSON emitter. JSON itself is not the obstacle — JSON numbers are
-arbitrary-precision text; only JavaScript's serialiser is.
+an exact JSON emitter is required. JSON itself is not the obstacle —
+JSON numbers are arbitrary-precision text; only JavaScript's
+serialiser is.
+
+The TypeScript emitter is a **documented public library export**,
+not a CLI internal: a library consumer whose document contains a
+biginteger has no other supported way to produce the promised exact
+JSON, so hiding the only implementation behind the command line
+would break the contract D9 makes. The CLI consumes the same export.
+
+Two testing consequences, because byte-exact serialisation cannot
+see the difference: an integral bigdecimal (`0d1e3`) and a
+biginteger can emit the *same* raw JSON number even if `generate()`
+returns the wrong runtime type. The native-type contract is
+therefore pinned by **per-port API tests** (TypeScript asserting
+`typeof`/`instanceof`, Go asserting the concrete type) alongside the
+`gens` rows — canon pins the AST kind, `gens` pins the bytes, and
+only the API tests pin the runtime object.
 
 This is an API-surface change for TS consumers of `generate()`
 (a document using `0d` can yield `bigint`/`Decimal` values), and it
@@ -263,8 +330,16 @@ pinned with baseline rows first):
    suite, docs, or editor files uses any of them meaningfully today;
    real-world documents using them as bare strings must quote them.
 2. `super(1.5)` flips from `number` to `float` (one landed row).
-3. `hex-big`/`hex-big-canon`/`hex-huge` flip to errors (D7 — the
-   change G1 already sanctioned).
+3. **Lossy integer literals become errors (D7)** — and this reaches
+   further than the four flipped spec rows (`hex-big`,
+   `hex-big-canon`, `hex-huge`, `lossy-above-pow53`): a plain JSON
+   document containing `{"x":9007199254740993}` is `0d`-free yet
+   flips from silently generating a rounded value to a located
+   error with a `0d` hint. That is the deliberate point of D7 —
+   refusal over corruption — but it means the JSON-superset
+   guarantee is "every JSON document parses", not "every JSON
+   document behaves identically". Likewise D6's exact integer sums:
+   an addition that silently rounded now errors.
 4. **`number` widens.** A schema saying `a: number` now also admits
    `0d` values. Subsumption-wise the new schema subsumes the old —
    backward compatible for all existing data — but a schema that
@@ -277,11 +352,16 @@ pinned with baseline rows first):
    made before this lands would be invalidated by the canon changes —
    an argument for sequencing the tower before G6 ships hashing.
 
-**What deliberately does not change:** every JSON document, every
-`0d`-free Aontu document, the R1 integer window, the R2/R3/R4/R5
-rules (each *extends* to the new leaves), and the absence of
-`inf`/`nan` literals — an overflowing literal stays an error, and the
-exact leaves cannot overflow, only exhaust their budget.
+**What deliberately does not change:** the R1 integer window, the
+R2/R3/R4/R5 rules (each *extends* to the new leaves), and the
+absence of `inf`/`nan` literals — an overflowing literal stays an
+error, and the exact leaves cannot overflow, only exhaust their
+budget. A document is untouched iff it avoids all of: `0d`-prefixed
+or newly reserved bare words (implication 1), lossy integer literals
+(implication 3), and integer sums that silently rounded (D6). Every
+value that is exact today means exactly what it meant; what changes
+is that the *inexact* cases stop being silent — the claim is meaning
+stability, not universal behaviour stability.
 
 **Knock-ons for the capability review:** G1's constraint atoms must
 range over the tower (`min(0)` against a bigdecimal — recommend
@@ -312,7 +392,7 @@ floats' behaviour.
 | Bare-string meaning changes go unnoticed downstream | Certain (for affected docs) | Low | Baseline rows pinned before the flip; loud CHANGELOG breaking section; quoting rescues every case |
 | Pointer-peg equality bugs in Go (`==` on `*big.Int`) | Medium | High | D2 makes identity per-kind value comparison; property tests over the lattice laws with big-leaf generators; the known sites are already enumerated |
 | TS exact-JSON emitter diverges from Go's marshaller | Medium | Medium | `gens` byte-exact rows executed by both runners; parity-probe discipline (both engines, never one) |
-| Coefficient blow-up as a resource attack | Low | Medium | D6 budget, deterministic and spec-pinned at the boundary |
+| Coefficient or scale blow-up as a resource attack (`0d1e4000 + 0d1e-4000`; the one-digit scale bomb `0d1e1000000000`) | Low | Medium | D6's dual budget — coefficient digits *and* absolute scale — enforced at parse, operation, and render, deterministic and spec-pinned at both boundaries |
 | `0d` matcher vs dot/path grammar interactions | Medium | Medium | Mirror boru's claim rule (trailing `.` only before a digit); pin the `0d1.e2`-class edges in the spec phase; the landed separator machinery already covers `_` edges |
 | `number`-widening surprises schema authors | Medium | Low | Migration note leads the CHANGELOG; `float` spelling is a one-word fix; G3's subsume verb (when it lands) mechanically confirms compatibility |
 | Two new kinds double the R5 contagion surface | Low | Medium | The promotion table is small and closed; pin the full operand-pair cross-product as spec rows, boru's `numeric-cross-product.tsv` being the template |
@@ -332,16 +412,23 @@ number-model rows except the flips this document names.
   classes/Kind enum, LSP lists, hints, editors, docs tables).
 - **Phase 2 — literals and leaves (L).** The `0d` matcher ×2;
   `BigIntegerVal`/`BigDecimalVal` (TS) and Kind members + pegs (Go);
-  parse-time normalisation (D4); canon; R2 extension (D5).
+  parse-time normalisation incl. the integral-bigdecimal `.0`
+  marker (D4); the parse-time scale bound (D6); canon; R2 extension
+  (D5); the programmatic-construction contract and exact-input
+  constructors (D8).
 - **Phase 3 — identity (S).** Per-kind value comparison in unify and
   disjunct sameness; kill the pointer-equality hazards.
-- **Phase 4 — arithmetic (M).** The `+` ladder, float⊕big error,
-  `upper`/`lower`/negate on the new leaves, the coefficient budget.
-  Cross-product spec rows.
-- **Phase 5 — generate (M).** Go marshallers; TS exact JSON emitter
-  in the CLI; API documentation of the new native types.
+- **Phase 4 — arithmetic (M).** The `+` ladder, exact integer sums
+  with the storage-contract error, float⊕big error, string × leaf
+  concatenation, `upper`/`lower`/negate on the new leaves, the
+  exactness budget at the operation boundary. Cross-product spec
+  rows including the string pairs.
+- **Phase 5 — generate (M).** Go marshallers; the TS exact JSON
+  emitter as a documented public export, consumed by the CLI;
+  per-port API tests pinning the native runtime types (D9); API
+  documentation of the new native types.
 - **Phase 6 — lossy literals (S).** D7's errors with the `0d` hint;
-  flip the three rows; delete the ledger entry; close #21.
+  flip the four rows; delete the ledger entry; close #21.
 - **Phase 7 — docs (M).** number-model.md successor section;
   reference/tutorial; CHANGELOG breaking inventory (implications
   1–6); migration notes led by the `number`-vs-`float` distinction.
