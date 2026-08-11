@@ -183,7 +183,7 @@ divergence is fixed, and the behaviour then earns real rows in the
 appropriate spec file.
 
 The ledger is not the same list as
-[Known TS/Go divergences](DIVERGENCE.md) . Those differ
+[Known TS/Go divergences](DIVERGENCE.md). Those differ
 deliberately and permanently and are never going to be pinned, so they
 are not tracked as debt.
 
