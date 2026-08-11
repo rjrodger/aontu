@@ -1,0 +1,25 @@
+# DRAFT (not executed; see README.md). G1 phases 4-5: cross-field
+# arguments, residuation, constraint-bearing disjuncts, and must().
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# An atom whose argument holds an unresolved reference residuates: no
+# error, re-evaluated on later passes, normalised once concrete.
+cross-ref-bound	gen	scaling:{floor:2 ceiling:10 target:integer&min($.scaling.floor)&max($.scaling.ceiling)} scaling:target:7	{"scaling":{"ceiling":10,"floor":2,"target":7}}
+cross-ref-reject	err	s:{lo:2 hi:10 t:integer&min($.s.lo)&max($.s.hi)} s:t:99	Cannot unify
+cross-ref-canon	canon	a:{hi:10 lo:2 t:integer&min($.a.lo)&max($.a.hi)}	{"a":{"hi":10,"lo":2,"t":integer&min(2)&max(10)}}
+residuation-forward	gen	t:integer&min($.lo) lo:2 t:5	{"lo":2,"t":5}
+#
+# Constraint-bearing disjuncts: a residual member adds no trial errors
+# and survives symbolically; generation picks the preference. These
+# rows guard the DisjunctVal.gen fold defect (see README.md) from the
+# constraint side — they must hold before constraint-bearing disjuncts
+# ship, WITHOUT the fold conjoining a residual into a chosen branch.
+disjunct-constraint-pref-gen	gens	a:*8080|min(1024)	{"a":8080}
+disjunct-constraint-residual-canon	canon	a:1024|min(2048)	{"a":1024|min(2048)}
+disjunct-constraint-data	gen	a:(min(1024)|*80) a:8080	{"a":8080}
+#
+# must(c, msg): Band B, evaluate-only. Residuates until the peer is
+# concrete; on failure the author message is attached to the nil; never
+# participates in emptiness or subsumption.
+must-basic	gen	a:must("gold"|"silver","tier must be a support tier name") a:gold	{"a":"gold"}
+must-reject-message	err	a:must("gold"|"silver","tier must be a support tier name") a:lead	tier must be a support tier name

@@ -1,0 +1,21 @@
+# DRAFT (not executed; see README.md). G1 phase 2: regex atoms.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# re(p) matches strings against an UNANCHORED pattern from a pinned
+# RE2-compatible subset (no backreferences, no lookaround), so both
+# engines — JS RegExp and Go regexp — agree by construction. A
+# non-portable pattern is a located construction-time error, not an
+# engine-dependent behaviour.
+re-match	gen	a:re("^[a-z]+$") a:hello	{"a":"hello"}
+re-reject	err	a:re("^[a-z]+$") a:"Hello!"	Cannot unify
+re-unanchored	gen	a:re("el") a:hello	{"a":"hello"}
+re-with-kind-canon	canon	a:string&re("^[a-z]$")	{"a":string&re("^[a-z]$")}
+#
+# Distinct patterns ACCUMULATE (sorted in canon) and are never declared
+# empty: regex emptiness is deliberately approximate — sound, incomplete.
+re-accumulate-canon	canon	a:re("x")&re("a")	{"a":re("a")&re("x")}
+re-accumulate-both-match	gen	a:re("^h")&re("o$") a:hello	{"a":"hello"}
+#
+# Non-portable patterns are refused at construction.
+re-nonportable-lookahead	err	a:re("(?=x)y")	pattern
+re-nonportable-backref	err	a:re("(x)\\1")	pattern

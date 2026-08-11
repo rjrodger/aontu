@@ -34,6 +34,7 @@ the [Explanation](explanation.md).
 - [Canonical form](#canonical-form)
 - [Generation](#generation)
 - [Errors](#errors)
+- [The constraint algebra (specified)](#the-constraint-algebra-specified)
 
 ---
 
@@ -893,3 +894,192 @@ Failures surface as messages (thrown as `AontuError` in TS, returned as
 In conflict messages the operand later in the source is named first
 ("…value: `<later>` with value: `<earlier>`") so the two sites are
 distinguishable.
+
+## The constraint algebra (specified)
+
+> **Status: specified, not yet implemented.** This section is the
+> normative design of capability G1's constraint atoms
+> ([docs/capability-review/g1-constraint-algebra.md](capability-review/g1-constraint-algebra.md),
+> phase 0), re-derived over the four-leaf number tower. Today every
+> atom below parses as an `unknown_function` error; the proposed spec
+> rows live as **drafts** in [`test/spec/draft/`](../test/spec/draft/)
+> and are promoted (after parity probing) as each implementation phase
+> lands. Everything else in this reference describes implemented
+> behaviour; this section alone describes committed design.
+
+### Vocabulary
+
+Nine builtins join the function registry. Eight are **Band A** — full
+lattice citizens with defined meet, emptiness, subsumption, and
+canonical form. One is **Band B** — evaluate-only, honestly reported
+as such. There is no new grammar: atoms are ordinary functions.
+
+| Atom | Band | Meaning |
+|------|------|---------|
+| `min(x)`  | A | value ≥ x (numeric, or string with lexical order) |
+| `max(x)`  | A | value ≤ x |
+| `above(x)`| A | value > x |
+| `below(x)`| A | value < x |
+| `neq(x, ...)` | A | value is none of the listed scalars (leaf-aware) |
+| `re(p)`   | A | string matches pattern p (unanchored, portable subset) |
+| `len(c)`  | A | length/count satisfies integer constraint c |
+| `unique()`| A | list elements pairwise distinct |
+| `must(c, msg)` | B | evaluate-only check with an author message |
+
+### Bounds and the number tower
+
+Three rulings, each forced by the tower's disjoint leaves
+(`integer`, `float`, `biginteger`, `bigdecimal` under the pure
+supertype `number`):
+
+1. **Order is a property of the number line, not the leaf.** A
+   numeric bound constrains the value's mathematical position and is
+   satisfied by ANY numeric leaf at an admissible position:
+   `min(0) & 0d5` is `0d5`, `above(1) & 1.5` is `1.5`. Comparison is
+   exact across leaves — every binary64 is exactly a rational, so a
+   `float` compares with an exact decimal without rounding, in both
+   implementations. A numeric bound implies the kind `number` (the
+   supertype); it never narrows the peer's leaf.
+2. **Endpoints keep their written leaf.** Canon round-trips kind
+   (rule R4), so `min(1)`, `min(1.0)` and `min(0d1)` are distinct
+   canonical texts denoting the same bound point. When two endpoints
+   at the SAME point meet (`min(1) & min(1.0)`), the survivor is the
+   one whose leaf sits lowest in the tower order
+   `integer < float < biginteger < bigdecimal` — a deterministic
+   choice both implementations make identically.
+3. **`neq` excludes by scalar identity — leaf and value** — because
+   that is what scalar identity means in the lattice (`1 & 1.0` is a
+   conflict; `1|1.0` keeps both alternatives). `neq(1)` excludes the
+   integer `1` and admits the float `1.0`. To exclude a point on the
+   whole number line, list its leaves: `neq(1, 1.0)` (the exact
+   leaves are opt-in, so `0d`-free documents need only these two).
+
+String bounds (`min("a")`) use lexical code-point order and imply
+`string`. Mixing domains in one meet (`min(0) & min("a")`) is empty
+and yields nil.
+
+### The meet
+
+`atom & atom` (same domain) is symbolic — decided at
+schema-composition time, before any data arrives:
+
+| Meet | Result |
+|------|--------|
+| interval & interval | intersection: `min(0) & min(5)` → `min(5)`; `min(2) & max(10) & max(7)` → `min(2)&max(7)` |
+| `neq` & `neq` | exclusion-set union, arguments sorted |
+| `re` & `re` | regex-set accumulation (patterns sorted; never simplified) |
+| `len(c1)` & `len(c2)` | `len(c1 & c2)` — the count atom reuses the numeric algebra recursively |
+| bound & kind | domain narrowing: `integer & min(0)` keeps both (interval gains the integral-domain flag); `number & min(0)` keeps `min(0)` (already implied); `string & min(0)` → nil |
+| bound & concrete scalar | membership by exact comparison → the scalar, or a two-site nil |
+| bound & `must` | both kept; `must` stays opaque |
+
+Meets are commutative and idempotent by construction — normalisation,
+not term order, defines the result — so the lattice guarantee is
+preserved.
+
+### Emptiness
+
+Decided **eagerly at unification time** where it is exact, and never
+guessed where it is not:
+
+- Empty interval: `min(5) & max(3)` → nil, both sites reported.
+- Integral gap: an integral-domain interval containing no integral
+  value — `integer & above(1) & below(2)` → nil. (Applies when the
+  domain is narrowed by `integer` or `biginteger`.)
+- Point deletion **requires a narrowed leaf**: `min(3) & max(3)`
+  admits the point 3 in any numeric leaf, so `neq(3)` (which excludes
+  only the integer `3`) does NOT empty it — but
+  `integer & min(3) & max(3) & neq(3)` → nil. This is the tower
+  re-derivation of the pre-tower example, and the draft rows pin both
+  directions.
+- `len(c)` is empty iff `c & integer & min(0)` is.
+- Regex emptiness is deliberately approximate: distinct `re` atoms
+  accumulate and are never declared empty — sound (no false
+  conflicts), incomplete (some contradictions surface only against
+  data).
+
+### Endpoint tightening: lazy endpoints, eager emptiness
+
+The pre-tower draft left open whether `integer & above(0.5)` should
+rewrite to `integer&min(1)`. **Decided: no endpoint rewriting.**
+Under the tower, a synthesised endpoint must be given a leaf the
+author never wrote (`1`? `0d1`?), and that invented spelling leaks
+into canonical text and, later, canon hashes. Emptiness needs no
+synthesis, so the algebra keeps *eager emptiness* (the
+composition-time contradiction detection that is the point of Band A)
+with *lazy endpoints* (canon stays what was written, normalised only
+by the meet rules above).
+
+### Canonical form
+
+A residual constraint renders as its normalised atoms joined by `&`
+in a fixed order — **kind, lower bound (`min`/`above`), upper bound
+(`max`/`below`), `neq` (arguments sorted), `re` (patterns sorted),
+`len`, `unique`, `must`** — no spaces, reparseable, endpoint leaves
+preserved:
+
+```aon
+a: integer & max(10) & min(0) & min(2)
+# canon: {"a":integer&min(2)&max(10)}
+```
+
+`parse(canon(v)) == v` holds for every atom and every normalisation
+rule: the reparse produces a conjunct of atoms that normalises back
+to the identical residual. Draft rows pin a round-trip and an
+order-independence case (`min(0)&max(10)` vs `max(10)&min(0)` →
+identical canon) for each rule.
+
+### `len` semantics
+
+`len` applies to strings, lists, and maps, with the domain fixed by
+the peer:
+
+- **strings**: length in **Unicode code points** — not UTF-16 code
+  units (TS's native count) and not bytes (Go's): `len(1) & "𝄞"`
+  holds, in both implementations. Astral-plane rows are part of the
+  draft suite, not an implementation accident.
+- **lists**: element count. **maps**: entry count.
+
+Its argument is any integer-domain constraint: `len(3)` means exactly
+3; `len(min(2) & max(5))` means between 2 and 5.
+
+### Cross-field bounds and residuation
+
+An atom whose argument contains an unresolved reference, or whose
+peer is not yet concrete, **residuates**: no error, stays in place,
+re-evaluated on later fixpoint passes. Atoms only ever suspend or
+intersect — never force evaluation — so evaluation order cannot
+change results.
+
+```aon
+scaling: {
+  floor: 2
+  ceiling: 10
+  target: integer & min($.scaling.floor) & max($.scaling.ceiling)
+}
+# target normalises to integer&min(2)&max(10) once floor/ceiling resolve
+```
+
+A residual that survives to generation is an error, exactly like an
+unresolved kind today; exhaustion of the pass budget while residuals
+are still refining is `budget_passes` ([the trust
+contract](trust.md), clause 2).
+
+### Band B: `must`
+
+`must(c, msg)` wraps any Aontu value as an evaluate-only check: it
+residuates until its peer is concrete, then requires the peer to
+unify with `c`; on failure the author's message is attached to the
+nil (`NilVal.details`). `must` never participates in emptiness or
+subsumption, and any report including one states that the check was
+evaluate-only — the honest channel for domain rules beyond the
+algebra.
+
+### Errors
+
+A constraint violation is an ordinary two-site nil in the existing
+message family (`Cannot unify value: 99999 with value: max(65535)`),
+with machine-readable `details`: the failing atom, the normalised
+admissible interval/sets, and any `must` message. Codes ride the
+[error-code registry](../test/spec/errcodes.tsv); rendering into
+reports belongs to the vet verb (G2).

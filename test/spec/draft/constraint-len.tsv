@@ -1,0 +1,27 @@
+# DRAFT (not executed; see README.md). G1 phase 3: len and unique.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# len's argument is any integer-domain constraint (the count atom
+# reuses the numeric algebra recursively); the domain — string length,
+# list element count, map entry count — is fixed by the peer.
+len-exact-list	gen	a:len(3) a:[1,2,3]	{"a":[1,2,3]}
+len-window-list	gen	a:len(min(2)&max(5)) a:[1,2,3]	{"a":[1,2,3]}
+len-reject-list	err	a:len(min(2)) a:[1]	Cannot unify
+len-map	gen	a:len(2) a:{x:1,y:2}	{"a":{"x":1,"y":2}}
+#
+# String length is counted in UNICODE CODE POINTS — not UTF-16 code
+# units (TS native) and not bytes (Go native). U+1D11E MUSICAL SYMBOL
+# G CLEF is one code point, two UTF-16 units, four UTF-8 bytes.
+len-string	gen	a:len(5) a:hello	{"a":"hello"}
+len-string-codepoints	gen	a:len(1) a:"𝄞"	{"a":"𝄞"}
+#
+# len emptiness reuses the numeric algebra: len(c) empty iff
+# c & integer & min(0) is.
+len-empty	err	a:len(min(5)&max(3))	Cannot unify
+len-negative-empty	err	a:len(max(-1))	Cannot unify
+#
+# unique() compares whole elements by scalar identity — leaf AND
+# value — so [1, 1.0] IS pairwise distinct under the tower.
+unique-ok	gen	a:unique() a:[1,2,3]	{"a":[1,2,3]}
+unique-reject	err	a:unique() a:[1,2,1]	Cannot unify
+unique-leafwise	gen	a:unique() a:[1,1.0]	{"a":[1,1]}
