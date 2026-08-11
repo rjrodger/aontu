@@ -54,3 +54,22 @@ move-shallower-dest-canon	canon	x:a:close({k:key()}) y:move($.x.a)	{"x":{"a":clo
 move-shallower-dest	gen	x:a:close({k:key()}) y:move($.x.a)	{"x":{},"y":{"k":"k"}}
 ref-into-move-dest-canon	canon	x:a:{v:6,k:key()} x:c:move($.x.a) y:$.x.c	{"x":{"a":{"k":key(),"v":6},"c":{"k":*"c","v":*6}},"y":{"k":*"k","v":*6}}
 ref-into-move-dest	gen	x:a:{v:6,k:key()} x:c:move($.x.a) y:$.x.c	{"x":{"c":{"k":"c","v":6}},"y":{"k":"k","v":6}}
+# AN INTERNAL CRASH IS NEVER THE RIGHT ANSWER.
+#
+# TypeScript reached these through raw TypeErrors that the unifier could
+# only report as an opaque [aontu/internal]: key() called the COERCING
+# global isNaN() on the argument's peg, which throws for a bigint (a
+# biginteger) and for the null-prototype object a map's peg is; path()
+# read .isScalar off undefined when called with no argument.
+#
+# upper()/lower() were given exactly this fix earlier and carry a comment
+# saying so; path() and key() were missed in that sweep.
+#
+# These rows pin only that the crash is gone and the two ports AGREE. What
+# a non-integer key() level should MEAN is an open contract question --
+# refusing it in both ports is the likelier answer than either port's
+# current behaviour -- and settling it will deliberately update these rows.
+key-biginteger-arg-no-crash	gens	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
+key-biginteger-arg-no-crash-canon	canon	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
+key-map-arg-no-crash	gens	a:b:c:key({})	{"a":{"b":{"c":"b"}}}
+path-no-arg-err	err	x:path()	Cannot resolve value
