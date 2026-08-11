@@ -146,10 +146,12 @@ only divergences that are expected to be fixed:
   invalid bytes, and by this document's own rule a divergence declared
   permanent does not go in the ledger either.
 
-  Distinct from this, and NOT permanent: a lone *surrogate* in a quoted
-  string is folded to U+FFFD by Go, which conflates distinct values.
-  That one is tracked in `test/spec/divergent.tsv` and issue #24, because
-  it breaks a lattice law rather than merely reshaping junk.
+  Distinct from this: a lone *surrogate* in a quoted string is folded
+  to U+FFFD by Go, which conflates distinct values and breaks a
+  lattice law rather than merely reshaping junk. That case has its own
+  entry above — it was tracked as ledger debt under issue #24 until
+  the refusal option was declined (2026-08-11), and is now a decided,
+  permanent divergence, not an open one.
 > **Previously divergent, now fixed:** root-level spreads over `$var`
 > (and other expression) keys. `k1:$flag &:boolean` used to raise an
 > internal error in TS: the expr plugin consumed the `&` as an infix
