@@ -116,7 +116,9 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
     }
     unify(peer, ctx) {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Constraint', this, peer);
-        let out = this;
+        // Every branch of the ladder assigns, so no initialiser: a
+        // residual is stable and the ladder is total.
+        let out;
         if (null != this.invalid) {
             out = (0, err_1.makeNilErr)(ctx, this.invalid, this, undefined, 'constrain');
         }

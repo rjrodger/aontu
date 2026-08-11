@@ -224,7 +224,9 @@ class ConstraintVal extends FeatureVal {
   unify(peer: Val, ctx: AontuContext): Val {
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Constraint', this, peer)
 
-    let out: Val = this
+    // Every branch of the ladder assigns, so no initialiser: a
+    // residual is stable and the ladder is total.
+    let out: Val
 
     if (null != this.invalid) {
       out = makeNilErr(ctx, this.invalid, this, undefined, 'constrain')
