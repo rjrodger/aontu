@@ -103,6 +103,26 @@ func mustMakeLang(base string) *jsonic.Jsonic {
 	return j
 }
 
+// inElem reports whether this val rule was pushed from a LIST ELEMENT.
+//
+// An optional key is not a list element. The same pair WITHOUT the `?` --
+// `a:[x:1]` -- is already discarded by both ports, because a key:value
+// pair is simply not an element; adding `?` must not turn a discarded pair
+// into a materialised one. It did here, purely because the optional form
+// reached the `val` rule's dive alts while the plain form never does.
+//
+// The canonical port avoids this a different way, by intercepting
+// OPTKEY+QM in the `elem` rule itself (the aontu-optional-key-elem alt in
+// ts/src/lang.ts) so `val` never sees it. Guarding the dive is the smaller
+// change here and keeps the two grammars' shapes recognisable.
+//
+// Worth naming what the bug actually cost: the phantom element MERGED with
+// a real one, so `a:[x?:1] a:[{q:9}]` generated {"q":9,"x":1} -- content
+// injected into a neighbouring element, not merely a stray entry.
+func inElem(r *jsonic.Rule) bool {
+	return r != nil && r.Parent != nil && "elem" == r.Parent.Name
+}
+
 func makeLang(base string) (*jsonic.Jsonic, error) {
 	j := jsonic.Make(jsonic.Options{
 		// Only # line comments are valid Aontu syntax (see
@@ -315,11 +335,16 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
 			&jsonic.AltSpec{
 				S: [][]jsonic.Tin{optkey, {qm}},
-				C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.D == 0 },
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
+					return r.D == 0 && !inElem(r)
+				},
 				P: "map", B: 2, A: freshMapNode, G: "optional",
 			},
 			&jsonic.AltSpec{
 				S: [][]jsonic.Tin{optkey, {qm}},
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
+					return !inElem(r)
+				},
 				P: "map", B: 2, N: map[string]int{"pk": 1}, A: freshMapNode,
 				G: "optional,dive",
 			},
@@ -390,6 +415,32 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 	j.Rule("elem", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependOpen(
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+
+			// An optional key in LIST position is consumed here and
+			// contributes NO element, mirroring the two
+			// aontu-optional-*-elem alts in ts/src/lang.ts.
+			//
+			// Two alts, because the first has to see OPTKEY+QM to know
+			// what this is, then hand the pair to `val` without letting
+			// `val`'s own optional-dive fire (which is what materialised
+			// a phantom {x:1} element). It backs up one token and
+			// re-enters elem carrying a marker; the second alt reads that
+			// marker and pushes the VALUE alone.
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{optkey, {qm}}, B: 1, R: "elem",
+				U: map[string]any{"aontu_optional": true},
+				G: "aontu-optional-key-elem",
+			},
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{{qm}, {cl}},
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
+					return r.Prev != nil && r.Prev.U != nil &&
+						r.Prev.U["aontu_optional"] == true
+				},
+				P: "val",
+				U: map[string]any{"aontu_optional_elem": true},
+				G: "aontu-optional-elem",
+			},
 		)
 		rs.AddAC(elemSpread)
 	})
@@ -404,7 +455,27 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 // listSpread marks the &: spread value within a parsed list slice.
 type listSpread struct{ val Val }
 
+// optionalElem marks a list entry that must NOT become an element: the
+// value of an unbraced optional pair in list position (`a:[x?:1]`).
+//
+// A marker rather than a removal because the entry is reached through the
+// enclosing list's slice, and shortening a slice here would not be visible
+// to the rule that owns it. The same reason listSpread is a marker.
+type optionalElem struct{}
+
 func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
+	// An optional key is not a list element. The pair is consumed by the
+	// two aontu-optional-*-elem alts above and its VALUE lands in the
+	// list, so it is marked here and dropped by asValDepth -- leaving the
+	// list exactly as the same pair without the `?` leaves it, which both
+	// ports already agree is empty.
+	if r.U["aontu_optional_elem"] == true {
+		if list, ok := r.Node.([]any); ok && 0 < len(list) {
+			list[len(list)-1] = &optionalElem{}
+		}
+		return
+	}
+
 	if r.U["spread"] != true {
 		return
 	}
@@ -1596,6 +1667,9 @@ func asValDepth(node any, depth int) Val {
 	case []any:
 		lv := &ListVal{}
 		for _, e := range n {
+			if _, ok := e.(*optionalElem); ok {
+				continue
+			}
 			if ls, ok := e.(*listSpread); ok {
 				if lv.spread == nil {
 					lv.spread = ls.val
