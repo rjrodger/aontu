@@ -28,7 +28,7 @@ class ScalarVal extends Val_1.Val {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Scalar', this, peer);
         let out;
         // Exactly equal scalars are handled in unify.unite
-        if (peer.isScalarKind) {
+        if (peer.isScalarKind || peer.isConstraint) {
             out = peer.unify(this, ctx);
         }
         else if (peer.isTop) {

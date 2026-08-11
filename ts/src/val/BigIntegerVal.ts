@@ -67,7 +67,7 @@ class BigIntegerVal extends ScalarVal {
     let out: Val = this
 
     if (null != peer) {
-      if (peer.isScalarKind) {
+      if (peer.isScalarKind || (peer as any).isConstraint) {
         out = peer.unify(this, te ? ctx.clone({ explain: ec(te, 'KND') }) : ctx)
       }
       else if (

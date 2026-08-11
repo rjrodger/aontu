@@ -60,7 +60,7 @@ class ScalarVal extends Val {
     let out: Val
 
     // Exactly equal scalars are handled in unify.unite
-    if (peer.isScalarKind) {
+    if (peer.isScalarKind || (peer as any).isConstraint) {
       out = peer.unify(this, ctx)
     }
     else if (peer.isTop) {

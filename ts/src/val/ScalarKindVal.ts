@@ -148,7 +148,13 @@ class ScalarKindVal extends FeatureVal {
 
     let out: Val = this
 
-    if (peerIsScalarVal) {
+    if ((peer as any).isConstraint) {
+      // The constraint algebra owns the kind-meets-constraint rules
+      // (narrowing, domain checks) -- delegate, so disjunct trials and
+      // direct drives agree with the sorted conjunct fold.
+      out = (peer as any).unify(this, ctx)
+    }
+    else if (peerIsScalarVal) {
       let peerKind = (peer as any).kind
 
       // A kind admits a concrete value of that kind, or of any kind

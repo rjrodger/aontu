@@ -10,8 +10,11 @@ its proposed rows wait here.
 
 Current contents: the constraint-algebra rows of capability G1 phase 0
 (`docs/capability-review/g1-constraint-algebra.md`; normative design in
-`docs/reference-language.md`, "The constraint algebra"). Every atom is
-an `unknown_function` error today.
+`docs/reference-language.md`, "The constraint algebra") that are NOT
+yet implemented: cross-structure constraints, len/unique, and re().
+The bound/neq rows (`constraint-bound.tsv`) were promoted to
+`test/spec/constraint-bound.tsv` when G1 phase 1 landed, with every
+expectation re-probed in both engines at promotion time per rule 2.
 
 Rules for this directory:
 

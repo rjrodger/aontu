@@ -24,6 +24,7 @@ var hints = map[string]string{
 	"unknown_function":  "This function name is not recognized.",
 	"literal_nil":       "A literal nil cannot unify with any other value.",
 	"unify_cycle":       "Circular reference detected during unification.",
+	"constraint":        "This value does not satisfy the constraint. A constraint is the\nmeet of bound atoms (min, max, above, below) and exclusions (neq)\nover one domain; the expected form shown is the normalised\nresidual the value must satisfy.\n \nExamples:\n  min(0) & 3                    -> 3    # Admitted (3 >= 0);\n  min(0) & 0d5                  -> 0d5  # Bounds are leaf-agnostic;\n  max(65535) & 99999            -> nil  # Above the bound;\n  min(5) & max(3)               -> nil  # Empty at composition time;\n  integer & above(1) & below(2) -> nil  # No integer in the gap;\n  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.",
 	"conjunct":          "This conjunction (& operator) could not be completed as some terms\ncould not be resolved.",
 	"no_path":           "The path reference could not be found.\n \nExamples:\n  a:1 b:$.a  -> a:1,b:1  # $.a is a valid path reference as a is a key of root ($).\n  a:$.b      -> nil      # $.b is not a valid path reference as there is no key b in root ($).\n",
 	"parse_bad_src":     "Invalid source provided for parsing. The source must be a non-empty string.",
@@ -103,6 +104,9 @@ var codeClasses = map[string]string{
 	"decimal_syntax":        "parse",
 
 	// conflict -- no common lower bound, or a value refused by a rule
+	// (constraint covers the whole algebra family: membership failure,
+	// empty meets at composition time, and domain/kind mixing.)
+	"constraint":            "conflict",
 	"scalar_value":          "conflict",
 	"scalar_kind":           "conflict",
 	"no_scalar_unify":       "conflict",

@@ -113,6 +113,15 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.ok(h);
         Assert.match(h.contents.value, /1/);
     });
+    (0, node_test_1.test)('hover-constraint', () => {
+        // A constraint residual hovers as its canon with the shared kind
+        // label "constraint" — never a constructor-name fallback (the Go
+        // twin is TestHoverConstraint; identical hover-text contract).
+        const h = (0, lsp_1.computeHover)('a:min(0)&max(10)', { line: 0, character: 3 });
+        Assert.ok(h);
+        Assert.match(h.contents.value, /min\(0\)&max\(10\)/);
+        Assert.match(h.contents.value, /\*constraint\*/);
+    });
     (0, node_test_1.test)('hover-miss-returns-null', () => {
         Assert.equal((0, lsp_1.computeHover)('port: 8080', { line: 5, character: 0 }), null);
     });
@@ -120,7 +129,7 @@ const lsp_server_1 = require("../dist/lsp-server");
 (0, node_test_1.describe)('lsp-completion', () => {
     (0, node_test_1.test)('completion-list', () => {
         const c = (0, lsp_1.computeCompletions)();
-        Assert.equal(c.length, 23); // 12 funcs + 7 kinds + 4 literals
+        Assert.equal(c.length, 28); // 17 funcs + 7 kinds + 4 literals
         const byLabel = new Map(c.map(i => [i.label, i]));
         Assert.equal(byLabel.get('upper')?.kind, lsp_1.COMPLETION_FUNCTION);
         Assert.equal(byLabel.get('string')?.kind, lsp_1.COMPLETION_KEYWORD);
@@ -133,7 +142,7 @@ const lsp_server_1 = require("../dist/lsp-server");
     (0, node_test_1.test)('builtin-funcs-match-engine', () => {
         // Drift guard: every BUILTIN_FUNCS name must be recognised by the
         // parser, and a bogus name must not be.
-        Assert.equal(lsp_1.BUILTIN_FUNCS.length, 12);
+        Assert.equal(lsp_1.BUILTIN_FUNCS.length, 17);
         const a = new aontu_1.Aontu();
         for (const name of lsp_1.BUILTIN_FUNCS) {
             const errs = (0, lsp_1.computeDiagnostics)('x:' + name + '(1)')
@@ -164,7 +173,7 @@ const lsp_server_1 = require("../dist/lsp-server");
         });
         Assert.match(hov[0].result.contents.value, /8080/);
         const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} });
-        Assert.equal(comp[0].result.length, 23);
+        Assert.equal(comp[0].result.length, 28);
     });
     (0, node_test_1.test)('initialize-advertises-capabilities', () => {
         const h = new lsp_1.LspHandler();

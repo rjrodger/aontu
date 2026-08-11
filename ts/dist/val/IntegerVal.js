@@ -92,7 +92,7 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Integer', this, peer);
         let out = this;
         if (null != peer) {
-            if (peer.isScalarKind) {
+            if (peer.isScalarKind || peer.isConstraint) {
                 out = peer.unify(this, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'KND') }) : ctx);
             }
             else if (peer.isScalar &&

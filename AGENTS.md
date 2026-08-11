@@ -246,9 +246,10 @@ duplicate-key merge, spreads `&:`, optional keys `a?:`, `close`/`open`),
 lists (incl. `&:` spreads), conjunction (`&`), disjunction (`|`),
 preference/defaults (`*`), references (`$.a.b`, relative `.x.a`, `$KEY`,
 cross/chained refs), `$name` variables, the `+` operator (and
-parenthesised grouping), all twelve built-in functions (`upper`,
+parenthesised grouping), all seventeen built-in functions (`upper`,
 `lower`, `copy`, `key`, `pref`, `super`, `type`, `hide`, `close`,
-`open`, `move`, `path`), type/hide marks, and `@"file"` source loading
+`open`, `move`, `path`, and the constraint atoms `min`, `max`,
+`above`, `below`, `neq`), type/hide marks, and `@"file"` source loading
 via the multisource plugin — plus `parse`, `unify`, `generate` and
 `canon`.
 

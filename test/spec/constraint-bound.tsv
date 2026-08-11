@@ -1,0 +1,124 @@
+# G1 phase 1: the constraint algebra's bound atoms (min, max, above,
+# below) and exclusions (neq), over the four-leaf number tower and
+# strings. Normative design: docs/reference-language.md ("The
+# constraint algebra"); working notes:
+# docs/capability-review/g1-constraint-algebra.md.
+# Promoted from test/spec/draft/ per the draft README protocol: every
+# expectation below was re-derived by running BOTH engines at
+# promotion time (byte-identical outputs, including full error text).
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# Canon round-trip and normalisation: fixed atom order (kind, lower
+# bound, upper bound, neq with sorted args); order-independence;
+# interval intersection keeps the tighter bound; endpoints keep the
+# leaf the author wrote (lazy endpoints); same-point endpoints keep
+# the tower-lowest spelling; at the same point an OPEN bound is the
+# tighter one.
+bound-min-basic	canon	a:integer&min(0)	{"a":integer&min(0)}
+bound-order-independence	canon	a:min(0)&max(10)	{"a":min(0)&max(10)}
+bound-order-independence-rev	canon	a:max(10)&min(0)	{"a":min(0)&max(10)}
+bound-meet-min	canon	a:min(0)&min(5)	{"a":min(5)}
+bound-meet-window	canon	a:min(2)&max(10)&max(7)	{"a":min(2)&max(7)}
+bound-endpoint-leaf-kept	canon	a:min(1.0)	{"a":min(1.0)}
+bound-endpoint-leaf-exact	canon	a:min(0d1)	{"a":min(0d1)}
+bound-endpoint-decimal	canon	a:min(0d1.5)	{"a":min(0d1.5)}
+bound-endpoint-negative	canon	a:min(-1.5)	{"a":min(-1.5)}
+bound-endpoint-same-point	canon	a:min(1)&min(1.0)	{"a":min(1)}
+bound-endpoint-same-point-tower	canon	a:min(1.0)&min(0d1)	{"a":min(1.0)}
+bound-open-beats-closed	canon	a:min(1)&above(1)	{"a":above(1)}
+bound-open-window	canon	a:above(1)&below(2)	{"a":above(1)&below(2)}
+#
+# Kind meets: `number` (or `string` on the string domain) is already
+# implied and evaporates; a numeric LEAF narrows the residual and is
+# rendered first in the canon.
+bound-number-passthrough	canon	a:number&min(0)	{"a":min(0)}
+bound-string-passthrough	canon	a:string&min("a")	{"a":min("a")}
+bound-float-narrow	canon	a:float&min(0)	{"a":float&min(0)}
+#
+# Lazy endpoints: no rewriting of what the author wrote — an integer
+# narrowing does NOT tighten above(0.5) to min(1).
+bound-no-tightening	canon	a:integer&above(0.5)	{"a":integer&above(0.5)}
+#
+# Disjunct member trials drive kind-meets-constraint directly (not via
+# the sorted conjunct fold); the same rules must apply.
+bound-disjunct-trial	canon	a:(integer|string)&min(0)	{"a":integer&min(0)}
+#
+# Disjunction is idempotent for residuals: equal-canon constraints are
+# ONE alternative (structural equality IS canon equality, the residual
+# being a normal form); distinct residuals both survive.
+constraint-disjunct-dedup	canon	a:min(0)|min(0)	{"a":min(0)}
+constraint-disjunct-distinct	canon	a:min(0)|min(1)	{"a":min(0)|min(1)}
+#
+# Marks ratchet across a meet: a type()/hide() mark on either operand
+# survives onto the merged residual, so the field is omitted from
+# generation exactly as an unmerged marked constraint would be.
+constraint-mark-type-merge	gens	a:type(min(0)) a:max(10) b:1	{"b":1}
+constraint-mark-hide-merge	gens	a:hide(min(0)) a:max(10) b:1	{"b":1}
+#
+# neq: canonical args are sorted (numeric: by point then tower rank;
+# string: code-point order) and identity duplicates dropped; meets
+# union the exclusion sets.
+neq-args-sorted	canon	a:neq(3,1,2)	{"a":neq(1,2,3)}
+neq-dedup	canon	a:neq(1,1,2)	{"a":neq(1,2)}
+neq-union	canon	a:neq(1)&neq(2)	{"a":neq(1,2)}
+neq-string-sorted	canon	a:neq("x","a")	{"a":neq("a","x")}
+#
+# Membership: order is a property of the number line — a bound admits
+# ANY numeric leaf at an admissible position, compared exactly.
+bound-membership	gen	a:integer&min(0)&max(50) a:3	{"a":3}
+bound-cross-leaf-exact	gens	a:min(0) a:0d5	{"a":5}
+bound-cross-leaf-float	gen	a:above(1) a:1.5	{"a":1.5}
+bound-number-kind-member	gen	a:number&min(0) a:2.5	{"a":2.5}
+bound-exact-endpoint-member	gen	a:min(0d1.5) a:2	{"a":2}
+bound-reject-above-max	err	a:max(65535) a:99999	Cannot unify
+bound-narrowed-reject-leaf	err	a:integer&min(0) a:1.5	Cannot unify
+#
+# A preference among the admissible values: the disjunct form gives
+# the default today. (The conjunct form `min(1024)&*8080` does NOT yet
+# resolve to the default — pref-meets-constraint is a later G1 phase.)
+bound-pref-disjunct	gens	a:*8080|min(1024)	{"a":8080}
+#
+# Emptiness, decided eagerly at composition time where exact: empty
+# interval, integral gap under an integer/biginteger narrowing, point
+# deletion under a narrowed leaf, domain mixing.
+bound-empty-window	err	a:min(5)&max(3)	Cannot unify
+bound-integral-gap	err	a:integer&above(1)&below(2)	Cannot unify
+bound-integral-gap-big	err	a:biginteger&above(0d1)&below(0d2)	Cannot unify
+bound-domain-mix-empty	err	a:min(0)&min("a")	Cannot unify
+bound-kind-string-empty	err	a:string&min(0)	Cannot unify
+#
+# neq excludes by scalar identity — leaf AND value (1 and 1.0 are
+# different scalars in the lattice, so neq(1) admits 1.0).
+neq-leaf-aware-int	err	a:neq(1) a:1	Cannot unify
+neq-leaf-aware-float-ok	gen	a:neq(1) a:1.0	{"a":1}
+neq-point-not-empty	gen	a:min(3)&max(3)&neq(3) a:3.0	{"a":3}
+neq-point-empty-narrowed	err	a:integer&min(3)&max(3)&neq(3)	Cannot unify
+#
+# String bounds: lexical code-point order; the domain is implied.
+bound-string-lexical	gen	a:min("m") a:x	{"a":"x"}
+bound-string-reject	err	a:min("m") a:apple	Cannot unify
+#
+# The registered `constraint` code (class conflict, errcodes.tsv)
+# covers the whole algebra family: membership failure, empty meets at
+# composition time, and domain/kind mixing.
+errc-constraint-member	errc	a:max(65535) a:99999	constraint
+errc-constraint-empty	errc	a:min(5)&max(3)	constraint
+errc-constraint-kind	errc	a:string&min(0)	constraint
+errc-constraint-narrowed	errc	a:integer&min(0) a:1.5	constraint
+#
+# An unusable atom (wrong arg type, wrong arity, mixed domains) is an
+# invalid residual: DRIVEN in a meet it raises arg/invalid-arg with
+# the `constrain` attempt; left undriven it surfaces at generate as
+# ordinary residue (mapval_no_gen), like any other non-literal.
+errc-invalid-arg-driven	errc	a:min(true)&1	invalid-arg
+errc-missing-arg-driven	errc	a:neq()&1	arg
+errc-invalid-arity-driven	errc	a:min(0,1)&5	invalid-arg
+errc-invalid-atom-residual	errc	a:min(true)	mapval_no_gen
+errc-residual-no-gen	errc	a:min(0)	mapval_no_gen
+residual-no-gen-msg	err	a:min(0)	Cannot resolve value: min(0)
+#
+# The op-chars reservation stands: `>` and `<` are STILL not
+# operators, and the parse error now redirects CUE-trained authors
+# (and agents) to the bound functions.
+errc-opchar-syntax	errc	a:number > 0	syntax
+opchar-hint	err	a:number > 0	The > and < characters are not Aontu operators: write the bound functions min(x), max(x), above(x), below(x) instead.

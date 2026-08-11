@@ -107,6 +107,16 @@ describe('lsp-hover', () => {
     Assert.match(h!.contents.value, /1/)
   })
 
+  test('hover-constraint', () => {
+    // A constraint residual hovers as its canon with the shared kind
+    // label "constraint" — never a constructor-name fallback (the Go
+    // twin is TestHoverConstraint; identical hover-text contract).
+    const h = computeHover('a:min(0)&max(10)', { line: 0, character: 3 })
+    Assert.ok(h)
+    Assert.match(h!.contents.value, /min\(0\)&max\(10\)/)
+    Assert.match(h!.contents.value, /\*constraint\*/)
+  })
+
   test('hover-miss-returns-null', () => {
     Assert.equal(computeHover('port: 8080', { line: 5, character: 0 }), null)
   })
@@ -118,7 +128,7 @@ describe('lsp-completion', () => {
 
   test('completion-list', () => {
     const c = computeCompletions()
-    Assert.equal(c.length, 23) // 12 funcs + 7 kinds + 4 literals
+    Assert.equal(c.length, 28) // 17 funcs + 7 kinds + 4 literals
     const byLabel = new Map(c.map(i => [i.label, i]))
     Assert.equal(byLabel.get('upper')?.kind, COMPLETION_FUNCTION)
     Assert.equal(byLabel.get('string')?.kind, COMPLETION_KEYWORD)
@@ -133,7 +143,7 @@ describe('lsp-completion', () => {
   test('builtin-funcs-match-engine', () => {
     // Drift guard: every BUILTIN_FUNCS name must be recognised by the
     // parser, and a bogus name must not be.
-    Assert.equal(BUILTIN_FUNCS.length, 12)
+    Assert.equal(BUILTIN_FUNCS.length, 17)
     const a = new Aontu()
     for (const name of BUILTIN_FUNCS) {
       const errs = computeDiagnostics('x:' + name + '(1)')
@@ -170,7 +180,7 @@ describe('lsp-handler', () => {
     Assert.match(hov[0].result.contents.value, /8080/)
 
     const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} })
-    Assert.equal(comp[0].result.length, 23)
+    Assert.equal(comp[0].result.length, 28)
   })
 
 
