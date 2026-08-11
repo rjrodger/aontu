@@ -3,6 +3,7 @@ import { AontuContext } from '../ctx';
 import { ScalarVal } from './ScalarVal';
 declare class IntegerVal extends ScalarVal {
     isInteger: boolean;
+    get canon(): string;
     constructor(spec: ValSpec, ctx?: AontuContext);
     unify(peer: any, ctx: AontuContext): Val;
 }
