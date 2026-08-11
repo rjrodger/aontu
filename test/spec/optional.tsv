@@ -17,3 +17,24 @@ optional-elided	gen	a?:	{"a":null}
 optional-partial-subtree	gen	a?:{x:1,y:top}	{"a":{"x":1}}
 optional-dup-merge	gen	a:1 a?:1	{"a":1}
 optional-dup-conflict	err	a:1 a?:2	Cannot unify value
+# AN OPTIONAL KEY IS NOT A LIST ELEMENT.
+#
+# The decisive argument is Go's own inconsistency, not canonicity: the SAME
+# pair without the `?` is discarded by BOTH ports -- `a:[x:1]` is
+# `{"a":[]}` everywhere, because a key:value pair is simply not a list
+# element. Adding `?` must not turn a discarded pair into a materialised
+# one, and in Go it did, purely because the construct reached a different
+# grammar rule.
+#
+# The last row is why this matters beyond a stray element: the phantom
+# MERGED into a real element, injecting x:1 into {q:9}.
+list-optional-pair-dropped-canon	canon	a:[x?:1]	{"a":[]}
+list-optional-pair-dropped-gens	gens	a:[x?:1]	{"a":[]}
+list-plain-pair-dropped-canon	canon	a:[x:1]	{"a":[]}
+list-plain-pair-dropped-gens	gens	a:[x:1]	{"a":[]}
+list-optional-pair-with-elem-gens	gens	a:[x?:1, 2]	{"a":[2]}
+list-optional-pair-after-elem-gens	gens	a:[2, x?:1]	{"a":[2]}
+list-optional-pair-no-merge-gens	gens	a:[x?:1] a:[{q:9}]	{"a":[{"q":9}]}
+# The map-level optional key is untouched and must stay that way.
+map-optional-still-works-gens	gens	a:{x?:1}	{"a":{"x":1}}
+top-optional-still-works-gens	gens	x?:1	{"x":1}
