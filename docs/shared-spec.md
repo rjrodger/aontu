@@ -51,8 +51,12 @@ above 2^53 compare *equal*; `gens` is the mode that can tell them apart,
 and the one the number tower's exact leaves are pinned with
 ([`docs/design/number-tower.md`](design/number-tower.md), D10). The
 serialisation contract both runners implement is: compact (no
-indentation, no spaces), keys in the order `generate` produced them
-(alphabetical in both ports), and no HTML escaping of `<`, `>` or `&`.
+indentation, no spaces), object keys in lexicographic order, and no HTML
+escaping of `<`, `>` or `&`. The key order is the EMITTER's doing, not
+`generate`'s: a JavaScript object cannot hold `"10"` before `"9"`
+(ECMAScript hoists canonical array-index keys, ascending), so TypeScript
+sorts in `exactJSON` and Go gets the same order from `encoding/json`,
+which sorts map keys.
 Each runner uses its port's real emitter — aontu's own `exactJSON`
 export in TypeScript (`JSON.stringify` throws on the `bigint` a
 biginteger generates as), `encoding/json` with `SetEscapeHTML(false)`
