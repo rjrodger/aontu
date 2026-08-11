@@ -24,3 +24,12 @@ load-not-found-member	err	a:1 @"nope-no-such-file"	source not found: nope-no-suc
 load-not-found-member-first	err	@"nope-no-such-file" a:1	source not found: nope-no-such-file
 load-not-found-nested	err	a:{ @"nope-no-such-file" }	source not found: nope-no-such-file
 load-not-found-list	err	a:[ @"nope-no-such-file" ]	source not found: nope-no-such-file
+# A missing include NESTED inside a file that loads FINE. The rows above all
+# put the bad include in the ENTRY source; here the entry loads cleanly and
+# the failure is one level down, in a sub-parse. That is a separate channel
+# and it stayed broken after the entry-level fix: Go generated {} -- losing
+# the outer key as well -- while TypeScript reports the failure with the
+# including file in the frame. Both positions of the inner include are
+# pinned, because value and member fail by different routes.
+load-not-found-in-loaded-member	err	@"__FIXTURES__/nest_missing.aon"	source not found: ./no-such-child
+load-not-found-in-loaded-value	err	@"__FIXTURES__/nest_missing_val.aon"	source not found: ./no-such-child-val
