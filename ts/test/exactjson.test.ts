@@ -73,6 +73,51 @@ describe('generate-native-types', () => {
     Assert.equal(sum.x.toString(), '0.3')
   })
 
+  test('an-integer-past-the-safe-range-generates-as-a-bigint', () => {
+    // Issue #21's generate half. Go's integer leaf is an int64, exact
+    // across the whole window; TypeScript's is a double, so above the
+    // safe-integer range a `number` no longer renders its own digits --
+    // JSON.stringify(2**60) is 1152921504606847000, a DIFFERENT integer.
+    // Handing the emitter a bigint is what lets it write the true value,
+    // and the emitter cannot work it out for itself: by then a
+    // float-kind 1e21 (whose `1e+21` shortest form IS correct, in both
+    // ports) looks like just another number.
+    const big = gen('x:1152921504606846976')
+    Assert.equal(typeof big.x, 'bigint')
+    Assert.equal(big.x, 1152921504606846976n)
+    Assert.equal(exactJSON(big), '{"x":1152921504606846976}')
+
+    Assert.equal(typeof gen('x:-1152921504606846976').x, 'bigint')
+    Assert.equal(gen('x:-1152921504606846976').x, -1152921504606846976n)
+
+    // Exact integer arithmetic (D6) is the second route into the window.
+    const sum = gen('x:576460752303423488+576460752303423488')
+    Assert.equal(typeof sum.x, 'bigint')
+    Assert.equal(sum.x, 1152921504606846976n)
+
+    // THE LINE IS Number.isSafeInteger, so it falls between 2^53-1 and
+    // 2^53. Both serialise to the same bytes, which is exactly why the
+    // `gens` rows cannot see this boundary and this test has to.
+    Assert.equal(typeof gen('x:9007199254740991').x, 'number')
+    Assert.equal(typeof gen('x:9007199254740992').x, 'bigint')
+    Assert.equal(exactJSON(gen('x:9007199254740992')), '{"x":9007199254740992}')
+
+    // A float-kind value stays a number at any magnitude: its shortest
+    // form is the right answer and the exact digits would be wrong.
+    Assert.equal(typeof gen('x:1e21').x, 'number')
+    Assert.equal(exactJSON(gen('x:1e21')), '{"x":1e+21}')
+    // 10^20 is exact, outside int64, and so number kind by R1 -- the
+    // control that shows the cut is on KIND, not on magnitude.
+    Assert.equal(typeof gen('x:100000000000000000000').x, 'number')
+
+    // An integer-kind bigint is still not a biginteger: the leaves stay
+    // disjoint (D2), and only canon can tell them apart.
+    Assert.equal(new Aontu().unify('x:1152921504606846976').canon,
+      '{"x":1152921504606846976}')
+    Assert.equal(new Aontu().unify('x:0d1152921504606846976').canon,
+      '{"x":0d1152921504606846976}')
+  })
+
   test('the-ordinary-leaves-are-untouched', () => {
     // A 0d-free document generates exactly what it always did.
     const out = gen('a:1 b:1.5 c:x d:true e:null f:[1,2] g:{h:1}')

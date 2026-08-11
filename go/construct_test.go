@@ -2,7 +2,11 @@
 
 package aontu
 
-import "testing"
+import (
+	"math/big"
+	"strings"
+	"testing"
+)
 
 // TestPublicConstructors exercises the exported value constructors the
 // way an external caller would: building a vars map for GenerateVars.
@@ -79,5 +83,73 @@ func TestPublicConstructorsUnify(t *testing.T) {
 	}
 	if v, ok := m["n"]; !ok || v != nil {
 		t.Errorf("n: want null present, got %v (ok=%v)", v, ok)
+	}
+}
+
+// TestNewIntegerRefusesLossyInt64 pins D8's API-side storage contract:
+// programmatic construction obeys the same exactness rule as a literal.
+//
+// This is the one storage divergence no parse-time rule could ever
+// catch, because no literal can express it. Go's integer leaf is an
+// int64 and the canonical TypeScript port's is a double, so an int64
+// that binary64 cannot carry exactly would be exact here and silently a
+// DIFFERENT number there — while D7 already refuses the equivalent
+// literal in both ports. The API had to be narrowed to match.
+func TestNewIntegerRefusesLossyInt64(t *testing.T) {
+	// THE RULE IS EXACTNESS, NOT MAGNITUDE. These are all far above 2^53
+	// and all exactly representable, so all still construct.
+	exact := []int64{
+		0, 1, -1, 11,
+		9007199254740992,     // 2^53
+		-9007199254740992,    // -2^53
+		1152921504606846976,  // 2^60
+		9223372036854774784,  // 2^63-1024, the last exact int64
+		-9223372036854775808, // math.MinInt64 = -2^63, a power of two
+		1000000000000000000,  // 10^18; its odd part 5^18 fits in 53 bits
+	}
+	for _, i := range exact {
+		if v := NewInteger(i); v.Nil() {
+			t.Errorf("NewInteger(%d) refused an exactly representable int64", i)
+		}
+	}
+
+	// Values that would have to CHANGE to be stored.
+	lossy := []int64{
+		9007199254740993,     // 2^53+1, the first
+		-9007199254740993,    // and its mirror
+		9223372036854775807,  // 2^63-1 (math.MaxInt64), rounds UP to 2^63
+		1152921504606846977,  // 2^60+1
+		-9223372036854775807, // -(2^63-1)
+	}
+	for _, i := range lossy {
+		v := NewInteger(i)
+		if !v.Nil() {
+			t.Fatalf("NewInteger(%d) stored a value binary64 cannot carry", i)
+		}
+	}
+
+	// The refusal is a VALUE, so it flows through unification and
+	// surfaces at Generate with the literal rule's own hint rather than
+	// panicking or corrupting the document.
+	_, err := New().GenerateVars("a:$n", map[string]Val{
+		"n": NewInteger(9007199254740993),
+	})
+	if err == nil {
+		t.Fatal("a lossy NewInteger generated without error")
+	}
+	if !strings.Contains(err.Error(), "not exactly representable") {
+		t.Errorf("want the lossy-integer hint, got: %v", err)
+	}
+
+	// And the escape is the same one the literal rule names.
+	out, err := New().GenerateVars("a:$n", map[string]Val{
+		"n": NewBigInteger(big.NewInt(9007199254740993)),
+	})
+	if err != nil {
+		t.Fatalf("NewBigInteger: %v", err)
+	}
+	got := out.(map[string]any)["a"].(*big.Int)
+	if got.String() != "9007199254740993" {
+		t.Errorf("a: want 9007199254740993, got %v", got)
 	}
 }

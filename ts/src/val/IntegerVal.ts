@@ -51,6 +51,51 @@ class IntegerVal extends ScalarVal {
     return BigInt(this.peg as number).toString()
   }
 
+
+  // The same exactness in GENERATED output -- the other half of #21, and
+  // the half canon cannot reach.
+  //
+  // `generate()` returns NATIVE values, and the emitter sees only those:
+  // by the time exactJSON has a JS number it can no longer tell an
+  // integer-kind 2^60 (whose exact digits are the answer) from a
+  // float-kind 1e21 (whose shortest form `1e+21` is the answer, and is
+  // what Go prints too). The kind has to travel WITH the value, so above
+  // the safe-integer range an integer-kind value generates as a `bigint`,
+  // which the emitter already writes as exact digits.
+  //
+  // WHY Number.isSafeInteger IS THE LINE. It is precisely "this double is
+  // an integer that renders its own exact digits": inside the range the
+  // integers are contiguous, so toString round-trips exactly and a
+  // `number` loses nothing. Outside it they are not, and JS itself
+  // declares the value untrustworthy -- so handing back a `number` there
+  // would give a consumer something that prints wrong AND does
+  // arithmetic wrong, silently. A bigint makes both explicit: mixing it
+  // with a number throws rather than quietly rounding.
+  //
+  // The line is deliberately the WELL-KNOWN one rather than the tightest
+  // possible one. Some doubles above the range do still render exactly
+  // (2^54, say), so a predicate of `BigInt(peg).toString() === String(peg)`
+  // would keep marginally more values as `number` -- at the cost of a
+  // contract no consumer could evaluate in their head, and of handing
+  // back unsafe numbers for arithmetic. "Integers up to
+  // Number.MAX_SAFE_INTEGER are numbers; beyond that, bigints" is a rule
+  // that can be stated once and relied on.
+  //
+  // This is a BREAKING change for a consumer reading integers above 2^53
+  // out of generate() -- but those were the values that were already
+  // silently wrong, and a TypeError on `out.x + 1` is the better failure.
+  // Go needs none of this: its integer leaf is an int64, exact across the
+  // whole window, and encoding/json writes its digits.
+  //
+  // The BYTES are unchanged below the line, and the values that cross it
+  // with 17 or fewer significant digits (2^53 itself) serialise the same
+  // either way -- only their runtime type moves, which is why the `gens`
+  // rows cannot see it and ts/test/exactjson.test.ts pins it instead.
+  gen(_ctx?: AontuContext) {
+    const peg = this.peg as number
+    return Number.isSafeInteger(peg) ? peg : BigInt(peg)
+  }
+
   constructor(
     spec: ValSpec,
     ctx?: AontuContext

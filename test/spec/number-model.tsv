@@ -14,7 +14,15 @@
 # literals that ARE exact -- 1e21 and 10^20 are exact and merely outside
 # the int64 window, which is precisely what makes them number kind.
 exp-whole-integer	gen	x:1e3 & integer	{"x":1000}
-pow53-integer	gen	x:9007199254740992 & integer	{"x":9007199254740992}
+# `gens`, not `gen`, and the mode is the point: 2^53 is the first
+# integer-kind value TypeScript generates as a `bigint` rather than a
+# `number` (see IntegerVal.gen), and `gen` decodes its expectation with
+# JSON.parse -- which yields a float64, so a bigint could never
+# deep-equal it whatever the digits say. The assertion this row exists
+# to make is unchanged: `& integer` still errors unless 2^53 has integer
+# kind, which is R1's claim here. Only the comparison had to move to the
+# bytes, for the same reason `gens` exists at all.
+pow53-integer	gens	x:9007199254740992 & integer	{"x":9007199254740992}
 exp-out-of-int64-err	err	x:1e21 & integer	Cannot unify scalar values
 dec-out-of-int64-err	err	x:100000000000000000000 & integer	Cannot unify scalar values
 neg-int64-min-err	err	x:-9223372036854775808 & integer	Cannot unify scalar values

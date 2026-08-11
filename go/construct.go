@@ -28,7 +28,33 @@ import (
 func NewString(s string) Val { return newString(s) }
 
 // NewInteger returns an integer scalar value.
-func NewInteger(i int64) Val { return newInteger(i) }
+//
+// D8 — PROGRAMMATIC CONSTRUCTION OBEYS THE SAME STORAGE CONTRACT AS A
+// LITERAL. An int64 that a binary64 cannot carry exactly (9007199254740993,
+// 2^63-1, …) is REFUSED rather than stored, exactly as the equivalent
+// literal is refused by D7. Without this the API is a hole straight
+// through the tower's storage rule: Go's integer leaf is an int64 and the
+// canonical TypeScript port's is a double, so `NewInteger(9007199254740993)`
+// would be exact here and silently `…992` there — a parity divergence no
+// parse-time rule can see, because no literal can express it.
+//
+// THE RULE IS EXACTNESS, NOT MAGNITUDE. Every power of two in the window
+// is fine however large, math.MinInt64 (-2^63) among them; what fails is
+// an int64 that would have to CHANGE to be stored.
+//
+// A refusal is a nil VALUE, not a panic and not a second return: aontu
+// errors are values, so the refusal flows through unification and
+// surfaces at Generate with the same "not exactly representable" hint the
+// literal gets. That also keeps the signature — this is a narrowing of
+// what the function accepts, not a change to how it is called.
+//
+// Use NewBigInteger for an exact integer of any size.
+func NewInteger(i int64) Val {
+	if !isExactInBinary64(big.NewInt(i)) {
+		return newNil("lossy_integer_literal")
+	}
+	return newInteger(i)
+}
 
 // NewNumber returns a scalar value of the `float` kind — the IEEE-754
 // binary64 leaf of the number lattice. (The name is kept for API

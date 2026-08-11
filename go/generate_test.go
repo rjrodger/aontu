@@ -400,3 +400,65 @@ func TestLiteralAndSumAgreeOnExactness(t *testing.T) {
 		t.Fatalf("2^124 is a power of two, so it must be exact")
 	}
 }
+
+// TestIntegerGeneratesAsInt64AtEveryMagnitude is the Go half of issue
+// #21, and it records a DELIBERATE cross-port asymmetry in the native
+// type — the one place D9's generate contract cannot be identical in
+// both ports, because the leaf's storage is not.
+//
+// Go's integer leaf IS an int64: exact across the whole window, at every
+// magnitude, and encoding/json writes its digits. So there is nothing to
+// do here and no threshold to place — an integer generates as an int64
+// whether it is 1 or 2^60.
+//
+// TypeScript's integer leaf is a double, which above Number.MAX_SAFE_INTEGER
+// stops rendering its own digits (JSON.stringify(2**60) is
+// 1152921504606847000, a different integer). So the canonical port
+// generates a `bigint` beyond that line to keep the value exact —
+// see IntegerVal.gen and ts/test/exactjson.test.ts.
+//
+// The BYTES agree either way, which is what the shared gens rows pin
+// (number-tower.tsv, gens-exact-int-*). Only the runtime type differs,
+// and only in the port whose storage forced it.
+func TestIntegerGeneratesAsInt64AtEveryMagnitude(t *testing.T) {
+	cases := []struct {
+		src  string
+		want int64
+		json string
+	}{
+		{"x:1", 1, `{"x":1}`},
+		{"x:9007199254740991", 9007199254740991, `{"x":9007199254740991}`}, // 2^53-1
+		{"x:9007199254740992", 9007199254740992, `{"x":9007199254740992}`}, // 2^53
+		{"x:1152921504606846976", 1152921504606846976, `{"x":1152921504606846976}`},
+		{"x:9223372036854774784", 9223372036854774784, `{"x":9223372036854774784}`},
+		{"x:-1152921504606846976", -1152921504606846976, `{"x":-1152921504606846976}`},
+		// D6's exact sum, the second route into the window above 2^53.
+		{"x:576460752303423488+576460752303423488", 1152921504606846976,
+			`{"x":1152921504606846976}`},
+	}
+
+	a := New()
+	for _, c := range cases {
+		t.Run(c.src, func(t *testing.T) {
+			out, err := a.Generate(c.src)
+			if err != nil {
+				t.Fatalf("generate error: %v", err)
+			}
+			got := out.(map[string]any)["x"]
+			n, ok := got.(int64)
+			if !ok {
+				t.Fatalf("integer generated as %T, want int64", got)
+			}
+			if n != c.want {
+				t.Fatalf("value = %d, want %d", n, c.want)
+			}
+			b, err := json.Marshal(out)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			if string(b) != c.json {
+				t.Fatalf("json = %s, want %s", b, c.json)
+			}
+		})
+	}
+}
