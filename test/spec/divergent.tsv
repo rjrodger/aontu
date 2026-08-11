@@ -63,21 +63,6 @@
 #
 # ---------------------------------------------------------------------
 #
-# OPEN -- invalid sources fail at different stages.
-#   issue: #31. A source invalid in both ports can be a parse error in
-#   one and a unify/generate error in the other, which
-#   AontuError.Code now makes observable (parse-class vs other codes).
-#
-#   Divergent input:  k-x:1
-#   TypeScript: parse error (bare key containing `-` rejected)
-#   Go:         parses to a list holding an error nil; generate errors
-#
-#   Not simply fixed because the accept/reject split lives partly in
-#   the pinned @tabnas parser stack; cases need enumeration and the
-#   earlier (TS) stage adopted.
-#
-# ---------------------------------------------------------------------
-#
 # OPEN -- lone surrogates in quoted strings folded to U+FFFD by Go.
 #   issue: #24 (REOPENED 2026-08-11; the 2026-08-11 decision to accept
 #   this permanently is reversed -- parity is required). Go conflates

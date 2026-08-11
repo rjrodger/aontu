@@ -24,3 +24,11 @@ errc-incomplete-kind	errc	a:number	mapval_no_gen
 errc-incomplete-required	errc	a:close({b:number})	mapval_required
 errc-no-gen-root	errc	number	no_gen
 errc-reference-no-path	errc	a:$.b	no_path
+#
+# Stage parity for invalid sources (#31): a source that fails to PARSE
+# leads with code `syntax` in both engines; the once-divergent k-x:1
+# (bare key with an op char) parses to ["k",nil] in BOTH engines now
+# and fails at generate with `negative` -- this row is the regression
+# fence for the divergence the old DIVERGENCE.md entry recorded.
+errc-parse-syntax	errc	a:k-x	syntax
+errc-parse-negative	errc	k-x:1	negative

@@ -1722,7 +1722,12 @@ func parseBase(src, base string) (Val, error) {
 	}
 
 	if err != nil {
-		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
+		// Code mirrors TS, whose jsonic parse errors wrap as an outer
+		// why:'parse' nil holding an inner why:'syntax' nil -- and it is
+		// the INNER syntax code that leads errs() on the thrown error,
+		// so `syntax` is the cross-port first-code for a source that
+		// fails to parse (pinned by error.tsv errc-parse-syntax).
+		return newMap(), &AontuError{Msg: err.Error(), Code: "syntax"}
 	}
 	if out == nil {
 		return newMap(), nil
