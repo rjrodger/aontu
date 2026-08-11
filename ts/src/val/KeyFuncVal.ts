@@ -79,8 +79,26 @@ class KeyFuncVal extends FuncBaseVal {
     let out: Val = this
 
     // if (!this.mark.type && !this.mark.hide) {
-    let move = this.peg?.[0]?.peg
-    move = isNaN(move) ? 1 : +move
+    //
+    // The level is read only from an argument that IS a JS number.
+    //
+    // This used to be `isNaN(move) ? 1 : +move`, with the COERCING global
+    // isNaN -- which is ToNumber, and ToNumber THROWS for a bigint (the
+    // peg of a biginteger, `key(0d1)`) and for the null-prototype object
+    // a map's peg is (`key({})`), since neither has a toString or valueOf
+    // to call. The exception escaped into unify's catch-all and surfaced
+    // as an opaque [aontu/internal], which is never a correct answer:
+    // upper()/lower() carry a comment recording exactly this fix, and
+    // key() was missed in that sweep.
+    //
+    // Anything that is not a number falls back to the documented default
+    // of 1, which is what the Go port already did. What a non-integer
+    // level should MEAN is a separate, open contract question -- refusing
+    // it in both ports is the likelier answer than either current
+    // behaviour -- and this deliberately does not pre-empt it. It only
+    // stops the crash and makes the ports agree.
+    const arg = this.peg?.[0]?.peg
+    const move = 'number' === typeof arg && !Number.isNaN(arg) ? arg : 1
     const key = this.path[this.path.length - (1 + move)] ?? ''
     // console.log('KEY', this.path, move, key)
 
