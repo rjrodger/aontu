@@ -766,3 +766,20 @@ exact-int-sum-canon	canon	x:576460752303423488+576460752303423488	{"x":115292150
 exact-int-pow53-canon	canon	x:9007199254740992	{"x":9007199254740992}
 exact-int-small-canon	canon	x:1	{"x":1}
 exact-int-negative-canon	canon	x:-1152921504606846976	{"x":-1152921504606846976}
+#
+# The same exactness in GENERATED JSON. Canon and the bytes are separate
+# contracts, and closing issue #21 needs both: JSON.stringify of the JS
+# number reproduces the very 17-digit form canon just stopped emitting,
+# so the emitter has to be part of the fix.
+#
+# The three control rows below the divergent ones matter as much: the
+# safe-integer maximum, its successor 2^53, and an ordinary small value
+# must keep the bytes they always had, so exactness above the window
+# cannot be bought by changing the rendering of everything beneath it.
+gens-exact-int-pow60	gens	x:1152921504606846976	{"x":1152921504606846976}
+gens-exact-int-near-int64	gens	x:9223372036854774784	{"x":9223372036854774784}
+gens-exact-int-negative	gens	x:-1152921504606846976	{"x":-1152921504606846976}
+gens-exact-int-sum	gens	x:576460752303423488+576460752303423488	{"x":1152921504606846976}
+gens-safe-int-max	gens	x:9007199254740991	{"x":9007199254740991}
+gens-exact-int-pow53	gens	x:9007199254740992	{"x":9007199254740992}
+gens-exact-int-small	gens	x:42	{"x":42}
