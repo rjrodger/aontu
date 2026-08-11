@@ -46,9 +46,9 @@ func TestHoverMiss(t *testing.T) {
 
 func TestCompletionsList(t *testing.T) {
 	c := Completions()
-	// 12 functions + 4 kinds + 4 literals.
-	if len(c) != 20 {
-		t.Fatalf("expected 20 completions, got %d", len(c))
+	// 12 functions + 7 kinds + 4 literals.
+	if len(c) != 23 {
+		t.Fatalf("expected 23 completions, got %d", len(c))
 	}
 	byLabel := map[string]CompletionItem{}
 	for _, it := range c {
@@ -60,10 +60,31 @@ func TestCompletionsList(t *testing.T) {
 	if byLabel["string"].Kind != CompletionKeyword {
 		t.Errorf("string kind = %d, want Keyword", byLabel["string"].Kind)
 	}
-	for _, want := range []string{"close", "upper", "path", "string", "integer", "true", "null", "top"} {
+	for _, want := range []string{"close", "upper", "path", "string", "number",
+		"integer", "float", "biginteger", "bigdecimal", "true", "null", "top"} {
 		if _, ok := byLabel[want]; !ok {
 			t.Errorf("missing completion %q", want)
 		}
+	}
+}
+
+// TestHoverExactLeaves covers the tower's exact leaves on the tooling
+// surface: a `0d` literal hovers as its own leaf (never as "number",
+// which is the supertype), and its range covers the whole literal —
+// including the fraction, which the dot token would otherwise split off.
+func TestHoverExactLeaves(t *testing.T) {
+	h := Hover("a:0d5", 0, 3)
+	if h == nil || !strings.Contains(h.Contents.Value, "0d5") ||
+		!strings.Contains(h.Contents.Value, "biginteger") {
+		t.Fatalf("expected biginteger hover, got %+v", h)
+	}
+	h = Hover("a:0d1.5", 0, 3)
+	if h == nil || !strings.Contains(h.Contents.Value, "0d1.5") ||
+		!strings.Contains(h.Contents.Value, "bigdecimal") {
+		t.Fatalf("expected bigdecimal hover, got %+v", h)
+	}
+	if h.Range == nil || h.Range.Start.Character != 2 || h.Range.End.Character != 7 {
+		t.Errorf("range = %+v, want start char 2 end 7", h.Range)
 	}
 }
 
@@ -116,8 +137,8 @@ func TestHandlerCompletion(t *testing.T) {
 	if err := json.Unmarshal(outs[0].Result, &items); err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 20 {
-		t.Errorf("expected 20 completion items, got %d", len(items))
+	if len(items) != 23 {
+		t.Errorf("expected 23 completion items, got %d", len(items))
 	}
 }
 

@@ -63,9 +63,18 @@ import {
 
 
 
-import { ScalarKindVal, Integer } from './val/ScalarKindVal'
+import {
+  ScalarKindVal,
+  BigDecimal,
+  BigInteger,
+  Float,
+  Integer,
+} from './val/ScalarKindVal'
 
 
+import { BigDecimalVal } from './val/BigDecimalVal'
+import { BigIntegerVal } from './val/BigIntegerVal'
+import { BIG_LITERAL_RE, readBigLiteral } from './val/Decimal'
 import { BooleanVal } from './val/BooleanVal'
 import { ConjunctVal } from './val/ConjunctVal'
 import { DisjunctVal } from './val/DisjunctVal'
@@ -75,7 +84,7 @@ import { MapVal } from './val/MapVal'
 import { NilVal } from './val/NilVal'
 import { NullVal } from './val/NullVal'
 import { NumberVal } from './val/NumberVal'
-import { isIntegerKind } from './val/numkind'
+import { isIntegerKind, isLossyIntegerLiteral } from './val/numkind'
 import { PrefVal } from './val/PrefVal'
 import { RefVal } from './val/RefVal'
 import { StringVal } from './val/StringVal'
@@ -96,6 +105,29 @@ import { SuperFuncVal } from './val/SuperFuncVal'
 
 
 const asPlugin = (p: unknown): Plugin => p as Plugin
+
+
+// Build the Val for a matched `0d` literal (see the `0d` value matcher
+// below). Leaf by source: digits only is a biginteger, a `.` or an
+// exponent makes it a bigdecimal.
+//
+// A literal over the D6 exactness budget becomes a LOCATED ERROR here
+// and not a rounded or expanded value: `0d1e1000000000` has a one-digit
+// coefficient, so only the scale bound catches it, and it is caught at
+// parse -- before plain-form rendering would try to materialise a
+// gigabyte of zeros.
+function bigVal(res: RegExpExecArray): Val {
+  const lit = readBigLiteral(res)
+  return 'biginteger' === lit.leaf ? new BigIntegerVal({ peg: lit.int }) :
+    'bigdecimal' === lit.leaf ? new BigDecimalVal({ peg: lit.dec }) :
+      new NilVal({ why: lit.code })
+}
+
+
+// Char codes of the literal's fixed opening, for the guard below.
+const CC_0 = 48
+const CC_d = 100
+const CC_D = 68
 
 let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
 
@@ -139,6 +171,77 @@ let AontuJsonic: Plugin = function AontuLang(jsonic: Jsonic) {
       // matched case-insensitively so the rule does not depend on which
       // prefix spellings the engine accepts.
       exclude: /__|^[-+]?0[xXoObB]_|_$/,
+    },
+  })
+
+  // D3 -- the `0d` literal, the only route to the exact leaves
+  // (biginteger and bigdecimal). See BIG_LITERAL_RE for the grammar and
+  // the leaf-by-source rule.
+  //
+  // The literal is claimed by the TEXT MATCHER'S CHECK HOOK (the sibling
+  // of the `Number.Check` hook the Go port already uses for big
+  // base-prefixed literals), not by a `value.def` entry, because a `0d`
+  // run may contain a `.` and the two claim source differently:
+  //
+  //   - A value def -- even a consuming one, matched against the full
+  //     forward source -- is applied INSIDE the text matcher, AFTER its
+  //     ender regexp has already carved the run at the `.`. The def
+  //     claims `0d1.5` whole, but the matcher then still emits the
+  //     ender's `.` as a fixed token, so `x:0d1.5` lexed as the
+  //     bigdecimal FOLLOWED BY a dangling member-access dot (a path
+  //     cycle). Verified, not theorised.
+  //   - The check hook runs BEFORE that ender regexp and returns the
+  //     token outright, so the run is claimed whole and nothing else is
+  //     emitted.
+  //
+  // A `match.value` matcher (which runs ahead of every other matcher)
+  // also claims it correctly, but it is a candidate at EVERY lex
+  // position and materializes the forward source there: ~8% on a
+  // text-heavy document, for a syntax almost none of them use. The check
+  // hook only runs where the text matcher already runs, and measures at
+  // parity with not having it.
+  //
+  // The number matcher never sees these runs at all: it declines `0d…`
+  // outright, since `d` is not an ender.
+  jsonic.options({
+    text: {
+      check: (lex: any) => {
+        // Guard first, on char codes: this hook runs at every text
+        // position, and the common case (any run that cannot be a `0d`
+        // literal) must cost two char reads and no allocation.
+        const pnt = lex.pnt
+        const src = lex.src
+        if (CC_0 !== src.charCodeAt(pnt.sI)) {
+          return undefined
+        }
+        const c1 = src.charCodeAt(pnt.sI + 1)
+        if (CC_d !== c1 && CC_D !== c1) {
+          return undefined
+        }
+
+        // BIG_LITERAL_RE is `^`-anchored and read against the forward
+        // source (memoized per position by refwd), which is what lets
+        // it claim the `.` of `0d1.5`.
+        const res = BIG_LITERAL_RE.exec(lex.refwd())
+        if (null == res) {
+          return undefined
+        }
+
+        const msrc = res[0]
+        // The token value is a FUNCTION so Val construction happens at
+        // parse time, where the rule and context needed for the site
+        // exist (jsonic calls a #VL token's function value with them).
+        // A `0d` literal never spans a line, so only the source and
+        // column positions advance.
+        const tkn = lex.token(
+          '#VL',
+          (r: Rule, ctx: JsonicContext) => addsite(bigVal(res), r, ctx),
+          msrc,
+          pnt)
+        pnt.sI += msrc.length
+        pnt.cI += msrc.length
+        return { done: true, token: tkn }
+      },
     },
   })
 
@@ -189,6 +292,9 @@ help isolate the syntax error.`,
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: String }), r, ctx)
         },
+        // `number` is a pure supertype: it matches a concrete value of
+        // any numeric leaf and never tags one itself. `integer` and
+        // `float` are the leaves (see ScalarKindVal for the lattice).
         'number': {
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: Number }), r, ctx)
@@ -197,6 +303,21 @@ help isolate the syntax error.`,
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: Integer }), r, ctx)
         },
+        'float': {
+          val: (r: Rule, ctx: JsonicContext) =>
+            addsite(new ScalarKindVal({ peg: Float }), r, ctx)
+        },
+        // The two exact leaves. Their keywords are the marker class
+        // names lowercased, which is also how ScalarKindVal canons them.
+        'biginteger': {
+          val: (r: Rule, ctx: JsonicContext) =>
+            addsite(new ScalarKindVal({ peg: BigInteger }), r, ctx)
+        },
+        'bigdecimal': {
+          val: (r: Rule, ctx: JsonicContext) =>
+            addsite(new ScalarKindVal({ peg: BigDecimal }), r, ctx)
+        },
+
         'boolean': {
           val: (r: Rule, ctx: JsonicContext) =>
             addsite(new ScalarKindVal({ peg: Boolean }), r, ctx)
@@ -312,6 +433,16 @@ help isolate the syntax error.`,
     'negative-prefix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[0]
       if (null == val) return incompleteNil(r, ctx)
+      // The exact leaves negate exactly and never change kind. R2/D5
+      // holds here too: bigint has a single zero, and Decimal's
+      // normalising constructor sends every zero to the same form, so
+      // `-0d0` is `0d0` and `-0d0.0` is `0d0.0`.
+      if (val instanceof BigIntegerVal) {
+        return addsite(new BigIntegerVal({ peg: -val.peg }), r, ctx)
+      }
+      if (val instanceof BigDecimalVal) {
+        return addsite(new BigDecimalVal({ peg: val.peg.negate() }), r, ctx)
+      }
       // Negating a non-numeric operand (`k-x` splits into k, -x) is an
       // error nil, not NaN (mirrors negate() in go/lang.go).
       if (!(val instanceof IntegerVal) && !(val instanceof NumberVal)) {
@@ -543,10 +674,27 @@ help isolate the syntax error.`,
           if (!Number.isFinite(r.node)) {
             valnode = addsite(new NilVal({ why: 'not_number' }), r, ctx)
           }
+          // D7 -- A LOSSY INTEGER LITERAL IS REFUSED, NOT ROUNDED. The
+          // token above is already a double, so a literal the double
+          // cannot hold exactly (2^53+1, 0x7fffffffffffffff,
+          // 0xffffffffffffffff) has ALREADY become a different number by
+          // the time it gets here. Storing it would mean the document
+          // silently means something other than what it says, so the
+          // literal becomes a located error whose hint names the escape:
+          // write it `0d…` and get the exact value.
+          //
+          // The rule is EXACTNESS, not magnitude -- 10^20 and 2^124 are
+          // both far outside the int64 window and both land exactly on a
+          // binary64, so both stay values (see isLossyIntegerLiteral).
+          else if (isLossyIntegerLiteral(r.node, r.o0.src)) {
+            const nil = new NilVal({ why: 'lossy_integer_literal' })
+            nil.details = { src: r.o0.src }
+            valnode = addsite(nil, r, ctx)
+          }
           // A literal is integer kind only if its source has no '.', its
           // value is integral, and it fits the int64 range: `1.0` is a
-          // number, and so are 1e21, 0x7fffffffffffffff and
-          // 0xffffffffffffffff (see isIntegerKind).
+          // number, and so are 1e21 and 100000000000000000000 (see
+          // isIntegerKind).
           else if (isIntegerKind(r.node, r.o0.src)) {
             valnode = addsite(new IntegerVal({ peg: r.node, src: r.o0.src }), r, ctx)
           }

@@ -23,6 +23,7 @@ import {
 import { top } from './top'
 
 import { FeatureVal } from './FeatureVal'
+import { ScalarKindVal, kindFamily } from './ScalarKindVal'
 
 
 class PrefVal extends FeatureVal {
@@ -30,7 +31,26 @@ class PrefVal extends FeatureVal {
   isGenable = true
   cjo = 30000
 
-  superpeg: Val
+  // The preferred value's own type: the yardstick for "did the peer say
+  // anything I did not already say?". A peer that resolves to this (or
+  // to the family gate below) leaves the preference standing.
+  // Both are assigned by resuper(), called from the constructor.
+  superpeg!: Val
+
+  // The gate an overriding peer must pass. A preference is a DEFAULT, so
+  // a concrete peer replaces it -- but only within the preferred value's
+  // FAMILY: `*lower(1.1) & a` is a conflict, not an override.
+  //
+  // Family and not leaf, because the number tower made `integer` and
+  // `float` disjoint siblings under `number`. Gating on the leaf would
+  // turn `*lower(2.2) & 3` (a float default overridden by an integer)
+  // into an error, which is a tightening no document asked for; gating
+  // on the family keeps it working and makes the mirror case
+  // (`*2 & 3.0`, an error before the tower) work too. For every
+  // non-numeric value the family root IS the leaf, so this is the
+  // preferred value's type as before.
+  familypeg!: Val
+
   rank: number = 0
 
   constructor(
@@ -46,8 +66,45 @@ class PrefVal extends FeatureVal {
       this.rank = 1 + spec.peg.rank
     }
 
-    this.superpeg = this.peg.superior()
+    this.resuper()
     // console.log('PVC', this.peg.canon, this.superpeg.canon)
+  }
+
+
+  // Recompute the type yardstick and the override gate from the current
+  // peg. Called again whenever the peg resolves (e.g. a ref).
+  private resuper() {
+    const peg: any = this.peg
+
+    // A preference whose peg is ITSELF a kind (`*integer`) constrains
+    // nothing: there is no type-of-a-type in this lattice, so any peer
+    // wins. (Pinned by test/spec/var.tsv:var-pref-kind-narrow. Before
+    // the tower this fell out of a ScalarKindVal's superior being top;
+    // now that a leaf kind lifts to `number`, it has to be said.)
+    if (true === peg.isScalarKind) {
+      this.superpeg = top()
+      this.familypeg = this.superpeg
+      return
+    }
+
+    const sup: any = peg.superior()
+    this.superpeg = sup
+
+    // No optional chain: superior() is contractually non-null (every
+    // Val returns one, a NilVal returning itself), so guarding against
+    // nullish here would claim a possibility the type does not have.
+    if (true === sup.isScalarKind) {
+      const family = kindFamily(sup.peg)
+      // The gate stands in for the preferred value in any conflict it
+      // reports, so it must carry the same site and path as the type it
+      // widens -- otherwise NilVal.make picks a different primary and
+      // the error moves to the wrong path.
+      this.familypeg = family === sup.peg ?
+        sup : sup.place(new ScalarKindVal({ peg: family, path: sup.path }))
+    }
+    else {
+      this.familypeg = sup
+    }
   }
 
 
@@ -66,7 +123,7 @@ class PrefVal extends FeatureVal {
         this.peg, top(), 'pref/resolve')
       // console.log('PREF-RESOLVED', this.peg.canon, '->', resolved)
       this.peg = resolved
-      this.superpeg = this.peg.superior()
+      this.resuper()
     }
 
     if (peer instanceof PrefVal) {
@@ -107,8 +164,12 @@ class PrefVal extends FeatureVal {
       why += 'super-'
 
       out = unite(te ? ctx.clone({ explain: ec(te, 'SUPER') }) : ctx,
-        this.superpeg, peer, 'pref-super/' + this.id)
-      if (out.same(this.superpeg)) {
+        this.familypeg, peer, 'pref-super/' + this.id)
+
+      // The peer added nothing beyond a type the preferred value already
+      // satisfies (`*1 & integer`, `*1 & number`), so the preference
+      // stands. Anything else is a concrete override and wins.
+      if (out.same(this.superpeg) || out.same(this.familypeg)) {
         out = this.peg
         why += 'same'
       }

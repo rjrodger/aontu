@@ -13,7 +13,7 @@ import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 import * as Readline from 'node:readline'
 
-import { Aontu, AontuError } from './aontu'
+import { Aontu, AontuError, exactJSON } from './aontu'
 
 
 type Mode = 'json' | 'canon'
@@ -57,9 +57,15 @@ function evalSource(
   mode: Mode,
 ): { ok: boolean; text: string } {
   try {
+    // exactJSON, not JSON.stringify: a document using the `0d` exact
+    // leaves generates bigints and Decimals, which JSON.stringify cannot
+    // write (D9). The CLI prints INDENTED JSON and the shared suite's
+    // `gens` mode prints COMPACT JSON, but both go through this one
+    // emitter -- an indent argument rather than a second implementation,
+    // so the two cannot drift from each other or from the Go port.
     const text = 'canon' === mode
       ? aontu.unify(src).canon
-      : JSON.stringify(aontu.generate(src), null, 2)
+      : exactJSON(aontu.generate(src), 2)
     return { ok: true, text }
   }
   catch (err: any) {
@@ -142,8 +148,30 @@ function runRepl(initialMode: Mode): void {
 
   rl.on('close', () => {
     process.stdout.write('\n')
-    process.exit(0)
+    // Same reason as finish(): the REPL requires a TTY stdin, but stdout
+    // can still be a pipe (`aontu | cat`), so exiting outright could
+    // discard queued output here too.
+    process.exitCode = 0
   })
+}
+
+
+// Exit without truncating output.
+//
+// process.exit() terminates immediately, discarding anything still
+// queued on stdout. A write to a PIPE is asynchronous once it exceeds
+// the pipe buffer, so `write(big); exit(0)` silently truncated output at
+// 65536 bytes — while a write to a TTY or a file, being synchronous,
+// looked fine. Setting exitCode instead lets the process end naturally,
+// after the queue drains.
+//
+// This predates the exact leaves but they make it trivially reachable
+// (one long biginteger canon exceeds the buffer), and it lands squarely
+// on the parity-probe discipline in AGENTS.md, which derives expected
+// spec values by piping BOTH CLIs and comparing. A truncated pipe there
+// reads as a port divergence.
+function finish(code: number): void {
+  process.exitCode = code
 }
 
 
@@ -157,15 +185,15 @@ function main(argv: string[]): void {
     }
     else if ('-h' === arg || '--help' === arg) {
       process.stdout.write(HELP)
-      process.exit(0)
+      return finish(0)
     }
     else if ('-v' === arg || '--version' === arg) {
       process.stdout.write(version() + '\n')
-      process.exit(0)
+      return finish(0)
     }
     else if (arg.startsWith('-')) {
       process.stderr.write(`aontu: unknown option ${arg} (try --help)\n`)
-      process.exit(2)
+      return finish(2)
     }
     else {
       file = arg
@@ -173,13 +201,13 @@ function main(argv: string[]): void {
   }
 
   if (null != file) {
-    process.exit(runFile(file, mode))
+    finish(runFile(file, mode))
   }
   else if (process.stdin.isTTY) {
     runRepl(mode)
   }
   else {
-    runStdin(mode).then((code) => process.exit(code))
+    runStdin(mode).then((code) => finish(code))
   }
 }
 

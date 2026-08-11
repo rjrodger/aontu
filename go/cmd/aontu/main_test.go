@@ -21,6 +21,33 @@ func TestRenderJSON(t *testing.T) {
 	}
 }
 
+// The CLI must not HTML-escape, and must write exact leaves as exact
+// digits — the same two choices the shared suite's gens mode makes.
+// Neither is visible to a spec row: the shared runner serialises with
+// its own encoder (specGens), so the CLI's rendering is only covered
+// here. json.MarshalIndent, which this used to call, escapes <, > and &
+// by default and so printed different bytes from the canonical
+// TypeScript CLI for any document containing them.
+func TestRenderJSONMatchesTypeScriptBytes(t *testing.T) {
+	cases := []struct{ src, want string }{
+		// TypeScript: exactJSON(generate(src), 2), which never escapes.
+		{`a:"<b>&</b>"`, "{\n  \"a\": \"<b>&</b>\"\n}"},
+		// The exact leaves reach JSON as exact digits (D9), an integral
+		// bigdecimal keeping its `.0` and a biginteger not gaining one.
+		{"a:0d9007199254740993", "{\n  \"a\": 9007199254740993\n}"},
+		{"a:0d1e3\nb:0d1000", "{\n  \"a\": 1000.0,\n  \"b\": 1000\n}"},
+	}
+	for _, c := range cases {
+		out, err := render(aontu.New(), c.src, "json")
+		if err != nil {
+			t.Fatalf("%s: %v", c.src, err)
+		}
+		if out != c.want {
+			t.Fatalf("render(%q):\n got: %q\nwant: %q", c.src, out, c.want)
+		}
+	}
+}
+
 func TestRenderCanon(t *testing.T) {
 	out, err := render(aontu.New(), "a:*1|number", "canon")
 	if err != nil {

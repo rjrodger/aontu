@@ -1,5 +1,5 @@
 # Shared aontu unit tests: the number model. Columns (tab-separated): name<TAB>mode<TAB>src<TAB>expect
-# mode: canon = unify(src).canon == expect ; gen = generate(src) deep-equals JSON(expect) ; err = generate(src) errors, message contains expect
+# mode: canon = unify(src).canon == expect ; gen = generate(src) deep-equals JSON(expect) ; gens = generate(src) as compact JSON == expect byte for byte ; err = generate(src) errors, message contains expect
 #
 # See docs/design/number-model.md for the rules these rows pin.
 #
@@ -7,16 +7,40 @@
 # value is integral, and it lies within the int64 range. Otherwise it is
 # number kind. (aontu has no negative literals -- '-' is an operator --
 # so the int64 minimum is not expressible as an integer-kind literal.)
+#
+# R1 now runs BEHIND D7 (docs/design/number-tower.md): a literal whose
+# value binary64 cannot hold exactly never becomes a value at all, so it
+# never reaches the kind question. The rows below therefore all use
+# literals that ARE exact -- 1e21 and 10^20 are exact and merely outside
+# the int64 window, which is precisely what makes them number kind.
 exp-whole-integer	gen	x:1e3 & integer	{"x":1000}
-pow53-integer	gen	x:9007199254740992 & integer	{"x":9007199254740992}
+# `gens`, not `gen`, and the mode is the point: 2^53 is the first
+# integer-kind value TypeScript generates as a `bigint` rather than a
+# `number` (see IntegerVal.gen), and `gen` decodes its expectation with
+# JSON.parse -- which yields a float64, so a bigint could never
+# deep-equal it whatever the digits say. The assertion this row exists
+# to make is unchanged: `& integer` still errors unless 2^53 has integer
+# kind, which is R1's claim here. Only the comparison had to move to the
+# bytes, for the same reason `gens` exists at all.
+pow53-integer	gens	x:9007199254740992 & integer	{"x":9007199254740992}
 exp-out-of-int64-err	err	x:1e21 & integer	Cannot unify scalar values
 dec-out-of-int64-err	err	x:100000000000000000000 & integer	Cannot unify scalar values
-hex-max-int64-err	err	x:0x7fffffffffffffff & integer	Cannot unify scalar values
 neg-int64-min-err	err	x:-9223372036854775808 & integer	Cannot unify scalar values
 #
-# A literal above 2^53 is stored in IEEE-754 double precision and is
-# therefore not exact; both implementations agree on the rounded value.
-lossy-above-pow53	gen	x:9007199254740993	{"x":9007199254740992}
+# FLIPPED by D7. 0x7fffffffffffffff is 2^63-1, which rounds UP to 2^63,
+# so it is refused at parse and the conjunction never gets as far as the
+# kind check this row used to pin ("Cannot unify scalar values", the R1
+# out-of-int64 failure). What it pins now is the ORDER: the lossy-literal
+# refusal fires ahead of unification. Its exact neighbour 2^63 is still
+# a value and still fails the kind check -- hex-pow63-integer-err below.
+hex-max-int64-lossy-err	err	x:0x7fffffffffffffff & integer	exactly representable
+#
+# FLIPPED by D7. This row pinned the silent rounding that D7 abolishes:
+# the source 9007199254740993 (2^53+1) generated 9007199254740992, a
+# DIFFERENT number. It is refused now, and the hint names the escape.
+# (number-tower.tsv pins the escape being taken: 0d9007199254740993.)
+lossy-above-pow53-err	err	x:9007199254740993	exactly representable
+lossy-above-pow53-hints-0d	err	x:9007199254740993	0d
 #
 # R2: negative zero never survives into the AST, generated output, or canon.
 neg-zero-int	gen	x:-0	{"x":0}
@@ -58,7 +82,7 @@ upper-num-unify-integer-err	err	x:upper(1.1) & integer	Cannot unify scalar value
 # R6: super(x) is the lattice-superior of its argument -- the kind of a
 # concrete scalar. (1 is an integer literal, so super(1) is integer.)
 super-int-canon	canon	x:super(1)	{"x":integer}
-super-float-canon	canon	x:super(1.5)	{"x":number}
+super-float-canon	canon	x:super(1.5)	{"x":float}
 super-string-canon	canon	x:super(a)	{"x":string}
 super-bool-canon	canon	x:super(true)	{"x":boolean}
 super-int-unify	gen	x:super(1) & 2	{"x":2}
@@ -117,9 +141,10 @@ neg-float-canon	canon	a:-1.5	{"a":-1.5}
 # case; the Go engine declines the same sources (numberExcluded in
 # go/lang.go) so the two agree. Note it is the prefix LETTER only -- an
 # upper-case exponent marker is accepted by both (exp-upper-canon).
-# A based literal has no '.', so R1(b)+(c) alone decide its kind:
-# 0x7fffffffffffffff rounds up to 2^63 and so is number kind, which is
-# why it cannot unify with `integer`.
+# A based literal has no '.', so R1(b)+(c) alone decide its kind, once
+# D7 has let it be a value at all: 0x8000000000000000 is 2^63, a power
+# of two and therefore exact, and it is number kind because 2^63 is one
+# past int64's maximum -- which is why it cannot unify with `integer`.
 hex-lower	gen	x:0x1f	{"x":31}
 octal-lower	gen	x:0o17	{"x":15}
 binary-lower	gen	x:0b1010	{"x":10}
@@ -127,7 +152,13 @@ hex-integer	gen	x:0xff & integer	{"x":255}
 octal-integer	gen	x:0o17 & integer	{"x":15}
 binary-integer	gen	x:0b1010 & integer	{"x":10}
 hex-zero	gen	x:0x0	{"x":0}
-hex-max-int64-canon	canon	x:0x7fffffffffffffff	{"x":9223372036854776000.0}
+# FLIPPED by D7. This row canoned 0x7fffffffffffffff as the rounded
+# 9223372036854776000.0 -- 2^63, not the 2^63-1 the source asked for.
+# There is no canon of a refused literal to pin instead, so the row
+# becomes the err that pins the OTHER assertion D7 rows carry: the hint
+# names `0d` as the way to write the exact integer.
+hex-max-int64-hints-0d	err	x:0x7fffffffffffffff	0d
+hex-pow63-canon	canon	x:0x8000000000000000	{"x":9223372036854776000.0}
 hex-pow63-integer-err	err	x:0x8000000000000000 & integer	Cannot unify scalar values
 base-upper-hex-text	gen	x:0X1F	{"x":"0X1F"}
 base-upper-octal-text	gen	x:0O17	{"x":"0O17"}
@@ -146,7 +177,16 @@ sep-between-digits	gen	x:1_0	{"x":10}
 sep-grouped	gen	x:1_000_000	{"x":1000000}
 sep-integer	gen	x:1_0 & integer	{"x":10}
 sep-hex	gen	x:0xf_f	{"x":255}
-sep-hex-big	gen	x:0xff_ffffffffffffff	{"x":18446744073709552000}
+# FLIPPED by D7: 0xff_ffffffffffffff is 2^64-1 with a separator in it,
+# and 2^64-1 is not exactly representable, so it is refused rather than
+# rounded (scalar.tsv:hex-big-err is the same value without the
+# separator). The row still does the job this block wants: an err naming
+# the lossy-literal rule proves the separator run was LEXED AS A NUMBER,
+# because a broken separator run falls through to text instead (compare
+# sep-prefix-edge-big-text below, which is the string). The accepted big
+# separator is pinned positively by the exact literal beside it.
+sep-hex-big-err	err	x:0xff_ffffffffffffff	exactly representable
+sep-hex-big-exact	gens	x:0xff_00000000000000	{"x":18374686479671624000}
 sep-fraction	gen	x:1_0.5_1	{"x":10.51}
 sep-exponent	gen	x:1e1_0	{"x":10000000000}
 sep-repeated-text	gen	x:1__0	{"x":"1__0"}

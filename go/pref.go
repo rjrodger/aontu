@@ -8,18 +8,44 @@ package aontu
 // the peer narrows it, otherwise the preferred value wins.
 type PrefVal struct {
 	base
-	peg      Val
+	peg Val
+	// The preferred value's own type: the yardstick for "did the peer
+	// say anything I did not already say?".
 	superpeg Val
-	rank     int
+	// The gate an overriding peer must pass. A preference is a DEFAULT,
+	// so a concrete peer replaces it — but only within the preferred
+	// value's FAMILY: `*lower(1.1) & a` is a conflict, not an override.
+	//
+	// Family and not leaf, because the number tower made `integer` and
+	// `float` disjoint siblings under `number`. Gating on the leaf would
+	// turn `*2.2 & 3` (a float default overridden by an integer) into an
+	// error, which is a tightening no document asked for. For every
+	// non-numeric value the family root IS the leaf, so this is the
+	// preferred value's type as before. Mirrors TS PrefVal.familypeg.
+	familypeg Val
+	rank      int
 }
 
 func newPref(v Val) *PrefVal {
 	p := &PrefVal{peg: v}
-	p.superpeg = v.superior()
+	p.resuper()
 	if inner, ok := v.(*PrefVal); ok {
 		p.rank = 1 + inner.rank
 	}
 	return p
+}
+
+// resuper recomputes the type yardstick and the override gate from the
+// current peg. Called again whenever the peg resolves (e.g. a func).
+func (p *PrefVal) resuper() {
+	sup := p.peg.superior()
+	p.superpeg = sup
+	p.familypeg = sup
+	if sk, ok := sup.(*ScalarKindVal); ok {
+		if fam := kindFamily(sk.kind); fam != sk.kind {
+			p.familypeg = newScalarKind(fam)
+		}
+	}
 }
 
 func (p *PrefVal) cjo() int { return 30000 }
@@ -42,7 +68,7 @@ func (p *PrefVal) Unify(peer Val, ctx *Ctx) Val {
 	if p.peg.Dc() != DONE {
 		ctx.slot = slot
 		p.peg = unite(ctx, p.peg, top())
-		p.superpeg = p.peg.superior()
+		p.resuper()
 	}
 
 	var out Val
@@ -63,11 +89,12 @@ func (p *PrefVal) Unify(peer Val, ctx *Ctx) Val {
 			out = p
 		} else {
 			// Peer is a concrete or kind value. Unify the preferred
-			// value's type with peer: if peer is type-compatible (result
-			// is still the type), the preference value wins; otherwise
-			// peer narrows it.
-			out = unite(ctx, p.superpeg, peer)
-			if valSame(out, p.superpeg) {
+			// value's FAMILY with peer: if the peer added nothing beyond
+			// a type the preferred value already satisfies (`*1 &
+			// integer`, `*1 & number`), the preference stands; anything
+			// else is a concrete override and wins.
+			out = unite(ctx, p.familypeg, peer)
+			if valSame(out, p.superpeg) || valSame(out, p.familypeg) {
 				out = p.peg
 			}
 		}

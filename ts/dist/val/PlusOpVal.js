@@ -2,12 +2,38 @@
 /* Copyright (c) 2024-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlusOpVal = void 0;
+const err_1 = require("../err");
 const IntegerVal_1 = require("../val/IntegerVal");
 const NumberVal_1 = require("../val/NumberVal");
 const StringVal_1 = require("../val/StringVal");
 const BooleanVal_1 = require("../val/BooleanVal");
+const BigIntegerVal_1 = require("../val/BigIntegerVal");
+const BigDecimalVal_1 = require("../val/BigDecimalVal");
+const Decimal_1 = require("../val/Decimal");
 const numkind_1 = require("../val/numkind");
 const OpBaseVal_1 = require("./OpBaseVal");
+// D6 -- THE EXACT LADDER: integer < biginteger < bigdecimal. A mixed
+// operation between exact leaves promotes to the WIDEST operand and is
+// computed exactly, so `1 + 0d2` is a biginteger and `1 + 0d0.5` a
+// bigdecimal.
+//
+// `float` is deliberately absent: it is OFF the ladder, keeping only its
+// classic contagion against `integer`. Its absence from this table is
+// what makes the float-with-big pairs fall through to the hard error
+// below rather than promoting.
+//
+// Results NEVER demote: `0d5 + -0d2` stays a biginteger even though 3
+// would fit an int64. Demotion would make the result kind depend on the
+// values rather than on the operand kinds, and a document could then
+// change leaf under a value edit.
+const EXACT_RANK = {
+    integer: 1,
+    biginteger: 2,
+    bigdecimal: 3,
+};
+function isBig(k) {
+    return 'biginteger' === k || 'bigdecimal' === k;
+}
 class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -19,7 +45,7 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
     opname() {
         return 'plus';
     }
-    operate(_ctx, args) {
+    operate(ctx, args) {
         // Only concrete scalar operands are valid: anything else (kinds,
         // maps, lists, null, top, funcs) must not coerce — the JS `+` would
         // leak internals like "[object Object]" into output. A non-scalar
@@ -32,60 +58,114 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
             }
             return v;
         };
-        const prim = (v) => {
-            const p = v?.isVal && v.isScalar ? v.peg : undefined;
-            const t = typeof p;
-            return 'string' === t || 'number' === t || 'boolean' === t ? p : undefined;
+        // The operand's LEAF, not the JavaScript type of its peg: integer
+        // and float share `number`, while the exact leaves are told apart
+        // from each other and from everything else by their own flags. The
+        // whole ladder below dispatches on this and never on `typeof`.
+        const opkind = (v) => {
+            if (!(v?.isVal && v.isScalar)) {
+                return undefined;
+            }
+            if (v.isBigInteger) {
+                return 'biginteger';
+            }
+            if (v.isBigDecimal) {
+                return 'bigdecimal';
+            }
+            if (v.isInteger) {
+                return 'integer';
+            }
+            const t = typeof v.peg;
+            return 'number' === t ? 'float' :
+                'string' === t ? 'string' :
+                    'boolean' === t ? 'boolean' :
+                        undefined;
         };
         const av = operand(args[0]);
         const bv = operand(args[1]);
-        let a = prim(av);
-        let b = prim(bv);
-        if (undefined === a || undefined === b) {
+        const ak = opkind(av);
+        const bk = opkind(bv);
+        if (undefined === ak || undefined === bk) {
             return undefined;
         }
-        const at = typeof a;
-        const bt = typeof b;
-        let peg = undefined;
-        if ('boolean' === at && 'boolean' === bt) {
-            peg = a || b;
+        if ('boolean' === ak && 'boolean' === bk) {
+            return new BooleanVal_1.BooleanVal({ peg: av.peg || bv.peg });
         }
-        else if ('string' === at || 'string' === bt) {
-            peg = String(a) + String(b);
+        // STRING CONCATENATION RENDERS DIGITS, NOT KIND DECORATION. The `0d`
+        // marker is canon's way of naming the leaf and never belongs in a
+        // string, exactly as R4's `.0` float suffix does not ("q" + 0d0.1 is
+        // "q0.1", and "q" + 1.0 is "q1"). Decimal.toString() is that
+        // marker-free rendering, which is why canon() wraps it rather than
+        // the other way round.
+        if ('string' === ak || 'string' === bk) {
+            return new StringVal_1.StringVal({ peg: digits(av, ak) + digits(bv, bk) });
         }
-        else if ('boolean' === at || 'boolean' === bt) {
-            // boolean mixed with a number does not coerce (no JS 0/1).
+        // A boolean mixed with a number does not coerce (no JS 0/1).
+        if ('boolean' === ak || 'boolean' === bk) {
             return undefined;
         }
-        else {
-            peg = a + b;
+        // FLOAT IS OFF THE EXACT LADDER, and mixing it with either big leaf
+        // is a hard error in BOTH operand orders: a big type never silently
+        // becomes a binary float. Promotion the other way is no better —
+        // binary64 cannot hold every exact value, so either direction throws
+        // away exactness the document explicitly asked for by writing `0d`.
+        // The error names both leaves in operand order.
+        if (('float' === ak && isBig(bk)) || (isBig(ak) && 'float' === bk)) {
+            return (0, err_1.makeNilErr)(ctx, 'exact_float_mix', this, undefined, 'add', { left: ak, right: bk });
         }
-        let pegtype = typeof peg;
-        let out = undefined;
-        if ('string' === pegtype) {
-            out = new StringVal_1.StringVal({ peg });
+        // Float with float or integer: unchanged R5 contagion, binary64
+        // addition, float result (`1 + 2.0` is `3.0`).
+        if ('float' === ak || 'float' === bk) {
+            return new NumberVal_1.NumberVal({ peg: av.peg + bv.peg });
         }
-        else if ('boolean' === pegtype) {
-            out = new BooleanVal_1.BooleanVal({ peg });
+        // Both operands are on the exact ladder: promote to the widest.
+        const rank = EXACT_RANK[bk] < EXACT_RANK[ak] ? EXACT_RANK[ak] : EXACT_RANK[bk];
+        if (EXACT_RANK.bigdecimal === rank) {
+            // Exact scaled-decimal addition. The budget applies to results as
+            // well as literals (D6): an exact sum too wide to hold is refused,
+            // never rounded to fit.
+            const sum = decimal(av, ak).add(decimal(bv, bk));
+            return (0, Decimal_1.decimalOverBudget)(sum) ?
+                (0, err_1.makeNilErr)(ctx, 'decimal_budget', this, undefined, 'add') :
+                new BigDecimalVal_1.BigDecimalVal({ peg: sum });
         }
-        else if ('number' === pegtype) {
-            // Kind contagion: `+` must not introduce a kind narrower than its
-            // operands. The result is integer kind only when BOTH operands
-            // are integer kind AND the sum is itself integer kind (integral
-            // and inside int64 — the sum of two integers can leave the
-            // range). Deriving the kind from the result value alone would
-            // make 1.5+1.5 an integer.
-            out = av instanceof IntegerVal_1.IntegerVal &&
-                bv instanceof IntegerVal_1.IntegerVal &&
-                (0, numkind_1.isIntegerKind)(peg) ?
-                new IntegerVal_1.IntegerVal({ peg }) :
-                new NumberVal_1.NumberVal({ peg });
+        // integer and biginteger both add as exact integers.
+        const sum = integer(av, ak) + integer(bv, bk);
+        if (EXACT_RANK.biginteger === rank) {
+            // Unbounded and exact: nothing to check, and no demotion to
+            // `integer` however small the result.
+            return new BigIntegerVal_1.BigIntegerVal({ peg: sum });
         }
-        return out;
+        // INTEGER + INTEGER IS COMPUTED EXACTLY, then offered to the integer
+        // leaf under the same storage contract R1 applies to a literal.
+        // Adding through float64 (as this did) silently rounded sums of
+        // exact operands — 4503599627370496 + 4503599627370497 came back as
+        // …992 — which is precisely the corruption the tower refuses. The
+        // sum that will not fit is an error pointing at `0d`, not a rounded
+        // answer.
+        return (0, numkind_1.isIntegerStorable)(sum) ?
+            new IntegerVal_1.IntegerVal({ peg: Number(sum) }) :
+            (0, err_1.makeNilErr)(ctx, 'inexact_integer_sum', this, undefined, 'add', { sum: sum.toString() });
     }
     get canon() {
         return this.peg[0]?.canon + '+' + this.peg[1]?.canon;
     }
 }
 exports.PlusOpVal = PlusOpVal;
+// The digits of an operand for string concatenation: no `0d` marker, no
+// R4 `.0` suffix — the plain rendering of the number, in every leaf.
+function digits(v, k) {
+    return 'bigdecimal' === k ? v.peg.toString() : String(v.peg);
+}
+// An exact-ladder operand as an exact integer. Only reached for the two
+// integral leaves; an `integer` peg is integral by construction, so
+// BigInt() is exact.
+function integer(v, k) {
+    return 'biginteger' === k ? v.peg : BigInt(v.peg);
+}
+// An exact-ladder operand as a Decimal, for the promotion to bigdecimal.
+// Scale 0 normalises to the one decimal place the leaf keeps.
+function decimal(v, k) {
+    return 'bigdecimal' === k ? v.peg : new Decimal_1.Decimal(integer(v, k), 0);
+}
 //# sourceMappingURL=PlusOpVal.js.map

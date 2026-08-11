@@ -38,6 +38,7 @@ const G = (s, _ctx) => A.generate(s);
 const makeSK_String = () => new ScalarKindVal_1.ScalarKindVal({ peg: String });
 const makeSK_Number = () => new ScalarKindVal_1.ScalarKindVal({ peg: Number });
 const makeSK_Integer = () => new ScalarKindVal_1.ScalarKindVal({ peg: ScalarKindVal_1.Integer });
+const makeSK_Float = () => new ScalarKindVal_1.ScalarKindVal({ peg: ScalarKindVal_1.Float });
 const makeSK_Boolean = () => new ScalarKindVal_1.ScalarKindVal({ peg: Boolean });
 const makeBooleanVal = (v) => new BooleanVal_1.BooleanVal({ peg: v });
 const makeNumberVal = (v, c) => new NumberVal_1.NumberVal({ peg: v }, c);
@@ -81,6 +82,44 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
         (0, expect_1.expect)(makeSK_Number().same(makeSK_Boolean())).equal(false);
         (0, expect_1.expect)(makeSK_Number().same(makeSK_Integer())).equal(false);
         (0, expect_1.expect)(makeSK_Integer().same(makeSK_Boolean())).equal(false);
+        // `float` is a distinct marker from `number` and from `integer`.
+        (0, expect_1.expect)(makeSK_Float().same(makeSK_Float())).equal(true);
+        (0, expect_1.expect)(makeSK_Float().same(makeSK_Number())).equal(false);
+        (0, expect_1.expect)(makeSK_Float().same(makeSK_Integer())).equal(false);
+    });
+    // The number tower: `number` is a pure supertype over the disjoint
+    // leaves `integer` and `float`. See docs/design/number-tower.md D1.
+    (0, node_test_1.it)('scalar-kind-lattice', () => {
+        let ctx = makeCtx();
+        let tu = (a, b) => (0, unify_2.unite)(ctx, a, b, 'kind-lattice-test');
+        // Canon is the keyword.
+        (0, expect_1.expect)(makeSK_Number().canon).equal('number');
+        (0, expect_1.expect)(makeSK_Integer().canon).equal('integer');
+        (0, expect_1.expect)(makeSK_Float().canon).equal('float');
+        // A concrete binary64 value is FLOAT kind, not number kind.
+        (0, expect_1.expect)(makeNumberVal(1.5).kind).equal(ScalarKindVal_1.Float);
+        (0, expect_1.expect)(makeIntegerVal(1).kind).equal(ScalarKindVal_1.Integer);
+        // super() ladder: value -> leaf -> number -> top.
+        (0, expect_1.expect)(makeNumberVal(1.5).superior().canon).equal('float');
+        (0, expect_1.expect)(makeIntegerVal(1).superior().canon).equal('integer');
+        (0, expect_1.expect)(makeSK_Float().superior().canon).equal('number');
+        (0, expect_1.expect)(makeSK_Integer().superior().canon).equal('number');
+        (0, expect_1.expect)(makeSK_Number().superior().isTop).equal(true);
+        // A kind admits a concrete value of any kind at or below it.
+        (0, expect_1.expect)(tu(makeSK_Float(), makeNumberVal(1.5)).canon).equal('1.5');
+        (0, expect_1.expect)(tu(makeSK_Number(), makeNumberVal(1.5)).canon).equal('1.5');
+        (0, expect_1.expect)(tu(makeSK_Number(), makeIntegerVal(1)).canon).equal('1');
+        (0, expect_1.expect)(tu(makeSK_Float(), makeIntegerVal(1)).isNil).exist();
+        (0, expect_1.expect)(tu(makeSK_Integer(), makeNumberVal(1.5)).isNil).exist();
+        // Kind meets: number is the supertype, the leaves are disjoint.
+        (0, expect_1.expect)(tu(makeSK_Number(), makeSK_Float()).canon).equal('float');
+        (0, expect_1.expect)(tu(makeSK_Float(), makeSK_Number()).canon).equal('float');
+        (0, expect_1.expect)(tu(makeSK_Number(), makeSK_Integer()).canon).equal('integer');
+        (0, expect_1.expect)(tu(makeSK_Number(), makeSK_Number()).canon).equal('number');
+        (0, expect_1.expect)(tu(makeSK_Float(), makeSK_Float()).canon).equal('float');
+        (0, expect_1.expect)(tu(makeSK_Float(), makeSK_Integer()).isNil).exist();
+        (0, expect_1.expect)(tu(makeSK_Integer(), makeSK_Float()).isNil).exist();
+        (0, expect_1.expect)(tu(makeSK_Number(), makeSK_String()).isNil).exist();
     });
     (0, node_test_1.it)('boolean', () => {
         let tu = (ctx, a, b) => (0, unify_2.unite)(ctx, a, b, 'boolean-test');

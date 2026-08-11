@@ -493,7 +493,12 @@ something worth exposing.
   changing the meaning, the value, or the canon of any literal
   already written. That property is why refusing the migration now
   costs nothing later — the refusal is a decision not to widen the
-  default number, not a decision against exactness.
+  default number, not a decision against exactness. *(Since decided:
+  the opt-in tower is being adopted —
+  `docs/design/number-tower.md`. The boundary holds as stated: the
+  default kinds are not migrated, exactness arrives as new opt-in
+  leaves, and this document's bound atoms gain a cross-leaf ordering
+  question recorded in that proposal's open questions.)*
 - **No time/format/net validator library.** That is the later
   stdlib stratum in CUE's demand ordering, and its hermeticity
   questions belong to [G5](g5-trust-contract.md).

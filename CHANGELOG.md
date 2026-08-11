@@ -7,6 +7,222 @@ which implementation each change affects.
 
 ## Go 0.1.4 — 2026-06-22 · TypeScript 0.47.0 (unreleased)
 
+### Breaking — the number tower (TypeScript and Go)
+
+`number` is no longer a leaf of the lattice. It is now the pure
+supertype of four **disjoint** numeric leaves — `integer`, the new
+`float`, and two new exact leaves, `biginteger` and `bigdecimal`,
+reached only through the new `0d` literal prefix:
+
+```
+number                the set of all numeric values
+├── integer           int64-window exact
+├── float             IEEE-754 binary64        (what number used to name)
+├── biginteger        unbounded exact integer  (0d123)
+└── bigdecimal        exact base-10 decimal    (0d0.1)
+```
+
+Alongside it, every numeric operation the language has is now **exact
+or an error**: nothing rounds silently any more, in either port. The
+rationale is in `docs/design/number-tower.md`; the contract is pinned
+by the shared `test/spec/number-tower.tsv` and is identical in both
+implementations.
+
+**Migration in two lines.** A schema that said `number` and *meant*
+binary64 must now say `float`. A value that binary64 cannot hold
+exactly must now be written `0d` — where such a value was previously
+rounded in silence, it is now refused.
+
+- **`number` widens to a supertype; `float` names the binary64 leaf.**
+  `number` now admits a value of *any* numeric leaf and no concrete
+  value ever carries it; `float` is a new kind keyword for the
+  IEEE-754 binary64 leaf. Kind meets follow from disjointness:
+  `number & float` → `float`, `number & 1.5` → `1.5`, and
+  `float & integer` is an error (two leaves describe disjoint value
+  sets, so they have no common lower bound). The `super()` ladder
+  gains its real rung: `super(1.5)` → `float` (was `number`),
+  `super(float)` → `number`, `super(number)` → `top` — one landed row
+  (`number-model.tsv:super-float-canon`) flips. What breaks: a schema
+  written `a: number` still admits everything it admitted, and now
+  *also* admits `0d` values — the new schema subsumes the old, so
+  existing data is unaffected, but a schema that meant "binary64 only"
+  silently became more permissive. *Write `float` where you meant the
+  binary64 leaf, and keep `number` where you meant "any number".*
+
+- **`0d` literals, and the two exact leaves.** `0d` opts a literal into
+  an exact leaf, and the leaf follows the source exactly as R1's `.`
+  rule already did: digits only is a **biginteger** (`0d5`, `-0d5`,
+  `0d123456789012345678901234567890`), while a `.` or an exponent
+  anywhere makes it a **bigdecimal** (`0d0.1`, `0d1.5e2`, `0d1e3`).
+  The exact leaves are reached *only* this way — never by promotion,
+  coercion or inference — so a document that writes neither `0d` nor
+  `float` means exactly what it meant before. Details that are
+  contract, not incidental:
+  - **One value, one rendering.** Scale is presentation, not identity,
+    so a literal normalises at parse: `0d0.10`, `0d0.1` and `0d1e-1`
+    are the same value and canon as `0d0.1`. An integral bigdecimal
+    keeps one decimal place (`0d1e3` canons as `0d1000.0`), because
+    `0d1000` would reparse as a *biginteger*. Negative zero never
+    survives: `-0d0` is `0d0`, `-0d0.0` is `0d0.0`.
+  - **The leaves are disjoint.** `5 & 0d5`, `1.5 & 0d1.5` and
+    `0d5 & 0d5.0` are all errors, for the same reason `1 & 1.0` is:
+    a cross-leaf meet would have to pick a kind, which makes `&`
+    asymmetric in kind.
+  - **The sign goes before the prefix** (`-0d5`). `0d-5`, `0d.5` and a
+    bare `0d` are not literals.
+  - **An exactness budget, not a rounding mode.** At most 4096
+    coefficient digits and an absolute scale of at most 4096, checked
+    at parse and at every operation; beyond it the value is refused
+    (`decimal_budget`), never approximated. `0d1e1000000000` is
+    rejected on sight rather than materialising a gigabyte of zeros.
+  - **Programmatic construction obeys the same contract**, including
+    the budget: Go gains `NewBigInteger(*big.Int)` and
+    `NewBigDecimal(string)`, TypeScript `BigIntegerVal` (a `bigint`)
+    and `BigDecimalVal` (a string). A float argument is deliberately
+    not accepted — it has already rounded before the library can see
+    it.
+
+  What breaks: `0d12` used to be the bare string `"0d12"`, `0d1.5`
+  used to be a path-reference error, and `-0d5` used to be a
+  `negative` error. *Quote it (`"0d12"`) to keep the string.*
+
+- **Arithmetic is exact, and `integer + integer` now refuses an inexact
+  sum.** The exact ladder is `integer < biginteger < bigdecimal`: a
+  mixed exact operation promotes to the widest operand, is computed
+  exactly, and never demotes (`1 + 0d0.5` → `0d1.5`, `0d7 + -0d2` →
+  `0d5`). `0d0.1 + 0d0.2` is `0d0.3`, which is the reason the exact
+  leaves exist — binary64 gives `0.30000000000000004`. `float` stays
+  off that ladder with its existing contagion against `integer`
+  (`1 + 2.0` → `3.0`, unchanged), and mixing it with either exact leaf
+  is a hard error in **both** operand orders (`1.0 + 0d2` and
+  `0d0.5 + 1.0` are both `exact_float_mix`): an exact value never
+  silently becomes a binary float. `upper()`/`lower()` are exact
+  ceiling/floor keeping the argument's kind, unary minus negates
+  exactly, and string concatenation renders marker-free digits
+  (`"q" + 0d0.1` is `"q0.1"`, never `"q0d0.1"`).
+
+  The breaking part is plain `integer + integer`. It is now computed
+  exactly — `bigint` in TypeScript, checked `int64` in Go — and the
+  exact answer must then satisfy the same storage contract R1 applies
+  to a literal: integral, inside int64, **and** exactly representable
+  in binary64. Binary64 addition silently rounded sums of exact
+  operands, so `4503599627370496 + 4503599627370497` produced
+  `9007199254740992` instead of `…993`; it is now an
+  `inexact_integer_sum` error. The exactly-representable half of the
+  test is what keeps the ports together: Go's `int64` can hold sums
+  TypeScript's double cannot, so both refuse rather than diverge.
+  *Write the operands as `0d` literals for a sum that leaves the exact
+  binary64 window.*
+
+- **Lossy integer literals are refused, with a `0d` escape.** An
+  integer-source literal — plain decimal, or `0x`/`0o`/`0b`, with or
+  without a non-negative exponent — whose value binary64 cannot hold
+  exactly is now a located parse error (`lossy_integer_literal`) whose
+  hint names the fix. **The rule is exactness, not magnitude.**
+  `9007199254740992` (2^53), `100000000000000000000` (10^20), `1e21`
+  and `0x10000000000000000000000000000000` (2^124, a power of two) are
+  all exact and remain values; `9007199254740993` (2^53+1),
+  `0x7fffffffffffffff` (2^63−1, which rounds *up* to 2^63) and
+  `0xffffffffffffffff` (2^64−1) are refused. Literals and computed
+  sums ask one shared exactness predicate, so they cannot disagree
+  about what exact means. Six landed rows flip
+  (`scalar.tsv:hex-big`/`hex-big-canon` and the `number-model.tsv`
+  lossy rows).
+
+  This reaches beyond `0d`-using documents: a plain JSON document
+  containing `{"x":9007199254740993}` writes no `0d` at all, yet flips
+  from silently generating a rounded number to an error. That is the
+  deliberate point — refusal over corruption — but it means the
+  JSON-superset guarantee is "every JSON document parses", not "every
+  JSON document behaves identically". *Write `0d9007199254740993` to
+  keep the exact value.*
+
+- **Exact generation, and a new public `exactJSON` export
+  (TypeScript).** An exact value now reaches JSON as exact digits. Go
+  `Generate` returns `*big.Int` for a biginteger and `*Decimal` for a
+  bigdecimal; `encoding/json` already emits exact digits for the
+  former and the latter has a `MarshalJSON`, so the Go CLI is
+  unchanged. TypeScript `generate()` returns a native `bigint` and a
+  `Decimal` — and `JSON.stringify` **throws** on a `bigint`, with no
+  replacer able to emit an unquoted number. TypeScript therefore gains
+  its own emitter, `exactJSON(value, indent?)`, exported publicly
+  alongside the `Decimal` class; the CLI (indented) and the shared
+  suite's byte-exact `gens` mode (compact) both go through it, so
+  neither can drift from the other or from Go. JSON itself was never
+  the obstacle — a JSON number is arbitrary-precision text.
+
+  What breaks: a TypeScript consumer of `generate()` on a document
+  that uses `0d` receives `bigint`/`Decimal` where it expected
+  `number`, and `JSON.stringify` on that output throws. *Use
+  `exactJSON`.* A `0d`-free document generates exactly what it
+  generated before.
+
+- **An integer past 2^53 now generates as a `bigint` (TypeScript).**
+  Aontu's `integer` leaf is an int64 window, but TypeScript stores it in
+  a double, and above `Number.MAX_SAFE_INTEGER` a double no longer
+  renders its own digits: `x:1152921504606846976` (2^60) generated and
+  canoned as `1152921504606847000` — a *different* integer that merely
+  rounds to the same double — while Go printed the true value from its
+  int64. That was the parity ledger's last entry (issue #21), and it is
+  now closed: TypeScript renders an integer-kind value by its exact
+  digits in canon, and `generate()` hands back a `bigint` past the
+  safe-integer line so `exactJSON` can write those digits. `Number.
+  isSafeInteger` is the threshold because it is exactly "this double is
+  an integer that renders its own digits".
+
+  This is not a rendering choice made to force agreement: the tower's
+  refusal of lossy literals means both ports now hold *exactly* the
+  value the source asked for, so there is a right answer, and Go was
+  already printing it.
+
+  What breaks: a TypeScript consumer reading an integer above 2^53 out
+  of `generate()` receives a `bigint` where it expected a `number`, so
+  `out.x + 1` throws a `TypeError`. Those are precisely the values that
+  were already silently wrong — a loud failure replaces a quiet one.
+  *Nothing below 2^53 changes, in type or in bytes.* Go is unaffected:
+  its leaf is an int64, exact at every magnitude, so it returns an
+  `int64` throughout. The serialised JSON now agrees in both ports.
+
+- **`NewInteger` refuses an inexact `int64` (Go).** Programmatic
+  construction now obeys the same storage contract as a literal:
+  `NewInteger(9007199254740993)` was exact in Go and unreachable in the
+  canonical TypeScript port, a divergence no parse-time rule could see
+  because no literal can express it. An `int64` that binary64 cannot
+  carry exactly now yields a nil value carrying the same "not exactly
+  representable" hint — and the same `0d` escape — that a lossy literal
+  gets, so it surfaces at `Generate` rather than corrupting the
+  document. The signature is unchanged. *Use `NewBigInteger` for an
+  exact integer of any size.* The rule is exactness, not magnitude:
+  `math.MinInt64` is a power of two and still constructs.
+
+- **Three new reserved words, plus the `0d` prefix.** `float`,
+  `biginteger` and `bigdecimal` are kind keywords; all three were
+  ordinary bare strings, as was any `0d…` run. Nothing in the
+  repository, the shared suite, the docs or the editor files used any
+  of them meaningfully, but a real document might. The concrete shape
+  this takes for a *reference* is worth naming: `a:$.float` against a
+  `float:` key now fails exactly as `a:$.number` already did — the
+  pre-existing keyword-versus-path behaviour, reached by one more
+  word. *Quote them (`"float"`) to keep the string.*
+
+- **A preference is now overridden by a peer of a sibling numeric
+  leaf.** `a:*2 & 3.0` was an error and now yields `3.0`. This is a
+  loosening, and it removes an asymmetry that existed only because
+  `number` was simultaneously the binary64 leaf and `integer`'s parent
+  — the mirror case `a:*2.2 & 3` already worked. `PrefVal` uses
+  `superior()` as its override gate, so moving a float value's
+  superior from `number` to `float` would otherwise have *tightened*
+  four behaviours both ports agreed on before the tower (`*2.2 & 3`,
+  `*lower(2.2) & 3`, `*upper(1.1) & 3`, `*1.5 & integer`); the gate
+  therefore tests the numeric **family**, not the leaf. *Nothing to do
+  unless you relied on the error.*
+
+- The shared spec gains `test/spec/number-tower.tsv`, and the runners
+  gain a fourth mode, `gens`, which compares the **byte-exact** JSON
+  serialisation of a generated value. The existing `gen` mode decodes
+  through float64 on both sides, so two distinct exact integers above
+  2^53 compare equal there — exactness is unassertable without `gens`.
+
 ### Fixed — spreads & `type()` (TypeScript and Go)
 
 - **`key()` through spreads (TypeScript and Go)**: `key()` (and other

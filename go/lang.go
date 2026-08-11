@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/big"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -143,15 +144,41 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		Value: &jsonic.ValueOptions{
 			Lex: boolPtr(true),
 			Def: map[string]*jsonic.ValueDef{
-				"string":  kindDef(KindString),
-				"number":  kindDef(KindNumber),
-				"integer": kindDef(KindInteger),
-				"boolean": kindDef(KindBoolean),
-				"top":     valDef(func(int) Val { return top() }),
-				"nil":     valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
-				"true":    valDef(func(sp int) Val { v := newBoolean(true); v.sp = sp; return v }),
-				"false":   valDef(func(sp int) Val { v := newBoolean(false); v.sp = sp; return v }),
-				"null":    valDef(func(sp int) Val { v := newNull(); v.sp = sp; return v }),
+				"string": kindDef(KindString),
+				// `number` is the numeric SUPERTYPE (it admits any
+				// numeric leaf); `float` names the binary64 leaf that
+				// `number` used to name. See scalar.go's Kind lattice.
+				"number":     kindDef(KindNumber),
+				"integer":    kindDef(KindInteger),
+				"float":      kindDef(KindFloat),
+				"biginteger": kindDef(KindBigInteger),
+				"bigdecimal": kindDef(KindBigDecimal),
+				"boolean":    kindDef(KindBoolean),
+				// The `0d` exact literal (D3). A regex value def with
+				// Consume claims the whole run — INCLUDING a `.` — from
+				// the full forward source, so it wins over both the
+				// number matcher (which declines `0d…` as not fully
+				// numeric) and the dot token that would otherwise split
+				// `0d1.5` into a path reference. See exactLiteralRe.
+				"exact": {
+					Match:   exactLiteralRe,
+					Consume: true,
+					ValFunc: func(m []string) any {
+						mk := exactLiteral(m)
+						return jsonic.TokenValFunc(func(r *jsonic.Rule, _ *jsonic.Context) any {
+							sp := -1
+							if r.ON > 0 {
+								sp = r.O0.SI
+							}
+							return mk(sp)
+						})
+					},
+				},
+				"top":   valDef(func(int) Val { return top() }),
+				"nil":   valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
+				"true":  valDef(func(sp int) Val { v := newBoolean(true); v.sp = sp; return v }),
+				"false": valDef(func(sp int) Val { v := newBoolean(false); v.sp = sp; return v }),
+				"null":  valDef(func(sp int) Val { v := newNull(); v.sp = sp; return v }),
 			},
 		},
 		Map: &jsonic.MapOptions{
@@ -511,16 +538,336 @@ func isIntegerKind(n float64, src string) bool {
 	return n == math.Trunc(n) && int64MinFloat <= n && n < int64LimitFloat
 }
 
-// numberVal picks an integer-kind vs a number-kind ScalarVal for a
-// parsed numeric literal (mirrors ts/src/lang.ts). src is the literal's
-// source text, or "" where there is none.
+// isExactInBinary64 reports whether an exact integer is carried EXACTLY
+// by a binary64 — the single exactness question D6's sum contract and
+// D7's literal rule both ask, so that a literal and a computed sum can
+// never disagree about what "exact" means. (Same name, same job, in
+// ts/src/val/numkind.ts.)
+//
+// THE RULE IS EXACTNESS, NOT MAGNITUDE. 2^124 is a power of two and so
+// survives a binary64 unharmed however big it looks
+// (0x10000000000000000000000000000000 is still a value); 10^20 and 10^21
+// are exact too, because their odd part fits in 53 bits. What fails is
+// 2^53+1, 2^63-1 (which rounds UP to 2^63) and 2^64-1 — values that
+// would have to change to be stored.
+//
+// big.Float.SetInt is exact by construction (it takes whatever precision
+// the integer needs), so Float64's reported accuracy is exactly the
+// question: Exact means the conversion lost nothing. An integer too big
+// for a binary64 converts to ±Inf with accuracy Above/Below, so the
+// overflow case needs no separate test.
+func isExactInBinary64(n *big.Int) bool {
+	_, acc := new(big.Float).SetInt(n).Float64()
+	return acc == big.Exact
+}
+
+// isIntegerStorable reports whether an exact integer can be held by the
+// `integer` leaf: inside the int64 window AND carried exactly by a
+// binary64 (D6's storage contract, applied to a computed sum in
+// integerPlus).
+//
+// IsInt64 is exactly the R1 window: the bounds are [-2^63, 2^63) over
+// the reals, and over the integers that is [-2^63, 2^63-1].
+//
+// The binary64 half is the parity-critical one: Go's int64 holds sums
+// TypeScript's double cannot, so a test written only against the window
+// would let this port store 9007199254740993 while the canonical port
+// silently stored …992. Kept in lock-step with isIntegerStorable in
+// ts/src/val/numkind.ts, which asks the same two questions of a bigint.
+func isIntegerStorable(n *big.Int) bool {
+	return n.IsInt64() && isExactInBinary64(n)
+}
+
+// pow53Float is 2^53, the magnitude at and above which a binary64 stops
+// being able to hold every integer. See numberVal's D7 gate.
+const pow53Float = 9007199254740992.0
+
+// maxIntegerLiteralExponent bounds the `e<n>` exponent that
+// isLossyIntegerLiteral will materialise as zeros — a scale bomb
+// (`1e1000000000`) must never be expanded just to be measured.
+//
+// It costs nothing to decline above it: a non-zero coefficient at an
+// exponent this large is beyond every finite binary64 (max ~1.8e308), so
+// wrapLeaf has ALREADY turned the literal into a not_number error nil
+// before numberVal is reached. (The canonical port refuses the same
+// literal as lossy instead, since its lexer hands over an Infinity
+// rather than declining first; both ports error, which is the
+// contractual part — the message text is not, see AGENTS.md.)
+const maxIntegerLiteralExponent = 400
+
+// isLossyIntegerLiteral reports whether src is an integer-source literal
+// whose exact value a binary64 cannot hold — the D7 test, mirroring
+// isLossyIntegerLiteral in ts/src/val/numkind.ts.
+//
+// WHICH LITERALS ARE IN SCOPE. An integer-source literal is one that
+// denotes an exact integer:
+//
+//   - plain decimal digits (`9007199254740993`), with the landed `_`
+//     separator rule;
+//   - a base-prefixed run (`0x…`, `0o…`, `0b…`);
+//   - either of those with a NON-NEGATIVE exponent (`1e21`), which still
+//     denotes an integer.
+//
+// Everything else is out of scope and unchanged. A '.' in the source
+// makes it a float literal by R1's condition (a), so it is not an
+// integer source at all; a NEGATIVE exponent (`2e-1`, `1e-400`) denotes
+// a fraction — `1e-400` is exactly 0 today, a landed row — and D7 is not
+// about fractions. An empty src is a construction site with no source
+// text (operator results, raw implicit-list values), and D7 is about
+// literals. The `0d` family never reaches here: it has its own matcher
+// and its own exact leaves.
+//
+// The value is re-derived from the SOURCE TEXT and not read off the
+// lexed float64, because that float64 is the rounded value this rule
+// exists to detect: comparing it with itself would always agree.
+func isLossyIntegerLiteral(src string) bool {
+	s := strings.ReplaceAll(src, "_", "")
+	// A literal token carries no sign (`-1` is unary minus applied to
+	// `1`), and the sign is irrelevant to exactness anyway — binary64 is
+	// sign-symmetric — but accept one so the test does not depend on
+	// that. (The matcher's own patterns admit a sign.)
+	if 0 < len(s) && (s[0] == '+' || s[0] == '-') {
+		s = s[1:]
+	}
+	if s == "" || strings.Contains(s, ".") {
+		return false
+	}
+
+	var exact *big.Int
+
+	if basedNumeric(s) {
+		base := 16
+		switch s[1] {
+		case 'o', 'O':
+			base = 8
+		case 'b', 'B':
+			base = 2
+		}
+		n, ok := new(big.Int).SetString(s[2:], base)
+		if !ok {
+			return false
+		}
+		exact = n
+	} else {
+		digits, exp := s, 0
+		if i := strings.IndexAny(s, "eE"); 0 <= i {
+			e, err := strconv.Atoi(s[i+1:])
+			if err != nil {
+				// An exponent too long for an int is beyond any bound this
+				// rule would accept anyway.
+				return false
+			}
+			digits, exp = s[:i], e
+		}
+		if !allDigits(digits) || exp < 0 {
+			return false
+		}
+		n, ok := new(big.Int).SetString(digits, 10)
+		if !ok {
+			return false
+		}
+		// Zero at any exponent is zero, and zero is exact — test it
+		// before the exponent bound, which would otherwise have to have
+		// an opinion about `0e500`.
+		if n.Sign() == 0 {
+			return false
+		}
+		if maxIntegerLiteralExponent < exp {
+			return false
+		}
+		exact = n.Mul(n, pow10(int64(exp)))
+	}
+
+	return !isExactInBinary64(exact)
+}
+
+// allDigits reports whether s is a non-empty run of decimal digits.
+func allDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || '9' < s[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// exactLiteralRe matches a `0d` exact-leaf literal (D3):
+//
+//	0[dD] digits [ . digits ] [ (e|E) [+-] digits ]
+//
+// with single `_` separators BETWEEN digits — the landed separator rule,
+// spelled directly into each digit run (`[0-9](?:_?[0-9])*`), so a
+// leading, trailing or repeated separator simply is not part of the
+// literal.
+//
+// The pattern is byte-identical to BIG_LITERAL_RE in
+// ts/src/val/Decimal.ts (which is kept RE2-compatible for exactly that
+// reason), so the two ports cannot drift on what a literal is.
+//
+// THE SIGN IS NOT PART OF THE PATTERN, though it is part of the D3
+// grammar: `-0d5` is the existing unary-minus prefix applied to `0d5`,
+// exactly as `-1.5` already is (see negate). The canonical port must
+// leave it out — its value matchers run BEFORE the fixed-token matcher,
+// so a `[-+]?` there would claim the `+` of `0d1 +0d2` and silently turn
+// an addition into an implicit list — and this port matches it rather
+// than diverging on a pattern the design says is shared.
+//
+// The regex is the accept language exactly, and it is applied to the
+// full forward source (ValueDef.Consume), so it claims the longest VALID
+// prefix and leaves anything else to the ordinary grammar:
+//
+//	0d1.5   -> one literal (the fraction is claimed before the dot token
+//	           can split it into a path reference)
+//	0d1.    -> the literal `0d1`, then a dot token: a trailing `.` is
+//	           claimed only when a digit follows
+//	0d.5    -> no match (no digit after the marker), bare `0d` likewise;
+//	           D3's rejected forms fall through to the ordinary grammar
+//	0d-5    -> the literal never sees the `-`: the sign belongs BEFORE
+//	           the prefix (`-0d5`)
+var exactLiteralRe = regexp.MustCompile(
+	`^0[dD]([0-9](?:_?[0-9])*)(?:\.([0-9](?:_?[0-9])*))?(?:[eE]([-+]?[0-9](?:_?[0-9])*))?`)
+
+// exactLiteral turns the exactLiteralRe match groups (1 integer digits,
+// 2 fraction digits, 3 exponent) into a constructor for the literal's
+// Val, deferring only the source position (which the lexer does not know
+// until the token is bound to a rule).
+//
+// LEAF BY SOURCE, mirroring R1's precedent (D3): digits only is a
+// BIGINTEGER; a `.` or an exponent anywhere makes it a BIGDECIMAL. So
+// `0d5` is a biginteger and `0d1e3` is a bigdecimal whose value happens
+// to be integral — and whose canon is therefore `0d1000.0`, not
+// `0d1000`, because `0d1000` would reparse as a biginteger (D4).
+func exactLiteral(m []string) func(int) Val {
+	intPart := stripSeps(m[1])
+	frac := stripSeps(m[2])
+	exp := stripSeps(m[3])
+
+	if m[2] == "" && m[3] == "" {
+		n, ok := new(big.Int).SetString(intPart, 10)
+		if !ok {
+			return exactNil("decimal_syntax")
+		}
+		// big.Int has no negative zero, so D5 needs nothing here.
+		return func(sp int) Val {
+			v := newBigInteger(new(big.Int).Set(n))
+			v.sp = sp
+			return v
+		}
+	}
+
+	d, why := exactDecimal(false, intPart, frac, exp)
+	if why != "" {
+		return exactNil(why)
+	}
+	return func(sp int) Val {
+		v := newBigDecimal(d)
+		v.sp = sp
+		return v
+	}
+}
+
+// exactDecimal builds a NORMALISED Decimal from already-separator-
+// stripped digit runs (an empty frac or exp meaning "none"), enforcing
+// D6's exactness budget. It returns an error CODE ("" on success) so
+// both callers — the literal path and the NewBigDecimal API — refuse
+// identically.
+//
+// neg is always false from the literal path: a `0d` literal carries no
+// sign (the unary-minus operator handles it — see exactLiteralRe). Only
+// the API, whose input is a whole signed number as text, passes true.
+func exactDecimal(neg bool, intPart, frac, exp string) (*Decimal, string) {
+	// The budget is enforced HERE — before any value is built, on the
+	// SOURCE form: normalising `0d1e1000000000` is itself the resource
+	// event the bound exists to prevent. The scale half is the
+	// load-bearing one, since that literal's coefficient is one digit.
+	//
+	// Coefficient digits are counted AS WRITTEN, leading zeros included,
+	// matching readBigLiteral in ts/src/val/Decimal.ts — the two ports
+	// need not agree on any cleverer rule, and a literal padded past the
+	// bound with zeros is refused in both.
+	//
+	// Normalisation can still fold a negative scale into the
+	// coefficient, so a value that passes both bounds holds at most
+	// decimalMaxCoeffDigits + decimalMaxScale + 1 digits — bounded, and
+	// small enough to render.
+	if len(intPart)+len(frac) > decimalMaxCoeffDigits {
+		return nil, "decimal_budget"
+	}
+
+	// scale = fraction digits - exponent. Computed in big.Int because
+	// the exponent is unbounded source text; the budget check below is
+	// what makes it safe to narrow to int32 afterwards.
+	scale := big.NewInt(int64(len(frac)))
+	if exp != "" {
+		e, ok := new(big.Int).SetString(exp, 10)
+		if !ok {
+			return nil, "decimal_syntax"
+		}
+		scale.Sub(scale, e)
+	}
+	if scale.CmpAbs(big.NewInt(decimalMaxScale)) > 0 {
+		return nil, "decimal_budget"
+	}
+
+	coeff, ok := new(big.Int).SetString(intPart+frac, 10)
+	if !ok {
+		return nil, "decimal_syntax"
+	}
+	if neg {
+		coeff.Neg(coeff)
+	}
+	// Normalised at construction (D4): one value, one rendering.
+	return newDecimal(coeff, int32(scale.Int64())), ""
+}
+
+// exactNil builds the constructor for a located error nil — a refused
+// literal is never a rounded or expanded value (D6).
+func exactNil(why string) func(int) Val {
+	return func(sp int) Val {
+		n := newNil(why)
+		n.sp = sp
+		return n
+	}
+}
+
+// stripSeps removes the digit separators from a matched digit run. The
+// regex has already checked that each one sits between two digits.
+func stripSeps(s string) string { return strings.ReplaceAll(s, "_", "") }
+
+// numberVal picks an integer-kind vs a float-kind (IEEE-754 binary64)
+// ScalarVal for a parsed numeric literal (mirrors ts/src/lang.ts). src
+// is the literal's source text, or "" where there is none. The result is
+// always a numeric LEAF: no ScalarVal ever carries the KindNumber
+// supertype.
+//
+// D7 — A LOSSY INTEGER LITERAL IS REFUSED, NOT ROUNDED. An
+// integer-source literal (decimal or base-prefixed, no '.') whose value a
+// binary64 cannot hold exactly becomes a located parse-time error whose
+// hint names the escape: write it as a `0d` literal, which holds it
+// exactly. Refusal over corruption — `x:9007199254740993` used to
+// generate …992 with no signal at all.
 func numberVal(n float64, src string, sp int) Val {
+	// The gate is an optimisation, not part of the rule: every integral
+	// value strictly inside the 2^53 window is exact, and an inexact
+	// integer literal always ROUNDS TO at least 2^53 in magnitude, so
+	// isLossyIntegerLiteral could only answer true above it. Ordinary
+	// numbers — every literal in a real config — therefore never touch
+	// the big.Int path. (The canonical port has no such gate; it changes
+	// no answer, only the work done to reach it.)
+	if pow53Float <= math.Abs(n) && isLossyIntegerLiteral(src) {
+		e := newNil("lossy_integer_literal")
+		e.sp = sp
+		return e
+	}
 	if isIntegerKind(n, src) {
 		v := newInteger(int64(n))
 		v.sp = sp
 		return v
 	}
-	v := newNumber(n)
+	v := newFloat(n)
 	v.sp = sp
 	return v
 }
@@ -1122,8 +1469,11 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 }
 
 // negate returns the arithmetic negation of a numeric operand. It never
-// narrows the kind (an integer stays an integer, a number stays a
-// number) and never yields negative zero.
+// narrows the kind (an integer stays an integer, a float stays a float,
+// each exact leaf stays itself) and never yields negative zero (D5:
+// `-0d0` is `0d0`, `-0d0.0` is `0d0.0`). A non-numeric operand — and any
+// numeric leaf not handled here — falls through to the `negative` nil
+// rather than being silently mishandled.
 func negate(t any) Val {
 	switch v := t.(type) {
 	case float64:
@@ -1134,15 +1484,20 @@ func negate(t any) Val {
 			i := v.peg.(int64)
 			if i == math.MinInt64 {
 				// -(-2^63) leaves the int64 range, so it cannot stay
-				// integer kind; widen to a number rather than wrapping.
+				// integer kind; widen to a float rather than wrapping.
 				// (No literal can express -2^63 as an integer, so this
 				// is only reachable through the NewInteger API.)
-				return newNumber(-float64(i))
+				return newFloat(-float64(i))
 			}
 			// int64 has no negative zero, so -0 cannot arise here.
 			return newInteger(-i)
-		case KindNumber:
-			return newNumber(negZero(-v.peg.(float64)))
+		case KindFloat:
+			return newFloat(negZero(-v.peg.(float64)))
+		case KindBigInteger:
+			// big.Int has no negative zero, so -0d0 is 0d0 for free.
+			return newBigInteger(new(big.Int).Neg(v.peg.(*big.Int)))
+		case KindBigDecimal:
+			return newBigDecimal(v.peg.(*Decimal).neg())
 		}
 	}
 	return newNil("negative")

@@ -15,12 +15,12 @@ const hints = {
         '  1 & 1   -> 1    # Does unify (equal Integers);\n' +
         '  a & a   -> a    # Does unify (equal Strings);\n' +
         '  1 & 2   -> nil  # Does not unify (unequal Integers);\n' +
-        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Number).',
+        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).',
     scalar_kind: 'Literal scalar values of different kinds cannot unify.' +
         '\n \nExamples:\n' +
         '  1 & 1   -> 1    # Does unify (equal Integers);\n' +
         '  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n' +
-        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Number).',
+        '  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).',
     nil_gen: 'The nil value was present after unification, and nil cannot be\n' +
         'generated because nil is not a literal value.',
     no_gen: 'This value was present after unification, and cannot be generated\n' +
@@ -51,8 +51,64 @@ const hints = {
     'unite': 'Failed to unite two values. The values are incompatible and cannot be unified.',
     'internal': 'Internal error during unification. This indicates an unexpected error in the unification process.',
     // Type mismatch errors
-    'scalar-type': 'Scalar type mismatch. The scalar types are incompatible.',
-    'no_scalar_unify': 'Cannot unify scalar values. The scalar values have incompatible types.',
+    decimal_budget: 'This exact decimal exceeds the exactness budget: at most 4096\n' +
+        'coefficient digits and an absolute scale of at most 4096. The\n' +
+        'budget applies to computed results as well as to literals.\n' +
+        'Aontu never rounds, so a value beyond the budget is refused\n' +
+        'rather than approximated.' +
+        '\n \nExamples:\n' +
+        '  0d1e1000000000    -> nil  # Scale far beyond the budget;\n' +
+        '  0d1e4000+0d1e-4000 -> nil  # An exact sum too wide to hold;\n' +
+        '  0d1e-1            -> 0d0.1  # Well within it.',
+    lossy_integer_literal: 'This integer literal, {src}, is not exactly representable in\n' +
+        'binary64, so storing it would silently round it to a DIFFERENT\n' +
+        'number. Aontu refuses rather than corrupts: write it as a `0d`\n' +
+        'literal to get the exact integer.\n' +
+        'The rule is exactness, not magnitude -- a literal far outside the\n' +
+        'int64 window is still a value when it lands exactly on a binary64.' +
+        '\n \nExamples:\n' +
+        '  9007199254740992   -> 9007199254740992    # 2^53, exact;\n' +
+        '  9007199254740993   -> nil                 # 2^53+1 is not;\n' +
+        '  0d9007199254740993 -> 0d9007199254740993  # ... the exact escape;\n' +
+        '  0x7fffffffffffffff -> nil    # 2^63-1 rounds up to 2^63;\n' +
+        '  100000000000000000000 -> 1e20 # 10^20 is huge and exact.',
+    exact_float_mix: 'Aontu cannot mix an exact number with a binary float.\n' +
+        'Here the operands are {left} and {right}, in that order.\n' +
+        'A big type never silently becomes a binary float, in either\n' +
+        'operand order -- binary64 cannot hold every exact value, so the\n' +
+        'promotion would throw away the exactness the `0d` leaves exist to\n' +
+        'guarantee. Write both operands in the same family (`0d1.0` for the\n' +
+        'float, or a plain integer for the big).' +
+        '\n \nExamples:\n' +
+        '  0d2 + 0d0.5 -> 0d2.5  # Exact with exact (widest leaf wins);\n' +
+        '  1 + 0d0.5   -> 0d1.5  # integer is on the exact ladder;\n' +
+        '  1 + 2.0     -> 3.0    # ... and float still mixes with integer;\n' +
+        '  1.0 + 0d2   -> nil    # float with biginteger;\n' +
+        '  0d0.5 + 1.0 -> nil    # ... and the same the other way round.',
+    inexact_integer_sum: 'The `integer` leaf holds a value only when it is integral, within\n' +
+        'the int64 range, and exactly representable in binary64. This sum\n' +
+        'is not: {sum}.\n' +
+        'Aontu adds integers exactly and refuses to store a rounded answer\n' +
+        '-- write `0d<digits>` for an exact integer beyond that window.' +
+        '\n \nExamples:\n' +
+        '  4503599627370496 + 4503599627370496 -> 9007199254740992  # Exact;\n' +
+        '  4503599627370496 + 4503599627370497 -> nil    # 2^53+1 is not;\n' +
+        '  0d4503599627370496 + 0d4503599627370497 -> 0d9007199254740993.',
+    'scalar-type': 'Scalar kinds only unify when one contains the other. `number` is\n' +
+        'the supertype of the numeric leaves (integer, float, biginteger,\n' +
+        'bigdecimal), so meeting it with a leaf gives that leaf; two distinct\n' +
+        'leaves describe disjoint sets of values and so have no common lower\n' +
+        'bound.' +
+        '\n \nExamples:\n' +
+        '  number & integer -> integer  # Does unify (integer is a number);\n' +
+        '  number & number  -> number   # Does unify (same kind);\n' +
+        '  float & integer  -> nil      # Does not unify (disjoint leaves).',
+    'no_scalar_unify': 'Cannot unify scalar values. The scalar values have incompatible types.' +
+        '\n \nExamples:\n' +
+        '  number & 1    -> 1    # Does unify (1 is a number);\n' +
+        '  integer & 1   -> 1    # Does unify (1 is an integer);\n' +
+        '  float & 1     -> nil  # Does not unify (1 is an integer, not a float);\n' +
+        '  integer & 1.5 -> nil  # Does not unify (1.5 is a float, not an integer).',
     'not-scalar-type': 'Expected a scalar type but got a non-scalar type.',
     'map': 'Type mismatch: expected a map value but got a different type.',
     'list': 'Type mismatch: expected a list value but got a different type.',

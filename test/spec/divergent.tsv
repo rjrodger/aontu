@@ -35,43 +35,49 @@
 #
 # ---------------------------------------------------------------------
 #
-# 1. INTEGER-KIND VALUES ABOVE 2^53 THAT NEED MORE THAN 17 SIGNIFICANT
-#    DIGITS TO WRITE EXACTLY
-#    issue: #21
-#    reason: this is the storage difference between the two ports, not a
-#      local formatting slip. TS holds an integer-kind peg as a JS
-#      number (a float64) and renders it with Number.toString, which
-#      emits the SHORTEST decimal that round-trips (at most 17
-#      significant digits). Go holds it as an int64 and renders the
-#      exact value with strconv.FormatInt. Both denote the same float64,
-#      but the text differs. Neither rendering is right: the value the
-#      source asked for is not the value either port holds, so making
-#      the two agree on text would only agree on a wrong number. That
-#      is why this is not fixed in place -- see the resolution below.
-#    detail: only integer KIND is affected. A number-kind value goes
-#      through the shared JS-Number.toString formatter in both ports
-#      (go/scalar.go formatNumber), so the extreme-magnitude rows in
-#      scalar.tsv and number-model.tsv are unaffected -- including
-#      0x7fffffffffffffff, which R1 makes number kind precisely because
-#      it rounds up to 2^63.
-#      Values whose exact digits fit in 17 significant digits agree:
-#      x:9007199254740992     both -> {"x":9007199254740992}
-#      x:123456789012345678   both -> {"x":123456789012345680}
-#      Values needing more do not:
-#      x:1152921504606846976  ts -> {"x":1152921504606847000}
-#                             go -> {"x":1152921504606846976}
-#      x:9223372036854774784  ts -> {"x":9223372036854775000}
-#                             go -> {"x":9223372036854774784}
-#      (Same divergence in gen and in canon.)
-#    resolution already designed: the capability review commits to
-#      making a lossy integer literal a located error rather than a
-#      silently rounded value -- see the "Numbers: decide and bound the
-#      defect" section of docs/capability-review/g1-constraint-algebra.md
-#      and its Phase 6. Every input in this window is exactly such a
-#      literal, so that change removes the divergence by refusing the
-#      input in both ports, instead of picking a rendering for a value
-#      neither port can represent faithfully. Do not close this entry by
-#      choosing a renderer; close it by landing that error.
+# CURRENTLY EMPTY. The one entry this file has ever carried is closed;
+# what it recorded is kept below, because how it was closed is the part
+# worth remembering.
+#
+# CLOSED -- integer-kind values above 2^53 that need more than 17
+#   significant digits to write exactly. issue: #21.
+#
+#   TypeScript held an integer-kind peg as a JS number and rendered it
+#   with Number.toString, which emits the SHORTEST decimal that parses
+#   back to the same double. Go held it as an int64 and printed the true
+#   value. So 2^60 was `1152921504606847000` in one port and
+#   `1152921504606846976` in the other -- two different integers that
+#   happen to round to the same double.
+#
+#   The entry twice recorded a resolution that turned out to be wrong:
+#   that the number tower's D7 (a lossy integer literal is refused)
+#   would remove the divergence by refusing the inputs. It does not. D7
+#   refuses a literal binary64 cannot carry EXACTLY; it does not refuse
+#   one that is merely large, and every value in this window (2^60,
+#   2^63-1024) is exactly representable. THE RULE IS EXACTNESS, NOT
+#   MAGNITUDE -- the same misreading, in three separate places, that the
+#   Phase 6 spec rows had to correct for the hex literals.
+#
+#   That mistake is the reason this note survives the entry. A ledger
+#   entry closed against a plausible-sounding phase that does not
+#   actually touch it looks exactly like a closed entry, and the only
+#   thing that caught it both times was re-probing BOTH CLIs at the
+#   exact inputs written down here -- which is why rule 3 above demands
+#   they be written down.
+#
+#   What actually closed it: once D7 landed, every remaining divergent
+#   case was one where BOTH ports held exactly the value the source
+#   asked for, so "agreeing on the text would only agree on a wrong
+#   number" stopped being true. There was a right answer, and Go already
+#   printed it. TypeScript now renders an integer-kind value by its
+#   exact digits in BOTH places -- IntegerVal.canon, and generate(),
+#   which past Number.MAX_SAFE_INTEGER hands back a `bigint` so the
+#   exact-JSON emitter can write the digits (JSON.stringify of the JS
+#   number reproduces the very 17-digit form canon had just dropped, so
+#   the emitter had to be part of the fix). The window is pinned by real
+#   rows now: number-tower.tsv, `EXACT INTEGER RENDERING` for canon and
+#   `gens-exact-int-*` for the bytes, both routes in -- literal and
+#   exact sum.
 #
 # ---------------------------------------------------------------------
 #
@@ -80,3 +86,12 @@
 # MESSAGE text, parse-level (non-unify) canon, the canon of sources that
 # are invalid in both ports, and the malformed-input acceptance edges.
 # Only the substring an err-mode spec row asserts is contractual.
+#
+# Also not a divergence, though it is a difference: the NATIVE TYPE an
+# integer generates as. Go returns an int64 at every magnitude;
+# TypeScript returns a `number` up to Number.MAX_SAFE_INTEGER and a
+# `bigint` above it, because its leaf is a double and a double past that
+# line no longer renders its own digits. The serialised BYTES agree --
+# that is what the gens rows pin -- and the difference is forced by the
+# storage, not chosen. It is pinned per-port instead: ts/test/
+# exactjson.test.ts and go/generate_test.go.

@@ -4,6 +4,7 @@ package aontu
 
 import (
 	"math"
+	"math/big"
 	"sort"
 	"strings"
 )
@@ -319,10 +320,20 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 	case "super":
 		// super(x) is the lattice-superior of its ARGUMENT, not of the
 		// super() call itself: super(1) -> integer, super(1.5) ->
-		// number, super(a) -> string, super(true) -> boolean.
+		// float, super(a) -> string, super(true) -> boolean.
 		// Returning the func's own superior (top) is what made super()
 		// inert.
 		if len(args) > 0 && args[0] != nil {
+			// A kind argument climbs the KIND lattice — super(integer)
+			// and super(float) are `number`, super(number) is top.
+			// ScalarKindVal.superior() cannot answer this: it is also
+			// PrefVal's narrowing gate and must stay top there.
+			if kv, ok := args[0].(*ScalarKindVal); ok {
+				if p, has := kindParent(kv.kind); has {
+					return newScalarKind(p)
+				}
+				return f.superior()
+			}
 			if sup := args[0].superior(); sup != nil && !isTop(sup) {
 				// Where the argument has no meaningful superior,
 				// superior() answers top and we fall through to the
@@ -371,7 +382,7 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 			return newString(strings.ToUpper(s))
 		}
 		return newString(strings.ToLower(s))
-	case KindInteger, KindNumber:
+	case KindInteger, KindFloat:
 		var fv float64
 		if sv.kind == KindInteger {
 			fv = float64(sv.peg.(int64))
@@ -383,13 +394,25 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 			res = math.Ceil(fv)
 		}
 		// The ceiling/floor keeps the ARGUMENT's kind (upper(2) is an
-		// integer 2, upper(1.1) is a number 2): the function must not
-		// narrow number to integer. This also makes the actual result
-		// kind agree with the superior() this func advertises.
+		// integer 2, upper(1.1) is a float 2.0): the function must not
+		// narrow float to integer. This also makes the actual result
+		// kind agree with the superior() this func advertises. A kind
+		// this switch does not handle falls through to invalid-arg
+		// rather than silently producing a wrong-kind value.
 		if sv.kind == KindInteger && isIntegerKind(res, "") {
 			return newInteger(int64(res))
 		}
-		return newNumber(res)
+		return newFloat(res)
+	case KindBigInteger:
+		// An exact integer is its own ceiling and floor. The value is
+		// rebuilt rather than shared so the result is a fresh Val with
+		// its own peg, matching every other branch here.
+		return newBigInteger(new(big.Int).Set(sv.peg.(*big.Int)))
+	case KindBigDecimal:
+		// Exact ceiling/floor by coefficient arithmetic (D6) — no
+		// float64 goes near it — keeping the argument's BIGDECIMAL kind
+		// (R5), so upper(0d1.1) is `0d2.0` and not `0d2`.
+		return newBigDecimal(sv.peg.(*Decimal).ceilFloor(up))
 	}
 	return makeNilErr(ctx, "invalid-arg", args[0], nil)
 }

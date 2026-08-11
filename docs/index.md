@@ -51,6 +51,11 @@ live in [`design/`](design/):
 - [The number model](design/number-model.md) — two numeric kinds over
   one IEEE-754 representation: how a literal is classified, how kind
   travels through operators and canon, and the edges that remain.
+- [The number tower](design/number-tower.md) — *design proposal*:
+  mirroring boru's four-leaf number structure (`integer`, `float`,
+  `biginteger`, `bigdecimal` under a pure-supertype `number`), the
+  `0d` exact literals, and where a unification lattice forces
+  deviations from boru.
 
 Forward-looking design work lives in
 [`capability-review/`](capability-review/index.md): a survey of what

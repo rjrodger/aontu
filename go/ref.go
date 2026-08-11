@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"math/big"
 	"strconv"
 	"strings"
 )
@@ -43,8 +44,19 @@ func (rv *RefVal) append(part any) {
 			rv.peg = append(rv.peg, p.peg.(string))
 		case KindInteger:
 			rv.peg = append(rv.peg, strconv.FormatInt(p.peg.(int64), 10))
-		case KindNumber:
+		case KindFloat:
 			for _, s := range strings.Split(formatNumber(p.peg.(float64)), ".") {
+				rv.peg = append(rv.peg, s)
+			}
+		case KindBigInteger:
+			// A path part is a KEY, so the exact leaves contribute their
+			// plain digits — the `0d` marker is literal syntax, not part
+			// of any key. A bigdecimal splits on its point exactly as a
+			// float does, so `x.0d1.5` addresses the same two levels
+			// `x.1.5` does.
+			rv.peg = append(rv.peg, bigIntDigits(p.peg.(*big.Int)))
+		case KindBigDecimal:
+			for _, s := range strings.Split(p.peg.(*Decimal).digits(), ".") {
 				rv.peg = append(rv.peg, s)
 			}
 		}
@@ -164,8 +176,13 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 					parts = append(parts, sv.peg.(string))
 				case KindInteger:
 					parts = append(parts, strconv.FormatInt(sv.peg.(int64), 10))
-				case KindNumber:
+				case KindFloat:
 					parts = append(parts, formatNumber(sv.peg.(float64)))
+				case KindBigInteger:
+					// Plain digits, no `0d` marker — see RefVal.append.
+					parts = append(parts, bigIntDigits(sv.peg.(*big.Int)))
+				case KindBigDecimal:
+					parts = append(parts, sv.peg.(*Decimal).digits())
 				case KindBoolean:
 					if sv.peg.(bool) {
 						parts = append(parts, "true")

@@ -79,6 +79,20 @@ describe('lsp-hover', () => {
     Assert.deepEqual(h!.range!.end, { line: 0, character: 10 })
   })
 
+  test('hover-exact-leaves-show-their-own-kind', () => {
+    // The `0d` leaves are their own kinds, not `integer`/`float`, and
+    // the hover canon is the normalised one-rendering-per-value form.
+    const bi = computeHover('n: 0d5', { line: 0, character: 4 })
+    Assert.ok(bi)
+    Assert.match(bi!.contents.value, /0d5/)
+    Assert.match(bi!.contents.value, /biginteger/)
+
+    const bd = computeHover('n: 0d1e3', { line: 0, character: 4 })
+    Assert.ok(bd)
+    Assert.match(bd!.contents.value, /0d1000\.0/)
+    Assert.match(bd!.contents.value, /bigdecimal/)
+  })
+
   test('hover-type', () => {
     const h = computeHover('a:{x:string}', { line: 0, character: 5 })
     Assert.ok(h)
@@ -104,11 +118,14 @@ describe('lsp-completion', () => {
 
   test('completion-list', () => {
     const c = computeCompletions()
-    Assert.equal(c.length, 20) // 12 funcs + 4 kinds + 4 literals
+    Assert.equal(c.length, 23) // 12 funcs + 7 kinds + 4 literals
     const byLabel = new Map(c.map(i => [i.label, i]))
     Assert.equal(byLabel.get('upper')?.kind, COMPLETION_FUNCTION)
     Assert.equal(byLabel.get('string')?.kind, COMPLETION_KEYWORD)
-    for (const want of ['close', 'upper', 'path', 'string', 'integer', 'true', 'null', 'top']) {
+    Assert.equal(byLabel.get('biginteger')?.kind, COMPLETION_KEYWORD)
+    for (const want of
+      ['close', 'upper', 'path', 'string', 'integer', 'float',
+        'biginteger', 'bigdecimal', 'true', 'null', 'top']) {
       Assert.ok(byLabel.has(want), 'missing ' + want)
     }
   })
@@ -153,7 +170,7 @@ describe('lsp-handler', () => {
     Assert.match(hov[0].result.contents.value, /8080/)
 
     const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} })
-    Assert.equal(comp[0].result.length, 20)
+    Assert.equal(comp[0].result.length, 23)
   })
 
 

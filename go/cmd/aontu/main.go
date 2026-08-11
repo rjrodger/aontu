@@ -11,6 +11,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -54,11 +55,24 @@ func render(a *aontu.Aontu, src, mode string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	b, err := json.MarshalIndent(out, "", "  ")
-	if err != nil {
+	// An Encoder with HTML escaping OFF, not json.MarshalIndent: Marshal
+	// rewrites <, > and & as their \u00xx escapes, which the
+	// canonical TypeScript CLI (exactJSON, and JSON.stringify before it)
+	// does not — so `x:"<b>&</b>"` printed different bytes in the two
+	// CLIs. The shared suite's gens mode already turned this escaping off
+	// for exactly this reason (specGens in spec_test.go); the CLI must
+	// make the same choice or the parity probe in AGENTS.md, which
+	// compares the two command lines, reads a divergence on any document
+	// containing those three characters.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(out); err != nil {
 		return "", err
 	}
-	return string(b), nil
+	// Encode always appends a newline; emit adds its own.
+	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
 // emit renders src to stdout (or the error to stderr) and returns the

@@ -48,7 +48,7 @@
   "Syntax table for `aontu-mode'.")
 
 (defconst aontu-font-lock-keywords
-  (let ((kinds '("string" "number" "integer" "boolean" "top" "nil"))
+  (let ((kinds '("string" "number" "float" "integer" "boolean" "top" "nil"))
         (literals '("true" "false" "null"))
         (funcs '("upper" "lower" "copy" "key" "pref" "super"
                  "type" "hide" "move" "path" "close" "open")))

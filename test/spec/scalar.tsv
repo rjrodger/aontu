@@ -27,6 +27,18 @@ tiny-fixed-canon	canon	a:0.000001	{"a":0.000001}
 exp-neg-canon	canon	a:1e-7	{"a":1e-7}
 number-overflow-err	err	a:1e999	Cannot resolve value
 number-neg-overflow-err	err	a:-1e999	Cannot resolve value
-hex-big	gen	a:0xffffffffffffffff	{"a":18446744073709552000}
-hex-big-canon	canon	a:0xffffffffffffffff	{"a":18446744073709552000.0}
+# FLIPPED by the number tower's D7 (docs/design/number-tower.md): an
+# integer-source literal that binary64 cannot hold EXACTLY is a located
+# error instead of a silently rounded value. 0xffffffffffffffff is
+# 2^64-1, which rounds up to 2^64, so `hex-big` and `hex-big-canon` --
+# which pinned that rounded value, 18446744073709552000, in gen and in
+# canon -- become one err row. The refusal's hint names the `0d` escape;
+# number-tower.tsv pins the hint text and the escape itself.
+#
+# THE RULE IS EXACTNESS, NOT MAGNITUDE, and hex-huge is the row that
+# says so: 0x10...0 is 2^124, a power of two, therefore exactly
+# representable, therefore still a value -- at a magnitude eighteen
+# orders of ten LARGER than the literal above it that is refused.
+hex-big-err	err	a:0xffffffffffffffff	exactly representable
 hex-huge	gen	a:0x10000000000000000000000000000000	{"a":2.1267647932558654e+37}
+hex-huge-canon	canon	a:0x10000000000000000000000000000000	{"a":2.1267647932558654e+37}

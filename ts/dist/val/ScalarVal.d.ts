@@ -11,6 +11,7 @@ declare class ScalarVal extends Val {
     unify(peer: Val, ctx: AontuContext): Val;
     get canon(): any;
     same(peer: any): boolean;
+    samePeg(peg: any): boolean;
     gen(_ctx?: AontuContext): any;
     superior(): Val;
 }

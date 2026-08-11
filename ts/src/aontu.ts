@@ -9,6 +9,8 @@ import { Lang } from './lang'
 import { Unify } from './unify'
 import { AontuContext, AontuContextConfig } from './ctx'
 import { MapVal } from './val/MapVal'
+import { Decimal } from './val/Decimal'
+import { exactJSON } from './exactjson'
 import { formatExplain } from './utility'
 import { makeNilErr, descErr, AontuError } from './err'
 
@@ -127,6 +129,18 @@ class Aontu {
 
 
   // Generate output structure from source, which must parse and fully unify.
+  //
+  // The result is made of NATIVE values, and D9 puts two beyond what
+  // `JSON.stringify` can write: a `biginteger` (a `0d` literal with no
+  // fraction or exponent) generates as a native `bigint`, and a
+  // `bigdecimal` generates as a `Decimal`. Both are exact at any
+  // magnitude, which is the whole point of the leaves -- and both are
+  // confined to documents that opt in, so a `0d`-free document generates
+  // exactly what it always did.
+  //
+  // Serialise the result with `exactJSON` (exported alongside this
+  // class), NOT with `JSON.stringify`: the latter throws on a bigint and
+  // has no way to write exact digits as a JSON number.
   generate(src: string, opts?: any, ac?: AontuContext): any {
     try {
       let out = undefined
@@ -239,7 +253,14 @@ export {
   Lang,
   runparse,
   util,
-  formatExplain
+  formatExplain,
+
+  // D9 -- the generate contract. `exactJSON` is the supported way to
+  // turn `generate()` output into JSON when a document uses the exact
+  // leaves, and `Decimal` is the type a `bigdecimal` generates as (a
+  // `biginteger` generates as the language's own `bigint`).
+  exactJSON,
+  Decimal,
 }
 
 

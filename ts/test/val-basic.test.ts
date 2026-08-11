@@ -43,7 +43,7 @@ import { StringVal } from '../dist/val/StringVal'
 import { BooleanVal } from '../dist/val/BooleanVal'
 import { IntegerVal } from '../dist/val/IntegerVal'
 import { NullVal } from '../dist/val/NullVal'
-import { ScalarKindVal, Integer } from '../dist/val/ScalarKindVal'
+import { ScalarKindVal, Float, Integer } from '../dist/val/ScalarKindVal'
 
 
 import {
@@ -71,6 +71,7 @@ const G = (s: string, _ctx?: any) => A.generate(s)
 const makeSK_String = () => new ScalarKindVal({ peg: String })
 const makeSK_Number = () => new ScalarKindVal({ peg: Number })
 const makeSK_Integer = () => new ScalarKindVal({ peg: Integer })
+const makeSK_Float = () => new ScalarKindVal({ peg: Float })
 const makeSK_Boolean = () => new ScalarKindVal({ peg: Boolean })
 
 const makeBooleanVal = (v: boolean) => new BooleanVal({ peg: v })
@@ -131,6 +132,52 @@ describe('val-basic', function() {
     expect(makeSK_Number().same(makeSK_Integer())).equal(false)
 
     expect(makeSK_Integer().same(makeSK_Boolean())).equal(false)
+
+    // `float` is a distinct marker from `number` and from `integer`.
+    expect(makeSK_Float().same(makeSK_Float())).equal(true)
+    expect(makeSK_Float().same(makeSK_Number())).equal(false)
+    expect(makeSK_Float().same(makeSK_Integer())).equal(false)
+  })
+
+
+  // The number tower: `number` is a pure supertype over the disjoint
+  // leaves `integer` and `float`. See docs/design/number-tower.md D1.
+  it('scalar-kind-lattice', () => {
+    let ctx = makeCtx()
+    let tu = (a: any, b: any) => unite(ctx, a, b, 'kind-lattice-test')
+
+    // Canon is the keyword.
+    expect(makeSK_Number().canon).equal('number')
+    expect(makeSK_Integer().canon).equal('integer')
+    expect(makeSK_Float().canon).equal('float')
+
+    // A concrete binary64 value is FLOAT kind, not number kind.
+    expect(makeNumberVal(1.5).kind).equal(Float)
+    expect(makeIntegerVal(1).kind).equal(Integer)
+
+    // super() ladder: value -> leaf -> number -> top.
+    expect(makeNumberVal(1.5).superior().canon).equal('float')
+    expect(makeIntegerVal(1).superior().canon).equal('integer')
+    expect(makeSK_Float().superior().canon).equal('number')
+    expect(makeSK_Integer().superior().canon).equal('number')
+    expect(makeSK_Number().superior().isTop).equal(true)
+
+    // A kind admits a concrete value of any kind at or below it.
+    expect(tu(makeSK_Float(), makeNumberVal(1.5)).canon).equal('1.5')
+    expect(tu(makeSK_Number(), makeNumberVal(1.5)).canon).equal('1.5')
+    expect(tu(makeSK_Number(), makeIntegerVal(1)).canon).equal('1')
+    expect(tu(makeSK_Float(), makeIntegerVal(1)).isNil).exist()
+    expect(tu(makeSK_Integer(), makeNumberVal(1.5)).isNil).exist()
+
+    // Kind meets: number is the supertype, the leaves are disjoint.
+    expect(tu(makeSK_Number(), makeSK_Float()).canon).equal('float')
+    expect(tu(makeSK_Float(), makeSK_Number()).canon).equal('float')
+    expect(tu(makeSK_Number(), makeSK_Integer()).canon).equal('integer')
+    expect(tu(makeSK_Number(), makeSK_Number()).canon).equal('number')
+    expect(tu(makeSK_Float(), makeSK_Float()).canon).equal('float')
+    expect(tu(makeSK_Float(), makeSK_Integer()).isNil).exist()
+    expect(tu(makeSK_Integer(), makeSK_Float()).isNil).exist()
+    expect(tu(makeSK_Number(), makeSK_String()).isNil).exist()
   })
 
 

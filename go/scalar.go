@@ -4,19 +4,40 @@ package aontu
 
 import (
 	"math"
+	"math/big"
 	"strconv"
 	"strings"
 )
 
 // Kind enumerates the scalar kinds (type constraints).
+//
+// The numeric kinds form a small lattice (docs/design/number-tower.md):
+//
+//	number                pure supertype: the set of all numeric values
+//	|- integer            int64-window exact
+//	|- float              IEEE-754 binary64
+//	|- biginteger         unbounded exact integer   (opt-in via 0d)
+//	|- bigdecimal         exact base-10 decimal     (opt-in via 0d)
+//
+// KindNumber is a SUPERTYPE only: it names no representation and is
+// carried by a ScalarKindVal (the `number` keyword) alone — a concrete
+// ScalarVal always carries a numeric LEAF kind. The leaves are pairwise
+// disjoint: `5 & 0d5` is an error, exactly as `1 & 1.0` is, because a
+// cross-leaf result would have to pick a kind (D2).
 type Kind int
 
 const (
 	KindTop Kind = iota
 	KindNil
 	KindString
+	// KindNumber is the numeric supertype; it is never a ScalarVal kind.
 	KindNumber
+	// Numeric leaves. Keep contiguous, and extend numericLeafKinds when
+	// adding one.
 	KindInteger
+	KindFloat
+	KindBigInteger
+	KindBigDecimal
 	KindBoolean
 	KindNull
 )
@@ -29,6 +50,12 @@ func (k Kind) String() string {
 		return "number"
 	case KindInteger:
 		return "integer"
+	case KindFloat:
+		return "float"
+	case KindBigInteger:
+		return "biginteger"
+	case KindBigDecimal:
+		return "bigdecimal"
 	case KindBoolean:
 		return "boolean"
 	case KindNull:
@@ -39,8 +66,65 @@ func (k Kind) String() string {
 	return "top"
 }
 
+// numericLeafKinds is the set of concrete numeric kinds sitting directly
+// under `number`. Every leaf here is a set of values disjoint from every
+// other leaf, so two distinct leaves have no common lower bound and
+// cannot unify (`float & integer` is an error).
+var numericLeafKinds = map[Kind]bool{
+	KindInteger:    true,
+	KindFloat:      true,
+	KindBigInteger: true,
+	KindBigDecimal: true,
+}
+
+// kindSubsumes reports whether kind sup is a strict supertype of kind
+// sub, i.e. every value of sub is a value of sup. Today the only such
+// relation is `number` over its numeric leaves.
+func kindSubsumes(sup, sub Kind) bool {
+	return sup == KindNumber && numericLeafKinds[sub]
+}
+
+// kindParent returns the immediate lattice parent of a kind, and whether
+// there is one. A numeric leaf lifts to `number`; `number` itself, and
+// every non-numeric kind, has no parent and therefore lifts to top.
+// This is the ladder super() climbs (R6, extended by the tower).
+//
+// It is deliberately NOT ScalarKindVal.superior(): superior() is also
+// the narrowing gate PrefVal uses (`*integer & "hello"` must admit the
+// string), so a kind's superior stays top there. See ScalarKindVal.
+func kindParent(k Kind) (Kind, bool) {
+	if numericLeafKinds[k] {
+		return KindNumber, true
+	}
+	return KindTop, false
+}
+
+// kindFamily returns the root of a kind's family: its highest ancestor
+// below top. Every numeric leaf answers `number`; a kind with no parent
+// (string, boolean, null — and `number` itself) is its own family root.
+//
+// Used by PrefVal, which gates an override on the preferred value's
+// FAMILY rather than its leaf, so that a float default can still be
+// overridden by an integer (`*2.2 & 3`). Mirrors TS kindFamily.
+func kindFamily(k Kind) Kind {
+	for {
+		p, ok := kindParent(k)
+		if !ok {
+			return k
+		}
+		k = p
+	}
+}
+
 // ScalarVal is a concrete scalar literal: a native value tagged with
-// its Kind. peg holds string | int64 | float64 | bool | nil.
+// its Kind. peg holds string | int64 | float64 | bool | nil, or one of
+// the tower's exact pegs: *big.Int (biginteger) and *Decimal
+// (bigdecimal).
+//
+// The two exact pegs are POINTERS, and pointers are IMMUTABLE here (D8):
+// clones share them and nothing mutates them in place. That also means
+// `==` on a peg is an ADDRESS comparison for those kinds — every
+// identity test must go through scalarPegSame instead (D2).
 type ScalarVal struct {
 	base
 	kind Kind
@@ -53,13 +137,52 @@ func newInteger(i int64) *ScalarVal {
 	v.dc = DONE
 	return v
 }
-func newNumber(f float64) *ScalarVal {
-	v := &ScalarVal{kind: KindNumber, peg: f}
+func newFloat(f float64) *ScalarVal {
+	v := &ScalarVal{kind: KindFloat, peg: f}
 	v.dc = DONE
 	return v
 }
+
+// newBigInteger takes ownership of n (callers pass a freshly built
+// big.Int; the peg is never mutated afterwards).
+func newBigInteger(n *big.Int) *ScalarVal {
+	v := &ScalarVal{kind: KindBigInteger, peg: n}
+	v.dc = DONE
+	return v
+}
+
+// newBigDecimal takes a Decimal already in normal form (newDecimal).
+func newBigDecimal(d *Decimal) *ScalarVal {
+	v := &ScalarVal{kind: KindBigDecimal, peg: d}
+	v.dc = DONE
+	return v
+}
+
 func newBoolean(b bool) *ScalarVal { v := &ScalarVal{kind: KindBoolean, peg: b}; v.dc = DONE; return v }
 func newNull() *ScalarVal          { v := &ScalarVal{kind: KindNull, peg: nil}; v.dc = DONE; return v }
+
+// scalarPegSame reports whether two scalars of the SAME kind hold the
+// same VALUE (D2: identity is kind and value).
+//
+// The exact leaves must not fall through to `==`: a *big.Int or a
+// *Decimal compares by ADDRESS there, so two separately parsed copies of
+// the same literal would look distinct — silently breaking unification
+// (`0d5 & 0d5`) and disjunct dedup. Every other peg type held by a
+// ScalarVal (string, int64, float64, bool, nil) is comparable and
+// compares by value.
+func scalarPegSame(kind Kind, a, b any) bool {
+	switch kind {
+	case KindBigInteger:
+		an, aok := a.(*big.Int)
+		bn, bok := b.(*big.Int)
+		return aok && bok && an.Cmp(bn) == 0
+	case KindBigDecimal:
+		ad, aok := a.(*Decimal)
+		bd, bok := b.(*Decimal)
+		return aok && bok && ad.equal(bd)
+	}
+	return a == b
+}
 
 func (s *ScalarVal) superior() Val { return newScalarKind(s.kind) }
 
@@ -69,8 +192,16 @@ func (s *ScalarVal) Canon() string {
 		return jsonString(s.peg.(string))
 	case KindInteger:
 		return strconv.FormatInt(s.peg.(int64), 10)
-	case KindNumber:
+	case KindFloat:
 		return canonNumber(s.peg.(float64))
+	case KindBigInteger:
+		// Sign before the marker (`-0d5`): D3 rejects `0d-5`, so canon
+		// must not emit it.
+		return markExact(bigIntDigits(s.peg.(*big.Int)))
+	case KindBigDecimal:
+		// Always one decimal place at minimum, so canon reparses as a
+		// bigdecimal and not as a biginteger (D4).
+		return s.peg.(*Decimal).Canon()
 	case KindBoolean:
 		if s.peg.(bool) {
 			return "true"
@@ -82,14 +213,41 @@ func (s *ScalarVal) Canon() string {
 	return ""
 }
 
+// Gen returns the NATIVE Go value for this scalar: string, int64
+// (integer), float64 (float), bool, nil — and, for the tower's exact
+// leaves, *big.Int (biginteger) and *Decimal (bigdecimal).
+//
+// The two exact leaves are POINTERS, and that is a requirement rather
+// than a convenience (D9): a non-pointer big.Int sitting in an `any`
+// marshals as `{}`, silently emitting an empty object where an exact
+// number should be. As pointers, encoding/json calls their MarshalJSON
+// and both reach JSON as EXACT DIGITS in a raw JSON number — JSON
+// numbers are arbitrary-precision text, so nothing is lost on the way
+// out. (Only JavaScript's serialiser needs help here, which is why the
+// canonical port ships its own emitter.)
+//
+// Byte-exact serialisation cannot check any of this on its own: a
+// biginteger and an integer can produce the SAME text while generate
+// returned the wrong runtime type. The concrete types above are pinned
+// by TestGenerateNativeExactTypes.
 func (s *ScalarVal) Gen(ctx *Ctx) (any, error) {
 	// Negative zero never reaches generated output. (Unary minus already
 	// normalises it away, but `+` and the NewNumber API can still build
 	// one, so the generate path normalises too.)
-	if s.kind == KindNumber {
+	if s.kind == KindFloat {
 		if f, ok := s.peg.(float64); ok && f == 0 {
 			return float64(0), nil
 		}
+	}
+	if s.kind == KindBigInteger {
+		// A COPY leaves the engine, because a *big.Int is mutable and the
+		// peg is not: handing the peg itself out would let a consumer
+		// mutate a value the AST (and any $var bound to it) still holds.
+		// NewBigInteger copies on the way in for the same reason. A
+		// *Decimal needs no copy — its fields are unexported and nothing
+		// ever mutates one — so, like TypeScript's Decimal instance, it
+		// goes out as it is.
+		return new(big.Int).Set(s.peg.(*big.Int)), nil
 	}
 	return s.peg, nil
 }
@@ -102,7 +260,9 @@ func (s *ScalarVal) Unify(peer Val, ctx *Ctx) Val {
 		return sk.Unify(s, ctx)
 	}
 	if ps, ok := peer.(*ScalarVal); ok {
-		if ps.kind == s.kind && ps.peg == s.peg {
+		// Identity is kind AND value (D2). scalarPegSame, not `==`: the
+		// exact leaves hold pointers, and `==` would compare addresses.
+		if ps.kind == s.kind && scalarPegSame(s.kind, ps.peg, s.peg) {
 			// Marks ratchet true across a unify (TS propagateMarks): a
 			// hide()/type() spread clone marks the destination value
 			// (`K:true &:hide($flag)` hides K).
@@ -139,6 +299,11 @@ func newScalarKind(k Kind) *ScalarKindVal {
 // superior of a kind is TOP (TS ScalarKindVal inherits FeatureVal's
 // superior): a pref whose peg is a kind (`*integer & "hello"`) lets any
 // concrete peer narrow it rather than clashing with the kind.
+//
+// This is NOT the kind lattice's parent relation — `super(integer)` is
+// `number`, not top. That ladder is kindParent, consulted directly by
+// the super() function; superior() has the separate PrefVal job above
+// and must keep answering top for every kind.
 func (k *ScalarKindVal) superior() Val { return top() }
 func (k *ScalarKindVal) Canon() string { return k.kind.String() }
 
@@ -151,23 +316,25 @@ func (k *ScalarKindVal) Unify(peer Val, ctx *Ctx) Val {
 		return k
 	}
 	if ps, ok := peer.(*ScalarVal); ok {
-		if ps.kind == k.kind {
-			return ps
-		}
-		// Integer is a subtype of Number.
-		if k.kind == KindNumber && ps.kind == KindInteger {
+		// A kind admits a concrete value of that kind, and a supertype
+		// admits a value of any kind below it (`number & 1.5` is 1.5).
+		if ps.kind == k.kind || kindSubsumes(k.kind, ps.kind) {
 			return ps
 		}
 		return makeNilErr(ctx, "no_scalar_unify", k, peer)
 	}
 	if pk, ok := peer.(*ScalarKindVal); ok {
-		if k.kind == KindNumber && pk.kind == KindInteger {
-			return pk
-		}
-		if pk.kind == KindNumber && k.kind == KindInteger {
+		// Meet of two kinds: the same kind, or the lower of a
+		// supertype/subtype pair (`number & float` is `float`). Two
+		// distinct leaves describe disjoint value sets, so they have no
+		// common lower bound and cannot unify.
+		if k.kind == pk.kind {
 			return k
 		}
-		if k.kind == pk.kind {
+		if kindSubsumes(k.kind, pk.kind) {
+			return pk
+		}
+		if kindSubsumes(pk.kind, k.kind) {
 			return k
 		}
 		return makeNilErr(ctx, "scalar-type", k, peer)

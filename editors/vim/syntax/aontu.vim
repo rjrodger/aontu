@@ -3,7 +3,7 @@ if exists('b:current_syntax')
   finish
 endif
 
-syn keyword aontuType     string number integer boolean top nil
+syn keyword aontuType     string number float integer boolean top nil
 syn keyword aontuConstant true false null
 syn keyword aontuFunction upper lower copy key pref super type hide move path close open
 
