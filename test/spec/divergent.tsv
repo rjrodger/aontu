@@ -35,9 +35,53 @@
 #
 # ---------------------------------------------------------------------
 #
-# CURRENTLY EMPTY. The one entry this file has ever carried is closed;
-# what it recorded is kept below, because how it was closed is the part
-# worth remembering.
+# 1. LONE SURROGATES IN QUOTED STRINGS ARE FOLDED TO U+FFFD BY GO
+#    issue: #24
+#    reason: the replacement happens at LEX time inside the pinned
+#      dependency github.com/tabnas/parser/go v0.8.0 (lexer.go
+#      matchString), where it is deliberate and documented
+#      (doc/differences.md). Nothing in this repository can recover a
+#      surrogate the lexer already discarded: no encoder setting, custom
+#      Marshaler or json.RawMessage trick reaches it, and SetEscapeHTML is
+#      a dead end. Whether aontu should instead REFUSE a lone surrogate in
+#      both ports is an open language question -- it would restore the
+#      lattice law, but in TypeScript it removes a working capability, so
+#      it needs a deliberate decision rather than a patch.
+#    detail: confined to QUOTED strings (all three quote styles) and to
+#      both escape spellings. Bare text is unaffected: `a\ud800:1` agrees
+#      in both ports, because the backslash stays literal there.
+#      x:"\ud800"           ts -> {"x":"\ud800"}   (code unit d800)
+#                           go -> {"x":"\ufffd"}   (bytes ef bf bd)
+#      It is a VALUE difference, not an output-encoding artifact --
+#      confirmed in-process through both library APIs, and it survives a
+#      $var binding.
+#    why it is not merely cosmetic: Go CONFLATES distinct values, which
+#      breaks the lattice law that two different values never unify:
+#      x:"\ud800"\nx:"\ufffd"  ts -> error, Cannot unify values at $.x
+#                              go -> SUCCESS, {"x":"\ufffd"}
+#      As map KEYS this silently merges distinct entries.
+#    and in the OPPOSITE direction: the braced spelling never pairs in Go,
+#      so Go rejects a document TypeScript accepts.
+#      x:"\u{d83d}\u{de00}"  ts -> {"x":"\U0001F600"}
+#                            go -> {"x":"\ufffd\ufffd"}
+#      The pair lookahead exists only in the 4-hex branch of the upstream
+#      lexer; the braced branch writes the rune immediately. That half is
+#      a plain upstream BUG and should be fixed before any refusal rule is
+#      specified, because until it is, Go cannot tell a paired braced half
+#      from a lone one.
+#    what still AGREES, and must keep agreeing: every paired form --
+#      a literal astral character, \u{1F600}, a \uXXXX\uXXXX pair, an
+#      astral map key, an astral list element, and escaped-vs-literal
+#      equality. Only the braced-halves spelling breaks.
+#    NOT this entry: map key ORDER above the BMP, which was a separate
+#      divergence and is fixed (code point order in both ports). A
+#      comparator cannot address this one -- the problem is key IDENTITY,
+#      not order.
+#
+# ---------------------------------------------------------------------
+#
+# The other entry this file has carried is CLOSED; what it recorded is
+# kept below, because how it was closed is the part worth remembering.
 #
 # CLOSED -- integer-kind values above 2^53 that need more than 17
 #   significant digits to write exactly. issue: #21.
