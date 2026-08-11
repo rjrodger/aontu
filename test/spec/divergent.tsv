@@ -35,52 +35,34 @@
 #
 # ---------------------------------------------------------------------
 #
-# 1. LONE SURROGATES IN QUOTED STRINGS ARE FOLDED TO U+FFFD BY GO
-#    issue: #24
-#    reason: the replacement happens at LEX time inside
-#      github.com/tabnas/parser/go (lexer.go matchString), where it is
-#      deliberate and documented (doc/differences.md line 327: "Lone
-#      surrogates | Preserved (JS strings allow them) | U+FFFD (matches
-#      encoding/json)"). Nothing in this repository can recover a surrogate
-#      the lexer already discarded: no encoder setting, custom Marshaler or
-#      json.RawMessage trick reaches it, and SetEscapeHTML is a dead end.
-#      Whether aontu should instead REFUSE a lone surrogate in both ports is
-#      an open language question -- it would restore the lattice law, but in
-#      TypeScript it removes a working capability, so it needs a deliberate
-#      decision rather than a patch. AWAITING SIGN-OFF; no code either way.
-#    detail: confined to QUOTED strings (all three quote styles) and to
-#      both escape spellings. Bare text is unaffected: `a\ud800:1` agrees
-#      in both ports, because the backslash stays literal there -- pinned
-#      now by scalar.tsv `surrogate-bare-text-untouched`.
-#      x:"\ud800"           ts -> {"x":"\ud800"}   (code unit d800)
-#                           go -> {"x":"\ufffd"}   (bytes ef bf bd)
-#      It is a VALUE difference, not an output-encoding artifact --
-#      confirmed in-process through both library APIs, and it survives a
-#      $var binding.
-#    why it is not merely cosmetic: Go CONFLATES distinct values, which
-#      breaks the lattice law that two different values never unify:
-#      x:"\ud800"\nx:"\ufffd"  ts -> error, Cannot unify values at $.x
-#                              go -> SUCCESS, {"x":"\ufffd"}
-#      As map KEYS this silently merges distinct entries.
-#    NARROWED 2026-08-11: this entry used to carry a SECOND, opposite-
-#      direction defect -- the braced spelling never paired in Go, so
-#      `x:"\u{d83d}\u{de00}"` was two U+FFFD there and Go REJECTED a
-#      document TypeScript accepted. That was a plain upstream bug, not a
-#      language question: the pair lookahead lived inside the 4-hex branch
-#      and recognised only its own spelling, while the braced branch wrote
-#      its rune immediately. Both MIXED spellings failed too. Fixed in
-#      @tabnas/parser 0.8.4 by pairing on the decoded code unit sequence,
-#      and pinned by real rows in scalar.tsv (`surrogate-*`), which is
-#      where a resolved behaviour belongs -- only the lone-surrogate
-#      question remains here.
-#    what still AGREES, and must keep agreeing: every paired form --
-#      a literal astral character, \u{1F600}, a \uXXXX\uXXXX pair, both
-#      braced and mixed pairs, an astral map key, an astral list element,
-#      and escaped-vs-literal equality. All of those now have spec rows.
-#    NOT this entry: map key ORDER above the BMP, which was a separate
-#      divergence and is fixed (code point order in both ports). A
-#      comparator cannot address this one -- the problem is key IDENTITY,
-#      not order.
+# CLOSED -- lone surrogates in quoted strings folded to U+FFFD by Go.
+#   issue: #24. Two separate things lived under this entry; both are
+#   settled, in opposite ways, and the difference is the point.
+#
+#   The BRACED-SPELLING half was a plain upstream BUG. The pair lookahead
+#   in @tabnas/parser's Go lexer sat inside the 4-hex escape branch and
+#   recognised only its own spelling, while the braced branch wrote its
+#   rune immediately with no lookahead at all -- so `\u{d83d}\u{de00}`,
+#   and both MIXED spellings, decoded to two U+FFFD. Go REJECTED documents
+#   TypeScript accepted, the opposite direction from the rest of #24.
+#   Fixed in @tabnas/parser 0.8.4 by pairing on the decoded code unit
+#   sequence rather than per escape spelling, and it now has real rows
+#   (scalar.tsv `surrogate-*`), which is where a resolved behaviour goes.
+#
+#   The LONE-SURROGATE half was never a bug -- it is deliberate upstream,
+#   and the question was whether aontu should refuse an unpaired surrogate
+#   in BOTH ports to restore the lattice law. DECLINED (2026-08-11): in Go
+#   a refusal removes nothing anyone can depend on, since the value is
+#   already destroyed, but in TypeScript it removes a working capability.
+#   A documented divergence was judged the smaller cost.
+#
+#   So it left this file in the OTHER direction from the entry above it:
+#   not fixed, but ACCEPTED. It is now in AGENTS.md "Known TS/Go
+#   divergences" with the cost stated plainly, per this file's own rule
+#   that permanent non-parity is documented there and not tracked here.
+#   That rule is why this entry is closed rather than left open forever:
+#   a debt register that accumulates decisions nobody intends to act on
+#   stops being read.
 #
 # ---------------------------------------------------------------------
 #
