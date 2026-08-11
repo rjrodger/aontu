@@ -89,6 +89,17 @@ func TestHoverExactLeaves(t *testing.T) {
 	}
 }
 
+// TestHoverConstraint: a constraint residual hovers as its canon with
+// the shared kind label "constraint" — never a bare "value" default
+// (the TS twin is hover-constraint; identical hover-text contract).
+func TestHoverConstraint(t *testing.T) {
+	h := Hover("a:min(0)&max(10)", 0, 3)
+	if h == nil || !strings.Contains(h.Contents.Value, "min(0)&max(10)") ||
+		!strings.Contains(h.Contents.Value, "*constraint*") {
+		t.Fatalf("expected constraint hover, got %+v", h)
+	}
+}
+
 func TestBuiltinFuncNamesParity(t *testing.T) {
 	// The completion function list must match the engine's recognised
 	// functions exactly (guards against drift).

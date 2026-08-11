@@ -43,6 +43,18 @@ bound-no-tightening	canon	a:integer&above(0.5)	{"a":integer&above(0.5)}
 # the sorted conjunct fold); the same rules must apply.
 bound-disjunct-trial	canon	a:(integer|string)&min(0)	{"a":integer&min(0)}
 #
+# Disjunction is idempotent for residuals: equal-canon constraints are
+# ONE alternative (structural equality IS canon equality, the residual
+# being a normal form); distinct residuals both survive.
+constraint-disjunct-dedup	canon	a:min(0)|min(0)	{"a":min(0)}
+constraint-disjunct-distinct	canon	a:min(0)|min(1)	{"a":min(0)|min(1)}
+#
+# Marks ratchet across a meet: a type()/hide() mark on either operand
+# survives onto the merged residual, so the field is omitted from
+# generation exactly as an unmerged marked constraint would be.
+constraint-mark-type-merge	gens	a:type(min(0)) a:max(10) b:1	{"b":1}
+constraint-mark-hide-merge	gens	a:hide(min(0)) a:max(10) b:1	{"b":1}
+#
 # neq: canonical args are sorted (numeric: by point then tower rank;
 # string: code-point order) and identity duplicates dropped; meets
 # union the exclusion sets.

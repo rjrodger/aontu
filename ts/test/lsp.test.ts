@@ -107,6 +107,16 @@ describe('lsp-hover', () => {
     Assert.match(h!.contents.value, /1/)
   })
 
+  test('hover-constraint', () => {
+    // A constraint residual hovers as its canon with the shared kind
+    // label "constraint" — never a constructor-name fallback (the Go
+    // twin is TestHoverConstraint; identical hover-text contract).
+    const h = computeHover('a:min(0)&max(10)', { line: 0, character: 3 })
+    Assert.ok(h)
+    Assert.match(h!.contents.value, /min\(0\)&max\(10\)/)
+    Assert.match(h!.contents.value, /\*constraint\*/)
+  })
+
   test('hover-miss-returns-null', () => {
     Assert.equal(computeHover('port: 8080', { line: 5, character: 0 }), null)
   })

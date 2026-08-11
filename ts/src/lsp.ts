@@ -330,6 +330,7 @@ function hoverMarkdown(val: any): string {
 function valKind(val: any): string {
   if (val.isNil) return 'error'
   if (val.isScalarKind) return 'type'
+  if (val.isConstraint) return 'constraint'
   if (val.isMap) return 'map'
   if (val.isList) return 'list'
   if (val.isRef) return 'reference'
@@ -358,7 +359,7 @@ type CompletionItem = {
 const COMPLETION_FUNCTION = 3
 const COMPLETION_KEYWORD = 14
 
-// The twelve built-in functions. Kept in sync with the engine by
+// The seventeen built-in functions. Kept in sync with the engine by
 // `lsp.test.ts`, which asserts each is recognised and no others are.
 const BUILTIN_FUNCS = [
   'above', 'below', 'close', 'copy', 'hide', 'key', 'lower', 'max',

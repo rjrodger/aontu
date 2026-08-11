@@ -257,5 +257,14 @@ func valSame(a, b Val) bool {
 			return valSame(ap.peg, bp.peg)
 		}
 	}
+	if ac, ok := a.(*ConstraintVal); ok {
+		if bc, ok := b.(*ConstraintVal); ok {
+			// Canon equality, exactly the TS ConstraintVal.same rule: the
+			// canon is the residual's normal form, so equal canon IS
+			// structural equality (`min(0)|min(0)` collapses).
+			return ac.Canon() == bc.Canon()
+		}
+		return false
+	}
 	return false
 }

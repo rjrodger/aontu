@@ -257,6 +257,8 @@ function valKind(val) {
         return 'error';
     if (val.isScalarKind)
         return 'type';
+    if (val.isConstraint)
+        return 'constraint';
     if (val.isMap)
         return 'map';
     if (val.isList)
@@ -286,7 +288,7 @@ const COMPLETION_FUNCTION = 3;
 exports.COMPLETION_FUNCTION = COMPLETION_FUNCTION;
 const COMPLETION_KEYWORD = 14;
 exports.COMPLETION_KEYWORD = COMPLETION_KEYWORD;
-// The twelve built-in functions. Kept in sync with the engine by
+// The seventeen built-in functions. Kept in sync with the engine by
 // `lsp.test.ts`, which asserts each is recognised and no others are.
 const BUILTIN_FUNCS = [
     'above', 'below', 'close', 'copy', 'hide', 'key', 'lower', 'max',

@@ -163,6 +163,8 @@ func valKind(v Val) string {
 		return t.kind.String()
 	case *ScalarKindVal:
 		return "type"
+	case *ConstraintVal:
+		return "constraint"
 	case *RefVal:
 		return "reference"
 	case *NilVal:

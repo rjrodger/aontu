@@ -113,6 +113,15 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.ok(h);
         Assert.match(h.contents.value, /1/);
     });
+    (0, node_test_1.test)('hover-constraint', () => {
+        // A constraint residual hovers as its canon with the shared kind
+        // label "constraint" — never a constructor-name fallback (the Go
+        // twin is TestHoverConstraint; identical hover-text contract).
+        const h = (0, lsp_1.computeHover)('a:min(0)&max(10)', { line: 0, character: 3 });
+        Assert.ok(h);
+        Assert.match(h.contents.value, /min\(0\)&max\(10\)/);
+        Assert.match(h.contents.value, /\*constraint\*/);
+    });
     (0, node_test_1.test)('hover-miss-returns-null', () => {
         Assert.equal((0, lsp_1.computeHover)('port: 8080', { line: 5, character: 0 }), null);
     });

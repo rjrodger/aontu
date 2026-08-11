@@ -48,6 +48,7 @@ import {
 import {
   explainOpen,
   explainClose,
+  propagateMarks,
 } from '../utility'
 
 import { makeNilErr } from '../err'
@@ -389,6 +390,12 @@ class ConstraintVal extends FeatureVal {
     out.site.row = this.site.row
     out.site.col = this.site.col
     out.site.url = this.site.url
+    // Marks ratchet across a meet (the propagateMarks rule): a fresh
+    // residual must carry both operands' type/hide marks, or a
+    // `type(min(0)) & max(10)` merge would silently unmark the field
+    // (the Go fold re-ratchets from its terms; this is the TS twin).
+    propagateMarks(this, out)
+    propagateMarks(peer, out)
     return out
   }
 
