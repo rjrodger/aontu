@@ -48,6 +48,9 @@ var hints = map[string]string{
 		"binary64 value, so storing it would silently round it to a different " +
 		"number. Aontu never rounds a literal, so write it as `0d<digits>` — " +
 		"the exact integer leaf holds it unchanged at any size.",
+	"key_level":        "The argument to key() is a LEVEL: how many steps up the path to look, where 0 is the key of the value itself and the default 1 is its parent. It must therefore be an integer -- `key(2)`, or `key(0d2)` for the exact leaf. A float, a decimal, a string, a boolean, a map or a list is not a level. A level beyond the top of the path is not an error; it yields the empty string.",
+	"invalid-arg":      "Invalid argument provided. The argument does not match the expected type or format.",
+	"arg":              "Missing required argument. A function requires an argument but none was provided.",
 	"no_path":          "The path reference could not be found.",
 	"path_cycle":       "Path cycle detected. The path contains a circular reference.",
 	"closed":           "Cannot add to closed structure. The map or list is closed and does not accept new keys/elements.",

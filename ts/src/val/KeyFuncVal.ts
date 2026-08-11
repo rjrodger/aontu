@@ -17,6 +17,7 @@ import { ConjunctVal } from '../val/ConjunctVal'
 
 
 import { FuncBaseVal } from './FuncBaseVal'
+import { makeNilErr } from '../err'
 
 
 class KeyFuncVal extends FuncBaseVal {
@@ -75,30 +76,43 @@ class KeyFuncVal extends FuncBaseVal {
   }
 
 
-  resolve(_ctx: AontuContext, _args: Val[]) {
+  resolve(ctx: AontuContext, _args: Val[]) {
     let out: Val = this
 
     // if (!this.mark.type && !this.mark.hide) {
     //
-    // The level is read only from an argument that IS a JS number.
+    // THE LEVEL MUST BE AN INTEGER, OR ABSENT.
     //
-    // This used to be `isNaN(move) ? 1 : +move`, with the COERCING global
-    // isNaN -- which is ToNumber, and ToNumber THROWS for a bigint (the
-    // peg of a biginteger, `key(0d1)`) and for the null-prototype object
-    // a map's peg is (`key({})`), since neither has a toString or valueOf
-    // to call. The exception escaped into unify's catch-all and surfaced
-    // as an opaque [aontu/internal], which is never a correct answer:
-    // upper()/lower() carry a comment recording exactly this fix, and
-    // key() was missed in that sweep.
+    // A level is an index into the path (0 the own key, the default 1 the
+    // parent), so the argument is an integer or it is a mistake. Both
+    // exact integer leaves qualify -- `integer` and `biginteger` -- and
+    // everything else is refused rather than silently meaning "parent",
+    // which is what made a mistyped level undetectable.
     //
-    // Anything that is not a number falls back to the documented default
-    // of 1, which is what the Go port already did. What a non-integer
-    // level should MEAN is a separate, open contract question -- refusing
-    // it in both ports is the likelier answer than either current
-    // behaviour -- and this deliberately does not pre-empt it. It only
-    // stops the crash and makes the ports agree.
-    const arg = this.peg?.[0]?.peg
-    const move = 'number' === typeof arg && !Number.isNaN(arg) ? arg : 1
+    // This also removes a crash. The test used to be
+    // `isNaN(move) ? 1 : +move` with the COERCING global isNaN, which is
+    // ToNumber, and ToNumber THROWS for a bigint (a biginteger's peg) and
+    // for the null-prototype object a map's peg is -- neither has a
+    // toString or valueOf to call. The exception escaped into unify's
+    // catch-all and surfaced as an opaque [aontu/internal].
+    const argval: any = this.peg?.[0]
+    let move = 1
+
+    if (null != argval) {
+      if (argval.isInteger) {
+        move = argval.peg as number
+      }
+      else if (argval.isBigInteger) {
+        // A level far outside the path simply misses, exactly as an
+        // out-of-range plain integer already does, so Number() here needs
+        // no bound of its own.
+        move = Number(argval.peg as bigint)
+      }
+      else {
+        return makeNilErr(ctx, 'key_level', this)
+      }
+    }
+
     const key = this.path[this.path.length - (1 + move)] ?? ''
     // console.log('KEY', this.path, move, key)
 

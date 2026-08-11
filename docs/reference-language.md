@@ -653,7 +653,7 @@ user-defined functions.
 | `upper(x)`  | uppercase a string; **ceiling** of a number, keeping the argument's kind | `upper(abc)`→`"ABC"`, `upper(2)`→ integer `2`, `upper(1.1)`→ float `2`, `upper(0d1.1)`→ bigdecimal `0d2.0` |
 | `lower(x)`  | lowercase a string; **floor** of a number, keeping the argument's kind   | `lower(ABC)`→`"abc"`, `lower(2)`→ integer `2`, `lower(1.9)`→ float `1`, `lower(0d1.9)`→ bigdecimal `0d1.0` |
 | `copy(x)`   | deep copy of a value or referenced node; clears `type`/`hide` marks | `copy({a:1,b:2})`→`{a:1,b:2}`; `copy($.x)` |
-| `key(n)`    | the ancestor key `n` levels up (`0` = own key, default `1` = parent) | at `a:b:c`: `key()`→`"b"`, `key(0)`→`"c"`, `key(2)`→`"a"` |
+| `key(n)`    | the ancestor key `n` levels up (`0` = own key, default `1` = parent). `n` must be an **integer** (`integer` or `biginteger`); anything else is an error. A level beyond the top of the path yields `""`. | at `a:b:c`: `key()`→`"b"`, `key(0)`→`"c"`, `key(2)`→`"a"`, `key(2.0)`→error |
 | `pref(x)`   | mark `x` as preferred (same as `*x`)          | `pref(1)` canon `*1`; `pref(2),x:3`→`3` |
 | `super(x)`  | the lattice-superior (generalisation/type) of `x` — for a concrete scalar, its kind | `super(1)` → `integer`, `super(1.5)` → `float`, `super(integer)` → `number` |
 | `type(x)`   | mark `x` as a type/schema value               | `type(1) & number`→`1` |

@@ -286,7 +286,7 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		walkMark(out, true, false, true, false) // copy clears marks
 		return out
 	case "key":
-		return keyFunc(f)
+		return keyFunc(ctx, f)
 	case "pref":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
@@ -450,12 +450,38 @@ func setClosed(ctx *Ctx, f *FuncVal, args []Val, closed bool) Val {
 }
 
 // keyFunc returns the key `move` levels up the path (KeyFuncVal.resolve).
-func keyFunc(f *FuncVal) Val {
+// keyFunc resolves key(n) to the ancestor key n levels up.
+//
+// THE LEVEL MUST BE AN INTEGER, OR ABSENT. A level is an index into the
+// path (0 the own key, the default 1 the parent), so the argument is an
+// integer or it is a mistake. Both exact integer leaves qualify --
+// `integer` and `biginteger` -- and everything else is refused rather
+// than silently falling back to 1, which is what made a mistyped level
+// undetectable here.
+func keyFunc(ctx *Ctx, f *FuncVal) Val {
 
 	move := 1
 	if len(f.peg) > 0 {
-		if sv, ok := f.peg[0].(*ScalarVal); ok && sv.kind == KindInteger {
+		sv, ok := f.peg[0].(*ScalarVal)
+		if !ok {
+			return makeNilErr(ctx, "key_level", f, nil)
+		}
+		switch sv.kind {
+		case KindInteger:
 			move = int(sv.peg.(int64))
+		case KindBigInteger:
+			// A level far outside the path simply misses, exactly as an
+			// out-of-range plain integer already does, so a big.Int that
+			// does not fit an int needs no bound of its own -- it is
+			// clamped to something equally out of range.
+			b := sv.peg.(*big.Int)
+			if b.IsInt64() {
+				move = int(b.Int64())
+			} else {
+				move = -1
+			}
+		default:
+			return makeNilErr(ctx, "key_level", f, nil)
 		}
 	}
 	idx := len(f.path) - (1 + move)
