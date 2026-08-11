@@ -1,12 +1,20 @@
-# Design proposal: the number tower
+# Design: the number tower
 
-*Status: design proposal (August 2026). Direction decided — Aontu will
-mirror boru's number type structure; this document works out how, and
-records the implications and the places where Aontu must deviate.
-Nothing here is implemented. The current, implemented model is
-[number-model.md](number-model.md); this proposal builds on its six
-rules (R1–R6) and supersedes parts of the
-[G1](../capability-review/g1-constraint-algebra.md) boundary.*
+*Status: **IMPLEMENTED** (August 2026), in both ports, through the
+Phases 0–6 planned below. Direction decided — Aontu mirrors boru's
+number type structure; this document works out how, and records the
+implications and the places where Aontu must deviate. It builds on
+[number-model.md](number-model.md), whose six rules (R1–R6) each
+*extend* to the new leaves rather than change, and supersedes parts of
+the [G1](../capability-review/g1-constraint-algebra.md) boundary.*
+
+*Reconciled with what landed. Where building the thing proved a
+decision wrong or incomplete, the correction appears as an
+**AMENDED** note beside the text it corrects, rather than by rewriting
+the original reasoning away: the reasoning is the record, and the
+amendments are what checking it against two working engines changed.
+The tense below is the design's own — read it as the decision, and the
+amendments as the outcome.*
 
 Every behavioural claim about boru below was verified by building and
 running its CLI from a local clone; every claim about Aontu's current
@@ -143,6 +151,48 @@ trailing `.` only when a digit follows, so `x:0d1.5` is one literal
 while dot-adjacency edges (`0d1.e2`) fall out of the grammar and get
 pinned in the spec phase.
 
+**AMENDED — the two ports claim the run by different hooks, and must.**
+The accept language is shared: one regexp, byte-identical in
+`exactLiteralRe` (`go/lang.go`) and `BIG_LITERAL_RE`
+(`ts/src/val/Decimal.ts`), kept RE2-compatible for exactly that reason,
+with the sign deliberately outside it (`-0d5` is the existing unary
+prefix; a `[+-]?` in the pattern would claim the `+` of `0d1 +0d2` and
+silently turn an addition into an implicit list). What differs is the
+hook that gets to claim the source, and the design named only one:
+
+- **Go — the documented `value.def` + `Consume` route**, as designed. A
+  regexp value definition with `Consume: true` is matched against the
+  full forward source, so it claims the whole run *including* the `.`
+  before either the number matcher (which declines `0d…` as not fully
+  numeric) or the dot token can split it.
+- **TypeScript — the text matcher's `check` hook**, because the
+  `value.def` route does not work in this grammar. A value def — even a
+  consuming one, even matched against the full forward source — is
+  applied *inside* the text matcher, **after** its ender regexp has
+  already carved the run at the `.`. The def duly claims `0d1.5` whole,
+  and the matcher then still emits the ender's `.` as a fixed token, so
+  `x:0d1.5` lexed as the bigdecimal *followed by a dangling
+  member-access dot* — a path cycle. Verified, not theorised. The
+  `check` hook runs **before** that ender regexp and returns the token
+  outright, so the run is claimed whole and nothing else is emitted.
+  (It is the sibling of the `Number.Check` hook the Go port already
+  uses for big base-prefixed literals, so this is a hook the two ports
+  were already using asymmetrically.)
+
+A `match.value` matcher also claims it correctly in TypeScript and was
+rejected on cost, not correctness: it is a candidate at *every* lex
+position and materialises the forward source there — ~8% on a
+text-heavy document, for a syntax almost none of them use. The `check`
+hook only runs where the text matcher already runs, and measures at
+parity with not having it. Its own cost is paid down by a two-char-code
+guard before any regexp or allocation.
+
+The lesson worth carrying: the D3 claim rule is a *language* decision
+and is shared; which lexer hook enforces it is a per-port
+implementation detail, and a design that names one hook for both ports
+is over-specifying. The shared artefact is the regexp and the spec
+rows, not the wiring.
+
 ### D4 — one value, one rendering: normalise at parse
 
 `0d0.10`, `0d0.1`, and `0d1e-1` all parse to the same value, whose
@@ -161,6 +211,34 @@ Normalisation is therefore: strip fraction to minimal scale, fold
 exponents, but never below one decimal place for a bigdecimal.
 (Bigdecimal 1000 and biginteger 1000 are distinct lattice points —
 kinds are disjoint per D2 — so their canons must differ.)
+
+**AMENDED — the normal form is one invariant, and it is load-bearing
+for D2 and D5.** Both ports arrived independently at the same rule, and
+it is worth stating as an invariant rather than as a procedure, because
+three of this document's separate requirements fall out of it:
+
+> A Decimal is `(coefficient, scale)` with **scale always ≥ 1**.
+> Trailing zeros are stripped only while `scale > 1`; a scale below 1
+> (including a negative one, from an exponent) is folded into the
+> coefficient; zero is `(0, scale 1)`. Normalisation happens in the
+> **constructor**, so every Decimal that exists is already in this form.
+
+From which: one value has one rendering, because `0d0.10`, `0d0.1` and
+`0d1e-1` cannot survive construction as different objects; the integral
+bigdecimal keeps its `.0` for free, because the floor at scale 1 *is*
+the marker this section argues for; and **negative zero cannot exist**,
+because the coefficient is a big integer and big integers have no
+signed zero — so D5 costs nothing at all on this leaf.
+
+The consequence that matters most is for D2. Because normalisation is
+an invariant of the type and not a step some paths take, **identity is
+a two-field comparison** — coefficient and scale — rather than a
+numeric comparison that has to align scales before it can answer.
+`0d0.10 & 0d0.1` succeeds by comparing equal fields, not by computing
+that two differently-scaled values are numerically equal. A design that
+normalised at *canon* rather than at *construction* would have had to
+put scale alignment inside `same()`/`valSame`, in both ports, on the
+hot path of every disjunct dedup.
 
 ### D5 — negative zero: R2 extends to the tower
 
@@ -224,6 +302,35 @@ field) without any arithmetic occurring. The budget is a resource
 guarantee in the G5 family — deterministic, identical in both ports,
 and pinned by spec rows at both boundaries.
 
+**AMENDED — the budget is checked on the SOURCE form, before
+normalisation, and every construction route asks the same question.**
+The proposed bounds landed as proposed (4096 coefficient digits, 4096
+absolute scale), but "enforced at parse time" turned out to be too
+loose a statement of *when*. Normalising an over-budget value **is** the
+resource event the bound exists to prevent: the constructor folds a
+scale below 1 by multiplying the coefficient by 10^−scale, so a Decimal
+built first and measured afterwards has already done the damage. The
+order is therefore part of the rule — measure the coefficient digits
+and the scale **as the source writes them**, and only then construct.
+
+That ordering is also what makes the bound cheap to state and impossible
+to get subtly wrong per route. It is written once —
+`overBudget(coeffDigits, scale)` — and asked by *both* routes into the
+leaf: the `0d` literal, and D8's exact-input API. This was found as a
+real defect rather than reasoned about in advance: TypeScript's
+`Decimal.fromString` (the route behind the string-accepting constructor)
+normalised before checking, so it built whatever it was asked for —
+verified turning `1e200000` into a 200,002-digit coefficient in 31ms,
+with `1e1000000000` exhausting memory — while the literal path refused
+the same input. It was simultaneously a **cross-port divergence**, since
+Go's `NewBigDecimal` already routed through the literal path's checker,
+so the two ports disagreed about whether an over-budget string is a
+value. The general form of the lesson: a resource bound stated against
+"the parser" rather than against *the type's constructors* leaves every
+non-parser route into the type unguarded, and the exact-input API is
+precisely such a route — offered by this document, in the same
+document that sets the bound.
+
 ### D7 — lossy literals become errors with a migration path
 
 This adopts G1's already-designed Phase 6, improved by the tower's
@@ -244,6 +351,48 @@ correct D7 implementation fail the shared contract. Together these
 divergent (2^53, 2^63) window becomes a refusal in both ports, and
 the ledger entry is deleted rather than answered with a renderer
 choice.
+
+**AMENDED — the rule is EXACTNESS, not magnitude, and both claims in
+that last paragraph are wrong because they read it as magnitude.**
+
+*`hex-huge` does not flip.* Its source,
+`0x10000000000000000000000000000000`, is 2^124 — a **power of two**,
+therefore exactly representable in binary64, therefore still a perfectly
+good value. It is refused by no part of D7. The three rows that do flip
+are the genuinely inexact literals: `0xffffffffffffffff` (2^64−1),
+`0x7fffffffffffffff` (2^63−1, which rounds *up* to 2^63) and
+`9007199254740993` (2^53+1). The shared suite makes the point
+deliberately, by keeping `hex-huge` as a value directly beneath the
+refused `hex-big` — a literal eighteen orders of ten *larger* than the
+one above it that is refused. The same correction applies to
+implication 3 below, and to G1, which listed `hex-huge` for the same
+reason.
+
+*Issue #21 is not resolved by this phase, and its ledger entry stays.*
+The claim rested on "every input in the divergent window is exactly
+such a literal", which is the magnitude reading again. #21 is about
+integer-kind values that need more than 17 significant digits to write
+exactly; D7 refuses a literal that is not exactly representable, not one
+that is merely large. Re-probed against both CLIs after Phases 4–6
+landed: `x:1152921504606846976` (2^60) and `x:9223372036854774784`
+(2^63−1024, where the binary64 spacing is 1024) are both exact, both
+still parse in both ports, and both still render differently (TypeScript
+`…847000` and `…775000`; Go the exact digits). D6's exact integer sums
+open a *second* route into the same window from operands D7 accepts —
+`576460752303423488+576460752303423488` is a sum of powers of two and
+diverges identically.
+
+What is true after this phase is a better position than before it, and
+it changes what closing #21 would mean: every case that still diverges
+is now one where **both ports hold exactly the value the source asked
+for**, so the old objection — that agreeing on the text would only be
+agreeing on a wrong number — no longer applies. There is now a right
+answer and Go already prints it. Closing #21 means rendering an
+integer-kind peg by its exact digits in TypeScript (the peg is integral
+and inside the int64 window by construction, so `BigInt(peg).toString()`
+is exact), in canon **and** in the Phase 5 exact-JSON emitter alike,
+since `JSON.stringify` of the same JS number reproduces the 17-digit
+form. That is an engine change, and it is not this phase's.
 
 ### D8 — representation: no new dependencies
 
@@ -275,6 +424,21 @@ choice.
   Exact values above 2^53 enter through the big leaves or not at
   all — in both ports alike.
 
+  **AMENDED — the exact-input constructors landed and share the D6
+  bound; the `NewInteger` half did not land.** `NewBigInteger(*big.Int)`
+  (copying its argument, so a caller may keep mutating theirs) and
+  `NewBigDecimal(string) (Val, error)` exist in Go, with
+  `bigint`-accepting and string-accepting constructors in TypeScript,
+  and both string routes are gated by the same `overBudget` check as the
+  literal — see the D6 amendment, where getting that wrong was the
+  actual defect. The one clause still outstanding is Go's `NewInteger`:
+  it accepts any `int64` unchecked, so the parity hole this bullet
+  opens with is still open — `NewInteger(9007199254740993)` is exact in
+  Go and `…992` in TypeScript. It is small (one call to the exactness
+  predicate that Phases 4 and 6 already share) and it is the API-side
+  face of #21, which the D7 amendment above leaves open for the same
+  underlying reason.
+
 ### D9 — the generate contract (the hard consumer-facing change)
 
 Generated native values: Go returns `*big.Int` and `*Decimal`, both
@@ -293,6 +457,13 @@ not a CLI internal: a library consumer whose document contains a
 biginteger has no other supported way to produce the promised exact
 JSON, so hiding the only implementation behind the command line
 would break the contract D9 makes. The CLI consumes the same export.
+
+**AMENDED — the export is `exactJSON(value, indent?)`**, exported from
+`aontu` alongside the `Decimal` class (the type a bigdecimal generates
+as; a biginteger generates as the language's own `bigint`). The indent
+argument is what keeps there being *one* implementation rather than two:
+the CLI passes `2` and the shared suite's `gens` mode passes none, so
+the pretty and compact forms cannot drift from each other, or from Go.
 
 Two testing consequences, because byte-exact serialisation cannot
 see the difference: an integral bigdecimal (`0d1e3`) and a
@@ -348,7 +519,10 @@ pinned with baseline rows first):
 2. `super(1.5)` flips from `number` to `float` (one landed row).
 3. **Lossy integer literals become errors (D7)** — and this reaches
    further than the four flipped spec rows (`hex-big`,
-   `hex-big-canon`, `hex-huge`, `lossy-above-pow53`): a plain JSON
+   `hex-big-canon`, `hex-huge`, `lossy-above-pow53`)
+   [**AMENDED**: `hex-huge` is 2^124, exact, and does **not** flip —
+   see D7; the flips are the inexact literals, `hex-big`,
+   `hex-big-canon`, `hex-max-int64` and `lossy-above-pow53`]: a plain JSON
    document containing `{"x":9007199254740993}` is `0d`-free yet
    flips from silently generating a rounded value to a located
    error with a `0d` hint. That is the deliberate point of D7 —
@@ -419,6 +593,11 @@ Spec-first throughout: every phase lands its TSV rows before code,
 TypeScript then Go, parity-probed. Nothing may regress the landed
 number-model rows except the flips this document names.
 
+**All of it landed, in this order, and the method held**: every phase
+committed its `test/spec/number-tower.tsv` rows first, failing, and the
+engine change second. The phases below are kept in the future tense they
+were written in; the amendments record where the plan met the code.
+
 - **Phase 0 — baseline + machinery (S/M).** Pin today's meaning of
   `0d…`/`float`/`biginteger`/`bigdecimal` bare text in both ports;
   add the byte-exact `gens` mode to both runners (D10).
@@ -445,9 +624,18 @@ number-model rows except the flips this document names.
   documentation of the new native types.
 - **Phase 6 — lossy literals (S).** D7's errors with the `0d` hint;
   flip the four rows; delete the ledger entry; close #21.
+  **AMENDED**: three rows flip, not four — `hex-huge` is exact and
+  stays a value — and the ledger entry and #21 both **stay open**, for
+  the reasons in the D7 amendment. Literals and computed sums were
+  given one shared exactness predicate so the two cannot disagree about
+  what exact means.
 - **Phase 7 — docs (M).** number-model.md successor section;
   reference/tutorial; CHANGELOG breaking inventory (implications
   1–6); migration notes led by the `number`-vs-`float` distinction.
+  **AMENDED**: this pass also reconciles *this document* with what
+  landed — the amendments throughout — since three of its decisions
+  turned out to be wrong or incomplete once there were two engines to
+  check them against.
 
 ## Open questions
 
@@ -455,6 +643,9 @@ number-model rows except the flips this document names.
   are unambiguous; `bigint`/`decimal` are shorter but `decimal`
   is a likelier bare-string collision in real documents. Mirror
   names recommended; decide once, before Phase 1.
+  **RESOLVED**: the mirror names, as recommended — `biginteger` and
+  `bigdecimal` in both ports, in the parser value definitions, both LSP
+  completion lists and hover labels, and both editors' syntax files.
 - **Cross-leaf bounds in G1.** Should `min(0)` constrain a
   bigdecimal? Recommended yes, via exact-rational ordering (boru's
   `toRatExact` precedent) — bounds are about order, not identity —
@@ -474,3 +665,14 @@ number-model rows except the flips this document names.
   falls out of matcher-vs-path-grammar interaction; pin whatever
   both ports agree on in Phase 2, and only design further if the
   agreed behaviour is unacceptable.
+  **RESOLVED, and the agreed behaviour is acceptable.** The claim rule
+  (a trailing `.` only when a digit follows) turns out to answer the
+  whole family uniformly: `0d1.`, `0d5.foo`, `0d1.e2` and `0d1.5.2`
+  each lex as an exact literal *followed by member access* and die as
+  an unresolvable path. No design was needed beyond it. Two edges were
+  worth pinning alongside: `0d5.foo` is the one case that genuinely
+  differed between the ports (bare text in TypeScript, a parse error in
+  Go) and now agrees — the D3 amendment's `check` hook is what closed
+  it; and a `0d` run in **key** position is text, dotted forms
+  included, since the literal is value syntax only, exactly as `float`
+  is.

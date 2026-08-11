@@ -161,11 +161,71 @@ port: "high"
 
 → `Cannot unify value: "high" with value: integer`
 
-The built-in kinds are `string`, `number`, `integer` (a `number` with no
-fractional part), `boolean`, and `top` (the catch-all that fits
-anything). Now your config is starting to carry its own schema.
+The built-in kinds are `string`, `boolean`, `top` (the catch-all that
+fits anything), and the numeric family: `number`, which covers every
+numeric value, over its four leaves `integer`, `float`, `biginteger`
+and `bigdecimal`. Say `number` when you mean "some number", and name a
+leaf when you mean that leaf — `port: integer` will not accept `8080.5`.
+Now your config is starting to carry its own schema.
 
-## 5. Defaults with `*`
+## 5. Exact numbers with `0d`
+
+An ordinary number in Aontu — like an ordinary number in JSON — is a
+binary floating-point value. That is the right choice for a port or a
+timeout, and the wrong one for money and for large identifiers,
+because binary cannot represent every decimal:
+
+```aontu
+total: 0.1 + 0.2
+```
+
+→ `{ "total": 0.30000000000000004 }`
+
+Prefix a number with `0d` and you get an **exact** value instead,
+stored as decimal digits and computed without rounding:
+
+```aontu
+total: 0d0.1 + 0d0.2
+```
+
+→ `{ "total": 0.3 }`
+
+The prefix is only source syntax; the digits generate as an ordinary
+JSON number. Whole digits give a `biginteger` (`0d5`), and a decimal
+point or an exponent gives a `bigdecimal` (`0d19.99`, `0d1e3`).
+Neither has a size limit worth worrying about.
+
+The same care shows up as a refusal. If a number cannot be stored
+without silently changing it, Aontu will not store it:
+
+```aontu
+id: 9007199254740993
+```
+
+→ fails with:
+
+```
+This integer literal, 9007199254740993, is not exactly representable in
+binary64, so storing it would silently round it to a DIFFERENT
+number. Aontu refuses rather than corrupts: write it as a `0d`
+literal to get the exact integer.
+```
+
+That value is 2^53+1, just past the point where doubles start skipping
+whole numbers. Take the hint and the document works again, with the
+exact ID intact:
+
+```aontu
+id: 0d9007199254740993
+```
+
+→ `{ "id": 9007199254740993 }`
+
+One thing to remember when you write the schema: an exact value is
+*not* an `integer`, so constrain it with `biginteger` (or with
+`number`, which accepts any numeric leaf).
+
+## 6. Defaults with `*`
 
 Mark a value as a **default** with `*`. A default is used only if nothing
 more specific is supplied:
@@ -191,7 +251,7 @@ The `|` here is **disjunction** — a choice between alternatives
 (`8080` *or* any `integer`). The `*` picks which branch is preferred when
 the choice is otherwise unforced.
 
-## 6. References
+## 7. References
 
 Pull a value from elsewhere in the document with a path. `$.` starts at
 the root:
@@ -218,18 +278,20 @@ users: bob:   { id: .$KEY }
 
 → `{ "users": { "alice": { "id": "alice" }, "bob": { "id": "bob" } } }`
 
-## 7. Templates with `&:` (spread)
+## 8. Templates with `&:` (spread)
 
 A `&:` entry inside a map is a **template** unified into every sibling
 key. Define a shape once and apply it everywhere:
 
 ```aontu
 servers: {
-  &: { region: *us-east | string, active: *true | boolean }
-  web: { region: eu-west }
+  &: { region: *"us-east" | string, active: *true | boolean }
+  web: { region: "eu-west" }
   db:  {}
 }
 ```
+
+(The region names are quoted because a bare string stops at the `-`.)
 
 →
 
@@ -246,22 +308,24 @@ servers: {
 itself does not appear in the output. Spreads work in lists too
 (`[&:{...}, ...]`).
 
-## 8. Functions
+## 9. Functions
 
 Aontu has a fixed set of built-in functions. A few useful ones:
 
 ```aontu
-name:  upper(mercury)      # -> "MERCURY"   (ceil for numbers)
-slug:  lower(Mercury)      # -> "mercury"   (floor for numbers)
-label: a + b + c           # -> "abc"       (+ concatenates / adds)
-copy:  copy($.servers.web) # deep copy of another node
+web:   { region: "eu-west" }
+name:  upper(mercury)      # -> "MERCURY"  (ceiling for numbers)
+slug:  lower(Mercury)      # -> "mercury"  (floor for numbers)
+label: a + b + c           # -> "abc"      (+ concatenates / adds)
+round: upper(0d1.1)        # -> 2.0        (exact ceiling, kind kept)
+copy:  copy($.web)         # deep copy of another node
 ```
 
 The complete list — `upper`, `lower`, `copy`, `key`, `pref`, `super`,
 `type`, `hide`, `close`, `open`, `move`, `path` — is in the
 [language reference](reference-language.md#functions).
 
-## 9. Sealing a shape with `close`
+## 10. Sealing a shape with `close`
 
 By default a map is **open**: unifying in extra keys is allowed.
 `close()` forbids that, turning a shape into a strict schema:
@@ -274,7 +338,7 @@ point: { x: 1, y: 2 }
 → `{ "point": { "x": 1, "y": 2 } }`, but adding `z: 3` would fail with a
 `closed` error. `open()` reverses it.
 
-## 10. Putting it together
+## 11. Putting it together
 
 Here is a single document that is schema, defaults, and data at once:
 
@@ -284,6 +348,7 @@ service: close({
   name:    string
   host:    *localhost | string
   port:    *8080 | integer
+  rate:    *0d0.01 | bigdecimal
   tags:    [string]
 })
 
@@ -291,6 +356,7 @@ service: close({
 service: {
   name: api
   port: 9090
+  rate: 0d0.025
   tags: [public, http]
 }
 ```
@@ -303,14 +369,16 @@ service: {
     "name": "api",
     "host": "localhost",
     "port": 9090,
+    "rate": 0.025,
     "tags": ["public", "http"]
   }
 }
 ```
 
 The schema constrained every field, defaults filled `host`, the data
-supplied `name`/`port`/`tags`, `close` guaranteed no stray keys slipped
-in, and unification combined it all into one answer — failing loudly if
+supplied `name`/`port`/`rate`/`tags`, `rate` stayed exact all the way
+to the output, `close` guaranteed no stray keys slipped in, and
+unification combined it all into one answer — failing loudly if
 anything had conflicted.
 
 ## Where to go next

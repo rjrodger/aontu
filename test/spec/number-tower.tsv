@@ -465,6 +465,195 @@ bigdec-disjunct-dedup-scale-canon	canon	x:0d1.0|0d1.00	{"x":0d1.0}
 bigdec-disjunct-dedup-trailing-canon	canon	x:0d1.50|0d1.5	{"x":0d1.5}
 bigint-disjunct-pick-canon	canon	x:(0d1|0d2)&0d2	{"x":0d2}
 #
+# PHASE 4 -- ARITHMETIC, the behaviour the contract rows above left
+# unpinned. Derived the same way: run through BOTH engines and written
+# down only where they agreed byte for byte. The whole ordered
+# operand-pair table lives in its own file (number-cross-product.tsv);
+# what follows is the edges -- exactness, the integer storage contract,
+# no-demotion, chaining, and upper()/lower() on every numeric leaf.
+#
+# EXACT ADDITION IS ALIGN-AND-ADD, WITH NO ROUNDING ANYWHERE. Aontu has
+# no rounding mode and no precision context (D6), so the only question a
+# sum can raise is whether the exact answer fits the budget.
+#
+# Scale is not part of identity, so a sum RENORMALISES: two hundredths
+# make a tenth, and the answer is `0d0.1` rather than `0d0.10`.
+bigdec-plus-crosses-scale-canon	canon	x:0d0.05+0d0.05	{"x":0d0.1}
+bigdec-plus-carries-to-unit-canon	canon	x:0d0.05+0d0.95	{"x":0d1.0}
+bigdec-plus-carries-thousandths-canon	canon	x:0d0.999+0d0.001	{"x":0d1.0}
+# A sum whose exact answer needs MORE coefficient digits than either
+# operand had -- the case a fixed-width representation would have to
+# round, and this one simply widens.
+bigdec-plus-widens-coefficient-canon	canon	x:0d9.9+0d0.1	{"x":0d10.0}
+bigdec-plus-widens-past-float64-canon	canon	x:0d99999999999999999999.5+0d0.5	{"x":0d100000000000000000000.0}
+# Unequal scales align on the wider one; the narrower operand is padded.
+bigdec-plus-unequal-scales-canon	canon	x:0d0.1+0d0.02	{"x":0d0.12}
+bigdec-plus-unequal-scales-carry-canon	canon	x:0d1.23+0d4.567	{"x":0d5.797}
+# A wide scale SPAN is where alignment inflates a coefficient: this one
+# needs 21 coefficient digits to hold two one-digit operands, and stays
+# exact rather than meeting in the middle.
+bigdec-plus-scale-span-canon	canon	x:0d1e-10+0d1e10	{"x":0d10000000000.0000000001}
+bigdec-plus-magnitude-span-canon	canon	x:0d1000000000000000000000000+0d0.000000000000000000000001	{"x":0d1000000000000000000000000.000000000000000000000001}
+# The headline case, chained: exact tenths keep adding exactly, where
+# binary64 gives 0.6000000000000001 for the same three terms.
+bigdec-plus-tenths-chain-canon	canon	x:0d0.1+0d0.2+0d0.3	{"x":0d0.6}
+#
+# THE BUDGET BOUNDS RESULTS, NOT ONLY LITERALS (D6). Both operands here
+# are comfortably inside both bounds, and their exact sum is not: scale
+# alignment needs 8001 coefficient digits. An engine with a rounding
+# context would quietly return an approximation; this one refuses.
+bigdec-plus-budget-result-err	err	x:0d1e-4000+0d1e4000	exceeds the exactness budget
+bigdec-plus-budget-result-bounds-err	err	x:0d1e-4000+0d1e4000	at most 4096
+#
+# ---------------------------------------------------------------------
+# THE INTEGER STORAGE CONTRACT, at and around its two boundaries. An
+# `integer` sum is computed exactly and then has to be STORABLE: integral,
+# inside the int64 window, and exactly representable in binary64. The
+# third clause is the parity-critical one -- Go's int64 holds sums this
+# port's double cannot -- and it is why the rows either side of 2^53 come
+# in pairs, one accepted and one refused, rather than as a single limit.
+#
+# Below and at 2^53 every integer is representable, so these are values.
+int-plus-int-to-pow53-minus-one-canon	canon	x:4503599627370496+4503599627370495	{"x":9007199254740991}
+int-plus-int-to-pow53-canon	canon	x:9007199254740991+1	{"x":9007199254740992}
+# Above 2^53 only the EVEN integers are representable, so a sum lands or
+# is refused according to the value and not the magnitude: +2 is a value,
+# +1 is an error -- and the error names the escape rather than rounding.
+int-plus-int-above-pow53-even-canon	canon	x:9007199254740992+2	{"x":9007199254740994}
+int-plus-int-above-pow53-odd-err	err	x:9007199254740992+1	exactly representable
+int-plus-int-above-pow53-hint-err	err	x:9007199254740992+1	0d<digits>` for an exact integer
+# THE ESCAPE THE HINT NAMES, executed: the same sum with the addend
+# written `0d1` is exact, and its result is a biginteger.
+int-plus-bigint-escape-canon	canon	x:9007199254740992+0d1	{"x":0d9007199254740993}
+bigint-plus-bigint-past-pow53-canon	canon	x:0d9007199254740993+0d1	{"x":0d9007199254740994}
+# The negative mirror of the same boundary, refusal and all.
+int-plus-int-to-negative-pow53-canon	canon	x:-4503599627370496+-4503599627370496	{"x":-9007199254740992}
+int-plus-int-negative-inexact-err	err	x:-4503599627370496+-4503599627370497	exactly representable
+int-plus-int-below-negative-pow53-even-canon	canon	x:-9007199254740992+-2	{"x":-9007199254740994}
+int-plus-int-below-negative-pow53-odd-err	err	x:-9007199254740992+-1	exactly representable
+# A sum of two powers of two above 2^53 is still exact -- 2^53+2^53 is
+# 2^54 -- so the rule really is exactness and not magnitude.
+int-plus-int-pow54-canon	canon	x:9007199254740992+9007199254740992	{"x":18014398509481984}
+# THE OTHER BOUNDARY: the int64 window. 2^62+2^62 is 2^63, one past
+# int64's maximum, and is refused even though a binary64 holds it
+# exactly -- all three clauses of the contract must hold, not any one.
+# (Its negative mirror lands exactly ON int64's minimum and is accepted
+# by both ports, but they render that value differently: it is an
+# integer-kind value above 2^53 needing more than 17 significant digits,
+# which is entry 1 of the parity ledger. See divergent.tsv -- and note
+# that operands like 2^62 are EXACT, so Phase 6's lossy-literal refusal
+# will not close that entry.)
+int-plus-int-int64-overflow-err	err	x:4611686018427387904+4611686018427387904	exactly representable
+int-plus-int-cancels-to-zero-canon	canon	x:4611686018427387904+-4611686018427387904	{"x":0}
+#
+# ---------------------------------------------------------------------
+# RESULTS NEVER DEMOTE. The result kind follows the OPERAND kinds, not
+# the value: a biginteger sum that would fit an int64 is still a
+# biginteger, and a bigdecimal sum that is integral is still a
+# bigdecimal. Demotion would make a document change leaf under a value
+# edit, which is the whole reason the ladder is written on kinds.
+bigint-plus-to-zero-canon	canon	x:0d5+-0d5	{"x":0d0}
+bigdec-plus-to-zero-canon	canon	x:0d1.5+-0d1.5	{"x":0d0.0}
+bigdec-plus-to-zero-halves-canon	canon	x:0d0.5+-0d0.5	{"x":0d0.0}
+bigint-plus-crosses-zero-canon	canon	x:-0d5+0d2	{"x":-0d3}
+bigint-plus-carries-width-canon	canon	x:-0d99999999999999999999+-0d1	{"x":-0d100000000000000000000}
+# No-demotion, enforced through UNIFICATION rather than read off canon:
+# an integral bigdecimal result unifies with a bigdecimal and NOT with
+# the numerically equal biginteger, because the leaves are disjoint (D2).
+bigdec-plus-integral-unifies-bigdec-canon	canon	x:(0d0.5+0d0.5)&0d1.0	{"x":0d1.0}
+bigdec-plus-integral-vs-bigint-err	err	x:(0d0.5+0d0.5)&0d1	different kinds cannot unify
+int-plus-bigint-result-is-bigint-canon	canon	x:(0d1+0d2)&biginteger	{"x":0d3}
+int-plus-bigint-result-not-integer-err	err	x:(1+0d2)&integer	Cannot unify scalar values
+#
+# ---------------------------------------------------------------------
+# CHAINED AND PARENTHESISED. `+` is left-associative, so a chain climbs
+# the ladder one step at a time and the widest operand anywhere in it
+# decides the leaf -- including when the widening operand comes last.
+chain-int-bigint-bigdec-canon	canon	x:1+0d2+0d0.5	{"x":0d3.5}
+chain-parenthesised-right-canon	canon	x:1+(0d2+0d0.5)	{"x":0d3.5}
+chain-int-int-bigint-canon	canon	x:1+2+0d3	{"x":0d6}
+chain-bigint-canon	canon	x:0d1+0d2+0d3	{"x":0d6}
+# A float anywhere in the chain still refuses to meet an exact leaf, in
+# either order -- the parentheses only decide WHERE the refusal happens.
+chain-bigint-into-float-err	err	x:(1+0d2)+1.0	cannot mix
+chain-float-into-bigint-err	err	x:(1+2.0)+0d3	cannot mix
+#
+# SPACING AROUND THE OPERATOR. A `0d` literal must not claim a leading
+# sign, or `0d1 +0d2` would lex as a two-element implicit LIST while the
+# identical `1 +2` stayed an addition. Both spellings are additions, in
+# a map value and inside a list.
+bigint-plus-spaced-canon	canon	x:0d1 + 0d2	{"x":0d3}
+bigint-plus-space-before-canon	canon	x:0d1 +0d2	{"x":0d3}
+bigint-plus-space-after-canon	canon	x:0d1+ 0d2	{"x":0d3}
+int-plus-bigint-space-before-canon	canon	x:1 +0d2	{"x":0d3}
+bigint-plus-in-list-canon	canon	x:[0d1 +0d2]	{"x":[0d3]}
+# The same sums in every structural position.
+bigint-plus-nested-canon	canon	x:{a:0d1+0d2}	{"x":{"a":0d3}}
+bigint-plus-list-items-canon	canon	x:[0d1+0d2,0d3+0d0.5]	{"x":[0d3,0d3.5]}
+bigint-plus-ref-canon	canon	a:0d1\nb:$.a+0d2	{"a":0d1,"b":0d3}
+bigdec-plus-ref-canon	canon	a:0d1.5\nb:$.a+0d0.5	{"a":0d1.5,"b":0d2.0}
+#
+# ---------------------------------------------------------------------
+# PREF AND DISJUNCT OPERANDS. A pref operand contributes its PREFERRED
+# VALUE, and therefore that value's kind too, so the ladder sees through
+# the mark in both spellings and on either side.
+pref-mark-bigint-operand-canon	canon	x:*0d1+1	{"x":0d2}
+pref-func-bigint-operand-canon	canon	x:pref(0d1)+1	{"x":0d2}
+pref-mark-bigdec-operand-canon	canon	x:*0d1.5+0d0.5	{"x":0d2.0}
+pref-int-operand-bigint-canon	canon	x:*1+0d2	{"x":0d3}
+pref-right-operand-canon	canon	x:0d1+*0d2	{"x":0d3}
+# A DISJUNCT operand is not a value yet, so there is nothing to add: the
+# op stays unresolved and carries the whole disjunct in its canon. This
+# is ordinary `+` behaviour and not an exact-leaf limitation.
+disjunct-operand-unresolved-canon	canon	x:(0d1|0d2)+1	{"x":0d1|0d2+1}
+disjunct-operand-no-gen-err	err	x:(0d1|0d2)+1	Cannot resolve value
+pref-disjunct-operand-unresolved-canon	canon	x:(*0d1|0d2)+1	{"x":*0d1|0d2+1}
+#
+# ---------------------------------------------------------------------
+# upper() AND lower() ON EVERY NUMERIC LEAF. They are exact ceiling and
+# floor, and they KEEP the argument's kind (R5) -- so a bigdecimal
+# ceiling is a bigdecimal, with the one decimal place the leaf always
+# renders, and a biginteger is already integral and comes back unchanged.
+#
+# The exact halves are the rows that would catch a float64 sneaking in:
+# there is no round-half-even here, only ceiling and floor.
+upper-bigdec-half-canon	canon	x:upper(0d1.5)	{"x":0d2.0}
+lower-bigdec-half-canon	canon	x:lower(0d1.5)	{"x":0d1.0}
+upper-bigdec-negative-half-canon	canon	x:upper(-0d1.5)	{"x":-0d1.0}
+lower-bigdec-negative-half-canon	canon	x:lower(-0d1.5)	{"x":-0d2.0}
+upper-bigdec-negative-canon	canon	x:upper(-0d1.1)	{"x":-0d1.0}
+upper-bigdec-integral-canon	canon	x:upper(0d2.0)	{"x":0d2.0}
+lower-bigdec-integral-canon	canon	x:lower(0d2.0)	{"x":0d2.0}
+# Rounding toward zero folds a sign away, and R2/D5 says the answer is
+# `0d0.0` and never `-0d0.0`.
+lower-bigdec-to-zero-canon	canon	x:lower(0d0.5)	{"x":0d0.0}
+upper-bigdec-negative-to-zero-canon	canon	x:upper(-0d0.5)	{"x":0d0.0}
+lower-bigdec-negative-half-below-zero-canon	canon	x:lower(-0d0.5)	{"x":-0d1.0}
+upper-bigdec-half-above-zero-canon	canon	x:upper(0d0.5)	{"x":0d1.0}
+lower-bigdec-zero-canon	canon	x:lower(0d0.0)	{"x":0d0.0}
+# A biginteger is integral already: ceiling and floor are identities on
+# it, and neither may demote it to an `integer`.
+lower-bigint-canon	canon	x:lower(0d5)	{"x":0d5}
+upper-bigint-negative-canon	canon	x:upper(-0d5)	{"x":-0d5}
+lower-bigint-negative-canon	canon	x:lower(-0d5)	{"x":-0d5}
+upper-bigint-zero-canon	canon	x:upper(0d0)	{"x":0d0}
+lower-bigint-keeps-leaf-canon	canon	x:lower(0d5)&biginteger	{"x":0d5}
+upper-bigdec-not-bigint-err	err	x:upper(0d1.1)&biginteger	Cannot unify scalar values
+# The float and integer leaves are unchanged by the tower: R5 kind
+# contagion already said upper()/lower() keep their operand's kind, and
+# a float ceiling still renders as a float.
+upper-float-canon	canon	x:upper(1.5)	{"x":2.0}
+lower-float-canon	canon	x:lower(1.5)	{"x":1.0}
+upper-float-negative-canon	canon	x:upper(-1.5)	{"x":-1.0}
+lower-float-negative-canon	canon	x:lower(-1.5)	{"x":-2.0}
+upper-integer-canon	canon	x:upper(1)	{"x":1}
+lower-integer-negative-canon	canon	x:lower(-1)	{"x":-1}
+# Exact ceiling at the extreme of the scale budget, and of a computed
+# value: neither goes anywhere near a binary64.
+upper-bigdec-budget-scale-canon	canon	x:upper(0d1e-4096)	{"x":0d1.0}
+lower-bigdec-budget-scale-canon	canon	x:lower(0d1e-4096)	{"x":0d0.0}
+upper-of-exact-sum-canon	canon	x:upper(0d0.1+0d0.2)	{"x":0d1.0}
+#
 # PHASE 5 -- generate. The exact leaves reach JSON as exact digits: a
 # JSON number is arbitrary-precision text, so the format was never the
 # obstacle -- only JavaScript's serialiser, which throws on a bigint.
@@ -481,6 +670,68 @@ gens-bigdec-negative	gens	x:-0d1.5	{"x":-1.5}
 gens-bigint-list	gens	x:[0d1,0d2]	{"x":[1,2]}
 gens-bigdec-exact-sum	gens	x:0d0.1+0d0.2	{"x":0.3}
 gens-bigint-nested	gens	x:{y:0d7}	{"x":{"y":7}}
+#
+# THE GENERATE PARITY PROBE. Phase 5 is the newest surface and the one
+# where the two ports have the most room to disagree: Go marshals a
+# *big.Int and a *Decimal through encoding/json, TypeScript walks the
+# value with its own emitter (exactJSON) because JSON.stringify throws
+# on a bigint. Nothing structural is shared, so the rows below sweep the
+# surface rather than sample it -- every leaf at several magnitudes and
+# both signs, both zeros, an integral bigdecimal beside the biginteger
+# of the same value, a long fraction, every structural position, and a
+# document carrying all seven kinds at once. Each was run through BOTH
+# CLIs and both compact emitters and agreed byte for byte.
+#
+# The CLI's INDENTED output was probed the same way and also agrees.
+# That is not directly assertable here -- the suite has no indented mode
+# -- and it is worth stating because it is where the drift actually was:
+# Go's CLI used json.MarshalIndent, whose default HTML escaping rewrote
+# every <, > and & in a string value as a \u00xx escape while TypeScript
+# left them alone. The gens mode had already turned that escaping off
+# on its own side, so no row could see it. Fixed in go/cmd/aontu (with
+# a byte-exact test there, since no spec row reaches the CLI); the
+# html-chars row below pins the same choice where both runners read it.
+#
+# Zero of each exact leaf, including D5's negative zeros, which must
+# reach JSON as plain 0 / 0.0 and never as -0.
+gens-bigint-zero	gens	x:0d0	{"x":0}
+gens-bigint-negative-zero	gens	x:-0d0	{"x":0}
+gens-bigdec-zero	gens	x:0d0.0	{"x":0.0}
+gens-bigdec-negative-zero	gens	x:-0d0.0	{"x":0.0}
+# Magnitudes: a biginteger far past any float64, and its negation.
+gens-bigint-negative-large	gens	x:-0d123456789012345678901234567890	{"x":-123456789012345678901234567890}
+gens-bigint-huge	gens	x:0d1000000000000000000000000	{"x":1000000000000000000000000}
+# A long fraction on both sides of the point -- 30 digits either way,
+# which no binary64 and no fixed 34-digit decimal context would keep.
+gens-bigdec-long-fraction	gens	x:0d123456789012345678901234567890.123456789012345678901234567890	{"x":123456789012345678901234567890.12345678901234567890123456789}
+gens-bigdec-tiny	gens	x:0d1e-30	{"x":0.000000000000000000000000000001}
+gens-bigdec-scale-normalised	gens	x:0d0.10	{"x":0.1}
+# THE PAIR THAT MAKES THE POINT: an integral bigdecimal and a biginteger
+# of the same numeric value are different lattice points, and their JSON
+# differs too -- 1000.0 against 1000. (Bytes are still not the whole
+# contract: see the per-port API tests, which pin the runtime object.)
+gens-bigdec-vs-bigint-integral	gens	x:{a:0d1000,b:0d1e3}	{"x":{"a":1000,"b":1000.0}}
+# Structural positions: an exact leaf as the WHOLE document, as a list
+# root, and inside a list of maps.
+gens-bigint-root	gens	0d5	5
+gens-bigint-root-negative	gens	-0d5	-5
+gens-bigdec-root	gens	0d1e3	1000.0
+gens-list-root	gens	[0d1,0d2]	[1,2]
+gens-exact-in-list-of-maps	gens	x:[{a:0d1},{b:0d2.0}]	{"x":[{"a":1},{"b":2.0}]}
+# Keys sort in both ports, exact values included.
+gens-key-order	gens	b:0d2\na:0d1	{"a":1,"b":2}
+# EVERY KIND IN ONE DOCUMENT: string, boolean, null, integer, float,
+# biginteger, bigdecimal. Note `b:2.0` is a float and serialises as `2`
+# while `d:0d4.5` keeps its exact digits -- gens sees bytes, not kinds.
+gens-all-kinds	gens	a:1 b:2.0 c:0d3 d:0d4.5 e:str f:true g:null	{"a":1,"b":2,"c":3,"d":4.5,"e":"str","f":true,"g":null}
+gens-all-kinds-nested	gens	a:0d1\nb:[0d2,{c:0d3.5}]\nd:{e:0d0}\nf:x\ng:false\nh:null\ni:1\nj:1.5	{"a":1,"b":[2,{"c":3.5}],"d":{"e":0},"f":"x","g":false,"h":null,"i":1,"j":1.5}
+# HTML characters stay literal beside an exact value: neither port may
+# escape them (this is the CLI divergence described above).
+gens-html-chars	gens	x:"<b>&</b>" y:0d1	{"x":"<b>&</b>","y":1}
+# Computed exact values reach JSON by the same path as literal ones.
+gens-bigdec-sum-integral	gens	x:0d0.5+0d0.5	{"x":1.0}
+gens-bigdec-sum-promoted	gens	x:1+0d0.5	{"x":1.5}
+gens-bigdec-sum-keeps-marker	gens	x:0d1e3+0d1	{"x":1001.0}
 #
 # PHASE 6 -- a lossy integer literal is refused, not rounded. The rule
 # is EXACTNESS, not magnitude: a huge literal that lands exactly on a

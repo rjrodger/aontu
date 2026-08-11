@@ -109,11 +109,14 @@ Escapes in `src`/`expect`: `\n` → newline, `\t` → tab, `\\` → backslash.
 Lines starting with `#` and blank lines are ignored. See
 [`docs/shared-spec.md`](docs/shared-spec.md) for details.
 
-Pick the mode that can actually fail: `gen` compares through JSON and is
-therefore blind to the `integer`/`float` kind distinction, so a
-behaviour that distinguishes kinds must be pinned by `canon` or `err`,
-and one that turns on the exact serialised bytes (which digits, which
-exponent form, which key order) by `gens` — see
+Pick the mode that can actually fail. **`canon` pins kind, `gens` pins
+bytes, and `gen` is blind to both**: `gen` compares through a JSON
+decode, so the numeric leaf is gone before the comparison happens and
+every number lands in a `float64` — which makes two distinct exact
+integers above 2^53 compare *equal*. So a behaviour that distinguishes
+kinds must be pinned by `canon` or `err`, and one that turns on the
+exact serialised bytes (which digits, which exponent form, which key
+order) by `gens` — see
 [Choosing a mode](docs/shared-spec.md#choosing-a-mode).
 
 ### Adding a behaviour
@@ -191,7 +194,9 @@ numeric literal's kind with no range condition at all, while Go used a
 TypeScript and failed in Go** — a silent, magnitude-dependent parity
 break that no existing row observed, because no row at that magnitude
 had ever been asked of both engines. The review that found it produced
-`test/spec/number-model.tsv` and the ledger's two current entries.
+`test/spec/number-model.tsv` and the ledger's entries — of which one,
+integer-kind values above 2^53 that need more than 17 significant digits
+to write exactly (#21), is still open.
 
 ## Implementation parity & Go coverage
 
@@ -202,7 +207,10 @@ the same stack as `ts/src/lang.ts` — so the surface syntax parses in
 parity.
 
 The Go port has **full parity** with the canonical TypeScript language:
-scalars, scalar kinds (type constraints), maps (implicit nesting,
+scalars, scalar kinds (type constraints — `string`, `boolean`, `top`,
+and the numeric tower `number` over its four leaves `integer`, `float`,
+`biginteger`, `bigdecimal`; see [The number model](#the-number-model)),
+`0d` exact literals and exact arithmetic, maps (implicit nesting,
 duplicate-key merge, spreads `&:`, optional keys `a?:`, `close`/`open`),
 lists (incl. `&:` spreads), conjunction (`&`), disjunction (`|`),
 preference/defaults (`*`), references (`$.a.b`, relative `.x.a`, `$KEY`,
@@ -242,6 +250,65 @@ upgrade deliberately and run `make test` before loosening any pin.
 > pair close alts in `ts/src/lang.ts` and `go/lang.go`), so consecutive
 > spreads are siblings on the enclosing map at any depth; covered by the
 > `spread.tsv:sibling-*` shared-spec rows.
+
+### The number model
+
+The numeric lattice is a **tower**. `number` is a pure supertype that
+never tags a concrete value; every numeric value carries one of four
+leaves, fixed when the value is built:
+
+| kind | holds | written |
+|------|-------|---------|
+| `integer`    | a double, whole, inside the int64 window | `1`, `1e3` |
+| `float`      | any other double (IEEE-754 binary64)     | `1.5`, `1e21` |
+| `biginteger` | exact, whole, unbounded                  | `0d5`, `0d1_000` |
+| `bigdecimal` | exact base-10, with a point or exponent  | `0d0.1`, `0d1e3` |
+
+Three properties govern every change in this area:
+
+- **The leaves are disjoint.** `1 & 1.0`, `5 & 0d5` and `0d5 & 0d5.0`
+  are all conflicts, and scalar identity compares kind as well as value
+  (so `1|1.0` keeps both alternatives). Which leaf a value takes is
+  therefore language surface, and a change to it must be pinned by
+  `canon` or `err` — never by `gen`, which cannot see a kind.
+- **Leaf by source, not by magnitude.** A literal without `0d` is
+  `integer` only if its text has no `.`, its value is integral, and it
+  is inside the int64 range; anything else is `float`. A literal with
+  `0d` is `bigdecimal` if its source carries a `.` or an exponent, and
+  `biginteger` otherwise. Both ports share one predicate for the first
+  rule — `isIntegerKind` (`ts/src/val/numkind.ts`, `go/lang.go`) —
+  applied at **every** construction site, including the raw/implicit-list
+  path where there is no source text.
+- **The exact leaves are opt-in.** They are reached only by a `0d`
+  literal or by the exact-input constructors, never by promotion,
+  coercion or inference, so a `0d`-free document means exactly what it
+  always meant. Arithmetic is exact-always with a loud limit rather
+  than a silent rounding: a bigdecimal beyond the budget (4096
+  coefficient digits, absolute scale 4096) is refused, in a literal and
+  in a computed result alike.
+
+Representation differs by port and must not drift: TypeScript holds a
+biginteger as a native `bigint` and a bigdecimal as a `Decimal`
+(`ts/src/val/Decimal.ts`); Go uses `*big.Int` and `*Decimal`
+(`go/decimal.go`). Both are **pointer/immutable** pegs — clones share
+them, nothing mutates them in place — which is why identity must compare
+the *number* and never the peg address in Go, nor object identity in TS.
+`generate()` hands these native types out, so TypeScript ships its own
+JSON emitter (`exactJSON`, `ts/src/exactjson.ts`); `JSON.stringify`
+throws on a `bigint`. Its bytes must stay identical to Go's
+`encoding/json` with `SetEscapeHTML(false)` — the `gens` rows are what
+hold the two together. See
+[`docs/reference-api.md`](docs/reference-api.md#exact-numbers-and-exactjson)
+for the consumer-facing contract.
+
+Where the rules are pinned: `test/spec/number-model.tsv` (the kind
+rules), `test/spec/number-tower.tsv` (the exact leaves), and
+`test/spec/number-cross-product.tsv` (the closed ordered-pair table for
+`+`). The reasoning is in
+[`docs/design/number-model.md`](docs/design/number-model.md) and
+[`docs/design/number-tower.md`](docs/design/number-tower.md); the
+user-facing rules are in
+[`docs/reference-language.md`](docs/reference-language.md#the-four-numeric-leaves).
 
 ## Conventions
 

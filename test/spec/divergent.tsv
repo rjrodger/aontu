@@ -44,34 +44,77 @@
 #      emits the SHORTEST decimal that round-trips (at most 17
 #      significant digits). Go holds it as an int64 and renders the
 #      exact value with strconv.FormatInt. Both denote the same float64,
-#      but the text differs. Neither rendering is right: the value the
-#      source asked for is not the value either port holds, so making
-#      the two agree on text would only agree on a wrong number. That
-#      is why this is not fixed in place -- see the resolution below.
+#      but the text differs.
 #    detail: only integer KIND is affected. A number-kind value goes
 #      through the shared JS-Number.toString formatter in both ports
 #      (go/scalar.go formatNumber), so the extreme-magnitude rows in
-#      scalar.tsv and number-model.tsv are unaffected -- including
-#      0x7fffffffffffffff, which R1 makes number kind precisely because
-#      it rounds up to 2^63.
+#      scalar.tsv and number-model.tsv are unaffected -- 2^63 written
+#      0x8000000000000000, for one, which R1 makes number kind because
+#      it is one past int64's maximum. (This clause used to cite
+#      0x7fffffffffffffff instead. That literal is no longer a value in
+#      either port: it is 2^63-1, it rounds UP to 2^63, and Phase 6
+#      refuses it -- see number-model.tsv:hex-max-int64-lossy-err.)
 #      Values whose exact digits fit in 17 significant digits agree:
 #      x:9007199254740992     both -> {"x":9007199254740992}
-#      x:123456789012345678   both -> {"x":123456789012345680}
 #      Values needing more do not:
 #      x:1152921504606846976  ts -> {"x":1152921504606847000}
 #                             go -> {"x":1152921504606846976}
 #      x:9223372036854774784  ts -> {"x":9223372036854775000}
 #                             go -> {"x":9223372036854774784}
 #      (Same divergence in gen and in canon.)
-#    resolution already designed: the capability review commits to
-#      making a lossy integer literal a located error rather than a
-#      silently rounded value -- see the "Numbers: decide and bound the
-#      defect" section of docs/capability-review/g1-constraint-algebra.md
-#      and its Phase 6. Every input in this window is exactly such a
-#      literal, so that change removes the divergence by refusing the
-#      input in both ports, instead of picking a rendering for a value
-#      neither port can represent faithfully. Do not close this entry by
-#      choosing a renderer; close it by landing that error.
+#    CORRECTION -- the resolution this entry used to record is WRONG,
+#      and its own examples disprove it. It said that the number
+#      tower's Phase 6 (a lossy integer literal becomes a located
+#      error) "removes the divergence by refusing the input in both
+#      ports", because "every input in this window is exactly such a
+#      literal". It is not. Phase 6 refuses a literal that is not
+#      EXACTLY REPRESENTABLE in binary64; it does not refuse one that
+#      is merely large -- the rule is exactness, not magnitude, which is
+#      the same correction the Phase 6 spec rows record for the hex
+#      literals. Both values listed above are exact (2^60, and 2^63-1024
+#      where the binary64 spacing is 1024), both still parse in both
+#      ports with Phase 6 landed, and both still render differently.
+#      Re-probed against both engines after Phase 4 and Phase 6 landed.
+#      D6's exact integer sums open a SECOND route into the same window,
+#      from operands Phase 6 accepts -- both of these are sums of powers
+#      of two, so every literal involved is exact:
+#      x:576460752303423488+576460752303423488
+#                             ts -> {"x":1152921504606847000}
+#                             go -> {"x":1152921504606846976}
+#      x:-4611686018427387904+-4611686018427387904
+#                             ts -> {"x":-9223372036854776000}
+#                             go -> {"x":-9223372036854775808}
+#      The second lands exactly ON int64's minimum, so it satisfies the
+#      integer storage contract and is stored rather than refused. That
+#      is why number-tower.tsv pins the POSITIVE int64-overflow sum
+#      (2^62+2^62, which both ports refuse) and leaves this negative
+#      mirror unpinned: no spec row may be written in this window.
+#    what is true now: after Phase 6, every case that still diverges is
+#      one where both ports hold EXACTLY the value the source asked for.
+#      The old objection -- "making the two agree on text would only
+#      agree on a wrong number" -- therefore no longer applies, and
+#      neither does the instruction not to close this by choosing a
+#      renderer: there is now a right answer, and Go already prints it.
+#      Closing this entry means rendering an integer-kind peg by its
+#      exact digits in TypeScript (the peg is integral and inside the
+#      int64 window by construction, so BigInt(peg).toString() is
+#      exact), in canon and in the Phase 5 exact JSON emitter alike --
+#      JSON.stringify of the same JS number reproduces the 17-digit
+#      form, so the emitter has to be part of the fix. Until that lands
+#      this stays a divergence, and the window stays unpinnable.
+#    RE-VERIFIED after Phase 5 and Phase 6 landed, by the agent that
+#      owns this suite, against both CLIs at the exact inputs above:
+#        x:1152921504606846976  ts -> 1152921504606847000
+#                               go -> 1152921504606846976
+#        x:9223372036854774784  ts -> 9223372036854775000
+#                               go -> 9223372036854774784
+#      in generated JSON and in canon alike. Neither is refused, because
+#      neither is lossy. #21 THEREFORE CANNOT BE CLOSED BY PHASE 6, and
+#      this entry stays. The instruction it was closed against ("close it
+#      by landing that error") was written from the mistaken premise the
+#      CORRECTION above dismantles; the work that would actually close it
+#      is the TypeScript exact-digit rendering described there, which is
+#      an engine change and not a spec change.
 #
 # ---------------------------------------------------------------------
 #
