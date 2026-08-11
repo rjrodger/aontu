@@ -658,8 +658,12 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of twelve built-in functions. There are no
-user-defined functions.
+Aontu provides a fixed set of seventeen built-in functions. There are
+no user-defined functions. Twelve are the general-purpose functions
+tabulated below; the other five — `min(x)`, `max(x)`, `above(x)`,
+`below(x)` and `neq(x,...)` — are the constraint atoms, whose meaning
+is defined in
+[The constraint algebra](#the-constraint-algebra-specified).
 
 | Function    | Effect | Example |
 |-------------|--------|---------|
@@ -897,15 +901,22 @@ distinguishable.
 
 ## The constraint algebra (specified)
 
-> **Status: specified, not yet implemented.** This section is the
-> normative design of capability G1's constraint atoms
+> **Status: phase 1 implemented (bounds and `neq`); the rest
+> specified.** This section is the normative design of capability G1's
+> constraint atoms
 > ([docs/capability-review/g1-constraint-algebra.md](capability-review/g1-constraint-algebra.md),
-> phase 0), re-derived over the four-leaf number tower. Today every
-> atom below parses as an `unknown_function` error; the proposed spec
-> rows live as **drafts** in [`test/spec/draft/`](../test/spec/draft/)
-> and are promoted (after parity probing) as each implementation phase
-> lands. Everything else in this reference describes implemented
-> behaviour; this section alone describes committed design.
+> phase 0), re-derived over the four-leaf number tower. The bound
+> atoms `min`/`max`/`above`/`below` and the exclusion `neq` are
+> implemented in both engines and pinned by
+> [`test/spec/constraint-bound.tsv`](../test/spec/constraint-bound.tsv);
+> violations raise the registered `constraint` code. `re`, `len`,
+> `unique` and `must` still parse as `unknown_function` errors; their
+> proposed spec rows live as **drafts** in
+> [`test/spec/draft/`](../test/spec/draft/) and are promoted (after
+> parity probing) as each implementation phase lands. Known phase-1
+> limit: a preference meeting a constraint in a CONJUNCT
+> (`min(1024) & *8080`) does not yet resolve to the default — use the
+> disjunct form (`*8080 | min(1024)`) today.
 
 ### Vocabulary
 

@@ -102,6 +102,13 @@ import { PrefFuncVal } from './val/PrefFuncVal'
 import { CloseFuncVal } from './val/CloseFuncVal'
 import { OpenFuncVal } from './val/OpenFuncVal'
 import { SuperFuncVal } from './val/SuperFuncVal'
+import {
+  MinConstraintVal,
+  MaxConstraintVal,
+  AboveConstraintVal,
+  BelowConstraintVal,
+  NeqConstraintVal,
+} from './val/ConstraintVal'
 
 
 const asPlugin = (p: unknown): Plugin => p as Plugin
@@ -392,6 +399,16 @@ help isolate the syntax error.`,
     close: CloseFuncVal,
     open: OpenFuncVal,
     super: SuperFuncVal,
+
+    // The constraint algebra's Band A atoms (G1 phase 1;
+    // docs/reference-language.md, "The constraint algebra"): bounds
+    // and exclusion enter through the function registry — the
+    // established extension point — with zero grammar change.
+    min: MinConstraintVal,
+    max: MaxConstraintVal,
+    above: AboveConstraintVal,
+    below: BelowConstraintVal,
+    neq: NeqConstraintVal,
   }
 
 
@@ -1042,6 +1059,34 @@ function makeModelResolver(options: any) {
 // the aontu val rule conversions (mirrors asVal in go/lang.go; like
 // there, source text is unavailable, so an integral number is an
 // integer).
+// The targeted parse hint for CUE-trained authors and models: `>` and
+// `<` are not Aontu operators (the op-chars reservation stands), and an
+// agent that emits `number > 0` should be redirected to the bound
+// atoms, not left with a bare "unexpected character". Appended to a
+// parse error's message when the source carries an unquoted `<` or
+// `>`; the Go twin is opCharHint in go/lang.go, byte-identical text.
+function opCharHint(src: string): string {
+  let q = ''
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i]
+    if ('' !== q) {
+      if (c === q && '\\' !== src[i - 1]) {
+        q = ''
+      }
+      continue
+    }
+    if ('"' === c || '\'' === c || '`' === c) {
+      q = c
+    }
+    else if ('<' === c || '>' === c) {
+      return '\nThe > and < characters are not Aontu operators: write the ' +
+        'bound functions min(x), max(x), above(x), below(x) instead.'
+    }
+  }
+  return ''
+}
+
+
 function rawToVal(n: any): Val {
   if (null == n) {
     return new NullVal({ peg: null })
@@ -1164,7 +1209,7 @@ class Lang {
           why: 'parse',
           err: new NilVal({
             why: 'syntax',
-            msg: e.message,
+            msg: e.message + opCharHint(src),
             err: e,
           })
         })

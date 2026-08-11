@@ -1537,6 +1537,13 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 				for _, t := range terms[1:] {
 					args = append(args, asVal(t))
 				}
+				if constraintAtoms[name] {
+					sp := -1
+					if r.ON > 0 {
+						sp = r.O0.SI
+					}
+					return newConstraint(name, args, sp)
+				}
 				return newFunc(name, args)
 			}
 			return asVal(terms[len(terms)-1])
@@ -1736,7 +1743,7 @@ func parseBase(src, base string) (Val, error) {
 		// the INNER syntax code that leads errs() on the thrown error,
 		// so `syntax` is the cross-port first-code for a source that
 		// fails to parse (pinned by error.tsv errc-parse-syntax).
-		return newMap(), &AontuError{Msg: err.Error(), Code: "syntax"}
+		return newMap(), &AontuError{Msg: err.Error() + opCharHint(src), Code: "syntax"}
 	}
 	if out == nil {
 		return newMap(), nil
@@ -1744,4 +1751,32 @@ func parseBase(src, base string) (Val, error) {
 	root := asVal(out)
 	setPaths(root, []string{})
 	return root, nil
+}
+
+// opCharHint is the targeted parse hint for CUE-trained authors and
+// models: `>` and `<` are not Aontu operators (the op-chars reservation
+// stands), and an agent that emits `number > 0` should be redirected to
+// the bound atoms, not left with a bare "unexpected character".
+// Appended to a parse error's message when the source carries an
+// unquoted `<` or `>`; the TS twin is opCharHint in ts/src/lang.ts,
+// byte-identical text. The chars of interest are all ASCII, so a
+// byte scan matches the TS code-unit scan exactly.
+func opCharHint(src string) string {
+	q := byte(0)
+	for i := 0; i < len(src); i++ {
+		c := src[i]
+		if 0 != q {
+			if c == q && (0 == i || '\\' != src[i-1]) {
+				q = 0
+			}
+			continue
+		}
+		if '"' == c || '\'' == c || '`' == c {
+			q = c
+		} else if '<' == c || '>' == c {
+			return "\nThe > and < characters are not Aontu operators: write the " +
+				"bound functions min(x), max(x), above(x), below(x) instead."
+		}
+	}
+	return ""
 }

@@ -13,11 +13,14 @@ import (
 )
 
 // funcSet is the set of recognised built-in function names (mirrors the
-// funcMap in ts/src/lang.ts).
+// funcMap in ts/src/lang.ts). The constraint atoms (constraintAtoms in
+// constraint.go) are members so name recognition stays in one set; the
+// func-paren handler routes them to newConstraint, not newFunc.
 var funcSet = map[string]bool{
 	"upper": true, "lower": true, "copy": true, "key": true,
 	"pref": true, "super": true, "type": true, "hide": true,
 	"move": true, "path": true, "close": true, "open": true,
+	"min": true, "max": true, "above": true, "below": true, "neq": true,
 }
 
 // BuiltinFuncNames returns the recognised built-in function names in

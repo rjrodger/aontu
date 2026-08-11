@@ -273,6 +273,10 @@ func (s *ScalarVal) Unify(peer Val, ctx *Ctx) Val {
 	if sk, ok := peer.(*ScalarKindVal); ok {
 		return sk.Unify(s, ctx)
 	}
+	if pc, ok := peer.(*ConstraintVal); ok {
+		// The constraint algebra owns membership (constraint.go admit).
+		return pc.Unify(s, ctx)
+	}
 	if ps, ok := peer.(*ScalarVal); ok {
 		// Identity is kind AND value (D2). scalarPegSame, not `==`: the
 		// exact leaves hold pointers, and `==` would compare addresses.
@@ -336,6 +340,12 @@ func (k *ScalarKindVal) Gen(ctx *Ctx) (any, error) {
 func (k *ScalarKindVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil || isTop(peer) {
 		return k
+	}
+	if pc, ok := peer.(*ConstraintVal); ok {
+		// The constraint algebra owns the kind-meets-constraint rules
+		// (narrowing, domain checks) -- delegate, so disjunct trials and
+		// direct drives agree with the sorted conjunct fold.
+		return pc.Unify(k, ctx)
 	}
 	if ps, ok := peer.(*ScalarVal); ok {
 		// A kind admits a concrete value of that kind, and a supertype

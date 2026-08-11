@@ -47,6 +47,7 @@ const PrefFuncVal_1 = require("./val/PrefFuncVal");
 const CloseFuncVal_1 = require("./val/CloseFuncVal");
 const OpenFuncVal_1 = require("./val/OpenFuncVal");
 const SuperFuncVal_1 = require("./val/SuperFuncVal");
+const ConstraintVal_1 = require("./val/ConstraintVal");
 const asPlugin = (p) => p;
 // Build the Val for a matched `0d` literal (see the `0d` value matcher
 // below). Leaf by source: digits only is a biginteger, a `.` or an
@@ -295,6 +296,15 @@ help isolate the syntax error.`,
         close: CloseFuncVal_1.CloseFuncVal,
         open: OpenFuncVal_1.OpenFuncVal,
         super: SuperFuncVal_1.SuperFuncVal,
+        // The constraint algebra's Band A atoms (G1 phase 1;
+        // docs/reference-language.md, "The constraint algebra"): bounds
+        // and exclusion enter through the function registry — the
+        // established extension point — with zero grammar change.
+        min: ConstraintVal_1.MinConstraintVal,
+        max: ConstraintVal_1.MaxConstraintVal,
+        above: ConstraintVal_1.AboveConstraintVal,
+        below: ConstraintVal_1.BelowConstraintVal,
+        neq: ConstraintVal_1.NeqConstraintVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -821,6 +831,32 @@ function makeModelResolver(options) {
 // the aontu val rule conversions (mirrors asVal in go/lang.go; like
 // there, source text is unavailable, so an integral number is an
 // integer).
+// The targeted parse hint for CUE-trained authors and models: `>` and
+// `<` are not Aontu operators (the op-chars reservation stands), and an
+// agent that emits `number > 0` should be redirected to the bound
+// atoms, not left with a bare "unexpected character". Appended to a
+// parse error's message when the source carries an unquoted `<` or
+// `>`; the Go twin is opCharHint in go/lang.go, byte-identical text.
+function opCharHint(src) {
+    let q = '';
+    for (let i = 0; i < src.length; i++) {
+        const c = src[i];
+        if ('' !== q) {
+            if (c === q && '\\' !== src[i - 1]) {
+                q = '';
+            }
+            continue;
+        }
+        if ('"' === c || '\'' === c || '`' === c) {
+            q = c;
+        }
+        else if ('<' === c || '>' === c) {
+            return '\nThe > and < characters are not Aontu operators: write the ' +
+                'bound functions min(x), max(x), above(x), below(x) instead.';
+        }
+    }
+    return '';
+}
 function rawToVal(n) {
     if (null == n) {
         return new NullVal_1.NullVal({ peg: null });
@@ -922,7 +958,7 @@ class Lang {
                     why: 'parse',
                     err: new NilVal_1.NilVal({
                         why: 'syntax',
-                        msg: e.message,
+                        msg: e.message + opCharHint(src),
                         err: e,
                     })
                 });
