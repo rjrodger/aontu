@@ -13,3 +13,25 @@ deep	gen	a:b:c:d:e:1	{"a":{"b":{"c":{"d":{"e":1}}}}}
 deep-merge	gen	a:b:c:1 a:b:d:2 a:e:3	{"a":{"b":{"c":1,"d":2},"e":3}}
 wide-merge	gen	a:b:c:x:1\na:b:c:y:2\na:b:d:x:3	{"a":{"b":{"c":{"x":1,"y":2},"d":{"x":3}}}}
 type-narrow-deep	gen	a:b:c:d:e:number\na:b:c:d:e:42	{"a":{"b":{"c":{"d":{"e":42}}}}}
+# MAP KEY ORDER IS CODE POINT ORDER, INCLUDING ABOVE THE BMP.
+#
+# JavaScript compares strings by UTF-16 CODE UNIT, so an astral character
+# -- stored as a surrogate pair beginning D800-DBFF -- sorts BEFORE every
+# character in U+E000-U+FFFF. Go sorts map keys as UTF-8 bytes, which is
+# code point order. The shared suite had no key above the BMP at all,
+# which is why two different orders shipped while three separate comments
+# in the tree asserted the ports agreed.
+#
+# Code point order wins: Go's generate() hands back a native map, so a
+# consumer's own json.Marshal sorts byte-wise whatever the engine does.
+#
+# The U+D7FF/U+E000/U+10000 row is the discriminator -- it shows the
+# divergence is confined to the range above the surrogate block, since
+# U+D7FF is ordered identically by both.
+astral-key-order-vs-pua	gens	x:{"😀":1,"":2}	{"x":{"":2,"😀":1}}
+astral-key-order-vs-pua-canon	canon	x:{"😀":1,"":2}	{"x":{"":2,"😀":1}}
+astral-key-order-vs-bmp-max	gens	x:{"😀":1,"￿":2}	{"x":{"￿":2,"😀":1}}
+astral-key-order-around-surrogates	gens	x:{"퟿":1,"":2,"𐀀":3}	{"x":{"퟿":1,"":2,"𐀀":3}}
+astral-key-order-replacement-char	gens	x:{"�":1,"💩":2}	{"x":{"�":1,"💩":2}}
+astral-key-order-ascii-first	gens	x:{"😀":1,"a":2,"Ａ":3}	{"x":{"a":2,"Ａ":3,"😀":1}}
+astral-key-order-nested	gens	x:{"😀":{"😀":1,"":2},"":3}	{"x":{"":3,"😀":{"":2,"😀":1}}}
