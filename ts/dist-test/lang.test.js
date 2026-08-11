@@ -300,6 +300,28 @@ let P = lang.parse.bind(lang);
         (0, expect_1.expect)(v10.canon).equal('{&:"b"&string,"a":"b"}');
         (0, expect_1.expect)(v10.unify(TOP, makeCtx()).gen(ctx)).equal({ a: 'b' });
     });
+    // PARSE-level canon of nested junctions: a junction child that is
+    // itself a junction with more than one term is parenthesised
+    // (JunctionVal.canon), so the text reparses to the same structure.
+    // No spec mode observes parse-level canon (the shared suite is
+    // unify-level), so this table is pinned by per-port twins: the Go
+    // twin with the SAME rows is TestParseCanonNestedJunctions in
+    // go/aontu_test.go. Closes the issue #30 divergence.
+    (0, node_test_1.it)('parse-canon-nested-junctions', () => {
+        const rows = [
+            ['a:(1|2)&3', '{"a":(1|2)&3}'],
+            ['a:1|2&3', '{"a":1|(2&3)}'],
+            ['a:1&2|3', '{"a":(1&2)|3}'],
+            ['a:(1&2)|3', '{"a":(1&2)|3}'],
+            ['a:1|2|3', '{"a":(1|2)|3}'],
+            ['a:1&2&3', '{"a":(1&2)&3}'],
+            ['a:(1|2)&(3|4)', '{"a":(1|2)&(3|4)}'],
+            ['a:1&(2|3)&4', '{"a":(1&(2|3))&4}'],
+        ];
+        for (const [src, canon] of rows) {
+            (0, expect_1.expect)(P(src).canon).equal(canon);
+        }
+    });
 });
 function makeCtx(opts) {
     return new ctx_1.AontuContext(opts || { root: new MapVal_1.MapVal({ peg: {} }) });

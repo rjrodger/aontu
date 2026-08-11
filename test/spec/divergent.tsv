@@ -63,21 +63,6 @@
 #
 # ---------------------------------------------------------------------
 #
-# OPEN -- parse-level canon of nested &/| differs.
-#   issue: #30. Only unify(src).canon is in parity; the raw
-#   parse(src).canon of nested junctions is parenthesised in TS and
-#   flat in Go. Invisible to the shared spec (unify-level), so the fix
-#   must land with its own pin (a new mode or per-port twins).
-#
-#   Divergent input:  a:(1|2)&3   (parse-level canon, BEFORE unify)
-#   TypeScript: parenthesised nested structure
-#   Go:         flat term list
-#
-#   Not simply fixed because parse-level canon has no spec mode to pin
-#   it, and the tree-shape question is partly upstream (@tabnas/expr).
-#
-# ---------------------------------------------------------------------
-#
 # OPEN -- invalid sources fail at different stages.
 #   issue: #31. A source invalid in both ports can be a parse error in
 #   one and a unify/generate error in the other, which

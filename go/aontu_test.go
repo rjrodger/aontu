@@ -89,3 +89,34 @@ func TestVersionFormat(t *testing.T) {
 		t.Fatalf("VERSION is not a plain semver triple: %q", VERSION)
 	}
 }
+
+// TestParseCanonNestedJunctions pins PARSE-level canon of nested
+// junctions: a junction child that is itself a junction with more than
+// one term is parenthesised (the TS JunctionVal.canon rule), so the
+// text reparses to the same structure — `(1|2)&3` must not print as
+// the differently-parsing `1|2&3`. No spec mode observes parse-level
+// canon (the shared suite is unify-level), so this table is pinned by
+// per-port twins: the TS twin with the SAME rows is
+// parse-canon-nested-junctions in ts/test/lang.test.ts. Closes the
+// issue #30 divergence.
+func TestParseCanonNestedJunctions(t *testing.T) {
+	rows := []struct{ src, canon string }{
+		{"a:(1|2)&3", `{"a":(1|2)&3}`},
+		{"a:1|2&3", `{"a":1|(2&3)}`},
+		{"a:1&2|3", `{"a":(1&2)|3}`},
+		{"a:(1&2)|3", `{"a":(1&2)|3}`},
+		{"a:1|2|3", `{"a":(1|2)|3}`},
+		{"a:1&2&3", `{"a":(1&2)&3}`},
+		{"a:(1|2)&(3|4)", `{"a":(1|2)&(3|4)}`},
+		{"a:1&(2|3)&4", `{"a":(1&(2|3))&4}`},
+	}
+	for _, r := range rows {
+		v, err := New().Parse(r.src)
+		if err != nil {
+			t.Fatalf("parse %q: %v", r.src, err)
+		}
+		if got := v.Canon(); got != r.canon {
+			t.Fatalf("parse canon mismatch\n src:  %q\n want: %s\n got:  %s", r.src, r.canon, got)
+		}
+	}
+}

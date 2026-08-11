@@ -444,6 +444,30 @@ describe('lang', function() {
     expect(v10.unify(TOP, makeCtx()).gen(ctx)).equal({ a: 'b' })
   })
 
+
+  // PARSE-level canon of nested junctions: a junction child that is
+  // itself a junction with more than one term is parenthesised
+  // (JunctionVal.canon), so the text reparses to the same structure.
+  // No spec mode observes parse-level canon (the shared suite is
+  // unify-level), so this table is pinned by per-port twins: the Go
+  // twin with the SAME rows is TestParseCanonNestedJunctions in
+  // go/aontu_test.go. Closes the issue #30 divergence.
+  it('parse-canon-nested-junctions', () => {
+    const rows: [string, string][] = [
+      ['a:(1|2)&3', '{"a":(1|2)&3}'],
+      ['a:1|2&3', '{"a":1|(2&3)}'],
+      ['a:1&2|3', '{"a":(1&2)|3}'],
+      ['a:(1&2)|3', '{"a":(1&2)|3}'],
+      ['a:1|2|3', '{"a":(1|2)|3}'],
+      ['a:1&2&3', '{"a":(1&2)&3}'],
+      ['a:(1|2)&(3|4)', '{"a":(1|2)&(3|4)}'],
+      ['a:1&(2|3)&4', '{"a":(1&(2|3))&4}'],
+    ]
+    for (const [src, canon] of rows) {
+      expect(P(src).canon).equal(canon)
+    }
+  })
+
 })
 
 

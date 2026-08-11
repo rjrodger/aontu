@@ -23,7 +23,8 @@ func (d *DisjunctVal) superior() Val { return top() }
 func (d *DisjunctVal) Canon() string {
 	parts := make([]string, len(d.peg))
 	for i, m := range d.peg {
-		parts[i] = m.Canon()
+		// Parenthesise nested junction children (see junctChildCanon).
+		parts[i] = junctChildCanon(m)
 	}
 	return strings.Join(parts, "|")
 }
