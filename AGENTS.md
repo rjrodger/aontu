@@ -396,6 +396,21 @@ only divergences that are expected to be fixed:
   juxtapositions (`1'00]...`, `"q k""?:...`) — one side errors, the
   other parses to a (differently shaped) junk value. Well-formed
   sources are unaffected.
+
+  The same bullet covers a source that is not well-formed **UTF-8**: the
+  two ports may produce a different NUMBER of U+FFFD replacement
+  characters for the same invalid bytes. A truncated three-byte sequence
+  (`E2 82`) inside a string yields ONE replacement character in
+  TypeScript and TWO in Go, because Node replaces invalid bytes as it
+  decodes the file to a UTF-16 string, while Go carries the raw bytes
+  through to the encoder. No spec rows: the `src` column cannot carry raw
+  invalid bytes, and by this document's own rule a divergence declared
+  permanent does not go in the ledger either.
+
+  Distinct from this, and NOT permanent: a lone *surrogate* in a quoted
+  string is folded to U+FFFD by Go, which conflates distinct values.
+  That one is tracked in `test/spec/divergent.tsv` and issue #24, because
+  it breaks a lattice law rather than merely reshaping junk.
 > **Previously divergent, now fixed:** root-level spreads over `$var`
 > (and other expression) keys. `k1:$flag &:boolean` used to raise an
 > internal error in TS: the expr plugin consumed the `&` as an infix
