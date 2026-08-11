@@ -22,7 +22,7 @@ import (
 // so treat opening an untrusted source as you would running it. If you
 // embed aontu in a less-trusted context, supply a custom resolver via
 // MultiSourceOptions that confines reads to an allowed root.
-func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOptions, _ *jsonic.Context) multisource.Resolution {
+func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOptions, ctx *jsonic.Context) multisource.Resolution {
 	res := multisource.Resolution{PathSpec: spec}
 
 	var potentials []string
@@ -50,10 +50,10 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 		}
 	}
 	// A missing source must be an error, not a silently dropped load
-	// (the multisource plugin injects nil for Found=false). Report it as
-	// "found" with the notfound kind; its processor injects an error nil
-	// whose message matches the TS multisource_not_found error, and
-	// parseBase turns that into a parse failure.
+	// (the multisource plugin injects nil for Found=false). Record it in
+	// the parse meta bag -- which parseBase checks -- and mark the
+	// resolution so notFoundProcessor can give the tree an error value.
+	recordNotFound(ctx, res.Path)
 	res.Kind = notFoundKind
 	res.Found = true
 	return res
@@ -62,7 +62,65 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 // notFoundKind marks a Resolution for a source that could not be found.
 const notFoundKind = "aontu-notfound"
 
+// notFoundMetaKey is where a failed load is recorded for parseBase, in the
+// jsonic parse meta bag.
+//
+// WHY THE META BAG AND NOT THE PARSED TREE. The obvious design -- inject an
+// error nil and have parseBase find it by walking the result -- loses the
+// error whenever `@"file"` is a bare MAP MEMBER rather than a value:
+//
+//	a: @"nofile"     the nil becomes the value of `a`, and survives
+//	a:1 @"nofile"    the include MERGES into the enclosing map, and a nil
+//	                 contributes no keys, so it vanishes without trace
+//
+// The second is the shape a real config uses most (`@"base.aon"` at the top
+// of a file), and it produced a clean, plausible, INCOMPLETE document with
+// exit 0 and no diagnostic -- a deleted or mistyped include silently
+// yielding wrong config. The canonical TypeScript port raises during the
+// parse and never had this hole.
+//
+// Wrapping the nil in a map to survive the merge does NOT work either, and
+// the reason is worth recording so it is not attempted again: the plugin's
+// mergeIntoParent copies the loaded value's keys into the parent one by one,
+// so a wrapper carrying its own order list OVERWRITES the parent's and
+// destroys the sibling keys -- while a wrapper without one is skipped by
+// asValDepth, which converts only the keys the order list names.
+//
+// Recording at the point of DETECTION cannot be undone by anything
+// downstream: no merge, no unification and no disjunction pruning can drop a
+// fact that was never in the tree.
+//
+// The key carries the reserved sentinel prefix (see reservedKeyPrefix in
+// lang.go) for the reason that prefix exists -- it shares a namespace with
+// keys a source could otherwise write, and sources using the prefix are
+// already refused.
+const notFoundMetaKey = reservedKeyPrefix + "notfound"
+
+// recordNotFound notes a failed load in the parse meta bag.
+//
+// IT MUST BE CALLED FROM THE RESOLVER, NOT THE PROCESSOR. The resolver runs
+// with the TOP-LEVEL parse context, whose Meta is the very map parseBase
+// passed to ParseMeta; the processor runs inside the include's own SUB-PARSE,
+// whose Meta is a different map that nothing upstream reads. Verified by
+// probing both, after the processor version silently did nothing.
+//
+// Only the FIRST failure is kept: TypeScript raises on the first missing
+// source and stops, so reporting the first is what keeps the two ports'
+// messages in step when a document has several bad includes.
+func recordNotFound(ctx *jsonic.Context, path string) {
+	if nil == ctx || nil == ctx.Meta {
+		return
+	}
+	if _, seen := ctx.Meta[notFoundMetaKey]; !seen {
+		ctx.Meta[notFoundMetaKey] = "source not found: " + path
+	}
+}
+
 // notFoundProcessor injects the not-found error nil (see fileResolver).
+//
+// The failure is DETECTED via the meta bag, not here; this gives the tree an
+// error value where the include was a value position, so nothing reads a
+// hole before parseBase returns.
 func notFoundProcessor(res *multisource.Resolution, _ *multisource.MultiSourceOptions, _ *jsonic.Context, _ *jsonic.Jsonic) {
 	n := newNil("multisource_not_found")
 	n.msg = "source not found: " + res.Path

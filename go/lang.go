@@ -1622,7 +1622,27 @@ func parseBase(src, base string) (Val, error) {
 	if err != nil {
 		return newMap(), &AontuError{Msg: err.Error()}
 	}
-	out, err := lang.Parse(src)
+	// ParseMeta, not Parse: the meta bag is this parse's private channel
+	// back from the @"file" resolver, and it is how a failed load is
+	// reported (see notFoundMetaKey in source.go). A fresh map per call is
+	// what keeps it PER-PARSE, which matters because langForBase caches the
+	// parser -- the *jsonic.Jsonic here is shared across goroutines, so
+	// nothing parse-specific may be stored on it or on its options.
+	meta := map[string]any{}
+
+	out, err := lang.ParseMeta(src, meta)
+
+	// A failed @"file" load is a parse error in TS (the multisource plugin
+	// raises multisource_not_found during the parse); mirror that here.
+	//
+	// The meta check comes BEFORE the parse error, not after: a missing
+	// include can leave the parse failing for a secondary reason, and
+	// "source not found: x" is the diagnosis the user needs -- the cascade
+	// is noise.
+	if nf, found := meta[notFoundMetaKey].(string); found {
+		return newMap(), &AontuError{Msg: nf}
+	}
+
 	if err != nil {
 		return newMap(), &AontuError{Msg: err.Error()}
 	}
@@ -1631,69 +1651,5 @@ func parseBase(src, base string) (Val, error) {
 	}
 	root := asVal(out)
 	setPaths(root, []string{})
-	// A failed @"file" load is a parse error in TS (the multisource
-	// plugin raises multisource_not_found during the parse); mirror that
-	// by surfacing the injected not-found nil (see source.go) here.
-	if nf := findNotFoundNil(root); nf != nil {
-		return newMap(), &AontuError{Msg: nf.msg}
-	}
 	return root, nil
-}
-
-// findNotFoundNil walks a parsed Val tree for a multisource_not_found
-// nil injected by notFoundProcessor (source.go).
-func findNotFoundNil(v Val) *NilVal {
-	switch t := v.(type) {
-	case *NilVal:
-		if t.why == "multisource_not_found" {
-			return t
-		}
-	case *MapVal:
-		if t.spread != nil {
-			if n := findNotFoundNil(t.spread); n != nil {
-				return n
-			}
-		}
-		for _, k := range t.keys {
-			if n := findNotFoundNil(t.peg[k]); n != nil {
-				return n
-			}
-		}
-	case *ListVal:
-		if t.spread != nil {
-			if n := findNotFoundNil(t.spread); n != nil {
-				return n
-			}
-		}
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	case *ConjunctVal:
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	case *DisjunctVal:
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	case *PrefVal:
-		if t.peg != nil {
-			if n := findNotFoundNil(t.peg); n != nil {
-				return n
-			}
-		}
-	case *FuncVal:
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	}
-	return nil
 }
