@@ -1229,43 +1229,19 @@ func tsNumCheck(l *jsonic.Lex) *jsonic.LexCheckResult {
 // engine accepts.
 // numberExcluded reports whether a matched number source must be
 // declined by the Go engine so that it lexes as text, matching the
-// canonical TypeScript engine. Two independent reasons, below.
+// canonical TypeScript engine.
+//
+// It used to carry a second reason, upperBasePrefix: the TS number
+// matcher spelled the base prefixes lower-case only, so `0X1F` fell to
+// text there while Go read 31, and Go mirrored the quirk to stay in step.
+// That function documented its own exit condition -- "if the upstream
+// @tabnas TypeScript lexer ever gains the upper-case spellings, delete
+// this function and let BOTH engines accept them, the spec rows will fail
+// loudly and say so". @tabnas/parser 0.8.3 gained them, the base-upper-*
+// rows duly failed, and this is that deletion. Both engines now read
+// `0X1F` as 31, exactly as JavaScript itself always has.
 func numberExcluded(msrc string) bool {
-	return sepInvalid(msrc) || upperBasePrefix(msrc)
-}
-
-// upperBasePrefix reports whether a matched number source carries an
-// UPPER-CASE base prefix (0X, 0O, 0B).
-//
-// The canonical TypeScript engine's number matcher spells the base
-// prefixes lower-case only, so `0X1F` never matches there and falls
-// through to text. The Go matcher accepts either case, which made
-// `a:0X1F` the string "0X1F" in TypeScript and the number 31 in Go —
-// a silent value-level divergence, the worst failure mode there is.
-//
-// TypeScript is the canonical implementation (AGENTS.md), so Go follows
-// it: both engines now read an upper-case prefix as text, pinned by the
-// base-upper-* rows in test/spec/number-model.tsv.
-//
-// This is deliberately a lexer quirk being mirrored, not a language
-// decision defended on its merits: JavaScript itself accepts 0X1F, so
-// if the upstream @tabnas TypeScript lexer ever gains the upper-case
-// spellings, delete this function and let BOTH engines accept them —
-// the spec rows will fail loudly and say so. The prefix LETTER is the
-// only thing at issue: an upper-case exponent marker (1E21) is accepted
-// by both engines and is pinned by exp-upper-canon.
-func upperBasePrefix(msrc string) bool {
-	s := msrc
-	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
-		s = s[1:]
-	}
-	if len(s) > 1 && s[0] == '0' {
-		switch s[1] {
-		case 'X', 'O', 'B':
-			return true
-		}
-	}
-	return false
+	return sepInvalid(msrc)
 }
 
 func sepInvalid(msrc string) bool {

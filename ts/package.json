@@ -52,7 +52,7 @@
     "@tabnas/expr": "0.5.1",
     "@tabnas/jsonic": "0.6.0",
     "@tabnas/multisource": "0.5.1",
-    "@tabnas/parser": "0.8.0",
+    "@tabnas/parser": "0.8.4",
     "@tabnas/path": "0.3.1"
   },
   "devDependencies": {

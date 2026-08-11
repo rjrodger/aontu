@@ -160,12 +160,30 @@ hex-zero	gen	x:0x0	{"x":0}
 hex-max-int64-hints-0d	err	x:0x7fffffffffffffff	0d
 hex-pow63-canon	canon	x:0x8000000000000000	{"x":9223372036854776000.0}
 hex-pow63-integer-err	err	x:0x8000000000000000 & integer	Cannot unify scalar values
-base-upper-hex-text	gen	x:0X1F	{"x":"0X1F"}
-base-upper-octal-text	gen	x:0O17	{"x":"0O17"}
-base-upper-binary-text	gen	x:0B1010	{"x":"0B1010"}
-base-upper-hex-big-text	gen	x:0Xffffffffffffffff	{"x":"0Xffffffffffffffff"}
-base-upper-in-list-text	gen	x:[0X1F,1]	{"x":["0X1F",1]}
-base-upper-hex-string	gen	x:0X1F & string	{"x":"0X1F"}
+# FLIPPED by @tabnas/parser 0.8.3. These rows used to assert that an
+# UPPER-CASE base prefix lexes as TEXT -- `x:0X1F` was the string
+# "0X1F" -- because the canonical TypeScript number matcher spelled the
+# prefixes lower-case only, and go/lang.go mirrored the quirk with an
+# upperBasePrefix exclusion so the ports would agree.
+#
+# That function documented its own exit condition: if the upstream TS
+# lexer ever gained the upper-case spellings, delete it and let BOTH
+# engines accept them, and these rows would fail loudly and say so.
+# parser 0.8.3 gained them, these rows duly failed, and the exclusion is
+# gone. `0X1F` is now 31 in both ports, as JavaScript itself always read
+# it. The prefix LETTER was the only thing at issue -- an upper-case
+# EXPONENT marker (1E21) was always accepted and is pinned by
+# exp-upper-canon.
+base-upper-hex	gen	x:0X1F	{"x":31}
+base-upper-octal	gen	x:0O17	{"x":15}
+base-upper-binary	gen	x:0B1010	{"x":10}
+base-upper-in-list	gen	x:[0X1F,1]	{"x":[31,1]}
+# Now a NUMBER, so it meets the same two rules its lower-case twin does:
+# D7 refuses a literal binary64 cannot carry exactly, and a number does
+# not unify with `string`. Both rows previously passed only because the
+# value was a string.
+base-upper-hex-big-err	err	x:0Xffffffffffffffff	not exactly representable
+base-upper-hex-string-err	err	x:0X1F & string	Cannot unify scalar values
 #
 # Digit separators are legal only as a SINGLE separator BETWEEN
 # digits. A run that breaks the rule is not a number at all: the whole

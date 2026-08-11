@@ -42,3 +42,41 @@ number-neg-overflow-err	err	a:-1e999	Cannot resolve value
 hex-big-err	err	a:0xffffffffffffffff	exactly representable
 hex-huge	gen	a:0x10000000000000000000000000000000	{"a":2.1267647932558654e+37}
 hex-huge-canon	canon	a:0x10000000000000000000000000000000	{"a":2.1267647932558654e+37}
+#
+# UTF-16 SURROGATE PAIRS IN QUOTED STRINGS
+#
+# An astral character has several spellings and all of them must denote
+# the same value. Three of these used to be Go-only failures: the pair
+# lookahead in @tabnas/parser's Go lexer lived inside the 4-hex escape
+# branch and recognised only its own spelling, while the braced branch
+# had no lookahead at all -- so a braced half, or either mixed pair,
+# decoded to two U+FFFD and Go REJECTED documents TypeScript accepted
+# (issue #24). Fixed upstream in parser 0.8.4 by pairing on the decoded
+# code unit sequence, so the spelling of each half no longer matters.
+#
+# In this file a cell's \\ becomes one backslash, so `\\u{d83d}` reaches
+# the engine as the seven characters \u{d83d}.
+surrogate-literal	gen	x:"😀"	{"x":"😀"}
+surrogate-braced-whole	gen	x:"\\u{1F600}"	{"x":"😀"}
+surrogate-4hex-pair	gen	x:"\\ud83d\\ude00"	{"x":"😀"}
+surrogate-braced-pair	gen	x:"\\u{d83d}\\u{de00}"	{"x":"😀"}
+surrogate-mixed-4hex-braced	gen	x:"\\ud83d\\u{de00}"	{"x":"😀"}
+surrogate-mixed-braced-4hex	gen	x:"\\u{d83d}\\ude00"	{"x":"😀"}
+# Escaped and literal spellings must UNIFY -- the value, not the source,
+# is what unification sees. This pair errored in Go before the fix.
+surrogate-escaped-unifies-literal	gen	x:"\\u{d83d}\\u{de00}"\nx:"😀"	{"x":"😀"}
+# In every position, not just a bare value.
+surrogate-map-key	gen	"\\u{d83d}\\u{de00}":1	{"😀":1}
+surrogate-list-element	gen	x:["\\u{d83d}\\u{de00}"]	{"x":["😀"]}
+surrogate-nested-map-leaf	gen	a:{b:"\\u{d83d}\\u{de00}"}	{"a":{"b":"😀"}}
+# Bare/unquoted text processes no escapes, so the backslash stays
+# literal. This agreed across ports throughout and must keep agreeing --
+# a fix inside the string matcher that reaches here has overreached.
+#
+# Note the asymmetry in the escaping: SRC passes through the runner's
+# unescape only, so `\\ud800` is the six characters \ud800. EXPECT passes
+# through unescape AND THEN JSON.parse, so it needs `\\\\ud800` -- four
+# backslashes -- to end at one literal backslash. Written with two, the
+# expect becomes a JSON \u escape and the row asserts a LONE SURROGATE
+# instead of the literal text, which is the opposite of the claim.
+surrogate-bare-text-untouched	gen	x:a\\ud800	{"x":"a\\\\ud800"}

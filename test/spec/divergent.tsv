@@ -37,19 +37,21 @@
 #
 # 1. LONE SURROGATES IN QUOTED STRINGS ARE FOLDED TO U+FFFD BY GO
 #    issue: #24
-#    reason: the replacement happens at LEX time inside the pinned
-#      dependency github.com/tabnas/parser/go v0.8.0 (lexer.go
-#      matchString), where it is deliberate and documented
-#      (doc/differences.md). Nothing in this repository can recover a
-#      surrogate the lexer already discarded: no encoder setting, custom
-#      Marshaler or json.RawMessage trick reaches it, and SetEscapeHTML is
-#      a dead end. Whether aontu should instead REFUSE a lone surrogate in
-#      both ports is an open language question -- it would restore the
-#      lattice law, but in TypeScript it removes a working capability, so
-#      it needs a deliberate decision rather than a patch.
+#    reason: the replacement happens at LEX time inside
+#      github.com/tabnas/parser/go (lexer.go matchString), where it is
+#      deliberate and documented (doc/differences.md line 327: "Lone
+#      surrogates | Preserved (JS strings allow them) | U+FFFD (matches
+#      encoding/json)"). Nothing in this repository can recover a surrogate
+#      the lexer already discarded: no encoder setting, custom Marshaler or
+#      json.RawMessage trick reaches it, and SetEscapeHTML is a dead end.
+#      Whether aontu should instead REFUSE a lone surrogate in both ports is
+#      an open language question -- it would restore the lattice law, but in
+#      TypeScript it removes a working capability, so it needs a deliberate
+#      decision rather than a patch. AWAITING SIGN-OFF; no code either way.
 #    detail: confined to QUOTED strings (all three quote styles) and to
 #      both escape spellings. Bare text is unaffected: `a\ud800:1` agrees
-#      in both ports, because the backslash stays literal there.
+#      in both ports, because the backslash stays literal there -- pinned
+#      now by scalar.tsv `surrogate-bare-text-untouched`.
 #      x:"\ud800"           ts -> {"x":"\ud800"}   (code unit d800)
 #                           go -> {"x":"\ufffd"}   (bytes ef bf bd)
 #      It is a VALUE difference, not an output-encoding artifact --
@@ -60,19 +62,21 @@
 #      x:"\ud800"\nx:"\ufffd"  ts -> error, Cannot unify values at $.x
 #                              go -> SUCCESS, {"x":"\ufffd"}
 #      As map KEYS this silently merges distinct entries.
-#    and in the OPPOSITE direction: the braced spelling never pairs in Go,
-#      so Go rejects a document TypeScript accepts.
-#      x:"\u{d83d}\u{de00}"  ts -> {"x":"\U0001F600"}
-#                            go -> {"x":"\ufffd\ufffd"}
-#      The pair lookahead exists only in the 4-hex branch of the upstream
-#      lexer; the braced branch writes the rune immediately. That half is
-#      a plain upstream BUG and should be fixed before any refusal rule is
-#      specified, because until it is, Go cannot tell a paired braced half
-#      from a lone one.
+#    NARROWED 2026-08-11: this entry used to carry a SECOND, opposite-
+#      direction defect -- the braced spelling never paired in Go, so
+#      `x:"\u{d83d}\u{de00}"` was two U+FFFD there and Go REJECTED a
+#      document TypeScript accepted. That was a plain upstream bug, not a
+#      language question: the pair lookahead lived inside the 4-hex branch
+#      and recognised only its own spelling, while the braced branch wrote
+#      its rune immediately. Both MIXED spellings failed too. Fixed in
+#      @tabnas/parser 0.8.4 by pairing on the decoded code unit sequence,
+#      and pinned by real rows in scalar.tsv (`surrogate-*`), which is
+#      where a resolved behaviour belongs -- only the lone-surrogate
+#      question remains here.
 #    what still AGREES, and must keep agreeing: every paired form --
-#      a literal astral character, \u{1F600}, a \uXXXX\uXXXX pair, an
-#      astral map key, an astral list element, and escaped-vs-literal
-#      equality. Only the braced-halves spelling breaks.
+#      a literal astral character, \u{1F600}, a \uXXXX\uXXXX pair, both
+#      braced and mixed pairs, an astral map key, an astral list element,
+#      and escaped-vs-literal equality. All of those now have spec rows.
 #    NOT this entry: map key ORDER above the BMP, which was a separate
 #      divergence and is fixed (code point order in both ports). A
 #      comparator cannot address this one -- the problem is key IDENTITY,
