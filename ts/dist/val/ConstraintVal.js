@@ -64,7 +64,12 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
     // Arguments must be concrete orderable scalars in phase 1;
     // reference-valued arguments are phase 4 (residuation).
     fromAtom(atom, args) {
-        const bad = (why) => { this.invalid = why; };
+        // Mark the residual invalid and report so (a plain boolean, so no
+        // void value is consumed by the callers' `return` statements).
+        const bad = (why) => {
+            this.invalid = why;
+            return true;
+        };
         if ('neq' === atom) {
             // Multiple arguments arrive from the func-paren grammar as one
             // entry holding the comma group: a raw array of Vals (or an
