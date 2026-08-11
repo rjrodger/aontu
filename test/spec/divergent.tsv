@@ -35,6 +35,107 @@
 #
 # ---------------------------------------------------------------------
 #
+# NOTE (2026-08-11): five entries below were RECLASSIFIED from
+# DIVERGENCE.md by maintainer decision -- previously accepted as
+# permanent, now debt to be fixed. Only the Unicode table vintage
+# remains in DIVERGENCE.md.
+#
+# ---------------------------------------------------------------------
+#
+# OPEN -- error message text: Go's rendering is abbreviated.
+#   issue: #29. TS renders `[aontu/<code>]` marker, a `Cannot ...
+#   at path <path>` headline, full hint text with worked examples, and
+#   two located source frames; Go renders a bare headline plus an
+#   abbreviated one-sentence hint.
+#
+#   Divergent input:  a:1 a:2
+#   TypeScript: "[aontu/scalar_value]: Cannot unify values at path
+#     $.a\n\nLiteral scalar values of the same kind can only unify if
+#     they are exactly equal. ..." (+ examples, + source frames)
+#   Go:         "Cannot unify value: 2 with value: 1\nLiteral scalar
+#     values of the same kind can only unify if they are exactly equal."
+#
+#   Not simply fixed because Go needs the full rendering ported: the
+#   mirrored hint table, the errmsg headline format, and located
+#   source frames (Go NilVal tracks a byte offset, not row/col).
+#   Meanwhile only err-row substrings and errc-row codes are
+#   contractual.
+#
+# ---------------------------------------------------------------------
+#
+# OPEN -- parse-level canon of nested &/| differs.
+#   issue: #30. Only unify(src).canon is in parity; the raw
+#   parse(src).canon of nested junctions is parenthesised in TS and
+#   flat in Go. Invisible to the shared spec (unify-level), so the fix
+#   must land with its own pin (a new mode or per-port twins).
+#
+#   Divergent input:  a:(1|2)&3   (parse-level canon, BEFORE unify)
+#   TypeScript: parenthesised nested structure
+#   Go:         flat term list
+#
+#   Not simply fixed because parse-level canon has no spec mode to pin
+#   it, and the tree-shape question is partly upstream (@tabnas/expr).
+#
+# ---------------------------------------------------------------------
+#
+# OPEN -- invalid sources fail at different stages.
+#   issue: #31. A source invalid in both ports can be a parse error in
+#   one and a unify/generate error in the other, which
+#   AontuError.Code now makes observable (parse-class vs other codes).
+#
+#   Divergent input:  k-x:1
+#   TypeScript: parse error (bare key containing `-` rejected)
+#   Go:         parses to a list holding an error nil; generate errors
+#
+#   Not simply fixed because the accept/reject split lives partly in
+#   the pinned @tabnas parser stack; cases need enumeration and the
+#   earlier (TS) stage adopted.
+#
+# ---------------------------------------------------------------------
+#
+# OPEN -- lone surrogates in quoted strings folded to U+FFFD by Go.
+#   issue: #24 (REOPENED 2026-08-11; the 2026-08-11 decision to accept
+#   this permanently is reversed -- parity is required). Go conflates
+#   values TS keeps distinct, breaking the lattice law that two
+#   different values never unify; as map keys it silently merges
+#   distinct entries.
+#
+#   Divergent input:  x:"\ud800" x:"�"
+#   TypeScript: error, Cannot unify values at $.x (values distinct)
+#   Go:         SUCCESS, {"x":"�"} (values conflated)
+#
+#   Not simply fixed because the fold happens at LEX time in the
+#   pinned @tabnas/parser Go lexer (deliberate upstream, matching
+#   encoding/json), and the direction is undecided: refuse unpaired
+#   surrogates in BOTH ports (restores the law, removes a working TS
+#   capability) or preserve in both (upstream lexer change + Go
+#   emission path). The upstream per-port pinning tests assert
+#   OPPOSITE results on purpose and must flip together with the fix.
+#   Paired forms all agree and keep their real rows (scalar.tsv
+#   surrogate-*).
+#
+# ---------------------------------------------------------------------
+#
+# OPEN -- malformed-input acceptance edges and invalid-UTF-8
+#   replacement counts.
+#   issue: #32. Degenerate inputs where one parser errors and the
+#   other produces differently-shaped junk; and invalid UTF-8 where
+#   the ports emit a different NUMBER of U+FFFD replacements.
+#
+#   Divergent inputs:  pref(1-3)   close(([]%))   1'00]...   "q k""?:...
+#     (acceptance: one side errors, the other parses to junk)
+#   And the byte sequence E2 82 (truncated three-byte UTF-8) inside a
+#   string:
+#   TypeScript: ONE U+FFFD (Node replaces at file decode)
+#   Go:         TWO U+FFFD (raw bytes carried to the encoder)
+#
+#   Not simply fixed because the acceptance split is largely upstream
+#   in the @tabnas stack, and the src column cannot carry raw invalid
+#   bytes -- fixes pin via per-port twin tests over byte fixtures.
+#   Well-formed sources are unaffected throughout.
+#
+# ---------------------------------------------------------------------
+#
 # OPEN -- deep reference chains: verdict diverges at 10+ links.
 #   issue: #26. A chain of plain references resolves one link per
 #   fixpoint pass in TypeScript, but Go's RefVal.Unify drives the found
@@ -93,20 +194,17 @@
 #   sequence rather than per escape spelling, and it now has real rows
 #   (scalar.tsv `surrogate-*`), which is where a resolved behaviour goes.
 #
-#   The LONE-SURROGATE half was never a bug -- it is deliberate upstream,
-#   and the question was whether aontu should refuse an unpaired surrogate
-#   in BOTH ports to restore the lattice law. DECLINED (2026-08-11): in Go
-#   a refusal removes nothing anyone can depend on, since the value is
-#   already destroyed, but in TypeScript it removes a working capability.
-#   A documented divergence was judged the smaller cost.
+#   The LONE-SURROGATE half was never a bug upstream -- it is deliberate
+#   there -- and the question was whether aontu should refuse an unpaired
+#   surrogate in BOTH ports to restore the lattice law. DECLINED
+#   (2026-08-11 morning): a documented divergence was judged the smaller
+#   cost, and the entry left this file as ACCEPTED, recorded in
+#   DIVERGENCE.md.
 #
-#   So it left this file in the OTHER direction from the entry above it:
-#   not fixed, but ACCEPTED. It is now in AGENTS.md "Known TS/Go
-#   divergences" with the cost stated plainly, per this file's own rule
-#   that permanent non-parity is documented there and not tracked here.
-#   That rule is why this entry is closed rather than left open forever:
-#   a debt register that accumulates decisions nobody intends to act on
-#   stops being read.
+#   REVERSED the same day: by maintainer decision the divergence is not
+#   acceptable and must be fixed. #24 is reopened and the case is OPEN
+#   again -- see its live entry ABOVE, which supersedes this note. This
+#   closed entry stays only for the braced-spelling half's history.
 #
 # ---------------------------------------------------------------------
 #

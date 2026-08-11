@@ -137,7 +137,9 @@ TypeScript and Go implementations. This is pinned, not promised:
   formatting) using each port's real emitter.
 - Error **codes** are stable and cross-implementation per the
   registry ([test/spec/errcodes.tsv](../test/spec/errcodes.tsv), `errc`
-  rows); full error message text is deliberately non-contractual.
+  rows); full error message text is not yet contractual — bringing it
+  into cross-port parity is tracked debt (issue #29), and until that
+  closes only asserted substrings and codes bind.
 - Expected values are **parity-probed**: obtained from both engines
   before a row is written, never copied from one (AGENTS.md).
 - Known disagreements live in exactly one place — the parity ledger —
@@ -214,6 +216,6 @@ Guarantees are as much about what will never be added:
 | code → class registry | [test/spec/errcodes.tsv](../test/spec/errcodes.tsv) + set-equality tests in both runners |
 | canon byte-stability | every `canon` row (strict equality, both runners) |
 | generated-JSON byte-stability | `gens` rows (docs/shared-spec.md) |
-| known open divergences | [test/spec/divergent.tsv](../test/spec/divergent.tsv) (currently: deep ref chains, issue #26) |
+| known open divergences | [test/spec/divergent.tsv](../test/spec/divergent.tsv) — each entry carries its tracking issue (#24, #26, #27, #29–#32 at the time of writing; only the Unicode table vintage remains permanent, in DIVERGENCE.md) |
 | resolver posture | SECURITY comment, `ts/src/lang.ts`; this document |
 | single-use trees | reference-api.md rule; `Aontu.parse` / Go `Parse` doc comments |

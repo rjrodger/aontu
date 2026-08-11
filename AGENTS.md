@@ -161,8 +161,10 @@ echo 'x:1.0' | node ts/dist/cli.js -c
 Both print `{"x":1.0}`, so that is the `canon` expectation and the row
 may be written. Drop `-c` from both for a `gen` row — the CLIs then
 print generated JSON. For an `err` row, probe the same way and assert a
-substring that **both** messages contain; error wording itself is not in
-parity (see [Known TS/Go divergences](DIVERGENCE.md)).
+substring that **both** messages contain; error wording itself is not
+YET in parity — bringing it into parity is tracked debt (issue #29,
+ledger entry in `test/spec/divergent.tsv`), so until that closes only
+the probed shared substring (and the `errc` code) is contractual.
 
 The TypeScript CLI runs the committed build, so run `make build-ts`
 before probing if `ts/src` has changed, or the probe answers for the old
@@ -201,7 +203,9 @@ appropriate spec file.
 The ledger is not the same list as
 [Known TS/Go divergences](DIVERGENCE.md). Those differ
 deliberately and permanently and are never going to be pinned, so they
-are not tracked as debt.
+are not tracked as debt. (After the 2026-08-11 reclassification that
+list holds a single entry — the Unicode table vintage; everything else
+that once lived there is now OPEN debt in the ledger.)
 
 [`docs/design/number-model.md`](docs/design/number-model.md) is the
 worked example of what this discipline catches. TypeScript classified a
