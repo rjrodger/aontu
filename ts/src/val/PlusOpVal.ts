@@ -21,6 +21,7 @@ import { BooleanVal } from '../val/BooleanVal'
 import { BigIntegerVal } from '../val/BigIntegerVal'
 import { BigDecimalVal } from '../val/BigDecimalVal'
 import { Decimal, decimalOverBudget } from '../val/Decimal'
+import { integerDigits } from '../val/numkind'
 import { isIntegerStorable } from '../val/numkind'
 import { OpBaseVal } from './OpBaseVal'
 
@@ -206,8 +207,21 @@ class PlusOpVal extends OpBaseVal {
 
 // The digits of an operand for string concatenation: no `0d` marker, no
 // R4 `.0` suffix — the plain rendering of the number, in every leaf.
+//
+// INTEGER KIND GOES THROUGH integerDigits. This was the THIRD site to
+// render an integer-kind peg with JavaScript's shortest round-tripping
+// form, so `"" + 1152921504606846976` produced "1152921504606847000" — a
+// different integer — where Go produced the exact digits. See #21 and
+// integerDigits, which exists so the set of such sites is greppable.
+//
+// The other leaves are already exact or already correct: a bigint
+// stringifies to its exact digits, a Decimal renders its own, and a FLOAT
+// must keep String() because its shortest form is the right answer and is
+// what Go prints too (`"a" + 1.0` is "a1").
 function digits(v: any, k: OpKind): string {
-  return 'bigdecimal' === k ? v.peg.toString() : String(v.peg)
+  return 'bigdecimal' === k ? v.peg.toString() :
+    'integer' === k ? integerDigits(v.peg) :
+      String(v.peg)
 }
 
 

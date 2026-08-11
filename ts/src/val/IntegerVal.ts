@@ -13,7 +13,7 @@ import { makeNilErr, AontuError } from '../err'
 
 import { ScalarVal } from './ScalarVal'
 import { Integer } from './ScalarKindVal'
-import { isIntegerKind } from './numkind'
+import { isIntegerKind, integerDigits } from './numkind'
 
 import {
   explainOpen,
@@ -48,7 +48,7 @@ class IntegerVal extends ScalarVal {
   // integral and inside the int64 window (isIntegerKind, enforced in the
   // constructor), so the bigint conversion cannot lose anything.
   get canon() {
-    return BigInt(this.peg as number).toString()
+    return integerDigits(this.peg as number)
   }
 
 

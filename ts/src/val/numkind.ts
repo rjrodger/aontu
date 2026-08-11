@@ -215,10 +215,40 @@ function stripSep(s: string): string {
 }
 
 
+// THE SINGLE RENDERING OF AN INTEGER-KIND PEG. Every site that turns one
+// into text must call this -- so that "how many rendering sites are there?"
+// is answerable by grepping this function's callers.
+//
+// That question has been answered wrongly twice. Issue #21 was the
+// divergence where TypeScript printed 2^60 as 1152921504606847000, a
+// DIFFERENT integer that merely rounds to the same double, because a JS
+// number's toString emits the shortest decimal that round-trips (at most 17
+// significant digits) while Go printed the exact value from its int64. It
+// was closed having fixed the two sites known at the time, canon and
+// generate. A differential audit then found a THIRD (`+`'s string
+// coercion) and, while fixing that, a FOURTH (a variable used as a path
+// segment). Both were the same one-character mistake -- `String(peg)` or
+// `'' + peg` on a JS number -- at a site nobody had enumerated.
+//
+// BigInt is exact here by construction: an integer-kind peg is integral and
+// inside the int64 window (isIntegerKind, enforced by IntegerVal's
+// constructor), so the conversion cannot throw or lose anything. Below 2^53
+// nothing moves -- BigInt(n).toString() === String(n) for every safe
+// integer, and both give "0" for negative zero.
+//
+// FLOAT KIND MUST NOT COME HERE. A float's shortest form IS the right
+// answer and is what Go prints too (1e21 -> "1e+21"), so a caller must
+// select on kind, not merely on the peg being a JS number.
+function integerDigits(peg: number): string {
+  return BigInt(peg).toString()
+}
+
+
 // The window bounds stay module-local: they are the rules' working
 // parts, not API, and every caller wants isIntegerKind or
 // isIntegerStorable.
 export {
+  integerDigits,
   isExactInBinary64,
   isIntegerKind,
   isIntegerStorable,

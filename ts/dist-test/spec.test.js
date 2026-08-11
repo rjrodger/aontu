@@ -207,6 +207,12 @@ function makeVarsCtx(a0) {
     ctx.vars.bar = new StringVal_1.StringVal({ peg: 'hello' });
     ctx.vars.flag = new BooleanVal_1.BooleanVal({ peg: true });
     ctx.vars.obj = new MapVal_1.MapVal({ peg: { x: new IntegerVal_1.IntegerVal({ peg: 1 }) } });
+    // 2^60: an integer-kind value ABOVE the safe-integer range, so it renders
+    // differently under `'' + peg` (the shortest round-tripping form,
+    // 1152921504606847000) than under its exact digits. Every other binding
+    // here renders identically either way, which is why no shared row could
+    // reach the variable-as-path-segment rendering site until this existed.
+    ctx.vars.big = new IntegerVal_1.IntegerVal({ peg: 1152921504606846976 });
     return ctx;
 }
 //# sourceMappingURL=spec.test.js.map

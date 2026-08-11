@@ -30,7 +30,7 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
     // integral and inside the int64 window (isIntegerKind, enforced in the
     // constructor), so the bigint conversion cannot lose anything.
     get canon() {
-        return BigInt(this.peg).toString();
+        return (0, numkind_1.integerDigits)(this.peg);
     }
     // The same exactness in GENERATED output -- the other half of #21, and
     // the half canon cannot reach.

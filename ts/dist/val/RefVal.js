@@ -13,6 +13,7 @@ const NumberVal_1 = require("./NumberVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const VarVal_1 = require("./VarVal");
 const FeatureVal_1 = require("./FeatureVal");
+const numkind_1 = require("./numkind");
 class RefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -201,7 +202,19 @@ class RefVal extends FeatureVal_1.FeatureVal {
                             // The resolved variable IS a path segment: $seg.r with
                             // seg="x" reads ...x.r (previously the coerced value was
                             // dropped, silently reading the path without it).
-                            parts.push('' + part.peg);
+                            //
+                            // Integer kind renders its EXACT digits -- the FOURTH site
+                            // to get this wrong (see integerDigits and #21). `'' + peg`
+                            // on a JS number gives the shortest round-tripping form, so
+                            // a variable bound to 2^60 addressed the key
+                            // "1152921504606847000" and missed the real one. Go's
+                            // ref.go dispatches on kind here and was already correct.
+                            //
+                            // Every other kind is already right under `'' +`: a bigint
+                            // and a Decimal stringify to exact digits, and a float must
+                            // keep JS parity.
+                            parts.push(part.isInteger ?
+                                (0, numkind_1.integerDigits)(part.peg) : '' + part.peg);
                         }
                     }
                 }

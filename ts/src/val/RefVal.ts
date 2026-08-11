@@ -37,6 +37,7 @@ import { NumberVal } from './NumberVal'
 import { ConjunctVal } from './ConjunctVal'
 import { VarVal } from './VarVal'
 import { FeatureVal } from './FeatureVal'
+import { integerDigits } from './numkind'
 
 
 
@@ -272,7 +273,19 @@ class RefVal extends FeatureVal {
               // The resolved variable IS a path segment: $seg.r with
               // seg="x" reads ...x.r (previously the coerced value was
               // dropped, silently reading the path without it).
-              parts.push('' + part.peg)
+              //
+              // Integer kind renders its EXACT digits -- the FOURTH site
+              // to get this wrong (see integerDigits and #21). `'' + peg`
+              // on a JS number gives the shortest round-tripping form, so
+              // a variable bound to 2^60 addressed the key
+              // "1152921504606847000" and missed the real one. Go's
+              // ref.go dispatches on kind here and was already correct.
+              //
+              // Every other kind is already right under `'' +`: a bigint
+              // and a Decimal stringify to exact digits, and a float must
+              // keep JS parity.
+              parts.push(part.isInteger ?
+                integerDigits(part.peg as number) : '' + part.peg)
             }
           }
         }
