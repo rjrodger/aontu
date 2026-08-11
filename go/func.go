@@ -296,12 +296,30 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
+		// A nil ARGUMENT is returned unchanged, never marked. Marking it
+		// makes the bag's marked-child skip drop it, which silently
+		// swallowed every parse-time refusal reaching here -- a lossy
+		// literal, an unknown function, an overflowing literal -- and
+		// generated the document as if the key were absent. Refusal over
+		// corruption (D7). Mirrors the TS guard in TypeFuncVal.
+		if args[0].Nil() {
+			return args[0]
+		}
 		out := clonePath(args[0], cp(base))
 		walkMark(out, true, true, false, false)
 		return out
 	case "hide":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
+		}
+		// A nil ARGUMENT is returned unchanged, never marked. Marking it
+		// makes the bag's marked-child skip drop it, which silently
+		// swallowed every parse-time refusal reaching here -- a lossy
+		// literal, an unknown function, an overflowing literal -- and
+		// generated the document as if the key were absent. Refusal over
+		// corruption (D7). Mirrors the TS guard in HideFuncVal.
+		if args[0].Nil() {
+			return args[0]
 		}
 		out := clonePath(args[0], cp(base))
 		walkMark(out, false, false, true, true)

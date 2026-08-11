@@ -309,7 +309,7 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 		}
 		// A JSON null child survives even when optional (`b?:null` keeps
 		// b: null); other nils and optional empties contribute nothing.
-		if cv == nil && gensNull(child) {
+		if cv == nil && gensNull(ctx, child) {
 			out[k] = nil
 			continue
 		}
@@ -338,12 +338,21 @@ func genable(v Val) bool {
 
 // gensNull reports whether a child's generated nil means JSON null
 // (rather than "nothing to contribute").
-func gensNull(v Val) bool {
+func gensNull(ctx *Ctx, v Val) bool {
 	switch n := v.(type) {
 	case *ScalarVal:
 		return n.kind == KindNull
 	case *PrefVal:
-		return gensNull(n.peg)
+		return gensNull(ctx, n.peg)
+	case *DisjunctVal:
+		// A disjunction generates whatever its FOLDED members generate, so
+		// ask the fold rather than the wrapper. Without this case a key
+		// whose value was `null|top` (which folds to null, since
+		// `null & top` is null) was read as "generated nothing" and
+		// silently dropped from the output -- and a list element with it.
+		// The members are genuinely different values, so no amount of
+		// deduping removes the case.
+		return gensNull(ctx, n.foldForGen(ctx))
 	}
 	return false
 }

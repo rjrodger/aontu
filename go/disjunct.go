@@ -95,8 +95,26 @@ func (d *DisjunctVal) Unify(peer Val, ctx *Ctx) Val {
 }
 
 func (d *DisjunctVal) Gen(ctx *Ctx) (any, error) {
-	if len(d.peg) == 0 {
+	val := d.foldForGen(ctx)
+	if val == nil {
 		return nil, &AontuError{Msg: "Cannot generate value: empty disjunct"}
+	}
+	return val.Gen(ctx)
+}
+
+// foldForGen reduces the members to the single Val that Gen will emit,
+// returning nil for an empty disjunct.
+//
+// Split out of Gen so that gensNull can ask what a disjunct WOULD generate
+// without generating it. Go's Gen returns (any, error) and so collapses
+// TypeScript's two distinct empty results -- `undefined` (nothing) and
+// `null` (JSON null) -- into one `nil`; gensNull reconstructs the
+// difference from the child Val, and had no case for a disjunct. So a key
+// whose value was a disjunction resolving to null was read as "nothing"
+// and silently DROPPED, taking list elements with it.
+func (d *DisjunctVal) foldForGen(ctx *Ctx) Val {
+	if len(d.peg) == 0 {
+		return nil
 	}
 	// Prefer PrefVal members (defaults); otherwise use all members.
 	var vals []Val
@@ -115,7 +133,7 @@ func (d *DisjunctVal) Gen(ctx *Ctx) (any, error) {
 		// d.peg[i] would unify the wrong (or a repeated) member.
 		val = val.Unify(vals[i], ctx)
 	}
-	return val.Gen(ctx)
+	return val
 }
 
 // rankPrefs merges and filters PrefVal members before member trials
@@ -204,6 +222,15 @@ func dedup(vals []Val) []Val {
 func valSame(a, b Val) bool {
 	if a == b {
 		return true
+	}
+	// TOP is a single value however many times it is spelled, so `top|top`
+	// must collapse (idempotence). Go's top is not a pointer singleton, so
+	// the identity test above misses it and the pair survived dedup --
+	// which then also hid the fact that a bare unresolved top is not
+	// generable, a rule both ports already applied to a plain `x:top`.
+	// The analogue of TS's TopVal.same override.
+	if isTop(a) || isTop(b) {
+		return isTop(a) && isTop(b)
 	}
 	if as, ok := a.(*ScalarVal); ok {
 		if bs, ok := b.(*ScalarVal); ok {

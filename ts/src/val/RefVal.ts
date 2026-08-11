@@ -315,8 +315,20 @@ class RefVal extends FeatureVal {
           (p === sep ? a.length = a.length - 1 : a.push(p), a)), [])
 
       if (modes.includes('KEY')) {
+        // STRINGIFY. A LIST index arrives here as a JS NUMBER (jsonic puts
+        // it in the path as one, and lang.ts copies the path wholesale),
+        // so `.$KEY` inside a list built a StringVal whose peg was the
+        // number 0 -- an ill-formed value, not a design choice: it canoned
+        // as a bare 0, generated a JSON number, satisfied `number` and
+        // failed `string`. Go stringifies, and key() already agreed with
+        // Go, so this port disagreed with itself.
+        //
+        // Coerced HERE, at the consumption site, rather than by
+        // normalising Val.path: the numeric segment originates in jsonic's
+        // own r.k.path and every other path consumer (find's descent,
+        // key(), the clone/spread machinery) already handles it.
         let key = this.path[this.path.length - 2]
-        let sv = new StringVal({ peg: null == key ? '' : key }, ctx)
+        let sv = new StringVal({ peg: null == key ? '' : '' + key }, ctx)
 
         // TODO: other props?
         sv.dc = DONE
