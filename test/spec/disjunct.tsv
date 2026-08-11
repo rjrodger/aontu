@@ -12,3 +12,35 @@ conj-commute-rev	gen	x:2 & (1|2)	{"x":2}
 # pref defaults fold across ALL pref members even when not the leading entry (regression)
 pref-fold-nonleading	gen	a:1 | *{x:1} | *{y:2}	{"a":{"x":1,"y":2}}
 pref-fold	gen	a:*{x:1} | *{y:2}	{"a":{"x":1,"y":2}}
+# TOP IS IDEMPOTENT UNDER DISJUNCTION.
+#
+# `top|top` is one value with two spellings, so it must collapse. Go's
+# disjunct dedup compared values without a case for top, so the pair
+# survived: canon kept both members, and the un-collapsed disjunct then
+# hid the fact that a bare unresolved `top` is not generable -- which both
+# ports already agree on for a plain `x:top`.
+#
+# The preference row is the control: `*top` and `top` are NOT the same
+# value, so that pair must NOT collapse.
+disjunct-top-idempotent-canon	canon	x:top|top	{"x":top}
+disjunct-top-idempotent3-canon	canon	x:top|top|top	{"x":top}
+disjunct-top-idempotent-err	err	x:top|top	Cannot resolve value
+disjunct-top-pref-not-deduped-canon	canon	x:*top|top	{"x":*top|top}
+# A DISJUNCTION THAT RESOLVES TO NULL EMITS null, NOT NOTHING.
+#
+# Go's Gen returns (any, error) and so collapses TypeScript's two distinct
+# empty results -- undefined (nothing) and null (JSON null) -- into one
+# nil, reconstructing the difference from the child Val. That test had no
+# case for a disjunct, so `null|top` (which folds to null, since
+# `null & top` is null) read as "generated nothing" and the key was
+# silently DROPPED -- and a list element with it, which is worse, because
+# the surrounding indices shift.
+#
+# The members are genuinely different values, so no amount of deduping
+# reaches this: it survives the top|top fix entirely.
+disjunct-null-top-gens	gens	x:null|top	{"x":null}
+disjunct-top-null-gens	gens	x:top|null	{"x":null}
+disjunct-null-top-list-gens	gens	x:[null|top]	{"x":[null]}
+disjunct-null-top-list-position-gens	gens	x:[1,null|top,3]	{"x":[1,null,3]}
+disjunct-null-top-nested-gens	gens	x:{y:null|top}	{"x":{"y":null}}
+disjunct-null-plain-gens	gens	x:null|null	{"x":null}
