@@ -1628,7 +1628,12 @@ func parseBase(src, base string) (Val, error) {
 	// what keeps it PER-PARSE, which matters because langForBase caches the
 	// parser -- the *jsonic.Jsonic here is shared across goroutines, so
 	// nothing parse-specific may be stored on it or on its options.
-	meta := map[string]any{}
+	// The sink is a POINTER so a failure inside a NESTED include reaches
+	// this parse: the plugin gives each nested source a SHALLOW COPY of its
+	// parent's meta, which carries the pointer but not later writes to a
+	// plain value. See notFoundSink.
+	sink := &notFoundSink{}
+	meta := map[string]any{notFoundMetaKey: sink}
 
 	out, err := lang.ParseMeta(src, meta)
 
@@ -1639,8 +1644,8 @@ func parseBase(src, base string) (Val, error) {
 	// include can leave the parse failing for a secondary reason, and
 	// "source not found: x" is the diagnosis the user needs -- the cascade
 	// is noise.
-	if nf, found := meta[notFoundMetaKey].(string); found {
-		return newMap(), &AontuError{Msg: nf}
+	if "" != sink.msg {
+		return newMap(), &AontuError{Msg: sink.msg}
 	}
 
 	if err != nil {

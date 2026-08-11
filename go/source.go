@@ -90,19 +90,45 @@ const notFoundKind = "aontu-notfound"
 // downstream: no merge, no unification and no disjunction pruning can drop a
 // fact that was never in the tree.
 //
+// The bag holds a POINTER (notFoundSink), not the message, so that a failure
+// found inside a NESTED include propagates back to the entry parse -- see
+// notFoundSink for why a plain value silently does not.
+//
 // The key carries the reserved sentinel prefix (see reservedKeyPrefix in
 // lang.go) for the reason that prefix exists -- it shares a namespace with
 // keys a source could otherwise write, and sources using the prefix are
 // already refused.
 const notFoundMetaKey = reservedKeyPrefix + "notfound"
 
-// recordNotFound notes a failed load in the parse meta bag.
+// notFoundSink is the shared accumulator a parse hands to the resolver
+// through the meta bag. It is a POINTER for the reason the whole mechanism
+// works: the multisource plugin builds a nested parse's meta with a SHALLOW
+// COPY of its parent's (childMeta), so every source in an include chain --
+// at any depth -- ends up holding this same pointer, and a write from the
+// deepest one is visible to the entry parse that allocated it.
+//
+// A plain string value in the bag is NOT enough, and that was the first
+// version of this fix: it caught a bad include in the ENTRY source only.
+// When the entry loaded a file that itself contained a bad bare-member
+// include, the write landed in the child's copy of the map, the entry never
+// saw it, and Go generated an incomplete document while TypeScript
+// correctly refused. Found in review; the fixtures under
+// test/spec/files/nest_missing*.aon pin it.
+//
+// Not synchronised, and does not need to be: the sink is allocated per
+// parseBase call and a single parse runs on one goroutine. It never
+// escapes to the cached, shared *jsonic.Jsonic.
+type notFoundSink struct {
+	msg string
+}
+
+// recordNotFound notes a failed load in the parse's shared sink.
 //
 // IT MUST BE CALLED FROM THE RESOLVER, NOT THE PROCESSOR. The resolver runs
-// with the TOP-LEVEL parse context, whose Meta is the very map parseBase
-// passed to ParseMeta; the processor runs inside the include's own SUB-PARSE,
-// whose Meta is a different map that nothing upstream reads. Verified by
-// probing both, after the processor version silently did nothing.
+// with the context of the parse that CONTAINS the include, so its meta bag
+// still holds the sink pointer; the processor runs inside the include's own
+// sub-parse. Verified by probing both, after the processor version silently
+// did nothing.
 //
 // Only the FIRST failure is kept: TypeScript raises on the first missing
 // source and stops, so reporting the first is what keeps the two ports'
@@ -111,8 +137,12 @@ func recordNotFound(ctx *jsonic.Context, path string) {
 	if nil == ctx || nil == ctx.Meta {
 		return
 	}
-	if _, seen := ctx.Meta[notFoundMetaKey]; !seen {
-		ctx.Meta[notFoundMetaKey] = "source not found: " + path
+	sink, ok := ctx.Meta[notFoundMetaKey].(*notFoundSink)
+	if !ok || nil == sink {
+		return
+	}
+	if "" == sink.msg {
+		sink.msg = "source not found: " + path
 	}
 }
 
