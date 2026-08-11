@@ -38,6 +38,11 @@ const hints = {
     unknown_function: 'This function name is not recognized.',
     literal_nil: 'A literal nil cannot unify with any other value.',
     unify_cycle: 'Circular reference detected during unification.',
+    budget_passes: 'The evaluation budget of {limit} fixpoint passes was spent before\n' +
+        'the model converged; still refining: {paths}.\n' +
+        'This is the evaluator giving up, not a contradiction in the model:\n' +
+        'raising the budget helps only a model that is still converging --\n' +
+        'a genuine cycle never converges at any budget.',
     conjunct: 'This conjunction (& operator) could not be completed as some terms\n' +
         'could not be resolved.',
     no_path: 'The path reference could not be found.' +
@@ -211,6 +216,11 @@ const codeClasses = {
     required_listelem: 'incomplete',
     // reference -- a name or path that does not resolve
     no_path: 'reference',
+    // A PROVEN structural cycle is a defect of the model, not a spent
+    // evaluation bound: raising a budget never fixes it (G5's ruling --
+    // class budget means "retry with more may help", path_cycle means
+    // "fix the model").
+    path_cycle: 'reference',
     ref: 'reference',
     'ref[': 'reference',
     var: 'reference',
@@ -221,8 +231,8 @@ const codeClasses = {
     multisource_not_found: 'reference',
     // budget -- an evaluation bound was exceeded
     unify_cycle: 'budget',
-    path_cycle: 'budget',
     max_depth: 'budget',
+    budget_passes: 'budget',
     // internal -- the engine reached a state it should not reach
     internal: 'internal',
     unify_no_res: 'internal',

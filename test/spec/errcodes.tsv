@@ -108,7 +108,11 @@ listval_spread_required	errcode	incomplete	0.51.0
 required_listelem	errcode	incomplete	0.51.0
 #
 # reference -- a name or path that does not resolve
+# (path_cycle is a PROVEN structural cycle -- a defect of the model,
+# not a spent evaluation bound: raising a budget never fixes it, so it
+# is class reference, not budget; G5's ruling.)
 no_path	errcode	reference	0.51.0
+path_cycle	errcode	reference	0.51.0
 ref	errcode	reference	0.51.0
 ref[	errcode	reference	0.51.0
 var	errcode	reference	0.51.0
@@ -120,8 +124,8 @@ multisource_not_found	errcode	reference	0.51.0
 #
 # budget -- an evaluation bound was exceeded
 unify_cycle	errcode	budget	0.51.0
-path_cycle	errcode	budget	0.51.0
 max_depth	errcode	budget	0.51.0
+budget_passes	errcode	budget	0.52.0
 #
 # internal -- the engine reached a state it should not reach
 internal	errcode	internal	0.51.0

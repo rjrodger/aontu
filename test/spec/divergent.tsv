@@ -35,6 +35,30 @@
 #
 # ---------------------------------------------------------------------
 #
+# OPEN -- deep reference chains: verdict diverges at 10+ links.
+#   issue: #26. A chain of plain references resolves one link per
+#   fixpoint pass in TypeScript, but Go's RefVal.Unify drives the found
+#   target eagerly, so a chain of any length resolves within a pass or
+#   two. With the pass budget at 9 (maxcc, ts/src/unify.ts), the same
+#   source gets DIFFERENT VERDICTS once a chain reaches 10 links.
+#
+#   Divergent input (chain of 10 refs):
+#     a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1
+#   TypeScript: error, code budget_passes ("evaluation budget" -- and
+#     before that code existed, the same exhaustion surfaced as a
+#     generic `ref` gen error, so the split predates it and was silent).
+#   Go: {"a":1,...,"k":1} -- success. Both engines agree up to 9 links.
+#
+#   Not simply fixed because which side is correct is an open language-
+#   design question entangled with the pass-budget review (G5): eager
+#   chasing in TS changes fixpoint convergence (the pass index is
+#   semantic -- KeyFuncVal defers until cc >= 3); per-pass deferral in
+#   Go regresses working models. Until decided, no shared budget_passes
+#   row can exist; the code itself is registered (errcodes.tsv) and
+#   emitted by both engines' pass-loop exits.
+#
+# ---------------------------------------------------------------------
+#
 # CLOSED -- lone surrogates in quoted strings folded to U+FFFD by Go.
 #   issue: #24. Two separate things lived under this entry; both are
 #   settled, in opposite ways, and the difference is the point.

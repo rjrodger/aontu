@@ -205,6 +205,30 @@ function update(x: Val, _y: Val) {
 }
 
 
+// The still-refining paths named by a budget_passes error: the first
+// `max` non-done nodes of the residue, as `$.dotted.paths`. Depth-first
+// over bag children only -- this feeds an error message, not a report,
+// so a small deterministic sample beats completeness.
+function residuePaths(v: Val, max: number): string[] {
+  const out: string[] = []
+  const visit = (n: any, isroot: boolean) => {
+    if (null == n || max <= out.length) {
+      return
+    }
+    if (!isroot && !n.done) {
+      out.push('$' + (0 < (n.path?.length ?? 0) ? '.' + n.path.join('.') : ''))
+    }
+    if (n.isMap || n.isList) {
+      for (const k in n.peg) {
+        visit(n.peg[k], false)
+      }
+    }
+  }
+  visit(v, true)
+  return out
+}
+
+
 class Unify {
   root: Val
   res: Val
@@ -264,6 +288,7 @@ class Unify {
 
       // NOTE: if true === res.done already, then this loop never needs to run.
       let maxcc = 9 // 99
+      let prevCanon: string | undefined = undefined
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
@@ -274,7 +299,33 @@ class Unify {
           break
         }
 
+        // Snapshot the second-to-last pass's result, so exhaustion can
+        // tell "still refining" from "stable residue" below. Only paid
+        // by models still unresolved this late.
+        if (this.cc === maxcc - 2 && DONE !== res.dc) {
+          prevCanon = res.canon
+        }
+
         uctx = uctx.clone({ root: res })
+      }
+
+      // The pass budget is spent AND the final pass still made
+      // progress: the model was cut off while converging, and no other
+      // error explains why. Silent truncation would surface later as
+      // ordinary incompleteness, so exhaustion is a semantic error of
+      // its own (class budget, docs/trust.md clause 2) -- retrying with
+      // a larger budget is a valid response to THIS code and useless
+      // for path_cycle or no_path. A STABLE residue (the final pass
+      // changed nothing -- e.g. a stuck `1+true`) is not a budget
+      // failure: it is ordinary incompleteness and stays silent here,
+      // surfacing at generate exactly as before.
+      if (maxcc <= this.cc && DONE !== res.dc && 0 === uctx.err.length
+        && undefined !== prevCanon && prevCanon !== res.canon) {
+        makeNilErr(uctx, 'budget_passes', undefined, undefined, 'resolve', {
+          budget: 'passes',
+          limit: maxcc,
+          paths: residuePaths(res, 4).join(' ') || '$',
+        })
       }
 
       uctx.explain && explainClose(te, res)

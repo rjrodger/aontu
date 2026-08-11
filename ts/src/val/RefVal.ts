@@ -413,8 +413,16 @@ class RefVal extends FeatureVal {
       else if (pI === refpath.length) {
         out = node
 
+        // A reference landing on another reference may be a PROVEN
+        // mutual cycle (a: $.b, b: $.a) -- follow the plain-ref chain
+        // and, if it revisits a node, report path_cycle now instead of
+        // deferring every pass and dying later as a generic ref error.
+        // No proof (chain leaves plain refs, or ends) defers as before.
+        if (null != out && (out as any).isRef && this.detectRefCycle(ctx)) {
+          out = makeNilErr(ctx, 'path_cycle', this)
+        }
         // Types and hidden values are cloned and made concrete
-        if (null != out) { //  && (out.mark.type || out.mark.hide)) {
+        else if (null != out) { //  && (out.mark.type || out.mark.hide)) {
 
           // console.log('FOUND-A', out)
 
@@ -453,6 +461,68 @@ class RefVal extends FeatureVal {
     // console.log('REF-FIND', ctx.cc, this.id, selfpath, 'PEG=', pegpath, 'RP', pI, refpath.join('.'), descent, 'O=', out?.id, out?.canon, out?.done)
 
     return out
+  }
+
+
+  // Follow the chain of plain references from this node; true iff the
+  // chain revisits a node -- a PROVEN reference cycle, distinct from a
+  // merely unresolved reference. Detection is only on the resolution
+  // chain revisiting a node, never on syntactic shape: a chain that
+  // passes through a variable segment, a conjunct, a function, or any
+  // non-ref value yields no proof and the ref defers as before.
+  detectRefCycle(ctx: AontuContext): boolean {
+    const seen = new Set<number>()
+    let cur: RefVal = this
+    for (let hops = 0; hops < 99; hops++) {
+      if (seen.has(cur.id)) {
+        return true
+      }
+      seen.add(cur.id)
+      const rp = cur.plainRefPath()
+      if (null == rp) {
+        return false
+      }
+      let node: any = ctx.root
+      for (let i = 0; i < rp.length && null != node; i++) {
+        node = (node.isMap || node.isList) ? node.peg[rp[i]] : undefined
+      }
+      if (null == node || !node.isRef) {
+        return false
+      }
+      cur = node
+    }
+    return false
+  }
+
+
+  // The resolved absolute path of a reference whose segments are all
+  // plain strings; undefined when the ref has variable segments (no
+  // cycle proof is attempted for those). Mirrors find's refpath
+  // computation for the plain case, including the `.` prefix reduction.
+  plainRefPath(): string[] | undefined {
+    const parts: string[] = []
+    for (const p of this.peg) {
+      if ('string' !== typeof p) {
+        return undefined
+      }
+      parts.push(p)
+    }
+    const refpath = this.absolute ? parts :
+      this.path.slice(0, -1).concat(parts)
+    const reduced: string[] = []
+    for (const p of refpath) {
+      if ('.' === p) {
+        // A parent step off the top of the path proves nothing.
+        if (0 === reduced.length) {
+          return undefined
+        }
+        reduced.length = reduced.length - 1
+      }
+      else {
+        reduced.push(p)
+      }
+    }
+    return reduced
   }
 
 

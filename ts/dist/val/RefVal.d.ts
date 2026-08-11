@@ -15,6 +15,8 @@ declare class RefVal extends FeatureVal {
     append(part: any): void;
     unify(peer: Val, ctx: AontuContext): Val;
     find(ctx: AontuContext): Val | undefined;
+    detectRefCycle(ctx: AontuContext): boolean;
+    plainRefPath(): string[] | undefined;
     same(peer: Val): boolean;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
     get canon(): string;

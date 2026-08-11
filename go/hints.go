@@ -61,6 +61,14 @@ var hints = map[string]string{
 	"unify_cycle":      "Circular reference detected during unification.",
 	"unknown_function": "This function name is not recognized.",
 	"max_depth":        "Input nesting is too deep to process safely.",
+	// G5's budget taxonomy: pass exhaustion is a semantic error, never
+	// silent truncation. The message must carry the substring
+	// "evaluation budget" (pinned by budget.tsv rows).
+	"budget_passes": "The evaluation budget of fixpoint passes was spent before " +
+		"the model converged. This is the evaluator giving up, not a " +
+		"contradiction in the model: raising the budget helps only a model " +
+		"that is still converging -- a genuine cycle never converges at any " +
+		"budget.",
 }
 
 // codeClasses assigns every error code a CLASS: conflict | incomplete |
@@ -128,7 +136,11 @@ var codeClasses = map[string]string{
 	"required_listelem":       "incomplete",
 
 	// reference -- a name or path that does not resolve
+	// (path_cycle is a PROVEN structural cycle -- a defect of the
+	// model, not a spent evaluation bound: raising a budget never
+	// fixes it, so it is class reference, not budget; G5's ruling.)
 	"no_path":               "reference",
+	"path_cycle":            "reference",
 	"ref":                   "reference",
 	"ref[":                  "reference",
 	"var":                   "reference",
@@ -139,9 +151,9 @@ var codeClasses = map[string]string{
 	"multisource_not_found": "reference",
 
 	// budget -- an evaluation bound was exceeded
-	"unify_cycle": "budget",
-	"path_cycle":  "budget",
-	"max_depth":   "budget",
+	"unify_cycle":   "budget",
+	"max_depth":     "budget",
+	"budget_passes": "budget",
 
 	// internal -- the engine reached a state it should not reach
 	"internal":     "internal",

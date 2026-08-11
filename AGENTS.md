@@ -68,7 +68,12 @@ can reuse it with their own transport. Editor plugins live in
 [`editors/`](editors/). Full reference: [`docs/lsp.md`](docs/lsp.md).
 Long-form documentation lives under [`docs/`](docs/) (start at
 `docs/index.md`); measure coverage with `make cov` (see
-`docs/test-coverage.md`).
+`docs/test-coverage.md`). The trust contract —
+hermeticity, termination, determinism, sandboxing, and exactly where
+each is conditional today — is [`docs/trust.md`](docs/trust.md); the
+budget/cycle error taxonomy it defines is pinned by
+`test/spec/budget.tsv` and the code registry by
+`test/spec/errcodes.tsv`.
 
 ## Build & test
 

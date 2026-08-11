@@ -268,6 +268,16 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		}
 	}
 
+	// A reference landing on another reference may be a PROVEN mutual
+	// cycle (a: $.b, b: $.a) -- follow the plain-ref chain and, if it
+	// revisits a node, report path_cycle now instead of deferring every
+	// pass and dying later as a generic ref error. No proof (chain
+	// leaves plain refs, or ends) defers as before. Mirrors the chase
+	// before the clone in TS RefVal.find.
+	if _, isref := node.(*RefVal); isref && rv.detectRefCycle(ctx) {
+		return makeNilErr(ctx, "path_cycle", rv, nil)
+	}
+
 	// A ref carrying marks transfers them onto the found node in place
 	// (mirrors the mark assignment on `out` before the clone in TS
 	// RefVal.find).
@@ -297,6 +307,91 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		forceRootPath(out, cp(rv.path))
 	}
 	return out
+}
+
+// detectRefCycle follows the chain of plain references from rv; true
+// iff the chain revisits a node -- a PROVEN reference cycle, distinct
+// from a merely unresolved reference. Detection is only on the
+// resolution chain revisiting a node, never on syntactic shape: a
+// chain that passes through a variable segment, a conjunct, a
+// function, or any non-ref value yields no proof and the ref defers as
+// before. Mirrors detectRefCycle in TS RefVal.
+func (rv *RefVal) detectRefCycle(ctx *Ctx) bool {
+	seen := map[*RefVal]bool{}
+	cur := rv
+	for hops := 0; hops < 99; hops++ {
+		if seen[cur] {
+			return true
+		}
+		seen[cur] = true
+		rp := cur.plainRefPath()
+		if rp == nil {
+			return false
+		}
+		var node Val = ctx.root
+		for _, part := range rp {
+			switch n := node.(type) {
+			case *MapVal:
+				node = n.peg[part]
+			case *ListVal:
+				idx, err := strconv.Atoi(part)
+				if err != nil || idx < 0 || idx >= len(n.peg) {
+					return false
+				}
+				node = n.peg[idx]
+			default:
+				return false
+			}
+			if node == nil {
+				return false
+			}
+		}
+		nref, ok := node.(*RefVal)
+		if !ok {
+			return false
+		}
+		cur = nref
+	}
+	return false
+}
+
+// plainRefPath is the resolved absolute path of a reference whose
+// segments are all plain strings; nil when the ref has variable
+// segments (no cycle proof is attempted for those). Mirrors find's
+// refpath computation for the plain case, with a conservative bail on
+// a parent step off the top of the path.
+func (rv *RefVal) plainRefPath() []string {
+	parts := make([]string, 0, len(rv.peg))
+	for _, p := range rv.peg {
+		s, ok := p.(string)
+		if !ok {
+			return nil
+		}
+		parts = append(parts, s)
+	}
+	var refpath []string
+	if rv.absolute {
+		refpath = parts
+	} else {
+		end := len(rv.path) - 1
+		if end < 0 {
+			end = 0
+		}
+		base := append([]string{}, rv.path[:end]...)
+		refpath = append(base, parts...)
+	}
+	reduced := make([]string, 0, len(refpath))
+	for _, p := range refpath {
+		if p == "." {
+			if len(reduced) == 0 {
+				return nil
+			}
+			reduced = reduced[:len(reduced)-1]
+		} else {
+			reduced = append(reduced, p)
+		}
+	}
+	return reduced
 }
 
 // isPrefixPath reports whether the reference path is a prefix of this

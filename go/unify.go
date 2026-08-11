@@ -65,7 +65,10 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		return root
 	}
 	res := root
-	for cc := 0; cc < 9 && res.Dc() != DONE; cc++ {
+	const maxcc = 9
+	prevCanon := ""
+	sawPrev := false
+	for cc := 0; cc < maxcc && res.Dc() != DONE; cc++ {
 		ctx.root = res
 		ctx.depth = 0
 		ctx.cc = cc
@@ -73,6 +76,25 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		if len(ctx.err) > 0 {
 			break
 		}
+		// Snapshot the second-to-last pass's result, so exhaustion can
+		// tell "still refining" from "stable residue" below. Only paid
+		// by models still unresolved this late.
+		if cc == maxcc-2 && res.Dc() != DONE {
+			prevCanon = res.Canon()
+			sawPrev = true
+		}
+	}
+	// The pass budget is spent AND the final pass still made progress:
+	// the model was cut off while converging, and no other error
+	// explains why. Silent truncation would surface later as ordinary
+	// incompleteness, so exhaustion is a semantic error of its own
+	// (class budget, docs/trust.md clause 2). A STABLE residue (the
+	// final pass changed nothing -- e.g. a stuck `1+true`) is not a
+	// budget failure: it stays silent here and surfaces at generate as
+	// before. Mirrors the budget_passes emission at the TS pass-loop
+	// exit (ts/src/unify.ts).
+	if res.Dc() != DONE && len(ctx.err) == 0 && sawPrev && prevCanon != res.Canon() {
+		makeNilErr(ctx, "budget_passes", nil, nil)
 	}
 	ctx.root = res
 	return res
