@@ -404,6 +404,33 @@ describe('unify', function() {
     expect(stuck.errs()[0].why).equal('mapval_no_gen')
   })
 
+
+  // The plain-ref cycle chase has NO hop cap: a cycle of any length is
+  // proven at the first repetition (the seen set grows every hop and
+  // the tree is finite). Regression for the removed 99-hop cutoff,
+  // which made longer cycles fall through to budget_passes. The Go
+  // twin is the long-cycle case in go/hints_test.go.
+  test('long-ref-cycle-is-proven', () => {
+    const keys: string[] = []
+    for (let i = 0; i < 120; i++) {
+      keys.push('k' + String(i).padStart(3, '0'))
+    }
+    const cycle = keys.map(
+      (k, i) => k + ':$.' + keys[(i + 1) % keys.length]).join(' ')
+
+    let err: any = undefined
+    try {
+      new Aontu().generate(cycle)
+    }
+    catch (e: any) {
+      err = e
+    }
+    if (undefined === err) {
+      throw new Error('expected path_cycle error, generate succeeded')
+    }
+    expect(err.errs()[0].why).equal('path_cycle')
+  })
+
 })
 
 

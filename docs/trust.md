@@ -44,15 +44,22 @@ repeats it:
 
 > **Treat opening an untrusted source as running it.**
 
-Hermeticity is therefore *total* under a confined resolver (an
-in-memory resolver, or a filesystem limited via `options.fs` — both
-exist today, see [the API reference](reference-api.md#aontuoptions))
-and *conditional* under the default chain. The graduated `trust`
-capability profile that makes confinement a first-class, per-surface
-default — `include: 'none' | {mem} | {root} | 'system'` — is the
-registered design (G5 phase 3) and is **not implemented yet**; until it
-is, confinement is the host's responsibility through the existing
-`resolver` / `fs` injection points.
+Hermeticity is therefore *total* only when the host **replaces the
+resolver outright**: in TypeScript, a caller-supplied
+`options.resolver` substitutes for the whole default chain
+(`ts/src/lang.ts`), and the documented in-memory resolver is such a
+replacement. Two things do NOT confine, and the contract says so to
+stop hosts assuming a sandbox they do not have: `options.fs` feeds
+source text for parsing and error context — the file and package legs
+still read through their own channels — and the **Go implementation
+has no confinement hook at all today**: `NewWithBase` only rebases
+relative paths, and its file resolver follows `..`, absolute paths,
+and symlinks through `os.ReadFile`. In Go, hermeticity under any
+include is conditional, full stop, until the trust profile ships. The
+graduated `trust` capability profile that makes confinement a
+first-class, per-surface default —
+`include: 'none' | {mem} | {root} | 'system'` — is the registered
+design (G5 phase 3) and is **not implemented yet**.
 
 **The JSON-superset guarantee, stated precisely.** Every JSON document
 *parses* as Aontu. That is the whole claim. It does not say "behaves
@@ -67,11 +74,11 @@ feature of the contract, not an exception to it.
 Every evaluation halts within deterministic budgets counted in
 **engine events, never wall-clock**:
 
-| budget     | counts                                   | current default |
+| budget     | counts                                   | current state |
 |------------|------------------------------------------|-----------------|
-| `passes`   | fixpoint passes over the whole model     | 9 (`maxcc`, `ts/src/unify.ts`) |
+| `passes`   | fixpoint passes over the whole model     | 9 (`maxcc`, `ts/src/unify.ts`; `go/unify.go`) |
 | `revisits` | same-pair re-unifications within a pass  | 999 (`MAXCYCLE`, `ts/src/unify.ts`) |
-| `depth`    | structural recursion depth               | engine guard (walk cap in TS; `maxUniteDepth` in Go) |
+| `depth`    | structural recursion depth               | Go: parse-depth guard (`max_depth`) plus `maxUniteDepth`. TypeScript: **no explicit depth budget today** — deep nesting can reach the V8 call-stack limit, which is caught and reported as an `internal` error but is environment-dependent, not a deterministic verdict. A documented gap of this clause until an explicit counter lands. |
 
 The contract pins *verdicts at default budgets* — every shared spec
 row must produce the same verdict in both implementations — not
@@ -95,7 +102,13 @@ these: it is ordinary incompleteness, silent at unify time and a
 generate-time error (`mapval_no_gen` family, class `incomplete`)
 exactly as before. Only genuine cut-off earns `budget_passes`.
 
-Two honest caveats, both tracked rather than papered over:
+Three honest caveats, tracked rather than papered over:
+
+- TypeScript has no explicit depth budget (table above): the `max_depth`
+  code exists in the registry and is raised by Go's parse guard, but the
+  TypeScript evaluator's only backstop for runaway depth is the caught
+  `RangeError` → `internal` path — deterministic in *classification*,
+  environment-dependent in *threshold*.
 
 - The smallest `budget_passes` reproducer (a chain of ten plain
   references) errors in TypeScript and resolves in Go, because the two
@@ -137,13 +150,15 @@ document: a `.aon` file cannot request more capability, includes take a
 literal string (never a computed expression), and canonical form is
 unaffected by any trust setting.
 
-Today the declaration is made through the existing injection points
-(`options.resolver`, `options.fs`, `base`); the graduated profile with
-per-surface defaults (LSP: workspace-confined; library: explicit; CLI:
-entry-file root with `--trust system` escape) is registered design, not
-yet behaviour. Until it ships, the default at every surface is the full
+Today that declaration exists in exactly one form: a TypeScript host
+replacing `options.resolver` outright (clause 1). `options.fs` and
+`base` shape resolution but do not confine it, and a Go host has no
+confinement hook at all. The graduated profile with per-surface
+defaults (LSP: workspace-confined; library: explicit; CLI: entry-file
+root with `--trust system` escape) is registered design, not yet
+behaviour. Until it ships, the default at every surface is the full
 resolver chain, and the posture above — opening an untrusted source is
-running it — is the operative warning.
+running it — is the operative warning, doubly so for Go embedders.
 
 Denied resolution, when confinement ships, is a located, deterministic
 parse-stage error (`include_denied`) like any other — never a silent

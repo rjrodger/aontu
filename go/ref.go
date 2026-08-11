@@ -319,7 +319,11 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 func (rv *RefVal) detectRefCycle(ctx *Ctx) bool {
 	seen := map[*RefVal]bool{}
 	cur := rv
-	for hops := 0; hops < 99; hops++ {
+	// No hop cap: every iteration either returns or adds a NEW ref to
+	// seen, and the tree holds finitely many refs, so the chase
+	// terminates at the first repetition or the first non-ref — a cap
+	// would just make cycles longer than it invisible.
+	for {
 		if seen[cur] {
 			return true
 		}
@@ -352,7 +356,6 @@ func (rv *RefVal) detectRefCycle(ctx *Ctx) bool {
 		}
 		cur = nref
 	}
-	return false
 }
 
 // plainRefPath is the resolved absolute path of a reference whose
@@ -471,7 +474,8 @@ func (rv *RefVal) Canon() string {
 }
 
 func (rv *RefVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: " + rv.Canon()}
+	// Code mirrors TS RefVal.gen ('ref').
+	return nil, &AontuError{Msg: "Cannot generate value: " + rv.Canon(), Code: "ref"}
 }
 
 // VarVal is a variable reference (e.g. `$name`). Full variable lookup

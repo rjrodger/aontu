@@ -180,9 +180,14 @@ into a context.
 **filesystem**, then **package** resolution, in that order. The chain
 is unconfined by default — a relative include follows any path the
 process can read — so **treat opening an untrusted source as running
-it**, and confine untrusted evaluation through `resolver`/`fs`. The
-[trust contract](trust.md) states the guarantees and their conditions;
-a first-class `trust` option (include capability
+it**. Confinement today means **replacing `resolver` outright** (a
+supplied resolver substitutes for the whole chain; the in-memory
+resolver is such a replacement): `fs` is *not* a sandbox — it supplies
+source text for parsing and error context, and the file and package
+legs read through their own channels — and the **Go API has no
+confinement hook at all** (`NewWithBase` only rebases relative
+paths). The [trust contract](trust.md) states the guarantees and
+their conditions; a first-class `trust` option (include capability
 `'none' | {mem} | {root} | 'system'` plus deterministic budgets) is
 the registered design for making confinement a per-surface default,
 and is not implemented yet — this stub reserves the name.

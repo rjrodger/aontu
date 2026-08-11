@@ -107,11 +107,11 @@ var bigDecimalTextRe = regexp.MustCompile(
 func NewBigDecimal(s string) (Val, error) {
 	m := bigDecimalTextRe.FindStringSubmatch(s)
 	if m == nil {
-		return nil, &AontuError{Msg: "Not an exact decimal: " + s}
+		return nil, &AontuError{Msg: "Not an exact decimal: " + s, Code: "decimal_syntax"}
 	}
 	d, why := exactDecimal(m[1] == "-", m[2], m[3], m[4])
 	if why != "" {
-		return nil, &AontuError{Msg: "Not an exact decimal: " + s + "\n" + hints[why]}
+		return nil, &AontuError{Msg: "Not an exact decimal: " + s + "\n" + hints[why], Code: why}
 	}
 	return newBigDecimal(d), nil
 }

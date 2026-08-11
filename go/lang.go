@@ -1693,7 +1693,7 @@ func parse(src string) (Val, error) {
 func parseBase(src, base string) (Val, error) {
 	lang, err := langForBase(base)
 	if err != nil {
-		return newMap(), &AontuError{Msg: err.Error()}
+		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
 	}
 	// ParseMeta, not Parse: the meta bag is this parse's private channel
 	// back from the @"file" resolver, and it is how a failed load is
@@ -1718,11 +1718,11 @@ func parseBase(src, base string) (Val, error) {
 	// "source not found: x" is the diagnosis the user needs -- the cascade
 	// is noise.
 	if "" != sink.msg {
-		return newMap(), &AontuError{Msg: sink.msg}
+		return newMap(), &AontuError{Msg: sink.msg, Code: "multisource_not_found"}
 	}
 
 	if err != nil {
-		return newMap(), &AontuError{Msg: err.Error()}
+		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
 	}
 	if out == nil {
 		return newMap(), nil

@@ -29,8 +29,9 @@ func (c *ConjunctVal) Canon() string {
 }
 
 func (c *ConjunctVal) Gen(ctx *Ctx) (any, error) {
-	// An unresolved conjunct is not a concrete value.
-	return nil, &AontuError{Msg: "Cannot generate value: " + c.Canon()}
+	// An unresolved conjunct is not a concrete value. Code mirrors TS
+	// ConjunctVal.gen ('conjunct').
+	return nil, &AontuError{Msg: "Cannot generate value: " + c.Canon(), Code: "conjunct"}
 }
 
 func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {

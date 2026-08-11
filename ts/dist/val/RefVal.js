@@ -365,7 +365,11 @@ class RefVal extends FeatureVal_1.FeatureVal {
     detectRefCycle(ctx) {
         const seen = new Set();
         let cur = this;
-        for (let hops = 0; hops < 99; hops++) {
+        // No hop cap: every iteration either returns or adds a NEW ref to
+        // `seen`, and the tree holds finitely many refs, so the chase
+        // terminates at the first repetition or the first non-ref — a cap
+        // would just make cycles longer than it invisible.
+        for (;;) {
             if (seen.has(cur.id)) {
                 return true;
             }
@@ -383,7 +387,6 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
             cur = node;
         }
-        return false;
     }
     // The resolved absolute path of a reference whose segments are all
     // plain strings; undefined when the ref has variable segments (no

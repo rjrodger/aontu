@@ -25,7 +25,9 @@ func (o *PlusOpVal) Canon() string {
 }
 
 func (o *PlusOpVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: " + o.Canon()}
+	// Code mirrors the TS FeatureVal.gen choice for residual
+	// non-literal values ('no_gen').
+	return nil, &AontuError{Msg: "Cannot generate value: " + o.Canon(), Code: "no_gen"}
 }
 
 func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {

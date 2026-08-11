@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -58,5 +59,28 @@ func TestCheckSurfacesCtxErrors(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected a path_cycle problem, got: %+v", probs)
+	}
+}
+
+// The plain-ref cycle chase has NO hop cap: a cycle of any length is
+// proven at the first repetition (the seen set grows every hop and the
+// tree is finite). Regression for the removed 99-hop cutoff. The TS
+// twin is long-ref-cycle-is-proven in ts/test/unify.test.ts.
+func TestLongRefCycleIsProven(t *testing.T) {
+	var keys []string
+	for i := 0; i < 120; i++ {
+		keys = append(keys, fmt.Sprintf("k%03d", i))
+	}
+	var parts []string
+	for i, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s:$.%s", k, keys[(i+1)%len(keys)]))
+	}
+	_, err := New().Generate(strings.Join(parts, " "))
+	if err == nil {
+		t.Fatalf("expected path_cycle error, generate succeeded")
+	}
+	ae, ok := err.(*AontuError)
+	if !ok || ae.Code != "path_cycle" {
+		t.Fatalf("expected code path_cycle, got %T %v", err, err)
 	}
 }

@@ -16,7 +16,11 @@ trailing-paren-err	err	(a|b)&a)	unexpected character(s): )
 # registered in test/spec/errcodes.tsv. Expectations probed from both
 # CLIs/engines per the parity rule (AGENTS.md).
 errc-conflict-scalar	errc	a:1 a:2	scalar_value
+errc-conflict-scalar-map	errc	x:1&{}	scalar_kind
+errc-conflict-map-scalar	errc	x:{}&1	map
+errc-conflict-list-scalar	errc	x:[1]&1	list
 errc-conflict-closed	errc	a:close({b:1}) a:{c:2}	closed
 errc-incomplete-kind	errc	a:number	mapval_no_gen
 errc-incomplete-required	errc	a:close({b:number})	mapval_required
+errc-no-gen-root	errc	number	no_gen
 errc-reference-no-path	errc	a:$.b	no_path
