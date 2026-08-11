@@ -32,3 +32,10 @@ errc-reference-no-path	errc	a:$.b	no_path
 # fence for the divergence the old DIVERGENCE.md entry recorded.
 errc-parse-syntax	errc	a:k-x	syntax
 errc-parse-negative	errc	k-x:1	negative
+#
+# Message-parity rows (#29, phase 1): the thrown error's marker,
+# headline, and full hint text (worked examples included) are now
+# shared between the ports. Source frames remain TS-only -- the open
+# remainder of the #29 ledger entry.
+errm-marker-headline	err	a:1 a:2	[aontu/scalar_value]: Cannot unify values at path $.a
+errm-full-hint	err	a:1 a:2	1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).

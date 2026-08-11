@@ -196,6 +196,7 @@ type NilVal struct {
 	base
 	why       string
 	msg       string
+	fullmsg   string
 	primary   Val
 	secondary Val
 }
@@ -223,12 +224,66 @@ func (n *NilVal) Gen(ctx *Ctx) (any, error) {
 	if n.why == "" {
 		n.why = "nil_gen"
 	}
-	return nil, &AontuError{Msg: n.Message(), Code: n.why}
+	return nil, &AontuError{Msg: n.FullMessage(), Code: n.why}
+}
+
+// FullMessage renders the failure the way the canonical TypeScript
+// implementation renders a THROWN error (descErr, ts/src/err.ts):
+// the `[aontu/<code>]` marker, the "Cannot <attempt> value(s) at path
+// <path>" headline, the hint, and the value line. Used by the
+// AontuError paths (unify/generate); the LSP/Problem surface keeps the
+// short Message below, mirroring TS's own split (descErr vs the LSP's
+// nilMessage). Source frames are not rendered yet — the remaining #29
+// work (Go tracks a byte offset, not row/col).
+func (n *NilVal) FullMessage() string {
+	if n.fullmsg != "" {
+		return n.fullmsg
+	}
+	attempt := "unify"
+	plural := "s"
+	if n.secondary == nil {
+		attempt = "resolve"
+		plural = ""
+	}
+	// The path comes from the primary operand, as TS NilVal.make copies
+	// av.path onto the nil.
+	path := "$"
+	if n.primary != nil {
+		if p := n.primary.vpath(); len(p) > 0 {
+			path = "$." + strings.Join(p, ".")
+		}
+	}
+	var b strings.Builder
+	b.WriteString("[aontu/")
+	b.WriteString(n.why)
+	b.WriteString("]: Cannot ")
+	b.WriteString(attempt)
+	b.WriteString(" value")
+	b.WriteString(plural)
+	b.WriteString(" at path ")
+	b.WriteString(path)
+	if hint := hints[n.why]; hint != "" {
+		b.WriteString("\n\n")
+		b.WriteString(hint)
+	}
+	if n.primary != nil {
+		b.WriteString("\n\nCannot ")
+		b.WriteString(attempt)
+		b.WriteString(" value: ")
+		b.WriteString(n.primary.Canon())
+		if n.secondary != nil {
+			b.WriteString(" with value: ")
+			b.WriteString(n.secondary.Canon())
+		}
+	}
+	n.fullmsg = b.String()
+	return n.fullmsg
 }
 
 // Message renders the human-readable failure message. The phrasing of
 // the "Cannot <attempt> value: ..." line is kept compatible with the
-// canonical TypeScript implementation (ts/src/err.ts).
+// canonical TypeScript LSP diagnostic text (nilMessage, ts/src/lsp.ts);
+// the thrown-error surface uses FullMessage above.
 func (n *NilVal) Message() string {
 	if n.msg != "" {
 		return n.msg

@@ -42,24 +42,30 @@
 #
 # ---------------------------------------------------------------------
 #
-# OPEN -- error message text: Go's rendering is abbreviated.
-#   issue: #29. TS renders `[aontu/<code>]` marker, a `Cannot ...
-#   at path <path>` headline, full hint text with worked examples, and
-#   two located source frames; Go renders a bare headline plus an
-#   abbreviated one-sentence hint.
+# OPEN -- error message text: source frames and parameterised hints
+#   remain TS-only.
+#   issue: #29. NARROWED (phase 1 landed): Go's thrown errors now
+#   render the TS structure -- the `[aontu/<code>]` marker, the
+#   `Cannot <attempt> value(s) at path <path>` headline, and the
+#   VERBATIM full hint texts with worked examples (go/hints.go is a
+#   generated copy of ts/src/hints.ts for non-parameterised entries;
+#   NilVal.FullMessage mirrors descErr, while the LSP/Problem surface
+#   keeps the short Message, mirroring TS's own descErr/nilMessage
+#   split). Pinned by error.tsv errm-marker-headline / errm-full-hint.
 #
-#   Divergent input:  a:1 a:2
-#   TypeScript: "[aontu/scalar_value]: Cannot unify values at path
-#     $.a\n\nLiteral scalar values of the same kind can only unify if
-#     they are exactly equal. ..." (+ examples, + source frames)
-#   Go:         "Cannot unify value: 2 with value: 1\nLiteral scalar
-#     values of the same kind can only unify if they are exactly equal."
+#   Still divergent, input a:1 a:2:
+#   TypeScript: additionally renders two located, ANSI-coloured source
+#     frames (file, row, col, source excerpt) per site.
+#   Go:         no source frames; and five hints stay non-verbatim
+#     because TS interpolates {placeholders} via details
+#     (lossy_integer_literal, exact_float_mix, inexact_integer_sum,
+#     mapval/listval_spread_required) -- Go has no details plumbing.
 #
-#   Not simply fixed because Go needs the full rendering ported: the
-#   mirrored hint table, the errmsg headline format, and located
-#   source frames (Go NilVal tracks a byte offset, not row/col).
-#   Meanwhile only err-row substrings and errc-row codes are
-#   contractual.
+#   Not simply fixed because frames need row/col tracking in Go's
+#   NilVal (it carries a byte offset today) and a source-excerpt
+#   renderer; parameterised hints need details plumbing through
+#   makeNilErr. Meanwhile only err-row substrings and errc-row codes
+#   are contractual.
 #
 # ---------------------------------------------------------------------
 #

@@ -48,7 +48,10 @@ func (c *Ctx) adderr(n *NilVal) {
 func (c *Ctx) errmsg() string {
 	parts := make([]string, 0, len(c.err))
 	for _, e := range c.err {
-		parts = append(parts, e.Message())
+		// The thrown-error surface renders the full TS-style message
+		// (marker, headline, hint, value line); the LSP/Problem surface
+		// keeps the short Message. See NilVal.FullMessage.
+		parts = append(parts, e.FullMessage())
 	}
 	return strings.Join(parts, "\n------\n")
 }
