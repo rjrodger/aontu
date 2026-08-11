@@ -51,10 +51,10 @@ func unite(ctx *Ctx, a, b Val) Val {
 	if b.Nil() {
 		return b
 	}
-	if isConjunct(a) {
+	if isConjunct(a) || isExpect(a) {
 		return drive(a, b)
 	}
-	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) {
+	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) {
 		return drive(b, a)
 	}
 	return drive(a, b)

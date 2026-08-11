@@ -132,6 +132,25 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 		default:
 			out = newConjunct([]Val{rv, peer})
 		}
+	} else if _, chain := found.(*RefVal); chain {
+		// The target is itself still a reference: defer a pass, so a
+		// chain of plain refs resolves ONE LINK PER PASS from the tail —
+		// the TS `resolved instanceof RefVal` branch, and the semantics
+		// the pass budget is defined over (issue #26). Driving the found
+		// ref here chased the whole chain within a single pass, which
+		// let Go resolve 10+-link chains the canonical engine's budget
+		// refuses. (A PROVEN mutual cycle never reaches this: find's
+		// detectRefCycle reports path_cycle before returning the ref.)
+		switch {
+		case isTop(peer):
+			out = rv
+		case peer.Nil():
+			out = makeNilErr(ctx, "ref", rv, peer)
+		case rv.Canon() == peer.Canon():
+			out = rv
+		default:
+			out = newConjunct([]Val{rv, peer})
+		}
 	} else {
 		if slot == nil {
 			slot = rv.path

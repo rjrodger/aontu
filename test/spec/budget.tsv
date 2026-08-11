@@ -32,14 +32,17 @@ no-path-msg	err	a:$.z	The path reference could not be found
 # PROGRESS (the model was cut off while converging) and no other
 # error. A STABLE residue -- a stuck `1+true`, an unresolved kind --
 # is ordinary incompleteness, stays silent at unify, and surfaces at
-# generate as before; only genuine cut-off earns the budget code. The
-# code is registered (errcodes.tsv, class budget, message substring
-# "evaluation budget") and BOTH engines emit it at the pass-loop exit
-# -- but no shared row can pin it yet: the smallest reproducer (a
-# chain of 10 plain refs) exhausts the budget in TypeScript and
-# resolves eagerly in Go, an OPEN verdict divergence tracked in
-# divergent.tsv (issue #26). A shared row lands when that decision
-# does.
+# generate as before; only genuine cut-off earns the budget code.
+#
+# A chain of plain references resolves ONE LINK PER PASS from the tail
+# in BOTH engines (the TS `resolved instanceof RefVal` deferral,
+# mirrored by go/ref.go -- issue #26 closed): nine links fit the
+# budget exactly, ten exhaust it. The pass budget is therefore part of
+# the language surface these rows pin, and raising maxcc is a
+# spec-visible change in both ports at once.
+budget-chain-9-resolves	gens	a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:1	{"a":1,"b":1,"c":1,"d":1,"e":1,"f":1,"g":1,"h":1,"i":1,"j":1}
+budget-chain-10-exhausts	errc	a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1	budget_passes
+budget-chain-10-msg	err	a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1	The evaluation budget of 9 fixpoint passes was spent before
 #
 # unify_cycle -- the per-pair revisit bound (MAXCYCLE = 999,
 # ts/src/unify.ts) tripping: SUSPECTED non-convergence. No known small

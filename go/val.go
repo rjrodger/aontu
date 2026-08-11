@@ -215,6 +215,9 @@ type NilVal struct {
 func newNil(why string) *NilVal {
 	n := &NilVal{why: why}
 	n.dc = DONE
+	// No source position until a caller assigns one — mirrors the TS
+	// site default (row/col -1), which a frame's arrow renders RAW.
+	n.sp = -1
 	return n
 }
 
@@ -330,7 +333,14 @@ func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
 		return ""
 	}
 
-	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", file, row, col)
+	// A positionless value prints its RAW site in the arrow — TS sites
+	// default to row/col -1 and descErr does not clamp them there —
+	// while the excerpt and caret below use the clamped coordinates.
+	arrowRow, arrowCol := row, col
+	if v.pos() < 0 {
+		arrowRow, arrowCol = -1, -1
+	}
+	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", file, arrowRow, arrowCol)
 	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row, line(row))
 
 	keyPrefix := ""

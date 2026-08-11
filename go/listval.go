@@ -59,23 +59,38 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 			if ctx != nil && ctx.collect {
 				break
 			}
-			// Code follows the TS BagVal.gen closed/no_gen choice (see
-			// MapVal.Gen — including the OPEN spread-required
-			// divergence, issue #27). Rendered via a NilVal for the
-			// full TS-style message, with the element index as the key
-			// detail (TS BagVal.gen passes the bag key either way).
+			// Code follows the TS BagVal.gen choice (see MapVal.Gen).
+			// Rendered via a NilVal for the full TS-style message, with
+			// the element index as the key detail (TS BagVal.gen passes
+			// the bag key either way).
 			code := "listval_no_gen"
 			if l.closed {
 				code = "listval_required"
+			}
+			src, file := "", ""
+			if ctx != nil {
+				src, file = ctx.src, ctx.file
+			}
+			if ev, ok := e.(*ExpectVal); ok {
+				// The TS isExpect branch, list prefix. Only maps create
+				// expects (see go/expect.go), so this is exactly as
+				// reachable as it is in TS — the shared BagVal.gen shape,
+				// mirrored for both bags.
+				code = "listval_spread_required"
+				var vb Val
+				if ev.parent != nil {
+					nb := newNil("")
+					nb.sp = ev.parent.pos()
+					vb = nb
+				}
+				n := makeNilErrFull(nil, code, ev.peg, vb, "",
+					map[string]string{"key": strconv.Itoa(i)})
+				return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 			}
 			n := newNil(code)
 			n.primary = e
 			n.sp = e.pos()
 			n.details = map[string]string{"key": strconv.Itoa(i)}
-			src, file := "", ""
-			if ctx != nil {
-				src, file = ctx.src, ctx.file
-			}
 			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 		}
 		ev, err := e.Gen(ctx)

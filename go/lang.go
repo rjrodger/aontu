@@ -48,6 +48,7 @@ const reservedKeyPrefix = "\x00aontu_"
 const orderKey = reservedKeyPrefix + "order"
 const spreadKey = reservedKeyPrefix + "spread"
 const optionalKey = reservedKeyPrefix + "optional"
+const posKey = reservedKeyPrefix + "pos"
 
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
@@ -380,6 +381,7 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		rs.PrependClose(
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
 		)
+		rs.AddAC(recordMapPos)
 	})
 
 	// pair: `&:value` is a spread (stored on the enclosing map);
@@ -445,6 +447,15 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		rs.AddAC(elemSpread)
 	})
 
+	// list: convert the raw slice into a ListVal at rule close, carrying
+	// the open token's source position — exactly where and how the TS
+	// grammar builds its ListVal (the list rule bc + addsite in
+	// ts/src/lang.ts), so a list operand in an error frame points at its
+	// `[` (issue #34).
+	j.Rule("list", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.AddAC(wrapList)
+	})
+
 	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil {
 		return nil, err
 	}
@@ -489,6 +500,39 @@ func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
 		return
 	}
 	list[len(list)-1] = &listSpread{val: sv}
+}
+
+// recordMapPos stamps the map rule's open-token source position into
+// the raw map node under the reserved posKey sentinel; asValDepth lifts
+// it onto the MapVal. This is the raw-node analogue of the TS map rule
+// bc's addsite (site.row/col from r.o0), so a map operand in an error
+// frame points at its `{` — or, for an implicit map, at the token that
+// opened it — identically in both ports (issue #34).
+func recordMapPos(r *jsonic.Rule, _ *jsonic.Context) {
+	m, ok := r.Node.(map[string]any)
+	if !ok || 0 == r.ON {
+		return
+	}
+	// Unconditional: the map's OWN rule is the authority, exactly as the
+	// TS bc runs once per map rule (a multisource load may have injected
+	// a loaded file's stamp; the host position wins, as in TS).
+	m[posKey] = r.O0.SI
+}
+
+// wrapList converts a completed raw list into a ListVal carrying the
+// open token's position — the direct mirror of the TS list rule bc
+// (new ListVal + addsite). Rule-nesting order means inner lists are
+// already Vals here; only this list's own markers need handling.
+func wrapList(r *jsonic.Rule, _ *jsonic.Context) {
+	n, ok := r.Node.([]any)
+	if !ok {
+		return
+	}
+	lv := listOfRaw(n, 0)
+	if 0 < r.ON {
+		lv.sp = r.O0.SI
+	}
+	r.Node = lv
 }
 
 func kindDef(k Kind) *jsonic.ValueDef {
@@ -1619,6 +1663,28 @@ const maxNodeDepth = 10000
 // converted recursively; map order comes from the order sentinel.
 func asVal(node any) Val { return asValDepth(node, 0) }
 
+// listOfRaw builds a ListVal from a raw element slice, extracting the
+// spread and optional markers the elem rule leaves behind. Shared by
+// wrapList (the list rule close) and the asValDepth fallback.
+func listOfRaw(n []any, depth int) *ListVal {
+	lv := &ListVal{}
+	for _, e := range n {
+		if _, ok := e.(*optionalElem); ok {
+			continue
+		}
+		if ls, ok := e.(*listSpread); ok {
+			if lv.spread == nil {
+				lv.spread = ls.val
+			} else {
+				lv.spread = mergeVals(lv.spread, ls.val)
+			}
+			continue
+		}
+		lv.peg = append(lv.peg, asValDepth(e, depth+1))
+	}
+	return lv
+}
+
 func asValDepth(node any, depth int) Val {
 	if depth > maxNodeDepth {
 		return newNil("max_depth")
@@ -1645,6 +1711,9 @@ func asValDepth(node any, depth int) Val {
 		if opt, ok := n[optionalKey].([]string); ok {
 			mv.optional = opt
 		}
+		if p, ok := n[posKey].(int); ok {
+			mv.sp = p
+		}
 		ord, _ := n[orderKey].([]string)
 		for _, k := range ord {
 			// Skip an order entry with no value: the multisource mark "@"
@@ -1657,22 +1726,10 @@ func asValDepth(node any, depth int) Val {
 		}
 		return mv
 	case []any:
-		lv := &ListVal{}
-		for _, e := range n {
-			if _, ok := e.(*optionalElem); ok {
-				continue
-			}
-			if ls, ok := e.(*listSpread); ok {
-				if lv.spread == nil {
-					lv.spread = ls.val
-				} else {
-					lv.spread = mergeVals(lv.spread, ls.val)
-				}
-				continue
-			}
-			lv.peg = append(lv.peg, asValDepth(e, depth+1))
-		}
-		return lv
+		// Reached only by lists that skipped the list rule (implicit
+		// top-level lists, evaluated expr slices); braced lists are
+		// already ListVals via wrapList. No position, as in TS rawToVal.
+		return listOfRaw(n, depth)
 	case float64:
 		// Source text is unavailable here (raw values from the implicit
 		// top-level list, expr operands), so the "no '.'" condition of

@@ -159,6 +159,12 @@ func clonePath(v Val, path []string) Val {
 		c := *n
 		c.path = cp(path)
 		return &c
+	case *ExpectVal:
+		// Shallow, like the TS Val.clone default an ExpectVal inherits:
+		// peg/peer/parent are shared references.
+		c := *n
+		c.path = cp(path)
+		return &c
 	case *MapVal:
 		out := newMap()
 		out.dc = n.dc

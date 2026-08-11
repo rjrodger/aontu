@@ -366,11 +366,11 @@ describe('unify', function() {
 
 
   // budget_passes: the pass budget spent while the final pass was still
-  // making progress (docs/trust.md clause 2). Pinned here per-port —
-  // no shared spec row can exist while the smallest reproducer (a
-  // 10-link ref chain) diverges between the engines (divergent.tsv,
-  // issue #26): Go resolves chains eagerly and cannot reach the code
-  // at this scale. The go/hints_test.go twin pins the Go message text.
+  // making progress (docs/trust.md clause 2). Since issue #26 closed
+  // (both engines defer ref chains one link per pass), the 10-link
+  // reproducer is pinned by SHARED rows (budget.tsv budget-chain-*);
+  // this test keeps the end-to-end err-shape guards (errs()[0].class,
+  // the stable-residue non-firing) that a spec row cannot express.
   test('budget-passes', () => {
     const chain =
       'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1'

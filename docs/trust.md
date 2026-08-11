@@ -110,12 +110,15 @@ Three honest caveats, tracked rather than papered over:
   `RangeError` → `internal` path — deterministic in *classification*,
   environment-dependent in *threshold*.
 
-- The smallest `budget_passes` reproducer (a chain of ten plain
-  references) errors in TypeScript and resolves in Go, because the two
-  engines resolve reference chains at different rates per pass. This is
-  an **open verdict divergence** — the parity ledger
-  ([test/spec/divergent.tsv](../test/spec/divergent.tsv)) and
-  issue #26 track it — so `budget_passes` has no shared spec row yet.
+- A chain of plain references resolves one link per pass from the tail
+  in **both** engines (issue #26, closed: Go now defers exactly as the
+  canonical engine does), so the pass budget is part of the shared
+  language surface: nine links fit, ten exhaust it as `budget_passes`,
+  pinned by the shared `budget-chain-*` rows in
+  [test/spec/budget.tsv](../test/spec/budget.tsv). One cycle SHAPE
+  still reports different codes — a cycle routed through a function
+  (`a:$.b b:upper($.a)`) is TS `internal` vs Go `path_cycle`, a
+  TS-side proof gap tracked by issue #35 in the parity ledger.
 - The revisit bound carries an acknowledged false-positive defect on
   very large models ("too many top unifications", `ts/src/unify.ts`);
   fixing it needs a generated-SDK-scale corpus first, and until then
@@ -214,10 +217,10 @@ Guarantees are as much about what will never be added:
 | claim | pin |
 |-------|-----|
 | cycle/no-path taxonomy codes | [test/spec/budget.tsv](../test/spec/budget.tsv) (`errc` + substring rows, both engines) |
-| `budget_passes` code, class and "evaluation budget" substring | per-port only — `ts/test/unify.test.ts` (end-to-end) and `go/hints_test.go` (hint table); a shared row is blocked on issue #26, as budget.tsv's comments state |
+| `budget_passes` code, class and "evaluation budget" substring | shared rows — [test/spec/budget.tsv](../test/spec/budget.tsv) `budget-chain-*` (verdicts, code and message substring, both engines); `ts/test/unify.test.ts` and `go/hints_test.go` keep the per-port err-shape guards |
 | code → class registry | [test/spec/errcodes.tsv](../test/spec/errcodes.tsv) + set-equality tests in both runners |
 | canon byte-stability | every `canon` row (strict equality, both runners) |
 | generated-JSON byte-stability | `gens` rows (docs/shared-spec.md) |
-| known open divergences | [test/spec/divergent.tsv](../test/spec/divergent.tsv) — each entry carries its tracking issue (#24, #26, #27, #32 at the time of writing; #29/#30/#31 are fixed and closed; only the Unicode table vintage remains permanent, in DIVERGENCE.md) |
+| known open divergences | [test/spec/divergent.tsv](../test/spec/divergent.tsv) — each entry carries its tracking issue (#24, #32, #35 at the time of writing; #26/#27/#29/#30/#31/#34 are fixed and closed; only the Unicode table vintage remains permanent, in DIVERGENCE.md) |
 | resolver posture | SECURITY comment, `ts/src/lang.ts`; this document |
 | single-use trees | reference-api.md rule; `Aontu.parse` / Go `Parse` doc comments |
