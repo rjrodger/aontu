@@ -749,3 +749,20 @@ exact-pow20-literal-canon	canon	x:100000000000000000000	{"x":1000000000000000000
 #
 # The refusal has an exact escape: write it as a 0d literal.
 lossy-literal-escape-canon	canon	x:0d9007199254740993	{"x":0d9007199254740993}
+#
+# EXACT INTEGER RENDERING -- canon prints the true digits of an
+# integer-kind value, not JavaScript's shortest round-tripping form.
+#
+# These were the parity ledger's last entry (issue #21). TypeScript's
+# Number.toString emits at most 17 significant digits, so 2^60 rendered
+# as 1152921504606847000 -- a DIFFERENT integer that merely rounds to
+# the same double -- while Go printed the true value from its int64.
+# Both routes into the window are pinned: the literal, and the exact
+# sum D6 opened (whose operands are individually exact, so Phase 6
+# accepts them).
+exact-int-pow60-canon	canon	x:1152921504606846976	{"x":1152921504606846976}
+exact-int-near-int64-canon	canon	x:9223372036854774784	{"x":9223372036854774784}
+exact-int-sum-canon	canon	x:576460752303423488+576460752303423488	{"x":1152921504606846976}
+exact-int-pow53-canon	canon	x:9007199254740992	{"x":9007199254740992}
+exact-int-small-canon	canon	x:1	{"x":1}
+exact-int-negative-canon	canon	x:-1152921504606846976	{"x":-1152921504606846976}
