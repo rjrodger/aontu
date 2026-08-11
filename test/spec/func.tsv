@@ -105,3 +105,36 @@ move-literal-keeps-value-gens	gens	x:move(1)	{"x":1}
 move-literal-keeps-value-canon	canon	x:move(1)	{"x":*1}
 move-literal-string-gens	gens	x:move("s")	{"x":"s"}
 move-kind-not-generable-err	err	x:move(number)	Cannot resolve value
+# upper()/lower() USE FULL UNICODE CASE MAPPING.
+#
+# JavaScript's toUpperCase/toLowerCase do locale-independent FULL case
+# mapping, where a character may map to a DIFFERENT NUMBER of characters.
+# Go's strings.ToUpper does SIMPLE per-rune mapping, which cannot, so the
+# two ports disagreed on every non-ASCII string that case-maps to a
+# different length -- and the shared suite tested only ASCII, which is
+# why a documented parity claim shipped false.
+#
+# The lower("ΟΔΟΣ") row is the Final_Sigma context rule: a word-final
+# sigma lowercases to U+03C2, a medial one to U+03C3. Simple mapping has
+# no notion of context and gave U+03C3 for both.
+#
+# The U+0130 row was silent DATA LOSS, not merely a different answer:
+# simple mapping dropped the combining dot entirely.
+upper-full-sharp-s	gens	x:upper("straße")	{"x":"STRASSE"}
+upper-full-sharp-s-capital	gens	x:upper("ẞ")	{"x":"ẞ"}
+upper-full-ligature-fi	gens	x:upper("ﬁx")	{"x":"FIX"}
+upper-full-ligature-ffl	gens	x:upper("ﬄ")	{"x":"FFL"}
+upper-full-length-changing	gens	x:upper("ǰ")	{"x":"J̌"}
+upper-full-armenian-ligature	gens	x:upper("և")	{"x":"ԵՒ"}
+lower-full-final-sigma	gens	x:lower("ΟΔΟΣ")	{"x":"οδος"}
+lower-full-medial-sigma	gens	x:lower("ΑΣΑ")	{"x":"ασα"}
+lower-full-sigma-pair	gens	x:lower("ΣΣ")	{"x":"σς"}
+lower-full-dotted-capital-i	gens	x:lower("İ")	{"x":"i̇"}
+# Locale independence: `i` uppercases to `I`, NOT the Turkish dotted `İ`.
+upper-locale-independent-i	gens	x:upper("i")	{"x":"I"}
+lower-locale-independent-i	gens	x:lower("I")	{"x":"i"}
+# ASCII and already-cased strings are unchanged, and both ports already
+# agreed here -- these are the controls.
+upper-ascii-unchanged	gens	x:upper("abc")	{"x":"ABC"}
+lower-ascii-unchanged	gens	x:lower("ABC")	{"x":"abc"}
+upper-digits-punct-unchanged	gens	x:upper("a1!")	{"x":"A1!"}
