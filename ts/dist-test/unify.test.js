@@ -253,7 +253,9 @@ const G = (s) => A.generate(s);
         catch (e) {
             err = e;
         }
-        (0, expect_1.expect)(undefined !== err).equal(true);
+        if (undefined === err) {
+            throw new Error('expected budget_passes error, generate succeeded');
+        }
         (0, expect_1.expect)(err.errs()[0].why).equal('budget_passes');
         (0, expect_1.expect)(err.errs()[0].class).equal('budget');
         (0, expect_1.expect)(err.message.includes('evaluation budget')).equal(true);
@@ -264,6 +266,9 @@ const G = (s) => A.generate(s);
         }
         catch (e) {
             stuck = e;
+        }
+        if (undefined === stuck) {
+            throw new Error('expected mapval_no_gen error, generate succeeded');
         }
         (0, expect_1.expect)(stuck.errs()[0].why).equal('mapval_no_gen');
     });

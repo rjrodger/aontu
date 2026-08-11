@@ -383,7 +383,9 @@ describe('unify', function() {
       err = e
     }
 
-    expect(undefined !== err).equal(true)
+    if (undefined === err) {
+      throw new Error('expected budget_passes error, generate succeeded')
+    }
     expect(err.errs()[0].why).equal('budget_passes')
     expect(err.errs()[0].class).equal('budget')
     expect(err.message.includes('evaluation budget')).equal(true)
@@ -395,6 +397,9 @@ describe('unify', function() {
     }
     catch (e: any) {
       stuck = e
+    }
+    if (undefined === stuck) {
+      throw new Error('expected mapval_no_gen error, generate succeeded')
     }
     expect(stuck.errs()[0].why).equal('mapval_no_gen')
   })
