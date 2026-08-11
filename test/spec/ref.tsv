@@ -18,3 +18,55 @@ key-deep	gen	a:b:{k:.$KEY}	{"a":{"b":{"k":"b"}}}
 key-sibling	gen	x:1 a:{k:.$KEY}	{"x":1,"a":{"k":"a"}}
 forward-ref	gen	x:$.a\na:7	{"x":7,"a":7}
 chain-reverse	gen	c:42\nb:$.c\na:$.b	{"a":42,"b":42,"c":42}
+# A LIST INDEX IS A STRING KEY, LIKE ANY OTHER.
+#
+# `.$KEY` at a list position built a StringVal whose peg was the JS NUMBER
+# 0 in TypeScript -- an ill-formed value, not a design choice: it canoned
+# as a bare 0, generated a JSON number, satisfied `number` and failed
+# `string`. Go stringifies and is right. key() already agrees with Go here,
+# so TypeScript also disagreed with itself.
+key-ref-list-index-gens	gens	a:[{k:.$KEY}]	{"a":[{"k":"0"}]}
+key-ref-list-index-canon	canon	a:[{k:.$KEY}]	{"a":[{"k":"0"}]}
+key-ref-list-index-is-string-canon	canon	a:[{k:.$KEY&string}]	{"a":[{"k":"0"}]}
+key-ref-list-index-not-number-err	err	a:[{k:.$KEY&number}]	Cannot unify value
+key-ref-list-index-agrees-with-keyfunc-gens	gens	a:[{k:.$KEY},{j:key()}]	{"a":[{"k":"0"},{"j":"1"}]}
+key-ref-nested-list-index-gens	gens	a:[{b:{k:.$KEY}}]	{"a":[{"b":{"k":"b"}}]}
+# A NUMERIC PATH SEGMENT IS A PLAIN DECIMAL INTEGER. NOTHING ELSE IS.
+#
+# `$.a.1` is a numeric segment: it indexes a list and addresses the key
+# "1". Every other numeric spelling -- hex, `0d`, `_` separators, an
+# exponent -- is a STRING KEY spelled exactly as written, because that is
+# what those spellings already produce on the KEY side: `a:{0x0:1}`
+# generates {"0x0":1}, not {"0":1}. A path spelled like the key it
+# addresses is the whole point.
+#
+# Both ports were wrong, in opposite directions. TypeScript pushed the
+# source text (right) but had no branch at all for the two exact leaves,
+# so a `0d` segment was SILENTLY DROPPED and the reference resolved to its
+# own CONTAINER -- a wrong value, not a miss. Go normalised every spelling
+# to its numeric value, so `$.a.0x0` addressed "0" and `$.a.1e2` addressed
+# "100".
+#
+# Each pair is deliberately a hit and a miss: a single row would pass in
+# whichever port happens to agree by accident.
+path-seg-decimal-list-index	gens	a:[10,20,30] b:$.a.1	{"a":[10,20,30],"b":20}
+path-seg-decimal-key	gens	a:{1:7} b:$.a.1	{"a":{"1":7},"b":7}
+path-seg-hex-is-text	gens	a:{0x0:1} b:$.a.0x0	{"a":{"0x0":1},"b":1}
+path-seg-hex-not-value-err	err	a:{0:1} b:$.a.0x0	Cannot resolve value
+path-seg-hex-not-index-err	err	a:[1,2] b:$.a.0x0	Cannot resolve value
+path-seg-exact-is-text	gens	a:{0d1:7} b:$.a.0d1	{"a":{"0d1":7},"b":7}
+path-seg-exact-not-value-err	err	a:{1:7} b:$.a.0d1	Cannot resolve value
+path-seg-exact-not-index-err	err	a:[1,2] b:$.a.0d0	Cannot resolve value
+path-seg-sep-is-text	gens	a:{1_0:7} b:$.a.1_0	{"a":{"1_0":7},"b":7}
+path-seg-sep-not-value-err	err	a:{10:7} b:$.a.1_0	Cannot resolve value
+path-seg-exponent-is-text	gens	a:{1e2:7} b:$.a.1e2	{"a":{"1e2":7},"b":7}
+path-seg-exponent-not-value-err	err	a:{100:7} b:$.a.1e2	Cannot resolve value
+# In a PATH the dot is always the separator, never a decimal point, which
+# is why a float segment splits: `$.a.1.0` is the two plain-decimal
+# segments `1` and `0`, and that is how a nested list index is written.
+# The split is the reason `1.0` reaches a[1][0] rather than looking for a
+# key spelled "1.0", and a future change to segment matching must not
+# quietly undo it.
+path-seg-nested-list-index	gens	a:[[1,2],[3,4]] b:$.a.1.0	{"a":[[1,2],[3,4]],"b":3}
+path-seg-nested-list-index-other	gens	a:[[1,2],[3,4]] b:$.a.0.1	{"a":[[1,2],[3,4]],"b":2}
+path-seg-nested-map-numeric-key	gens	a:{1:{0:7}} b:$.a.1.0	{"a":{"1":{"0":7}},"b":7}

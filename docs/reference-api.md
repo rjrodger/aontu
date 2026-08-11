@@ -274,9 +274,16 @@ JSON.stringify(out) // TypeError: Do not know how to serialize a BigInt
   (`1000.0`, `0.1`, `-1.5`) — no `0d` marker, since that belongs to
   canon and is not JSON, but an integral bigdecimal keeps its `.0` so
   the JSON still shows a decimal.
-- Ordinary values are written exactly as `JSON.stringify` writes them:
-  key order as given (`generate()` already emits map keys
-  alphabetically), the same string escaping, `null` for `NaN` and
+- Object keys are emitted in **lexicographic order** (by UTF-16 code
+  unit), matching Go's `encoding/json`, which sorts map keys. This is
+  done at emit time and not by `generate()`, because a JavaScript object
+  *cannot* hold the required order: ECMAScript lists canonical
+  array-index keys first, ascending numerically, so an object can never
+  present `"10"` before `"9"`. It applies to any object passed in, not
+  only `generate()` output, since this is a general emitter — and it is
+  the one place the result deliberately differs from `JSON.stringify`.
+- Ordinary values are otherwise written exactly as `JSON.stringify`
+  writes them: the same string escaping, `null` for `NaN` and
   `Infinity`, and `undefined`/function/symbol dropped from an object but
   written as `null` inside an array. An object with a `toJSON` method is
   asked for its replacement (`Decimal` is handled as a number before

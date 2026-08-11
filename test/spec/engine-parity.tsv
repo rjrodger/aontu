@@ -33,3 +33,30 @@ baseline-hex-list	gen	a2:[0xFF,2]	{"a2":[255,2]}
 # representation semantic on both ports; source order is not preserved in
 # gen output).
 intkey-order	gen	c:{2:9,1:8}	{"c":{"1":8,"2":9}}
+# MAP KEY ORDER IS LEXICOGRAPHIC, IN GENERATED JSON AS WELL AS CANON.
+#
+# The intkey-order row above pins nothing: `gen` decodes before comparing,
+# so it is order-blind in BOTH runners, and its example {2:9,1:8} is one
+# where numeric and lexicographic order coincide. These rows use `gens`,
+# which compares the serialised bytes, and keys where the two orders differ.
+#
+# TypeScript emitted integer-like keys in ascending NUMERIC order, ahead of
+# every other key -- not a design rule but ECMAScript's own property order
+# (OrdinaryOwnPropertyKeys hoists canonical array indices, ascending), which
+# silently discarded the lexicographic sort BagVal.gen had already done.
+# TS's own CANON was lexicographic throughout, so the port contradicted
+# itself; the canon rows below pin the half that was already right.
+#
+# The 2^32 row is the one that proves the cause: only indices up to 2^32-2
+# are hoisted, so 4294967296 stays behind while 5 and 4294967295 jump ahead
+# of it. No ordering rule anyone would design produces that.
+intkey-order-multidigit	gens	x:{9:1,10:2}	{"x":{"10":2,"9":1}}
+intkey-order-punct	gens	x:{"!":1,9:2}	{"x":{"!":1,"9":2}}
+intkey-order-mixed-alpha	gens	x:{a:1,9:2}	{"x":{"9":2,"a":1}}
+intkey-order-index-limit	gens	x:{4294967295:1,4294967296:2,5:3}	{"x":{"4294967295":1,"4294967296":2,"5":3}}
+intkey-order-nested	gens	x:{9:{8:1,10:2},10:3}	{"x":{"10":3,"9":{"10":2,"8":1}}}
+intkey-order-in-list	gens	x:[{9:1,10:2}]	{"x":[{"10":2,"9":1}]}
+intkey-order-canon	canon	x:{9:1,10:2}	{"x":{"10":2,"9":1}}
+intkey-order-canon-punct	canon	x:{"!":1,9:2}	{"x":{"!":1,"9":2}}
+intkey-order-canon-commute-a	canon	x:{"2":1}&{"10":2}	{"x":{"10":2,"2":1}}
+intkey-order-canon-commute-b	canon	x:{"10":2}&{"2":1}	{"x":{"10":2,"2":1}}

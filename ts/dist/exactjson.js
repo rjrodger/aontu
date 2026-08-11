@@ -61,6 +61,7 @@ exports.exactJSON = exactJSON;
  */
 const Decimal_1 = require("./val/Decimal");
 const err_1 = require("./err");
+const keyorder_1 = require("./keyorder");
 // JS leaves U+2028 (LINE SEPARATOR) and U+2029 (PARAGRAPH SEPARATOR)
 // literal in a JSON string; Go's encoder escapes them. Byte parity wins.
 const LSPS_RE = new RegExp('[\u2028\u2029]', 'g');
@@ -144,11 +145,36 @@ function emit(v, unit, pad, seen) {
     else {
         const colon = '' === unit ? ':' : ': ';
         const parts = [];
-        // OWN enumerable keys, in their existing order -- what
-        // JSON.stringify serialises, and (since MapVal.gen already sorted
-        // them) the same order Go's key-sorting encoder produces. A `for
-        // ... in` here would additionally walk the prototype chain.
-        for (const k of Object.keys(v)) {
+        // OWN enumerable keys, SORTED. A `for ... in` here would additionally
+        // walk the prototype chain.
+        //
+        // WHY THE SORT IS HERE AND NOT IN gen(). BagVal.gen already sorts map
+        // entries lexicographically -- and then writes them into a plain JS
+        // object, where ECMAScript throws that sort away. OrdinaryOwnPropertyKeys
+        // lists canonical ARRAY-INDEX keys first, in ascending NUMERIC order,
+        // and only then the remaining string keys in insertion order. So
+        // `{9:1,10:2}` came back out as 9 before 10, and `{"!":1,9:2}` put the
+        // digit key ahead of the punctuation one.
+        //
+        // This is not a V8 quirk and not a JSON.stringify quirk; it is the
+        // object's own key order, and it CANNOT be fixed upstream, because no
+        // JavaScript object can hold "10" before "9". The emitter is the last
+        // point that still has the freedom to choose, so it chooses here.
+        //
+        // The giveaway that it was never a design rule: only indices up to
+        // 2^32-2 are hoisted, so `{4294967295:1,4294967296:2,5:3}` emitted as
+        // 5, 4294967295, 4294967296 -- and TypeScript's own CANON, which builds
+        // text from a sorted list rather than from an object, was lexicographic
+        // all along. The port contradicted itself.
+        //
+        // Lexicographic by UTF-16 code unit, which is what `<` on JS strings
+        // does and what MapVal.canon/BagVal.gen already sort by. Go sorts map
+        // keys by UTF-8 byte, and the two orders agree on every key that stays
+        // inside the BMP; astral-plane keys are a separate, tracked divergence.
+        // CODE POINT order (cmpCodePoint), which is what Go's UTF-8 byte sort
+        // produces. A bare .sort() is UTF-16 code-unit order, which puts an
+        // astral key ahead of everything in U+E000-U+FFFF.
+        for (const k of Object.keys(v).sort(keyorder_1.cmpCodePoint)) {
             const cv = v[k];
             if (skipped(cv)) {
                 continue;

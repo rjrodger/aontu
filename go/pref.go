@@ -93,6 +93,17 @@ func (p *PrefVal) Unify(peer Val, ctx *Ctx) Val {
 			// a type the preferred value already satisfies (`*1 &
 			// integer`, `*1 & number`), the preference stands; anything
 			// else is a concrete override and wins.
+			// Recompute a missing gate rather than proceed without one.
+			// unite(ctx, nil, peer) returns the peer verbatim, so a nil
+			// familypeg does not weaken this test, it deletes it -- and
+			// silently, which is how a dropped field in one clone case
+			// disabled the gate everywhere without a single test failing.
+			// Belt and braces: clone.go now carries the field, and this
+			// makes the whole class of bug unreachable rather than fixed
+			// once.
+			if nil == p.familypeg {
+				p.resuper()
+			}
 			out = unite(ctx, p.familypeg, peer)
 			if valSame(out, p.superpeg) || valSame(out, p.familypeg) {
 				out = p.peg

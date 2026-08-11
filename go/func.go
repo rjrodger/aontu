@@ -7,6 +7,9 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // funcSet is the set of recognised built-in function names (mirrors the
@@ -286,7 +289,7 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		walkMark(out, true, false, true, false) // copy clears marks
 		return out
 	case "key":
-		return keyFunc(f)
+		return keyFunc(ctx, f)
 	case "pref":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
@@ -296,12 +299,30 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
+		// A nil ARGUMENT is returned unchanged, never marked. Marking it
+		// makes the bag's marked-child skip drop it, which silently
+		// swallowed every parse-time refusal reaching here -- a lossy
+		// literal, an unknown function, an overflowing literal -- and
+		// generated the document as if the key were absent. Refusal over
+		// corruption (D7). Mirrors the TS guard in TypeFuncVal.
+		if args[0].Nil() {
+			return args[0]
+		}
 		out := clonePath(args[0], cp(base))
 		walkMark(out, true, true, false, false)
 		return out
 	case "hide":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
+		}
+		// A nil ARGUMENT is returned unchanged, never marked. Marking it
+		// makes the bag's marked-child skip drop it, which silently
+		// swallowed every parse-time refusal reaching here -- a lossy
+		// literal, an unknown function, an overflowing literal -- and
+		// generated the document as if the key were absent. Refusal over
+		// corruption (D7). Mirrors the TS guard in HideFuncVal.
+		if args[0].Nil() {
+			return args[0]
 		}
 		out := clonePath(args[0], cp(base))
 		walkMark(out, false, false, true, true)
@@ -367,6 +388,47 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 	return makeNilErr(ctx, "func:"+f.name, f, nil)
 }
 
+// caseUpper / caseLower apply FULL Unicode case mapping, matching
+// JavaScript's toUpperCase/toLowerCase, which is what the canonical port
+// uses.
+//
+// NOT strings.ToUpper/ToLower, which do SIMPLE per-rune mapping: a rune
+// in, a rune out. Full mapping may change LENGTH, and that is the whole
+// divergence -- `upper("straße")` is STRASSE in the canonical port and
+// was STRAßE here, `upper("ﬁ")` is FI and was unchanged. It also covers
+// the Final_Sigma CONTEXT rule, which per-rune mapping cannot express at
+// all: a word-final sigma lowercases to U+03C2 and a medial one to
+// U+03C3, and simple mapping gave U+03C3 for both.
+//
+// `strings.ToLower` additionally LOST DATA on U+0130 (capital I with dot
+// above), truncating it to "i" and dropping the combining dot that the
+// full mapping keeps.
+//
+// language.Und, not a specific locale: the canonical port's methods are
+// locale-INDEPENDENT, so `upper("i")` must be "I" and never the Turkish
+// "İ". Confirmed in both directions against the canonical port.
+//
+// A fresh Caser per call because x/text documents Caser as potentially
+// stateful and explicitly not safe for concurrent use. A shared caser
+// measured clean over 64k concurrent calls under -race, but a documented
+// contract beats a passing measurement -- these functions are not on a
+// hot path.
+//
+// SCOPE, stated honestly: this is exact on the Unicode 15.0 repertoire,
+// which is x/text's table vintage (and Go's own unicode package's). Node
+// ships newer ICU tables, so ~110 code points assigned after Unicode 15
+// case-map there and not here. That is a table-vintage gap, not an
+// algorithmic one, and strings.ToUpper/ToLower miss every one of them
+// too -- so nothing regresses; the gap simply stops being hidden behind
+// a much larger one.
+func caseUpper(s string) string {
+	return cases.Upper(language.Und).String(s)
+}
+
+func caseLower(s string) string {
+	return cases.Lower(language.Und).String(s)
+}
+
 func upperLower(ctx *Ctx, args []Val, up bool) Val {
 	if len(args) == 0 {
 		return makeNilErr(ctx, "arg", nil, nil)
@@ -379,9 +441,9 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 	case KindString:
 		s := sv.peg.(string)
 		if up {
-			return newString(strings.ToUpper(s))
+			return newString(caseUpper(s))
 		}
-		return newString(strings.ToLower(s))
+		return newString(caseLower(s))
 	case KindInteger, KindFloat:
 		var fv float64
 		if sv.kind == KindInteger {
@@ -432,12 +494,38 @@ func setClosed(ctx *Ctx, f *FuncVal, args []Val, closed bool) Val {
 }
 
 // keyFunc returns the key `move` levels up the path (KeyFuncVal.resolve).
-func keyFunc(f *FuncVal) Val {
+// keyFunc resolves key(n) to the ancestor key n levels up.
+//
+// THE LEVEL MUST BE AN INTEGER, OR ABSENT. A level is an index into the
+// path (0 the own key, the default 1 the parent), so the argument is an
+// integer or it is a mistake. Both exact integer leaves qualify --
+// `integer` and `biginteger` -- and everything else is refused rather
+// than silently falling back to 1, which is what made a mistyped level
+// undetectable here.
+func keyFunc(ctx *Ctx, f *FuncVal) Val {
 
 	move := 1
 	if len(f.peg) > 0 {
-		if sv, ok := f.peg[0].(*ScalarVal); ok && sv.kind == KindInteger {
+		sv, ok := f.peg[0].(*ScalarVal)
+		if !ok {
+			return makeNilErr(ctx, "key_level", f, nil)
+		}
+		switch sv.kind {
+		case KindInteger:
 			move = int(sv.peg.(int64))
+		case KindBigInteger:
+			// A level far outside the path simply misses, exactly as an
+			// out-of-range plain integer already does, so a big.Int that
+			// does not fit an int needs no bound of its own -- it is
+			// clamped to something equally out of range.
+			b := sv.peg.(*big.Int)
+			if b.IsInt64() {
+				move = int(b.Int64())
+			} else {
+				move = -1
+			}
+		default:
+			return makeNilErr(ctx, "key_level", f, nil)
 		}
 	}
 	idx := len(f.path) - (1 + move)

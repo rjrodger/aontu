@@ -32,6 +32,7 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
+import { cmpCodePoint } from '../keyorder'
 
 
 // Structural snapshots of ref spreads (see MapVal.unify), keyed by the
@@ -419,10 +420,11 @@ class MapVal extends BagVal {
 
 
   get canon() {
-    // Keys are emitted alphabetically so the canonical form is
-    // independent of insertion/unification order (and matches the Go
-    // port, whose JSON marshaling also sorts keys).
-    let keys = Object.keys(this.peg).sort()
+    // Keys are emitted in CODE POINT order so the canonical form is
+    // independent of insertion/unification order and matches the Go
+    // port. A bare .sort() is UTF-16 code-unit order, which puts an
+    // astral key ahead of everything in U+E000-U+FFFF -- see cmpCodePoint.
+    let keys = Object.keys(this.peg).sort(cmpCodePoint)
     return '' +
       // this.errcanon() +
       // (this.mark.type ? '<type>' : '') +

@@ -16,3 +16,17 @@ top-func-plus	gen	lower(1.1)+2	3
 top-disjunct	canon	1|2	1|2
 hide-spread-scalar	gen	K:true &:hide(true)	{}
 hide-spread-scalar-canon	canon	K:true &:hide(true)	{&:hide(true),"K":true}
+# A REFUSED VALUE STAYS REFUSED INSIDE type() AND hide().
+#
+# Both marks walked their argument and marked it -- including when the
+# argument was already an error value -- and the bag's marked-child skip
+# then dropped it, so a parse-time refusal (a lossy literal, an unknown
+# function, an overflowing literal) was silently swallowed and the
+# document generated as if the key were absent. TypeScript returns a nil
+# argument unchanged before marking, and is right: refusal over corruption.
+hide-lossy-literal-arg-err	err	x:hide(9007199254740993)	not exactly representable
+type-lossy-literal-arg-err	err	x:type(9007199254740993)	not exactly representable
+hide-lossy-literal-arg-nested-err	err	x:{a:hide(9007199254740993)}	not exactly representable
+hide-lossy-literal-arg-in-list-err	err	x:[hide(9007199254740993)]	not exactly representable
+hide-unknown-func-arg-err	err	x:hide(unknownfn(1))	Cannot resolve value
+type-unknown-func-arg-err	err	x:type(unknownfn(1))	Cannot resolve value

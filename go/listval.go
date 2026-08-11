@@ -65,7 +65,7 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 			}
 			return nil, err
 		}
-		if ev == nil && !gensNull(e) {
+		if ev == nil && !gensNull(ctx, e) {
 			continue
 		}
 		out = append(out, ev)

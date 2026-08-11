@@ -389,6 +389,16 @@ only divergences that are expected to be fixed:
   error nil in Go. `generate` errors in both; only `unify(src).canon` of
   such an *invalid* source differs, which the spec (whose canon rows are
   valid sources) never observes.
+- **Unicode table vintage.** `upper()`/`lower()` use FULL Unicode case
+  mapping in both ports and agree exactly on the Unicode 15.0 repertoire.
+  The Go port's tables (`golang.org/x/text`, and Go's own `unicode`
+  package) are Unicode 15.0; Node ships newer ICU tables, so roughly 110
+  code points assigned after Unicode 15 — Garay, some Latin Extended-D
+  additions, a few Cyrillic — case-map in TypeScript and not in Go. This
+  is a table-vintage gap, not an algorithmic one, and it closes on its own
+  as Go's tables advance. No ledger entry: nothing in this repository can
+  change it, and no spec rows pin it.
+
 - **Malformed-input acceptance edges.** Fuzzing surfaced a residual
   family of *degenerate* inputs where the two parsers disagree about
   whether to accept at all: nested implicit lists from adjacent values
@@ -396,6 +406,21 @@ only divergences that are expected to be fixed:
   juxtapositions (`1'00]...`, `"q k""?:...`) — one side errors, the
   other parses to a (differently shaped) junk value. Well-formed
   sources are unaffected.
+
+  The same bullet covers a source that is not well-formed **UTF-8**: the
+  two ports may produce a different NUMBER of U+FFFD replacement
+  characters for the same invalid bytes. A truncated three-byte sequence
+  (`E2 82`) inside a string yields ONE replacement character in
+  TypeScript and TWO in Go, because Node replaces invalid bytes as it
+  decodes the file to a UTF-16 string, while Go carries the raw bytes
+  through to the encoder. No spec rows: the `src` column cannot carry raw
+  invalid bytes, and by this document's own rule a divergence declared
+  permanent does not go in the ledger either.
+
+  Distinct from this, and NOT permanent: a lone *surrogate* in a quoted
+  string is folded to U+FFFD by Go, which conflates distinct values.
+  That one is tracked in `test/spec/divergent.tsv` and issue #24, because
+  it breaks a lattice law rather than merely reshaping junk.
 > **Previously divergent, now fixed:** root-level spreads over `$var`
 > (and other expression) keys. `k1:$flag &:boolean` used to raise an
 > internal error in TS: the expr plugin consumed the `&` as an infix

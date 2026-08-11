@@ -13,6 +13,13 @@ const NumberVal_1 = require("./NumberVal");
 const ConjunctVal_1 = require("./ConjunctVal");
 const VarVal_1 = require("./VarVal");
 const FeatureVal_1 = require("./FeatureVal");
+const numkind_1 = require("./numkind");
+const BigIntegerVal_1 = require("./BigIntegerVal");
+const BigDecimalVal_1 = require("./BigDecimalVal");
+// A path segment no spelling can produce, used when append meets a Val
+// class it has no rule for. A key cannot contain a NUL, so this can never
+// match, which turns a silent path-shortening bug into a visible miss.
+const UNSPELLABLE_SEGMENT = '\u0000unspellable';
 class RefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -54,6 +61,21 @@ class RefVal extends FeatureVal_1.FeatureVal {
             let partvals = part.src.split('.');
             this.peg.push(...partvals);
         }
+        // THE EXACT LEAVES ARE PATH TEXT LIKE ANY OTHER SPELLING. `0d1` as a
+        // segment addresses the key literally spelled `0d1` -- the same key
+        // `a:{0d1:7}` creates -- and is NOT the number 1, so it neither
+        // indexes a list nor reaches a key spelled `1`.
+        //
+        // Without these branches the part fell off the end of the chain and
+        // was SILENTLY DROPPED, so `$.a.0d0` resolved to `$.a` and handed back
+        // the CONTAINER. That is a wrong value, not a miss -- strictly worse
+        // than an error -- and it made `$.a.0d0` and `$.a.0d1` denote the same
+        // location.
+        else if (part instanceof BigIntegerVal_1.BigIntegerVal || part instanceof BigDecimalVal_1.BigDecimalVal) {
+            // A bigdecimal splits on its point exactly as a float does, so
+            // `$.x.0d1.5` addresses two levels.
+            this.peg.push(...part.src.split('.'));
+        }
         else if (part instanceof VarVal_1.VarVal) {
             partval = part;
             this.peg.push(partval);
@@ -78,6 +100,15 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 }
             }
             this.peg.push(...part.peg);
+        }
+        // A closed chain, deliberately. Every branch above ends in a push, so
+        // an unhandled Val class used to fall through in SILENCE and shorten
+        // the path by one segment -- which is how the two exact leaves, added
+        // by the number tower, made references resolve to their own container.
+        // A segment that cannot be spelled is pushed as one that cannot match,
+        // so the reference misses loudly instead of succeeding wrongly.
+        else {
+            this.peg.push(UNSPELLABLE_SEGMENT);
         }
     }
     unify(peer, ctx) {
@@ -201,7 +232,19 @@ class RefVal extends FeatureVal_1.FeatureVal {
                             // The resolved variable IS a path segment: $seg.r with
                             // seg="x" reads ...x.r (previously the coerced value was
                             // dropped, silently reading the path without it).
-                            parts.push('' + part.peg);
+                            //
+                            // Integer kind renders its EXACT digits -- the FOURTH site
+                            // to get this wrong (see integerDigits and #21). `'' + peg`
+                            // on a JS number gives the shortest round-tripping form, so
+                            // a variable bound to 2^60 addressed the key
+                            // "1152921504606847000" and missed the real one. Go's
+                            // ref.go dispatches on kind here and was already correct.
+                            //
+                            // Every other kind is already right under `'' +`: a bigint
+                            // and a Decimal stringify to exact digits, and a float must
+                            // keep JS parity.
+                            parts.push(part.isInteger ?
+                                (0, numkind_1.integerDigits)(part.peg) : '' + part.peg);
                         }
                     }
                 }
@@ -223,8 +266,20 @@ class RefVal extends FeatureVal_1.FeatureVal {
             refpath = refpath
                 .reduce(((a, p) => (p === sep ? a.length = a.length - 1 : a.push(p), a)), []);
             if (modes.includes('KEY')) {
+                // STRINGIFY. A LIST index arrives here as a JS NUMBER (jsonic puts
+                // it in the path as one, and lang.ts copies the path wholesale),
+                // so `.$KEY` inside a list built a StringVal whose peg was the
+                // number 0 -- an ill-formed value, not a design choice: it canoned
+                // as a bare 0, generated a JSON number, satisfied `number` and
+                // failed `string`. Go stringifies, and key() already agreed with
+                // Go, so this port disagreed with itself.
+                //
+                // Coerced HERE, at the consumption site, rather than by
+                // normalising Val.path: the numeric segment originates in jsonic's
+                // own r.k.path and every other path consumer (find's descent,
+                // key(), the clone/spread machinery) already handles it.
                 let key = this.path[this.path.length - 2];
-                let sv = new StringVal_1.StringVal({ peg: null == key ? '' : key }, ctx);
+                let sv = new StringVal_1.StringVal({ peg: null == key ? '' : '' + key }, ctx);
                 // TODO: other props?
                 sv.dc = type_1.DONE;
                 sv.path = this.path;

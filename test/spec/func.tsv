@@ -54,3 +54,87 @@ move-shallower-dest-canon	canon	x:a:close({k:key()}) y:move($.x.a)	{"x":{"a":clo
 move-shallower-dest	gen	x:a:close({k:key()}) y:move($.x.a)	{"x":{},"y":{"k":"k"}}
 ref-into-move-dest-canon	canon	x:a:{v:6,k:key()} x:c:move($.x.a) y:$.x.c	{"x":{"a":{"k":key(),"v":6},"c":{"k":*"c","v":*6}},"y":{"k":*"k","v":*6}}
 ref-into-move-dest	gen	x:a:{v:6,k:key()} x:c:move($.x.a) y:$.x.c	{"x":{"c":{"k":"c","v":6}},"y":{"k":"k","v":6}}
+# key() TAKES AN INTEGER LEVEL, OR NOTHING.
+#
+# A level is an index into the path -- 0 is the own key, the default 1 is
+# the parent -- so the argument must be an INTEGER. Both exact integer
+# leaves qualify (`integer` and `biginteger`); a float, a bigdecimal, a
+# string, a boolean, a map or a list does not, and is refused in both
+# ports rather than silently meaning "parent".
+#
+# Before this, TypeScript coerced anything number-ish and Go silently fell
+# back to level 1, so a mistyped level was undetectable -- and in
+# TypeScript `key(0d1)` and `key({})` did not merely misbehave, they
+# CRASHED: key() called the COERCING global isNaN() on the argument's peg,
+# which throws for a bigint and for the null-prototype object a map's peg
+# is. That surfaced as an opaque [aontu/internal]. path() had the same
+# class of bug, reading .isScalar off undefined when called with no
+# argument; upper()/lower() were given this exact fix earlier and carry a
+# comment saying so, and these two were missed in that sweep.
+key-arg-biginteger	gens	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
+key-arg-biginteger-canon	canon	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
+key-arg-biginteger-zero	gens	a:b:c:key(0d0)	{"a":{"b":{"c":"c"}}}
+key-arg-float-err	err	a:b:c:key(2.0)	The argument to key() is a LEVEL
+key-arg-float-fraction-err	err	a:b:c:key(1.5)	The argument to key() is a LEVEL
+key-arg-bigdecimal-err	err	a:b:c:key(0d1.0)	The argument to key() is a LEVEL
+key-arg-string-err	err	a:b:c:key("x")	The argument to key() is a LEVEL
+key-arg-bool-err	err	a:b:c:key(true)	The argument to key() is a LEVEL
+key-arg-map-err	err	a:b:c:key({})	The argument to key() is a LEVEL
+key-arg-list-err	err	a:b:c:key([1])	The argument to key() is a LEVEL
+key-arg-none-defaults-to-parent	gens	a:b:c:key()	{"a":{"b":{"c":"b"}}}
+key-arg-zero-own-key	gens	a:b:c:key(0)	{"a":{"b":{"c":"c"}}}
+key-arg-two	gens	a:b:c:key(2)	{"a":{"b":{"c":"a"}}}
+path-no-arg-err	err	x:path()	Cannot resolve value
+# move(top) MUST ERROR, NOT VANISH.
+#
+# The landed rule for a literal move() argument is set by its neighbours,
+# which both ports already agree on: the destination KEEPS the value
+# (wrapped in a pref), and errors if that value is not generable --
+# `x:move(number)` errors in both. And `top` is not generable: `x:top`,
+# `x:copy(top)` and `x:pref(top)` all error in both ports.
+#
+# TypeScript instead dropped the key silently, and disagreed with ITSELF
+# while doing it: its canon kept `x:top`, its generate did not. move() is
+# the only function that marks the ORIGINAL rather than the clone, and
+# TopVal.clone is the identity function, so the clone and the original are
+# the same object -- move() hid the very value it was returning.
+move-bare-top-err	err	q:1 a:1 x:move(top)	Cannot resolve value
+move-bare-top-canon	canon	q:1 a:1 x:move(top)	{"a":1,"q":1,"x":top}
+move-top-conjunct-gens	gens	x:move(top)&1	{"x":1}
+move-literal-keeps-value-gens	gens	x:move(1)	{"x":1}
+move-literal-keeps-value-canon	canon	x:move(1)	{"x":*1}
+move-literal-string-gens	gens	x:move("s")	{"x":"s"}
+move-kind-not-generable-err	err	x:move(number)	Cannot resolve value
+# upper()/lower() USE FULL UNICODE CASE MAPPING.
+#
+# JavaScript's toUpperCase/toLowerCase do locale-independent FULL case
+# mapping, where a character may map to a DIFFERENT NUMBER of characters.
+# Go's strings.ToUpper does SIMPLE per-rune mapping, which cannot, so the
+# two ports disagreed on every non-ASCII string that case-maps to a
+# different length -- and the shared suite tested only ASCII, which is
+# why a documented parity claim shipped false.
+#
+# The lower("ΟΔΟΣ") row is the Final_Sigma context rule: a word-final
+# sigma lowercases to U+03C2, a medial one to U+03C3. Simple mapping has
+# no notion of context and gave U+03C3 for both.
+#
+# The U+0130 row was silent DATA LOSS, not merely a different answer:
+# simple mapping dropped the combining dot entirely.
+upper-full-sharp-s	gens	x:upper("straße")	{"x":"STRASSE"}
+upper-full-sharp-s-capital	gens	x:upper("ẞ")	{"x":"ẞ"}
+upper-full-ligature-fi	gens	x:upper("ﬁx")	{"x":"FIX"}
+upper-full-ligature-ffl	gens	x:upper("ﬄ")	{"x":"FFL"}
+upper-full-length-changing	gens	x:upper("ǰ")	{"x":"J̌"}
+upper-full-armenian-ligature	gens	x:upper("և")	{"x":"ԵՒ"}
+lower-full-final-sigma	gens	x:lower("ΟΔΟΣ")	{"x":"οδος"}
+lower-full-medial-sigma	gens	x:lower("ΑΣΑ")	{"x":"ασα"}
+lower-full-sigma-pair	gens	x:lower("ΣΣ")	{"x":"σς"}
+lower-full-dotted-capital-i	gens	x:lower("İ")	{"x":"i̇"}
+# Locale independence: `i` uppercases to `I`, NOT the Turkish dotted `İ`.
+upper-locale-independent-i	gens	x:upper("i")	{"x":"I"}
+lower-locale-independent-i	gens	x:lower("I")	{"x":"i"}
+# ASCII and already-cased strings are unchanged, and both ports already
+# agreed here -- these are the controls.
+upper-ascii-unchanged	gens	x:upper("abc")	{"x":"ABC"}
+lower-ascii-unchanged	gens	x:lower("ABC")	{"x":"abc"}
+upper-digits-punct-unchanged	gens	x:upper("a1!")	{"x":"A1!"}

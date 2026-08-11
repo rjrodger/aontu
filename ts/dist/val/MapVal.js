@@ -9,6 +9,7 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const BagVal_1 = require("./BagVal");
+const keyorder_1 = require("../keyorder");
 // Structural snapshots of ref spreads (see MapVal.unify), keyed by the
 // ref's canon + source site rather than object identity: spread
 // application clones templates (and the refs inside them) freely, and a
@@ -316,10 +317,11 @@ class MapVal extends BagVal_1.BagVal {
         return out;
     }
     get canon() {
-        // Keys are emitted alphabetically so the canonical form is
-        // independent of insertion/unification order (and matches the Go
-        // port, whose JSON marshaling also sorts keys).
-        let keys = Object.keys(this.peg).sort();
+        // Keys are emitted in CODE POINT order so the canonical form is
+        // independent of insertion/unification order and matches the Go
+        // port. A bare .sort() is UTF-16 code-unit order, which puts an
+        // astral key ahead of everything in U+E000-U+FFFF -- see cmpCodePoint.
+        let keys = Object.keys(this.peg).sort(keyorder_1.cmpCodePoint);
         return '' +
             // this.errcanon() +
             // (this.mark.type ? '<type>' : '') +

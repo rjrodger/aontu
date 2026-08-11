@@ -172,11 +172,46 @@ describe('exactjson', () => {
     Assert.equal(exactJSON(gen('x:{y:0d7}')), '{"x":{"y":7}}')
   })
 
+  test('sorts-object-keys-where-JSON-stringify-would-not', () => {
+    // The ONE place this emitter deliberately differs from JSON.stringify,
+    // and it exists because a JS object cannot represent the required
+    // order: ECMAScript lists canonical array-index keys first, ascending
+    // numerically, so `{"10":..,"9":..}` is unrepresentable as insertion
+    // order. Go's encoding/json sorts map keys, so sorting here is what
+    // makes the two ports byte-identical.
+    const idx: any = { '10': 2, '9': 1 }
+    Assert.equal(JSON.stringify(idx), '{"9":1,"10":2}')   // ECMAScript order
+    Assert.equal(exactJSON(idx), '{"10":2,"9":1}')        // lexicographic
+
+    // Plain insertion order is sorted too -- same rule, no special case.
+    Assert.equal(exactJSON({ b: 1, a: 2 }), '{"a":2,"b":1}')
+
+    // The 2^32 boundary, which is what shows the old order was ECMAScript's
+    // and not anyone's design: only indices below it are hoisted.
+    Assert.equal(
+      JSON.stringify({ '4294967295': 1, '4294967296': 2, '5': 3 }),
+      '{"5":3,"4294967295":1,"4294967296":2}')
+    Assert.equal(
+      exactJSON({ '4294967295': 1, '4294967296': 2, '5': 3 }),
+      '{"4294967295":1,"4294967296":2,"5":3}')
+
+    // Nested objects sort at every level.
+    Assert.equal(exactJSON({ x: { '9': { b: 1, a: 2 }, '10': 3 } }),
+      '{"x":{"10":3,"9":{"a":2,"b":1}}}')
+
+    // Arrays keep their order -- a list is ordered data, not a map.
+    Assert.equal(exactJSON([3, 1, 2]), '[3,1,2]')
+  })
+
   test('is-JSON-stringify-byte-for-byte-without-the-exact-leaves', () => {
     // The Go-parity anchor. Go's encoder (HTML escaping OFF) was
     // aligned with JSON.stringify when the `gens` mode landed, so
     // agreeing with JSON.stringify here is how this emitter stays
     // aligned with Go for everything the exact leaves did not add.
+    //
+    // KEY ORDER IS EXCLUDED, and deliberately: every object below is
+    // already in sorted order, so the two agree. Where they do not, the
+    // sort wins -- see the preceding test.
     // Control characters, written by code point so the source file
     // carries no invisible bytes: NUL, backspace, formfeed, escape,
     // unit separator. JS and Go both shorthand \b and \f and both

@@ -7,7 +7,7 @@ declare class KeyFuncVal extends FuncBaseVal {
     make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
     unify(peer: Val, ctx: AontuContext): Val;
-    resolve(_ctx: AontuContext, _args: Val[]): Val;
+    resolve(ctx: AontuContext, _args: Val[]): import("./NilVal").NilVal | Val;
     gen(_ctx: AontuContext): any;
 }
 export { KeyFuncVal, };

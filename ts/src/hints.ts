@@ -159,6 +159,7 @@ const hints: Record<string, string> = {
   // Argument errors
   'arg': 'Missing required argument. A function requires an argument but none was provided.',
   'invalid-arg': 'Invalid argument provided. The argument does not match the expected type or format.',
+  'key_level': 'The argument to key() is a LEVEL: how many steps up the path to look, where 0 is the key of the value itself and the default 1 is its parent. It must therefore be an integer -- `key(2)`, or `key(0d2)` for the exact leaf. A float, a decimal, a string, a boolean, a map or a list is not a level. A level beyond the top of the path is not an error; it yields the empty string.',
   'no_first_arg': 'Missing first argument. The function requires a first argument but none was provided.',
 
   // Variable errors

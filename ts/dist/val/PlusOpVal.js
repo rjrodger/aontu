@@ -11,6 +11,7 @@ const BigIntegerVal_1 = require("../val/BigIntegerVal");
 const BigDecimalVal_1 = require("../val/BigDecimalVal");
 const Decimal_1 = require("../val/Decimal");
 const numkind_1 = require("../val/numkind");
+const numkind_2 = require("../val/numkind");
 const OpBaseVal_1 = require("./OpBaseVal");
 // D6 -- THE EXACT LADDER: integer < biginteger < bigdecimal. A mixed
 // operation between exact leaves promotes to the WIDEST operand and is
@@ -143,7 +144,7 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
         // …992 — which is precisely the corruption the tower refuses. The
         // sum that will not fit is an error pointing at `0d`, not a rounded
         // answer.
-        return (0, numkind_1.isIntegerStorable)(sum) ?
+        return (0, numkind_2.isIntegerStorable)(sum) ?
             new IntegerVal_1.IntegerVal({ peg: Number(sum) }) :
             (0, err_1.makeNilErr)(ctx, 'inexact_integer_sum', this, undefined, 'add', { sum: sum.toString() });
     }
@@ -154,8 +155,21 @@ class PlusOpVal extends OpBaseVal_1.OpBaseVal {
 exports.PlusOpVal = PlusOpVal;
 // The digits of an operand for string concatenation: no `0d` marker, no
 // R4 `.0` suffix — the plain rendering of the number, in every leaf.
+//
+// INTEGER KIND GOES THROUGH integerDigits. This was the THIRD site to
+// render an integer-kind peg with JavaScript's shortest round-tripping
+// form, so `"" + 1152921504606846976` produced "1152921504606847000" — a
+// different integer — where Go produced the exact digits. See #21 and
+// integerDigits, which exists so the set of such sites is greppable.
+//
+// The other leaves are already exact or already correct: a bigint
+// stringifies to its exact digits, a Decimal renders its own, and a FLOAT
+// must keep String() because its shortest form is the right answer and is
+// what Go prints too (`"a" + 1.0` is "a1").
 function digits(v, k) {
-    return 'bigdecimal' === k ? v.peg.toString() : String(v.peg);
+    return 'bigdecimal' === k ? v.peg.toString() :
+        'integer' === k ? (0, numkind_1.integerDigits)(v.peg) :
+            String(v.peg);
 }
 // An exact-ladder operand as an exact integer. Only reached for the two
 // integral leaves; an `integer` peg is integral by construction, so

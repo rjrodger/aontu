@@ -13,3 +13,23 @@ load-conflict	err	car:@"__FIXTURES__/car.aon" car:{doors:5}	Cannot unify
 # Relative @"./x" inside a loaded file resolves against that file directory (parent->child->grand).
 load-rel-chain	gen	@"__FIXTURES__/nest_parent.aon"	{"a":1,"child":{"b":2,"grand":{"c":3}}}
 load-not-found	err	a:@"nope-no-such-file"	source not found: nope-no-such-file
+# A missing @"file" must be an error in EVERY position it can appear, not
+# just as a value. load-not-found above uses the value position -- the one
+# both ports already agreed on -- so it pinned the narrowest case and left
+# the rest open. A bare member include is the position a real config uses
+# most (`@"base.aon"` at the top of a file), and it is the one where a
+# missing source silently produced a clean, plausible, INCOMPLETE document.
+load-not-found-bare	err	@"nope-no-such-file"	source not found: nope-no-such-file
+load-not-found-member	err	a:1 @"nope-no-such-file"	source not found: nope-no-such-file
+load-not-found-member-first	err	@"nope-no-such-file" a:1	source not found: nope-no-such-file
+load-not-found-nested	err	a:{ @"nope-no-such-file" }	source not found: nope-no-such-file
+load-not-found-list	err	a:[ @"nope-no-such-file" ]	source not found: nope-no-such-file
+# A missing include NESTED inside a file that loads FINE. The rows above all
+# put the bad include in the ENTRY source; here the entry loads cleanly and
+# the failure is one level down, in a sub-parse. That is a separate channel
+# and it stayed broken after the entry-level fix: Go generated {} -- losing
+# the outer key as well -- while TypeScript reports the failure with the
+# including file in the frame. Both positions of the inner include are
+# pinned, because value and member fail by different routes.
+load-not-found-in-loaded-member	err	@"__FIXTURES__/nest_missing.aon"	source not found: ./no-such-child
+load-not-found-in-loaded-value	err	@"__FIXTURES__/nest_missing_val.aon"	source not found: ./no-such-child-val

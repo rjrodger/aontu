@@ -21,3 +21,15 @@ spread-expr	err	k1:1+1 &:boolean	Cannot unify value: boolean with value: 2
 spread-repeated	gen	p1:$flag &:boolean p2:$flag &:boolean	{"p1":true,"p2":true}
 spread-conjunct-kinds	gen	p1:$foo &:integer&number	{"p1":11}
 path-segment	gen	hello:{r:1} r:2 out:$bar.r	{"hello":{"r":1},"out":1,"r":2}
+# A VARIABLE USED AS A PATH SEGMENT RENDERS ITS EXACT DIGITS.
+#
+# `$big` is integer 2^60. Under `'' + peg` a JS number gives the shortest
+# round-tripping form (1152921504606847000) -- a DIFFERENT integer -- so
+# TypeScript addressed a key that does not exist and missed the one that
+# does. Go dispatched on kind here and was already right.
+#
+# The PAIR is the assertion. The first row alone passes in a broken port if
+# the document happens to contain the rounded key; the second says the
+# rounded key must NOT be reachable. Together they pin the exact rendering.
+var-path-seg-exact-int	canon	a:{"1152921504606846976":7}\nb:$.a.$big	{"a":{"1152921504606846976":7},"b":7}
+var-path-seg-exact-int-not-rounded	err	a:{"1152921504606847000":7}\nb:$.a.$big	Cannot resolve value

@@ -7,6 +7,7 @@ require (
 	github.com/tabnas/jsonic/go v0.6.0
 	github.com/tabnas/multisource/go v0.5.1
 	github.com/tabnas/path/go v0.3.1
+	golang.org/x/text v0.30.0
 )
 
 require (

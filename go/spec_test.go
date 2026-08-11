@@ -150,6 +150,12 @@ func specVars() map[string]Val {
 		"bar":  newString("hello"),
 		"flag": newBoolean(true),
 		"obj":  obj,
+		// 2^60: an integer-kind value above TypeScript's safe-integer
+		// range, where its exact digits and JavaScript's shortest
+		// round-tripping form differ. Every other binding renders
+		// identically in both ports, so no shared row could reach the
+		// variable-as-path-segment rendering site until this existed.
+		"big": newInteger(1152921504606846976),
 	}
 }
 

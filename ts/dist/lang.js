@@ -57,10 +57,22 @@ const asPlugin = (p) => p;
 // coefficient, so only the scale bound catches it, and it is caught at
 // parse -- before plain-form rendering would try to materialise a
 // gigabyte of zeros.
+// The source text of a negated exact literal. `-` is a prefix OPERATOR,
+// not part of the literal, so the text has to be rebuilt here to keep
+// `src` meaning "how this value is spelled" (see bigVal).
+function negsrc(src) {
+    return '' === src ? '' : src.startsWith('-') ? src.slice(1) : '-' + src;
+}
 function bigVal(res) {
     const lit = (0, Decimal_1.readBigLiteral)(res);
-    return 'biginteger' === lit.leaf ? new BigIntegerVal_1.BigIntegerVal({ peg: lit.int }) :
-        'bigdecimal' === lit.leaf ? new BigDecimalVal_1.BigDecimalVal({ peg: lit.dec }) :
+    // `src` is the literal's own text, and it is not decoration: a path
+    // segment is spelled text, so `$.a.0d1` must address the key `0d1` --
+    // the same key `a:{0d1:7}` creates -- rather than the number 1. See
+    // RefVal.append. Without it the segment was empty and the reference
+    // silently resolved to its own container.
+    const src = res[0];
+    return 'biginteger' === lit.leaf ? new BigIntegerVal_1.BigIntegerVal({ peg: lit.int, src }) :
+        'bigdecimal' === lit.leaf ? new BigDecimalVal_1.BigDecimalVal({ peg: lit.dec, src }) :
             new NilVal_1.NilVal({ why: lit.code });
 }
 // Char codes of the literal's fixed opening, for the guard below.
@@ -335,10 +347,10 @@ help isolate the syntax error.`,
             // normalising constructor sends every zero to the same form, so
             // `-0d0` is `0d0` and `-0d0.0` is `0d0.0`.
             if (val instanceof BigIntegerVal_1.BigIntegerVal) {
-                return addsite(new BigIntegerVal_1.BigIntegerVal({ peg: -val.peg }), r, ctx);
+                return addsite(new BigIntegerVal_1.BigIntegerVal({ peg: -val.peg, src: negsrc(val.src) }), r, ctx);
             }
             if (val instanceof BigDecimalVal_1.BigDecimalVal) {
-                return addsite(new BigDecimalVal_1.BigDecimalVal({ peg: val.peg.negate() }), r, ctx);
+                return addsite(new BigDecimalVal_1.BigDecimalVal({ peg: val.peg.negate(), src: negsrc(val.src) }), r, ctx);
             }
             // Negating a non-numeric operand (`k-x` splits into k, -x) is an
             // error nil, not NaN (mirrors negate() in go/lang.go).

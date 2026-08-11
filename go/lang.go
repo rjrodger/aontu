@@ -103,6 +103,26 @@ func mustMakeLang(base string) *jsonic.Jsonic {
 	return j
 }
 
+// inElem reports whether this val rule was pushed from a LIST ELEMENT.
+//
+// An optional key is not a list element. The same pair WITHOUT the `?` --
+// `a:[x:1]` -- is already discarded by both ports, because a key:value
+// pair is simply not an element; adding `?` must not turn a discarded pair
+// into a materialised one. It did here, purely because the optional form
+// reached the `val` rule's dive alts while the plain form never does.
+//
+// The canonical port avoids this a different way, by intercepting
+// OPTKEY+QM in the `elem` rule itself (the aontu-optional-key-elem alt in
+// ts/src/lang.ts) so `val` never sees it. Guarding the dive is the smaller
+// change here and keeps the two grammars' shapes recognisable.
+//
+// Worth naming what the bug actually cost: the phantom element MERGED with
+// a real one, so `a:[x?:1] a:[{q:9}]` generated {"q":9,"x":1} -- content
+// injected into a neighbouring element, not merely a stray entry.
+func inElem(r *jsonic.Rule) bool {
+	return r != nil && r.Parent != nil && "elem" == r.Parent.Name
+}
+
 func makeLang(base string) (*jsonic.Jsonic, error) {
 	j := jsonic.Make(jsonic.Options{
 		// Only # line comments are valid Aontu syntax (see
@@ -315,11 +335,16 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "map", B: 2, G: "spread"},
 			&jsonic.AltSpec{
 				S: [][]jsonic.Tin{optkey, {qm}},
-				C: func(r *jsonic.Rule, _ *jsonic.Context) bool { return r.D == 0 },
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
+					return r.D == 0 && !inElem(r)
+				},
 				P: "map", B: 2, A: freshMapNode, G: "optional",
 			},
 			&jsonic.AltSpec{
 				S: [][]jsonic.Tin{optkey, {qm}},
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
+					return !inElem(r)
+				},
 				P: "map", B: 2, N: map[string]int{"pk": 1}, A: freshMapNode,
 				G: "optional,dive",
 			},
@@ -390,6 +415,32 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 	j.Rule("elem", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
 		rs.PrependOpen(
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, P: "val", U: map[string]any{"spread": true}, G: "spread"},
+
+			// An optional key in LIST position is consumed here and
+			// contributes NO element, mirroring the two
+			// aontu-optional-*-elem alts in ts/src/lang.ts.
+			//
+			// Two alts, because the first has to see OPTKEY+QM to know
+			// what this is, then hand the pair to `val` without letting
+			// `val`'s own optional-dive fire (which is what materialised
+			// a phantom {x:1} element). It backs up one token and
+			// re-enters elem carrying a marker; the second alt reads that
+			// marker and pushes the VALUE alone.
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{optkey, {qm}}, B: 1, R: "elem",
+				U: map[string]any{"aontu_optional": true},
+				G: "aontu-optional-key-elem",
+			},
+			&jsonic.AltSpec{
+				S: [][]jsonic.Tin{{qm}, {cl}},
+				C: func(r *jsonic.Rule, _ *jsonic.Context) bool {
+					return r.Prev != nil && r.Prev.U != nil &&
+						r.Prev.U["aontu_optional"] == true
+				},
+				P: "val",
+				U: map[string]any{"aontu_optional_elem": true},
+				G: "aontu-optional-elem",
+			},
 		)
 		rs.AddAC(elemSpread)
 	})
@@ -404,7 +455,27 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 // listSpread marks the &: spread value within a parsed list slice.
 type listSpread struct{ val Val }
 
+// optionalElem marks a list entry that must NOT become an element: the
+// value of an unbraced optional pair in list position (`a:[x?:1]`).
+//
+// A marker rather than a removal because the entry is reached through the
+// enclosing list's slice, and shortening a slice here would not be visible
+// to the rule that owns it. The same reason listSpread is a marker.
+type optionalElem struct{}
+
 func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
+	// An optional key is not a list element. The pair is consumed by the
+	// two aontu-optional-*-elem alts above and its VALUE lands in the
+	// list, so it is marked here and dropped by asValDepth -- leaving the
+	// list exactly as the same pair without the `?` leaves it, which both
+	// ports already agree is empty.
+	if r.U["aontu_optional_elem"] == true {
+		if list, ok := r.Node.([]any); ok && 0 < len(list) {
+			list[len(list)-1] = &optionalElem{}
+		}
+		return
+	}
+
 	if r.U["spread"] != true {
 		return
 	}
@@ -740,7 +811,26 @@ var exactLiteralRe = regexp.MustCompile(
 // `0d5` is a biginteger and `0d1e3` is a bigdecimal whose value happens
 // to be integral — and whose canon is therefore `0d1000.0`, not
 // `0d1000`, because `0d1000` would reparse as a biginteger (D4).
+// negSrc rebuilds the spelling of a negated literal. `-` is a prefix
+// OPERATOR and not part of the literal, so the text has to be rebuilt to
+// keep src meaning "how this value is spelled" (see ScalarVal.src).
+func negSrc(src string) string {
+	if src == "" {
+		return ""
+	}
+	if strings.HasPrefix(src, "-") {
+		return src[1:]
+	}
+	return "-" + src
+}
+
+func withSrc(v *ScalarVal, src string) *ScalarVal {
+	v.src = src
+	return v
+}
+
 func exactLiteral(m []string) func(int) Val {
+	src := m[0]
 	intPart := stripSeps(m[1])
 	frac := stripSeps(m[2])
 	exp := stripSeps(m[3])
@@ -754,6 +844,7 @@ func exactLiteral(m []string) func(int) Val {
 		return func(sp int) Val {
 			v := newBigInteger(new(big.Int).Set(n))
 			v.sp = sp
+			v.src = src
 			return v
 		}
 	}
@@ -765,6 +856,7 @@ func exactLiteral(m []string) func(int) Val {
 	return func(sp int) Val {
 		v := newBigDecimal(d)
 		v.sp = sp
+		v.src = src
 		return v
 	}
 }
@@ -865,10 +957,12 @@ func numberVal(n float64, src string, sp int) Val {
 	if isIntegerKind(n, src) {
 		v := newInteger(int64(n))
 		v.sp = sp
+		v.src = src
 		return v
 	}
 	v := newFloat(n)
 	v.sp = sp
+	v.src = src
 	return v
 }
 
@@ -1495,9 +1589,9 @@ func negate(t any) Val {
 			return newFloat(negZero(-v.peg.(float64)))
 		case KindBigInteger:
 			// big.Int has no negative zero, so -0d0 is 0d0 for free.
-			return newBigInteger(new(big.Int).Neg(v.peg.(*big.Int)))
+			return withSrc(newBigInteger(new(big.Int).Neg(v.peg.(*big.Int))), negSrc(v.src))
 		case KindBigDecimal:
-			return newBigDecimal(v.peg.(*Decimal).neg())
+			return withSrc(newBigDecimal(v.peg.(*Decimal).neg()), negSrc(v.src))
 		}
 	}
 	return newNil("negative")
@@ -1573,6 +1667,9 @@ func asValDepth(node any, depth int) Val {
 	case []any:
 		lv := &ListVal{}
 		for _, e := range n {
+			if _, ok := e.(*optionalElem); ok {
+				continue
+			}
 			if ls, ok := e.(*listSpread); ok {
 				if lv.spread == nil {
 					lv.spread = ls.val
@@ -1622,7 +1719,32 @@ func parseBase(src, base string) (Val, error) {
 	if err != nil {
 		return newMap(), &AontuError{Msg: err.Error()}
 	}
-	out, err := lang.Parse(src)
+	// ParseMeta, not Parse: the meta bag is this parse's private channel
+	// back from the @"file" resolver, and it is how a failed load is
+	// reported (see notFoundMetaKey in source.go). A fresh map per call is
+	// what keeps it PER-PARSE, which matters because langForBase caches the
+	// parser -- the *jsonic.Jsonic here is shared across goroutines, so
+	// nothing parse-specific may be stored on it or on its options.
+	// The sink is a POINTER so a failure inside a NESTED include reaches
+	// this parse: the plugin gives each nested source a SHALLOW COPY of its
+	// parent's meta, which carries the pointer but not later writes to a
+	// plain value. See notFoundSink.
+	sink := &notFoundSink{}
+	meta := map[string]any{notFoundMetaKey: sink}
+
+	out, err := lang.ParseMeta(src, meta)
+
+	// A failed @"file" load is a parse error in TS (the multisource plugin
+	// raises multisource_not_found during the parse); mirror that here.
+	//
+	// The meta check comes BEFORE the parse error, not after: a missing
+	// include can leave the parse failing for a secondary reason, and
+	// "source not found: x" is the diagnosis the user needs -- the cascade
+	// is noise.
+	if "" != sink.msg {
+		return newMap(), &AontuError{Msg: sink.msg}
+	}
+
 	if err != nil {
 		return newMap(), &AontuError{Msg: err.Error()}
 	}
@@ -1631,69 +1753,5 @@ func parseBase(src, base string) (Val, error) {
 	}
 	root := asVal(out)
 	setPaths(root, []string{})
-	// A failed @"file" load is a parse error in TS (the multisource
-	// plugin raises multisource_not_found during the parse); mirror that
-	// by surfacing the injected not-found nil (see source.go) here.
-	if nf := findNotFoundNil(root); nf != nil {
-		return newMap(), &AontuError{Msg: nf.msg}
-	}
 	return root, nil
-}
-
-// findNotFoundNil walks a parsed Val tree for a multisource_not_found
-// nil injected by notFoundProcessor (source.go).
-func findNotFoundNil(v Val) *NilVal {
-	switch t := v.(type) {
-	case *NilVal:
-		if t.why == "multisource_not_found" {
-			return t
-		}
-	case *MapVal:
-		if t.spread != nil {
-			if n := findNotFoundNil(t.spread); n != nil {
-				return n
-			}
-		}
-		for _, k := range t.keys {
-			if n := findNotFoundNil(t.peg[k]); n != nil {
-				return n
-			}
-		}
-	case *ListVal:
-		if t.spread != nil {
-			if n := findNotFoundNil(t.spread); n != nil {
-				return n
-			}
-		}
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	case *ConjunctVal:
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	case *DisjunctVal:
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	case *PrefVal:
-		if t.peg != nil {
-			if n := findNotFoundNil(t.peg); n != nil {
-				return n
-			}
-		}
-	case *FuncVal:
-		for _, e := range t.peg {
-			if n := findNotFoundNil(e); n != nil {
-				return n
-			}
-		}
-	}
-	return nil
 }
