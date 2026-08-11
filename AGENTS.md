@@ -146,7 +146,7 @@ Both print `{"x":1.0}`, so that is the `canon` expectation and the row
 may be written. Drop `-c` from both for a `gen` row — the CLIs then
 print generated JSON. For an `err` row, probe the same way and assert a
 substring that **both** messages contain; error wording itself is not in
-parity (see [Known TS/Go divergences](#known-tsgo-divergences)).
+parity (see [Known TS/Go divergences](DIVERGENCE.md)).
 
 The TypeScript CLI runs the committed build, so run `make build-ts`
 before probing if `ts/src` has changed, or the probe answers for the old
@@ -183,7 +183,7 @@ divergence is fixed, and the behaviour then earns real rows in the
 appropriate spec file.
 
 The ledger is not the same list as
-[Known TS/Go divergences](#known-tsgo-divergences) below. Those differ
+[Known TS/Go divergences](DIVERGENCE.md). Those differ
 deliberately and permanently and are never going to be pinned, so they
 are not tracked as debt.
 
@@ -340,138 +340,13 @@ applies to the Go port. Treat parsed `Val`s as single-use.
 
 ### Known TS/Go divergences
 
-The shared spec only contains rows that pass identically in both
-implementations. A few behaviours deliberately differ and must **not**
-be added to `test/spec/*.tsv`. These are permanent, so they are not
-entered in the divergence ledger
-([`test/spec/divergent.tsv`](test/spec/divergent.tsv)), which tracks
-only divergences that are expected to be fixed:
+Moved to [`DIVERGENCE.md`](DIVERGENCE.md) at the repository root, which is
+now the single record of permanent TypeScript/Go non-parity — what differs,
+what it costs, and why the alternative was rejected. The debt register for
+divergences still expected to be FIXED remains
+[`test/spec/divergent.tsv`](test/spec/divergent.tsv).
 
-- **Error message text.** Go's `hints` are abbreviated versions of the TS
-  hints, and TS additionally renders source frames. Only the substring
-  asserted by an `err`-mode spec row is contractual; full error text is
-  not in parity.
-- **Parse-level canon.** Only `unify(src).canon` is in parity. The raw
-  `parse(src).canon` of nested `&`/`|` is parenthesised in TS but flat in
-  Go; this is invisible to the shared spec (which is unify-level).
-> **Previously divergent, now fixed:** the canon of move()-hidden ghost
-> nodes, including the object-sharing artifacts. The Go port now
-> mirrors TS's clone-graph sharing directly: func clones share their
-> args array (TS `Val.clone` passes `peg` by reference) and pref clones
-> share their peg, a TOP-peer map/list unify refines the bag IN PLACE
-> (the `out = peer.isTop ? this : new ...` fast-path), and a driving
-> func re-paths its (possibly shared) args to its own location each
-> pass (`repathArg`, the equivalent of TS's ctx-path re-descent — with
-> key()'s stored path frozen once its cc<3 delay window closes). Hiding
-> is mark-based: move() sets the hide mark on the found source node's
-> ROOT only (TS `_hide_found`), bag unifies ratchet marks down one
-> level per pass, and a marked func freezes against TOP but still
-> resolves against a non-TOP peer (spread clones re-driving hidden
-> children behave exactly as in TS). Chained moves wrap the moved copy
-> in a pref() func immediately (TS MoveFuncVal), so intermediate frozen
-> ghosts render `pref($.x.a)` / `pref({"k":"c"})` identically. Ref
-> spreads are snapshotted once per canon+site (the TS snapshotRefSpread
-> port), and spread constraint roots are pathed under a literal `&`
-> segment so relative refs used as spreads resolve one level deeper,
-> as in TS. A ctx `slot` hint threads the TS ctx.path through unify
-> (bag child loops, func arg loops, junction folds), so shared clones
-> whose stored paths carry transplant overlay tails are driven at
-> their actual slot — a close() ghost moved to a SHALLOWER destination
-> re-keys as in TS. Go's hasPathFunc mirrors the TS isPathDependent
-> getter including its recursion quirks (a pref-wrapped func's args
-> array is invisible to the property walk, so `&:{q:*copy($.z)}`
-> templates are shared and advance in place). Covered by the func.tsv
-> ghost/move-chain rows and the spread.tsv close-template and
-> template-pref-copy rows.
-- **Canon of invalid sources.** A source that fails in both
-  implementations may fail at different stages — e.g. `k-x:1` (bare key
-  containing `-`) is a parse error in TS but parses to a list holding an
-  error nil in Go. `generate` errors in both; only `unify(src).canon` of
-  such an *invalid* source differs, which the spec (whose canon rows are
-  valid sources) never observes.
-- **Unicode table vintage.** `upper()`/`lower()` use FULL Unicode case
-  mapping in both ports and agree exactly on the Unicode 15.0 repertoire.
-  The Go port's tables (`golang.org/x/text`, and Go's own `unicode`
-  package) are Unicode 15.0; Node ships newer ICU tables, so roughly 110
-  code points assigned after Unicode 15 — Garay, some Latin Extended-D
-  additions, a few Cyrillic — case-map in TypeScript and not in Go. This
-  is a table-vintage gap, not an algorithmic one, and it closes on its own
-  as Go's tables advance. No ledger entry: nothing in this repository can
-  change it, and no spec rows pin it.
-
-- **Malformed-input acceptance edges.** Fuzzing surfaced a residual
-  family of *degenerate* inputs where the two parsers disagree about
-  whether to accept at all: nested implicit lists from adjacent values
-  in expression positions (`pref(1-3)`, `close(([]%))`), and stray-quote
-  juxtapositions (`1'00]...`, `"q k""?:...`) — one side errors, the
-  other parses to a (differently shaped) junk value. Well-formed
-  sources are unaffected.
-
-  The same bullet covers a source that is not well-formed **UTF-8**: the
-  two ports may produce a different NUMBER of U+FFFD replacement
-  characters for the same invalid bytes. A truncated three-byte sequence
-  (`E2 82`) inside a string yields ONE replacement character in
-  TypeScript and TWO in Go, because Node replaces invalid bytes as it
-  decodes the file to a UTF-16 string, while Go carries the raw bytes
-  through to the encoder. No spec rows: the `src` column cannot carry raw
-  invalid bytes, and by this document's own rule a divergence declared
-  permanent does not go in the ledger either.
-
-  Distinct from this, and NOT permanent: a lone *surrogate* in a quoted
-  string is folded to U+FFFD by Go, which conflates distinct values.
-  That one is tracked in `test/spec/divergent.tsv` and issue #24, because
-  it breaks a lattice law rather than merely reshaping junk.
-> **Previously divergent, now fixed:** root-level spreads over `$var`
-> (and other expression) keys. `k1:$flag &:boolean` used to raise an
-> internal error in TS: the expr plugin consumed the `&` as an infix
-> conjunct, choked on the `:`, and left a raw unevaluated expr node in
-> the map. Both grammars now close an open expression when `&` `:`
-> follows (backtracking so the enclosing map takes the spread), and TS
-> VarVal.unify resolves the variable's NAME against TOP only, applying
-> the peer constraint to the resolved VALUE (previously the constraint
-> was unified with the name string, inverting the check). TS unite's
-> dispatch ladder also gained the `isVar` case Go already had, so
-> conjunct-driven constraints reach VarVal.unify instead of failing in
-> ScalarKindVal (`p1:$foo &:integer&number`). TS RefVal.find now pushes
-> a resolved variable path segment (`$seg.r` with seg="x" reads
-> `...x.r`; previously the coerced value was silently dropped and the
-> path read without it — Go's interpolation was already correct).
-> Covered by the var.tsv spread and path-segment rows.
-
-> **Previously divergent, now fixed:** numeric canon formatting at
-> extreme magnitudes. Go's `formatNumber` (go/scalar.go) now reproduces
-> JavaScript `Number.toString` exactly — fixed notation for decimal
-> exponents in [-6, 20], exponential with an unpadded signed exponent
-> outside (`1e+21`, `1e-7`) — pinned by `go/scalar_format_test.go` and
-> the `scalar.tsv` extreme-magnitude canon rows. Numeric canon rows no
-> longer need to stay inside the old "safe decimal subset".
-
-> **Previously divergent, now fixed:** the classification of numeric
-> kinds. TypeScript decided a literal's kind with no range condition at
-> all, and Go with a `float64` → `int64` round-trip (whose out-of-range
-> behaviour the Go specification leaves implementation-dependent), so
-> `a:1e21 & integer` succeeded in TS and failed in Go. Both ports now
-> share one predicate — `isIntegerKind` (`ts/src/val/numkind.ts`,
-> `go/lang.go`), comparing against the exact `float64` bounds and
-> applied at every construction site, including the raw/implicit-list
-> path where there is no source text. Five further rules landed with it:
-> negative zero never reaches the AST, generated output or canon; scalar
-> identity compares kind as well as value, so `1|1.0` keeps both
-> alternatives; number-kind canon always carries a fraction or an
-> exponent, so it reparses to the same kind (this flipped `scalar.tsv`'s
-> `big-fixed-canon` and `hex-big-canon` to a `.0` suffix); `+`,
-> `upper()` and `lower()` never narrow their operands' kind; and
-> `super(x)` lifts its argument rather than itself. The `.0` suffix is
-> canon-only — `+`'s string coercion keeps JS parity (`"a"+1.0` is
-> `"a1"`), so `go/scalar_format_test.go` passes unchanged. Pinned by
-> `test/spec/number-model.tsv`; what remains unresolved is entry 2 of
-> the divergence ledger. Background:
-> [`docs/design/number-model.md`](docs/design/number-model.md).
-
-> **Previously divergent, now fixed:** a colon-chain key whose value was a
-> bare import — `struct: minor: @"file"` — used to resolve to `{}` in Go
-> (it loaded correctly in TS). Fixed upstream in `@tabnas/multisource/go`
-> v0.3.1 (pinned in `go/go.mod`); covered by the shared-spec regression
-> `file.tsv:load-colon-chain`. Background:
-> [`docs/design/nested-import-colon-chain.md`](docs/design/nested-import-colon-chain.md).
-
+Kept in one place deliberately: the same divergence had been described in
+an AGENTS.md section, a ledger comment and an upstream doc, and they drifted
+apart — the ledger claimed a behaviour was still divergent for some time
+after it had been aligned.
