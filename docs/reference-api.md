@@ -203,10 +203,34 @@ write:
 
 | Aontu kind   | Source     | `generate()` returns |
 |--------------|------------|----------------------|
-| `integer`    | `x:5`      | `number`             |
+| `integer`    | `x:5`      | `number`, or `bigint` past `Number.MAX_SAFE_INTEGER` (see below) |
 | `float`      | `x:1.5`    | `number`             |
 | `biginteger` | `x:0d5`    | `bigint`             |
 | `bigdecimal` | `x:0d0.1`  | `Decimal`            |
+
+**Why an `integer` can be a `bigint`.** The `integer` leaf is an int64
+window, and JavaScript stores it in a double. Below
+`Number.MAX_SAFE_INTEGER` that is faithful: the integers are contiguous
+there, so the `number` renders its own exact digits. Above it they are
+not — `JSON.stringify(2**60)` is `1152921504606847000`, a *different*
+integer that merely rounds to the same double — so `generate()` returns
+a `bigint`, which `exactJSON` writes exactly. A `float` stays a `number`
+at any magnitude, because there its shortest form *is* the right answer
+(`1e21` serialises as `1e+21`, in this port and in Go).
+
+```ts
+typeof gen('x:9007199254740991').x     // 'number'  (2^53-1)
+typeof gen('x:9007199254740992').x     // 'bigint'  (2^53)
+typeof gen('x:1e21').x                 // 'number'  (float kind)
+exactJSON(gen('x:1152921504606846976'))  // '{"x":1152921504606846976}'
+```
+
+An integer-kind `bigint` is still not a `biginteger`: the leaves stay
+disjoint and only canon tells them apart (`1152921504606846976` versus
+`0d1152921504606846976`). Go needs none of this — its `integer` leaf is
+an `int64`, exact across the whole window, so `Generate` returns an
+`int64` at every magnitude. The serialised JSON is identical in both
+ports.
 
 A `0d`-free document generates exactly what it always did — the exact
 leaves are reached only by writing `0d` (see the
@@ -491,7 +515,7 @@ with the exported constructors:
 | Constructor | Returns |
 |-------------|---------|
 | `NewString(s string) Val`        | string scalar |
-| `NewInteger(i int64) Val`        | `integer` scalar |
+| `NewInteger(i int64) Val`        | `integer` scalar — **refuses** an `int64` binary64 cannot carry exactly (see below) |
 | `NewNumber(f float64) Val`       | `float` scalar (the name is kept for API compatibility; the kind it builds is `KindFloat`) |
 | `NewBigInteger(n *big.Int) Val`  | `biginteger` scalar — the exact unbounded integer leaf |
 | `NewBigDecimal(s string) (Val, error)` | `bigdecimal` scalar — the exact base-10 leaf |
@@ -514,6 +538,27 @@ out, err := aontu.New().GenerateVars(
 
 Pass `nil` vars when a model uses no `$name` variables. An undefined
 `$name` is a `Cannot resolve` error.
+
+**`NewInteger` obeys the same storage contract as a literal.** An
+`int64` that binary64 cannot carry exactly is refused rather than
+stored, exactly as the equivalent literal is refused — otherwise the API
+would be a hole straight through that rule, since Go's `integer` leaf is
+an `int64` and the canonical TypeScript port's is a double. The refusal
+is a **nil value**, not a panic and not a second return: aontu errors
+are values, so it flows through unification and surfaces at `Generate`
+with the same "not exactly representable" message and the same `0d`
+escape a lossy literal gets.
+
+The rule is **exactness, not magnitude**: every power of two in the
+window is fine however large, `math.MinInt64` included.
+
+```go
+aontu.NewInteger(1152921504606846976)   // 2^60 — fine
+aontu.NewInteger(math.MinInt64)         // -2^63, a power of two — fine
+aontu.NewInteger(9007199254740993)      // 2^53+1 — nil value
+aontu.NewInteger(math.MaxInt64)         // 2^63-1, rounds up — nil value
+aontu.NewBigInteger(big.NewInt(9007199254740993))  // the exact escape
+```
 
 **Exact-input constructors.** `NewBigInteger` **copies** its argument
 and never mutates the copy, so a caller may keep using (and mutating)

@@ -157,6 +157,44 @@ rounded in silence, it is now refused.
   `exactJSON`.* A `0d`-free document generates exactly what it
   generated before.
 
+- **An integer past 2^53 now generates as a `bigint` (TypeScript).**
+  Aontu's `integer` leaf is an int64 window, but TypeScript stores it in
+  a double, and above `Number.MAX_SAFE_INTEGER` a double no longer
+  renders its own digits: `x:1152921504606846976` (2^60) generated and
+  canoned as `1152921504606847000` — a *different* integer that merely
+  rounds to the same double — while Go printed the true value from its
+  int64. That was the parity ledger's last entry (issue #21), and it is
+  now closed: TypeScript renders an integer-kind value by its exact
+  digits in canon, and `generate()` hands back a `bigint` past the
+  safe-integer line so `exactJSON` can write those digits. `Number.
+  isSafeInteger` is the threshold because it is exactly "this double is
+  an integer that renders its own digits".
+
+  This is not a rendering choice made to force agreement: the tower's
+  refusal of lossy literals means both ports now hold *exactly* the
+  value the source asked for, so there is a right answer, and Go was
+  already printing it.
+
+  What breaks: a TypeScript consumer reading an integer above 2^53 out
+  of `generate()` receives a `bigint` where it expected a `number`, so
+  `out.x + 1` throws a `TypeError`. Those are precisely the values that
+  were already silently wrong — a loud failure replaces a quiet one.
+  *Nothing below 2^53 changes, in type or in bytes.* Go is unaffected:
+  its leaf is an int64, exact at every magnitude, so it returns an
+  `int64` throughout. The serialised JSON now agrees in both ports.
+
+- **`NewInteger` refuses an inexact `int64` (Go).** Programmatic
+  construction now obeys the same storage contract as a literal:
+  `NewInteger(9007199254740993)` was exact in Go and unreachable in the
+  canonical TypeScript port, a divergence no parse-time rule could see
+  because no literal can express it. An `int64` that binary64 cannot
+  carry exactly now yields a nil value carrying the same "not exactly
+  representable" hint — and the same `0d` escape — that a lossy literal
+  gets, so it surfaces at `Generate` rather than corrupting the
+  document. The signature is unchanged. *Use `NewBigInteger` for an
+  exact integer of any size.* The rule is exactness, not magnitude:
+  `math.MinInt64` is a power of two and still constructs.
+
 - **Three new reserved words, plus the `0d` prefix.** `float`,
   `biginteger` and `bigdecimal` are kind keywords; all three were
   ordinary bare strings, as was any `0d…` run. Nothing in the

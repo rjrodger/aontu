@@ -394,6 +394,39 @@ is exact), in canon **and** in the Phase 5 exact-JSON emitter alike,
 since `JSON.stringify` of the same JS number reproduces the 17-digit
 form. That is an engine change, and it is not this phase's.
 
+**RESOLVED — #21 is closed, and the parity ledger is empty.** That
+engine change landed: `IntegerVal.canon` renders `BigInt(peg).toString()`,
+and `IntegerVal.gen` returns a **`bigint`** for a value past
+`Number.MAX_SAFE_INTEGER` so the exact-JSON emitter writes the exact
+digits. The emitter half is not optional and could not be solved inside
+the emitter: by the time `exactJSON` holds a JS number, an integer-kind
+2^60 (whose exact digits are the answer) is indistinguishable from a
+float-kind `1e21` (whose shortest form `1e+21` is the answer, in both
+ports). The kind has to travel *with* the value.
+
+`Number.isSafeInteger` is the threshold because it is exactly "this
+double is an integer that renders its own digits". A tighter predicate
+(`BigInt(peg).toString() === String(peg)`) would keep marginally more
+values as `number` — 2^54 among them — at the cost of a contract no
+consumer can evaluate in their head, and of handing back numbers that
+are unsafe for arithmetic as well as for printing.
+
+This is a **breaking change** for a TypeScript consumer reading integers
+above 2^53 out of `generate()`; those are precisely the values that were
+already silently wrong, and a `TypeError` on `out.x + 1` is the better
+failure. It also makes the native type differ between the ports — Go
+returns an `int64` at every magnitude — which is forced by the storage
+rather than chosen, and is why the runtime types are pinned per-port
+(`ts/test/exactjson.test.ts`, `go/generate_test.go`) while the shared
+`gens` rows pin the bytes they agree on.
+
+One shared row changed mode as a consequence:
+`number-model.tsv:pow53-integer` moves from `gen` to `gens`, because 2^53
+is the first value TypeScript generates as a `bigint` and `gen` decodes
+its expectation with `JSON.parse` — a bigint can never deep-equal a
+float64, whatever the digits say. The R1 assertion is untouched: the
+`& integer` in the source still errors unless 2^53 has integer kind.
+
 ### D8 — representation: no new dependencies
 
 - **Go:** biginteger is `*big.Int` (pointer, mandatorily — a
@@ -438,6 +471,19 @@ form. That is an engine change, and it is not this phase's.
   predicate that Phases 4 and 6 already share) and it is the API-side
   face of #21, which the D7 amendment above leaves open for the same
   underlying reason.
+
+  **AMENDED AGAIN — the `NewInteger` clause has now landed, and D8 is
+  complete.** `NewInteger` refuses an `int64` that `isExactInBinary64`
+  rejects, so programmatic construction obeys the same storage contract
+  as a literal and the API can no longer build a value the canonical
+  port cannot hold. The refusal is a **nil value**, not a panic and not
+  a second return: aontu errors are values, so it flows through
+  unification and surfaces at `Generate` carrying the same
+  `lossy_integer_literal` hint (and the same `0d` escape) that D7's
+  literal rule gives — which also leaves the signature `NewInteger(int64)
+  Val` unchanged, since this narrows what the function accepts rather
+  than how it is called. `math.MinInt64` is a power of two and so stays
+  constructible, keeping the negation path in `lang.go` reachable.
 
 ### D9 — the generate contract (the hard consumer-facing change)
 
@@ -629,6 +675,16 @@ were written in; the amendments record where the plan met the code.
   the reasons in the D7 amendment. Literals and computed sums were
   given one shared exactness predicate so the two cannot disagree about
   what exact means.
+- **Phase 8 — exact integer rendering (S), unplanned.** The work the
+  Phase 6 amendment identified and could not do: TypeScript renders an
+  integer-kind value by its exact digits, in canon and in generated
+  JSON alike (the latter by generating a `bigint` past
+  `Number.MAX_SAFE_INTEGER`, since the emitter cannot recover the kind
+  from a JS number). Ten new rows in `number-tower.tsv` pin both routes
+  into the window and the values beneath it; `pow53-integer` moves from
+  `gen` to `gens`. This closes #21, **empties the parity ledger**, and
+  with D8's `NewInteger` clause landing alongside it, completes the
+  tower.
 - **Phase 7 — docs (M).** number-model.md successor section;
   reference/tutorial; CHANGELOG breaking inventory (implications
   1–6); migration notes led by the `number`-vs-`float` distinction.

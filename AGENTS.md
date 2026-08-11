@@ -194,9 +194,17 @@ numeric literal's kind with no range condition at all, while Go used a
 TypeScript and failed in Go** — a silent, magnitude-dependent parity
 break that no existing row observed, because no row at that magnitude
 had ever been asked of both engines. The review that found it produced
-`test/spec/number-model.tsv` and the ledger's entries — of which one,
-integer-kind values above 2^53 that need more than 17 significant digits
-to write exactly (#21), is still open.
+`test/spec/number-model.tsv` and the ledger's entries — of which the
+last, integer-kind values above 2^53 that need more than 17 significant
+digits to write exactly (#21), is now closed, and the ledger is empty.
+
+That entry is worth reading anyway (`test/spec/divergent.tsv` keeps the
+note). It was closed twice against a rule that never touched it — the
+number tower's refusal of lossy integer literals, which refuses a
+literal binary64 cannot carry *exactly* and not one that is merely
+large. Both times the thing that caught it was re-probing **both** CLIs
+at the exact inputs the entry recorded, which is why an entry must
+record them.
 
 ## Implementation parity & Go coverage
 
