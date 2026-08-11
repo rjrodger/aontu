@@ -7,6 +7,9 @@ import (
 	"math/big"
 	"sort"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // funcSet is the set of recognised built-in function names (mirrors the
@@ -385,6 +388,47 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 	return makeNilErr(ctx, "func:"+f.name, f, nil)
 }
 
+// caseUpper / caseLower apply FULL Unicode case mapping, matching
+// JavaScript's toUpperCase/toLowerCase, which is what the canonical port
+// uses.
+//
+// NOT strings.ToUpper/ToLower, which do SIMPLE per-rune mapping: a rune
+// in, a rune out. Full mapping may change LENGTH, and that is the whole
+// divergence -- `upper("straße")` is STRASSE in the canonical port and
+// was STRAßE here, `upper("ﬁ")` is FI and was unchanged. It also covers
+// the Final_Sigma CONTEXT rule, which per-rune mapping cannot express at
+// all: a word-final sigma lowercases to U+03C2 and a medial one to
+// U+03C3, and simple mapping gave U+03C3 for both.
+//
+// `strings.ToLower` additionally LOST DATA on U+0130 (capital I with dot
+// above), truncating it to "i" and dropping the combining dot that the
+// full mapping keeps.
+//
+// language.Und, not a specific locale: the canonical port's methods are
+// locale-INDEPENDENT, so `upper("i")` must be "I" and never the Turkish
+// "İ". Confirmed in both directions against the canonical port.
+//
+// A fresh Caser per call because x/text documents Caser as potentially
+// stateful and explicitly not safe for concurrent use. A shared caser
+// measured clean over 64k concurrent calls under -race, but a documented
+// contract beats a passing measurement -- these functions are not on a
+// hot path.
+//
+// SCOPE, stated honestly: this is exact on the Unicode 15.0 repertoire,
+// which is x/text's table vintage (and Go's own unicode package's). Node
+// ships newer ICU tables, so ~110 code points assigned after Unicode 15
+// case-map there and not here. That is a table-vintage gap, not an
+// algorithmic one, and strings.ToUpper/ToLower miss every one of them
+// too -- so nothing regresses; the gap simply stops being hidden behind
+// a much larger one.
+func caseUpper(s string) string {
+	return cases.Upper(language.Und).String(s)
+}
+
+func caseLower(s string) string {
+	return cases.Lower(language.Und).String(s)
+}
+
 func upperLower(ctx *Ctx, args []Val, up bool) Val {
 	if len(args) == 0 {
 		return makeNilErr(ctx, "arg", nil, nil)
@@ -397,9 +441,9 @@ func upperLower(ctx *Ctx, args []Val, up bool) Val {
 	case KindString:
 		s := sv.peg.(string)
 		if up {
-			return newString(strings.ToUpper(s))
+			return newString(caseUpper(s))
 		}
-		return newString(strings.ToLower(s))
+		return newString(caseLower(s))
 	case KindInteger, KindFloat:
 		var fv float64
 		if sv.kind == KindInteger {

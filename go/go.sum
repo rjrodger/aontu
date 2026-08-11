@@ -14,3 +14,5 @@ github.com/tabnas/parser/go v0.8.0 h1:ej1Ei6yLFQp/bJ7dF+cUUTPZgEJ6ZnSBd2WEgot2J8
 github.com/tabnas/parser/go v0.8.0/go.mod h1:WrlfEVyZ1QjEIowWiyEu3K1iHj7wxuPut5zoH9Trehk=
 github.com/tabnas/path/go v0.3.1 h1:Bn3bbcR6Z7qmyhWyt6ZiZRPkYQ5bzizT6aEmE7jWObc=
 github.com/tabnas/path/go v0.3.1/go.mod h1:ZdFV2jFfjZFii4kzSrzGSc60wkeOmJtkhU9bUUG66DA=
+golang.org/x/text v0.30.0 h1:yznKA/E9zq54KzlzBEAWn1NXSQ8DIp/NYMy88xJjl4k=
+golang.org/x/text v0.30.0/go.mod h1:yDdHFIX9t+tORqspjENWgzaCVXgk0yYnYuSZ8UzzBVM=

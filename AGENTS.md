@@ -389,6 +389,16 @@ only divergences that are expected to be fixed:
   error nil in Go. `generate` errors in both; only `unify(src).canon` of
   such an *invalid* source differs, which the spec (whose canon rows are
   valid sources) never observes.
+- **Unicode table vintage.** `upper()`/`lower()` use FULL Unicode case
+  mapping in both ports and agree exactly on the Unicode 15.0 repertoire.
+  The Go port's tables (`golang.org/x/text`, and Go's own `unicode`
+  package) are Unicode 15.0; Node ships newer ICU tables, so roughly 110
+  code points assigned after Unicode 15 — Garay, some Latin Extended-D
+  additions, a few Cyrillic — case-map in TypeScript and not in Go. This
+  is a table-vintage gap, not an algorithmic one, and it closes on its own
+  as Go's tables advance. No ledger entry: nothing in this repository can
+  change it, and no spec rows pin it.
+
 - **Malformed-input acceptance edges.** Fuzzing surfaced a residual
   family of *degenerate* inputs where the two parsers disagree about
   whether to accept at all: nested implicit lists from adjacent values
