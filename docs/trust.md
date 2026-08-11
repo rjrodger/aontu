@@ -194,7 +194,8 @@ Guarantees are as much about what will never be added:
 
 | claim | pin |
 |-------|-----|
-| budget/cycle taxonomy codes | [test/spec/budget.tsv](../test/spec/budget.tsv) (`errc` + substring rows) |
+| cycle/no-path taxonomy codes | [test/spec/budget.tsv](../test/spec/budget.tsv) (`errc` + substring rows, both engines) |
+| `budget_passes` code, class and "evaluation budget" substring | per-port only — `ts/test/unify.test.ts` (end-to-end) and `go/hints_test.go` (hint table); a shared row is blocked on issue #26, as budget.tsv's comments state |
 | code → class registry | [test/spec/errcodes.tsv](../test/spec/errcodes.tsv) + set-equality tests in both runners |
 | canon byte-stability | every `canon` row (strict equality, both runners) |
 | generated-JSON byte-stability | `gens` rows (docs/shared-spec.md) |

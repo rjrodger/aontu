@@ -283,9 +283,13 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			if ctx != nil && ctx.collect {
 				break
 			}
-			// Code mirrors the TS BagVal.gen choice: a closed bag makes
-			// the residue a missing REQUIRED value; an open one merely
-			// non-generable. (Message text is not in parity; codes are.)
+			// Code follows the TS BagVal.gen closed/no_gen choice: a
+			// closed bag makes the residue a missing REQUIRED value; an
+			// open one merely non-generable. TS additionally raises
+			// mapval_spread_required via its isExpect branch; Go has no
+			// ExpectVal counterpart yet, so spread-required residue
+			// takes the generic code here — an OPEN divergence, ledger
+			// entry in test/spec/divergent.tsv, issue #27.
 			code := "mapval_no_gen"
 			if m.closed {
 				code = "mapval_required"

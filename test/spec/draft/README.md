@@ -27,7 +27,8 @@ Rules for this directory:
    and guessing it here would prejudge that.
 4. Behaviour that IS pinnable today is not drafted here — it goes into
    the real suite directly (see the `guard-fold-canon` and
-   `guard-pref-disjunct-gen` rows in `test/spec/disjunct.tsv`, which
+   `guard-pref-disjunct-canon`/`guard-pref-disjunct-gens` rows in
+   `test/spec/disjunct.tsv`, which
    fence the known `DisjunctVal.gen` fold defect from the constraint
    side before any `ConstraintVal` code exists).
 

@@ -238,5 +238,34 @@ const G = (s) => A.generate(s);
         (0, expect_1.expect)(u4.cc).greaterThan(2);
         (0, expect_1.expect)(u4.res.done).equal(true);
     });
+    // budget_passes: the pass budget spent while the final pass was still
+    // making progress (docs/trust.md clause 2). Pinned here per-port —
+    // no shared spec row can exist while the smallest reproducer (a
+    // 10-link ref chain) diverges between the engines (divergent.tsv,
+    // issue #26): Go resolves chains eagerly and cannot reach the code
+    // at this scale. The go/hints_test.go twin pins the Go message text.
+    (0, node_test_1.test)('budget-passes', () => {
+        const chain = 'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1';
+        let err = undefined;
+        try {
+            new __1.Aontu().generate(chain);
+        }
+        catch (e) {
+            err = e;
+        }
+        (0, expect_1.expect)(undefined !== err).equal(true);
+        (0, expect_1.expect)(err.errs()[0].why).equal('budget_passes');
+        (0, expect_1.expect)(err.errs()[0].class).equal('budget');
+        (0, expect_1.expect)(err.message.includes('evaluation budget')).equal(true);
+        // A STABLE residue is incompleteness, not budget exhaustion.
+        let stuck = undefined;
+        try {
+            new __1.Aontu().generate('x:1+true');
+        }
+        catch (e) {
+            stuck = e;
+        }
+        (0, expect_1.expect)(stuck.errs()[0].why).equal('mapval_no_gen');
+    });
 });
 //# sourceMappingURL=unify.test.js.map

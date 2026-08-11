@@ -50,7 +50,22 @@ func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
 	ctx.root = res
 
 	var nils []*NilVal
-	collectNils(res, &nils, map[Val]bool{})
+	seen := map[Val]bool{}
+	collectNils(res, &nils, seen)
+
+	// Errors recorded on the context but not present in the tree — e.g.
+	// a budget_passes exhaustion nil, which is about the whole
+	// evaluation rather than any node — would otherwise be invisible
+	// here, and the trust contract forbids silent truncation
+	// (docs/trust.md clause 2). Tree nils are already on ctx.err too,
+	// so dedup by identity. Mirrors the ctx-err union in TS
+	// computeDiagnostics (ts/src/lsp.ts).
+	for _, n := range ctx.err {
+		if !seen[Val(n)] {
+			seen[Val(n)] = true
+			nils = append(nils, n)
+		}
+	}
 
 	out := make([]Problem, 0, len(nils))
 	for _, n := range nils {

@@ -59,6 +59,26 @@
 #
 # ---------------------------------------------------------------------
 #
+# OPEN -- spread-required residue: Go raises *_no_gen where TypeScript
+#   raises *_spread_required.
+#   issue: #27. TS BagVal.gen has an isExpect branch (the internal
+#   ExpectVal spread-required machinery) selecting
+#   mapval_spread_required / listval_spread_required; the Go port has
+#   no ExpectVal counterpart, so the same residue takes the generic
+#   *_no_gen code.
+#
+#   Divergent input:  m:{&:{r:string} a:{}}
+#   TypeScript: error code mapval_spread_required
+#   Go:         error code mapval_no_gen
+#
+#   Not simply fixed because Go needs the expect/required tracking
+#   ported (or an equivalent marker) before it can make the
+#   distinction -- a port task, not a registry entry. Both codes stay
+#   registered in errcodes.tsv (the registry is the vocabulary); no
+#   errc row may pin the spread-required case until this closes.
+#
+# ---------------------------------------------------------------------
+#
 # CLOSED -- lone surrogates in quoted strings folded to U+FFFD by Go.
 #   issue: #24. Two separate things lived under this entry; both are
 #   settled, in opposite ways, and the difference is the point.

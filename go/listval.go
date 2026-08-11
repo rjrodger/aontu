@@ -56,7 +56,9 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 			if ctx != nil && ctx.collect {
 				break
 			}
-			// Code mirrors the TS BagVal.gen choice (see MapVal.Gen).
+			// Code follows the TS BagVal.gen closed/no_gen choice (see
+			// MapVal.Gen — including the OPEN spread-required
+			// divergence, issue #27).
 			code := "listval_no_gen"
 			if l.closed {
 				code = "listval_required"

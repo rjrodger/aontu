@@ -365,6 +365,40 @@ describe('unify', function() {
   })
 
 
+  // budget_passes: the pass budget spent while the final pass was still
+  // making progress (docs/trust.md clause 2). Pinned here per-port —
+  // no shared spec row can exist while the smallest reproducer (a
+  // 10-link ref chain) diverges between the engines (divergent.tsv,
+  // issue #26): Go resolves chains eagerly and cannot reach the code
+  // at this scale. The go/hints_test.go twin pins the Go message text.
+  test('budget-passes', () => {
+    const chain =
+      'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1'
+
+    let err: any = undefined
+    try {
+      new Aontu().generate(chain)
+    }
+    catch (e: any) {
+      err = e
+    }
+
+    expect(undefined !== err).equal(true)
+    expect(err.errs()[0].why).equal('budget_passes')
+    expect(err.errs()[0].class).equal('budget')
+    expect(err.message.includes('evaluation budget')).equal(true)
+
+    // A STABLE residue is incompleteness, not budget exhaustion.
+    let stuck: any = undefined
+    try {
+      new Aontu().generate('x:1+true')
+    }
+    catch (e: any) {
+      stuck = e
+    }
+    expect(stuck.errs()[0].why).equal('mapval_no_gen')
+  })
+
 })
 
 

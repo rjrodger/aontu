@@ -63,7 +63,9 @@ var hints = map[string]string{
 	"max_depth":        "Input nesting is too deep to process safely.",
 	// G5's budget taxonomy: pass exhaustion is a semantic error, never
 	// silent truncation. The message must carry the substring
-	// "evaluation budget" (pinned by budget.tsv rows).
+	// "evaluation budget" — pinned per-port (TestBudgetPassesHint here,
+	// ts/test/unify.test.ts on the TS side) until a shared budget.tsv
+	// row can exist (blocked on the issue #26 divergence).
 	"budget_passes": "The evaluation budget of fixpoint passes was spent before " +
 		"the model converged. This is the evaluator giving up, not a " +
 		"contradiction in the model: raising the budget helps only a model " +
