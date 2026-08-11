@@ -2,7 +2,10 @@
 
 package aontu
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // ListVal is an ordered list of element Vals. Unification is
 // element-wise by index; a longer peer extends the result.
@@ -44,7 +47,7 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 		return nil, nil
 	}
 	out := make([]any, 0, len(l.peg))
-	for _, e := range l.peg {
+	for i, e := range l.peg {
 		if e.markedType() || e.markedHide() {
 			continue
 		}
@@ -58,12 +61,22 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 			}
 			// Code follows the TS BagVal.gen closed/no_gen choice (see
 			// MapVal.Gen — including the OPEN spread-required
-			// divergence, issue #27).
+			// divergence, issue #27). Rendered via a NilVal for the
+			// full TS-style message, with the element index as the key
+			// detail (TS BagVal.gen passes the bag key either way).
 			code := "listval_no_gen"
 			if l.closed {
 				code = "listval_required"
 			}
-			return nil, &AontuError{Msg: "Cannot resolve value: " + e.Canon(), Code: code}
+			n := newNil(code)
+			n.primary = e
+			n.sp = e.pos()
+			n.details = map[string]string{"key": strconv.Itoa(i)}
+			src, file := "", ""
+			if ctx != nil {
+				src, file = ctx.src, ctx.file
+			}
+			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 		}
 		ev, err := e.Gen(ctx)
 		if err != nil {

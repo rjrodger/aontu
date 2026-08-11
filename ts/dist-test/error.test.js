@@ -126,5 +126,25 @@ const err_1 = require("../dist/err");
             (0, expect_1.expect)(e.message).to.contain('a:1,a:2');
         }
     });
+    // The FULL thrown-message twin: this exact literal -- marker,
+    // headline, verbatim hint, and both ANSI-coloured source frames -- is
+    // asserted byte-for-byte here AND by TestFullMessageTwin in
+    // go/hints_test.go, so a change to either port's rendering fails
+    // that side loudly. This is the completion pin of issue #29: thrown
+    // error text is in cross-port parity. (Spec rows still assert only
+    // probed substrings -- the twins are the byte-level guard.)
+    (0, node_test_1.it)('full-message-twin', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate('a:1 a:2');
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).equal("[aontu/scalar_value]: Cannot unify values at path $.a\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:1:7\n\u001b[34m  1 | \u001b[0ma:1 a:2\n            \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:1:3\n\u001b[34m  1 | \u001b[0ma:1 a:2\n        \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n");
+    });
 });
 //# sourceMappingURL=error.test.js.map

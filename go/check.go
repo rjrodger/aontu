@@ -45,7 +45,7 @@ func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
 		return []Problem{{Pos: -1, Len: 1, Why: "parse", Class: codeClass("parse"), Message: perr.Error()}}
 	}
 
-	ctx := &Ctx{root: v, vars: vars}
+	ctx := &Ctx{root: v, vars: vars, src: src}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
 
@@ -103,7 +103,7 @@ func (a *Aontu) Spans(src string) []ValueSpan {
 	if perr != nil {
 		return nil
 	}
-	ctx := &Ctx{root: v}
+	ctx := &Ctx{root: v, src: src}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
 

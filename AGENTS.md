@@ -161,10 +161,13 @@ echo 'x:1.0' | node ts/dist/cli.js -c
 Both print `{"x":1.0}`, so that is the `canon` expectation and the row
 may be written. Drop `-c` from both for a `gen` row — the CLIs then
 print generated JSON. For an `err` row, probe the same way and assert a
-substring that **both** messages contain; error wording itself is not
-YET in parity — bringing it into parity is tracked debt (issue #29,
-ledger entry in `test/spec/divergent.tsv`), so until that closes only
-the probed shared substring (and the `errc` code) is contractual.
+substring that **both** messages contain. Thrown-error text is in
+cross-port parity (#29: marker, headline, verbatim hints with
+injected details, ANSI source frames — guarded byte-for-byte by the
+full-message twin tests in ts/test/error.test.ts and
+go/hints_test.go), but a spec row still asserts only its probed
+substring and `errc` code: rows outlive renderer changes, twins pin
+the renderer.
 
 The TypeScript CLI runs the committed build, so run `make build-ts`
 before probing if `ts/src` has changed, or the probe answers for the old

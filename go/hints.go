@@ -8,10 +8,10 @@ import "strings"
 // Since the #29 message-parity work the non-parameterised entries are
 // VERBATIM copies of ts/src/hints.ts (worked examples included) --
 // regenerate from there when the TS table changes, do not hand-edit.
-// The exceptions, kept in the "Go-specific and parameterised" block at
-// the end, are the entries whose TS text interpolates {placeholders}
-// via strinject (Go has no details plumbing yet -- #29 phase 2) and
-// decimal_syntax, which only Go raises.
+// The parameterised entries at the end are ALSO verbatim TS text:
+// their {placeholders} are interpolated from NilVal.details by
+// strinject at render time (go/val.go), exactly as TS getHint does.
+// decimal_syntax stays Go-only (TS never raises it).
 var hints = map[string]string{
 	"scalar_value":      "Literal scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
 	"scalar_kind":       "Literal scalar values of different kinds cannot unify.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
@@ -62,32 +62,23 @@ var hints = map[string]string{
 	"ref[":              "Reference error: ",
 	"op[":               "Operator value error: ",
 
-	// -- Go-specific and parameterised entries (not yet verbatim TS) --
+	// -- Parameterised entries: VERBATIM TS text, {placeholders}
+	// interpolated from NilVal.details by strinject at render time
+	// (go/val.go), exactly as TS getHint does. --
 
+	"lossy_integer_literal":   "This integer literal, {src}, is not exactly representable in\nbinary64, so storing it would silently round it to a DIFFERENT\nnumber. Aontu refuses rather than corrupts: write it as a `0d`\nliteral to get the exact integer.\nThe rule is exactness, not magnitude -- a literal far outside the\nint64 window is still a value when it lands exactly on a binary64.\n \nExamples:\n  9007199254740992   -> 9007199254740992    # 2^53, exact;\n  9007199254740993   -> nil                 # 2^53+1 is not;\n  0d9007199254740993 -> 0d9007199254740993  # ... the exact escape;\n  0x7fffffffffffffff -> nil    # 2^63-1 rounds up to 2^63;\n  100000000000000000000 -> 1e20 # 10^20 is huge and exact.",
+	"exact_float_mix":         "Aontu cannot mix an exact number with a binary float.\nHere the operands are {left} and {right}, in that order.\nA big type never silently becomes a binary float, in either\noperand order -- binary64 cannot hold every exact value, so the\npromotion would throw away the exactness the `0d` leaves exist to\nguarantee. Write both operands in the same family (`0d1.0` for the\nfloat, or a plain integer for the big).\n \nExamples:\n  0d2 + 0d0.5 -> 0d2.5  # Exact with exact (widest leaf wins);\n  1 + 0d0.5   -> 0d1.5  # integer is on the exact ladder;\n  1 + 2.0     -> 3.0    # ... and float still mixes with integer;\n  1.0 + 0d2   -> nil    # float with biginteger;\n  0d0.5 + 1.0 -> nil    # ... and the same the other way round.",
+	"inexact_integer_sum":     "The `integer` leaf holds a value only when it is integral, within\nthe int64 range, and exactly representable in binary64. This sum\nis not: {sum}.\nAontu adds integers exactly and refuses to store a rounded answer\n-- write `0d<digits>` for an exact integer beyond that window.\n \nExamples:\n  4503599627370496 + 4503599627370496 -> 9007199254740992  # Exact;\n  4503599627370496 + 4503599627370497 -> nil    # 2^53+1 is not;\n  0d4503599627370496 + 0d4503599627370497 -> 0d9007199254740993.",
+	"mapval_spread_required":  "The value for key {key} is required (defined in spread).",
+	"listval_spread_required": "The value for key {key} is required (defined in spread).",
+
+	// budget_passes mirrors the TS text ({limit}/{paths} injected); the
+	// "evaluation budget" substring is pinned per-port
+	// (TestBudgetPassesHint) until a shared row exists (issue #26).
+	"budget_passes": "The evaluation budget of {limit} fixpoint passes was spent before\nthe model converged; still refining: {paths}.\nThis is the evaluator giving up, not a contradiction in the model:\nraising the budget helps only a model that is still converging --\na genuine cycle never converges at any budget.",
+
+	// Go-only: TS never raises decimal_syntax.
 	"decimal_syntax": "This 0d literal is not a valid exact number.",
-	// TS interpolates {src}; text kept local until details plumbing lands.
-	"lossy_integer_literal": "This integer literal is not exactly representable as a " +
-		"binary64 value, so storing it would silently round it to a different " +
-		"number. Aontu never rounds a literal, so write it as `0d<digits>` \u2014 " +
-		"the exact integer leaf holds it unchanged at any size.",
-	// TS interpolates {left}/{right}.
-	"exact_float_mix": "An exact value (biginteger, bigdecimal) and a binary float " +
-		"cannot mix in arithmetic, in either operand order: a Big type never " +
-		"silently becomes a binary float. Write both operands as exact `0d` " +
-		"literals, or neither.",
-	// TS interpolates {sum}.
-	"inexact_integer_sum": "The exact sum of these integers is not exactly representable " +
-		"as an integer: the integer leaf holds only int64-window values that a " +
-		"binary64 carries exactly. Aontu never rounds a sum, so write the " +
-		"operands as `0d<digits>` for an exact integer instead.",
-	// TS interpolates {limit}/{paths}; the "evaluation budget" substring
-	// is pinned per-port (TestBudgetPassesHint) until a shared row exists
-	// (issue #26).
-	"budget_passes": "The evaluation budget of fixpoint passes was spent before " +
-		"the model converged. This is the evaluator giving up, not a " +
-		"contradiction in the model: raising the budget helps only a model " +
-		"that is still converging -- a genuine cycle never converges at any " +
-		"budget.",
 }
 
 // codeClasses assigns every error code a CLASS: conflict | incomplete |

@@ -12,7 +12,17 @@ import "strings"
 // Ctx carries unification state: the root Val (for path resolution,
 // once references are ported) and the collected error list.
 type Ctx struct {
-	root  Val
+	root Val
+	// src is the entry source text, used by error rendering to compute
+	// row/col from a value's byte offset and to excerpt source lines
+	// (NilVal.FullMessage frames). Values loaded from @"file" includes
+	// carry offsets into their own file; with no per-value url tracking
+	// their frames fall back to this text — the same fallback TS's
+	// resolveSrc makes when a site's file cannot be read.
+	src string
+	// file is the display name of the entry source for error frames
+	// (Aontu.File); empty renders <no-file>.
+	file  string
 	err   []*NilVal
 	depth int            // unite recursion depth (cycle guard)
 	cc    int            // current fixpoint pass (for late-resolving funcs)
@@ -49,9 +59,9 @@ func (c *Ctx) errmsg() string {
 	parts := make([]string, 0, len(c.err))
 	for _, e := range c.err {
 		// The thrown-error surface renders the full TS-style message
-		// (marker, headline, hint, value line); the LSP/Problem surface
-		// keeps the short Message. See NilVal.FullMessage.
-		parts = append(parts, e.FullMessage())
+		// (marker, headline, hint, value line, frames); the LSP/Problem
+		// surface keeps the short Message. See NilVal.FullMessage.
+		parts = append(parts, e.FullMessage(c.src, c.file))
 	}
 	return strings.Join(parts, "\n------\n")
 }

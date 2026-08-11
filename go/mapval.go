@@ -294,7 +294,18 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			if m.closed {
 				code = "mapval_required"
 			}
-			return nil, &AontuError{Msg: "Cannot resolve value: " + child.Canon(), Code: code}
+			// Render the full TS-style message (marker, headline, hint,
+			// frame with the `key <k>` caret submessage) via a NilVal,
+			// as TS BagVal.gen raises makeNilErr with details {key}.
+			n := newNil(code)
+			n.primary = child
+			n.sp = child.pos()
+			n.details = map[string]string{"key": k}
+			src, file := "", ""
+			if ctx != nil {
+				src, file = ctx.src, ctx.file
+			}
+			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 		}
 
 		// An optional child generates in an isolated collect context so

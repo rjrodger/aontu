@@ -116,7 +116,7 @@ func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 	// string concatenation are all decided by kind, and none of them may
 	// pass through binary64.
 	if isExactScalar(av) || isExactScalar(bv) {
-		return exactPlus(ctx, av, bv)
+		return exactPlus(ctx, o, av, bv)
 	}
 
 	a := primatize(av)
@@ -141,7 +141,7 @@ func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 		return nil
 	case isIntegerScalar(av) && isIntegerScalar(bv):
 		// integer + integer is computed EXACTLY, in int64 (D6).
-		return integerPlus(ctx, av, bv)
+		return integerPlus(ctx, o, av, bv)
 	default:
 		peg = plusAdd(a, b)
 	}
@@ -177,15 +177,25 @@ func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 // holds sums TypeScript's double cannot, so without a shared storage
 // test a document would resolve here and round (or error) there. Both
 // refuse, and the hint names the `0d` spelling that computes it exactly.
-func integerPlus(ctx *Ctx, av, bv Val) Val {
+func integerPlus(ctx *Ctx, o Val, av, bv Val) Val {
 	x := av.(*ScalarVal).peg.(int64)
 	y := bv.(*ScalarVal).peg.(int64)
+	// The exact sum, computed in big.Int for the {sum} hint detail (a
+	// bigint in TS) — the int64 fast path below still decides storability.
+	exact := new(big.Int).Add(big.NewInt(x), big.NewInt(y))
 	sum := x + y
+
+	// The error mirrors TS: the OP is the single operand of an `add`
+	// attempt, and the hint names the exact sum ({sum}).
+	inexact := func() Val {
+		return makeNilErrFull(ctx, "inexact_integer_sum", o, nil, "add",
+			map[string]string{"sum": exact.String()})
+	}
 
 	// Checked add: Go's int64 addition WRAPS, and a wrap is exactly a
 	// sum whose sign disagrees with two same-signed operands.
 	if (0 < x && 0 < y && sum < 0) || (x < 0 && y < 0 && 0 <= sum) {
-		return makeNilErr(ctx, "inexact_integer_sum", av, bv)
+		return inexact()
 	}
 
 	// R1's storage test, applied to the result — reaching the SAME
@@ -193,7 +203,7 @@ func integerPlus(ctx *Ctx, av, bv Val) Val {
 	// (isExactInBinary64, inside isIntegerStorable), so a literal and a
 	// computed sum cannot disagree about what "exact" means.
 	if !isIntegerStorable(big.NewInt(sum)) {
-		return makeNilErr(ctx, "inexact_integer_sum", av, bv)
+		return inexact()
 	}
 	return newInteger(sum)
 }
@@ -204,7 +214,7 @@ func integerPlus(ctx *Ctx, av, bv Val) Val {
 // integer < biginteger < bigdecimal: a mixed exact operation promotes to
 // the WIDEST operand and is computed exactly, and the result never
 // demotes — `0d5 + -0d2` stays a biginteger though 3 fits an int64.
-func exactPlus(ctx *Ctx, av, bv Val) Val {
+func exactPlus(ctx *Ctx, o Val, av, bv Val) Val {
 	asv, aok := av.(*ScalarVal)
 	bsv, bok := bv.(*ScalarVal)
 	if !aok || !bok {
@@ -225,7 +235,10 @@ func exactPlus(ctx *Ctx, av, bv Val) Val {
 	// round — most exact decimals have no binary64 image — and this
 	// language does not round, so the mix is a hard error.
 	if asv.kind == KindFloat || bsv.kind == KindFloat {
-		return makeNilErr(ctx, "exact_float_mix", av, bv)
+		// Mirrors TS: the OP is the single operand of an `add` attempt,
+		// and the hint names both leaves in operand order ({left}/{right}).
+		return makeNilErrFull(ctx, "exact_float_mix", o, nil, "add",
+			map[string]string{"left": asv.kind.String(), "right": bsv.kind.String()})
 	}
 
 	if !exactLadderKinds[asv.kind] || !exactLadderKinds[bsv.kind] {
@@ -239,7 +252,7 @@ func exactPlus(ctx *Ctx, av, bv Val) Val {
 		// The budget bounds results as well as literals: an exact sum
 		// over either bound is refused, never rounded.
 		if sum.overBudget() {
-			return makeNilErr(ctx, "decimal_budget", av, bv)
+			return makeNilErrFull(ctx, "decimal_budget", o, nil, "add", nil)
 		}
 		return newBigDecimal(sum)
 	}

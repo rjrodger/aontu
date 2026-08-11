@@ -425,7 +425,7 @@ func TestIntegerSumStorageContract(t *testing.T) {
 		{math.MinInt64 / 2, 0, -(1 << 62)}, //
 	}
 	for _, c := range ok {
-		out := integerPlus(nil, newInteger(c.x), newInteger(c.y))
+		out := integerPlus(nil, newPlusOp(newInteger(c.x), newInteger(c.y)), newInteger(c.x), newInteger(c.y))
 		sv, is := out.(*ScalarVal)
 		if !is || sv.kind != KindInteger {
 			t.Errorf("%d+%d = %s, want an integer", c.x, c.y, out.Canon())
@@ -447,7 +447,7 @@ func TestIntegerSumStorageContract(t *testing.T) {
 		{4503599627370496, 4503599627370497}, // the spec row, at the boundary
 	}
 	for _, c := range bad {
-		out := integerPlus(nil, newInteger(c[0]), newInteger(c[1]))
+		out := integerPlus(nil, newPlusOp(newInteger(c[0]), newInteger(c[1])), newInteger(c[0]), newInteger(c[1]))
 		nv, isnil := out.(*NilVal)
 		if !isnil {
 			t.Errorf("%d+%d = %s, want a located error", c[0], c[1], out.Canon())

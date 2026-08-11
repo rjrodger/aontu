@@ -35,37 +35,13 @@
 #
 # ---------------------------------------------------------------------
 #
-# NOTE (2026-08-11): five entries below were RECLASSIFIED from
-# DIVERGENCE.md by maintainer decision -- previously accepted as
-# permanent, now debt to be fixed. Only the Unicode table vintage
-# remains in DIVERGENCE.md.
-#
-# ---------------------------------------------------------------------
-#
-# OPEN -- error message text: source frames and parameterised hints
-#   remain TS-only.
-#   issue: #29. NARROWED (phase 1 landed): Go's thrown errors now
-#   render the TS structure -- the `[aontu/<code>]` marker, the
-#   `Cannot <attempt> value(s) at path <path>` headline, and the
-#   VERBATIM full hint texts with worked examples (go/hints.go is a
-#   generated copy of ts/src/hints.ts for non-parameterised entries;
-#   NilVal.FullMessage mirrors descErr, while the LSP/Problem surface
-#   keeps the short Message, mirroring TS's own descErr/nilMessage
-#   split). Pinned by error.tsv errm-marker-headline / errm-full-hint.
-#
-#   Still divergent, input a:1 a:2:
-#   TypeScript: additionally renders two located, ANSI-coloured source
-#     frames (file, row, col, source excerpt) per site.
-#   Go:         no source frames; and five hints stay non-verbatim
-#     because TS interpolates {placeholders} via details
-#     (lossy_integer_literal, exact_float_mix, inexact_integer_sum,
-#     mapval/listval_spread_required) -- Go has no details plumbing.
-#
-#   Not simply fixed because frames need row/col tracking in Go's
-#   NilVal (it carries a byte offset today) and a source-excerpt
-#   renderer; parameterised hints need details plumbing through
-#   makeNilErr. Meanwhile only err-row substrings and errc-row codes
-#   are contractual.
+# NOTE (2026-08-11): five entries were RECLASSIFIED from DIVERGENCE.md
+# by maintainer decision -- previously accepted as permanent, now debt
+# to be fixed; only the Unicode table vintage remains there. Three are
+# already fixed and removed (#29 message text, #30 parse-level canon,
+# #31 invalid-source stages); the surrogate (#24) and malformed-input
+# (#32) entries below remain, blocked on upstream @tabnas work and a
+# direction decision.
 #
 # ---------------------------------------------------------------------
 #

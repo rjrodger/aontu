@@ -84,3 +84,22 @@ func TestLongRefCycleIsProven(t *testing.T) {
 		t.Fatalf("expected code path_cycle, got %T %v", err, err)
 	}
 }
+
+// TestFullMessageTwin asserts the FULL thrown-message literal -- marker,
+// headline, verbatim hint, and both ANSI-coloured source frames --
+// byte-for-byte. The TS twin with the SAME literal is
+// full-message-twin in ts/test/error.test.ts, so a change to either
+// port's rendering fails that side loudly. This is the completion pin
+// of issue #29: thrown error text is in cross-port parity. (Spec rows
+// still assert only probed substrings -- the twins are the byte-level
+// guard.)
+func TestFullMessageTwin(t *testing.T) {
+	_, err := New().Generate("a:1 a:2")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	want := "[aontu/scalar_value]: Cannot unify values at path $.a\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:1:7\n\u001b[34m  1 | \u001b[0ma:1 a:2\n            \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:1:3\n\u001b[34m  1 | \u001b[0ma:1 a:2\n        \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n"
+	if got := err.Error(); got != want {
+		t.Fatalf("full message mismatch\n want: %q\n got:  %q", want, got)
+	}
+}

@@ -15,6 +15,13 @@ type Aontu struct {
 	// base is the directory used to resolve relative @"file" source
 	// loads. Empty means the process working directory.
 	base string
+
+	// File is an optional display name for the entry source, rendered
+	// in error frames the way the TS CLI renders its entry path
+	// (`--> model.aon:3:5`). Empty renders `<no-file>`, as TS does for
+	// string sources. Set it when evaluating a real file, e.g. from
+	// cmd/aontu.
+	File string
 }
 
 // New creates a new Aontu instance. Relative @"file" loads resolve from
@@ -56,15 +63,16 @@ func (a *Aontu) UnifyVars(src string, vars map[string]Val) (Val, error) {
 	if err != nil {
 		return v, err
 	}
-	res, _, err := a.unifyCtx(v, vars)
+	res, _, err := a.unifyCtx(v, vars, src)
 	return res, err
 }
 
 // unifyCtx runs the fixpoint loop and returns the result with its
 // context (which carries move()-hidden paths and variables used by
-// generation).
-func (a *Aontu) unifyCtx(v Val, vars map[string]Val) (Val, *Ctx, error) {
-	ctx := &Ctx{root: v, vars: vars}
+// generation). src is the entry source text, threaded for error
+// frame rendering (NilVal.FullMessage).
+func (a *Aontu) unifyCtx(v Val, vars map[string]Val, src string) (Val, *Ctx, error) {
+	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
 	if len(ctx.err) > 0 {
@@ -107,7 +115,7 @@ func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
 	if perr != nil {
 		return nil, perr
 	}
-	res, ctx, err := a.unifyCtx(v, vars)
+	res, ctx, err := a.unifyCtx(v, vars, src)
 	if err != nil {
 		return nil, err
 	}

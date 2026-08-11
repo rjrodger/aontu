@@ -33,9 +33,18 @@ errc-reference-no-path	errc	a:$.b	no_path
 errc-parse-syntax	errc	a:k-x	syntax
 errc-parse-negative	errc	k-x:1	negative
 #
-# Message-parity rows (#29, phase 1): the thrown error's marker,
-# headline, and full hint text (worked examples included) are now
-# shared between the ports. Source frames remain TS-only -- the open
-# remainder of the #29 ledger entry.
+# Message-parity rows (#29): the thrown error's marker, headline, full
+# hint text (worked examples AND {placeholder} injection), source
+# frames (arrow, excerpt, caret submessage -- ANSI included), and the
+# attempt name are shared between the ports. The byte-level guard is
+# the full-message twin pair (ts/test/error.test.ts full-message-twin,
+# go/hints_test.go TestFullMessageTwin), which assert one identical
+# literal in both engines.
 errm-marker-headline	err	a:1 a:2	[aontu/scalar_value]: Cannot unify values at path $.a
 errm-full-hint	err	a:1 a:2	1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).
+errm-frame-arrow	err	a:1 a:2	--> <no-file>:1:7
+errm-frame-caret	err	a:1 a:2	^ value was: 2
+errm-frame-key	err	a:number	^ key a value was: number
+errm-inject-src	err	x:9007199254740993	This integer literal, 9007199254740993, is not
+errm-inject-operands	err	x:1.0+0d2	Here the operands are float and biginteger, in that order.
+errm-attempt-add	err	x:1.0+0d2	[aontu/exact_float_mix]: Cannot add value at path $.x

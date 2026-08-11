@@ -2,6 +2,11 @@
 
 package aontu
 
+import (
+	"strconv"
+	"strings"
+)
+
 // unite is the binary unification dispatcher, mirroring the TS
 // `unite` in ts/src/unify.ts (minus cycle-detection, which the core
 // subset does not need without references). TOP is the unit element;
@@ -94,8 +99,48 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 	// before. Mirrors the budget_passes emission at the TS pass-loop
 	// exit (ts/src/unify.ts).
 	if res.Dc() != DONE && len(ctx.err) == 0 && sawPrev && prevCanon != res.Canon() {
-		makeNilErr(ctx, "budget_passes", nil, nil)
+		// The hint names the budget and the still-refining paths
+		// ({limit}/{paths}), as the TS residuePaths details do.
+		paths := residuePaths(res, 4)
+		joined := strings.Join(paths, " ")
+		if joined == "" {
+			joined = "$"
+		}
+		makeNilErrFull(ctx, "budget_passes", nil, nil, "resolve",
+			map[string]string{"limit": strconv.Itoa(maxcc), "paths": joined})
 	}
 	ctx.root = res
 	return res
+}
+
+// residuePaths is the Go twin of the TS residuePaths (ts/src/unify.ts):
+// the first max non-done nodes of the residue, as $.dotted.paths,
+// depth-first over bag children only.
+func residuePaths(v Val, max int) []string {
+	var out []string
+	var visit func(n Val, isroot bool)
+	visit = func(n Val, isroot bool) {
+		if n == nil || max <= len(out) {
+			return
+		}
+		if !isroot && n.Dc() != DONE {
+			p := "$"
+			if vp := n.vpath(); len(vp) > 0 {
+				p = "$." + strings.Join(vp, ".")
+			}
+			out = append(out, p)
+		}
+		switch t := n.(type) {
+		case *MapVal:
+			for _, k := range t.keys {
+				visit(t.peg[k], false)
+			}
+		case *ListVal:
+			for _, e := range t.peg {
+				visit(e, false)
+			}
+		}
+	}
+	visit(v, true)
+	return out
 }

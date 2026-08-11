@@ -76,11 +76,11 @@ same text, so `gens` stays green if a port hands back a `number` where a
 `bigint` was due. That half of the contract is pinned by per-port API
 tests (`ts/test/exactjson.test.ts`, `go/generate_test.go`) instead.
 
-`errc` is `err`'s code-exact counterpart. Error *message* text is not
-yet in parity between the ports (Go's hints are abbreviated,
-TypeScript renders source frames — tracked debt, issue #29 and the
-parity ledger), so an `err` row can pin
-only a shared substring; the error *codes* (the `NilVal` `why`, e.g.
+`errc` is `err`'s code-exact counterpart. Thrown-error message text
+is in cross-port parity (#29: marker, headline, verbatim hints,
+source frames — byte-guarded by the full-message twin tests), but an
+`err` row still asserts only a probed shared substring — rows outlive
+renderer changes; the twins pin the renderer. The error *codes* (the `NilVal` `why`, e.g.
 `scalar_value`, `no_path`, `mapval_no_gen`) ARE in parity, and an
 `errc` row pins which code a given source raises — TypeScript asserts
 `errs()[0].why` on the thrown `AontuError`, Go asserts

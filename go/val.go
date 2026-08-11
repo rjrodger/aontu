@@ -17,7 +17,10 @@
 // type/hide marks and @"file" source loading.
 package aontu
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // DONE marks a Val whose unification has fully converged.
 const DONE = -1
@@ -194,9 +197,16 @@ func (t *TopVal) Unify(peer Val, ctx *Ctx) Val {
 // that the shared error specs assert on.
 type NilVal struct {
 	base
-	why       string
-	msg       string
-	fullmsg   string
+	why     string
+	msg     string
+	fullmsg string
+	// attempt names the operation in messages ("unify", "resolve",
+	// "add", ...), mirroring the attempt argument of TS makeNilErr;
+	// empty means derive from the operand count as TS descErr does.
+	attempt string
+	// details parameterises hint text ({src}, {left}, {sum}, ...) and
+	// carries the `key` submessage prefix, mirroring TS NilVal.details.
+	details   map[string]string
 	primary   Val
 	secondary Val
 }
@@ -224,26 +234,38 @@ func (n *NilVal) Gen(ctx *Ctx) (any, error) {
 	if n.why == "" {
 		n.why = "nil_gen"
 	}
-	return nil, &AontuError{Msg: n.FullMessage(), Code: n.why}
+	src, file := "", ""
+	if ctx != nil {
+		src, file = ctx.src, ctx.file
+	}
+	return nil, &AontuError{Msg: n.FullMessage(src, file), Code: n.why}
 }
 
 // FullMessage renders the failure the way the canonical TypeScript
 // implementation renders a THROWN error (descErr, ts/src/err.ts):
 // the `[aontu/<code>]` marker, the "Cannot <attempt> value(s) at path
-// <path>" headline, the hint, and the value line. Used by the
-// AontuError paths (unify/generate); the LSP/Problem surface keeps the
-// short Message below, mirroring TS's own split (descErr vs the LSP's
-// nilMessage). Source frames are not rendered yet — the remaining #29
-// work (Go tracks a byte offset, not row/col).
-func (n *NilVal) FullMessage() string {
+// <path>" headline, the (parameterised) hint, and one located source
+// frame per operand — byte-matched to the TS output, ANSI colouring
+// included. Used by the AontuError paths (unify/generate); the
+// LSP/Problem surface keeps the short Message below, mirroring TS's
+// own split (descErr vs the LSP's nilMessage). src is the entry
+// source text for row/col mapping and excerpts (ctx.src); frames for
+// values loaded from includes fall back to it, as TS's resolveSrc
+// falls back when a site's file cannot be read.
+func (n *NilVal) FullMessage(src, file string) string {
 	if n.fullmsg != "" {
 		return n.fullmsg
 	}
-	attempt := "unify"
-	plural := "s"
-	if n.secondary == nil {
-		attempt = "resolve"
-		plural = ""
+	attempt := n.attempt
+	if attempt == "" {
+		attempt = "unify"
+		if n.secondary == nil {
+			attempt = "resolve"
+		}
+	}
+	plural := ""
+	if n.secondary != nil {
+		plural = "s"
 	}
 	// The path comes from the primary operand, as TS NilVal.make copies
 	// av.path onto the nil.
@@ -264,20 +286,97 @@ func (n *NilVal) FullMessage() string {
 	b.WriteString(path)
 	if hint := hints[n.why]; hint != "" {
 		b.WriteString("\n\n")
-		b.WriteString(hint)
+		b.WriteString(strinject(hint, n.details))
 	}
 	if n.primary != nil {
-		b.WriteString("\n\nCannot ")
-		b.WriteString(attempt)
-		b.WriteString(" value: ")
-		b.WriteString(n.primary.Canon())
+		b.WriteString("\n\n")
+		b.WriteString(n.frame(src, file, attempt, n.primary, n.secondary))
 		if n.secondary != nil {
-			b.WriteString(" with value: ")
-			b.WriteString(n.secondary.Canon())
+			// The second frame swaps the operand order, as descErr does.
+			b.WriteString("\n")
+			b.WriteString(n.frame(src, file, attempt, n.secondary, n.primary))
 		}
 	}
 	n.fullmsg = b.String()
 	return n.fullmsg
+}
+
+// frame renders one located source frame, byte-matched to the jsonic
+// errmsg block TS descErr emits: the value line, the blue `-->`
+// arrow with file:row:col, the source row with a caret naming the
+// value (and the map key when known), and the two following rows.
+func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
+	if file == "" {
+		file = "<no-file>"
+	}
+	var b strings.Builder
+	b.WriteString(" Cannot ")
+	b.WriteString(attempt)
+	b.WriteString(" value: ")
+	b.WriteString(v.Canon())
+	if other != nil {
+		b.WriteString(" with value: ")
+		b.WriteString(other.Canon())
+	}
+	b.WriteString("\n")
+
+	row, col := rowCol(src, v.pos())
+	lines := strings.Split(src, "\n")
+	line := func(r int) string {
+		if 1 <= r && r <= len(lines) {
+			return lines[r-1]
+		}
+		return ""
+	}
+
+	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", file, row, col)
+	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row, line(row))
+
+	keyPrefix := ""
+	if k := n.details["key"]; k != "" {
+		keyPrefix = "key " + k + " "
+	}
+	caretCol := col
+	if caretCol < 1 {
+		caretCol = 1
+	}
+	b.WriteString(strings.Repeat(" ", 6+caretCol-1))
+	b.WriteString("\x1b[34m^ ")
+	b.WriteString(keyPrefix)
+	b.WriteString("value was: ")
+	b.WriteString(v.Canon())
+	b.WriteString("\x1b[0m\n")
+
+	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row+1, line(row+1))
+	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row+2, line(row+2))
+	return b.String()
+}
+
+// rowCol maps a byte offset into src to 1-based row and column, the
+// coordinates jsonic sites carry in TS. A value with no usable
+// position maps to row 1, column 1.
+func rowCol(src string, sp int) (int, int) {
+	if sp < 0 || len(src) < sp {
+		return 1, 1
+	}
+	row := 1
+	last := -1
+	for i := 0; i < sp; i++ {
+		if src[i] == '\n' {
+			row++
+			last = i
+		}
+	}
+	return row, sp - last
+}
+
+// strinject replaces {key} placeholders with detail values, the Go
+// twin of the jsonic strinject TS getHint applies to hint text.
+func strinject(txt string, details map[string]string) string {
+	for k, v := range details {
+		txt = strings.ReplaceAll(txt, "{"+k+"}", v)
+	}
+	return txt
 }
 
 // Message renders the human-readable failure message. The phrasing of
@@ -310,6 +409,15 @@ func (n *NilVal) Message() string {
 	}
 	n.msg = b.String()
 	return n.msg
+}
+
+// makeNilErrFull is makeNilErr with the attempt name and hint details
+// TS's makeNilErr carries as its trailing arguments.
+func makeNilErrFull(ctx *Ctx, why string, a, b Val, attempt string, details map[string]string) *NilVal {
+	n := makeNilErr(ctx, why, a, b)
+	n.attempt = attempt
+	n.details = details
+	return n
 }
 
 // makeNilErr builds a NilVal error and records it on ctx. The operand
