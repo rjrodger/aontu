@@ -61,6 +61,7 @@ exports.exactJSON = exactJSON;
  */
 const Decimal_1 = require("./val/Decimal");
 const err_1 = require("./err");
+const keyorder_1 = require("./keyorder");
 // JS leaves U+2028 (LINE SEPARATOR) and U+2029 (PARAGRAPH SEPARATOR)
 // literal in a JSON string; Go's encoder escapes them. Byte parity wins.
 const LSPS_RE = new RegExp('[\u2028\u2029]', 'g');
@@ -170,7 +171,10 @@ function emit(v, unit, pad, seen) {
         // does and what MapVal.canon/BagVal.gen already sort by. Go sorts map
         // keys by UTF-8 byte, and the two orders agree on every key that stays
         // inside the BMP; astral-plane keys are a separate, tracked divergence.
-        for (const k of Object.keys(v).sort()) {
+        // CODE POINT order (cmpCodePoint), which is what Go's UTF-8 byte sort
+        // produces. A bare .sort() is UTF-16 code-unit order, which puts an
+        // astral key ahead of everything in U+E000-U+FFFF.
+        for (const k of Object.keys(v).sort(keyorder_1.cmpCodePoint)) {
             const cv = v[k];
             if (skipped(cv)) {
                 continue;

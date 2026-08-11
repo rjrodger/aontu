@@ -20,6 +20,7 @@ import { Val } from './Val'
 import { NilVal } from './NilVal'
 import { FeatureVal } from './FeatureVal'
 import { ExpectVal } from './ExpectVal'
+import { cmpCodePoint } from '../keyorder'
 
 
 abstract class BagVal extends FeatureVal {
@@ -65,15 +66,17 @@ abstract class BagVal extends FeatureVal {
       return undefined
     }
 
-    // Maps emit their keys alphabetically so the generated output is
-    // independent of insertion/unification order (and matches the Go
-    // port, whose JSON marshaling also sorts map keys). Lists keep their
-    // numeric index order.
+    // Maps emit their keys in CODE POINT order so the generated output
+    // is independent of insertion/unification order and matches the Go
+    // port. Lists keep their numeric index order.
+    //
+    // The keys are String()-coerced because a list entry carries a
+    // numeric index here; the coercion is a no-op for every map key.
     let entries = items(this.peg)
     if (this.isMap) {
       entries = entries
         .slice()
-        .sort((a: any, b: any) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+        .sort((a: any, b: any) => cmpCodePoint(String(a[0]), String(b[0])))
     }
 
     for (let item of entries) {

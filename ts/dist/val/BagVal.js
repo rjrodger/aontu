@@ -8,6 +8,7 @@ const Val_1 = require("./Val");
 const NilVal_1 = require("./NilVal");
 const FeatureVal_1 = require("./FeatureVal");
 const ExpectVal_1 = require("./ExpectVal");
+const keyorder_1 = require("../keyorder");
 class BagVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -38,15 +39,17 @@ class BagVal extends FeatureVal_1.FeatureVal {
         if (this.mark.type || this.mark.hide) {
             return undefined;
         }
-        // Maps emit their keys alphabetically so the generated output is
-        // independent of insertion/unification order (and matches the Go
-        // port, whose JSON marshaling also sorts map keys). Lists keep their
-        // numeric index order.
+        // Maps emit their keys in CODE POINT order so the generated output
+        // is independent of insertion/unification order and matches the Go
+        // port. Lists keep their numeric index order.
+        //
+        // The keys are String()-coerced because a list entry carries a
+        // numeric index here; the coercion is a no-op for every map key.
         let entries = (0, utility_1.items)(this.peg);
         if (this.isMap) {
             entries = entries
                 .slice()
-                .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+                .sort((a, b) => (0, keyorder_1.cmpCodePoint)(String(a[0]), String(b[0])));
         }
         for (let item of entries) {
             const p = item[0];

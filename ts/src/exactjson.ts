@@ -60,6 +60,7 @@
 
 import { Decimal } from './val/Decimal'
 import { AontuError } from './err'
+import { cmpCodePoint } from './keyorder'
 
 
 // JS leaves U+2028 (LINE SEPARATOR) and U+2029 (PARAGRAPH SEPARATOR)
@@ -188,7 +189,10 @@ function emit(v: any, unit: string, pad: string, seen: Set<any>): string {
     // does and what MapVal.canon/BagVal.gen already sort by. Go sorts map
     // keys by UTF-8 byte, and the two orders agree on every key that stays
     // inside the BMP; astral-plane keys are a separate, tracked divergence.
-    for (const k of Object.keys(v).sort()) {
+    // CODE POINT order (cmpCodePoint), which is what Go's UTF-8 byte sort
+    // produces. A bare .sort() is UTF-16 code-unit order, which puts an
+    // astral key ahead of everything in U+E000-U+FFFF.
+    for (const k of Object.keys(v).sort(cmpCodePoint)) {
       const cv = v[k]
       if (skipped(cv)) {
         continue
