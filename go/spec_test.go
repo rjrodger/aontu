@@ -8,10 +8,14 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
 )
+
+// semverRe matches the since-version column of test/spec/errcodes.tsv.
+var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 // TestSpec runs the shared, data-driven conformance suite. The test
 // cases live in the top-level test/spec/*.tsv files and are the single
@@ -26,6 +30,13 @@ import (
 //	mode=gens  : Generate(src) serialised as compact JSON must equal
 //	             expect BYTE FOR BYTE
 //	mode=err   : Generate(src) must error, message must contain expect
+//	mode=errc  : Generate(src) must error, and the FIRST failure's
+//	             why-code (AontuError.Code) must EQUAL expect (message
+//	             text is not in parity; codes are -- see
+//	             test/spec/errcodes.tsv)
+//	mode=errcode : registry row -- name is a code, src its class,
+//	             expect its since-version; asserted against the engine's
+//	             codeClasses table (go/hints.go)
 //
 // gen vs gens: gen normalises both sides through a JSON decode, which
 // collapses every number to a float64 — so two distinct exact integers
@@ -128,6 +139,37 @@ func TestSpec(t *testing.T) {
 					if !strings.Contains(err.Error(), expect) {
 						t.Fatalf("error mismatch\n src:  %q\n want contains: %s\n got:          %s", src, expect, err.Error())
 					}
+				case "errc":
+					// Code parity: the FIRST failure's why-code must EQUAL
+					// expect. Message text is deliberately not in parity
+					// between the ports; the codes in test/spec/errcodes.tsv
+					// are.
+					_, err := a.GenerateVars(src, vars)
+					if err == nil {
+						t.Fatalf("expected error with code %q, got none\n src: %q", expect, src)
+					}
+					ae, ok := err.(*AontuError)
+					if !ok {
+						t.Fatalf("expected *AontuError, got %T\n src: %q\n err: %v", err, src, err)
+					}
+					if ae.Code != expect {
+						t.Fatalf("error code mismatch\n src:  %q\n want: %s\n got:  %s\n msg:  %s", src, expect, ae.Code, ae.Msg)
+					}
+				case "errcode":
+					// Registry row: name IS the code, src is its class,
+					// expect the version line at which the code was first
+					// registered. The reverse direction (every engine code
+					// registered in the tsv) is TestErrCodesRegistry.
+					cls, ok := codeClasses[name]
+					if !ok {
+						t.Fatalf("code %q is not in the engine codeClasses table", name)
+					}
+					if cls != src {
+						t.Fatalf("code %q: registry class %q, engine class %q", name, src, cls)
+					}
+					if !semverRe.MatchString(expect) {
+						t.Fatalf("code %q: since-version %q is not a semver triple", name, expect)
+					}
 				default:
 					t.Fatalf("unknown spec mode %q", mode)
 				}
@@ -137,6 +179,44 @@ func TestSpec(t *testing.T) {
 
 	if total == 0 {
 		t.Fatalf("no spec rows loaded from %s", specDir)
+	}
+}
+
+// TestErrCodesRegistry asserts the registry (test/spec/errcodes.tsv)
+// and the engine's codeClasses table agree as SETS. The errcode rows in
+// TestSpec assert "every registered code exists in the engine with the
+// registered class"; this asserts the reverse -- an engine code missing
+// from the registry (or a stale registry entry) fails here. The
+// TypeScript runner performs the same check against ts/src/hints.ts
+// (spec-errcodes-registry).
+func TestErrCodesRegistry(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "test", "spec", "errcodes.tsv"))
+	if err != nil {
+		t.Fatalf("read errcodes.tsv: %v", err)
+	}
+
+	var registered []string
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSuffix(line, "\r")
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Split(line, "\t")
+		if len(parts) < 4 || parts[1] != "errcode" {
+			continue
+		}
+		registered = append(registered, parts[0])
+	}
+	sort.Strings(registered)
+
+	engine := make([]string, 0, len(codeClasses))
+	for code := range codeClasses {
+		engine = append(engine, code)
+	}
+	sort.Strings(engine)
+
+	if !reflect.DeepEqual(engine, registered) {
+		t.Fatalf("engine codeClasses table and test/spec/errcodes.tsv disagree\n engine:     %q\n registered: %q", engine, registered)
 	}
 }
 

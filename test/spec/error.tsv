@@ -7,3 +7,16 @@ nested-conflict	err	a:b:1 a:b:2	Cannot unify value: 2 with value: 1
 top-no-gen	err	a:top	Cannot resolve value
 kind-no-gen	err	a:number	Cannot resolve value
 trailing-paren-err	err	(a|b)&a)	unexpected character(s): )
+#
+# Error-code rows (mode errc): the FIRST failure's why-code must EQUAL
+# expect in BOTH engines. These pin the incomplete/conflict distinction
+# the err rows above cannot see: "your data contradicts the truth"
+# (class conflict) versus "your data has not yet supplied everything
+# the truth requires" (class incomplete). Classes per code are
+# registered in test/spec/errcodes.tsv. Expectations probed from both
+# CLIs/engines per the parity rule (AGENTS.md).
+errc-conflict-scalar	errc	a:1 a:2	scalar_value
+errc-conflict-closed	errc	a:close({b:1}) a:{c:2}	closed
+errc-incomplete-kind	errc	a:number	mapval_no_gen
+errc-incomplete-required	errc	a:close({b:number})	mapval_required
+errc-reference-no-path	errc	a:$.b	no_path

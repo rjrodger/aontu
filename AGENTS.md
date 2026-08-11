@@ -104,6 +104,8 @@ Tab-separated columns: `name <TAB> mode <TAB> src <TAB> expect`
 | `gen`   | `generate(src)` deep-equals `JSON(expect)`            |
 | `gens`  | `generate(src)` as compact JSON equals `expect` byte for byte |
 | `err`   | `generate(src)` errors, message contains `expect`     |
+| `errc`  | `generate(src)` errors, first failure's why-code equals `expect` |
+| `errcode` | registry row: code / class / since — asserted against the engine's code→class table (see below) |
 
 Escapes in `src`/`expect`: `\n` → newline, `\t` → tab, `\\` → backslash.
 Lines starting with `#` and blank lines are ignored. See
@@ -118,6 +120,15 @@ kinds must be pinned by `canon` or `err`, and one that turns on the
 exact serialised bytes (which digits, which exponent form, which key
 order) by `gens` — see
 [Choosing a mode](docs/shared-spec.md#choosing-a-mode).
+
+Error *codes* — unlike error message text — are in cross-port parity:
+every code either engine can raise is registered with a class in
+[`test/spec/errcodes.tsv`](test/spec/errcodes.tsv) (mode `errcode`;
+both runners assert set equality against their `codeClasses` table in
+`ts/src/hints.ts` / `go/hints.go`), and `errc` rows pin which code a
+given source raises (TS `errs()[0].why`, Go `AontuError.Code`). Codes
+are append-only and never renamed; a class change is breaking. New
+engine codes must land with a registry row in the same change.
 
 ### Adding a behaviour
 

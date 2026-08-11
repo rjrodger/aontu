@@ -212,8 +212,18 @@ func (n *NilVal) superior() Val { return n }
 
 func (n *NilVal) Unify(peer Val, ctx *Ctx) Val { return n }
 
+// Class is the code's class from the shared registry
+// (test/spec/errcodes.tsv): conflict | incomplete | reference | parse |
+// budget | internal. Mirrors the NilVal.class getter in TS.
+func (n *NilVal) Class() string { return codeClass(n.why) }
+
 func (n *NilVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: n.Message()}
+	// A why-less nil takes the gen-time code, mirroring the
+	// `this.why = this.why ?? 'nil_gen'` default in TS NilVal.gen.
+	if n.why == "" {
+		n.why = "nil_gen"
+	}
+	return nil, &AontuError{Msg: n.Message(), Code: n.why}
 }
 
 // Message renders the human-readable failure message. The phrasing of
@@ -273,6 +283,14 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 // AontuError is the error type returned by Unify/Generate.
 type AontuError struct {
 	Msg string
+
+	// Code is the error code of the FIRST underlying failure (the
+	// NilVal `why`, e.g. "scalar_value", "no_path", "mapval_no_gen"),
+	// mirroring errs()[0].why on the TypeScript AontuError. Empty when
+	// no code is known (e.g. wrapped parse errors). Codes -- unlike
+	// message text -- are in cross-implementation parity, registered in
+	// test/spec/errcodes.tsv and pinned by `errc` spec rows.
+	Code string
 }
 
 func (e *AontuError) Error() string { return e.Msg }

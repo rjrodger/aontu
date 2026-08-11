@@ -68,7 +68,9 @@ func (a *Aontu) unifyCtx(v Val, vars map[string]Val) (Val, *Ctx, error) {
 	res := unifyRoot(v, ctx)
 	ctx.root = res
 	if len(ctx.err) > 0 {
-		return res, ctx, &AontuError{Msg: ctx.errmsg()}
+		// Code carries the first collected failure's why-code, mirroring
+		// errs()[0].why on the TS AontuError thrown by handleErrors.
+		return res, ctx, &AontuError{Msg: ctx.errmsg(), Code: ctx.err[0].why}
 	}
 	return res, ctx, nil
 }

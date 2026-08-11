@@ -24,7 +24,7 @@ name <TAB> mode <TAB> src <TAB> expect
 | column   | meaning                                                        |
 |----------|----------------------------------------------------------------|
 | `name`   | short identifier for the case (unique within its file)         |
-| `mode`   | `canon`, `gen`, `gens` or `err` (see below)                    |
+| `mode`   | `canon`, `gen`, `gens`, `err`, `errc` or `errcode` (see below) |
 | `src`    | Aontu source text to evaluate                                  |
 | `expect` | the expected result, interpreted according to `mode`          |
 
@@ -36,6 +36,8 @@ name <TAB> mode <TAB> src <TAB> expect
 | `gen`   | `generate(src)` must deep-equal `JSON.parse(expect)`            |
 | `gens`  | `generate(src)` serialised as compact JSON must equal `expect` **byte for byte** |
 | `err`   | `generate(src)` must raise an error whose message contains `expect` |
+| `errc`  | `generate(src)` must raise an error whose FIRST failure's why-code **equals** `expect` |
+| `errcode` | registry row: `name` is an error code, `src` its class, `expect` its since-version — asserted against the engine's code→class table |
 
 For `gen`, the generated value and the expected JSON are compared
 structurally (numeric type and object key order do not matter). That
@@ -73,6 +75,30 @@ A biginteger and an ordinary integer of the same value serialise to the
 same text, so `gens` stays green if a port hands back a `number` where a
 `bigint` was due. That half of the contract is pinned by per-port API
 tests (`ts/test/exactjson.test.ts`, `go/generate_test.go`) instead.
+
+`errc` is `err`'s code-exact counterpart. Error *message* text is
+deliberately not in parity between the ports (Go's hints are
+abbreviated, TypeScript renders source frames), so an `err` row can pin
+only a shared substring; the error *codes* (the `NilVal` `why`, e.g.
+`scalar_value`, `no_path`, `mapval_no_gen`) ARE in parity, and an
+`errc` row pins which code a given source raises — TypeScript asserts
+`errs()[0].why` on the thrown `AontuError`, Go asserts
+`AontuError.Code`. Use `errc` when the point is *which* failure this
+is: notably, the conflict/incomplete distinction ("this data can never
+satisfy the truth" versus "this data has not yet supplied everything
+the truth requires") that a message substring cannot express.
+
+`errcode` rows are not evaluations at all: they are the error-code
+REGISTRY. [`test/spec/errcodes.tsv`](../test/spec/errcodes.tsv)
+registers every code either engine can raise, with a CLASS (`conflict`,
+`incomplete`, `reference`, `parse`, `budget`, `internal`) and the
+version line at which the code was registered. Each row asserts the
+code exists in the engine's code→class table (`codeClasses` in
+`ts/src/hints.ts` and `go/hints.go`) with the registered class, and a
+separate per-runner test asserts SET EQUALITY between the file and the
+table, so neither side can grow or drop a code silently. Codes are
+append-only and never renamed; class changes are breaking. The class
+rulings are documented in the file's header.
 
 ### Escapes
 

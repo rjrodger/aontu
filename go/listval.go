@@ -56,7 +56,12 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 			if ctx != nil && ctx.collect {
 				break
 			}
-			return nil, &AontuError{Msg: "Cannot resolve value: " + e.Canon()}
+			// Code mirrors the TS BagVal.gen choice (see MapVal.Gen).
+			code := "listval_no_gen"
+			if l.closed {
+				code = "listval_required"
+			}
+			return nil, &AontuError{Msg: "Cannot resolve value: " + e.Canon(), Code: code}
 		}
 		ev, err := e.Gen(ctx)
 		if err != nil {

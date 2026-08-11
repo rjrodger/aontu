@@ -201,6 +201,118 @@ const hints: Record<string, string> = {
 }
 
 
+// codeClasses assigns every error code a CLASS: conflict | incomplete |
+// reference | parse | budget | internal. The contract lives in
+// test/spec/errcodes.tsv (mode `errcode`): the spec suite executes one
+// row per code against this table and asserts SET EQUALITY between the
+// file and these keys, in both implementations (go/hints.go mirrors
+// this map exactly). Codes are append-only and never renamed; a class
+// change is a breaking change. Class rulings (why decimal_budget and
+// lossy_integer_literal are conflict, not budget; why unknown_function
+// is reference) are documented in the tsv header.
+const codeClasses: Record<string, string> = {
+  // parse -- the source text is malformed or unusable
+  parse: 'parse',
+  syntax: 'parse',
+  parse_unknown: 'parse',
+  parse_bad_src: 'parse',
+  unify_no_src: 'parse',
+  incomplete_expression: 'parse',
+  not_number: 'parse',
+  negative: 'parse',
+  decimal_syntax: 'parse',
+
+  // conflict -- no common lower bound, or a value refused by a rule
+  scalar_value: 'conflict',
+  scalar_kind: 'conflict',
+  no_scalar_unify: 'conflict',
+  'scalar-type': 'conflict',
+  'not-scalar-type': 'conflict',
+  map: 'conflict',
+  list: 'conflict',
+  closed: 'conflict',
+  literal_nil: 'conflict',
+  nil_gen: 'conflict',
+  unite: 'conflict',
+  '|:empty': 'conflict',
+  '|:empty-dist': 'conflict',
+  exact_float_mix: 'conflict',
+  inexact_integer_sum: 'conflict',
+  decimal_budget: 'conflict',
+  lossy_integer_literal: 'conflict',
+  arg: 'conflict',
+  'invalid-arg': 'conflict',
+  no_first_arg: 'conflict',
+  key_level: 'conflict',
+  func: 'conflict',
+  'func:': 'conflict',
+  op: 'conflict',
+  'op:': 'conflict',
+  'op[': 'conflict',
+  make: 'conflict',
+  resolve: 'conflict',
+  operate: 'conflict',
+  close: 'conflict',
+
+  // incomplete -- residue: the truth requires more than was supplied
+  no_gen: 'incomplete',
+  conjunct: 'incomplete',
+  mapval_no_gen: 'incomplete',
+  mapval_required: 'incomplete',
+  mapval_spread_required: 'incomplete',
+  listval_no_gen: 'incomplete',
+  listval_required: 'incomplete',
+  listval_spread_required: 'incomplete',
+  required_listelem: 'incomplete',
+
+  // reference -- a name or path that does not resolve
+  no_path: 'reference',
+  ref: 'reference',
+  'ref[': 'reference',
+  var: 'reference',
+  'var[': 'reference',
+  unknown_var: 'reference',
+  invalid_var_kind: 'reference',
+  unknown_function: 'reference',
+  multisource_not_found: 'reference',
+
+  // budget -- an evaluation bound was exceeded
+  unify_cycle: 'budget',
+  path_cycle: 'budget',
+  max_depth: 'budget',
+
+  // internal -- the engine reached a state it should not reach
+  internal: 'internal',
+  unify_no_res: 'internal',
+  unknown_op: 'internal',
+}
+
+
+// Dynamic-prefix families: the engine appends a name or value to these
+// (e.g. `func:upper`, `op:+`, `var[string]`, `ref[$.x]`, `op[+]`), so
+// class lookup falls back to the registered prefix.
+const CODE_PREFIXES = ['func:', 'op:', 'op[', 'var[', 'ref[']
+
+
+// The class of an error code: an exact registry entry, else the
+// registered dynamic prefix it extends, else `internal` -- an
+// unregistered code is an engine defect, not a user error.
+function codeClass(code: string): string {
+  const cls = codeClasses[code]
+  if (null != cls) {
+    return cls
+  }
+  for (const prefix of CODE_PREFIXES) {
+    if (code.startsWith(prefix)) {
+      return codeClasses[prefix]
+    }
+  }
+  return 'internal'
+}
+
+
 export {
   hints,
+  codeClasses,
+  codeClass,
 }

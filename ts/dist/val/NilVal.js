@@ -5,6 +5,7 @@ exports.TRIAL_NIL = exports.NilVal = void 0;
 const type_1 = require("../type");
 const Val_1 = require("./Val");
 const err_1 = require("../err");
+const hints_1 = require("../hints");
 class NilVal extends Val_1.Val {
     constructor(spec, ctx) {
         super(spec && 'string' !== typeof spec ? spec : {}, ctx);
@@ -40,6 +41,12 @@ class NilVal extends Val_1.Val {
     // TODO: custom canon? useful for unknown function errors
     get canon() {
         return 'nil';
+    }
+    // The code's class from the shared registry (test/spec/errcodes.tsv):
+    // conflict | incomplete | reference | parse | budget | internal.
+    // A why-less nil classifies as its eventual gen-time code, nil_gen.
+    get class() {
+        return (0, hints_1.codeClass)(null == this.why ? 'nil_gen' : String(this.why));
     }
     gen(ctx) {
         // Unresolved nil cannot be generated, so always an error.

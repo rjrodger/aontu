@@ -18,6 +18,8 @@ import { Val, EMPTY_ERR } from './Val'
 
 import { AontuError, descErr } from '../err'
 
+import { codeClass } from '../hints'
+
 
 class NilVal extends Val {
   isNil = true
@@ -132,6 +134,14 @@ class NilVal extends Val {
   // TODO: custom canon? useful for unknown function errors
   get canon() {
     return 'nil'
+  }
+
+
+  // The code's class from the shared registry (test/spec/errcodes.tsv):
+  // conflict | incomplete | reference | parse | budget | internal.
+  // A why-less nil classifies as its eventual gen-time code, nil_gen.
+  get class(): string {
+    return codeClass(null == this.why ? 'nil_gen' : String(this.why))
   }
 
 

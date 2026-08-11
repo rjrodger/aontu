@@ -21,6 +21,11 @@ type Problem struct {
 	// "unknown_function").
 	Why string
 
+	// Class is Why's class from the shared registry
+	// (test/spec/errcodes.tsv): conflict | incomplete | reference |
+	// parse | budget | internal.
+	Class string
+
 	// Message is the human-readable error message.
 	Message string
 }
@@ -37,7 +42,7 @@ func (a *Aontu) Check(src string) []Problem {
 func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
 	v, perr := parseBase(src, a.base)
 	if perr != nil {
-		return []Problem{{Pos: -1, Len: 1, Why: "parse", Message: perr.Error()}}
+		return []Problem{{Pos: -1, Len: 1, Why: "parse", Class: codeClass("parse"), Message: perr.Error()}}
 	}
 
 	ctx := &Ctx{root: v, vars: vars}
@@ -49,7 +54,7 @@ func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
 
 	out := make([]Problem, 0, len(nils))
 	for _, n := range nils {
-		p := Problem{Pos: n.sp, Len: 1, Why: n.why, Message: n.Message()}
+		p := Problem{Pos: n.sp, Len: 1, Why: n.why, Class: n.Class(), Message: n.Message()}
 		if p.Pos < 0 {
 			p.Pos = -1
 		}

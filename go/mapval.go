@@ -283,7 +283,14 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			if ctx != nil && ctx.collect {
 				break
 			}
-			return nil, &AontuError{Msg: "Cannot resolve value: " + child.Canon()}
+			// Code mirrors the TS BagVal.gen choice: a closed bag makes
+			// the residue a missing REQUIRED value; an open one merely
+			// non-generable. (Message text is not in parity; codes are.)
+			code := "mapval_no_gen"
+			if m.closed {
+				code = "mapval_required"
+			}
+			return nil, &AontuError{Msg: "Cannot resolve value: " + child.Canon(), Code: code}
 		}
 
 		// An optional child generates in an isolated collect context so
