@@ -129,6 +129,20 @@ type ScalarVal struct {
 	base
 	kind Kind
 	peg  any
+
+	// src is the literal's own source text, when it came from one.
+	//
+	// A path segment is SPELLED TEXT: `$.a.0x0` addresses the key `0x0`,
+	// the same key `a:{0x0:1}` creates, and NOT the key `0`. Only a plain
+	// decimal integer is a numeric segment. So RefVal.append needs the
+	// text, not the value -- normalising it here is what made `$.a.1e2`
+	// address `100` and `$.a.0d1` address `1`.
+	//
+	// Empty for a value with no literal behind it (a computed result, an
+	// API-constructed value, a $var binding), where there is no spelling
+	// to preserve and the numeric rendering is the only answer available.
+	// Mirrors ScalarVal.src in the canonical port.
+	src string
 }
 
 func newString(s string) *ScalarVal { v := &ScalarVal{kind: KindString, peg: s}; v.dc = DONE; return v }

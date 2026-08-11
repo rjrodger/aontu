@@ -14,6 +14,12 @@ const ConjunctVal_1 = require("./ConjunctVal");
 const VarVal_1 = require("./VarVal");
 const FeatureVal_1 = require("./FeatureVal");
 const numkind_1 = require("./numkind");
+const BigIntegerVal_1 = require("./BigIntegerVal");
+const BigDecimalVal_1 = require("./BigDecimalVal");
+// A path segment no spelling can produce, used when append meets a Val
+// class it has no rule for. A key cannot contain a NUL, so this can never
+// match, which turns a silent path-shortening bug into a visible miss.
+const UNSPELLABLE_SEGMENT = '\u0000unspellable';
 class RefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -55,6 +61,21 @@ class RefVal extends FeatureVal_1.FeatureVal {
             let partvals = part.src.split('.');
             this.peg.push(...partvals);
         }
+        // THE EXACT LEAVES ARE PATH TEXT LIKE ANY OTHER SPELLING. `0d1` as a
+        // segment addresses the key literally spelled `0d1` -- the same key
+        // `a:{0d1:7}` creates -- and is NOT the number 1, so it neither
+        // indexes a list nor reaches a key spelled `1`.
+        //
+        // Without these branches the part fell off the end of the chain and
+        // was SILENTLY DROPPED, so `$.a.0d0` resolved to `$.a` and handed back
+        // the CONTAINER. That is a wrong value, not a miss -- strictly worse
+        // than an error -- and it made `$.a.0d0` and `$.a.0d1` denote the same
+        // location.
+        else if (part instanceof BigIntegerVal_1.BigIntegerVal || part instanceof BigDecimalVal_1.BigDecimalVal) {
+            // A bigdecimal splits on its point exactly as a float does, so
+            // `$.x.0d1.5` addresses two levels.
+            this.peg.push(...part.src.split('.'));
+        }
         else if (part instanceof VarVal_1.VarVal) {
             partval = part;
             this.peg.push(partval);
@@ -79,6 +100,15 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 }
             }
             this.peg.push(...part.peg);
+        }
+        // A closed chain, deliberately. Every branch above ends in a push, so
+        // an unhandled Val class used to fall through in SILENCE and shorten
+        // the path by one segment -- which is how the two exact leaves, added
+        // by the number tower, made references resolve to their own container.
+        // A segment that cannot be spelled is pushed as one that cannot match,
+        // so the reference misses loudly instead of succeeding wrongly.
+        else {
+            this.peg.push(UNSPELLABLE_SEGMENT);
         }
     }
     unify(peer, ctx) {

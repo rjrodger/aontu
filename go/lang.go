@@ -740,7 +740,26 @@ var exactLiteralRe = regexp.MustCompile(
 // `0d5` is a biginteger and `0d1e3` is a bigdecimal whose value happens
 // to be integral — and whose canon is therefore `0d1000.0`, not
 // `0d1000`, because `0d1000` would reparse as a biginteger (D4).
+// negSrc rebuilds the spelling of a negated literal. `-` is a prefix
+// OPERATOR and not part of the literal, so the text has to be rebuilt to
+// keep src meaning "how this value is spelled" (see ScalarVal.src).
+func negSrc(src string) string {
+	if src == "" {
+		return ""
+	}
+	if strings.HasPrefix(src, "-") {
+		return src[1:]
+	}
+	return "-" + src
+}
+
+func withSrc(v *ScalarVal, src string) *ScalarVal {
+	v.src = src
+	return v
+}
+
 func exactLiteral(m []string) func(int) Val {
+	src := m[0]
 	intPart := stripSeps(m[1])
 	frac := stripSeps(m[2])
 	exp := stripSeps(m[3])
@@ -754,6 +773,7 @@ func exactLiteral(m []string) func(int) Val {
 		return func(sp int) Val {
 			v := newBigInteger(new(big.Int).Set(n))
 			v.sp = sp
+			v.src = src
 			return v
 		}
 	}
@@ -765,6 +785,7 @@ func exactLiteral(m []string) func(int) Val {
 	return func(sp int) Val {
 		v := newBigDecimal(d)
 		v.sp = sp
+		v.src = src
 		return v
 	}
 }
@@ -865,10 +886,12 @@ func numberVal(n float64, src string, sp int) Val {
 	if isIntegerKind(n, src) {
 		v := newInteger(int64(n))
 		v.sp = sp
+		v.src = src
 		return v
 	}
 	v := newFloat(n)
 	v.sp = sp
+	v.src = src
 	return v
 }
 
@@ -1495,9 +1518,9 @@ func negate(t any) Val {
 			return newFloat(negZero(-v.peg.(float64)))
 		case KindBigInteger:
 			// big.Int has no negative zero, so -0d0 is 0d0 for free.
-			return newBigInteger(new(big.Int).Neg(v.peg.(*big.Int)))
+			return withSrc(newBigInteger(new(big.Int).Neg(v.peg.(*big.Int))), negSrc(v.src))
 		case KindBigDecimal:
-			return newBigDecimal(v.peg.(*Decimal).neg())
+			return withSrc(newBigDecimal(v.peg.(*Decimal).neg()), negSrc(v.src))
 		}
 	}
 	return newNil("negative")

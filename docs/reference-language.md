@@ -505,8 +505,20 @@ place.
 |-----------|------------------------------------------------------|---------|
 | `$.a.b`   | absolute path from the document root                 | `a:1 b:$.a` → `b:1` |
 | `.a.b`    | path relative to the current map                     | `z:x:{a:62} z:y:.x.a` → `y:62` |
-| `$.a.1`   | list index                                           | `a:[10,20,30] b:$.a.1` → `b:20` |
+| `$.a.1`   | list index — a segment is numeric **only** as a plain decimal integer | `a:[10,20,30] b:$.a.1` → `b:20` |
 | `.$KEY`   | the key under which the current value is stored      | `a:{k:.$KEY}` → `{"a":{"k":"a"}}` |
+
+**Numeric segments are plain decimal integers, and nothing else is.**
+`$.a.1` indexes a list and reaches the key `1`. Every other numeric
+spelling — hex, `0d`, `_` separators, an exponent — addresses the key
+spelled **exactly that way**, because that is what the spelling already
+produces on the key side: `a:{0x0:1}` generates `{"0x0":1}`, not
+`{"0":1}`, so `$.a.0x0` finds it and `$.a.0` does not.
+
+In a path the dot is always the **separator**, never a decimal point.
+That is why `$.a.1.0` is the two segments `1` and `0` — how a nested list
+index is written (`a:[[1,2],[3,4]] b:$.a.1.0` → `b:3`) — rather than a
+key spelled `1.0`.
 
 References compose with unification and each other:
 

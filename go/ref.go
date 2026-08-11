@@ -43,20 +43,38 @@ func (rv *RefVal) append(part any) {
 		case KindString:
 			rv.peg = append(rv.peg, p.peg.(string))
 		case KindInteger:
-			rv.peg = append(rv.peg, strconv.FormatInt(p.peg.(int64), 10))
+			// A PATH SEGMENT IS SPELLED TEXT, not a value.
+			//
+			// Only a plain decimal integer is a numeric segment: `$.a.1`
+			// indexes a list and reaches the key `1`. Every other numeric
+			// spelling addresses the key spelled exactly that way, because
+			// that is what the spelling already produces on the KEY side --
+			// `a:{0x0:1}` generates {"0x0":1}, not {"0":1}, so a path
+			// spelled like its key is the whole point.
+			//
+			// Normalising here made `$.a.0x0` address `0`, `$.a.1_0`
+			// address `10` and `$.a.1e2` address `100` -- each of them a
+			// silently WRONG location rather than a miss.
+			//
+			// src is empty for a value with no literal behind it (a
+			// computed segment, an API-built value), and there the numeric
+			// rendering is the only answer available.
+			rv.peg = append(rv.peg, srcOr(p.src,
+				func() string { return strconv.FormatInt(p.peg.(int64), 10) }))
 		case KindFloat:
-			for _, s := range strings.Split(formatNumber(p.peg.(float64)), ".") {
+			// A float splits on its point, so `$.x.1.5` addresses two
+			// levels -- of the text, which is what makes `$.x.1e2` a
+			// single segment `1e2` rather than the expanded `100`.
+			for _, s := range strings.Split(srcOr(p.src,
+				func() string { return formatNumber(p.peg.(float64)) }), ".") {
 				rv.peg = append(rv.peg, s)
 			}
 		case KindBigInteger:
-			// A path part is a KEY, so the exact leaves contribute their
-			// plain digits — the `0d` marker is literal syntax, not part
-			// of any key. A bigdecimal splits on its point exactly as a
-			// float does, so `x.0d1.5` addresses the same two levels
-			// `x.1.5` does.
-			rv.peg = append(rv.peg, bigIntDigits(p.peg.(*big.Int)))
+			rv.peg = append(rv.peg, srcOr(p.src,
+				func() string { return bigIntDigits(p.peg.(*big.Int)) }))
 		case KindBigDecimal:
-			for _, s := range strings.Split(p.peg.(*Decimal).digits(), ".") {
+			for _, s := range strings.Split(srcOr(p.src,
+				func() string { return p.peg.(*Decimal).digits() }), ".") {
 				rv.peg = append(rv.peg, s)
 			}
 		}
@@ -416,4 +434,13 @@ func (vv *VarVal) Gen(ctx *Ctx) (any, error) {
 	// Silent (mirrors the TS FeatureVal gen pattern): the enclosing
 	// bag reports unresolved vars.
 	return nil, nil
+}
+
+// srcOr returns a literal's own source text, falling back to a computed
+// rendering when there is no literal behind the value (see ScalarVal.src).
+func srcOr(src string, gen func() string) string {
+	if src != "" {
+		return src
+	}
+	return gen()
 }
