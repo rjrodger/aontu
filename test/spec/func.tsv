@@ -54,22 +54,34 @@ move-shallower-dest-canon	canon	x:a:close({k:key()}) y:move($.x.a)	{"x":{"a":clo
 move-shallower-dest	gen	x:a:close({k:key()}) y:move($.x.a)	{"x":{},"y":{"k":"k"}}
 ref-into-move-dest-canon	canon	x:a:{v:6,k:key()} x:c:move($.x.a) y:$.x.c	{"x":{"a":{"k":key(),"v":6},"c":{"k":*"c","v":*6}},"y":{"k":*"k","v":*6}}
 ref-into-move-dest	gen	x:a:{v:6,k:key()} x:c:move($.x.a) y:$.x.c	{"x":{"c":{"k":"c","v":6}},"y":{"k":"k","v":6}}
-# AN INTERNAL CRASH IS NEVER THE RIGHT ANSWER.
+# key() TAKES AN INTEGER LEVEL, OR NOTHING.
 #
-# TypeScript reached these through raw TypeErrors that the unifier could
-# only report as an opaque [aontu/internal]: key() called the COERCING
-# global isNaN() on the argument's peg, which throws for a bigint (a
-# biginteger) and for the null-prototype object a map's peg is; path()
-# read .isScalar off undefined when called with no argument.
+# A level is an index into the path -- 0 is the own key, the default 1 is
+# the parent -- so the argument must be an INTEGER. Both exact integer
+# leaves qualify (`integer` and `biginteger`); a float, a bigdecimal, a
+# string, a boolean, a map or a list does not, and is refused in both
+# ports rather than silently meaning "parent".
 #
-# upper()/lower() were given exactly this fix earlier and carry a comment
-# saying so; path() and key() were missed in that sweep.
-#
-# These rows pin only that the crash is gone and the two ports AGREE. What
-# a non-integer key() level should MEAN is an open contract question --
-# refusing it in both ports is the likelier answer than either port's
-# current behaviour -- and settling it will deliberately update these rows.
-key-biginteger-arg-no-crash	gens	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
-key-biginteger-arg-no-crash-canon	canon	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
-key-map-arg-no-crash	gens	a:b:c:key({})	{"a":{"b":{"c":"b"}}}
+# Before this, TypeScript coerced anything number-ish and Go silently fell
+# back to level 1, so a mistyped level was undetectable -- and in
+# TypeScript `key(0d1)` and `key({})` did not merely misbehave, they
+# CRASHED: key() called the COERCING global isNaN() on the argument's peg,
+# which throws for a bigint and for the null-prototype object a map's peg
+# is. That surfaced as an opaque [aontu/internal]. path() had the same
+# class of bug, reading .isScalar off undefined when called with no
+# argument; upper()/lower() were given this exact fix earlier and carry a
+# comment saying so, and these two were missed in that sweep.
+key-arg-biginteger	gens	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
+key-arg-biginteger-canon	canon	a:b:c:key(0d1)	{"a":{"b":{"c":"b"}}}
+key-arg-biginteger-zero	gens	a:b:c:key(0d0)	{"a":{"b":{"c":"c"}}}
+key-arg-float-err	err	a:b:c:key(2.0)	The argument to key() is a LEVEL
+key-arg-float-fraction-err	err	a:b:c:key(1.5)	The argument to key() is a LEVEL
+key-arg-bigdecimal-err	err	a:b:c:key(0d1.0)	The argument to key() is a LEVEL
+key-arg-string-err	err	a:b:c:key("x")	The argument to key() is a LEVEL
+key-arg-bool-err	err	a:b:c:key(true)	The argument to key() is a LEVEL
+key-arg-map-err	err	a:b:c:key({})	The argument to key() is a LEVEL
+key-arg-list-err	err	a:b:c:key([1])	The argument to key() is a LEVEL
+key-arg-none-defaults-to-parent	gens	a:b:c:key()	{"a":{"b":{"c":"b"}}}
+key-arg-zero-own-key	gens	a:b:c:key(0)	{"a":{"b":{"c":"c"}}}
+key-arg-two	gens	a:b:c:key(2)	{"a":{"b":{"c":"a"}}}
 path-no-arg-err	err	x:path()	Cannot resolve value
