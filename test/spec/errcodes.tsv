@@ -1,0 +1,133 @@
+# THE ERROR-CODE REGISTRY -- the shared contract for engine error codes.
+#
+# Every error code either implementation can attach to a failure is
+# registered here with its CLASS. This file is the source of truth: both
+# runners (ts/test/spec.test.ts, go/spec_test.go) execute each row below
+# (mode `errcode`) against the engine's own code->class table
+# (ts/src/hints.ts `codeClasses`, go/hints.go `codeClasses`), and each
+# runner additionally asserts SET EQUALITY between this file and its
+# engine table -- a code present in an engine but absent here (or the
+# reverse) fails the suite in that engine.
+#
+# Columns: code<TAB>errcode<TAB>class<TAB>since
+#   code  : the frozen snake_case code string (the NilVal `why`).
+#           Codes are a CONTRACT: append-only, renames forbidden. A code
+#           that ends in `:` or `[` is a dynamic-prefix family -- the
+#           engine appends a name/value (e.g. `func:upper`, `ref[$.x]`)
+#           and class lookup falls back to the longest registered prefix.
+#   errcode : the spec mode (fixed).
+#   class : one of conflict | incomplete | reference | parse | budget |
+#           internal (see below). Classes drive report verdicts and exit
+#           classes (docs/capability-review/g2-validation-verb.md), so a
+#           class change is a breaking change.
+#   since : the version line (TypeScript series) at which the code was
+#           first REGISTERED. Codes predating the registry all carry the
+#           registry's inception version, 0.51.0.
+#
+# THE CLASSES
+#   conflict   : the source asks for something that can never hold --
+#                two values with no common lower bound, a value refused
+#                by a language rule, an impossible function argument.
+#   incomplete : nothing contradicts, but residue remains -- a value the
+#                truth requires has not been supplied yet.
+#   reference  : a name or path that does not resolve.
+#   parse      : the source text itself is malformed or unusable.
+#   budget     : an evaluation bound was exceeded (cycles, passes,
+#                nesting depth) -- see docs/capability-review/g5.
+#   internal   : the engine reached a state it should not reach.
+#
+# RULINGS the class column encodes (decided at registry inception):
+#   - decimal_budget is class CONFLICT, not budget: the exactness budget
+#     is a fixed language rule about the VALUE (4096 digits / scale
+#     4096), not an evaluation resource -- no re-run with a larger
+#     budget exists, so the repair action is "change the value", which
+#     is what conflict means. The budget class is reserved for
+#     evaluation bounds (cycles, passes, depth).
+#   - lossy_integer_literal is class CONFLICT for the same reason: the
+#     literal is well-formed but refused by a value rule; the repair is
+#     writing the `0d` form.
+#   - unknown_function is class REFERENCE: a name that fails to resolve,
+#     exactly like an unresolved path or variable.
+#   - The transient disjunct-trial sentinel `|:trial-nil`
+#     (ts/src/val/NilVal.ts TRIAL_NIL) is deliberately NOT registered:
+#     it never surfaces to user-visible output, and the engines assert
+#     set equality, so registering it would claim otherwise.
+#
+# parse -- the source text is malformed or unusable
+parse	errcode	parse	0.51.0
+syntax	errcode	parse	0.51.0
+parse_unknown	errcode	parse	0.51.0
+parse_bad_src	errcode	parse	0.51.0
+unify_no_src	errcode	parse	0.51.0
+incomplete_expression	errcode	parse	0.51.0
+not_number	errcode	parse	0.51.0
+negative	errcode	parse	0.51.0
+decimal_syntax	errcode	parse	0.51.0
+#
+# conflict -- no common lower bound, or a value refused by a rule
+scalar_value	errcode	conflict	0.51.0
+scalar_kind	errcode	conflict	0.51.0
+no_scalar_unify	errcode	conflict	0.51.0
+scalar-type	errcode	conflict	0.51.0
+not-scalar-type	errcode	conflict	0.51.0
+map	errcode	conflict	0.51.0
+list	errcode	conflict	0.51.0
+closed	errcode	conflict	0.51.0
+literal_nil	errcode	conflict	0.51.0
+nil_gen	errcode	conflict	0.51.0
+unite	errcode	conflict	0.51.0
+|:empty	errcode	conflict	0.51.0
+|:empty-dist	errcode	conflict	0.51.0
+exact_float_mix	errcode	conflict	0.51.0
+inexact_integer_sum	errcode	conflict	0.51.0
+decimal_budget	errcode	conflict	0.51.0
+lossy_integer_literal	errcode	conflict	0.51.0
+arg	errcode	conflict	0.51.0
+invalid-arg	errcode	conflict	0.51.0
+no_first_arg	errcode	conflict	0.51.0
+key_level	errcode	conflict	0.51.0
+func	errcode	conflict	0.51.0
+func:	errcode	conflict	0.51.0
+op	errcode	conflict	0.51.0
+op:	errcode	conflict	0.51.0
+op[	errcode	conflict	0.51.0
+make	errcode	conflict	0.51.0
+resolve	errcode	conflict	0.51.0
+operate	errcode	conflict	0.51.0
+close	errcode	conflict	0.51.0
+#
+# incomplete -- residue: the truth requires more than was supplied
+no_gen	errcode	incomplete	0.51.0
+conjunct	errcode	incomplete	0.51.0
+mapval_no_gen	errcode	incomplete	0.51.0
+mapval_required	errcode	incomplete	0.51.0
+mapval_spread_required	errcode	incomplete	0.51.0
+listval_no_gen	errcode	incomplete	0.51.0
+listval_required	errcode	incomplete	0.51.0
+listval_spread_required	errcode	incomplete	0.51.0
+required_listelem	errcode	incomplete	0.51.0
+#
+# reference -- a name or path that does not resolve
+# (path_cycle is a PROVEN structural cycle -- a defect of the model,
+# not a spent evaluation bound: raising a budget never fixes it, so it
+# is class reference, not budget; G5's ruling.)
+no_path	errcode	reference	0.51.0
+path_cycle	errcode	reference	0.51.0
+ref	errcode	reference	0.51.0
+ref[	errcode	reference	0.51.0
+var	errcode	reference	0.51.0
+var[	errcode	reference	0.51.0
+unknown_var	errcode	reference	0.51.0
+invalid_var_kind	errcode	reference	0.51.0
+unknown_function	errcode	reference	0.51.0
+multisource_not_found	errcode	reference	0.51.0
+#
+# budget -- an evaluation bound was exceeded
+unify_cycle	errcode	budget	0.51.0
+max_depth	errcode	budget	0.51.0
+budget_passes	errcode	budget	0.52.0
+#
+# internal -- the engine reached a state it should not reach
+internal	errcode	internal	0.51.0
+unify_no_res	errcode	internal	0.51.0
+unknown_op	errcode	internal	0.51.0

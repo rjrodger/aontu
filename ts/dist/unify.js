@@ -174,6 +174,28 @@ function update(x, _y) {
     // TODO: update x with y.site
     return x;
 }
+// The still-refining paths named by a budget_passes error: the first
+// `max` non-done nodes of the residue, as `$.dotted.paths`. Depth-first
+// over bag children only -- this feeds an error message, not a report,
+// so a small deterministic sample beats completeness.
+function residuePaths(v, max) {
+    const out = [];
+    const visit = (n, isroot) => {
+        if (null == n || max <= out.length) {
+            return;
+        }
+        if (!isroot && !n.done) {
+            out.push('$' + (0 < (n.path?.length ?? 0) ? '.' + n.path.join('.') : ''));
+        }
+        if (n.isMap || n.isList) {
+            for (const k in n.peg) {
+                visit(n.peg[k], false);
+            }
+        }
+    };
+    visit(v, true);
+    return out;
+}
 class Unify {
     constructor(root, lang, ctx, src) {
         this.lang = lang || new lang_1.Lang();
@@ -215,6 +237,7 @@ class Unify {
             const te = explain && (0, utility_1.explainOpen)(uctx, explain, 'root', res);
             // NOTE: if true === res.done already, then this loop never needs to run.
             let maxcc = 9; // 99
+            let prevCanon = undefined;
             for (; this.cc < maxcc && type_1.DONE !== res.dc; this.cc++) {
                 // console.log('CC', this.cc, res.canon)
                 uctx.cc = this.cc;
@@ -223,7 +246,31 @@ class Unify {
                 if (0 < uctx.err.length) {
                     break;
                 }
+                // Snapshot the second-to-last pass's result, so exhaustion can
+                // tell "still refining" from "stable residue" below. Only paid
+                // by models still unresolved this late.
+                if (this.cc === maxcc - 2 && type_1.DONE !== res.dc) {
+                    prevCanon = res.canon;
+                }
                 uctx = uctx.clone({ root: res });
+            }
+            // The pass budget is spent AND the final pass still made
+            // progress: the model was cut off while converging, and no other
+            // error explains why. Silent truncation would surface later as
+            // ordinary incompleteness, so exhaustion is a semantic error of
+            // its own (class budget, docs/trust.md clause 2) -- retrying with
+            // a larger budget is a valid response to THIS code and useless
+            // for path_cycle or no_path. A STABLE residue (the final pass
+            // changed nothing -- e.g. a stuck `1+true`) is not a budget
+            // failure: it is ordinary incompleteness and stays silent here,
+            // surfacing at generate exactly as before.
+            if (maxcc <= this.cc && type_1.DONE !== res.dc && 0 === uctx.err.length
+                && undefined !== prevCanon && prevCanon !== res.canon) {
+                (0, err_1.makeNilErr)(uctx, 'budget_passes', undefined, undefined, 'resolve', {
+                    budget: 'passes',
+                    limit: maxcc,
+                    paths: residuePaths(res, 4).join(' ') || '$',
+                });
             }
             uctx.explain && (0, utility_1.explainClose)(te, res);
         }

@@ -1,0 +1,50 @@
+# The budget and cycle taxonomy (G5, docs/trust.md clause 2): three
+# different answers -- "your model is cyclic", "your model is
+# incomplete", and "my budget ran out" -- must never collapse into one
+# message. An agent branches on the class: path_cycle (reference) means
+# FIX THE MODEL, no_path (reference) means SUPPLY MORE, budget_passes /
+# unify_cycle (budget) mean THE EVALUATOR GAVE UP and a larger budget
+# may (only for these) be a valid response.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; modes: errc|err ; escapes: \n \t \\
+#
+# A PROVEN cycle is path_cycle wherever the proof comes from: a
+# self/ancestor reference (peg is a prefix of the node's own path), or
+# the resolution chain of plain references revisiting a node (mutual
+# and longer chains -- detectRefCycle in ts/src/val/RefVal.ts and
+# go/ref.go). A chain that passes through a variable segment, a
+# conjunct, a function, or any non-ref value yields NO proof and defers
+# as before.
+path-cycle-self	errc	a:$.a	path_cycle
+path-cycle-ancestor	errc	a:b:$.a	path_cycle
+path-cycle-mutual	errc	a:$.b b:$.a	path_cycle
+path-cycle-chain	errc	a:$.b b:$.c c:$.a	path_cycle
+path-cycle-nested-mutual	errc	a:{x:$.b.y} b:{y:$.a.x}	path_cycle
+path-cycle-msg	err	a:$.b b:$.a	Path cycle detected
+#
+# Mere incompleteness stays no_path: the model is wrong about a name,
+# not cyclic and not out of budget.
+no-path	errc	a:$.z	no_path
+no-path-msg	err	a:$.z	The path reference could not be found
+#
+# budget_passes -- the pass loop finished its budget (maxcc = 9,
+# ts/src/unify.ts; go/unify.go) with the final pass STILL MAKING
+# PROGRESS (the model was cut off while converging) and no other
+# error. A STABLE residue -- a stuck `1+true`, an unresolved kind --
+# is ordinary incompleteness, stays silent at unify, and surfaces at
+# generate as before; only genuine cut-off earns the budget code. The
+# code is registered (errcodes.tsv, class budget, message substring
+# "evaluation budget") and BOTH engines emit it at the pass-loop exit
+# -- but no shared row can pin it yet: the smallest reproducer (a
+# chain of 10 plain refs) exhausts the budget in TypeScript and
+# resolves eagerly in Go, an OPEN verdict divergence tracked in
+# divergent.tsv (issue #26). A shared row lands when that decision
+# does.
+#
+# unify_cycle -- the per-pair revisit bound (MAXCYCLE = 999,
+# ts/src/unify.ts) tripping: SUSPECTED non-convergence. No known small
+# reproducer exists (small cycles are all caught earlier as
+# path_cycle), and the bound's acknowledged false positive ("too many
+# top unifications", ts/src/unify.ts TODO) needs a generated-SDK-scale
+# corpus before its behaviour is pinned or changed -- G5 phase 2's
+# remaining slice.

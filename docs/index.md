@@ -35,6 +35,13 @@ Tooling:
   (TypeScript and Go), how to wire it into an editor, and the reusable
   LSP library API.
 
+Contract:
+
+- [The trust contract](trust.md) — hermeticity, termination,
+  determinism, and sandboxing: what a host may rely on when evaluating
+  an Aontu document, exactly where each guarantee is conditional
+  today, and the budget/cycle error taxonomy.
+
 Two further documents support the project itself:
 
 - [Test coverage](test-coverage.md) — how coverage is measured for both

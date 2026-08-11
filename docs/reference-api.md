@@ -7,6 +7,7 @@ command-line tool. For the language itself see the
 ## Contents
 
 - [Command-line interface](#command-line-interface)
+- [Evaluation consumes the tree](#evaluation-consumes-the-tree)
 - [TypeScript API](#typescript-api)
   - [`Aontu`](#class-aontu)
   - [`AontuOptions`](#aontuoptions)
@@ -100,6 +101,22 @@ Both commands accept the same options and produce the same results.
 
 ---
 
+## Evaluation consumes the tree
+
+A parsed `Val` tree is **single-use**, in both implementations.
+`unify`/`generate` refine the tree in place (children are written
+back, junction and reference nodes advance their own state), which is
+safe only because a tree is unified once and never shared. Do not
+cache, reuse, or unify the same parsed `Val` — or any node reachable
+from it — in two different evaluations: the second run starts from
+mutated state and the result is nondeterministic. Parse again (or
+clone first) for every independent evaluation. The string entry points
+(`generate(src)`, `unify(src)`) parse per call and are always safe.
+
+This is a named rule of the [trust contract](trust.md)'s determinism
+clause, not a performance note: violating it produces wrong answers,
+not slow ones.
+
 ## TypeScript API
 
 Package `aontu` (canonical). Entry point `dist/aontu.js`, types
@@ -134,8 +151,11 @@ aontu.generate('a:1 b:$.a')              // { a: 1, b: 1 }
 aontu.generate('a:1 a:2')                // throws AontuError: Cannot unify value: 2 with value: 1
 ```
 
-`unify` accepts a previously parsed `Val`, letting you parse once and
-unify repeatedly: `const p = aontu.parse(src); aontu.unify(p)`.
+`unify` accepts a previously parsed `Val`, so a caller that wants the
+AST first need not re-parse: `const p = aontu.parse(src);
+aontu.unify(p)`. But note that the parsed tree is **single-use** — see
+[Evaluation consumes the tree](#evaluation-consumes-the-tree) —
+so each parse feeds at most one unify/generate.
 
 ### `AontuOptions`
 
@@ -157,7 +177,20 @@ into a context.
 | `log`      | `number`    | Parser log verbosity. |
 
 `@"…"` resolution tries an **in-memory** resolver, then the
-**filesystem**, then **package** resolution, in that order.
+**filesystem**, then **package** resolution, in that order. The chain
+is unconfined by default — a relative include follows any path the
+process can read — so **treat opening an untrusted source as running
+it**. Confinement today means **replacing `resolver` outright** (a
+supplied resolver substitutes for the whole chain; the in-memory
+resolver is such a replacement): `fs` is *not* a sandbox — it supplies
+source text for parsing and error context, and the file and package
+legs read through their own channels — and the **Go API has no
+confinement hook at all** (`NewWithBase` only rebases relative
+paths). The [trust contract](trust.md) states the guarantees and
+their conditions; a first-class `trust` option (include capability
+`'none' | {mem} | {root} | 'system'` plus deterministic budgets) is
+the registered design for making confinement a per-surface default,
+and is not implemented yet — this stub reserves the name.
 
 ### `AontuContext`
 

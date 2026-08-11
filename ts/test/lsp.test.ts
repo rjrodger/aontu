@@ -320,3 +320,31 @@ describe('lsp-server-framing', () => {
   })
 
 })
+
+
+// Context-recorded errors that never land in the tree — a
+// budget_passes exhaustion nil is about the whole evaluation, not any
+// node — must still surface as diagnostics (docs/trust.md clause 2:
+// exhaustion is never silent). The Go twin is TestCheckSurfacesCtxErrors
+// in go/hints_test.go.
+describe('lsp-diagnostics-ctx-errors', () => {
+
+  test('budget-passes-surfaces', () => {
+    const chain =
+      'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1'
+    const ds = computeDiagnostics(chain)
+    Assert.ok(ds.some((d: any) => 'budget_passes' === d.code),
+      'expected a budget_passes diagnostic, got: ' +
+      JSON.stringify(ds.map((d: any) => d.code)))
+  })
+
+  test('stable-residue-stays-quiet', () => {
+    // A stuck operator is incompleteness, not exhaustion: no
+    // budget_passes diagnostic (generation-time residue reporting is
+    // unchanged).
+    const ds = computeDiagnostics('x:1+true')
+    Assert.ok(!ds.some((d: any) => 'budget_passes' === d.code),
+      'stable residue must not report budget_passes')
+  })
+
+})

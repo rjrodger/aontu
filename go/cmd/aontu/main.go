@@ -96,7 +96,11 @@ func aontuForFile(file string) *aontu.Aontu {
 	if err != nil {
 		abs = file
 	}
-	return aontu.NewWithBase(filepath.Dir(abs))
+	a := aontu.NewWithBase(filepath.Dir(abs))
+	// Error frames name the entry file as typed, the way the TS CLI's
+	// resolved entry path renders relative to the working directory.
+	a.File = file
+	return a
 }
 
 // stdinIsPipe reports whether stdin is piped/redirected (not a terminal).

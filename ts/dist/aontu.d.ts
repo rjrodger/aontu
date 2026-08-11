@@ -5,7 +5,7 @@ import { Decimal } from './val/Decimal';
 import { exactJSON } from './exactjson';
 import { formatExplain } from './utility';
 import { AontuError } from './err';
-declare const VERSION = "0.50.1";
+declare const VERSION = "0.51.0";
 declare class Aontu {
     opts: AontuOptions;
     lang: Lang;

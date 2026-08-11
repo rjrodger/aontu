@@ -365,6 +365,72 @@ describe('unify', function() {
   })
 
 
+  // budget_passes: the pass budget spent while the final pass was still
+  // making progress (docs/trust.md clause 2). Pinned here per-port —
+  // no shared spec row can exist while the smallest reproducer (a
+  // 10-link ref chain) diverges between the engines (divergent.tsv,
+  // issue #26): Go resolves chains eagerly and cannot reach the code
+  // at this scale. The go/hints_test.go twin pins the Go message text.
+  test('budget-passes', () => {
+    const chain =
+      'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1'
+
+    let err: any = undefined
+    try {
+      new Aontu().generate(chain)
+    }
+    catch (e: any) {
+      err = e
+    }
+
+    if (undefined === err) {
+      throw new Error('expected budget_passes error, generate succeeded')
+    }
+    expect(err.errs()[0].why).equal('budget_passes')
+    expect(err.errs()[0].class).equal('budget')
+    expect(err.message.includes('evaluation budget')).equal(true)
+
+    // A STABLE residue is incompleteness, not budget exhaustion.
+    let stuck: any = undefined
+    try {
+      new Aontu().generate('x:1+true')
+    }
+    catch (e: any) {
+      stuck = e
+    }
+    if (undefined === stuck) {
+      throw new Error('expected mapval_no_gen error, generate succeeded')
+    }
+    expect(stuck.errs()[0].why).equal('mapval_no_gen')
+  })
+
+
+  // The plain-ref cycle chase has NO hop cap: a cycle of any length is
+  // proven at the first repetition (the seen set grows every hop and
+  // the tree is finite). Regression for the removed 99-hop cutoff,
+  // which made longer cycles fall through to budget_passes. The Go
+  // twin is the long-cycle case in go/hints_test.go.
+  test('long-ref-cycle-is-proven', () => {
+    const keys: string[] = []
+    for (let i = 0; i < 120; i++) {
+      keys.push('k' + String(i).padStart(3, '0'))
+    }
+    const cycle = keys.map(
+      (k, i) => k + ':$.' + keys[(i + 1) % keys.length]).join(' ')
+
+    let err: any = undefined
+    try {
+      new Aontu().generate(cycle)
+    }
+    catch (e: any) {
+      err = e
+    }
+    if (undefined === err) {
+      throw new Error('expected path_cycle error, generate succeeded')
+    }
+    expect(err.errs()[0].why).equal('path_cycle')
+  })
+
 })
 
 

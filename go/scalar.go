@@ -294,7 +294,12 @@ func (s *ScalarVal) Unify(peer Val, ctx *Ctx) Val {
 		}
 		return makeNilErr(ctx, code, s, peer)
 	}
-	return makeNilErr(ctx, "scalar", s, peer)
+	// Non-scalar peer (map, list, ...): the TS ScalarVal.unify fallback
+	// computes 'scalar_' + kind-equality here, and a non-scalar peer
+	// never shares the kind, so the code is scalar_kind — the old
+	// "scalar" spelling was unregistered and broke code parity the
+	// moment AontuError.Code exposed it.
+	return makeNilErr(ctx, "scalar_kind", s, peer)
 }
 
 // ScalarKindVal is a type constraint (e.g. string, number) — a scalar
@@ -322,7 +327,10 @@ func (k *ScalarKindVal) superior() Val { return top() }
 func (k *ScalarKindVal) Canon() string { return k.kind.String() }
 
 func (k *ScalarKindVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: "Cannot generate value: " + k.kind.String()}
+	// Code mirrors the TS FeatureVal.gen choice for residual
+	// non-literal values (a bare `number` generates a no_gen error in
+	// both ports; pinned by error.tsv errc-no-gen-root).
+	return nil, &AontuError{Msg: "Cannot generate value: " + k.kind.String(), Code: "no_gen"}
 }
 
 func (k *ScalarKindVal) Unify(peer Val, ctx *Ctx) Val {

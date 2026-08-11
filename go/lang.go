@@ -952,6 +952,12 @@ func numberVal(n float64, src string, sp int) Val {
 	if pow53Float <= math.Abs(n) && isLossyIntegerLiteral(src) {
 		e := newNil("lossy_integer_literal")
 		e.sp = sp
+		// The hint names the refused literal ({src}), as in TS.
+		e.details = map[string]string{"src": src}
+		// A parse-constructed nil is its own frame operand (TS ends up
+		// with primary === the nil itself), so the thrown message shows
+		// the literal's location with `value was: nil`.
+		e.primary = e
 		return e
 	}
 	if isIntegerKind(n, src) {
@@ -1508,7 +1514,10 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		if len(terms) < 2 {
 			return incompleteNil(r)
 		}
-		return newPlusOp(asVal(terms[0]), asVal(terms[1]))
+		ov := newPlusOp(asVal(terms[0]), asVal(terms[1]))
+		// Source position for error frames (TS ops carry their site).
+		ov.sp = r.O0.SI
+		return ov
 	case "func-paren":
 		// preval injects the function name as a raw string term[0] for
 		// `name(args)`; plain `(expr)` grouping has the inner Val in
@@ -1693,7 +1702,7 @@ func parse(src string) (Val, error) {
 func parseBase(src, base string) (Val, error) {
 	lang, err := langForBase(base)
 	if err != nil {
-		return newMap(), &AontuError{Msg: err.Error()}
+		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
 	}
 	// ParseMeta, not Parse: the meta bag is this parse's private channel
 	// back from the @"file" resolver, and it is how a failed load is
@@ -1718,11 +1727,16 @@ func parseBase(src, base string) (Val, error) {
 	// "source not found: x" is the diagnosis the user needs -- the cascade
 	// is noise.
 	if "" != sink.msg {
-		return newMap(), &AontuError{Msg: sink.msg}
+		return newMap(), &AontuError{Msg: sink.msg, Code: "multisource_not_found"}
 	}
 
 	if err != nil {
-		return newMap(), &AontuError{Msg: err.Error()}
+		// Code mirrors TS, whose jsonic parse errors wrap as an outer
+		// why:'parse' nil holding an inner why:'syntax' nil -- and it is
+		// the INNER syntax code that leads errs() on the thrown error,
+		// so `syntax` is the cross-port first-code for a source that
+		// fails to parse (pinned by error.tsv errc-parse-syntax).
+		return newMap(), &AontuError{Msg: err.Error(), Code: "syntax"}
 	}
 	if out == nil {
 		return newMap(), nil

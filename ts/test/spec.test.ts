@@ -14,6 +14,12 @@
  *   mode=gens  : generate(src), serialised to COMPACT JSON, must equal
  *                expect BYTE-FOR-BYTE
  *   mode=err   : generate(src) must throw, message must contain expect
+ *   mode=errc  : generate(src) must throw, and the FIRST collected
+ *                error's why-code must EQUAL expect (message text is
+ *                not in parity; codes are -- see test/spec/errcodes.tsv)
+ *   mode=errcode : registry row -- name is a code, src its class,
+ *                expect its since-version; asserted against the
+ *                engine's codeClasses table (ts/src/hints.ts)
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -31,6 +37,7 @@ import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
 import { Aontu, exactJSON } from '../dist/aontu'
+import { codeClasses } from '../dist/hints'
 import { IntegerVal } from '../dist/val/IntegerVal'
 import { StringVal } from '../dist/val/StringVal'
 import { BooleanVal } from '../dist/val/BooleanVal'
@@ -149,6 +156,47 @@ function runRow(row: Omit<Row, 'file'>): void {
       }
     )
   }
+  else if ('errc' === row.mode) {
+    // Code parity: the FIRST collected error's why-code must EQUAL
+    // expect. Message text is deliberately not in parity between the
+    // ports; the codes in test/spec/errcodes.tsv are.
+    Assert.throws(
+      () => a0.generate(row.src, undefined, makeVarsCtx(a0)),
+      (err: any) => {
+        const errs = 'function' === typeof err?.errs ? err.errs() : []
+        const code = errs[0]?.why
+        Assert.strictEqual(
+          code,
+          row.expect,
+          `expected error code "${row.expect}", got "${code}"` +
+          ` (message: ${String(err && err.message).split('\n')[0]})`
+        )
+        return true
+      }
+    )
+  }
+  else if ('errcode' === row.mode) {
+    // Registry row: name IS the code, src is its class, expect the
+    // version line at which the code was first registered. The reverse
+    // direction (every engine code registered in the tsv) is asserted
+    // by the spec-errcodes-registry set-equality test below.
+    const cls = codeClasses[row.name]
+    Assert.ok(
+      undefined !== cls,
+      `code "${row.name}" is not in the engine codeClasses table`
+    )
+    Assert.strictEqual(
+      cls,
+      row.src,
+      `code "${row.name}": registry class "${row.src}",` +
+      ` engine class "${cls}"`
+    )
+    Assert.ok(
+      /^\d+\.\d+\.\d+$/.test(row.expect),
+      `code "${row.name}": since-version "${row.expect}"` +
+      ` is not a semver triple`
+    )
+  }
   else {
     throw new Error('unknown spec mode: ' + row.mode)
   }
@@ -190,6 +238,30 @@ describe('spec-gens-mode', () => {
     Assert.throws(
       () => runRow({ name: 'g8', mode: 'genz', src: 'a:1', expect: '{"a":1}' }),
       /unknown spec mode: genz/)
+  })
+
+})
+
+
+// The registry (test/spec/errcodes.tsv) and the engine's codeClasses
+// table must agree as SETS. The errcode rows above assert "every
+// registered code exists in the engine with the registered class"; this
+// asserts the reverse -- an engine code missing from the registry (or a
+// stale registry entry) fails here. The Go runner performs the same
+// check against go/hints.go (TestErrCodesRegistry).
+describe('spec-errcodes-registry', () => {
+
+  test('registry-and-engine-agree', () => {
+    const registered = loadRows()
+      .filter((r) => 'errcode' === r.mode)
+      .map((r) => r.name)
+      .sort()
+    const engine = Object.keys(codeClasses).sort()
+    Assert.deepStrictEqual(
+      engine,
+      registered,
+      'engine codeClasses table and test/spec/errcodes.tsv disagree'
+    )
   })
 
 })

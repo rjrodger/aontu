@@ -17,7 +17,10 @@
 // type/hide marks and @"file" source loading.
 package aontu
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // DONE marks a Val whose unification has fully converged.
 const DONE = -1
@@ -194,8 +197,16 @@ func (t *TopVal) Unify(peer Val, ctx *Ctx) Val {
 // that the shared error specs assert on.
 type NilVal struct {
 	base
-	why       string
-	msg       string
+	why     string
+	msg     string
+	fullmsg string
+	// attempt names the operation in messages ("unify", "resolve",
+	// "add", ...), mirroring the attempt argument of TS makeNilErr;
+	// empty means derive from the operand count as TS descErr does.
+	attempt string
+	// details parameterises hint text ({src}, {left}, {sum}, ...) and
+	// carries the `key` submessage prefix, mirroring TS NilVal.details.
+	details   map[string]string
 	primary   Val
 	secondary Val
 }
@@ -212,13 +223,166 @@ func (n *NilVal) superior() Val { return n }
 
 func (n *NilVal) Unify(peer Val, ctx *Ctx) Val { return n }
 
+// Class is the code's class from the shared registry
+// (test/spec/errcodes.tsv): conflict | incomplete | reference | parse |
+// budget | internal. Mirrors the NilVal.class getter in TS.
+func (n *NilVal) Class() string { return codeClass(n.why) }
+
 func (n *NilVal) Gen(ctx *Ctx) (any, error) {
-	return nil, &AontuError{Msg: n.Message()}
+	// A why-less nil takes the gen-time code, mirroring the
+	// `this.why = this.why ?? 'nil_gen'` default in TS NilVal.gen.
+	if n.why == "" {
+		n.why = "nil_gen"
+	}
+	src, file := "", ""
+	if ctx != nil {
+		src, file = ctx.src, ctx.file
+	}
+	return nil, &AontuError{Msg: n.FullMessage(src, file), Code: n.why}
+}
+
+// FullMessage renders the failure the way the canonical TypeScript
+// implementation renders a THROWN error (descErr, ts/src/err.ts):
+// the `[aontu/<code>]` marker, the "Cannot <attempt> value(s) at path
+// <path>" headline, the (parameterised) hint, and one located source
+// frame per operand — byte-matched to the TS output, ANSI colouring
+// included. Used by the AontuError paths (unify/generate); the
+// LSP/Problem surface keeps the short Message below, mirroring TS's
+// own split (descErr vs the LSP's nilMessage). src is the entry
+// source text for row/col mapping and excerpts (ctx.src); frames for
+// values loaded from includes fall back to it, as TS's resolveSrc
+// falls back when a site's file cannot be read.
+func (n *NilVal) FullMessage(src, file string) string {
+	if n.fullmsg != "" {
+		return n.fullmsg
+	}
+	attempt := n.attempt
+	if attempt == "" {
+		attempt = "unify"
+		if n.secondary == nil {
+			attempt = "resolve"
+		}
+	}
+	plural := ""
+	if n.secondary != nil {
+		plural = "s"
+	}
+	// The path comes from the primary operand, as TS NilVal.make copies
+	// av.path onto the nil.
+	path := "$"
+	if n.primary != nil {
+		if p := n.primary.vpath(); len(p) > 0 {
+			path = "$." + strings.Join(p, ".")
+		}
+	}
+	var b strings.Builder
+	b.WriteString("[aontu/")
+	b.WriteString(n.why)
+	b.WriteString("]: Cannot ")
+	b.WriteString(attempt)
+	b.WriteString(" value")
+	b.WriteString(plural)
+	b.WriteString(" at path ")
+	b.WriteString(path)
+	if hint := hints[n.why]; hint != "" {
+		b.WriteString("\n\n")
+		b.WriteString(strinject(hint, n.details))
+	}
+	if n.primary != nil {
+		b.WriteString("\n\n")
+		b.WriteString(n.frame(src, file, attempt, n.primary, n.secondary))
+		if n.secondary != nil {
+			// The second frame swaps the operand order, as descErr does.
+			b.WriteString("\n")
+			b.WriteString(n.frame(src, file, attempt, n.secondary, n.primary))
+		}
+	}
+	n.fullmsg = b.String()
+	return n.fullmsg
+}
+
+// frame renders one located source frame, byte-matched to the jsonic
+// errmsg block TS descErr emits: the value line, the blue `-->`
+// arrow with file:row:col, the source row with a caret naming the
+// value (and the map key when known), and the two following rows.
+func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
+	if file == "" {
+		file = "<no-file>"
+	}
+	var b strings.Builder
+	b.WriteString(" Cannot ")
+	b.WriteString(attempt)
+	b.WriteString(" value: ")
+	b.WriteString(v.Canon())
+	if other != nil {
+		b.WriteString(" with value: ")
+		b.WriteString(other.Canon())
+	}
+	b.WriteString("\n")
+
+	row, col := rowCol(src, v.pos())
+	lines := strings.Split(src, "\n")
+	line := func(r int) string {
+		if 1 <= r && r <= len(lines) {
+			return lines[r-1]
+		}
+		return ""
+	}
+
+	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", file, row, col)
+	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row, line(row))
+
+	keyPrefix := ""
+	if k := n.details["key"]; k != "" {
+		keyPrefix = "key " + k + " "
+	}
+	caretCol := col
+	if caretCol < 1 {
+		caretCol = 1
+	}
+	b.WriteString(strings.Repeat(" ", 6+caretCol-1))
+	b.WriteString("\x1b[34m^ ")
+	b.WriteString(keyPrefix)
+	b.WriteString("value was: ")
+	b.WriteString(v.Canon())
+	b.WriteString("\x1b[0m\n")
+
+	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row+1, line(row+1))
+	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row+2, line(row+2))
+	return b.String()
+}
+
+// rowCol maps a byte offset into src to 1-based row and column, the
+// coordinates jsonic sites carry in TS. A value with no usable
+// position maps to row 1, column 1.
+func rowCol(src string, sp int) (int, int) {
+	if sp < 0 || len(src) < sp {
+		return 1, 1
+	}
+	row := 1
+	last := -1
+	for i := 0; i < sp; i++ {
+		if src[i] == '\n' {
+			row++
+			last = i
+		}
+	}
+	return row, sp - last
+}
+
+// strinject replaces {key} placeholders with detail values, the Go
+// twin of the jsonic strinject TS getHint applies to hint text.
+func strinject(txt string, details map[string]string) string {
+	for k, v := range details {
+		txt = strings.ReplaceAll(txt, "{"+k+"}", v)
+	}
+	return txt
 }
 
 // Message renders the human-readable failure message. The phrasing of
 // the "Cannot <attempt> value: ..." line is kept compatible with the
-// canonical TypeScript implementation (ts/src/err.ts).
+// canonical TypeScript LSP diagnostic text (nilMessage, ts/src/lsp.ts);
+// the thrown-error surface uses FullMessage above.
 func (n *NilVal) Message() string {
 	if n.msg != "" {
 		return n.msg
@@ -247,6 +411,15 @@ func (n *NilVal) Message() string {
 	return n.msg
 }
 
+// makeNilErrFull is makeNilErr with the attempt name and hint details
+// TS's makeNilErr carries as its trailing arguments.
+func makeNilErrFull(ctx *Ctx, why string, a, b Val, attempt string, details map[string]string) *NilVal {
+	n := makeNilErr(ctx, why, a, b)
+	n.attempt = attempt
+	n.details = details
+	return n
+}
+
 // makeNilErr builds a NilVal error and records it on ctx. The operand
 // later in the source (greater position) becomes the primary, matching
 // the TypeScript NilVal.make ordering so error messages agree.
@@ -273,6 +446,14 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 // AontuError is the error type returned by Unify/Generate.
 type AontuError struct {
 	Msg string
+
+	// Code is the error code of the FIRST underlying failure (the
+	// NilVal `why`, e.g. "scalar_value", "no_path", "mapval_no_gen"),
+	// mirroring errs()[0].why on the TypeScript AontuError. Empty when
+	// no code is known (e.g. wrapped parse errors). Codes -- unlike
+	// message text -- are in cross-implementation parity, registered in
+	// test/spec/errcodes.tsv and pinned by `errc` spec rows.
+	Code string
 }
 
 func (e *AontuError) Error() string { return e.Msg }

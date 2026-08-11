@@ -21,6 +21,11 @@ type Problem struct {
 	// "unknown_function").
 	Why string
 
+	// Class is Why's class from the shared registry
+	// (test/spec/errcodes.tsv): conflict | incomplete | reference |
+	// parse | budget | internal.
+	Class string
+
 	// Message is the human-readable error message.
 	Message string
 }
@@ -37,19 +42,34 @@ func (a *Aontu) Check(src string) []Problem {
 func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
 	v, perr := parseBase(src, a.base)
 	if perr != nil {
-		return []Problem{{Pos: -1, Len: 1, Why: "parse", Message: perr.Error()}}
+		return []Problem{{Pos: -1, Len: 1, Why: "parse", Class: codeClass("parse"), Message: perr.Error()}}
 	}
 
-	ctx := &Ctx{root: v, vars: vars}
+	ctx := &Ctx{root: v, vars: vars, src: src}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
 
 	var nils []*NilVal
-	collectNils(res, &nils, map[Val]bool{})
+	seen := map[Val]bool{}
+	collectNils(res, &nils, seen)
+
+	// Errors recorded on the context but not present in the tree — e.g.
+	// a budget_passes exhaustion nil, which is about the whole
+	// evaluation rather than any node — would otherwise be invisible
+	// here, and the trust contract forbids silent truncation
+	// (docs/trust.md clause 2). Tree nils are already on ctx.err too,
+	// so dedup by identity. Mirrors the ctx-err union in TS
+	// computeDiagnostics (ts/src/lsp.ts).
+	for _, n := range ctx.err {
+		if !seen[Val(n)] {
+			seen[Val(n)] = true
+			nils = append(nils, n)
+		}
+	}
 
 	out := make([]Problem, 0, len(nils))
 	for _, n := range nils {
-		p := Problem{Pos: n.sp, Len: 1, Why: n.why, Message: n.Message()}
+		p := Problem{Pos: n.sp, Len: 1, Why: n.why, Class: n.Class(), Message: n.Message()}
 		if p.Pos < 0 {
 			p.Pos = -1
 		}
@@ -83,7 +103,7 @@ func (a *Aontu) Spans(src string) []ValueSpan {
 	if perr != nil {
 		return nil
 	}
-	ctx := &Ctx{root: v}
+	ctx := &Ctx{root: v, src: src}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
 

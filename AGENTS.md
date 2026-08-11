@@ -68,7 +68,12 @@ can reuse it with their own transport. Editor plugins live in
 [`editors/`](editors/). Full reference: [`docs/lsp.md`](docs/lsp.md).
 Long-form documentation lives under [`docs/`](docs/) (start at
 `docs/index.md`); measure coverage with `make cov` (see
-`docs/test-coverage.md`).
+`docs/test-coverage.md`). The trust contract —
+hermeticity, termination, determinism, sandboxing, and exactly where
+each is conditional today — is [`docs/trust.md`](docs/trust.md); the
+budget/cycle error taxonomy it defines is pinned by
+`test/spec/budget.tsv` and the code registry by
+`test/spec/errcodes.tsv`.
 
 ## Build & test
 
@@ -104,6 +109,8 @@ Tab-separated columns: `name <TAB> mode <TAB> src <TAB> expect`
 | `gen`   | `generate(src)` deep-equals `JSON(expect)`            |
 | `gens`  | `generate(src)` as compact JSON equals `expect` byte for byte |
 | `err`   | `generate(src)` errors, message contains `expect`     |
+| `errc`  | `generate(src)` errors, first failure's why-code equals `expect` |
+| `errcode` | registry row: code / class / since — asserted against the engine's code→class table (see below) |
 
 Escapes in `src`/`expect`: `\n` → newline, `\t` → tab, `\\` → backslash.
 Lines starting with `#` and blank lines are ignored. See
@@ -118,6 +125,15 @@ kinds must be pinned by `canon` or `err`, and one that turns on the
 exact serialised bytes (which digits, which exponent form, which key
 order) by `gens` — see
 [Choosing a mode](docs/shared-spec.md#choosing-a-mode).
+
+Error *codes* — unlike error message text — are in cross-port parity:
+every code either engine can raise is registered with a class in
+[`test/spec/errcodes.tsv`](test/spec/errcodes.tsv) (mode `errcode`;
+both runners assert set equality against their `codeClasses` table in
+`ts/src/hints.ts` / `go/hints.go`), and `errc` rows pin which code a
+given source raises (TS `errs()[0].why`, Go `AontuError.Code`). Codes
+are append-only and never renamed; a class change is breaking. New
+engine codes must land with a registry row in the same change.
 
 ### Adding a behaviour
 
@@ -145,8 +161,13 @@ echo 'x:1.0' | node ts/dist/cli.js -c
 Both print `{"x":1.0}`, so that is the `canon` expectation and the row
 may be written. Drop `-c` from both for a `gen` row — the CLIs then
 print generated JSON. For an `err` row, probe the same way and assert a
-substring that **both** messages contain; error wording itself is not in
-parity (see [Known TS/Go divergences](DIVERGENCE.md)).
+substring that **both** messages contain. Thrown-error text is in
+cross-port parity (#29: marker, headline, verbatim hints with
+injected details, ANSI source frames — guarded byte-for-byte by the
+full-message twin tests in ts/test/error.test.ts and
+go/hints_test.go), but a spec row still asserts only its probed
+substring and `errc` code: rows outlive renderer changes, twins pin
+the renderer.
 
 The TypeScript CLI runs the committed build, so run `make build-ts`
 before probing if `ts/src` has changed, or the probe answers for the old
@@ -185,7 +206,9 @@ appropriate spec file.
 The ledger is not the same list as
 [Known TS/Go divergences](DIVERGENCE.md). Those differ
 deliberately and permanently and are never going to be pinned, so they
-are not tracked as debt.
+are not tracked as debt. (After the 2026-08-11 reclassification that
+list holds a single entry — the Unicode table vintage; everything else
+that once lived there is now OPEN debt in the ledger.)
 
 [`docs/design/number-model.md`](docs/design/number-model.md) is the
 worked example of what this discipline catches. TypeScript classified a

@@ -544,6 +544,19 @@ round-trip property `parse(canon(v)) == v` throughout.
    `constraint-len.tsv`, `constraint-cross.tsv` with canon, gen, and
    err rows, including round-trip and order-independence rows
    (`min(0)&max(10)` vs `max(10)&min(0)` → identical canon).
+   *(Since done: the algebra section is in
+   `docs/reference-language.md` ("The constraint algebra"),
+   re-derived over the four-leaf tower — cross-leaf ordering decided
+   (bounds are exact order over the number line, leaf-agnostic;
+   `neq` excludes by scalar identity, so point-deletion emptiness
+   requires a narrowed leaf), endpoint tightening decided (lazy
+   endpoints, eager emptiness), `len` pinned to Unicode code points.
+   The four spec files are authored as DRAFTS in `test/spec/draft/`
+   — the parity-probe rule forbids executable rows for unimplemented
+   behaviour — and are promoted with fresh probes as each phase
+   lands. The `DisjunctVal.gen` fold defect is fenced from the
+   constraint side by probed guard rows in `test/spec/disjunct.tsv`
+   plus draft generation expectations.)*
 2. **Phase 1 — numeric and lexical bounds, `neq` (M).** New
    `ts/src/val/ConstraintVal.ts` plus atom entries in `funcMap`
    (`ts/src/lang.ts`); `cjo` slot and fold interplay in

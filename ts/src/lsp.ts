@@ -78,8 +78,9 @@ function computeDiagnostics(
   const aontu = new Aontu()
 
   let root: any
+  let ac: any
   try {
-    const ac = aontu.ctx({ collect: true })
+    ac = aontu.ctx({ collect: true })
     if (opts?.vars) {
       Object.assign(ac.vars, opts.vars)
     }
@@ -92,7 +93,21 @@ function computeDiagnostics(
   }
 
   const nils: any[] = []
-  walkNils(root, nils, new Set())
+  const seen = new Set()
+  walkNils(root, nils, seen)
+
+  // Errors recorded on the context but not present in the tree — e.g. a
+  // budget_passes exhaustion nil, which is about the whole evaluation
+  // rather than any node — would otherwise be invisible here, and the
+  // trust contract forbids silent truncation (docs/trust.md clause 2).
+  // Tree nils are already on ctx.err too, so dedup by identity; the
+  // transient disjunct-trial sentinel never surfaces.
+  for (const e of ac?.err ?? []) {
+    if (e?.isNil && '|:trial-nil' !== e.why && !seen.has(e)) {
+      seen.add(e)
+      nils.push(e)
+    }
+  }
 
   return nils.map(nilToDiagnostic)
 }

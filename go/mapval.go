@@ -283,7 +283,29 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			if ctx != nil && ctx.collect {
 				break
 			}
-			return nil, &AontuError{Msg: "Cannot resolve value: " + child.Canon()}
+			// Code follows the TS BagVal.gen closed/no_gen choice: a
+			// closed bag makes the residue a missing REQUIRED value; an
+			// open one merely non-generable. TS additionally raises
+			// mapval_spread_required via its isExpect branch; Go has no
+			// ExpectVal counterpart yet, so spread-required residue
+			// takes the generic code here — an OPEN divergence, ledger
+			// entry in test/spec/divergent.tsv, issue #27.
+			code := "mapval_no_gen"
+			if m.closed {
+				code = "mapval_required"
+			}
+			// Render the full TS-style message (marker, headline, hint,
+			// frame with the `key <k>` caret submessage) via a NilVal,
+			// as TS BagVal.gen raises makeNilErr with details {key}.
+			n := newNil(code)
+			n.primary = child
+			n.sp = child.pos()
+			n.details = map[string]string{"key": k}
+			src, file := "", ""
+			if ctx != nil {
+				src, file = ctx.src, ctx.file
+			}
+			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 		}
 
 		// An optional child generates in an isolated collect context so

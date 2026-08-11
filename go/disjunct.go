@@ -23,7 +23,8 @@ func (d *DisjunctVal) superior() Val { return top() }
 func (d *DisjunctVal) Canon() string {
 	parts := make([]string, len(d.peg))
 	for i, m := range d.peg {
-		parts[i] = m.Canon()
+		// Parenthesise nested junction children (see junctChildCanon).
+		parts[i] = junctChildCanon(m)
 	}
 	return strings.Join(parts, "|")
 }
@@ -97,7 +98,11 @@ func (d *DisjunctVal) Unify(peer Val, ctx *Ctx) Val {
 func (d *DisjunctVal) Gen(ctx *Ctx) (any, error) {
 	val := d.foldForGen(ctx)
 	if val == nil {
-		return nil, &AontuError{Msg: "Cannot generate value: empty disjunct"}
+		// Registered code for an alternatives-exhausted disjunct. (TS
+		// generates nothing for an empty disjunct and lets the bag
+		// report — an edge no shared row pins; this Code is
+		// classification, not pinned parity.)
+		return nil, &AontuError{Msg: "Cannot generate value: empty disjunct", Code: "|:empty"}
 	}
 	return val.Gen(ctx)
 }

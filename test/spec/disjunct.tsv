@@ -44,3 +44,15 @@ disjunct-null-top-list-gens	gens	x:[null|top]	{"x":[null]}
 disjunct-null-top-list-position-gens	gens	x:[1,null|top,3]	{"x":[1,null,3]}
 disjunct-null-top-nested-gens	gens	x:{y:null|top}	{"x":{"y":null}}
 disjunct-null-plain-gens	gens	x:null|null	{"x":null}
+#
+# Guard rows fencing the known DisjunctVal.gen fold defect
+# (ts/src/val/DisjunctVal.ts ~263, mirrored by the Go port): the CANON
+# of a distributed disjunct-and-map meet is correct in both engines
+# and pinned here, so a future fix to the WRONG generation (both
+# engines today merge the branches into a chimera — deliberately not
+# pinned) cannot silently change canon. The constraint-side guard
+# expectations live in test/spec/draft/constraint-cross.tsv until the
+# atoms exist. Parity-probed 2026-08-11.
+guard-fold-canon	canon	a:({x:1}|{y:2})&{z:3}	{"a":{"x":1,"z":3}|{"y":2,"z":3}}
+guard-pref-disjunct-canon	canon	a:*8080|1024	{"a":*8080|1024}
+guard-pref-disjunct-gens	gens	a:*8080|1024	{"a":8080}

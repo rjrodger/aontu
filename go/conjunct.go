@@ -23,14 +23,35 @@ func (c *ConjunctVal) superior() Val { return top() }
 func (c *ConjunctVal) Canon() string {
 	parts := make([]string, len(c.peg))
 	for i, t := range c.peg {
-		parts[i] = t.Canon()
+		parts[i] = junctChildCanon(t)
 	}
 	return strings.Join(parts, "&")
 }
 
+// junctChildCanon renders a junction child, parenthesising a child
+// that is itself a junction with more than one term — the TS
+// JunctionVal.canon rule — so nested structure survives in the text:
+// `(1|2)&3` canons as `(1|2)&3`, not the differently-parsing `1|2&3`.
+// Post-unification junctions are flattened by norm, so parens appear
+// only where real nesting remains (parse-level canon, issue #30).
+func junctChildCanon(v Val) string {
+	switch t := v.(type) {
+	case *ConjunctVal:
+		if len(t.peg) > 1 {
+			return "(" + t.Canon() + ")"
+		}
+	case *DisjunctVal:
+		if len(t.peg) > 1 {
+			return "(" + t.Canon() + ")"
+		}
+	}
+	return v.Canon()
+}
+
 func (c *ConjunctVal) Gen(ctx *Ctx) (any, error) {
-	// An unresolved conjunct is not a concrete value.
-	return nil, &AontuError{Msg: "Cannot generate value: " + c.Canon()}
+	// An unresolved conjunct is not a concrete value. Code mirrors TS
+	// ConjunctVal.gen ('conjunct').
+	return nil, &AontuError{Msg: "Cannot generate value: " + c.Canon(), Code: "conjunct"}
 }
 
 func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {

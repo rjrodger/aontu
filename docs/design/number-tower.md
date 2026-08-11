@@ -707,6 +707,15 @@ were written in; the amendments record where the plan met the code.
   `toRatExact` precedent) — bounds are about order, not identity —
   but the decision belongs to G1's algebra and needs its emptiness
   and subsumption rules extended leaf-wise.
+  **RESOLVED as recommended**: order is a property of the number
+  line; a bound admits any numeric leaf at an admissible position,
+  compared exactly, and never narrows the peer's leaf. The leaf-wise
+  emptiness rules (integral-gap on narrowed domains; point-deletion
+  only under a narrowed leaf, since `neq` excludes by scalar
+  identity), the endpoint-leaf canon rule, and the lazy-endpoint /
+  eager-emptiness ruling are in
+  [`docs/reference-language.md`](../reference-language.md#the-constraint-algebra-specified),
+  "The constraint algebra"; draft rows in `test/spec/draft/`.
 - **Conversion functions.** With cross-leaf unification refused,
   deliberate conversion (`0d5` to integer 5) has no spelling. Boru's
   `convert` + accuracy-mode design is the reference; in Aontu this
