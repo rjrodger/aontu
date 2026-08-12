@@ -40,13 +40,13 @@ cd go && go tool cover -html=coverage.out      # annotated source in a browser
 | TypeScript     | lines (Node `--experimental-test-coverage`) | **95.2 %** |
 | TypeScript     | branches | **89.8 %** |
 | TypeScript     | functions | **92.7 %** |
-| Go — library (`package aontu`) | statements (`go test -cover`) | **91.3 %** |
+| Go — library (`package aontu`) | statements (`go test -cover`) | **93.5 %** |
 | Go — CLI (`cmd/aontu`)         | statements | **48.3 %** |
 | Go — LSP library (`lsp`)       | statements | **89.1 %** |
 | Go — LSP server (`cmd/aontu-lsp`) | statements | **76.0 %** |
 
 `make cov-go` prints one combined figure over all four Go packages:
-**89.8 %**.
+**91.5 %**.
 
 Both suites pass in full via `make test` (see the run output for the
 current counts; the shared spec suite alone is ~900 rows, executed by

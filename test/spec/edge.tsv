@@ -230,3 +230,53 @@ edge-move-then-ref	gens	b:{x:1} a:move($.b) c:$.a	{"a":{"x":1},"c":{"x":1}}
 edge-func-residue-meet	errc	a:upper($.zz)&1	no_path
 edge-key-level-conflict	errc	q:{k:key(3)&"q"}	scalar_value
 edge-conjunct-nil-mid	errc	a:1&nil&2	literal_nil
+#
+# Batch 5: variable path parts of every scalar kind, chase edges,
+# spread templates with path funcs in nested shapes, optional
+# subtrees, pending-func meets, pref ranks, and key escapes.
+edge-var-float-part	gens	q:{"1.5":3} x:$.q.$half	{"q":{"1.5":3},"x":3}
+edge-var-false-part	gens	q:{"false":3} x:$.q.$off	{"q":{"false":3},"x":3}
+edge-var-bigint-part	gens	q:{"5":3} x:$.q.$bigi	{"q":{"5":3},"x":3}
+edge-var-bigdec-part	gens	q:{"1.5":3} x:$.q.$bigd	{"q":{"1.5":3},"x":3}
+edge-var-null-part	errc	x:$.q.$nul q:{}	no_path
+edge-var-all-kinds	gens	x:$half y:$off z:$bigi w:$bigd v:$nul	{"v":null,"w":1.5,"x":1.5,"y":false,"z":5}
+edge-parent-mid	errc	a:$.x.$PARENT	ref
+edge-self-root	errc	a:$SELF	unknown_var
+edge-type-ref	canon	a:type($.b) b:1 c:2	{"a":1,"b":1,"c":2}
+edge-chase-var-part	errc	a:$.b b:$.c.$foo c:{}	no_path
+edge-chase-bad-index	errc	a:$.b.x b:[$.a]	no_path
+edge-chain-nil-peer	errc	a:$.b&nil b:$.c c:1	literal_nil
+edge-constraint-boolean-kind	errc	a:boolean&min(0)	constraint
+edge-hi-tie-tower-rev	canon	a:max(0d1)&max(1.0)	{"a":max(1.0)}
+edge-meet-neq-narrowed	errc	a:(integer&neq(1))&(float&neq(2))	constraint
+edge-decimal-neg-budget	errc	a:0d1e-5000	decimal_budget
+edge-bigdec-cmp-scales	canon	a:0d1.5&0d1.50	{"a":0d1.5}
+edge-type-list-template	gens	a:type([1,2]) b:$.a&[1,2]	{"b":[1,2]}
+edge-spread-nested-map-key	gens	a:{&:{x:{y:key()}},b:{}}	{"a":{"b":{"x":{"y":"x"}}}}
+edge-spread-disjunct-key	gens	a:{&:(1|{k:key()}),b:1}	{"a":{"b":1}}
+edge-hide-map-gen	gens	a:hide({x:1}) b:1	{"b":1}
+edge-opt-inner-ref-miss	errc	a:{b?:{c:$.zz9}} d:1	no_path
+edge-opt-hidden-list	gens	a:{b?:[hide(1)]} c:1	{"a":{},"c":1}
+edge-closed-peer-drives	gens	a:{y:2}&close({x:1,y:2})	{"a":{"x":1,"y":2}}
+edge-opt-superset	canon	a:{x?:1}&{x?:1,y?:3}	{"a":{"x"?:1,"y"?:3}}
+edge-type-meet-gen	gens	a:type({x:1})&{x:1} b:2	{"b":2}
+edge-opt-func-miss	errc	a:{b?:upper($.zz9)} c:1	no_path
+edge-func-pending-meet	gens	a:upper($.b)&"Q" b:$.c c:"q"	{"a":"Q","b":"q","c":"q"}
+edge-func-then-ref-miss	errc	q:{a:upper("x")&$.q.zz}	no_path
+edge-pref-conjunct-func	gens	b:1 a:pref(2&2)	{"a":2,"b":1}
+edge-pref-disjunct-func	gens	b:1 a:pref(3|3)	{"a":3,"b":1}
+edge-hide-scalar-dup	gens	a:hide(1) a:1 b:2	{"b":2}
+edge-key-backspace	canon	a:{"x\\by":1}	{"a":{"x\\by":1}}
+edge-key-formfeed	canon	a:{"x\\fy":1}	{"a":{"x\\fy":1}}
+edge-key-cr	canon	a:{"x\\ry":1}	{"a":{"x\\ry":1}}
+edge-disjunct-ref-members	gens	a:($.b|$.c) b:1 c:1	{"a":1,"b":1,"c":1}
+edge-rank-pref-first	gens	a:**1|*2	{"a":2}
+edge-rank-pref-second	gens	a:*1|**2	{"a":1}
+edge-pref-dup-fold	gens	a:*1|*1	{"a":1}
+edge-conjunct-nil-meet	errc	a:(1&1)&nil	literal_nil
+edge-conjunct-ref-members	gens	a:($.b&$.c) b:1 c:1	{"a":1,"b":1,"c":1}
+edge-list-ref-peer	gens	a:[1]&[$.b] b:1	{"a":[1],"b":1}
+edge-list-spread-extend	gens	a:[&:integer,1]&[1,2]	{"a":[1,2]}
+edge-hide-list-gen2	gens	a:hide([1,2]) b:1	{"b":1}
+edge-copy-spread-key	canon	a:copy({&:{k:key()},b:{}})	{"a":{&:{"k":key()},"b":{"k":"b"}}}
+edge-constraint-null-var	errc	a:min(0)&$nul	constraint

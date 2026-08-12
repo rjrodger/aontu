@@ -74,6 +74,11 @@ const IntegerVal_1 = require("../dist/val/IntegerVal");
 const StringVal_1 = require("../dist/val/StringVal");
 const BooleanVal_1 = require("../dist/val/BooleanVal");
 const MapVal_1 = require("../dist/val/MapVal");
+const NumberVal_1 = require("../dist/val/NumberVal");
+const NullVal_1 = require("../dist/val/NullVal");
+const BigIntegerVal_1 = require("../dist/val/BigIntegerVal");
+const BigDecimalVal_1 = require("../dist/val/BigDecimalVal");
+const Decimal_1 = require("../dist/val/Decimal");
 // test/spec lives at the repo root, two levels up from ts/dist-test.
 const SPEC_DIR = Path.join(__dirname, '..', '..', 'test', 'spec');
 // Use forward slashes even on Windows: this path is spliced into Aontu
@@ -260,6 +265,14 @@ function makeVarsCtx(a0) {
     // here renders identically either way, which is why no shared row could
     // reach the variable-as-path-segment rendering site until this existed.
     ctx.vars.big = new IntegerVal_1.IntegerVal({ peg: 1152921504606846976 });
+    // One variable per remaining scalar kind, so shared rows can reach
+    // every variable-as-path-segment rendering branch (coverage drive;
+    // go/spec_test.go specVars mirrors these).
+    ctx.vars.half = new NumberVal_1.NumberVal({ peg: 1.5 });
+    ctx.vars.off = new BooleanVal_1.BooleanVal({ peg: false });
+    ctx.vars.bigi = new BigIntegerVal_1.BigIntegerVal({ peg: 5n });
+    ctx.vars.bigd = new BigDecimalVal_1.BigDecimalVal({ peg: new Decimal_1.Decimal(15n, 1) });
+    ctx.vars.nul = new NullVal_1.NullVal({ peg: null });
     return ctx;
 }
 //# sourceMappingURL=spec.test.js.map

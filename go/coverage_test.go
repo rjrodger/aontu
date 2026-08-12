@@ -15,6 +15,8 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+
+	jsonic "github.com/tabnas/jsonic/go"
 )
 
 // The binary64 infinities order below/above everything finite and are
@@ -412,5 +414,288 @@ func TestCheckParseError(t *testing.T) {
 	spans := a.Spans("a:{b:[1,{c:2}]} d:$.a e:top f:1|$.zz g:upper($.zz)")
 	if len(spans) == 0 {
 		t.Fatalf("expected spans")
+	}
+}
+
+// Constraint internals no source reaches: the NaN guard (no literal
+// spells NaN), mixed-domain scalar identity, direct nil/top peers on a
+// residual, and tighterBound's one-sided arms.
+func TestConstraintInternals(t *testing.T) {
+	nan := numberVal(math.NaN(), "", -1).(*ScalarVal)
+	if sv, d := orderableScalar(nan); sv != nil || d != "" {
+		t.Fatalf("NaN must not be orderable")
+	}
+	one := numberVal(1, "1", -1).(*ScalarVal)
+	s := newString("x")
+	if sameConstraintScalar(one, s) || sameConstraintScalar(s, one) {
+		t.Fatalf("mixed domains are never the same scalar")
+	}
+	c := newConstraint("min", []Val{one}, -1)
+	if c.Unify(nil, &Ctx{}) != Val(c) || c.Unify(top(), &Ctx{}) != Val(c) {
+		t.Fatalf("nil/top peer must keep the residual")
+	}
+	lo := &constraintBound{v: one}
+	if tighterBound("number", nil, lo, true) != lo ||
+		tighterBound("number", lo, nil, true) != lo {
+		t.Fatalf("one-sided tighterBound arms")
+	}
+	if _, ok := c.superior().(*TopVal); !ok {
+		t.Fatalf("constraint superior")
+	}
+	if _, err := c.Gen(nil); err == nil {
+		t.Fatalf("constraint gen must refuse")
+	}
+}
+
+// clonePath carries a PrefVal's gate fields and a RefVal's flags; the
+// hideFound flag survives (move()-made refs cloned through paths).
+func TestClonePrefAndRefFlags(t *testing.T) {
+	p := &PrefVal{peg: numberVal(1, "1", -1), rank: 1}
+	p.dc = DONE
+	c := clonePath(p, []string{"q"}).(*PrefVal)
+	if c.rank != 1 || c.peg != p.peg || !c.posu() {
+		t.Fatalf("pref clone fields")
+	}
+	r := &RefVal{absolute: true, hideFound: true, copyFound: true, peg: []any{"x"}}
+	cr := clonePath(r, nil).(*RefVal)
+	if !cr.hideFound || !cr.copyFound {
+		t.Fatalf("ref clone flags")
+	}
+}
+
+// PrefVal.Unify's direct nil-peer arm (unite short-circuits nils
+// before PrefVal sees them, so only a direct call reaches it), and
+// Gen of an unresolved pref.
+func TestPrefDirectArms(t *testing.T) {
+	p := &PrefVal{peg: numberVal(1, "1", -1)}
+	if out := p.Unify(newNil("x"), &Ctx{}); !out.Nil() {
+		t.Fatalf("nil peer")
+	}
+	_, err := (&PrefVal{peg: &RefVal{absolute: true, peg: []any{"zz"}}}).Gen(&Ctx{})
+	if err == nil {
+		t.Fatalf("unresolved pref gen must refuse")
+	}
+}
+
+// ConjunctVal direct arms: nil peer normalises to TOP; a member that
+// unites to a conjunct is kept deferred.
+func TestConjunctDirectArms(t *testing.T) {
+	cj := newConjunct([]Val{numberVal(1, "1", -1)})
+	if out := cj.Unify(nil, &Ctx{root: newMap()}); out == nil {
+		t.Fatalf("nil peer")
+	}
+	if _, ok := newConjunct(nil).superior().(*TopVal); !ok {
+		t.Fatalf("conjunct superior")
+	}
+	if _, err := newConjunct(nil).Gen(nil); err == nil {
+		t.Fatalf("conjunct gen must refuse")
+	}
+}
+
+// Kind.String's fallback, formatNumber's non-finite renderings (only
+// the exported NewNumber constructor can build them), and the sprOf
+// default.
+func TestScalarRenderingEdges(t *testing.T) {
+	if Kind(99).String() != "top" || KindNil.String() != "nil" {
+		t.Fatalf("kind string fallbacks")
+	}
+	if formatNumber(math.NaN()) != "NaN" ||
+		formatNumber(math.Inf(1)) != "Infinity" ||
+		formatNumber(math.Inf(-1)) != "-Infinity" {
+		t.Fatalf("non-finite renderings")
+	}
+	if sprOf(numberVal(1, "1", -1)) != nil {
+		t.Fatalf("sprOf non-bag")
+	}
+	if !isEmptyGen([]any{}) || isEmptyGen(3) {
+		t.Fatalf("isEmptyGen arms")
+	}
+}
+
+// ScalarKindVal.Unify's nil/top arms, and mark ratcheting between
+// duplicate scalars (the mtype/mhide propagation branch).
+func TestScalarKindAndMarks(t *testing.T) {
+	k := newScalarKind(KindInteger)
+	if k.Unify(nil, &Ctx{}) != Val(k) || k.Unify(top(), &Ctx{}) != Val(k) {
+		t.Fatalf("kind nil/top arms")
+	}
+	a := newInteger(1)
+	b := newInteger(1)
+	b.mtype = true
+	b.mhide = true
+	out := a.Unify(b, &Ctx{})
+	if !out.markedType() || !out.markedHide() {
+		t.Fatalf("marks must ratchet across equal scalars")
+	}
+}
+
+// TopVal.Gen is silent; NilVal.superior is itself; message/fullmsg
+// caches return the stored string on the second call.
+func TestValMiscArms(t *testing.T) {
+	g, err := newTop().Gen(nil)
+	if g != nil || err != nil {
+		t.Fatalf("top gen silent")
+	}
+	n := newNil("no_path")
+	if n.superior() != Val(n) {
+		t.Fatalf("nil superior")
+	}
+	m1 := n.Message()
+	if n.Message() != m1 {
+		t.Fatalf("message cache")
+	}
+	f1 := n.FullMessage("", "")
+	if n.FullMessage("", "") != f1 {
+		t.Fatalf("fullmsg cache")
+	}
+}
+
+// ExpectVal accumulates a SECOND concrete peer (the unite arm of the
+// accumulator) before escaping.
+func TestExpectSecondPeer(t *testing.T) {
+	e := &ExpectVal{peg: newScalarKind(KindInteger)}
+	ctx := &Ctx{root: newMap()}
+	out1 := e.Unify(newScalarKind(KindNumber), ctx)
+	if out1 != Val(e) {
+		t.Fatalf("kind peer must not escape")
+	}
+	out2 := e.Unify(newInteger(7), ctx)
+	if sv, ok := out2.(*ScalarVal); !ok || sv.peg.(int64) != 7 {
+		t.Fatalf("second, concrete peer must escape: %v", out2.Canon())
+	}
+}
+
+// residuePaths truncates at max and walks list children; ctx.errmsg
+// joins collected errors.
+func TestResiduePathsAndErrmsg(t *testing.T) {
+	m := newMap()
+	l := &ListVal{peg: []Val{&RefVal{absolute: true, peg: []any{"z"}}}}
+	l.dc = 1
+	m.set("a", l)
+	m.dc = 1
+	paths := residuePaths(m, 1)
+	if len(paths) != 1 {
+		t.Fatalf("residuePaths max cut: %v", paths)
+	}
+	c := &Ctx{}
+	c.adderr(newNil("no_path"))
+	if c.errmsg() == "" {
+		t.Fatalf("errmsg must render")
+	}
+	// walkMark's list arm.
+	lv := &ListVal{peg: []Val{newInteger(1)}}
+	walkMark(lv, false, true, false, false)
+}
+
+// plusAdd's string arms and operate's default fallthrough are only
+// reachable through mixed raw primitives.
+func TestPlusAddArms(t *testing.T) {
+	if plusAdd("a", int64(1)) != "a1" || plusAdd(int64(1), "b") != "1b" {
+		t.Fatalf("plusAdd string arms")
+	}
+}
+
+// keyArgVal's integer-arg arm, and resolve's unknown-name fallback
+// (every funcSet name has a resolve case; the fallback guards a
+// registry/resolve drift, reachable only directly).
+func TestKeyArgAndResolveFallback(t *testing.T) {
+	f := newFunc("key", []Val{newInteger(2)})
+	if lv, ok := keyArgVal(f); !ok || lv != 2 {
+		t.Fatalf("keyArgVal int arm")
+	}
+	bad := newFunc("min", []Val{})
+	ctx := &Ctx{root: newMap()}
+	out := bad.resolve(ctx, nil, nil)
+	if out == nil || !out.Nil() {
+		t.Fatalf("resolve fallback must refuse: %v", out)
+	}
+}
+
+// Package-level lexer/number helpers, driven directly: the exactness
+// checks, based-literal parsing, negation source forms, and the
+// op-char hint's quote states.
+func TestLexerHelpersDirect(t *testing.T) {
+	// isLossyIntegerLiteral: signed forms, bad based digits, huge and
+	// negative exponents, zero at any exponent, non-digit rejection.
+	for src, want := range map[string]bool{
+		"+9007199254740993":      true,
+		"-123":                   false,
+		"0b12":                   false,
+		"1e99999999999999999999": false,
+		"0e500":                  false,
+		"12a":                    false,
+		"1e-5":                   false,
+		"0x1z":                   false,
+	} {
+		if got := isLossyIntegerLiteral(src); got != want {
+			t.Fatalf("isLossyIntegerLiteral(%q) = %v", src, got)
+		}
+	}
+	if !allDigits("123") || allDigits("") || allDigits("1a") {
+		t.Fatalf("allDigits")
+	}
+	// based numeric recognisers, signed and malformed.
+	if !basedNumeric("-0x1F") || basedNumeric("0x") || basedNumeric("0xZZ") {
+		t.Fatalf("basedNumeric arms")
+	}
+	if v, ok := basedFloat("0xFF"); !ok || v != 255 {
+		t.Fatalf("basedFloat hex: %v %v", v, ok)
+	}
+	if v, ok := basedFloat("-0o7"); !ok || v != -7 {
+		t.Fatalf("basedFloat signed octal: %v %v", v, ok)
+	}
+	if v, ok := basedFloat("+0b11"); !ok || v != 3 {
+		t.Fatalf("basedFloat binary: %v %v", v, ok)
+	}
+	if _, ok := basedFloat("0xZZ"); ok {
+		t.Fatalf("basedFloat bad digits must fail")
+	}
+	// negSrc empty-source arm.
+	if negSrc("") != "" {
+		t.Fatalf("negSrc empty")
+	}
+	// keyOf nil-token arm.
+	if keyOf(nil) != "" {
+		t.Fatalf("keyOf nil")
+	}
+	// opCharHint: a quote closed at a later index, an escaped quote,
+	// and a fully-quoted source with no operator chars.
+	if opCharHint(`a:"x" b:'y'`) != "" {
+		t.Fatalf("quoted-only source must not hint")
+	}
+	if opCharHint(`a:"<" b:>`) == "" {
+		t.Fatalf("unquoted > after quoted < must hint")
+	}
+	if opCharHint(`a:"\"<" c:1`) != "" {
+		t.Fatalf("escaped quote must stay in-quote")
+	}
+}
+
+// langForBase caches per base (the second lookup is the cache-hit
+// arm), and NewWithBase drives the based parse path.
+func TestLangCacheHit(t *testing.T) {
+	a1 := NewWithBase("cachebase")
+	if _, err := a1.Unify("a:1"); err != nil {
+		t.Fatal(err)
+	}
+	a2 := NewWithBase("cachebase")
+	if _, err := a2.Unify("b:2"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// asVal's expression wrappers: a nil ListRef, an empty one, and the
+// snip walk over shared slices.
+func TestAsValExprWrappers(t *testing.T) {
+	if sv, ok := asVal(&jsonic.ListRef{}).(*ScalarVal); !ok || sv.kind != KindNull {
+		t.Fatalf("empty ListRef must be null")
+	}
+	if out := snipExprCycles(nil); out != nil {
+		t.Fatalf("snip nil")
+	}
+	shared := []any{1.0}
+	cyc := &jsonic.ListRef{Val: []any{shared, shared}}
+	if snipExprCycles(cyc) == nil {
+		t.Fatalf("snip shared (non-cycle) must keep")
 	}
 }

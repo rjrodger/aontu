@@ -42,6 +42,11 @@ import { IntegerVal } from '../dist/val/IntegerVal'
 import { StringVal } from '../dist/val/StringVal'
 import { BooleanVal } from '../dist/val/BooleanVal'
 import { MapVal } from '../dist/val/MapVal'
+import { NumberVal } from '../dist/val/NumberVal'
+import { NullVal } from '../dist/val/NullVal'
+import { BigIntegerVal } from '../dist/val/BigIntegerVal'
+import { BigDecimalVal } from '../dist/val/BigDecimalVal'
+import { Decimal } from '../dist/val/Decimal'
 
 
 // test/spec lives at the repo root, two levels up from ts/dist-test.
@@ -299,5 +304,13 @@ function makeVarsCtx(a0: Aontu): any {
   // here renders identically either way, which is why no shared row could
   // reach the variable-as-path-segment rendering site until this existed.
   ctx.vars.big = new IntegerVal({ peg: 1152921504606846976 })
+  // One variable per remaining scalar kind, so shared rows can reach
+  // every variable-as-path-segment rendering branch (coverage drive;
+  // go/spec_test.go specVars mirrors these).
+  ctx.vars.half = new NumberVal({ peg: 1.5 })
+  ctx.vars.off = new BooleanVal({ peg: false })
+  ctx.vars.bigi = new BigIntegerVal({ peg: 5n })
+  ctx.vars.bigd = new BigDecimalVal({ peg: new Decimal(15n, 1) })
+  ctx.vars.nul = new NullVal({ peg: null })
   return ctx
 }
