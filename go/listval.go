@@ -81,6 +81,7 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 				if ev.parent != nil {
 					nb := newNil("")
 					nb.sp = ev.parent.pos()
+					nb.spu = ev.parent.posu()
 					vb = nb
 				}
 				n := makeNilErrFull(nil, code, ev.peg, vb, "",
@@ -125,6 +126,8 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		out = &ListVal{}
 		out.closed = l.closed
 		out.path = cp(l.path)
+		out.sp = l.sp
+		out.spu = l.spu
 		out.spread = l.spread
 	}
 	done := true

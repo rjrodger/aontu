@@ -1653,11 +1653,72 @@ func toVals(terms []interface{}) []Val {
 
 // maxNodeDepth bounds asVal's recursion so pathologically deep input
 // (thousands of nested {}/[]) yields a clean error instead of a fatal,
-// unrecoverable Go stack overflow. Because every Val tree is built by
-// asVal, this also transitively bounds the depth that setPaths and
-// clonePath (which walk asVal's output) ever recurse to, so they cannot
-// overflow either. Real configs are orders of magnitude shallower.
+// unrecoverable Go stack overflow. Lists convert at their rule close
+// (wrapList) with a per-list depth restart, so asVal's own counter no
+// longer sees the full nesting; the transitive bound that keeps
+// setPaths, clonePath and the unify walks stack-safe is therefore
+// enforced by valTreeDepth in parseBase — an ITERATIVE scan over the
+// finished tree. Real configs are orders of magnitude shallower.
 const maxNodeDepth = 10000
+
+// valTreeDepth reports the maximum nesting depth of a finished Val
+// tree, iteratively — this check is what permits every later walker to
+// recurse without its own guard. Bags and every wrapper that adds a
+// recursion frame in those walkers count a level; the scan stops early
+// once the bound is exceeded.
+func valTreeDepth(v Val) int {
+	type item struct {
+		v Val
+		d int
+	}
+	stack := []item{{v, 1}}
+	maxd := 0
+	for len(stack) > 0 {
+		it := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if it.d > maxd {
+			maxd = it.d
+			if maxd > maxNodeDepth {
+				return maxd
+			}
+		}
+		switch n := it.v.(type) {
+		case *MapVal:
+			for _, k := range n.keys {
+				stack = append(stack, item{n.peg[k], it.d + 1})
+			}
+			if n.spread != nil {
+				stack = append(stack, item{n.spread, it.d + 1})
+			}
+		case *ListVal:
+			for _, e := range n.peg {
+				stack = append(stack, item{e, it.d + 1})
+			}
+			if n.spread != nil {
+				stack = append(stack, item{n.spread, it.d + 1})
+			}
+		case *ConjunctVal:
+			for _, t := range n.peg {
+				stack = append(stack, item{t, it.d + 1})
+			}
+		case *DisjunctVal:
+			for _, t := range n.peg {
+				stack = append(stack, item{t, it.d + 1})
+			}
+		case *PlusOpVal:
+			for _, t := range n.peg {
+				stack = append(stack, item{t, it.d + 1})
+			}
+		case *FuncVal:
+			for _, a := range n.peg {
+				stack = append(stack, item{a, it.d + 1})
+			}
+		case *PrefVal:
+			stack = append(stack, item{n.peg, it.d + 1})
+		}
+	}
+	return maxd
+}
 
 // asVal converts a parsed jsonic node into a Val. Containers are
 // converted recursively; map order comes from the order sentinel.
@@ -1806,6 +1867,16 @@ func parseBase(src, base string) (Val, error) {
 		return newMap(), nil
 	}
 	root := asVal(out)
+	// The transitive depth bound (see maxNodeDepth): checked ONCE here,
+	// iteratively, before any recursive walker touches the tree. The
+	// registered budget-class max_depth code is unchanged; only the
+	// stage moved (parse instead of a nil embedded at the cut), which
+	// no row pins — TS has no equivalent guard at all (its stack
+	// overflows first, a documented gap).
+	if valTreeDepth(root) > maxNodeDepth {
+		n := newNil("max_depth")
+		return newMap(), &AontuError{Msg: n.FullMessage(src, ""), Code: "max_depth"}
+	}
 	setPaths(root, []string{})
 	return root, nil
 }

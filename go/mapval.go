@@ -304,8 +304,12 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 				code = "mapval_spread_required"
 				var vb Val
 				if ev.parent != nil {
+					// place() copies the parent's whole site — position
+					// AND url (the clone mark), which gates the operand
+					// order exactly as in TS.
 					nb := newNil("")
 					nb.sp = ev.parent.pos()
+					nb.spu = ev.parent.posu()
 					vb = nb
 				}
 				n := makeNilErrFull(nil, code, ev.peg, vb, "",
@@ -445,6 +449,11 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		out = newMap()
 		out.closed = m.closed
 		out.path = cp(m.path)
+		// The site survives unification (TS: `out.site = this.site` in
+		// MapVal.unify copies row, col AND url), so a unified bag still
+		// frames at its brace and keeps its clone mark.
+		out.sp = m.sp
+		out.spu = m.spu
 		out.spread = m.spread
 		out.optional = append([]string{}, m.optional...)
 	}

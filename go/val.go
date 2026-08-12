@@ -49,6 +49,8 @@ type Val interface {
 	setDc(dc int)
 	pos() int
 	setPos(p int)
+	posu() bool
+	setPosu(u bool)
 	cjo() int
 	superior() Val
 
@@ -68,11 +70,20 @@ type Val interface {
 // embed it and override Canon/Gen/Unify/superior (and cjo/Nil where
 // they differ).
 type base struct {
-	dc    int
-	sp    int      // source position (byte offset), used to order error operands
-	path  []string // path from root (for reference resolution)
-	mtype bool     // type mark
-	mhide bool     // hide mark
+	dc   int
+	sp   int      // source position (byte offset), used to order error operands
+	path []string // path from root (for reference resolution)
+	// spu marks a clone-minted value. TS sites carry a url that is null
+	// on parsed values and BECOMES '' at Val.clone (`?? ''`), and
+	// NilVal.make's later-in-source primary flip fires only when the two
+	// operands' urls are EQUAL — so a cloned operand meeting a parsed
+	// one keeps the driving operand primary regardless of position.
+	// spu is that url distinction: false = parsed (TS null), true =
+	// minted by clonePath's top level (TS ''). Children of a clone stay
+	// false, as TS's shallow clone shares the original children.
+	spu   bool
+	mtype bool // type mark
+	mhide bool // hide mark
 	// spr records the identity of the spread constraint already merged
 	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
 	// applies ONCE per child, and later passes only self-unify.
@@ -134,6 +145,8 @@ func (b *base) Nil() bool           { return false }
 func (b *base) setDc(dc int)        { b.dc = dc }
 func (b *base) pos() int            { return b.sp }
 func (b *base) setPos(p int)        { b.sp = p }
+func (b *base) posu() bool          { return b.spu }
+func (b *base) setPosu(u bool)      { b.spu = u }
 func (b *base) cjo() int            { return 99999 }
 func (b *base) vpath() []string     { return b.path }
 func (b *base) setvpath(p []string) { b.path = p }
@@ -433,7 +446,10 @@ func makeNilErrFull(ctx *Ctx, why string, a, b Val, attempt string, details map[
 
 // makeNilErr builds a NilVal error and records it on ctx. The operand
 // later in the source (greater position) becomes the primary, matching
-// the TypeScript NilVal.make ordering so error messages agree.
+// the TypeScript NilVal.make ordering so error messages agree — and,
+// exactly as there, the flip fires only when the two operands share a
+// source identity (the site-url equality gate; posu here): a cloned
+// operand meeting a parsed one keeps the driving operand primary.
 func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 	n := newNil(why)
 	if a != nil {
@@ -441,7 +457,7 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 		n.sp = a.pos()
 		if b != nil {
 			n.secondary = b
-			if b.pos() > a.pos() {
+			if a.posu() == b.posu() && b.pos() > a.pos() {
 				n.primary = b
 				n.secondary = a
 				n.sp = b.pos()

@@ -88,18 +88,6 @@
 #
 # ---------------------------------------------------------------------
 #
-# CLOSED -- deep reference chains: verdict diverged at 10+ links.
-#   issue: #26. Closed by making Go defer like the canonical engine:
-#   a ref whose FOUND TARGET is still a reference defers a pass
-#   (go/ref.go, the TS `resolved instanceof RefVal` branch), so a
-#   chain resolves one link per pass from the tail in both ports --
-#   nine links fit the maxcc=9 budget, ten exhaust it as
-#   budget_passes, byte-identically (the -1:-1 siteless frame
-#   included). Real rows now: budget.tsv budget-chain-*. The
-#   maintainer's direction was parity with TS as canonical; the
-#   pass-budget SIZE remains a G5 open question, but it is now the
-#   same question in both engines.
-#
 # OPEN -- a cycle routed through a function errors with different
 #   codes. issue: #35. `a:$.b b:upper($.a)` errors in BOTH engines
 #   (verdict agrees) but TS reports `internal` -- a caught stack
@@ -117,18 +105,6 @@
 #   path_cycle -- an engine change on the TS side tracked by #35; Go
 #   already reports the proof. No errc row may pin either code
 #   meanwhile.
-#
-# ---------------------------------------------------------------------
-#
-# CLOSED -- spread-required residue: Go raised *_no_gen where
-#   TypeScript raised *_spread_required. issue: #27. Closed by porting
-#   the ExpectVal machinery (go/expect.go): the MapVal peer-key loop
-#   wraps non-generable peer children, the bag Gens select the
-#   *_spread_required codes, and the expectation escapes on a concrete
-#   peer. Behaviour now has real rows (test/spec/spread-required.tsv),
-#   probed byte-identical in both engines -- including the full error
-#   text, whose placed-nil frame position depends on the #34 map
-#   position fix landing first.
 #
 # ---------------------------------------------------------------------
 #
