@@ -29,7 +29,11 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
     }
     unify(peer, ctx) {
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Op:' + this.opname(), this, peer);
-        let out = this;
+        // Declared without an initial value: every arm below assigns it, and
+        // seeding it with `this` made the two arms that stand the op read as
+        // redundant self-assignments. The arms themselves stay as they are —
+        // they mirror the dispatch switch in go/op.go arm for arm (ADR-001).
+        let out;
         if (this.id == peer.id) {
             return this;
         }
