@@ -158,7 +158,9 @@ func (d *DisjunctVal) rankPrefs(ctx *Ctx) Val {
 			if lastpref != nil {
 				if v.rank == lastpref.rank {
 					u := v.Unify(lastpref, ctx)
-					if u.Nil() {
+					// A pref meeting a pref always yields a pref, never a
+					// bare nil (a conflict is wrapped inside it).
+					if u.Nil() { //coverage:ignore PrefVal.Unify never returns a bare nil here
 						return u
 					}
 					d.peg[lastprefI] = u

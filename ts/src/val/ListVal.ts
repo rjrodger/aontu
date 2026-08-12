@@ -121,9 +121,9 @@ class ListVal extends BagVal {
 
         propagateMarks(this, child)
 
+        // child is non-nullish: propagateMarks above dereferences it.
         out.peg[key] =
-          undefined === child ? key_spread_cj :
-            child.isNil ? child :
+          child.isNil ? child :
               key_spread_cj.isNil ? key_spread_cj :
                 key_spread_cj.isTop && child.done ? child :
                   child.isTop && key_spread_cj.done ? key_spread_cj :

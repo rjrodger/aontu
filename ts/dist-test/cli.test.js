@@ -42,10 +42,18 @@ const aontu_1 = require("../dist/aontu");
 const cli_1 = require("../dist/cli");
 const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js');
 function run(args, input) {
+    // The child does NOT inherit NODE_V8_COVERAGE. These cases assert the
+    // packaged binary's behaviour; its coverage is contributed in-process
+    // by coverage3.test.ts, and a grandchild's coverage file is not always
+    // flushed before the runner aggregates — which made the ADR-002 gate
+    // flaky rather than measuring anything extra.
+    const env = { ...process.env };
+    delete env.NODE_V8_COVERAGE;
     try {
         const out = (0, node_child_process_1.execFileSync)('node', [CLI, ...args], {
             input: input ?? '',
             encoding: 'utf8',
+            env,
         });
         return { out, code: 0 };
     }

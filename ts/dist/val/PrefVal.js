@@ -61,7 +61,6 @@ class PrefVal extends FeatureVal_1.FeatureVal {
     unify(peer, ctx) {
         peer = peer ?? (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Pref', this, peer);
-        let done = true;
         let out = this;
         let why = '';
         if (!this.peg.done) {
@@ -115,7 +114,9 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         else {
             why += 'none';
         }
-        out.dc = done ? type_1.DONE : this.dc + 1;
+        // Every pref result is DONE, including a stuck conjunct from the
+        // superior-unify (mirrored by PrefVal.Unify in go/pref.go).
+        out.dc = type_1.DONE;
         // console.log('PREFVAL-OUT', why, this.canon, peer.canon, '->', out.canon, out.done)
         ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;

@@ -102,7 +102,7 @@ function computeDiagnostics(
   // trust contract forbids silent truncation (docs/trust.md clause 2).
   // Tree nils are already on ctx.err too, so dedup by identity; the
   // transient disjunct-trial sentinel never surfaces.
-  for (const e of ac?.err ?? []) {
+  for (const e of ac.err) {
     if (e?.isNil && '|:trial-nil' !== e.why && !seen.has(e)) {
       seen.add(e)
       nils.push(e)
@@ -292,8 +292,8 @@ function collectHoverCandidates(
   if (seen.has(v)) return
   seen.add(v)
 
-  const row = v.site?.row ?? -1
-  const col = v.site?.col ?? -1
+  const row = v.site.row
+  const col = v.site.col
   let canon = ''
   try { canon = v.canon } catch { canon = '' }
   // Hover targets concrete values (scalars, kinds, refs, …), not
@@ -320,8 +320,9 @@ function collectHoverCandidates(
 
 
 function hoverMarkdown(val: any): string {
-  let canon = ''
-  try { canon = val.canon } catch { canon = '' }
+  // No try needed: a Val only becomes a hover candidate after
+  // collectHoverCandidates read this same getter successfully.
+  const canon = val.canon
   return '```aontu\n' + canon + '\n```\n\n' + '*' + valKind(val) + '*'
 }
 
@@ -331,8 +332,6 @@ function valKind(val: any): string {
   if (val.isNil) return 'error'
   if (val.isScalarKind) return 'type'
   if (val.isConstraint) return 'constraint'
-  if (val.isMap) return 'map'
-  if (val.isList) return 'list'
   if (val.isRef) return 'reference'
   if (val.isInteger) return 'integer'
   // NumberVal is the binary64 leaf, whose kind keyword is `float`;

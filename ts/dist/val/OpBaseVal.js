@@ -44,13 +44,11 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         }
         // console.log('OPVAL', this.id, this.opname(), pegdone, newpeg.map(p => p.canon))
         if (pegdone) {
-            let result = null == ctx ? this : this.operate(ctx, newpeg);
-            result = result || this;
-            if (null == result && this.canon === peer.canon) {
-                out = this;
-            }
+            // `|| this` makes result truthy, so an op that cannot compute yet
+            // takes the OpBaseVal arm below rather than a separate null arm.
+            let result = this.operate(ctx, newpeg) || this;
             // TODO: should be result.isOp
-            else if (result instanceof OpBaseVal) {
+            if (result instanceof OpBaseVal) {
                 if (peer.isTop) {
                     out = this;
                 }

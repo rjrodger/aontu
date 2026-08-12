@@ -66,13 +66,13 @@ class ListVal extends BagVal_1.BagVal {
                 const key_spread_cj = spread_cj.spreadClone(keyctx);
                 const child = this.peg[key];
                 (0, utility_1.propagateMarks)(this, child);
+                // child is non-nullish: propagateMarks above dereferences it.
                 out.peg[key] =
-                    undefined === child ? key_spread_cj :
-                        child.isNil ? child :
-                            key_spread_cj.isNil ? key_spread_cj :
-                                key_spread_cj.isTop && child.done ? child :
-                                    child.isTop && key_spread_cj.done ? key_spread_cj :
-                                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, key_spread_cj, 'list-own');
+                    child.isNil ? child :
+                        key_spread_cj.isNil ? key_spread_cj :
+                            key_spread_cj.isTop && child.done ? child :
+                                child.isTop && key_spread_cj.done ? key_spread_cj :
+                                    (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, key_spread_cj, 'list-own');
                 done = (done && type_1.DONE === out.peg[key].dc);
             }
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];

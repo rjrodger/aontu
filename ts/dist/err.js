@@ -43,7 +43,8 @@ function descErr(err, errctx) {
             let v1src = resolveSrc(v1, errctx, 'primary');
             let v2src = resolveSrc(v2, errctx, 'secondary');
             let path = ['$', ...err.path].filter((p) => null != p && '' != p);
-            let valpath = (0 < path.length ? path.join('.') : '');
+            // '$' is neither null nor '', so the filter always leaves it.
+            let valpath = path.join('.');
             let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify');
             const details = err.details;
             err.msg = [

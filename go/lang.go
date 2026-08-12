@@ -81,7 +81,7 @@ func langForBase(base string) (*jsonic.Jsonic, error) {
 		return j, nil
 	}
 	j, err := makeLang(base)
-	if err != nil {
+	if err != nil { //coverage:ignore makeLang cannot fail — see mustMakeLang
 		return nil, err
 	}
 	// Bound memory in long-running hosts (e.g. the LSP) that may resolve
@@ -98,7 +98,10 @@ func boolPtr(b bool) *bool { return &b }
 
 func mustMakeLang(base string) *jsonic.Jsonic {
 	j, err := makeLang(base)
-	if err != nil {
+	// makeLang's only error sources are its three plugin registrations,
+	// which take compile-time literal options and ignore the base — and
+	// this very call already succeeds at package init.
+	if err != nil { //coverage:ignore plugin registration cannot fail
 		panic("aontu: jsonic grammar setup failed: " + err.Error())
 	}
 	return j
@@ -270,11 +273,11 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			},
 		},
 		"evaluate": evaluate,
-	}); err != nil {
+	}); err != nil { //coverage:ignore plugin registration cannot fail
 		return nil, err
 	}
 
-	if err := j.Use(path.Path, nil); err != nil {
+	if err := j.Use(path.Path, nil); err != nil { //coverage:ignore plugin registration cannot fail
 		return nil, err
 	}
 
@@ -456,7 +459,8 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		rs.AddAC(wrapList)
 	})
 
-	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil {
+	// MultiSource reads the base only at RESOLVE time, not registration.
+	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil { //coverage:ignore plugin registration cannot fail
 		return nil, err
 	}
 
@@ -778,7 +782,7 @@ func isLossyIntegerLiteral(src string) bool {
 			return false
 		}
 		n, ok := new(big.Int).SetString(digits, 10)
-		if !ok {
+		if !ok { //coverage:ignore allDigits above already vetted the run
 			return false
 		}
 		// Zero at any exponent is zero, and zero is exact — test it
@@ -881,7 +885,7 @@ func exactLiteral(m []string) func(int) Val {
 
 	if m[2] == "" && m[3] == "" {
 		n, ok := new(big.Int).SetString(intPart, 10)
-		if !ok {
+		if !ok { //coverage:ignore the literal regex already vetted the digits
 			return exactNil("decimal_syntax")
 		}
 		// big.Int has no negative zero, so D5 needs nothing here.
@@ -939,7 +943,7 @@ func exactDecimal(neg bool, intPart, frac, exp string) (*Decimal, string) {
 	scale := big.NewInt(int64(len(frac)))
 	if exp != "" {
 		e, ok := new(big.Int).SetString(exp, 10)
-		if !ok {
+		if !ok { //coverage:ignore both callers pass a signed digit run
 			return nil, "decimal_syntax"
 		}
 		scale.Sub(scale, e)
@@ -949,7 +953,7 @@ func exactDecimal(neg bool, intPart, frac, exp string) (*Decimal, string) {
 	}
 
 	coeff, ok := new(big.Int).SetString(intPart+frac, 10)
-	if !ok {
+	if !ok { //coverage:ignore both callers pass unsigned digit runs
 		return nil, "decimal_syntax"
 	}
 	if neg {
@@ -1820,7 +1824,7 @@ func asValDepth(node any, depth int) Val {
 // relative @"file" loads.
 func parseBase(src, base string) (Val, error) {
 	lang, err := langForBase(base)
-	if err != nil {
+	if err != nil { //coverage:ignore langForBase cannot fail — see makeLang
 		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
 	}
 	// ParseMeta, not Parse: the meta bag is this parse's private channel

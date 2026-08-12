@@ -13,6 +13,7 @@ cov: cov-ts cov-go
 
 cov-ts:
 	cd ts && npm run test-cov
+	cd ts && npm run test-cov-check
 
 # Unit-test statement coverage, plus GOCOVERDIR integration runs of the
 # two command binaries so their literal main() functions are counted —
@@ -29,6 +30,17 @@ cov-go:
 	cd go && go tool covdata textfmt -i=covdata -o coverage-main.out
 	cd go && go run ./scripts/covmerge coverage-unit.out coverage-main.out > coverage.out
 	cd go && go tool cover -func=coverage.out | tail -1
+	@cd go && n=$$(awk '$$NF==0' coverage.out | wc -l | tr -d ' '); \
+		if [ "$$n" != "0" ]; then \
+			echo "covcheck: $$n uncovered block(s) — ADR-002 requires 100%:"; \
+			awk '$$NF==0 {print "  " $$1}' coverage.out; \
+			echo; \
+			echo "Close each with a shared spec row (preferred), a Go test, or —"; \
+			echo "only when genuinely unreachable — a //coverage:ignore marker"; \
+			echo "carrying its justification. See ADR.md."; \
+			exit 1; \
+		fi; \
+		echo "covcheck: 100% (ADR-002)"
 	cd go && rm -rf covdata bin coverage-unit.out coverage-main.out
 
 # TypeScript (canonical implementation, package lives in ts/)

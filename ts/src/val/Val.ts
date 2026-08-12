@@ -148,11 +148,13 @@ abstract class Val {
 
   deps?: any
 
-  #ctx: any
+  // TS-private (as _site above): the `#` form emits downlevel helper
+  // functions whose branches no supported Node can execute.
+  private _ctx: any
 
   // TODO: Site needed in ctor
   constructor(spec: ValSpec, ctx?: AontuContext) {
-    this.#ctx = ctx
+    this._ctx = ctx
 
     this.peg = spec?.peg
 
@@ -179,7 +181,7 @@ abstract class Val {
 
 
   ctx() {
-    return this.#ctx
+    return this._ctx
   }
 
 
@@ -217,9 +219,12 @@ abstract class Val {
 
     out.dc = this.done ? DONE : out.dc
 
-    out.site.row = spec?.row ?? this.site.row ?? -1
-    out.site.col = spec?.col ?? this.site.col ?? -1
-    out.site.url = spec?.url ?? this.site.url ?? ''
+    // this.site is a lazy getter that always yields a Site, and Site's
+    // constructor coerces row/col to numbers and url to a string, so the
+    // spec value is the only one that can be absent.
+    out.site.row = spec?.row ?? this.site.row
+    out.site.col = spec?.col ?? this.site.col
+    out.site.url = spec?.url ?? this.site.url
 
     out.mark = Object.assign({}, this.mark, fullspec.mark ?? {})
     out.mark.type = this.mark.type && (fullspec.mark?.type ?? true)
@@ -427,7 +432,7 @@ function inspectpeg(peg: any, d: number) {
     ('{' +
       Object.entries(peg).map((n: any) =>
         '\n  ' + indent + n[0] + ': ' + // n[1].inspect(d)
-        (n[1].inspect(d) ?? '' + n[1])
+        n[1].inspect(d)
       ).join(',') +
       '\n' + indent + '}')
   )

@@ -181,10 +181,16 @@ Concretely:
   so the behavioural suites stay readable as documentation.
 - The measurement pipeline is part of the deal and is maintained as
   such: `make cov-go` runs the command binaries under `GOCOVERDIR` so
-  their `main()` functions are genuinely executed rather than waved off,
-  and the TypeScript entry points are thin `bin/` wrappers so the
-  instrumented modules contain no unexecutable process glue.
+  their `main()` functions are genuinely executed rather than waved off;
+  the TypeScript entry points are thin `bin/` wrappers so the
+  instrumented modules contain no unexecutable process glue; and the
+  gate reads the lcov report rather than the runner's own summary
+  table, which miscounts `export` accessors. `make cov` FAILS below
+  100 % — the floor is checked, not eyeballed.
 - The remaining exclusions are enumerated with their rulings in
   [`docs/test-coverage.md`](docs/test-coverage.md). That list is meant
   to stay short and to be re-examined whenever the surrounding code
   changes: an exclusion whose justification no longer holds is a bug.
+  As of the round that first reached 100 %, it is twenty Go statements
+  (plugin registration, pre-vetted digit parses, ADR-001 shape mirrors,
+  two `main()`s) and, in TypeScript, the export blocks alone.

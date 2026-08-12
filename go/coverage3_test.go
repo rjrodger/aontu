@@ -384,7 +384,7 @@ func TestPrefRankArms(t *testing.T) {
 	if p.Unify(nil, ctx) != Val(p) {
 		t.Fatalf("pref against nil peer")
 	}
-	lo := newPref(newInteger(3))            // rank 0
+	lo := newPref(newInteger(3))          // rank 0
 	hi := newPref(newPref(newInteger(2))) // rank 1
 	if lo.Unify(hi, ctx) != Val(lo) {
 		t.Fatalf("lower rank must supersede")

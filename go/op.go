@@ -160,7 +160,7 @@ func (o *PlusOpVal) operate(ctx *Ctx, args []Val) Val {
 		// never the `number` supertype, which no concrete value carries.
 		return newFloat(p)
 	}
-	return nil
+	return nil //coverage:ignore peg is always string, bool or float64
 }
 
 // integerPlus is integer + integer, computed EXACTLY (D6).

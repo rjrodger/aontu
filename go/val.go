@@ -361,7 +361,7 @@ func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
 		keyPrefix = "key " + k + " "
 	}
 	caretCol := col
-	if caretCol < 1 {
+	if caretCol < 1 { //coverage:ignore rowCol never returns a column below 1
 		caretCol = 1
 	}
 	b.WriteString(strings.Repeat(" ", 6+caretCol-1))

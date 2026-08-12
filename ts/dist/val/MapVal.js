@@ -17,7 +17,7 @@ const keyorder_1 = require("../keyorder");
 // pass. The map lives on the unify root ctx (see Unify), so it persists
 // across fixpoint passes and is GC'd with the run.
 function spreadSnapKey(cj) {
-    return cj.canon + '~' + (cj.site?.row ?? -1) + ':' + (cj.site?.col ?? -1);
+    return cj.canon + '~' + cj.site.row + ':' + cj.site.col;
 }
 // Snapshot a path-dependent ref spread to its structural target once,
 // while inner key()/path() funcs in the target are still unresolved (see
@@ -176,13 +176,13 @@ class MapVal extends BagVal_1.BagVal {
                 }
                 else {
                     const key_spread_cj = spread_cj.spreadClone(keyctx);
+                    // child is non-nullish: propagateMarks above dereferences it.
                     oval =
-                        undefined === child ? key_spread_cj :
-                            child.isNil ? child :
-                                key_spread_cj.isNil ? key_spread_cj :
-                                    key_spread_cj.isTop && child.done ? child :
-                                        child.isTop && key_spread_cj.done ? key_spread_cj :
-                                            (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, key_spread_cj, 'map-own');
+                        child.isNil ? child :
+                            key_spread_cj.isNil ? key_spread_cj :
+                                key_spread_cj.isTop && child.done ? child :
+                                    child.isTop && key_spread_cj.done ? key_spread_cj :
+                                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, key_spread_cj, 'map-own');
                     if (!spread_cj.isTop && !oval.isNil) {
                         ;
                         oval._spr = spread_cj.id;

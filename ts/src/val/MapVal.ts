@@ -42,7 +42,7 @@ import { cmpCodePoint } from '../keyorder'
 // pass. The map lives on the unify root ctx (see Unify), so it persists
 // across fixpoint passes and is GC'd with the run.
 function spreadSnapKey(cj: any): string {
-  return cj.canon + '~' + (cj.site?.row ?? -1) + ':' + (cj.site?.col ?? -1)
+  return cj.canon + '~' + cj.site.row + ':' + cj.site.col
 }
 
 // Snapshot a path-dependent ref spread to its structural target once,
@@ -239,9 +239,9 @@ class MapVal extends BagVal {
         else {
           const key_spread_cj = spread_cj.spreadClone(keyctx)
 
+          // child is non-nullish: propagateMarks above dereferences it.
           oval =
-            undefined === child ? key_spread_cj :
-              child.isNil ? child :
+            child.isNil ? child :
                 key_spread_cj.isNil ? key_spread_cj :
                   key_spread_cj.isTop && child.done ? child :
                     child.isTop && key_spread_cj.done ? key_spread_cj :

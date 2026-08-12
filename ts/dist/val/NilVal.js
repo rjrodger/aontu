@@ -16,10 +16,10 @@ class NilVal extends Val_1.Val {
         if (spec && 'object' === typeof spec) {
             this.why = spec?.why;
             this.msg = 'string' === typeof spec?.msg ? spec.msg : this.msg;
-            this.err = spec ?
+            this.err =
                 Array.isArray(spec.err) ? [...spec.err] :
                     null != spec.err ? [spec.err] :
-                        Val_1.EMPTY_ERR : Val_1.EMPTY_ERR;
+                        Val_1.EMPTY_ERR;
         }
         // Nil is always DONE, by definition.
         this.dc = type_1.DONE;

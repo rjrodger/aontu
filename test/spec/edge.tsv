@@ -333,3 +333,30 @@ edge-implicit-list-mixed	gens	1,"s",true,null	[1,"s",true,null]
 edge-implicit-list-float	gens	1.5,2	[1.5,2]
 edge-implicit-list-canon	canon	1,2	[1,2]
 edge-implicit-list-map	gens	[{x:1},2]	[{"x":1},2]
+# --- batch 9: constraint residual algebra — leaf-kind narrowing of every
+# --- numeric leaf, like-direction bound tightening in both orders, and
+# --- exclusion dedup/tie-breaking — plus super() canon ---
+edge-constraint-leaf-integer	canon	a:integer&min(0)&5	{"a":5}
+edge-constraint-leaf-float	canon	a:float&min(0)&1.5	{"a":1.5}
+edge-constraint-leaf-biginteger	canon	a:biginteger&min(0)&0d5	{"a":0d5}
+edge-constraint-leaf-bigdecimal	canon	a:bigdecimal&min(0)&0d1.5	{"a":0d1.5}
+edge-constraint-min-tighter-right	canon	a:min(1)&min(2)	{"a":min(2)}
+edge-constraint-min-tighter-left	canon	a:min(2)&min(1)	{"a":min(2)}
+edge-constraint-max-tighter-left	canon	a:max(1)&max(2)	{"a":max(1)}
+edge-constraint-max-tighter-right	canon	a:max(2)&max(1)	{"a":max(1)}
+edge-constraint-above-tighter	canon	a:above(1)&above(2)	{"a":above(2)}
+edge-constraint-below-tighter	canon	a:below(2)&below(1)	{"a":below(1)}
+edge-constraint-open-beats-closed	canon	a:min(1)&above(1)	{"a":above(1)}
+edge-constraint-neq-tower-tie	canon	a:neq(1,1.0)	{"a":neq(1,1.0)}
+edge-constraint-neq-string-dedup	canon	a:neq("a","a")	{"a":neq("a")}
+edge-constraint-neq-merge-tie	canon	a:neq(1)&neq(1.0)	{"a":neq(1,1.0)}
+edge-spread-scalar-conflict-drives-keys	errc	a:{&:1,x:1}&{&:"s"}	scalar_kind
+edge-super-canon	canon	a:super(1)	{"a":integer}
+edge-super-residue-code	errc	a:super(1)&integer	mapval_no_gen
+# --- batch 10: double negation of an exact literal — `-` is a prefix
+# --- operator, so the negated spelling is rebuilt each time ---
+edge-neg-neg-biginteger	canon	a:--0d5	{"a":0d5}
+edge-neg-neg-spaced	canon	a:- -0d1.5	{"a":0d1.5}
+edge-neg-neg-paren	canon	a:-(-0d5)	{"a":0d5}
+edge-neg-paren-biginteger	canon	a:-(0d5)	{"a":-0d5}
+edge-neg-neg-gen	gens	a:--0d5	{"a":5}

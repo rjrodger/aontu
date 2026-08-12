@@ -1,84 +1,100 @@
 # Test coverage
 
-How test coverage is measured for both implementations, the current
-numbers, what the suites exercise, and — because the numbers are now
-close to the ceiling — an explicit accounting of every uncovered
-statement that remains. The figures below were produced with the
-dependency versions current at the time of writing and the toolchains
-noted in each section; re-run the commands to refresh them.
+Aontu holds **100 % coverage in both implementations** — Go statement
+coverage, TypeScript line, branch and function coverage — as a
+[recorded decision](../ADR.md#adr-002--test-coverage-stays-at-100--in-both-implementations),
+not an aspiration. This page explains how that is measured, what the
+suites actually exercise, and — because 100 % is only meaningful if the
+exclusions are honest — every place where code is excluded from the
+denominator and why.
 
 ## How to reproduce
 
 From the repository root:
 
 ```sh
-make cov        # both implementations
+make cov        # both implementations, and fail if either is under 100 %
 make cov-ts     # TypeScript only
 make cov-go     # Go only
 ```
 
+Each target ends in a **gate**, not just a report: `make cov` exits
+non-zero and names the offending lines if anything is uncovered. That is
+the ADR-002 floor made checkable.
+
 Equivalently, by hand:
 
 ```sh
-# TypeScript — Node's built-in V8 coverage over the compiled tests
-cd ts && npm run build && npm run test-cov
+# TypeScript — Node's V8 coverage over the compiled tests, checked by
+# ts/test/covcheck.js against the lcov report
+cd ts && npm run build && npm run test-cov-check
 
-# Go — statement coverage for package aontu
-cd go && go test -cover -coverprofile=coverage.out ./... \
-      && go tool cover -func=coverage.out      # per-function
-cd go && go tool cover -html=coverage.out      # annotated source in a browser
+# the human-readable table (not the gate)
+cd ts && npm run test-cov
+
+# Go — statement coverage, unit tests plus the GOCOVERDIR binary runs
+cd go && go tool cover -func=coverage.out   # after `make cov-go`
+cd go && go tool cover -html=coverage.out   # annotated source
 ```
 
-> The two numbers are **not directly comparable**: Node reports V8
-> line/branch/function coverage (including the test files), while Go
-> reports *statement* coverage of the package. Read each within its own
-> tool, not against the other.
+> The two numbers are still **not the same measurement**: Node reports
+> V8 line/branch/function coverage, Go reports *statement* coverage.
+> Both now read 100 %, but they are 100 % of different things.
 
 ## Summary
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript     | lines (Node `--experimental-test-coverage`) | **98.6 %** |
-| TypeScript     | branches | **93.8 %** |
-| TypeScript     | functions | **96.9 %** |
-| Go — library (`package aontu`) | statements (`go test -cover`) | **99.2 %** |
-| Go — CLI (`cmd/aontu`)         | statements | **97.8 %** |
-| Go — LSP library (`lsp`)       | statements | **100.0 %** |
-| Go — LSP server (`cmd/aontu-lsp`) | statements | **98.0 %** |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11327/11327) |
+| TypeScript — `ts/src` | branches | **100.00 %** (2527/2527) |
+| TypeScript — `ts/src` | functions | **100.00 %** (466/466) |
+| Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-`make cov-go` prints one combined figure over all four Go packages of
-**99.3 %** — and that run now covers the literal `main()` functions
-too: the target builds both command binaries with `go build -cover`,
-runs them for real (version, a piped document, an immediate-EOF LSP
-session) under `GOCOVERDIR`, and unions the binary-run profile into
-the unit-test profile with `go/scripts/covmerge`.
+Both suites pass in full via `make test`: **1952 TypeScript tests** and
+four green Go packages, including the **1592-row shared spec** that both
+engines execute.
 
-Both suites pass in full via `make test` (1877 TypeScript tests; the
-Go packages run the same shared rows plus 130+ native test functions).
+### What the measurement includes
 
-The coverage-driving method is spec-first: every gap reachable FROM
-SOURCE INPUT gets a shared row — `test/spec/edge.tsv` exists precisely
-for coverage-driven parity edges, every row probed byte-identical in
-both engines before pinning — so a covering test usually lifts BOTH
-engines at once. Only paths a source cannot reach get per-port unit
-tests (`go/coverage_test.go`, `go/coverage3_test.go` and the ts/test
-suites): comparison-internal binary64 infinities, deliberately-dead
-mirrored branches, grammar-action guards driven with constructed
-rules, tooling walks, debug/inspect rendering, and the CLI/LSP process
-plumbing. What still cannot be reached that way is not waved off — it
-is itemised in [The remainder, documented](#the-remainder-documented).
+Getting an honest 100 % needed the measurement itself to be sound, not
+just the tests:
+
+- **Go `main()` functions really run.** `make cov-go` builds both
+  command binaries with `go build -cover`, runs them for real (version,
+  a piped document, an immediate-EOF LSP session) under `GOCOVERDIR`,
+  converts with `go tool covdata textfmt`, and unions that profile into
+  the unit profile with `go/scripts/covmerge`.
+- **TypeScript entry points are thin wrappers.** `bin/aontu.js` and
+  `bin/aontu-lsp.js` hold the shebang and the `main(process.argv)` call
+  — the two things no in-process run can execute — so `src/cli.ts` and
+  `src/lsp-server.ts` are ordinary, fully-measurable modules.
+- **The gate reads lcov, not the summary table.** Node's built-in
+  coverage reporter attributes the accessors `tsc` emits for
+  `export { X }` to the import lines and then counts one of them unhit
+  even when V8 recorded a call. The lcov reporter and the raw
+  `NODE_V8_COVERAGE` data agree with each other at 100 %, so
+  `ts/test/covcheck.js` reads lcov. The summary table remains a useful
+  human report; it is simply not the thing CI checks.
+- **The run is deterministic.** Coverage merged across concurrently
+  running test-file processes proved lossy under load — single items
+  would drop in roughly one run in six. The gate therefore runs with
+  `--test-concurrency=1`, and the spawned-binary cases in `cli.test.ts`
+  no longer pass `NODE_V8_COVERAGE` to their children: those cases
+  assert the packaged binary's behaviour, while the same code paths are
+  measured in-process.
 
 ## What the suites exercise
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **1570 cases across 54 files** — is run by *both*
-implementations and is the contract that defines shared behaviour:
+`test/spec/*.tsv` — **1592 cases across 54 files** — is run by *both*
+implementations and is the contract that defines shared behaviour
+([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
 | `number-tower.tsv`        | 388 | `map.tsv`        | 20 |
-| `edge.tsv`                | 284 | `file.tsv`       | 18 |
+| `edge.tsv`                | 306 | `file.tsv`       | 18 |
 | `number-model.tsv`        | 112 | `plus.tsv`       | 14 |
 | `func.tsv`                |  91 | `conjunct.tsv`   | 13 |
 | `errcodes.tsv`            |  65 | `op-chars.tsv`   | 13 |
@@ -94,133 +110,114 @@ implementations and is the contract that defines shared behaviour:
 | `marks.tsv` / `var.tsv`   |  23 each |             |    |
 
 plus the `spread*.tsv` family — **26 files, 128 cases**, one spread
-topic per file. `divergent.tsv` is the divergence ledger: commentary
-only, no data rows, so it contributes zero cases (see
-[the shared spec](shared-spec.md#the-divergence-ledger)).
+topic per file. `divergent.tsv` is the parity ledger: commentary only,
+no data rows (see [the shared spec](shared-spec.md#the-divergence-ledger)).
 
 `edge.tsv` is the coverage drive's own file: parity edges found by
-reading uncovered engine code and probing candidate sources through
-both engines byte-for-byte before pinning. Its eight batches cover
-constraint ties, junction folding, reference/variable path parts of
-every kind, canon escapes, expects, lexer edges (based literals,
-overflow, exactness windows, separator refusals), comment starters
-inside text tokens, dangling operators, list-spread merging,
-duplicate-key merges of every bag shape, optional pairs in list
-position, and implicit top-level lists of every raw scalar kind.
+reading uncovered engine code and probing candidate sources through both
+engines byte-for-byte before pinning. Its ten batches cover constraint
+ties and the residual algebra (leaf narrowing, bound tightening in both
+orders, exclusion dedup and tie-breaks), junction folding,
+reference/variable path parts of every scalar kind, canon escapes,
+expects, lexer edges (based literals, overflow, exactness windows,
+separator refusals), comment starters inside text tokens, dangling
+operators, list-spread merging, duplicate-key merges of every bag shape,
+optional pairs in list position, implicit top-level lists of every raw
+scalar kind, and double negation of exact literals.
 
-The three `number-*.tsv` files are 559 of the 1570 rows — over a
-third of the suite. That is the number tower's doing: the leaves are
-disjoint, so every kind rule needs pinning in both directions, and
-`number-cross-product.tsv` pins the `+` operand table exhaustively in
-both operand orders.
+Each row asserts a canonical form (`canon`), a generated value (`gen`),
+the exact serialised bytes (`gens`), an error substring (`err`), an exact
+error code (`errc`), or an error-code registry entry (`errcode`).
 
-Each row asserts a canonical form (`canon`, 472 rows), a generated
-value (`gen`, 428), the exact serialised bytes (`gens`, 256), an error
-substring (`err`, 208), an exact error code (`errc`, 141), or an
-error-code registry entry (`errcode`, 65). Because both
-implementations load the same rows, every line of language behaviour
-described in the [language reference](reference-language.md) is
-checked on both sides.
+### Per-port tests
 
-### TypeScript-native tests
+Only what a shared row cannot express gets a per-port test — ADR-001
+prefers a row precisely because one row lifts both engines:
 
-`spec.test.ts` accounts for 1575 of the 1877 TypeScript tests: the
-1570 shared rows, a sanity check that the rows loaded, and tests of
-the `gens` mode's own machinery. The other ~300 are rich,
-implementation-specific cases: every built-in function in depth
-(`func.test.ts`), the exact leaves (`bignum.test.ts`), the public API
-(`aontu.test.ts`), LSP diagnostics/hover/completion/framing
-(`lsp.test.ts`), the CLI core and spawned binary (`cli.test.ts`),
-error rendering, references, parsing, the fixpoint, worked examples —
-and `coverage.test.ts` / `coverage2.test.ts`, the rounds that walk
-what no source reaches: the explain-trace formatters and `walk`
-guards in `utility.ts`, raw (non-Val) variable bindings in `VarVal`,
-`OpBaseVal`'s base machinery and `primatize`, `Val`'s inspect/debug
-rendering, the LSP server's frame codec and wiring fed malformed
-input, the exact-comparison edges, the spread-clone arms, the
-unify-cycle counter and internal-exception catch, and the whole CLI —
-help/version/file/canon/REPL/stdin — driven in-process on a swapped
-stdin, so even the readline loop and the version fallback are
-counted.
+**TypeScript** (`ts/test/*.test.ts`, 1952 tests, 1597 of them shared
+rows): every built-in function in depth, the exact leaves, the public
+API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
+references, parsing, the fixpoint, worked examples — plus three
+coverage-driven files (`coverage.test.ts`, `coverage2.test.ts`,
+`coverage3.test.ts`) that reach what no source can: the explain-trace
+formatters, raw (non-Val) variable bindings, `OpBaseVal` machinery,
+`Val`'s inspect rendering, `unite`'s internal-exception catch and cycle
+counter, spread-clone arms, constraint internals, the whole CLI driven
+in-process on a swapped stdin (readline REPL included), and the LSP
+server's frame codec and stream defaults.
 
-### Go-native tests
+**Go** (`go/*_test.go`, plus `lsp` and both commands): the
+representation-level invariants, `Generate`'s native exact types, the
+kind lattice, file loading, constructors, concurrency, `formatNumber`
+parity — plus four coverage-driven files (`coverage_test.go` through
+`coverage4_test.go`) covering scaled-comparison infinities, the
+`Check`/`Spans` walkers on constructed trees, `RefVal`/`VarVal`
+internals, defer and ratchet arms across the Val types, grammar actions
+driven with hand-built `jsonic.Rule` values, the custom lex matchers on
+a hand-built lexer, and the budget/clone paths that need a Val the
+engine never builds.
 
-`go/spec_test.go`'s `TestSpec` runs all 1570 shared rows as subtests,
-and `TestSpecGensMode` checks the byte-exact runner itself. Around
-them, `package aontu` has 114 test functions in twelve files — the
-representation-level invariants (`exact_test.go`), `Generate`'s native
-exact types (`generate_test.go`), the kind lattice (`kind_test.go`),
-file loading, constructors, concurrency, `formatNumber` parity, and
-two dedicated coverage files:
+## The exclusions, in full
 
-- `coverage_test.go` (rounds 1–2): scaled-comparison infinities,
-  tower ranks, ExpectVal contracts, unite dispatch arms, constraint
-  internals, lexer helpers, residue paths, clone flags.
-- `coverage3_test.go` (round 3): the `Check`/`Spans` walkers on
-  constructed trees, `RefVal`/`VarVal` internals (computed path
-  segments, chain-defer arms, cycle-proof walk failures), grammar
-  actions driven with hand-built `jsonic.Rule` values, `evaluate`
-  outside any parse, `snipExprCycles` on real back-edges, and the
-  custom lex matchers on a hand-built lexer.
+100 % is only meaningful if what was excluded is visible. Twenty Go
+statements carry a `//coverage:ignore` marker; TypeScript carries none
+at all beyond the export blocks (see below). Every marker states, in
+the source, what state would be required and why nothing can produce it
+— a marker without that justification is a defect
+([ADR-002](../ADR.md#adr-002--test-coverage-stays-at-100--in-both-implementations),
+rule 3).
 
-Outside the library, `go/lsp` is at 100 % (its own suite plus
-`coverage_test.go` covering the marshal fallbacks, parameter guards,
-positionless diagnostics, and line-index clamps), and both commands
-are tested end-to-end in-process: `cmd/aontu`'s `main` is a one-line
-`os.Exit(run(...))` and `run` is driven with in-memory pipes through
-every mode (help/version/bad option/file/canon/stdin/REPL);
-`cmd/aontu-lsp`'s `serve` loop is driven through framing errors, bad
-JSON, write failures, and the shutdown/exit handshake.
-
-## The remainder, documented
-
-The gap to literal 100 % is small enough to enumerate. Every entry
-below is code we keep ON PURPOSE — a defensive guard, an API-mandated
-error return, or process glue — and this list is the ruling on why a
-test does not exist. If a change makes one of these reachable, it
-moves out of this list and into a test.
-
-### Go library (`package aontu`, 23 statements)
+### Go — 20 statements
 
 | Site | Why it cannot be reached |
 |------|--------------------------|
-| `lang.go` `makeLang`/`mustMakeLang`/`langForBase`/`parseBase` error returns (84, 101, 273, 277, 459, 1823) | jsonic plugin-registration errors. The grammar is static — no input can make registration fail — but the plugin API returns errors and refusing to check them would be worse. |
-| `lang.go` `big.Int.SetString` guards (762, 781, 884, 942, 952) | The digit strings are pre-validated by `basedNumeric`/`allDigits`/the decimal regex, so `SetString` cannot fail on them. |
-| `func.go` resolve-pending arms (178–193) | The Go port's `resolve()` never returns nil or the func itself; TS `FuncBaseVal.resolve` can, and the arms mirror that shape so the two ports read the same. |
-| `clone.go` 300 | `clonePathRec`'s type-switch default: every concrete Val type has a case. |
-| `conjunct.go` 120 | `outvals` cannot be empty when `upeer` is non-empty — the last fold iteration always appends. |
-| `disjunct.go` 161 | An equal-rank pref merge wraps a conflict in a PrefVal; it never returns a bare nil, so the nil check cannot fire. |
-| `op.go` 163 | `operate`'s result switch: `plusAdd` only produces strings and floats. |
-| `unify.go` 106 | The `"$"` fallback for an empty residue-path list needs a non-bag root still refining at budget exhaustion; no source form produces one. |
-| `val.go` 364 | `rowCol` clamps columns to ≥ 1, so the caret clamp below it cannot fire. |
+| `lang.go` × 5 — `langForBase`, `mustMakeLang`, and the three `j.Use(...)` registrations | Plugin registration takes compile-time literal options and ignores the base; the same registrations already succeed at package init, so a failure would panic at load rather than reach these arms. |
+| `lang.go` × 4 — `big.Int.SetString` guards in `isLossyIntegerLiteral`, `exactLiteral`, `exactDecimal` | The digit strings are pre-vetted by `allDigits` or by the literal regex before the call, so `SetString` cannot reject them. |
+| `lang.go` — `parseBase`'s `langForBase` error arm | Same as `langForBase`: it has no failure mode. |
+| `func.go` × 2 — `resolve() == nil` and the whole `result == Val(f)` block | No `FuncVal.resolve` arm returns nil or the receiver. The block mirrors TS `FuncBaseVal`, where `resolve()` can return `this` — kept for the ADR-001 shape correspondence. |
+| `conjunct.go` — `case 0` of the outvals switch | A fold over ≥ 1 term always appends; the empty case returned 30 lines earlier. |
+| `disjunct.go` — the nil check after an equal-rank pref merge | `PrefVal.Unify` with a pref peer always yields a pref, never a bare nil. |
+| `op.go` — the trailing `return nil` of `operate` | `peg` is provably one of string, bool or float64, all handled above. |
+| `val.go` — the caret-column clamp in `NilVal.frame` | `rowCol` never returns a column below 1. |
+| `cmd/aontu/main.go`, `cmd/aontu-lsp/main.go` — `main()` | Executed for real by the `GOCOVERDIR` leg of `make cov-go`; the marker keeps the unit-only profile honest rather than excusing an untested function. |
 
-### Go commands (1 statement)
+The markers are implemented by `go/scripts/covmerge`, which parses the
+marked sources and drops those blocks from the merged profile. Two
+properties keep it from flattering the number: a marked block is dropped
+**only when its count is zero**, so a coarse marker can never hide
+executed code; and a file it cannot find or parse simply has no markers,
+so the merge degrades to a plain union rather than silently dropping
+everything.
 
-`cmd/aontu`'s `json.Encoder.Encode` error guard: `Generate` output is
-always encodable, and the guard is the API contract. The two `main()`
-functions are no longer in this list — `make cov-go` executes them for
-real via `GOCOVERDIR` binary runs and merges that profile in.
+### TypeScript — export blocks only
 
-### TypeScript
+`ts/src` carries one directive per file, on the trailing
+`export { … }` block, because V8 reports those lines as unexecuted in
+every run. Nothing else is excluded.
 
-| File | Remaining | What it is |
-|------|-----------|------------|
-| every file's `export { … }` block, the two shebangs, the two `require.main` guard calls | ~60 lines total | Counter artifacts and entry-point glue: V8+source-maps report export blocks as unexecuted, and the guarded `main(process.argv)` call only runs in a spawned binary, whose coverage the in-process tool cannot count. This is the floor under the TypeScript line number. |
-| `lang.ts` `rawToVal` arms, the resolver empty-path guards, the list `___merge` branch | ~20 lines | Kept for engine states the current jsonic grammar does not hand back (the implicit-list rows exercise the Go twin; TS routes those shapes through the Val rules). The resolver guard is shadowed by the `@""` syntax refusal — the divergence tracked as #38. |
-| `lsp.ts` `nilMessage` primary arms | 5 lines | Diagnostics carry a prebuilt `msg`, so the fallback formatter's canon arms never fire. |
-| `utility.ts` `walk` `Array.isArray` arm | 7 lines | Dead — arrays take the `typeof === 'object'` for-in path above it. Kept because the TS source is the canonical reading. |
-| a handful of one-line val branches (`OpBaseVal` result-null mirror, `Decimal` scale arm, `numkind` zero-coefficient window) | <10 lines | Mirror-dead or shadowed by an earlier fast path; each has a Go twin with the same ruling. |
+Everything else that was unreachable is **gone rather than excused**,
+per ADR-002 rule 4. The round deleted: a `null == resolved` branch that
+`?? this` had already made impossible (`RefVal`), the same shape in
+`OpBaseVal`, a `null == ctx` guard nine lines after `ctx` was
+dereferenced, an `undefined === child` guard after `propagateMarks`
+dereferenced the child (`MapVal` and `ListVal`), a `done` flag that was
+never set false (`PrefVal`), an array arm unreachable because
+`typeof [] === 'object'` (`utility.walk`), `Site` fallbacks that its own
+constructor makes impossible, a `___merge` list branch multisource
+cannot produce, and the two container arms of `lsp.valKind` — whose
+removal also brings it back into line with `valKind` in `go/check.go`.
+Two dot-operator handlers were folded onto one guarded builder so the
+missing-operand guard has a single, reachable site.
 
-## Reading the gap
+## Keeping it
 
-The headline difference (TS ~98.6 % of lines vs Go ~99.3 % of statements)
-is a measurement difference, not a quality signal: V8 counts every
-line of the file (exports, process glue, the REPL that only a real
-TTY runs), while Go counts statements in functions. In both ports the
-behaviour of every language feature is pinned by the 1570-row shared
-spec, which passes byte-identically on both sides; the per-port tests
-exist for what a TSV row cannot express. When raising a number
-further, the order of preference stays: shared row first (probe both
-engines, pin the agreement, ledger the divergence), per-port unit
-test only for engine internals, and a documented ruling only for what
-no test can reach.
+The floor holds because `make cov` fails when it is breached, and the
+order of preference for closing a gap is fixed: a shared spec row first
+(it lifts both engines), then a per-port unit test, then — only with a
+written justification — a marker, and preferably a deletion instead. A
+test that exists only to move the number is worse than the gap it
+closes, because it makes the counter lie.
+
+The probing that drives new rows also keeps finding real parity
+differences rather than hiding them: this round filed #39, #40 and #41,
+each registered rather than pinned or papered over.

@@ -160,7 +160,7 @@ func repl(a *aontu.Aontu, mode string, in io.Reader, out io.Writer) {
 	fmt.Fprintln(out)
 }
 
-func main() {
+func main() { //coverage:ignore run under GOCOVERDIR by `make cov-go`
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, !stdinIsPipe()))
 }
 
