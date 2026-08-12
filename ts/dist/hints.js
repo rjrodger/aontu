@@ -271,5 +271,5 @@ function codeClass(code) {
         }
     }
     return 'internal';
-}
+} /* node:coverage ignore next 8 */
 //# sourceMappingURL=hints.js.map

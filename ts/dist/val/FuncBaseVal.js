@@ -127,6 +127,6 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     resolve(ctx, _args) {
         return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'resolve');
     }
-}
+} /* node:coverage ignore next 6 */
 exports.FuncBaseVal = FuncBaseVal;
 //# sourceMappingURL=FuncBaseVal.js.map

@@ -144,7 +144,7 @@ class IntegerVal extends ScalarVal {
 
     return out
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

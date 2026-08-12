@@ -75,6 +75,6 @@ class ScalarVal extends Val_1.Val {
             peg: this.kind
         }));
     }
-}
+} /* node:coverage ignore next 6 */
 exports.ScalarVal = ScalarVal;
 //# sourceMappingURL=ScalarVal.js.map

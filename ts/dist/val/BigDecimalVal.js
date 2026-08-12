@@ -75,6 +75,6 @@ class BigDecimalVal extends ScalarVal_1.ScalarVal {
     get canon() {
         return this.peg.canon();
     }
-}
+} /* node:coverage ignore next 6 */
 exports.BigDecimalVal = BigDecimalVal;
 //# sourceMappingURL=BigDecimalVal.js.map

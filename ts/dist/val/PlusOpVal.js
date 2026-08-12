@@ -181,5 +181,5 @@ function integer(v, k) {
 // Scale 0 normalises to the one decimal place the leaf keeps.
 function decimal(v, k) {
     return 'bigdecimal' === k ? v.peg : new Decimal_1.Decimal(integer(v, k), 0);
-}
+} /* node:coverage ignore next 6 */
 //# sourceMappingURL=PlusOpVal.js.map

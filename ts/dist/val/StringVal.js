@@ -14,6 +14,6 @@ class StringVal extends ScalarVal_1.ScalarVal {
     get canon() {
         return JSON.stringify(this.peg);
     }
-}
+} /* node:coverage ignore next 5 */
 exports.StringVal = StringVal;
 //# sourceMappingURL=StringVal.js.map

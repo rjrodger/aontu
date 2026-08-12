@@ -449,7 +449,7 @@ class MapVal extends BagVal {
     return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : ''
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

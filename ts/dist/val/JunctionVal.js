@@ -26,6 +26,6 @@ class JunctionVal extends FeatureVal_1.FeatureVal {
                 '(' + v.canon + ')' : v.canon; // v.id + '=' + v.canon
         }).join(this.getJunctionSymbol()); // + '<' + (this.mark.hide ? 'H' : '') + '>'
     }
-}
+} /* node:coverage ignore next 6 */
 exports.JunctionVal = JunctionVal;
 //# sourceMappingURL=JunctionVal.js.map

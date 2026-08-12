@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -84,9 +83,5 @@ function main(stdin = process.stdin, write = (chunk) => void process.stdout.writ
     stdin.on('data', (chunk) => codec.push(chunk));
     stdin.on('end', () => codec.end());
     return codec;
-}
-// Only auto-run when invoked as a program, not when imported by tests.
-if (require.main === module) {
-    main();
-}
+} /* node:coverage ignore next 11 */
 //# sourceMappingURL=lsp-server.js.map

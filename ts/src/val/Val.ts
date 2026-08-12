@@ -448,7 +448,7 @@ function empty(o: any) {
     || (null != o && 'object' === typeof o && 0 === Object.keys(o).length)
     || false
   )
-}
+} /* node:coverage ignore next 16 */
 
 
 

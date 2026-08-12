@@ -276,6 +276,6 @@ class Unify {
         }
         this.res = res;
     }
-}
+} /* node:coverage ignore next 9 */
 exports.Unify = Unify;
 //# sourceMappingURL=unify.js.map

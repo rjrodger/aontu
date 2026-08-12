@@ -181,6 +181,6 @@ class ListVal extends BagVal_1.BagVal {
                 this.peg[k].canon).join(',') +
             ']';
     }
-}
+} /* node:coverage ignore next 8 */
 exports.ListVal = ListVal;
 //# sourceMappingURL=ListVal.js.map

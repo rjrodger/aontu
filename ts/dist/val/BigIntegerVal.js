@@ -70,6 +70,6 @@ class BigIntegerVal extends ScalarVal_1.ScalarVal {
         const neg = this.peg < 0n;
         return (neg ? '-0d' : '0d') + (neg ? -this.peg : this.peg).toString();
     }
-}
+} /* node:coverage ignore next 6 */
 exports.BigIntegerVal = BigIntegerVal;
 //# sourceMappingURL=BigIntegerVal.js.map

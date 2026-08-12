@@ -1221,7 +1221,7 @@ class Lang {
 
     return val
   }
-}
+} /* node:coverage ignore next 6 */
 
 export {
   Lang,

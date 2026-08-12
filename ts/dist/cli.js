@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
@@ -221,9 +220,5 @@ function main(argv) {
     else {
         runStdin(mode).then((code) => finish(code));
     }
-}
-// Only run when invoked as a program, not when imported (e.g. by tests).
-if (require.main === module) {
-    main(process.argv);
-}
+} /* node:coverage ignore next 8 */
 //# sourceMappingURL=cli.js.map

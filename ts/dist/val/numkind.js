@@ -220,5 +220,5 @@ function stripSep(s) {
 // select on kind, not merely on the peg being a JS number.
 function integerDigits(peg) {
     return BigInt(peg).toString();
-}
+} /* node:coverage ignore next 13 */
 //# sourceMappingURL=numkind.js.map

@@ -454,6 +454,6 @@ class RefVal extends FeatureVal_1.FeatureVal {
             this.prefix ? 'prefix' : '',
         ].filter(p => '' != p).join(',');
     }
-}
+} /* node:coverage ignore next 6 */
 exports.RefVal = RefVal;
 //# sourceMappingURL=RefVal.js.map

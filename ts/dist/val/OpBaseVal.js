@@ -147,6 +147,6 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         }
         return undefined;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.OpBaseVal = OpBaseVal;
 //# sourceMappingURL=OpBaseVal.js.map

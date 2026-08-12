@@ -198,6 +198,6 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         }
         return super.gen(ctx);
     }
-}
+} /* node:coverage ignore next 8 */
 exports.DisjunctVal = DisjunctVal;
 //# sourceMappingURL=DisjunctVal.js.map

@@ -102,7 +102,7 @@ class BigIntegerVal extends ScalarVal {
     const neg = this.peg < 0n
     return (neg ? '-0d' : '0d') + (neg ? -this.peg : this.peg).toString()
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

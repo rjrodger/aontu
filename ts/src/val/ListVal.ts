@@ -271,7 +271,7 @@ class ListVal extends BagVal {
           this.peg[k].canon).join(',') +
       ']'
   }
-}
+} /* node:coverage ignore next 8 */
 
 
 

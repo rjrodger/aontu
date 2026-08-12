@@ -155,6 +155,6 @@ class AontuError extends Error {
             .filter(line => !line.match(/aontu\/(src|dist)\//))
             .join('\n');
     }
-}
+} /* node:coverage ignore next 9 */
 exports.AontuError = AontuError;
 //# sourceMappingURL=err.js.map

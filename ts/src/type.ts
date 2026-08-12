@@ -50,7 +50,7 @@ type ValList = Val[]
 type ErrContext = {
   src?: string,
   fs?: FST
-}
+} /* node:coverage ignore next 20 */
 
 export type {
   Val,

@@ -109,7 +109,7 @@ Try it without writing any code — both implementations ship an `aontu`
 command that evaluates a file or starts a REPL:
 
 ```sh
-echo 'port: *8080 | integer' | node ts/dist/cli.js   # or: go run ./cmd/aontu
+echo 'port: *8080 | integer' | node ts/bin/aontu.js   # or: go run ./cmd/aontu
 ```
 
 Start with the [Tutorial](tutorial.md).

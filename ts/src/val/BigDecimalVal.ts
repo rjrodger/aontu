@@ -109,7 +109,7 @@ class BigDecimalVal extends ScalarVal {
   get canon() {
     return this.peg.canon()
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

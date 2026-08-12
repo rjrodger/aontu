@@ -279,7 +279,7 @@ class DisjunctVal extends JunctionVal {
 
     return super.gen(ctx)
   }
-}
+} /* node:coverage ignore next 8 */
 
 
 

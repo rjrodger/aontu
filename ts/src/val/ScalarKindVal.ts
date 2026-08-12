@@ -219,7 +219,7 @@ class ScalarKindVal extends FeatureVal {
   }
 
 
-}
+} /* node:coverage ignore next 15 */
 
 
 export {

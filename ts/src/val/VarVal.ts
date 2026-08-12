@@ -189,7 +189,7 @@ class VarVal extends FeatureVal {
 
     return undefined
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

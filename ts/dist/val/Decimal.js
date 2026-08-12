@@ -314,5 +314,5 @@ function readBigLiteral(m) {
         leaf: 'bigdecimal',
         dec: new Decimal(BigInt(intd + (fracd ?? '')), scale),
     };
-}
+} /* node:coverage ignore next 12 */
 //# sourceMappingURL=Decimal.js.map

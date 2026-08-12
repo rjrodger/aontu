@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
 // Aontu Language Server (stdio).
@@ -99,13 +98,11 @@ function main(
   stdin.on('data', (chunk: Buffer) => codec.push(chunk))
   stdin.on('end', () => codec.end())
   return codec
-}
+} /* node:coverage ignore next 11 */
 
 
-// Only auto-run when invoked as a program, not when imported by tests.
-if (require.main === module) {
-  main()
-}
+// No require.main guard here: bin/aontu-lsp.js is the executable entry
+// and calls main() itself, so this module stays import-only.
 
 
 export {

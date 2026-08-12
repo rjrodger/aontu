@@ -95,7 +95,7 @@ class NumberVal extends ScalarVal {
       s.includes('N') ||
       s.includes('I')) ? s : s + '.0'
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

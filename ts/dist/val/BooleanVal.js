@@ -11,6 +11,6 @@ class BooleanVal extends ScalarVal_1.ScalarVal {
     unify(peer, ctx) {
         return super.unify(peer, ctx);
     }
-}
+} /* node:coverage ignore next 6 */
 exports.BooleanVal = BooleanVal;
 //# sourceMappingURL=BooleanVal.js.map

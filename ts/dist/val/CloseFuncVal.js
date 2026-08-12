@@ -27,6 +27,6 @@ class CloseFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return argval;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.CloseFuncVal = CloseFuncVal;
 //# sourceMappingURL=CloseFuncVal.js.map

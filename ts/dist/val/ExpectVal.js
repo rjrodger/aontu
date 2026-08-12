@@ -38,6 +38,6 @@ class ExpectVal extends FeatureVal_1.FeatureVal {
             ',peer=' + this.peer?.inspect(d) +
             ',parent=' + this.parent?.inspect(d);
     }
-}
+} /* node:coverage ignore next 6 */
 exports.ExpectVal = ExpectVal;
 //# sourceMappingURL=ExpectVal.js.map

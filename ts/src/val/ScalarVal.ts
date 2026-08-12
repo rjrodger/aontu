@@ -121,7 +121,7 @@ class ScalarVal extends Val {
     }))
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

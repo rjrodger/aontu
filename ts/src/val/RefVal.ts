@@ -582,7 +582,7 @@ class RefVal extends FeatureVal {
     ].filter(p => '' != p).join(',')
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

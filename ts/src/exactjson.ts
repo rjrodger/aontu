@@ -246,7 +246,7 @@ function emit(v: any, unit: string, pad: string, seen: Set<any>): string {
  */
 function exactJSON(value: any, indent?: number | string): string {
   return emit(value, indentUnit(indent), '', new Set())
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

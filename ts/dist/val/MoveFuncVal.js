@@ -56,6 +56,6 @@ class MoveFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // console.log('MOVE-resolve', orig, out)
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.MoveFuncVal = MoveFuncVal;
 //# sourceMappingURL=MoveFuncVal.js.map

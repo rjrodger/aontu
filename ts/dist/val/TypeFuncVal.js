@@ -30,6 +30,6 @@ class TypeFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.TypeFuncVal = TypeFuncVal;
 //# sourceMappingURL=TypeFuncVal.js.map

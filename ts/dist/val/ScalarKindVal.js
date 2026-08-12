@@ -166,6 +166,6 @@ class ScalarKindVal extends FeatureVal_1.FeatureVal {
         let out = peer?.isScalarKind ? this.peg === peer?.peg : super.same(peer);
         return out;
     }
-}
+} /* node:coverage ignore next 15 */
 exports.ScalarKindVal = ScalarKindVal;
 //# sourceMappingURL=ScalarKindVal.js.map

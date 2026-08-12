@@ -36,7 +36,7 @@ implementations are checked against the same cases.
 │   └── spec/            # shared test cases — *.tsv (language-agnostic)
 │       └── divergent.tsv  # the parity ledger (commentary only, no rows)
 ├── ts/                  # canonical TypeScript implementation
-│   ├── package.json     # `bin`: aontu -> dist/cli.js, aontu-lsp -> dist/lsp-server.js
+│   ├── package.json     # `bin`: aontu -> bin/aontu.js, aontu-lsp -> bin/aontu-lsp.js
 │   ├── src/             # source incl. cli.ts, lsp.ts, lsp-server.ts (+ src/tsconfig.json -> ../dist)
 │   ├── test/            # tests (+ test/tsconfig.json -> ../dist-test)
 │   ├── dist/            # committed compiled JS + .d.ts (incl. cli.js)
@@ -154,7 +154,7 @@ both implementations and requiring them to agree.** Two command lines,
 from the repository root:
 
 ```sh
-echo 'x:1.0' | node ts/dist/cli.js -c
+echo 'x:1.0' | node ts/bin/aontu.js -c
 (cd go && echo 'x:1.0' | go run ./cmd/aontu -c)
 ```
 

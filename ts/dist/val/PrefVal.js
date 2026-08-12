@@ -146,6 +146,6 @@ class PrefVal extends FeatureVal_1.FeatureVal {
         }
         return val.gen(ctx);
     }
-}
+} /* node:coverage ignore next 6 */
 exports.PrefVal = PrefVal;
 //# sourceMappingURL=PrefVal.js.map

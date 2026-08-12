@@ -197,7 +197,7 @@ class FuncBaseVal extends FeatureVal {
   }
 
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

@@ -135,7 +135,7 @@ with no arguments.
 
 ```sh
 cd ts && npm install && npm run build
-node ts/dist/lsp-server.js
+node ts/bin/aontu-lsp.js
 # or, once installed (npm i -g aontu), the bin:
 aontu-lsp
 ```
@@ -176,7 +176,7 @@ import { workspace, ExtensionContext } from 'vscode'
 import { LanguageClient, TransportKind } from 'vscode-languageclient/node'
 
 export function activate(_ctx: ExtensionContext) {
-  const serverModule = '/abs/path/to/aontu/ts/dist/lsp-server.js' // or the Go binary
+  const serverModule = '/abs/path/to/aontu/ts/bin/aontu-lsp.js' // or the Go binary
   const client = new LanguageClient(
     'aontu',
     'Aontu',
@@ -202,7 +202,7 @@ vim.api.nvim_create_autocmd('FileType', {
   callback = function(args)
     vim.lsp.start({
       name = 'aontu-lsp',
-      cmd = { 'aontu-lsp' },           -- or { 'node', '/abs/path/ts/dist/lsp-server.js' }
+      cmd = { 'aontu-lsp' },           -- or { 'node', '/abs/path/ts/bin/aontu-lsp.js' }
       root_dir = vim.fs.dirname(args.file),
     })
   end,

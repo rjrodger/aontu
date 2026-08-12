@@ -342,6 +342,6 @@ class MapVal extends BagVal_1.BagVal {
     inspection(d) {
         return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : '';
     }
-}
+} /* node:coverage ignore next 6 */
 exports.MapVal = MapVal;
 //# sourceMappingURL=MapVal.js.map

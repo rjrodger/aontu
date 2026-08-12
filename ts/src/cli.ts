@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
 // Command-line interface for Aontu.
@@ -209,13 +208,11 @@ function main(argv: string[]): void {
   else {
     runStdin(mode).then((code) => finish(code))
   }
-}
+} /* node:coverage ignore next 8 */
 
 
-// Only run when invoked as a program, not when imported (e.g. by tests).
-if (require.main === module) {
-  main(process.argv)
-}
+// No require.main guard here: bin/aontu.js is the executable entry and
+// calls main(process.argv) itself, so this module stays import-only.
 
 
 export { evalSource, main }

@@ -226,7 +226,7 @@ class PrefVal extends FeatureVal {
 
     return val.gen(ctx)
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

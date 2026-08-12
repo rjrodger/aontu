@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { LspHandler } from './lsp';
 declare class FrameCodec {
     private handler;

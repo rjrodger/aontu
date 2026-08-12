@@ -237,7 +237,7 @@ function integer(v: any, k: OpKind): bigint {
 // Scale 0 normalises to the one decimal place the leaf keeps.
 function decimal(v: any, k: OpKind): Decimal {
   return 'bigdecimal' === k ? v.peg : new Decimal(integer(v, k), 0)
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

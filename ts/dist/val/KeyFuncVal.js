@@ -89,6 +89,6 @@ class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     gen(_ctx) {
         return undefined;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.KeyFuncVal = KeyFuncVal;
 //# sourceMappingURL=KeyFuncVal.js.map

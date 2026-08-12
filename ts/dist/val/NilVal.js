@@ -111,6 +111,6 @@ NilVal.make = (ctx, why, av, bv, attempt, details) => {
 //
 // Do NOT use this sentinel for errors that may surface: those need
 // real NilVals with proper site/path info for descErr formatting.
-const TRIAL_NIL = new NilVal({ why: '|:trial-nil' });
+const TRIAL_NIL = new NilVal({ why: '|:trial-nil' }); /* node:coverage ignore next 7 */
 exports.TRIAL_NIL = TRIAL_NIL;
 //# sourceMappingURL=NilVal.js.map

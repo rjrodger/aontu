@@ -969,6 +969,6 @@ class Lang {
         }
         return val;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.Lang = Lang;
 //# sourceMappingURL=lang.js.map

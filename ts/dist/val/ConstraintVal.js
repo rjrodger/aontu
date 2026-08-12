@@ -402,6 +402,6 @@ class NeqConstraintVal extends ConstraintVal {
     constructor(spec, ctx) {
         super({ ...spec, atom: 'neq' }, ctx);
     }
-}
+} /* node:coverage ignore next 11 */
 exports.NeqConstraintVal = NeqConstraintVal;
 //# sourceMappingURL=ConstraintVal.js.map

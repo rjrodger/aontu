@@ -38,6 +38,6 @@ class CopyFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // console.log('COPY-RESOLVE', ctx.cc, val, out)
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.CopyFuncVal = CopyFuncVal;
 //# sourceMappingURL=CopyFuncVal.js.map

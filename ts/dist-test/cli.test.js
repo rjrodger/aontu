@@ -40,7 +40,7 @@ const node_child_process_1 = require("node:child_process");
 const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
 const cli_1 = require("../dist/cli");
-const CLI = Path.join(__dirname, '..', 'dist', 'cli.js');
+const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js');
 function run(args, input) {
     try {
         const out = (0, node_child_process_1.execFileSync)('node', [CLI, ...args], {

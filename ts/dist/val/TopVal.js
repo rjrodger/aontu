@@ -33,6 +33,6 @@ class TopVal extends Val_1.Val {
     gen(_ctx) {
         return undefined;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.TopVal = TopVal;
 //# sourceMappingURL=TopVal.js.map

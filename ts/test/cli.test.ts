@@ -9,7 +9,7 @@ import { Aontu } from '../dist/aontu'
 import { evalSource } from '../dist/cli'
 
 
-const CLI = Path.join(__dirname, '..', 'dist', 'cli.js')
+const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js')
 
 
 function run(args: string[], input?: string): { out: string; code: number } {

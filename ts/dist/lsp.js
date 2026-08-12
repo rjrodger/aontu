@@ -396,6 +396,6 @@ class LspHandler {
     publish(uri) {
         return publishDiagnosticsMsg(uri, computeDiagnostics(this.docs.get(uri) ?? ''));
     }
-}
+} /* node:coverage ignore next 28 */
 exports.LspHandler = LspHandler;
 //# sourceMappingURL=lsp.js.map

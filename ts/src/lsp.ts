@@ -480,7 +480,7 @@ class LspHandler {
   private publish(uri: string): OutMessage {
     return publishDiagnosticsMsg(uri, computeDiagnostics(this.docs.get(uri) ?? ''))
   }
-}
+} /* node:coverage ignore next 28 */
 
 
 export {

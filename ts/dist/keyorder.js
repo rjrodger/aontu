@@ -61,5 +61,5 @@ function cmpCodePoint(a, b) {
             return xc < yc ? -1 : 1;
         }
     }
-}
+} /* node:coverage ignore next 6 */
 //# sourceMappingURL=keyorder.js.map

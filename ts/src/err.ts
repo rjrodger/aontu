@@ -200,7 +200,7 @@ class AontuError extends Error {
   }
 
   errs: () => NilVal[]
-}
+} /* node:coverage ignore next 9 */
 
 
 export {

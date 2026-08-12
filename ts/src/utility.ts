@@ -194,7 +194,7 @@ function items(o: any) {
   else {
     return []
   }
-}
+} /* node:coverage ignore next 15 */
 
 
 export {

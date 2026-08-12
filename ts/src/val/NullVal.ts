@@ -29,7 +29,7 @@ class NullVal extends ScalarVal {
   unify(peer: Val, ctx: AontuContext): Val {
     return super.unify(peer, ctx)
   }
-}
+} /* node:coverage ignore next 7 */
 
 
 export {

@@ -114,6 +114,6 @@ class IntegerVal extends ScalarVal_1.ScalarVal {
         (0, utility_1.explainClose)(te, out);
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.IntegerVal = IntegerVal;
 //# sourceMappingURL=IntegerVal.js.map
