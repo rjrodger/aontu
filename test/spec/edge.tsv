@@ -314,3 +314,22 @@ edge-zeros-exp-zero	gens	a:00e999	{"a":0}
 edge-sep-doubled-text	gens	a:1__2	{"a":"1__2"}
 edge-sep-based-open-neg	errc	a:-0x_1	negative
 edge-sep-based-open-binary	gens	a:0b_1	{"a":"0b_1"}
+# --- batch 7: duplicate-key merges (conjunct-conjunct append, list
+# --- replays, junction pairs) and optional pairs in list position ---
+edge-dup-conjunct-conflict	errc	a:1&2 a:3&4	scalar_value
+edge-dup-conjunct-maps	gens	a:{x:1}&{y:2} a:{z:3}&{w:4}	{"a":{"w":4,"x":1,"y":2,"z":3}}
+edge-dup-list-same	gens	a:[1] a:[1]	{"a":[1]}
+edge-dup-list-conflict	errc	a:[1] a:[2]	scalar_value
+edge-dup-list-two	gens	a:[1,2] a:[1,2]	{"a":[1,2]}
+edge-dup-conjunct-kind	gens	a:1&integer a:1&integer	{"a":1}
+edge-dup-list-conjunct	gens	a:[1]&[1] a:[1]&[1]	{"a":[1]}
+edge-dup-junction	gens	a:1&2|3 a:4&5|3	{"a":3}
+edge-optional-pair-in-list	gens	a:[1,x?:2]	{"a":[1]}
+edge-optional-pair-in-list-ref	gens	a:[1,x?:$.zz]	{"a":[1]}
+# --- batch 8: implicit top-level lists (raw scalar conversions of every
+# --- kind outside the val rules) ---
+edge-implicit-list-ints	gens	1,2	[1,2]
+edge-implicit-list-mixed	gens	1,"s",true,null	[1,"s",true,null]
+edge-implicit-list-float	gens	1.5,2	[1.5,2]
+edge-implicit-list-canon	canon	1,2	[1,2]
+edge-implicit-list-map	gens	[{x:1},2]	[{"x":1},2]

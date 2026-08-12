@@ -3,6 +3,7 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FrameCodec = void 0;
+exports.main = main;
 // Aontu Language Server (stdio).
 //
 //   aontu-lsp
@@ -74,11 +75,15 @@ class FrameCodec {
     }
 }
 exports.FrameCodec = FrameCodec;
-function main() {
+// The streams and exit are injectable (defaulting to real stdio) so the
+// full wiring is unit-testable — the same shape as the Go server's
+// serve(in, out, logw).
+function main(stdin = process.stdin, write = (chunk) => void process.stdout.write(chunk), exit = (code) => process.exit(code)) {
     const handler = new lsp_1.LspHandler();
-    const codec = new FrameCodec(handler, (chunk) => process.stdout.write(chunk), (code) => process.exit(code));
-    process.stdin.on('data', (chunk) => codec.push(chunk));
-    process.stdin.on('end', () => codec.end());
+    const codec = new FrameCodec(handler, write, exit);
+    stdin.on('data', (chunk) => codec.push(chunk));
+    stdin.on('end', () => codec.end());
+    return codec;
 }
 // Only auto-run when invoked as a program, not when imported by tests.
 if (require.main === module) {

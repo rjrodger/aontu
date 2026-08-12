@@ -14,8 +14,22 @@ cov: cov-ts cov-go
 cov-ts:
 	cd ts && npm run test-cov
 
+# Unit-test statement coverage, plus GOCOVERDIR integration runs of the
+# two command binaries so their literal main() functions are counted —
+# go test cannot execute a main() that os.Exits. The two profiles are
+# unioned by scripts/covmerge.
 cov-go:
-	cd go && go test -cover -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | tail -1
+	cd go && go test -cover -coverprofile=coverage-unit.out $$(go list ./... | grep -v /scripts/)
+	cd go && rm -rf covdata && mkdir -p covdata bin \
+		&& go build -cover -o bin/aontu-cov ./cmd/aontu \
+		&& go build -cover -o bin/aontu-lsp-cov ./cmd/aontu-lsp
+	cd go && GOCOVERDIR=covdata ./bin/aontu-cov --version >/dev/null
+	cd go && echo 'a:1' | GOCOVERDIR=covdata ./bin/aontu-cov >/dev/null
+	cd go && GOCOVERDIR=covdata ./bin/aontu-lsp-cov </dev/null >/dev/null || true
+	cd go && go tool covdata textfmt -i=covdata -o coverage-main.out
+	cd go && go run ./scripts/covmerge coverage-unit.out coverage-main.out > coverage.out
+	cd go && go tool cover -func=coverage.out | tail -1
+	cd go && rm -rf covdata bin coverage-unit.out coverage-main.out
 
 # TypeScript (canonical implementation, package lives in ts/)
 build-ts:
