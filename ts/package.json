@@ -21,7 +21,7 @@
   "scripts": {
     "test": "node --enable-source-maps --test \"dist-test/**/*.test.js\"",
     "test-cov": "node --enable-source-maps --experimental-test-coverage --test-coverage-exclude=\"dist-test/**\" --test-coverage-exclude=\"test/**\" --test-coverage-exclude=\"bin/**\" --test \"dist-test/**/*.test.js\"",
-    "test-cov-check": "node --enable-source-maps --experimental-test-coverage --test-coverage-exclude=\"dist-test/**\" --test-coverage-exclude=\"test/**\" --test-coverage-exclude=\"bin/**\" --test-concurrency=1 --test-reporter=lcov --test-reporter-destination=coverage/lcov.info --test \"dist-test/**/*.test.js\" && node test/covcheck.js coverage/lcov.info",
+    "test-cov-check": "node test/covrun.js",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$TEST_PATTERN\" --test \"dist-test/**/*.test.js\"",
     "watch": "tsc --build src test -w",
     "build": "tsc --build src test",

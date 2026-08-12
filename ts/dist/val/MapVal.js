@@ -168,7 +168,9 @@ class MapVal extends BagVal_1.BagVal {
                 // but costs O(keys) deep template clones per pass on large
                 // models — the dominant cost on generated-SDK model trees.
                 let oval;
-                if (undefined !== child && !spread_cj.isTop
+                // No `undefined !== child` here: propagateMarks above already
+                // dereferenced it, so a missing child would have thrown there.
+                if (!spread_cj.isTop
                     && child._spr === spread_cj.id) {
                     oval = child.done ? child :
                         (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, TOP, 'map-own');

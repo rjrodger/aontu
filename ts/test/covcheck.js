@@ -3,7 +3,11 @@
 // ADR-002 gate: read an lcov report of ts/src and fail unless every
 // line, branch and function is covered.
 //
-//   node test/covcheck.js [lcov.info]
+//   node test/covcheck.js [lcov.info ...]
+//
+// Several reports are UNIONED: a line observed executing in any run did
+// execute, so unioning recovers observations that a single run lost (see
+// test/covrun.js for why that happens).
 //
 // Why lcov and not the runner's own summary table: Node's built-in
 // coverage reporter attributes the re-export accessors tsc emits for
@@ -33,7 +37,7 @@ function parseLcov(text) {
       cur = {
         file: line.slice(3),
         lines: new Map(),
-        branches: [],
+        branches: new Map(),
         fns: new Map(),
         fnhits: new Map(),
       }
@@ -47,8 +51,11 @@ function parseLcov(text) {
       cur.lines.set(+ln, +count)
     }
     else if (line.startsWith('BRDA:')) {
+      // line, block, branch, taken — the first three identify the arm,
+      // which is what lets two runs be unioned (a run that never reaches
+      // a block omits its arms entirely, so position is not an identity).
       const p = line.slice(5).split(',')
-      cur.branches.push({ line: +p[0], taken: p[3] })
+      cur.branches.set(`${p[0]}:${p[1]}:${p[2]}`, { line: +p[0], taken: p[3] })
     }
     else if (line.startsWith('FN:')) {
       const ix = line.indexOf(',')
@@ -77,7 +84,7 @@ function check(files) {
       else gaps.push(`${f.file}:${ln} line never executed`)
     }
 
-    for (const b of f.branches) {
+    for (const b of f.branches.values()) {
       total.branches[1]++
       if ('0' !== b.taken && '-' !== b.taken) total.branches[0]++
       else gaps.push(`${f.file}:${b.line} branch arm never taken`)
@@ -99,16 +106,53 @@ function pct(hit, all) {
 }
 
 
-function main() {
-  const path = process.argv[2] ?? Path.join(__dirname, '..', 'coverage', 'lcov.info')
+// Union several parsed reports into one, keyed by file.
+function union(reports) {
+  const byFile = new Map()
+  for (const files of reports) {
+    for (const f of files) {
+      const cur = byFile.get(f.file)
+      if (null == cur) {
+        byFile.set(f.file, f)
+        continue
+      }
+      for (const [ln, count] of f.lines) {
+        cur.lines.set(ln, Math.max(cur.lines.get(ln) ?? 0, count))
+      }
+      for (const [name, count] of f.fnhits) {
+        cur.fnhits.set(name, Math.max(cur.fnhits.get(name) ?? 0, count))
+      }
+      // Keep an arm once any run took it; an arm a run never reached
+      // at all is simply absent from that run's report.
+      for (const [key, b] of f.branches) {
+        const cb = cur.branches.get(key)
+        if (null == cb) {
+          cur.branches.set(key, b)
+        }
+        else if ('0' === cb.taken || '-' === cb.taken) {
+          cur.branches.set(key, b.taken === cb.taken ? cb : b)
+        }
+      }
+    }
+  }
+  return [...byFile.values()]
+}
 
-  if (!Fs.existsSync(path)) {
-    process.stderr.write(`covcheck: no lcov report at ${path}\n`)
+
+function main() {
+  const paths = 2 <= process.argv.length - 2
+    ? process.argv.slice(2)
+    : [process.argv[2] ?? Path.join(__dirname, '..', 'coverage', 'lcov.info')]
+
+  const missing = paths.filter((p) => !Fs.existsSync(p))
+  if (0 < missing.length) {
+    process.stderr.write(`covcheck: no lcov report at ${missing[0]}\n`)
     process.exitCode = 2
     return
   }
 
-  const { gaps, total } = check(parseLcov(Fs.readFileSync(path, 'utf8')))
+  const { gaps, total } = check(union(
+    paths.map((p) => parseLcov(Fs.readFileSync(p, 'utf8')))))
 
   process.stdout.write(
     `ts/src coverage: lines ${pct(...total.lines)}% (${total.lines[0]}/${total.lines[1]}), ` +
