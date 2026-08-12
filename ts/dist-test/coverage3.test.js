@@ -86,14 +86,6 @@ const numkind_1 = require("../dist/val/numkind");
 const utility_1 = require("../dist/utility");
 const A = () => new aontu_1.Aontu();
 const CTX = () => new ctx_1.AontuContext({ root: new MapVal_1.MapVal({ peg: {} }) });
-// A root whose only key is pending, so absolute refs into it defer.
-function pendingCtx() {
-    return new ctx_1.AontuContext({
-        root: new MapVal_1.MapVal({
-            peg: { zz: new ConjunctVal_1.ConjunctVal({ peg: [new IntegerVal_1.IntegerVal({ peg: 1 })] }) },
-        }),
-    });
-}
 // Capture process output around an in-process CLI run.
 function capture(fn) {
     const so = process.stdout.write;
@@ -521,8 +513,11 @@ function capture(fn) {
     });
     (0, node_test_1.test)('raw-value-conversion', () => {
         const lang = new lang_1.Lang();
-        const raw = Path.join(__dirname, '..', 'test', 'raw.json');
-        const rawfn = Path.join(__dirname, '..', 'test', 'raw-fn.js');
+        // Forward slashes even on Windows: the path is embedded in aontu
+        // SOURCE below, where a backslash is a string escape.
+        const fixture = (name) => Path.join(__dirname, '..', 'test', name).split(Path.sep).join('/');
+        const raw = fixture('raw.json');
+        const rawfn = fixture('raw-fn.js');
         // An elided element in an implicit top-level list is null.
         Assert.equal(lang.parse('1,,2').canon, '[1,null,2]');
         // A JSON include arrives as raw JS and is converted kind by kind.

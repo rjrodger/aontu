@@ -20,7 +20,6 @@ import {
   explainOpen,
   ec,
   explainClose,
-  items,
 } from '../utility'
 
 import { makeNilErr, AontuError } from '../err'
@@ -33,7 +32,6 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
-import { empty } from './Val'
 
 
 class ListVal extends BagVal {

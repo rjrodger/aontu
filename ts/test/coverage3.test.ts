@@ -60,15 +60,6 @@ import { explainOpen, explainClose, formatExplain } from '../dist/utility'
 const A = () => new Aontu()
 const CTX = () => new AontuContext({ root: new MapVal({ peg: {} }) })
 
-// A root whose only key is pending, so absolute refs into it defer.
-function pendingCtx() {
-  return new AontuContext({
-    root: new MapVal({
-      peg: { zz: new ConjunctVal({ peg: [new IntegerVal({ peg: 1 })] }) },
-    }),
-  })
-}
-
 // Capture process output around an in-process CLI run.
 function capture(fn: () => void): { out: string; err: string } {
   const so = process.stdout.write
@@ -599,8 +590,12 @@ describe('coverage3-lang', () => {
 
   test('raw-value-conversion', () => {
     const lang = new Lang()
-    const raw = Path.join(__dirname, '..', 'test', 'raw.json')
-    const rawfn = Path.join(__dirname, '..', 'test', 'raw-fn.js')
+    // Forward slashes even on Windows: the path is embedded in aontu
+    // SOURCE below, where a backslash is a string escape.
+    const fixture = (name: string) =>
+      Path.join(__dirname, '..', 'test', name).split(Path.sep).join('/')
+    const raw = fixture('raw.json')
+    const rawfn = fixture('raw-fn.js')
 
     // An elided element in an implicit top-level list is null.
     Assert.equal(lang.parse('1,,2').canon, '[1,null,2]')
