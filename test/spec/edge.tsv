@@ -280,3 +280,37 @@ edge-list-spread-extend	gens	a:[&:integer,1]&[1,2]	{"a":[1,2]}
 edge-hide-list-gen2	gens	a:hide([1,2]) b:1	{"b":1}
 edge-copy-spread-key	canon	a:copy({&:{k:key()},b:{}})	{"a":{&:{"k":key()},"b":{"k":"b"}}}
 edge-constraint-null-var	errc	a:min(0)&$nul	constraint
+# --- batch 6: parser/lexer edges — list-spread merging, comments inside
+# --- text tokens, incomplete operator expressions, binary/octal based
+# --- literals, numeric-separator refusals lexing as text, top-level
+# --- spreads, float-overflow text fallback, optional-key drops ---
+edge-list-spread-merge	gens	a:[&:integer,&:min(0),1,2]	{"a":[1,2]}
+edge-list-spread-only-canon	canon	a:[&:integer]	{"a":[&:integer]}
+edge-list-spread-conjunct-arg	gens	a:[&:integer&min(0),1,2]	{"a":[1,2]}
+edge-text-comment-line	canon	a:x#y	{"a":"x"}
+edge-text-slashes-not-comment	canon	a:x//y	{"a":"x//y"}
+edge-text-comment-block-syntax	errc	a:x/*y*/	syntax
+edge-op-dangling-minus	errc	a:-	incomplete_expression
+edge-op-dangling-plus	errc	a:+	incomplete_expression
+edge-op-dangling-dot	errc	a:.	incomplete_expression
+edge-op-dangling-plus-after	errc	a:1+	incomplete_expression
+edge-op-dangling-paren	errc	a:(1+)	syntax
+edge-op-dangling-in-list	errc	a:[1+,2]	incomplete_expression
+edge-conjunct-trailing-amp	canon	a:1&	{"a":1}
+edge-amp-alone	errc	a:&	syntax
+edge-key-no-value-null	canon	a:	{"a":null}
+edge-overflow-float-text	errc	a:1e999	not_number
+edge-overflow-float-text-conjunct	errc	a:1e999&1	not_number
+edge-based-binary	gens	a:0b101	{"a":5}
+edge-based-binary-neg	gens	a:-0b11	{"a":-3}
+edge-based-octal	gens	a:0o17	{"a":15}
+edge-root-spread-map	gens	&:{x:1} a:{} b:{}	{"a":{"x":1},"b":{"x":1}}
+edge-root-spread-scalar-conflict	errc	&:1 a:{}	map
+edge-map-spread-empty	canon	a:{&:}	{"a":{}}
+edge-root-bool	gens	true	true
+edge-optional-ref-error	errc	a:{b?:$.zz9} c:1	no_path
+edge-optional-stuck-op-drop	gens	a:{b?:1+true} c:1	{"a":{},"c":1}
+edge-zeros-exp-zero	gens	a:00e999	{"a":0}
+edge-sep-doubled-text	gens	a:1__2	{"a":"1__2"}
+edge-sep-based-open-neg	errc	a:-0x_1	negative
+edge-sep-based-open-binary	gens	a:0b_1	{"a":"0b_1"}

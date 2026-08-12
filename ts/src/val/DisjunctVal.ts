@@ -278,42 +278,6 @@ class DisjunctVal extends JunctionVal {
     }
 
     return super.gen(ctx)
-
-    // // // console.log('DJ-GEN', this.peg)
-
-    // if (1 === this.peg.length) {
-    //   return this.peg[0].gen(ctx)
-    // }
-    // else if (1 < this.peg.length) {
-    //   let peg = this.peg.filter((v: Val) => v instanceof PrefVal)
-
-    //   if (1 === peg.length) {
-    //     return peg[0].gen(ctx)
-    //   }
-    //   else {
-
-    //     let nil = Nil.make(
-    //       ctx,
-    //       'disjunct',
-    //       this,
-    //       undefined
-    //     )
-
-    //     // TODO: refactor to use Site
-    //     nil.path = this.path
-    //     nil.site.url = this.url
-    //     nil.site.row = this.row
-    //     nil.site.col = this.col
-
-    //     // descErr(nil, ctx)
-
-    //     if (null == ctx) {
-    //       throw new Error(nil.msg)
-    //     }
-    //   }
-
-    //   return undefined
-    // }
   }
 }
 
