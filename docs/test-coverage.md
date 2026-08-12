@@ -37,20 +37,30 @@ cd go && go tool cover -html=coverage.out      # annotated source in a browser
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript     | lines (Node `--experimental-test-coverage`) | **94.9 %** |
-| TypeScript     | branches | **89.5 %** |
-| TypeScript     | functions | **91.6 %** |
-| Go — library (`package aontu`) | statements (`go test -cover`) | **83.6 %** |
-| Go — CLI (`cmd/aontu`)         | statements | **47.1 %** |
+| TypeScript     | lines (Node `--experimental-test-coverage`) | **95.2 %** |
+| TypeScript     | branches | **89.8 %** |
+| TypeScript     | functions | **92.7 %** |
+| Go — library (`package aontu`) | statements (`go test -cover`) | **91.3 %** |
+| Go — CLI (`cmd/aontu`)         | statements | **48.3 %** |
 | Go — LSP library (`lsp`)       | statements | **89.1 %** |
 | Go — LSP server (`cmd/aontu-lsp`) | statements | **76.0 %** |
 
 `make cov-go` prints one combined figure over all four Go packages:
-**82.5 %**.
+**89.8 %**.
 
-Both suites pass in full: **TypeScript 1203/1203 tests**, **Go
-1076/1076** test functions and subtests (library + CLI + LSP + shared
-spec), via `make test`.
+Both suites pass in full via `make test` (see the run output for the
+current counts; the shared spec suite alone is ~900 rows, executed by
+both engines).
+
+The coverage-driving method is spec-first: every gap reachable FROM
+SOURCE INPUT gets a shared row — `test/spec/edge.tsv` exists precisely
+for coverage-driven parity edges, every row probed byte-identical in
+both engines before pinning — so a covering test usually lifts BOTH
+engines at once. Only paths a source cannot reach get per-port unit
+tests (`go/coverage_test.go` and the ts/test suites): the
+comparison-internal binary64 infinities, deliberately-dead mirrored
+branches (`ExpectVal.Gen`, the list spread-required arm), tooling
+walks, defensive type-switch fallbacks, and the parse-depth guard.
 
 The `cmd/aontu` figure is lower because its uncovered lines are the
 process/terminal glue — `main`, stdin-pipe detection, and the `emit`

@@ -39,18 +39,6 @@ func (m *MapVal) set(k string, v Val) {
 	m.peg[k] = v
 }
 
-// add applies duplicate-key merge semantics: a repeated key combines
-// the old and new values into a conjunct, mirroring the jsonic merge
-// in ts/src/lang.ts (so `a:1 a:2` becomes `a:1&2`).
-func (m *MapVal) add(k string, v Val) {
-	if old, ok := m.peg[k]; ok {
-		m.peg[k] = mergeVals(old, v)
-	} else {
-		m.keys = append(m.keys, k)
-		m.peg[k] = v
-	}
-}
-
 func mergeVals(a, b Val) Val {
 	if cj, ok := a.(*ConjunctVal); ok {
 		cj.peg = append(cj.peg, b)

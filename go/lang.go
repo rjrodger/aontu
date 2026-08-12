@@ -1816,12 +1816,6 @@ func asValDepth(node any, depth int) Val {
 	return newNil("parse_unknown")
 }
 
-// parse parses source into a (not yet unified) Val, resolving relative
-// @"file" loads from the process working directory.
-func parse(src string) (Val, error) {
-	return parseBase(src, "")
-}
-
 // parseBase is parse with an explicit base directory for resolving
 // relative @"file" loads.
 func parseBase(src, base string) (Val, error) {
