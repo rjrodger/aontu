@@ -131,6 +131,40 @@ describe('spec', () => {
 })
 
 
+// Canon rows whose expected canon cannot be reparsed. Each entry needs a
+// reason and an issue; entries are DELETED, not amended, when fixed
+// (AGENTS.md ledger discipline).
+const CANON_NO_REPARSE: Record<string, string> = {
+  // The `&:`-spread required-child placeholder renders as a key with no
+  // value (`{"r":}`), which is not a document. Both engines emit it
+  // identically, so it is a shared canon defect, not a divergence.
+  'spread-required-canon': 'placeholder canons as `{"r":}` -- issue #43',
+}
+
+
+// CANON CONVERGENCE -- the guard the G1/G2/G5 implementation plans call
+// for. Those plans word it `parse(canon(v)) == v`, which is too strong
+// and was never enforced: canon deliberately PRESERVES unevaluated ghost
+// applications (`key()`, `pref(...)`, an unexpanded `&:` template), so
+// reparsing a canon runs one more evaluation round and legitimately
+// resolves them -- 15 of the 491 canon rows move on that first reparse.
+//
+// What does hold, for every row, is convergence: canon reaches a
+// fixpoint immediately after that one round, so it can never oscillate
+// or drift. That is the property worth pinning, and it is what makes
+// canon safe as the seed of semantic hashing (G6).
+function assertCanonConverges(row: Omit<Row, 'file'>): void {
+  if (row.name in CANON_NO_REPARSE) {
+    return
+  }
+  const a1 = new Aontu()
+  const c2 = a1.unify(row.expect, undefined, makeVarsCtx(a1)).canon
+  const a2 = new Aontu()
+  const c3 = a2.unify(c2, undefined, makeVarsCtx(a2)).canon
+  Assert.strictEqual(c3, c2, `canon does not converge: ${row.name}`)
+}
+
+
 // Execute one spec row. Shared by the TSV-driven tests above and the
 // gens-mode self-test below, so both go through the same comparison.
 function runRow(row: Omit<Row, 'file'>): void {
@@ -140,6 +174,7 @@ function runRow(row: Omit<Row, 'file'>): void {
 
   if ('canon' === row.mode) {
     Assert.strictEqual(a0.unify(row.src, undefined, ctx).canon, row.expect)
+    assertCanonConverges(row)
   }
   else if ('gen' === row.mode) {
     Assert.deepStrictEqual(
@@ -147,6 +182,16 @@ function runRow(row: Omit<Row, 'file'>): void {
   }
   else if ('gens' === row.mode) {
     Assert.strictEqual(genJSON(a0.generate(row.src, undefined, ctx)), row.expect)
+
+    // REPEATABILITY (G5 determinism clause, docs/trust.md): the same
+    // source under the same bindings must serialise to the same bytes on
+    // a fresh engine. Re-running every gens row here pins that over the
+    // whole byte-exact corpus rather than a handful of dedicated rows.
+    const a1 = new Aontu()
+    Assert.strictEqual(
+      genJSON(a1.generate(row.src, undefined, makeVarsCtx(a1))),
+      row.expect,
+      `gens is not repeatable: ${row.name}`)
   }
   else if ('err' === row.mode) {
     Assert.throws(

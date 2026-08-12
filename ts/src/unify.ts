@@ -26,7 +26,13 @@ import {
 } from './val/top'
 
 
-// TODO: FIX: false positive when too many top unifications
+// Per-pass revisit bound: how many times one (Val, path) pair may be
+// re-unified within a single fixpoint pass before the evaluator calls it
+// non-convergence (`unify_cycle`). The old false positive here -- a
+// legal model with more than MAXCYCLE sibling conjunct terms at one
+// path, each re-running the TOP self-unify -- is fixed by the per-pass
+// memo below (_tcc/_tpi); test/spec/budget.tsv drives 1200 sibling
+// terms through both engines as the regression guard.
 const MAXCYCLE = 999
 
 // Vals should only have to unify downwards (in .unify) over Vals they understand.

@@ -302,17 +302,23 @@ zoo grows.
 
 ## Verified codebase facts referenced by the design documents
 
-Checked against this repository at review time (TS v0.49.0 line):
+Checked against this repository at review time (TS v0.49.0 line).
+**Four of these have since moved — the review's own work changed them
+— and are marked inline; the rest still hold as written.**
 
-- Exactly 12 builtin functions, hard-wired in the parser's `funcMap`
-  (`ts/src/lang.ts`): `upper`, `lower`, `copy`, `key`, `type`, `hide`,
-  `move`, `path`, `pref`, `close`, `open`, `super`. (`ExpectVal` is
-  internal spread-required machinery, not a user-callable function.)
+- ~~Exactly 12 builtin functions~~ **now 17**, hard-wired in the
+  parser's `funcMap` (`ts/src/lang.ts`): `upper`, `lower`, `copy`,
+  `key`, `type`, `hide`, `move`, `path`, `pref`, `close`, `open`,
+  `super`, plus G1 phase 1's Band A atoms `min`, `max`, `above`,
+  `below`, `neq`. (`ExpectVal` is internal spread-required machinery,
+  not a user-callable function.)
 - Scalar constraints are kind-only; `a: number > 0` fails to parse
-  (verified by running the CLI).
-- 45 shared spec files under `test/spec/` (~426 rows; modes
-  `canon`/`gen`/`err`); the Go runner executes every row with no skip
-  list.
+  (verified by running the CLI). **Still true as written — there is no
+  operator sugar — but bounds themselves now exist in function form
+  (`a: number & min(0)`), so the underlying gap is partly closed.**
+- ~~45 shared spec files (~426 rows; modes `canon`/`gen`/`err`)~~
+  **now 54 files, 1594 rows, modes `canon`/`gen`/`gens`/`err`/`errc`/
+  `errcode`**; the Go runner executes every row with no skip list.
 - The fixpoint is bounded at `maxcc = 9` passes (`ts/src/unify.ts`);
   `MAXCYCLE = 999`.
 - The resolver security posture is documented in code
@@ -320,8 +326,15 @@ Checked against this repository at review time (TS v0.49.0 line):
   it").
 - Disjunct generation has a known distribution defect, acknowledged in
   a code comment (`ts/src/val/DisjunctVal.ts`).
-- Both implementations use IEEE-754 double number semantics (Go
-  reproduces JS `Number.toString`).
+- ~~Both implementations use IEEE-754 double number semantics (Go
+  reproduces JS `Number.toString`).~~ **Superseded by G1 phase 6,
+  which went well past the "decide and bound the defect" it was
+  scoped as: numbers are now a four-leaf tower
+  (`integer < float < biginteger < bigdecimal`), exact leaves opt-in
+  via a `0d` prefix, and a literal that is integer-kind but not
+  exactly representable is a located `lossy_integer_literal` error
+  rather than a silently rounded value. See
+  `docs/design/number-tower.md`.**
 - Parsed/unified trees are single-use (documented mutation caveat);
   the LSP re-parses and re-unifies whole documents per change.
 
