@@ -38,9 +38,9 @@ cd go && go tool cover -html=coverage.out      # annotated source in a browser
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript     | lines (Node `--experimental-test-coverage`) | **97.0 %** |
-| TypeScript     | branches | **90.9 %** |
-| TypeScript     | functions | **95.0 %** |
+| TypeScript     | lines (Node `--experimental-test-coverage`) | **97.2 %** |
+| TypeScript     | branches | **92.1 %** |
+| TypeScript     | functions | **95.3 %** |
 | Go — library (`package aontu`) | statements (`go test -cover`) | **99.2 %** |
 | Go — CLI (`cmd/aontu`)         | statements | **97.8 %** |
 | Go — LSP library (`lsp`)       | statements | **100.0 %** |
@@ -49,7 +49,7 @@ cd go && go tool cover -html=coverage.out      # annotated source in a browser
 `make cov-go` prints one combined figure over all four Go packages:
 **99.2 %**.
 
-Both suites pass in full via `make test` (1828 TypeScript tests; the
+Both suites pass in full via `make test` (1830 TypeScript tests; the
 Go packages run the same shared rows plus 130+ native test functions).
 
 The coverage-driving method is spec-first: every gap reachable FROM
@@ -118,9 +118,9 @@ checked on both sides.
 
 ### TypeScript-native tests
 
-`spec.test.ts` accounts for 1560 of the 1828 TypeScript tests: the
+`spec.test.ts` accounts for 1560 of the 1830 TypeScript tests: the
 1555 shared rows, a sanity check that the rows loaded, and tests of
-the `gens` mode's own machinery. The other 268 are rich,
+the `gens` mode's own machinery. The other 270 are rich,
 implementation-specific cases: every built-in function in depth
 (`func.test.ts`), the exact leaves (`bignum.test.ts`), the public API
 (`aontu.test.ts`), LSP diagnostics/hover/completion/framing

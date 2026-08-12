@@ -353,3 +353,35 @@ describe('coverage-lsp-server', () => {
     Assert.equal(exited, 1)
   })
 })
+
+
+describe('coverage-ctx-explain', () => {
+
+  test('explain-threading', () => {
+    const { Aontu } = require('../dist/aontu')
+    const a0 = new Aontu()
+    const ctx = a0.ctx()
+    ctx.explain = []
+    ctx.vars.foo = 11
+    const src = 'a:1&integer b:1|*2 c:$.a d:{&:{x:integer},y:{x:1}} ' +
+      'e:[1,2]&[1,2] f:upper("q") g:1+2 h:min(0)&2 i:$foo k:{m?:1}'
+    const v = a0.unify(src, undefined, ctx)
+    Assert.ok(!v.isNil)
+    Assert.ok(0 < ctx.explain.length)
+    Assert.ok(0 < formatExplain(ctx.explain).length)
+  })
+
+  test('ctx-find-and-path-caches', () => {
+    const root = new MapVal({
+      peg: { a: new ListVal({ peg: [new IntegerVal({ peg: 1 })] }) },
+    })
+    const ctx = new AontuContext({ root })
+    Assert.equal(ctx.find(['a', '0'])!.canon, '1')
+    Assert.equal(ctx.find(['a', '0', 'x']), undefined)
+    Assert.equal(ctx.find(['zz']), undefined)
+    ctx.path = ['p.q', 'r']
+    Assert.equal(ctx.pathstr, 'p\\.q.r')
+    const i1 = ctx.pathidx
+    Assert.equal(ctx.pathidx, i1)
+  })
+})
