@@ -43,6 +43,6 @@ class HideFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.HideFuncVal = HideFuncVal;
 //# sourceMappingURL=HideFuncVal.js.map

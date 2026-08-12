@@ -17,7 +17,7 @@ const keyorder_1 = require("../keyorder");
 // pass. The map lives on the unify root ctx (see Unify), so it persists
 // across fixpoint passes and is GC'd with the run.
 function spreadSnapKey(cj) {
-    return cj.canon + '~' + (cj.site?.row ?? -1) + ':' + (cj.site?.col ?? -1);
+    return cj.canon + '~' + cj.site.row + ':' + cj.site.col;
 }
 // Snapshot a path-dependent ref spread to its structural target once,
 // while inner key()/path() funcs in the target are still unresolved (see
@@ -168,7 +168,9 @@ class MapVal extends BagVal_1.BagVal {
                 // but costs O(keys) deep template clones per pass on large
                 // models — the dominant cost on generated-SDK model trees.
                 let oval;
-                if (undefined !== child && !spread_cj.isTop
+                // No `undefined !== child` here: propagateMarks above already
+                // dereferenced it, so a missing child would have thrown there.
+                if (!spread_cj.isTop
                     && child._spr === spread_cj.id) {
                     oval = child.done ? child :
                         (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, TOP, 'map-own');
@@ -176,13 +178,13 @@ class MapVal extends BagVal_1.BagVal {
                 }
                 else {
                     const key_spread_cj = spread_cj.spreadClone(keyctx);
+                    // child is non-nullish: propagateMarks above dereferences it.
                     oval =
-                        undefined === child ? key_spread_cj :
-                            child.isNil ? child :
-                                key_spread_cj.isNil ? key_spread_cj :
-                                    key_spread_cj.isTop && child.done ? child :
-                                        child.isTop && key_spread_cj.done ? key_spread_cj :
-                                            (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, key_spread_cj, 'map-own');
+                        child.isNil ? child :
+                            key_spread_cj.isNil ? key_spread_cj :
+                                key_spread_cj.isTop && child.done ? child :
+                                    child.isTop && key_spread_cj.done ? key_spread_cj :
+                                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, key_spread_cj, 'map-own');
                     if (!spread_cj.isTop && !oval.isNil) {
                         ;
                         oval._spr = spread_cj.id;
@@ -342,6 +344,6 @@ class MapVal extends BagVal_1.BagVal {
     inspection(d) {
         return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : '';
     }
-}
+} /* node:coverage ignore next 6 */
 exports.MapVal = MapVal;
 //# sourceMappingURL=MapVal.js.map

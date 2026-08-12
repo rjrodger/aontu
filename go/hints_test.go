@@ -8,12 +8,11 @@ import (
 	"testing"
 )
 
-// The budget_passes message substring and class, pinned per-port: no
-// shared spec row can exist while the smallest reproducer (a 10-link
-// ref chain) diverges between the engines (test/spec/divergent.tsv,
-// issue #26) — Go resolves chains eagerly and cannot reach the code at
-// that scale, so the Go pin is on the hint table itself. The
-// ts/test/unify.test.ts twin pins the TS side end-to-end.
+// The budget_passes message substring and class. Since issue #26
+// closed (Go defers ref chains one link per pass, like TS), the
+// 10-link reproducer is pinned by SHARED rows (budget.tsv
+// budget-chain-*); this test keeps the hint-table and class guards as
+// the fast local twin of ts/test/unify.test.ts.
 func TestBudgetPassesHint(t *testing.T) {
 	hint, ok := hints["budget_passes"]
 	if !ok {
@@ -40,8 +39,7 @@ func TestBudgetPassesHint(t *testing.T) {
 
 // Check surfaces context-recorded errors that never land in the tree
 // (the ctx-err union in CheckVars) — proven here with a unify-time
-// error that IS reachable in Go; the budget_passes case itself is
-// TS-only until issue #26 is decided.
+// error that is reachable in Go.
 func TestCheckSurfacesCtxErrors(t *testing.T) {
 	a := New()
 	probs := a.Check("a:$.b b:$.a")
@@ -101,5 +99,22 @@ func TestFullMessageTwin(t *testing.T) {
 	want := "[aontu/scalar_value]: Cannot unify values at path $.a\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:1:7\n\u001b[34m  1 | \u001b[0ma:1 a:2\n            \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:1:3\n\u001b[34m  1 | \u001b[0ma:1 a:2\n        \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n"
 	if got := err.Error(); got != want {
 		t.Fatalf("full message mismatch\n want: %q\n got:  %q", want, got)
+	}
+}
+
+// TestFullMessageBagTwin is the bag-operand twin (issue #34): a map
+// operand carries its real source position (its `{`), so it wins the
+// later-in-source primary rule and its frame points at column 7 --
+// byte-identical with full-message-bag-twin in ts/test/error.test.ts.
+// Before the parse recorded map/list positions, the MapVal read as
+// position 0: the frame said 1:1 and the operand order flipped.
+func TestFullMessageBagTwin(t *testing.T) {
+	_, err := New().Generate("a:1 a:{b:1}")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	want := "[aontu/scalar_kind]: Cannot unify values at path $.a\n\nLiteral scalar values of different kinds cannot unify.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: {\"b\":1} with value: 1\n  \u001b[34m--> <no-file>:1:7\n\u001b[34m  1 | \u001b[0ma:1 a:{b:1}\n            \u001b[34m^ value was: {\"b\":1}\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: {\"b\":1}\n  \u001b[34m--> <no-file>:1:3\n\u001b[34m  1 | \u001b[0ma:1 a:{b:1}\n        \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n"
+	if got := err.Error(); got != want {
+		t.Fatalf("bag twin mismatch\n want: %q\n got:  %q", want, got)
 	}
 }

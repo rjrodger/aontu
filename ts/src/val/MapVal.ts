@@ -42,7 +42,7 @@ import { cmpCodePoint } from '../keyorder'
 // pass. The map lives on the unify root ctx (see Unify), so it persists
 // across fixpoint passes and is GC'd with the run.
 function spreadSnapKey(cj: any): string {
-  return cj.canon + '~' + (cj.site?.row ?? -1) + ':' + (cj.site?.col ?? -1)
+  return cj.canon + '~' + cj.site.row + ':' + cj.site.col
 }
 
 // Snapshot a path-dependent ref spread to its structural target once,
@@ -229,7 +229,9 @@ class MapVal extends BagVal {
         // but costs O(keys) deep template clones per pass on large
         // models — the dominant cost on generated-SDK model trees.
         let oval: Val
-        if (undefined !== child && !spread_cj.isTop
+        // No `undefined !== child` here: propagateMarks above already
+        // dereferenced it, so a missing child would have thrown there.
+        if (!spread_cj.isTop
           && (child as any)._spr === (spread_cj as any).id) {
           oval = child.done ? child :
             unite(te ? keyctx.clone({ explain: ec(te, 'KEY:' + key) }) : keyctx,
@@ -239,9 +241,9 @@ class MapVal extends BagVal {
         else {
           const key_spread_cj = spread_cj.spreadClone(keyctx)
 
+          // child is non-nullish: propagateMarks above dereferences it.
           oval =
-            undefined === child ? key_spread_cj :
-              child.isNil ? child :
+            child.isNil ? child :
                 key_spread_cj.isNil ? key_spread_cj :
                   key_spread_cj.isTop && child.done ? child :
                     child.isTop && key_spread_cj.done ? key_spread_cj :
@@ -449,7 +451,7 @@ class MapVal extends BagVal {
     return this.spread.cj ? '&:' + this.spread.cj.inspect(null == d ? 0 : d + 1) : ''
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

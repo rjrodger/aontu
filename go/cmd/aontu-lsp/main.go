@@ -25,7 +25,7 @@ import (
 	"github.com/rjrodger/aontu/go/lsp"
 )
 
-func main() {
+func main() { //coverage:ignore run under GOCOVERDIR by `make cov-go`
 	os.Exit(serve(os.Stdin, os.Stdout, os.Stderr))
 }
 

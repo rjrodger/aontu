@@ -117,3 +117,20 @@ func TestReplEmptyAndUnknown(t *testing.T) {
 		t.Fatalf("expected unknown command notice:\n%s", out.String())
 	}
 }
+
+// render surfaces an encoder failure rather than printing partial JSON.
+// A sum that overflows binary64 generates as +Inf, which encoding/json
+// refuses — the one input shape that reaches the Encode error arm.
+func TestRenderEncodeError(t *testing.T) {
+	const max = "1.7976931348623157e308"
+	out, err := render(aontu.New(), "a: "+max+"+"+max, "json")
+	if err == nil {
+		t.Fatalf("want encode error, got %q", out)
+	}
+	if out != "" {
+		t.Fatalf("want empty output, got %q", out)
+	}
+	if !strings.Contains(err.Error(), "unsupported value") {
+		t.Fatalf("want json unsupported-value error, got %v", err)
+	}
+}

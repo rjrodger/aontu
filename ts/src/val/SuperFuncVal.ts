@@ -51,7 +51,7 @@ class SuperFuncVal extends FuncBaseVal {
     return this.place(this.superior())
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

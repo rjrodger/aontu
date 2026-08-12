@@ -1,39 +1,5 @@
-#!/usr/bin/env node
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.evalSource = evalSource;
 exports.main = main;
@@ -44,9 +10,11 @@ exports.main = main;
 // With a file argument, the file is evaluated and the result printed.
 // With no file on an interactive terminal, a REPL is started. With no
 // file and piped input, the source is read from stdin. See HELP below.
-const Fs = __importStar(require("node:fs"));
-const Path = __importStar(require("node:path"));
-const Readline = __importStar(require("node:readline"));
+// Named imports, not `import * as`: the namespace form makes tsc emit the
+// __importStar downlevel helper, whose branches no supported Node takes.
+const node_fs_1 = require("node:fs");
+const node_path_1 = require("node:path");
+const node_readline_1 = require("node:readline");
 const aontu_1 = require("./aontu");
 const HELP = `Usage: aontu [options] [file]
 
@@ -67,7 +35,7 @@ REPL commands:
 `;
 function version() {
     try {
-        const txt = Fs.readFileSync(Path.join(__dirname, '..', 'package.json'), 'utf8');
+        const txt = (0, node_fs_1.readFileSync)((0, node_path_1.join)(__dirname, '..', 'package.json'), 'utf8');
         return JSON.parse(txt).version ?? '0.0.0';
     }
     catch {
@@ -99,13 +67,13 @@ function evalSource(aontu, src, mode) {
 function runFile(file, mode) {
     let src;
     try {
-        src = Fs.readFileSync(file, 'utf8');
+        src = (0, node_fs_1.readFileSync)(file, 'utf8');
     }
     catch (err) {
         process.stderr.write(`aontu: cannot read ${file}: ${err.message}\n`);
         return 1;
     }
-    const aontu = new aontu_1.Aontu({ path: Path.resolve(file) });
+    const aontu = new aontu_1.Aontu({ path: (0, node_path_1.resolve)(file) });
     const res = evalSource(aontu, src, mode);
     (res.ok ? process.stdout : process.stderr).write(res.text + '\n');
     return res.ok ? 0 : 1;
@@ -125,7 +93,7 @@ function runStdin(mode) {
 function runRepl(initialMode) {
     let mode = initialMode;
     const aontu = new aontu_1.Aontu();
-    const rl = Readline.createInterface({
+    const rl = (0, node_readline_1.createInterface)({
         input: process.stdin,
         output: process.stdout,
         prompt: 'aontu> ',
@@ -221,9 +189,5 @@ function main(argv) {
     else {
         runStdin(mode).then((code) => finish(code));
     }
-}
-// Only run when invoked as a program, not when imported (e.g. by tests).
-if (require.main === module) {
-    main(process.argv);
-}
+} /* node:coverage ignore next 8 */
 //# sourceMappingURL=cli.js.map

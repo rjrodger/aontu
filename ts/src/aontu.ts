@@ -108,14 +108,10 @@ class Aontu {
       let uni = new Unify(pval, this.lang, ac, src)
       errs = uni.err
 
+      // Never nullish: Unify.res starts as the root Val, unite() returns a
+      // Val on every arm, and its catch-all turns a throwing node into an
+      // 'internal' NilVal.
       out = uni.res
-
-      if (null == out) {
-        out = makeNilErr(ac, 'unify_no_res')
-        if (0 === errs.length) {
-          errs = [out]
-        }
-      }
 
       out.deps = pval.deps
       out.err = errs

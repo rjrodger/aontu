@@ -30,6 +30,6 @@ class SuperFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return this.place(this.superior());
     }
-}
+} /* node:coverage ignore next 6 */
 exports.SuperFuncVal = SuperFuncVal;
 //# sourceMappingURL=SuperFuncVal.js.map

@@ -173,7 +173,7 @@ function scaledFloor(s: Scaled): bigint {
   const q = s.unscaled / p
   // BigInt division truncates toward zero; floor rounds down.
   return (s.unscaled < 0n && 0n !== s.unscaled % p) ? q - 1n : q
-}
+} /* node:coverage ignore next 14 */
 
 
 export {

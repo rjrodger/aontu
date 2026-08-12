@@ -52,7 +52,7 @@ class OpenFuncVal extends FuncBaseVal {
     return argval
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

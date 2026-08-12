@@ -30,7 +30,7 @@ class StringVal extends ScalarVal {
     return JSON.stringify(this.peg)
   }
 
-}
+} /* node:coverage ignore next 5 */
 
 export {
   StringVal,

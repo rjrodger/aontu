@@ -74,7 +74,7 @@ class CopyFuncVal extends FuncBaseVal {
 
     return out
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

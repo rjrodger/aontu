@@ -371,7 +371,7 @@ function readBigLiteral(m: RegExpExecArray | (string | undefined)[]): BigLiteral
     leaf: 'bigdecimal',
     dec: new Decimal(BigInt(intd + (fracd ?? '')), scale),
   }
-}
+} /* node:coverage ignore next 12 */
 
 
 export {

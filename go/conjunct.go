@@ -117,7 +117,7 @@ func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {
 
 	var out Val
 	switch len(outvals) {
-	case 0:
+	case 0: //coverage:ignore a fold over >=1 term always appends
 		out = top()
 	case 1:
 		out = outvals[0]

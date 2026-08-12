@@ -178,7 +178,7 @@ abstract class BagVal extends FeatureVal {
     return out
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

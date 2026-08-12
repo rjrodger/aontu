@@ -333,7 +333,7 @@ class Unify {
 
     this.res = res
   }
-}
+} /* node:coverage ignore next 9 */
 
 
 

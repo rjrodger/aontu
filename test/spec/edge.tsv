@@ -1,0 +1,362 @@
+# Parity edges, coverage-driven: every row here was added to close a
+# measured statement-coverage gap in one or both engines (see
+# docs/test-coverage.md), and every expectation was probed
+# byte-identical in BOTH engines before pinning — the same promotion
+# protocol as every other file here. Rows are grouped by the engine
+# area they exercise.
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; escapes: \n \t \\
+#
+# Exact numeric comparison and constraint meets: same-point tower
+# ties in both directions, negative integral gaps, cross-leaf scale
+# alignment, and the constraint/pref/kind interactions.
+edge-tie-float-bigdec	canon	a:min(1.5)&min(0d1.5)	{"a":min(1.5)}
+edge-tie-hi-int-float	canon	a:max(1)&max(1.0)	{"a":max(1)}
+edge-tie-hi-open-wins	canon	a:max(2)&below(2)	{"a":below(2)}
+edge-tie-big-identical	canon	a:min(0d2)&min(0d2)	{"a":min(0d2)}
+edge-neg-integral-gap	errc	a:integer&above(-1.9)&below(-1.1)	constraint
+edge-neg-interval-lives	errc	a:integer&above(-2.5)&below(-1.5)	mapval_no_gen
+edge-neg-bound-member	gens	a:integer&min(-2.5) a:-2	{"a":-2}
+edge-cross-scale-window	canon	a:min(0.5)&max(0d0.75)	{"a":min(0.5)&max(0d0.75)}
+edge-constraint-nil	errc	a:min(0)&nil	literal_nil
+edge-pref-of-constraint	canon	a:*min(0) a:5	{"a":5}
+edge-root-constraint-gen	errc	min(0)	no_gen
+edge-constraint-second-leaf	errc	a:integer&min(0)&float	constraint
+edge-kind-then-neq	canon	a:number&neq(1)&min(0)	{"a":min(0)&neq(1)}
+edge-neq-domain-mix-meet	errc	a:min(0)&neq("x")	constraint
+#
+# Junction residue and preference folding.
+edge-root-conjunct-ref	errc	1&$.zz	conjunct
+edge-pref-conjunct	gens	b:2 a:*(1&1)	{"a":1,"b":2}
+edge-pref-op	gens	b:1 a:*(1+1)	{"a":2,"b":1}
+edge-pref-disjunct-meet	gens	a:*(1|2)&3	{"a":3}
+edge-pref-pref-disjunct	errc	a:*1|*2	scalar_value
+edge-disjunct-intersect	canon	a:(1|2)&(2|3)	{"a":2}
+edge-disjunct-empty	errc	a:(1|2)&3	|:empty
+#
+# References and variables: numeric segments, relative misses, $vars
+# of every bound kind, self-prefix cycles, path().
+edge-ref-list-index	gens	a:[5,6] b:$.a.1	{"a":[5,6],"b":6}
+edge-ref-relative-miss	errc	a:.zz	no_path
+edge-var-int	gens	x:$foo	{"x":11}
+edge-var-str-bool-map	gens	x:$bar y:$flag z:$obj	{"x":"hello","y":true,"z":{"x":1}}
+edge-var-big	gens	x:$big	{"x":1152921504606846976}
+edge-var-unknown	errc	x:$nosuchvar	unknown_var
+edge-ref-self-prefix	errc	a:$.a.b	ref
+edge-path-func	gens	p:path(q.r) q:{r:7}	{"p":7,"q":{"r":7}}
+#
+# The + operator across kinds, and unary minus refusals.
+edge-plus-strings	gens	a:"x"+"y"	{"a":"xy"}
+edge-plus-float-int	gens	a:1.5+2	{"a":3.5}
+edge-plus-map	errc	a:{x:1}+2	mapval_no_gen
+edge-plus-lists	errc	a:[1]+[2]	mapval_no_gen
+edge-neg-string	errc	a:-"s"	negative
+edge-neg-bool	errc	a:-true	negative
+edge-neg-big-vs-int	errc	a:-0d1&0	scalar_kind
+edge-neg-bigdec	gens	a:-0d1.5	{"a":-1.5}
+#
+# String canon escapes and number rendering forms.
+edge-str-tab	canon	a:"x\\ty"	{"a":"x\\ty"}
+edge-str-quote	canon	a:"q\\"w"	{"a":"q\\"w"}
+edge-str-plain	canon	a:"lm"	{"a":"lm"}
+edge-str-backslash	canon	a:"p\\\\q"	{"a":"p\\\\q"}
+edge-num-exp-pos	canon	a:1e21	{"a":1e+21}
+edge-num-exp-neg	canon	a:1e-7	{"a":1e-7}
+edge-str-unicode	gens	a:"é"	{"a":"é"}
+edge-num-separator	gens	a:1_000	{"a":1000}
+edge-quote-kinds	gens	a:'sq' b:`bq`	{"a":"sq","b":"bq"}
+#
+# Lists: closed with residue, null elements, spread canon, and a
+# ref-carried list spread.
+edge-list-closed-residue	errc	a:close([1,number])	listval_required
+edge-list-null-elem	gens	a:[null,2]	{"a":[null,2]}
+edge-list-spread-canon	canon	a:[&:number,1]	{"a":[&:number,1]}
+edge-list-spread-via-ref	errc	q:[&:{r:string} {}] w:$.q	mapval_spread_required
+#
+# Expectations: escape with extra peer keys; a top expectation.
+edge-expect-escape-extra	gens	m:{&:{r:string} a:{r:x}} m:{a:{q:1}}	{"m":{"a":{"q":1,"r":"x"}}}
+edge-expect-top	canon	m:{&:{r:top} a:{}}	{"m":{&:{"r":top},"a":{"r":}}}
+#
+# Functions: exact-leaf rounding, string case, invalid args, move,
+# open/close, key levels.
+edge-upper-bigint	gens	a:upper(0d2)	{"a":2}
+edge-lower-string	gens	a:lower("QQ")	{"a":"qq"}
+edge-upper-map	errc	a:upper({})	invalid-arg
+edge-move-map	gens	b:{x:1} a:move($.b)	{"a":{"x":1}}
+edge-open-close	gens	a:open(close({x:1}))&{y:2}	{"a":{"x":1,"y":2}}
+edge-key-float-arg	errc	a:key(1.5)	key_level
+edge-key-own	gens	q:{k:key(0)}	{"q":{"k":"k"}}
+#
+# Batch 2: reference modes ($SELF/$PARENT/$KEY, var path parts,
+# numeric segments, dotted parents), function edges, closed bags,
+# list spreads, junction dedup, + operator kinds, and neq edges.
+edge-self-mid	errc	a:{b:$SELF.c,c:2}	no_path
+edge-key-root	errc	k:$KEY	unknown_var
+edge-parent-var	gens	a:{b:$PARENT.c,c:5}	{"a":{"b":5,"c":5}}
+edge-key-mid	errc	a:$KEY.x	ref
+edge-var-map-part	errc	x:$.q.$obj q:{}	no_path
+edge-var-bool-part	gens	q:{"true":3} x:$.q.$flag	{"q":{"true":3},"x":3}
+edge-var-int-part	gens	q:{"11":3} x:$.q.$foo	{"q":{"11":3},"x":3}
+edge-ref-index-oob	errc	a:[1] b:$.a.9	no_path
+edge-ref-nil-peer	errc	a:$.zz&nil	no_path
+edge-ref-same-canon	errc	a:$.zz&$.zz	no_path
+edge-rel-nested	gens	a:{b:{c:1},d:.b.c}	{"a":{"b":{"c":1},"d":1}}
+edge-parent-dots	errc	a:{b:..c,c:1}	no_path
+edge-ref-float-part	gens	b:$.a.1.5 a:{"1":{"5":9}}	{"a":{"1":{"5":9}},"b":9}
+edge-var-conflict	errc	x:$flag&false	scalar_value
+edge-ref-sibling	gens	x:{y:$.x.z,z:4}	{"x":{"y":4,"z":4}}
+edge-ref-through-scalar	errc	w:$.q.r.s q:{r:1}	no_path
+edge-pref-func	gens	a:pref(7) a:9	{"a":9}
+edge-super-nil	errc	a:super(nil)	literal_nil
+edge-super-bigdec	gens	a:super(0d1.5)&0d2.5	{"a":2.5}
+edge-type-template	gens	a:type({x:integer}) b:$.a&{x:3}	{"b":{"x":3}}
+edge-copy-noarg	errc	a:copy()	invalid-arg
+edge-copy-list	gens	a:copy([1,2])	{"a":[1,2]}
+edge-move-miss	errc	a:move($.zz)	no_path
+edge-key-bigint-arg	gens	a:key(0d1) b:{c:$.a}	{"a":"","b":{"c":"b"}}
+edge-upper-residue	errc	a:upper(1&$.zz)	no_path
+edge-map-ref-meet	gens	a:{} b:{}&$.a	{"a":{},"b":{}}
+edge-closed-extra	errc	a:close({x:1})&{y:2}	closed
+edge-closed-twice	gens	a:close({x:1})&close({x:1})	{"a":{"x":1}}
+edge-opt-ref-miss	errc	a:{x?:$.zz9}	no_path
+edge-closed-disjoint	errc	a:close({x:1,y:2})&close({z:3})	closed
+edge-list-extend	gens	a:[1]&[1,2]	{"a":[1,2]}
+edge-list-closed-longer	errc	a:[1,2]&close([1])	closed
+edge-list-spread-two	gens	a:[&:integer,1,2]	{"a":[1,2]}
+edge-list-spread-conflict	errc	a:[&:integer,1.5]	no_scalar_unify
+edge-list-pref-elem	gens	a:[*1|2]	{"a":[1]}
+edge-disjunct-dup-scalar	gens	a:1|1	{"a":1}
+edge-pref-or-kind	canon	a:*3|integer	{"a":*3|integer}
+edge-disjunct-dup-pref	gens	a:(*1|2)|(*1|2)	{"a":1}
+edge-disjunct-map-vs-str	errc	a:({x:1}|2)&"s"	|:empty
+edge-plus-exact	gens	a:0d2+0d0.5	{"a":2.5}
+edge-plus-chain	gens	a:1+2+3	{"a":6}
+edge-plus-nil	errc	a:nil+1	mapval_no_gen
+edge-unary-plus	gens	a:+5	{"a":5}
+edge-neg-hex	gens	a:-0xFF	{"a":-255}
+edge-decimal-budget-sum	errc	a:0d1e5000+0d1e-5000	mapval_no_gen
+edge-bigdec-trailing	canon	a:0d1.50	{"a":0d1.5}
+edge-neg-zero	canon	a:-0.0	{"a":0.0}
+edge-bool-null-self	canon	b:true&true c:null&null	{"b":true,"c":null}
+edge-string-conflict	errc	a:"x"&"y"	scalar_value
+edge-neq-bool	errc	a:neq(true)	mapval_no_gen
+edge-string-empty-window	errc	a:above("a")&below("a")	constraint
+edge-neq-merge-sorted	canon	a:neq(2,1)&neq(3,2)	{"a":neq(1,2,3)}
+edge-constraint-map	errc	a:min(0)&{x:1}	constraint
+edge-pref-or-min	canon	a:*8080|min(1024)	{"a":*8080|min(1024)}
+#
+# Batch 3: number-lexer edges (based literals, overflow, exactness
+# windows), grammar dives, empty bags, and canonical keys.
+edge-float-overflow	errc	a:1e999	not_number
+edge-zero-exp	gens	a:0e500	{"a":0}
+edge-neg-binary	gens	a:-0b101	{"a":-5}
+edge-pos-octal	gens	a:+0o17	{"a":15}
+edge-lossy-huge	errc	a:10000000000000000000000000	lossy_integer_literal
+edge-exact-1e20	gens	a:100000000000000000000	{"a":100000000000000000000}
+edge-lossy-hex-max	errc	a:0x7fffffffffffffff	lossy_integer_literal
+edge-list-two-spreads	gens	a:[&:integer,&:min(0),5]	{"a":[5]}
+edge-opt-dive	gens	q:a?:1	{"q":{"a":1}}
+edge-opt-in-list	gens	a:[x?:1]	{"a":[]}
+edge-list-spread-empty	gens	a:[&:number] b:1	{"a":[],"b":1}
+edge-binary-meet	canon	a:0b11&3	{"a":3}
+edge-exp-small	gens	a:1e2	{"a":100}
+edge-lossy-2p53	errc	a:9007199254740993	lossy_integer_literal
+edge-exact-2p53	gens	a:0d9007199254740993	{"a":9007199254740993}
+edge-bigdec-4000	canon	a:0d1e4000	{"a":0d10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.0}
+edge-decimal-over-budget	errc	a:0d1e40000	decimal_budget
+edge-empty-map	gens	{}	{}
+edge-map-meet-empty	gens	a:{}&{}	{"a":{}}
+edge-top-canon	canon	a:top	{"a":top}
+edge-kind-disjoint-families	errc	a:number&string	scalar-type
+edge-string-dup	gens	a:"x" a:"x"	{"a":"x"}
+edge-conjunct-triple	canon	a:1&1&1	{"a":1}
+edge-paren-group	gens	a:(1)	{"a":1}
+edge-paren-empty	errc	a:()	incomplete_expression
+edge-nested-lists	gens	a:[[1],[2]]	{"a":[[1],[2]]}
+edge-key-space	canon	a:{"k k":1}	{"a":{"k k":1}}
+edge-key-empty	gens	a:{"":1}	{"a":{"":1}}
+#
+# Batch 4: marked refs, zero-arg functions, pending-op meets,
+# pref folding ranks, list spread merges, expect re-meets, and
+# constraint meet refusals.
+edge-ref-dot-after-abs	errc	a:$.a..b	no_path
+edge-self-mid-var	errc	x:$.q.$SELF q:{}	ref
+edge-hide-ref	gens	a:hide($.b) b:1 c:2	{"b":1,"c":2}
+edge-cycle-through-list	errc	a:$.b.0 b:[$.a]	path_cycle
+edge-rel-deep	gens	a:{b:{c:{d:1}},e:.b.c.d}	{"a":{"b":{"c":{"d":1}},"e":1}}
+edge-pref-noarg	errc	a:pref()	arg
+edge-type-noarg	errc	a:type()	arg
+edge-hide-noarg	errc	a:hide()	arg
+edge-move-noarg	errc	a:move()	arg
+edge-upper-bool	errc	a:upper(true)	invalid-arg
+edge-close-noarg	errc	a:close()	no_first_arg
+edge-pref-list	gens	a:pref([1,2]) a:[1,2]	{"a":[1,2]}
+edge-pref-of-disjunct	canon	a:*(1|2)	{"a":*1|2}
+edge-pref-of-conjunct	canon	a:*(1&1)	{"a":*1}
+edge-key-huge-level	gens	a:key(0d900000000000000000000) b:1	{"a":"","b":1}
+edge-op-chained-refs	gens	a:$.b+1 b:$.c c:2	{"a":3,"b":2,"c":2}
+edge-op-residue-meet	errc	a:(1+$.zz)&2	no_path
+edge-op-ref-canon	errc	a:1+$.b	no_path
+edge-plus-str-int	gens	a:"x"+1	{"a":"x1"}
+edge-plus-int-str	gens	a:1+"y"	{"a":"1y"}
+edge-disjunct-ref-member	errc	a:($.b|2) b:1	scalar_value
+edge-pref-same-twice	gens	q:*2|*2	{"q":2}
+edge-key-newline	canon	a:{"x\\ny":1}	{"a":{"x\\ny":1}}
+edge-exp-e100	canon	a:1e100	{"a":nil}
+edge-exp-neg-frac	canon	a:1.5e-9	{"a":1.5e-9}
+edge-small-decimal	canon	a:0.000001	{"a":0.000001}
+edge-neq-empty-list	errc	a:neq([])	mapval_no_gen
+edge-constraint-bool	errc	a:min(0)&true	constraint
+edge-number-string-bound	errc	a:number&min("a")	constraint
+edge-integer-string-bound	errc	a:integer&min("a")	constraint
+edge-meet-invalid-peer	errc	a:min(0)&min()	arg
+edge-meet-two-narrowed	errc	a:(integer&min(0))&(float&max(9))	constraint
+edge-hi-tie-tower	canon	a:max(1.0)&max(0d1)	{"a":max(1.0)}
+edge-hi-open-closed	canon	a:below(1)&max(1)	{"a":below(1)}
+edge-pref-list-meet	gens	b:*[1] b:[1]	{"b":[1]}
+edge-hide-elem	gens	a:[hide(1),2]	{"a":[2]}
+edge-list-spread-merge	canon	a:[&:integer]&[&:min(0)]	{"a":[&:integer&min(0)]}
+edge-hide-list-meet	gens	a:hide([1,2])&[1,2] b:3	{"b":3}
+edge-list-ref-elem	gens	a:[$.b]&[1] b:1	{"a":[1],"b":1}
+edge-list-extend-spread	gens	a:[1]&[&:integer,1,2]	{"a":[1,2]}
+edge-pref-via-ref	gens	q:*1 w:$.q w:2	{"q":1,"w":2}
+edge-list-spread-key	gens	a:[&:{k:key()},{}]	{"a":[{"k":"0"}]}
+edge-root-nil	errc	nil	literal_nil
+edge-expect-kind-peer	errc	m:{&:{r:string} a:{r:string}}	mapval_no_gen
+edge-expect-two-peers	gens	m:{&:{r:min(0)} a:{}} m:{a:{r:5}} m:{a:{r:5}}	{"m":{"a":{"r":5}}}
+edge-pref-nil	errc	a:*1&nil	literal_nil
+edge-conjunct-nested-dup	canon	a:(1&1)&(1&1)	{"a":1}
+edge-key-var-meet	errc	a:$KEY&1	unknown_var
+edge-move-then-ref	gens	b:{x:1} a:move($.b) c:$.a	{"a":{"x":1},"c":{"x":1}}
+edge-func-residue-meet	errc	a:upper($.zz)&1	no_path
+edge-key-level-conflict	errc	q:{k:key(3)&"q"}	scalar_value
+edge-conjunct-nil-mid	errc	a:1&nil&2	literal_nil
+#
+# Batch 5: variable path parts of every scalar kind, chase edges,
+# spread templates with path funcs in nested shapes, optional
+# subtrees, pending-func meets, pref ranks, and key escapes.
+edge-var-float-part	gens	q:{"1.5":3} x:$.q.$half	{"q":{"1.5":3},"x":3}
+edge-var-false-part	gens	q:{"false":3} x:$.q.$off	{"q":{"false":3},"x":3}
+edge-var-bigint-part	gens	q:{"5":3} x:$.q.$bigi	{"q":{"5":3},"x":3}
+edge-var-bigdec-part	gens	q:{"1.5":3} x:$.q.$bigd	{"q":{"1.5":3},"x":3}
+edge-var-null-part	errc	x:$.q.$nul q:{}	no_path
+edge-var-all-kinds	gens	x:$half y:$off z:$bigi w:$bigd v:$nul	{"v":null,"w":1.5,"x":1.5,"y":false,"z":5}
+edge-parent-mid	errc	a:$.x.$PARENT	ref
+edge-self-root	errc	a:$SELF	unknown_var
+edge-type-ref	canon	a:type($.b) b:1 c:2	{"a":1,"b":1,"c":2}
+edge-chase-var-part	errc	a:$.b b:$.c.$foo c:{}	no_path
+edge-chase-bad-index	errc	a:$.b.x b:[$.a]	no_path
+edge-chain-nil-peer	errc	a:$.b&nil b:$.c c:1	literal_nil
+edge-constraint-boolean-kind	errc	a:boolean&min(0)	constraint
+edge-hi-tie-tower-rev	canon	a:max(0d1)&max(1.0)	{"a":max(1.0)}
+edge-meet-neq-narrowed	errc	a:(integer&neq(1))&(float&neq(2))	constraint
+edge-decimal-neg-budget	errc	a:0d1e-5000	decimal_budget
+edge-bigdec-cmp-scales	canon	a:0d1.5&0d1.50	{"a":0d1.5}
+edge-type-list-template	gens	a:type([1,2]) b:$.a&[1,2]	{"b":[1,2]}
+edge-spread-nested-map-key	gens	a:{&:{x:{y:key()}},b:{}}	{"a":{"b":{"x":{"y":"x"}}}}
+edge-spread-disjunct-key	gens	a:{&:(1|{k:key()}),b:1}	{"a":{"b":1}}
+edge-hide-map-gen	gens	a:hide({x:1}) b:1	{"b":1}
+edge-opt-inner-ref-miss	errc	a:{b?:{c:$.zz9}} d:1	no_path
+edge-opt-hidden-list	gens	a:{b?:[hide(1)]} c:1	{"a":{},"c":1}
+edge-closed-peer-drives	gens	a:{y:2}&close({x:1,y:2})	{"a":{"x":1,"y":2}}
+edge-opt-superset	canon	a:{x?:1}&{x?:1,y?:3}	{"a":{"x"?:1,"y"?:3}}
+edge-type-meet-gen	gens	a:type({x:1})&{x:1} b:2	{"b":2}
+edge-opt-func-miss	errc	a:{b?:upper($.zz9)} c:1	no_path
+edge-func-pending-meet	gens	a:upper($.b)&"Q" b:$.c c:"q"	{"a":"Q","b":"q","c":"q"}
+edge-func-then-ref-miss	errc	q:{a:upper("x")&$.q.zz}	no_path
+edge-pref-conjunct-func	gens	b:1 a:pref(2&2)	{"a":2,"b":1}
+edge-pref-disjunct-func	gens	b:1 a:pref(3|3)	{"a":3,"b":1}
+edge-hide-scalar-dup	gens	a:hide(1) a:1 b:2	{"b":2}
+edge-key-backspace	canon	a:{"x\\by":1}	{"a":{"x\\by":1}}
+edge-key-formfeed	canon	a:{"x\\fy":1}	{"a":{"x\\fy":1}}
+edge-key-cr	canon	a:{"x\\ry":1}	{"a":{"x\\ry":1}}
+edge-disjunct-ref-members	gens	a:($.b|$.c) b:1 c:1	{"a":1,"b":1,"c":1}
+edge-rank-pref-first	gens	a:**1|*2	{"a":2}
+edge-rank-pref-second	gens	a:*1|**2	{"a":1}
+edge-pref-dup-fold	gens	a:*1|*1	{"a":1}
+edge-conjunct-nil-meet	errc	a:(1&1)&nil	literal_nil
+edge-conjunct-ref-members	gens	a:($.b&$.c) b:1 c:1	{"a":1,"b":1,"c":1}
+edge-list-ref-peer	gens	a:[1]&[$.b] b:1	{"a":[1],"b":1}
+edge-list-spread-extend	gens	a:[&:integer,1]&[1,2]	{"a":[1,2]}
+edge-hide-list-gen2	gens	a:hide([1,2]) b:1	{"b":1}
+edge-copy-spread-key	canon	a:copy({&:{k:key()},b:{}})	{"a":{&:{"k":key()},"b":{"k":"b"}}}
+edge-constraint-null-var	errc	a:min(0)&$nul	constraint
+# --- batch 6: parser/lexer edges — list-spread merging, comments inside
+# --- text tokens, incomplete operator expressions, binary/octal based
+# --- literals, numeric-separator refusals lexing as text, top-level
+# --- spreads, float-overflow text fallback, optional-key drops ---
+edge-list-spread-merge	gens	a:[&:integer,&:min(0),1,2]	{"a":[1,2]}
+edge-list-spread-only-canon	canon	a:[&:integer]	{"a":[&:integer]}
+edge-list-spread-conjunct-arg	gens	a:[&:integer&min(0),1,2]	{"a":[1,2]}
+edge-text-comment-line	canon	a:x#y	{"a":"x"}
+edge-text-slashes-not-comment	canon	a:x//y	{"a":"x//y"}
+edge-text-comment-block-syntax	errc	a:x/*y*/	syntax
+edge-op-dangling-minus	errc	a:-	incomplete_expression
+edge-op-dangling-plus	errc	a:+	incomplete_expression
+edge-op-dangling-dot	errc	a:.	incomplete_expression
+edge-op-dangling-plus-after	errc	a:1+	incomplete_expression
+edge-op-dangling-paren	errc	a:(1+)	syntax
+edge-op-dangling-in-list	errc	a:[1+,2]	incomplete_expression
+edge-conjunct-trailing-amp	canon	a:1&	{"a":1}
+edge-amp-alone	errc	a:&	syntax
+edge-key-no-value-null	canon	a:	{"a":null}
+edge-overflow-float-text	errc	a:1e999	not_number
+edge-overflow-float-text-conjunct	errc	a:1e999&1	not_number
+edge-based-binary	gens	a:0b101	{"a":5}
+edge-based-binary-neg	gens	a:-0b11	{"a":-3}
+edge-based-octal	gens	a:0o17	{"a":15}
+edge-root-spread-map	gens	&:{x:1} a:{} b:{}	{"a":{"x":1},"b":{"x":1}}
+edge-root-spread-scalar-conflict	errc	&:1 a:{}	map
+edge-map-spread-empty	canon	a:{&:}	{"a":{}}
+edge-root-bool	gens	true	true
+edge-optional-ref-error	errc	a:{b?:$.zz9} c:1	no_path
+edge-optional-stuck-op-drop	gens	a:{b?:1+true} c:1	{"a":{},"c":1}
+edge-zeros-exp-zero	gens	a:00e999	{"a":0}
+edge-sep-doubled-text	gens	a:1__2	{"a":"1__2"}
+edge-sep-based-open-neg	errc	a:-0x_1	negative
+edge-sep-based-open-binary	gens	a:0b_1	{"a":"0b_1"}
+# --- batch 7: duplicate-key merges (conjunct-conjunct append, list
+# --- replays, junction pairs) and optional pairs in list position ---
+edge-dup-conjunct-conflict	errc	a:1&2 a:3&4	scalar_value
+edge-dup-conjunct-maps	gens	a:{x:1}&{y:2} a:{z:3}&{w:4}	{"a":{"w":4,"x":1,"y":2,"z":3}}
+edge-dup-list-same	gens	a:[1] a:[1]	{"a":[1]}
+edge-dup-list-conflict	errc	a:[1] a:[2]	scalar_value
+edge-dup-list-two	gens	a:[1,2] a:[1,2]	{"a":[1,2]}
+edge-dup-conjunct-kind	gens	a:1&integer a:1&integer	{"a":1}
+edge-dup-list-conjunct	gens	a:[1]&[1] a:[1]&[1]	{"a":[1]}
+edge-dup-junction	gens	a:1&2|3 a:4&5|3	{"a":3}
+edge-optional-pair-in-list	gens	a:[1,x?:2]	{"a":[1]}
+edge-optional-pair-in-list-ref	gens	a:[1,x?:$.zz]	{"a":[1]}
+# --- batch 8: implicit top-level lists (raw scalar conversions of every
+# --- kind outside the val rules) ---
+edge-implicit-list-ints	gens	1,2	[1,2]
+edge-implicit-list-mixed	gens	1,"s",true,null	[1,"s",true,null]
+edge-implicit-list-float	gens	1.5,2	[1.5,2]
+edge-implicit-list-canon	canon	1,2	[1,2]
+edge-implicit-list-map	gens	[{x:1},2]	[{"x":1},2]
+# --- batch 9: constraint residual algebra — leaf-kind narrowing of every
+# --- numeric leaf, like-direction bound tightening in both orders, and
+# --- exclusion dedup/tie-breaking — plus super() canon ---
+edge-constraint-leaf-integer	canon	a:integer&min(0)&5	{"a":5}
+edge-constraint-leaf-float	canon	a:float&min(0)&1.5	{"a":1.5}
+edge-constraint-leaf-biginteger	canon	a:biginteger&min(0)&0d5	{"a":0d5}
+edge-constraint-leaf-bigdecimal	canon	a:bigdecimal&min(0)&0d1.5	{"a":0d1.5}
+edge-constraint-min-tighter-right	canon	a:min(1)&min(2)	{"a":min(2)}
+edge-constraint-min-tighter-left	canon	a:min(2)&min(1)	{"a":min(2)}
+edge-constraint-max-tighter-left	canon	a:max(1)&max(2)	{"a":max(1)}
+edge-constraint-max-tighter-right	canon	a:max(2)&max(1)	{"a":max(1)}
+edge-constraint-above-tighter	canon	a:above(1)&above(2)	{"a":above(2)}
+edge-constraint-below-tighter	canon	a:below(2)&below(1)	{"a":below(1)}
+edge-constraint-open-beats-closed	canon	a:min(1)&above(1)	{"a":above(1)}
+edge-constraint-neq-tower-tie	canon	a:neq(1,1.0)	{"a":neq(1,1.0)}
+edge-constraint-neq-string-dedup	canon	a:neq("a","a")	{"a":neq("a")}
+edge-constraint-neq-merge-tie	canon	a:neq(1)&neq(1.0)	{"a":neq(1,1.0)}
+edge-spread-scalar-conflict-drives-keys	errc	a:{&:1,x:1}&{&:"s"}	scalar_kind
+edge-super-canon	canon	a:super(1)	{"a":integer}
+edge-super-residue-code	errc	a:super(1)&integer	mapval_no_gen
+# --- batch 10: double negation of an exact literal — `-` is a prefix
+# --- operator, so the negated spelling is rebuilt each time ---
+edge-neg-neg-biginteger	canon	a:--0d5	{"a":0d5}
+edge-neg-neg-spaced	canon	a:- -0d1.5	{"a":0d1.5}
+edge-neg-neg-paren	canon	a:-(-0d5)	{"a":0d5}
+edge-neg-paren-biginteger	canon	a:-(0d5)	{"a":-0d5}
+edge-neg-neg-gen	gens	a:--0d5	{"a":5}

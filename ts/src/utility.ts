@@ -84,19 +84,13 @@ function walk(
 
   // Container Vals (Map etc) have peg = plain {} or []
   if (null != child && !child.isVal) {
+    // A ListVal's array peg is an object too, and for-in yields its
+    // indices as string keys, so this one loop covers both bag shapes.
     if ('object' === typeof child) {
       for (let ckey in child) {
         if (child[ckey] && child[ckey].isVal) {
           child[ckey] = walk(
             child[ckey], before, after, maxdepth, ckey, out, [...(path || []), ckey])
-        }
-      }
-    }
-    else if (Array.isArray(child)) {
-      for (let i = 0; i < child.length; i++) {
-        if (child[i] && child[i].isVal) {
-          child[i] = walk(
-            child[i], before, after, maxdepth, i, out, [...(path || []), '' + i])
         }
       }
     }
@@ -194,7 +188,7 @@ function items(o: any) {
   else {
     return []
   }
-}
+} /* node:coverage ignore next 15 */
 
 
 export {

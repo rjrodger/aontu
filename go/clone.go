@@ -131,8 +131,17 @@ func repathArg(v Val, base []string, cc int) {
 
 // clonePath deep-clones a Val, rebasing the subtree at the given path
 // (mirrors Val.clone in ts/src/val/Val.ts, used when a reference
-// resolves to a target). Done-state is preserved.
+// resolves to a target). Done-state is preserved. The TOP of the clone
+// is marked clone-minted (posu; TS Val.clone's `url ?? ”`), which
+// gates the error-operand position flip in makeNilErr; children keep
+// their source marks, as TS's shallow clone shares the originals.
 func clonePath(v Val, path []string) Val {
+	out := clonePathRec(v, path)
+	out.setPosu(true)
+	return out
+}
+
+func clonePathRec(v Val, path []string) Val {
 	switch n := v.(type) {
 	case *TopVal:
 		// Return a fresh TOP so marks (e.g. hide(top)) don't leak onto
@@ -159,10 +168,25 @@ func clonePath(v Val, path []string) Val {
 		c := *n
 		c.path = cp(path)
 		return &c
+	case *ExpectVal:
+		// TS Val.clone rebuilds an ExpectVal from the generic spec (peg,
+		// marks, path) alone — the expectation-only state (accumulated
+		// peer, creating parent, key) is NOT part of the spec and starts
+		// unset in the clone, so an independent destination accumulates
+		// its own peers and places its own error.
+		out := &ExpectVal{peg: n.peg}
+		out.dc = n.dc
+		out.sp = n.sp
+		out.path = overlayPath(path, n.path)
+		copyMarks(out, n)
+		return out
 	case *MapVal:
 		out := newMap()
 		out.dc = n.dc
 		out.path = overlayPath(path, n.path)
+		// The source site travels with the clone (TS Val.clone copies
+		// site.row/col), so a ref-carried bag still frames at its brace.
+		out.sp = n.sp
 		out.closed = n.closed
 		out.optional = append([]string{}, n.optional...)
 		if n.spread != nil {
@@ -177,6 +201,7 @@ func clonePath(v Val, path []string) Val {
 		out := &ListVal{}
 		out.dc = n.dc
 		out.path = overlayPath(path, n.path)
+		out.sp = n.sp
 		out.closed = n.closed
 		if n.spread != nil {
 			out.spread = clonePath(n.spread, path)

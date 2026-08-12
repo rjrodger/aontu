@@ -20,7 +20,6 @@ import {
   explainOpen,
   ec,
   explainClose,
-  items,
 } from '../utility'
 
 import { makeNilErr, AontuError } from '../err'
@@ -33,7 +32,6 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
-import { empty } from './Val'
 
 
 class ListVal extends BagVal {
@@ -121,9 +119,9 @@ class ListVal extends BagVal {
 
         propagateMarks(this, child)
 
+        // child is non-nullish: propagateMarks above dereferences it.
         out.peg[key] =
-          undefined === child ? key_spread_cj :
-            child.isNil ? child :
+          child.isNil ? child :
               key_spread_cj.isNil ? key_spread_cj :
                 key_spread_cj.isTop && child.done ? child :
                   child.isTop && key_spread_cj.done ? key_spread_cj :
@@ -271,7 +269,7 @@ class ListVal extends BagVal {
           this.peg[k].canon).join(',') +
       ']'
   }
-}
+} /* node:coverage ignore next 8 */
 
 
 

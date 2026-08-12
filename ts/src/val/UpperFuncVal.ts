@@ -81,7 +81,7 @@ class UpperFuncVal extends FuncBaseVal {
       })) :
       super.superior()
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

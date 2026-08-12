@@ -48,7 +48,7 @@ function computeDiagnostics(src, opts) {
     // trust contract forbids silent truncation (docs/trust.md clause 2).
     // Tree nils are already on ctx.err too, so dedup by identity; the
     // transient disjunct-trial sentinel never surfaces.
-    for (const e of ac?.err ?? []) {
+    for (const e of ac.err) {
         if (e?.isNil && '|:trial-nil' !== e.why && !seen.has(e)) {
             seen.add(e);
             nils.push(e);
@@ -209,8 +209,8 @@ function collectHoverCandidates(v, out, seen) {
     if (seen.has(v))
         return;
     seen.add(v);
-    const row = v.site?.row ?? -1;
-    const col = v.site?.col ?? -1;
+    const row = v.site.row;
+    const col = v.site.col;
     let canon = '';
     try {
         canon = v.canon;
@@ -242,13 +242,9 @@ function collectHoverCandidates(v, out, seen) {
         collectHoverCandidates(spreadCj, out, seen);
 }
 function hoverMarkdown(val) {
-    let canon = '';
-    try {
-        canon = val.canon;
-    }
-    catch {
-        canon = '';
-    }
+    // No try needed: a Val only becomes a hover candidate after
+    // collectHoverCandidates read this same getter successfully.
+    const canon = val.canon;
     return '```aontu\n' + canon + '\n```\n\n' + '*' + valKind(val) + '*';
 }
 // A short human description of a Val's kind, shown under the hover canon.
@@ -259,10 +255,6 @@ function valKind(val) {
         return 'type';
     if (val.isConstraint)
         return 'constraint';
-    if (val.isMap)
-        return 'map';
-    if (val.isList)
-        return 'list';
     if (val.isRef)
         return 'reference';
     if (val.isInteger)
@@ -396,6 +388,6 @@ class LspHandler {
     publish(uri) {
         return publishDiagnosticsMsg(uri, computeDiagnostics(this.docs.get(uri) ?? ''));
     }
-}
+} /* node:coverage ignore next 28 */
 exports.LspHandler = LspHandler;
 //# sourceMappingURL=lsp.js.map

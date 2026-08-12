@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { LspHandler } from './lsp';
 declare class FrameCodec {
     private handler;
@@ -11,4 +10,5 @@ declare class FrameCodec {
     private drain;
     private send;
 }
-export { FrameCodec, };
+declare function main(stdin?: NodeJS.ReadableStream, write?: (chunk: Buffer) => void, exit?: (code: number) => void): FrameCodec;
+export { FrameCodec, main, };

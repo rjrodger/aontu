@@ -45,6 +45,6 @@ class PathFuncVal extends FuncBaseVal_1.FuncBaseVal {
         let out = args[0] ?? (0, err_1.makeNilErr)(ctx, 'arg', this);
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.PathFuncVal = PathFuncVal;
 //# sourceMappingURL=PathFuncVal.js.map

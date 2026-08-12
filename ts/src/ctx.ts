@@ -285,7 +285,7 @@ class AontuContext {
     return this._pathstr ??
       (this._pathstr = this.path.map(p => p.replaceAll('.', '\\.')).join('.'))
   }
-}
+} /* node:coverage ignore next 8 */
 
 
 

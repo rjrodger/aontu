@@ -68,8 +68,9 @@ class RefVal extends FeatureVal {
     super(spec, ctx)
     this.peg = []
 
-    this.absolute = true === this.absolute ? true : // absolute sticks
-      true === spec.absolute ? true : false
+    // The field initialiser (absolute = false) has just run, so only
+    // the spec can carry absoluteness in (RefVal.clone re-passes it).
+    this.absolute = true === spec.absolute
 
     this.prefix = true === spec.prefix
 
@@ -181,14 +182,13 @@ class RefVal extends FeatureVal {
       // TODO: not resolved when all Vals in path are done is an error
       // as path cannot be found
       // let resolved: Val | undefined = null == ctx ? this : ctx.find(this)
-      let found: Val | undefined = null == ctx ? this : this.find(ctx)
+      let found: Val | undefined = this.find(ctx)
 
+      // `?? this` makes resolved non-nullish, so an unresolved reference
+      // takes the RefVal arm below rather than a separate null arm.
       const resolved = found ?? this
 
-      if (null == resolved && this.canon === peer.canon) {
-        out = this
-      }
-      else if (resolved instanceof RefVal) {
+      if (resolved instanceof RefVal) {
         if (peer.isTop) {
           out = this
           why = 'pt'
@@ -582,7 +582,7 @@ class RefVal extends FeatureVal {
     ].filter(p => '' != p).join(',')
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

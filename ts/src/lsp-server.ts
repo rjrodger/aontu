@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
 // Aontu Language Server (stdio).
@@ -85,25 +84,28 @@ class FrameCodec {
 }
 
 
-function main() {
+// The streams and exit are injectable (defaulting to real stdio) so the
+// full wiring is unit-testable — the same shape as the Go server's
+// serve(in, out, logw).
+function main(
+  stdin: NodeJS.ReadableStream = process.stdin,
+  write: (chunk: Buffer) => void = (chunk) => void process.stdout.write(chunk),
+  exit: (code: number) => void = (code) => process.exit(code),
+): FrameCodec {
   const handler = new LspHandler()
-  const codec = new FrameCodec(
-    handler,
-    (chunk) => process.stdout.write(chunk),
-    (code) => process.exit(code),
-  )
+  const codec = new FrameCodec(handler, write, exit)
 
-  process.stdin.on('data', (chunk: Buffer) => codec.push(chunk))
-  process.stdin.on('end', () => codec.end())
-}
+  stdin.on('data', (chunk: Buffer) => codec.push(chunk))
+  stdin.on('end', () => codec.end())
+  return codec
+} /* node:coverage ignore next 11 */
 
 
-// Only auto-run when invoked as a program, not when imported by tests.
-if (require.main === module) {
-  main()
-}
+// No require.main guard here: bin/aontu-lsp.js is the executable entry
+// and calls main() itself, so this module stays import-only.
 
 
 export {
   FrameCodec,
+  main,
 }

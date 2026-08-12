@@ -1,0 +1,30 @@
+# Spread-required residue (#27): a PEER-introduced map key whose value
+# cannot generate on its own — most commonly a spread template field
+# applied to a child that never receives a concrete value — is
+# DISTINGUISHED residue: the registered mapval_spread_required code
+# (class incomplete), not the generic *_no_gen. The machinery is TS's
+# ExpectVal (ts/src/val/ExpectVal.ts), ported as go/expect.go: the
+# expectation escapes to a real value the moment a concrete peer
+# arrives, and an optional child drops its unmet expectations wholesale.
+# Every expectation below was probed byte-identical in BOTH engines at
+# promotion time (full error text included).
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+spread-required-code	errc	m:{&:{r:string} a:{}}	mapval_spread_required
+spread-required-msg	err	m:{&:{r:string} a:{}}	The value for key r is required (defined in spread).
+spread-required-canon	canon	m:{&:{r:string} a:{}}	{"m":{&:{"r":string},"a":{"r":}}}
+spread-required-escape	gens	m:{&:{r:string} a:{r:x}}	{"m":{"a":{"r":"x"}}}
+spread-required-optional	gens	m:{&:{r:string} a?:{}}	{"m":{}}
+#
+# A LIST spread template applies to the element maps, so the residue is
+# map-level (a list child itself is never an expectation, in either
+# port — listval_spread_required stays registered vocabulary with no
+# raise site).
+spread-required-list-elem	errc	m:[&:{r:string} {}]	mapval_spread_required
+#
+# The code covers every peer-introduced non-generable key, spread or
+# not (the TS handleExpectedVal condition is on the peer child, not on
+# how it arrived): a duplicate-key merge and a ref-carried spread reach
+# the same residue.
+peer-key-kind-required	errc	m:{x:1} m:{y:string}	mapval_spread_required
+spread-required-constraint	errc	m:{&:{r:min(0)} a:{}}	mapval_spread_required
+spread-required-via-ref	errc	q:{&:{r:string}} w:$.q w:{a:{}}	mapval_spread_required

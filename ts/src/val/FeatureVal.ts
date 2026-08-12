@@ -48,7 +48,7 @@ abstract class FeatureVal extends Val {
     return undefined
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

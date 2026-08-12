@@ -48,6 +48,7 @@ const reservedKeyPrefix = "\x00aontu_"
 const orderKey = reservedKeyPrefix + "order"
 const spreadKey = reservedKeyPrefix + "spread"
 const optionalKey = reservedKeyPrefix + "optional"
+const posKey = reservedKeyPrefix + "pos"
 
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
@@ -80,7 +81,7 @@ func langForBase(base string) (*jsonic.Jsonic, error) {
 		return j, nil
 	}
 	j, err := makeLang(base)
-	if err != nil {
+	if err != nil { //coverage:ignore makeLang cannot fail — see mustMakeLang
 		return nil, err
 	}
 	// Bound memory in long-running hosts (e.g. the LSP) that may resolve
@@ -97,7 +98,10 @@ func boolPtr(b bool) *bool { return &b }
 
 func mustMakeLang(base string) *jsonic.Jsonic {
 	j, err := makeLang(base)
-	if err != nil {
+	// makeLang's only error sources are its three plugin registrations,
+	// which take compile-time literal options and ignore the base — and
+	// this very call already succeeds at package init.
+	if err != nil { //coverage:ignore plugin registration cannot fail
 		panic("aontu: jsonic grammar setup failed: " + err.Error())
 	}
 	return j
@@ -269,11 +273,11 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			},
 		},
 		"evaluate": evaluate,
-	}); err != nil {
+	}); err != nil { //coverage:ignore plugin registration cannot fail
 		return nil, err
 	}
 
-	if err := j.Use(path.Path, nil); err != nil {
+	if err := j.Use(path.Path, nil); err != nil { //coverage:ignore plugin registration cannot fail
 		return nil, err
 	}
 
@@ -380,6 +384,7 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		rs.PrependClose(
 			&jsonic.AltSpec{S: [][]jsonic.Tin{{cj}, {cl}}, B: 2, G: "spread"},
 		)
+		rs.AddAC(recordMapPos)
 	})
 
 	// pair: `&:value` is a spread (stored on the enclosing map);
@@ -445,7 +450,17 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 		rs.AddAC(elemSpread)
 	})
 
-	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil {
+	// list: convert the raw slice into a ListVal at rule close, carrying
+	// the open token's source position — exactly where and how the TS
+	// grammar builds its ListVal (the list rule bc + addsite in
+	// ts/src/lang.ts), so a list operand in an error frame points at its
+	// `[` (issue #34).
+	j.Rule("list", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
+		rs.AddAC(wrapList)
+	})
+
+	// MultiSource reads the base only at RESOLVE time, not registration.
+	if err := j.Use(multisource.MultiSource, msOptions(base)); err != nil { //coverage:ignore plugin registration cannot fail
 		return nil, err
 	}
 
@@ -489,6 +504,39 @@ func elemSpread(r *jsonic.Rule, _ *jsonic.Context) {
 		return
 	}
 	list[len(list)-1] = &listSpread{val: sv}
+}
+
+// recordMapPos stamps the map rule's open-token source position into
+// the raw map node under the reserved posKey sentinel; asValDepth lifts
+// it onto the MapVal. This is the raw-node analogue of the TS map rule
+// bc's addsite (site.row/col from r.o0), so a map operand in an error
+// frame points at its `{` — or, for an implicit map, at the token that
+// opened it — identically in both ports (issue #34).
+func recordMapPos(r *jsonic.Rule, _ *jsonic.Context) {
+	m, ok := r.Node.(map[string]any)
+	if !ok || 0 == r.ON {
+		return
+	}
+	// Unconditional: the map's OWN rule is the authority, exactly as the
+	// TS bc runs once per map rule (a multisource load may have injected
+	// a loaded file's stamp; the host position wins, as in TS).
+	m[posKey] = r.O0.SI
+}
+
+// wrapList converts a completed raw list into a ListVal carrying the
+// open token's position — the direct mirror of the TS list rule bc
+// (new ListVal + addsite). Rule-nesting order means inner lists are
+// already Vals here; only this list's own markers need handling.
+func wrapList(r *jsonic.Rule, _ *jsonic.Context) {
+	n, ok := r.Node.([]any)
+	if !ok {
+		return
+	}
+	lv := listOfRaw(n, 0)
+	if 0 < r.ON {
+		lv.sp = r.O0.SI
+	}
+	r.Node = lv
 }
 
 func kindDef(k Kind) *jsonic.ValueDef {
@@ -734,7 +782,7 @@ func isLossyIntegerLiteral(src string) bool {
 			return false
 		}
 		n, ok := new(big.Int).SetString(digits, 10)
-		if !ok {
+		if !ok { //coverage:ignore allDigits above already vetted the run
 			return false
 		}
 		// Zero at any exponent is zero, and zero is exact — test it
@@ -837,7 +885,7 @@ func exactLiteral(m []string) func(int) Val {
 
 	if m[2] == "" && m[3] == "" {
 		n, ok := new(big.Int).SetString(intPart, 10)
-		if !ok {
+		if !ok { //coverage:ignore the literal regex already vetted the digits
 			return exactNil("decimal_syntax")
 		}
 		// big.Int has no negative zero, so D5 needs nothing here.
@@ -895,7 +943,7 @@ func exactDecimal(neg bool, intPart, frac, exp string) (*Decimal, string) {
 	scale := big.NewInt(int64(len(frac)))
 	if exp != "" {
 		e, ok := new(big.Int).SetString(exp, 10)
-		if !ok {
+		if !ok { //coverage:ignore both callers pass a signed digit run
 			return nil, "decimal_syntax"
 		}
 		scale.Sub(scale, e)
@@ -905,7 +953,7 @@ func exactDecimal(neg bool, intPart, frac, exp string) (*Decimal, string) {
 	}
 
 	coeff, ok := new(big.Int).SetString(intPart+frac, 10)
-	if !ok {
+	if !ok { //coverage:ignore both callers pass unsigned digit runs
 		return nil, "decimal_syntax"
 	}
 	if neg {
@@ -1609,15 +1657,98 @@ func toVals(terms []interface{}) []Val {
 
 // maxNodeDepth bounds asVal's recursion so pathologically deep input
 // (thousands of nested {}/[]) yields a clean error instead of a fatal,
-// unrecoverable Go stack overflow. Because every Val tree is built by
-// asVal, this also transitively bounds the depth that setPaths and
-// clonePath (which walk asVal's output) ever recurse to, so they cannot
-// overflow either. Real configs are orders of magnitude shallower.
+// unrecoverable Go stack overflow. Lists convert at their rule close
+// (wrapList) with a per-list depth restart, so asVal's own counter no
+// longer sees the full nesting; the transitive bound that keeps
+// setPaths, clonePath and the unify walks stack-safe is therefore
+// enforced by valTreeDepth in parseBase — an ITERATIVE scan over the
+// finished tree. Real configs are orders of magnitude shallower.
 const maxNodeDepth = 10000
+
+// valTreeDepth reports the maximum nesting depth of a finished Val
+// tree, iteratively — this check is what permits every later walker to
+// recurse without its own guard. Bags and every wrapper that adds a
+// recursion frame in those walkers count a level; the scan stops early
+// once the bound is exceeded.
+func valTreeDepth(v Val) int {
+	type item struct {
+		v Val
+		d int
+	}
+	stack := []item{{v, 1}}
+	maxd := 0
+	for len(stack) > 0 {
+		it := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if it.d > maxd {
+			maxd = it.d
+			if maxd > maxNodeDepth {
+				return maxd
+			}
+		}
+		switch n := it.v.(type) {
+		case *MapVal:
+			for _, k := range n.keys {
+				stack = append(stack, item{n.peg[k], it.d + 1})
+			}
+			if n.spread != nil {
+				stack = append(stack, item{n.spread, it.d + 1})
+			}
+		case *ListVal:
+			for _, e := range n.peg {
+				stack = append(stack, item{e, it.d + 1})
+			}
+			if n.spread != nil {
+				stack = append(stack, item{n.spread, it.d + 1})
+			}
+		case *ConjunctVal:
+			for _, t := range n.peg {
+				stack = append(stack, item{t, it.d + 1})
+			}
+		case *DisjunctVal:
+			for _, t := range n.peg {
+				stack = append(stack, item{t, it.d + 1})
+			}
+		case *PlusOpVal:
+			for _, t := range n.peg {
+				stack = append(stack, item{t, it.d + 1})
+			}
+		case *FuncVal:
+			for _, a := range n.peg {
+				stack = append(stack, item{a, it.d + 1})
+			}
+		case *PrefVal:
+			stack = append(stack, item{n.peg, it.d + 1})
+		}
+	}
+	return maxd
+}
 
 // asVal converts a parsed jsonic node into a Val. Containers are
 // converted recursively; map order comes from the order sentinel.
 func asVal(node any) Val { return asValDepth(node, 0) }
+
+// listOfRaw builds a ListVal from a raw element slice, extracting the
+// spread and optional markers the elem rule leaves behind. Shared by
+// wrapList (the list rule close) and the asValDepth fallback.
+func listOfRaw(n []any, depth int) *ListVal {
+	lv := &ListVal{}
+	for _, e := range n {
+		if _, ok := e.(*optionalElem); ok {
+			continue
+		}
+		if ls, ok := e.(*listSpread); ok {
+			if lv.spread == nil {
+				lv.spread = ls.val
+			} else {
+				lv.spread = mergeVals(lv.spread, ls.val)
+			}
+			continue
+		}
+		lv.peg = append(lv.peg, asValDepth(e, depth+1))
+	}
+	return lv
+}
 
 func asValDepth(node any, depth int) Val {
 	if depth > maxNodeDepth {
@@ -1645,6 +1776,9 @@ func asValDepth(node any, depth int) Val {
 		if opt, ok := n[optionalKey].([]string); ok {
 			mv.optional = opt
 		}
+		if p, ok := n[posKey].(int); ok {
+			mv.sp = p
+		}
 		ord, _ := n[orderKey].([]string)
 		for _, k := range ord {
 			// Skip an order entry with no value: the multisource mark "@"
@@ -1657,22 +1791,10 @@ func asValDepth(node any, depth int) Val {
 		}
 		return mv
 	case []any:
-		lv := &ListVal{}
-		for _, e := range n {
-			if _, ok := e.(*optionalElem); ok {
-				continue
-			}
-			if ls, ok := e.(*listSpread); ok {
-				if lv.spread == nil {
-					lv.spread = ls.val
-				} else {
-					lv.spread = mergeVals(lv.spread, ls.val)
-				}
-				continue
-			}
-			lv.peg = append(lv.peg, asValDepth(e, depth+1))
-		}
-		return lv
+		// Reached only by lists that skipped the list rule (implicit
+		// top-level lists, evaluated expr slices); braced lists are
+		// already ListVals via wrapList. No position, as in TS rawToVal.
+		return listOfRaw(n, depth)
 	case float64:
 		// Source text is unavailable here (raw values from the implicit
 		// top-level list, expr operands), so the "no '.'" condition of
@@ -1698,17 +1820,11 @@ func asValDepth(node any, depth int) Val {
 	return newNil("parse_unknown")
 }
 
-// parse parses source into a (not yet unified) Val, resolving relative
-// @"file" loads from the process working directory.
-func parse(src string) (Val, error) {
-	return parseBase(src, "")
-}
-
 // parseBase is parse with an explicit base directory for resolving
 // relative @"file" loads.
 func parseBase(src, base string) (Val, error) {
 	lang, err := langForBase(base)
-	if err != nil {
+	if err != nil { //coverage:ignore langForBase cannot fail — see makeLang
 		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
 	}
 	// ParseMeta, not Parse: the meta bag is this parse's private channel
@@ -1749,6 +1865,16 @@ func parseBase(src, base string) (Val, error) {
 		return newMap(), nil
 	}
 	root := asVal(out)
+	// The transitive depth bound (see maxNodeDepth): checked ONCE here,
+	// iteratively, before any recursive walker touches the tree. The
+	// registered budget-class max_depth code is unchanged; only the
+	// stage moved (parse instead of a nil embedded at the cut), which
+	// no row pins — TS has no equivalent guard at all (its stack
+	// overflows first, a documented gap).
+	if valTreeDepth(root) > maxNodeDepth {
+		n := newNil("max_depth")
+		return newMap(), &AontuError{Msg: n.FullMessage(src, ""), Code: "max_depth"}
+	}
 	setPaths(root, []string{})
 	return root, nil
 }

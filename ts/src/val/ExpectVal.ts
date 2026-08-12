@@ -87,7 +87,7 @@ class ExpectVal extends FeatureVal {
       ',parent=' + this.parent?.inspect(d)
   }
 
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

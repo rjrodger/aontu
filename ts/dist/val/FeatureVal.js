@@ -24,6 +24,6 @@ class FeatureVal extends Val_1.Val {
         }
         return undefined;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.FeatureVal = FeatureVal;
 //# sourceMappingURL=FeatureVal.js.map

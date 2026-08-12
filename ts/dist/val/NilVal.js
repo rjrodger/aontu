@@ -16,10 +16,10 @@ class NilVal extends Val_1.Val {
         if (spec && 'object' === typeof spec) {
             this.why = spec?.why;
             this.msg = 'string' === typeof spec?.msg ? spec.msg : this.msg;
-            this.err = spec ?
+            this.err =
                 Array.isArray(spec.err) ? [...spec.err] :
                     null != spec.err ? [spec.err] :
-                        Val_1.EMPTY_ERR : Val_1.EMPTY_ERR;
+                        Val_1.EMPTY_ERR;
         }
         // Nil is always DONE, by definition.
         this.dc = type_1.DONE;
@@ -111,6 +111,6 @@ NilVal.make = (ctx, why, av, bv, attempt, details) => {
 //
 // Do NOT use this sentinel for errors that may surface: those need
 // real NilVals with proper site/path info for descErr formatting.
-const TRIAL_NIL = new NilVal({ why: '|:trial-nil' });
+const TRIAL_NIL = new NilVal({ why: '|:trial-nil' }); /* node:coverage ignore next 7 */
 exports.TRIAL_NIL = TRIAL_NIL;
 //# sourceMappingURL=NilVal.js.map

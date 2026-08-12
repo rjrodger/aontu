@@ -548,7 +548,7 @@ class NeqConstraintVal extends ConstraintVal {
   constructor(spec: ValSpec, ctx?: AontuContext) {
     super({ ...spec, atom: 'neq' }, ctx)
   }
-}
+} /* node:coverage ignore next 11 */
 
 
 export {

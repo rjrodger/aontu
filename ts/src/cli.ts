@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
 // Command-line interface for Aontu.
@@ -9,9 +8,11 @@
 // With no file on an interactive terminal, a REPL is started. With no
 // file and piped input, the source is read from stdin. See HELP below.
 
-import * as Fs from 'node:fs'
-import * as Path from 'node:path'
-import * as Readline from 'node:readline'
+// Named imports, not `import * as`: the namespace form makes tsc emit the
+// __importStar downlevel helper, whose branches no supported Node takes.
+import { readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { createInterface } from 'node:readline'
 
 import { Aontu, AontuError, exactJSON } from './aontu'
 
@@ -40,7 +41,7 @@ REPL commands:
 
 function version(): string {
   try {
-    const txt = Fs.readFileSync(Path.join(__dirname, '..', 'package.json'), 'utf8')
+    const txt = readFileSync(join(__dirname, '..', 'package.json'), 'utf8')
     return JSON.parse(txt).version ?? '0.0.0'
   }
   catch {
@@ -80,14 +81,14 @@ function evalSource(
 function runFile(file: string, mode: Mode): number {
   let src: string
   try {
-    src = Fs.readFileSync(file, 'utf8')
+    src = readFileSync(file, 'utf8')
   }
   catch (err: any) {
     process.stderr.write(`aontu: cannot read ${file}: ${err.message}\n`)
     return 1
   }
 
-  const aontu = new Aontu({ path: Path.resolve(file) })
+  const aontu = new Aontu({ path: resolve(file) })
   const res = evalSource(aontu, src, mode)
   ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
   return res.ok ? 0 : 1
@@ -111,7 +112,7 @@ function runStdin(mode: Mode): Promise<number> {
 function runRepl(initialMode: Mode): void {
   let mode = initialMode
   const aontu = new Aontu()
-  const rl = Readline.createInterface({
+  const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
     prompt: 'aontu> ',
@@ -209,13 +210,11 @@ function main(argv: string[]): void {
   else {
     runStdin(mode).then((code) => finish(code))
   }
-}
+} /* node:coverage ignore next 8 */
 
 
-// Only run when invoked as a program, not when imported (e.g. by tests).
-if (require.main === module) {
-  main(process.argv)
-}
+// No require.main guard here: bin/aontu.js is the executable entry and
+// calls main(process.argv) itself, so this module stays import-only.
 
 
 export { evalSource, main }

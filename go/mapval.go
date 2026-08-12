@@ -39,18 +39,6 @@ func (m *MapVal) set(k string, v Val) {
 	m.peg[k] = v
 }
 
-// add applies duplicate-key merge semantics: a repeated key combines
-// the old and new values into a conjunct, mirroring the jsonic merge
-// in ts/src/lang.ts (so `a:1 a:2` becomes `a:1&2`).
-func (m *MapVal) add(k string, v Val) {
-	if old, ok := m.peg[k]; ok {
-		m.peg[k] = mergeVals(old, v)
-	} else {
-		m.keys = append(m.keys, k)
-		m.peg[k] = v
-	}
-}
-
 func mergeVals(a, b Val) Val {
 	if cj, ok := a.(*ConjunctVal); ok {
 		cj.peg = append(cj.peg, b)
@@ -283,16 +271,38 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			if ctx != nil && ctx.collect {
 				break
 			}
-			// Code follows the TS BagVal.gen closed/no_gen choice: a
-			// closed bag makes the residue a missing REQUIRED value; an
-			// open one merely non-generable. TS additionally raises
-			// mapval_spread_required via its isExpect branch; Go has no
-			// ExpectVal counterpart yet, so spread-required residue
-			// takes the generic code here — an OPEN divergence, ledger
-			// entry in test/spec/divergent.tsv, issue #27.
+			// Code follows the TS BagVal.gen choice: an expect child is
+			// spread-required residue (issue #27); otherwise a closed
+			// bag makes the residue a missing REQUIRED value, an open
+			// one merely non-generable.
 			code := "mapval_no_gen"
 			if m.closed {
 				code = "mapval_required"
+			}
+			src, file := "", ""
+			if ctx != nil {
+				src, file = ctx.src, ctx.file
+			}
+			if ev, ok := child.(*ExpectVal); ok {
+				// The TS isExpect branch: code *_spread_required, and the
+				// operands are the EXPECTATION (va = expect.peg) and a
+				// fresh nil PLACED at the creating bag's site (vb) — the
+				// placed nil sits later in the source, so it wins the
+				// primary slot and the first frame points at the bag.
+				code = "mapval_spread_required"
+				var vb Val
+				if ev.parent != nil {
+					// place() copies the parent's whole site — position
+					// AND url (the clone mark), which gates the operand
+					// order exactly as in TS.
+					nb := newNil("")
+					nb.sp = ev.parent.pos()
+					nb.spu = ev.parent.posu()
+					vb = nb
+				}
+				n := makeNilErrFull(nil, code, ev.peg, vb, "",
+					map[string]string{"key": k})
+				return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 			}
 			// Render the full TS-style message (marker, headline, hint,
 			// frame with the `key <k>` caret submessage) via a NilVal,
@@ -301,10 +311,6 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			n.primary = child
 			n.sp = child.pos()
 			n.details = map[string]string{"key": k}
-			src, file := "", ""
-			if ctx != nil {
-				src, file = ctx.src, ctx.file
-			}
 			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 		}
 
@@ -431,6 +437,11 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		out = newMap()
 		out.closed = m.closed
 		out.path = cp(m.path)
+		// The site survives unification (TS: `out.site = this.site` in
+		// MapVal.unify copies row, col AND url), so a unified bag still
+		// frames at its brace and keeps its clone mark.
+		out.sp = m.sp
+		out.spu = m.spu
 		out.spread = m.spread
 		out.optional = append([]string{}, m.optional...)
 	}
@@ -539,6 +550,14 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 			if ex, ok := out.peg[pk]; ok {
 				ctx.slot = pkslot
 				uv = unite(ctx, ex, pc)
+			} else if !expectGenable(pc) {
+				// TS handleExpectedVal: a peer key whose value cannot
+				// generate on its own (a kind, top, a var, a constraint —
+				// typically a spread template field) is wrapped, so the
+				// bag's Gen can distinguish spread-required residue from
+				// ordinary *_no_gen (issue #27). Not united with TOP: the
+				// wrap must hold the raw expectation, exactly as in TS.
+				uv = &ExpectVal{peg: pc, parent: m, key: pk}
 			} else {
 				ctx.slot = pkslot
 				uv = unite(ctx, pc, top())

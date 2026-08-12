@@ -26,7 +26,6 @@ declare const DONE = -1;
 declare const SPREAD: unique symbol;
 declare const EMPTY_ERR: any[];
 declare abstract class Val {
-    #private;
     isVal: boolean;
     isTop: boolean;
     isNil: boolean;
@@ -76,6 +75,7 @@ declare abstract class Val {
     explain: any[] | null;
     uh?: number[];
     deps?: any;
+    private _ctx;
     constructor(spec: ValSpec, ctx?: AontuContext);
     ctx(): any;
     get done(): boolean;

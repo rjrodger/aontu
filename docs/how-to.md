@@ -48,7 +48,7 @@ aontu> :quit
 
 Get the command with `npm i -g aontu` (or `npx aontu`) for Node, or
 `go install github.com/rjrodger/aontu/go/cmd/aontu@latest` for Go. From a
-clone, use `node ts/dist/cli.js …` or `go run ./cmd/aontu …`.
+clone, use `node ts/bin/aontu.js …` or `go run ./cmd/aontu …`.
 
 ## Call Aontu from TypeScript
 

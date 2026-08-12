@@ -47,6 +47,13 @@ type Ctx struct {
 }
 
 func (c *Ctx) adderr(n *NilVal) {
+	// An operand-less nil becomes its own primary (the TS ctx.adderr
+	// rule), so it still renders a located section — e.g. the
+	// budget_passes frame, whose siteless `-1:-1` arrow the shared
+	// budget rows pin.
+	if n.primary == nil {
+		n.primary = n
+	}
 	for _, e := range c.err {
 		if e == n {
 			return

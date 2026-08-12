@@ -65,6 +65,6 @@ class NumberVal extends ScalarVal_1.ScalarVal {
             s.includes('N') ||
             s.includes('I')) ? s : s + '.0';
     }
-}
+} /* node:coverage ignore next 6 */
 exports.NumberVal = NumberVal;
 //# sourceMappingURL=NumberVal.js.map

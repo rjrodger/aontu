@@ -67,7 +67,11 @@ class OpBaseVal extends FeatureVal {
 
   unify(peer: Val, ctx: AontuContext): Val {
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Op:' + this.opname(), this, peer)
-    let out: Val = this
+    // Declared without an initial value: every arm below assigns it, and
+    // seeding it with `this` made the two arms that stand the op read as
+    // redundant self-assignments. The arms themselves stay as they are —
+    // they mirror the dispatch switch in go/op.go arm for arm (ADR-001).
+    let out: Val
 
     if (this.id == peer.id) {
       return this
@@ -88,16 +92,12 @@ class OpBaseVal extends FeatureVal {
     // console.log('OPVAL', this.id, this.opname(), pegdone, newpeg.map(p => p.canon))
 
     if (pegdone) {
-      let result: Val | undefined = null == ctx ? this : this.operate(ctx, newpeg)
-
-      result = result || this
-
-      if (null == result && this.canon === peer.canon) {
-        out = this
-      }
+      // `|| this` makes result truthy, so an op that cannot compute yet
+      // takes the OpBaseVal arm below rather than a separate null arm.
+      let result: Val = this.operate(ctx, newpeg) || this
 
       // TODO: should be result.isOp
-      else if (result instanceof OpBaseVal) {
+      if (result instanceof OpBaseVal) {
         if (peer.isTop) {
           out = this
         }
@@ -223,7 +223,7 @@ class OpBaseVal extends FeatureVal {
 
     return undefined
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

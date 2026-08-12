@@ -7,6 +7,13 @@ kept in parity**:
 - **TypeScript** in `ts/` — the **canonical** implementation.
 - **Go** in `go/` — a port that mirrors the TypeScript semantics.
 
+Two decisions govern everything below and are recorded in
+[`ADR.md`](ADR.md): **ADR-001** (the two implementations stay at full
+parity, proved by the shared spec) and **ADR-002** (coverage stays at
+100 % in both, with every exclusion justified in the source). Read those
+before proposing a change that touches one implementation only, or that
+adds code no test reaches.
+
 The structural layout follows [`voxgig/util`](https://github.com/voxgig/util):
 top-level `ts/` and `go/` siblings and a fan-out `Makefile`. On top of
 that, this repo adds a **shared, data-driven test suite** so both
@@ -23,6 +30,7 @@ implementations are checked against the same cases.
 
 ```
 .
+├── ADR.md               # architecture decision record (the fundamentals)
 ├── AGENTS.md            # this file
 ├── CLAUDE.md            # pointer to AGENTS.md
 ├── Makefile             # fans out to ts/ and go/
@@ -36,7 +44,7 @@ implementations are checked against the same cases.
 │   └── spec/            # shared test cases — *.tsv (language-agnostic)
 │       └── divergent.tsv  # the parity ledger (commentary only, no rows)
 ├── ts/                  # canonical TypeScript implementation
-│   ├── package.json     # `bin`: aontu -> dist/cli.js, aontu-lsp -> dist/lsp-server.js
+│   ├── package.json     # `bin`: aontu -> bin/aontu.js, aontu-lsp -> bin/aontu-lsp.js
 │   ├── src/             # source incl. cli.ts, lsp.ts, lsp-server.ts (+ src/tsconfig.json -> ../dist)
 │   ├── test/            # tests (+ test/tsconfig.json -> ../dist-test)
 │   ├── dist/            # committed compiled JS + .d.ts (incl. cli.js)
@@ -154,7 +162,7 @@ both implementations and requiring them to agree.** Two command lines,
 from the repository root:
 
 ```sh
-echo 'x:1.0' | node ts/dist/cli.js -c
+echo 'x:1.0' | node ts/bin/aontu.js -c
 (cd go && echo 'x:1.0' | go run ./cmd/aontu -c)
 ```
 

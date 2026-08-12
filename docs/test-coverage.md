@@ -1,226 +1,230 @@
 # Test coverage
 
-How test coverage is measured for both implementations, the current
-numbers, what the suites exercise, and where the gaps are. The figures
-below were produced with the dependency versions current at the time of
-writing and the toolchains noted in each section; re-run the commands to
-refresh them.
+Aontu holds **100 % coverage in both implementations** — Go statement
+coverage, TypeScript line, branch and function coverage — as a
+[recorded decision](../ADR.md#adr-002--test-coverage-stays-at-100--in-both-implementations),
+not an aspiration. This page explains how that is measured, what the
+suites actually exercise, and — because 100 % is only meaningful if the
+exclusions are honest — every place where code is excluded from the
+denominator and why.
 
 ## How to reproduce
 
 From the repository root:
 
 ```sh
-make cov        # both implementations
+make cov        # both implementations, and fail if either is under 100 %
 make cov-ts     # TypeScript only
 make cov-go     # Go only
 ```
 
+Each target ends in a **gate**, not just a report: `make cov` exits
+non-zero and names the offending lines if anything is uncovered. That is
+the ADR-002 floor made checkable.
+
 Equivalently, by hand:
 
 ```sh
-# TypeScript — Node's built-in V8 coverage over the compiled tests
-cd ts && npm run build && npm run test-cov
+# TypeScript — Node's V8 coverage over the compiled tests, checked by
+# ts/test/covcheck.js against the lcov report
+cd ts && npm run build && npm run test-cov-check
 
-# Go — statement coverage for package aontu
-cd go && go test -cover -coverprofile=coverage.out ./... \
-      && go tool cover -func=coverage.out      # per-function
-cd go && go tool cover -html=coverage.out      # annotated source in a browser
+# the human-readable table (not the gate)
+cd ts && npm run test-cov
+
+# Go — statement coverage, unit tests plus the GOCOVERDIR binary runs
+cd go && go tool cover -func=coverage.out   # after `make cov-go`
+cd go && go tool cover -html=coverage.out   # annotated source
 ```
 
-> The two numbers are **not directly comparable**: Node reports V8
-> line/branch/function coverage (including the test files), while Go
-> reports *statement* coverage of the package. Read each within its own
-> tool, not against the other.
+> The two numbers are still **not the same measurement**: Node reports
+> V8 line/branch/function coverage, Go reports *statement* coverage.
+> Both now read 100 %, but they are 100 % of different things.
 
 ## Summary
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript     | lines (Node `--experimental-test-coverage`) | **94.9 %** |
-| TypeScript     | branches | **89.5 %** |
-| TypeScript     | functions | **91.6 %** |
-| Go — library (`package aontu`) | statements (`go test -cover`) | **83.6 %** |
-| Go — CLI (`cmd/aontu`)         | statements | **47.1 %** |
-| Go — LSP library (`lsp`)       | statements | **89.1 %** |
-| Go — LSP server (`cmd/aontu-lsp`) | statements | **76.0 %** |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11331/11331) |
+| TypeScript — `ts/src` | branches | **100.00 %** (2527/2527) |
+| TypeScript — `ts/src` | functions | **100.00 %** (466/466) |
+| Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-`make cov-go` prints one combined figure over all four Go packages:
-**82.5 %**.
+Both suites pass in full via `make test`: **1952 TypeScript tests** and
+four green Go packages, including the **1592-row shared spec** that both
+engines execute.
 
-Both suites pass in full: **TypeScript 1203/1203 tests**, **Go
-1076/1076** test functions and subtests (library + CLI + LSP + shared
-spec), via `make test`.
+### What the measurement includes
 
-The `cmd/aontu` figure is lower because its uncovered lines are the
-process/terminal glue — `main`, stdin-pipe detection, and the `emit`
-exit-code path — which need a real process or TTY to exercise. The core
-`render` and `repl` logic *is* unit-tested (`go/cmd/aontu/main_test.go`).
-The TypeScript CLI is the same shape: `cli.ts` sits at ~67 % because its
-`evalSource` core is unit-tested while the `readline` REPL loop and
-argument/stdin plumbing run only in a spawned binary (whose coverage the
-in-process tool does not count).
+Getting an honest 100 % needed the measurement itself to be sound, not
+just the tests:
+
+- **Go `main()` functions really run.** `make cov-go` builds both
+  command binaries with `go build -cover`, runs them for real (version,
+  a piped document, an immediate-EOF LSP session) under `GOCOVERDIR`,
+  converts with `go tool covdata textfmt`, and unions that profile into
+  the unit profile with `go/scripts/covmerge`.
+- **TypeScript entry points are thin wrappers.** `bin/aontu.js` and
+  `bin/aontu-lsp.js` hold the shebang and the `main(process.argv)` call
+  — the two things no in-process run can execute — so `src/cli.ts` and
+  `src/lsp-server.ts` are ordinary, fully-measurable modules.
+- **The gate reads lcov, not the summary table.** Node's built-in
+  coverage reporter attributes the accessors `tsc` emits for
+  `export { X }` to the import lines and then counts one of them unhit
+  even when V8 recorded a call. The lcov reporter and the raw
+  `NODE_V8_COVERAGE` data agree with each other at 100 %, so
+  `ts/test/covcheck.js` reads lcov. The summary table remains a useful
+  human report; it is simply not the thing CI checks.
+- **The run does not flake.** `node --test` runs each test file in its
+  own process and merges their coverage at the end; under load that
+  merge drops a handful of observations, and which ones it drops moves
+  around. The gate therefore goes through `ts/test/covrun.js`, which
+  reruns and **unions** reports — a line seen executing in any run did
+  execute, the same argument that lets `covmerge` union the Go
+  profiles. It cannot mask a real gap: code no test exercises is
+  missing from every run, so the union is still short and the gate
+  still fails. (Single-process mode was tried first and rejected:
+  several cases depend on a fresh module registry, and coverage drops
+  to ~99.6 % because they stop exercising what they were written for.)
+  The spawned-binary cases in `cli.test.ts` also no longer pass
+  `NODE_V8_COVERAGE` to their children: those assert the packaged
+  binary's behaviour, while the same paths are measured in-process.
 
 ## What the suites exercise
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **961 cases across 49 files** — is run by *both*
-implementations and is the contract that defines shared behaviour:
+`test/spec/*.tsv` — **1592 cases across 54 files** — is run by *both*
+implementations and is the contract that defines shared behaviour
+([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
-| `number-tower.tsv`        | 364 | `op-chars.tsv`   | 13 |
-| `number-model.tsv`        | 112 | `disjunct.tsv`   | 11 |
-| `number-cross-product.tsv`|  59 | `file.tsv`       | 11 |
-| `func.tsv`                |  55 | `close.tsv`      |  9 |
-| `scalar.tsv`              |  29 | `incomplete.tsv` |  9 |
-| `var.tsv`                 |  21 | `error.tsv`      |  7 |
-| `ref.tsv`                 |  19 | `list.tsv`       |  7 |
-| `optional.tsv`            |  18 | `comment.tsv`    |  6 |
-| `marks.tsv`               |  17 | `elision.tsv`    |  5 |
-| `pref.tsv`                |  17 | `divergent.tsv`  |  0 |
-| `plus.tsv`                |  14 |                  |    |
-| `conjunct.tsv`            |  13 |                  |    |
-| `engine-parity.tsv`       |  13 |                  |    |
-| `map.tsv`                 |  13 |                  |    |
+| `number-tower.tsv`        | 388 | `map.tsv`        | 20 |
+| `edge.tsv`                | 306 | `file.tsv`       | 18 |
+| `number-model.tsv`        | 112 | `plus.tsv`       | 14 |
+| `func.tsv`                |  91 | `conjunct.tsv`   | 13 |
+| `errcodes.tsv`            |  65 | `op-chars.tsv`   | 13 |
+| `number-cross-product.tsv`|  59 | `budget.tsv`     | 11 |
+| `constraint-bound.tsv`    |  57 | `close.tsv`      |  9 |
+| `ref.tsv`                 |  40 | `incomplete.tsv` |  9 |
+| `scalar.tsv`              |  40 | `list.tsv`       |  7 |
+| `error.tsv`               |  34 | `comment.tsv`    |  6 |
+| `optional.tsv`            |  27 | `elision.tsv`    |  5 |
+| `pref.tsv`                |  27 | `divergent.tsv`  |  0 |
+| `disjunct.tsv`            |  24 |                  |    |
+| `engine-parity.tsv`       |  23 |                  |    |
+| `marks.tsv` / `var.tsv`   |  23 each |             |    |
 
-plus the `spread*.tsv` family — **25 files, 119 cases**, one spread
-topic per file. `divergent.tsv` is the divergence ledger: commentary
-only, no data rows, so it contributes zero cases (see
-[the shared spec](shared-spec.md#the-divergence-ledger)).
+plus the `spread*.tsv` family — **26 files, 128 cases**, one spread
+topic per file. `divergent.tsv` is the parity ledger: commentary only,
+no data rows (see [the shared spec](shared-spec.md#the-divergence-ledger)).
 
-The three `number-*.tsv` files are 535 of the 961 rows — over half the
-suite. That is the number tower's doing: the leaves are disjoint, so
-every kind rule needs pinning in both directions, and
-`number-cross-product.tsv` pins the `+` operand table exhaustively in
-both operand orders.
+`edge.tsv` is the coverage drive's own file: parity edges found by
+reading uncovered engine code and probing candidate sources through both
+engines byte-for-byte before pinning. Its ten batches cover constraint
+ties and the residual algebra (leaf narrowing, bound tightening in both
+orders, exclusion dedup and tie-breaks), junction folding,
+reference/variable path parts of every scalar kind, canon escapes,
+expects, lexer edges (based literals, overflow, exactness windows,
+separator refusals), comment starters inside text tokens, dangling
+operators, list-spread merging, duplicate-key merges of every bag shape,
+optional pairs in list position, implicit top-level lists of every raw
+scalar kind, and double negation of exact literals.
 
-Each row asserts a canonical form (`canon`, 360 rows), a generated value
-(`gen`, 413), the exact serialised bytes (`gens`, 54), or an error
-substring (`err`, 134). Because both implementations load the same rows,
-every line of language behaviour described in the
-[language reference](reference-language.md) is checked on both sides.
+Each row asserts a canonical form (`canon`), a generated value (`gen`),
+the exact serialised bytes (`gens`), an error substring (`err`), an exact
+error code (`errc`), or an error-code registry entry (`errcode`).
 
-### TypeScript-native tests
+### Per-port tests
 
-`spec.test.ts` accounts for 965 of the 1203 TypeScript tests: the 961
-shared rows, a sanity check that the rows loaded, and three tests of the
-`gens` mode's own machinery. On top of it, `ts/test/*.test.ts`
-contributes the remaining 238 — rich, implementation-specific cases:
+Only what a shared row cannot express gets a per-port test — ADR-001
+prefers a row precisely because one row lifts both engines:
 
-| Suite | Tests | Focus |
-|-------|------:|-------|
-| `spec.test.ts`         | 965 | loads and runs the shared `test/spec/*.tsv` |
-| `func.test.ts`         |  55 | every built-in function, in depth (largest native suite) |
-| `bignum.test.ts`       |  25 | the exact leaves: `Decimal`, the two Vals on it, the `0d` literal, lossy-literal refusal |
-| `val-basic.test.ts`    |  24 | scalars, maps, lists, core value behaviour |
-| `lsp.test.ts`          |  22 | diagnostics, hover, completion, handler, stdio framing |
-| `aontu.test.ts`        |  21 | public API: parse/unify/generate, file loading, options |
-| `val-ref.test.ts`      |  12 | references and path resolution |
-| `lang.test.ts`         |  12 | parsing |
-| `exactjson.test.ts`    |  11 | `generate`'s native exact types and the `exactJSON` emitter |
-| `error.test.ts`        |  11 | error reporting |
-| `cli.test.ts`          |  10 | the command-line tool: `evalSource` core + spawned-binary integration |
-| `unify.test.ts` / `example.test.ts` | 8 each | the fixpoint; worked examples |
-| `val-conjunct` / `val-pref` / `scalar` / `version` / `val-disjunct` / `op` | 6, 4, 3, 2, 2, 2 | conjunction, preference/ranking, kinds, the version constant, disjunction, operators |
+**TypeScript** (`ts/test/*.test.ts`, 1952 tests, 1597 of them shared
+rows): every built-in function in depth, the exact leaves, the public
+API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
+references, parsing, the fixpoint, worked examples — plus three
+coverage-driven files (`coverage.test.ts`, `coverage2.test.ts`,
+`coverage3.test.ts`) that reach what no source can: the explain-trace
+formatters, raw (non-Val) variable bindings, `OpBaseVal` machinery,
+`Val`'s inspect rendering, `unite`'s internal-exception catch and cycle
+counter, spread-clone arms, constraint internals, the whole CLI driven
+in-process on a swapped stdin (readline REPL included), and the LSP
+server's frame codec and stream defaults.
 
-### Go-native tests
+**Go** (`go/*_test.go`, plus `lsp` and both commands): the
+representation-level invariants, `Generate`'s native exact types, the
+kind lattice, file loading, constructors, concurrency, `formatNumber`
+parity — plus four coverage-driven files (`coverage_test.go` through
+`coverage4_test.go`) covering scaled-comparison infinities, the
+`Check`/`Spans` walkers on constructed trees, `RefVal`/`VarVal`
+internals, defer and ratchet arms across the Val types, grammar actions
+driven with hand-built `jsonic.Rule` values, the custom lex matchers on
+a hand-built lexer, and the budget/clone paths that need a Val the
+engine never builds.
 
-`go/spec_test.go`'s `TestSpec` runs all 961 shared rows as subtests, and
-`TestSpecGensMode` checks the byte-exact runner itself. Around them,
-`package aontu` has 44 test functions in nine files:
+## The exclusions, in full
 
-| File | Tests | Focus |
-|------|------:|-------|
-| `exact_test.go`         | 15 | the tower's representation-level invariants: `Decimal` normal form, identity by value not pointer, the budget boundary, exact `+` |
-| `generate_test.go`      |  9 | `Generate`'s native exact types (`*big.Int`, `*Decimal`), their marshalling, lossy-literal refusal |
-| `aontu_test.go`         |  7 | sanity: `TestBasicCanon`, `TestParseCanon`, `TestGenerate`, `TestConflictErrors`, `TestEmpty`, `TestReservedKeyPrefixRejected`, `TestVersionFormat` |
-| `kind_test.go`          |  4 | the kind lattice, and that `number` is a supertype no value carries |
-| `source_test.go`        |  3 | relative/absolute `@"file"` loading against a base |
-| `construct_test.go`     |  2 | the exported value constructors via `GenerateVars`/`UnifyVars` |
-| `spec_test.go`          |  2 | the shared spec, and the `gens` runner |
-| `concurrent_test.go`    |  1 | concurrent `New()` use |
-| `scalar_format_test.go` |  1 | `formatNumber` reproducing JavaScript `Number.toString` |
+100 % is only meaningful if what was excluded is visible. Twenty Go
+statements carry a `//coverage:ignore` marker; TypeScript carries none
+at all beyond the export blocks (see below). Every marker states, in
+the source, what state would be required and why nothing can produce it
+— a marker without that justification is a defect
+([ADR-002](../ADR.md#adr-002--test-coverage-stays-at-100--in-both-implementations),
+rule 3).
 
-The Go library suite is therefore still **shared-spec-dominated** — 961
-of its 1047 results are spec rows — but the tower brought three files
-(`kind_test.go`, `exact_test.go`, `generate_test.go`) that pin what a
-TSV row cannot reach: the kind lattice, the internal representation, and
-the concrete type `Generate` hands back. Outside the library,
-`go/cmd/aontu/main_test.go` covers the CLI's `render` and `repl` logic in
-7 tests — including rows pinning the exact bytes the TypeScript CLI
-emits for the same source — and the LSP packages add 22 more.
+### Go — 20 statements
 
-## Where the coverage goes
+| Site | Why it cannot be reached |
+|------|--------------------------|
+| `lang.go` × 5 — `langForBase`, `mustMakeLang`, and the three `j.Use(...)` registrations | Plugin registration takes compile-time literal options and ignores the base; the same registrations already succeed at package init, so a failure would panic at load rather than reach these arms. |
+| `lang.go` × 4 — `big.Int.SetString` guards in `isLossyIntegerLiteral`, `exactLiteral`, `exactDecimal` | The digit strings are pre-vetted by `allDigits` or by the literal regex before the call, so `SetString` cannot reject them. |
+| `lang.go` — `parseBase`'s `langForBase` error arm | Same as `langForBase`: it has no failure mode. |
+| `func.go` × 2 — `resolve() == nil` and the whole `result == Val(f)` block | No `FuncVal.resolve` arm returns nil or the receiver. The block mirrors TS `FuncBaseVal`, where `resolve()` can return `this` — kept for the ADR-001 shape correspondence. |
+| `conjunct.go` — `case 0` of the outvals switch | A fold over ≥ 1 term always appends; the empty case returned 30 lines earlier. |
+| `disjunct.go` — the nil check after an equal-rank pref merge | `PrefVal.Unify` with a pref peer always yields a pref, never a bare nil. |
+| `op.go` — the trailing `return nil` of `operate` | `peg` is provably one of string, bool or float64, all handled above. |
+| `val.go` — the caret-column clamp in `NilVal.frame` | `rowCol` never returns a column below 1. |
+| `cmd/aontu/main.go`, `cmd/aontu-lsp/main.go` — `main()` | Executed for real by the `GOCOVERDIR` leg of `make cov-go`; the marker keeps the unit-only profile honest rather than excusing an untested function. |
 
-### TypeScript (per source area)
+The markers are implemented by `go/scripts/covmerge`, which parses the
+marked sources and drops those blocks from the merged profile. Two
+properties keep it from flattering the number: a marked block is dropped
+**only when its count is zero**, so a coarse marker can never hide
+executed code; and a file it cannot find or parse simply has no markers,
+so the merge degrades to a plain union rather than silently dropping
+everything.
 
-Most of `ts/src` is very well covered (the language core sits at
-86–99 %). The lower-covered files are overwhelmingly **diagnostic and
-debug tooling**, not language semantics:
+### TypeScript — export blocks only
 
-| Area | Lines | Why the gap |
-|------|------:|-------------|
-| `utility.ts`        | 56 % | `formatExplain` / explain-trace formatting (debug aid) |
-| `cli.ts`            | 67 % | the REPL loop and process plumbing (see above) |
-| `val/VarVal.ts`     | 68 % | variable code paths beyond the shared `$name` cases |
-| `val/OpBaseVal.ts`  | 76 % | operator base machinery / unused branches |
-| `val/ExpectVal.ts`  | 82 % | internal assertion value |
-| `val/Val.ts`        | 82 % | `inspect`/debug rendering and rarely-hit clone paths |
-| `lsp.ts` / `lsp-server.ts` | 88 % / 77 % | editor-facing paths and stdio framing |
-| the exact leaves (`val/Decimal.ts`, `val/BigIntegerVal.ts`, `val/BigDecimalVal.ts`, `src/exactjson.ts`) | 92–98 % | new with the number tower, and carrying their own suites |
-| core (`aontu`, `ctx`, `err`, `lang`, `unify`, scalar/map/list/ref vals) | 86–99 % | exercised heavily by the native suites |
+`ts/src` carries one directive per file, on the trailing
+`export { … }` block, because V8 reports those lines as unexecuted in
+every run. Nothing else is excluded.
 
-### Go (per file)
+Everything else that was unreachable is **gone rather than excused**,
+per ADR-002 rule 4. The round deleted: a `null == resolved` branch that
+`?? this` had already made impossible (`RefVal`), the same shape in
+`OpBaseVal`, a `null == ctx` guard nine lines after `ctx` was
+dereferenced, an `undefined === child` guard after `propagateMarks`
+dereferenced the child (`MapVal` and `ListVal`), a `done` flag that was
+never set false (`PrefVal`), an array arm unreachable because
+`typeof [] === 'object'` (`utility.walk`), `Site` fallbacks that its own
+constructor makes impossible, a `___merge` list branch multisource
+cannot produce, and the two container arms of `lsp.valKind` — whose
+removal also brings it back into line with `valKind` in `go/check.go`.
+Two dot-operator handlers were folded onto one guarded builder so the
+missing-operand guard has a single, reachable site.
 
-What is left uncovered is mostly **internal helper methods no test path
-calls** — chiefly `superior()` (the lattice-ordering helper used in
-sorting/preference resolution, uncovered on five value types) and
-`Canon`/`Gen` implementations the `gen`/`canon` specs do not reach, plus
-small formatters (`numStr`) and accessors (`setPos`).
+## Keeping it
 
-| File | Stmts | File | Stmts |
-|------|------:|------|------:|
-| `check.go`    | 26 % | `lang.go`      | 86 % |
-| `ref.go`      | 70 % | `ctx.go`       | 88 % |
-| `marks.go`    | 77 % | `mapval.go`    | 89 % |
-| `func.go`     | 82 % | `clone.go`     | 90 % |
-| `listval.go`  | 83 % | `val.go`       | 91 % |
-| `op.go`       | 83 % | `conjunct.go`  | 93 % |
-| `scalar.go`   | 84 % | `pref.go`      | 94 % |
-| `unify.go`    | 86 % | `decimal.go`   | 95 % |
-| `disjunct.go` | 86 % | `aontu.go`     | 96 % |
-|               |      | `construct.go` | 100 % |
-|               |      | `source.go`    | 100 % |
+The floor holds because `make cov` fails when it is breached, and the
+order of preference for closing a gap is fixed: a shared spec row first
+(it lifts both engines), then a per-port unit test, then — only with a
+written justification — a marker, and preferably a deletion instead. A
+test that exists only to move the number is worse than the gap it
+closes, because it makes the counter lie.
 
-`check.go` is the outlier and is an artefact of the measurement rather
-than a gap: `Check`/`CheckVars` exist for the language server, which
-lives in the separate `lsp` package, and `go test -cover` attributes
-statements only to the package under test. Its own suite covers it.
-
-The uncovered lines are otherwise unreached helpers and defensive
-branches rather than untested language features — the *behaviour* of
-every feature is pinned by the shared spec, which passes on both sides.
-
-## Reading the gap
-
-The headline difference (TS ~95 % vs Go ~84 %) is explained by **suite
-composition, not by behavioural blind spots**:
-
-- The TypeScript side carries 238 targeted tests that walk private
-  branches, debug/inspect output, and option permutations.
-- The Go side is intentionally a port and leans on the 961-row shared
-  spec plus its own targeted files; its remaining uncovered code is
-  mostly internal lattice/diagnostic helpers.
-
-The gap narrowed as the number tower landed — `conjunct.go` 39 → 93 %,
-`op.go` 47 → 83 %, `listval.go` 52 → 83 % — with its 535 spec rows
-driving the lattice and `+` paths, and `exact_test.go` /
-`generate_test.go` reaching representation-level code no TSV row can
-address.
-
-If raising the Go number further is a goal, the highest-value additions
-are direct unit tests for `superior()` ordering and `ref.go` resolution
-branches — behaviour that is currently asserted only indirectly through
-generation.
+The probing that drives new rows also keeps finding real parity
+differences rather than hiding them: this round filed #39, #40 and #41,
+each registered rather than pinned or papered over.

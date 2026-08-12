@@ -34,6 +34,6 @@ class PrefFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.PrefFuncVal = PrefFuncVal;
 //# sourceMappingURL=PrefFuncVal.js.map

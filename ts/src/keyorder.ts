@@ -65,7 +65,7 @@ function cmpCodePoint(a: string, b: string): number {
       return xc < yc ? -1 : 1
     }
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

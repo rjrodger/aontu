@@ -279,7 +279,7 @@ function norm(terms: Val[]): Val[] {
 
 
   return expand
-}
+} /* node:coverage ignore next 7 */
 
 
 export {

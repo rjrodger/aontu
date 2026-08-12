@@ -25,6 +25,6 @@ class OpenFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return argval;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.OpenFuncVal = OpenFuncVal;
 //# sourceMappingURL=OpenFuncVal.js.map

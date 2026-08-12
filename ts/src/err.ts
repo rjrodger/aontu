@@ -66,7 +66,8 @@ function descErr<NILS extends NilVal | NilVal[]>(
 
       let path = ['$', ...err.path].filter((p: any) => null != p && '' != p)
 
-      let valpath = (0 < path.length ? path.join('.') : '')
+      // '$' is neither null nor '', so the filter always leaves it.
+      let valpath = path.join('.')
       let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify')
 
       const details = err.details
@@ -200,7 +201,7 @@ class AontuError extends Error {
   }
 
   errs: () => NilVal[]
-}
+} /* node:coverage ignore next 9 */
 
 
 export {

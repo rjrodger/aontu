@@ -52,6 +52,6 @@ class LowerFuncVal extends FuncBaseVal_1.FuncBaseVal {
             })) :
             super.superior();
     }
-}
+} /* node:coverage ignore next 6 */
 exports.LowerFuncVal = LowerFuncVal;
 //# sourceMappingURL=LowerFuncVal.js.map

@@ -5,6 +5,7 @@ package aontu
 import (
 	"bytes"
 	"encoding/json"
+	"math/big"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -236,6 +237,14 @@ func specVars() map[string]Val {
 		// identically in both ports, so no shared row could reach the
 		// variable-as-path-segment rendering site until this existed.
 		"big": newInteger(1152921504606846976),
+		// One variable per remaining scalar kind, so shared rows can
+		// reach every variable-as-path-segment rendering branch
+		// (coverage drive; ts/test/spec.test.ts mirrors these).
+		"half": numberVal(1.5, "1.5", -1),
+		"off":  newBoolean(false),
+		"bigi": newBigInteger(big.NewInt(5)),
+		"bigd": newBigDecimal(newDecimal(big.NewInt(15), 1)),
+		"nul":  newNull(),
 	}
 }
 

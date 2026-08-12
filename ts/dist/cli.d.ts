@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import { Aontu } from './aontu';
 type Mode = 'json' | 'canon';
 declare function evalSource(aontu: Aontu, src: string, mode: Mode): {

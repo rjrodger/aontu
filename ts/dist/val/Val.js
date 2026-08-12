@@ -1,17 +1,5 @@
 "use strict";
 /* Copyright (c) 2022-2025 Richard Rodger, MIT License */
-var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
-    if (kind === "m") throw new TypeError("Private method is not writable");
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
-    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
-};
-var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
-    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-};
-var _Val_ctx;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EMPTY_ERR = exports.SPREAD = exports.DONE = exports.Val = void 0;
 exports.empty = empty;
@@ -57,8 +45,7 @@ class Val {
         // results assign a real error array.
         this.err = EMPTY_ERR;
         this.explain = null;
-        _Val_ctx.set(this, void 0);
-        __classPrivateFieldSet(this, _Val_ctx, ctx, "f");
+        this._ctx = ctx;
         this.peg = spec?.peg;
         if (Array.isArray(this.peg)) {
             let spread = this.peg[SPREAD];
@@ -77,7 +64,7 @@ class Val {
         // console.log('BV', this.id, this.constructor.name, this.peg?.canon)
     }
     ctx() {
-        return __classPrivateFieldGet(this, _Val_ctx, "f");
+        return this._ctx;
     }
     get done() {
         return this.dc === DONE;
@@ -105,9 +92,12 @@ class Val {
         let out = new this
             .constructor(fullspec, ctx);
         out.dc = this.done ? DONE : out.dc;
-        out.site.row = spec?.row ?? this.site.row ?? -1;
-        out.site.col = spec?.col ?? this.site.col ?? -1;
-        out.site.url = spec?.url ?? this.site.url ?? '';
+        // this.site is a lazy getter that always yields a Site, and Site's
+        // constructor coerces row/col to numbers and url to a string, so the
+        // spec value is the only one that can be absent.
+        out.site.row = spec?.row ?? this.site.row;
+        out.site.col = spec?.col ?? this.site.col;
+        out.site.url = spec?.url ?? this.site.url;
         out.mark = Object.assign({}, this.mark, fullspec.mark ?? {});
         out.mark.type = this.mark.type && (fullspec.mark?.type ?? true);
         out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true);
@@ -180,7 +170,7 @@ class Val {
     notdone() {
         this.dc = DONE === this.dc ? DONE : this.dc + 1;
     }
-    [(_Val_ctx = new WeakMap(), node_util_1.inspect.custom)](d, _opts, _inspect) {
+    [node_util_1.inspect.custom](d, _opts, _inspect) {
         return this.inspect(d);
     }
     inspect(d) {
@@ -272,7 +262,7 @@ function inspectpeg(peg, d) {
             '\n' + indent + ']') :
         ('{' +
             Object.entries(peg).map((n) => '\n  ' + indent + n[0] + ': ' + // n[1].inspect(d)
-                (n[1].inspect(d) ?? '' + n[1])).join(',') +
+                n[1].inspect(d)).join(',') +
             '\n' + indent + '}'));
 }
 function pretty(s) {
@@ -285,5 +275,5 @@ function empty(o) {
     return ((Array.isArray(o) && 0 === o.length)
         || (null != o && 'object' === typeof o && 0 === Object.keys(o).length)
         || false);
-}
+} /* node:coverage ignore next 16 */
 //# sourceMappingURL=Val.js.map

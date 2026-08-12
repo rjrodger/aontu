@@ -336,7 +336,7 @@ function codeClass(code: string): string {
     }
   }
   return 'internal'
-}
+} /* node:coverage ignore next 8 */
 
 
 export {

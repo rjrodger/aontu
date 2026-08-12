@@ -20,7 +20,7 @@ class Site {
     this.col = site?.col ?? -1
     this.url = site?.url ?? ''
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

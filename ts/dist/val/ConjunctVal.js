@@ -187,5 +187,5 @@ function norm(terms) {
     }
     // console.log('NORM', expand.map(t => t.canon).join(', '))
     return expand;
-}
+} /* node:coverage ignore next 7 */
 //# sourceMappingURL=ConjunctVal.js.map

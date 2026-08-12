@@ -46,7 +46,7 @@ abstract class JunctionVal extends FeatureVal {
 
   // Abstract method to be implemented by subclasses to define their junction symbol
   abstract getJunctionSymbol(): string
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

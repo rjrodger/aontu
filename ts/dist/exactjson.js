@@ -224,5 +224,5 @@ function emit(v, unit, pad, seen) {
  */
 function exactJSON(value, indent) {
     return emit(value, indentUnit(indent), '', new Set());
-}
+} /* node:coverage ignore next 6 */
 //# sourceMappingURL=exactjson.js.map

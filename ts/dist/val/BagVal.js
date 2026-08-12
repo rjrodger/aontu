@@ -130,6 +130,6 @@ class BagVal extends FeatureVal_1.FeatureVal {
         }
         return out;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.BagVal = BagVal;
 //# sourceMappingURL=BagVal.js.map

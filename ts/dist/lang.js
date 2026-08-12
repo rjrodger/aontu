@@ -62,7 +62,11 @@ const asPlugin = (p) => p;
 // not part of the literal, so the text has to be rebuilt here to keep
 // `src` meaning "how this value is spelled" (see bigVal).
 function negsrc(src) {
-    return '' === src ? '' : src.startsWith('-') ? src.slice(1) : '-' + src;
+    // src is never empty here: it is a BIG_LITERAL_RE match (at minimum
+    // the two chars `0d`) or an already-negated spelling. Computed exact
+    // values do carry src '', but they are built at unify time, long
+    // after this parse-time opmap.
+    return src.startsWith('-') ? src.slice(1) : '-' + src;
 }
 function bigVal(res) {
     const lit = (0, Decimal_1.readBigLiteral)(res);
@@ -86,6 +90,12 @@ let AontuJsonic = function AontuLang(jsonic) {
     // docs/reference-language.md; go/lang.go sets the same). Clear the
     // underlying jsonic comment markers entirely, then define # directly,
     // so the comment set is hash-only regardless of those defaults.
+    let dotRef = (r, ctx, terms, prefix) => {
+        terms = dropUnfilled(terms);
+        if (0 === terms.length)
+            return incompleteNil(r, ctx);
+        return addsite(new RefVal_1.RefVal({ peg: terms, prefix }), r, ctx);
+    };
     jsonic.options({ comment: { def: null } });
     jsonic.options({
         comment: {
@@ -191,7 +201,8 @@ let AontuJsonic = function AontuLang(jsonic) {
         v.site.row = null == r.o0 ? -1 : r.o0.rI;
         v.site.col = null == r.o0 ? -1 : r.o0.cI;
         v.site.url = ctx.meta.multisource ? ctx.meta.multisource.path : '';
-        v.path = r.k ? [...(r.k.path || [])] : [];
+        // A keyed rule always carries a path array; a keyless one has none.
+        v.path = r.k ? [...r.k.path] : [];
         return v;
     };
     jsonic.options({
@@ -316,18 +327,11 @@ help isolate the syntax error.`,
     let opmap = {
         'conjunct-infix': (r, ctx, _op, terms) => addsite(new ConjunctVal_1.ConjunctVal({ peg: dropUnfilled(terms) }), r, ctx),
         'disjunct-infix': (r, ctx, _op, terms) => addsite(new DisjunctVal_1.DisjunctVal({ peg: dropUnfilled(terms) }), r, ctx),
-        'dot-prefix': (r, ctx, _op, terms) => {
-            terms = dropUnfilled(terms);
-            if (0 === terms.length)
-                return incompleteNil(r, ctx);
-            return addsite(new RefVal_1.RefVal({ peg: terms, prefix: true }), r, ctx);
-        },
-        'dot-infix': (r, ctx, _op, terms) => {
-            terms = dropUnfilled(terms);
-            if (0 === terms.length)
-                return incompleteNil(r, ctx);
-            return addsite(new RefVal_1.RefVal({ peg: terms }), r, ctx);
-        },
+        // `.a` (prefix) and `a.b` (infix) build the same reference; only the
+        // prefix flag differs, and both need the same missing-operand guard,
+        // so they share one builder.
+        'dot-prefix': (r, ctx, _op, terms) => dotRef(r, ctx, terms, true),
+        'dot-infix': (r, ctx, _op, terms) => dotRef(r, ctx, terms, false),
         'star-prefix': (r, ctx, _op, terms) => {
             if (null == terms[0])
                 return incompleteNil(r, ctx);
@@ -655,16 +659,10 @@ help isolate the syntax error.`,
                     ao[i] = addsite(new NullVal_1.NullVal({ peg: null }), r, ctx);
                 }
             }
-            if (ao.___merge) {
-                let aop = [...ao];
-                delete aop.___merge;
-                // TODO: needs addpath?
-                let aopv = new ListVal_1.ListVal({ peg: aop });
-                aopv.optionalKeys = optionalKeys;
-                r.node =
-                    addsite(new ConjunctVal_1.ConjunctVal({ peg: [aopv, ...ao.___merge] }), r, ctx);
-            }
-            else {
+            // No ___merge arm here: the deferred map.merge that writes it
+            // only ever fires for a `pair` rule, whose parent is always a
+            // `map` rule with a plain-object node — never a list.
+            {
                 r.node = addsite(new ListVal_1.ListVal({ peg: ao }), r, ctx);
                 r.node.optionalKeys = optionalKeys;
             }
@@ -798,7 +796,10 @@ function makeModelResolver(options) {
         ...(options.resolver?.pkg || {})
     });
     return function ModelResolver(spec, popts, rule, ctx, jsonic) {
-        let path = 'string' === typeof spec ? spec : spec?.peg;
+        // The aontu val rule's ac has already wrapped every raw string node
+        // as a StringVal, so spec is a Val here (or a raw object from a
+        // .json/.js include, whose peg is undefined -> not found).
+        let path = spec?.peg;
         // A bare `@` with no path (`a:@`) has nothing to resolve; report
         // not-found instead of crashing in the underlying resolvers.
         if (null == path || '' === path) {
@@ -969,6 +970,6 @@ class Lang {
         }
         return val;
     }
-}
+} /* node:coverage ignore next 6 */
 exports.Lang = Lang;
 //# sourceMappingURL=lang.js.map

@@ -175,12 +175,16 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 
 	if pegdone {
 		result := f.resolve(ctx, base, newpeg)
-		if result == nil {
+		if result == nil { //coverage:ignore no resolve arm returns nil
 			result = f
 		}
 		// Only the func ITSELF signals "still pending" — a resolve that
 		// returns a *different* func (copy of a raw func argument)
 		// produced a real value that must unify onward.
+		// No resolve arm returns the receiver, so the whole
+		// still-pending block below is unreachable; it mirrors the TS
+		// FuncBaseVal shape, where resolve() can return `this`.
+		//coverage:ignore-block resolve never returns the func itself
 		if result == Val(f) {
 			switch {
 			case isTop(peer):

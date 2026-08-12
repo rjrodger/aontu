@@ -52,6 +52,6 @@ class UpperFuncVal extends FuncBaseVal_1.FuncBaseVal {
             })) :
             super.superior();
     }
-}
+} /* node:coverage ignore next 6 */
 exports.UpperFuncVal = UpperFuncVal;
 //# sourceMappingURL=UpperFuncVal.js.map

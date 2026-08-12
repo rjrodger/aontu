@@ -13,6 +13,6 @@ class NullVal extends ScalarVal_1.ScalarVal {
     unify(peer, ctx) {
         return super.unify(peer, ctx);
     }
-}
+} /* node:coverage ignore next 7 */
 exports.NullVal = NullVal;
 //# sourceMappingURL=NullVal.js.map

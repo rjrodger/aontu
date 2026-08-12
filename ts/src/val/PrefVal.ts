@@ -114,7 +114,6 @@ class PrefVal extends FeatureVal {
     peer = peer ?? top()
 
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Pref', this, peer)
-    let done = true
     let out: Val = this
     let why = ''
 
@@ -180,7 +179,9 @@ class PrefVal extends FeatureVal {
       why += 'none'
     }
 
-    out.dc = done ? DONE : this.dc + 1
+    // Every pref result is DONE, including a stuck conjunct from the
+    // superior-unify (mirrored by PrefVal.Unify in go/pref.go).
+    out.dc = DONE
 
     // console.log('PREFVAL-OUT', why, this.canon, peer.canon, '->', out.canon, out.done)
 
@@ -226,7 +227,7 @@ class PrefVal extends FeatureVal {
 
     return val.gen(ctx)
   }
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

@@ -241,7 +241,7 @@ function stripSep(s: string): string {
 // select on kind, not merely on the peg being a JS number.
 function integerDigits(peg: number): string {
   return BigInt(peg).toString()
-}
+} /* node:coverage ignore next 13 */
 
 
 // The window bounds stay module-local: they are the rules' working

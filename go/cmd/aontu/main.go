@@ -75,15 +75,15 @@ func render(a *aontu.Aontu, src, mode string) (string, error) {
 	return strings.TrimSuffix(buf.String(), "\n"), nil
 }
 
-// emit renders src to stdout (or the error to stderr) and returns the
+// emit renders src to out (or the error to errw) and returns the
 // process exit code.
-func emit(a *aontu.Aontu, src, mode string) int {
+func emit(a *aontu.Aontu, src, mode string, out, errw io.Writer) int {
 	text, err := render(a, src, mode)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(errw, err)
 		return 1
 	}
-	fmt.Println(text)
+	fmt.Fprintln(out, text)
 	return 0
 }
 
@@ -160,24 +160,31 @@ func repl(a *aontu.Aontu, mode string, in io.Reader, out io.Writer) {
 	fmt.Fprintln(out)
 }
 
-func main() {
+func main() { //coverage:ignore run under GOCOVERDIR by `make cov-go`
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr, !stdinIsPipe()))
+}
+
+// run is main with its arguments, streams and terminal-ness injected,
+// returning the process exit code. Separated from main so tests can
+// drive the whole command with in-memory pipes.
+func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int {
 	mode := "json"
 	var file string
 
-	for _, arg := range os.Args[1:] {
+	for _, arg := range args {
 		switch arg {
 		case "-c", "--canon":
 			mode = "canon"
 		case "-h", "--help":
-			fmt.Print(helpText)
-			return
+			fmt.Fprint(stdout, helpText)
+			return 0
 		case "-v", "--version":
-			fmt.Println(aontu.VERSION)
-			return
+			fmt.Fprintln(stdout, aontu.VERSION)
+			return 0
 		default:
 			if strings.HasPrefix(arg, "-") {
-				fmt.Fprintf(os.Stderr, "aontu: unknown option %s (try --help)\n", arg)
-				os.Exit(2)
+				fmt.Fprintf(stderr, "aontu: unknown option %s (try --help)\n", arg)
+				return 2
 			}
 			file = arg
 		}
@@ -186,23 +193,24 @@ func main() {
 	if file != "" {
 		src, err := os.ReadFile(file)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "aontu: cannot read %s: %v\n", file, err)
-			os.Exit(1)
+			fmt.Fprintf(stderr, "aontu: cannot read %s: %v\n", file, err)
+			return 1
 		}
 		// Resolve relative @"file" loads against the entry file's dir.
-		os.Exit(emit(aontuForFile(file), string(src), mode))
+		return emit(aontuForFile(file), string(src), mode, stdout, stderr)
 	}
 
 	a := aontu.New()
 
-	if stdinIsPipe() {
-		src, err := io.ReadAll(os.Stdin)
+	if !tty {
+		src, err := io.ReadAll(stdin)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "aontu: cannot read stdin: %v\n", err)
-			os.Exit(1)
+			fmt.Fprintf(stderr, "aontu: cannot read stdin: %v\n", err)
+			return 1
 		}
-		os.Exit(emit(a, string(src), mode))
+		return emit(a, string(src), mode, stdout, stderr)
 	}
 
-	repl(a, mode, os.Stdin, os.Stdout)
+	repl(a, mode, stdin, stdout)
+	return 0
 }
