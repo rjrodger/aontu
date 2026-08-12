@@ -24,7 +24,7 @@ Object.defineProperty(exports, "AontuError", { enumerable: true, get: function (
 // Kept in step with package.json by the `version` npm lifecycle script,
 // which runs on `npm version` / `npm run repo-bump`. version.test.ts
 // fails if the two ever drift.
-const VERSION = '0.51.0';
+const VERSION = '0.52.0';
 exports.VERSION = VERSION;
 class Aontu {
     constructor(popts) {
