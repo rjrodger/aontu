@@ -45,7 +45,7 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11325/11325) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11331/11331) |
 | TypeScript — `ts/src` | branches | **100.00 %** (2527/2527) |
 | TypeScript — `ts/src` | functions | **100.00 %** (466/466) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
@@ -75,13 +75,20 @@ just the tests:
   `NODE_V8_COVERAGE` data agree with each other at 100 %, so
   `ts/test/covcheck.js` reads lcov. The summary table remains a useful
   human report; it is simply not the thing CI checks.
-- **The run is deterministic.** Coverage merged across concurrently
-  running test-file processes proved lossy under load — single items
-  would drop in roughly one run in six. The gate therefore runs with
-  `--test-concurrency=1`, and the spawned-binary cases in `cli.test.ts`
-  no longer pass `NODE_V8_COVERAGE` to their children: those cases
-  assert the packaged binary's behaviour, while the same code paths are
-  measured in-process.
+- **The run does not flake.** `node --test` runs each test file in its
+  own process and merges their coverage at the end; under load that
+  merge drops a handful of observations, and which ones it drops moves
+  around. The gate therefore goes through `ts/test/covrun.js`, which
+  reruns and **unions** reports — a line seen executing in any run did
+  execute, the same argument that lets `covmerge` union the Go
+  profiles. It cannot mask a real gap: code no test exercises is
+  missing from every run, so the union is still short and the gate
+  still fails. (Single-process mode was tried first and rejected:
+  several cases depend on a fresh module registry, and coverage drops
+  to ~99.6 % because they stop exercising what they were written for.)
+  The spawned-binary cases in `cli.test.ts` also no longer pass
+  `NODE_V8_COVERAGE` to their children: those assert the packaged
+  binary's behaviour, while the same paths are measured in-process.
 
 ## What the suites exercise
 
