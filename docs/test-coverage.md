@@ -45,7 +45,7 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11327/11327) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11325/11325) |
 | TypeScript — `ts/src` | branches | **100.00 %** (2527/2527) |
 | TypeScript — `ts/src` | functions | **100.00 %** (466/466) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |

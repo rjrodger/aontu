@@ -3,4 +3,6 @@
 // Fixture: an included source whose export is a FUNCTION — the one raw
 // JavaScript value rawToVal has no Val for, so it becomes a parse_unknown
 // nil. Used by ts/test/coverage3.test.ts.
-module.exports = function fn() { }
+module.exports = function fn() {
+  return 'not a Val'
+}

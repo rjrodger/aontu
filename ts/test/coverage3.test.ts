@@ -54,7 +54,7 @@ import {
   scaledOfFloat, cmpScaled, cmpCodePoints, scaledFloor,
 } from '../dist/val/numcmp'
 import { isLossyIntegerLiteral } from '../dist/val/numkind'
-import { explainOpen, explainClose, formatExplain } from '../dist/utility'
+import { explainOpen, explainClose } from '../dist/utility'
 
 
 const A = () => new Aontu()
