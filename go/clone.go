@@ -280,7 +280,7 @@ func clonePathRec(v Val, path []string) Val {
 		}
 		return out
 	case *FuncVal:
-		out := &FuncVal{name: n.name}
+		out := &FuncVal{name: n.name, prepared: n.prepared}
 		out.dc = n.dc
 		out.sp = n.sp
 		out.path = overlayPath(path, n.path)

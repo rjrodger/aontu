@@ -237,22 +237,23 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 				//
 				// Dispatch is by TYPE because jsonic's merge hook is not given
 				// the key. It is unambiguous: a parsed source value is never a
-				// `[]string` (jsonic list nodes are `[]any`) nor a bare `int`
-				// (numbers arrive as float64), so these two arms are reachable
-				// only from the sentinels -- orderKey/optionalKey and posKey
-				// respectively. spreadKey holds a Val and wants exactly the
-				// ordinary conjunct merge below, which is what it gets.
+				// `[]string` (jsonic list nodes are `[]any`), so this arm is
+				// reachable only from orderKey and optionalKey, the two
+				// sentinels that hold one.
+				//
+				// The other two sentinels need no arm. spreadKey holds a Val
+				// and wants exactly the ordinary conjunct merge below, which is
+				// what it gets. posKey never REACHES this hook with a prev to
+				// merge against: recordMapPos is an after-close action, so the
+				// host map is stamped only once its own rule closes, which is
+				// always after an include nested in it has merged -- prev is
+				// nil there and the guard above returns the loaded value, which
+				// recordMapPos then overwrites unconditionally. (Confirmed by
+				// panicking in an arm for it: no include shape reaches it.)
 				if pl, ok := prev.([]string); ok {
 					if vl, ok := val.([]string); ok {
 						return appendNew(pl, vl...)
 					}
-					return prev
-				}
-				if _, ok := prev.(int); ok {
-					// posKey: the HOST map's own open-token position wins, as
-					// in TS. (recordMapPos re-stamps it unconditionally after
-					// the merge; keeping prev means the node is never briefly
-					// wrong for anything reading it in between.)
 					return prev
 				}
 				return mergeVals(asVal(prev), asVal(val))

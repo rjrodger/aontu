@@ -25,9 +25,13 @@ func (o *PlusOpVal) Canon() string {
 }
 
 func (o *PlusOpVal) Gen(ctx *Ctx) (any, error) {
-	// Code mirrors the TS FeatureVal.gen choice for residual
-	// non-literal values ('no_gen').
-	return nil, &AontuError{Msg: "Cannot generate value: " + o.Canon(), Code: "no_gen"}
+	// `op`, not `no_gen`, and rendered as a full located message: TS's
+	// OpBaseVal.gen raises makeNilErr(ctx, 'op', this) and descErr renders
+	// it. Only the ROOT position reaches here -- inside a map the bag
+	// reports the residue first, and `a:{b:1+true}` already agreed on
+	// mapval_no_gen -- so the divergence was invisible until a residual
+	// op was the whole document (issue #38).
+	return nil, residueErr(ctx, o, "op")
 }
 
 func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {

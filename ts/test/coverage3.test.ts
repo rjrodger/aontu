@@ -262,12 +262,13 @@ describe('coverage3-bags', () => {
   })
 
   test('optional-list-element-canon', () => {
-    // TS-only: the Go port drops an optional list element from canon
-    // rather than rendering it, so this cannot be a shared row yet
-    // (divergence filed).
+    // A list canon carries no optional markers, even when the value is
+    // built by hand with one recorded (issue #40): a key:value pair is
+    // not a list element, so there is no optional element for a marker to
+    // describe, and the Go port's ListVal.Canon has no arm for one.
     const lv: any = new ListVal({ peg: [new IntegerVal({ peg: 1 })] }, CTX())
     lv.optionalKeys.push('0')
-    Assert.equal(lv.canon, '[0?:1]')
+    Assert.equal(lv.canon, '[1]')
   })
 
   test('map-inspection-spread', () => {

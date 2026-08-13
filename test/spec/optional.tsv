@@ -35,6 +35,28 @@ list-plain-pair-dropped-gens	gens	a:[x:1]	{"a":[]}
 list-optional-pair-with-elem-gens	gens	a:[x?:1, 2]	{"a":[2]}
 list-optional-pair-after-elem-gens	gens	a:[2, x?:1]	{"a":[2]}
 list-optional-pair-no-merge-gens	gens	a:[x?:1] a:[{q:9}]	{"a":[{"q":9}]}
+# The same rule with a NUMERIC key (issue #40). This half was divergent
+# and invisible: jsonic writes a pair at `node[key]`, and a list's node is
+# an array, so a non-numeric key set a property nothing ever read
+# (`length` stays 0) while a numeric one set an INDEX and became a real
+# element -- TS generated {"a":[1]} for `a:[0:1]` where Go generated
+# {"a":[]}, and `a:[1:2]` even filled the gap with a null. That is the
+# shape of a JavaScript array, not a decision about the language.
+#
+# The last two rows are the ones with teeth: a pair aimed at an index a
+# real element already holds must leave that element ALONE, in both
+# directions (the pair before the element, and after it).
+list-plain-pair-numeric-canon	canon	a:[0:1]	{"a":[]}
+list-plain-pair-numeric-gens	gens	a:[0:1]	{"a":[]}
+list-optional-pair-numeric-canon	canon	a:[0?:1]	{"a":[]}
+list-optional-pair-numeric-gens	gens	a:[0?:1]	{"a":[]}
+# An index PAST the end must not grow the list with a hole either.
+list-plain-pair-gap-gens	gens	a:[1:2]	{"a":[]}
+list-optional-pair-gap-gens	gens	a:[2?:3]	{"a":[]}
+list-plain-pair-then-elem-gens	gens	a:[0:1, 2]	{"a":[2]}
+list-elem-then-plain-pair-gens	gens	a:[5, 0:1]	{"a":[5]}
+list-elem-then-optional-pair-gens	gens	a:[5, 0?:1]	{"a":[5]}
+list-elem-then-optional-gap-gens	gens	a:[5, 1?:9]	{"a":[5]}
 # The map-level optional key is untouched and must stay that way.
 map-optional-still-works-gens	gens	a:{x?:1}	{"a":{"x":1}}
 top-optional-still-works-gens	gens	x?:1	{"x":1}

@@ -865,6 +865,52 @@ help isolate the syntax error.`,
   }
 
 
+  // A pair in LIST position writes its value at `node[key]` like any
+  // other pair, and the enclosing list's node is an ARRAY -- so a numeric
+  // key lands on an index and becomes an element, and may land on an
+  // index a real element already holds (`[5,0:1]`). Since the pair must
+  // contribute nothing (issue #40), the slot is photographed before the
+  // value is parsed and put back afterwards. Restoring beats deleting for
+  // exactly the overwrite case: deleting `[5,0:1]`'s index 0 would take
+  // the 5 with it, where restoring gives back the list the pair was
+  // never part of.
+  //
+  // `length` is saved too: writing past the end grows an array, and
+  // `[5,1?:9]` must be [5] again and not [5, <hole>].
+  // Indexed as a string bag deliberately: the slot may be named by a
+  // non-numeric key (`[x:1]`), which Array.isArray narrowing would refuse.
+  const asSlots = (n: any): Record<string, any> | undefined =>
+    Array.isArray(n) ? (n as any) : undefined
+
+  const snapshotPairSlot = (r: Rule, key: string) => {
+    const node = asSlots(r.node)
+    if (null == node) {
+      return
+    }
+    r.u.aontu_pair_slot = {
+      key,
+      had: Object.prototype.hasOwnProperty.call(node, key),
+      was: node[key],
+      len: node.length,
+    }
+  }
+
+  const restorePairSlot = (r: Rule) => {
+    const slot: any = r.u.aontu_pair_slot
+    const node = asSlots(r.node)
+    if (null == slot || null == node) {
+      return
+    }
+    if (slot.had) {
+      node[slot.key] = slot.was
+    }
+    else {
+      delete node[slot.key]
+    }
+    node.length = slot.len
+  }
+
+
   jsonic.rule('pair', (rs: RuleSpec) => {
     rs
       .open([
@@ -955,11 +1001,31 @@ help isolate the syntax error.`,
           a: (r) => {
             pairkey(r.prev)
             r.u.key = r.prev.u.key
-
-            r.parent.u.aontu_optional_keys = (r.parent.u.aontu_optional_keys || [])
-            r.parent.u.aontu_optional_keys.push('' + r.u.key)
+            snapshotPairSlot(r, '' + r.u.key)
           },
           g: 'aontu-optional-elem'
+        },
+
+        // A PLAIN pair in list position, `[k:v]`. It contributes no
+        // element either -- a key:value pair is simply not a list element,
+        // which is the rule the optional form above already followed, and
+        // the two spellings must not disagree (issue #40).
+        //
+        // It needed an alt of its own because only a NON-NUMERIC key was
+        // already inert: jsonic writes the pair at `node[key]`, and the
+        // node is an array, so `[x:1]` set a property that never showed up
+        // (`length` stays 0) while `[0:1]` set an INDEX and became an
+        // element -- `[1:2]` even filling the gap with a null. That is the
+        // shape of a JavaScript array, not a decision about the language,
+        // and it made the two ports disagree on generate as well as canon.
+        {
+          s: [OPTKEY, CL], p: 'val',
+          u: { spread: true, done: true, list: true, pair: true },
+          a: (r) => {
+            pairkey(r)
+            snapshotPairSlot(r, '' + r.u.key)
+          },
+          g: 'aontu-plain-pair-elem'
         }
       ])
 
@@ -972,6 +1038,8 @@ help isolate the syntax error.`,
             (rule.node[SPREAD] || { o: rule.o0.src, v: [] })
           rule.node[SPREAD].v.push(rule.child.node)
         }
+
+        restorePairSlot(rule)
 
         return undefined
       })

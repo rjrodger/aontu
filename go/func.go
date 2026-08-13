@@ -41,6 +41,13 @@ type FuncVal struct {
 	base
 	name string
 	peg  []Val // arguments
+	// prepared marks the one-time argument rewrite (currently path()'s
+	// scalar-to-reference wrap) as done, mirroring TS's `prepared`
+	// counter: the rewrite reads RAW arguments and must not see them
+	// again once they have resolved. Clones start unprepared only if the
+	// clone copies it -- see clonePath, which carries it, because a clone
+	// shares the already-rewritten args.
+	prepared bool
 }
 
 func newFunc(name string, args []Val) *FuncVal {
@@ -122,6 +129,36 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	if isTop(peer) && (f.mtype || f.mhide) {
 		f.setDc(DONE)
 		return f
+	}
+
+	// path("b") NAMES a path rather than being one: the scalar becomes a
+	// relative reference, which ordinary ref resolution then answers. This
+	// is TS's PathFuncVal.prepare, and it must run HERE -- before the args
+	// are driven -- for the reason TS guards it with `0 === this.prepared`:
+	// once driven, `path($.b)` has already become the scalar its reference
+	// resolved to, and wrapping THAT would look up a key named after the
+	// value. Handing the scalar back unwrapped instead made `a:path("b")
+	// b:2` evaluate to the string "b" rather than 2 -- path() with a
+	// computed name did not work in this port at all -- and left the
+	// degenerate spellings silent where TS refuses them: `path(1)` is a
+	// no_path (there is no key "1"), `path("")` a path_cycle (issue #38).
+	if f.name == "path" && !f.prepared {
+		f.prepared = true
+		for i, arg := range f.peg {
+			if sv, ok := arg.(*ScalarVal); ok {
+				rv := newRef([]any{sv}, false)
+				// FROM THE ROOT. TS builds this ref with absolute:false but
+				// never gives it a path, and a relative ref with no path
+				// resolves from the root anyway -- so `a:{q:path("b")}`
+				// finds the root's `b`, not `$.a.b`. Saying absolute here
+				// says that outright, and survives the arg re-pathing below,
+				// which would otherwise hand the ref the call's own location
+				// and make it look one level down.
+				rv.absolute = true
+				rv.sp, rv.spu = f.sp, f.spu
+				f.peg[i] = rv
+			}
+		}
 	}
 
 	// Re-path args to this func's location before resolving them: func

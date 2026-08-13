@@ -455,6 +455,22 @@ func (rv *RefVal) plainRefPath() []string {
 // isPrefixPath reports whether the reference path is a prefix of this
 // node's own path (a self/ancestor cycle).
 func (rv *RefVal) isPrefixPath() bool {
+	// The degenerate spelling: every segment empty, so the reference names
+	// nothing and lands back where it started. `path("")` is the way to
+	// write it, and TS treats it as a cycle rather than a miss (issue #38)
+	// -- there is no key to be missing.
+	if len(rv.peg) > 0 {
+		allEmpty := true
+		for _, p := range rv.peg {
+			if s, ok := p.(string); !ok || s != "" {
+				allEmpty = false
+				break
+			}
+		}
+		if allEmpty {
+			return true
+		}
+	}
 	if len(rv.peg) == 0 || len(rv.peg) > len(rv.path) {
 		return false
 	}
@@ -530,7 +546,7 @@ func (rv *RefVal) Canon() string {
 
 func (rv *RefVal) Gen(ctx *Ctx) (any, error) {
 	// Code mirrors TS RefVal.gen ('ref').
-	return nil, &AontuError{Msg: "Cannot generate value: " + rv.Canon(), Code: "ref"}
+	return nil, residueErr(ctx, rv, "ref")
 }
 
 // VarVal is a variable reference (e.g. `$name`). Full variable lookup

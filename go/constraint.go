@@ -380,7 +380,7 @@ func (c *ConstraintVal) Canon() string {
 func (c *ConstraintVal) Gen(ctx *Ctx) (any, error) {
 	// A residual constraint is not a concrete value (mirrors the TS
 	// FeatureVal no_gen family; the bag level reports mapval_no_gen).
-	return nil, &AontuError{Msg: "Cannot generate value: " + c.Canon(), Code: "no_gen"}
+	return nil, residueErr(ctx, c, "no_gen")
 }
 
 // tighterBound picks the tighter of two like-direction bounds: the

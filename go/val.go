@@ -474,6 +474,30 @@ func (n *NilVal) Message() string {
 	return n.msg
 }
 
+// residueErr reports a value that survived unification but cannot be
+// generated, as the FULL located message TS renders for it -- the
+// `[aontu/<code>]` marker, the headline naming the path, the hint, and a
+// frame pointing at the value.
+//
+// Only a ROOT-position residue reaches these Gen methods: inside a bag,
+// the bag notices the non-generable child first and reports it (both
+// ports already agreed there, which is why this stayed hidden). At the
+// root each port was on its own, and this one answered with a bare
+// "Cannot generate value: <canon>" carrying no code marker, no path and
+// no frame -- so the one document shaped entirely like the mistake got
+// the least helpful message (issue #38).
+func residueErr(ctx *Ctx, v Val, code string) error {
+	src, file := "", ""
+	if ctx != nil {
+		src, file = ctx.src, ctx.file
+	}
+	n := newNil(code)
+	n.primary = v
+	n.sp = v.pos()
+	n.path = cp(v.vpath())
+	return &AontuError{Msg: n.FullMessage(src, file), Code: code}
+}
+
 // makeNilErrFull is makeNilErr with the attempt name and hint details
 // TS's makeNilErr carries as its trailing arguments.
 func makeNilErrFull(ctx *Ctx, why string, a, b Val, attempt string, details map[string]string) *NilVal {
