@@ -317,8 +317,10 @@ Checked against this repository at review time (TS v0.49.0 line).
   operator sugar — but bounds themselves now exist in function form
   (`a: number & min(0)`), so the underlying gap is partly closed.**
 - ~~45 shared spec files (~426 rows; modes `canon`/`gen`/`err`)~~
-  **now 54 files, 1594 rows, modes `canon`/`gen`/`gens`/`err`/`errc`/
+  **now 55 files, 1850 rows, modes `canon`/`gen`/`gens`/`err`/`errc`/
   `errcode`**; the Go runner executes every row with no skip list.
+  (Counts move with every capability phase — take them as an order of
+  magnitude, and read `ls test/spec/*.tsv` for the current figure.)
 - The fixpoint is bounded at `maxcc = 9` passes (`ts/src/unify.ts`);
   `MAXCYCLE = 999`.
 - The resolver security posture is documented in code
