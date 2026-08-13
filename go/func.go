@@ -209,7 +209,16 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		// the result (`out.path = this.path`), so a copy()/move() clone
 		// delivered through a transplanted func lands at the func's
 		// location rather than keeping a stale overlay-tailed path.
-		if out != Val(f) && !isTop(out) {
+		// No isTop guard: TS's FuncBaseVal.unify assigns the func's marks,
+		// path and site to the resolved value with no exemption, and a
+		// function CAN resolve to a top -- `super(number)` climbs off the
+		// top of the kind lattice, `copy(top)` copies one. Excluding those
+		// left the residual with neither the call's path nor its site, so
+		// the error named `$` instead of `$.x` and pointed at nothing.
+		// Safe because top() mints a FRESH TopVal per call (there is no
+		// shared singleton to corrupt), which is why the exemption is not
+		// needed to protect one.
+		if out != Val(f) {
 			propagateMarks(f, out)
 			out.setvpath(cp(f.path))
 			// ... and the func's SITE with its path. TS copies both onto

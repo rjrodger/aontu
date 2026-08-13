@@ -88,26 +88,6 @@
 #
 # ---------------------------------------------------------------------
 #
-# OPEN -- a cycle routed through a function errors with different
-#   codes. issue: #35. `a:$.b b:upper($.a)` errors in BOTH engines
-#   (verdict agrees) but TS reports `internal` -- a caught stack
-#   overflow, its documented no-depth-guard fallback -- where Go
-#   proves `path_cycle`.
-#
-#   Divergent input:  a:$.b b:upper($.a)
-#   TypeScript: error code internal (RangeError caught; threshold
-#     environment-dependent, classification deterministic)
-#   Go:         error code path_cycle
-#
-#   Not simply fixed because the correct answer (path_cycle) requires
-#   TS to PROVE the cycle -- chase detection through function
-#   arguments, or an explicit depth budget that classifies as
-#   path_cycle -- an engine change on the TS side tracked by #35; Go
-#   already reports the proof. No errc row may pin either code
-#   meanwhile.
-#
-# ---------------------------------------------------------------------
-#
 # CLOSED -- lone surrogates in quoted strings folded to U+FFFD by Go.
 #   issue: #24. Two separate things lived under this entry; both are
 #   settled, in opposite ways, and the difference is the point.

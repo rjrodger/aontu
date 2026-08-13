@@ -293,8 +293,14 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 	// pass and dying later as a generic ref error. No proof (chain
 	// leaves plain refs, or ends) defers as before. Mirrors the chase
 	// before the clone in TS RefVal.find.
-	if _, isref := node.(*RefVal); isref && rv.detectRefCycle(ctx) {
-		return makeNilErr(ctx, "path_cycle", rv, nil)
+	// A reference landing on another reference -- or on a FUNCTION, whose
+	// arguments the chase now follows (issue #35) -- may be a PROVEN
+	// mutual cycle. Same guard as the TS RefVal.find branch.
+	switch node.(type) {
+	case *RefVal, *FuncVal:
+		if rv.detectRefCycle(ctx) {
+			return makeNilErr(ctx, "path_cycle", rv, nil)
+		}
 	}
 
 	// A ref carrying marks transfers them onto the found node in place
@@ -329,52 +335,82 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 }
 
 // detectRefCycle follows the chain of plain references from rv; true
-// iff the chain revisits a node -- a PROVEN reference cycle, distinct
-// from a merely unresolved reference. Detection is only on the
-// resolution chain revisiting a node, never on syntactic shape: a
-// chain that passes through a variable segment, a conjunct, a
-// function, or any non-ref value yields no proof and the ref defers as
-// before. Mirrors detectRefCycle in TS RefVal.
+// iff the chain returns to a node still open above it -- a PROVEN
+// reference cycle, distinct from a merely unresolved reference.
+// Detection is only on the resolution chain revisiting a node, never on
+// syntactic shape: a chain that passes through a variable segment, a
+// conjunct or any other non-ref value yields no proof and the ref defers
+// as before.
+//
+// A FUNCTION is followed, through its arguments (issue #35). A function
+// resolves only once every argument does, so a chain reaching
+// `b:upper($.a)` and leaving through `$.a` has proved the same
+// dependency a bare `b:$.a` proves. Mirrors detectRefCycle in TS RefVal,
+// arm for arm -- and matters here for WHERE the failure is reported, not
+// whether: this port already proved the shape one step later, through
+// the isprefixpath test, once clonePath had re-pathed the resolved clone
+// to the referring site. Proving it at the same point as TypeScript is
+// what makes both name the same path.
 func (rv *RefVal) detectRefCycle(ctx *Ctx) bool {
-	seen := map[*RefVal]bool{}
-	cur := rv
-	// No hop cap: every iteration either returns or adds a NEW ref to
-	// seen, and the tree holds finitely many refs, so the chase
-	// terminates at the first repetition or the first non-ref — a cap
-	// would just make cycles longer than it invisible.
-	for {
-		if seen[cur] {
-			return true
-		}
-		seen[cur] = true
-		rp := cur.plainRefPath()
-		if rp == nil {
-			return false
-		}
-		var node Val = ctx.root
-		for _, part := range rp {
-			switch n := node.(type) {
-			case *MapVal:
-				node = n.peg[part]
-			case *ListVal:
-				idx, err := strconv.Atoi(part)
-				if err != nil || idx < 0 || idx >= len(n.peg) {
-					return false
-				}
-				node = n.peg[idx]
-			default:
-				return false
-			}
-			if node == nil {
-				return false
-			}
-		}
-		nref, ok := node.(*RefVal)
-		if !ok {
-			return false
-		}
-		cur = nref
+	return rv.chaseRefCycle(ctx, map[string]bool{})
+}
+
+// chaseRefCycle is detectRefCycle's depth-first walk. Depth-first with an
+// explicit ANCESTOR set, because a function may carry several reference
+// arguments and the cycle can run through any one of them. The set holds
+// the chain currently being walked, not every node ever walked:
+// revisiting a node reached down a DIFFERENT branch is an ordinary shared
+// reference (two keys reading one third key), and only revisiting one
+// still open above us is a cycle.
+//
+// Identity is the RESOLVED PATH, not the *RefVal: the same target can be
+// reached through distinct ref instances, and it is returning to the same
+// place that closes a loop.
+func (rv *RefVal) chaseRefCycle(ctx *Ctx, ancestors map[string]bool) bool {
+	rp := rv.plainRefPath()
+	if rp == nil {
+		return false
 	}
+	key := strings.Join(rp, " ")
+	if ancestors[key] {
+		return true
+	}
+
+	var node Val = ctx.root
+	for _, part := range rp {
+		switch n := node.(type) {
+		case *MapVal:
+			node = n.peg[part]
+		case *ListVal:
+			idx, err := strconv.Atoi(part)
+			if err != nil || idx < 0 || idx >= len(n.peg) {
+				return false
+			}
+			node = n.peg[idx]
+		default:
+			return false
+		}
+		if node == nil {
+			return false
+		}
+	}
+
+	// Terminates: each level adds a path to ancestors and refuses a
+	// repeat, and the tree holds finitely many distinct paths.
+	ancestors[key] = true
+	defer delete(ancestors, key)
+
+	switch n := node.(type) {
+	case *RefVal:
+		return n.chaseRefCycle(ctx, ancestors)
+	case *FuncVal:
+		for _, arg := range n.peg {
+			if aref, ok := arg.(*RefVal); ok && aref.chaseRefCycle(ctx, ancestors) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // plainRefPath is the resolved absolute path of a reference whose

@@ -413,12 +413,15 @@ class RefVal extends FeatureVal {
       else if (pI === refpath.length) {
         out = node
 
-        // A reference landing on another reference may be a PROVEN
-        // mutual cycle (a: $.b, b: $.a) -- follow the plain-ref chain
-        // and, if it revisits a node, report path_cycle now instead of
-        // deferring every pass and dying later as a generic ref error.
-        // No proof (chain leaves plain refs, or ends) defers as before.
-        if (null != out && (out as any).isRef && this.detectRefCycle(ctx)) {
+        // A reference landing on another reference -- or on a FUNCTION,
+        // whose arguments the chase now follows (issue #35) -- may be a
+        // PROVEN mutual cycle (a: $.b, b: $.a; a: $.b, b: upper($.a)).
+        // Follow the chain and, if it returns to a node still open above
+        // it, report path_cycle now instead of deferring every pass and
+        // dying later as a spent budget. No proof (the chain leaves plain
+        // refs and calls, or ends) defers as before.
+        if (null != out && ((out as any).isRef || (out as any).isFunc) &&
+          this.detectRefCycle(ctx)) {
           out = makeNilErr(ctx, 'path_cycle', this)
         }
         // Types and hidden values are cloned and made concrete
@@ -468,33 +471,80 @@ class RefVal extends FeatureVal {
   // chain revisits a node -- a PROVEN reference cycle, distinct from a
   // merely unresolved reference. Detection is only on the resolution
   // chain revisiting a node, never on syntactic shape: a chain that
-  // passes through a variable segment, a conjunct, a function, or any
-  // non-ref value yields no proof and the ref defers as before.
+  // passes through a variable segment, a conjunct or any other non-ref
+  // value yields no proof and the ref defers as before.
+  //
+  // A FUNCTION is followed, through its arguments (issue #35). A
+  // function resolves only once every argument does, so a chain that
+  // reaches `b:upper($.a)` and out through `$.a` has proved the same
+  // dependency a bare `b:$.a` proves -- `a:$.b b:upper($.a)` is a cycle
+  // whichever link wears the call. Without this the shape exhausted the
+  // depth budget instead: a `unify_cycle`, which under the G5 taxonomy
+  // means "retry with more may help", where a proven structural cycle is
+  // FIX THE MODEL. A conjunct and a disjunct stay unfollowed for reasons
+  // that are not the same: a disjunct member may simply not be taken, so
+  // reaching one proves nothing; a conjunct would be sound to follow, and
+  // is left out only because nothing needs it yet.
+  //
+  // The Go port reaches the same verdict on this shape by a DIFFERENT
+  // arm, and that difference outlives this method: its clonePath re-paths
+  // a resolved clone to the referring site, so the inner `$.a` lands at
+  // path [a] and the plain isprefixpath test proves the cycle before any
+  // chase is needed. TypeScript's clone keeps the source paths. ADR-001
+  // asks for arm-for-arm correspondence, so the clone-path difference is
+  // worth closing on its own; it is wider than this issue and both ports
+  // now agree on the verdict and the code either way.
   detectRefCycle(ctx: AontuContext): boolean {
-    const seen = new Set<number>()
-    let cur: RefVal = this
-    // No hop cap: every iteration either returns or adds a NEW ref to
-    // `seen`, and the tree holds finitely many refs, so the chase
-    // terminates at the first repetition or the first non-ref — a cap
-    // would just make cycles longer than it invisible.
-    for (; ;) {
-      if (seen.has(cur.id)) {
-        return true
-      }
-      seen.add(cur.id)
-      const rp = cur.plainRefPath()
+    // Depth-first with an explicit ANCESTOR set, because a function may
+    // carry several reference arguments and the cycle can run through
+    // any one of them. The set holds the chain currently being walked,
+    // not every node ever walked: revisiting a node reached down a
+    // DIFFERENT branch is an ordinary shared reference (two keys reading
+    // one third key), and only revisiting one that is still open above
+    // us is a cycle.
+    //
+    // Identity is the RESOLVED PATH, not the RefVal instance: the same
+    // target can be reached through distinct ref instances, and it is
+    // returning to the same place that closes a loop.
+    const chase = (ref: RefVal, ancestors: Set<string>): boolean => {
+      const rp = ref.plainRefPath()
       if (null == rp) {
         return false
       }
+      const key = rp.join(' ')
+      if (ancestors.has(key)) {
+        return true
+      }
+
       let node: any = ctx.root
       for (let i = 0; i < rp.length && null != node; i++) {
         node = (node.isMap || node.isList) ? node.peg[rp[i]] : undefined
       }
-      if (null == node || !node.isRef) {
+      if (null == node) {
         return false
       }
-      cur = node
+
+      // Terminates: each level adds a path to `ancestors` and refuses a
+      // repeat, and the tree holds finitely many distinct paths.
+      ancestors.add(key)
+      let found = false
+      if (node.isRef) {
+        found = chase(node, ancestors)
+      }
+      else if (node.isFunc && Array.isArray(node.peg)) {
+        for (const arg of node.peg) {
+          if (null != arg && arg.isRef && chase(arg, ancestors)) {
+            found = true
+            break
+          }
+        }
+      }
+      ancestors.delete(key)
+
+      return found
     }
+
+    return chase(this, new Set<string>())
   }
 
 
