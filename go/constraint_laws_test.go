@@ -16,12 +16,17 @@ import (
 // commutativity, idempotence, normalisation convergence -- across TS
 // and Go, seeded from the atom vocabulary).
 //
-// The corpus is ENUMERATED, not random: lawAtoms below is the same
-// vocabulary, in the same order, as ATOMS in
-// ts/test/constraint-laws.test.ts, so both ports check identical terms.
-// Cross-port AGREEMENT on the results is the shared suite's job
-// (test/spec/constraint-bound.tsv); these tests guard the laws
-// themselves as the vocabulary grows.
+// The corpus is ENUMERATED, not random: the atom vocabulary is read
+// from test/spec/files/constraint-atoms.txt, shared with
+// ts/test/constraint-laws.test.ts, so both ports cross identical terms
+// and the two lists cannot drift apart.
+//
+// These tests check each engine against ITSELF -- a law that breaks in
+// one port breaks visibly in that port's suite. That is deliberately
+// only half the guarantee: two ports could normalise the same meet
+// differently and each still be internally lawful. The cross-port half
+// is test/spec/constraint-product.tsv, which pins the observable for
+// every cell of the same corpus and is run by both runners.
 //
 // The observable is canon, or the error CODE when the meet is empty --
 // both order-independent, unlike error message text (whose primary site

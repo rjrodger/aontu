@@ -10,13 +10,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // idempotence, normalisation convergence -- across TS and Go, seeded
 // from the atom vocabulary).
 //
-// The corpus is ENUMERATED, not random: the same atom vocabulary is
-// crossed exhaustively here and in go/constraint_laws_test.go, so both
-// ports check identical terms and a law that breaks in one port breaks
-// visibly in that port's suite. Cross-port AGREEMENT on the results is
-// the shared suite's job (test/spec/constraint-bound.tsv); these tests
-// guard the laws themselves as the vocabulary grows, which is where a
-// hand-written row set stops scaling.
+// The corpus is ENUMERATED, not random: the atom vocabulary is read
+// from test/spec/files/constraint-atoms.txt, shared with
+// go/constraint_laws_test.go, so both ports cross identical terms and
+// the two lists cannot drift apart.
+//
+// These tests check each engine against ITSELF -- a law that breaks in
+// one port breaks visibly in that port's suite. That is deliberately
+// only half the guarantee: two ports could normalise the same meet
+// differently and each still be internally lawful. The cross-port half
+// is test/spec/constraint-product.tsv, which pins the observable for
+// every cell of the same corpus and is run by both runners.
 //
 // The observable is canon, or the error CODE when the meet is empty --
 // both are order-independent by construction, unlike error message text
