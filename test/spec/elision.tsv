@@ -35,3 +35,14 @@ trailing-comma-map	gens	{a:1,}	{"a":1}
 empty-pair-map	gens	{,}	{}
 empty-map	gens	a:{}	{"a":{}}
 empty-list	gens	a:[]	{"a":[]}
+# The elided SPREAD, the fourth position (issue #48). It refuses the
+# whole MAP rather than a key, because a spread is not a child: a refusal
+# stored in its place has nothing to attach to, and `x:&:` has no
+# children for the spread to apply to, so the map would generate as `{}`
+# with the mistake silently gone.
+spread-elide	errc	x:{q:1}&:	elided_value
+spread-elide-childless	errc	x:&:	elided_value
+spread-elide-braced	errc	a:{&:}	elided_value
+# ... and a real spread, which must keep working in both positions.
+spread-value-kept	gens	x:{q:1}&:{r:2}	{"x":{"q":1,"r":2}}
+spread-root-kept	gens	x:{a:{}} &:{k:1}	{"x":{"a":{},"k":1}}

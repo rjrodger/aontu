@@ -701,6 +701,17 @@ help isolate the syntax error.`,
                     mo[k] = addsite(new NilVal_1.NilVal({ why: 'elided_value' }), r, ctx);
                 }
             }
+            // An elided SPREAD (`x:$obj&:` with nothing after the colon)
+            // refuses the whole map, not a key (issue #48). A spread is not a
+            // child, so a refusal stored in its place has nothing to attach
+            // to: `x:&:` has no children for the spread to apply to, and the
+            // map would generate as `{}` with the mistake silently gone.
+            // Refusing the container is what makes it visible at all.
+            const sp = mo[type_1.SPREAD];
+            if (sp && sp.v.some((sv) => null == sv)) {
+                r.node = addsite(new NilVal_1.NilVal({ why: 'elided_value' }), r, ctx);
+                return undefined;
+            }
             //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
             if (mo.___merge) {
                 let mop = { ...mo };

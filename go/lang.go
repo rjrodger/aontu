@@ -50,6 +50,12 @@ const spreadKey = reservedKeyPrefix + "spread"
 const optionalKey = reservedKeyPrefix + "optional"
 const posKey = reservedKeyPrefix + "pos"
 
+// elidedSpreadKey marks a map whose `&:` spread was written with no
+// value (issue #48). A bool rather than a Val: nothing can be stored
+// under spreadKey to carry it, since a spread with no value is exactly
+// what is missing.
+const elidedSpreadKey = reservedKeyPrefix + "elidedspread"
+
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
 var theLang = mustMakeLang("")
@@ -1114,10 +1120,15 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	// into a conjunct) rather than recording it as a key.
 	if r.U["spread"] == true {
 		cn := r.Child.Node
-		// An elided spread value (`x:$obj&:` at end of input) never
-		// became a node — TS's MapVal constructor drops the falsy
-		// spread entirely, so store nothing.
-		if cn == nil || jsonic.IsUndefined(cn) {
+		// An elided SPREAD value (`x:$obj&:` with nothing after the
+		// colon) refuses the whole map, not a key (issue #48). A spread
+		// is not a child, so a refusal stored in its place has nothing
+		// to attach to: `x:&:` has no children for the spread to apply
+		// to, and the map would generate as `{}` with the mistake
+		// silently gone. The marker is read where the map is converted,
+		// which turns the container itself into the refusal.
+		if isElidedNode(cn) {
+			m[elidedSpreadKey] = true
 			return
 		}
 		sv := asVal(cn)
@@ -1953,6 +1964,11 @@ func asValDepth(node any, depth int) Val {
 		}
 		if p, ok := n[posKey].(int); ok {
 			mv.sp = p
+		}
+		if n[elidedSpreadKey] == true {
+			en := newNil("elided_value")
+			en.sp = mv.sp
+			return en
 		}
 		ord, _ := n[orderKey].([]string)
 		for _, k := range ord {

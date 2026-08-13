@@ -312,7 +312,10 @@ edge-based-binary-neg	gens	a:-0b11	{"a":-3}
 edge-based-octal	gens	a:0o17	{"a":15}
 edge-root-spread-map	gens	&:{x:1} a:{} b:{}	{"a":{"x":1},"b":{"x":1}}
 edge-root-spread-scalar-conflict	errc	&:1 a:{}	map
-edge-map-spread-empty	canon	a:{&:}	{"a":{}}
+# An elided SPREAD refuses the whole map (issue #48). It used to be
+# dropped, which on a map with no children to apply it to left `{}` --
+# the mistake gone without trace.
+edge-map-spread-empty	errc	a:{&:}	elided_value
 edge-root-bool	gens	true	true
 edge-optional-ref-error	errc	a:{b?:$.zz9} c:1	no_path
 edge-optional-stuck-op-drop	gens	a:{b?:1+true} c:1	{"a":{},"c":1}

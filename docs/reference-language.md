@@ -904,11 +904,13 @@ one (how many levels up the path to read — none means the parent), and
 `neq`, which takes one or more exclusions. A wrong count is a mistake in
 the source and is refused before anything is evaluated.
 
-**An elided value is refused.** A key or element written with nothing
-after its colon (`a:`, `a?:`, `[,]`, `[1,,2]`) is a mistake in the source
+**An elided value is refused.** A key, element or spread written with
+nothing after its colon (`a:`, `a?:`, `[,]`, `[1,,2]`, `x:$obj&:`) is a
+mistake in the source
 rather than a null — writing it as a null made the mistake
 indistinguishable from a deliberate `a:null`. The error names the key or
-index, not the container.
+index, not the container — except for a spread, which has no key of its
+own and so refuses the map it belongs to.
 
 Three things that look similar are not elisions and keep working: an
 explicit `a:null`, a colon chain (`a: b:1`, whose value is the nested
