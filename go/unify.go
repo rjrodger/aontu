@@ -12,6 +12,17 @@ import (
 // subset does not need without references). TOP is the unit element;
 // complex Vals (conjunct/disjunct/pref) drive their own unify.
 func unite(ctx *Ctx, a, b Val) Val {
+	// Fast path, ABOVE the depth counter: a value that is already done,
+	// unified with TOP, is itself. The TS unite has the same shape --
+	// its fast paths return before its counter increments -- and the
+	// counters have to charge the same entries or the shared depth
+	// budget bites at different documents in the two ports. Counting it
+	// here cost one frame per document (the scalar leaf of a nested
+	// bag), which is exactly the constant-1 offset issue #46 recorded.
+	if a != nil && (b == nil || isTop(b)) && a.Dc() == DONE {
+		return a
+	}
+
 	// Bound recursion to break reference cycles (the TS unite uses a
 	// per-path seen-map with MAXCYCLE; a depth guard is sufficient here).
 	ctx.depth++
@@ -36,9 +47,9 @@ func unite(ctx *Ctx, a, b Val) Val {
 		return b
 	}
 	if b == nil || isTop(b) {
-		if a.Dc() == DONE {
-			return a
-		}
+		// No `a.Dc() == DONE` check here: the fast path at the top of the
+		// function already returned for that case, so anything reaching
+		// this line is not done.
 		return drive(a, top())
 	}
 	if isTop(a) {
@@ -60,7 +71,19 @@ func unite(ctx *Ctx, a, b Val) Val {
 	return drive(a, b)
 }
 
-const maxUniteDepth = 2000
+// Structural recursion budget: how deep unite may nest before the
+// evaluator reports `unify_cycle`. SHARED LANGUAGE SURFACE -- the TS
+// MAXDEPTH (ts/src/unify.ts) carries the same number, and
+// test/spec/budget.tsv pins the boundary in both, so changing it is a
+// spec-visible change in both ports at once.
+//
+// Lowered from 2000 when TypeScript gained its own explicit budget:
+// V8 exhausts its call stack past depth ~1500 in that evaluator, so
+// 2000 was unreachable there and the two ports would have disagreed on
+// every document between the limits. 1000 sits above every real
+// document (the whole shared suite peaks at 603) and below both hosts'
+// limits, so the budget decides the verdict rather than the runtime.
+const maxUniteDepth = 1000
 
 // unifyRoot runs the fixpoint loop: repeatedly unify the result with
 // TOP until it converges (Dc == DONE) or an error is collected. ctx.root

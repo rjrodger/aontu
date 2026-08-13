@@ -11,7 +11,7 @@
 # Columns: name<TAB>mode<TAB>src<TAB>expect
 spread-required-code	errc	m:{&:{r:string} a:{}}	mapval_spread_required
 spread-required-msg	err	m:{&:{r:string} a:{}}	The value for key r is required (defined in spread).
-spread-required-canon	canon	m:{&:{r:string} a:{}}	{"m":{&:{"r":string},"a":{"r":}}}
+spread-required-canon	canon	m:{&:{r:string} a:{}}	{"m":{&:{"r":string},"a":{"r":string}}}
 spread-required-escape	gens	m:{&:{r:string} a:{r:x}}	{"m":{"a":{"r":"x"}}}
 spread-required-optional	gens	m:{&:{r:string} a?:{}}	{"m":{}}
 #

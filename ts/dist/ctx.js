@@ -28,6 +28,7 @@ class AontuContext {
         this._pathmap = new Map();
         this._pathTrie = new Map();
         this._pathidxNext = { n: 1 }; // 0 reserved for the root path
+        this._depth = { n: 0 };
         this._pathidx = 0;
         this.opts = (0, type_1.DEFAULT_OPTS)();
         this.addopts(cfg.opts);

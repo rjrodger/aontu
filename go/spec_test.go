@@ -197,14 +197,10 @@ func TestSpec(t *testing.T) {
 
 // canonNoReparse lists canon rows whose expected canon cannot be
 // reparsed. Each entry needs a reason and an issue; entries are DELETED,
-// not amended, when fixed (AGENTS.md ledger discipline). The TypeScript
+// not amended, when fixed (AGENTS.md ledger discipline). Currently
+// EMPTY: every canon row in the shared suite reparses. The TypeScript
 // runner carries the same list (ts/test/spec.test.ts CANON_NO_REPARSE).
-var canonNoReparse = map[string]string{
-	// The `&:`-spread required-child placeholder renders as a key with no
-	// value (`{"r":}`), which is not a document. Both engines emit it
-	// identically, so it is a shared canon defect, not a divergence.
-	"spread-required-canon": "placeholder canons as `{\"r\":}` -- issue #43",
-}
+var canonNoReparse = map[string]string{}
 
 // assertCanonConverges is the guard the G1/G2/G5 implementation plans
 // call for. Those plans word it `parse(canon(v)) == v`, which is too

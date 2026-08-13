@@ -55,16 +55,37 @@ budget-chain-10-msg	err	a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:
 budget-wide-conjunct-legal	gens	a:@"__FIXTURES__/large-siblings.aon"	{"a":{"wide":{"x":1}}}
 budget-wide-conjunct-canon	canon	a:@"__FIXTURES__/large-siblings.aon"	{"a":{"wide":{"x":1}}}
 #
-# unify_cycle -- the per-pair revisit bound tripping: SUSPECTED
-# non-convergence. Registered in errcodes.tsv (class budget) but
-# deliberately NOT pinned by a shared row, because the two engines
-# reach it by different mechanisms and no shared source drives both:
-# TypeScript counts (Val, path) revisits against MAXCYCLE, while Go
-# bounds recursion depth instead (maxUniteDepth, go/unify.go -- "a
-# depth guard is sufficient here" without references). Small cycles
-# are all caught earlier as path_cycle in both. It is pinned per-port
-# instead: go/coverage_test.go drives the Go depth bound directly.
-# TypeScript's side is the deep-nesting gap documented in
-# docs/trust.md (no explicit depth budget; V8 stack exhaustion is
-# caught and reported as `internal`), and closing that is what would
-# make a shared row possible.
+# THE DEPTH BUDGET -- structural recursion, shared language surface.
+# Both engines bound `unite` nesting at 1000 (ts/src/unify.ts MAXDEPTH,
+# go/unify.go maxUniteDepth) and report `unify_cycle` past it. These
+# rows pin the boundary from both sides, so raising or lowering it is a
+# spec-visible change in both ports at once, exactly like the pass
+# budget above.
+#
+# TypeScript had NO explicit depth budget until this pair landed: deep
+# nesting exhausted the V8 call stack and surfaced as `internal`, a
+# verdict that depended on the host's stack size rather than on the
+# document -- the determinism gap docs/trust.md recorded against this
+# clause. Go's bound was 2000, unreachable in V8, so the two ports
+# disagreed on every document between the limits. Both are now 1000:
+# above every real document (the whole shared suite peaks at depth 603)
+# and below both hosts' limits.
+#
+# deep-ok wraps its nesting in hide() so the expectation stays readable
+# -- the unifier still walks all 900 levels, it just generates nothing.
+budget-depth-900-resolves	gens	x:@"__FIXTURES__/deep-ok.aon"	{"x":{"z":1}}
+budget-depth-1200-exhausts	errc	x:@"__FIXTURES__/deep-exhausts.aon"	unify_cycle
+budget-depth-1200-msg	err	x:@"__FIXTURES__/deep-exhausts.aon"	Circular reference detected during unification.
+# Function arguments evaluate through arg.unify rather than the unite
+# dispatcher, so they need their own guard (withDepth, ts/src/unify.ts;
+# Go routes them through its counted dispatcher already). Without it a
+# 1500-deep expression resolved in TypeScript while Go refused it.
+budget-depth-func-exhausts	errc	x:@"__FIXTURES__/deep-func.aon"	unify_cycle
+# The EXACT cutoff, both sides. The two ports disagreed by one nesting
+# level until Go's "done value unified with TOP" fast path was hoisted
+# above its depth counter, so that both charge the same entries -- Go
+# was spending one frame per document (the scalar leaf) that TS never
+# spent. These rows make the boundary itself contractual rather than
+# just the region either side of it (issue #46).
+budget-depth-boundary-in	gens	x:@"__FIXTURES__/deep-boundary-in.aon"	{"x":{"z":1}}
+budget-depth-boundary-out	errc	x:@"__FIXTURES__/deep-boundary-out.aon"	unify_cycle

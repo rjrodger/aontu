@@ -17,7 +17,7 @@ import {
 } from '../err'
 
 import { AontuContext } from '../ctx'
-import { unite } from '../unify'
+import { unite, withDepth } from '../unify'
 
 import {
   explainOpen,
@@ -83,7 +83,11 @@ class OpBaseVal extends FeatureVal {
 
     for (let arg of this.peg) {
       if (!arg.done) {
-        arg = arg.unify(top(), ctx, ec(te, 'ARG'))
+        // Charged to the depth budget: this recurses without going
+        // through `unite`, so the counter would otherwise stay flat
+        // while the stack grows (see withDepth in unify.ts).
+        const a = arg
+        arg = withDepth(ctx, a, top(), () => a.unify(top(), ctx, ec(te, 'ARG')))
       }
       pegdone &&= arg.done
       newpeg.push(arg)

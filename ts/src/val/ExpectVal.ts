@@ -35,6 +35,21 @@ class ExpectVal extends FeatureVal {
   parent?: Val
   key?: string
 
+  // An expectation canons as THE EXPECTATION ITSELF -- the peg the peer
+  // must satisfy. Val.canon's default was the empty string, which
+  // rendered a key with no value (`{"r":}`): text that is not a document
+  // and could not be reparsed, breaking canon's round-trip contract in
+  // both engines (issue #43).
+  //
+  // Not `top`, which was the first fix here and was wrong. An ExpectVal
+  // is created for EVERY peer-introduced non-generable key, not just for
+  // `&:` spread children -- `m:{x:1} m:{y:string}` makes one at `y` with
+  // no spread in sight -- so rendering `top` erased the `string` and the
+  // canon reparsed into a document that accepts values the original
+  // rejects. A canon that silently drops a constraint is worse than one
+  // that fails to parse. Go's ExpectVal.Canon renders the same peg.
+  get canon() { return this.peg.canon }
+
   constructor(
     spec: ValSpec,
     ctx?: AontuContext

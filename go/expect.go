@@ -26,10 +26,20 @@ type ExpectVal struct {
 
 func (e *ExpectVal) superior() Val { return top() }
 
-// Canon is EMPTY, exactly as in TS (FeatureVal's default over an
-// unrendered peg): a map holding an expect for key r canons as
-// `{"r":}` — the key present, the value pending.
-func (e *ExpectVal) Canon() string { return "" }
+// Canon is THE EXPECTATION ITSELF — the peg the peer must satisfy —
+// exactly as in TS. It used to render as nothing, so a map holding an
+// expect for key r canoned as `{"r":}`: text that is not a document and
+// could not be reparsed, breaking canon's round-trip contract in both
+// engines (issue #43).
+//
+// Not `top`, which was the first fix here and was wrong. An ExpectVal is
+// created for EVERY peer-introduced non-generable key, not just for `&:`
+// spread children — `m:{x:1} m:{y:string}` makes one at y with no spread
+// in sight — so rendering `top` erased the `string` and the canon
+// reparsed into a document that accepts values the original rejects. A
+// canon that silently drops a constraint is worse than one that fails to
+// parse.
+func (e *ExpectVal) Canon() string { return e.peg.Canon() }
 
 // Gen is unreachable: BagVal-level Gen intercepts an expect child (the
 // *_spread_required branch) before ever calling child.Gen, for

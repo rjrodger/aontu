@@ -71,6 +71,14 @@ class AontuContext {
   _pathTrie: Map<number, Map<string, { idx: number, path: string[] }>>
   _pathidxNext: { n: number }
 
+  // Current `unite` recursion depth, checked against MAXDEPTH
+  // (ts/src/unify.ts). Held in a shared mutable box, like _pathidxNext,
+  // because clone() uses Object.create: the box is inherited by
+  // reference, so a nested clone's increments are visible to the frame
+  // that will decrement them. The Go port keeps the same counter
+  // directly on its Ctx pointer (go/unify.go, maxUniteDepth).
+  _depth: { n: number }
+
   // Trial mode: set by DisjunctVal.unify while each member is tried
   // against the peer. When true, makeNilErr returns the shared
   // TRIAL_NIL sentinel instead of allocating a fresh NilVal, and
@@ -116,6 +124,7 @@ class AontuContext {
     this._pathmap = new Map()
     this._pathTrie = new Map()
     this._pathidxNext = { n: 1 }  // 0 reserved for the root path
+    this._depth = { n: 0 }
     this._pathidx = 0
 
     this.opts = DEFAULT_OPTS()

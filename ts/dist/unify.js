@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unite = exports.Unify = void 0;
+exports.withDepth = exports.unite = exports.Unify = void 0;
 const ctx_1 = require("./ctx");
 const type_1 = require("./type");
 const err_1 = require("./err");
@@ -16,6 +16,39 @@ const top_1 = require("./val/top");
 // memo below (_tcc/_tpi); test/spec/budget.tsv drives 1200 sibling
 // terms through both engines as the regression guard.
 const MAXCYCLE = 999;
+// Structural recursion budget: how deep `unite` may nest before the
+// evaluator reports `unify_cycle`. SHARED LANGUAGE SURFACE -- Go's
+// maxUniteDepth (go/unify.go) carries the same number, and
+// test/spec/budget.tsv pins the boundary in both, so changing it is a
+// spec-visible change in both ports at once.
+//
+// Why 1000: the whole shared suite peaks at 603 (the deliberately
+// extreme 1200-sibling-term fixture; ordinary documents are two orders
+// below), and V8 exhausts its call stack somewhere past depth ~1500 in
+// this evaluator. 1000 sits above every real document and below the
+// host limit, so the budget -- not the host -- decides the verdict.
+const MAXDEPTH = 1000;
+// Charge a DIRECT `Val.unify` recursion to the same depth budget that
+// `unite` enforces. Function and operator arguments evaluate through
+// `arg.unify(top(), ...)` rather than through the dispatcher, so without
+// this the counter stays flat while the JavaScript stack keeps growing:
+// a 1500-deep `upper(upper(...))` resolved in TypeScript while Go — which
+// routes its arguments through the counted dispatcher — reported
+// `unify_cycle`. Returns the budget nil instead of running when the
+// budget is spent.
+const withDepth = (ctx, a, b, run) => {
+    if (MAXDEPTH <= ctx._depth.n) {
+        return (0, err_1.makeNilErr)(ctx, 'unify_cycle', a, b);
+    }
+    ctx._depth.n++;
+    try {
+        return run();
+    }
+    finally {
+        ctx._depth.n--;
+    }
+};
+exports.withDepth = withDepth;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
@@ -61,12 +94,22 @@ const unite = (ctx, a, b, whence) => {
     // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
     // See for example PrefVal peg.id equality inspection.
     const sawCount = ctx.seen[saw] ?? 0;
-    if (MAXCYCLE < sawCount) {
+    if (MAXDEPTH <= ctx._depth.n) {
+        // Structural recursion budget. Without it, deep nesting exhausts the
+        // V8 call stack and the catch-all below reports a RangeError as
+        // `internal` — a verdict that depends on the host's stack size
+        // rather than on the document, which is exactly what the
+        // determinism clause forbids (docs/trust.md). Tripping here instead
+        // makes it a stated budget error, like the pass budget.
+        out = (0, err_1.makeNilErr)(ctx, 'unify_cycle', a, b);
+    }
+    else if (MAXCYCLE < sawCount) {
         // console.log('SAW', sawCount, saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
         out = (0, err_1.makeNilErr)(ctx, 'unify_cycle', a, b);
     }
     else {
         ctx.seen[saw] = sawCount + 1;
+        ctx._depth.n++;
         try {
             let unified = false;
             // Dispatch ladder. Structure note:
@@ -170,6 +213,9 @@ const unite = (ctx, a, b, whence) => {
                 error: String(err?.message ?? err),
                 ...(err instanceof RangeError ? { overflow: true } : {}),
             });
+        }
+        finally {
+            ctx._depth.n--;
         }
     }
     ctx.explain && (0, utility_1.explainClose)(te, out);

@@ -167,7 +167,10 @@ function capture(fn) {
     (0, node_test_1.test)('base-unify-is-identity', () => {
         // No concrete Val inherits Val.unify — every leaf overrides it — but
         // the base contract is that an unhandled Val stands.
+        // `canon` is abstract on Val, so even a stand-in has to render
+        // something; this one is never canoned.
         class PlainVal extends FeatureVal_1.FeatureVal {
+            get canon() { return ''; }
         }
         const pv = new PlainVal({ peg: 1 });
         Assert.equal(pv.unify((0, top_1.top)(), CTX()), pv);

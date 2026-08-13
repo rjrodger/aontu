@@ -86,7 +86,7 @@ declare abstract class Val {
     get isPathDependent(): boolean;
     place(v: Val): Val;
     unify(_peer: Val, _ctx: AontuContext): Val;
-    get canon(): string;
+    abstract get canon(): string;
     errcanon(): string;
     gen(_ctx: AontuContext): any;
     notdone(): void;

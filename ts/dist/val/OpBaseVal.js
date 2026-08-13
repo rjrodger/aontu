@@ -41,7 +41,11 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         let newpeg = [];
         for (let arg of this.peg) {
             if (!arg.done) {
-                arg = arg.unify((0, top_1.top)(), ctx, (0, utility_1.ec)(te, 'ARG'));
+                // Charged to the depth budget: this recurses without going
+                // through `unite`, so the counter would otherwise stay flat
+                // while the stack grows (see withDepth in unify.ts).
+                const a = arg;
+                arg = (0, unify_1.withDepth)(ctx, a, (0, top_1.top)(), () => a.unify((0, top_1.top)(), ctx, (0, utility_1.ec)(te, 'ARG')));
             }
             pegdone &&= arg.done;
             newpeg.push(arg);

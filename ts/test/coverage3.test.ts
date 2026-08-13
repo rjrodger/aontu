@@ -160,7 +160,11 @@ describe('coverage3-val-base', () => {
   test('base-unify-is-identity', () => {
     // No concrete Val inherits Val.unify — every leaf overrides it — but
     // the base contract is that an unhandled Val stands.
-    class PlainVal extends FeatureVal { }
+    // `canon` is abstract on Val, so even a stand-in has to render
+    // something; this one is never canoned.
+    class PlainVal extends FeatureVal {
+      get canon() { return '' }
+    }
     const pv = new PlainVal({ peg: 1 })
     Assert.equal(pv.unify(top(), CTX()), pv)
   })

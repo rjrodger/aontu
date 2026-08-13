@@ -561,9 +561,10 @@ resolves them; 15 of the 491 canon rows move on that first reparse.
 The property that does hold for every row, and is now asserted by both
 spec runners, is CONVERGENCE: canon reaches a fixpoint immediately
 after that round, so it can never oscillate or drift. Constraint
-residuals specifically do satisfy the stronger form. One row is exempt
-from reparse altogether — the `&:` required-child placeholder canons
-as `{"r":}`, issue #43.)*
+residuals specifically do satisfy the stronger form. Adding the guard
+immediately found one canon that could not be reparsed at all — the
+`&:` required-child placeholder rendered as `{"r":}` in both engines —
+which is fixed: it now canons as `top`, and no row is exempt.)*
 
 1. **Phase 0 — algebra on paper (S).** Write the pairwise meet /
    emptiness / subsumption tables and the canonical atom order into
