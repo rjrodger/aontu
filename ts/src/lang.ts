@@ -877,16 +877,15 @@ help isolate the syntax error.`,
   //
   // `length` is saved too: writing past the end grows an array, and
   // `[5,1?:9]` must be [5] again and not [5, <hole>].
-  // Indexed as a string bag deliberately: the slot may be named by a
-  // non-numeric key (`[x:1]`), which Array.isArray narrowing would refuse.
-  const asSlots = (n: any): Record<string, any> | undefined =>
-    Array.isArray(n) ? (n as any) : undefined
+  // Typed as a string bag deliberately: the slot may be named by a
+  // non-numeric key (`[x:1]`), which the array type would refuse. Both
+  // helpers run only from the elem rule, whose node is the enclosing
+  // list, so neither guards against a non-array node — a guard there
+  // proved unreachable and dead code is worse than none.
+  const asSlots = (r: Rule): Record<string, any> => r.node as any
 
   const snapshotPairSlot = (r: Rule, key: string) => {
-    const node = asSlots(r.node)
-    if (null == node) {
-      return
-    }
+    const node = asSlots(r)
     r.u.aontu_pair_slot = {
       key,
       had: Object.prototype.hasOwnProperty.call(node, key),
@@ -897,10 +896,10 @@ help isolate the syntax error.`,
 
   const restorePairSlot = (r: Rule) => {
     const slot: any = r.u.aontu_pair_slot
-    const node = asSlots(r.node)
-    if (null == slot || null == node) {
+    if (null == slot) {
       return
     }
+    const node = asSlots(r)
     if (slot.had) {
       node[slot.key] = slot.was
     }

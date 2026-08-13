@@ -256,5 +256,30 @@ const err_1 = require("../dist/err");
         (0, expect_1.expect)(out.b).equal('x\uFFFDy');
         (0, expect_1.expect)(out.c).equal('p\uFFFDq');
     });
+    // A CRLF source (issue #5). The \r sits on the end of the line and is
+    // not part of the marker run, so it has to come off before the length
+    // is counted -- otherwise `=======\r` is eight characters and the
+    // marker goes unnoticed on every Windows checkout, which is exactly
+    // where an unresolved merge is most likely to be sitting.
+    //
+    // Not a shared spec row: the spec's src column escapes \n, \t and \\,
+    // and has no spelling for a carriage return.
+    (0, node_test_1.it)('merge-conflict-crlf', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate('<<<<<<< HEAD\r\na:1\r\n=======\r\na:2\r\n>>>>>>> other\r\n');
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).match(/aontu\/merge_conflict/);
+        // ... and a bare CR line ending is still not a marker line.
+        const ok = new aontu_1.Aontu().generate('a:1\r\nb:2\r\n');
+        (0, expect_1.expect)(ok.a).equal(1);
+        (0, expect_1.expect)(ok.b).equal(2);
+    });
 });
 //# sourceMappingURL=error.test.js.map

@@ -184,3 +184,35 @@ func TestListIndexZeroPath(t *testing.T) {
 		t.Fatalf("list-index-zero-path mismatch\n want: %q\n got:  %q", want, got)
 	}
 }
+
+// TestMergeConflictCRLF is the merge-conflict-crlf twin in
+// ts/test/error.test.ts (issue #5).
+//
+// The \r sits on the end of the line and is not part of the marker run,
+// so it has to come off before the length is counted -- otherwise
+// "=======\r" is eight characters and the marker goes unnoticed on every
+// Windows checkout, which is exactly where an unresolved merge is most
+// likely to be sitting.
+//
+// Not a shared spec row: the spec's src column escapes \n, \t and \\, and
+// has no spelling for a carriage return.
+func TestMergeConflictCRLF(t *testing.T) {
+	_, err := New().Generate("<<<<<<< HEAD\r\na:1\r\n=======\r\na:2\r\n>>>>>>> other\r\n")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	ae, ok := err.(*AontuError)
+	if !ok || ae.Code != "merge_conflict" {
+		t.Fatalf("crlf marker: %v", err)
+	}
+
+	// ... and a bare CRLF line ending is still not a marker line.
+	out, err := New().Generate("a:1\r\nb:2\r\n")
+	if err != nil {
+		t.Fatalf("crlf plain: %v", err)
+	}
+	m, _ := out.(map[string]any)
+	if m == nil || m["a"] == nil || m["b"] == nil {
+		t.Fatalf("crlf plain: %v", out)
+	}
+}
