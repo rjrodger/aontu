@@ -5,6 +5,7 @@ package aontu
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -120,5 +121,44 @@ func TestInvalidUTF8ReplacementTwin(t *testing.T) {
 	}
 	if m["c"] != "p�q" {
 		t.Fatalf("c: want %q, got %q", "p�q", m["c"])
+	}
+}
+
+// TestParseErrorNamesFile checks that a parse-stage error frame names the
+// entry source, rather than the `<no-file>` the parser falls back to
+// (issue #50).
+//
+// The name reaches the parser through meta["fileName"], which is what TS
+// passes as popts.path; without it every Go syntax error pointed at
+// `<no-file>` while the canonical engine named the file. There is no
+// shared spec row for this: the runner parses source strings, and the
+// display name is a property of the caller, not of the source.
+func TestParseErrorNamesFile(t *testing.T) {
+	a := New()
+	a.File = "model.aon"
+
+	// A syntax error, rendered by the parser itself.
+	_, err := a.Generate("1'00]")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "model.aon:1:5") {
+		t.Fatalf("syntax frame: %q", err.Error())
+	}
+
+	// ... and one rendered by aontu's own frame renderer, which takes the
+	// same name by the same route.
+	_, err = a.Generate("<<<<<<< HEAD\na:1\n")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "model.aon:1:1") {
+		t.Fatalf("merge_conflict frame: %q", err.Error())
+	}
+
+	// With no name set, the parser's own fallback still applies.
+	_, err = New().Generate("1'00]")
+	if err == nil || !strings.Contains(err.Error(), "<no-file>") {
+		t.Fatalf("unnamed fallback: %v", err)
 	}
 }
