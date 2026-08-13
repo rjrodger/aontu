@@ -11,7 +11,7 @@ import {
 } from '../type'
 
 import { AontuContext } from '../ctx'
-import { unite } from '../unify'
+import { unite, withDepth } from '../unify'
 
 
 import {
@@ -100,7 +100,13 @@ class FuncBaseVal extends FeatureVal {
 
             let newarg = arg
             if (!arg.done) {
-              newarg = arg.unify(TOP, te ? ctx.clone({ explain: ec(te, 'ARG') }) : ctx)
+              // Charged to the depth budget: this recurses without going
+              // through `unite`, so the counter would otherwise stay flat
+              // while the stack grows (see withDepth in unify.ts). The
+              // arg context is built OUTSIDE the closure so its explain
+              // ternary stays one branch rather than one per call.
+              const argctx = te ? ctx.clone({ explain: ec(te, 'ARG') }) : ctx
+              newarg = withDepth(ctx, arg, TOP, () => arg.unify(TOP, argctx))
               newtype = newtype || newarg.mark.type
               newhide = newhide || newarg.mark.hide
               // console.log('FUNCBASE-UNIFY-PEG-B', arg.canon, arg.done, '->', newarg.canon, newarg.done)

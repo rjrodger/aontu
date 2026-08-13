@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unite = exports.Unify = void 0;
+exports.withDepth = exports.unite = exports.Unify = void 0;
 const ctx_1 = require("./ctx");
 const type_1 = require("./type");
 const err_1 = require("./err");
@@ -28,6 +28,27 @@ const MAXCYCLE = 999;
 // this evaluator. 1000 sits above every real document and below the
 // host limit, so the budget -- not the host -- decides the verdict.
 const MAXDEPTH = 1000;
+// Charge a DIRECT `Val.unify` recursion to the same depth budget that
+// `unite` enforces. Function and operator arguments evaluate through
+// `arg.unify(top(), ...)` rather than through the dispatcher, so without
+// this the counter stays flat while the JavaScript stack keeps growing:
+// a 1500-deep `upper(upper(...))` resolved in TypeScript while Go — which
+// routes its arguments through the counted dispatcher — reported
+// `unify_cycle`. Returns the budget nil instead of running when the
+// budget is spent.
+const withDepth = (ctx, a, b, run) => {
+    if (MAXDEPTH <= ctx._depth.n) {
+        return (0, err_1.makeNilErr)(ctx, 'unify_cycle', a, b);
+    }
+    ctx._depth.n++;
+    try {
+        return run();
+    }
+    finally {
+        ctx._depth.n--;
+    }
+};
+exports.withDepth = withDepth;
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx, a, b, whence) => {
@@ -73,7 +94,7 @@ const unite = (ctx, a, b, whence) => {
     // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
     // See for example PrefVal peg.id equality inspection.
     const sawCount = ctx.seen[saw] ?? 0;
-    if (MAXDEPTH < ctx._depth.n) {
+    if (MAXDEPTH <= ctx._depth.n) {
         // Structural recursion budget. Without it, deep nesting exhausts the
         // V8 call stack and the catch-all below reports a RangeError as
         // `internal` — a verdict that depends on the host's stack size

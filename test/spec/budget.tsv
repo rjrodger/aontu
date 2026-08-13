@@ -76,3 +76,8 @@ budget-wide-conjunct-canon	canon	a:@"__FIXTURES__/large-siblings.aon"	{"a":{"wid
 budget-depth-900-resolves	gens	x:@"__FIXTURES__/deep-ok.aon"	{"x":{"z":1}}
 budget-depth-1200-exhausts	errc	x:@"__FIXTURES__/deep-exhausts.aon"	unify_cycle
 budget-depth-1200-msg	err	x:@"__FIXTURES__/deep-exhausts.aon"	Circular reference detected during unification.
+# Function arguments evaluate through arg.unify rather than the unite
+# dispatcher, so they need their own guard (withDepth, ts/src/unify.ts;
+# Go routes them through its counted dispatcher already). Without it a
+# 1500-deep expression resolved in TypeScript while Go refused it.
+budget-depth-func-exhausts	errc	x:@"__FIXTURES__/deep-func.aon"	unify_cycle

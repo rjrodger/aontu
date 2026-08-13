@@ -72,6 +72,14 @@ func unite(ctx *Ctx, a, b Val) Val {
 // every document between the limits. 1000 sits above every real
 // document (the whole shared suite peaks at 603) and below both hosts'
 // limits, so the budget decides the verdict rather than the runtime.
+//
+// KNOWN, and registered in test/spec/divergent.tsv: the two dispatchers
+// do not count the same entry set. Go spends one counted frame per
+// document that TS does not, so the OBSERVABLE boundary sits one
+// nesting level apart -- a 999-deep bag refuses here and resolves in
+// TypeScript, while 998 and 1000 agree. The offset is a constant 1 for
+// both bag shapes measured. The pinned rows (900 / 1200) sit well clear
+// of it, so no shared row depends on the exact cutoff.
 const maxUniteDepth = 1000
 
 // unifyRoot runs the fixpoint loop: repeatedly unify the result with

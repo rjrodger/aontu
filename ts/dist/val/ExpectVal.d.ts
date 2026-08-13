@@ -7,7 +7,7 @@ declare class ExpectVal extends FeatureVal {
     peer?: Val;
     parent?: Val;
     key?: string;
-    get canon(): string;
+    get canon(): any;
     constructor(spec: ValSpec, ctx?: AontuContext);
     unify(peer: Val, ctx: AontuContext): Val;
     gen(ctx: AontuContext): undefined;

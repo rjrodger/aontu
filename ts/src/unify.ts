@@ -48,6 +48,30 @@ const MAXCYCLE = 999
 // host limit, so the budget -- not the host -- decides the verdict.
 const MAXDEPTH = 1000
 
+// Charge a DIRECT `Val.unify` recursion to the same depth budget that
+// `unite` enforces. Function and operator arguments evaluate through
+// `arg.unify(top(), ...)` rather than through the dispatcher, so without
+// this the counter stays flat while the JavaScript stack keeps growing:
+// a 1500-deep `upper(upper(...))` resolved in TypeScript while Go — which
+// routes its arguments through the counted dispatcher — reported
+// `unify_cycle`. Returns the budget nil instead of running when the
+// budget is spent.
+const withDepth = (
+  ctx: AontuContext, a: any, b: any, run: () => any
+): any => {
+  if (MAXDEPTH <= ctx._depth.n) {
+    return makeNilErr(ctx, 'unify_cycle', a, b)
+  }
+  ctx._depth.n++
+  try {
+    return run()
+  }
+  finally {
+    ctx._depth.n--
+  }
+}
+
+
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
@@ -95,7 +119,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
   // See for example PrefVal peg.id equality inspection.
   const sawCount = ctx.seen[saw] ?? 0
-  if (MAXDEPTH < ctx._depth.n) {
+  if (MAXDEPTH <= ctx._depth.n) {
     // Structural recursion budget. Without it, deep nesting exhausts the
     // V8 call stack and the catch-all below reports a RangeError as
     // `internal` — a verdict that depends on the host's stack size
@@ -373,4 +397,5 @@ class Unify {
 export {
   Unify,
   unite,
+  withDepth,
 }
