@@ -1,6 +1,7 @@
 /* Copyright (c) 2020-2023 Richard Rodger and other contributors, MIT License */
 
 import Fs from 'node:fs'
+import Path from 'node:path'
 import { describe, it } from 'node:test'
 import { expect } from './expect'
 import { Aontu, AontuContext } from '../dist/aontu'
@@ -289,6 +290,26 @@ describe('error', function() {
       throw new Error('expected error')
     }
     expect(err.message).equal("[aontu/scalar_value]: Cannot unify values at path $.a.0\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:1:8\n\u001b[34m  1 | \u001b[0ma:[1]&[2]\n             \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:1:4\n\u001b[34m  1 | \u001b[0ma:[1]&[2]\n         \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n")
+  })
+
+
+  // The invalid-utf8-replacement twin in go/source_test.go (issue #32,
+  // family 2). The fixture holds two invalid sequences -- a truncated
+  // three-byte sequence (E2 82) and a lone FF -- and each must become
+  // exactly ONE U+FFFD. Node replaces them as it decodes the file, so
+  // this side never saw the bad bytes; the Go port carried them to its
+  // JSON encoder, which replaced them PER BYTE, giving two replacements
+  // for the truncated sequence and writing both as escapes.
+  //
+  // Not a shared spec row: the spec's src column is text, and these bytes
+  // are by definition not.
+  it('invalid-utf8-replacement', () => {
+    const src = Fs.readFileSync(
+      Path.join(__dirname, '..', '..', 'test', 'spec', 'files', 'invalid-utf8.aon'),
+      'utf8')
+    const out: any = new Aontu().generate(src)
+    expect(out.b).equal('x\uFFFDy')
+    expect(out.c).equal('p\uFFFDq')
   })
 
 })

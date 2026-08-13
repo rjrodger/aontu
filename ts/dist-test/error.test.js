@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_fs_1 = __importDefault(require("node:fs"));
+const node_path_1 = __importDefault(require("node:path"));
 const node_test_1 = require("node:test");
 const expect_1 = require("./expect");
 const aontu_1 = require("../dist/aontu");
@@ -238,6 +239,22 @@ const err_1 = require("../dist/err");
             throw new Error('expected error');
         }
         (0, expect_1.expect)(err.message).equal("[aontu/scalar_value]: Cannot unify values at path $.a.0\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:1:8\n\u001b[34m  1 | \u001b[0ma:[1]&[2]\n             \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:1:4\n\u001b[34m  1 | \u001b[0ma:[1]&[2]\n         \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n");
+    });
+    // The invalid-utf8-replacement twin in go/source_test.go (issue #32,
+    // family 2). The fixture holds two invalid sequences -- a truncated
+    // three-byte sequence (E2 82) and a lone FF -- and each must become
+    // exactly ONE U+FFFD. Node replaces them as it decodes the file, so
+    // this side never saw the bad bytes; the Go port carried them to its
+    // JSON encoder, which replaced them PER BYTE, giving two replacements
+    // for the truncated sequence and writing both as escapes.
+    //
+    // Not a shared spec row: the spec's src column is text, and these bytes
+    // are by definition not.
+    (0, node_test_1.it)('invalid-utf8-replacement', () => {
+        const src = node_fs_1.default.readFileSync(node_path_1.default.join(__dirname, '..', '..', 'test', 'spec', 'files', 'invalid-utf8.aon'), 'utf8');
+        const out = new aontu_1.Aontu().generate(src);
+        (0, expect_1.expect)(out.b).equal('x\uFFFDy');
+        (0, expect_1.expect)(out.c).equal('p\uFFFDq');
     });
 });
 //# sourceMappingURL=error.test.js.map

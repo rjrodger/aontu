@@ -68,22 +68,37 @@
 #
 # ---------------------------------------------------------------------
 #
-# OPEN -- malformed-input acceptance edges and invalid-UTF-8
-#   replacement counts.
-#   issue: #32. Degenerate inputs where one parser errors and the
-#   other produces differently-shaped junk; and invalid UTF-8 where
-#   the ports emit a different NUMBER of U+FFFD replacements.
+# OPEN -- malformed-input acceptance edges. issue: #32. Degenerate
+#   inputs where one parser errors and the other produces
+#   differently-shaped junk.
 #
-#   Divergent inputs:  pref(1-3)   close(([]%))   1'00]...   "q k""?:...
-#     (acceptance: one side errors, the other parses to junk)
-#   And the byte sequence E2 82 (truncated three-byte UTF-8) inside a
-#   string:
-#   TypeScript: ONE U+FFFD (Node replaces at file decode)
-#   Go:         TWO U+FFFD (raw bytes carried to the encoder)
+#   The invalid-UTF-8 half of this entry is FIXED and gone: replacement
+#   now happens where TypeScript's happens, at decode, so a truncated
+#   three-byte sequence is ONE U+FFFD in both ports instead of one in TS
+#   and two in Go, and the character is written rather than escaped. It
+#   pins as the entry predicted it would have to -- per-port twin tests
+#   over a byte fixture (test/spec/files/invalid-utf8.aon), since the src
+#   column cannot carry raw invalid bytes.
 #
-#   Not simply fixed because the acceptance split is largely upstream
-#   in the @tabnas stack, and the src column cannot carry raw invalid
-#   bytes -- fixes pin via per-port twin tests over byte fixtures.
+#   Divergent inputs:  pref(1-3)   close(([]%))
+#   TypeScript: throws -- `internal` for the first, and for the second a
+#     TypeError ("Cannot set property ...") that escapes as "unexpected
+#     error". Both are TS DEFECTS in their own right, not merely a
+#     different verdict; filed separately.
+#   Go:         parses each to junk ({"a":[1,-3]}, {"a":[[],"%"]})
+#
+#   Not simply fixed because the acceptance split is largely upstream in
+#   the @tabnas stack: which shapes the grammar admits is decided there,
+#   and the two ports' parser stacks disagree before aontu sees anything.
+#
+#   Also still divergent, and NOT upstream: a lexer-stage parse error
+#   carries no file in the Go frame (`<no-file>` where TS names the
+#   source) and renders fewer trailing lines. That is the #29 message
+#   family reaching the parse stage, tracked with the other parse-stage
+#   rendering gap. The error MARKER itself now agrees -- Go brands parse
+#   errors `[aontu/...]`, as TS always did, instead of naming the
+#   dependency `[jsonic/...]`.
+#
 #   Well-formed sources are unaffected throughout.
 #
 # ---------------------------------------------------------------------

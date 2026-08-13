@@ -129,6 +129,15 @@ func inElem(r *jsonic.Rule) bool {
 
 func makeLang(base string) (*jsonic.Jsonic, error) {
 	j := jsonic.Make(jsonic.Options{
+		// Brand parse errors as aontu's, exactly as ts/src/lang.ts does
+		// with `errmsg: { name: 'aontu', suffix: false }`. Without it a
+		// syntax error reached the user marked `[jsonic/unexpected]`,
+		// naming a dependency the reader never chose, where the canonical
+		// engine says `[aontu/unexpected]` (issue #32, family 1).
+		ErrMsg: &jsonic.ErrMsgOptions{
+			Name:   "aontu",
+			Suffix: false,
+		},
 		// Only # line comments are valid Aontu syntax (see
 		// docs/reference-language.md; ts/src/lang.ts sets the same).
 		// Def MERGES with the parser's defaults (#, //, /* */) rather
@@ -1938,7 +1947,33 @@ func findConflictMarker(src string) int {
 	return -1
 }
 
+// toValidSource replaces invalid UTF-8 in a source with U+FFFD, ONE per
+// maximal invalid subpart, before anything reads it.
+//
+// This is where TypeScript's replacement happens too, though it never had
+// to be written: Node decodes the file to UTF-16 as it reads it, so the
+// engine only ever sees well-formed text. Go carried the raw bytes all
+// the way to the JSON encoder, which replaced them PER BYTE at the very
+// end -- so a truncated three-byte sequence (E2 82) inside a string
+// generated two replacement characters where TypeScript generated one,
+// and the encoder wrote them as `�` escapes where TypeScript wrote
+// the character itself (issue #32, family 2).
+//
+// strings.ToValidUTF8 collapses a run of invalid bytes into a single
+// replacement, which is the maximal-subpart rule Node's decoder follows.
+// Doing it at DECODE rather than at encode also means every stage in
+// between -- lexer, parser, canon, error frames -- sees the same text the
+// canonical engine sees, instead of only the final output agreeing.
+func toValidSource(src string) string {
+	if utf8.ValidString(src) {
+		return src
+	}
+	return strings.ToValidUTF8(src, "�")
+}
+
 func parseBase(src, base string) (Val, error) {
+	src = toValidSource(src)
+
 	// A version-control conflict marker is refused BEFORE the parse
 	// (issue #5). None of `<`, `=` or `>` is an aontu operator, so a
 	// marker line is ordinary text and `<<<<<<< HEAD` parsed happily into

@@ -88,3 +88,37 @@ func TestAbsoluteSourceLoadIgnoresBase(t *testing.T) {
 		t.Fatalf("absolute load: want {x:7}, got %v", m["v"])
 	}
 }
+
+// TestInvalidUTF8ReplacementTwin is the invalid-utf8-replacement twin in
+// ts/test/error.test.ts (issue #32, family 2).
+//
+// The fixture holds two invalid sequences: a truncated three-byte
+// sequence (E2 82) and a lone FF. Each must become exactly ONE U+FFFD,
+// which is the maximal-subpart rule Node's decoder applies as it reads
+// the file -- so TypeScript never saw the bad bytes at all. This port
+// carried them to the JSON encoder, which replaced them PER BYTE, so the
+// truncated sequence generated TWO replacements and both were written as
+// `�` escapes rather than as the character.
+//
+// The source cannot be a shared spec row: the spec's src column is text,
+// and these bytes are by definition not.
+func TestInvalidUTF8ReplacementTwin(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "test", "spec", "files", "invalid-utf8.aon"))
+	if err != nil {
+		t.Fatalf("fixture: %v", err)
+	}
+	out, gerr := New().Generate(string(data))
+	if gerr != nil {
+		t.Fatalf("generate: %v", gerr)
+	}
+	m, ok := out.(map[string]any)
+	if !ok {
+		t.Fatalf("want map, got %T", out)
+	}
+	if m["b"] != "x�y" {
+		t.Fatalf("b: want %q, got %q", "x�y", m["b"])
+	}
+	if m["c"] != "p�q" {
+		t.Fatalf("c: want %q, got %q", "p�q", m["c"])
+	}
+}
