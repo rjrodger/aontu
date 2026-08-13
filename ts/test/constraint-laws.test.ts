@@ -21,22 +21,25 @@
 
 import { describe, test } from 'node:test'
 import Assert from 'node:assert'
+import Fs from 'node:fs'
+import Path from 'node:path'
 
 import { Aontu } from '../dist/aontu'
 
 
 // The implemented Band A vocabulary (G1 phase 1: bounds and neq), plus
-// the kinds and concrete scalars they meet against. Extend this list as
-// `re`, `len`, `unique` and `must` land -- the laws below then cover
-// them with no new test code.
-const ATOMS = [
-  'min(0)', 'min(5)', 'min("a")',
-  'max(3)', 'max(10)', 'max("z")',
-  'above(1)', 'below(2)',
-  'neq(1)', 'neq(1,2)', 'neq("a")',
-  'integer', 'number', 'string',
-  '5', '"m"',
-]
+// the kinds and concrete scalars they meet against. Read from the
+// SHARED file so this list and the Go twin's cannot drift apart, and so
+// the probed cross-product in test/spec/constraint-product.tsv is over
+// the same corpus. Extend that file as `re`, `len`, `unique` and `must`
+// land -- the laws below then cover them with no new test code.
+const ATOMS = Fs
+  .readFileSync(
+    Path.join(__dirname, '..', '..', 'test', 'spec', 'files',
+      'constraint-atoms.txt'), 'utf8')
+  .split('\n')
+  .map((line) => line.trim())
+  .filter((line) => '' !== line && !line.startsWith('#'))
 
 // Associativity is cubic, so it runs over a representative prefix.
 const TRIPLE_ATOMS = ATOMS.slice(0, 8)
@@ -44,13 +47,19 @@ const TRIPLE_ATOMS = ATOMS.slice(0, 8)
 
 // Evaluate to an order-independent observable: the canonical form, or
 // the error code when the meet is empty.
+//
+// The code comes from the collected error, NOT from a regex over the
+// message: codes are not all `\w+` (`scalar-type` carries a hyphen), so
+// pattern-matching the headline silently truncates them and would make
+// two distinct codes compare equal. The Go twin reads `AontuError.Code`
+// for the same reason.
 function obs(src: string): string {
   try {
     return new Aontu().unify(src).canon
   }
   catch (e: any) {
-    const m = String(e && e.message).match(/aontu\/(\w+)/)
-    return 'ERR:' + (m ? m[1] : 'unknown')
+    const errs = 'function' === typeof e?.errs ? e.errs() : []
+    return 'ERR:' + (errs[0]?.why ?? 'unknown')
   }
 }
 

@@ -4,7 +4,9 @@ package aontu
 
 import (
 	"fmt"
-	"regexp"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -25,31 +27,45 @@ import (
 // both order-independent, unlike error message text (whose primary site
 // is deliberately later-in-source, so it is NOT expected to commute).
 
-var lawAtoms = []string{
-	"min(0)", "min(5)", `min("a")`,
-	"max(3)", "max(10)", `max("z")`,
-	"above(1)", "below(2)",
-	"neq(1)", "neq(1,2)", `neq("a")`,
-	"integer", "number", "string",
-	"5", `"m"`,
+// lawAtoms is read from the SHARED vocabulary file so this list and the
+// TypeScript twin's cannot drift apart, and so the probed cross-product
+// in test/spec/constraint-product.tsv is over the same corpus.
+var lawAtoms = loadLawAtoms()
+
+func loadLawAtoms() []string {
+	path := filepath.Join("..", "test", "spec", "files", "constraint-atoms.txt")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		panic("cannot read shared atom vocabulary " + path + ": " + err.Error())
+	}
+	var atoms []string
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		atoms = append(atoms, line)
+	}
+	return atoms
 }
 
 // Associativity is cubic, so it runs over a representative prefix --
 // the same prefix length as the TypeScript twin.
 var lawTripleAtoms = lawAtoms[:8]
 
-var lawCodeRe = regexp.MustCompile(`aontu/(\w+)`)
-
 // lawObs evaluates to an order-independent observable: the canonical
 // form, or the error code when the meet is empty.
+//
+// The code comes from AontuError.Code, never from a pattern over the
+// message: codes are not all `\w+` (`scalar-type` carries a hyphen), so
+// matching the headline silently truncates them and would make two
+// distinct codes compare equal. The TypeScript twin reads the collected
+// error's `why` for the same reason.
 func lawObs(src string) string {
 	v, err := New().Unify(src)
 	if err != nil {
 		if ae, ok := err.(*AontuError); ok {
 			return "ERR:" + ae.Code
-		}
-		if m := lawCodeRe.FindStringSubmatch(err.Error()); m != nil {
-			return "ERR:" + m[1]
 		}
 		return "ERR:unknown"
 	}

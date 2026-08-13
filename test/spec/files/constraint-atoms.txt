@@ -1,0 +1,24 @@
+# Shared Band A atom vocabulary for the constraint algebra law tests
+# (ts/test/constraint-laws.test.ts, go/constraint_laws_test.go) and the
+# probed cross-product in test/spec/constraint-product.tsv.
+#
+# One atom per line; blank lines and # comments ignored. Both ports read
+# THIS file, so the corpora cannot drift apart. Extend it as re, len,
+# unique and must land -- the laws then cover them with no new test
+# code, and the cross-product is re-probed and re-pinned.
+min(0)
+min(5)
+min("a")
+max(3)
+max(10)
+max("z")
+above(1)
+below(2)
+neq(1)
+neq(1,2)
+neq("a")
+integer
+number
+string
+5
+"m"
