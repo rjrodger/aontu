@@ -81,3 +81,11 @@ budget-depth-1200-msg	err	x:@"__FIXTURES__/deep-exhausts.aon"	Circular reference
 # Go routes them through its counted dispatcher already). Without it a
 # 1500-deep expression resolved in TypeScript while Go refused it.
 budget-depth-func-exhausts	errc	x:@"__FIXTURES__/deep-func.aon"	unify_cycle
+# The EXACT cutoff, both sides. The two ports disagreed by one nesting
+# level until Go's "done value unified with TOP" fast path was hoisted
+# above its depth counter, so that both charge the same entries -- Go
+# was spending one frame per document (the scalar leaf) that TS never
+# spent. These rows make the boundary itself contractual rather than
+# just the region either side of it (issue #46).
+budget-depth-boundary-in	gens	x:@"__FIXTURES__/deep-boundary-in.aon"	{"x":{"z":1}}
+budget-depth-boundary-out	errc	x:@"__FIXTURES__/deep-boundary-out.aon"	unify_cycle

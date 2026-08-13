@@ -196,20 +196,3 @@
 # storage, not chosen. It is pinned per-port instead: ts/test/
 # exactjson.test.ts and go/generate_test.go.
 #
-# ---------------------------------------------------------------------
-#
-# OPEN -- the depth budget's observable boundary is one nesting level
-# apart between the ports. Both bound `unite` recursion at 1000
-# (ts/src/unify.ts MAXDEPTH, go/unify.go maxUniteDepth) and both report
-# `unify_cycle` past it, but the dispatchers do not count the same
-# entry set: Go spends one counted frame per document that TypeScript
-# does not, so a 999-deep bag refuses in Go and resolves in TypeScript.
-# 998 and 1000 agree, and the offset measured a constant 1 for both
-# nested-map and nested-list shapes.
-#
-# Not pinned either way: the shared rows in budget.tsv (900 resolves,
-# 1200 exhausts) sit well clear of the cutoff, so no row depends on it.
-# The fix is to make the two dispatchers count the same entries -- the
-# extra Go frame was not located; inlining the isTop(a) arm to match
-# TS's non-recursive `out = b` did not move the boundary, so it is
-# elsewhere in the root drive. See issue #46.
