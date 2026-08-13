@@ -26,10 +26,13 @@ type ExpectVal struct {
 
 func (e *ExpectVal) superior() Val { return top() }
 
-// Canon is EMPTY, exactly as in TS (FeatureVal's default over an
-// unrendered peg): a map holding an expect for key r canons as
-// `{"r":}` — the key present, the value pending.
-func (e *ExpectVal) Canon() string { return "" }
+// Canon is `top`, exactly as in TS. A required-but-unsupplied spread
+// child used to render as nothing, so a map holding an expect for key r
+// canoned as `{"r":}` — text that is not a document and could not be
+// reparsed, breaking canon's round-trip contract in both engines
+// (issue #43). `top` is the honest reading: the slot is present and,
+// until the peer supplies one, unconstrained.
+func (e *ExpectVal) Canon() string { return "top" }
 
 // Gen is unreachable: BagVal-level Gen intercepts an expect child (the
 // *_spread_required branch) before ever calling child.Gen, for

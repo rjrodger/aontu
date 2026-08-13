@@ -141,13 +141,9 @@ function loadRows() {
 });
 // Canon rows whose expected canon cannot be reparsed. Each entry needs a
 // reason and an issue; entries are DELETED, not amended, when fixed
-// (AGENTS.md ledger discipline).
-const CANON_NO_REPARSE = {
-    // The `&:`-spread required-child placeholder renders as a key with no
-    // value (`{"r":}`), which is not a document. Both engines emit it
-    // identically, so it is a shared canon defect, not a divergence.
-    'spread-required-canon': 'placeholder canons as `{"r":}` -- issue #43',
-};
+// (AGENTS.md ledger discipline). Currently EMPTY: every canon row in the
+// shared suite reparses.
+const CANON_NO_REPARSE = {};
 // CANON CONVERGENCE -- the guard the G1/G2/G5 implementation plans call
 // for. Those plans word it `parse(canon(v)) == v`, which is too strong
 // and was never enforced: canon deliberately PRESERVES unevaluated ghost

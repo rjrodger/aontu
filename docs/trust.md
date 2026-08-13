@@ -78,7 +78,17 @@ Every evaluation halts within deterministic budgets counted in
 |------------|------------------------------------------|-----------------|
 | `passes`   | fixpoint passes over the whole model     | 9 (`maxcc`, `ts/src/unify.ts`; `go/unify.go`) |
 | `revisits` | same-pair re-unifications within a pass  | 999 (`MAXCYCLE`, `ts/src/unify.ts`) |
-| `depth`    | structural recursion depth               | Go: parse-depth guard (`max_depth`) plus `maxUniteDepth`. TypeScript: **no explicit depth budget today** — deep nesting can reach the V8 call-stack limit, which is caught and reported as an `internal` error but is environment-dependent, not a deterministic verdict. A documented gap of this clause until an explicit counter lands. |
+| `depth`    | structural recursion depth               | 1000 (`MAXDEPTH`, `ts/src/unify.ts`; `maxUniteDepth`, `go/unify.go`), plus Go's parse-depth guard (`max_depth`). Shared: both engines report `unify_cycle` past it, and `test/spec/budget.tsv` pins the boundary from both sides. |
+
+> **Closed gap.** TypeScript previously had no explicit depth budget:
+> deep nesting reached the V8 call-stack limit, which was caught and
+> reported as `internal` — a verdict that depended on the host's stack
+> size rather than on the document, and so a real breach of this
+> clause. It now carries the counter above. Aligning the two required
+> lowering Go's bound from 2000, which V8 could never reach, so that a
+> document does not resolve in one port and fail in the other. 1000
+> sits above every real document (the whole shared suite peaks at depth
+> 603) and below both hosts' limits, so the budget decides the verdict.
 
 The contract pins *verdicts at default budgets* — every shared spec
 row must produce the same verdict in both implementations — not

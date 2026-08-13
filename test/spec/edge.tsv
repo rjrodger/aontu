@@ -74,7 +74,7 @@ edge-list-spread-via-ref	errc	q:[&:{r:string} {}] w:$.q	mapval_spread_required
 #
 # Expectations: escape with extra peer keys; a top expectation.
 edge-expect-escape-extra	gens	m:{&:{r:string} a:{r:x}} m:{a:{q:1}}	{"m":{"a":{"q":1,"r":"x"}}}
-edge-expect-top	canon	m:{&:{r:top} a:{}}	{"m":{&:{"r":top},"a":{"r":}}}
+edge-expect-top	canon	m:{&:{r:top} a:{}}	{"m":{&:{"r":top},"a":{"r":top}}}
 #
 # Functions: exact-leaf rounding, string case, invalid args, move,
 # open/close, key levels.

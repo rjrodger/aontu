@@ -60,7 +60,19 @@ func unite(ctx *Ctx, a, b Val) Val {
 	return drive(a, b)
 }
 
-const maxUniteDepth = 2000
+// Structural recursion budget: how deep unite may nest before the
+// evaluator reports `unify_cycle`. SHARED LANGUAGE SURFACE -- the TS
+// MAXDEPTH (ts/src/unify.ts) carries the same number, and
+// test/spec/budget.tsv pins the boundary in both, so changing it is a
+// spec-visible change in both ports at once.
+//
+// Lowered from 2000 when TypeScript gained its own explicit budget:
+// V8 exhausts its call stack past depth ~1500 in that evaluator, so
+// 2000 was unreachable there and the two ports would have disagreed on
+// every document between the limits. 1000 sits above every real
+// document (the whole shared suite peaks at 603) and below both hosts'
+// limits, so the budget decides the verdict rather than the runtime.
+const maxUniteDepth = 1000
 
 // unifyRoot runs the fixpoint loop: repeatedly unify the result with
 // TOP until it converges (Dc == DONE) or an error is collected. ctx.root

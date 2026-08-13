@@ -35,6 +35,15 @@ class ExpectVal extends FeatureVal {
   parent?: Val
   key?: string
 
+  // A required-but-unsupplied spread child canons as `top`, not as
+  // nothing. Val.canon's default is the empty string, which rendered a
+  // key with no value (`{"r":}`) -- text that is not a document and
+  // could not be reparsed, breaking canon's round-trip contract in both
+  // engines (issue #43). `top` is the honest reading: the slot is
+  // present and, until the peer supplies one, unconstrained. Go's
+  // ExpectVal.Canon returns the same.
+  get canon() { return 'top' }
+
   constructor(
     spec: ValSpec,
     ctx?: AontuContext

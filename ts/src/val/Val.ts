@@ -297,7 +297,14 @@ abstract class Val {
 
   // TODO: indicate marks in some way that is ignored by reparse.
   // Need an annotation/taggins syntax? a:{}/type ?
-  get canon(): string { return '' }
+  // ABSTRACT: every concrete Val renders its own canonical form. There
+  // used to be an empty-string default here, and the one class relying
+  // on it (ExpectVal) was rendering a key with no value -- `{"r":}`,
+  // text that is not a document (issue #43). With that fixed, nothing
+  // reached the default, so it is declared rather than defaulted: a new
+  // Val that forgets `canon` is now a compile error instead of silently
+  // canoning as nothing.
+  abstract get canon(): string
 
 
   errcanon(): string {

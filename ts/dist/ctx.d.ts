@@ -43,6 +43,9 @@ declare class AontuContext {
     _pathidxNext: {
         n: number;
     };
+    _depth: {
+        n: number;
+    };
     _trialMode?: boolean;
     _childCache?: Map<string, AontuContext>;
     constructor(cfg: AontuContextConfig);

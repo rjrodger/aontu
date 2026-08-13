@@ -35,6 +35,19 @@ import {
 // terms through both engines as the regression guard.
 const MAXCYCLE = 999
 
+// Structural recursion budget: how deep `unite` may nest before the
+// evaluator reports `unify_cycle`. SHARED LANGUAGE SURFACE -- Go's
+// maxUniteDepth (go/unify.go) carries the same number, and
+// test/spec/budget.tsv pins the boundary in both, so changing it is a
+// spec-visible change in both ports at once.
+//
+// Why 1000: the whole shared suite peaks at 603 (the deliberately
+// extreme 1200-sibling-term fixture; ordinary documents are two orders
+// below), and V8 exhausts its call stack somewhere past depth ~1500 in
+// this evaluator. 1000 sits above every real document and below the
+// host limit, so the budget -- not the host -- decides the verdict.
+const MAXDEPTH = 1000
+
 // Vals should only have to unify downwards (in .unify) over Vals they understand.
 // and for complex Vals, TOP, which means self unify if not yet done
 const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
@@ -82,12 +95,22 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
   // See for example PrefVal peg.id equality inspection.
   const sawCount = ctx.seen[saw] ?? 0
-  if (MAXCYCLE < sawCount) {
+  if (MAXDEPTH < ctx._depth.n) {
+    // Structural recursion budget. Without it, deep nesting exhausts the
+    // V8 call stack and the catch-all below reports a RangeError as
+    // `internal` — a verdict that depends on the host's stack size
+    // rather than on the document, which is exactly what the
+    // determinism clause forbids (docs/trust.md). Tripping here instead
+    // makes it a stated budget error, like the pass budget.
+    out = makeNilErr(ctx, 'unify_cycle', a, b)
+  }
+  else if (MAXCYCLE < sawCount) {
     // console.log('SAW', sawCount, saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
   else {
     ctx.seen[saw] = sawCount + 1
+    ctx._depth.n++
 
     try {
       let unified = false
@@ -196,6 +219,9 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         error: String(err?.message ?? err),
         ...(err instanceof RangeError ? { overflow: true } : {}),
       })
+    }
+    finally {
+      ctx._depth.n--
     }
   }
 

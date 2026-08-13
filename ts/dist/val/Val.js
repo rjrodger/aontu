@@ -158,9 +158,6 @@ class Val {
     // threads. The public Aontu.unify/generate entry points re-parse per
     // call, so this only matters if you hold and reuse a Val yourself.
     unify(_peer, _ctx) { return this; }
-    // TODO: indicate marks in some way that is ignored by reparse.
-    // Need an annotation/taggins syntax? a:{}/type ?
-    get canon() { return ''; }
     errcanon() {
         return 0 === this.err.length ? '' : `<ERRS:${this.err.length}>`;
     }
