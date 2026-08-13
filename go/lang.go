@@ -1905,7 +1905,54 @@ func asValDepth(node any, depth int) Val {
 
 // parseBase is parse with an explicit base directory for resolving
 // relative @"file" loads.
+// findConflictMarker returns the byte offset of the first
+// version-control conflict marker line in src, or -1 when there is none.
+//
+// The shape is git's, and it is matched exactly: SEVEN of `<`, `=` or `>`
+// at the very start of a line, then either the end of that line or a
+// space before the branch label. Requiring the run length and the line
+// start is what keeps a document that legitimately writes `a:"<<<<<<<"`,
+// or a row of `=` inside a string, from being refused -- the marker is
+// recognised as the artifact it is, not as a suspicious character.
+//
+// Kept byte-identical to findConflictMarker in ts/src/aontu.ts.
+func findConflictMarker(src string) int {
+	offset := 0
+	for _, rawline := range strings.Split(src, "\n") {
+		// A CRLF source leaves the \r on the line; it is not part of the run.
+		line := strings.TrimSuffix(rawline, "\r")
+		if len(line) > 0 {
+			c := line[0]
+			if '<' == c || '=' == c || '>' == c {
+				run := 0
+				for run < len(line) && line[run] == c {
+					run++
+				}
+				if 7 == run && (7 == len(line) || ' ' == line[7]) {
+					return offset
+				}
+			}
+		}
+		offset += len(rawline) + 1
+	}
+	return -1
+}
+
 func parseBase(src, base string) (Val, error) {
+	// A version-control conflict marker is refused BEFORE the parse
+	// (issue #5). None of `<`, `=` or `>` is an aontu operator, so a
+	// marker line is ordinary text and `<<<<<<< HEAD` parsed happily into
+	// the two-string list ["<<<<<<<","HEAD"] -- an unresolved merge became
+	// a plausible document instead of an error.
+	if off := findConflictMarker(src); off >= 0 {
+		n := newNil("merge_conflict")
+		n.sp = off
+		return newMap(), &AontuError{
+			Msg:  n.FullMessage(src, ""),
+			Code: "merge_conflict",
+		}
+	}
+
 	lang, err := langForBase(base)
 	if err != nil { //coverage:ignore langForBase cannot fail — see makeLang
 		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}

@@ -894,6 +894,16 @@ Failures surface as messages (thrown as `AontuError` in TS, returned as
 | inexact integer sum    | `exactly representable`, plus `0d<digits>` |
 | float mixed with exact | `cannot mix` (naming both leaves) |
 | over the exact budget  | `exceeds the exactness budget`, `at most 4096` |
+| conflict marker left in | `conflict marker was found` (code `merge_conflict`) |
+
+A **version-control conflict marker** is refused before the parse. None
+of `<`, `=` and `>` is an operator, so a marker line would otherwise be
+read as ordinary text and `<<<<<<< HEAD` would parse into the list
+`["<<<<<<<","HEAD"]` — an unresolved merge quietly becoming a plausible
+document. The match is git's exact shape: seven `<`, `=` or `>` at the
+start of a line, followed by the end of the line or a space before the
+branch label. A document may still write those characters freely
+anywhere else, quoted or not (`a:"<<<<<<<"`, `a:<<<<<<`).
 
 In conflict messages the operand later in the source is named first
 ("…value: `<later>` with value: `<earlier>`") so the two sites are

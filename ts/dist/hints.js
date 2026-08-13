@@ -62,6 +62,7 @@ const hints = {
         '  a:$.b      -> nil      # $.b is not a valid path reference as there is no key b in root ($).\n',
     // Parsing errors
     'parse_bad_src': 'Invalid source provided for parsing. The source must be a non-empty string.',
+    merge_conflict: 'A version-control conflict marker was found in the source. The\nfile still holds an unresolved merge: resolve it and remove the\n`<<<<<<<`, `=======` and `>>>>>>>` lines before unifying.\n \nExamples:\n  <<<<<<< HEAD  -> nil  # A conflict marker, not a `<` operation;\n  =======       -> nil  # ... nor a chain of `=` characters;\n  >>>>>>> other -> nil  # ... nor a `>` operation.',
     // Unification errors
     'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
     'unify_no_res': 'Unification produced no result. The values could not be unified.',
@@ -179,6 +180,7 @@ const codeClasses = {
     syntax: 'parse',
     parse_unknown: 'parse',
     parse_bad_src: 'parse',
+    merge_conflict: 'parse',
     unify_no_src: 'parse',
     incomplete_expression: 'parse',
     not_number: 'parse',

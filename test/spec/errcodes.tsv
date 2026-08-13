@@ -58,6 +58,10 @@ parse	errcode	parse	0.51.0
 syntax	errcode	parse	0.51.0
 parse_unknown	errcode	parse	0.51.0
 parse_bad_src	errcode	parse	0.51.0
+# A version-control conflict marker left in the source (issue #5).
+# Without it `<<<<<<< HEAD` parsed as ordinary text and the document
+# quietly became a list of strings.
+merge_conflict	errcode	parse	0.53.0
 unify_no_src	errcode	parse	0.51.0
 incomplete_expression	errcode	parse	0.51.0
 not_number	errcode	parse	0.51.0

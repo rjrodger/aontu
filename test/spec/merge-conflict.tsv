@@ -1,0 +1,33 @@
+# Version-control conflict markers (issue #5).
+#
+# None of `<`, `=` or `>` is an aontu operator, so a marker line is
+# ordinary text: `<<<<<<< HEAD` parsed happily into the two-string list
+# ["<<<<<<<","HEAD"] and an unresolved merge became a plausible DOCUMENT
+# rather than an error. A file in that state is never what the author
+# meant, so it is refused before the parse, with a code of its own.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; modes: errc|err|gens
+#
+# All three marker lines, alone and in the shape git actually leaves.
+conflict-open	errc	<<<<<<< HEAD	merge_conflict
+conflict-sep	errc	=======	merge_conflict
+conflict-close	errc	>>>>>>> other	merge_conflict
+conflict-whole	errc	<<<<<<< HEAD\na:1\n=======\na:2\n>>>>>>> other	merge_conflict
+# The marker is reported wherever it sits, not only on line one.
+conflict-later-line	errc	a:1\n=======\nb:2	merge_conflict
+conflict-msg	err	<<<<<<< HEAD	conflict marker
+#
+# ... and what must NOT be refused. The run length and the line start are
+# both load-bearing: a document may legitimately hold these characters,
+# and refusing one that does would be a worse bug than the one being
+# fixed. Each row below is a shape that LOOKS like a marker somewhere.
+conflict-not-quoted-open	gens	a:"<<<<<<<"	{"a":"<<<<<<<"}
+conflict-not-quoted-sep	gens	a:"======="	{"a":"======="}
+conflict-not-inside-string	gens	x:"a=======b"	{"x":"a=======b"}
+# Six is not seven, and eight is not seven.
+conflict-not-six	gens	a:<<<<<<	{"a":"<<<<<<"}
+conflict-not-eight	gens	<<<<<<<< toomany	["<<<<<<<<","toomany"]
+# A marker must start the LINE: indented, it is a run of text again.
+conflict-not-indented	gens	 <<<<<<< indented	["<<<<<<<","indented"]
+# Seven followed by something other than a space is not the git shape.
+conflict-not-glued	gens	a:1 b:=======x	{"a":1,"b":"=======x"}
