@@ -198,7 +198,7 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 						})
 					},
 				},
-				"top":   valDef(func(int) Val { return top() }),
+				"top":   valDef(func(sp int) Val { t := top(); t.sp = sp; return t }),
 				"nil":   valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
 				"true":  valDef(func(sp int) Val { v := newBoolean(true); v.sp = sp; return v }),
 				"false": valDef(func(sp int) Val { v := newBoolean(false); v.sp = sp; return v }),
@@ -1619,7 +1619,16 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			}
 			return r0
 		}
-		return newVar(asVal(terms[0]))
+		vv := newVar(asVal(terms[0]))
+		// Locate the variable at its `$`, exactly as the absolute-ref
+		// branch above does. Without this a `$name` had no site at all,
+		// so an error about one (`a:$x` with no such variable) drew its
+		// frame at the start of the line -- the enclosing pair -- rather
+		// than at the reference TS points to.
+		if r.ON > 0 {
+			vv.sp = r.O0.SI
+		}
+		return vv
 	case "addition-infix":
 		if len(terms) < 2 {
 			return incompleteNil(r)
@@ -1654,7 +1663,18 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 					}
 					return newConstraint(name, args, sp)
 				}
-				return newFunc(name, args)
+				fv := newFunc(name, args)
+				// Locate the call, as the constraint-atom branch just
+				// above already does. A FuncVal left at the zero sp --
+				// which is a REAL position, the first byte of the source
+				// -- handed that position to any conjunct built over it
+				// (newConjunct takes its site from its first term), so
+				// `a:super(1)&integer` drew its frame at the key rather
+				// than at the value (issue #41).
+				if r.ON > 0 {
+					fv.sp = r.O0.SI
+				}
+				return fv
 			}
 			return asVal(terms[len(terms)-1])
 		}

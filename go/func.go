@@ -212,6 +212,16 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		if out != Val(f) && !isTop(out) {
 			propagateMarks(f, out)
 			out.setvpath(cp(f.path))
+			// ... and the func's SITE with its path. TS copies both onto
+			// the result in every branch of FuncBaseVal.unify. A function
+			// that resolves to a FRESH value -- `super(1)` answers a new
+			// ScalarKindVal -- otherwise handed the map a child with no
+			// position at all, so an error about it (and any conjunct
+			// built over it, which takes its site from its first term)
+			// pointed at the start of the source instead of at the call
+			// (issue #41).
+			out.setPos(f.sp)
+			out.setPosu(f.spu)
 		}
 	} else if isTop(peer) {
 		f.notdone()
@@ -230,6 +240,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		f.notdone()
 		cj := newConjunct([]Val{f, peer})
 		cj.path = cp(f.path) // TS defer branch: out.path = this.path
+		cj.sp, cj.spu = f.sp, f.spu
 		out = cj
 	}
 

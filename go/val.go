@@ -180,6 +180,15 @@ type TopVal struct{ base }
 func newTop() *TopVal {
 	t := &TopVal{}
 	t.dc = DONE
+	// UNLOCATED until something locates it. A TOP is nearly always
+	// synthesised -- the implicit peer every unify starts from -- and the
+	// zero value of sp is a real position (the first byte of the source),
+	// so leaving it there drew an error frame about an implicit TOP at
+	// 1:1 of the entry file. TS gives an unset site row/col -1 and an
+	// empty url, which its frames render as `<no-file>:-1:-1`; -1 is
+	// already this port's spelling of the same thing (see newNil). A
+	// `top` WRITTEN in source is located by its value def, as in TS.
+	t.sp = -1
 	return t
 }
 
@@ -374,10 +383,16 @@ func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
 	// default to row/col -1 and descErr does not clamp them there —
 	// while the excerpt and caret below use the clamped coordinates.
 	arrowRow, arrowCol := row, col
+	arrowFile := file
 	if v.pos() < 0 {
 		arrowRow, arrowCol = -1, -1
+		// ... and its FILE is unknown too. TS names each frame's file
+		// from that value's own site url, which an unlocated value leaves
+		// empty, so it prints `<no-file>` -- naming the entry source here
+		// pointed the reader at a file the value never came from.
+		arrowFile = "<no-file>"
 	}
-	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", file, arrowRow, arrowCol)
+	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", arrowFile, arrowRow, arrowCol)
 	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row, line(row))
 
 	keyPrefix := ""
