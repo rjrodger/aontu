@@ -221,6 +221,40 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 				if prev == nil {
 					return val
 				}
+				// A BOOKKEEPING ENTRY, not a source value: combine it
+				// structurally rather than unifying it as a Val (issue #3).
+				//
+				// multisource's mergeIntoParent copies the loaded file's map
+				// node into the host node ONE KEY AT A TIME through this
+				// function, and the loaded node carries the same reserved
+				// sentinel entries every aontu map node carries. Unifying
+				// those turned the host's `[]string` order list into a
+				// ConjunctVal, so asValDepth's `n[orderKey].([]string)`
+				// assertion failed, the order list read back empty, and
+				// EVERY key of the host map vanished -- `a:1 @"f" c:3`
+				// generated `{"c":3}` (only the pairs after the include, which
+				// re-seeded a fresh list) where TypeScript generates all three.
+				//
+				// Dispatch is by TYPE because jsonic's merge hook is not given
+				// the key. It is unambiguous: a parsed source value is never a
+				// `[]string` (jsonic list nodes are `[]any`) nor a bare `int`
+				// (numbers arrive as float64), so these two arms are reachable
+				// only from the sentinels -- orderKey/optionalKey and posKey
+				// respectively. spreadKey holds a Val and wants exactly the
+				// ordinary conjunct merge below, which is what it gets.
+				if pl, ok := prev.([]string); ok {
+					if vl, ok := val.([]string); ok {
+						return appendNew(pl, vl...)
+					}
+					return prev
+				}
+				if _, ok := prev.(int); ok {
+					// posKey: the HOST map's own open-token position wins, as
+					// in TS. (recordMapPos re-stamps it unconditionally after
+					// the merge; keeping prev means the node is never briefly
+					// wrong for anything reading it in between.)
+					return prev
+				}
 				return mergeVals(asVal(prev), asVal(val))
 			},
 		},
@@ -1097,12 +1131,31 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	}
 
 	ord, _ := m[orderKey].([]string)
-	for _, k := range ord {
-		if k == key {
-			return
+	m[orderKey] = appendNew(ord, key)
+}
+
+// appendNew appends each of add to base, skipping any entry base already
+// holds — the "first occurrence wins" rule that governs both reserved
+// `[]string` bookkeeping entries. Key order records where a key was FIRST
+// seen (a duplicate merges into the existing entry's value rather than
+// moving it), and the optional-key list is a set.
+//
+// Used by trackOrder for one key at a time and by the map merge hook to
+// fold a loaded file's whole list into the host's (issue #3).
+func appendNew(base []string, add ...string) []string {
+	for _, k := range add {
+		seen := false
+		for _, b := range base {
+			if b == k {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			base = append(base, k)
 		}
 	}
-	m[orderKey] = append(ord, key)
+	return base
 }
 
 func keyOf(t *jsonic.Token) string {
@@ -1520,7 +1573,16 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		if len(terms) < 1 {
 			return incompleteNil(r)
 		}
-		return negate(terms[0])
+		nv := negate(terms[0])
+		// A refused negation is an error nil, and it must be LOCATED:
+		// TS builds its own through addsite (ts/src/lang.ts), so its
+		// frame points at the `-`. Go's was positionless, which left the
+		// nil with neither a site nor -- once setPaths runs over it -- a
+		// way to be told apart from the root (issue #39).
+		if nl, ok := nv.(*NilVal); ok && r.ON > 0 {
+			nl.sp = r.O0.SI
+		}
+		return nv
 	case "positive-prefix":
 		if len(terms) < 1 {
 			return incompleteNil(r)

@@ -285,12 +285,18 @@ func (n *NilVal) FullMessage(src, file string) string {
 		plural = "s"
 	}
 	// The path comes from the primary operand, as TS NilVal.make copies
-	// av.path onto the nil.
+	// av.path onto the nil. A nil with NO operands -- one raised about a
+	// construct rather than about a failed meet, such as the refused
+	// negation in `a:-0x_1` -- keeps the path setPaths gave it where it
+	// sits in the tree; reading only the (absent) primary reported every
+	// one of them at the root (issue #39).
 	path := "$"
-	if n.primary != nil {
-		if p := n.primary.vpath(); len(p) > 0 {
-			path = "$." + strings.Join(p, ".")
-		}
+	residue := n.primary
+	if residue == nil {
+		residue = n
+	}
+	if p := residue.vpath(); len(p) > 0 {
+		path = "$." + strings.Join(p, ".")
 	}
 	var b strings.Builder
 	b.WriteString("[aontu/")
@@ -301,18 +307,36 @@ func (n *NilVal) FullMessage(src, file string) string {
 	b.WriteString(plural)
 	b.WriteString(" at path ")
 	b.WriteString(path)
+	// Separator before the first frame: one blank line after a hint, TWO
+	// when the code has none. That asymmetry is TS's, and it comes out of
+	// descErr's fixed [headline+hint, '\n', frame].join('\n') followed by
+	// its `\n\n` -> `\n` pass -- with no hint there is simply less text
+	// for that pass to collapse. Reproduced here rather than derived,
+	// because the twin tests compare these messages byte for byte.
+	gap := "\n\n\n"
 	if hint := hints[n.why]; hint != "" {
+		gap = "\n\n"
 		b.WriteString("\n\n")
-		b.WriteString(strinject(hint, n.details))
+		// Trailing newlines are NOT part of the hint's spacing: TS ends
+		// descErr with a `.replace(/\n\n/g, '\n')` pass, which absorbs a
+		// hint's own trailing newline into the single blank line that
+		// separates it from the first frame. (Its deliberate blank lines
+		// survive that pass because they are "\n \n" -- newline, SPACE,
+		// newline -- not "\n\n".) Without the trim, the one hint that
+		// ends in a newline, `no_path`, gained a second blank line here
+		// and Go's message drifted a byte from TS's (issue #39).
+		b.WriteString(strinject(strings.TrimRight(hint, "\n"), n.details))
 	}
-	if n.primary != nil {
-		b.WriteString("\n\n")
-		b.WriteString(n.frame(src, file, attempt, n.primary, n.secondary))
-		if n.secondary != nil {
-			// The second frame swaps the operand order, as descErr does.
-			b.WriteString("\n")
-			b.WriteString(n.frame(src, file, attempt, n.secondary, n.primary))
-		}
+	// An operandless nil still gets ONE frame, rendered about itself: its
+	// canon is "nil" and its site is where the refused construct was
+	// written, which is exactly what TS shows for `a:-0x_1` (its nil is
+	// built through addsite, so it carries the `-`).
+	b.WriteString(gap)
+	b.WriteString(n.frame(src, file, attempt, residue, n.secondary))
+	if n.secondary != nil {
+		// The second frame swaps the operand order, as descErr does.
+		b.WriteString("\n")
+		b.WriteString(n.frame(src, file, attempt, n.secondary, residue))
 	}
 	n.fullmsg = b.String()
 	return n.fullmsg

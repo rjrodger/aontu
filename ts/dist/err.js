@@ -42,7 +42,16 @@ function descErr(err, errctx) {
             let v2 = err.secondary;
             let v1src = resolveSrc(v1, errctx, 'primary');
             let v2src = resolveSrc(v2, errctx, 'secondary');
-            let path = ['$', ...err.path].filter((p) => null != p && '' != p);
+            // STRICT `!==` against the empty string. The loose `!=` here dropped
+            // the list index 0, because `'' != 0` is FALSE in JavaScript ('' and
+            // 0 are both coerced to 0): `a:[1]&[2]` reported its conflict at
+            // `$.a` while `a:[1,5]&[1,6]` reported `$.a.1`, so the one index a
+            // reader is most likely to meet was the one silently erased, and a
+            // nested `a:[[1]]&[[2]]` lost both segments (issue #37). Numeric
+            // segments arrive here as numbers, so only `===`/`!==` compares them
+            // for what they are. `null != p` stays loose on purpose -- it is the
+            // idiomatic null-and-undefined test.
+            let path = ['$', ...err.path].filter((p) => null != p && '' !== p);
             // '$' is neither null nor '', so the filter always leaves it.
             let valpath = path.join('.');
             let attempt = null != err.attempt ? err.attempt : (null == v2 ? 'resolve' : 'unify');
