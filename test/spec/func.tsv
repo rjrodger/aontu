@@ -154,3 +154,35 @@ path-ref-arg-unwrapped	gens	a:path($.b) b:2	{"a":2,"b":2}
 # name: there is no key "1", and the empty path names nothing at all.
 path-scalar-missing	errc	a:path(1)	no_path
 path-empty-cycle	errc	a:path("")	path_cycle
+# ARITY (issue #51). Every built-in's argument count is known, so a
+# surplus or missing argument is a mistake in the source and is refused
+# at parse -- where the author can see it, and before any of it is
+# evaluated. Previously each function noticed or did not: `upper()` was
+# `invalid-arg` in TS and `arg` in Go, `close()` raised `no_first_arg`,
+# and `min(1,2)` noticed nothing at all, building a constraint that
+# merely refused to generate later with a message about the map.
+func-arity-none-given	errc	a:upper()	func_arity
+func-arity-two-given	errc	a:upper("x","y")	func_arity
+func-arity-constraint-two	errc	a:min(1,2)	func_arity
+func-arity-key-two	errc	a:key(1,2)	func_arity
+func-arity-msg	err	a:upper("x","y")	upper takes exactly one argument, but was given 2
+# key takes NONE or one (how many levels up the path to read), and neq
+# takes one or more (a set of exclusions). Both are real arities, not
+# exemptions, so both spellings must keep working.
+func-arity-key-none	gens	a:{b:key()}	{"a":{"b":"a"}}
+func-arity-key-one	gens	a:{b:key(1)}	{"a":{"b":"a"}}
+func-arity-key-zero	gens	a:{b:key(0)}	{"a":{"b":"b"}}
+func-arity-neq-many	gens	a:neq(1,2)&3	{"a":3}
+func-arity-neq-one	gens	a:neq(1)&3	{"a":3}
+# A comma group and a written LIST are different argument counts, and
+# telling them apart is what makes the check possible: `upper("a","b")`
+# is two arguments, `upper(["a","b"])` is one (which upper then refuses
+# for its KIND, not its count).
+func-arity-list-is-one	errc	a:upper(["a","b"])	invalid-arg
+# A CORRECT count with a wrong KIND is still invalid-arg -- the arity
+# check does not swallow it, and these rows are what keep the two
+# distinguishable. `lower` had no such row at all: every kind-refusal row
+# used `upper`, so its twin arm went untested.
+func-lower-boolean-arg	errc	a:lower(true)	invalid-arg
+func-lower-list-arg	errc	a:lower([1])	invalid-arg
+func-lower-map-arg	errc	a:lower({})	invalid-arg

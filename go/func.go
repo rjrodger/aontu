@@ -23,6 +23,55 @@ var funcSet = map[string]bool{
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
 }
 
+// funcArity is the permitted WRITTEN argument count of each built-in, as
+// {min, max}; a max of -1 is unbounded. Every name in funcSet has an
+// entry, and the arity is a property of the language rather than of
+// either port -- ts/src/lang.ts carries the same table.
+//
+// Nearly everything takes exactly one. The two exceptions earn their
+// place: key() names how many levels UP the path to read, defaulting to
+// the parent when omitted, and neq takes a whole set of exclusions.
+var funcArity = map[string][2]int{
+	"upper": {1, 1}, "lower": {1, 1}, "copy": {1, 1}, "pref": {1, 1},
+	"super": {1, 1}, "type": {1, 1}, "hide": {1, 1}, "close": {1, 1},
+	"open": {1, 1}, "move": {1, 1}, "path": {1, 1},
+	"min": {1, 1}, "max": {1, 1}, "above": {1, 1}, "below": {1, 1},
+	"key": {0, 1},
+	"neq": {1, -1},
+}
+
+// writtenArgCount counts the arguments as the AUTHOR wrote them.
+//
+// It cannot simply be len(terms): a comma group reaches the func-paren
+// handler as ONE term holding a raw slice, so `upper("a","b")` and
+// `upper(["a","b"])` both arrive as a single argument. They are still
+// distinguishable, and that is what makes an arity check possible at
+// all -- the comma group is a RAW []any, while a written list literal
+// has already been built into a *ListVal by the list rule.
+func writtenArgCount(terms []any) int {
+	if 1 == len(terms) {
+		if raw, ok := terms[0].([]any); ok {
+			return len(raw)
+		}
+	}
+	return len(terms)
+}
+
+// arityText renders a built-in's permitted count for the error message.
+// The fixed-arity case says "one" outright rather than counting: every
+// fixed arity in the table IS one, and a phrasing for a count no entry
+// carries would be untested prose pretending to be tested.
+func arityText(lo, hi int) string {
+	switch {
+	case -1 == hi:
+		return "one or more arguments"
+	case lo != hi:
+		return "no arguments or one"
+	default:
+		return "exactly one argument"
+	}
+}
+
 // BuiltinFuncNames returns the recognised built-in function names in
 // sorted order. Exposed for tooling (e.g. LSP completion in go/lsp).
 func BuiltinFuncNames() []string {

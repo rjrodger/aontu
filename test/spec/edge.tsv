@@ -109,7 +109,13 @@ edge-pref-func	gens	a:pref(7) a:9	{"a":9}
 edge-super-nil	errc	a:super(nil)	literal_nil
 edge-super-bigdec	gens	a:super(0d1.5)&0d2.5	{"a":2.5}
 edge-type-template	gens	a:type({x:integer}) b:$.a&{x:3}	{"b":{"x":3}}
-edge-copy-noarg	errc	a:copy()	invalid-arg
+# A wrong ARGUMENT COUNT is one code now, not whichever each function
+# happened to raise (issue #51). These rows used to expect `arg`,
+# `invalid-arg` and `no_first_arg` for the same mistake -- and the two
+# ports did not even agree on which: `upper()` was invalid-arg in TS and
+# arg in Go. Arity is known for every built-in, so the call is refused
+# at parse, where the author can see it.
+edge-copy-noarg	errc	a:copy()	func_arity
 edge-copy-list	gens	a:copy([1,2])	{"a":[1,2]}
 edge-move-miss	errc	a:move($.zz)	no_path
 edge-key-bigint-arg	gens	a:key(0d1) b:{c:$.a}	{"a":"","b":{"c":"b"}}
@@ -183,12 +189,12 @@ edge-self-mid-var	errc	x:$.q.$SELF q:{}	ref
 edge-hide-ref	gens	a:hide($.b) b:1 c:2	{"b":1,"c":2}
 edge-cycle-through-list	errc	a:$.b.0 b:[$.a]	path_cycle
 edge-rel-deep	gens	a:{b:{c:{d:1}},e:.b.c.d}	{"a":{"b":{"c":{"d":1}},"e":1}}
-edge-pref-noarg	errc	a:pref()	arg
-edge-type-noarg	errc	a:type()	arg
-edge-hide-noarg	errc	a:hide()	arg
-edge-move-noarg	errc	a:move()	arg
+edge-pref-noarg	errc	a:pref()	func_arity
+edge-type-noarg	errc	a:type()	func_arity
+edge-hide-noarg	errc	a:hide()	func_arity
+edge-move-noarg	errc	a:move()	func_arity
 edge-upper-bool	errc	a:upper(true)	invalid-arg
-edge-close-noarg	errc	a:close()	no_first_arg
+edge-close-noarg	errc	a:close()	func_arity
 edge-pref-list	gens	a:pref([1,2]) a:[1,2]	{"a":[1,2]}
 edge-pref-of-disjunct	canon	a:*(1|2)	{"a":*1|2}
 edge-pref-of-conjunct	canon	a:*(1&1)	{"a":*1}
@@ -208,7 +214,7 @@ edge-neq-empty-list	errc	a:neq([])	mapval_no_gen
 edge-constraint-bool	errc	a:min(0)&true	constraint
 edge-number-string-bound	errc	a:number&min("a")	constraint
 edge-integer-string-bound	errc	a:integer&min("a")	constraint
-edge-meet-invalid-peer	errc	a:min(0)&min()	arg
+edge-meet-invalid-peer	errc	a:min(0)&min()	func_arity
 edge-meet-two-narrowed	errc	a:(integer&min(0))&(float&max(9))	constraint
 edge-hi-tie-tower	canon	a:max(1.0)&max(0d1)	{"a":max(1.0)}
 edge-hi-open-closed	canon	a:below(1)&max(1)	{"a":below(1)}

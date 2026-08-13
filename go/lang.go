@@ -1683,6 +1683,29 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 					}
 					return n
 				}
+				// Arity is known for every built-in, so a surplus or
+				// missing argument is a mistake in the SOURCE, refused
+				// here where the author can see it (issue #51). It was
+				// previously left to each function to notice or not: the
+				// two ports disagreed on `upper()` and on `close()`, and
+				// `min(1,2)` noticed nothing at all -- it built a
+				// constraint that merely refused to generate later, with
+				// a message about the map rather than about the call.
+				if ar, known := funcArity[name]; known {
+					got := writtenArgCount(terms[1:])
+					if got < ar[0] || (-1 != ar[1] && got > ar[1]) {
+						n := newNil("func_arity")
+						n.details = map[string]string{
+							"func": name,
+							"want": arityText(ar[0], ar[1]),
+							"got":  itoa(got),
+						}
+						if r.ON > 0 {
+							n.sp = r.O0.SI
+						}
+						return n
+					}
+				}
 				args := make([]Val, 0, len(terms)-1)
 				for _, t := range terms[1:] {
 					args = append(args, asVal(t))

@@ -457,17 +457,24 @@ const G = (x) => A.generate(x);
         (0, expect_1.expect)(N('type([1,2])')).equal('[1,2]');
     });
     (0, node_test_1.test)('super-basic', () => {
-        // super() returns the superior type of the current context
-        // These tests may need adjustment based on the actual superior() implementation
-        (0, expect_1.expect)(G('super()')).equal(undefined); // TOP has no superior
+        // super() with NO argument is refused at parse: super takes exactly
+        // one, and arity is checked for every built-in (issue #51). It used
+        // to be a silent no-op returning the func's own superior, which is
+        // TOP -- so the call generated `undefined` and said nothing about
+        // the missing argument.
+        (0, expect_1.expect)(() => G('super()')).throws(/aontu\/func_arity/);
+        // super(1) is the KIND `integer`, which is a type value and so does
+        // not generate on its own -- meet it with a member to see it.
+        (0, expect_1.expect)(G('a:super(1)&2')).equal({ a: 2 });
     });
     (0, node_test_1.test)('super-functionality', () => {
-        // super() should return the superior type in type hierarchies
-        // The exact behavior depends on the superior() implementation in the Val classes
+        // super() climbs the lattice from its ARGUMENT, so it needs one --
+        // see super-basic for the no-argument case, which is now refused.
         const a0 = new __1.Aontu();
         const G = a0.generate.bind(a0);
-        // These tests may need to be adjusted based on actual behavior
-        (0, expect_1.expect)(G('super()')).equal(undefined);
+        (0, expect_1.expect)(G('a:super(1.5)&2.5')).equal({ a: 2.5 });
+        (0, expect_1.expect)(G('a:super(a)&"z"')).equal({ a: 'z' });
+        (0, expect_1.expect)(G('a:super(true)&false')).equal({ a: false });
     });
     (0, node_test_1.test)('hide-functionality', () => {
         const a0 = new __1.Aontu();

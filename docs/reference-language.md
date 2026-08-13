@@ -895,6 +895,18 @@ Failures surface as messages (thrown as `AontuError` in TS, returned as
 | float mixed with exact | `cannot mix` (naming both leaves) |
 | over the exact budget  | `exceeds the exactness budget`, `at most 4096` |
 | conflict marker left in | `conflict marker was found` (code `merge_conflict`) |
+| wrong argument count   | `takes exactly one argument, but was given 2` (code `func_arity`) |
+
+**Every built-in has a fixed arity, checked at parse.** Nearly all take
+exactly one argument; the two exceptions are `key`, which takes none or
+one (how many levels up the path to read — none means the parent), and
+`neq`, which takes one or more exclusions. A wrong count is a mistake in
+the source and is refused before anything is evaluated.
+
+A comma group and a written list are different counts:
+`upper("a","b")` is two arguments and is refused, while
+`upper(["a","b"])` is one — a list, which `upper` then refuses for its
+kind rather than its count.
 
 A **version-control conflict marker** is refused before the parse. None
 of `<`, `=` and `>` is an operator, so a marker line would otherwise be

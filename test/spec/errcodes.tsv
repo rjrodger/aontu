@@ -62,6 +62,10 @@ parse_bad_src	errcode	parse	0.51.0
 # Without it `<<<<<<< HEAD` parsed as ordinary text and the document
 # quietly became a list of strings.
 merge_conflict	errcode	parse	0.53.0
+# A built-in called with the wrong number of arguments (issue #51).
+# Arity is known for every built-in, so a surplus or missing argument is
+# a mistake in the SOURCE and is refused where the author can see it.
+func_arity	errcode	parse	0.53.0
 unify_no_src	errcode	parse	0.51.0
 incomplete_expression	errcode	parse	0.51.0
 not_number	errcode	parse	0.51.0

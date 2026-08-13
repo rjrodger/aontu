@@ -399,6 +399,36 @@ help isolate the syntax error.`,
             const fname = terms[0];
             if ('' !== fname) {
                 const funcval = funcMap[fname];
+                // Arity is known for every built-in, so a surplus or missing
+                // argument is a mistake in the SOURCE, refused here where the
+                // author can see it (issue #51). It was previously left to each
+                // function to notice or not: the two ports disagreed on `upper()`
+                // and on `close()`, and `min(1,2)` noticed nothing at all -- it
+                // built a constraint that merely refused to generate later, with
+                // a message about the map rather than about the call.
+                //
+                // Counted BEFORE the rawToVal pass below, which is what makes the
+                // count possible: a comma group arrives as a RAW array and a
+                // written list literal as a ListVal, and rawToVal turns the first
+                // into the second.
+                const arity = funcArity[fname];
+                if (null != arity) {
+                    const got = writtenArgCount(terms.slice(1));
+                    if (got < arity[0] || (-1 !== arity[1] && got > arity[1])) {
+                        // details is assigned AFTER construction: the NilVal
+                        // constructor does not read it from its spec (only
+                        // NilVal.make does), so passing it in the spec left the
+                        // hint's {func}/{want}/{got} placeholders un-injected and
+                        // printed literally.
+                        const nil = new NilVal_1.NilVal({ why: 'func_arity' });
+                        nil.details = {
+                            func: fname,
+                            want: arityText(arity[0], arity[1]),
+                            got: '' + got,
+                        };
+                        return addsite(nil, r, ctx);
+                    }
+                }
                 // rawToVal EVERY argument. A degenerate expression can hand this
                 // handler raw parse values rather than Vals -- `pref(1-3)` arrives
                 // as the plain numbers 1 and -3 -- and a func's peg is unified
@@ -899,6 +929,55 @@ function makeModelResolver(options) {
         res.search = search.concat(res.search);
         return res;
     };
+}
+// funcArity is the permitted WRITTEN argument count of each built-in, as
+// [min, max]; a max of -1 is unbounded. Every name in funcMap has an
+// entry, and the arity is a property of the language rather than of
+// either port -- go/func.go carries the same table.
+//
+// Nearly everything takes exactly one. The two exceptions earn their
+// place: key() names how many levels UP the path to read, defaulting to
+// the parent when omitted, and neq takes a whole set of exclusions.
+const funcArity = {
+    upper: [1, 1], lower: [1, 1], copy: [1, 1], pref: [1, 1],
+    super: [1, 1], type: [1, 1], hide: [1, 1], close: [1, 1],
+    open: [1, 1], move: [1, 1], path: [1, 1],
+    min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1],
+    key: [0, 1],
+    neq: [1, -1],
+};
+// writtenArgCount counts the arguments as the AUTHOR wrote them.
+//
+// It cannot simply be terms.length: a comma group reaches the func-paren
+// handler as ONE term holding a raw array, so `upper("a","b")` and
+// `upper(["a","b"])` both arrive as a single argument. They are still
+// distinguishable, and that is what makes an arity check possible at
+// all -- the comma group is a RAW array, while a written list literal
+// has already been built into a ListVal by the list rule.
+function writtenArgCount(terms) {
+    if (1 === terms.length) {
+        // `terms[0]` is re-read rather than reusing a narrowed local:
+        // Array.isArray narrows an `any` to `any[]`, which then has no
+        // `isVal` to test.
+        const t = terms[0];
+        if (Array.isArray(t) && true !== terms[0].isVal) {
+            return t.length;
+        }
+    }
+    return terms.length;
+}
+// arityText renders a built-in's permitted count for the error message.
+// The fixed-arity case says "one" outright rather than counting: every
+// fixed arity in the table IS one, and a phrasing for a count no entry
+// carries would be untested prose pretending to be tested.
+function arityText(lo, hi) {
+    if (-1 === hi) {
+        return 'one or more arguments';
+    }
+    if (lo !== hi) {
+        return 'no arguments or one';
+    }
+    return 'exactly one argument';
 }
 // rawToVal converts a raw parse node (or raw elements inside one) into
 // the matching Val. Used for implicit top-level lists, whose nodes skip

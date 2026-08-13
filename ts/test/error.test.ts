@@ -363,7 +363,11 @@ describe('error', function() {
     if (undefined === err) {
       throw new Error('expected error')
     }
-    expect(err.message).match(/aontu\/parse_unknown/)
+    // Refused as a wrong argument COUNT once arity is checked (#51):
+    // `1-3` is two arguments, and pref takes one. Either way the point
+    // stands -- an ordinary refusal, naming the mistake, rather than an
+    // `internal` verdict or a TypeError escaping the unifier.
+    expect(err.message).match(/aontu\/func_arity/)
 
     // The two shapes that threw a TypeError past the unifier resolve.
     const out: any = new Aontu().generate('x:(([]%))')
