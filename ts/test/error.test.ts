@@ -340,4 +340,34 @@ describe('error', function() {
     expect(ok.b).equal(2)
   })
 
+
+  // A raw parse value reaching a func's peg (issue #49). `pref(1-3)`
+  // hands the handler the plain numbers 1 and -3 rather than Vals, and a
+  // func's peg is unified element by element, so a raw one reached
+  // `arg.unify(...)` and threw -- which the unifier's catch-all then
+  // reported as an `internal` VERDICT, a crash dressed up as a
+  // unification result. It must be an ordinary refusal instead.
+  //
+  // TS-only: the Go port accepts this shape and generates {"a":[1,-3]}.
+  // That divergence is the acceptance family of #32 and is upstream; it
+  // is not what this test is about, which is that neither `internal` nor
+  // a thrown TypeError is an acceptable answer to any source.
+  it('raw-func-arg-is-not-internal', () => {
+    let err: any = undefined
+    try {
+      new Aontu().generate('a:pref(1-3)')
+    }
+    catch (e: any) {
+      err = e
+    }
+    if (undefined === err) {
+      throw new Error('expected error')
+    }
+    expect(err.message).match(/aontu\/parse_unknown/)
+
+    // The two shapes that threw a TypeError past the unifier resolve.
+    const out: any = new Aontu().generate('x:(([]%))')
+    expect(JSON.stringify(out.x)).equal('[[],"%"]')
+  })
+
 })

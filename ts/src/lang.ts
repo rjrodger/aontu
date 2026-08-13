@@ -517,7 +517,14 @@ help isolate the syntax error.`,
       const fname = terms[0]
       if ('' !== fname) {
         const funcval = funcMap[fname]
-        const args = terms.slice(1)
+        // rawToVal EVERY argument. A degenerate expression can hand this
+        // handler raw parse values rather than Vals -- `pref(1-3)` arrives
+        // as the plain numbers 1 and -3 -- and a func's peg is unified
+        // element by element, so a raw one reached `arg.unify(...)` and
+        // threw. The unifier's catch-all turned that into an `internal`
+        // verdict: a crash reported as a unification result (issue #49).
+        // The Go port has always converted here (asVal in evaluate).
+        const args = terms.slice(1).map(rawToVal)
         val = null == funcval ?
           new NilVal({ why: 'unknown_function' }) :
           new funcval({
@@ -526,7 +533,11 @@ help isolate the syntax error.`,
       }
       // `a:()` — grouping parens with nothing inside.
       if (null == val) return incompleteNil(r, ctx)
-      const out = addsite(val, r, ctx)
+      // ... and the same for a GROUPING paren, whose value is passed
+      // straight through: `(([]%))` yielded a raw array, and addsite went
+      // on to write a site onto it, throwing a TypeError that escaped the
+      // unifier entirely ("Cannot set properties of undefined").
+      const out = addsite(rawToVal(val), r, ctx)
       return out
     },
   }
