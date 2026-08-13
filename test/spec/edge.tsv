@@ -304,7 +304,7 @@ edge-op-dangling-paren	errc	a:(1+)	syntax
 edge-op-dangling-in-list	errc	a:[1+,2]	incomplete_expression
 edge-conjunct-trailing-amp	canon	a:1&	{"a":1}
 edge-amp-alone	errc	a:&	syntax
-edge-key-no-value-null	canon	a:	{"a":null}
+edge-key-no-value-null	errc	a:	elided_value
 edge-overflow-float-text	errc	a:1e999	not_number
 edge-overflow-float-text-conjunct	errc	a:1e999&1	not_number
 edge-based-binary	gens	a:0b101	{"a":5}

@@ -13,7 +13,7 @@ top-optional-canon	canon	a?:1	{"a"?:1}
 optional-merge-canon	canon	a:{x?:number} a:{x:11}	{"a":{"x"?:11}}
 optional-null-kept	gen	b?:null	{"b":null}
 optional-null-kept-canon	canon	b?:null	{"b"?:null}
-optional-elided	gen	a?:	{"a":null}
+optional-elided	errc	a?:	elided_value
 optional-partial-subtree	gen	a?:{x:1,y:top}	{"a":{"x":1}}
 optional-dup-merge	gen	a:1 a?:1	{"a":1}
 optional-dup-conflict	err	a:1 a?:2	Cannot unify value

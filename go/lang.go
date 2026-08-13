@@ -597,10 +597,16 @@ func wrapList(r *jsonic.Rule, _ *jsonic.Context) {
 	if !ok {
 		return
 	}
-	lv := listOfRaw(n, 0)
+	// The list's own position is worked out FIRST and handed down: an
+	// elided element has no token of its own, so its error is located at
+	// the list's `[`, and listOfRaw would otherwise read lv.sp before it
+	// was assigned.
+	sp := -1
 	if 0 < r.ON {
-		lv.sp = r.O0.SI
+		sp = r.O0.SI
 	}
+	lv := listOfRawAt(n, 0, sp)
+	lv.sp = sp
 	r.Node = lv
 }
 
@@ -1867,7 +1873,31 @@ func asVal(node any) Val { return asValDepth(node, 0) }
 // listOfRaw builds a ListVal from a raw element slice, extracting the
 // spread and optional markers the elem rule leaves behind. Shared by
 // wrapList (the list rule close) and the asValDepth fallback.
-func listOfRaw(n []any, depth int) *ListVal {
+// isElidedNode reports whether a raw pair value is an ELISION -- a key
+// written with nothing after its colon -- rather than a value.
+//
+// It has three spellings, because the parser represents "nothing" three
+// ways depending on which rule consumed the pair: a plain `a:` leaves a
+// nil, and the optional `a?:` leaves the Undefined sentinel. Both are the
+// same mistake (issue #48), and an explicit `a:null` is neither -- that
+// arrives as a real ScalarVal from the `null` value def.
+func isElidedNode(v any) bool {
+	if v == nil {
+		return true
+	}
+	if jsonic.IsUndefined(v) {
+		return true
+	}
+	return false
+}
+
+func listOfRaw(n []any, depth int) *ListVal { return listOfRawAt(n, depth, -1) }
+
+// listOfRawAt is listOfRaw with the enclosing list's source position,
+// used to locate an elided element (issue #48). A raw list that never
+// passed the list rule -- an implicit top-level one -- has none, as its
+// TS twin rawToVal has no site either.
+func listOfRawAt(n []any, depth int, sp int) *ListVal {
 	lv := &ListVal{}
 	for _, e := range n {
 		if _, ok := e.(*optionalElem); ok {
@@ -1879,6 +1909,15 @@ func listOfRaw(n []any, depth int) *ListVal {
 			} else {
 				lv.spread = mergeVals(lv.spread, ls.val)
 			}
+			continue
+		}
+		if e == nil {
+			// An elided ELEMENT (`[,]`, `[1,,2]`), refused for the same
+			// reason as an elided map value (issue #48). A trailing comma
+			// (`[1,]`) is not an elision and never reaches here.
+			en := newNil("elided_value")
+			en.sp = sp
+			lv.peg = append(lv.peg, en)
 			continue
 		}
 		lv.peg = append(lv.peg, asValDepth(e, depth+1))
@@ -1923,6 +1962,35 @@ func asValDepth(node any, depth int) Val {
 			if !ok {
 				continue
 			}
+			if isElidedNode(v) {
+				// An elided value (`a:`) is REFUSED, not made a null
+				// (issue #48): a key with nothing after the colon is a
+				// mistake in the source, and turning it into a value made
+				// that mistake indistinguishable from a deliberate
+				// `a:null`. Located at the enclosing map's own position,
+				// which is where TS's addsite puts it too -- the elided
+				// value has no token of its own to point at.
+				//
+				// A colon chain (`a: b:1`) is not an elision: its value is
+				// the nested pair, which does reach the node.
+				en := newNil("elided_value")
+				en.sp = mv.sp
+				mv.set(k, en)
+				// An elided value under an OPTIONAL key stops being
+				// optional. Optionality is about a value that may be
+				// absent at GENERATE; it does not excuse a source that
+				// stops after the colon. Left optional, the refusal is
+				// dropped with the key and `a?:` generates `{}` -- a
+				// silent nothing, worse than either the old null or the
+				// error.
+				for i, ok := range mv.optional {
+					if ok == k {
+						mv.optional = append(mv.optional[:i], mv.optional[i+1:]...)
+						break
+					}
+				}
+				continue
+			}
 			mv.set(k, asValDepth(v, depth+1))
 		}
 		return mv
@@ -1942,17 +2010,13 @@ func asValDepth(node any, depth int) Val {
 		return newString(n)
 	case bool:
 		return newBoolean(n)
-	case nil:
-		// An elided value or element (`a:`, `[,]`) is null in jsonic;
-		// mirror the TS NullVal conversion. (An empty *source* still
-		// yields {} — see the out == nil branch in parseBase.)
-		return newNull()
 	}
-	// The jsonic Undefined sentinel marks a missing value (`a?:` with
-	// nothing after the colon) — null, like an elided plain value.
-	if jsonic.IsUndefined(node) {
-		return newNull()
-	}
+	// No arm for a raw nil or the Undefined sentinel. Both used to become
+	// a NullVal here -- that was the elided value (`a:`, `[,]`, `a?:`)
+	// arriving -- and an elision is now refused where the container is
+	// converted, which knows the key or index and the position to report
+	// it at. Anything else reaching here with no value is genuinely
+	// unaccounted for, and says so.
 	return newNil("parse_unknown")
 }
 

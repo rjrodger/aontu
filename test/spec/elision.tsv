@@ -1,7 +1,37 @@
-# Elided values and elements are null (as in the underlying jsonic)
-# Columns: name<TAB>mode<TAB>src<TAB>expect ; mode: canon|gen|err ; escapes: \n \t \\
-value-elide	gen	a:	{"a":null}
-elem-elide	gen	[,]	[null]
-elem-elide-nested	gen	a:[,]	{"a":[null]}
-lead-comma	gen	,a:1	[null]
-empty-pair-map	gen	{,}	{}
+# An elided value or element is REFUSED (issue #48).
+#
+# It used to be a null, following the underlying jsonic. That made a
+# mistake in the source indistinguishable from a deliberate `a:null` --
+# a key whose value the author simply forgot to write generated happily
+# as a null, and the document was wrong rather than rejected.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; modes: errc|err|gens
+value-elide	errc	a:	elided_value
+elem-elide	errc	[,]	elided_value
+elem-elide-nested	errc	a:[,]	elided_value
+elem-elide-between	errc	a:[1,,2]	elided_value
+lead-comma	errc	,a:1	elided_value
+value-elide-msg	err	a:	written with no value after the colon
+# The error names the KEY or INDEX that was elided, not the container it
+# sits in -- a document with many keys should not make the reader hunt.
+value-elide-path	err	a:{b:}	at path $.a.b
+elem-elide-path	err	a:[1,,2]	at path $.a.1
+#
+# ... and what is NOT an elision. Each of these was a value all along and
+# must stay one; refusing any of them would be a worse bug than the one
+# being fixed.
+#
+# An explicit null is a VALUE. This is the distinction the whole change
+# exists to restore, so it is the first row.
+explicit-null	gens	a:null	{"a":null}
+# A colon chain is not an elision: `a:` is followed by the nested pair,
+# which is its value.
+colon-chain	gens	a: b:1	{"a":{"b":1}}
+colon-chain-deep	gens	a: b: c:1	{"a":{"b":{"c":1}}}
+# A trailing comma is a separator, not an element.
+trailing-comma	gens	a:[1,]	{"a":[1]}
+trailing-comma-map	gens	{a:1,}	{"a":1}
+# An empty map or list has nothing elided in it.
+empty-pair-map	gens	{,}	{}
+empty-map	gens	a:{}	{"a":{}}
+empty-list	gens	a:[]	{"a":[]}

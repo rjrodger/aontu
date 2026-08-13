@@ -824,10 +824,45 @@ help isolate the syntax error.`,
         let mo = r.node
 
         // An elided value (`a:`) leaves a raw null/undefined that never
-        // passed through the val rule; make it an explicit NullVal.
+        // passed through the val rule. It is REFUSED rather than made a
+        // null (issue #48): a key with nothing after the colon is a
+        // mistake in the source, and turning it into a value made that
+        // mistake indistinguishable from a deliberate `a:null`.
+        //
+        // A colon chain (`a: b:1`) is not an elision -- the value is the
+        // nested pair, which the val rule does produce -- and neither is
+        // a trailing comma.
         for (const k in mo) {
           if (null == mo[k] && '___merge' !== k) {
-            mo[k] = addsite(new NullVal({ peg: null }), r, ctx)
+            // Pathed at the KEY, not at the enclosing map. addsite takes
+            // the rule's path, which here is the map's, so the error
+            // would otherwise name the container and leave the reader to
+            // work out which key was elided.
+            const en: any = addsite(new NilVal({ why: 'elided_value' }), r, ctx)
+            en.path = [...(r.k?.path ?? []), k]
+            mo[k] = en
+
+            // An elided value under an OPTIONAL key stops being optional.
+            // Optionality is about a value that may be absent at
+            // GENERATE; it does not excuse a source that stops after the
+            // colon. Left optional, the refusal was dropped with the key
+            // and `a?:` generated `{}` -- a silent nothing, which is
+            // worse than either the old null or the error.
+            const oi = optionalKeys.indexOf(k)
+            if (-1 !== oi) {
+              optionalKeys.splice(oi, 1)
+            }
+          }
+        }
+
+        // ... and the OPTIONAL spelling, `a?:`, which does not leave a
+        // null behind to be found: its value never reaches the node at
+        // all, so the key is simply absent and the map generated without
+        // it. A key recorded as optional but missing from the node was
+        // written with nothing after its colon.
+        for (const k of optionalKeys) {
+          if (!(k in mo)) {
+            mo[k] = addsite(new NilVal({ why: 'elided_value' }), r, ctx)
           }
         }
 
@@ -867,11 +902,15 @@ help isolate the syntax error.`,
 
         let ao = r.node
 
-        // An elided element (`[,]`) is a raw null that never passed
-        // through the val rule; make it an explicit NullVal.
+        // An elided ELEMENT (`[,]`, `[1,,2]`) is refused for the same
+        // reason as an elided map value (issue #48). A trailing comma
+        // (`[1,]`) is not an elision and never reaches here.
         for (let i = 0; i < ao.length; i++) {
           if (null == ao[i]) {
-            ao[i] = addsite(new NullVal({ peg: null }), r, ctx)
+            // Pathed at the INDEX, for the same reason as the map case.
+            const en: any = addsite(new NilVal({ why: 'elided_value' }), r, ctx)
+            en.path = [...(r.k?.path ?? []), '' + i]
+            ao[i] = en
           }
         }
 

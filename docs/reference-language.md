@@ -896,12 +896,23 @@ Failures surface as messages (thrown as `AontuError` in TS, returned as
 | over the exact budget  | `exceeds the exactness budget`, `at most 4096` |
 | conflict marker left in | `conflict marker was found` (code `merge_conflict`) |
 | wrong argument count   | `takes exactly one argument, but was given 2` (code `func_arity`) |
+| key or element with no value | `written with no value after the colon` (code `elided_value`) |
 
 **Every built-in has a fixed arity, checked at parse.** Nearly all take
 exactly one argument; the two exceptions are `key`, which takes none or
 one (how many levels up the path to read — none means the parent), and
 `neq`, which takes one or more exclusions. A wrong count is a mistake in
 the source and is refused before anything is evaluated.
+
+**An elided value is refused.** A key or element written with nothing
+after its colon (`a:`, `a?:`, `[,]`, `[1,,2]`) is a mistake in the source
+rather than a null — writing it as a null made the mistake
+indistinguishable from a deliberate `a:null`. The error names the key or
+index, not the container.
+
+Three things that look similar are not elisions and keep working: an
+explicit `a:null`, a colon chain (`a: b:1`, whose value is the nested
+pair), and a trailing comma (`[1,]`, `{a:1,}`).
 
 A comma group and a written list are different counts:
 `upper("a","b")` is two arguments and is refused, while

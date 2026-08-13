@@ -651,8 +651,9 @@ describe('coverage3-lang', () => {
     const raw = fixture('raw.json')
     const rawfn = fixture('raw-fn.js')
 
-    // An elided element in an implicit top-level list is null.
-    Assert.equal(lang.parse('1,,2').canon, '[1,null,2]')
+    // An elided element is REFUSED, in an implicit top-level list as
+    // anywhere else (issue #48). It canons as the nil it now is.
+    Assert.equal(lang.parse('1,,2').canon, '[1,nil,2]')
 
     // A JSON include arrives as raw JS and is converted kind by kind.
     Assert.equal(lang.parse('1, @"' + raw + '"').canon,
