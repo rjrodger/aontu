@@ -138,6 +138,27 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 			Name:   "aontu",
 			Suffix: false,
 		},
+		// Aontu's own text for the two parse hints, replacing the
+		// parser's defaults — the same two, with the same wording, that
+		// ts/src/lang.ts sets through `jsonic.options({hint:{...}})`.
+		// Without them a Go syntax error explained itself in the
+		// parser's terms ("do not match any rule alternative active at
+		// this position") where the canonical engine explains itself in
+		// the user's, and points at the `#` comment character as the way
+		// to bisect the problem (issue #50).
+		Hint: map[string]string{
+			"unknown": `
+Since the error is unknown, this is probably a bug. Please consider
+posting a github issue - thanks!
+
+Code: {code}, Details:
+{details}`,
+
+			"unexpected": `
+The character(s) {src} were not expected at this point as they do not
+match the expected syntax. Use the # character to comment out lines to
+help isolate the syntax error.`,
+		},
 		// Only # line comments are valid Aontu syntax (see
 		// docs/reference-language.md; ts/src/lang.ts sets the same).
 		// Def MERGES with the parser's defaults (#, //, /* */) rather
@@ -1971,7 +1992,7 @@ func toValidSource(src string) string {
 	return strings.ToValidUTF8(src, "�")
 }
 
-func parseBase(src, base string) (Val, error) {
+func parseBase(src, base, file string) (Val, error) {
 	src = toValidSource(src)
 
 	// A version-control conflict marker is refused BEFORE the parse
@@ -1983,7 +2004,7 @@ func parseBase(src, base string) (Val, error) {
 		n := newNil("merge_conflict")
 		n.sp = off
 		return newMap(), &AontuError{
-			Msg:  n.FullMessage(src, ""),
+			Msg:  n.FullMessage(src, file),
 			Code: "merge_conflict",
 		}
 	}
@@ -2004,6 +2025,14 @@ func parseBase(src, base string) (Val, error) {
 	// plain value. See notFoundSink.
 	sink := &notFoundSink{}
 	meta := map[string]any{notFoundMetaKey: sink}
+	// The parser names the source in its own error frames from
+	// meta["fileName"] (TS passes the same through popts.path), and
+	// defaults to "<no-file>" without it. parseBase had no filename to
+	// give until it was threaded in, so every Go syntax error pointed at
+	// `<no-file>` where the canonical engine named the file (issue #50).
+	if "" != file {
+		meta["fileName"] = file
+	}
 
 	out, err := lang.ParseMeta(src, meta)
 
@@ -2038,7 +2067,7 @@ func parseBase(src, base string) (Val, error) {
 	// overflows first, a documented gap).
 	if valTreeDepth(root) > maxNodeDepth {
 		n := newNil("max_depth")
-		return newMap(), &AontuError{Msg: n.FullMessage(src, ""), Code: "max_depth"}
+		return newMap(), &AontuError{Msg: n.FullMessage(src, file), Code: "max_depth"}
 	}
 	setPaths(root, []string{})
 	return root, nil

@@ -40,7 +40,7 @@ func (a *Aontu) Check(src string) []Problem {
 
 // CheckVars is Check with $name variables resolved from vars.
 func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
-	v, perr := parseBase(src, a.base)
+	v, perr := parseBase(src, a.base, a.File)
 	if perr != nil {
 		return []Problem{{Pos: -1, Len: 1, Why: "parse", Class: codeClass("parse"), Message: perr.Error()}}
 	}
@@ -99,7 +99,7 @@ type ValueSpan struct {
 // positioned non-container value in the result, so tooling can locate the
 // value under a cursor. Returns nil on a parse error.
 func (a *Aontu) Spans(src string) []ValueSpan {
-	v, perr := parseBase(src, a.base)
+	v, perr := parseBase(src, a.base, a.File)
 	if perr != nil {
 		return nil
 	}
