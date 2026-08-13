@@ -592,7 +592,10 @@ Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, Go port follows.
 Nothing may regress at any phase: the 527 rows of the shared suite,
 the error.tsv substring assertions, canon round-trip
-`parse(canon(v)) == v`, and byte-equal canon rows across TS and Go.
+canon convergence, and byte-equal canon rows across TS and Go. (This
+document originally stated that guard as `parse(canon(v)) == v`; see
+the correction in [G1](g1-constraint-algebra.md#implementation-plan) —
+the enforced property is convergence, asserted by both spec runners.)
 
 **Phase 1 — write the contract (S).**
 New docs/trust.md (four clauses, profiles, budget names, remote-
@@ -634,6 +637,17 @@ structures); repeatability property rows. Code: ts/test/spec.test.ts
 and go/spec_test.go mode handling; any serialisation divergence fixed
 in the implementation, never carved out of the suite. `deps` manifest
 wired (ts/src/lang.ts → ts/src/aontu.ts; go/lang.go) and documented.
+
+*(As landed, with two deliberate departures from the text above.
+**No `gens.tsv`**: the 257 byte-exact rows live beside the behaviour
+they pin — 125 in `edge.tsv`, 60 in `number-tower.tsv`, the rest
+across ten more topic files — because a single bucket separates a
+serialisation expectation from the semantics it belongs to, and the
+number tower's exactness rows are unreadable apart from their
+`canon` twins. **Repeatability is a runner property, not rows**: both
+spec runners re-run every `gens` row on a fresh engine and require
+byte-identical output, so all 257 rows carry the determinism
+assertion instead of a handful of dedicated ones.)*
 
 **Phase 6 — default flip (S code, staged socially).**
 Warning window ships with Phase 3; the flip itself (CLI entry-root

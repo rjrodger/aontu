@@ -44,10 +44,27 @@ budget-chain-9-resolves	gens	a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$
 budget-chain-10-exhausts	errc	a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1	budget_passes
 budget-chain-10-msg	err	a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:1	The evaluation budget of 9 fixpoint passes was spent before
 #
-# unify_cycle -- the per-pair revisit bound (MAXCYCLE = 999,
-# ts/src/unify.ts) tripping: SUSPECTED non-convergence. No known small
-# reproducer exists (small cycles are all caught earlier as
-# path_cycle), and the bound's acknowledged false positive ("too many
-# top unifications", ts/src/unify.ts TODO) needs a generated-SDK-scale
-# corpus before its behaviour is pinned or changed -- G5 phase 2's
-# remaining slice.
+# LARGE BUT LEGAL -- the false-positive guard. The per-pair revisit
+# bound (MAXCYCLE = 999, ts/src/unify.ts) counts (Val, path) pairs per
+# pass, and a conjunct fold used to re-run the TOP self-unify once per
+# fold term. A model with more than 999 sibling terms at a single path
+# therefore tripped the cycle guard while being entirely legal. The
+# per-pass memo in ts/src/unify.ts (_tcc/_tpi: "once per pass per
+# (Val, path)") fixes that; this fixture -- 1200 sibling terms at one
+# path -- is the regression guard, and must simply unify.
+budget-wide-conjunct-legal	gens	a:@"__FIXTURES__/large-siblings.aon"	{"a":{"wide":{"x":1}}}
+budget-wide-conjunct-canon	canon	a:@"__FIXTURES__/large-siblings.aon"	{"a":{"wide":{"x":1}}}
+#
+# unify_cycle -- the per-pair revisit bound tripping: SUSPECTED
+# non-convergence. Registered in errcodes.tsv (class budget) but
+# deliberately NOT pinned by a shared row, because the two engines
+# reach it by different mechanisms and no shared source drives both:
+# TypeScript counts (Val, path) revisits against MAXCYCLE, while Go
+# bounds recursion depth instead (maxUniteDepth, go/unify.go -- "a
+# depth guard is sufficient here" without references). Small cycles
+# are all caught earlier as path_cycle in both. It is pinned per-port
+# instead: go/coverage_test.go drives the Go depth bound directly.
+# TypeScript's side is the deep-nesting gap documented in
+# docs/trust.md (no explicit depth budget; V8 stack exhaustion is
+# caught and reported as `internal`), and closing that is what would
+# make a shared row possible.

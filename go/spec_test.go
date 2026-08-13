@@ -111,6 +111,7 @@ func TestSpec(t *testing.T) {
 					if got := v.Canon(); got != expect {
 						t.Fatalf("canon mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
 					}
+					assertCanonConverges(t, name, expect, vars)
 				case "gen":
 					got, err := a.GenerateVars(src, vars)
 					if err != nil {
@@ -131,6 +132,17 @@ func TestSpec(t *testing.T) {
 					}
 					if text != expect {
 						t.Fatalf("gens mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, text)
+					}
+					// REPEATABILITY (G5 determinism clause, docs/trust.md):
+					// the same source under the same bindings must
+					// serialise to the same bytes on a fresh engine. Run
+					// over every gens row rather than a few dedicated ones.
+					if again, aerr := New().GenerateVars(src, vars); aerr != nil {
+						t.Fatalf("gens not repeatable (second run errored): %v\n src: %q", aerr, src)
+					} else if atext, aterr := specGens(again); aterr != nil {
+						t.Fatalf("gens not repeatable (second serialise): %v\n src: %q", aterr, src)
+					} else if atext != expect {
+						t.Fatalf("gens not repeatable\n src:  %q\n want: %s\n got:  %s", src, expect, atext)
 					}
 				case "err":
 					_, err := a.GenerateVars(src, vars)
@@ -180,6 +192,47 @@ func TestSpec(t *testing.T) {
 
 	if total == 0 {
 		t.Fatalf("no spec rows loaded from %s", specDir)
+	}
+}
+
+// canonNoReparse lists canon rows whose expected canon cannot be
+// reparsed. Each entry needs a reason and an issue; entries are DELETED,
+// not amended, when fixed (AGENTS.md ledger discipline). The TypeScript
+// runner carries the same list (ts/test/spec.test.ts CANON_NO_REPARSE).
+var canonNoReparse = map[string]string{
+	// The `&:`-spread required-child placeholder renders as a key with no
+	// value (`{"r":}`), which is not a document. Both engines emit it
+	// identically, so it is a shared canon defect, not a divergence.
+	"spread-required-canon": "placeholder canons as `{\"r\":}` -- issue #43",
+}
+
+// assertCanonConverges is the guard the G1/G2/G5 implementation plans
+// call for. Those plans word it `parse(canon(v)) == v`, which is too
+// strong and was never enforced: canon deliberately PRESERVES
+// unevaluated ghost applications (`key()`, `pref(...)`, an unexpanded
+// `&:` template), so reparsing a canon runs one more evaluation round
+// and legitimately resolves them.
+//
+// What does hold, for every row, is convergence: canon reaches a
+// fixpoint immediately after that one round, so it can never oscillate
+// or drift. That is what makes canon safe as the seed of semantic
+// hashing (G6). The TypeScript runner asserts the same property.
+func assertCanonConverges(t *testing.T, name, expect string, vars map[string]Val) {
+	t.Helper()
+	if _, skip := canonNoReparse[name]; skip {
+		return
+	}
+	v2, err := New().UnifyVars(expect, vars)
+	if err != nil {
+		t.Fatalf("canon does not reparse: %s\n canon: %s\n err:   %v", name, expect, err)
+	}
+	c2 := v2.Canon()
+	v3, err := New().UnifyVars(c2, vars)
+	if err != nil {
+		t.Fatalf("re-canon does not reparse: %s\n canon: %s\n err:   %v", name, c2, err)
+	}
+	if c3 := v3.Canon(); c3 != c2 {
+		t.Fatalf("canon does not converge: %s\n c2: %s\n c3: %s", name, c2, c3)
 	}
 }
 

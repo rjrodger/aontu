@@ -293,7 +293,12 @@ constraint for `len`, and a uniqueness flag. Rules:
   (`min(5) & max(3)` → nil, with both sites reported); an
   integer-narrowed interval containing no integer
   (`integer & above(1) & below(2)` → nil); exclusions deleting a
-  point interval (`min(3) & max(3) & neq(3)` → nil); `len(c)` empty
+  point interval, which under the four-leaf number tower **requires a
+  narrowed leaf** — `min(3) & max(3)` admits the point 3 in any
+  numeric leaf and `neq(3)` excludes only the integer `3`, so that
+  meet is NOT empty, while `integer & min(3) & max(3) & neq(3)` → nil
+  (re-derived in phase 0; the normative statement is
+  `docs/reference-language.md`, "The constraint algebra"); `len(c)` empty
   iff its integer constraint is. Regex emptiness is deliberately
   approximate: distinct `re` atoms accumulate as a residual and are
   never declared empty — sound (no false conflicts), incomplete
@@ -389,6 +394,16 @@ atom, the normalised admissible interval/sets, and any `must`
 message. The rendering of that data into reports, codes, and formats
 is owned by [G2](g2-validation-verb.md); G1 only guarantees the data
 is present.
+
+*(As landed in phase 1, `details` carries `expected` — the normalised
+residual's canon, which IS the admissible interval/exclusion set — and
+`actual`, the peer's canon, byte-identical in both ports. Per-atom
+attribution ("which atom rejected it") is **not** carried: when several
+atoms are unsatisfied there is no single failing one, and picking a
+representative is a report-shaping decision. It is therefore deferred
+to G2 phase 2, where the finding object is designed and the choice can
+be made once for every code rather than guessed here. `must` messages
+arrive with phase 5.)*
 
 ### Numbers: decide and bound the defect
 
@@ -535,7 +550,20 @@ follows, and `make test` runs both. Nothing may regress: all 527
 rows of the shared suite (46 row-bearing files;
 `test/spec/divergent.tsv` is the parity ledger and carries none)
 except the single row Phase 6 deliberately amends, and the canon
-round-trip property `parse(canon(v)) == v` throughout.
+round-trip property throughout.
+
+*(Correction, since first draft: the guard is stated in this document
+and in G2/G5 as `parse(canon(v)) == v`, which is too strong and was
+enforced by nothing. Canon deliberately preserves unevaluated ghost
+applications — `key()`, `pref(…)`, an unexpanded `&:` template — so
+reparsing a canon runs one more evaluation round and legitimately
+resolves them; 15 of the 491 canon rows move on that first reparse.
+The property that does hold for every row, and is now asserted by both
+spec runners, is CONVERGENCE: canon reaches a fixpoint immediately
+after that round, so it can never oscillate or drift. Constraint
+residuals specifically do satisfy the stronger form. One row is exempt
+from reparse altogether — the `&:` required-child placeholder canons
+as `{"r":}`, issue #43.)*
 
 1. **Phase 0 — algebra on paper (S).** Write the pairwise meet /
    emptiness / subsumption tables and the canonical atom order into

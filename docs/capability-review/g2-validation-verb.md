@@ -438,8 +438,12 @@ byte-identical JSON for the same inputs, pinned by spec rows.
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, Go port follows.
 Nothing may regress: the 45 existing spec files (~426 rows), the
-error.tsv substring assertions, and canon round-trip
-`parse(canon(v)) == v` stay green in every phase.
+error.tsv substring assertions, and canon convergence stay green in
+every phase. (This document originally stated that guard as
+`parse(canon(v)) == v`; see the correction in
+[G1](g1-constraint-algebra.md#implementation-plan) — the enforced
+property is convergence, asserted by both spec runners for every canon
+row.)
 
 **Phase 1 — error taxonomy groundwork (M).**
 Spec: new `test/spec/errcodes.tsv` (code, class, since-version); new
