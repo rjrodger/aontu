@@ -894,6 +894,41 @@ Failures surface as messages (thrown as `AontuError` in TS, returned as
 | inexact integer sum    | `exactly representable`, plus `0d<digits>` |
 | float mixed with exact | `cannot mix` (naming both leaves) |
 | over the exact budget  | `exceeds the exactness budget`, `at most 4096` |
+| conflict marker left in | `conflict marker was found` (code `merge_conflict`) |
+| wrong argument count   | `takes exactly one argument, but was given 2` (code `func_arity`) |
+| key or element with no value | `written with no value after the colon` (code `elided_value`) |
+
+**Every built-in has a fixed arity, checked at parse.** Nearly all take
+exactly one argument; the two exceptions are `key`, which takes none or
+one (how many levels up the path to read — none means the parent), and
+`neq`, which takes one or more exclusions. A wrong count is a mistake in
+the source and is refused before anything is evaluated.
+
+**An elided value is refused.** A key, element or spread written with
+nothing after its colon (`a:`, `a?:`, `[,]`, `[1,,2]`, `x:$obj&:`) is a
+mistake in the source
+rather than a null — writing it as a null made the mistake
+indistinguishable from a deliberate `a:null`. The error names the key or
+index, not the container — except for a spread, which has no key of its
+own and so refuses the map it belongs to.
+
+Three things that look similar are not elisions and keep working: an
+explicit `a:null`, a colon chain (`a: b:1`, whose value is the nested
+pair), and a trailing comma (`[1,]`, `{a:1,}`).
+
+A comma group and a written list are different counts:
+`upper("a","b")` is two arguments and is refused, while
+`upper(["a","b"])` is one — a list, which `upper` then refuses for its
+kind rather than its count.
+
+A **version-control conflict marker** is refused before the parse. None
+of `<`, `=` and `>` is an operator, so a marker line would otherwise be
+read as ordinary text and `<<<<<<< HEAD` would parse into the list
+`["<<<<<<<","HEAD"]` — an unresolved merge quietly becoming a plausible
+document. The match is git's exact shape: seven `<`, `=` or `>` at the
+start of a line, followed by the end of the line or a space before the
+branch label. A document may still write those characters freely
+anywhere else, quoted or not (`a:"<<<<<<<"`, `a:<<<<<<`).
 
 In conflict messages the operand later in the source is named first
 ("…value: `<later>` with value: `<earlier>`") so the two sites are

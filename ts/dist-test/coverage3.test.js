@@ -53,6 +53,12 @@ const ctx_1 = require("../dist/ctx");
 const err_1 = require("../dist/err");
 const lang_1 = require("../dist/lang");
 const site_1 = require("../dist/site");
+const CloseFuncVal_1 = require("../dist/val/CloseFuncVal");
+const CopyFuncVal_1 = require("../dist/val/CopyFuncVal");
+const HideFuncVal_1 = require("../dist/val/HideFuncVal");
+const MoveFuncVal_1 = require("../dist/val/MoveFuncVal");
+const PrefFuncVal_1 = require("../dist/val/PrefFuncVal");
+const TypeFuncVal_1 = require("../dist/val/TypeFuncVal");
 const unify_1 = require("../dist/unify");
 const cli_1 = require("../dist/cli");
 const lsp_server_1 = require("../dist/lsp-server");
@@ -244,12 +250,45 @@ function capture(fn) {
         Assert.deepEqual(new ListVal_1.ListVal({ peg: [1, 'x'] }, ctx).clone(ctx).peg, [1, 'x']);
     });
     (0, node_test_1.test)('optional-list-element-canon', () => {
-        // TS-only: the Go port drops an optional list element from canon
-        // rather than rendering it, so this cannot be a shared row yet
-        // (divergence filed).
+        // A list canon carries no optional markers, even when the value is
+        // built by hand with one recorded (issue #40): a key:value pair is
+        // not a list element, so there is no optional element for a marker to
+        // describe, and the Go port's ListVal.Canon has no arm for one.
         const lv = new ListVal_1.ListVal({ peg: [new IntegerVal_1.IntegerVal({ peg: 1 })] }, CTX());
         lv.optionalKeys.push('0');
-        Assert.equal(lv.canon, '[0?:1]');
+        Assert.equal(lv.canon, '[1]');
+    });
+    (0, node_test_1.test)('func-no-arg-guards-via-api', () => {
+        // Every built-in's missing-argument guard, reached the only way that
+        // is left: through the programmatic API (issue #51).
+        //
+        // A wrong argument count is refused at PARSE now, so no source can
+        // reach these guards -- but a caller constructing a func Val by hand
+        // still can, and they are what keeps that a clean nil rather than a
+        // TypeError on `undefined`. The value of the test is that surface,
+        // not the counter: the guards became unreachable from source the
+        // moment arity was checked, and deleting them would have moved the
+        // failure from a refusal to a crash for anyone building Vals.
+        const ctx = CTX();
+        const cases = [
+            ['close', new CloseFuncVal_1.CloseFuncVal({ peg: [] }), 'no_first_arg'],
+            ['copy', new CopyFuncVal_1.CopyFuncVal({ peg: [] }), 'invalid-arg'],
+            ['hide', new HideFuncVal_1.HideFuncVal({ peg: [] }), 'arg'],
+            ['move', new MoveFuncVal_1.MoveFuncVal({ peg: [] }), 'arg'],
+            ['pref', new PrefFuncVal_1.PrefFuncVal({ peg: [] }), 'arg'],
+            ['type', new TypeFuncVal_1.TypeFuncVal({ peg: [] }), 'arg'],
+        ];
+        for (const [name, fv, why] of cases) {
+            const out = fv.resolve(ctx, []);
+            Assert.equal(out.isNil, true, name + ': expected a nil');
+            Assert.equal(out.why, why, name + ': why');
+        }
+        // path() refuses its missing argument in prepare rather than
+        // resolve, since it rewrites the argument before it is driven.
+        const pf = new PathFuncVal_1.PathFuncVal({ peg: [] });
+        const prepared = pf.prepare(ctx, []);
+        Assert.equal(prepared[0].isNil, true);
+        Assert.equal(prepared[0].why, 'invalid-arg');
     });
     (0, node_test_1.test)('map-inspection-spread', () => {
         const mv = new MapVal_1.MapVal({ peg: { a: new IntegerVal_1.IntegerVal({ peg: 1 }) } });
@@ -477,6 +516,12 @@ function capture(fn) {
         Assert.deepEqual(t, before);
         (0, utility_1.explainClose)(t, new IntegerVal_1.IntegerVal({ peg: 2 }));
         Assert.ok(t.some((e) => 'string' === typeof e && /^-> \d+=2$/.test(e)));
+        // An outcome that is NOT yet done is marked `!`, which is the whole
+        // point of the slot when reading an explain trace: it distinguishes a
+        // frame that settled from one still deferring. A scalar is always
+        // done, so only an unresolved value reaches this arm.
+        (0, utility_1.explainClose)(t, new RefVal_1.RefVal({ peg: ['zz'], absolute: true }));
+        Assert.ok(t.some((e) => 'string' === typeof e && /^-> \d+!=/.test(e)));
         // A missing frame is a no-op (explain disabled).
         (0, utility_1.explainClose)(null);
     });
@@ -521,8 +566,9 @@ function capture(fn) {
         const fixture = (name) => Path.join(__dirname, '..', 'test', name).split(Path.sep).join('/');
         const raw = fixture('raw.json');
         const rawfn = fixture('raw-fn.js');
-        // An elided element in an implicit top-level list is null.
-        Assert.equal(lang.parse('1,,2').canon, '[1,null,2]');
+        // An elided element is REFUSED, in an implicit top-level list as
+        // anywhere else (issue #48). It canons as the nil it now is.
+        Assert.equal(lang.parse('1,,2').canon, '[1,nil,2]');
         // A JSON include arrives as raw JS and is converted kind by kind.
         Assert.equal(lang.parse('1, @"' + raw + '"').canon, '[1,{"a":1,"b":"s","c":true,"d":[1,2],"e":null,"f":1.5}]');
         // A function export has no Val: parse_unknown.

@@ -111,8 +111,8 @@ errc-constraint-narrowed	errc	a:integer&min(0) a:1.5	constraint
 # the `constrain` attempt; left undriven it surfaces at generate as
 # ordinary residue (mapval_no_gen), like any other non-literal.
 errc-invalid-arg-driven	errc	a:min(true)&1	invalid-arg
-errc-missing-arg-driven	errc	a:neq()&1	arg
-errc-invalid-arity-driven	errc	a:min(0,1)&5	invalid-arg
+errc-missing-arg-driven	errc	a:neq()&1	func_arity
+errc-invalid-arity-driven	errc	a:min(0,1)&5	func_arity
 errc-invalid-atom-residual	errc	a:min(true)	mapval_no_gen
 errc-residual-no-gen	errc	a:min(0)	mapval_no_gen
 residual-no-gen-msg	err	a:min(0)	Cannot resolve value: min(0)
@@ -122,3 +122,16 @@ residual-no-gen-msg	err	a:min(0)	Cannot resolve value: min(0)
 # (and agents) to the bound functions.
 errc-opchar-syntax	errc	a:number > 0	syntax
 opchar-hint	err	a:number > 0	The > and < characters are not Aontu operators: write the bound functions min(x), max(x), above(x), below(x) instead.
+# An invalid atom reached as the PEER of a meet, rather than as the
+# driving side: the residual carries its complaint and the meet reports
+# it with the `constrain` attempt. Order matters, which is why this needs
+# its own row -- with the invalid atom written first, the meet never
+# happens and the ordinary constraint failure is reported instead.
+errc-invalid-peer-atom	errc	a:min(1)&neq(true)	invalid-arg
+err-invalid-peer-atom-msg	err	a:min(1)&neq(true)	Cannot constrain value
+# A bound atom's argument must be an ORDERABLE SCALAR. The count is right
+# here, so the arity check passes and the kind is what fails -- the two
+# refusals stay distinguishable. Meeting a value is what surfaces it: on
+# its own the invalid residual is merely non-generable.
+errc-bound-list-arg	errc	a:min([1])&5	invalid-arg
+errc-bound-map-arg	errc	a:min({})&5	invalid-arg

@@ -23,6 +23,55 @@ var funcSet = map[string]bool{
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
 }
 
+// funcArity is the permitted WRITTEN argument count of each built-in, as
+// {min, max}; a max of -1 is unbounded. Every name in funcSet has an
+// entry, and the arity is a property of the language rather than of
+// either port -- ts/src/lang.ts carries the same table.
+//
+// Nearly everything takes exactly one. The two exceptions earn their
+// place: key() names how many levels UP the path to read, defaulting to
+// the parent when omitted, and neq takes a whole set of exclusions.
+var funcArity = map[string][2]int{
+	"upper": {1, 1}, "lower": {1, 1}, "copy": {1, 1}, "pref": {1, 1},
+	"super": {1, 1}, "type": {1, 1}, "hide": {1, 1}, "close": {1, 1},
+	"open": {1, 1}, "move": {1, 1}, "path": {1, 1},
+	"min": {1, 1}, "max": {1, 1}, "above": {1, 1}, "below": {1, 1},
+	"key": {0, 1},
+	"neq": {1, -1},
+}
+
+// writtenArgCount counts the arguments as the AUTHOR wrote them.
+//
+// It cannot simply be len(terms): a comma group reaches the func-paren
+// handler as ONE term holding a raw slice, so `upper("a","b")` and
+// `upper(["a","b"])` both arrive as a single argument. They are still
+// distinguishable, and that is what makes an arity check possible at
+// all -- the comma group is a RAW []any, while a written list literal
+// has already been built into a *ListVal by the list rule.
+func writtenArgCount(terms []any) int {
+	if 1 == len(terms) {
+		if raw, ok := terms[0].([]any); ok {
+			return len(raw)
+		}
+	}
+	return len(terms)
+}
+
+// arityText renders a built-in's permitted count for the error message.
+// The fixed-arity case says "one" outright rather than counting: every
+// fixed arity in the table IS one, and a phrasing for a count no entry
+// carries would be untested prose pretending to be tested.
+func arityText(lo, hi int) string {
+	switch {
+	case -1 == hi:
+		return "one or more arguments"
+	case lo != hi:
+		return "no arguments or one"
+	default:
+		return "exactly one argument"
+	}
+}
+
 // BuiltinFuncNames returns the recognised built-in function names in
 // sorted order. Exposed for tooling (e.g. LSP completion in go/lsp).
 func BuiltinFuncNames() []string {
@@ -41,6 +90,13 @@ type FuncVal struct {
 	base
 	name string
 	peg  []Val // arguments
+	// prepared marks the one-time argument rewrite (currently path()'s
+	// scalar-to-reference wrap) as done, mirroring TS's `prepared`
+	// counter: the rewrite reads RAW arguments and must not see them
+	// again once they have resolved. Clones start unprepared only if the
+	// clone copies it -- see clonePath, which carries it, because a clone
+	// shares the already-rewritten args.
+	prepared bool
 }
 
 func newFunc(name string, args []Val) *FuncVal {
@@ -122,6 +178,36 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	if isTop(peer) && (f.mtype || f.mhide) {
 		f.setDc(DONE)
 		return f
+	}
+
+	// path("b") NAMES a path rather than being one: the scalar becomes a
+	// relative reference, which ordinary ref resolution then answers. This
+	// is TS's PathFuncVal.prepare, and it must run HERE -- before the args
+	// are driven -- for the reason TS guards it with `0 === this.prepared`:
+	// once driven, `path($.b)` has already become the scalar its reference
+	// resolved to, and wrapping THAT would look up a key named after the
+	// value. Handing the scalar back unwrapped instead made `a:path("b")
+	// b:2` evaluate to the string "b" rather than 2 -- path() with a
+	// computed name did not work in this port at all -- and left the
+	// degenerate spellings silent where TS refuses them: `path(1)` is a
+	// no_path (there is no key "1"), `path("")` a path_cycle (issue #38).
+	if f.name == "path" && !f.prepared {
+		f.prepared = true
+		for i, arg := range f.peg {
+			if sv, ok := arg.(*ScalarVal); ok {
+				rv := newRef([]any{sv}, false)
+				// FROM THE ROOT. TS builds this ref with absolute:false but
+				// never gives it a path, and a relative ref with no path
+				// resolves from the root anyway -- so `a:{q:path("b")}`
+				// finds the root's `b`, not `$.a.b`. Saying absolute here
+				// says that outright, and survives the arg re-pathing below,
+				// which would otherwise hand the ref the call's own location
+				// and make it look one level down.
+				rv.absolute = true
+				rv.sp, rv.spu = f.sp, f.spu
+				f.peg[i] = rv
+			}
+		}
 	}
 
 	// Re-path args to this func's location before resolving them: func
@@ -209,9 +295,28 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		// the result (`out.path = this.path`), so a copy()/move() clone
 		// delivered through a transplanted func lands at the func's
 		// location rather than keeping a stale overlay-tailed path.
-		if out != Val(f) && !isTop(out) {
+		// No isTop guard: TS's FuncBaseVal.unify assigns the func's marks,
+		// path and site to the resolved value with no exemption, and a
+		// function CAN resolve to a top -- `super(number)` climbs off the
+		// top of the kind lattice, `copy(top)` copies one. Excluding those
+		// left the residual with neither the call's path nor its site, so
+		// the error named `$` instead of `$.x` and pointed at nothing.
+		// Safe because top() mints a FRESH TopVal per call (there is no
+		// shared singleton to corrupt), which is why the exemption is not
+		// needed to protect one.
+		if out != Val(f) {
 			propagateMarks(f, out)
 			out.setvpath(cp(f.path))
+			// ... and the func's SITE with its path. TS copies both onto
+			// the result in every branch of FuncBaseVal.unify. A function
+			// that resolves to a FRESH value -- `super(1)` answers a new
+			// ScalarKindVal -- otherwise handed the map a child with no
+			// position at all, so an error about it (and any conjunct
+			// built over it, which takes its site from its first term)
+			// pointed at the start of the source instead of at the call
+			// (issue #41).
+			out.setPos(f.sp)
+			out.setPosu(f.spu)
 		}
 	} else if isTop(peer) {
 		f.notdone()
@@ -230,6 +335,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		f.notdone()
 		cj := newConjunct([]Val{f, peer})
 		cj.path = cp(f.path) // TS defer branch: out.path = this.path
+		cj.sp, cj.spu = f.sp, f.spu
 		out = cj
 	}
 

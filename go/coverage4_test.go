@@ -68,3 +68,46 @@ func TestLossyBasedLiteralDoubleSign(t *testing.T) {
 		}
 	}
 }
+
+// TestFuncNoArgGuardsViaAPI reaches every built-in's missing-argument
+// guard the only way that is left: through the programmatic API
+// (issue #51). The twin is func-no-arg-guards-via-api in
+// ts/test/coverage3.test.ts.
+//
+// A wrong argument count is refused at PARSE now, so no source can reach
+// these guards -- but a caller building a FuncVal by hand still can, and
+// they are what keeps that a clean nil rather than an index panic. The
+// value of the test is that surface, not the counter: deleting the
+// guards would have moved the failure from a refusal to a crash for
+// anyone constructing Vals.
+func TestFuncNoArgGuardsViaAPI(t *testing.T) {
+	ctx := &Ctx{root: newMap()}
+	for _, tc := range []struct{ name, why string }{
+		{"copy", "invalid-arg"},
+		{"pref", "arg"},
+		{"type", "arg"},
+		{"hide", "arg"},
+		{"path", "arg"},
+		{"move", "arg"},
+		{"upper", "arg"},
+		{"lower", "arg"},
+		{"close", "no_first_arg"},
+		{"open", "no_first_arg"},
+	} {
+		f := newFunc(tc.name, nil)
+		out := f.resolve(ctx, nil, nil)
+		n, ok := out.(*NilVal)
+		if !ok {
+			t.Fatalf("%s: want nil, got %T", tc.name, out)
+		}
+		if n.why != tc.why {
+			t.Fatalf("%s: why = %q, want %q", tc.name, n.why, tc.why)
+		}
+	}
+
+	// The constraint atoms carry their complaint on the residual rather
+	// than returning a nil, and report it when the residual is met.
+	if c := newConstraint("min", nil, -1); c.invalid != "arg" {
+		t.Fatalf("min(): invalid = %q, want %q", c.invalid, "arg")
+	}
+}

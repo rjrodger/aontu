@@ -50,6 +50,12 @@ const spreadKey = reservedKeyPrefix + "spread"
 const optionalKey = reservedKeyPrefix + "optional"
 const posKey = reservedKeyPrefix + "pos"
 
+// elidedSpreadKey marks a map whose `&:` spread was written with no
+// value (issue #48). A bool rather than a Val: nothing can be stored
+// under spreadKey to carry it, since a spread with no value is exactly
+// what is missing.
+const elidedSpreadKey = reservedKeyPrefix + "elidedspread"
+
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
 var theLang = mustMakeLang("")
@@ -129,6 +135,36 @@ func inElem(r *jsonic.Rule) bool {
 
 func makeLang(base string) (*jsonic.Jsonic, error) {
 	j := jsonic.Make(jsonic.Options{
+		// Brand parse errors as aontu's, exactly as ts/src/lang.ts does
+		// with `errmsg: { name: 'aontu', suffix: false }`. Without it a
+		// syntax error reached the user marked `[jsonic/unexpected]`,
+		// naming a dependency the reader never chose, where the canonical
+		// engine says `[aontu/unexpected]` (issue #32, family 1).
+		ErrMsg: &jsonic.ErrMsgOptions{
+			Name:   "aontu",
+			Suffix: false,
+		},
+		// Aontu's own text for the two parse hints, replacing the
+		// parser's defaults — the same two, with the same wording, that
+		// ts/src/lang.ts sets through `jsonic.options({hint:{...}})`.
+		// Without them a Go syntax error explained itself in the
+		// parser's terms ("do not match any rule alternative active at
+		// this position") where the canonical engine explains itself in
+		// the user's, and points at the `#` comment character as the way
+		// to bisect the problem (issue #50).
+		Hint: map[string]string{
+			"unknown": `
+Since the error is unknown, this is probably a bug. Please consider
+posting a github issue - thanks!
+
+Code: {code}, Details:
+{details}`,
+
+			"unexpected": `
+The character(s) {src} were not expected at this point as they do not
+match the expected syntax. Use the # character to comment out lines to
+help isolate the syntax error.`,
+		},
 		// Only # line comments are valid Aontu syntax (see
 		// docs/reference-language.md; ts/src/lang.ts sets the same).
 		// Def MERGES with the parser's defaults (#, //, /* */) rather
@@ -198,7 +234,7 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 						})
 					},
 				},
-				"top":   valDef(func(int) Val { return top() }),
+				"top":   valDef(func(sp int) Val { t := top(); t.sp = sp; return t }),
 				"nil":   valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
 				"true":  valDef(func(sp int) Val { v := newBoolean(true); v.sp = sp; return v }),
 				"false": valDef(func(sp int) Val { v := newBoolean(false); v.sp = sp; return v }),
@@ -220,6 +256,41 @@ func makeLang(base string) (*jsonic.Jsonic, error) {
 				// new ones, so this guard is required for source loading.
 				if prev == nil {
 					return val
+				}
+				// A BOOKKEEPING ENTRY, not a source value: combine it
+				// structurally rather than unifying it as a Val (issue #3).
+				//
+				// multisource's mergeIntoParent copies the loaded file's map
+				// node into the host node ONE KEY AT A TIME through this
+				// function, and the loaded node carries the same reserved
+				// sentinel entries every aontu map node carries. Unifying
+				// those turned the host's `[]string` order list into a
+				// ConjunctVal, so asValDepth's `n[orderKey].([]string)`
+				// assertion failed, the order list read back empty, and
+				// EVERY key of the host map vanished -- `a:1 @"f" c:3`
+				// generated `{"c":3}` (only the pairs after the include, which
+				// re-seeded a fresh list) where TypeScript generates all three.
+				//
+				// Dispatch is by TYPE because jsonic's merge hook is not given
+				// the key. It is unambiguous: a parsed source value is never a
+				// `[]string` (jsonic list nodes are `[]any`), so this arm is
+				// reachable only from orderKey and optionalKey, the two
+				// sentinels that hold one.
+				//
+				// The other two sentinels need no arm. spreadKey holds a Val
+				// and wants exactly the ordinary conjunct merge below, which is
+				// what it gets. posKey never REACHES this hook with a prev to
+				// merge against: recordMapPos is an after-close action, so the
+				// host map is stamped only once its own rule closes, which is
+				// always after an include nested in it has merged -- prev is
+				// nil there and the guard above returns the loaded value, which
+				// recordMapPos then overwrites unconditionally. (Confirmed by
+				// panicking in an arm for it: no include shape reaches it.)
+				if pl, ok := prev.([]string); ok {
+					if vl, ok := val.([]string); ok {
+						return appendNew(pl, vl...)
+					}
+					return prev
 				}
 				return mergeVals(asVal(prev), asVal(val))
 			},
@@ -532,10 +603,16 @@ func wrapList(r *jsonic.Rule, _ *jsonic.Context) {
 	if !ok {
 		return
 	}
-	lv := listOfRaw(n, 0)
+	// The list's own position is worked out FIRST and handed down: an
+	// elided element has no token of its own, so its error is located at
+	// the list's `[`, and listOfRaw would otherwise read lv.sp before it
+	// was assigned.
+	sp := -1
 	if 0 < r.ON {
-		lv.sp = r.O0.SI
+		sp = r.O0.SI
 	}
+	lv := listOfRawAt(n, 0, sp)
+	lv.sp = sp
 	r.Node = lv
 }
 
@@ -1043,10 +1120,15 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	// into a conjunct) rather than recording it as a key.
 	if r.U["spread"] == true {
 		cn := r.Child.Node
-		// An elided spread value (`x:$obj&:` at end of input) never
-		// became a node — TS's MapVal constructor drops the falsy
-		// spread entirely, so store nothing.
-		if cn == nil || jsonic.IsUndefined(cn) {
+		// An elided SPREAD value (`x:$obj&:` with nothing after the
+		// colon) refuses the whole map, not a key (issue #48). A spread
+		// is not a child, so a refusal stored in its place has nothing
+		// to attach to: `x:&:` has no children for the spread to apply
+		// to, and the map would generate as `{}` with the mistake
+		// silently gone. The marker is read where the map is converted,
+		// which turns the container itself into the refusal.
+		if isElidedNode(cn) {
+			m[elidedSpreadKey] = true
 			return
 		}
 		sv := asVal(cn)
@@ -1097,12 +1179,31 @@ func trackOrder(r *jsonic.Rule, _ *jsonic.Context) {
 	}
 
 	ord, _ := m[orderKey].([]string)
-	for _, k := range ord {
-		if k == key {
-			return
+	m[orderKey] = appendNew(ord, key)
+}
+
+// appendNew appends each of add to base, skipping any entry base already
+// holds — the "first occurrence wins" rule that governs both reserved
+// `[]string` bookkeeping entries. Key order records where a key was FIRST
+// seen (a duplicate merges into the existing entry's value rather than
+// moving it), and the optional-key list is a set.
+//
+// Used by trackOrder for one key at a time and by the map merge hook to
+// fold a loaded file's whole list into the host's (issue #3).
+func appendNew(base []string, add ...string) []string {
+	for _, k := range add {
+		seen := false
+		for _, b := range base {
+			if b == k {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			base = append(base, k)
 		}
 	}
-	m[orderKey] = append(ord, key)
+	return base
 }
 
 func keyOf(t *jsonic.Token) string {
@@ -1520,7 +1621,16 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		if len(terms) < 1 {
 			return incompleteNil(r)
 		}
-		return negate(terms[0])
+		nv := negate(terms[0])
+		// A refused negation is an error nil, and it must be LOCATED:
+		// TS builds its own through addsite (ts/src/lang.ts), so its
+		// frame points at the `-`. Go's was positionless, which left the
+		// nil with neither a site nor -- once setPaths runs over it -- a
+		// way to be told apart from the root (issue #39).
+		if nl, ok := nv.(*NilVal); ok && r.ON > 0 {
+			nl.sp = r.O0.SI
+		}
+		return nv
 	case "positive-prefix":
 		if len(terms) < 1 {
 			return incompleteNil(r)
@@ -1557,7 +1667,16 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			}
 			return r0
 		}
-		return newVar(asVal(terms[0]))
+		vv := newVar(asVal(terms[0]))
+		// Locate the variable at its `$`, exactly as the absolute-ref
+		// branch above does. Without this a `$name` had no site at all,
+		// so an error about one (`a:$x` with no such variable) drew its
+		// frame at the start of the line -- the enclosing pair -- rather
+		// than at the reference TS points to.
+		if r.ON > 0 {
+			vv.sp = r.O0.SI
+		}
+		return vv
 	case "addition-infix":
 		if len(terms) < 2 {
 			return incompleteNil(r)
@@ -1581,6 +1700,29 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 					}
 					return n
 				}
+				// Arity is known for every built-in, so a surplus or
+				// missing argument is a mistake in the SOURCE, refused
+				// here where the author can see it (issue #51). It was
+				// previously left to each function to notice or not: the
+				// two ports disagreed on `upper()` and on `close()`, and
+				// `min(1,2)` noticed nothing at all -- it built a
+				// constraint that merely refused to generate later, with
+				// a message about the map rather than about the call.
+				if ar, known := funcArity[name]; known {
+					got := writtenArgCount(terms[1:])
+					if got < ar[0] || (-1 != ar[1] && got > ar[1]) {
+						n := newNil("func_arity")
+						n.details = map[string]string{
+							"func": name,
+							"want": arityText(ar[0], ar[1]),
+							"got":  itoa(got),
+						}
+						if r.ON > 0 {
+							n.sp = r.O0.SI
+						}
+						return n
+					}
+				}
 				args := make([]Val, 0, len(terms)-1)
 				for _, t := range terms[1:] {
 					args = append(args, asVal(t))
@@ -1592,7 +1734,18 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 					}
 					return newConstraint(name, args, sp)
 				}
-				return newFunc(name, args)
+				fv := newFunc(name, args)
+				// Locate the call, as the constraint-atom branch just
+				// above already does. A FuncVal left at the zero sp --
+				// which is a REAL position, the first byte of the source
+				// -- handed that position to any conjunct built over it
+				// (newConjunct takes its site from its first term), so
+				// `a:super(1)&integer` drew its frame at the key rather
+				// than at the value (issue #41).
+				if r.ON > 0 {
+					fv.sp = r.O0.SI
+				}
+				return fv
 			}
 			return asVal(terms[len(terms)-1])
 		}
@@ -1731,7 +1884,31 @@ func asVal(node any) Val { return asValDepth(node, 0) }
 // listOfRaw builds a ListVal from a raw element slice, extracting the
 // spread and optional markers the elem rule leaves behind. Shared by
 // wrapList (the list rule close) and the asValDepth fallback.
-func listOfRaw(n []any, depth int) *ListVal {
+// isElidedNode reports whether a raw pair value is an ELISION -- a key
+// written with nothing after its colon -- rather than a value.
+//
+// It has three spellings, because the parser represents "nothing" three
+// ways depending on which rule consumed the pair: a plain `a:` leaves a
+// nil, and the optional `a?:` leaves the Undefined sentinel. Both are the
+// same mistake (issue #48), and an explicit `a:null` is neither -- that
+// arrives as a real ScalarVal from the `null` value def.
+func isElidedNode(v any) bool {
+	if v == nil {
+		return true
+	}
+	if jsonic.IsUndefined(v) {
+		return true
+	}
+	return false
+}
+
+func listOfRaw(n []any, depth int) *ListVal { return listOfRawAt(n, depth, -1) }
+
+// listOfRawAt is listOfRaw with the enclosing list's source position,
+// used to locate an elided element (issue #48). A raw list that never
+// passed the list rule -- an implicit top-level one -- has none, as its
+// TS twin rawToVal has no site either.
+func listOfRawAt(n []any, depth int, sp int) *ListVal {
 	lv := &ListVal{}
 	for _, e := range n {
 		if _, ok := e.(*optionalElem); ok {
@@ -1743,6 +1920,15 @@ func listOfRaw(n []any, depth int) *ListVal {
 			} else {
 				lv.spread = mergeVals(lv.spread, ls.val)
 			}
+			continue
+		}
+		if e == nil {
+			// An elided ELEMENT (`[,]`, `[1,,2]`), refused for the same
+			// reason as an elided map value (issue #48). A trailing comma
+			// (`[1,]`) is not an elision and never reaches here.
+			en := newNil("elided_value")
+			en.sp = sp
+			lv.peg = append(lv.peg, en)
 			continue
 		}
 		lv.peg = append(lv.peg, asValDepth(e, depth+1))
@@ -1779,12 +1965,46 @@ func asValDepth(node any, depth int) Val {
 		if p, ok := n[posKey].(int); ok {
 			mv.sp = p
 		}
+		if n[elidedSpreadKey] == true {
+			en := newNil("elided_value")
+			en.sp = mv.sp
+			return en
+		}
 		ord, _ := n[orderKey].([]string)
 		for _, k := range ord {
 			// Skip an order entry with no value: the multisource mark "@"
 			// is recorded in order but injects its content under real keys.
 			v, ok := n[k]
 			if !ok {
+				continue
+			}
+			if isElidedNode(v) {
+				// An elided value (`a:`) is REFUSED, not made a null
+				// (issue #48): a key with nothing after the colon is a
+				// mistake in the source, and turning it into a value made
+				// that mistake indistinguishable from a deliberate
+				// `a:null`. Located at the enclosing map's own position,
+				// which is where TS's addsite puts it too -- the elided
+				// value has no token of its own to point at.
+				//
+				// A colon chain (`a: b:1`) is not an elision: its value is
+				// the nested pair, which does reach the node.
+				en := newNil("elided_value")
+				en.sp = mv.sp
+				mv.set(k, en)
+				// An elided value under an OPTIONAL key stops being
+				// optional. Optionality is about a value that may be
+				// absent at GENERATE; it does not excuse a source that
+				// stops after the colon. Left optional, the refusal is
+				// dropped with the key and `a?:` generates `{}` -- a
+				// silent nothing, worse than either the old null or the
+				// error.
+				for i, ok := range mv.optional {
+					if ok == k {
+						mv.optional = append(mv.optional[:i], mv.optional[i+1:]...)
+						break
+					}
+				}
 				continue
 			}
 			mv.set(k, asValDepth(v, depth+1))
@@ -1806,23 +2026,92 @@ func asValDepth(node any, depth int) Val {
 		return newString(n)
 	case bool:
 		return newBoolean(n)
-	case nil:
-		// An elided value or element (`a:`, `[,]`) is null in jsonic;
-		// mirror the TS NullVal conversion. (An empty *source* still
-		// yields {} — see the out == nil branch in parseBase.)
-		return newNull()
 	}
-	// The jsonic Undefined sentinel marks a missing value (`a?:` with
-	// nothing after the colon) — null, like an elided plain value.
-	if jsonic.IsUndefined(node) {
-		return newNull()
-	}
+	// No arm for a raw nil or the Undefined sentinel. Both used to become
+	// a NullVal here -- that was the elided value (`a:`, `[,]`, `a?:`)
+	// arriving -- and an elision is now refused where the container is
+	// converted, which knows the key or index and the position to report
+	// it at. Anything else reaching here with no value is genuinely
+	// unaccounted for, and says so.
 	return newNil("parse_unknown")
 }
 
 // parseBase is parse with an explicit base directory for resolving
 // relative @"file" loads.
-func parseBase(src, base string) (Val, error) {
+// findConflictMarker returns the byte offset of the first
+// version-control conflict marker line in src, or -1 when there is none.
+//
+// The shape is git's, and it is matched exactly: SEVEN of `<`, `=` or `>`
+// at the very start of a line, then either the end of that line or a
+// space before the branch label. Requiring the run length and the line
+// start is what keeps a document that legitimately writes `a:"<<<<<<<"`,
+// or a row of `=` inside a string, from being refused -- the marker is
+// recognised as the artifact it is, not as a suspicious character.
+//
+// Kept byte-identical to findConflictMarker in ts/src/aontu.ts.
+func findConflictMarker(src string) int {
+	offset := 0
+	for _, rawline := range strings.Split(src, "\n") {
+		// A CRLF source leaves the \r on the line; it is not part of the run.
+		line := strings.TrimSuffix(rawline, "\r")
+		if len(line) > 0 {
+			c := line[0]
+			if '<' == c || '=' == c || '>' == c {
+				run := 0
+				for run < len(line) && line[run] == c {
+					run++
+				}
+				if 7 == run && (7 == len(line) || ' ' == line[7]) {
+					return offset
+				}
+			}
+		}
+		offset += len(rawline) + 1
+	}
+	return -1
+}
+
+// toValidSource replaces invalid UTF-8 in a source with U+FFFD, ONE per
+// maximal invalid subpart, before anything reads it.
+//
+// This is where TypeScript's replacement happens too, though it never had
+// to be written: Node decodes the file to UTF-16 as it reads it, so the
+// engine only ever sees well-formed text. Go carried the raw bytes all
+// the way to the JSON encoder, which replaced them PER BYTE at the very
+// end -- so a truncated three-byte sequence (E2 82) inside a string
+// generated two replacement characters where TypeScript generated one,
+// and the encoder wrote them as `�` escapes where TypeScript wrote
+// the character itself (issue #32, family 2).
+//
+// strings.ToValidUTF8 collapses a run of invalid bytes into a single
+// replacement, which is the maximal-subpart rule Node's decoder follows.
+// Doing it at DECODE rather than at encode also means every stage in
+// between -- lexer, parser, canon, error frames -- sees the same text the
+// canonical engine sees, instead of only the final output agreeing.
+func toValidSource(src string) string {
+	if utf8.ValidString(src) {
+		return src
+	}
+	return strings.ToValidUTF8(src, "�")
+}
+
+func parseBase(src, base, file string) (Val, error) {
+	src = toValidSource(src)
+
+	// A version-control conflict marker is refused BEFORE the parse
+	// (issue #5). None of `<`, `=` or `>` is an aontu operator, so a
+	// marker line is ordinary text and `<<<<<<< HEAD` parsed happily into
+	// the two-string list ["<<<<<<<","HEAD"] -- an unresolved merge became
+	// a plausible document instead of an error.
+	if off := findConflictMarker(src); off >= 0 {
+		n := newNil("merge_conflict")
+		n.sp = off
+		return newMap(), &AontuError{
+			Msg:  n.FullMessage(src, file),
+			Code: "merge_conflict",
+		}
+	}
+
 	lang, err := langForBase(base)
 	if err != nil { //coverage:ignore langForBase cannot fail — see makeLang
 		return newMap(), &AontuError{Msg: err.Error(), Code: "parse"}
@@ -1839,6 +2128,14 @@ func parseBase(src, base string) (Val, error) {
 	// plain value. See notFoundSink.
 	sink := &notFoundSink{}
 	meta := map[string]any{notFoundMetaKey: sink}
+	// The parser names the source in its own error frames from
+	// meta["fileName"] (TS passes the same through popts.path), and
+	// defaults to "<no-file>" without it. parseBase had no filename to
+	// give until it was threaded in, so every Go syntax error pointed at
+	// `<no-file>` where the canonical engine named the file (issue #50).
+	if "" != file {
+		meta["fileName"] = file
+	}
 
 	out, err := lang.ParseMeta(src, meta)
 
@@ -1873,7 +2170,7 @@ func parseBase(src, base string) (Val, error) {
 	// overflows first, a documented gap).
 	if valTreeDepth(root) > maxNodeDepth {
 		n := newNil("max_depth")
-		return newMap(), &AontuError{Msg: n.FullMessage(src, ""), Code: "max_depth"}
+		return newMap(), &AontuError{Msg: n.FullMessage(src, file), Code: "max_depth"}
 	}
 	setPaths(root, []string{})
 	return root, nil

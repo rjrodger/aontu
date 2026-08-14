@@ -40,3 +40,12 @@ pref-family-gate-copy-string-err	err	x:*"a" y:copy($.x)&1	Cannot unify value
 pref-family-gate-disjunct-spread-err	err	a:{&:*1|number, b:{}}	Cannot unify value
 pref-override-within-family-gens	gens	a:{&:*1, b:2}	{"a":{"b":2}}
 pref-override-ref-clone-gens	gens	x:*1 y:$.x&2	{"x":1,"y":2}
+# A preference inside a COLON-CHAIN nested map (issue #1). The report was
+# that `bar: kind: *'led' | 'custom'` raised a model error naming both
+# alternatives; it resolves to the preferred one in both engines. The
+# canon row is the one that matters -- gen alone cannot see that the
+# alternatives are still there, unresolved, behind the preference.
+pref-disjunct-colon-chain	gen	foo: {\n  bar: kind: *'led' | 'custom'\n}	{"foo":{"bar":{"kind":"led"}}}
+pref-disjunct-colon-chain-canon	canon	foo: {\n  bar: kind: *'led' | 'custom'\n}	{"foo":{"bar":{"kind":*"led"|"custom"}}}
+# ... and the preference yields when the other alternative is required.
+pref-disjunct-colon-chain-override	gen	foo:{bar:kind:*'led'|'custom'} foo:{bar:kind:'custom'}	{"foo":{"bar":{"kind":"custom"}}}

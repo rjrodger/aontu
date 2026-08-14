@@ -263,10 +263,14 @@ class ListVal extends BagVal {
       '[' +
       (this.spread.cj ? '&:' + this.spread.cj.canon +
         (0 < keys.length ? ',' : '') : '') +
-      keys
-        .map(k => this.optionalKeys.includes(k) ?
-          k + '?:' + this.peg[k].canon :
-          this.peg[k].canon).join(',') +
+      // No optional-element rendering. A list HAS no optional elements to
+      // render: a key:value pair in list position contributes no element
+      // at all, in either spelling and whatever its key (issue #40), so
+      // nothing a source can write reaches this method with an optional
+      // key. The Go port's ListVal.Canon has no such arm either, and the
+      // two canons must agree -- a canon is round-trippable, and a marker
+      // on an element the grammar cannot produce would not reparse.
+      keys.map(k => this.peg[k].canon).join(',') +
       ']'
   }
 } /* node:coverage ignore next 8 */

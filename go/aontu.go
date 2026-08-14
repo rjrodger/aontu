@@ -47,7 +47,7 @@ func NewWithBase(base string) *Aontu { return &Aontu{base: base} }
 // Generate entry points re-parse per call, so this only matters if you
 // hold a Parse result yourself; call Parse again for a fresh tree.
 func (a *Aontu) Parse(src string) (Val, error) {
-	return parseBase(src, a.base)
+	return parseBase(src, a.base, a.File)
 }
 
 // Unify parses and fully unifies source, returning the unified Val.
@@ -59,7 +59,7 @@ func (a *Aontu) Unify(src string) (Val, error) {
 
 // UnifyVars is Unify with $name variables resolved from vars.
 func (a *Aontu) UnifyVars(src string, vars map[string]Val) (Val, error) {
-	v, err := parseBase(src, a.base)
+	v, err := parseBase(src, a.base, a.File)
 	if err != nil {
 		return v, err
 	}
@@ -111,7 +111,7 @@ func (a *Aontu) Generate(src string) (any, error) {
 
 // GenerateVars is Generate with $name variables resolved from vars.
 func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
-	v, perr := parseBase(src, a.base)
+	v, perr := parseBase(src, a.base, a.File)
 	if perr != nil {
 		return nil, perr
 	}

@@ -180,6 +180,15 @@ type TopVal struct{ base }
 func newTop() *TopVal {
 	t := &TopVal{}
 	t.dc = DONE
+	// UNLOCATED until something locates it. A TOP is nearly always
+	// synthesised -- the implicit peer every unify starts from -- and the
+	// zero value of sp is a real position (the first byte of the source),
+	// so leaving it there drew an error frame about an implicit TOP at
+	// 1:1 of the entry file. TS gives an unset site row/col -1 and an
+	// empty url, which its frames render as `<no-file>:-1:-1`; -1 is
+	// already this port's spelling of the same thing (see newNil). A
+	// `top` WRITTEN in source is located by its value def, as in TS.
+	t.sp = -1
 	return t
 }
 
@@ -285,12 +294,18 @@ func (n *NilVal) FullMessage(src, file string) string {
 		plural = "s"
 	}
 	// The path comes from the primary operand, as TS NilVal.make copies
-	// av.path onto the nil.
+	// av.path onto the nil. A nil with NO operands -- one raised about a
+	// construct rather than about a failed meet, such as the refused
+	// negation in `a:-0x_1` -- keeps the path setPaths gave it where it
+	// sits in the tree; reading only the (absent) primary reported every
+	// one of them at the root (issue #39).
 	path := "$"
-	if n.primary != nil {
-		if p := n.primary.vpath(); len(p) > 0 {
-			path = "$." + strings.Join(p, ".")
-		}
+	residue := n.primary
+	if residue == nil {
+		residue = n
+	}
+	if p := residue.vpath(); len(p) > 0 {
+		path = "$." + strings.Join(p, ".")
 	}
 	var b strings.Builder
 	b.WriteString("[aontu/")
@@ -301,18 +316,36 @@ func (n *NilVal) FullMessage(src, file string) string {
 	b.WriteString(plural)
 	b.WriteString(" at path ")
 	b.WriteString(path)
+	// Separator before the first frame: one blank line after a hint, TWO
+	// when the code has none. That asymmetry is TS's, and it comes out of
+	// descErr's fixed [headline+hint, '\n', frame].join('\n') followed by
+	// its `\n\n` -> `\n` pass -- with no hint there is simply less text
+	// for that pass to collapse. Reproduced here rather than derived,
+	// because the twin tests compare these messages byte for byte.
+	gap := "\n\n\n"
 	if hint := hints[n.why]; hint != "" {
+		gap = "\n\n"
 		b.WriteString("\n\n")
-		b.WriteString(strinject(hint, n.details))
+		// Trailing newlines are NOT part of the hint's spacing: TS ends
+		// descErr with a `.replace(/\n\n/g, '\n')` pass, which absorbs a
+		// hint's own trailing newline into the single blank line that
+		// separates it from the first frame. (Its deliberate blank lines
+		// survive that pass because they are "\n \n" -- newline, SPACE,
+		// newline -- not "\n\n".) Without the trim, the one hint that
+		// ends in a newline, `no_path`, gained a second blank line here
+		// and Go's message drifted a byte from TS's (issue #39).
+		b.WriteString(strinject(strings.TrimRight(hint, "\n"), n.details))
 	}
-	if n.primary != nil {
-		b.WriteString("\n\n")
-		b.WriteString(n.frame(src, file, attempt, n.primary, n.secondary))
-		if n.secondary != nil {
-			// The second frame swaps the operand order, as descErr does.
-			b.WriteString("\n")
-			b.WriteString(n.frame(src, file, attempt, n.secondary, n.primary))
-		}
+	// An operandless nil still gets ONE frame, rendered about itself: its
+	// canon is "nil" and its site is where the refused construct was
+	// written, which is exactly what TS shows for `a:-0x_1` (its nil is
+	// built through addsite, so it carries the `-`).
+	b.WriteString(gap)
+	b.WriteString(n.frame(src, file, attempt, residue, n.secondary))
+	if n.secondary != nil {
+		// The second frame swaps the operand order, as descErr does.
+		b.WriteString("\n")
+		b.WriteString(n.frame(src, file, attempt, n.secondary, residue))
 	}
 	n.fullmsg = b.String()
 	return n.fullmsg
@@ -350,10 +383,16 @@ func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
 	// default to row/col -1 and descErr does not clamp them there —
 	// while the excerpt and caret below use the clamped coordinates.
 	arrowRow, arrowCol := row, col
+	arrowFile := file
 	if v.pos() < 0 {
 		arrowRow, arrowCol = -1, -1
+		// ... and its FILE is unknown too. TS names each frame's file
+		// from that value's own site url, which an unlocated value leaves
+		// empty, so it prints `<no-file>` -- naming the entry source here
+		// pointed the reader at a file the value never came from.
+		arrowFile = "<no-file>"
 	}
-	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", file, arrowRow, arrowCol)
+	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", arrowFile, arrowRow, arrowCol)
 	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row, line(row))
 
 	keyPrefix := ""
@@ -433,6 +472,30 @@ func (n *NilVal) Message() string {
 	}
 	n.msg = b.String()
 	return n.msg
+}
+
+// residueErr reports a value that survived unification but cannot be
+// generated, as the FULL located message TS renders for it -- the
+// `[aontu/<code>]` marker, the headline naming the path, the hint, and a
+// frame pointing at the value.
+//
+// Only a ROOT-position residue reaches these Gen methods: inside a bag,
+// the bag notices the non-generable child first and reports it (both
+// ports already agreed there, which is why this stayed hidden). At the
+// root each port was on its own, and this one answered with a bare
+// "Cannot generate value: <canon>" carrying no code marker, no path and
+// no frame -- so the one document shaped entirely like the mistake got
+// the least helpful message (issue #38).
+func residueErr(ctx *Ctx, v Val, code string) error {
+	src, file := "", ""
+	if ctx != nil {
+		src, file = ctx.src, ctx.file
+	}
+	n := newNil(code)
+	n.primary = v
+	n.sp = v.pos()
+	n.path = cp(v.vpath())
+	return &AontuError{Msg: n.FullMessage(src, file), Code: code}
 }
 
 // makeNilErrFull is makeNilErr with the attempt name and hint details

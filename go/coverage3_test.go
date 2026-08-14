@@ -659,12 +659,18 @@ func TestGrammarActionsDirect(t *testing.T) {
 
 	// trackOrder: the own-node map fallback, the elided spread value,
 	// and the no-map bail.
+	//
+	// An elided spread MARKS the map rather than storing nothing (issue
+	// #48): a spread is not a child, so there is no slot a refusal could
+	// occupy, and the map itself becomes the refusal when it is
+	// converted. Storing nothing is what used to let `x:&:` generate as
+	// `{}` with the mistake gone.
 	m2 := map[string]any{}
 	r6 := &jsonic.Rule{Node: m2, Child: &jsonic.Rule{}}
 	r6.EnsureU()["spread"] = true
 	trackOrder(r6, nil)
-	if len(m2) != 0 {
-		t.Fatalf("elided spread must store nothing")
+	if m2[elidedSpreadKey] != true || len(m2) != 1 {
+		t.Fatalf("elided spread must mark the map: %v", m2)
 	}
 	trackOrder(&jsonic.Rule{Node: "x"}, nil)
 }

@@ -44,7 +44,12 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 		if data, err := os.ReadFile(p); err == nil {
 			res.Full = p
 			res.Kind = strings.TrimPrefix(filepath.Ext(p), ".")
-			res.Src = string(data)
+			// Replace invalid UTF-8 as it is READ, exactly as parseBase
+			// does for the entry source -- a loaded file reaches the parser
+			// through the plugin, not through parseBase, so it needs its
+			// own call or an include stays on the old per-byte behaviour
+			// while the entry source no longer does (issue #32).
+			res.Src = toValidSource(string(data))
 			res.Found = true
 			return res
 		}

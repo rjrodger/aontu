@@ -5,6 +5,25 @@ load-nested	gen	a:@"__FIXTURES__/foo.aon"	{"a":{"f":11}}
 # Colon-chain (nested-path) key whose value is a bare @"file" import.
 load-colon-chain	gen	a:b:@"__FIXTURES__/foo.aon"	{"a":{"b":{"f":11}}}
 load-merge	gen	b:1 a:@"__FIXTURES__/foo.aon"	{"b":1,"a":{"f":11}}
+# A BARE MEMBER include with pairs around it (issue #3). load-merge above
+# puts the include in a VALUE position, where it becomes one key's value and
+# cannot disturb its siblings; a bare member merges INTO the enclosing map,
+# and that is the shape that was broken. Go generated `{"c":3}` for
+# load-member-between -- every pair at or before the include was lost --
+# because multisource copies the loaded node into the host node one key at a
+# time through the grammar's map-merge hook, which unified the host's
+# reserved order-list entry with the loaded file's instead of combining them,
+# leaving an entry asValDepth could no longer read. Three positions, because
+# the include being FIRST is the one case that worked (nothing to lose yet).
+load-member-after	gen	a:1 @"__FIXTURES__/foo.aon"	{"a":1,"f":11}
+load-member-between	gen	a:1 @"__FIXTURES__/foo.aon" c:3	{"a":1,"c":3,"f":11}
+load-member-before	gen	@"__FIXTURES__/foo.aon" c:3	{"c":3,"f":11}
+# The same merge inside a braced map, and with the two other reserved
+# bookkeeping entries live: a duplicate key (which must still fold to a
+# conjunct) and an optional key (whose marker must survive into canon).
+load-member-nested	gen	a:{ x:1 @"__FIXTURES__/foo.aon" y:2 }	{"a":{"f":11,"x":1,"y":2}}
+load-member-dup-key	gen	f:number a:1 @"__FIXTURES__/foo.aon"	{"a":1,"f":11}
+load-member-optional-canon	canon	a?:1 @"__FIXTURES__/foo.aon"	{"a"?:1,"f":11}
 load-car	gen	car:@"__FIXTURES__/car.aon"	{"car":{"color":"silver","doors":4}}
 load-unify	gen	car:@"__FIXTURES__/car.aon" car:{doors:number,wheels:4}	{"car":{"color":"silver","doors":4,"wheels":4}}
 load-refs	gen	@"__FIXTURES__/refs.aon"	{"a":{"x":1},"b":1}

@@ -66,6 +66,22 @@ class Aontu {
       out = makeNilErr(ac, 'parse_bad_src')
       errs.push(out)
     }
+    else {
+      // A version-control conflict marker is refused BEFORE the parse
+      // (issue #5). None of `<`, `=` or `>` is an aontu operator, so a
+      // marker line is ordinary text and `<<<<<<< HEAD` parsed happily
+      // into the two-string list ["<<<<<<<","HEAD"] -- an unresolved
+      // merge became a plausible document instead of an error, and the
+      // report of it read as a failed `<` operation.
+      const marker = findConflictMarker(src)
+      if (-1 !== marker.offset) {
+        const nil: any = makeNilErr(ac, 'merge_conflict')
+        nil.site.row = marker.row
+        nil.site.col = marker.col
+        out = nil
+        errs.push(nil)
+      }
+    }
 
     if (0 === errs.length) {
       out = runparse(src, this.lang, ac)
@@ -206,6 +222,47 @@ function handleErrors(errs: any[], out: Val | undefined, ac: AontuContext) {
       throw new AontuError(ac.errmsg(), ac.err)
     }
   }
+}
+
+
+// Locate the first version-control conflict marker in a source, as a
+// 1-based row and column (offset -1 when there is none).
+//
+// The shape is git's, and it is matched exactly: SEVEN of `<`, `=` or `>`
+// at the very start of a line, then either the end of that line or a
+// space before the branch label. Requiring the run length and the line
+// start is what keeps a document that legitimately writes `a:"<<<<<<<"`,
+// or a row of `=` inside a string, from being refused -- the marker is
+// recognised as the artifact it is, not as a suspicious character.
+//
+// Kept byte-identical to findConflictMarker in go/lang.go.
+function findConflictMarker(src: string): {
+  offset: number, row: number, col: number
+} {
+  const miss = { offset: -1, row: -1, col: -1 }
+  let offset = 0
+  let row = 1
+
+  for (const rawline of src.split('\n')) {
+    // A CRLF source leaves the \r on the line; it is not part of the run.
+    const line = rawline.endsWith('\r') ? rawline.slice(0, -1) : rawline
+    const c = line[0]
+
+    if ('<' === c || '=' === c || '>' === c) {
+      let run = 0
+      while (run < line.length && line[run] === c) {
+        run++
+      }
+      if (7 === run && (7 === line.length || ' ' === line[7])) {
+        return { offset, row, col: 1 }
+      }
+    }
+
+    offset += rawline.length + 1
+    row++
+  }
+
+  return miss
 }
 
 

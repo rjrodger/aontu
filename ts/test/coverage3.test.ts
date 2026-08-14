@@ -21,6 +21,12 @@ import { AontuContext } from '../dist/ctx'
 import { AontuError, makeNilErr, descErr } from '../dist/err'
 import { Lang, Site as LangSite } from '../dist/lang'
 import { Site } from '../dist/site'
+import { CloseFuncVal } from '../dist/val/CloseFuncVal'
+import { CopyFuncVal } from '../dist/val/CopyFuncVal'
+import { HideFuncVal } from '../dist/val/HideFuncVal'
+import { MoveFuncVal } from '../dist/val/MoveFuncVal'
+import { PrefFuncVal } from '../dist/val/PrefFuncVal'
+import { TypeFuncVal } from '../dist/val/TypeFuncVal'
 import { Unify } from '../dist/unify'
 import { main as cliMain, evalSource } from '../dist/cli'
 import { main as lspMain } from '../dist/lsp-server'
@@ -262,12 +268,48 @@ describe('coverage3-bags', () => {
   })
 
   test('optional-list-element-canon', () => {
-    // TS-only: the Go port drops an optional list element from canon
-    // rather than rendering it, so this cannot be a shared row yet
-    // (divergence filed).
+    // A list canon carries no optional markers, even when the value is
+    // built by hand with one recorded (issue #40): a key:value pair is
+    // not a list element, so there is no optional element for a marker to
+    // describe, and the Go port's ListVal.Canon has no arm for one.
     const lv: any = new ListVal({ peg: [new IntegerVal({ peg: 1 })] }, CTX())
     lv.optionalKeys.push('0')
-    Assert.equal(lv.canon, '[0?:1]')
+    Assert.equal(lv.canon, '[1]')
+  })
+
+
+  test('func-no-arg-guards-via-api', () => {
+    // Every built-in's missing-argument guard, reached the only way that
+    // is left: through the programmatic API (issue #51).
+    //
+    // A wrong argument count is refused at PARSE now, so no source can
+    // reach these guards -- but a caller constructing a func Val by hand
+    // still can, and they are what keeps that a clean nil rather than a
+    // TypeError on `undefined`. The value of the test is that surface,
+    // not the counter: the guards became unreachable from source the
+    // moment arity was checked, and deleting them would have moved the
+    // failure from a refusal to a crash for anyone building Vals.
+    const ctx = CTX()
+    const cases: [string, any, string][] = [
+      ['close', new CloseFuncVal({ peg: [] }), 'no_first_arg'],
+      ['copy', new CopyFuncVal({ peg: [] }), 'invalid-arg'],
+      ['hide', new HideFuncVal({ peg: [] }), 'arg'],
+      ['move', new MoveFuncVal({ peg: [] }), 'arg'],
+      ['pref', new PrefFuncVal({ peg: [] }), 'arg'],
+      ['type', new TypeFuncVal({ peg: [] }), 'arg'],
+    ]
+    for (const [name, fv, why] of cases) {
+      const out: any = fv.resolve(ctx, [])
+      Assert.equal(out.isNil, true, name + ': expected a nil')
+      Assert.equal(out.why, why, name + ': why')
+    }
+
+    // path() refuses its missing argument in prepare rather than
+    // resolve, since it rewrites the argument before it is driven.
+    const pf: any = new PathFuncVal({ peg: [] })
+    const prepared: any = pf.prepare(ctx, [])
+    Assert.equal(prepared[0].isNil, true)
+    Assert.equal(prepared[0].why, 'invalid-arg')
   })
 
   test('map-inspection-spread', () => {
@@ -545,6 +587,14 @@ describe('coverage3-explain-close', () => {
     Assert.ok(t.some((e: any) =>
       'string' === typeof e && /^-> \d+=2$/.test(e)))
 
+    // An outcome that is NOT yet done is marked `!`, which is the whole
+    // point of the slot when reading an explain trace: it distinguishes a
+    // frame that settled from one still deferring. A scalar is always
+    // done, so only an unresolved value reaches this arm.
+    explainClose(t, new RefVal({ peg: ['zz'], absolute: true }))
+    Assert.ok(t.some((e: any) =>
+      'string' === typeof e && /^-> \d+!=/.test(e)))
+
     // A missing frame is a no-op (explain disabled).
     explainClose(null)
   })
@@ -601,8 +651,9 @@ describe('coverage3-lang', () => {
     const raw = fixture('raw.json')
     const rawfn = fixture('raw-fn.js')
 
-    // An elided element in an implicit top-level list is null.
-    Assert.equal(lang.parse('1,,2').canon, '[1,null,2]')
+    // An elided element is REFUSED, in an implicit top-level list as
+    // anywhere else (issue #48). It canons as the nil it now is.
+    Assert.equal(lang.parse('1,,2').canon, '[1,nil,2]')
 
     // A JSON include arrives as raw JS and is converted kind by kind.
     Assert.equal(lang.parse('1, @"' + raw + '"').canon,

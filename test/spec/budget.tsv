@@ -12,15 +12,32 @@
 # self/ancestor reference (peg is a prefix of the node's own path), or
 # the resolution chain of plain references revisiting a node (mutual
 # and longer chains -- detectRefCycle in ts/src/val/RefVal.ts and
-# go/ref.go). A chain that passes through a variable segment, a
-# conjunct, a function, or any non-ref value yields NO proof and defers
-# as before.
+# go/ref.go), THROUGH function arguments as well as plain refs. A chain
+# that passes through a variable segment, a conjunct, or any other
+# non-ref value yields NO proof and defers as before.
 path-cycle-self	errc	a:$.a	path_cycle
 path-cycle-ancestor	errc	a:b:$.a	path_cycle
 path-cycle-mutual	errc	a:$.b b:$.a	path_cycle
 path-cycle-chain	errc	a:$.b b:$.c c:$.a	path_cycle
 path-cycle-nested-mutual	errc	a:{x:$.b.y} b:{y:$.a.x}	path_cycle
 path-cycle-msg	err	a:$.b b:$.a	Path cycle detected
+# A cycle wearing a function call is the same cycle (issue #35). A
+# function resolves only once every argument does, so a chain leaving
+# through an argument has proved what a bare ref proves. TS used to
+# exhaust its depth budget here and answer `unify_cycle` -- class budget,
+# which tells an agent "retry with more may help" about a model that can
+# never resolve. Both ports report the same path, because both now prove
+# it at the same point: Go had reached the same verdict one step later,
+# through the prefix test, after clonePath re-pathed the resolved clone.
+path-cycle-func-routed	errc	a:$.b b:upper($.a)	path_cycle
+path-cycle-func-routed-msg	err	a:$.b b:upper($.a)	at path $.a
+path-cycle-func-chain	errc	a:$.b b:upper($.c) c:$.a	path_cycle
+# ... and the guard against proving too much: a function argument that
+# does NOT close a loop still resolves, and two keys reading one third
+# key revisit that key without any cycle. The chase carries the ancestors
+# of the branch it is walking, not everything it has ever seen.
+path-cycle-func-no-cycle	gens	a:$.b b:upper($.c) c:1	{"a":1,"b":1,"c":1}
+path-cycle-shared-ref-no-cycle	gens	a:$.c b:$.c c:1	{"a":1,"b":1,"c":1}
 #
 # Mere incompleteness stays no_path: the model is wrong about a name,
 # not cyclic and not out of budget.

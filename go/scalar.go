@@ -334,7 +334,7 @@ func (k *ScalarKindVal) Gen(ctx *Ctx) (any, error) {
 	// Code mirrors the TS FeatureVal.gen choice for residual
 	// non-literal values (a bare `number` generates a no_gen error in
 	// both ports; pinned by error.tsv errc-no-gen-root).
-	return nil, &AontuError{Msg: "Cannot generate value: " + k.kind.String(), Code: "no_gen"}
+	return nil, residueErr(ctx, k, "no_gen")
 }
 
 func (k *ScalarKindVal) Unify(peer Val, ctx *Ctx) Val {

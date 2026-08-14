@@ -399,7 +399,44 @@ help isolate the syntax error.`,
             const fname = terms[0];
             if ('' !== fname) {
                 const funcval = funcMap[fname];
-                const args = terms.slice(1);
+                // Arity is known for every built-in, so a surplus or missing
+                // argument is a mistake in the SOURCE, refused here where the
+                // author can see it (issue #51). It was previously left to each
+                // function to notice or not: the two ports disagreed on `upper()`
+                // and on `close()`, and `min(1,2)` noticed nothing at all -- it
+                // built a constraint that merely refused to generate later, with
+                // a message about the map rather than about the call.
+                //
+                // Counted BEFORE the rawToVal pass below, which is what makes the
+                // count possible: a comma group arrives as a RAW array and a
+                // written list literal as a ListVal, and rawToVal turns the first
+                // into the second.
+                const arity = funcArity[fname];
+                if (null != arity) {
+                    const got = writtenArgCount(terms.slice(1));
+                    if (got < arity[0] || (-1 !== arity[1] && got > arity[1])) {
+                        // details is assigned AFTER construction: the NilVal
+                        // constructor does not read it from its spec (only
+                        // NilVal.make does), so passing it in the spec left the
+                        // hint's {func}/{want}/{got} placeholders un-injected and
+                        // printed literally.
+                        const nil = new NilVal_1.NilVal({ why: 'func_arity' });
+                        nil.details = {
+                            func: fname,
+                            want: arityText(arity[0], arity[1]),
+                            got: '' + got,
+                        };
+                        return addsite(nil, r, ctx);
+                    }
+                }
+                // rawToVal EVERY argument. A degenerate expression can hand this
+                // handler raw parse values rather than Vals -- `pref(1-3)` arrives
+                // as the plain numbers 1 and -3 -- and a func's peg is unified
+                // element by element, so a raw one reached `arg.unify(...)` and
+                // threw. The unifier's catch-all turned that into an `internal`
+                // verdict: a crash reported as a unification result (issue #49).
+                // The Go port has always converted here (asVal in evaluate).
+                const args = terms.slice(1).map(rawToVal);
                 val = null == funcval ?
                     new NilVal_1.NilVal({ why: 'unknown_function' }) :
                     new funcval({
@@ -409,7 +446,11 @@ help isolate the syntax error.`,
             // `a:()` — grouping parens with nothing inside.
             if (null == val)
                 return incompleteNil(r, ctx);
-            const out = addsite(val, r, ctx);
+            // ... and the same for a GROUPING paren, whose value is passed
+            // straight through: `(([]%))` yielded a raw array, and addsite went
+            // on to write a site onto it, throwing a TypeError that escaped the
+            // unifier entirely ("Cannot set properties of undefined").
+            const out = addsite(rawToVal(val), r, ctx);
             return out;
         },
     };
@@ -621,11 +662,55 @@ help isolate the syntax error.`,
             const optionalKeys = r.u.aontu_optional_keys ?? [];
             let mo = r.node;
             // An elided value (`a:`) leaves a raw null/undefined that never
-            // passed through the val rule; make it an explicit NullVal.
+            // passed through the val rule. It is REFUSED rather than made a
+            // null (issue #48): a key with nothing after the colon is a
+            // mistake in the source, and turning it into a value made that
+            // mistake indistinguishable from a deliberate `a:null`.
+            //
+            // A colon chain (`a: b:1`) is not an elision -- the value is the
+            // nested pair, which the val rule does produce -- and neither is
+            // a trailing comma.
             for (const k in mo) {
                 if (null == mo[k] && '___merge' !== k) {
-                    mo[k] = addsite(new NullVal_1.NullVal({ peg: null }), r, ctx);
+                    // Pathed at the KEY, not at the enclosing map. addsite takes
+                    // the rule's path, which here is the map's, so the error
+                    // would otherwise name the container and leave the reader to
+                    // work out which key was elided.
+                    const en = addsite(new NilVal_1.NilVal({ why: 'elided_value' }), r, ctx);
+                    en.path = [...(r.k?.path ?? []), k];
+                    mo[k] = en;
+                    // An elided value under an OPTIONAL key stops being optional.
+                    // Optionality is about a value that may be absent at
+                    // GENERATE; it does not excuse a source that stops after the
+                    // colon. Left optional, the refusal was dropped with the key
+                    // and `a?:` generated `{}` -- a silent nothing, which is
+                    // worse than either the old null or the error.
+                    const oi = optionalKeys.indexOf(k);
+                    if (-1 !== oi) {
+                        optionalKeys.splice(oi, 1);
+                    }
                 }
+            }
+            // ... and the OPTIONAL spelling, `a?:`, which does not leave a
+            // null behind to be found: its value never reaches the node at
+            // all, so the key is simply absent and the map generated without
+            // it. A key recorded as optional but missing from the node was
+            // written with nothing after its colon.
+            for (const k of optionalKeys) {
+                if (!(k in mo)) {
+                    mo[k] = addsite(new NilVal_1.NilVal({ why: 'elided_value' }), r, ctx);
+                }
+            }
+            // An elided SPREAD (`x:$obj&:` with nothing after the colon)
+            // refuses the whole map, not a key (issue #48). A spread is not a
+            // child, so a refusal stored in its place has nothing to attach
+            // to: `x:&:` has no children for the spread to apply to, and the
+            // map would generate as `{}` with the mistake silently gone.
+            // Refusing the container is what makes it visible at all.
+            const sp = mo[type_1.SPREAD];
+            if (sp && sp.v.some((sv) => null == sv)) {
+                r.node = addsite(new NilVal_1.NilVal({ why: 'elided_value' }), r, ctx);
+                return undefined;
             }
             //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`
             if (mo.___merge) {
@@ -652,11 +737,15 @@ help isolate the syntax error.`,
             .bc((r, ctx) => {
             const optionalKeys = r.u.aontu_optional_keys ?? [];
             let ao = r.node;
-            // An elided element (`[,]`) is a raw null that never passed
-            // through the val rule; make it an explicit NullVal.
+            // An elided ELEMENT (`[,]`, `[1,,2]`) is refused for the same
+            // reason as an elided map value (issue #48). A trailing comma
+            // (`[1,]`) is not an elision and never reaches here.
             for (let i = 0; i < ao.length; i++) {
                 if (null == ao[i]) {
-                    ao[i] = addsite(new NullVal_1.NullVal({ peg: null }), r, ctx);
+                    // Pathed at the INDEX, for the same reason as the map case.
+                    const en = addsite(new NilVal_1.NilVal({ why: 'elided_value' }), r, ctx);
+                    en.path = [...(r.k?.path ?? []), '' + i];
+                    ao[i] = en;
                 }
             }
             // No ___merge arm here: the deferred map.merge that writes it
@@ -680,6 +769,47 @@ help isolate the syntax error.`,
             ? key_token.val // Was text
             : key_token.src; // Was number, use original text
         r.u.key = key;
+    };
+    // A pair in LIST position writes its value at `node[key]` like any
+    // other pair, and the enclosing list's node is an ARRAY -- so a numeric
+    // key lands on an index and becomes an element, and may land on an
+    // index a real element already holds (`[5,0:1]`). Since the pair must
+    // contribute nothing (issue #40), the slot is photographed before the
+    // value is parsed and put back afterwards. Restoring beats deleting for
+    // exactly the overwrite case: deleting `[5,0:1]`'s index 0 would take
+    // the 5 with it, where restoring gives back the list the pair was
+    // never part of.
+    //
+    // `length` is saved too: writing past the end grows an array, and
+    // `[5,1?:9]` must be [5] again and not [5, <hole>].
+    // Typed as a string bag deliberately: the slot may be named by a
+    // non-numeric key (`[x:1]`), which the array type would refuse. Both
+    // helpers run only from the elem rule, whose node is the enclosing
+    // list, so neither guards against a non-array node — a guard there
+    // proved unreachable and dead code is worse than none.
+    const asSlots = (r) => r.node;
+    const snapshotPairSlot = (r, key) => {
+        const node = asSlots(r);
+        r.u.aontu_pair_slot = {
+            key,
+            had: Object.prototype.hasOwnProperty.call(node, key),
+            was: node[key],
+            len: node.length,
+        };
+    };
+    const restorePairSlot = (r) => {
+        const slot = r.u.aontu_pair_slot;
+        if (null == slot) {
+            return;
+        }
+        const node = asSlots(r);
+        if (slot.had) {
+            node[slot.key] = slot.was;
+        }
+        else {
+            delete node[slot.key];
+        }
+        node.length = slot.len;
     };
     jsonic.rule('pair', (rs) => {
         rs
@@ -756,10 +886,30 @@ help isolate the syntax error.`,
                 a: (r) => {
                     pairkey(r.prev);
                     r.u.key = r.prev.u.key;
-                    r.parent.u.aontu_optional_keys = (r.parent.u.aontu_optional_keys || []);
-                    r.parent.u.aontu_optional_keys.push('' + r.u.key);
+                    snapshotPairSlot(r, '' + r.u.key);
                 },
                 g: 'aontu-optional-elem'
+            },
+            // A PLAIN pair in list position, `[k:v]`. It contributes no
+            // element either -- a key:value pair is simply not a list element,
+            // which is the rule the optional form above already followed, and
+            // the two spellings must not disagree (issue #40).
+            //
+            // It needed an alt of its own because only a NON-NUMERIC key was
+            // already inert: jsonic writes the pair at `node[key]`, and the
+            // node is an array, so `[x:1]` set a property that never showed up
+            // (`length` stays 0) while `[0:1]` set an INDEX and became an
+            // element -- `[1:2]` even filling the gap with a null. That is the
+            // shape of a JavaScript array, not a decision about the language,
+            // and it made the two ports disagree on generate as well as canon.
+            {
+                s: [OPTKEY, CL], p: 'val',
+                u: { spread: true, done: true, list: true, pair: true },
+                a: (r) => {
+                    pairkey(r);
+                    snapshotPairSlot(r, '' + r.u.key);
+                },
+                g: 'aontu-plain-pair-elem'
             }
         ])
             .bc((rule) => {
@@ -769,6 +919,7 @@ help isolate the syntax error.`,
                     (rule.node[type_1.SPREAD] || { o: rule.o0.src, v: [] });
                 rule.node[type_1.SPREAD].v.push(rule.child.node);
             }
+            restorePairSlot(rule);
             return undefined;
         })
             .close([{ s: [CJ, CL], r: 'elem', b: 2, g: 'spread,json,more' }]);
@@ -826,6 +977,55 @@ function makeModelResolver(options) {
         res.search = search.concat(res.search);
         return res;
     };
+}
+// funcArity is the permitted WRITTEN argument count of each built-in, as
+// [min, max]; a max of -1 is unbounded. Every name in funcMap has an
+// entry, and the arity is a property of the language rather than of
+// either port -- go/func.go carries the same table.
+//
+// Nearly everything takes exactly one. The two exceptions earn their
+// place: key() names how many levels UP the path to read, defaulting to
+// the parent when omitted, and neq takes a whole set of exclusions.
+const funcArity = {
+    upper: [1, 1], lower: [1, 1], copy: [1, 1], pref: [1, 1],
+    super: [1, 1], type: [1, 1], hide: [1, 1], close: [1, 1],
+    open: [1, 1], move: [1, 1], path: [1, 1],
+    min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1],
+    key: [0, 1],
+    neq: [1, -1],
+};
+// writtenArgCount counts the arguments as the AUTHOR wrote them.
+//
+// It cannot simply be terms.length: a comma group reaches the func-paren
+// handler as ONE term holding a raw array, so `upper("a","b")` and
+// `upper(["a","b"])` both arrive as a single argument. They are still
+// distinguishable, and that is what makes an arity check possible at
+// all -- the comma group is a RAW array, while a written list literal
+// has already been built into a ListVal by the list rule.
+function writtenArgCount(terms) {
+    if (1 === terms.length) {
+        // `terms[0]` is re-read rather than reusing a narrowed local:
+        // Array.isArray narrows an `any` to `any[]`, which then has no
+        // `isVal` to test.
+        const t = terms[0];
+        if (Array.isArray(t) && true !== terms[0].isVal) {
+            return t.length;
+        }
+    }
+    return terms.length;
+}
+// arityText renders a built-in's permitted count for the error message.
+// The fixed-arity case says "one" outright rather than counting: every
+// fixed arity in the table IS one, and a phrasing for a count no entry
+// carries would be untested prose pretending to be tested.
+function arityText(lo, hi) {
+    if (-1 === hi) {
+        return 'one or more arguments';
+    }
+    if (lo !== hi) {
+        return 'no arguments or one';
+    }
+    return 'exactly one argument';
 }
 // rawToVal converts a raw parse node (or raw elements inside one) into
 // the matching Val. Used for implicit top-level lists, whose nodes skip

@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_fs_1 = __importDefault(require("node:fs"));
+const node_path_1 = __importDefault(require("node:path"));
 const node_test_1 = require("node:test");
 const expect_1 = require("./expect");
 const aontu_1 = require("../dist/aontu");
@@ -164,6 +165,152 @@ const err_1 = require("../dist/err");
             throw new Error('expected error');
         }
         (0, expect_1.expect)(err.message).equal("[aontu/scalar_kind]: Cannot unify values at path $.a\n\nLiteral scalar values of different kinds cannot unify.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: {\"b\":1} with value: 1\n  \u001b[34m--> <no-file>:1:7\n\u001b[34m  1 | \u001b[0ma:1 a:{b:1}\n            \u001b[34m^ value was: {\"b\":1}\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: {\"b\":1}\n  \u001b[34m--> <no-file>:1:3\n\u001b[34m  1 | \u001b[0ma:1 a:{b:1}\n        \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n");
+    });
+    // The func-residue-frame twin in go/hints_test.go.
+    // A function that resolves to a FRESH value (`super(1)` answers a new
+    // ScalarKindVal) must hand its own SITE to that value, or the residue --
+    // and any conjunct built over it, which takes its site from its first
+    // term -- has no position, and the frame points at the start of the
+    // source instead of at the call (issue #41).
+    (0, node_test_1.it)('func-residue-frame', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate("a:super(1)&integer");
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).equal("[aontu/mapval_no_gen]: Cannot resolve value at path $.a\n\nThis value was present after unification, and cannot be generated\nbecause it is not a literal value.\n\n Cannot resolve value: integer\n  \u001b[34m--> <no-file>:1:3\n\u001b[34m  1 | \u001b[0ma:super(1)&integer\n        \u001b[34m^ key a value was: integer\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n");
+    });
+    // The operandless-nil-frame twin in go/hints_test.go.
+    // A nil raised about a CONSTRUCT rather than a failed meet has no
+    // operands, and still gets a located frame rendered about ITSELF, plus
+    // the path where it sits. Reading both from the absent primary put every
+    // such error at `$` with no frame at all (issue #39). The two blank lines
+    // before the frame are TS's spacing for a code that carries no hint.
+    (0, node_test_1.it)('operandless-nil-frame', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate("a:-0x_1");
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).equal("[aontu/negative]: Cannot resolve value at path $.a\n\n\n Cannot resolve value: nil\n  \u001b[34m--> <no-file>:1:3\n\u001b[34m  1 | \u001b[0ma:-0x_1\n        \u001b[34m^ value was: nil\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n");
+    });
+    // The hint-trailing-newline-frame twin in go/hints_test.go.
+    // `no_path` is the one hint whose text ends in a newline. That newline is
+    // not extra spacing -- TS's closing `\n\n` -> `\n` pass absorbs it into
+    // the single blank line before the frame -- so Go must trim it or the
+    // message gains a blank line TS does not have (issue #39).
+    (0, node_test_1.it)('hint-trailing-newline-frame', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate("a:{b?:$.zz9} c:1");
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).equal("[aontu/no_path]: Cannot resolve value at path $.a.b\n\nThe path reference could not be found.\n \nExamples:\n  a:1 b:$.a  -> a:1,b:1  # $.a is a valid path reference as a is a key of root ($).\n  a:$.b      -> nil      # $.b is not a valid path reference as there is no key b in root ($).\n\n Cannot resolve value: $.zz9\n  \u001b[34m--> <no-file>:1:7\n\u001b[34m  1 | \u001b[0ma:{b?:$.zz9} c:1\n            \u001b[34m^ value was: $.zz9\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n");
+    });
+    // The list-index-zero-path twin in go/hints_test.go.
+    // The list index 0 SURVIVES into the headline path. TS filtered path
+    // segments with `'' != p`, and `'' != 0` is false in JavaScript, so the
+    // index a reader is most likely to meet was the one silently erased,
+    // while `$.a.1` came through (issue #37).
+    (0, node_test_1.it)('list-index-zero-path', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate("a:[1]&[2]");
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).equal("[aontu/scalar_value]: Cannot unify values at path $.a.0\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:1:8\n\u001b[34m  1 | \u001b[0ma:[1]&[2]\n             \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:1:4\n\u001b[34m  1 | \u001b[0ma:[1]&[2]\n         \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n");
+    });
+    // The invalid-utf8-replacement twin in go/source_test.go (issue #32,
+    // family 2). The fixture holds two invalid sequences -- a truncated
+    // three-byte sequence (E2 82) and a lone FF -- and each must become
+    // exactly ONE U+FFFD. Node replaces them as it decodes the file, so
+    // this side never saw the bad bytes; the Go port carried them to its
+    // JSON encoder, which replaced them PER BYTE, giving two replacements
+    // for the truncated sequence and writing both as escapes.
+    //
+    // Not a shared spec row: the spec's src column is text, and these bytes
+    // are by definition not.
+    (0, node_test_1.it)('invalid-utf8-replacement', () => {
+        const src = node_fs_1.default.readFileSync(node_path_1.default.join(__dirname, '..', '..', 'test', 'spec', 'files', 'invalid-utf8.aon'), 'utf8');
+        const out = new aontu_1.Aontu().generate(src);
+        (0, expect_1.expect)(out.b).equal('x\uFFFDy');
+        (0, expect_1.expect)(out.c).equal('p\uFFFDq');
+    });
+    // A CRLF source (issue #5). The \r sits on the end of the line and is
+    // not part of the marker run, so it has to come off before the length
+    // is counted -- otherwise `=======\r` is eight characters and the
+    // marker goes unnoticed on every Windows checkout, which is exactly
+    // where an unresolved merge is most likely to be sitting.
+    //
+    // Not a shared spec row: the spec's src column escapes \n, \t and \\,
+    // and has no spelling for a carriage return.
+    (0, node_test_1.it)('merge-conflict-crlf', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate('<<<<<<< HEAD\r\na:1\r\n=======\r\na:2\r\n>>>>>>> other\r\n');
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).match(/aontu\/merge_conflict/);
+        // ... and a bare CR line ending is still not a marker line.
+        const ok = new aontu_1.Aontu().generate('a:1\r\nb:2\r\n');
+        (0, expect_1.expect)(ok.a).equal(1);
+        (0, expect_1.expect)(ok.b).equal(2);
+    });
+    // A raw parse value reaching a func's peg (issue #49). `pref(1-3)`
+    // hands the handler the plain numbers 1 and -3 rather than Vals, and a
+    // func's peg is unified element by element, so a raw one reached
+    // `arg.unify(...)` and threw -- which the unifier's catch-all then
+    // reported as an `internal` VERDICT, a crash dressed up as a
+    // unification result. It must be an ordinary refusal instead.
+    //
+    // TS-only: the Go port accepts this shape and generates {"a":[1,-3]}.
+    // That divergence is the acceptance family of #32 and is upstream; it
+    // is not what this test is about, which is that neither `internal` nor
+    // a thrown TypeError is an acceptable answer to any source.
+    (0, node_test_1.it)('raw-func-arg-is-not-internal', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate('a:pref(1-3)');
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        // Refused as a wrong argument COUNT once arity is checked (#51):
+        // `1-3` is two arguments, and pref takes one. Either way the point
+        // stands -- an ordinary refusal, naming the mistake, rather than an
+        // `internal` verdict or a TypeError escaping the unifier.
+        (0, expect_1.expect)(err.message).match(/aontu\/func_arity/);
+        // The two shapes that threw a TypeError past the unifier resolve.
+        const out = new aontu_1.Aontu().generate('x:(([]%))');
+        (0, expect_1.expect)(JSON.stringify(out.x)).equal('[[],"%"]');
     });
 });
 //# sourceMappingURL=error.test.js.map

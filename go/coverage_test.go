@@ -363,7 +363,9 @@ func TestPlusOpGen(t *testing.T) {
 	o := newPlusOp(numberVal(1, "1", -1), numberVal(2, "2", -1))
 	_, err := o.Gen(nil)
 	ae, ok := err.(*AontuError)
-	if !ok || ae.Code != "no_gen" {
+	// `op`, not `no_gen`: a residual operator is what TS's OpBaseVal.gen
+	// raises, and only the root position reaches this method (issue #38).
+	if !ok || ae.Code != "op" {
 		t.Fatalf("PlusOp.Gen: %v", err)
 	}
 	// primStr/primFloat defaults.
