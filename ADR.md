@@ -19,6 +19,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 |-----|----------|--------|
 | [ADR-001](#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec) | TypeScript and Go stay at full parity, driven by a shared spec | Accepted |
 | [ADR-002](#adr-002--test-coverage-stays-at-100--in-both-implementations) | Test coverage stays at 100 % in both implementations | Accepted |
+| [ADR-003](#adr-003--host-provided-semantics-are-normalised-not-trusted) | Host-provided semantics are normalised, not trusted | Accepted |
 
 ---
 
@@ -194,3 +195,124 @@ Concretely:
   As of the round that first reached 100 %, it is twenty Go statements
   (plugin registration, pre-vetted digit parses, ADR-001 shape mirrors,
   two `main()`s) and, in TypeScript, the export blocks alone.
+
+---
+
+## ADR-003 — Host-provided semantics are normalised, not trusted
+
+**Status:** Accepted
+
+### Context
+
+ADR-001 keeps two implementations at one meaning. It is enforceable
+because almost everything either port does is *ours*: we wrote the
+unifier, the number tower, the canon renderer, so when they disagree one
+of them has a bug we can fix.
+
+`re()` broke that assumption. A pattern is handed to a **host**
+subsystem — JavaScript's `RegExp` in TypeScript, RE2 in Go — and those
+are not two implementations of one specification. They are different
+languages, in different complexity classes, over different alphabets.
+Neither can be fixed from this repository.
+
+The first attempt was a **blacklist**: enumerate the constructs known to
+differ, refuse those, hand the rest to the host engines. It leaked three
+times in one day.
+
+1. `\A` and `\z` are anchors in RE2 and *identity escapes* — a literal
+   `A`, a literal `z` — in JavaScript. Both engines compiled the pattern
+   and returned different answers.
+2. `\s` is Unicode whitespace in JavaScript and ASCII-only in RE2, so
+   `re("^\s$")` matched U+00A0 in one port and refused it in the other.
+3. JavaScript matches UTF-16 **code units** where RE2 matches **code
+   points**, so `re("^.$")` accepted U+1D11E in Go and refused it in
+   TypeScript — and `re("^..$")` did the exact reverse.
+
+Two of the three were found by review and one while writing
+documentation; none by a test. That is the diagnostic. A blacklist's
+correctness is a claim about the *author's knowledge* of two large
+external systems, it degrades silently as those systems evolve, and
+nothing in the suite can falsify it.
+
+The three failures also share a shape. Every one is a construct whose
+expansion is **engine-defined** — an abbreviation (`\s`, `\d`, `.`), a
+spelling (`\A`), or the alphabet itself. Strip those away and what
+remains is the classical regular-expression core, whose meaning over a
+fixed alphabet is mathematically determined and leaves no room to
+disagree.
+
+### Decision
+
+**Where a host subsystem supplies semantics, Aontu defines the meaning
+and rewrites the input to an unambiguous form. The host is given only
+constructs it cannot interpret two ways.**
+
+Concretely, for `re()`:
+
+1. **Aontu defines the abbreviations**, and inherits neither host's:
+   `\d` is `[0-9]`, `\w` is `[0-9A-Za-z_]`, `\s` is
+   `[ \t\n\r\f\v]`, `.` is `[^\n]`, `\A` is `^`, `\z` is `$`,
+   and the negated forms follow. The definitions are the small ASCII
+   ones deliberately: a config value containing U+00A0 is a mistake to
+   catch, not a space to accept in silence.
+
+2. **Normalisation happens before compilation.** `normaliseRe`
+   (`ts/src/val/ConstraintVal.ts`, `go/constraint.go`) rewrites the
+   pattern; only the rewritten form reaches `RegExp` or `regexp`. The
+   two normalisers are mirrored statement for statement.
+
+3. **The alphabet is fixed.** TypeScript compiles with the `u` flag so
+   both engines match code points.
+
+4. **Refusal is reserved for what cannot be rewritten**: a construct one
+   engine simply lacks (backreferences, lookaround — not regular
+   languages at all), a spelling whose meaning changes wholesale
+   (`(?...)` other than `(?:`), and a difference of *cost* rather than
+   meaning (a quantifier over a group containing a quantifier or
+   alternation — see ADR-003's consequence on termination below).
+
+5. **Canon renders the pattern as written, never the normalised form.**
+   Canon round-trips source and G6's semantic hash will be taken over
+   canon, so normalisation must not leak into it.
+
+6. **The claim is checked, not asserted.**
+   `test/spec/files/regex-corpus.tsv` pins the verdict of both
+   normalisers over a generated corpus; both ports assert against it, so
+   a drift fails in whichever port drifted. The corpus is generated
+   offline and committed — a fuzzer that reseeds in CI is a flaky test,
+   and this project pins determinism as a contract.
+
+### Consequences
+
+- **The guarantee stops depending on our knowledge of the hosts.** We no
+  longer have to know every difference between `RegExp` and RE2; we have
+  to know that the constructs we emit are unambiguous, which is a much
+  smaller and more stable claim.
+- **Authors get a larger subset, not a smaller one.** `\s`, `\d`,
+  `\A` and `.` are all usable again. Normalising is strictly more
+  permissive than refusing.
+- **Aontu owns a semantic decision it previously delegated.** `\s` no
+  longer means what your regex habits expect in either language; it
+  means what this ADR says. That must be documented at the point of use,
+  and the refusal message names the subset.
+- **One axis is not closed by this decision.** Complexity is not a
+  property of the pattern language: JavaScript's backtracking makes
+  `(a+)+$` exponential where RE2 is linear, and no rewriting fixes that.
+  It is held by a syntactic restriction instead, which is why
+  `docs/trust.md` clause 2 says pattern matching is bounded *by
+  construction* rather than by budget. **The principled end state is to
+  own the matcher** — parse to an AST, compile to a Thompson NFA, run it
+  in both ports — at which point there is no host subsystem, the
+  restriction can be lifted, and the termination clause becomes true
+  rather than approximated. That is recorded here as the accepted
+  direction, not scheduled.
+- **The rule generalises beyond regex**, and is stated that way on
+  purpose. Any future capability that delegates meaning to a host
+  subsystem — a date parser, a collation order, a number formatter —
+  inherits this decision: define it here, rewrite the input, and give
+  the host only what it cannot misread.
+
+See [`docs/reference-language.md`](docs/reference-language.md#re-and-the-portable-pattern-subset)
+for the author-facing subset, and
+[`docs/trust.md`](docs/trust.md#clause-2--termination) for the
+termination consequence.

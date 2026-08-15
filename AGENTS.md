@@ -7,12 +7,15 @@ kept in parity**:
 - **TypeScript** in `ts/` — the **canonical** implementation.
 - **Go** in `go/` — a port that mirrors the TypeScript semantics.
 
-Two decisions govern everything below and are recorded in
+Three decisions govern everything below and are recorded in
 [`ADR.md`](ADR.md): **ADR-001** (the two implementations stay at full
-parity, proved by the shared spec) and **ADR-002** (coverage stays at
-100 % in both, with every exclusion justified in the source). Read those
-before proposing a change that touches one implementation only, or that
-adds code no test reaches.
+parity, proved by the shared spec), **ADR-002** (coverage stays at
+100 % in both, with every exclusion justified in the source), and
+**ADR-003** (where a host subsystem supplies semantics, Aontu defines
+the meaning and rewrites the input rather than trusting the host). Read
+those before proposing a change that touches one implementation only,
+that adds code no test reaches, or that hands a value to a host library
+to interpret.
 
 The structural layout follows [`voxgig/util`](https://github.com/voxgig/util):
 top-level `ts/` and `go/` siblings and a fan-out `Makefile`. On top of

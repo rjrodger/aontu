@@ -28,47 +28,44 @@ name: string & re("^[a-z][a-z0-9-]{0,62}$")
   be regex containment, which this algebra deliberately does not do, so
   a contradiction between patterns surfaces against data instead.
 
-**A pinned portable subset, checked before either engine compiles.**
-TypeScript compiles patterns with JavaScript's `RegExp` and Go with
-RE2, and the two are not the same language — each accepts what the
-other rejects, and each accepts patterns the other reads *differently*.
-So `re` takes a subset checked by one shared scanner mirrored in both
-ports. Three rules, each a whitelist:
+**Aontu defines the pattern language; the host engines are rewritten to
+it** (new **ADR-003**). TypeScript compiles with JavaScript's
+backtracking `RegExp` and Go with RE2 — different languages, in
+different complexity classes, over different alphabets. Rather than
+enumerate the differences and refuse them (which leaked three times:
+`\A` is an anchor in RE2 and a literal `A` in JavaScript, `\s` matched
+U+00A0 in one engine only, and `.` counted UTF-16 units in one and code
+points in the other), `re()` **normalises** the pattern before either
+engine compiles it:
 
-1. **Groups** — `(?` opens only the non-capturing `(?:`, which refuses
-   lookaround, atomic groups, conditionals, inline flags and named
-   groups (spelled differently in the two engines) in one line.
-2. **Escapes** — only escapes with identical meaning pass. Notably
-   absent: `\s`/`\S`, whose whitespace class is Unicode in JavaScript
-   and ASCII-only in RE2, and `\A`/`\z`/`\Z`, which are anchors in
-   RE2 but identity escapes matching a literal letter in JavaScript.
-3. **Code points, not code units** — JavaScript's default regex mode
-   matches UTF-16 code units while RE2 matches code points, so `^.$`
-   accepted U+1D11E in Go and refused it in TypeScript (and `^..$` did
-   the reverse). The TypeScript port compiles with the `u` flag so both
-   count code points. That flag also makes JavaScript refuse `\-`
-   outside a character class where RE2 accepts it, so `\-` passes only
-   inside a class.
-4. **Quantifier nesting** — a quantifier may not be applied to a group
-   containing a quantifier or an alternation. This one is about *time*:
-   `(a+)+$` against twenty-nine characters takes 45 seconds under
-   JavaScript's backtracking engine and 0.065s under RE2, and a regex
-   match is counted by no evaluator budget, so an untrusted schema
-   could otherwise stall the TypeScript evaluator indefinitely.
+    \d  [0-9]              \D  [^0-9]
+    \w  [0-9A-Za-z_]       \W  [^0-9A-Za-z_]
+    \s  [ \t\n\r\f\v]      \S  [^ \t\n\r\f\v]
+    .   [^\n]              \A  ^        \z  $
 
-Anything outside the subset is a located `constraint_pattern` error
-(new registered code, class `conflict`) rather than an engine-dependent
-behaviour, and a pattern the host engine itself refuses is the same
-refusal under the same code. The subset is deliberately smaller than
-the true intersection — widening it later is compatible, narrowing it
-would not be. Full rules: `docs/reference-language.md`, "`re` and the
-portable pattern subset"; the termination consequence is recorded in
-`docs/trust.md`, clause 2.
+These are Aontu's definitions, not either host's. Note that **`\s` is
+those six ASCII characters only** — it does not match U+00A0, though
+JavaScript's does. Matching counts code points in both.
 
-Pinned by the new `test/spec/constraint-re.tsv` (86 shared rows,
+Refusal is reserved for what rewriting cannot reach: constructs one
+engine lacks (backreferences, lookaround), spellings that change meaning
+wholesale (any `(?…)` but `(?:`), and a quantifier applied to a group
+containing a quantifier or an alternation — that last about *cost*, not
+meaning, since `(a+)+$` against twenty-nine characters takes 45 seconds
+in JavaScript and 0.065s under RE2, and a regex match is counted by no
+evaluator budget. Refusals raise the registered `constraint_pattern`
+code, and the message restates the whole accepted subset so an author
+need not consult the reference.
+
+Canon renders the pattern **as written**, never the rewritten form.
+
+Pinned by the new `test/spec/constraint-re.tsv` (89 shared rows,
 promoted from `test/spec/draft/` with every expectation re-probed
 through both engines). The builtin registry goes from 17 to 18 names,
-in both ports and both LSP completion lists.
+in both ports and both LSP completion lists. `test/spec/files/regex-corpus.tsv`
+is a differential corpus of 400 generated patterns: both ports run their
+own normaliser over it and must reproduce the pinned verdict byte for
+byte, so a drift fails in whichever port drifted.
 
 ## Go 0.1.4 — 2026-06-22 · TypeScript 0.47.0 (unreleased)
 

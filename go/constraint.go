@@ -27,119 +27,169 @@ type constraintBound struct {
 }
 
 type constraintRe struct {
-	v   *ScalarVal     // the stored pattern scalar (Canon renders the literal)
-	src string         // the pattern text
-	re  *regexp.Regexp // compiled by the host engine
+	v *ScalarVal // the stored pattern scalar (Canon renders the literal)
+	// src is the pattern text AS WRITTEN -- Canon and dedup use this,
+	// never the normalised form, because canon round-trips source.
+	src  string
+	norm string         // the engine-neutral rewrite actually compiled
+	re   *regexp.Regexp // compiled by the host engine, from norm
 }
 
-// THE PORTABLE PATTERN SUBSET (G1 phase 2).
+// THE PATTERN SUBSET, AND HOW IT IS ENFORCED (G1 phase 2; ADR-003).
 //
-// The exact port of nonPortableRe in ts/src/val/ConstraintVal.ts -- read
-// the rationale there. In brief: `re(p)` must mean the same thing in
-// both engines AND cost about the same to evaluate, and neither is free.
-// TypeScript compiles with JavaScript's backtracking RegExp, Go with
-// RE2: a different language in a different complexity class. So the
-// pattern is checked against one shared syntactic subset before either
-// host engine sees it.
+// The exact port of normaliseRe in ts/src/val/ConstraintVal.ts -- read
+// the rationale there. In brief: enforcement is NORMALISATION, not
+// refusal. Every construct whose expansion is engine-defined is
+// rewritten here into an explicit form that cannot be read two ways,
+// and only the rewritten pattern reaches a host engine.
 //
-// Everything here is a WHITELIST. The first draft blacklisted the
-// constructs known to differ and handed the rest to the host engines,
-// and review found two escapes that silently diverge -- `\A` and `\z`
-// are anchors here and identity escapes matching a literal "A"/"z" in
-// JavaScript. A blacklist admits the next divergence by construction.
+// Aontu DEFINES the abbreviations rather than inheriting either host's:
 //
-// The three rules:
+//     \d  [0-9]                 \D  [^0-9]
+//     \w  [0-9A-Za-z_]          \W  [^0-9A-Za-z_]
+//     \s  [ \t\n\r\f\v]         \S  [^ \t\n\r\f\v]
+//     .   [^\n]
+//     \A  ^                     \z  $
 //
-//  1. GROUPS. `(?` opens only the non-capturing group `(?:`, which
-//     refuses lookaround, atomic groups, conditionals, inline flags and
-//     named groups (`(?P<n>` here, `(?<n>` in JavaScript) in one line.
-//  2. ESCAPES. Only escapes with identical meaning in both engines pass.
-//     Notably ABSENT: `\s`/`\S`, whose whitespace set is ASCII-only here
-//     and Unicode in JavaScript.
-//  3. QUANTIFIER NESTING. A quantifier may not be applied to a group
-//     containing a quantifier or an alternation. This one is about TIME,
-//     not meaning: `(a+)+$` is linear under RE2 and exponential in
-//     JavaScript (45 seconds at 29 characters), and a regex match is
-//     counted by no evaluator budget, so the shape is refused in both
-//     ports to keep docs/trust.md clause 2 true in the port that has the
-//     problem.
+// Neither host agreed with all of these before rewriting: RE2's \s omits
+// \v where JavaScript's includes it and also matches Unicode spaces, and
+// the two `.` sets differ by \r and the line separators. After
+// rewriting, both engines see one explicit class.
 //
-// Deliberately smaller than the true intersection: sound, not complete.
+// Still refused: constructs one engine simply lacks (backreferences,
+// lookaround, POSIX classes, \p, \x{}, \u), `(?` other than `(?:`, and a
+// quantifier applied to a group containing a quantifier or alternation
+// -- the last about TIME rather than meaning, since normalisation cannot
+// fix a complexity difference (docs/trust.md clause 2).
 
-// reEscapeLetters are the escape letters whose meaning is identical in
-// JavaScript (no flags) and RE2. Each was verified by probing both.
-const reEscapeLetters = "dDwWtnrfvbB"
+// The normative expansions. These are Aontu's definitions, not either
+// host's; both hosts are rewritten to them.
+const reClassDigit = "0-9"
+const reClassWord = "0-9A-Za-z_"
+const reClassSpace = ` \t\n\r\f\v`
 
 // reEscapePunct are the metacharacters that may be escaped to mean
-// themselves. Other punctuation is left out because RE2 rejects some
-// identity escapes JavaScript allows.
-//
-// `-` is NOT here: it is legal escaped only INSIDE a character class.
-// Outside one, RE2 accepts `a\-b` and JavaScript's unicode mode (which
-// the TypeScript port must use for code-point parity) makes it a syntax
-// error, so admitting it either way is a divergence.
+// themselves in both engines. `-` is handled separately: legal escaped
+// only INSIDE a character class.
 const reEscapePunct = `\.+*?()[]{}|^$/`
+
+// reEscapePass are escapes passed through unchanged: the control
+// characters. Each was probed in both engines.
+const reEscapePass = "tnrfv"
 
 func isHexDigit(c rune) bool {
 	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')
 }
 
-// portableEscape reports why `\<n>` is not in the subset, or "" when it
-// is, together with the number of EXTRA characters consumed beyond the
-// backslash and n (for `\xHH`).
-func portableEscape(n rune, at func(int) rune, i int, inClass bool) (string, int) {
+// normaliseEscape rewrites one `\<n>` into its engine-neutral form.
+// Returns (emitted, why, extra): a non-empty why means refused, and
+// extra counts source characters consumed beyond the backslash and n.
+func normaliseEscape(n rune, at func(int) rune, i int, inClass bool) (string, string, int) {
 	if 0 == n {
-		return "a trailing backslash", 0
+		return "", "a trailing backslash", 0
 	}
 	if '1' <= n && n <= '9' {
-		return "a backreference (\\" + string(n) + "), which RE2 has no equivalent for", 0
+		return "", "a backreference (\\" + string(n) + "): RE2 has no equivalent, and a" +
+			" pattern with one is not a regular expression", 0
 	}
 	if 'k' == n {
-		return "a named backreference (\\k), which RE2 has no equivalent for", 0
+		return "", "a named backreference (\\k): RE2 has no equivalent", 0
 	}
 	if 'u' == n {
-		return "a \\u escape, which RE2 spells \\x{...}", 0
+		return "", "a \\u escape, which RE2 spells \\x{...}: write the character" +
+			" itself, or \\xHH for a byte", 0
 	}
 	if 'p' == n || 'P' == n {
-		return "a Unicode class (\\" + string(n) + "), which JavaScript reads as a literal here", 0
+		return "", "a Unicode class (\\" + string(n) + "), which JavaScript reads as a" +
+			" literal \"" + string(n) + "\" without a flag Aontu does not set", 0
 	}
-	if 's' == n || 'S' == n {
-		return "\\" + string(n) + ", whose whitespace set differs between the engines" +
-			" (write [ \\t\\n\\r\\f\\v])", 0
-	}
-	if 'A' == n || 'z' == n || 'Z' == n {
-		return "\\" + string(n) + ", an anchor in RE2 but a literal \"" + string(n) +
-			"\" in JavaScript", 0
+	if 'Z' == n {
+		return "", "\\Z, which RE2 does not accept and JavaScript reads as a" +
+			" literal \"Z\": write $ for end of text", 0
 	}
 	if 'x' == n {
 		if '{' == at(i+2) {
-			return "a \\x{...} escape, which JavaScript spells \\u", 0
+			return "", "a \\x{...} escape, which JavaScript spells \\u: write the" +
+				" character itself", 0
 		}
 		if !isHexDigit(at(i+2)) || !isHexDigit(at(i+3)) {
-			return "an \\x escape without two hex digits", 0
+			return "", "an \\x escape without two hex digits", 0
 		}
-		return "", 2
+		return "\\x" + string(at(i+2)) + string(at(i+3)), "", 2
 	}
+
+	// The abbreviations, rewritten to Aontu's definitions. Inside a class
+	// the expansion splices without its brackets (`[\dx]` -> `[0-9x]`).
+	if 'd' == n || 'w' == n || 's' == n {
+		set := reClassDigit
+		if 'w' == n {
+			set = reClassWord
+		} else if 's' == n {
+			set = reClassSpace
+		}
+		if inClass {
+			return set, "", 0
+		}
+		return "[" + set + "]", "", 0
+	}
+	if 'D' == n || 'W' == n || 'S' == n {
+		if inClass {
+			// `[^...]` cannot be spliced into an enclosing class: the
+			// negation would apply to the whole class, not this member.
+			return "", "a negated abbreviation (\\" + string(n) + ") inside a character" +
+				" class, which cannot be expanded in place: write the characters out", 0
+		}
+		set := reClassDigit
+		if 'W' == n {
+			set = reClassWord
+		} else if 'S' == n {
+			set = reClassSpace
+		}
+		return "[^" + set + "]", "", 0
+	}
+
+	// Anchors. `\A`/`\z` are RE2 spellings that JavaScript reads as
+	// literals, so they are rewritten rather than refused. Inside a class
+	// an anchor is meaningless, and `[\b]` is a BACKSPACE in JavaScript.
+	if 'A' == n || 'z' == n || 'b' == n || 'B' == n {
+		if inClass {
+			return "", "\\" + string(n) + " inside a character class, where the two" +
+				" engines do not agree what it means", 0
+		}
+		if 'A' == n {
+			return "^", "", 0
+		}
+		if 'z' == n {
+			return "$", "", 0
+		}
+		return "\\" + string(n), "", 0
+	}
+
 	if '-' == n {
 		if inClass {
-			return "", 0
+			return "\\-", "", 0
 		}
-		return "\\-, which is a range separator inside a class and a syntax" +
-			" error outside one (write a bare -)", 0
+		return "", "\\- outside a character class: it is a range separator inside" +
+			" one and a syntax error outside one (write a bare -)", 0
 	}
-	if strings.ContainsRune(reEscapeLetters, n) || strings.ContainsRune(reEscapePunct, n) {
-		return "", 0
+	if strings.ContainsRune(reEscapePass, n) || strings.ContainsRune(reEscapePunct, n) {
+		return "\\" + string(n), "", 0
 	}
-	return "\\" + string(n) + ", an escape whose meaning the two engines do not share", 0
+	return "", "\\" + string(n) + ", an escape whose meaning the two engines do not" +
+		" share", 0
 }
 
 type reGroup struct {
 	q, alt bool
 }
 
-func nonPortableRe(src string) string {
+// normaliseRe rewrites a pattern into the engine-neutral subset.
+// Returns (normalised, why): a non-empty why means the pattern is
+// outside the subset and names the construct.
+func normaliseRe(src string) (string, string) {
 	inClass := false
 	r := []rune(src)
+	var out strings.Builder
 
 	at := func(i int) rune {
 		if i >= 0 && i < len(r) {
@@ -148,10 +198,10 @@ func nonPortableRe(src string) string {
 		return 0
 	}
 
-	// One frame per open group, recording whether the group contains a
+	// One frame per open group, recording whether it contains a
 	// quantifier or an alternation. A group carrying either may not
-	// itself be quantified (rule 3); containment is transitive, so a
-	// frame hands its flags up to its parent when it closes.
+	// itself be quantified; containment is transitive, so a frame hands
+	// its flags up to its parent when it closes.
 	groups := []reGroup{}
 	mark := func(q bool) {
 		if 0 < len(groups) {
@@ -167,51 +217,59 @@ func nonPortableRe(src string) string {
 		c := r[i]
 
 		if '\\' == c {
-			why, extra := portableEscape(at(i+1), at, i, inClass)
+			emit, why, extra := normaliseEscape(at(i+1), at, i, inClass)
 			if "" != why {
-				return why
+				return "", why
 			}
+			out.WriteString(emit)
 			i += 1 + extra
 			continue
 		}
 
-		// A POSIX class opener, anywhere. Checked BEFORE the in-class
-		// branch because the POSIX form lives inside an ordinary class
-		// (`[[:alpha:]]`), and refused everywhere rather than only
-		// there: one rule is easier to mirror exactly than two, and a
-		// literal `[:` costs an author nothing to rewrite.
+		// A POSIX class opener, anywhere: the form lives inside an
+		// ordinary class (`[[:alpha:]]`), and refusing it everywhere is
+		// one rule rather than two.
 		if '[' == c && ':' == at(i+1) {
-			return "a POSIX class ([:...:]), which JavaScript does not have"
+			return "", "a POSIX class ([:...:]), which JavaScript does not have"
 		}
 
 		if inClass {
 			if ']' == c {
 				inClass = false
 			}
+			out.WriteRune(c)
 			continue
 		}
 
 		if '[' == c {
-			// An empty class: `[]` in JavaScript is a class that never
-			// matches, in RE2 it does not compile. `[^]` is the same
-			// disagreement one character along.
+			// `[]` is a never-matching class in JavaScript and a parse
+			// error in RE2; `[^]` is the same disagreement one along.
 			first := at(i + 1)
 			if '^' == first {
 				first = at(i + 2)
 			}
 			if ']' == first {
-				return "an empty character class, which RE2 refuses"
+				return "", "an empty character class, which RE2 refuses"
 			}
 			inClass = true
+			out.WriteRune(c)
+			continue
+		}
+
+		if '.' == c {
+			out.WriteString(`[^\n]`)
 			continue
 		}
 
 		if '(' == c {
 			if '?' == at(i+1) {
 				if ':' != at(i+2) {
-					return "a (?...) group other than the non-capturing (?:"
+					return "", "a (?...) group other than the non-capturing (?:"
 				}
+				out.WriteString("(?:")
 				i += 2
+			} else {
+				out.WriteRune(c)
 			}
 			groups = append(groups, reGroup{})
 			continue
@@ -219,7 +277,7 @@ func nonPortableRe(src string) string {
 
 		if ')' == c {
 			if 0 == len(groups) {
-				return "an unbalanced group"
+				return "", "an unbalanced group"
 			}
 			g := groups[len(groups)-1]
 			groups = groups[:len(groups)-1]
@@ -230,38 +288,42 @@ func nonPortableRe(src string) string {
 				if g.q {
 					which = "another quantifier"
 				}
-				return "a quantifier applied to a group containing " + which +
+				return "", "a quantifier applied to a group containing " + which +
 					", which backtracks exponentially in JavaScript"
 			}
-			// Containment is transitive: the parent inherits.
 			if g.q {
 				mark(true)
 			}
 			if g.alt {
 				mark(false)
 			}
+			out.WriteRune(c)
 			continue
 		}
 
 		if '|' == c {
 			mark(false)
+			out.WriteRune(c)
 			continue
 		}
 
 		if '*' == c || '+' == c || '?' == c || '{' == c {
 			mark(true)
+			out.WriteRune(c)
 			continue
 		}
+
+		out.WriteRune(c)
 	}
 
 	if inClass {
-		return "an unterminated character class"
+		return "", "an unterminated character class"
 	}
 	if 0 < len(groups) {
-		return "an unclosed group"
+		return "", "an unclosed group"
 	}
 
-	return ""
+	return out.String(), ""
 }
 
 // ConstraintVal is immutable after construction: meets build NEW
@@ -388,11 +450,14 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 			return bad("invalid-arg")
 		}
 		src := psv.peg.(string)
-		if why := nonPortableRe(src); "" != why {
+		// Normalise BEFORE compiling: the host engines only ever see a
+		// pattern that cannot be read two ways (ADR-003).
+		norm, why := normaliseRe(src)
+		if "" != why {
 			c.invalidWhy = why
 			return bad("constraint_pattern")
 		}
-		re, err := regexp.Compile(src)
+		re, err := regexp.Compile(norm)
 		if nil != err {
 			// The host engine refuses what the subset scanner passed --
 			// a malformed quantifier, an unbalanced group. Same refusal
@@ -403,7 +468,7 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 			return bad("constraint_pattern")
 		}
 		c.domain = "string"
-		c.res = []constraintRe{{v: psv, src: src, re: re}}
+		c.res = []constraintRe{{v: psv, src: src, norm: norm, re: re}}
 		return c
 	}
 

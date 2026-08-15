@@ -72,20 +72,34 @@ re-nonportable-hex-brace-escape	errc	a:re("a\\\\x{41}")&"x"	constraint_pattern
 re-nonportable-unterminated-class	errc	a:re("[abc")&"x"	constraint_pattern
 re-nonportable-trailing-backslash	errc	a:re("\\\\")&"x"	constraint_pattern
 re-nonportable-trailing-backslash-msg	err	a:re("\\\\")&"x"	a trailing backslash
-# ESCAPES ARE A WHITELIST, not a blacklist. Review of the first draft
-# of this phase found two escapes that silently DIVERGED: `\\A` and `\\z`
-# are anchors in RE2 and identity escapes matching a literal "A"/"z" in
-# JavaScript, so `re("\\A") & "x"` held in Go and failed in TypeScript.
-# These rows are the ones that would have caught it.
-re-nonportable-anchor-A	errc	a:re("\\\\A")&"x"	constraint_pattern
-re-nonportable-anchor-z	errc	a:re("\\\\z")&"x"	constraint_pattern
+# ABBREVIATIONS ARE NORMALISED, NOT REFUSED (ADR-003). Aontu DEFINES
+# what each abbreviation means and rewrites both hosts to it, so neither
+# host's reading is inherited:
+#   \\d [0-9]   \\w [0-9A-Za-z_]   \\s [ \\t\\n\\r\\f\\v]   . [^\\n]
+#   \\A ^       \\z $
+# Before this, `\\A` was an anchor in RE2 and a literal "A" in JavaScript
+# (so `re("\\A") & "x"` held in Go and failed in TypeScript), and `\\s`
+# matched U+00A0 in JavaScript but not in Go. Both are now single-valued.
+re-normalise-anchors	gen	a:re("\\\\Aabc\\\\z") a:abc	{"a":"abc"}
+re-normalise-space	gen	a:re("^\\\\s+$") a:" "	{"a":" "}
+re-normalise-space-negated	gen	a:re("^\\\\S+$") a:abc	{"a":"abc"}
+re-normalise-word	gen	a:re("^\\\\w+$") a:a_1	{"a":"a_1"}
+re-normalise-digit-in-class	gen	a:re("^[\\\\dx]+$") a:"1x"	{"a":"1x"}
+# The definition BITES: U+00A0 is whitespace to JavaScript and not to
+# RE2, and Aontu's \\s excludes it in both. A non-breaking space in a
+# config value is a mistake to catch, not a space to accept silently.
+re-normalise-space-excludes-nbsp	errc	a:re("^\\\\s$") a:" "	constraint
+# Canon renders the pattern AS WRITTEN, never the normalised form: canon
+# round-trips source, and G6's hash will be taken over canon.
+re-canon-keeps-source	canon	a:re("^\\\\d+$")	{"a":re("^\\\\d+$")}
+#
+# What normalisation cannot reach, and why refusal is still right there:
+# a construct one engine simply lacks (there is nothing to rewrite it
+# to), a spelling difference that changes meaning wholesale, or a
+# difference of COST rather than meaning.
 re-nonportable-anchor-Z	errc	a:re("\\\\Z")&"x"	constraint_pattern
-re-nonportable-anchor-msg	err	a:re("\\\\A")&"x"	an anchor in RE2
-# JavaScript's \\s is Unicode whitespace, RE2's is ASCII-only: `^\\s$`
-# matched U+00A0 in TypeScript and refused it in Go.
-re-nonportable-space-class	errc	a:re("\\\\s")&"x"	constraint_pattern
-re-nonportable-space-class-neg	errc	a:re("\\\\S")&"x"	constraint_pattern
-re-nonportable-space-class-msg	err	a:re("\\\\s")&"x"	whitespace set differs
+re-nonportable-negated-abbrev-in-class	errc	a:re("[\\\\D]")&"x"	constraint_pattern
+re-nonportable-wordbreak-in-class	errc	a:re("[\\\\b]")&"x"	constraint_pattern
 re-nonportable-unknown-escape	errc	a:re("\\\\q")&"x"	constraint_pattern
 re-nonportable-unknown-escape-msg	err	a:re("\\\\q")&"x"	the two engines do not share
 re-nonportable-hex-short	errc	a:re("\\\\xZZ")&"x"	constraint_pattern
@@ -116,7 +130,7 @@ re-astral-class	gen	a:re("^[𝄞x]+$") a:"𝄞"	{"a":"𝄞"}
 # positions. Refused outside a class so the two ports agree.
 re-escape-hyphen-in-class	gen	a:re("^[a\\\\-z]+$") a:"a-z"	{"a":"a-z"}
 re-nonportable-hyphen-outside-class	errc	a:re("a\\\\-b")&"x"	constraint_pattern
-re-nonportable-hyphen-msg	err	a:re("a\\\\-b")&"x"	range separator inside a class
+re-nonportable-hyphen-msg	err	a:re("a\\\\-b")&"x"	a range separator inside
 re-bare-hyphen	gen	a:re("^a-b$") a:"a-b"	{"a":"a-b"}
 #
 # QUANTIFIER NESTING is refused, and this rule is about TIME rather than
@@ -145,7 +159,7 @@ re-group-sequence	gen	a:re("(a)(b)") a:ab	{"a":"ab"}
 re-toplevel-alternation	gen	a:re("^a|b$") a:a	{"a":"a"}
 re-quantifier-in-class	gen	a:re("^[a+]+$") a:"++"	{"a":"++"}
 re-capture-group-quantified	gen	a:re("^(a)+$") a:a	{"a":"a"}
-re-nonportable-msg	err	a:re("(?=x)y")&"y"	outside the portable subset
+re-nonportable-msg	err	a:re("(?=x)y")&"y"	outside the supported subset
 re-nonportable-msg-reason	err	a:re("(x)\\\\1")&"xx"	a backreference
 #
 # A pattern the subset scanner passes but the host engine refuses is the

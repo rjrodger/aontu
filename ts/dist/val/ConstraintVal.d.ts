@@ -8,6 +8,7 @@ type Bound = {
 type ReAtom = {
     v: any;
     src: string;
+    norm: string;
     re: RegExp;
 };
 type ConstraintState = {
@@ -19,6 +20,7 @@ type ConstraintState = {
     res: ReAtom[];
     invalid?: string;
 };
+declare function normaliseRe(src: string): [string, string];
 declare class ConstraintVal extends FeatureVal {
     isConstraint: boolean;
     cjo: number;
@@ -64,4 +66,4 @@ declare class NeqConstraintVal extends ConstraintVal {
 declare class ReConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
-export { ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, };
+export { normaliseRe, ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, };

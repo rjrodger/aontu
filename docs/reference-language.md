@@ -1144,80 +1144,82 @@ and `$` to constrain the whole string. The string kind is implied, so
 makes `number & min(0)` canonicalise to `min(0)`.
 
 A pattern must mean the same thing in both implementations **and cost
-about the same to evaluate**, and neither is free. The two host engines
-are not the same language, nor the same complexity class: TypeScript
-compiles with JavaScript's backtracking `RegExp`, Go with RE2. So `re`
-takes a **portable subset**, checked before either host engine compiles
-the pattern; anything outside it is a located `constraint_pattern`
-error rather than an engine-dependent behaviour.
+about the same to evaluate**, and the two host regex engines guarantee
+neither: TypeScript compiles with JavaScript's backtracking `RegExp`, Go
+with RE2 — a different language, in a different complexity class, over a
+different alphabet.
 
-Three rules, each a *whitelist* — a blacklist of known-bad constructs
-admits the next divergence by construction.
+Aontu therefore **defines** the pattern language and rewrites your
+pattern into a form neither engine can read two ways
+([ADR-003](../ADR.md#adr-003--host-provided-semantics-are-normalised-not-trusted)).
+Only the rewritten form reaches a host engine.
 
-**1. Groups.** `(?` opens only the non-capturing group `(?:`. That one
-rule refuses lookaround, atomic groups, conditionals, recursion, inline
-flags, and named groups — whose spelling differs (`(?P<n>` in RE2,
-`(?<n>` in JavaScript) even where both support them.
+**What `re` accepts**
 
-**2. Escapes.** Only escapes whose meaning is identical in both engines
-pass: `\d \D \w \W` (ASCII classes), `\t \n \r \f \v`, `\b \B`
-(ASCII word boundary), `\xHH`, and a backslash before any of
-`\ . + * ? ( ) [ ] { } | ^ $ /` to mean that character literally.
-`\-` passes only *inside* a character class, where it is a literal
-hyphen in both; outside one RE2 accepts it and JavaScript does not, so
-write a bare `-`.
+| | |
+|---|---|
+| literals | `a`, and `\` before any of `. \ + * ? ( ) [ ] { } \| ^ $ /` to mean it literally; `\xHH` |
+| classes | `[abc]`, `[^abc]`, `[a-z]`; `\-` inside a class for a literal hyphen |
+| abbreviations | `\d \D \w \W \s \S` and `.` |
+| repetition | `*` `+` `?` `{n}` `{n,}` `{n,m}`, and the lazy forms `*?` `+?` `??` |
+| grouping | `(…)`, `(?:…)`, alternation `a|b` |
+| anchors | `^` `$` `\A` `\z` `\b` `\B` |
+| control | `\t \n \r \f \v` |
 
-Everything else is refused, including several that look harmless:
+**Aontu defines the abbreviations**, and inherits neither host's:
 
-| Escape | Why |
-|--------|-----|
-| `\s`, `\S` | JavaScript's whitespace class is Unicode, RE2's is ASCII-only — `re("^\s$")` matches U+00A0 in one engine and not the other. Write `[ \t\n\r\f\v]` |
-| `\A`, `\z`, `\Z` | anchors in RE2, but identity escapes matching a literal `A`/`z`/`Z` in JavaScript |
-| `\1`–`\9`, `\k<name>` | backreferences; RE2 has no equivalent |
-| `\u`, `\p`, `\P`, `\x{…}` | spelled differently, or gated on a flag: JavaScript reads `\p{L}` as a literal `p` without the `u` flag |
+| written | means | 
+|---|---|
+| `\d` / `\D` | `[0-9]` / `[^0-9]` |
+| `\w` / `\W` | `[0-9A-Za-z_]` / `[^0-9A-Za-z_]` |
+| `\s` / `\S` | `[ \t\n\r\f\v]` / `[^ \t\n\r\f\v]` |
+| `.` | `[^\n]` |
+| `\A` / `\z` | `^` / `$` |
 
-**3. Quantifier nesting.** A quantifier may not be applied to a group
-that itself contains a quantifier or an alternation. This rule is about
-*time* rather than meaning. `(a+)+$` against twenty-nine `a`s and a `!`
-takes **45 seconds** in JavaScript and 0.065s under RE2, and grows
-exponentially from there; a regex match is counted by no evaluator
-budget ([the trust contract](trust.md), clause 2), so without this rule
-an untrusted schema could stall the TypeScript evaluator indefinitely —
-exactly the unattended-agent case the language is for. `(?:a|b)+` is
-refused too, though it is safe, because deciding that two alternation
-branches cannot both match is real work: write `[ab]+`.
+These are the small ASCII sets deliberately. **`\s` is those six
+characters only** — it does *not* match U+00A0 or the other Unicode
+spaces, though JavaScript's `\s` does, because a non-breaking space in
+a config value is a mistake worth catching rather than a space worth
+accepting in silence. Matching counts **code points**, not UTF-16 code
+units, in both implementations.
 
-Unquantified groups are unaffected, and so is alternation that is not
-under a quantifier — `(a|b)`, `^a|b$`, `(?:ab)+`, `(a)(b)` and `(a)+`
-all pass. Quantifiers inside a character class are literal characters,
-not quantifiers, so `[a+]+` passes too.
+**What `re` refuses**, and why rewriting cannot help:
 
-Also refused: POSIX classes (`[[:alpha:]]`, RE2 only) and empty
-character classes (`[]`, `[^]` — a never-matching class in JavaScript,
-a parse error in RE2).
+| Construct | Why |
+|-----------|-----|
+| backreferences `\1`–`\9`, `\k<name>` | RE2 has no equivalent, and a pattern using one is not a regular expression at all |
+| lookaround `(?=)` `(?!)` `(?<=)` `(?<!)` | same — not in RE2 |
+| any `(?…)` but `(?:` | named groups are spelled `(?P<n>` in RE2 and `(?<n>` in JavaScript; inline flags change the meaning of everything after them |
+| `\p{…}`, `\x{…}`, `\u`, `\Z` | spelled differently, or read as a literal by one engine |
+| POSIX classes `[[:alpha:]]` | RE2 only |
+| empty classes `[]`, `[^]` | a never-matching class in JavaScript, a parse error in RE2 |
+| a quantifier on a group containing a quantifier or an alternation | **cost, not meaning** — see below |
 
-**Matching counts code points, not code units.** JavaScript's default
-regex mode matches UTF-16 code units, so `.` consumes half of an astral
-character; RE2 matches code points. `re("^.$")` therefore accepted
-U+1D11E in Go and refused it in TypeScript, and `re("^..$")` did the
-exact reverse. The TypeScript port compiles patterns with the `u` flag
-so both engines count code points, and `test/spec/constraint-re.tsv`
-pins the astral cases in both directions.
+The last one is different in kind. `(a+)+$` against twenty-nine `a`s and
+a `!` takes **45 seconds** in JavaScript and 0.065s under RE2, growing
+exponentially; a regex match is counted by no evaluator budget ([the
+trust contract](trust.md), clause 2), so without this rule an untrusted
+schema could stall the TypeScript evaluator indefinitely. Rewriting
+cannot fix a complexity difference, so this one is refused rather than
+normalised. `(?:a|b)+` is caught by it too, though it is safe — deciding
+that two alternation branches cannot both match is real work. Write
+`[ab]+`. Unquantified groups, top-level alternation, `(?:ab)+`, `(a)(b)`
+and `(a)+` all pass, and a quantifier inside a character class is a
+literal character (`[a+]+` is fine).
 
-A pattern that passes all three rules still goes to the host engine,
-and its own compile failure is the same refusal under the same code.
-The subset is deliberately *smaller* than the true intersection of the
-two engines — sound, not complete, the same stance the algebra takes on
-regex emptiness. Widening it later is a compatible change; narrowing it
-would not be.
+The refusal message names the offending construct *and* restates this
+whole table, so an author never has to find this page to recover.
 
 Patterns **accumulate** and are never simplified: `re("x") & re("a")`
 keeps both (sorted by pattern text in canon), and a value must match
-every one. Two `re` atoms are never declared empty at composition
-time, because deciding that one pattern excludes another is regex
-containment — which this algebra deliberately does not do. A
-contradiction between patterns therefore surfaces against data, not
-against the schema.
+every one. Two `re` atoms are never declared empty at composition time,
+because deciding that one pattern excludes another is regex containment
+— which this algebra deliberately does not do. A contradiction between
+patterns therefore surfaces against data, not against the schema.
+
+Canon renders the pattern **as written**, never the rewritten form:
+canon round-trips source, and [G6](capability-review/g6-distribution.md)'s
+semantic hash will be taken over canon.
 
 ### `len` semantics
 

@@ -76,18 +76,38 @@ const hints: Record<string, string> = {
     '  re("^a") & "abc"              -> "abc" # Patterns are unanchored.',
 
   constraint_pattern:
-    'This re() pattern is outside the portable subset. It uses\n' +
+    'This re() pattern is outside the supported subset. It uses\n' +
     '{reason}.\n' +
-    'A pattern must mean the same thing in both implementations, so\n' +
-    're() accepts only what JavaScript RegExp and RE2 agree on: no\n' +
-    'lookaround, no backreferences, no named groups, no POSIX classes,\n' +
-    'and no escapes the two spell differently. The only (?...) form is\n' +
-    'the non-capturing group (?:.' +
+    ' \n' +
+    're() accepts classical regular expressions over Unicode code\n' +
+    'points, with one meaning in both implementations:\n' +
+    ' \n' +
+    '  literals     a  \\.  \\*  \\xHH        (escape . \\ + * ? ( ) [ ] { } | ^ $ /)\n' +
+    '  classes      [abc]  [^abc]  [a-z]\n' +
+    '  abbreviations \\d \\D \\w \\W \\s \\S  and  .\n' +
+    '  repetition   *  +  ?  {n}  {n,}  {n,m}   (lazy: *? +? ??)\n' +
+    '  grouping     (...)  (?:...)      alternation  a|b\n' +
+    '  anchors      ^  $  \\A  \\z  \\b  \\B\n' +
+    ' \n' +
+    'Aontu DEFINES the abbreviations rather than inheriting either\n' +
+    'host regex engine, so they mean the same in both ports:\n' +
+    '  \\d [0-9]   \\w [0-9A-Za-z_]   \\s [ \\t\\n\\r\\f\\v]   . [^\\n]\n' +
+    'Note \\s is these six ASCII characters only -- not U+00A0.\n' +
+    ' \n' +
+    'NOT accepted, because no rewriting can make the two engines\n' +
+    'agree:\n' +
+    '  backreferences (\\1, \\k<n>) and lookaround ((?=) (?!) (?<=))\n' +
+    '  named groups, inline flags, and any (?...) but (?:\n' +
+    '  POSIX classes [[:alpha:]], \\p{...}, \\x{...}, \\u\n' +
+    '  a quantifier on a group containing a quantifier or an\n' +
+    '    alternation -- (a+)+ backtracks exponentially in one port,\n' +
+    '    so write [ab]+ rather than (?:a|b)+' +
     '\n \nExamples:\n' +
-    '  re("^[a-z]+$")     # Fine;\n' +
-    '  re("(?:ab)+")      # Fine (non-capturing group);\n' +
-    '  re("(?=x)y")       # Refused (lookahead);\n' +
-    '  re("(x)\\\\1")       # Refused (backreference).',
+    '  re("^[a-z][a-z0-9-]*$")  # Fine;\n' +
+    '  re("^\\d{3}-\\d{4}$")      # Fine;\n' +
+    '  re("(?:ab)+")            # Fine (non-capturing group);\n' +
+    '  re("(?=x)y")             # Refused (lookahead);\n' +
+    '  re("(a+)+")              # Refused (nested quantifier).',
 
   budget_passes:
     'The evaluation budget of {limit} fixpoint passes was spent before\n' +
