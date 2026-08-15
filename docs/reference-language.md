@@ -971,7 +971,7 @@ as such. There is no new grammar: atoms are ordinary functions.
 | `neq(x, ...)` | A | value is none of the listed scalars (leaf-aware) |
 | `re(p)`   | A | string matches pattern p (unanchored, portable subset) |
 | `len(c)`  | A | length/count satisfies integer constraint c |
-| `unique()`| A | list elements pairwise distinct |
+| `unique()`| A | members pairwise distinct (list elements, map values) |
 | `must(c, msg)` | B | evaluate-only check with an author message |
 
 ### Bounds and the number tower
@@ -1234,6 +1234,68 @@ the peer:
 
 Its argument is any integer-domain constraint: `len(3)` means exactly
 3; `len(min(2) & max(5))` means between 2 and 5.
+
+**`len` counts what generates.** An optional key that never resolves is
+dropped at generation, so it does not count:
+`len(1) & {x:1, y?:number}` **holds**, because the generated value is
+`{"x":1}`. The constraint is a claim about the data, and the data is
+what comes out.
+
+**When the count is decided.** For a map with no unresolved optional
+keys — the ordinary case — the count is known during unification and
+`len` decides at composition time like every other atom, including
+detecting an empty meet before any data arrives.
+
+An unresolved optional key changes that, and the reason is worth stating
+exactly, because it is easy to specify a mechanism the engine does not
+have. An optional key **survives unification carrying its unresolved
+value** — `{x:1, y?:number}` canonicalises as `{"x":1,"y"?:number}` —
+and is dropped only in generation (`BagVal.gen`). Nothing in the
+fixpoint settles it earlier. So a map holding one has no knowable count
+until generation, and `len` over such a map is **completed at
+generation**, where the surviving members are exactly the generated
+ones.
+
+This makes `len` the one atom with a generate-time leg. The alternative
+— counting declared keys — would decide earlier at the cost of letting a
+document fail `len(1)` while generating exactly one entry, which cannot
+be explained in an error message. What is *not* deferred is the atom's
+own arithmetic: `len(min(5) & max(3))` is empty at composition time
+whatever map it meets, because the inner interval is empty on its own.
+
+### `unique` semantics
+
+`unique()` holds when the members of a container are **pairwise
+distinct**, compared by **canonical form**: two members are the same
+member exactly when their canons are equal.
+
+Canon is the right yardstick because it is already this language's
+normal form for "the same value" — `ConstraintVal.same` compares canons,
+and `DisjunctVal` deduplicates members that way. It is deterministic,
+byte-identical across the two implementations (every `canon` spec row
+pins that), and it is defined for *every* value, which scalar identity
+is not.
+
+For scalar members it reduces exactly to scalar identity — leaf *and*
+value — because canon round-trips kind: `1` and `1.0` canon differently,
+so `[1, 1.0]` is distinct under the number tower, exactly as `1 & 1.0`
+is a conflict. For **container** members it gives structural equality
+without a separate rule: `[{x:1},{x:1}]` is not unique, because both
+elements canon as `{"x":1}`, and `[{x:1},{x:2}]` is.
+
+It applies to two shapes:
+
+- **lists**: the elements are pairwise distinct.
+- **maps**: the entry *values* are pairwise distinct. (Keys are
+  distinct by construction, so there is nothing to check there.)
+
+Any other peer — a string, a scalar — is a domain conflict.
+
+What `unique()` does **not** do is uniqueness *by projection*: "no two
+services share a port" compares one field of each member rather than
+the whole member, and that needs a projector, which in turn needs
+[G8](capability-review/g8-generation.md)'s combinators. The arity is
+reserved for it.
 
 ### Cross-field bounds and residuation
 

@@ -260,11 +260,11 @@ Band B — evaluate-only, honestly reported as such.
 | `neq(x, ...)` | A | value equals none of the listed scalars |
 | `re(p)` | A | string matches pattern p (unanchored) |
 | `len(c)` | A | length/count satisfies integer constraint c |
-| `unique()` | A | list elements pairwise distinct |
+| `unique()` | A | members pairwise distinct (list elements, map values) |
 | `must(c, msg)` | B | evaluate-only check with author message |
 
 Numeric bound atoms imply the `number` kind; string-argument bounds
-and `re` imply `string`; `unique` implies list; `len` applies to
+and `re` imply `string`; `unique` implies list or map; `len` applies to
 strings (length), lists (element count), and maps (entry count),
 with the domain fixed by the peer. Mixing domains in one meet
 (`min(0) & min("a")`) is empty and yields nil.
@@ -625,6 +625,28 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    algebra recursively; domain resolution against string/list/map
    peers touches `ts/src/val/ListVal.ts` and `MapVal.ts` membership
    checks (`go/listval.go`, `go/mapval.go`).
+   *(Two semantics the plan text left open, now decided and written
+   into `docs/reference-language.md` before any code, per the
+   spec-first method. **`len` counts what GENERATES**: an optional key
+   that never resolves is dropped at generation and does not count, so
+   `len(1) & {x:1, y?:number}` holds. Review caught the first draft of
+   this note specifying a mechanism the engine does not have: it said
+   `len` RESIDUATES until the optional "resolves or is dropped", but an
+   optional survives unification carrying its unresolved value and is
+   dropped only in `BagVal.gen`, so nothing would ever settle it and the
+   atom would be stuck. The correct statement is that a map with an
+   unresolved optional has no knowable count until generation, so `len`
+   over one is COMPLETED AT GENERATION — the one atom with a
+   generate-time leg. Maps without unresolved optionals decide eagerly
+   as usual, and the atom's own arithmetic (`len(min(5)&max(3))`) is
+   empty at composition time regardless. **`unique()` applies to
+   lists and maps**: list elements pairwise distinct, map entry values
+   pairwise distinct, compared by CANONICAL FORM — which reduces to
+   scalar identity for scalars (`[1, 1.0]` stays distinct under the
+   tower) and gives structural equality for container members
+   (`[{x:1},{x:1}]` is not unique) without a second rule. Any other peer is a domain conflict, and
+   uniqueness by PROJECTION stays deferred to G8's combinators with the
+   arity reserved.)*
 5. **Phase 4 — cross-field arguments and residuation (M).**
    `RefVal`-valued atom arguments; residuation rows including
    forward references and spread interplay (`&:` templates carrying
@@ -674,10 +696,12 @@ applied to the language itself.
   lint (G2's territory) nudge authors to write the kind explicitly
   (`integer & min(0)`) for agent legibility, or is the implication
   enough?
-- **`unique` with a projector.** `unique()` compares whole
-  elements; uniqueness by key ("no two services share a port")
-  needs a projection, which drags in G8's combinator questions.
-  Defer, but reserve the arity.
+- **`unique` with a projector.** *Partly settled:* `unique()` compares
+  whole members, over lists (elements) and maps (entry values) — see
+  `docs/reference-language.md`, "`unique` semantics". What remains open
+  is uniqueness by KEY ("no two services share a port"), which needs a
+  projection and so drags in G8's combinator questions. Deferred, arity
+  reserved.
 - **How much admissible-set detail travels in `NilVal.details`.**
   Repair-loop evidence says admissible alternatives drive agent
   self-correction; the exact shape (interval endpoints? nearest
