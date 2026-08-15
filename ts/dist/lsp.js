@@ -280,12 +280,12 @@ const COMPLETION_FUNCTION = 3;
 exports.COMPLETION_FUNCTION = COMPLETION_FUNCTION;
 const COMPLETION_KEYWORD = 14;
 exports.COMPLETION_KEYWORD = COMPLETION_KEYWORD;
-// The eighteen built-in functions. Kept in sync with the engine by
+// The twenty built-in functions. Kept in sync with the engine by
 // `lsp.test.ts`, which asserts each is recognised and no others are.
 const BUILTIN_FUNCS = [
-    'above', 'below', 'close', 'copy', 'hide', 'key', 'lower', 'max',
-    'min', 'move', 'neq', 'open', 'path', 'pref', 're', 'super', 'type',
-    'upper',
+    'above', 'below', 'close', 'copy', 'hide', 'key', 'len', 'lower',
+    'max', 'min', 'move', 'neq', 'open', 'path', 'pref', 're', 'super',
+    'type', 'unique', 'upper',
 ];
 exports.BUILTIN_FUNCS = BUILTIN_FUNCS;
 // Scalar-kind and literal keywords.

@@ -109,6 +109,8 @@ import {
   BelowConstraintVal,
   NeqConstraintVal,
   ReConstraintVal,
+  LenConstraintVal,
+  UniqueConstraintVal,
 } from './val/ConstraintVal'
 
 
@@ -425,6 +427,13 @@ help isolate the syntax error.`,
     // G1 phase 2: pattern membership, over the portable subset both
     // host regex engines agree on (nonPortableRe in ConstraintVal.ts).
     re: ReConstraintVal,
+
+    // G1 phase 3: the sizing atoms. Both are properties of a CONTAINER
+    // (or, for len, of a string) rather than comparisons against a
+    // value, which is why `unique` is the one built-in taking no
+    // argument at all.
+    len: LenConstraintVal,
+    unique: UniqueConstraintVal,
   }
 
 
@@ -1226,15 +1235,19 @@ function makeModelResolver(options: any) {
 // entry, and the arity is a property of the language rather than of
 // either port -- go/func.go carries the same table.
 //
-// Nearly everything takes exactly one. The two exceptions earn their
+// Nearly everything takes exactly one. The three exceptions earn their
 // place: key() names how many levels UP the path to read, defaulting to
-// the parent when omitted, and neq takes a whole set of exclusions.
+// the parent when omitted, neq takes a whole set of exclusions, and
+// unique() is a property of the container rather than a comparison
+// against anything, so there is nothing for it to take.
 const funcArity: Record<string, [number, number]> = {
   upper: [1, 1], lower: [1, 1], copy: [1, 1], pref: [1, 1],
   super: [1, 1], type: [1, 1], hide: [1, 1], close: [1, 1],
   open: [1, 1], move: [1, 1], path: [1, 1],
   min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1], re: [1, 1],
+  len: [1, 1],
   key: [0, 1],
+  unique: [0, 0],
   neq: [1, -1],
 }
 
@@ -1271,6 +1284,9 @@ function arityText(lo: number, hi: number): string {
   }
   if (lo !== hi) {
     return 'no arguments or one'
+  }
+  if (0 === hi) {
+    return 'no arguments'
   }
   return 'exactly one argument'
 }

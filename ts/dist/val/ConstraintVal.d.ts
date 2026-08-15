@@ -18,6 +18,9 @@ type ConstraintState = {
     hi?: Bound;
     neqs: any[];
     res: ReAtom[];
+    len?: ConstraintState;
+    uniq: boolean;
+    clash?: boolean;
     invalid?: string;
 };
 declare function normaliseRe(src: string): [string, string];
@@ -30,6 +33,9 @@ declare class ConstraintVal extends FeatureVal {
     hi?: Bound;
     neqs: any[];
     res: ReAtom[];
+    len?: ConstraintState;
+    uniq: boolean;
+    clash?: boolean;
     invalid?: string;
     invalidWhy?: string;
     constructor(spec: ValSpec & {
@@ -39,6 +45,7 @@ declare class ConstraintVal extends FeatureVal {
     private fromAtom;
     unify(peer: Val, ctx: AontuContext): Val;
     private admit;
+    private admitContainer;
     private meetKind;
     private meetConstraint;
     private finish;
@@ -66,4 +73,10 @@ declare class NeqConstraintVal extends ConstraintVal {
 declare class ReConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
-export { normaliseRe, ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, };
+declare class LenConstraintVal extends ConstraintVal {
+    constructor(spec: ValSpec, ctx?: AontuContext);
+}
+declare class UniqueConstraintVal extends ConstraintVal {
+    constructor(spec: ValSpec, ctx?: AontuContext);
+}
+export { normaliseRe, ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, LenConstraintVal, UniqueConstraintVal, };

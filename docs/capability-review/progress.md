@@ -89,19 +89,19 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **57 `.tsv` files, 56
-   row-bearing, 2,031 rows**, in six modes — `canon` 642, `gen` 460,
-   `errc` 337, `gens` 300, `err` 223, `errcode` 69. Reproduce with
+   register's last update the suite is **58 `.tsv` files, 57
+   row-bearing, 2,121 rows**, in six modes — `canon` 650, `gen` 498,
+   `errc` 378, `gens` 301, `err` 225, `errcode` 69. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Ten of forty-nine phases have moved; seven of those are complete.
+Eleven of forty-nine phases have moved; eight of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
-| [G1](g1-constraint-algebra.md) | Constraint algebra | A | 4 | 0 | 3 |
+| [G1](g1-constraint-algebra.md) | Constraint algebra | A | 5 | 0 | 2 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 1 | 0 | 5 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
@@ -109,17 +109,17 @@ Ten of forty-nine phases have moved; seven of those are complete.
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **7** | **3** | **39** |
+| | | **total** | **8** | **3** | **38** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
 - **Phase A — make the claim true.** Partly done. The trust contract
   (G5.1–2) and the error-code registry (G2.1) are in; of the sequencing
   table's "constraint algebra core (bounds, regex, length/count)",
-  bounds and `neq` are in (G1.1) and regex is in (G1.2). Outstanding:
-  `len`/`unique` (G1.3), and the whole of the `vet` verb (G2.2–6).
-  **Phase A's headline claim — `aontu vet` — does not exist in either
-  port.**
+  bounds and `neq` are in (G1.1), regex is in (G1.2) and length/count is
+  in (G1.3) — the row is complete. Outstanding: the whole of the `vet`
+  verb (G2.2–6). **Phase A's headline claim — `aontu vet` — does not
+  exist in either port.**
 - **Phase B — differentiate.** Untouched. No subsumption, no canon
   hash, no query surface.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
@@ -131,10 +131,10 @@ surface depends on nothing and could ship at any time.
 
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
-| **0** — algebra on paper | S | **LANDED** | `docs/reference-language.md` "The constraint algebra (specified)": all three tables the phase names — meet, emptiness, and **subsumption** — plus the canonical atom order, tower rulings, the lazy-endpoint/eager-emptiness decision, and `len` as Unicode code points. `test/spec/constraint-bound.tsv` and `constraint-re.tsv` promoted; `constraint-len/cross.tsv` remain drafts. Fold-defect guard rows in `disjunct.tsv`. Commit `98fc1bf`, completed by the subsumption table. |
+| **0** — algebra on paper | S | **LANDED** | `docs/reference-language.md` "The constraint algebra (specified)": all three tables the phase names — meet, emptiness, and **subsumption** — plus the canonical atom order, tower rulings, the lazy-endpoint/eager-emptiness decision, and `len` as Unicode code points. `test/spec/constraint-bound.tsv`, `constraint-re.tsv` and `constraint-len.tsv` promoted; `constraint-cross.tsv` remains a draft. Fold-defect guard rows in `disjunct.tsv`. Commit `98fc1bf`, completed by the subsumption table. |
 | **1** — numeric and lexical bounds, `neq` | M | **LANDED** | `ts/src/val/ConstraintVal.ts` (`cjo = 50000`) + `go/constraint.go`; `min`/`max`/`above`/`below`/`neq` in both registries (12 → 17 builtins); `test/spec/constraint-bound.tsv`, `constraint-product.tsv` (all 256 ordered pairs), `errcodes.tsv:constraint`; law tests `ts/test/constraint-laws.test.ts` + `go/constraint_laws_test.go` over `test/spec/files/constraint-atoms.txt`. Commit `ae82828`. |
 | **2** — `re` | M | **LANDED** | `ReConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `re` arm of `newConstraint` (`go/constraint.go`); `re` in both registries (17 → 18 builtins) and both LSP completion lists; the portable-subset scanner `nonPortableRe`, mirrored statement for statement in both ports; `test/spec/constraint-re.tsv` (89 rows, promoted from the draft with every expectation re-probed) and the differential corpus `test/spec/files/regex-corpus.tsv` (400 patterns, both normalisers pinned); `errcodes.tsv:constraint_pattern`. |
-| **3** — `len` and `unique` | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-len.tsv`. **Unblocked:** the two semantics the design left open are now decided and written into `docs/reference-language.md` — `len` counts what generates (so it residuates while a map holds an unresolved optional), and `unique()` covers lists and maps, projection deferred. |
+| **3** — `len` and `unique` | M | **LANDED** | `LenConstraintVal`/`UniqueConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `len`/`unique` arms of `newConstraint` (`go/constraint.go`); both in both registries (18 → 20 builtins) and both LSP completion lists; `unique` is the first zero-arity built-in, so `arityText` gained a "no arguments" case. `test/spec/constraint-len.tsv` (90 rows, promoted from the draft with every expectation obtained by running BOTH engines and diffing). **Departure from the design:** implementing it added one rule the design did not have — sizing atoms fold LAST in a conjunct (`SIZING_CJO`), or `a:len(2) a:{x:1} a:{y:2}` would count the first fragment alone and refuse the layering the language exists for; `docs/reference-language.md` "Sizing atoms fold last" carries it, and `MapVal`/`ListVal` hand a constraint peer back to the constraint because the order reverses who drives the meet. |
 | **4** — cross-field arguments, residuation | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-cross.tsv`. |
 | **5** — `must` | S | **NOT STARTED** | — |
 | **6** — number exactness | S | **LANDED** | `isLossyIntegerLiteral` → `lossy_integer_literal` in `ts/src/lang.ts` and `go/lang.go`; `test/spec/number-tower.tsv`, `number-model.tsv`, `scalar.tsv`. Landed inside the number tower, commit `51e8149`. |

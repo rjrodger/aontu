@@ -86,6 +86,15 @@ class MapVal extends BagVal_1.BagVal {
         // console.log('MAPVAL-UNIFY', this.id, this.canon, peer.id, peer.canon)
         const TOP = (0, top_1.top)();
         peer = peer ?? TOP;
+        // A sizing residual (`len`, `unique`) sorts AFTER containers in a
+        // conjunct so that it counts the MERGED map rather than the first
+        // fragment (SIZING_CJO in ConstraintVal.ts). That makes the map the
+        // accumulator and the constraint its peer, the reverse of the usual
+        // order — and the reading belongs to the constraint either way, so
+        // hand it straight back.
+        if (true === peer.isConstraint) {
+            return peer.unify(this, ctx);
+        }
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Map', this, peer);
         let done = true;
         let exit = false;

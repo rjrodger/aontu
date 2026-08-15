@@ -113,6 +113,15 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil {
 		peer = top()
 	}
+	// A sizing residual (`len`, `unique`) sorts AFTER containers in a
+	// conjunct so that it counts the MERGED list rather than the first
+	// fragment (sizingCjo in constraint.go). That makes the list the
+	// accumulator and the constraint its peer, the reverse of the usual
+	// order -- and the reading belongs to the constraint either way, so
+	// hand it straight back.
+	if pc, ok := peer.(*ConstraintVal); ok {
+		return pc.Unify(l, ctx)
+	}
 	if pl, ok := peer.(*ListVal); ok && !l.closed && pl.closed {
 		return pl.Unify(l, ctx)
 	}

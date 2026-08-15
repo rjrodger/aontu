@@ -1135,6 +1135,21 @@ to the identical residual. Draft rows pin a round-trip and an
 order-independence case (`min(0)&max(10)` vs `max(10)&min(0)` →
 identical canon) for each rule.
 
+Two renderings follow from that round trip rather than from taste:
+
+- **`len`'s argument renders unabridged**, implied parts and all:
+  `len(3)` canonicalises to `len(integer&min(3)&max(3))`, because that
+  *is* the residual the count must satisfy (`len(c)` always meets
+  `integer & min(0)`; see [`len` semantics](#len-semantics)).
+  Abbreviating it would mean a second set of rules for when the implied
+  parts may be dropped, and canon is a normal form — [G6](capability-review/g6-distribution.md)
+  hashes it — not a pretty-printer.
+- **A bare domain is spelled out when nothing implies it.** An order
+  atom's argument names its own domain, so `min(2)` need not say
+  `number`. A sizing residual carries no order, so `string & len(3)`
+  renders as `string&len(...)`: drop the `string` and the reparse would
+  admit lists and maps of three members too.
+
 ### `re` and the portable pattern subset
 
 `re(p)` admits a string matching `p`. Matching is **unanchored** in
@@ -1233,7 +1248,22 @@ the peer:
 - **lists**: element count. **maps**: entry count.
 
 Its argument is any integer-domain constraint: `len(3)` means exactly
-3; `len(min(2) & max(5))` means between 2 and 5.
+3; `len(min(2) & max(5))` means between 2 and 5. Every argument meets
+`integer & min(0)` — a count is a non-negative whole number — which is
+what makes `len(max(-1))` and `len(1.5)` empty on their own, and what
+canon renders.
+
+The argument is read at composition time and **does not residuate**:
+`len($.n)` is refused (`invalid-arg`), the same discipline `min` and
+`max` apply to theirs. It is the *peer* whose members are still
+settling that a sizing atom waits for, never its own argument.
+
+A sizing residual has **no domain of its own** — a count says nothing
+about what is counted — so meeting a kind *sets* one rather than merely
+agreeing with it. `string & len(3)` is a three-character string, and
+`number & len(3)` is empty, because a number has neither a length nor
+members. `min(2) & unique()` and `re("^a") & unique()` are empty for the
+same reason.
 
 **`len` counts what generates.** An optional key that never resolves is
 dropped at generation, so it does not count:
@@ -1270,6 +1300,33 @@ atom's own arithmetic: `len(min(5) & max(3))` is empty at composition
 time whatever map it meets, because the inner interval is empty on its
 own.
 
+### Sizing atoms fold last
+
+There is one more rule the sizing atoms need, and it is not shared with
+the order atoms: **`len` and `unique` are the last terms of a conjunct
+to fold.**
+
+An order atom may decide the moment it meets a scalar, because meeting
+further scalars can only narrow: `min(2) & 1 & 2` is a conflict however
+it is grouped. A sizing atom cannot, because meeting further containers
+*grows* the member set:
+
+```aon
+a: len(2)
+a: {x:1}
+a: {y:2}
+```
+
+Layering fragments like this is the point of the language, and an atom
+that folded early would count `{x:1}` alone and refuse it. So the two
+kinds of atom take different slots in the conjunct sort order (`cjo`):
+the order atoms fold before containers, the sizing atoms after every
+value that could contribute a member. The size is then read once, from
+the merged container.
+
+Written order does not matter — `a: {x:1} a: {y:2} a: len(2)` is the
+same value — which is the property the sort order exists to guarantee.
+
 ### `unique` semantics
 
 `unique()` holds when the members of a container are **pairwise
@@ -1296,7 +1353,10 @@ It applies to two shapes:
 - **maps**: the entry *values* are pairwise distinct. (Keys are
   distinct by construction, so there is nothing to check there.)
 
-Any other peer — a string, a scalar — is a domain conflict.
+Any other peer — a string, a number, a boolean, `null` — is a domain
+conflict: no scalar has members. The members it does compare are the
+members that *generate*, the same set `len` counts, so a `hide`n entry
+and a dropped optional are not members here either.
 
 What `unique()` does **not** do is uniqueness *by projection*: "no two
 services share a port" compares one field of each member rather than

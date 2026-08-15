@@ -652,6 +652,26 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    (`[{x:1},{x:1}]` is not unique) without a second rule. Any other peer is a domain conflict, and
    uniqueness by PROJECTION stays deferred to G8's combinators with the
    arity reserved.)*
+   *(**Landed, with one departure from this plan.** Implementing it
+   surfaced a rule neither the plan nor the reference had: the sizing
+   atoms must fold LAST in a conjunct. Every atom before them sorts at
+   `cjo` 50000, below the container default, because an order atom may
+   decide as soon as it meets a scalar — meeting further scalars can
+   only narrow. A sizing atom cannot: meeting further containers GROWS
+   the member set, so `a:len(2) a:{x:1} a:{y:2}` folded at 50000 counts
+   `{x:1}` alone and refuses the fragment layering the language exists
+   for. The residual therefore takes `SIZING_CJO` (150000) when it
+   carries `len` or `unique`, and `MapVal`/`ListVal` hand a constraint
+   peer straight back to the constraint, because the new order reverses
+   which side drives the meet. `docs/reference-language.md`, "Sizing
+   atoms fold last", is the normative statement; `constraint-len.tsv`
+   pins written-order independence. Two smaller consequences: a sizing
+   residual has no domain of its own, so a kind SETS one
+   (`string & len(3)` is a three-character string, `number & len(3)` is
+   empty), and canon must then spell out a bare `string`; and the count
+   argument is read at composition time and does NOT residuate, so
+   `len($.n)` is refused rather than deferred — phase 4's cross-field
+   work is about atom arguments generally and can revisit it.)*
 5. **Phase 4 — cross-field arguments and residuation (M).**
    `RefVal`-valued atom arguments; residuation rows including
    forward references and spread interplay (`&:` templates carrying
