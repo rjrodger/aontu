@@ -25,3 +25,24 @@ len-negative-empty	err	a:len(max(-1))	Cannot unify
 unique-ok	gen	a:unique() a:[1,2,3]	{"a":[1,2,3]}
 unique-reject	err	a:unique() a:[1,2,1]	Cannot unify
 unique-leafwise	gen	a:unique() a:[1,1.0]	{"a":[1,1]}
+#
+# DECIDED (see docs/reference-language.md, "`unique` semantics"):
+# unique() applies to lists AND maps -- map ENTRY VALUES pairwise
+# distinct, since keys are distinct by construction. Any other peer is
+# a domain conflict. Uniqueness by PROJECTION ("no two services share a
+# port") stays deferred to G8's combinators, arity reserved.
+unique-map-ok	gen	a:unique() a:{x:1,y:2}	{"a":{"x":1,"y":2}}
+unique-map-reject	err	a:unique() a:{x:1,y:1}	Cannot unify
+unique-string-domain	err	a:unique() a:abc	Cannot unify
+unique-scalar-domain	err	a:unique() a:1	Cannot unify
+#
+# DECIDED (see docs/reference-language.md, "`len` semantics"):
+# len counts what GENERATES. An optional key that never resolves is
+# dropped at generation and does not count, so the first row HOLDS.
+# The consequence is that a map still carrying an unresolved optional
+# has no settled count, so len RESIDUATES there and decides on a later
+# pass -- the one place a Band A atom does not decide eagerly. A
+# supplied optional DOES count.
+len-map-drops-unresolved-optional	gen	a:len(1) a:{x:1,y?:number}	{"a":{"x":1}}
+len-map-counts-supplied-optional	gen	a:len(2) a:{x:1,y?:number} a:{y:2}	{"a":{"x":1,"y":2}}
+len-map-optional-count-mismatch	err	a:len(2) a:{x:1,y?:number}	Cannot unify

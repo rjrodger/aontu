@@ -625,6 +625,20 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    algebra recursively; domain resolution against string/list/map
    peers touches `ts/src/val/ListVal.ts` and `MapVal.ts` membership
    checks (`go/listval.go`, `go/mapval.go`).
+   *(Two semantics the plan text left open, now decided and written
+   into `docs/reference-language.md` before any code, per the
+   spec-first method. **`len` counts what GENERATES**: an optional key
+   that never resolves is dropped at generation and does not count, so
+   `len(1) & {x:1, y?:number}` holds. The consequence is that a map
+   still carrying an unresolved optional has no settled count and `len`
+   RESIDUATES there — the one place a Band A atom does not decide
+   eagerly, accepted because the alternative lets a document fail
+   `len(1)` while generating exactly one entry. **`unique()` applies to
+   lists and maps**: list elements pairwise distinct, map entry values
+   pairwise distinct, compared by scalar identity so `[1, 1.0]` stays
+   distinct under the tower. Any other peer is a domain conflict, and
+   uniqueness by PROJECTION stays deferred to G8's combinators with the
+   arity reserved.)*
 5. **Phase 4 — cross-field arguments and residuation (M).**
    `RefVal`-valued atom arguments; residuation rows including
    forward references and spread interplay (`&:` templates carrying
@@ -674,10 +688,12 @@ applied to the language itself.
   lint (G2's territory) nudge authors to write the kind explicitly
   (`integer & min(0)`) for agent legibility, or is the implication
   enough?
-- **`unique` with a projector.** `unique()` compares whole
-  elements; uniqueness by key ("no two services share a port")
-  needs a projection, which drags in G8's combinator questions.
-  Defer, but reserve the arity.
+- **`unique` with a projector.** *Partly settled:* `unique()` compares
+  whole members, over lists (elements) and maps (entry values) — see
+  `docs/reference-language.md`, "`unique` semantics". What remains open
+  is uniqueness by KEY ("no two services share a port"), which needs a
+  projection and so drags in G8's combinator questions. Deferred, arity
+  reserved.
 - **How much admissible-set detail travels in `NilVal.details`.**
   Repair-loop evidence says admissible alternatives drive agent
   self-correction; the exact shape (interval endpoints? nearest

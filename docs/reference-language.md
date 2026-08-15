@@ -1235,6 +1235,43 @@ the peer:
 Its argument is any integer-domain constraint: `len(3)` means exactly
 3; `len(min(2) & max(5))` means between 2 and 5.
 
+**`len` counts what generates.** An optional key that never resolves is
+dropped at generation, so it does not count:
+`len(1) & {x:1, y?:number}` **holds**, because the generated value is
+`{"x":1}`. The constraint is a claim about the data, and the data is
+what comes out.
+
+The consequence is that a map still carrying an unresolved optional key
+has no settled count, so `len` **residuates** there — it stays in place
+and is decided on a later pass, once the optional resolves or is
+dropped. This is the one place a Band A atom does not decide eagerly,
+and it is deliberate: the alternative (counting declared keys) lets a
+document fail `len(1)` while generating exactly one entry, which cannot
+be explained in an error message. Where a map has no unresolved
+optionals — the ordinary case — the count is known immediately and
+`len` decides at composition time like every other atom.
+
+### `unique` semantics
+
+`unique()` holds when the members of a container are **pairwise
+distinct**, compared by scalar identity — leaf *and* value, the
+lattice's own rule. `[1, 1.0]` is therefore distinct under the number
+tower, exactly as `1 & 1.0` is a conflict.
+
+It applies to two shapes:
+
+- **lists**: the elements are pairwise distinct.
+- **maps**: the entry *values* are pairwise distinct. (Keys are
+  distinct by construction, so there is nothing to check there.)
+
+Any other peer — a string, a scalar — is a domain conflict.
+
+What `unique()` does **not** do is uniqueness *by projection*: "no two
+services share a port" compares one field of each member rather than
+the whole member, and that needs a projector, which in turn needs
+[G8](capability-review/g8-generation.md)'s combinators. The arity is
+reserved for it.
+
 ### Cross-field bounds and residuation
 
 An atom whose argument contains an unresolved reference, or whose
