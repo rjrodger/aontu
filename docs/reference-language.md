@@ -971,7 +971,7 @@ as such. There is no new grammar: atoms are ordinary functions.
 | `neq(x, ...)` | A | value is none of the listed scalars (leaf-aware) |
 | `re(p)`   | A | string matches pattern p (unanchored, portable subset) |
 | `len(c)`  | A | length/count satisfies integer constraint c |
-| `unique()`| A | list elements pairwise distinct |
+| `unique()`| A | members pairwise distinct (list elements, map values) |
 | `must(c, msg)` | B | evaluate-only check with an author message |
 
 ### Bounds and the number tower
@@ -1241,22 +1241,47 @@ dropped at generation, so it does not count:
 `{"x":1}`. The constraint is a claim about the data, and the data is
 what comes out.
 
-The consequence is that a map still carrying an unresolved optional key
-has no settled count, so `len` **residuates** there — it stays in place
-and is decided on a later pass, once the optional resolves or is
-dropped. This is the one place a Band A atom does not decide eagerly,
-and it is deliberate: the alternative (counting declared keys) lets a
+**When the count is decided.** For a map with no unresolved optional
+keys — the ordinary case — the count is known during unification and
+`len` decides at composition time like every other atom, including
+detecting an empty meet before any data arrives.
+
+An unresolved optional key changes that, and the reason is worth stating
+exactly, because it is easy to specify a mechanism the engine does not
+have. An optional key **survives unification carrying its unresolved
+value** — `{x:1, y?:number}` canonicalises as `{"x":1,"y"?:number}` —
+and is dropped only in generation (`BagVal.gen`). Nothing in the
+fixpoint settles it earlier. So a map holding one has no knowable count
+until generation, and `len` over such a map is **completed at
+generation**, where the surviving members are exactly the generated
+ones.
+
+This makes `len` the one atom with a generate-time leg. The alternative
+— counting declared keys — would decide earlier at the cost of letting a
 document fail `len(1)` while generating exactly one entry, which cannot
-be explained in an error message. Where a map has no unresolved
-optionals — the ordinary case — the count is known immediately and
-`len` decides at composition time like every other atom.
+be explained in an error message. What is *not* deferred is the atom's
+own arithmetic: `len(min(5) & max(3))` is empty at composition time
+whatever map it meets, because the inner interval is empty on its own.
 
 ### `unique` semantics
 
 `unique()` holds when the members of a container are **pairwise
-distinct**, compared by scalar identity — leaf *and* value, the
-lattice's own rule. `[1, 1.0]` is therefore distinct under the number
-tower, exactly as `1 & 1.0` is a conflict.
+distinct**, compared by **canonical form**: two members are the same
+member exactly when their canons are equal.
+
+Canon is the right yardstick because it is already this language's
+normal form for "the same value" — `ConstraintVal.same` compares canons,
+and `DisjunctVal` deduplicates members that way. It is deterministic,
+byte-identical across the two implementations (every `canon` spec row
+pins that), and it is defined for *every* value, which scalar identity
+is not.
+
+For scalar members it reduces exactly to scalar identity — leaf *and*
+value — because canon round-trips kind: `1` and `1.0` canon differently,
+so `[1, 1.0]` is distinct under the number tower, exactly as `1 & 1.0`
+is a conflict. For **container** members it gives structural equality
+without a separate rule: `[{x:1},{x:1}]` is not unique, because both
+elements canon as `{"x":1}`, and `[{x:1},{x:2}]` is.
 
 It applies to two shapes:
 
