@@ -118,7 +118,11 @@ no budget counts, and the two ports do not agree on complexity: Go uses
 RE2, which is linear, while TypeScript uses JavaScript's backtracking
 `RegExp`, which is not. A nested quantifier is enough to make the
 difference unbounded — `(a+)+$` against twenty-nine characters takes 45
-seconds in TypeScript and 0.065s in Go. Rather than add a budget the
+seconds in TypeScript and 0.065s in Go. (TypeScript also compiles with
+the `u` flag, so both engines count code points rather than one
+counting UTF-16 units — a semantic parity fix rather than a bound, but
+it is part of the same "the two engines are not one engine" story.)
+Rather than add a budget the
 host engine cannot be asked to respect, the
 [portable subset](reference-language.md#re-and-the-portable-pattern-subset)
 **refuses the shapes that cause it**: a quantifier may not be applied to

@@ -73,7 +73,12 @@ const reEscapeLetters = "dDwWtnrfvbB"
 // reEscapePunct are the metacharacters that may be escaped to mean
 // themselves. Other punctuation is left out because RE2 rejects some
 // identity escapes JavaScript allows.
-const reEscapePunct = `\.+*?()[]{}|^$/-`
+//
+// `-` is NOT here: it is legal escaped only INSIDE a character class.
+// Outside one, RE2 accepts `a\-b` and JavaScript's unicode mode (which
+// the TypeScript port must use for code-point parity) makes it a syntax
+// error, so admitting it either way is a divergence.
+const reEscapePunct = `\.+*?()[]{}|^$/`
 
 func isHexDigit(c rune) bool {
 	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')
@@ -82,7 +87,7 @@ func isHexDigit(c rune) bool {
 // portableEscape reports why `\<n>` is not in the subset, or "" when it
 // is, together with the number of EXTRA characters consumed beyond the
 // backslash and n (for `\xHH`).
-func portableEscape(n rune, at func(int) rune, i int) (string, int) {
+func portableEscape(n rune, at func(int) rune, i int, inClass bool) (string, int) {
 	if 0 == n {
 		return "a trailing backslash", 0
 	}
@@ -114,6 +119,13 @@ func portableEscape(n rune, at func(int) rune, i int) (string, int) {
 			return "an \\x escape without two hex digits", 0
 		}
 		return "", 2
+	}
+	if '-' == n {
+		if inClass {
+			return "", 0
+		}
+		return "\\-, which is a range separator inside a class and a syntax" +
+			" error outside one (write a bare -)", 0
 	}
 	if strings.ContainsRune(reEscapeLetters, n) || strings.ContainsRune(reEscapePunct, n) {
 		return "", 0
@@ -155,7 +167,7 @@ func nonPortableRe(src string) string {
 		c := r[i]
 
 		if '\\' == c {
-			why, extra := portableEscape(at(i+1), at, i)
+			why, extra := portableEscape(at(i+1), at, i, inClass)
 			if "" != why {
 				return why
 			}

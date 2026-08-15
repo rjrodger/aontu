@@ -1162,7 +1162,10 @@ flags, and named groups — whose spelling differs (`(?P<n>` in RE2,
 **2. Escapes.** Only escapes whose meaning is identical in both engines
 pass: `\d \D \w \W` (ASCII classes), `\t \n \r \f \v`, `\b \B`
 (ASCII word boundary), `\xHH`, and a backslash before any of
-`\ . + * ? ( ) [ ] { } | ^ $ / -` to mean that character literally.
+`\ . + * ? ( ) [ ] { } | ^ $ /` to mean that character literally.
+`\-` passes only *inside* a character class, where it is a literal
+hyphen in both; outside one RE2 accepts it and JavaScript does not, so
+write a bare `-`.
 
 Everything else is refused, including several that look harmless:
 
@@ -1192,6 +1195,14 @@ not quantifiers, so `[a+]+` passes too.
 Also refused: POSIX classes (`[[:alpha:]]`, RE2 only) and empty
 character classes (`[]`, `[^]` — a never-matching class in JavaScript,
 a parse error in RE2).
+
+**Matching counts code points, not code units.** JavaScript's default
+regex mode matches UTF-16 code units, so `.` consumes half of an astral
+character; RE2 matches code points. `re("^.$")` therefore accepted
+U+1D11E in Go and refused it in TypeScript, and `re("^..$")` did the
+exact reverse. The TypeScript port compiles patterns with the `u` flag
+so both engines count code points, and `test/spec/constraint-re.tsv`
+pins the astral cases in both directions.
 
 A pattern that passes all three rules still goes to the host engine,
 and its own compile failure is the same refusal under the same code.

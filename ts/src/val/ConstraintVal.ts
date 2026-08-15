@@ -156,7 +156,11 @@ const RE_ESCAPE_LETTERS = 'dDwWtnrfvbB'
 // Metacharacters that may be escaped to mean themselves. Both engines
 // read `\<punct>` as the literal for these; other punctuation is left
 // out because RE2 rejects some identity escapes JavaScript allows.
-const RE_ESCAPE_PUNCT = '\\.+*?()[]{}|^$/-'
+//
+// `-` is NOT here: it is legal escaped only INSIDE a character class.
+// Outside one, RE2 accepts `a\-b` and JavaScript's unicode mode makes it
+// a syntax error, so admitting it either way is a divergence.
+const RE_ESCAPE_PUNCT = '\\.+*?()[]{}|^$/'
 
 function isHexDigit(c: string | undefined): boolean {
   return null != c && (
@@ -166,8 +170,9 @@ function isHexDigit(c: string | undefined): boolean {
 // portableEscape reports why `\<n>` is not in the subset, or undefined
 // when it is. Returns the number of EXTRA source characters consumed
 // beyond the backslash and `n` via the second element (for `\xHH`).
-function portableEscape(n: string | undefined, src: string, i: number):
-  [string | undefined, number] {
+function portableEscape(
+  n: string | undefined, src: string, i: number, inClass: boolean
+): [string | undefined, number] {
   if (null == n) {
     return ['a trailing backslash', 0]
   }
@@ -202,6 +207,11 @@ function portableEscape(n: string | undefined, src: string, i: number):
     }
     return [undefined, 2]
   }
+  if ('-' === n) {
+    return inClass ? [undefined, 0] :
+      ['\\-, which is a range separator inside a class and a syntax' +
+        ' error outside one (write a bare -)', 0]
+  }
   if (RE_ESCAPE_LETTERS.includes(n) || RE_ESCAPE_PUNCT.includes(n)) {
     return [undefined, 0]
   }
@@ -227,7 +237,7 @@ function nonPortableRe(src: string): string | undefined {
     const c = src[i]
 
     if ('\\' === c) {
-      const [why, extra] = portableEscape(src[i + 1], src, i)
+      const [why, extra] = portableEscape(src[i + 1], src, i, inClass)
       if (null != why) {
         return why
       }
@@ -453,7 +463,16 @@ class ConstraintVal extends FeatureVal {
       }
       let re: RegExp
       try {
-        re = new RegExp(src)
+        // The `u` flag is REQUIRED for parity, not an optimisation.
+        // Without it JavaScript matches UTF-16 code units while RE2
+        // matches code points, so `re("^.$")` accepted U+1D11E in Go
+        // and refused it in TypeScript (and `^..$` did the reverse).
+        // With it, `.` and every quantifier count code points in both.
+        // It also makes JavaScript refuse the identity escapes this
+        // scanner rejects by hand, which is defence in depth rather
+        // than a substitute: RE2 accepts some of them, so the scanner
+        // is what keeps the two ports agreeing.
+        re = new RegExp(src, 'u')
       }
       catch (e: any) {
         // The host engine refuses what the subset scanner passed — a

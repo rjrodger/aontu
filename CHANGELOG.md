@@ -42,7 +42,14 @@ ports. Three rules, each a whitelist:
    absent: `\s`/`\S`, whose whitespace class is Unicode in JavaScript
    and ASCII-only in RE2, and `\A`/`\z`/`\Z`, which are anchors in
    RE2 but identity escapes matching a literal letter in JavaScript.
-3. **Quantifier nesting** — a quantifier may not be applied to a group
+3. **Code points, not code units** — JavaScript's default regex mode
+   matches UTF-16 code units while RE2 matches code points, so `^.$`
+   accepted U+1D11E in Go and refused it in TypeScript (and `^..$` did
+   the reverse). The TypeScript port compiles with the `u` flag so both
+   count code points. That flag also makes JavaScript refuse `\-`
+   outside a character class where RE2 accepts it, so `\-` passes only
+   inside a class.
+4. **Quantifier nesting** — a quantifier may not be applied to a group
    containing a quantifier or an alternation. This one is about *time*:
    `(a+)+$` against twenty-nine characters takes 45 seconds under
    JavaScript's backtracking engine and 0.065s under RE2, and a regex
@@ -58,7 +65,7 @@ would not be. Full rules: `docs/reference-language.md`, "`re` and the
 portable pattern subset"; the termination consequence is recorded in
 `docs/trust.md`, clause 2.
 
-Pinned by the new `test/spec/constraint-re.tsv` (78 shared rows,
+Pinned by the new `test/spec/constraint-re.tsv` (86 shared rows,
 promoted from `test/spec/draft/` with every expectation re-probed
 through both engines). The builtin registry goes from 17 to 18 names,
 in both ports and both LSP completion lists.

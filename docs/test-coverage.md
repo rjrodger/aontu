@@ -45,13 +45,13 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (12100/12100) |
-| TypeScript — `ts/src` | branches | **100.00 %** (2686/2686) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (12119/12119) |
+| TypeScript — `ts/src` | branches | **100.00 %** (2690/2690) |
 | TypeScript — `ts/src` | functions | **100.00 %** (484/484) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **2392 TypeScript tests** and
-four green Go packages, including the **2020-row shared spec** that both
+Both suites pass in full via `make test`: **2400 TypeScript tests** and
+four green Go packages, including the **2028-row shared spec** that both
 engines execute.
 
 The absolute figures above move with every change and are reproduced,
@@ -101,7 +101,7 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **2020 cases across 57 files** — is run by *both*
+`test/spec/*.tsv` — **2028 cases across 57 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
@@ -115,7 +115,7 @@ implementations and is the contract that defines shared behaviour
 | `errcodes.tsv`            |  69 | `map.tsv`          | 20 |
 | `constraint-bound.tsv`    |  61 | `plus.tsv`         | 14 |
 | `number-cross-product.tsv`|  59 | `conjunct.tsv`     | 13 |
-| `constraint-re.tsv`       |  78 | `merge-conflict.tsv`| 13 |
+| `constraint-re.tsv`       |  86 | `merge-conflict.tsv`| 13 |
 | `ref.tsv`                 |  40 | `op-chars.tsv`     | 13 |
 | `scalar.tsv`              |  40 | `close.tsv`        |  9 |
 | `optional.tsv`            |  37 | `incomplete.tsv`   |  9 |
@@ -158,7 +158,7 @@ error code (`errc`), or an error-code registry entry (`errcode`).
 Only what a shared row cannot express gets a per-port test — ADR-001
 prefers a row precisely because one row lifts both engines:
 
-**TypeScript** (`ts/test/*.test.ts`, 2392 tests, 2020 of them shared
+**TypeScript** (`ts/test/*.test.ts`, 2400 tests, 2028 of them shared
 rows): every built-in function in depth, the exact leaves, the public
 API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
 references, parsing, the fixpoint, worked examples — plus three

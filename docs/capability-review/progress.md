@@ -90,8 +90,8 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
    register's last update the suite is **57 `.tsv` files, 56
-   row-bearing, 2,020 rows**, in six modes — `canon` 641, `gen` 450,
-   `errc` 336, `gens` 300, `err` 224, `errcode` 69. Reproduce with
+   row-bearing, 2,028 rows**, in six modes — `canon` 641, `gen` 455,
+   `errc` 338, `gens` 300, `err` 225, `errcode` 69. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
@@ -133,7 +133,7 @@ surface depends on nothing and could ship at any time.
 |-------|------|--------|-----|
 | **0** — algebra on paper | S | **LANDED** | `docs/reference-language.md` "The constraint algebra (specified)": all three tables the phase names — meet, emptiness, and **subsumption** — plus the canonical atom order, tower rulings, the lazy-endpoint/eager-emptiness decision, and `len` as Unicode code points. `test/spec/constraint-bound.tsv` and `constraint-re.tsv` promoted; `constraint-len/cross.tsv` remain drafts. Fold-defect guard rows in `disjunct.tsv`. Commit `98fc1bf`, completed by the subsumption table. |
 | **1** — numeric and lexical bounds, `neq` | M | **LANDED** | `ts/src/val/ConstraintVal.ts` (`cjo = 50000`) + `go/constraint.go`; `min`/`max`/`above`/`below`/`neq` in both registries (12 → 17 builtins); `test/spec/constraint-bound.tsv`, `constraint-product.tsv` (all 256 ordered pairs), `errcodes.tsv:constraint`; law tests `ts/test/constraint-laws.test.ts` + `go/constraint_laws_test.go` over `test/spec/files/constraint-atoms.txt`. Commit `ae82828`. |
-| **2** — `re` | M | **LANDED** | `ReConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `re` arm of `newConstraint` (`go/constraint.go`); `re` in both registries (17 → 18 builtins) and both LSP completion lists; the portable-subset scanner `nonPortableRe`, mirrored statement for statement in both ports; `test/spec/constraint-re.tsv` (78 rows, promoted from the draft with every expectation re-probed); `errcodes.tsv:constraint_pattern`. |
+| **2** — `re` | M | **LANDED** | `ReConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `re` arm of `newConstraint` (`go/constraint.go`); `re` in both registries (17 → 18 builtins) and both LSP completion lists; the portable-subset scanner `nonPortableRe`, mirrored statement for statement in both ports; `test/spec/constraint-re.tsv` (86 rows, promoted from the draft with every expectation re-probed); `errcodes.tsv:constraint_pattern`. |
 | **3** — `len` and `unique` | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-len.tsv`. |
 | **4** — cross-field arguments, residuation | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-cross.tsv`. |
 | **5** — `must` | S | **NOT STARTED** | — |
@@ -169,6 +169,17 @@ ASCII-only in RE2). Escapes are now a whitelist too. The lesson is
 general enough to state: **in a two-engine subset, every axis must be a
 whitelist, because a blacklist admits the next divergence by
 construction.**
+
+A third divergence of the same family turned up while writing up the
+engine differences, and it was the subset's own blind spot rather than
+review's: **JavaScript matches UTF-16 code units by default and RE2
+matches code points**, so `re("^.$")` accepted U+1D11E in Go and refused
+it in TypeScript — and `re("^..$")` did the exact reverse. The
+TypeScript port now compiles with the `u` flag, which makes `.` and
+every quantifier count code points in both engines. That flag also makes
+JavaScript refuse `\-` outside a character class where RE2 accepts it,
+so the scanner now allows `\-` only inside a class; adding the flag
+without that rule would have traded one divergence for another.
 
 The same review found that `re` also breaks the *termination* clause in
 one port. `(a+)+$` against twenty-nine characters takes 45 seconds under

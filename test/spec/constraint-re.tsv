@@ -99,6 +99,26 @@ re-escape-not-digit	gen	a:re("^\\\\D$") a:x	{"a":"x"}
 re-escape-tab-class	gen	a:re("^[ \\\\t]$") a:" "	{"a":" "}
 re-escape-literal-dot	gen	a:re("^a\\\\.b$") a:"a.b"	{"a":"a.b"}
 #
+# CODE POINTS, NOT CODE UNITS. JavaScript matches UTF-16 code units by
+# default and RE2 matches code points, so `^.$` accepted U+1D11E (one
+# code point, TWO UTF-16 units) in Go and refused it in TypeScript --
+# and `^..$` did the exact reverse. The TypeScript port therefore
+# compiles with the `u` flag, which makes `.` and every quantifier count
+# code points in both engines. These rows are the ones that would have
+# caught it.
+re-astral-dot-one	gen	a:re("^.$") a:"𝄞"	{"a":"𝄞"}
+re-astral-dot-two-fails	errc	a:re("^..$") a:"𝄞"	constraint
+re-astral-counted-quantifier	gen	a:re("^.{1}$") a:"𝄞"	{"a":"𝄞"}
+re-astral-class	gen	a:re("^[𝄞x]+$") a:"𝄞"	{"a":"𝄞"}
+#
+# `\-` is a range separator inside a character class and a syntax error
+# outside one under the `u` flag -- while RE2 accepts it in both
+# positions. Refused outside a class so the two ports agree.
+re-escape-hyphen-in-class	gen	a:re("^[a\\\\-z]+$") a:"a-z"	{"a":"a-z"}
+re-nonportable-hyphen-outside-class	errc	a:re("a\\\\-b")&"x"	constraint_pattern
+re-nonportable-hyphen-msg	err	a:re("a\\\\-b")&"x"	range separator inside a class
+re-bare-hyphen	gen	a:re("^a-b$") a:"a-b"	{"a":"a-b"}
+#
 # QUANTIFIER NESTING is refused, and this rule is about TIME rather than
 # meaning. `(a+)+$` against 29 a-characters and a `!` took 45 SECONDS in
 # TypeScript and 0.065s under RE2, growing exponentially: a regex match
