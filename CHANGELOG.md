@@ -33,17 +33,32 @@ TypeScript compiles patterns with JavaScript's `RegExp` and Go with
 RE2, and the two are not the same language — each accepts what the
 other rejects, and each accepts patterns the other reads *differently*.
 So `re` takes a subset checked by one shared scanner mirrored in both
-ports: no `(?…)` group except `(?:`, no backreferences, no
-`\u`/`\p`/`\P`/`\x{…}` escapes, no POSIX classes, no empty
-character classes. Anything outside it is a located
-`constraint_pattern` error (new registered code, class `conflict`)
-rather than an engine-dependent behaviour, and a pattern the host
-engine itself refuses is the same refusal under the same code. The
-subset is deliberately smaller than the true intersection — widening it
-later is compatible, narrowing it would not be. Full rules:
-`docs/reference-language.md`, "`re` and the portable pattern subset".
+ports. Three rules, each a whitelist:
 
-Pinned by the new `test/spec/constraint-re.tsv` (46 shared rows,
+1. **Groups** — `(?` opens only the non-capturing `(?:`, which refuses
+   lookaround, atomic groups, conditionals, inline flags and named
+   groups (spelled differently in the two engines) in one line.
+2. **Escapes** — only escapes with identical meaning pass. Notably
+   absent: `\s`/`\S`, whose whitespace class is Unicode in JavaScript
+   and ASCII-only in RE2, and `\A`/`\z`/`\Z`, which are anchors in
+   RE2 but identity escapes matching a literal letter in JavaScript.
+3. **Quantifier nesting** — a quantifier may not be applied to a group
+   containing a quantifier or an alternation. This one is about *time*:
+   `(a+)+$` against twenty-nine characters takes 45 seconds under
+   JavaScript's backtracking engine and 0.065s under RE2, and a regex
+   match is counted by no evaluator budget, so an untrusted schema
+   could otherwise stall the TypeScript evaluator indefinitely.
+
+Anything outside the subset is a located `constraint_pattern` error
+(new registered code, class `conflict`) rather than an engine-dependent
+behaviour, and a pattern the host engine itself refuses is the same
+refusal under the same code. The subset is deliberately smaller than
+the true intersection — widening it later is compatible, narrowing it
+would not be. Full rules: `docs/reference-language.md`, "`re` and the
+portable pattern subset"; the termination consequence is recorded in
+`docs/trust.md`, clause 2.
+
+Pinned by the new `test/spec/constraint-re.tsv` (78 shared rows,
 promoted from `test/spec/draft/` with every expectation re-probed
 through both engines). The builtin registry goes from 17 to 18 names,
 in both ports and both LSP completion lists.

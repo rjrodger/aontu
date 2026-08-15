@@ -1,7 +1,7 @@
 # G1: A real constraint algebra
 
-*Status: partly implemented — phases 1, 2 and 6 landed, phase 0 partial,
-phases 3–5 outstanding. Per-phase status, pins and the corrections this
+*Status: partly implemented — phases 0, 1, 2 and 6 landed, phases 3–5
+outstanding. Per-phase status, pins and the corrections this
 document still needs are in the [progress register](progress.md), which
 is authoritative for status; this document is authoritative for design.
 Part of the
@@ -577,8 +577,12 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    `constraint-len.tsv`, `constraint-cross.tsv` with canon, gen, and
    err rows, including round-trip and order-independence rows
    (`min(0)&max(10)` vs `max(10)&min(0)` → identical canon).
-   *(Since done: the algebra section is in
-   `docs/reference-language.md` ("The constraint algebra"),
+   *(Since done, all three tables: the algebra section is in
+   `docs/reference-language.md` ("The constraint algebra"), including
+   the **subsumption** table — the last of the three to be written, and
+   the one G3 phase 0 consumes; its two approximations (`re` compares
+   patterns as text, `must` is opaque) both fail toward "not subsumed",
+   the safe direction for a compatibility check —
    re-derived over the four-leaf tower — cross-leaf ordering decided
    (bounds are exact order over the number line, leaf-agnostic;
    `neq` excludes by scalar identity, so point-deletion emptiness

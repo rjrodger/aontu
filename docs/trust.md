@@ -112,6 +112,23 @@ these: it is ordinary incompleteness, silent at unify time and a
 generate-time error (`mapval_no_gen` family, class `incomplete`)
 exactly as before. Only genuine cut-off earns `budget_passes`.
 
+**Pattern matching is bounded by construction, not by a budget.** The
+`re()` atom is the one place the evaluator runs a subsystem whose cost
+no budget counts, and the two ports do not agree on complexity: Go uses
+RE2, which is linear, while TypeScript uses JavaScript's backtracking
+`RegExp`, which is not. A nested quantifier is enough to make the
+difference unbounded — `(a+)+$` against twenty-nine characters takes 45
+seconds in TypeScript and 0.065s in Go. Rather than add a budget the
+host engine cannot be asked to respect, the
+[portable subset](reference-language.md#re-and-the-portable-pattern-subset)
+**refuses the shapes that cause it**: a quantifier may not be applied to
+a group containing a quantifier or an alternation. That keeps this
+clause true in the port that has the problem, at the cost of refusing
+some patterns that would have been safe. Residual risk, stated plainly:
+the rule is syntactic, so a pattern with a large but polynomial
+backtracking cost is still admitted, and pattern matching remains
+outside the event-counted budgets above.
+
 Two notes on how the budgets behave, and one caveat that remains:
 
 - A chain of plain references resolves one link per pass from the tail

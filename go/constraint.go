@@ -34,62 +34,132 @@ type constraintRe struct {
 
 // THE PORTABLE PATTERN SUBSET (G1 phase 2).
 //
-// The exact port of nonPortableRe in ts/src/val/ConstraintVal.ts — read
+// The exact port of nonPortableRe in ts/src/val/ConstraintVal.ts -- read
 // the rationale there. In brief: `re(p)` must mean the same thing in
-// both engines, and JavaScript RegExp and RE2 are not the same
-// language, so a pattern is checked against one shared syntactic subset
-// before either host engine compiles it. The rule is a whitelist where
-// the spellings diverge, because a blacklist silently admits the next
-// divergence:
+// both engines AND cost about the same to evaluate, and neither is free.
+// TypeScript compiles with JavaScript's backtracking RegExp, Go with
+// RE2: a different language in a different complexity class. So the
+// pattern is checked against one shared syntactic subset before either
+// host engine sees it.
 //
-//   - `(?` opens only the non-capturing group `(?:` — which refuses
-//     lookaround, atomic groups, conditionals, inline flags, and named
-//     groups (`(?P<n>` here, `(?<n>` in JavaScript) in one rule.
-//   - Backreferences (`\1`..`\9`, `\k<name>`) do not exist in RE2.
-//   - `\u`, `\p`, `\P` and `\x{...}` are spelled differently or gated
-//     on a flag JavaScript is not given here.
-//   - POSIX classes (`[[:alpha:]]`) are RE2-only.
-//   - An empty character class (`[]`, `[^]`) is a never-matching class
-//     in JavaScript and a parse error in RE2.
+// Everything here is a WHITELIST. The first draft blacklisted the
+// constructs known to differ and handed the rest to the host engines,
+// and review found two escapes that silently diverge -- `\A` and `\z`
+// are anchors here and identity escapes matching a literal "A"/"z" in
+// JavaScript. A blacklist admits the next divergence by construction.
 //
-// Everything else goes to the host engine, whose own compile failure is
-// the same refusal under the same code. Deliberately smaller than the
-// true intersection: sound, not complete.
+// The three rules:
+//
+//  1. GROUPS. `(?` opens only the non-capturing group `(?:`, which
+//     refuses lookaround, atomic groups, conditionals, inline flags and
+//     named groups (`(?P<n>` here, `(?<n>` in JavaScript) in one line.
+//  2. ESCAPES. Only escapes with identical meaning in both engines pass.
+//     Notably ABSENT: `\s`/`\S`, whose whitespace set is ASCII-only here
+//     and Unicode in JavaScript.
+//  3. QUANTIFIER NESTING. A quantifier may not be applied to a group
+//     containing a quantifier or an alternation. This one is about TIME,
+//     not meaning: `(a+)+$` is linear under RE2 and exponential in
+//     JavaScript (45 seconds at 29 characters), and a regex match is
+//     counted by no evaluator budget, so the shape is refused in both
+//     ports to keep docs/trust.md clause 2 true in the port that has the
+//     problem.
+//
+// Deliberately smaller than the true intersection: sound, not complete.
+
+// reEscapeLetters are the escape letters whose meaning is identical in
+// JavaScript (no flags) and RE2. Each was verified by probing both.
+const reEscapeLetters = "dDwWtnrfvbB"
+
+// reEscapePunct are the metacharacters that may be escaped to mean
+// themselves. Other punctuation is left out because RE2 rejects some
+// identity escapes JavaScript allows.
+const reEscapePunct = `\.+*?()[]{}|^$/-`
+
+func isHexDigit(c rune) bool {
+	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F')
+}
+
+// portableEscape reports why `\<n>` is not in the subset, or "" when it
+// is, together with the number of EXTRA characters consumed beyond the
+// backslash and n (for `\xHH`).
+func portableEscape(n rune, at func(int) rune, i int) (string, int) {
+	if 0 == n {
+		return "a trailing backslash", 0
+	}
+	if '1' <= n && n <= '9' {
+		return "a backreference (\\" + string(n) + "), which RE2 has no equivalent for", 0
+	}
+	if 'k' == n {
+		return "a named backreference (\\k), which RE2 has no equivalent for", 0
+	}
+	if 'u' == n {
+		return "a \\u escape, which RE2 spells \\x{...}", 0
+	}
+	if 'p' == n || 'P' == n {
+		return "a Unicode class (\\" + string(n) + "), which JavaScript reads as a literal here", 0
+	}
+	if 's' == n || 'S' == n {
+		return "\\" + string(n) + ", whose whitespace set differs between the engines" +
+			" (write [ \\t\\n\\r\\f\\v])", 0
+	}
+	if 'A' == n || 'z' == n || 'Z' == n {
+		return "\\" + string(n) + ", an anchor in RE2 but a literal \"" + string(n) +
+			"\" in JavaScript", 0
+	}
+	if 'x' == n {
+		if '{' == at(i+2) {
+			return "a \\x{...} escape, which JavaScript spells \\u", 0
+		}
+		if !isHexDigit(at(i+2)) || !isHexDigit(at(i+3)) {
+			return "an \\x escape without two hex digits", 0
+		}
+		return "", 2
+	}
+	if strings.ContainsRune(reEscapeLetters, n) || strings.ContainsRune(reEscapePunct, n) {
+		return "", 0
+	}
+	return "\\" + string(n) + ", an escape whose meaning the two engines do not share", 0
+}
+
+type reGroup struct {
+	q, alt bool
+}
+
 func nonPortableRe(src string) string {
 	inClass := false
 	r := []rune(src)
 
 	at := func(i int) rune {
-		if i < len(r) {
+		if i >= 0 && i < len(r) {
 			return r[i]
 		}
 		return 0
+	}
+
+	// One frame per open group, recording whether the group contains a
+	// quantifier or an alternation. A group carrying either may not
+	// itself be quantified (rule 3); containment is transitive, so a
+	// frame hands its flags up to its parent when it closes.
+	groups := []reGroup{}
+	mark := func(q bool) {
+		if 0 < len(groups) {
+			if q {
+				groups[len(groups)-1].q = true
+			} else {
+				groups[len(groups)-1].alt = true
+			}
+		}
 	}
 
 	for i := 0; i < len(r); i++ {
 		c := r[i]
 
 		if '\\' == c {
-			n := at(i + 1)
-			if 0 == n {
-				return "a trailing backslash"
+			why, extra := portableEscape(at(i+1), at, i)
+			if "" != why {
+				return why
 			}
-			if '1' <= n && n <= '9' {
-				return "a backreference (\\" + string(n) + "), which RE2 has no equivalent for"
-			}
-			if 'k' == n {
-				return "a named backreference (\\k), which RE2 has no equivalent for"
-			}
-			if 'u' == n {
-				return "a \\u escape, which RE2 spells \\x{...}"
-			}
-			if 'p' == n || 'P' == n {
-				return "a Unicode class (\\" + string(n) + "), which JavaScript reads as a literal here"
-			}
-			if 'x' == n && '{' == at(i+2) {
-				return "a \\x{...} escape, which JavaScript spells \\u"
-			}
-			i++
+			i += 1 + extra
 			continue
 		}
 
@@ -124,13 +194,59 @@ func nonPortableRe(src string) string {
 			continue
 		}
 
-		if '(' == c && '?' == at(i+1) && ':' != at(i+2) {
-			return "a (?...) group other than the non-capturing (?:"
+		if '(' == c {
+			if '?' == at(i+1) {
+				if ':' != at(i+2) {
+					return "a (?...) group other than the non-capturing (?:"
+				}
+				i += 2
+			}
+			groups = append(groups, reGroup{})
+			continue
+		}
+
+		if ')' == c {
+			if 0 == len(groups) {
+				return "an unbalanced group"
+			}
+			g := groups[len(groups)-1]
+			groups = groups[:len(groups)-1]
+			nx := at(i + 1)
+			quantified := '*' == nx || '+' == nx || '?' == nx || '{' == nx
+			if quantified && (g.q || g.alt) {
+				which := "an alternation"
+				if g.q {
+					which = "another quantifier"
+				}
+				return "a quantifier applied to a group containing " + which +
+					", which backtracks exponentially in JavaScript"
+			}
+			// Containment is transitive: the parent inherits.
+			if g.q {
+				mark(true)
+			}
+			if g.alt {
+				mark(false)
+			}
+			continue
+		}
+
+		if '|' == c {
+			mark(false)
+			continue
+		}
+
+		if '*' == c || '+' == c || '?' == c || '{' == c {
+			mark(true)
+			continue
 		}
 	}
 
 	if inClass {
 		return "an unterminated character class"
+	}
+	if 0 < len(groups) {
+		return "an unclosed group"
 	}
 
 	return ""

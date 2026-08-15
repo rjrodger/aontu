@@ -1046,6 +1046,64 @@ guessed where it is not:
   conflicts), incomplete (some contradictions surface only against
   data).
 
+### Subsumption
+
+*Not yet implemented — this is the specification the
+[G3](capability-review/g3-subsumption-evolution.md) `subsume` query will
+build on. It completes phase 0's three tables (meet, emptiness,
+subsumption); the meet and emptiness rules above are live in both
+engines.*
+
+`A ⊒ B` ("A subsumes B", B is an instance of A) holds when **every
+value B admits, A admits too**. It is the lattice's own order, and for
+this algebra it is decided per atom family rather than by search. Three
+properties make it useful: it is reflexive (`A ⊒ A`), transitive, and
+`A ⊒ B` exactly when `A & B` is `B` — so an implementation has a free
+cross-check against the meet table.
+
+**Soundness before completeness.** Where a rule below cannot decide, the
+answer is **not subsumed**, never a guess. That direction is the safe
+one for the query G3 puts on top: a compatibility check that wrongly
+reports "breaking" costs a reviewer a second look, while one that
+wrongly reports "compatible" ships the break. Two rules are approximate
+in this sense and are marked; the rest are exact.
+
+| A (general) | B (specific) | A ⊒ B when |
+|-------------|--------------|------------|
+| no kind     | any          | always — an unnarrowed residual admits every leaf its domain has |
+| `number`    | any numeric leaf, or a numeric residual | always — the supertype admits every leaf |
+| leaf `k`    | leaf `k'`    | `k == k'`; distinct leaves are disjoint, so neither subsumes the other |
+| interval    | interval     | A's interval contains B's: A's lower endpoint is at or below B's, A's upper at or above, and where endpoints coincide A's may not be the open one |
+| interval    | concrete scalar | the scalar is admitted by A (the membership rule of the meet) |
+| no bound on a side | any    | an absent endpoint is ±∞ and contains everything |
+| `neq(S)`    | `neq(T)`     | `S ⊆ T` — excluding *fewer* values is more general. `neq(1) ⊒ neq(1,2)` |
+| `neq(S)`    | concrete scalar | the scalar is in neither S nor excluded by A's other atoms |
+| `re(P)`     | `re(Q)`      | **approximate**: `P ⊆ Q` as a *set of pattern strings*. Adding a pattern narrows, so `re("a") ⊒ re("a")&re("b")` |
+| `len(c)`    | `len(d)`     | `c ⊒ d`, recursively — the count atom reuses this same table over the integer domain |
+| absent `len`/`unique` | present | always — an unsized residual admits every size |
+| `unique()`  | `unique()`   | always (reflexive); nothing else subsumes or is subsumed by it |
+| `must(…)`   | anything     | **never** — a Band B predicate is opaque, so A's admitted set is unknown |
+| anything    | `must(…)`    | decided by A's other atoms alone; an extra `must` on B can only narrow B |
+| anything    | nil (empty)  | always — the empty set is an instance of everything |
+
+A whole residual subsumes another when **every** row above holds for the
+corresponding atom families, and the domains agree (a numeric residual
+never subsumes a string one, or a container one).
+
+**Why the two approximations are where they are.** `re` compares
+patterns as *text* because deciding that `^a` admits everything `^ab`
+admits is regex containment, which this algebra deliberately does not
+do — the same ruling that stops two `re` atoms being declared empty at
+composition time. `must` is opaque by construction: that is what Band B
+*means*. In both cases the answer is "not subsumed", so the error is
+always toward reporting a difference that is not there.
+
+**One consequence worth stating outright.** Subsumption is decided over
+the *normalised* residual, so two spellings of one constraint subsume
+each other in both directions. `min(0)&max(10)` and `max(10)&min(0)`
+normalise identically, and the canonical atom order below is what makes
+that true by construction rather than by a special case.
+
 ### Endpoint tightening: lazy endpoints, eager emptiness
 
 The pre-tower draft left open whether `integer & above(0.5)` should
@@ -1085,28 +1143,61 @@ and `$` to constrain the whole string. The string kind is implied, so
 `string & re("x")` canonicalises to `re("x")` — the same rule that
 makes `number & min(0)` canonicalise to `min(0)`.
 
-A pattern must mean the same thing in both implementations, and the
-two host engines are not the same language: TypeScript compiles with
-JavaScript's backtracking `RegExp`, Go with RE2. Each accepts patterns
-the other rejects, and each accepts patterns the other reads
-*differently*. So `re` takes a **portable subset**, checked before
-either host engine compiles the pattern; anything outside it is a
-located `constraint_pattern` error rather than an engine-dependent
-behaviour. Refused:
+A pattern must mean the same thing in both implementations **and cost
+about the same to evaluate**, and neither is free. The two host engines
+are not the same language, nor the same complexity class: TypeScript
+compiles with JavaScript's backtracking `RegExp`, Go with RE2. So `re`
+takes a **portable subset**, checked before either host engine compiles
+the pattern; anything outside it is a located `constraint_pattern`
+error rather than an engine-dependent behaviour.
 
-| Construct | Why |
-|-----------|-----|
-| any `(?…)` group except `(?:`  | lookaround, atomic groups, conditionals and inline flags are not shared; named groups are spelled `(?P<n>` in RE2 and `(?<n>` in JavaScript |
-| backreferences `\1`–`\9`, `\k<name>` | RE2 has no equivalent — accepting them in TypeScript alone would be a silent divergence |
-| `\u`, `\p`, `\P`, `\x{…}`     | spelled differently, or gated on a flag: JavaScript reads `\p{L}` as a literal `p` without the `u` flag |
-| POSIX classes `[[:alpha:]]`   | RE2 only |
-| empty classes `[]`, `[^]`     | a never-matching class in JavaScript, a parse error in RE2 |
+Three rules, each a *whitelist* — a blacklist of known-bad constructs
+admits the next divergence by construction.
 
-Everything else is handed to the host engine, and its own compile
-failure is the same refusal under the same code. The subset is
-deliberately *smaller* than the true intersection of the two engines —
-sound, not complete, the same stance the algebra takes on regex
-emptiness. Widening it later is a compatible change; narrowing it
+**1. Groups.** `(?` opens only the non-capturing group `(?:`. That one
+rule refuses lookaround, atomic groups, conditionals, recursion, inline
+flags, and named groups — whose spelling differs (`(?P<n>` in RE2,
+`(?<n>` in JavaScript) even where both support them.
+
+**2. Escapes.** Only escapes whose meaning is identical in both engines
+pass: `\d \D \w \W` (ASCII classes), `\t \n \r \f \v`, `\b \B`
+(ASCII word boundary), `\xHH`, and a backslash before any of
+`\ . + * ? ( ) [ ] { } | ^ $ / -` to mean that character literally.
+
+Everything else is refused, including several that look harmless:
+
+| Escape | Why |
+|--------|-----|
+| `\s`, `\S` | JavaScript's whitespace class is Unicode, RE2's is ASCII-only — `re("^\s$")` matches U+00A0 in one engine and not the other. Write `[ \t\n\r\f\v]` |
+| `\A`, `\z`, `\Z` | anchors in RE2, but identity escapes matching a literal `A`/`z`/`Z` in JavaScript |
+| `\1`–`\9`, `\k<name>` | backreferences; RE2 has no equivalent |
+| `\u`, `\p`, `\P`, `\x{…}` | spelled differently, or gated on a flag: JavaScript reads `\p{L}` as a literal `p` without the `u` flag |
+
+**3. Quantifier nesting.** A quantifier may not be applied to a group
+that itself contains a quantifier or an alternation. This rule is about
+*time* rather than meaning. `(a+)+$` against twenty-nine `a`s and a `!`
+takes **45 seconds** in JavaScript and 0.065s under RE2, and grows
+exponentially from there; a regex match is counted by no evaluator
+budget ([the trust contract](trust.md), clause 2), so without this rule
+an untrusted schema could stall the TypeScript evaluator indefinitely —
+exactly the unattended-agent case the language is for. `(?:a|b)+` is
+refused too, though it is safe, because deciding that two alternation
+branches cannot both match is real work: write `[ab]+`.
+
+Unquantified groups are unaffected, and so is alternation that is not
+under a quantifier — `(a|b)`, `^a|b$`, `(?:ab)+`, `(a)(b)` and `(a)+`
+all pass. Quantifiers inside a character class are literal characters,
+not quantifiers, so `[a+]+` passes too.
+
+Also refused: POSIX classes (`[[:alpha:]]`, RE2 only) and empty
+character classes (`[]`, `[^]` — a never-matching class in JavaScript,
+a parse error in RE2).
+
+A pattern that passes all three rules still goes to the host engine,
+and its own compile failure is the same refusal under the same code.
+The subset is deliberately *smaller* than the true intersection of the
+two engines — sound, not complete, the same stance the algebra takes on
+regex emptiness. Widening it later is a compatible change; narrowing it
 would not be.
 
 Patterns **accumulate** and are never simplified: `re("x") & re("a")`

@@ -72,6 +72,59 @@ re-nonportable-hex-brace-escape	errc	a:re("a\\\\x{41}")&"x"	constraint_pattern
 re-nonportable-unterminated-class	errc	a:re("[abc")&"x"	constraint_pattern
 re-nonportable-trailing-backslash	errc	a:re("\\\\")&"x"	constraint_pattern
 re-nonportable-trailing-backslash-msg	err	a:re("\\\\")&"x"	a trailing backslash
+# ESCAPES ARE A WHITELIST, not a blacklist. Review of the first draft
+# of this phase found two escapes that silently DIVERGED: `\\A` and `\\z`
+# are anchors in RE2 and identity escapes matching a literal "A"/"z" in
+# JavaScript, so `re("\\A") & "x"` held in Go and failed in TypeScript.
+# These rows are the ones that would have caught it.
+re-nonportable-anchor-A	errc	a:re("\\\\A")&"x"	constraint_pattern
+re-nonportable-anchor-z	errc	a:re("\\\\z")&"x"	constraint_pattern
+re-nonportable-anchor-Z	errc	a:re("\\\\Z")&"x"	constraint_pattern
+re-nonportable-anchor-msg	err	a:re("\\\\A")&"x"	an anchor in RE2
+# JavaScript's \\s is Unicode whitespace, RE2's is ASCII-only: `^\\s$`
+# matched U+00A0 in TypeScript and refused it in Go.
+re-nonportable-space-class	errc	a:re("\\\\s")&"x"	constraint_pattern
+re-nonportable-space-class-neg	errc	a:re("\\\\S")&"x"	constraint_pattern
+re-nonportable-space-class-msg	err	a:re("\\\\s")&"x"	whitespace set differs
+re-nonportable-unknown-escape	errc	a:re("\\\\q")&"x"	constraint_pattern
+re-nonportable-unknown-escape-msg	err	a:re("\\\\q")&"x"	the two engines do not share
+re-nonportable-hex-short	errc	a:re("\\\\xZZ")&"x"	constraint_pattern
+# The escapes that ARE shared, each probed through both engines.
+re-escape-hex	gen	a:re("^\\\\x41$") a:A	{"a":"A"}
+re-escape-hex-lower	gen	a:re("^\\\\x4a$") a:J	{"a":"J"}
+re-escape-hex-upper	gen	a:re("^\\\\x4A$") a:J	{"a":"J"}
+re-nonportable-hex-second-digit	errc	a:re("\\\\x4Z")&"x"	constraint_pattern
+re-escape-word	gen	a:re("^\\\\w+$") a:abc	{"a":"abc"}
+re-escape-not-digit	gen	a:re("^\\\\D$") a:x	{"a":"x"}
+re-escape-tab-class	gen	a:re("^[ \\\\t]$") a:" "	{"a":" "}
+re-escape-literal-dot	gen	a:re("^a\\\\.b$") a:"a.b"	{"a":"a.b"}
+#
+# QUANTIFIER NESTING is refused, and this rule is about TIME rather than
+# meaning. `(a+)+$` against 29 a-characters and a `!` took 45 SECONDS in
+# TypeScript and 0.065s under RE2, growing exponentially: a regex match
+# is counted by no evaluator budget (docs/trust.md clause 2), so an
+# untrusted schema could stall the evaluator indefinitely. Refusing the
+# shape keeps the termination clause true in the port that has the
+# problem. `(?:a|b)+` is refused too, though safe -- deciding that two
+# branches cannot both match is real work; write `[ab]+`.
+re-nested-quantifier	errc	a:re("(a+)+$")&"x"	constraint_pattern
+re-nested-quantifier-msg	err	a:re("(a+)+$")&"x"	backtracks exponentially
+re-nested-quantifier-star	errc	a:re("(a*)*")&"x"	constraint_pattern
+re-nested-quantifier-deep	errc	a:re("((a+))+")&"x"	constraint_pattern
+re-alternation-quantified	errc	a:re("(a|a)*")&"x"	constraint_pattern
+re-alternation-quantified-group	errc	a:re("(?:a|b)+")&"x"	constraint_pattern
+re-unclosed-group	errc	a:re("(ab")&"x"	constraint_pattern
+re-unbalanced-group	errc	a:re("ab)")&"x"	constraint_pattern
+# What the rule does NOT refuse: an unquantified group of any shape, a
+# quantified group with no inner quantifier or alternation, top-level
+# alternation, and quantifiers inside a character class (where they are
+# literal characters, not quantifiers).
+re-group-unquantified-alternation	gen	a:re("^(a|b)$") a:a	{"a":"a"}
+re-group-quantified-plain	gen	a:re("(?:ab)+") a:abab	{"a":"abab"}
+re-group-sequence	gen	a:re("(a)(b)") a:ab	{"a":"ab"}
+re-toplevel-alternation	gen	a:re("^a|b$") a:a	{"a":"a"}
+re-quantifier-in-class	gen	a:re("^[a+]+$") a:"++"	{"a":"++"}
+re-capture-group-quantified	gen	a:re("^(a)+$") a:a	{"a":"a"}
 re-nonportable-msg	err	a:re("(?=x)y")&"y"	outside the portable subset
 re-nonportable-msg-reason	err	a:re("(x)\\\\1")&"xx"	a backreference
 #

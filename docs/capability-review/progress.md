@@ -90,18 +90,18 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
    register's last update the suite is **57 `.tsv` files, 56
-   row-bearing, 1,988 rows**, in six modes — `canon` 641, `gen` 437,
-   `errc` 321, `gens` 300, `err` 220, `errcode` 69. Reproduce with
+   row-bearing, 2,020 rows**, in six modes — `canon` 641, `gen` 450,
+   `errc` 336, `gens` 300, `err` 224, `errcode` 69. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Ten of forty-nine phases have moved; six of those are complete.
+Ten of forty-nine phases have moved; seven of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
-| [G1](g1-constraint-algebra.md) | Constraint algebra | A | 3 | 1 | 3 |
+| [G1](g1-constraint-algebra.md) | Constraint algebra | A | 4 | 0 | 3 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 1 | 0 | 5 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
@@ -109,7 +109,7 @@ Ten of forty-nine phases have moved; six of those are complete.
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **6** | **4** | **39** |
+| | | **total** | **7** | **3** | **39** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -131,19 +131,23 @@ surface depends on nothing and could ship at any time.
 
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
-| **0** — algebra on paper | S | **PARTIAL** | `docs/reference-language.md` "The constraint algebra (specified)": meet table, emptiness rules, canonical atom order, tower rulings, lazy-endpoint/eager-emptiness decision, `len` as Unicode code points. `test/spec/constraint-bound.tsv` promoted; `constraint-re/len/cross.tsv` authored as drafts. Fold-defect guard rows in `disjunct.tsv`. Commit `98fc1bf`. |
+| **0** — algebra on paper | S | **LANDED** | `docs/reference-language.md` "The constraint algebra (specified)": all three tables the phase names — meet, emptiness, and **subsumption** — plus the canonical atom order, tower rulings, the lazy-endpoint/eager-emptiness decision, and `len` as Unicode code points. `test/spec/constraint-bound.tsv` and `constraint-re.tsv` promoted; `constraint-len/cross.tsv` remain drafts. Fold-defect guard rows in `disjunct.tsv`. Commit `98fc1bf`, completed by the subsumption table. |
 | **1** — numeric and lexical bounds, `neq` | M | **LANDED** | `ts/src/val/ConstraintVal.ts` (`cjo = 50000`) + `go/constraint.go`; `min`/`max`/`above`/`below`/`neq` in both registries (12 → 17 builtins); `test/spec/constraint-bound.tsv`, `constraint-product.tsv` (all 256 ordered pairs), `errcodes.tsv:constraint`; law tests `ts/test/constraint-laws.test.ts` + `go/constraint_laws_test.go` over `test/spec/files/constraint-atoms.txt`. Commit `ae82828`. |
-| **2** — `re` | M | **LANDED** | `ReConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `re` arm of `newConstraint` (`go/constraint.go`); `re` in both registries (17 → 18 builtins) and both LSP completion lists; the portable-subset scanner `nonPortableRe`, mirrored statement for statement in both ports; `test/spec/constraint-re.tsv` (46 rows, promoted from the draft with every expectation re-probed); `errcodes.tsv:constraint_pattern`. |
+| **2** — `re` | M | **LANDED** | `ReConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `re` arm of `newConstraint` (`go/constraint.go`); `re` in both registries (17 → 18 builtins) and both LSP completion lists; the portable-subset scanner `nonPortableRe`, mirrored statement for statement in both ports; `test/spec/constraint-re.tsv` (78 rows, promoted from the draft with every expectation re-probed); `errcodes.tsv:constraint_pattern`. |
 | **3** — `len` and `unique` | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-len.tsv`. |
 | **4** — cross-field arguments, residuation | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-cross.tsv`. |
 | **5** — `must` | S | **NOT STARTED** | — |
 | **6** — number exactness | S | **LANDED** | `isLossyIntegerLiteral` → `lossy_integer_literal` in `ts/src/lang.ts` and `go/lang.go`; `test/spec/number-tower.tsv`, `number-model.tsv`, `scalar.tsv`. Landed inside the number tower, commit `51e8149`. |
 
-**Phase 0's outstanding deliverable** is the *subsumption* table. The
-phase text names "the pairwise meet / emptiness / subsumption tables";
-the meet and emptiness tables are written, the subsumption one is not
-(`docs/reference-language.md` mentions the word twice, both times in
-prose). G3 phase 0 is the consumer that will need it.
+**Phase 0's subsumption table** was the last of its three tables to be
+written, and for a while the reason this phase read PARTIAL: the phase
+text names "the pairwise meet / emptiness / subsumption tables", and
+only the first two existed. It is now in
+`docs/reference-language.md`, "Subsumption" — the per-atom rules for
+`A ⊒ B`, with the two approximations (`re` compares patterns as text;
+`must` is opaque) marked as such and both failing toward "not
+subsumed", which is the safe direction for the compatibility check G3
+puts on top. G3 phase 0 is its consumer, and it is no longer blocked.
 
 **Phase 2 departed from its drafted rows in one place, and the probe is
 why we know.** The draft predicted `string & re("^[a-z]$")` would canon
@@ -152,6 +156,33 @@ as `string&re("^[a-z]$")`. Both engines agree it canons as
 bound implies `number`, and the phase-1 row `bound-number-passthrough`
 already pinned the implied kind being dropped. The promoted row records
 the probed behaviour and says so inline.
+
+Phase 2's subset had to be tightened twice, and the second time was
+review finding a real defect rather than a style point. The first draft
+whitelisted `(?...)` groups but left ESCAPES as a blacklist, and two
+escapes it had never heard of silently diverged: `\A` and `\z` are
+anchors in RE2 and identity escapes matching a literal letter in
+JavaScript, so `re("\A") & "x"` held in Go and failed in TypeScript —
+precisely the divergence the subset exists to prevent. `\s` was the
+same story on a different axis (Unicode whitespace in JavaScript,
+ASCII-only in RE2). Escapes are now a whitelist too. The lesson is
+general enough to state: **in a two-engine subset, every axis must be a
+whitelist, because a blacklist admits the next divergence by
+construction.**
+
+The same review found that `re` also breaks the *termination* clause in
+one port. `(a+)+$` against twenty-nine characters takes 45 seconds under
+JavaScript's backtracking engine and 0.065s under RE2, and a regex match
+is counted by no evaluator budget, so an untrusted schema could stall
+the TypeScript evaluator indefinitely — the unattended-agent case the
+language is for. The subset now refuses a quantifier applied to a group
+containing a quantifier or an alternation, which keeps `docs/trust.md`
+clause 2 true in the port that has the problem. Recorded there as
+bounded-by-construction rather than bounded-by-budget, with the residual
+risk (polynomial backtracking is still admitted) stated. **The
+principled fix is a linear-time regex engine in TypeScript** so the two
+ports share a complexity class as well as a semantics; that is a
+dependency decision, not a phase-2 one.
 
 Phase 2 also added the `constraint_pattern` code (class `conflict`) for
 a pattern outside the portable subset — the design text does not name a
