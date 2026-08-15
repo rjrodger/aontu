@@ -1241,27 +1241,34 @@ dropped at generation, so it does not count:
 `{"x":1}`. The constraint is a claim about the data, and the data is
 what comes out.
 
-**When the count is decided.** For a map with no unresolved optional
-keys — the ordinary case — the count is known during unification and
-`len` decides at composition time like every other atom, including
-detecting an empty meet before any data arrives.
+**When the count is decided.** An optional key **survives unification
+carrying its unresolved value** — `{x:1, y?:number}` canonicalises as
+`{"x":1,"y"?:number}` — and is dropped only in generation
+(`BagVal.gen`). It is tempting to conclude that the count is therefore
+unknowable until generation, and that `len` must wait for a drop. It
+must not: nothing in the fixpoint performs that drop, so an atom waiting
+for it waits forever.
 
-An unresolved optional key changes that, and the reason is worth stating
-exactly, because it is easy to specify a mechanism the engine does not
-have. An optional key **survives unification carrying its unresolved
-value** — `{x:1, y?:number}` canonicalises as `{"x":1,"y"?:number}` —
-and is dropped only in generation (`BagVal.gen`). Nothing in the
-fixpoint settles it earlier. So a map holding one has no knowable count
-until generation, and `len` over such a map is **completed at
-generation**, where the surviving members are exactly the generated
-ones.
+The count is knowable earlier, because *whether a member will generate*
+is decided before generation runs. A member is skipped by generation
+when it carries a `type` or `hide` mark, or when it is an optional key
+whose value cannot generate. So:
 
-This makes `len` the one atom with a generate-time leg. The alternative
-— counting declared keys — would decide earlier at the cost of letting a
-document fail `len(1)` while generating exactly one entry, which cannot
-be explained in an error message. What is *not* deferred is the atom's
-own arithmetic: `len(min(5) & max(3))` is empty at composition time
-whatever map it meets, because the inner interval is empty on its own.
+- **Every optional child settled** — this includes `{x:1, y?:number}`,
+  where the map converges immediately and `y` simply holds an
+  unresolved kind. The count is known, and `len` decides at composition
+  time like every other atom, `len(1) & {x:1, y?:number}` included.
+- **Some optional child still converging** — `{x:1, y?:$.z}` before `z`
+  resolves, where the child's fate genuinely is not yet decided. `len`
+  **residuates**: it stays in place and is retried, exactly as an
+  arithmetic operator with a non-concrete operand does.
+
+So `len` is eager in the ordinary case and defers only where the answer
+is not yet determined, which is the same discipline every other
+deferring value in the language follows. What is never deferred is the
+atom's own arithmetic: `len(min(5) & max(3))` is empty at composition
+time whatever map it meets, because the inner interval is empty on its
+own.
 
 ### `unique` semantics
 

@@ -629,17 +629,22 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    into `docs/reference-language.md` before any code, per the
    spec-first method. **`len` counts what GENERATES**: an optional key
    that never resolves is dropped at generation and does not count, so
-   `len(1) & {x:1, y?:number}` holds. Review caught the first draft of
-   this note specifying a mechanism the engine does not have: it said
-   `len` RESIDUATES until the optional "resolves or is dropped", but an
-   optional survives unification carrying its unresolved value and is
-   dropped only in `BagVal.gen`, so nothing would ever settle it and the
-   atom would be stuck. The correct statement is that a map with an
-   unresolved optional has no knowable count until generation, so `len`
-   over one is COMPLETED AT GENERATION — the one atom with a
-   generate-time leg. Maps without unresolved optionals decide eagerly
-   as usual, and the atom's own arithmetic (`len(min(5)&max(3))`) is
-   empty at composition time regardless. **`unique()` applies to
+   `len(1) & {x:1, y?:number}` holds. WHEN it is decided took three
+   passes to get right, and the two wrong answers are worth keeping
+   because each was refuted by evidence rather than by argument. First
+   draft: `len` "residuates until the optional resolves or is dropped"
+   — refuted by review, since an optional survives unification and is
+   dropped only in `BagVal.gen`, so nothing would ever settle it.
+   Second: `len` over such a map is "completed at generation" —
+   refuted by probing the engine, which shows `a:{x:1,y?:number}`
+   converging DONE on the first pass with the optional child settled
+   and simply not generable, so the count is knowable then and no
+   generate-time leg is needed. The rule that survives: `len` counts
+   the members that will generate, mirroring generation's own skip
+   rules, and RESIDUATES only while an optional child is still
+   converging (`y?:$.z` before `z` resolves) — the same discipline
+   every other deferring value follows. The atom's own arithmetic
+   (`len(min(5)&max(3))`) is empty at composition time regardless. **`unique()` applies to
    lists and maps**: list elements pairwise distinct, map entry values
    pairwise distinct, compared by CANONICAL FORM — which reduces to
    scalar identity for scalars (`[1, 1.0]` stays distinct under the

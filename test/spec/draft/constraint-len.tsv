@@ -52,14 +52,24 @@ unique-mixed-shapes	gen	a:unique() a:[1,"1",[1]]	{"a":[1,"1",[1]]}
 # DECIDED (see docs/reference-language.md, "`len` semantics"):
 # len counts what GENERATES. An optional key that never resolves is
 # dropped at generation and does not count, so the first row HOLDS.
-# An optional key SURVIVES unification carrying its unresolved value
-# (`{x:1,y?:number}` canons as `{"x":1,"y"?:number}`) and is dropped
-# only in BagVal.gen -- nothing in the fixpoint settles it earlier. So a
-# map holding one has no knowable count until generation, and len over
-# such a map is COMPLETED AT GENERATION. A supplied optional DOES count.
-# (The first draft of this said len "residuates until the optional
-# resolves or is dropped"; review pointed out that drop never happens
-# during unification, so the atom would be stuck forever.)
+# len counts the members that WILL GENERATE, mirroring generation's own
+# skip rules (type/hide marks, and an optional whose value cannot
+# generate). That is knowable before generation runs: probing the engine
+# shows a:{x:1,y?:number} converging DONE on the first pass with the
+# optional child settled and simply not generable, so len decides
+# eagerly there. It RESIDUATES only while an optional child is still
+# converging (y?:$.z before z resolves), like any other deferring value.
+# A supplied optional DOES count.
+#
+# Two earlier readings were wrong and are recorded so they are not
+# re-invented: "residuates until the optional resolves or is dropped"
+# (no such transition -- the drop happens only in BagVal.gen), and
+# "completed at generation" (unnecessary -- the count is knowable
+# earlier).
 len-map-drops-unresolved-optional	gen	a:len(1) a:{x:1,y?:number}	{"a":{"x":1}}
 len-map-counts-supplied-optional	gen	a:len(2) a:{x:1,y?:number} a:{y:2}	{"a":{"x":1,"y":2}}
 len-map-optional-count-mismatch	err	a:len(2) a:{x:1,y?:number}	Cannot unify
+# The residuation case: the optional child is still converging, so the
+# count is not yet determined and len must defer rather than decide.
+len-map-optional-resolves-late	gen	a:len(2) a:{x:1,y?:$.z} z:9	{"a":{"x":1,"y":9},"z":9}
+len-map-optional-never-resolves	gen	a:len(1) a:{x:1,y?:$.nope}	{"a":{"x":1}}
