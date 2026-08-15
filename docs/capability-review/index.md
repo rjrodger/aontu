@@ -8,6 +8,13 @@ agents? Each identified gap has a companion design document (G1–G8,
 linked below) with alternatives, boundaries, risks, and an
 implementation plan.*
 
+> **Where the work stands** is recorded in the
+> [progress register](progress.md) — every numbered phase of G1–G8,
+> its status, and the artifact that proves it. This index and the gap
+> documents describe what *should* be built and were written before any
+> of it landed; the register is the only place that says what *has*
+> been. Nine of forty-nine phases have moved.
+
 Method: a ten-agent survey — three codebase analysts over this
 repository, six researchers (CUE; Nickel/Dhall/Pkl/KCL/Jsonnet/Starlark;
 refinement types and formal methods; ontologies and MBSE; agent-industry
@@ -300,6 +307,12 @@ capability lands as TSV spec rows first, both implementations follow,
 and property-based differential testing guards the algebra as the Val
 zoo grows.
 
+Progress against this table is tracked phase by phase in the
+[progress register](progress.md). In short: Phase A is part-done — the
+trust contract, the error-code registry, and the bounds atoms are in;
+`re`, `len`/`unique` and the whole `vet` verb are not. Phases B and C
+are untouched.
+
 ## Verified codebase facts referenced by the design documents
 
 Checked against this repository at review time (TS v0.49.0 line).
@@ -317,10 +330,13 @@ Checked against this repository at review time (TS v0.49.0 line).
   operator sugar — but bounds themselves now exist in function form
   (`a: number & min(0)`), so the underlying gap is partly closed.**
 - ~~45 shared spec files (~426 rows; modes `canon`/`gen`/`err`)~~
-  **now 55 files, 1850 rows, modes `canon`/`gen`/`gens`/`err`/`errc`/
-  `errcode`**; the Go runner executes every row with no skip list.
-  (Counts move with every capability phase — take them as an order of
-  magnitude, and read `ls test/spec/*.tsv` for the current figure.)
+  **the suite has grown by roughly 4.5× and gained three modes**; the
+  Go runner executes every row with no skip list. Counts move with
+  every capability phase, so they are kept in one place with their
+  reproduction commands — see the
+  [progress register](progress.md#the-update-protocol), rule 5. Several
+  gap documents froze a count into a "nothing may regress" clause and
+  are now stale by 1,400-odd rows.
 - The fixpoint is bounded at `maxcc = 9` passes (`ts/src/unify.ts`);
   `MAXCYCLE = 999`.
 - The resolver security posture is documented in code

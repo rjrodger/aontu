@@ -1,0 +1,421 @@
+# Differential regex corpus (ADR-003). GENERATED, then committed.
+#
+# Columns: pattern <TAB> verdict
+#   verdict = the NORMALISED pattern, or "!" followed by the refusal
+#             reason when the pattern is outside the subset.
+#
+# Both ports run their own normaliser over every pattern below and must
+# reproduce the verdict byte for byte. That is what makes "the two
+# normalisers are the same function" a checked claim rather than an
+# assertion in a comment: this file was produced by running BOTH and
+# diffing, and it fails in whichever port drifts.
+#
+# The patterns come from a seeded generator over the atom vocabulary
+# (accepted and refused constructs mixed), not from random input at test
+# time -- a fuzzer that reseeds in CI is a flaky test, and this
+# repository pins determinism as a contract. To extend the corpus,
+# regenerate with a new seed, re-run both ports, and commit the diff
+# only if they still agree.
+#
+# Reasons are included deliberately: a port that refuses the same
+# patterns for different stated reasons has still drifted.
+(?:(?:\p{L}.|\p{L})(?:\19[[:alpha:]]|\s)|[a-z])\A(?:\\b[^]|\*)|b$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\((?:b(?:[\dx][a\-z]|_)\t|\Z)|a$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^\s|(?:(?:\t\nz|[])(?:\D|0)\+|a)	!an empty character class, which RE2 refuses
+\p{L}(?:\W(?:\..|\*)\t|\p{L})|\\	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\d(?:\B|\k<n>)|(?:(?:[[:alpha:]]b\p{L}|\S)|\n)	!a named backreference (\k): RE2 has no equivalent
+\[|[]$	!an empty character class, which RE2 refuses
+[^a-z]|(?:(?:\x41\u0041\d|\n)a|_)$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+\w\W\D|(?:(?:\p{L}|\D)|(?:\x41\s|[a\-z]))	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+^(?:(?:[[:alpha:]]\B\s|\q)\x41| )|\Z	!a POSIX class ([:...:]), which JavaScript does not have
+09\n|\1	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+9[a\-z](?:(?:\.\[[\dx]|\Z)(?:\x{41}-|z)|(?:\s))|\k<n>$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^\z\.[\dx]|\Z	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+-(?:(?:9[0-9x]\s| )|\w)a| 	-(?:(?:9[0-9x][ \t\n\r\f\v]| )|[0-9A-Za-z_])a| 
+(?:\q|(?:b\b\u0041|a))b(?:\+b\D|\w)|\[	!\q, an escape whose meaning the two engines do not share
+(?: |(?:\*[^]9|\S))|[^a-z]	!an empty character class, which RE2 refuses
+(?:\k<n>|(?:\k<n>|0))\Aa|\t	!a named backreference (\k): RE2 has no equivalent
+\u0041\s(?:[^](?:\z[^\n]|\n)a|(?:[[:alpha:]]z|[a\-z]))|b	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+-(?:\D|\+)|(?:-(?:_0*[a\-z]|\s)|\k<n>)	!a named backreference (\k): RE2 has no equivalent
+(?:_(?:\d|\*)|\W)0\u0041|\W$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+\x41\s9|\[	\x41[ \t\n\r\f\v]9|\[
+(?:(?:\n\S|a)|(?:[^a-z]|\s))(?:\s[[:alpha:]]_|(?:.|\n))(?:(?:\+\1\u0041|[])\p{L}(?:\B|[0-9x])|(?:\[|[\dx]))|(?:z|\B)	!a POSIX class ([:...:]), which JavaScript does not have
+\B[a-z][[:alpha:]]|(?:\b\1|(?:\S\S|\x{41}))	!a POSIX class ([:...:]), which JavaScript does not have
+(?:(?:\n\q|\z)(?:\Z\Z\k<n>|\b)|(?:_\A|\+))(?:[^a-z][0-9x]|(?:[^\n]0|.))|\*	!\q, an escape whose meaning the two engines do not share
+^\Z|\x{41}	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:[^](?: \.\z|\p{L})a|\p{L})z|\t$	!an empty character class, which RE2 refuses
+(?:(?:0|\A)(?:\S|\W)|\p{L})\u0041\x{41}|(?:[\dx](?:0\Z|\b)[^\n]|(?:\S|\n))$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:[^\n](?:\Z|[^])|[^])|[a-z]$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^(?:\1(?:\*|\W)(?:b\W|[^a-z])|(?:-\t|\+))\.|\x{41}	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+^(?:(?:\b\D|[a\-z])\d|\.)(?:(?:\s|\S)| )|\b	^(?:(?:\b[^0-9]|[a\-z])[0-9]|\.)(?:(?:[ \t\n\r\f\v]|[^ \t\n\r\f\v])| )|\b
+\A(?:\s\[[^\n]|(?:[[:alpha:]]\w[a-z]|.))\u0041|(?:\k<n>(?:_|\b)(?:[^a-z]|\b)|\x41)$	!a POSIX class ([:...:]), which JavaScript does not have
+\s|\\	[ \t\n\r\f\v]|\\
+^(?:(?:\s\D|\n)(?:\19|\x{41})(?:[^a-z]|b)|(?:0z[0-9x]|\x{41}))|(?:\Bz|(?:\n|.))$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+(?:\W[^]\b|(?:0\p{L}\(|\W))a|\s$	!an empty character class, which RE2 refuses
+^\w\q|(?:\.|(?:\q|\*))$	!\q, an escape whose meaning the two engines do not share
+[]|(?:(?:a|9)\p{L}_|\n)	!an empty character class, which RE2 refuses
+z|\z$	z|$$
+\.(?:(?:\t[\dx]\1|b)(?:\u0041\k<n>\\|\A)(?: \sa|a)|a)(?:(?:\s\x{41}z|\t)(?:\S\u0041\s|\u0041)|\D)|\.$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+[0-9x](?: (?:-[a\-z]\.|[^a-z])|[^])|(?:\d(?:\s_|\\)|[\dx])$	!an empty character class, which RE2 refuses
+0(?:[^]\.|(?:\p{L}[a\-z]|[^\n]))|[^a-z]$	!an empty character class, which RE2 refuses
+^\1\t|\Z$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\u0041(?:(?:9[^a-z]\*|\k<n>)*\+(?:\+|0)|(?:\t\x41|\[))|[a-z]	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:\B\b|\p{L}) \w|\q$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:(?:\1|[[:alpha:]])b|.)[a-z]|(?:(?:\B0|z)|-)$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\W_\x41|[\dx]	[^0-9A-Za-z_]_\x41|[0-9x]
+\+\*(?:(?:\tz\W|[])-(?:[a\-z]|a)| )|(?:[\dx]|(?:\W|\())$	!an empty character class, which RE2 refuses
+\d\k<n>|\x{41}$	!a named backreference (\k): RE2 has no equivalent
+(?:\*|\d)(?:\x{41}(?:\t\t\s|\s)|(?:\1\k<n>_|\Z))\u0041|[0-9x]	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^(?:-\W |(?:\w|a))0|\W	^(?:-[^0-9A-Za-z_] |(?:[0-9A-Za-z_]|a))0|[^0-9A-Za-z_]
+^(?:\u0041\z\(|(?:\t\p{L}|[a\-z]))\b|[0-9x]$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+\s[^a-z](?:\z\b|(?:\b[\dx]|\Z))|[^a-z]$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^(?:[^a-z](?:_\\|\W)-|.)|[]	!an empty character class, which RE2 refuses
+^(?:_(?:z-\w|[^a-z])|\z)|z	^(?:_(?:z-[0-9A-Za-z_]|[^a-z])|$)|z
+(?:\W\n(?:\p{L}|\B)|[[:alpha:]])|\.	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\*.|[0-9x]	\*[^\n]|[0-9x]
+[a\-z](?:(?:z\d|[[:alpha:]])|[a-z])\n|(?:\.(?:\[_[[:alpha:]]|\B)\p{L}|[a\-z])$	!a POSIX class ([:...:]), which JavaScript does not have
+(?:\+\k<n>|(?:\t[^]\x41|[^\n]))\.|\B	!a named backreference (\k): RE2 has no equivalent
+(?:(?:\(|\[)|\t)[[:alpha:]](?:(?:9\k<n>\Z|[^a-z])(?:a|[])|(?:\z\(z|\A))|[]	!a POSIX class ([:...:]), which JavaScript does not have
+\B(?:\\|(?:\x41|\w))\S|(?:(?:bz|\()-(?:\t\1|9)|\u0041)	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+b|(?:(?:\u0041\x41|\1)\p{L}|\Z)	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^(?:[a\-z]|(?:\z\p{L}|[a-z]))|(?:[^\n](?:\S|\t)|\z)	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+[^](?:\[(?:\b|\s)|\1)(?:\.\W[a-z]|\*)|(?:_(?:\x{41}|[0-9x])|(?:.\k<n>[^]|[a-z]))$	!an empty character class, which RE2 refuses
+(?:\[|\+)[\dx]|(?:(?:z|\w)|(?:\B[]\*|\t))	!an empty character class, which RE2 refuses
+^(?:(?:\p{L}\z\q|[])\u0041(?:\[z|a)|(?:\S|\u0041))|[\dx]	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:(?:.\Z\q|[0-9x])[0-9x]|\()[a\-z]\x41|(?:\d\\|\w)$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+z|(?:0\Z|(?:\z\s\t|[a-z]))	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^(?:[[:alpha:]](?:\W[[:alpha:]]\t|[\dx])|\*)\Z(?:(?:\[\Z\.|b)(?:[^]|z)(?:[^a-z][a\-z]0|_)|\+)|(?:(?:\x41\Za|\p{L})(?:\B\z\\|[^])|(?:[^]a|\b))	!a POSIX class ([:...:]), which JavaScript does not have
+^\u0041|_	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^[^\n]|\+	^[^\n]|\+
+(?:(?:\s|\[)(?:\S |\+)|z)\S(?:_\S(?:z-|\z)|(?:[]|\b))|(?:(?:\x{41}|\q)a(?:.\k<n>*|\D)|(?:0\B|\x{41}))$	!an empty character class, which RE2 refuses
+\D |(?:0(?:[^]|\t)\[|(?:a[a\-z]|\z))	!an empty character class, which RE2 refuses
+^\+(?:\.|\S)|z$	^\+(?:\.|[^ \t\n\r\f\v])|z$
+\u0041(?:(?:\s|\S)\s(?:\z\\|\q)|\p{L})\D|\.	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\.|(?:[\dx]\p{L}[^\n]|(?:\+\Z|\A))	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+^(?:\p{L}|[\dx])|(?:(?:a|\s)|[0-9x])	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\Z\x{41}|\w$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+\t\p{L}|[]	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+^\b|(?:\n|(?:[a-z]|\s))	^\b|(?:\n|(?:[a-z]|[ \t\n\r\f\v]))
+-\[\W|(?:a\x41|[\dx])	-\[[^0-9A-Za-z_]|(?:a\x41|[0-9x])
+b(?:\[\B[a-z]|.)|[^\n]	b(?:\[\B[a-z]|[^\n])|[^\n]
+\1|\S	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+^\x41|(?:\w(?:\\\Z|\w)\n|[[:alpha:]])	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+[a\-z]|a	[a\-z]|a
+^\d|(?:(?:0\[\S|[^\n])|\k<n>)	!a named backreference (\k): RE2 has no equivalent
+90|\\$	90|\\$
+z|\[	z|\[
+\W\W[\dx]|\d$	[^0-9A-Za-z_][^0-9A-Za-z_][0-9x]|[0-9]$
+^(?:(?:[[:alpha:]]|\+)[]\+|(?:[a\-z]))|\u0041	!a POSIX class ([:...:]), which JavaScript does not have
+^\b[^][^]|\\	!an empty character class, which RE2 refuses
+^(?:[^]\q(?:\p{L}\D\t|\1)|\\)\d|\W	!an empty character class, which RE2 refuses
+(?:(?:\(\b\[|[[:alpha:]]) (?:.|\q)|\b)(?:\*| *)|(?:\*|\z)$	!a POSIX class ([:...:]), which JavaScript does not have
+(?:\u0041|(?:\x41\+.|\Z))|\\$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^(?:(?:[]|\B)[]\s|[a\-z])\+_|(?:\b\D\S|\W)$	!an empty character class, which RE2 refuses
+^[a-z]|\k<n>	!a named backreference (\k): RE2 has no equivalent
+\u0041(?:\t[^a-z]|(?:a|[[:alpha:]]))\k<n>|\s	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:\S\k<n>(?:\q|9)|\d)|(?:(?:\w\x{41}|\t)[a\-z]|\S)	!a named backreference (\k): RE2 has no equivalent
+^[^a-z](?:(?:\[\w|a)[^](?:\[\u0041\x{41}|\w)|-)|(?:\k<n>[\dx]|\x{41})	!an empty character class, which RE2 refuses
+(?:\p{L}(?:\s|\S)|\t).\W|\z$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+^\q\b|\z$	!\q, an escape whose meaning the two engines do not share
+(?:\n|[^\n])(?:(?:[^]z|\())(?:(?:\Za| )|(?: |[^]))|(?:a|\Z)$	!an empty character class, which RE2 refuses
+^[[:alpha:]].|(?:\D|(?:\x41[^\n]| ))$	!a POSIX class ([:...:]), which JavaScript does not have
+\s(?:\d|(?:\n|\x{41}))|-$	!a \x{...} escape, which JavaScript spells \u: write the character itself
+_\*\D|(?:[[:alpha:]]|\Z)	!a POSIX class ([:...:]), which JavaScript does not have
+\z|\s$	$|[ \t\n\r\f\v]$
+^(?:(?:[\dx]\t\*|\S)0(?:\\\W\S|[0-9x])|\k<n>)\s|\1	!a named backreference (\k): RE2 has no equivalent
+\.|\($	\.|\($
+(?:\+\z[\dx]|\W)|(?:(?:\z\[|\u0041)(?:\n[^a-z]-|\A)\A|(?:\.|9))$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+0|\D	0|[^0-9]
+(?:[]|(?:\s-a|[^\n]))(?:[a-z](?:\1\B|\p{L})|-)(?:[^\n][][^]|z)|[a\-z]$	!an empty character class, which RE2 refuses
+^[]\z*(?:\+[\dx]\1|(?:\1\B|\+))|(?:\s|\\)	!an empty character class, which RE2 refuses
+(?:\S\D|(?:a\D\x{41}| ))|\d$	!a \x{...} escape, which JavaScript spells \u: write the character itself
+ (?:\t\w(?:0|[^a-z])|(?:\q|[^\n]))(?:\B|\k<n>)|\*	!\q, an escape whose meaning the two engines do not share
+\((?:(?:.\*|\(*)\w(?:\q|\q)|(?:[][a-z].|-))\B|\[	!\q, an escape whose meaning the two engines do not share
+(?:\.|(?: [\dx][\dx]|\[))\A |(?:\t|(?:\w[^][0-9x]|b))$	!an empty character class, which RE2 refuses
+\s|(?:(?:[][^\n]|0)\w_|(?:\(b[^\n]|\A))	!an empty character class, which RE2 refuses
+b[^\n](?:(?:\D\B\D|\x{41})(?:[]\k<n>[a-z]|\n)|(?:[^a-z]|\.))|b	!a \x{...} escape, which JavaScript spells \u: write the character itself
+[^a-z]|(?:(?:.|.)(?:[^]\x41|9)\(|\b)	!an empty character class, which RE2 refuses
+[^][^a-z](?:(?:\*\W|\s)[a-z](?:_z\p{L}|\W)|(?:\S[\dx]\B|\W))|0	!an empty character class, which RE2 refuses
+(?:(?:[\dx]\*|[\dx])(?:\*|\t)|\\)(?:(?:\s|b)\Z|(?:.9|\s))(?:(?:\n[[:alpha:]]|b)\w\u0041|[[:alpha:]])|[a-z]	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^\t|(?:[a\-z][^a-z](?:z\w\[|\u0041)|(?:\(\s\z|.))	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:(?:\\[]|[a\-z])\n(?:b|\u0041)|\d)\b\*|.$	!an empty character class, which RE2 refuses
+^\s|9	^[ \t\n\r\f\v]|9
+(?:(?:\x{41}\*\S|_)\z(?:\W\(|[a\-z])|\u0041)|(?:(?:\s\[\W|\s)(?:\t\k<n>\x41|\n)(?:\*|\t)|\.)	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^\[.*0|(?:\*(?:\u0041|[])(?:z[[:alpha:]]|\B)|\n)	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+[a-z]|(?:\S\*|(?:[[:alpha:]]|\p{L}))	!a POSIX class ([:...:]), which JavaScript does not have
+^[^a-z]|a	^[^a-z]|a
+\D\x{41}[a-z]| 	!a \x{...} escape, which JavaScript spells \u: write the character itself
+.[]|(?:\x41_\k<n>|\z)$	!an empty character class, which RE2 refuses
+^\.|[a-z]	^\.|[a-z]
+^\D(?:(?:\Z|\k<n>) (?:\s|\x{41})|\1)\z|[0-9x]	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+z(?:(?:\*bz|9)(?:\x41_|b)|\z)|\p{L}$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\u0041|\[	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:\s|(?:[^]|-))|(?:(?:\*\q|\x{41})\S(?:[\dx].|\.)|\W)$	!an empty character class, which RE2 refuses
+^(?:(?:\x41|\x{41})\u0041|(?:\W\s|\x{41}))|\n	!a \x{...} escape, which JavaScript spells \u: write the character itself
+\+0|\x41	\+0|\x41
+\\|(?:\(|a)	\\|(?:\(|a)
+(?:[[:alpha:]]b(?:\+[]|\s)|\.)[a-z]|\t	!a POSIX class ([:...:]), which JavaScript does not have
+\S\u0041\1|\\$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+_|\($	_|\($
+^\1[^a-z]|(?:(?:[a-z]\Z|\b)(?:\1[a\-z]|[\dx])|(?: |\B))	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+(?:(?:\p{L}\Z[^a-z]|\D)9|\W)\*|b$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\\0|\p{L}	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:z|\x{41})|.	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^\p{L}|\q	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:\A|(?:b|\+))\+0|(?:[^]|\n)$	!an empty character class, which RE2 refuses
+(?:\s[^a-z]|_)|(?:\W| )$	(?:[ \t\n\r\f\v][^a-z]|_)|(?:[^0-9A-Za-z_]| )$
+\z(?:(?:\1[].|\k<n>)\s|\\)\u0041|(?:(?:a|\n)[a\-z]|(?:[0-9x][^\n]b|[\dx]))	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+(?:\+(?:_\.-|\x41)a|\\)|(?:\Z(?:\.|[^a-z])|\k<n>)	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:(?:[0-9x][^\n]\d|\x{41})|(?:\1\[|[\dx]))|(?:\((?:[a\-z]|\z)(?:\n|[0-9x])|\q)	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^(?:(?:\q\10|\B)\1|\d)[a-z]|\b$	!\q, an escape whose meaning the two engines do not share
+\\(?:\A (?:z|\D)|(?:\x41\\\.|-))(?:\Z(?:\B\A|[a-z])|a)|(?:(?:\* |[\dx])\k<n>|(?:\D\1\.|\x{41}))	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:[^\n]|\k<n>)(?:(?:\q\t\x{41}|\x{41})(?:[a-z][^]\x41|_)|(?:[^\n]|[\dx]))|[a\-z]	!a named backreference (\k): RE2 has no equivalent
+(?:(?:[\dx]bb|[0-9x])|\b)(?:\B-|\z)(?:-\s|.)|\B	(?:(?:[0-9x]bb|[0-9x])|\b)(?:\B-|$)(?:-[ \t\n\r\f\v]|[^\n])|\B
+^\d|0	^[0-9]|0
+(?:.|\t)\q|\+	!\q, an escape whose meaning the two engines do not share
+\s|\x{41}	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^[a-z].a|\*	^[a-z][^\n]a|\*
+\x{41}9(?:\Z \B|\b)|(?:\q(?:\\|\.)(?:\B|_)|\Z)$	!a \x{...} escape, which JavaScript spells \u: write the character itself
+\A|(?:\S|(?:\Wb[0-9x]|\b))$	^|(?:[^ \t\n\r\f\v]|(?:[^0-9A-Za-z_]b[0-9x]|\b))$
+(?:\u0041|(?:\+\k<n>\s|\x{41}))(?:\(|(?: \u0041|\D))\b|(?:(?:\t\z|\Z)|\\)	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+[](?:(?:\q|\\)\S(?:[^a-z]|\n)|(?:0[a-z]|b))|-$	!an empty character class, which RE2 refuses
+^\b|_$	^\b|_$
+^\1\Z\A|\t*	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+^[^]|(?:\n|(?:\p{L}\\.|\.))$	!an empty character class, which RE2 refuses
+.(?:(?:\w\D|z)\s(?:[a-z]\x{41}.| )|(?:[a\-z]|z))|\B	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^(?:[^](?:\d-|.) |(?:b\t|a))\D|[a\-z]$	!an empty character class, which RE2 refuses
+^(?:(?:\t\n|z)|_) |.	^(?:(?:\t\n|z)|_) |[^\n]
+^[^]\n\x{41}|(?:\x{41}\n|(?:\+|[[:alpha:]]))$	!an empty character class, which RE2 refuses
+(?:a\k<n>|(?:\x{41}\(0|-))(?:(?: \p{L}|[[:alpha:]])[a\-z]|[])[a\-z]|\A	!a named backreference (\k): RE2 has no equivalent
+(?:(?:\qb|\S)\s\s|[a-z])z|(?:(?:\A|\Z)|\d)	!\q, an escape whose meaning the two engines do not share
+z|(?:(?:\B[a\-z]|\()\B(?:\\\w|9)|(?:\x419[[:alpha:]]|0))$	!a POSIX class ([:...:]), which JavaScript does not have
+^\([\dx](?:(?:\A|\d)|(?:[a\-z][a-z]|\x{41}))|(?:(?:\1\sz|[0-9x])|[0-9x])	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^\A|(?:9(?:\x{41}|\k<n>)|[^\n])	!a \x{...} escape, which JavaScript spells \u: write the character itself
+.|(?:(?:b\s|_)|b)	[^\n]|(?:(?:b[ \t\n\r\f\v]|_)|b)
+^b|(?:\x{41}9|(?:[^a-z]|[\dx]))	!a \x{...} escape, which JavaScript spells \u: write the character itself
+(?:a|\x41)(?:(?:\t|z)(?:\.|\k<n>)[^]|\.)\B|\W	!a named backreference (\k): RE2 has no equivalent
+(?:(?:-\W\Z|[[:alpha:]])\d|_)(?:[a\-z]|(?:\[z\x{41}|\[))|(?:\x41_|(?:\(\w.|\k<n>))	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:\w\*|\z)\*\[|\(	(?:[0-9A-Za-z_]\*|$)\*\[|\(
+^\W(?:_|(?:\\[]|\d))|[\dx]$	!an empty character class, which RE2 refuses
+^\A|\z	^^|$
+^\.(?:b\p{L}|(?:\z\d\n|\p{L}))|\t	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\z(?:(?:\z\u0041|\+)|(?:\D\1|[a-z]))|\*	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:\D(?:\u0041\x{41}a|-)|\1)(?:\n[^a-z]|\()|[^]$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+((?:\\\[|\+)\u0041|(?:\w|\*))[a-z][^]|\w	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\Z|\d$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+z(?:(?:[a-z]|[^a-z])(?:z[^]|[^])|(?:[\dx]b\+|[^a-z]))\w|(?:\b(?:[0-9x]| )(?:\z\q|\[)|\x{41})$	!an empty character class, which RE2 refuses
+(?:[\dx]\.(?:\k<n>\p{L}\*|\k<n>)|\q)|(?:(?:\z|.)\Z|[0-9x])	!a named backreference (\k): RE2 has no equivalent
+[^]|\t	!an empty character class, which RE2 refuses
+^_\s|\W	^_[ \t\n\r\f\v]|[^0-9A-Za-z_]
+^[0-9x]\B(?:\p{L}|_)|(?:\+|\k<n>)$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\s\.|(?:\b(?:[^a-z]|\1)z|\()	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+^(?:(?:\s|\u0041)\D-|\*)|(?:\b|(?:\A[]|\x41))	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^(?:\x{41}\A|\B)|(?:(?:\[\Z|\[)|(?:[^a-z]z|\D))	!a \x{...} escape, which JavaScript spells \u: write the character itself
+(?:(?:\k<n>\\[^]|9)|(?:[a\-z]0|\x41))|(?:\s\*|(?:\A\*|\x41))	!a named backreference (\k): RE2 has no equivalent
+z(?:(?:\b\[|-)[a-z]|\D)|(?:\Z\s|-)	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+\Z\n\D|(?:\s|(?:\z\b\1|\b))	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+[^\n]|\s$	[^\n]|[ \t\n\r\f\v]$
+[^a-z]| 	[^a-z]| 
+(?:[^](?:\t|[^])0|0)|(?:\qb|\()$	!an empty character class, which RE2 refuses
+(?:0(?:-[a-z]|[])|(?:[^]\(|\z))[0-9x]\S|(?:0(?:[a\-z]|\t)|\k<n>)	!an empty character class, which RE2 refuses
+\u0041[^\n]\q|[^a-z]$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\S|(?:\x{41}(?:[][a\-z]z|\x41)\Z|_)$	!a \x{...} escape, which JavaScript spells \u: write the character itself
+\x41|\[	\x41|\[
+.[\dx][^]|(?:9|(?:\x41|_))	!an empty character class, which RE2 refuses
+(?:\A(?:\z[\dx]\w*|b)|\z)\Z|9$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+[^\n]|\p{L}	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:(?:\.|\d)(?:\z|\w)-|\t)(?:\.(?:.\x{41}[a\-z]|\D)|-)|[]	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^\W(?:\A(?:\u0041\w\D|\Z)|b)\z|z	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:(?:\w\[\Z|\s))|\B$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^\u0041\+|(?:\*\s\s|(?:\n\n|\u0041))$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^(?:\k<n>\A|(?:\.-|\Z))|(?:\u0041|\()	!a named backreference (\k): RE2 has no equivalent
+[a\-z]|(?:\A(?:\\\x{41}\u0041|\1)|.)	!a \x{...} escape, which JavaScript spells \u: write the character itself
+(?:b|[a-z])\k<n>\s|_	!a named backreference (\k): RE2 has no equivalent
+(?:(?:\+.|[])(?:\n\+|\A)(?:a\\|[a-z])|\\)|(?:\d|9)$	!an empty character class, which RE2 refuses
+\p{L}(?:[a\-z]\D|(?:\w|\A))(?:(?:[\dx]|\x41)\t[[:alpha:]]|\s)|\k<n>	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:(?:\.|[\dx])|(?:\t|\.))\S[]|[^]	!an empty character class, which RE2 refuses
+^(?:(?:\W.|[\dx])(?:[[:alpha:]]|b)|\Z)(?:(?:_|\w)(?:[^\n]|b)|(?:b[^\n]|[^])).|(?:(?:\W\S|[a\-z])(?:_\[\.|\w)|\B)$	!a POSIX class ([:...:]), which JavaScript does not have
+\k<n>\x{41}|\A	!a named backreference (\k): RE2 has no equivalent
+\Z|(?:(?:\S\x41|[\dx])(?:\.|\b)|\*)	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+[^a-z](?:(?:[\dx]\q|\s)\x{41}(?:[[:alpha:]]\A\B|\u0041)|(?:\*|\s)) |(?:_|\1)	!\q, an escape whose meaning the two engines do not share
+^\k<n>[a\-z]|z	!a named backreference (\k): RE2 has no equivalent
+(?:(?: \q|[a-z]) \[|\\)(?:(?:\W[\dx]9|\q)(?:\+\q|[])|[a-z])|(?:\W(?:\u0041b\n|[])(?:\D|\d)|(?:-\z\p{L}|\p{L}))	!\q, an escape whose meaning the two engines do not share
+^\k<n>\w(?:(?:\S|\z)(?:\p{L}\+|\z)\b)|0$	!a named backreference (\k): RE2 has no equivalent
+^(?:(?:9[a\-z]\w|\b)|z)\x41\b|\B$	^(?:(?:9[a\-z][0-9A-Za-z_]|\b)|z)\x41\b|\B$
+\*|(?:\Z\s(?:\p{L}\*a|\q)|9)	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:_| )\+*\p{L}|(?:\B|\d)$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:(?:\sz|_)|[^\n])[0-9x][0-9x]|\u0041	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^[a-z]|(?:(?:__\x{41}|\n)(?:z\D-|[a-z])| )	!a \x{...} escape, which JavaScript spells \u: write the character itself
+-\b|z	-\b|z
+(?:z\b(?:[\dx] _|\n)|[0-9x])|(?:\p{L}(?:\+\x{41}\b|\n)|(?:[]_|\k<n>))$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\S\D|9$	[^ \t\n\r\f\v][^0-9]|9$
+(?:[\dx]\1|(?:\\[a\-z]|[^a-z]))(?:a|[a\-z])\s|(?:_(?:\Z\x41|\.)(?:[]|\x41)*|\Z)	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+[^]|[\dx]	!an empty character class, which RE2 refuses
+(?:\q[a\-z]\k<n>|9)|[]$	!\q, an escape whose meaning the two engines do not share
+[[:alpha:]]\*\k<n>|[^a-z]	!a POSIX class ([:...:]), which JavaScript does not have
+[^\n]\z(?:\w(?:\d|\p{L})b|\n)|\\	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+^(?:a|(?: []|z))\.|(?:(?:\1\Z|z)\Z(?:\b\b |\k<n>)|(?:\q\.|\+))$	!an empty character class, which RE2 refuses
+^(?:z| )(?:\s|[[:alpha:]])|[a-z]$	!a POSIX class ([:...:]), which JavaScript does not have
+(?:(?:\q\q|\b)(?:[[:alpha:]]\[|\x{41})(?:\\|b)|(?:\s\A|\A))\s\p{L}|(?:(?:_\*\x{41}|\1)[^a-z]\\|(?:[\dx][[:alpha:]]\\|\t))	!\q, an escape whose meaning the two engines do not share
+^(?:\1|(?:\d-|\t))\\|\p{L}$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+(?:(?:\+|\u0041)\q(?:\A[^a-z]|\.)|(?:\w|9))\((?:\\(?:\n|\k<n>)|[a-z])|\S	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^(?:[^a-z](?:\x{41}|9)|\\)[^a-z]0|[a\-z]$	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^(?:(?:\+.b|[^\n])|(?:[^a-z]\*[^]|\Z))[[:alpha:]](?:(?:\([0-9x]|\s)(?:\b|\u0041)|[\dx])|a$	!an empty character class, which RE2 refuses
+\.9b|\n	\.9b|\n
+(?:\n\x{41}\d|-)[0-9x]\t|(?:.\.\s|z)	!a \x{...} escape, which JavaScript spells \u: write the character itself
+[](?:(?:\x41|\B)|(?:\z|\.)*)|\x41$	!an empty character class, which RE2 refuses
+^\*|(?:(?:-\u0041[a-z]|\W)z|(?:\.\s[[:alpha:]]|\[))$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:[a-z]|\.)|(?:.[^a-z]|\A)	(?:[a-z]|\.)|(?:[^\n][^a-z]|^)
+(?:(?:[[:alpha:]]\1|[^\n])|(?:\z\+))|(?:\S(?:\t90|a)(?:\z|-)|(?:.\p{L}|[^\n]))$	!a POSIX class ([:...:]), which JavaScript does not have
+\\.\[|[a-z]$	\\[^\n]\[|[a-z]$
+(?:(?:_\p{L}|\()(?:\n[^]\+|a)a|\.)\u0041|\1	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+[^](?:(?:[0-9x]\q|[^\n])(?:\B\k<n>|\t)|\B)|\\	!an empty character class, which RE2 refuses
+(?:a(?:[^a-z]-\n|\S*)|(?:\n[^\n]\W|\z))|[^a-z]$	(?:a(?:[^a-z]-\n|[^ \t\n\r\f\v]*)|(?:\n[^\n][^0-9A-Za-z_]|$))|[^a-z]$
+(?:\t\1|\1)|\x{41}	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+^(?:-\p{L}*|\s)\d|\D	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:(?:0|\p{L})|.)|0	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:\1(?:\W\B[a-z]|\t)\\|(?:\Z\W[\dx]|[[:alpha:]]))|(?:\D(?:\Z|\x41)|(?:\19|-))$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+9\Z|(?:(?:\k<n>[^a-z]|\z)|(?:9z|[]))	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+[^a-z]|\z$	[^a-z]|$$
+[^]a|(?:[a\-z](?:\\a\x41|[^])\d|\D)$	!an empty character class, which RE2 refuses
+^(?:\w| )(?:\d\\|(?:\b|[a-z]))\A|(?:\w|(?:\q\q\S|\p{L}))$	!\q, an escape whose meaning the two engines do not share
+^(?:0\w(?:\(|_)|(?:\W|\1))_\w|\D	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\D.|[a-z]	[^0-9][^\n]|[a-z]
+^\p{L}\S\.|(?:(?:\[|\.)b[[:alpha:]]|(?:[^]\k<n>[a\-z]|_))$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+[0-9x]|\u0041	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+\S[[:alpha:]](?:(?:\dz[^\n]|\1)(?:\b\+\1|[^])9|a)|[0-9x]	!a POSIX class ([:...:]), which JavaScript does not have
+z[a-z]| $	z[a-z]| $
+\s[a\-z]|\A	[ \t\n\r\f\v][a\-z]|^
+^[^]|(?:\*\Z|\x41)	!an empty character class, which RE2 refuses
+0|0	0|0
+^(?:\u0041a|[])|(?: (?:_\B\n|\1)(?:.|\d)|(?:_[a-z][^]|a))$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+-(?:\**|(?:\\[^\n]\k<n>|\b))(?: \s(?:z|\+)|9)|(?:(?:\Z|[^])\z|(?:a|\A))	!a named backreference (\k): RE2 has no equivalent
+^z(?:\*\*|(?:a|[a\-z]))\t|(?:[0-9x]\p{L}\S|(?:\k<n>\b\1|[a-z]))	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+^\(_|\[$	^\(_|\[$
+^(?:_[a-z]\n|(?:\x41[\dx]b|\D))[^a-z][a\-z]|(?:\Z\D[[:alpha:]]|[])$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:\*(?:\(|\b)|\z)\D(?:(?:\w\x41\w|\D)|[^])|\x{41}$	!an empty character class, which RE2 refuses
+(?:\Z|\D)\s(?:z\(\\|(?:[a-z]\\|\n))|\q	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+z(?:(?:\q|\x41)[a-z]-|\*)[^a-z]|[^a-z]	!\q, an escape whose meaning the two engines do not share
+\W|9$	[^0-9A-Za-z_]|9$
+\d(?:(?:\.\x{41}[\dx]|\\)|\p{L}).|\($	!a \x{...} escape, which JavaScript spells \u: write the character itself
+(?:(?:b|[\dx])|\+)\B\[|\.$	(?:(?:b|[0-9x])|\+)\B\[|\.$
+(?:[[:alpha:]](?:\Z\Zb|[\dx])|\S)b|\t	!a POSIX class ([:...:]), which JavaScript does not have
+\p{L}|(?:(?:[^\n][[:alpha:]]\s|\w)(?:\D|\p{L})(?:\B\A_*|[a\-z])|\S)	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+z\q[\dx]|\t$	!\q, an escape whose meaning the two engines do not share
+[^]\u0041(?:[[:alpha:]]0(?:\D\[|9)|\\)|(?:\d|\s)	!an empty character class, which RE2 refuses
+([\dx]|(?:_|\\))\z[^]|z	!an empty character class, which RE2 refuses
+[a\-z]|[^\n]	[a\-z]|[^\n]
+^(?:a(?: [a\-z]\W|[^])(?:.9|\q)|\[)\x{41}|\(	!an empty character class, which RE2 refuses
+^(?:(?:\t.|\x41)(?:\*a|[])|(?: \(\q|[[:alpha:]]))[0-9x]a|\t	!an empty character class, which RE2 refuses
+\D(?:(?:\A[a\-z]|\x{41})\k<n>|\()(?:z|\s)|(?:(?:\d\n\+|z)\A\z|[^a-z])	!a \x{...} escape, which JavaScript spells \u: write the character itself
+\k<n>\k<n>(?:\.(?:[^\n]\k<n>|\s)|(?:\z\t|\s))|\s$	!a named backreference (\k): RE2 has no equivalent
+(?:(?:\+|\q)|(?:[^a-z]\+0|\s))\u0041|\S	!\q, an escape whose meaning the two engines do not share
+[\dx](?:(?:\S|\u0041)(?:_[\dx]|\x41)(?:\x41|\k<n>)|(?:[^]\W*[\dx]|0))|\A	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\S|(?:z|\u0041)	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:\z(?:\([^a-z][\dx]|\w)[0-9x]|(?:_\z\x{41}|\b))(?:[^a-z]|(?:0|\1))|\x{41}	!a \x{...} escape, which JavaScript spells \u: write the character itself
+(?:\Z|(?:\[\b|\())(?:(?:b\t|\x{41})(?:[]|\d)|_)|(?:[^\n]|\z)	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:\S|z)[a-z](?:\*|[\dx])|\x41$	(?:[^ \t\n\r\f\v]|z)[a-z](?:\*|[0-9x])|\x41$
+\\\u0041[]|\S	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\qz|\+	!\q, an escape whose meaning the two engines do not share
+\n\[|0$	\n\[|0$
+^\u0041|(?:(?:\(\(|[^\n])9|\z)	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+\1|(?:\z\w|(?:\[ |\b))	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+(?:(?:\Z|\[)\Z(?:_\n\+|\w)|\x{41})\s(?:0|[^a-z])|(?:(?:\q\q\q|\\)|-)$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+\d_|(?:(?:\x{41}\+|\[)[0-9x](?:[a\-z]|a))	!a \x{...} escape, which JavaScript spells \u: write the character itself
+0|[^\n]	0|[^\n]
+\x41\n|b$	\x41\n|b$
+(?:-|[\dx])\x{41}|\b	!a \x{...} escape, which JavaScript spells \u: write the character itself
+-(?:\D|[a\-z])| 	-(?:[^0-9]|[a\-z])| 
+^[0-9x](?:(?:\u0041|\w)|\z)(?:(?:\z|\t)99|(?:\+\x{41}|\k<n>))|(?:a(?:\[|\t)|(?:\+|\b))	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^(?:\S[^][\dx]|\b)b|\A$	!an empty character class, which RE2 refuses
+\*a|(?:[\dx]b|(?:\n|\u0041))	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+9|\d$	9|[0-9]$
+[^a-z]_|(?:\1|(?:\*| ))	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\A|(?:\B|(?:\w\Z|\s))$	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^\z|(?:-(?:\k<n>|\A)|(?:[[:alpha:]]|\\))	!a named backreference (\k): RE2 has no equivalent
+\*(?:(?:\u0041\.|[^])\*\1|(?:b\x{41}\D|0))|[\dx]	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+(?:\+(?:[^a-z][^a-z]\z|.)|\u0041)_(?:(?:[^a-z][^][[:alpha:]]|\[)|(?:9\z9|[a-z]))|(?:\S\q\s|(?:[^a-z]z\*|\z))$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\x41.\s|z$	^\x41[^\n][ \t\n\r\f\v]|z$
+^9|(?:(?:z\x41[^a-z]|[a-z])\\|[^])	!an empty character class, which RE2 refuses
+^(?:z-|\.)|[a\-z]$	^(?:z-|\.)|[a\-z]$
+^(?:[]0|(?:[^a-z].|[0-9x]))(?:_(?:\B\W|\t)(?:_[0-9x]| )|[])[0-9x]|\Z$	!an empty character class, which RE2 refuses
+9\D\B|\S$	9[^0-9]\B|[^ \t\n\r\f\v]$
+\x{41}(?:(?:\q[0-9x]\p{L}|[[:alpha:]])|[a-z])[0-9x]|\S	!a \x{...} escape, which JavaScript spells \u: write the character itself
+(?:\+(?:[^\n]\s |\u0041)\x{41}|\\)\[| 	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^[^](?:\*\x41(?:[0-9x]|\D)|(?:[^\n][^]|\z))z|(?:[]\x41\s|\x41)$	!an empty character class, which RE2 refuses
+^\W(?:(?:a\[|9)|(?:\d\p{L}|[\dx]))|(?:\b|(?:[[:alpha:]]\x{41}|[^]))	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\S|\d	[^ \t\n\r\f\v]|[0-9]
+^(?:\x{41}|(?:\(|[a-z]))(?:(?:\W|\*)|[0-9x])\.|(?:(?:\k<n>\s\p{L}|\()(?:[a-z]|\s)(?:_\k<n>|\D)|\p{L})	!a \x{...} escape, which JavaScript spells \u: write the character itself
+(?:[^\n]|\x{41})|[a-z]	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^[a\-z][[:alpha:]]|\b	!a POSIX class ([:...:]), which JavaScript does not have
+\t.[a-z]|[a\-z]	\t[^\n][a-z]|[a\-z]
+^\b(?:(?:\q|[^])[[:alpha:]]|(?:\d|\1))(?:\n|(?:[a\-z][[:alpha:]]\t|[]))|\S$	!\q, an escape whose meaning the two engines do not share
+^(?:-\B|a)\p{L}\1|\x{41}$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+(?:\s(?:\W|\p{L})|\w)[a\-z]|(?:(?:\w\s\b|\()(?:\S[a\-z]\(|[\dx])(?: _[0-9x]|0)|z)	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\x41\1(?:z|(?:\*|\k<n>))|[]$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\w|\t	[0-9A-Za-z_]|\t
+\k<n>\q|\x41$	!a named backreference (\k): RE2 has no equivalent
+(?:(?:\z|b)\z|\n)b |(?:\q|[a-z])	!\q, an escape whose meaning the two engines do not share
+^\*(?:(?:[^\n]\x{41}|\p{L})|(?:_|\D))(?:a(?:\s\bz|[0-9x])(?:[[:alpha:]][^]|\.)|(?:[\dx]\([a\-z]|\A))|\q$	!a \x{...} escape, which JavaScript spells \u: write the character itself
+[a\-z](?:[a\-z]\\(?: 9\d|\+)|(?:\tz|0))|\\$	[a\-z](?:[a\-z]\\(?: 9[0-9]|\+)|(?:\tz|0))|\\$
+^\W\.\Z|(?:(?:\s\([^]|\1)\b|(?:b\x41|\+))	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+^(?:(?:z|\p{L})(?:\n9|\d)\\|[])|\b	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\s|\n	[ \t\n\r\f\v]|\n
+\u0041|\1	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+[a\-z]\n(?:[^a-z]\q\p{L}|[[:alpha:]])|(?:(?:\x{41}|[^\n])(?:[[:alpha:]]|.)(?:[^\n]|\*)|(?:\..|\A))	!\q, an escape whose meaning the two engines do not share
+(?:-\p{L}|(?:_[^]|\B))(?:(?:.|b)(?:[\dx]\1\[| )(?:\(|\D)|\1)|(?:(?:[a\-z]|[^\n])\**|(?:_|-))	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\d(?:(?:\Z|9)\x41|b)\(|\x{41}	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+(?:\*(?:\k<n>\x{41}a|[])\B|[a\-z])\s\t|(?: (?:\u0041\s|\.)(?:[\dx]|\A)|(?:_[a-z]|\W))$	!a named backreference (\k): RE2 has no equivalent
+\[(?:(?:\n[a-z]\*| )|\q)(?:(?:\d|\+)[^a-z]|(?:[a-z]|\.))|(?:\[|\D)	!\q, an escape whose meaning the two engines do not share
+^(?:(?:\n\B|\W)|\d)(?:(?:\1\w|[\dx])b|\s)\s|\.	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\x{41}|\w	!a \x{...} escape, which JavaScript spells \u: write the character itself
+a[[:alpha:]]|\D	!a POSIX class ([:...:]), which JavaScript does not have
+\S\qz|\B	!\q, an escape whose meaning the two engines do not share
+^(?:(?:\q|z)\D(?:[a\-z]\S|\[)|(?:[\dx]\x41\s|[[:alpha:]]))\Z(?:\x41\A\x41|a)|_	!\q, an escape whose meaning the two engines do not share
+(?:(?:\q9[a-z]|\\)|(?:\A\x41\q|\+))(?:(?:\d.\B|[\dx])[^](?:\w\+\W|\\)|[[:alpha:]])[^\n]|(?:\b(?:\n|\+)[a\-z]|(?:\1|[0-9x]))	!\q, an escape whose meaning the two engines do not share
+z[\dx]\d|(?:(?:\1\x41\*|\u0041)\u0041(?:[a-z]\q|\B)|(?:\n\S|\k<n>))	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\1|\w$	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+[[:alpha:]]|\A	!a POSIX class ([:...:]), which JavaScript does not have
+^(?:\n(?:\w\z[a-z]|\D)\B|\.)|[\dx]	^(?:\n(?:[0-9A-Za-z_]$[a-z]|[^0-9])\B|\.)|[0-9x]
+(?:(?:\na|\n)\w|(?:\1|\\))[^\n]\b|[0-9x]	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+\q\x{41}\B|[a\-z]	!\q, an escape whose meaning the two engines do not share
+^\s[^\n]|\w	^[ \t\n\r\f\v][^\n]|[0-9A-Za-z_]
+\[(?:_|\b)|b	\[(?:_|\b)|b
+\x41a\A|[a-z]	\x41a^|[a-z]
+^(?:(?:\B|\q)(?:[^]\p{L}0| )|(?:\A\s[\dx]|\x41))[0-9x]|\x41	!\q, an escape whose meaning the two engines do not share
+^\d(?:-(?:[]_|a)\S|\s)(?:(?:[[:alpha:]]|z)|\k<n>)|(?:(?:\z\u0041\x{41}|\*)|\D)	!an empty character class, which RE2 refuses
+(?:(?:[]_\x41|-)[[:alpha:]]|\A)[a\-z]|\B	!an empty character class, which RE2 refuses
+^(?:(?:\S\B9|\d)\S|a)_|(?:-\w(?:[\dx][^]|\.)|(?:\W\A[]|\s))$	!an empty character class, which RE2 refuses
+\1(?:(?:\p{L}| )\B|(?:\.\p{L}\W|\())(?:\\|(?:\S\d\1|0))|(?:(?:9-|\x{41})(?:_\s|\n)|\q)	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+^(?:\x{41}(?:\Z|[^\n])|(?:\D|[a\-z]))(?:(?:[0-9x]|[a-z])(?:\D|\()|(?:\x41\u0041|b))|(?:(?:\S\+_|[[:alpha:]])|(?:[^\n]\A\z|\B))	!a \x{...} escape, which JavaScript spells \u: write the character itself
+^(?:.(?:\d[[:alpha:]]\d|\t)|(?:[]|\())\w|(?:\S[[:alpha:]][a-z]|\.)	!a POSIX class ([:...:]), which JavaScript does not have
+_|[a-z]	_|[a-z]
+^[[:alpha:]][a-z]\k<n>|(?:\z|0)$	!a POSIX class ([:...:]), which JavaScript does not have
+\(9|(?:(\x41[0-9x]|[[:alpha:]])|(?:\D|\\))$	!a POSIX class ([:...:]), which JavaScript does not have
+-[\dx]|[a\-z]	-[0-9x]|[a\-z]
+0(?:9|\p{L})|9	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+\u00419|\W	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\k<n>|(?:(?:\b|\w)|(?:\[\\.|\w))$	!a named backreference (\k): RE2 has no equivalent
+^\Z\W(?:[[:alpha:]][^\n]|\s)|\(	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text
+.(?:.\s|(?:0\t9|\d))\\|\x41	[^\n](?:[^\n][ \t\n\r\f\v]|(?:0\t9|[0-9]))\\|\x41
+. |b$	[^\n] |b$
+^(?:(?:\p{L}\x{41}|[\dx])|\1)|(?:\k<n>|[[:alpha:]])	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+.\+(?:-(?:\b[0-9x]|[a\-z])\(|[\dx])|[\dx]	[^\n]\+(?:-(?:\b[0-9x]|[a\-z])\(|[0-9x])|[0-9x]
+\S\\|(?:[0-9x](?:\\\\|_)\u0041|(?:\x{41}\s-|\k<n>))	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+^\B(?:(?:.\.|\k<n>)\s|\w)|9	!a named backreference (\k): RE2 has no equivalent
+\[[^]\1|(?:\*\q|(?:\W\W|\x41))$	!an empty character class, which RE2 refuses
+\x41|(?:(?:\D\w.|[^])[a\-z]\x41|\W)$	!an empty character class, which RE2 refuses
+^\1\((?:(?:\S\D|\Z)|(?:\z|\q))|\u0041	!a backreference (\1): RE2 has no equivalent, and a pattern with one is not a regular expression
+(?:(?:b\S|\n)|\x41)\d_|\*$	(?:(?:b[^ \t\n\r\f\v]|\n)|\x41)[0-9]_|\*$
+(?:\u0041|(?:-|a))\D|\+$	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+\S(?:\*\u0041(?:[^]|\s)|[[:alpha:]]*)|(?:(?:\\|\t)[a\-z]|(?:\[\t[^a-z]|\Z))	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+\s(?:(?:[[:alpha:]][^]b|9)\b(?:[[:alpha:]]|[[:alpha:]])|\Z)\d|-	!a POSIX class ([:...:]), which JavaScript does not have
+^[^]a|-	!an empty character class, which RE2 refuses
+^[^a-z]\Ba|[a\-z]	^[^a-z]\Ba|[a\-z]
+\s|(?:\+|[[:alpha:]])	!a POSIX class ([:...:]), which JavaScript does not have
+(?:\p{L}\.(?:[]\.a|\W)|\D)(?:[^\n]|(?:[[:alpha:]]\*[\dx]|\[))\z|(?:\\\W|(?:[0-9x] |[^a-z]))$	!a Unicode class (\p), which JavaScript reads as a literal "p" without a flag Aontu does not set
+^\\\w(?:\u0041(?:0|[^\n])|(?:[a-z]0[^\n]|\+))|(?:\A\A[a\-z]|\x41)	!a \u escape, which RE2 spells \x{...}: write the character itself, or \xHH for a byte
+[a-z]	[a-z]
+(?:(?:\k<n>[a-z] |\s)\u0041|(?:\.|\())\z|[^\n]	!a named backreference (\k): RE2 has no equivalent
+ba|(?:\D|\x41)	ba|(?:[^0-9]|\x41)
+\Z|(?:(?:[][^]-|\x{41})\s(?:a\b[a\-z]|[^])|(?: \z|\())	!\Z, which RE2 does not accept and JavaScript reads as a literal "Z": write $ for end of text

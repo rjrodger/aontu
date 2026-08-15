@@ -45,14 +45,21 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11331/11331) |
-| TypeScript — `ts/src` | branches | **100.00 %** (2527/2527) |
-| TypeScript — `ts/src` | functions | **100.00 %** (466/466) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (12196/12196) |
+| TypeScript — `ts/src` | branches | **100.00 %** (2722/2722) |
+| TypeScript — `ts/src` | functions | **100.00 %** (484/484) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **1952 TypeScript tests** and
-four green Go packages, including the **1592-row shared spec** that both
+Both suites pass in full via `make test`: **2407 TypeScript tests** and
+four green Go packages, including the **2031-row shared spec** that both
 engines execute.
+
+The absolute figures above move with every change and are reproduced,
+not remembered — rerun `make cov` and `make test` rather than trusting
+this paragraph. The shared-suite total is also quoted, with its
+reproduction commands, in the
+[capability-review progress register](capability-review/progress.md#the-update-protocol);
+if the two disagree, both are stale.
 
 ### What the measurement includes
 
@@ -94,31 +101,41 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **1592 cases across 54 files** — is run by *both*
+`test/spec/*.tsv` — **2031 cases across 57 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
-| `number-tower.tsv`        | 388 | `map.tsv`        | 20 |
-| `edge.tsv`                | 306 | `file.tsv`       | 18 |
-| `number-model.tsv`        | 112 | `plus.tsv`       | 14 |
-| `func.tsv`                |  91 | `conjunct.tsv`   | 13 |
-| `errcodes.tsv`            |  65 | `op-chars.tsv`   | 13 |
-| `number-cross-product.tsv`|  59 | `budget.tsv`     | 11 |
-| `constraint-bound.tsv`    |  57 | `close.tsv`      |  9 |
-| `ref.tsv`                 |  40 | `incomplete.tsv` |  9 |
-| `scalar.tsv`              |  40 | `list.tsv`       |  7 |
-| `error.tsv`               |  34 | `comment.tsv`    |  6 |
-| `optional.tsv`            |  27 | `elision.tsv`    |  5 |
-| `pref.tsv`                |  27 | `divergent.tsv`  |  0 |
-| `disjunct.tsv`            |  24 |                  |    |
-| `engine-parity.tsv`       |  23 |                  |    |
-| `marks.tsv` / `var.tsv`   |  23 each |             |    |
+| `number-tower.tsv`        | 388 | `file.tsv`         | 24 |
+| `edge.tsv`                | 310 | `engine-parity.tsv`| 23 |
+| `constraint-product.tsv`  | 256 | `marks.tsv`        | 23 |
+| `number-model.tsv`        | 112 | `var.tsv`          | 23 |
+| `func.tsv`                | 110 | `elision.tsv`      | 21 |
+| `errcodes.tsv`            |  69 | `map.tsv`          | 20 |
+| `constraint-bound.tsv`    |  61 | `plus.tsv`         | 14 |
+| `number-cross-product.tsv`|  59 | `conjunct.tsv`     | 13 |
+| `constraint-re.tsv`       |  89 | `merge-conflict.tsv`| 13 |
+| `ref.tsv`                 |  40 | `op-chars.tsv`     | 13 |
+| `scalar.tsv`              |  40 | `close.tsv`        |  9 |
+| `optional.tsv`            |  37 | `incomplete.tsv`   |  9 |
+| `error.tsv`               |  34 | `list.tsv`         |  7 |
+| `pref.tsv`                |  30 | `comment.tsv`      |  6 |
+| `budget.tsv`              |  24 | `divergent.tsv`    |  0 |
+| `disjunct.tsv`            |  24 |                    |    |
 
-plus the `spread*.tsv` family — **26 files, 128 cases**, one spread
+plus the `spread*.tsv` family — **26 files, 130 cases**, one spread
 topic per file. `divergent.tsv` is the parity ledger: commentary only,
 no data rows (see [the shared spec](shared-spec.md#the-divergence-ledger)).
+
+Regenerate the whole table rather than patching cells — it has drifted
+before, and an omitted file reads as "this behaviour is not pinned":
+
+```sh
+for f in test/spec/*.tsv; do
+  printf '%s %s\n' "$(grep -P '\t' "$f" | grep -vc '^#')" "$(basename "$f")"
+done | sort -rn
+```
 
 `edge.tsv` is the coverage drive's own file: parity edges found by
 reading uncovered engine code and probing candidate sources through both
@@ -141,7 +158,7 @@ error code (`errc`), or an error-code registry entry (`errcode`).
 Only what a shared row cannot express gets a per-port test — ADR-001
 prefers a row precisely because one row lifts both engines:
 
-**TypeScript** (`ts/test/*.test.ts`, 1952 tests, 1597 of them shared
+**TypeScript** (`ts/test/*.test.ts`, 2407 tests, 2031 of them shared
 rows): every built-in function in depth, the exact leaves, the public
 API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
 references, parsing, the fixpoint, worked examples — plus three

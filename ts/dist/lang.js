@@ -316,6 +316,9 @@ help isolate the syntax error.`,
         above: ConstraintVal_1.AboveConstraintVal,
         below: ConstraintVal_1.BelowConstraintVal,
         neq: ConstraintVal_1.NeqConstraintVal,
+        // G1 phase 2: pattern membership, over the portable subset both
+        // host regex engines agree on (nonPortableRe in ConstraintVal.ts).
+        re: ConstraintVal_1.ReConstraintVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -990,7 +993,7 @@ const funcArity = {
     upper: [1, 1], lower: [1, 1], copy: [1, 1], pref: [1, 1],
     super: [1, 1], type: [1, 1], hide: [1, 1], close: [1, 1],
     open: [1, 1], move: [1, 1], path: [1, 1],
-    min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1],
+    min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1], re: [1, 1],
     key: [0, 1],
     neq: [1, -1],
 };

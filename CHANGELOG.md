@@ -5,6 +5,68 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/rjrodger/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
+## Unreleased — TypeScript 0.53.0 line
+
+### Added — `re()`, pattern membership in the constraint algebra
+
+The constraint algebra gains its sixth atom (capability G1 phase 2).
+`re(p)` admits a string matching `p`, in both implementations:
+
+```
+name: string & re("^[a-z][a-z0-9-]{0,62}$")
+```
+
+- **Matching is unanchored**, as it is in both host engines, so
+  `re("el")` admits `"hello"`. Anchor with `^` and `$` to constrain the
+  whole string.
+- **The string kind is implied**, so `string & re("x")` canonicalises to
+  `re("x")` — the same rule that already makes `number & min(0)`
+  canonicalise to `min(0)`.
+- **Patterns accumulate and are never simplified.** `re("x") & re("a")`
+  keeps both, sorted by pattern text, and a value must match every one.
+  Two patterns are never declared empty at composition time: that would
+  be regex containment, which this algebra deliberately does not do, so
+  a contradiction between patterns surfaces against data instead.
+
+**Aontu defines the pattern language; the host engines are rewritten to
+it** (new **ADR-003**). TypeScript compiles with JavaScript's
+backtracking `RegExp` and Go with RE2 — different languages, in
+different complexity classes, over different alphabets. Rather than
+enumerate the differences and refuse them (which leaked three times:
+`\A` is an anchor in RE2 and a literal `A` in JavaScript, `\s` matched
+U+00A0 in one engine only, and `.` counted UTF-16 units in one and code
+points in the other), `re()` **normalises** the pattern before either
+engine compiles it:
+
+    \d  [0-9]              \D  [^0-9]
+    \w  [0-9A-Za-z_]       \W  [^0-9A-Za-z_]
+    \s  [ \t\n\r\f\v]      \S  [^ \t\n\r\f\v]
+    .   [^\n]              \A  ^        \z  $
+
+These are Aontu's definitions, not either host's. Note that **`\s` is
+those six ASCII characters only** — it does not match U+00A0, though
+JavaScript's does. Matching counts code points in both.
+
+Refusal is reserved for what rewriting cannot reach: constructs one
+engine lacks (backreferences, lookaround), spellings that change meaning
+wholesale (any `(?…)` but `(?:`), and a quantifier applied to a group
+containing a quantifier or an alternation — that last about *cost*, not
+meaning, since `(a+)+$` against twenty-nine characters takes 45 seconds
+in JavaScript and 0.065s under RE2, and a regex match is counted by no
+evaluator budget. Refusals raise the registered `constraint_pattern`
+code, and the message restates the whole accepted subset so an author
+need not consult the reference.
+
+Canon renders the pattern **as written**, never the rewritten form.
+
+Pinned by the new `test/spec/constraint-re.tsv` (89 shared rows,
+promoted from `test/spec/draft/` with every expectation re-probed
+through both engines). The builtin registry goes from 17 to 18 names,
+in both ports and both LSP completion lists. `test/spec/files/regex-corpus.tsv`
+is a differential corpus of 400 generated patterns: both ports run their
+own normaliser over it and must reproduce the pinned verdict byte for
+byte, so a drift fails in whichever port drifted.
+
 ## Go 0.1.4 — 2026-06-22 · TypeScript 0.47.0 (unreleased)
 
 ### Breaking — the number tower (TypeScript and Go)

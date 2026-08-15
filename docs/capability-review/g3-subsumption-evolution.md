@@ -1,6 +1,9 @@
 # G3: Subsumption as a first-class query; schema evolution
 
-*Status: design proposal, part of the
+*Status: design proposal — nothing implemented. Per-phase status and the
+corrections this document needs are in the
+[progress register](progress.md), which is authoritative for status;
+this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
 G3 — exposing the lattice's instance-of relation as a query, and
 building the schema-evolution story (breaking checks, compatibility

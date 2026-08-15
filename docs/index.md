@@ -70,7 +70,10 @@ Aontu lacks to serve as a systems-definition ground truth for agents,
 with eight companion design documents (G1–G8) covering the constraint
 algebra, the validation verb, subsumption and schema evolution,
 identity and relations, the trust contract, distribution, the
-machine-facing access surface, and generation.
+machine-facing access surface, and generation. Those documents are
+design; what has actually been built from them is recorded phase by
+phase in the
+[progress register](capability-review/progress.md).
 
 ### Why the split?
 

@@ -1,6 +1,10 @@
 # G1: A real constraint algebra
 
-*Status: design proposal, part of the
+*Status: partly implemented — phases 0, 1, 2 and 6 landed, phases 3–5
+outstanding. Per-phase status, pins and the corrections this
+document still needs are in the [progress register](progress.md), which
+is authoritative for status; this document is authoritative for design.
+Part of the
 [capability review](index.md) (August 2026). This document expands the
 G1 entry in the review index: the vocabulary of constraint atoms, their
 lattice algebra, canonical syntax for bounds, the two-band
@@ -573,8 +577,12 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    `constraint-len.tsv`, `constraint-cross.tsv` with canon, gen, and
    err rows, including round-trip and order-independence rows
    (`min(0)&max(10)` vs `max(10)&min(0)` → identical canon).
-   *(Since done: the algebra section is in
-   `docs/reference-language.md` ("The constraint algebra"),
+   *(Since done, all three tables: the algebra section is in
+   `docs/reference-language.md` ("The constraint algebra"), including
+   the **subsumption** table — the last of the three to be written, and
+   the one G3 phase 0 consumes; its two approximations (`re` compares
+   patterns as text, `must` is opaque) both fail toward "not subsumed",
+   the safe direction for a compatibility check —
    re-derived over the four-leaf tower — cross-leaf ordering decided
    (bounds are exact order over the number line, leaf-agnostic;
    `neq` excludes by scalar identity, so point-deletion emptiness
@@ -597,6 +605,22 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    validation at construction in TS (`ts/src/val/ConstraintVal.ts`);
    Go side is native `regexp`. Spec rows for matching, residual
    accumulation, and rejected patterns.
+   *(Since done. Two things the plan text did not anticipate. The
+   portability check could not be "validate in TS, use native regexp
+   in Go": Go's RE2 refuses some non-portable constructs but ACCEPTS
+   others JavaScript reads differently — `(?P<n>` versus `(?<n>`,
+   `\x{41}` versus `A`, `\p{L}` which JavaScript silently reads
+   as a literal `p` without the `u` flag. So the subset is one shared
+   syntactic scanner (`nonPortableRe`) mirrored in both ports and run
+   BEFORE either host engine compiles, with the host's own compile
+   failure folded into the same refusal. It is a whitelist where the
+   spellings diverge — `(?` opens only `(?:` — because a blacklist
+   admits the next divergence silently. Second, refusal needed its own
+   registered code, `constraint_pattern` (class conflict): phase 1's
+   one-code-for-the-family rule would have given the atom's most likely
+   authoring mistake a generic message. The reason text is a fixed
+   string, not the host's, so the frame stays byte-identical across
+   ports. Rows: `test/spec/constraint-re.tsv`.)*
 4. **Phase 3 — `len` and `unique` (M).** `len` reuses the integer
    algebra recursively; domain resolution against string/list/map
    peers touches `ts/src/val/ListVal.ts` and `MapVal.ts` membership

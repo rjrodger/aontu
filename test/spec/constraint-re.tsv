@@ -1,0 +1,175 @@
+# The constraint algebra: pattern membership (G1 phase 2).
+# Promoted from test/spec/draft/constraint-re.tsv; every expectation
+# below was re-probed through BOTH engines at promotion time, per the
+# parity-probe rule in AGENTS.md. Normative design:
+# docs/reference-language.md, "The constraint algebra".
+#
+# re(p) admits a string matching p. Matching is UNANCHORED in both
+# engines (JS RegExp.test, Go MatchString) -- anchor with ^ and $ to
+# mean the whole string.
+re-match	gen	a:re("^[a-z]+$") a:hello	{"a":"hello"}
+re-match-gens	gens	a:re("^[a-z]+$") a:hello	{"a":"hello"}
+re-unanchored	gen	a:re("el") a:hello	{"a":"hello"}
+re-reject	errc	a:re("^[a-z]+$") a:"Hello!"	constraint
+re-reject-msg	err	a:re("^[a-z]+$") a:"Hello!"	Cannot unify
+re-anchored-whole-string	errc	a:re("^[a-z]$")&"ab"	constraint
+re-empty-pattern	gen	a:re("") a:x	{"a":"x"}
+re-class-escape	gen	a:re("^\\\\d+$") a:"42"	{"a":"42"}
+re-noncapturing-group	gen	a:re("(?:ab)+") a:abab	{"a":"abab"}
+re-nested	gen	a:{b:re("^v[0-9]$")} a:{b:v2}	{"a":{"b":"v2"}}
+#
+# The string kind is IMPLIED by a pattern, so canon drops it -- the same
+# rule that makes `number&min(0)` canon as `min(0)` (bound-number-passthrough).
+# NOTE: the draft row expected `string&re(...)`; the probe shows the
+# implied-kind rule wins, and the promoted row records what the engines
+# agree on rather than what the draft predicted.
+re-canon	canon	a:re("^[a-z]$")	{"a":re("^[a-z]$")}
+re-kind-implied-canon	canon	a:string&re("^[a-z]$")	{"a":re("^[a-z]$")}
+#
+# Distinct patterns ACCUMULATE (sorted by source in canon) and are never
+# simplified: deciding one pattern subsumes another is regex
+# containment, which the algebra deliberately does not do. Emptiness
+# stays approximate -- sound, incomplete -- so two `re` atoms are never
+# declared empty at composition time, only against data.
+re-accumulate-canon	canon	a:re("x")&re("a")	{"a":re("a")&re("x")}
+re-accumulate-order-independence	canon	a:re("a")&re("x")	{"a":re("a")&re("x")}
+re-accumulate-dedup	canon	a:re("x")&re("x")	{"a":re("x")}
+re-accumulate-both-match	gen	a:re("^h")&re("o$") a:hello	{"a":"hello"}
+re-accumulate-one-fails	errc	a:re("^h")&re("z$") a:hello	constraint
+#
+# Atom order in canon: kind, lower bound, upper bound, neq, re.
+re-canon-order-bound	canon	a:min("a")&re("x")	{"a":min("a")&re("x")}
+re-canon-order-neq	canon	a:neq("q")&re("^.$")	{"a":neq("q")&re("^.$")}
+re-canon-order-full	canon	a:string&re("x")&max("z")	{"a":max("z")&re("x")}
+#
+# Domain and shape: a pattern is a STRING membership test, so it mixes
+# emptily with the numeric domain and refuses every non-string peer.
+re-domain-mix-numeric	errc	a:min(0)&re("x")	constraint
+re-peer-number	errc	a:re("x")&1	constraint
+re-peer-boolean	errc	a:re("x")&true	constraint
+re-peer-list	errc	a:re("x")&[1]	constraint
+re-peer-map	errc	a:re("x")&{b:1}	constraint
+re-peer-numeric-kind	errc	a:re("x")&integer	constraint
+#
+# THE PORTABLE SUBSET. A pattern must mean the same thing in both
+# engines, so it is checked against one shared syntactic subset
+# (nonPortableRe, mirrored in ts/src/val/ConstraintVal.ts and
+# go/constraint.go) BEFORE either host engine compiles it. Refusal is
+# the registered `constraint_pattern` code. As with every other invalid
+# atom (errc-invalid-atom-residual), the code is raised when the
+# residual is DRIVEN in a meet; on its own it is merely non-generable.
+re-nonportable-lookahead	errc	a:re("(?=x)y")&"y"	constraint_pattern
+re-nonportable-lookbehind	errc	a:re("(?<=x)y")&"y"	constraint_pattern
+re-nonportable-backref	errc	a:re("(x)\\\\1")&"xx"	constraint_pattern
+re-nonportable-named-backref	errc	a:re("\\\\k<n>")&"x"	constraint_pattern
+re-nonportable-named-group	errc	a:re("(?<n>x)")&"x"	constraint_pattern
+re-nonportable-posix-class	errc	a:re("[[:alpha:]]")&"x"	constraint_pattern
+re-nonportable-empty-class	errc	a:re("[]")&"x"	constraint_pattern
+re-nonportable-negated-empty-class	errc	a:re("[^]")&"x"	constraint_pattern
+re-nonportable-u-escape	errc	a:re("a\\\\u0041")&"x"	constraint_pattern
+re-nonportable-unicode-class	errc	a:re("\\\\p{L}")&"x"	constraint_pattern
+re-nonportable-hex-brace-escape	errc	a:re("a\\\\x{41}")&"x"	constraint_pattern
+re-nonportable-unterminated-class	errc	a:re("[abc")&"x"	constraint_pattern
+re-nonportable-trailing-backslash	errc	a:re("\\\\")&"x"	constraint_pattern
+re-nonportable-trailing-backslash-msg	err	a:re("\\\\")&"x"	a trailing backslash
+# ABBREVIATIONS ARE NORMALISED, NOT REFUSED (ADR-003). Aontu DEFINES
+# what each abbreviation means and rewrites both hosts to it, so neither
+# host's reading is inherited:
+#   \\d [0-9]   \\w [0-9A-Za-z_]   \\s [ \\t\\n\\r\\f\\v]   . [^\\n]
+#   \\A ^       \\z $
+# Before this, `\\A` was an anchor in RE2 and a literal "A" in JavaScript
+# (so `re("\\A") & "x"` held in Go and failed in TypeScript), and `\\s`
+# matched U+00A0 in JavaScript but not in Go. Both are now single-valued.
+re-normalise-anchors	gen	a:re("\\\\Aabc\\\\z") a:abc	{"a":"abc"}
+re-normalise-space	gen	a:re("^\\\\s+$") a:" "	{"a":" "}
+re-normalise-space-negated	gen	a:re("^\\\\S+$") a:abc	{"a":"abc"}
+re-normalise-word	gen	a:re("^\\\\w+$") a:a_1	{"a":"a_1"}
+re-normalise-digit-in-class	gen	a:re("^[\\\\dx]+$") a:"1x"	{"a":"1x"}
+# The definition BITES: U+00A0 is whitespace to JavaScript and not to
+# RE2, and Aontu's \\s excludes it in both. A non-breaking space in a
+# config value is a mistake to catch, not a space to accept silently.
+re-normalise-space-excludes-nbsp	errc	a:re("^\\\\s$") a:" "	constraint
+# Canon renders the pattern AS WRITTEN, never the normalised form: canon
+# round-trips source, and G6's hash will be taken over canon.
+re-canon-keeps-source	canon	a:re("^\\\\d+$")	{"a":re("^\\\\d+$")}
+#
+# What normalisation cannot reach, and why refusal is still right there:
+# a construct one engine simply lacks (there is nothing to rewrite it
+# to), a spelling difference that changes meaning wholesale, or a
+# difference of COST rather than meaning.
+re-nonportable-anchor-Z	errc	a:re("\\\\Z")&"x"	constraint_pattern
+re-nonportable-negated-abbrev-in-class	errc	a:re("[\\\\D]")&"x"	constraint_pattern
+re-nonportable-wordbreak-in-class	errc	a:re("[\\\\b]")&"x"	constraint_pattern
+re-nonportable-unknown-escape	errc	a:re("\\\\q")&"x"	constraint_pattern
+re-nonportable-unknown-escape-msg	err	a:re("\\\\q")&"x"	the two engines do not share
+re-nonportable-hex-short	errc	a:re("\\\\xZZ")&"x"	constraint_pattern
+# The escapes that ARE shared, each probed through both engines.
+re-escape-hex	gen	a:re("^\\\\x41$") a:A	{"a":"A"}
+re-escape-hex-lower	gen	a:re("^\\\\x4a$") a:J	{"a":"J"}
+re-escape-hex-upper	gen	a:re("^\\\\x4A$") a:J	{"a":"J"}
+re-nonportable-hex-second-digit	errc	a:re("\\\\x4Z")&"x"	constraint_pattern
+re-escape-word	gen	a:re("^\\\\w+$") a:abc	{"a":"abc"}
+re-escape-not-digit	gen	a:re("^\\\\D$") a:x	{"a":"x"}
+re-escape-tab-class	gen	a:re("^[ \\\\t]$") a:" "	{"a":" "}
+re-escape-literal-dot	gen	a:re("^a\\\\.b$") a:"a.b"	{"a":"a.b"}
+#
+# CODE POINTS, NOT CODE UNITS. JavaScript matches UTF-16 code units by
+# default and RE2 matches code points, so `^.$` accepted U+1D11E (one
+# code point, TWO UTF-16 units) in Go and refused it in TypeScript --
+# and `^..$` did the exact reverse. The TypeScript port therefore
+# compiles with the `u` flag, which makes `.` and every quantifier count
+# code points in both engines. These rows are the ones that would have
+# caught it.
+re-astral-dot-one	gen	a:re("^.$") a:"𝄞"	{"a":"𝄞"}
+re-astral-dot-two-fails	errc	a:re("^..$") a:"𝄞"	constraint
+re-astral-counted-quantifier	gen	a:re("^.{1}$") a:"𝄞"	{"a":"𝄞"}
+re-astral-class	gen	a:re("^[𝄞x]+$") a:"𝄞"	{"a":"𝄞"}
+#
+# `\-` is a range separator inside a character class and a syntax error
+# outside one under the `u` flag -- while RE2 accepts it in both
+# positions. Refused outside a class so the two ports agree.
+re-escape-hyphen-in-class	gen	a:re("^[a\\\\-z]+$") a:"a-z"	{"a":"a-z"}
+re-nonportable-hyphen-outside-class	errc	a:re("a\\\\-b")&"x"	constraint_pattern
+re-nonportable-hyphen-msg	err	a:re("a\\\\-b")&"x"	a range separator inside
+re-bare-hyphen	gen	a:re("^a-b$") a:"a-b"	{"a":"a-b"}
+#
+# QUANTIFIER NESTING is refused, and this rule is about TIME rather than
+# meaning. `(a+)+$` against 29 a-characters and a `!` took 45 SECONDS in
+# TypeScript and 0.065s under RE2, growing exponentially: a regex match
+# is counted by no evaluator budget (docs/trust.md clause 2), so an
+# untrusted schema could stall the evaluator indefinitely. Refusing the
+# shape keeps the termination clause true in the port that has the
+# problem. `(?:a|b)+` is refused too, though safe -- deciding that two
+# branches cannot both match is real work; write `[ab]+`.
+re-nested-quantifier	errc	a:re("(a+)+$")&"x"	constraint_pattern
+re-nested-quantifier-msg	err	a:re("(a+)+$")&"x"	backtracks exponentially
+re-nested-quantifier-star	errc	a:re("(a*)*")&"x"	constraint_pattern
+re-nested-quantifier-deep	errc	a:re("((a+))+")&"x"	constraint_pattern
+re-alternation-quantified	errc	a:re("(a|a)*")&"x"	constraint_pattern
+re-alternation-quantified-group	errc	a:re("(?:a|b)+")&"x"	constraint_pattern
+re-unclosed-group	errc	a:re("(ab")&"x"	constraint_pattern
+re-unbalanced-group	errc	a:re("ab)")&"x"	constraint_pattern
+# What the rule does NOT refuse: an unquantified group of any shape, a
+# quantified group with no inner quantifier or alternation, top-level
+# alternation, and quantifiers inside a character class (where they are
+# literal characters, not quantifiers).
+re-group-unquantified-alternation	gen	a:re("^(a|b)$") a:a	{"a":"a"}
+re-group-quantified-plain	gen	a:re("(?:ab)+") a:abab	{"a":"abab"}
+re-group-sequence	gen	a:re("(a)(b)") a:ab	{"a":"ab"}
+re-toplevel-alternation	gen	a:re("^a|b$") a:a	{"a":"a"}
+re-quantifier-in-class	gen	a:re("^[a+]+$") a:"++"	{"a":"++"}
+re-capture-group-quantified	gen	a:re("^(a)+$") a:a	{"a":"a"}
+re-nonportable-msg	err	a:re("(?=x)y")&"y"	outside the supported subset
+re-nonportable-msg-reason	err	a:re("(x)\\\\1")&"xx"	a backreference
+#
+# A pattern the subset scanner passes but the host engine refuses is the
+# same refusal under the same code: one rule for the author, not two.
+# The reason text is fixed rather than the host's message, so the whole
+# frame stays byte-identical across ports.
+re-host-refuses	errc	a:re("*")&"x"	constraint_pattern
+#
+# Argument shape. Arity is a parse-time check (all eighteen built-ins);
+# a non-string argument is the atom's own invalid-arg.
+re-invalid-arg	errc	a:re(1)&"x"	invalid-arg
+re-arity	errc	a:re("a","b")&"x"	func_arity
+re-invalid-atom-residual	errc	a:re("(?=x)y")	mapval_no_gen

@@ -72,7 +72,42 @@ const hints: Record<string, string> = {
     '  max(65535) & 99999            -> nil  # Above the bound;\n' +
     '  min(5) & max(3)               -> nil  # Empty at composition time;\n' +
     '  integer & above(1) & below(2) -> nil  # No integer in the gap;\n' +
-    '  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.',
+    '  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.\n' +
+    '  re("^a") & "abc"              -> "abc" # Patterns are unanchored.',
+
+  constraint_pattern:
+    'This re() pattern is outside the supported subset. It uses\n' +
+    '{reason}.\n' +
+    ' \n' +
+    're() accepts classical regular expressions over Unicode code\n' +
+    'points, with one meaning in both implementations:\n' +
+    ' \n' +
+    '  literals     a  \\.  \\*  \\xHH        (escape . \\ + * ? ( ) [ ] { } | ^ $ /)\n' +
+    '  classes      [abc]  [^abc]  [a-z]\n' +
+    '  abbreviations \\d \\D \\w \\W \\s \\S  and  .\n' +
+    '  repetition   *  +  ?  {n}  {n,}  {n,m}   (lazy: *? +? ??)\n' +
+    '  grouping     (...)  (?:...)      alternation  a|b\n' +
+    '  anchors      ^  $  \\A  \\z  \\b  \\B\n' +
+    ' \n' +
+    'Aontu DEFINES the abbreviations rather than inheriting either\n' +
+    'host regex engine, so they mean the same in both ports:\n' +
+    '  \\d [0-9]   \\w [0-9A-Za-z_]   \\s [ \\t\\n\\r\\f\\v]   . [^\\n]\n' +
+    'Note \\s is these six ASCII characters only -- not U+00A0.\n' +
+    ' \n' +
+    'NOT accepted, because no rewriting can make the two engines\n' +
+    'agree:\n' +
+    '  backreferences (\\1, \\k<n>) and lookaround ((?=) (?!) (?<=))\n' +
+    '  named groups, inline flags, and any (?...) but (?:\n' +
+    '  POSIX classes [[:alpha:]], \\p{...}, \\x{...}, \\u\n' +
+    '  a quantifier on a group containing a quantifier or an\n' +
+    '    alternation -- (a+)+ backtracks exponentially in one port,\n' +
+    '    so write [ab]+ rather than (?:a|b)+' +
+    '\n \nExamples:\n' +
+    '  re("^[a-z][a-z0-9-]*$")  # Fine;\n' +
+    '  re("^\\d{3}-\\d{4}$")      # Fine;\n' +
+    '  re("(?:ab)+")            # Fine (non-capturing group);\n' +
+    '  re("(?=x)y")             # Refused (lookahead);\n' +
+    '  re("(a+)+")              # Refused (nested quantifier).',
 
   budget_passes:
     'The evaluation budget of {limit} fixpoint passes was spent before\n' +
@@ -255,6 +290,7 @@ const codeClasses: Record<string, string> = {
   // (constraint covers the whole algebra family: membership failure,
   // empty meets at composition time, and domain/kind mixing.)
   constraint: 'conflict',
+  constraint_pattern: 'conflict',
   scalar_value: 'conflict',
   scalar_kind: 'conflict',
   no_scalar_unify: 'conflict',

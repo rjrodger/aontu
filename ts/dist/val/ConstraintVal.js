@@ -1,13 +1,269 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NeqConstraintVal = exports.BelowConstraintVal = exports.AboveConstraintVal = exports.MaxConstraintVal = exports.MinConstraintVal = exports.ConstraintVal = void 0;
+exports.ReConstraintVal = exports.NeqConstraintVal = exports.BelowConstraintVal = exports.AboveConstraintVal = exports.MaxConstraintVal = exports.MinConstraintVal = exports.ConstraintVal = void 0;
+exports.normaliseRe = normaliseRe;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
 const err_1 = require("../err");
 const FeatureVal_1 = require("./FeatureVal");
 const ScalarKindVal_1 = require("./ScalarKindVal");
 const numcmp_1 = require("./numcmp");
+// THE PATTERN SUBSET, AND HOW IT IS ENFORCED (G1 phase 2; ADR-003).
+//
+// `re(p)` must mean the same thing in both engines and cost about the
+// same, and the two host engines guarantee neither: TypeScript compiles
+// with JavaScript's backtracking RegExp, Go with RE2 — a different
+// language in a different complexity class, over a different alphabet.
+//
+// The enforcement is NORMALISATION, not refusal (ADR-003). Every
+// construct whose expansion is engine-defined is rewritten here, by
+// this function, into an explicit form that cannot be read two ways;
+// only the rewritten pattern reaches a host engine. The alternative —
+// refusing everything that might differ — was tried first and leaked
+// three times, because its correctness depended on this comment knowing
+// every difference between two large engines.
+//
+// Aontu therefore DEFINES the abbreviations rather than inheriting
+// either host's. The definitions are deliberately the small ASCII ones,
+// because a config value containing U+00A0 is a mistake to catch, not a
+// space to accept silently:
+//
+//     \d  [0-9]                 \D  [^0-9]
+//     \w  [0-9A-Za-z_]          \W  [^0-9A-Za-z_]
+//     \s  [ \t\n\r\f\v]         \S  [^ \t\n\r\f\v]
+//     .   [^\n]
+//     \A  ^                     \z  $
+//
+// Neither host agreed with all of these before rewriting: JavaScript's
+// \s also matches U+00A0 and other Unicode spaces, RE2's omits \v, and
+// the two `.` sets differ by \r and the Unicode line separators. After
+// rewriting, both engines see one explicit class and cannot disagree.
+//
+// What is still REFUSED, and why refusal is right for these:
+//
+//  1. Constructs one engine simply lacks — backreferences and
+//     lookaround (not in RE2, and not expressible as regular
+//     expressions at all), POSIX classes, `\p{...}`, `\x{...}`, `\u`.
+//     There is nothing to normalise them TO.
+//  2. `(?` other than `(?:` — named groups are spelled differently
+//     (`(?P<n>` in RE2, `(?<n>` in JavaScript) and inline flags change
+//     the meaning of everything after them.
+//  3. A quantifier applied to a group containing a quantifier or an
+//     alternation. This one is about TIME, not meaning: `(a+)+$`
+//     against twenty-nine characters takes 45 SECONDS in JavaScript
+//     and 0.065s under RE2, and a regex match is counted by no
+//     evaluator budget, so an untrusted schema could otherwise stall
+//     the TypeScript evaluator indefinitely (docs/trust.md clause 2).
+//     Normalisation cannot fix a complexity difference; only owning the
+//     matcher could, which ADR-003 records as the future option.
+//
+// The alphabet is fixed separately, by compiling with the `u` flag:
+// JavaScript otherwise matches UTF-16 code units where RE2 matches code
+// points, so `^.$` accepted U+1D11E in Go and refused it in TypeScript.
+//
+// This function is mirrored statement for statement in go/constraint.go,
+// and `test/spec/files/regex-corpus.txt` pins that the two produce
+// byte-identical output for every pattern in a generated corpus.
+// The normative expansions. These are Aontu's definitions, not either
+// host's; both hosts are rewritten to them.
+const RE_CLASS_DIGIT = '0-9';
+const RE_CLASS_WORD = '0-9A-Za-z_';
+const RE_CLASS_SPACE = ' \\t\\n\\r\\f\\v';
+// Metacharacters that may be escaped to mean themselves, in both
+// engines. `-` is handled separately: it is legal escaped only INSIDE a
+// character class, because RE2 accepts `a\-b` and JavaScript's unicode
+// mode makes it a syntax error.
+const RE_ESCAPE_PUNCT = '\\.+*?()[]{}|^$/';
+// Escapes passed through unchanged: the control characters, the ASCII
+// word boundary, and `\xHH`. Each was probed in both engines.
+const RE_ESCAPE_PASS = 'tnrfv';
+function isHexDigit(c) {
+    return null != c && (('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F'));
+}
+// normaliseEscape rewrites one `\<n>` into its engine-neutral form.
+// Returns [emitted, why, extra]: `why` non-empty means refused, and
+// `extra` counts source characters consumed beyond the backslash and n.
+function normaliseEscape(n, src, i, inClass) {
+    if (null == n) {
+        return ['', 'a trailing backslash', 0];
+    }
+    if ('1' <= n && n <= '9') {
+        return ['', 'a backreference (\\' + n + '): RE2 has no equivalent, and a' +
+                ' pattern with one is not a regular expression', 0];
+    }
+    if ('k' === n) {
+        return ['', 'a named backreference (\\k): RE2 has no equivalent', 0];
+    }
+    if ('u' === n) {
+        return ['', 'a \\u escape, which RE2 spells \\x{...}: write the character' +
+                ' itself, or \\xHH for a byte', 0];
+    }
+    if ('p' === n || 'P' === n) {
+        return ['', 'a Unicode class (\\' + n + '), which JavaScript reads as a' +
+                ' literal "' + n + '" without a flag Aontu does not set', 0];
+    }
+    if ('Z' === n) {
+        return ['', '\\Z, which RE2 does not accept and JavaScript reads as a' +
+                ' literal "Z": write $ for end of text', 0];
+    }
+    if ('x' === n) {
+        if ('{' === src[i + 2]) {
+            return ['', 'a \\x{...} escape, which JavaScript spells \\u: write the' +
+                    ' character itself', 0];
+        }
+        if (!isHexDigit(src[i + 2]) || !isHexDigit(src[i + 3])) {
+            return ['', 'an \\x escape without two hex digits', 0];
+        }
+        return ['\\x' + src[i + 2] + src[i + 3], '', 2];
+    }
+    // The abbreviations, rewritten to Aontu's definitions. Inside a class
+    // the expansion splices without its brackets (`[\dx]` -> `[0-9x]`).
+    if ('d' === n || 'w' === n || 's' === n) {
+        const set = 'd' === n ? RE_CLASS_DIGIT :
+            'w' === n ? RE_CLASS_WORD : RE_CLASS_SPACE;
+        return [inClass ? set : '[' + set + ']', '', 0];
+    }
+    if ('D' === n || 'W' === n || 'S' === n) {
+        if (inClass) {
+            // `[^...]` cannot be spliced into an enclosing class: the negation
+            // would apply to the whole class rather than this member.
+            return ['', 'a negated abbreviation (\\' + n + ') inside a character' +
+                    ' class, which cannot be expanded in place: write the characters out', 0];
+        }
+        const set = 'D' === n ? RE_CLASS_DIGIT :
+            'W' === n ? RE_CLASS_WORD : RE_CLASS_SPACE;
+        return ['[^' + set + ']', '', 0];
+    }
+    // Anchors. `\A`/`\z` are RE2 spellings that JavaScript reads as
+    // literals, so they are rewritten rather than refused. Inside a class
+    // an anchor is meaningless, and `[\b]` is a BACKSPACE in JavaScript.
+    if ('A' === n || 'z' === n || 'b' === n || 'B' === n) {
+        if (inClass) {
+            return ['', '\\' + n + ' inside a character class, where the two' +
+                    ' engines do not agree what it means', 0];
+        }
+        return ['A' === n ? '^' : 'z' === n ? '$' : '\\' + n, '', 0];
+    }
+    if ('-' === n) {
+        return inClass ? ['\\-', '', 0] :
+            ['', '\\- outside a character class: it is a range separator inside' +
+                    ' one and a syntax error outside one (write a bare -)', 0];
+    }
+    if (RE_ESCAPE_PASS.includes(n) || RE_ESCAPE_PUNCT.includes(n)) {
+        return ['\\' + n, '', 0];
+    }
+    return ['', '\\' + n + ', an escape whose meaning the two engines do not' +
+            ' share', 0];
+}
+// normaliseRe rewrites a pattern into the engine-neutral subset.
+// Returns [normalised, why]: a non-empty `why` means the pattern is
+// outside the subset and names the construct.
+function normaliseRe(src) {
+    let inClass = false;
+    const out = [];
+    // One frame per open group, recording whether it contains a quantifier
+    // or an alternation. A group carrying either may not itself be
+    // quantified; containment is transitive, so a frame hands its flags up
+    // to its parent when it closes.
+    const groups = [];
+    const mark = (k) => {
+        if (0 < groups.length) {
+            groups[groups.length - 1][k] = true;
+        }
+    };
+    for (let i = 0; i < src.length; i++) {
+        const c = src[i];
+        if ('\\' === c) {
+            const [emit, why, extra] = normaliseEscape(src[i + 1], src, i, inClass);
+            if ('' !== why) {
+                return ['', why];
+            }
+            out.push(emit);
+            i += 1 + extra;
+            continue;
+        }
+        // A POSIX class opener, anywhere: the form lives inside an ordinary
+        // class (`[[:alpha:]]`), and refusing it everywhere is one rule
+        // rather than two.
+        if ('[' === c && ':' === src[i + 1]) {
+            return ['', 'a POSIX class ([:...:]), which JavaScript does not have'];
+        }
+        if (inClass) {
+            if (']' === c) {
+                inClass = false;
+            }
+            out.push(c);
+            continue;
+        }
+        if ('[' === c) {
+            // `[]` is a never-matching class in JavaScript and a parse error in
+            // RE2; `[^]` is the same disagreement one character along.
+            const first = '^' === src[i + 1] ? src[i + 2] : src[i + 1];
+            if (']' === first) {
+                return ['', 'an empty character class, which RE2 refuses'];
+            }
+            inClass = true;
+            out.push(c);
+            continue;
+        }
+        if ('.' === c) {
+            out.push('[^\\n]');
+            continue;
+        }
+        if ('(' === c) {
+            if ('?' === src[i + 1]) {
+                if (':' !== src[i + 2]) {
+                    return ['', 'a (?...) group other than the non-capturing (?:'];
+                }
+                out.push('(?:');
+                i += 2;
+            }
+            else {
+                out.push(c);
+            }
+            groups.push({ q: false, alt: false });
+            continue;
+        }
+        if (')' === c) {
+            const g = groups.pop();
+            if (null == g) {
+                return ['', 'an unbalanced group'];
+            }
+            const nx = src[i + 1];
+            const quantified = '*' === nx || '+' === nx || '?' === nx || '{' === nx;
+            if (quantified && (g.q || g.alt)) {
+                return ['', 'a quantifier applied to a group containing ' +
+                        (g.q ? 'another quantifier' : 'an alternation') +
+                        ', which backtracks exponentially in JavaScript'];
+            }
+            if (g.q)
+                mark('q');
+            if (g.alt)
+                mark('alt');
+            out.push(c);
+            continue;
+        }
+        if ('|' === c) {
+            mark('alt');
+            out.push(c);
+            continue;
+        }
+        if ('*' === c || '+' === c || '?' === c || '{' === c) {
+            mark('q');
+            out.push(c);
+            continue;
+        }
+        out.push(c);
+    }
+    if (inClass) {
+        return ['', 'an unterminated character class'];
+    }
+    if (0 < groups.length) {
+        return ['', 'an unclosed group'];
+    }
+    return [out.join(''), ''];
+}
 // True for a scalar Val the algebra can order: a numeric leaf or a
 // string. (Booleans and null have no order and no bounds.)
 function numericLeaf(v) {
@@ -46,12 +302,16 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         this.isConstraint = true;
         this.cjo = 50000;
         this.neqs = [];
+        this.res = [];
         if (spec.state) {
             this.domain = spec.state.domain;
             this.kind = spec.state.kind;
             this.lo = spec.state.lo;
             this.hi = spec.state.hi;
             this.neqs = spec.state.neqs;
+            // A state built by an embedder (or by a per-port test) may predate
+            // the pattern field; an absent one means "no patterns", not undefined.
+            this.res = spec.state.res ?? [];
             this.invalid = spec.state.invalid;
         }
         else if (spec.atom) {
@@ -100,6 +360,47 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             return bad('arg');
         }
         const a = args[0];
+        // `re` is the one atom whose argument is not an ORDER point: a
+        // pattern is a membership test, so it takes the string domain
+        // outright rather than inferring a domain from the argument's leaf.
+        if ('re' === atom) {
+            if (!stringLeaf(a)) {
+                return bad('invalid-arg');
+            }
+            const src = a.peg;
+            // Normalise BEFORE compiling: the host engines only ever see a
+            // pattern that cannot be read two ways (ADR-003).
+            const [norm, why] = normaliseRe(src);
+            if ('' !== why) {
+                this.invalidWhy = why;
+                return bad('constraint_pattern');
+            }
+            let re;
+            try {
+                // The `u` flag is REQUIRED for parity, not an optimisation.
+                // Without it JavaScript matches UTF-16 code units while RE2
+                // matches code points, so `re("^.$")` accepted U+1D11E in Go
+                // and refused it in TypeScript (and `^..$` did the reverse).
+                // With it, `.` and every quantifier count code points in both.
+                // It also makes JavaScript refuse the identity escapes this
+                // scanner rejects by hand, which is defence in depth rather
+                // than a substitute: RE2 accepts some of them, so the scanner
+                // is what keeps the two ports agreeing.
+                re = new RegExp(norm, 'u');
+            }
+            catch (e) {
+                // The host engine refuses what the subset scanner passed — a
+                // malformed quantifier, an unbalanced group. Same refusal under
+                // the same code: the author gets one rule, not two. The message
+                // is the host's, so it is NOT pinned by a shared row; the code
+                // and the located frame are.
+                this.invalidWhy = 'not a valid pattern';
+                return bad('constraint_pattern');
+            }
+            this.domain = 'string';
+            this.res = [{ v: a, src, norm, re }];
+            return;
+        }
         const domain = numericLeaf(a) ? 'number' : stringLeaf(a) ? 'string' : undefined;
         if (null == domain) {
             return bad('invalid-arg');
@@ -120,7 +421,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         // residual is stable and the ladder is total.
         let out;
         if (null != this.invalid) {
-            out = (0, err_1.makeNilErr)(ctx, this.invalid, this, undefined, 'constrain');
+            out = (0, err_1.makeNilErr)(ctx, this.invalid, this, undefined, 'constrain', null == this.invalidWhy ? undefined : { reason: this.invalidWhy });
         }
         else if (null == peer || peer.isTop) {
             out = this;
@@ -174,6 +475,15 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
                 return this.fail(ctx, peer);
             }
         }
+        // Every accumulated pattern must match: the meet of two `re` atoms
+        // is conjunction, and matching is UNANCHORED in both engines
+        // (JS RegExp.test, Go regexp.MatchString), so `re("el")` admits
+        // "hello". Anchor with ^ and $ to mean the whole string.
+        for (const r of this.res) {
+            if (!r.re.test(peer.peg)) {
+                return this.fail(ctx, peer);
+            }
+        }
         return peer;
     }
     // Meet with a kind: `number` (or `string` on the string domain) is
@@ -203,7 +513,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
     // union, kind union — then the eager emptiness rules.
     meetConstraint(peer, ctx) {
         if (null != peer.invalid) {
-            return (0, err_1.makeNilErr)(ctx, peer.invalid, peer, undefined, 'constrain');
+            return (0, err_1.makeNilErr)(ctx, peer.invalid, peer, undefined, 'constrain', null == peer.invalidWhy ? undefined : { reason: peer.invalidWhy });
         }
         if (null != this.domain && null != peer.domain && this.domain !== peer.domain) {
             return this.fail(ctx, peer);
@@ -218,6 +528,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         merged.lo = tighter(d, this.lo, peer.lo, true);
         merged.hi = tighter(d, this.hi, peer.hi, false);
         merged.neqs = dedupSorted(d, [...this.neqs, ...peer.neqs]);
+        merged.res = dedupSortedRes([...this.res, ...peer.res]);
         return this.finish(merged, ctx, peer);
     }
     // Build the merged residual, applying the eager emptiness rules.
@@ -290,6 +601,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             lo: this.lo,
             hi: this.hi,
             neqs: [...this.neqs],
+            res: [...this.res],
             invalid: this.invalid,
         };
     }
@@ -303,7 +615,9 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         out.lo = this.lo;
         out.hi = this.hi;
         out.neqs = [...this.neqs];
+        out.res = [...this.res];
         out.invalid = this.invalid;
+        out.invalidWhy = this.invalidWhy;
         return out;
     }
     // The fixed canonical atom order: kind, lower, upper, neq (arguments
@@ -322,6 +636,9 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         }
         if (0 < this.neqs.length) {
             parts.push('neq(' + this.neqs.map((n) => n.canon).join(',') + ')');
+        }
+        for (const r of this.res) {
+            parts.push('re(' + r.v.canon + ')');
         }
         if (0 === parts.length) {
             // Raw invalid atom: render the call so the error frame shows it.
@@ -371,7 +688,23 @@ function dedupSorted(domain, neqs) {
     }
     return out;
 }
-// The five atom classes registered in the parser's funcMap: each is a
+// Sort accumulated patterns by source in code-point order and drop
+// exact duplicates. Patterns are NEVER simplified or compared for
+// containment: deciding `re("a")` subsumes `re("a|b")` is regex
+// containment, which the algebra deliberately does not do (emptiness
+// stays approximate — sound, incomplete). Two spellings of one language
+// therefore both survive, and both are tested.
+function dedupSortedRes(res) {
+    const sorted = [...res].sort((a, b) => (0, numcmp_1.cmpCodePoints)(a.src, b.src));
+    const out = [];
+    for (const r of sorted) {
+        if (0 === out.length || out[out.length - 1].src !== r.src) {
+            out.push(r);
+        }
+    }
+    return out;
+}
+// The six atom classes registered in the parser's funcMap: each is a
 // ConstraintVal that knows its atom name. Constructed by the
 // func-paren handler as `new funcval({peg: args})`.
 class MinConstraintVal extends ConstraintVal {
@@ -402,6 +735,12 @@ class NeqConstraintVal extends ConstraintVal {
     constructor(spec, ctx) {
         super({ ...spec, atom: 'neq' }, ctx);
     }
-} /* node:coverage ignore next 11 */
+}
 exports.NeqConstraintVal = NeqConstraintVal;
+class ReConstraintVal extends ConstraintVal {
+    constructor(spec, ctx) {
+        super({ ...spec, atom: 're' }, ctx);
+    }
+} /* node:coverage ignore next 16 */
+exports.ReConstraintVal = ReConstraintVal;
 //# sourceMappingURL=ConstraintVal.js.map

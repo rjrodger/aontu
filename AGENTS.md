@@ -7,12 +7,15 @@ kept in parity**:
 - **TypeScript** in `ts/` — the **canonical** implementation.
 - **Go** in `go/` — a port that mirrors the TypeScript semantics.
 
-Two decisions govern everything below and are recorded in
+Three decisions govern everything below and are recorded in
 [`ADR.md`](ADR.md): **ADR-001** (the two implementations stay at full
-parity, proved by the shared spec) and **ADR-002** (coverage stays at
-100 % in both, with every exclusion justified in the source). Read those
-before proposing a change that touches one implementation only, or that
-adds code no test reaches.
+parity, proved by the shared spec), **ADR-002** (coverage stays at
+100 % in both, with every exclusion justified in the source), and
+**ADR-003** (where a host subsystem supplies semantics, Aontu defines
+the meaning and rewrites the input rather than trusting the host). Read
+those before proposing a change that touches one implementation only,
+that adds code no test reaches, or that hands a value to a host library
+to interpret.
 
 The structural layout follows [`voxgig/util`](https://github.com/voxgig/util):
 top-level `ts/` and `go/` siblings and a fan-out `Makefile`. On top of
@@ -227,7 +230,11 @@ break that no existing row observed, because no row at that magnitude
 had ever been asked of both engines. The review that found it produced
 `test/spec/number-model.tsv` and the ledger's entries — of which the
 last, integer-kind values above 2^53 that need more than 17 significant
-digits to write exactly (#21), is now closed, and the ledger is empty.
+digits to write exactly (#21), is now closed. The ledger is not empty:
+it carries one `# OPEN` entry, lone surrogates in quoted strings folded
+to U+FFFD by Go (#24, reopened 2026-08-11). Read
+`test/spec/divergent.tsv` for the live list rather than trusting a count
+written here.
 
 That entry is worth reading anyway (`test/spec/divergent.tsv` keeps the
 note). It was closed twice against a rule that never touched it — the
@@ -236,6 +243,36 @@ literal binary64 cannot carry *exactly* and not one that is merely
 large. Both times the thing that caught it was re-probing **both** CLIs
 at the exact inputs the entry recorded, which is why an entry must
 record them.
+
+### The capability-review progress register
+
+Forward-looking design work lives in
+[`docs/capability-review/`](docs/capability-review/index.md): eight gap
+documents (G1–G8), each ending in a numbered implementation plan.
+**When a phase of one of those plans lands, its row in
+[`docs/capability-review/progress.md`](docs/capability-review/progress.md)
+changes in the same commit** — the register is the single record of what
+has been built, and the gap documents are design, not status.
+
+The same-commit rule is the whole mechanism, because nothing here is
+machine-checked. It is the rule that keeps
+[`test/spec/errcodes.tsv`](test/spec/errcodes.tsv) accurate ("new engine
+codes must land with a registry row in the same change"), and
+errcodes.tsv is the only landing record in this repository that has
+never gone stale. Two further rules from the register, worth knowing
+before you write a phase entry:
+
+- **A phase is landed only when both ports have it and shared rows pin
+  it** (ADR-001). Implemented in TypeScript alone is *partial*, and the
+  entry names what is missing.
+- **A phase that lands differently from its design says so**, in the
+  register and in the gap document, in that commit. G1 phase 6 is the
+  worked example — the landed rule is exactness, not the magnitude band
+  the design specified, and more rows changed than the design sanctioned.
+
+Suite-size figures ("all N rows must not regress") belong in the
+register and nowhere else; all eight gap documents froze their own and
+all eight are now wrong.
 
 ## Implementation parity & Go coverage
 
@@ -254,10 +291,10 @@ duplicate-key merge, spreads `&:`, optional keys `a?:`, `close`/`open`),
 lists (incl. `&:` spreads), conjunction (`&`), disjunction (`|`),
 preference/defaults (`*`), references (`$.a.b`, relative `.x.a`, `$KEY`,
 cross/chained refs), `$name` variables, the `+` operator (and
-parenthesised grouping), all seventeen built-in functions (`upper`,
+parenthesised grouping), all eighteen built-in functions (`upper`,
 `lower`, `copy`, `key`, `pref`, `super`, `type`, `hide`, `close`,
 `open`, `move`, `path`, and the constraint atoms `min`, `max`,
-`above`, `below`, `neq`), type/hide marks, and `@"file"` source loading
+`above`, `below`, `neq`, `re`), type/hide marks, and `@"file"` source loading
 via the multisource plugin — plus `parse`, `unify`, `generate` and
 `canon`.
 
