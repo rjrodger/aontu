@@ -1,6 +1,9 @@
 # G7: A machine-facing access surface
 
-*Status: design proposal, part of the
+*Status: design proposal — nothing implemented. Per-phase status and the
+corrections this document needs are in the
+[progress register](progress.md), which is authoritative for status;
+this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
 G7 — query, provenance, patch, and delivery: the surfaces through
 which agents consume an Aontu definition as ground truth — with

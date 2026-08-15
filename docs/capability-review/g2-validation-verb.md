@@ -1,6 +1,9 @@
 # G2: The validation verb
 
-*Status: design proposal, part of the
+*Status: partly implemented — phase 1 (the error-code registry) landed;
+the verb itself, phases 2–6, is outstanding. Per-phase status and pins
+are in the [progress register](progress.md), which is authoritative for
+status; this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
 G2 — turning Aontu from an evaluator of its own files into a guardrail
 that validates external data — with alternatives, an explicit boundary,

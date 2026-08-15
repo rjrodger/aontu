@@ -1,6 +1,11 @@
 # G5: A specified trust contract
 
-*Status: design proposal, part of the
+*Status: partly implemented — phases 1 and 2 landed, phases 4 and 5
+partial, phases 3 and 6 outstanding. Per-phase status, the departures
+the landed work took, and the corrections this document and
+`docs/trust.md` still need are in the [progress register](progress.md),
+which is authoritative for status; this document is authoritative for
+design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
 G5 — hermeticity, termination, determinism, and sandboxing as
 specified, spec-pinned guarantees — with alternatives, an explicit

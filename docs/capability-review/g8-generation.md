@@ -1,6 +1,9 @@
 # G8: Generation and abstraction, on the total side of the fork
 
-*Status: design proposal, part of the
+*Status: design proposal — phase 0 partial (its defect-fencing half
+landed with G1 phase 0), phases 1–4 outstanding. Per-phase status is in
+the [progress register](progress.md), which is authoritative for status;
+this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
 G8 — producing N similar children from data without copies that drift,
 while keeping the guarantee that Aontu evaluation always terminates.

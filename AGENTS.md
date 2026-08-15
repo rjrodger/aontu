@@ -227,7 +227,11 @@ break that no existing row observed, because no row at that magnitude
 had ever been asked of both engines. The review that found it produced
 `test/spec/number-model.tsv` and the ledger's entries — of which the
 last, integer-kind values above 2^53 that need more than 17 significant
-digits to write exactly (#21), is now closed, and the ledger is empty.
+digits to write exactly (#21), is now closed. The ledger is not empty:
+it carries one `# OPEN` entry, lone surrogates in quoted strings folded
+to U+FFFD by Go (#24, reopened 2026-08-11). Read
+`test/spec/divergent.tsv` for the live list rather than trusting a count
+written here.
 
 That entry is worth reading anyway (`test/spec/divergent.tsv` keeps the
 note). It was closed twice against a rule that never touched it — the
@@ -236,6 +240,36 @@ literal binary64 cannot carry *exactly* and not one that is merely
 large. Both times the thing that caught it was re-probing **both** CLIs
 at the exact inputs the entry recorded, which is why an entry must
 record them.
+
+### The capability-review progress register
+
+Forward-looking design work lives in
+[`docs/capability-review/`](docs/capability-review/index.md): eight gap
+documents (G1–G8), each ending in a numbered implementation plan.
+**When a phase of one of those plans lands, its row in
+[`docs/capability-review/progress.md`](docs/capability-review/progress.md)
+changes in the same commit** — the register is the single record of what
+has been built, and the gap documents are design, not status.
+
+The same-commit rule is the whole mechanism, because nothing here is
+machine-checked. It is the rule that keeps
+[`test/spec/errcodes.tsv`](test/spec/errcodes.tsv) accurate ("new engine
+codes must land with a registry row in the same change"), and
+errcodes.tsv is the only landing record in this repository that has
+never gone stale. Two further rules from the register, worth knowing
+before you write a phase entry:
+
+- **A phase is landed only when both ports have it and shared rows pin
+  it** (ADR-001). Implemented in TypeScript alone is *partial*, and the
+  entry names what is missing.
+- **A phase that lands differently from its design says so**, in the
+  register and in the gap document, in that commit. G1 phase 6 is the
+  worked example — the landed rule is exactness, not the magnitude band
+  the design specified, and more rows changed than the design sanctioned.
+
+Suite-size figures ("all N rows must not regress") belong in the
+register and nowhere else; all eight gap documents froze their own and
+all eight are now wrong.
 
 ## Implementation parity & Go coverage
 

@@ -1,6 +1,9 @@
 # G4: Identity and typed relations
 
-*Status: design proposal, part of the
+*Status: design proposal — nothing implemented. Per-phase status and the
+corrections this document needs are in the
+[progress register](progress.md), which is authoritative for status;
+this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands
 the G4 entry in the review index: a stable identity mark on any
 node, reference constraints with checked referential integrity,

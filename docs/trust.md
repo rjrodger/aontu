@@ -112,28 +112,29 @@ these: it is ordinary incompleteness, silent at unify time and a
 generate-time error (`mapval_no_gen` family, class `incomplete`)
 exactly as before. Only genuine cut-off earns `budget_passes`.
 
-Three honest caveats, tracked rather than papered over:
-
-- TypeScript has no explicit depth budget (table above): the `max_depth`
-  code exists in the registry and is raised by Go's parse guard, but the
-  TypeScript evaluator's only backstop for runaway depth is the caught
-  `RangeError` → `internal` path — deterministic in *classification*,
-  environment-dependent in *threshold*.
+Two notes on how the budgets behave, and one caveat that remains:
 
 - A chain of plain references resolves one link per pass from the tail
   in **both** engines (issue #26, closed: Go now defers exactly as the
   canonical engine does), so the pass budget is part of the shared
   language surface: nine links fit, ten exhaust it as `budget_passes`,
   pinned by the shared `budget-chain-*` rows in
-  [test/spec/budget.tsv](../test/spec/budget.tsv). One cycle SHAPE
-  still reports different codes — a cycle routed through a function
-  (`a:$.b b:upper($.a)`) is TS `internal` vs Go `path_cycle`, a
-  TS-side proof gap tracked by issue #35 in the parity ledger.
-- The revisit bound carries an acknowledged false-positive defect on
-  very large models ("too many top unifications", `ts/src/unify.ts`);
-  fixing it needs a generated-SDK-scale corpus first, and until then
-  `unify_cycle` remains *suspicion*, which is why it is class `budget`
-  and not `reference`.
+  [test/spec/budget.tsv](../test/spec/budget.tsv).
+- A cycle wearing a function call is the same cycle. `a:$.b b:upper($.a)`
+  once reported TS `internal` against Go `path_cycle`; both ports now
+  follow function arguments when detecting the cycle (issue #35,
+  closed), and the shape is pinned by the shared
+  `path-cycle-func-routed`, `-msg` and `path-cycle-func-chain` rows —
+  together with `path-cycle-func-no-cycle`, which pins that an ordinary
+  function chain is still not a cycle.
+- `unify_cycle` remains *suspicion*, not proof, which is why it is class
+  `budget` and not `reference`: the revisit bound cannot distinguish a
+  genuine cycle from a model too large to settle within it. The
+  specific false positive this caveat used to record — a legal model
+  with more than `MAXCYCLE` sibling conjunct terms at one path, each
+  re-running the TOP self-unify — is fixed by the per-pass `_tcc/_tpi`
+  memo, with a 1200-sibling-term fixture driven through both engines as
+  the regression guard.
 
 ## Clause 3 — Determinism
 
@@ -231,6 +232,6 @@ Guarantees are as much about what will never be added:
 | code → class registry | [test/spec/errcodes.tsv](../test/spec/errcodes.tsv) + set-equality tests in both runners |
 | canon byte-stability | every `canon` row (strict equality, both runners) |
 | generated-JSON byte-stability | `gens` rows (docs/shared-spec.md) |
-| known open divergences | [test/spec/divergent.tsv](../test/spec/divergent.tsv) — each entry carries its tracking issue (#24, #32, #35 at the time of writing; #26/#27/#29/#30/#31/#34 are fixed and closed; only the Unicode table vintage remains permanent, in DIVERGENCE.md) |
+| known open divergences | [test/spec/divergent.tsv](../test/spec/divergent.tsv) — each entry carries its tracking issue. Read the file for the live list rather than a count copied here; as of this revision one entry is `# OPEN` (#24, lone surrogates), and #26/#27/#29/#30/#31/#32/#34/#35 are fixed and closed. Only the Unicode table vintage remains permanent, in DIVERGENCE.md |
 | resolver posture | SECURITY comment, `ts/src/lang.ts`; this document |
 | single-use trees | reference-api.md rule; `Aontu.parse` / Go `Parse` doc comments |

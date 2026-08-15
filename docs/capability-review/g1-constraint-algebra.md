@@ -1,6 +1,10 @@
 # G1: A real constraint algebra
 
-*Status: design proposal, part of the
+*Status: partly implemented — phases 1 and 6 landed, phase 0 partial,
+phases 2–5 outstanding. Per-phase status, pins and the corrections this
+document still needs are in the [progress register](progress.md), which
+is authoritative for status; this document is authoritative for design.
+Part of the
 [capability review](index.md) (August 2026). This document expands the
 G1 entry in the review index: the vocabulary of constraint atoms, their
 lattice algebra, canonical syntax for bounds, the two-band

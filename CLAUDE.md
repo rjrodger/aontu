@@ -17,3 +17,9 @@ Quick reference:
 - Shared behaviour lives in `test/spec/*.tsv` and is run by both
   `ts/test/spec.test.ts` and `go/spec_test.go`.
 - `make test` runs both suites; `make cov` checks the ADR-002 floor.
+- Forward-looking work is the capability review in
+  `docs/capability-review/` (G1–G8, design) plus
+  `docs/capability-review/progress.md` (the register of what has
+  landed). **A phase's row in the register changes in the same commit
+  that changes its status** — see AGENTS.md, "The capability-review
+  progress register".
