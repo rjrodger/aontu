@@ -11,10 +11,18 @@ its proposed rows wait here.
 Current contents: the constraint-algebra rows of capability G1 phase 0
 (`docs/capability-review/g1-constraint-algebra.md`; normative design in
 `docs/reference-language.md`, "The constraint algebra") that are NOT
-yet implemented: cross-structure constraints, len/unique, and re().
-The bound/neq rows (`constraint-bound.tsv`) were promoted to
-`test/spec/constraint-bound.tsv` when G1 phase 1 landed, with every
-expectation re-probed in both engines at promotion time per rule 2.
+yet implemented: cross-structure constraints and len/unique.
+
+Promoted so far, each with every expectation re-probed in both engines
+at promotion time per rule 2: the bound/neq rows to
+`test/spec/constraint-bound.tsv` when G1 phase 1 landed, and the regex
+rows to `test/spec/constraint-re.tsv` when G1 phase 2 landed. The
+second promotion is the reason rule 1 says what it does -- one drafted
+expectation was WRONG. The draft predicted `a:string&re("^[a-z]$")`
+would canon as `string&re("^[a-z]$")`; both engines agree it canons as
+`re("^[a-z]$")`, because a pattern implies the string kind exactly as
+a bound implies `number`. The probe caught it; the draft would have
+baselined a canon neither engine produces.
 
 Rules for this directory:
 

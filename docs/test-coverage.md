@@ -45,13 +45,13 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11771/11771) |
-| TypeScript — `ts/src` | branches | **100.00 %** (2577/2577) |
-| TypeScript — `ts/src` | functions | **100.00 %** (477/477) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (11982/11982) |
+| TypeScript — `ts/src` | branches | **100.00 %** (2633/2633) |
+| TypeScript — `ts/src` | functions | **100.00 %** (481/481) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **2313 TypeScript tests** and
-four green Go packages, including the **1941-row shared spec** that both
+Both suites pass in full via `make test`: **2360 TypeScript tests** and
+four green Go packages, including the **1988-row shared spec** that both
 engines execute.
 
 The absolute figures above move with every change and are reproduced,
@@ -101,29 +101,28 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **1941 cases across 56 files** — is run by *both*
+`test/spec/*.tsv` — **1988 cases across 57 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
-| `number-tower.tsv`        | 388 | `budget.tsv`       | 24 |
-| `edge.tsv`                | 310 | `disjunct.tsv`     | 24 |
-| `constraint-product.tsv`  | 256 | `file.tsv`         | 24 |
-| `number-model.tsv`        | 112 | `engine-parity.tsv`| 23 |
-| `func.tsv`                | 110 | `marks.tsv`        | 23 |
-| `errcodes.tsv`            |  68 | `var.tsv`          | 23 |
-| `constraint-bound.tsv`    |  61 | `elision.tsv`      | 21 |
-| `number-cross-product.tsv`|  59 | `map.tsv`          | 20 |
-| `ref.tsv`                 |  40 | `plus.tsv`         | 14 |
-| `scalar.tsv`              |  40 | `conjunct.tsv`     | 13 |
-| `optional.tsv`            |  37 | `merge-conflict.tsv`| 13 |
-| `error.tsv`               |  34 | `op-chars.tsv`     | 13 |
-| `pref.tsv`                |  30 | `close.tsv`        |  9 |
-|                           |     | `incomplete.tsv`   |  9 |
-|                           |     | `list.tsv`         |  7 |
-|                           |     | `comment.tsv`      |  6 |
-|                           |     | `divergent.tsv`    |  0 |
+| `number-tower.tsv`        | 388 | `file.tsv`         | 24 |
+| `edge.tsv`                | 310 | `engine-parity.tsv`| 23 |
+| `constraint-product.tsv`  | 256 | `marks.tsv`        | 23 |
+| `number-model.tsv`        | 112 | `var.tsv`          | 23 |
+| `func.tsv`                | 110 | `elision.tsv`      | 21 |
+| `errcodes.tsv`            |  69 | `map.tsv`          | 20 |
+| `constraint-bound.tsv`    |  61 | `plus.tsv`         | 14 |
+| `number-cross-product.tsv`|  59 | `conjunct.tsv`     | 13 |
+| `constraint-re.tsv`       |  46 | `merge-conflict.tsv`| 13 |
+| `ref.tsv`                 |  40 | `op-chars.tsv`     | 13 |
+| `scalar.tsv`              |  40 | `close.tsv`        |  9 |
+| `optional.tsv`            |  37 | `incomplete.tsv`   |  9 |
+| `error.tsv`               |  34 | `list.tsv`         |  7 |
+| `pref.tsv`                |  30 | `comment.tsv`      |  6 |
+| `budget.tsv`              |  24 | `divergent.tsv`    |  0 |
+| `disjunct.tsv`            |  24 |                    |    |
 
 plus the `spread*.tsv` family — **26 files, 130 cases**, one spread
 topic per file. `divergent.tsv` is the parity ledger: commentary only,
@@ -159,7 +158,7 @@ error code (`errc`), or an error-code registry entry (`errcode`).
 Only what a shared row cannot express gets a per-port test — ADR-001
 prefers a row precisely because one row lifts both engines:
 
-**TypeScript** (`ts/test/*.test.ts`, 1952 tests, 1597 of them shared
+**TypeScript** (`ts/test/*.test.ts`, 2360 tests, 1988 of them shared
 rows): every built-in function in depth, the exact leaves, the public
 API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
 references, parsing, the fixpoint, worked examples — plus three

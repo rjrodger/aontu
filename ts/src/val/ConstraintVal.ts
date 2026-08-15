@@ -77,13 +77,123 @@ type Bound = {
   open: boolean   // true for above/below, false for min/max
 }
 
+type ReAtom = {
+  v: any          // the stored pattern StringVal (canon renders the literal)
+  src: string     // the pattern text
+  re: RegExp      // compiled by the host engine
+}
+
 type ConstraintState = {
   domain?: 'number' | 'string'
   kind?: any      // numeric leaf marker (Integer | Float | ...) or undefined
   lo?: Bound
   hi?: Bound
   neqs: any[]     // excluded scalars, identity per leaf+value
+  res: ReAtom[]   // accumulated patterns, sorted by source (never simplified)
   invalid?: string  // why-code when the atom's arguments were unusable
+}
+
+
+// THE PORTABLE PATTERN SUBSET (G1 phase 2).
+//
+// `re(p)` must mean the same thing in both engines, and the two host
+// regex engines are not the same language: TypeScript compiles with
+// JavaScript's backtracking RegExp, Go with RE2. Each accepts patterns
+// the other rejects, and — worse — each accepts patterns the other
+// accepts with DIFFERENT meaning. So the pattern is checked against one
+// shared syntactic subset BEFORE either host engine sees it, and this
+// scanner is mirrored statement for statement in go/constraint.go.
+//
+// The rule is a whitelist where the spellings diverge, because a
+// blacklist of known-bad constructs silently admits the next one:
+//
+//  - `(?` opens only the non-capturing group `(?:`. That single rule
+//    refuses lookahead, lookbehind, atomic groups, conditionals,
+//    recursion, inline flags, and named groups — whose spelling differs
+//    (`(?P<n>` in RE2, `(?<n>` in JS) even where both support them.
+//  - Backreferences (`\1`..`\9`, `\k<name>`) are not in RE2 at all;
+//    accepting them in TypeScript alone would be a silent divergence.
+//  - `\u`, `\p`, `\P` and `\x{...}` are spelled differently or gated on
+//    a flag: JS writes `￿` where RE2 writes `\x{FFFF}`, and JS
+//    `\p{...}` needs the `u` flag it is not given here (without it, JS
+//    reads `\p` as a literal `p` — accepted, and wrong).
+//  - POSIX classes (`[[:alpha:]]`) are RE2-only.
+//  - An empty character class (`[]`, `[^]`) is a valid never-matching
+//    class in JS and a parse error in RE2.
+//
+// Everything else is handed to the host engine, whose own compile
+// failure is the same refusal under the same code. The subset is
+// deliberately smaller than the intersection of the two engines —
+// sound, not complete, exactly as the algebra treats regex emptiness.
+// Widening it later is compatible; narrowing it would not be.
+function nonPortableRe(src: string): string | undefined {
+  let inClass = false
+
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i]
+
+    if ('\\' === c) {
+      const n = src[i + 1]
+      if (null == n) {
+        return 'a trailing backslash'
+      }
+      if ('1' <= n && n <= '9') {
+        return 'a backreference (\\' + n + '), which RE2 has no equivalent for'
+      }
+      if ('k' === n) {
+        return 'a named backreference (\\k), which RE2 has no equivalent for'
+      }
+      if ('u' === n) {
+        return 'a \\u escape, which RE2 spells \\x{...}'
+      }
+      if ('p' === n || 'P' === n) {
+        return 'a Unicode class (\\' + n + '), which JavaScript reads as a literal here'
+      }
+      if ('x' === n && '{' === src[i + 2]) {
+        return 'a \\x{...} escape, which JavaScript spells \\u'
+      }
+      i++
+      continue
+    }
+
+    // A POSIX class opener, anywhere. Checked BEFORE the in-class
+    // branch because the POSIX form lives inside an ordinary class
+    // (`[[:alpha:]]`), and refused everywhere rather than only there:
+    // one rule is easier to mirror exactly than two, and a literal
+    // `[:` costs an author nothing to rewrite.
+    if ('[' === c && ':' === src[i + 1]) {
+      return 'a POSIX class ([:...:]), which JavaScript does not have'
+    }
+
+    if (inClass) {
+      if (']' === c) {
+        inClass = false
+      }
+      continue
+    }
+
+    if ('[' === c) {
+      // An empty class: `[]` in JS is a class that never matches, in
+      // RE2 it does not compile. `[^]` is the same disagreement one
+      // character along — everything in JS, a parse error in RE2.
+      const first = '^' === src[i + 1] ? src[i + 2] : src[i + 1]
+      if (']' === first) {
+        return 'an empty character class, which RE2 refuses'
+      }
+      inClass = true
+      continue
+    }
+
+    if ('(' === c && '?' === src[i + 1] && ':' !== src[i + 2]) {
+      return 'a (?...) group other than the non-capturing (?:'
+    }
+  }
+
+  if (inClass) {
+    return 'an unterminated character class'
+  }
+
+  return undefined
 }
 
 
@@ -137,7 +247,9 @@ class ConstraintVal extends FeatureVal {
   lo?: Bound
   hi?: Bound
   neqs: any[] = []
+  res: ReAtom[] = []
   invalid?: string
+  invalidWhy?: string
 
   constructor(
     spec: ValSpec & { atom?: string, state?: ConstraintState },
@@ -151,6 +263,9 @@ class ConstraintVal extends FeatureVal {
       this.lo = spec.state.lo
       this.hi = spec.state.hi
       this.neqs = spec.state.neqs
+      // A state built by an embedder (or by a per-port test) may predate
+      // the pattern field; an absent one means "no patterns", not undefined.
+      this.res = spec.state.res ?? []
       this.invalid = spec.state.invalid
     }
     else if (spec.atom) {
@@ -204,6 +319,38 @@ class ConstraintVal extends FeatureVal {
       return bad('arg')
     }
     const a = args[0]
+
+    // `re` is the one atom whose argument is not an ORDER point: a
+    // pattern is a membership test, so it takes the string domain
+    // outright rather than inferring a domain from the argument's leaf.
+    if ('re' === atom) {
+      if (!stringLeaf(a)) {
+        return bad('invalid-arg')
+      }
+      const src = a.peg as string
+      const why = nonPortableRe(src)
+      if (null != why) {
+        this.invalidWhy = why
+        return bad('constraint_pattern')
+      }
+      let re: RegExp
+      try {
+        re = new RegExp(src)
+      }
+      catch (e: any) {
+        // The host engine refuses what the subset scanner passed — a
+        // malformed quantifier, an unbalanced group. Same refusal under
+        // the same code: the author gets one rule, not two. The message
+        // is the host's, so it is NOT pinned by a shared row; the code
+        // and the located frame are.
+        this.invalidWhy = 'not a valid pattern'
+        return bad('constraint_pattern')
+      }
+      this.domain = 'string'
+      this.res = [{ v: a, src, re }]
+      return
+    }
+
     const domain = numericLeaf(a) ? 'number' : stringLeaf(a) ? 'string' : undefined
     if (null == domain) {
       return bad('invalid-arg')
@@ -229,7 +376,8 @@ class ConstraintVal extends FeatureVal {
     let out: Val
 
     if (null != this.invalid) {
-      out = makeNilErr(ctx, this.invalid, this, undefined, 'constrain')
+      out = makeNilErr(ctx, this.invalid, this, undefined, 'constrain',
+        null == this.invalidWhy ? undefined : { reason: this.invalidWhy })
     }
     else if (null == peer || (peer as any).isTop) {
       out = this
@@ -288,6 +436,15 @@ class ConstraintVal extends FeatureVal {
         return this.fail(ctx, peer)
       }
     }
+    // Every accumulated pattern must match: the meet of two `re` atoms
+    // is conjunction, and matching is UNANCHORED in both engines
+    // (JS RegExp.test, Go regexp.MatchString), so `re("el")` admits
+    // "hello". Anchor with ^ and $ to mean the whole string.
+    for (const r of this.res) {
+      if (!r.re.test(peer.peg)) {
+        return this.fail(ctx, peer)
+      }
+    }
     return peer
   }
 
@@ -322,7 +479,8 @@ class ConstraintVal extends FeatureVal {
   // union, kind union — then the eager emptiness rules.
   private meetConstraint(peer: ConstraintVal, ctx: AontuContext): Val {
     if (null != peer.invalid) {
-      return makeNilErr(ctx, peer.invalid, peer, undefined, 'constrain')
+      return makeNilErr(ctx, peer.invalid, peer, undefined, 'constrain',
+        null == peer.invalidWhy ? undefined : { reason: peer.invalidWhy })
     }
     if (null != this.domain && null != peer.domain && this.domain !== peer.domain) {
       return this.fail(ctx, peer)
@@ -338,6 +496,7 @@ class ConstraintVal extends FeatureVal {
     merged.lo = tighter(d, this.lo, peer.lo, true)
     merged.hi = tighter(d, this.hi, peer.hi, false)
     merged.neqs = dedupSorted(d, [...this.neqs, ...peer.neqs])
+    merged.res = dedupSortedRes([...this.res, ...peer.res])
 
     return this.finish(merged, ctx, peer)
   }
@@ -422,6 +581,7 @@ class ConstraintVal extends FeatureVal {
       lo: this.lo,
       hi: this.hi,
       neqs: [...this.neqs],
+      res: [...this.res],
       invalid: this.invalid,
     }
   }
@@ -437,7 +597,9 @@ class ConstraintVal extends FeatureVal {
     out.lo = this.lo
     out.hi = this.hi
     out.neqs = [...this.neqs]
+    out.res = [...this.res]
     out.invalid = this.invalid
+    out.invalidWhy = this.invalidWhy
     return out
   }
 
@@ -458,6 +620,9 @@ class ConstraintVal extends FeatureVal {
     }
     if (0 < this.neqs.length) {
       parts.push('neq(' + this.neqs.map((n: any) => n.canon).join(',') + ')')
+    }
+    for (const r of this.res) {
+      parts.push('re(' + r.v.canon + ')')
     }
     if (0 === parts.length) {
       // Raw invalid atom: render the call so the error frame shows it.
@@ -517,7 +682,25 @@ function dedupSorted(domain: 'number' | 'string', neqs: any[]): any[] {
 }
 
 
-// The five atom classes registered in the parser's funcMap: each is a
+// Sort accumulated patterns by source in code-point order and drop
+// exact duplicates. Patterns are NEVER simplified or compared for
+// containment: deciding `re("a")` subsumes `re("a|b")` is regex
+// containment, which the algebra deliberately does not do (emptiness
+// stays approximate — sound, incomplete). Two spellings of one language
+// therefore both survive, and both are tested.
+function dedupSortedRes(res: ReAtom[]): ReAtom[] {
+  const sorted = [...res].sort((a, b) => cmpCodePoints(a.src, b.src))
+  const out: ReAtom[] = []
+  for (const r of sorted) {
+    if (0 === out.length || out[out.length - 1].src !== r.src) {
+      out.push(r)
+    }
+  }
+  return out
+}
+
+
+// The six atom classes registered in the parser's funcMap: each is a
 // ConstraintVal that knows its atom name. Constructed by the
 // func-paren handler as `new funcval({peg: args})`.
 class MinConstraintVal extends ConstraintVal {
@@ -548,7 +731,13 @@ class NeqConstraintVal extends ConstraintVal {
   constructor(spec: ValSpec, ctx?: AontuContext) {
     super({ ...spec, atom: 'neq' }, ctx)
   }
-} /* node:coverage ignore next 11 */
+}
+
+class ReConstraintVal extends ConstraintVal {
+  constructor(spec: ValSpec, ctx?: AontuContext) {
+    super({ ...spec, atom: 're' }, ctx)
+  }
+} /* node:coverage ignore next 12 */
 
 
 export {
@@ -558,4 +747,5 @@ export {
   AboveConstraintVal,
   BelowConstraintVal,
   NeqConstraintVal,
+  ReConstraintVal,
 }

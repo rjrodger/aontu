@@ -1,7 +1,7 @@
 # G1: A real constraint algebra
 
-*Status: partly implemented — phases 1 and 6 landed, phase 0 partial,
-phases 2–5 outstanding. Per-phase status, pins and the corrections this
+*Status: partly implemented — phases 1, 2 and 6 landed, phase 0 partial,
+phases 3–5 outstanding. Per-phase status, pins and the corrections this
 document still needs are in the [progress register](progress.md), which
 is authoritative for status; this document is authoritative for design.
 Part of the
@@ -601,6 +601,22 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    validation at construction in TS (`ts/src/val/ConstraintVal.ts`);
    Go side is native `regexp`. Spec rows for matching, residual
    accumulation, and rejected patterns.
+   *(Since done. Two things the plan text did not anticipate. The
+   portability check could not be "validate in TS, use native regexp
+   in Go": Go's RE2 refuses some non-portable constructs but ACCEPTS
+   others JavaScript reads differently — `(?P<n>` versus `(?<n>`,
+   `\x{41}` versus `A`, `\p{L}` which JavaScript silently reads
+   as a literal `p` without the `u` flag. So the subset is one shared
+   syntactic scanner (`nonPortableRe`) mirrored in both ports and run
+   BEFORE either host engine compiles, with the host's own compile
+   failure folded into the same refusal. It is a whitelist where the
+   spellings diverge — `(?` opens only `(?:` — because a blacklist
+   admits the next divergence silently. Second, refusal needed its own
+   registered code, `constraint_pattern` (class conflict): phase 1's
+   one-code-for-the-family rule would have given the atom's most likely
+   authoring mistake a generic message. The reason text is a fixed
+   string, not the host's, so the frame stays byte-identical across
+   ports. Rows: `test/spec/constraint-re.tsv`.)*
 4. **Phase 3 — `len` and `unique` (M).** `len` reuses the integer
    algebra recursively; domain resolution against string/list/map
    peers touches `ts/src/val/ListVal.ts` and `MapVal.ts` membership

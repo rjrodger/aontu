@@ -12,7 +12,7 @@
 // — scalars, scalar kinds, maps (nesting, merge, spreads &:, optional
 // keys, close/open), lists (incl. &: spreads), conjunction (&),
 // disjunction (|), preference (*), references ($.a.b / .x.a / $KEY),
-// $name variables, the + operator, all seventeen built-in functions
+// $name variables, the + operator, all eighteen built-in functions
 // (upper/lower/copy/key/pref/super/type/hide/close/open/move/path and
 // the constraint atoms min/max/above/below/neq), type/hide marks and
 // @"file" source loading.

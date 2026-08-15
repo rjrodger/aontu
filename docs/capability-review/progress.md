@@ -89,19 +89,19 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **56 `.tsv` files, 55
-   row-bearing, 1,941 rows**, in six modes — `canon` 633, `gen` 430,
-   `gens` 299, `errc` 295, `err` 216, `errcode` 68. Reproduce with
+   register's last update the suite is **57 `.tsv` files, 56
+   row-bearing, 1,988 rows**, in six modes — `canon` 641, `gen` 437,
+   `errc` 321, `gens` 300, `err` 220, `errcode` 69. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Nine of forty-nine phases have moved; five of those are complete.
+Ten of forty-nine phases have moved; six of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
-| [G1](g1-constraint-algebra.md) | Constraint algebra | A | 2 | 1 | 4 |
+| [G1](g1-constraint-algebra.md) | Constraint algebra | A | 3 | 1 | 3 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 1 | 0 | 5 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
@@ -109,17 +109,17 @@ Nine of forty-nine phases have moved; five of those are complete.
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **5** | **4** | **40** |
+| | | **total** | **6** | **4** | **39** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
-- **Phase A — make the claim true.** Partly done, and the remainder is
-  the bulk of it. The trust contract (G5.1–2) and the error-code
-  registry (G2.1) are in; bounds and `neq` are in (G1.1). Outstanding:
-  `re` and `len`/`unique` (G1.2–3, both named explicitly in the
-  sequencing table's "constraint algebra core"), and the whole of the
-  `vet` verb (G2.2–6). **Phase A's headline claim — `aontu vet` — does
-  not exist in either port.**
+- **Phase A — make the claim true.** Partly done. The trust contract
+  (G5.1–2) and the error-code registry (G2.1) are in; of the sequencing
+  table's "constraint algebra core (bounds, regex, length/count)",
+  bounds and `neq` are in (G1.1) and regex is in (G1.2). Outstanding:
+  `len`/`unique` (G1.3), and the whole of the `vet` verb (G2.2–6).
+  **Phase A's headline claim — `aontu vet` — does not exist in either
+  port.**
 - **Phase B — differentiate.** Untouched. No subsumption, no canon
   hash, no query surface.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
@@ -133,7 +133,7 @@ surface depends on nothing and could ship at any time.
 |-------|------|--------|-----|
 | **0** — algebra on paper | S | **PARTIAL** | `docs/reference-language.md` "The constraint algebra (specified)": meet table, emptiness rules, canonical atom order, tower rulings, lazy-endpoint/eager-emptiness decision, `len` as Unicode code points. `test/spec/constraint-bound.tsv` promoted; `constraint-re/len/cross.tsv` authored as drafts. Fold-defect guard rows in `disjunct.tsv`. Commit `98fc1bf`. |
 | **1** — numeric and lexical bounds, `neq` | M | **LANDED** | `ts/src/val/ConstraintVal.ts` (`cjo = 50000`) + `go/constraint.go`; `min`/`max`/`above`/`below`/`neq` in both registries (12 → 17 builtins); `test/spec/constraint-bound.tsv`, `constraint-product.tsv` (all 256 ordered pairs), `errcodes.tsv:constraint`; law tests `ts/test/constraint-laws.test.ts` + `go/constraint_laws_test.go` over `test/spec/files/constraint-atoms.txt`. Commit `ae82828`. |
-| **2** — `re` | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-re.tsv`. `re` is still `unknown_function` in both ports. |
+| **2** — `re` | M | **LANDED** | `ReConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `re` arm of `newConstraint` (`go/constraint.go`); `re` in both registries (17 → 18 builtins) and both LSP completion lists; the portable-subset scanner `nonPortableRe`, mirrored statement for statement in both ports; `test/spec/constraint-re.tsv` (46 rows, promoted from the draft with every expectation re-probed); `errcodes.tsv:constraint_pattern`. |
 | **3** — `len` and `unique` | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-len.tsv`. |
 | **4** — cross-field arguments, residuation | M | **NOT STARTED** | Rows drafted at `test/spec/draft/constraint-cross.tsv`. |
 | **5** — `must` | S | **NOT STARTED** | — |
@@ -144,6 +144,22 @@ phase text names "the pairwise meet / emptiness / subsumption tables";
 the meet and emptiness tables are written, the subsumption one is not
 (`docs/reference-language.md` mentions the word twice, both times in
 prose). G3 phase 0 is the consumer that will need it.
+
+**Phase 2 departed from its drafted rows in one place, and the probe is
+why we know.** The draft predicted `string & re("^[a-z]$")` would canon
+as `string&re("^[a-z]$")`. Both engines agree it canons as
+`re("^[a-z]$")`: a pattern implies the string kind exactly as a numeric
+bound implies `number`, and the phase-1 row `bound-number-passthrough`
+already pinned the implied kind being dropped. The promoted row records
+the probed behaviour and says so inline.
+
+Phase 2 also added the `constraint_pattern` code (class `conflict`) for
+a pattern outside the portable subset — the design text does not name a
+code, and the phase-1 precedent of one `constraint` code for the whole
+family would have given the most likely authoring mistake in the atom a
+generic message. The refusal reason is a fixed string rather than the
+host engine's message, so the whole error frame stays byte-identical
+across ports even when it is the host compiler that objected.
 
 **Phase 6 landed broader than its design.** The design scoped the
 refusal to the `(2^53, 2^63)` magnitude band and stated that
@@ -230,7 +246,7 @@ it is a vet-time pass, and `vet` does not exist.
 "join `funcMap`". G1's atoms did not: they route through a separate
 `constraintAtoms` table (`go/constraint.go`, noted at `go/func.go`), so
 "join funcMap" now has two shapes to choose between. Arity is also a
-parse-time check for all seventeen builtins since commit `c8b4c54`, so
+parse-time check for all eighteen builtins since commit `c8b4c54`, so
 a new builtin must add entries to the arity tables in both ports.
 
 ## G5 — a specified trust contract
@@ -326,9 +342,8 @@ how likely each is to mislead an implementer.
    "one row changes".** The landed rule is exactness and several rows
    changed (see G1 above).
 3. **G1's problem statement says `min`, `max` and `re` are not in
-   `funcMap`** and that there are "exactly 12 builtins". There are 17;
-   only `re`, `len`, `unique` and `must` still fail as
-   `unknown_function`.
+   `funcMap`** and that there are "exactly 12 builtins". There are 18;
+   only `len`, `unique` and `must` still fail as `unknown_function`.
 4. **G1's open-questions list still carries two questions Phase 0
    decided** — eager kind-tightening (decided: lazy endpoints, eager
    emptiness) and string-length semantics (decided: Unicode code

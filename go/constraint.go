@@ -16,6 +16,7 @@ package aontu
 
 import (
 	"math"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -23,6 +24,116 @@ import (
 type constraintBound struct {
 	v    *ScalarVal
 	open bool
+}
+
+type constraintRe struct {
+	v   *ScalarVal     // the stored pattern scalar (Canon renders the literal)
+	src string         // the pattern text
+	re  *regexp.Regexp // compiled by the host engine
+}
+
+// THE PORTABLE PATTERN SUBSET (G1 phase 2).
+//
+// The exact port of nonPortableRe in ts/src/val/ConstraintVal.ts — read
+// the rationale there. In brief: `re(p)` must mean the same thing in
+// both engines, and JavaScript RegExp and RE2 are not the same
+// language, so a pattern is checked against one shared syntactic subset
+// before either host engine compiles it. The rule is a whitelist where
+// the spellings diverge, because a blacklist silently admits the next
+// divergence:
+//
+//   - `(?` opens only the non-capturing group `(?:` — which refuses
+//     lookaround, atomic groups, conditionals, inline flags, and named
+//     groups (`(?P<n>` here, `(?<n>` in JavaScript) in one rule.
+//   - Backreferences (`\1`..`\9`, `\k<name>`) do not exist in RE2.
+//   - `\u`, `\p`, `\P` and `\x{...}` are spelled differently or gated
+//     on a flag JavaScript is not given here.
+//   - POSIX classes (`[[:alpha:]]`) are RE2-only.
+//   - An empty character class (`[]`, `[^]`) is a never-matching class
+//     in JavaScript and a parse error in RE2.
+//
+// Everything else goes to the host engine, whose own compile failure is
+// the same refusal under the same code. Deliberately smaller than the
+// true intersection: sound, not complete.
+func nonPortableRe(src string) string {
+	inClass := false
+	r := []rune(src)
+
+	at := func(i int) rune {
+		if i < len(r) {
+			return r[i]
+		}
+		return 0
+	}
+
+	for i := 0; i < len(r); i++ {
+		c := r[i]
+
+		if '\\' == c {
+			n := at(i + 1)
+			if 0 == n {
+				return "a trailing backslash"
+			}
+			if '1' <= n && n <= '9' {
+				return "a backreference (\\" + string(n) + "), which RE2 has no equivalent for"
+			}
+			if 'k' == n {
+				return "a named backreference (\\k), which RE2 has no equivalent for"
+			}
+			if 'u' == n {
+				return "a \\u escape, which RE2 spells \\x{...}"
+			}
+			if 'p' == n || 'P' == n {
+				return "a Unicode class (\\" + string(n) + "), which JavaScript reads as a literal here"
+			}
+			if 'x' == n && '{' == at(i+2) {
+				return "a \\x{...} escape, which JavaScript spells \\u"
+			}
+			i++
+			continue
+		}
+
+		// A POSIX class opener, anywhere. Checked BEFORE the in-class
+		// branch because the POSIX form lives inside an ordinary class
+		// (`[[:alpha:]]`), and refused everywhere rather than only
+		// there: one rule is easier to mirror exactly than two, and a
+		// literal `[:` costs an author nothing to rewrite.
+		if '[' == c && ':' == at(i+1) {
+			return "a POSIX class ([:...:]), which JavaScript does not have"
+		}
+
+		if inClass {
+			if ']' == c {
+				inClass = false
+			}
+			continue
+		}
+
+		if '[' == c {
+			// An empty class: `[]` in JavaScript is a class that never
+			// matches, in RE2 it does not compile. `[^]` is the same
+			// disagreement one character along.
+			first := at(i + 1)
+			if '^' == first {
+				first = at(i + 2)
+			}
+			if ']' == first {
+				return "an empty character class, which RE2 refuses"
+			}
+			inClass = true
+			continue
+		}
+
+		if '(' == c && '?' == at(i+1) && ':' != at(i+2) {
+			return "a (?...) group other than the non-capturing (?:"
+		}
+	}
+
+	if inClass {
+		return "an unterminated character class"
+	}
+
+	return ""
 }
 
 // ConstraintVal is immutable after construction: meets build NEW
@@ -34,7 +145,12 @@ type ConstraintVal struct {
 	kind    Kind   // KindTop when unnarrowed; a numeric leaf otherwise
 	lo, hi  *constraintBound
 	neqs    []*ScalarVal
-	invalid string // why-code when the atom's arguments were unusable
+	res     []constraintRe // accumulated patterns, sorted by source
+	invalid string         // why-code when the atom's arguments were unusable
+	// invalidWhy is the human half of a constraint_pattern refusal: which
+	// construct put the pattern outside the portable subset. Injected
+	// into the hint as {reason}; the TS twin carries the same string.
+	invalidWhy string
 }
 
 func (c *ConstraintVal) cjo() int      { return 50000 }
@@ -44,6 +160,7 @@ func (c *ConstraintVal) superior() Val { return top() }
 // the func-paren handler in lang.go.
 var constraintAtoms = map[string]bool{
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
+	"re": true,
 }
 
 // orderableScalar reports the algebra domain of a scalar: numeric
@@ -133,6 +250,35 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 	if 1 != len(args) {
 		return bad("arg")
 	}
+
+	// `re` is the one atom whose argument is not an ORDER point: a
+	// pattern is a membership test, so it takes the string domain
+	// outright rather than inferring a domain from the argument's leaf.
+	if "re" == atom {
+		psv, pd := orderableScalar(args[0])
+		if nil == psv || "string" != pd {
+			return bad("invalid-arg")
+		}
+		src := psv.peg.(string)
+		if why := nonPortableRe(src); "" != why {
+			c.invalidWhy = why
+			return bad("constraint_pattern")
+		}
+		re, err := regexp.Compile(src)
+		if nil != err {
+			// The host engine refuses what the subset scanner passed --
+			// a malformed quantifier, an unbalanced group. Same refusal
+			// under the same code: the author gets one rule, not two.
+			// The message is the host's, so it is NOT pinned by a shared
+			// row; the code and the located frame are.
+			c.invalidWhy = "not a valid pattern"
+			return bad("constraint_pattern")
+		}
+		c.domain = "string"
+		c.res = []constraintRe{{v: psv, src: src, re: re}}
+		return c
+	}
+
 	sv, d := orderableScalar(args[0])
 	if nil == sv {
 		return bad("invalid-arg")
@@ -151,7 +297,7 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 
 func (c *ConstraintVal) Unify(peer Val, ctx *Ctx) Val {
 	if "" != c.invalid {
-		return makeNilErrFull(ctx, c.invalid, c, nil, "constrain", nil)
+		return makeNilErrFull(ctx, c.invalid, c, nil, "constrain", c.reasonDetails())
 	}
 	if nil == peer || isTop(peer) {
 		return c
@@ -200,6 +346,15 @@ func (c *ConstraintVal) admit(peer *ScalarVal, ctx *Ctx) Val {
 			return c.fail(ctx, peer)
 		}
 	}
+	// Every accumulated pattern must match: the meet of two `re` atoms
+	// is conjunction, and matching is UNANCHORED in both engines
+	// (Go MatchString, JS RegExp.test), so `re("el")` admits "hello".
+	// Anchor with ^ and $ to mean the whole string.
+	for _, r := range c.res {
+		if !r.re.MatchString(peer.peg.(string)) {
+			return c.fail(ctx, peer)
+		}
+	}
 	return peer
 }
 
@@ -236,7 +391,7 @@ func (c *ConstraintVal) meetKind(peer *ScalarKindVal, ctx *Ctx) Val {
 // then the eager emptiness rules.
 func (c *ConstraintVal) meetConstraint(peer *ConstraintVal, ctx *Ctx) Val {
 	if "" != peer.invalid {
-		return makeNilErrFull(ctx, peer.invalid, peer, nil, "constrain", nil)
+		return makeNilErrFull(ctx, peer.invalid, peer, nil, "constrain", peer.reasonDetails())
 	}
 	if "" != c.domain && "" != peer.domain && c.domain != peer.domain {
 		return c.fail(ctx, peer)
@@ -255,6 +410,7 @@ func (c *ConstraintVal) meetConstraint(peer *ConstraintVal, ctx *Ctx) Val {
 	merged.lo = tighterBound(merged.domain, c.lo, peer.lo, true)
 	merged.hi = tighterBound(merged.domain, c.hi, peer.hi, false)
 	merged.neqs = dedupSortedNeqs(merged.domain, append(append([]*ScalarVal{}, c.neqs...), peer.neqs...))
+	merged.res = dedupSortedRes(append(append([]constraintRe{}, c.res...), peer.res...))
 
 	return c.finish(merged, ctx, peer)
 }
@@ -335,9 +491,40 @@ func (c *ConstraintVal) cloneState() *ConstraintVal {
 		lo:      c.lo,
 		hi:      c.hi,
 		neqs:    append([]*ScalarVal{}, c.neqs...),
+		res:     append([]constraintRe{}, c.res...),
 		invalid: c.invalid,
 	}
+	out.invalidWhy = c.invalidWhy
 	out.dc = DONE
+	return out
+}
+
+// reasonDetails carries the portable-subset refusal reason into the
+// hint as {reason}; every other invalid code has no detail to inject.
+func (c *ConstraintVal) reasonDetails() map[string]string {
+	if "" == c.invalidWhy {
+		return nil
+	}
+	return map[string]string{"reason": c.invalidWhy}
+}
+
+// dedupSortedRes sorts accumulated patterns by source in code-point
+// order and drops exact duplicates. Patterns are NEVER simplified or
+// compared for containment: deciding `re("a")` subsumes `re("a|b")` is
+// regex containment, which the algebra deliberately does not do
+// (emptiness stays approximate -- sound, incomplete). Two spellings of
+// one language therefore both survive, and both are tested.
+func dedupSortedRes(res []constraintRe) []constraintRe {
+	sorted := append([]constraintRe{}, res...)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].src < sorted[j].src
+	})
+	out := []constraintRe{}
+	for _, r := range sorted {
+		if 0 == len(out) || out[len(out)-1].src != r.src {
+			out = append(out, r)
+		}
+	}
 	return out
 }
 
@@ -369,6 +556,9 @@ func (c *ConstraintVal) Canon() string {
 			ns[i] = n.Canon()
 		}
 		parts = append(parts, "neq("+strings.Join(ns, ",")+")")
+	}
+	for _, r := range c.res {
+		parts = append(parts, "re("+r.v.Canon()+")")
 	}
 	if 0 == len(parts) {
 		// Raw invalid atom: render the call so the error frame shows it.

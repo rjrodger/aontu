@@ -108,6 +108,7 @@ import {
   AboveConstraintVal,
   BelowConstraintVal,
   NeqConstraintVal,
+  ReConstraintVal,
 } from './val/ConstraintVal'
 
 
@@ -420,6 +421,10 @@ help isolate the syntax error.`,
     above: AboveConstraintVal,
     below: BelowConstraintVal,
     neq: NeqConstraintVal,
+
+    // G1 phase 2: pattern membership, over the portable subset both
+    // host regex engines agree on (nonPortableRe in ConstraintVal.ts).
+    re: ReConstraintVal,
   }
 
 
@@ -1228,7 +1233,7 @@ const funcArity: Record<string, [number, number]> = {
   upper: [1, 1], lower: [1, 1], copy: [1, 1], pref: [1, 1],
   super: [1, 1], type: [1, 1], hide: [1, 1], close: [1, 1],
   open: [1, 1], move: [1, 1], path: [1, 1],
-  min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1],
+  min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1], re: [1, 1],
   key: [0, 1],
   neq: [1, -1],
 }

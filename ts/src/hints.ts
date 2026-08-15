@@ -72,7 +72,22 @@ const hints: Record<string, string> = {
     '  max(65535) & 99999            -> nil  # Above the bound;\n' +
     '  min(5) & max(3)               -> nil  # Empty at composition time;\n' +
     '  integer & above(1) & below(2) -> nil  # No integer in the gap;\n' +
-    '  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.',
+    '  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.\n' +
+    '  re("^a") & "abc"              -> "abc" # Patterns are unanchored.',
+
+  constraint_pattern:
+    'This re() pattern is outside the portable subset. It uses\n' +
+    '{reason}.\n' +
+    'A pattern must mean the same thing in both implementations, so\n' +
+    're() accepts only what JavaScript RegExp and RE2 agree on: no\n' +
+    'lookaround, no backreferences, no named groups, no POSIX classes,\n' +
+    'and no escapes the two spell differently. The only (?...) form is\n' +
+    'the non-capturing group (?:.' +
+    '\n \nExamples:\n' +
+    '  re("^[a-z]+$")     # Fine;\n' +
+    '  re("(?:ab)+")      # Fine (non-capturing group);\n' +
+    '  re("(?=x)y")       # Refused (lookahead);\n' +
+    '  re("(x)\\\\1")       # Refused (backreference).',
 
   budget_passes:
     'The evaluation budget of {limit} fixpoint passes was spent before\n' +
@@ -255,6 +270,7 @@ const codeClasses: Record<string, string> = {
   // (constraint covers the whole algebra family: membership failure,
   // empty meets at composition time, and domain/kind mixing.)
   constraint: 'conflict',
+  constraint_pattern: 'conflict',
   scalar_value: 'conflict',
   scalar_kind: 'conflict',
   no_scalar_unify: 'conflict',

@@ -658,11 +658,11 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of seventeen built-in functions. There are
+Aontu provides a fixed set of eighteen built-in functions. There are
 no user-defined functions. Twelve are the general-purpose functions
-tabulated below; the other five — `min(x)`, `max(x)`, `above(x)`,
-`below(x)` and `neq(x,...)` — are the constraint atoms, whose meaning
-is defined in
+tabulated below; the other six — `min(x)`, `max(x)`, `above(x)`,
+`below(x)`, `neq(x,...)` and `re(p)` — are the constraint atoms, whose
+meaning is defined in
 [The constraint algebra](#the-constraint-algebra-specified).
 
 | Function    | Effect | Example |
@@ -936,15 +936,17 @@ distinguishable.
 
 ## The constraint algebra (specified)
 
-> **Status: phase 1 implemented (bounds and `neq`); the rest
+> **Status: phases 1 and 2 implemented (bounds, `neq`, `re`); the rest
 > specified.** This section is the normative design of capability G1's
 > constraint atoms
 > ([docs/capability-review/g1-constraint-algebra.md](capability-review/g1-constraint-algebra.md),
 > phase 0), re-derived over the four-leaf number tower. The bound
-> atoms `min`/`max`/`above`/`below` and the exclusion `neq` are
-> implemented in both engines and pinned by
-> [`test/spec/constraint-bound.tsv`](../test/spec/constraint-bound.tsv);
-> violations raise the registered `constraint` code. `re`, `len`,
+> atoms `min`/`max`/`above`/`below`, the exclusion `neq` and the
+> pattern `re` are implemented in both engines and pinned by
+> [`test/spec/constraint-bound.tsv`](../test/spec/constraint-bound.tsv)
+> and [`test/spec/constraint-re.tsv`](../test/spec/constraint-re.tsv);
+> violations raise the registered `constraint` code, and a pattern
+> outside the portable subset raises `constraint_pattern`. `len`,
 > `unique` and `must` still parse as `unknown_function` errors; their
 > proposed spec rows live as **drafts** in
 > [`test/spec/draft/`](../test/spec/draft/) and are promoted (after
@@ -1074,6 +1076,46 @@ rule: the reparse produces a conjunct of atoms that normalises back
 to the identical residual. Draft rows pin a round-trip and an
 order-independence case (`min(0)&max(10)` vs `max(10)&min(0)` →
 identical canon) for each rule.
+
+### `re` and the portable pattern subset
+
+`re(p)` admits a string matching `p`. Matching is **unanchored** in
+both implementations, so `re("el")` admits `"hello"`; anchor with `^`
+and `$` to constrain the whole string. The string kind is implied, so
+`string & re("x")` canonicalises to `re("x")` — the same rule that
+makes `number & min(0)` canonicalise to `min(0)`.
+
+A pattern must mean the same thing in both implementations, and the
+two host engines are not the same language: TypeScript compiles with
+JavaScript's backtracking `RegExp`, Go with RE2. Each accepts patterns
+the other rejects, and each accepts patterns the other reads
+*differently*. So `re` takes a **portable subset**, checked before
+either host engine compiles the pattern; anything outside it is a
+located `constraint_pattern` error rather than an engine-dependent
+behaviour. Refused:
+
+| Construct | Why |
+|-----------|-----|
+| any `(?…)` group except `(?:`  | lookaround, atomic groups, conditionals and inline flags are not shared; named groups are spelled `(?P<n>` in RE2 and `(?<n>` in JavaScript |
+| backreferences `\1`–`\9`, `\k<name>` | RE2 has no equivalent — accepting them in TypeScript alone would be a silent divergence |
+| `\u`, `\p`, `\P`, `\x{…}`     | spelled differently, or gated on a flag: JavaScript reads `\p{L}` as a literal `p` without the `u` flag |
+| POSIX classes `[[:alpha:]]`   | RE2 only |
+| empty classes `[]`, `[^]`     | a never-matching class in JavaScript, a parse error in RE2 |
+
+Everything else is handed to the host engine, and its own compile
+failure is the same refusal under the same code. The subset is
+deliberately *smaller* than the true intersection of the two engines —
+sound, not complete, the same stance the algebra takes on regex
+emptiness. Widening it later is a compatible change; narrowing it
+would not be.
+
+Patterns **accumulate** and are never simplified: `re("x") & re("a")`
+keeps both (sorted by pattern text in canon), and a value must match
+every one. Two `re` atoms are never declared empty at composition
+time, because deciding that one pattern excludes another is regex
+containment — which this algebra deliberately does not do. A
+contradiction between patterns therefore surfaces against data, not
+against the schema.
 
 ### `len` semantics
 

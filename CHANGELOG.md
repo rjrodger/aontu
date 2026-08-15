@@ -5,6 +5,49 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/rjrodger/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
+## Unreleased — TypeScript 0.53.0 line
+
+### Added — `re()`, pattern membership in the constraint algebra
+
+The constraint algebra gains its sixth atom (capability G1 phase 2).
+`re(p)` admits a string matching `p`, in both implementations:
+
+```
+name: string & re("^[a-z][a-z0-9-]{0,62}$")
+```
+
+- **Matching is unanchored**, as it is in both host engines, so
+  `re("el")` admits `"hello"`. Anchor with `^` and `$` to constrain the
+  whole string.
+- **The string kind is implied**, so `string & re("x")` canonicalises to
+  `re("x")` — the same rule that already makes `number & min(0)`
+  canonicalise to `min(0)`.
+- **Patterns accumulate and are never simplified.** `re("x") & re("a")`
+  keeps both, sorted by pattern text, and a value must match every one.
+  Two patterns are never declared empty at composition time: that would
+  be regex containment, which this algebra deliberately does not do, so
+  a contradiction between patterns surfaces against data instead.
+
+**A pinned portable subset, checked before either engine compiles.**
+TypeScript compiles patterns with JavaScript's `RegExp` and Go with
+RE2, and the two are not the same language — each accepts what the
+other rejects, and each accepts patterns the other reads *differently*.
+So `re` takes a subset checked by one shared scanner mirrored in both
+ports: no `(?…)` group except `(?:`, no backreferences, no
+`\u`/`\p`/`\P`/`\x{…}` escapes, no POSIX classes, no empty
+character classes. Anything outside it is a located
+`constraint_pattern` error (new registered code, class `conflict`)
+rather than an engine-dependent behaviour, and a pattern the host
+engine itself refuses is the same refusal under the same code. The
+subset is deliberately smaller than the true intersection — widening it
+later is compatible, narrowing it would not be. Full rules:
+`docs/reference-language.md`, "`re` and the portable pattern subset".
+
+Pinned by the new `test/spec/constraint-re.tsv` (46 shared rows,
+promoted from `test/spec/draft/` with every expectation re-probed
+through both engines). The builtin registry goes from 17 to 18 names,
+in both ports and both LSP completion lists.
+
 ## Go 0.1.4 — 2026-06-22 · TypeScript 0.47.0 (unreleased)
 
 ### Breaking — the number tower (TypeScript and Go)

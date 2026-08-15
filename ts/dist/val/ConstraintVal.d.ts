@@ -5,12 +5,18 @@ type Bound = {
     v: any;
     open: boolean;
 };
+type ReAtom = {
+    v: any;
+    src: string;
+    re: RegExp;
+};
 type ConstraintState = {
     domain?: 'number' | 'string';
     kind?: any;
     lo?: Bound;
     hi?: Bound;
     neqs: any[];
+    res: ReAtom[];
     invalid?: string;
 };
 declare class ConstraintVal extends FeatureVal {
@@ -21,7 +27,9 @@ declare class ConstraintVal extends FeatureVal {
     lo?: Bound;
     hi?: Bound;
     neqs: any[];
+    res: ReAtom[];
     invalid?: string;
+    invalidWhy?: string;
     constructor(spec: ValSpec & {
         atom?: string;
         state?: ConstraintState;
@@ -53,4 +61,7 @@ declare class BelowConstraintVal extends ConstraintVal {
 declare class NeqConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
-export { ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, };
+declare class ReConstraintVal extends ConstraintVal {
+    constructor(spec: ValSpec, ctx?: AontuContext);
+}
+export { ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, };
