@@ -492,20 +492,29 @@ implementation.
 
 ## Open questions
 
-- **Default completeness.** Should bare `vet` require full
-  concreteness (incomplete ⇒ exit 3) or admit partial data? Agent
-  emission favours strict; drift checks over partial dumps favour
-  `--partial`. Must be settled before the exit classes are documented
-  as stable.
+- ~~**Default completeness.**~~ **Decided: strict.** Bare `vet`
+  requires full concreteness — residue with no contradiction is
+  verdict `incomplete`, exit 3 — and `--partial` opts out. The gate is
+  the primary use: a half-finished document must not pass one, and a
+  verb that silently accepted "not yet finished" would answer the
+  wrong question for the agent loop the verb exists to serve. The
+  drift case is real but secondary, and it pays exactly one flag. The
+  exit classes may therefore be documented as stable when phase 3
+  lands them.
 - **YAML ingestion.** Live dumps are often YAML. Accepting it means a
   site-accurate YAML parser in *both* implementations, or a
   documented `yq`-style conversion step; parser cost decides.
-- **Relaxed versus strict data parsing.** Full-grammar parsing lets
-  "data" carry operators and constraints — arguably a feature (a
-  candidate can refine the truth) but it blurs the data/schema role
-  labels. A `--strict-data` JSON mode is the conservative
-  alternative; the default depends on whether vet's contract is
-  "validate a document" or "validate a contribution".
+- ~~**Relaxed versus strict data parsing.**~~ **Decided: full
+  grammar.** A data file is ordinary Aontu source, so a candidate may
+  refine the truth (`replicas: min(2)`) rather than only satisfy it —
+  vet's contract is "validate a **contribution**". This is what makes
+  the verb compose with layering instead of standing outside it, and
+  it costs nothing at the report layer: site *roles* are assigned by
+  URL provenance, not by what the file's grammar was allowed to
+  contain, so the labels stay crisp however rich the data is. A
+  `--strict-data` JSON-only mode remains available as an additive
+  flag if a caller wants the narrower contract; nothing in the report
+  shape changes when it lands.
 - **Registry source of truth.** Whether hints.ts generates
   errcodes.tsv or errcodes.tsv generates both hint tables; the
   generation direction decides which artifact is the contract.
