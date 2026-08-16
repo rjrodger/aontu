@@ -411,6 +411,31 @@ help isolate the syntax error.`,
         'func-paren': (r, ctx, _op, terms) => {
             let val = terms[1];
             const fname = terms[0];
+            // Reduce nested operator expressions inside a COMMA GROUP.
+            //
+            // The expr plugin evaluates an operator expression through this
+            // same opmap -- but only when it is the whole of a term. Inside a
+            // comma group it hands the func-paren handler the UNREDUCED tree:
+            // a raw array whose head is the Op descriptor and whose tail is
+            // the operands. `rawToVal` then turned that into a ListVal holding
+            // the descriptor, so `must("a"|"b",m)` became a three-element list
+            // with a nil in front and every check against it failed, while
+            // `neq(3,$.z)` became an unusable argument. Reducing here gives a
+            // comma group the same meaning a single argument already has:
+            // `min(1+1)` and `must(1+1,m)` now agree.
+            const reduceOps = (n) => {
+                if (!Array.isArray(n)) {
+                    return n;
+                }
+                const head = n[0];
+                if (0 < n.length && null != head && 'object' === typeof head &&
+                    true !== head.isVal && 'string' === typeof head.name &&
+                    'function' === typeof opmap[head.name]) {
+                    return opmap[head.name](r, ctx, head, n.slice(1).map(reduceOps));
+                }
+                return n.map(reduceOps);
+            };
+            terms = terms.map((t, i) => 0 === i ? t : reduceOps(t));
             if ('' !== fname) {
                 const funcval = funcMap[fname];
                 // Arity is known for every built-in, so a surplus or missing

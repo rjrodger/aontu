@@ -135,3 +135,15 @@ err-invalid-peer-atom-msg	err	a:min(1)&neq(true)	Cannot constrain value
 # its own the invalid residual is merely non-generable.
 errc-bound-list-arg	errc	a:min([1])&5	invalid-arg
 errc-bound-map-arg	errc	a:min({})&5	invalid-arg
+#
+# ARGUMENTS INSIDE A COMMA GROUP (the func-paren reduction).
+#
+# An operator expression is reduced whether it is the whole argument or
+# one member of a comma group: `min(1+1)` and `neq(3,1+1)` must agree
+# about what `1+1` is. TypeScript handed the func-paren handler the
+# UNREDUCED op tree for the comma-group case and built a list holding
+# the operator descriptor, so the argument silently became unusable.
+neq-comma-ref	gen	a:neq(3,$.z) a:1\nz:2	{"a":1,"z":2}
+neq-comma-ref-reject	errc	a:neq(3,$.z) a:2\nz:2	constraint
+min-expr-arg	gen	a:min(1+1) a:2	{"a":2}
+min-expr-arg-reject	errc	a:min(1+1) a:1	constraint
