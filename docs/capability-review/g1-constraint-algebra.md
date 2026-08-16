@@ -204,7 +204,7 @@ syntax" (IDEAS.md), grows the surface a constrained-decoding grammar
 new precedence interactions with `&`, `|`, `*`, and `?`.
 
 **B. Function-form atoms** (`min(0)`, `max(10)`, `re("^[a-z]+$")`,
-`len(c)`). Zero grammar change: atoms enter through `funcMap`, the
+`length(c)`). Zero grammar change: atoms enter through `funcMap`, the
 established extension point; canon already renders functions
 reparseably; the Go port mirrors a registry entry, not a grammar
 change. Cost: more verbose than `>0`, unfamiliar to CUE-trained
@@ -259,22 +259,22 @@ Band B — evaluate-only, honestly reported as such.
 | `below(x)` | A | value < x |
 | `neq(x, ...)` | A | value equals none of the listed scalars |
 | `re(p)` | A | string matches pattern p (unanchored) |
-| `len(c)` | A | length/count satisfies integer constraint c |
+| `length(c)` | A | length/count satisfies integer constraint c |
 | `unique()` | A | members pairwise distinct (list elements, map values) |
 | `must(c, msg)` | B | evaluate-only check with author message |
 
 Numeric bound atoms imply the `number` kind; string-argument bounds
-and `re` imply `string`; `unique` implies list or map; `len` applies to
+and `re` imply `string`; `unique` implies list or map; `length` applies to
 strings (length), lists (element count), and maps (entry count),
 with the domain fixed by the peer. Mixing domains in one meet
 (`min(0) & min("a")`) is empty and yields nil.
 
-`len` is compositional: its argument is any integer-domain
-constraint, so `len(3)` means exactly 3 and `len(min(2) & max(5))`
+`length` is compositional: its argument is any integer-domain
+constraint, so `length(3)` means exactly 3 and `length(min(2) & max(5))`
 means between 2 and 5 — "between 2 and 5 replicas" is
-`replicas: len(min(2) & max(5))` on the replica list (there is no
+`replicas: length(min(2) & max(5))` on the replica list (there is no
 list kind keyword; the domain resolves against the peer). The meet
-of `len(c1)` and `len(c2)` is `len(c1 & c2)`; its emptiness is the
+of `length(c1)` and `length(c2)` is `length(c1 & c2)`; its emptiness is the
 emptiness of `c & integer & min(0)`. The count/cardinality atom
 therefore reuses the numeric algebra instead of duplicating it.
 
@@ -284,10 +284,10 @@ A new Val kind, `ConstraintVal` (`ts/src/val/ConstraintVal.ts`, Go
 `go/constraint.go`), is the normal form of any meet of Band A atoms
 over one domain: an interval (endpoints plus open/closed flags), an
 exclusion set (from `neq`), a set of regex atoms, a nested integer
-constraint for `len`, and a uniqueness flag. Rules:
+constraint for `length`, and a uniqueness flag. Rules:
 
 - **Meet.** atom & atom (same domain) → interval intersection,
-  exclusion-set union, regex-set union, recursive `len` meet.
+  exclusion-set union, regex-set union, recursive `length` meet.
   `min(0) & min(5)` → `min(5)`. Constraint & concrete scalar →
   membership check → the scalar, or nil. Constraint & kind → domain
   narrowing (`integer & min(0)` keeps both; `string & min(0)` is
@@ -302,7 +302,7 @@ constraint for `len`, and a uniqueness flag. Rules:
   numeric leaf and `neq(3)` excludes only the integer `3`, so that
   meet is NOT empty, while `integer & min(3) & max(3) & neq(3)` → nil
   (re-derived in phase 0; the normative statement is
-  `docs/reference-language.md`, "The constraint algebra"); `len(c)` empty
+  `docs/reference-language.md`, "The constraint algebra"); `length(c)` empty
   iff its integer constraint is. Regex emptiness is deliberately
   approximate: distinct `re` atoms accumulate as a residual and are
   never declared empty — sound (no false conflicts), incomplete
@@ -317,7 +317,7 @@ constraint for `len`, and a uniqueness flag. Rules:
 - **Canonical form.** A residual `ConstraintVal` renders as its
   normalised atoms joined by `&` in a fixed order — kind, lower
   bound, upper bound, `neq` (arguments sorted), `re` (patterns
-  sorted), `len`, `unique`, `must` — matching the existing canon
+  sorted), `length`, `unique`, `must` — matching the existing canon
   style (`docs/reference-language.md`): no spaces, reparseable.
   Because atoms are functions, `parse(canon(v)) == v` holds through
   the existing function-canon path: the reparse produces a conjunct
@@ -523,7 +523,7 @@ something worth exposing.
   questions belong to [G5](g5-trust-contract.md).
 - **No quantified cross-child cardinality atoms.** "Exactly one
   child with `primary: true`" awaits [G8](g8-generation.md)'s total
-  combinators (`len` over a filter); until then `must` is the honest
+  combinators (`length` over a filter); until then `must` is the honest
   stopgap.
 - **No user-defined predicates or functions.** Recursion trades away
   the termination guarantee (index trap); abstraction power is
@@ -574,7 +574,7 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    emptiness / subsumption tables and the canonical atom order into
    a new section of `docs/reference-language.md`; author
    `test/spec/constraint-bound.tsv`, `constraint-re.tsv`,
-   `constraint-len.tsv`, `constraint-cross.tsv` with canon, gen, and
+   `constraint-length.tsv`, `constraint-cross.tsv` with canon, gen, and
    err rows, including round-trip and order-independence rows
    (`min(0)&max(10)` vs `max(10)&min(0)` → identical canon).
    *(Since done, all three tables: the algebra section is in
@@ -587,7 +587,7 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    (bounds are exact order over the number line, leaf-agnostic;
    `neq` excludes by scalar identity, so point-deletion emptiness
    requires a narrowed leaf), endpoint tightening decided (lazy
-   endpoints, eager emptiness), `len` pinned to Unicode code points.
+   endpoints, eager emptiness), `length` pinned to Unicode code points.
    The four spec files are authored as DRAFTS in `test/spec/draft/`
    — the parity-probe rule forbids executable rows for unimplemented
    behaviour — and are promoted with fresh probes as each phase
@@ -621,25 +621,30 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    authoring mistake a generic message. The reason text is a fixed
    string, not the host's, so the frame stays byte-identical across
    ports. Rows: `test/spec/constraint-re.tsv`.)*
-4. **Phase 3 — `len` and `unique` (M).** `len` reuses the integer
+4. **Phase 3 — `length` and `unique` (M).** `length` reuses the integer
    algebra recursively; domain resolution against string/list/map
    peers touches `ts/src/val/ListVal.ts` and `MapVal.ts` membership
    checks (`go/listval.go`, `go/mapval.go`).
    *(Two semantics the plan text left open, now decided and written
    into `docs/reference-language.md` before any code, per the
-   spec-first method. **`len` counts what GENERATES**: an optional key
+   spec-first method. **`length` counts what GENERATES**: an optional key
    that never resolves is dropped at generation and does not count, so
-   `len(1) & {x:1, y?:number}` holds. Review caught the first draft of
-   this note specifying a mechanism the engine does not have: it said
-   `len` RESIDUATES until the optional "resolves or is dropped", but an
-   optional survives unification carrying its unresolved value and is
-   dropped only in `BagVal.gen`, so nothing would ever settle it and the
-   atom would be stuck. The correct statement is that a map with an
-   unresolved optional has no knowable count until generation, so `len`
-   over one is COMPLETED AT GENERATION — the one atom with a
-   generate-time leg. Maps without unresolved optionals decide eagerly
-   as usual, and the atom's own arithmetic (`len(min(5)&max(3))`) is
-   empty at composition time regardless. **`unique()` applies to
+   `length(1) & {x:1, y?:number}` holds. WHEN it is decided took three
+   passes to get right, and the two wrong answers are worth keeping
+   because each was refuted by evidence rather than by argument. First
+   draft: `length` "residuates until the optional resolves or is dropped"
+   — refuted by review, since an optional survives unification and is
+   dropped only in `BagVal.gen`, so nothing would ever settle it.
+   Second: `length` over such a map is "completed at generation" —
+   refuted by probing the engine, which shows `a:{x:1,y?:number}`
+   converging DONE on the first pass with the optional child settled
+   and simply not generable, so the count is knowable then and no
+   generate-time leg is needed. The rule that survives: `length` counts
+   the members that will generate, mirroring generation's own skip
+   rules, and RESIDUATES only while an optional child is still
+   converging (`y?:$.z` before `z` resolves) — the same discipline
+   every other deferring value follows. The atom's own arithmetic
+   (`length(min(5)&max(3))`) is empty at composition time regardless. **`unique()` applies to
    lists and maps**: list elements pairwise distinct, map entry values
    pairwise distinct, compared by CANONICAL FORM — which reduces to
    scalar identity for scalars (`[1, 1.0]` stays distinct under the
@@ -647,6 +652,26 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    (`[{x:1},{x:1}]` is not unique) without a second rule. Any other peer is a domain conflict, and
    uniqueness by PROJECTION stays deferred to G8's combinators with the
    arity reserved.)*
+   *(**Landed, with one departure from this plan.** Implementing it
+   surfaced a rule neither the plan nor the reference had: the sizing
+   atoms must fold LAST in a conjunct. Every atom before them sorts at
+   `cjo` 50000, below the container default, because an order atom may
+   decide as soon as it meets a scalar — meeting further scalars can
+   only narrow. A sizing atom cannot: meeting further containers GROWS
+   the member set, so `a:length(2) a:{x:1} a:{y:2}` folded at 50000 counts
+   `{x:1}` alone and refuses the fragment layering the language exists
+   for. The residual therefore takes `SIZING_CJO` (150000) when it
+   carries `length` or `unique`, and `MapVal`/`ListVal` hand a constraint
+   peer straight back to the constraint, because the new order reverses
+   which side drives the meet. `docs/reference-language.md`, "Sizing
+   atoms fold last", is the normative statement; `constraint-length.tsv`
+   pins written-order independence. Two smaller consequences: a sizing
+   residual has no domain of its own, so a kind SETS one
+   (`string & length(3)` is a three-character string, `number & length(3)` is
+   empty), and canon must then spell out a bare `string`; and the count
+   argument is read at composition time and does NOT residuate, so
+   `length($.n)` is refused rather than deferred — phase 4's cross-field
+   work is about atom arguments generally and can revisit it.)*
 5. **Phase 4 — cross-field arguments and residuation (M).**
    `RefVal`-valued atom arguments; residuation rows including
    forward references and spread interplay (`&:` templates carrying
@@ -680,7 +705,7 @@ applied to the language itself.
   publishes the grammar and real usage shows how often the hint
   fires.
 - **String length semantics.** TS strings are UTF-16 code units, Go
-  strings are bytes with rune iteration — `len` on strings must pin
+  strings are bytes with rune iteration — `length` on strings must pin
   one definition (Unicode code points is least surprising and costs
   Go nothing) and spec-test the astral-plane cases. A parity
   landmine either way; a Phase 0 row, not an implementation

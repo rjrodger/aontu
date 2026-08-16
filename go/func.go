@@ -21,7 +21,7 @@ var funcSet = map[string]bool{
 	"pref": true, "super": true, "type": true, "hide": true,
 	"move": true, "path": true, "close": true, "open": true,
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
-	"re": true,
+	"re": true, "length": true, "unique": true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -29,17 +29,21 @@ var funcSet = map[string]bool{
 // entry, and the arity is a property of the language rather than of
 // either port -- ts/src/lang.ts carries the same table.
 //
-// Nearly everything takes exactly one. The two exceptions earn their
+// Nearly everything takes exactly one. The three exceptions earn their
 // place: key() names how many levels UP the path to read, defaulting to
-// the parent when omitted, and neq takes a whole set of exclusions.
+// the parent when omitted, neq takes a whole set of exclusions, and
+// unique() is a property of the container rather than a comparison
+// against anything, so there is nothing for it to take.
 var funcArity = map[string][2]int{
 	"upper": {1, 1}, "lower": {1, 1}, "copy": {1, 1}, "pref": {1, 1},
 	"super": {1, 1}, "type": {1, 1}, "hide": {1, 1}, "close": {1, 1},
 	"open": {1, 1}, "move": {1, 1}, "path": {1, 1},
 	"min": {1, 1}, "max": {1, 1}, "above": {1, 1}, "below": {1, 1},
-	"re":  {1, 1},
-	"key": {0, 1},
-	"neq": {1, -1},
+	"re":     {1, 1},
+	"length": {1, 1},
+	"key":    {0, 1},
+	"unique": {0, 0},
+	"neq":    {1, -1},
 }
 
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
@@ -61,14 +65,16 @@ func writtenArgCount(terms []any) int {
 
 // arityText renders a built-in's permitted count for the error message.
 // The fixed-arity case says "one" outright rather than counting: every
-// fixed arity in the table IS one, and a phrasing for a count no entry
-// carries would be untested prose pretending to be tested.
+// fixed arity in the table is either one or none, and a phrasing for a
+// count no entry carries would be untested prose pretending to be tested.
 func arityText(lo, hi int) string {
 	switch {
 	case -1 == hi:
 		return "one or more arguments"
 	case lo != hi:
 		return "no arguments or one"
+	case 0 == hi:
+		return "no arguments"
 	default:
 		return "exactly one argument"
 	}

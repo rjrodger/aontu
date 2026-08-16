@@ -128,7 +128,7 @@ describe('lsp-completion', () => {
 
   test('completion-list', () => {
     const c = computeCompletions()
-    Assert.equal(c.length, 29) // 18 funcs + 7 kinds + 4 literals
+    Assert.equal(c.length, 31) // 20 funcs + 7 kinds + 4 literals
     const byLabel = new Map(c.map(i => [i.label, i]))
     Assert.equal(byLabel.get('upper')?.kind, COMPLETION_FUNCTION)
     Assert.equal(byLabel.get('string')?.kind, COMPLETION_KEYWORD)
@@ -143,7 +143,7 @@ describe('lsp-completion', () => {
   test('builtin-funcs-match-engine', () => {
     // Drift guard: every BUILTIN_FUNCS name must be recognised by the
     // parser, and a bogus name must not be.
-    Assert.equal(BUILTIN_FUNCS.length, 18)
+    Assert.equal(BUILTIN_FUNCS.length, 20)
     const a = new Aontu()
     for (const name of BUILTIN_FUNCS) {
       const errs = computeDiagnostics('x:' + name + '(1)')
@@ -180,7 +180,7 @@ describe('lsp-handler', () => {
     Assert.match(hov[0].result.contents.value, /8080/)
 
     const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} })
-    Assert.equal(comp[0].result.length, 29)
+    Assert.equal(comp[0].result.length, 31)
   })
 
 

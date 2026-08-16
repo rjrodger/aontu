@@ -355,6 +355,54 @@ severity, the data site as primary `location`, the schema site under
 Nothing beyond this profile (no fixes, no code flows); enough for
 GitHub code-scanning upload and PR annotation.
 
+### What the spec suite can actually pin
+
+Phase 2's deliverable is "rows before code", and reconnaissance against
+the engine turned up five constraints on what a row *can* assert. Each
+was probed, not reasoned about; together they rule out the obvious
+encodings.
+
+1. **A path is not delimiter-safe.** `"a b":1 "a b":2` produces a
+   finding whose path is `a b`; `"a@b"` gives `a@b` and `"a+b"` gives
+   `a+b`. Every character a compact `code@path` summary might use as a
+   separator is legal inside a quoted map key, and JSON data carries
+   such keys routinely. A finding list must therefore be **JSON-encoded
+   in the expect cell**, reusing `exactJSON`/`json.Encoder` — the one
+   serialiser pair the suite already holds to byte parity — rather than
+   invented punctuation.
+
+2. **Message text is deliberately not in parity.** Both runners say so
+   at the `errc` site (ts/test/spec.test.ts, go/spec_test.go), and
+   `test/spec/divergent.tsv` repeats it: codes are contractual, prose is
+   not. A whole-report byte golden would silently promote every
+   `message` string to a cross-port contract the repository refuses. So
+   **`message` is excluded from any byte-pinned golden** and asserted by
+   substring the way `err` rows already are; every other finding field
+   is byte-pinned.
+
+3. **Codes are partly dynamic.** `codeClasses` registers five *prefixes*
+   — `func:`, `op:`, `op[`, `var[`, `ref[` — and `codeClass()` resolves
+   an unregistered code through them. A check of the form "every code a
+   vet row names is a key of `codeClasses`" would reject a whole family
+   of real findings; the check must go through **`codeClass()`**.
+
+4. **Finding order is not in parity today, so it cannot be pinned
+   until vet defines it.** The walk this builds on iterates raw object
+   keys, and the two hosts disagree: source `10:… 9:…` yields TS key
+   order `["9","10"]` (JavaScript hoists integer-like keys) against Go's
+   insertion order. `ts/src/keyorder.ts` exists for exactly this. Vet
+   must therefore **sort findings itself** before emitting them — which
+   also answers the ordering question left open below. The order is by
+   data site (file, row, column), then code, compared by code point.
+
+5. **`truncated` is rarer than the plan assumes.** Two independent
+   conflicts *do* collect in one pass — `a:integer b:integer a:"x" b:"y"`
+   yields two findings — so the first-error break truncates only when a
+   *later pass* would have found more. `truncated` therefore means
+   precisely "the pass loop stopped with work outstanding, or
+   `--max-errors` capped the list", and phase 6 shrinks the first case
+   without changing the field.
+
 ### Collect-mode API surface
 
 TypeScript (ts/src/vet.ts, exported from ts/src/aontu.ts):
@@ -492,20 +540,29 @@ implementation.
 
 ## Open questions
 
-- **Default completeness.** Should bare `vet` require full
-  concreteness (incomplete ⇒ exit 3) or admit partial data? Agent
-  emission favours strict; drift checks over partial dumps favour
-  `--partial`. Must be settled before the exit classes are documented
-  as stable.
+- ~~**Default completeness.**~~ **Decided: strict.** Bare `vet`
+  requires full concreteness — residue with no contradiction is
+  verdict `incomplete`, exit 3 — and `--partial` opts out. The gate is
+  the primary use: a half-finished document must not pass one, and a
+  verb that silently accepted "not yet finished" would answer the
+  wrong question for the agent loop the verb exists to serve. The
+  drift case is real but secondary, and it pays exactly one flag. The
+  exit classes may therefore be documented as stable when phase 3
+  lands them.
 - **YAML ingestion.** Live dumps are often YAML. Accepting it means a
   site-accurate YAML parser in *both* implementations, or a
   documented `yq`-style conversion step; parser cost decides.
-- **Relaxed versus strict data parsing.** Full-grammar parsing lets
-  "data" carry operators and constraints — arguably a feature (a
-  candidate can refine the truth) but it blurs the data/schema role
-  labels. A `--strict-data` JSON mode is the conservative
-  alternative; the default depends on whether vet's contract is
-  "validate a document" or "validate a contribution".
+- ~~**Relaxed versus strict data parsing.**~~ **Decided: full
+  grammar.** A data file is ordinary Aontu source, so a candidate may
+  refine the truth (`replicas: min(2)`) rather than only satisfy it —
+  vet's contract is "validate a **contribution**". This is what makes
+  the verb compose with layering instead of standing outside it, and
+  it costs nothing at the report layer: site *roles* are assigned by
+  URL provenance, not by what the file's grammar was allowed to
+  contain, so the labels stay crisp however rich the data is. A
+  `--strict-data` JSON-only mode remains available as an additive
+  flag if a caller wants the narrower contract; nothing in the report
+  shape changes when it lands.
 - **Registry source of truth.** Whether hints.ts generates
   errcodes.tsv or errcodes.tsv generates both hint tables; the
   generation direction decides which artifact is the contract.
@@ -513,6 +570,11 @@ implementation.
   validation entrypoints (an in-file mark), which travels better than
   a flag once schemas are distributed ([G6](g6-distribution.md)) but
   adds language surface; the flag ships first.
-- **Finding cap and ordering once Phase 6 lands.** CUE's thirty-site
-  pile-ups argue for a low default cap; agent loops argue for
-  data-site document order so repairs apply top-down.
+- ~~**Finding ordering.**~~ **Decided: vet sorts, by data site then
+  code.** Not a preference but a necessity — the underlying walk's
+  order is not in cross-port parity (see "What the spec suite can
+  actually pin", point 4), so an unsorted report could not be pinned by
+  a shared row at all. Data-site document order is also what agent
+  loops want, so the forced answer is the wanted one. The **cap**
+  remains open: CUE's thirty-site pile-ups argue for a low default,
+  and it only starts to bite once phase 6 lands.

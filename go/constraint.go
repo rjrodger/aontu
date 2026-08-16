@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 type constraintBound struct {
@@ -331,26 +332,54 @@ func normaliseRe(src string) (string, string) {
 // shallowly, like a ScalarKindVal).
 type ConstraintVal struct {
 	base
-	domain  string // "number", "string", or ""
-	kind    Kind   // KindTop when unnarrowed; a numeric leaf otherwise
-	lo, hi  *constraintBound
-	neqs    []*ScalarVal
-	res     []constraintRe // accumulated patterns, sorted by source
-	invalid string         // why-code when the atom's arguments were unusable
+	domain string // "number", "string", or ""
+	kind   Kind   // KindTop when unnarrowed; a numeric leaf otherwise
+	lo, hi *constraintBound
+	neqs   []*ScalarVal
+	res    []constraintRe // accumulated patterns, sorted by source
+	// count is the len() residual: itself a residual over the integer
+	// domain, because the count atom reuses this same algebra
+	// recursively. nil when the residual says nothing about length.
+	count *ConstraintVal
+	uniq  bool // members must be pairwise distinct (unique())
+	// clash records a kind disagreement inside a len() argument. That
+	// meet runs at construction, where there is no Ctx to fail through,
+	// so emptiness carries the news instead.
+	clash   bool
+	invalid string // why-code when the atom's arguments were unusable
 	// invalidWhy is the human half of a constraint_pattern refusal: which
 	// construct put the pattern outside the portable subset. Injected
 	// into the hint as {reason}; the TS twin carries the same string.
 	invalidWhy string
 }
 
-func (c *ConstraintVal) cjo() int      { return 50000 }
+// sizingCjo is the conjunct sort order for a SIZING residual. Every
+// other value sorts below the container default (99999), so a sizing
+// atom is the LAST term to fold: `a:len(2) a:{x:1} a:{y:2}` must count
+// the MERGED map, and a constraint that folded at 50000 would count
+// `{x:1}` alone and refuse the layering that is the whole point of the
+// language.
+//
+// The order atoms keep the low slot: `min(2) & 1 & 2` may decide as
+// soon as it sees a scalar, because meeting more scalars can only
+// narrow. Meeting more containers GROWS the member set, which is why
+// the two orders differ.
+const sizingCjo = 150000
+
+func (c *ConstraintVal) cjo() int {
+	if nil != c.count || c.uniq {
+		return sizingCjo
+	}
+	return 50000
+}
+
 func (c *ConstraintVal) superior() Val { return top() }
 
 // constraintAtoms are the funcSet members routed to newConstraint by
 // the func-paren handler in lang.go.
 var constraintAtoms = map[string]bool{
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
-	"re": true,
+	"re": true, "length": true, "unique": true,
 }
 
 // orderableScalar reports the algebra domain of a scalar: numeric
@@ -409,6 +438,14 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 
 	bad := func(why string) *ConstraintVal {
 		c.invalid = why
+		return c
+	}
+
+	// `unique()` takes no argument: it is a property of the container,
+	// not a comparison against a value. Arity is checked at parse, so a
+	// written argument never reaches here.
+	if "unique" == atom {
+		c.uniq = true
 		return c
 	}
 
@@ -472,6 +509,31 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 		return c
 	}
 
+	// `length` is the other non-ORDER atom: its argument constrains the
+	// COUNT, not the value, so it is itself a residual over the integer
+	// domain (docs/reference-language.md, "`length` semantics"). It is
+	// resolved HERE, at construction, by walking the written argument
+	// rather than by unifying it: the func-paren handler builds atoms
+	// without a Ctx, so there is nothing to fold a nested conjunct
+	// through. Walking is enough because a length argument is by definition
+	// a meet of concrete Band A atoms; anything else (a reference, an
+	// expression) is refused rather than deferred, the same discipline
+	// min/max apply to their own arguments.
+	if "length" == atom {
+		arg := countArgState(args[0])
+		if nil == arg {
+			return bad("invalid-arg")
+		}
+		inner := meetCount(countBase(), arg)
+		c.count = inner
+		// `len(min(5)&max(3))` is unsatisfiable with no peer in sight,
+		// so it is refused at composition time like any other empty meet.
+		if stateEmpty(inner) {
+			return bad("constraint")
+		}
+		return c
+	}
+
 	sv, d := orderableScalar(args[0])
 	if nil == sv {
 		return bad("invalid-arg")
@@ -507,73 +569,136 @@ func (c *ConstraintVal) Unify(peer Val, ctx *Ctx) Val {
 	if ps, ok := peer.(*ScalarVal); ok {
 		return c.admit(ps, ctx)
 	}
-	// Maps, lists, and every other non-scalar shape: no order, no
-	// membership — a conflict of the constraint family.
+	if pm, ok := peer.(*MapVal); ok {
+		return c.admitContainer(pm, pm.optional, ctx, peer)
+	}
+	if pl, ok := peer.(*ListVal); ok {
+		return c.admitContainer(pl, nil, ctx, peer)
+	}
+	// Every other shape: no order, no membership, nothing to count -- a
+	// conflict of the constraint family. The ladder above is total in
+	// practice: every remaining Val kind either sorts BELOW a constraint
+	// in a conjunct (conjunct, disjunct, pref, ref) and so drives the
+	// meet from its own side, or resolves to a scalar/container before a
+	// constraint sees it (func, op, var, expect). The arm is kept
+	// because "in practice" depends on the cjo table, and a future value
+	// class would land here rather than falling through Unify with no
+	// result.
+	//coverage:ignore-block no Val kind reaches this arm; see above
 	return c.fail(ctx, peer)
 }
 
 // admit checks membership: the peer scalar passes every part of the
 // residual, or the meet is a located conflict.
 func (c *ConstraintVal) admit(peer *ScalarVal, ctx *Ctx) Val {
-	sv, d := orderableScalar(peer)
-	if nil == sv || d != c.domain {
+	// No scalar has members, so a `unique()` residual admits none.
+	if c.uniq {
 		return c.fail(ctx, peer)
 	}
-	if KindTop != c.kind && peer.kind != c.kind {
+	if !stateAdmits(c, peer) {
 		return c.fail(ctx, peer)
 	}
-	if nil != c.lo {
-		cv := cmpConstraintVal(c.domain, peer, c.lo.v)
-		if cv < 0 || (0 == cv && c.lo.open) {
+	if nil != c.count {
+		// Only a string among the scalars has a length, and it is
+		// counted in CODE POINTS -- not bytes (this host's native
+		// count) and not UTF-16 units (the TS port's).
+		if KindString != peer.kind {
 			return c.fail(ctx, peer)
 		}
-	}
-	if nil != c.hi {
-		cv := cmpConstraintVal(c.domain, peer, c.hi.v)
-		if cv > 0 || (0 == cv && c.hi.open) {
-			return c.fail(ctx, peer)
-		}
-	}
-	for _, n := range c.neqs {
-		if sameConstraintScalar(peer, n) {
-			return c.fail(ctx, peer)
-		}
-	}
-	// Every accumulated pattern must match: the meet of two `re` atoms
-	// is conjunction, and matching is UNANCHORED in both engines
-	// (Go MatchString, JS RegExp.test), so `re("el")` admits "hello".
-	// Anchor with ^ and $ to mean the whole string.
-	for _, r := range c.res {
-		if !r.re.MatchString(peer.peg.(string)) {
+		n := utf8.RuneCountInString(peer.peg.(string))
+		if !stateAdmits(c.count, countVal(n)) {
 			return c.fail(ctx, peer)
 		}
 	}
 	return peer
 }
 
+// admitContainer checks membership for a map or list peer. Only the
+// SIZING atoms have anything to say about a container; every other atom
+// is scalar-domain and refuses one.
+//
+// The members that count are the members that GENERATE
+// (docs/reference-language.md, "`length` semantics"), so the selection in
+// emittedMembers mirrors MapVal.Gen/ListVal.Gen exactly.
+func (c *ConstraintVal) admitContainer(
+	bag Val, optional []string, ctx *Ctx, peer Val) Val {
+	// A scalar-domain residual has no reading over a container.
+	if "" != c.domain {
+		return c.fail(ctx, peer)
+	}
+	// Not yet settled: the container, or an optional child, may still
+	// resolve, so the member set is not final. Defer rather than decide
+	// — the same discipline OpBaseVal follows for a non-concrete operand.
+	if !containerSettled(bag) {
+		c.dc = 0
+		return newConjunct([]Val{c, peer})
+	}
+
+	members := emittedMembers(bag, optional, ctx)
+	if nil == members {
+		// The container cannot generate at all; its own error is the
+		// one worth reporting, so pass it through untouched.
+		return peer
+	}
+
+	if nil != c.count && !stateAdmits(c.count, countVal(len(members))) {
+		return c.fail(ctx, peer)
+	}
+
+	if c.uniq {
+		// Members compare by CANONICAL FORM, which reduces to scalar
+		// identity for scalars (so [1, 1.0] is distinct) and gives
+		// structural equality for container members without a second
+		// rule. A generated value could not express the first: `1` and
+		// `1.0` generate the same JSON number.
+		seen := map[string]bool{}
+		for _, m := range members {
+			key := m.Canon()
+			if seen[key] {
+				return c.fail(ctx, peer)
+			}
+			seen[key] = true
+		}
+	}
+
+	return peer
+}
+
 // meetKind: `number` (or `string` on the string domain) is already
-// implied; a numeric LEAF narrows the residual; anything else has an
-// empty intersection with the constraint's domain.
+// implied by an ORDER atom's argument; a numeric LEAF narrows the
+// residual; anything else has an empty intersection with the
+// constraint's domain.
+//
+// A sizing residual (`length`, `unique`) has no domain of its own -- a
+// count says nothing about what is counted -- so a kind here SETS one
+// rather than merely agreeing with it: `string & len(3)` is a
+// three-character string, and `number & len(3)` is empty because a
+// number has no length (stateEmpty decides that, not this).
 func (c *ConstraintVal) meetKind(peer *ScalarKindVal, ctx *Ctx) Val {
 	switch peer.kind {
-	case KindNumber:
-		if "number" == c.domain {
+	case KindNumber, KindString:
+		d := "number"
+		if KindString == peer.kind {
+			d = "string"
+		}
+		if d == c.domain {
 			return c
 		}
-		return c.fail(ctx, peer)
-	case KindString:
-		if "string" == c.domain {
-			return c
+		if "" != c.domain {
+			return c.fail(ctx, peer)
 		}
-		return c.fail(ctx, peer)
+		merged := c.cloneState()
+		merged.domain = d
+		return c.finish(merged, ctx, peer)
 	case KindInteger, KindFloat, KindBigInteger, KindBigDecimal:
-		if "number" != c.domain {
+		if "string" == c.domain {
 			return c.fail(ctx, peer)
 		}
 		if KindTop != c.kind && c.kind != peer.kind {
 			return c.fail(ctx, peer)
 		}
 		merged := c.cloneState()
+		merged.domain = "number"
 		merged.kind = peer.kind
 		return c.finish(merged, ctx, peer)
 	}
@@ -604,6 +729,19 @@ func (c *ConstraintVal) meetConstraint(peer *ConstraintVal, ctx *Ctx) Val {
 	merged.hi = tighterBound(merged.domain, c.hi, peer.hi, false)
 	merged.neqs = dedupSortedNeqs(merged.domain, append(append([]*ScalarVal{}, c.neqs...), peer.neqs...))
 	merged.res = dedupSortedRes(append(append([]constraintRe{}, c.res...), peer.res...))
+	// `len(c1) & len(c2)` is `len(c1 & c2)`: the count atom reuses the
+	// numeric algebra recursively, over the counts rather than the
+	// values.
+	switch {
+	case nil == c.count:
+		merged.count = peer.count
+	case nil == peer.count:
+		merged.count = c.count
+	default:
+		merged.count = meetCount(c.count, peer.count)
+	}
+	// `unique()` is idempotent: two of them are one.
+	merged.uniq = c.uniq || peer.uniq
 
 	return c.finish(merged, ctx, peer)
 }
@@ -611,51 +749,8 @@ func (c *ConstraintVal) meetConstraint(peer *ConstraintVal, ctx *Ctx) Val {
 // finish applies the eager emptiness rules and builds the merged
 // residual (a NEW value; residuals are immutable).
 func (c *ConstraintVal) finish(state *ConstraintVal, ctx *Ctx, peer Val) Val {
-	d := state.domain
-
-	if nil != state.lo && nil != state.hi {
-		cv := cmpConstraintVal(d, state.hi.v, state.lo.v)
-		if cv < 0 || (0 == cv && (state.lo.open || state.hi.open)) {
-			return c.fail(ctx, peer)
-		}
-	}
-
-	integral := KindInteger == state.kind || KindBigInteger == state.kind
-
-	// Integral gap: an integer-narrowed interval containing no whole
-	// number is empty (integer & above(1) & below(2)). The
-	// representability holes of the int64-window integer leaf are
-	// deliberately NOT modelled — sound, incomplete (see the TS twin).
-	if integral && nil != state.lo && nil != state.hi {
-		lo := scaledOfNumeric(state.lo.v)
-		hi := scaledOfNumeric(state.hi.v)
-		if 0 == lo.inf && 0 == hi.inf {
-			n := scaledFloorBig(lo)
-			if !scaledIsIntegral(lo) || state.lo.open {
-				n.Add(n, oneBig)
-			}
-			m := scaledFloorBig(hi)
-			if state.hi.open && scaledIsIntegral(hi) {
-				m.Sub(m, oneBig)
-			}
-			if m.Cmp(n) < 0 {
-				return c.fail(ctx, peer)
-			}
-		}
-	}
-
-	// Point deletion under a narrowed leaf: a closed point interval
-	// whose single value of the narrowed leaf is excluded is empty
-	// (integer & min(3) & max(3) & neq(3)). Without a narrowing the
-	// point survives in the other leaves.
-	if KindTop != state.kind && nil != state.lo && nil != state.hi &&
-		!state.lo.open && !state.hi.open &&
-		0 == cmpConstraintVal(d, state.lo.v, state.hi.v) {
-		for _, n := range state.neqs {
-			if n.kind == state.kind && 0 == cmpNumeric(n, state.lo.v) {
-				return c.fail(ctx, peer)
-			}
-		}
+	if stateEmpty(state) {
+		return c.fail(ctx, peer)
 	}
 
 	state.dc = DONE
@@ -685,6 +780,9 @@ func (c *ConstraintVal) cloneState() *ConstraintVal {
 		hi:      c.hi,
 		neqs:    append([]*ScalarVal{}, c.neqs...),
 		res:     append([]constraintRe{}, c.res...),
+		count:   c.count,
+		uniq:    c.uniq,
+		clash:   c.clash,
 		invalid: c.invalid,
 	}
 	out.invalidWhy = c.invalidWhy
@@ -722,12 +820,19 @@ func dedupSortedRes(res []constraintRe) []constraintRe {
 }
 
 // Canon renders the fixed canonical atom order: kind, lower bound,
-// upper bound, neq (arguments sorted). Reparses to a conjunct of atoms
-// that normalises back to this exact residual.
+// upper bound, neq (arguments sorted), re, length, unique. Reparses to a
+// conjunct of atoms that normalises back to this exact residual.
 func (c *ConstraintVal) Canon() string {
 	parts := []string{}
 	if KindTop != c.kind {
 		parts = append(parts, c.kind.String())
+	} else if "string" == c.domain &&
+		nil == c.lo && nil == c.hi && 0 == len(c.neqs) && 0 == len(c.res) {
+		// An ORDER atom's argument implies the domain, so it is not
+		// spelled out. A SIZING residual carries no order, and there
+		// `string` is the only thing saying what is being sized -- drop
+		// it and the reparse would admit lists and maps too.
+		parts = append(parts, "string")
 	}
 	if nil != c.lo {
 		a := "min("
@@ -753,6 +858,18 @@ func (c *ConstraintVal) Canon() string {
 	for _, r := range c.res {
 		parts = append(parts, "re("+r.v.Canon()+")")
 	}
+	if nil != c.count {
+		// Rendered UNABRIDGED, implied parts and all: `length(3)`
+		// canonicalises to `length(integer&min(3)&max(3))` because that IS
+		// the residual the count must satisfy, and canon is a normal
+		// form (G6 hashes it), not a pretty-printer. Abbreviating would
+		// mean a second set of rules for when the implied
+		// `integer & min(0)` may be dropped.
+		parts = append(parts, "length("+c.count.Canon()+")")
+	}
+	if c.uniq {
+		parts = append(parts, "unique()")
+	}
 	if 0 == len(parts) {
 		// Raw invalid atom: render the call so the error frame shows it.
 		return "constraint()"
@@ -764,6 +881,361 @@ func (c *ConstraintVal) Gen(ctx *Ctx) (any, error) {
 	// A residual constraint is not a concrete value (mirrors the TS
 	// FeatureVal no_gen family; the bag level reports mapval_no_gen).
 	return nil, residueErr(ctx, c, "no_gen")
+}
+
+// stateAdmits reports whether a residual's ORDER and MEMBERSHIP part
+// admits the scalar. The sizing atoms are deliberately not consulted:
+// admit applies them to the peer's length, and the count check applies
+// this same function to the count.
+func stateAdmits(s *ConstraintVal, peer *ScalarVal) bool {
+	sv, d := orderableScalar(peer)
+	if nil == sv {
+		// Booleans and null: no order, no length and no members.
+		return false
+	}
+	if "" == s.domain {
+		// A sizing residual has no domain, and admits any scalar the
+		// sizing atoms can then rule on.
+		return true
+	}
+	if d != s.domain {
+		return false
+	}
+	if KindTop != s.kind && peer.kind != s.kind {
+		return false
+	}
+	if nil != s.lo {
+		cv := cmpConstraintVal(s.domain, peer, s.lo.v)
+		if cv < 0 || (0 == cv && s.lo.open) {
+			return false
+		}
+	}
+	if nil != s.hi {
+		cv := cmpConstraintVal(s.domain, peer, s.hi.v)
+		if cv > 0 || (0 == cv && s.hi.open) {
+			return false
+		}
+	}
+	for _, n := range s.neqs {
+		if sameConstraintScalar(peer, n) {
+			return false
+		}
+	}
+	// Every accumulated pattern must match: the meet of two `re` atoms
+	// is conjunction, and matching is UNANCHORED in both engines
+	// (Go MatchString, JS RegExp.test), so `re("el")` admits "hello".
+	// Anchor with ^ and $ to mean the whole string.
+	for _, r := range s.res {
+		if !r.re.MatchString(peer.peg.(string)) {
+			return false
+		}
+	}
+	return true
+}
+
+// stateEmpty applies the eager emptiness rules. Each is EXACT -- it
+// reports empty only where no value could satisfy the residual -- so
+// the algebra stays sound; the incompleteness it accepts is documented
+// in docs/reference-language.md, "Emptiness".
+func stateEmpty(s *ConstraintVal) bool {
+	// Two disagreeing kind narrowings inside a length argument, recorded
+	// by meetCount because that meet has no Ctx to fail through.
+	if s.clash {
+		return true
+	}
+
+	d := s.domain
+
+	// Empty interval.
+	if nil != s.lo && nil != s.hi {
+		cv := cmpConstraintVal(d, s.hi.v, s.lo.v)
+		if cv < 0 || (0 == cv && (s.lo.open || s.hi.open)) {
+			return true
+		}
+	}
+
+	integral := KindInteger == s.kind || KindBigInteger == s.kind
+
+	// Integral gap: an integer-narrowed interval containing no whole
+	// number is empty (integer & above(1) & below(2)). The
+	// representability holes of the int64-window integer leaf are
+	// deliberately NOT modelled — sound, incomplete (see the TS twin).
+	if integral && nil != s.lo && nil != s.hi {
+		lo := scaledOfNumeric(s.lo.v)
+		hi := scaledOfNumeric(s.hi.v)
+		if 0 == lo.inf && 0 == hi.inf {
+			n := scaledFloorBig(lo)
+			if !scaledIsIntegral(lo) || s.lo.open {
+				n.Add(n, oneBig)
+			}
+			m := scaledFloorBig(hi)
+			if s.hi.open && scaledIsIntegral(hi) {
+				m.Sub(m, oneBig)
+			}
+			if m.Cmp(n) < 0 {
+				return true
+			}
+		}
+	}
+
+	// Point deletion under a narrowed leaf: a closed point interval
+	// whose single value of the narrowed leaf is excluded is empty
+	// (integer & min(3) & max(3) & neq(3)). Without a narrowing the
+	// point survives in the other leaves.
+	if KindTop != s.kind && nil != s.lo && nil != s.hi &&
+		!s.lo.open && !s.hi.open &&
+		0 == cmpConstraintVal(d, s.lo.v, s.hi.v) {
+		for _, n := range s.neqs {
+			if n.kind == s.kind && 0 == cmpNumeric(n, s.lo.v) {
+				return true
+			}
+		}
+	}
+
+	// Sizing over the number domain: a number has neither a length nor
+	// members, so `integer & len(3)` and `min(2) & unique()` admit
+	// nothing. Uniqueness over the string domain is empty for the same
+	// reason -- a string's members are not values the algebra compares.
+	if "number" == d && (nil != s.count || s.uniq) {
+		return true
+	}
+	if "string" == d && s.uniq {
+		return true
+	}
+
+	// An empty count residual makes the whole thing empty: no container
+	// and no string has a length no integer can take.
+	if nil != s.count && stateEmpty(s.count) {
+		return true
+	}
+
+	return false
+}
+
+// countBase is the base every `length` argument meets: a count is a
+// non-negative integer, whatever else the argument says
+// (docs/reference-language.md, "`length` semantics" -- `length(c)` is empty
+// iff `c & integer & min(0)` is).
+func countBase() *ConstraintVal {
+	return &ConstraintVal{
+		domain: "number",
+		kind:   KindInteger,
+		lo:     &constraintBound{v: countVal(0), open: false},
+	}
+}
+
+// countVal renders a count as a Val, so the count residual can be
+// applied by exactly the same membership function as any other numeric
+// residual.
+func countVal(n int) *ScalarVal {
+	return newInteger(int64(n))
+}
+
+// meetCount is the pure meet of two count residuals. Both are
+// number-domain and carry no pattern or sizing atom of their own, so
+// the merge is the interval/exclusion part alone. A kind disagreement
+// becomes a `clash` rather than an error: this meet runs at
+// construction, where there is no Ctx to raise through, and an empty
+// residual carries the same news to Unify.
+func meetCount(a, b *ConstraintVal) *ConstraintVal {
+	kind := a.kind
+	if KindTop == kind {
+		kind = b.kind
+	}
+	out := &ConstraintVal{
+		domain: "number",
+		kind:   kind,
+		lo:     tighterBound("number", a.lo, b.lo, true),
+		hi:     tighterBound("number", a.hi, b.hi, false),
+		neqs: dedupSortedNeqs("number",
+			append(append([]*ScalarVal{}, a.neqs...), b.neqs...)),
+		clash: a.clash || b.clash ||
+			(KindTop != a.kind && KindTop != b.kind && a.kind != b.kind),
+	}
+	out.dc = DONE
+	return out
+}
+
+// countArgState reads a WRITTEN `length` argument as a count residual, or
+// nil when it is not one. Accepted: an integer literal (an exact
+// count), a numeric kind, a Band A residual over the number domain, and
+// any conjunct of those -- which is what `len(min(2)&max(5))` arrives
+// as, and what Canon emits.
+//
+// Anything else is refused rather than deferred. A reference or an
+// expression would have to residuate, and the sizing atoms do not
+// residuate on their ARGUMENT -- only on the peer whose members are
+// still settling.
+func countArgState(arg Val) *ConstraintVal {
+	if sv, d := orderableScalar(arg); nil != sv && "number" == d {
+		out := &ConstraintVal{
+			domain: "number",
+			lo:     &constraintBound{v: sv, open: false},
+			hi:     &constraintBound{v: sv, open: false},
+		}
+		out.dc = DONE
+		return out
+	}
+
+	if cv, ok := arg.(*ConstraintVal); ok {
+		// A pattern, a sizing atom or a string bound inside a count is
+		// not a count constraint at all, and neither is a broken one.
+		if "" != cv.invalid || 0 < len(cv.res) || cv.uniq || nil != cv.count ||
+			"number" != cv.domain {
+			return nil
+		}
+		out := &ConstraintVal{
+			domain: "number",
+			kind:   cv.kind,
+			lo:     cv.lo,
+			hi:     cv.hi,
+			neqs:   append([]*ScalarVal{}, cv.neqs...),
+		}
+		out.dc = DONE
+		return out
+	}
+
+	if kv, ok := arg.(*ScalarKindVal); ok {
+		switch kv.kind {
+		case KindNumber:
+			out := &ConstraintVal{domain: "number"}
+			out.dc = DONE
+			return out
+		case KindInteger, KindFloat, KindBigInteger, KindBigDecimal:
+			out := &ConstraintVal{domain: "number", kind: kv.kind}
+			out.dc = DONE
+			return out
+		}
+		return nil
+	}
+
+	if jv, ok := arg.(*ConjunctVal); ok {
+		acc := &ConstraintVal{domain: "number"}
+		acc.dc = DONE
+		for _, term := range jv.peg {
+			one := countArgState(term)
+			if nil == one {
+				return nil
+			}
+			acc = meetCount(acc, one)
+		}
+		return acc
+	}
+
+	return nil
+}
+
+// containerSettled reports whether a bag and every child have
+// converged. Until then the member set can still change — an optional
+// key whose value is a still-resolving reference may yet generate — so
+// a sizing atom must defer rather than decide
+// (docs/reference-language.md, "`length` semantics"). Note that an
+// optional holding a settled-but-ungenerable value, `{x:1,y?:number}`,
+// IS settled: the map converges on the first pass and `y` is simply
+// never emitted.
+func containerSettled(bag Val) bool {
+	// The bag's OWN done-counter is enough: MapVal.Unify/ListVal.Unify
+	// set it from the AND over their children, so an unsettled child
+	// already leaves the bag unsettled. Walking the children again would
+	// be a second, drifting copy of that rule.
+	return DONE == bag.Dc()
+}
+
+// bagChildren lists a map's children in code-point key order (Go keeps
+// insertion order in `keys`, JavaScript hoists integer-like keys, and a
+// duplicate report must name the same pair in both) or a list's in
+// index order.
+func bagChildren(bag Val) []Val {
+	if m, ok := bag.(*MapVal); ok {
+		keys := append([]string(nil), m.keys...)
+		sort.Strings(keys)
+		out := make([]Val, 0, len(keys))
+		for _, k := range keys {
+			out = append(out, m.peg[k])
+		}
+		return out
+	}
+	return bag.(*ListVal).peg
+}
+
+// bagKeys lists a bag's member keys in the same order bagChildren lists
+// its children, so the optional test can be applied per child.
+func bagKeys(bag Val) []string {
+	if m, ok := bag.(*MapVal); ok {
+		keys := append([]string(nil), m.keys...)
+		sort.Strings(keys)
+		return keys
+	}
+	return make([]string, len(bag.(*ListVal).peg))
+}
+
+// emittedMembers lists the children a bag would EMIT, mirroring the
+// selection in MapVal.Gen/ListVal.Gen — type/hide marks skipped,
+// non-generable residue and values that generate nothing dropped,
+// optional keys dropped when they generate empty.
+//
+// It returns the member VALS rather than their generated values,
+// because uniqueness compares canon and a generated value cannot
+// express that distinction: `1` and `1.0` generate the same JSON number
+// and canon differently. Counting uses the same list, so both sizing
+// atoms see exactly one definition of "member".
+//
+// Returns nil when a REQUIRED child is residue: the container's own Gen
+// raises there, and that error is the one worth reporting.
+func emittedMembers(bag Val, optional []string, ctx *Ctx) []Val {
+	children := bagChildren(bag)
+	keys := bagKeys(bag)
+	out := []Val{}
+
+	for i, child := range children {
+		if child.markedType() || child.markedHide() {
+			continue
+		}
+
+		opt := false
+		for _, o := range optional {
+			if o == keys[i] {
+				opt = true
+				break
+			}
+		}
+
+		if !genable(child) {
+			if opt {
+				continue
+			}
+			return nil
+		}
+
+		// Generation decides in an isolated collect context, so an
+		// unresolved inner value neither raises here nor pollutes the
+		// caller's errors — the same isolation MapVal.Gen uses for an
+		// optional child.
+		gctx := &Ctx{}
+		if nil != ctx {
+			c2 := *ctx
+			c2.err = nil
+			gctx = &c2
+		}
+		gctx.collect = true
+
+		cv, err := child.Gen(gctx)
+		if nil != err || nil == cv {
+			// A child that generates nothing contributes nothing --
+			// except a JSON null, which is a member like any other.
+			if nil == err && nil == cv && gensNull(ctx, child) {
+				out = append(out, child)
+			}
+			continue
+		}
+		if opt && isEmptyGen(cv) {
+			continue
+		}
+
+		out = append(out, child)
+	}
+
+	return out
 }
 
 // tighterBound picks the tighter of two like-direction bounds: the

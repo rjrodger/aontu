@@ -358,12 +358,12 @@ type CompletionItem = {
 const COMPLETION_FUNCTION = 3
 const COMPLETION_KEYWORD = 14
 
-// The eighteen built-in functions. Kept in sync with the engine by
+// The twenty built-in functions. Kept in sync with the engine by
 // `lsp.test.ts`, which asserts each is recognised and no others are.
 const BUILTIN_FUNCS = [
-  'above', 'below', 'close', 'copy', 'hide', 'key', 'lower', 'max',
-  'min', 'move', 'neq', 'open', 'path', 'pref', 're', 'super', 'type',
-  'upper',
+  'above', 'below', 'close', 'copy', 'hide', 'key', 'length', 'lower',
+  'max', 'min', 'move', 'neq', 'open', 'path', 'pref', 're', 'super',
+  'type', 'unique', 'upper',
 ]
 
 // Scalar-kind and literal keywords.
