@@ -355,6 +355,54 @@ severity, the data site as primary `location`, the schema site under
 Nothing beyond this profile (no fixes, no code flows); enough for
 GitHub code-scanning upload and PR annotation.
 
+### What the spec suite can actually pin
+
+Phase 2's deliverable is "rows before code", and reconnaissance against
+the engine turned up five constraints on what a row *can* assert. Each
+was probed, not reasoned about; together they rule out the obvious
+encodings.
+
+1. **A path is not delimiter-safe.** `"a b":1 "a b":2` produces a
+   finding whose path is `a b`; `"a@b"` gives `a@b` and `"a+b"` gives
+   `a+b`. Every character a compact `code@path` summary might use as a
+   separator is legal inside a quoted map key, and JSON data carries
+   such keys routinely. A finding list must therefore be **JSON-encoded
+   in the expect cell**, reusing `exactJSON`/`json.Encoder` — the one
+   serialiser pair the suite already holds to byte parity — rather than
+   invented punctuation.
+
+2. **Message text is deliberately not in parity.** Both runners say so
+   at the `errc` site (ts/test/spec.test.ts, go/spec_test.go), and
+   `test/spec/divergent.tsv` repeats it: codes are contractual, prose is
+   not. A whole-report byte golden would silently promote every
+   `message` string to a cross-port contract the repository refuses. So
+   **`message` is excluded from any byte-pinned golden** and asserted by
+   substring the way `err` rows already are; every other finding field
+   is byte-pinned.
+
+3. **Codes are partly dynamic.** `codeClasses` registers five *prefixes*
+   — `func:`, `op:`, `op[`, `var[`, `ref[` — and `codeClass()` resolves
+   an unregistered code through them. A check of the form "every code a
+   vet row names is a key of `codeClasses`" would reject a whole family
+   of real findings; the check must go through **`codeClass()`**.
+
+4. **Finding order is not in parity today, so it cannot be pinned
+   until vet defines it.** The walk this builds on iterates raw object
+   keys, and the two hosts disagree: source `10:… 9:…` yields TS key
+   order `["9","10"]` (JavaScript hoists integer-like keys) against Go's
+   insertion order. `ts/src/keyorder.ts` exists for exactly this. Vet
+   must therefore **sort findings itself** before emitting them — which
+   also answers the ordering question left open below. The order is by
+   data site (file, row, column), then code, compared by code point.
+
+5. **`truncated` is rarer than the plan assumes.** Two independent
+   conflicts *do* collect in one pass — `a:integer b:integer a:"x" b:"y"`
+   yields two findings — so the first-error break truncates only when a
+   *later pass* would have found more. `truncated` therefore means
+   precisely "the pass loop stopped with work outstanding, or
+   `--max-errors` capped the list", and phase 6 shrinks the first case
+   without changing the field.
+
 ### Collect-mode API surface
 
 TypeScript (ts/src/vet.ts, exported from ts/src/aontu.ts):
@@ -522,6 +570,11 @@ implementation.
   validation entrypoints (an in-file mark), which travels better than
   a flag once schemas are distributed ([G6](g6-distribution.md)) but
   adds language surface; the flag ships first.
-- **Finding cap and ordering once Phase 6 lands.** CUE's thirty-site
-  pile-ups argue for a low default cap; agent loops argue for
-  data-site document order so repairs apply top-down.
+- ~~**Finding ordering.**~~ **Decided: vet sorts, by data site then
+  code.** Not a preference but a necessity — the underlying walk's
+  order is not in cross-port parity (see "What the spec suite can
+  actually pin", point 4), so an unsorted report could not be pinned by
+  a shared row at all. Data-site document order is also what agent
+  loops want, so the forced answer is the wanted one. The **cap**
+  remains open: CUE's thirty-site pile-ups argue for a low default,
+  and it only starts to bite once phase 6 lands.
