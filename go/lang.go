@@ -1683,7 +1683,18 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		}
 		ov := newPlusOp(asVal(terms[0]), asVal(terms[1]))
 		// Source position for error frames (TS ops carry their site).
-		ov.sp = r.O0.SI
+		//
+		// Guarded like every sibling handler: an expression is evaluated
+		// OUTSIDE any rule when it is the last member of a func-paren
+		// comma group (expr.Evaluation(nil, nil, ...) in asValDepth,
+		// which the NoRule sentinel at the top of this function stands
+		// in for), and reading O0 there dereferenced the sentinel's
+		// empty open-token slice -- a nil pointer panic that the
+		// parser's recover reported as an `internal` engine defect on
+		// `neq(1,1+1)`.
+		if r.ON > 0 {
+			ov.sp = r.O0.SI
+		}
 		return ov
 	case "func-paren":
 		// preval injects the function name as a raw string term[0] for

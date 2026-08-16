@@ -147,3 +147,12 @@ neq-comma-ref	gen	a:neq(3,$.z) a:1\nz:2	{"a":1,"z":2}
 neq-comma-ref-reject	errc	a:neq(3,$.z) a:2\nz:2	constraint
 min-expr-arg	gen	a:min(1+1) a:2	{"a":2}
 min-expr-arg-reject	errc	a:min(1+1) a:1	constraint
+#
+# `+` as the LAST member of the group is its own case: the expression is
+# evaluated OUTSIDE any rule there, and Go's addition handler read the
+# rule's open token unguarded -- a nil dereference the parser's recover
+# reported as an `internal` engine defect.
+neq-comma-expr-last	errc	a:neq(1,1+1) a:2	constraint
+neq-comma-expr-last-admit	gen	a:neq(1,1+1) a:3	{"a":3}
+neq-comma-expr-mid	errc	a:neq(1,2+3,4) a:5	constraint
+neq-comma-expr-mid-admit	gen	a:neq(1,2+3,4) a:6	{"a":6}
