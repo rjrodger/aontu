@@ -946,7 +946,7 @@ distinguishable.
 > [`test/spec/constraint-bound.tsv`](../test/spec/constraint-bound.tsv)
 > and [`test/spec/constraint-re.tsv`](../test/spec/constraint-re.tsv);
 > violations raise the registered `constraint` code, and a pattern
-> outside the portable subset raises `constraint_pattern`. `len`,
+> outside the portable subset raises `constraint_pattern`. `length`,
 > `unique` and `must` still parse as `unknown_function` errors; their
 > proposed spec rows live as **drafts** in
 > [`test/spec/draft/`](../test/spec/draft/) and are promoted (after
@@ -970,7 +970,7 @@ as such. There is no new grammar: atoms are ordinary functions.
 | `below(x)`| A | value < x |
 | `neq(x, ...)` | A | value is none of the listed scalars (leaf-aware) |
 | `re(p)`   | A | string matches pattern p (unanchored, portable subset) |
-| `len(c)`  | A | length/count satisfies integer constraint c |
+| `length(c)`  | A | length/count satisfies integer constraint c |
 | `unique()`| A | members pairwise distinct (list elements, map values) |
 | `must(c, msg)` | B | evaluate-only check with an author message |
 
@@ -1016,7 +1016,7 @@ schema-composition time, before any data arrives:
 | interval & interval | intersection: `min(0) & min(5)` → `min(5)`; `min(2) & max(10) & max(7)` → `min(2)&max(7)` |
 | `neq` & `neq` | exclusion-set union, arguments sorted |
 | `re` & `re` | regex-set accumulation (patterns sorted; never simplified) |
-| `len(c1)` & `len(c2)` | `len(c1 & c2)` — the count atom reuses the numeric algebra recursively |
+| `length(c1)` & `length(c2)` | `length(c1 & c2)` — the count atom reuses the numeric algebra recursively |
 | bound & kind | domain narrowing: `integer & min(0)` keeps both (interval gains the integral-domain flag); `number & min(0)` keeps `min(0)` (already implied); `string & min(0)` → nil |
 | bound & concrete scalar | membership by exact comparison → the scalar, or a two-site nil |
 | bound & `must` | both kept; `must` stays opaque |
@@ -1040,7 +1040,7 @@ guessed where it is not:
   `integer & min(3) & max(3) & neq(3)` → nil. This is the tower
   re-derivation of the pre-tower example, and the draft rows pin both
   directions.
-- `len(c)` is empty iff `c & integer & min(0)` is.
+- `length(c)` is empty iff `c & integer & min(0)` is.
 - Regex emptiness is deliberately approximate: distinct `re` atoms
   accumulate and are never declared empty — sound (no false
   conflicts), incomplete (some contradictions surface only against
@@ -1079,8 +1079,8 @@ in this sense and are marked; the rest are exact.
 | `neq(S)`    | `neq(T)`     | `S ⊆ T` — excluding *fewer* values is more general. `neq(1) ⊒ neq(1,2)` |
 | `neq(S)`    | concrete scalar | the scalar is in neither S nor excluded by A's other atoms |
 | `re(P)`     | `re(Q)`      | **approximate**: `P ⊆ Q` as a *set of pattern strings*. Adding a pattern narrows, so `re("a") ⊒ re("a")&re("b")` |
-| `len(c)`    | `len(d)`     | `c ⊒ d`, recursively — the count atom reuses this same table over the integer domain |
-| absent `len`/`unique` | present | always — an unsized residual admits every size |
+| `length(c)`    | `length(d)`     | `c ⊒ d`, recursively — the count atom reuses this same table over the integer domain |
+| absent `length`/`unique` | present | always — an unsized residual admits every size |
 | `unique()`  | `unique()`   | always (reflexive); nothing else subsumes or is subsumed by it |
 | `must(…)`   | anything     | **never** — a Band B predicate is opaque, so A's admitted set is unknown |
 | anything    | `must(…)`    | decided by A's other atoms alone; an extra `must` on B can only narrow B |
@@ -1121,7 +1121,7 @@ by the meet rules above).
 A residual constraint renders as its normalised atoms joined by `&`
 in a fixed order — **kind, lower bound (`min`/`above`), upper bound
 (`max`/`below`), `neq` (arguments sorted), `re` (patterns sorted),
-`len`, `unique`, `must`** — no spaces, reparseable, endpoint leaves
+`length`, `unique`, `must`** — no spaces, reparseable, endpoint leaves
 preserved:
 
 ```aon
@@ -1137,17 +1137,17 @@ identical canon) for each rule.
 
 Two renderings follow from that round trip rather than from taste:
 
-- **`len`'s argument renders unabridged**, implied parts and all:
-  `len(3)` canonicalises to `len(integer&min(3)&max(3))`, because that
-  *is* the residual the count must satisfy (`len(c)` always meets
-  `integer & min(0)`; see [`len` semantics](#len-semantics)).
+- **`length`'s argument renders unabridged**, implied parts and all:
+  `length(3)` canonicalises to `length(integer&min(3)&max(3))`, because that
+  *is* the residual the count must satisfy (`length(c)` always meets
+  `integer & min(0)`; see [`length` semantics](#length-semantics)).
   Abbreviating it would mean a second set of rules for when the implied
   parts may be dropped, and canon is a normal form — [G6](capability-review/g6-distribution.md)
   hashes it — not a pretty-printer.
 - **A bare domain is spelled out when nothing implies it.** An order
   atom's argument names its own domain, so `min(2)` need not say
-  `number`. A sizing residual carries no order, so `string & len(3)`
-  renders as `string&len(...)`: drop the `string` and the reparse would
+  `number`. A sizing residual carries no order, so `string & length(3)`
+  renders as `string&length(...)`: drop the `string` and the reparse would
   admit lists and maps of three members too.
 
 ### `re` and the portable pattern subset
@@ -1236,38 +1236,38 @@ Canon renders the pattern **as written**, never the rewritten form:
 canon round-trips source, and [G6](capability-review/g6-distribution.md)'s
 semantic hash will be taken over canon.
 
-### `len` semantics
+### `length` semantics
 
-`len` applies to strings, lists, and maps, with the domain fixed by
+`length` applies to strings, lists, and maps, with the domain fixed by
 the peer:
 
 - **strings**: length in **Unicode code points** — not UTF-16 code
-  units (TS's native count) and not bytes (Go's): `len(1) & "𝄞"`
+  units (TS's native count) and not bytes (Go's): `length(1) & "𝄞"`
   holds, in both implementations. Astral-plane rows are part of the
   draft suite, not an implementation accident.
 - **lists**: element count. **maps**: entry count.
 
-Its argument is any integer-domain constraint: `len(3)` means exactly
-3; `len(min(2) & max(5))` means between 2 and 5. Every argument meets
+Its argument is any integer-domain constraint: `length(3)` means exactly
+3; `length(min(2) & max(5))` means between 2 and 5. Every argument meets
 `integer & min(0)` — a count is a non-negative whole number — which is
-what makes `len(max(-1))` and `len(1.5)` empty on their own, and what
+what makes `length(max(-1))` and `length(1.5)` empty on their own, and what
 canon renders.
 
 The argument is read at composition time and **does not residuate**:
-`len($.n)` is refused (`invalid-arg`), the same discipline `min` and
+`length($.n)` is refused (`invalid-arg`), the same discipline `min` and
 `max` apply to theirs. It is the *peer* whose members are still
 settling that a sizing atom waits for, never its own argument.
 
 A sizing residual has **no domain of its own** — a count says nothing
 about what is counted — so meeting a kind *sets* one rather than merely
-agreeing with it. `string & len(3)` is a three-character string, and
-`number & len(3)` is empty, because a number has neither a length nor
+agreeing with it. `string & length(3)` is a three-character string, and
+`number & length(3)` is empty, because a number has neither a length nor
 members. `min(2) & unique()` and `re("^a") & unique()` are empty for the
 same reason.
 
-**`len` counts what generates.** An optional key that never resolves is
+**`length` counts what generates.** An optional key that never resolves is
 dropped at generation, so it does not count:
-`len(1) & {x:1, y?:number}` **holds**, because the generated value is
+`length(1) & {x:1, y?:number}` **holds**, because the generated value is
 `{"x":1}`. The constraint is a claim about the data, and the data is
 what comes out.
 
@@ -1275,7 +1275,7 @@ what comes out.
 carrying its unresolved value** — `{x:1, y?:number}` canonicalises as
 `{"x":1,"y"?:number}` — and is dropped only in generation
 (`BagVal.gen`). It is tempting to conclude that the count is therefore
-unknowable until generation, and that `len` must wait for a drop. It
+unknowable until generation, and that `length` must wait for a drop. It
 must not: nothing in the fixpoint performs that drop, so an atom waiting
 for it waits forever.
 
@@ -1286,24 +1286,24 @@ whose value cannot generate. So:
 
 - **Every optional child settled** — this includes `{x:1, y?:number}`,
   where the map converges immediately and `y` simply holds an
-  unresolved kind. The count is known, and `len` decides at composition
-  time like every other atom, `len(1) & {x:1, y?:number}` included.
+  unresolved kind. The count is known, and `length` decides at composition
+  time like every other atom, `length(1) & {x:1, y?:number}` included.
 - **Some optional child still converging** — `{x:1, y?:$.z}` before `z`
-  resolves, where the child's fate genuinely is not yet decided. `len`
+  resolves, where the child's fate genuinely is not yet decided. `length`
   **residuates**: it stays in place and is retried, exactly as an
   arithmetic operator with a non-concrete operand does.
 
-So `len` is eager in the ordinary case and defers only where the answer
+So `length` is eager in the ordinary case and defers only where the answer
 is not yet determined, which is the same discipline every other
 deferring value in the language follows. What is never deferred is the
-atom's own arithmetic: `len(min(5) & max(3))` is empty at composition
+atom's own arithmetic: `length(min(5) & max(3))` is empty at composition
 time whatever map it meets, because the inner interval is empty on its
 own.
 
 ### Sizing atoms fold last
 
 There is one more rule the sizing atoms need, and it is not shared with
-the order atoms: **`len` and `unique` are the last terms of a conjunct
+the order atoms: **`length` and `unique` are the last terms of a conjunct
 to fold.**
 
 An order atom may decide the moment it meets a scalar, because meeting
@@ -1312,7 +1312,7 @@ it is grouped. A sizing atom cannot, because meeting further containers
 *grows* the member set:
 
 ```aon
-a: len(2)
+a: length(2)
 a: {x:1}
 a: {y:2}
 ```
@@ -1324,7 +1324,7 @@ the order atoms fold before containers, the sizing atoms after every
 value that could contribute a member. The size is then read once, from
 the merged container.
 
-Written order does not matter — `a: {x:1} a: {y:2} a: len(2)` is the
+Written order does not matter — `a: {x:1} a: {y:2} a: length(2)` is the
 same value — which is the property the sort order exists to guarantee.
 
 ### `unique` semantics
@@ -1355,7 +1355,7 @@ It applies to two shapes:
 
 Any other peer — a string, a number, a boolean, `null` — is a domain
 conflict: no scalar has members. The members it does compare are the
-members that *generate*, the same set `len` counts, so a `hide`n entry
+members that *generate*, the same set `length` counts, so a `hide`n entry
 and a dropped optional are not members here either.
 
 What `unique()` does **not** do is uniqueness *by projection*: "no two

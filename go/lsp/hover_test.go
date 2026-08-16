@@ -104,7 +104,7 @@ func TestBuiltinFuncNamesParity(t *testing.T) {
 	// The completion function list must match the engine's recognised
 	// functions exactly (guards against drift).
 	got := aontu.BuiltinFuncNames()
-	want := []string{"above", "below", "close", "copy", "hide", "key", "len", "lower", "max", "min", "move", "neq", "open", "path", "pref", "re", "super", "type", "unique", "upper"}
+	want := []string{"above", "below", "close", "copy", "hide", "key", "length", "lower", "max", "min", "move", "neq", "open", "path", "pref", "re", "super", "type", "unique", "upper"}
 	if len(got) != len(want) {
 		t.Fatalf("BuiltinFuncNames = %v, want %v", got, want)
 	}

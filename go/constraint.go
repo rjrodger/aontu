@@ -379,7 +379,7 @@ func (c *ConstraintVal) superior() Val { return top() }
 // the func-paren handler in lang.go.
 var constraintAtoms = map[string]bool{
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
-	"re": true, "len": true, "unique": true,
+	"re": true, "length": true, "unique": true,
 }
 
 // orderableScalar reports the algebra domain of a scalar: numeric
@@ -509,17 +509,17 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 		return c
 	}
 
-	// `len` is the other non-ORDER atom: its argument constrains the
+	// `length` is the other non-ORDER atom: its argument constrains the
 	// COUNT, not the value, so it is itself a residual over the integer
-	// domain (docs/reference-language.md, "`len` semantics"). It is
+	// domain (docs/reference-language.md, "`length` semantics"). It is
 	// resolved HERE, at construction, by walking the written argument
 	// rather than by unifying it: the func-paren handler builds atoms
 	// without a Ctx, so there is nothing to fold a nested conjunct
-	// through. Walking is enough because a len argument is by definition
+	// through. Walking is enough because a length argument is by definition
 	// a meet of concrete Band A atoms; anything else (a reference, an
 	// expression) is refused rather than deferred, the same discipline
 	// min/max apply to their own arguments.
-	if "len" == atom {
+	if "length" == atom {
 		arg := countArgState(args[0])
 		if nil == arg {
 			return bad("invalid-arg")
@@ -618,7 +618,7 @@ func (c *ConstraintVal) admit(peer *ScalarVal, ctx *Ctx) Val {
 // is scalar-domain and refuses one.
 //
 // The members that count are the members that GENERATE
-// (docs/reference-language.md, "`len` semantics"), so the selection in
+// (docs/reference-language.md, "`length` semantics"), so the selection in
 // emittedMembers mirrors MapVal.Gen/ListVal.Gen exactly.
 func (c *ConstraintVal) admitContainer(
 	bag Val, optional []string, ctx *Ctx, peer Val) Val {
@@ -669,7 +669,7 @@ func (c *ConstraintVal) admitContainer(
 // residual; anything else has an empty intersection with the
 // constraint's domain.
 //
-// A sizing residual (`len`, `unique`) has no domain of its own -- a
+// A sizing residual (`length`, `unique`) has no domain of its own -- a
 // count says nothing about what is counted -- so a kind here SETS one
 // rather than merely agreeing with it: `string & len(3)` is a
 // three-character string, and `number & len(3)` is empty because a
@@ -820,7 +820,7 @@ func dedupSortedRes(res []constraintRe) []constraintRe {
 }
 
 // Canon renders the fixed canonical atom order: kind, lower bound,
-// upper bound, neq (arguments sorted), re, len, unique. Reparses to a
+// upper bound, neq (arguments sorted), re, length, unique. Reparses to a
 // conjunct of atoms that normalises back to this exact residual.
 func (c *ConstraintVal) Canon() string {
 	parts := []string{}
@@ -859,13 +859,13 @@ func (c *ConstraintVal) Canon() string {
 		parts = append(parts, "re("+r.v.Canon()+")")
 	}
 	if nil != c.count {
-		// Rendered UNABRIDGED, implied parts and all: `len(3)`
-		// canonicalises to `len(integer&min(3)&max(3))` because that IS
+		// Rendered UNABRIDGED, implied parts and all: `length(3)`
+		// canonicalises to `length(integer&min(3)&max(3))` because that IS
 		// the residual the count must satisfy, and canon is a normal
 		// form (G6 hashes it), not a pretty-printer. Abbreviating would
 		// mean a second set of rules for when the implied
 		// `integer & min(0)` may be dropped.
-		parts = append(parts, "len("+c.count.Canon()+")")
+		parts = append(parts, "length("+c.count.Canon()+")")
 	}
 	if c.uniq {
 		parts = append(parts, "unique()")
@@ -938,7 +938,7 @@ func stateAdmits(s *ConstraintVal, peer *ScalarVal) bool {
 // the algebra stays sound; the incompleteness it accepts is documented
 // in docs/reference-language.md, "Emptiness".
 func stateEmpty(s *ConstraintVal) bool {
-	// Two disagreeing kind narrowings inside a len argument, recorded
+	// Two disagreeing kind narrowings inside a length argument, recorded
 	// by meetCount because that meet has no Ctx to fail through.
 	if s.clash {
 		return true
@@ -1012,9 +1012,9 @@ func stateEmpty(s *ConstraintVal) bool {
 	return false
 }
 
-// countBase is the base every `len` argument meets: a count is a
+// countBase is the base every `length` argument meets: a count is a
 // non-negative integer, whatever else the argument says
-// (docs/reference-language.md, "`len` semantics" -- `len(c)` is empty
+// (docs/reference-language.md, "`length` semantics" -- `length(c)` is empty
 // iff `c & integer & min(0)` is).
 func countBase() *ConstraintVal {
 	return &ConstraintVal{
@@ -1056,7 +1056,7 @@ func meetCount(a, b *ConstraintVal) *ConstraintVal {
 	return out
 }
 
-// countArgState reads a WRITTEN `len` argument as a count residual, or
+// countArgState reads a WRITTEN `length` argument as a count residual, or
 // nil when it is not one. Accepted: an integer literal (an exact
 // count), a numeric kind, a Band A residual over the number domain, and
 // any conjunct of those -- which is what `len(min(2)&max(5))` arrives
@@ -1129,7 +1129,7 @@ func countArgState(arg Val) *ConstraintVal {
 // converged. Until then the member set can still change — an optional
 // key whose value is a still-resolving reference may yet generate — so
 // a sizing atom must defer rather than decide
-// (docs/reference-language.md, "`len` semantics"). Note that an
+// (docs/reference-language.md, "`length` semantics"). Note that an
 // optional holding a settled-but-ungenerable value, `{x:1,y?:number}`,
 // IS settled: the map converges on the first pass and `y` is simply
 // never emitted.

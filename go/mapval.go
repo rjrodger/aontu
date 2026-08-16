@@ -400,7 +400,7 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	if peer == nil {
 		peer = top()
 	}
-	// A sizing residual (`len`, `unique`) sorts AFTER containers in a
+	// A sizing residual (`length`, `unique`) sorts AFTER containers in a
 	// conjunct so that it counts the MERGED map rather than the first
 	// fragment (sizingCjo in constraint.go). That makes the map the
 	// accumulator and the constraint its peer, the reverse of the usual

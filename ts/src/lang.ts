@@ -109,7 +109,7 @@ import {
   BelowConstraintVal,
   NeqConstraintVal,
   ReConstraintVal,
-  LenConstraintVal,
+  LengthConstraintVal,
   UniqueConstraintVal,
 } from './val/ConstraintVal'
 
@@ -429,10 +429,10 @@ help isolate the syntax error.`,
     re: ReConstraintVal,
 
     // G1 phase 3: the sizing atoms. Both are properties of a CONTAINER
-    // (or, for len, of a string) rather than comparisons against a
+    // (or, for length, of a string) rather than comparisons against a
     // value, which is why `unique` is the one built-in taking no
     // argument at all.
-    len: LenConstraintVal,
+    length: LengthConstraintVal,
     unique: UniqueConstraintVal,
   }
 
@@ -1245,7 +1245,7 @@ const funcArity: Record<string, [number, number]> = {
   super: [1, 1], type: [1, 1], hide: [1, 1], close: [1, 1],
   open: [1, 1], move: [1, 1], path: [1, 1],
   min: [1, 1], max: [1, 1], above: [1, 1], below: [1, 1], re: [1, 1],
-  len: [1, 1],
+  length: [1, 1],
   key: [0, 1],
   unique: [0, 0],
   neq: [1, -1],

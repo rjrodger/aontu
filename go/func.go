@@ -21,7 +21,7 @@ var funcSet = map[string]bool{
 	"pref": true, "super": true, "type": true, "hide": true,
 	"move": true, "path": true, "close": true, "open": true,
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
-	"re": true, "len": true, "unique": true,
+	"re": true, "length": true, "unique": true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -40,7 +40,7 @@ var funcArity = map[string][2]int{
 	"open": {1, 1}, "move": {1, 1}, "path": {1, 1},
 	"min": {1, 1}, "max": {1, 1}, "above": {1, 1}, "below": {1, 1},
 	"re":     {1, 1},
-	"len":    {1, 1},
+	"length": {1, 1},
 	"key":    {0, 1},
 	"unique": {0, 0},
 	"neq":    {1, -1},

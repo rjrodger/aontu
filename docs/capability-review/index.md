@@ -310,7 +310,7 @@ zoo grows.
 Progress against this table is tracked phase by phase in the
 [progress register](progress.md). In short: Phase A is part-done — the
 trust contract, the error-code registry, and the bounds atoms are in;
-`re`, `len`/`unique` and the whole `vet` verb are not. Phases B and C
+`re`, `length`/`unique` and the whole `vet` verb are not. Phases B and C
 are untouched.
 
 ## Verified codebase facts referenced by the design documents

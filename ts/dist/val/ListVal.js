@@ -37,7 +37,7 @@ class ListVal extends BagVal_1.BagVal {
     unify(peer, ctx) {
         const TOP = (0, top_1.top)();
         peer = peer ?? TOP;
-        // A sizing residual (`len`, `unique`) sorts AFTER containers in a
+        // A sizing residual (`length`, `unique`) sorts AFTER containers in a
         // conjunct so that it counts the MERGED list rather than the first
         // fragment (SIZING_CJO in ConstraintVal.ts). That makes the list the
         // accumulator and the constraint its peer, the reverse of the usual

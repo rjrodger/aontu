@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UniqueConstraintVal = exports.LenConstraintVal = exports.ReConstraintVal = exports.NeqConstraintVal = exports.BelowConstraintVal = exports.AboveConstraintVal = exports.MaxConstraintVal = exports.MinConstraintVal = exports.ConstraintVal = void 0;
+exports.UniqueConstraintVal = exports.LengthConstraintVal = exports.ReConstraintVal = exports.NeqConstraintVal = exports.BelowConstraintVal = exports.AboveConstraintVal = exports.MaxConstraintVal = exports.MinConstraintVal = exports.ConstraintVal = void 0;
 exports.normaliseRe = normaliseRe;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
@@ -302,7 +302,7 @@ function leafMarker(v) {
 }
 // Conjunct sort order for a SIZING residual. Every other value sorts
 // below the container default (99999), so a sizing atom is the LAST
-// term to fold: `a:len(2) a:{x:1} a:{y:2}` must count the MERGED map,
+// term to fold: `a:length(2) a:{x:1} a:{y:2}` must count the MERGED map,
 // and a constraint that folded at 50000 would count `{x:1}` alone and
 // refuse the layering that is the whole point of the language.
 //
@@ -328,14 +328,14 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             // A state built by an embedder (or by a per-port test) may predate
             // the pattern field; an absent one means "no patterns", not undefined.
             this.res = spec.state.res ?? [];
-            this.len = spec.state.len;
+            this.count = spec.state.count;
             this.uniq = spec.state.uniq ?? false;
             this.invalid = spec.state.invalid;
         }
         else if (spec.atom) {
             this.fromAtom(spec.atom, spec.peg ?? []);
         }
-        if (null != this.len || this.uniq) {
+        if (null != this.count || this.uniq) {
             this.cjo = SIZING_CJO;
         }
         // A residual constraint is stable, like a ScalarKindVal.
@@ -429,24 +429,24 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             this.res = [{ v: a, src, norm, re }];
             return;
         }
-        // `len` is the other non-ORDER atom: its argument constrains the
+        // `length` is the other non-ORDER atom: its argument constrains the
         // COUNT, not the value, so it is itself a residual over the integer
-        // domain (docs/reference-language.md, "`len` semantics"). It is
+        // domain (docs/reference-language.md, "`length` semantics"). It is
         // resolved HERE, at construction, by walking the written argument
         // rather than by unifying it: the func-paren handler builds atoms
         // without an AontuContext, so there is nothing to fold a nested
-        // conjunct through. Walking is enough because a len argument is by
+        // conjunct through. Walking is enough because a length argument is by
         // definition a meet of concrete Band A atoms; anything else (a
         // reference, an expression) is refused rather than deferred, the
         // same discipline min/max apply to their own arguments.
-        if ('len' === atom) {
+        if ('length' === atom) {
             const arg = countArgState(a);
             if (null == arg) {
                 return bad('invalid-arg');
             }
             const inner = meetCount(countBase(), arg);
-            this.len = inner;
-            // `len(min(5)&max(3))` is unsatisfiable with no peer in sight, so
+            this.count = inner;
+            // `length(min(5)&max(3))` is unsatisfiable with no peer in sight, so
             // it is refused at composition time like any other empty meet.
             if (stateEmpty(inner)) {
                 return bad('constraint');
@@ -519,14 +519,14 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         if (!stateAdmits(this, peer)) {
             return this.fail(ctx, peer);
         }
-        if (null != this.len) {
+        if (null != this.count) {
             // Only a string among the scalars has a length, and it is counted
             // in CODE POINTS -- not UTF-16 units (this host's native count)
             // and not bytes (Go's). Iterating a string yields code points.
             if (!stringLeaf(peer)) {
                 return this.fail(ctx, peer);
             }
-            if (!stateAdmits(this.len, countVal([...peer.peg].length))) {
+            if (!stateAdmits(this.count, countVal([...peer.peg].length))) {
                 return this.fail(ctx, peer);
             }
         }
@@ -537,7 +537,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
     // refuses one.
     //
     // The members that count are the members that GENERATE
-    // (docs/reference-language.md, "`len` semantics"), and rather than
+    // (docs/reference-language.md, "`length` semantics"), and rather than
     // mirror generation's filter — type/hide marks, optional keys that
     // drop, empty optional values — this asks generation itself, in an
     // isolated collect context so nothing leaks into the caller's errors.
@@ -561,7 +561,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             // worth reporting, so pass it through untouched.
             return peer;
         }
-        if (null != this.len && !stateAdmits(this.len, countVal(members.length))) {
+        if (null != this.count && !stateAdmits(this.count, countVal(members.length))) {
             return this.fail(ctx, peer);
         }
         if (this.uniq) {
@@ -586,10 +586,10 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
     // the residual; anything else has an empty intersection with the
     // constraint's domain.
     //
-    // A sizing residual (`len`, `unique`) has no domain of its own -- a
+    // A sizing residual (`length`, `unique`) has no domain of its own -- a
     // count says nothing about what is counted -- so a kind here SETS one
-    // rather than merely agreeing with it: `string & len(3)` is a
-    // three-character string, and `number & len(3)` is empty because a
+    // rather than merely agreeing with it: `string & length(3)` is a
+    // three-character string, and `number & length(3)` is empty because a
     // number has no length (stateEmpty decides that, not this).
     meetKind(peer, ctx) {
         const marker = peer.peg;
@@ -637,11 +637,11 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         merged.hi = tighter(d, this.hi, peer.hi, false);
         merged.neqs = dedupSorted(d, [...this.neqs, ...peer.neqs]);
         merged.res = dedupSortedRes([...this.res, ...peer.res]);
-        // `len(c1) & len(c2)` is `len(c1 & c2)`: the count atom reuses the
+        // `length(c1) & length(c2)` is `length(c1 & c2)`: the count atom reuses
         // numeric algebra recursively, over the counts rather than the
         // values.
-        merged.len = null == this.len ? peer.len :
-            null == peer.len ? this.len : meetCount(this.len, peer.len);
+        merged.count = null == this.count ? peer.count :
+            null == peer.count ? this.count : meetCount(this.count, peer.count);
         // `unique()` is idempotent: two of them are one.
         merged.uniq = this.uniq || peer.uniq;
         return this.finish(merged, ctx, peer);
@@ -678,7 +678,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             hi: this.hi,
             neqs: [...this.neqs],
             res: [...this.res],
-            len: this.len,
+            count: this.count,
             uniq: this.uniq,
             invalid: this.invalid,
         };
@@ -694,7 +694,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         out.hi = this.hi;
         out.neqs = [...this.neqs];
         out.res = [...this.res];
-        out.len = this.len;
+        out.count = this.count;
         out.uniq = this.uniq;
         out.cjo = this.cjo;
         out.invalid = this.invalid;
@@ -702,7 +702,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         return out;
     }
     // The fixed canonical atom order: kind, lower, upper, neq (arguments
-    // sorted), re, len, unique. No spaces; reparses to a conjunct that
+    // sorted), re, length, unique. No spaces; reparses to a conjunct that
     // normalises back to this exact residual.
     get canon() {
         return canonState(this);
@@ -750,8 +750,8 @@ function dedupSorted(domain, neqs) {
     return out;
 }
 // The canonical rendering of a residual, in the fixed atom order:
-// kind, lower bound, upper bound, neq, re, len, unique. Taken over the
-// STATE rather than the Val because `len`'s argument is a residual too,
+// kind, lower bound, upper bound, neq, re, length, unique. Taken over the
+// STATE rather than the Val because `length`'s argument is a residual too,
 // and renders by exactly the same rules.
 function canonState(s) {
     const parts = [];
@@ -778,13 +778,13 @@ function canonState(s) {
     for (const r of s.res) {
         parts.push('re(' + r.v.canon + ')');
     }
-    if (null != s.len) {
-        // Rendered UNABRIDGED, implied parts and all: `len(3)` canonicalises
-        // to `len(integer&min(3)&max(3))` because that IS the residual the
+    if (null != s.count) {
+        // Rendered UNABRIDGED, implied parts and all: `length(3)` canonicalises
+        // to `length(integer&min(3)&max(3))` because that IS the residual the
         // count must satisfy, and canon is a normal form (G6 hashes it),
         // not a pretty-printer. Abbreviating would mean a second set of
         // rules for when the implied `integer & min(0)` may be dropped.
-        parts.push('len(' + canonState(s.len) + ')');
+        parts.push('length(' + canonState(s.count) + ')');
     }
     if (s.uniq) {
         parts.push('unique()');
@@ -851,7 +851,7 @@ function stateAdmits(s, peer) {
 // sound; the incompleteness it accepts is documented in
 // docs/reference-language.md, "Emptiness".
 function stateEmpty(s) {
-    // Two disagreeing kind narrowings inside a len argument, recorded by
+    // Two disagreeing kind narrowings inside a length argument, recorded by
     // meetCount because that meet has no ctx to fail through.
     if (s.clash) {
         return true;
@@ -900,10 +900,10 @@ function stateEmpty(s) {
         }
     }
     // Sizing over the number domain: a number has neither a length nor
-    // members, so `integer & len(3)` and `min(2) & unique()` admit
+    // members, so `integer & length(3)` and `min(2) & unique()` admit
     // nothing. Uniqueness over the string domain is empty for the same
     // reason -- a string's members are not values the algebra compares.
-    if ('number' === d && (null != s.len || s.uniq)) {
+    if ('number' === d && (null != s.count || s.uniq)) {
         return true;
     }
     if ('string' === d && s.uniq) {
@@ -911,14 +911,15 @@ function stateEmpty(s) {
     }
     // An empty count residual makes the whole thing empty: no container
     // and no string has a length no integer can take.
-    if (null != s.len && stateEmpty(s.len)) {
+    if (null != s.count && stateEmpty(s.count)) {
         return true;
     }
     return false;
 }
-// The base every `len` argument meets: a count is a non-negative
+// The base every `length` argument meets: a count is a non-negative
 // integer, whatever else the argument says (docs/reference-language.md,
-// "`len` semantics" -- `len(c)` is empty iff `c & integer & min(0)` is).
+// "`length` semantics" -- `length(c)` is empty iff `c & integer & min(0)`
+// is).
 function countBase() {
     return {
         domain: 'number',
@@ -953,10 +954,10 @@ function meetCount(a, b) {
             (null != a.kind && null != b.kind && a.kind !== b.kind),
     };
 }
-// Read a WRITTEN `len` argument as a count residual, or undefined when
+// Read a WRITTEN `length` argument as a count residual, or undefined when
 // it is not one. Accepted: an integer literal (an exact count), a
 // numeric kind, a Band A residual over the number domain, and any
-// conjunct of those -- which is what `len(min(2)&max(5))` arrives as,
+// conjunct of those -- which is what `length(min(2)&max(5))` arrives as,
 // and what canon emits.
 //
 // Anything else is refused rather than deferred. A reference or an
@@ -976,7 +977,7 @@ function countArgState(arg) {
         const c = arg;
         // A pattern, a sizing atom or a string bound inside a count is not
         // a count constraint at all, and neither is a broken one.
-        if (null != c.invalid || 0 < c.res.length || c.uniq || null != c.len ||
+        if (null != c.invalid || 0 < c.res.length || c.uniq || null != c.count ||
             'number' !== c.domain) {
             return undefined;
         }
@@ -1016,7 +1017,7 @@ function countArgState(arg) {
 // A container is SETTLED when it and every child have converged. Until
 // then the member set can still change — an optional key whose value is
 // a still-resolving reference may yet generate — so a sizing atom must
-// defer rather than decide (docs/reference-language.md, "`len`
+// defer rather than decide (docs/reference-language.md, "`length`
 // semantics"). Note that an optional holding a settled-but-ungenerable
 // value, `{x:1,y?:number}`, IS settled: the map converges on the first
 // pass and `y` is simply never emitted.
@@ -1140,12 +1141,12 @@ class ReConstraintVal extends ConstraintVal {
     }
 }
 exports.ReConstraintVal = ReConstraintVal;
-class LenConstraintVal extends ConstraintVal {
+class LengthConstraintVal extends ConstraintVal {
     constructor(spec, ctx) {
-        super({ ...spec, atom: 'len' }, ctx);
+        super({ ...spec, atom: 'length' }, ctx);
     }
 }
-exports.LenConstraintVal = LenConstraintVal;
+exports.LengthConstraintVal = LengthConstraintVal;
 class UniqueConstraintVal extends ConstraintVal {
     constructor(spec, ctx) {
         super({ ...spec, atom: 'unique' }, ctx);
