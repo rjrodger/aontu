@@ -1253,10 +1253,10 @@ Its argument is any integer-domain constraint: `length(3)` means exactly
 what makes `length(max(-1))` and `length(1.5)` empty on their own, and what
 canon renders.
 
-The argument is read at composition time and **does not residuate**:
-`length($.n)` is refused (`invalid-arg`), the same discipline `min` and
-`max` apply to theirs. It is the *peer* whose members are still
-settling that a sizing atom waits for, never its own argument.
+Like every other atom's argument, it **residuates** until it settles
+(G1 phase 4): `length($.n)` waits for `$.n`, then checks the count. Only
+a *settled* argument of the wrong shape — a string, a boolean, a
+contradictory kind — is refused.
 
 A sizing residual has **no domain of its own** — a count says nothing
 about what is counted — so meeting a kind *sets* one rather than merely

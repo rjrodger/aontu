@@ -1,13 +1,15 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UniqueConstraintVal = exports.LengthConstraintVal = exports.ReConstraintVal = exports.NeqConstraintVal = exports.BelowConstraintVal = exports.AboveConstraintVal = exports.MaxConstraintVal = exports.MinConstraintVal = exports.ConstraintVal = void 0;
+exports.MustConstraintVal = exports.UniqueConstraintVal = exports.LengthConstraintVal = exports.ReConstraintVal = exports.NeqConstraintVal = exports.BelowConstraintVal = exports.AboveConstraintVal = exports.MaxConstraintVal = exports.MinConstraintVal = exports.ConstraintVal = void 0;
 exports.normaliseRe = normaliseRe;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
 const Val_1 = require("./Val");
 const keyorder_1 = require("../keyorder");
 const ConjunctVal_1 = require("./ConjunctVal");
+const top_1 = require("./top");
+const unify_1 = require("../unify");
 const IntegerVal_1 = require("./IntegerVal");
 const err_1 = require("../err");
 const FeatureVal_1 = require("./FeatureVal");
@@ -300,17 +302,24 @@ function leafMarker(v) {
     return v.isBigDecimal ? ScalarKindVal_1.BigDecimal : v.isBigInteger ? ScalarKindVal_1.BigInteger :
         v.isInteger ? ScalarKindVal_1.Integer : ScalarKindVal_1.Float;
 }
-// Conjunct sort order for a SIZING residual. Every other value sorts
-// below the container default (99999), so a sizing atom is the LAST
-// term to fold: `a:length(2) a:{x:1} a:{y:2}` must count the MERGED map,
-// and a constraint that folded at 50000 would count `{x:1}` alone and
-// refuse the layering that is the whole point of the language.
+// Conjunct sort order for an atom that must see the WHOLE value.
+// Every other value sorts below the container default (99999), so such
+// an atom is the LAST term to fold: `a:length(2) a:{x:1} a:{y:2}` must
+// count the MERGED map, and a constraint that folded at 50000 would
+// count `{x:1}` alone and refuse the layering that is the whole point
+// of the language.
 //
 // The order atoms keep the low slot: `min(2) & 1 & 2` may decide as
 // soon as it sees a scalar, because meeting more scalars can only
 // narrow. Meeting more containers GROWS the member set, which is why
 // the two orders differ.
-const SIZING_CJO = 150000;
+//
+// Three atoms are late: `length` and `unique` (they count members), and
+// `must` (an evaluate-only check against the finished value).
+const LATE_CJO = 150000;
+function lateAtom(atom) {
+    return 'length' === atom || 'unique' === atom || 'must' === atom;
+}
 class ConstraintVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super({ ...spec, peg: spec.peg ?? [] }, ctx);
@@ -319,6 +328,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         this.neqs = [];
         this.res = [];
         this.uniq = false;
+        this.musts = [];
         if (spec.state) {
             this.domain = spec.state.domain;
             this.kind = spec.state.kind;
@@ -330,20 +340,42 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             this.res = spec.state.res ?? [];
             this.count = spec.state.count;
             this.uniq = spec.state.uniq ?? false;
+            this.musts = spec.state.musts ?? [];
             this.invalid = spec.state.invalid;
         }
         else if (spec.atom) {
-            this.fromAtom(spec.atom, spec.peg ?? []);
+            const args = atomArgs(spec.atom, spec.peg ?? []);
+            // An argument that is not yet concrete — a reference, an
+            // arithmetic expression, a conjunct of atoms — makes the whole
+            // atom PENDING rather than invalid (G1 phase 4). It is resolved
+            // in unify, where there is a ctx to resolve through, and the
+            // residual is built from the settled arguments. Only a settled
+            // argument of the wrong shape is an `invalid-arg`.
+            if (args.some((a) => true !== a?.done)) {
+                this.pending = { atom: spec.atom, args };
+            }
+            else {
+                this.fromAtom(spec.atom, args);
+            }
         }
-        if (null != this.count || this.uniq) {
-            this.cjo = SIZING_CJO;
+        if (null != this.count || this.uniq || 0 < this.musts.length ||
+            (null != this.pending && lateAtom(this.pending.atom))) {
+            this.cjo = LATE_CJO;
         }
-        // A residual constraint is stable, like a ScalarKindVal.
-        this.dc = type_1.DONE;
+        // A residual constraint is stable, like a ScalarKindVal — but a
+        // pending atom is not a residual yet, and must be re-entered on
+        // later passes until its arguments settle.
+        if (null == this.pending) {
+            this.dc = type_1.DONE;
+        }
+        else {
+            this.notdone();
+        }
     }
-    // Normalise one atom call (min/max/above/below/neq) into state.
-    // Arguments must be concrete orderable scalars in phase 1;
-    // reference-valued arguments are phase 4 (residuation).
+    // Normalise one atom call into state. Every argument here is already
+    // SETTLED — the constructor routes an unsettled one to `pending` —
+    // so a shape this cannot use is a genuine `invalid-arg`, not a
+    // not-yet.
     fromAtom(atom, args) {
         // Mark the residual invalid and report so (a plain boolean, so no
         // void value is consumed by the callers' `return` statements).
@@ -358,17 +390,33 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             this.uniq = true;
             return;
         }
+        // `must(c, msg)` is Band B: an evaluate-only check against the
+        // finished value, carrying the author's own message. It is KEPT,
+        // never simplified and never consulted for emptiness or
+        // subsumption — Band B is opaque by construction, which is exactly
+        // what makes it the honest channel for a rule the algebra cannot
+        // reason about (docs/reference-language.md, "Band B: `must`").
+        if ('must' === atom) {
+            if (2 !== args.length) {
+                return bad('arg');
+            }
+            if (!stringLeaf(args[1])) {
+                return bad('invalid-arg');
+            }
+            // A check carrying a nil is refused outright rather than left to
+            // fail against every value. It is how the ONE spelling trap
+            // surfaces: `|` and `,` mis-associate inside a function call, so
+            // `must("a"|"b",m)` parses as a single list argument holding a
+            // nil rather than as a disjunct and a message. Parenthesise a
+            // compound check -- `must(("a"|"b"),m)` -- and see
+            // docs/reference-language.md, "Band B: `must`".
+            if (holdsNil(args[0])) {
+                return bad('invalid-arg');
+            }
+            this.musts = [{ v: args[0], msg: args[1] }];
+            return;
+        }
         if ('neq' === atom) {
-            // Multiple arguments arrive from the func-paren grammar as one
-            // entry holding the comma group: a raw array of Vals (or an
-            // implicit ListVal via some spellings). `neq(3,1,2)` therefore
-            // has peg [[3,1,2]], and `neq([3,1,2])` means the same thing.
-            if (1 === args.length && Array.isArray(args[0])) {
-                args = args[0];
-            }
-            else if (1 === args.length && true === args[0]?.isList) {
-                args = args[0].peg;
-            }
             if (0 === args.length) {
                 return bad('arg');
             }
@@ -472,7 +520,10 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         // Every branch of the ladder assigns, so no initialiser: a
         // residual is stable and the ladder is total.
         let out;
-        if (null != this.invalid) {
+        if (null != this.pending) {
+            out = this.settle(peer, ctx);
+        }
+        else if (null != this.invalid) {
             out = (0, err_1.makeNilErr)(ctx, this.invalid, this, undefined, 'constrain', null == this.invalidWhy ? undefined : { reason: this.invalidWhy });
         }
         else if (null == peer || peer.isTop) {
@@ -509,6 +560,62 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         ctx.explain && (0, utility_1.explainClose)(te, out);
         return out;
     }
+    // Resolve a pending atom's arguments and, once they have all settled,
+    // become the residual they describe (G1 phase 4).
+    //
+    // This is the residuation discipline FuncBaseVal already follows for
+    // its own operands: push each unsettled argument one step by unifying
+    // it with `top`, and if any is still moving, mark not-done and defer
+    // — either as this same pending atom (against a `top` peer) or
+    // wrapped with the peer in a conjunct the next pass will re-enter.
+    // Nothing is decided from a half-resolved argument, which is what
+    // keeps `min($.lo)` from reporting a conflict against a bound that
+    // has not arrived yet.
+    settle(peer, ctx) {
+        const TOP = (0, top_1.top)();
+        const pend = this.pending;
+        let settled = true;
+        const args = [];
+        for (const arg of pend.args) {
+            let next = arg;
+            if (true !== arg?.done) {
+                // Charged to the depth budget: this recurses without going
+                // through `unite`, so the counter would otherwise stay flat
+                // while the stack grows (the rule FuncBaseVal follows).
+                next = (0, unify_1.withDepth)(ctx, arg, TOP, () => arg.unify(TOP, ctx));
+            }
+            settled = settled && true === next?.done;
+            args.push(next);
+        }
+        if (settled) {
+            // Build the residual the atom always meant, at this atom's site,
+            // then let the ordinary ladder meet it with the peer.
+            const built = new ConstraintVal({ peg: args, atom: pend.atom }, ctx);
+            built.path = this.path;
+            built.site.row = this.site.row;
+            built.site.col = this.site.col;
+            built.site.url = this.site.url;
+            (0, utility_1.propagateMarks)(this, built);
+            return built.unify(peer, ctx);
+        }
+        this.notdone();
+        // A fresh pending atom carrying the partially-resolved arguments, so
+        // the next pass starts from the progress this one made rather than
+        // re-resolving from source.
+        const again = new ConstraintVal({ peg: args, atom: pend.atom }, ctx);
+        again.path = this.path;
+        again.site.row = this.site.row;
+        again.site.col = this.site.col;
+        again.site.url = this.site.url;
+        (0, utility_1.propagateMarks)(this, again);
+        if (null == peer || peer.isTop) {
+            return again;
+        }
+        if (peer.isNil) {
+            return peer;
+        }
+        return new ConjunctVal_1.ConjunctVal({ peg: [again, peer] }, ctx);
+    }
     // Membership: the peer scalar passes every part of the residual, or
     // the whole meet is a located conflict.
     admit(peer, ctx) {
@@ -530,7 +637,33 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
                 return this.fail(ctx, peer);
             }
         }
+        const bad = this.checkMusts(peer, ctx);
+        if (null != bad) {
+            return bad;
+        }
         return peer;
+    }
+    // Band B, applied to a finished value. Each check is a plain
+    // unification against a CLONE of the peer: `must` reports, it never
+    // contributes: whatever the check would have added to the value is
+    // discarded, and `peer` is returned untouched by the callers.
+    //
+    // The trial runs in an isolated collect context so a failing check
+    // leaves nothing on the caller's error list — only the located nil
+    // this returns, carrying the author's own message.
+    checkMusts(peer, ctx) {
+        for (const m of this.musts) {
+            const trial = ctx.clone({ err: [], collect: true });
+            const got = (0, unify_1.unite)(trial, m.v.clone(trial), peer.clone(trial), 'must');
+            if (true === got?.isNil || 0 < trial.err.length) {
+                return (0, err_1.makeNilErr)(ctx, 'must', this, peer, undefined, {
+                    message: m.msg.peg,
+                    expected: m.v.canon,
+                    actual: peer.canon,
+                });
+            }
+        }
+        return undefined;
     }
     // Membership for a container peer. Only the SIZING atoms have anything
     // to say about a map or a list; every other atom is scalar-domain and
@@ -554,6 +687,13 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         if (!containerSettled(peer)) {
             this.dc = 0;
             return new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
+        }
+        const bad = this.checkMusts(peer, ctx);
+        if (null != bad) {
+            return bad;
+        }
+        if (!this.uniq && null == this.count) {
+            return peer;
         }
         const members = emittedMembers(peer, ctx);
         if (null == members) {
@@ -644,6 +784,10 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             null == peer.count ? this.count : meetCount(this.count, peer.count);
         // `unique()` is idempotent: two of them are one.
         merged.uniq = this.uniq || peer.uniq;
+        // Band B checks accumulate in written order and are never merged,
+        // deduplicated or reordered: each carries its own author message,
+        // and two checks with the same shape may still say different things.
+        merged.musts = [...this.musts, ...peer.musts];
         return this.finish(merged, ctx, peer);
     }
     // Build the merged residual, applying the eager emptiness rules.
@@ -680,6 +824,7 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             res: [...this.res],
             count: this.count,
             uniq: this.uniq,
+            musts: [...this.musts],
             invalid: this.invalid,
         };
     }
@@ -696,6 +841,8 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         out.res = [...this.res];
         out.count = this.count;
         out.uniq = this.uniq;
+        out.musts = [...this.musts];
+        out.pending = this.pending;
         out.cjo = this.cjo;
         out.invalid = this.invalid;
         out.invalidWhy = this.invalidWhy;
@@ -705,6 +852,12 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
     // sorted), re, length, unique. No spaces; reparses to a conjunct that
     // normalises back to this exact residual.
     get canon() {
+        if (null != this.pending) {
+            // A pending atom has no residual yet, so canon renders the call as
+            // written — the same shape FuncBaseVal renders while deferring.
+            return this.pending.atom +
+                '(' + this.pending.args.map((a) => a.canon).join(',') + ')';
+        }
         return canonState(this);
     }
     same(peer) {
@@ -749,6 +902,48 @@ function dedupSorted(domain, neqs) {
     }
     return out;
 }
+// Is this value, or anything inside it, a nil? A written argument that
+// holds one can never be satisfied, so the atom refuses it as an
+// argument rather than reporting a mystery failure against every peer.
+function holdsNil(v) {
+    if (null == v || true !== v.isVal) {
+        return false;
+    }
+    if (true === v.isNil) {
+        return true;
+    }
+    const peg = v.peg;
+    if (Array.isArray(peg)) {
+        return peg.some((c) => holdsNil(c));
+    }
+    if (null != peg && 'object' === typeof peg) {
+        for (const k in peg) {
+            if (holdsNil(peg[k])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+// The written arguments of an atom, flattened.
+//
+// A multi-argument call arrives from the func-paren grammar as ONE
+// entry holding the comma group: a raw array of Vals (or an implicit
+// ListVal via some spellings). `neq(3,1,2)` therefore has peg [[3,1,2]],
+// and `neq([3,1,2])` means the same thing. Flattening happens before
+// the settled check, because an unsettled member hiding inside a raw
+// array would otherwise make the atom look ready.
+function atomArgs(atom, args) {
+    if (('neq' === atom || 'must' === atom) && 1 === args.length) {
+        if (Array.isArray(args[0])) {
+            return args[0];
+        }
+        if (true === args[0]?.isList) {
+            return args[0].peg;
+        }
+    }
+    return args;
+}
 // The canonical rendering of a residual, in the fixed atom order:
 // kind, lower bound, upper bound, neq, re, length, unique. Taken over the
 // STATE rather than the Val because `length`'s argument is a residual too,
@@ -788,6 +983,9 @@ function canonState(s) {
     }
     if (s.uniq) {
         parts.push('unique()');
+    }
+    for (const m of s.musts) {
+        parts.push('must(' + m.v.canon + ',' + m.msg.canon + ')');
     }
     if (0 === parts.length) {
         // Raw invalid atom: render the call so the error frame shows it.
@@ -927,6 +1125,7 @@ function countBase() {
         lo: { v: countVal(0), open: false },
         neqs: [],
         res: [],
+        musts: [],
         uniq: false,
     };
 }
@@ -949,6 +1148,7 @@ function meetCount(a, b) {
         hi: tighter('number', a.hi, b.hi, false),
         neqs: dedupSorted('number', [...a.neqs, ...b.neqs]),
         res: [],
+        musts: [],
         uniq: false,
         clash: true === a.clash || true === b.clash ||
             (null != a.kind && null != b.kind && a.kind !== b.kind),
@@ -970,7 +1170,7 @@ function countArgState(arg) {
             domain: 'number',
             lo: { v: arg, open: false },
             hi: { v: arg, open: false },
-            neqs: [], res: [], uniq: false,
+            neqs: [], res: [], musts: [], uniq: false,
         };
     }
     if (true === arg?.isConstraint) {
@@ -987,22 +1187,22 @@ function countArgState(arg) {
             lo: c.lo,
             hi: c.hi,
             neqs: [...c.neqs],
-            res: [], uniq: false,
+            res: [], musts: [], uniq: false,
         };
     }
     if (true === arg?.isScalarKind) {
         const marker = arg.peg;
         if (Number === marker) {
-            return { domain: 'number', neqs: [], res: [], uniq: false };
+            return { domain: 'number', neqs: [], res: [], musts: [], uniq: false };
         }
         if (ScalarKindVal_1.Integer === marker || ScalarKindVal_1.Float === marker ||
             ScalarKindVal_1.BigInteger === marker || ScalarKindVal_1.BigDecimal === marker) {
-            return { domain: 'number', kind: marker, neqs: [], res: [], uniq: false };
+            return { domain: 'number', kind: marker, neqs: [], res: [], musts: [], uniq: false };
         }
         return undefined;
     }
     if (true === arg?.isConjunct) {
-        let acc = { domain: 'number', neqs: [], res: [], uniq: false };
+        let acc = { domain: 'number', neqs: [], res: [], musts: [], uniq: false };
         for (const term of arg.peg) {
             const one = countArgState(term);
             if (null == one) {
@@ -1141,6 +1341,12 @@ class ReConstraintVal extends ConstraintVal {
     }
 }
 exports.ReConstraintVal = ReConstraintVal;
+class MustConstraintVal extends ConstraintVal {
+    constructor(spec, ctx) {
+        super({ ...spec, atom: 'must' }, ctx);
+    }
+}
+exports.MustConstraintVal = MustConstraintVal;
 class LengthConstraintVal extends ConstraintVal {
     constructor(spec, ctx) {
         super({ ...spec, atom: 'length' }, ctx);
@@ -1151,6 +1357,6 @@ class UniqueConstraintVal extends ConstraintVal {
     constructor(spec, ctx) {
         super({ ...spec, atom: 'unique' }, ctx);
     }
-} /* node:coverage ignore next 18 */
+} /* node:coverage ignore next 19 */
 exports.UniqueConstraintVal = UniqueConstraintVal;
 //# sourceMappingURL=ConstraintVal.js.map

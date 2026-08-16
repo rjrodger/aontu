@@ -13,18 +13,33 @@ import "strings"
 // strinject at render time (go/val.go), exactly as TS getHint does.
 // decimal_syntax stays Go-only (TS never raises it).
 var hints = map[string]string{
-	"scalar_value":       "Literal scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
-	"scalar_kind":        "Literal scalar values of different kinds cannot unify.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
-	"nil_gen":            "The nil value was present after unification, and nil cannot be\ngenerated because nil is not a literal value.",
-	"no_gen":             "This value was present after unification, and cannot be generated\nbecause it is not a literal value.",
-	"mapval_required":    "This map value is required.",
-	"mapval_no_gen":      "This value was present after unification, and cannot be generated\nbecause it is not a literal value.",
-	"listval_required":   "This list element is required.",
-	"listval_no_gen":     "This list element was present after unification, and cannot be generated\nbecause it is not a literal value.",
-	"unknown_function":   "This function name is not recognized.",
-	"literal_nil":        "A literal nil cannot unify with any other value.",
-	"unify_cycle":        "Circular reference detected during unification.",
-	"constraint":         "This value does not satisfy the constraint. A constraint is the\nmeet of bound atoms (min, max, above, below) and exclusions (neq)\nover one domain; the expected form shown is the normalised\nresidual the value must satisfy.\n \nExamples:\n  min(0) & 3                    -> 3    # Admitted (3 >= 0);\n  min(0) & 0d5                  -> 0d5  # Bounds are leaf-agnostic;\n  max(65535) & 99999            -> nil  # Above the bound;\n  min(5) & max(3)               -> nil  # Empty at composition time;\n  integer & above(1) & below(2) -> nil  # No integer in the gap;\n  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.\n  re(\"^a\") & \"abc\"              -> \"abc\" # Patterns are unanchored.",
+	"scalar_value":     "Literal scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
+	"scalar_kind":      "Literal scalar values of different kinds cannot unify.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  1 & a   -> nil  # Does not unify (Kinds: Integer & String);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).",
+	"nil_gen":          "The nil value was present after unification, and nil cannot be\ngenerated because nil is not a literal value.",
+	"no_gen":           "This value was present after unification, and cannot be generated\nbecause it is not a literal value.",
+	"mapval_required":  "This map value is required.",
+	"mapval_no_gen":    "This value was present after unification, and cannot be generated\nbecause it is not a literal value.",
+	"listval_required": "This list element is required.",
+	"listval_no_gen":   "This list element was present after unification, and cannot be generated\nbecause it is not a literal value.",
+	"unknown_function": "This function name is not recognized.",
+	"literal_nil":      "A literal nil cannot unify with any other value.",
+	"unify_cycle":      "Circular reference detected during unification.",
+	"constraint":       "This value does not satisfy the constraint. A constraint is the\nmeet of bound atoms (min, max, above, below) and exclusions (neq)\nover one domain; the expected form shown is the normalised\nresidual the value must satisfy.\n \nExamples:\n  min(0) & 3                    -> 3    # Admitted (3 >= 0);\n  min(0) & 0d5                  -> 0d5  # Bounds are leaf-agnostic;\n  max(65535) & 99999            -> nil  # Above the bound;\n  min(5) & max(3)               -> nil  # Empty at composition time;\n  integer & above(1) & below(2) -> nil  # No integer in the gap;\n  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.\n  re(\"^a\") & \"abc\"              -> \"abc\" # Patterns are unanchored.",
+	"must": "This value fails an evaluate-only check written with must().\n" +
+		"The author's message is: {message}" +
+		"\n \n" +
+		"must(c, msg) is Band B of the constraint algebra: the value must\n" +
+		"unify with c, but the check itself is OPAQUE to the algebra -- it\n" +
+		"never participates in emptiness or subsumption, and it never\n" +
+		"contributes to the value. It is the honest channel for a domain\n" +
+		"rule the algebra cannot reason about, which is why it carries a\n" +
+		"message of its own." +
+		"\n \nExamples:\n" +
+		"  must(\"gold\"|\"silver\",\"tier\") & \"gold\" -> \"gold\"  # Admitted;\n" +
+		"  must(\"gold\"|\"silver\",\"tier\") & \"lead\" -> nil    # ... reported\n" +
+		"                                                   #     with \"tier\";\n" +
+		"  min(0) & must(integer,\"whole\") & 3    -> 3      # Bands compose.",
+
 	"constraint_pattern": "This re() pattern is outside the supported subset. It uses\n{reason}.\n \nre() accepts classical regular expressions over Unicode code\npoints, with one meaning in both implementations:\n \n  literals     a  \\.  \\*  \\xHH        (escape . \\ + * ? ( ) [ ] { } | ^ $ /)\n  classes      [abc]  [^abc]  [a-z]\n  abbreviations \\d \\D \\w \\W \\s \\S  and  .\n  repetition   *  +  ?  {n}  {n,}  {n,m}   (lazy: *? +? ??)\n  grouping     (...)  (?:...)      alternation  a|b\n  anchors      ^  $  \\A  \\z  \\b  \\B\n \nAontu DEFINES the abbreviations rather than inheriting either\nhost regex engine, so they mean the same in both ports:\n  \\d [0-9]   \\w [0-9A-Za-z_]   \\s [ \\t\\n\\r\\f\\v]   . [^\\n]\nNote \\s is these six ASCII characters only -- not U+00A0.\n \nNOT accepted, because no rewriting can make the two engines\nagree:\n  backreferences (\\1, \\k<n>) and lookaround ((?=) (?!) (?<=))\n  named groups, inline flags, and any (?...) but (?:\n  POSIX classes [[:alpha:]], \\p{...}, \\x{...}, \\u\n  a quantifier on a group containing a quantifier or an\n    alternation -- (a+)+ backtracks exponentially in one port,\n    so write [ab]+ rather than (?:a|b)+\n \nExamples:\n  re(\"^[a-z][a-z0-9-]*$\")  # Fine;\n  re(\"^\\d{3}-\\d{4}$\")      # Fine;\n  re(\"(?:ab)+\")            # Fine (non-capturing group);\n  re(\"(?=x)y\")             # Refused (lookahead);\n  re(\"(a+)+\")              # Refused (nested quantifier).",
 	"conjunct":           "This conjunction (& operator) could not be completed as some terms\ncould not be resolved.",
 	"no_path":            "The path reference could not be found.\n \nExamples:\n  a:1 b:$.a  -> a:1,b:1  # $.a is a valid path reference as a is a key of root ($).\n  a:$.b      -> nil      # $.b is not a valid path reference as there is no key b in root ($).\n",
@@ -115,6 +130,7 @@ var codeClasses = map[string]string{
 	// empty meets at composition time, and domain/kind mixing.)
 	"constraint":            "conflict",
 	"constraint_pattern":    "conflict",
+	"must":                  "conflict",
 	"scalar_value":          "conflict",
 	"scalar_kind":           "conflict",
 	"no_scalar_unify":       "conflict",

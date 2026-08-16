@@ -75,6 +75,22 @@ const hints: Record<string, string> = {
     '  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.\n' +
     '  re("^a") & "abc"              -> "abc" # Patterns are unanchored.',
 
+  must:
+    'This value fails an evaluate-only check written with must().\n' +
+    'The author\'s message is: {message}' +
+    '\n \n' +
+    'must(c, msg) is Band B of the constraint algebra: the value must\n' +
+    'unify with c, but the check itself is OPAQUE to the algebra -- it\n' +
+    'never participates in emptiness or subsumption, and it never\n' +
+    'contributes to the value. It is the honest channel for a domain\n' +
+    'rule the algebra cannot reason about, which is why it carries a\n' +
+    'message of its own.' +
+    '\n \nExamples:\n' +
+    '  must("gold"|"silver","tier") & "gold" -> "gold"  # Admitted;\n' +
+    '  must("gold"|"silver","tier") & "lead" -> nil    # ... reported\n' +
+    '                                                   #     with "tier";\n' +
+    '  min(0) & must(integer,"whole") & 3    -> 3      # Bands compose.',
+
   constraint_pattern:
     'This re() pattern is outside the supported subset. It uses\n' +
     '{reason}.\n' +
@@ -290,6 +306,7 @@ const codeClasses: Record<string, string> = {
   // (constraint covers the whole algebra family: membership failure,
   // empty meets at composition time, and domain/kind mixing.)
   constraint: 'conflict',
+  must: 'conflict',
   constraint_pattern: 'conflict',
   scalar_value: 'conflict',
   scalar_kind: 'conflict',
