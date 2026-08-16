@@ -195,3 +195,46 @@
 # storage, not chosen. It is pinned per-port instead: ts/test/
 # exactjson.test.ts and go/generate_test.go.
 #
+# ---------------------------------------------------------------------
+#
+# ENTRY (2026-08-16): a single-segment `$.x` in the FIRST position of a
+# function call's comma group swallows the rest of the group in
+# TypeScript. Go parses the same source correctly.
+#
+#   1. ISSUE: rjrodger/aontu#55
+#
+#   2. WHY NOT SIMPLY FIXED: the loss happens in the paren rule's TERM
+#      COLLECTION, inside @tabnas/expr, before any aontu handler runs.
+#      The dot-prefix and dollar-prefix opmap handlers receive correct
+#      terms and build a correct RefVal; the dropped argument never
+#      reaches them, and `terms.slice(1)` in the func-paren handler has
+#      one entry where the author wrote two. Ruled out by experiment:
+#      operator precedence (dollar-prefix.right at 23M/26M/31M and
+#      dot-prefix.right at 13M/19M/26M all behave identically, and
+#      `$.b.c` keeps parsing at every value), and plugin registration
+#      order (TS registers Path before Expr, Go after; matching Go's
+#      order does not fix it). It cannot be fixed from this repository.
+#
+#   3. THE INPUTS, AND BOTH ENGINES:
+#
+#        a:neq($.z,3) a:3
+#        z:2
+#          TS -> {"a":3,"z":2}          the `,3` is gone; canon neq($.z)
+#          Go -> [aontu/constraint]     canon neq(2,3)
+#
+#        a:must($.c,"m")
+#          TS -> [aontu/func_arity]     loud, same cause
+#          Go -> parses, two arguments
+#
+#      NOT affected, which is what makes the fault narrow: two segments
+#      (`$.z.w,3`), parentheses (`($.z),3`), a later position
+#      (`3,$.z`), a var rather than a path (`$x,3`), and both list and
+#      map literals (`[$.z,3]`, `{p:$.z,q:3}`).
+#
+#      The `neq` case is a SILENT WRONG ANSWER -- neq takes one or more
+#      arguments, so the arity check cannot catch a dropped exclusion --
+#      which is why it is recorded here rather than left to be
+#      rediscovered. It is reachable on main today through `neq` alone;
+#      G1 phase 4 (reference-valued atom arguments) is what made it
+#      visible, not what introduced it.
+#
