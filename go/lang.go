@@ -2022,6 +2022,20 @@ func asValDepth(node any, depth int) Val {
 		}
 		return mv
 	case []any:
+		// An OPERATOR EXPRESSION, not a list: the head is the Op
+		// descriptor and the tail its operands. Reduce it through the
+		// same evaluate the parser uses, or `k2.b` in an implicit
+		// top-level list became the nonsense list [nil,"k2","b"] --
+		// asVal on the descriptor is a nil, and the operands trail
+		// behind it. TypeScript gets this reduced by @tabnas/expr 0.5.4
+		// ("stop skipping implicit-list members"); the Go port of that
+		// fix still hands the raw slice over, so the reduction is done
+		// here to keep the two ports agreeing (ADR-001).
+		if 0 < len(n) {
+			if op, ok := n[0].(*expr.Op); ok {
+				return asValDepth(evaluate(nil, nil, op, n[1:]), depth+1)
+			}
+		}
 		// Reached only by lists that skipped the list rule (implicit
 		// top-level lists, evaluated expr slices); braced lists are
 		// already ListVals via wrapList. No position, as in TS rawToVal.

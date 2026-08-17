@@ -1157,8 +1157,10 @@ function meetCount(a, b) {
 // Read a WRITTEN `length` argument as a count residual, or undefined when
 // it is not one. Accepted: an integer literal (an exact count), a
 // numeric kind, a Band A residual over the number domain, and any
-// conjunct of those -- which is what `length(min(2)&max(5))` arrives as,
-// and what canon emits.
+// conjunct of those. A conjunct never reaches here any more: an
+// unsettled argument is held as `pending` and folded before the count
+// reads it (G1 phase 4), so `length(min(2)&max(5))` arrives as the
+// single residual it folds to.
 //
 // Anything else is refused rather than deferred. A reference or an
 // expression would have to residuate, and the sizing atoms do not
@@ -1200,17 +1202,6 @@ function countArgState(arg) {
             return { domain: 'number', kind: marker, neqs: [], res: [], musts: [], uniq: false };
         }
         return undefined;
-    }
-    if (true === arg?.isConjunct) {
-        let acc = { domain: 'number', neqs: [], res: [], musts: [], uniq: false };
-        for (const term of arg.peg) {
-            const one = countArgState(term);
-            if (null == one) {
-                return undefined;
-            }
-            acc = meetCount(acc, one);
-        }
-        return acc;
     }
     return undefined;
 }

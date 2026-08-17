@@ -573,8 +573,14 @@ function capture(fn) {
         Assert.equal(lang.parse('1, @"' + raw + '"').canon, '[1,{"a":1,"b":"s","c":true,"d":[1,2],"e":null,"f":1.5}]');
         // A function export has no Val: parse_unknown.
         Assert.equal(lang.parse('1, @"' + rawfn + '"').canon, '[1,nil]');
-        // An unfilled operator slot in a raw list stays nil.
-        Assert.equal(lang.parse('k2.b K:1').canon, '[[nil,"k2","b"]]');
+        // An operator expression in an implicit top-level list is REDUCED,
+        // not left as a raw op array: `k2.b` is the relative reference
+        // `.k2.b`, which is what it canons as standalone too. Before
+        // @tabnas/expr 0.5.4 this parsed as the nonsense list
+        // [nil,"k2","b"] -- the op descriptor as a nil, its operands
+        // trailing behind it -- and unify then produced that list as a
+        // VALUE in Go while TypeScript raised no_path. Both now raise.
+        Assert.equal(lang.parse('k2.b K:1').canon, '[.k2.b]');
     });
 });
 (0, node_test_1.describe)('coverage3-lsp', () => {

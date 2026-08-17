@@ -156,3 +156,13 @@ neq-comma-expr-last	errc	a:neq(1,1+1) a:2	constraint
 neq-comma-expr-last-admit	gen	a:neq(1,1+1) a:3	{"a":3}
 neq-comma-expr-mid	errc	a:neq(1,2+3,4) a:5	constraint
 neq-comma-expr-mid-admit	gen	a:neq(1,2+3,4) a:6	{"a":6}
+#
+# A REFERENCE among the arguments (@tabnas/expr#42, #43). The parser
+# dropped every argument after a single-segment `$.x` in first position,
+# so `neq($.z,3)` silently became `neq($.z)` and admitted 3. Ledgered as
+# a divergence -- TypeScript only -- and closed by expr 0.5.4.
+neq-ref-first	gen	a:neq($.z,3) a:1\nz:2	{"a":1,"z":2}
+neq-ref-first-reject-ref	errc	a:neq($.z,3) a:2\nz:2	constraint
+neq-ref-first-reject-lit	errc	a:neq($.z,3) a:3\nz:2	constraint
+neq-ref-both	gen	a:neq($.z,$.w) a:1\nz:2\nw:3	{"a":1,"w":3,"z":2}
+neq-ref-both-reject	errc	a:neq($.z,$.w) a:3\nz:2\nw:3	constraint

@@ -537,31 +537,6 @@ help isolate the syntax error.`,
       let val = terms[1]
       const fname = terms[0]
 
-      // Reduce nested operator expressions inside a COMMA GROUP.
-      //
-      // The expr plugin evaluates an operator expression through this
-      // same opmap -- but only when it is the whole of a term. Inside a
-      // comma group it hands the func-paren handler the UNREDUCED tree:
-      // a raw array whose head is the Op descriptor and whose tail is
-      // the operands. `rawToVal` then turned that into a ListVal holding
-      // the descriptor, so `must("a"|"b",m)` became a three-element list
-      // with a nil in front and every check against it failed, while
-      // `neq(3,$.z)` became an unusable argument. Reducing here gives a
-      // comma group the same meaning a single argument already has:
-      // `min(1+1)` and `must(1+1,m)` now agree.
-      const reduceOps = (n: any): any => {
-        if (!Array.isArray(n)) {
-          return n
-        }
-        const head = n[0]
-        if (0 < n.length && null != head && 'object' === typeof head &&
-          true !== head.isVal && 'string' === typeof head.name &&
-          'function' === typeof (opmap as any)[head.name]) {
-          return (opmap as any)[head.name](r, ctx, head, n.slice(1).map(reduceOps))
-        }
-        return n.map(reduceOps)
-      }
-      terms = terms.map((t: any, i: number) => 0 === i ? t : reduceOps(t))
       if ('' !== fname) {
         const funcval = funcMap[fname]
         // Arity is known for every built-in, so a surplus or missing
@@ -1388,12 +1363,6 @@ function rawToVal(n: any): Val {
     return new BooleanVal({ peg: n })
   }
   if ('object' === t) {
-    // An expr-plugin internal (operator descriptor) leaking through a
-    // degenerate parse (`k2.b K:1`) is not data — reject it rather
-    // than emitting raw internals in generated output.
-    if (undefined !== (n as any).OP_MARK) {
-      return new NilVal({ why: 'parse_unknown' })
-    }
     const peg: Record<string, Val> = {}
     for (const k in n) {
       peg[k] = rawToVal(n[k])
