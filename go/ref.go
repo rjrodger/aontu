@@ -31,6 +31,12 @@ func newRef(terms []any, prefix bool) *RefVal {
 func (rv *RefVal) cjo() int      { return 32500 }
 func (rv *RefVal) superior() Val { return top() }
 
+// A path segment no spelling can produce, used when append meets a
+// value it has no rule for. A key cannot contain a NUL, so this can
+// never match, which turns a silent path-shortening bug into a visible
+// miss. Mirrors UNSPELLABLE_SEGMENT in ts/src/val/RefVal.ts.
+const unspellableSegment = "\u0000unspellable"
+
 // append builds the path parts, mirroring RefVal.append.
 func (rv *RefVal) append(part any) {
 	switch p := part.(type) {
@@ -77,6 +83,11 @@ func (rv *RefVal) append(part any) {
 				func() string { return p.peg.(*Decimal).digits() }), ".") {
 				rv.peg = append(rv.peg, s)
 			}
+		default:
+			// A boolean or null operand has no spelling that addresses a
+			// key; it must miss loudly, not shorten the path — see the
+			// trailing default below.
+			rv.peg = append(rv.peg, unspellableSegment)
 		}
 	case *VarVal:
 		rv.peg = append(rv.peg, p)
@@ -96,6 +107,16 @@ func (rv *RefVal) append(part any) {
 			}
 		}
 		rv.peg = append(rv.peg, p.peg...)
+	default:
+		// A closed chain, deliberately. Every branch above ends in an
+		// append, so an unhandled value class used to fall through in
+		// SILENCE and shorten the path by one segment — which is how
+		// `**.true` built an EMPTY prefix path that resolved to its own
+		// container, leaving a PrefVal whose peg was itself and an
+		// unrecoverable stack overflow in Canon. A segment that cannot
+		// be spelled is pushed as one that cannot match, so the
+		// reference misses loudly instead of succeeding wrongly.
+		rv.peg = append(rv.peg, unspellableSegment)
 	}
 }
 

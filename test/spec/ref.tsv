@@ -70,3 +70,23 @@ path-seg-exponent-not-value-err	err	a:{100:7} b:$.a.1e2	Cannot resolve value
 path-seg-nested-list-index	gens	a:[[1,2],[3,4]] b:$.a.1.0	{"a":[[1,2],[3,4]],"b":3}
 path-seg-nested-list-index-other	gens	a:[[1,2],[3,4]] b:$.a.0.1	{"a":[[1,2],[3,4]],"b":2}
 path-seg-nested-map-numeric-key	gens	a:{1:{0:7}} b:$.a.1.0	{"a":{"1":{"0":7}},"b":7}
+
+# AN UNSPELLABLE SEGMENT MISSES LOUDLY, IN BOTH PORTS.
+#
+# A reference operand no spelling can produce (a boolean, null, a list,
+# a map) appends a segment no key can contain (NUL-prefixed), so the
+# path can never resolve and the reference reports as unresolved. Go
+# used to DROP the segment instead, leaving `**.true` an EMPTY prefix
+# path that resolved to its own container -- a PrefVal whose peg was
+# itself, and an unrecoverable stack overflow in PrefVal.Canon
+# (go/pref.go). TypeScript closed the same hole for the exact number
+# leaves (UNSPELLABLE_SEGMENT, ts/src/val/RefVal.ts); these rows pin the
+# whole operand family in both engines. At the root the failure
+# surfaces as the generate-stage `ref` code rather than `no_path`.
+ref-unspellable-bool	errc	a:**.true	no_path
+ref-unspellable-null	errc	a:**.null	no_path
+ref-unspellable-list	errc	a:**.[1]	no_path
+ref-unspellable-map	errc	a:**.{x:1}	no_path
+ref-unspellable-nopref	errc	a:*.true	no_path
+ref-unspellable-root	errc	**.true	ref
+ref-unspellable-root-list	errc	**.[1]	ref
