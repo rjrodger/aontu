@@ -3,7 +3,7 @@ module github.com/rjrodger/aontu/go
 go 1.24.7
 
 require (
-	github.com/tabnas/expr/go v0.5.4
+	github.com/tabnas/expr/go v0.5.5
 	github.com/tabnas/jsonic/go v0.6.2
 	github.com/tabnas/multisource/go v0.5.2
 	github.com/tabnas/path/go v0.3.2

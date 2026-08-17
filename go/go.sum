@@ -2,8 +2,8 @@ github.com/tabnas/debug/go v0.3.2 h1:mBC5HjPvmXf3d+/0lpD21qh8MqKVBlOotNpQG7r1+2U
 github.com/tabnas/debug/go v0.3.2/go.mod h1:rJwdYl23jnWZX1af6jenk5jzP6R8EO3G8VlUkKB55dA=
 github.com/tabnas/directive/go v0.5.2 h1:UrCo0Hgceu7h25KRpwIBdk1mp9xsoPdzmUqrtoz25iU=
 github.com/tabnas/directive/go v0.5.2/go.mod h1:Bw5bXQ/j9GGgEC4oUSNaCYkd7JhCmvtwizRxB714CX0=
-github.com/tabnas/expr/go v0.5.4 h1:qeiomis/gMurjw5rDFjX9+D6jvozTL8y+Bdet3YHEAg=
-github.com/tabnas/expr/go v0.5.4/go.mod h1:C5LXXHwiF9e1TF9e97GfqM6cgrIqeCn8ge4vlIwPDRQ=
+github.com/tabnas/expr/go v0.5.5 h1:mV8TB0GPzUhnW5hIcFLHy7HZpXNpUyp33C0BfgozFOk=
+github.com/tabnas/expr/go v0.5.5/go.mod h1:C5LXXHwiF9e1TF9e97GfqM6cgrIqeCn8ge4vlIwPDRQ=
 github.com/tabnas/json/go v0.5.2 h1:w8MYJfnihZoHSuQQ/KmweuIaLX6ciUB71+/+2ovMhak=
 github.com/tabnas/json/go v0.5.2/go.mod h1:/ANfNGFDbBBiTniNYf0CCY8H4rQF72rl+0z3n2tiyJ0=
 github.com/tabnas/jsonic/go v0.6.2 h1:G2L7jehqDuufNYndlA5er1Fca4GA73hrGw0mTl72TII=
