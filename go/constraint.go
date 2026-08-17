@@ -27,6 +27,16 @@ type constraintBound struct {
 	open bool
 }
 
+type constraintMust struct {
+	v   Val        // the value the peer must unify with
+	msg *ScalarVal // the author's message (Canon renders the literal)
+}
+
+type constraintPending struct {
+	atom string
+	args []Val
+}
+
 type constraintRe struct {
 	v *ScalarVal // the stored pattern scalar (Canon renders the literal)
 	// src is the pattern text AS WRITTEN -- Canon and dedup use this,
@@ -342,6 +352,13 @@ type ConstraintVal struct {
 	// recursively. nil when the residual says nothing about length.
 	count *ConstraintVal
 	uniq  bool // members must be pairwise distinct (unique())
+	// musts are Band B checks, kept in written order and never
+	// simplified: each carries its own author message.
+	musts []constraintMust
+	// pending holds an atom whose arguments have not settled yet (G1
+	// phase 4), until Unify has a Ctx to resolve them through. Never
+	// present on a residual.
+	pending *constraintPending
 	// clash records a kind disagreement inside a len() argument. That
 	// meet runs at construction, where there is no Ctx to fail through,
 	// so emptiness carries the news instead.
@@ -379,7 +396,7 @@ func (c *ConstraintVal) superior() Val { return top() }
 // the func-paren handler in lang.go.
 var constraintAtoms = map[string]bool{
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
-	"re": true, "length": true, "unique": true,
+	"re": true, "length": true, "unique": true, "must": true,
 }
 
 // orderableScalar reports the algebra domain of a scalar: numeric
@@ -433,13 +450,31 @@ func cmpConstraintVal(domain string, a, b *ScalarVal) int {
 // arguments are phase 4 (residuation).
 func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 	c := &ConstraintVal{kind: KindTop}
-	c.dc = DONE
 	c.sp = sp
 
 	bad := func(why string) *ConstraintVal {
 		c.invalid = why
+		c.dc = DONE
 		return c
 	}
+
+	args = atomArgs(atom, args)
+
+	// An argument that is not yet concrete -- a reference, an arithmetic
+	// expression, a conjunct of atoms -- makes the whole atom PENDING
+	// rather than invalid (G1 phase 4). It is resolved in Unify, where
+	// there is a Ctx to resolve through, and the residual is built from
+	// the settled arguments. Only a settled argument of the wrong shape
+	// is an `invalid-arg`.
+	for _, a := range args {
+		if DONE != a.Dc() {
+			c.pending = &constraintPending{atom: atom, args: args}
+			c.notdone()
+			return c
+		}
+	}
+
+	c.dc = DONE
 
 	// `unique()` takes no argument: it is a property of the container,
 	// not a comparison against a value. Arity is checked at parse, so a
@@ -449,15 +484,32 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 		return c
 	}
 
-	if "neq" == atom {
-		// Multiple arguments arrive from the func-paren grammar as one
-		// entry holding the comma group (a ListVal); `neq([3,1,2])`
-		// means the same thing (mirrors the TS raw-array unwrap).
-		if 1 == len(args) {
-			if lv, ok := args[0].(*ListVal); ok {
-				args = lv.peg
-			}
+	// `must(c, msg)` is Band B: an evaluate-only check against the
+	// finished value, carrying the author's own message. It is KEPT,
+	// never simplified and never consulted for emptiness or subsumption
+	// (docs/reference-language.md, "Band B: `must`").
+	if "must" == atom {
+		if 2 != len(args) {
+			return bad("arg")
 		}
+		msv, md := orderableScalar(args[1])
+		if nil == msv || "string" != md {
+			return bad("invalid-arg")
+		}
+		// A check carrying a nil can never be satisfied, so it is refused
+		// as an ARGUMENT rather than left to fail against every value
+		// with the author's message attached -- which would blame the
+		// data for a mistake in the check. `must([1-x],m)` is the
+		// reachable case: a degenerate expression leaves a nil inside
+		// the written list.
+		if holdsNil(args[0]) {
+			return bad("invalid-arg")
+		}
+		c.musts = []constraintMust{{v: args[0], msg: msv}}
+		return c
+	}
+
+	if "neq" == atom {
 		if 0 == len(args) {
 			return bad("arg")
 		}
@@ -551,6 +603,9 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 }
 
 func (c *ConstraintVal) Unify(peer Val, ctx *Ctx) Val {
+	if nil != c.pending {
+		return c.settle(peer, ctx)
+	}
 	if "" != c.invalid {
 		return makeNilErrFull(ctx, c.invalid, c, nil, "constrain", c.reasonDetails())
 	}
@@ -588,6 +643,84 @@ func (c *ConstraintVal) Unify(peer Val, ctx *Ctx) Val {
 	return c.fail(ctx, peer)
 }
 
+// settle resolves a pending atom's arguments and, once they have all
+// settled, becomes the residual they describe (G1 phase 4).
+//
+// This is the residuation discipline FuncVal already follows for its own
+// operands: push each unsettled argument one step by unifying it with
+// top, and if any is still moving, mark not-done and defer -- either as
+// this same pending atom (against a top peer) or wrapped with the peer
+// in a conjunct the next pass will re-enter. Nothing is decided from a
+// half-resolved argument, which is what keeps `min($.lo)` from reporting
+// a conflict against a bound that has not arrived yet.
+func (c *ConstraintVal) settle(peer Val, ctx *Ctx) Val {
+	settled := true
+	args := make([]Val, 0, len(c.pending.args))
+	for _, arg := range c.pending.args {
+		next := arg
+		if DONE != arg.Dc() {
+			next = arg.Unify(top(), ctx)
+		}
+		settled = settled && DONE == next.Dc()
+		args = append(args, next)
+	}
+
+	built := newConstraint(c.pending.atom, args, c.sp)
+	built.path = cp(c.path)
+	built.spu = c.spu
+	built.mtype = c.mtype
+	built.mhide = c.mhide
+
+	if settled {
+		// The residual the atom always meant; the ordinary ladder now
+		// meets it with the peer.
+		return built.Unify(peer, ctx)
+	}
+
+	c.notdone()
+
+	if nil == peer || isTop(peer) {
+		return built
+	}
+	if peer.Nil() {
+		return peer
+	}
+	return newConjunct([]Val{built, peer})
+}
+
+// checkMusts applies Band B to a finished value. Each check is a plain
+// unification against a CLONE of the peer: `must` reports, it never
+// contributes -- whatever the check would have added is discarded, and
+// the caller returns the peer untouched.
+//
+// The trial runs in an isolated collect context so a failing check
+// leaves nothing on the caller's error list -- only the located nil this
+// returns, carrying the author's own message.
+func (c *ConstraintVal) checkMusts(peer Val, ctx *Ctx) Val {
+	for _, m := range c.musts {
+		trial := &Ctx{}
+		if nil != ctx {
+			t := *ctx
+			t.err = nil
+			trial = &t
+		}
+		trial.collect = true
+		got := unite(trial, clonePath(m.v, c.path), clonePath(peer, c.path))
+		if (nil != got && got.Nil()) || 0 < len(trial.err) {
+			pcanon := ""
+			if nil != peer {
+				pcanon = peer.Canon()
+			}
+			return makeNilErrFull(ctx, "must", c, peer, "", map[string]string{
+				"message":  m.msg.peg.(string),
+				"expected": m.v.Canon(),
+				"actual":   pcanon,
+			})
+		}
+	}
+	return nil
+}
+
 // admit checks membership: the peer scalar passes every part of the
 // residual, or the meet is a located conflict.
 func (c *ConstraintVal) admit(peer *ScalarVal, ctx *Ctx) Val {
@@ -609,6 +742,9 @@ func (c *ConstraintVal) admit(peer *ScalarVal, ctx *Ctx) Val {
 		if !stateAdmits(c.count, countVal(n)) {
 			return c.fail(ctx, peer)
 		}
+	}
+	if bad := c.checkMusts(peer, ctx); nil != bad {
+		return bad
 	}
 	return peer
 }
@@ -632,6 +768,14 @@ func (c *ConstraintVal) admitContainer(
 	if !containerSettled(bag) {
 		c.dc = 0
 		return newConjunct([]Val{c, peer})
+	}
+
+	if bad := c.checkMusts(peer, ctx); nil != bad {
+		return bad
+	}
+
+	if !c.uniq && nil == c.count {
+		return peer
 	}
 
 	members := emittedMembers(bag, optional, ctx)
@@ -742,6 +886,10 @@ func (c *ConstraintVal) meetConstraint(peer *ConstraintVal, ctx *Ctx) Val {
 	}
 	// `unique()` is idempotent: two of them are one.
 	merged.uniq = c.uniq || peer.uniq
+	// Band B checks accumulate in written order and are never merged,
+	// deduplicated or reordered: each carries its own author message,
+	// and two checks with the same shape may still say different things.
+	merged.musts = append(append([]constraintMust{}, c.musts...), peer.musts...)
 
 	return c.finish(merged, ctx, peer)
 }
@@ -782,6 +930,7 @@ func (c *ConstraintVal) cloneState() *ConstraintVal {
 		res:     append([]constraintRe{}, c.res...),
 		count:   c.count,
 		uniq:    c.uniq,
+		musts:   append([]constraintMust{}, c.musts...),
 		clash:   c.clash,
 		invalid: c.invalid,
 	}
@@ -823,6 +972,15 @@ func dedupSortedRes(res []constraintRe) []constraintRe {
 // upper bound, neq (arguments sorted), re, length, unique. Reparses to a
 // conjunct of atoms that normalises back to this exact residual.
 func (c *ConstraintVal) Canon() string {
+	if nil != c.pending {
+		// A pending atom has no residual yet, so Canon renders the call
+		// as written -- the same shape FuncVal renders while deferring.
+		as := make([]string, len(c.pending.args))
+		for i, a := range c.pending.args {
+			as[i] = a.Canon()
+		}
+		return c.pending.atom + "(" + strings.Join(as, ",") + ")"
+	}
 	parts := []string{}
 	if KindTop != c.kind {
 		parts = append(parts, c.kind.String())
@@ -870,6 +1028,9 @@ func (c *ConstraintVal) Canon() string {
 	if c.uniq {
 		parts = append(parts, "unique()")
 	}
+	for _, m := range c.musts {
+		parts = append(parts, "must("+m.v.Canon()+","+m.msg.Canon()+")")
+	}
 	if 0 == len(parts) {
 		// Raw invalid atom: render the call so the error frame shows it.
 		return "constraint()"
@@ -881,6 +1042,61 @@ func (c *ConstraintVal) Gen(ctx *Ctx) (any, error) {
 	// A residual constraint is not a concrete value (mirrors the TS
 	// FeatureVal no_gen family; the bag level reports mapval_no_gen).
 	return nil, residueErr(ctx, c, "no_gen")
+}
+
+// atomArgs flattens an atom's written arguments.
+//
+// A multi-argument call arrives from the func-paren grammar as ONE entry
+// holding the comma group (a *ListVal); `neq([3,1,2])` means the same
+// thing. Flattening happens before the settled check, because an
+// unsettled member hiding inside the group would otherwise make the atom
+// look ready.
+func atomArgs(atom string, args []Val) []Val {
+	if ("neq" == atom || "must" == atom) && 1 == len(args) {
+		if lv, ok := args[0].(*ListVal); ok {
+			return lv.peg
+		}
+	}
+	return args
+}
+
+// holdsNil reports whether a value, or anything inside it, is a nil. A
+// written argument that holds one can never be satisfied, so the atom
+// refuses it rather than reporting a mystery failure against every peer.
+func holdsNil(v Val) bool {
+	if nil == v {
+		return false
+	}
+	if v.Nil() {
+		return true
+	}
+	switch t := v.(type) {
+	case *MapVal:
+		for _, child := range t.peg {
+			if holdsNil(child) {
+				return true
+			}
+		}
+	case *ListVal:
+		for _, child := range t.peg {
+			if holdsNil(child) {
+				return true
+			}
+		}
+	case *DisjunctVal:
+		for _, child := range t.peg {
+			if holdsNil(child) {
+				return true
+			}
+		}
+	case *ConjunctVal:
+		for _, child := range t.peg {
+			if holdsNil(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // stateAdmits reports whether a residual's ORDER and MEMBERSHIP part

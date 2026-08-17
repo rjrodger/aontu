@@ -111,6 +111,7 @@ import {
   ReConstraintVal,
   LengthConstraintVal,
   UniqueConstraintVal,
+  MustConstraintVal,
 } from './val/ConstraintVal'
 
 
@@ -434,6 +435,12 @@ help isolate the syntax error.`,
     // argument at all.
     length: LengthConstraintVal,
     unique: UniqueConstraintVal,
+
+    // G1 phase 5: Band B. `must` is the one atom the algebra does not
+    // reason about -- it is checked against the finished value and
+    // reported with the author's own message, never simplified and
+    // never consulted for emptiness or subsumption.
+    must: MustConstraintVal,
   }
 
 
@@ -529,6 +536,7 @@ help isolate the syntax error.`,
     'func-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[1]
       const fname = terms[0]
+
       if ('' !== fname) {
         const funcval = funcMap[fname]
         // Arity is known for every built-in, so a surplus or missing
@@ -1235,11 +1243,12 @@ function makeModelResolver(options: any) {
 // entry, and the arity is a property of the language rather than of
 // either port -- go/func.go carries the same table.
 //
-// Nearly everything takes exactly one. The three exceptions earn their
+// Nearly everything takes exactly one. The four exceptions earn their
 // place: key() names how many levels UP the path to read, defaulting to
-// the parent when omitted, neq takes a whole set of exclusions, and
+// the parent when omitted, neq takes a whole set of exclusions,
 // unique() is a property of the container rather than a comparison
-// against anything, so there is nothing for it to take.
+// against anything, so there is nothing for it to take, and must()
+// takes a check AND the author's message for when it fails.
 const funcArity: Record<string, [number, number]> = {
   upper: [1, 1], lower: [1, 1], copy: [1, 1], pref: [1, 1],
   super: [1, 1], type: [1, 1], hide: [1, 1], close: [1, 1],
@@ -1249,6 +1258,7 @@ const funcArity: Record<string, [number, number]> = {
   key: [0, 1],
   unique: [0, 0],
   neq: [1, -1],
+  must: [2, 2],
 }
 
 
@@ -1287,6 +1297,9 @@ function arityText(lo: number, hi: number): string {
   }
   if (0 === hi) {
     return 'no arguments'
+  }
+  if (2 === hi) {
+    return 'exactly two arguments'
   }
   return 'exactly one argument'
 }
@@ -1350,12 +1363,6 @@ function rawToVal(n: any): Val {
     return new BooleanVal({ peg: n })
   }
   if ('object' === t) {
-    // An expr-plugin internal (operator descriptor) leaking through a
-    // degenerate parse (`k2.b K:1`) is not data — reject it rather
-    // than emitting raw internals in generated output.
-    if (undefined !== (n as any).OP_MARK) {
-      return new NilVal({ why: 'parse_unknown' })
-    }
     const peg: Record<string, Val> = {}
     for (const k in n) {
       peg[k] = rawToVal(n[k])

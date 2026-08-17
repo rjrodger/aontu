@@ -135,3 +135,34 @@ err-invalid-peer-atom-msg	err	a:min(1)&neq(true)	Cannot constrain value
 # its own the invalid residual is merely non-generable.
 errc-bound-list-arg	errc	a:min([1])&5	invalid-arg
 errc-bound-map-arg	errc	a:min({})&5	invalid-arg
+#
+# ARGUMENTS INSIDE A COMMA GROUP.
+#
+# An operator expression means the same thing whether it is the whole
+# argument or one member of a comma group: `min(1+1)` and `neq(3,1+1)`
+# must agree about what `1+1` is. They did not -- the parser handed the
+# comma-group case over unreduced, so the argument silently became
+# unusable (fixed in @tabnas/expr 0.5.4, tabnas/expr#42).
+neq-comma-ref	gen	a:neq(3,$.z) a:1\nz:2	{"a":1,"z":2}
+neq-comma-ref-reject	errc	a:neq(3,$.z) a:2\nz:2	constraint
+min-expr-arg	gen	a:min(1+1) a:2	{"a":2}
+min-expr-arg-reject	errc	a:min(1+1) a:1	constraint
+#
+# `+` as the LAST member of the group is its own case: the expression is
+# evaluated OUTSIDE any rule there, and Go's addition handler read the
+# rule's open token unguarded -- a nil dereference the parser's recover
+# reported as an `internal` engine defect.
+neq-comma-expr-last	errc	a:neq(1,1+1) a:2	constraint
+neq-comma-expr-last-admit	gen	a:neq(1,1+1) a:3	{"a":3}
+neq-comma-expr-mid	errc	a:neq(1,2+3,4) a:5	constraint
+neq-comma-expr-mid-admit	gen	a:neq(1,2+3,4) a:6	{"a":6}
+#
+# A REFERENCE among the arguments (@tabnas/expr#42, #43). The parser
+# dropped every argument after a single-segment `$.x` in first position,
+# so `neq($.z,3)` silently became `neq($.z)` and admitted 3. Ledgered as
+# a divergence -- TypeScript only -- and closed by expr 0.5.4.
+neq-ref-first	gen	a:neq($.z,3) a:1\nz:2	{"a":1,"z":2}
+neq-ref-first-reject-ref	errc	a:neq($.z,3) a:2\nz:2	constraint
+neq-ref-first-reject-lit	errc	a:neq($.z,3) a:3\nz:2	constraint
+neq-ref-both	gen	a:neq($.z,$.w) a:1\nz:2\nw:3	{"a":1,"w":3,"z":2}
+neq-ref-both-reject	errc	a:neq($.z,$.w) a:3\nz:2\nw:3	constraint

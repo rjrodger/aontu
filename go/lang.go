@@ -1683,7 +1683,18 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		}
 		ov := newPlusOp(asVal(terms[0]), asVal(terms[1]))
 		// Source position for error frames (TS ops carry their site).
-		ov.sp = r.O0.SI
+		//
+		// Guarded like every sibling handler: an expression is evaluated
+		// OUTSIDE any rule when it is the last member of a func-paren
+		// comma group (expr.Evaluation(nil, nil, ...) in asValDepth,
+		// which the NoRule sentinel at the top of this function stands
+		// in for), and reading O0 there dereferenced the sentinel's
+		// empty open-token slice -- a nil pointer panic that the
+		// parser's recover reported as an `internal` engine defect on
+		// `neq(1,1+1)`.
+		if r.ON > 0 {
+			ov.sp = r.O0.SI
+		}
 		return ov
 	case "func-paren":
 		// preval injects the function name as a raw string term[0] for
@@ -2011,6 +2022,20 @@ func asValDepth(node any, depth int) Val {
 		}
 		return mv
 	case []any:
+		// An OPERATOR EXPRESSION, not a list: the head is the Op
+		// descriptor and the tail its operands. Reduce it through the
+		// same evaluate the parser uses, or `k2.b` in an implicit
+		// top-level list became the nonsense list [nil,"k2","b"] --
+		// asVal on the descriptor is a nil, and the operands trail
+		// behind it. TypeScript gets this reduced by @tabnas/expr 0.5.4
+		// ("stop skipping implicit-list members"); the Go port of that
+		// fix still hands the raw slice over, so the reduction is done
+		// here to keep the two ports agreeing (ADR-001).
+		if 0 < len(n) {
+			if op, ok := n[0].(*expr.Op); ok {
+				return asValDepth(evaluate(nil, nil, op, n[1:]), depth+1)
+			}
+		}
 		// Reached only by lists that skipped the list rule (implicit
 		// top-level lists, evaluated expr slices); braced lists are
 		// already ListVals via wrapList. No position, as in TS rawToVal.

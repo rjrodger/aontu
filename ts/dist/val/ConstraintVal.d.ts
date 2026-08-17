@@ -11,6 +11,10 @@ type ReAtom = {
     norm: string;
     re: RegExp;
 };
+type MustAtom = {
+    v: any;
+    msg: any;
+};
 type ConstraintState = {
     domain?: 'number' | 'string';
     kind?: any;
@@ -20,6 +24,7 @@ type ConstraintState = {
     res: ReAtom[];
     count?: ConstraintState;
     uniq: boolean;
+    musts: MustAtom[];
     clash?: boolean;
     invalid?: string;
 };
@@ -35,6 +40,11 @@ declare class ConstraintVal extends FeatureVal {
     res: ReAtom[];
     count?: ConstraintState;
     uniq: boolean;
+    musts: MustAtom[];
+    pending?: {
+        atom: string;
+        args: any[];
+    };
     clash?: boolean;
     invalid?: string;
     invalidWhy?: string;
@@ -44,7 +54,9 @@ declare class ConstraintVal extends FeatureVal {
     }, ctx?: AontuContext);
     private fromAtom;
     unify(peer: Val, ctx: AontuContext): Val;
+    private settle;
     private admit;
+    private checkMusts;
     private admitContainer;
     private meetKind;
     private meetConstraint;
@@ -73,10 +85,13 @@ declare class NeqConstraintVal extends ConstraintVal {
 declare class ReConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
+declare class MustConstraintVal extends ConstraintVal {
+    constructor(spec: ValSpec, ctx?: AontuContext);
+}
 declare class LengthConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
 declare class UniqueConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
-export { normaliseRe, ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, LengthConstraintVal, UniqueConstraintVal, };
+export { normaliseRe, ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, LengthConstraintVal, UniqueConstraintVal, MustConstraintVal, };

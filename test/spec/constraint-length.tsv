@@ -63,11 +63,14 @@ length-canon-reparse	gen	a:length(integer&min(3)&max(3)) a:[1,2,3]	{"a":[1,2,3]}
 length-unique-canon	canon	a:length(3)&unique()	{"a":length(integer&min(3)&max(3))&unique()}
 length-unique-canon-order	canon	a:unique()&length(3)	{"a":length(integer&min(3)&max(3))&unique()}
 #
-# The sizing atoms do not residuate on their ARGUMENT: a reference or an
-# expression is refused, the same discipline min/max apply to theirs.
+# A settled argument of the wrong shape is refused. An UNSETTLED one
+# residuates instead (G1 phase 4) -- see the reference rows below.
 length-arg-string	errc	a:length("x") a:[1]	invalid-arg
 length-arg-boolean	errc	a:length(true) a:[1]	invalid-arg
-length-arg-ref	errc	a:length($.z) a:[1]\nz:3	invalid-arg
+# G1 phase 4 REVERSED this pair. A reference argument no longer refuses:
+# it residuates, settles, and the count is then checked like any other.
+length-arg-ref	gen	a:length($.z) a:[1,2,3]\nz:3	{"a":[1,2,3],"z":3}
+length-arg-ref-reject	errc	a:length($.z) a:[1]\nz:3	constraint
 length-arity	errc	a:length()	func_arity
 unique-arity	errc	a:unique(1)	func_arity
 #
@@ -145,7 +148,10 @@ length-arg-unique	errc	a:length(unique()) a:[1]	invalid-arg
 length-arg-length	errc	a:length(length(2)) a:[1]	invalid-arg
 length-arg-string-kind	errc	a:length(string) a:[1]	invalid-arg
 length-arg-boolean-kind	errc	a:length(boolean) a:[1]	invalid-arg
-length-arg-conjunct-bad	errc	a:length(integer&string) a:[1]	invalid-arg
+# ... and a conjunct argument settles BEFORE the count reads it, so a
+# contradiction inside it is reported where it actually is.
+length-arg-conjunct	gen	a:length(integer&min(2)) a:[1,2,3]	{"a":[1,2,3]}
+length-arg-conjunct-bad	errc	a:length(integer&string) a:[1]	scalar-type
 #
 # A JSON null is a member like any other: it generates, so it counts,
 # and two of them are not distinct.

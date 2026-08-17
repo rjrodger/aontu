@@ -28,3 +28,12 @@ coverage
 *.test
 *.cover
 go/coverage.out
+
+# Go coverage build artifacts. `make cov-go` builds instrumented binaries
+# into go/bin and raw counter files into go/covdata, then removes both --
+# but only on success, so a FAILING coverage run leaves them behind and
+# the next `git add -A` sweeps 12 MB of binaries into the commit (as one
+# did in cc0c2d9).
+go/bin/
+go/covdata/
+go/coverage*.out

@@ -668,10 +668,10 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
    pins written-order independence. Two smaller consequences: a sizing
    residual has no domain of its own, so a kind SETS one
    (`string & length(3)` is a three-character string, `number & length(3)` is
-   empty), and canon must then spell out a bare `string`; and the count
-   argument is read at composition time and does NOT residuate, so
-   `length($.n)` is refused rather than deferred — phase 4's cross-field
-   work is about atom arguments generally and can revisit it.)*
+   empty), and canon must then spell out a bare `string`. (The count
+   argument was refused rather than deferred when this phase landed;
+   phase 4 revisited it, as anticipated, and it now residuates like
+   every other atom argument.)*
 5. **Phase 4 — cross-field arguments and residuation (M).**
    `RefVal`-valued atom arguments; residuation rows including
    forward references and spread interplay (`&:` templates carrying

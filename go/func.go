@@ -21,7 +21,7 @@ var funcSet = map[string]bool{
 	"pref": true, "super": true, "type": true, "hide": true,
 	"move": true, "path": true, "close": true, "open": true,
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
-	"re": true, "length": true, "unique": true,
+	"re": true, "length": true, "unique": true, "must": true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -29,11 +29,12 @@ var funcSet = map[string]bool{
 // entry, and the arity is a property of the language rather than of
 // either port -- ts/src/lang.ts carries the same table.
 //
-// Nearly everything takes exactly one. The three exceptions earn their
+// Nearly everything takes exactly one. The four exceptions earn their
 // place: key() names how many levels UP the path to read, defaulting to
-// the parent when omitted, neq takes a whole set of exclusions, and
+// the parent when omitted, neq takes a whole set of exclusions,
 // unique() is a property of the container rather than a comparison
-// against anything, so there is nothing for it to take.
+// against anything, so there is nothing for it to take, and must()
+// takes a check AND the author's message for when it fails.
 var funcArity = map[string][2]int{
 	"upper": {1, 1}, "lower": {1, 1}, "copy": {1, 1}, "pref": {1, 1},
 	"super": {1, 1}, "type": {1, 1}, "hide": {1, 1}, "close": {1, 1},
@@ -44,6 +45,7 @@ var funcArity = map[string][2]int{
 	"key":    {0, 1},
 	"unique": {0, 0},
 	"neq":    {1, -1},
+	"must":   {2, 2},
 }
 
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
@@ -75,6 +77,8 @@ func arityText(lo, hi int) string {
 		return "no arguments or one"
 	case 0 == hi:
 		return "no arguments"
+	case 2 == hi:
+		return "exactly two arguments"
 	default:
 		return "exactly one argument"
 	}
