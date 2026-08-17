@@ -49,17 +49,17 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@tabnas/debug": "0.3.1",
-    "@tabnas/directive": "0.5.1",
-    "@tabnas/expr": "0.5.4",
-    "@tabnas/jsonic": "0.6.0",
-    "@tabnas/multisource": "0.5.1",
-    "@tabnas/parser": "0.8.4",
-    "@tabnas/path": "0.3.1"
+    "@tabnas/debug": "0.3.2",
+    "@tabnas/directive": "0.5.2",
+    "@tabnas/expr": "0.5.5",
+    "@tabnas/jsonic": "0.6.2",
+    "@tabnas/multisource": "0.5.2",
+    "@tabnas/parser": "0.8.7",
+    "@tabnas/path": "0.3.2"
   },
   "devDependencies": {
-    "@types/node": "26.1.1",
-    "memfs": "4.64.0",
+    "@types/node": "26.2.0",
+    "memfs": "4.68.1",
     "typescript": "7.0.2"
   },
   "aliasify": {
