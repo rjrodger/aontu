@@ -7,7 +7,7 @@ package aontu
 // Spelled in caps to match ts/src/aontu.ts's exported VERSION, so the two
 // ports name the same thing the same way. Note the two version SERIES are
 // independent: the Go module is 0.1.x, the npm package 0.49.x.
-const VERSION = "0.1.9"
+const VERSION = "0.1.10"
 
 // Aontu is the top-level entry point, mirroring the TypeScript Aontu
 // class (ts/src/aontu.ts).
