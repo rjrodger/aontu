@@ -403,13 +403,11 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             if (!stringLeaf(args[1])) {
                 return bad('invalid-arg');
             }
-            // A check carrying a nil is refused outright rather than left to
-            // fail against every value. It is how the ONE spelling trap
-            // surfaces: `|` and `,` mis-associate inside a function call, so
-            // `must("a"|"b",m)` parses as a single list argument holding a
-            // nil rather than as a disjunct and a message. Parenthesise a
-            // compound check -- `must(("a"|"b"),m)` -- and see
-            // docs/reference-language.md, "Band B: `must`".
+            // A check carrying a nil can never be satisfied, so it is refused
+            // as an ARGUMENT rather than left to fail against every value with
+            // the author's message attached -- which would blame the data for
+            // a mistake in the check. `must([1-x],m)` is the reachable case: a
+            // degenerate expression leaves a nil inside the written list.
             if (holdsNil(args[0])) {
                 return bad('invalid-arg');
             }
@@ -928,19 +926,16 @@ function holdsNil(v) {
 // The written arguments of an atom, flattened.
 //
 // A multi-argument call arrives from the func-paren grammar as ONE
-// entry holding the comma group: a raw array of Vals (or an implicit
-// ListVal via some spellings). `neq(3,1,2)` therefore has peg [[3,1,2]],
-// and `neq([3,1,2])` means the same thing. Flattening happens before
-// the settled check, because an unsettled member hiding inside a raw
-// array would otherwise make the atom look ready.
+// entry holding the comma group, and `neq([3,1,2])` means the same as
+// `neq(3,1,2)`. The group is always a ListVal by the time it reaches
+// here -- the func-paren handler rawToVals every argument (issue #49) --
+// so there is no raw-array case to unwrap. Flattening happens before
+// the settled check, because an unsettled member hiding inside the
+// group would otherwise make the atom look ready.
 function atomArgs(atom, args) {
-    if (('neq' === atom || 'must' === atom) && 1 === args.length) {
-        if (Array.isArray(args[0])) {
-            return args[0];
-        }
-        if (true === args[0]?.isList) {
-            return args[0].peg;
-        }
+    if (('neq' === atom || 'must' === atom) && 1 === args.length &&
+        true === args[0]?.isList) {
+        return args[0].peg;
     }
     return args;
 }

@@ -496,11 +496,12 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 		if nil == msv || "string" != md {
 			return bad("invalid-arg")
 		}
-		// A check carrying a nil is refused outright rather than left to
-		// fail against every value. It is how the ONE spelling trap
-		// surfaces: `|` and `,` mis-associate inside a function call, so
-		// `must("a"|"b",m)` parses as a single list argument holding a
-		// nil. Parenthesise a compound check -- `must(("a"|"b"),m)`.
+		// A check carrying a nil can never be satisfied, so it is refused
+		// as an ARGUMENT rather than left to fail against every value
+		// with the author's message attached -- which would blame the
+		// data for a mistake in the check. `must([1-x],m)` is the
+		// reachable case: a degenerate expression leaves a nil inside
+		// the written list.
 		if holdsNil(args[0]) {
 			return bad("invalid-arg")
 		}
