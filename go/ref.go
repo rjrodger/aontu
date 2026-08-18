@@ -197,6 +197,16 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 	parts := make([]string, 0, len(rv.peg))
 	var modes []string
 	for i, p := range rv.peg {
+		// An unspellable segment MISSES BEFORE ANY LOOKUP. The marker is
+		// NUL-prefixed because no spelling produces one, but a document
+		// can still hold a key spelled with an escaped NUL
+		// (`a:{" unspellable":7}`), and matching it would turn the
+		// silent path-shortening this marker exists to prevent into a
+		// different silent wrong value. The marker is a marker, never a
+		// lookup key.
+		if s, ok := p.(string); ok && unspellableSegment == s {
+			return makeNilErr(ctx, "no_path", rv, nil)
+		}
 		if vv, ok := p.(*VarVal); ok {
 			switch name := varName(vv); name {
 			case "KEY":

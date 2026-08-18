@@ -496,8 +496,8 @@ ships as a reporter here and becomes an editor there.
 
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, the Go port follows;
-`make test` runs both. Nothing may regress: the shared suite (44
-files; counts live in [the register's protocol rule 5](progress.md#the-update-protocol)), canon convergence
+`make test` runs both. Nothing may regress: the shared suite (counts
+live in [the register's protocol rule 5](progress.md#the-update-protocol)),
 canon convergence, and today's generation behaviour of
 invalid-default disjuncts (until the sanctioned flip, which goes
 through `breaking` itself).

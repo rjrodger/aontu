@@ -81,12 +81,21 @@ path-seg-nested-map-numeric-key	gens	a:{1:{0:7}} b:$.a.1.0	{"a":{"1":{"0":7}},"b
 # itself, and an unrecoverable stack overflow in PrefVal.Canon
 # (go/pref.go). TypeScript closed the same hole for the exact number
 # leaves (UNSPELLABLE_SEGMENT, ts/src/val/RefVal.ts); these rows pin the
-# whole operand family in both engines. At the root the failure
-# surfaces as the generate-stage `ref` code rather than `no_path`.
+# whole operand family in both engines, at every position: find
+# reports the miss where the segment is read, so the code is the same
+# at the root as it is nested.
 ref-unspellable-bool	errc	a:**.true	no_path
 ref-unspellable-null	errc	a:**.null	no_path
 ref-unspellable-list	errc	a:**.[1]	no_path
 ref-unspellable-map	errc	a:**.{x:1}	no_path
 ref-unspellable-nopref	errc	a:*.true	no_path
-ref-unspellable-root	errc	**.true	ref
-ref-unspellable-root-list	errc	**.[1]	ref
+ref-unspellable-root	errc	**.true	no_path
+ref-unspellable-root-list	errc	**.[1]	no_path
+# The marker is a MARKER, never a lookup key. A document can spell a
+# key with an escaped NUL, so matching the marker against real keys
+# would trade the silent path-shortening it exists to prevent for a
+# different silent wrong value: before find refused it up front, this
+# source resolved $.a.true to 7. (The source needs a real NUL, which a
+# .tsv cell cannot carry -- the runners' unescape maps \u to u -- so it
+# lives in a fixture file, as file.tsv does.)
+ref-unspellable-no-collision	errc	@"__FIXTURES__/unspellable-key.aon" b:$.a.true	no_path

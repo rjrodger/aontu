@@ -493,10 +493,10 @@ entity address — the protobuf field-number lesson applied.
 Every phase is spec-first: TSV rows are authored and reviewed before
 implementation, TypeScript (canonical) lands first, the Go port
 follows, `make test` runs both, and committed `ts/dist` is rebuilt
-(`make build-ts`). Nothing may regress: all 44 existing spec files
-(counts in [the register's protocol rule 5](progress.md#the-update-protocol)) pass unchanged, and canon convergence
-canon convergence holds throughout, including for the new
-forms.
+(`make build-ts`). Nothing may regress: every row of the shared suite
+(counts in [the register's protocol rule 5](progress.md#the-update-protocol))
+passes unchanged, and canon convergence holds throughout, including
+for the new forms.
 
 1. **Phase 0 — semantics on paper (S).** New "Identity" and
    "Entity references" sections in `docs/reference-language.md`:

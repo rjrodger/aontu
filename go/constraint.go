@@ -474,6 +474,18 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 	// there is a Ctx to resolve through, and the residual is built from
 	// the settled arguments. Only a settled argument of the wrong shape
 	// is an `invalid-arg`.
+	// The effectful-argument refusal happens HERE, on the written form,
+	// and not in the `must` arm below: settling is what runs the effect,
+	// so by the time that arm sees a settled `move($.b)` the move has
+	// already happened and the argument is just its result.
+	if "must" == atom {
+		for _, a := range args {
+			if holdsMove(a) {
+				return bad("invalid-arg")
+			}
+		}
+	}
+
 	for _, a := range args {
 		if DONE != a.Dc() {
 			c.pending = &constraintPending{atom: atom, args: args}
@@ -518,6 +530,9 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 		if holdsNil(args[0]) {
 			return bad("invalid-arg")
 		}
+		// (An effectful argument is refused at construction, above: by
+		// the time this arm sees a settled `move($.b)` the move has
+		// already run.)
 		c.musts = []constraintMust{{v: args[0], msg: msv}}
 		return c
 	}
@@ -1114,6 +1129,47 @@ func holdsNil(v Val) bool {
 	// returns the nil operand (conjunct.go) — so one never reaches here
 	// live. TypeScript has no such arm either; its structural walk
 	// would treat a conjunct exactly as it treats the disjunct above.
+	return false
+}
+
+// holdsMove reports whether a value, or anything inside it, is an
+// effectful call -- one whose evaluation changes a node OTHER than the
+// one being computed. `move()` is the only builtin that does: it hides
+// its resolution target in place. Band B refuses one as an argument,
+// because settling it runs the effect against the live root before
+// `must`'s trial clone is taken, and a check that mutates cannot be
+// report-only. Mirrors holdsMove in ts/src/val/ConstraintVal.ts.
+func holdsMove(v Val) bool {
+	if f, ok := v.(*FuncVal); ok {
+		if "move" == f.name {
+			return true
+		}
+		for _, arg := range f.peg {
+			if holdsMove(arg) {
+				return true
+			}
+		}
+	}
+	switch t := v.(type) {
+	case *MapVal:
+		for _, child := range t.peg {
+			if holdsMove(child) {
+				return true
+			}
+		}
+	case *ListVal:
+		for _, child := range t.peg {
+			if holdsMove(child) {
+				return true
+			}
+		}
+	case *DisjunctVal:
+		for _, child := range t.peg {
+			if holdsMove(child) {
+				return true
+			}
+		}
+	}
 	return false
 }
 

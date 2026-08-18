@@ -52,3 +52,23 @@ must-container-arg-reject	err	a:must({k:1},"shape must match") a:{k:2}	shape mus
 must-list-arg	gen	a:must([1,2],"m") a:[1,2]	{"a":[1,2]}
 must-holds-nil-deep	errc	a:must({k:{j:[1-x]}},"m")	invalid-arg
 must-holds-nil-in-disjunct-list	errc	a:must([1|(1-x)],"m")	invalid-arg
+
+# A CHECK THAT MUTATES IS A CONTRADICTION IN TERMS.
+#
+# `must` reports and never contributes, but `move()` hides its
+# resolution target in place -- and settling a pending argument runs
+# that against the LIVE root, before the trial clone is taken. Go
+# dropped `b` from the output entirely and TypeScript raised
+# `internal`. The sibling atoms already refuse an effectful argument
+# (`min(move($.b))` and `neq(move($.b))` are invalid-arg in both
+# ports, because it is not an orderable scalar), so this is `must`
+# joining a policy the family already had. Refused at CONSTRUCTION,
+# on the written form: settling is what runs the effect.
+must-move-arg	errc	b:1 a:must(move($.b),"m") a:1	invalid-arg
+must-move-arg-in-list	errc	b:1 a:must([move($.b)],"m") a:1	invalid-arg
+must-move-arg-in-map	errc	b:1 a:must({k:move($.b)},"m") a:1	invalid-arg
+must-move-arg-wrapped	errc	b:1 a:must(upper(move($.b)),"m") a:1	invalid-arg
+must-move-arg-in-disjunct	errc	b:1 a:must(move($.b)|1,"m") a:1	invalid-arg
+# hide() marks the value it wraps rather than reaching out to another
+# node, so it is not effectful in this sense and stays admissible.
+must-hide-arg	gen	b:1 a:must(hide($.b),"m") a:1	{"a":1,"b":1}

@@ -351,7 +351,14 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             // in unify, where there is a ctx to resolve through, and the
             // residual is built from the settled arguments. Only a settled
             // argument of the wrong shape is an `invalid-arg`.
-            if (args.some((a) => true !== a?.done)) {
+            // The effectful-argument refusal happens HERE, on the written
+            // form, and not in fromAtom: settling is what runs the effect, so
+            // by the time fromAtom sees a settled `move($.b)` the move has
+            // already happened and the argument is just its result.
+            if ('must' === spec.atom && args.some((a) => holdsMove(a))) {
+                this.invalid = 'invalid-arg';
+            }
+            else if (args.some((a) => true !== a?.done)) {
                 this.pending = { atom: spec.atom, args };
             }
             else {
@@ -411,6 +418,9 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             if (holdsNil(args[0])) {
                 return bad('invalid-arg');
             }
+            // (An effectful argument is refused at construction, in the
+            // constructor: by the time this arm sees a settled `move($.b)`
+            // the move has already run.)
             this.musts = [{ v: args[0], msg: args[1] }];
             return;
         }
@@ -918,6 +928,29 @@ function holdsNil(v) {
     if (null != peg && 'object' === typeof peg) {
         for (const k in peg) {
             if (holdsNil(peg[k])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+// Whether a value, or anything inside it, is an effectful call — one
+// whose evaluation changes a node OTHER than the one being computed.
+// `move()` is the only builtin that does: it hides its resolution
+// target in place. Band B refuses one as an argument, because settling
+// it runs the effect against the live root before `must`'s trial clone
+// is taken, and a check that mutates cannot be report-only.
+function holdsMove(v) {
+    if (true === v.isFunc && 'move' === v.funcname?.()) {
+        return true;
+    }
+    const peg = v.peg;
+    if (Array.isArray(peg)) {
+        return peg.some((c) => holdsMove(c));
+    }
+    if (null != peg && 'object' === typeof peg) {
+        for (const k in peg) {
+            if (holdsMove(peg[k])) {
                 return true;
             }
         }
