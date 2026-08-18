@@ -746,7 +746,14 @@ describe('coverage3-lsp', () => {
       return h.contents.value
     }
     Assert.match(label('a:$.a', 2), /\*error\*/)
-    Assert.match(label('a:$.b b:$.c c:$.a', 8), /\*reference\*/)
+    // A REFERENCE that survives unification: a chain deeper than the
+    // pass budget stalls unresolved without erroring. A cycle no longer
+    // works here — with multi-error collection (G2 phase 6) the pass
+    // loop continues past the erroring pass, and the cycle's members
+    // absorb the one cycle nil rather than staying references.
+    Assert.match(label(
+      'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:$.l l:1',
+      2), /\*reference\*/)
     Assert.match(label('n:1.5', 2), /\*float\*/)
     Assert.match(label('x:null|top', 2), /\*scalar\*/)
     Assert.match(label('x:top|top', 2), /\*top\*/)

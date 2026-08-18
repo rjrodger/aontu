@@ -351,9 +351,21 @@ class Unify {
         uctx.seen = {}
         res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
 
-        if (0 < uctx.err.length) {
-          break
-        }
+        // MULTI-ERROR COLLECTION (G2 phase 6): the pass loop CONTINUES
+        // past an erroring pass, so independent failures a later pass
+        // would reach are collected in the same run — the break that
+        // stood here made every multi-error report truncated at the
+        // first erroring pass.
+        //
+        // What controls the cascade the design feared: a nil is
+        // ABSORBING (unite's isNil arms return the existing nil, no new
+        // error), so one failure stays ONE NilVal however many later
+        // meets touch it — a reference resolving to a failed target
+        // takes the same nil identity, which is exactly what lets the
+        // report layer dedup by identity. The probes that established
+        // this (fan-in refs, spread templates, disjunct trials, nested
+        // conjuncts) are pinned as vet.tsv's multi-* rows in both
+        // ports.
 
         // Snapshot the second-to-last pass's result, so exhaustion can
         // tell "still refining" from "stable residue" below. Only paid

@@ -138,3 +138,18 @@ vet-at-through-constraint	vet	a:min(2)	3	{"findings":[],"opts":{"at":"$.a.0"},"t
 vet-at-list-length	vet	a:[1,2]	9	{"findings":[],"opts":{"at":"$.a.length"},"truncated":false,"verdict":"error"}
 vet-closed-anchor	vet	service:{name:string}	name:"auth"\nextra:1	{"findings":[{"class":"conflict","code":"closed","path":"$.extra","severity":"error","sites":[{"col":7,"file":"data","role":"data","row":2,"value":"1"}]}],"opts":{"at":"$.service","closed":true},"truncated":false,"verdict":"invalid"}
 vet-closed-scalar-anchor-inert	vet	a:integer	1	{"findings":[],"opts":{"at":"$.a","closed":true},"truncated":false,"verdict":"valid"}
+
+# --- multi-error collection (G2 phase 6) ------------------------------
+# The pass loop continues past an erroring pass, so a failure only a
+# LATER pass can reach is collected in the same run (the second row's
+# $.b.p used to surface as a vague unsited incompleteness). What keeps
+# the report from cascading: a nil is ABSORBING in the engine, and the
+# report dedups by (code, sites) -- NOT (code, path), because a
+# reference resolves by cloning its target, so one failed target can
+# fail once per referrer with a different path each time. One cause,
+# one finding: the fan-in and cycle rows pin the collapse (the cycle
+# used to report twice even under the single-pass loop).
+multi-second-pass-conflict	vet	q:1 a:{p:1}	q:2 b:$.a b:{p:2}	{"findings":[{"class":"conflict","code":"scalar_value","path":"$.q","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"2"},{"col":3,"file":"schema","role":"schema","row":1,"value":"1"}]},{"class":"conflict","code":"scalar_value","path":"$.b.p","severity":"error","sites":[{"col":16,"file":"data","role":"data","row":1,"value":"2"},{"col":10,"file":"schema","role":"schema","row":1,"value":"1"}]}],"truncated":false,"verdict":"invalid"}
+multi-fanin-one-finding	vet	a:1	a:2 b:$.a c:$.a	{"findings":[{"class":"conflict","code":"scalar_value","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"2"},{"col":3,"file":"schema","role":"schema","row":1,"value":"1"}]}],"truncated":false,"verdict":"invalid"}
+multi-spread-children	vet	a: &: integer	a:{x:"p",y:"q"}	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.a.x","severity":"error","sites":[{"col":6,"file":"data","role":"data","row":1,"value":"\\"p\\""},{"col":7,"file":"schema","role":"schema","row":1,"value":"integer"}]},{"class":"conflict","code":"no_scalar_unify","path":"$.a.y","severity":"error","sites":[{"col":12,"file":"data","role":"data","row":1,"value":"\\"q\\""},{"col":7,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"truncated":false,"verdict":"invalid"}
+multi-cycle-one-finding	vet	top	a:$.b b:$.c c:$.a	{"findings":[{"class":"reference","code":"path_cycle","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"$.b"}]}],"truncated":false,"verdict":"invalid"}

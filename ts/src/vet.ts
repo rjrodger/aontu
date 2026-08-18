@@ -460,7 +460,29 @@ export function vet(
 
   const keyed = findings.map((f, i) => ({ key: orderKey(f, i), finding: f }))
   keyed.sort((a, b) => a.key < b.key ? -1 : 1)
-  const ordered = keyed.map((k) => k.finding)
+  let ordered = keyed.map((k) => k.finding)
+
+  // ONE CAUSE, ONE FINDING. A reference resolves by CLONING its target,
+  // so a target that later fails can fail once per referrer — same
+  // code, same two source sites, a different path each time. Multi-pass
+  // collection (G2 phase 6) made this reachable: the pass loop now
+  // continues past the erroring pass, so the clones' own folds run too.
+  // The dedup key is the CODE plus the SITES (file, row, col, value,
+  // role): two findings that name the same meet of the same two source
+  // positions are one contradiction observed from two paths. The key is
+  // NOT (code, path) — the design's sketch — because the paths are
+  // exactly what differ. Sorted order makes the kept finding the first
+  // by data site then path, deterministically in both ports.
+  const causes = new Set<string>()
+  ordered = ordered.filter((f) => {
+    const cause = f.code + '\u0000' + f.sites.map((s) =>
+      [s.file, s.row, s.col, s.role, s.value].join('\u0000')).join('\u0000')
+    if (causes.has(cause)) {
+      return false
+    }
+    causes.add(cause)
+    return true
+  })
 
   const truncated = maxErrors < ordered.length
   const kept = truncated ? ordered.slice(0, maxErrors) : ordered

@@ -101,9 +101,15 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		ctx.depth = 0
 		ctx.cc = cc
 		res = unite(ctx, res, top())
-		if len(ctx.err) > 0 {
-			break
-		}
+		// MULTI-ERROR COLLECTION (G2 phase 6): the pass loop CONTINUES
+		// past an erroring pass, so independent failures a later pass
+		// would reach are collected in the same run — the break that
+		// stood here made every multi-error report truncated at the
+		// first erroring pass. What controls the cascade: a nil is
+		// ABSORBING (unite's Nil arms return the existing nil, no new
+		// error), so one failure stays ONE nil however many later meets
+		// touch it. Mirrors ts/src/unify.ts; pinned by vet.tsv's
+		// multi-* rows.
 		// Snapshot the second-to-last pass's result, so exhaustion can
 		// tell "still refining" from "stable residue" below. Only paid
 		// by models still unresolved this late.

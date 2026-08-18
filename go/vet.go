@@ -531,10 +531,39 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		idx[i] = i
 	}
 	sort.Slice(idx, func(a, b int) bool { return keys[idx[a]] < keys[idx[b]] })
-	ordered := make([]VetFinding, len(findings))
-	for i, j := range idx {
-		ordered[i] = findings[j]
+	ordered := make([]VetFinding, 0, len(findings))
+	for _, j := range idx {
+		ordered = append(ordered, findings[j])
 	}
+
+	// ONE CAUSE, ONE FINDING. A reference resolves by CLONING its
+	// target, so a target that later fails can fail once per referrer —
+	// same code, same two source sites, a different path each time.
+	// Multi-pass collection (G2 phase 6) made this reachable: the pass
+	// loop now continues past the erroring pass, so the clones' own
+	// folds run too. The dedup key is the CODE plus the SITES (file,
+	// row, col, role, value): two findings that name the same meet of
+	// the same two source positions are one contradiction observed from
+	// two paths. The key is NOT (code, path) — the design's sketch —
+	// because the paths are exactly what differ. Sorted order makes the
+	// kept finding the first by data site then path, deterministically
+	// in both ports. NUL-joined, like the order key: no field can
+	// contain one, so the key cannot collide across field boundaries.
+	causes := map[string]bool{}
+	deduped := ordered[:0]
+	for _, f := range ordered {
+		cause := f.Code
+		for _, s := range f.Sites {
+			cause += "\x00" + s.File + "\x00" + strconv.Itoa(s.Row) +
+				"\x00" + strconv.Itoa(s.Col) + "\x00" + s.Role + "\x00" + s.Value
+		}
+		if causes[cause] {
+			continue
+		}
+		causes[cause] = true
+		deduped = append(deduped, f)
+	}
+	ordered = deduped
 
 	truncated := maxErrors < len(ordered)
 	kept := ordered

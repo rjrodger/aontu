@@ -1,8 +1,7 @@
 # G2: The validation verb
 
-*Status: largely implemented — the verb, its report contract and its
-delivery skin (phases 1–5) are landed in both ports; multi-error
-collection (phase 6) is outstanding. Per-phase status and pins
+*Status: implemented — all six phases are landed in both ports.
+Per-phase status and pins
 are in the [progress register](progress.md), which is authoritative for
 status; this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -590,13 +589,25 @@ risk. Watch polls mtime+size rather than using a native watcher, which
 is what "re-run on file mtime change" turns out to mean once editor
 save strategies (inode replacement) enter the picture.
 
-**Phase 6 — multi-error collection (L, engine).**
-Localise `nil` to its subtree and let the pass loop continue. Spec
-rows first: two independent conflicts must yield two findings;
-single-cause models exactly one. Code: ts/src/unify.ts (the
-`if (0 < uctx.err.length) break` site), affected Val classes;
-go/unify.go. Ships only if the cascade risk is demonstrably
-controlled by the spec rows; `truncated` then becomes rare.
+**Phase 6 — multi-error collection (L, engine).** LANDED, in both
+ports, and far smaller than its L sizing: removing the
+`if (0 < uctx.err.length) break` site (ts/src/unify.ts, go/unify.go)
+was the whole engine change, because the "localise `nil` to its
+subtree" machinery this phase planned to build ALREADY EXISTS — the
+absorption discipline (unite's isNil arms return the existing nil,
+raising nothing) keeps one failure one NilVal through every later
+meet. That was established by an adversarial probe corpus over both
+engines (fan-in references, spread templates, disjunct trials, nested
+conjuncts, prefs, `must`) before any row was written, and the rows are
+`test/spec/vet.tsv` `multi-*`. **One departure:** the dedup key is
+(code, sites), not the (code, path) sketched under Risks — a reference
+resolves by CLONING its target, so one failed target can fail once per
+referrer with a different path each time; the paths are exactly what
+differ, so keying on them cannot collapse the family, and keying on
+the meet's source positions also fixed a pre-existing double report
+(a pure reference cycle reported at two of its three members even
+under the single-pass loop). `truncated` now means only the
+`--max-errors` cap, exactly as this plan predicted.
 
 Rough sizing: S ≈ days, M ≈ a week or two, L ≈ several weeks per
 implementation.
