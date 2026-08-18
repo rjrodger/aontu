@@ -402,7 +402,7 @@ port: deprecate(*8080 | integer, {
   gains one optional record field.
 - **Canonical form:** renders reparseably as the call,
   `deprecate(*8080|integer,{"msg":"renamed",...})`, in the existing
-  function-canon style; `parse(canon(v)) == v` holds.
+  function-canon style; canon convergence holds (the enforced property is CONVERGENCE, not the stronger round-trip this line states — see the correction in [G1](g1-constraint-algebra.md#implementation-plan)).
 - **Point of use, three surfaces:** a [G2](g2-validation-verb.md)
   finding with code `deprecated` and severity `warning` — the slot
   G2 explicitly reserved for this mark — whenever vet unifies data
@@ -496,9 +496,9 @@ ships as a reporter here and becomes an editor there.
 
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, the Go port follows;
-`make test` runs both. Nothing may regress: the shared suite (44
-files, ~426 rows at review time), the canon round-trip
-`parse(canon(v)) == v`, and today's generation behaviour of
+`make test` runs both. Nothing may regress: the shared suite (counts
+live in [the register's protocol rule 5](progress.md#the-update-protocol)),
+canon convergence, and today's generation behaviour of
 invalid-default disjuncts (until the sanctioned flip, which goes
 through `breaking` itself).
 

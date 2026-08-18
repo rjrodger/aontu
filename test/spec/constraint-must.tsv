@@ -1,0 +1,74 @@
+# G1 phase 5: must(c, msg) -- Band B, evaluate-only. The check is a
+# KEPT field on the residual, never merged away, deduplicated or
+# reordered; it folds LAST (LATE_CJO / sizingCjo, generalised from the
+# sizing rule) so it checks the FINISHED value, and it checks a CLONE
+# -- must reports, it never contributes. On failure the author's own
+# message rides the nil (code `must`, errcodes.tsv). must never
+# participates in emptiness or subsumption
+# (docs/reference-language.md, "Band B: `must`"). Every expectation
+# obtained by running BOTH engines over the same source and requiring
+# byte-identical output.
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; modes: canon|gen|err|errc
+
+must-basic	gen	a:must("gold"|"silver","tier must be a support tier name") a:gold	{"a":"gold"}
+must-reject-code	errc	a:must("gold"|"silver","tier must be a support tier name") a:lead	must
+must-reject-message	err	a:must("gold"|"silver","tier must be a support tier name") a:lead	tier must be a support tier name
+must-residual-canon	canon	a:integer&must(min(3),"too small")	{"a":integer&must(min(3),"too small")}
+must-evaluate-only	gen	a:must(min(3),"too small") a:9	{"a":9}
+must-expr-arg	gen	a:must(1+2,"sum") a:3	{"a":3}
+must-ref-arg	gen	b:3 a:must($.b,"match b") a:3	{"a":3,"b":3}
+must-ref-arg-reject	err	b:3 a:must($.b,"match b") a:4	match b
+must-container	gen	a:must(length(2),"len") a:[1,2]	{"a":[1,2]}
+
+# must folds LAST: the check sees the MERGED value, not the first
+# fragment -- `a:must(length(2),m) a:{x:1} a:{y:2}` is the map
+# counting both keys, which is the fragment layering the language
+# exists for. Go's cjo() lacked the must arm of the late-fold rule and
+# fired the check against {x:1} alone; these rows are the pin.
+must-folds-last	gen	a:must(length(2),"need two") a:{x:1} a:{y:2}	{"a":{"x":1,"y":2}}
+must-folds-last-reject	errc	a:must(length(2),"need two") a:{x:1}	must
+
+# Kept in written order, never merged or deduplicated: the FIRST
+# failing check reports, with its own message.
+must-multi	gen	a:must(min(2),"m1")&must(max(9),"m2") a:5	{"a":5}
+must-multi-first-fail	errc	a:must(min(2),"m1")&must(max(9),"m2") a:1	must
+must-multi-first-msg	err	a:must(min(2),"m1")&must(max(9),"m2") a:1	The author's message is: m1
+must-kept-never-dedup	gen	a:must(1,"m")&must(1,"m") a:1	{"a":1}
+must-kept-canon	canon	x:must(1,"m")&must(1,"m")	{"x":must(1,"m")&must(1,"m")}
+
+# Argument discipline: exactly two arguments (a parse-time arity
+# check, like every builtin since c8b4c54), the message a string, and
+# a check that already holds a nil refused as an ARGUMENT -- blaming
+# the check for the mistake, not the data it would fail against.
+must-arity-low	errc	a:must(1)	func_arity
+must-arity-high	errc	a:must(1,2,3)	func_arity
+must-msg-not-string	errc	a:must(1,2) a:1	invalid-arg
+must-holds-nil	errc	a:must([1-x],"m")	invalid-arg
+must-holds-nil-map	errc	a:must({k:[1-x]},"m")	invalid-arg
+must-holds-nil-disjunct	errc	a:must((1-x)|1,"m")	invalid-arg
+must-holds-nil-nested	errc	a:must([[1-x]],"m")	invalid-arg
+must-container-arg	gen	a:must({k:1},"m") a:{k:1}	{"a":{"k":1}}
+must-container-arg-reject	err	a:must({k:1},"shape must match") a:{k:2}	shape must match
+must-list-arg	gen	a:must([1,2],"m") a:[1,2]	{"a":[1,2]}
+must-holds-nil-deep	errc	a:must({k:{j:[1-x]}},"m")	invalid-arg
+must-holds-nil-in-disjunct-list	errc	a:must([1|(1-x)],"m")	invalid-arg
+
+# A CHECK THAT MUTATES IS A CONTRADICTION IN TERMS.
+#
+# `must` reports and never contributes, but `move()` hides its
+# resolution target in place -- and settling a pending argument runs
+# that against the LIVE root, before the trial clone is taken. Go
+# dropped `b` from the output entirely and TypeScript raised
+# `internal`. The sibling atoms already refuse an effectful argument
+# (`min(move($.b))` and `neq(move($.b))` are invalid-arg in both
+# ports, because it is not an orderable scalar), so this is `must`
+# joining a policy the family already had. Refused at CONSTRUCTION,
+# on the written form: settling is what runs the effect.
+must-move-arg	errc	b:1 a:must(move($.b),"m") a:1	invalid-arg
+must-move-arg-in-list	errc	b:1 a:must([move($.b)],"m") a:1	invalid-arg
+must-move-arg-in-map	errc	b:1 a:must({k:move($.b)},"m") a:1	invalid-arg
+must-move-arg-wrapped	errc	b:1 a:must(upper(move($.b)),"m") a:1	invalid-arg
+must-move-arg-in-disjunct	errc	b:1 a:must(move($.b)|1,"m") a:1	invalid-arg
+# hide() marks the value it wraps rather than reaching out to another
+# node, so it is not effectful in this sense and stays admissible.
+must-hide-arg	gen	b:1 a:must(hide($.b),"m") a:1	{"a":1,"b":1}

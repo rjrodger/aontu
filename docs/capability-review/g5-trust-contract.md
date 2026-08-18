@@ -155,8 +155,11 @@ What exists and is reusable:
   the two ports came to classify the same numeric literal
   differently (`a:1e21 & integer` succeeded in TypeScript and failed
   in Go) while both passed the shared suite.
-- **A parity method to extend.** 46 row-bearing shared spec files
-  (527 rows, modes `canon`/`gen`/`err`); test/spec/engine-parity.tsv
+- **A parity method to extend.** The row-bearing shared spec files
+  (counts and modes in [the register's protocol rule 5](progress.md#the-update-protocol) —
+  this document's original "527 rows, modes canon/gen/err" predates
+  the `gens`/`errc`/`errcode` modes its own phase 5 introduced);
+  test/spec/engine-parity.tsv
   is precedent for pinning whole regression *classes*, and
   test/spec/var.tsv for a spec file with fixed runner-side
   configuration (a shared variable set) — the pattern a
@@ -311,7 +314,7 @@ contract from a claim.
 
 The design adds **zero language syntax**. Trust is a property of the
 evaluation, not the document: a `.aon` file cannot request more
-capability, and canonical form is untouched — `parse(canon(v)) == v`
+capability, and canonical form is untouched — canon convergence
 is not at risk from anything below.
 
 ### The contract
@@ -595,7 +598,8 @@ remote resolver — so the ecosystem never has a permissive interlude:
 
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, Go port follows.
-Nothing may regress at any phase: the 527 rows of the shared suite,
+Nothing may regress at any phase: every row of the shared suite
+(counts in [the register's protocol rule 5](progress.md#the-update-protocol)),
 the error.tsv substring assertions, canon round-trip
 canon convergence, and byte-equal canon rows across TS and Go. (This
 document originally stated that guard as `parse(canon(v)) == v`; see

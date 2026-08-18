@@ -55,6 +55,19 @@ func setPaths(v Val, path []string) {
 		for _, a := range n.peg {
 			setPaths(a, path)
 		}
+	case *ConstraintVal:
+		// A pending atom's arguments (G1 phase 4) carry refs that
+		// resolve — and report — from the atom's own location. Without
+		// this arm an unresolvable `min($.zz)` located its no_path at
+		// the ROOT while TypeScript locates it at the constraint.
+		if nil != n.pending {
+			for _, a := range n.pending.args {
+				setPaths(a, path)
+			}
+		}
+		for _, m := range n.musts {
+			setPaths(m.v, path)
+		}
 	}
 }
 

@@ -192,6 +192,16 @@ class RefVal extends FeatureVal_1.FeatureVal {
             let modes = [];
             for (let pI = 0; pI < this.peg.length; pI++) {
                 let part = this.peg[pI];
+                // An unspellable segment MISSES BEFORE ANY LOOKUP. The marker
+                // is NUL-prefixed because no spelling produces one, but a
+                // document can still hold a key spelled with an escaped NUL
+                // (`a:{" unspellable":7}`), and matching it would turn the
+                // silent path-shortening this marker exists to prevent into a
+                // different silent wrong value. The marker is a marker, never a
+                // lookup key.
+                if (UNSPELLABLE_SEGMENT === part) {
+                    return (0, err_1.makeNilErr)(ctx, 'no_path', this);
+                }
                 if (part instanceof VarVal_1.VarVal) {
                     let strval = part.peg;
                     let name = strval ? '' + strval.peg : '';

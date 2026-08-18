@@ -14,7 +14,7 @@ declare class RefVal extends FeatureVal {
     }, ctx?: AontuContext);
     append(part: any): void;
     unify(peer: Val, ctx: AontuContext): Val;
-    find(ctx: AontuContext): Val | undefined;
+    find(ctx: AontuContext): import("./NilVal").NilVal | Val | undefined;
     detectRefCycle(ctx: AontuContext): boolean;
     plainRefPath(): string[] | undefined;
     same(peer: Val): boolean;

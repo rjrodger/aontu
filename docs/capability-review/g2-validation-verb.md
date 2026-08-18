@@ -1,7 +1,8 @@
 # G2: The validation verb
 
-*Status: partly implemented — phase 1 (the error-code registry) landed;
-the verb itself, phases 2–6, is outstanding. Per-phase status and pins
+*Status: partly implemented — phase 1 (the error-code registry) landed,
+phase 2 (the vet ENGINE, TypeScript) is partial; the CLI verb, the Go
+port and the rest, phases 3–6, are outstanding. Per-phase status and pins
 are in the [progress register](progress.md), which is authoritative for
 status; this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -480,7 +481,7 @@ byte-identical JSON for the same inputs, pinned by spec rows.
 | Freezing today's why-codes bakes in bad names | Medium | Low | Append-only registry with an alias/deprecation column; codes are contracts, hint text is not |
 | Alternatives enumeration touches the known DisjunctVal.gen fold defect | Medium | Medium | Render alternatives from member canons only; never call `gen` on a disjunct to enumerate; add regression spec rows |
 | Per-data-file schema re-evaluation is slow in watch/CI loops (single-use trees) | Medium | Medium | Acceptable now (`maxcc = 9` bounds passes); measure; incrementality is explicitly deferred, budgets are G5's |
-| Canon round-trip or existing error text regresses while adding classes | Low | High | `class` is additive on `NilVal`; error.tsv substrings and `parse(canon(v)) == v` stay green throughout |
+| Canon round-trip or existing error text regresses while adding classes | Low | High | `class` is additive on `NilVal`; error.tsv substrings and canon convergence stay green throughout (the enforced property is CONVERGENCE, not the stronger round-trip this line states — see the correction in [G1](g1-constraint-algebra.md#implementation-plan)) |
 | Exit-class numbering collides with scripts assuming 0/1 | Low | Low | Non-zero on any failure is preserved; classes are refinements; documented in reference-api.md |
 | Adoption risk: agents default to JSON Schema validators | Medium | High | Ship the Action + SARIF so vet drops into existing CI; lead with what JSON Schema cannot do (two-site conflicts, merge-as-unification) |
 
@@ -488,7 +489,8 @@ byte-identical JSON for the same inputs, pinned by spec rows.
 
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, Go port follows.
-Nothing may regress: the 45 existing spec files (~426 rows), the
+Nothing may regress: every row of the shared suite (counts and their
+reproduction commands live in one place — see [the register's protocol rule 5](progress.md#the-update-protocol)), the
 error.tsv substring assertions, and canon convergence stay green in
 every phase. (This document originally stated that guard as
 `parse(canon(v)) == v`; see the correction in
@@ -506,11 +508,28 @@ assert codes.
 
 **Phase 2 — vet engine API, TypeScript (M).**
 Spec: new `test/spec/vet.tsv` — columns name, schema, data, verdict,
-findings (`code@path` lists) — plus JSON-report goldens for a
-representative subset. Code: new ts/src/vet.ts (anchor selection,
-data parse, unify-with-collect, residue walk generalising
-ts/src/lsp.ts `walkNils`, finding construction); ts/src/aontu.ts
-export.
+findings — plus JSON-report goldens for a representative subset.
+**The row encoding is settled, by probing.** `code@path` lists,
+written here before the reconnaissance below, are ruled out by its
+first constraint: no punctuation is safe as a separator, because every
+candidate is legal inside a quoted map key. The surviving shape was
+then probed against the engine and is now written out, with its
+reasoning, at the head of
+[`test/spec/draft/vet.tsv`](../../test/spec/draft/vet.tsv):
+**five columns** — name, mode, schema, data, expect — because vet takes
+two documents; a **JSON-encoded** expect object, using the serialiser
+pair the suite already holds to byte parity; and `message`
+**excluded** from the golden, asserted by substring per port, because
+prose is deliberately not in cross-port parity. One part remains
+unprobed and is flagged there: options (`at`, `closed`, `partial`)
+ride an `opts` key rather than a column, because no runner passes
+options today.
+The rows are drafted rather than live because both runners execute
+every row with no skip list, so a `vet` row cannot be executable until
+phase 4 gives Go a vet.
+Code: new ts/src/vet.ts (anchor selection, data parse,
+unify-with-collect, residue walk generalising ts/src/lsp.ts
+`walkNils`, finding construction); ts/src/aontu.ts export.
 
 **Phase 3 — CLI verb and JSON format (M).**
 Code: ts/src/cli.ts (`vet` subcommand, `--at`, `--format`, verdict
@@ -563,9 +582,16 @@ implementation.
   `--strict-data` JSON-only mode remains available as an additive
   flag if a caller wants the narrower contract; nothing in the report
   shape changes when it lands.
-- **Registry source of truth.** Whether hints.ts generates
-  errcodes.tsv or errcodes.tsv generates both hint tables; the
-  generation direction decides which artifact is the contract.
+- ~~**Registry source of truth.**~~ **Decided by what phase 1
+  landed: neither generator was built.**
+  `test/spec/errcodes.tsv` declares itself the source of truth, both
+  engines keep hand-maintained `codeClasses` tables (`ts/src/hints.ts`,
+  `go/hints.go`), and both runners assert set equality in both
+  directions (`spec-errcodes-registry`, `TestErrCodesRegistry`), so
+  neither table can drift from the registry without a red suite. The
+  question as posed — which artifact generates which — is answered by
+  a third option: cross-checking beats generating, and the registry is
+  the contract.
 - **Anchor convention beyond `--at`.** A schema could name its own
   validation entrypoints (an in-file mark), which travels better than
   a flag once schemas are distributed ([G6](g6-distribution.md)) but

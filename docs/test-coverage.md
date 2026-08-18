@@ -101,28 +101,29 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **2031 cases across 57 files** — is run by *both*
+`test/spec/*.tsv` — **2202 cases across 60 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
-| `number-tower.tsv`        | 388 | `file.tsv`         | 24 |
-| `edge.tsv`                | 310 | `engine-parity.tsv`| 23 |
-| `constraint-product.tsv`  | 256 | `marks.tsv`        | 23 |
-| `number-model.tsv`        | 112 | `var.tsv`          | 23 |
-| `func.tsv`                | 110 | `elision.tsv`      | 21 |
-| `errcodes.tsv`            |  69 | `map.tsv`          | 20 |
-| `constraint-bound.tsv`    |  61 | `plus.tsv`         | 14 |
-| `number-cross-product.tsv`|  59 | `conjunct.tsv`     | 13 |
-| `constraint-re.tsv`       |  89 | `merge-conflict.tsv`| 13 |
-| `ref.tsv`                 |  40 | `op-chars.tsv`     | 13 |
-| `scalar.tsv`              |  40 | `close.tsv`        |  9 |
-| `optional.tsv`            |  37 | `incomplete.tsv`   |  9 |
-| `error.tsv`               |  34 | `list.tsv`         |  7 |
-| `pref.tsv`                |  30 | `comment.tsv`      |  6 |
-| `budget.tsv`              |  24 | `divergent.tsv`    |  0 |
-| `disjunct.tsv`            |  24 |                    |    |
+| `number-tower.tsv`         | 388 | `file.tsv`           | 24 |
+| `edge.tsv`                 | 310 | `disjunct.tsv`       | 24 |
+| `constraint-product.tsv`   | 256 | `budget.tsv`         | 24 |
+| `number-model.tsv`         | 112 | `var.tsv`            | 23 |
+| `func.tsv`                 | 110 | `marks.tsv`          | 23 |
+| `constraint-length.tsv`    |  92 | `engine-parity.tsv`  | 23 |
+| `constraint-re.tsv`        |  89 | `elision.tsv`        | 21 |
+| `constraint-bound.tsv`     |  74 | `map.tsv`            | 20 |
+| `errcodes.tsv`             |  70 | `plus.tsv`           | 14 |
+| `number-cross-product.tsv` |  59 | `op-chars.tsv`       | 13 |
+| `ref.tsv`                  |  47 | `merge-conflict.tsv` | 13 |
+| `scalar.tsv`               |  40 | `conjunct.tsv`       | 13 |
+| `optional.tsv`             |  37 | `incomplete.tsv`     |  9 |
+| `error.tsv`                |  34 | `close.tsv`          |  9 |
+| `pref.tsv`                 |  30 | `list.tsv`           |  7 |
+| `constraint-cross.tsv`     |  30 | `comment.tsv`        |  6 |
+| `constraint-must.tsv`      |  28 | `divergent.tsv`      |  0 |
 
 plus the `spread*.tsv` family — **26 files, 130 cases**, one spread
 topic per file. `divergent.tsv` is the parity ledger: commentary only,

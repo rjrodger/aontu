@@ -263,7 +263,7 @@ Semantics:
   Identity adds a location-independent addressing scheme without
   changing the shape of the output.
 - **Canon.** Canon renders `id("svc/auth")&{…}` reparseably, and
-  reparsing re-merges idempotently, so `parse(canon(v)) == v`
+  reparsing re-merges idempotently, so canon convergence (the enforced property is CONVERGENCE, not the stronger round-trip this line states — see the correction in [G1](g1-constraint-algebra.md#implementation-plan))
   holds. This deliberately differs from `type`/`hide` marks, which
   canon drops (`test/spec/marks.tsv`, row `type-canon`): identity
   is semantic content that [G6](g6-distribution.md) canon-hashing
@@ -480,7 +480,7 @@ entity address — the protobuf field-number lesson applied.
 |------|------------|--------|------------|
 | Identity-merge fails to converge within `maxcc = 9` on deep id/ref chains, silently under-merging | Medium | High | Spec rows at the pass boundary; registry unifies eagerly per pass; escalate silent-stop semantics to G5 as designed there |
 | Id leaks through `RefVal` clones, `copy()`, or spread snapshots, changing pinned behaviour | Medium | High | The three clearing rules land with dedicated spec rows; all existing `ref.tsv`, `spread-*.tsv`, `marks.tsv` rows must pass unchanged |
-| Canon round-trip breaks for `id()`/`refer()` residuals | Medium | High | Round-trip rows (`parse(canon(v)) == v`) for every new form before code lands |
+| Canon round-trip breaks for `id()`/`refer()` residuals | Medium | High | Canon-convergence rows for every new form before code lands (the enforced property is CONVERGENCE, not the stronger round-trip this line states — see the correction in [G1](g1-constraint-algebra.md#implementation-plan)) |
 | TS/Go divergence in registry and vet-pass iteration order (Go map order is random) | High | Medium | Sort ids and keys at every iteration point; byte-identical canon and report rows in the parity suite |
 | Constraint-flow through `refer(t)` surprises authors (a link mutates its target) | Medium | Medium | Document loudly; error messages name both sites; a lint-level notice via G2 when a refer adds fields rather than matching them |
 | `DisjunctVal.gen` fold defect (`ts/src/val/DisjunctVal.ts` ~263) compounds when identified nodes appear in disjuncts | Low | Medium | Spec rows pin disjunct-of-entity generation before code; do not extend the defect's reach |
@@ -493,10 +493,10 @@ entity address — the protobuf field-number lesson applied.
 Every phase is spec-first: TSV rows are authored and reviewed before
 implementation, TypeScript (canonical) lands first, the Go port
 follows, `make test` runs both, and committed `ts/dist` is rebuilt
-(`make build-ts`). Nothing may regress: all 44 existing spec files
-(~426 rows) pass unchanged, and the canon round-trip property
-`parse(canon(v)) == v` holds throughout, including for the new
-forms.
+(`make build-ts`). Nothing may regress: every row of the shared suite
+(counts in [the register's protocol rule 5](progress.md#the-update-protocol))
+passes unchanged, and canon convergence holds throughout, including
+for the new forms.
 
 1. **Phase 0 — semantics on paper (S).** New "Identity" and
    "Entity references" sections in `docs/reference-language.md`:

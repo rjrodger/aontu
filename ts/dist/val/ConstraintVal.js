@@ -351,7 +351,14 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             // in unify, where there is a ctx to resolve through, and the
             // residual is built from the settled arguments. Only a settled
             // argument of the wrong shape is an `invalid-arg`.
-            if (args.some((a) => true !== a?.done)) {
+            // The effectful-argument refusal happens HERE, on the written
+            // form, and not in fromAtom: settling is what runs the effect, so
+            // by the time fromAtom sees a settled `move($.b)` the move has
+            // already happened and the argument is just its result.
+            if ('must' === spec.atom && args.some((a) => holdsMove(a))) {
+                this.invalid = 'invalid-arg';
+            }
+            else if (args.some((a) => true !== a?.done)) {
                 this.pending = { atom: spec.atom, args };
             }
             else {
@@ -411,6 +418,9 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
             if (holdsNil(args[0])) {
                 return bad('invalid-arg');
             }
+            // (An effectful argument is refused at construction, in the
+            // constructor: by the time this arm sees a settled `move($.b)`
+            // the move has already run.)
             this.musts = [{ v: args[0], msg: args[1] }];
             return;
         }
@@ -609,9 +619,9 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         if (null == peer || peer.isTop) {
             return again;
         }
-        if (peer.isNil) {
-            return peer;
-        }
+        // No nil-peer arm: `unite` returns a nil operand before dispatching
+        // to any Val's unify (ts/src/unify.ts), so a nil never reaches here
+        // — and were one to, the conjunct below folds to it unchanged.
         return new ConjunctVal_1.ConjunctVal({ peg: [again, peer] }, ctx);
     }
     // Membership: the peer scalar passes every part of the residual, or
@@ -903,10 +913,11 @@ function dedupSorted(domain, neqs) {
 // Is this value, or anything inside it, a nil? A written argument that
 // holds one can never be satisfied, so the atom refuses it as an
 // argument rather than reporting a mystery failure against every peer.
+// Every caller passes a Val: `args[0]` comes from atomArgs, and the
+// walk below descends only into container pegs, which hold Vals. The
+// null/non-Val guard this function used to open with was therefore
+// unreachable, and the coverage gate said so.
 function holdsNil(v) {
-    if (null == v || true !== v.isVal) {
-        return false;
-    }
     if (true === v.isNil) {
         return true;
     }
@@ -917,6 +928,29 @@ function holdsNil(v) {
     if (null != peg && 'object' === typeof peg) {
         for (const k in peg) {
             if (holdsNil(peg[k])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+// Whether a value, or anything inside it, is an effectful call — one
+// whose evaluation changes a node OTHER than the one being computed.
+// `move()` is the only builtin that does: it hides its resolution
+// target in place. Band B refuses one as an argument, because settling
+// it runs the effect against the live root before `must`'s trial clone
+// is taken, and a check that mutates cannot be report-only.
+function holdsMove(v) {
+    if (true === v.isFunc && 'move' === v.funcname?.()) {
+        return true;
+    }
+    const peg = v.peg;
+    if (Array.isArray(peg)) {
+        return peg.some((c) => holdsMove(c));
+    }
+    if (null != peg && 'object' === typeof peg) {
+        for (const k in peg) {
+            if (holdsMove(peg[k])) {
                 return true;
             }
         }
@@ -1138,7 +1172,9 @@ function countVal(n) {
 function meetCount(a, b) {
     return {
         domain: 'number',
-        kind: a.kind ?? b.kind,
+        // `a` is always a countBase()-seeded residual, so its kind is
+        // always Integer — there is no kindless side to fall back from.
+        kind: a.kind,
         lo: tighter('number', a.lo, b.lo, true),
         hi: tighter('number', a.hi, b.hi, false),
         neqs: dedupSorted('number', [...a.neqs, ...b.neqs]),

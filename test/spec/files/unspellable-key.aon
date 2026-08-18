@@ -1,0 +1,5 @@
+# A map key spelled with an ESCAPED NUL, so the parser produces a key
+# byte-identical to the unspellable-segment marker RefVal.append uses.
+# Referenced by ref.tsv:ref-unspellable-no-collision, which pins that
+# an unspellable segment misses instead of matching this key.
+a:{"\u0000unspellable":7}

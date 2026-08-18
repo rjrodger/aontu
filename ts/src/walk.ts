@@ -1,0 +1,70 @@
+/* Copyright (c) 2025 Richard Rodger, MIT License */
+
+// One tree walk, two consumers: the language server collects NilVals
+// for diagnostics (ts/src/lsp.ts) and the validation verb both stamps
+// provenance and collects NilVals for findings (ts/src/vet.ts). They had
+// the same traversal written out twice, which is one copy too many for
+// something with three easy ways to be subtly wrong:
+//
+//   - a Val's children live under `peg`, which is an ARRAY for lists,
+//     conjuncts and disjuncts, and an OBJECT for maps;
+//   - a spread constraint lives OFF-peg (`spread.cj`), so a value inside
+//     a `&:` template is reachable only by following it deliberately;
+//   - the `seen` set is a termination guard, not an optimisation, and
+//     the non-Val guard is load-bearing too: a peg object can hold
+//     entries that are not Vals.
+//
+// The visitor returns false to prune the subtree below a node, which is
+// how a nil collector stops at the nil rather than walking into the
+// operands it carries.
+
+export function walkVals(
+  v: any,
+  visit: (v: any) => boolean,
+  seen: Set<any>
+) {
+  if (null == v || 'object' !== typeof v || true !== v.isVal) {
+    return
+  }
+  if (seen.has(v)) {
+    return
+  }
+  seen.add(v)
+
+  if (!visit(v)) {
+    return
+  }
+
+  const peg = v.peg
+  if (Array.isArray(peg)) {
+    for (const c of peg) {
+      walkVals(c, visit, seen)
+    }
+  }
+  else if (null != peg && 'object' === typeof peg) {
+    for (const k in peg) {
+      walkVals(peg[k], visit, seen)
+    }
+  }
+
+  const spread = v.spread?.cj
+  if (spread) {
+    walkVals(spread, visit, seen)
+  }
+}
+
+
+// Every NilVal in the tree, in walk order. Callers that need a stable
+// order across the two ports must sort — the walk follows raw key
+// order, and the hosts disagree about that (ts/src/keyorder.ts).
+export function collectNils(root: any, seen?: Set<any>): any[] {
+  const out: any[] = []
+  walkVals(root, (v: any) => {
+    if (true === v.isNil) {
+      out.push(v)
+      return false
+    }
+    return true
+  }, seen ?? new Set())
+  return out
+}
