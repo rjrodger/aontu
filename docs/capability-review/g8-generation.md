@@ -377,7 +377,7 @@ because this machinery is where behaviour hides.
 
 **Canonical form.** An unfired generator canons as its call —
 `pack($.names,{"image":...})` — which reparses to the same value, so
-`parse(canon(v)) == v` holds for incomplete models. A fired generator
+canon convergence holds for incomplete models. A fired generator
 canons as its output structure, exactly as `lower(HELLO)` already
 canons as `"hello"` once resolved (test/spec/spread.tsv,
 template-func-canon). `_` canons as `_`. `|>`, if adopted, never
@@ -486,7 +486,7 @@ through the existing document pipeline (ts/src/lsp.ts).
 | Generator/spread interaction regresses the spread corpus (25 spec files) | Medium | High | Land the staging refactor (Phase 0) with zero behaviour change first; add gen-x-spread/close/key spec files before code; property-test commutativity and idempotence over generator-bearing values |
 | Fixpoint budget (`maxcc = 9`) exhausted by nested generators, surfacing as wrong "cannot resolve" errors | Medium | High | Settled-argument rule makes firing eager; budget exhaustion is a distinct G5 error, never silence; spec rows pin nesting depths 2-3 |
 | TS/Go divergence in generated key order, trial-mode behaviour, or clone-graph artifacts | Medium | High | Order pinned to sorted keys (already canon's and Go marshalling's order); every behaviour lands as shared TSV rows first; AGENTS.md parity discipline (no Go skip list) unchanged |
-| Canon round-trip breaks for unfired generators or `_` | Low | High | Canon rows in the same TSV files as gen rows from Phase 1; `parse(canon(v)) == v` asserted for unfired forms explicitly |
+| Canon round-trip breaks for unfired generators or `_` | Low | High | Canon rows in the same TSV files as gen rows from Phase 1; canon convergence asserted for unfired forms explicitly |
 | Reserving `_` breaks existing documents using it as text | Low | Medium | Breaking-change flag in CHANGELOG; a spec row pins the new parse; migration is mechanical (quote `"_"`) |
 | `filter`/`match` inherit the DisjunctVal.gen distribution defect through trial unification | Medium | Medium | Fix or fence the defect (ts/src/val/DisjunctVal.ts) before Phase 2; add spec rows for match-over-disjunct scrutinees |
 | Performance: pack/each clone templates per child on large data (the known dominant cost of spread application) | Medium | Medium | Reuse tiered `spreadClone` and apply-once `_spr` discipline; perf-annotate spec fixtures; G5 budgets cap runaway cost |
@@ -499,7 +499,7 @@ through the existing document pipeline (ts/src/lsp.ts).
 Spec-first throughout: every behaviour lands as test/spec/*.tsv rows
 agreed before code; TypeScript (canonical) implements; the Go port
 follows to green on the identical rows. At every phase, all existing
-spec rows and the canon round-trip (`parse(canon(v)) == v`) must not
+spec rows and canon convergence must not
 regress; the spread corpus is the regression canary.
 
 **Phase 0 — staging rule (S).** Replace the `KeyFuncVal` `cc < 3`

@@ -136,7 +136,7 @@ surface depends on nothing and could ship at any time.
 | **0** — algebra on paper | S | **LANDED** | `docs/reference-language.md` "The constraint algebra (specified)": all three tables the phase names — meet, emptiness, and **subsumption** — plus the canonical atom order, tower rulings, the lazy-endpoint/eager-emptiness decision, and `length` as Unicode code points. `test/spec/constraint-bound.tsv`, `constraint-re.tsv`, `constraint-length.tsv` and `constraint-cross.tsv` all promoted (the draft directory is now empty). Fold-defect guard rows in `disjunct.tsv`. Commit `98fc1bf`, completed by the subsumption table. |
 | **1** — numeric and lexical bounds, `neq` | M | **LANDED** | `ts/src/val/ConstraintVal.ts` (`cjo = 50000`) + `go/constraint.go`; `min`/`max`/`above`/`below`/`neq` in both registries (12 → 17 builtins); `test/spec/constraint-bound.tsv`, `constraint-product.tsv` (all 256 ordered pairs), `errcodes.tsv:constraint`; law tests `ts/test/constraint-laws.test.ts` + `go/constraint_laws_test.go` over `test/spec/files/constraint-atoms.txt`. Commit `ae82828`. |
 | **2** — `re` | M | **LANDED** | `ReConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `re` arm of `newConstraint` (`go/constraint.go`); `re` in both registries (17 → 18 builtins) and both LSP completion lists; the portable-subset scanner `nonPortableRe`, mirrored statement for statement in both ports; `test/spec/constraint-re.tsv` (89 rows, promoted from the draft with every expectation re-probed) and the differential corpus `test/spec/files/regex-corpus.tsv` (400 patterns, both normalisers pinned); `errcodes.tsv:constraint_pattern`. |
-| **3** — `length` and `unique` | M | **LANDED** | `LengthConstraintVal`/`UniqueConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `length`/`unique` arms of `newConstraint` (`go/constraint.go`); both in both registries (18 → 20 builtins) and both LSP completion lists; `unique` is the first zero-arity built-in, so `arityText` gained a "no arguments" case. `test/spec/constraint-length.tsv` (90 rows, promoted from the draft with every expectation obtained by running BOTH engines and diffing). **Departure from the design:** implementing it added one rule the design did not have — sizing atoms fold LAST in a conjunct (`SIZING_CJO`), or `a:length(2) a:{x:1} a:{y:2}` would count the first fragment alone and refuse the layering the language exists for; `docs/reference-language.md` "Sizing atoms fold last" carries it, and `MapVal`/`ListVal` hand a constraint peer back to the constraint because the order reverses who drives the meet. |
+| **3** — `length` and `unique` | M | **LANDED** | `LengthConstraintVal`/`UniqueConstraintVal` (`ts/src/val/ConstraintVal.ts`) + the `length`/`unique` arms of `newConstraint` (`go/constraint.go`); both in both registries (18 → 20 builtins) and both LSP completion lists; `unique` is the first zero-arity built-in, so `arityText` gained a "no arguments" case. `test/spec/constraint-length.tsv` (92 rows, promoted from the draft with every expectation obtained by running BOTH engines and diffing). **Departure from the design:** implementing it added one rule the design did not have — sizing atoms fold LAST in a conjunct (`SIZING_CJO`), or `a:length(2) a:{x:1} a:{y:2}` would count the first fragment alone and refuse the layering the language exists for; `docs/reference-language.md` "Sizing atoms fold last" carries it, and `MapVal`/`ListVal` hand a constraint peer back to the constraint because the order reverses who drives the meet. |
 | **4** — cross-field arguments, residuation | M | **LANDED** | `settle` in `ts/src/val/ConstraintVal.ts` + `go/constraint.go`: an atom whose arguments have not settled becomes `pending` and resolves through `unify`, mirroring `FuncBaseVal`'s discipline. `test/spec/constraint-cross.tsv` (30 rows, promoted from the draft with every expectation obtained by running BOTH engines and diffing) covers reference and expression arguments, forward and chained references, the sizing/pattern atoms' own arguments, spread templates carrying a bound onto children, constraint-bearing disjuncts, and the `budget_passes` boundary. **Unblocked, by three parser fixes.** The phase unmasked a family of func-paren comma-group defects: TS handed the handler the UNREDUCED operator tree, Go's `addition-infix` handler read the rule's open token unguarded and PANICKED when a `+` was the last member, and TS dropped every argument after a single-segment `$.z`. The Go panic was fixed in `0feb17c`; the other two upstream in `@tabnas/expr` 0.5.4 (tabnas/expr#42, #43, raised from this work), adopted in `cc0c2d9`. Those three are pinned by the `neq-comma-*`, `min-expr-arg-*` and `neq-ref-*` rows in `constraint-bound.tsv`. **Departure from the design:** writing the rows found two Go-only defects the probe corpus had missed — `setPaths` had no `ConstraintVal` arm, so a pending atom's arguments carried no path and an unresolvable `min($.zz)` located its `no_path` at the ROOT, and the fold's re-wrap was pathless, so `budget_passes` named `$` where TypeScript names the node. Both are fixed and pinned by the `-sited` rows. |
 | **5** — `must` | S | **LANDED** | Band B in both ports as a kept, never-simplified field on the residual, folded LAST (`LATE_CJO`/`sizingCjo`, generalised from the sizing rule) so it checks the finished value, against a CLONE so the check reports without contributing; error code `must` in `errcodes.tsv` with the author message carried into the hint. `test/spec/constraint-must.tsv` (28 rows): evaluate-only reporting, the late fold over layered fragments, checks kept in written order without dedup, reference and expression arguments, container arguments, and the argument discipline (parse-time arity, string message, a check holding a nil refused as an argument). **Departure from the design:** `must` joining the late-fold slot is what generalised it, so `docs/reference-language.md` "Sizing atoms fold last" now names all three late atoms — Go's `cjo()` was missing the `must` arm entirely, which fired the check against the first fragment, and the `must-folds-last` rows pin it. |
 | **6** — number exactness | S | **LANDED** | `isLossyIntegerLiteral` → `lossy_integer_literal` in `ts/src/lang.ts` and `go/lang.go`; `test/spec/number-tower.tsv`, `number-model.tsv`, `scalar.tsv`. Landed inside the number tower, commit `51e8149`. |
@@ -305,7 +305,7 @@ it is a vet-time pass, and `vet` does not exist.
 "join `funcMap`". G1's atoms did not: they route through a separate
 `constraintAtoms` table (`go/constraint.go`, noted at `go/func.go`), so
 "join funcMap" now has two shapes to choose between. Arity is also a
-parse-time check for all eighteen builtins since commit `c8b4c54`, so
+parse-time check for all twenty-one builtins since commit `c8b4c54`, so
 a new builtin must add entries to the arity tables in both ports.
 
 ## G5 — a specified trust contract
@@ -390,47 +390,36 @@ which design option A proposes documenting — are already documented in
 ## Corrections outstanding in the gap documents
 
 Recorded here rather than fixed silently, because each is a change to a
-design document and belongs in a commit with its reasoning. Ordered by
-how likely each is to mislead an implementer.
+design document and belongs in a commit with its reasoning.
 
-1. **All eight gap documents are headed "Status: design proposal"**,
-   including the three with landed phases. An agent told to "implement
-   the capability review" reads G1's header, concludes nothing has
-   landed, and re-implements `min`/`max`.
-2. **G1's Phase 6 text and Risks table describe the magnitude band and
-   "one row changes".** The landed rule is exactness and several rows
-   changed (see G1 above).
-3. **G1's problem statement says `min`, `max` and `re` are not in
-   `funcMap`** and that there are "exactly 12 builtins". There are 20;
-   only `must` still fails as `unknown_function`.
-4. **G1's open-questions list still carries two questions Phase 0
-   decided** — eager kind-tightening (decided: lazy endpoints, eager
-   emptiness) and string-length semantics (decided: Unicode code
-   points). Both are pinned by rows. They are unimplemented, not
-   undecided.
-5. **All eight plan preambles quote a stale regression baseline** — G1
-   and G8 "527 rows", G5 "527 rows / 46 files, modes canon/gen/err",
-   G2, G6 and G7 "45 files ~426 rows", G3 and G4 "44 files ~426 rows".
-   G5's is stale about the modes its own phase 5 introduced. All should
-   link this register's protocol rule 5 instead of restating a number.
-6. **`parse(canon(v)) == v` survives in four documents** (G3, G4, G6,
-   G7 — and in G2's risk table, two paragraphs above the correction
-   that retracts it). The enforced property is convergence.
-7. **`docs/trust.md` contradicts itself on the depth budget**: the
-   clause-2 table and a "closed gap" callout give TypeScript a
-   `MAXDEPTH` of 1000, and the caveat bullet immediately below still
-   says "TypeScript has no explicit depth budget". It also cites issues
-   #32 and #35 as open; both were closed by commit `c8b4c54`, and #35
-   has no ledger entry at all.
-8. **`AGENTS.md` says the divergence ledger "is empty"** eleven lines
-   after saying reclassified items are open debt in it;
-   `test/spec/divergent.tsv` carries a live `# OPEN` entry (#24).
-9. **`docs/test-coverage.md` quotes "1592 cases across 54 files"** and
-   its per-file table omits `constraint-product.tsv` entirely — 256
-   rows, the largest single artifact of the G1 work — and
-   `merge-conflict.tsv`.
-10. **G3, G4, G6 and G7 cite drifted line numbers**, most often
-    `makeModelResolver` "~line 750" (now `ts/src/lang.ts:1154`).
+**The list this section carried is now empty.** All ten entries have
+been applied — four (the "design proposal" headers, `docs/trust.md`'s
+depth-budget self-contradiction, `AGENTS.md` on the divergence ledger,
+and `docs/test-coverage.md`'s per-file table) in commit `94b63f9`,
+which is also the commit that wrote the list; the remaining six with
+the G1 phase 4–5 landing. What changed, for a reader tracing the
+history:
+
+- G1's problem statement, Phase 6 text and Risks table, and its
+  open-questions list now match what landed — 21 builtins with the
+  atoms routed through `constraintAtoms`, exactness rather than the
+  `(2^53, 2^63)` magnitude band, and the two questions phase 0 decided
+  (lazy endpoints with eager emptiness; `length` in Unicode code
+  points) struck through with their rulings.
+- All eight plan preambles now link protocol rule 5 above instead of
+  restating a row count; none of the eight had a current one.
+- `parse(canon(v)) == v` is gone from the gap documents' guarantees,
+  replaced by canon convergence — the property both runners actually
+  assert. It survives only where G1, G2 and G5 quote the retracted
+  phrasing in order to retract it.
+- The drifted `makeModelResolver` "~line 750" citations in G6 and G7
+  now name the file without a line number, which is the form that
+  cannot drift again.
+
+Keep this section, and add to it, when the next phase lands
+differently from its design: the standing hazard is a gap document
+that reads as current while describing a rule the engine no longer
+has.
 
 ## Where this is pinned
 

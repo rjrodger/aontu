@@ -39,8 +39,8 @@ by `test/spec/file.tsv:load-not-found`). The only cross-repository
 channel that *does* work is the package resolver — `@"pkg"` via
 `require()` — so distributing a schema today means publishing an
 npm package and having every consumer execute its code on load. The
-security comment above `makeModelResolver` (`ts/src/lang.ts`, near
-line 750) is blunt: treat opening an untrusted source as running
+security comment above `makeModelResolver` (`ts/src/lang.ts`) is
+blunt: treat opening an untrusted source as running
 it. That is a supply chain without any of a supply chain's
 protections.
 
@@ -471,8 +471,8 @@ is required for v1. Two hooks make the registry more than storage:
 
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows, TypeScript (canonical) makes them pass, then the Go port.
-Nothing may regress the existing 45 spec files (~426 rows) or the
-canon round-trip `parse(canon(v)) == v`; `@tabnas` pins stay exact.
+Nothing may regress any row of the shared suite (counts in [the register's protocol rule 5](progress.md#the-update-protocol)) or the
+canon convergence; `@tabnas` pins stay exact.
 
 **Phase 0 — the hash form (S/M).** Add the `hcanon` rendering
 (closedness wrappers, mark wrappers) and a new shared-spec mode

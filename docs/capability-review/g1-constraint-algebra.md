@@ -122,10 +122,15 @@ missing:
   `FuncBaseVal` (`ts/src/val/FuncBaseVal.ts`) has the same defer
   branch. These are embryonic, ad-hoc residuation — the design
   below formalises them.
-- **Functions as the extension idiom.** The parser's `funcMap`
-  (`ts/src/lang.ts`) holds exactly 12 builtins — `upper`, `lower`,
-  `copy`, `key`, `type`, `hide`, `move`, `path`, `pref`, `close`,
-  `open`, `super` — mirrored in `go/func.go`. Function canon renders
+- **Functions as the extension idiom.** *(Written before this gap's
+  own work; the count is now 21. At review time)* the parser's
+  `funcMap` (`ts/src/lang.ts`) held exactly 12 builtins — `upper`,
+  `lower`, `copy`, `key`, `type`, `hide`, `move`, `path`, `pref`,
+  `close`, `open`, `super` — mirrored in `go/func.go`. The nine atoms
+  this document specifies have since joined them, routed through a
+  separate `constraintAtoms` table rather than `funcMap` itself
+  (`go/constraint.go`); none of them still fails as
+  `unknown_function`. Function canon renders
   `name(args)` reparseably (`FuncBaseVal.canon`). `ExpectVal`
   (`ts/src/val/ExpectVal.ts`) is *internal* spread-required
   machinery, not a user-facing predicate — the design cannot lean
@@ -544,7 +549,7 @@ something worth exposing.
 | Conjunct sort instability diverges between implementations | Low | Medium | Result defined by normalisation, not order; `sort.SliceStable` in `go/conjunct.go`; parity rows with mixed-band conjuncts |
 | Surface creep: 9 new builtins (12 → 21) | Medium | Medium | One family, one reference section, zero grammar change; demand-ordered phases allow stopping after bounds+regex |
 | Agents emit CUE spellings (`>0`, `=~`) | High | Low | Targeted parse hints in `ts/src/hints.ts` / `go/hints.go`; published grammar and examples via G7 |
-| Breaking spec-row change for lossy integer literals above 2^53 | Certain | Low | One row (`number-model.tsv`, `lossy-above-pow53`); single, deliberate, documented change; assessed with G3's breaking check once it exists |
+| Breaking spec-row change for lossy integer literals above 2^53 | Certain | Low | ~~One row (`number-model.tsv`, `lossy-above-pow53`)~~ **As landed: the rule is exactness, not the magnitude band, so more rows changed than this line sanctioned — `scalar.tsv:hex-big` became `hex-big-err` among them. See the register, G1 phase 6.** Single, deliberate, documented change; assessed with G3's breaking check once it exists |
 | Performance: per-pass regex recompilation, interval churn | Low | Medium | Compile-once cache keyed on pattern; intervals are O(1) merges; add perf-sensitive rows to the parity suite |
 
 ## Implementation plan
@@ -684,12 +689,15 @@ which is fixed: it now canons as `top`, and no row is exempt.)*
 7. **Phase 6 — number exactness (S).** Lossy-integer-literal error
    beside `isIntegerKind` in `ts/src/lang.ts` and `go/lang.go`: a
    literal that passes the integer-kind test but whose value is not
-   exactly representable — the (2^53, 2^63) band — becomes a
-   located nil instead of a rounded value. Amend
-   `number-model.tsv` row `lossy-above-pow53` to `err` mode — the
-   one sanctioned regression, in its own commit. The `scalar.tsv`
-   extreme-magnitude rows are untouched: the kind rule makes those
-   literals number kind, so the error never reaches them.
+   exactly representable becomes a located nil instead of a rounded
+   value. **Landed broader than this text specified**, and the
+   register carries it: the rule checks *exactness*, not the
+   `(2^53, 2^63)` magnitude band this paragraph scoped it to, so the
+   `scalar.tsv` extreme-magnitude rows were NOT untouched —
+   `hex-big` became `hex-big-err`, and more than the one sanctioned
+   `number-model.tsv:lossy-above-pow53` row changed.
+   `test/spec/number-tower.tsv` records the reason inline: the
+   arithmetic, once checked, did not support the narrower rule.
 
 Ongoing, per the review's method: property-based differential
 testing of the algebra laws (commutativity, idempotence,
@@ -705,19 +713,18 @@ applied to the language itself.
   two spellings, the op-chars reservation policy. Decide after G7
   publishes the grammar and real usage shows how often the hint
   fires.
-- **String length semantics.** TS strings are UTF-16 code units, Go
-  strings are bytes with rune iteration — `length` on strings must pin
-  one definition (Unicode code points is least surprising and costs
-  Go nothing) and spec-test the astral-plane cases. A parity
-  landmine either way; a Phase 0 row, not an implementation
-  accident.
-- **Eager kind-tightening.** Should `integer & above(0.5)`
-  canonicalise to `integer&min(1)`, and `integer & above(1) &
-  below(2)` be eagerly empty (as proposed), or should integer
-  tightening be lazy (emptiness only, no endpoint rewriting)? Eager
-  gives stronger composition-time errors and sharper subsumption
-  for G3; lazy keeps canon closer to source. The Phase 0 meet
-  tables must pick one and pin it.
+- ~~**String length semantics.**~~ **Decided by phase 0, and
+  implemented: Unicode code points**, in both ports, pinned by the
+  astral-plane rows in `test/spec/constraint-length.tsv`.
+  (The question as posed: TS strings are UTF-16 code units, Go
+  strings are bytes with rune iteration, so `length` had to pin one
+  definition or be a parity landmine.)
+- ~~**Eager kind-tightening.**~~ **Decided by phase 0: lazy
+  endpoints, eager emptiness** — `integer & above(0.5)` keeps its
+  endpoint rather than canonicalising to `integer&min(1)`, while
+  `integer & above(1) & below(2)` is empty at composition time. The
+  meet tables in `docs/reference-language.md` carry the ruling and
+  rows pin it.
 - **Bare-`min` kinds.** `min(0)` alone implies `number`; should a
   lint (G2's territory) nudge authors to write the kind explicitly
   (`integer & min(0)`) for agent legibility, or is the implication

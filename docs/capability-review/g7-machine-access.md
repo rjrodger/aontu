@@ -166,7 +166,7 @@ What structurally blocks the capability:
   ports); there is no declarative grammar file to publish.
 - **Resolver posture.** Any resident server inherits the
   memory → filesystem → package resolver chain (`makeModelResolver`,
-  ts/src/lang.ts, ~line 750) and its documented stance that opening
+  ts/src/lang.ts) and its documented stance that opening
   an untrusted source is running it — confinement is
   [G5](g5-trust-contract.md)'s contract and a precondition here.
 
@@ -516,14 +516,14 @@ stays the default.
 | Overlay files accumulate into an unreadable sediment | High | Low | One well-known overlay per entry document; `why` shows overlay sites like any other; consolidation tooling deferred to stage 2 |
 | MCP spec churn breaks the server | Medium | Low | Tool library is transport-free (LSP split); only ts/src/mcp-server.ts tracks protocol versions |
 | Adoption risk: agents read the file instead of calling tools | Medium | High | `aontu agentsmd` writes the stanza that names the tools; skill teaches the get/why/vet loop; slices are cheaper in tokens than the file — measured and stated |
-| Canon round-trip regression via fragment rendering | Low | High | Spec row pins `get $ --canon` == document canon; `parse(canon(v)) == v` stays green in every phase |
+| Canon round-trip regression via fragment rendering | Low | High | Spec row pins `get $ --canon` == document canon; canon convergence stays green in every phase |
 
 ## Implementation plan
 
 Spec-first throughout: every behaviour lands as `test/spec/*.tsv`
 rows before code; TypeScript (canonical) first, Go follows. Nothing
-may regress in any phase: the 45 existing spec files (~426 rows),
-canon round-trip `parse(canon(v)) == v`, LSP diagnostic parity, and
+may regress in any phase: every row of the shared suite (counts in [the register's protocol rule 5](progress.md#the-update-protocol)),
+canon convergence, LSP diagnostic parity, and
 the performance of uninstrumented evaluation.
 
 **Phase 1 — `get` and projections, TypeScript (M).**
