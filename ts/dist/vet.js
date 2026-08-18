@@ -41,13 +41,19 @@ function siteOf(v, dataUrl) {
     if (null == v) {
         return undefined;
     }
-    // `?? ''`: the site's url is ALWAYS a string in the report, so a
-    // consumer can read `file` without a presence check. A value
-    // unification minted, which belongs to neither document, reports the
-    // empty name rather than no name -- and the parser leaves the url
-    // undefined on one of its two paths (ts/src/lang.ts), which would
-    // otherwise drop the key for that value alone.
-    const file = v.site.url ?? '';
+    // The report's `file` is whatever the site carries, and by the time a
+    // site reaches a report that is always a stamped name: vet walks both
+    // documents before they meet, and the walk reaches the off-peg values
+    // a finding can name (ts/src/walk.ts). A consumer therefore reads
+    // `file` without a presence check, and the Go port -- whose field is
+    // a plain string -- writes the same key.
+    //
+    // NOT coalesced. The parser leaves the url undefined on one of its
+    // two paths (ts/src/lang.ts), and a `?? ''` here would be dead code
+    // that hides it: if a value ever reaches a report unstamped, the two
+    // ports should disagree loudly rather than quietly agree on an empty
+    // name that neither of them meant.
+    const file = v.site.url;
     return {
         file,
         row: v.site.row,

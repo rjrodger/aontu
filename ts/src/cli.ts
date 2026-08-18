@@ -310,11 +310,10 @@ function renderFinding(f: VetFinding): string {
   }
   for (const s of f.sites) {
     // Every site carries the canon of the value it stands for: that is
-    // what makes the two sides of a conflict readable side by side.
-    // `?? ''`: a site whose value was never named by a document has no
-    // file, and interpolating that directly wrote the word "undefined"
-    // into the report.
-    out.push(`  ${s.role}: ${s.file ?? ''}:${s.row}:${s.col} (${s.value})`)
+    // what makes the two sides of a conflict readable side by side. A
+    // site's file is always a string -- empty when the value belongs to
+    // neither document -- so there is nothing to coalesce here.
+    out.push(`  ${s.role}: ${s.file}:${s.row}:${s.col} (${s.value})`)
   }
 
   return out.join('\n')
