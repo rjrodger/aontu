@@ -14,6 +14,7 @@ import { exactJSON } from './exactjson'
 import { formatExplain } from './utility'
 import { makeNilErr, descErr, AontuError } from './err'
 import { vet } from './vet'
+import { sarifReport } from './report-sarif'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -317,8 +318,11 @@ export {
   Decimal,
 
   // G2 phase 2 -- the validation verb. The engine only: the CLI verb
-  // and the report renderers are phase 3, the Go port phase 4.
+  // and the text/JSON renderers are phase 3, the Go port phase 4.
+  // `sarifReport` (phase 5) is library API so an embedder can emit the
+  // interchange form without shelling out.
   vet,
+  sarifReport,
 }
 
 

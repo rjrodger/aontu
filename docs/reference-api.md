@@ -81,7 +81,8 @@ aontu vet [options] <schema> <data> [more-data...]
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
-  --format <f>      text (default) or json
+  --format <f>      text (default), json or sarif
+  --watch           Re-run whenever a watched file changes
 ```
 
 **Exit codes are verdict classes**, not a pass/fail bit, because the
@@ -135,6 +136,25 @@ stanza naming the producer, so a report read from a pipe says which
 version and verb made it. Where the constraint algebra knows what would
 have unified, the finding carries it as `expected`/`actual`, and a
 `must()` check's author message rides along as `note`.
+
+`--format sarif` emits the report as SARIF 2.1.0, the interchange form
+CI systems ingest (GitHub code scanning upload, PR annotation) — a
+minimal profile: one run, one result per finding, the data site as the
+primary location, the schema site under `relatedLocations`, and the
+whole native finding embedded in `properties`, so a SARIF consumer
+still holds the native contract. Severities map to SARIF levels
+(`info` → `note`). The renderer is library API in both ports
+(`sarifReport(report, version)` from `aontu`; `aontu.SarifReport` in
+Go), and its bytes are held to cross-port parity by the golden in
+[`test/spec/files/vet-sarif/`](../test/spec/files/vet-sarif/README.md).
+A ready-made GitHub Action wrapping the verb ships in this repository:
+[`vet-action/`](../vet-action/README.md).
+
+`--watch` re-runs the whole vet whenever a watched file (the schema or
+any data file) changes, streaming one report per run — honestly
+non-incremental: parsed trees are single-use, so every run is a full
+re-parse and re-unify, bounded by the fixpoint's pass budget. A file
+that is briefly unreadable mid-save reports and keeps watching.
 
 **REPL commands**
 

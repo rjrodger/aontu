@@ -137,6 +137,26 @@ complete* (3) from *the truth you were given is unusable* (4), and
 `--format json` emits the same report for a program to read. See
 [`aontu vet`](reference-api.md#aontu-vet).
 
+**In CI**, the repository ships a GitHub Action wrapping the verb —
+[`rjrodger/aontu/vet-action`](../vet-action/README.md) — which fails
+the job by verdict class and can emit SARIF
+(`--format sarif`) for GitHub code scanning. As a **pre-commit hook**,
+the verb is one line, and the verdict classes mean a half-finished
+document blocks the commit too:
+
+```sh
+#!/bin/sh
+# .git/hooks/pre-commit
+exec aontu vet service.aon deploy.json
+```
+
+**While editing**, `--watch` re-runs the vet whenever the schema or a
+data file changes, streaming one report per run:
+
+```sh
+$ aontu vet --watch service.aon deploy.json
+```
+
 ## Provide defaults that callers can override
 
 Mark the default with `*` inside a disjunction with its type:

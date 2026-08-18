@@ -1,8 +1,8 @@
 # G2: The validation verb
 
-*Status: partly implemented — phase 1 (the error-code registry) landed,
-phase 2 (the vet ENGINE, TypeScript) is partial; the CLI verb, the Go
-port and the rest, phases 3–6, are outstanding. Per-phase status and pins
+*Status: largely implemented — the verb, its report contract and its
+delivery skin (phases 1–5) are landed in both ports; multi-error
+collection (phase 6) is outstanding. Per-phase status and pins
 are in the [progress register](progress.md), which is authoritative for
 status; this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -574,9 +574,21 @@ across two documents, a constraint residual losing its source, and
 generation under collect recording nothing), each fixed rather than
 recorded. The progress register lists them.
 
-**Phase 5 — SARIF, Action, watch (S).**
-Code: ts/src/report-sarif.ts and Go twin; `--watch` in both CLIs;
-`aontu-vet-action` repository; SARIF goldens in test/spec/files/.
+**Phase 5 — SARIF, Action, watch (S).** LANDED, in both ports.
+Code: ts/src/report-sarif.ts and its Go twin go/report_sarif.go —
+library API (`sarifReport`/`SarifReport`), not CLI plumbing, so an
+embedder and G7's MCP server can emit the interchange form without
+shelling out; `--format sarif` and `--watch` in both CLIs; the SARIF
+golden in test/spec/files/vet-sarif/ (message text and producer
+version redacted, the same carve-outs the JSON report makes).
+**Departure:** the Action ships in THIS repository as the composite
+`vet-action/` (`rjrodger/aontu/vet-action@<ref>`), not as the separate
+`aontu-vet-action` repository named above — in-repo it versions in
+lock-step with the CLI it runs, and a subdirectory action is directly
+referenceable, so the separate repository bought nothing but drift
+risk. Watch polls mtime+size rather than using a native watcher, which
+is what "re-run on file mtime change" turns out to mean once editor
+save strategies (inode replacement) enter the picture.
 
 **Phase 6 — multi-error collection (L, engine).**
 Localise `nil` to its subtree and let the pass loop continue. Spec

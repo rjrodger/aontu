@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "results": [
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "data.aon"
+                },
+                "region": {
+                  "startColumn": 32,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "<MESSAGE>"
+          },
+          "properties": {
+            "class": "conflict",
+            "code": "closed",
+            "message": "<MESSAGE>",
+            "path": "$.service.prot",
+            "severity": "error",
+            "sites": [
+              {
+                "col": 32,
+                "file": "data.aon",
+                "role": "data",
+                "row": 1,
+                "value": "8080"
+              }
+            ]
+          },
+          "ruleId": "aontu/closed"
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "data.aon"
+                },
+                "region": {
+                  "startColumn": 44,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "<MESSAGE>"
+          },
+          "properties": {
+            "actual": "80",
+            "class": "conflict",
+            "code": "constraint",
+            "expected": "integer&min(1024)",
+            "message": "<MESSAGE>",
+            "path": "$.service.port",
+            "severity": "error",
+            "sites": [
+              {
+                "col": 44,
+                "file": "data.aon",
+                "role": "data",
+                "row": 1,
+                "value": "80"
+              },
+              {
+                "col": 19,
+                "file": "schema.aon",
+                "role": "schema",
+                "row": 3,
+                "value": "integer&min(1024)"
+              }
+            ]
+          },
+          "relatedLocations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "schema.aon"
+                },
+                "region": {
+                  "startColumn": 19,
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "ruleId": "aontu/constraint"
+        },
+        {
+          "level": "error",
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "data.aon"
+                },
+                "region": {
+                  "startColumn": 54,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
+          "message": {
+            "text": "<MESSAGE>"
+          },
+          "properties": {
+            "actual": "\"lead\"",
+            "class": "conflict",
+            "code": "must",
+            "expected": "\"gold\"|\"silver\"",
+            "message": "<MESSAGE>",
+            "note": "tier must be supported",
+            "path": "$.service.tier",
+            "severity": "error",
+            "sites": [
+              {
+                "col": 54,
+                "file": "data.aon",
+                "role": "data",
+                "row": 1,
+                "value": "\"lead\""
+              },
+              {
+                "col": 9,
+                "file": "schema.aon",
+                "role": "schema",
+                "row": 4,
+                "value": "must(\"gold\"|\"silver\",\"tier must be supported\")"
+              }
+            ]
+          },
+          "relatedLocations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "schema.aon"
+                },
+                "region": {
+                  "startColumn": 9,
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "ruleId": "aontu/must"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/rjrodger/aontu",
+          "name": "aontu",
+          "version": "<VERSION>"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

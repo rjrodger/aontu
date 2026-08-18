@@ -8,7 +8,7 @@ import * as Os from 'node:os'
 import * as Path from 'node:path'
 
 import { Aontu } from '../dist/aontu'
-import { evalSource, runVet, main as cliMainVet } from '../dist/cli'
+import { evalSource, runVet, watchChange, main as cliMainVet } from '../dist/cli'
 
 
 const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js')
@@ -378,5 +378,72 @@ describe('cli-vet', () => {
     const r = run(['vet', f.schema, f.data])
     Assert.equal(r.code, 1)
     Assert.match(r.out, /verdict: invalid/)
+  })
+
+
+  // --- SARIF and watch (G2 phase 5) -----------------------------------
+
+  // The interchange form: level from severity, the data site as the
+  // primary location, the schema site related, the whole native finding
+  // in properties. Shape parity with the Go port is the golden in
+  // test/spec/files/vet-sarif/ (sarif.test.ts); this is the CLI wiring.
+  test('vet-sarif-format-embeds-the-finding', () => {
+    const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }')
+    const r = vetCapture(() => runVet(['--format', 'sarif', f.schema, f.data]))
+    const log = JSON.parse(r.out)
+    Assert.equal(log.version, '2.1.0')
+    Assert.match(log.$schema, /sarif-2\.1\.0/)
+    const result = log.runs[0].results[0]
+    Assert.equal(result.ruleId, 'aontu/no_scalar_unify')
+    Assert.equal(result.level, 'error')
+    Assert.equal(result.properties.path, '$.service.port')
+    Assert.equal(result.locations[0].physicalLocation.artifactLocation.uri,
+      f.data)
+    Assert.equal(result.relatedLocations.length, 1)
+    Assert.match(log.runs[0].tool.driver.version, /^\d+\.\d+\.\d+$/)
+  })
+
+
+  // The watch loop: one report per run, one run per change, streaming.
+  // The waiter is injected so the loop is bounded; the report changing
+  // between runs proves the files are re-read each time.
+  test('vet-watch-streams-a-report-per-change', async () => {
+    const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }')
+    let calls = 0
+    const wait = async (files: string[]) => {
+      Assert.deepEqual(files, [f.schema, f.data])
+      if (0 === calls++) {
+        Fs.writeFileSync(f.data, 'service: { name: "auth", port: "80" }')
+        return true
+      }
+      return false
+    }
+
+    let code = -1
+    const so = process.stdout.write
+    let out = ''
+    ;(process.stdout as any).write = (s: any) => ((out += s), true)
+    try {
+      code = await (runVet(['--watch', f.schema, f.data], wait) as Promise<number>)
+    }
+    finally {
+      process.stdout.write = so
+    }
+
+    Assert.equal(code, 1)
+    Assert.match(out, /verdict: valid[\s\S]*verdict: invalid/)
+  })
+
+
+  // The real waiter resolves when a watched file's mtime+size signature
+  // moves — including from "gone" to existing, which is what a file
+  // being replaced by an editor looks like mid-save.
+  test('vet-watch-change-resolves-on-touch', async () => {
+    const f = vetFiles(VET_SCHEMA, 'service: {}')
+    const missing = Path.join(f.dir, 'not-yet.json')
+
+    const change = watchChange([f.schema, missing], 20)
+    setTimeout(() => Fs.writeFileSync(missing, 'service: {}'), 120)
+    Assert.equal(await change, true)
   })
 })

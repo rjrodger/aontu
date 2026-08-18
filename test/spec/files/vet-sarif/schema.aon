@@ -1,0 +1,5 @@
+service: close({
+  name: string
+  port: integer & min(1024)
+  tier: must("gold"|"silver","tier must be supported")
+})

@@ -42,7 +42,8 @@ Vet options:
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
-  --format <f>      text (default) or json
+  --format <f>      text (default), json or sarif
+  --watch           Re-run whenever a watched file changes
 
 Vet exit codes:
   0  valid       data unifies, and is concrete (or --partial)

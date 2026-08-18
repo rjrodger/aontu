@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.evalSource = evalSource;
 exports.main = main;
 exports.runVet = runVet;
+exports.watchChange = watchChange;
 // Command-line interface for Aontu.
 //
 //   aontu [options] [file]
@@ -17,6 +18,7 @@ const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");
 const node_readline_1 = require("node:readline");
 const aontu_1 = require("./aontu");
+const report_sarif_1 = require("./report-sarif");
 const vet_1 = require("./vet");
 const HELP = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
@@ -38,7 +40,8 @@ Vet options:
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
-  --format <f>      text (default) or json
+  --format <f>      text (default), json or sarif
+  --watch           Re-run whenever a watched file changes
 
 Vet exit codes:
   0  valid       data unifies, and is concrete (or --partial)
@@ -185,6 +188,7 @@ function parseVetArgs(argv) {
     let closed = false;
     let partial = false;
     let maxErrors;
+    let watch = false;
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         // `-h`/`--help` before anything else, INCLUDING the file count:
@@ -202,8 +206,8 @@ function parseVetArgs(argv) {
         }
         else if ('--format' === arg) {
             const f = argv[++i];
-            if ('text' !== f && 'json' !== f) {
-                return { err: `aontu: --format needs text or json` };
+            if ('text' !== f && 'json' !== f && 'sarif' !== f) {
+                return { err: `aontu: --format needs text, json or sarif` };
             }
             format = f;
         }
@@ -228,6 +232,9 @@ function parseVetArgs(argv) {
         else if ('--partial' === arg) {
             partial = true;
         }
+        else if ('--watch' === arg) {
+            watch = true;
+        }
         else if (arg.startsWith('-')) {
             return { err: `aontu: unknown vet option ${arg} (try --help)` };
         }
@@ -247,6 +254,7 @@ function parseVetArgs(argv) {
             closed,
             partial,
             maxErrors,
+            watch,
         },
     };
 }
@@ -295,6 +303,12 @@ function renderVetJson(report) {
         findings: report.findings,
     }, 2);
 }
+// The machine-interchange form (G2 phase 5): SARIF 2.1.0, rendered by
+// the library (ts/src/report-sarif.ts) so an embedder gets the same
+// bytes the CLI prints.
+function renderVetSarif(report) {
+    return (0, report_sarif_1.sarifReport)(report, version());
+}
 // The worst verdict wins across data files: a run that is invalid
 // anywhere is invalid, and a schema that cannot stand up makes every
 // file's verdict moot.
@@ -304,17 +318,11 @@ const VET_RANK = {
     invalid: 2,
     error: 3,
 };
-function runVet(argv) {
-    const parsed = parseVetArgs(argv);
-    if (null != parsed.err) {
-        process.stderr.write(parsed.err + '\n');
-        return 2;
-    }
-    const args = parsed.args;
-    if (true === args.help) {
-        process.stdout.write(HELP);
-        return 0;
-    }
+// One complete vet run: read every file, vet each data document, print
+// one report, return the exit class. Split from runVet so `--watch` can
+// repeat it — the files are re-read on every run, which is the point of
+// watching them.
+function vetOnce(args) {
     let schemaSrc;
     const sources = [];
     try {
@@ -369,10 +377,74 @@ function runVet(argv) {
         truncated: truncated || cap < findings.length,
         findings: kept,
     };
-    const text = 'json' === args.format
-        ? renderVetJson(report) : renderVetText(report);
+    const text = 'json' === args.format ? renderVetJson(report) :
+        'sarif' === args.format ? renderVetSarif(report) :
+            renderVetText(report);
     process.stdout.write(text + '\n');
     return VET_EXIT[verdict];
+}
+// How often `--watch` polls for a change. Polling by mtime+size rather
+// than fs.watch: the design asks for "re-run on file mtime change", and
+// the native watcher's semantics differ by platform (rename versus
+// change events, editors that replace the inode) in exactly the ways
+// that made every build tool fall back to polling.
+const WATCH_POLL_MS = 100;
+function watchSignature(files) {
+    return files.map((f) => {
+        // throwIfNoEntry, not try/catch: a file mid-save can be briefly
+        // absent, and "gone" is a state to notice, not an error to die on.
+        const stat = (0, node_fs_1.statSync)(f, { throwIfNoEntry: false });
+        return null == stat ? 'gone' : `${stat.mtimeMs}:${stat.size}`;
+    }).join('\n');
+}
+function sleep(ms) {
+    return new Promise((done) => setTimeout(done, ms));
+}
+// Resolve true when any watched file changes. This is the real waiter:
+// it never resolves false, so a real watch runs until the process is
+// interrupted; tests inject their own waiter to bound the loop, and
+// pass a short pollMs when they drive this one directly. The interval
+// is a required argument (the command passes WATCH_POLL_MS) so there is
+// no defaulting branch a test could never take.
+async function watchChange(files, pollMs) {
+    const before = watchSignature(files);
+    for (;;) {
+        await sleep(pollMs);
+        if (watchSignature(files) !== before) {
+            return true;
+        }
+    }
+}
+// The watch loop: one report per run, one run per change, streaming to
+// stdout. An unreadable file mid-watch reports (exit class 2 from
+// vetOnce) and keeps watching — a file being rewritten is briefly
+// unreadable, and dying on it would make the mode useless for the very
+// moment it exists for.
+async function watchVet(args, wait) {
+    let code = vetOnce(args);
+    while (await wait([args.schema, ...args.data])) {
+        code = vetOnce(args);
+    }
+    return code;
+}
+// The vet verb. Non-watch runs are synchronous and return the exit
+// class directly; `--watch` returns a promise that resolves only when
+// the waiter says stop (never, for the real one).
+function runVet(argv, wait) {
+    const parsed = parseVetArgs(argv);
+    if (null != parsed.err) {
+        process.stderr.write(parsed.err + '\n');
+        return 2;
+    }
+    const args = parsed.args;
+    if (true === args.help) {
+        process.stdout.write(HELP);
+        return 0;
+    }
+    if (true === args.watch) {
+        return watchVet(args, wait ?? ((files) => watchChange(files, WATCH_POLL_MS)));
+    }
+    return vetOnce(args);
 }
 // Exit without truncating output.
 //
@@ -398,8 +470,13 @@ function main(argv) {
     // `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
     // what it always did. A file named `vet` is still reachable as
     // `aontu ./vet`.
+    //
+    // Promise.resolve either way: a non-watch run returns its exit class
+    // synchronously (and has already written its report), while `--watch`
+    // resolves only when the watch ends — so one await-shaped line serves
+    // both without a branch to keep covered.
     if ('vet' === argv[2]) {
-        return finish(runVet(argv.slice(3)));
+        return void Promise.resolve(runVet(argv.slice(3))).then(finish);
     }
     for (const arg of argv.slice(2)) {
         if ('-c' === arg || '--canon' === arg) {

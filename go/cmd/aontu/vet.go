@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	aontu "github.com/rjrodger/aontu/go"
 )
@@ -56,6 +57,7 @@ type vetArgs struct {
 	closed    bool
 	partial   bool
 	maxErrors int
+	watch     bool
 }
 
 // parseVetArgs reads the verb's argument tail. It returns the error
@@ -81,8 +83,9 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 			args.at = argv[i]
 		case "--format" == arg:
 			i++
-			if len(argv) <= i || ("text" != argv[i] && "json" != argv[i]) {
-				return nil, "aontu: --format needs text or json"
+			if len(argv) <= i ||
+				("text" != argv[i] && "json" != argv[i] && "sarif" != argv[i]) {
+				return nil, "aontu: --format needs text, json or sarif"
 			}
 			args.format = argv[i]
 		case "--max-errors" == arg:
@@ -113,6 +116,8 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 			args.closed = true
 		case "--partial" == arg:
 			args.partial = true
+		case "--watch" == arg:
+			args.watch = true
 		case strings.HasPrefix(arg, "-"):
 			return nil, "aontu: unknown vet option " + arg + " (try --help)"
 		default:
@@ -212,6 +217,59 @@ func renderVetJSON(report aontu.VetReport) string {
 	return strings.TrimSuffix(buf.String(), "\n")
 }
 
+// How often --watch polls for a change. Polling by mtime+size rather
+// than a native watcher: the design asks for "re-run on file mtime
+// change", and native watcher semantics differ by platform (rename
+// versus change events, editors that replace the inode) in exactly the
+// ways that made every build tool fall back to polling. A var, not a
+// const, so the waiter's own test can shorten it.
+var watchPoll = 100 * time.Millisecond
+
+func watchSignature(files []string) string {
+	parts := make([]string, 0, len(files))
+	for _, f := range files {
+		// A file mid-save can be briefly absent, and "gone" is a state
+		// to notice, not an error to die on.
+		info, err := os.Stat(f)
+		if err != nil {
+			parts = append(parts, "gone")
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%d:%d", info.ModTime().UnixNano(), info.Size()))
+	}
+	return strings.Join(parts, "\n")
+}
+
+// watchWait blocks until any watched file changes. This is the real
+// waiter: it never returns false, so a real watch runs until the
+// process is interrupted; tests swap vetWatchWait to bound the loop.
+func watchWait(files []string) bool {
+	before := watchSignature(files)
+	for {
+		time.Sleep(watchPoll)
+		if watchSignature(files) != before {
+			return true
+		}
+	}
+}
+
+// Swapped by tests; the command always runs the real waiter.
+var vetWatchWait = watchWait
+
+// watchVet is the watch loop: one report per run, one run per change,
+// streaming to stdout. An unreadable file mid-watch reports (exit class
+// 2 from vetOnce) and keeps watching — a file being rewritten is
+// briefly unreadable, and dying on it would make the mode useless for
+// the very moment it exists for.
+func watchVet(args *vetArgs, stdout, stderr io.Writer) int {
+	code := vetOnce(args, stdout, stderr)
+	files := append([]string{args.schema}, args.data...)
+	for vetWatchWait(files) {
+		code = vetOnce(args, stdout, stderr)
+	}
+	return code
+}
+
 func runVet(argv []string, stdout, stderr io.Writer) int {
 	args, argErr := parseVetArgs(argv)
 	if "" != argErr {
@@ -224,6 +282,18 @@ func runVet(argv []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
+	if args.watch {
+		return watchVet(args, stdout, stderr)
+	}
+
+	return vetOnce(args, stdout, stderr)
+}
+
+// vetOnce is one complete vet run: read every file, vet each data
+// document, print one report, return the exit class. Split from runVet
+// so --watch can repeat it — the files are re-read on every run, which
+// is the point of watching them.
+func vetOnce(args *vetArgs, stdout, stderr io.Writer) int {
 	schemaSrc, err := os.ReadFile(args.schema)
 	if err != nil {
 		fmt.Fprintf(stderr, "aontu: cannot read %s: %v\n", args.schema, err)
@@ -290,8 +360,13 @@ func runVet(argv []string, stdout, stderr io.Writer) int {
 
 	report := aontu.VetReport{Verdict: verdict, Truncated: truncated, Findings: findings}
 	text := renderVetText(report)
-	if "json" == args.format {
+	switch args.format {
+	case "json":
 		text = renderVetJSON(report)
+	case "sarif":
+		// Rendered by the library (report_sarif.go) so an embedder gets
+		// the same bytes the CLI prints.
+		text = aontu.SarifReport(report, aontu.VERSION)
 	}
 
 	fmt.Fprintln(stdout, text)
