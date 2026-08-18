@@ -13,6 +13,7 @@ import { Decimal } from './val/Decimal'
 import { exactJSON } from './exactjson'
 import { formatExplain } from './utility'
 import { makeNilErr, descErr, AontuError } from './err'
+import { vet } from './vet'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -314,6 +315,10 @@ export {
   // `biginteger` generates as the language's own `bigint`).
   exactJSON,
   Decimal,
+
+  // G2 phase 2 -- the validation verb. The engine only: the CLI verb
+  // and the report renderers are phase 3, the Go port phase 4.
+  vet,
 }
 
 

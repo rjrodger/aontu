@@ -1,0 +1,34 @@
+export type VetVerdict = 'valid' | 'invalid' | 'incomplete' | 'error';
+export type VetRole = 'data' | 'schema';
+export type VetSite = {
+    file: string;
+    row: number;
+    col: number;
+    role: VetRole;
+    value?: string;
+};
+export type VetFinding = {
+    code: string;
+    class: string;
+    severity: 'error' | 'warning' | 'info';
+    path: string;
+    message: string;
+    sites: VetSite[];
+    expected?: string;
+    actual?: string;
+    note?: string;
+};
+export type VetReport = {
+    verdict: VetVerdict;
+    truncated: boolean;
+    findings: VetFinding[];
+};
+export type VetOptions = {
+    at?: string;
+    closed?: boolean;
+    partial?: boolean;
+    maxErrors?: number;
+    schemaUrl?: string;
+    dataUrl?: string;
+};
+export declare function vet(schemaSrc: string, dataSrc: string, opts?: VetOptions): VetReport;

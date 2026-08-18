@@ -20,6 +20,7 @@ import type { Val } from './type'
 
 import { Aontu } from './aontu'
 import { getHint } from './err'
+import { collectNils } from './walk'
 
 
 // LSP DiagnosticSeverity subset.
@@ -92,9 +93,10 @@ function computeDiagnostics(
     return [parseErrorDiagnostic(err)]
   }
 
-  const nils: any[] = []
+  // The walk's `seen` set is reused below to dedup context errors
+  // against the nils already found in the tree.
   const seen = new Set()
-  walkNils(root, nils, seen)
+  const nils: any[] = collectNils(root, seen)
 
   // Errors recorded on the context but not present in the tree — e.g. a
   // budget_passes exhaustion nil, which is about the whole evaluation
@@ -110,33 +112,6 @@ function computeDiagnostics(
   }
 
   return nils.map(nilToDiagnostic)
-}
-
-
-// Walk a unified Val tree collecting every NilVal exactly once. A NilVal
-// in the result always represents an error; valid non-concrete values
-// (scalar kinds, refs, conjuncts) are never NilVals.
-function walkNils(v: any, out: any[], seen: Set<any>) {
-  if (null == v || 'object' !== typeof v || true !== v.isVal) return
-  if (seen.has(v)) return
-  seen.add(v)
-
-  if (v.isNil) {
-    out.push(v)
-    return
-  }
-
-  const peg = v.peg
-  if (Array.isArray(peg)) {
-    for (const c of peg) walkNils(c, out, seen)
-  }
-  else if (null != peg && 'object' === typeof peg) {
-    for (const k in peg) walkNils(peg[k], out, seen)
-  }
-
-  // Spread constraints live off-peg on Map/List Vals.
-  const spreadCj = v.spread?.cj
-  if (spreadCj) walkNils(spreadCj, out, seen)
 }
 
 

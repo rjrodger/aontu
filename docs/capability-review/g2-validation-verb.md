@@ -1,7 +1,8 @@
 # G2: The validation verb
 
-*Status: partly implemented — phase 1 (the error-code registry) landed;
-the verb itself, phases 2–6, is outstanding. Per-phase status and pins
+*Status: partly implemented — phase 1 (the error-code registry) landed,
+phase 2 (the vet ENGINE, TypeScript) is partial; the CLI verb, the Go
+port and the rest, phases 3–6, are outstanding. Per-phase status and pins
 are in the [progress register](progress.md), which is authoritative for
 status; this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -508,15 +509,24 @@ assert codes.
 **Phase 2 — vet engine API, TypeScript (M).**
 Spec: new `test/spec/vet.tsv` — columns name, schema, data, verdict,
 findings — plus JSON-report goldens for a representative subset.
-**The row encoding is not settled.** `code@path` lists, written here
-before the reconnaissance below, are ruled out by its first
-constraint: no punctuation is safe as a separator, because every
-candidate is legal inside a quoted map key. Three candidate encodings
-were drafted and all three failed adversarial review; the surviving
-shape — explicit input columns, JSON-encoded finding lists, goldens
-with `message` carved out — has **not** been probed against the
-engine, and probing it is the first task of this phase, not a
-detail of it. See "What the spec suite can actually pin" above.
+**The row encoding is settled, by probing.** `code@path` lists,
+written here before the reconnaissance below, are ruled out by its
+first constraint: no punctuation is safe as a separator, because every
+candidate is legal inside a quoted map key. The surviving shape was
+then probed against the engine and is now written out, with its
+reasoning, at the head of
+[`test/spec/draft/vet.tsv`](../../test/spec/draft/vet.tsv):
+**five columns** — name, mode, schema, data, expect — because vet takes
+two documents; a **JSON-encoded** expect object, using the serialiser
+pair the suite already holds to byte parity; and `message`
+**excluded** from the golden, asserted by substring per port, because
+prose is deliberately not in cross-port parity. One part remains
+unprobed and is flagged there: options (`at`, `closed`, `partial`)
+ride an `opts` key rather than a column, because no runner passes
+options today.
+The rows are drafted rather than live because both runners execute
+every row with no skip list, so a `vet` row cannot be executable until
+phase 4 gives Go a vet.
 Code: new ts/src/vet.ts (anchor selection, data parse,
 unify-with-collect, residue walk generalising ts/src/lsp.ts
 `walkNils`, finding construction); ts/src/aontu.ts export.

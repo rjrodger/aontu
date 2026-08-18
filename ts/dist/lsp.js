@@ -7,6 +7,7 @@ exports.computeHover = computeHover;
 exports.computeCompletions = computeCompletions;
 const aontu_1 = require("./aontu");
 const err_1 = require("./err");
+const walk_1 = require("./walk");
 // LSP DiagnosticSeverity subset.
 const SEVERITY_ERROR = 1;
 exports.SEVERITY_ERROR = SEVERITY_ERROR;
@@ -39,9 +40,10 @@ function computeDiagnostics(src, opts) {
         // errors may carry 1-based line/col; fall back to the document start.
         return [parseErrorDiagnostic(err)];
     }
-    const nils = [];
+    // The walk's `seen` set is reused below to dedup context errors
+    // against the nils already found in the tree.
     const seen = new Set();
-    walkNils(root, nils, seen);
+    const nils = (0, walk_1.collectNils)(root, seen);
     // Errors recorded on the context but not present in the tree — e.g. a
     // budget_passes exhaustion nil, which is about the whole evaluation
     // rather than any node — would otherwise be invisible here, and the
@@ -55,33 +57,6 @@ function computeDiagnostics(src, opts) {
         }
     }
     return nils.map(nilToDiagnostic);
-}
-// Walk a unified Val tree collecting every NilVal exactly once. A NilVal
-// in the result always represents an error; valid non-concrete values
-// (scalar kinds, refs, conjuncts) are never NilVals.
-function walkNils(v, out, seen) {
-    if (null == v || 'object' !== typeof v || true !== v.isVal)
-        return;
-    if (seen.has(v))
-        return;
-    seen.add(v);
-    if (v.isNil) {
-        out.push(v);
-        return;
-    }
-    const peg = v.peg;
-    if (Array.isArray(peg)) {
-        for (const c of peg)
-            walkNils(c, out, seen);
-    }
-    else if (null != peg && 'object' === typeof peg) {
-        for (const k in peg)
-            walkNils(peg[k], out, seen);
-    }
-    // Spread constraints live off-peg on Map/List Vals.
-    const spreadCj = v.spread?.cj;
-    if (spreadCj)
-        walkNils(spreadCj, out, seen);
 }
 // Convert a NilVal (1-based site row/col) to an LSP diagnostic (0-based
 // line/character).

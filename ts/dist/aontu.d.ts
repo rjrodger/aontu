@@ -5,6 +5,7 @@ import { Decimal } from './val/Decimal';
 import { exactJSON } from './exactjson';
 import { formatExplain } from './utility';
 import { AontuError } from './err';
+import { vet } from './vet';
 declare const VERSION = "0.52.1";
 declare class Aontu {
     opts: AontuOptions;
@@ -19,5 +20,5 @@ declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
     runparse: typeof runparse;
 };
-export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, };
+export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, };
 export default Aontu;

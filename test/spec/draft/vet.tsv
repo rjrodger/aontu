@@ -1,0 +1,87 @@
+# DRAFT (not executed; see README.md). G2 phase 2: the validation verb.
+#
+# WHY THESE ARE DRAFTED RATHER THAN LANDED. Both runners execute every
+# row of every test/spec/*.tsv file, with no skip list -- a property the
+# Go runner is deliberately proud of. A `vet` row therefore cannot
+# become executable until `vet` exists in BOTH ports, which is phase 4.
+# The engine landed in TypeScript first (ADR-001: TypeScript is
+# canonical, the Go port follows), so its behaviour is pinned by
+# ts/test/vet.test.ts today and by these rows when the port lands.
+#
+# THE ENCODING, settled by probing the engine rather than by argument.
+# Three candidate encodings failed adversarial review before this one;
+# what rules them out is recorded in the design document under "What the
+# spec suite can actually pin". The surviving shape:
+#
+#   name <TAB> vet <TAB> schema <TAB> data <TAB> expect
+#
+# FIVE columns, not four. Both runners already tolerate extra columns
+# (they read the first four and ignore the rest), so a `vet` arm reading
+# a fifth is additive rather than a format change. The alternative --
+# packing two documents into the single src cell with a separator --
+# founders on the same rock as the compact finding summary: no
+# punctuation is safe, because a quoted map key may contain any
+# character.
+#
+# `expect` is a JSON object, encoded with the serialiser pair the suite
+# already holds to byte parity (exactJSON / json.Encoder):
+#
+#   {"verdict":"invalid","truncated":false,"findings":[{...}]}
+#
+# MESSAGE TEXT IS EXCLUDED from the golden, deliberately. Codes are
+# contractual across the ports and prose is not -- both runners say so
+# at the `errc` site, and test/spec/divergent.tsv repeats it -- so a
+# whole-report byte golden would silently promote every message string
+# to a cross-port contract this repository refuses to make. The
+# `message` field is asserted by substring in the per-port tests
+# instead, the way `err` rows already work.
+#
+# SITES carry `file`, `row`, `col` and `role`. The files are named by
+# the runner (`schema` and `data`), not by a path, so the golden does
+# not depend on where the suite is checked out.
+#
+# Columns: name<TAB>mode<TAB>schema<TAB>data<TAB>expect
+
+# --- verdicts ---------------------------------------------------------
+vet-valid	vet	service:{name:string,port:integer}	service:{name:"auth",port:8080}	{"verdict":"valid","truncated":false,"findings":[]}
+vet-invalid-kind	vet	service:{name:string,port:integer}	service:{name:"auth",port:"8080"}	{"verdict":"invalid","truncated":false,"findings":[{"code":"no_scalar_unify","class":"conflict","severity":"error","path":"$.service.port","sites":[{"file":"data","row":1,"col":32,"role":"data","value":"\"8080\""},{"file":"schema","row":1,"col":32,"role":"schema","value":"integer"}]}]}
+# Residue is INCOMPLETE, not invalid: the data does not yet satisfy the
+# truth, as against never being able to. Bare vet is strict, so this is
+# a failing verdict; --partial opts out.
+vet-incomplete	vet	service:{name:string,port:integer}	service:{name:"auth"}	{"verdict":"incomplete","truncated":false,"findings":[{"code":"mapval_no_gen","class":"incomplete","severity":"error","path":"$.service.port"}]}
+# A schema that does not stand up on its own is never blamed on data.
+vet-schema-error	vet	a:1 a:2	a:1	{"verdict":"error","truncated":false,"findings":[]}
+vet-data-unparseable	vet	a:integer	a: ]	{"verdict":"error","truncated":false,"findings":[]}
+
+# --- findings ---------------------------------------------------------
+# The data site is listed first: it is the thing to fix. Roles come from
+# provenance, not from NilVal's primary/secondary heuristic, which is
+# source-order reasoning within ONE document and says nothing useful
+# when one side is a schema and the other is data.
+vet-closed-key	vet	service:close({name:string})	service:{name:"auth",prot:8080}	{"verdict":"invalid","truncated":false,"findings":[{"code":"closed","class":"conflict","severity":"error","path":"$.service.prot","sites":[{"file":"data","row":1,"col":32,"role":"data","value":"8080"}]}]}
+# expected/actual come from the constraint algebra's own details, so
+# G1's canonical bound syntax is what a repair loop is handed.
+vet-constraint-alternatives	vet	service:{port:integer&min(1024)}	service:{port:80}	{"verdict":"invalid","truncated":false,"findings":[{"code":"constraint","class":"conflict","severity":"error","path":"$.service.port","expected":"integer&min(1024)","actual":"80"}]}
+# The author's message from Band B rides the finding as `note`.
+vet-must-note	vet	service:{tier:must("gold"|"silver","tier must be supported")}	service:{tier:"lead"}	{"verdict":"invalid","truncated":false,"findings":[{"code":"must","class":"conflict","severity":"error","path":"$.service.tier","expected":"\"gold\"|\"silver\"","actual":"\"lead\"","note":"tier must be supported"}]}
+# A path is not delimiter-safe, which is why the whole finding list is
+# JSON rather than a compact code@path summary.
+vet-path-with-space	vet	"a b":integer	"a b":"x"	{"verdict":"invalid","truncated":false,"findings":[{"code":"no_scalar_unify","class":"conflict","severity":"error","path":"$.a b"}]}
+
+# --- ordering and limits ---------------------------------------------
+# Vet sorts its own findings. The underlying walk follows raw key order
+# and the two hosts disagree about that, so an unsorted report could
+# never be in cross-port parity.
+vet-sorted-by-data-site	vet	a:integer\nb:integer\nc:integer	c:"z"\na:"x"\nb:"y"	{"verdict":"invalid","truncated":false,"findings":[{"path":"$.a"},{"path":"$.b"},{"path":"$.c"}]}
+vet-truncated	vet	a:integer\nb:integer\nc:integer	a:"x"\nb:"y"\nc:"z"	{"verdict":"invalid","truncated":true,"findings":[{"path":"$.a"},{"path":"$.b"}]}
+
+# --- anchor -----------------------------------------------------------
+# The anchor and the closed flag are options rather than source, so
+# these rows need the option column the runner arm will read from the
+# expect object's "opts" key -- the one piece of this encoding that is
+# NOT yet probed, because the TypeScript engine takes options as an
+# argument and no runner passes them yet. Recorded here so the phase-4
+# port does not rediscover it.
+vet-at-subtree	vet	services:{auth:{port:integer}}	auth:{port:8080}	{"opts":{"at":"$.services"},"verdict":"valid","truncated":false,"findings":[]}
+vet-closed-anchor	vet	service:{name:string}	name:"auth"\nextra:1	{"opts":{"at":"$.service","closed":true},"verdict":"invalid","truncated":false,"findings":[{"code":"closed","class":"conflict","severity":"error","path":"$.service.extra"}]}
+vet-partial-allows-residue	vet	service:{name:string,port:integer}	service:{name:"auth"}	{"opts":{"partial":true},"verdict":"valid","truncated":false,"findings":[{"code":"mapval_no_gen","class":"incomplete","severity":"error","path":"$.service.port"}]}

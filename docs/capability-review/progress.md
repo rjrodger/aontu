@@ -97,19 +97,19 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Thirteen of forty-nine phases have moved; ten of those are complete.
+Fourteen of forty-nine phases have moved; ten of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
-| [G2](g2-validation-verb.md) | The validation verb | A | 1 | 0 | 5 |
+| [G2](g2-validation-verb.md) | The validation verb | A | 1 | 1 | 4 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 2 | 2 | 2 |
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **10** | **3** | **36** |
+| | | **total** | **10** | **4** | **35** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -119,9 +119,10 @@ Against the review's own [sequencing](index.md#sequencing):
   ADR-002 gate back at 100% in both. That is more than the sequencing
   table's "constraint algebra core (bounds, regex, length/count)"
   asked for: cross-field residuation and the `must` escape hatch are
-  in too. Outstanding: the whole of the `vet` verb (G2.2–6).
-  **Phase A's headline claim — `aontu vet` — does not exist in either
-  port.**
+  in too. Outstanding: the rest of the `vet` verb (G2.3–6) and its Go
+  port (G2.4). **Phase A's headline claim now half exists: the vet
+  ENGINE runs in TypeScript (G2.2), but there is no `aontu vet`
+  command, and Go has no vet at all.**
 - **Phase B — differentiate.** Untouched. No subsumption, no canon
   hash, no query surface.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
@@ -242,7 +243,7 @@ does not resolve to the default; the disjunct form does. See
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
 | **1** — error taxonomy groundwork | M | **LANDED** | `test/spec/errcodes.tsv` (70 registered codes with class and since-version — 64 at this phase's own landing, grown since by `constraint_pattern` and `must`); new spec modes `errc` and `errcode`; `class` on `NilVal` (`ts/src/val/NilVal.ts`, `go/val.go`); registry set-equality asserted by both runners (`ts/test/spec.test.ts` `spec-errcodes-registry`, `go/spec_test.go` `TestErrCodesRegistry`). Commit `98fc1bf`. |
-| **2** — vet engine API, TypeScript | M | **NOT STARTED** | No `ts/src/vet.ts`, no `test/spec/vet.tsv`. **Unblocked:** the two semantics the design left open are now decided and written into `docs/capability-review/g2-validation-verb.md` — bare `vet` is **strict** (residue with no contradiction is verdict `incomplete`, exit 3; `--partial` opts out), and a data file is parsed with the **full grammar**, so vet validates a *contribution* rather than only a document, with site roles assigned by URL provenance rather than by grammar. Reconnaissance against the engine then added five probed constraints on what a shared row can assert — paths are not delimiter-safe, message text is deliberately not in parity, codes are partly dynamic prefixes, the underlying walk's order differs between the hosts (so vet must sort, which settles the ordering question too), and `truncated` is rarer than the plan assumed — recorded as "What the spec suite can actually pin". |
+| **2** — vet engine API, TypeScript | M | **PARTIAL** | `ts/src/vet.ts`, exported from `ts/src/aontu.ts`: anchor selection (`at`, `closed`), data parsed with the full grammar, unify-with-collect, the residue walk, finding construction with roles by provenance, vet-side sorting, `maxErrors`/`truncated`, and the four verdicts. 30 rows in `ts/test/vet.test.ts`; ADR-002 back at 100%. **What is missing, and why it is not a slip:** the phase names `test/spec/vet.tsv` as a deliverable, and that file cannot exist yet. Both runners execute every row of every `test/spec/*.tsv` with no skip list, so a `vet` row is only executable once `vet` exists in BOTH ports — phase 4. The rows are written and carry the settled encoding, in `test/spec/draft/vet.tsv`. Under ADR-001 a TypeScript-only phase is partial, and this one is partial for a second reason too. **Departures from the design:** (1) the encoding is FIVE columns — name, mode, schema, data, expect — because vet takes two documents and no separator inside one cell is safe; both runners already tolerate extra columns, so the arm is additive. (2) `message` is excluded from the goldens and asserted by substring per port, because prose is deliberately not in cross-port parity. (3) Options (`at`, `closed`, `partial`) have no column: they ride an `opts` key in the expect object, the one part of the encoding still unprobed, because no runner passes options today. (4) A conflict inside a `&:` template reports the TEMPLATE's path, not the instance's — the data site still points at the offending value, and naming the instance path is a report-layer concern for phase 3. |
 | **3** — CLI verb and JSON format | M | **NOT STARTED** | `ts/src/cli.ts` has no subcommand dispatch at all — one file argument, `-c/--canon`, help/version, REPL. |
 | **4** — Go port | L | **NOT STARTED** | No `go/vet.go`, no `go/report.go`. |
 | **5** — SARIF, Action, watch | S | **NOT STARTED** | — |
