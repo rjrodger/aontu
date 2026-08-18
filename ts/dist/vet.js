@@ -1,11 +1,16 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.VET_MAX_ERRORS = void 0;
 exports.vet = vet;
 const aontu_1 = require("./aontu");
+const err_1 = require("./err");
 const ConjunctVal_1 = require("./val/ConjunctVal");
 const walk_1 = require("./walk");
-const DEFAULT_MAX_ERRORS = 20;
+// The default cap, exported because the CLI applies it to the WHOLE
+// report across several data files and must not carry a second copy of
+// the number (ts/src/cli.ts).
+exports.VET_MAX_ERRORS = 20;
 const DEFAULT_SCHEMA_URL = 'schema';
 const DEFAULT_DATA_URL = 'data';
 // Every site in a freshly parsed tree carries the same url, and for a
@@ -36,6 +41,18 @@ function siteOf(v, dataUrl) {
     if (null == v) {
         return undefined;
     }
+    // The report's `file` is whatever the site carries, and by the time a
+    // site reaches a report that is always a stamped name: vet walks both
+    // documents before they meet, and the walk reaches the off-peg values
+    // a finding can name (ts/src/walk.ts). A consumer therefore reads
+    // `file` without a presence check, and the Go port -- whose field is
+    // a plain string -- writes the same key.
+    //
+    // NOT coalesced. The parser leaves the url undefined on one of its
+    // two paths (ts/src/lang.ts), and a `?? ''` here would be dead code
+    // that hides it: if a value ever reaches a report unstamped, the two
+    // ports should disagree loudly rather than quietly agree on an empty
+    // name that neither of them meant.
     const file = v.site.url;
     return {
         file,
@@ -49,7 +66,14 @@ function siteOf(v, dataUrl) {
 // The underlying NilVal fields are untouched: this is a report-layer
 // projection, so the existing error.tsv assertions do not move.
 function sitesOf(nil, dataUrl) {
-    const sites = [siteOf(nil.primary, dataUrl)];
+    // `?? nil`: a failure raised about a CONSTRUCT rather than about a
+    // failed meet -- a lossy integer literal, say -- carries no operands
+    // at all, and reporting it about ITSELF is what ctx.adderr already
+    // does for the same reason. Without the fallback the report built a
+    // site out of `undefined` and threw while partitioning it, which is
+    // the one thing vet promises not to do: a bad value in the data is
+    // DATA, and the caller gets a report.
+    const sites = [siteOf(nil.primary ?? nil, dataUrl)];
     const secondary = siteOf(nil.secondary, dataUrl);
     if (null != secondary) {
         sites.push(secondary);
@@ -62,6 +86,24 @@ function sitesOf(nil, dataUrl) {
         ...sites.filter((s) => 'schema' === s.role),
     ];
 }
+// The message text is MATERIALISED on demand, exactly as handleErrors
+// materialises one before a caller sees it: makeNilErr defers it
+// because most NilVals are transient and never rendered, and only the
+// throwing path asks for it. Without this a finding could carry an
+// empty `message` -- which is what the incomplete half of every report
+// did, and what any nil built during the PARSE of a document did.
+function materialise(nil, ctx) {
+    if (null == nil.msg || '' === nil.msg) {
+        (0, err_1.descErr)(nil, ctx);
+    }
+}
+// The terminal colour escapes the parser puts in its message text. A
+// RegExp built from a string, not a literal: the escape is a control
+// character, and spelling it `\u001b` keeps the source readable.
+const ANSI_RE = new RegExp('\u001b\\[[0-9;]*m', 'g');
+function stripAnsi(s) {
+    return s.replace(ANSI_RE, '');
+}
 function findingOf(nil, dataUrl) {
     const details = nil.details ?? {};
     const finding = {
@@ -69,7 +111,14 @@ function findingOf(nil, dataUrl) {
         class: nil.class,
         severity: 'error',
         path: pathText(nil.path),
-        message: nil.msg ? nil.msg.split('\n')[0] : '',
+        // The HEADLINE only, WITHOUT ANSI: the frames below it are for a
+        // human reading a terminal, and the first line is the part the two
+        // ports hold to byte parity. Materialised before this runs, so it
+        // is always there (see materialise above). The escapes matter for
+        // one family only -- a parse failure's text comes from the parser,
+        // which colours its marker -- and a machine-readable report is no
+        // place for terminal control codes.
+        message: stripAnsi(nil.msg.split('\n')[0]),
         sites: sitesOf(nil, dataUrl),
     };
     // `expected`/`actual` are the admissible-alternatives contract, and
@@ -102,14 +151,24 @@ function findingOf(nil, dataUrl) {
 // A cascade would need a test per tie-breaker to stay honest; a key
 // needs none, and cannot disagree with itself.
 const ORDER_PAD = 9;
-function orderKey(f) {
+function pad(n) {
+    return String(n).padStart(ORDER_PAD, '0');
+}
+// The walk index is the LAST field, which makes every key unique and
+// the sort below total: two findings can otherwise share everything the
+// key carries — same data site, same code, same path — and a comparator
+// that has to answer "equal" is one more thing to get right in two
+// languages. With the index appended, ties simply keep walk order, in
+// both ports, by construction rather than by the sort's promises.
+function orderKey(f, index) {
     const site = f.sites[0];
     return [
         site.file,
-        String(site.row).padStart(ORDER_PAD, '0'),
-        String(site.col).padStart(ORDER_PAD, '0'),
+        pad(site.row),
+        pad(site.col),
         f.code,
         f.path,
+        pad(index),
     ].join('\u0000');
 }
 // Walk the evaluated schema to the anchor path. `$` and `$.a.b` are
@@ -120,11 +179,42 @@ function anchorAt(root, at) {
     const parts = trimmed.split('.').filter((p) => '' !== p);
     let node = root;
     for (const part of parts) {
-        const peg = node?.peg;
-        if (null == peg || 'object' !== typeof peg || !(part in peg)) {
+        // TYPE-DIRECTED, not a property lookup on whatever `peg` happens to
+        // be. An anchor is a STRUCTURAL path into the schema — the same
+        // thing a reference means by `$.a.b` — so it walks map keys and
+        // list indices, and stops at anything else.
+        //
+        // Indexing the peg generically walked much further than that: into
+        // a junction's branches (`a:1|2` with `--at $.a.0` validated
+        // against ONE branch), into a constraint's atom arguments (so
+        // `min(2)` with `--at $.a.0` reported the bound's own argument as
+        // the truth), into a pref's wrapped value through the literal key
+        // `peg`, and into an array's `length` — that last one handing back
+        // a JavaScript NUMBER as the anchor, after which every document
+        // whatsoever came back valid. The Go port has always been
+        // type-directed here; this is the canonical side moving to it.
+        if (true === node?.isMap) {
+            const peg = node.peg;
+            if (null == peg || !Object.prototype.hasOwnProperty.call(peg, part)) {
+                return undefined;
+            }
+            node = peg[part];
+        }
+        else if (true === node?.isList) {
+            // CANONICAL DECIMAL, the spelling a reference uses for a list
+            // index (`0`, or a non-zero digit run) -- so `$.a.01` names
+            // nothing here exactly as it names nothing there.
+            const peg = node.peg;
+            const index = Number(part);
+            if (!/^(0|[1-9][0-9]*)$/.test(part) ||
+                !Array.isArray(peg) || peg.length <= index) {
+                return undefined;
+            }
+            node = peg[index];
+        }
+        else {
             return undefined;
         }
-        node = peg[part];
     }
     return node;
 }
@@ -139,12 +229,19 @@ function vet(schemaSrc, dataSrc, opts) {
     const options = opts ?? {};
     const schemaUrl = options.schemaUrl ?? DEFAULT_SCHEMA_URL;
     const dataUrl = options.dataUrl ?? DEFAULT_DATA_URL;
-    const maxErrors = options.maxErrors ?? DEFAULT_MAX_ERRORS;
+    const maxErrors = options.maxErrors ?? exports.VET_MAX_ERRORS;
+    // ONE instance, two bases: the path rides on each CALL rather than on
+    // the constructor, because the schema and the data may live in
+    // different directories (Lang.parse takes `opts.path` per parse).
     const aontu = new aontu_1.Aontu();
+    const schemaOpts = null == options.schemaPath ?
+        undefined : { path: options.schemaPath };
+    const dataOpts = null == options.dataPath ?
+        undefined : { path: options.dataPath };
     // 1. The schema alone. If it does not stand up on its own, the data
     //    is never blamed for it.
     const schemaCtx = aontu.ctx({ collect: true });
-    const schemaVal = aontu.unify(schemaSrc, undefined, schemaCtx);
+    const schemaVal = aontu.unify(schemaSrc, schemaOpts, schemaCtx);
     if (0 < schemaCtx.err.length || true === schemaVal?.isNil) {
         return { verdict: 'error', truncated: false, findings: [] };
     }
@@ -159,9 +256,35 @@ function vet(schemaSrc, dataSrc, opts) {
     // 3. Both documents get their provenance stamped BEFORE they meet, so
     //    every site in the result knows which document it came from.
     const dataCtx = aontu.ctx({ collect: true });
-    const dataVal = aontu.parse(dataSrc, undefined, dataCtx);
+    const dataVal = aontu.parse(dataSrc, dataOpts, dataCtx);
     if (0 < dataCtx.err.length || null == dataVal) {
-        return { verdict: 'error', truncated: false, findings: [] };
+        // A DATA DOCUMENT THAT WILL NOT PARSE IS THE DATA'S FAULT, and the
+        // report says so: verdict `invalid`, with a finding carrying the
+        // parser's own code and a site in the data. `error` is left to mean
+        // what the exit table says it means -- the run could not be set up
+        // from the SCHEMA side.
+        //
+        // The engine already answered it this way one character earlier: a
+        // refused CONSTRUCT (`a: 9007199254740993`) reaches the tree as an
+        // ordinary nil and is reported as an invalid data finding. A stray
+        // `]` took the throwing path instead and came back as a broken
+        // SCHEMA -- the same fault, classified two opposite ways by which
+        // branch the parser happened to take.
+        //
+        // The FIRST error only: the parser stops at the first syntax error,
+        // so a second entry would be a consequence of the first rather than
+        // a separate thing to fix.
+        const failure = dataCtx.err[0];
+        if (null == failure) {
+            return { verdict: 'error', truncated: false, findings: [] };
+        }
+        failure.site.url = dataUrl;
+        materialise(failure, dataCtx);
+        return {
+            verdict: 'invalid',
+            truncated: false,
+            findings: [findingOf(failure, dataUrl)],
+        };
     }
     stampUrl(anchor, schemaUrl);
     stampUrl(dataVal, dataUrl);
@@ -176,12 +299,29 @@ function vet(schemaSrc, dataSrc, opts) {
     const ctx = aontu.ctx({ collect: true });
     const pair = new ConjunctVal_1.ConjunctVal({ peg: [anchor, dataVal] }, ctx);
     const unified = aontu.unify(pair, undefined, ctx);
-    // 4. Contradictions: every NilVal standing in the result.
-    // collectNils reports the node it is given, so a root that is itself
-    // a nil needs no separate arm — adding one listed the same finding
-    // twice.
-    const nils = (0, walk_1.collectNils)(unified);
-    const findings = nils.map((n) => findingOf(n, dataUrl));
+    // 4. Contradictions: every NilVal standing in the result, PLUS the
+    //    ones that never made it into the tree.
+    //
+    // The second half is not belt-and-braces. When a parent collapses to
+    // a nil the whole subtree goes with it, so `service: close({...})`
+    // meeting a typo AND a kind conflict leaves ONE nil in the tree and
+    // reports the other only on the context — the vet verb's own
+    // motivating example, reporting half of what it found. The language
+    // server already walks both for this reason; vet dedups by identity
+    // the same way, and skips the transient disjunct-trial sentinel,
+    // which is bookkeeping rather than a finding.
+    const seen = new Set();
+    const nils = (0, walk_1.collectNils)(unified, seen);
+    for (const err of ctx.err) {
+        if (true === err?.isNil && '|:trial-nil' !== err.why && !seen.has(err)) {
+            seen.add(err);
+            nils.push(err);
+        }
+    }
+    const findings = nils.map((n) => {
+        materialise(n, ctx);
+        return findingOf(n, dataUrl);
+    });
     const conflicts = findings.length;
     // 5. Incompleteness: what is left standing that cannot generate. The
     //    generate check runs in its own collect context so nothing it
@@ -194,10 +334,11 @@ function vet(schemaSrc, dataSrc, opts) {
     unified.gen(genCtx);
     for (const err of genCtx.err) {
         if ('incomplete' === err.class) {
+            materialise(err, genCtx);
             findings.push(findingOf(err, dataUrl));
         }
     }
-    const keyed = findings.map((f) => ({ key: orderKey(f), finding: f }));
+    const keyed = findings.map((f, i) => ({ key: orderKey(f, i), finding: f }));
     keyed.sort((a, b) => a.key < b.key ? -1 : 1);
     const ordered = keyed.map((k) => k.finding);
     const truncated = maxErrors < ordered.length;

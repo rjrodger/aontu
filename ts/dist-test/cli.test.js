@@ -37,6 +37,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const node_child_process_1 = require("node:child_process");
+const Fs = __importStar(require("node:fs"));
+const Os = __importStar(require("node:os"));
 const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
 const cli_1 = require("../dist/cli");
@@ -114,6 +116,216 @@ function run(args, input) {
         const r = run(['--nope']);
         Assert.equal(r.code, 2);
         Assert.match(r.out, /unknown option/);
+    });
+});
+// --- the vet verb (G2 phase 3) ---------------------------------------
+function vetCapture(fn) {
+    const so = process.stdout.write;
+    const se = process.stderr.write;
+    let out = '';
+    let err = '';
+    process.stdout.write = (s) => ((out += s), true);
+    process.stderr.write = (s) => ((err += s), true);
+    try {
+        fn();
+    }
+    finally {
+        process.stdout.write = so;
+        process.stderr.write = se;
+        process.exitCode = 0;
+    }
+    return { out, err };
+}
+function vetFiles(schema, data) {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-'));
+    const s = Path.join(dir, 'schema.aon');
+    const d = Path.join(dir, 'data.json');
+    Fs.writeFileSync(s, schema);
+    Fs.writeFileSync(d, data);
+    return { dir, schema: s, data: d };
+}
+const VET_SCHEMA = 'service: { name: string, port: integer }';
+(0, node_test_1.describe)('cli-vet', () => {
+    // The verb's whole reason for existing: an agent emits a document,
+    // the gate says what does not hold and WHERE, and the exit code says
+    // which kind of "no" it was.
+    (0, node_test_1.test)('vet-reports-conflicts-with-both-sites', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }');
+        const r = vetCapture(() => (0, cli_1.runVet)([f.schema, f.data]));
+        Assert.match(r.out, /verdict: invalid/);
+        Assert.match(r.out, /\$\.service\.port: no_scalar_unify \[conflict\]/);
+        Assert.match(r.out, /data: .*data\.json:1:\d+ \("8080"\)/);
+        Assert.match(r.out, /schema: .*schema\.aon:1:\d+ \(integer\)/);
+    });
+    // A parent that collapses to a nil takes its subtree with it, so the
+    // sibling conflict is reported on the CONTEXT rather than standing in
+    // the tree. Both belong in the report: this is the design's own
+    // motivating example, and it used to show half of what it found.
+    (0, node_test_1.test)('vet-reports-findings-that-never-reached-the-tree', () => {
+        const f = vetFiles('service: close({ name: string, port: integer, replicas: integer })', 'service: { name: "auth", prot: 8080, replicas: "3" }');
+        const r = vetCapture(() => (0, cli_1.runVet)([f.schema, f.data]));
+        Assert.match(r.out, /\$\.service\.prot: closed/);
+        Assert.match(r.out, /\$\.service\.replicas: no_scalar_unify/);
+    });
+    (0, node_test_1.test)('vet-exit-codes-are-verdict-classes', () => {
+        const valid = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }');
+        Assert.equal(vetCapture(() => {
+            Assert.equal((0, cli_1.runVet)([valid.schema, valid.data]), 0);
+        }).out.trim(), 'verdict: valid');
+        const invalid = vetFiles(VET_SCHEMA, 'service: { name: 1, port: 8080 }');
+        vetCapture(() => Assert.equal((0, cli_1.runVet)([invalid.schema, invalid.data]), 1));
+        const incomplete = vetFiles(VET_SCHEMA, 'service: { name: "auth" }');
+        vetCapture(() => Assert.equal((0, cli_1.runVet)([incomplete.schema, incomplete.data]), 3));
+        // --partial keeps reporting the residue but stops it failing.
+        vetCapture(() => Assert.equal((0, cli_1.runVet)(['--partial', incomplete.schema, incomplete.data]), 0));
+        const broken = vetFiles('a: 1\na: 2', 'a: 1');
+        vetCapture(() => Assert.equal((0, cli_1.runVet)([broken.schema, broken.data]), 4));
+    });
+    // A data document that will not parse is the DATA's fault: exit 1
+    // with a finding naming the file, not exit 4, which says the schema
+    // is unusable. And one bad file among several must not blank the
+    // findings the others earned.
+    (0, node_test_1.test)('vet-unparseable-data-exits-1-and-names-the-file', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: ]');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runVet)([f.schema, f.data]), 1));
+        Assert.match(r.out, /verdict: invalid/);
+        Assert.match(r.out, /\$: syntax \[parse\]/);
+        Assert.match(r.out, /data: .*data\.json:-1:-1 \(nil\)/);
+        const good = Path.join(f.dir, 'good.json');
+        Fs.writeFileSync(good, 'service: { name: 1, port: 8080 }');
+        const both = vetCapture(() => Assert.equal((0, cli_1.runVet)([f.schema, good, f.data]), 1));
+        Assert.match(both.out, /no_scalar_unify/);
+        Assert.match(both.out, /syntax/);
+    });
+    (0, node_test_1.test)('vet-json-format-names-its-producer', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }');
+        const r = vetCapture(() => (0, cli_1.runVet)(['--format', 'json', f.schema, f.data]));
+        const report = JSON.parse(r.out);
+        Assert.equal(report.aontu.verb, 'vet');
+        Assert.match(report.aontu.version, /^\d+\.\d+\.\d+$/);
+        Assert.equal(report.verdict, 'invalid');
+        Assert.equal(report.truncated, false);
+        Assert.equal(report.findings[0].code, 'no_scalar_unify');
+        Assert.equal(report.findings[0].sites[0].role, 'data');
+    });
+    // A relative `@"file"` load inside either document resolves from THAT
+    // document's directory, not from wherever the command was run —
+    // which is what `aontu <file>` has always done. Before this, a
+    // modular schema vetted from another directory came back `error`,
+    // and a same-named file in the working directory was read instead.
+    (0, node_test_1.test)('vet-resolves-includes-from-each-document', () => {
+        const f = vetFiles('@"part.aon"\nname: string', 'name: "auth"\nport: 8080');
+        Fs.writeFileSync(Path.join(f.dir, 'part.aon'), 'port: integer');
+        const cwd = process.cwd();
+        const decoy = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-cwd-'));
+        Fs.writeFileSync(Path.join(decoy, 'part.aon'), 'port: string');
+        try {
+            process.chdir(decoy);
+            vetCapture(() => Assert.equal((0, cli_1.runVet)([f.schema, f.data]), 0));
+        }
+        finally {
+            process.chdir(cwd);
+        }
+    });
+    (0, node_test_1.test)('vet-at-and-closed-reach-the-engine', () => {
+        const f = vetFiles('services: { auth: { port: integer } }', 'auth: { port: 8080 }');
+        vetCapture(() => Assert.equal((0, cli_1.runVet)(['--at', '$.services', f.schema, f.data]), 0));
+        const g = vetFiles('service: { name: string }', 'service: { name: "auth" }\nextra: 1');
+        vetCapture(() => Assert.equal((0, cli_1.runVet)([g.schema, g.data]), 0));
+        vetCapture(() => Assert.equal((0, cli_1.runVet)(['--closed', g.schema, g.data]), 1));
+    });
+    (0, node_test_1.test)('vet-max-errors-truncates-and-says-so', () => {
+        const f = vetFiles('a: integer\nb: integer\nc: integer', 'a: "x"\nb: "y"\nc: "z"');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runVet)(['--max-errors', '2', f.schema, f.data]), 1));
+        Assert.match(r.out, /findings truncated/);
+    });
+    // The cap is on the REPORT, not on each file: two data files that
+    // each come in under it can still overflow it together, and only the
+    // aggregate cut catches that. Per-file capping alone would emit four
+    // findings here and call the report whole.
+    (0, node_test_1.test)('vet-max-errors-caps-the-report-not-each-file', () => {
+        const f = vetFiles('a: integer\nb: integer', 'a: "x"\nb: "y"');
+        const other = Path.join(f.dir, 'other.json');
+        Fs.writeFileSync(other, 'a: "p"\nb: "q"');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runVet)(['--max-errors', '3', f.schema, f.data, other]), 1));
+        Assert.match(r.out, /findings truncated/);
+        Assert.equal(r.out.match(/no_scalar_unify \[conflict\]/g)?.length, 3);
+    });
+    // Several data files are several candidates for one truth, so each is
+    // vetted on its own and the worst verdict wins.
+    (0, node_test_1.test)('vet-takes-more-than-one-data-file', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }');
+        const bad = Path.join(f.dir, 'bad.json');
+        Fs.writeFileSync(bad, 'service: { name: "auth", port: "nope" }');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runVet)([f.schema, f.data, bad]), 1));
+        Assert.match(r.out, /verdict: invalid/);
+        Assert.match(r.out, /bad\.json/);
+    });
+    // The usage errors all end with "(try --help)", so the verb answers
+    // to it: same text as `aontu --help`, exit 0.
+    (0, node_test_1.test)('vet-help-is-help-not-an-unknown-option', () => {
+        for (const args of [['--help'], ['-h'], ['--help', 'a.aon', 'b.json']]) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runVet)(args), 0));
+            Assert.match(r.out, /aontu vet \[options\]/);
+            Assert.equal(r.err, '');
+        }
+    });
+    (0, node_test_1.test)('vet-usage-errors-exit-2', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }');
+        for (const args of [
+            [],
+            [f.schema],
+            ['--at'],
+            ['--format', 'yaml', f.schema, f.data],
+            ['--max-errors', 'lots', f.schema, f.data],
+            ['--max-errors', '0', f.schema, f.data],
+            ['--nope', f.schema, f.data],
+        ]) {
+            const r = vetCapture(() => Assert.equal((0, cli_1.runVet)(args), 2));
+            Assert.match(r.err, /^aontu: /);
+        }
+    });
+    (0, node_test_1.test)('vet-unreadable-file-exits-2-and-names-it', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }');
+        const missing = Path.join(f.dir, 'no-such.json');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runVet)([f.schema, missing]), 2));
+        Assert.match(r.err, /cannot read .*no-such\.json/);
+    });
+    (0, node_test_1.test)('vet-note-and-alternatives-reach-the-text-report', () => {
+        const f = vetFiles('service: { tier: must("gold"|"silver","tier must be supported"),' +
+            ' port: integer & min(1024) }', 'service: { tier: "lead", port: 80 }');
+        const r = vetCapture(() => (0, cli_1.runVet)([f.schema, f.data]));
+        Assert.match(r.out, /note: tier must be supported/);
+        Assert.match(r.out, /expected: integer&min\(1024\)/);
+        Assert.match(r.out, /actual: +80/);
+    });
+    // An OFF-PEG value still names its document: a preference's
+    // synthesised type yardstick is not a peg entry, so provenance
+    // reaches it only because the stamp walk follows it deliberately.
+    // Before that it belonged to neither document, and the report said
+    // so by naming no file at all.
+    (0, node_test_1.test)('vet-site-off-peg-still-names-its-document', () => {
+        const f = vetFiles('a: *1', 'a: {}');
+        const r = vetCapture(() => (0, cli_1.runVet)([f.schema, f.data]));
+        Assert.match(r.out, /schema: .*schema\.aon:1:\d+ \(number\)/);
+    });
+    // The verb dispatches only as the FIRST argument, so a file argument
+    // is never shadowed by a verb name.
+    (0, node_test_1.test)('vet-dispatches-through-main', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }');
+        const r = vetCapture(() => (0, cli_1.main)(['node', 'cli', 'vet', f.schema, f.data]));
+        Assert.match(r.out, /verdict: valid/);
+    });
+    (0, node_test_1.test)('vet-verb-appears-in-help', () => {
+        const r = run(['--help']);
+        Assert.match(r.out, /aontu vet \[options\]/);
+        Assert.match(r.out, /3 {2}incomplete/);
+    });
+    (0, node_test_1.test)('vet-end-to-end-exit-code', () => {
+        const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }');
+        const r = run(['vet', f.schema, f.data]);
+        Assert.equal(r.code, 1);
+        Assert.match(r.out, /verdict: invalid/);
     });
 });
 //# sourceMappingURL=cli.test.js.map

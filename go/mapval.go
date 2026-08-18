@@ -268,9 +268,6 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			if optional {
 				continue
 			}
-			if ctx != nil && ctx.collect {
-				break
-			}
 			// Code follows the TS BagVal.gen choice: an expect child is
 			// spread-required residue (issue #27); otherwise a closed
 			// bag makes the residue a missing REQUIRED value, an open
@@ -279,10 +276,7 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			if m.closed {
 				code = "mapval_required"
 			}
-			src, file := "", ""
-			if ctx != nil {
-				src, file = ctx.src, ctx.file
-			}
+			va, vb := child, Val(nil)
 			if ev, ok := child.(*ExpectVal); ok {
 				// The TS isExpect branch: code *_spread_required, and the
 				// operands are the EXPECTATION (va = expect.peg) and a
@@ -290,7 +284,6 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 				// placed nil sits later in the source, so it wins the
 				// primary slot and the first frame points at the bag.
 				code = "mapval_spread_required"
-				var vb Val
 				if ev.parent != nil {
 					// place() copies the parent's whole site — position
 					// AND url (the clone mark), which gates the operand
@@ -298,26 +291,40 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 					nb := newNil("")
 					nb.sp = ev.parent.pos()
 					nb.spu = ev.parent.posu()
+					nb.surl = ev.parent.srcurl()
 					vb = nb
 				}
-				n := makeNilErrFull(nil, code, ev.peg, vb, "",
-					map[string]string{"key": k})
-				return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
+				va = ev.peg
+			}
+			details := map[string]string{"key": k}
+			// UNDER COLLECT the bag stops at its first non-generable
+			// child, and RECORDS it: truncation limits the report to one
+			// finding per bag, it does not suppress it. TS makes the same
+			// two moves in the same order (makeNilErr, which files the
+			// nil on the context, then break) in both modes — Go's error
+			// return is the difference below, not this. The validation
+			// verb reads these off an isolated context to tell "the data
+			// has not yet satisfied the truth" from "the data
+			// contradicts it" (vet.go).
+			if ctx != nil && ctx.collect {
+				makeNilErrFull(ctx, code, va, vb, "", details)
+				break
 			}
 			// Render the full TS-style message (marker, headline, hint,
 			// frame with the `key <k>` caret submessage) via a NilVal,
 			// as TS BagVal.gen raises makeNilErr with details {key}.
-			n := newNil(code)
-			n.primary = child
-			n.sp = child.pos()
-			n.details = map[string]string{"key": k}
+			src, file := "", ""
+			if ctx != nil {
+				src, file = ctx.src, ctx.file
+			}
+			n := makeNilErrFull(nil, code, va, vb, "", details)
 			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 		}
 
 		// An optional child generates in an isolated collect context so
 		// inner failures drop parts of the subtree rather than raising.
 		gctx := ctx
-		if optional && ctx != nil && !ctx.collect {
+		if optional && ctx != nil {
 			c2 := *ctx
 			c2.err = nil
 			c2.collect = true
@@ -451,6 +458,7 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		// frames at its brace and keeps its clone mark.
 		out.sp = m.sp
 		out.spu = m.spu
+		out.surl = m.surl
 		out.spread = m.spread
 		out.optional = append([]string{}, m.optional...)
 	}
@@ -537,6 +545,10 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		}
 	}
 
+	// The first refused surplus key, kept until every peer key has been
+	// unified (see the closed arm below).
+	var bad *NilVal
+
 	if pm, ok := peer.(*MapVal); ok {
 		out.closed = m.closed || pm.closed
 		// Self-unify the peer against TOP first (the `upeer` step in TS
@@ -552,7 +564,15 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		for _, pk := range pm.keys {
 			pc := pm.peg[pk]
 			if _, allowed := m.peg[pk]; m.closed && !allowed {
-				return makeNilErr(ctx, "closed", pc, nil)
+				// RECORDED, and the loop goes on. Returning here made the
+				// first surplus key the last thing the map ever said: a
+				// closed bag meeting a typo AND a kind conflict reported
+				// the typo and stopped, so the second mistake only
+				// appeared once the first was fixed. TS keeps the nil in
+				// `bad` and hands it back after unifying every peer key,
+				// which is what puts BOTH on the context — the case the
+				// validation verb exists for.
+				bad = makeNilErr(ctx, "closed", pc, nil)
 			}
 			pkslot := append(cp(dbase), pk)
 			var uv Val
@@ -589,6 +609,10 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 		}
 	} else if !isTop(peer) {
 		return makeNilErr(ctx, "map", m, peer)
+	}
+
+	if nil != bad {
+		return bad
 	}
 
 	if done {

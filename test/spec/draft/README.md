@@ -18,8 +18,21 @@ at promotion time per rule 2: the bound/neq rows to
 rows to `test/spec/constraint-re.tsv` when G1 phase 2 landed, and the
 cross-field/residuation and constraint-bearing-disjunct rows to
 `test/spec/constraint-cross.tsv` when G1 phases 4–5 landed (the
-`must` rows went directly to `test/spec/constraint-must.tsv`). The
-second promotion is the reason rule 1 says what it does -- one drafted
+`must` rows went directly to `test/spec/constraint-must.tsv`), and the
+validation-verb rows to `test/spec/vet.tsv` when G2 phase 4 landed the
+Go port -- the phase that MADE them executable, since both runners run
+every row of every file and a `vet` row cannot pass until both ports
+have the verb.
+
+The G2 promotion is the reason rule 2 says what it does -- the drafted
+sites were guesses at the column arithmetic and all of them were off
+(the draft said column 32 where both engines say 27), the drafted
+findings omitted fields the engines do emit, and the drafted `opts`
+encoding, flagged in the draft as the one unprobed piece, survived the
+probe unchanged. Every golden in `test/spec/vet.tsv` was generated from
+the canonical engine and then executed against the Go port.
+
+The G1 promotion is the reason rule 1 says what it does -- one drafted
 expectation was WRONG. The draft predicted `a:string&re("^[a-z]$")`
 would canon as `string&re("^[a-z]$")`; both engines agree it canons as
 `re("^[a-z]$")`, because a pattern implies the string kind exactly as

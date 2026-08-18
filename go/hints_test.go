@@ -91,6 +91,26 @@ func TestLongRefCycleIsProven(t *testing.T) {
 // of issue #29: thrown error text is in cross-port parity. (Spec rows
 // still assert only probed substrings -- the twins are the byte-level
 // guard.)
+// TestFullMessageTwinFramed is the twin above with the two things its
+// one-line source could not show: a conflict BELOW row 1, so the
+// frame's two lines of leading context are rendered, and a multi-byte
+// character before the column, so the column is counted in UTF-16 code
+// units rather than bytes. Go got both wrong until the validation
+// verb's byte-parity probing found them (G2 phase 4) -- the existing
+// twin stayed green throughout, which is exactly why this one exists.
+// The TS twin with the SAME literal is full-message-twin-framed in
+// ts/test/error.test.ts.
+func TestFullMessageTwinFramed(t *testing.T) {
+	_, err := New().Generate("x: 0\ny: 0\n\"\u00e9\": 1\n\"\u00e9\": 2\nz: 0\n")
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	want := "[aontu/scalar_value]: Cannot unify values at path $.é\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:4:6\n\u001b[34m  2 | \u001b[0my: 0\n\u001b[34m  3 | \u001b[0m\"é\": 1\n\u001b[34m  4 | \u001b[0m\"é\": 2\n           \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  5 | \u001b[0mz: 0\n\u001b[34m  6 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:3:6\n\u001b[34m  1 | \u001b[0mx: 0\n\u001b[34m  2 | \u001b[0my: 0\n\u001b[34m  3 | \u001b[0m\"é\": 1\n           \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  4 | \u001b[0m\"é\": 2\n\u001b[34m  5 | \u001b[0mz: 0\n"
+	if got := err.Error(); got != want {
+		t.Fatalf("full message mismatch\n want: %q\n got:  %q", want, got)
+	}
+}
+
 func TestFullMessageTwin(t *testing.T) {
 	_, err := New().Generate("a:1 a:2")
 	if err == nil {

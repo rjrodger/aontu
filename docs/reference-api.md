@@ -34,6 +34,7 @@ interactively with no file.
 
 ```
 Usage: aontu [options] [file]
+       aontu vet [options] <schema> <data> [more-data...]
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -65,6 +66,75 @@ Options:
   same bytes.
 - Results go to **stdout**; errors go to **stderr** with a non-zero exit
   status (`1` for an evaluation error, `2` for a bad option).
+
+### `aontu vet`
+
+Validate data documents against a schema document. This is the
+emit → validate → repair loop's entry point: an agent writes a
+document, `vet` says what does not hold and where, and the exit code
+says which kind of "no" it was.
+
+```
+aontu vet [options] <schema> <data> [more-data...]
+
+  --at <path>       Validate against this path of the schema ($.a.b)
+  --closed          Refuse keys the anchor does not declare
+  --partial         Residue is reported but does not fail the run
+  --max-errors <n>  Cap the finding list (default 20)
+  --format <f>      text (default) or json
+```
+
+**Exit codes are verdict classes**, not a pass/fail bit, because the
+three ways to fail call for three different responses:
+
+| Exit | Verdict | Meaning |
+|------|---------|---------|
+| 0 | `valid` | the data unifies and is concrete (or `--partial`) |
+| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse |
+| 2 | — | usage: a bad option, or a file that cannot be read |
+| 3 | `incomplete` | no contradiction, but the truth is not yet satisfied |
+| 4 | `error` | the run could not be set up from the schema side: an unusable schema, or an `--at` that names nothing — never the data's fault |
+
+Each data file is vetted separately, and the worst verdict wins: two
+data files are two candidates for the same truth, not one merged
+candidate. `--max-errors` caps the whole report, not each file, and
+says so with `truncated`.
+
+**A data file that will not parse is the data's fault**, and is
+reported as one `parse`-class finding with a site in that file — not as
+a broken schema. The distinction matters to the loop the verb exists
+for: exit 1 says "repair what you emitted", exit 4 says "the truth you
+were given is unusable, stop".
+
+**`--at` takes a structural path** — map keys and list indices, the
+same thing a reference means by `$.a.b`, with an index spelled as a
+plain decimal integer. A path that names nothing is verdict `error`.
+
+**Relative `@"file"` loads inside either document** resolve from that
+document's own directory, exactly as they do for `aontu <file>`.
+
+**A finding names both sides.** Sites are labelled by provenance —
+`data` first, because that is the one to edit — rather than by the
+source-order heuristic a single-document error uses:
+
+```
+$ aontu vet service.aon deploy.json
+verdict: invalid
+
+$.service.prot: closed [conflict]
+  [aontu/closed]: Cannot resolve value at path $.service.prot
+  data: deploy.json:1:40 (8080)
+$.service.replicas: no_scalar_unify [conflict]
+  [aontu/no_scalar_unify]: Cannot unify values at path $.service.replicas
+  data: deploy.json:2:28 ("3")
+  schema: service.aon:4:13 (integer)
+```
+
+`--format json` emits the same report as an object, with an `aontu`
+stanza naming the producer, so a report read from a pipe says which
+version and verb made it. Where the constraint algebra knows what would
+have unified, the finding carries it as `expected`/`actual`, and a
+`must()` check's author message rides along as `note`.
 
 **REPL commands**
 
@@ -646,6 +716,14 @@ Generated **bytes** are in parity too: `exactJSON` in TypeScript and
 which the shared suite's byte-exact `gens` rows pin. What byte equality
 cannot see — a `bigint` where a `number` was due, since both serialise
 as `5` — is pinned by per-port API tests instead.
+
+**Validation reports** are in parity as well: `aontu vet` produces the
+same report from both commands, text and JSON, with the same exit code —
+pinned by the shared suite's [`vet.tsv`](../test/spec/vet.tsv) rows for
+everything but each finding's `message`, which is prose. Two things
+still differ by construction: the `aontu.version` field, because the
+npm and Go module version series are independent, and the wording of a
+"cannot read <file>" failure, which is the host's.
 
 The shared parser stack is identical: TypeScript uses `@tabnas/jsonic` +
 `@tabnas/{expr,path,multisource,directive,debug}`; Go uses the ports

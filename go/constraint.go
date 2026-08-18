@@ -696,6 +696,7 @@ func (c *ConstraintVal) settle(peer Val, ctx *Ctx) Val {
 	built := newConstraint(c.pending.atom, args, c.sp)
 	built.path = cp(c.path)
 	built.spu = c.spu
+	built.surl = c.surl
 	built.mtype = c.mtype
 	built.mhide = c.mhide
 
@@ -938,6 +939,11 @@ func (c *ConstraintVal) finish(state *ConstraintVal, ctx *Ctx, peer Val) Val {
 	state.dc = DONE
 	state.path = cp(c.path)
 	state.sp = c.sp
+	// The SOURCE NAME travels with the position: TS copies the whole
+	// site here (`out.site.url = this.site.url`), and without it a
+	// residual built from a constraint in one document was reported as
+	// belonging to neither (go/vet.go role tagging).
+	state.surl = c.surl
 	return state
 }
 

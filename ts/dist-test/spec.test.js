@@ -54,6 +54,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *   mode=errcode : registry row -- name is a code, src its class,
  *                expect its since-version; asserted against the
  *                engine's codeClasses table (ts/src/hints.ts)
+ *   mode=vet   : FIVE columns -- name, vet, schema, data, expect. The
+ *                report of vet(schema, data) must equal the expect
+ *                object, MINUS each finding's message (prose is not in
+ *                parity; see test/spec/vet.tsv for the whole encoding,
+ *                including the `opts` key)
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -108,13 +113,29 @@ function loadRows() {
         const text = Fs.readFileSync(Path.join(SPEC_DIR, file), 'utf8');
         // Split on \n and tolerate CRLF checkouts (e.g. Windows) by dropping
         // any trailing \r so the last field never carries a stray carriage return.
+        let lineno = 0;
         for (const line of text.split('\n').map((l) => l.replace(/\r$/, ''))) {
+            lineno++;
             if ('' === line || line.startsWith('#')) {
                 continue;
             }
             const parts = line.split('\t');
-            if (parts.length < 4) {
-                continue;
+            // MALFORMED IS LOUD, not skipped. A row that is short by a column
+            // -- a `vet` row whose expected report was left off, say -- would
+            // otherwise be dropped in silence, and a suite that quietly runs
+            // one row fewer stays green while the behaviour it claims to pin
+            // goes unpinned. The Go runner refuses the same shapes.
+            //
+            // This, and not a row COUNT, is the guard: a count would have to
+            // be edited by every change that adds a row, and a number nobody
+            // trusts is a number nobody updates honestly. The only count
+            // asserted is that the files were found at all
+            // (spec-files-present below).
+            const vetRow = 'vet' === parts[1];
+            const want = vetRow ? 5 : 4;
+            if (parts.length < want) {
+                throw new Error(`malformed spec row: ${file} line ${lineno}: ${want} columns` +
+                    ` required for mode "${parts[1]}", found ${parts.length}`);
             }
             rows.push({
                 file,
@@ -123,7 +144,8 @@ function loadRows() {
                 // __FIXTURES__ -> absolute test/spec/files dir, so file-loading
                 // (@"file") rows resolve to the shared fixtures from any cwd.
                 src: unescape(parts[2]).replaceAll('__FIXTURES__', FIXTURES_DIR),
-                expect: unescape(parts[3]),
+                data: vetRow ? unescape(parts[3]) : undefined,
+                expect: unescape(parts[vetRow ? 4 : 3]),
             });
         }
     }
@@ -165,6 +187,17 @@ function assertCanonConverges(row) {
     const c3 = a2.unify(c2, undefined, makeVarsCtx(a2)).canon;
     Assert.strictEqual(c3, c2, `canon does not converge: ${row.name}`);
 }
+// The report as a vet golden spells it: the message is EXCLUDED (prose
+// is per-port, codes are not), and the rest goes through the emitter
+// the two ports hold to byte parity -- which also sorts keys, so the
+// golden cell may be written in any order.
+function vetGolden(report) {
+    return (0, aontu_1.exactJSON)({
+        verdict: report.verdict,
+        truncated: report.truncated,
+        findings: report.findings.map(({ message, ...rest }) => rest),
+    });
+}
 // Execute one spec row. Shared by the TSV-driven tests above and the
 // gens-mode self-test below, so both go through the same comparison.
 function runRow(row) {
@@ -205,6 +238,14 @@ function runRow(row) {
                 ` (message: ${String(err && err.message).split('\n')[0]})`);
             return true;
         });
+    }
+    else if ('vet' === row.mode) {
+        // The golden carries the run's options under `opts`; everything
+        // else in it is the report.
+        const golden = JSON.parse(row.expect);
+        const opts = golden.opts;
+        delete golden.opts;
+        Assert.strictEqual(vetGolden((0, aontu_1.vet)(row.src, row.data, opts)), (0, aontu_1.exactJSON)(golden), `vet report mismatch: ${row.name}`);
     }
     else if ('errcode' === row.mode) {
         // Registry row: name IS the code, src is its class, expect the

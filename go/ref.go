@@ -189,6 +189,35 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 // find resolves the reference against ctx.root. It returns the cloned
 // target, a NilVal (path not found / cycle), or nil when resolution
 // must be retried on a later pass.
+// listIndex reads a path segment as a list index. CANONICAL DECIMAL
+// ONLY: `0`, or a non-zero digit followed by digits. Atoi was too
+// generous -- it accepted a sign and leading zeros, so `$.a.01` and
+// `$.a.-0` resolved here while the canonical port refused them
+// (JavaScript array indexing is canonical too, which is what its
+// resolver leans on). docs/reference-language.md says a numeric segment
+// is recognised "only as a plain decimal integer"; this is that rule,
+// spelled out.
+func listIndex(part string) (int, bool) {
+	if "" == part {
+		return 0, false
+	}
+	if "0" != part && '0' == part[0] {
+		return 0, false
+	}
+	for i := 0; i < len(part); i++ {
+		if part[i] < '0' || '9' < part[i] {
+			return 0, false
+		}
+	}
+	// A digit run still overflows: `$.a.999999999999999999999999` is
+	// syntactically an index and numerically not one.
+	idx, err := strconv.Atoi(part)
+	if err != nil {
+		return 0, false
+	}
+	return idx, true
+}
+
 func (rv *RefVal) find(ctx *Ctx) Val {
 	if rv.isPrefixPath() {
 		return makeNilErr(ctx, "path_cycle", rv, nil)
@@ -301,8 +330,8 @@ func (rv *RefVal) find(ctx *Ctx) Val {
 		case *MapVal:
 			node = n.peg[part]
 		case *ListVal:
-			idx, err := strconv.Atoi(part)
-			if err != nil || idx < 0 || idx >= len(n.peg) {
+			idx, ok := listIndex(part)
+			if !ok || idx >= len(n.peg) {
 				node = nil
 			} else {
 				node = n.peg[idx]

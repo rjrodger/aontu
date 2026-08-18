@@ -198,7 +198,15 @@ func scalarPegSame(kind Kind, a, b any) bool {
 	return a == b
 }
 
-func (s *ScalarVal) superior() Val { return newScalarKind(s.kind) }
+// The yardstick is PLACED at the value it was derived from, as TS's
+// `this.place(new ScalarKindVal(...))` does: a preference's type gate
+// (pref.go) is reported to the user as a conflict operand, and an
+// unplaced one pointed at the start of the document.
+func (s *ScalarVal) superior() Val {
+	k := newScalarKind(s.kind)
+	k.sp, k.spu, k.surl = s.sp, s.spu, s.surl
+	return k
+}
 
 func (s *ScalarVal) Canon() string {
 	switch s.kind {

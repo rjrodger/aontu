@@ -43,7 +43,11 @@ func (p *PrefVal) resuper() {
 	p.familypeg = sup
 	if sk, ok := sup.(*ScalarKindVal); ok {
 		if fam := kindFamily(sk.kind); fam != sk.kind {
-			p.familypeg = newScalarKind(fam)
+			f := newScalarKind(fam)
+			// Placed at the yardstick it widens, as TS's
+			// `sup.place(new ScalarKindVal({peg: family}))` does.
+			f.sp, f.spu, f.surl = sk.sp, sk.spu, sk.surl
+			p.familypeg = f
 		}
 	}
 }

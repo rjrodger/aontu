@@ -24,9 +24,19 @@ name <TAB> mode <TAB> src <TAB> expect
 | column   | meaning                                                        |
 |----------|----------------------------------------------------------------|
 | `name`   | short identifier for the case (unique within its file)         |
-| `mode`   | `canon`, `gen`, `gens`, `err`, `errc` or `errcode` (see below) |
+| `mode`   | `canon`, `gen`, `gens`, `err`, `errc`, `errcode` or `vet` (see below) |
 | `src`    | Aontu source text to evaluate                                  |
 | `expect` | the expected result, interpreted according to `mode`          |
+
+One mode takes a FIFTH column. `vet` validates a data document against a
+schema document, so it needs two sources: `src` is the schema, the
+fourth column is the data, and `expect` moves to the fifth. Every other
+mode reads the first four columns and ignores anything after them, which
+is what makes the extra column additive rather than a format change:
+
+```
+name <TAB> vet <TAB> schema <TAB> data <TAB> expect
+```
 
 ### Modes
 
@@ -38,6 +48,7 @@ name <TAB> mode <TAB> src <TAB> expect
 | `err`   | `generate(src)` must raise an error whose message contains `expect` |
 | `errc`  | `generate(src)` must raise an error whose FIRST failure's why-code **equals** `expect` |
 | `errcode` | registry row: `name` is an error code, `src` its class, `expect` its since-version — asserted against the engine's code→class table |
+| `vet`   | five columns: `vet(schema, data)` must produce the report `expect` describes, MINUS each finding's message |
 
 For `gen`, the generated value and the expected JSON are compared
 structurally (numeric type and object key order do not matter). That
@@ -101,6 +112,26 @@ table, so neither side can grow or drop a code silently. Codes are
 append-only and never renamed; class changes are breaking. The class
 rulings are documented in the file's header.
 
+`vet` rows carry TWO documents and a JSON report.
+[`test/spec/vet.tsv`](../test/spec/vet.tsv) pins the validation verb
+(`aontu vet`, G2): `src` is the schema, the fourth column is the data,
+and the fifth is the report `vet(schema, data)` must produce. Both sides
+of that comparison are re-emitted through the same serialiser before
+comparing, so the golden may be written in any key order, and the run's
+options ride in the golden under a reserved `opts` key (`at`, `closed`,
+`partial`, `maxErrors`) rather than in a sixth column that most rows
+would leave empty.
+
+Each finding's `message` is EXCLUDED from the golden. It is the one part
+of a report that is prose, and prose is not in cross-port parity — the
+same split the `errc` mode makes, and the reason `errc` exists at all.
+Everything else in the report *is* contractual: the verdict, the
+truncation flag, and each finding's code, class, severity, path, sites
+(file, row, column, role, value) and the `expected`/`actual`/`note` the
+constraint algebra attaches. The two documents are named `schema` and
+`data` by the runner rather than by a path, so the goldens do not depend
+on where the suite is checked out.
+
 ### Escapes
 
 Because the delimiter is a tab and rows are single lines, the following
@@ -112,6 +143,11 @@ use:
 | `\n`   | newline      |
 | `\t`   | tab          |
 | `\\`   | backslash    |
+
+A `vet` golden is JSON, and JSON strings escape their own quotes, so a
+golden carrying a quoted canon (`"value":"\"8080\""`) writes those
+backslashes DOUBLED in the cell — the escape pass above runs first, and
+un-doubling them is what leaves the JSON intact.
 
 This lets a single row carry multi-line source, e.g.:
 

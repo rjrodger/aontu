@@ -4,5 +4,6 @@ declare function evalSource(aontu: Aontu, src: string, mode: Mode): {
     ok: boolean;
     text: string;
 };
+declare function runVet(argv: string[]): number;
 declare function main(argv: string[]): void;
-export { evalSource, main };
+export { evalSource, main, runVet };

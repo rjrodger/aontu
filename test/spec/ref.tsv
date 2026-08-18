@@ -84,6 +84,18 @@ path-seg-nested-map-numeric-key	gens	a:{1:{0:7}} b:$.a.1.0	{"a":{"1":{"0":7}},"b
 # whole operand family in both engines, at every position: find
 # reports the miss where the segment is read, so the code is the same
 # at the root as it is nested.
+# A LIST INDEX IS CANONICAL DECIMAL, the spelling JavaScript array
+# indexing gives the canonical port for free and the Go port now
+# spells out (listIndex, go/ref.go): no sign, no leading zeros, and a
+# digit run that overflows an index is not one. `vet --at` takes the
+# same segments (test/spec/vet.tsv).
+ref-list-index	gen	a:[1,2]\nb:$.a.1	{"a":[1,2],"b":2}
+ref-list-index-zero	gen	a:[1,2]\nb:$.a.0	{"a":[1,2],"b":1}
+ref-list-index-leading-zero	errc	a:[1,2]\nb:$.a.01	no_path
+ref-list-index-padded	errc	a:[1,2]\nb:$.a.007	no_path
+ref-list-index-overflow	errc	a:[1,2]\nb:$.a.999999999999999999999999	no_path
+ref-list-index-out-of-range	errc	a:[1,2]\nb:$.a.2	no_path
+
 ref-unspellable-bool	errc	a:**.true	no_path
 ref-unspellable-null	errc	a:**.null	no_path
 ref-unspellable-list	errc	a:**.[1]	no_path

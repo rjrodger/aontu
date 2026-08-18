@@ -2,6 +2,9 @@
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
+import * as Fs from 'node:fs'
+import * as Os from 'node:os'
+import * as Path from 'node:path'
 
 import { vet } from '../dist/vet'
 import { vet as vetFromPackage } from '../dist/aontu'
@@ -64,9 +67,44 @@ describe('vet-verdicts', () => {
   })
 
 
-  test('unparseable-data-is-an-error-verdict', () => {
+  // A data document that will not parse is the DATA's fault: `invalid`
+  // with a finding carrying the parser's own code, not `error`, which
+  // is the schema's verdict. The engine already answered it this way
+  // one character earlier — a refused CONSTRUCT reaches the tree as an
+  // ordinary nil (see an-operandless-nil-reports-about-itself).
+  test('unparseable-data-is-invalid-not-an-error-verdict', () => {
     const r = vet(SCHEMA, 'a: ]')
-    Assert.equal(r.verdict, 'error')
+    Assert.equal(r.verdict, 'invalid')
+    Assert.equal(r.findings.length, 1)
+    const f = r.findings[0]
+    Assert.equal(f.code, 'syntax')
+    Assert.equal(f.class, 'parse')
+    Assert.equal(f.path, '$')
+    Assert.equal(f.sites.length, 1)
+    Assert.equal(f.sites[0].role, 'data')
+    Assert.equal(f.sites[0].value, 'nil')
+    // No terminal escapes in a machine-readable report: the parser
+    // colours its own marker, and this is the one finding family whose
+    // text comes from there.
+    Assert.ok(!f.message.includes('\u001b'))
+    Assert.ok(f.message.startsWith('[aontu/'))
+  })
+
+
+  // A merge marker is refused before the parse, and it knows WHERE.
+  test('a-conflict-marker-in-data-is-a-located-finding', () => {
+    const r = vet(SCHEMA, 'a: 1\n<<<<<<< HEAD\nb: 2')
+    Assert.equal(r.verdict, 'invalid')
+    Assert.equal(r.findings[0].code, 'merge_conflict')
+    Assert.equal(r.findings[0].sites[0].row, 2)
+    Assert.equal(r.findings[0].sites[0].col, 1)
+  })
+
+
+  // The SCHEMA side keeps the error verdict: exit 4 means the run
+  // could not be set up from the truth's side, and nothing else.
+  test('unparseable-schema-is-still-an-error-verdict', () => {
+    Assert.equal(vet('a: ]', 'a: 1').verdict, 'error')
   })
 })
 
@@ -122,6 +160,33 @@ describe('vet-findings', () => {
     Assert.equal(f.note, 'tier must be supported')
     Assert.equal(f.expected, '"gold"|"silver"')
     Assert.equal(f.actual, '"lead"')
+  })
+
+
+  // A nil built during the PARSE of a document has no operands and
+  // never passes through the unify error path, so both of its report
+  // fields have to be filled in by vet itself: the site (about the nil
+  // itself) and the message (materialised on demand).
+  test('an-operandless-nil-reports-about-itself', () => {
+    const r = vet('a: integer', 'a: 9007199254740993')
+    Assert.equal(r.verdict, 'invalid')
+    const f = r.findings[0]
+    Assert.equal(f.code, 'lossy_integer_literal')
+    Assert.equal(f.sites.length, 1)
+    Assert.equal(f.sites[0].role, 'data')
+    Assert.equal(f.sites[0].value, 'nil')
+    Assert.ok(f.message.startsWith('[aontu/lossy_integer_literal]'))
+  })
+
+
+  // The incomplete half of a report comes from the generate check,
+  // which never renders its own text: without materialisation these
+  // findings carried an empty message while the conflicts carried a
+  // headline.
+  test('an-incomplete-finding-carries-its-message', () => {
+    const r = vet(SCHEMA, 'service: { name: "auth" }')
+    Assert.equal(r.findings[0].message,
+      '[aontu/mapval_no_gen]: Cannot resolve value at path $.service.port')
   })
 
 
@@ -227,6 +292,22 @@ describe('vet-anchor', () => {
   })
 
 
+  // An anchor is a STRUCTURAL path: map keys and list indices. Reading
+  // it off whatever a value's peg held walked into a junction's
+  // branches, a constraint's own arguments and an array's `length` —
+  // the last handing back a JavaScript number, after which everything
+  // validated.
+  test('an-anchor-descends-only-through-bags', () => {
+    Assert.equal(vet('a: 1|2', '1', { at: '$.a.0' }).verdict, 'error')
+    Assert.equal(vet('a: min(2)', '3', { at: '$.a.0' }).verdict, 'error')
+    Assert.equal(vet('a: [1,2]', '9', { at: '$.a.length' }).verdict, 'error')
+    Assert.equal(vet('a: *1', '9', { at: '$.a.peg' }).verdict, 'error')
+    // The two that DO descend still do.
+    Assert.equal(vet('a: { b: integer }', '1', { at: '$.a.b' }).verdict, 'valid')
+    Assert.equal(vet('a: [integer]', '1', { at: '$.a.0' }).verdict, 'valid')
+  })
+
+
   test('an-anchor-through-a-scalar-is-an-error-verdict', () => {
     const r = vet('a: 1', 'x: 1', { at: '$.a.b' })
     Assert.equal(r.verdict, 'error')
@@ -275,6 +356,32 @@ describe('vet-api', () => {
     Assert.equal(typeof vetFromPackage, 'function')
     const r = vetFromPackage('a: integer', 'a: 1')
     Assert.equal(r.verdict, 'valid')
+  })
+
+
+  // `schemaPath` and `dataPath` are the two documents' OWN bases: a
+  // relative `@"file"` load inside either resolves from the directory
+  // holding it, not from the process working directory -- which is
+  // neither document's home, and may hold a same-named decoy. The two
+  // paths are separate because the documents need not live together.
+  test('each-document-resolves-its-own-includes', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-base-'))
+    Fs.writeFileSync(Path.join(dir, 'part.aon'), 'port: integer')
+
+    // The document is passed as TEXT and its path only says where it
+    // came from -- but the loader resolves the base against a real
+    // directory, so the file has to be there, which for every caller
+    // that read the text out of it already is.
+    const src = '@"part.aon"\nname: string'
+    const data = 'name: "auth"\nport: 8080'
+    const schemaPath = Path.join(dir, 'schema.aon')
+    Fs.writeFileSync(schemaPath, src)
+    Assert.equal(vet(src, data, { schemaPath }).verdict, 'valid')
+
+    // Without the base the include is looked for beside the test
+    // process instead, where there is no part.aon: a schema that will
+    // not stand up is an `error` verdict, never the data's fault.
+    Assert.equal(vet(src, data).verdict, 'error')
   })
 })
 

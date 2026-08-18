@@ -13,7 +13,7 @@ implementation plan.*
 > its status, and the artifact that proves it. This index and the gap
 > documents describe what *should* be built and were written before any
 > of it landed; the register is the only place that says what *has*
-> been. Thirteen of forty-nine phases have moved.
+> been. Sixteen of forty-nine phases have moved.
 
 Method: a ten-agent survey — three codebase analysts over this
 repository, six researchers (CUE; Nickel/Dhall/Pkl/KCL/Jsonnet/Starlark;
@@ -308,10 +308,12 @@ and property-based differential testing guards the algebra as the Val
 zoo grows.
 
 Progress against this table is tracked phase by phase in the
-[progress register](progress.md). In short: Phase A is part-done — the
-trust contract, the error-code registry, and the bounds atoms are in;
-`re`, `length`/`unique` and the whole `vet` verb are not. Phases B and C
-are untouched.
+[progress register](progress.md). In short: Phase A is most of the way
+done — the trust contract, the error-code registry, the whole constraint
+algebra (bounds, `re`, `length`/`unique`, cross-field residuation and
+`must`), and the `vet` verb in both ports, with shared rows for all of
+it. Outstanding in A: SARIF/watch (G2.5) and multi-error collection
+(G2.6). Phases B and C are untouched.
 
 ## Verified codebase facts referenced by the design documents
 

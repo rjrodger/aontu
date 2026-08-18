@@ -56,9 +56,6 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 		// (or truncate under collect); a nil that doesn't stand for
 		// JSON null contributes nothing.
 		if !genable(e) {
-			if ctx != nil && ctx.collect {
-				break
-			}
 			// Code follows the TS BagVal.gen choice (see MapVal.Gen).
 			// Rendered via a NilVal for the full TS-style message, with
 			// the element index as the key detail (TS BagVal.gen passes
@@ -67,31 +64,33 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 			if l.closed {
 				code = "listval_required"
 			}
-			src, file := "", ""
-			if ctx != nil {
-				src, file = ctx.src, ctx.file
-			}
+			va, vb := e, Val(nil)
 			if ev, ok := e.(*ExpectVal); ok {
 				// The TS isExpect branch, list prefix. Only maps create
 				// expects (see go/expect.go), so this is exactly as
 				// reachable as it is in TS — the shared BagVal.gen shape,
 				// mirrored for both bags.
 				code = "listval_spread_required"
-				var vb Val
 				if ev.parent != nil {
 					nb := newNil("")
 					nb.sp = ev.parent.pos()
 					nb.spu = ev.parent.posu()
+					nb.surl = ev.parent.srcurl()
 					vb = nb
 				}
-				n := makeNilErrFull(nil, code, ev.peg, vb, "",
-					map[string]string{"key": strconv.Itoa(i)})
-				return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
+				va = ev.peg
 			}
-			n := newNil(code)
-			n.primary = e
-			n.sp = e.pos()
-			n.details = map[string]string{"key": strconv.Itoa(i)}
+			details := map[string]string{"key": strconv.Itoa(i)}
+			// Recorded before the truncating break, as in MapVal.Gen.
+			if ctx != nil && ctx.collect {
+				makeNilErrFull(ctx, code, va, vb, "", details)
+				break
+			}
+			src, file := "", ""
+			if ctx != nil {
+				src, file = ctx.src, ctx.file
+			}
+			n := makeNilErrFull(nil, code, va, vb, "", details)
 			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
 		}
 		ev, err := e.Gen(ctx)
@@ -137,6 +136,7 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		out.path = cp(l.path)
 		out.sp = l.sp
 		out.spu = l.spu
+		out.surl = l.surl
 		out.spread = l.spread
 	}
 	done := true

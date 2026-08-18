@@ -36,6 +36,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
+const Fs = __importStar(require("node:fs"));
+const Os = __importStar(require("node:os"));
+const Path = __importStar(require("node:path"));
 const vet_1 = require("../dist/vet");
 const aontu_1 = require("../dist/aontu");
 const SCHEMA = 'service: { name: string, port: integer }';
@@ -80,9 +83,40 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(r.verdict, 'error');
         Assert.deepEqual(r.findings, []);
     });
-    (0, node_test_1.test)('unparseable-data-is-an-error-verdict', () => {
+    // A data document that will not parse is the DATA's fault: `invalid`
+    // with a finding carrying the parser's own code, not `error`, which
+    // is the schema's verdict. The engine already answered it this way
+    // one character earlier — a refused CONSTRUCT reaches the tree as an
+    // ordinary nil (see an-operandless-nil-reports-about-itself).
+    (0, node_test_1.test)('unparseable-data-is-invalid-not-an-error-verdict', () => {
         const r = (0, vet_1.vet)(SCHEMA, 'a: ]');
-        Assert.equal(r.verdict, 'error');
+        Assert.equal(r.verdict, 'invalid');
+        Assert.equal(r.findings.length, 1);
+        const f = r.findings[0];
+        Assert.equal(f.code, 'syntax');
+        Assert.equal(f.class, 'parse');
+        Assert.equal(f.path, '$');
+        Assert.equal(f.sites.length, 1);
+        Assert.equal(f.sites[0].role, 'data');
+        Assert.equal(f.sites[0].value, 'nil');
+        // No terminal escapes in a machine-readable report: the parser
+        // colours its own marker, and this is the one finding family whose
+        // text comes from there.
+        Assert.ok(!f.message.includes('\u001b'));
+        Assert.ok(f.message.startsWith('[aontu/'));
+    });
+    // A merge marker is refused before the parse, and it knows WHERE.
+    (0, node_test_1.test)('a-conflict-marker-in-data-is-a-located-finding', () => {
+        const r = (0, vet_1.vet)(SCHEMA, 'a: 1\n<<<<<<< HEAD\nb: 2');
+        Assert.equal(r.verdict, 'invalid');
+        Assert.equal(r.findings[0].code, 'merge_conflict');
+        Assert.equal(r.findings[0].sites[0].row, 2);
+        Assert.equal(r.findings[0].sites[0].col, 1);
+    });
+    // The SCHEMA side keeps the error verdict: exit 4 means the run
+    // could not be set up from the truth's side, and nothing else.
+    (0, node_test_1.test)('unparseable-schema-is-still-an-error-verdict', () => {
+        Assert.equal((0, vet_1.vet)('a: ]', 'a: 1').verdict, 'error');
     });
 });
 (0, node_test_1.describe)('vet-findings', () => {
@@ -125,6 +159,28 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(f.note, 'tier must be supported');
         Assert.equal(f.expected, '"gold"|"silver"');
         Assert.equal(f.actual, '"lead"');
+    });
+    // A nil built during the PARSE of a document has no operands and
+    // never passes through the unify error path, so both of its report
+    // fields have to be filled in by vet itself: the site (about the nil
+    // itself) and the message (materialised on demand).
+    (0, node_test_1.test)('an-operandless-nil-reports-about-itself', () => {
+        const r = (0, vet_1.vet)('a: integer', 'a: 9007199254740993');
+        Assert.equal(r.verdict, 'invalid');
+        const f = r.findings[0];
+        Assert.equal(f.code, 'lossy_integer_literal');
+        Assert.equal(f.sites.length, 1);
+        Assert.equal(f.sites[0].role, 'data');
+        Assert.equal(f.sites[0].value, 'nil');
+        Assert.ok(f.message.startsWith('[aontu/lossy_integer_literal]'));
+    });
+    // The incomplete half of a report comes from the generate check,
+    // which never renders its own text: without materialisation these
+    // findings carried an empty message while the conflicts carried a
+    // headline.
+    (0, node_test_1.test)('an-incomplete-finding-carries-its-message', () => {
+        const r = (0, vet_1.vet)(SCHEMA, 'service: { name: "auth" }');
+        Assert.equal(r.findings[0].message, '[aontu/mapval_no_gen]: Cannot resolve value at path $.service.port');
     });
     (0, node_test_1.test)('message-is-the-headline-only', () => {
         const r = (0, vet_1.vet)(SCHEMA, 'service: { name: "auth", port: "8080" }');
@@ -199,6 +255,20 @@ const SCHEMA = 'service: { name: string, port: integer }';
         const r = (0, vet_1.vet)(SCHEMA, 'a: 1', { at: '$.nope' });
         Assert.equal(r.verdict, 'error');
     });
+    // An anchor is a STRUCTURAL path: map keys and list indices. Reading
+    // it off whatever a value's peg held walked into a junction's
+    // branches, a constraint's own arguments and an array's `length` —
+    // the last handing back a JavaScript number, after which everything
+    // validated.
+    (0, node_test_1.test)('an-anchor-descends-only-through-bags', () => {
+        Assert.equal((0, vet_1.vet)('a: 1|2', '1', { at: '$.a.0' }).verdict, 'error');
+        Assert.equal((0, vet_1.vet)('a: min(2)', '3', { at: '$.a.0' }).verdict, 'error');
+        Assert.equal((0, vet_1.vet)('a: [1,2]', '9', { at: '$.a.length' }).verdict, 'error');
+        Assert.equal((0, vet_1.vet)('a: *1', '9', { at: '$.a.peg' }).verdict, 'error');
+        // The two that DO descend still do.
+        Assert.equal((0, vet_1.vet)('a: { b: integer }', '1', { at: '$.a.b' }).verdict, 'valid');
+        Assert.equal((0, vet_1.vet)('a: [integer]', '1', { at: '$.a.0' }).verdict, 'valid');
+    });
     (0, node_test_1.test)('an-anchor-through-a-scalar-is-an-error-verdict', () => {
         const r = (0, vet_1.vet)('a: 1', 'x: 1', { at: '$.a.b' });
         Assert.equal(r.verdict, 'error');
@@ -232,6 +302,28 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(typeof aontu_1.vet, 'function');
         const r = (0, aontu_1.vet)('a: integer', 'a: 1');
         Assert.equal(r.verdict, 'valid');
+    });
+    // `schemaPath` and `dataPath` are the two documents' OWN bases: a
+    // relative `@"file"` load inside either resolves from the directory
+    // holding it, not from the process working directory -- which is
+    // neither document's home, and may hold a same-named decoy. The two
+    // paths are separate because the documents need not live together.
+    (0, node_test_1.test)('each-document-resolves-its-own-includes', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-base-'));
+        Fs.writeFileSync(Path.join(dir, 'part.aon'), 'port: integer');
+        // The document is passed as TEXT and its path only says where it
+        // came from -- but the loader resolves the base against a real
+        // directory, so the file has to be there, which for every caller
+        // that read the text out of it already is.
+        const src = '@"part.aon"\nname: string';
+        const data = 'name: "auth"\nport: 8080';
+        const schemaPath = Path.join(dir, 'schema.aon');
+        Fs.writeFileSync(schemaPath, src);
+        Assert.equal((0, vet_1.vet)(src, data, { schemaPath }).verdict, 'valid');
+        // Without the base the include is looked for beside the test
+        // process instead, where there is no part.aon: a schema that will
+        // not stand up is an `error` verdict, never the data's fault.
+        Assert.equal((0, vet_1.vet)(src, data).verdict, 'error');
     });
 });
 (0, node_test_1.describe)('vet-containers', () => {
