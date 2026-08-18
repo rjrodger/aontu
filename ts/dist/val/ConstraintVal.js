@@ -609,9 +609,9 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
         if (null == peer || peer.isTop) {
             return again;
         }
-        if (peer.isNil) {
-            return peer;
-        }
+        // No nil-peer arm: `unite` returns a nil operand before dispatching
+        // to any Val's unify (ts/src/unify.ts), so a nil never reaches here
+        // — and were one to, the conjunct below folds to it unchanged.
         return new ConjunctVal_1.ConjunctVal({ peg: [again, peer] }, ctx);
     }
     // Membership: the peer scalar passes every part of the residual, or
@@ -903,10 +903,11 @@ function dedupSorted(domain, neqs) {
 // Is this value, or anything inside it, a nil? A written argument that
 // holds one can never be satisfied, so the atom refuses it as an
 // argument rather than reporting a mystery failure against every peer.
+// Every caller passes a Val: `args[0]` comes from atomArgs, and the
+// walk below descends only into container pegs, which hold Vals. The
+// null/non-Val guard this function used to open with was therefore
+// unreachable, and the coverage gate said so.
 function holdsNil(v) {
-    if (null == v || true !== v.isVal) {
-        return false;
-    }
     if (true === v.isNil) {
         return true;
     }
@@ -1138,7 +1139,9 @@ function countVal(n) {
 function meetCount(a, b) {
     return {
         domain: 'number',
-        kind: a.kind ?? b.kind,
+        // `a` is always a countBase()-seeded residual, so its kind is
+        // always Integer — there is no kindless side to fall back from.
+        kind: a.kind,
         lo: tighter('number', a.lo, b.lo, true),
         hi: tighter('number', a.hi, b.hi, false),
         neqs: dedupSorted('number', [...a.neqs, ...b.neqs]),

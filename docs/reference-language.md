@@ -1327,6 +1327,13 @@ the merged container.
 Written order does not matter — `a: {x:1} a: {y:2} a: length(2)` is the
 same value — which is the property the sort order exists to guarantee.
 
+**`must` folds last for the same reason**, and the slot is named for
+what the three atoms share rather than for sizing alone: `length`,
+`unique` and `must` all need the *whole* value. An evaluate-only check
+run against the first fragment would refuse `a: must(length(2),m)` /
+`a: {x:1}` / `a: {y:2}` on a count of one, exactly as an early-folding
+`length` would.
+
 ### `unique` semantics
 
 `unique()` holds when the members of a container are **pairwise

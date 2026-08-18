@@ -383,8 +383,16 @@ type ConstraintVal struct {
 // the two orders differ.
 const sizingCjo = 150000
 
+// Three atoms are late: `length` and `unique` (they count members), and
+// `must` (an evaluate-only check against the finished value). Mirrors
+// lateAtom in ts/src/val/ConstraintVal.ts.
+func lateAtom(atom string) bool {
+	return "length" == atom || "unique" == atom || "must" == atom
+}
+
 func (c *ConstraintVal) cjo() int {
-	if nil != c.count || c.uniq {
+	if nil != c.count || c.uniq || 0 < len(c.musts) ||
+		(nil != c.pending && lateAtom(c.pending.atom)) {
 		return sizingCjo
 	}
 	return 50000
@@ -489,7 +497,12 @@ func newConstraint(atom string, args []Val, sp int) *ConstraintVal {
 	// never simplified and never consulted for emptiness or subsumption
 	// (docs/reference-language.md, "Band B: `must`").
 	if "must" == atom {
-		if 2 != len(args) {
+		// The parse-time arity check (c8b4c54) guarantees exactly two
+		// arguments, so this never fires. It is kept where the TS twin
+		// has no guard at all because the ports fail differently on a
+		// broken invariant: JavaScript reads args[1] as undefined and
+		// refuses it as invalid-arg, Go panics on the index.
+		if 2 != len(args) { //coverage:ignore parse-time arity guarantees two; see above
 			return bad("arg")
 		}
 		msv, md := orderableScalar(args[1])
@@ -682,10 +695,16 @@ func (c *ConstraintVal) settle(peer Val, ctx *Ctx) Val {
 	if nil == peer || isTop(peer) {
 		return built
 	}
-	if peer.Nil() {
-		return peer
-	}
-	return newConjunct([]Val{built, peer})
+	// No nil-peer arm: unite returns a nil operand before dispatching to
+	// any Val's Unify (unify.go), so a nil never reaches here — and were
+	// one to, the conjunct below folds to it unchanged. The TS twin lost
+	// the same arm.
+	// The wrapper lives at the atom's own location (TS builds it with
+	// the ctx, which stamps the path): budget_passes names the
+	// still-refining node by this path.
+	out := newConjunct([]Val{built, peer})
+	out.path = cp(c.path)
+	return out
 }
 
 // checkMusts applies Band B to a finished value. Each check is a plain
@@ -1063,10 +1082,11 @@ func atomArgs(atom string, args []Val) []Val {
 // holdsNil reports whether a value, or anything inside it, is a nil. A
 // written argument that holds one can never be satisfied, so the atom
 // refuses it rather than reporting a mystery failure against every peer.
+// Every caller passes a Val: args[0] comes from atomArgs, and the walk
+// below descends only into container pegs, which hold Vals. The nil
+// guard this function used to open with was therefore unreachable, and
+// the coverage gate said so (the TS twin lost the same guard).
 func holdsNil(v Val) bool {
-	if nil == v {
-		return false
-	}
 	if v.Nil() {
 		return true
 	}
@@ -1089,13 +1109,11 @@ func holdsNil(v Val) bool {
 				return true
 			}
 		}
-	case *ConjunctVal:
-		for _, child := range t.peg {
-			if holdsNil(child) {
-				return true
-			}
-		}
 	}
+	// No ConjunctVal arm: a conjunct holding a nil IS a nil — the fold
+	// returns the nil operand (conjunct.go) — so one never reaches here
+	// live. TypeScript has no such arm either; its structural walk
+	// would treat a conjunct exactly as it treats the disjunct above.
 	return false
 }
 
@@ -1254,10 +1272,11 @@ func countVal(n int) *ScalarVal {
 // construction, where there is no Ctx to raise through, and an empty
 // residual carries the same news to Unify.
 func meetCount(a, b *ConstraintVal) *ConstraintVal {
+	// `a` is always a countBase()-seeded residual, so its kind is always
+	// KindInteger — there is no kindless side to fall back from, which
+	// is why this is a plain read rather than a top-check (the TS twin
+	// lost the same fallback).
 	kind := a.kind
-	if KindTop == kind {
-		kind = b.kind
-	}
 	out := &ConstraintVal{
 		domain: "number",
 		kind:   kind,
@@ -1325,19 +1344,11 @@ func countArgState(arg Val) *ConstraintVal {
 		return nil
 	}
 
-	if jv, ok := arg.(*ConjunctVal); ok {
-		acc := &ConstraintVal{domain: "number"}
-		acc.dc = DONE
-		for _, term := range jv.peg {
-			one := countArgState(term)
-			if nil == one {
-				return nil
-			}
-			acc = meetCount(acc, one)
-		}
-		return acc
-	}
-
+	// No ConjunctVal arm: an atom's arguments are SETTLED before they
+	// reach here, and a settled conjunct of count constraints has
+	// already folded to a single residual. The TS port deleted its twin
+	// as dead code when @tabnas/expr 0.5.4 landed (cc0c2d9); found by
+	// the coverage gate there, and by the same gate here.
 	return nil
 }
 

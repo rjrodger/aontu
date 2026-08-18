@@ -13,7 +13,7 @@ implementation plan.*
 > its status, and the artifact that proves it. This index and the gap
 > documents describe what *should* be built and were written before any
 > of it landed; the register is the only place that says what *has*
-> been. Nine of forty-nine phases have moved.
+> been. Thirteen of forty-nine phases have moved.
 
 Method: a ten-agent survey — three codebase analysts over this
 repository, six researchers (CUE; Nickel/Dhall/Pkl/KCL/Jsonnet/Starlark;

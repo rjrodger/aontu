@@ -122,7 +122,13 @@ func (c *ConjunctVal) Unify(peer Val, ctx *Ctx) Val {
 	case 1:
 		out = outvals[0]
 	default:
-		out = newConjunct(outvals)
+		nc := newConjunct(outvals)
+		// The re-wrap lives where the fold ran (TS builds its wrapper
+		// with the ctx, which stamps the path): budget_passes names a
+		// still-refining node by this path, so a pathless wrapper
+		// reported `$` where TypeScript reports the node's location.
+		nc.path = cp(c.path)
+		out = nc
 	}
 	if done {
 		out.setDc(DONE)

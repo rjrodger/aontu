@@ -1,0 +1,67 @@
+# G1 phase 4: cross-field arguments and residuation. An atom whose
+# argument holds an unresolved reference or expression RESIDUATES: no
+# error, re-evaluated on later fixpoint passes, normalised once
+# concrete (docs/reference-language.md, "Cross-field bounds and
+# residuation"). Promoted from test/spec/draft/ with every expectation
+# obtained by running BOTH engines over the same source and requiring
+# byte-identical output.
+# Columns: name<TAB>mode<TAB>src<TAB>expect ; modes: canon|gen|gens|err|errc
+
+cross-ref-bound	gen	scaling:{floor:2 ceiling:10 target:integer&min($.scaling.floor)&max($.scaling.ceiling)} scaling:target:7	{"scaling":{"ceiling":10,"floor":2,"target":7}}
+cross-ref-reject	errc	s:{lo:2 hi:10 t:integer&min($.s.lo)&max($.s.hi)} s:t:99	constraint
+cross-ref-reject-sited	err	s:{lo:2 hi:10 t:integer&min($.s.lo)&max($.s.hi)} s:t:99	Cannot unify values at path $.s.t
+cross-ref-canon	canon	a:{hi:10 lo:2 t:integer&min($.a.lo)&max($.a.hi)}	{"a":{"hi":10,"lo":2,"t":integer&min(2)&max(10)}}
+residuation-forward	gen	t:integer&min($.lo) lo:2 t:5	{"lo":2,"t":5}
+residuation-chain	gen	base:3 lo:$.base t:integer&min($.lo) t:5	{"base":3,"lo":3,"t":5}
+residual-no-gen	errc	t:integer&min($.lo) lo:2	mapval_no_gen
+expr-arg-normalises	canon	a:min(1+1)	{"a":min(2)}
+expr-arg-admits	gen	a:min(1+1) a:5	{"a":5}
+
+# An unresolvable reference argument reports no_path AT THE ATOM'S
+# LOCATION. Go's setPaths had no ConstraintVal arm, so a pending
+# atom's arguments carried no path and the error located at the ROOT;
+# the sited row pins the alignment with TypeScript.
+arg-no-path	errc	a:min($.zz) a:5	no_path
+arg-no-path-sited	err	a:min($.zz) a:5	Cannot resolve value at path $.a
+
+# The sizing and pattern atoms residuate their arguments like the
+# order atoms. (The count argument was refused outright when phase 3
+# landed; phase 4 revisited it, as the design anticipated.)
+cross-length	gen	a:{n:2 v:length($.a.n)&["x","y"]}	{"a":{"n":2,"v":["x","y"]}}
+cross-length-reject	errc	a:{n:3 v:length($.a.n)&["x","y"]}	constraint
+cross-length-relative	gen	a:{n:2 v:length(.n)&["x","y"]}	{"a":{"n":2,"v":["x","y"]}}
+cross-re	gen	a:{p:"^a+$" v:re($.a.p)&"aaa"}	{"a":{"p":"^a+$","v":"aaa"}}
+cross-re-reject	errc	a:{p:"^a+$" v:re($.a.p)&"bbb"}	constraint
+
+# The count argument may itself be a constraint conjunct or a kind.
+count-arg-conjunct	gen	a:length(min(2)&max(4)) a:[1,2,3]	{"a":[1,2,3]}
+count-arg-conjunct-reject	errc	a:length(min(2)&max(4)) a:[1]	constraint
+count-arg-kind	gen	a:length(integer) a:[1,2]	{"a":[1,2]}
+
+# Spread interplay: a spread template carries a cross-field bound onto
+# every child (a phase-4 row family the g1 plan names outright).
+spread-cross	gen	floor:3 a:&:min($.floor) a:{x:5,y:7}	{"a":{"x":5,"y":7},"floor":3}
+spread-cross-canon	canon	floor:3 a:&:min($.floor) a:{x:5,y:7}	{"a":{&:min($.floor),"x":5,"y":7},"floor":3}
+spread-cross-reject	errc	floor:3 a:&:min($.floor) a:{x:2}	constraint
+
+# Constraint-bearing disjuncts: a residual member adds no trial errors
+# and survives symbolically; generation picks the preference. These
+# fence the DisjunctVal.gen fold defect from the constraint side (see
+# disjunct.tsv's guard rows).
+disjunct-constraint-pref	gens	a:*8080|min(1024)	{"a":8080}
+disjunct-constraint-residual-canon	canon	a:1024|min(2048)	{"a":1024|min(2048)}
+disjunct-constraint-data	gen	a:(min(1024)|*80) a:8080	{"a":8080}
+
+# The fixpoint budget applies to argument settlement: a reference
+# chain the pass budget cannot finish is budget_passes (trust.md,
+# clause 2), and the still-refining list names the atom's own location
+# -- the conjunct wrapper is stamped with the fold's path in both
+# ports, which the sited row pins.
+budget-chain-within	gen	c1:$.c2 c2:$.c3 c3:$.c4 c4:$.c5 c5:$.c6 c6:$.c7 c7:2 t:min($.c1) t:5	{"c1":2,"c2":2,"c3":2,"c4":2,"c5":2,"c6":2,"c7":2,"t":5}
+budget-chain-exhausted	errc	c1:$.c2 c2:$.c3 c3:$.c4 c4:$.c5 c5:$.c6 c6:$.c7 c7:$.c8 c8:$.c9 c9:$.c10 c10:$.c11 c11:$.c12 c12:2 t:min($.c1) t:5	budget_passes
+budget-chain-exhausted-sited	err	c1:$.c2 c2:$.c3 c3:$.c4 c4:$.c5 c5:$.c6 c6:$.c7 c7:$.c8 c8:$.c9 c9:$.c10 c10:$.c11 c11:$.c12 c12:2 t:min($.c1) t:5	still refining: $.c1 $.c2 $.t
+
+# Two count residuals meet as counts (interval/exclusion part alone);
+# a kindless count adopts the peer count's kind.
+count-meet-kind	gen	a:length(min(2))&length(integer) a:[1,2,3]	{"a":[1,2,3]}
+count-arg-kind-conjunct	gen	a:length(min(2)&integer) a:[1,2]	{"a":[1,2]}

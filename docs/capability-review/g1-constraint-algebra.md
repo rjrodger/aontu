@@ -1,9 +1,10 @@
 # G1: A real constraint algebra
 
-*Status: partly implemented — phases 0, 1, 2 and 6 landed, phases 3–5
-outstanding. Per-phase status, pins and the corrections this
-document still needs are in the [progress register](progress.md), which
-is authoritative for status; this document is authoritative for design.
+*Status: implemented — all seven phases landed in both ports, pinned by
+shared spec rows. Per-phase status, pins, the departures from this
+design and the corrections this document still needs are in the
+[progress register](progress.md), which is authoritative for status;
+this document is authoritative for design.
 Part of the
 [capability review](index.md) (August 2026). This document expands the
 G1 entry in the review index: the vocabulary of constraint atoms, their

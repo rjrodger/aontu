@@ -8,15 +8,17 @@ forbids adding an executable row whose expectation was not probed in
 BOTH engines. A behaviour that does not exist yet cannot be probed, so
 its proposed rows wait here.
 
-Current contents: the constraint-algebra rows of capability G1 phase 0
-(`docs/capability-review/g1-constraint-algebra.md`; normative design in
-`docs/reference-language.md`, "The constraint algebra") that are NOT
-yet implemented: cross-structure constraints and len/unique.
+Current contents: none — every drafted family has been promoted. The
+directory stays, because the method it exists for (author rows before
+code, promote after probing) is how the next capability phase starts.
 
 Promoted so far, each with every expectation re-probed in both engines
 at promotion time per rule 2: the bound/neq rows to
-`test/spec/constraint-bound.tsv` when G1 phase 1 landed, and the regex
-rows to `test/spec/constraint-re.tsv` when G1 phase 2 landed. The
+`test/spec/constraint-bound.tsv` when G1 phase 1 landed, the regex
+rows to `test/spec/constraint-re.tsv` when G1 phase 2 landed, and the
+cross-field/residuation and constraint-bearing-disjunct rows to
+`test/spec/constraint-cross.tsv` when G1 phases 4–5 landed (the
+`must` rows went directly to `test/spec/constraint-must.tsv`). The
 second promotion is the reason rule 1 says what it does -- one drafted
 expectation was WRONG. The draft predicted `a:string&re("^[a-z]$")`
 would canon as `string&re("^[a-z]$")`; both engines agree it canons as
@@ -42,6 +44,10 @@ Rules for this directory:
    `test/spec/disjunct.tsv`, which
    fence the known `DisjunctVal.gen` fold defect from the constraint
    side before any `ConstraintVal` code exists).
+
+The last paragraph's forward reference is now history: the
+constraint-bearing-disjunct expectations it describes live in
+`test/spec/constraint-cross.tsv` as executable rows.
 
 Known defect fenced, not pinned: `a:({x:1}|{y:2})&{z:3}` today
 GENERATES the chimera `{"a":{"x":1,"y":2,"z":3}}` in BOTH engines (the
