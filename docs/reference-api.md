@@ -32,8 +32,13 @@ Both implementations ship the same `aontu` command. It evaluates a
 source file (or stdin) and prints the result, or starts a REPL when run
 interactively with no file.
 
+**TypeScript only for now:** the `vet` verb below is
+[G2 phase 3](capability-review/progress.md#g2--the-validation-verb) and
+has no Go port yet. Everything else on this page is in both.
+
 ```
 Usage: aontu [options] [file]
+       aontu vet [options] <schema> <data> [more-data...]
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -65,6 +70,61 @@ Options:
   same bytes.
 - Results go to **stdout**; errors go to **stderr** with a non-zero exit
   status (`1` for an evaluation error, `2` for a bad option).
+
+### `aontu vet`
+
+Validate data documents against a schema document. This is the
+emit → validate → repair loop's entry point: an agent writes a
+document, `vet` says what does not hold and where, and the exit code
+says which kind of "no" it was.
+
+```
+aontu vet [options] <schema> <data> [more-data...]
+
+  --at <path>       Validate against this path of the schema ($.a.b)
+  --closed          Refuse keys the anchor does not declare
+  --partial         Residue is reported but does not fail the run
+  --max-errors <n>  Cap the finding list (default 20)
+  --format <f>      text (default) or json
+```
+
+**Exit codes are verdict classes**, not a pass/fail bit, because the
+three ways to fail call for three different responses:
+
+| Exit | Verdict | Meaning |
+|------|---------|---------|
+| 0 | `valid` | the data unifies and is concrete (or `--partial`) |
+| 1 | `invalid` | at least one contradiction: this data can never satisfy the truth |
+| 2 | — | usage: a bad option, or a file that cannot be read |
+| 3 | `incomplete` | no contradiction, but the truth is not yet satisfied |
+| 4 | `error` | the schema is unusable on its own — never the data's fault |
+
+Each data file is vetted separately, and the worst verdict wins: two
+data files are two candidates for the same truth, not one merged
+candidate.
+
+**A finding names both sides.** Sites are labelled by provenance —
+`data` first, because that is the one to edit — rather than by the
+source-order heuristic a single-document error uses:
+
+```
+$ aontu vet service.aon deploy.json
+verdict: invalid
+
+$.service.prot: closed [conflict]
+  [aontu/closed]: Cannot resolve value at path $.service.prot
+  data: deploy.json:1:40 (8080)
+$.service.replicas: no_scalar_unify [conflict]
+  [aontu/no_scalar_unify]: Cannot unify values at path $.service.replicas
+  data: deploy.json:2:28 ("3")
+  schema: service.aon:4:13 (integer)
+```
+
+`--format json` emits the same report as an object, with an `aontu`
+stanza naming the producer, so a report read from a pipe says which
+version and verb made it. Where the constraint algebra knows what would
+have unified, the finding carries it as `expected`/`actual`, and a
+`must()` check's author message rides along as `note`.
 
 **REPL commands**
 

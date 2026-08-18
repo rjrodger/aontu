@@ -57,7 +57,11 @@ export function walkVals(
 // Every NilVal in the tree, in walk order. Callers that need a stable
 // order across the two ports must sort — the walk follows raw key
 // order, and the hosts disagree about that (ts/src/keyorder.ts).
-export function collectNils(root: any, seen?: Set<any>): any[] {
+//
+// The `seen` set is the caller's, not an internal detail: both callers
+// go on to dedup context-only errors against the nils already found,
+// which is only possible if they hold the set.
+export function collectNils(root: any, seen: Set<any>): any[] {
   const out: any[] = []
   walkVals(root, (v: any) => {
     if (true === v.isNil) {
@@ -65,6 +69,6 @@ export function collectNils(root: any, seen?: Set<any>): any[] {
       return false
     }
     return true
-  }, seen ?? new Set())
+  }, seen)
   return out
 }

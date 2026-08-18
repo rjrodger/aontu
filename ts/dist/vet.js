@@ -176,11 +176,25 @@ function vet(schemaSrc, dataSrc, opts) {
     const ctx = aontu.ctx({ collect: true });
     const pair = new ConjunctVal_1.ConjunctVal({ peg: [anchor, dataVal] }, ctx);
     const unified = aontu.unify(pair, undefined, ctx);
-    // 4. Contradictions: every NilVal standing in the result.
-    // collectNils reports the node it is given, so a root that is itself
-    // a nil needs no separate arm — adding one listed the same finding
-    // twice.
-    const nils = (0, walk_1.collectNils)(unified);
+    // 4. Contradictions: every NilVal standing in the result, PLUS the
+    //    ones that never made it into the tree.
+    //
+    // The second half is not belt-and-braces. When a parent collapses to
+    // a nil the whole subtree goes with it, so `service: close({...})`
+    // meeting a typo AND a kind conflict leaves ONE nil in the tree and
+    // reports the other only on the context — the vet verb's own
+    // motivating example, reporting half of what it found. The language
+    // server already walks both for this reason; vet dedups by identity
+    // the same way, and skips the transient disjunct-trial sentinel,
+    // which is bookkeeping rather than a finding.
+    const seen = new Set();
+    const nils = (0, walk_1.collectNils)(unified, seen);
+    for (const err of ctx.err) {
+        if (true === err?.isNil && '|:trial-nil' !== err.why && !seen.has(err)) {
+            seen.add(err);
+            nils.push(err);
+        }
+    }
     const findings = nils.map((n) => findingOf(n, dataUrl));
     const conflicts = findings.length;
     // 5. Incompleteness: what is left standing that cannot generate. The

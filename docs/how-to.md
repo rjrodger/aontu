@@ -117,6 +117,26 @@ Supplying `id: "seven"` instead fails with
 `Cannot unify value: "seven" with value: integer`. To reject *extra*
 fields too, wrap the schema in [`close`](#forbid-unexpected-keys).
 
+**When the data lives in its own file**, use the `vet` verb rather than
+concatenating the two — it keeps the files apart, so every finding says
+which side it came from, and it answers with a verdict rather than a
+bare failure:
+
+```sh
+$ aontu vet schema.aon user.json
+verdict: invalid
+
+$.user.id: no_scalar_unify [conflict]
+  data: user.json:1:12 ("seven")
+  schema: schema.aon:1:15 (integer)
+```
+
+The exit code distinguishes *contradicted* (1) from *not yet complete*
+(3) from *the schema itself is broken* (4), and `--format json` emits
+the same report for a program to read. See
+[`aontu vet`](reference-api.md#aontu-vet). (TypeScript only for now;
+the Go port is the next phase.)
+
 ## Provide defaults that callers can override
 
 Mark the default with `*` inside a disjunction with its type:

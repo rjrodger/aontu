@@ -50,6 +50,10 @@ function walkVals(v, visit, seen) {
 // Every NilVal in the tree, in walk order. Callers that need a stable
 // order across the two ports must sort — the walk follows raw key
 // order, and the hosts disagree about that (ts/src/keyorder.ts).
+//
+// The `seen` set is the caller's, not an internal detail: both callers
+// go on to dedup context-only errors against the nils already found,
+// which is only possible if they hold the set.
 function collectNils(root, seen) {
     const out = [];
     walkVals(root, (v) => {
@@ -58,7 +62,7 @@ function collectNils(root, seen) {
             return false;
         }
         return true;
-    }, seen ?? new Set());
+    }, seen);
     return out;
 }
 //# sourceMappingURL=walk.js.map
