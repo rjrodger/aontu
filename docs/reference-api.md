@@ -90,14 +90,28 @@ three ways to fail call for three different responses:
 | Exit | Verdict | Meaning |
 |------|---------|---------|
 | 0 | `valid` | the data unifies and is concrete (or `--partial`) |
-| 1 | `invalid` | at least one contradiction: this data can never satisfy the truth |
+| 1 | `invalid` | the data does not hold: a contradiction it can never satisfy, or a document that would not parse |
 | 2 | — | usage: a bad option, or a file that cannot be read |
 | 3 | `incomplete` | no contradiction, but the truth is not yet satisfied |
-| 4 | `error` | the schema is unusable on its own — never the data's fault |
+| 4 | `error` | the run could not be set up from the schema side: an unusable schema, or an `--at` that names nothing — never the data's fault |
 
 Each data file is vetted separately, and the worst verdict wins: two
 data files are two candidates for the same truth, not one merged
-candidate.
+candidate. `--max-errors` caps the whole report, not each file, and
+says so with `truncated`.
+
+**A data file that will not parse is the data's fault**, and is
+reported as one `parse`-class finding with a site in that file — not as
+a broken schema. The distinction matters to the loop the verb exists
+for: exit 1 says "repair what you emitted", exit 4 says "the truth you
+were given is unusable, stop".
+
+**`--at` takes a structural path** — map keys and list indices, the
+same thing a reference means by `$.a.b`, with an index spelled as a
+plain decimal integer. A path that names nothing is verdict `error`.
+
+**Relative `@"file"` loads inside either document** resolve from that
+document's own directory, exactly as they do for `aontu <file>`.
 
 **A finding names both sides.** Sites are labelled by provenance —
 `data` first, because that is the one to edit — rather than by the

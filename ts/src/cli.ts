@@ -15,6 +15,7 @@ import { join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
 import { Aontu, AontuError, exactJSON, vet } from './aontu'
+import { VET_MAX_ERRORS } from './vet'
 import type { VetReport, VetFinding, VetVerdict } from './vet'
 
 
@@ -197,6 +198,7 @@ const VET_HELP = 'aontu vet <schema> <data> [more-data...] (try --help)'
 
 
 type VetArgs = {
+  help?: boolean
   schema: string
   data: string[]
   format: 'text' | 'json'
@@ -220,6 +222,14 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
 
+    // `-h`/`--help` before anything else, INCLUDING the file count:
+    // the usage errors below all end with "(try --help)", and a verb
+    // that then refused --help as an unknown option was sending the
+    // reader in a circle.
+    if ('-h' === arg || '--help' === arg) {
+      return { args: { help: true, schema: '', data: [], format } }
+    }
+
     if ('--at' === arg) {
       at = argv[++i]
       if (null == at) {
@@ -234,11 +244,19 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
       format = f
     }
     else if ('--max-errors' === arg) {
-      const n = Number(argv[++i])
-      if (!Number.isInteger(n) || n < 1) {
+      // ONE GRAMMAR, spelled the same way in both ports: decimal
+      // digits, one to nine of them, at least 1. `Number()` alone
+      // accepted `1.0`, `1e2`, `0x10` and ` 3`, which Go's parser
+      // refuses -- so the same documented invocation meant different
+      // things in the two shipped commands. The nine-digit ceiling is
+      // where the ports would part company again: beyond it Go's
+      // integer conversion saturates, and a cap nobody can reach is
+      // not worth a divergence.
+      const raw = argv[++i]
+      if (!/^[0-9]{1,9}$/.test(raw ?? '') || 1 > Number(raw)) {
         return { err: 'aontu: --max-errors needs a positive whole number' }
       }
-      maxErrors = n
+      maxErrors = Number(raw)
     }
     else if ('--closed' === arg) {
       closed = true
@@ -347,6 +365,11 @@ function runVet(argv: string[]): number {
   }
   const args = parsed.args as VetArgs
 
+  if (true === args.help) {
+    process.stdout.write(HELP)
+    return 0
+  }
+
   let schemaSrc: string
   const sources: { file: string; src: string }[] = []
   try {
@@ -375,6 +398,14 @@ function runVet(argv: string[]): number {
       maxErrors: args.maxErrors,
       schemaUrl: args.schema,
       dataUrl: source.file,
+      // The paths as well as the labels: a relative `@"file"` load
+      // inside either document resolves from ITS OWN directory, the
+      // way `aontu <file>` already resolves one (runFile above). The
+      // path is passed AS TYPED, not resolved: it doubles as the
+      // label above, and a report that mixed the typed path with an
+      // absolute one would name the same file two ways.
+      schemaPath: args.schema,
+      dataPath: source.file,
     })
 
     if (VET_RANK[verdict] < VET_RANK[report.verdict]) {
@@ -384,7 +415,20 @@ function runVet(argv: string[]): number {
     findings.push(...report.findings)
   }
 
-  const report: VetReport = { verdict, truncated, findings }
+  // The cap is on the REPORT, not on each file. Capping every file's
+  // list and then concatenating them let `--max-errors 1` emit one
+  // finding PER FILE -- and leave `truncated` false while doing it,
+  // because no single file had been cut. The engine still caps each
+  // run, so a pathological file cannot flood the aggregate before it
+  // gets here; this is the second, honest cut.
+  const cap = args.maxErrors ?? VET_MAX_ERRORS
+  const kept = cap < findings.length ? findings.slice(0, cap) : findings
+
+  const report: VetReport = {
+    verdict,
+    truncated: truncated || cap < findings.length,
+    findings: kept,
+  }
   const text = 'json' === args.format
     ? renderVetJson(report) : renderVetText(report)
 

@@ -69,10 +69,26 @@ export type VetOptions = {
   maxErrors?: number   // cap the finding list (default 20)
   schemaUrl?: string   // provenance label for schema sites
   dataUrl?: string     // provenance label for data sites
+
+  // Where each document CAME FROM, used to resolve its relative
+  // `@"file"` loads -- the file path, as `Aontu({path})` takes it, not
+  // the directory. Vet takes two documents from its caller rather than
+  // from the filesystem, so it cannot know this: without it a modular
+  // schema resolved its includes against the process working
+  // directory, which fails outside that directory and, worse, silently
+  // reads a same-named file that happens to sit there. The two
+  // documents get their OWN bases, because they need not live in the
+  // same place.
+  schemaPath?: string
+  dataPath?: string
 }
 
 
-const DEFAULT_MAX_ERRORS = 20
+// The default cap, exported because the CLI applies it to the WHOLE
+// report across several data files and must not carry a second copy of
+// the number (ts/src/cli.ts).
+export const VET_MAX_ERRORS = 20
+
 const DEFAULT_SCHEMA_URL = 'schema'
 const DEFAULT_DATA_URL = 'data'
 
@@ -109,7 +125,13 @@ function siteOf(v: any, dataUrl: string): VetSite | undefined {
   if (null == v) {
     return undefined
   }
-  const file = v.site.url
+  // `?? ''`: the site's url is ALWAYS a string in the report, so a
+  // consumer can read `file` without a presence check. A value
+  // unification minted, which belongs to neither document, reports the
+  // empty name rather than no name -- and the parser leaves the url
+  // undefined on one of its two paths (ts/src/lang.ts), which would
+  // otherwise drop the key for that value alone.
+  const file = v.site.url ?? ''
   return {
     file,
     row: v.site.row,
@@ -161,6 +183,16 @@ function materialise(nil: any, ctx: any): void {
 }
 
 
+// The terminal colour escapes the parser puts in its message text. A
+// RegExp built from a string, not a literal: the escape is a control
+// character, and spelling it `\u001b` keeps the source readable.
+const ANSI_RE = new RegExp('\u001b\\[[0-9;]*m', 'g')
+
+function stripAnsi(s: string): string {
+  return s.replace(ANSI_RE, '')
+}
+
+
 function findingOf(nil: any, dataUrl: string): VetFinding {
   const details = nil.details ?? {}
   const finding: VetFinding = {
@@ -168,11 +200,14 @@ function findingOf(nil: any, dataUrl: string): VetFinding {
     class: nil.class,
     severity: 'error',
     path: pathText(nil.path),
-    // The HEADLINE only: the frames below it are for a human reading a
-    // terminal, and the first line is the part the two ports hold to
-    // byte parity. Materialised before this runs, so it is always
-    // there (see materialise above).
-    message: nil.msg.split('\n')[0],
+    // The HEADLINE only, WITHOUT ANSI: the frames below it are for a
+    // human reading a terminal, and the first line is the part the two
+    // ports hold to byte parity. Materialised before this runs, so it
+    // is always there (see materialise above). The escapes matter for
+    // one family only -- a parse failure's text comes from the parser,
+    // which colours its marker -- and a machine-readable report is no
+    // place for terminal control codes.
+    message: stripAnsi(nil.msg.split('\n')[0]),
     sites: sitesOf(nil, dataUrl),
   }
 
@@ -244,11 +279,42 @@ function anchorAt(root: any, at: string): Val | undefined {
 
   let node: any = root
   for (const part of parts) {
-    const peg = node?.peg
-    if (null == peg || 'object' !== typeof peg || !(part in peg)) {
+    // TYPE-DIRECTED, not a property lookup on whatever `peg` happens to
+    // be. An anchor is a STRUCTURAL path into the schema — the same
+    // thing a reference means by `$.a.b` — so it walks map keys and
+    // list indices, and stops at anything else.
+    //
+    // Indexing the peg generically walked much further than that: into
+    // a junction's branches (`a:1|2` with `--at $.a.0` validated
+    // against ONE branch), into a constraint's atom arguments (so
+    // `min(2)` with `--at $.a.0` reported the bound's own argument as
+    // the truth), into a pref's wrapped value through the literal key
+    // `peg`, and into an array's `length` — that last one handing back
+    // a JavaScript NUMBER as the anchor, after which every document
+    // whatsoever came back valid. The Go port has always been
+    // type-directed here; this is the canonical side moving to it.
+    if (true === node?.isMap) {
+      const peg = node.peg
+      if (null == peg || !Object.prototype.hasOwnProperty.call(peg, part)) {
+        return undefined
+      }
+      node = peg[part]
+    }
+    else if (true === node?.isList) {
+      // CANONICAL DECIMAL, the spelling a reference uses for a list
+      // index (`0`, or a non-zero digit run) -- so `$.a.01` names
+      // nothing here exactly as it names nothing there.
+      const peg = node.peg
+      const index = Number(part)
+      if (!/^(0|[1-9][0-9]*)$/.test(part) ||
+        !Array.isArray(peg) || peg.length <= index) {
+        return undefined
+      }
+      node = peg[index]
+    }
+    else {
       return undefined
     }
-    node = peg[part]
   }
 
   return node
@@ -267,14 +333,21 @@ export function vet(
   const options = opts ?? {}
   const schemaUrl = options.schemaUrl ?? DEFAULT_SCHEMA_URL
   const dataUrl = options.dataUrl ?? DEFAULT_DATA_URL
-  const maxErrors = options.maxErrors ?? DEFAULT_MAX_ERRORS
+  const maxErrors = options.maxErrors ?? VET_MAX_ERRORS
 
+  // ONE instance, two bases: the path rides on each CALL rather than on
+  // the constructor, because the schema and the data may live in
+  // different directories (Lang.parse takes `opts.path` per parse).
   const aontu = new Aontu()
+  const schemaOpts = null == options.schemaPath ?
+    undefined : { path: options.schemaPath }
+  const dataOpts = null == options.dataPath ?
+    undefined : { path: options.dataPath }
 
   // 1. The schema alone. If it does not stand up on its own, the data
   //    is never blamed for it.
   const schemaCtx = aontu.ctx({ collect: true })
-  const schemaVal: any = aontu.unify(schemaSrc, undefined, schemaCtx)
+  const schemaVal: any = aontu.unify(schemaSrc, schemaOpts, schemaCtx)
   if (0 < schemaCtx.err.length || true === schemaVal?.isNil) {
     return { verdict: 'error', truncated: false, findings: [] }
   }
@@ -291,9 +364,35 @@ export function vet(
   // 3. Both documents get their provenance stamped BEFORE they meet, so
   //    every site in the result knows which document it came from.
   const dataCtx = aontu.ctx({ collect: true })
-  const dataVal: any = aontu.parse(dataSrc, undefined, dataCtx)
+  const dataVal: any = aontu.parse(dataSrc, dataOpts, dataCtx)
   if (0 < dataCtx.err.length || null == dataVal) {
-    return { verdict: 'error', truncated: false, findings: [] }
+    // A DATA DOCUMENT THAT WILL NOT PARSE IS THE DATA'S FAULT, and the
+    // report says so: verdict `invalid`, with a finding carrying the
+    // parser's own code and a site in the data. `error` is left to mean
+    // what the exit table says it means -- the run could not be set up
+    // from the SCHEMA side.
+    //
+    // The engine already answered it this way one character earlier: a
+    // refused CONSTRUCT (`a: 9007199254740993`) reaches the tree as an
+    // ordinary nil and is reported as an invalid data finding. A stray
+    // `]` took the throwing path instead and came back as a broken
+    // SCHEMA -- the same fault, classified two opposite ways by which
+    // branch the parser happened to take.
+    //
+    // The FIRST error only: the parser stops at the first syntax error,
+    // so a second entry would be a consequence of the first rather than
+    // a separate thing to fix.
+    const failure = dataCtx.err[0]
+    if (null == failure) {
+      return { verdict: 'error', truncated: false, findings: [] }
+    }
+    failure.site.url = dataUrl
+    materialise(failure, dataCtx)
+    return {
+      verdict: 'invalid',
+      truncated: false,
+      findings: [findingOf(failure, dataUrl)],
+    }
   }
   stampUrl(anchor, schemaUrl)
   stampUrl(dataVal, dataUrl)

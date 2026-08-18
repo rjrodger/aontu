@@ -131,9 +131,10 @@ $.user.id: no_scalar_unify [conflict]
   schema: schema.aon:1:15 (integer)
 ```
 
-The exit code distinguishes *contradicted* (1) from *not yet complete*
-(3) from *the schema itself is broken* (4), and `--format json` emits
-the same report for a program to read. See
+The exit code distinguishes *the data does not hold* (1) — a
+contradiction, or a document that would not parse — from *not yet
+complete* (3) from *the truth you were given is unusable* (4), and
+`--format json` emits the same report for a program to read. See
 [`aontu vet`](reference-api.md#aontu-vet).
 
 ## Provide defaults that callers can override

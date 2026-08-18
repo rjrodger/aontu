@@ -251,9 +251,26 @@ Semantics, in order:
 1. Evaluate `schema.aon` alone. If it errors, the *schema* is broken:
    verdict `error`, exit 4 — never blamed on the data.
 2. Select the anchor: the evaluated root, or the value at `--at`;
-   `--closed` wraps it in `close()`.
+   `--closed` wraps it in `close()`. `--at` is a STRUCTURAL path — map
+   keys and list indices, the same namespace a reference uses, with the
+   index spelled as a plain decimal integer. (Reading it off whatever a
+   value's `peg` held also walked into a junction's branches, a
+   constraint's own arguments and an array's `length`, which handed
+   back a JavaScript number as the anchor and made every document
+   valid.)
 3. Parse each data file with the Aontu parser, so every data node
-   carries `{row, col, url}` sites pointing into the data file.
+   carries `{row, col, url}` sites pointing into the data file. A data
+   file that does NOT parse is the data's fault: verdict `invalid`,
+   with one `parse`-class finding carrying the parser's own code and a
+   site in that file. (The plan was silent here, and the first
+   implementation answered `error` — the schema's verdict — which the
+   engine already contradicted one character away: a refused CONSTRUCT
+   such as a lossy integer literal reaches the tree as an ordinary nil
+   and is reported as invalid data. The fork was which branch the
+   parser happened to take.) Relative `@"file"` loads inside either
+   document resolve from THAT document's directory, as they do for
+   `aontu <file>`; vet still reads no file itself, so the caller passes
+   the paths (`schemaPath`/`dataPath`).
 4. Unify anchor & data under `{collect: true}`, then generate-check.
    Parsed trees are single-use, so each data file gets a fresh
    evaluation of the schema — the documented mutation caveat.
@@ -268,9 +285,9 @@ Semantics, in order:
 | Verdict      | Meaning                                        | Exit |
 |--------------|------------------------------------------------|------|
 | `valid`      | unifies, fully concrete (or `--partial`)       | 0    |
-| `invalid`    | at least one contradiction-class finding       | 1    |
+| `invalid`    | at least one contradiction-class finding, or a data document that would not parse | 1    |
 | `incomplete` | no contradiction, but residue remains          | 3    |
-| `error`      | schema unusable (parse/unify failure)          | 4    |
+| `error`      | the run cannot be set up from the schema side: an unusable schema, or an `--at` that names nothing | 4    |
 | —            | usage error (bad flags, unreadable file)       | 2    |
 
 Exit 2 stays reserved for usage, matching the existing CLI convention
@@ -510,7 +527,7 @@ assert codes.
 "TypeScript" qualifier is gone: the engine exists in both ports
 (`ts/src/vet.ts`, `go/vet.go`), because phase 4 is what makes the
 shared rows executable.
-Spec: [`test/spec/vet.tsv`](../../test/spec/vet.tsv) — 37 rows, run by
+Spec: [`test/spec/vet.tsv`](../../test/spec/vet.tsv) — 41 rows, run by
 both runners. **The row encoding was settled by probing.** `code@path`
 lists, written here before the reconnaissance below, are ruled out by
 its first constraint: no punctuation is safe as a separator, because

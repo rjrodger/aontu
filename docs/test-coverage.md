@@ -50,8 +50,8 @@ cd go && go tool cover -html=coverage.out   # annotated source
 | TypeScript — `ts/src` | functions | **100.00 %** (536/536) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **2669 TypeScript tests** and
-four green Go packages, including the **2246-row shared spec** that both
+Both suites pass in full via `make test`: **2684 TypeScript tests** and
+four green Go packages, including the **2256-row shared spec** that both
 engines execute.
 
 The absolute figures above move with every change and are reproduced,
@@ -101,7 +101,7 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **2246 cases across 61 files** — is run by *both*
+`test/spec/*.tsv` — **2256 cases across 61 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
@@ -117,10 +117,10 @@ implementations and is the contract that defines shared behaviour
 | `constraint-bound.tsv`      |  74 | `map.tsv`            | 20 |
 | `errcodes.tsv`              |  70 | `plus.tsv`           | 14 |
 | `number-cross-product.tsv`  |  59 | `conjunct.tsv`       | 13 |
-| `ref.tsv`                   |  48 | `merge-conflict.tsv` | 13 |
-| `scalar.tsv`                |  40 | `op-chars.tsv`       | 13 |
-| `optional.tsv`              |  37 | `close.tsv`          |  9 |
-| `vet.tsv`                   |  37 | `incomplete.tsv`     |  9 |
+| `ref.tsv`                   |  54 | `merge-conflict.tsv` | 13 |
+| `vet.tsv`                   |  41 | `op-chars.tsv`       | 13 |
+| `scalar.tsv`                |  40 | `close.tsv`          |  9 |
+| `optional.tsv`              |  37 | `incomplete.tsv`     |  9 |
 | `constraint-must.tsv`       |  34 | `list.tsv`           |  7 |
 | `error.tsv`                 |  34 | `comment.tsv`        |  6 |
 | `constraint-cross.tsv`      |  30 | `divergent.tsv`      |  0 |
@@ -162,7 +162,7 @@ column carries the data document that meets the schema in `src`).
 Only what a shared row cannot express gets a per-port test — ADR-001
 prefers a row precisely because one row lifts both engines:
 
-**TypeScript** (`ts/test/*.test.ts`, 2669 tests, 2246 of them shared
+**TypeScript** (`ts/test/*.test.ts`, 2684 tests, 2256 of them shared
 rows): every built-in function in depth, the exact leaves, the public
 API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
 the validation verb (`vet.test.ts`, and the verb's cases in
@@ -189,7 +189,7 @@ engine never builds.
 
 ## The exclusions, in full
 
-100 % is only meaningful if what was excluded is visible. Twenty Go
+100 % is only meaningful if what was excluded is visible. Twenty-two Go
 statements carry a `//coverage:ignore` marker; TypeScript carries none
 at all beyond the export blocks (see below). Every marker states, in
 the source, what state would be required and why nothing can produce it
@@ -197,7 +197,7 @@ the source, what state would be required and why nothing can produce it
 ([ADR-002](../ADR.md#adr-002--test-coverage-stays-at-100--in-both-implementations),
 rule 3).
 
-### Go — 20 statements
+### Go — 22 statements
 
 | Site | Why it cannot be reached |
 |------|--------------------------|
@@ -209,6 +209,7 @@ rule 3).
 | `disjunct.go` — the nil check after an equal-rank pref merge | `PrefVal.Unify` with a pref peer always yields a pref, never a bare nil. |
 | `op.go` — the trailing `return nil` of `operate` | `peg` is provably one of string, bool or float64, all handled above. |
 | `val.go` — the caret-column clamp in `NilVal.frame` | `rowCol` never returns a column below 1. |
+| `vet.go` × 2 — the non-`*AontuError` and empty-code arms of `dataParseFinding` | Every parse failure path in `lang.go` returns an `*AontuError` and names a code; the two arms exist so the report cannot be built from nothing if one ever does not. |
 | `cmd/aontu/main.go`, `cmd/aontu-lsp/main.go` — `main()` | Executed for real by the `GOCOVERDIR` leg of `make cov-go`; the marker keeps the unit-only profile honest rather than excusing an untested function. |
 
 The markers are implemented by `go/scripts/covmerge`, which parses the

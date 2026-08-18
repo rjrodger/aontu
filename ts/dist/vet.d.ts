@@ -30,5 +30,8 @@ export type VetOptions = {
     maxErrors?: number;
     schemaUrl?: string;
     dataUrl?: string;
+    schemaPath?: string;
+    dataPath?: string;
 };
+export declare const VET_MAX_ERRORS = 20;
 export declare function vet(schemaSrc: string, dataSrc: string, opts?: VetOptions): VetReport;

@@ -190,6 +190,26 @@ describe('cli-vet', () => {
   })
 
 
+  // A data document that will not parse is the DATA's fault: exit 1
+  // with a finding naming the file, not exit 4, which says the schema
+  // is unusable. And one bad file among several must not blank the
+  // findings the others earned.
+  test('vet-unparseable-data-exits-1-and-names-the-file', () => {
+    const f = vetFiles(VET_SCHEMA, 'service: ]')
+    const r = vetCapture(() => Assert.equal(runVet([f.schema, f.data]), 1))
+    Assert.match(r.out, /verdict: invalid/)
+    Assert.match(r.out, /\$: syntax \[parse\]/)
+    Assert.match(r.out, /data: .*data\.json:-1:-1 \(nil\)/)
+
+    const good = Path.join(f.dir, 'good.json')
+    Fs.writeFileSync(good, 'service: { name: 1, port: 8080 }')
+    const both = vetCapture(() =>
+      Assert.equal(runVet([f.schema, good, f.data]), 1))
+    Assert.match(both.out, /no_scalar_unify/)
+    Assert.match(both.out, /syntax/)
+  })
+
+
   test('vet-json-format-names-its-producer', () => {
     const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }')
     const r = vetCapture(() => runVet(['--format', 'json', f.schema, f.data]))
@@ -200,6 +220,28 @@ describe('cli-vet', () => {
     Assert.equal(report.truncated, false)
     Assert.equal(report.findings[0].code, 'no_scalar_unify')
     Assert.equal(report.findings[0].sites[0].role, 'data')
+  })
+
+
+  // A relative `@"file"` load inside either document resolves from THAT
+  // document's directory, not from wherever the command was run —
+  // which is what `aontu <file>` has always done. Before this, a
+  // modular schema vetted from another directory came back `error`,
+  // and a same-named file in the working directory was read instead.
+  test('vet-resolves-includes-from-each-document', () => {
+    const f = vetFiles('@"part.aon"\nname: string', 'name: "auth"\nport: 8080')
+    Fs.writeFileSync(Path.join(f.dir, 'part.aon'), 'port: integer')
+
+    const cwd = process.cwd()
+    const decoy = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-cwd-'))
+    Fs.writeFileSync(Path.join(decoy, 'part.aon'), 'port: string')
+    try {
+      process.chdir(decoy)
+      vetCapture(() => Assert.equal(runVet([f.schema, f.data]), 0))
+    }
+    finally {
+      process.chdir(cwd)
+    }
   })
 
 
@@ -235,6 +277,17 @@ describe('cli-vet', () => {
       Assert.equal(runVet([f.schema, f.data, bad]), 1))
     Assert.match(r.out, /verdict: invalid/)
     Assert.match(r.out, /bad\.json/)
+  })
+
+
+  // The usage errors all end with "(try --help)", so the verb answers
+  // to it: same text as `aontu --help`, exit 0.
+  test('vet-help-is-help-not-an-unknown-option', () => {
+    for (const args of [['--help'], ['-h'], ['--help', 'a.aon', 'b.json']]) {
+      const r = vetCapture(() => Assert.equal(runVet(args), 0))
+      Assert.match(r.out, /aontu vet \[options\]/)
+      Assert.equal(r.err, '')
+    }
   })
 
 
@@ -276,13 +329,15 @@ describe('cli-vet', () => {
   })
 
 
-  // A value the walk never reaches has no file name to report — a
-  // preference's synthesised type yardstick is one — and the line
-  // renders with an empty file rather than the word "undefined".
-  test('vet-site-without-a-file-renders-empty', () => {
+  // An OFF-PEG value still names its document: a preference's
+  // synthesised type yardstick is not a peg entry, so provenance
+  // reaches it only because the stamp walk follows it deliberately.
+  // Before that it belonged to neither document, and the report said
+  // so by naming no file at all.
+  test('vet-site-off-peg-still-names-its-document', () => {
     const f = vetFiles('a: *1', 'a: {}')
     const r = vetCapture(() => runVet([f.schema, f.data]))
-    Assert.match(r.out, /schema: :1:\d+ \(number\)/)
+    Assert.match(r.out, /schema: .*schema\.aon:1:\d+ \(number\)/)
   })
 
 

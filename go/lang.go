@@ -2131,9 +2131,15 @@ func parseBase(src, base, file string) (Val, error) {
 	if off := findConflictMarker(src); off >= 0 {
 		n := newNil("merge_conflict")
 		n.sp = off
+		// The marker's row and column ride along: the canonical port
+		// puts them on the refusal's site, and the validation verb
+		// reports them (vet.go).
+		row, col := rowCol(src, off)
 		return newMap(), &AontuError{
 			Msg:  n.FullMessage(src, file),
 			Code: "merge_conflict",
+			Row:  row,
+			Col:  col,
 		}
 	}
 

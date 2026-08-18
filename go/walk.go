@@ -56,6 +56,13 @@ func walkVals(v Val, visit func(Val) bool, seen map[Val]bool) {
 		}
 	case *PrefVal:
 		walkVals(n.peg, visit, seen)
+		// OFF-PEG, and reportable: the type yardstick and the family
+		// gate a preference derives from its own value are what
+		// `*1 & {}` conflicts with, so a caller that stamps provenance
+		// (vet.go) has to reach them or the report cannot say which
+		// document they came from (ts/src/walk.ts does the same).
+		walkVals(n.superpeg, visit, seen)
+		walkVals(n.familypeg, visit, seen)
 	case *PlusOpVal:
 		for _, t := range n.peg {
 			walkVals(t, visit, seen)
@@ -73,6 +80,11 @@ func walkVals(v Val, visit func(Val) bool, seen map[Val]bool) {
 			for _, a := range n.pending.args {
 				walkVals(a, visit, seen)
 			}
+		}
+		// The value a `must` checks against is off-peg too, and it is
+		// the operand a failed check reports.
+		for _, m := range n.musts {
+			walkVals(m.v, visit, seen)
 		}
 	}
 }

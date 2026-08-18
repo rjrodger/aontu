@@ -107,6 +107,33 @@ func TestVetExitCodesAreVerdictClasses(t *testing.T) {
 	}
 }
 
+// A data document that will not parse is the DATA's fault: exit 1 with
+// a finding naming the file, not exit 4, which says the schema is
+// unusable. And one bad file among several must not blank the findings
+// the others earned.
+func TestVetUnparseableDataExits1AndNamesTheFile(t *testing.T) {
+	dir, s, d := vetFiles(t, vetSchemaSrc, "service: ]")
+	out, _, code := vetRun(s, d)
+	if 1 != code {
+		t.Fatalf("code: %d", code)
+	}
+	vetMatch(t, out, `verdict: invalid`)
+	vetMatch(t, out, `\$: syntax \[parse\]`)
+	vetMatch(t, out, `data: .*data\.json:-1:-1 \(nil\)`)
+
+	good := filepath.Join(dir, "good.json")
+	if err := os.WriteFile(good,
+		[]byte(`service: { name: 1, port: 8080 }`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	both, _, code := vetRun(s, good, d)
+	if 1 != code {
+		t.Fatalf("mixed code: %d", code)
+	}
+	vetMatch(t, both, `no_scalar_unify`)
+	vetMatch(t, both, `syntax`)
+}
+
 func TestVetJSONFormatNamesItsProducer(t *testing.T) {
 	_, s, d := vetFiles(t, vetSchemaSrc, `service: { name: "auth", port: "8080" }`)
 	out, _, _ := vetRun("--format", "json", s, d)
@@ -145,6 +172,37 @@ func TestVetJSONFormatNamesItsProducer(t *testing.T) {
 		strings.Index(out, "\"truncated\"") < strings.Index(out, "\"findings\"") ||
 		strings.Index(out, "\"verdict\"") < strings.Index(out, "\"truncated\"") {
 		t.Fatalf("keys are not in sorted order:\n%s", out)
+	}
+}
+
+// A relative `@"file"` load inside either document resolves from THAT
+// document's directory, not from wherever the command was run — which
+// is what `aontu <file>` has always done. Before this, a modular schema
+// vetted from another directory came back `error`, and a same-named
+// file in the working directory was read instead.
+func TestVetResolvesIncludesFromEachDocument(t *testing.T) {
+	dir, s, d := vetFiles(t, "@\"part.aon\"\nname: string", "name: \"auth\"\nport: 8080")
+	if err := os.WriteFile(filepath.Join(dir, "part.aon"),
+		[]byte("port: integer"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	decoy := t.TempDir()
+	if err := os.WriteFile(filepath.Join(decoy, "part.aon"),
+		[]byte("port: string"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(decoy); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(cwd)
+
+	if _, errText, code := vetRun(s, d); 0 != code {
+		t.Fatalf("code %d: %s", code, errText)
 	}
 }
 
@@ -190,6 +248,18 @@ func TestVetTakesMoreThanOneDataFile(t *testing.T) {
 	}
 	vetMatch(t, out, `verdict: invalid`)
 	vetMatch(t, out, `bad\.json`)
+}
+
+// The usage errors all end with "(try --help)", so the verb answers to
+// it: same text as `aontu --help`, exit 0.
+func TestVetHelpIsHelpNotAnUnknownOption(t *testing.T) {
+	for _, args := range [][]string{{"--help"}, {"-h"}, {"--help", "a.aon", "b.json"}} {
+		out, errText, code := vetRun(args...)
+		if 0 != code || "" != errText {
+			t.Fatalf("%v: code %d, stderr %q", args, code, errText)
+		}
+		vetMatch(t, out, `aontu vet \[options\]`)
+	}
 }
 
 func TestVetUsageErrorsExit2(t *testing.T) {
@@ -243,13 +313,13 @@ func TestVetNoteAndAlternativesReachTheTextReport(t *testing.T) {
 	vetMatch(t, out, `actual: +80`)
 }
 
-// A value the walk never reaches has no file name to report — a
-// preference's synthesised type yardstick is one — and the line renders
-// with an empty file rather than a placeholder.
-func TestVetSiteWithoutAFileRendersEmpty(t *testing.T) {
+// An OFF-PEG value still names its document: a preference's
+// synthesised type yardstick is not a peg entry, so provenance reaches
+// it only because the stamp walk follows it deliberately.
+func TestVetSiteOffPegStillNamesItsDocument(t *testing.T) {
 	_, s, d := vetFiles(t, "a: *1", "a: {}")
 	out, _, _ := vetRun(s, d)
-	vetMatch(t, out, `schema: :1:\d+ \(number\)`)
+	vetMatch(t, out, `schema: .*schema\.aon:1:\d+ \(number\)`)
 }
 
 // The verb dispatches only as the FIRST argument, so a file argument is

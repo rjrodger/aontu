@@ -101,19 +101,30 @@ function loadRows(): Row[] {
     const text = Fs.readFileSync(Path.join(SPEC_DIR, file), 'utf8')
     // Split on \n and tolerate CRLF checkouts (e.g. Windows) by dropping
     // any trailing \r so the last field never carries a stray carriage return.
+    let lineno = 0
     for (const line of text.split('\n').map((l) => l.replace(/\r$/, ''))) {
+      lineno++
       if ('' === line || line.startsWith('#')) {
         continue
       }
       const parts = line.split('\t')
-      if (parts.length < 4) {
-        continue
-      }
-      // A vet row carries two documents, so its expect is the FIFTH
-      // column; every other mode reads four and ignores any extra.
+      // MALFORMED IS LOUD, not skipped. A row that is short by a column
+      // -- a `vet` row whose expected report was left off, say -- would
+      // otherwise be dropped in silence, and a suite that quietly runs
+      // one row fewer stays green while the behaviour it claims to pin
+      // goes unpinned. The Go runner refuses the same shapes.
+      //
+      // This, and not a row COUNT, is the guard: a count would have to
+      // be edited by every change that adds a row, and a number nobody
+      // trusts is a number nobody updates honestly. The only count
+      // asserted is that the files were found at all
+      // (spec-files-present below).
       const vetRow = 'vet' === parts[1]
-      if (vetRow && parts.length < 5) {
-        continue
+      const want = vetRow ? 5 : 4
+      if (parts.length < want) {
+        throw new Error(
+          `malformed spec row: ${file} line ${lineno}: ${want} columns` +
+          ` required for mode "${parts[1]}", found ${parts.length}`)
       }
       rows.push({
         file,

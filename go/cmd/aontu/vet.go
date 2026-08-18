@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,9 @@ import (
 )
 
 const vetHelp = "aontu vet <schema> <data> [more-data...] (try --help)"
+
+// maxErrorsRe is the shared --max-errors grammar (see parseVetArgs).
+var maxErrorsRe = regexp.MustCompile(`^[0-9]{1,9}$`)
 
 var vetExit = map[string]int{
 	aontu.VetValid:      0,
@@ -44,6 +48,7 @@ var vetRank = map[string]int{
 }
 
 type vetArgs struct {
+	help      bool
 	schema    string
 	data      []string
 	format    string
@@ -62,6 +67,12 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 	for i := 0; i < len(argv); i++ {
 		arg := argv[i]
 		switch {
+		// -h/--help before anything else, INCLUDING the file count: the
+		// usage errors below all end with "(try --help)", and a verb
+		// that then refused --help as an unknown option was sending the
+		// reader in a circle.
+		case "-h" == arg, "--help" == arg:
+			return &vetArgs{help: true, format: args.format}, ""
 		case "--at" == arg:
 			i++
 			if len(argv) <= i {
@@ -75,11 +86,25 @@ func parseVetArgs(argv []string) (*vetArgs, string) {
 			}
 			args.format = argv[i]
 		case "--max-errors" == arg:
+			// ONE GRAMMAR, spelled the same way in both ports: decimal
+			// digits, one to nine of them, at least 1. Atoi alone
+			// accepted a leading sign and SATURATED on overflow (a
+			// twenty-digit argument silently became MaxInt64), while
+			// the canonical port's Number() accepted `1.0`, `1e2` and
+			// `0x10` -- so the same documented invocation meant
+			// different things in the two shipped commands.
 			i++
-			n := 0
+			raw := ""
 			if len(argv) > i {
-				n, _ = strconv.Atoi(argv[i])
+				raw = argv[i]
 			}
+			if !maxErrorsRe.MatchString(raw) {
+				return nil, "aontu: --max-errors needs a positive whole number"
+			}
+			// Atoi cannot fail on one to nine digits, so its error is
+			// dropped; zero is the one value the grammar still admits
+			// and the check below refuses.
+			n, _ := strconv.Atoi(raw)
 			if n < 1 {
 				return nil, "aontu: --max-errors needs a positive whole number"
 			}
@@ -126,12 +151,8 @@ func renderFinding(f aontu.VetFinding) string {
 		// Every site carries the canon of the value it stands for: that
 		// is what makes the two sides of a conflict readable side by
 		// side. A site with no file name renders as none.
-		file := ""
-		if nil != s.File {
-			file = *s.File
-		}
 		out = append(out, fmt.Sprintf("  %s: %s:%d:%d (%s)",
-			s.Role, file, s.Row, s.Col, s.Value))
+			s.Role, s.File, s.Row, s.Col, s.Value))
 	}
 
 	return strings.Join(out, "\n")
@@ -198,6 +219,11 @@ func runVet(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	if args.help {
+		fmt.Fprint(stdout, helpText)
+		return 0
+	}
+
 	schemaSrc, err := os.ReadFile(args.schema)
 	if err != nil {
 		fmt.Fprintf(stderr, "aontu: cannot read %s: %v\n", args.schema, err)
@@ -229,6 +255,15 @@ func runVet(argv []string, stdout, stderr io.Writer) int {
 			MaxErrors: args.maxErrors,
 			SchemaURL: args.schema,
 			DataURL:   source.file,
+			// The paths as well as the labels: a relative `@"file"`
+			// load inside either document resolves from ITS OWN
+			// directory, the way `aontu <file>` already resolves one
+			// (aontuForFile in main.go). The path is passed AS TYPED,
+			// not resolved: it doubles as the label above, and a
+			// report that mixed the typed path with an absolute one
+			// would name the same file two ways.
+			SchemaPath: args.schema,
+			DataPath:   source.file,
 		})
 
 		if vetRank[verdict] < vetRank[report.Verdict] {
@@ -236,6 +271,21 @@ func runVet(argv []string, stdout, stderr io.Writer) int {
 		}
 		truncated = truncated || report.Truncated
 		findings = append(findings, report.Findings...)
+	}
+
+	// The cap is on the REPORT, not on each file. Capping every file's
+	// list and then concatenating them let `--max-errors 1` emit one
+	// finding PER FILE -- and leave `truncated` false while doing it,
+	// because no single file had been cut. The engine still caps each
+	// run, so a pathological file cannot flood the aggregate before it
+	// gets here; this is the second, honest cut.
+	cap := args.maxErrors
+	if 0 == cap {
+		cap = aontu.VetMaxErrors
+	}
+	if cap < len(findings) {
+		truncated = true
+		findings = findings[:cap]
 	}
 
 	report := aontu.VetReport{Verdict: verdict, Truncated: truncated, Findings: findings}

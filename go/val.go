@@ -670,6 +670,16 @@ type AontuError struct {
 	// message text -- are in cross-implementation parity, registered in
 	// test/spec/errcodes.tsv and pinned by `errc` spec rows.
 	Code string
+
+	// Row and Col locate a PARSE failure, 1-based, or -1 when the
+	// failure knows no position. Only the merge-conflict refusal fills
+	// them today, which is exactly where the canonical port carries a
+	// position too (its other parse failures leave the site at -1:-1,
+	// with the coordinates only inside the rendered message). The
+	// validation verb reports them (vet.go), so the two ports have to
+	// know the same things here.
+	Row int
+	Col int
 }
 
 func (e *AontuError) Error() string { return e.Msg }

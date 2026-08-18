@@ -17,6 +17,7 @@ const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");
 const node_readline_1 = require("node:readline");
 const aontu_1 = require("./aontu");
+const vet_1 = require("./vet");
 const HELP = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
 
@@ -186,6 +187,13 @@ function parseVetArgs(argv) {
     let maxErrors;
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
+        // `-h`/`--help` before anything else, INCLUDING the file count:
+        // the usage errors below all end with "(try --help)", and a verb
+        // that then refused --help as an unknown option was sending the
+        // reader in a circle.
+        if ('-h' === arg || '--help' === arg) {
+            return { args: { help: true, schema: '', data: [], format } };
+        }
         if ('--at' === arg) {
             at = argv[++i];
             if (null == at) {
@@ -200,11 +208,19 @@ function parseVetArgs(argv) {
             format = f;
         }
         else if ('--max-errors' === arg) {
-            const n = Number(argv[++i]);
-            if (!Number.isInteger(n) || n < 1) {
+            // ONE GRAMMAR, spelled the same way in both ports: decimal
+            // digits, one to nine of them, at least 1. `Number()` alone
+            // accepted `1.0`, `1e2`, `0x10` and ` 3`, which Go's parser
+            // refuses -- so the same documented invocation meant different
+            // things in the two shipped commands. The nine-digit ceiling is
+            // where the ports would part company again: beyond it Go's
+            // integer conversion saturates, and a cap nobody can reach is
+            // not worth a divergence.
+            const raw = argv[++i];
+            if (!/^[0-9]{1,9}$/.test(raw ?? '') || 1 > Number(raw)) {
                 return { err: 'aontu: --max-errors needs a positive whole number' };
             }
-            maxErrors = n;
+            maxErrors = Number(raw);
         }
         else if ('--closed' === arg) {
             closed = true;
@@ -296,6 +312,10 @@ function runVet(argv) {
         return 2;
     }
     const args = parsed.args;
+    if (true === args.help) {
+        process.stdout.write(HELP);
+        return 0;
+    }
     let schemaSrc;
     const sources = [];
     try {
@@ -322,6 +342,14 @@ function runVet(argv) {
             maxErrors: args.maxErrors,
             schemaUrl: args.schema,
             dataUrl: source.file,
+            // The paths as well as the labels: a relative `@"file"` load
+            // inside either document resolves from ITS OWN directory, the
+            // way `aontu <file>` already resolves one (runFile above). The
+            // path is passed AS TYPED, not resolved: it doubles as the
+            // label above, and a report that mixed the typed path with an
+            // absolute one would name the same file two ways.
+            schemaPath: args.schema,
+            dataPath: source.file,
         });
         if (VET_RANK[verdict] < VET_RANK[report.verdict]) {
             verdict = report.verdict;
@@ -329,7 +357,19 @@ function runVet(argv) {
         truncated = truncated || report.truncated;
         findings.push(...report.findings);
     }
-    const report = { verdict, truncated, findings };
+    // The cap is on the REPORT, not on each file. Capping every file's
+    // list and then concatenating them let `--max-errors 1` emit one
+    // finding PER FILE -- and leave `truncated` false while doing it,
+    // because no single file had been cut. The engine still caps each
+    // run, so a pathological file cannot flood the aggregate before it
+    // gets here; this is the second, honest cut.
+    const cap = args.maxErrors ?? vet_1.VET_MAX_ERRORS;
+    const kept = cap < findings.length ? findings.slice(0, cap) : findings;
+    const report = {
+        verdict,
+        truncated: truncated || cap < findings.length,
+        findings: kept,
+    };
     const text = 'json' === args.format
         ? renderVetJson(report) : renderVetText(report);
     process.stdout.write(text + '\n');

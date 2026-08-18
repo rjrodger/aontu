@@ -32,6 +32,8 @@ package aontu
 // suite's goldens exclude it.
 
 import (
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -56,8 +58,13 @@ const (
 	VetRoleSchema = "schema"
 )
 
+// VetMaxErrors is the default cap on a report's finding list. Exported
+// because the command applies it to the WHOLE report across several
+// data files and must not carry a second copy of the number
+// (cmd/aontu/vet.go).
+const VetMaxErrors = 20
+
 const (
-	vetMaxErrors = 20
 	vetSchemaURL = "schema"
 	vetDataURL   = "data"
 )
@@ -69,15 +76,14 @@ const (
 // already sorted.
 type VetSite struct {
 	Col int `json:"col"`
-	// File is a POINTER because a site may have NO file: a value
-	// unification minted belongs to neither document. TypeScript spells
-	// that as an undefined url, which its emitter drops, so a plain
-	// string field here would write `"file": ""` where the canonical
-	// report writes no key at all.
-	File  *string `json:"file,omitempty"`
-	Role  string  `json:"role"`
-	Row   int     `json:"row"`
-	Value string  `json:"value"`
+	// File is ALWAYS present, and empty when the value belongs to
+	// neither document -- one unification minted, rather than one
+	// either document wrote. A consumer reads `file` without a presence
+	// check; the canonical port coerces the same way.
+	File  string `json:"file"`
+	Role  string `json:"role"`
+	Row   int    `json:"row"`
+	Value string `json:"value"`
 }
 
 // VetFinding is one thing that does not hold. The optional fields are
@@ -120,6 +126,31 @@ type VetOptions struct {
 	MaxErrors int
 	SchemaURL string // provenance label for schema sites
 	DataURL   string // provenance label for data sites
+
+	// SchemaPath and DataPath are where each document CAME FROM, used
+	// to resolve its relative `@"file"` loads -- the FILE path, as the
+	// canonical port's `{path}` option takes it, not the directory
+	// (this side does the Dir() itself). Vet takes two documents from
+	// its caller rather than from the filesystem, so it cannot know
+	// this: without it a modular schema resolved its includes against
+	// the process working directory, which fails outside that
+	// directory and, worse, silently reads a same-named file that
+	// happens to sit there. The two documents get their OWN bases,
+	// because they need not live in the same place.
+	SchemaPath string
+	DataPath   string
+}
+
+// aontuForPath builds an engine whose relative `@"file"` loads resolve
+// against the directory holding path. The twin of cmd/aontu's
+// aontuForFile, and of the per-parse `path` option the canonical port
+// hands to its parser. An empty path means the process working
+// directory, which is what New() already does.
+func aontuForPath(path string) *Aontu {
+	if "" == path {
+		return New()
+	}
+	return NewWithBase(filepath.Dir(path))
 }
 
 // vetSources maps a stamped url to the text its offsets index into.
@@ -138,25 +169,15 @@ func siteOf(v Val, dataURL string, sources vetSources) *VetSite {
 	if v == nil {
 		return nil
 	}
-	// Named or not, and nothing in between. TypeScript's url has a third
-	// state — the empty string, which its freshly minted values carry
-	// while parsed ones carry undefined — but no value a report can
-	// reach is in it: the two documents are stamped before they meet, so
-	// an unnamed site is one unification minted, and that reports no
-	// file rather than an empty one.
-	var file *string
-	name := v.srcurl()
-	if "" != name {
-		file = &name
-	}
+	file := v.srcurl()
 	role := VetRoleSchema
-	if nil != file && dataURL == *file {
+	if dataURL == file {
 		role = VetRoleData
 	}
 	// An unstamped value (one minted with no source name) is counted
 	// against the data text, which is the same fallback the error
 	// frames make with ctx.src.
-	src, ok := sources[name]
+	src, ok := sources[file]
 	if !ok {
 		src = sources[dataURL]
 	}
@@ -266,10 +287,6 @@ func vetOrderKey(f VetFinding, index int) string {
 	if 0 < len(f.Sites) {
 		site = f.Sites[0]
 	}
-	file := ""
-	if nil != site.File {
-		file = *site.File
-	}
 	pad := func(n int) string {
 		s := strconv.Itoa(n)
 		if len(s) < vetOrderPad {
@@ -278,7 +295,7 @@ func vetOrderKey(f VetFinding, index int) string {
 		return s
 	}
 	return strings.Join([]string{
-		file, pad(site.Row), pad(site.Col), f.Code, f.Path, pad(index),
+		site.File, pad(site.Row), pad(site.Col), f.Code, f.Path, pad(index),
 	}, "\x00")
 }
 
@@ -300,8 +317,11 @@ func anchorAt(root Val, at string) Val {
 			}
 			node = child
 		case *ListVal:
-			i, err := strconv.Atoi(part)
-			if err != nil || i < 0 || len(n.peg) <= i {
+			// The same canonical-decimal index a reference takes
+			// (listIndex, ref.go), so `$.a.01` names nothing here
+			// exactly as it names nothing there.
+			i, ok := listIndex(part)
+			if !ok || len(n.peg) <= i {
 				return nil
 			}
 			node = n.peg[i]
@@ -310,6 +330,51 @@ func anchorAt(root Val, at string) Val {
 		}
 	}
 	return node
+}
+
+// ansiRe matches the terminal colour escapes the parser puts in its
+// message text. A machine-readable report is no place for them.
+var ansiRe = regexp.MustCompile("\u001b\\[[0-9;]*m")
+
+// dataParseFinding projects a data document's parse failure as the one
+// finding the report carries. Built by hand rather than through a
+// NilVal because the parse never produced one: what Go has is the
+// error, and the error already knows the code, the position and the
+// text (val.go, AontuError).
+func dataParseFinding(dataURL string, err error) VetFinding {
+	ae, ok := err.(*AontuError)
+	if !ok { //coverage:ignore every parse failure path returns an *AontuError (lang.go)
+		ae = &AontuError{Msg: err.Error(), Code: "parse", Row: -1, Col: -1}
+	}
+	code := ae.Code
+	if "" == code { //coverage:ignore parseBase names a code on every failure path
+		code = "parse"
+	}
+	row, col := ae.Row, ae.Col
+	if 0 == row && 0 == col {
+		// An error that carries no position: the zero value, not a
+		// located 0:0, which cannot occur (rows and columns are
+		// 1-based).
+		row, col = -1, -1
+	}
+	message := ansiRe.ReplaceAllString(ae.Msg, "")
+	if i := strings.IndexByte(message, '\n'); 0 <= i {
+		message = message[:i]
+	}
+	return VetFinding{
+		Class:    codeClass(code),
+		Code:     code,
+		Message:  message,
+		Path:     "$",
+		Severity: "error",
+		Sites: []VetSite{{
+			Col:   col,
+			File:  dataURL,
+			Role:  VetRoleData,
+			Row:   row,
+			Value: "nil",
+		}},
+	}
 }
 
 // Vet validates dataSrc against schemaSrc.
@@ -338,18 +403,21 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	if "" != options.DataURL {
 		dataURL = options.DataURL
 	}
-	maxErrors := vetMaxErrors
+	maxErrors := VetMaxErrors
 	if 0 < options.MaxErrors {
 		maxErrors = options.MaxErrors
 	}
 
 	broken := VetReport{Verdict: VetError, Truncated: false, Findings: []VetFinding{}}
 
-	a := New()
+	// TWO instances, because the two documents may live in different
+	// directories and each one's includes resolve from its own.
+	schemaA := aontuForPath(options.SchemaPath)
+	dataA := aontuForPath(options.DataPath)
 
 	// 1. The schema alone. If it does not stand up on its own, the data
 	//    is never blamed for it.
-	schemaParsed, perr := a.Parse(schemaSrc)
+	schemaParsed, perr := schemaA.Parse(schemaSrc)
 	if perr != nil {
 		return broken
 	}
@@ -371,9 +439,26 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 
 	// 3. Both documents get their provenance stamped BEFORE they meet,
 	//    so every site in the result knows which document it came from.
-	dataVal, derr := a.Parse(dataSrc)
+	dataVal, derr := dataA.Parse(dataSrc)
 	if derr != nil {
-		return broken
+		// A DATA DOCUMENT THAT WILL NOT PARSE IS THE DATA'S FAULT, and
+		// the report says so: verdict `invalid`, with a finding
+		// carrying the parser's own code and a site in the data.
+		// `error` is left to mean what the exit table says it means --
+		// the run could not be set up from the SCHEMA side.
+		//
+		// The engine already answered it this way one character
+		// earlier: a refused CONSTRUCT (`a: 9007199254740993`) reaches
+		// the tree as an ordinary nil and is reported as an invalid
+		// data finding. A stray `]` took the throwing path instead and
+		// came back as a broken SCHEMA -- the same fault, classified
+		// two opposite ways by which branch the parser happened to
+		// take.
+		return VetReport{
+			Verdict:   VetInvalid,
+			Truncated: false,
+			Findings:  []VetFinding{dataParseFinding(dataURL, derr)},
+		}
 	}
 	stampURL(anchor, schemaURL)
 	stampURL(dataVal, dataURL)

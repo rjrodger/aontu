@@ -745,3 +745,28 @@ func TestLexMatcherGuards(t *testing.T) {
 		t.Fatalf("block comment must stop the text extent, got %d", sI)
 	}
 }
+
+// listIndex is the canonical-decimal grammar a path segment must match
+// to be a list index — the rule references and `vet --at` share, and
+// the rule the canonical port gets for free from JavaScript array
+// indexing. `strconv.Atoi` had been standing in for it, and accepted a
+// sign and leading zeros.
+func TestListIndexIsCanonicalDecimal(t *testing.T) {
+	for _, ok := range []struct {
+		part string
+		idx  int
+	}{{"0", 0}, {"1", 1}, {"12", 12}, {"907", 907}} {
+		if i, valid := listIndex(ok.part); !valid || i != ok.idx {
+			t.Fatalf("listIndex(%q) = %d, %v", ok.part, i, valid)
+		}
+	}
+	for _, bad := range []string{
+		"", "01", "007", "-1", "-0", "+1", "x", "1x", " 1", "1.0",
+		// A digit run that is not a number this machine can index by.
+		"999999999999999999999999",
+	} {
+		if i, valid := listIndex(bad); valid {
+			t.Fatalf("listIndex(%q) = %d, accepted", bad, i)
+		}
+	}
+}

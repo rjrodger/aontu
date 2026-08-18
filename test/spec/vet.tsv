@@ -41,10 +41,15 @@ vet-invalid-kind	vet	service:{name:string,port:integer}	service:{name:"auth",por
 vet-incomplete	vet	service:{name:string,port:integer}	service:{name:"auth"}	{"findings":[{"class":"incomplete","code":"mapval_no_gen","path":"$.service.port","severity":"error","sites":[{"col":27,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"truncated":false,"verdict":"incomplete"}
 vet-partial-allows-residue	vet	service:{name:string,port:integer}	service:{name:"auth"}	{"findings":[{"class":"incomplete","code":"mapval_no_gen","path":"$.service.port","severity":"error","sites":[{"col":27,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"opts":{"partial":true},"truncated":false,"verdict":"valid"}
 vet-conflict-outranks-residue	vet	service:{name:string,port:integer}	service:{name:1}	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.service.name","severity":"error","sites":[{"col":15,"file":"data","role":"data","row":1,"value":"1"},{"col":15,"file":"schema","role":"schema","row":1,"value":"string"}]},{"class":"incomplete","code":"mapval_no_gen","path":"$.service.port","severity":"error","sites":[{"col":27,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"truncated":false,"verdict":"invalid"}
-# A schema that does not stand up on its own is never blamed on data,
-# and neither document is blamed for the other failing to parse.
+# A schema that does not stand up on its own is never blamed on data:
+# verdict `error`, which is what the exit table means by exit 4. A DATA
+# document that will not parse is the DATA's fault, so it is `invalid`
+# with a finding carrying the parser's own code -- the same answer the
+# engine already gave one character earlier, where a refused construct
+# (vet-refused-construct below) reaches the tree as an ordinary nil.
 vet-schema-error	vet	a:1 a:2	a:1	{"findings":[],"truncated":false,"verdict":"error"}
-vet-data-unparseable	vet	a:integer	a: ]	{"findings":[],"truncated":false,"verdict":"error"}
+vet-data-unparseable	vet	a:integer	a: ]	{"findings":[{"class":"parse","code":"syntax","path":"$","severity":"error","sites":[{"col":-1,"file":"data","role":"data","row":-1,"value":"nil"}]}],"truncated":false,"verdict":"invalid"}
+vet-data-merge-conflict	vet	a:integer	a:1\n<<<<<<< HEAD\nb:2	{"findings":[{"class":"parse","code":"merge_conflict","path":"$","severity":"error","sites":[{"col":1,"file":"data","role":"data","row":2,"value":"nil"}]}],"truncated":false,"verdict":"invalid"}
 vet-schema-unparseable	vet	a: ]	a:1	{"findings":[],"truncated":false,"verdict":"error"}
 # --- findings ---------------------------------------------------------
 # The data site is listed first: it is the thing to fix. Roles come from
@@ -80,14 +85,15 @@ vet-spread-template	vet	services:&:{port:integer}	services:{auth:{port:"80"}}	{"
 # SITES. A failure raised about a construct rather than a failed meet
 # carries no operands, and is reported about itself. A junction is given
 # no position by either parser, so its site is -1:-1 rather than a
-# coordinate it does not have. A value the walk never reaches -- a
-# preference's synthesised type yardstick -- has no file name at all,
-# and the key is absent rather than empty. Columns count UTF-16 code
-# units, as the canonical port's sites do.
+# coordinate it does not have. A preference's synthesised type yardstick
+# lives OFF-PEG, so provenance reaches it only because the stamp walk
+# follows superpeg/familypeg deliberately -- without that it belonged to
+# neither document, and the two ports disagreed about which. Columns
+# count UTF-16 code units, as the canonical port's sites do.
 vet-operandless-nil	vet	a:integer	a:9007199254740993	{"findings":[{"class":"conflict","code":"lossy_integer_literal","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"nil"}]}],"truncated":false,"verdict":"invalid"}
 vet-refused-construct	vet	a:integer	a:-0x_1	{"findings":[{"class":"parse","code":"negative","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"nil"}]}],"truncated":false,"verdict":"invalid"}
 vet-unsited-junction	vet	a:1|2	a:3	{"findings":[{"class":"conflict","code":"|:empty","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"3"},{"col":-1,"file":"schema","role":"schema","row":-1,"value":"1|2"}]}],"truncated":false,"verdict":"invalid"}
-vet-unnamed-file	vet	a:*1	a:{}	{"findings":[{"class":"conflict","code":"not-scalar-type","path":"$","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"{}"},{"col":4,"role":"schema","row":1,"value":"number"}]}],"truncated":false,"verdict":"invalid"}
+vet-pref-yardstick	vet	a:*1	a:{}	{"findings":[{"class":"conflict","code":"not-scalar-type","path":"$","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"{}"},{"col":4,"file":"schema","role":"schema","row":1,"value":"number"}]}],"truncated":false,"verdict":"invalid"}
 vet-utf16-column	vet	k:{"é":integer}	k:{"é":"x"}	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.k.é","severity":"error","sites":[{"col":8,"file":"data","role":"data","row":1,"value":"\\"x\\""},{"col":8,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"truncated":false,"verdict":"invalid"}
 vet-utf16-astral	vet	k:{"𝄞":integer}	k:{"𝄞":"x"}	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.k.𝄞","severity":"error","sites":[{"col":9,"file":"data","role":"data","row":1,"value":"\\"x\\""},{"col":9,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"truncated":false,"verdict":"invalid"}
 # The data document is PARSED and not evaluated before it meets the
@@ -115,5 +121,13 @@ vet-at-bare-path	vet	services:{auth:{port:integer}}	auth:{port:"x"}	{"findings":
 vet-at-list-index	vet	a:[{p:integer}]	p:"x"	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.a.0.p","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"\\"x\\""},{"col":7,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"opts":{"at":"$.a.0"},"truncated":false,"verdict":"invalid"}
 vet-at-missing	vet	a:{b:1}	x:1	{"findings":[],"opts":{"at":"$.nope"},"truncated":false,"verdict":"error"}
 vet-at-through-scalar	vet	a:1	x:1	{"findings":[],"opts":{"at":"$.a.b"},"truncated":false,"verdict":"error"}
+# AN ANCHOR IS A STRUCTURAL PATH -- map keys and list indices, and
+# nothing else. Reading it off whatever a value's peg happened to hold
+# walked into a junction's branches, a constraint's own arguments, and
+# an array's `length`, which handed back a JavaScript number as the
+# anchor and made every document valid.
+vet-at-through-junction	vet	a:1|2	1	{"findings":[],"opts":{"at":"$.a.0"},"truncated":false,"verdict":"error"}
+vet-at-through-constraint	vet	a:min(2)	3	{"findings":[],"opts":{"at":"$.a.0"},"truncated":false,"verdict":"error"}
+vet-at-list-length	vet	a:[1,2]	9	{"findings":[],"opts":{"at":"$.a.length"},"truncated":false,"verdict":"error"}
 vet-closed-anchor	vet	service:{name:string}	name:"auth"\nextra:1	{"findings":[{"class":"conflict","code":"closed","path":"$.extra","severity":"error","sites":[{"col":7,"file":"data","role":"data","row":2,"value":"1"}]}],"opts":{"at":"$.service","closed":true},"truncated":false,"verdict":"invalid"}
 vet-closed-scalar-anchor-inert	vet	a:integer	1	{"findings":[],"opts":{"at":"$.a","closed":true},"truncated":false,"verdict":"valid"}

@@ -82,7 +82,7 @@ func TestSpec(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", file, err)
 		}
-		for _, line := range strings.Split(string(data), "\n") {
+		for lineno, line := range strings.Split(string(data), "\n") {
 			// Tolerate CRLF checkouts (e.g. Windows) by dropping any trailing
 			// \r so the last field never carries a stray carriage return.
 			line = strings.TrimSuffix(line, "\r")
@@ -90,18 +90,39 @@ func TestSpec(t *testing.T) {
 				continue
 			}
 			parts := strings.Split(line, "\t")
-			if len(parts) < 4 {
-				continue
+			// The mode decides how many columns the row needs, so it is
+			// read before the count is checked -- defensively, since a
+			// row short enough to lack one is exactly what is refused
+			// below.
+			mode := ""
+			if 1 < len(parts) {
+				mode = parts[1]
 			}
-			name := parts[0]
-			mode := parts[1]
 			// A vet row carries TWO documents, so its expect is the
 			// fifth column; every other mode reads four and ignores any
 			// extra (see test/spec/vet.tsv for the encoding).
 			vetRow := "vet" == mode
-			if vetRow && len(parts) < 5 {
-				continue
+			// MALFORMED IS LOUD, not skipped. A row short by a column --
+			// a vet row whose expected report was left off, say -- would
+			// otherwise be dropped in silence, and a suite that quietly
+			// runs one row fewer stays green while the behaviour it
+			// claims to pin goes unpinned. The TS runner refuses the
+			// same shapes.
+			//
+			// This, and not a row COUNT, is the guard: a count would
+			// have to be edited by every change that adds a row, and a
+			// number nobody trusts is a number nobody updates honestly.
+			// The only count asserted is that the files were found at
+			// all (the total check after the loop).
+			want := 4
+			if vetRow {
+				want = 5
 			}
+			if len(parts) < want {
+				t.Fatalf("malformed spec row: %s line %d: %d columns required for mode %q, found %d",
+					file, lineno+1, want, mode, len(parts))
+			}
+			name := parts[0]
 			src := strings.ReplaceAll(unescapeSpec(parts[2]), "__FIXTURES__", fixturesDir)
 			data := ""
 			expect := unescapeSpec(parts[3])
@@ -348,7 +369,16 @@ func TestErrCodesRegistry(t *testing.T) {
 			continue
 		}
 		parts := strings.Split(line, "\t")
-		if len(parts) < 4 || parts[1] != "errcode" {
+		// Short rows are LOUD here too: this loader is the one place
+		// that reads errcodes.tsv without going through TestSpec's, and
+		// a registry row quietly dropped would take a code out of the
+		// set-equality check below without failing anything. The TS
+		// twin reuses the loud loader for the same reason.
+		if len(parts) < 4 {
+			t.Fatalf("malformed registry row: errcodes.tsv line %q: 4 columns required, found %d",
+				line, len(parts))
+		}
+		if parts[1] != "errcode" {
 			continue
 		}
 		registered = append(registered, parts[0])

@@ -8,6 +8,7 @@ package aontu
 // around it (the options struct, the site projection, the walk arms).
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -75,9 +76,38 @@ func TestVetBrokenSchemaIsNeverBlamedOnData(t *testing.T) {
 	}
 }
 
-func TestVetUnparseableDataIsAnErrorVerdict(t *testing.T) {
-	if r := vetRun(vetSchema, "a: ]", nil); VetError != r.Verdict {
-		t.Fatalf("verdict: %s", r.Verdict)
+// A data document that will not parse is the DATA's fault: invalid
+// with a finding carrying the parser's own code, not error, which is
+// the schema's verdict.
+func TestVetUnparseableDataIsInvalid(t *testing.T) {
+	r := vetRun(vetSchema, "a: ]", nil)
+	if VetInvalid != r.Verdict || 1 != len(r.Findings) {
+		t.Fatalf("report: %+v", r)
+	}
+	f := r.Findings[0]
+	if "syntax" != f.Code || "parse" != f.Class || "$" != f.Path {
+		t.Fatalf("finding: %+v", f)
+	}
+	if 1 != len(f.Sites) || VetRoleData != f.Sites[0].Role ||
+		"nil" != f.Sites[0].Value || -1 != f.Sites[0].Row {
+		t.Fatalf("site: %+v", f.Sites)
+	}
+	// No terminal escapes in a machine-readable report: the parser
+	// colours its own marker, and this is the one finding family whose
+	// text comes from there.
+	if strings.ContainsRune(f.Message, 0x1b) || !strings.HasPrefix(f.Message, "[aontu/") {
+		t.Fatalf("message: %q", f.Message)
+	}
+}
+
+// A merge marker is refused before the parse, and it knows WHERE.
+func TestVetConflictMarkerInDataIsLocated(t *testing.T) {
+	r := vetRun(vetSchema, "a: 1\n<<<<<<< HEAD\nb: 2", nil)
+	if VetInvalid != r.Verdict || "merge_conflict" != r.Findings[0].Code {
+		t.Fatalf("report: %+v", r)
+	}
+	if 2 != r.Findings[0].Sites[0].Row || 1 != r.Findings[0].Sites[0].Col {
+		t.Fatalf("site: %+v", r.Findings[0].Sites[0])
 	}
 }
 
@@ -94,12 +124,12 @@ func TestVetSitesAreRoleTaggedDataFirst(t *testing.T) {
 	if 2 != len(sites) {
 		t.Fatalf("sites: %+v", sites)
 	}
-	if VetRoleData != sites[0].Role || nil == sites[0].File ||
-		"deploy.json" != *sites[0].File || `"8080"` != sites[0].Value {
+	if VetRoleData != sites[0].Role || "deploy.json" != sites[0].File ||
+		`"8080"` != sites[0].Value {
 		t.Fatalf("data site: %+v", sites[0])
 	}
-	if VetRoleSchema != sites[1].Role || nil == sites[1].File ||
-		"service.aon" != *sites[1].File || "integer" != sites[1].Value {
+	if VetRoleSchema != sites[1].Role || "service.aon" != sites[1].File ||
+		"integer" != sites[1].Value {
 		t.Fatalf("schema site: %+v", sites[1])
 	}
 	if sites[0].Row <= 0 || sites[0].Col <= 0 {
@@ -268,7 +298,9 @@ func TestVetAtIndexesAList(t *testing.T) {
 		&VetOptions{At: "$.a.0"}); VetInvalid != r.Verdict {
 		t.Fatalf("verdict: %s", r.Verdict)
 	}
-	for _, at := range []string{"$.a.1", "$.a.-1", "$.a.x"} {
+	// `length` is the sharp one: a generic peg lookup answered it with a
+	// JavaScript number, and every document then validated.
+	for _, at := range []string{"$.a.1", "$.a.-1", "$.a.x", "$.a.length"} {
 		if r := vetRun("a: [{ p: integer }]", "p: 1",
 			&VetOptions{At: at}); VetError != r.Verdict {
 			t.Fatalf("%s: verdict %s", at, r.Verdict)

@@ -64,9 +64,44 @@ describe('vet-verdicts', () => {
   })
 
 
-  test('unparseable-data-is-an-error-verdict', () => {
+  // A data document that will not parse is the DATA's fault: `invalid`
+  // with a finding carrying the parser's own code, not `error`, which
+  // is the schema's verdict. The engine already answered it this way
+  // one character earlier — a refused CONSTRUCT reaches the tree as an
+  // ordinary nil (see an-operandless-nil-reports-about-itself).
+  test('unparseable-data-is-invalid-not-an-error-verdict', () => {
     const r = vet(SCHEMA, 'a: ]')
-    Assert.equal(r.verdict, 'error')
+    Assert.equal(r.verdict, 'invalid')
+    Assert.equal(r.findings.length, 1)
+    const f = r.findings[0]
+    Assert.equal(f.code, 'syntax')
+    Assert.equal(f.class, 'parse')
+    Assert.equal(f.path, '$')
+    Assert.equal(f.sites.length, 1)
+    Assert.equal(f.sites[0].role, 'data')
+    Assert.equal(f.sites[0].value, 'nil')
+    // No terminal escapes in a machine-readable report: the parser
+    // colours its own marker, and this is the one finding family whose
+    // text comes from there.
+    Assert.ok(!f.message.includes('\u001b'))
+    Assert.ok(f.message.startsWith('[aontu/'))
+  })
+
+
+  // A merge marker is refused before the parse, and it knows WHERE.
+  test('a-conflict-marker-in-data-is-a-located-finding', () => {
+    const r = vet(SCHEMA, 'a: 1\n<<<<<<< HEAD\nb: 2')
+    Assert.equal(r.verdict, 'invalid')
+    Assert.equal(r.findings[0].code, 'merge_conflict')
+    Assert.equal(r.findings[0].sites[0].row, 2)
+    Assert.equal(r.findings[0].sites[0].col, 1)
+  })
+
+
+  // The SCHEMA side keeps the error verdict: exit 4 means the run
+  // could not be set up from the truth's side, and nothing else.
+  test('unparseable-schema-is-still-an-error-verdict', () => {
+    Assert.equal(vet('a: ]', 'a: 1').verdict, 'error')
   })
 })
 
@@ -251,6 +286,22 @@ describe('vet-anchor', () => {
   test('an-anchor-that-does-not-exist-is-an-error-verdict', () => {
     const r = vet(SCHEMA, 'a: 1', { at: '$.nope' })
     Assert.equal(r.verdict, 'error')
+  })
+
+
+  // An anchor is a STRUCTURAL path: map keys and list indices. Reading
+  // it off whatever a value's peg held walked into a junction's
+  // branches, a constraint's own arguments and an array's `length` —
+  // the last handing back a JavaScript number, after which everything
+  // validated.
+  test('an-anchor-descends-only-through-bags', () => {
+    Assert.equal(vet('a: 1|2', '1', { at: '$.a.0' }).verdict, 'error')
+    Assert.equal(vet('a: min(2)', '3', { at: '$.a.0' }).verdict, 'error')
+    Assert.equal(vet('a: [1,2]', '9', { at: '$.a.length' }).verdict, 'error')
+    Assert.equal(vet('a: *1', '9', { at: '$.a.peg' }).verdict, 'error')
+    // The two that DO descend still do.
+    Assert.equal(vet('a: { b: integer }', '1', { at: '$.a.b' }).verdict, 'valid')
+    Assert.equal(vet('a: [integer]', '1', { at: '$.a.0' }).verdict, 'valid')
   })
 
 
