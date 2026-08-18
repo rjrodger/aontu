@@ -45,13 +45,13 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (13658/13658) |
-| TypeScript — `ts/src` | branches | **100.00 %** (3074/3074) |
-| TypeScript — `ts/src` | functions | **100.00 %** (536/536) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (13820/13820) |
+| TypeScript — `ts/src` | branches | **100.00 %** (3095/3095) |
+| TypeScript — `ts/src` | functions | **100.00 %** (537/537) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **2684 TypeScript tests** and
-four green Go packages, including the **2256-row shared spec** that both
+Both suites pass in full via `make test`: **2688 TypeScript tests** and
+four green Go packages, including the **2257-row shared spec** that both
 engines execute.
 
 The absolute figures above move with every change and are reproduced,
@@ -101,7 +101,7 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **2256 cases across 61 files** — is run by *both*
+`test/spec/*.tsv` — **2257 cases across 61 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
@@ -118,7 +118,7 @@ implementations and is the contract that defines shared behaviour
 | `errcodes.tsv`              |  70 | `plus.tsv`           | 14 |
 | `number-cross-product.tsv`  |  59 | `conjunct.tsv`       | 13 |
 | `ref.tsv`                   |  54 | `merge-conflict.tsv` | 13 |
-| `vet.tsv`                   |  41 | `op-chars.tsv`       | 13 |
+| `vet.tsv`                   |  42 | `op-chars.tsv`       | 13 |
 | `scalar.tsv`                |  40 | `close.tsv`          |  9 |
 | `optional.tsv`              |  37 | `incomplete.tsv`     |  9 |
 | `constraint-must.tsv`       |  34 | `list.tsv`           |  7 |
@@ -162,7 +162,7 @@ column carries the data document that meets the schema in `src`).
 Only what a shared row cannot express gets a per-port test — ADR-001
 prefers a row precisely because one row lifts both engines:
 
-**TypeScript** (`ts/test/*.test.ts`, 2684 tests, 2256 of them shared
+**TypeScript** (`ts/test/*.test.ts`, 2688 tests, 2257 of them shared
 rows): every built-in function in depth, the exact leaves, the public
 API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
 the validation verb (`vet.test.ts`, and the verb's cases in
@@ -190,14 +190,15 @@ engine never builds.
 ## The exclusions, in full
 
 100 % is only meaningful if what was excluded is visible. Twenty-two Go
-statements carry a `//coverage:ignore` marker; TypeScript carries none
+sites carry a `//coverage:ignore` marker — 24 statements, because two of
+them are `ignore-block` markers over a pair; TypeScript carries none
 at all beyond the export blocks (see below). Every marker states, in
 the source, what state would be required and why nothing can produce it
 — a marker without that justification is a defect
 ([ADR-002](../ADR.md#adr-002--test-coverage-stays-at-100--in-both-implementations),
 rule 3).
 
-### Go — 22 statements
+### Go — 22 marked sites, 24 statements
 
 | Site | Why it cannot be reached |
 |------|--------------------------|
@@ -206,6 +207,7 @@ rule 3).
 | `lang.go` — `parseBase`'s `langForBase` error arm | Same as `langForBase`: it has no failure mode. |
 | `func.go` × 2 — `resolve() == nil` and the whole `result == Val(f)` block | No `FuncVal.resolve` arm returns nil or the receiver. The block mirrors TS `FuncBaseVal`, where `resolve()` can return `this` — kept for the ADR-001 shape correspondence. |
 | `conjunct.go` — `case 0` of the outvals switch | A fold over ≥ 1 term always appends; the empty case returned 30 lines earlier. |
+| `constraint.go` × 2 — `must`'s arity guard, and the final arm of the meet ladder | The parser already refuses a `must` that is not given exactly two arguments. The ladder above the arm is total in practice: every remaining `Val` kind either sorts below a constraint in a conjunct and drives the meet from its own side, or resolves to a scalar or container before a constraint sees it. Both are kept because a broken invariant should fail as a refusal, not as a panic or a silent fall-through. |
 | `disjunct.go` — the nil check after an equal-rank pref merge | `PrefVal.Unify` with a pref peer always yields a pref, never a bare nil. |
 | `op.go` — the trailing `return nil` of `operate` | `peg` is provably one of string, bool or float64, all handled above. |
 | `val.go` — the caret-column clamp in `NilVal.frame` | `rowCol` never returns a column below 1. |

@@ -8,6 +8,8 @@ package aontu
 // around it (the options struct, the site projection, the walk arms).
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -388,5 +390,41 @@ func TestVetColumnsCountUTF16Units(t *testing.T) {
 	}
 	if 11 != r.Findings[0].Sites[0].Col {
 		t.Fatalf("col: %d", r.Findings[0].Sites[0].Col)
+	}
+}
+
+// `SchemaPath` and `DataPath` are the two documents' OWN bases: a
+// relative `@"file"` load inside either resolves from the directory
+// holding it, not from the process working directory -- which is
+// neither document's home, and may hold a same-named decoy. The two
+// paths are separate because the documents need not live together.
+func TestVetEachDocumentResolvesItsOwnIncludes(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "part.aon"),
+		[]byte("port: integer"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// The document is passed as TEXT and its path only says where it
+	// came from -- but the loader resolves the base against a real
+	// directory, so the file has to be there, which for every caller
+	// that read the text out of it already is.
+	src := "@\"part.aon\"\nname: string"
+	data := "name: \"auth\"\nport: 8080"
+	schemaPath := filepath.Join(dir, "schema.aon")
+	if err := os.WriteFile(schemaPath, []byte(src), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	r := vetRun(src, data, &VetOptions{SchemaPath: schemaPath})
+	if VetValid != r.Verdict {
+		t.Fatalf("based: %s", r.Verdict)
+	}
+
+	// Without the base the include is looked for beside the test
+	// process instead, where there is no part.aon: a schema that will
+	// not stand up is an `error` verdict, never the data's fault.
+	if r := vetRun(src, data, nil); VetError != r.Verdict {
+		t.Fatalf("unbased: %s", r.Verdict)
 	}
 }

@@ -239,6 +239,18 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         const r = vetCapture(() => Assert.equal((0, cli_1.runVet)(['--max-errors', '2', f.schema, f.data]), 1));
         Assert.match(r.out, /findings truncated/);
     });
+    // The cap is on the REPORT, not on each file: two data files that
+    // each come in under it can still overflow it together, and only the
+    // aggregate cut catches that. Per-file capping alone would emit four
+    // findings here and call the report whole.
+    (0, node_test_1.test)('vet-max-errors-caps-the-report-not-each-file', () => {
+        const f = vetFiles('a: integer\nb: integer', 'a: "x"\nb: "y"');
+        const other = Path.join(f.dir, 'other.json');
+        Fs.writeFileSync(other, 'a: "p"\nb: "q"');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runVet)(['--max-errors', '3', f.schema, f.data, other]), 1));
+        Assert.match(r.out, /findings truncated/);
+        Assert.equal(r.out.match(/no_scalar_unify \[conflict\]/g)?.length, 3);
+    });
     // Several data files are several candidates for one truth, so each is
     // vetted on its own and the worst verdict wins.
     (0, node_test_1.test)('vet-takes-more-than-one-data-file', () => {

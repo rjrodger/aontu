@@ -2,6 +2,9 @@
 
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
+import * as Fs from 'node:fs'
+import * as Os from 'node:os'
+import * as Path from 'node:path'
 
 import { vet } from '../dist/vet'
 import { vet as vetFromPackage } from '../dist/aontu'
@@ -353,6 +356,32 @@ describe('vet-api', () => {
     Assert.equal(typeof vetFromPackage, 'function')
     const r = vetFromPackage('a: integer', 'a: 1')
     Assert.equal(r.verdict, 'valid')
+  })
+
+
+  // `schemaPath` and `dataPath` are the two documents' OWN bases: a
+  // relative `@"file"` load inside either resolves from the directory
+  // holding it, not from the process working directory -- which is
+  // neither document's home, and may hold a same-named decoy. The two
+  // paths are separate because the documents need not live together.
+  test('each-document-resolves-its-own-includes', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-base-'))
+    Fs.writeFileSync(Path.join(dir, 'part.aon'), 'port: integer')
+
+    // The document is passed as TEXT and its path only says where it
+    // came from -- but the loader resolves the base against a real
+    // directory, so the file has to be there, which for every caller
+    // that read the text out of it already is.
+    const src = '@"part.aon"\nname: string'
+    const data = 'name: "auth"\nport: 8080'
+    const schemaPath = Path.join(dir, 'schema.aon')
+    Fs.writeFileSync(schemaPath, src)
+    Assert.equal(vet(src, data, { schemaPath }).verdict, 'valid')
+
+    // Without the base the include is looked for beside the test
+    // process instead, where there is no part.aon: a schema that will
+    // not stand up is an `error` verdict, never the data's fault.
+    Assert.equal(vet(src, data).verdict, 'error')
   })
 })
 

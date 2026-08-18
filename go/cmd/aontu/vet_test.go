@@ -233,6 +233,28 @@ func TestVetMaxErrorsTruncatesAndSaysSo(t *testing.T) {
 	vetMatch(t, out, `findings truncated`)
 }
 
+// The cap is on the REPORT, not on each file: two data files that each
+// come in under it can still overflow it together, and only the
+// aggregate cut catches that. Per-file capping alone would emit four
+// findings here and call the report whole.
+func TestVetMaxErrorsCapsTheReportNotEachFile(t *testing.T) {
+	dir, s, d := vetFiles(t, "a: integer\nb: integer", "a: \"x\"\nb: \"y\"")
+	other := filepath.Join(dir, "other.json")
+	if err := os.WriteFile(other,
+		[]byte("a: \"p\"\nb: \"q\""), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	out, _, code := vetRun("--max-errors", "3", s, d, other)
+	if 1 != code {
+		t.Fatalf("code: %d", code)
+	}
+	vetMatch(t, out, `findings truncated`)
+	if n := strings.Count(out, "no_scalar_unify [conflict]"); 3 != n {
+		t.Fatalf("findings: %d", n)
+	}
+}
+
 // Several data files are several candidates for one truth, so each is
 // vetted on its own and the worst verdict wins.
 func TestVetTakesMoreThanOneDataFile(t *testing.T) {

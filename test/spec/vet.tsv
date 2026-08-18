@@ -94,6 +94,13 @@ vet-operandless-nil	vet	a:integer	a:9007199254740993	{"findings":[{"class":"conf
 vet-refused-construct	vet	a:integer	a:-0x_1	{"findings":[{"class":"parse","code":"negative","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"nil"}]}],"truncated":false,"verdict":"invalid"}
 vet-unsited-junction	vet	a:1|2	a:3	{"findings":[{"class":"conflict","code":"|:empty","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"3"},{"col":-1,"file":"schema","role":"schema","row":-1,"value":"1|2"}]}],"truncated":false,"verdict":"invalid"}
 vet-pref-yardstick	vet	a:*1	a:{}	{"findings":[{"class":"conflict","code":"not-scalar-type","path":"$","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"{}"},{"col":4,"file":"schema","role":"schema","row":1,"value":"number"}]}],"truncated":false,"verdict":"invalid"}
+# A value the engine mints for ITSELF belongs to neither document, and
+# says so with an empty file rather than borrowing one: an unknown var
+# meets `top`, which no parser sited and no stamp walk reached. Both
+# ports leave the name empty, so the emptiness is the contract -- a
+# port that quietly labelled it `schema` would be claiming the mistake
+# is in a document the reader can open and look at.
+vet-unstamped-operand	vet	a:integer	a:$x	{"findings":[{"class":"reference","code":"unknown_var","path":"$.a","severity":"error","sites":[{"col":3,"file":"data","role":"data","row":1,"value":"$\\"x\\""},{"col":-1,"file":"","role":"schema","row":-1,"value":"top"}]}],"truncated":false,"verdict":"invalid"}
 vet-utf16-column	vet	k:{"é":integer}	k:{"é":"x"}	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.k.é","severity":"error","sites":[{"col":8,"file":"data","role":"data","row":1,"value":"\\"x\\""},{"col":8,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"truncated":false,"verdict":"invalid"}
 vet-utf16-astral	vet	k:{"𝄞":integer}	k:{"𝄞":"x"}	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.k.𝄞","severity":"error","sites":[{"col":9,"file":"data","role":"data","row":1,"value":"\\"x\\""},{"col":9,"file":"schema","role":"schema","row":1,"value":"integer"}]}],"truncated":false,"verdict":"invalid"}
 # The data document is PARSED and not evaluated before it meets the

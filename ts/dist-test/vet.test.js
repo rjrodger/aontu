@@ -36,6 +36,9 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
+const Fs = __importStar(require("node:fs"));
+const Os = __importStar(require("node:os"));
+const Path = __importStar(require("node:path"));
 const vet_1 = require("../dist/vet");
 const aontu_1 = require("../dist/aontu");
 const SCHEMA = 'service: { name: string, port: integer }';
@@ -299,6 +302,28 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(typeof aontu_1.vet, 'function');
         const r = (0, aontu_1.vet)('a: integer', 'a: 1');
         Assert.equal(r.verdict, 'valid');
+    });
+    // `schemaPath` and `dataPath` are the two documents' OWN bases: a
+    // relative `@"file"` load inside either resolves from the directory
+    // holding it, not from the process working directory -- which is
+    // neither document's home, and may hold a same-named decoy. The two
+    // paths are separate because the documents need not live together.
+    (0, node_test_1.test)('each-document-resolves-its-own-includes', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-vet-base-'));
+        Fs.writeFileSync(Path.join(dir, 'part.aon'), 'port: integer');
+        // The document is passed as TEXT and its path only says where it
+        // came from -- but the loader resolves the base against a real
+        // directory, so the file has to be there, which for every caller
+        // that read the text out of it already is.
+        const src = '@"part.aon"\nname: string';
+        const data = 'name: "auth"\nport: 8080';
+        const schemaPath = Path.join(dir, 'schema.aon');
+        Fs.writeFileSync(schemaPath, src);
+        Assert.equal((0, vet_1.vet)(src, data, { schemaPath }).verdict, 'valid');
+        // Without the base the include is looked for beside the test
+        // process instead, where there is no part.aon: a schema that will
+        // not stand up is an `error` verdict, never the data's fault.
+        Assert.equal((0, vet_1.vet)(src, data).verdict, 'error');
     });
 });
 (0, node_test_1.describe)('vet-containers', () => {

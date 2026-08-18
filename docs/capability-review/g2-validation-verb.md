@@ -527,7 +527,7 @@ assert codes.
 "TypeScript" qualifier is gone: the engine exists in both ports
 (`ts/src/vet.ts`, `go/vet.go`), because phase 4 is what makes the
 shared rows executable.
-Spec: [`test/spec/vet.tsv`](../../test/spec/vet.tsv) — 41 rows, run by
+Spec: [`test/spec/vet.tsv`](../../test/spec/vet.tsv) — 42 rows, run by
 both runners. **The row encoding was settled by probing.** `code@path`
 lists, written here before the reconnaissance below, are ruled out by
 its first constraint: no punctuation is safe as a separator, because
