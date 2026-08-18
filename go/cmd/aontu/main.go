@@ -23,15 +23,33 @@ import (
 )
 
 const helpText = `Usage: aontu [options] [file]
+       aontu vet [options] <schema> <data> [more-data...]
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
 With no file and piped input, read the source from stdin.
 
+The vet verb validates data documents against a schema document and
+reports what does not hold, as text or as a machine-readable object.
+
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
   -v, --version   Print the version and exit
+
+Vet options:
+  --at <path>       Validate against this path of the schema ($.a.b)
+  --closed          Refuse keys the anchor does not declare
+  --partial         Residue is reported but does not fail the run
+  --max-errors <n>  Cap the finding list (default 20)
+  --format <f>      text (default) or json
+
+Vet exit codes:
+  0  valid       data unifies, and is concrete (or --partial)
+  1  invalid     at least one contradiction
+  2  usage       bad option, or a file that cannot be read
+  3  incomplete  no contradiction, but the truth is not yet satisfied
+  4  error       the schema is unusable on its own
 
 REPL commands:
   :help           Show REPL help
@@ -168,6 +186,14 @@ func main() { //coverage:ignore run under GOCOVERDIR by `make cov-go`
 // returning the process exit code. Separated from main so tests can
 // drive the whole command with in-memory pipes.
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int {
+	// Subcommand dispatch, and deliberately only for a FIRST argument:
+	// `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
+	// what it always did. A file named `vet` is still reachable as
+	// `aontu ./vet`.
+	if 0 < len(args) && "vet" == args[0] {
+		return runVet(args[1:], stdout, stderr)
+	}
+
 	mode := "json"
 	var file string
 

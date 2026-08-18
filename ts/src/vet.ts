@@ -27,6 +27,7 @@
 import type { Val } from './type'
 
 import { Aontu } from './aontu'
+import { descErr } from './err'
 import { ConjunctVal } from './val/ConjunctVal'
 import { walkVals, collectNils } from './walk'
 
@@ -123,7 +124,14 @@ function siteOf(v: any, dataUrl: string): VetSite | undefined {
 // The underlying NilVal fields are untouched: this is a report-layer
 // projection, so the existing error.tsv assertions do not move.
 function sitesOf(nil: any, dataUrl: string): VetSite[] {
-  const sites: VetSite[] = [siteOf(nil.primary, dataUrl) as VetSite]
+  // `?? nil`: a failure raised about a CONSTRUCT rather than about a
+  // failed meet -- a lossy integer literal, say -- carries no operands
+  // at all, and reporting it about ITSELF is what ctx.adderr already
+  // does for the same reason. Without the fallback the report built a
+  // site out of `undefined` and threw while partitioning it, which is
+  // the one thing vet promises not to do: a bad value in the data is
+  // DATA, and the caller gets a report.
+  const sites: VetSite[] = [siteOf(nil.primary ?? nil, dataUrl) as VetSite]
 
   const secondary = siteOf(nil.secondary, dataUrl)
   if (null != secondary) {
@@ -140,6 +148,19 @@ function sitesOf(nil: any, dataUrl: string): VetSite[] {
 }
 
 
+// The message text is MATERIALISED on demand, exactly as handleErrors
+// materialises one before a caller sees it: makeNilErr defers it
+// because most NilVals are transient and never rendered, and only the
+// throwing path asks for it. Without this a finding could carry an
+// empty `message` -- which is what the incomplete half of every report
+// did, and what any nil built during the PARSE of a document did.
+function materialise(nil: any, ctx: any): void {
+  if (null == nil.msg || '' === nil.msg) {
+    descErr(nil, ctx)
+  }
+}
+
+
 function findingOf(nil: any, dataUrl: string): VetFinding {
   const details = nil.details ?? {}
   const finding: VetFinding = {
@@ -147,7 +168,11 @@ function findingOf(nil: any, dataUrl: string): VetFinding {
     class: nil.class,
     severity: 'error',
     path: pathText(nil.path),
-    message: nil.msg ? nil.msg.split('\n')[0] : '',
+    // The HEADLINE only: the frames below it are for a human reading a
+    // terminal, and the first line is the part the two ports hold to
+    // byte parity. Materialised before this runs, so it is always
+    // there (see materialise above).
+    message: nil.msg.split('\n')[0],
     sites: sitesOf(nil, dataUrl),
   }
 
@@ -185,14 +210,27 @@ function findingOf(nil: any, dataUrl: string): VetFinding {
 // needs none, and cannot disagree with itself.
 const ORDER_PAD = 9
 
-function orderKey(f: VetFinding): string {
+
+function pad(n: number): string {
+  return String(n).padStart(ORDER_PAD, '0')
+}
+
+
+// The walk index is the LAST field, which makes every key unique and
+// the sort below total: two findings can otherwise share everything the
+// key carries — same data site, same code, same path — and a comparator
+// that has to answer "equal" is one more thing to get right in two
+// languages. With the index appended, ties simply keep walk order, in
+// both ports, by construction rather than by the sort's promises.
+function orderKey(f: VetFinding, index: number): string {
   const site = f.sites[0]
   return [
     site.file,
-    String(site.row).padStart(ORDER_PAD, '0'),
-    String(site.col).padStart(ORDER_PAD, '0'),
+    pad(site.row),
+    pad(site.col),
     f.code,
     f.path,
+    pad(index),
   ].join('\u0000')
 }
 
@@ -293,7 +331,10 @@ export function vet(
     }
   }
 
-  const findings: VetFinding[] = nils.map((n) => findingOf(n, dataUrl))
+  const findings: VetFinding[] = nils.map((n) => {
+    materialise(n, ctx)
+    return findingOf(n, dataUrl)
+  })
   const conflicts = findings.length
 
   // 5. Incompleteness: what is left standing that cannot generate. The
@@ -307,11 +348,12 @@ export function vet(
   unified.gen(genCtx)
   for (const err of genCtx.err) {
     if ('incomplete' === err.class) {
+      materialise(err, genCtx)
       findings.push(findingOf(err, dataUrl))
     }
   }
 
-  const keyed = findings.map((f) => ({ key: orderKey(f), finding: f }))
+  const keyed = findings.map((f, i) => ({ key: orderKey(f, i), finding: f }))
   keyed.sort((a, b) => a.key < b.key ? -1 : 1)
   const ordered = keyed.map((k) => k.finding)
 

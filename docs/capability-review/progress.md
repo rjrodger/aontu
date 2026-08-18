@@ -89,41 +89,43 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **60 `.tsv` files, 59
-   row-bearing, 2,202 rows**, in six modes — `canon` 656, `gen` 530,
-   `errc` 412, `gens` 302, `err` 232, `errcode` 70. Reproduce with
+   register's last update the suite is **61 `.tsv` files, 60
+   row-bearing, 2,246 rows**, in seven modes — `canon` 656, `gen` 531,
+   `errc` 418, `gens` 302, `err` 232, `errcode` 70, `vet` 37. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Fifteen of forty-nine phases have moved; ten of those are complete.
+Sixteen of forty-nine phases have moved; thirteen of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
-| [G2](g2-validation-verb.md) | The validation verb | A | 1 | 2 | 3 |
+| [G2](g2-validation-verb.md) | The validation verb | A | 4 | 0 | 2 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 2 | 2 | 2 |
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **10** | **5** | **34** |
+| | | **total** | **13** | **3** | **33** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
-- **Phase A — make the claim true.** Partly done. The trust contract
-  (G5.1–2) and the error-code registry (G2.1) are in, and **G1 is
+- **Phase A — make the claim true.** Nearly done. The trust contract
+  (G5.1–2) and the error-code registry (G2.1) are in, **G1 is
   complete** — all seven phases, both ports, shared rows, and the
-  ADR-002 gate back at 100% in both. That is more than the sequencing
-  table's "constraint algebra core (bounds, regex, length/count)"
-  asked for: cross-field residuation and the `must` escape hatch are
-  in too. Outstanding: the Go port of the verb (G2.4), SARIF and watch
-  (G2.5), and multi-error collection (G2.6). **`aontu vet` now exists
-  in TypeScript** — engine (G2.2) and command (G2.3), with verdict exit
-  classes an agent loop can branch on. Go has no vet at all, which is
-  what keeps both phases partial and the shared rows drafted.
+  ADR-002 gate back at 100% in both — and so is **`aontu vet`**:
+  engine (G2.2), command (G2.3) and Go port (G2.4), with verdict exit
+  classes an agent loop can branch on and 37 shared rows both runners
+  execute. G1 landed more than the sequencing table's "constraint
+  algebra core (bounds, regex, length/count)" asked for: cross-field
+  residuation and the `must` escape hatch are in too. Outstanding in A:
+  SARIF, the Action and watch (G2.5), and multi-error collection
+  (G2.6) — the last is what would make a report list every
+  contradiction in one pass rather than the ones a single evaluation
+  reaches.
 - **Phase B — differentiate.** Untouched. No subsumption, no canon
   hash, no query surface.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
@@ -244,9 +246,9 @@ does not resolve to the default; the disjunct form does. See
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
 | **1** — error taxonomy groundwork | M | **LANDED** | `test/spec/errcodes.tsv` (70 registered codes with class and since-version — 64 at this phase's own landing, grown since by `constraint_pattern` and `must`); new spec modes `errc` and `errcode`; `class` on `NilVal` (`ts/src/val/NilVal.ts`, `go/val.go`); registry set-equality asserted by both runners (`ts/test/spec.test.ts` `spec-errcodes-registry`, `go/spec_test.go` `TestErrCodesRegistry`). Commit `98fc1bf`. |
-| **2** — vet engine API, TypeScript | M | **PARTIAL** | `ts/src/vet.ts`, exported from `ts/src/aontu.ts`: anchor selection (`at`, `closed`), data parsed with the full grammar, unify-with-collect, the residue walk, finding construction with roles by provenance, vet-side sorting, `maxErrors`/`truncated`, and the four verdicts. 30 rows in `ts/test/vet.test.ts`; ADR-002 back at 100%. **What is missing, and why it is not a slip:** the phase names `test/spec/vet.tsv` as a deliverable, and that file cannot exist yet. Both runners execute every row of every `test/spec/*.tsv` with no skip list, so a `vet` row is only executable once `vet` exists in BOTH ports — phase 4. The rows are written and carry the settled encoding, in `test/spec/draft/vet.tsv`. Under ADR-001 a TypeScript-only phase is partial, and this one is partial for a second reason too. **Departures from the design:** (1) the encoding is FIVE columns — name, mode, schema, data, expect — because vet takes two documents and no separator inside one cell is safe; both runners already tolerate extra columns, so the arm is additive. (2) `message` is excluded from the goldens and asserted by substring per port, because prose is deliberately not in cross-port parity. (3) Options (`at`, `closed`, `partial`) have no column: they ride an `opts` key in the expect object, the one part of the encoding still unprobed, because no runner passes options today. (4) findings that never reach the tree are collected from the context too — a parent that collapses to a nil takes its subtree with it, so `close({…})` meeting a typo AND a kind conflict left one nil standing and reported the other only on `ctx.err`. The verb's own motivating example was reporting half of what it found until phase 3 ran it. The language server already walked both; vet now dedups by identity the same way. (5) A conflict inside a `&:` template reports the TEMPLATE's path, not the instance's — the data site still points at the offending value, and naming the instance path is a report-layer concern for phase 3. |
-| **3** — CLI verb and JSON format | M | **PARTIAL** | `aontu vet <schema> <data> [more-data...]` in `ts/src/cli.ts`: subcommand dispatch (first argument only, so a file argument is never shadowed), `--at`, `--closed`, `--partial`, `--max-errors`, `--format text|json`, and verdict exit classes 0/1/2/3/4. Each data file is vetted separately and the worst verdict wins. 12 cases in `ts/test/cli.test.ts`; `docs/reference-api.md` "`aontu vet`" and `docs/how-to.md` carry the verb. **PARTIAL for the same reason as phase 2:** ADR-001 makes a TypeScript-only capability partial, and the Go CLI has no verb until phase 4. **Departures from the design:** (1) the text renderer does NOT reuse `descErr`. `descErr` renders NilVals with ANSI colour through the TypeScript-only error path, while the report is a plain projection that the Go port has to match byte for byte — rendering from the projection is what keeps the two ports renderable from one contract. (2) JSON field order is `exactJSON`'s lexicographic order, not the design's illustrative order, because that is the emitter already held to byte parity with Go. (3) `--surplus` and `--watch` are not here: the first has no engine support yet and the second is phase 5. |
-| **4** — Go port | L | **NOT STARTED** | No `go/vet.go`, no `go/report.go`. |
+| **2** — vet engine API | M | **LANDED** | `ts/src/vet.ts` and its Go twin `go/vet.go`, exported from `ts/src/aontu.ts` and as `aontu.Vet`: anchor selection (`at`, `closed`), data parsed with the full grammar, unify-with-collect, the residue walk, finding construction with roles by provenance, vet-side sorting, `maxErrors`/`truncated`, and the four verdicts. `test/spec/vet.tsv` — 37 rows, executed by BOTH runners; `ts/test/vet.test.ts` (32 cases) and `go/vet_test.go` (30) hold the per-port API around them. **The PARTIAL that stood here had one cause and phase 4 removed it:** both runners execute every row of every `test/spec/*.tsv` with no skip list, so a `vet` row could not execute until both ports had the verb. The rows were promoted from `test/spec/draft/vet.tsv` with every golden regenerated from the canonical engine and then run against the port. **Departures from the design:** (1) the encoding is FIVE columns — name, mode, schema, data, expect — because vet takes two documents and no separator inside one cell is safe; both runners already tolerated extra columns, so the arm is additive. (2) `message` is excluded from the goldens and asserted per port, because prose is deliberately not in cross-port parity. (3) Options (`at`, `closed`, `partial`, `maxErrors`) have no column: they ride an `opts` key in the expect object. Flagged in the draft as the one unprobed piece of the encoding, it survived the probe unchanged. (4) findings that never reach the tree are collected from the context too — a parent that collapses to a nil takes its subtree with it, so `close({…})` meeting a typo AND a kind conflict left one nil standing and reported the other only on `ctx.err`. The verb's own motivating example was reporting half of what it found. (5) A conflict inside a `&:` template reports the TEMPLATE's path, not the instance's. Both ports now agree on that (they did not at first — see phase 4), and the data site still points at the offending value; naming the instance path remains a report-layer improvement nobody has taken. |
+| **3** — CLI verb and JSON format | M | **LANDED** | `aontu vet <schema> <data> [more-data...]` in `ts/src/cli.ts` and `go/cmd/aontu/vet.go`: subcommand dispatch (first argument only, so a file argument is never shadowed), `--at`, `--closed`, `--partial`, `--max-errors`, `--format text|json`, and verdict exit classes 0/1/2/3/4. Each data file is vetted separately and the worst verdict wins. 13 cases in `ts/test/cli.test.ts`, 13 in `go/cmd/aontu/vet_test.go`; `docs/reference-api.md` "`aontu vet`" and `docs/how-to.md` carry the verb. The two CLIs were diffed on ~90 schema/data pairs and produce BYTE-IDENTICAL reports, text and JSON, exit codes included — everything but the `version` field, whose two series are independent by design, and the host's own wording for an unreadable file. **Departures from the design:** (1) the text renderer does NOT reuse `descErr`. `descErr` renders NilVals with ANSI colour through the TypeScript-only error path, while the report is a plain projection the Go port has to match byte for byte. (2) JSON field order is `exactJSON`'s lexicographic order, not the design's illustrative order, because that is the emitter already held to byte parity with Go — which is why the Go structs declare their fields in sorted order. (3) `--surplus` and `--watch` are not here: the first has no engine support yet and the second is phase 5. |
+| **4** — Go port | L | **LANDED** | `go/vet.go` (the engine), `go/walk.go` (one traversal for Check and vet, the twin of `ts/src/walk.ts`, with provenance stamping), `go/cmd/aontu/vet.go` (the verb). No `go/report.go`: the renderers live beside the command, as they do in `ts/src/cli.ts`, and the report types are the engine's exported API. The port is what made `test/spec/vet.tsv` executable. **What the port cost the ENGINE, and why that is the interesting part.** Byte parity was the acceptance test, and it exposed nine pre-existing divergences no shared row had reached — every one fixed rather than recorded: (1) `rowCol` counted BYTES where the canonical port counts UTF-16 code units, so every column after a multi-byte character was late, in messages and in the LSP-adjacent surface alike; (2) an error frame printed the two lines AFTER the mistake and none of the two before, so every message about row 2 or later differed from TypeScript's; (3) a closed bag RETURNED at its first surplus key instead of recording it and unifying the rest, which is exactly the motivating example above — half the report, from the engine rather than from vet; (4) the disjunct fold dropped the path, so a junction that survived one evaluation and met its peer in a later one (what vet does) reported at the root; (5) junctions were sited at their first member where TypeScript sites them nowhere, so an unsited operand claimed row 1 column 1; (6) a preference's synthesised type yardstick was unplaced, pointing at the start of the document; (7) the operand flip compared positions across the two documents, which are offsets into different texts — fixed by giving every value a source identity (`base.surl`, `srcid`), the same thing TypeScript spells as a site url; (8) a constraint residual dropped that identity, so a data value the schema refined was reported as belonging to neither document; (9) generation under COLLECT recorded nothing — not the bag's first non-generable child, not a root residue — where TypeScript records the reason and carries on, which is the whole point of the mode and the half of the report the incomplete verdict is built from. The first two are now pinned by a twin pair over a multi-row, non-ASCII source (`TestFullMessageTwinFramed`, `full-message-twin-framed`); the one-line twin that stood before could not see either. Two more were fixed in the canonical port: `vet` THREW on a failure with no operands (a lossy integer literal in the data crashed the verb), and half of every report carried an empty `message` because the text is materialised only on the throwing path. **Not fixed here, and now understood:** issue #63's frame ordering is the same operand-flip family — Go marks clone-minted values where TypeScript marks values the parser did NOT site, which is a different set. Dropping the clone mark alone fixes #63 with both suites green; doing it properly means marking parse-sited values instead, and that is its own change. |
 | **5** — SARIF, Action, watch | S | **NOT STARTED** | — |
 | **6** — multi-error collection | L | **NOT STARTED** | The single-error exit in `ts/src/unify.ts` is unchanged. |
 

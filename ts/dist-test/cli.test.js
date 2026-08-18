@@ -243,6 +243,14 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         Assert.match(r.out, /expected: integer&min\(1024\)/);
         Assert.match(r.out, /actual: +80/);
     });
+    // A value the walk never reaches has no file name to report — a
+    // preference's synthesised type yardstick is one — and the line
+    // renders with an empty file rather than the word "undefined".
+    (0, node_test_1.test)('vet-site-without-a-file-renders-empty', () => {
+        const f = vetFiles('a: *1', 'a: {}');
+        const r = vetCapture(() => (0, cli_1.runVet)([f.schema, f.data]));
+        Assert.match(r.out, /schema: :1:\d+ \(number\)/);
+    });
     // The verb dispatches only as the FIRST argument, so a file argument
     // is never shadowed by a verb name.
     (0, node_test_1.test)('vet-dispatches-through-main', () => {

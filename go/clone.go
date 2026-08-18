@@ -155,6 +155,21 @@ func clonePath(v Val, path []string) Val {
 }
 
 func clonePathRec(v Val, path []string) Val {
+	if v == nil {
+		return nil
+	}
+	out := clonePathKind(v, path)
+	// The SOURCE NAME travels with every clone, whatever its kind: TS's
+	// Val.clone copies the whole site, url included, so a value carried
+	// into another document by a ref still says which document wrote it
+	// (val.go, base.surl). Done here rather than in each arm below
+	// because a kind that forgot it would mislabel a report site --
+	// silently, and only in the two-document vet run.
+	out.setSrcurl(v.srcurl())
+	return out
+}
+
+func clonePathKind(v Val, path []string) Val {
 	switch n := v.(type) {
 	case *TopVal:
 		// Return a fresh TOP so marks (e.g. hide(top)) don't leak onto

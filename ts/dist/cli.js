@@ -254,7 +254,10 @@ function renderFinding(f) {
     for (const s of f.sites) {
         // Every site carries the canon of the value it stands for: that is
         // what makes the two sides of a conflict readable side by side.
-        out.push(`  ${s.role}: ${s.file}:${s.row}:${s.col} (${s.value})`);
+        // `?? ''`: a site whose value was never named by a document has no
+        // file, and interpolating that directly wrote the word "undefined"
+        // into the report.
+        out.push(`  ${s.role}: ${s.file ?? ''}:${s.row}:${s.col} (${s.value})`);
     }
     return out.join('\n');
 }

@@ -3,6 +3,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.vet = vet;
 const aontu_1 = require("./aontu");
+const err_1 = require("./err");
 const ConjunctVal_1 = require("./val/ConjunctVal");
 const walk_1 = require("./walk");
 const DEFAULT_MAX_ERRORS = 20;
@@ -49,7 +50,14 @@ function siteOf(v, dataUrl) {
 // The underlying NilVal fields are untouched: this is a report-layer
 // projection, so the existing error.tsv assertions do not move.
 function sitesOf(nil, dataUrl) {
-    const sites = [siteOf(nil.primary, dataUrl)];
+    // `?? nil`: a failure raised about a CONSTRUCT rather than about a
+    // failed meet -- a lossy integer literal, say -- carries no operands
+    // at all, and reporting it about ITSELF is what ctx.adderr already
+    // does for the same reason. Without the fallback the report built a
+    // site out of `undefined` and threw while partitioning it, which is
+    // the one thing vet promises not to do: a bad value in the data is
+    // DATA, and the caller gets a report.
+    const sites = [siteOf(nil.primary ?? nil, dataUrl)];
     const secondary = siteOf(nil.secondary, dataUrl);
     if (null != secondary) {
         sites.push(secondary);
@@ -62,6 +70,17 @@ function sitesOf(nil, dataUrl) {
         ...sites.filter((s) => 'schema' === s.role),
     ];
 }
+// The message text is MATERIALISED on demand, exactly as handleErrors
+// materialises one before a caller sees it: makeNilErr defers it
+// because most NilVals are transient and never rendered, and only the
+// throwing path asks for it. Without this a finding could carry an
+// empty `message` -- which is what the incomplete half of every report
+// did, and what any nil built during the PARSE of a document did.
+function materialise(nil, ctx) {
+    if (null == nil.msg || '' === nil.msg) {
+        (0, err_1.descErr)(nil, ctx);
+    }
+}
 function findingOf(nil, dataUrl) {
     const details = nil.details ?? {};
     const finding = {
@@ -69,7 +88,11 @@ function findingOf(nil, dataUrl) {
         class: nil.class,
         severity: 'error',
         path: pathText(nil.path),
-        message: nil.msg ? nil.msg.split('\n')[0] : '',
+        // The HEADLINE only: the frames below it are for a human reading a
+        // terminal, and the first line is the part the two ports hold to
+        // byte parity. Materialised before this runs, so it is always
+        // there (see materialise above).
+        message: nil.msg.split('\n')[0],
         sites: sitesOf(nil, dataUrl),
     };
     // `expected`/`actual` are the admissible-alternatives contract, and
@@ -102,14 +125,24 @@ function findingOf(nil, dataUrl) {
 // A cascade would need a test per tie-breaker to stay honest; a key
 // needs none, and cannot disagree with itself.
 const ORDER_PAD = 9;
-function orderKey(f) {
+function pad(n) {
+    return String(n).padStart(ORDER_PAD, '0');
+}
+// The walk index is the LAST field, which makes every key unique and
+// the sort below total: two findings can otherwise share everything the
+// key carries — same data site, same code, same path — and a comparator
+// that has to answer "equal" is one more thing to get right in two
+// languages. With the index appended, ties simply keep walk order, in
+// both ports, by construction rather than by the sort's promises.
+function orderKey(f, index) {
     const site = f.sites[0];
     return [
         site.file,
-        String(site.row).padStart(ORDER_PAD, '0'),
-        String(site.col).padStart(ORDER_PAD, '0'),
+        pad(site.row),
+        pad(site.col),
         f.code,
         f.path,
+        pad(index),
     ].join('\u0000');
 }
 // Walk the evaluated schema to the anchor path. `$` and `$.a.b` are
@@ -195,7 +228,10 @@ function vet(schemaSrc, dataSrc, opts) {
             nils.push(err);
         }
     }
-    const findings = nils.map((n) => findingOf(n, dataUrl));
+    const findings = nils.map((n) => {
+        materialise(n, ctx);
+        return findingOf(n, dataUrl);
+    });
     const conflicts = findings.length;
     // 5. Incompleteness: what is left standing that cannot generate. The
     //    generate check runs in its own collect context so nothing it
@@ -208,10 +244,11 @@ function vet(schemaSrc, dataSrc, opts) {
     unified.gen(genCtx);
     for (const err of genCtx.err) {
         if ('incomplete' === err.class) {
+            materialise(err, genCtx);
             findings.push(findingOf(err, dataUrl));
         }
     }
-    const keyed = findings.map((f) => ({ key: orderKey(f), finding: f }));
+    const keyed = findings.map((f, i) => ({ key: orderKey(f, i), finding: f }));
     keyed.sort((a, b) => a.key < b.key ? -1 : 1);
     const ordered = keyed.map((k) => k.finding);
     const truncated = maxErrors < ordered.length;

@@ -51,6 +51,8 @@ type Val interface {
 	setPos(p int)
 	posu() bool
 	setPosu(u bool)
+	srcurl() string
+	setSrcurl(u string)
 	cjo() int
 	superior() Val
 
@@ -81,7 +83,24 @@ type base struct {
 	// spu is that url distinction: false = parsed (TS null), true =
 	// minted by clonePath's top level (TS ''). Children of a clone stay
 	// false, as TS's shallow clone shares the original children.
-	spu   bool
+	//
+	// KNOWN WRONG SET (issue #63). TS's clone COPIES the url, so what it
+	// really separates is "sited by the parser" from "made during
+	// evaluation" -- which is not the same partition as clone-vs-parsed,
+	// and the frames of a spread-applied conflict come out in the
+	// opposite order because of it. Marking parse-sited values instead
+	// is the fix, and it is its own change.
+	spu bool
+	// surl is the value's SOURCE NAME, the other half of the url TS
+	// carries on every site. spu above is only a distinction (parsed vs
+	// clone-minted) because, until a caller supplies real names, that is
+	// all the url ever amounts to here: one entry source, one text. The
+	// validation verb (vet.go) breaks that assumption -- it unifies TWO
+	// documents in one run -- so a value has to be able to say WHICH
+	// document it came from, both to be role-tagged in a report and to
+	// have its row/column computed against the right text. Empty means
+	// unnamed, which is every value in a single-source run.
+	surl  string
 	mtype bool // type mark
 	mhide bool // hide mark
 	// spr records the identity of the spread constraint already merged
@@ -147,6 +166,8 @@ func (b *base) pos() int            { return b.sp }
 func (b *base) setPos(p int)        { b.sp = p }
 func (b *base) posu() bool          { return b.spu }
 func (b *base) setPosu(u bool)      { b.spu = u }
+func (b *base) srcurl() string      { return b.surl }
+func (b *base) setSrcurl(u string)  { b.surl = u }
 func (b *base) cjo() int            { return 99999 }
 func (b *base) vpath() []string     { return b.path }
 func (b *base) setvpath(p []string) { b.path = p }
@@ -267,6 +288,79 @@ func (n *NilVal) Gen(ctx *Ctx) (any, error) {
 	return nil, &AontuError{Msg: n.FullMessage(src, file), Code: n.why}
 }
 
+// attempt names the operation in messages, defaulting from the operand
+// count the way TS descErr does.
+func (n *NilVal) attemptName() string {
+	if n.attempt != "" {
+		return n.attempt
+	}
+	if n.secondary == nil {
+		return "resolve"
+	}
+	return "unify"
+}
+
+// Path is the `$.a.b` location the failure is reported at.
+//
+// The path comes from the primary operand, as TS NilVal.make copies
+// av.path onto the nil. A nil with NO operands -- one raised about a
+// construct rather than about a failed meet, such as the refused
+// negation in `a:-0x_1` -- keeps the path setPaths gave it where it
+// sits in the tree; reading only the (absent) primary reported every
+// one of them at the root (issue #39).
+func (n *NilVal) Path() string {
+	if p := n.pathSegments(); 0 < len(p) {
+		return "$." + strings.Join(p, ".")
+	}
+	return "$"
+}
+
+// pathSegments is the raw path the failure is reported at.
+func (n *NilVal) pathSegments() []string {
+	residue := n.primary
+	if residue == nil {
+		residue = n
+	}
+	return residue.vpath()
+}
+
+// Headline is the first line of the full message: the `[aontu/<code>]`
+// marker, the attempt and the path. It is the ONE line of prose the two
+// ports hold to byte parity (the frames below it excerpt source, and the
+// short Message is each port's own), which is why the validation verb
+// reports it rather than Message -- a vet report crossing between the
+// ports must read the same in both (vet.go).
+func (n *NilVal) Headline() string {
+	plural := ""
+	if n.secondary != nil {
+		plural = "s"
+	}
+	return "[aontu/" + n.why + "]: Cannot " + n.attemptName() +
+		" value" + plural + " at path " + n.messagePath()
+}
+
+// messagePath is Path with EMPTY SEGMENTS DROPPED, which is what TS
+// descErr renders: its filter exists to keep a null out of the joined
+// path, and takes the empty-string key with it -- so `a: {"": integer}`
+// is reported at `$.a` in the message while the machine-readable report
+// keeps the segment (`$.a.`, vet.go). Reproduced rather than corrected:
+// the two ports' messages are held to byte parity, and which of the two
+// spellings is right for an empty key is a question about paths, not
+// about this line (docs/capability-review/g7-machine-access.md).
+func (n *NilVal) messagePath() string {
+	p := n.pathSegments()
+	segs := make([]string, 0, len(p))
+	for _, seg := range p {
+		if "" != seg {
+			segs = append(segs, seg)
+		}
+	}
+	if 0 == len(segs) {
+		return "$"
+	}
+	return "$." + strings.Join(segs, ".")
+}
+
 // FullMessage renders the failure the way the canonical TypeScript
 // implementation renders a THROWN error (descErr, ts/src/err.ts):
 // the `[aontu/<code>]` marker, the "Cannot <attempt> value(s) at path
@@ -282,40 +376,15 @@ func (n *NilVal) FullMessage(src, file string) string {
 	if n.fullmsg != "" {
 		return n.fullmsg
 	}
-	attempt := n.attempt
-	if attempt == "" {
-		attempt = "unify"
-		if n.secondary == nil {
-			attempt = "resolve"
-		}
-	}
-	plural := ""
-	if n.secondary != nil {
-		plural = "s"
-	}
-	// The path comes from the primary operand, as TS NilVal.make copies
-	// av.path onto the nil. A nil with NO operands -- one raised about a
-	// construct rather than about a failed meet, such as the refused
-	// negation in `a:-0x_1` -- keeps the path setPaths gave it where it
-	// sits in the tree; reading only the (absent) primary reported every
-	// one of them at the root (issue #39).
-	path := "$"
+	attempt := n.attemptName()
+	// The frames are rendered ABOUT the primary operand, falling back to
+	// the nil itself when the failure had none (see Path above).
 	residue := n.primary
 	if residue == nil {
 		residue = n
 	}
-	if p := residue.vpath(); len(p) > 0 {
-		path = "$." + strings.Join(p, ".")
-	}
 	var b strings.Builder
-	b.WriteString("[aontu/")
-	b.WriteString(n.why)
-	b.WriteString("]: Cannot ")
-	b.WriteString(attempt)
-	b.WriteString(" value")
-	b.WriteString(plural)
-	b.WriteString(" at path ")
-	b.WriteString(path)
+	b.WriteString(n.Headline())
 	// Separator before the first frame: one blank line after a hint, TWO
 	// when the code has none. That asymmetry is TS's, and it comes out of
 	// descErr's fixed [headline+hint, '\n', frame].join('\n') followed by
@@ -393,6 +462,17 @@ func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
 		arrowFile = "<no-file>"
 	}
 	fmt.Fprintf(&b, "  \x1b[34m--> %s:%d:%d\n", arrowFile, arrowRow, arrowCol)
+	// TWO lines of leading context, clamped at the top of the file, then
+	// the value's own line, then two trailing: the window TS's frame
+	// shows. Go printed only the trailing half, so every error below row
+	// 1 -- which is most of them in a real document -- framed with the
+	// lines AFTER the mistake and none of the lines before it, and the
+	// two ports' messages differed by those lines.
+	for r := row - 2; r < row; r++ {
+		if 1 <= r {
+			fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", r, line(r))
+		}
+	}
 	fmt.Fprintf(&b, "\x1b[34m%3d | \x1b[0m%s\n", row, line(row))
 
 	keyPrefix := ""
@@ -430,7 +510,27 @@ func rowCol(src string, sp int) (int, int) {
 			last = i
 		}
 	}
-	return row, sp - last
+	return row, 1 + utf16Len(src[last+1:sp])
+}
+
+// utf16Len counts the UTF-16 code units in s.
+//
+// COLUMNS ARE COUNTED IN UTF-16 CODE UNITS, not bytes. That is what the
+// canonical port's sites carry -- JavaScript strings are UTF-16, so
+// jsonic's columns are too -- and it is what the LSP protocol asks for
+// by default (go/lsp converts its own offsets the same way). Counting
+// bytes put every column, and the caret under it, one place late for
+// each multi-byte character earlier in the line: `k:{"é":integer}`
+// framed at column 9 where TypeScript said 8.
+func utf16Len(s string) int {
+	n := 0
+	for _, r := range s {
+		n++
+		if 0xFFFF < r {
+			n++
+		}
+	}
+	return n
 }
 
 // strinject replaces {key} placeholders with detail values, the Go
@@ -487,14 +587,22 @@ func (n *NilVal) Message() string {
 // no frame -- so the one document shaped entirely like the mistake got
 // the least helpful message (issue #38).
 func residueErr(ctx *Ctx, v Val, code string) error {
+	// Recorded on the context first, as TS FeatureVal.gen does through
+	// makeNilErr — and, like TS, RAISED only when the context is not
+	// collecting. A collecting caller asked for the failures to be
+	// gathered rather than thrown, and returning an error there left the
+	// one thing it asked for (the reason) nowhere to be found: the
+	// validation verb reads exactly these off an isolated context to
+	// report residue the data has not yet satisfied (vet.go).
+	n := makeNilErr(ctx, code, v, nil)
+	n.path = cp(v.vpath())
+	if ctx != nil && ctx.collect {
+		return nil
+	}
 	src, file := "", ""
 	if ctx != nil {
 		src, file = ctx.src, ctx.file
 	}
-	n := newNil(code)
-	n.primary = v
-	n.sp = v.pos()
-	n.path = cp(v.vpath())
 	return &AontuError{Msg: n.FullMessage(src, file), Code: code}
 }
 
@@ -507,12 +615,30 @@ func makeNilErrFull(ctx *Ctx, why string, a, b Val, attempt string, details map[
 	return n
 }
 
+// srcid is a value's SOURCE IDENTITY: the thing TS compares when it
+// gates the operand flip on `nil.site.url === bv.site.url`. A real
+// source name wins when there is one (the validation verb stamps one
+// per document, walk.go); otherwise the clone-mint flag stands in for
+// it, which is all a single-source run ever needs — one text, so the
+// only distinction left is parsed versus minted.
+func srcid(v Val) string {
+	if u := v.srcurl(); "" != u {
+		return u
+	}
+	if v.posu() {
+		return "\x00clone"
+	}
+	return "\x00parse"
+}
+
 // makeNilErr builds a NilVal error and records it on ctx. The operand
 // later in the source (greater position) becomes the primary, matching
 // the TypeScript NilVal.make ordering so error messages agree — and,
 // exactly as there, the flip fires only when the two operands share a
-// source identity (the site-url equality gate; posu here): a cloned
-// operand meeting a parsed one keeps the driving operand primary.
+// source identity (srcid above): a cloned operand meeting a parsed one,
+// or a schema value meeting a data value, keeps the driving operand
+// primary, because comparing their positions would be comparing
+// offsets into different texts.
 func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 	n := newNil(why)
 	if a != nil {
@@ -520,7 +646,7 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 		n.sp = a.pos()
 		if b != nil {
 			n.secondary = b
-			if a.posu() == b.posu() && b.pos() > a.pos() {
+			if srcid(a) == srcid(b) && b.pos() > a.pos() {
 				n.primary = b
 				n.secondary = a
 				n.sp = b.pos()

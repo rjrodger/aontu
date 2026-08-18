@@ -276,6 +276,16 @@ describe('cli-vet', () => {
   })
 
 
+  // A value the walk never reaches has no file name to report — a
+  // preference's synthesised type yardstick is one — and the line
+  // renders with an empty file rather than the word "undefined".
+  test('vet-site-without-a-file-renders-empty', () => {
+    const f = vetFiles('a: *1', 'a: {}')
+    const r = vetCapture(() => runVet([f.schema, f.data]))
+    Assert.match(r.out, /schema: :1:\d+ \(number\)/)
+  })
+
+
   // The verb dispatches only as the FIRST argument, so a file argument
   // is never shadowed by a verb name.
   test('vet-dispatches-through-main', () => {

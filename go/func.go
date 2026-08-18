@@ -216,7 +216,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 				// which would otherwise hand the ref the call's own location
 				// and make it look one level down.
 				rv.absolute = true
-				rv.sp, rv.spu = f.sp, f.spu
+				rv.sp, rv.spu, rv.surl = f.sp, f.spu, f.surl
 				f.peg[i] = rv
 			}
 		}
@@ -329,6 +329,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 			// (issue #41).
 			out.setPos(f.sp)
 			out.setPosu(f.spu)
+			out.setSrcurl(f.surl)
 		}
 	} else if isTop(peer) {
 		f.notdone()
@@ -347,7 +348,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		f.notdone()
 		cj := newConjunct([]Val{f, peer})
 		cj.path = cp(f.path) // TS defer branch: out.path = this.path
-		cj.sp, cj.spu = f.sp, f.spu
+		cj.sp, cj.spu, cj.surl = f.sp, f.spu, f.surl
 		out = cj
 	}
 

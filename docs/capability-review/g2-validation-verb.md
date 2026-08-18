@@ -506,41 +506,56 @@ ts/src/val/NilVal.ts (`class` field), ts/src/err.ts; go/hints.go,
 go/val.go. Runners ts/test/spec.test.ts and go/spec_test.go learn to
 assert codes.
 
-**Phase 2 — vet engine API, TypeScript (M).**
-Spec: new `test/spec/vet.tsv` — columns name, schema, data, verdict,
-findings — plus JSON-report goldens for a representative subset.
-**The row encoding is settled, by probing.** `code@path` lists,
-written here before the reconnaissance below, are ruled out by its
-first constraint: no punctuation is safe as a separator, because every
-candidate is legal inside a quoted map key. The surviving shape was
-then probed against the engine and is now written out, with its
-reasoning, at the head of
-[`test/spec/draft/vet.tsv`](../../test/spec/draft/vet.tsv):
+**Phase 2 — vet engine API (M).** LANDED, and the plan's own
+"TypeScript" qualifier is gone: the engine exists in both ports
+(`ts/src/vet.ts`, `go/vet.go`), because phase 4 is what makes the
+shared rows executable.
+Spec: [`test/spec/vet.tsv`](../../test/spec/vet.tsv) — 37 rows, run by
+both runners. **The row encoding was settled by probing.** `code@path`
+lists, written here before the reconnaissance below, are ruled out by
+its first constraint: no punctuation is safe as a separator, because
+every candidate is legal inside a quoted map key. The surviving shape
+is documented at the head of the file:
 **five columns** — name, mode, schema, data, expect — because vet takes
 two documents; a **JSON-encoded** expect object, using the serialiser
-pair the suite already holds to byte parity; and `message`
-**excluded** from the golden, asserted by substring per port, because
-prose is deliberately not in cross-port parity. One part remains
-unprobed and is flagged there: options (`at`, `closed`, `partial`)
-ride an `opts` key rather than a column, because no runner passes
-options today.
-The rows are drafted rather than live because both runners execute
-every row with no skip list, so a `vet` row cannot be executable until
-phase 4 gives Go a vet.
-Code: new ts/src/vet.ts (anchor selection, data parse,
+pair the suite already holds to byte parity; `message` **excluded**
+from the golden, asserted per port, because prose is deliberately not
+in cross-port parity; and options (`at`, `closed`, `partial`,
+`maxErrors`) riding an `opts` key rather than a column. That last part
+was the one piece the phase-2 draft could not probe, since no runner
+passed options then; it survived phase 4's probe unchanged.
+Code: ts/src/vet.ts and go/vet.go (anchor selection, data parse,
 unify-with-collect, residue walk generalising ts/src/lsp.ts
-`walkNils`, finding construction); ts/src/aontu.ts export.
+`walkNils` into ts/src/walk.ts and go/walk.go, finding construction);
+exported from ts/src/aontu.ts and as `aontu.Vet`.
 
-**Phase 3 — CLI verb and JSON format (M).**
-Code: ts/src/cli.ts (`vet` subcommand, `--at`, `--format`, verdict
-exit classes); docs/reference-api.md, docs/how-to.md. Text renderer
-reuses `descErr`, with roles replacing the same-file primary
-heuristic for cross-file sites.
+**Phase 3 — CLI verb and JSON format (M).** LANDED, in both ports.
+Code: ts/src/cli.ts and go/cmd/aontu/vet.go (`vet` subcommand, `--at`,
+`--closed`, `--partial`, `--max-errors`, `--format`, verdict exit
+classes); docs/reference-api.md, docs/how-to.md. **Departure:** the
+text renderer does NOT reuse `descErr`. `descErr` renders NilVals
+through the TypeScript-only error path, ANSI colour included, while
+the report is a plain projection the Go port matches byte for byte —
+rendering from the projection is what lets one contract drive both.
+Roles do replace the same-file primary heuristic for cross-file
+sites, as planned.
 
-**Phase 4 — Go port (L).**
-Code: go/vet.go, go/report.go, go/cmd/aontu, go/hints.go.
-go/spec_test.go runs vet.tsv and errcodes.tsv with no skip list,
-including byte-identical report JSON.
+**Phase 4 — Go port (L).** LANDED.
+Code: go/vet.go, go/walk.go, go/cmd/aontu/vet.go. **Departures:** no
+go/report.go — the renderers live beside the command, as they do in
+ts/src/cli.ts, and the report types are the engine's exported API; and
+go/hints.go needed nothing, because the codes vet reports were already
+registered by phase 1. go/spec_test.go runs vet.tsv and errcodes.tsv
+with no skip list, and the two CLIs were diffed over ~90 schema/data
+pairs: byte-identical reports, text and JSON, exit codes included.
+Byte parity is what made this phase an ENGINE phase as much as a port
+one — it exposed nine pre-existing divergences no shared row had
+reached (column counting, frame context lines, a closed bag's early
+return, a lost path in the disjunct fold, unsited junctions, an
+unplaced preference yardstick, the operand flip comparing offsets
+across two documents, a constraint residual losing its source, and
+generation under collect recording nothing), each fixed rather than
+recorded. The progress register lists them.
 
 **Phase 5 — SARIF, Action, watch (S).**
 Code: ts/src/report-sarif.ts and Go twin; `--watch` in both CLIs;
@@ -597,7 +612,9 @@ implementation.
   a flag once schemas are distributed ([G6](g6-distribution.md)) but
   adds language surface; the flag ships first.
 - ~~**Finding ordering.**~~ **Decided: vet sorts, by data site then
-  code.** Not a preference but a necessity — the underlying walk's
+  code** — then path, then the walk index, the last field making every
+  key unique so a tie cannot fall to the sort algorithm. Not a
+  preference but a necessity — the underlying walk's
   order is not in cross-port parity (see "What the spec suite can
   actually pin", point 4), so an unsorted report could not be pinned by
   a shared row at all. Data-site document order is also what agent

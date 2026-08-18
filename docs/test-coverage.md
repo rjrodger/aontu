@@ -45,13 +45,13 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (12196/12196) |
-| TypeScript — `ts/src` | branches | **100.00 %** (2722/2722) |
-| TypeScript — `ts/src` | functions | **100.00 %** (484/484) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (13658/13658) |
+| TypeScript — `ts/src` | branches | **100.00 %** (3074/3074) |
+| TypeScript — `ts/src` | functions | **100.00 %** (536/536) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **2407 TypeScript tests** and
-four green Go packages, including the **2031-row shared spec** that both
+Both suites pass in full via `make test`: **2669 TypeScript tests** and
+four green Go packages, including the **2246-row shared spec** that both
 engines execute.
 
 The absolute figures above move with every change and are reproduced,
@@ -101,29 +101,30 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **2202 cases across 60 files** — is run by *both*
+`test/spec/*.tsv` — **2246 cases across 61 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
 | File | Cases | File | Cases |
 |------|------:|------|------:|
-| `number-tower.tsv`         | 388 | `file.tsv`           | 24 |
-| `edge.tsv`                 | 310 | `disjunct.tsv`       | 24 |
-| `constraint-product.tsv`   | 256 | `budget.tsv`         | 24 |
-| `number-model.tsv`         | 112 | `var.tsv`            | 23 |
-| `func.tsv`                 | 110 | `marks.tsv`          | 23 |
-| `constraint-length.tsv`    |  92 | `engine-parity.tsv`  | 23 |
-| `constraint-re.tsv`        |  89 | `elision.tsv`        | 21 |
-| `constraint-bound.tsv`     |  74 | `map.tsv`            | 20 |
-| `errcodes.tsv`             |  70 | `plus.tsv`           | 14 |
-| `number-cross-product.tsv` |  59 | `op-chars.tsv`       | 13 |
-| `ref.tsv`                  |  47 | `merge-conflict.tsv` | 13 |
-| `scalar.tsv`               |  40 | `conjunct.tsv`       | 13 |
-| `optional.tsv`             |  37 | `incomplete.tsv`     |  9 |
-| `error.tsv`                |  34 | `close.tsv`          |  9 |
-| `pref.tsv`                 |  30 | `list.tsv`           |  7 |
-| `constraint-cross.tsv`     |  30 | `comment.tsv`        |  6 |
-| `constraint-must.tsv`      |  28 | `divergent.tsv`      |  0 |
+| `number-tower.tsv`          | 388 | `budget.tsv`         | 24 |
+| `edge.tsv`                  | 310 | `disjunct.tsv`       | 24 |
+| `constraint-product.tsv`    | 256 | `file.tsv`           | 24 |
+| `number-model.tsv`          | 112 | `engine-parity.tsv`  | 23 |
+| `func.tsv`                  | 110 | `marks.tsv`          | 23 |
+| `constraint-length.tsv`     |  92 | `var.tsv`            | 23 |
+| `constraint-re.tsv`         |  89 | `elision.tsv`        | 21 |
+| `constraint-bound.tsv`      |  74 | `map.tsv`            | 20 |
+| `errcodes.tsv`              |  70 | `plus.tsv`           | 14 |
+| `number-cross-product.tsv`  |  59 | `conjunct.tsv`       | 13 |
+| `ref.tsv`                   |  48 | `merge-conflict.tsv` | 13 |
+| `scalar.tsv`                |  40 | `op-chars.tsv`       | 13 |
+| `optional.tsv`              |  37 | `close.tsv`          |  9 |
+| `vet.tsv`                   |  37 | `incomplete.tsv`     |  9 |
+| `constraint-must.tsv`       |  34 | `list.tsv`           |  7 |
+| `error.tsv`                 |  34 | `comment.tsv`        |  6 |
+| `constraint-cross.tsv`      |  30 | `divergent.tsv`      |  0 |
+| `pref.tsv`                  |  30 |                      |    |
 
 plus the `spread*.tsv` family — **26 files, 130 cases**, one spread
 topic per file. `divergent.tsv` is the parity ledger: commentary only,
@@ -152,17 +153,20 @@ scalar kind, and double negation of exact literals.
 
 Each row asserts a canonical form (`canon`), a generated value (`gen`),
 the exact serialised bytes (`gens`), an error substring (`err`), an exact
-error code (`errc`), or an error-code registry entry (`errcode`).
+error code (`errc`), an error-code registry entry (`errcode`), or — in
+the one five-column mode — a whole validation report (`vet`, whose extra
+column carries the data document that meets the schema in `src`).
 
 ### Per-port tests
 
 Only what a shared row cannot express gets a per-port test — ADR-001
 prefers a row precisely because one row lifts both engines:
 
-**TypeScript** (`ts/test/*.test.ts`, 2407 tests, 2031 of them shared
+**TypeScript** (`ts/test/*.test.ts`, 2669 tests, 2246 of them shared
 rows): every built-in function in depth, the exact leaves, the public
 API, LSP diagnostics/hover/completion/framing, the CLI, error rendering,
-references, parsing, the fixpoint, worked examples — plus three
+the validation verb (`vet.test.ts`, and the verb's cases in
+`cli.test.ts`), references, parsing, the fixpoint, worked examples — plus three
 coverage-driven files (`coverage.test.ts`, `coverage2.test.ts`,
 `coverage3.test.ts`) that reach what no source can: the explain-trace
 formatters, raw (non-Val) variable bindings, `OpBaseVal` machinery,
@@ -174,7 +178,8 @@ server's frame codec and stream defaults.
 **Go** (`go/*_test.go`, plus `lsp` and both commands): the
 representation-level invariants, `Generate`'s native exact types, the
 kind lattice, file loading, constructors, concurrency, `formatNumber`
-parity — plus four coverage-driven files (`coverage_test.go` through
+parity, the validation verb (`vet_test.go` and `cmd/aontu/vet_test.go`,
+the twins of the TypeScript files above) — plus four coverage-driven files (`coverage_test.go` through
 `coverage4_test.go`) covering scaled-comparison infinities, the
 `Check`/`Spans` walkers on constructed trees, `RefVal`/`VarVal`
 internals, defer and ratchet arms across the Val types, grammar actions

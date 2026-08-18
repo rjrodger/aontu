@@ -134,6 +134,27 @@ const err_1 = require("../dist/err");
     // that side loudly. This is the completion pin of issue #29: thrown
     // error text is in cross-port parity. (Spec rows still assert only
     // probed substrings -- the twins are the byte-level guard.)
+    // The twin above with the two things its one-line source could not
+    // show: a conflict BELOW row 1, so the frame's two lines of leading
+    // context are rendered, and a multi-byte character before the column,
+    // so the column is counted in UTF-16 code units rather than bytes.
+    // The Go port got both wrong until the validation verb's byte-parity
+    // probing found them, while the one-line twin stayed green. The Go
+    // twin with the SAME literal is TestFullMessageTwinFramed in
+    // go/hints_test.go.
+    (0, node_test_1.it)('full-message-twin-framed', () => {
+        let err = undefined;
+        try {
+            new aontu_1.Aontu().generate('x: 0\ny: 0\n"\u00e9": 1\n"\u00e9": 2\nz: 0\n');
+        }
+        catch (e) {
+            err = e;
+        }
+        if (undefined === err) {
+            throw new Error('expected error');
+        }
+        (0, expect_1.expect)(err.message).equal("[aontu/scalar_value]: Cannot unify values at path $.é\n\nLiteral scalar values of the same kind can only unify if they are\nexactly equal.\n \nExamples:\n  1 & 1   -> 1    # Does unify (equal Integers);\n  a & a   -> a    # Does unify (equal Strings);\n  1 & 2   -> nil  # Does not unify (unequal Integers);\n  1 & 1.0 -> nil  # Does not unify (kinds: Integer & Float).\n\n Cannot unify value: 2 with value: 1\n  \u001b[34m--> <no-file>:4:6\n\u001b[34m  2 | \u001b[0my: 0\n\u001b[34m  3 | \u001b[0m\"é\": 1\n\u001b[34m  4 | \u001b[0m\"é\": 2\n           \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  5 | \u001b[0mz: 0\n\u001b[34m  6 | \u001b[0m\n\n Cannot unify value: 1 with value: 2\n  \u001b[34m--> <no-file>:3:6\n\u001b[34m  1 | \u001b[0mx: 0\n\u001b[34m  2 | \u001b[0my: 0\n\u001b[34m  3 | \u001b[0m\"é\": 1\n           \u001b[34m^ value was: 1\u001b[0m\n\u001b[34m  4 | \u001b[0m\"é\": 2\n\u001b[34m  5 | \u001b[0mz: 0\n");
+    });
     (0, node_test_1.it)('full-message-twin', () => {
         let err = undefined;
         try {

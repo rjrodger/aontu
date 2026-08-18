@@ -70,6 +70,14 @@ func TestCheckWalkersDirect(t *testing.T) {
 	if valKind(cj) != "conjunct" {
 		t.Fatalf("conjunct kind")
 	}
+	// A junction that survives evaluation is always a FOLD's mint, and a
+	// mint carries no position (disjunct.go), so collectSpans never
+	// reaches this label through a real document — the hover path it
+	// serves would still use it for a constructed tree, and TS's
+	// valKind keeps the same arm.
+	if valKind(newDisjunct(nil)) != "disjunct" {
+		t.Fatalf("disjunct kind")
+	}
 	if valKind(newFunc("key", nil)) != "function" {
 		t.Fatalf("func kind")
 	}

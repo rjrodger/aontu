@@ -126,6 +126,28 @@ const SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(f.expected, '"gold"|"silver"');
         Assert.equal(f.actual, '"lead"');
     });
+    // A nil built during the PARSE of a document has no operands and
+    // never passes through the unify error path, so both of its report
+    // fields have to be filled in by vet itself: the site (about the nil
+    // itself) and the message (materialised on demand).
+    (0, node_test_1.test)('an-operandless-nil-reports-about-itself', () => {
+        const r = (0, vet_1.vet)('a: integer', 'a: 9007199254740993');
+        Assert.equal(r.verdict, 'invalid');
+        const f = r.findings[0];
+        Assert.equal(f.code, 'lossy_integer_literal');
+        Assert.equal(f.sites.length, 1);
+        Assert.equal(f.sites[0].role, 'data');
+        Assert.equal(f.sites[0].value, 'nil');
+        Assert.ok(f.message.startsWith('[aontu/lossy_integer_literal]'));
+    });
+    // The incomplete half of a report comes from the generate check,
+    // which never renders its own text: without materialisation these
+    // findings carried an empty message while the conflicts carried a
+    // headline.
+    (0, node_test_1.test)('an-incomplete-finding-carries-its-message', () => {
+        const r = (0, vet_1.vet)(SCHEMA, 'service: { name: "auth" }');
+        Assert.equal(r.findings[0].message, '[aontu/mapval_no_gen]: Cannot resolve value at path $.service.port');
+    });
     (0, node_test_1.test)('message-is-the-headline-only', () => {
         const r = (0, vet_1.vet)(SCHEMA, 'service: { name: "auth", port: "8080" }');
         Assert.ok(r.findings[0].message.startsWith('[aontu/no_scalar_unify]'));

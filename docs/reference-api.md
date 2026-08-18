@@ -32,10 +32,6 @@ Both implementations ship the same `aontu` command. It evaluates a
 source file (or stdin) and prints the result, or starts a REPL when run
 interactively with no file.
 
-**TypeScript only for now:** the `vet` verb below is
-[G2 phase 3](capability-review/progress.md#g2--the-validation-verb) and
-has no Go port yet. Everything else on this page is in both.
-
 ```
 Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
@@ -706,6 +702,14 @@ Generated **bytes** are in parity too: `exactJSON` in TypeScript and
 which the shared suite's byte-exact `gens` rows pin. What byte equality
 cannot see — a `bigint` where a `number` was due, since both serialise
 as `5` — is pinned by per-port API tests instead.
+
+**Validation reports** are in parity as well: `aontu vet` produces the
+same report from both commands, text and JSON, with the same exit code —
+pinned by the shared suite's [`vet.tsv`](../test/spec/vet.tsv) rows for
+everything but each finding's `message`, which is prose. Two things
+still differ by construction: the `aontu.version` field, because the
+npm and Go module version series are independent, and the wording of a
+"cannot read <file>" failure, which is the host's.
 
 The shared parser stack is identical: TypeScript uses `@tabnas/jsonic` +
 `@tabnas/{expr,path,multisource,directive,debug}`; Go uses the ports

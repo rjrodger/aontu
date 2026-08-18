@@ -14,7 +14,9 @@ type DisjunctVal struct {
 }
 
 func newDisjunct(members []Val) *DisjunctVal {
-	return &DisjunctVal{peg: members}
+	d := &DisjunctVal{peg: members}
+	d.sp = -1
+	return d
 }
 
 func (d *DisjunctVal) cjo() int      { return 35000 }
@@ -87,6 +89,13 @@ func (d *DisjunctVal) Unify(peer Val, ctx *Ctx) Val {
 		return makeNilErr(ctx, "|:empty", d, peer)
 	}
 	out := newDisjunct(res)
+	// The fold's result stands where the disjunct stood, so it keeps the
+	// path (TS's Val constructor takes it from the ctx, which is the
+	// same location; the conjunct fold already does this). Without it a
+	// disjunct that survives one evaluation and meets its peer in a
+	// LATER one — which is exactly what the validation verb does, schema
+	// first and data second — reported its conflict at the root.
+	out.path = cp(d.path)
 	if done {
 		out.setDc(DONE)
 	} else {

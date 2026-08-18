@@ -95,8 +95,20 @@ func TestSpec(t *testing.T) {
 			}
 			name := parts[0]
 			mode := parts[1]
+			// A vet row carries TWO documents, so its expect is the
+			// fifth column; every other mode reads four and ignores any
+			// extra (see test/spec/vet.tsv for the encoding).
+			vetRow := "vet" == mode
+			if vetRow && len(parts) < 5 {
+				continue
+			}
 			src := strings.ReplaceAll(unescapeSpec(parts[2]), "__FIXTURES__", fixturesDir)
+			data := ""
 			expect := unescapeSpec(parts[3])
+			if vetRow {
+				data = unescapeSpec(parts[3])
+				expect = unescapeSpec(parts[4])
+			}
 			total++
 
 			t.Run(file+":"+name, func(t *testing.T) {
@@ -183,6 +195,22 @@ func TestSpec(t *testing.T) {
 					if !semverRe.MatchString(expect) {
 						t.Fatalf("code %q: since-version %q is not a semver triple", name, expect)
 					}
+				case "vet":
+					// The golden carries the run's options under `opts`;
+					// everything else in it is the report.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					opts := specVetOpts(t, golden["opts"])
+					delete(golden, "opts")
+
+					got := specVetGolden(t, Vet(src, data, opts))
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("vet report mismatch\n schema: %q\n data:   %q\n want: %s\n got:  %s",
+							src, data, want, got)
+					}
 				default:
 					t.Fatalf("unknown spec mode %q", mode)
 				}
@@ -193,6 +221,74 @@ func TestSpec(t *testing.T) {
 	if total == 0 {
 		t.Fatalf("no spec rows loaded from %s", specDir)
 	}
+}
+
+// specJSON serialises a value the way the vet goldens are compared:
+// COMPACT, HTML escaping off (as specGens turned it off, so `<`, `>`
+// and `&` stay literal in both ports), keys sorted -- which Go's
+// encoder does for a map and the canonical emitter does for every
+// object, so a golden cell may be written in any key order.
+func specJSON(t *testing.T, v any) string {
+	t.Helper()
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	return strings.TrimSuffix(buf.String(), "\n")
+}
+
+// specVetGolden is the report as a vet golden spells it: the MESSAGE is
+// excluded (prose is per-port, codes are not -- the same split the errc
+// mode makes), and the rest is round-tripped through the map form so
+// the two sides of the comparison are serialised by the same code.
+func specVetGolden(t *testing.T, report VetReport) string {
+	t.Helper()
+	raw, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("marshal report: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("unmarshal report: %v", err)
+	}
+	findings, _ := out["findings"].([]any)
+	for _, f := range findings {
+		if m, ok := f.(map[string]any); ok {
+			delete(m, "message")
+		}
+	}
+	return specJSON(t, out)
+}
+
+// specVetOpts reads the run's options out of the golden's `opts` key.
+func specVetOpts(t *testing.T, raw any) *VetOptions {
+	t.Helper()
+	if nil == raw {
+		return nil
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("opts is not an object: %v", raw)
+	}
+	opts := &VetOptions{}
+	for k, v := range m {
+		switch k {
+		case "at":
+			opts.At, _ = v.(string)
+		case "closed":
+			opts.Closed, _ = v.(bool)
+		case "partial":
+			opts.Partial, _ = v.(bool)
+		case "maxErrors":
+			n, _ := v.(float64)
+			opts.MaxErrors = int(n)
+		default:
+			t.Fatalf("unknown vet opt %q", k)
+		}
+	}
+	return opts
 }
 
 // canonNoReparse lists canon rows whose expected canon cannot be

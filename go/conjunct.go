@@ -14,7 +14,9 @@ type ConjunctVal struct {
 }
 
 func newConjunct(terms []Val) *ConjunctVal {
-	return &ConjunctVal{peg: terms}
+	c := &ConjunctVal{peg: terms}
+	c.sp = -1
+	return c
 }
 
 func (c *ConjunctVal) cjo() int      { return 40000 }

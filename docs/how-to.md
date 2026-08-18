@@ -134,8 +134,7 @@ $.user.id: no_scalar_unify [conflict]
 The exit code distinguishes *contradicted* (1) from *not yet complete*
 (3) from *the schema itself is broken* (4), and `--format json` emits
 the same report for a program to read. See
-[`aontu vet`](reference-api.md#aontu-vet). (TypeScript only for now;
-the Go port is the next phase.)
+[`aontu vet`](reference-api.md#aontu-vet).
 
 ## Provide defaults that callers can override
 

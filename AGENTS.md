@@ -122,6 +122,11 @@ Tab-separated columns: `name <TAB> mode <TAB> src <TAB> expect`
 | `err`   | `generate(src)` errors, message contains `expect`     |
 | `errc`  | `generate(src)` errors, first failure's why-code equals `expect` |
 | `errcode` | registry row: code / class / since — asserted against the engine's code→class table (see below) |
+| `vet`   | FIVE columns — `name <TAB> vet <TAB> schema <TAB> data <TAB> expect` — the report of `vet(schema, data)` equals `expect`, minus each finding's message |
+
+`vet` is the one mode with a fifth column, because the validation verb
+takes two documents. Every other mode reads the first four and ignores
+anything after them, which is what made the column additive.
 
 Escapes in `src`/`expect`: `\n` → newline, `\t` → tab, `\\` → backslash.
 Lines starting with `#` and blank lines are ignored. See
