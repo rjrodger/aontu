@@ -21,7 +21,12 @@
 
 root ::= ws value ws
 
-value ::= disjunct
+value ::= piped
+
+# The pipe is SUGAR: `x |> f(a)` is `f(x, a)`, resolved while reading
+# the source (G8 phase 4). It never reaches a value, so canon never
+# emits it — every canon in the shared suite shows the call.
+piped ::= disjunct ( ws "|>" ws disjunct )*
 
 disjunct ::= conjunct ( ws "|" ws conjunct )*
 

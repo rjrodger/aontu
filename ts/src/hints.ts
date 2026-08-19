@@ -174,6 +174,8 @@ const hints: Record<string, string> = {
 
   place_pair: 'Two placeholders met, and neither has a value to fill the other.\n`_` is a HOLE: it is filled by whatever the call is unified with, so\na call holding one needs a peer that does not. Give one side a\nvalue.\n \nExamples:\n  upper(_) & hello        -> "HELLO"  # The peer fills the hole;\n  _ + 2 & 1               -> 3        # ... whatever the call is;\n  upper(_) & lower(_)     -> nil      # ... but two holes fill nothing.',
 
+  pipe_target: 'The right-hand side of a `|>` is not a function. A pipe puts the\nvalue on its left in as the FIRST argument of the call on its\nright, so the right side has to be one: a call, or the bare name of\na built-in.\n \nExamples:\n  hello |> upper        -> "HELLO"  # A bare name is the call;\n  $.names |> pack({})   -> {..}     # ... or a call with more arguments;\n  1 |> 2                -> nil      # ... but a value is not a function.',
+
   // Unification errors
   'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
   'unify_no_res': 'Unification produced no result. The values could not be unified.',
@@ -380,6 +382,11 @@ const codeClasses: Record<string, string> = {
   // and neither could answer for the other, which is what every
   // conflict is.
   place_pair: 'conflict',
+
+  // G8 phase 4 -- the pipe. Class `parse`: a pipe is sugar resolved
+  // while reading the source, so a pipe into something that is not a
+  // call is wrong in the TEXT and no later pass can repair it.
+  pipe_target: 'parse',
 
   // G4 phase 5 -- the relation graph checks. Class `conflict`: the
   // model contradicts a property it declared for itself. Report-layer,

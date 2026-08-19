@@ -124,6 +124,7 @@ const hints = {
     filter_data: 'The first argument to filter() is not a bag. `filter` keeps the\nchildren of its DATA that already satisfy a condition, so the data\nhas to have children: a list, or a map.\n \nExamples:\n  filter([1,x], integer)      -> [..]  # A list;\n  filter({a:1,b:x}, integer)  -> {..}  # ... or a map, keys kept;\n  filter(1, integer)          -> nil   # ... but a scalar has none.',
     match_none: 'No pattern matched, and there is no default. `match` tries each\npattern in the order written and takes the first the value unifies\nwith; the value {value} unified with none of {tried}. Add a trailing\ndefault — the argument after the last pair — if the rest was meant\nto be allowed.\n \nExamples:\n  match(1, integer, ok)             -> "ok"   # The first pattern matches;\n  match(x, integer, ok, other)      -> "other"  # ... or the default does;\n  match(x, integer, ok)             -> nil    # ... but nothing here does.',
     place_pair: 'Two placeholders met, and neither has a value to fill the other.\n`_` is a HOLE: it is filled by whatever the call is unified with, so\na call holding one needs a peer that does not. Give one side a\nvalue.\n \nExamples:\n  upper(_) & hello        -> "HELLO"  # The peer fills the hole;\n  _ + 2 & 1               -> 3        # ... whatever the call is;\n  upper(_) & lower(_)     -> nil      # ... but two holes fill nothing.',
+    pipe_target: 'The right-hand side of a `|>` is not a function. A pipe puts the\nvalue on its left in as the FIRST argument of the call on its\nright, so the right side has to be one: a call, or the bare name of\na built-in.\n \nExamples:\n  hello |> upper        -> "HELLO"  # A bare name is the call;\n  $.names |> pack({})   -> {..}     # ... or a call with more arguments;\n  1 |> 2                -> nil      # ... but a value is not a function.',
     // Unification errors
     'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
     'unify_no_res': 'Unification produced no result. The values could not be unified.',
@@ -296,6 +297,10 @@ const codeClasses = {
     // and neither could answer for the other, which is what every
     // conflict is.
     place_pair: 'conflict',
+    // G8 phase 4 -- the pipe. Class `parse`: a pipe is sugar resolved
+    // while reading the source, so a pipe into something that is not a
+    // call is wrong in the TEXT and no later pass can repair it.
+    pipe_target: 'parse',
     // G4 phase 5 -- the relation graph checks. Class `conflict`: the
     // model contradicts a property it declared for itself. Report-layer,
     // so no NilVal carries either -- both are global and non-monotone,

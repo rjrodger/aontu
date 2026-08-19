@@ -515,6 +515,117 @@ help isolate the syntax error.`,
   const incompleteNil = (r: Rule, ctx: JsonicContext) =>
     addsite(new NilVal({ why: 'incomplete_expression' }), r, ctx)
 
+  // Build a call from a NAME and the argument terms as the author
+  // wrote them. Shared by the `func(...)` handler and by the pipe,
+  // which is the same call with one more argument on the front — so
+  // the arity check, the comma-group rule and the raw-value conversion
+  // are stated once and both spellings get all three.
+  const buildCall = (r: Rule, ctx: JsonicContext,
+    fname: string, argterms: any[]): any => {
+    const funcval = funcMap[fname]
+
+    // Arity is known for every built-in, so a surplus or missing
+    // argument is a mistake in the SOURCE, refused here where the
+    // author can see it (issue #51). It was previously left to each
+    // function to notice or not: the two ports disagreed on `upper()`
+    // and on `close()`, and `min(1,2)` noticed nothing at all -- it
+    // built a constraint that merely refused to generate later, with a
+    // message about the map rather than about the call.
+    //
+    // Counted BEFORE the rawToVal pass below, which is what makes the
+    // count possible: a comma group arrives as a RAW array and a
+    // written list literal as a ListVal, and rawToVal turns the first
+    // into the second.
+    const arity = funcArity[fname]
+    if (null != arity) {
+      const got = writtenArgCount(argterms)
+      if (got < arity[0] || (-1 !== arity[1] && got > arity[1])) {
+        // details is assigned AFTER construction: the NilVal
+        // constructor does not read it from its spec (only NilVal.make
+        // does), so passing it in the spec left the hint's
+        // {func}/{want}/{got} placeholders un-injected and printed
+        // literally.
+        const nil: any = new NilVal({ why: 'func_arity' })
+        nil.details = {
+          func: fname,
+          want: arityText(arity[0], arity[1]),
+          got: '' + got,
+        }
+        // The CALL AS WRITTEN rides the refusal (G8 phase 4): a pipe
+        // rebuilds `x |> upper()` as `upper(x)`, and the arity it fails
+        // on here is the arity of a call one argument short of the one
+        // the author actually wrote.
+        nil._callname = fname
+        nil._callterms = argterms
+        return addsite(nil, r, ctx)
+      }
+    }
+
+    // rawToVal EVERY argument. A degenerate expression can hand this
+    // handler raw parse values rather than Vals -- `pref(1-3)` arrives
+    // as the plain numbers 1 and -3 -- and a func's peg is unified
+    // element by element, so a raw one reached `arg.unify(...)` and
+    // threw. The unifier's catch-all turned that into an `internal`
+    // verdict: a crash reported as a unification result (issue #49).
+    // The Go port has always converted here (asVal in evaluate).
+    // A comma group is ONE raw-array term (see writtenArgCount).
+    // For a function whose arguments are distinct POSITIONS —
+    // deprecate's value and record, pack's and each's data and template
+    // — the group is expanded back into them here, while a written list
+    // literal, already a ListVal, stays one argument. The constraint
+    // atoms make the same move in their own constructor (atomArgs,
+    // ConstraintVal.ts), which is why they are not in this set:
+    // `neq(1,2)` is one argument LIST, not two positions, and expanding
+    // it here would take the list away from the code that reads it.
+    let terms = argterms
+    if (true === POSITIONAL_ARG_FUNCS[fname] && 1 === terms.length &&
+      Array.isArray(terms[0])) {
+      terms = terms[0]
+    }
+    const args = terms.map(rawToVal)
+    const val: any = null == funcval ?
+      new NilVal({ why: 'unknown_function' }) :
+      new funcval({ peg: args })
+
+    // The call as written, for the pipe to rebuild from. Parse-time
+    // only: nothing downstream reads it, and a clone does not carry it.
+    //
+    // NOT on a constraint atom that BUILT: an atom with its argument
+    // list complete is a residual, not a call waiting for a subject,
+    // and `1 |> neq(2,3)` is asking for `1 & neq(2,3)` -- which is
+    // what `&` is for. (An atom the arity check REFUSED still carries
+    // it, on the nil above: `1 |> min()` is `min(1)`, and that is a
+    // call waiting for a subject.) The Go port cannot rebuild a built
+    // atom at all -- its residual keeps no atom name -- so this is
+    // also what keeps the two ports answering the same thing.
+    if (true !== val.isConstraint) {
+      val._callname = fname
+      val._callterms = argterms
+    }
+
+    return val
+  }
+
+
+  // The argument terms `f(...)` would have been written with, had the
+  // piped value been written into it. A comma group is one raw-array
+  // term: for a POSITIONAL function the group is separate arguments,
+  // so the piped value joins them; for a constraint atom the group IS
+  // the argument list, so the piped value joins the list instead.
+  const pipeTerms = (call: any, val: any): any[] => {
+    const written: any[] = call._callterms
+    const group = 1 === written.length && Array.isArray(written[0]) ?
+      written[0] : written
+
+    if (0 === group.length) {
+      return [val]
+    }
+
+    return true === POSITIONAL_ARG_FUNCS[call._callname] ?
+      [val, ...group] : [[val, ...group]]
+  }
+
+
   let opmap: any = {
     'conjunct-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) =>
       addsite(new ConjunctVal({ peg: dropUnfilled(terms) }), r, ctx),
@@ -594,70 +705,47 @@ help isolate the syntax error.`,
       return addsite(val, r, ctx)
     },
 
+    // THE PIPE `|>` (G8 phase 4): parse-time sugar and nothing else.
+    // `x |> f(a)` IS `f(x, a)` -- the piped value goes in as the FIRST
+    // argument, Elixir-style, because every Aontu call is data-first
+    // already (`close(x)`, `pack(data, tmpl)`) and a pipe must read the
+    // way the calls it replaces read. It never reaches a Val: by the
+    // time the tree exists the call is an ordinary call, which is why
+    // canon can never emit the token and the two ports' canon stay
+    // byte-identical without either knowing about it.
+    'pipe-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      const val = terms[0]
+      const call: any = terms[1]
+
+      if (null == val || null == call) return incompleteNil(r, ctx)
+
+      // The right-hand side is a CALL: either one the func handler
+      // already built, or one it refused for an arity the pipe is about
+      // to satisfy. Both carry what they were written as.
+      if (null != call._callname) {
+        return buildCall(r, ctx, call._callname, pipeTerms(call, val))
+      }
+
+      // ... or a bare NAME, which is the whole point of the short
+      // spelling: `x |> upper` is `upper(x)`. A bare word has already
+      // become a string VALUE by the time an infix operator sees it, so
+      // this is where a string becomes a call.
+      if (true === call?.isScalar && 'string' === typeof call.peg &&
+        null != funcMap[call.peg]) {
+        return buildCall(r, ctx, call.peg, [val])
+      }
+
+      // Anything else is not a call, and a pipe into a non-call is a
+      // mistake in the source rather than a value.
+      return addsite(new NilVal({ why: 'pipe_target' }), r, ctx)
+    },
+
     'func-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[1]
       const fname = terms[0]
 
       if ('' !== fname) {
-        const funcval = funcMap[fname]
-        // Arity is known for every built-in, so a surplus or missing
-        // argument is a mistake in the SOURCE, refused here where the
-        // author can see it (issue #51). It was previously left to each
-        // function to notice or not: the two ports disagreed on `upper()`
-        // and on `close()`, and `min(1,2)` noticed nothing at all -- it
-        // built a constraint that merely refused to generate later, with
-        // a message about the map rather than about the call.
-        //
-        // Counted BEFORE the rawToVal pass below, which is what makes the
-        // count possible: a comma group arrives as a RAW array and a
-        // written list literal as a ListVal, and rawToVal turns the first
-        // into the second.
-        const arity = funcArity[fname]
-        if (null != arity) {
-          const got = writtenArgCount(terms.slice(1))
-          if (got < arity[0] || (-1 !== arity[1] && got > arity[1])) {
-            // details is assigned AFTER construction: the NilVal
-            // constructor does not read it from its spec (only
-            // NilVal.make does), so passing it in the spec left the
-            // hint's {func}/{want}/{got} placeholders un-injected and
-            // printed literally.
-            const nil: any = new NilVal({ why: 'func_arity' })
-            nil.details = {
-              func: fname,
-              want: arityText(arity[0], arity[1]),
-              got: '' + got,
-            }
-            return addsite(nil, r, ctx)
-          }
-        }
-        // rawToVal EVERY argument. A degenerate expression can hand this
-        // handler raw parse values rather than Vals -- `pref(1-3)` arrives
-        // as the plain numbers 1 and -3 -- and a func's peg is unified
-        // element by element, so a raw one reached `arg.unify(...)` and
-        // threw. The unifier's catch-all turned that into an `internal`
-        // verdict: a crash reported as a unification result (issue #49).
-        // The Go port has always converted here (asVal in evaluate).
-        // A comma group is ONE raw-array term (see writtenArgCount).
-        // For a function whose arguments are distinct POSITIONS —
-        // deprecate's value and record, pack's and each's data and
-        // template — the group is expanded back into them here, while a
-        // written list literal, already a ListVal, stays one argument.
-        // The constraint atoms make the same move in their own
-        // constructor (atomArgs, ConstraintVal.ts), which is why they
-        // are not in this set: `neq(1,2)` is one argument LIST, not two
-        // positions, and expanding it here would take the list away
-        // from the code that reads it.
-        let argterms = terms.slice(1)
-        if (true === POSITIONAL_ARG_FUNCS[fname] && 1 === argterms.length &&
-          Array.isArray(argterms[0])) {
-          argterms = argterms[0]
-        }
-        const args = argterms.map(rawToVal)
-        val = null == funcval ?
-          new NilVal({ why: 'unknown_function' }) :
-          new funcval({
-            peg: args
-          })
+        val = buildCall(r, ctx, fname, terms.slice(1))
       }
       // `a:()` — grouping parens with nothing inside.
       if (null == val) return incompleteNil(r, ctx)
@@ -681,6 +769,14 @@ help isolate the syntax error.`,
 
         'disjunct': {
           infix: true, src: '|', left: 14_000_000, right: 15_000_000
+        },
+
+        // G8 phase 4: the pipe. LOOSEST of all the infix operators, so
+        // `a & b |> f` pipes the whole meet and not just `b` -- a pipe
+        // reads as "and then", which is a statement about everything to
+        // its left. Kept in lock-step with the op table in go/lang.go.
+        'pipe-infix': {
+          infix: true, src: '|>', left: 12_000_000, right: 13_000_000
         },
 
         'plus-infix': {

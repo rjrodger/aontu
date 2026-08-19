@@ -89,9 +89,9 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **84 `.tsv` files, 83
-   row-bearing, 3,005 rows**, in eighteen modes — `canon` 711, `gen`
-   541, `errc` 493, `gens` 469, `err` 240, `errcode` 96, `subsume` 94,
+   register's last update the suite is **85 `.tsv` files, 84
+   row-bearing, 3,030 rows**, in eighteen modes — `canon` 714, `gen`
+   541, `errc` 500, `gens` 483, `err` 240, `errcode` 97, `subsume` 94,
    `query` 92, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
    `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
    `agentsmd` 7.
@@ -101,7 +101,7 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-five of forty-nine phases have moved; forty-four of those are
+Forty-six of forty-nine phases have moved; forty-five of those are
 complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
@@ -113,8 +113,8 @@ complete.
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
-| [G8](g8-generation.md) | Generation | C | 4 | 0 | 1 |
-| | | **total** | **44** | **1** | **4** |
+| [G8](g8-generation.md) | Generation | C | 5 | 0 | 0 |
+| | | **total** | **45** | **1** | **3** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -173,7 +173,10 @@ Against the review's own [sequencing](index.md#sequencing):
   **G8.2**, `filter` and `match`, which select by unification rather
   than by a predicate language of their own, and **G8.3**, the
   placeholder `_` — the language's first reserved literal since it
-  gained `top`, and its first deliberate breaking change.
+  gained `top`, and its first deliberate breaking change. **G8 is
+  complete**: `pack`, `each`, `filter`, `match`, `_` and `|>` all
+  ship, and the staging rule they share replaced the pass-count hack
+  the review named as the strain.
 
 One structural note the sequencing table itself makes: G7's query/MCP
 surface depends on nothing and could ship at any time.
@@ -698,7 +701,7 @@ references behind; it is G4's to settle for both at once.
 | **1** — `pack` and `each` | M | **LANDED** | `ts/src/val/PackFuncVal.ts` and `ts/src/val/EachFuncVal.ts` (new), the `"pack"`/`"each"` arms of `go/func.go` with `go/generate.go` (new); both in both registries (24 → 26 builtins), both arity tables, both LSP completion lists and both published grammars. Codes `pack_data`, `pack_key`, `each_data` in `errcodes.tsv`. Spec: `test/spec/gen-pack.tsv` (25), `gen-each.tsv` (20), `gen-spread.tsv` (9), `gen-close.tsv` (7), `gen-key.tsv` (10) — 71 rows, every expectation from a parity probe run through both engines. Docs: "Generating children" in [`docs/reference-language.md`](../reference-language.md#generating-children-pack-and-each). **Departures and discoveries:** four, all recorded below. |
 | **2** — `filter` and `match` | M | **LANDED** | `ts/src/val/FilterFuncVal.ts` and `ts/src/val/MatchFuncVal.ts` (new), the `"filter"`/`"match"` arms of `go/func.go` with `filterFunc`/`matchFunc` in `go/generate.go`; the trial-meet helper is shared (`trialUnify` in `ts/src/val/FuncBaseVal.ts` and `go/generate.go`), and is the mechanism disjunction already uses. Both in both registries (26 → 28 builtins), arity tables, LSP completion lists and published grammars. Codes `filter_data` and `match_none` in `errcodes.tsv`. Spec: `test/spec/gen-filter.tsv` (16) and `gen-match.tsv` (16) — 32 rows, every expectation from a parity probe run through both engines. Docs: "Selecting" in [`docs/reference-language.md`](../reference-language.md#selecting-filter-and-match). **Departures:** three, recorded below — two of them semantic, and both because the design's own examples cannot be evaluated under the rules it stated. |
 | **3** — placeholder `_` (the parser phase) | M/L | **LANDED** | `ts/src/val/PlaceVal.ts` and `go/place.go` (new): the hole, plus the `hasPlace`/`fillPlace` walk both ports share. A bare `_` is a value keyword in both parsers (`ts/src/lang.ts`, `go/lang.go`), in both published grammars and in both LSP literal lists; a call holding a hole waits for a peer and is rebuilt with the peer in it (`FuncBaseVal.unify`/`OpBaseVal.unify`, `go/func.go`/`go/op.go`), and a placeheld operator DRIVES in `unite` because its peer is its filling rather than its constraint. Inside a generator's template `_` binds the source child (`pack`, `each`, `filter` in both ports). Code `place_pair` in `errcodes.tsv`. Spec: `test/spec/place.tsv` (37 rows), including the four that pin the BREAKING CHANGE — quoted `"_"`, a longer bare word, and `_` as a key all stay text. Docs: "The placeholder `_`" in [`docs/reference-language.md`](../reference-language.md#the-placeholder-_). **Departure:** one, recorded below. |
-| **4** — `\|>` sugar | S | **NOT STARTED** | Marked optional and droppable in the plan, so this is a plan-consistent state rather than a slip. |
+| **4** — `\|>` sugar | S | **LANDED** | Parse-time only, as designed: `ts/src/lang.ts` and `go/lang.go` gained one infix operator (`\|>`, LOOSEST of them all, so `a & b \|> f` pipes the whole meet) and one shared call builder each — `buildCall`, which both the `f(...)` handler and the pipe go through, so the arity check, the comma-group rule and the raw-value conversion are stated once. Code `pipe_target` in `errcodes.tsv`; the token in both published grammars. Spec: `test/spec/pipe.tsv` (24 rows), whose canon rows all show CALLS — no Val ever holds a pipe, which is what keeps canon and the two ports' agreement about it untouched. The plan allowed dropping this phase if call nesting proved acceptable; there was no adoption evidence either way, so it landed rather than being dropped on a guess. **Departure:** one, recorded below. |
 
 **Departures and discoveries recorded by G8.1.**
 
@@ -794,6 +797,22 @@ this phase does not carry the fix.
    placeholder: the `_`-in-a-condition binding phase 2 wrote was
    unreachable until this changed, which is what the coverage floor is
    for.
+
+**Departure recorded by G8.4.**
+
+1. **A constraint atom that BUILT cannot be piped into.** The design
+   said only that the piped value becomes the first argument. Rebuilding
+   the call from the value the parser produced works for a function and
+   for a call the arity check refused (which carries what it was written
+   as), but not for a constraint atom that succeeded: an atom folds into
+   a RESIDUAL at construction, and the Go port's residual keeps no atom
+   name to rebuild from. Rather than let one port support `1 |>
+   neq(2,3)` and the other not, both refuse it — and the refusal is
+   defensible on its own terms, because an atom with a complete argument
+   list is a residual rather than a call waiting for a subject, and
+   `1 & neq(2,3)` is what that document meant. Pinned as
+   `pipe.tsv:pipe-into-built-atom`.
+
 
 
 ## Corrections outstanding in the gap documents

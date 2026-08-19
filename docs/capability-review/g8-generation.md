@@ -583,11 +583,16 @@ placeheld operator has to DRIVE: a scalar asked to unify with `_ + 2`
 sees an operator rather than a hole and refuses it on kind. Both
 published grammars and both LSP literal lists carry it too.
 
-**Phase 4 — `|>` sugar (S, optional).** Parse-time desugaring only;
-spec file pipe.tsv whose canon rows all show desugared call forms,
-proving canon never emits the token. Files: ts/src/lang.ts;
-go/lang.go. May be dropped without loss if Phase 1-3 adoption shows
-call nesting is acceptable.
+**Phase 4 — `|>` sugar (S, optional). LANDED.** Parse-time
+desugaring only; pipe.tsv's canon rows all show call forms, proving
+canon never emits the token. Files: ts/src/lang.ts, go/lang.go. The
+drop clause was not exercised: it asked for adoption evidence that
+call nesting is acceptable, and there is none either way for a
+capability that shipped in the same series. What landing it cost was
+one operator and one shared call builder per port — the `f(...)`
+handler and the pipe now go through the same `buildCall`, so the
+arity check, the comma-group rule and the raw-value conversion are
+stated once instead of twice.
 
 Sequencing within the review: index.md places G8 in Phase C. Phase 0
 here is a pure engine cleanup with independent value (it removes a

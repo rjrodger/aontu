@@ -252,3 +252,8 @@ match_none	errcode	conflict	0.53.0
 # there is nothing to pick between them. A hole with a value on the
 # other side is not an error at all -- it is the whole point.
 place_pair	errcode	conflict	0.53.0
+# THE PIPE (G8 phase 4, `|>`). One code, class `parse`: the pipe is
+# sugar resolved while reading the source -- `x |> f(a)` IS `f(x, a)`
+# before any Val exists -- so a pipe into something that is not a call
+# is wrong in the TEXT, and no later pass can repair it.
+pipe_target	errcode	parse	0.53.0

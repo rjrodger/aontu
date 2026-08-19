@@ -23,6 +23,10 @@ the [Explanation](explanation.md).
 - [Preference / default `*`](#preference--default-)
 - [Optional keys `?`](#optional-keys-)
 - [Spreads `&:`](#spreads-)
+- [Generating children: `pack` and `each`](#generating-children-pack-and-each)
+- [Selecting: `filter` and `match`](#selecting-filter-and-match)
+- [The placeholder `_`](#the-placeholder-_)
+- [The pipe `|>`](#the-pipe-)
 - [References and paths](#references-and-paths)
 - [Variables `$name`](#variables-name)
 - [The `+` operator and grouping](#the--operator-and-grouping)
@@ -633,6 +637,32 @@ hole now — a breaking change, pinned by `test/spec/place.tsv`. Quoted
 `"_"` is still that string, any longer bare word containing it (`_b`)
 is still ordinary text, and `_` as a **key** is still a key.
 
+## The pipe `|>`
+
+`x |> f(a)` **is** `f(x, a)`: the value on the left goes in as the
+first argument of the call on the right. The right-hand side may also
+be the bare name of a builtin, which is the short spelling:
+
+```
+name:  hello |> upper                 → {"name":"HELLO"}
+open:  $.names |> pack({replicas:2})  → one child per name
+sizes: $.ports |> each |> each        → pipes chain
+```
+
+It is **sugar and nothing else** — resolved while the source is read,
+so no value ever holds a pipe and canon never emits the token. Every
+canon row in `test/spec/pipe.tsv` shows a call.
+
+The pipe binds **loosest** of all the infix operators, so
+`a & b |> f` pipes the whole meet: a pipe reads as "and then", which
+is a statement about everything to its left.
+
+Piping into something that is not a call is an error, and so is piping
+into a **constraint atom that already has its arguments**: an atom with
+a complete argument list is a residual rather than a call waiting for a
+subject, and `1 |> neq(2,3)` is asking for `1 & neq(2,3)` — which is
+what `&` is for.
+
 ## References and paths
 
 A reference resolves to the value at another location, then unifies in
@@ -1214,9 +1244,11 @@ From tightest to loosest binding (higher binding power binds first):
 | `-` / `+` (unary)   | prefix      | `-1 & integer` ≡ `(-1) & integer` |
 | `+` (add/concat)    | infix       |       |
 | `&` (conjunction)   | infix       | binds tighter than `\|` |
-| `\|` (disjunction)  | infix       | loosest |
+| `\|` (disjunction)  | infix       |       |
+| `\|>` (pipe)        | infix       | loosest; sugar, never in canon |
 
-So `c & b | a` ≡ `(c & b) | a`, and `*1 | number` ≡ `(*1) | number`.
+So `c & b | a` ≡ `(c & b) | a`, `*1 | number` ≡ `(*1) | number`, and
+`a & b |> f` ≡ `f(a & b)`.
 Parentheses override precedence and also serve as function-call syntax.
 
 ## Canonical form
