@@ -400,4 +400,175 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         Assert.equal(await change, true);
     });
 });
+// The subsumption verbs (G3 phase 3). What the two ports must AGREE on
+// (the report itself) is pinned by test/spec/subsume.tsv; what each
+// port owns (argument handling, exit codes, the text rendering, git
+// resolution) is here. The Go twin is go/cmd/aontu/subsume_test.go.
+(0, node_test_1.describe)('cli-subsume', () => {
+    function subFiles(general, specific) {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-sub-'));
+        const g = Path.join(dir, 'general.aon');
+        const s = Path.join(dir, 'specific.aon');
+        Fs.writeFileSync(g, general);
+        Fs.writeFileSync(s, specific);
+        return { dir, general: g, specific: s };
+    }
+    (0, node_test_1.test)('subsume-exit-codes-are-verdict-classes', () => {
+        const yes = subFiles('a:integer', 'a:1');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runSubsume)([yes.general, yes.specific]), 0)).out.trim(), 'verdict: subsumes');
+        const no = subFiles('a:integer', 'a:hello');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runSubsume)([no.general, no.specific]), 1));
+        Assert.match(r.out, /verdict: does_not_subsume/);
+        Assert.match(r.out, /\$\.a: compat_narrowed \[compat\]/);
+        Assert.match(r.out, /general: .*general\.aon:1:3 \(integer\)/);
+        Assert.match(r.out, /specific: .*specific\.aon:1:3 \("hello"\)/);
+        const und = subFiles('a:{x:1}|{x:2}', 'a:{x:1|2}');
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)([und.general, und.specific]), 3));
+        const broken = subFiles('a:1 a:2', 'a:1');
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)([broken.general, broken.specific]), 4));
+    });
+    (0, node_test_1.test)('subsume-profile-selects-the-comparison', () => {
+        const f = subFiles('a:*2|number', 'a:*1|number');
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--profile', 'values', f.general, f.specific]), 0));
+        const r = vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--profile', 'defaults', f.general, f.specific]), 1));
+        Assert.match(r.out, /compat_default_changed/);
+    });
+    (0, node_test_1.test)('subsume-at-anchors-both-documents', () => {
+        const f = subFiles('a:{x:integer} b:2', 'a:{x:1} b:xyz');
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--at', '$.a', f.general, f.specific]), 0));
+        // A path missing from either side is an error verdict.
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--at', '$.zz', f.general, f.specific]), 4));
+    });
+    (0, node_test_1.test)('subsume-json-names-the-producer', () => {
+        const f = subFiles('a:integer', 'a:hello');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--format', 'json', f.general, f.specific]), 1));
+        const report = JSON.parse(r.out);
+        Assert.equal(report.aontu.verb, 'subsume');
+        Assert.equal(report.verdict, 'does_not_subsume');
+        Assert.equal(report.findings[0].code, 'compat_narrowed');
+        Assert.equal(report.aontu.mode, undefined);
+    });
+    (0, node_test_1.test)('subsume-usage-errors-exit-2', () => {
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--bogus']), 2)).err.includes('unknown subsume option'), true);
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['one.aon']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--profile', 'bogus', 'a.aon', 'b.aon']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--at']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--format', 'sarif', 'a.aon', 'b.aon']), 2));
+        const f = subFiles('a:1', 'a:1');
+        vetCapture(() => Assert.equal((0, cli_1.runSubsume)([Path.join(f.dir, 'missing.aon'), f.specific]), 2));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runSubsume)(['--help']), 0)).out.includes('aontu subsume'), true);
+    });
+    // The design's own motivating example: the v2 that renames nothing
+    // but adds a required key and moves a default is BREAKING, with both
+    // witnesses located.
+    (0, node_test_1.test)('breaking-detects-the-designs-v1-v2-break', () => {
+        const f = subFiles('service: close({name:string,port:*9090|integer,owner:string})', 'service: close({name:string,port:*8080|integer})');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, f.general]), 1));
+        Assert.match(r.out, /verdict: breaking/);
+        Assert.match(r.out, /\$\.service\.owner: compat_required_added/);
+        Assert.match(r.out, /\$\.service\.port: compat_default_changed/);
+    });
+    (0, node_test_1.test)('breaking-modes-choose-the-directions', () => {
+        // Widening (v2 admits more) is fine backward, breaking forward.
+        const f = subFiles('a:number', 'a:integer');
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, '--mode', 'backward', f.general]), 0));
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, '--mode', 'forward', f.general]), 1));
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, '--mode', 'full', f.general]), 1));
+    });
+    (0, node_test_1.test)('breaking-resolves-git-revisions', () => {
+        const { execFileSync } = require('node:child_process');
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-brk-'));
+        const file = Path.join(dir, 'svc.aon');
+        const git = (...args) => execFileSync('git', [
+            '-c', 'user.email=t@example.com', '-c', 'user.name=t', ...args,
+        ], { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] });
+        git('init', '-q', '.');
+        Fs.writeFileSync(file, 'service: close({name:string,port:*8080|integer})');
+        git('add', 'svc.aon');
+        git('commit', '-q', '-m', 'v1');
+        Fs.writeFileSync(file, 'service: close({name:string,port:*9090|integer,owner:string})');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', 'git#HEAD', file]), 1));
+        Assert.match(r.out, /verdict: breaking/);
+        Assert.match(r.out, /specific: git#HEAD:1:\d+/);
+        // The forward direction puts the git source on the general side.
+        const fwd = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', 'git#HEAD', '--mode', 'forward', file]), 1));
+        Assert.match(fwd.out, /general: git#HEAD:1:\d+/);
+        // An unknown revision is a usage failure naming the spelling.
+        const bad = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', 'git#no-such-rev', file]), 2));
+        Assert.match(bad.err, /cannot resolve git#no-such-rev/);
+        // No git binary at all: still a located usage failure, using the
+        // spawn error's own message since there is no stderr to quote.
+        const savedPath = process.env.PATH;
+        try {
+            process.env.PATH = '';
+            const gone = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', 'git#HEAD', file]), 2));
+            Assert.match(gone.err, /cannot resolve git#HEAD/);
+        }
+        finally {
+            process.env.PATH = savedPath;
+        }
+    });
+    (0, node_test_1.test)('breaking-reads-the-documents-own-policy', () => {
+        // The policy declares no compatibility promise: nothing to check,
+        // whatever --against says.
+        const f = subFiles('aontu_policy: hide({compat: *none|backward|forward|full})\na:1', 'a:hello');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, '--format', 'json', f.general]), 0));
+        const report = JSON.parse(r.out);
+        Assert.equal(report.aontu.mode, 'none');
+        Assert.equal(report.verdict, 'compatible');
+        // --mode overrides the declaration.
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, '--mode', 'backward', f.general]), 1));
+        // The none path renders as text too.
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, f.general]), 0)).out.trim(), 'verdict: compatible');
+    });
+    // The declaration's other spellings: a preference-free disjunction
+    // declares its first alternative; a bare scalar declares itself; a
+    // value that does not spell a mode (or a document that does not stand
+    // alone) falls back to backward.
+    (0, node_test_1.test)('breaking-policy-spellings', () => {
+        const noPref = subFiles('aontu_policy: hide({compat: none|backward})\na:1', 'a:hello');
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', noPref.specific, noPref.general]), 0));
+        const bare = subFiles('aontu_policy: hide({compat: none})\na:1', 'a:hello');
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', bare.specific, bare.general]), 0));
+        const notString = subFiles('aontu_policy: hide({compat: 1})\na:integer', 'aontu_policy: hide({compat: 1})\na:1');
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', notString.specific, notString.general]), 0));
+        const notMode = subFiles('aontu_policy: hide({compat: sideways})\na:integer', 'aontu_policy: hide({compat: sideways})\na:1');
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', notMode.specific, notMode.general]), 0));
+        // A document that does not stand alone: the policy read yields
+        // nothing, and the backward check itself reports the error.
+        const broken = subFiles('a:1 a:2', 'a:1');
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', broken.specific, broken.general]), 4));
+    });
+    (0, node_test_1.test)('breaking-allow-undecided-downgrades-the-exit', () => {
+        const f = subFiles('a:{x:1}|{x:2}', 'a:{x:1|2}');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, f.general]), 3));
+        Assert.match(r.out, /verdict: undecided/);
+        Assert.match(r.out, /sub_disjunct_distribution/);
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, '--allow-undecided', f.general]), 0));
+        const j = vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', f.specific, '--format', 'json', f.general]), 3));
+        Assert.equal(JSON.parse(j.out).aontu.mode, 'backward');
+        Assert.equal(JSON.parse(j.out).verdict, 'undecided');
+    });
+    (0, node_test_1.test)('breaking-usage-errors-exit-2', () => {
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['file.aon']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against']), 2));
+        const gf = subFiles('a:1', 'a:1');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', 'git#', gf.general]), 2)).err.includes('git# needs a revision'), true);
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--mode', 'sideways', '--against', 'a.aon', 'b.aon']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--format', 'yaml', '--against', 'a.aon', 'b.aon']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--bogus']), 2));
+        const f = subFiles('a:1', 'a:1');
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--against', Path.join(f.dir, 'missing.aon'), f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runBreaking)([Path.join(f.dir, 'missing.aon'), '--against', f.specific]), 2));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runBreaking)(['--help']), 0)).out.includes('aontu breaking'), true);
+    });
+    // The verbs ride the same first-argument dispatch vet does.
+    (0, node_test_1.test)('subsume-verbs-dispatch-from-main', () => {
+        const f = subFiles('a:integer', 'a:1');
+        const r = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'subsume', f.general, f.specific]));
+        Assert.match(r.out, /verdict: subsumes/);
+        const b = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'breaking', '--against', f.specific, f.general]));
+        Assert.match(b.out, /verdict: compatible/);
+    });
+});
 //# sourceMappingURL=cli.test.js.map

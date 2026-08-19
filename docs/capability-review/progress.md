@@ -89,27 +89,28 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **62 `.tsv` files, 61
-   row-bearing, 2,266 rows**, in seven modes — `canon` 656, `gen` 535,
-   `errc` 423, `gens` 302, `err` 233, `errcode` 71, `vet` 46. Reproduce with
+   register's last update the suite is **63 `.tsv` files, 62
+   row-bearing, 2,369 rows**, in eight modes — `canon` 656, `gen` 535,
+   `errc` 423, `gens` 302, `err` 233, `subsume` 94, `errcode` 80,
+   `vet` 46. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Twenty-three of forty-nine phases have moved; twenty-one of those are complete.
+Twenty-four of forty-nine phases have moved; twenty-two of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
-| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 3 | 0 | 4 |
+| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 4 | 0 | 3 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **21** | **2** | **26** |
+| | | **total** | **22** | **2** | **25** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -132,8 +133,11 @@ Against the review's own [sequencing](index.md#sequencing):
   hermeticity file set observable — what remains of A is only G5.6's
   default FLIP, staged for the next major version with its warning
   window already shipping.
-- **Phase B — differentiate.** Untouched. No subsumption, no canon
-  hash, no query surface.
+- **Phase B — differentiate.** Underway: **subsumption is a query and
+  a gate** — the G3 recursion in both ports (G3.1–2), its rules and 94
+  shared rows (G3.0), and the `subsume` and `breaking` CLI verbs with
+  `git#rev` resolution and the `aontu_policy.compat` declaration
+  (G3.3). No canon hash or query surface yet.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
 
 One structural note the sequencing table itself makes: G7's query/MCP
@@ -322,14 +326,13 @@ doc should record it.
 | **0** — rules on paper | M | **LANDED** | `docs/reference-language.md` "Subsumption": the per-former table (all three profiles, with the `*` × `close()` × `&:` × `?` interaction cells), sitting above the constraint algebra's own subsumption table, whose "not yet implemented" note is gone. `test/spec/subsume.tsv` — 97 rows, executed by BOTH runners, covering every probe in the design's Problem section (the v1/v2 `service` break included) and every `undecided` reason. **Departure:** the design named six columns (name, profile, general, specific, verdict, detail); the encoding is instead vet.tsv's exactly — FIVE columns with the report as an expect object, `message` excluded, options (`profile`, `at`) riding the `opts` key — because the two-document shape and its probed carve-outs are the same, and a second five-column precedent beats a third encoding. |
 | **1** — the recursion, TypeScript | L | **LANDED** | `ts/src/subsume.ts`: a dedicated structural walk over evaluated trees (design option B) — never mutates, no fixpoint, three-valued verdict plus `error`; findings reuse G2's object with class `compat`; the nine codes (`compat_narrowed`, `compat_required_added`, `compat_default_changed`, `compat_marks_changed`, five `sub_*` undecided reasons) registered in `test/spec/errcodes.tsv` under the new `compat` class. Constraint rules live beside the compare machinery they reuse (`ts/src/val/ConstraintVal.ts` `constraintSubsumesConstraint`, `constraintAdmitsScalar`). Exported from `ts/src/aontu.ts`. **Departures:** (1) no `rankPrefs` helper existed to reuse — effective-default extraction is the walk's own, and the first draft picked the HIGHEST rank where generation picks the LOWEST (`a:**1|*2` generates `2`, `edge.tsv`); the parity corpus caught it before landing and `default-rank-mixed` pins the direction. (2) The constraint table's `must` row says "never"; the query answers `undecided` (`sub_evaluate_only`) — honest indecision, recorded in the reference. (3) No nil rule: an error-free evaluated tree carries no nil, so the walk's no-rule fold answers a hypothetical one `undecided`, pinned by direct tests in both ports rather than rows no source can produce. |
 | **2** — Go port | L | **LANDED** | `go/subsume.go`, mirroring the dispatch; `go/constraint.go` `constraintStateSubsumes`/`constraintAdmitsScalarQ`; both runners execute every `subsume.tsv` row with no skip list, expectations parity-probed (byte-identical reports, message text excluded) before any row was written. **What the probe cost the engine** (the G2 phase-4 pattern, two more pre-existing divergences fixed rather than recorded): (1) a preference was sited at its inner value where TypeScript sites it at the `*` itself (`go/lang.go` star-prefix); (2) `hasPathFunc` did not see through a `ConstraintVal` — a pending atom endpoint holding `min($.floor)`, a `must` value, the recursive count — so a path-dependent spread template compared structurally instead of refusing (`go/mapval.go`). |
-| **3** — CLI verbs (`subsume`, `breaking`) | M | **NOT STARTED** |  |
+| **3** — CLI verbs (`subsume`, `breaking`) | M | **LANDED** | `aontu subsume [--profile] [--at] [--format text\|json]` and `aontu breaking --against <file\|git#rev> [--mode backward\|forward\|full] [--allow-undecided]` in `ts/src/cli.ts` and `go/cmd/aontu/subsume.go`: exit classes 0/1/3/4/2 mirroring vet's convention (undecided FAILS by default), `git#rev` by shelling out to `git show <rev>:./<basename>` from the file's own directory, the `$.aontu_policy.compat` declaration read from the new document with `--mode` overriding (reader: `policyCompat` beside the TS verb, exported `aontu.PolicyCompat` in Go — the verb package cannot reach the tree's fields), findings through G2's renderer. `SubsumeOptions` gained `generalPath`/`specificPath` (vet's per-document base precedent) so relative `@"file"` loads resolve from each document's own directory. 11 cases in `ts/test/cli.test.ts`, 12 in `go/cmd/aontu/subsume_test.go`; the two CLIs diffed byte-identical (text and JSON, exit codes included) over a 24-case corpus — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` and `docs/how-to.md` carry the verbs. **Departures:** (1) no `--allow-deprecated-removal`: it gates on `deprecate()`, which is phase 4 — the flag lands there rather than parsing as a no-op lie here. (2) No SARIF format: the SARIF profile is vet's report shape (`truncated`, data/schema roles); mapping compat findings is real design work nothing needs yet. (3) A `git#rev` source's relative includes resolve from the working file's directory (the revision has no directory of its own). |
 | **4** — `deprecate()` | M | **NOT STARTED** |  |
 | **5** — default-validity lint | S | **NOT STARTED** |  |
 | **6** — trim reporter | M | **NOT STARTED** |  |
 
-Phases 3–6 have no artifacts yet: no CLI verb, no
-`test/spec/deprecate.tsv` or `trim.tsv`. Phase 3's G2 dependencies
-(phases 1–3) are all in.
+Phases 4–6 have no artifacts yet: no `deprecate()` builtin, no
+`test/spec/deprecate.tsv` or `trim.tsv`.
 
 **Two facts the doc asserts are no longer true.** `super()` is no
 longer "degenerate and unpinned" — `ts/src/val/SuperFuncVal.ts` and

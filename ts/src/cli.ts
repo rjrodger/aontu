@@ -14,10 +14,13 @@ import { readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
-import { Aontu, AontuError, exactJSON, vet } from './aontu'
+import { Aontu, AontuError, exactJSON, vet, subsume } from './aontu'
 import { sarifReport } from './report-sarif'
 import { VET_MAX_ERRORS } from './vet'
 import type { VetReport, VetFinding, VetVerdict } from './vet'
+import type {
+  SubsumeReport, SubsumeVerdict, SubsumeProfile,
+} from './subsume'
 
 
 type Mode = 'json' | 'canon'
@@ -25,6 +28,8 @@ type Mode = 'json' | 'canon'
 
 const HELP = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
+       aontu subsume [options] <general> <specific>
+       aontu breaking --against <file|git#rev> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -32,6 +37,10 @@ With no file and piped input, read the source from stdin.
 
 The vet verb validates data documents against a schema document and
 reports what does not hold, as text or as a machine-readable object.
+
+The subsume verb asks whether every instance the specific document
+admits, the general document admits too. The breaking verb runs that
+query between a document and its own earlier versions.
 
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
@@ -55,6 +64,30 @@ Vet exit codes:
   2  usage       bad option, or a file that cannot be read
   3  incomplete  no contradiction, but the truth is not yet satisfied
   4  error       the schema is unusable on its own
+
+Subsume options:
+  --profile <p>   values, defaults (default) or gen
+  --at <path>     Compare at this path of both documents ($.a.b)
+  --format <f>    text (default) or json
+
+Subsume exit codes:
+  0  subsumes          every specific instance is admitted
+  1  does_not_subsume  a witness exists (see the findings)
+  2  usage             bad option, or a file that cannot be read
+  3  undecided         no rule decides (a sub_* reason is reported)
+  4  error             a document does not stand up on its own
+
+Breaking options:
+  --against <v>       An earlier version: a file path, or git#<rev>
+                      (resolved by 'git show'); repeatable
+  --mode <m>          backward (new admits old, the default), forward
+                      (old admits new), or full (both); overrides the
+                      document's own $.aontu_policy.compat declaration
+  --allow-undecided   Exit 0 on undecided (the report still says so)
+  --format <f>        text (default) or json
+
+Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,
+2 usage, 3 undecided, 4 error.
 
 REPL commands:
   :help           Show REPL help
@@ -602,6 +635,396 @@ function runVet(argv: string[], wait?: VetWaiter): number | Promise<number> {
 }
 
 
+// ---------------------------------------------------------------------
+// The subsumption verbs (G3 phase 3): `subsume` asks the query once,
+// `breaking` asks it between a document and its own earlier versions.
+
+const SUBSUME_HELP = 'aontu subsume <general> <specific> (try --help)'
+const BREAKING_HELP =
+  'aontu breaking --against <file|git#rev> <file> (try --help)'
+
+type SubsumeFormat = 'text' | 'json'
+
+// Exit classes mirror vet's convention: 3 is "the truth is not yet
+// settled", which is exactly what undecided means here — and a gate
+// that shrugs is not a gate, so undecided FAILS by default.
+const SUBSUME_EXIT: Record<SubsumeVerdict, number> = {
+  subsumes: 0,
+  does_not_subsume: 1,
+  undecided: 3,
+  error: 4,
+}
+
+type SubsumeArgs = {
+  help?: boolean
+  general: string
+  specific: string
+  profile?: SubsumeProfile
+  at?: string
+  format: SubsumeFormat
+}
+
+function parseSubsumeArgs(argv: string[]): { args?: SubsumeArgs; err?: string } {
+  const files: string[] = []
+  let profile: SubsumeProfile | undefined
+  let at: string | undefined
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      return { args: { help: true, general: '', specific: '', format } }
+    }
+    if ('--profile' === arg) {
+      const p = argv[++i]
+      if ('values' !== p && 'defaults' !== p && 'gen' !== p) {
+        return { err: 'aontu: --profile needs values, defaults or gen' }
+      }
+      profile = p
+    }
+    else if ('--at' === arg) {
+      at = argv[++i]
+      if (null == at) {
+        return { err: 'aontu: --at needs a path' }
+      }
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        return { err: 'aontu: --format needs text or json' }
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      return { err: `aontu: unknown subsume option ${arg} (try --help)` }
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (2 !== files.length) {
+    return {
+      err: 'aontu: subsume needs a general and a specific file\n' +
+        SUBSUME_HELP,
+    }
+  }
+
+  return {
+    args: { general: files[0], specific: files[1], profile, at, format },
+  }
+}
+
+function renderSubsumeText(report: SubsumeReport): string {
+  const head = `verdict: ${report.verdict}`
+  if (0 === report.findings.length) {
+    return head
+  }
+  return [head, ''].concat(report.findings.map(renderFinding)).join('\n')
+}
+
+function renderSubsumeJson(report: SubsumeReport): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'subsume' },
+    verdict: report.verdict,
+    findings: report.findings,
+  }, 2)
+}
+
+function runSubsume(argv: string[]): number {
+  const parsed = parseSubsumeArgs(argv)
+  if (null != parsed.err) {
+    process.stderr.write(parsed.err + '\n')
+    return 2
+  }
+  const args = parsed.args as SubsumeArgs
+
+  if (true === args.help) {
+    process.stdout.write(HELP)
+    return 0
+  }
+
+  let generalSrc: string, specificSrc: string
+  try {
+    generalSrc = readFileSync(args.general, 'utf8')
+    specificSrc = readFileSync(args.specific, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = subsume(generalSrc, specificSrc, {
+    profile: args.profile,
+    at: args.at,
+    generalUrl: args.general,
+    specificUrl: args.specific,
+    generalPath: args.general,
+    specificPath: args.specific,
+  })
+
+  const text = 'json' === args.format
+    ? renderSubsumeJson(report)
+    : renderSubsumeText(report)
+  process.stdout.write(text + '\n')
+  return SUBSUME_EXIT[report.verdict]
+}
+
+
+type BreakingMode = 'backward' | 'forward' | 'full' | 'none'
+
+type BreakingArgs = {
+  help?: boolean
+  file: string
+  against: string[]
+  mode?: BreakingMode
+  allowUndecided: boolean
+  format: SubsumeFormat
+}
+
+function parseBreakingArgs(
+  argv: string[]): { args?: BreakingArgs; err?: string } {
+  const files: string[] = []
+  const against: string[] = []
+  let mode: BreakingMode | undefined
+  let allowUndecided = false
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      return {
+        args: { help: true, file: '', against: [], allowUndecided, format },
+      }
+    }
+    if ('--against' === arg) {
+      const a = argv[++i]
+      if (null == a) {
+        return { err: 'aontu: --against needs a file path or git#<rev>' }
+      }
+      against.push(a)
+    }
+    else if ('--mode' === arg) {
+      const m = argv[++i]
+      if ('backward' !== m && 'forward' !== m && 'full' !== m) {
+        return { err: 'aontu: --mode needs backward, forward or full' }
+      }
+      mode = m
+    }
+    else if ('--allow-undecided' === arg) {
+      allowUndecided = true
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        return { err: 'aontu: --format needs text or json' }
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      return { err: `aontu: unknown breaking option ${arg} (try --help)` }
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length || 0 === against.length) {
+    return {
+      err: 'aontu: breaking needs one file and at least one --against\n' +
+        BREAKING_HELP,
+    }
+  }
+
+  return { args: { file: files[0], against, mode, allowUndecided, format } }
+}
+
+// Resolve one --against spelling to source text. `git#<rev>` shells out
+// to `git show <rev>:./<basename>` from the file's own directory — no
+// embedded git, and the `./` prefix makes git resolve the path relative
+// to that directory rather than the repository root. Returns undefined
+// (with the message already printed) on failure.
+function againstSource(spec: string, file: string): string | undefined {
+  if (!spec.startsWith('git#')) {
+    try {
+      return readFileSync(spec, 'utf8')
+    }
+    catch (err: any) {
+      process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+      return undefined
+    }
+  }
+
+  const rev = spec.slice('git#'.length)
+  if ('' === rev) {
+    process.stderr.write('aontu: --against git# needs a revision\n')
+    return undefined
+  }
+  try {
+    // Lazy import: the dependency exists only when a git spelling is
+    // actually used, so plain runs never pay for it.
+    const { execFileSync } = require('node:child_process')
+    const dir = dirname(resolve(file))
+    const rel = './' + resolve(file).slice(dir.length + 1)
+    return execFileSync('git', ['show', `${rev}:${rel}`], {
+      cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    })
+  }
+  catch (err: any) {
+    const detail = String(err.stderr ?? err.message).trim().split('\n')[0]
+    process.stderr.write(`aontu: cannot resolve ${spec}: ${detail}\n`)
+    return undefined
+  }
+}
+
+// The document's own compatibility declaration: `$.aontu_policy.compat`,
+// a disjunction whose default is the declared mode. Undefined when the
+// key is absent or does not spell a mode.
+function policyCompat(newSrc: string, path: string): BreakingMode | undefined {
+  const aontu = new Aontu()
+  const ctx = aontu.ctx({ collect: true })
+  const v: any = aontu.unify(newSrc, { path }, ctx)
+  if (0 < ctx.err.length || true === v?.isNil) {
+    return undefined
+  }
+  let compat: any = v?.peg?.aontu_policy?.peg?.compat
+  if (null == compat) {
+    return undefined
+  }
+  if (true === compat.isDisjunct && Array.isArray(compat.peg)) {
+    compat = compat.peg.find((m: any) => true === m?.isPref) ?? compat.peg[0]
+  }
+  if (true === compat.isPref) {
+    compat = compat.peg
+  }
+  const m = true === compat?.isString ? compat.peg : undefined
+  return 'backward' === m || 'forward' === m || 'full' === m || 'none' === m
+    ? m : undefined
+}
+
+// Verdict aggregation for breaking: an error anywhere makes the run an
+// error; otherwise a witness anywhere makes it breaking; otherwise an
+// open question anywhere leaves it undecided.
+const BREAKING_RANK: Record<SubsumeVerdict, number> = {
+  subsumes: 0,
+  undecided: 1,
+  does_not_subsume: 2,
+  error: 3,
+}
+
+const BREAKING_EXIT: Record<SubsumeVerdict, number> = SUBSUME_EXIT
+
+const BREAKING_VERDICT: Record<SubsumeVerdict, string> = {
+  subsumes: 'compatible',
+  does_not_subsume: 'breaking',
+  undecided: 'undecided',
+  error: 'error',
+}
+
+function runBreaking(argv: string[]): number {
+  const parsed = parseBreakingArgs(argv)
+  if (null != parsed.err) {
+    process.stderr.write(parsed.err + '\n')
+    return 2
+  }
+  const args = parsed.args as BreakingArgs
+
+  if (true === args.help) {
+    process.stdout.write(HELP)
+    return 0
+  }
+
+  let newSrc: string
+  try {
+    newSrc = readFileSync(args.file, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  // The declared mode: --mode overrides the document's own policy;
+  // neither means backward, the index's framing (v1-valid documents
+  // stay valid).
+  const mode: BreakingMode =
+    args.mode ?? policyCompat(newSrc, args.file) ?? 'backward'
+
+  if ('none' === mode) {
+    // The document declares no compatibility promise: nothing to check.
+    const report: SubsumeReport = { verdict: 'subsumes', findings: [] }
+    const text = 'json' === args.format
+      ? renderBreakingJson(report, mode)
+      : renderBreakingText(report)
+    process.stdout.write(text + '\n')
+    return 0
+  }
+
+  let worst: SubsumeVerdict = 'subsumes'
+  const findings: VetFinding[] = []
+
+  for (const spec of args.against) {
+    const oldSrc = againstSource(spec, args.file)
+    if (null == oldSrc) {
+      return 2
+    }
+
+    // backward: the NEW document is the general side — every old
+    // instance must still be admitted. forward: the old one is.
+    const checks: Array<{ general: [string, string], specific: [string, string] }> = []
+    if ('backward' === mode || 'full' === mode) {
+      checks.push({ general: [newSrc, args.file], specific: [oldSrc, spec] })
+    }
+    if ('forward' === mode || 'full' === mode) {
+      checks.push({ general: [oldSrc, spec], specific: [newSrc, args.file] })
+    }
+
+    for (const check of checks) {
+      const report = subsume(check.general[0], check.specific[0], {
+        generalUrl: check.general[1],
+        specificUrl: check.specific[1],
+        // A git#rev source has no directory of its own; its relative
+        // loads resolve as the working file's do.
+        generalPath: check.general[1].startsWith('git#')
+          ? args.file : check.general[1],
+        specificPath: check.specific[1].startsWith('git#')
+          ? args.file : check.specific[1],
+      })
+      if (BREAKING_RANK[worst] < BREAKING_RANK[report.verdict]) {
+        worst = report.verdict
+      }
+      findings.push(...report.findings)
+    }
+  }
+
+  const report: SubsumeReport = { verdict: worst, findings }
+  const text = 'json' === args.format
+    ? renderBreakingJson(report, mode)
+    : renderBreakingText(report)
+  process.stdout.write(text + '\n')
+
+  if ('undecided' === worst && args.allowUndecided) {
+    return 0
+  }
+  return BREAKING_EXIT[worst]
+}
+
+function renderBreakingText(report: SubsumeReport): string {
+  const head = `verdict: ${BREAKING_VERDICT[report.verdict]}`
+  if (0 === report.findings.length) {
+    return head
+  }
+  return [head, ''].concat(report.findings.map(renderFinding)).join('\n')
+}
+
+function renderBreakingJson(report: SubsumeReport, mode: string): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'breaking', mode },
+    verdict: BREAKING_VERDICT[report.verdict],
+    findings: report.findings,
+  }, 2)
+}
+
+
 // Exit without truncating output.
 //
 // process.exit() terminates immediately, discarding anything still
@@ -657,6 +1080,12 @@ function main(argv: string[]): void {
   if ('vet' === argv[2]) {
     return void Promise.resolve(runVet(argv.slice(3))).then(finish)
   }
+  if ('subsume' === argv[2]) {
+    return finish(runSubsume(argv.slice(3)))
+  }
+  if ('breaking' === argv[2]) {
+    return finish(runBreaking(argv.slice(3)))
+  }
 
   const args = argv.slice(2)
   for (let i = 0; i < args.length; i++) {
@@ -707,11 +1136,14 @@ function main(argv: string[]): void {
   else {
     runStdin(mode, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 8 */
+} /* node:coverage ignore next 11 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
 // calls main(process.argv) itself, so this module stays import-only.
 
 
-export { evalSource, main, runVet, watchChange, watchSignature, vetWaiter }
+export {
+  evalSource, main, runVet, runSubsume, runBreaking,
+  watchChange, watchSignature, vetWaiter,
+}

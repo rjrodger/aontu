@@ -95,3 +95,29 @@ func TestSubsumeListViewChildMiss(t *testing.T) {
 		t.Fatalf("expected 1, got %s", v.Canon())
 	}
 }
+
+// PolicyCompat's spellings, exercised directly: the breaking verb
+// lives in another package, so its runs do not count here, and the
+// reader's arms are this package's own contract (the TS twin exercises
+// them through the verb — ts/test/cli.test.ts breaking-policy-*).
+func TestPolicyCompat(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		src  string
+		want string
+	}{
+		{"pref", "aontu_policy: hide({compat: *none|backward|forward|full})\na:1", "none"},
+		{"no-pref-first", "aontu_policy: hide({compat: none|backward})\na:1", "none"},
+		{"bare", "aontu_policy: hide({compat: forward})\na:1", "forward"},
+		{"not-string", "aontu_policy: hide({compat: 1})\na:1", ""},
+		{"not-a-mode", "aontu_policy: hide({compat: sideways})\na:1", ""},
+		{"no-compat-key", "aontu_policy: hide({other: 1})\na:1", ""},
+		{"no-policy-key", "a:1", ""},
+		{"scalar-root", "5", ""},
+		{"broken", "a:1 a:2", ""},
+	} {
+		if got := PolicyCompat(tc.src, ""); tc.want != got {
+			t.Fatalf("%s: expected %q, got %q", tc.name, tc.want, got)
+		}
+	}
+}

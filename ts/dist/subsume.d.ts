@@ -6,6 +6,8 @@ export type SubsumeOptions = {
     at?: string;
     generalUrl?: string;
     specificUrl?: string;
+    generalPath?: string;
+    specificPath?: string;
 };
 export type SubsumeReport = {
     verdict: SubsumeVerdict;

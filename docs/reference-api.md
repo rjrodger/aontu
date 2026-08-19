@@ -35,6 +35,8 @@ interactively with no file.
 ```
 Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
+       aontu subsume [options] <general> <specific>
+       aontu breaking --against <file|git#rev> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -155,6 +157,49 @@ any data file) changes, streaming one report per run — honestly
 non-incremental: parsed trees are single-use, so every run is a full
 re-parse and re-unify, bounded by the fixpoint's pass budget. A file
 that is briefly unreadable mid-save reports and keeps watching.
+
+### `aontu subsume`
+
+The subsumption query as a command
+([docs/reference-language.md, "Subsumption"](reference-language.md#subsumption)):
+does the general document admit every instance the specific one admits?
+
+```
+aontu subsume [--profile values|defaults|gen] [--at <path>]
+              [--format text|json] <general.aon> <specific.aon>
+```
+
+The exit code is the verdict class: `0` subsumes, `1` does not subsume
+(the findings carry the witness — path, codes, both sites), `3`
+undecided (always with a `sub_*` reason), `4` a document that does not
+stand up on its own, `2` usage. The report reuses vet's finding object
+and renderers, class `compat`.
+
+### `aontu breaking`
+
+The evolution gate built on the same query: compare a document against
+its own earlier versions.
+
+```
+aontu breaking --against <file|git#rev> [--mode backward|forward|full]
+               [--allow-undecided] [--format text|json] <file.aon>
+```
+
+- `--against` takes a file path or `git#<rev>` (resolved by shelling
+  out to `git show <rev>:./<basename>` from the file's own directory —
+  no embedded git), and is repeatable.
+- Modes: **backward** (the default) checks the new document subsumes
+  the old — documents valid under v1 stay valid; **forward** checks the
+  old subsumes the new; **full** checks both.
+- The document can declare its own promise:
+  `aontu_policy: hide({compat: *backward | forward | full | none})` —
+  `breaking` reads `$.aontu_policy.compat` from the new document, and
+  `--mode` overrides it. `none` declares no promise: nothing is
+  checked.
+- Exit codes mirror `subsume`'s: `0` compatible, `1` breaking, `3`
+  undecided, `4` error, `2` usage. Undecided **fails** the gate by
+  default — a gate that shrugs is not a gate — downgradable with
+  `--allow-undecided`.
 
 **REPL commands**
 

@@ -24,6 +24,8 @@ import (
 
 const helpText = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
+       aontu subsume [options] <general> <specific>
+       aontu breaking --against <file|git#rev> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -31,6 +33,10 @@ With no file and piped input, read the source from stdin.
 
 The vet verb validates data documents against a schema document and
 reports what does not hold, as text or as a machine-readable object.
+
+The subsume verb asks whether every instance the specific document
+admits, the general document admits too. The breaking verb runs that
+query between a document and its own earlier versions.
 
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
@@ -54,6 +60,30 @@ Vet exit codes:
   2  usage       bad option, or a file that cannot be read
   3  incomplete  no contradiction, but the truth is not yet satisfied
   4  error       the schema is unusable on its own
+
+Subsume options:
+  --profile <p>   values, defaults (default) or gen
+  --at <path>     Compare at this path of both documents ($.a.b)
+  --format <f>    text (default) or json
+
+Subsume exit codes:
+  0  subsumes          every specific instance is admitted
+  1  does_not_subsume  a witness exists (see the findings)
+  2  usage             bad option, or a file that cannot be read
+  3  undecided         no rule decides (a sub_* reason is reported)
+  4  error             a document does not stand up on its own
+
+Breaking options:
+  --against <v>       An earlier version: a file path, or git#<rev>
+                      (resolved by 'git show'); repeatable
+  --mode <m>          backward (new admits old, the default), forward
+                      (old admits new), or full (both); overrides the
+                      document's own $.aontu_policy.compat declaration
+  --allow-undecided   Exit 0 on undecided (the report still says so)
+  --format <f>        text (default) or json
+
+Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,
+2 usage, 3 undecided, 4 error.
 
 REPL commands:
   :help           Show REPL help
@@ -264,6 +294,12 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	// `aontu ./vet`.
 	if 0 < len(args) && "vet" == args[0] {
 		return runVet(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "subsume" == args[0] {
+		return runSubsume(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "breaking" == args[0] {
+		return runBreaking(args[1:], stdout, stderr)
 	}
 
 	mode := "json"

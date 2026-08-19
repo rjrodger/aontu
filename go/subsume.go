@@ -30,6 +30,12 @@ type SubsumeOptions struct {
 	At          string // compare at this path of both documents
 	GeneralURL  string // provenance label for general sites
 	SpecificURL string // provenance label for specific sites
+	// Where each document CAME FROM, so a relative `@"file"` load
+	// inside it resolves from its own directory — vet's
+	// SchemaPath/DataPath precedent, one per document because they
+	// need not live together.
+	GeneralPath  string
+	SpecificPath string
 }
 
 // SubsumeReport is the whole answer: one verdict, and the findings
@@ -576,6 +582,57 @@ func subsumeDefaultsWalk(st *subState, path []string, g, s Val) string {
 // the recursion runs on the finished values. The port of
 // ts/src/subsume.ts, held to byte-identical reports by
 // test/spec/subsume.tsv.
+// PolicyCompat reads a document's own compatibility declaration:
+// `$.aontu_policy.compat`, a disjunction whose default is the declared
+// mode ("backward" | "forward" | "full" | "none"). The empty string
+// means the key is absent, the document does not stand alone, or the
+// value does not spell a mode. Exported for the `breaking` verb
+// (go/cmd/aontu), which cannot reach the tree's fields itself; the
+// canonical port keeps the same reader beside its verb (ts/src/cli.ts
+// policyCompat).
+func PolicyCompat(src, path string) string {
+	a := aontuForPath(path)
+	v, err := a.Unify(src)
+	if err != nil || nil == v || v.Nil() {
+		return ""
+	}
+	m, ok := v.(*MapVal)
+	if !ok {
+		return ""
+	}
+	pol, ok := m.peg["aontu_policy"].(*MapVal)
+	if !ok {
+		return ""
+	}
+	compat := pol.peg["compat"]
+	if d, ok := compat.(*DisjunctVal); ok {
+		var pick Val
+		for _, mem := range d.peg {
+			if nil == pick {
+				pick = mem
+			}
+			if isPref(mem) {
+				pick = mem
+				break
+			}
+		}
+		compat = pick
+	}
+	if p, ok := compat.(*PrefVal); ok {
+		compat = p.peg
+	}
+	sv, ok := compat.(*ScalarVal)
+	if !ok || KindString != sv.kind {
+		return ""
+	}
+	mode, _ := sv.peg.(string)
+	switch mode {
+	case "backward", "forward", "full", "none":
+		return mode
+	}
+	return ""
+}
+
 func Subsume(generalSrc, specificSrc string, opts *SubsumeOptions) SubsumeReport {
 	options := SubsumeOptions{}
 	if nil != opts {
@@ -604,8 +661,8 @@ func Subsume(generalSrc, specificSrc string, opts *SubsumeOptions) SubsumeReport
 
 	broken := SubsumeReport{Verdict: SubsumeError, Findings: []VetFinding{}}
 
-	load := func(src string) Val {
-		a := New()
+	load := func(src, path string) Val {
+		a := aontuForPath(path)
 		v, err := a.Unify(src)
 		if err != nil || nil == v || v.Nil() {
 			return nil
@@ -613,8 +670,8 @@ func Subsume(generalSrc, specificSrc string, opts *SubsumeOptions) SubsumeReport
 		return v
 	}
 
-	g := load(generalSrc)
-	s := load(specificSrc)
+	g := load(generalSrc, options.GeneralPath)
+	s := load(specificSrc, options.SpecificPath)
 	if nil == g || nil == s {
 		return broken
 	}

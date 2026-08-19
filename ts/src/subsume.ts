@@ -43,6 +43,11 @@ export type SubsumeOptions = {
   at?: string
   generalUrl?: string   // provenance label for general sites
   specificUrl?: string  // provenance label for specific sites
+  // Where each document CAME FROM, so a relative `@"file"` load inside
+  // it resolves from its own directory — vet's schemaPath/dataPath
+  // precedent, one per document because they need not live together.
+  generalPath?: string
+  specificPath?: string
 }
 
 export type SubsumeReport = {
@@ -564,18 +569,19 @@ export function subsume(
     specificUrl: options.specificUrl ?? DEFAULT_SPECIFIC_URL,
   }
 
-  const load = (src: string): any => {
+  const load = (src: string, path?: string): any => {
     const aontu = new Aontu()
     const ctx = aontu.ctx({ collect: true })
-    const v: any = aontu.unify(src, undefined, ctx)
+    const v: any = aontu.unify(
+      src, null == path ? undefined : { path }, ctx)
     if (0 < ctx.err.length || true === v?.isNil) {
       return undefined
     }
     return v
   }
 
-  let g = load(generalSrc)
-  let s = load(specificSrc)
+  let g = load(generalSrc, options.generalPath)
+  let s = load(specificSrc, options.specificPath)
   if (null == g || null == s) {
     return { verdict: 'error', findings: [] }
   }

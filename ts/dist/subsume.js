@@ -418,17 +418,17 @@ function subsume(generalSrc, specificSrc, opts) {
         generalUrl: options.generalUrl ?? DEFAULT_GENERAL_URL,
         specificUrl: options.specificUrl ?? DEFAULT_SPECIFIC_URL,
     };
-    const load = (src) => {
+    const load = (src, path) => {
         const aontu = new aontu_1.Aontu();
         const ctx = aontu.ctx({ collect: true });
-        const v = aontu.unify(src, undefined, ctx);
+        const v = aontu.unify(src, null == path ? undefined : { path }, ctx);
         if (0 < ctx.err.length || true === v?.isNil) {
             return undefined;
         }
         return v;
     };
-    let g = load(generalSrc);
-    let s = load(specificSrc);
+    let g = load(generalSrc, options.generalPath);
+    let s = load(specificSrc, options.specificPath);
     if (null == g || null == s) {
         return { verdict: 'error', findings: [] };
     }
