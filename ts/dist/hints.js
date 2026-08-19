@@ -247,6 +247,10 @@ const codeClasses = {
     sub_default_indeterminate: 'compat',
     deprecated: 'compat',
     pref_not_instance: 'compat',
+    // G7 phase 5 -- the overlay patch verb: an assignment that is not
+    // <path>=<value>. Class `parse`, because what is malformed IS
+    // source text; report-layer, so no NilVal carries it.
+    patch_assignment: 'parse',
     func_arity: 'parse',
     elided_value: 'parse',
     unify_no_src: 'parse',

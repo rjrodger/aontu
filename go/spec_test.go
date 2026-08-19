@@ -54,6 +54,10 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	             and the hash form must round-trip (G6, hcanon.tsv)
 //	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
 //	             `aon1-...` pin, byte-identical across the ports
+//	mode=patch : FIVE columns -- name, patch, entry, input, expect.
+//	             The report of Patch(entry, overlay, set) must match
+//	             the expect object ({appended, overlay, verdict} plus
+//	             `codes`); see test/spec/patch.tsv
 //	mode=why   : FIVE columns -- name, why, src, path, expect. The
 //	             record of Why(src, path) must match the expect object
 //	             ({value, conjuncts} or {code, note}); see
@@ -128,7 +132,7 @@ func TestSpec(t *testing.T) {
 			// ignores any extra (see test/spec/vet.tsv and
 			// test/spec/subsume.tsv for the encodings).
 			vetRow := "vet" == mode || "subsume" == mode || "query" == mode ||
-				"why" == mode
+				"why" == mode || "patch" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -286,6 +290,47 @@ func TestSpec(t *testing.T) {
 					}
 					if got := CanonHash(v); got != expect {
 						t.Fatalf("hash mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+
+				case "patch":
+					var input struct {
+						Overlay string   `json:"overlay"`
+						Set     []string `json:"set"`
+					}
+					if jerr := json.Unmarshal([]byte(data), &input); jerr != nil {
+						t.Fatalf("bad patch input: %v\n %s", jerr, data)
+					}
+					pr := Patch(src, input.Overlay, input.Set, nil)
+					got := map[string]any{
+						"appended": pr.Appended,
+						"overlay":  pr.Overlay,
+						"verdict":  pr.Verdict,
+					}
+					if 0 < len(pr.Findings) {
+						codes := []string{}
+						for _, f := range pr.Findings {
+							codes = append(codes, f.Code)
+						}
+						got["codes"] = codes
+					}
+					var golden map[string]any
+					if jerr := json.Unmarshal([]byte(expect), &golden); jerr != nil {
+						t.Fatalf("bad patch golden: %v\n %s", jerr, expect)
+					}
+					if specJSON(t, got) != specJSON(t, golden) {
+						t.Fatalf("patch report mismatch\n want: %s\n got:  %s",
+							specJSON(t, golden), specJSON(t, got))
+					}
+
+					// ORDER-INDEPENDENCE, the property the whole verb
+					// rests on: an overlay entry is just another
+					// conjunct, so entry-against-overlay is the same as
+					// overlay-against-entry.
+					if VetError != pr.Verdict {
+						if back := Vet(pr.Overlay, src, nil); back.Verdict != pr.Verdict {
+							t.Fatalf("patch is not order-independent: %s\n %s vs %s",
+								name, pr.Verdict, back.Verdict)
+						}
 					}
 
 				case "why":

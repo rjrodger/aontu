@@ -41,6 +41,7 @@ Usage: aontu [options] [file]
        aontu hash [options] <file>
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
+       aontu set <path>=<value>... --entry <file> --overlay <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -332,6 +333,49 @@ $.services.auth.replicas = 3
   uninstrumented evaluation pays one property load per meet. An
   instrumented run pays site materialisation, one map entry per path
   met, and the spread walk that marks a template's application.
+
+### `aontu set`
+
+Change a document by **appending to an overlay**, not by rewriting it.
+
+```
+aontu set <path>=<value>... --entry <file> --overlay <file>
+         [--dry-run] [--format text|json]
+```
+
+```
+$ aontu set '$.services.auth.owner="identity-2"' \
+    --entry system.aon --overlay changes.aon
+verdict: valid
+wrote: changes.aon
+```
+
+- The assignment becomes a **path-flattened conjunct** — `$.a.b=1`
+  is appended as `"a": "b": 1`, keys quoted so a segment may be a
+  word the grammar spells otherwise, a number, or hold a space. The
+  text is split at the *first* `=`; everything after it is Aontu
+  source, so a value may contain one.
+- This needs no rewriter, and damages nothing: an overlay entry is
+  just another conjunct, and unification is order-independent, so
+  appending to a second file is the same value as writing into the
+  first. The shared suite asserts that equivalence for every row
+  rather than claiming it.
+- **What it cannot do is change a pinned value.** The lattice refuses
+  `5` against `3`, the verdict is `invalid`, and the finding names the
+  pinning site — which [`aontu why`](#aontu-why) then explains. The
+  loop is *set → conflict → why → edit the pinning site*, with that
+  last step manual until the format-preserving in-place edit lands
+  (stage 2; it needs a comment-preserving CST the parser stack does
+  not have yet).
+- **The overlay is written only when the change holds.** An `invalid`
+  or `error` verdict leaves the file exactly as it was: a change the
+  author still has to think about should not sit in their
+  configuration while they do. `--dry-run` writes nothing either way
+  and prints what would have been written.
+- A missing overlay file is the empty overlay, and is created.
+- Exit codes are [`vet`](#aontu-vet)'s verdict classes: `0` valid,
+  `1` invalid, `2` usage, `3` incomplete, `4` the entry does not stand
+  up on its own.
 
 ### `aontu hash`
 
@@ -781,6 +825,9 @@ get            // the query surface (see `aontu get` above):
 why            // provenance (see `aontu why` above):
                // why(src, path, {path?}) -> {ok, record, findings},
                // record = {path, value, conjuncts}; Go: (*Aontu).Why
+patch          // the overlay patch (see `aontu set` above):
+               // patch(entry, overlay, ["$.a.b=1"], opts?) ->
+               // {overlay, appended, verdict, findings}; Go: aontu.Patch
 ```
 
 ---

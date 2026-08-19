@@ -1,0 +1,44 @@
+# G7 phase 5: the overlay patch verb (`aontu set`)
+# (docs/capability-review/g7-machine-access.md). Columns:
+# name<TAB>patch<TAB>entry<TAB>input<TAB>expect, where input is a
+# JSON object {overlay, set} -- the overlay text as it stands and
+# the assignments to append -- and expect is the report:
+# {appended, overlay, verdict} plus `codes` when there are findings.
+# Messages are excluded, as every other verb's goldens exclude them.
+#
+# An overlay entry is just another CONJUNCT, and unification is
+# order-independent, so appending to a second file is the same value
+# as writing into the first. What it cannot do is change a PINNED
+# value (patch-pinned-conflict): the lattice refuses, the verdict is
+# invalid, and `why` locates the pinning site. The verdict is vet's,
+# unchanged.
+#
+# Keys are QUOTED in the flattened line: a path segment may be a
+# word the grammar spells otherwise (patch-keyword-key), a number
+# (patch-numeric-key), or hold a space.
+#
+# Every expectation was obtained by the parity probe (AGENTS.md).
+
+patch-fill-open-field	patch	services: { auth: { owner: string, replicas: *1|integer } }	{"overlay": "", "set": ["$.services.auth.owner=\\"identity-2\\""]}	{"appended": ["\\"services\\": \\"auth\\": \\"owner\\": \\"identity-2\\""], "overlay": "\\"services\\": \\"auth\\": \\"owner\\": \\"identity-2\\"\\n", "verdict": "valid"}
+patch-two-assignments	patch	services: { auth: { owner: string, replicas: *1|integer } }	{"overlay": "x: 1", "set": ["$.services.auth.owner=\\"a\\"", "$.services.auth.replicas=5"]}	{"appended": ["\\"services\\": \\"auth\\": \\"owner\\": \\"a\\"", "\\"services\\": \\"auth\\": \\"replicas\\": 5"], "overlay": "x: 1\\n\\"services\\": \\"auth\\": \\"owner\\": \\"a\\"\\n\\"services\\": \\"auth\\": \\"replicas\\": 5\\n", "verdict": "valid"}
+patch-pinned-conflict	patch	services: { auth: { owner: string, replicas: *1|integer } }	{"overlay": "", "set": ["$.services.auth.owner=3"]}	{"appended": ["\\"services\\": \\"auth\\": \\"owner\\": 3"], "codes": ["no_scalar_unify"], "overlay": "\\"services\\": \\"auth\\": \\"owner\\": 3\\n", "verdict": "invalid"}
+patch-not-an-assignment	patch	services: { auth: { owner: string, replicas: *1|integer } }	{"overlay": "", "set": ["bogus"]}	{"appended": [], "codes": ["patch_assignment"], "overlay": "", "verdict": "error"}
+patch-root-path	patch	services: { auth: { owner: string, replicas: *1|integer } }	{"overlay": "", "set": ["$=1"]}	{"appended": [], "codes": ["patch_assignment"], "overlay": "", "verdict": "error"}
+patch-empty-value	patch	services: { auth: { owner: string, replicas: *1|integer } }	{"overlay": "", "set": ["$.a="]}	{"appended": [], "codes": ["patch_assignment"], "overlay": "", "verdict": "error"}
+patch-empty-path	patch	services: { auth: { owner: string, replicas: *1|integer } }	{"overlay": "", "set": ["=1"]}	{"appended": [], "codes": ["patch_assignment"], "overlay": "", "verdict": "error"}
+patch-pinned-differs	patch	port: 3\nname: string	{"overlay": "", "set": ["$.port=5"]}	{"appended": ["\\"port\\": 5"], "codes": ["scalar_value", "mapval_no_gen"], "overlay": "\\"port\\": 5\\n", "verdict": "invalid"}
+patch-pinned-agrees	patch	port: 3\nname: string	{"overlay": "", "set": ["$.port=3"]}	{"appended": ["\\"port\\": 3"], "codes": ["mapval_no_gen"], "overlay": "\\"port\\": 3\\n", "verdict": "incomplete"}
+patch-fills-string	patch	port: 3\nname: string	{"overlay": "", "set": ["$.name=\\"n\\""]}	{"appended": ["\\"name\\": \\"n\\""], "overlay": "\\"name\\": \\"n\\"\\n", "verdict": "valid"}
+patch-already-filled	patch	port: 3\nname: string	{"overlay": "name: \\"n\\"", "set": ["$.port=3"]}	{"appended": ["\\"port\\": 3"], "overlay": "name: \\"n\\"\\n\\"port\\": 3\\n", "verdict": "valid"}
+patch-open-map-new-key	patch	port: 3\nname: string	{"overlay": "", "set": ["$.other=1"]}	{"appended": ["\\"other\\": 1"], "codes": ["mapval_no_gen"], "overlay": "\\"other\\": 1\\n", "verdict": "incomplete"}
+patch-constraint-value	patch	a: {b: integer}	{"overlay": "", "set": ["$.a.b=min(2)"]}	{"appended": ["\\"a\\": \\"b\\": min(2)"], "codes": ["mapval_no_gen"], "overlay": "\\"a\\": \\"b\\": min(2)\\n", "verdict": "incomplete"}
+patch-concrete-value	patch	a: {b: integer}	{"overlay": "", "set": ["$.a.b=2"]}	{"appended": ["\\"a\\": \\"b\\": 2"], "overlay": "\\"a\\": \\"b\\": 2\\n", "verdict": "valid"}
+patch-equals-in-value	patch	a: {}	{"overlay": "", "set": ["$.a.k=\\"v with = sign\\""]}	{"appended": ["\\"a\\": \\"k\\": \\"v with = sign\\""], "overlay": "\\"a\\": \\"k\\": \\"v with = sign\\"\\n", "verdict": "valid"}
+patch-keyword-key	patch	a: {}	{"overlay": "", "set": ["$.a.if=1"]}	{"appended": ["\\"a\\": \\"if\\": 1"], "overlay": "\\"a\\": \\"if\\": 1\\n", "verdict": "valid"}
+patch-numeric-key	patch	a: {}	{"overlay": "", "set": ["$.a.0=1"]}	{"appended": ["\\"a\\": \\"0\\": 1"], "overlay": "\\"a\\": \\"0\\": 1\\n", "verdict": "valid"}
+patch-entry-trailing-newline	patch	a: {}\n	{"overlay": "", "set": ["$.a.k=1"]}	{"appended": ["\\"a\\": \\"k\\": 1"], "overlay": "\\"a\\": \\"k\\": 1\\n", "verdict": "valid"}
+patch-overlay-no-newline	patch	a: {}	{"overlay": "y: 2", "set": ["$.a.k=1"]}	{"appended": ["\\"a\\": \\"k\\": 1"], "overlay": "y: 2\\n\\"a\\": \\"k\\": 1\\n", "verdict": "valid"}
+patch-overlay-trailing-newline	patch	a: {}	{"overlay": "y: 2\\n", "set": ["$.a.k=1"]}	{"appended": ["\\"a\\": \\"k\\": 1"], "overlay": "y: 2\\n\\"a\\": \\"k\\": 1\\n", "verdict": "valid"}
+patch-entry-unparseable	patch	a:]	{"overlay": "", "set": ["$.a=1"]}	{"appended": ["\\"a\\": 1"], "overlay": "\\"a\\": 1\\n", "verdict": "error"}
+patch-no-assignments	patch	a: {b: 1}	{"overlay": "", "set": []}	{"appended": [], "overlay": "", "verdict": "valid"}
+patch-closed-map-refuses	patch	a: close({b:integer})	{"overlay": "", "set": ["$.a.c=1"]}	{"appended": ["\\"a\\": \\"c\\": 1"], "codes": ["closed"], "overlay": "\\"a\\": \\"c\\": 1\\n", "verdict": "invalid"}

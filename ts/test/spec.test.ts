@@ -36,6 +36,10 @@
  *                and the hash form must round-trip (G6, hcanon.tsv)
  *   mode=hash  : canonHash(unify(src)) must equal expect, the full
  *                `aon1-...` pin, byte-identical across the ports
+ *   mode=patch : FIVE columns -- name, patch, entry, input, expect.
+ *                The report of patch(entry, overlay, set) must match
+ *                the expect object ({appended, overlay, verdict} plus
+ *                `codes`); see test/spec/patch.tsv
  *   mode=why   : FIVE columns -- name, why, src, path, expect. The
  *                record of why(src, path) must match the expect object
  *                ({value, conjuncts} or {code, note}); see
@@ -63,6 +67,7 @@ import * as Path from 'node:path'
 
 import {
   Aontu, exactJSON, vet, subsume, trimCheck, hcanon, canonHash, get, why,
+  patch,
 } from '../dist/aontu'
 import { codeClasses } from '../dist/hints'
 import { IntegerVal } from '../dist/val/IntegerVal'
@@ -142,7 +147,7 @@ function loadRows(): Row[] {
       // asserted is that the files were found at all
       // (spec-files-present below).
       const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
-        'query' === parts[1] || 'why' === parts[1]
+        'query' === parts[1] || 'why' === parts[1] || 'patch' === parts[1]
       const want = vetRow ? 5 : 4
       if (parts.length < want) {
         throw new Error(
@@ -384,6 +389,32 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
   }
   else if ('hash' === row.mode) {
     Assert.strictEqual(canonHash(a0.unify(row.src, undefined, ctx)), row.expect)
+  }
+  else if ('patch' === row.mode) {
+    const input = JSON.parse(row.data as string)
+    const golden = JSON.parse(row.expect)
+    const report = patch(row.src, input.overlay, input.set)
+
+    Assert.strictEqual(
+      exactJSON({
+        appended: report.appended,
+        overlay: report.overlay,
+        verdict: report.verdict,
+        ...(0 === report.findings.length
+          ? {} : { codes: report.findings.map((f) => f.code) }),
+      }),
+      exactJSON(golden),
+      `patch report mismatch: ${row.name}`)
+
+    // ORDER-INDEPENDENCE, the property the whole verb rests on: an
+    // overlay entry is just another conjunct, so evaluating the entry
+    // against the overlay is the same as evaluating the overlay
+    // against the entry. Asserted for every row that stands up.
+    if ('error' !== report.verdict) {
+      Assert.strictEqual(
+        vet(report.overlay, row.src).verdict, report.verdict,
+        `patch is not order-independent: ${row.name}`)
+    }
   }
   else if ('why' === row.mode) {
     const golden = JSON.parse(row.expect)

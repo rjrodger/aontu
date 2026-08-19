@@ -19,6 +19,7 @@ import { subsume } from './subsume'
 import { trimCheck } from './trim'
 import { hcanon, canonHash } from './hcanon'
 import { get, why } from './query'
+import { patch } from './patch'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -381,6 +382,7 @@ export {
   // (types/depth/keys) that subsumes the truth it summarises.
   get,
   why,
+  patch,
 }
 
 

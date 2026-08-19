@@ -10,7 +10,7 @@ import * as Path from 'node:path'
 import { Aontu } from '../dist/aontu'
 import {
   evalSource, runVet, runSubsume, runBreaking, runTrim, runHash, runGet, runWhy,
-  renderWhyText,
+  renderWhyText, runSet,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
   main as cliMainVet,
 } from '../dist/cli'
@@ -808,6 +808,102 @@ describe('cli-subsume', () => {
     ).out.includes('aontu trim'), true)
   })
 
+  // G7 phase 5: the overlay patch verb. What the two ports must agree
+  // on (the report) is pinned by test/spec/patch.tsv; these cases hold
+  // the command line and, above all, WHEN THE FILE IS WRITTEN.
+  test('set-appends-to-the-overlay-when-the-change-holds', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-set-'))
+    const entry = Path.join(dir, 'sys.aon')
+    const overlay = Path.join(dir, 'ov.aon')
+    Fs.writeFileSync(entry,
+      'services: { auth: { owner: string, replicas: *1 | integer } }')
+
+    // An ABSENT overlay is the empty overlay, and the file is created.
+    const r = vetCapture(() => Assert.equal(runSet(
+      ['$.services.auth.owner="identity-2"',
+        '--entry', entry, '--overlay', overlay]), 0))
+    Assert.match(r.out, /verdict: valid/)
+    Assert.match(r.out, /wrote:/)
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'),
+      '"services": "auth": "owner": "identity-2"\n')
+
+    // A second assignment appends after the first.
+    vetCapture(() => Assert.equal(runSet(
+      ['$.services.auth.replicas=5',
+        '--entry', entry, '--overlay', overlay]), 0))
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'),
+      '"services": "auth": "owner": "identity-2"\n' +
+      '"services": "auth": "replicas": 5\n')
+
+    const j = JSON.parse(vetCapture(() => Assert.equal(runSet(
+      ['$.services.auth.owner="identity-2"', '--format', 'json',
+        '--entry', entry, '--overlay', overlay]), 0)).out)
+    Assert.equal(j.aontu.verb, 'set')
+    Assert.equal(j.verdict, 'valid')
+    Assert.equal(j.written, true)
+    Assert.deepEqual(j.appended, ['"services": "auth": "owner": "identity-2"'])
+  })
+
+  // A change that contradicts a PINNED value is a question for the
+  // author at the pinning site: reported, exit 1, and NOT written —
+  // leaving it in the overlay would leave the configuration broken.
+  test('set-refuses-to-write-a-change-that-does-not-hold', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-set-no-'))
+    const entry = Path.join(dir, 'sys.aon')
+    const overlay = Path.join(dir, 'ov.aon')
+    Fs.writeFileSync(entry, 'port: 3')
+    Fs.writeFileSync(overlay, 'x: 1\n')
+
+    const r = vetCapture(() => Assert.equal(runSet(
+      ['$.port=5', '--entry', entry, '--overlay', overlay]), 1))
+    Assert.match(r.err, /verdict: invalid/)
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'), 'x: 1\n')
+
+    // --dry-run prints the verdict and writes nothing, even when it
+    // would have held.
+    const d = vetCapture(() => Assert.equal(runSet(
+      ['$.port=3', '--dry-run', '--entry', entry, '--overlay', overlay]), 0))
+    Assert.match(d.out, /\(dry run\)/)
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'), 'x: 1\n')
+
+    // An entry that does not stand up is verdict error, exit 4.
+    Fs.writeFileSync(entry, 'a:1 a:2')
+    vetCapture(() => Assert.equal(runSet(
+      ['$.b=1', '--entry', entry, '--overlay', overlay]), 4))
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'), 'x: 1\n')
+  })
+
+  test('set-usage-errors-exit-2', () => {
+    const f = subFiles('a:{b:integer}', 'a:1')
+    const ov = Path.join(f.dir, 'ov.aon')
+    vetCapture(() => Assert.equal(runSet([]), 2))
+    vetCapture(() => Assert.equal(runSet(['$.a.b=1']), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', f.general]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['--entry', f.general, '--overlay', ov]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--bogus', '--entry', f.general, '--overlay', ov]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--format', 'yaml', '--entry', f.general, '--overlay', ov]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', Path.join(f.dir, 'missing.aon'),
+        '--overlay', ov]), 2))
+    // An overlay that cannot be READ (a directory, not a missing file)
+    // is a usage error, not an empty overlay.
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', f.general, '--overlay', f.dir]), 2))
+    // An overlay whose DIRECTORY does not exist reads as absent (the
+    // empty overlay) and then fails to write, which is also usage.
+    Assert.equal(vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', f.general,
+        '--overlay', Path.join(f.dir, 'no-such-dir', 'ov.aon')]), 2)
+    ).err.includes('cannot write'), true)
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runSet(['--help']), 0)
+    ).out.includes('aontu set'), true)
+  })
+
   // G7 phase 3: provenance. The record itself is pinned by
   // test/spec/why.tsv in both ports; these cases hold the command
   // line and the text rendering.
@@ -1058,6 +1154,10 @@ describe('cli-subsume', () => {
     const w = vetCapture(() => cliMainVet(
       ['node', 'aontu', 'why', '$.a', f.general]))
     Assert.match(w.out, /\$\.a = integer/)
+    const st = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'set', '$.a=1', '--dry-run',
+        '--entry', f.general, '--overlay', Path.join(f.dir, 'ov.aon')]))
+    Assert.match(st.out, /verdict: valid/)
   })
 
 })

@@ -12,6 +12,7 @@ exports.runHash = runHash;
 exports.runGet = runGet;
 exports.runWhy = runWhy;
 exports.renderWhyText = renderWhyText;
+exports.runSet = runSet;
 exports.watchChange = watchChange;
 exports.watchSignature = watchSignature;
 exports.deprecatedAt = deprecatedAt;
@@ -38,6 +39,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu hash [options] <file>
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
+       aontu set <path>=<value>... --entry <file> --overlay <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -131,6 +133,18 @@ Why options:
 
 Why exit codes mirror get's: 0 explained, 1 the path names nothing,
 2 usage, 4 the document does not stand up on its own.
+
+Set options:
+  --entry <file>    The document the change is checked against
+  --overlay <file>  The file the change is appended to (created if
+                    absent; not written when the change does not hold)
+  --dry-run         Print the overlay that would be written, write
+                    nothing
+  --format <f>      text (default) or json
+
+Set exit codes are vet's verdict classes: 0 valid, 1 invalid (the
+change contradicts a pinned value -- aontu why locates it),
+2 usage, 3 incomplete, 4 the entry does not stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -1294,6 +1308,115 @@ function renderWhyText(record) {
             ('literal' === c.role ? '' : `  (${c.role})`);
     })).join('\n');
 }
+// ---------------------------------------------------------------------
+// The overlay patch verb (G7 phase 5): change a document by APPENDING
+// to an overlay, not by rewriting it. An overlay entry is just another
+// conjunct and unification is order-independent, so this needs no
+// rewriter — the format-preserving in-place edit is stage 2, and needs
+// a comment-preserving CST the parser stack does not have.
+const SET_HELP = 'aontu set <path>=<value> --entry <file> --overlay <file> (try --help)';
+function runSet(argv) {
+    const assignments = [];
+    let entry;
+    let overlayFile;
+    let dryRun = false;
+    let format = 'text';
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        if ('--entry' === arg) {
+            entry = argv[++i];
+        }
+        else if ('--overlay' === arg) {
+            overlayFile = argv[++i];
+        }
+        else if ('--dry-run' === arg) {
+            dryRun = true;
+        }
+        else if ('--format' === arg) {
+            const f = argv[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return 2;
+            }
+            format = f;
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown set option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            assignments.push(arg);
+        }
+    }
+    if (0 === assignments.length || null == entry || null == overlayFile) {
+        process.stderr.write(`aontu: set needs assignments, --entry and --overlay\n${SET_HELP}\n`);
+        return 2;
+    }
+    let entrySrc;
+    try {
+        entrySrc = (0, node_fs_1.readFileSync)(entry, 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+        return 2;
+    }
+    // An ABSENT overlay is the empty overlay, and the file is created by
+    // the write below: "append to the overlay" should not require the
+    // author to have made one first.
+    let overlaySrc = '';
+    try {
+        overlaySrc = (0, node_fs_1.readFileSync)(overlayFile, 'utf8');
+    }
+    catch (err) {
+        if ('ENOENT' !== err?.code) {
+            process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+            return 2;
+        }
+    }
+    const report = (0, aontu_1.patch)(entrySrc, overlaySrc, assignments, {
+        entryPath: entry,
+        overlayPath: overlayFile,
+    });
+    // WRITTEN ONLY WHEN IT HOLDS. A change that contradicts a pinned
+    // value is a question the author has to answer at the pinning site;
+    // leaving it in the overlay would leave the configuration broken
+    // while the exit code says so somewhere they may not be reading.
+    const wrote = !dryRun &&
+        'invalid' !== report.verdict && 'error' !== report.verdict;
+    if (wrote) {
+        try {
+            (0, node_fs_1.writeFileSync)(overlayFile, report.overlay, 'utf8');
+        }
+        catch (err) {
+            process.stderr.write(`aontu: cannot write ${overlayFile}: ${err.message}\n`);
+            return 2;
+        }
+    }
+    if ('json' === format) {
+        process.stdout.write((0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'set' },
+            appended: report.appended,
+            findings: report.findings,
+            overlay: report.overlay,
+            verdict: report.verdict,
+            written: wrote,
+        }, 2) + '\n');
+    }
+    else {
+        const head = `verdict: ${report.verdict}` +
+            (wrote ? `\nwrote: ${overlayFile}` : dryRun ? '\n(dry run)' : '');
+        const body = 0 === report.findings.length
+            ? [head]
+            : [head, ''].concat(report.findings.map(renderFinding));
+        (0 === report.findings.length ? process.stdout : process.stderr)
+            .write(body.join('\n') + '\n');
+    }
+    return VET_EXIT[report.verdict];
+}
 // Exit without truncating output.
 //
 // process.exit() terminates immediately, discarding anything still
@@ -1349,6 +1472,9 @@ function main(argv) {
     }
     if ('breaking' === argv[2]) {
         return finish(runBreaking(argv.slice(3)));
+    }
+    if ('set' === argv[2]) {
+        return finish(runSet(argv.slice(3)));
     }
     if ('why' === argv[2]) {
         return finish(runWhy(argv.slice(3)));

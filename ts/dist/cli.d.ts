@@ -18,5 +18,6 @@ declare function runHash(argv: string[]): number;
 declare function runGet(argv: string[]): number;
 declare function runWhy(argv: string[]): number;
 declare function renderWhyText(record: WhyRecord): string;
+declare function runSet(argv: string[]): number;
 declare function main(argv: string[]): void;
-export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, runGet, runWhy, renderWhyText, watchChange, watchSignature, vetWaiter, deprecatedAt, };
+export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, runGet, runWhy, renderWhyText, runSet, watchChange, watchSignature, vetWaiter, deprecatedAt, };

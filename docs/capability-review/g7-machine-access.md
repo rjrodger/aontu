@@ -1,8 +1,9 @@
 # G7: A machine-facing access surface
 
-*Status: design proposal — phases 1–4 (`get` and its projections, and
-`why` with its provenance recorder, both ports) are implemented;
-phases 5–7 (patch, delivery, REPL) are not. Per-phase status and the
+*Status: design proposal — phases 1–5 (`get` and its projections,
+`why` with its provenance recorder, and the overlay `set`, both ports)
+are implemented; phases 6 and 7 (delivery, REPL) are not, and neither
+is phase 5's stage 2, the format-preserving in-place edit. Per-phase status and the
 corrections this document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the

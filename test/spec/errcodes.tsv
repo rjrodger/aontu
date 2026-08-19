@@ -186,3 +186,7 @@ deprecated	errcode	compat	0.53.0
 # error is itself a breaking change, sequenced through the `breaking`
 # gate.
 pref_not_instance	errcode	compat	0.53.0
+# The overlay patch verb (G7 phase 5, `aontu set`): the assignment was
+# not <path>=<value>. Class `parse` -- what is malformed is source
+# text -- and report-layer, so no NilVal ever carries it.
+patch_assignment	errcode	parse	0.53.0

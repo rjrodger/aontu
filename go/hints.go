@@ -135,6 +135,7 @@ var codeClasses = map[string]string{
 	"sub_default_indeterminate": "compat",
 	"deprecated":                "compat",
 	"pref_not_instance":         "compat",
+	"patch_assignment":          "parse",
 	"func_arity":                "parse",
 	"elided_value":              "parse",
 	"unify_no_src":              "parse",
