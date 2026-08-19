@@ -63,6 +63,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                expect. The report of subsume(general, specific) must
  *                equal the expect object (verdict + findings), MINUS
  *                each finding's message; see test/spec/subsume.tsv
+ *   mode=trim  : trimCheck(src) must equal the expect object
+ *                ({redundant, verdict}); see test/spec/trim.tsv
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -277,6 +279,10 @@ function runRow(row) {
             verdict: report.verdict,
             findings: report.findings.map(({ message, ...rest }) => rest),
         }), (0, aontu_1.exactJSON)(golden), `subsume report mismatch: ${row.name}`);
+    }
+    else if ('trim' === row.mode) {
+        const report = (0, aontu_1.trimCheck)(row.src);
+        Assert.strictEqual((0, aontu_1.exactJSON)({ redundant: report.redundant, verdict: report.verdict }), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `trim report mismatch: ${row.name}`);
     }
     else if ('errcode' === row.mode) {
         // Registry row: name IS the code, src is its class, expect the

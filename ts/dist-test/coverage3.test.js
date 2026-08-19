@@ -66,6 +66,7 @@ const lsp_1 = require("../dist/lsp");
 const subsume_1 = require("../dist/subsume");
 const DeprecateFuncVal_1 = require("../dist/val/DeprecateFuncVal");
 const utility_1 = require("../dist/utility");
+const trim_1 = require("../dist/trim");
 const Val_1 = require("../dist/val/Val");
 const top_1 = require("../dist/val/top");
 const MapVal_1 = require("../dist/val/MapVal");
@@ -795,6 +796,37 @@ function capture(fn) {
         Assert.equal(r, 'undecided');
         Assert.equal(state.findings.length, 1);
         Assert.equal(state.findings[0].code, 'sub_unresolved');
+    });
+});
+(0, node_test_1.describe)('coverage3-trim', () => {
+    // The trim internals no source reaches (G3 phase 6): the candidate
+    // walk's raw-entry guard, and deleteAt's honest answers for paths a
+    // candidate enumeration from an identical parse can never produce.
+    (0, node_test_1.test)('trim-internals', () => {
+        const raw = new MapVal_1.MapVal({ peg: {} });
+        raw.peg.k = 7;
+        const paths = [];
+        (0, trim_1.candidates)(raw, [], paths);
+        Assert.deepEqual(paths, [['k']]);
+        const root = new MapVal_1.MapVal({ peg: {} });
+        const inner = new MapVal_1.MapVal({ peg: {} });
+        inner.optionalKeys = ['x', 'y'];
+        inner.peg.x = new IntegerVal_1.IntegerVal({ peg: 1 });
+        root.peg.a = inner;
+        root.peg.s = new IntegerVal_1.IntegerVal({ peg: 2 });
+        // A mid-path segment that is not a bag proves nothing to delete:
+        // the walk stops inside the loop, before the final-key check.
+        Assert.equal((0, trim_1.deleteAt)(root, ['s', 'deep', 'deeper']), false);
+        // And when the FINAL parent is not a bag, the last check answers.
+        Assert.equal((0, trim_1.deleteAt)(root, ['s', 'deep']), false);
+        // A missing key likewise.
+        Assert.equal((0, trim_1.deleteAt)(root, ['a', 'zz']), false);
+        // A real optional entry deletes, and its optional mark goes too.
+        Assert.equal((0, trim_1.deleteAt)(root, ['a', 'x']), true);
+        Assert.deepEqual(inner.optionalKeys, ['y']);
+        // evalCanon answers undefined for a probe whose deletion cannot
+        // land (the caller's "load-bearing" fold).
+        Assert.equal((0, trim_1.evalCanon)('a:1', {}, ['zz', 'deep']), undefined);
     });
 });
 //# sourceMappingURL=coverage3.test.js.map

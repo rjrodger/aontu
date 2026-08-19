@@ -37,6 +37,7 @@ Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
+       aontu trim --check [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -203,6 +204,32 @@ aontu breaking --against <file|git#rev> [--mode backward|forward|full]
 - `--allow-deprecated-removal` downgrades a finding about a value the
   old version already `deprecate()`d to a warning (still reported, no
   longer failing): deprecate-then-remove is the supported rename path.
+
+### `aontu trim`
+
+Report redundant map entries — entries whose removal leaves the
+evaluated result unchanged, the spread-implied case included — as
+paths.
+
+```
+aontu trim --check [--format text|json] <file.aon>
+```
+
+- The test is **evaluate-and-compare**: for each candidate entry the
+  source is re-parsed, the entry deleted from the parsed tree, and the
+  canon compared to the baseline. This covers everything the fixpoint
+  can see (spread templates, references, duplicate-key merges), and a
+  removal that *errors* is not redundant — the entry is load-bearing.
+- Candidates are map entries at every depth; **list elements are not
+  candidates** (removing one shifts every later index — a different
+  document, not the same one minus a redundancy). A child of a
+  redundant parent is skipped: removing the parent already covers it.
+- `--check` is **required**: trim only reports for now — rewriting the
+  file in place needs a format-preserving editor (G7) — and
+  `aontu trim f.aon` doing something other than trimming silently
+  would be worse than saying so.
+- Exit codes: `0` clean, `1` redundant entries found, `4` the document
+  itself does not evaluate, `2` usage.
 
 **REPL commands**
 
@@ -581,6 +608,9 @@ sarifReport    // a vet report as SARIF 2.1.0
 subsume        // the subsumption query (docs/reference-language.md,
                // "Subsumption"): subsume(general, specific, {profile?, at?})
                // -> {verdict, findings}; Go: aontu.Subsume
+trimCheck      // the redundancy reporter (see `aontu trim` above):
+               // trimCheck(src, {path?}) -> {verdict, redundant};
+               // Go: aontu.New().TrimCheck(src)
 ```
 
 ---

@@ -26,6 +26,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
+       aontu trim --check [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -87,6 +88,14 @@ Breaking options:
 
 Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,
 2 usage, 3 undecided, 4 error.
+
+Trim options:
+  --check         Report redundant entries as paths (required: trim
+                  only reports for now; rewriting is a future editor)
+  --format <f>    text (default) or json
+
+Trim exit codes: 0 nothing redundant, 1 redundancies reported,
+2 usage, 4 the document does not stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -303,6 +312,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 	if 0 < len(args) && "breaking" == args[0] {
 		return runBreaking(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "trim" == args[0] {
+		return runTrim(args[1:], stdout, stderr)
 	}
 
 	mode := "json"

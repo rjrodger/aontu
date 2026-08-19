@@ -29,6 +29,8 @@
  *                expect. The report of subsume(general, specific) must
  *                equal the expect object (verdict + findings), MINUS
  *                each finding's message; see test/spec/subsume.tsv
+ *   mode=trim  : trimCheck(src) must equal the expect object
+ *                ({redundant, verdict}); see test/spec/trim.tsv
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -45,7 +47,7 @@ import * as Assert from 'node:assert'
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
-import { Aontu, exactJSON, vet, subsume } from '../dist/aontu'
+import { Aontu, exactJSON, vet, subsume, trimCheck } from '../dist/aontu'
 import { codeClasses } from '../dist/hints'
 import { IntegerVal } from '../dist/val/IntegerVal'
 import { StringVal } from '../dist/val/StringVal'
@@ -310,6 +312,13 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       }),
       exactJSON(golden),
       `subsume report mismatch: ${row.name}`)
+  }
+  else if ('trim' === row.mode) {
+    const report = trimCheck(row.src)
+    Assert.strictEqual(
+      exactJSON({ redundant: report.redundant, verdict: report.verdict }),
+      exactJSON(JSON.parse(row.expect)),
+      `trim report mismatch: ${row.name}`)
   }
   else if ('errcode' === row.mode) {
     // Registry row: name IS the code, src is its class, expect the

@@ -34,6 +34,11 @@ import { computeDiagnostics, computeHover, LspHandler } from '../dist/lsp'
 import { subsumeNode } from '../dist/subsume'
 import { DeprecateFuncVal } from '../dist/val/DeprecateFuncVal'
 import { collectDeprecations } from '../dist/utility'
+import {
+  candidates as trimCandidates,
+  deleteAt as trimDeleteAt,
+  evalCanon as trimEvalCanon,
+} from '../dist/trim'
 
 import { Val } from '../dist/val/Val'
 import { top } from '../dist/val/top'
@@ -920,6 +925,44 @@ describe('coverage3-subsume', () => {
     Assert.equal(r, 'undecided')
     Assert.equal(state.findings.length, 1)
     Assert.equal(state.findings[0].code, 'sub_unresolved')
+  })
+
+})
+
+
+describe('coverage3-trim', () => {
+
+  // The trim internals no source reaches (G3 phase 6): the candidate
+  // walk's raw-entry guard, and deleteAt's honest answers for paths a
+  // candidate enumeration from an identical parse can never produce.
+  test('trim-internals', () => {
+    const raw = new MapVal({ peg: {} })
+    raw.peg.k = 7
+    const paths: string[][] = []
+    trimCandidates(raw, [], paths)
+    Assert.deepEqual(paths, [['k']])
+
+    const root = new MapVal({ peg: {} })
+    const inner = new MapVal({ peg: {} })
+    inner.optionalKeys = ['x', 'y']
+    inner.peg.x = new IntegerVal({ peg: 1 })
+    root.peg.a = inner
+    root.peg.s = new IntegerVal({ peg: 2 })
+
+    // A mid-path segment that is not a bag proves nothing to delete:
+    // the walk stops inside the loop, before the final-key check.
+    Assert.equal(trimDeleteAt(root, ['s', 'deep', 'deeper']), false)
+    // And when the FINAL parent is not a bag, the last check answers.
+    Assert.equal(trimDeleteAt(root, ['s', 'deep']), false)
+    // A missing key likewise.
+    Assert.equal(trimDeleteAt(root, ['a', 'zz']), false)
+    // A real optional entry deletes, and its optional mark goes too.
+    Assert.equal(trimDeleteAt(root, ['a', 'x']), true)
+    Assert.deepEqual(inner.optionalKeys, ['y'])
+
+    // evalCanon answers undefined for a probe whose deletion cannot
+    // land (the caller's "load-bearing" fold).
+    Assert.equal(trimEvalCanon('a:1', {}, ['zz', 'deep']), undefined)
   })
 
 })

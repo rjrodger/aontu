@@ -16,6 +16,7 @@ import { makeNilErr, descErr, AontuError } from './err'
 import { vet } from './vet'
 import { sarifReport } from './report-sarif'
 import { subsume } from './subsume'
+import { trimCheck } from './trim'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -364,6 +365,7 @@ export {
   // admit every instance the specific value admits? Three-valued, with
   // G2-shaped findings (class `compat`).
   subsume,
+  trimCheck,
 }
 
 

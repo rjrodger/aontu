@@ -14,13 +14,14 @@ import { readFileSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
-import { Aontu, AontuError, exactJSON, vet, subsume } from './aontu'
+import { Aontu, AontuError, exactJSON, vet, subsume, trimCheck } from './aontu'
 import { sarifReport } from './report-sarif'
 import { VET_MAX_ERRORS } from './vet'
 import type { VetReport, VetFinding, VetVerdict } from './vet'
 import type {
   SubsumeReport, SubsumeVerdict, SubsumeProfile,
 } from './subsume'
+import type { TrimReport, TrimVerdict } from './trim'
 
 
 type Mode = 'json' | 'canon'
@@ -30,6 +31,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
+       aontu trim --check [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -91,6 +93,14 @@ Breaking options:
 
 Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,
 2 usage, 3 undecided, 4 error.
+
+Trim options:
+  --check         Report redundant entries as paths (required: trim
+                  only reports for now; rewriting is a future editor)
+  --format <f>    text (default) or json
+
+Trim exit codes: 0 nothing redundant, 1 redundancies reported,
+2 usage, 4 the document does not stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -1097,6 +1107,97 @@ function renderBreakingJson(report: SubsumeReport, mode: string): string {
 }
 
 
+// ---------------------------------------------------------------------
+// The trim reporter (G3 phase 6): report redundant entries as paths.
+// Report-only — REWRITING needs G7's format-preserving patch surface —
+// which is why --check is REQUIRED rather than defaulted: `aontu trim
+// f.aon` reads as "trim this file", and doing something else silently
+// is worse than saying so.
+
+const TRIM_HELP = 'aontu trim --check <file> (try --help)'
+
+const TRIM_EXIT: Record<TrimVerdict, number> = {
+  clean: 0,
+  redundant: 1,
+  error: 4,
+}
+
+function runTrim(argv: string[]): number {
+  const files: string[] = []
+  let check = false
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--check' === arg) {
+      check = true
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown trim option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length) {
+    process.stderr.write(`aontu: trim needs one file\n${TRIM_HELP}\n`)
+    return 2
+  }
+  if (!check) {
+    process.stderr.write(
+      'aontu: trim only reports for now — rewriting needs a format-' +
+      'preserving editor (G7); pass --check\n')
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(files[0], 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = trimCheck(src, { path: files[0] })
+  const text = 'json' === format
+    ? renderTrimJson(report)
+    : renderTrimText(report)
+  process.stdout.write(text + '\n')
+  return TRIM_EXIT[report.verdict]
+}
+
+function renderTrimText(report: TrimReport): string {
+  const head = `verdict: ${report.verdict}`
+  if (0 === report.redundant.length) {
+    return head
+  }
+  return [head, ''].concat(report.redundant).join('\n')
+}
+
+function renderTrimJson(report: TrimReport): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'trim' },
+    verdict: report.verdict,
+    redundant: report.redundant,
+  }, 2)
+}
+
+
 // Exit without truncating output.
 //
 // process.exit() terminates immediately, discarding anything still
@@ -1158,6 +1259,9 @@ function main(argv: string[]): void {
   if ('breaking' === argv[2]) {
     return finish(runBreaking(argv.slice(3)))
   }
+  if ('trim' === argv[2]) {
+    return finish(runTrim(argv.slice(3)))
+  }
 
   const args = argv.slice(2)
   for (let i = 0; i < args.length; i++) {
@@ -1216,6 +1320,6 @@ function main(argv: string[]): void {
 
 
 export {
-  evalSource, main, runVet, runSubsume, runBreaking,
+  evalSource, main, runVet, runSubsume, runBreaking, runTrim,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
 }

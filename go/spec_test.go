@@ -38,6 +38,17 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	mode=errcode : registry row -- name is a code, src its class,
 //	             expect its since-version; asserted against the engine's
 //	             codeClasses table (go/hints.go)
+//	mode=vet   : FIVE columns -- name, vet, schema, data, expect. The
+//	             report of Vet(schema, data) must equal the expect
+//	             object, MINUS each finding's message (prose is not in
+//	             parity; see test/spec/vet.tsv for the whole encoding,
+//	             including the `opts` key)
+//	mode=subsume : FIVE columns -- name, subsume, general, specific,
+//	             expect. The report of Subsume(general, specific) must
+//	             equal the expect object (verdict + findings), MINUS
+//	             each finding's message; see test/spec/subsume.tsv
+//	mode=trim  : TrimCheck(src) must equal the expect object
+//	             ({redundant, verdict}); see test/spec/trim.tsv
 //
 // gen vs gens: gen normalises both sides through a JSON decode, which
 // collapses every number to a float64 — so two distinct exact integers
@@ -242,6 +253,21 @@ func TestSpec(t *testing.T) {
 					if got != want {
 						t.Fatalf("vet report mismatch\n schema: %q\n data:   %q\n want: %s\n got:  %s",
 							src, data, want, got)
+					}
+				case "trim":
+					// trimCheck(src) must equal the expect object
+					// ({redundant, verdict}); see test/spec/trim.tsv.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					r := New().TrimCheck(src)
+					got := specJSON(t, map[string]any{
+						"redundant": r.Redundant, "verdict": r.Verdict})
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("trim report mismatch\n src: %q\n want: %s\n got:  %s",
+							src, want, got)
 					}
 				case "subsume":
 					// Same golden discipline as vet: `opts` rides the

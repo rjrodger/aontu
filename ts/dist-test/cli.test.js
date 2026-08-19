@@ -592,6 +592,38 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         // that produced the finding already reported why.
         Assert.equal((0, cli_1.deprecatedAt)('a:1 a:2', '$.a', 'x.aon'), false);
     });
+    // The trim reporter (G3 phase 6). Go twin: TestTrimVerb in
+    // go/cmd/aontu/trim_test.go.
+    (0, node_test_1.test)('trim-check-reports-redundant-paths', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-trim-'));
+        const file = Path.join(dir, 'doc.aon');
+        Fs.writeFileSync(file, 'a:{&:{deep:1}, b:{deep:1}, c:{other:2}}');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', file]), 1));
+        Assert.match(r.out, /verdict: redundant/);
+        Assert.match(r.out, /\$\.a\.b\.deep/);
+        Fs.writeFileSync(file, 'x:{y:1}');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', file]), 0)).out.trim(), 'verdict: clean');
+        Fs.writeFileSync(file, 'a:1 a:2');
+        vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', file]), 4));
+        Fs.writeFileSync(file, 'a:{&:{k:1},m:{k:1}}');
+        const j = vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', '--format', 'json', file]), 1));
+        const report = JSON.parse(j.out);
+        Assert.equal(report.aontu.verb, 'trim');
+        Assert.equal(report.verdict, 'redundant');
+        Assert.deepEqual(report.redundant, ['$.a.m.k']);
+    });
+    (0, node_test_1.test)('trim-usage-errors-exit-2', () => {
+        const f = subFiles('a:1', 'a:1');
+        // Report-only: rewriting needs a format-preserving editor (G7),
+        // so --check is required rather than silently defaulted.
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)([f.general]), 2)).err.includes('pass --check'), true);
+        vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', f.general, f.specific]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--bogus']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', '--format', 'yaml', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', Path.join(f.dir, 'missing.aon')]), 2));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--help']), 0)).out.includes('aontu trim'), true);
+    });
     // The verbs ride the same first-argument dispatch vet does.
     (0, node_test_1.test)('subsume-verbs-dispatch-from-main', () => {
         const f = subFiles('a:integer', 'a:1');
@@ -599,6 +631,8 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         Assert.match(r.out, /verdict: subsumes/);
         const b = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'breaking', '--against', f.specific, f.general]));
         Assert.match(b.out, /verdict: compatible/);
+        const t = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'trim', '--check', f.general]));
+        Assert.match(t.out, /verdict: clean/);
     });
 });
 //# sourceMappingURL=cli.test.js.map
