@@ -226,6 +226,7 @@ func isPref(v Val) bool     { _, ok := v.(*PrefVal); return ok }
 func isRef(v Val) bool      { _, ok := v.(*RefVal); return ok }
 func isVar(v Val) bool      { _, ok := v.(*VarVal); return ok }
 func isFunc(v Val) bool     { _, ok := v.(*FuncVal); return ok }
+func isRefer(v Val) bool    { _, ok := v.(*ReferVal); return ok }
 
 // TopVal is the unit of the lattice: unifying with TOP yields the
 // other operand. There is conceptually only one TOP.

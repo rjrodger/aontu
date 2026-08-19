@@ -70,6 +70,7 @@ const hcanon_1 = require("../dist/hcanon");
 const query_1 = require("../dist/query");
 const provenance_1 = require("../dist/provenance");
 const IdFuncVal_1 = require("../dist/val/IdFuncVal");
+const ReferFuncVal_1 = require("../dist/val/ReferFuncVal");
 const utility_2 = require("../dist/utility");
 const Val_1 = require("../dist/val/Val");
 const trim_1 = require("../dist/trim");
@@ -1006,6 +1007,24 @@ function capture(fn) {
         const res = new unify_1.Unify(root, undefined, ctx).res;
         Assert.strictEqual(res.entity, 'x');
     });
+    (0, node_test_1.test)('identity-merge-walk-answers-a-non-val-slot', () => {
+        // A bag slot can hold a raw value or nothing at all in a hand-built
+        // tree (the shape `raw-peg-canon-and-clone` builds); the walk
+        // answers it unchanged rather than dereferencing it. No document
+        // produces one — both ports proved that by running their whole
+        // suites — so the guard is pinned here, as its Go twin is in
+        // go/identity_test.go.
+        const a0 = new aontu_1.Aontu();
+        const ctx = a0.ctx({});
+        ctx.entities = new Map();
+        const child = new MapVal_1.MapVal({ peg: {} }, ctx);
+        child.entity = 'x';
+        const root = new MapVal_1.MapVal({ peg: { a: child, raw: 5, gap: undefined } }, ctx);
+        const out = (0, unify_1.mergeEntities)(ctx, root);
+        Assert.strictEqual(out.peg.raw, 5);
+        Assert.strictEqual(out.peg.gap, undefined);
+        Assert.strictEqual(out.peg.a.entity, 'x');
+    });
     (0, node_test_1.test)('identity-merge-converges-list-positions', () => {
         // A list element is a POSITION: after the merge both elements hold
         // the one value, not two equal ones.
@@ -1013,6 +1032,46 @@ function capture(fn) {
         const list = v.peg.a;
         Assert.strictEqual(list.peg[0], list.peg[1]);
         Assert.strictEqual(list.peg[0].canon, '{"j":2,"k":1}');
+    });
+});
+// G4 phase 2 — the refer internals no source reaches. The residual is
+// minted where it is used and answers whole shapes, so its per-arm
+// behaviour is exercised here directly: an address that walks into a
+// scalar, the peers the dispatcher never hands it, and a flow whose
+// TOP-LEVEL meet fails (from source the conflict usually lands on a
+// field, the two maps meeting and one key disagreeing).
+(0, node_test_1.describe)('coverage3-refer', () => {
+    (0, node_test_1.test)('find-entity-walks-into-non-bags', () => {
+        const ctx = new aontu_1.Aontu().ctx({});
+        const m = new MapVal_1.MapVal({ peg: { p: new IntegerVal_1.IntegerVal({ peg: 1 }, ctx) } }, ctx);
+        const reg = new Map([['x', m]]);
+        Assert.strictEqual((0, ReferFuncVal_1.findEntity)(reg, (0, ReferFuncVal_1.parseAddress)('x.p.q')), undefined);
+        Assert.strictEqual((0, ReferFuncVal_1.findEntity)(reg, (0, ReferFuncVal_1.parseAddress)('x.nope')), undefined);
+        Assert.strictEqual((0, ReferFuncVal_1.findEntity)(undefined, (0, ReferFuncVal_1.parseAddress)('x')), undefined);
+        const found = (0, ReferFuncVal_1.findEntity)(reg, (0, ReferFuncVal_1.parseAddress)('x.p'));
+        Assert.strictEqual(found.parent, m);
+        Assert.strictEqual(found.key, 'p');
+    });
+    (0, node_test_1.test)('refer-peers-the-dispatcher-never-hands-it', () => {
+        const ctx = new aontu_1.Aontu().ctx({});
+        const r = new ReferFuncVal_1.ReferVal({}, ctx);
+        // A NIL peer is absorbing, as everywhere else: the residual answers
+        // the existing failure rather than minting a second one.
+        const nil = new NilVal_1.NilVal({ why: 'test-nil' }, ctx);
+        Assert.strictEqual(r.unify(nil, ctx), nil);
+        // And an absent peer is the self-drive `unite` substitutes TOP for.
+        Assert.strictEqual(r.unify(undefined, ctx), r);
+    });
+    (0, node_test_1.test)('refer-flow-refusal-is-the-nil', () => {
+        const a0 = new aontu_1.Aontu();
+        const ctx = a0.ctx({ collect: true });
+        const m = new MapVal_1.MapVal({ peg: { k: new IntegerVal_1.IntegerVal({ peg: 1 }, ctx) } }, ctx);
+        ctx.entities = new Map([['x', m]]);
+        const r = new ReferFuncVal_1.ReferVal({}, ctx);
+        r.tval = new IntegerVal_1.IntegerVal({ peg: 1 }, ctx);
+        r.addr = (0, ReferFuncVal_1.parseAddress)('x');
+        r.addrsrc = 'x';
+        Assert.strictEqual(r.settle(ctx, r).isNil, true);
     });
 });
 //# sourceMappingURL=coverage3.test.js.map

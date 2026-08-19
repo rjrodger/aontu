@@ -206,3 +206,16 @@ patch_assignment	errcode	parse	0.53.0
 id_name	errcode	parse	0.53.0
 id_conflict	errcode	conflict	0.53.0
 id_spread	errcode	parse	0.53.0
+# THE CHECKED LINK (G4 phase 2, `refer(t?)`). Two codes. `refer_address`
+# is the value met being no address at all -- a non-string, or a string
+# that is not one -- class `parse`, because what is wrong is the text
+# and no later pass can repair it. `refer_unresolved` is a well-formed
+# address that names nothing in this evaluation -- class `reference`,
+# the same class as `no_path`, because it is the same kind of miss.
+# Integrity is a UNIFICATION-time property: within one evaluation the
+# document-set is fixed, so the last pass decides, and the refusal is a
+# located nil rather than a vet-time deferral. A `t` that cannot be
+# unified into the target is NOT in this list: that is the ordinary
+# conflict of whatever disagreed, which is what constraint flow means.
+refer_address	errcode	parse	0.53.0
+refer_unresolved	errcode	reference	0.53.0

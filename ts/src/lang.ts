@@ -108,6 +108,7 @@ import { TypeFuncVal } from './val/TypeFuncVal'
 import { HideFuncVal } from './val/HideFuncVal'
 import { DeprecateFuncVal } from './val/DeprecateFuncVal'
 import { IdFuncVal } from './val/IdFuncVal'
+import { ReferFuncVal } from './val/ReferFuncVal'
 import { MoveFuncVal } from './val/MoveFuncVal'
 import { PathFuncVal } from './val/PathFuncVal'
 import { PrefFuncVal } from './val/PrefFuncVal'
@@ -464,6 +465,12 @@ help isolate the syntax error.`,
     // name, and every node in one evaluation with that name is
     // unified with every other.
     id: IdFuncVal,
+
+    // G4 phase 2: the checked, typed, LINK-shaped reference. A
+    // constraint on a string field: the string must be an entity
+    // address, the address must resolve, and the optional argument
+    // flows INTO the target. The field keeps the string.
+    refer: ReferFuncVal,
   }
 
 
@@ -1401,6 +1408,7 @@ const funcArity: Record<string, [number, number]> = {
   must: [2, 2],
   deprecate: [1, 2],
   id: [1, 1],
+  refer: [0, 1],
 }
 
 

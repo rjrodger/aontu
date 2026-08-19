@@ -37,6 +37,7 @@ grammar is [`grammar/aontu.gbnf`](../../grammar/aontu.gbnf) (and
 | `type(x)` | a definition, not a value: it generates nothing |
 | `deprecate(x, {msg:"…"})` | still works, and says so |
 | `id(svc/auth) & x` | this value IS that entity; every node with the name unifies |
+| `refer(t) & "svc/auth"` | a checked LINK: the name must resolve, and `t` flows into it |
 
 ## Constraints
 

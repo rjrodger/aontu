@@ -24,6 +24,7 @@ var funcSet = map[string]bool{
 	"re": true, "length": true, "unique": true, "must": true,
 	"deprecate": true,
 	"id":        true,
+	"refer":     true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -52,6 +53,8 @@ var funcArity = map[string][2]int{
 	"deprecate": {1, 2},
 	// G4 phase 1: the entity name.
 	"id": {1, 1},
+	// G4 phase 2: the optional type to flow into the target.
+	"refer": {0, 1},
 }
 
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
@@ -521,6 +524,17 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		}
 		out := newTop()
 		out.setEntityName(name)
+		return out
+	case "refer":
+		// G4 phase 2: the function resolves to the RESIDUAL, which does
+		// the address work when it meets a string. Mirrors
+		// ReferFuncVal.resolve in ts/src/val/ReferFuncVal.ts.
+		out := newRefer(nil)
+		if 0 < len(args) {
+			out.tval = args[0]
+		}
+		out.sp, out.spu, out.surl = f.sp, f.spu, f.surl
+		out.path = cp(base)
 		return out
 	case "super":
 		// super(x) is the lattice-superior of its ARGUMENT, not of the

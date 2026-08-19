@@ -659,8 +659,8 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of twenty-three built-in functions. There
-are no user-defined functions. Fourteen are the general-purpose
+Aontu provides a fixed set of twenty-four built-in functions. There
+are no user-defined functions. Fifteen are the general-purpose
 functions tabulated below; the other nine — `min(x)`, `max(x)`,
 `above(x)`, `below(x)`, `neq(x,...)`, `re(p)`, `length(c)`,
 `unique()` and `must(c,msg)` — are the constraint atoms, whose
@@ -682,6 +682,7 @@ meaning is defined in
 | `move(p)`   | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
 | `path(p)`   | resolve a path expression (function form of a reference) | `path(x.a)` (relative), `path($.z.x.a)` (absolute) |
 | `id(name)`  | declare the enclosing value an **entity** called `name`; every node in the evaluation with that name is unified with every other. See [Identity](#identity-idname) | `services: auth: id(svc/auth) & {port:8080}` |
+| `refer(t?)` | constrain a string field to be an **entity address** that resolves; `t`, if given, is unified into the target. The field keeps the address. See [Entity references](#entity-references-refert) | `dependsOn: [&: refer($.std.Service), svc/auth]` |
 | `deprecate(x, m)` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
 
 `super(x)` lifts its **argument** one step up the lattice, so for a
@@ -837,6 +838,82 @@ entity, not just that declaration of it.
 
 Identity is scoped to **one evaluated document-set**. There is no
 cross-evaluation registry, and ids do not embed versions.
+
+## Entity references: `refer(t?)`
+
+An [identity](#identity-idname) gives a node a name; `refer` is how one
+part of a document *points at* another by that name and has the
+language check it.
+
+```aon
+services: {
+  auth: id(svc/auth) & { kind: service, port: 8080 }
+  billing: id(svc/billing) & {
+    dependsOn: [&: refer({kind: service}), svc/auth]
+  }
+}
+```
+
+The list spread applies `refer` to every element, so `dependsOn`
+generates `["svc/auth"]` — a list of **names**, checked. Neither of the
+two things you could write before does that: a bare string checks
+nothing, and `dependsOn: [$.services.auth]` embeds a full copy of the
+auth node, because a reference resolves by cloning its target.
+
+`refer(t)` says three things about the string it constrains:
+
+1. It must be an **entity address**.
+2. The address must **resolve** in this evaluation.
+3. If `t` is given, `t` is unified **into** the target.
+
+### Addresses
+
+An address is an entity name, optionally followed by a dot-separated
+path *inside* that entity:
+
+```
+svc/auth              the entity
+svc/auth.ports.http   a node inside it
+```
+
+The two addressing schemes divide cleanly: `$.a.b` answers *where* — a
+tree location — and an address answers *what*. Beneath entity
+granularity the tree is authoritative again. The no-dots rule on ids is
+what makes the split unambiguous. Only a string can be an address, and
+a malformed one is refused at once (`refer_address`): no later pass can
+repair it.
+
+### Existence is decided, not deferred
+
+A `refer` **residuates**: a target may be declared by a later conjunct,
+include or spread, so the constraint retries each pass exactly as a
+forward reference does. But within one evaluation the document-set is
+fixed, so existence *is* decidable — an address that still names
+nothing at the last pass is a located error (`refer_unresolved`), not
+something to check later.
+
+### Constraints flow through links
+
+`refer(t)` does not merely *test* the target against `t`; it unifies
+`t` into it, and into every position of that entity:
+
+```
+a: id(x) & {p:1}
+c: id(x) & {q:2}
+b: refer({r:3}) & "x"
+                        →  a and c both {p:1, q:2, r:3}, b is "x"
+```
+
+Referring to something as a `Service` makes it one — and if it cannot
+be, the conflict is an ordinary located error. Check-only semantics
+would be non-monotone (true, then false as the target grows), and the
+lattice guarantee is that more information never falsifies what has
+already been observed.
+
+Constraints written *alongside* a refer constrain the **link**, not the
+target: `refer() & string & re("^svc/") & "svc/auth"` checks the
+address itself. They are held until the address arrives, and then meet
+it.
 
 ## Marks: `type` and `hide`
 

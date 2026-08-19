@@ -27,7 +27,7 @@ import { HideFuncVal } from '../dist/val/HideFuncVal'
 import { MoveFuncVal } from '../dist/val/MoveFuncVal'
 import { PrefFuncVal } from '../dist/val/PrefFuncVal'
 import { TypeFuncVal } from '../dist/val/TypeFuncVal'
-import { Unify } from '../dist/unify'
+import { Unify, mergeEntities } from '../dist/unify'
 import { main as cliMain, evalSource } from '../dist/cli'
 import { main as lspMain } from '../dist/lsp-server'
 import { computeDiagnostics, computeHover, LspHandler } from '../dist/lsp'
@@ -38,6 +38,7 @@ import { hcanon, canonHash } from '../dist/hcanon'
 import { projectFor } from '../dist/query'
 import { Provenance } from '../dist/provenance'
 import { IdFuncVal, idName } from '../dist/val/IdFuncVal'
+import { ReferVal, parseAddress, findEntity } from '../dist/val/ReferFuncVal'
 import { constantIdFunc, canonRiders } from '../dist/utility'
 import { nextValId } from '../dist/val/Val'
 import {
@@ -1175,6 +1176,26 @@ describe('coverage3-identity', () => {
     Assert.strictEqual(res.entity, 'x')
   })
 
+  test('identity-merge-walk-answers-a-non-val-slot', () => {
+    // A bag slot can hold a raw value or nothing at all in a hand-built
+    // tree (the shape `raw-peg-canon-and-clone` builds); the walk
+    // answers it unchanged rather than dereferencing it. No document
+    // produces one — both ports proved that by running their whole
+    // suites — so the guard is pinned here, as its Go twin is in
+    // go/identity_test.go.
+    const a0 = new Aontu()
+    const ctx: any = a0.ctx({})
+    ctx.entities = new Map()
+    const child: any = new MapVal({ peg: {} }, ctx)
+    child.entity = 'x'
+    const root: any = new MapVal(
+      { peg: { a: child, raw: 5 as any, gap: undefined as any } }, ctx)
+    const out: any = mergeEntities(ctx, root)
+    Assert.strictEqual(out.peg.raw, 5)
+    Assert.strictEqual(out.peg.gap, undefined)
+    Assert.strictEqual(out.peg.a.entity, 'x')
+  })
+
   test('identity-merge-converges-list-positions', () => {
     // A list element is a POSITION: after the merge both elements hold
     // the one value, not two equal ones.
@@ -1182,6 +1203,53 @@ describe('coverage3-identity', () => {
     const list = v.peg.a
     Assert.strictEqual(list.peg[0], list.peg[1])
     Assert.strictEqual(list.peg[0].canon, '{"j":2,"k":1}')
+  })
+
+})
+
+// G4 phase 2 — the refer internals no source reaches. The residual is
+// minted where it is used and answers whole shapes, so its per-arm
+// behaviour is exercised here directly: an address that walks into a
+// scalar, the peers the dispatcher never hands it, and a flow whose
+// TOP-LEVEL meet fails (from source the conflict usually lands on a
+// field, the two maps meeting and one key disagreeing).
+describe('coverage3-refer', () => {
+
+  test('find-entity-walks-into-non-bags', () => {
+    const ctx = new Aontu().ctx({})
+    const m: any = new MapVal({ peg: { p: new IntegerVal({ peg: 1 }, ctx) } }, ctx)
+    const reg = new Map<string, any>([['x', m]])
+
+    Assert.strictEqual(findEntity(reg, parseAddress('x.p.q') as any), undefined)
+    Assert.strictEqual(findEntity(reg, parseAddress('x.nope') as any), undefined)
+    Assert.strictEqual(findEntity(undefined, parseAddress('x') as any), undefined)
+    const found: any = findEntity(reg, parseAddress('x.p') as any)
+    Assert.strictEqual(found.parent, m)
+    Assert.strictEqual(found.key, 'p')
+  })
+
+  test('refer-peers-the-dispatcher-never-hands-it', () => {
+    const ctx = new Aontu().ctx({})
+    const r: any = new ReferVal({}, ctx)
+    // A NIL peer is absorbing, as everywhere else: the residual answers
+    // the existing failure rather than minting a second one.
+    const nil: any = new NilVal({ why: 'test-nil' }, ctx)
+    Assert.strictEqual(r.unify(nil, ctx), nil)
+    // And an absent peer is the self-drive `unite` substitutes TOP for.
+    Assert.strictEqual(r.unify(undefined as any, ctx), r)
+  })
+
+  test('refer-flow-refusal-is-the-nil', () => {
+    const a0 = new Aontu()
+    const ctx: any = a0.ctx({ collect: true })
+    const m: any = new MapVal({ peg: { k: new IntegerVal({ peg: 1 }, ctx) } }, ctx)
+    ctx.entities = new Map([['x', m]])
+
+    const r: any = new ReferVal({}, ctx)
+    r.tval = new IntegerVal({ peg: 1 }, ctx)
+    r.addr = parseAddress('x')
+    r.addrsrc = 'x'
+    Assert.strictEqual(r.settle(ctx, r).isNil, true)
   })
 
 })

@@ -142,7 +142,12 @@ func uniteRaw(ctx *Ctx, a, b Val) Val {
 	if isConjunct(a) || isExpect(a) {
 		return drive(a, b)
 	}
-	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) {
+	// The refer residual (G4 phase 2) DRIVES, like the other residuals
+	// here: its peer is a plain string, which knows nothing about entity
+	// addresses, so letting the string drive would drop the address and
+	// leave the constraint standing. Mirrors the same arm in
+	// ts/src/unify.ts.
+	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) || isRefer(b) {
 		return drive(b, a)
 	}
 	return drive(a, b)

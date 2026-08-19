@@ -69,96 +69,87 @@ func idName(v Val) (string, bool) {
 // and generation emits it at each path — duplication, as references
 // generate today. Identity adds addressing, not a new shape.
 //
-// COLLECT, then APPLY — two walks, not one. A single walk merges each
-// position into the representative as it meets it, which leaves the
-// positions it already passed holding the pre-merge value: `a: id(x) &
-// {k:1}` kept `{k:1}` while `b: id(x) & {j:2}` became `{j:2,k:1}`, and
-// the two sites disagreed about what the one entity is. The
-// representative is therefore settled over the WHOLE tree before any
-// position is written. Mirrors mergeEntities in ts/src/unify.ts.
+// COLLECT, then APPLY — the same walk twice, not two walks. A single
+// pass merges each position into the representative as it meets it,
+// which leaves the positions it already passed holding the pre-merge
+// value: `a: id(x) & {k:1}` kept `{k:1}` while `b: id(x) & {j:2}`
+// became `{j:2,k:1}`, and the two sites disagreed about what the one
+// entity is. The representative is therefore settled over the WHOLE
+// tree before any position is written. Mirrors mergeEntities in
+// ts/src/unify.ts.
 func mergeEntities(ctx *Ctx, root Val) Val {
 	if nil == ctx.entities {
 		ctx.entities = map[string]Val{}
 	}
 
-	collectEntities(ctx, root, map[Val]bool{})
+	walkEntities(ctx, root, map[Val]bool{}, false)
 
-	// NOTHING TO APPLY. The collect walk is also the "does this
-	// document use identity at all?" answer, so a document that never
-	// says `id()` pays for one walk per pass rather than two — and the
-	// second walk, which is the one that WRITES, never runs over a tree
-	// it cannot change.
+	// NOTHING TO APPLY. The collect half is also the "does this document
+	// use identity at all?" answer, so a document that never says `id()`
+	// pays for one walk per pass rather than two — and the writing half
+	// never runs over a tree it cannot change.
 	if 0 == len(ctx.entities) {
 		return root
 	}
-	return applyEntities(ctx, root, map[Val]bool{})
+	return walkEntities(ctx, root, map[Val]bool{}, true)
 }
 
-func collectEntities(ctx *Ctx, node Val, seen map[Val]bool) {
-	if nil == node || seen[node] {
-		return
+// walkEntities is both halves of the merge; `write` is which one is
+// running. One function rather than two because the two halves differ
+// in three lines and agree in the walk — and a walk written twice is a
+// walk that drifts.
+func walkEntities(ctx *Ctx, node Val, seen map[Val]bool, write bool) Val {
+	if nil == node {
+		return node
 	}
-	seen[node] = true
 
 	if name := node.entityName(); "" != name {
-		rep, ok := ctx.entities[name]
-		if !ok || rep == node {
-			ctx.entities[name] = node
+		if write {
+			// The SUBSTITUTION happens before the seen-guard, not after.
+			// Two positions of one entity hold the SAME object once a
+			// pass has merged them, so a guard that ran first would visit
+			// the first position, replace it with a newer
+			// representative, and then skip the second as already-seen —
+			// leaving it on the older value. That is exactly what a
+			// `refer(t)` flow produces: it writes a new representative
+			// mid-pass, and every position must take it.
+			if rep, ok := ctx.entities[name]; ok && rep != node {
+				node = rep
+			}
 		} else {
-			ctx.entities[name] = unite(ctx, node, rep)
+			rep, ok := ctx.entities[name]
+			if !ok || rep == node {
+				ctx.entities[name] = node
+			} else {
+				ctx.entities[name] = unite(ctx, node, rep)
+			}
 		}
 	}
 
-	for _, c := range entityChildren(node) {
-		collectEntities(ctx, c, seen)
-	}
-}
-
-func applyEntities(ctx *Ctx, node Val, seen map[Val]bool) Val {
-	if nil == node || seen[node] {
+	// The guard bounds the DESCENT, which is all it was ever for: a
+	// unified tree is a graph, and a subtree is worth walking once.
+	if seen[node] {
 		return node
 	}
 	seen[node] = true
 
-	if name := node.entityName(); "" != name {
-		if rep, ok := ctx.entities[name]; ok && rep != node {
-			node = rep
-			if seen[node] {
-				return node
-			}
-			seen[node] = true
-		}
-	}
-
 	switch n := node.(type) {
 	case *MapVal:
 		for _, k := range n.keys {
-			n.peg[k] = applyEntities(ctx, n.peg[k], seen)
+			out := walkEntities(ctx, n.peg[k], seen, write)
+			if write {
+				n.peg[k] = out
+			}
 		}
 	case *ListVal:
 		for i, e := range n.peg {
-			n.peg[i] = applyEntities(ctx, e, seen)
+			out := walkEntities(ctx, e, seen, write)
+			if write {
+				n.peg[i] = out
+			}
 		}
 	}
 	return node
-}
-
-// entityChildren is the walk both passes share: BAG children only. A
-// conjunct or a function argument is not a POSITION in the result — it
-// is a term still being evaluated — and merging into one would stamp
-// the entity onto a value the document never placed anywhere.
-func entityChildren(node Val) []Val {
-	switch n := node.(type) {
-	case *MapVal:
-		out := make([]Val, 0, len(n.keys))
-		for _, k := range n.keys {
-			out = append(out, n.peg[k])
-		}
-		return out
-	case *ListVal:
-		return n.peg
-	}
-	return nil
 }
 
 // entityNames is the registry's names in sorted order — the

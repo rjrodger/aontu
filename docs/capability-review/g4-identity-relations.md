@@ -1,7 +1,7 @@
 # G4: Identity and typed relations
 
-*Status: phases 0 and 1 (`id()`) have LANDED in both ports; phases 2–5
-remain design proposal. Per-phase status and the corrections this
+*Status: phases 0, 1 (`id()`) and 2 (`refer()`) have LANDED in both
+ports; phases 3–5 remain design proposal. Per-phase status and the corrections this
 document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
@@ -371,7 +371,9 @@ Semantics:
   reference. Integrity is a unification-time property, per the
   review index — there is no vet-time deferral.
 - **Canon** renders the residual reparseably:
-  `"dependsOn":[refer($.std.Service)&"svc/auth", …]`.
+  `"dependsOn":[refer($.std.Service)&"svc/auth", …]`. (As built, a
+  RESOLVED refer is simply its address string — the link is the value —
+  so it is the *pending* residual that renders as a call.)
 - **Error data.** Failures carry both sites and the machine-facing
   details field established by [G1](g1-constraint-algebra.md);
   rendering into reports and codes is owned by

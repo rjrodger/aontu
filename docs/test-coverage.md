@@ -45,13 +45,13 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (19246/19246) |
-| TypeScript — `ts/src` | branches | **100.00 %** (4530/4530) |
-| TypeScript — `ts/src` | functions | **100.00 %** (728/728) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (19575/19575) |
+| TypeScript — `ts/src` | branches | **100.00 %** (4604/4604) |
+| TypeScript — `ts/src` | functions | **100.00 %** (738/738) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **3260 TypeScript tests** and
-four green Go packages, including the **2723-row shared spec** that both
+Both suites pass in full via `make test`: **3318 TypeScript tests** and
+four green Go packages, including the **2777-row shared spec** that both
 engines execute.
 
 The absolute figures above move with every change and are reproduced,
@@ -101,7 +101,7 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **2723 cases across 72 files** — is run by *both*
+`test/spec/*.tsv` — **2777 cases across 73 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
@@ -116,20 +116,21 @@ implementations and is the contract that defines shared behaviour
 | `constraint-length.tsv`      |  92 | `patch.tsv` | 23 |
 | `query.tsv`                  |  92 | `var.tsv` | 23 |
 | `constraint-re.tsv`          |  89 | `deprecate.tsv` | 21 |
-| `errcodes.tsv`               |  86 | `elision.tsv` | 21 |
+| `errcodes.tsv`               |  88 | `elision.tsv` | 21 |
 | `constraint-bound.tsv`       |  74 | `map.tsv` | 20 |
 | `id.tsv`                     |  70 | `plus.tsv` | 14 |
 | `number-cross-product.tsv`   |  59 | `conjunct.tsv` | 13 |
 | `ref.tsv`                    |  54 | `merge-conflict.tsv` | 13 |
 | `hcanon.tsv`                 |  53 | `op-chars.tsv` | 13 |
-| `vet.tsv`                    |  46 | `trim.tsv` | 11 |
-| `scalar.tsv`                 |  40 | `close.tsv` |  9 |
-| `why.tsv`                    |  39 | `incomplete.tsv` |  9 |
-| `optional.tsv`               |  37 | `agentsmd.tsv` |  7 |
-| `constraint-must.tsv`        |  34 | `list.tsv` |  7 |
-| `error.tsv`                  |  34 | `comment.tsv` |  6 |
-| `constraint-cross.tsv`       |  30 | `include-trust.tsv` |  4 |
-| `pref.tsv`                   |  30 | `divergent.tsv` |  0 |
+| `refer.tsv`                  |  52 | `trim.tsv` | 11 |
+| `vet.tsv`                    |  46 | `close.tsv` |  9 |
+| `scalar.tsv`                 |  40 | `incomplete.tsv` |  9 |
+| `why.tsv`                    |  39 | `agentsmd.tsv` |  7 |
+| `optional.tsv`               |  37 | `list.tsv` |  7 |
+| `constraint-must.tsv`        |  34 | `comment.tsv` |  6 |
+| `error.tsv`                  |  34 | `include-trust.tsv` |  4 |
+| `constraint-cross.tsv`       |  30 | `divergent.tsv` |  0 |
+| `pref.tsv`                   |  30 |                      |    |
 
 plus the `spread*.tsv` family — **26 files, 130 cases**, one spread
 topic per file. `divergent.tsv` is the parity ledger: commentary only,

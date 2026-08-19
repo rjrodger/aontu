@@ -49,6 +49,7 @@ const TypeFuncVal_1 = require("./val/TypeFuncVal");
 const HideFuncVal_1 = require("./val/HideFuncVal");
 const DeprecateFuncVal_1 = require("./val/DeprecateFuncVal");
 const IdFuncVal_1 = require("./val/IdFuncVal");
+const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const MoveFuncVal_1 = require("./val/MoveFuncVal");
 const PathFuncVal_1 = require("./val/PathFuncVal");
 const PrefFuncVal_1 = require("./val/PrefFuncVal");
@@ -347,6 +348,11 @@ help isolate the syntax error.`,
         // name, and every node in one evaluation with that name is
         // unified with every other.
         id: IdFuncVal_1.IdFuncVal,
+        // G4 phase 2: the checked, typed, LINK-shaped reference. A
+        // constraint on a string field: the string must be an entity
+        // address, the address must resolve, and the optional argument
+        // flows INTO the target. The field keeps the string.
+        refer: ReferFuncVal_1.ReferFuncVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -1138,6 +1144,7 @@ const funcArity = {
     must: [2, 2],
     deprecate: [1, 2],
     id: [1, 1],
+    refer: [0, 1],
 };
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
 //

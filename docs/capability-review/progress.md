@@ -89,29 +89,29 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **72 `.tsv` files, 71
-   row-bearing, 2,723 rows**, in sixteen modes — `canon` 682, `gen`
-   539, `errc` 438, `gens` 337, `err` 237, `subsume` 94, `query` 92,
-   `errcode` 86, `vet` 53, `why` 43, `hcanon` 42, `diff` 28,
+   register's last update the suite is **73 `.tsv` files, 72
+   row-bearing, 2,777 rows**, in sixteen modes — `canon` 686, `gen`
+   539, `errc` 455, `gens` 364, `err` 240, `subsume` 94, `query` 92,
+   `errcode` 88, `vet` 53, `why` 43, `hcanon` 43, `diff` 28,
    `patch` 23, `trim` 11, `hash` 11, `agentsmd` 7. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Thirty-eight of forty-nine phases have moved; thirty-six of those are complete.
+Thirty-nine of forty-nine phases have moved; thirty-seven of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
-| [G4](g4-identity-relations.md) | Identity, relations | C | 2 | 0 | 4 |
+| [G4](g4-identity-relations.md) | Identity, relations | C | 3 | 0 | 3 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **36** | **2** | **11** |
+| | | **total** | **37** | **2** | **10** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -373,7 +373,7 @@ the doc's one-yardstick text would be wrong.
 |-------|------|--------|-----|
 | **0** — semantics on paper | S | **LANDED** | The "Identity: `id(name)`" section of [`docs/reference-language.md`](../reference-language.md#identity-idname) — merge semantics, the name grammar, canon and the hash, the three clearing rules — plus `test/spec/id.tsv` (66 rows) and the three codes in `errcodes.tsv`. The design's phase-0 also called for `test/spec/refer.tsv`; that ships with phase 2, which owns `refer()`. |
 | **1** — `id()` | M | **LANDED** | `ts/src/val/IdFuncVal.ts` and the `"id"` arm of `go/func.go`; the `entity` slot on the carriers (`ts/src/val/Val.ts`, `go/val.go`) with the rider in `unite` in both ports; the registry on the unify root context (`ts/src/unify.ts` `entities`, `go/ctx.go`) and the per-pass `mergeEntities` walk (`go/identity.go`); canon through `canonRiders` (renamed from `canonDeprecation`, now rendering both riders) and the hash form through `hcanon`; clearing rules in `RefVal`/`CopyFuncVal` (TS) and `ref.go`/`func.go` via `walkClearEntity` (Go), and rule 3 at bag construction in both. `id` added to the arity tables, the LSP completion list, and both published grammars. **Departures:** see below. |
-| **2** — `refer()` | M | **NOT STARTED** |  |
+| **2** — `refer()` | M | **LANDED** | `ts/src/val/ReferFuncVal.ts` (the `ReferFuncVal` call and the `ReferVal` residual it resolves to) and `go/refer.go`; the address grammar shared with the id grammar; the registry lookup, the constraint FLOW into the target and every position of its entity, and the last-pass existence decision; the residual added to `unite`'s driver list in both ports, and to the arity tables, the LSP completion list and both published grammars (where `refer` must be listed BEFORE `re`, the name set being an ordered choice). Codes `refer_address` and `refer_unresolved` in `errcodes.tsv`. Spec: `test/spec/refer.tsv` (52 rows). Docs: "Entity references" in [`docs/reference-language.md`](../reference-language.md#entity-references-refert). **Departures:** see below. |
 | **3** — derived structures | S | **NOT STARTED** |  |
 | **4** — `std/system` vocabulary | M | **NOT STARTED** |  |
 | **5** — relation graph checks | L | **NOT STARTED** |  |
@@ -383,14 +383,17 @@ beyond phases 0 and 1.
 
 **Departures recorded by G4.1.**
 
-1. **The merge is COLLECT-then-APPLY, two walks per pass, not one.**
+1. **The merge is COLLECT-then-APPLY — the same walk twice per pass,
+   not one walk.**
    The design's "a position carrying an id unifies with the
    representative and updates it" reads as a single walk, and a single
    walk is wrong: it leaves every position it already passed holding
    the pre-merge value, so `a: id(x) & {k:1}` kept `{k:1}` while
    `b: id(x) & {j:2}` became `{j:2,k:1}` and the two sites disagreed
    about what the one entity is. The representative is settled over
-   the whole tree before any position is written.
+   the whole tree before any position is written. One function with a
+   `write` flag rather than two: the halves differ in three lines and
+   agree in the walk, and a walk written twice is a walk that drifts.
 2. **`id(key(0))`, not `id(key())`, is the per-child spread name.**
    The design sketched `&: id(svc/ + key())`; there is no string `+`,
    and more importantly `key()` reads one level UP (`func.tsv`,
@@ -430,12 +433,55 @@ beyond phases 0 and 1.
    runs take the meet, uninstrumented ones are untouched — and the
    four `why` rows in `id.tsv` pin the result.
 
+**Departures recorded by G4.2.**
+
+1. **Constraints written alongside a refer are HELD on the residual,
+   not parked in a conjunct.** The design does not say where they go,
+   and a conjunct is the obvious answer — but a conjunct rebuilt every
+   pass grows a level every pass. The residual carries them and applies
+   them to the LINK when the address arrives, which is what makes
+   `refer() & string & "x"` the string and `refer() & "x" & "y"` a
+   conflict; both are pinned.
+2. **A value that can never BE a string is refused at once; a kind or
+   constraint is not.** The design says only that the field is
+   string-valued. A number, boolean, map or list conjoined with a refer
+   cannot become an address in any later pass, so that arm refuses
+   (`refer_address`) rather than deferring; `string`, `re(...)` and the
+   like are perfectly good constraints on an address and are held.
+3. **Existence is decided at the LAST pass, not at generation.** The
+   design says "an error at generation, mirroring an unresolved
+   reference". A generation-time refusal would arrive as the bag's
+   generic `*_no_gen`, which names the map rather than the link. A
+   pending refer keeps the tree not-done, so the pass loop always
+   reaches the final pass; the refusal is made there, as a located nil
+   naming the address. A `refer()` that never met an address at all is
+   NOT that error: it is an ordinary unresolved constraint, like a bare
+   `min(1)`.
+4. **The residual has no clone or path-dependence hooks.** Both were
+   written and both proved dead: a spread template holds the FUNCTION,
+   so `&: refer(t)` is cloned per destination as a `refer(...)` call
+   and each clone mints its own residual there. Removed rather than
+   excused (ADR-002 rule 4). A consequence worth knowing: a
+   path-dependent flow TYPE in a spread (`&: refer({k:key()})`)
+   resolves its `key()` per clone but the flows all land in the
+   entities the addresses name, so two entities can receive the same
+   computed type. Both ports agree byte-for-byte; the shape is pinned
+   at `spread-path-dependent-template` and no more is claimed for it.
+5. **A defect in G4.1's merge, found by G4.2.** The writing half
+   substituted the representative AFTER its cycle guard.
+   Two positions of one entity hold the SAME object once a pass has
+   merged them, so the walk replaced the first and then skipped the
+   second as already-seen — invisible until a `refer(t)` flow wrote a
+   new representative mid-pass and only one position took it. The
+   substitution now happens first and the guard bounds the descent
+   only; `flow-reaches-every-position` is the regression row.
+
 **The funcMap note, now answered.** The doc said the two new builtins
 "join `funcMap`"; G1's atoms did not, routing through
 `constraintAtoms` instead. `id()` takes the funcMap road — it is an
 ordinary function that resolves to a value, not a residual constraint
 — and, as the note required, added its entry to the arity tables in
-both ports. The builtin roster is now twenty-three.
+both ports. The builtin roster is now twenty-four (`refer` took the same road in phase 2).
 
 ## G5 — a specified trust contract
 

@@ -2,6 +2,7 @@
 /* Copyright (c) 2021-2023 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withDepth = exports.unite = exports.Unify = void 0;
+exports.mergeEntities = mergeEntities;
 const ctx_1 = require("./ctx");
 const type_1 = require("./type");
 const err_1 = require("./err");
@@ -180,7 +181,12 @@ const unite = (ctx, a, b, whence) => {
                 || b.isPref
                 || b.isVar
                 || b.isFunc
-                || b.isExpect) {
+                || b.isExpect
+                // The refer residual (G4 phase 2) DRIVES, like the other
+                // residuals here: its peer is a plain string, which knows
+                // nothing about entity addresses, so letting the string drive
+                // dropped the address and left the constraint standing.
+                || b.isRefer) {
                 out = b.unify(a, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'BW') }) : ctx);
                 unified = true;
                 why = 'bv';
@@ -326,72 +332,77 @@ function residuePaths(v, max) {
 // value and generation emits it at each path — duplication, as
 // references generate today. Identity adds addressing, not a new
 // shape.
+// The ctx DESCENDS with the walk, so the merge's meet happens at the
+// position's own path: a contribution `$.b.k` picked up from `$.a.k`
+// is recorded against `$.b.k`, which is where a reader asking `why`
+// stands. Merging under the root ctx instead filed every contribution
+// at the top and left the positions themselves with an empty record —
+// and the Go port, whose bag loops derive the base from the value's
+// own path, already answered the useful way.
 function mergeEntities(ctx, root) {
     const reg = ctx.entities;
-    // COLLECT, then APPLY — two walks, not one. A single walk merges
-    // each position into the representative as it meets it, which
-    // leaves the positions it already passed holding the pre-merge
+    // COLLECT, then APPLY — the same walk twice, not two walks. A single
+    // pass merges each position into the representative as it meets it,
+    // which leaves the positions it already passed holding the pre-merge
     // value: `a: id(x) & {k:1}` kept `{k:1}` while `b: id(x) & {j:2}`
-    // became `{j:2,k:1}`, and the two sites disagreed about what the
-    // one entity is. The representative is therefore settled over the
-    // WHOLE tree before any position is written.
-    // The ctx DESCENDS with the walk, so the merge's meet happens at the
-    // position's own path: a contribution `$.b.k` picked up from `$.a.k`
-    // is recorded against `$.b.k`, which is where a reader asking `why`
-    // stands. Merging under the root ctx instead filed every
-    // contribution at the top and left the positions themselves with an
-    // empty record — and the Go port, whose bag loops derive the base
-    // from the value's own path, already answered the useful way.
-    const collect = (node, seen, nctx) => {
-        if (null == node || true !== node.isVal || seen.has(node)) {
-            return;
+    // became `{j:2,k:1}`, and the two sites disagreed about what the one
+    // entity is. The representative is therefore settled over the WHOLE
+    // tree before any position is written.
+    //
+    // `write` is which half is running. One function rather than two
+    // because the two halves differ in three lines and agree in the walk
+    // — and a walk written twice is a walk that drifts.
+    const walk = (node, seen, nctx, write) => {
+        if (null == node || true !== node.isVal) {
+            return node;
         }
-        seen.add(node);
         const name = node.entity;
         if (null != name) {
-            const rep = reg.get(name);
-            reg.set(name, null == rep || rep === node ? node :
-                unite(nctx, node, rep, 'entity'));
-        }
-        if ((true === node.isMap || true === node.isList) && null != node.peg) {
-            for (const k of Object.keys(node.peg)) {
-                collect(node.peg[k], seen, nctx.descend(k));
+            if (write) {
+                // The SUBSTITUTION happens before the seen-guard, not after.
+                // Two positions of one entity hold the SAME object once a pass
+                // has merged them, so a guard that ran first would visit the
+                // first position, replace it with a newer representative, and
+                // then skip the second as already-seen — leaving it on the
+                // older value. That is exactly what a `refer(t)` flow
+                // produces: it writes a new representative mid-pass, and every
+                // position must take it.
+                const rep = reg.get(name);
+                if (null != rep && rep !== node) {
+                    node = rep;
+                }
+            }
+            else {
+                const rep = reg.get(name);
+                reg.set(name, null == rep || rep === node ? node :
+                    unite(nctx, node, rep, 'entity'));
             }
         }
-    };
-    const apply = (node, seen) => {
-        if (null == node || true !== node.isVal || seen.has(node)) {
+        // The guard bounds the DESCENT, which is all it was ever for: a
+        // unified tree is a graph, and a subtree is worth walking once.
+        if (seen.has(node)) {
             return node;
         }
         seen.add(node);
-        const name = node.entity;
-        if (null != name) {
-            const rep = reg.get(name);
-            if (null != rep && rep !== node) {
-                node = rep;
-                if (seen.has(node)) {
-                    return node;
-                }
-                seen.add(node);
-            }
-        }
         if ((true === node.isMap || true === node.isList) && null != node.peg) {
             for (const k of Object.keys(node.peg)) {
-                node.peg[k] = apply(node.peg[k], seen);
+                const out = walk(node.peg[k], seen, nctx.descend(k), write);
+                if (write) {
+                    node.peg[k] = out;
+                }
             }
         }
         return node;
     };
-    collect(root, new Set(), ctx);
-    // NOTHING TO APPLY. The collect walk is also the "does this document
+    walk(root, new Set(), ctx, false);
+    // NOTHING TO APPLY. The collect half is also the "does this document
     // use identity at all?" answer, so a document that never says `id()`
-    // pays for one walk per pass rather than two — and the second walk,
-    // which is the one that WRITES, never runs over a tree it cannot
-    // change.
+    // pays for one walk per pass rather than two — and the writing half
+    // never runs over a tree it cannot change.
     if (0 === reg.size) {
         return root;
     }
-    return apply(root, new Set());
+    return walk(root, new Set(), ctx, true);
 }
 class Unify {
     constructor(root, lang, ctx, src) {
@@ -495,6 +506,6 @@ class Unify {
         }
         this.res = res;
     }
-} /* node:coverage ignore next 9 */
+} /* node:coverage ignore next 10 */
 exports.Unify = Unify;
 //# sourceMappingURL=unify.js.map

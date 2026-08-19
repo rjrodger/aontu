@@ -116,6 +116,8 @@ const hints = {
     id_name: 'The argument to id() is not an entity name. A name is one or\nmore letters, digits, `_`, `-` or `/`, and NO dots: a dot separates\nan entity name from a path inside that entity, so a dotted name\nwould be ambiguous. A `-` must be quoted, because it is not a\nbare-text character.\n \nExamples:\n  id(svc/auth)   -> id   # Letters, digits and `/` may be bare;\n  id("team-pay") -> id   # ... a `-` name must be quoted;\n  id(svc.auth)   -> nil  # ... a dot is a path separator, not a name;\n  id(1)          -> nil  # ... and a number is not a name at all.',
     id_conflict: 'One value was declared to be two different entities. An id() says\nwhat a value IS, so two names on one node is a contradiction, not a\nmerge — the same kind of failure as unifying 1 with 2. Give the node\none name, or give the two names to two nodes.\n \nExamples:\n  id(a) & id(a) & {}  -> {..}  # One entity, said twice;\n  id(a) & {x:1}       -> {..}  # ... an entity with content;\n  id(a) & id(b) & {}  -> nil   # ... but a node cannot be both.',
     id_spread: 'A spread template stamps one id() onto every child. `&: id(x) & …`\nsays that EVERY child of the bag is the entity `x`, and identity\nmerging would then unify all of them into one. Use a\npath-dependent name — `id(key())` — to give each child its own,\nor move the id() to the one child that has it.\n \nExamples:\n  {&: id(key()), a:{}, b:{}}  -> {..}  # A name per child;\n  {a: id(x) & {}}             -> {..}  # ... or one named child;\n  {&: id(x), a:{}, b:{}}      -> nil   # ... but not one name for all.',
+    refer_address: 'A refer() was given something that is not an entity address. An\naddress is an entity name, optionally followed by a dot-separated path\ninside that entity — and only a STRING can be one.\n \nExamples:\n  refer() & "svc/auth"        -> "svc/auth"  # An entity;\n  refer() & "svc/auth.port"   -> ...         # ... and a node inside it;\n  refer() & "svc/auth."       -> nil         # ... but not a trailing dot;\n  refer() & 1                 -> nil         # ... and not a number.',
+    refer_unresolved: 'A refer() address names no entity in this evaluation. Within one\nevaluation the document-set is fixed, so a link to nothing is an\nerror rather than something to resolve later: check the spelling, or\nadd the id() that was meant to declare it.\n \nExamples:\n  a:id(svc/x)&{} b:refer()&"svc/x"     -> "svc/x"  # Declared, so it resolves;\n  a:id(svc/x)&{p:1} b:refer()&"svc/x.p" -> "svc/x.p"  # ... and so does a node inside it;\n  b:refer()&"svc/nope"                -> nil      # ... but nothing declares this.',
     // Unification errors
     'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
     'unify_no_res': 'Unification produced no result. The values could not be unified.',
@@ -264,6 +266,12 @@ const codeClasses = {
     // `parse`, because what is wrong is the TEXT of the template rather
     // than any pair of values it brought together.
     id_spread: 'parse',
+    // G4 phase 2 -- the checked link: a string that is not an entity
+    // address (class `parse`, the text is wrong), and an address that
+    // names nothing in this evaluation (class `reference`, the same
+    // class as `no_path`, because it is the same kind of miss).
+    refer_address: 'parse',
+    refer_unresolved: 'reference',
     func_arity: 'parse',
     elided_value: 'parse',
     unify_no_src: 'parse',

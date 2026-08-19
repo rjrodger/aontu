@@ -53,7 +53,7 @@ func: name "(" [value ("," value)*] ")"
 
 name: "above" | "below" | "close" | "copy" | "deprecate" | "hide" | "id" | "key"
     | "length" | "lower" | "max" | "min" | "move" | "must" | "neq"
-    | "open" | "path" | "pref" | "re" | "same" | "super" | "type"
+    | "open" | "path" | "pref" | "refer" | "re" | "same" | "super" | "type"
     | "unique" | "upper"
 
 ref: "$" ("." segment)*
