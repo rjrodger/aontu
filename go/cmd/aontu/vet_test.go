@@ -10,6 +10,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -420,8 +421,13 @@ func TestVetSarifFormatEmbedsTheFinding(t *testing.T) {
 	if "$.service.port" != result.Properties.Path {
 		t.Fatalf("properties: %+v", result.Properties)
 	}
-	if d != result.Locations[0].PhysicalLocation.ArtifactLocation.URI {
-		t.Fatalf("uri: %+v", result.Locations[0])
+	// DECODED before comparing: the uri percent-encodes URI-significant
+	// bytes, and on Windows the temp path's backslashes are exactly
+	// that (%5C), so a raw string equality only holds on POSIX.
+	uri, err := url.PathUnescape(
+		result.Locations[0].PhysicalLocation.ArtifactLocation.URI)
+	if err != nil || d != uri {
+		t.Fatalf("uri: %v %+v", err, result.Locations[0])
 	}
 	if 1 != len(result.RelatedLocations) {
 		t.Fatalf("related: %+v", result.RelatedLocations)

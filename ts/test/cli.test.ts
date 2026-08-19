@@ -400,7 +400,12 @@ describe('cli-vet', () => {
     Assert.equal(result.ruleId, 'aontu/no_scalar_unify')
     Assert.equal(result.level, 'error')
     Assert.equal(result.properties.path, '$.service.port')
-    Assert.equal(result.locations[0].physicalLocation.artifactLocation.uri,
+    // DECODED before comparing: the uri percent-encodes URI-significant
+    // bytes, and on Windows the temp path's backslashes are exactly
+    // that (%5C), so the raw string equality only held on POSIX.
+    Assert.equal(
+      decodeURIComponent(
+        result.locations[0].physicalLocation.artifactLocation.uri),
       f.data)
     Assert.equal(result.relatedLocations.length, 1)
     Assert.match(log.runs[0].tool.driver.version, /^\d+\.\d+\.\d+$/)
