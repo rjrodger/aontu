@@ -2,6 +2,7 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VET_MAX_ERRORS = void 0;
+exports.anchorAt = anchorAt;
 exports.vet = vet;
 const aontu_1 = require("./aontu");
 const err_1 = require("./err");

@@ -528,6 +528,11 @@ runparse, util // parsing helpers
 formatExplain  // pretty-print an `explain` trace
 exactJSON      // exact JSON emitter — use instead of JSON.stringify
 Decimal        // the type a bigdecimal generates as
+vet            // the validation verb (see `aontu vet` above)
+sarifReport    // a vet report as SARIF 2.1.0
+subsume        // the subsumption query (docs/reference-language.md,
+               // "Subsumption"): subsume(general, specific, {profile?, at?})
+               // -> {verdict, findings}; Go: aontu.Subsume
 ```
 
 ---

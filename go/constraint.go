@@ -1179,6 +1179,102 @@ func holdsMove(v Val) bool {
 	return false
 }
 
+// SUBSUMPTION over two residuals (G3, the query built on the table in
+// docs/reference-language.md "Subsumption"): does every value `s`
+// admits pass `g` too? Implemented here because the compare machinery
+// (cmpConstraintVal, sameConstraintScalar, the recursive count
+// residual) is this file's. The port of constraintStateSubsumes in
+// ts/src/val/ConstraintVal.ts.
+//
+// Returns (subsumes, undecided): undecided is true only for a `must`
+// on the GENERAL side (a Band B predicate is opaque); every other
+// approximation folds toward false, the safe direction.
+func constraintStateSubsumes(g, s *ConstraintVal) (bool, bool) {
+	if 0 < len(g.musts) {
+		return false, true
+	}
+	if "" != g.domain && g.domain != s.domain {
+		return false, false
+	}
+	if KindTop != g.kind && g.kind != s.kind {
+		return false, false
+	}
+	d := g.domain
+	if "" == d {
+		d = s.domain
+	}
+	if nil != g.lo {
+		if nil == s.lo || "" == d {
+			return false, false
+		}
+		c := cmpConstraintVal(d, g.lo.v, s.lo.v)
+		if 0 < c || (0 == c && g.lo.open && !s.lo.open) {
+			return false, false
+		}
+	}
+	if nil != g.hi {
+		if nil == s.hi || "" == d {
+			return false, false
+		}
+		c := cmpConstraintVal(d, g.hi.v, s.hi.v)
+		if c < 0 || (0 == c && g.hi.open && !s.hi.open) {
+			return false, false
+		}
+	}
+	// Excluding FEWER values is more general: every general exclusion
+	// must be excluded by the specific too.
+	for _, n := range g.neqs {
+		found := false
+		for _, m := range s.neqs {
+			if sameConstraintScalar(n, m) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false, false
+		}
+	}
+	// Patterns compare as TEXT sets (the sanctioned approximation).
+	for _, r := range g.res {
+		found := false
+		for _, q := range s.res {
+			if q.src == r.src {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false, false
+		}
+	}
+	if g.uniq && !s.uniq {
+		return false, false
+	}
+	// The count atom reuses this same table over the integer domain.
+	if nil != g.count {
+		if nil == s.count {
+			return false, false
+		}
+		return constraintStateSubsumes(g.count, s.count)
+	}
+	return true, false
+}
+
+// constraintAdmitsScalarQ is the query-side membership test: `must`
+// makes the answer undecided, `unique` and a count residual fold to
+// false (sizing is the meet's business), everything else is
+// stateAdmits.
+func constraintAdmitsScalarQ(g *ConstraintVal, scalar *ScalarVal) (bool, bool) {
+	if 0 < len(g.musts) {
+		return false, true
+	}
+	if g.uniq || nil != g.count {
+		return false, false
+	}
+	return stateAdmits(g, scalar), false
+}
+
 // stateAdmits reports whether a residual's ORDER and MEMBERSHIP part
 // admits the scalar. The sizing atoms are deliberately not consulted:
 // admit applies them to the peer's length, and the count check applies

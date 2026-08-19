@@ -15,6 +15,7 @@ import { formatExplain } from './utility'
 import { makeNilErr, descErr, AontuError } from './err'
 import { vet } from './vet'
 import { sarifReport } from './report-sarif'
+import { subsume } from './subsume'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -286,16 +287,17 @@ function manifestOf(
   const seen = new Set<string>()
   const out: { path: string, capability: string }[] = []
   for (const dep of sink) {
-    const key = dep.path + ' ' + dep.capability
+    const key = dep.path + ' ' + dep.capability
     if (!seen.has(key)) {
       seen.add(key)
       out.push({ path: dep.path, capability: dep.capability })
     }
   }
+  // No equal case: entries were deduplicated on exactly this key.
   out.sort((a, b) => {
-    const ka = a.path + ' ' + a.capability
-    const kb = b.path + ' ' + b.capability
-    return ka < kb ? -1 : ka === kb ? 0 : 1
+    const ka = a.path + ' ' + a.capability
+    const kb = b.path + ' ' + b.capability
+    return ka < kb ? -1 : 1
   })
   return out
 }
@@ -357,6 +359,11 @@ export {
   // interchange form without shelling out.
   vet,
   sarifReport,
+
+  // G3 -- subsumption as a first-class query: does the general value
+  // admit every instance the specific value admits? Three-valued, with
+  // G2-shaped findings (class `compat`).
+  subsume,
 }
 
 

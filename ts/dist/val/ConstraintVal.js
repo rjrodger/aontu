@@ -3,6 +3,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MustConstraintVal = exports.UniqueConstraintVal = exports.LengthConstraintVal = exports.ReConstraintVal = exports.NeqConstraintVal = exports.BelowConstraintVal = exports.AboveConstraintVal = exports.MaxConstraintVal = exports.MinConstraintVal = exports.ConstraintVal = void 0;
 exports.normaliseRe = normaliseRe;
+exports.constraintSubsumesConstraint = constraintSubsumesConstraint;
+exports.constraintAdmitsScalar = constraintAdmitsScalar;
 const type_1 = require("../type");
 const utility_1 = require("../utility");
 const Val_1 = require("./Val");
@@ -1022,6 +1024,104 @@ function canonState(s) {
     }
     return parts.join('&');
 }
+// SUBSUMPTION over two residuals (G3, the query built on the table in
+// docs/reference-language.md "Subsumption"): does every value `s`
+// admits pass `g` too? Implemented here because the compare machinery
+// (cmpVal, sameScalar, the recursive count state) is this module's.
+//
+// Three-valued: true / false / 'undecided'. `must` on the GENERAL side
+// is undecided by construction (a Band B predicate is opaque — G3 maps
+// the table's "never" to the query's honest sub_evaluate_only); every
+// other approximation folds toward false, the safe direction.
+function constraintStateSubsumes(g, s) {
+    // A Band B predicate on the general side makes its admitted set
+    // unknowable; an extra `must` on the SPECIFIC side only narrows it
+    // and is ignored.
+    if (0 < g.musts.length) {
+        return 'undecided';
+    }
+    // Domains must agree where both constrain one; a sizing-only residual
+    // has no domain and passes this gate.
+    if (null != g.domain && g.domain !== s.domain) {
+        return false;
+    }
+    // A general leaf restriction requires the same leaf on the specific
+    // side (leaves are disjoint; an unrestricted specific admits other
+    // leaves the general refuses).
+    if (null != g.kind && g.kind !== s.kind) {
+        return false;
+    }
+    // Interval containment: the general's endpoints at or beyond the
+    // specific's, and where they coincide the general's may not be the
+    // open one.
+    const d = g.domain ?? s.domain;
+    if (null != g.lo) {
+        if (null == s.lo || null == d) {
+            return false;
+        }
+        const c = cmpVal(d, g.lo.v, s.lo.v);
+        if (0 < c || (0 === c && g.lo.open && !s.lo.open)) {
+            return false;
+        }
+    }
+    if (null != g.hi) {
+        if (null == s.hi || null == d) {
+            return false;
+        }
+        const c = cmpVal(d, g.hi.v, s.hi.v);
+        if (c < 0 || (0 === c && g.hi.open && !s.hi.open)) {
+            return false;
+        }
+    }
+    // Excluding FEWER values is more general: every general exclusion
+    // must be excluded by the specific too.
+    for (const n of g.neqs) {
+        if (!s.neqs.some((m) => sameScalar(n, m))) {
+            return false;
+        }
+    }
+    // Patterns compare as TEXT sets (the sanctioned approximation:
+    // deciding regex containment is what this algebra refuses to do).
+    for (const r of g.res) {
+        if (!s.res.some((q) => q.src === r.src)) {
+            return false;
+        }
+    }
+    // `unique()` subsumes only itself on that axis: a general uniqueness
+    // demand admits no container the unconstrained specific also admits.
+    if (g.uniq && !s.uniq) {
+        return false;
+    }
+    // The count atom reuses this same table over the integer domain.
+    if (null != g.count) {
+        if (null == s.count) {
+            return false;
+        }
+        return constraintStateSubsumes(g.count, s.count);
+    }
+    return true;
+}
+// The query surface for ts/src/subsume.ts: residual-vs-residual, and
+// residual-vs-scalar membership (with `must` and `unique` making the
+// scalar case undecided/false exactly as the meet would).
+function constraintSubsumesConstraint(g, s) {
+    return constraintStateSubsumes(g, s);
+}
+function constraintAdmitsScalar(g, scalar) {
+    if (0 < g.musts.length) {
+        return 'undecided';
+    }
+    if (g.uniq) {
+        return false;
+    }
+    // A count residual admits by LENGTH, which is the meet's business;
+    // the query answers false (the safe direction) rather than
+    // reimplementing the sizing walk here.
+    if (null != g.count) {
+        return false;
+    }
+    return stateAdmits(g, scalar);
+}
 // Does this residual's ORDER and MEMBERSHIP part admit the scalar? The
 // sizing atoms are deliberately not consulted: `admit` applies them to
 // the peer's length, and the count check applies this same function to
@@ -1379,6 +1479,6 @@ class UniqueConstraintVal extends ConstraintVal {
     constructor(spec, ctx) {
         super({ ...spec, atom: 'unique' }, ctx);
     }
-} /* node:coverage ignore next 19 */
+} /* node:coverage ignore next 23 */
 exports.UniqueConstraintVal = UniqueConstraintVal;
 //# sourceMappingURL=ConstraintVal.js.map

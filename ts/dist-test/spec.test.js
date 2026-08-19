@@ -59,6 +59,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                object, MINUS each finding's message (prose is not in
  *                parity; see test/spec/vet.tsv for the whole encoding,
  *                including the `opts` key)
+ *   mode=subsume : FIVE columns -- name, subsume, general, specific,
+ *                expect. The report of subsume(general, specific) must
+ *                equal the expect object (verdict + findings), MINUS
+ *                each finding's message; see test/spec/subsume.tsv
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -131,7 +135,7 @@ function loadRows() {
             // trusts is a number nobody updates honestly. The only count
             // asserted is that the files were found at all
             // (spec-files-present below).
-            const vetRow = 'vet' === parts[1];
+            const vetRow = 'vet' === parts[1] || 'subsume' === parts[1];
             const want = vetRow ? 5 : 4;
             if (parts.length < want) {
                 throw new Error(`malformed spec row: ${file} line ${lineno}: ${want} columns` +
@@ -261,6 +265,18 @@ function runRow(row) {
         const opts = golden.opts;
         delete golden.opts;
         Assert.strictEqual(vetGolden((0, aontu_1.vet)(row.src, row.data, opts)), (0, aontu_1.exactJSON)(golden), `vet report mismatch: ${row.name}`);
+    }
+    else if ('subsume' === row.mode) {
+        // Same golden discipline as vet: `opts` rides the expect object,
+        // messages are per-port prose and excluded from parity.
+        const golden = JSON.parse(row.expect);
+        const opts = golden.opts;
+        delete golden.opts;
+        const report = (0, aontu_1.subsume)(row.src, row.data, opts);
+        Assert.strictEqual((0, aontu_1.exactJSON)({
+            verdict: report.verdict,
+            findings: report.findings.map(({ message, ...rest }) => rest),
+        }), (0, aontu_1.exactJSON)(golden), `subsume report mismatch: ${row.name}`);
     }
     else if ('errcode' === row.mode) {
         // Registry row: name IS the code, src is its class, expect the

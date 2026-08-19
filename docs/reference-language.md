@@ -33,6 +33,7 @@ the [Explanation](explanation.md).
 - [Operator precedence](#operator-precedence)
 - [Canonical form](#canonical-form)
 - [Generation](#generation)
+- [Subsumption](#subsumption)
 - [Errors](#errors)
 - [The constraint algebra (specified)](#the-constraint-algebra-specified)
 
@@ -876,7 +877,91 @@ the plain family neither is numeric kind. Between the exact leaves it
 *is* significant, as the `1000` / `1000.0` pair shows, which is why the
 shared suite pins those cases byte for byte rather than structurally.
 
-## Errors
+## Subsumption
+
+`A ⊒ B` ("A subsumes B") holds when **every instance the specific
+value B admits, the general value A admits too**. It is the lattice's
+own order, asked as a first-class query: `subsume(general, specific)`
+in both engines ([G3](capability-review/g3-subsumption-evolution.md)),
+running after evaluation on finished trees, never mutating them. The
+verdict is three-valued plus `error` — `subsumes`, `does_not_subsume`
+(with the failing path and both sides' canons as the witness),
+`undecided` (always with a `sub_*` reason code, never silently), and
+`error` for a source that does not stand up on its own. Findings reuse
+the validation verb's report object with class `compat`; every code is
+registered in `test/spec/errcodes.tsv`, and the whole behaviour is
+pinned by `test/spec/subsume.tsv` in both engines.
+
+**Soundness before completeness.** Where a rule cannot decide, the
+answer folds toward `does_not_subsume` or `undecided`, never toward
+"compatible": a gate that wrongly reports "breaking" costs a second
+look, one that wrongly reports "compatible" ships the break.
+
+### Profiles
+
+| Profile | Compares |
+|---------|----------|
+| `values` | admitted value sets only |
+| `defaults` (the default) | value sets, plus every effective default the specific side declares must survive into the general side unchanged |
+| `gen` | `defaults`, plus the `type`/`hide` marks on corresponding nodes (they change the output shape) |
+
+An **effective default** is a preference's own value, or, in a
+disjunction holding several preferences, the value of the
+lowest-ranked one (generation picks the lowest rank: `a:**1|*2`
+generates `2`). Equal-rank preferences that disagree make the
+effective default indeterminate (`sub_default_indeterminate`,
+undecided). Adding a default where none existed is compatible;
+changing or removing one is `compat_default_changed` — previously
+generable documents materialise differently or become incomplete.
+
+### Rules, by value former
+
+| A (general) | B (specific) | A ⊒ B |
+|-------------|--------------|-------|
+| `top` | anything | yes |
+| preference `*x` | — | compares as what it admits (its superior type); its default value is the profiles' business, not the value set's |
+| unresolved residue (reference, variable, unreduced conjunct or function) on either side | — | `undecided` (`sub_unresolved`): there is no admitted set to compare |
+| anything | disjunction | every specific alternative must be admitted by A; a concrete failing alternative is a witness (`compat_narrowed`), a non-concrete one is `undecided` (`sub_disjunct_distribution`) |
+| disjunction | non-disjunction | some general alternative must admit B member-wise; failure with concrete B is a witness, otherwise `undecided` (`sub_disjunct_distribution`) — member-wise failure is not proof, the distribution case |
+| scalar kind | scalar kind or scalar | the general kind admits the specific kind (`number ⊒ integer`) or the scalar's kind; distinct leaves are disjoint |
+| scalar kind | constraint residual | the kind covers the residual's domain: `number` admits any numeric residual, a numeric leaf kind admits a residual pinned to that leaf, `string` admits any pattern residual |
+| constraint residual | constraint residual | per the constraint algebra's own [subsumption table](#subsumption-1); a `must` on the general side is `undecided` (`sub_evaluate_only`) |
+| constraint residual | scalar | membership, with `must` again `undecided`; `unique()` and `length` demands admit no scalar |
+| concrete scalar | concrete scalar | identity — a concrete value subsumes only itself (kind included) |
+| map | map | see below; anything else is `compat_narrowed` |
+| list | list | element-wise by position, with the same required/optional shape as maps |
+
+There is no nil rule: an error-free evaluated document carries no nil
+(failing disjunct members are discarded and every other nil collects
+an error), and a source that does not stand alone answers `error`
+before the walk begins.
+
+### Maps, lists, closedness, optionality, spreads
+
+- Every **required** key of the general side must be present and
+  required in the specific side, and subsume; a missing or
+  optional-ised key is `compat_required_added` (instances without it
+  are admitted by the specific side but refused by the general).
+- An **optional** key (`k?:`) of the general side compares only when
+  the specific side has it; the specific side making a general
+  optional key required merely narrows, which is compatible.
+- A **closed** general bag (`close(…)`) requires the specific side to
+  be closed and inside its declared key set; an open specific side, or
+  a surplus key, is `compat_narrowed`.
+- A **spread** template (`&:`) on the general side governs the
+  specific side's surplus keys and its template (a missing specific
+  template compares as `top`, so a general-only template does not
+  subsume an open specific bag). A specific-only template narrows the
+  specific side and refuses nothing. A **path-dependent** template
+  (one whose meaning depends on where it lands — `key()`, a
+  reference) cannot be compared structurally:
+  `sub_path_dependent_spread`, undecided.
+- Under the `gen` profile, `type`/`hide` marks must agree on
+  corresponding nodes (`compat_marks_changed`).
+
+The `at` option anchors both documents at one path before comparing
+(the validation verb's `--at`); a path missing from either side is an
+`error` verdict.
 
 Failures surface as messages (thrown as `AontuError` in TS, returned as
 `error` in Go):
@@ -1048,11 +1133,14 @@ guessed where it is not:
 
 ### Subsumption
 
-*Not yet implemented — this is the specification the
-[G3](capability-review/g3-subsumption-evolution.md) `subsume` query will
-build on. It completes phase 0's three tables (meet, emptiness,
-subsumption); the meet and emptiness rules above are live in both
-engines.*
+*Live in both engines: the
+[G3](capability-review/g3-subsumption-evolution.md) `subsume` query
+implements this table (its per-former rules are in
+[Subsumption](#subsumption) above). It completes phase 0's three
+tables (meet, emptiness, subsumption). One mapping to note: the
+query answers the `must` row's "never" as `undecided` with reason
+`sub_evaluate_only` — the admitted set is opaque, which is honest
+indecision rather than a decided refusal.*
 
 `A ⊒ B` ("A subsumes B", B is an instance of A) holds when **every
 value B admits, A admits too**. It is the lattice's own order, and for

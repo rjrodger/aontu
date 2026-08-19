@@ -98,10 +98,11 @@ func TestSpec(t *testing.T) {
 			if 1 < len(parts) {
 				mode = parts[1]
 			}
-			// A vet row carries TWO documents, so its expect is the
-			// fifth column; every other mode reads four and ignores any
-			// extra (see test/spec/vet.tsv for the encoding).
-			vetRow := "vet" == mode
+			// A vet or subsume row carries TWO documents, so its expect
+			// is the fifth column; every other mode reads four and
+			// ignores any extra (see test/spec/vet.tsv and
+			// test/spec/subsume.tsv for the encodings).
+			vetRow := "vet" == mode || "subsume" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -242,6 +243,23 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("vet report mismatch\n schema: %q\n data:   %q\n want: %s\n got:  %s",
 							src, data, want, got)
 					}
+				case "subsume":
+					// Same golden discipline as vet: `opts` rides the
+					// expect object, messages are per-port prose and
+					// excluded from parity.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					opts := specSubsumeOpts(t, golden["opts"])
+					delete(golden, "opts")
+
+					got := specSubsumeGolden(t, Subsume(src, data, opts))
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("subsume report mismatch\n general:  %q\n specific: %q\n want: %s\n got:  %s",
+							src, data, want, got)
+					}
 				default:
 					t.Fatalf("unknown spec mode %q", mode)
 				}
@@ -317,6 +335,53 @@ func specVetOpts(t *testing.T, raw any) *VetOptions {
 			opts.MaxErrors = int(n)
 		default:
 			t.Fatalf("unknown vet opt %q", k)
+		}
+	}
+	return opts
+}
+
+// specSubsumeGolden mirrors specVetGolden for the subsume mode: the
+// MESSAGE is excluded from each finding, and the rest is round-tripped
+// through the map form so both sides of the comparison serialise
+// through specJSON.
+func specSubsumeGolden(t *testing.T, report SubsumeReport) string {
+	t.Helper()
+	raw, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("marshal report: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("unmarshal report: %v", err)
+	}
+	findings, _ := out["findings"].([]any)
+	for _, f := range findings {
+		if m, ok := f.(map[string]any); ok {
+			delete(m, "message")
+		}
+	}
+	return specJSON(t, out)
+}
+
+// specSubsumeOpts reads the run's options out of the golden's `opts` key.
+func specSubsumeOpts(t *testing.T, raw any) *SubsumeOptions {
+	t.Helper()
+	if nil == raw {
+		return nil
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("opts is not an object: %v", raw)
+	}
+	opts := &SubsumeOptions{}
+	for k, v := range m {
+		switch k {
+		case "profile":
+			opts.Profile, _ = v.(string)
+		case "at":
+			opts.At, _ = v.(string)
+		default:
+			t.Fatalf("unknown subsume opt %q", k)
 		}
 	}
 	return opts

@@ -113,19 +113,33 @@ var hints = map[string]string{
 // is reference) are documented in the tsv header.
 var codeClasses = map[string]string{
 	// parse -- the source text is malformed or unusable
-	"parse":                 "parse",
-	"syntax":                "parse",
-	"parse_unknown":         "parse",
-	"parse_bad_src":         "parse",
-	"merge_conflict":        "parse",
-	"include_denied":        "parse",
-	"func_arity":            "parse",
-	"elided_value":          "parse",
-	"unify_no_src":          "parse",
-	"incomplete_expression": "parse",
-	"not_number":            "parse",
-	"negative":              "parse",
-	"decimal_syntax":        "parse",
+	"parse":          "parse",
+	"syntax":         "parse",
+	"parse_unknown":  "parse",
+	"parse_bad_src":  "parse",
+	"merge_conflict": "parse",
+	"include_denied": "parse",
+
+	// G3 -- the subsumption query's report vocabulary (class compat):
+	// the compat_* codes are its findings, the sub_* codes its
+	// undecided reasons. Report-layer codes: no NilVal ever carries
+	// one, so they have no hint text.
+	"compat_narrowed":           "compat",
+	"compat_required_added":     "compat",
+	"compat_default_changed":    "compat",
+	"compat_marks_changed":      "compat",
+	"sub_unresolved":            "compat",
+	"sub_disjunct_distribution": "compat",
+	"sub_path_dependent_spread": "compat",
+	"sub_evaluate_only":         "compat",
+	"sub_default_indeterminate": "compat",
+	"func_arity":                "parse",
+	"elided_value":              "parse",
+	"unify_no_src":              "parse",
+	"incomplete_expression":     "parse",
+	"not_number":                "parse",
+	"negative":                  "parse",
+	"decimal_syntax":            "parse",
 
 	// conflict -- no common lower bound, or a value refused by a rule
 	// (constraint covers the whole algebra family: membership failure,

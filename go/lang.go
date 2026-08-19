@@ -1615,7 +1615,12 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		}
 		inner := asVal(terms[0])
 		pv := newPref(inner)
+		// Sited at the `*` itself, as TS's addsite frames it; the inner
+		// value's position is the fallback for a synthetic rule.
 		pv.sp = inner.pos()
+		if r.ON > 0 {
+			pv.sp = r.O0.SI
+		}
 		return pv
 	case "negative-prefix":
 		if len(terms) < 1 {

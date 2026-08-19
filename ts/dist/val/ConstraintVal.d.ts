@@ -67,6 +67,8 @@ declare class ConstraintVal extends FeatureVal {
     get canon(): string;
     same(peer: any): boolean;
 }
+declare function constraintSubsumesConstraint(g: ConstraintVal, s: ConstraintVal): boolean | 'undecided';
+declare function constraintAdmitsScalar(g: ConstraintVal, scalar: any): boolean | 'undecided';
 declare class MinConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
@@ -94,4 +96,4 @@ declare class LengthConstraintVal extends ConstraintVal {
 declare class UniqueConstraintVal extends ConstraintVal {
     constructor(spec: ValSpec, ctx?: AontuContext);
 }
-export { normaliseRe, ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, LengthConstraintVal, UniqueConstraintVal, MustConstraintVal, };
+export { normaliseRe, constraintSubsumesConstraint, constraintAdmitsScalar, ConstraintVal, MinConstraintVal, MaxConstraintVal, AboveConstraintVal, BelowConstraintVal, NeqConstraintVal, ReConstraintVal, LengthConstraintVal, UniqueConstraintVal, MustConstraintVal, };

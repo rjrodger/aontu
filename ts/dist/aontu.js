@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sarifReport = exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
+exports.subsume = exports.sarifReport = exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
 exports.runparse = runparse;
 const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
@@ -21,6 +21,8 @@ const vet_1 = require("./vet");
 Object.defineProperty(exports, "vet", { enumerable: true, get: function () { return vet_1.vet; } });
 const report_sarif_1 = require("./report-sarif");
 Object.defineProperty(exports, "sarifReport", { enumerable: true, get: function () { return report_sarif_1.sarifReport; } });
+const subsume_1 = require("./subsume");
+Object.defineProperty(exports, "subsume", { enumerable: true, get: function () { return subsume_1.subsume; } });
 // VERSION is the Aontu npm package version, and mirrors
 // go/aontu.go's `Version` (which tracks the Go module version
 // separately — the two version series are independent).
@@ -237,16 +239,17 @@ function manifestOf(sink) {
     const seen = new Set();
     const out = [];
     for (const dep of sink) {
-        const key = dep.path + ' ' + dep.capability;
+        const key = dep.path + ' ' + dep.capability;
         if (!seen.has(key)) {
             seen.add(key);
             out.push({ path: dep.path, capability: dep.capability });
         }
     }
+    // No equal case: entries were deduplicated on exactly this key.
     out.sort((a, b) => {
-        const ka = a.path + ' ' + a.capability;
-        const kb = b.path + ' ' + b.capability;
-        return ka < kb ? -1 : ka === kb ? 0 : 1;
+        const ka = a.path + ' ' + a.capability;
+        const kb = b.path + ' ' + b.capability;
+        return ka < kb ? -1 : 1;
     });
     return out;
 }

@@ -63,6 +63,7 @@ const unify_1 = require("../dist/unify");
 const cli_1 = require("../dist/cli");
 const lsp_server_1 = require("../dist/lsp-server");
 const lsp_1 = require("../dist/lsp");
+const subsume_1 = require("../dist/subsume");
 const Val_1 = require("../dist/val/Val");
 const top_1 = require("../dist/val/top");
 const MapVal_1 = require("../dist/val/MapVal");
@@ -742,6 +743,23 @@ function capture(fn) {
         }
         Assert.match(Buffer.concat(written).toString('utf8'), /Content-Length/);
         Assert.equal(exited, 0);
+    });
+});
+(0, node_test_1.describe)('coverage3-subsume', () => {
+    // The no-rule fold at the walk's tail (ts/src/subsume.ts): total in
+    // practice for every evaluated former, so unreachable through
+    // subsume() — pinned directly, with a nil, which also pins the "a nil
+    // folds to undecided" claim the walk's top comment makes. The Go port
+    // pins the same fold in TestSubsumeNoRuleFold.
+    (0, node_test_1.test)('subsume-no-rule-fold', () => {
+        const state = {
+            profile: 'values', findings: [],
+            generalUrl: 'general', specificUrl: 'specific',
+        };
+        const r = (0, subsume_1.subsumeNode)(state, [], new NilVal_1.NilVal({ why: 'test' }), new NilVal_1.NilVal({ why: 'test' }));
+        Assert.equal(r, 'undecided');
+        Assert.equal(state.findings.length, 1);
+        Assert.equal(state.findings[0].code, 'sub_unresolved');
     });
 });
 //# sourceMappingURL=coverage3.test.js.map

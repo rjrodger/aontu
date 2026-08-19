@@ -31,6 +31,7 @@ import { Unify } from '../dist/unify'
 import { main as cliMain, evalSource } from '../dist/cli'
 import { main as lspMain } from '../dist/lsp-server'
 import { computeDiagnostics, computeHover, LspHandler } from '../dist/lsp'
+import { subsumeNode } from '../dist/subsume'
 
 import { Val } from '../dist/val/Val'
 import { top } from '../dist/val/top'
@@ -856,4 +857,26 @@ describe('coverage3-process', () => {
     Assert.match(Buffer.concat(written).toString('utf8'), /Content-Length/)
     Assert.equal(exited, 0)
   })
+})
+
+
+describe('coverage3-subsume', () => {
+
+  // The no-rule fold at the walk's tail (ts/src/subsume.ts): total in
+  // practice for every evaluated former, so unreachable through
+  // subsume() — pinned directly, with a nil, which also pins the "a nil
+  // folds to undecided" claim the walk's top comment makes. The Go port
+  // pins the same fold in TestSubsumeNoRuleFold.
+  test('subsume-no-rule-fold', () => {
+    const state: any = {
+      profile: 'values', findings: [],
+      generalUrl: 'general', specificUrl: 'specific',
+    }
+    const r = subsumeNode(
+      state, [], new NilVal({ why: 'test' }), new NilVal({ why: 'test' }))
+    Assert.equal(r, 'undecided')
+    Assert.equal(state.findings.length, 1)
+    Assert.equal(state.findings[0].code, 'sub_unresolved')
+  })
+
 })

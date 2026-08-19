@@ -7,6 +7,7 @@ import { formatExplain } from './utility';
 import { AontuError } from './err';
 import { vet } from './vet';
 import { sarifReport } from './report-sarif';
+import { subsume } from './subsume';
 declare const VERSION = "0.52.1";
 declare class Aontu {
     opts: AontuOptions;
@@ -21,5 +22,5 @@ declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
     runparse: typeof runparse;
 };
-export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, };
+export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, };
 export default Aontu;

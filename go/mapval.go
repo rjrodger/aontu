@@ -176,6 +176,27 @@ func computePathFunc(v Val) bool {
 		if n.spread != nil && hasPathFunc(n.spread) {
 			return true
 		}
+	case *ConstraintVal:
+		// A residual's unresolved arguments live in pending (an atom
+		// endpoint still waiting on a reference), its predicates in
+		// musts, and the sizing residual in count. TS reaches the same
+		// values through the generic peg walk (ConstraintVal keeps its
+		// arguments as peg).
+		if nil != n.pending {
+			for _, a := range n.pending.args {
+				if hasPathFunc(a) {
+					return true
+				}
+			}
+		}
+		for _, m := range n.musts {
+			if hasPathFunc(m.v) {
+				return true
+			}
+		}
+		if nil != n.count && hasPathFunc(n.count) {
+			return true
+		}
 	case *ListVal:
 		for _, e := range n.peg {
 			if hasPathFunc(e) {

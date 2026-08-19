@@ -279,7 +279,7 @@ function orderKey(f: VetFinding, index: number): string {
 // Walk the evaluated schema to the anchor path. `$` and `$.a.b` are
 // both accepted, as is the bare `a.b` a shell is likely to hand over
 // unquoted.
-function anchorAt(root: any, at: string): Val | undefined {
+export function anchorAt(root: any, at: string): Val | undefined {
   const trimmed = at.startsWith('$') ? at.slice(1) : at
   const parts = trimmed.split('.').filter((p) => '' !== p)
 

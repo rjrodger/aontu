@@ -17,6 +17,7 @@
 #           and class lookup falls back to the longest registered prefix.
 #   errcode : the spec mode (fixed).
 #   class : one of conflict | incomplete | reference | parse | budget |
+#           compat |
 #           internal (see below). Classes drive report verdicts and exit
 #           classes (docs/capability-review/g2-validation-verb.md), so a
 #           class change is a breaking change.
@@ -34,6 +35,8 @@
 #   parse      : the source text itself is malformed or unusable.
 #   budget     : an evaluation bound was exceeded (cycles, passes,
 #                nesting depth) -- see docs/capability-review/g5.
+#   compat     : the subsumption query's report vocabulary (G3) -- the
+#                compat_* findings and the sub_* undecided reasons.
 #   internal   : the engine reached a state it should not reach.
 #
 # RULINGS the class column encodes (decided at registry inception):
@@ -155,3 +158,18 @@ budget_passes	errcode	budget	0.52.0
 internal	errcode	internal	0.51.0
 unify_no_res	errcode	internal	0.51.0
 unknown_op	errcode	internal	0.51.0
+#
+# compat -- the subsumption query's report vocabulary (G3,
+# docs/capability-review/g3-subsumption-evolution.md). These codes ride
+# G2's finding object from the `subsume` and `breaking` surfaces; the
+# `sub_*` codes are the UNDECIDED reasons, spec-pinned so the taxonomy
+# cannot grow silently.
+compat_narrowed	errcode	compat	0.53.0
+compat_required_added	errcode	compat	0.53.0
+compat_default_changed	errcode	compat	0.53.0
+compat_marks_changed	errcode	compat	0.53.0
+sub_unresolved	errcode	compat	0.53.0
+sub_disjunct_distribution	errcode	compat	0.53.0
+sub_path_dependent_spread	errcode	compat	0.53.0
+sub_evaluate_only	errcode	compat	0.53.0
+sub_default_indeterminate	errcode	compat	0.53.0

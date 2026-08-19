@@ -97,19 +97,19 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Twenty of forty-nine phases have moved; eighteen of those are complete.
+Twenty-three of forty-nine phases have moved; twenty-one of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
-| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
+| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 3 | 0 | 4 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **18** | **2** | **29** |
+| | | **total** | **21** | **2** | **26** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -317,20 +317,19 @@ doc should record it.
 
 ## G3 — subsumption as a query; schema evolution
 
-| Phase | Size | Status |
-|-------|------|--------|
-| **0** — rules on paper | M | **NOT STARTED** |
-| **1** — the recursion, TypeScript | L | **NOT STARTED** |
-| **2** — Go port | L | **NOT STARTED** |
-| **3** — CLI verbs (`subsume`, `breaking`) | M | **NOT STARTED** |
-| **4** — `deprecate()` | M | **NOT STARTED** |
-| **5** — default-validity lint | S | **NOT STARTED** |
-| **6** — trim reporter | M | **NOT STARTED** |
+| Phase | Size | Status | Pin |
+|-------|------|--------|-----|
+| **0** — rules on paper | M | **LANDED** | `docs/reference-language.md` "Subsumption": the per-former table (all three profiles, with the `*` × `close()` × `&:` × `?` interaction cells), sitting above the constraint algebra's own subsumption table, whose "not yet implemented" note is gone. `test/spec/subsume.tsv` — 97 rows, executed by BOTH runners, covering every probe in the design's Problem section (the v1/v2 `service` break included) and every `undecided` reason. **Departure:** the design named six columns (name, profile, general, specific, verdict, detail); the encoding is instead vet.tsv's exactly — FIVE columns with the report as an expect object, `message` excluded, options (`profile`, `at`) riding the `opts` key — because the two-document shape and its probed carve-outs are the same, and a second five-column precedent beats a third encoding. |
+| **1** — the recursion, TypeScript | L | **LANDED** | `ts/src/subsume.ts`: a dedicated structural walk over evaluated trees (design option B) — never mutates, no fixpoint, three-valued verdict plus `error`; findings reuse G2's object with class `compat`; the nine codes (`compat_narrowed`, `compat_required_added`, `compat_default_changed`, `compat_marks_changed`, five `sub_*` undecided reasons) registered in `test/spec/errcodes.tsv` under the new `compat` class. Constraint rules live beside the compare machinery they reuse (`ts/src/val/ConstraintVal.ts` `constraintSubsumesConstraint`, `constraintAdmitsScalar`). Exported from `ts/src/aontu.ts`. **Departures:** (1) no `rankPrefs` helper existed to reuse — effective-default extraction is the walk's own, and the first draft picked the HIGHEST rank where generation picks the LOWEST (`a:**1|*2` generates `2`, `edge.tsv`); the parity corpus caught it before landing and `default-rank-mixed` pins the direction. (2) The constraint table's `must` row says "never"; the query answers `undecided` (`sub_evaluate_only`) — honest indecision, recorded in the reference. (3) No nil rule: an error-free evaluated tree carries no nil, so the walk's no-rule fold answers a hypothetical one `undecided`, pinned by direct tests in both ports rather than rows no source can produce. |
+| **2** — Go port | L | **LANDED** | `go/subsume.go`, mirroring the dispatch; `go/constraint.go` `constraintStateSubsumes`/`constraintAdmitsScalarQ`; both runners execute every `subsume.tsv` row with no skip list, expectations parity-probed (byte-identical reports, message text excluded) before any row was written. **What the probe cost the engine** (the G2 phase-4 pattern, two more pre-existing divergences fixed rather than recorded): (1) a preference was sited at its inner value where TypeScript sites it at the `*` itself (`go/lang.go` star-prefix); (2) `hasPathFunc` did not see through a `ConstraintVal` — a pending atom endpoint holding `min($.floor)`, a `must` value, the recursive count — so a path-dependent spread template compared structurally instead of refusing (`go/mapval.go`). |
+| **3** — CLI verbs (`subsume`, `breaking`) | M | **NOT STARTED** |  |
+| **4** — `deprecate()` | M | **NOT STARTED** |  |
+| **5** — default-validity lint | S | **NOT STARTED** |  |
+| **6** — trim reporter | M | **NOT STARTED** |  |
 
-Nothing of G3 has ever existed: no `ts/src/subsume.ts`,
-`go/subsume.go`, `test/spec/subsume.tsv`, `deprecate.tsv` or
-`trim.tsv` in any commit. Phase 3 depends on G2 phases 1–3, of which
-only phase 1 is in.
+Phases 3–6 have no artifacts yet: no CLI verb, no
+`test/spec/deprecate.tsv` or `trim.tsv`. Phase 3's G2 dependencies
+(phases 1–3) are all in.
 
 **Two facts the doc asserts are no longer true.** `super()` is no
 longer "degenerate and unpinned" — `ts/src/val/SuperFuncVal.ts` and
