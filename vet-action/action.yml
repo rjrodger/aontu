@@ -30,13 +30,17 @@ inputs:
   args:
     description: >-
       Extra aontu vet arguments (for example "--at $.services --closed
-      --partial").
+      --partial"), whitespace-separated.
     required: false
     default: ''
   version:
-    description: 'aontu npm package version to run (default: latest).'
+    description: >-
+      aontu npm package version to run. The default is pinned to the
+      CLI release this Action revision shipped with (kept in step by
+      the repo's version bump), so a workflow pinning the Action by ref
+      cannot silently acquire a newer CLI.
     required: false
-    default: 'latest'
+    default: '0.52.1'
 
 outputs:
   exit-code:
@@ -50,22 +54,38 @@ runs:
   steps:
     - id: vet
       shell: bash
+      # Inputs reach the script ONLY through the environment, never by
+      # interpolating ${{ }} into the script text: GitHub substitutes
+      # expressions before Bash parses, so an event-controlled value
+      # embedded in the script (a quote-breaking path, shell operators
+      # in args) would execute on the runner. Environment values are
+      # data; the word-splitting below is explicit and quote-free by
+      # declaration (data and args are documented whitespace-separated
+      # lists).
+      env:
+        AONTU_SCHEMA: ${{ inputs.schema }}
+        AONTU_DATA: ${{ inputs.data }}
+        AONTU_FORMAT: ${{ inputs.format }}
+        AONTU_OUTPUT: ${{ inputs.output-file }}
+        AONTU_ARGS: ${{ inputs.args }}
+        AONTU_VERSION: ${{ inputs.version }}
       # The verdict classes are the contract (docs/reference-api.md):
       # the job fails on any non-zero class, and the class itself is
       # surfaced as an output so a workflow can branch on "invalid"
       # differently from "incomplete".
       run: |
         set -o pipefail
+        read -r -a extra_args <<< "$AONTU_ARGS"
+        read -r -a data_files <<< "$AONTU_DATA"
         code=0
-        if [ -n "${{ inputs.output-file }}" ]; then
-          npx --yes "aontu@${{ inputs.version }}" vet \
-            --format "${{ inputs.format }}" ${{ inputs.args }} \
-            "${{ inputs.schema }}" ${{ inputs.data }} \
-            > "${{ inputs.output-file }}" || code=$?
+        if [ -n "$AONTU_OUTPUT" ]; then
+          npx --yes "aontu@$AONTU_VERSION" vet --format "$AONTU_FORMAT" \
+            "${extra_args[@]}" "$AONTU_SCHEMA" "${data_files[@]}" \
+            > "$AONTU_OUTPUT" || code=$?
         else
-          npx --yes "aontu@${{ inputs.version }}" vet \
-            --format "${{ inputs.format }}" ${{ inputs.args }} \
-            "${{ inputs.schema }}" ${{ inputs.data }} || code=$?
+          npx --yes "aontu@$AONTU_VERSION" vet --format "$AONTU_FORMAT" \
+            "${extra_args[@]}" "$AONTU_SCHEMA" "${data_files[@]}" \
+            || code=$?
         fi
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
         exit $code

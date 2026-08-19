@@ -12,9 +12,30 @@ const SARIF_LEVEL = {
     warning: 'warning',
     info: 'note',
 };
+// A site's file is a filesystem path, and a SARIF artifactLocation.uri
+// is a URI reference: `#`, `%`, spaces and every other URI-significant
+// character must be percent-encoded or a consumer parses the path as
+// something else (text after `#` becomes a fragment). Encoded BY BYTE
+// over UTF-8, with RFC 3986's unreserved and path characters kept
+// literal, so the Go twin produces identical bytes from an identical
+// loop (go/report_sarif.go sarifURI).
+function sarifUri(path) {
+    const bytes = Buffer.from(path, 'utf8');
+    let out = '';
+    for (const b of bytes) {
+        const c = String.fromCharCode(b);
+        if (b < 128 && /[A-Za-z0-9\-._~/!$&'()*+,;=:@]/.test(c)) {
+            out += c;
+        }
+        else {
+            out += '%' + b.toString(16).toUpperCase().padStart(2, '0');
+        }
+    }
+    return out;
+}
 function sarifLocation(site) {
     const physical = {
-        artifactLocation: { uri: site.file },
+        artifactLocation: { uri: sarifUri(site.file) },
     };
     // SARIF regions are 1-based. A finding with no position — a parse
     // failure reports at -1:-1 — gets a location with no region rather
@@ -58,6 +79,14 @@ function sarifReport(report, version) {
     return (0, exactjson_1.exactJSON)({
         $schema: 'https://json.schemastore.org/sarif-2.1.0.json',
         runs: [{
+                // An `error` verdict means the run could not be set up (an
+                // unusable schema): zero findings from a FAILED run must not
+                // read like zero findings from a clean one, so the failure is
+                // carried in SARIF's own invocation metadata rather than by an
+                // indistinguishable empty result list.
+                invocations: [{
+                        executionSuccessful: 'error' !== report.verdict,
+                    }],
                 results: report.findings.map(sarifResult),
                 tool: {
                     driver: {

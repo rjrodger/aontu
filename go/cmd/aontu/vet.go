@@ -240,11 +240,17 @@ func watchSignature(files []string) string {
 	return strings.Join(parts, "\n")
 }
 
-// watchWait blocks until any watched file changes. This is the real
-// waiter: it never returns false, so a real watch runs until the
-// process is interrupted; tests swap vetWatchWait to bound the loop.
-func watchWait(files []string) bool {
-	before := watchSignature(files)
+// watchWait blocks until any watched file's signature moves off
+// `before`. This is the real waiter: it never returns false, so a real
+// watch runs until the process is interrupted; tests swap vetWatchWait
+// to bound the loop.
+//
+// The BASELINE is an argument, not a snapshot taken here: the loop
+// records it BEFORE each vet run, so a save landing between the run's
+// reads and the wait still compares as a change. A waiter that
+// snapshotted on entry would adopt that unvetted save as its baseline
+// and wait indefinitely on a stale report.
+func watchWait(files []string, before string) bool {
 	for {
 		time.Sleep(watchPoll)
 		if watchSignature(files) != before {
@@ -262,9 +268,11 @@ var vetWatchWait = watchWait
 // briefly unreadable, and dying on it would make the mode useless for
 // the very moment it exists for.
 func watchVet(args *vetArgs, stdout, stderr io.Writer) int {
-	code := vetOnce(args, stdout, stderr)
 	files := append([]string{args.schema}, args.data...)
-	for vetWatchWait(files) {
+	before := watchSignature(files)
+	code := vetOnce(args, stdout, stderr)
+	for vetWatchWait(files, before) {
+		before = watchSignature(files)
 		code = vetOnce(args, stdout, stderr)
 	}
 	return code

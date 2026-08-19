@@ -120,7 +120,7 @@ Against the review's own [sequencing](index.md#sequencing):
   engine (G2.2), command (G2.3), Go port (G2.4) and the delivery skin
   (G2.5: SARIF in both ports, the `vet-action/` composite Action, and
   `--watch`), with verdict exit classes an agent loop can branch on and
-  42 shared rows both runners execute. G1 landed more than the
+  46 shared rows both runners execute. G1 landed more than the
   sequencing table's "constraint algebra core (bounds, regex,
   length/count)" asked for: cross-field residuation and the `must`
   escape hatch are in too. **G2 is complete**: multi-error collection

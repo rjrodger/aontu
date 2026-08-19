@@ -23,6 +23,7 @@ package aontu
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 
@@ -33,8 +34,13 @@ type sarifLog struct {
 }
 
 type sarifRun struct {
-	Results []sarifResult `json:"results"`
-	Tool    sarifTool     `json:"tool"`
+	Invocations []sarifInvocation `json:"invocations"`
+	Results     []sarifResult     `json:"results"`
+	Tool        sarifTool         `json:"tool"`
+}
+
+type sarifInvocation struct {
+	ExecutionSuccessful bool `json:"executionSuccessful"`
 }
 
 type sarifTool struct {
@@ -88,9 +94,29 @@ var sarifLevel = map[string]string{
 	"info":    "note",
 }
 
+// sarifURI percent-encodes a filesystem path as a SARIF URI reference:
+// `#`, `%`, spaces and every other URI-significant byte would otherwise
+// change the path's meaning to a consumer (text after `#` becomes a
+// fragment). Encoded BY BYTE over UTF-8, with RFC 3986's unreserved and
+// path characters kept literal — the identical loop to the canonical
+// port's sarifUri (ts/src/report-sarif.ts), so the bytes agree.
+func sarifURI(path string) string {
+	var b strings.Builder
+	for i := 0; i < len(path); i++ {
+		c := path[i]
+		if 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z' || '0' <= c && c <= '9' ||
+			strings.IndexByte("-._~/!$&'()*+,;=:@", c) >= 0 {
+			b.WriteByte(c)
+		} else {
+			b.WriteString(fmt.Sprintf("%%%02X", c))
+		}
+	}
+	return b.String()
+}
+
 func sarifLocationOf(site VetSite) sarifLocation {
 	physical := sarifPhysical{
-		ArtifactLocation: sarifArtifact{URI: site.File},
+		ArtifactLocation: sarifArtifact{URI: sarifURI(site.File)},
 	}
 	// SARIF regions are 1-based. A finding with no position — a parse
 	// failure reports at -1:-1 — gets a location with no region rather
@@ -134,6 +160,13 @@ func SarifReport(report VetReport, version string) string {
 	log := sarifLog{
 		Schema: "https://json.schemastore.org/sarif-2.1.0.json",
 		Runs: []sarifRun{{
+			// An `error` verdict means the run could not be set up (an
+			// unusable schema): zero findings from a FAILED run must
+			// not read like zero findings from a clean one, so the
+			// failure is carried in SARIF's own invocation metadata.
+			Invocations: []sarifInvocation{{
+				ExecutionSuccessful: VetError != report.Verdict,
+			}},
 			Results: results,
 			Tool: sarifTool{Driver: sarifDriver{
 				InformationURI: "https://github.com/rjrodger/aontu",

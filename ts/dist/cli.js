@@ -1,10 +1,12 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.vetWaiter = void 0;
 exports.evalSource = evalSource;
 exports.main = main;
 exports.runVet = runVet;
 exports.watchChange = watchChange;
+exports.watchSignature = watchSignature;
 // Command-line interface for Aontu.
 //
 //   aontu [options] [file]
@@ -400,14 +402,20 @@ function watchSignature(files) {
 function sleep(ms) {
     return new Promise((done) => setTimeout(done, ms));
 }
-// Resolve true when any watched file changes. This is the real waiter:
-// it never resolves false, so a real watch runs until the process is
-// interrupted; tests inject their own waiter to bound the loop, and
-// pass a short pollMs when they drive this one directly. The interval
-// is a required argument (the command passes WATCH_POLL_MS) so there is
-// no defaulting branch a test could never take.
-async function watchChange(files, pollMs) {
-    const before = watchSignature(files);
+// Resolve true when any watched file's signature moves off `before`.
+// This is the real waiter: it never resolves false, so a real watch
+// runs until the process is interrupted; tests inject their own waiter
+// to bound the loop, and pass a short pollMs when they drive this one
+// directly. The interval is a required argument (the command passes
+// WATCH_POLL_MS) so there is no defaulting branch a test could never
+// take.
+//
+// The BASELINE is an argument, not a snapshot taken here: the loop
+// records it BEFORE each vet run, so a save landing between the run's
+// reads and the wait still compares as a change. A waiter that
+// snapshotted on entry would adopt that unvetted save as its baseline
+// and wait indefinitely on a stale report.
+async function watchChange(files, before, pollMs) {
     for (;;) {
         await sleep(pollMs);
         if (watchSignature(files) !== before) {
@@ -415,14 +423,22 @@ async function watchChange(files, pollMs) {
         }
     }
 }
+// The waiter the command runs with: the real change-poller at the real
+// interval. Named (rather than inlined at the runVet call) so the
+// production waiter itself is directly testable.
+const vetWaiter = (files, before) => watchChange(files, before, WATCH_POLL_MS);
+exports.vetWaiter = vetWaiter;
 // The watch loop: one report per run, one run per change, streaming to
 // stdout. An unreadable file mid-watch reports (exit class 2 from
 // vetOnce) and keeps watching — a file being rewritten is briefly
 // unreadable, and dying on it would make the mode useless for the very
 // moment it exists for.
 async function watchVet(args, wait) {
+    const files = [args.schema, ...args.data];
+    let before = watchSignature(files);
     let code = vetOnce(args);
-    while (await wait([args.schema, ...args.data])) {
+    while (await wait(files, before)) {
+        before = watchSignature(files);
         code = vetOnce(args);
     }
     return code;
@@ -442,7 +458,7 @@ function runVet(argv, wait) {
         return 0;
     }
     if (true === args.watch) {
-        return watchVet(args, wait ?? ((files) => watchChange(files, WATCH_POLL_MS)));
+        return watchVet(args, wait ?? vetWaiter);
     }
     return vetOnce(args);
 }

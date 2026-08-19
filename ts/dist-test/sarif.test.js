@@ -111,7 +111,11 @@ function redact(sarif) {
         Assert.equal(log.runs[0].results[0].relatedLocations, undefined);
     });
     // A clean run is still a report: one run, empty results, the tool
-    // named — what a CI upload of a passing check looks like.
+    // named — what a CI upload of a passing check looks like. A FAILED
+    // run (verdict error: the schema was unusable) also has empty
+    // results, and the difference is carried in SARIF's own invocation
+    // metadata so a consumer never mistakes "could not check" for
+    // "checked and clean".
     (0, node_test_1.test)('sarif-empty', () => {
         const report = { verdict: 'valid', truncated: false, findings: [] };
         const log = JSON.parse((0, aontu_1.sarifReport)(report, '1.2.3'));
@@ -119,6 +123,32 @@ function redact(sarif) {
         Assert.deepEqual(log.runs[0].results, []);
         Assert.equal(log.runs[0].tool.driver.name, 'aontu');
         Assert.equal(log.runs[0].tool.driver.version, '1.2.3');
+        Assert.equal(log.runs[0].invocations[0].executionSuccessful, true);
+        const failed = { verdict: 'error', truncated: false, findings: [] };
+        const flog = JSON.parse((0, aontu_1.sarifReport)(failed, '1.2.3'));
+        Assert.deepEqual(flog.runs[0].results, []);
+        Assert.equal(flog.runs[0].invocations[0].executionSuccessful, false);
+    });
+    // A site's file is a filesystem path; the SARIF uri percent-encodes
+    // every URI-significant byte (by UTF-8 byte, so the Go twin's loop
+    // produces identical text) — otherwise text after `#` reads as a
+    // fragment and the consumer loses the file association.
+    (0, node_test_1.test)('sarif-uri-encoding', () => {
+        const report = {
+            verdict: 'invalid',
+            truncated: false,
+            findings: [{
+                    code: 'x',
+                    class: 'conflict',
+                    severity: 'error',
+                    path: '$',
+                    message: 'm',
+                    sites: [{ file: 'a b#c%.aon', row: 1, col: 1, role: 'data' }],
+                }],
+        };
+        const log = JSON.parse((0, aontu_1.sarifReport)(report, 'x'));
+        Assert.equal(log.runs[0].results[0].locations[0].physicalLocation
+            .artifactLocation.uri, 'a%20b%23c%25.aon');
     });
 });
 //# sourceMappingURL=sarif.test.js.map

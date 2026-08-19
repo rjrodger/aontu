@@ -470,14 +470,21 @@ function sleep(ms: number): Promise<void> {
 }
 
 
-// Resolve true when any watched file changes. This is the real waiter:
-// it never resolves false, so a real watch runs until the process is
-// interrupted; tests inject their own waiter to bound the loop, and
-// pass a short pollMs when they drive this one directly. The interval
-// is a required argument (the command passes WATCH_POLL_MS) so there is
-// no defaulting branch a test could never take.
-async function watchChange(files: string[], pollMs: number): Promise<boolean> {
-  const before = watchSignature(files)
+// Resolve true when any watched file's signature moves off `before`.
+// This is the real waiter: it never resolves false, so a real watch
+// runs until the process is interrupted; tests inject their own waiter
+// to bound the loop, and pass a short pollMs when they drive this one
+// directly. The interval is a required argument (the command passes
+// WATCH_POLL_MS) so there is no defaulting branch a test could never
+// take.
+//
+// The BASELINE is an argument, not a snapshot taken here: the loop
+// records it BEFORE each vet run, so a save landing between the run's
+// reads and the wait still compares as a change. A waiter that
+// snapshotted on entry would adopt that unvetted save as its baseline
+// and wait indefinitely on a stale report.
+async function watchChange(
+  files: string[], before: string, pollMs: number): Promise<boolean> {
   for (;;) {
     await sleep(pollMs)
     if (watchSignature(files) !== before) {
@@ -487,7 +494,14 @@ async function watchChange(files: string[], pollMs: number): Promise<boolean> {
 }
 
 
-type VetWaiter = (files: string[]) => Promise<boolean>
+type VetWaiter = (files: string[], before: string) => Promise<boolean>
+
+
+// The waiter the command runs with: the real change-poller at the real
+// interval. Named (rather than inlined at the runVet call) so the
+// production waiter itself is directly testable.
+const vetWaiter: VetWaiter = (files, before) =>
+  watchChange(files, before, WATCH_POLL_MS)
 
 
 // The watch loop: one report per run, one run per change, streaming to
@@ -496,8 +510,11 @@ type VetWaiter = (files: string[]) => Promise<boolean>
 // unreadable, and dying on it would make the mode useless for the very
 // moment it exists for.
 async function watchVet(args: VetArgs, wait: VetWaiter): Promise<number> {
+  const files = [args.schema, ...args.data]
+  let before = watchSignature(files)
   let code = vetOnce(args)
-  while (await wait([args.schema, ...args.data])) {
+  while (await wait(files, before)) {
+    before = watchSignature(files)
     code = vetOnce(args)
   }
   return code
@@ -521,8 +538,7 @@ function runVet(argv: string[], wait?: VetWaiter): number | Promise<number> {
   }
 
   if (true === args.watch) {
-    return watchVet(args,
-      wait ?? ((files) => watchChange(files, WATCH_POLL_MS)))
+    return watchVet(args, wait ?? vetWaiter)
   }
 
   return vetOnce(args)
@@ -602,4 +618,4 @@ function main(argv: string[]): void {
 // calls main(process.argv) itself, so this module stays import-only.
 
 
-export { evalSource, main, runVet, watchChange }
+export { evalSource, main, runVet, watchChange, watchSignature, vetWaiter }

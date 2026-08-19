@@ -352,8 +352,11 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
     (0, node_test_1.test)('vet-watch-streams-a-report-per-change', async () => {
         const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }');
         let calls = 0;
-        const wait = async (files) => {
+        const wait = async (files, before) => {
             Assert.deepEqual(files, [f.schema, f.data]);
+            // The baseline is recorded BEFORE the run it follows, so a save
+            // landing during the run still reads as a change.
+            Assert.equal(typeof before, 'string');
             if (0 === calls++) {
                 Fs.writeFileSync(f.data, 'service: { name: "auth", port: "80" }');
                 return true;
@@ -379,8 +382,18 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
     (0, node_test_1.test)('vet-watch-change-resolves-on-touch', async () => {
         const f = vetFiles(VET_SCHEMA, 'service: {}');
         const missing = Path.join(f.dir, 'not-yet.json');
-        const change = (0, cli_1.watchChange)([f.schema, missing], 20);
+        const files = [f.schema, missing];
+        const change = (0, cli_1.watchChange)(files, (0, cli_1.watchSignature)(files), 20);
         setTimeout(() => Fs.writeFileSync(missing, 'service: {}'), 120);
+        Assert.equal(await change, true);
+    });
+    // The production waiter itself — the real poll interval, driven by a
+    // real touch, so the composition runVet actually uses is exercised.
+    (0, node_test_1.test)('vet-watch-production-waiter', async () => {
+        const f = vetFiles(VET_SCHEMA, 'service: {}');
+        const files = [f.schema, f.data];
+        const change = (0, cli_1.vetWaiter)(files, (0, cli_1.watchSignature)(files));
+        setTimeout(() => Fs.writeFileSync(f.data, 'service: { x: 1 }'), 250);
         Assert.equal(await change, true);
     });
 });

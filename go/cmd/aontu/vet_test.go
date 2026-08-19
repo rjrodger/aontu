@@ -440,9 +440,14 @@ func TestVetWatchStreamsAReportPerChange(t *testing.T) {
 	saved := vetWatchWait
 	defer func() { vetWatchWait = saved }()
 	calls := 0
-	vetWatchWait = func(files []string) bool {
+	vetWatchWait = func(files []string, before string) bool {
 		if s != files[0] || d != files[1] {
 			t.Fatalf("files: %v", files)
+		}
+		// The baseline is recorded BEFORE the run it follows, so a save
+		// landing during the run still reads as a change.
+		if "" == before {
+			t.Fatal("baseline signature missing")
 		}
 		if 0 == calls {
 			calls++
@@ -475,9 +480,10 @@ func TestVetWatchWaitSeesAChange(t *testing.T) {
 
 	dir := t.TempDir()
 	missing := filepath.Join(dir, "not-yet.json")
+	files := []string{missing}
 
 	done := make(chan bool)
-	go func() { done <- watchWait([]string{missing}) }()
+	go func() { done <- watchWait(files, watchSignature(files)) }()
 	time.Sleep(60 * time.Millisecond)
 	if err := os.WriteFile(missing, []byte("service: {}"), 0o600); err != nil {
 		t.Fatal(err)

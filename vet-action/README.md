@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       # Fail the job if deploy.json does not satisfy service.aon.
       - uses: rjrodger/aontu/vet-action@main
@@ -48,5 +48,7 @@ jobs:
 Inputs: `schema` (required), `data` (required, whitespace-separated),
 `format` (`text`/`json`/`sarif`), `output-file`, `args` (extra flags,
 e.g. `--at $.services --closed --partial`), `version` (npm version of
-`aontu` to run, default `latest`). Output: `exit-code`, the verdict
-class (0 valid, 1 invalid, 2 usage, 3 incomplete, 4 schema error).
+`aontu` to run; the default is pinned to the CLI release this Action
+revision shipped with, so a pinned Action cannot silently acquire a
+newer CLI). Output: `exit-code`, the verdict class (0 valid, 1
+invalid, 2 usage, 3 incomplete, 4 schema error).

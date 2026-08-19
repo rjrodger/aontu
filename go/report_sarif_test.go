@@ -179,3 +179,46 @@ func TestSarifEmpty(t *testing.T) {
 		t.Fatalf("driver: %+v", log.Runs[0].Tool.Driver)
 	}
 }
+
+// A FAILED run (verdict error: the schema was unusable) also has empty
+// results; the difference from a clean run is carried in SARIF's own
+// invocation metadata so a consumer never mistakes "could not check"
+// for "checked and clean".
+func TestSarifInvocationCarriesTheVerdict(t *testing.T) {
+	var log struct {
+		Runs []struct {
+			Invocations []struct {
+				ExecutionSuccessful bool `json:"executionSuccessful"`
+			} `json:"invocations"`
+		} `json:"runs"`
+	}
+
+	clean := VetReport{Verdict: VetValid, Findings: []VetFinding{}}
+	if err := json.Unmarshal([]byte(SarifReport(clean, "x")), &log); err != nil {
+		t.Fatal(err)
+	}
+	if !log.Runs[0].Invocations[0].ExecutionSuccessful {
+		t.Fatal("valid run should be executionSuccessful")
+	}
+
+	failed := VetReport{Verdict: VetError, Findings: []VetFinding{}}
+	if err := json.Unmarshal([]byte(SarifReport(failed, "x")), &log); err != nil {
+		t.Fatal(err)
+	}
+	if log.Runs[0].Invocations[0].ExecutionSuccessful {
+		t.Fatal("error run should not be executionSuccessful")
+	}
+}
+
+// A site's file is a filesystem path; the SARIF uri percent-encodes
+// every URI-significant byte (by UTF-8 byte, the identical loop to the
+// canonical port) — otherwise text after `#` reads as a fragment and
+// the consumer loses the file association.
+func TestSarifURIEncoding(t *testing.T) {
+	if got := sarifURI("a b#c%.aon"); "a%20b%23c%25.aon" != got {
+		t.Fatalf("uri: %q", got)
+	}
+	if got := sarifURI("dir/ok-1._~!$&'()*+,;=:@.aon"); "dir/ok-1._~!$&'()*+,;=:@.aon" != got {
+		t.Fatalf("safe set: %q", got)
+	}
+}
