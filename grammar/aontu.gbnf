@@ -61,7 +61,7 @@ element ::= spread | value
 func ::= name "(" ws ( value ( ws "," ws value )* ws )? ")"
 
 name ::=
-    "above" | "below" | "close" | "copy" | "deprecate" | "hide" | "key"
+    "above" | "below" | "close" | "copy" | "deprecate" | "hide" | "id" | "key"
   | "length" | "lower" | "max" | "min" | "move" | "must" | "neq"
   | "open" | "path" | "pref" | "re" | "same" | "super" | "type"
   | "unique" | "upper"

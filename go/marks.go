@@ -15,14 +15,34 @@ func propagateMarks(from, to Val) {
 	}
 }
 
-// canonDeprecation renders a value's canonical form wrapped in its
-// deprecation call when it carries one — reparseably, so
-// `deprecate(x, m)` round-trips through canon (G3 phase 4). Bags render
-// their children through this (MapVal/ListVal Canon), which is where a
-// deprecated FIELD — the realistic case — lives. Mirrors
-// canonDeprecation in ts/src/utility.ts.
-func canonDeprecation(v Val) string {
+// canonEntity is the IDENTITY wrapper (G4 phase 1): `id("svc/auth")&{…}`,
+// written as the conjunct an author writes, so canon reparses to the
+// same entity. This deliberately differs from the type/hide MARKS,
+// which canon drops (test/spec/marks.tsv, row `type-canon`): identity
+// is semantic content, and G6's canon-hash must see it — two documents
+// that disagree about which entity a node IS do not mean the same
+// thing and must not hash alike.
+//
+// The name is JSON-quoted whatever it spells: `-` is not a bare-text
+// character (test/spec/op-chars.tsv pins `a:6-2` as a parse error), so
+// an unquoted `id(team-pay)` would not reparse. Mirrors canonEntity in
+// ts/src/utility.ts.
+func canonEntity(v Val) string {
 	c := v.Canon()
+	if "" == v.entityName() {
+		return c
+	}
+	return "id(" + jsonString(v.entityName()) + ")&" + c
+}
+
+// canonRiders renders a value's canonical form wrapped in the RIDERS it
+// carries — the identity (G4 phase 1) and the deprecation record (G3
+// phase 4) — reparseably, so `id(name) & x` and `deprecate(x, m)`
+// survive canon. Bags render their children through this
+// (MapVal/ListVal Canon), which is where a marked FIELD — the realistic
+// case — lives. Mirrors canonRiders in ts/src/utility.ts.
+func canonRiders(v Val) string {
+	c := canonEntity(v)
 	d := v.deprecRec()
 	if nil == d {
 		return c
@@ -48,36 +68,60 @@ func canonDeprecation(v Val) string {
 // walkMark sets or clears the type/hide marks on a Val and all of its
 // descendants (the walk used by type(), hide() and copy()).
 func walkMark(v Val, setType, typeVal, setHide, hideVal bool) {
-	if setType {
-		v.setMarkType(typeVal)
-	}
-	if setHide {
-		v.setMarkHide(hideVal)
-	}
+	walkMarkVals(v, func(n Val) {
+		if setType {
+			n.setMarkType(typeVal)
+		}
+		if setHide {
+			n.setMarkHide(hideVal)
+		}
+	})
+}
+
+// walkClearEntity drops the identity from a value and everything under
+// it (G4 phase 1, clearing rules 1 and 2). A reference's clone and a
+// copy() are COPIES of an entity, not the entity: leaving the id on
+// would merge the copy straight back into the original — making
+// `copy()` a no-op for exactly the values it exists to detach, and
+// making `w:b:$.q.a & {y:2,z:3}` (row `ref-and-merge`,
+// test/spec/ref.tsv) push `y:2` back into `q.a`. It rides the same walk
+// as the mark clearing, and is called at the same two sites, mirroring
+// the `val.entity = undefined` lines in ts/src/val/RefVal.ts and
+// ts/src/val/CopyFuncVal.ts.
+func walkClearEntity(v Val) {
+	walkMarkVals(v, func(n Val) { n.setEntityName("") })
+}
+
+// walkMarkVals applies fn to a value and every value under it — the one
+// recursion shape the mark and identity walks share. It descends into
+// junction terms and FUNCTION ARGUMENTS as well as bag children,
+// because the TS `walk` in ts/src/utility.ts does: a mark walk that
+// stopped at bags would miss the (possibly shared) arg trees of a
+// pending call.
+func walkMarkVals(v Val, fn func(Val)) {
+	fn(v)
 	switch n := v.(type) {
 	case *MapVal:
 		for _, k := range n.keys {
-			walkMark(n.peg[k], setType, typeVal, setHide, hideVal)
+			walkMarkVals(n.peg[k], fn)
 		}
 	case *ListVal:
 		for _, e := range n.peg {
-			walkMark(e, setType, typeVal, setHide, hideVal)
+			walkMarkVals(e, fn)
 		}
 	case *ConjunctVal:
 		for _, t := range n.peg {
-			walkMark(t, setType, typeVal, setHide, hideVal)
+			walkMarkVals(t, fn)
 		}
 	case *DisjunctVal:
 		for _, t := range n.peg {
-			walkMark(t, setType, typeVal, setHide, hideVal)
+			walkMarkVals(t, fn)
 		}
 	case *PrefVal:
-		walkMark(n.peg, setType, typeVal, setHide, hideVal)
+		walkMarkVals(n.peg, fn)
 	case *FuncVal:
-		// TS walk recurses into a func's peg array, so mark walks reach
-		// (possibly shared) arg trees too.
 		for _, a := range n.peg {
-			walkMark(a, setType, typeVal, setHide, hideVal)
+			walkMarkVals(a, fn)
 		}
 	}
 }
@@ -86,4 +130,5 @@ func copyMarks(to, from Val) {
 	to.setMarkType(from.markedType())
 	to.setMarkHide(from.markedHide())
 	to.setDeprecRec(from.deprecRec())
+	to.setEntityName(from.entityName())
 }

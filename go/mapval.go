@@ -75,9 +75,9 @@ func (m *MapVal) Canon() string {
 			b.WriteByte('?')
 		}
 		b.WriteByte(':')
-		// canonDeprecation, not Canon: a deprecated field renders back
+		// canonRiders, not Canon: a deprecated field renders back
 		// as its `deprecate(x, m)` call, reparseably (G3).
-		b.WriteString(canonDeprecation(m.peg[k]))
+		b.WriteString(canonRiders(m.peg[k]))
 	}
 	b.WriteByte('}')
 	return b.String()
@@ -535,6 +535,21 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	if out.spread != nil {
 		spreadCj = out.spread
 	}
+
+	// The template REFUSED at parse (clearing rule 3, G4 phase 1): the
+	// bag itself is that refusal. Returning the nil here rather than
+	// only letting it reach the children is what makes an EMPTY bag
+	// with a bad template an error too — there are no children to carry
+	// it. Narrow to THIS code on purpose: a nil spread from any other
+	// cause keeps its existing behaviour of driving every key. Mirrors
+	// the same arm in ts/src/val/MapVal.ts and ts/src/val/ListVal.ts.
+	// NOT added to ctx.err here: a parse-time refusal is a nil IN THE
+	// TREE, and canon renders it (`{"a":nil}`) exactly as it renders a
+	// bad arity or an unknown function; generation is what reports it.
+	if nv, ok := spreadCj.(*NilVal); ok && "id_spread" == nv.why {
+		return nv
+	}
+
 	// Snapshot a path-dependent ref spread to its structural target once
 	// (see snapshotRefSpread), so later passes don't capture the
 	// source's own resolved key()/path() literals.

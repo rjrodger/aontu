@@ -89,13 +89,22 @@ function render(v, inh) {
     else {
         s = v.canon;
     }
+    // The IDENTITY is innermost, exactly as canon writes it (G4 phase
+    // 1). It is IN the hash — a node declared `id(svc/auth)` and the
+    // same node declared `id(svc/billing)` describe different systems,
+    // and a pin that could not tell them apart would be a pin on the
+    // shape rather than on the meaning.
+    const e = v.entity;
+    if (null != e) {
+        s = 'id(' + JSON.stringify(e) + ')&' + s;
+    }
     if (mtype && !inh.type) {
         s = 'type(' + s + ')';
     }
     if (mhide && !inh.hide) {
         s = 'hide(' + s + ')';
     }
-    // The deprecation record rides outermost, as canonDeprecation
+    // The deprecation record rides outermost, as canonRiders
     // renders it (the wrappers are all reparseable calls, so order only
     // has to be FIXED, and this matches the canon the G3 rows pinned).
     const d = v.deprecation;

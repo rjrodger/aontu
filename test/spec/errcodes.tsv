@@ -190,3 +190,19 @@ pref_not_instance	errcode	compat	0.53.0
 # not <path>=<value>. Class `parse` -- what is malformed is source
 # text -- and report-layer, so no NilVal ever carries it.
 patch_assignment	errcode	parse	0.53.0
+# THE IDENTITY MARK (G4 phase 1, `id(name)`). Three codes, three
+# classes, because three different things go wrong. `id_name` is the
+# argument refused: a name that is not one (a number, a map, a dotted
+# string) — class `parse`, what is wrong is the text. `id_conflict` is
+# two DIFFERENT names on one node — class `conflict`, an ordinary
+# failed meet, because one node cannot be two entities. `id_spread` is
+# clearing rule 3, a constant `id()` inside an `&:` template that
+# would declare every child of the bag to be one entity — class
+# `parse`, what is wrong is the template rather than any pair of
+# values it brought together. A CONTRADICTION between two positions of
+# the same entity is not in this list: it is the ordinary conflict of
+# whatever disagreed (`scalar_value` and friends), which is the whole
+# point of merging by unification.
+id_name	errcode	parse	0.53.0
+id_conflict	errcode	conflict	0.53.0
+id_spread	errcode	parse	0.53.0

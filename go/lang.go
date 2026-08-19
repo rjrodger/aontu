@@ -1960,6 +1960,9 @@ func listOfRawAt(n []any, depth int, sp int) *ListVal {
 		}
 		lv.peg = append(lv.peg, asValDepth(e, depth+1))
 	}
+	// Clearing rule 3 (G4 phase 1, identity.go): a CONSTANT id() in the
+	// template would declare every element to be one entity.
+	lv.spread = refuseSpreadId(lv.spread)
 	return lv
 }
 
@@ -1984,7 +1987,9 @@ func asValDepth(node any, depth int) Val {
 	case map[string]any:
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
-			mv.spread = sp.(Val)
+			// Clearing rule 3 (G4 phase 1, identity.go): a CONSTANT id()
+			// in the template would declare every child to be one entity.
+			mv.spread = refuseSpreadId(sp.(Val))
 		}
 		if opt, ok := n[optionalKey].([]string); ok {
 			mv.optional = opt

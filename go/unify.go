@@ -34,6 +34,32 @@ func unite(ctx *Ctx, a, b Val) Val {
 	if nil != ctx.prov {
 		ctx.prov.record(provPath, a, b, out)
 	}
+	// The IDENTITY survives every meet (G4 phase 1), by the same
+	// channel and for the same reason as the deprecation rider below.
+	// TWO DIFFERENT NAMES on one node is a contradiction, not a merge:
+	// one node cannot be two entities, and the error names both sites.
+	// Mirrors the identity rider in ts/src/unify.ts.
+	if nil != out && !out.Nil() {
+		ae, be := "", ""
+		if nil != a {
+			ae = a.entityName()
+		}
+		if nil != b {
+			be = b.entityName()
+		}
+		if "" != ae && "" != be && ae != be {
+			out = makeNilErr(ctx, "id_conflict", a, b)
+		} else if !isTop(out) {
+			e := ae
+			if "" == e {
+				e = be
+			}
+			if "" != e {
+				out.setEntityName(e)
+			}
+		}
+	}
+
 	// The deprecation record survives EVERY meet (G3 phase 4): the
 	// boolean marks have their own sweeps (conjunct, the bag walks),
 	// but a record lost in one meet shape is a use the tooling never
@@ -172,6 +198,13 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		}
 
 		res = unite(ctx, res, top())
+
+		// The identity merge, after the pass's own unification: the
+		// positions this pass produced are what there is to merge
+		// (identity.go, mirroring the mergeEntities call in the TS pass
+		// loop).
+		res = mergeEntities(ctx, res)
+
 		// MULTI-ERROR COLLECTION (G2 phase 6): the pass loop CONTINUES
 		// past an erroring pass, so independent failures a later pass
 		// would reach are collected in the same run — the break that

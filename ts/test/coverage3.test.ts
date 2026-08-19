@@ -37,6 +37,9 @@ import { collectDeprecations } from '../dist/utility'
 import { hcanon, canonHash } from '../dist/hcanon'
 import { projectFor } from '../dist/query'
 import { Provenance } from '../dist/provenance'
+import { IdFuncVal, idName } from '../dist/val/IdFuncVal'
+import { constantIdFunc, canonRiders } from '../dist/utility'
+import { nextValId } from '../dist/val/Val'
 import {
   candidates as trimCandidates,
   deleteAt as trimDeleteAt,
@@ -1070,6 +1073,115 @@ describe('coverage3-provenance', () => {
     Assert.deepEqual(prov.at(['k']).map((c: any) => c.canon), ['"a"', '"z"'])
     // A path nothing met has no record at all.
     Assert.deepEqual(prov.at(['nowhere']), [])
+  })
+
+})
+
+// G4 phase 1 — the identity internals no source reaches. Language
+// behaviour is pinned in test/spec/id.tsv; what is left here is the
+// engine's own shapes: arguments the parser never hands the function,
+// template containers the grammar cannot build, and the CYCLIC tree a
+// unified result actually is (a resolved reference shares its target),
+// which is what makes the walks' seen-guards load-bearing rather than
+// defensive.
+describe('coverage3-identity', () => {
+
+  test('id-name-argument-kinds', () => {
+    const ctx = new Aontu().ctx({})
+    // What spells a name, and what does not. `undefined` and a
+    // non-Val reach idName only through a direct call: the func
+    // dispatcher resolves every argument to a Val first.
+    for (const ok of ['a', 'svc/auth', 'team-pay', 'a_1', '0', 'A/b-c_1']) {
+      Assert.strictEqual(idName(new StringVal({ peg: ok }, ctx)), ok)
+    }
+    for (const bad of ['', 'svc.auth', 'a b', 'a:b', 'a$b']) {
+      Assert.strictEqual(idName(new StringVal({ peg: bad }, ctx)), undefined)
+    }
+    Assert.strictEqual(idName(new IntegerVal({ peg: 1 }, ctx)), undefined)
+    Assert.strictEqual(idName(new MapVal({ peg: {} }, ctx)), undefined)
+    Assert.strictEqual(idName(undefined), undefined)
+    Assert.strictEqual(idName({ isScalar: true, peg: 1 }), undefined)
+  })
+
+  test('id-func-shape', () => {
+    const ctx = new Aontu().ctx({})
+    const fn = new IdFuncVal({ peg: [new StringVal({ peg: 'x' }, ctx)] }, ctx)
+    Assert.strictEqual(fn.funcname(), 'id')
+    Assert.strictEqual((fn as any).isIdFunc, true)
+    // make() is the clone hook FuncBaseVal calls; it answers another
+    // IdFuncVal rather than the base class.
+    const made: any = fn.make(ctx, { peg: fn.peg })
+    Assert.strictEqual(made.isIdFunc, true)
+    // The unit it resolves to carries the name and a FRESH id: the
+    // pinned TopVal id 0 would collide in unite's done-pair fast path
+    // and drop an identity before the rider could carry it.
+    const out: any = fn.resolve(ctx, fn.peg as any)
+    Assert.strictEqual(out.isTop, true)
+    Assert.strictEqual(out.entity, 'x')
+    Assert.notStrictEqual(out.id, 0)
+    Assert.ok(nextValId() > 0)
+  })
+
+  test('constant-id-in-every-template-container', () => {
+    const ctx = new Aontu().ctx({})
+    const idfn = new IdFuncVal({ peg: [new StringVal({ peg: 'x' }, ctx)] }, ctx)
+    const keyed = new Aontu().unify('a:{&:id(key(0)),b:{}}') as any
+
+    // Every container a template can be. The bag arms are reached
+    // through peg; the spread arm is the off-peg tail.
+    const inMap = new MapVal({ peg: { a: idfn } }, ctx)
+    const inList = new ListVal({ peg: [idfn] }, ctx)
+    const inConjunct = new ConjunctVal({ peg: [idfn] }, ctx)
+    const withSpread: any = new MapVal({ peg: {} }, ctx)
+    withSpread.spread.cj = idfn
+
+    for (const v of [idfn, inMap, inList, inConjunct, withSpread]) {
+      Assert.strictEqual(constantIdFunc(v), idfn)
+    }
+    // ... and what carries no constant id at all.
+    for (const v of [undefined, null, 5, new MapVal({ peg: {} }, ctx),
+      new IntegerVal({ peg: 1 }, ctx), keyed]) {
+      Assert.strictEqual(constantIdFunc(v as any), undefined)
+    }
+
+    // The cycle guard: a unified tree is a graph, so a self-containing
+    // map is a shape the scan must survive rather than recurse into.
+    const cyc: any = new MapVal({ peg: {} }, ctx)
+    cyc.peg.self = cyc
+    Assert.strictEqual(constantIdFunc(cyc), undefined)
+  })
+
+  test('canon-riders-nest-identity-inside-deprecation', () => {
+    const ctx = new Aontu().ctx({})
+    const v: any = new IntegerVal({ peg: 1 }, ctx)
+    Assert.strictEqual(canonRiders(v), '1')
+    v.entity = 'team-pay'
+    Assert.strictEqual(canonRiders(v), 'id("team-pay")&1')
+    v.deprecation = { msg: 'gone' }
+    Assert.strictEqual(canonRiders(v),
+      'deprecate(id("team-pay")&1,{"msg":"gone"})')
+  })
+
+  test('identity-merge-walks-survive-a-cyclic-tree', () => {
+    // Both walks meet the same graph. Driven through Unify so the
+    // registry is the one the pass loop seeds.
+    const a0 = new Aontu()
+    const ctx = a0.ctx({})
+    const root: any = new MapVal({ peg: {} }, ctx)
+    root.peg.self = root
+    root.peg.k = new IntegerVal({ peg: 1 }, ctx)
+    root.entity = 'x'
+    const res: any = new Unify(root, undefined, ctx).res
+    Assert.strictEqual(res.entity, 'x')
+  })
+
+  test('identity-merge-converges-list-positions', () => {
+    // A list element is a POSITION: after the merge both elements hold
+    // the one value, not two equal ones.
+    const v: any = new Aontu().unify('a:[id(x) & {k:1}, id(x) & {j:2}]')
+    const list = v.peg.a
+    Assert.strictEqual(list.peg[0], list.peg[1])
+    Assert.strictEqual(list.peg[0].canon, '{"j":2,"k":1}')
   })
 
 })

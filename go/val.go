@@ -68,6 +68,8 @@ type Val interface {
 	setFromSpread()
 	deprecRec() map[string]string
 	setDeprecRec(rec map[string]string)
+	entityName() string
+	setEntityName(name string)
 	markedHide() bool
 	setMarkType(v bool)
 	setMarkHide(v bool)
@@ -117,9 +119,16 @@ type base struct {
 	// the value carries one optional record (keys msg/use/since, values
 	// strings). Propagated through meets by propagateMarks and carried
 	// by clonePath, exactly as the boolean marks are; canon renders it
-	// back reparseably (canonDeprecation). Mirrors Val.deprecation in
+	// back reparseably (canonRiders). Mirrors Val.deprecation in
 	// ts/src/val/Val.ts.
 	deprec map[string]string
+	// The IDENTITY (G4 phase 1, `id(name)`): the entity this value IS.
+	// A separate slot for the same reason the deprecation record has one
+	// — a boolean mark cannot hold a name — and carried through meets by
+	// the same rider in unite. Unlike the marks, Canon RENDERS it:
+	// identity is semantic content, and G6's canon-hash must see it.
+	// Empty means anonymous. Mirrors Val.entity in ts/src/val/Val.ts.
+	entity string
 	// spr records the identity of the spread constraint already merged
 	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
 	// applies ONCE per child, and later passes only self-unify.
@@ -192,11 +201,14 @@ func (b *base) setvpath(p []string) { b.path = p }
 func (b *base) markedType() bool                   { return b.mtype }
 func (b *base) deprecRec() map[string]string       { return b.deprec }
 func (b *base) setDeprecRec(rec map[string]string) { b.deprec = rec }
-func (b *base) markedHide() bool                   { return b.mhide }
-func (b *base) fromSpread() bool                   { return b.fspr }
-func (b *base) setFromSpread()                     { b.fspr = true }
-func (b *base) setMarkType(v bool)                 { b.mtype = v }
-func (b *base) setMarkHide(v bool)                 { b.mhide = v }
+
+func (b *base) entityName() string        { return b.entity }
+func (b *base) setEntityName(name string) { b.entity = name }
+func (b *base) markedHide() bool          { return b.mhide }
+func (b *base) fromSpread() bool          { return b.fspr }
+func (b *base) setFromSpread()            { b.fspr = true }
+func (b *base) setMarkType(v bool)        { b.mtype = v }
+func (b *base) setMarkHide(v bool)        { b.mhide = v }
 
 // notdone advances the done-counter without marking DONE.
 func (b *base) notdone() {

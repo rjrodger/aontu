@@ -46,6 +46,9 @@ var hints = map[string]string{
 	"parse_bad_src":      "Invalid source provided for parsing. The source must be a non-empty string.",
 	"merge_conflict":     "A version-control conflict marker was found in the source. The\nfile still holds an unresolved merge: resolve it and remove the\n`<<<<<<<`, `=======` and `>>>>>>>` lines before unifying.\n \nExamples:\n  <<<<<<< HEAD  -> nil  # A conflict marker, not a `<` operation;\n  =======       -> nil  # ... nor a chain of `=` characters;\n  >>>>>>> other -> nil  # ... nor a `>` operation.",
 	"include_denied":     "An @\"...\" include was refused by the active trust profile\n(docs/trust.md). The document asked to read a source the evaluation's\ninclude capability does not allow: widen the capability if the read is\nintended, or remove the include if it is not.\n \nExamples:\n  a:@\"in-root.aon\"    -> {..}  # Inside the confinement root: allowed;\n  a:@\"../secret.aon\"  -> nil   # ... but escaping the root is denied;\n  a:@\"/etc/hostname\"  -> nil   # ... and so is an absolute path outside it.",
+	"id_name":            "The argument to id() is not an entity name. A name is one or\nmore letters, digits, `_`, `-` or `/`, and NO dots: a dot separates\nan entity name from a path inside that entity, so a dotted name\nwould be ambiguous. A `-` must be quoted, because it is not a\nbare-text character.\n \nExamples:\n  id(svc/auth)   -> id   # Letters, digits and `/` may be bare;\n  id(\"team-pay\") -> id   # ... a `-` name must be quoted;\n  id(svc.auth)   -> nil  # ... a dot is a path separator, not a name;\n  id(1)          -> nil  # ... and a number is not a name at all.",
+	"id_conflict":        "One value was declared to be two different entities. An id() says\nwhat a value IS, so two names on one node is a contradiction, not a\nmerge — the same kind of failure as unifying 1 with 2. Give the node\none name, or give the two names to two nodes.\n \nExamples:\n  id(a) & id(a) & {}  -> {..}  # One entity, said twice;\n  id(a) & {x:1}       -> {..}  # ... an entity with content;\n  id(a) & id(b) & {}  -> nil   # ... but a node cannot be both.",
+	"id_spread":          "A spread template stamps one id() onto every child. `&: id(x) & …`\nsays that EVERY child of the bag is the entity `x`, and identity\nmerging would then unify all of them into one. Use a\npath-dependent name — `id(key())` — to give each child its own,\nor move the id() to the one child that has it.\n \nExamples:\n  {&: id(key()), a:{}, b:{}}  -> {..}  # A name per child;\n  {a: id(x) & {}}             -> {..}  # ... or one named child;\n  {&: id(x), a:{}, b:{}}      -> nil   # ... but not one name for all.",
 	"func_arity":         "This function was called with the wrong number of arguments:\n{func} takes {want}, but was given {got}.\n \nExamples:\n  upper(\"a\")     -> \"A\"  # One argument, which is what upper takes;\n  upper(\"a\",\"b\") -> nil  # ... so two is a mistake in the source;\n  key()          -> \"\"   # key takes none, or one level count;\n  neq(1,2,3)     -> neq  # ... and neq takes one or more exclusions.",
 	"elided_value":       "A key or element was written with no value after the colon. An\nelided value is a mistake in the source rather than a null: write\n`null` if that is what was meant, or supply the value.\n \nExamples:\n  a:null  -> null  # An explicit null, which is a value;\n  a:      -> nil   # ... but nothing at all is not;\n  a: b:1  -> {..}  # A colon chain is not an elision;\n  [1,]    -> [1]   # ... nor is a trailing comma.",
 	"unify_no_src":       "No source provided for unification. Cannot unify without source values.",
@@ -135,14 +138,23 @@ var codeClasses = map[string]string{
 	"sub_default_indeterminate": "compat",
 	"deprecated":                "compat",
 	"pref_not_instance":         "compat",
-	"patch_assignment":          "parse",
-	"func_arity":                "parse",
-	"elided_value":              "parse",
-	"unify_no_src":              "parse",
-	"incomplete_expression":     "parse",
-	"not_number":                "parse",
-	"negative":                  "parse",
-	"decimal_syntax":            "parse",
+	// G4 phase 1 -- the identity mark: a name that is not one
+	// (`id_name`, class parse), two different names on one node
+	// (`id_conflict`, class conflict -- an ordinary failed meet,
+	// because that is exactly what it is), and a constant id() inside
+	// an `&:` template (`id_spread`, class parse -- what is wrong is
+	// the template text). Registered in test/spec/errcodes.tsv.
+	"id_name":               "parse",
+	"id_conflict":           "conflict",
+	"id_spread":             "parse",
+	"patch_assignment":      "parse",
+	"func_arity":            "parse",
+	"elided_value":          "parse",
+	"unify_no_src":          "parse",
+	"incomplete_expression": "parse",
+	"not_number":            "parse",
+	"negative":              "parse",
+	"decimal_syntax":        "parse",
 
 	// conflict -- no common lower bound, or a value refused by a rule
 	// (constraint covers the whole algebra family: membership failure,

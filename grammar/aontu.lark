@@ -51,7 +51,7 @@ element: spread
 
 func: name "(" [value ("," value)*] ")"
 
-name: "above" | "below" | "close" | "copy" | "deprecate" | "hide" | "key"
+name: "above" | "below" | "close" | "copy" | "deprecate" | "hide" | "id" | "key"
     | "length" | "lower" | "max" | "min" | "move" | "must" | "neq"
     | "open" | "path" | "pref" | "re" | "same" | "super" | "type"
     | "unique" | "upper"

@@ -35,6 +35,12 @@ type Ctx struct {
 	// snapshotRefSpread in mapval.go), keyed by the ref's canon + source
 	// position — mirroring the snapmap on the TS unify root ctx.
 	snapmap map[string]Val
+	// entities is the identity registry (G4 phase 1): id -> the
+	// representative value every position carrying that id has been
+	// merged into. Same lifetime and placement as snapmap above — one
+	// evaluation, one set of entities — mirroring the `entities` map on
+	// the TS unify root ctx.
+	entities map[string]Val
 	// slot is the location the next Unify target is being driven at —
 	// the TS ctx.path equivalent. Producers (bag child loops, func arg
 	// loops, junction folds) set it right before a unite call; unite

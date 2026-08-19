@@ -36,6 +36,7 @@ grammar is [`grammar/aontu.gbnf`](../../grammar/aontu.gbnf) (and
 | `hide(x)` | evaluated, then dropped from the output |
 | `type(x)` | a definition, not a value: it generates nothing |
 | `deprecate(x, {msg:"…"})` | still works, and says so |
+| `id(svc/auth) & x` | this value IS that entity; every node with the name unifies |
 
 ## Constraints
 

@@ -659,8 +659,8 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of twenty-two built-in functions. There
-are no user-defined functions. Thirteen are the general-purpose
+Aontu provides a fixed set of twenty-three built-in functions. There
+are no user-defined functions. Fourteen are the general-purpose
 functions tabulated below; the other nine — `min(x)`, `max(x)`,
 `above(x)`, `below(x)`, `neq(x,...)`, `re(p)`, `length(c)`,
 `unique()` and `must(c,msg)` — are the constraint atoms, whose
@@ -681,6 +681,7 @@ meaning is defined in
 | `open(x)`   | reverse a `close`                             | `open(close({x:1})) & {y:2}`→`{x:1,y:2}` |
 | `move(p)`   | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
 | `path(p)`   | resolve a path expression (function form of a reference) | `path(x.a)` (relative), `path($.z.x.a)` (absolute) |
+| `id(name)`  | declare the enclosing value an **entity** called `name`; every node in the evaluation with that name is unified with every other. See [Identity](#identity-idname) | `services: auth: id(svc/auth) & {port:8080}` |
 | `deprecate(x, m)` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
 
 `super(x)` lifts its **argument** one step up the lattice, so for a
@@ -721,6 +722,121 @@ Functions compose with operators and references:
 `upper(a)+b`→`"Ab"`, `lower(1.1)+2`→`3`, `x:foo y:upper($.x)`→`y:"FOO"`,
 `[lower(A),lower(B)]`→`["a","b"]`, and a function may be a preferred
 default: `*upper(foo)`→`"FOO"`.
+
+## Identity: `id(name)`
+
+A document is a tree, and its only names are tree paths. `id(name)`
+adds a second, **location-independent** name: it declares that the
+value it is written on IS the entity called `name`.
+
+```aon
+services: auth: id(svc/auth) & {
+  kind: service
+  port: 8080
+}
+```
+
+**Every node in one evaluation carrying the same id is unified with
+every other.** Declaring two nodes the same entity *means* unifying
+them, so the two descriptions meet and any contradiction between them
+is an ordinary located error:
+
+```aon
+# catalog.aon
+catalog: payments: id(svc/payments) & { owner: "team-pay", tier: 1 }
+
+# deploy.aon
+deploy: eu1: payments: id(svc/payments) & { replicas: 3, tier: 2 }
+```
+
+Without the ids these two files evaluate together in silence —
+unification is path-aligned, so `tier:1` and `tier:2` are never
+brought into contact and a consumer of `catalog.payments.tier` reads
+a "fact" the deploy layout contradicts. With them, the run fails at
+the two `tier` sites. Identity links that cannot fail are how
+`owl:sameAs` produced silent corruption at web scale; unification
+inverts that.
+
+**The tree stays a tree.** After merging, *every* declared position
+holds the merged value, and generation emits it at each path —
+duplication, exactly as references generate today. Nothing is aliased
+or shared, and the output shape is unchanged:
+
+```
+a: id(x) & {k:1}
+b: id(x) & {j:2}
+                    →  {"a":{"j":2,"k":1},"b":{"j":2,"k":1}}
+```
+
+A node with an `id()` is an independent entity; a node without one is
+a component of its nearest identified ancestor, addressable only
+relative to it.
+
+### Names
+
+A name is one or more letters, digits, `_`, `-` or `/`, and **no
+dots** — a dot separates an entity name from a path inside that entity,
+so a dotted name would be ambiguous. `/` parses as bare text and may be
+written unquoted; `-` is not a bare-text character, so a name
+containing one must be quoted:
+
+```
+id(svc/auth)     id(a_1)     id("team-pay")     id("svc.auth") → error
+```
+
+Anything that is not a string — a number, a boolean, a map — is not a
+name (`id_name`). Two *different* names on one node is a contradiction,
+not a merge: one node cannot be two entities (`id_conflict`).
+
+### Canon and the hash
+
+Canon renders the identity back as the conjunct you wrote, so canon
+reparses to the same entity and re-reading is idempotent:
+
+```
+a: id(x) & {k:1}   →  canon  {"a":id("x")&{"k":1}}
+```
+
+This deliberately differs from the `type`/`hide` marks, which canon
+drops: identity is semantic content, not presentation, and the
+[canon-hash](#canonical-form) must see it — two documents that
+disagree about which entity a node is do not mean the same thing.
+
+### What does not carry identity
+
+Three rules keep identity from leaking into values that merely look
+like an entity:
+
+1. **A reference's clone does not carry the id.** `b: $.a & {j:2}`
+   constrains `b`, and does not push `j:2` back into `a`.
+2. **`copy()` clears the id**, as it clears the marks — a copy of an
+   entity is a second value shaped like it.
+3. **A spread template may not stamp a constant id on every child.**
+   `{&: id(svc/thing), a:{}, b:{}}` would declare every child to be one
+   entity; it is refused (`id_spread`). To name each child, use a
+   path-dependent argument — in a map template applied at the child
+   position that is `key(0)`, the child's own key:
+
+   ```aon
+   services: {
+     &: id(key(0))
+     auth:    { port: 8080 }
+     billing: { port: 8081 }
+   }
+   ```
+
+   Plain `key()` reads one level *up*, so in a template it names the
+   bag and every child collides on that one name. That is a defined
+   result rather than a refusal: rule 3 is a syntactic guard on
+   constants, and no parse-time check can know what a computed name
+   will resolve to.
+
+Because every position holds the one merged value, a mark on one
+declaration reaches all of them: `a: hide(id(x) & {k:1})` hides the
+entity, not just that declaration of it.
+
+Identity is scoped to **one evaluated document-set**. There is no
+cross-evaluation registry, and ids do not embed versions.
 
 ## Marks: `type` and `hide`
 

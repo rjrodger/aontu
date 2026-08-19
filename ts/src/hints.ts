@@ -152,6 +152,12 @@ const hints: Record<string, string> = {
 
   elided_value: 'A key or element was written with no value after the colon. An\nelided value is a mistake in the source rather than a null: write\n`null` if that is what was meant, or supply the value.\n \nExamples:\n  a:null  -> null  # An explicit null, which is a value;\n  a:      -> nil   # ... but nothing at all is not;\n  a: b:1  -> {..}  # A colon chain is not an elision;\n  [1,]    -> [1]   # ... nor is a trailing comma.',
 
+  id_name: 'The argument to id() is not an entity name. A name is one or\nmore letters, digits, `_`, `-` or `/`, and NO dots: a dot separates\nan entity name from a path inside that entity, so a dotted name\nwould be ambiguous. A `-` must be quoted, because it is not a\nbare-text character.\n \nExamples:\n  id(svc/auth)   -> id   # Letters, digits and `/` may be bare;\n  id("team-pay") -> id   # ... a `-` name must be quoted;\n  id(svc.auth)   -> nil  # ... a dot is a path separator, not a name;\n  id(1)          -> nil  # ... and a number is not a name at all.',
+
+  id_conflict: 'One value was declared to be two different entities. An id() says\nwhat a value IS, so two names on one node is a contradiction, not a\nmerge — the same kind of failure as unifying 1 with 2. Give the node\none name, or give the two names to two nodes.\n \nExamples:\n  id(a) & id(a) & {}  -> {..}  # One entity, said twice;\n  id(a) & {x:1}       -> {..}  # ... an entity with content;\n  id(a) & id(b) & {}  -> nil   # ... but a node cannot be both.',
+
+  id_spread: 'A spread template stamps one id() onto every child. `&: id(x) & …`\nsays that EVERY child of the bag is the entity `x`, and identity\nmerging would then unify all of them into one. Use a\npath-dependent name — `id(key())` — to give each child its own,\nor move the id() to the one child that has it.\n \nExamples:\n  {&: id(key()), a:{}, b:{}}  -> {..}  # A name per child;\n  {a: id(x) & {}}             -> {..}  # ... or one named child;\n  {&: id(x), a:{}, b:{}}      -> nil   # ... but not one name for all.',
+
   // Unification errors
   'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
   'unify_no_res': 'Unification produced no result. The values could not be unified.',
@@ -318,6 +324,18 @@ const codeClasses: Record<string, string> = {
   // <path>=<value>. Class `parse`, because what is malformed IS
   // source text; report-layer, so no NilVal carries it.
   patch_assignment: 'parse',
+
+  // G4 phase 1 -- the identity mark: a name that is not one, and two
+  // different names on one node. `id_name` is a parse-class refusal
+  // of the argument; `id_conflict` is a conflict like any other
+  // failed meet, because that is exactly what it is.
+  id_name: 'parse',
+  id_conflict: 'conflict',
+
+  // Clearing rule 3: a constant `id()` inside an `&:` template. Class
+  // `parse`, because what is wrong is the TEXT of the template rather
+  // than any pair of values it brought together.
+  id_spread: 'parse',
   func_arity: 'parse',
   elided_value: 'parse',
   unify_no_src: 'parse',

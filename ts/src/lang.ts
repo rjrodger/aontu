@@ -107,6 +107,7 @@ import { KeyFuncVal } from './val/KeyFuncVal'
 import { TypeFuncVal } from './val/TypeFuncVal'
 import { HideFuncVal } from './val/HideFuncVal'
 import { DeprecateFuncVal } from './val/DeprecateFuncVal'
+import { IdFuncVal } from './val/IdFuncVal'
 import { MoveFuncVal } from './val/MoveFuncVal'
 import { PathFuncVal } from './val/PathFuncVal'
 import { PrefFuncVal } from './val/PrefFuncVal'
@@ -455,8 +456,14 @@ help isolate the syntax error.`,
 
     // G3 phase 4: the deprecation mark. Unification-transparent; the
     // record rides the result (Val.deprecation) and canon renders the
-    // call back (canonDeprecation).
+    // call back (canonRiders).
     deprecate: DeprecateFuncVal,
+
+    // G4 phase 1: the identity mark. Written as a conjunct
+    // (`id(svc/auth) & {…}`), it resolves to the unit carrying the
+    // name, and every node in one evaluation with that name is
+    // unified with every other.
+    id: IdFuncVal,
   }
 
 
@@ -1393,6 +1400,7 @@ const funcArity: Record<string, [number, number]> = {
   neq: [1, -1],
   must: [2, 2],
   deprecate: [1, 2],
+  id: [1, 1],
 }
 
 

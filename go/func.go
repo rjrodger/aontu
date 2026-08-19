@@ -23,6 +23,7 @@ var funcSet = map[string]bool{
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
 	"re": true, "length": true, "unique": true, "must": true,
 	"deprecate": true,
+	"id":        true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -49,6 +50,8 @@ var funcArity = map[string][2]int{
 	"must":   {2, 2},
 	// G3 phase 4: the value, and its optional deprecation record.
 	"deprecate": {1, 2},
+	// G4 phase 1: the entity name.
+	"id": {1, 1},
 }
 
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
@@ -300,7 +303,13 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 			default:
 				out = newConjunct([]Val{f, peer})
 			}
-		} else if result.Dc() == DONE && isTop(peer) {
+		} else if result.Dc() == DONE && isTop(peer) && "" == peer.entityName() {
+			// The TOP peer is DROPPED as the unit it is — unless it
+			// carries an identity (G4 phase 1), which is content rather
+			// than the unit: `id(x) & id(y)` resolves both sides to a
+			// top, and taking this shortcut would silently keep one name
+			// and lose the other instead of refusing the pair. Mirrors
+			// the same guard in ts/src/val/FuncBaseVal.ts.
 			out = result
 		} else {
 			ctx.slot = base
@@ -419,6 +428,7 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		}
 		out := clonePath(args[0], cp(base))
 		walkMark(out, true, false, true, false) // copy clears marks
+		walkClearEntity(out)                    // ... and identity (G4 rule 2)
 		return out
 	case "key":
 		return keyFunc(ctx, f)
@@ -496,6 +506,21 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 			}
 		}
 		out.setDeprecRec(rec)
+		return out
+	case "id":
+		// G4 phase 1: the identity mark resolves to the UNIT carrying
+		// the name, so `id(x) & v` is `v` with an identity and the
+		// rider in unite does the stamping. Mirrors IdFuncVal.resolve
+		// in ts/src/val/IdFuncVal.ts.
+		if len(args) == 0 { //coverage:ignore arity is checked at parse
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		name, ok := idName(args[0])
+		if !ok {
+			return makeNilErrFull(ctx, "id_name", f, nil, "id", nil)
+		}
+		out := newTop()
+		out.setEntityName(name)
 		return out
 	case "super":
 		// super(x) is the lattice-superior of its ARGUMENT, not of the

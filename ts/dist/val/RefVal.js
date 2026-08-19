@@ -359,6 +359,14 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     (0, utility_1.walk)(out, (_key, val) => {
                         val.mark.type = false;
                         val.mark.hide = false;
+                        // REFERENCES DO NOT CARRY IDENTITY (G4 phase 1, clearing
+                        // rule 1). The clone is a copy of an entity, not the
+                        // entity: without this, `w:b:$.q.a & {y:2,z:3}` (row
+                        // `ref-and-merge`, test/spec/ref.tsv) would push `y:2`
+                        // back into `q.a` through the identity merge — pinned
+                        // behaviour, silently changed by a mark the author never
+                        // wrote at the reference site.
+                        val.entity = undefined;
                         return val;
                     });
                     //}

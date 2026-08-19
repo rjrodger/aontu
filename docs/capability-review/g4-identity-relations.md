@@ -1,7 +1,8 @@
 # G4: Identity and typed relations
 
-*Status: design proposal — nothing implemented. Per-phase status and the
-corrections this document needs are in the
+*Status: phases 0 and 1 (`id()`) have LANDED in both ports; phases 2–5
+remain design proposal. Per-phase status and the corrections this
+document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands
@@ -278,7 +279,14 @@ the same lifetime and placement as the ref-spread snapshot map in
 site. Each fixpoint pass, a position carrying an id unifies with
 the representative and updates it; positions converge across passes
 as chained references do today, within the `maxcc = 9` bound
-(`ts/src/unify.ts`). Whether bound exhaustion with an unconverged
+(`ts/src/unify.ts`).
+
+(As built, that is TWO walks per pass, not one — collect the
+representative over the whole tree, then write it back to every
+position. A single walk leaves the positions it already passed
+holding the pre-merge value, so the sites disagree about what the
+one entity is; see the departure note in
+[the register](progress.md#g4--identity-and-typed-relations).) Whether bound exhaustion with an unconverged
 merge is a distinct semantic error is owned by
 [G5](g5-trust-contract.md).
 
@@ -295,9 +303,17 @@ must pass unchanged under them:
 3. **Spread templates may not stamp one id onto every child.** An
    `id()` with a concrete argument inside an `&:` template is a
    located error (all children would merge into one entity). A
-   path-dependent argument is allowed — `&: id(svc/ + key()) & {…}`
-   gives each child a distinct id, resolved per destination by the
-   existing `spreadClone` machinery.
+   path-dependent argument is allowed — `&: id(key(0)) & {…}` gives
+   each child a distinct id, resolved per destination by the existing
+   `spreadClone` machinery.
+
+   (This line originally sketched `id(svc/ + key())`. There is no
+   string `+`, and `key()` reads one level UP — in a template applied
+   at the child position it names the BAG, so every child collides on
+   that one name. `key(0)` is the child's own key. The collision is a
+   defined result rather than a refusal: rule 3 is a syntactic guard
+   on CONSTANTS, and no parse-time check can know what a computed name
+   resolves to.)
 
 The entity/component distinction falls out free: a node with
 `id()` is an independent entity; a node without one is a component

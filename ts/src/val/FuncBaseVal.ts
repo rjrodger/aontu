@@ -123,7 +123,12 @@ class FuncBaseVal extends FeatureVal {
           const resolved = this.resolve(ctx, newpeg)
           // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
 
-          out = resolved.done && peer.isTop ? resolved :
+          // The TOP peer is DROPPED as the unit it is — unless it
+          // carries an identity (G4 phase 1), which is content rather
+          // than the unit: `id(x) & id(y)` resolves both sides to a
+          // top, and taking this shortcut would silently keep one
+          // name and lose the other instead of refusing the pair.
+          out = resolved.done && peer.isTop && null == peer.entity ? resolved :
             unite(te ? ctx.clone({ explain: ec(te, 'PEG') }) : ctx,
               resolved, peer, 'func-' + this.funcname() + '/' + this.id)
           propagateMarks(this, out)

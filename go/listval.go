@@ -36,9 +36,9 @@ func (l *ListVal) Canon() string {
 		if i > 0 {
 			b.WriteByte(',')
 		}
-		// canonDeprecation, not Canon: a deprecated element renders back
+		// canonRiders, not Canon: a deprecated element renders back
 		// as its `deprecate(x, m)` call, reparseably (G3).
-		b.WriteString(canonDeprecation(e))
+		b.WriteString(canonRiders(e))
 	}
 	b.WriteByte(']')
 	return b.String()
@@ -153,6 +153,20 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 	var spreadCj Val = top()
 	if out.spread != nil {
 		spreadCj = out.spread
+	}
+
+	// The template REFUSED at parse (clearing rule 3, G4 phase 1): the
+	// bag itself is that refusal. Returning the nil here rather than
+	// only letting it reach the children is what makes an EMPTY bag
+	// with a bad template an error too — there are no children to carry
+	// it. Narrow to THIS code on purpose: a nil spread from any other
+	// cause keeps its existing behaviour of driving every key. Mirrors
+	// the same arm in ts/src/val/MapVal.ts and ts/src/val/ListVal.ts.
+	// NOT added to ctx.err here: a parse-time refusal is a nil IN THE
+	// TREE, and canon renders it (`{"a":nil}`) exactly as it renders a
+	// bad arity or an unknown function; generation is what reports it.
+	if nv, ok := spreadCj.(*NilVal); ok && "id_spread" == nv.why {
+		return nv
 	}
 
 	// Driven base (see the matching comment in MapVal.Unify).

@@ -63,6 +63,17 @@ const EMPTY_ERR: any[] = Object.freeze([]) as unknown as any[]
 let ID = 1000
 
 
+// A fresh Val id, for the one carrier that cannot take the one its
+// class fixes: TopVal pins `id = 0` (there is only one top), and the
+// identity mark (G4 phase 1) resolves to a top that must NOT collide
+// with it — the fast path in `unite` returns early on two done Vals
+// with the same id, which would drop an identity before the rider
+// could carry it.
+export function nextValId(): number {
+  return ID++
+}
+
+
 abstract class Val {
   // Type-discriminator flags: defaults live on Val.prototype (see
   // bottom of this file). Each subclass overrides only its own
@@ -143,6 +154,14 @@ abstract class Val {
   // by propagateMarks and carried by clone, exactly as the boolean
   // marks are.
   deprecation?: Record<string, string>
+
+  // The IDENTITY (G4 phase 1, `id(name)`): the entity this value IS.
+  // A separate slot for the same reason the deprecation record has
+  // one — a boolean ValMark cannot hold a name — and carried through
+  // meets by the same rider in `unite`. Unlike the marks, canon
+  // RENDERS it: identity is semantic content, and G6's hash must see
+  // it.
+  entity?: string
 
   // Actual native value.
   peg: any = undefined
@@ -240,6 +259,9 @@ abstract class Val {
     out.mark.type = this.mark.type && (fullspec.mark?.type ?? true)
     out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true)
 
+    if (null != this.entity) {
+      out.entity = this.entity
+    }
     if (null != this.deprecation) {
       out.deprecation = this.deprecation
     }

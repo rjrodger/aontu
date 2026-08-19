@@ -68,7 +68,14 @@ const unite = (ctx, a, b, whence) => {
             if (a.done)
                 return a;
         }
-        else if (b !== undefined && b !== null) {
+        // ... and NOT on an instrumented run (G7 provenance). Both arms
+        // below answer with one operand and never reach the recorder at
+        // the tail, so an equal pair — two positions of one entity that
+        // agree, a clone meeting its source — contributed silently and
+        // `why` named one site where the Go port, whose recorder wraps the
+        // whole dispatcher, named both. Instrumented runs pay the slow
+        // path knowingly; uninstrumented ones pay one undefined check.
+        else if (b !== undefined && b !== null && undefined === ctx.prov) {
             if (a.done && b.done) {
                 if (a.id === b.id) {
                     // The deprecation record survives the fast path (G3).
@@ -81,7 +88,14 @@ const unite = (ctx, a, b, whence) => {
                     && !a.isNil && !b.isNil
                     && !a.isMap && !a.isList
                     && !a.isConjunct && !a.isDisjunct
-                    && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
+                    && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect
+                    // NOT two TOPs (G4 phase 1): every top has the same
+                    // (absent) peg, so this path treated any two as the same
+                    // value — true of the unit itself, false of a unit
+                    // CARRYING AN IDENTITY, and `id(x) & id(y)` is two of
+                    // those. The slow path answers the same thing for two
+                    // plain tops, and refuses the pair for two named ones.
+                    && !a.isTop && !b.isTop) {
                     // The deprecation record survives the fast path too (G3):
                     // `deprecate(5) & 5` short-circuits here.
                     if (null == a.deprecation && null != b.deprecation) {
@@ -237,6 +251,23 @@ const unite = (ctx, a, b, whence) => {
     if (undefined !== ctx.prov) {
         ctx.prov.record(ctx.path, a, b, out);
     }
+    // The IDENTITY survives every meet (G4 phase 1), by the same
+    // channel and for the same reason as the deprecation record below.
+    // TWO DIFFERENT NAMES on one node is a contradiction, not a merge:
+    // one node cannot be two entities, and the error names both sites.
+    if (null != out && true === out.isVal && !out.isNil) {
+        const ae = null != a ? a.entity : undefined;
+        const be = null != b ? b.entity : undefined;
+        if (null != ae && null != be && ae !== be) {
+            out = (0, err_1.makeNilErr)(ctx, 'id_conflict', a, b);
+        }
+        else if (!out.isTop) {
+            const e = ae ?? be;
+            if (null != e) {
+                out.entity = e;
+            }
+        }
+    }
     // The deprecation record survives EVERY meet (G3 phase 4): the
     // boolean marks have their own sweeps (ConjunctVal, the bag walks),
     // but a record lost in one meet shape is a use the tooling never
@@ -280,6 +311,88 @@ function residuePaths(v, max) {
     visit(v, true);
     return out;
 }
+// IDENTITY-MERGE (G4 phase 1): every node in one evaluation carrying
+// the same id is unified with every other. Declaring two nodes the
+// same entity MEANS unifying them, so this is not a lookup table —
+// it is a meet, and a contradiction between two declarations is an
+// ordinary conflict naming both sites.
+//
+// Run once per fixpoint pass, after the pass's own unification: a
+// position picks up the representative, the representative picks up
+// the position, and the two converge across passes exactly as chained
+// references do, inside the same `maxcc` bound.
+//
+// The tree stays a TREE. Every declared position holds the merged
+// value and generation emits it at each path — duplication, as
+// references generate today. Identity adds addressing, not a new
+// shape.
+function mergeEntities(ctx, root) {
+    const reg = ctx.entities;
+    // COLLECT, then APPLY — two walks, not one. A single walk merges
+    // each position into the representative as it meets it, which
+    // leaves the positions it already passed holding the pre-merge
+    // value: `a: id(x) & {k:1}` kept `{k:1}` while `b: id(x) & {j:2}`
+    // became `{j:2,k:1}`, and the two sites disagreed about what the
+    // one entity is. The representative is therefore settled over the
+    // WHOLE tree before any position is written.
+    // The ctx DESCENDS with the walk, so the merge's meet happens at the
+    // position's own path: a contribution `$.b.k` picked up from `$.a.k`
+    // is recorded against `$.b.k`, which is where a reader asking `why`
+    // stands. Merging under the root ctx instead filed every
+    // contribution at the top and left the positions themselves with an
+    // empty record — and the Go port, whose bag loops derive the base
+    // from the value's own path, already answered the useful way.
+    const collect = (node, seen, nctx) => {
+        if (null == node || true !== node.isVal || seen.has(node)) {
+            return;
+        }
+        seen.add(node);
+        const name = node.entity;
+        if (null != name) {
+            const rep = reg.get(name);
+            reg.set(name, null == rep || rep === node ? node :
+                unite(nctx, node, rep, 'entity'));
+        }
+        if ((true === node.isMap || true === node.isList) && null != node.peg) {
+            for (const k of Object.keys(node.peg)) {
+                collect(node.peg[k], seen, nctx.descend(k));
+            }
+        }
+    };
+    const apply = (node, seen) => {
+        if (null == node || true !== node.isVal || seen.has(node)) {
+            return node;
+        }
+        seen.add(node);
+        const name = node.entity;
+        if (null != name) {
+            const rep = reg.get(name);
+            if (null != rep && rep !== node) {
+                node = rep;
+                if (seen.has(node)) {
+                    return node;
+                }
+                seen.add(node);
+            }
+        }
+        if ((true === node.isMap || true === node.isList) && null != node.peg) {
+            for (const k of Object.keys(node.peg)) {
+                node.peg[k] = apply(node.peg[k], seen);
+            }
+        }
+        return node;
+    };
+    collect(root, new Set(), ctx);
+    // NOTHING TO APPLY. The collect walk is also the "does this document
+    // use identity at all?" answer, so a document that never says `id()`
+    // pays for one walk per pass rather than two — and the second walk,
+    // which is the one that WRITES, never runs over a tree it cannot
+    // change.
+    if (0 === reg.size) {
+        return root;
+    }
+    return apply(root, new Set());
+}
 class Unify {
     constructor(root, lang, ctx, src) {
         this.lang = lang || new lang_1.Lang();
@@ -317,6 +430,7 @@ class Unify {
             uctx.err = this.err;
             uctx.explain = this.explain;
             uctx.snapmap = new Map();
+            uctx.entities = new Map();
             const explain = null == ctx?.explain ? undefined : ctx?.explain;
             const te = explain && (0, utility_1.explainOpen)(uctx, explain, 'root', res);
             // NOTE: if true === res.done already, then this loop never needs to run.
@@ -354,6 +468,9 @@ class Unify {
                 // this (fan-in refs, spread templates, disjunct trials, nested
                 // conjuncts) are pinned as vet.tsv's multi-* rows in both
                 // ports.
+                // The identity merge, after the pass's own unification: the
+                // positions this pass produced are what there is to merge.
+                res = mergeEntities(uctx, res);
                 uctx = uctx.clone({ root: res });
             }
             // The pass budget is spent AND the final pass still made

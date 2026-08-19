@@ -48,6 +48,7 @@ const KeyFuncVal_1 = require("./val/KeyFuncVal");
 const TypeFuncVal_1 = require("./val/TypeFuncVal");
 const HideFuncVal_1 = require("./val/HideFuncVal");
 const DeprecateFuncVal_1 = require("./val/DeprecateFuncVal");
+const IdFuncVal_1 = require("./val/IdFuncVal");
 const MoveFuncVal_1 = require("./val/MoveFuncVal");
 const PathFuncVal_1 = require("./val/PathFuncVal");
 const PrefFuncVal_1 = require("./val/PrefFuncVal");
@@ -339,8 +340,13 @@ help isolate the syntax error.`,
         must: ConstraintVal_1.MustConstraintVal,
         // G3 phase 4: the deprecation mark. Unification-transparent; the
         // record rides the result (Val.deprecation) and canon renders the
-        // call back (canonDeprecation).
+        // call back (canonRiders).
         deprecate: DeprecateFuncVal_1.DeprecateFuncVal,
+        // G4 phase 1: the identity mark. Written as a conjunct
+        // (`id(svc/auth) & {…}`), it resolves to the unit carrying the
+        // name, and every node in one evaluation with that name is
+        // unified with every other.
+        id: IdFuncVal_1.IdFuncVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -1131,6 +1137,7 @@ const funcArity = {
     neq: [1, -1],
     must: [2, 2],
     deprecate: [1, 2],
+    id: [1, 1],
 };
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
 //

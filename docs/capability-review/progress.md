@@ -89,29 +89,29 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **71 `.tsv` files, 70
-   row-bearing, 2,650 rows**, in sixteen modes — `canon` 673, `gen`
-   539, `errc` 425, `gens` 303, `err` 233, `subsume` 94, `query` 92,
-   `errcode` 83, `vet` 53, `why` 39, `hcanon` 38, `diff` 28,
-   `patch` 23, `trim` 11, `hash` 9, `agentsmd` 7. Reproduce with
+   register's last update the suite is **72 `.tsv` files, 71
+   row-bearing, 2,723 rows**, in sixteen modes — `canon` 682, `gen`
+   539, `errc` 438, `gens` 337, `err` 237, `subsume` 94, `query` 92,
+   `errcode` 86, `vet` 53, `why` 43, `hcanon` 42, `diff` 28,
+   `patch` 23, `trim` 11, `hash` 11, `agentsmd` 7. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Thirty-six of forty-nine phases have moved; thirty-four of those are complete.
+Thirty-eight of forty-nine phases have moved; thirty-six of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
-| [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
+| [G4](g4-identity-relations.md) | Identity, relations | C | 2 | 0 | 4 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **34** | **2** | **13** |
+| | | **total** | **36** | **2** | **11** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -369,24 +369,73 @@ the doc's one-yardstick text would be wrong.
 
 ## G4 — identity and typed relations
 
-| Phase | Size | Status |
-|-------|------|--------|
-| **0** — semantics on paper | S | **NOT STARTED** |
-| **1** — `id()` | M | **NOT STARTED** |
-| **2** — `refer()` | M | **NOT STARTED** |
-| **3** — derived structures | S | **NOT STARTED** |
-| **4** — `std/system` vocabulary | M | **NOT STARTED** |
-| **5** — relation graph checks | L | **NOT STARTED** |
+| Phase | Size | Status | Pin |
+|-------|------|--------|-----|
+| **0** — semantics on paper | S | **LANDED** | The "Identity: `id(name)`" section of [`docs/reference-language.md`](../reference-language.md#identity-idname) — merge semantics, the name grammar, canon and the hash, the three clearing rules — plus `test/spec/id.tsv` (66 rows) and the three codes in `errcodes.tsv`. The design's phase-0 also called for `test/spec/refer.tsv`; that ships with phase 2, which owns `refer()`. |
+| **1** — `id()` | M | **LANDED** | `ts/src/val/IdFuncVal.ts` and the `"id"` arm of `go/func.go`; the `entity` slot on the carriers (`ts/src/val/Val.ts`, `go/val.go`) with the rider in `unite` in both ports; the registry on the unify root context (`ts/src/unify.ts` `entities`, `go/ctx.go`) and the per-pass `mergeEntities` walk (`go/identity.go`); canon through `canonRiders` (renamed from `canonDeprecation`, now rendering both riders) and the hash form through `hcanon`; clearing rules in `RefVal`/`CopyFuncVal` (TS) and `ref.go`/`func.go` via `walkClearEntity` (Go), and rule 3 at bag construction in both. `id` added to the arity tables, the LSP completion list, and both published grammars. **Departures:** see below. |
+| **2** — `refer()` | M | **NOT STARTED** |  |
+| **3** — derived structures | S | **NOT STARTED** |  |
+| **4** — `std/system` vocabulary | M | **NOT STARTED** |  |
+| **5** — relation graph checks | L | **NOT STARTED** |  |
 
-No G4 artifact of any kind exists. Phase 5 additionally has no host:
-it is a vet-time pass, and `vet` does not exist.
+Phase 5 has a host now — `vet` exists (G2) — but no G4 artifact
+beyond phases 0 and 1.
 
-**One note for whoever starts G4.1.** The doc says the two new builtins
-"join `funcMap`". G1's atoms did not: they route through a separate
-`constraintAtoms` table (`go/constraint.go`, noted at `go/func.go`), so
-"join funcMap" now has two shapes to choose between. Arity is also a
-parse-time check for all twenty-one builtins since commit `c8b4c54`, so
-a new builtin must add entries to the arity tables in both ports.
+**Departures recorded by G4.1.**
+
+1. **The merge is COLLECT-then-APPLY, two walks per pass, not one.**
+   The design's "a position carrying an id unifies with the
+   representative and updates it" reads as a single walk, and a single
+   walk is wrong: it leaves every position it already passed holding
+   the pre-merge value, so `a: id(x) & {k:1}` kept `{k:1}` while
+   `b: id(x) & {j:2}` became `{j:2,k:1}` and the two sites disagreed
+   about what the one entity is. The representative is settled over
+   the whole tree before any position is written.
+2. **`id(key(0))`, not `id(key())`, is the per-child spread name.**
+   The design sketched `&: id(svc/ + key())`; there is no string `+`,
+   and more importantly `key()` reads one level UP (`func.tsv`,
+   `key-one`), so in a template applied at the child position it names
+   the BAG and every child collides on that one name. `key(0)` is the
+   child's own key. The collision case is a defined result rather than
+   a refusal — rule 3 is a syntactic guard on CONSTANTS, and no
+   parse-time check can know what a computed name resolves to — and is
+   pinned as such (`spread-key-id-collides`).
+3. **Rule 3's refusal makes the BAG the error, not only its children.**
+   Placing the nil as the template alone would leave an empty bag with
+   a bad template silently fine. The bag returns it, narrowed to this
+   one code so a nil template from any other cause keeps its existing
+   per-key behaviour.
+4. **Marks reach every position of an entity.** `a: hide(id(x) & {k:1})`
+   hides the entity, not just that declaration of it, because every
+   position holds the one merged value. A consequence of the design's
+   own "every declared position holds the merged value", surprising
+   enough to pin (`merge-hide-covers-every-position`).
+5. **Identity is a slot, not a mark, and canon renders it** — as the
+   design says — which required `canonDeprecation` to become
+   `canonRiders` in both ports, rendering identity inside the
+   deprecation wrapper. The order only has to be FIXED (both wrappers
+   are reparseable calls); this one matches the canon the G3 rows
+   already pinned.
+6. **The merge is PROVENANCE-VISIBLE, and aligning that moved the
+   canonical implementation twice.** `why $.b.k`, where `b` picked `k`
+   up from another declaration of the same entity, has to name the
+   site that wrote it. Two long-standing structural differences
+   between the ports surfaced the moment a merge brought a peer whose
+   children the recorder counts as WRITTEN (a reference's clone's do
+   not, which is why nothing had caught them): TypeScript CARRIED a
+   peer-only key where Go unites it with TOP, and TypeScript's
+   equal-pair fast path in `unite` returned before the recorder at the
+   tail of the slow path where Go's recorder wraps the whole
+   dispatcher. Both are now conditional on `ctx.prov` — instrumented
+   runs take the meet, uninstrumented ones are untouched — and the
+   four `why` rows in `id.tsv` pin the result.
+
+**The funcMap note, now answered.** The doc said the two new builtins
+"join `funcMap`"; G1's atoms did not, routing through
+`constraintAtoms` instead. `id()` takes the funcMap road — it is an
+ordinary function that resolves to a value, not a residual constraint
+— and, as the note required, added its entry to the arity tables in
+both ports. The builtin roster is now twenty-three.
 
 ## G5 — a specified trust contract
 

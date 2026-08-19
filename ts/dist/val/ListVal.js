@@ -8,6 +8,7 @@ const utility_1 = require("../utility");
 const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
+const NilVal_1 = require("./NilVal");
 const BagVal_1 = require("./BagVal");
 const provenance_1 = require("../provenance");
 class ListVal extends BagVal_1.BagVal {
@@ -28,6 +29,21 @@ class ListVal extends BagVal_1.BagVal {
                             new ConjunctVal_1.ConjunctVal({ peg: spread.v }, ctx) :
                             spread.v[0] :
                         spread.v;
+                // Clearing rule 3 (G4 phase 1): a CONSTANT id in the template
+                // would declare every child to be one entity. The refusal
+                // replaces the template, so it reaches every child and the
+                // bag itself (see the isNil arm where the spread is applied)
+                // as ONE nil identity — made here, once, rather than per
+                // pass, so the report names it once.
+                const idfn = (0, utility_1.constantIdFunc)(this.spread.cj);
+                if (undefined !== idfn) {
+                    const nil = new NilVal_1.NilVal({ why: 'id_spread' }, ctx);
+                    nil.site.row = idfn.site.row;
+                    nil.site.col = idfn.site.col;
+                    nil.site.url = idfn.site.url;
+                    nil.primary = idfn;
+                    this.spread.cj = nil;
+                }
                 // let tmv = Array.isArray(spread.v) ? spread.v : [spread.v]
                 // this.spread.cj = new ConjunctVal({ peg: tmv }, ctx)
             }
@@ -70,6 +86,20 @@ class ListVal extends BagVal_1.BagVal {
         if (!exit) {
             out.dc = this.dc + 1;
             let spread_cj = out.spread.cj || TOP;
+            // The template REFUSED at construction (clearing rule 3, G4
+            // phase 1): the bag itself is that refusal. Returning the nil
+            // here rather than only letting it reach the children is what
+            // makes an EMPTY bag with a bad template an error too — there
+            // are no children to carry it.
+            //
+            // Narrow to THIS code on purpose. A nil spread from any other
+            // cause keeps its existing behaviour of driving every key
+            // (coverage3 `nil-spread-drives-every-key`): a template that has
+            // merely not resolved yet must not permanently kill the bag that
+            // holds it.
+            if ('id_spread' === spread_cj.why) {
+                return spread_cj;
+            }
             // Always unify children first
             for (let key in this.peg) {
                 const keyctx = ctx.descend(key);
@@ -207,9 +237,9 @@ class ListVal extends BagVal_1.BagVal {
             // key. The Go port's ListVal.Canon has no such arm either, and the
             // two canons must agree -- a canon is round-trippable, and a marker
             // on an element the grammar cannot produce would not reparse.
-            // canonDeprecation, not .canon: a deprecated element renders
+            // canonRiders, not .canon: a deprecated element renders
             // back as its `deprecate(x, m)` call, reparseably (G3).
-            keys.map(k => (0, utility_1.canonDeprecation)(this.peg[k])).join(',') +
+            keys.map(k => (0, utility_1.canonRiders)(this.peg[k])).join(',') +
             ']';
     }
 } /* node:coverage ignore next 8 */

@@ -9,7 +9,7 @@
 // unify, which is not wanted. Boolean ValMarks cannot hold a record,
 // so the Val carries one optional field (Val.deprecation), propagated
 // by the same channel as the marks (propagateMarks) and rendered back
-// reparseably by canon (canonDeprecation).
+// reparseably by canon (canonRiders).
 
 import type {
   Val,
