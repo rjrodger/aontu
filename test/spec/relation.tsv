@@ -1,0 +1,73 @@
+# G4 phase 5: RELATION GRAPH CHECKS
+# (docs/capability-review/g4-identity-relations.md). Acyclicity and
+# inverse consistency over the edge set, checked AFTER unification and
+# never by it.
+#
+# Why not in the lattice. Both properties are GLOBAL and NON-MONOTONE:
+# an acyclic graph becomes cyclic when one more edge unifies in, and an
+# inverse that is present becomes absent when the far side is narrowed.
+# The lattice guarantee is that more information never falsifies what
+# has been observed, so a constraint that could be true and then false
+# is not a constraint the lattice may hold. These are facts about the
+# finished model, and a verb that reports facts about a finished model
+# is where they belong.
+#
+# A relation is DECLARED as data, under the `relations` key of the
+# document root, which is the std/system vocabulary's convention.
+# Nothing in the ENGINE knows that name; this pass does.
+#
+# Mode `relation`, four columns; `expect` is the whole report as JSON.
+# Findings are sorted by the position of the offending edge, and a
+# cycle walk visits its roots and successors in sorted order, so the
+# cycle a report names is the same one in both ports.
+#
+# Every expectation was obtained by the parity probe (AGENTS.md).
+no-relations-declared	relation	a: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {}	{"verdict":"pass","findings":[]}
+relation-declared-nothing-asked	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {target: top}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {}	{"verdict":"pass","findings":[]}
+
+# --- Acyclicity -------------------------------------------------------
+#
+# Asked for by `acyclic: true` and by nothing else: a cycle in a
+# relation nobody declared acyclic is DATA, and the engine has no
+# opinion about it. A cycle is reported ONCE, with the entities it runs
+# through closing back on the first, and only for the relation that
+# asked. An edge into a node INSIDE an entity is an edge to that
+# entity: a relation holds between entities, and the path inside one
+# says which part of it the link reaches.
+acyclic-holds	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {}	{"verdict":"pass","findings":[]}
+acyclic-two-cycle	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {dependsOn: [&: refer(), a]}	{"verdict":"fail","findings":[{"code":"relation_cycle","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","b","a"]}]}
+acyclic-three-cycle	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {dependsOn: [&: refer(), c]}\nc: id(c) & {dependsOn: [&: refer(), a]}	{"verdict":"fail","findings":[{"code":"relation_cycle","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","b","c","a"]}]}
+acyclic-self-cycle	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: id(a) & {dependsOn: [&: refer(), a]}	{"verdict":"fail","findings":[{"code":"relation_cycle","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","a"]}]}
+acyclic-diamond-is-not-a-cycle	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: id(a) & {dependsOn: [&: refer(), b, c]}\nb: id(b) & {dependsOn: [&: refer(), d]}\nc: id(c) & {dependsOn: [&: refer(), d]}\nd: id(d) & {}	{"verdict":"pass","findings":[]}
+acyclic-not-asked-for	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {target: top}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {dependsOn: [&: refer(), a]}	{"verdict":"pass","findings":[]}
+acyclic-only-its-own-relation	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: id(a) & {dependsOn: [&: refer(), b], seeAlso: [&: refer(), b]}\nb: id(b) & {seeAlso: [&: refer(), a]}	{"verdict":"pass","findings":[]}
+acyclic-into-a-node-inside-an-entity	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: id(a) & {ports: {p: {}}, dependsOn: [&: refer(), "b.ports.p"]}\nb: id(b) & {ports: {p: {}}, dependsOn: [&: refer(), "a.ports.p"]}	{"verdict":"fail","findings":[{"code":"relation_cycle","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","b","a"]}]}
+
+# --- Inverse consistency ----------------------------------------------
+#
+# For each `a --dependsOn--> b`, `b` must carry `a` under the declared
+# inverse. The report names the exact missing entry -- the two ends and
+# the relation that should have mirrored it -- and one per edge, because
+# each missing entry is its own repair. DERIVING the inverse (writing
+# `usedBy` for the author) is field generation, and waits for the
+# generation combinators; this validates only.
+inverse-holds	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {inverse: usedBy}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {usedBy: [&: refer(), a]}	{"verdict":"pass","findings":[]}
+inverse-missing	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {inverse: usedBy}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {}	{"verdict":"fail","findings":[{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","b","usedBy"]}]}
+inverse-missing-names-the-entry	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {inverse: usedBy}}\na: id(a) & {dependsOn: [&: refer(), b, c]}\nb: id(b) & {usedBy: [&: refer(), a]}\nc: id(c) & {}	{"verdict":"fail","findings":[{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.a.dependsOn.1","detail":["a","c","usedBy"]}]}
+inverse-wrong-way-round	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {inverse: usedBy}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {usedBy: [&: refer(), b]}	{"verdict":"fail","findings":[{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","b","usedBy"]}]}
+inverse-and-acyclic-together	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {inverse: usedBy, acyclic: true}}\na: id(a) & {dependsOn: [&: refer(), b]}\nb: id(b) & {dependsOn: [&: refer(), a]}	{"verdict":"fail","findings":[{"code":"relation_cycle","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","b","a"]},{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.a.dependsOn.0","detail":["a","b","usedBy"]},{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.b.dependsOn.0","detail":["b","a","usedBy"]}]}
+two-relations-declared	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}, seeAlso: $.std.Relation & {inverse: seeAlso}}\na: id(a) & {dependsOn: [&: refer(), b], seeAlso: [&: refer(), b]}\nb: id(b) & {}	{"verdict":"fail","findings":[{"code":"relation_inverse_missing","relation":"seeAlso","at":"$.a.seeAlso.0","detail":["a","b","seeAlso"]}]}
+
+# --- What the pass does not do ---------------------------------------
+#
+# An edge outside every entity has no source to be a relation OF. A
+# document that does not stand up is not a document with a bad graph:
+# the errors it already has are the answer. And a `relations` entry
+# that is not a map declares nothing.
+edge-outside-an-entity-is-not-a-relation	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {inverse: usedBy}}\ndependsOn: [&: refer(), b]\nb: id(b) & {}	{"verdict":"pass","findings":[]}
+broken-document-is-not-blamed-on-relations	relation	@"std/system"\nrelations: {dependsOn: $.std.Relation & {acyclic: true}}\na: 1 & 2	{"verdict":"error","findings":[]}
+relations-that-are-not-maps-are-skipped	relation	relations: {dependsOn: 1}\na: id(a) & {dependsOn: [&: refer(), a]}	{"verdict":"pass","findings":[]}
+the-worked-example	relation	@"std/system"\n\nservices: {\n  auth: id(svc/auth) & $.std.Service & {}\n  billing: id(svc/billing) & $.std.Service & {dependsOn: [&: refer(), svc/auth]}\n}\nrelations: {\n  dependsOn: $.std.Relation & {target: $.std.Service, inverse: dependedOnBy, acyclic: true}\n}	{"verdict":"fail","findings":[{"code":"relation_inverse_missing","relation":"dependsOn","at":"$.services.billing.dependsOn.0","detail":["svc/billing","svc/auth","dependedOnBy"]}]}
+# A root that is not a map declares no relations: there is nowhere for
+# `relations` to be.
+non-map-root	relation	[1,2]	{"verdict":"pass","findings":[]}

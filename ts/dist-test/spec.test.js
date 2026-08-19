@@ -339,6 +339,15 @@ function runRow(row) {
         const report = (0, aontu_1.trimCheck)(row.src);
         Assert.strictEqual((0, aontu_1.exactJSON)({ redundant: report.redundant, verdict: report.verdict }), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `trim report mismatch: ${row.name}`);
     }
+    else if ('relation' === row.mode) {
+        // RELATION GRAPH CHECKS (G4 phase 5): acyclicity and inverse
+        // consistency over the edge set, compared as the whole report.
+        // Both are GLOBAL and NON-MONOTONE, which is why they are checked
+        // after unification and never by it — a lattice citizen may not be
+        // falsified by more information, and one more edge is more
+        // information.
+        Assert.strictEqual((0, aontu_1.exactJSON)((0, aontu_1.relationCheck)(row.src)), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `relation report mismatch: ${row.name}`);
+    }
     else if ('graph' === row.mode) {
         // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
         // edge set of the unified document, compared whole. Both are

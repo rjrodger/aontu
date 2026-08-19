@@ -75,7 +75,7 @@ import * as Path from 'node:path'
 
 import {
   Aontu, exactJSON, vet, subsume, trimCheck, hcanon, canonHash, get, why,
-  graphOf,
+  graphOf, relationCheck,
   patch, diff, agentsMd,
 } from '../dist/aontu'
 import { codeClasses } from '../dist/hints'
@@ -392,6 +392,18 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       exactJSON({ redundant: report.redundant, verdict: report.verdict }),
       exactJSON(JSON.parse(row.expect)),
       `trim report mismatch: ${row.name}`)
+  }
+  else if ('relation' === row.mode) {
+    // RELATION GRAPH CHECKS (G4 phase 5): acyclicity and inverse
+    // consistency over the edge set, compared as the whole report.
+    // Both are GLOBAL and NON-MONOTONE, which is why they are checked
+    // after unification and never by it — a lattice citizen may not be
+    // falsified by more information, and one more edge is more
+    // information.
+    Assert.strictEqual(
+      exactJSON(relationCheck(row.src)),
+      exactJSON(JSON.parse(row.expect)),
+      `relation report mismatch: ${row.name}`)
   }
   else if ('graph' === row.mode) {
     // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the

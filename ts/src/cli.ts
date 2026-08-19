@@ -15,7 +15,8 @@ import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
 import {
-  Aontu, AontuError, exactJSON, vet, subsume, trimCheck, hcanon, canonHash,
+  Aontu, AontuError, exactJSON, vet, subsume, trimCheck, relationCheck,
+  hcanon, canonHash,
   get, why, patch, agentsMd,
 } from './aontu'
 import { sarifReport } from './report-sarif'
@@ -25,6 +26,7 @@ import type {
   SubsumeReport, SubsumeVerdict, SubsumeProfile,
 } from './subsume'
 import type { TrimReport, TrimVerdict } from './trim'
+import type { RelationReport, RelationVerdict } from './relation'
 import type { QueryView } from './query'
 import type { WhyRecord } from './provenance'
 import { agentsMdSplice } from './agentsmd'
@@ -38,6 +40,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
+       aontu relations [options] <file>
        aontu hash [options] <file>
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
@@ -1378,6 +1381,91 @@ function renderTrimJson(report: TrimReport): string {
 }
 
 
+// The relation reporter (G4 phase 5): acyclicity and inverse
+// consistency over the edge set. A verb of its own rather than a leg of
+// `vet`, for the reason `trim` is one: vet answers "does this DOCUMENT
+// satisfy that SCHEMA", and these are facts about one finished model,
+// with no schema on the other side of the question.
+
+const RELATIONS_HELP = 'aontu relations <file> (try --help)'
+
+const RELATIONS_EXIT: Record<RelationVerdict, number> = {
+  pass: 0,
+  fail: 1,
+  error: 4,
+}
+
+function runRelations(argv: string[]): number {
+  const files: string[] = []
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown relations option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length) {
+    process.stderr.write(`aontu: relations needs one file\n${RELATIONS_HELP}\n`)
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(files[0], 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = relationCheck(src, { path: files[0] })
+  const text = 'json' === format
+    ? renderRelationsJson(report)
+    : renderRelationsText(report)
+  process.stdout.write(text + '\n')
+  return RELATIONS_EXIT[report.verdict]
+}
+
+function renderRelationsText(report: RelationReport): string {
+  const head = `verdict: ${report.verdict}`
+  if (0 === report.findings.length) {
+    return head
+  }
+  const lines = report.findings.map((f) =>
+    'relation_cycle' === f.code
+      ? `${f.at}  ${f.relation}: cycle ${f.detail.join(' -> ')}`
+      : `${f.at}  ${f.relation}: ${f.detail[1]} does not list ` +
+      `${f.detail[0]} under ${f.detail[2]}`)
+  return [head, ''].concat(lines).join('\n')
+}
+
+function renderRelationsJson(report: RelationReport): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'relations' },
+    verdict: report.verdict,
+    findings: report.findings,
+  }, 2)
+}
+
+
 // ---------------------------------------------------------------------
 // The canon-hash (G6 phase 1): the pin an agent, a lockfile or a
 // registry stores for "this module, this meaning". The hash covers the
@@ -1954,6 +2042,10 @@ function main(argv: string[]): void {
     return finish(runHash(argv.slice(3)))
   }
 
+  if ('relations' === argv[2]) {
+    return finish(runRelations(argv.slice(3)))
+  }
+
   if ('trim' === argv[2]) {
     return finish(runTrim(argv.slice(3)))
   }
@@ -2010,7 +2102,7 @@ function main(argv: string[]): void {
   else {
     runStdin(mode, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 11 */
+} /* node:coverage ignore next 12 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
@@ -2018,7 +2110,8 @@ function main(argv: string[]): void {
 
 
 export {
-  evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, runGet,
+  evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations,
+  runHash, runGet,
   runWhy, renderWhyText, runSet, runAgentsMd,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
 }

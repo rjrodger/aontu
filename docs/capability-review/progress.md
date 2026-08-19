@@ -89,30 +89,31 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **75 `.tsv` files, 74
-   row-bearing, 2,829 rows**, in seventeen modes — `canon` 687, `gen`
+   register's last update the suite is **76 `.tsv` files, 75
+   row-bearing, 2,852 rows**, in eighteen modes — `canon` 687, `gen`
    539, `errc` 458, `gens` 383, `err` 240, `subsume` 94, `query` 92,
-   `errcode` 88, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
-   `diff` 28, `patch` 23, `hash` 12, `trim` 11, `agentsmd` 7.
+   `errcode` 90, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
+   `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
+   `agentsmd` 7.
    Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Forty-one of forty-nine phases have moved; thirty-nine of those are complete.
+Forty-two of forty-nine phases have moved; forty of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
-| [G4](g4-identity-relations.md) | Identity, relations | C | 5 | 0 | 1 |
+| [G4](g4-identity-relations.md) | Identity, relations | C | 6 | 0 | 0 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **39** | **2** | **8** |
+| | | **total** | **40** | **2** | **7** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -377,7 +378,7 @@ the doc's one-yardstick text would be wrong.
 | **2** — `refer()` | M | **LANDED** | `ts/src/val/ReferFuncVal.ts` (the `ReferFuncVal` call and the `ReferVal` residual it resolves to) and `go/refer.go`; the address grammar shared with the id grammar; the registry lookup, the constraint FLOW into the target and every position of its entity, and the last-pass existence decision; the residual added to `unite`'s driver list in both ports, and to the arity tables, the LSP completion list and both published grammars (where `refer` must be listed BEFORE `re`, the name set being an ordered choice). Codes `refer_address` and `refer_unresolved` in `errcodes.tsv`. Spec: `test/spec/refer.tsv` (52 rows). Docs: "Entity references" in [`docs/reference-language.md`](../reference-language.md#entity-references-refert). **Departures:** see below. |
 | **3** — derived structures | S | **LANDED** | `ts/src/graph.ts` and `go/graph.go`: the ENTITY INDEX (id → every tree path that holds it) and the EDGE SET (one entry per checked link: the entity it sits inside, the relation key, the address, and where it is written). Exposed as `result.graph` and the pure `graphOf(val)` in TypeScript and as `Aontu.Graph` in Go — each port following its own `deps` precedent — and documented in [`docs/reference-api.md`](../reference-api.md). A seventeenth spec mode, `graph`, carries the goldens (`test/spec/graph.tsv`, 27 rows); both runners re-derive on a fresh engine and require the same bytes, so DETERMINISM is asserted as a property rather than claimed. **Departures:** see below. |
 | **4** — `std/system` vocabulary | M | **LANDED** | `Port`, `Component`, `Service` and `Relation` as ordinary schemas, BUNDLED with the engine (`ts/src/std.ts`, `go/std.go` — the same bytes, pinned by `vocabulary-canon` and `vocabulary-hash` so the copies cannot drift) and served for `@"std/system"` from a leg ahead of the memory resolver in both ports, under every include capability but `none`. Manifest capability `std`; documented in [`docs/reference-language.md`](../reference-language.md#the-stdsystem-vocabulary), [`docs/reference-api.md`](../reference-api.md) and [`docs/trust.md`](../trust.md) (why a bundled source widens nothing). Spec: `test/spec/std-system.tsv` (23 rows), including the design's worked example and its graph. **Departures:** see below. |
-| **5** — relation graph checks | L | **NOT STARTED** |  |
+| **5** — relation graph checks | L | **LANDED** | `ts/src/relation.ts` and `go/relation.go`: `relationCheck(src)` / `Aontu.RelationCheck(src)` run ACYCLICITY and INVERSE CONSISTENCY over the derived edge set, after unification and never by it. `aontu relations <file>` in both CLIs (`--format json`), exit classes 0/1/4 as `trim` has, text and JSON byte-identical between the ports. Codes `relation_cycle` and `relation_inverse_missing` in `errcodes.tsv`, class `conflict`, report-layer — no NilVal carries either. An eighteenth spec mode, `relation`, carries the goldens (`test/spec/relation.tsv`, 21 rows). Documented in [`docs/reference-language.md`](../reference-language.md#declared-relations) and [`docs/reference-api.md`](../reference-api.md). **Departures:** see below. |
 
 Phase 5 has a host now — `vet` exists (G2) — but no G4 artifact
 beyond phases 0 and 1.
@@ -556,6 +557,35 @@ beyond phases 0 and 1.
    position that refers to the same thing) and only when there are
    marks to clear, because cloning an unmarked type moved the site an
    error names.
+
+**Departures recorded by G4.5.**
+
+1. **A verb of its own, not a leg of `vet`.** The design says "the vet
+   pass, delivered with G2's verb". `vet` answers "does this DOCUMENT
+   satisfy that SCHEMA" and takes two documents; these are facts about
+   ONE finished model, with no schema on the other side of the
+   question. `aontu relations` is the shape `trim` already
+   established for exactly that kind of check.
+2. **Relations are read from the `relations` key of the document
+   root.** The design shows them there and never says how the pass
+   finds them. That is now the rule, and it is the VOCABULARY's
+   convention rather than the engine's: nothing in the language knows
+   the name, and the checking pass says so where it uses it.
+3. **`target` is not checked here.** The design lists it beside
+   `inverse` and `acyclic`, but a relation's target constraint is what
+   `refer(t)` already flows into the addressed entity — checked by
+   unification, at the site, with a located error. Re-checking it after
+   the fact would answer the same question later and worse.
+4. **An edge into a node INSIDE an entity is an edge to that entity.**
+   `dependsOn: [&: refer(), "b.ports.p"]` is a dependency on `b`: a
+   relation holds between entities, and the path inside one says which
+   part of it the link reaches. Pinned, because it decides whether a
+   cycle through ports is a cycle.
+5. **One cycle per relation, not all of them.** A report that listed
+   every cycle would list the same edges many times over; the walk
+   visits its roots and successors in sorted order and stops at the
+   first, so the cycle a report names is the same one in both ports and
+   the next one appears when that one is fixed.
 
 **The funcMap note, now answered.** The doc said the two new builtins
 "join `funcMap`"; G1's atoms did not, routing through

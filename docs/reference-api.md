@@ -698,6 +698,16 @@ capability except `'none'`. It appears in the manifest with capability
 `std`. A host that wants a different vocabulary supplies its own source
 under its own name; the bundled one is engine-owned.
 
+**Relation checks.** `relationCheck(src)` in TypeScript and
+`Aontu.RelationCheck(src)` in Go run the
+[declared-relation](reference-language.md#declared-relations) checks —
+acyclicity and inverse consistency — over the derived edge set, and
+return `{verdict, findings}` with `verdict` one of `pass`, `fail` or
+`error`. `aontu relations <file>` is the same report from the command
+line (`--format json` for the machine-readable form). Findings are
+sorted by the position of the offending edge, so the report diffs
+cleanly.
+
 **The derived graph.** After a unification, an evaluated document's
 identity structure is observable too (G4):
 `result.graph` in TypeScript — also available as the pure function

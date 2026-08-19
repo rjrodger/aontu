@@ -968,6 +968,44 @@ Everything here is ordinary unification, so an author who wants a
 different vocabulary writes one the same way — and nothing in the
 language knows these names.
 
+### Declared relations
+
+`$.std.Relation` says what a relation IS, and two of its fields are
+checked over the whole finished model rather than by unification:
+
+```aon
+@"std/system"
+
+relations: {
+  dependsOn: $.std.Relation & { inverse: usedBy, acyclic: true }
+}
+
+a: id(a) & { dependsOn: [&: refer(), b] }
+b: id(b) & { usedBy:    [&: refer(), a] }
+```
+
+- **`acyclic: true`** — the edges under that relation must have no
+  cycle. The report names the entities the cycle runs through.
+- **`inverse: <name>`** — for each `a --dependsOn--> b`, `b` must carry
+  `a` under `<name>`. The report names the exact missing entry.
+
+`aontu relations <file>` runs them, and the library exposes
+`relationCheck(src)`. **Neither is a lattice constraint, deliberately.**
+Both properties are global and non-monotone: an acyclic graph becomes
+cyclic when one more edge unifies in, and an inverse that is present
+becomes absent when the far side is narrowed. The lattice guarantee is
+that more information never falsifies what has already been observed,
+so a constraint that could be true and then false is not one the
+lattice may hold. These are facts about a finished model, and a verb
+that reports facts about a finished model is where they belong.
+
+Relations are read from the `relations` key of the document root —
+the vocabulary's convention, not the engine's. Nothing in the language
+knows the name; the checking pass does.
+
+Writing the inverse **for** you is generation, not validation, and is
+not done here.
+
 ## Marks: `type` and `hide`
 
 Marks are boolean flags carried on a value (set by `type()` / `hide()`,

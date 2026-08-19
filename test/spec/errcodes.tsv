@@ -219,3 +219,11 @@ id_spread	errcode	parse	0.53.0
 # conflict of whatever disagreed, which is what constraint flow means.
 refer_address	errcode	parse	0.53.0
 refer_unresolved	errcode	reference	0.53.0
+# RELATION GRAPH CHECKS (G4 phase 5). Two report-layer codes, class
+# `conflict`: the model contradicts a property it declared for itself.
+# NEITHER is a NilVal code -- both are GLOBAL and NON-MONOTONE (an
+# acyclic graph becomes cyclic when one more edge unifies in), so they
+# are checked after unification and never by it. `aontu relations`
+# reports them; the lattice never sees them.
+relation_cycle	errcode	conflict	0.53.0
+relation_inverse_missing	errcode	conflict	0.53.0

@@ -23,6 +23,7 @@ import { patch } from './patch'
 import { diff } from './diff'
 import { agentsMd } from './agentsmd'
 import { graphOf } from './graph'
+import { relationCheck } from './relation'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -394,6 +395,7 @@ export {
   diff,
   agentsMd,
   graphOf,
+  relationCheck,
 }
 
 

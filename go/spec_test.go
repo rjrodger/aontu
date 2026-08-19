@@ -512,6 +512,24 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("trim report mismatch\n src: %q\n want: %s\n got:  %s",
 							src, want, got)
 					}
+				case "relation":
+					// RELATION GRAPH CHECKS (G4 phase 5): acyclicity and
+					// inverse consistency over the edge set, compared as
+					// the whole report. Both are GLOBAL and NON-MONOTONE,
+					// which is why they are checked after unification and
+					// never by it — a lattice citizen may not be falsified
+					// by more information, and one more edge is more
+					// information.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					got := specJSON(t, specAsMap(t, New().RelationCheck(src)))
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("relation report mismatch\n src: %q\n want: %s\n got:  %s",
+							src, want, got)
+					}
 				case "graph":
 					// THE DERIVED STRUCTURES (G4 phase 3): the entity index
 					// and the edge set of the unified document, compared

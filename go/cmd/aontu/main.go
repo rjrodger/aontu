@@ -27,6 +27,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
+       aontu relations [options] <file>
        aontu hash [options] <file>
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
@@ -356,6 +357,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	if 0 < len(args) && "breaking" == args[0] {
 		return runBreaking(args[1:], stdout, stderr)
 	}
+	if 0 < len(args) && "relations" == args[0] {
+		return runRelations(args[1:], stdout, stderr)
+	}
+
 	if 0 < len(args) && "trim" == args[0] {
 		return runTrim(args[1:], stdout, stderr)
 	}

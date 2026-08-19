@@ -1,8 +1,6 @@
 # G4: Identity and typed relations
 
-*Status: phases 0, 1 (`id()`), 2 (`refer()`), 3 (derived structures)
-and 4 (the `std/system` vocabulary) have LANDED in both ports; phase 5
-remains design proposal. Per-phase status and the corrections this
+*Status: ALL SIX PHASES have LANDED in both ports. Per-phase status and the corrections this
 document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
@@ -397,6 +395,13 @@ relations: dependsOn: $.std.Relation & {
   acyclic: true
 }
 ```
+
+(As built this is `aontu relations` / `relationCheck`, a verb of its
+own rather than a leg of `vet`: vet answers "does this DOCUMENT
+satisfy that SCHEMA" and these are facts about one finished model.
+`target` is not re-checked here — `refer(t)` already flows it into the
+addressed entity, checked by unification at the site. See
+[the register](progress.md#g4--identity-and-typed-relations).)
 
 The vet pass (delivered with G2's verb, reported via the G2 error
 contract) walks the unified tree before generation: it collects

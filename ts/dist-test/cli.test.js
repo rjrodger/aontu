@@ -624,6 +624,51 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', Path.join(f.dir, 'missing.aon')]), 2));
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--help']), 0)).out.includes('aontu trim'), true);
     });
+    // The relation reporter (G4 phase 5). Go twin: TestRelationsVerb in
+    // go/cmd/aontu/relations_test.go. What the two ports must AGREE on
+    // (the report itself) is test/spec/relation.tsv's; what each port
+    // owns — argument handling, exit codes, the text rendering — is here.
+    (0, node_test_1.test)('relations-reports-cycles-and-missing-inverses', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-rel-'));
+        const file = Path.join(dir, 'doc.aon');
+        const decl = '@"std/system"\n' +
+            'relations: {dependsOn: $.std.Relation & {inverse: usedBy, acyclic: true}}\n';
+        Fs.writeFileSync(file, decl +
+            'a: id(a) & {dependsOn: [&: refer(), b]}\n' +
+            'b: id(b) & {dependsOn: [&: refer(), a]}\n');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runRelations)([file]), 1));
+        Assert.match(r.out, /verdict: fail/);
+        Assert.match(r.out, /cycle a -> b -> a/);
+        Assert.match(r.out, /b does not list a under usedBy/);
+        // Acyclic AND mirrored: nothing to report.
+        Fs.writeFileSync(file, decl +
+            'a: id(a) & {dependsOn: [&: refer(), b]}\n' +
+            'b: id(b) & {usedBy: [&: refer(), a]}\n');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runRelations)([file]), 0)).out.trim(), 'verdict: pass');
+        // A document that does not stand up is not a document with a bad
+        // graph.
+        Fs.writeFileSync(file, 'a: 1 & 2');
+        vetCapture(() => Assert.equal((0, cli_1.runRelations)([file]), 4));
+        Fs.writeFileSync(file, decl +
+            'a: id(a) & {dependsOn: [&: refer(), b]}\n' +
+            'b: id(b) & {dependsOn: [&: refer(), a]}\n');
+        const j = vetCapture(() => Assert.equal((0, cli_1.runRelations)(['--format', 'json', file]), 1));
+        const report = JSON.parse(j.out);
+        Assert.equal(report.aontu.verb, 'relations');
+        Assert.equal(report.verdict, 'fail');
+        Assert.equal(report.findings.length, 3);
+        Assert.equal(report.findings[0].code, 'relation_cycle');
+        Assert.deepEqual(report.findings[0].detail, ['a', 'b', 'a']);
+    });
+    (0, node_test_1.test)('relations-usage-errors-exit-2', () => {
+        const f = subFiles('a:1', 'a:1');
+        vetCapture(() => Assert.equal((0, cli_1.runRelations)([]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runRelations)([f.general, f.specific]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runRelations)(['--bogus']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runRelations)(['--format', 'yaml', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runRelations)([Path.join(f.dir, 'missing.aon')]), 2));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runRelations)(['--help']), 0)).out.includes('aontu relations'), true);
+    });
     // G7 phase 7: the REPL as an inspection tool. The command handler
     // is a pure function of (state, line), so every answer the session
     // gives is as checkable as the CLI's.
@@ -979,6 +1024,8 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         Assert.match(b.out, /verdict: compatible/);
         const t = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'trim', '--check', f.general]));
         Assert.match(t.out, /verdict: clean/);
+        const rl = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'relations', f.general]));
+        Assert.match(rl.out, /verdict: pass/);
         const h = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'hash', f.general]));
         Assert.match(h.out, /^aon1-/);
         const g = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'get', '$.a', '--canon', f.general]));

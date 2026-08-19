@@ -45,13 +45,13 @@ cd go && go tool cover -html=coverage.out   # annotated source
 
 | Implementation | Metric (tool) | Coverage |
 |----------------|---------------|----------|
-| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (19892/19892) |
-| TypeScript — `ts/src` | branches | **100.00 %** (4644/4644) |
-| TypeScript — `ts/src` | functions | **100.00 %** (748/748) |
+| TypeScript — `ts/src` | lines (Node `--experimental-test-coverage`) | **100.00 %** (20242/20242) |
+| TypeScript — `ts/src` | branches | **100.00 %** (4734/4734) |
+| TypeScript — `ts/src` | functions | **100.00 %** (759/759) |
 | Go — all four packages | statements (`go test -cover` + `GOCOVERDIR`) | **100.0 %** |
 
-Both suites pass in full via `make test`: **3372 TypeScript tests** and
-four green Go packages, including the **2829-row shared spec** that both
+Both suites pass in full via `make test`: **3397 TypeScript tests** and
+four green Go packages, including the **2852-row shared spec** that both
 engines execute.
 
 The absolute figures above move with every change and are reproduced,
@@ -101,7 +101,7 @@ just the tests:
 
 ### Shared, cross-language spec
 
-`test/spec/*.tsv` — **2829 cases across 75 files** — is run by *both*
+`test/spec/*.tsv` — **2852 cases across 76 files** — is run by *both*
 implementations and is the contract that defines shared behaviour
 ([ADR-001](../ADR.md#adr-001--typescript-and-go-stay-at-full-parity-driven-by-a-shared-spec)):
 
@@ -115,23 +115,23 @@ implementations and is the contract that defines shared behaviour
 | `subsume.tsv`                |  98 | `marks.tsv` | 23 |
 | `constraint-length.tsv`      |  92 | `patch.tsv` | 23 |
 | `query.tsv`                  |  92 | `std-system.tsv` | 23 |
-| `constraint-re.tsv`          |  89 | `var.tsv` | 23 |
-| `errcodes.tsv`               |  88 | `deprecate.tsv` | 21 |
+| `errcodes.tsv`               |  90 | `var.tsv` | 23 |
+| `constraint-re.tsv`          |  89 | `deprecate.tsv` | 21 |
 | `constraint-bound.tsv`       |  74 | `elision.tsv` | 21 |
-| `id.tsv`                     |  70 | `map.tsv` | 20 |
-| `number-cross-product.tsv`   |  59 | `plus.tsv` | 14 |
-| `ref.tsv`                    |  54 | `conjunct.tsv` | 13 |
-| `refer.tsv`                  |  54 | `merge-conflict.tsv` | 13 |
-| `hcanon.tsv`                 |  53 | `op-chars.tsv` | 13 |
-| `vet.tsv`                    |  46 | `trim.tsv` | 11 |
-| `scalar.tsv`                 |  40 | `close.tsv` |  9 |
-| `why.tsv`                    |  39 | `incomplete.tsv` |  9 |
-| `optional.tsv`               |  37 | `agentsmd.tsv` |  7 |
-| `constraint-must.tsv`        |  34 | `list.tsv` |  7 |
-| `error.tsv`                  |  34 | `comment.tsv` |  6 |
-| `constraint-cross.tsv`       |  30 | `include-trust.tsv` |  4 |
-| `pref.tsv`                   |  30 | `divergent.tsv` |  0 |
-| `diff.tsv`                   |  28 |                      |    |
+| `id.tsv`                     |  70 | `relation.tsv` | 21 |
+| `number-cross-product.tsv`   |  59 | `map.tsv` | 20 |
+| `ref.tsv`                    |  54 | `plus.tsv` | 14 |
+| `refer.tsv`                  |  54 | `conjunct.tsv` | 13 |
+| `hcanon.tsv`                 |  53 | `merge-conflict.tsv` | 13 |
+| `vet.tsv`                    |  46 | `op-chars.tsv` | 13 |
+| `scalar.tsv`                 |  40 | `trim.tsv` | 11 |
+| `why.tsv`                    |  39 | `close.tsv` |  9 |
+| `optional.tsv`               |  37 | `incomplete.tsv` |  9 |
+| `constraint-must.tsv`        |  34 | `agentsmd.tsv` |  7 |
+| `error.tsv`                  |  34 | `list.tsv` |  7 |
+| `constraint-cross.tsv`       |  30 | `comment.tsv` |  6 |
+| `pref.tsv`                   |  30 | `include-trust.tsv` |  4 |
+| `diff.tsv`                   |  28 | `divergent.tsv` |  0 |
 
 plus the `spread*.tsv` family — **26 files, 130 cases**, one spread
 topic per file. `divergent.tsv` is the parity ledger: commentary only,
@@ -162,8 +162,9 @@ Each row asserts a canonical form (`canon`), a generated value (`gen`),
 the exact serialised bytes (`gens`), an error substring (`err`), an exact
 error code (`errc`), an error-code registry entry (`errcode`), the hash
 form (`hcanon`) or the canon-hash itself (`hash`), a redundancy report
-(`trim`), or — in the seven five-column modes — a whole report about a
-second input: a validation (`vet`), a compatibility verdict
+(`trim`), the derived entity index and edge set (`graph`), a
+relation-property report (`relation`), or — in the seven five-column
+modes — a whole report about a second input: a validation (`vet`), a compatibility verdict
 (`subsume`), a path's value (`query`) or the contributions that made it
 (`why`), an overlay (`patch`), a comparison (`diff`), or the generated
 AGENTS.md stanza (`agentsmd`). The full encoding of each is in

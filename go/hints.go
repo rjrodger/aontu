@@ -155,6 +155,12 @@ var codeClasses = map[string]string{
 	// as no_path, because it is the same kind of miss).
 	"refer_address":    "parse",
 	"refer_unresolved": "reference",
+	// G4 phase 5 -- the relation graph checks. Class conflict: the model
+	// contradicts a property it declared for itself. Report-layer, so no
+	// NilVal carries either -- both are global and non-monotone, and a
+	// lattice citizen may not be falsified by more information.
+	"relation_cycle":           "conflict",
+	"relation_inverse_missing": "conflict",
 
 	"patch_assignment":      "parse",
 	"func_arity":            "parse",
