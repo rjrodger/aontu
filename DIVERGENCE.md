@@ -68,7 +68,8 @@ Kept because how each was closed is worth remembering.
 > (the `out = peer.isTop ? this : new ...` fast-path), and a driving
 > func re-paths its (possibly shared) args to its own location each
 > pass (`repathArg`, the equivalent of TS's ctx-path re-descent — with
-> key()'s stored path frozen once its cc<3 delay window closes). Hiding
+> key()'s stored path frozen once it stops residuating, on the settle
+> pass of G8 phase 0's staging rule). Hiding
 > is mark-based: move() sets the hide mark on the found source node's
 > ROOT only (TS `_hide_found`), bag unifies ratchet marks down one
 > level per pass, and a marked func freezes against TOP but still

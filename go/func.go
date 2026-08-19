@@ -167,9 +167,12 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		base = f.path
 	}
 
-	// key() resolves late so that spreads/refs settle the path first
-	// (KeyFuncVal.unify hack).
-	if f.name == "key" && ctx.cc < 3 {
+	// key() is the first value to take THE STAGING RULE (G8 phase 0,
+	// see Ctx.settle): its answer is a segment of its own path, so it
+	// must not answer while a spread, a reference or a move() can still
+	// move it. It residuates until the model stops changing, and fires
+	// on the settle pass.
+	if f.name == "key" && !ctx.settle {
 		f.notdone()
 		switch {
 		case isTop(peer):
@@ -182,7 +185,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 			// Identical key() at the same path collapses (the
 			// peer.isKeyFunc same-path same-arg check in TS
 			// KeyFuncVal.unify): `key()&key()` folds to one pending
-			// key() during the delay window.
+			// key() while both residuate.
 			if pf, ok := peer.(*FuncVal); ok && pf.name == "key" &&
 				pathEq(pf.path, f.path) && keyArgEq(pf, f) {
 				return f
@@ -243,7 +246,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	// beyond the driving base, exactly like ctx-based Val.clone.
 	if f.name != "move" && f.name != "copy" {
 		for _, arg := range f.peg {
-			repathArg(arg, base, ctx.cc)
+			repathArg(arg, base, ctx.settle)
 		}
 	}
 

@@ -186,9 +186,36 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 			e.setMarkHide(true)
 		}
 		islot := append(cp(dbase), itoa(i))
-		sc := spreadCloneFor(spreadCj, islot, ctx)
-		ctx.slot = islot
-		ev := unite(ctx, e, sc)
+		// APPLIED ONCE PER ELEMENT, the guard MapVal.Unify has carried
+		// since the spread was written: an element that already holds
+		// this template's contribution is progressed by self-unification
+		// instead of having the template met into it a second time.
+		// Re-applying is the identity for a template that has already
+		// RESOLVED, which is why the missing guard went unnoticed here
+		// — but a template that residuates (`&: id(key(1))`, G8 phase 0)
+		// is not yet a value to be idempotent about, so each pass
+		// conjoined another copy and the element's canon DOUBLED per
+		// pass. The old `ctx.cc < 3` key delay hid it by ending the
+		// growth at three passes; the staging rule waits for the model
+		// to settle, and a model whose canon doubles every pass never
+		// does. Mirrors ts/src/val/ListVal.ts.
+		var ev Val
+		if !isTop(spreadCj) && sprOf(e) == spreadCj {
+			if e.Dc() == DONE {
+				ev = e
+			} else {
+				ctx.slot = islot
+				ev = unite(ctx, e, top())
+			}
+			setSprOn(ev, spreadCj)
+		} else {
+			sc := spreadCloneFor(spreadCj, islot, ctx)
+			ctx.slot = islot
+			ev = unite(ctx, e, sc)
+			if !isTop(spreadCj) && !ev.Nil() {
+				setSprOn(ev, spreadCj)
+			}
+		}
 		if inplace {
 			out.peg[i] = ev
 		} else {

@@ -1,7 +1,8 @@
 # G8: Generation and abstraction, on the total side of the fork
 
-*Status: design proposal — phase 0 partial (its defect-fencing half
-landed with G1 phase 0), phases 1–4 outstanding. Per-phase status is in
+*Status: design proposal — phase 0 **landed** (its defect-fencing half
+with G1 phase 0, the staging rule with G8 phase 0), phases 1–4
+outstanding. Per-phase status is in
 the [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -105,10 +106,11 @@ What exists is a solid substrate, and most of it is reusable:
   spread variants. Generated children must flow through exactly this
   machinery.
 - **The strain is visible.** `KeyFuncVal.unify`
-  (ts/src/val/KeyFuncVal.ts) special-cases `ctx.cc < 3` to delay
+  (ts/src/val/KeyFuncVal.ts) special-cased `ctx.cc < 3` to delay
   resolution so keys inside spreads and refs resolve at their
   destination, under a comment: "this delay makes keys in spreads and
-  refs work, but it is a hack - find a better way". Generation will
+  refs work, but it is a hack - find a better way". Phase 0 has since
+  replaced it with the staging rule below. Generation will
   multiply the situations where a value must wait for its
   surroundings; an ad-hoc pass-count check does not scale to them.
 - **Bounded fixpoint.** The unify loop runs at most `maxcc = 9`
@@ -133,8 +135,9 @@ What exists is a solid substrate, and most of it is reusable:
 What structurally blocks the capability: (1) no Val can create map
 keys that were not in some source text — `MapVal.unify` only iterates
 its own and its peer's existing keys; (2) `_` is ordinary text to the
-parser, so placeholders do not parse; (3) evaluation staging is
-ad hoc (the `cc < 3` hack) rather than a rule; (4) the Go port
+parser, so placeholders do not parse; (3) evaluation staging was
+ad hoc (the `cc < 3` hack) rather than a rule — phase 0 has since made
+it one; (4) the Go port
 (go/func.go, go/mapval.go, go/unify.go) mirrors all of the above and
 must move in lockstep.
 
@@ -345,19 +348,33 @@ second spelling of something the language has — and `+` chains are
 the easier form for constrained generation of Aontu by models.
 
 **The staging rule (replacing the delay hack).** One rule, spec-
-pinned, governs when generation happens: *a generator residuates
-until its data argument is settled (DONE), then fires exactly once,
-and its output replaces it.* "Fires once" reuses the spread's
-apply-once discipline (`_spr` marking in ts/src/val/MapVal.ts).
+pinned, governs when generation happens: *a value whose answer
+depends on where it is residuates until the MODEL has settled, then
+fires exactly once, and its output replaces it.* "Fires once" reuses
+the spread's apply-once discipline (`_spr` marking in
+ts/src/val/MapVal.ts, and — since phase 0 — ts/src/val/ListVal.ts).
 Termination is structural: firing strictly decreases the number of
 unfired generator instances; a template may textually contain further
 generator calls, but clones are one per settled data child and
 nesting depth is fixed by the source text, so total firings are
 bounded by a product of finite, already-settled data sizes — no
-recursion can arise. The same settled-argument rule, stated once in
-ts/src/unify.ts / FuncBaseVal, replaces `KeyFuncVal`'s `cc < 3`
-check; that refactor lands *before* any combinator, as a
-zero-behaviour-change phase gated on the full existing suite.
+recursion can arise.
+
+*Settled how.* The rule as first written said "until its DATA
+ARGUMENT is settled (DONE)". Phase 0 found that too weak to be the
+rule it claimed: `move()` hides its source one pass AFTER it copies
+it, so a value whose own path and whose arguments have all settled
+can still be moved out from under itself, and a `key()` that answered
+on that evidence answered for the ghost. What landed reads stability
+of the WHOLE MODEL — the pass loop compares the canon it enters each
+pass with the previous pass's, and a staged value fires on the first
+pass where they are identical, because nothing moved and so nothing
+will move it again. That also settles where the rule is stated: the
+pass loop (ts/src/unify.ts, go/unify.go), which is where two
+consecutive models exist to compare, rather than FuncBaseVal, which
+reads the flag (`AontuContext.settle` / `Ctx.settle`). This replaced
+`KeyFuncVal`'s `cc < 3` check as a zero-behaviour-change refactor
+gated on the full existing suite, before any combinator.
 Generators consume fixpoint passes; per G5, exhausting the pass
 budget with generators still unfired is a distinct semantic error
 ("budget exhausted", G5's contract), never silent truncation. The
@@ -502,14 +519,21 @@ follows to green on the identical rows. At every phase, all existing
 spec rows and canon convergence must not
 regress; the spread corpus is the regression canary.
 
-**Phase 0 — staging rule (S).** Replace the `KeyFuncVal` `cc < 3`
-delay with the settled-argument residuation rule in the shared
-function base; zero behaviour change, gated on the full 527-row
-suite. Files: ts/src/val/FuncBaseVal.ts, ts/src/val/KeyFuncVal.ts,
-ts/src/unify.ts; go/func.go, go/unify.go. No new spec rows; the
-existing spread-key*.tsv files are the acceptance test. Fix or fence
+**Phase 0 — staging rule (S). LANDED.** The `KeyFuncVal` `cc < 3`
+delay is replaced by the model-settled residuation rule, stated in
+the pass loop (see *Settled how* above); zero behaviour change across
+the whole shared suite ([row counts](progress.md) live in the
+register). Files: ts/src/ctx.ts, ts/src/unify.ts,
+ts/src/val/KeyFuncVal.ts, ts/src/val/ListVal.ts; go/ctx.go,
+go/unify.go, go/func.go, go/listval.go. The acceptance test is the
+existing spread-key corpus, as planned — but the phase did not land
+row-free: it exposed a missing apply-once guard in ListVal (a
+residuating list template was re-applied every pass, doubling its
+canon), and the four `spread-nested-list-key*` rows in
+test/spec/spread.tsv pin the documents that fixed. Fix or fence
 the DisjunctVal.gen distribution defect (ts/src/val/DisjunctVal.ts,
-go/disjunct.go) here, with its own rows in disjunct.tsv.
+go/disjunct.go) here, with its own rows in disjunct.tsv — **fenced**
+with G1 phase 0.
 
 **Phase 1 — `pack` and `each` (M).** New spec files gen-pack.tsv,
 gen-each.tsv (gen + canon + err rows: list/map data, unfired canon,

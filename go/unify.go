@@ -183,10 +183,30 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 	}
 	prevCanon := ""
 	sawPrev := false
+	lastCanon := ""
+	sawLast := false
+	settle := false
 	for cc := 0; cc < maxcc && res.Dc() != DONE; cc++ {
 		ctx.root = res
 		ctx.depth = 0
 		ctx.cc = cc
+
+		// THE STAGING RULE (G8 phase 0,
+		// docs/capability-review/g8-generation.md, mirroring
+		// ts/src/unify.ts), stated once, here, for every value whose
+		// answer depends on WHERE IT IS. Such a value residuates while
+		// the model is still moving and fires on the first pass whose
+		// input is IDENTICAL to the previous pass's input: nothing
+		// moved, so nothing will move it again, and the position it
+		// reports is the position it ends at.
+		//
+		// Why the whole model and not the value's own path. A spread, a
+		// reference or a move() can place a value under a path it has
+		// already been driven at and THEN change what encloses it --
+		// move() hides its source one pass AFTER it copies it, and a
+		// key() that answered on the strength of its path alone would
+		// answer for the ghost.
+		ctx.settle = settle
 
 		// Snapshot BEFORE the final pass (the loop condition has already
 		// established the tree is not done), so exhaustion can tell
@@ -195,10 +215,16 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		// same value when the budget allows two passes, and the only
 		// possible value when the trust profile sets passes to 1, where
 		// the old placement (cc == maxcc-2, never true) made exhaustion
-		// silent, exactly the truncation docs/trust.md forbids. Mirrors
+		// silent, exactly the truncation docs/trust.md forbids.
+		// lastCanon IS that entry canon whenever a previous pass
+		// rendered one, so this costs nothing extra. Mirrors
 		// ts/src/unify.ts.
 		if cc == maxcc-1 {
-			prevCanon = res.Canon()
+			if sawLast {
+				prevCanon = lastCanon
+			} else {
+				prevCanon = res.Canon()
+			}
 			sawPrev = true
 		}
 
@@ -219,6 +245,20 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		// error), so one failure stays ONE nil however many later meets
 		// touch it. Mirrors ts/src/unify.ts; pinned by vet.tsv's
 		// multi-* rows.
+
+		// The staging signal for the NEXT pass, rendered here rather
+		// than at the top of the loop so a model that is FINISHED is
+		// never rendered at all: Canon walks references, and the only
+		// trees that close a cycle are hand-built ones (the pass loop is
+		// what a test drives them through), which converge in one pass
+		// and must not be walked to decide a question that no longer
+		// arises.
+		if res.Dc() != DONE {
+			nowCanon := res.Canon()
+			settle = sawLast && lastCanon == nowCanon
+			lastCanon = nowCanon
+			sawLast = true
+		}
 	}
 	// The pass budget is spent AND the final pass still made progress:
 	// the model was cut off while converging, and no other error

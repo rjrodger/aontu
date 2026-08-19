@@ -103,29 +103,56 @@ class ListVal extends BagVal_1.BagVal {
             // Always unify children first
             for (let key in this.peg) {
                 const keyctx = ctx.descend(key);
-                const key_spread_cj = spread_cj.spreadClone(keyctx);
-                // The spread mark the provenance recorder reads (G7 phase 3),
-                // as in MapVal: this is where a template becomes a per-element
-                // contribution. Instrumented runs only.
-                if (undefined !== keyctx.prov) {
-                    (0, provenance_1.markSpread)(key_spread_cj);
-                }
                 const child = this.peg[key];
                 (0, utility_1.propagateMarks)(this, child);
-                // child is non-nullish: propagateMarks above dereferences it.
-                out.peg[key] =
-                    child.isNil ? child :
-                        key_spread_cj.isNil ? key_spread_cj :
-                            // The no-op meet is SKIPPED on the normal path (it is the
-                            // identity) but TAKEN while recording: a value written once
-                            // and never met is still a contribution the author wants
-                            // pointed at, and the Go port's unite sees that meet (G7
-                            // phase 4). Instrumented runs pay knowingly.
-                            key_spread_cj.isTop && child.done && undefined === keyctx.prov
-                                ? child :
-                                child.isTop && key_spread_cj.done ? key_spread_cj :
-                                    (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, key_spread_cj, 'list-own');
-                done = (done && type_1.DONE === out.peg[key].dc);
+                // APPLIED ONCE PER ELEMENT, the guard MapVal has carried since
+                // the spread was written: an element that already holds this
+                // template's contribution is progressed by self-unification
+                // instead of having the template met into it a second time.
+                // Re-applying is the identity for a template that has already
+                // RESOLVED, which is why the missing guard went unnoticed here
+                // — but a template that residuates (`&: id(key(1))`, G8 phase
+                // 0) is not yet a value to be idempotent about, so each pass
+                // conjoined another copy and the element's canon DOUBLED per
+                // pass. The old `ctx.cc < 3` key delay hid it by ending the
+                // growth at three passes; the staging rule waits for the model
+                // to settle, and a model whose canon doubles every pass never
+                // does.
+                let oval;
+                if (!spread_cj.isTop
+                    && child._spr === spread_cj.id) {
+                    oval = child.done ? child :
+                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, TOP, 'list-own');
+                    oval._spr = spread_cj.id;
+                }
+                else {
+                    const key_spread_cj = spread_cj.spreadClone(keyctx);
+                    // The spread mark the provenance recorder reads (G7 phase 3),
+                    // as in MapVal: this is where a template becomes a per-element
+                    // contribution. Instrumented runs only.
+                    if (undefined !== keyctx.prov) {
+                        (0, provenance_1.markSpread)(key_spread_cj);
+                    }
+                    // child is non-nullish: propagateMarks above dereferences it.
+                    oval =
+                        child.isNil ? child :
+                            key_spread_cj.isNil ? key_spread_cj :
+                                // The no-op meet is SKIPPED on the normal path (it is the
+                                // identity) but TAKEN while recording: a value written once
+                                // and never met is still a contribution the author wants
+                                // pointed at, and the Go port's unite sees that meet (G7
+                                // phase 4). Instrumented runs pay knowingly.
+                                key_spread_cj.isTop && child.done && undefined === keyctx.prov
+                                    ? child :
+                                    child.isTop && key_spread_cj.done ? key_spread_cj :
+                                        (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, key_spread_cj, 'list-own');
+                    if (!spread_cj.isTop && !oval.isNil) {
+                        ;
+                        oval._spr = spread_cj.id;
+                    }
+                }
+                out.peg[key] = oval;
+                done = (done && type_1.DONE === oval.dc);
             }
             const allowedKeys = this.closed ? Object.keys(this.peg) : [];
             let bad = undefined;

@@ -24,9 +24,21 @@ type Ctx struct {
 	// (Aontu.File); empty renders <no-file>.
 	file  string
 	err   []*NilVal
-	depth int            // unite recursion depth (cycle guard)
-	cc    int            // current fixpoint pass (for late-resolving funcs)
-	vars  map[string]Val // user-provided variables, resolved by $name
+	depth int // unite recursion depth (cycle guard)
+	cc    int // current fixpoint pass (for late-resolving funcs)
+	// settle is THE STAGING RULE (G8 phase 0,
+	// docs/capability-review/g8-generation.md, and the Go side of
+	// AontuContext.settle). A value whose answer depends on WHERE IT IS
+	// -- key() today, the generation combinators next -- residuates
+	// while this is false and fires exactly once on the pass where it
+	// is true. unifyRoot sets it on the first pass whose input model is
+	// identical to the previous pass's: everything that was going to
+	// move has moved. It replaces a `ctx.cc < 3` pass count, a magic
+	// number that was right for the documents it was tuned on and
+	// silently wrong for anything that took a fourth pass to place a
+	// value.
+	settle bool
+	vars   map[string]Val // user-provided variables, resolved by $name
 	// collect: generation inside an optional subtree — failures are
 	// isolated (skipped/partial output) instead of raised, mirroring
 	// the cctx clone({err: [], collect: true}) in TS BagVal.gen.

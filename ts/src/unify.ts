@@ -518,10 +518,29 @@ class Unify {
       // NOTE: if true === res.done already, then this loop never needs to run.
       let maxcc = uctx.budget.passes
       let prevCanon: string | undefined = undefined
+      let lastCanon: string | undefined = undefined
+      let settle = false
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
         uctx.seen = {}
+
+        // THE STAGING RULE (G8 phase 0,
+        // docs/capability-review/g8-generation.md), stated once, here,
+        // for every value whose answer depends on WHERE IT IS. Such a
+        // value residuates while the model is still moving and fires on
+        // the first pass whose input is IDENTICAL to the previous
+        // pass's input: nothing moved, so nothing will move it again,
+        // and the position it reports is the position it ends at.
+        //
+        // Why the whole model and not the value's own path. A spread, a
+        // reference or a `move` can place a value under a path it has
+        // already been driven at and THEN change what encloses it --
+        // `move` hides its source one pass AFTER it copies it, and a
+        // `key()` that answered on the strength of its path alone would
+        // answer for the ghost. Stability of the model is the only
+        // signal that says every such rearrangement is finished.
+        uctx.settle = settle
 
         // Snapshot BEFORE the final pass (the loop condition has
         // already established the tree is not done), so exhaustion can
@@ -531,9 +550,10 @@ class Unify {
         // only possible value when the trust profile sets passes to 1,
         // where the old placement (cc === maxcc - 2, never true) made
         // exhaustion silent, exactly the truncation docs/trust.md
-        // forbids.
+        // forbids. `lastCanon` IS that entry canon whenever a previous
+        // pass rendered one, so this costs nothing extra.
         if (this.cc === maxcc - 1) {
-          prevCanon = res.canon
+          prevCanon = lastCanon ?? res.canon
         }
 
         res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
@@ -557,6 +577,19 @@ class Unify {
         // The identity merge, after the pass's own unification: the
         // positions this pass produced are what there is to merge.
         res = mergeEntities(uctx, res)
+
+        // The staging signal for the NEXT pass, rendered here rather
+        // than at the top of the loop so a model that is FINISHED is
+        // never rendered at all: canon walks references, and the only
+        // trees that close a cycle are hand-built ones (the pass loop
+        // is what a test drives them through), which converge in one
+        // pass and must not be walked to decide a question that no
+        // longer arises.
+        if (DONE !== res.dc) {
+          const nowCanon = res.canon
+          settle = undefined !== lastCanon && lastCanon === nowCanon
+          lastCanon = nowCanon
+        }
 
         uctx = uctx.clone({ root: res })
       }

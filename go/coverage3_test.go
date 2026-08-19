@@ -221,7 +221,7 @@ func TestRefInternalsDirect(t *testing.T) {
 	}
 }
 
-// FuncVal: silent Gen, nil peers in the key-delay window and the
+// FuncVal: silent Gen, nil peers while key() residuates and the
 // pending-args defer, and the walkPref conjunct arm.
 func TestFuncArmsDirect(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
@@ -447,10 +447,10 @@ func TestCloneVarAndSpreads(t *testing.T) {
 	m := newMap()
 	m.set("k", newInteger(1))
 	m.spread = newFunc("path", nil)
-	repathArg(m, []string{"b"}, 0)
+	repathArg(m, []string{"b"}, false)
 	l := newList([]Val{newInteger(1)})
 	l.spread = newFunc("path", nil)
-	repathArg(l, []string{"b"}, 0)
+	repathArg(l, []string{"b"}, false)
 	if strings.Join(m.spread.vpath(), "/") != "b" || strings.Join(l.spread.vpath(), "/") != "b" {
 		t.Fatalf("spread repath")
 	}

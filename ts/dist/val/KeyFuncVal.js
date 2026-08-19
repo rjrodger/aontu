@@ -18,13 +18,19 @@ class KeyFuncVal extends FuncBaseVal_1.FuncBaseVal {
     funcname() {
         return 'key';
     }
+    // `key()` is the first value to take THE STAGING RULE (G8 phase 0,
+    // see AontuContext.settle): its answer is a segment of its own path,
+    // so it must not answer while a spread, a reference or a `move` can
+    // still move it. It residuates until the model stops changing, and
+    // fires on the settle pass.
     unify(peer, ctx) {
-        // TODO: this delay makes keys in spreads and refs work, but it is a hack - find a better way.
         let out = this;
-        if (ctx.cc < 3) {
+        if (!ctx.settle) {
             this.notdone();
             if (peer.isTop || (peer.id === this.id)) {
-                // TODO: clone needed to avoid triggering unify_cycle - find a better way
+                // Cloned rather than returned: a driver that met the same
+                // object twice in one pass would charge the revisit budget and
+                // report `unify_cycle`.
                 out = this.clone(ctx);
             }
             else if (peer.isNil) {

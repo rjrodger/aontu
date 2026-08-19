@@ -33,3 +33,16 @@ template-pref-copy	gen	z:3 m:{&:{q:*copy($.z)},a:{}}	{"m":{"a":{"q":3}},"z":3}
 # close alts had to be taught to see.
 sibling-bare-newline	gen	&: a:1\n&: b:2\nx:{}\ny:{}	{"x":{"a":1,"b":2},"y":{"a":1,"b":2}}
 sibling-bare-newline-canon	canon	&: a:1\n&: b:2	{&:{"a":1}&{"b":2}}
+# A list spread INSIDE a list spread, with a `key()` in the inner
+# template (G8 phase 0). The staging rule is what makes these answer:
+# under the pass-count delay it replaced, the inner template was met
+# into each element AGAIN on every pass -- ListVal had no
+# apply-once-per-element guard, the one MapVal has always had -- so a
+# `key()` that had already answered "0" was handed a second, still
+# pending copy of itself and the two collided (`scalar_value` at
+# $.a.0.k.k). The map-nested row is the control: it went through
+# MapVal's guard and always worked.
+spread-nested-list-key	gens	a:[&:[&:{k:key()},{}],[{}]]	{"a":[[{"k":"0"}]]}
+spread-nested-list-key-canon	canon	a:[&:[&:{k:key()},{}],[{}]]	{"a":[&:[&:{"k":key()},{}],[&:{"k":key()},{"k":"0"}]]}
+spread-nested-list-key-siblings	gens	a:[&:[&:{k:key()},{}],[{}],[{},{}]]	{"a":[[{"k":"0"}],[{"k":"0"},{"k":"1"}]]}
+spread-nested-list-key-in-map	gens	a:{&:[&:{k:key()},{}], b:[{}], c:[{},{}]}	{"a":{"b":[{"k":"0"}],"c":[{"k":"0"},{"k":"1"}]}}

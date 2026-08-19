@@ -90,8 +90,8 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
    register's last update the suite is **76 `.tsv` files, 75
-   row-bearing, 2,852 rows**, in eighteen modes — `canon` 687, `gen`
-   539, `errc` 458, `gens` 383, `err` 240, `subsume` 94, `query` 92,
+   row-bearing, 2,856 rows**, in eighteen modes — `canon` 688, `gen`
+   539, `errc` 458, `gens` 386, `err` 240, `subsume` 94, `query` 92,
    `errcode` 90, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
    `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
    `agentsmd` 7.
@@ -101,7 +101,8 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-two of forty-nine phases have moved; forty of those are complete.
+Forty-two of forty-nine phases have moved; forty-one of those are
+complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
@@ -112,8 +113,8 @@ Forty-two of forty-nine phases have moved; forty of those are complete.
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
-| [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **40** | **2** | **7** |
+| [G8](g8-generation.md) | Generation | C | 1 | 0 | 4 |
+| | | **total** | **41** | **1** | **7** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -165,7 +166,8 @@ Against the review's own [sequencing](index.md#sequencing):
   document and answers `:get`, `:keys` and `:why` about it, `--jsonl`
   makes the session machine-drivable, and LSP hover can carry the
   provenance record behind a config gate.
-- **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
+- **Phase C — scale.** G4 is complete and **G8.0 has landed** — the
+  staging rule that every generation combinator is to share.
 
 One structural note the sequencing table itself makes: G7's query/MCP
 surface depends on nothing and could ship at any time.
@@ -686,7 +688,7 @@ references behind; it is G4's to settle for both at once.
 
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
-| **0** — staging rule | S | **PARTIAL** | The phase has two deliverables. The `DisjunctVal.gen` distribution defect is **fenced** — probed guard rows landed in `test/spec/disjunct.tsv` with G1.0. The `KeyFuncVal` `cc < 3` delay is **not** replaced by the settled-argument residuation rule; `ts/src/val/KeyFuncVal.ts` and `go/func.go` are unchanged. |
+| **0** — staging rule | S | **LANDED** | Both deliverables. The `DisjunctVal.gen` distribution defect was **fenced** by probed guard rows in `test/spec/disjunct.tsv` with G1.0. The `KeyFuncVal` `cc < 3` delay is now the settled-position rule: `AontuContext.settle` / `Ctx.settle`, set by the pass loop (`ts/src/unify.ts`, `go/unify.go`) on the first pass whose input model is identical to the previous pass's, and read by `key()` in `ts/src/val/KeyFuncVal.ts` and `go/func.go`. Zero behaviour change across the existing suite in both ports. **Departure from the design**, in two respects. (a) The rule reads MODEL stability, not "the data argument is DONE": `move()` hides its source one pass *after* it copies it, so a value whose own path and arguments have settled can still be moved, and only stability of the whole model rules that out. (b) It is stated in the pass loop rather than in `FuncBaseVal`, because that is where the two consecutive models exist to compare; `FuncBaseVal` reads the flag. Landing it also exposed a real defect: `ListVal` had no apply-once-per-element spread guard (the `_spr` stamp `MapVal` has always had), so a list template that RESIDUATES was met into each element again every pass and its canon doubled — invisible under a three-pass delay, fatal under a rule that waits for stability. Fixed in `ts/src/val/ListVal.ts` and `go/listval.go`; pinned by the four `spread-nested-list-key*` rows in `test/spec/spread.tsv`, which the old rule failed with a spurious `scalar_value` error. |
 | **1** — `pack` and `each` | M | **NOT STARTED** | — |
 | **2** — `filter` and `match` | M | **NOT STARTED** | Depends on phase 0's defect work. |
 | **3** — placeholder `_` (the parser phase) | M/L | **NOT STARTED** | — |

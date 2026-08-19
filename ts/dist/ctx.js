@@ -9,6 +9,25 @@ const err_1 = require("./err");
 class AontuContext {
     constructor(cfg) {
         this.cc = -1;
+        // THE STAGING RULE (G8 phase 0,
+        // docs/capability-review/g8-generation.md). A value whose answer
+        // depends on WHERE IT IS -- `key()` today, the generation
+        // combinators next -- must not answer while anything is still
+        // moving it: resolved early it reports the position it was WRITTEN
+        // at rather than the one it ends up at. Such a value RESIDUATES
+        // while this is false, and fires exactly once on the pass where it
+        // is true.
+        //
+        // The pass loop (ts/src/unify.ts) sets it on the first pass whose
+        // input tree is IDENTICAL to the previous pass's: everything that
+        // was going to move has moved, and what is left is the staged
+        // values themselves, which is precisely the moment they may answer.
+        // It replaces a `ctx.cc < 3` pass count in KeyFuncVal -- a magic
+        // number, right for the documents it was tuned on and silently
+        // wrong for anything that took a fourth pass to place a value. The
+        // comment it replaces said as much: "this delay makes keys in
+        // spreads and refs work, but it is a hack - find a better way".
+        this.settle = false;
         this.vars = {};
         this.root = cfg.root;
         this.path = [...(cfg.path ?? [])];
