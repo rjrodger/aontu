@@ -68,6 +68,13 @@ type Aontu struct {
 	// a document with no includes.
 	IncludeDeps []IncludeDep
 
+	// Graph is the DERIVED GRAPH of the most recent unification (G4
+	// phase 3): the entity index and the edge set, both deterministic.
+	// Reset per unification; empty for a document with no identity.
+	// Mirrors `result.graph` in ts/src/aontu.ts, which stamps it on the
+	// returned Val the way that port stamps `deps`.
+	Graph Graph
+
 	// TrustWarn and TrustWarnRoot are the staged-flip warning window
 	// (G5 phase 6, cmd/aontu only): under the 'system' posture every
 	// resolution escaping TrustWarnRoot calls TrustWarn. Not a stable
@@ -183,6 +190,11 @@ func (a *Aontu) unifyCtx(v Val, vars map[string]Val, src string) (Val, *Ctx, err
 	}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
+	// THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
+	// edge set, computed once from the unified tree and left on the
+	// instance exactly as the include manifest is. Cheap on a document
+	// with no identity — one guarded walk.
+	a.Graph = GraphOf(res)
 	if len(ctx.err) > 0 {
 		// Code carries the first collected failure's why-code, mirroring
 		// errs()[0].why on the TS AontuError thrown by handleErrors.

@@ -70,6 +70,8 @@ type Val interface {
 	setDeprecRec(rec map[string]string)
 	entityName() string
 	setEntityName(name string)
+	linkAddr() string
+	setLinkAddr(addr string)
 	markedHide() bool
 	setMarkType(v bool)
 	setMarkHide(v bool)
@@ -129,6 +131,12 @@ type base struct {
 	// identity is semantic content, and G6's canon-hash must see it.
 	// Empty means anonymous. Mirrors Val.entity in ts/src/val/Val.ts.
 	entity string
+	// The LINK (G4 phase 2/3): the entity address a `refer` resolved
+	// to, stamped on the string it answers. The string IS the value — a
+	// link, not an embedding — so nothing downstream could otherwise
+	// tell a checked link from a literal that happens to look like one,
+	// and the edge set (graph.go) is exactly the set of these.
+	link string
 	// spr records the identity of the spread constraint already merged
 	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
 	// applies ONCE per child, and later passes only self-unify.
@@ -204,11 +212,14 @@ func (b *base) setDeprecRec(rec map[string]string) { b.deprec = rec }
 
 func (b *base) entityName() string        { return b.entity }
 func (b *base) setEntityName(name string) { b.entity = name }
-func (b *base) markedHide() bool          { return b.mhide }
-func (b *base) fromSpread() bool          { return b.fspr }
-func (b *base) setFromSpread()            { b.fspr = true }
-func (b *base) setMarkType(v bool)        { b.mtype = v }
-func (b *base) setMarkHide(v bool)        { b.mhide = v }
+
+func (b *base) linkAddr() string        { return b.link }
+func (b *base) setLinkAddr(addr string) { b.link = addr }
+func (b *base) markedHide() bool        { return b.mhide }
+func (b *base) fromSpread() bool        { return b.fspr }
+func (b *base) setFromSpread()          { b.fspr = true }
+func (b *base) setMarkType(v bool)      { b.mtype = v }
+func (b *base) setMarkHide(v bool)      { b.mhide = v }
 
 // notdone advances the done-counter without marking DONE.
 func (b *base) notdone() {

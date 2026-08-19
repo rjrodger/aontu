@@ -20,6 +20,7 @@ declare class ReferVal extends FeatureVal {
     addrsrc?: string;
     held?: Val;
     constructor(spec: ValSpec, ctx?: AontuContext);
+    clone(ctx: AontuContext, spec?: ValSpec): Val;
     unify(peer: Val, ctx: AontuContext): Val;
     with(ctx: AontuContext, spec: any, site: Val): Val;
     settle(ctx: AontuContext, site: Val): Val;

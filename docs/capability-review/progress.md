@@ -89,29 +89,30 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **73 `.tsv` files, 72
-   row-bearing, 2,777 rows**, in sixteen modes — `canon` 686, `gen`
+   register's last update the suite is **74 `.tsv` files, 73
+   row-bearing, 2,804 rows**, in seventeen modes — `canon` 686, `gen`
    539, `errc` 455, `gens` 364, `err` 240, `subsume` 94, `query` 92,
    `errcode` 88, `vet` 53, `why` 43, `hcanon` 43, `diff` 28,
-   `patch` 23, `trim` 11, `hash` 11, `agentsmd` 7. Reproduce with
+   `graph` 27, `patch` 23, `trim` 11, `hash` 11, `agentsmd` 7.
+   Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Thirty-nine of forty-nine phases have moved; thirty-seven of those are complete.
+Forty of forty-nine phases have moved; thirty-eight of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
-| [G4](g4-identity-relations.md) | Identity, relations | C | 3 | 0 | 3 |
+| [G4](g4-identity-relations.md) | Identity, relations | C | 4 | 0 | 2 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **37** | **2** | **10** |
+| | | **total** | **38** | **2** | **9** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -374,7 +375,7 @@ the doc's one-yardstick text would be wrong.
 | **0** — semantics on paper | S | **LANDED** | The "Identity: `id(name)`" section of [`docs/reference-language.md`](../reference-language.md#identity-idname) — merge semantics, the name grammar, canon and the hash, the three clearing rules — plus `test/spec/id.tsv` (66 rows) and the three codes in `errcodes.tsv`. The design's phase-0 also called for `test/spec/refer.tsv`; that ships with phase 2, which owns `refer()`. |
 | **1** — `id()` | M | **LANDED** | `ts/src/val/IdFuncVal.ts` and the `"id"` arm of `go/func.go`; the `entity` slot on the carriers (`ts/src/val/Val.ts`, `go/val.go`) with the rider in `unite` in both ports; the registry on the unify root context (`ts/src/unify.ts` `entities`, `go/ctx.go`) and the per-pass `mergeEntities` walk (`go/identity.go`); canon through `canonRiders` (renamed from `canonDeprecation`, now rendering both riders) and the hash form through `hcanon`; clearing rules in `RefVal`/`CopyFuncVal` (TS) and `ref.go`/`func.go` via `walkClearEntity` (Go), and rule 3 at bag construction in both. `id` added to the arity tables, the LSP completion list, and both published grammars. **Departures:** see below. |
 | **2** — `refer()` | M | **LANDED** | `ts/src/val/ReferFuncVal.ts` (the `ReferFuncVal` call and the `ReferVal` residual it resolves to) and `go/refer.go`; the address grammar shared with the id grammar; the registry lookup, the constraint FLOW into the target and every position of its entity, and the last-pass existence decision; the residual added to `unite`'s driver list in both ports, and to the arity tables, the LSP completion list and both published grammars (where `refer` must be listed BEFORE `re`, the name set being an ordered choice). Codes `refer_address` and `refer_unresolved` in `errcodes.tsv`. Spec: `test/spec/refer.tsv` (52 rows). Docs: "Entity references" in [`docs/reference-language.md`](../reference-language.md#entity-references-refert). **Departures:** see below. |
-| **3** — derived structures | S | **NOT STARTED** |  |
+| **3** — derived structures | S | **LANDED** | `ts/src/graph.ts` and `go/graph.go`: the ENTITY INDEX (id → every tree path that holds it) and the EDGE SET (one entry per checked link: the entity it sits inside, the relation key, the address, and where it is written). Exposed as `result.graph` and the pure `graphOf(val)` in TypeScript and as `Aontu.Graph` in Go — each port following its own `deps` precedent — and documented in [`docs/reference-api.md`](../reference-api.md). A seventeenth spec mode, `graph`, carries the goldens (`test/spec/graph.tsv`, 27 rows); both runners re-derive on a fresh engine and require the same bytes, so DETERMINISM is asserted as a property rather than claimed. **Departures:** see below. |
 | **4** — `std/system` vocabulary | M | **NOT STARTED** |  |
 | **5** — relation graph checks | L | **NOT STARTED** |  |
 
@@ -457,11 +458,13 @@ beyond phases 0 and 1.
    naming the address. A `refer()` that never met an address at all is
    NOT that error: it is an ordinary unresolved constraint, like a bare
    `min(1)`.
-4. **The residual has no clone or path-dependence hooks.** Both were
-   written and both proved dead: a spread template holds the FUNCTION,
-   so `&: refer(t)` is cloned per destination as a `refer(...)` call
-   and each clone mints its own residual there. Removed rather than
-   excused (ADR-002 rule 4). A consequence worth knowing: a
+4. **The residual has a clone hook but no path-dependence hook.**
+   (Corrected by phase 3 — see its departure 3. The clone hook was
+   briefly removed as dead and is not: a REFERENCE to a value holding
+   a resolved link clones it.) The path-dependence hook is genuinely
+   unnecessary: a spread template holds the FUNCTION, so `&: refer(t)`
+   is cloned per destination as a `refer(...)` call and each clone
+   mints its own residual there. A consequence worth knowing: a
    path-dependent flow TYPE in a spread (`&: refer({k:key()})`)
    resolves its `key()` per clone but the flows all land in the
    entities the addresses name, so two entities can receive the same
@@ -475,6 +478,40 @@ beyond phases 0 and 1.
    new representative mid-pass and only one position took it. The
    substitution now happens first and the guard bounds the descent
    only; `flow-reaches-every-position` is the regression row.
+
+**Departures recorded by G4.3.**
+
+1. **A link is STAMPED, not inferred.** The design says the edge set is
+   "(source entity, relation key, target address) triples for every
+   field whose key matches a declared relation" — but declared
+   relations are phase 5's vocabulary, and a resolved `refer` answers
+   a plain string that no walk could tell from a literal. The
+   resolution stamps the address on the value it answers (`Val.link`,
+   `base.link`), so the edge set is exactly the set of checked links
+   and nothing has to guess. Phase 5 filters this set by declared
+   relation; it does not have to rebuild it.
+2. **A clone KEEPS the link, unlike the identity.** An identity says
+   what a value IS, so a copy must not be that entity (clearing rules
+   1 and 2). A link says what a value POINTS AT, and a copy of a link
+   points at the same thing. It is also the only answer the two ports
+   can agree on: a clone taken before the refer resolves carries a
+   pending residual that resolves — and stamps — on its own.
+3. **A defect in G4.2's residual, found by G4.3.** `ReferVal` had been
+   left without a clone hook (a phase-2 departure said both ports had
+   proved one dead). They had not: a REFERENCE to a value containing a
+   resolved link (`s: $.z`) clones the residual, and without the hook
+   TypeScript rebuilt it from the spec and lost the address — the
+   clone came back a bare `refer()` — while Go fell through to sharing
+   ONE residual between the reference and its target, so two positions
+   that later constrained it differently would interfere. Both ports
+   now clone it as an independent copy carrying its state; the
+   phase-2 departure is corrected above.
+4. **`from` and `key` are relative to the nearest identified
+   ancestor**, which makes the entity/component distinction observable:
+   a node without an id is a component of the entity above it, and a
+   link inside a list is an edge under its relation rather than under
+   its index. A link outside every entity has an empty `from`; a link
+   that IS an entity has an empty `key`. Both are pinned.
 
 **The funcMap note, now answered.** The doc said the two new builtins
 "join `funcMap`"; G1's atoms did not, routing through

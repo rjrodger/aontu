@@ -73,6 +73,8 @@ declare abstract class Val {
     mark: ValMark;
     deprecation?: Record<string, string>;
     entity?: string;
+    link?: string;
+    graph?: any;
     peg: any;
     err: any[];
     explain: any[] | null;

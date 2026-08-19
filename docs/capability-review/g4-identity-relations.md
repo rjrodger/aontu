@@ -1,7 +1,8 @@
 # G4: Identity and typed relations
 
-*Status: phases 0, 1 (`id()`) and 2 (`refer()`) have LANDED in both
-ports; phases 3–5 remain design proposal. Per-phase status and the corrections this
+*Status: phases 0, 1 (`id()`), 2 (`refer()`) and 3 (derived
+structures) have LANDED in both ports; phases 4–5 remain design
+proposal. Per-phase status and the corrections this
 document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
@@ -452,7 +453,12 @@ entity ids do *not* embed versions.
 ### Downstream: what this buys the graph consumers
 
 The evaluation result gains two derived structures: an entity index
-(id → list of tree paths) and the relation edge set. Impact
+(id → list of tree paths) and the relation edge set. (As built, the
+edge set is the set of checked `refer` LINKS, each stamped at
+resolution so nothing has to guess which strings are addresses; phase
+5 filters it by declared relation rather than rebuilding it. See
+`result.graph` / `Aontu.Graph` in
+[the API reference](../reference-api.md).) Impact
 analysis ("what reaches `svc/auth`?"), reachability, and
 context-window-sized entity slices become traversals over them;
 their exposure — CLI verbs, projections, the MCP tool set — is

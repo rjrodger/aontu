@@ -111,8 +111,15 @@ class Val {
         out.mark = Object.assign({}, this.mark, fullspec.mark ?? {});
         out.mark.type = this.mark.type && (fullspec.mark?.type ?? true);
         out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true);
-        if (null != this.entity) {
+        // The two IDENTITY riders travel together, under one test: the
+        // entity a value IS, and the address a resolved link POINTS AT.
+        // One guard rather than two because the pair is what a clone
+        // either carries or does not — and because a second test for the
+        // link alone would be a branch no document takes, the reference
+        // clone catching the pending residual before it ever resolves.
+        if (null != this.entity || null != this.link) {
             out.entity = this.entity;
+            out.link = this.link;
         }
         if (null != this.deprecation) {
             out.deprecation = this.deprecation;

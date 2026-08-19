@@ -89,6 +89,12 @@ func walkMark(v Val, setType, typeVal, setHide, hideVal bool) {
 // the `val.entity = undefined` lines in ts/src/val/RefVal.ts and
 // ts/src/val/CopyFuncVal.ts.
 func walkClearEntity(v Val) {
+	// The LINK is NOT cleared here (G4 phase 3). An identity says what a
+	// value IS, so a copy of an entity must not be that entity; a link
+	// says what a value POINTS AT, and a copy of a link points at the
+	// same thing. It is also the only answer the two ports can agree
+	// on: a clone taken before the refer resolves carries a pending
+	// residual that resolves — and stamps — on its own.
 	walkMarkVals(v, func(n Val) { n.setEntityName("") })
 }
 
@@ -131,4 +137,5 @@ func copyMarks(to, from Val) {
 	to.setMarkHide(from.markedHide())
 	to.setDeprecRec(from.deprecRec())
 	to.setEntityName(from.entityName())
+	to.setLinkAddr(from.linkAddr())
 }

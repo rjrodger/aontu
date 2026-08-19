@@ -690,6 +690,37 @@ is observable as sorted, deduplicated `{ path, capability }` entries —
 "file set" as data (capability is `mem`, `file` or `pkg`). Content
 hashing and pinning belong to the distribution layer (G6).
 
+**The derived graph.** After a unification, an evaluated document's
+identity structure is observable too (G4):
+`result.graph` in TypeScript — also available as the pure function
+`graphOf(val)` — and `Aontu.Graph` in Go. It has two parts:
+
+```ts
+{
+  entities: [ { id: 'svc/auth', paths: ['$.services.auth'] }, … ],
+  edges:    [ { from: 'svc/billing', key: 'dependsOn',
+                to: 'svc/auth', at: '$.services.billing.dependsOn.0' }, … ],
+}
+```
+
+- **`entities`** is the entity index: each `id(name)` and every tree
+  path that holds it. More than one path is the normal case — the
+  merge puts an entity's value at every position that declared it —
+  and it is why moving an entity to a new path breaks `$.path`
+  references but no entity address.
+- **`edges`** is the edge set: one entry per checked
+  [link](reference-language.md#entity-references-refert). `from` is the
+  entity the link sits inside (empty outside every entity), `key` is
+  the nearest map key below that entity — so a link inside a list is
+  an edge under its relation, not under its index — and `at` is where
+  the link is written.
+
+Both are **deterministic**: ids, paths and edges are sorted by
+construction, and both runners re-derive the graph on a fresh engine
+and require the same bytes (`test/spec/graph.tsv`). Impact analysis,
+reachability and entity slices are traversals over these; their
+exposure as verbs and projections is the machine-access layer's.
+
 ### `AontuContext`
 
 A context threads variables, error state, and resolver configuration

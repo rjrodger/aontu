@@ -512,6 +512,39 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("trim report mismatch\n src: %q\n want: %s\n got:  %s",
 							src, want, got)
 					}
+				case "graph":
+					// THE DERIVED STRUCTURES (G4 phase 3): the entity index
+					// and the edge set of the unified document, compared
+					// whole. Both are deterministic by construction — ids
+					// and paths in code-point order, edges by the position
+					// they are written at — which is what makes a
+					// byte-comparable golden possible at all, Go map order
+					// being random.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					ga := New()
+					ga.UnifyVars(src, vars)
+					// Through a MAP on both sides: specJSON encodes a
+					// struct in field order and a map in key order, so
+					// comparing one against the other would fail on the
+					// ordering rather than on the graph.
+					got := specJSON(t, specAsMap(t, ga.Graph))
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("graph mismatch\n src: %q\n want: %s\n got:  %s",
+							src, want, got)
+					}
+					// ... and DETERMINISTIC is a property, not a claim: a
+					// fresh engine over the same source answers the same
+					// bytes.
+					gb := New()
+					gb.UnifyVars(src, vars)
+					if again := specJSON(t, specAsMap(t, gb.Graph)); again != got {
+						t.Fatalf("graph is not repeatable\n src: %q\n first: %s\n again: %s",
+							src, got, again)
+					}
 				case "subsume":
 					// Same golden discipline as vet: `opts` rides the
 					// expect object, messages are per-port prose and
@@ -546,6 +579,21 @@ func TestSpec(t *testing.T) {
 // and `&` stay literal in both ports), keys sorted -- which Go's
 // encoder does for a map and the canonical emitter does for every
 // object, so a golden cell may be written in any key order.
+// specAsMap round-trips a value through JSON into a plain map, so a
+// struct golden and a literal golden are compared by the same encoding.
+func specAsMap(t *testing.T, v any) map[string]any {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil { //coverage:ignore a report struct is always encodable
+		t.Fatalf("marshal: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil { //coverage:ignore ... and always decodable
+		t.Fatalf("unmarshal: %v", err)
+	}
+	return out
+}
+
 func specJSON(t *testing.T, v any) string {
 	t.Helper()
 	var buf bytes.Buffer

@@ -22,6 +22,7 @@ import { get, why } from './query'
 import { patch } from './patch'
 import { diff } from './diff'
 import { agentsMd } from './agentsmd'
+import { graphOf } from './graph'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -148,6 +149,11 @@ class Aontu {
       out = uni.res
 
       out.deps = pval.deps
+      // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
+      // edge set, computed once from the unified tree. Cheap on a
+      // document with no identity — one guarded walk — and the thing
+      // impact analysis and the relation checks are traversals over.
+      out.graph = graphOf(out)
       out.err = errs
       ac.root = out
     }
@@ -387,6 +393,7 @@ export {
   patch,
   diff,
   agentsMd,
+  graphOf,
 }
 
 

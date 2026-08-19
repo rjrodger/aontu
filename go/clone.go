@@ -190,6 +190,15 @@ func clonePathKind(v Val, path []string) Val {
 		c := *n
 		c.path = cp(path)
 		return &c
+	case *ReferVal:
+		// The residual's own state — the type to flow, the address it has
+		// met, the constraints it holds — travels with the clone, and the
+		// clone is an INDEPENDENT value: without this arm the fall-through
+		// shared one residual between a reference and its target, so two
+		// positions that later constrained it differently would interfere.
+		c := *n
+		c.path = cp(path)
+		return &c
 	case *ConstraintVal:
 		// Residuals are immutable after construction (constraint.go), so
 		// bounds and exclusions are shared, like a ScalarKindVal's marker.

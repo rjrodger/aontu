@@ -339,6 +339,20 @@ function runRow(row) {
         const report = (0, aontu_1.trimCheck)(row.src);
         Assert.strictEqual((0, aontu_1.exactJSON)({ redundant: report.redundant, verdict: report.verdict }), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `trim report mismatch: ${row.name}`);
     }
+    else if ('graph' === row.mode) {
+        // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
+        // edge set of the unified document, compared whole. Both are
+        // deterministic by construction — ids and paths in code-point
+        // order, edges by the position they are written at — which is what
+        // makes a byte-comparable golden possible at all, Go map order
+        // being random.
+        const graph = (0, aontu_1.graphOf)(a0.unify(row.src, undefined, ctx));
+        Assert.strictEqual((0, aontu_1.exactJSON)(graph), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `graph mismatch: ${row.name}`);
+        // ... and DETERMINISTIC is a property, not a claim: a fresh engine
+        // over the same source answers the same bytes.
+        const a1 = rowAontu(row);
+        Assert.strictEqual((0, aontu_1.exactJSON)((0, aontu_1.graphOf)(a1.unify(row.src, undefined, makeVarsCtx(a1)))), (0, aontu_1.exactJSON)(graph), `graph is not repeatable: ${row.name}`);
+    }
     else if ('hcanon' === row.mode) {
         Assert.strictEqual((0, aontu_1.hcanon)(a0.unify(row.src, undefined, ctx)), row.expect);
         assertHcanonRoundTrips(row);

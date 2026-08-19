@@ -39,6 +39,7 @@ import { projectFor } from '../dist/query'
 import { Provenance } from '../dist/provenance'
 import { IdFuncVal, idName } from '../dist/val/IdFuncVal'
 import { ReferVal, parseAddress, findEntity } from '../dist/val/ReferFuncVal'
+import { graphOf } from '../dist/graph'
 import { constantIdFunc, canonRiders } from '../dist/utility'
 import { nextValId } from '../dist/val/Val'
 import {
@@ -1250,6 +1251,38 @@ describe('coverage3-refer', () => {
     r.addr = parseAddress('x')
     r.addrsrc = 'x'
     Assert.strictEqual(r.settle(ctx, r).isNil, true)
+  })
+
+})
+
+// G4 phase 3 — the graph walk's guards. The walk visits POSITIONS
+// rather than values (two positions of one entity share a value object
+// after the merge), so its termination guard is the ANCESTOR chain,
+// which is what a cycle actually is. No document produces one — a
+// self-prefix reference is refused as `path_cycle` long before — so
+// the guard is pinned here, as its Go twin is in go/graph_test.go.
+describe('coverage3-graph', () => {
+
+  test('graph-of-survives-a-cycle', () => {
+    const ctx = new Aontu().ctx({})
+    const root: any = new MapVal({ peg: {} }, ctx)
+    root.peg.self = root
+    root.entity = 'x'
+    const g = graphOf(root)
+    // Once, at the root: the ancestor guard stops the descent the
+    // moment the cycle closes back onto a node already on the path.
+    Assert.deepEqual(g.entities, [{ id: 'x', paths: ['$'] }])
+    Assert.deepEqual(g.edges, [])
+  })
+
+  test('graph-of-answers-a-non-val-slot', () => {
+    // A bag slot can hold a raw value or nothing at all in a hand-built
+    // tree; the walk answers it rather than descending into it.
+    const ctx = new Aontu().ctx({})
+    const root: any = new MapVal(
+      { peg: { raw: 5 as any, gap: undefined as any } }, ctx)
+    root.entity = 'x'
+    Assert.deepEqual(graphOf(root).entities, [{ id: 'x', paths: ['$'] }])
   })
 
 })

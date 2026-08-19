@@ -136,12 +136,24 @@ class ReferVal extends FeatureVal {
     this.dc = 0
   }
 
-  // NO clone or path-dependence hooks, deliberately. A spread template
-  // holds the FUNCTION, not the residual — `&: refer(t)` is cloned per
-  // destination as a `refer(...)` call, and each clone resolves to its
-  // own ReferVal there — so a residual never travels: it is minted
-  // where it is used. Both ports were written with the hooks and both
-  // proved them dead (ADR-002 rule 4: gone rather than excused).
+  // The residual's own state — the type to flow, the address it has
+  // met, the constraints it holds — TRAVELS with the clone. A spread
+  // template holds the FUNCTION, so a template never needs this; a
+  // REFERENCE to a value that already contains a resolved link does
+  // (`z: id(a) & {u: refer() & "a"}` then `s: $.z`). Without it the
+  // clone came back as a bare `refer()` — the address silently
+  // dropped, and the copied link resolving to nothing.
+  //
+  // No path-dependence hook, though: a residual is minted at its
+  // destination, so `key()` inside a template resolves there already.
+  clone(ctx: AontuContext, spec?: ValSpec): Val {
+    const out: any = super.clone(ctx, spec)
+    out.tval = this.tval
+    out.addr = this.addr
+    out.addrsrc = this.addrsrc
+    out.held = this.held
+    return out
+  }
 
   unify(peer: Val, ctx: AontuContext): Val {
     const p: any = peer
@@ -260,6 +272,11 @@ class ReferVal extends FeatureVal {
     // The value IS the address string: a link, not an embedding.
     const out: any = new StringVal({ peg: this.addrsrc as string }, ctx)
     out.dc = DONE
+    // STAMPED as a link (G4 phase 3): the value is the address string,
+    // so without this nothing downstream could tell a checked link from
+    // a literal that happens to look like one. The edge set is exactly
+    // the set of these stamps.
+    out.link = this.addrsrc
     propagateMarks(this, out)
     out.site = site.site
     out.path = this.path

@@ -163,6 +163,19 @@ abstract class Val {
   // it.
   entity?: string
 
+  // The LINK (G4 phase 2/3): the entity address a `refer` resolved to,
+  // stamped on the string it answers. The string IS the value — a
+  // link, not an embedding — so nothing downstream could otherwise
+  // tell a checked link from a literal that happens to look like one,
+  // and the edge set (ts/src/graph.ts) is exactly the set of these.
+  link?: string
+
+  // The GRAPH of an evaluated document (G4 phase 3): the entity index
+  // and the edge set, stamped on the result by Aontu.unify the way the
+  // include manifest is. Absent on every Val that is not a unify
+  // result.
+  graph?: any
+
   // Actual native value.
   peg: any = undefined
 
@@ -259,8 +272,15 @@ abstract class Val {
     out.mark.type = this.mark.type && (fullspec.mark?.type ?? true)
     out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true)
 
-    if (null != this.entity) {
+    // The two IDENTITY riders travel together, under one test: the
+    // entity a value IS, and the address a resolved link POINTS AT.
+    // One guard rather than two because the pair is what a clone
+    // either carries or does not — and because a second test for the
+    // link alone would be a branch no document takes, the reference
+    // clone catching the pending residual before it ever resolves.
+    if (null != this.entity || null != this.link) {
       out.entity = this.entity
+      out.link = this.link
     }
     if (null != this.deprecation) {
       out.deprecation = this.deprecation

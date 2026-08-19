@@ -293,6 +293,11 @@ func (r *ReferVal) settle(ctx *Ctx, site Val) Val {
 	// The value IS the address string: a link, not an embedding.
 	out := newString(r.addrsrc)
 	copyMarks(out, r)
+	// STAMPED as a link (G4 phase 3): the value is the address string,
+	// so without this nothing downstream could tell a checked link from
+	// a literal that happens to look like one. The edge set is exactly
+	// the set of these stamps.
+	out.setLinkAddr(r.addrsrc)
 	out.sp, out.spu, out.surl = site.pos(), site.posu(), site.srcurl()
 	out.path = cp(r.path)
 	if nil == r.held {
