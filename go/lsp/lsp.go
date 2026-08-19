@@ -263,7 +263,9 @@ func Completions() []CompletionItem {
 		"biginteger", "bigdecimal", "boolean"} {
 		out = append(out, CompletionItem{Label: k, Kind: CompletionKeyword, Detail: "scalar kind"})
 	}
-	for _, k := range []string{"true", "false", "null", "top"} {
+	// `_` joins these as of G8 phase 3: it is a literal of the language
+	// now, not text.
+	for _, k := range []string{"_", "true", "false", "null", "top"} {
 		out = append(out, CompletionItem{Label: k, Kind: CompletionKeyword, Detail: "keyword"})
 	}
 	return out

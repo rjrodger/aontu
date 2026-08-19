@@ -89,9 +89,9 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **83 `.tsv` files, 82
-   row-bearing, 2,967 rows**, in eighteen modes — `canon` 704, `gen`
-   541, `errc` 487, `gens` 445, `err` 240, `errcode` 95, `subsume` 94,
+   register's last update the suite is **84 `.tsv` files, 83
+   row-bearing, 3,005 rows**, in eighteen modes — `canon` 711, `gen`
+   541, `errc` 493, `gens` 469, `err` 240, `errcode` 96, `subsume` 94,
    `query` 92, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
    `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
    `agentsmd` 7.
@@ -101,7 +101,7 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-four of forty-nine phases have moved; forty-three of those are
+Forty-five of forty-nine phases have moved; forty-four of those are
 complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
@@ -113,8 +113,8 @@ complete.
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
-| [G8](g8-generation.md) | Generation | C | 3 | 0 | 2 |
-| | | **total** | **43** | **1** | **5** |
+| [G8](g8-generation.md) | Generation | C | 4 | 0 | 1 |
+| | | **total** | **44** | **1** | **4** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -171,7 +171,9 @@ Against the review's own [sequencing](index.md#sequencing):
   and `each` — children made from data that is already in the model,
   so the list and the children built from it cannot drift — and
   **G8.2**, `filter` and `match`, which select by unification rather
-  than by a predicate language of their own.
+  than by a predicate language of their own, and **G8.3**, the
+  placeholder `_` — the language's first reserved literal since it
+  gained `top`, and its first deliberate breaking change.
 
 One structural note the sequencing table itself makes: G7's query/MCP
 surface depends on nothing and could ship at any time.
@@ -695,7 +697,7 @@ references behind; it is G4's to settle for both at once.
 | **0** — staging rule | S | **LANDED** | Both deliverables. The `DisjunctVal.gen` distribution defect was **fenced** by probed guard rows in `test/spec/disjunct.tsv` with G1.0. The `KeyFuncVal` `cc < 3` delay is now the settled-position rule: `AontuContext.settle` / `Ctx.settle`, set by the pass loop (`ts/src/unify.ts`, `go/unify.go`) on the first pass whose input model is identical to the previous pass's, and read by `key()` in `ts/src/val/KeyFuncVal.ts` and `go/func.go`. Zero behaviour change across the existing suite in both ports. **Departure from the design**, in two respects. (a) The rule reads MODEL stability, not "the data argument is DONE": `move()` hides its source one pass *after* it copies it, so a value whose own path and arguments have settled can still be moved, and only stability of the whole model rules that out. (b) It is stated in the pass loop rather than in `FuncBaseVal`, because that is where the two consecutive models exist to compare; `FuncBaseVal` reads the flag. Landing it also exposed a real defect: `ListVal` had no apply-once-per-element spread guard (the `_spr` stamp `MapVal` has always had), so a list template that RESIDUATES was met into each element again every pass and its canon doubled — invisible under a three-pass delay, fatal under a rule that waits for stability. Fixed in `ts/src/val/ListVal.ts` and `go/listval.go`; pinned by the four `spread-nested-list-key*` rows in `test/spec/spread.tsv`, which the old rule failed with a spurious `scalar_value` error. |
 | **1** — `pack` and `each` | M | **LANDED** | `ts/src/val/PackFuncVal.ts` and `ts/src/val/EachFuncVal.ts` (new), the `"pack"`/`"each"` arms of `go/func.go` with `go/generate.go` (new); both in both registries (24 → 26 builtins), both arity tables, both LSP completion lists and both published grammars. Codes `pack_data`, `pack_key`, `each_data` in `errcodes.tsv`. Spec: `test/spec/gen-pack.tsv` (25), `gen-each.tsv` (20), `gen-spread.tsv` (9), `gen-close.tsv` (7), `gen-key.tsv` (10) — 71 rows, every expectation from a parity probe run through both engines. Docs: "Generating children" in [`docs/reference-language.md`](../reference-language.md#generating-children-pack-and-each). **Departures and discoveries:** four, all recorded below. |
 | **2** — `filter` and `match` | M | **LANDED** | `ts/src/val/FilterFuncVal.ts` and `ts/src/val/MatchFuncVal.ts` (new), the `"filter"`/`"match"` arms of `go/func.go` with `filterFunc`/`matchFunc` in `go/generate.go`; the trial-meet helper is shared (`trialUnify` in `ts/src/val/FuncBaseVal.ts` and `go/generate.go`), and is the mechanism disjunction already uses. Both in both registries (26 → 28 builtins), arity tables, LSP completion lists and published grammars. Codes `filter_data` and `match_none` in `errcodes.tsv`. Spec: `test/spec/gen-filter.tsv` (16) and `gen-match.tsv` (16) — 32 rows, every expectation from a parity probe run through both engines. Docs: "Selecting" in [`docs/reference-language.md`](../reference-language.md#selecting-filter-and-match). **Departures:** three, recorded below — two of them semantic, and both because the design's own examples cannot be evaluated under the rules it stated. |
-| **3** — placeholder `_` (the parser phase) | M/L | **NOT STARTED** | — |
+| **3** — placeholder `_` (the parser phase) | M/L | **LANDED** | `ts/src/val/PlaceVal.ts` and `go/place.go` (new): the hole, plus the `hasPlace`/`fillPlace` walk both ports share. A bare `_` is a value keyword in both parsers (`ts/src/lang.ts`, `go/lang.go`), in both published grammars and in both LSP literal lists; a call holding a hole waits for a peer and is rebuilt with the peer in it (`FuncBaseVal.unify`/`OpBaseVal.unify`, `go/func.go`/`go/op.go`), and a placeheld operator DRIVES in `unite` because its peer is its filling rather than its constraint. Inside a generator's template `_` binds the source child (`pack`, `each`, `filter` in both ports). Code `place_pair` in `errcodes.tsv`. Spec: `test/spec/place.tsv` (37 rows), including the four that pin the BREAKING CHANGE — quoted `"_"`, a longer bare word, and `_` as a key all stay text. Docs: "The placeholder `_`" in [`docs/reference-language.md`](../reference-language.md#the-placeholder-_). **Departure:** one, recorded below. |
 | **4** — `\|>` sugar | S | **NOT STARTED** | Marked optional and droppable in the plan, so this is a plan-consistent state rather than a slip. |
 
 **Departures and discoveries recorded by G8.1.**
@@ -777,6 +779,22 @@ this phase does not carry the fix.
    one. TypeScript needed no equivalent (its clone hands out a fresh
    arg array), which is the sort of asymmetry the shared rows exist to
    catch — `gen-match.tsv:match-inside-pack` is the row that caught it.
+
+**Departure recorded by G8.3.**
+
+1. **`filter`'s CONDITION is a template, not a driven argument.** The
+   phase-2 implementation drove both of filter's arguments to done
+   before firing, which is right for the data and wrong for the
+   condition: a condition is tested against each child AT THAT CHILD'S
+   POSITION, so it may hold a `_` (the child it is being tested
+   against) or a relative reference, and neither has an answer at the
+   call site. Driving it there froze both — `filter($.l, _)` could not
+   resolve at all. The condition is now left standing and cloned per
+   child, exactly as `pack`'s and `each`'s templates are. Found by the
+   placeholder: the `_`-in-a-condition binding phase 2 wrote was
+   unreachable until this changed, which is what the coverage floor is
+   for.
+
 
 ## Corrections outstanding in the gap documents
 

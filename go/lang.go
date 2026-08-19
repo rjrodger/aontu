@@ -234,7 +234,12 @@ help isolate the syntax error.`,
 						})
 					},
 				},
-				"top":   valDef(func(sp int) Val { t := top(); t.sp = sp; return t }),
+				"top": valDef(func(sp int) Val { t := top(); t.sp = sp; return t }),
+				// G8 phase 3: the placeholder. A BARE `_` is the hole;
+				// `"_"` quoted, and any longer bare word containing it,
+				// stay text. Reserving it is a breaking change, pinned
+				// by place.tsv. Mirrors ts/src/lang.ts.
+				"_":     valDef(func(sp int) Val { p := newPlace(); p.sp = sp; return p }),
 				"nil":   valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
 				"true":  valDef(func(sp int) Val { v := newBoolean(true); v.sp = sp; return v }),
 				"false": valDef(func(sp int) Val { v := newBoolean(false); v.sp = sp; return v }),

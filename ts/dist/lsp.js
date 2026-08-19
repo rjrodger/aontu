@@ -339,7 +339,9 @@ exports.BUILTIN_FUNCS = BUILTIN_FUNCS;
 const KIND_KEYWORDS = [
     'string', 'number', 'integer', 'float', 'biginteger', 'bigdecimal', 'boolean',
 ];
-const LITERAL_KEYWORDS = ['true', 'false', 'null', 'top'];
+// `_` joins these as of G8 phase 3: it is a literal of the language
+// now, not text.
+const LITERAL_KEYWORDS = ['_', 'true', 'false', 'null', 'top'];
 // Context-free completion: the built-in functions, scalar-kind keywords
 // and literals. Clients filter by the typed prefix.
 function computeCompletions() {

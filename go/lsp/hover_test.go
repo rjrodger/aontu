@@ -47,8 +47,8 @@ func TestHoverMiss(t *testing.T) {
 func TestCompletionsList(t *testing.T) {
 	c := Completions()
 	// 24 functions + 7 kinds + 4 literals.
-	if len(c) != 39 {
-		t.Fatalf("expected 39 completions, got %d", len(c))
+	if len(c) != 40 {
+		t.Fatalf("expected 40 completions, got %d", len(c))
 	}
 	byLabel := map[string]CompletionItem{}
 	for _, it := range c {
@@ -149,8 +149,8 @@ func TestHandlerCompletion(t *testing.T) {
 	if err := json.Unmarshal(outs[0].Result, &items); err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 39 {
-		t.Errorf("expected 39 completion items, got %d", len(items))
+	if len(items) != 40 {
+		t.Errorf("expected 40 completion items, got %d", len(items))
 	}
 }
 

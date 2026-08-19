@@ -9,6 +9,7 @@ const utility_1 = require("../utility");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const FeatureVal_1 = require("./FeatureVal");
+const PlaceVal_1 = require("./PlaceVal");
 class OpBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -28,6 +29,16 @@ class OpBaseVal extends FeatureVal_1.FeatureVal {
         return 'op';
     }
     unify(peer, ctx) {
+        // THE PLACEHOLDER (G8 phase 3, see PlaceVal), on the operator side:
+        // `x: {&: {m: _ + 2}}` meeting `1` is `3`. Same rule as
+        // FuncBaseVal's -- the peer fills the hole and the operation is
+        // what answers.
+        if (!peer.isTop && !peer.isNil && this.id !== peer.id && (0, PlaceVal_1.hasPlace)(this)) {
+            if ((0, PlaceVal_1.hasPlace)(peer)) {
+                return (0, err_1.makeNilErr)(ctx, 'place_pair', this, peer);
+            }
+            return (0, PlaceVal_1.fillPlace)(this, peer, ctx).unify((0, top_1.top)(), ctx);
+        }
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Op:' + this.opname(), this, peer);
         // Declared without an initial value: every arm below assigns it, and
         // seeding it with `this` made the two arms that stand the op read as

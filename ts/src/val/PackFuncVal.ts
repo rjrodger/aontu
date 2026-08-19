@@ -42,6 +42,7 @@ import { unite } from '../unify'
 import { makeNilErr } from '../err'
 import { MapVal } from './MapVal'
 import { FuncBaseVal } from './FuncBaseVal'
+import { fillPlace } from './PlaceVal'
 
 
 // The keys a data bag names, in the order the result must carry them,
@@ -132,8 +133,16 @@ class PackFuncVal extends FuncBaseVal {
     const tmpl: Val = args[1]
     const peg: Record<string, Val> = {}
 
+    const src: any = args[0]
+
     for (const key of keys) {
       const keyctx = ctx.descend(key)
+      // THE PLACEHOLDER BINDS THE SOURCE CHILD (G8 phase 3): inside a
+      // generator's template `_` is the datum this child is being made
+      // FROM. For a map that is the child's value; for a list of names
+      // it is the name, which is also the key -- so `_` and `key()`
+      // agree there, and differ the moment the data is a map.
+      const source: Val = true === src?.isMap ? src.peg[key] : src.peg[keys.indexOf(key)]
       // CLONED, never shared. A spread may share a template that holds
       // nothing path-dependent (MapVal.spreadClone), because a spread
       // CONSTRAINS a child that exists; a generator's template IS the
@@ -141,7 +150,7 @@ class PackFuncVal extends FuncBaseVal {
       // child pointing at the template's own parse-time location, which
       // is the position the template is never used at -- visible as the
       // site an error inside a generated child reports.
-      const child = tmpl.clone(keyctx)
+      const child = fillPlace(tmpl.clone(keyctx), source, keyctx)
       peg[key] = undefined === peg[key] ? child :
         unite(keyctx, peg[key], child, 'pack')
     }

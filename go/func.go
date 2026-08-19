@@ -246,6 +246,24 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		}
 	}
 
+	// THE PLACEHOLDER (G8 phase 3, see place.go). A call holding a hole
+	// waits for a peer, and the peer is what fills it: the call is
+	// rebuilt with the hole replaced and resolved on the spot, so
+	// `upper(_) & hello` is `"HELLO"` and not `"HELLO" & "hello"` --
+	// the peer went INTO the call, it is not also a constraint on the
+	// way out. Mirrors the same arm in ts/src/val/FuncBaseVal.ts.
+	if !isTop(peer) && !peer.Nil() && Val(f) != peer && hasPlace(f) {
+		// TWO HOLES AND NOTHING TO FILL THEM. `upper(_) & lower(_)` has
+		// no value on either side, and picking one call to be the
+		// other's filling would be inventing an order the language does
+		// not have.
+		if hasPlace(peer) {
+			return makeNilErr(ctx, "place_pair", f, peer)
+		}
+		ctx.slot = base
+		return unite(ctx, fillPlace(f, peer), top())
+	}
+
 	// A marked func freezes against TOP instead of resolving (the
 	// `peer.isTop && (mark.type || mark.hide) -> dc = DONE` shortcut in
 	// TS FuncBaseVal.unify). The hide mark arrives either directly

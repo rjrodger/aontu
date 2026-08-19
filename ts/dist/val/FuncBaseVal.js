@@ -10,6 +10,7 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const FeatureVal_1 = require("../val/FeatureVal");
+const PlaceVal_1 = require("../val/PlaceVal");
 // A TRIAL meet: does `a` unify with `b`, and if so as what? Failure is
 // an ANSWER here rather than an error, which is exactly what
 // DisjunctVal already needs when it tries each member against a peer —
@@ -107,6 +108,21 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     unify(peer, ctx) {
         if (this.staged && !ctx.settle) {
             return this.residuate(peer, ctx);
+        }
+        // THE PLACEHOLDER (G8 phase 3, see PlaceVal). A call holding a hole
+        // waits for a peer, and the peer is what fills it: the call is
+        // rebuilt with the hole replaced and resolved on the spot, so
+        // `upper(_) & hello` is `"HELLO"` and not `"HELLO" & "hello"` --
+        // the peer went INTO the call, it is not also a constraint on the
+        // way out.
+        if (!peer.isTop && !peer.isNil && this.id !== peer.id && (0, PlaceVal_1.hasPlace)(this)) {
+            // TWO HOLES AND NOTHING TO FILL THEM. `upper(_) & lower(_)` has
+            // no value on either side, and picking one call to be the other's
+            // filling would be inventing an order the language does not have.
+            if ((0, PlaceVal_1.hasPlace)(peer)) {
+                return (0, err_1.makeNilErr)(ctx, 'place_pair', this, peer);
+            }
+            return (0, PlaceVal_1.fillPlace)(this, peer, ctx).unify((0, top_1.top)(), ctx);
         }
         const TOP = (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer);

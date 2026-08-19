@@ -6,6 +6,7 @@ const err_1 = require("../err");
 const MapVal_1 = require("./MapVal");
 const ListVal_1 = require("./ListVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
+const PlaceVal_1 = require("./PlaceVal");
 class FilterFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -17,14 +18,20 @@ class FilterFuncVal extends FuncBaseVal_1.FuncBaseVal {
     funcname() {
         return 'filter';
     }
-    // Neither argument is driven by the base: `unify` below drives both
-    // by hand, because a staged func must advance its arguments on every
-    // pass rather than only on the one it fires.
+    // Neither argument is driven by the base: `unify` below drives the
+    // DATA by hand, because a staged func must advance the argument it
+    // is waiting on every pass rather than only on the one it fires.
+    //
+    // The CONDITION is not driven at all, and that is deliberate: it is
+    // a template, tested against each child at that child's position,
+    // so it may hold a `_` (G8 phase 3, the child it is being tested
+    // against) or a relative reference — neither of which has an answer
+    // at the call site. Driving it there would freeze both.
     prepare(_ctx, _args) {
         return null;
     }
     unify(peer, ctx) {
-        const ready = this.driveStagedArgs(ctx, 2);
+        const ready = this.driveStagedArgs(ctx, 1);
         if (!ready || !ctx.settle) {
             return this.residuate(peer, ctx);
         }
@@ -41,7 +48,11 @@ class FilterFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // MEANS in this language: it is the form the two ports agree on,
         // the form `aontu diff` compares, and the form a hash is taken of.
         const keeps = (child, kctx) => {
-            const met = (0, FuncBaseVal_1.trialUnify)(kctx, child.clone(kctx), cond.clone(kctx));
+            // `_` inside the condition binds the child being tested (G8
+            // phase 3), so a condition can be about the child as a whole
+            // rather than only about its shape.
+            const test = (0, PlaceVal_1.fillPlace)(cond.clone(kctx), child, kctx);
+            const met = (0, FuncBaseVal_1.trialUnify)(kctx, child.clone(kctx), test);
             return undefined !== met && met.canon === child.canon;
         };
         if (true === data?.isMap) {

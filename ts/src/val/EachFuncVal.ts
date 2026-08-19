@@ -34,6 +34,7 @@ import { unite } from '../unify'
 import { makeNilErr } from '../err'
 import { ListVal } from './ListVal'
 import { FuncBaseVal } from './FuncBaseVal'
+import { fillPlace } from './PlaceVal'
 import { cmpCodePoint } from '../keyorder'
 
 
@@ -108,8 +109,10 @@ class EachFuncVal extends FuncBaseVal {
       const el = vals[i].clone(elctx)
       // The template is CLONED per element, never shared: see
       // PackFuncVal.resolve.
+      // `_` inside the template binds the source child (G8 phase 3),
+      // which for `each` is the element itself.
       peg.push(undefined === tmpl ? el :
-        unite(elctx, el, tmpl.clone(elctx), 'each'))
+        unite(elctx, el, fillPlace(tmpl.clone(elctx), vals[i], elctx), 'each'))
     }
 
     return new ListVal({ peg }, ctx)

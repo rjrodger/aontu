@@ -1,8 +1,8 @@
 # G8: Generation and abstraction, on the total side of the fork
 
-*Status: design proposal — phases 0, 1 and 2 **landed** (`pack`,
-`each`, `filter` and `match` ship; phase 0's defect-fencing half went
-with G1 phase 0), phases 3–4 outstanding. Per-phase status is in
+*Status: design proposal — phases 0–3 **landed** (`pack`, `each`,
+`filter`, `match` and the placeholder `_` ship; phase 0's
+defect-fencing half went with G1 phase 0), phase 4 outstanding. Per-phase status is in
 the [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -572,15 +572,16 @@ sets was exactly the one to lend. Two of the semantics as written
 could not be evaluated — see the corrections above and the
 [register](progress.md).
 
-**Phase 3 — placeholder `_` (M/L; the parser phase).** Spec file
-place.tsv: `upper(_) & foo`, `_+2` in spread templates, `_` binding
-inside pack/each templates, the `upper(_) & lower(_)` error, canon of
-unfired placeheld forms, and rows pinning that quoted `"_"` stays a
-string. Files: ts/src/val/PlaceVal.ts (new), ts/src/lang.ts
-(expr-plugin operator config), ts/src/val/FuncBaseVal.ts,
-ts/src/val/OpBaseVal.ts (residuation on peer); go/lang.go, go/op.go,
-go/func.go. Sequenced after G1's residuation machinery so the two
-gaps share one implementation.
+**Phase 3 — placeholder `_` (M/L; the parser phase). LANDED.** Spec
+file place.tsv (37 rows), as planned, including the compatibility
+rows. Files: ts/src/val/PlaceVal.ts and go/place.go (new),
+ts/src/lang.ts and go/lang.go (a value keyword — no operator config
+was needed, `_` being a value rather than a token),
+ts/src/val/FuncBaseVal.ts, ts/src/val/OpBaseVal.ts, go/func.go,
+go/op.go (fill on peer), and ts/src/unify.ts / go/unify.go, where a
+placeheld operator has to DRIVE: a scalar asked to unify with `_ + 2`
+sees an operator rather than a hole and refuses it on kind. Both
+published grammars and both LSP literal lists carry it too.
 
 **Phase 4 — `|>` sugar (S, optional).** Parse-time desugaring only;
 spec file pipe.tsv whose canon rows all show desugared call forms,

@@ -31,6 +31,7 @@ atom: map
     | func
     | ref
     | kind
+    | place
     | scalar
     | "(" value ")"
 
@@ -63,6 +64,9 @@ name: "above" | "below" | "close" | "copy" | "deprecate" | "each" | "filter"
 ref: "$" ("." segment)*
 
 segment: /[a-zA-Z0-9_-]+/
+
+// placeholder
+place: "_"
 
 kind: "biginteger" | "bigdecimal" | "boolean" | "float" | "integer"
     | "number" | "string" | "top" | "nil"

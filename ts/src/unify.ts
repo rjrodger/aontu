@@ -10,6 +10,7 @@ import { DONE } from './type'
 import { makeNilErr } from './err'
 
 import { NilVal } from './val/NilVal'
+import { hasPlace } from './val/PlaceVal'
 
 import {
   Lang
@@ -214,6 +215,13 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         // nothing about entity addresses, so letting the string drive
         // dropped the address and left the constraint standing.
         || b.isRefer
+        // An operator holding a HOLE (G8 phase 3) drives for the same
+        // reason: its peer is what FILLS it, and a scalar asked to
+        // unify with `_ + 2` sees an operator rather than a hole and
+        // refuses it on kind. Narrow to placeheld operators on
+        // purpose -- every other operator meets its peer the way it
+        // always has, through the conjunct fold that drives it.
+        || (b.isOp && hasPlace(b))
       ) {
         out = b.unify(a, te ? ctx.clone({ explain: ec(te, 'BW') }) : ctx)
         unified = true

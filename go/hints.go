@@ -54,6 +54,7 @@ var hints = map[string]string{
 	"each_data":          "The first argument to each() is not a bag. `each` makes one list\nelement per child of its DATA, so the data has to have children: a\nlist, or a map whose values become the elements in sorted-key order.\n \nExamples:\n  each([1,2])       -> [..]  # A list, in source order;\n  each({b:2,a:1})   -> [..]  # ... a map, in sorted-key order;\n  each(1)           -> nil   # ... but a scalar has no children.",
 	"filter_data":        "The first argument to filter() is not a bag. `filter` keeps the\nchildren of its DATA that already satisfy a condition, so the data\nhas to have children: a list, or a map.\n \nExamples:\n  filter([1,x], integer)      -> [..]  # A list;\n  filter({a:1,b:x}, integer)  -> {..}  # ... or a map, keys kept;\n  filter(1, integer)          -> nil   # ... but a scalar has none.",
 	"match_none":         "No pattern matched, and there is no default. `match` tries each\npattern in the order written and takes the first the value unifies\nwith; the value {value} unified with none of {tried}. Add a trailing\ndefault — the argument after the last pair — if the rest was meant\nto be allowed.\n \nExamples:\n  match(1, integer, ok)             -> \"ok\"   # The first pattern matches;\n  match(x, integer, ok, other)      -> \"other\"  # ... or the default does;\n  match(x, integer, ok)             -> nil    # ... but nothing here does.",
+	"place_pair":         "Two placeholders met, and neither has a value to fill the other.\n`_` is a HOLE: it is filled by whatever the call is unified with, so\na call holding one needs a peer that does not. Give one side a\nvalue.\n \nExamples:\n  upper(_) & hello        -> \"HELLO\"  # The peer fills the hole;\n  _ + 2 & 1               -> 3        # ... whatever the call is;\n  upper(_) & lower(_)     -> nil      # ... but two holes fill nothing.",
 	"refer_address":      "A refer() was given something that is not an entity address. An\naddress is an entity name, optionally followed by a dot-separated path\ninside that entity — and only a STRING can be one.\n \nExamples:\n  refer() & \"svc/auth\"        -> \"svc/auth\"  # An entity;\n  refer() & \"svc/auth.port\"   -> ...         # ... and a node inside it;\n  refer() & \"svc/auth.\"       -> nil         # ... but not a trailing dot;\n  refer() & 1                 -> nil         # ... and not a number.",
 	"refer_unresolved":   "A refer() address names no entity in this evaluation. Within one\nevaluation the document-set is fixed, so a link to nothing is an\nerror rather than something to resolve later: check the spelling, or\nadd the id() that was meant to declare it.\n \nExamples:\n  a:id(svc/x)&{} b:refer()&\"svc/x\"     -> \"svc/x\"  # Declared, so it resolves;\n  a:id(svc/x)&{p:1} b:refer()&\"svc/x.p\" -> \"svc/x.p\"  # ... and so does a node inside it;\n  b:refer()&\"svc/nope\"                -> nil      # ... but nothing declares this.",
 	"func_arity":         "This function was called with the wrong number of arguments:\n{func} takes {want}, but was given {got}.\n \nExamples:\n  upper(\"a\")     -> \"A\"  # One argument, which is what upper takes;\n  upper(\"a\",\"b\") -> nil  # ... so two is a mistake in the source;\n  key()          -> \"\"   # key takes none, or one level count;\n  neq(1,2,3)     -> neq  # ... and neq takes one or more exclusions.",
@@ -170,6 +171,11 @@ var codeClasses = map[string]string{
 	// meet, reported once for the whole form.
 	"filter_data": "parse",
 	"match_none":  "conflict",
+
+	// G8 phase 3 -- the placeholder. Class `conflict`: two values met
+	// and neither could answer for the other, which is what every
+	// conflict is.
+	"place_pair": "conflict",
 	// G4 phase 2 -- the checked link: a string that is not an entity
 	// address (class parse, the text is wrong), and an address that
 	// names nothing in this evaluation (class reference, the same class

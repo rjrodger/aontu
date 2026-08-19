@@ -7,6 +7,7 @@ const unify_1 = require("../unify");
 const err_1 = require("../err");
 const MapVal_1 = require("./MapVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
+const PlaceVal_1 = require("./PlaceVal");
 // The keys a data bag names, in the order the result must carry them,
 // or a code naming what is wrong with it. Shared with `each`, which
 // asks the same question of the same argument and answers it with the
@@ -72,8 +73,15 @@ class PackFuncVal extends FuncBaseVal_1.FuncBaseVal {
         // Arity is checked at parse (funcArity), so both arguments are here.
         const tmpl = args[1];
         const peg = {};
+        const src = args[0];
         for (const key of keys) {
             const keyctx = ctx.descend(key);
+            // THE PLACEHOLDER BINDS THE SOURCE CHILD (G8 phase 3): inside a
+            // generator's template `_` is the datum this child is being made
+            // FROM. For a map that is the child's value; for a list of names
+            // it is the name, which is also the key -- so `_` and `key()`
+            // agree there, and differ the moment the data is a map.
+            const source = true === src?.isMap ? src.peg[key] : src.peg[keys.indexOf(key)];
             // CLONED, never shared. A spread may share a template that holds
             // nothing path-dependent (MapVal.spreadClone), because a spread
             // CONSTRAINS a child that exists; a generator's template IS the
@@ -81,7 +89,7 @@ class PackFuncVal extends FuncBaseVal_1.FuncBaseVal {
             // child pointing at the template's own parse-time location, which
             // is the position the template is never used at -- visible as the
             // site an error inside a generated child reports.
-            const child = tmpl.clone(keyctx);
+            const child = (0, PlaceVal_1.fillPlace)(tmpl.clone(keyctx), source, keyctx);
             peg[key] = undefined === peg[key] ? child :
                 (0, unify_1.unite)(keyctx, peg[key], child, 'pack');
         }

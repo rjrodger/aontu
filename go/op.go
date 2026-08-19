@@ -46,6 +46,17 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 	// the same undescended ctx; the slot hint is single-use per unite).
 	slot := ctx.slot
 
+	// THE PLACEHOLDER (G8 phase 3, see place.go), on the operator side:
+	// `x: {&: {m: _ + 2}}` meeting `1` is `3`. Same rule as FuncVal's --
+	// the peer fills the hole and the operation is what answers.
+	if !isTop(peer) && !peer.Nil() && hasPlace(o) {
+		if hasPlace(peer) {
+			return makeNilErr(ctx, "place_pair", o, peer)
+		}
+		ctx.slot = slot
+		return unite(ctx, fillPlace(o, peer), top())
+	}
+
 	// Resolve operands into a scratch slice WITHOUT writing them back:
 	// a stuck op keeps its original operands (`$flag+[...]` renders the
 	// unresolved $flag), matching TS OpBaseVal.unify, which also only

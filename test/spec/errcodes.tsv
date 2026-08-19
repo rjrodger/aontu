@@ -247,3 +247,8 @@ each_data	errcode	parse	0.53.0
 # the patterns that were tried.
 filter_data	errcode	parse	0.53.0
 match_none	errcode	conflict	0.53.0
+# THE PLACEHOLDER (G8 phase 3, `_`). One code, class `conflict`: two
+# placeheld calls met and neither has a value to fill the other, so
+# there is nothing to pick between them. A hole with a value on the
+# other side is not an error at all -- it is the whole point.
+place_pair	errcode	conflict	0.53.0

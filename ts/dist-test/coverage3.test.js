@@ -85,6 +85,7 @@ const StringVal_1 = require("../dist/val/StringVal");
 const ScalarVal_1 = require("../dist/val/ScalarVal");
 const NilVal_1 = require("../dist/val/NilVal");
 const KeyFuncVal_1 = require("../dist/val/KeyFuncVal");
+const PlaceVal_1 = require("../dist/val/PlaceVal");
 const RefVal_1 = require("../dist/val/RefVal");
 const VarVal_1 = require("../dist/val/VarVal");
 const ConjunctVal_1 = require("../dist/val/ConjunctVal");
@@ -1110,6 +1111,15 @@ function capture(fn) {
 // the Go port pins its twin the same way (coverage3_test.go,
 // TestFuncArmsDirect).
 (0, node_test_1.describe)('coverage3-staging', () => {
+    (0, node_test_1.test)('a-hole-has-nothing-above-it', () => {
+        // `superior` is the lattice step UP, asked of a value by the
+        // generalisation machinery (G3). A hole admits everything, so the
+        // answer is itself — the same answer TOP gives. No document asks
+        // it of a hole, because a hole is filled before anything
+        // generalises it, so the contract is pinned here.
+        const place = new PlaceVal_1.PlaceVal({});
+        Assert.strictEqual(place.superior(), place);
+    });
     (0, node_test_1.test)('residuation-answers-a-nil-peer', () => {
         const a0 = new aontu_1.Aontu();
         const ctx = a0.ctx({});

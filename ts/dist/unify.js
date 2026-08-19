@@ -6,6 +6,7 @@ exports.mergeEntities = mergeEntities;
 const ctx_1 = require("./ctx");
 const type_1 = require("./type");
 const err_1 = require("./err");
+const PlaceVal_1 = require("./val/PlaceVal");
 const lang_1 = require("./lang");
 const utility_1 = require("./utility");
 const top_1 = require("./val/top");
@@ -186,7 +187,14 @@ const unite = (ctx, a, b, whence) => {
                 // residuals here: its peer is a plain string, which knows
                 // nothing about entity addresses, so letting the string drive
                 // dropped the address and left the constraint standing.
-                || b.isRefer) {
+                || b.isRefer
+                // An operator holding a HOLE (G8 phase 3) drives for the same
+                // reason: its peer is what FILLS it, and a scalar asked to
+                // unify with `_ + 2` sees an operator rather than a hole and
+                // refuses it on kind. Narrow to placeheld operators on
+                // purpose -- every other operator meets its peer the way it
+                // always has, through the conjunct fold that drives it.
+                || (b.isOp && (0, PlaceVal_1.hasPlace)(b))) {
                 out = b.unify(a, te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'BW') }) : ctx);
                 unified = true;
                 why = 'bv';

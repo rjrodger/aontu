@@ -595,6 +595,44 @@ Both wait for the model to settle before they answer, for the reason
 wrong bag to take a subset of, and a scrutinee that is still being
 narrowed can match an earlier arm than the one it will end up matching.
 
+## The placeholder `_`
+
+A bare `_` is a **hole**: a call holding one waits, and whatever the
+call is unified with fills it.
+
+```
+greeting: upper(_) & hello         → {"greeting":"HELLO"}
+x: {&: {m: _ + 2}}   x: a: m: 1    → {"x":{"a":{"m":3}}}
+```
+
+The peer goes **into** the call and is not also a constraint on the
+way out: `upper(_) & hello` is `"HELLO"`, not `"HELLO" & "hello"`.
+Two holes meeting is an error — neither has a value to fill the other.
+
+Inside a generator's template, `_` is the **source child** the
+generated one is being made from:
+
+```
+ports: {http: 80, https: 443}
+open:  pack($.ports, {port: _, name: key()})
+  → {"open":{"http":{"name":"http","port":80},
+             "https":{"name":"https","port":443}}}
+```
+
+For a `pack` over a list of names, `_` and `key()` are the same thing
+— the name is the key. Over a map they differ: `key()` is the key, `_`
+is the value. In a `filter` condition, `_` is the child being tested.
+
+A hole is not a function parameter: it cannot be named, passed, or
+partially applied, and there is no way to write one that is not
+already inside a call. Unfilled at generation it is an error, exactly
+as `top` is.
+
+**Compatibility.** A bare `_` used to be the string `"_"`. It is a
+hole now — a breaking change, pinned by `test/spec/place.tsv`. Quoted
+`"_"` is still that string, any longer bare word containing it (`_b`)
+is still ordinary text, and `_` as a **key** is still a key.
+
 ## References and paths
 
 A reference resolves to the value at another location, then unifies in

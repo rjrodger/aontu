@@ -7,6 +7,7 @@ const unify_1 = require("../unify");
 const err_1 = require("../err");
 const ListVal_1 = require("./ListVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
+const PlaceVal_1 = require("./PlaceVal");
 const keyorder_1 = require("../keyorder");
 // The children a data bag holds, in the order the result must carry
 // them, or the code naming what is wrong with the argument.
@@ -56,8 +57,10 @@ class EachFuncVal extends FuncBaseVal_1.FuncBaseVal {
             const el = vals[i].clone(elctx);
             // The template is CLONED per element, never shared: see
             // PackFuncVal.resolve.
+            // `_` inside the template binds the source child (G8 phase 3),
+            // which for `each` is the element itself.
             peg.push(undefined === tmpl ? el :
-                (0, unify_1.unite)(elctx, el, tmpl.clone(elctx), 'each'));
+                (0, unify_1.unite)(elctx, el, (0, PlaceVal_1.fillPlace)(tmpl.clone(elctx), vals[i], elctx), 'each'));
         }
         return new ListVal_1.ListVal({ peg }, ctx);
     }

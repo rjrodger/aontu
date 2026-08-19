@@ -147,7 +147,14 @@ func uniteRaw(ctx *Ctx, a, b Val) Val {
 	// addresses, so letting the string drive would drop the address and
 	// leave the constraint standing. Mirrors the same arm in
 	// ts/src/unify.ts.
-	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) || isRefer(b) {
+	// An operator holding a HOLE (G8 phase 3) drives for the same
+	// reason: its peer is what FILLS it, and a scalar asked to unify
+	// with `_ + 2` sees an operator rather than a hole and refuses it
+	// on kind. Narrow to placeheld operators on purpose -- every other
+	// operator meets its peer the way it always has, through the
+	// conjunct fold that drives it.
+	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) || isRefer(b) ||
+		isPlaceheldOp(b) {
 		return drive(b, a)
 	}
 	return drive(a, b)
@@ -314,4 +321,11 @@ func residuePaths(v Val, max int) []string {
 	}
 	visit(v, true)
 	return out
+}
+
+// isPlaceheldOp reports whether v is an operator holding a placeholder
+// hole (G8 phase 3, see place.go).
+func isPlaceheldOp(v Val) bool {
+	_, ok := v.(*PlusOpVal)
+	return ok && hasPlace(v)
 }

@@ -55,6 +55,7 @@ const PackFuncVal_1 = require("./val/PackFuncVal");
 const EachFuncVal_1 = require("./val/EachFuncVal");
 const FilterFuncVal_1 = require("./val/FilterFuncVal");
 const MatchFuncVal_1 = require("./val/MatchFuncVal");
+const PlaceVal_1 = require("./val/PlaceVal");
 const MoveFuncVal_1 = require("./val/MoveFuncVal");
 const PathFuncVal_1 = require("./val/PathFuncVal");
 const PrefFuncVal_1 = require("./val/PrefFuncVal");
@@ -278,6 +279,12 @@ help isolate the syntax error.`,
                 },
                 // TODO: FIX: need a TOP instance to hold path
                 'top': { val: () => (0, top_1.top)() },
+                // G8 phase 3: the placeholder. A BARE `_` is the hole; `"_"`
+                // quoted, and any longer bare word containing it, stay text.
+                // Reserving it is a breaking change, pinned by place.tsv.
+                '_': {
+                    val: (r, ctx) => addsite(new PlaceVal_1.PlaceVal({}), r, ctx)
+                },
             }
         },
         map: {

@@ -58,6 +58,7 @@ import { StringVal } from '../dist/val/StringVal'
 import { ScalarVal } from '../dist/val/ScalarVal'
 import { NilVal } from '../dist/val/NilVal'
 import { KeyFuncVal } from '../dist/val/KeyFuncVal'
+import { PlaceVal } from '../dist/val/PlaceVal'
 import { RefVal } from '../dist/val/RefVal'
 import { VarVal } from '../dist/val/VarVal'
 import { ConjunctVal } from '../dist/val/ConjunctVal'
@@ -1296,6 +1297,16 @@ describe('coverage3-graph', () => {
 // the Go port pins its twin the same way (coverage3_test.go,
 // TestFuncArmsDirect).
 describe('coverage3-staging', () => {
+
+  test('a-hole-has-nothing-above-it', () => {
+    // `superior` is the lattice step UP, asked of a value by the
+    // generalisation machinery (G3). A hole admits everything, so the
+    // answer is itself — the same answer TOP gives. No document asks
+    // it of a hole, because a hole is filled before anything
+    // generalises it, so the contract is pinned here.
+    const place: any = new PlaceVal({})
+    Assert.strictEqual(place.superior(), place)
+  })
 
   test('residuation-answers-a-nil-peer', () => {
     const a0 = new Aontu()

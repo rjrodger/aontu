@@ -29,6 +29,7 @@ import {
 
 import { ConjunctVal } from '../val/ConjunctVal'
 import { FeatureVal } from '../val/FeatureVal'
+import { hasPlace, fillPlace } from '../val/PlaceVal'
 
 
 // A TRIAL meet: does `a` unify with `b`, and if so as what? Failure is
@@ -154,6 +155,22 @@ class FuncBaseVal extends FeatureVal {
   unify(peer: Val, ctx: AontuContext): Val {
     if (this.staged && !ctx.settle) {
       return this.residuate(peer, ctx)
+    }
+
+    // THE PLACEHOLDER (G8 phase 3, see PlaceVal). A call holding a hole
+    // waits for a peer, and the peer is what fills it: the call is
+    // rebuilt with the hole replaced and resolved on the spot, so
+    // `upper(_) & hello` is `"HELLO"` and not `"HELLO" & "hello"` --
+    // the peer went INTO the call, it is not also a constraint on the
+    // way out.
+    if (!peer.isTop && !peer.isNil && this.id !== peer.id && hasPlace(this)) {
+      // TWO HOLES AND NOTHING TO FILL THEM. `upper(_) & lower(_)` has
+      // no value on either side, and picking one call to be the other's
+      // filling would be inventing an order the language does not have.
+      if (hasPlace(peer)) {
+        return makeNilErr(ctx, 'place_pair', this, peer)
+      }
+      return fillPlace(this, peer, ctx).unify(top(), ctx)
     }
 
     const TOP = top()

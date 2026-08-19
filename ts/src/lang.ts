@@ -115,6 +115,7 @@ import { PackFuncVal } from './val/PackFuncVal'
 import { EachFuncVal } from './val/EachFuncVal'
 import { FilterFuncVal } from './val/FilterFuncVal'
 import { MatchFuncVal } from './val/MatchFuncVal'
+import { PlaceVal } from './val/PlaceVal'
 import { MoveFuncVal } from './val/MoveFuncVal'
 import { PathFuncVal } from './val/PathFuncVal'
 import { PrefFuncVal } from './val/PrefFuncVal'
@@ -384,6 +385,14 @@ help isolate the syntax error.`,
 
         // TODO: FIX: need a TOP instance to hold path
         'top': { val: () => top() },
+
+        // G8 phase 3: the placeholder. A BARE `_` is the hole; `"_"`
+        // quoted, and any longer bare word containing it, stay text.
+        // Reserving it is a breaking change, pinned by place.tsv.
+        '_': {
+          val: (r: Rule, ctx: JsonicContext) =>
+            addsite(new PlaceVal({}), r, ctx)
+        },
       }
     },
 

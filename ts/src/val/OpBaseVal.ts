@@ -31,6 +31,7 @@ import {
 
 import { ConjunctVal } from './ConjunctVal'
 import { FeatureVal } from './FeatureVal'
+import { hasPlace, fillPlace } from './PlaceVal'
 
 
 
@@ -66,6 +67,17 @@ class OpBaseVal extends FeatureVal {
 
 
   unify(peer: Val, ctx: AontuContext): Val {
+
+    // THE PLACEHOLDER (G8 phase 3, see PlaceVal), on the operator side:
+    // `x: {&: {m: _ + 2}}` meeting `1` is `3`. Same rule as
+    // FuncBaseVal's -- the peer fills the hole and the operation is
+    // what answers.
+    if (!peer.isTop && !peer.isNil && this.id !== peer.id && hasPlace(this)) {
+      if (hasPlace(peer)) {
+        return makeNilErr(ctx, 'place_pair', this, peer)
+      }
+      return fillPlace(this, peer, ctx).unify(top(), ctx)
+    }
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Op:' + this.opname(), this, peer)
     // Declared without an initial value: every arm below assigns it, and
     // seeding it with `this` made the two arms that stand the op read as

@@ -86,13 +86,24 @@ func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	}
 
 	out := newMap()
-	for _, key := range keys {
+	for ki, key := range keys {
 		kslot := append(cp(base), key)
+		// THE PLACEHOLDER BINDS THE SOURCE CHILD (G8 phase 3): inside a
+		// generator's template `_` is the datum this child is being
+		// made FROM. For a map that is the child's value; for a list of
+		// names it is the name, which is also the key -- so `_` and
+		// key() agree there, and differ the moment the data is a map.
+		var source Val
+		if m, ok := data.(*MapVal); ok {
+			source = m.peg[key]
+		} else if l, ok := data.(*ListVal); ok {
+			source = l.peg[ki]
+		}
 		// CLONED, never shared. A spread may share a template that
 		// holds nothing path-dependent; a generator's template IS the
 		// child, and a child is a position (see the TS
 		// PackFuncVal.resolve comment).
-		child := clonePath(tmpl, kslot)
+		child := fillPlace(clonePath(tmpl, kslot), source)
 		if prev, seen := out.peg[key]; seen {
 			// Duplicate generated keys are not an error: the colliding
 			// children unify, exactly as duplicate source keys merge.
@@ -133,7 +144,9 @@ func eachFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 		el := clonePath(v, islot)
 		if nil != tmpl {
 			ctx.slot = islot
-			el = unite(ctx, el, clonePath(tmpl, islot))
+			// `_` inside the template binds the source child (G8 phase
+			// 3), which for each() is the element itself.
+			el = unite(ctx, el, fillPlace(clonePath(tmpl, islot), v))
 		}
 		elems = append(elems, el)
 	}
@@ -187,7 +200,11 @@ func filterFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	// the comparison because canon is what "the same value" means here.
 	keeps := func(child Val, slot []string) bool {
 		ctx.slot = slot
-		met := trialUnify(ctx, clonePath(child, slot), clonePath(cond, slot))
+		// `_` inside the condition binds the child being tested (G8
+		// phase 3), so a condition can be about the child as a whole
+		// rather than only about its shape.
+		test := fillPlace(clonePath(cond, slot), child)
+		met := trialUnify(ctx, clonePath(child, slot), test)
 		return nil != met && met.Canon() == child.Canon()
 	}
 
@@ -269,7 +286,11 @@ func stagedArgIdx(f *FuncVal) []int {
 	case "pack", "each":
 		return []int{0}
 	case "filter":
-		return []int{0, 1}
+		// The DATA only. The condition is a template, tested against
+		// each child at that child's position, so it may hold a `_` or
+		// a relative reference — neither of which has an answer at the
+		// call site (see the TS FilterFuncVal.prepare comment).
+		return []int{0}
 	case "match":
 		out := []int{0}
 		last := len(f.peg)
