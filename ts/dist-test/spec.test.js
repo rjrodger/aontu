@@ -70,6 +70,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                and the hash form must round-trip (G6, hcanon.tsv)
  *   mode=hash  : canonHash(unify(src)) must equal expect, the full
  *                `aon1-...` pin, byte-identical across the ports
+ *   mode=diff  : FIVE columns -- name, diff, left, input, expect. The
+ *                report of diff(left, right) must match the expect
+ *                object ({changes, same} plus `codes`); the input is
+ *                {right, at?}. See test/spec/diff.tsv
  *   mode=patch : FIVE columns -- name, patch, entry, input, expect.
  *                The report of patch(entry, overlay, set) must match
  *                the expect object ({appended, overlay, verdict} plus
@@ -156,7 +160,8 @@ function loadRows() {
             // asserted is that the files were found at all
             // (spec-files-present below).
             const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
-                'query' === parts[1] || 'why' === parts[1] || 'patch' === parts[1];
+                'query' === parts[1] || 'why' === parts[1] || 'patch' === parts[1] ||
+                'diff' === parts[1];
             const want = vetRow ? 5 : 4;
             if (parts.length < want) {
                 throw new Error(`malformed spec row: ${file} line ${lineno}: ${want} columns` +
@@ -336,6 +341,27 @@ function runRow(row) {
     }
     else if ('hash' === row.mode) {
         Assert.strictEqual((0, aontu_1.canonHash)(a0.unify(row.src, undefined, ctx)), row.expect);
+    }
+    else if ('diff' === row.mode) {
+        const input = JSON.parse(row.data);
+        const golden = JSON.parse(row.expect);
+        const report = (0, aontu_1.diff)(row.src, input.right, null == input.at ? undefined : { at: input.at });
+        Assert.strictEqual((0, aontu_1.exactJSON)({
+            changes: report.changes,
+            same: report.same,
+            ...(0 === report.findings.length
+                ? {} : { codes: report.findings.map((f) => f.code) }),
+        }), (0, aontu_1.exactJSON)(golden), `diff report mismatch: ${row.name}`);
+        // A diff is SYMMETRIC in what it detects: swapping the sides
+        // reports the same number of changes at the same paths, with
+        // added and removed exchanged. Asserted for every row that
+        // stands up, which is cheap and catches a one-sided walk.
+        if (report.ok) {
+            const back = (0, aontu_1.diff)(input.right, row.src, null == input.at ? undefined : { at: input.at });
+            Assert.deepStrictEqual(back.changes.map((c) => c.path), report.changes.map((c) => c.path), `diff is not symmetric: ${row.name}`);
+            Assert.deepStrictEqual(back.changes.map((c) => 'added' === c.kind ? 'removed' : 'removed' === c.kind ? 'added'
+                : c.kind), report.changes.map((c) => c.kind), `diff kinds are not symmetric: ${row.name}`);
+        }
     }
     else if ('patch' === row.mode) {
         const input = JSON.parse(row.data);

@@ -54,6 +54,10 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	             and the hash form must round-trip (G6, hcanon.tsv)
 //	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
 //	             `aon1-...` pin, byte-identical across the ports
+//	mode=diff  : FIVE columns -- name, diff, left, input, expect. The
+//	             report of Diff(left, right) must match the expect
+//	             object ({changes, same} plus `codes`); the input is
+//	             {right, at?}. See test/spec/diff.tsv
 //	mode=patch : FIVE columns -- name, patch, entry, input, expect.
 //	             The report of Patch(entry, overlay, set) must match
 //	             the expect object ({appended, overlay, verdict} plus
@@ -132,7 +136,7 @@ func TestSpec(t *testing.T) {
 			// ignores any extra (see test/spec/vet.tsv and
 			// test/spec/subsume.tsv for the encodings).
 			vetRow := "vet" == mode || "subsume" == mode || "query" == mode ||
-				"why" == mode || "patch" == mode
+				"why" == mode || "patch" == mode || "diff" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -290,6 +294,58 @@ func TestSpec(t *testing.T) {
 					}
 					if got := CanonHash(v); got != expect {
 						t.Fatalf("hash mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+
+				case "diff":
+					var dinput struct {
+						At    string `json:"at"`
+						Right string `json:"right"`
+					}
+					if jerr := json.Unmarshal([]byte(data), &dinput); jerr != nil {
+						t.Fatalf("bad diff input: %v\n %s", jerr, data)
+					}
+					dr := Diff(src, dinput.Right, &DiffOptions{At: dinput.At})
+					dgot := map[string]any{
+						"changes": dr.Changes,
+						"same":    dr.Same,
+					}
+					if 0 < len(dr.Findings) {
+						codes := []string{}
+						for _, f := range dr.Findings {
+							codes = append(codes, f.Code)
+						}
+						dgot["codes"] = codes
+					}
+					var dgolden map[string]any
+					if jerr := json.Unmarshal([]byte(expect), &dgolden); jerr != nil {
+						t.Fatalf("bad diff golden: %v\n %s", jerr, expect)
+					}
+					if specJSON(t, dgot) != specJSON(t, dgolden) {
+						t.Fatalf("diff report mismatch\n want: %s\n got:  %s",
+							specJSON(t, dgolden), specJSON(t, dgot))
+					}
+
+					// A diff is SYMMETRIC in what it detects: swapping
+					// the sides reports the same paths with added and
+					// removed exchanged.
+					if dr.OK {
+						back := Diff(dinput.Right, src, &DiffOptions{At: dinput.At})
+						if len(back.Changes) != len(dr.Changes) {
+							t.Fatalf("diff is not symmetric: %s", name)
+						}
+						for i, c := range dr.Changes {
+							b := back.Changes[i]
+							want := c.Kind
+							if DiffAdded == want {
+								want = DiffRemoved
+							} else if DiffRemoved == want {
+								want = DiffAdded
+							}
+							if b.Path != c.Path || b.Kind != want {
+								t.Fatalf("diff is not symmetric: %s\n %v vs %v",
+									name, c, b)
+							}
+						}
 					}
 
 				case "patch":

@@ -20,6 +20,7 @@ import { trimCheck } from './trim'
 import { hcanon, canonHash } from './hcanon'
 import { get, why } from './query'
 import { patch } from './patch'
+import { diff } from './diff'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -383,6 +384,7 @@ export {
   get,
   why,
   patch,
+  diff,
 }
 
 

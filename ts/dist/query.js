@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.nearestKey = nearestKey;
 exports.pathParts = pathParts;
 exports.projectFor = projectFor;
+exports.evalFailure = evalFailure;
 exports.get = get;
 exports.why = why;
 // THE QUERY SURFACE (G7 phase 1,

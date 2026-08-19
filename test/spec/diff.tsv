@@ -1,0 +1,52 @@
+# G7 phase 6: the path-addressed diff (the `diff` MCP tool)
+# (docs/capability-review/g7-machine-access.md). Columns:
+# name<TAB>diff<TAB>left<TAB>input<TAB>expect, where input is a JSON
+# object {right, at?} and expect is {changes, same} plus `codes`
+# when a document does not stand up. Messages are excluded.
+#
+# Deterministic canon is what makes this possible without phantom
+# noise: two documents that MEAN the same thing canon the same way,
+# so reordering keys is not a change (diff-key-order-is-not-a-change).
+#
+# The text compared is the HASH FORM, not the plain canon: canon
+# drops closedness and the type/hide marks, so a canon diff would
+# call close({a:1}) and {a:1} identical (diff-closedness). A false
+# "unchanged" is a change nobody reviewed.
+#
+# Bags of the same kind recurse, so the report is path-addressed
+# rather than one line saying the document changed; a bag's SPREAD is
+# part of what it means and diffs at the `&` pseudo-key, as its
+# closedness and marks do at `&closed`, `&type` and `&hide`.
+#
+# WHETHER a change is BREAKING is G3's question, not this one.
+#
+# Every expectation was obtained by the parity probe (AGENTS.md).
+
+diff-same	diff	a:1	{"right": "a:1"}	{"changes": [], "same": true}
+diff-scalar-changed	diff	a:1	{"right": "a:2"}	{"changes": [{"kind": "changed", "left": "1", "path": "$.a", "right": "2"}], "same": false}
+diff-key-added	diff	a:{b:1}	{"right": "a:{b:1,c:2}"}	{"changes": [{"kind": "added", "path": "$.a.c", "right": "2"}], "same": false}
+diff-key-removed	diff	a:{b:1,c:2}	{"right": "a:{b:1}"}	{"changes": [{"kind": "removed", "left": "2", "path": "$.a.c"}], "same": false}
+diff-element-added	diff	a:[1,2]	{"right": "a:[1,2,3]"}	{"changes": [{"kind": "added", "path": "$.a.2", "right": "3"}], "same": false}
+diff-element-removed	diff	a:[1,2,3]	{"right": "a:[1,2]"}	{"changes": [{"kind": "removed", "left": "3", "path": "$.a.2"}], "same": false}
+diff-spread-changed	diff	a:{&:{k:integer},x:{k:1}}	{"right": "a:{&:{k:number},x:{k:1}}"}	{"changes": [{"kind": "changed", "left": "{\\"k\\":integer}", "path": "$.a.&", "right": "{\\"k\\":number}"}], "same": false}
+diff-spread-added	diff	a:{x:{k:1}}	{"right": "a:{&:{k:integer},x:{k:1}}"}	{"changes": [{"kind": "added", "path": "$.a.&", "right": "{\\"k\\":integer}"}], "same": false}
+diff-spread-removed	diff	a:{&:{k:integer},x:{k:1}}	{"right": "a:{x:{k:1}}"}	{"changes": [{"kind": "removed", "left": "{\\"k\\":integer}", "path": "$.a.&"}], "same": false}
+diff-right-unparseable	diff	a:1	{"right": "a:]"}	{"changes": [], "codes": ["syntax"], "same": false}
+diff-left-unparseable	diff	a:]	{"right": "a:1"}	{"changes": [], "codes": ["syntax"], "same": false}
+diff-at-path	diff	a:{b:1}	{"at": "$.a", "right": "a:{b:2}"}	{"changes": [{"kind": "changed", "left": "1", "path": "$.b", "right": "2"}], "same": false}
+diff-at-path-missing	diff	a:{b:1}	{"at": "$.zz", "right": "a:{b:2}"}	{"changes": [], "codes": ["no_path", "no_path"], "same": false}
+diff-string-changed	diff	a:1 b:"x"	{"right": "a:1 b:\\"y\\""}	{"changes": [{"kind": "changed", "left": "\\"x\\"", "path": "$.b", "right": "\\"y\\""}], "same": false}
+diff-subtree-added	diff	a:{b:{c:1}}	{"right": "a:{b:{c:1,d:{e:2}}}"}	{"changes": [{"kind": "added", "path": "$.a.b.d", "right": "{\\"e\\":2}"}], "same": false}
+diff-kind-to-value	diff	a: integer	{"right": "a: 1"}	{"changes": [{"kind": "changed", "left": "integer", "path": "$.a", "right": "1"}], "same": false}
+diff-default-changed	diff	a: *1|integer	{"right": "a: *2|integer"}	{"changes": [{"kind": "changed", "left": "*1|integer", "path": "$.a", "right": "*2|integer"}], "same": false}
+diff-nested-list	diff	a:[1,[2]]	{"right": "a:[1,[3]]"}	{"changes": [{"kind": "changed", "left": "2", "path": "$.a.1.0", "right": "3"}], "same": false}
+diff-key-order-is-not-a-change	diff	a:{"z":1,"A":2}	{"right": "a:{\\"A\\":2,\\"z\\":1}"}	{"changes": [], "same": true}
+diff-map-to-list	diff	a:{}	{"right": "a:[]"}	{"changes": [{"kind": "changed", "left": "{}", "path": "$.a", "right": "[]"}], "same": false}
+diff-key-renamed	diff	a:{b:1}	{"right": "b:{a:1}"}	{"changes": [{"kind": "removed", "left": "{\\"b\\":1}", "path": "$.a"}, {"kind": "added", "path": "$.b", "right": "{\\"a\\":1}"}], "same": false}
+diff-empty-left	diff		{"right": "a:1"}	{"changes": [{"kind": "added", "path": "$.a", "right": "1"}], "same": false}
+diff-empty-right	diff	a:1	{"right": ""}	{"changes": [{"kind": "removed", "left": "1", "path": "$.a"}], "same": false}
+diff-exact-leaf	diff	a: 0d9007199254740993	{"right": "a: 0d9007199254740994"}	{"changes": [{"kind": "changed", "left": "0d9007199254740993", "path": "$.a", "right": "0d9007199254740994"}], "same": false}
+diff-closedness	diff	a: close({b:1})	{"right": "a: {b:1}"}	{"changes": [{"kind": "changed", "left": "true", "path": "$.a.&closed", "right": "false"}], "same": false}
+diff-hide-mark	diff	a:{b:1}	{"right": "a:hide({b:1})"}	{"changes": [{"kind": "changed", "left": "false", "path": "$.a.&hide", "right": "true"}, {"kind": "changed", "left": "1", "path": "$.a.b", "right": "hide(1)"}], "same": false}
+diff-type-mark	diff	a:type({b:1})	{"right": "a:{b:1}"}	{"changes": [{"kind": "changed", "left": "true", "path": "$.a.&type", "right": "false"}, {"kind": "changed", "left": "type(1)", "path": "$.a.b", "right": "1"}], "same": false}
+diff-list-closedness	diff	a:[1]	{"right": "a:close([1])"}	{"changes": [{"kind": "changed", "left": "false", "path": "$.a.&closed", "right": "true"}], "same": false}

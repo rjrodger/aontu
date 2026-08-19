@@ -216,7 +216,7 @@ function finding(
 // nothing to a diagnosis the evaluator already made. The path is the
 // DOCUMENT — what failed is the whole thing standing up, not the node
 // the caller asked about, which may never have existed.
-function evalFailure(ctx: any): VetFinding {
+export function evalFailure(ctx: any): VetFinding {
   // ctx.err is never empty at a call site: every failure that reaches
   // one collected an error first — a parse that did not stand up, a
   // root that came back nil. Not coalesced, on the vet siteOf
