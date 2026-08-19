@@ -35,7 +35,8 @@ import { subsumeNode } from '../dist/subsume'
 import { DeprecateFuncVal } from '../dist/val/DeprecateFuncVal'
 import { collectDeprecations } from '../dist/utility'
 import { hcanon, canonHash } from '../dist/hcanon'
-import { get } from '../dist/query'
+import { projectFor } from '../dist/query'
+import { Provenance } from '../dist/provenance'
 import {
   candidates as trimCandidates,
   deleteAt as trimDeleteAt,
@@ -1035,11 +1036,40 @@ describe('coverage3-query', () => {
 
     // Reached through the exported walk rather than the verb, which
     // would unify the tree and flatten it back.
-    const q: any = require('../dist/query')
     Assert.equal(
-      q.projectFor(root, 'canon', Infinity), '{"j":(1|2)&3}')
+      projectFor(root, 'canon', Infinity), '{"j":(1|2)&3}')
     Assert.equal(
-      q.projectFor(root, 'types', Infinity), '{"j":(integer|integer)&integer}')
+      projectFor(root, 'types', Infinity), '{"j":(integer|integer)&integer}')
+  })
+
+})
+
+
+describe('coverage3-provenance', () => {
+
+  // The last tiebreak of the contribution order (G7 phase 3): two
+  // values written at the SAME file, row and column. No document
+  // produces that — a position holds one value — but the order has to
+  // be TOTAL anyway, because a partial one would leave the record's
+  // tail in meet order, which is the fixpoint's business and differs
+  // between the ports.
+  test('provenance-orders-same-site-contributions-by-canon', () => {
+    const ctx = new Aontu().ctx({})
+    const zed = new StringVal({ peg: 'z' }, ctx)
+    const alf = new StringVal({ peg: 'a' }, ctx)
+    for (const v of [zed, alf]) {
+      v.site.row = 1
+      v.site.col = 1
+      v.site.url = 'one.aon'
+    }
+
+    const prov = new Provenance()
+    prov.writtenFrom(new MapVal({ peg: { z: zed, a: alf } }, ctx))
+    prov.record(['k'], zed, alf, new StringVal({ peg: 'z' }, ctx))
+
+    Assert.deepEqual(prov.at(['k']).map((c: any) => c.canon), ['"a"', '"z"'])
+    // A path nothing met has no record at all.
+    Assert.deepEqual(prov.at(['nowhere']), [])
   })
 
 })

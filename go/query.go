@@ -286,39 +286,10 @@ func (a *Aontu) Get(src, path string, opts *QueryOptions) QueryReport {
 
 	node := anchorAt(root, path)
 	if nil == node {
-		// WHICH segment failed, and what was there instead -- the "did
-		// you mean" the no_path contract promises. Walking again is
-		// cheap (the tree is in hand) and is the only way to name the
-		// parent.
-		parts := queryPathParts(path)
-		at := root
-		want := ""
-		for _, part := range parts {
-			next := anchorAt(at, part)
-			if nil == next {
-				want = part
-				break
-			}
-			at = next
-		}
-		have := []string{}
-		switch b := at.(type) {
-		case *MapVal:
-			have = append(have, b.keys...)
-			sort.Strings(have)
-		case *ListVal:
-			for j := range b.peg {
-				have = append(have, itoa(j))
-			}
-		}
 		return QueryReport{
-			OK:  false,
-			Out: "",
-			Findings: []VetFinding{queryFinding(
-				"no_path",
-				queryPathText(path),
-				"The path "+path+" names nothing in this document.",
-				queryNote(queryNearestKey(want, have)))},
+			OK:       false,
+			Out:      "",
+			Findings: []VetFinding{noPathFinding(root, path)},
 		}
 	}
 
@@ -355,6 +326,39 @@ func queryNote(near string) string {
 	return "did you mean " + near + "?"
 }
 
+// noPathFinding is the refusal for a path that names nothing, shared
+// by Get and Why: WHICH segment failed, and what was there instead --
+// the "did you mean" the no_path contract promises. Walking again is
+// cheap (the tree is in hand) and is the only way to name the parent.
+func noPathFinding(root Val, path string) VetFinding {
+	parts := queryPathParts(path)
+	at := root
+	want := ""
+	for _, part := range parts {
+		next := anchorAt(at, part)
+		if nil == next {
+			want = part
+			break
+		}
+		at = next
+	}
+	have := []string{}
+	switch b := at.(type) {
+	case *MapVal:
+		have = append(have, b.keys...)
+		sort.Strings(have)
+	case *ListVal:
+		for j := range b.peg {
+			have = append(have, itoa(j))
+		}
+	}
+	return queryFinding(
+		"no_path",
+		queryPathText(path),
+		"The path "+path+" names nothing in this document.",
+		queryNote(queryNearestKey(want, have)))
+}
+
 // queryPathText is the queried path, normalised the way anchorAt reads
 // it -- so a finding names `$.a.b` whether the caller wrote that, `a.b`
 // or `$.a.b.` -- and `$` for the root.
@@ -379,4 +383,74 @@ func queryFailed(err error, path string) QueryReport {
 		Out:      "",
 		Findings: []VetFinding{queryFinding(code, path, msg, "")},
 	}
+}
+
+// WhyReport is the whole answer: the record, or G2-shaped findings.
+type WhyReport struct {
+	Findings []VetFinding `json:"findings"`
+	OK       bool         `json:"ok"`
+	Record   *WhyRecord   `json:"record,omitempty"`
+}
+
+// Why answers WHY the value at this path holds: evaluate with the
+// provenance recorder on, select the node, and answer the ordered
+// contributions that met there — the positive twin of G2's error
+// report. Mirrors why in ts/src/query.ts.
+func (a *Aontu) Why(src, path string) WhyReport {
+	// Parse and unify SEPARATELY, so the parsed tree can be stamped
+	// before the fixpoint runs: a contribution is a value the author
+	// wrote, and after unification there is no longer any way to tell
+	// one from a value the engine minted on the way.
+	parsed, perr := a.parseEntry(src)
+	if nil != perr {
+		return whyFailed(perr)
+	}
+	// Stamp the entry document with its own file name, as vet stamps
+	// the schema and data documents (stampURL): a contribution's site
+	// names the file it was written in, and the TypeScript side gets
+	// the same from the parse `path` option.
+	if "" != a.File {
+		stampURL(parsed, a.File)
+	}
+
+	prov := newProvenance(src)
+	prov.writtenFrom(parsed)
+
+	ctx := &Ctx{root: parsed, src: src, file: a.File, prov: prov}
+	if nil != a.Trust {
+		ctx.budgetPasses = a.Trust.Budget.Passes
+		ctx.budgetDepth = a.Trust.Budget.Depth
+	}
+	root := unifyRoot(parsed, ctx)
+	ctx.root = root
+	if nil == root || root.Nil() || 0 < len(ctx.err) {
+		var uerr error
+		if 0 < len(ctx.err) {
+			uerr = &AontuError{Msg: ctx.errmsg(), Code: ctx.err[0].why}
+		}
+		return whyFailed(uerr)
+	}
+
+	node := anchorAt(root, path)
+	if nil == node {
+		return WhyReport{
+			OK:       false,
+			Findings: []VetFinding{noPathFinding(root, path)},
+		}
+	}
+
+	return WhyReport{
+		OK: true,
+		Record: &WhyRecord{
+			Conjuncts: prov.at(queryPathParts(path)),
+			Path:      queryPathText(path),
+			Value:     node.Canon(),
+		},
+		Findings: []VetFinding{},
+	}
+}
+
+func whyFailed(err error) WhyReport {
+	r := queryFailed(err, "$")
+	return WhyReport{OK: false, Findings: r.Findings}
 }

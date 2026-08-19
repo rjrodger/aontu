@@ -63,6 +63,9 @@ type Val interface {
 	// Marks: type values are constraints, hidden values are excluded
 	// from generation. Both are skipped when generating a containing map.
 	markedType() bool
+	// fromSpread reports the G7 provenance mark (see base.fspr).
+	fromSpread() bool
+	setFromSpread()
 	deprecRec() map[string]string
 	setDeprecRec(rec map[string]string)
 	markedHide() bool
@@ -105,6 +108,10 @@ type base struct {
 	surl  string
 	mtype bool // type mark
 	mhide bool // hide mark
+	// fspr marks a spread template's per-key clone, set at the one
+	// place a spread is applied and only on an INSTRUMENTED run (G7
+	// phase 4). Read by the provenance recorder; nothing else.
+	fspr bool
 	// The deprecation record (G3 phase 4, `deprecate(x, m)`): boolean
 	// marks cannot hold a message, a replacement path and a version, so
 	// the value carries one optional record (keys msg/use/since, values
@@ -186,6 +193,8 @@ func (b *base) markedType() bool                   { return b.mtype }
 func (b *base) deprecRec() map[string]string       { return b.deprec }
 func (b *base) setDeprecRec(rec map[string]string) { b.deprec = rec }
 func (b *base) markedHide() bool                   { return b.mhide }
+func (b *base) fromSpread() bool                   { return b.fspr }
+func (b *base) setFromSpread()                     { b.fspr = true }
 func (b *base) setMarkType(v bool)                 { b.mtype = v }
 func (b *base) setMarkHide(v bool)                 { b.mhide = v }
 

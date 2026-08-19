@@ -21,6 +21,11 @@ type AontuContextConfig = {
   cc?: number
   err?: any[] // Omit<NilVal[], "push">
   explain?: any[] | boolean | null
+
+  // The provenance recorder (G7 phase 3), or absent for an
+  // uninstrumented run. Shared by reference down every descend, as the
+  // error list is, so one run has one record.
+  prov?: any
   fs?: any
   path?: string[]
   root?: Val
@@ -49,6 +54,11 @@ class AontuContext {
   seen: Record<string, number>
 
   collect: boolean
+
+  // The provenance recorder (G7 phase 3), or undefined for an
+  // uninstrumented run. Inherited by every descended and cloned
+  // context through the prototype chain, so one run has one record.
+  prov?: any
 
   // errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
   err: any[]
@@ -117,6 +127,7 @@ class AontuContext {
     this.src = cfg.src
 
     this.collect = cfg.collect ?? null != cfg.err
+    this.prov = cfg.prov
 
     this.err = cfg.err ?? []
     this.explain = Array.isArray(cfg.explain) ? cfg.explain : null

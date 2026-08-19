@@ -14,6 +14,7 @@ class AontuContext {
         this.path = [...(cfg.path ?? [])];
         this.src = cfg.src;
         this.collect = cfg.collect ?? null != cfg.err;
+        this.prov = cfg.prov;
         this.err = cfg.err ?? [];
         this.explain = Array.isArray(cfg.explain) ? cfg.explain : null;
         this.fs = cfg.fs ?? null;

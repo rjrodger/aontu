@@ -52,6 +52,11 @@ type Ctx struct {
 	// only aontu.go sets them, from the trust profile.
 	budgetPasses int
 	budgetDepth  int
+
+	// prov is the provenance recorder (G7 phase 4), or nil for an
+	// uninstrumented run. One run has one recorder: the Ctx is shared
+	// by reference all the way down, as the error list is.
+	prov *Provenance
 }
 
 func (c *Ctx) adderr(n *NilVal) {

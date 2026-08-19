@@ -32,6 +32,8 @@ import { exactJSON } from './exactjson'
 import { anchorAt } from './vet'
 import type { VetFinding } from './vet'
 import { cmpCodePoint } from './keyorder'
+import { Provenance } from './provenance'
+import type { WhyRecord } from './provenance'
 
 
 export type QueryView = 'json' | 'canon' | 'types' | 'keys'
@@ -209,6 +211,50 @@ function finding(
 }
 
 
+// A document that does not stand up has no node to select. The
+// engine's own first error IS the report: the query surface adds
+// nothing to a diagnosis the evaluator already made. The path is the
+// DOCUMENT — what failed is the whole thing standing up, not the node
+// the caller asked about, which may never have existed.
+function evalFailure(ctx: any): VetFinding {
+  // ctx.err is never empty at a call site: every failure that reaches
+  // one collected an error first — a parse that did not stand up, a
+  // root that came back nil. Not coalesced, on the vet siteOf
+  // precedent: an impossible state should fail loudly rather than be
+  // quietly papered over with a made-up code.
+  const err: any = ctx.err[0]
+  return finding(err.why, '$', err.msg)
+}
+
+
+// The refusal for a path that names nothing, shared by `get` and
+// `why`: WHICH segment failed, and what was there instead — the "did
+// you mean" the no_path contract promises. Walking again is cheap (the
+// tree is in hand) and is the only way to name the parent.
+function noPathFinding(root: any, path: string): VetFinding {
+  const parts = pathParts(path)
+  let at: any = root
+  let want = ''
+  for (const part of parts) {
+    const next: any = anchorAt(at, part)
+    if (null == next) {
+      want = part
+      break
+    }
+    at = next
+  }
+  const have = true === at?.isMap
+    ? Object.keys(at.peg).sort(cmpCodePoint)
+    : (true === at?.isList ? Object.keys(at.peg) : [])
+  const near = nearestKey(want, have)
+  return finding(
+    'no_path',
+    pathText(path),
+    `The path ${path} names nothing in this document.`,
+    null == near ? undefined : `did you mean ${near}?`)
+}
+
+
 // Evaluate the document, select the node at `path`, and render it.
 export function get(
   src: string, path: string, opts?: QueryOptions): QueryReport {
@@ -221,52 +267,12 @@ export function get(
   const root: any = aontu.unify(src, parseOpts, ctx)
 
   if (0 < ctx.err.length || null == root || true === root.isNil) {
-    // A document that does not stand up has no node to select. The
-    // engine's own first error IS the report: `get` adds nothing to a
-    // diagnosis the evaluator already made.
-    const err: any = ctx.err[0]
-    // The path is the DOCUMENT: what failed is the whole thing
-    // standing up, not the node the caller asked about (which may
-    // never have existed). The engine's own message carries the site.
-    return {
-      ok: false,
-      out: '',
-      findings: [finding(
-        err?.why ?? 'unify_failed',
-        '$',
-        err?.msg ?? 'The document does not evaluate.')],
-    }
+    return { ok: false, out: '', findings: [evalFailure(ctx)] }
   }
 
   const node: any = anchorAt(root, path)
   if (null == node) {
-    // WHICH segment failed, and what was there instead — the "did you
-    // mean" the no_path contract promises. Walking again is cheap
-    // (the tree is in hand) and is the only way to name the parent.
-    const parts = pathParts(path)
-    let at: any = root
-    let want = ''
-    for (const part of parts) {
-      const next: any = anchorAt(at, part)
-      if (null == next) {
-        want = part
-        break
-      }
-      at = next
-    }
-    const have = true === at?.isMap
-      ? Object.keys(at.peg).sort(cmpCodePoint)
-      : (true === at?.isList ? Object.keys(at.peg) : [])
-    const near = nearestKey(want, have)
-    return {
-      ok: false,
-      out: '',
-      findings: [finding(
-        'no_path',
-        pathText(path),
-        `The path ${path} names nothing in this document.`,
-        null == near ? undefined : `did you mean ${near}?`)],
-    }
+    return { ok: false, out: '', findings: [noPathFinding(root, path)] }
   }
 
   if ('json' === view) {
@@ -297,6 +303,60 @@ export function get(
   return {
     ok: true,
     out: project(node, view, options.depth ?? Infinity),
+    findings: [],
+  }
+}
+
+
+export type WhyReport = {
+  ok: boolean
+  record?: WhyRecord
+  findings: VetFinding[]
+}
+
+
+// WHY does the value at this path hold? Evaluate with the provenance
+// recorder on, select the node, and answer the ordered contributions
+// that met there — the positive twin of G2's error report.
+//
+// Two evaluations are NOT needed: the recorder rides the one run this
+// call makes. What it costs is site materialisation and one map entry
+// per path met, which an instrumented run pays knowingly.
+export function why(
+  src: string, path: string, opts?: QueryOptions): WhyReport {
+  const options = opts ?? {}
+  const aontu = new Aontu()
+  const prov = new Provenance()
+  const ctx = aontu.ctx({ collect: true, prov })
+  const parseOpts = null == options.path ? undefined : { path: options.path }
+
+  // Parse and unify SEPARATELY, so the parsed tree can be stamped
+  // before the fixpoint runs: a contribution is a value the author
+  // wrote, and after unification there is no longer any way to tell
+  // one from a value the engine minted on the way.
+  const parsed: any = aontu.parse(src, parseOpts, ctx)
+  if (0 < ctx.err.length || null == parsed) {
+    return { ok: false, findings: [evalFailure(ctx)] }
+  }
+  prov.writtenFrom(parsed)
+
+  const root: any = aontu.unify(parsed, parseOpts, ctx)
+  if (0 < ctx.err.length || null == root || true === root.isNil) {
+    return { ok: false, findings: [evalFailure(ctx)] }
+  }
+
+  const node: any = anchorAt(root, path)
+  if (null == node) {
+    return { ok: false, findings: [noPathFinding(root, path)] }
+  }
+
+  return {
+    ok: true,
+    record: {
+      conjuncts: prov.at(pathParts(path)),
+      path: pathText(path),
+      value: node.canon,
+    },
     findings: [],
   }
 }

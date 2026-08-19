@@ -262,6 +262,14 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
 
   ctx.explain && explainClose(te, out)
 
+  // The provenance record (G7 phase 3), at the one place every meet
+  // passes through — the same reason the deprecation rider below lives
+  // here. Off by default: an uninstrumented run pays this one property
+  // load, and an instrumented one pays site materialisation knowingly.
+  if (undefined !== ctx.prov) {
+    ctx.prov.record(ctx.path, a, b, out)
+  }
+
   // The deprecation record survives EVERY meet (G3 phase 4): the
   // boolean marks have their own sweeps (ConjunctVal, the bag walks),
   // but a record lost in one meet shape is a use the tooling never

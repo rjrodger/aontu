@@ -54,6 +54,10 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	             and the hash form must round-trip (G6, hcanon.tsv)
 //	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
 //	             `aon1-...` pin, byte-identical across the ports
+//	mode=why   : FIVE columns -- name, why, src, path, expect. The
+//	             record of Why(src, path) must match the expect object
+//	             ({value, conjuncts} or {code, note}); see
+//	             test/spec/why.tsv
 //	mode=query : FIVE columns -- name, query, src, path, expect. The
 //	             report of Get(src, path) must match the expect object
 //	             ({out?, code?, note?}, options riding `opts`), and a
@@ -123,7 +127,8 @@ func TestSpec(t *testing.T) {
 			// is the fifth column; every other mode reads four and
 			// ignores any extra (see test/spec/vet.tsv and
 			// test/spec/subsume.tsv for the encodings).
-			vetRow := "vet" == mode || "subsume" == mode || "query" == mode
+			vetRow := "vet" == mode || "subsume" == mode || "query" == mode ||
+				"why" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -281,6 +286,43 @@ func TestSpec(t *testing.T) {
 					}
 					if got := CanonHash(v); got != expect {
 						t.Fatalf("hash mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+
+				case "why":
+					var golden struct {
+						Code      string        `json:"code"`
+						Conjuncts []WhyConjunct `json:"conjuncts"`
+						Note      string        `json:"note"`
+						Value     string        `json:"value"`
+					}
+					if jerr := json.Unmarshal([]byte(expect), &golden); jerr != nil {
+						t.Fatalf("bad why golden: %v\n %s", jerr, expect)
+					}
+					wr := a.Why(src, data)
+					value := ""
+					var conjuncts []WhyConjunct
+					if nil != wr.Record {
+						value = wr.Record.Value
+						conjuncts = wr.Record.Conjuncts
+					}
+					if value != golden.Value {
+						t.Fatalf("why value mismatch\n src:  %q\n path: %q\n want: %q\n got:  %q",
+							src, data, golden.Value, value)
+					}
+					if specJSON(t, conjuncts) != specJSON(t, golden.Conjuncts) {
+						t.Fatalf("why conjuncts mismatch\n src:  %q\n path: %q\n want: %s\n got:  %s",
+							src, data, specJSON(t, golden.Conjuncts), specJSON(t, conjuncts))
+					}
+					code, note := "", ""
+					if 0 < len(wr.Findings) {
+						code = wr.Findings[0].Code
+						if nil != wr.Findings[0].Note {
+							note = *wr.Findings[0].Note
+						}
+					}
+					if code != golden.Code || note != golden.Note {
+						t.Fatalf("why finding mismatch\n want: %q/%q\n got:  %q/%q",
+							golden.Code, golden.Note, code, note)
 					}
 
 				case "query":

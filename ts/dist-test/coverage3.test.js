@@ -67,6 +67,8 @@ const subsume_1 = require("../dist/subsume");
 const DeprecateFuncVal_1 = require("../dist/val/DeprecateFuncVal");
 const utility_1 = require("../dist/utility");
 const hcanon_1 = require("../dist/hcanon");
+const query_1 = require("../dist/query");
+const provenance_1 = require("../dist/provenance");
 const trim_1 = require("../dist/trim");
 const Val_1 = require("../dist/val/Val");
 const top_1 = require("../dist/val/top");
@@ -885,9 +887,32 @@ function capture(fn) {
         }, ctx);
         // Reached through the exported walk rather than the verb, which
         // would unify the tree and flatten it back.
-        const q = require('../dist/query');
-        Assert.equal(q.projectFor(root, 'canon', Infinity), '{"j":(1|2)&3}');
-        Assert.equal(q.projectFor(root, 'types', Infinity), '{"j":(integer|integer)&integer}');
+        Assert.equal((0, query_1.projectFor)(root, 'canon', Infinity), '{"j":(1|2)&3}');
+        Assert.equal((0, query_1.projectFor)(root, 'types', Infinity), '{"j":(integer|integer)&integer}');
+    });
+});
+(0, node_test_1.describe)('coverage3-provenance', () => {
+    // The last tiebreak of the contribution order (G7 phase 3): two
+    // values written at the SAME file, row and column. No document
+    // produces that — a position holds one value — but the order has to
+    // be TOTAL anyway, because a partial one would leave the record's
+    // tail in meet order, which is the fixpoint's business and differs
+    // between the ports.
+    (0, node_test_1.test)('provenance-orders-same-site-contributions-by-canon', () => {
+        const ctx = new aontu_1.Aontu().ctx({});
+        const zed = new StringVal_1.StringVal({ peg: 'z' }, ctx);
+        const alf = new StringVal_1.StringVal({ peg: 'a' }, ctx);
+        for (const v of [zed, alf]) {
+            v.site.row = 1;
+            v.site.col = 1;
+            v.site.url = 'one.aon';
+        }
+        const prov = new provenance_1.Provenance();
+        prov.writtenFrom(new MapVal_1.MapVal({ peg: { z: zed, a: alf } }, ctx));
+        prov.record(['k'], zed, alf, new StringVal_1.StringVal({ peg: 'z' }, ctx));
+        Assert.deepEqual(prov.at(['k']).map((c) => c.canon), ['"a"', '"z"']);
+        // A path nothing met has no record at all.
+        Assert.deepEqual(prov.at(['nowhere']), []);
     });
 });
 //# sourceMappingURL=coverage3.test.js.map

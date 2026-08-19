@@ -10,6 +10,8 @@ exports.runBreaking = runBreaking;
 exports.runTrim = runTrim;
 exports.runHash = runHash;
 exports.runGet = runGet;
+exports.runWhy = runWhy;
+exports.renderWhyText = renderWhyText;
 exports.watchChange = watchChange;
 exports.watchSignature = watchSignature;
 exports.deprecatedAt = deprecatedAt;
@@ -35,6 +37,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu hash [options] <file>
        aontu get <path> [options] <file>
+       aontu why <path> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -122,6 +125,12 @@ Get options:
 
 Get exit codes: 0 rendered, 1 the path names nothing, 2 usage, 4 the
 document does not stand up on its own.
+
+Why options:
+  --format <f>    text (default) or json
+
+Why exit codes mirror get's: 0 explained, 1 the path names nothing,
+2 usage, 4 the document does not stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -1201,6 +1210,90 @@ function runGet(argv) {
     // as it is for every other verb.
     return 'no_path' === report.findings[0]?.code ? 1 : 4;
 }
+// ---------------------------------------------------------------------
+// Provenance (G7 phase 3): WHY the value at a path holds — the ordered
+// contributions that met there, each with the site it was written at.
+// The positive twin of the vet report: errors explain what failed to
+// unify, this explains what did.
+const WHY_HELP = 'aontu why <path> <file> (try --help)';
+function runWhy(argv) {
+    const rest = [];
+    let format = 'text';
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        if ('--format' === arg) {
+            const f = argv[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return 2;
+            }
+            format = f;
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown why option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            rest.push(arg);
+        }
+    }
+    if (2 !== rest.length) {
+        process.stderr.write(`aontu: why needs a path and one file\n${WHY_HELP}\n`);
+        return 2;
+    }
+    const [path, file] = rest;
+    let src;
+    try {
+        src = (0, node_fs_1.readFileSync)(file, 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+        return 2;
+    }
+    const report = (0, aontu_1.why)(src, path, { path: file });
+    if ('json' === format) {
+        process.stdout.write((0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'why' },
+            findings: report.findings,
+            ok: report.ok,
+            ...(null == report.record ? {} : { record: report.record }),
+        }, 2) + '\n');
+    }
+    else if (report.ok) {
+        process.stdout.write(renderWhyText(report.record) + '\n');
+    }
+    else {
+        process.stderr.write(report.findings.map(renderFinding).join('\n') + '\n');
+    }
+    if (report.ok) {
+        return 0;
+    }
+    return 'no_path' === report.findings[0]?.code ? 1 : 4;
+}
+// One contribution per line, numbered in source order, each with what
+// was written, where, and how it got here. A siteless contribution
+// prints no location rather than a `-1:-1` that means nothing —
+// exported for the direct test, because the site SHAPE allows one
+// while no document has yet produced one (ADR-002).
+function renderWhyText(record) {
+    const head = `${record.path} = ${record.value}`;
+    if (0 === record.conjuncts.length) {
+        // A value written once and never met is a fact, not a failure.
+        return head + '\n  (no contributions: nothing met at this path)';
+    }
+    return [head].concat(record.conjuncts.map((c, i) => {
+        const where = -1 === c.site.row
+            ? ''
+            : `  ${'' === c.site.file ? '' : c.site.file + ':'}` +
+                `${c.site.row}:${c.site.col}`;
+        return `  ${i + 1}. ${c.canon}${where}` +
+            ('literal' === c.role ? '' : `  (${c.role})`);
+    })).join('\n');
+}
 // Exit without truncating output.
 //
 // process.exit() terminates immediately, discarding anything still
@@ -1256,6 +1349,9 @@ function main(argv) {
     }
     if ('breaking' === argv[2]) {
         return finish(runBreaking(argv.slice(3)));
+    }
+    if ('why' === argv[2]) {
+        return finish(runWhy(argv.slice(3)));
     }
     if ('get' === argv[2]) {
         return finish(runGet(argv.slice(3)));

@@ -1,4 +1,5 @@
 import { Aontu } from './aontu';
+import type { WhyRecord } from './provenance';
 type Mode = 'json' | 'canon';
 declare function evalSource(aontu: Aontu, src: string, mode: Mode): {
     ok: boolean;
@@ -15,5 +16,7 @@ declare function runBreaking(argv: string[]): number;
 declare function runTrim(argv: string[]): number;
 declare function runHash(argv: string[]): number;
 declare function runGet(argv: string[]): number;
+declare function runWhy(argv: string[]): number;
+declare function renderWhyText(record: WhyRecord): string;
 declare function main(argv: string[]): void;
-export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, runGet, watchChange, watchSignature, vetWaiter, deprecatedAt, };
+export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, runGet, runWhy, renderWhyText, watchChange, watchSignature, vetWaiter, deprecatedAt, };

@@ -624,6 +624,64 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', Path.join(f.dir, 'missing.aon')]), 2));
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--help']), 0)).out.includes('aontu trim'), true);
     });
+    // G7 phase 3: provenance. The record itself is pinned by
+    // test/spec/why.tsv in both ports; these cases hold the command
+    // line and the text rendering.
+    (0, node_test_1.test)('why-names-every-contribution', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-why-'));
+        const file = Path.join(dir, 'doc.aon');
+        Fs.writeFileSync(file, 'services: {\n  &: { replicas: *1 | integer }\n' +
+            '  auth: { replicas: 3 }\n  db: {}\n}\n');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.services.auth.replicas', file]), 0));
+        Assert.match(r.out, /^\$\.services\.auth\.replicas = 3/);
+        Assert.match(r.out, /1\. \*1\|integer.*doc\.aon:2:18  \(spread\)/);
+        Assert.match(r.out, /2\. 3.*doc\.aon:3:21/);
+        // A value written once and never met is a fact, not a failure.
+        const q = vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.services.db.replicas', file]), 0));
+        Assert.match(q.out, /no contributions/);
+        const j = JSON.parse(vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.services.auth.replicas', '--format', 'json', file]), 0)).out);
+        Assert.equal(j.aontu.verb, 'why');
+        Assert.equal(j.ok, true);
+        Assert.equal(j.record.value, '3');
+        Assert.equal(j.record.conjuncts.length, 2);
+        Assert.equal(j.record.conjuncts[0].role, 'spread');
+    });
+    (0, node_test_1.test)('why-exit-codes-and-usage', () => {
+        const f = subFiles('a:{b:1}', 'a:1');
+        const miss = vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.zz', f.general]), 1));
+        Assert.match(miss.err, /no_path/);
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-why-err-'));
+        const broken = Path.join(dir, 'doc.aon');
+        Fs.writeFileSync(broken, 'a:1 a:2');
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.a', broken]), 4));
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)([]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.a', f.general, f.specific]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)(['--bogus', '$.a', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.a', '--format', 'yaml', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.a', '--format']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.a', Path.join(f.dir, 'missing.aon')]), 2));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runWhy)(['--help']), 0)).out.includes('aontu why'), true);
+        // The JSON form of a refusal carries the findings and no record.
+        const j = JSON.parse(vetCapture(() => Assert.equal((0, cli_1.runWhy)(['$.zz', '--format', 'json', f.general]), 1)).out);
+        Assert.equal(j.ok, false);
+        Assert.equal(j.record, undefined);
+        Assert.equal(j.findings[0].code, 'no_path');
+    });
+    // A SITELESS contribution prints no location rather than a `-1:-1`
+    // that means nothing, and an unnamed source prints row:col alone.
+    // The site shape allows both while no document has yet produced one,
+    // so the renderer is exercised directly (ADR-002).
+    (0, node_test_1.test)('why-renders-a-siteless-contribution', () => {
+        Assert.equal((0, cli_1.renderWhyText)({
+            conjuncts: [
+                { canon: '1', role: 'literal', site: { col: -1, file: '', row: -1 } },
+                { canon: 'integer', role: 'spread', site: { col: 3, file: '', row: 2 } },
+            ],
+            path: '$.a',
+            value: '1',
+        }), '$.a = 1\n  1. 1\n  2. integer  2:3  (spread)');
+    });
     // G7 phase 1: the query verb. The views themselves are pinned by
     // test/spec/query.tsv in both ports; these cases hold the command
     // line -- flag parsing, the exit classes, and where each answer
@@ -743,6 +801,8 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         Assert.match(h.out, /^aon1-/);
         const g = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'get', '$.a', '--canon', f.general]));
         Assert.match(g.out, /integer/);
+        const w = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'why', '$.a', f.general]));
+        Assert.match(w.out, /\$\.a = integer/);
     });
 });
 //# sourceMappingURL=cli.test.js.map

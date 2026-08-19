@@ -33,6 +33,7 @@ import {
 import { ConjunctVal } from './ConjunctVal'
 import { NilVal } from './NilVal'
 import { BagVal } from './BagVal'
+import { markSpread } from '../provenance'
 
 
 class ListVal extends BagVal {
@@ -126,6 +127,12 @@ class ListVal extends BagVal {
       for (let key in this.peg) {
         const keyctx = ctx.descend(key)
         const key_spread_cj = spread_cj.spreadClone(keyctx)
+        // The spread mark the provenance recorder reads (G7 phase 3),
+        // as in MapVal: this is where a template becomes a per-element
+        // contribution. Instrumented runs only.
+        if (undefined !== keyctx.prov) {
+          markSpread(key_spread_cj)
+        }
         const child = this.peg[key]
 
         propagateMarks(this, child)
@@ -134,7 +141,13 @@ class ListVal extends BagVal {
         out.peg[key] =
           child.isNil ? child :
               key_spread_cj.isNil ? key_spread_cj :
-                key_spread_cj.isTop && child.done ? child :
+                // The no-op meet is SKIPPED on the normal path (it is the
+                // identity) but TAKEN while recording: a value written once
+                // and never met is still a contribution the author wants
+                // pointed at, and the Go port's unite sees that meet (G7
+                // phase 4). Instrumented runs pay knowingly.
+                key_spread_cj.isTop && child.done && undefined === keyctx.prov
+                  ? child :
                   child.isTop && key_spread_cj.done ? key_spread_cj :
                     unite(te ? keyctx.clone({ explain: ec(te, 'PEG:' + key) }) : keyctx,
                       child, key_spread_cj, 'list-own')
@@ -172,6 +185,9 @@ class ListVal extends BagVal {
 
           if (this.spread.cj) {
             let key_spread_cj = spread_cj.spreadClone(peerctx)
+            if (undefined !== peerctx.prov) {
+              markSpread(key_spread_cj)
+            }
 
             oval = out.peg[peerkey] =
               unite(te ? peerctx.clone({ explain: ec(te, 'PSP:' + peerkey) }) : peerctx,

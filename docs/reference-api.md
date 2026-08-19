@@ -40,6 +40,7 @@ Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu hash [options] <file>
        aontu get <path> [options] <file>
+       aontu why <path> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -286,6 +287,51 @@ an unresolved reference) is left alone rather than generalised twice.
 Projections are not canonical form and are never fed to
 [`aontu hash`](#aontu-hash) — the flags are distinct from `--canon` to
 keep that unambiguous.
+
+### `aontu why`
+
+Provenance: what *contributed* to the value at a path, in order, with
+the site each contribution was written at. The positive twin of
+[`vet`](#aontu-vet)'s report — errors explain what failed to unify,
+`why` explains what did.
+
+```
+aontu why <path> [--format text|json] <file.aon>
+```
+
+```
+$ aontu why $.services.auth.replicas service.aon
+$.services.auth.replicas = 3
+  1. *1|integer  service.aon:2:18  (spread)
+  2. 3  service.aon:3:21
+```
+
+- A **contribution** is a value the author *wrote* that met something
+  at this path. Values the engine mints on the way — a kind lifted
+  from a leaf while a disjunction trials its members, a fold's
+  intermediate — are not contributions, and neither are the members
+  *inside* one written value, which meet at the same path as that
+  value resolves. A **conjunct** is the exception in the other
+  direction: `a & b`, or the merge of two duplicate keys, is the
+  statement that several separately-written values must all hold, so
+  it expands into one contribution each.
+- **Roles**: `literal`, `spread` (a template applied to this key),
+  `ref` (the reference itself, whose canon names its target) and
+  `pref`. A preference *inside* a spread template reports as `spread`,
+  which is the thing the author needs to be told.
+- Contributions are listed in **source order** — file, then row, then
+  column — not in the order the fixpoint happened to meet them, which
+  is an engine detail.
+- A value written once and never met has **no contributions**, and
+  says so. That is a fact about the document, not a failure.
+- `--format json` emits the record: `{path, value, conjuncts:
+  [{canon, role, site}]}`, with sites in the same shape the vet report
+  uses. Exit codes mirror `get`'s: `0` explained, `1` the path names
+  nothing, `2` usage, `4` the document does not stand up.
+- **Cost**: the recorder rides the context and is off by default —
+  uninstrumented evaluation pays one property load per meet. An
+  instrumented run pays site materialisation, one map entry per path
+  met, and the spread walk that marks a template's application.
 
 ### `aontu hash`
 
@@ -732,6 +778,9 @@ canonHash      // the canon-hash pin over that form,
 get            // the query surface (see `aontu get` above):
                // get(src, path, {view?, depth?, path?}) ->
                // {ok, out, findings}; Go: aontu.New().Get(src, path, opts)
+why            // provenance (see `aontu why` above):
+               // why(src, path, {path?}) -> {ok, record, findings},
+               // record = {path, value, conjuncts}; Go: (*Aontu).Why
 ```
 
 ---

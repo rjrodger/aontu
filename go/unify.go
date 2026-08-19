@@ -12,7 +12,28 @@ import (
 // subset does not need without references). TOP is the unit element;
 // complex Vals (conjunct/disjunct/pref) drive their own unify.
 func unite(ctx *Ctx, a, b Val) Val {
+	// The path this meet happens at, read BEFORE uniteRaw scopes the
+	// slot hint away. The slot is the TS ctx.path equivalent; with no
+	// hint, a value sits at its own stored path (the same fallback
+	// MapVal.Unify makes).
+	var provPath []string
+	if nil != ctx.prov {
+		provPath = ctx.slot
+		if nil == provPath && nil != a {
+			provPath = a.vpath()
+		}
+	}
+
 	out := uniteRaw(ctx, a, b)
+
+	// The provenance record (G7 phase 4), at the one place every meet
+	// passes through — the same reason the deprecation rider below
+	// lives here. Off by default: an uninstrumented run pays one nil
+	// check, and an instrumented one pays site materialisation
+	// knowingly.
+	if nil != ctx.prov {
+		ctx.prov.record(provPath, a, b, out)
+	}
 	// The deprecation record survives EVERY meet (G3 phase 4): the
 	// boolean marks have their own sweeps (conjunct, the bag walks),
 	// but a record lost in one meet shape is a use the tooling never

@@ -89,17 +89,17 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **67 `.tsv` files, 66
-   row-bearing, 2,552 rows**, in twelve modes — `canon` 673, `gen` 539,
-   `errc` 425, `gens` 303, `err` 233, `subsume` 94, `query` 92,
-   `errcode` 82, `vet` 53, `hcanon` 38, `trim` 11, `hash` 9.
+   register's last update the suite is **68 `.tsv` files, 67
+   row-bearing, 2,591 rows**, in thirteen modes — `canon` 673, `gen`
+   539, `errc` 425, `gens` 303, `err` 233, `subsume` 94, `query` 92,
+   `errcode` 82, `vet` 53, `why` 39, `hcanon` 38, `trim` 11, `hash` 9.
    Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Thirty-one of forty-nine phases have moved; twenty-nine of those are complete.
+Thirty-three of forty-nine phases have moved; thirty-one of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
@@ -109,9 +109,9 @@ Thirty-one of forty-nine phases have moved; twenty-nine of those are complete.
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
-| [G7](g7-machine-access.md) | Machine access | B | 2 | 0 | 5 |
+| [G7](g7-machine-access.md) | Machine access | B | 4 | 0 | 3 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **29** | **2** | **18** |
+| | | **total** | **31** | **2** | **16** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -149,8 +149,11 @@ Against the review's own [sequencing](index.md#sequencing):
   `aontu get` selects one node by path and renders it plainly or as a
   lattice abstraction, in both ports, with the "view subsumes truth"
   property mechanically asserted by every projection row rather than
-  promised. Provenance (`why`), patch (`set`) and the MCP delivery
-  skin are still ahead.
+  promised. **Provenance is a verb** (G7.3–4): `aontu why` names every
+  contribution to a value with the site it was written at, from a
+  recorder that hooks the one place every meet passes through and is
+  off by default. Patch (`set`) and the MCP delivery skin are still
+  ahead.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
 
 One structural note the sequencing table itself makes: G7's query/MCP
@@ -432,18 +435,22 @@ parse-level canon.
 |-------|------|--------|
 | **1** — `get` and projections, TypeScript | M | **LANDED** | `ts/src/query.ts` (`get`, exported from `ts/src/aontu.ts`): evaluate the document, select the node at a path, render it as generated JSON (the default), canonical form, a `types` shape view, a `depth`-elided view, or a `keys` listing. Path parsing REUSES `anchorAt` — vet's `--at` walk, already type-directed and already in parity — so a path means exactly what a reference means by `$.a.b`, down to the canonical-decimal index rule. A refusal is a G2 finding (`no_path`, class `reference`) carrying a nearest-key suggestion, so `get` invents no error format. CLI verb `aontu get <path> [-c\|--canon] [--keys] [--types] [--depth n] [--format text\|json] <file>` in `ts/src/cli.ts`, exit classes 0 rendered / 1 the path names nothing / 2 usage / 4 the document does not stand up. `test/spec/query.tsv` — 92 rows in the new fifth-column mode; `ts/test/query.test.ts` (5 cases) and 3 cli cases hold the API and the command line. `docs/reference-api.md` and `docs/shared-spec.md` carry the verb and the mode. **Departures:** (1) THE PROJECTION PROPERTY IS ASSERTED, not claimed: every canon-shaped row additionally runs `subsume(view, truth)` in both runners and requires `subsumes` — G3 landed first, so what the design could only promise is now mechanically checked. It runs under the **values** profile, because a shape view ERASES defaults (`*8080\|integer` → `*integer\|integer`) and the `defaults` profile rightly calls that a break; the claim a projection makes is about admitted values, not about which one is generated. (2) `--types` lifts through the lattice's own `superior()` rather than a kind table, and leaves a value that is ALREADY an abstraction (a kind marker, a constraint, an unresolved reference) alone — lifting `integer` to `number` would generalise a shape view that was already a shape. (3) Junctions and prefs are TRANSPARENT to `--depth`: not a structural tier, so `*8080\|integer` projects its members rather than collapsing to `top` and discarding the alternatives. (4) `--depth` with the JSON view is a USAGE ERROR: eliding renders `top`, which JSON cannot say, and switching the view silently is the choice `trim --check` already refused. (5) The design's `[file]` optionality (stdin) is not taken: every other verb names its file, and an included document's base directory has to come from somewhere. |
 | **2** — `get`, Go port | M | **LANDED** | `go/query.go` (`(*Aontu).Get`, `QueryOptions`, `QueryReport`) and `go/cmd/aontu/get.go`, mirroring the walk, the views, the exit classes and the JSON report; both runners execute every `query.tsv` row with no skip list, expectations parity-probed (87 cases diffed byte-for-byte, then 5 more for the list-spread arm) before any row was written. `go/query_test.go` (7 cases) holds the API and the arms no source reaches. The two CLIs diffed byte-identical over a 17-case corpus — the version series and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. **What the probe cost the engine** (the G2 phase-4 pattern): the canonical side was WRONG about a non-concrete value — `get $.k` on `k: integer` returned the string `null` under `collect`, where the Go port correctly refused; generation failures now read back off the context in TypeScript, and `query-k-json` pins the refusal. Two smaller fixes: the finding's path is now the normalised QUERIED path in both ports (it was the engine error's, which is empty for a parse failure), and the Go CLI's `get`, `hash` and `trim` verbs now build their engine through `aontuForFile`, so an error frame names the file rather than `<no-file>`. **Observed, not fixed:** for an unparseable document the TS error FRAME prints one more trailing source line than Go's. It is pre-existing (identical under the plain `aontu <file>` verb), it is frame prose rather than behaviour, and no row pins it. |
-| **3** — provenance recorder and `why`, TypeScript | L | **NOT STARTED** |
-| **4** — `why`, Go port | L | **NOT STARTED** |
+| **3** — provenance recorder and `why`, TypeScript | L | **LANDED** | `ts/src/provenance.ts` (the `Provenance` recorder and the record shape) and `why` in `ts/src/query.ts`, exported from `ts/src/aontu.ts`: what CONTRIBUTED to the value at a path, in order, each with the site it was written at. CLI verb `aontu why <path> [--format text\|json] <file>`, exit classes mirroring `get`'s. `test/spec/why.tsv` — 39 rows in a new five-column mode. **Departures, all of them about what a contribution IS** — the design named five instrumentation points (the `update()` site-drop, the conjunct fold, spread application, pref resolution, ref resolution); one is enough and the rest fall out: (1) the recorder hooks `unite` ALONE, the one place every meet passes through — G3's deprecation rider proved that point exists — plus a mark at the spread clone, which is the only role no operand can tell you about itself. A ref is still a `RefVal` when it meets its peer and a pref is still a `PrefVal`, so those two roles need no hook. (2) A contribution must be a value the author WROTE: the parsed tree is stamped before the fixpoint runs, and anything minted during unification (a kind lifted while a disjunct trials its members, a fold's intermediate) is the engine's own work and is dropped — without that rule the record for the design's own example carried a `number` nobody wrote. (3) Values structurally INSIDE a recorded contribution are dropped for the same reason, but a CONJUNCT expands into its terms: `a & b`, or two duplicate keys merged at parse, is several separately-written values, and the conjunct's own site is nowhere. (4) Contributions are ordered by SITE, not by meet order: the fold order is the fixpoint's business and would not survive the port. (5) Deduplication is by (path, val id) as designed, keyed on the path STRING rather than `ctx._pathidx` — the same rule, and the string is what the report prints. (6) Two evaluations are not needed: the recorder rides the one run the call already makes. **The cost is where the design put it:** off by default, one property load per meet on the uninstrumented path; an instrumented run additionally takes the no-op meets a bag normally skips, so a value written once and never met is still reported. |
+| **4** — `why`, Go port | L | **LANDED** | `go/provenance.go` and `(*Aontu).Why` in `go/query.go`, plus `go/cmd/aontu/why.go`; the recorder hangs off `Ctx.prov` and hooks the `unite` wrapper that already carries G3's deprecation rider. Both runners execute every `why.tsv` row with no skip list, expectations parity-probed (39 cases diffed field by field, records and refusals) before any row was written. `go/provenance_test.go` holds the ordering's last tiebreaks and the entry-file/trust wiring; the two CLIs diffed byte-identical over an 11-case corpus — the version series and the host's file-error wording excepted. **What the probe cost the engine:** three shapes where a value was never met at all (a lone leaf, a nested leaf, a ref target) recorded nothing in TypeScript and one contribution in Go, because the TS bags SKIP the identity meet as an optimisation; the skip now yields while recording, so both ports see the same meets. Go additionally stamps the entry document's file name (`stampURL`, vet's precedent) — the TypeScript side gets it from the parse `path` option — so a site names its file in both. **Observed, not fixed:** Go has no per-Val id, so the recorder keys on pointer identity, which says the same thing. |
 | **5** — overlay `set` | M | **NOT STARTED** |
 | **6** — delivery: MCP server, grammar, skill, `agentsmd` | M | **NOT STARTED** |
 | **7** — REPL inspection mode and hover-provenance | S | **NOT STARTED** |
 
-Phases 3–7 have no artifacts yet: no provenance recorder, no `why`, no
-overlay `set`, no MCP server, no REPL inspection mode. The design's
-load-bearing premises for them were re-verified and all still hold —
-the site-dropping `update()` stub, `maxcc = 9`, the `DisjunctVal.gen`
-fold defect, per-request re-unification in hover, and the
-`ctx._pathidx` trie that the provenance recorder would reuse.
+Phases 5–7 have no artifacts yet: no overlay `set`, no MCP server, no
+REPL inspection mode. The design's load-bearing premises for them were
+re-verified and all still hold — `maxcc = 9`, the `DisjunctVal.gen`
+fold defect, and per-request re-unification in hover, which is what
+would make LSP hover-provenance a config-gated increment rather than a
+new cost class. Two premises the recorder settled instead of using:
+the `update()` site-drop needed no surgery (a meet is recorded where
+it happens, so nothing has to survive the drop), and `ctx._pathidx`
+was not the key (the path string is, and it is what the report
+prints).
 
 Two smaller corrections stand: the `no_path` code G7.1 proposed
 already existed (`errcodes.tsv`, landed by G2.1) and is what `get`

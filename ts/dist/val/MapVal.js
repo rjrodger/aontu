@@ -10,6 +10,7 @@ const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const BagVal_1 = require("./BagVal");
 const keyorder_1 = require("../keyorder");
+const provenance_1 = require("../provenance");
 // Structural snapshots of ref spreads (see MapVal.unify), keyed by the
 // ref's canon + source site rather than object identity: spread
 // application clones templates (and the refs inside them) freely, and a
@@ -187,11 +188,24 @@ class MapVal extends BagVal_1.BagVal {
                 }
                 else {
                     const key_spread_cj = spread_cj.spreadClone(keyctx);
+                    // The one place a spread is APPLIED, so the one place that
+                    // knows a contribution came from a template rather than
+                    // from the key itself (G7 phase 3). Only when someone is
+                    // recording: the walk is O(template) per key per pass.
+                    if (undefined !== keyctx.prov) {
+                        (0, provenance_1.markSpread)(key_spread_cj);
+                    }
                     // child is non-nullish: propagateMarks above dereferences it.
                     oval =
                         child.isNil ? child :
                             key_spread_cj.isNil ? key_spread_cj :
-                                key_spread_cj.isTop && child.done ? child :
+                                // The no-op meet is SKIPPED on the normal path (it is the
+                                // identity) but TAKEN while recording: a value written once
+                                // and never met is still a contribution the author wants
+                                // pointed at, and the Go port's unite sees that meet (G7
+                                // phase 4). Instrumented runs pay knowingly.
+                                key_spread_cj.isTop && child.done && undefined === keyctx.prov
+                                    ? child :
                                     child.isTop && key_spread_cj.done ? key_spread_cj :
                                         (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, key_spread_cj, 'map-own');
                     if (!spread_cj.isTop && !oval.isNil) {

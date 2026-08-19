@@ -4,6 +4,7 @@ type AontuContextConfig = {
     cc?: number;
     err?: any[];
     explain?: any[] | boolean | null;
+    prov?: any;
     fs?: any;
     path?: string[];
     root?: Val;
@@ -28,6 +29,7 @@ declare class AontuContext {
     seenI: number;
     seen: Record<string, number>;
     collect: boolean;
+    prov?: any;
     err: any[];
     explain: any[] | null;
     srcpath?: string;

@@ -9,6 +9,7 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
 const BagVal_1 = require("./BagVal");
+const provenance_1 = require("../provenance");
 class ListVal extends BagVal_1.BagVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -73,13 +74,25 @@ class ListVal extends BagVal_1.BagVal {
             for (let key in this.peg) {
                 const keyctx = ctx.descend(key);
                 const key_spread_cj = spread_cj.spreadClone(keyctx);
+                // The spread mark the provenance recorder reads (G7 phase 3),
+                // as in MapVal: this is where a template becomes a per-element
+                // contribution. Instrumented runs only.
+                if (undefined !== keyctx.prov) {
+                    (0, provenance_1.markSpread)(key_spread_cj);
+                }
                 const child = this.peg[key];
                 (0, utility_1.propagateMarks)(this, child);
                 // child is non-nullish: propagateMarks above dereferences it.
                 out.peg[key] =
                     child.isNil ? child :
                         key_spread_cj.isNil ? key_spread_cj :
-                            key_spread_cj.isTop && child.done ? child :
+                            // The no-op meet is SKIPPED on the normal path (it is the
+                            // identity) but TAKEN while recording: a value written once
+                            // and never met is still a contribution the author wants
+                            // pointed at, and the Go port's unite sees that meet (G7
+                            // phase 4). Instrumented runs pay knowingly.
+                            key_spread_cj.isTop && child.done && undefined === keyctx.prov
+                                ? child :
                                 child.isTop && key_spread_cj.done ? key_spread_cj :
                                     (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'PEG:' + key) }) : keyctx, child, key_spread_cj, 'list-own');
                 done = (done && type_1.DONE === out.peg[key].dc);
@@ -104,6 +117,9 @@ class ListVal extends BagVal_1.BagVal {
                                         (0, unify_1.unite)(te ? peerctx.clone({ explain: (0, utility_1.ec)(te, 'CHD') }) : peerctx, child, peerchild, 'list-peer');
                     if (this.spread.cj) {
                         let key_spread_cj = spread_cj.spreadClone(peerctx);
+                        if (undefined !== peerctx.prov) {
+                            (0, provenance_1.markSpread)(key_spread_cj);
+                        }
                         oval = out.peg[peerkey] =
                             (0, unify_1.unite)(te ? peerctx.clone({ explain: (0, utility_1.ec)(te, 'PSP:' + peerkey) }) : peerctx, out.peg[peerkey], key_spread_cj, 'list-spread');
                     }

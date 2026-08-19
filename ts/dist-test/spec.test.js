@@ -70,6 +70,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                and the hash form must round-trip (G6, hcanon.tsv)
  *   mode=hash  : canonHash(unify(src)) must equal expect, the full
  *                `aon1-...` pin, byte-identical across the ports
+ *   mode=why   : FIVE columns -- name, why, src, path, expect. The
+ *                record of why(src, path) must match the expect object
+ *                ({value, conjuncts} or {code, note}); see
+ *                test/spec/why.tsv
  *   mode=query : FIVE columns -- name, query, src, path, expect. The
  *                report of get(src, path) must match the expect
  *                object ({out?, code?, note?}, options riding `opts`),
@@ -148,7 +152,7 @@ function loadRows() {
             // asserted is that the files were found at all
             // (spec-files-present below).
             const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
-                'query' === parts[1];
+                'query' === parts[1] || 'why' === parts[1];
             const want = vetRow ? 5 : 4;
             if (parts.length < want) {
                 throw new Error(`malformed spec row: ${file} line ${lineno}: ${want} columns` +
@@ -328,6 +332,14 @@ function runRow(row) {
     }
     else if ('hash' === row.mode) {
         Assert.strictEqual((0, aontu_1.canonHash)(a0.unify(row.src, undefined, ctx)), row.expect);
+    }
+    else if ('why' === row.mode) {
+        const golden = JSON.parse(row.expect);
+        const report = (0, aontu_1.why)(row.src, row.data);
+        Assert.strictEqual(report.record?.value, golden.value, `why value mismatch: ${row.name}`);
+        Assert.strictEqual((0, aontu_1.exactJSON)(report.record?.conjuncts ?? null), (0, aontu_1.exactJSON)(golden.conjuncts ?? null), `why conjuncts mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.code, golden.code, `why code mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.note, golden.note, `why note mismatch: ${row.name}`);
     }
     else if ('query' === row.mode) {
         // The golden carries the run's options under `opts`; `out` is the

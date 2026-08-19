@@ -248,6 +248,11 @@ func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	if isTop(s) {
 		return s
 	}
+	// The one place a spread is APPLIED, so the one place that knows a
+	// contribution came from a template rather than from the key
+	// itself (G7 phase 4). Only when someone is recording: the walk is
+	// O(template) per key per pass, which is real money on a large
+	// model and buys nothing when no one is recording.
 	// The share-when-path-independent tier exists only on bags (TS
 	// overrides spreadClone on MapVal/ListVal alone); every other
 	// constraint kind — prefs, funcs, refs, junctions — clones per
@@ -256,10 +261,27 @@ func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	switch s.(type) {
 	case *MapVal, *ListVal:
 		if !hasPathFunc(s) {
+			markSpread(s, ctx)
 			return s
 		}
 	}
-	return clonePath(s, path)
+	out := clonePath(s, path)
+	markSpread(out, ctx)
+	return out
+}
+
+// markSpread marks a spread clone and everything inside it, so a
+// contribution several levels down a template is still known to have
+// come from the template. Instrumented runs only (see spreadCloneFor).
+// Mirrors markSpread in ts/src/provenance.ts.
+func markSpread(v Val, ctx *Ctx) {
+	if nil == ctx.prov || nil == v || v.fromSpread() {
+		return
+	}
+	v.setFromSpread()
+	for _, k := range whyKids(v) {
+		markSpread(k, ctx)
+	}
 }
 
 func (m *MapVal) Gen(ctx *Ctx) (any, error) {
