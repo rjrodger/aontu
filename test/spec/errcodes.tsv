@@ -62,6 +62,12 @@ parse_bad_src	errcode	parse	0.51.0
 # Without it `<<<<<<< HEAD` parsed as ordinary text and the document
 # quietly became a list of strings.
 merge_conflict	errcode	parse	0.53.0
+# An @"..." include refused by the trust profile's include capability
+# (G5 phase 3, docs/trust.md): a path escaping the confinement root, or
+# any include under the 'none' capability. Parse-stage, deterministic,
+# and raised (never injected as a value) so a bare-member include cannot
+# vanish in the merge.
+include_denied	errcode	parse	0.53.0
 # A built-in called with the wrong number of arguments (issue #51).
 # Arity is known for every built-in, so a surplus or missing argument is
 # a mistake in the SOURCE and is refused where the author can see it.

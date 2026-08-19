@@ -40,9 +40,17 @@ func (a *Aontu) Check(src string) []Problem {
 
 // CheckVars is Check with $name variables resolved from vars.
 func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
-	v, perr := parseBase(src, a.base, a.File)
+	v, perr := a.parseEntry(src)
 	if perr != nil {
-		return []Problem{{Pos: -1, Len: 1, Why: "parse", Class: codeClass("parse"), Message: perr.Error()}}
+		// The SPECIFIC code, not a generic "parse": the canonical
+		// port's first code for an unparseable source is the inner
+		// nil's (`syntax`, `include_denied`, ...) — the same code errc
+		// rows pin — so the diagnostic a client branches on matches.
+		code := "parse"
+		if ae, ok := perr.(*AontuError); ok && "" != ae.Code {
+			code = ae.Code
+		}
+		return []Problem{{Pos: -1, Len: 1, Why: code, Class: codeClass(code), Message: perr.Error()}}
 	}
 
 	ctx := &Ctx{root: v, vars: vars, src: src}
@@ -99,7 +107,7 @@ type ValueSpan struct {
 // positioned non-container value in the result, so tooling can locate the
 // value under a cursor. Returns nil on a parse error.
 func (a *Aontu) Spans(src string) []ValueSpan {
-	v, perr := parseBase(src, a.base, a.File)
+	v, perr := a.parseEntry(src)
 	if perr != nil {
 		return nil
 	}

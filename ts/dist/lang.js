@@ -3,6 +3,12 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Site = exports.Lang = void 0;
 // import { performance } from 'node:perf_hooks'
+// Named imports, not `import * as`: the namespace form makes tsc emit
+// the __importStar downlevel helper, whose branches no supported Node
+// takes (the same rule cli.ts records). Aliased because `Path` is
+// already the @tabnas/path plugin below.
+const node_fs_1 = require("node:fs");
+const node_path_1 = require("node:path");
 const jsonic_1 = require("@tabnas/jsonic");
 const debug_1 = require("@tabnas/debug");
 const multisource_1 = require("@tabnas/multisource");
@@ -940,18 +946,30 @@ help isolate the syntax error.`,
         return rs;
     });
 };
-// SECURITY: the default resolver reads any file/package the process can
-// reach — @"path" follows relative paths (`@"../../etc/passwd"`) and
-// symlinks with no containment check, and @"pkg" can require() arbitrary
-// installed modules. This is intentional for the CLI, but it means a
-// `.aon` source can read referenced files; the LSP uses this same
-// resolver, so treat opening an untrusted source as running it. Pass a
-// confined `options.resolver` to restrict reads in less-trusted contexts.
+// SECURITY: under the DEFAULT ('system') include capability this
+// resolver reads any file/package the process can reach — @"path"
+// follows relative paths (`@"../../etc/passwd"`) and symlinks, and
+// @"pkg" can require() arbitrary installed modules — so treat opening
+// an untrusted source as running it. The trust profile (G5,
+// docs/trust.md) is the confinement surface: `trust.include` of
+// 'none', `{ mem }` or `{ root }` restricts what `@"..."` may resolve,
+// and a denied resolution is a deterministic parse-stage
+// `include_denied` error.
 function makeModelResolver(options) {
     const useRequire = options.require || require;
-    let memResolver = (0, mem_1.makeMemResolver)({
-        ...(options.resolver?.mem || {})
-    });
+    const capability = options.trust?.include ?? 'system';
+    const memCapability = 'object' === typeof capability && null != capability.mem;
+    const rootDir = 'object' === typeof capability &&
+        'string' === typeof capability.root
+        ? (0, node_path_1.resolve)(capability.root) : undefined;
+    // Under the mem capability the CAPABILITY's file set is the whole
+    // world; otherwise the host-injected `options.resolver.mem` entries
+    // remain available under every capability but 'none' — they are
+    // host-provided, not document-requested, so confining them would
+    // confine the host against itself.
+    let memResolver = (0, mem_1.makeMemResolver)(memCapability
+        ? { ...capability.mem }
+        : { ...(options.resolver?.mem || {}) });
     // TODO: make this consistent with other resolvers
     let fileResolver = (0, file_1.makeFileResolver)((spec) => {
         return 'string' === typeof spec ? spec : spec?.peg;
@@ -960,6 +978,51 @@ function makeModelResolver(options) {
         require: useRequire,
         ...(options.resolver?.pkg || {})
     });
+    // Confinement is realpath-then-prefix-check (docs/trust.md): the
+    // RESOLVED file's real path must sit below the root's real path, so a
+    // symlink inside the root pointing outside it is an escape, not a
+    // loophole. A path realpath cannot resolve falls back to the lexical
+    // form — the comparison is then against what the resolver actually
+    // read.
+    // Real fs, deliberately: `options.fs` is not a sandbox (it feeds
+    // parse text; the file leg reads through its own channel), so the
+    // containment check must see the same filesystem that leg read from.
+    const realpath = (p) => {
+        try {
+            return (0, node_fs_1.realpathSync)(p);
+        }
+        catch {
+            return (0, node_path_1.resolve)(p);
+        }
+    };
+    const outsideRoot = (root, full) => {
+        const rootReal = realpath(root);
+        const fullReal = realpath(full);
+        return fullReal !== rootReal && !fullReal.startsWith(rootReal + node_path_1.sep);
+    };
+    // A denial THROWS with the code; Lang.parse converts it to the
+    // parse-stage `include_denied` nil (the same shape a syntax failure
+    // takes). Raising beats injecting a nil value: a bare-member include
+    // (`@"denied.aon"` at the top of a file) MERGES into the enclosing
+    // map, and a nil contributes no keys, so an injected denial would
+    // vanish and leave a plausible, silently-partial document.
+    const deny = (path) => {
+        // Only 'none' and 'root' can deny: the mem capability's misses are
+        // not-found (its set is the whole world), so there is no third arm.
+        const capname = 'none' === capability ? 'none' : 'root:' + rootDir;
+        const err = new Error('include denied: ' + path + ' (capability: ' + capname + ')');
+        err.code = 'include_denied';
+        throw err;
+    };
+    // The manifest sink rides the parse meta (Lang.parse seeds it, the
+    // multisource plugin's child-meta spread carries it to every nested
+    // include), so the recorded closure covers the whole include tree.
+    const record = (ctx, path, cap) => {
+        const manifest = ctx?.meta?.aontu?.manifest;
+        if (Array.isArray(manifest)) {
+            manifest.push({ path, capability: cap });
+        }
+    };
     return function ModelResolver(spec, popts, rule, ctx, jsonic) {
         // The aontu val rule's ac has already wrapped every raw string node
         // as a StringVal, so spec is a Val here (or a raw object from a
@@ -970,22 +1033,60 @@ function makeModelResolver(options) {
         if (null == path || '' === path) {
             return { found: false, path: '' + (path ?? ''), search: [] };
         }
+        if ('none' === capability) {
+            deny(path);
+        }
         let search = [];
         let res = memResolver(path, popts, rule, ctx, jsonic);
         res.path = path;
         if (res.found) {
+            record(ctx, res.full ?? path, 'mem');
+            return res;
+        }
+        if (memCapability) {
+            // A miss in the declared virtual set is NOT-FOUND, not denial:
+            // the allowed mechanism ran and missed. Denial is reserved for a
+            // capability refusing a mechanism outright.
+            res.search = search.concat(res.search);
             return res;
         }
         search = search.concat(res.search);
         res = fileResolver(path, popts, rule, ctx, jsonic);
         res.path = path;
         if (res.found) {
+            // `res.full` asserted non-null: a FOUND file resolution always
+            // carries the absolute path it read (and the pkg leg below is the
+            // same), so a runtime fallback arm would be dead code.
+            const full = res.full;
+            if (null != rootDir && outsideRoot(rootDir, full)) {
+                deny(path);
+            }
+            // The warning window for the staged default flip (G5 phase 6):
+            // under 'system', the CLI supplies trustWarn and the entry root,
+            // and every resolution escaping that root names the flag a future
+            // default will require.
+            if (null == rootDir && null != options.trustWarn &&
+                null != options.trustWarnRoot &&
+                outsideRoot(options.trustWarnRoot, full)) {
+                options.trustWarn('escape', full);
+            }
+            record(ctx, full, 'file');
             return res;
         }
         search = search.concat(res.search);
+        if (null != rootDir) {
+            // Package resolution is not part of the root capability; the
+            // miss stands as not-found with the searched paths listed.
+            res.search = search;
+            return res;
+        }
         res = pkgResolver(path, popts, rule, ctx, jsonic);
         res.path = path;
         if (res.found) {
+            if (null != options.trustWarn) {
+                options.trustWarn('pkg', res.full);
+            }
+            record(ctx, res.full, 'pkg');
             return res;
         }
         res.search = search.concat(res.search);
@@ -1152,7 +1253,13 @@ class Lang {
             multisource: {
                 path: opts?.path ?? this.opts.path,
                 deps: (opts && opts.deps) || undefined
-            }
+            },
+            // The include-manifest sink (G5, docs/trust.md): the resolver
+            // records every resolved include here, and the plugin's
+            // child-meta spread carries the same array to nested includes.
+            aontu: {
+                manifest: opts?.manifest,
+            },
         };
         if (null != opts?.idcount) {
             this.idcount = opts.idcount;
@@ -1174,7 +1281,21 @@ class Lang {
             }
         }
         catch (e) {
-            if (e instanceof jsonic_1.JsonicError || 'JsonicError' === e.constructor.name) {
+            if ('include_denied' === e?.code) {
+                // A denied include (trust profile, G5): the resolver throws so
+                // a bare-member include cannot vanish in the merge, and the
+                // code survives here as the parse-stage nil the registry
+                // pins (errcodes.tsv: include_denied, class parse).
+                val = new NilVal_1.NilVal({
+                    why: 'parse',
+                    err: new NilVal_1.NilVal({
+                        why: 'include_denied',
+                        msg: e.message,
+                        err: e,
+                    })
+                });
+            }
+            else if (e instanceof jsonic_1.JsonicError || 'JsonicError' === e.constructor.name) {
                 val = new NilVal_1.NilVal({
                     why: 'parse',
                     err: new NilVal_1.NilVal({

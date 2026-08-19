@@ -311,10 +311,12 @@ Progress against this table is tracked phase by phase in the
 [progress register](progress.md). In short: Phase A is most of the way
 done — the trust contract, the error-code registry, the whole constraint
 algebra (bounds, `re`, `length`/`unique`, cross-field residuation and
-`must`), and the whole of G2: the `vet` verb in both ports, its
-delivery skin (SARIF, the Action, watch), and multi-error collection,
-with shared rows for all of it. Outstanding in A: only G5's
-trust-profile phases. Phases B and C are untouched.
+`must`), the whole of G2 (the `vet` verb in both ports, its delivery
+skin, multi-error collection), and the whole of G5's machinery (the
+trust profile in both ports at every surface, deterministic budgets,
+the include manifest), with shared rows for all of it. Outstanding in
+A: only G5.6's default flip, a next-major release act whose warning
+window already ships. Phases B and C are untouched.
 
 ## Verified codebase facts referenced by the design documents
 

@@ -11,7 +11,7 @@
 // Named imports, not `import * as`: the namespace form makes tsc emit the
 // __importStar downlevel helper, whose branches no supported Node takes.
 import { readFileSync, statSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
 import { Aontu, AontuError, exactJSON, vet } from './aontu'
@@ -37,6 +37,9 @@ Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
   -v, --version   Print the version and exit
+  --trust <t>     Include capability: system (default), none, or
+                  root[:dir] to confine @"..." below a directory
+  --include-root <dir>  Shorthand for --trust root:<dir>
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
@@ -100,7 +103,59 @@ function evalSource(
 }
 
 
-function runFile(file: string, mode: Mode): number {
+// The include capability the main verb runs with (G5, docs/trust.md).
+// `--trust` and `--include-root` set it explicitly; the default is
+// 'system' WITH the warning window: every resolution that escapes the
+// entry root or goes through package resolution prints a one-line
+// stderr warning naming the flag a future default will require
+// (phase 6, the staged flip).
+type TrustArg =
+  | { kind: 'system-warn' }
+  | { kind: 'system' }
+  | { kind: 'none' }
+  | { kind: 'root', dir?: string }
+
+
+// The one-line warning of the staged default flip. Once per (kind,
+// path): a fixpoint re-resolves nothing (includes load at parse), but
+// several includes may escape and each deserves exactly one line.
+function makeTrustWarn(): (kind: 'escape' | 'pkg', path: string) => void {
+  const warned = new Set<string>()
+  return (kind, path) => {
+    const key = kind + ' ' + path
+    if (warned.has(key)) {
+      return
+    }
+    warned.add(key)
+    const how = 'pkg' === kind
+      ? 'through package resolution'
+      : 'outside the entry root'
+    process.stderr.write(
+      `aontu: warning: include resolved ${how}: ${path}` +
+      ` (a future release will deny this by default;` +
+      ` pass --trust system to keep it, or --include-root to confine)\n`)
+  }
+}
+
+
+// Build the evaluator options a TrustArg means, for an entry rooted at
+// entryRoot (the entry file's directory, or the working directory for
+// stdin/REPL).
+function trustOpts(trust: TrustArg, entryRoot: string): any {
+  switch (trust.kind) {
+    case 'none':
+      return { trust: { include: 'none' } }
+    case 'root':
+      return { trust: { include: { root: trust.dir ?? entryRoot } } }
+    case 'system':
+      return {}
+    default:  // system-warn: today's default plus the warning window
+      return { trustWarn: makeTrustWarn(), trustWarnRoot: entryRoot }
+  }
+}
+
+
+function runFile(file: string, mode: Mode, trust: TrustArg): number {
   let src: string
   try {
     src = readFileSync(file, 'utf8')
@@ -110,20 +165,22 @@ function runFile(file: string, mode: Mode): number {
     return 1
   }
 
-  const aontu = new Aontu({ path: resolve(file) })
+  const path = resolve(file)
+  const aontu = new Aontu({ path, ...trustOpts(trust, dirname(path)) })
   const res = evalSource(aontu, src, mode)
   ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
   return res.ok ? 0 : 1
 }
 
 
-function runStdin(mode: Mode): Promise<number> {
+function runStdin(mode: Mode, trust: TrustArg): Promise<number> {
   return new Promise((resolve) => {
     let src = ''
     process.stdin.setEncoding('utf8')
     process.stdin.on('data', (d) => (src += d))
     process.stdin.on('end', () => {
-      const res = evalSource(new Aontu(), src, mode)
+      const res = evalSource(
+        new Aontu(trustOpts(trust, process.cwd())), src, mode)
       ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
       resolve(res.ok ? 0 : 1)
     })
@@ -564,9 +621,29 @@ function finish(code: number): void {
 }
 
 
+// Parse a --trust argument value. Returns undefined for an unknown
+// spelling, so the caller owns the usage error.
+function parseTrustArg(value: string): TrustArg | undefined {
+  if ('system' === value) {
+    return { kind: 'system' }
+  }
+  if ('none' === value) {
+    return { kind: 'none' }
+  }
+  if ('root' === value) {
+    return { kind: 'root' }
+  }
+  if (value.startsWith('root:') && 'root:'.length < value.length) {
+    return { kind: 'root', dir: value.slice('root:'.length) }
+  }
+  return undefined
+}
+
+
 function main(argv: string[]): void {
   let mode: Mode = 'json'
   let file: string | undefined
+  let trust: TrustArg = { kind: 'system-warn' }
 
   // Subcommand dispatch, and deliberately only for a FIRST argument:
   // `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
@@ -581,7 +658,9 @@ function main(argv: string[]): void {
     return void Promise.resolve(runVet(argv.slice(3))).then(finish)
   }
 
-  for (const arg of argv.slice(2)) {
+  const args = argv.slice(2)
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]
     if ('-c' === arg || '--canon' === arg) {
       mode = 'canon'
     }
@@ -593,6 +672,23 @@ function main(argv: string[]): void {
       process.stdout.write(version() + '\n')
       return finish(0)
     }
+    else if ('--trust' === arg) {
+      const parsed = null == args[i + 1] ? undefined : parseTrustArg(args[++i])
+      if (null == parsed) {
+        process.stderr.write(
+          'aontu: --trust needs system, none, or root[:dir]\n')
+        return finish(2)
+      }
+      trust = parsed
+    }
+    else if ('--include-root' === arg) {
+      const dir = args[++i]
+      if (null == dir) {
+        process.stderr.write('aontu: --include-root needs a directory\n')
+        return finish(2)
+      }
+      trust = { kind: 'root', dir }
+    }
     else if (arg.startsWith('-')) {
       process.stderr.write(`aontu: unknown option ${arg} (try --help)\n`)
       return finish(2)
@@ -603,13 +699,13 @@ function main(argv: string[]): void {
   }
 
   if (null != file) {
-    finish(runFile(file, mode))
+    finish(runFile(file, mode, trust))
   }
   else if (process.stdin.isTTY) {
     runRepl(mode)
   }
   else {
-    runStdin(mode).then((code) => finish(code))
+    runStdin(mode, trust).then((code) => finish(code))
   }
 } /* node:coverage ignore next 8 */
 

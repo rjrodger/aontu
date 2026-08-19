@@ -3,6 +3,19 @@ import { Resolver } from '@tabnas/multisource';
 import { Val, DONE, SPREAD } from './val/Val';
 import type { ValMark, ValSpec } from './val/Val';
 type FST = typeof Fs;
+type TrustInclude = 'none' | 'system' | {
+    mem: Record<string, string>;
+} | {
+    root: string;
+};
+type TrustBudget = {
+    passes?: number;
+    depth?: number;
+};
+type TrustOptions = {
+    include?: TrustInclude;
+    budget?: TrustBudget;
+};
 type AontuOptions = {
     src?: string;
     print?: number;
@@ -18,6 +31,9 @@ type AontuOptions = {
     collect?: boolean;
     err?: any[];
     explain?: any[];
+    trust?: TrustOptions;
+    trustWarn?: (kind: 'escape' | 'pkg', path: string) => void;
+    trustWarnRoot?: string;
 };
 declare const DEFAULT_OPTS: () => AontuOptions;
 type ValMap = {
@@ -28,5 +44,5 @@ type ErrContext = {
     src?: string;
     fs?: FST;
 };
-export type { Val, ValMark, ValSpec, ValMap, ValList, AontuOptions, ErrContext, FST, };
+export type { Val, ValMark, ValSpec, ValMap, ValList, AontuOptions, ErrContext, FST, TrustInclude, TrustBudget, TrustOptions, };
 export { DONE, SPREAD, DEFAULT_OPTS, Resolver, };

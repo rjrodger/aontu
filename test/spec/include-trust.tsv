@@ -1,0 +1,27 @@
+# G5 phase 3: the trust profile's include capability (docs/trust.md).
+#
+# THE RUNNER CONVENTION (the var.tsv precedent of fixed runner-side
+# configuration): every row in THIS FILE evaluates under a trust
+# profile root-confined to the fixtures directory --
+# `trust: { include: { root: __FIXTURES__ } }` in ts/test/spec.test.ts,
+# `TrustOptions{IncludeRoot: fixturesDir}` in go/spec_test.go. The same
+# profile also covers file.tsv, which is what makes the shared suite
+# itself HERMETIC: no row may read outside the repository or resolve
+# through installed packages.
+#
+# The deny target (test/spec/trust-secret.aon) is a real committed file
+# ONE LEVEL ABOVE the confinement root: confinement is realpath-then-
+# prefix-check on the RESOLVED file, so the file must exist for the
+# escape to be an escape (a missing path is ordinary not-found -- the
+# allowed mechanism ran and missed; denial is reserved for the
+# capability refusing the read).
+#
+# The nested row proves the profile travels: trust-nest.aon itself
+# includes trust-in.aon relatively, and the child parse runs under the
+# same capability (the resolver reads it from the parse meta the plugin
+# copies to every nested include).
+
+trust-allow-in-root	gen	a:@"__FIXTURES__/trust-in.aon"	{"a":{"f":11}}
+trust-allow-nested	gen	a:@"__FIXTURES__/trust-nest.aon"	{"a":{"f":11,"g":22}}
+trust-deny-escape	errc	a:@"__FIXTURES__/../trust-secret.aon"	include_denied
+trust-deny-escape-msg	err	a:@"__FIXTURES__/../trust-secret.aon"	include denied

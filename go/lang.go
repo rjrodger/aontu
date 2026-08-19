@@ -2120,7 +2120,13 @@ func toValidSource(src string) string {
 	return strings.ToValidUTF8(src, "�")
 }
 
-func parseBase(src, base, file string) (Val, error) {
+// parseWithTrust is parseBase under a trust sink (G5, docs/trust.md):
+// the sink carries the include capability, the warning window and the
+// manifest accumulator into the resolver via the parse meta bag, and a
+// recorded denial comes back as the include_denied error -- checked
+// BEFORE not-found, because an escape that also failed to read must
+// report as the refusal it is.
+func parseWithTrust(src, base, file string, trust *trustSink) (Val, error) {
 	src = toValidSource(src)
 
 	// A version-control conflict marker is refused BEFORE the parse
@@ -2159,6 +2165,9 @@ func parseBase(src, base, file string) (Val, error) {
 	// plain value. See notFoundSink.
 	sink := &notFoundSink{}
 	meta := map[string]any{notFoundMetaKey: sink}
+	if nil != trust {
+		meta[trustMetaKey] = trust
+	}
 	// The parser names the source in its own error frames from
 	// meta["fileName"] (TS passes the same through popts.path), and
 	// defaults to "<no-file>" without it. parseBase had no filename to
@@ -2177,6 +2186,10 @@ func parseBase(src, base, file string) (Val, error) {
 	// include can leave the parse failing for a secondary reason, and
 	// "source not found: x" is the diagnosis the user needs -- the cascade
 	// is noise.
+	if nil != trust && "" != trust.denied {
+		return newMap(), &AontuError{Msg: trust.denied, Code: "include_denied"}
+	}
+
 	if "" != sink.msg {
 		return newMap(), &AontuError{Msg: sink.msg, Code: "multisource_not_found"}
 	}

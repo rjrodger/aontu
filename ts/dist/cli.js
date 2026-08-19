@@ -36,6 +36,9 @@ Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
   -v, --version   Print the version and exit
+  --trust <t>     Include capability: system (default), none, or
+                  root[:dir] to confine @"..." below a directory
+  --include-root <dir>  Shorthand for --trust root:<dir>
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
@@ -89,7 +92,41 @@ function evalSource(aontu, src, mode) {
         return { ok: false, text: msg };
     }
 }
-function runFile(file, mode) {
+// The one-line warning of the staged default flip. Once per (kind,
+// path): a fixpoint re-resolves nothing (includes load at parse), but
+// several includes may escape and each deserves exactly one line.
+function makeTrustWarn() {
+    const warned = new Set();
+    return (kind, path) => {
+        const key = kind + ' ' + path;
+        if (warned.has(key)) {
+            return;
+        }
+        warned.add(key);
+        const how = 'pkg' === kind
+            ? 'through package resolution'
+            : 'outside the entry root';
+        process.stderr.write(`aontu: warning: include resolved ${how}: ${path}` +
+            ` (a future release will deny this by default;` +
+            ` pass --trust system to keep it, or --include-root to confine)\n`);
+    };
+}
+// Build the evaluator options a TrustArg means, for an entry rooted at
+// entryRoot (the entry file's directory, or the working directory for
+// stdin/REPL).
+function trustOpts(trust, entryRoot) {
+    switch (trust.kind) {
+        case 'none':
+            return { trust: { include: 'none' } };
+        case 'root':
+            return { trust: { include: { root: trust.dir ?? entryRoot } } };
+        case 'system':
+            return {};
+        default: // system-warn: today's default plus the warning window
+            return { trustWarn: makeTrustWarn(), trustWarnRoot: entryRoot };
+    }
+}
+function runFile(file, mode, trust) {
     let src;
     try {
         src = (0, node_fs_1.readFileSync)(file, 'utf8');
@@ -98,18 +135,19 @@ function runFile(file, mode) {
         process.stderr.write(`aontu: cannot read ${file}: ${err.message}\n`);
         return 1;
     }
-    const aontu = new aontu_1.Aontu({ path: (0, node_path_1.resolve)(file) });
+    const path = (0, node_path_1.resolve)(file);
+    const aontu = new aontu_1.Aontu({ path, ...trustOpts(trust, (0, node_path_1.dirname)(path)) });
     const res = evalSource(aontu, src, mode);
     (res.ok ? process.stdout : process.stderr).write(res.text + '\n');
     return res.ok ? 0 : 1;
 }
-function runStdin(mode) {
+function runStdin(mode, trust) {
     return new Promise((resolve) => {
         let src = '';
         process.stdin.setEncoding('utf8');
         process.stdin.on('data', (d) => (src += d));
         process.stdin.on('end', () => {
-            const res = evalSource(new aontu_1.Aontu(), src, mode);
+            const res = evalSource(new aontu_1.Aontu(trustOpts(trust, process.cwd())), src, mode);
             (res.ok ? process.stdout : process.stderr).write(res.text + '\n');
             resolve(res.ok ? 0 : 1);
         });
@@ -479,9 +517,27 @@ function runVet(argv, wait) {
 function finish(code) {
     process.exitCode = code;
 }
+// Parse a --trust argument value. Returns undefined for an unknown
+// spelling, so the caller owns the usage error.
+function parseTrustArg(value) {
+    if ('system' === value) {
+        return { kind: 'system' };
+    }
+    if ('none' === value) {
+        return { kind: 'none' };
+    }
+    if ('root' === value) {
+        return { kind: 'root' };
+    }
+    if (value.startsWith('root:') && 'root:'.length < value.length) {
+        return { kind: 'root', dir: value.slice('root:'.length) };
+    }
+    return undefined;
+}
 function main(argv) {
     let mode = 'json';
     let file;
+    let trust = { kind: 'system-warn' };
     // Subcommand dispatch, and deliberately only for a FIRST argument:
     // `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
     // what it always did. A file named `vet` is still reachable as
@@ -494,7 +550,9 @@ function main(argv) {
     if ('vet' === argv[2]) {
         return void Promise.resolve(runVet(argv.slice(3))).then(finish);
     }
-    for (const arg of argv.slice(2)) {
+    const args = argv.slice(2);
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
         if ('-c' === arg || '--canon' === arg) {
             mode = 'canon';
         }
@@ -506,6 +564,22 @@ function main(argv) {
             process.stdout.write(version() + '\n');
             return finish(0);
         }
+        else if ('--trust' === arg) {
+            const parsed = null == args[i + 1] ? undefined : parseTrustArg(args[++i]);
+            if (null == parsed) {
+                process.stderr.write('aontu: --trust needs system, none, or root[:dir]\n');
+                return finish(2);
+            }
+            trust = parsed;
+        }
+        else if ('--include-root' === arg) {
+            const dir = args[++i];
+            if (null == dir) {
+                process.stderr.write('aontu: --include-root needs a directory\n');
+                return finish(2);
+            }
+            trust = { kind: 'root', dir };
+        }
         else if (arg.startsWith('-')) {
             process.stderr.write(`aontu: unknown option ${arg} (try --help)\n`);
             return finish(2);
@@ -515,13 +589,13 @@ function main(argv) {
         }
     }
     if (null != file) {
-        finish(runFile(file, mode));
+        finish(runFile(file, mode, trust));
     }
     else if (process.stdin.isTTY) {
         runRepl(mode);
     }
     else {
-        runStdin(mode).then((code) => finish(code));
+        runStdin(mode, trust).then((code) => finish(code));
     }
 } /* node:coverage ignore next 8 */
 //# sourceMappingURL=cli.js.map

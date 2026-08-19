@@ -62,7 +62,19 @@ func Diagnostics(src string) []Diagnostic {
 
 // DiagnosticsVars is Diagnostics with $name variables resolved from vars.
 func DiagnosticsVars(src string, vars map[string]aontu.Val) []Diagnostic {
-	probs := aontu.New().CheckVars(src, vars)
+	return DiagnosticsTrust(src, vars, nil)
+}
+
+// DiagnosticsTrust is DiagnosticsVars under a trust profile (G5,
+// docs/trust.md). The LSP is the highest-exposure surface — merely
+// OPENING a hostile .aon file in an editor performs its reads — so the
+// Handler confines evaluation to the workspace root and threads the
+// profile through here. Nil means today's unconfined behaviour, which
+// single-file sessions rely on.
+func DiagnosticsTrust(src string, vars map[string]aontu.Val, trust *aontu.TrustOptions) []Diagnostic {
+	a := aontu.New()
+	a.Trust = trust
+	probs := a.CheckVars(src, vars)
 	idx := newLineIndex(src)
 
 	out := make([]Diagnostic, 0, len(probs))

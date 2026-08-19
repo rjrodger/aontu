@@ -89,15 +89,15 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **61 `.tsv` files, 60
-   row-bearing, 2,261 rows**, in seven modes — `canon` 656, `gen` 533,
-   `errc` 422, `gens` 302, `err` 232, `errcode` 70, `vet` 46. Reproduce with
+   register's last update the suite is **62 `.tsv` files, 61
+   row-bearing, 2,266 rows**, in seven modes — `canon` 656, `gen` 535,
+   `errc` 423, `gens` 302, `err` 233, `errcode` 71, `vet` 46. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Eighteen of forty-nine phases have moved; fifteen of those are complete.
+Twenty of forty-nine phases have moved; eighteen of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
@@ -105,11 +105,11 @@ Eighteen of forty-nine phases have moved; fifteen of those are complete.
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
-| [G5](g5-trust-contract.md) | Trust contract | A | 2 | 2 | 2 |
+| [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **15** | **3** | **31** |
+| | | **total** | **18** | **2** | **29** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -125,8 +125,13 @@ Against the review's own [sequencing](index.md#sequencing):
   length/count)" asked for: cross-field residuation and the `must`
   escape hatch are in too. **G2 is complete**: multi-error collection
   (G2.6) landed, so a report lists every contradiction the fixpoint can
-  reach, deduplicated to one finding per cause. Outstanding in A: only
-  the G5 trust-profile phases below.
+  reach, deduplicated to one finding per cause. **G5 is complete but
+  for one release act**: the trust profile (include capability plus
+  deterministic budgets) is in both ports at every surface, the shared
+  suite is hermetic under it, and the include manifest makes the
+  hermeticity file set observable — what remains of A is only G5.6's
+  default FLIP, staged for the next major version with its warning
+  window already shipping.
 - **Phase B — differentiate.** Untouched. No subsumption, no canon
   hash, no query surface.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
@@ -365,10 +370,10 @@ a new builtin must add entries to the arity tables in both ports.
 |-------|------|--------|-----|
 | **1** — write the contract | S | **LANDED** | [`docs/trust.md`](../trust.md), four clauses (hermeticity, termination, determinism, sandboxing) with profiles and budget names; `docs/reference-api.md` single-use-tree rule; `AGENTS.md` points at it. Commit `98fc1bf`. |
 | **2** — budget and cycle taxonomy | M | **LANDED** | `test/spec/budget.tsv` (24 rows) pinning `path_cycle`, `no_path`, `budget_passes`, `unify_cycle` as distinct; the `maxcc` false positive fixed by the per-pass memo with a 1200-sibling fixture as guard. Commits `98fc1bf`, `90f3146`. |
-| **3** — trust profile and confinement, TypeScript | L | **NOT STARTED** | No `trust` option in `ts/src/type.ts`, no `include_denied`, no `test/spec/include-trust.tsv`. |
-| **4** — Go port of profile and budgets | L | **PARTIAL** | The **budget** half landed with phase 2 (`go/unify.go` defaults, `budget.tsv` runs in `go/spec_test.go` with no skip list). The **trust profile** half has nothing, and cannot until phase 3 gives it a canonical side to mirror. |
-| **5** — determinism byte-pinning | M | **PARTIAL** | `gens` documented in `docs/shared-spec.md`; 299 byte-exact rows beside the behaviour they pin; repeatability enforced as a *runner property* — both runners re-run every `gens` row on a fresh engine. Missing: the `deps` manifest, absent from Go entirely and an unpopulated pass-through in TypeScript. |
-| **6** — default flip | S | **NOT STARTED** | Depends on phase 3's warning window. |
+| **3** — trust profile and confinement, TypeScript | L | **LANDED** | `trust` on `AontuOptions` (`ts/src/type.ts`): include capability `'none' \| {mem} \| {root} \| 'system'` plus `budget.{passes,depth}`. `makeModelResolver` (`ts/src/lang.ts`) enforces it — `none` denies outright, `mem` is the whole world (a miss is not-found, denial is reserved for a refused MECHANISM), `root` is realpath-then-prefix-check on the RESOLVED file so a symlink escape is denied, `system` keeps today's chain; a denial is RAISED (never injected as a value, or a bare-member include would vanish in the merge) and lands as the parse-stage `include_denied` nil (`errcodes.tsv`, class parse). Budgets ride `ctx.budget` (`ts/src/ctx.ts`), read by the pass loop and depth guards (`ts/src/unify.ts`); fixing `passes: 1` exposed and fixed a real defect — the still-refining snapshot was taken after pass `maxcc-2`, which never exists when the budget is 1, so exhaustion was SILENT; it is now taken at the final pass's entry, in both ports. CLI: `--trust <system\|none\|root[:dir]>`, `--include-root`, and the phase-6 warning window. LSP: workspace-root confinement from the `initialize` params, `initializationOptions.aontu.trust.include` override, an unrecognised explicit value confining to NOTHING. Spec: `test/spec/include-trust.tsv` (4 rows, both runners, fixtures-root profile — the var.tsv runner-convention precedent) and `file.tsv` re-scoped under the same profile, making the shared suite itself hermetic. **Departures:** (1) `budget.revisits` is NOT profile surface — the Go dispatcher has no revisit counter, and a knob one port cannot honour breaks ADR-001 by construction; the TS revisit bound stays an internal constant. (2) The LSP falls back to UNCONFINED when there is no workspace root and no explicit option (single-file sessions rely on it); the design's per-surface table implied always-confined. (3) `deny-pkg` from the design's sketch rows is unpinnable as a shared row (a package hit depends on the installed environment); package denial under `root` shows as not-found after the file leg misses, and the pkg-leg skip is pinned per port. |
+| **4** — Go port of profile and budgets | L | **LANDED** | The trust profile in Go: `Aontu.Trust` (`TrustOptions{IncludeNone, IncludeMem, IncludeRoot, Budget}`, `go/aontu.go`); enforcement in `go/source.go` (capability + realpath containment + `deniedKind` processor, the twin of the not-found flow) with the capability riding the parse meta bag (`trustSink`, the `notFoundSink` pattern) because the parser is CACHED per base; `parseWithTrust` (`go/lang.go`) returns the denial as `include_denied` BEFORE the not-found check; budgets on `Ctx` (zero = the spec constants, so a bare `&Ctx{}` behaves exactly as before). CLI flags and warning window in `go/cmd/aontu/main.go`; LSP workspace confinement in `go/lsp` (`trustFromInitialize`, `DiagnosticsTrust`). One canonical-side alignment landed with it: `CheckVars` reports a parse failure under its SPECIFIC code (`syntax`, `include_denied`) instead of a generic `parse`, matching the first-code contract errc rows pin. `include-trust.tsv` runs in `go/spec_test.go` under the same fixtures-root profile; per-port twins in `go/trust_test.go`, `go/cmd/aontu/trust_test.go`, `go/lsp/lsp_test.go`. |
+| **5** — determinism byte-pinning | M | **LANDED** | `gens` documented in `docs/shared-spec.md`; the byte-exact rows live beside the behaviour they pin; repeatability enforced as a *runner property* — both runners re-run every `gens` row on a fresh engine. The **`deps` manifest** completed the phase: the resolved include closure as sorted, deduplicated `{path, capability}` entries — `result.deps` in TypeScript (`manifestOf`, `ts/src/aontu.ts`), `Aontu.IncludeDeps` in Go — hermeticity clause 1's "file set" made observable, deterministic by construction (no timestamps; the plugin's raw `wen`-stamped DependencyMap stays internal). Documented in `docs/reference-api.md` and `docs/trust.md`; pinned per port (`ts/test/trust.test.ts`, `go/trust_test.go`). |
+| **6** — default flip | S | **PARTIAL** | The **warning window** is shipped, in both CLIs: under the default `'system'` posture, every resolution escaping the entry root (or resolving through a package) prints one stderr line naming `--trust system` / `--include-root` — once per resolution, pinned per port. `docs/trust.md` states the schedule. **What remains is the flip itself** — CLI entry-root confinement by default and the library's explicit-capability requirement — which the design stages at the NEXT MAJOR VERSION with a migration note; that is a release decision for the repository owner, not more code: the machinery, flags and denial semantics it needs are all landed. |
 
 **Two departures the doc already records**: no `gens.tsv` bucket (rows
 live beside their behaviour), and repeatability as a runner property

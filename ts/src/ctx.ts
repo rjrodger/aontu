@@ -71,13 +71,28 @@ class AontuContext {
   _pathTrie: Map<number, Map<string, { idx: number, path: string[] }>>
   _pathidxNext: { n: number }
 
-  // Current `unite` recursion depth, checked against MAXDEPTH
+  // Current `unite` recursion depth, checked against the depth budget
   // (ts/src/unify.ts). Held in a shared mutable box, like _pathidxNext,
   // because clone() uses Object.create: the box is inherited by
   // reference, so a nested clone's increments are visible to the frame
   // that will decrement them. The Go port keeps the same counter
   // directly on its Ctx pointer (go/unify.go, maxUniteDepth).
   _depth: { n: number }
+
+  // The evaluation budgets (G5 trust profile, docs/trust.md): integer
+  // counts of engine events, never wall-clock. Always present, defaults
+  // from the shared spec-visible constants (test/spec/budget.tsv), so
+  // the hot-path reads in unify.ts are plain property loads. Inherited
+  // by clone() through the prototype chain. `revisits` is NOT profile
+  // surface (the Go port has no revisit counter to configure — see
+  // TrustBudget in type.ts); it is carried here so unify.ts reads one
+  // budget object, at its fixed spec constant.
+  budget: { passes: number, revisits: number, depth: number }
+
+  // The include manifest sink (G5, docs/trust.md): every include the
+  // resolver reads is recorded here as { path, capability }, and
+  // Aontu.parse() sorts and dedups it onto the result's `deps`.
+  manifest: { path: string, capability: string }[]
 
   // Trial mode: set by DisjunctVal.unify while each member is tried
   // against the peer. When true, makeNilErr returns the shared
@@ -127,8 +142,20 @@ class AontuContext {
     this._depth = { n: 0 }
     this._pathidx = 0
 
+    this.manifest = []
+
     this.opts = DEFAULT_OPTS()
     this.addopts(cfg.opts)
+
+    // Budget defaults are the shared spec-visible constants
+    // (test/spec/budget.tsv pins the boundaries in both ports); the
+    // trust profile may lower or raise them, deterministically.
+    const budget = (this.opts as any).trust?.budget ?? {}
+    this.budget = {
+      passes: budget.passes ?? 9,
+      revisits: 999,
+      depth: budget.depth ?? 1000,
+    }
   }
 
 

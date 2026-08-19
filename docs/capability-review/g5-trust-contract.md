@@ -1,9 +1,10 @@
 # G5: A specified trust contract
 
-*Status: partly implemented — phases 1 and 2 landed, phases 4 and 5
-partial, phases 3 and 6 outstanding. Per-phase status, the departures
-the landed work took, and the corrections this document and
-`docs/trust.md` still need are in the [progress register](progress.md),
+*Status: implemented but for the default flip — phases 1 through 5 are
+landed in both ports; phase 6's warning window ships and the flip
+itself awaits the next major version. Per-phase status and the
+departures the landed work took are in the
+[progress register](progress.md),
 which is authoritative for status; this document is authoritative for
 design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -622,7 +623,18 @@ residue; progress-aware revisit counting for the line-29 TODO),
 ts/src/val/RefVal.ts (mutual-cycle chain detection),
 ts/src/hints.ts; then go/unify.go, go/ref.go, go/hints.go.
 
-**Phase 3 — trust profile and confinement, TypeScript (L).**
+**Phase 3 — trust profile and confinement, TypeScript (L).** LANDED —
+with three departures the register details: `budget.revisits` is not
+profile surface (the Go dispatcher has no revisit counter, and a knob
+one port cannot honour breaks ADR-001 by construction); the LSP falls
+back to unconfined when there is no workspace root and no explicit
+option, which single-file sessions rely on; and the sketched `deny-pkg`
+row is unpinnable as a shared row (a package hit depends on the
+installed environment), so package denial under `root` is pinned per
+port. Reifying `budget.passes` also found a real defect: at `passes: 1`
+the still-refining snapshot (taken after pass `maxcc-2`, which never
+exists) made exhaustion silent — it is now taken at the final pass's
+entry, in both ports.
 Spec: test/spec/include-trust.tsv (fixed-profile runner convention à
 la var.tsv; denial and allow rows; literal-include-path row); file.tsv
 re-scoped under a fixtures-root profile. Code: ts/src/type.ts
@@ -632,14 +644,24 @@ ts/src/cli.ts (`--trust`, `--include-root`, escape warnings),
 ts/src/lsp.ts + ts/src/lsp-server.ts (workspace-root default,
 `initializationOptions`); runner change in ts/test/spec.test.ts.
 
-**Phase 4 — Go port of profile and budgets (L).**
+**Phase 4 — Go port of profile and budgets (L).** LANDED. The
+capability rides the parse meta bag (the `notFoundSink` pattern),
+because the parser is cached per base and nothing parse-specific may
+live on it. One canonical-side alignment landed with the port:
+`CheckVars` reports a parse failure under its specific code
+(`syntax`, `include_denied`) rather than a generic `parse`, matching
+the first-code contract errc rows pin.
 Code: go/aontu.go (options), go/source.go (root confinement,
 `include_denied`, documented `system`≡file-only note), go/ctx.go,
 go/unify.go defaults, go/cmd/aontu flags, go/lsp. go/spec_test.go
 runs budget.tsv and include-trust.tsv with no skip list; LSP denial
 diagnostics byte-identical to TS.
 
-**Phase 5 — determinism byte-pinning (M).**
+**Phase 5 — determinism byte-pinning (M).** LANDED — completed by the
+`deps` manifest: sorted, deduplicated `{path, capability}` entries on
+the parse result in both ports (`result.deps` / `Aontu.IncludeDeps`),
+deterministic by construction (no timestamps — the plugin's raw
+`wen`-stamped DependencyMap stays internal).
 Spec: `gens` mode documented in docs/shared-spec.md; rows in a new
 test/spec/gens.tsv (numbers first, then strings/escaping, then
 structures); repeatability property rows. Code: ts/test/spec.test.ts
@@ -658,11 +680,13 @@ spec runners re-run every `gens` row on a fresh engine and require
 byte-identical output, so all 257 rows carry the determinism
 assertion instead of a handful of dedicated ones.)*
 
-**Phase 6 — default flip (S code, staged socially).**
-Warning window ships with Phase 3; the flip itself (CLI entry-root
-default, library explicit-capability requirement, LSP already
-confined) lands at the next major version with a migration note in
-docs/how-to.md.
+**Phase 6 — default flip (S code, staged socially).** PARTIAL, as
+staged: the warning window ships (both CLIs, one stderr line per
+escaping resolution naming the future-required flag); the flip itself
+(CLI entry-root default, library explicit-capability requirement, LSP
+already confined) remains the next major version's release act, with
+its migration note in docs/trust.md — no further code is needed for
+it, only the decision.
 
 Rough sizing: S ≈ days, M ≈ a week or two, L ≈ several weeks per
 implementation.

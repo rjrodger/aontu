@@ -46,6 +46,15 @@ declare class AontuContext {
     _depth: {
         n: number;
     };
+    budget: {
+        passes: number;
+        revisits: number;
+        depth: number;
+    };
+    manifest: {
+        path: string;
+        capability: string;
+    }[];
     _trialMode?: boolean;
     _childCache?: Map<string, AontuContext>;
     constructor(cfg: AontuContextConfig);

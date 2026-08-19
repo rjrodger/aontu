@@ -134,6 +134,16 @@ func TestSpec(t *testing.T) {
 
 			t.Run(file+":"+name, func(t *testing.T) {
 				a := New()
+				// Files whose rows evaluate under a fixed trust profile
+				// (G5, docs/trust.md): root-confined to the fixtures
+				// directory, the var.tsv precedent of runner-side
+				// configuration. This is also what makes the shared
+				// suite itself HERMETIC: no row may read outside the
+				// repository, in either runner (ts/test/spec.test.ts
+				// applies the same profile to the same files).
+				if "include-trust.tsv" == file || "file.tsv" == file {
+					a.Trust = &TrustOptions{IncludeRoot: fixturesDir}
+				}
 				vars := specVars()
 				switch mode {
 				case "canon":

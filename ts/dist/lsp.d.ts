@@ -38,6 +38,7 @@ type OutMessage = {
 };
 declare function computeDiagnostics(src: string, opts?: {
     vars?: Record<string, Val>;
+    trust?: any;
 }): Diagnostic[];
 type MarkupContent = {
     kind: 'markdown' | 'plaintext';
@@ -61,6 +62,7 @@ declare class LspHandler {
     private docs;
     private shutdownOK;
     private exited;
+    private trust;
     get shouldExit(): boolean;
     get exitCode(): number;
     doc(uri: string): string | undefined;

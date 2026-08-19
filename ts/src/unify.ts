@@ -26,27 +26,27 @@ import {
 } from './val/top'
 
 
-// Per-pass revisit bound: how many times one (Val, path) pair may be
-// re-unified within a single fixpoint pass before the evaluator calls it
-// non-convergence (`unify_cycle`). The old false positive here -- a
-// legal model with more than MAXCYCLE sibling conjunct terms at one
-// path, each re-running the TOP self-unify -- is fixed by the per-pass
-// memo below (_tcc/_tpi); test/spec/budget.tsv drives 1200 sibling
-// terms through both engines as the regression guard.
-const MAXCYCLE = 999
-
-// Structural recursion budget: how deep `unite` may nest before the
-// evaluator reports `unify_cycle`. SHARED LANGUAGE SURFACE -- Go's
-// maxUniteDepth (go/unify.go) carries the same number, and
-// test/spec/budget.tsv pins the boundary in both, so changing it is a
-// spec-visible change in both ports at once.
+// The evaluation budgets live on the context (ctx.budget: passes,
+// revisits, depth), defaulted there to the shared spec-visible
+// constants test/spec/budget.tsv pins in both ports (9 / 999 / 1000)
+// and configurable through the trust profile (G5, docs/trust.md) —
+// deterministically: a budget is an integer count of engine events,
+// never wall-clock.
 //
-// Why 1000: the whole shared suite peaks at 603 (the deliberately
-// extreme 1200-sibling-term fixture; ordinary documents are two orders
-// below), and V8 exhausts its call stack somewhere past depth ~1500 in
-// this evaluator. 1000 sits above every real document and below the
-// host limit, so the budget -- not the host -- decides the verdict.
-const MAXDEPTH = 1000
+// Why the revisit default is 999: how many times one (Val, path) pair
+// may be re-unified within a single fixpoint pass before the evaluator
+// calls it non-convergence (`unify_cycle`). The old false positive here
+// -- a legal model with many sibling conjunct terms at one path, each
+// re-running the TOP self-unify -- is fixed by the per-pass memo below
+// (_tcc/_tpi); test/spec/budget.tsv drives 1200 sibling terms through
+// both engines as the regression guard.
+//
+// Why the depth default is 1000: the whole shared suite peaks at 603
+// (the deliberately extreme 1200-sibling-term fixture; ordinary
+// documents are two orders below), and V8 exhausts its call stack
+// somewhere past depth ~1500 in this evaluator. 1000 sits above every
+// real document and below the host limit, so the budget -- not the
+// host -- decides the verdict.
 
 // Charge a DIRECT `Val.unify` recursion to the same depth budget that
 // `unite` enforces. Function and operator arguments evaluate through
@@ -59,7 +59,7 @@ const MAXDEPTH = 1000
 const withDepth = (
   ctx: AontuContext, a: any, b: any, run: () => any
 ): any => {
-  if (MAXDEPTH <= ctx._depth.n) {
+  if (ctx.budget.depth <= ctx._depth.n) {
     return makeNilErr(ctx, 'unify_cycle', a, b)
   }
   ctx._depth.n++
@@ -119,7 +119,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
   // See for example PrefVal peg.id equality inspection.
   const sawCount = ctx.seen[saw] ?? 0
-  if (MAXDEPTH <= ctx._depth.n) {
+  if (ctx.budget.depth <= ctx._depth.n) {
     // Structural recursion budget. Without it, deep nesting exhausts the
     // V8 call stack and the catch-all below reports a RangeError as
     // `internal` — a verdict that depends on the host's stack size
@@ -128,7 +128,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
     // makes it a stated budget error, like the pass budget.
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
-  else if (MAXCYCLE < sawCount) {
+  else if (ctx.budget.revisits < sawCount) {
     // console.log('SAW', sawCount, saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
@@ -343,12 +343,26 @@ class Unify {
       const te = explain && explainOpen(uctx, explain, 'root', res)
 
       // NOTE: if true === res.done already, then this loop never needs to run.
-      let maxcc = 9 // 99
+      let maxcc = uctx.budget.passes
       let prevCanon: string | undefined = undefined
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
         uctx.seen = {}
+
+        // Snapshot BEFORE the final pass (the loop condition has
+        // already established the tree is not done), so exhaustion can
+        // tell "still refining" from "stable residue" below. Taken at
+        // the final pass's ENTRY rather than the previous pass's exit
+        // — the same value when the budget allows two passes, and the
+        // only possible value when the trust profile sets passes to 1,
+        // where the old placement (cc === maxcc - 2, never true) made
+        // exhaustion silent, exactly the truncation docs/trust.md
+        // forbids.
+        if (this.cc === maxcc - 1) {
+          prevCanon = res.canon
+        }
+
         res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
 
         // MULTI-ERROR COLLECTION (G2 phase 6): the pass loop CONTINUES
@@ -366,13 +380,6 @@ class Unify {
         // this (fan-in refs, spread templates, disjunct trials, nested
         // conjuncts) are pinned as vet.tsv's multi-* rows in both
         // ports.
-
-        // Snapshot the second-to-last pass's result, so exhaustion can
-        // tell "still refining" from "stable residue" below. Only paid
-        // by models still unresolved this late.
-        if (this.cc === maxcc - 2 && DONE !== res.dc) {
-          prevCanon = res.canon
-        }
 
         uctx = uctx.clone({ root: res })
       }

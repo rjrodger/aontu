@@ -44,6 +44,14 @@ type Ctx struct {
 	// actually sits at its slot (everything except shared/transplanted
 	// clones, whose stored paths carry overlay tails).
 	slot []string
+
+	// The evaluation budgets (G5 trust profile, docs/trust.md): integer
+	// counts of engine events, never wall-clock. ZERO MEANS THE DEFAULT
+	// — the shared spec-visible constants test/spec/budget.tsv pins (9
+	// passes, depth 1000) — so a bare &Ctx{} behaves exactly as before;
+	// only aontu.go sets them, from the trust profile.
+	budgetPasses int
+	budgetDepth  int
 }
 
 func (c *Ctx) adderr(n *NilVal) {

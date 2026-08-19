@@ -110,6 +110,7 @@ const hints = {
     // Parsing errors
     'parse_bad_src': 'Invalid source provided for parsing. The source must be a non-empty string.',
     merge_conflict: 'A version-control conflict marker was found in the source. The\nfile still holds an unresolved merge: resolve it and remove the\n`<<<<<<<`, `=======` and `>>>>>>>` lines before unifying.\n \nExamples:\n  <<<<<<< HEAD  -> nil  # A conflict marker, not a `<` operation;\n  =======       -> nil  # ... nor a chain of `=` characters;\n  >>>>>>> other -> nil  # ... nor a `>` operation.',
+    include_denied: 'An @"..." include was refused by the active trust profile\n(docs/trust.md). The document asked to read a source the evaluation\'s\ninclude capability does not allow: widen the capability if the read is\nintended, or remove the include if it is not.\n \nExamples:\n  a:@"in-root.aon"    -> {..}  # Inside the confinement root: allowed;\n  a:@"../secret.aon"  -> nil   # ... but escaping the root is denied;\n  a:@"/etc/hostname"  -> nil   # ... and so is an absolute path outside it.',
     func_arity: 'This function was called with the wrong number of arguments:\n{func} takes {want}, but was given {got}.\n \nExamples:\n  upper(\"a\")     -> \"A\"  # One argument, which is what upper takes;\n  upper(\"a\",\"b\") -> nil  # ... so two is a mistake in the source;\n  key()          -> \"\"   # key takes none, or one level count;\n  neq(1,2,3)     -> neq  # ... and neq takes one or more exclusions.',
     elided_value: 'A key or element was written with no value after the colon. An\nelided value is a mistake in the source rather than a null: write\n`null` if that is what was meant, or supply the value.\n \nExamples:\n  a:null  -> null  # An explicit null, which is a value;\n  a:      -> nil   # ... but nothing at all is not;\n  a: b:1  -> {..}  # A colon chain is not an elision;\n  [1,]    -> [1]   # ... nor is a trailing comma.',
     // Unification errors
@@ -230,6 +231,7 @@ const codeClasses = {
     parse_unknown: 'parse',
     parse_bad_src: 'parse',
     merge_conflict: 'parse',
+    include_denied: 'parse',
     func_arity: 'parse',
     elided_value: 'parse',
     unify_no_src: 'parse',

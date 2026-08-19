@@ -30,8 +30,18 @@ class AontuContext {
         this._pathidxNext = { n: 1 }; // 0 reserved for the root path
         this._depth = { n: 0 };
         this._pathidx = 0;
+        this.manifest = [];
         this.opts = (0, type_1.DEFAULT_OPTS)();
         this.addopts(cfg.opts);
+        // Budget defaults are the shared spec-visible constants
+        // (test/spec/budget.tsv pins the boundaries in both ports); the
+        // trust profile may lower or raise them, deterministically.
+        const budget = this.opts.trust?.budget ?? {};
+        this.budget = {
+            passes: budget.passes ?? 9,
+            revisits: 999,
+            depth: budget.depth ?? 1000,
+        };
     }
     clone(cfg) {
         const ctx = Object.create(this);

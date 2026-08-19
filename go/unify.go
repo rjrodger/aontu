@@ -24,10 +24,16 @@ func unite(ctx *Ctx, a, b Val) Val {
 	}
 
 	// Bound recursion to break reference cycles (the TS unite uses a
-	// per-path seen-map with MAXCYCLE; a depth guard is sufficient here).
+	// per-path seen-map with its revisit constant; a depth guard is
+	// sufficient here). The bound is the depth budget: the spec constant
+	// unless the trust profile set one (ctx.budgetDepth, zero = default).
+	maxDepth := ctx.budgetDepth
+	if 0 == maxDepth {
+		maxDepth = maxUniteDepth
+	}
 	ctx.depth++
 	defer func() { ctx.depth-- }()
-	if ctx.depth > maxUniteDepth {
+	if ctx.depth > maxDepth {
 		return makeNilErr(ctx, "unify_cycle", a, b)
 	}
 
@@ -93,13 +99,33 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		return root
 	}
 	res := root
-	const maxcc = 9
+	// The pass budget: the spec constant unless the trust profile set
+	// one (ctx.budgetPasses, zero = default).
+	maxcc := ctx.budgetPasses
+	if 0 == maxcc {
+		maxcc = 9
+	}
 	prevCanon := ""
 	sawPrev := false
 	for cc := 0; cc < maxcc && res.Dc() != DONE; cc++ {
 		ctx.root = res
 		ctx.depth = 0
 		ctx.cc = cc
+
+		// Snapshot BEFORE the final pass (the loop condition has already
+		// established the tree is not done), so exhaustion can tell
+		// "still refining" from "stable residue" below. Taken at the
+		// final pass's ENTRY rather than the previous pass's exit — the
+		// same value when the budget allows two passes, and the only
+		// possible value when the trust profile sets passes to 1, where
+		// the old placement (cc == maxcc-2, never true) made exhaustion
+		// silent, exactly the truncation docs/trust.md forbids. Mirrors
+		// ts/src/unify.ts.
+		if cc == maxcc-1 {
+			prevCanon = res.Canon()
+			sawPrev = true
+		}
+
 		res = unite(ctx, res, top())
 		// MULTI-ERROR COLLECTION (G2 phase 6): the pass loop CONTINUES
 		// past an erroring pass, so independent failures a later pass
@@ -110,13 +136,6 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		// error), so one failure stays ONE nil however many later meets
 		// touch it. Mirrors ts/src/unify.ts; pinned by vet.tsv's
 		// multi-* rows.
-		// Snapshot the second-to-last pass's result, so exhaustion can
-		// tell "still refining" from "stable residue" below. Only paid
-		// by models still unresolved this late.
-		if cc == maxcc-2 && res.Dc() != DONE {
-			prevCanon = res.Canon()
-			sawPrev = true
-		}
 	}
 	// The pass budget is spent AND the final pass still made progress:
 	// the model was cut off while converging, and no other error

@@ -270,17 +270,39 @@ into a context.
 **filesystem**, then **package** resolution, in that order. The chain
 is unconfined by default — a relative include follows any path the
 process can read — so **treat opening an untrusted source as running
-it**. Confinement today means **replacing `resolver` outright** (a
-supplied resolver substitutes for the whole chain; the in-memory
-resolver is such a replacement): `fs` is *not* a sandbox — it supplies
-source text for parsing and error context, and the file and package
-legs read through their own channels — and the **Go API has no
-confinement hook at all** (`NewWithBase` only rebases relative
-paths). The [trust contract](trust.md) states the guarantees and
-their conditions; a first-class `trust` option (include capability
-`'none' | {mem} | {root} | 'system'` plus deterministic budgets) is
-the registered design for making confinement a per-surface default,
-and is not implemented yet — this stub reserves the name.
+it**. Confinement is the **`trust` option** (G5, [the trust
+contract](trust.md)), in both implementations:
+
+```ts
+const aontu = new Aontu({
+  trust: {
+    // include capability, one of:
+    //   'none'              — @"…" always denied
+    //   { mem: {...} }      — a virtual file set only
+    //   { root: '/models' } — real files, realpath-confined below root;
+    //                         no package resolution
+    //   'system'            — the full chain (today's default)
+    include: { root: '/models' },
+    budget: { passes: 9, depth: 1000 },  // integer engine-event counts
+  },
+})
+```
+
+Go mirrors it as `Aontu.Trust` (`TrustOptions`: `IncludeNone`,
+`IncludeMem`, `IncludeRoot`, `Budget`). A denied resolution is the
+parse-stage `include_denied` error, pinned by
+`test/spec/include-trust.tsv` in both runners. Confinement is
+realpath-then-prefix-check on the resolved file, so a symlink inside
+the root pointing outside it is denied. Note `fs` is *not* a sandbox —
+it supplies source text for parsing and error context, and the file
+and package legs read through their own channels; the trust profile is
+the confinement surface.
+
+**The include manifest.** After a parse, the resolved include closure
+is observable as sorted, deduplicated `{ path, capability }` entries —
+`result.deps` in TypeScript, `Aontu.IncludeDeps` in Go — hermeticity's
+"file set" as data (capability is `mem`, `file` or `pkg`). Content
+hashing and pinning belong to the distribution layer (G6).
 
 ### `AontuContext`
 

@@ -42,6 +42,11 @@ class Aontu {
   ctx(cfg?: AontuContextConfig): AontuContext {
     cfg = cfg ?? {}
     cfg.fs = cfg.fs ?? this.opts.fs
+    // The trust profile rides the instance (its resolver is built once,
+    // in the Lang constructor); the context needs it too, for the
+    // budgets (G5, docs/trust.md).
+    cfg.opts = cfg.opts ?? {}
+    ; (cfg.opts as any).trust = (cfg.opts as any).trust ?? this.opts.trust
     const ac = new AontuContext(cfg)
     return ac
   }
@@ -87,7 +92,11 @@ class Aontu {
 
     if (0 === errs.length) {
       out = runparse(src, this.lang, ac)
-      out.deps = ac.deps
+      // The include MANIFEST (G5, docs/trust.md): the resolved include
+      // closure as `{ path, capability }`, sorted and deduplicated so
+      // it is deterministic — the "file set" of hermeticity clause 1
+      // made observable. Content hashing and pinning stay with G6.
+      out.deps = manifestOf(ac.manifest)
       ac.root = out
     }
 
@@ -268,12 +277,37 @@ function findConflictMarker(src: string): {
 }
 
 
+// Sort and deduplicate the raw manifest sink into the deterministic
+// include closure: by path then capability, code-point order, one entry
+// per (path, capability) pair.
+function manifestOf(
+  sink: { path: string, capability: string }[]
+): { path: string, capability: string }[] {
+  const seen = new Set<string>()
+  const out: { path: string, capability: string }[] = []
+  for (const dep of sink) {
+    const key = dep.path + ' ' + dep.capability
+    if (!seen.has(key)) {
+      seen.add(key)
+      out.push({ path: dep.path, capability: dep.capability })
+    }
+  }
+  out.sort((a, b) => {
+    const ka = a.path + ' ' + a.capability
+    const kb = b.path + ' ' + b.capability
+    return ka < kb ? -1 : ka === kb ? 0 : 1
+  })
+  return out
+}
+
+
 // Perform parse of source code (minor customizations over Lang.parse).
 function runparse(src: string, lang: Lang, ctx: AontuContext): Val {
   const popts = {
     deps: ctx.deps,
     fs: ctx.fs,
-    path: ctx.opts.path
+    path: ctx.opts.path,
+    manifest: ctx.manifest,
   }
   let val
 

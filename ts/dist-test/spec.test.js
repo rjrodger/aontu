@@ -181,9 +181,9 @@ function assertCanonConverges(row) {
     if (row.name in CANON_NO_REPARSE) {
         return;
     }
-    const a1 = new aontu_1.Aontu();
+    const a1 = rowAontu(row);
     const c2 = a1.unify(row.expect, undefined, makeVarsCtx(a1)).canon;
-    const a2 = new aontu_1.Aontu();
+    const a2 = rowAontu(row);
     const c3 = a2.unify(c2, undefined, makeVarsCtx(a2)).canon;
     Assert.strictEqual(c3, c2, `canon does not converge: ${row.name}`);
 }
@@ -198,10 +198,25 @@ function vetGolden(report) {
         findings: report.findings.map(({ message, ...rest }) => rest),
     });
 }
+// Files whose rows evaluate under a fixed trust profile (G5,
+// docs/trust.md): root-confined to the fixtures directory, the
+// var.tsv precedent of runner-side configuration. This is also what
+// makes the shared suite itself HERMETIC: no row may read outside the
+// repository or resolve through installed packages, in either runner
+// (go/spec_test.go applies the same profile to the same files).
+const TRUST_FILES = {
+    'include-trust.tsv': true,
+    'file.tsv': true,
+};
+function rowAontu(row) {
+    return new aontu_1.Aontu(null != row.file && true === TRUST_FILES[row.file]
+        ? { trust: { include: { root: FIXTURES_DIR } } }
+        : {});
+}
 // Execute one spec row. Shared by the TSV-driven tests above and the
 // gens-mode self-test below, so both go through the same comparison.
 function runRow(row) {
-    const a0 = new aontu_1.Aontu();
+    const a0 = rowAontu(row);
     // Fresh context per row carrying the shared $var test variables.
     const ctx = makeVarsCtx(a0);
     if ('canon' === row.mode) {
@@ -217,7 +232,7 @@ function runRow(row) {
         // source under the same bindings must serialise to the same bytes on
         // a fresh engine. Re-running every gens row here pins that over the
         // whole byte-exact corpus rather than a handful of dedicated rows.
-        const a1 = new aontu_1.Aontu();
+        const a1 = rowAontu(row);
         Assert.strictEqual(genJSON(a1.generate(row.src, undefined, makeVarsCtx(a1))), row.expect, `gens is not repeatable: ${row.name}`);
     }
     else if ('err' === row.mode) {

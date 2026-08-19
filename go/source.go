@@ -24,6 +24,37 @@ import (
 // MultiSourceOptions that confines reads to an allowed root.
 func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOptions, ctx *jsonic.Context) multisource.Resolution {
 	res := multisource.Resolution{PathSpec: spec}
+	sink := trustSinkOf(ctx)
+
+	// The include capability (G5 trust profile, docs/trust.md), from the
+	// per-parse trust sink. 'none' denies every @"..." outright.
+	if nil != sink && sink.none {
+		recordDenied(ctx, res.Path, "none")
+		res.Kind = deniedKind
+		res.Found = true
+		return res
+	}
+
+	// The mem capability: the declared virtual file set is the whole
+	// world — a hit resolves from it, a miss is NOT-FOUND (the allowed
+	// mechanism ran and missed; denial is reserved for a capability
+	// refusing a mechanism outright), and the filesystem never runs.
+	if nil != sink && nil != sink.mem {
+		for _, key := range []string{spec.Full, spec.Path} {
+			if src, ok := sink.mem[key]; ok {
+				res.Full = key
+				res.Kind = strings.TrimPrefix(filepath.Ext(key), ".")
+				res.Src = toValidSource(src)
+				res.Found = true
+				recordDep(sink, key, "mem")
+				return res
+			}
+		}
+		recordNotFound(ctx, res.Path)
+		res.Kind = notFoundKind
+		res.Found = true
+		return res
+	}
 
 	var potentials []string
 	if spec.Full != "" {
@@ -42,6 +73,25 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 
 	for _, p := range potentials {
 		if data, err := os.ReadFile(p); err == nil {
+			// The root capability: confinement is realpath-then-prefix-
+			// check on the RESOLVED file (docs/trust.md), so a symlink
+			// inside the root pointing outside it is an escape, not a
+			// loophole. Content read before the check is discarded with
+			// the denial; nothing of it reaches the document.
+			if nil != sink && "" != sink.root && outsideRoot(sink.root, p) {
+				recordDenied(ctx, res.Path, "root:"+sink.root)
+				res.Kind = deniedKind
+				res.Found = true
+				return res
+			}
+			// The warning window for the staged default flip (G5 phase
+			// 6): under 'system', the CLI supplies warn and the entry
+			// root, and every resolution escaping that root names the
+			// flag a future default will require.
+			if nil != sink && "" == sink.root && nil != sink.warn &&
+				"" != sink.warnRoot && outsideRoot(sink.warnRoot, p) {
+				sink.warn("escape", p)
+			}
 			res.Full = p
 			res.Kind = strings.TrimPrefix(filepath.Ext(p), ".")
 			// Replace invalid UTF-8 as it is READ, exactly as parseBase
@@ -51,6 +101,7 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 			// while the entry source no longer does (issue #32).
 			res.Src = toValidSource(string(data))
 			res.Found = true
+			recordDep(sink, p, "file")
 			return res
 		}
 	}
@@ -62,6 +113,92 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 	res.Kind = notFoundKind
 	res.Found = true
 	return res
+}
+
+// outsideRoot reports whether full's real path escapes root's real path.
+// A path EvalSymlinks cannot resolve falls back to its absolute lexical
+// form — the comparison is then against what the resolver actually read.
+// The identical rule to the canonical port (ts/src/lang.ts outsideRoot).
+func outsideRoot(root, full string) bool {
+	realRoot := realOrAbs(root)
+	realFull := realOrAbs(full)
+	return realFull != realRoot &&
+		!strings.HasPrefix(realFull, realRoot+string(filepath.Separator))
+}
+
+// realOrAbs is EvalSymlinks with the lexical-absolute fallback for a
+// path that does not (yet) exist — a nonexistent confinement root still
+// confines, because everything real is outside it.
+func realOrAbs(p string) string {
+	real, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		real, _ = filepath.Abs(p)
+	}
+	return real
+}
+
+// deniedKind marks a Resolution refused by the trust profile.
+const deniedKind = "aontu-denied"
+
+// trustMetaKey is where the per-parse trust sink rides the jsonic parse
+// meta bag — the same channel notFoundMetaKey uses, and for the same
+// reason: langForBase caches the parser per base, so nothing
+// parse-specific may be stored on it or its options, while the plugin's
+// child-meta copy carries the bag (and this pointer) to every nested
+// include.
+const trustMetaKey = reservedKeyPrefix + "trust"
+
+// trustSink carries one parse's include capability, its first denial,
+// and the include manifest. A POINTER, like notFoundSink, so a nested
+// include's writes reach the entry parse.
+type trustSink struct {
+	none     bool
+	mem      map[string]string
+	root     string
+	denied   string // first denial's message ("" = none)
+	deps     *[]IncludeDep
+	warn     func(kind, path string)
+	warnRoot string
+}
+
+func trustSinkOf(ctx *jsonic.Context) *trustSink {
+	if nil == ctx || nil == ctx.Meta {
+		return nil
+	}
+	sink, _ := ctx.Meta[trustMetaKey].(*trustSink)
+	return sink
+}
+
+// recordDenied notes a refused include in the parse's shared sink.
+// Only the FIRST denial is kept, exactly as recordNotFound keeps the
+// first miss: the canonical port raises on the first and stops.
+func recordDenied(ctx *jsonic.Context, path, capability string) {
+	sink := trustSinkOf(ctx)
+	if nil == sink {
+		return
+	}
+	if "" == sink.denied {
+		sink.denied = "include denied: " + path + " (capability: " + capability + ")"
+	}
+}
+
+// recordDep appends a resolved include to the manifest sink (G5: the
+// include closure made observable; sorted and deduplicated at the API
+// boundary, aontu.go manifestOf).
+func recordDep(sink *trustSink, path, capability string) {
+	if nil == sink || nil == sink.deps {
+		return
+	}
+	*sink.deps = append(*sink.deps, IncludeDep{Path: path, Capability: capability})
+}
+
+// deniedProcessor injects the include_denied nil (the twin of
+// notFoundProcessor): the failure is DETECTED via the sink, this gives
+// the tree an error value where the include was a value position.
+func deniedProcessor(res *multisource.Resolution, _ *multisource.MultiSourceOptions, _ *jsonic.Context, _ *jsonic.Jsonic) {
+	n := newNil("include_denied")
+	n.msg = "include denied: " + res.Path
+	res.Val = n
 }
 
 // notFoundKind marks a Resolution for a source that could not be found.
@@ -177,6 +314,7 @@ func msOptions(base string) map[string]any {
 				"aon":        multisource.JsonicProcessor,
 				"aontu":      multisource.JsonicProcessor,
 				notFoundKind: notFoundProcessor,
+				deniedKind:   deniedProcessor,
 			},
 			// `.aon` is the preferred Aontu source extension; `.aontu`
 			// also works. `.jsonic` is retired (no longer auto-resolved).

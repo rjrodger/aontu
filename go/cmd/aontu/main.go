@@ -36,6 +36,9 @@ Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
   -v, --version   Print the version and exit
+  --trust <t>     Include capability: system (default), none, or
+                  root[:dir] to confine @"..." below a directory
+  --include-root <dir>  Shorthand for --trust root:<dir>
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
@@ -104,6 +107,74 @@ func emit(a *aontu.Aontu, src, mode string, out, errw io.Writer) int {
 	}
 	fmt.Fprintln(out, text)
 	return 0
+}
+
+// trustArg is the include capability the main verb runs with (G5,
+// docs/trust.md). `--trust` and `--include-root` set it explicitly; the
+// default is 'system' WITH the warning window: every resolution that
+// escapes the entry root prints a one-line stderr warning naming the
+// flag a future default will require (phase 6, the staged flip).
+type trustArg struct {
+	kind string // "system-warn", "system", "none", "root"
+	dir  string // root's directory ("" = the entry root)
+}
+
+// parseTrustArg reads a --trust value; ok is false for an unknown
+// spelling, so the caller owns the usage error.
+func parseTrustArg(value string) (trustArg, bool) {
+	switch {
+	case "system" == value:
+		return trustArg{kind: "system"}, true
+	case "none" == value:
+		return trustArg{kind: "none"}, true
+	case "root" == value:
+		return trustArg{kind: "root"}, true
+	case strings.HasPrefix(value, "root:") && len("root:") < len(value):
+		return trustArg{kind: "root", dir: value[len("root:"):]}, true
+	}
+	return trustArg{}, false
+}
+
+// makeTrustWarn is the one-line warning of the staged default flip,
+// once per (kind, path). The identical text to the canonical CLI.
+func makeTrustWarn(stderr io.Writer) func(kind, path string) {
+	warned := map[string]bool{}
+	return func(kind, path string) {
+		key := kind + " " + path
+		if warned[key] {
+			return
+		}
+		warned[key] = true
+		how := "outside the entry root"
+		if "pkg" == kind { //coverage:ignore Go has no package leg to warn about
+			how = "through package resolution"
+		}
+		fmt.Fprintf(stderr,
+			"aontu: warning: include resolved %s: %s"+
+				" (a future release will deny this by default;"+
+				" pass --trust system to keep it, or --include-root to confine)\n",
+			how, path)
+	}
+}
+
+// applyTrust configures a for the parsed trust argument, with entryRoot
+// the entry file's directory (or the working directory for stdin/REPL).
+func applyTrust(a *aontu.Aontu, trust trustArg, entryRoot string, stderr io.Writer) {
+	switch trust.kind {
+	case "none":
+		a.Trust = &aontu.TrustOptions{IncludeNone: true}
+	case "root":
+		dir := trust.dir
+		if "" == dir {
+			dir = entryRoot
+		}
+		a.Trust = &aontu.TrustOptions{IncludeRoot: dir}
+	case "system":
+		// explicit system: unconfined, no warnings
+	default: // system-warn: today's default plus the warning window
+		a.TrustWarn = makeTrustWarn(stderr)
+		a.TrustWarnRoot = entryRoot
+	}
 }
 
 // aontuForFile builds an Aontu whose relative @"file" loads resolve
@@ -197,8 +268,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 
 	mode := "json"
 	var file string
+	trust := trustArg{kind: "system-warn"}
 
-	for _, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		switch arg {
 		case "-c", "--canon":
 			mode = "canon"
@@ -208,6 +281,24 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 		case "-v", "--version":
 			fmt.Fprintln(stdout, aontu.VERSION)
 			return 0
+		case "--trust":
+			i++
+			parsed, ok := trustArg{}, false
+			if i < len(args) {
+				parsed, ok = parseTrustArg(args[i])
+			}
+			if !ok {
+				fmt.Fprintln(stderr, "aontu: --trust needs system, none, or root[:dir]")
+				return 2
+			}
+			trust = parsed
+		case "--include-root":
+			i++
+			if len(args) <= i {
+				fmt.Fprintln(stderr, "aontu: --include-root needs a directory")
+				return 2
+			}
+			trust = trustArg{kind: "root", dir: args[i]}
 		default:
 			if strings.HasPrefix(arg, "-") {
 				fmt.Fprintf(stderr, "aontu: unknown option %s (try --help)\n", arg)
@@ -224,10 +315,21 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 			return 1
 		}
 		// Resolve relative @"file" loads against the entry file's dir.
-		return emit(aontuForFile(file), string(src), mode, stdout, stderr)
+		a := aontuForFile(file)
+		abs, aerr := filepath.Abs(file)
+		if aerr != nil { //coverage:ignore Abs fails only on a deleted cwd
+			abs = file
+		}
+		applyTrust(a, trust, filepath.Dir(abs), stderr)
+		return emit(a, string(src), mode, stdout, stderr)
 	}
 
 	a := aontu.New()
+	cwd, cwdErr := os.Getwd()
+	if cwdErr != nil { //coverage:ignore Getwd fails only on a deleted cwd
+		cwd = "."
+	}
+	applyTrust(a, trust, cwd, stderr)
 
 	if !tty {
 		src, err := io.ReadAll(stdin)

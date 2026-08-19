@@ -74,9 +74,13 @@ type OutMessage = {
 // functions, syntax errors) produce diagnostics.
 function computeDiagnostics(
   src: string,
-  opts?: { vars?: Record<string, Val> }
+  opts?: { vars?: Record<string, Val>, trust?: any }
 ): Diagnostic[] {
-  const aontu = new Aontu()
+  // The trust profile (G5, docs/trust.md): the LSP is the
+  // highest-exposure surface — merely OPENING a hostile .aon file in an
+  // editor performs its reads — so the handler confines evaluation to
+  // the workspace root and threads the profile through here.
+  const aontu = new Aontu(null == opts?.trust ? {} : { trust: opts.trust })
 
   let root: any
   let ac: any
@@ -371,10 +375,28 @@ function computeCompletions(): CompletionItem[] {
 // messages and returns the messages to send back, tracking open document
 // text and recomputing diagnostics on open/change/close. Not safe for
 // concurrent use; drive it from a single loop (as the stdio server does).
+// A file:// uri's filesystem path, for the workspace-root confinement.
+// Percent-decoded; a non-file uri (or none) yields undefined.
+function uriToPath(uri: unknown): string | undefined {
+  if ('string' !== typeof uri || !uri.startsWith('file://')) {
+    return undefined
+  }
+  return decodeURIComponent(uri.slice('file://'.length))
+}
+
+
 class LspHandler {
   private docs = new Map<string, string>()
   private shutdownOK = false
   private exited = false
+
+  // The trust profile evaluation runs under (G5, docs/trust.md):
+  // workspace-root confinement by default, set from the initialize
+  // params. An `initializationOptions.aontu.trust.include` of 'system',
+  // 'none' or { root } widens or narrows it explicitly. Undefined —
+  // no workspace root and no explicit option — falls back to today's
+  // unconfined behaviour, which single-file sessions rely on.
+  private trust: any = undefined
 
   // True once an `exit` notification has been received.
   get shouldExit(): boolean { return this.exited }
@@ -389,8 +411,32 @@ class LspHandler {
   // Process one incoming message, returning zero or more to send.
   handle(msg: Message): OutMessage[] {
     switch (msg.method) {
-      case 'initialize':
+      case 'initialize': {
+        const params = msg.params ?? {}
+        const explicit = params.initializationOptions?.aontu?.trust?.include
+        if (null != explicit) {
+          // An explicit setting wins — validated, and an unrecognised
+          // value confines to NOTHING rather than silently widening:
+          // deny is the safe reading of a setting the server does not
+          // understand. The same rule as the Go handler.
+          this.trust =
+            'system' === explicit ? undefined :
+              'none' === explicit ? { include: 'none' } :
+                ('string' === typeof explicit?.root && '' !== explicit.root)
+                  ? { include: { root: explicit.root } } :
+                  (null != explicit?.mem && 'object' === typeof explicit.mem)
+                    ? { include: { mem: explicit.mem } } :
+                    { include: 'none' }
+        }
+        else {
+          const root = uriToPath(params.workspaceFolders?.[0]?.uri)
+            ?? uriToPath(params.rootUri)
+            ?? (('string' === typeof params.rootPath && '' !== params.rootPath)
+              ? params.rootPath : undefined)
+          this.trust = null != root ? { include: { root } } : undefined
+        }
         return [{ jsonrpc: '2.0', id: msg.id, result: initializeResult() }]
+      }
 
       case 'initialized':
         return []
@@ -453,7 +499,8 @@ class LspHandler {
   }
 
   private publish(uri: string): OutMessage {
-    return publishDiagnosticsMsg(uri, computeDiagnostics(this.docs.get(uri) ?? ''))
+    return publishDiagnosticsMsg(uri,
+      computeDiagnostics(this.docs.get(uri) ?? '', { trust: this.trust }))
   }
 } /* node:coverage ignore next 28 */
 
