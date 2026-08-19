@@ -965,6 +965,19 @@ The `at` option anchors both documents at one path before comparing
 (the validation verb's `--at`); a path missing from either side is an
 `error` verdict.
 
+### Default validity
+
+The relation also powers a lint the engine itself cannot express: a
+disjunction's effective default must be an instance of some remaining
+alternative. `level: *wran | info | warn | debug` unifies cleanly and
+GENERATES `{"level":"wran"}` — the schema ships a default its own
+disjunct refuses. The validation verb reports it as a
+`pref_not_instance` finding at severity `warning` (class `compat`).
+A warning, not an error, deliberately: existing documents may lean on
+today's generation behaviour, so promoting the warning to an error is
+itself a breaking change — sequenced through the `breaking` gate like
+any other, not taken silently.
+
 Failures surface as messages (thrown as `AontuError` in TS, returned as
 `error` in Go):
 

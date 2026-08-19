@@ -90,27 +90,27 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
    register's last update the suite is **64 `.tsv` files, 63
-   row-bearing, 2,391 rows**, in eight modes — `canon` 667, `gen` 539,
-   `errc` 425, `gens` 303, `err` 233, `subsume` 94, `errcode` 81,
-   `vet` 49. Reproduce with
+   row-bearing, 2,396 rows**, in eight modes — `canon` 667, `gen` 539,
+   `errc` 425, `gens` 303, `err` 233, `subsume` 94, `errcode` 82,
+   `vet` 53. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Twenty-five of forty-nine phases have moved; twenty-three of those are complete.
+Twenty-six of forty-nine phases have moved; twenty-four of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
-| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 5 | 0 | 2 |
+| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 6 | 0 | 1 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **23** | **2** | **24** |
+| | | **total** | **24** | **2** | **23** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -329,10 +329,10 @@ doc should record it.
 | **2** — Go port | L | **LANDED** | `go/subsume.go`, mirroring the dispatch; `go/constraint.go` `constraintStateSubsumes`/`constraintAdmitsScalarQ`; both runners execute every `subsume.tsv` row with no skip list, expectations parity-probed (byte-identical reports, message text excluded) before any row was written. **What the probe cost the engine** (the G2 phase-4 pattern, two more pre-existing divergences fixed rather than recorded): (1) a preference was sited at its inner value where TypeScript sites it at the `*` itself (`go/lang.go` star-prefix); (2) `hasPathFunc` did not see through a `ConstraintVal` — a pending atom endpoint holding `min($.floor)`, a `must` value, the recursive count — so a path-dependent spread template compared structurally instead of refusing (`go/mapval.go`). |
 | **3** — CLI verbs (`subsume`, `breaking`) | M | **LANDED** | `aontu subsume [--profile] [--at] [--format text\|json]` and `aontu breaking --against <file\|git#rev> [--mode backward\|forward\|full] [--allow-undecided]` in `ts/src/cli.ts` and `go/cmd/aontu/subsume.go`: exit classes 0/1/3/4/2 mirroring vet's convention (undecided FAILS by default), `git#rev` by shelling out to `git show <rev>:./<basename>` from the file's own directory, the `$.aontu_policy.compat` declaration read from the new document with `--mode` overriding (reader: `policyCompat` beside the TS verb, exported `aontu.PolicyCompat` in Go — the verb package cannot reach the tree's fields), findings through G2's renderer. `SubsumeOptions` gained `generalPath`/`specificPath` (vet's per-document base precedent) so relative `@"file"` loads resolve from each document's own directory. 11 cases in `ts/test/cli.test.ts`, 12 in `go/cmd/aontu/subsume_test.go`; the two CLIs diffed byte-identical (text and JSON, exit codes included) over a 24-case corpus — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` and `docs/how-to.md` carry the verbs. **Departures:** (1) no `--allow-deprecated-removal`: it gates on `deprecate()`, which is phase 4 — the flag lands there rather than parsing as a no-op lie here. (2) No SARIF format: the SARIF profile is vet's report shape (`truncated`, data/schema roles); mapping compat findings is real design work nothing needs yet. (3) A `git#rev` source's relative includes resolve from the working file's directory (the revision has no directory of its own). |
 | **4** — `deprecate()` | M | **LANDED** | The twenty-second builtin: `deprecate(x, m)` in both ports (`ts/src/val/DeprecateFuncVal.ts`; the resolve arm in `go/func.go`), unification-transparent — the record (keys msg/use/since, all optional strings; other keys DROPPED) rides the Val (`Val.deprecation`, `base.deprec`) through every meet via a rider at the tail of `unite` (the one place all meets pass), through clones, reference resolution and spread application; canon renders the call back reparseably (`canonDeprecation`, wrapped at the bag renderers). `test/spec/deprecate.tsv` — 22 rows (canon round-trip and convergence, transparency, refs, spreads, the record vocabulary, arity, three vet rows), parity-probed. Point of use, three surfaces: a vet finding code `deprecated`, class `compat`, severity `warning` — registered in errcodes.tsv, and warnings never move the verdict; the LSP Deprecated tag (2) at Hint severity in both servers; and `breaking --allow-deprecated-removal`, which downgrades findings about values the `--against` version already deprecated (readers: `deprecatedAt` beside the TS verb, exported `aontu.DeprecatedAt`). **Departures:** (1) the design's "alongside the existing mark propagation" landed as a rider in `unite` instead: the boolean-mark sweeps are order-sensitive by construction, and a record lost in one meet shape is a use the tooling never warns about — the rider also makes a deprecated spread template deprecate every key it governs. (2) A first canon draft computed each child's canon twice (guard + render), which is 2^depth on a nested document — the budget suite's 1200-deep fixture caught it. (3) No `since` checking: free text until G6 defines module versions, as designed. |
-| **5** — default-validity lint | S | **NOT STARTED** |  |
+| **5** — default-validity lint | S | **LANDED** | `pref_not_instance` (class compat, severity `warning`, registered in errcodes.tsv): vet walks the SCHEMA anchor for disjunctions carrying a preference and asks the subsumption recursion's own two questions — the effective default (`effectiveDefault` / `subEffectiveDefault`, exported for the lint) and whether some remaining alternative admits it (`subsumeNode`). Four parity-probed vet rows in `test/spec/subsume.tsv` (the design's own `*wran` example included); the shared `walkBagVals` walker now backs this, the deprecation walk and nothing else. The warning-to-error flip is documented as NOT taken (docs/reference-language.md, "Default validity"): today's engine generates the bad default, and promoting the warning is itself a breaking change, sequenced through the `breaking` gate. |
 | **6** — trim reporter | M | **NOT STARTED** |  |
 
-Phases 5–6 have no artifacts yet: no `pref_not_instance` lint, no
+Phase 6 has no artifacts yet: no trim reporter, no
 `test/spec/trim.tsv`.
 
 **Two facts the doc asserts are no longer true.** `super()` is no

@@ -179,3 +179,10 @@ sub_default_indeterminate	errcode	compat	0.53.0
 # code that can appear in a vet report as well as a subsume/breaking
 # one.
 deprecated	errcode	compat	0.53.0
+# The default-validity lint (G3 phase 5): a disjunction's effective
+# default is not an instance of any remaining alternative. Severity
+# `warning` in vet for now — today's engine generates the bad default
+# and existing documents may lean on it, so promoting the warning to an
+# error is itself a breaking change, sequenced through the `breaking`
+# gate.
+pref_not_instance	errcode	compat	0.53.0

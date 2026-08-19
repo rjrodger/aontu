@@ -128,7 +128,11 @@ function admission(v: any): any {
 // The effective default of a value, or undefined when it has none, or
 // 'indeterminate' when equal-rank preferences disagree (which the
 // engine itself refuses only at generation).
-function effectiveDefault(v: any): any {
+// Exported (with subsumeNode) for the default-validity lint in
+// ts/src/vet.ts (G3 phase 5): the lint asks exactly this walk's two
+// questions — what is the effective default, and does a member admit
+// it.
+export function effectiveDefault(v: any): any {
   if (true === v?.isPref) {
     return v.peg
   }

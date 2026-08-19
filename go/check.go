@@ -218,14 +218,27 @@ type deprecatedVal struct {
 // bag slot a degenerate construction can leave empty.
 func collectDeprecatedVals(root Val) []deprecatedVal {
 	out := []deprecatedVal{}
+	walkBagVals(root, func(n Val, path []string) {
+		if nil != n.deprecRec() {
+			out = append(out, deprecatedVal{v: n, path: append([]string{}, path...)})
+		}
+	})
+	return out
+}
+
+// walkBagVals visits every Val reachable through bag children, with
+// its path — the walk under collectDeprecatedVals and vet's
+// default-validity lint. The nil guard is for a bag slot a degenerate
+// construction can leave empty (pinned by
+// TestCollectDeprecatedValsNilSlot). Mirrors walkBagVals in
+// ts/src/utility.ts.
+func walkBagVals(root Val, fn func(v Val, path []string)) {
 	var walk func(n Val, path []string)
 	walk = func(n Val, path []string) {
 		if nil == n {
 			return
 		}
-		if nil != n.deprecRec() {
-			out = append(out, deprecatedVal{v: n, path: path})
-		}
+		fn(n, path)
 		switch b := n.(type) {
 		case *MapVal:
 			for _, k := range b.keys {
@@ -238,7 +251,6 @@ func collectDeprecatedVals(root Val) []deprecatedVal {
 		}
 	}
 	walk(root, nil)
-	return out
 }
 
 // DeprecationsVars evaluates src (with $name variables from vars, which

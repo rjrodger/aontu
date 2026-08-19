@@ -123,3 +123,15 @@ spread-path-dependent-vs-plain	subsume	a:{x:5}	floor:3 a:{x:5,&:min($.floor)}	{"
 default-rank-mixed	subsume	a:*x|string	a:**1|string|*x	{"findings":[{"actual":"**1","class":"compat","code":"sub_disjunct_distribution","expected":"*\\"x\\"|string","path":"$.a","severity":"error","sites":[{"col":-1,"file":"general","role":"general","row":-1,"value":"*\\"x\\"|string"},{"col":3,"file":"specific","role":"specific","row":1,"value":"**1"}]}],"verdict":"undecided"}
 map-witness	subsume	a:{x:1}|{x:2}	a:{x:3}	{"findings":[{"actual":"{\\"x\\":3}","class":"compat","code":"compat_narrowed","expected":"{\\"x\\":1}|{\\"x\\":2}","path":"$.a","severity":"error","sites":[{"col":-1,"file":"general","role":"general","row":-1,"value":"{\\"x\\":1}|{\\"x\\":2}"},{"col":3,"file":"specific","role":"specific","row":1,"value":"{\\"x\\":3}"}]}],"verdict":"does_not_subsume"}
 disj-list-nonconcrete	subsume	a:[1]|[2]	a:[integer]	{"findings":[{"actual":"[integer]","class":"compat","code":"sub_disjunct_distribution","expected":"[1]|[2]","path":"$.a","severity":"error","sites":[{"col":-1,"file":"general","role":"general","row":-1,"value":"[1]|[2]"},{"col":3,"file":"specific","role":"specific","row":1,"value":"[integer]"}]}],"verdict":"undecided"}
+
+# The default-validity lint (G3 phase 5, `pref_not_instance`): a
+# disjunction whose effective default no remaining alternative admits
+# ships an invalid value to every consumer leaning on it. A vet
+# WARNING for now: the engine still generates the bad default, and
+# promoting the warning to an error is itself a breaking change,
+# sequenced through the `breaking` gate. Parity-probed like every row
+# above.
+pref-lint-fires	vet	a:*5|string	a:ok	{"findings":[{"class":"compat","code":"pref_not_instance","path":"$.a","severity":"warning","sites":[{"col":4,"file":"schema","role":"schema","row":1,"value":"5"}]}],"truncated":false,"verdict":"valid"}
+pref-lint-clean	vet	a:*8080|integer	a:1	{"findings":[],"truncated":false,"verdict":"valid"}
+pref-lint-typo-default	vet	level:*wran|info|warn|debug	level:info	{"findings":[{"class":"compat","code":"pref_not_instance","path":"$.level","severity":"warning","sites":[{"col":8,"file":"schema","role":"schema","row":1,"value":"\\"wran\\""}]}],"truncated":false,"verdict":"valid"}
+pref-lint-nested	vet	b:{p:*x|integer}	b:{p:1}	{"findings":[{"class":"compat","code":"pref_not_instance","path":"$.b.p","severity":"warning","sites":[{"col":7,"file":"schema","role":"schema","row":1,"value":"\\"x\\""}]}],"truncated":false,"verdict":"valid"}

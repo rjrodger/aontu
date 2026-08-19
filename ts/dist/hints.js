@@ -246,6 +246,7 @@ const codeClasses = {
     sub_evaluate_only: 'compat',
     sub_default_indeterminate: 'compat',
     deprecated: 'compat',
+    pref_not_instance: 'compat',
     func_arity: 'parse',
     elided_value: 'parse',
     unify_no_src: 'parse',

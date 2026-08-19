@@ -5,6 +5,7 @@ exports.items = items;
 exports.propagateMarks = propagateMarks;
 exports.canonDeprecation = canonDeprecation;
 exports.collectDeprecations = collectDeprecations;
+exports.walkBagVals = walkBagVals;
 exports.deprecationMessage = deprecationMessage;
 exports.formatPath = formatPath;
 exports.walk = walk;
@@ -36,13 +37,24 @@ function propagateMarks(source, target) {
 // entries, which degenerate parses can leave behind.
 function collectDeprecations(root) {
     const out = [];
+    walkBagVals(root, (v, path) => {
+        if (null != v.deprecation) {
+            out.push({ val: v, path });
+        }
+    });
+    return out;
+}
+// Visit every Val reachable through bag children, with its path — the
+// walk under collectDeprecations and vet's default-validity lint. The
+// non-Val guard is for a bag's raw peg entries, which degenerate
+// parses can leave behind (pinned by the collect-deprecations direct
+// test, ts/test/coverage3.test.ts).
+function walkBagVals(root, fn) {
     const walk = (v, path) => {
         if (null == v || true !== v.isVal) {
             return;
         }
-        if (null != v.deprecation) {
-            out.push({ val: v, path });
-        }
+        fn(v, path);
         if ((true === v.isMap || true === v.isList) && null != v.peg) {
             for (const k of Object.keys(v.peg)) {
                 walk(v.peg[k], [...path, k]);
@@ -50,7 +62,6 @@ function collectDeprecations(root) {
         }
     };
     walk(root, []);
-    return out;
 }
 // The one-line prose for a deprecation record, shared by vet's warning
 // findings and the LSP's tagged diagnostics.

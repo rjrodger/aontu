@@ -1,6 +1,7 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.effectiveDefault = effectiveDefault;
 exports.subsumeNode = subsumeNode;
 exports.subsume = subsume;
 const aontu_1 = require("./aontu");
@@ -52,6 +53,10 @@ function admission(v) {
 // The effective default of a value, or undefined when it has none, or
 // 'indeterminate' when equal-rank preferences disagree (which the
 // engine itself refuses only at generation).
+// Exported (with subsumeNode) for the default-validity lint in
+// ts/src/vet.ts (G3 phase 5): the lint asks exactly this walk's two
+// questions — what is the effective default, and does a member admit
+// it.
 function effectiveDefault(v) {
     if (true === v?.isPref) {
         return v.peg;

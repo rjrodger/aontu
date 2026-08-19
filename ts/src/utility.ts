@@ -34,13 +34,27 @@ function propagateMarks(source: Val, target: Val): void {
 function collectDeprecations(
   root: Val): Array<{ val: Val, path: string[] }> {
   const out: Array<{ val: Val, path: string[] }> = []
+  walkBagVals(root, (v: any, path) => {
+    if (null != v.deprecation) {
+      out.push({ val: v, path })
+    }
+  })
+  return out
+}
+
+
+// Visit every Val reachable through bag children, with its path — the
+// walk under collectDeprecations and vet's default-validity lint. The
+// non-Val guard is for a bag's raw peg entries, which degenerate
+// parses can leave behind (pinned by the collect-deprecations direct
+// test, ts/test/coverage3.test.ts).
+function walkBagVals(
+  root: Val, fn: (v: Val, path: string[]) => void): void {
   const walk = (v: any, path: string[]): void => {
     if (null == v || true !== v.isVal) {
       return
     }
-    if (null != v.deprecation) {
-      out.push({ val: v, path })
-    }
+    fn(v, path)
     if ((true === v.isMap || true === v.isList) && null != v.peg) {
       for (const k of Object.keys(v.peg)) {
         walk(v.peg[k], [...path, k])
@@ -48,7 +62,6 @@ function collectDeprecations(
     }
   }
   walk(root, [])
-  return out
 }
 
 
@@ -251,6 +264,7 @@ export {
   propagateMarks,
   canonDeprecation,
   collectDeprecations,
+  walkBagVals,
   deprecationMessage,
   formatPath,
   walk,

@@ -437,6 +437,62 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		}
 	}
 
+	// Default-validity lint (G3 phase 5): for every disjunction in the
+	// SCHEMA carrying a preference, the effective default must be
+	// admitted by some remaining alternative — `a:*5|string` ships a
+	// default its own disjunct refuses, and every consumer leaning on
+	// it receives an invalid value from the truth itself. A vet WARNING
+	// for now (code `pref_not_instance`, class compat): today's engine
+	// generates the bad default, existing documents may lean on it, and
+	// promoting the warning to an error is itself a breaking change,
+	// sequenced through the `breaking` gate (the G3 design's own rule).
+	// Mirrors the lintDefaults pass in ts/src/vet.ts.
+	lintFindings := []VetFinding{}
+	walkBagVals(anchor, func(v Val, path []string) {
+		if d, ok := v.(*DisjunctVal); ok {
+			def, has, indet := subEffectiveDefault(d)
+			if has && !indet && nil != def {
+				rest := []Val{}
+				for _, m := range d.peg {
+					if !isPref(m) {
+						rest = append(rest, m)
+					}
+				}
+				st := &subState{
+					profile:     "values",
+					generalURL:  schemaURL,
+					specificURL: schemaURL,
+					generalSrc:  schemaSrc,
+					specificSrc: schemaSrc,
+				}
+				admitted := false
+				for _, m := range rest {
+					if subYes == subsumeNode(st, path, m, def) {
+						admitted = true
+						break
+					}
+				}
+				if !admitted && 0 < len(rest) {
+					row, col := -1, -1
+					if 0 <= def.pos() {
+						row, col = rowCol(schemaSrc, def.pos())
+					}
+					site := &VetSite{Col: col, File: schemaURL,
+						Role: VetRoleSchema, Row: row, Value: def.Canon()}
+					lintFindings = append(lintFindings, VetFinding{
+						Code:     "pref_not_instance",
+						Class:    "compat",
+						Severity: "warning",
+						Path:     subPathText(path),
+						Message: "the default " + def.Canon() +
+							" is not an instance of any alternative of " + d.Canon(),
+						Sites: []VetSite{*site},
+					})
+				}
+			}
+		}
+	})
+
 	// 3. Both documents get their provenance stamped BEFORE they meet,
 	//    so every site in the result knows which document it came from.
 	dataVal, derr := dataA.Parse(dataSrc)
@@ -524,6 +580,7 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		}
 	}
 	errorFindings := len(findings)
+	findings = append(findings, lintFindings...)
 
 	// 5b. Deprecation warnings (G3 phase 4): a value that carries the
 	//     deprecate() record after the meet was USED — the data met a

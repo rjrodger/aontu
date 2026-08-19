@@ -30,7 +30,8 @@ import { Aontu } from './aontu'
 import { descErr } from './err'
 import { ConjunctVal } from './val/ConjunctVal'
 import { walkVals, collectNils } from './walk'
-import { collectDeprecations, deprecationMessage } from './utility'
+import { collectDeprecations, walkBagVals, deprecationMessage } from './utility'
+import { subsumeNode, effectiveDefault } from './subsume'
 
 
 export type VetVerdict = 'valid' | 'invalid' | 'incomplete' | 'error'
@@ -404,6 +405,48 @@ export function vet(
   stampUrl(anchor, schemaUrl)
   stampUrl(dataVal, dataUrl)
 
+  // Default-validity lint (G3 phase 5): for every disjunction in the
+  // SCHEMA carrying a preference, the effective default must be
+  // admitted by some remaining alternative — `a:*5|string` ships a
+  // default its own disjunct refuses, and every consumer leaning on it
+  // receives an invalid value from the truth itself. A vet WARNING for
+  // now (code `pref_not_instance`, class compat): today's engine
+  // generates the bad default, existing documents may lean on it, and
+  // promoting the warning to an error is itself a breaking change,
+  // sequenced through the `breaking` gate (the G3 design's own rule).
+  const lintFindings: VetFinding[] = []
+  walkBagVals(anchor, (v: any, path: string[]): void => {
+    if (true === v.isDisjunct && Array.isArray(v.peg)) {
+      const d = effectiveDefault(v)
+      if (null != d && 'indeterminate' !== d) {
+        const rest = v.peg.filter((m: any) => true !== m?.isPref)
+        const state: any = {
+          profile: 'values', findings: [],
+          generalUrl: schemaUrl, specificUrl: schemaUrl,
+        }
+        const admitted = rest.some(
+          (m: any) => 'yes' === subsumeNode(state, path, m, d))
+        if (!admitted && 0 < rest.length) {
+          lintFindings.push({
+            code: 'pref_not_instance',
+            class: 'compat',
+            severity: 'warning',
+            path: pathText(path),
+            message: 'the default ' + d.canon +
+              ' is not an instance of any alternative of ' + v.canon,
+            sites: [{
+              file: schemaUrl,
+              row: d.site?.row ?? -1,
+              col: d.site?.col ?? -1,
+              role: 'schema',
+              value: d.canon,
+            }],
+          })
+        }
+      }
+    }
+  })
+
   // `--closed` sets the flag `close()` itself sets, rather than wrapping
   // the anchor in a CloseFuncVal: the anchor is an already-evaluated
   // tree, and a func value would have to resolve again to have any
@@ -465,6 +508,7 @@ export function vet(
   //     generate one. Severity `warning` (the slot G2 reserved for
   //     exactly this mark), and warnings never touch the verdict below.
   const errorFindings = findings.length
+  findings.push(...lintFindings)
   for (const { val, path } of collectDeprecations(unified)) {
     const v: any = val
     // The same file/role projection sitesOf makes: the url as stamped

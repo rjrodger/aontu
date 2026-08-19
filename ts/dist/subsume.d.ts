@@ -20,6 +20,7 @@ type SubState = {
     specificUrl: string;
 };
 type Tri = 'yes' | 'no' | 'undecided';
+export declare function effectiveDefault(v: any): any;
 export declare function subsumeNode(state: SubState, path: string[], g0: any, s0: any): Tri;
 /**
  * Does `generalSrc` subsume `specificSrc` — is every instance the
