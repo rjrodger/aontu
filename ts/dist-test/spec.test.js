@@ -65,6 +65,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                each finding's message; see test/spec/subsume.tsv
  *   mode=trim  : trimCheck(src) must equal the expect object
  *                ({redundant, verdict}); see test/spec/trim.tsv
+ *   mode=hcanon : hcanon(unify(src)) -- the HASH FORM, canon plus the
+ *                close()/type()/hide() wrappers -- must equal expect,
+ *                and the hash form must round-trip (G6, hcanon.tsv)
+ *   mode=hash  : canonHash(unify(src)) must equal expect, the full
+ *                `aon1-...` pin, byte-identical across the ports
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -193,6 +198,15 @@ function assertCanonConverges(row) {
     const c3 = a2.unify(c2, undefined, makeVarsCtx(a2)).canon;
     Assert.strictEqual(c3, c2, `canon does not converge: ${row.name}`);
 }
+// The hash form's defining property (G6 phase 0): it is valid Aontu
+// source, and re-evaluating it reproduces itself --
+// hcanon(unify(parse(hcanon(v)))) == hcanon(v). A hash over a rendering
+// that drifted on re-parse would pin nothing, so every hcanon row
+// asserts it, exactly as every canon row asserts convergence.
+function assertHcanonRoundTrips(row) {
+    const a1 = rowAontu(row);
+    Assert.strictEqual((0, aontu_1.hcanon)(a1.unify(row.expect, undefined, makeVarsCtx(a1))), row.expect, `hash form does not round-trip: ${row.name}`);
+}
 // The report as a vet golden spells it: the message is EXCLUDED (prose
 // is per-port, codes are not), and the rest goes through the emitter
 // the two ports hold to byte parity -- which also sorts keys, so the
@@ -283,6 +297,13 @@ function runRow(row) {
     else if ('trim' === row.mode) {
         const report = (0, aontu_1.trimCheck)(row.src);
         Assert.strictEqual((0, aontu_1.exactJSON)({ redundant: report.redundant, verdict: report.verdict }), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `trim report mismatch: ${row.name}`);
+    }
+    else if ('hcanon' === row.mode) {
+        Assert.strictEqual((0, aontu_1.hcanon)(a0.unify(row.src, undefined, ctx)), row.expect);
+        assertHcanonRoundTrips(row);
+    }
+    else if ('hash' === row.mode) {
+        Assert.strictEqual((0, aontu_1.canonHash)(a0.unify(row.src, undefined, ctx)), row.expect);
     }
     else if ('errcode' === row.mode) {
         // Registry row: name IS the code, src is its class, expect the

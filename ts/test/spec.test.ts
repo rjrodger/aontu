@@ -31,6 +31,11 @@
  *                each finding's message; see test/spec/subsume.tsv
  *   mode=trim  : trimCheck(src) must equal the expect object
  *                ({redundant, verdict}); see test/spec/trim.tsv
+ *   mode=hcanon : hcanon(unify(src)) -- the HASH FORM, canon plus the
+ *                close()/type()/hide() wrappers -- must equal expect,
+ *                and the hash form must round-trip (G6, hcanon.tsv)
+ *   mode=hash  : canonHash(unify(src)) must equal expect, the full
+ *                `aon1-...` pin, byte-identical across the ports
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -47,7 +52,9 @@ import * as Assert from 'node:assert'
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
-import { Aontu, exactJSON, vet, subsume, trimCheck } from '../dist/aontu'
+import {
+  Aontu, exactJSON, vet, subsume, trimCheck, hcanon, canonHash,
+} from '../dist/aontu'
 import { codeClasses } from '../dist/hints'
 import { IntegerVal } from '../dist/val/IntegerVal'
 import { StringVal } from '../dist/val/StringVal'
@@ -193,6 +200,21 @@ function assertCanonConverges(row: Omit<Row, 'file'> & { file?: string }): void 
 }
 
 
+// The hash form's defining property (G6 phase 0): it is valid Aontu
+// source, and re-evaluating it reproduces itself --
+// hcanon(unify(parse(hcanon(v)))) == hcanon(v). A hash over a rendering
+// that drifted on re-parse would pin nothing, so every hcanon row
+// asserts it, exactly as every canon row asserts convergence.
+function assertHcanonRoundTrips(
+  row: Omit<Row, 'file'> & { file?: string }): void {
+  const a1 = rowAontu(row)
+  Assert.strictEqual(
+    hcanon(a1.unify(row.expect, undefined, makeVarsCtx(a1))),
+    row.expect,
+    `hash form does not round-trip: ${row.name}`)
+}
+
+
 // The report as a vet golden spells it: the message is EXCLUDED (prose
 // is per-port, codes are not), and the rest goes through the emitter
 // the two ports hold to byte parity -- which also sorts keys, so the
@@ -319,6 +341,13 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
       exactJSON({ redundant: report.redundant, verdict: report.verdict }),
       exactJSON(JSON.parse(row.expect)),
       `trim report mismatch: ${row.name}`)
+  }
+  else if ('hcanon' === row.mode) {
+    Assert.strictEqual(hcanon(a0.unify(row.src, undefined, ctx)), row.expect)
+    assertHcanonRoundTrips(row)
+  }
+  else if ('hash' === row.mode) {
+    Assert.strictEqual(canonHash(a0.unify(row.src, undefined, ctx)), row.expect)
   }
   else if ('errcode' === row.mode) {
     // Registry row: name IS the code, src is its class, expect the

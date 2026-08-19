@@ -34,6 +34,7 @@ import { computeDiagnostics, computeHover, LspHandler } from '../dist/lsp'
 import { subsumeNode } from '../dist/subsume'
 import { DeprecateFuncVal } from '../dist/val/DeprecateFuncVal'
 import { collectDeprecations } from '../dist/utility'
+import { hcanon, canonHash } from '../dist/hcanon'
 import {
   candidates as trimCandidates,
   deleteAt as trimDeleteAt,
@@ -963,6 +964,49 @@ describe('coverage3-trim', () => {
     // evalCanon answers undefined for a probe whose deletion cannot
     // land (the caller's "load-bearing" fold).
     Assert.equal(trimEvalCanon('a:1', {}, ['zz', 'deep']), undefined)
+  })
+
+})
+
+
+describe('coverage3-hcanon', () => {
+
+  // The hash-form arms no SOURCE reaches (G6 phase 0): a bag's raw peg
+  // entry, which degenerate parses can leave behind, and the junction
+  // parenthesisation rule -- post-unification junctions are flattened
+  // by norm, so only a constructed tree still nests one. The rule has
+  // to hold anyway: a hash form that rendered `(1|2)&3` as the
+  // differently-parsing `1|2&3` would be a pin that silently agrees
+  // with a document it should not.
+  test('hcanon-internals', () => {
+    const ctx = new Aontu().ctx({})
+
+    const raw = new MapVal({ peg: {} }, ctx)
+    raw.peg.k = 7
+    Assert.equal(hcanon(raw as any), '{"k":7}')
+
+    const nested = new ConjunctVal({
+      peg: [
+        new DisjunctVal({
+          peg: [new IntegerVal({ peg: 1 }), new IntegerVal({ peg: 2 })],
+        }, ctx),
+        new IntegerVal({ peg: 3 }),
+      ],
+    }, ctx)
+    Assert.equal(hcanon(nested as any), '(1|2)&3')
+
+    // A junction member with ONE term needs no parens: `1&3`, which is
+    // what the same text reparses to.
+    const single = new ConjunctVal({
+      peg: [
+        new DisjunctVal({ peg: [new IntegerVal({ peg: 1 })] }, ctx),
+        new IntegerVal({ peg: 3 }),
+      ],
+    }, ctx)
+    Assert.equal(hcanon(single as any), '1&3')
+
+    // And the hash is the hash form's digest, whatever the tree.
+    Assert.match(canonHash(single as any), /^aon1-[A-Za-z0-9_-]{43}$/)
   })
 
 })

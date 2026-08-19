@@ -49,6 +49,11 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	             each finding's message; see test/spec/subsume.tsv
 //	mode=trim  : TrimCheck(src) must equal the expect object
 //	             ({redundant, verdict}); see test/spec/trim.tsv
+//	mode=hcanon : Hcanon(Unify(src)) -- the HASH FORM, canon plus the
+//	             close()/type()/hide() wrappers -- must equal expect,
+//	             and the hash form must round-trip (G6, hcanon.tsv)
+//	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
+//	             `aon1-...` pin, byte-identical across the ports
 //
 // gen vs gens: gen normalises both sides through a JSON decode, which
 // collapses every number to a float64 — so two distinct exact integers
@@ -254,6 +259,25 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("vet report mismatch\n schema: %q\n data:   %q\n want: %s\n got:  %s",
 							src, data, want, got)
 					}
+				case "hcanon":
+					v, err := a.UnifyVars(src, vars)
+					if err != nil {
+						t.Fatalf("unify error: %v\n src: %q", err, src)
+					}
+					if got := Hcanon(v); got != expect {
+						t.Fatalf("hcanon mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+					assertHcanonRoundTrips(t, name, expect, vars)
+
+				case "hash":
+					v, err := a.UnifyVars(src, vars)
+					if err != nil {
+						t.Fatalf("unify error: %v\n src: %q", err, src)
+					}
+					if got := CanonHash(v); got != expect {
+						t.Fatalf("hash mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+
 				case "trim":
 					// trimCheck(src) must equal the expect object
 					// ({redundant, verdict}); see test/spec/trim.tsv.
@@ -447,6 +471,22 @@ func assertCanonConverges(t *testing.T, name, expect string, vars map[string]Val
 	}
 	if c3 := v3.Canon(); c3 != c2 {
 		t.Fatalf("canon does not converge: %s\n c2: %s\n c3: %s", name, c2, c3)
+	}
+}
+
+// assertHcanonRoundTrips pins the hash form's defining property (G6
+// phase 0): it is valid Aontu source, and re-evaluating it reproduces
+// itself -- Hcanon(Unify(Parse(Hcanon(v)))) == Hcanon(v). A hash over a
+// rendering that drifted on re-parse would pin nothing, so every hcanon
+// row asserts it, exactly as every canon row asserts convergence.
+func assertHcanonRoundTrips(t *testing.T, name, expect string, vars map[string]Val) {
+	t.Helper()
+	v2, err := New().UnifyVars(expect, vars)
+	if err != nil {
+		t.Fatalf("hash form does not reparse: %s\n hcanon: %s\n err: %v", name, expect, err)
+	}
+	if h2 := Hcanon(v2); h2 != expect {
+		t.Fatalf("hash form does not round-trip: %s\n want: %s\n got:  %s", name, expect, h2)
 	}
 }
 

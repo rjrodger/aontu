@@ -27,6 +27,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
+       aontu hash [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -96,6 +97,14 @@ Trim options:
 
 Trim exit codes: 0 nothing redundant, 1 redundancies reported,
 2 usage, 4 the document does not stand up on its own.
+
+Hash options:
+  --form          Print the hash FORM (the hashed text) instead of the
+                  hash, which is what to diff when a pin moves
+  --format <f>    text (default) or json
+
+Hash exit codes: 0 hashed, 2 usage, 4 the document does not stand up
+on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -315,6 +324,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 	if 0 < len(args) && "trim" == args[0] {
 		return runTrim(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "hash" == args[0] {
+		return runHash(args[1:], stdout, stderr)
 	}
 
 	mode := "json"

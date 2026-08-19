@@ -8,6 +8,7 @@ exports.runVet = runVet;
 exports.runSubsume = runSubsume;
 exports.runBreaking = runBreaking;
 exports.runTrim = runTrim;
+exports.runHash = runHash;
 exports.watchChange = watchChange;
 exports.watchSignature = watchSignature;
 exports.deprecatedAt = deprecatedAt;
@@ -31,6 +32,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
+       aontu hash [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -100,6 +102,14 @@ Trim options:
 
 Trim exit codes: 0 nothing redundant, 1 redundancies reported,
 2 usage, 4 the document does not stand up on its own.
+
+Hash options:
+  --form          Print the hash FORM (the hashed text) instead of the
+                  hash, which is what to diff when a pin moves
+  --format <f>    text (default) or json
+
+Hash exit codes: 0 hashed, 2 usage, 4 the document does not stand up
+on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -1014,6 +1024,77 @@ function renderTrimJson(report) {
         redundant: report.redundant,
     }, 2);
 }
+// ---------------------------------------------------------------------
+// The canon-hash (G6 phase 1): the pin an agent, a lockfile or a
+// registry stores for "this module, this meaning". The hash covers the
+// module evaluated STANDALONE -- its own include closure resolved and
+// unified at its own root, before any consumer context -- which is what
+// makes the pin transitive: an edit two includes deep changes the
+// unified root, hence the hash.
+const HASH_HELP = 'aontu hash <file> (try --help)';
+function runHash(argv) {
+    const files = [];
+    let form = false;
+    let format = 'text';
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        if ('--form' === arg) {
+            form = true;
+        }
+        else if ('--format' === arg) {
+            const f = argv[++i];
+            if ('text' !== f && 'json' !== f) {
+                process.stderr.write('aontu: --format needs text or json\n');
+                return 2;
+            }
+            format = f;
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown hash option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            files.push(arg);
+        }
+    }
+    if (1 !== files.length) {
+        process.stderr.write(`aontu: hash needs one file\n${HASH_HELP}\n`);
+        return 2;
+    }
+    let src;
+    try {
+        src = (0, node_fs_1.readFileSync)(files[0], 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+        return 2;
+    }
+    // The file's own directory is the include base, as every verb
+    // resolves a named file (vet's aontuForPath rule).
+    const aontu = new aontu_1.Aontu();
+    const ctx = aontu.ctx({ collect: true });
+    const v = aontu.unify(src, { path: files[0] }, ctx);
+    if (0 < ctx.err.length || true === v?.isNil) {
+        // A document that does not stand up on its own has no meaning to
+        // pin, and a hash of a broken evaluation would be a pin that
+        // silently agrees with every other broken evaluation.
+        process.stderr.write(`aontu: ${files[0]} does not evaluate on its own; nothing to hash\n`);
+        return 4;
+    }
+    const text = 'json' === format
+        ? (0, aontu_1.exactJSON)({
+            aontu: { version: version(), verb: 'hash' },
+            hash: (0, aontu_1.canonHash)(v),
+            form: (0, aontu_1.hcanon)(v),
+        }, 2)
+        : (form ? (0, aontu_1.hcanon)(v) : (0, aontu_1.canonHash)(v));
+    process.stdout.write(text + '\n');
+    return 0;
+}
 // Exit without truncating output.
 //
 // process.exit() terminates immediately, discarding anything still
@@ -1069,6 +1150,9 @@ function main(argv) {
     }
     if ('breaking' === argv[2]) {
         return finish(runBreaking(argv.slice(3)));
+    }
+    if ('hash' === argv[2]) {
+        return finish(runHash(argv.slice(3)));
     }
     if ('trim' === argv[2]) {
         return finish(runTrim(argv.slice(3)));

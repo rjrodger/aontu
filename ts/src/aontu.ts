@@ -17,6 +17,7 @@ import { vet } from './vet'
 import { sarifReport } from './report-sarif'
 import { subsume } from './subsume'
 import { trimCheck } from './trim'
+import { hcanon, canonHash } from './hcanon'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -366,6 +367,13 @@ export {
   // G2-shaped findings (class `compat`).
   subsume,
   trimCheck,
+
+  // G6 -- the hash form and the canon-hash pin. `hcanon` is the
+  // unify-level canon plus the close()/type()/hide() wrappers that
+  // close its semantic gaps; `canonHash` is
+  // "aon1-" + base64url(SHA-256(UTF-8(hcanon(v)))).
+  hcanon,
+  canonHash,
 }
 
 

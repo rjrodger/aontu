@@ -89,16 +89,16 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **65 `.tsv` files, 64
-   row-bearing, 2,407 rows**, in nine modes — `canon` 667, `gen` 539,
+   register's last update the suite is **66 `.tsv` files, 65
+   row-bearing, 2,460 rows**, in eleven modes — `canon` 673, `gen` 539,
    `errc` 425, `gens` 303, `err` 233, `subsume` 94, `errcode` 82,
-   `vet` 53, `trim` 11. Reproduce with
+   `vet` 53, `hcanon` 38, `trim` 11, `hash` 9. Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Twenty-seven of forty-nine phases have moved; twenty-five of those are complete.
+Twenty-nine of forty-nine phases have moved; twenty-seven of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
@@ -107,10 +107,10 @@ Twenty-seven of forty-nine phases have moved; twenty-five of those are complete.
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
-| [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
+| [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **25** | **2** | **22** |
+| | | **total** | **27** | **2** | **20** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -139,8 +139,12 @@ Against the review's own [sequencing](index.md#sequencing):
   `breaking` CLI verbs with `git#rev` resolution and the
   `aontu_policy.compat` declaration (G3.3), the `deprecate()` mark
   with its three point-of-use surfaces (G3.4), the default-validity
-  lint (G3.5) and the `trim --check` redundancy reporter (G3.6). No
-  canon hash or query surface yet.
+  lint (G3.5) and the `trim --check` redundancy reporter (G3.6). The
+  **canon-hash pins meaning rather than text** (G6.0–1): the hash form
+  in both ports, `aontu hash` on both command lines, and full
+  `aon1-…` strings pinned cross-implementation by the shared suite —
+  the review's Phase B "canon-hash pinning" item, useful with no
+  registry behind it. No query surface yet.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
 
 One structural note the sequencing table itself makes: G7's query/MCP
@@ -392,17 +396,21 @@ ADR-001, a deliverable absent from one port's source cannot count.
 
 | Phase | Size | Status |
 |-------|------|--------|
-| **0** — the hash form (`hcanon`) | S/M | **NOT STARTED** |
-| **1** — the hash itself (`canonHash`) | S | **NOT STARTED** |
+| **0** — the hash form (`hcanon`) | S/M | **LANDED** | `ts/src/hcanon.ts` (`hcanon`, exported from `ts/src/aontu.ts`) and `go/hcanon.go` (`aontu.Hcanon`): exactly the unify-level canon with the two additions that close its semantic gaps — a closed map or list wrapped as `close({…})` / `close([…])`, and the type/hide marks rendered as `type(x)` / `hide(x)`. Both reuse parseable syntax, so the hash form is valid Aontu source, and every row asserts the property the hash rests on: `hcanon(unify(parse(hcanon(v)))) == hcanon(v)`, in both runners. `test/spec/hcanon.tsv` — 38 `hcanon` rows in the new mode (closedness at depth and under marks, spreads, optional keys, prefs, refs, escape-heavy strings, extreme and exact magnitudes, code-point key order, the deprecation vocabulary), beside 6 `canon` rows over the same sources so the "user-facing canon is UNCHANGED" claim is a pin rather than a promise. `docs/shared-spec.md` carries the new modes (and the `subsume`/`trim` modes it had not caught up with). **Departures:** (1) the marks PROPAGATE to every descendant at unification, so a wrapper is emitted only where a mark STARTS — the walk carries inherited marks down and a child whose mark its parent already carries renders bare; rendering every marked leaf would be correct but never minimal, and not what the source said. (2) The design's "`ts/src/val/Val.ts` (default `hcanon` delegating to `canon`)" landed as a standalone WALK instead of a per-Val method: the rendering has to carry inherited-mark state down the tree, which a no-argument getter on each Val cannot do without adding that state to every Val in the engine. Everything the walk does not need to descend — scalars, kinds, funcs, refs, constraints — still delegates to its own `canon`, which is where the cross-port parity already lives. (3) The junction parenthesisation rule is kept exactly, but post-unification junctions are flattened by `norm`, so no SOURCE reaches its wrapping arm; it is pinned by direct tests over constructed Vals in both ports, because a hash form that could render `(1\|2)&3` as the differently-parsing `1\|2&3` would be a pin that silently agrees with a document it should not. |
+| **1** — the hash itself (`canonHash`) | S | **LANDED** | `canonHash` / `aontu.CanonHash`: `"aon1-" + base64url(SHA-256(UTF-8(hcanon(unify(v)))))`, unpadded (RFC 4648 §5), the scheme id there so a semantically stronger normal form is later an upgrade rather than a breakage. CLI verb `aontu hash [--form] [--format text\|json] <file>` in both ports (`ts/src/cli.ts`, `go/cmd/aontu/hash.go`), the document evaluated STANDALONE at its own root — which is what makes the pin transitive — with exit classes 0 hashed, 2 usage, 4 the document does not stand up on its own (a hash of a wreck would agree with every other wreck). 9 `hash` rows pinning full `aon1-…` strings, executed by BOTH runners; 3 cases in `ts/test/cli.test.ts` and 3 in `go/cmd/aontu/hash_test.go` holding each port's argument handling and the invariances (reformat, recomment, reorder keys → same pin; close a map → different pin); the two CLIs diffed byte-identical over a 10-case corpus (text, `--form` and JSON, exit codes included) — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` carries the verb, the hash form's definition and the two exports. **Departure:** `--form` is not in the design. It prints the hashed TEXT instead of the digest, which is the first thing anyone needs the moment a pin moves and the only way to see what the engine actually hashed; without it a flapping pin is undiagnosable from the command line. |
 | **2** — module identity and local resolution | M | **NOT STARTED** |
 | **3** — fetch and publish tooling | L | **NOT STARTED** |
 | **4** — registry hooks and agent integration | M | **NOT STARTED** |
 
-Zero code, zero rows, zero doc sections. G6's own risk row — "G1's new
-constraint syntax changes canon, invalidating all pins" — has already
-begun to materialise: G1.1 added five atoms to canon before G6 wrote a
-line, which vindicates the "hash GA after G1's canon settles"
-mitigation.
+Phases 2–4 (module identity, fetch/publish tooling, registry hooks)
+have no artifacts yet: no module-path resolution, no `mod.aon`, no
+`test/spec/mod.tsv`.
+
+G6's own risk row — "G1's new constraint syntax changes canon,
+invalidating all pins" — materialised before the hash existed: G1.1
+added five atoms to canon while G6 was still on paper, which is
+exactly why the hash landed AFTER G1 completed rather than beside it,
+and why the scheme id is in the string.
 
 **One current-state claim is now false**: the doc says parse-level
 canon is not in TS/Go parity, citing an AGENTS.md entry. That

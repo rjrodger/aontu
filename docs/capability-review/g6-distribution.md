@@ -1,9 +1,12 @@
 # G6: A distribution layer — versioned, integrity-hashed, pinnable modules
 
-*Status: design proposal — nothing implemented. Per-phase status and the
-corrections this document needs (one current-state claim is now false)
-are in the [progress register](progress.md), which is authoritative for
-status; this document is authoritative for design. Part of the
+*Status: design proposal — phases 0 and 1 (the hash form and the
+canon-hash, with `aontu hash` on both command lines) are implemented;
+phases 2–4 (module identity, fetch/publish tooling, registry hooks)
+are not. Per-phase status and the corrections this document needs (one
+current-state claim is now false) are in the
+[progress register](progress.md), which is authoritative for status;
+this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
 G6 — growing `@"…"` file inclusion into module identity, versioning,
 registry distribution, and semantic integrity hashing over Aontu's

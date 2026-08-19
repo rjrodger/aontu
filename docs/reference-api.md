@@ -38,6 +38,7 @@ Usage: aontu [options] [file]
        aontu subsume [options] <general> <specific>
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
+       aontu hash [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -230,6 +231,63 @@ aontu trim --check [--format text|json] <file.aon>
   would be worse than saying so.
 - Exit codes: `0` clean, `1` redundant entries found, `4` the document
   itself does not evaluate, `2` usage.
+
+### `aontu hash`
+
+The canon-hash: one string that pins what a document *means*, so a
+lockfile, a registry or an agent can say "this module, this meaning"
+and have the claim survive reformatting.
+
+```
+aontu hash [--form] [--format text|json] <file.aon>
+```
+
+- The hash is
+  `"aon1-" + base64url(SHA-256(UTF-8(hcanon(unify(file)))))`, where
+  `hcanon` is the **hash form** — see below. `aon1-` is a scheme id, so
+  a future semantically-stronger normal form is an upgrade rather than
+  a breakage.
+- The document is evaluated **standalone**: its own `@"file"` closure
+  resolved and unified at its own root, before any consumer context.
+  That is what makes the pin transitive — an edit two includes deep
+  changes the unified root, hence the hash.
+- **The pin survives** comments, whitespace, formatting, key
+  reordering, and splitting one file into several includes — any
+  refactor that leaves the unified value identical. **It breaks on**
+  any semantic change in the transitive closure: a default flipped, a
+  field added, a map closed, a constraint tightened.
+- `--form` prints the hashed TEXT instead of the digest, which is what
+  to diff when a pin moves. `--format json` prints both under
+  `hash` and `form`.
+- Exit codes: `0` hashed, `2` usage, `4` the document does not
+  evaluate on its own — a broken document has no meaning to pin, and a
+  hash of the wreck would agree with every other wreck.
+
+**The hash form (`hcanon`)**
+
+Exactly the unify-level [canon](#val-typescript) with the two
+additions that close its semantic gaps:
+
+| | canon | hash form |
+|---|---|---|
+| a closed map or list | `{"a":1}` | `close({"a":1})` |
+| a `type`- or `hide`-marked value | `1` | `type(1)`, `hide(1)` |
+
+Both reuse existing parseable syntax, so the hash form is itself valid
+Aontu source and round-trips —
+`hcanon(unify(parse(hcanon(v)))) == hcanon(v)` is asserted for every
+row of `test/spec/hcanon.tsv`, in both implementations. Marks
+propagate to every descendant at unification, so a wrapper is emitted
+only where a mark *starts*. User-facing `canon` is unchanged.
+
+This is a *canonical-text* hash, not a hash of semantic equivalence
+classes: canon is deterministic syntax, not a unique normal form, so
+`number|integer` and `number` denote the same value set and hash
+differently. The failure direction is the safe one — a false "changed"
+forces a needless re-review, while a false "unchanged" is impossible
+provided the hash form is semantically complete, which is exactly why
+the `close`/mark additions are part of the definition rather than an
+optimisation.
 
 **REPL commands**
 
@@ -611,6 +669,11 @@ subsume        // the subsumption query (docs/reference-language.md,
 trimCheck      // the redundancy reporter (see `aontu trim` above):
                // trimCheck(src, {path?}) -> {verdict, redundant};
                // Go: aontu.New().TrimCheck(src)
+hcanon         // the HASH FORM of an evaluated Val (see `aontu hash`
+               // above): canon plus the close()/type()/hide()
+               // wrappers; Go: aontu.Hcanon
+canonHash      // the canon-hash pin over that form,
+               // "aon1-"+base64url(SHA-256(...)); Go: aontu.CanonHash
 ```
 
 ---

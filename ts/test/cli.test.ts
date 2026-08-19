@@ -9,7 +9,7 @@ import * as Path from 'node:path'
 
 import { Aontu } from '../dist/aontu'
 import {
-  evalSource, runVet, runSubsume, runBreaking, runTrim,
+  evalSource, runVet, runSubsume, runBreaking, runTrim, runHash,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
   main as cliMainVet,
 } from '../dist/cli'
@@ -807,6 +807,74 @@ describe('cli-subsume', () => {
     ).out.includes('aontu trim'), true)
   })
 
+  // G6 phase 1: the canon-hash verb. The pin is the point, so the
+  // cases assert the SHAPE and the invariances -- reformatting,
+  // reordering and re-commenting a document leave the hash alone,
+  // while closing a map moves it -- rather than a literal digest,
+  // which test/spec/hcanon.tsv pins in both ports at once.
+  test('hash-pins-meaning-not-text', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-hash-'))
+    const file = Path.join(dir, 'doc.aon')
+
+    Fs.writeFileSync(file, 'b: 2\na: 1\n')
+    const first = vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim()
+    Assert.match(first, /^aon1-[A-Za-z0-9_-]{43}$/)
+
+    // Same meaning, different bytes: comments, whitespace, key order.
+    Fs.writeFileSync(file, '# the module\n\n   a:1\n   b:2  # trailing\n')
+    Assert.equal(
+      vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim(), first)
+
+    // A semantic change moves it -- closedness is IN the hash form
+    // even though canon drops it.
+    Fs.writeFileSync(file, 'a: 1\nb: 3\n')
+    Assert.notEqual(
+      vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim(), first)
+
+    Fs.writeFileSync(file, 'x: {a:1}')
+    const open = vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim()
+    Fs.writeFileSync(file, 'x: close({a:1})')
+    const closed = vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim()
+    Assert.notEqual(closed, open)
+
+    // --form prints the hashed TEXT, which is what to diff when a pin
+    // moves, and the JSON report carries both.
+    Assert.equal(
+      vetCapture(() => Assert.equal(runHash(['--form', file]), 0)).out.trim(),
+      '{"x":close({"a":1})}')
+    const j = JSON.parse(vetCapture(() =>
+      Assert.equal(runHash(['--format', 'json', file]), 0)).out)
+    Assert.equal(j.aontu.verb, 'hash')
+    Assert.equal(j.hash, closed)
+    Assert.equal(j.form, '{"x":close({"a":1})}')
+  })
+
+  test('hash-usage-errors-exit-2', () => {
+    const f = subFiles('a:1', 'a:1')
+    vetCapture(() => Assert.equal(runHash([]), 2))
+    vetCapture(() => Assert.equal(runHash([f.general, f.specific]), 2))
+    vetCapture(() => Assert.equal(runHash(['--bogus', f.general]), 2))
+    vetCapture(() => Assert.equal(runHash(['--format', 'yaml', f.general]), 2))
+    vetCapture(() => Assert.equal(runHash(['--format']), 2))
+    vetCapture(() => Assert.equal(
+      runHash([Path.join(f.dir, 'missing.aon')]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runHash(['--help']), 0)
+    ).out.includes('aontu hash'), true)
+  })
+
+  // A document that does not stand up on its own has no meaning to
+  // pin: exit 4, the verbs' error class, and NOT a hash of the wreck
+  // (which would agree with every other wreck).
+  test('hash-broken-document-exits-4', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-hash-err-'))
+    const file = Path.join(dir, 'doc.aon')
+    Fs.writeFileSync(file, 'a:1 a:2')
+    const r = vetCapture(() => Assert.equal(runHash([file]), 4))
+    Assert.equal(r.out, '')
+    Assert.match(r.err, /does not evaluate on its own/)
+  })
+
   // The verbs ride the same first-argument dispatch vet does.
   test('subsume-verbs-dispatch-from-main', () => {
     const f = subFiles('a:integer', 'a:1')
@@ -819,6 +887,9 @@ describe('cli-subsume', () => {
     const t = vetCapture(() => cliMainVet(
       ['node', 'aontu', 'trim', '--check', f.general]))
     Assert.match(t.out, /verdict: clean/)
+    const h = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'hash', f.general]))
+    Assert.match(h.out, /^aon1-/)
   })
 
 })

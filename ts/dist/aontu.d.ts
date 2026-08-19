@@ -9,6 +9,7 @@ import { vet } from './vet';
 import { sarifReport } from './report-sarif';
 import { subsume } from './subsume';
 import { trimCheck } from './trim';
+import { hcanon, canonHash } from './hcanon';
 declare const VERSION = "0.52.1";
 declare class Aontu {
     opts: AontuOptions;
@@ -23,5 +24,5 @@ declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
     runparse: typeof runparse;
 };
-export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, trimCheck, };
+export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, trimCheck, hcanon, canonHash, };
 export default Aontu;
