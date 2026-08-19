@@ -21,6 +21,7 @@ import type { Val } from './type'
 import { Aontu } from './aontu'
 import { getHint } from './err'
 import { collectNils } from './walk'
+import { collectDeprecations, deprecationMessage } from './utility'
 
 
 // LSP DiagnosticSeverity subset.
@@ -46,6 +47,9 @@ type Diagnostic = {
   code?: string
   source: string
   message: string
+  // LSP DiagnosticTag values; [1] is Unnecessary, [2] is Deprecated —
+  // the native tag editors strike through (G3 phase 4).
+  tags?: number[]
 }
 
 
@@ -115,7 +119,35 @@ function computeDiagnostics(
     }
   }
 
-  return nils.map(nilToDiagnostic)
+  const out = nils.map(nilToDiagnostic)
+
+  // Deprecation tags (G3 phase 4): every sited value carrying the
+  // deprecate() record — the declaration and, because the record rides
+  // meets and reference clones, every use resolving through it — gets
+  // the native Deprecated tag (2) at Hint severity, so editors strike
+  // it through without shouting.
+  for (const { val } of collectDeprecations(root)) {
+    const v: any = val
+    if (1 > (v.site?.row ?? -1) || 1 > (v.site?.col ?? -1)) {
+      continue
+    }
+    out.push({
+      range: {
+        start: { line: v.site.row - 1, character: v.site.col - 1 },
+        end: {
+          line: v.site.row - 1,
+          character: v.site.col - 1 + String(v.canon).length,
+        },
+      },
+      severity: 4,
+      code: 'deprecated',
+      source: 'aontu',
+      message: deprecationMessage(v.deprecation),
+      tags: [2],
+    })
+  }
+
+  return out
 }
 
 
@@ -337,10 +369,11 @@ type CompletionItem = {
 const COMPLETION_FUNCTION = 3
 const COMPLETION_KEYWORD = 14
 
-// The twenty-one built-in functions. Kept in sync with the engine by
+// The twenty-two built-in functions. Kept in sync with the engine by
 // `lsp.test.ts`, which asserts each is recognised and no others are.
 const BUILTIN_FUNCS = [
-  'above', 'below', 'close', 'copy', 'hide', 'key', 'length', 'lower',
+  'above', 'below', 'close', 'copy', 'deprecate', 'hide', 'key',
+  'length', 'lower',
   'max', 'min', 'move', 'must', 'neq', 'open', 'path', 'pref', 're',
   'super', 'type', 'unique', 'upper',
 ]

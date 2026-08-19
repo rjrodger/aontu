@@ -659,10 +659,11 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of eighteen built-in functions. There are
-no user-defined functions. Twelve are the general-purpose functions
-tabulated below; the other six — `min(x)`, `max(x)`, `above(x)`,
-`below(x)`, `neq(x,...)` and `re(p)` — are the constraint atoms, whose
+Aontu provides a fixed set of twenty-two built-in functions. There
+are no user-defined functions. Thirteen are the general-purpose
+functions tabulated below; the other nine — `min(x)`, `max(x)`,
+`above(x)`, `below(x)`, `neq(x,...)`, `re(p)`, `length(c)`,
+`unique()` and `must(c,msg)` — are the constraint atoms, whose
 meaning is defined in
 [The constraint algebra](#the-constraint-algebra-specified).
 
@@ -680,6 +681,7 @@ meaning is defined in
 | `open(x)`   | reverse a `close`                             | `open(close({x:1})) & {y:2}`→`{x:1,y:2}` |
 | `move(p)`   | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
 | `path(p)`   | resolve a path expression (function form of a reference) | `path(x.a)` (relative), `path($.z.x.a)` (absolute) |
+| `deprecate(x, m)` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
 
 `super(x)` lifts its **argument** one step up the lattice, so for a
 concrete scalar it yields that scalar's kind — and because `number`

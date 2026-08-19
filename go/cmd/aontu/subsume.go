@@ -167,12 +167,13 @@ func runSubsume(argv []string, stdout, stderr io.Writer) int {
 }
 
 type breakingArgs struct {
-	help           bool
-	file           string
-	against        []string
-	mode           string
-	allowUndecided bool
-	format         string
+	help             bool
+	file             string
+	against          []string
+	mode             string
+	allowUndecided   bool
+	allowDeprRemoval bool
+	format           string
 }
 
 func parseBreakingArgs(argv []string) (*breakingArgs, string) {
@@ -199,6 +200,8 @@ func parseBreakingArgs(argv []string) (*breakingArgs, string) {
 			args.mode = argv[i]
 		case "--allow-undecided" == arg:
 			args.allowUndecided = true
+		case "--allow-deprecated-removal" == arg:
+			args.allowDeprRemoval = true
 		case "--format" == arg:
 			i++
 			if len(argv) <= i || ("text" != argv[i] && "json" != argv[i]) {
@@ -398,8 +401,32 @@ func runBreaking(argv []string, stdout, stderr io.Writer) int {
 					GeneralPath:  check.generalPath,
 					SpecificPath: check.specificPath,
 				})
-			if breakingRank[worst] < breakingRank[report.Verdict] {
-				worst = report.Verdict
+
+			// The deprecated-removal downgrade: a finding about a value
+			// the OLD version already deprecated becomes a warning, and
+			// warnings do not move the verdict. Deprecate-then-remove is
+			// the supported rename path (the design's own sequencing).
+			verdict := report.Verdict
+			if args.allowDeprRemoval {
+				live := 0
+				a := aontu.New()
+				for i := range report.Findings {
+					f := &report.Findings[i]
+					if "error" == f.Severity &&
+						a.DeprecatedAt(oldSrc, f.Path) {
+						f.Severity = "warning"
+					}
+					if "error" == f.Severity {
+						live++
+					}
+				}
+				if aontu.SubsumeNo == verdict && 0 == live {
+					verdict = aontu.SubsumeYes
+				}
+			}
+
+			if breakingRank[worst] < breakingRank[verdict] {
+				worst = verdict
 			}
 			findings = append(findings, report.Findings...)
 		}

@@ -1739,8 +1739,19 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 						return n
 					}
 				}
-				args := make([]Val, 0, len(terms)-1)
-				for _, t := range terms[1:] {
+				// A comma group is ONE raw-slice term (writtenArgCount).
+				// deprecate's two arguments are distinct positions (the
+				// value, the record), so the group is expanded back into
+				// them here, while a written list literal — already a
+				// *ListVal — stays one argument. Mirrors ts/src/lang.ts.
+				argterms := terms[1:]
+				if "deprecate" == name && 1 == len(argterms) {
+					if raw, ok := argterms[0].([]any); ok {
+						argterms = raw
+					}
+				}
+				args := make([]Val, 0, len(argterms))
+				for _, t := range argterms {
 					args = append(args, asVal(t))
 				}
 				if constraintAtoms[name] {

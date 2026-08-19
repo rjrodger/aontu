@@ -523,6 +523,36 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 			findings = append(findings, findingOf(e, dataURL, sources))
 		}
 	}
+	errorFindings := len(findings)
+
+	// 5b. Deprecation warnings (G3 phase 4): a value that carries the
+	//     deprecate() record after the meet was USED — the data met a
+	//     deprecated schema value, or the schema's own default will
+	//     generate one. Severity `warning` (the slot G2 reserved for
+	//     exactly this mark), and warnings never touch the verdict
+	//     below. Mirrors the walkDeprecated pass in ts/src/vet.ts.
+	for _, d := range collectDeprecatedVals(unified) {
+		rec := d.v.deprecRec()
+		msg := "deprecated"
+		if m, ok := rec["msg"]; ok {
+			msg += ": " + m
+		}
+		if u, ok := rec["use"]; ok {
+			msg += " (use " + u + ")"
+		}
+		if sv, ok := rec["since"]; ok {
+			msg += " (since " + sv + ")"
+		}
+		site := siteOf(d.v, dataURL, sources)
+		findings = append(findings, VetFinding{
+			Code:     "deprecated",
+			Class:    "compat",
+			Severity: "warning",
+			Path:     subPathText(d.v.vpath()),
+			Message:  msg,
+			Sites:    []VetSite{*site},
+		})
+	}
 
 	keys := make([]string, len(findings))
 	idx := make([]int, len(findings))
@@ -576,7 +606,7 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	verdict := VetValid
 	if 0 < conflicts {
 		verdict = VetInvalid
-	} else if conflicts < len(findings) && !options.Partial {
+	} else if conflicts < errorFindings && !options.Partial {
 		verdict = VetIncomplete
 	}
 

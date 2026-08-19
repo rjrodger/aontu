@@ -22,6 +22,7 @@ var funcSet = map[string]bool{
 	"move": true, "path": true, "close": true, "open": true,
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
 	"re": true, "length": true, "unique": true, "must": true,
+	"deprecate": true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -46,6 +47,8 @@ var funcArity = map[string][2]int{
 	"unique": {0, 0},
 	"neq":    {1, -1},
 	"must":   {2, 2},
+	// G3 phase 4: the value, and its optional deprecation record.
+	"deprecate": {1, 2},
 }
 
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
@@ -74,7 +77,10 @@ func arityText(lo, hi int) string {
 	case -1 == hi:
 		return "one or more arguments"
 	case lo != hi:
-		return "no arguments or one"
+		if 0 == lo {
+			return "no arguments or one"
+		}
+		return "one argument or two"
 	case 0 == hi:
 		return "no arguments"
 	case 2 == hi:
@@ -464,6 +470,33 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
 		return args[0]
+	case "deprecate":
+		// G3 phase 4: unification-transparent — the result IS the
+		// argument, with the record riding it (base.deprec). A nil
+		// argument is returned unchanged (refusal over corruption, D7).
+		if len(args) == 0 {
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		if args[0].Nil() {
+			return args[0]
+		}
+		out := clonePath(args[0], cp(base))
+		rec := map[string]string{}
+		if len(args) > 1 {
+			if m, ok := args[1].(*MapVal); ok {
+				// The record's whole vocabulary; other keys are DROPPED
+				// (see DEPRECATION_KEYS in ts/src/val/DeprecateFuncVal.ts).
+				for _, key := range []string{"msg", "use", "since"} {
+					if sv, ok := m.peg[key].(*ScalarVal); ok && KindString == sv.kind {
+						if str, ok := sv.peg.(string); ok {
+							rec[key] = str
+						}
+					}
+				}
+			}
+		}
+		out.setDeprecRec(rec)
+		return out
 	case "super":
 		// super(x) is the lattice-superior of its ARGUMENT, not of the
 		// super() call itself: super(1) -> integer, super(1.5) ->

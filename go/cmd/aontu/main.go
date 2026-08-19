@@ -80,6 +80,9 @@ Breaking options:
                       (old admits new), or full (both); overrides the
                       document's own $.aontu_policy.compat declaration
   --allow-undecided   Exit 0 on undecided (the report still says so)
+  --allow-deprecated-removal
+                      A finding about a value the old version already
+                      deprecated warns instead of breaking
   --format <f>        text (default) or json
 
 Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,

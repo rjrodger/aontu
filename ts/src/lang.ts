@@ -106,6 +106,7 @@ import { CopyFuncVal } from './val/CopyFuncVal'
 import { KeyFuncVal } from './val/KeyFuncVal'
 import { TypeFuncVal } from './val/TypeFuncVal'
 import { HideFuncVal } from './val/HideFuncVal'
+import { DeprecateFuncVal } from './val/DeprecateFuncVal'
 import { MoveFuncVal } from './val/MoveFuncVal'
 import { PathFuncVal } from './val/PathFuncVal'
 import { PrefFuncVal } from './val/PrefFuncVal'
@@ -451,6 +452,11 @@ help isolate the syntax error.`,
     // reported with the author's own message, never simplified and
     // never consulted for emptiness or subsumption.
     must: MustConstraintVal,
+
+    // G3 phase 4: the deprecation mark. Unification-transparent; the
+    // record rides the result (Val.deprecation) and canon renders the
+    // call back (canonDeprecation).
+    deprecate: DeprecateFuncVal,
   }
 
 
@@ -586,7 +592,18 @@ help isolate the syntax error.`,
         // threw. The unifier's catch-all turned that into an `internal`
         // verdict: a crash reported as a unification result (issue #49).
         // The Go port has always converted here (asVal in evaluate).
-        const args = terms.slice(1).map(rawToVal)
+        // A comma group is ONE raw-array term (see writtenArgCount).
+        // deprecate's two arguments are distinct positions (the value,
+        // the record), so the group is expanded back into them here,
+        // while a written list literal — already a ListVal — stays one
+        // argument. The constraint atoms make the same move in their
+        // own constructor (atomArgs, ConstraintVal.ts).
+        let argterms = terms.slice(1)
+        if ('deprecate' === fname && 1 === argterms.length &&
+          Array.isArray(argterms[0])) {
+          argterms = argterms[0]
+        }
+        const args = argterms.map(rawToVal)
         val = null == funcval ?
           new NilVal({ why: 'unknown_function' }) :
           new funcval({
@@ -1375,6 +1392,7 @@ const funcArity: Record<string, [number, number]> = {
   unique: [0, 0],
   neq: [1, -1],
   must: [2, 2],
+  deprecate: [1, 2],
 }
 
 
@@ -1409,7 +1427,7 @@ function arityText(lo: number, hi: number): string {
     return 'one or more arguments'
   }
   if (lo !== hi) {
-    return 'no arguments or one'
+    return 0 === lo ? 'no arguments or one' : 'one argument or two'
   }
   if (0 === hi) {
     return 'no arguments'

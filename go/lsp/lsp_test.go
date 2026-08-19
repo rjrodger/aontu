@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -335,5 +336,36 @@ func TestTrustLspMalformedInitializeParams(t *testing.T) {
 	h := trustInit(t, `not json`)
 	if 0 != len(trustDiags(t, h, `a:@"`+root+`/in.aon"`)) {
 		t.Fatal("malformed params fall back to unconfined")
+	}
+}
+
+// G3 phase 4: the deprecation mark's LSP surface — the native
+// Deprecated tag (2) at Hint severity, on the declaration and on every
+// use resolving through the value. The TS twin is lsp-deprecated in
+// ts/test/lsp.test.ts.
+func TestDiagnosticsDeprecated(t *testing.T) {
+	d := Diagnostics("p:deprecate(8080,{msg:\"renamed\",use:\"$.listen\",since:\"2.0.0\"})\nq:$.p")
+	tagged := []Diagnostic{}
+	for _, x := range d {
+		if "deprecated" == x.Code {
+			tagged = append(tagged, x)
+		}
+	}
+	if 2 != len(tagged) {
+		t.Fatalf("expected 2 deprecated diagnostics, got %d: %+v", len(tagged), d)
+	}
+	for _, x := range tagged {
+		if SeverityHint != x.Severity || 1 != len(x.Tags) || 2 != x.Tags[0] {
+			t.Fatalf("expected hint severity and tag 2, got %+v", x)
+		}
+		for _, want := range []string{"renamed", "use $.listen", "since 2.0.0"} {
+			if !strings.Contains(x.Message, want) {
+				t.Fatalf("expected %q in %q", want, x.Message)
+			}
+		}
+	}
+
+	if d2 := Diagnostics("a:1"); 0 != len(d2) {
+		t.Fatalf("expected no diagnostics, got %+v", d2)
 	}
 }

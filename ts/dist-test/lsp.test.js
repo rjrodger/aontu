@@ -129,7 +129,7 @@ const lsp_server_1 = require("../dist/lsp-server");
 (0, node_test_1.describe)('lsp-completion', () => {
     (0, node_test_1.test)('completion-list', () => {
         const c = (0, lsp_1.computeCompletions)();
-        Assert.equal(c.length, 32); // 21 funcs + 7 kinds + 4 literals
+        Assert.equal(c.length, 33); // 22 funcs + 7 kinds + 4 literals
         const byLabel = new Map(c.map(i => [i.label, i]));
         Assert.equal(byLabel.get('upper')?.kind, lsp_1.COMPLETION_FUNCTION);
         Assert.equal(byLabel.get('string')?.kind, lsp_1.COMPLETION_KEYWORD);
@@ -142,7 +142,7 @@ const lsp_server_1 = require("../dist/lsp-server");
     (0, node_test_1.test)('builtin-funcs-match-engine', () => {
         // Drift guard: every BUILTIN_FUNCS name must be recognised by the
         // parser, and a bogus name must not be.
-        Assert.equal(lsp_1.BUILTIN_FUNCS.length, 21);
+        Assert.equal(lsp_1.BUILTIN_FUNCS.length, 22);
         const a = new aontu_1.Aontu();
         for (const name of lsp_1.BUILTIN_FUNCS) {
             const errs = (0, lsp_1.computeDiagnostics)('x:' + name + '(1)')
@@ -173,7 +173,7 @@ const lsp_server_1 = require("../dist/lsp-server");
         });
         Assert.match(hov[0].result.contents.value, /8080/);
         const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} });
-        Assert.equal(comp[0].result.length, 32);
+        Assert.equal(comp[0].result.length, 33);
     });
     (0, node_test_1.test)('initialize-advertises-capabilities', () => {
         const h = new lsp_1.LspHandler();
@@ -322,6 +322,28 @@ const lsp_server_1 = require("../dist/lsp-server");
         // unchanged).
         const ds = (0, lsp_1.computeDiagnostics)('x:1+true');
         Assert.ok(!ds.some((d) => 'budget_passes' === d.code), 'stable residue must not report budget_passes');
+    });
+});
+// G3 phase 4: the deprecation mark's LSP surface — the native
+// Deprecated tag (2) at Hint severity, on the declaration and on every
+// use resolving through the value. The Go twin is in
+// go/lsp/lsp_test.go (TestDiagnosticsDeprecated).
+(0, node_test_1.describe)('lsp-deprecated', () => {
+    (0, node_test_1.test)('deprecated-values-carry-the-tag', () => {
+        const d = (0, lsp_1.computeDiagnostics)('p:deprecate(8080,{msg:"renamed",use:"$.listen",since:"2.0.0"})\nq:$.p');
+        const tagged = d.filter((x) => 'deprecated' === x.code);
+        Assert.equal(tagged.length, 2);
+        for (const t of tagged) {
+            Assert.equal(t.severity, 4);
+            Assert.deepEqual(t.tags, [2]);
+            Assert.match(t.message, /renamed/);
+            Assert.match(t.message, /use \$\.listen/);
+            Assert.match(t.message, /since 2\.0\.0/);
+        }
+    });
+    (0, node_test_1.test)('undeprecated-documents-carry-no-tag', () => {
+        const d = (0, lsp_1.computeDiagnostics)('a:1');
+        Assert.equal(d.filter((x) => 'deprecated' === x.code).length, 0);
     });
 });
 //# sourceMappingURL=lsp.test.js.map

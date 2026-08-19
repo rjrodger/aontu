@@ -36,7 +36,9 @@ func (l *ListVal) Canon() string {
 		if i > 0 {
 			b.WriteByte(',')
 		}
-		b.WriteString(e.Canon())
+		// canonDeprecation, not Canon: a deprecated element renders back
+		// as its `deprecate(x, m)` call, reparseably (G3).
+		b.WriteString(canonDeprecation(e))
 	}
 	b.WriteByte(']')
 	return b.String()

@@ -121,3 +121,90 @@ func TestPolicyCompat(t *testing.T) {
 		}
 	}
 }
+
+// The deprecation surfaces' engine internals (G3 phase 4), pinned in
+// this package because cross-package runs (the LSP and CLI tests) do
+// not count toward its coverage. TS twins: breaking-deprecated-at-reader
+// (ts/test/cli.test.ts), collect-deprecations-walk and
+// deprecate-func-internals (ts/test/coverage3.test.ts).
+func TestDeprecationReaders(t *testing.T) {
+	a := New()
+	src := "a:[deprecate(1,{msg:\"m\"})] b:{c:deprecate(2,{msg:\"n\"})} d:3"
+
+	deps := a.DeprecationsVars(src, nil)
+	if 2 != len(deps) {
+		t.Fatalf("expected 2 deprecations, got %d", len(deps))
+	}
+	for _, d := range deps {
+		if "" == d.Record["msg"] || d.Pos < 0 || d.Len < 1 {
+			t.Fatalf("bad deprecation: %+v", d)
+		}
+	}
+	if 0 != len(a.DeprecationsVars("a:1 a:2", nil)) {
+		t.Fatal("expected none for a broken source")
+	}
+	if 0 != len(a.DeprecationsVars("a:]", nil)) {
+		t.Fatal("expected none for an unparseable source")
+	}
+
+	for _, tc := range []struct {
+		path string
+		want bool
+	}{
+		{"$.a.0", true},
+		{"$.b.c", true},
+		{"$.a.5", false},
+		{"$.a.x", false},
+		{"$.zz", false},
+		{"$.d.deeper", false},
+		{"$.d", false},
+	} {
+		if got := a.DeprecatedAt(src, tc.path); tc.want != got {
+			t.Fatalf("%s: expected %v, got %v", tc.path, tc.want, got)
+		}
+	}
+	// A document that does not stand alone answers false: the check
+	// that produced the finding already reported why.
+	if a.DeprecatedAt("a:1 a:2", "$.a") {
+		t.Fatal("expected false for a broken source")
+	}
+	if a.DeprecatedAt("a:]", "$.a") {
+		t.Fatal("expected false for an unparseable source")
+	}
+}
+
+// The shared walk's nil guard: a bag slot a degenerate construction can
+// leave empty.
+func TestCollectDeprecatedValsNilSlot(t *testing.T) {
+	m := newMap()
+	dep := newInteger(1)
+	dep.setDeprecRec(map[string]string{"msg": "m"})
+	m.set("a", newList([]Val{dep}))
+	m.set("empty", nil)
+	found := collectDeprecatedVals(m)
+	if 1 != len(found) {
+		t.Fatalf("expected 1, got %d", len(found))
+	}
+	if "a" != found[0].path[0] || "0" != found[0].path[1] {
+		t.Fatalf("bad path: %v", found[0].path)
+	}
+}
+
+// The deprecate builtin's defensive resolve arms no source reaches:
+// arity refuses the argless call at parse, and a nil argument is
+// returned unchanged, never marked (the type()/hide() lesson —
+// refusal over corruption, D7).
+func TestDeprecateResolveArms(t *testing.T) {
+	f := newFunc("deprecate", nil)
+	ctx := &Ctx{root: newMap()}
+	out := f.resolve(ctx, nil, nil)
+	if nil == out || !out.Nil() {
+		t.Fatalf("expected an arg nil, got %v", out)
+	}
+
+	n := newNil("test")
+	f2 := newFunc("deprecate", []Val{n})
+	if got := f2.resolve(ctx, nil, []Val{n}); got != Val(n) {
+		t.Fatalf("expected the nil back, got %v", got)
+	}
+}

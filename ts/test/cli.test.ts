@@ -10,7 +10,7 @@ import * as Path from 'node:path'
 import { Aontu } from '../dist/aontu'
 import {
   evalSource, runVet, runSubsume, runBreaking,
-  watchChange, watchSignature, vetWaiter,
+  watchChange, watchSignature, vetWaiter, deprecatedAt,
   main as cliMainVet,
 } from '../dist/cli'
 
@@ -718,6 +718,46 @@ describe('cli-subsume', () => {
     Assert.equal(vetCapture(() =>
       Assert.equal(runBreaking(['--help']), 0)
     ).out.includes('aontu breaking'), true)
+  })
+
+  // Deprecate-then-remove is the supported rename path: a finding
+  // about a value the old version already deprecated becomes a warning
+  // under --allow-deprecated-removal, and warnings do not move the
+  // verdict.
+  test('breaking-allow-deprecated-removal', () => {
+    const f = subFiles(
+      'service: close({name:string, listen:integer})',
+      'service: close({name:string, listen:integer,' +
+      ' port:deprecate(integer,{msg:"renamed",use:"$.service.listen"})})')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, f.general]), 1))
+    const r = vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--allow-deprecated-removal', f.general]), 0))
+    Assert.match(r.out, /verdict: compatible/)
+    Assert.match(r.out, /\$\.service\.port: compat_narrowed/)
+
+    // A removal the old version did NOT deprecate stays breaking.
+    const g = subFiles(
+      'service: close({name:string})',
+      'service: close({name:string, port:integer})')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', g.specific, '--allow-deprecated-removal', g.general]), 1))
+  })
+
+  // The old-version reader behind the downgrade, arm by arm — the Go
+  // port exports the same reader (aontu.DeprecatedAt) and pins the same
+  // arms in go/check-adjacent tests.
+  test('breaking-deprecated-at-reader', () => {
+    const src = 'a:[deprecate(1,{msg:"m"})] b:{c:deprecate(2,{msg:"n"})} d:3'
+    Assert.equal(deprecatedAt(src, '$.a.0', 'x.aon'), true)
+    Assert.equal(deprecatedAt(src, '$.b.c', 'x.aon'), true)
+    Assert.equal(deprecatedAt(src, '$.a.5', 'x.aon'), false)
+    Assert.equal(deprecatedAt(src, '$.zz', 'x.aon'), false)
+    Assert.equal(deprecatedAt(src, '$.d.deeper', 'x.aon'), false)
+    Assert.equal(deprecatedAt(src, '$.d', 'x.aon'), false)
+    // A document that does not stand alone answers false: the check
+    // that produced the finding already reported why.
+    Assert.equal(deprecatedAt('a:1 a:2', '$.a', 'x.aon'), false)
   })
 
   // The verbs ride the same first-argument dispatch vet does.

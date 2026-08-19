@@ -12,6 +12,30 @@ import (
 // subset does not need without references). TOP is the unit element;
 // complex Vals (conjunct/disjunct/pref) drive their own unify.
 func unite(ctx *Ctx, a, b Val) Val {
+	out := uniteRaw(ctx, a, b)
+	// The deprecation record survives EVERY meet (G3 phase 4): the
+	// boolean marks have their own sweeps (conjunct, the bag walks),
+	// but a record lost in one meet shape is a use the tooling never
+	// warns about, so it rides here, at the one place all meets pass
+	// through. First record wins; TOP and nil stay clean (TOP is the
+	// unit, and an error needs no deprecation). Mirrors the rider at
+	// the tail of unite in ts/src/unify.ts.
+	if nil != out && !isTop(out) && !out.Nil() && nil == out.deprecRec() {
+		var dep map[string]string
+		if nil != a {
+			dep = a.deprecRec()
+		}
+		if nil == dep && nil != b {
+			dep = b.deprecRec()
+		}
+		if nil != dep {
+			out.setDeprecRec(dep)
+		}
+	}
+	return out
+}
+
+func uniteRaw(ctx *Ctx, a, b Val) Val {
 	// Fast path, ABOVE the depth counter: a value that is already done,
 	// unified with TOP, is itself. The TS unite has the same shape --
 	// its fast paths return before its counter increments -- and the

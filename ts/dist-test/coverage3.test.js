@@ -64,6 +64,8 @@ const cli_1 = require("../dist/cli");
 const lsp_server_1 = require("../dist/lsp-server");
 const lsp_1 = require("../dist/lsp");
 const subsume_1 = require("../dist/subsume");
+const DeprecateFuncVal_1 = require("../dist/val/DeprecateFuncVal");
+const utility_1 = require("../dist/utility");
 const Val_1 = require("../dist/val/Val");
 const top_1 = require("../dist/val/top");
 const MapVal_1 = require("../dist/val/MapVal");
@@ -90,7 +92,7 @@ const BigIntegerVal_1 = require("../dist/val/BigIntegerVal");
 const BigDecimalVal_1 = require("../dist/val/BigDecimalVal");
 const numcmp_1 = require("../dist/val/numcmp");
 const numkind_1 = require("../dist/val/numkind");
-const utility_1 = require("../dist/utility");
+const utility_2 = require("../dist/utility");
 const A = () => new aontu_1.Aontu();
 const CTX = () => new ctx_1.AontuContext({ root: new MapVal_1.MapVal({ peg: {} }) });
 // Capture process output around an in-process CLI run.
@@ -511,20 +513,20 @@ function capture(fn) {
     (0, node_test_1.test)('close-without-a-result', () => {
         // A frame can close with no result (an abandoned trial) as well as
         // with one; only the latter records the outcome slot.
-        const t = (0, utility_1.explainOpen)({ cc: 1, path: ['a'] }, undefined, 'Probe', new IntegerVal_1.IntegerVal({ peg: 1 }));
+        const t = (0, utility_2.explainOpen)({ cc: 1, path: ['a'] }, undefined, 'Probe', new IntegerVal_1.IntegerVal({ peg: 1 }));
         const before = t.slice();
-        (0, utility_1.explainClose)(t);
+        (0, utility_2.explainClose)(t);
         Assert.deepEqual(t, before);
-        (0, utility_1.explainClose)(t, new IntegerVal_1.IntegerVal({ peg: 2 }));
+        (0, utility_2.explainClose)(t, new IntegerVal_1.IntegerVal({ peg: 2 }));
         Assert.ok(t.some((e) => 'string' === typeof e && /^-> \d+=2$/.test(e)));
         // An outcome that is NOT yet done is marked `!`, which is the whole
         // point of the slot when reading an explain trace: it distinguishes a
         // frame that settled from one still deferring. A scalar is always
         // done, so only an unresolved value reaches this arm.
-        (0, utility_1.explainClose)(t, new RefVal_1.RefVal({ peg: ['zz'], absolute: true }));
+        (0, utility_2.explainClose)(t, new RefVal_1.RefVal({ peg: ['zz'], absolute: true }));
         Assert.ok(t.some((e) => 'string' === typeof e && /^-> \d+!=/.test(e)));
         // A missing frame is a no-op (explain disabled).
-        (0, utility_1.explainClose)(null);
+        (0, utility_2.explainClose)(null);
     });
 });
 (0, node_test_1.describe)('coverage3-lang', () => {
@@ -743,6 +745,39 @@ function capture(fn) {
         }
         Assert.match(Buffer.concat(written).toString('utf8'), /Content-Length/);
         Assert.equal(exited, 0);
+    });
+});
+(0, node_test_1.describe)('coverage3-deprecate', () => {
+    // The internals no source reaches (G3 phase 4): make() is the
+    // multi-pass rebuild contract every FuncBaseVal keeps; the argless
+    // and nil-argument resolve arms are the defensive shape the
+    // type()/hide() lesson fixed (refusal over corruption, D7).
+    (0, node_test_1.test)('deprecate-func-internals', () => {
+        const ctx = new ctx_1.AontuContext({ root: (0, top_1.top)() });
+        const d = new DeprecateFuncVal_1.DeprecateFuncVal({ peg: [] });
+        const made = d.make(ctx, { peg: [new IntegerVal_1.IntegerVal({ peg: 1 })] });
+        Assert.equal(made.isDeprecateFunc, true);
+        const argless = d.resolve(ctx, []);
+        Assert.equal(argless.isNil, true);
+        Assert.equal(argless.why, 'arg');
+        const nil = new NilVal_1.NilVal({ why: 'test' });
+        Assert.equal(d.resolve(ctx, [nil]), nil);
+    });
+    // The shared walk behind vet's warnings and the LSP tags: the
+    // non-Val guard is for a bag's raw peg entries, which degenerate
+    // parses can leave behind — pinned directly, with one.
+    (0, node_test_1.test)('collect-deprecations-walk', () => {
+        const m = new MapVal_1.MapVal({ peg: {} });
+        const dep = new IntegerVal_1.IntegerVal({ peg: 1 });
+        dep.deprecation = { msg: 'm' };
+        const plain = new IntegerVal_1.IntegerVal({ peg: 2 });
+        const inner = new ListVal_1.ListVal({ peg: [dep] });
+        m.peg.a = inner;
+        m.peg.b = plain;
+        m.peg.raw = 42;
+        const found = (0, utility_1.collectDeprecations)(m);
+        Assert.equal(found.length, 1);
+        Assert.deepEqual(found[0].path, ['a', '0']);
     });
 });
 (0, node_test_1.describe)('coverage3-subsume', () => {

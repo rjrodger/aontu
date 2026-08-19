@@ -1,5 +1,11 @@
 import type { Val } from './type';
 declare function propagateMarks(source: Val, target: Val): void;
+declare function collectDeprecations(root: Val): Array<{
+    val: Val;
+    path: string[];
+}>;
+declare function deprecationMessage(d: Record<string, string>): string;
+declare function canonDeprecation(v: Val): string;
 declare function formatPath(path: Val | string[], absolute?: boolean): string;
 type WalkApply = (key: string | number | undefined, val: Val, parent: Val | undefined, path: (string | number)[]) => Val;
 /**
@@ -12,4 +18,4 @@ declare function ec(t: any[] | undefined | null, why: string): (string | null)[]
 declare function explainClose(t: any[] | undefined | null, out?: Val): void;
 declare function formatExplain(t: any[], d?: number): string;
 declare function items(o: any): any[][];
-export { items, propagateMarks, formatPath, walk, WalkApply, explainOpen, ec, explainClose, formatExplain, };
+export { items, propagateMarks, canonDeprecation, collectDeprecations, deprecationMessage, formatPath, walk, WalkApply, explainOpen, ec, explainClose, formatExplain, };

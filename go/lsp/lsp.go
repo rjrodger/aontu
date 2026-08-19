@@ -50,6 +50,9 @@ type Diagnostic struct {
 	Code     string `json:"code,omitempty"`
 	Source   string `json:"source"`
 	Message  string `json:"message"`
+	// LSP DiagnosticTag values; 1 is Unnecessary, 2 is Deprecated —
+	// the native tag editors strike through (G3 phase 4).
+	Tags []int `json:"tags,omitempty"`
 }
 
 // Diagnostics analyses Aontu source and returns LSP diagnostics for every
@@ -94,6 +97,33 @@ func DiagnosticsTrust(src string, vars map[string]aontu.Val, trust *aontu.TrustO
 			Code:     p.Why,
 			Source:   "aontu",
 			Message:  p.Message,
+		})
+	}
+
+	// Deprecation tags (G3 phase 4): every sited value carrying the
+	// deprecate() record gets the native Deprecated tag (2) at Hint
+	// severity, so editors strike it through without shouting. Mirrors
+	// the walkDep pass in ts/src/lsp.ts.
+	for _, d := range a.DeprecationsVars(src, vars) {
+		start := idx.position(d.Pos)
+		end := idx.position(d.Pos + d.Len)
+		msg := "deprecated"
+		if m, ok := d.Record["msg"]; ok {
+			msg += ": " + m
+		}
+		if u, ok := d.Record["use"]; ok {
+			msg += " (use " + u + ")"
+		}
+		if sv, ok := d.Record["since"]; ok {
+			msg += " (since " + sv + ")"
+		}
+		out = append(out, Diagnostic{
+			Range:    Range{start, end},
+			Severity: SeverityHint,
+			Code:     "deprecated",
+			Source:   "aontu",
+			Message:  msg,
+			Tags:     []int{2},
 		})
 	}
 	return out

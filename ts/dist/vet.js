@@ -8,6 +8,7 @@ const aontu_1 = require("./aontu");
 const err_1 = require("./err");
 const ConjunctVal_1 = require("./val/ConjunctVal");
 const walk_1 = require("./walk");
+const utility_1 = require("./utility");
 // The default cap, exported because the CLI applies it to the WHOLE
 // report across several data files and must not carry a second copy of
 // the number (ts/src/cli.ts).
@@ -339,6 +340,33 @@ function vet(schemaSrc, dataSrc, opts) {
             findings.push(findingOf(err, dataUrl));
         }
     }
+    // 5b. Deprecation warnings (G3 phase 4): a value that carries the
+    //     deprecate() record after the meet was USED — the data met a
+    //     deprecated schema value, or the schema's own default will
+    //     generate one. Severity `warning` (the slot G2 reserved for
+    //     exactly this mark), and warnings never touch the verdict below.
+    const errorFindings = findings.length;
+    for (const { val, path } of (0, utility_1.collectDeprecations)(unified)) {
+        const v = val;
+        // The same file/role projection sitesOf makes: the url as stamped
+        // (empty when the value belongs to neither document), the role by
+        // comparing it to the data document's.
+        const file = v.site.url;
+        findings.push({
+            code: 'deprecated',
+            class: 'compat',
+            severity: 'warning',
+            path: pathText(path),
+            message: (0, utility_1.deprecationMessage)(v.deprecation),
+            sites: [{
+                    file,
+                    row: v.site.row ?? -1,
+                    col: v.site.col ?? -1,
+                    role: (dataUrl === file ? 'data' : 'schema'),
+                    value: v.canon,
+                }],
+        });
+    }
     const keyed = findings.map((f, i) => ({ key: orderKey(f, i), finding: f }));
     keyed.sort((a, b) => a.key < b.key ? -1 : 1);
     let ordered = keyed.map((k) => k.finding);
@@ -370,7 +398,7 @@ function vet(schemaSrc, dataSrc, opts) {
     if (0 < conflicts) {
         verdict = 'invalid';
     }
-    else if (findings.length > conflicts && true !== options.partial) {
+    else if (errorFindings > conflicts && true !== options.partial) {
         verdict = 'incomplete';
     }
     return { verdict, truncated, findings: kept };

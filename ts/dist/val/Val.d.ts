@@ -70,6 +70,7 @@ declare abstract class Val {
     get site(): Site;
     set site(s: Site);
     mark: ValMark;
+    deprecation?: Record<string, string>;
     peg: any;
     err: any[];
     explain: any[] | null;

@@ -337,3 +337,31 @@ func TestBreakingUsageErrorsExit2(t *testing.T) {
 		t.Fatalf("want help, got %d", code)
 	}
 }
+
+// Deprecate-then-remove is the supported rename path: a finding about
+// a value the old version already deprecated becomes a warning under
+// --allow-deprecated-removal, and warnings do not move the verdict.
+// TS twin: breaking-allow-deprecated-removal in ts/test/cli.test.ts.
+func TestBreakingAllowDeprecatedRemoval(t *testing.T) {
+	_, g, s := subFiles(t,
+		"service: close({name:string, listen:integer})",
+		"service: close({name:string, listen:integer,"+
+			" port:deprecate(integer,{msg:\"renamed\",use:\"$.service.listen\"})})")
+	if _, _, code := brkRun("--against", s, g); 1 != code {
+		t.Fatalf("want 1, got %d", code)
+	}
+	out, _, code := brkRun("--against", s, "--allow-deprecated-removal", g)
+	if 0 != code {
+		t.Fatalf("want 0, got %d:\n%s", code, out)
+	}
+	vetMatch(t, out, `verdict: compatible`)
+	vetMatch(t, out, `\$\.service\.port: compat_narrowed`)
+
+	// A removal the old version did NOT deprecate stays breaking.
+	_, g2, s2 := subFiles(t,
+		"service: close({name:string})",
+		"service: close({name:string, port:integer})")
+	if _, _, code := brkRun("--against", s2, "--allow-deprecated-removal", g2); 1 != code {
+		t.Fatalf("want 1, got %d", code)
+	}
+}

@@ -32,6 +32,8 @@ import { main as cliMain, evalSource } from '../dist/cli'
 import { main as lspMain } from '../dist/lsp-server'
 import { computeDiagnostics, computeHover, LspHandler } from '../dist/lsp'
 import { subsumeNode } from '../dist/subsume'
+import { DeprecateFuncVal } from '../dist/val/DeprecateFuncVal'
+import { collectDeprecations } from '../dist/utility'
 
 import { Val } from '../dist/val/Val'
 import { top } from '../dist/val/top'
@@ -857,6 +859,47 @@ describe('coverage3-process', () => {
     Assert.match(Buffer.concat(written).toString('utf8'), /Content-Length/)
     Assert.equal(exited, 0)
   })
+})
+
+
+describe('coverage3-deprecate', () => {
+
+  // The internals no source reaches (G3 phase 4): make() is the
+  // multi-pass rebuild contract every FuncBaseVal keeps; the argless
+  // and nil-argument resolve arms are the defensive shape the
+  // type()/hide() lesson fixed (refusal over corruption, D7).
+  test('deprecate-func-internals', () => {
+    const ctx = new AontuContext({ root: top() } as any)
+    const d = new DeprecateFuncVal({ peg: [] })
+
+    const made = d.make(ctx, { peg: [new IntegerVal({ peg: 1 })] })
+    Assert.equal((made as any).isDeprecateFunc, true)
+
+    const argless: any = d.resolve(ctx, [])
+    Assert.equal(argless.isNil, true)
+    Assert.equal(argless.why, 'arg')
+
+    const nil = new NilVal({ why: 'test' })
+    Assert.equal(d.resolve(ctx, [nil]), nil)
+  })
+
+  // The shared walk behind vet's warnings and the LSP tags: the
+  // non-Val guard is for a bag's raw peg entries, which degenerate
+  // parses can leave behind — pinned directly, with one.
+  test('collect-deprecations-walk', () => {
+    const m = new MapVal({ peg: {} })
+    const dep = new IntegerVal({ peg: 1 })
+    ;(dep as any).deprecation = { msg: 'm' }
+    const plain = new IntegerVal({ peg: 2 })
+    const inner = new ListVal({ peg: [dep] })
+    m.peg.a = inner
+    m.peg.b = plain
+    m.peg.raw = 42
+    const found = collectDeprecations(m)
+    Assert.equal(found.length, 1)
+    Assert.deepEqual(found[0].path, ['a', '0'])
+  })
+
 })
 
 

@@ -10,6 +10,7 @@ type VetWaiter = (files: string[], before: string) => Promise<boolean>;
 declare const vetWaiter: VetWaiter;
 declare function runVet(argv: string[], wait?: VetWaiter): number | Promise<number>;
 declare function runSubsume(argv: string[]): number;
+declare function deprecatedAt(oldSrc: string, path: string, filePath: string): boolean;
 declare function runBreaking(argv: string[]): number;
 declare function main(argv: string[]): void;
-export { evalSource, main, runVet, runSubsume, runBreaking, watchChange, watchSignature, vetWaiter, };
+export { evalSource, main, runVet, runSubsume, runBreaking, watchChange, watchSignature, vetWaiter, deprecatedAt, };

@@ -200,6 +200,9 @@ aontu breaking --against <file|git#rev> [--mode backward|forward|full]
   undecided, `4` error, `2` usage. Undecided **fails** the gate by
   default — a gate that shrugs is not a gate — downgradable with
   `--allow-undecided`.
+- `--allow-deprecated-removal` downgrades a finding about a value the
+  old version already `deprecate()`d to a warning (still reported, no
+  longer failing): deprecate-then-remove is the supported rename path.
 
 **REPL commands**
 

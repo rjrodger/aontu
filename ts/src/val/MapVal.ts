@@ -16,6 +16,7 @@ import { unite } from '../unify'
 
 import {
   propagateMarks,
+  canonDeprecation,
   walk,
   explainOpen,
   ec,
@@ -450,7 +451,13 @@ class MapVal extends BagVal {
           JSON.stringify(k) +
           (this.optionalKeys.includes(k) ? '?' : '') +
           ':' +
-          (this.peg[k]?.canon ?? this.peg[k])
+          // canonDeprecation, not .canon: a deprecated field renders
+          // back as its `deprecate(x, m)` call, reparseably (G3). The
+          // guard is the isVal FLAG, never the canon getter: computing
+          // canon in the guard and again in the render doubles the
+          // recursion per level, which is 2^depth on a nested document.
+          (true === this.peg[k]?.isVal
+            ? canonDeprecation(this.peg[k]) : this.peg[k])
         ])
         .join(',') +
       '}' // + '<' + (this.mark.hide ? 'H' : '') + '>'

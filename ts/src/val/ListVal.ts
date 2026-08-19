@@ -17,6 +17,7 @@ import { unite } from '../unify'
 
 import {
   propagateMarks,
+  canonDeprecation,
   explainOpen,
   ec,
   explainClose,
@@ -280,7 +281,9 @@ class ListVal extends BagVal {
       // key. The Go port's ListVal.Canon has no such arm either, and the
       // two canons must agree -- a canon is round-trippable, and a marker
       // on an element the grammar cannot produce would not reparse.
-      keys.map(k => this.peg[k].canon).join(',') +
+      // canonDeprecation, not .canon: a deprecated element renders
+      // back as its `deprecate(x, m)` call, reparseably (G3).
+      keys.map(k => canonDeprecation(this.peg[k])).join(',') +
       ']'
   }
 } /* node:coverage ignore next 8 */

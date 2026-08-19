@@ -75,7 +75,9 @@ func (m *MapVal) Canon() string {
 			b.WriteByte('?')
 		}
 		b.WriteByte(':')
-		b.WriteString(m.peg[k].Canon())
+		// canonDeprecation, not Canon: a deprecated field renders back
+		// as its `deprecate(x, m)` call, reparseably (G3).
+		b.WriteString(canonDeprecation(m.peg[k]))
 	}
 	b.WriteByte('}')
 	return b.String()

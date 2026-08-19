@@ -3,6 +3,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.items = items;
 exports.propagateMarks = propagateMarks;
+exports.canonDeprecation = canonDeprecation;
+exports.collectDeprecations = collectDeprecations;
+exports.deprecationMessage = deprecationMessage;
 exports.formatPath = formatPath;
 exports.walk = walk;
 exports.explainOpen = explainOpen;
@@ -24,6 +27,53 @@ function propagateMarks(source, target) {
     for (let name in source.mark) {
         target.mark[name] = target.mark[name] || source.mark[name];
     }
+}
+// Collect every value in the tree carrying the deprecation record (G3
+// phase 4), with its path — the one walk behind vet's `deprecated`
+// warnings and the LSP's Deprecated tags. The record travels on meets
+// (the unite rider) and clones, so this sees the declaration and every
+// use resolving through it. The non-Val guard is for a bag's raw peg
+// entries, which degenerate parses can leave behind.
+function collectDeprecations(root) {
+    const out = [];
+    const walk = (v, path) => {
+        if (null == v || true !== v.isVal) {
+            return;
+        }
+        if (null != v.deprecation) {
+            out.push({ val: v, path });
+        }
+        if ((true === v.isMap || true === v.isList) && null != v.peg) {
+            for (const k of Object.keys(v.peg)) {
+                walk(v.peg[k], [...path, k]);
+            }
+        }
+    };
+    walk(root, []);
+    return out;
+}
+// The one-line prose for a deprecation record, shared by vet's warning
+// findings and the LSP's tagged diagnostics.
+function deprecationMessage(d) {
+    const msg = 'string' === typeof d.msg ? d.msg : '';
+    return 'deprecated' + ('' === msg ? '' : ': ' + msg) +
+        ('string' === typeof d.use ? ' (use ' + d.use + ')' : '') +
+        ('string' === typeof d.since ? ' (since ' + d.since + ')' : '');
+}
+// The canonical form of a value, wrapped in its deprecation call when
+// it carries one — reparseably, so `deprecate(x, m)` round-trips
+// through canon (G3 phase 4). Bags render their children through this
+// (MapVal/ListVal canon), which is where a deprecated FIELD — the
+// realistic case — lives.
+function canonDeprecation(v) {
+    const c = v.canon;
+    const d = v.deprecation;
+    if (null == d) {
+        return c;
+    }
+    const keys = Object.keys(d).sort();
+    const rec = keys.map((k) => JSON.stringify(k) + ':' + JSON.stringify(d[k])).join(',');
+    return 'deprecate(' + c + ('' === rec ? '' : ',{' + rec + '}') + ')';
 }
 function formatPath(path, absolute) {
     let parts;
@@ -142,5 +192,5 @@ function items(o) {
     else {
         return [];
     }
-} /* node:coverage ignore next 15 */
+} /* node:coverage ignore next 17 */
 //# sourceMappingURL=utility.js.map

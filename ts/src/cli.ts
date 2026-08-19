@@ -84,6 +84,9 @@ Breaking options:
                       (old admits new), or full (both); overrides the
                       document's own $.aontu_policy.compat declaration
   --allow-undecided   Exit 0 on undecided (the report still says so)
+  --allow-deprecated-removal
+                      A finding about a value the old version already
+                      deprecated warns instead of breaking
   --format <f>        text (default) or json
 
 Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,
@@ -779,6 +782,7 @@ type BreakingArgs = {
   against: string[]
   mode?: BreakingMode
   allowUndecided: boolean
+  allowDeprecatedRemoval: boolean
   format: SubsumeFormat
 }
 
@@ -788,13 +792,17 @@ function parseBreakingArgs(
   const against: string[] = []
   let mode: BreakingMode | undefined
   let allowUndecided = false
+  let allowDeprecatedRemoval = false
   let format: SubsumeFormat = 'text'
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if ('-h' === arg || '--help' === arg) {
       return {
-        args: { help: true, file: '', against: [], allowUndecided, format },
+        args: {
+          help: true, file: '', against: [],
+          allowUndecided, allowDeprecatedRemoval, format,
+        },
       }
     }
     if ('--against' === arg) {
@@ -813,6 +821,9 @@ function parseBreakingArgs(
     }
     else if ('--allow-undecided' === arg) {
       allowUndecided = true
+    }
+    else if ('--allow-deprecated-removal' === arg) {
+      allowDeprecatedRemoval = true
     }
     else if ('--format' === arg) {
       const f = argv[++i]
@@ -836,7 +847,12 @@ function parseBreakingArgs(
     }
   }
 
-  return { args: { file: files[0], against, mode, allowUndecided, format } }
+  return {
+    args: {
+      file: files[0], against, mode,
+      allowUndecided, allowDeprecatedRemoval, format,
+    },
+  }
 }
 
 // Resolve one --against spelling to source text. `git#<rev>` shells out
@@ -901,6 +917,38 @@ function policyCompat(newSrc: string, path: string): BreakingMode | undefined {
   return 'backward' === m || 'forward' === m || 'full' === m || 'none' === m
     ? m : undefined
 }
+
+// Is the evaluated old version's value at the finding path deprecated?
+// The --allow-deprecated-removal downgrade (G3 phase 4): removing (or
+// otherwise changing) a value the old version already deprecated warns
+// instead of breaking. The Go port exports the same reader as
+// aontu.DeprecatedAt.
+function deprecatedAt(oldSrc: string, path: string, filePath: string): boolean {
+  const aontu = new Aontu()
+  const ctx = aontu.ctx({ collect: true })
+  const v: any = aontu.unify(oldSrc, { path: filePath }, ctx)
+  if (0 < ctx.err.length || true === v?.isNil) {
+    return false
+  }
+  const segs = path.replace(/^\$/, '').split('.').filter((p) => '' !== p)
+  let node: any = v
+  for (const seg of segs) {
+    if (true === node?.isMap) {
+      node = node.peg?.[seg]
+    }
+    else if (true === node?.isList) {
+      node = node.peg?.[Number(seg)]
+    }
+    else {
+      return false
+    }
+    if (null == node) {
+      return false
+    }
+  }
+  return null != node?.deprecation
+}
+
 
 // Verdict aggregation for breaking: an error anywhere makes the run an
 // error; otherwise a witness anywhere makes it breaking; otherwise an
@@ -978,6 +1026,8 @@ function runBreaking(argv: string[]): number {
       checks.push({ general: [oldSrc, spec], specific: [newSrc, args.file] })
     }
 
+    const oldPath = spec.startsWith('git#') ? args.file : spec
+
     for (const check of checks) {
       const report = subsume(check.general[0], check.specific[0], {
         generalUrl: check.general[1],
@@ -989,8 +1039,30 @@ function runBreaking(argv: string[]): number {
         specificPath: check.specific[1].startsWith('git#')
           ? args.file : check.specific[1],
       })
-      if (BREAKING_RANK[worst] < BREAKING_RANK[report.verdict]) {
-        worst = report.verdict
+
+      // The deprecated-removal downgrade: a finding about a value the
+      // OLD version already deprecated becomes a warning, and warnings
+      // do not move the verdict. Deprecate-then-remove is the
+      // supported rename path (the design's own sequencing).
+      let verdict = report.verdict
+      if (args.allowDeprecatedRemoval) {
+        let liveFindings = 0
+        for (const f of report.findings) {
+          if ('error' === f.severity &&
+            deprecatedAt(oldSrc, f.path, oldPath)) {
+            f.severity = 'warning'
+          }
+          if ('error' === f.severity) {
+            liveFindings++
+          }
+        }
+        if ('does_not_subsume' === verdict && 0 === liveFindings) {
+          verdict = 'subsumes'
+        }
+      }
+
+      if (BREAKING_RANK[worst] < BREAKING_RANK[verdict]) {
+        worst = verdict
       }
       findings.push(...report.findings)
     }
@@ -1145,5 +1217,5 @@ function main(argv: string[]): void {
 
 export {
   evalSource, main, runVet, runSubsume, runBreaking,
-  watchChange, watchSignature, vetWaiter,
+  watchChange, watchSignature, vetWaiter, deprecatedAt,
 }

@@ -91,12 +91,23 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
     }
     else if (b !== undefined && b !== null) {
       if (a.done && b.done) {
-        if (a.id === b.id) return a
+        if (a.id === b.id) {
+          // The deprecation record survives the fast path (G3).
+          if (null == a.deprecation && null != b.deprecation) {
+            a.deprecation = b.deprecation
+          }
+          return a
+        }
         if (a.constructor === b.constructor && a.peg === b.peg
             && !a.isNil && !b.isNil
             && !a.isMap && !a.isList
             && !a.isConjunct && !a.isDisjunct
             && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
+          // The deprecation record survives the fast path too (G3):
+          // `deprecate(5) & 5` short-circuits here.
+          if (null == a.deprecation && null != b.deprecation) {
+            a.deprecation = b.deprecation
+          }
           return a
         }
       }
@@ -250,6 +261,21 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   }
 
   ctx.explain && explainClose(te, out)
+
+  // The deprecation record survives EVERY meet (G3 phase 4): the
+  // boolean marks have their own sweeps (ConjunctVal, the bag walks),
+  // but a record lost in one meet shape is a use the tooling never
+  // warns about, so it rides here, at the one place all meets pass
+  // through. First record wins; TOP and nil stay clean (TOP is the
+  // unit, and an error needs no deprecation).
+  if (null != out && true === (out as any).isVal &&
+    !out.isTop && !out.isNil && null == out.deprecation) {
+    const dep = (null != a ? a.deprecation : undefined) ??
+      (null != b ? b.deprecation : undefined)
+    if (null != dep) {
+      out.deprecation = dep
+    }
+  }
 
   return out
 }

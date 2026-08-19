@@ -133,6 +133,7 @@ var codeClasses = map[string]string{
 	"sub_path_dependent_spread": "compat",
 	"sub_evaluate_only":         "compat",
 	"sub_default_indeterminate": "compat",
+	"deprecated":                "compat",
 	"func_arity":                "parse",
 	"elided_value":              "parse",
 	"unify_no_src":              "parse",

@@ -134,6 +134,16 @@ abstract class Val {
     hide: false,
   }
 
+  // The deprecation record (G3 phase 4, `deprecate(x, m)`): boolean
+  // marks cannot hold a message, a replacement path and a version, so
+  // the Val carries one optional record. Keys are the three the
+  // builtin defines (msg, use, since), all optional, values strings;
+  // `use` is a path spelled as a STRING — a live reference would
+  // resolve and unify, which is not wanted. Propagated through meets
+  // by propagateMarks and carried by clone, exactly as the boolean
+  // marks are.
+  deprecation?: Record<string, string>
+
   // Actual native value.
   peg: any = undefined
 
@@ -229,6 +239,10 @@ abstract class Val {
     out.mark = Object.assign({}, this.mark, fullspec.mark ?? {})
     out.mark.type = this.mark.type && (fullspec.mark?.type ?? true)
     out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true)
+
+    if (null != this.deprecation) {
+      out.deprecation = this.deprecation
+    }
 
     return out
   }

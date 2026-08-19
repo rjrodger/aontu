@@ -101,6 +101,9 @@ class Val {
         out.mark = Object.assign({}, this.mark, fullspec.mark ?? {});
         out.mark.type = this.mark.type && (fullspec.mark?.type ?? true);
         out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true);
+        if (null != this.deprecation) {
+            out.deprecation = this.deprecation;
+        }
         return out;
     }
     // Shallow clone for spread constraints: creates a new Val with the

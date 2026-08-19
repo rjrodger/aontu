@@ -63,6 +63,8 @@ type Val interface {
 	// Marks: type values are constraints, hidden values are excluded
 	// from generation. Both are skipped when generating a containing map.
 	markedType() bool
+	deprecRec() map[string]string
+	setDeprecRec(rec map[string]string)
 	markedHide() bool
 	setMarkType(v bool)
 	setMarkHide(v bool)
@@ -103,6 +105,14 @@ type base struct {
 	surl  string
 	mtype bool // type mark
 	mhide bool // hide mark
+	// The deprecation record (G3 phase 4, `deprecate(x, m)`): boolean
+	// marks cannot hold a message, a replacement path and a version, so
+	// the value carries one optional record (keys msg/use/since, values
+	// strings). Propagated through meets by propagateMarks and carried
+	// by clonePath, exactly as the boolean marks are; canon renders it
+	// back reparseably (canonDeprecation). Mirrors Val.deprecation in
+	// ts/src/val/Val.ts.
+	deprec map[string]string
 	// spr records the identity of the spread constraint already merged
 	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
 	// applies ONCE per child, and later passes only self-unify.
@@ -172,10 +182,12 @@ func (b *base) cjo() int            { return 99999 }
 func (b *base) vpath() []string     { return b.path }
 func (b *base) setvpath(p []string) { b.path = p }
 
-func (b *base) markedType() bool   { return b.mtype }
-func (b *base) markedHide() bool   { return b.mhide }
-func (b *base) setMarkType(v bool) { b.mtype = v }
-func (b *base) setMarkHide(v bool) { b.mhide = v }
+func (b *base) markedType() bool                   { return b.mtype }
+func (b *base) deprecRec() map[string]string       { return b.deprec }
+func (b *base) setDeprecRec(rec map[string]string) { b.deprec = rec }
+func (b *base) markedHide() bool                   { return b.mhide }
+func (b *base) setMarkType(v bool)                 { b.mtype = v }
+func (b *base) setMarkHide(v bool)                 { b.mhide = v }
 
 // notdone advances the done-counter without marking DONE.
 func (b *base) notdone() {

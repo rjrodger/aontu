@@ -18,6 +18,7 @@ type Diagnostic = {
     code?: string;
     source: string;
     message: string;
+    tags?: number[];
 };
 type Message = {
     jsonrpc?: string;

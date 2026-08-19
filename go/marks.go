@@ -2,6 +2,8 @@
 
 package aontu
 
+import "sort"
+
 // propagateMarks copies type/hide marks from one Val to another (mirrors
 // propagateMarks in ts/src/utility.ts).
 func propagateMarks(from, to Val) {
@@ -11,6 +13,36 @@ func propagateMarks(from, to Val) {
 	if from.markedHide() {
 		to.setMarkHide(true)
 	}
+}
+
+// canonDeprecation renders a value's canonical form wrapped in its
+// deprecation call when it carries one — reparseably, so
+// `deprecate(x, m)` round-trips through canon (G3 phase 4). Bags render
+// their children through this (MapVal/ListVal Canon), which is where a
+// deprecated FIELD — the realistic case — lives. Mirrors
+// canonDeprecation in ts/src/utility.ts.
+func canonDeprecation(v Val) string {
+	c := v.Canon()
+	d := v.deprecRec()
+	if nil == d {
+		return c
+	}
+	keys := make([]string, 0, len(d))
+	for k := range d {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	rec := ""
+	for i, k := range keys {
+		if 0 < i {
+			rec += ","
+		}
+		rec += jsonString(k) + ":" + jsonString(d[k])
+	}
+	if "" == rec {
+		return "deprecate(" + c + ")"
+	}
+	return "deprecate(" + c + ",{" + rec + "})"
 }
 
 // walkMark sets or clears the type/hide marks on a Val and all of its
@@ -53,4 +85,5 @@ func walkMark(v Val, setType, typeVal, setHide, hideVal bool) {
 func copyMarks(to, from Val) {
 	to.setMarkType(from.markedType())
 	to.setMarkHide(from.markedHide())
+	to.setDeprecRec(from.deprecRec())
 }
