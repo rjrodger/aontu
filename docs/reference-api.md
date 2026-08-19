@@ -690,6 +690,14 @@ is observable as sorted, deduplicated `{ path, capability }` entries —
 "file set" as data (capability is `mem`, `file` or `pkg`). Content
 hashing and pinning belong to the distribution layer (G6).
 
+**The bundled vocabulary.** `@"std/system"` (G4, [the system
+vocabulary](reference-language.md#the-stdsystem-vocabulary)) is served
+from the engine rather than from disk, so it needs neither the
+filesystem nor package resolution and resolves under every include
+capability except `'none'`. It appears in the manifest with capability
+`std`. A host that wants a different vocabulary supplies its own source
+under its own name; the bundled one is engine-owned.
+
 **The derived graph.** After a unification, an evaluated document's
 identity structure is observable too (G4):
 `result.graph` in TypeScript — also available as the pure function

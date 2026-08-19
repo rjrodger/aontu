@@ -1,8 +1,8 @@
 # G4: Identity and typed relations
 
-*Status: phases 0, 1 (`id()`), 2 (`refer()`) and 3 (derived
-structures) have LANDED in both ports; phases 4–5 remain design
-proposal. Per-phase status and the corrections this
+*Status: phases 0, 1 (`id()`), 2 (`refer()`), 3 (derived structures)
+and 4 (the `std/system` vocabulary) have LANDED in both ports; phase 5
+remains design proposal. Per-phase status and the corrections this
 document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
@@ -415,6 +415,12 @@ implementations, per [G5](g5-trust-contract.md).
 
 Ports, interfaces, and connections need no syntax — they are schemas
 (abbreviated sketch):
+
+(As built, four of the five schemas ship and the block is NOT wrapped
+in `hide()`; `Connection` waits on engine work, `Service` states
+itself rather than referencing `Component`, and `target` is optional.
+Each is explained in
+[the register](progress.md#g4--identity-and-typed-relations).)
 
 ```aon
 # std/system.aon (sketch)

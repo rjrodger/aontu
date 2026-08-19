@@ -44,6 +44,8 @@ import {
   makeMemResolver
 } from '@tabnas/multisource/resolver/mem'
 
+import { STD_SOURCES } from './std'
+
 import {
   Expr,
   Op,
@@ -1232,6 +1234,13 @@ function makeModelResolver(options: any) {
   // remain available under every capability but 'none' — they are
   // host-provided, not document-requested, so confining them would
   // confine the host against itself.
+  // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts) rides the
+  // memory leg: served from the engine itself, so it needs neither the
+  // filesystem nor package resolution and is available under every
+  // capability but `none` — which denies every include outright, that
+  // being what `none` means. Host entries and the capability's own set
+  // WIN over it: a caller that supplies its own `std/system` gets the
+  // one it supplied.
   let memResolver = makeMemResolver(memCapability
     ? { ...(capability as any).mem }
     : { ...(options.resolver?.mem || {}) })
@@ -1317,6 +1326,19 @@ function makeModelResolver(options: any) {
 
     if ('none' === capability) {
       deny(path)
+    }
+
+    // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts): served from
+    // the engine itself, so it needs neither the filesystem nor package
+    // resolution and is available under every capability but `none` —
+    // checked just above, that being what `none` means. Matched against
+    // the name the author WROTE, before the memory leg, so the kind is
+    // stated rather than guessed from an extension the bare name does
+    // not have.
+    const std = STD_SOURCES[path]
+    if (null != std) {
+      record(ctx, path, 'std')
+      return { found: true, path, full: path, kind: 'aon', src: std, search: [] }
     }
 
     let search: any = []

@@ -43,6 +43,15 @@ hermeticity is TOTAL: `none` denies every `@"…"`, `{mem}` resolves
 only the declared virtual file set, and `{root}` reads real files
 realpath-confined below the root (a symlink inside the root pointing
 outside it is an escape and is denied; package resolution never runs).
+One name is served under every capability but `none`: `@"std/system"`,
+the [system vocabulary](reference-language.md#the-stdsystem-vocabulary),
+which is BUNDLED with the engine. It touches neither the filesystem nor
+package resolution, so it widens nothing a hermetic evaluation cares
+about — a source that never leaves the process is as reproducible as a
+builtin function — and it appears in the manifest under capability
+`std`, so the closure still says it was read. Under `none` it is denied
+with everything else: `none` means no includes at all.
+
 A denied resolution is the located, deterministic parse-stage
 `include_denied` error, pinned by `test/spec/include-trust.tsv` in
 both runners. The resolved closure itself is observable as the

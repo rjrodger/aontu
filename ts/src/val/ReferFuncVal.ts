@@ -40,7 +40,7 @@ import { FeatureVal } from './FeatureVal'
 import { StringVal } from './StringVal'
 import { unite } from '../unify'
 import { top } from './top'
-import { propagateMarks } from '../utility'
+import { propagateMarks, walk } from '../utility'
 
 
 // A segment of the path INSIDE an entity. The entity name's own
@@ -103,6 +103,32 @@ export function findEntity(
     val = next
   }
   return { parent, key, val }
+}
+
+
+// concreteFlow is `t` as it enters the target: a copy with the
+// type/hide marks cleared at every depth. The clone matters as much as
+// the clearing — `t` is shared by every position that refers to the
+// same thing, and clearing in place would unmark the schema itself.
+function concreteFlow(ctx: AontuContext, t: Val): Val {
+  let marked = false
+  walk(t, (_key: string | number | undefined, v: Val) => {
+    marked = marked || v.mark.type || v.mark.hide
+    return v
+  })
+  // An unmarked flow type is passed THROUGH: cloning one anyway would
+  // move the site an error names, and a conflict has to point at what
+  // the author wrote.
+  if (!marked) {
+    return t
+  }
+  const out = t.clone(ctx)
+  walk(out, (_key: string | number | undefined, v: Val) => {
+    v.mark.type = false
+    v.mark.hide = false
+    return v
+  })
+  return out
 }
 
 
@@ -232,6 +258,12 @@ class ReferVal extends FeatureVal {
   // resolved string should take.
   settle(ctx: AontuContext, site: Val): Val {
     if (undefined === this.addr) {
+      // NOT DONE, unlike `string` or `min(1)`. A refer without an
+      // address has not done its work — it exists to check one — and
+      // the pass loop must keep offering it the chance. The cost is
+      // that a SCHEMA mentioning a link never resolves either, so
+      // `type({from: refer($.std.Port)})` is not expressible today;
+      // G4 phase 4 records why, and what it would take.
       this.dc = 0
       return this
     }
@@ -257,7 +289,13 @@ class ReferVal extends FeatureVal {
     // every position of the entity carries it after the pass's
     // identity merge — the same channel the merge itself uses.
     if (!this.tval.isTop) {
-      const merged = unite(ctx, found.val, this.tval, 'refer-flow')
+      // The flowed type is CONCRETE at the target: a schema flowing
+      // into a value must not make the value a schema. Same reasoning
+      // as a reference's clone clearing marks — `refer($.std.Service)`
+      // says the target IS a Service, not that it is the definition of
+      // one — and without it the target silently stopped generating.
+      const merged = unite(ctx, found.val, concreteFlow(ctx, this.tval),
+        'refer-flow')
       if (true === (merged as any).isNil) {
         return merged
       }

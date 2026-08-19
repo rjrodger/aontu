@@ -35,6 +35,23 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 		return res
 	}
 
+	// THE BUNDLED VOCABULARY (G4 phase 4, std.go): served from the
+	// engine itself, so it needs neither the filesystem nor package
+	// resolution and is available under every capability but `none` —
+	// which is checked above, because `none` means no includes at all.
+	// A document's OWN `std/system` file, reached through a capability
+	// that allows it, is not shadowed: the bundled name is matched
+	// against what the author WROTE, so a relative path resolving to a
+	// real file never reaches here.
+	if src, ok := stdSources[spec.Path]; ok {
+		res.Full = spec.Path
+		res.Kind = "aon"
+		res.Src = toValidSource(src)
+		res.Found = true
+		recordDep(sink, spec.Path, "std")
+		return res
+	}
+
 	// The mem capability: the declared virtual file set is the whole
 	// world — a hit resolves from it, a miss is NOT-FOUND (the allowed
 	// mechanism ran and missed; denial is reserved for a capability

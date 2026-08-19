@@ -132,3 +132,13 @@ spread-path-dependent-template	gens	z: id(x) & {}\na: {&: refer({k:key(0)}), p:"
 # than replacing: both still meet the link when the address arrives.
 held-two-constraints	gens	a: id(x) & {k:1}\nb: refer() & string & re("^x$") & "x"	{"a":{"k":1},"b":"x"}
 held-two-constraints-refused	errc	a: id(x) & {k:1}\nb: refer() & string & re("^y$") & "x"	constraint
+# THE FLOWED TYPE IS CONCRETE AT THE TARGET. A schema flowing into a
+# value must not make the value a schema -- the same reasoning as a
+# reference's clone clearing marks: `refer(type(t))` says the target IS
+# a t, not that it is the definition of one. Without the clearing the
+# target silently stopped generating. The marks are cleared on a COPY,
+# `t` being shared by every position that refers to the same thing --
+# and only when there are marks to clear, because cloning an unmarked
+# type would move the site an error names.
+flow-type-mark-cleared	gens	a: id(x) & {}\nb: refer(type({k:1})) & "x"	{"a":{"k":1},"b":"x"}
+flow-hide-mark-cleared	gens	a: id(x) & {}\nb: refer(hide({k:1})) & "x"	{"a":{"k":1},"b":"x"}

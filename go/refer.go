@@ -247,6 +247,12 @@ func (r *ReferVal) reshape() *ReferVal {
 // string should take.
 func (r *ReferVal) settle(ctx *Ctx, site Val) Val {
 	if nil == r.addr {
+		// NOT DONE, unlike `string` or `min(1)`. A refer without an
+		// address has not done its work — it exists to check one — and
+		// the pass loop must keep offering it the chance. The cost is
+		// that a SCHEMA mentioning a link never resolves either, so
+		// `type({from: refer($.std.Port)})` is not expressible today;
+		// G4 phase 4 records why, and what it would take.
 		r.notdone()
 		return r
 	}
@@ -274,7 +280,19 @@ func (r *ReferVal) settle(ctx *Ctx, site Val) Val {
 	// every position of the entity carries it after the pass's identity
 	// merge — the same channel the merge itself uses.
 	if nil != r.tval && !isTop(r.tval) {
-		merged := unite(ctx, found.val, r.tval)
+		// The flowed type is CONCRETE at the target: a schema flowing
+		// into a value must not make the value a schema. Same reasoning
+		// as a reference's clone clearing marks — `refer($.std.Service)`
+		// says the target IS a Service, not that it is the definition of
+		// one — and without it the target silently stopped generating.
+		// Cloned as well as cleared: `t` is shared by every position
+		// that refers to the same thing.
+		flow := r.tval
+		if hasMark(flow) {
+			flow = clonePath(flow, cp(flow.vpath()))
+			walkMark(flow, true, false, true, false)
+		}
+		merged := unite(ctx, found.val, flow)
 		if merged.Nil() {
 			return merged
 		}

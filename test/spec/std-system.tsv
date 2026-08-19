@@ -1,0 +1,73 @@
+# G4 phase 4: the std/system VOCABULARY
+# (docs/capability-review/g4-identity-relations.md). Ports, components
+# and relations need no syntax: they are schemas. Everything in
+# `@"std/system"` is ordinary unification -- conjunction, spreads,
+# marks, defaults -- so the vocabulary costs the language nothing, and
+# an author who wants a different one writes it the same way.
+#
+# The source is BUNDLED with the engine (ts/src/std.ts, go/std.go): no
+# filesystem, no package resolution, so it is available under every
+# include capability except `none`, and the hermeticity posture is not
+# widened by a source that never leaves the process. The two copies are
+# the same bytes, and `vocabulary-canon` and `vocabulary-hash` below pin
+# that in both engines -- they cannot drift without a red suite.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+#
+# Every expectation was obtained by the parity probe (AGENTS.md).
+vocabulary-is-served	gens	@"std/system"\np: id(p) & $.std.Port & {}	{"p":{"direction":"in"},"std":{}}
+vocabulary-by-file-name	gens	@"std/system.aon"\np: id(p) & $.std.Port & {}	{"p":{"direction":"in"},"std":{}}
+vocabulary-generates-nothing-of-its-own	gens	@"std/system"	{"std":{}}
+
+# --- Port -------------------------------------------------------------
+#
+# `port-direction-is-not-closed` records the language as it is rather
+# than as the vocabulary would like it: a PREFERRED member makes a
+# disjunction permissive, so `*in | out | inout` supplies a default but
+# does not close the set. A closed set costs the default
+# (`in | out | inout` refuses anything else and generates nothing on its
+# own), and the vocabulary chooses the default. A non-string is still
+# refused, the members all being strings.
+port-default-direction	gens	@"std/system"\np: $.std.Port & {}	{"p":{"direction":"in"},"std":{}}
+port-direction-chosen	gens	@"std/system"\np: $.std.Port & {direction: out}	{"p":{"direction":"out"},"std":{}}
+port-direction-is-not-closed	gens	@"std/system"\np: $.std.Port & {direction: sideways}	{"p":{"direction":"sideways"},"std":{}}
+port-protocol-optional	gens	@"std/system"\np: $.std.Port & {protocol: http}	{"p":{"direction":"in","protocol":"http"},"std":{}}
+
+# --- Component and Service -------------------------------------------
+#
+# Service is written out rather than as `$.std.Component & {kind:
+# service}`: a reference from one member of this file to another does
+# not survive being INCLUDED into a document, so the vocabulary states
+# each schema on its own and `service-is-a-component-shape` pins that
+# the two still meet.
+component-ports-are-ports	gens	@"std/system"\nc: $.std.Component & {ports: {http: {protocol: http}}}	{"c":{"ports":{"http":{"direction":"in","protocol":"http"}}},"std":{}}
+component-ports-take-the-port-default	gens	@"std/system"\nc: $.std.Component & {ports: {http: {direction: out}}}	{"c":{"ports":{"http":{"direction":"out"}}},"std":{}}
+component-without-ports	gens	@"std/system"\nc: $.std.Component & {}	{"c":{},"std":{}}
+service-is-a-component	gens	@"std/system"\ns: $.std.Service & {ports: {http: {}}}	{"s":{"kind":"service","ports":{"http":{"direction":"in"}}},"std":{}}
+service-kind-is-fixed	errc	@"std/system"\ns: $.std.Service & {kind: database}	scalar_value
+
+# --- Relation ---------------------------------------------------------
+#
+# What phase 5 will read: `target` is what the far end must satisfy,
+# `inverse` names the relation that must mirror it, and `acyclic` asks
+# that the edge set have no cycle. The last two are checked AFTER
+# unification, not by it -- they are global and non-monotone, and no
+# lattice citizen may be falsified by more information.
+relation-declared	gens	@"std/system"\nr: $.std.Relation & {target: {kind: service}, inverse: dependedOnBy, acyclic: true}	{"r":{"acyclic":true,"inverse":"dependedOnBy","target":{"kind":"service"}},"std":{}}
+relation-acyclic-defaults-false	gens	@"std/system"\nr: $.std.Relation & {target: {kind: service}}	{"r":{"acyclic":false,"target":{"kind":"service"}},"std":{}}
+relation-inverse-optional	gens	@"std/system"\nr: $.std.Relation & {target: {kind: service}, acyclic: true}	{"r":{"acyclic":true,"target":{"kind":"service"}},"std":{}}
+relation-acyclic-must-be-boolean	errc	@"std/system"\nr: $.std.Relation & {target: {kind: service}, acyclic: yes}	|:empty
+
+# --- The worked example ----------------------------------------------
+#
+# The design's own figure, evaluated: identified services, a typed
+# link-shaped dependency list, and a declared relation over it. The
+# graph row is what phase 5 will consume.
+the-worked-example	gens	@"std/system"\n\nservices: {\n  auth: id(svc/auth) & $.std.Service & {ports: {http: {protocol: http}}}\n  billing: id(svc/billing) & $.std.Service & {dependsOn: [&: refer(), svc/auth]}\n}\nrelations: {\n  dependsOn: $.std.Relation & {target: $.std.Service, inverse: dependedOnBy, acyclic: true}\n}	{"relations":{"dependsOn":{"acyclic":true,"inverse":"dependedOnBy","target":{"kind":"service"}}},"services":{"auth":{"kind":"service","ports":{"http":{"direction":"in","protocol":"http"}}},"billing":{"dependsOn":["svc/auth"],"kind":"service"}},"std":{}}
+the-worked-example-graph	graph	@"std/system"\n\nservices: {\n  auth: id(svc/auth) & $.std.Service & {ports: {http: {protocol: http}}}\n  billing: id(svc/billing) & $.std.Service & {dependsOn: [&: refer(), svc/auth]}\n}	{"entities":[{"id":"svc/auth","paths":["$.services.auth"]},{"id":"svc/billing","paths":["$.services.billing"]}],"edges":[{"from":"svc/billing","key":"dependsOn","to":"svc/auth","at":"$.services.billing.dependsOn.0"}]}
+vocabulary-canon	canon	@"std/system"	{"std":{"Component":{"ports"?:{&:$.std.Port}},"Port":{"direction":*"in"|"out"|"inout","protocol"?:string},"Relation":{"acyclic"?:*false|boolean,"inverse"?:string,"target"?:top},"Service":{"kind":"service","ports"?:{&:$.std.Port}}}}
+vocabulary-hash	hash	@"std/system"	aon1-rI-LzXTNNXmMLQpedeNbdYuMC25N9KCbAWQZRI7-pD4
+relation-target-optional	gens	@"std/system"\nr: $.std.Relation & {acyclic: true}	{"r":{"acyclic":true},"std":{}}
+service-is-a-component-shape	gens	@"std/system"\ns: $.std.Component & $.std.Service & {ports: {http: {}}}	{"s":{"kind":"service","ports":{"http":{"direction":"in"}}},"std":{}}
+port-direction-refuses-a-non-string	errc	@"std/system"\np: $.std.Port & {direction: 1}	|:empty

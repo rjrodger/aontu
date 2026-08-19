@@ -132,6 +132,20 @@ func walkMarkVals(v Val, fn func(Val)) {
 	}
 }
 
+// hasMark reports whether a value or anything under it carries a
+// type/hide mark — the question `refer`'s flow asks before paying for a
+// clone (G4 phase 2): a flow type with no marks needs no clearing, and
+// cloning one anyway moved the site an error names.
+func hasMark(v Val) bool {
+	out := false
+	walkMarkVals(v, func(n Val) {
+		if n.markedType() || n.markedHide() {
+			out = true
+		}
+	})
+	return out
+}
+
 func copyMarks(to, from Val) {
 	to.setMarkType(from.markedType())
 	to.setMarkHide(from.markedHide())

@@ -16,6 +16,7 @@ const multisource_1 = require("@tabnas/multisource");
 const file_1 = require("@tabnas/multisource/resolver/file");
 const pkg_1 = require("@tabnas/multisource/resolver/pkg");
 const mem_1 = require("@tabnas/multisource/resolver/mem");
+const std_1 = require("./std");
 const expr_1 = require("@tabnas/expr");
 const path_1 = require("@tabnas/path");
 const type_1 = require("./type");
@@ -995,6 +996,13 @@ function makeModelResolver(options) {
     // remain available under every capability but 'none' — they are
     // host-provided, not document-requested, so confining them would
     // confine the host against itself.
+    // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts) rides the
+    // memory leg: served from the engine itself, so it needs neither the
+    // filesystem nor package resolution and is available under every
+    // capability but `none` — which denies every include outright, that
+    // being what `none` means. Host entries and the capability's own set
+    // WIN over it: a caller that supplies its own `std/system` gets the
+    // one it supplied.
     let memResolver = (0, mem_1.makeMemResolver)(memCapability
         ? { ...capability.mem }
         : { ...(options.resolver?.mem || {}) });
@@ -1063,6 +1071,18 @@ function makeModelResolver(options) {
         }
         if ('none' === capability) {
             deny(path);
+        }
+        // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts): served from
+        // the engine itself, so it needs neither the filesystem nor package
+        // resolution and is available under every capability but `none` —
+        // checked just above, that being what `none` means. Matched against
+        // the name the author WROTE, before the memory leg, so the kind is
+        // stated rather than guessed from an extension the bare name does
+        // not have.
+        const std = std_1.STD_SOURCES[path];
+        if (null != std) {
+            record(ctx, path, 'std');
+            return { found: true, path, full: path, kind: 'aon', src: std, search: [] };
         }
         let search = [];
         let res = memResolver(path, popts, rule, ctx, jsonic);

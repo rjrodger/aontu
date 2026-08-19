@@ -915,6 +915,59 @@ target: `refer() & string & re("^svc/") & "svc/auth"` checks the
 address itself. They are held until the address arrives, and then meet
 it.
 
+### The `std/system` vocabulary
+
+Ports, components and relations need no syntax — they are schemas, and
+one set of them ships with the engine:
+
+```aon
+@"std/system"
+
+services: {
+  auth: id(svc/auth) & $.std.Service & {
+    ports: { http: { protocol: http } }
+  }
+  billing: id(svc/billing) & $.std.Service & {
+    dependsOn: [&: refer(), svc/auth]
+  }
+}
+relations: {
+  dependsOn: $.std.Relation & {
+    target: $.std.Service, inverse: dependedOnBy, acyclic: true
+  }
+}
+```
+
+| Schema | Says |
+|--------|------|
+| `$.std.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
+| `$.std.Component` | a node with `ports`, each of which is a `Port` |
+| `$.std.Service` | a Component whose `kind` is `service` |
+| `$.std.Relation` | a declared relation: what its `target` must satisfy, the `inverse` that mirrors it, and whether it is `acyclic` |
+
+`@"std/system"` is **bundled with the engine** — no filesystem, no
+package resolution — so it resolves under every include capability
+except `'none'`, which denies every include by definition. It is
+**experimental** until the vocabulary can be versioned by canon-hash.
+
+Two things about it are worth knowing, because they are the language
+rather than the vocabulary:
+
+- **A preferred member does not close a disjunction.** `direction:
+  *in | out | inout` supplies a default, and still admits any other
+  string. Closing the set costs the default (`in | out | inout` refuses
+  anything else, and generates nothing on its own). The vocabulary
+  chooses the default.
+- **`Service` is written out rather than as `$.std.Component & {kind:
+  service}`.** A reference from one member of an included file to
+  another does not survive the include, so each schema states itself;
+  `$.std.Component & $.std.Service` still meets exactly as you would
+  expect.
+
+Everything here is ordinary unification, so an author who wants a
+different vocabulary writes one the same way — and nothing in the
+language knows these names.
+
 ## Marks: `type` and `hide`
 
 Marks are boolean flags carried on a value (set by `type()` / `hide()`,

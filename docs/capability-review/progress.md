@@ -89,30 +89,30 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **74 `.tsv` files, 73
-   row-bearing, 2,804 rows**, in seventeen modes — `canon` 686, `gen`
-   539, `errc` 455, `gens` 364, `err` 240, `subsume` 94, `query` 92,
-   `errcode` 88, `vet` 53, `why` 43, `hcanon` 43, `diff` 28,
-   `graph` 27, `patch` 23, `trim` 11, `hash` 11, `agentsmd` 7.
+   register's last update the suite is **75 `.tsv` files, 74
+   row-bearing, 2,829 rows**, in seventeen modes — `canon` 687, `gen`
+   539, `errc` 458, `gens` 383, `err` 240, `subsume` 94, `query` 92,
+   `errcode` 88, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
+   `diff` 28, `patch` 23, `hash` 12, `trim` 11, `agentsmd` 7.
    Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Forty of forty-nine phases have moved; thirty-eight of those are complete.
+Forty-one of forty-nine phases have moved; thirty-nine of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
 | [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
-| [G4](g4-identity-relations.md) | Identity, relations | C | 4 | 0 | 2 |
+| [G4](g4-identity-relations.md) | Identity, relations | C | 5 | 0 | 1 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **38** | **2** | **9** |
+| | | **total** | **39** | **2** | **8** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -376,7 +376,7 @@ the doc's one-yardstick text would be wrong.
 | **1** — `id()` | M | **LANDED** | `ts/src/val/IdFuncVal.ts` and the `"id"` arm of `go/func.go`; the `entity` slot on the carriers (`ts/src/val/Val.ts`, `go/val.go`) with the rider in `unite` in both ports; the registry on the unify root context (`ts/src/unify.ts` `entities`, `go/ctx.go`) and the per-pass `mergeEntities` walk (`go/identity.go`); canon through `canonRiders` (renamed from `canonDeprecation`, now rendering both riders) and the hash form through `hcanon`; clearing rules in `RefVal`/`CopyFuncVal` (TS) and `ref.go`/`func.go` via `walkClearEntity` (Go), and rule 3 at bag construction in both. `id` added to the arity tables, the LSP completion list, and both published grammars. **Departures:** see below. |
 | **2** — `refer()` | M | **LANDED** | `ts/src/val/ReferFuncVal.ts` (the `ReferFuncVal` call and the `ReferVal` residual it resolves to) and `go/refer.go`; the address grammar shared with the id grammar; the registry lookup, the constraint FLOW into the target and every position of its entity, and the last-pass existence decision; the residual added to `unite`'s driver list in both ports, and to the arity tables, the LSP completion list and both published grammars (where `refer` must be listed BEFORE `re`, the name set being an ordered choice). Codes `refer_address` and `refer_unresolved` in `errcodes.tsv`. Spec: `test/spec/refer.tsv` (52 rows). Docs: "Entity references" in [`docs/reference-language.md`](../reference-language.md#entity-references-refert). **Departures:** see below. |
 | **3** — derived structures | S | **LANDED** | `ts/src/graph.ts` and `go/graph.go`: the ENTITY INDEX (id → every tree path that holds it) and the EDGE SET (one entry per checked link: the entity it sits inside, the relation key, the address, and where it is written). Exposed as `result.graph` and the pure `graphOf(val)` in TypeScript and as `Aontu.Graph` in Go — each port following its own `deps` precedent — and documented in [`docs/reference-api.md`](../reference-api.md). A seventeenth spec mode, `graph`, carries the goldens (`test/spec/graph.tsv`, 27 rows); both runners re-derive on a fresh engine and require the same bytes, so DETERMINISM is asserted as a property rather than claimed. **Departures:** see below. |
-| **4** — `std/system` vocabulary | M | **NOT STARTED** |  |
+| **4** — `std/system` vocabulary | M | **LANDED** | `Port`, `Component`, `Service` and `Relation` as ordinary schemas, BUNDLED with the engine (`ts/src/std.ts`, `go/std.go` — the same bytes, pinned by `vocabulary-canon` and `vocabulary-hash` so the copies cannot drift) and served for `@"std/system"` from a leg ahead of the memory resolver in both ports, under every include capability but `none`. Manifest capability `std`; documented in [`docs/reference-language.md`](../reference-language.md#the-stdsystem-vocabulary), [`docs/reference-api.md`](../reference-api.md) and [`docs/trust.md`](../trust.md) (why a bundled source widens nothing). Spec: `test/spec/std-system.tsv` (23 rows), including the design's worked example and its graph. **Departures:** see below. |
 | **5** — relation graph checks | L | **NOT STARTED** |  |
 
 Phase 5 has a host now — `vet` exists (G2) — but no G4 artifact
@@ -512,6 +512,50 @@ beyond phases 0 and 1.
    link inside a list is an edge under its relation rather than under
    its index. A link outside every entity has an empty `from`; a link
    that IS an entity has an empty `key`. Both are pinned.
+
+**Departures recorded by G4.4.**
+
+1. **No `Connection`.** The design's sketch has
+   `Connection: type({from: refer($.std.Port), …})`, and it is not
+   expressible today: `type(x)` resolves only once `x` is done, and a
+   `refer()` with no address is deliberately NOT done — it exists to
+   check an address and the pass loop must keep offering it the
+   chance. Making it done as a constraint (like `string` or `min(1)`)
+   does make the schema resolve, and was tried: it then lets the whole
+   tree go done before an ADDRESSED refer has settled, so the pass loop
+   exits and the link fails at generation with the bag's generic code
+   instead of `refer_unresolved` — in Go but not TypeScript. A
+   `Connection` needs the pass loop to know the difference between
+   "this constraint is complete" and "this value is settled"; that is
+   real engine work and it is not in this phase.
+2. **`Service` is written out, not `$.std.Component & {kind:
+   service}`.** A reference from one member of an INCLUDED file to
+   another does not survive the include in TypeScript: the referring
+   member comes back marked and silently stops generating. Inline, the
+   same text works in both ports. Each schema therefore states itself,
+   and `service-is-a-component-shape` pins that the two still meet.
+   The underlying include/marks interaction is pre-existing and not
+   G4's.
+3. **`std` generates as an empty map.** The sketch wraps the block in
+   `hide()`. Under `hide`, a func whose arguments are references
+   FREEZES unresolved (the documented marked-func freeze), so every
+   schema mentioning `$.std.Port` stops resolving. The members carry
+   their own `type()` marks and so generate nothing; only the empty
+   container remains.
+4. **`target` is optional and a preferred member does not close a
+   disjunction.** `target: top` as a required field can never generate
+   — `top` is not concrete — so it is `target?: top`. And
+   `direction: *in | out | inout` supplies a default while still
+   admitting any string: closing the set costs the default. Both are
+   the language rather than the vocabulary, both are pinned, and the
+   reference documentation says so where an author will meet them.
+5. **A defect in G4.2's flow, found here.** `refer(t)` unified `t` into
+   its target WITH its marks, so `refer($.std.Service)` made the target
+   a type() — and the target silently stopped generating. The flow is
+   now cleared of type/hide marks, on a COPY (a `t` is shared by every
+   position that refers to the same thing) and only when there are
+   marks to clear, because cloning an unmarked type moved the site an
+   error names.
 
 **The funcMap note, now answered.** The doc said the two new builtins
 "join `funcMap`"; G1's atoms did not, routing through
