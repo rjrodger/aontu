@@ -5,6 +5,18 @@ declare function evalSource(aontu: Aontu, src: string, mode: Mode): {
     ok: boolean;
     text: string;
 };
+export type ReplState = {
+    mode: Mode;
+    jsonl: boolean;
+    name?: string;
+    src?: string;
+};
+export type ReplAnswer = {
+    close: boolean;
+    out: string;
+    state: ReplState;
+};
+export declare function replCommand(state: ReplState, line: string, read: (file: string) => string): ReplAnswer;
 declare function watchSignature(files: string[]): string;
 declare function watchChange(files: string[], before: string, pollMs: number): Promise<boolean>;
 type VetWaiter = (files: string[], before: string) => Promise<boolean>;

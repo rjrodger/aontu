@@ -624,6 +624,68 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', Path.join(f.dir, 'missing.aon')]), 2));
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--help']), 0)).out.includes('aontu trim'), true);
     });
+    // G7 phase 7: the REPL as an inspection tool. The command handler
+    // is a pure function of (state, line), so every answer the session
+    // gives is as checkable as the CLI's.
+    (0, node_test_1.test)('repl-loads-a-document-and-answers-about-it', () => {
+        const doc = 'services: {\n  &: { replicas: *1 | integer }\n' +
+            '  auth: { replicas: 3 }\n}';
+        const read = (f) => {
+            if ('missing.aon' === f) {
+                throw Object.assign(new Error('no such file'), { code: 'ENOENT' });
+            }
+            return doc;
+        };
+        let st = { mode: 'json', jsonl: false };
+        const run = (line) => {
+            const r = (0, cli_1.replCommand)(st, line, read);
+            st = r.state;
+            return r;
+        };
+        // Nothing loaded yet: the inspection commands say so rather than
+        // guessing.
+        Assert.match(run(':get $.a').out, /nothing loaded/);
+        Assert.match(run(':why $.a').out, /nothing loaded/);
+        Assert.match(run(':load sys.aon').out, /^loaded: sys\.aon/);
+        Assert.equal(run(':keys $.services').out, 'auth');
+        Assert.equal(run(':get $.services.auth').out, '{\n  "replicas": 3\n}');
+        Assert.match(run(':why $.services.auth.replicas').out, /\*1\|integer.*\(spread\)/);
+        // The `:canon` toggle reaches the query surface too.
+        run(':canon');
+        Assert.equal(run(':get $.services.auth').out, '{"replicas":3}');
+        // A path that names nothing is a refusal, not an answer.
+        Assert.match(run(':get $.nope').out, /no_path/);
+        Assert.match(run(':why $.nope').out, /no_path/);
+        // And the session's own commands still work.
+        Assert.equal(run('').out, '');
+        Assert.match(run(':help').out, /Usage: aontu/);
+        Assert.match(run(':bogus').out, /unknown command/);
+        Assert.match(run(':load').out, /needs a file/);
+        Assert.match(run(':load missing.aon').out, /cannot read/);
+        // A document that does not stand up is refused at :load, and
+        // nothing is held: the session keeps whatever it had.
+        const broken = (0, cli_1.replCommand)({ mode: 'json', jsonl: false }, ':load broken.aon', () => 'a:1 a:2');
+        Assert.equal(broken.state.src, undefined);
+        Assert.match(broken.out, /Cannot unify/);
+        Assert.equal(run('a:1').out, '{"a":1}');
+        Assert.equal(run(':quit').close, true);
+        Assert.equal(run(':exit').close, true);
+    });
+    // The SESSION protocol: one JSON line per answer, so a harness can
+    // drive the REPL. Human-readable output stays the default.
+    (0, node_test_1.test)('repl-jsonl-answers-in-one-line', () => {
+        const read = () => 'a: 1';
+        let st = { mode: 'json', jsonl: true };
+        const run = (line) => {
+            const r = (0, cli_1.replCommand)(st, line, read);
+            st = r.state;
+            return JSON.parse(r.out);
+        };
+        Assert.deepEqual(run(':load doc.aon'), { ok: true, out: 'loaded: doc.aon\n{\n  "a": 1\n}' });
+        Assert.deepEqual(run(':keys'), { ok: true, out: 'a' });
+        Assert.equal(run(':get $.zz').ok, false);
+        Assert.equal(run('a:1 a:2').ok, false);
+    });
     // G7 phase 6: the generated AGENTS.md stanza. The stanza itself is
     // pinned byte for byte by test/spec/agentsmd.tsv in both ports;
     // these cases hold the command line and the SPLICE.

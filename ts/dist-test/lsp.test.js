@@ -346,4 +346,83 @@ const lsp_server_1 = require("../dist/lsp-server");
         Assert.equal(d.filter((x) => 'deprecated' === x.code).length, 0);
     });
 });
+(0, node_test_1.describe)('lsp-hover-provenance', () => {
+    // HOVER PROVENANCE (G7 phase 7) is config-gated and off by default:
+    // the contributions that met at the hovered path, appended to the
+    // value's own hover. The markdown is byte-identical to the Go
+    // port's, which was diffed before this was written.
+    (0, node_test_1.test)('hover-provenance-is-off-until-asked-for', () => {
+        const src = 'services: {\n  &: { replicas: *1 | integer }\n' +
+            '  auth: { replicas: 3 }\n}';
+        const pos = { line: 2, character: 20 };
+        const off = (0, lsp_1.computeHover)(src, pos);
+        Assert.doesNotMatch(off.contents.value, /Contributions/);
+        const on = (0, lsp_1.computeHover)(src, pos, true);
+        Assert.match(on.contents.value, /Contributions:/);
+        Assert.match(on.contents.value, /`\*1\|integer` — spread \(2:18\)/);
+        Assert.match(on.contents.value, /`3` — literal \(3:21\)/);
+        // A value with NO path — the whole document — has no
+        // contributions to name, and the hover is unchanged rather than
+        // decorated with an empty section.
+        const bare = (0, lsp_1.computeHover)('42', { line: 0, character: 1 }, true);
+        Assert.doesNotMatch(bare.contents.value, /Contributions/);
+        // A document with an error ELSEWHERE still hovers, while `why`
+        // refuses it: the hover keeps its value and gains no section.
+        const broken = (0, lsp_1.computeHover)('a: 1\nb: 2 & "x"', { line: 0, character: 3 }, true);
+        Assert.match(broken.contents.value, /1/);
+        Assert.doesNotMatch(broken.contents.value, /Contributions/);
+    });
+    // The two shapes the record allows and no hover produces: a
+    // contribution with no site, and one whose site names a file.
+    (0, node_test_1.test)('contributions-markdown-renders-every-site-shape', () => {
+        Assert.equal((0, lsp_1.contributionsMarkdown)([]), '');
+        Assert.equal((0, lsp_1.contributionsMarkdown)([
+            { canon: '1', role: 'literal', site: { col: -1, file: '', row: -1 } },
+            { canon: 'integer', role: 'spread', site: { col: 3, file: 'x.aon', row: 2 } },
+        ]), '\n\n---\n\nContributions:\n' +
+            '- `1` — literal\n- `integer` — spread (x.aon:2:3)');
+    });
+    // The opt-in reaches the handler through initialize.
+    (0, node_test_1.test)('the-handler-reads-the-opt-in', () => {
+        const on = new lsp_1.LspHandler();
+        on.handle({
+            jsonrpc: '2.0', id: 1, method: 'initialize',
+            params: { initializationOptions: { aontu: { provenance: true } } },
+        });
+        on.handle({
+            jsonrpc: '2.0', method: 'textDocument/didOpen',
+            params: {
+                textDocument: {
+                    uri: 'file:///p.aon', text: 'a: 1\na: integer', version: 1,
+                },
+            },
+        });
+        const hover = on.handle({
+            jsonrpc: '2.0', id: 2, method: 'textDocument/hover',
+            params: {
+                textDocument: { uri: 'file:///p.aon' },
+                position: { line: 0, character: 3 },
+            },
+        })[0];
+        Assert.match(hover.result.contents.value, /Contributions:/);
+        const off = new lsp_1.LspHandler();
+        off.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+        off.handle({
+            jsonrpc: '2.0', method: 'textDocument/didOpen',
+            params: {
+                textDocument: {
+                    uri: 'file:///p.aon', text: 'a: 1\na: integer', version: 1,
+                },
+            },
+        });
+        const plain = off.handle({
+            jsonrpc: '2.0', id: 2, method: 'textDocument/hover',
+            params: {
+                textDocument: { uri: 'file:///p.aon' },
+                position: { line: 0, character: 3 },
+            },
+        })[0];
+        Assert.doesNotMatch(plain.result.contents.value, /Contributions/);
+    });
+});
 //# sourceMappingURL=lsp.test.js.map

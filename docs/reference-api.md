@@ -460,9 +460,24 @@ optimisation.
 | Command | Effect |
 |---------|--------|
 | `:help` | show help |
+| `:load <file>` | evaluate a document and hold it for the commands below |
+| `:get [path]` | what the held document says at a path |
+| `:keys [path]` | the keys at a path of the held document |
+| `:why <path>` | every contribution to the value at a path |
 | `:canon` | switch to canonical-form output |
 | `:json` | switch to JSON output |
 | `:quit`, `:exit` | leave (or press Ctrl-D) |
+
+`:load` holds the document's **source**, not its evaluated tree —
+parsed trees are single-use — so every later question re-evaluates
+from the text. `:get` and `:keys` are the [query](#aontu-get) surface
+and `:why` is the [provenance](#aontu-why) surface, answering about
+the held document.
+
+**`--jsonl` makes the session machine-drivable**: no banner, no
+prompt, and every command answers as one JSON line
+(`{"ok":true,"out":"…"}`), so a harness can drive the REPL the way it
+drives the CLI. Human-readable output stays the default.
 
 ```
 $ aontu
@@ -534,6 +549,21 @@ stub, a one-page grammar card, a JSON-first example ladder, and the
 error-code index for repair loops. Every example document in the
 ladder is evaluated by `ts/test/skill.test.ts`, so a skill that
 teaches something the engine no longer does fails the build.
+
+### LSP hover provenance
+
+The language server can append a value's **contributions** to its
+hover — what met at that path, in source order, with each site — the
+same record [`aontu why`](#aontu-why) prints. It is off unless an
+editor asks for it:
+
+```json
+{ "initializationOptions": { "aontu": { "provenance": true } } }
+```
+
+Hover already re-unifies the document per request, so an editor that
+asks for this pays a second, instrumented evaluation knowingly, and
+one that does not pays nothing. Diagnostics are unchanged either way.
 
 **Getting the command**
 

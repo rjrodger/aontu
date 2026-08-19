@@ -58,6 +58,7 @@ query between a document and its own earlier versions.
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
+  --jsonl         REPL: answer every command as one JSON line
   -v, --version   Print the version and exit
   --trust <t>     Include capability: system (default), none, or
                   root[:dir] to confine @"..." below a directory
@@ -159,6 +160,10 @@ stand up on its own.
 
 REPL commands:
   :help           Show REPL help
+  :load <file>    Evaluate a document and hold it for the commands below
+  :get [path]     What the held document says at a path
+  :keys [path]    The keys at a path of the held document
+  :why <path>     Every contribution to the value at a path
   :canon          Switch to canonical-form output
   :json           Switch to JSON output
   :quit, :exit    Exit the REPL (or press Ctrl-D)
@@ -289,41 +294,161 @@ function runStdin(mode: Mode, trust: TrustArg): Promise<number> {
 }
 
 
-function runRepl(initialMode: Mode): void {
-  let mode = initialMode
-  const aontu = new Aontu()
+// THE REPL AS AN INSPECTION TOOL (G7 phase 7): `:load` holds a
+// document, and `:get`, `:keys` and `:why` ask the query and
+// provenance surfaces about it, so the session is a place to
+// INTERROGATE a definition rather than only to evaluate snippets.
+//
+// The command handler is a PURE FUNCTION of (state, line): a readline
+// loop is untestable, and every answer this REPL gives has to be as
+// checkable as the CLI's. File reading is injected for the same
+// reason.
+export type ReplState = {
+  // How a value renders: the `:canon` / `:json` toggle.
+  mode: Mode
+  // The SESSION protocol: one JSON line per answer, for a harness
+  // driving the REPL. Human-readable output stays the default.
+  jsonl: boolean
+  name?: string
+  src?: string
+}
+
+export type ReplAnswer = {
+  close: boolean
+  out: string
+  state: ReplState
+}
+
+
+// The loaded document, or the answer to give when there is none.
+function replLoaded(state: ReplState): string | undefined {
+  return state.src
+}
+
+
+export function replCommand(
+  state: ReplState,
+  line: string,
+  read: (file: string) => string,
+): ReplAnswer {
+  const s = line.trim()
+  const answer = (out: string, next?: Partial<ReplState>): ReplAnswer => {
+    const st = { ...state, ...(next ?? {}) }
+    return {
+      close: false,
+      out: st.jsonl ? exactJSON({ ok: true, out }) : out,
+      state: st,
+    }
+  }
+  const refuse = (out: string): ReplAnswer => ({
+    close: false,
+    out: state.jsonl ? exactJSON({ ok: false, out }) : out,
+    state,
+  })
+
+  if ('' === s) {
+    return { close: false, out: '', state }
+  }
+
+  if (!s.startsWith(':')) {
+    const res = evalSource(new Aontu(), s, state.mode)
+    return res.ok ? answer(res.text) : refuse(res.text)
+  }
+
+  const sp = s.indexOf(' ')
+  const cmd = sp < 0 ? s : s.slice(0, sp)
+  const arg = sp < 0 ? '' : s.slice(sp + 1).trim()
+
+  switch (cmd) {
+    case ':help':
+      // Trimmed: the loop adds the newline, and the Go REPL answers
+      // the same string — a help text that differed by a blank line
+      // between the ports would be a parity diff in the one output
+      // every user sees first.
+      return answer(HELP.replace(/\n$/, ''))
+
+    case ':canon':
+      return answer('canon output', { mode: 'canon' })
+
+    case ':json':
+      return answer('json output', { mode: 'json' })
+
+    case ':quit':
+    case ':exit':
+      return { close: true, out: '', state }
+
+    case ':load': {
+      if ('' === arg) {
+        return refuse(':load needs a file')
+      }
+      let src: string
+      try {
+        src = read(arg)
+      }
+      catch (err: any) {
+        return refuse(`cannot read ${arg}: ${err.message}`)
+      }
+      // Evaluated ONCE, and what is held is the source: parsed trees
+      // are single-use, so every later question re-evaluates from the
+      // text rather than reusing a tree that has already been spent.
+      const res = evalSource(new Aontu({ path: arg }), src, state.mode)
+      return res.ok
+        ? answer(`loaded: ${arg}\n${res.text}`, { name: arg, src })
+        : refuse(res.text)
+    }
+
+    case ':get':
+    case ':keys':
+    case ':why': {
+      const src = replLoaded(state)
+      if (null == src) {
+        return refuse('nothing loaded (try :load <file>)')
+      }
+      const path = '' === arg ? '$' : arg
+      if (':why' === cmd) {
+        const report = why(src, path, { path: state.name })
+        return report.ok
+          ? answer(renderWhyText(report.record as WhyRecord))
+          : refuse(report.findings.map(renderFinding).join('\n'))
+      }
+      const view: QueryView = ':keys' === cmd
+        ? 'keys' : 'canon' === state.mode ? 'canon' : 'json'
+      const report = get(src, path, { view, path: state.name })
+      return report.ok
+        ? answer(report.out)
+        : refuse(report.findings.map(renderFinding).join('\n'))
+    }
+
+    default:
+      return refuse(`unknown command: ${s} (try :help)`)
+  }
+}
+
+
+function runRepl(initialMode: Mode, jsonl: boolean): void {
+  let state: ReplState = { mode: initialMode, jsonl }
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: 'aontu> ',
+    prompt: jsonl ? '' : 'aontu> ',
   })
 
-  process.stdout.write(
-    `Aontu v${version()} REPL — :help for commands, :quit to exit\n`)
+  if (!jsonl) {
+    process.stdout.write(
+      `Aontu v${version()} REPL — :help for commands, :quit to exit\n`)
+  }
   rl.prompt()
 
   rl.on('line', (line) => {
-    const s = line.trim()
-
-    if ('' === s) {
-      rl.prompt()
+    const res = replCommand(state, line, (f) => readFileSync(f, 'utf8'))
+    state = res.state
+    if (res.close) {
+      rl.close()
       return
     }
-
-    if (s.startsWith(':')) {
-      switch (s) {
-        case ':help': process.stdout.write(HELP); break
-        case ':canon': mode = 'canon'; process.stdout.write('canon output\n'); break
-        case ':json': mode = 'json'; process.stdout.write('json output\n'); break
-        case ':quit': case ':exit': rl.close(); return
-        default: process.stdout.write(`unknown command: ${s} (try :help)\n`)
-      }
-      rl.prompt()
-      return
+    if ('' !== res.out) {
+      process.stdout.write(res.out + '\n')
     }
-
-    const res = evalSource(aontu, s, mode)
-    process.stdout.write(res.text + '\n')
     rl.prompt()
   })
 
@@ -1785,6 +1910,11 @@ function main(argv: string[]): void {
   let mode: Mode = 'json'
   let file: string | undefined
   let trust: TrustArg = { kind: 'system-warn' }
+  // The REPL's SESSION protocol (G7 phase 7): one JSON line per
+  // answer, so a harness can drive the session. Named --jsonl rather
+  // than the design's --json, which would read as the `:json` output
+  // mode the REPL already has.
+  let jsonl = false
 
   // Subcommand dispatch, and deliberately only for a FIRST argument:
   // `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
@@ -1851,6 +1981,9 @@ function main(argv: string[]): void {
       }
       trust = parsed
     }
+    else if ('--jsonl' === arg) {
+      jsonl = true
+    }
     else if ('--include-root' === arg) {
       const dir = args[++i]
       if (null == dir) {
@@ -1872,7 +2005,7 @@ function main(argv: string[]): void {
     finish(runFile(file, mode, trust))
   }
   else if (process.stdin.isTTY) {
-    runRepl(mode)
+    runRepl(mode, jsonl)
   }
   else {
     runStdin(mode, trust).then((code) => finish(code))

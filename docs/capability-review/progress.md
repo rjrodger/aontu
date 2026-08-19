@@ -99,7 +99,7 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Thirty-five of forty-nine phases have moved; thirty-three of those are complete.
+Thirty-six of forty-nine phases have moved; thirty-four of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
@@ -109,9 +109,9 @@ Thirty-five of forty-nine phases have moved; thirty-three of those are complete.
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
-| [G7](g7-machine-access.md) | Machine access | B | 6 | 0 | 1 |
+| [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **33** | **2** | **14** |
+| | | **total** | **34** | **2** | **13** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -159,8 +159,10 @@ Against the review's own [sequencing](index.md#sequencing):
   an MCP server over the same contracts the CLI prints, a path-
   addressed `diff`, a published grammar the suite's own canon corpus
   is run against, a generated AGENTS.md stanza, and a skill whose
-  examples are executed. Only the REPL inspection mode is still
-  ahead.
+  examples are executed. **G7 is complete** (G7.7): the REPL loads a
+  document and answers `:get`, `:keys` and `:why` about it, `--jsonl`
+  makes the session machine-drivable, and LSP hover can carry the
+  provenance record behind a config gate.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
 
 One structural note the sequencing table itself makes: G7's query/MCP
@@ -446,13 +448,13 @@ parse-level canon.
 | **4** — `why`, Go port | L | **LANDED** | `go/provenance.go` and `(*Aontu).Why` in `go/query.go`, plus `go/cmd/aontu/why.go`; the recorder hangs off `Ctx.prov` and hooks the `unite` wrapper that already carries G3's deprecation rider. Both runners execute every `why.tsv` row with no skip list, expectations parity-probed (39 cases diffed field by field, records and refusals) before any row was written. `go/provenance_test.go` holds the ordering's last tiebreaks and the entry-file/trust wiring; the two CLIs diffed byte-identical over an 11-case corpus — the version series and the host's file-error wording excepted. **What the probe cost the engine:** three shapes where a value was never met at all (a lone leaf, a nested leaf, a ref target) recorded nothing in TypeScript and one contribution in Go, because the TS bags SKIP the identity meet as an optimisation; the skip now yields while recording, so both ports see the same meets. Go additionally stamps the entry document's file name (`stampURL`, vet's precedent) — the TypeScript side gets it from the parse `path` option — so a site names its file in both. **Observed, not fixed:** Go has no per-Val id, so the recorder keys on pointer identity, which says the same thing. |
 | **5** — overlay `set` | M | **LANDED** | `ts/src/patch.ts` (`patch`, exported from `ts/src/aontu.ts`) and `go/patch.go` (`aontu.Patch`), with `aontu set <path>=<value>... --entry <file> --overlay <file> [--dry-run] [--format text\|json]` in both CLIs: an assignment becomes a path-flattened conjunct (`$.a.b=1` → `"a": "b": 1`, keys quoted so a segment may be a keyword, a number, or hold a space) appended to the overlay, and the verdict is G2's, unchanged — `vet(entry, overlay)` already asks exactly the right question, so the verb adds a writer, not a report. Exit codes are vet's verdict classes. `test/spec/patch.tsv` — 23 rows, parity-probed; `patch_assignment` registered in errcodes.tsv (class `parse`: what is malformed is source text). **The order-independence the whole verb rests on is ASSERTED, not claimed**: every row that stands up additionally runs the vet the other way round in both runners and requires the same verdict. **Departures:** (1) the engine returns the overlay TEXT and the CLI writes it — an engine that touched the filesystem could not be used by a server, and the CLI is the one place that knows about files. (2) The overlay is written ONLY when the change holds: an `invalid` or `error` verdict leaves the file exactly as it was, because a change the author still has to think about should not sit in their configuration while they do (the design said "appends, then re-evaluates"; on a refusal that would leave a broken overlay behind and the exit code is the only thing saying so). `--dry-run` writes nothing either way. (3) A missing overlay file is the empty overlay and is created, so "append to the overlay" does not require having made one first. (4) The entry and overlay file names ride as vet URLs as well as base paths, so a finding names the two files rather than the generic `schema`/`data` labels. **Stage 2 — the format-preserving in-place edit — is NOT started and is what other gap documents defer "applying a fix" to**; it needs a comment-and-layout-preserving CST the parser stack does not have. |
 | **6** — delivery: MCP server, grammar, skill, `agentsmd` | M | **LANDED** | Four deliverables. **The MCP server**: `ts/src/mcp.ts` (tools and protocol, transport-free) and `ts/src/mcp-server.ts` (NDJSON stdio), published as the `aontu-mcp` bin — the LSP's three-layer split. Six tools — `vet`, `get`, `why`, `diff`, `canon`, `summary` — each returning the SAME JSON contract the CLI prints; a tool that REFUSES answers with its own report and `isError: false`, which is reserved for a call that could not be made. Served evaluation is confined to no includes at all (G5). **`diff`**: `ts/src/diff.ts` and `go/diff.go`, path-addressed, with `test/spec/diff.tsv` (28 rows) asserting SYMMETRY in both runners. **The published grammar**: `grammar/aontu.gbnf` and `grammar/aontu.lark`, and `ts/test/grammar.test.ts`, which READS the gbnf file, interprets it as an ordered-choice PEG, and requires it to accept every canonical-form output in the shared suite (673 rows) while refusing the include directive and the over-approximations. **`aontu agentsmd`** in both CLIs, over `agentsMd`/`(*Aontu).AgentsMd`, with `test/spec/agentsmd.tsv` pinning the stanza BYTE FOR BYTE across ports; `--write` splices between markers and leaves the rest of the file alone. **The skill**: `docs/skill/` — trigger stub, grammar card, JSON-first example ladder, error-code index — with `ts/test/skill.test.ts` evaluating every example document, so a skill that teaches what the engine no longer does fails the build. **Departures:** (1) `diff` compares the HASH FORM, not the plain canon: canon drops closedness and the marks, so a canon diff would call `close({a:1})` and `{a:1}` identical, and a bag's own attributes diff at the `&`, `&closed`, `&type` and `&hide` pseudo-keys. G6 landing first is what made that available. (2) MCP RESOURCES are not implemented; the progressive disclosure the design wanted from them is the `summary` TOOL plus `get`, which is the same disclosure without a second protocol surface to keep in parity. (3) `diff` and `agentsMd` are in BOTH ports with shared rows, though only TypeScript serves MCP — behaviour belongs to the spec suite (ADR-001), and the Go API is what a gateway embeds. (4) The grammar's parity test interprets the gbnf file rather than shelling out to lark or llama.cpp: the discipline the design asked for, without a toolchain the CI does not have. |
-| **7** — REPL inspection mode and hover-provenance | S | **NOT STARTED** |
+| **7** — REPL inspection mode and hover-provenance | S | **LANDED** | The REPL gains `:load`, `:get`, `:keys` and `:why` in BOTH ports, over the query and provenance surfaces, plus a `--jsonl` session mode with no banner, no prompt and one JSON line per answer. The command handler is a PURE FUNCTION of (state, line) in both ports (`replCommand`, `ts/src/cli.ts` and `go/cmd/aontu/repl.go`) with file reading injected: a read loop is untestable, and every answer this REPL gives has to be as checkable as the CLI's. The two handlers were diffed line by line over a 24-line scripted session, in both output modes, before either was tested. **Hover provenance** in both language servers (`ts/src/lsp.ts`, `go/lsp/lsp.go`), config-gated by `initializationOptions.aontu.provenance` and off by default; `ValueSpan` gained the path the record is keyed by, and the markdown was diffed byte for byte. Diagnostics are unchanged. **Departures:** (1) the session flag is `--jsonl`, not the design's `--json`, which would read as the `:json` output mode the REPL already has. (2) `:load` holds the SOURCE, not the rendered document: every later question re-evaluates, which is what single-use trees require, and holding both texts would have made `:get`'s view flags answer from the wrong one. (3) Hover provenance costs a SECOND evaluation rather than instrumenting the hover's own: the recorder needs the parsed tree stamped before the fixpoint, which hover's evaluation has already passed by the time a candidate is chosen. It is gated for exactly that reason. |
 
-Phase 7 has no artifacts yet: the REPL has no `:load`, `:get`, `:why`
-or `--json` session mode, and LSP hover carries no provenance. Neither
-does G7.5's STAGE 2, the format-preserving in-place edit, which is
-what [G2](g2-validation-verb.md) and
-[G3](g3-subsumption-evolution.md) defer "applying a fix" to. The design's load-bearing premises for them were
+What remains of G7 is G7.5's STAGE 2, the format-preserving in-place
+edit, which is what [G2](g2-validation-verb.md) and
+[G3](g3-subsumption-evolution.md) defer "applying a fix" to. It is
+not a phase of this plan — phase 5 names it as deferred — and it needs
+a comment-and-layout-preserving CST the parser stack does not have. The design's load-bearing premises for them were
 re-verified and all still hold — `maxcc = 9`, the `DisjunctVal.gen`
 fold defect, and per-request re-unification in hover, which is what
 would make LSP hover-provenance a config-gated increment rather than a

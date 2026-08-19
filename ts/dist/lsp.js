@@ -2,6 +2,7 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.COMPLETION_KEYWORD = exports.COMPLETION_FUNCTION = exports.SEVERITY_HINT = exports.SEVERITY_INFORMATION = exports.SEVERITY_WARNING = exports.SEVERITY_ERROR = exports.BUILTIN_FUNCS = exports.LSP_VERSION = exports.LspHandler = void 0;
+exports.contributionsMarkdown = contributionsMarkdown;
 exports.computeDiagnostics = computeDiagnostics;
 exports.computeHover = computeHover;
 exports.computeCompletions = computeCompletions;
@@ -9,6 +10,7 @@ const aontu_1 = require("./aontu");
 const err_1 = require("./err");
 const walk_1 = require("./walk");
 const utility_1 = require("./utility");
+const query_1 = require("./query");
 // LSP DiagnosticSeverity subset.
 const SEVERITY_ERROR = 1;
 exports.SEVERITY_ERROR = SEVERITY_ERROR;
@@ -180,7 +182,35 @@ function publishDiagnosticsMsg(uri, diagnostics) {
 // the position is not over a value with a known source location. Because
 // hover reads the *unified* tree, a literal shows its resolved value and
 // kind (e.g. a reference target resolves to the value it points at).
-function computeHover(src, position) {
+// HOVER PROVENANCE (G7 phase 7) is CONFIG-GATED and off by default:
+// the contributions that met at the hovered path, appended to the
+// value's own hover. Hover already re-unifies the whole document per
+// request, so an editor that asks for this pays a second instrumented
+// evaluation knowingly, and one that does not pays nothing.
+function provenanceMarkdown(src, path) {
+    if (0 === path.length) {
+        return '';
+    }
+    // A document with an error ELSEWHERE still hovers — the tree the
+    // hover walked is there — while `why` refuses it, so the record may
+    // be absent for a value the cursor is sitting on.
+    const report = (0, query_1.why)(src, '$.' + path.join('.'));
+    return contributionsMarkdown(report.record?.conjuncts ?? []);
+}
+// The contributions as hover markdown. Exported for the direct test
+// (ADR-002): a siteless contribution and a named file are both shapes
+// the record allows and no hover produces, hover evaluating one
+// unnamed document.
+function contributionsMarkdown(conjuncts) {
+    if (0 === conjuncts.length) {
+        return '';
+    }
+    return '\n\n---\n\nContributions:\n' + conjuncts.map((c) => '- `' + c.canon + '` — ' + c.role +
+        (0 > c.site.row ? '' : ' (' +
+            ('' === c.site.file ? '' : c.site.file + ':') +
+            c.site.row + ':' + c.site.col + ')')).join('\n');
+}
+function computeHover(src, position, provenance) {
     let root;
     try {
         root = new aontu_1.Aontu().unify(src, { collect: true });
@@ -202,7 +232,11 @@ function computeHover(src, position) {
     if (null == best)
         return null;
     return {
-        contents: { kind: 'markdown', value: hoverMarkdown(best.val) },
+        contents: {
+            kind: 'markdown',
+            value: hoverMarkdown(best.val) +
+                (true === provenance ? provenanceMarkdown(src, best.val.path) : ''),
+        },
         range: {
             start: { line: best.line, character: best.start },
             end: { line: best.line, character: best.end },
@@ -341,6 +375,10 @@ class LspHandler {
         // no workspace root and no explicit option — falls back to today's
         // unconfined behaviour, which single-file sessions rely on.
         this.trust = undefined;
+        // Hover provenance (G7 phase 7): off unless an editor asks for it
+        // with `initializationOptions.aontu.provenance`. It costs a second,
+        // instrumented evaluation per hover, which is a cost to opt into.
+        this.provenance = false;
     }
     // True once an `exit` notification has been received.
     get shouldExit() { return this.exited; }
@@ -354,6 +392,8 @@ class LspHandler {
         switch (msg.method) {
             case 'initialize': {
                 const params = msg.params ?? {};
+                this.provenance =
+                    true === params.initializationOptions?.aontu?.provenance;
                 const explicit = params.initializationOptions?.aontu?.trust?.include;
                 if (null != explicit) {
                     // An explicit setting wins — validated, and an unrecognised
@@ -414,7 +454,8 @@ class LspHandler {
                 const uri = msg.params?.textDocument?.uri;
                 const pos = msg.params?.position;
                 const text = null != uri ? this.docs.get(uri) : undefined;
-                const hover = (null != text && null != pos) ? computeHover(text, pos) : null;
+                const hover = (null != text && null != pos)
+                    ? computeHover(text, pos, this.provenance) : null;
                 return [{ jsonrpc: '2.0', id: msg.id, result: hover }];
             }
             case 'textDocument/completion':

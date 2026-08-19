@@ -106,6 +106,10 @@ type ValueSpan struct {
 	Len   int
 	Canon string
 	Kind  string
+	// Path is where the value sits in the document, for the hover
+	// provenance G7 phase 7 appends. Empty for a value with no path
+	// (the root, or a value the walk reached through a shared clone).
+	Path []string
 }
 
 // Spans parses and unifies src and returns a ValueSpan for every
@@ -161,7 +165,10 @@ func collectSpans(v Val, out *[]ValueSpan, seen map[Val]bool) {
 	if p := v.pos(); p >= 0 {
 		c := v.Canon()
 		if len(c) > 0 {
-			*out = append(*out, ValueSpan{Pos: p, Len: len(c), Canon: c, Kind: valKind(v)})
+			*out = append(*out, ValueSpan{
+				Pos: p, Len: len(c), Canon: c, Kind: valKind(v),
+				Path: v.vpath(),
+			})
 		}
 	}
 }

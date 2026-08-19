@@ -1,4 +1,5 @@
 import type { Val } from './type';
+import type { WhyConjunct } from './provenance';
 declare const SEVERITY_ERROR = 1;
 declare const SEVERITY_WARNING = 2;
 declare const SEVERITY_INFORMATION = 3;
@@ -49,7 +50,8 @@ type Hover = {
     contents: MarkupContent;
     range?: Range;
 };
-declare function computeHover(src: string, position: Position): Hover | null;
+export declare function contributionsMarkdown(conjuncts: WhyConjunct[]): string;
+declare function computeHover(src: string, position: Position, provenance?: boolean): Hover | null;
 type CompletionItem = {
     label: string;
     kind?: number;
@@ -64,6 +66,7 @@ declare class LspHandler {
     private shutdownOK;
     private exited;
     private trust;
+    private provenance;
     get shouldExit(): boolean;
     get exitCode(): number;
     doc(uri: string): string | undefined;

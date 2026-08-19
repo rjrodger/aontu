@@ -47,6 +47,7 @@ query between a document and its own earlier versions.
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
+  --jsonl         REPL: answer every command as one JSON line
   -v, --version   Print the version and exit
   --trust <t>     Include capability: system (default), none, or
                   root[:dir] to confine @"..." below a directory
@@ -148,6 +149,10 @@ stand up on its own.
 
 REPL commands:
   :help           Show REPL help
+  :load <file>    Evaluate a document and hold it for the commands below
+  :get [path]     What the held document says at a path
+  :keys [path]    The keys at a path of the held document
+  :why <path>     Every contribution to the value at a path
   :canon          Switch to canonical-form output
   :json           Switch to JSON output
   :quit, :exit    Exit the REPL (or press Ctrl-D)
@@ -295,45 +300,34 @@ func stdinIsPipe() bool {
 
 // repl reads source lines from in, evaluating each and writing results
 // to out, until EOF or a :quit/:exit command.
-func repl(a *aontu.Aontu, mode string, in io.Reader, out io.Writer) {
-	fmt.Fprintf(out, "Aontu v%s REPL — :help for commands, :quit to exit\n", aontu.VERSION)
+func repl(mode string, jsonl bool, in io.Reader, out io.Writer) {
+	prompt := "aontu> "
+	if jsonl {
+		prompt = ""
+	} else {
+		fmt.Fprintf(out,
+			"Aontu v%s REPL — :help for commands, :quit to exit\n", aontu.VERSION)
+	}
+	state := replState{Mode: mode, JSONL: jsonl}
 	sc := bufio.NewScanner(in)
 	// Raise the line cap well above bufio's 64KB default so a long
 	// pasted source line is not silently truncated.
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	fmt.Fprint(out, "aontu> ")
+	fmt.Fprint(out, prompt)
 	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			fmt.Fprint(out, "aontu> ")
-			continue
+		res := replCommand(state, sc.Text(), func(f string) (string, error) {
+			raw, err := os.ReadFile(f)
+			return string(raw), err
+		})
+		state = res.State
+		if res.Close {
+			fmt.Fprintln(out)
+			return
 		}
-		if strings.HasPrefix(line, ":") {
-			switch line {
-			case ":help":
-				fmt.Fprint(out, helpText)
-			case ":canon":
-				mode = "canon"
-				fmt.Fprintln(out, "canon output")
-			case ":json":
-				mode = "json"
-				fmt.Fprintln(out, "json output")
-			case ":quit", ":exit":
-				fmt.Fprintln(out)
-				return
-			default:
-				fmt.Fprintf(out, "unknown command: %s (try :help)\n", line)
-			}
-			fmt.Fprint(out, "aontu> ")
-			continue
+		if "" != res.Out {
+			fmt.Fprintln(out, res.Out)
 		}
-		text, err := render(a, line, mode)
-		if err != nil {
-			fmt.Fprintln(out, err)
-		} else {
-			fmt.Fprintln(out, text)
-		}
-		fmt.Fprint(out, "aontu> ")
+		fmt.Fprint(out, prompt)
 	}
 	if err := sc.Err(); err != nil {
 		fmt.Fprintln(out, "aontu: input error:", err)
@@ -382,6 +376,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 
 	mode := "json"
+	jsonl := false
 	var file string
 	trust := trustArg{kind: "system-warn"}
 
@@ -455,6 +450,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 		return emit(a, string(src), mode, stdout, stderr)
 	}
 
-	repl(a, mode, stdin, stdout)
+	repl(mode, jsonl, stdin, stdout)
 	return 0
 }

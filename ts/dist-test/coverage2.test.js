@@ -41,6 +41,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const node_stream_1 = require("node:stream");
+const Fs = __importStar(require("node:fs"));
+const Os = __importStar(require("node:os"));
+const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
 const ctx_1 = require("../dist/ctx");
 const err_1 = require("../dist/err");
@@ -114,8 +117,15 @@ function pendingCtx() {
         const cap = captureOut();
         try {
             (0, cli_1.main)(['node', 'cli']);
+            // A :load through the LOOP, which reads a real file: the
+            // handler's reader is injected, and this is where the real one
+            // is wired.
+            const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-repl-'));
+            const doc = Path.join(dir, 'doc.aon');
+            Fs.writeFileSync(doc, 'a: 1');
             for (const line of [
-                ':help\n', ':canon\n', ':json\n', ':bogus\n', '\n', 'a:1\n', ':quit\n',
+                ':help\n', ':canon\n', ':json\n', ':bogus\n', '\n',
+                `:load ${doc}\n`, ':get $.a\n', 'a:1\n', ':quit\n',
             ]) {
                 fakeIn.write(line);
             }
@@ -128,10 +138,32 @@ function pendingCtx() {
         const out = cap.get();
         for (const want of [
             'REPL', 'Usage: aontu', 'canon output', 'json output',
-            'unknown command', '"a": 1',
+            'unknown command', '"a": 1', 'loaded: ',
         ]) {
             Assert.ok(out.includes(want), 'repl output missing ' + want + ':\n' + out);
         }
+    });
+    // The REPL's SESSION protocol (G7 phase 7): no banner, no prompt,
+    // one JSON line per answer.
+    (0, node_test_1.test)('repl-jsonl-in-process', async () => {
+        const fakeIn = new node_stream_1.PassThrough();
+        fakeIn.isTTY = true;
+        const restoreIn = swapStdin(fakeIn);
+        const cap = captureOut();
+        try {
+            (0, cli_1.main)(['node', 'cli', '--jsonl']);
+            for (const line of ['a:1\n', ':quit\n']) {
+                fakeIn.write(line);
+            }
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        finally {
+            cap.restore();
+            restoreIn();
+        }
+        const out = cap.get();
+        Assert.ok(!out.includes('aontu>'), 'jsonl session printed a prompt:\n' + out);
+        Assert.ok(out.includes('{"ok":true,"out":"{\\n  \\"a\\": 1\\n}"}'), out);
     });
     (0, node_test_1.test)('stdin-in-process', async () => {
         const fakeIn = new node_stream_1.PassThrough();

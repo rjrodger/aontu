@@ -16,6 +16,8 @@
 package lsp
 
 import (
+	"strconv"
+	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
 
@@ -146,7 +148,7 @@ type HoverResult struct {
 // Hover resolves the value at a cursor position and describes it, or
 // returns nil when the position is not over a concrete value. Because it
 // reads the *unified* tree, a value shows its resolved canon and kind.
-func Hover(src string, line, character int) *HoverResult {
+func Hover(src string, line, character int, provenance bool) *HoverResult {
 	spans := aontu.New().Spans(src)
 	if spans == nil {
 		return nil
@@ -168,13 +170,66 @@ func Hover(src string, line, character int) *HoverResult {
 	}
 	s := spans[best]
 	return &HoverResult{
-		Contents: MarkupContent{Kind: "markdown", Value: hoverMarkdown(s)},
-		Range:    &Range{Start: idx.position(s.Pos), End: idx.position(s.Pos + s.Len)},
+		Contents: MarkupContent{Kind: "markdown", Value: hoverMarkdown(s) +
+			provenanceOf(src, s, provenance)},
+		Range: &Range{Start: idx.position(s.Pos), End: idx.position(s.Pos + s.Len)},
 	}
+}
+
+// provenanceOf is the gate: nothing at all unless the editor asked.
+func provenanceOf(src string, s aontu.ValueSpan, on bool) string {
+	if !on {
+		return ""
+	}
+	return provenanceMarkdown(src, s.Path)
 }
 
 func hoverMarkdown(s aontu.ValueSpan) string {
 	return "```aontu\n" + s.Canon + "\n```\n\n*" + s.Kind + "*"
+}
+
+// provenanceMarkdown is HOVER PROVENANCE (G7 phase 7), config-gated
+// and off by default: the contributions that met at the hovered path,
+// appended to the value's own hover. Hover already re-unifies the
+// whole document per request, so an editor that asks for this pays a
+// second instrumented evaluation knowingly. Mirrors
+// provenanceMarkdown in ts/src/lsp.ts.
+func provenanceMarkdown(src string, path []string) string {
+	if 0 == len(path) {
+		return ""
+	}
+	// A document with an error ELSEWHERE still hovers — the tree the
+	// hover walked is there — while Why refuses it, so the record may
+	// be absent for a value the cursor is sitting on.
+	report := aontu.New().Why(src, "$."+strings.Join(path, "."))
+	if !report.OK || nil == report.Record {
+		return ""
+	}
+	return contributionsMarkdown(report.Record.Conjuncts)
+}
+
+// contributionsMarkdown renders the contributions as hover markdown.
+// Separated for the direct test (ADR-002): a siteless contribution and
+// a named file are both shapes the record allows and no hover
+// produces, hover evaluating one unnamed document.
+func contributionsMarkdown(conjuncts []aontu.WhyConjunct) string {
+	if 0 == len(conjuncts) {
+		return ""
+	}
+	lines := make([]string, 0, len(conjuncts))
+	for _, c := range conjuncts {
+		where := ""
+		if 0 <= c.Site.Row {
+			name := ""
+			if "" != c.Site.File {
+				name = c.Site.File + ":"
+			}
+			where = " (" + name +
+				strconv.Itoa(c.Site.Row) + ":" + strconv.Itoa(c.Site.Col) + ")"
+		}
+		lines = append(lines, "- `"+c.Canon+"` — "+c.Role+where)
+	}
+	return "\n\n---\n\nContributions:\n" + strings.Join(lines, "\n")
 }
 
 // --- Completion -------------------------------------------------------

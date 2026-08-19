@@ -11,7 +11,7 @@ import (
 )
 
 func TestHoverScalar(t *testing.T) {
-	h := Hover("port: 8080", 0, 7)
+	h := Hover("port: 8080", 0, 7, false)
 	if h == nil {
 		t.Fatal("expected hover over 8080")
 	}
@@ -24,7 +24,7 @@ func TestHoverScalar(t *testing.T) {
 }
 
 func TestHoverType(t *testing.T) {
-	h := Hover("a:{x:string}", 0, 5)
+	h := Hover("a:{x:string}", 0, 5, false)
 	if h == nil || !strings.Contains(h.Contents.Value, "string") || !strings.Contains(h.Contents.Value, "type") {
 		t.Fatalf("expected type hover, got %+v", h)
 	}
@@ -32,14 +32,14 @@ func TestHoverType(t *testing.T) {
 
 func TestHoverResolvedReference(t *testing.T) {
 	// b resolves to 1; hovering the definition shows the resolved value.
-	h := Hover("a:1\nb:$.a", 0, 2)
+	h := Hover("a:1\nb:$.a", 0, 2, false)
 	if h == nil || !strings.Contains(h.Contents.Value, "1") {
 		t.Fatalf("expected hover over resolved value, got %+v", h)
 	}
 }
 
 func TestHoverMiss(t *testing.T) {
-	if h := Hover("port: 8080", 5, 0); h != nil {
+	if h := Hover("port: 8080", 5, 0, false); h != nil {
 		t.Errorf("expected nil hover off-document, got %+v", h)
 	}
 }
@@ -74,12 +74,12 @@ func TestCompletionsList(t *testing.T) {
 // which is the supertype), and its range covers the whole literal —
 // including the fraction, which the dot token would otherwise split off.
 func TestHoverExactLeaves(t *testing.T) {
-	h := Hover("a:0d5", 0, 3)
+	h := Hover("a:0d5", 0, 3, false)
 	if h == nil || !strings.Contains(h.Contents.Value, "0d5") ||
 		!strings.Contains(h.Contents.Value, "biginteger") {
 		t.Fatalf("expected biginteger hover, got %+v", h)
 	}
-	h = Hover("a:0d1.5", 0, 3)
+	h = Hover("a:0d1.5", 0, 3, false)
 	if h == nil || !strings.Contains(h.Contents.Value, "0d1.5") ||
 		!strings.Contains(h.Contents.Value, "bigdecimal") {
 		t.Fatalf("expected bigdecimal hover, got %+v", h)
@@ -93,7 +93,7 @@ func TestHoverExactLeaves(t *testing.T) {
 // the shared kind label "constraint" — never a bare "value" default
 // (the TS twin is hover-constraint; identical hover-text contract).
 func TestHoverConstraint(t *testing.T) {
-	h := Hover("a:min(0)&max(10)", 0, 3)
+	h := Hover("a:min(0)&max(10)", 0, 3, false)
 	if h == nil || !strings.Contains(h.Contents.Value, "min(0)&max(10)") ||
 		!strings.Contains(h.Contents.Value, "*constraint*") {
 		t.Fatalf("expected constraint hover, got %+v", h)
@@ -169,5 +169,84 @@ func TestInitializeAdvertisesHoverAndCompletion(t *testing.T) {
 	}
 	if len(res.Capabilities.CompletionProvider) == 0 {
 		t.Error("completionProvider not advertised")
+	}
+}
+
+// HOVER PROVENANCE (G7 phase 7) is config-gated and off by default:
+// the contributions that met at the hovered path, appended to the
+// value's own hover. The markdown is byte-identical to the canonical
+// port's (ts/src/lsp.ts), which was diffed before this was written.
+func TestHoverProvenance(t *testing.T) {
+	src := "services: {\n  &: { replicas: *1 | integer }\n  auth: { replicas: 3 }\n}"
+
+	off := Hover(src, 2, 20, false)
+	if nil == off || strings.Contains(off.Contents.Value, "Contributions") {
+		t.Fatalf("provenance leaked when off: %q", off.Contents.Value)
+	}
+
+	on := Hover(src, 2, 20, true)
+	if nil == on {
+		t.Fatal("no hover")
+	}
+	for _, want := range []string{
+		"Contributions:", "`*1|integer` — spread (2:18)", "`3` — literal (3:21)",
+	} {
+		if !strings.Contains(on.Contents.Value, want) {
+			t.Fatalf("hover missing %q:\n%s", want, on.Contents.Value)
+		}
+	}
+
+	// A value with NO path — the whole document — has no contributions
+	// to name, and the hover is unchanged rather than decorated with
+	// an empty section.
+	bare := Hover("42", 0, 1, true)
+	if nil != bare && strings.Contains(bare.Contents.Value, "Contributions") {
+		t.Fatalf("root hover: %q", bare.Contents.Value)
+	}
+
+	// A document with an error ELSEWHERE still hovers, while Why
+	// refuses it: the hover keeps its value and gains no section.
+	broken := Hover("a: 1\nb: 2 & \"x\"", 0, 3, true)
+	if nil == broken || strings.Contains(broken.Contents.Value, "Contributions") {
+		t.Fatalf("broken hover: %+v", broken)
+	}
+}
+
+// The two shapes the record allows and no hover produces: a
+// contribution with no site, and one whose site names a file.
+func TestContributionsMarkdown(t *testing.T) {
+	if "" != contributionsMarkdown(nil) {
+		t.Fatal("empty should render nothing")
+	}
+	got := contributionsMarkdown([]aontu.WhyConjunct{
+		{Canon: "1", Role: "literal",
+			Site: aontu.WhySite{Col: -1, File: "", Row: -1}},
+		{Canon: "integer", Role: "spread",
+			Site: aontu.WhySite{Col: 3, File: "x.aon", Row: 2}},
+	})
+	want := "\n\n---\n\nContributions:\n" +
+		"- `1` — literal\n- `integer` — spread (x.aon:2:3)"
+	if want != got {
+		t.Fatalf("want %q, got %q", want, got)
+	}
+}
+
+// The opt-in reaches the handler: an initialize with
+// initializationOptions.aontu.provenance turns it on, and anything
+// else leaves it off.
+func TestHandlerHoverProvenance(t *testing.T) {
+	for _, c := range []struct {
+		params string
+		want   bool
+	}{
+		{`{"initializationOptions":{"aontu":{"provenance":true}}}`, true},
+		{`{"initializationOptions":{"aontu":{"provenance":false}}}`, false},
+		{`{"initializationOptions":{"aontu":{}}}`, false},
+		{`{}`, false},
+		{`not json`, false},
+	} {
+		if got := provenanceFromInitialize(json.RawMessage(c.params)); got != c.want {
+			t.Fatalf("%s: want %v, got %v", c.params, c.want, got)
+		}
 	}
 }

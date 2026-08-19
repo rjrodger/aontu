@@ -6,6 +6,7 @@ import * as Assert from 'node:assert'
 import {
   computeDiagnostics,
   computeHover,
+  contributionsMarkdown,
   computeCompletions,
   LspHandler,
   BUILTIN_FUNCS,
@@ -383,6 +384,99 @@ describe('lsp-deprecated', () => {
   test('undeprecated-documents-carry-no-tag', () => {
     const d = computeDiagnostics('a:1')
     Assert.equal(d.filter((x: any) => 'deprecated' === x.code).length, 0)
+  })
+
+})
+
+
+describe('lsp-hover-provenance', () => {
+
+  // HOVER PROVENANCE (G7 phase 7) is config-gated and off by default:
+  // the contributions that met at the hovered path, appended to the
+  // value's own hover. The markdown is byte-identical to the Go
+  // port's, which was diffed before this was written.
+  test('hover-provenance-is-off-until-asked-for', () => {
+    const src = 'services: {\n  &: { replicas: *1 | integer }\n' +
+      '  auth: { replicas: 3 }\n}'
+    const pos = { line: 2, character: 20 }
+
+    const off: any = computeHover(src, pos)
+    Assert.doesNotMatch(off.contents.value, /Contributions/)
+
+    const on: any = computeHover(src, pos, true)
+    Assert.match(on.contents.value, /Contributions:/)
+    Assert.match(on.contents.value, /`\*1\|integer` — spread \(2:18\)/)
+    Assert.match(on.contents.value, /`3` — literal \(3:21\)/)
+
+    // A value with NO path — the whole document — has no
+    // contributions to name, and the hover is unchanged rather than
+    // decorated with an empty section.
+    const bare: any = computeHover('42', { line: 0, character: 1 }, true)
+    Assert.doesNotMatch(bare.contents.value, /Contributions/)
+
+    // A document with an error ELSEWHERE still hovers, while `why`
+    // refuses it: the hover keeps its value and gains no section.
+    const broken: any = computeHover(
+      'a: 1\nb: 2 & "x"', { line: 0, character: 3 }, true)
+    Assert.match(broken.contents.value, /1/)
+    Assert.doesNotMatch(broken.contents.value, /Contributions/)
+  })
+
+  // The two shapes the record allows and no hover produces: a
+  // contribution with no site, and one whose site names a file.
+  test('contributions-markdown-renders-every-site-shape', () => {
+    Assert.equal(contributionsMarkdown([]), '')
+    Assert.equal(
+      contributionsMarkdown([
+        { canon: '1', role: 'literal', site: { col: -1, file: '', row: -1 } },
+        { canon: 'integer', role: 'spread', site: { col: 3, file: 'x.aon', row: 2 } },
+      ] as any),
+      '\n\n---\n\nContributions:\n' +
+      '- `1` — literal\n- `integer` — spread (x.aon:2:3)')
+  })
+
+  // The opt-in reaches the handler through initialize.
+  test('the-handler-reads-the-opt-in', () => {
+    const on = new LspHandler()
+    on.handle({
+      jsonrpc: '2.0', id: 1, method: 'initialize',
+      params: { initializationOptions: { aontu: { provenance: true } } },
+    } as any)
+    on.handle({
+      jsonrpc: '2.0', method: 'textDocument/didOpen',
+      params: {
+        textDocument: {
+          uri: 'file:///p.aon', text: 'a: 1\na: integer', version: 1,
+        },
+      },
+    } as any)
+    const hover: any = on.handle({
+      jsonrpc: '2.0', id: 2, method: 'textDocument/hover',
+      params: {
+        textDocument: { uri: 'file:///p.aon' },
+        position: { line: 0, character: 3 },
+      },
+    } as any)[0]
+    Assert.match(hover.result.contents.value, /Contributions:/)
+
+    const off = new LspHandler()
+    off.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} } as any)
+    off.handle({
+      jsonrpc: '2.0', method: 'textDocument/didOpen',
+      params: {
+        textDocument: {
+          uri: 'file:///p.aon', text: 'a: 1\na: integer', version: 1,
+        },
+      },
+    } as any)
+    const plain: any = off.handle({
+      jsonrpc: '2.0', id: 2, method: 'textDocument/hover',
+      params: {
+        textDocument: { uri: 'file:///p.aon' },
+        position: { line: 0, character: 3 },
+      },
+    } as any)[0]
+    Assert.doesNotMatch(plain.result.contents.value, /Contributions/)
   })
 
 })

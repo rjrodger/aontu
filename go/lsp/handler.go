@@ -79,6 +79,12 @@ type Handler struct {
 	// unconfined behaviour, which single-file sessions rely on. The
 	// same rule as the canonical port's LspHandler (ts/src/lsp.ts).
 	trust *aontu.TrustOptions
+
+	// provenance is hover provenance (G7 phase 7): off unless an
+	// editor asks for it with initializationOptions.aontu.provenance.
+	// It costs a second, instrumented evaluation per hover, which is a
+	// cost to opt into. The same rule as the canonical port.
+	provenance bool
 }
 
 // NewHandler returns a ready Handler with no open documents.
@@ -112,6 +118,7 @@ func (h *Handler) Handle(m Message) []Out {
 	switch m.Method {
 	case "initialize":
 		h.trust = trustFromInitialize(m.Params)
+		h.provenance = provenanceFromInitialize(m.Params)
 		return []Out{newResponse(m.ID, initializeResult())}
 
 	case "initialized":
@@ -184,7 +191,8 @@ func (h *Handler) Handle(m Message) []Out {
 		if !ok {
 			return []Out{newResponse(m.ID, nil)}
 		}
-		return []Out{newResponse(m.ID, Hover(text, p.Position.Line, p.Position.Character))}
+		return []Out{newResponse(m.ID,
+			Hover(text, p.Position.Line, p.Position.Character, h.provenance))}
 
 	case "textDocument/completion":
 		return []Out{newResponse(m.ID, Completions())}
@@ -202,6 +210,23 @@ func (h *Handler) Handle(m Message) []Out {
 // publish computes and wraps diagnostics for an open document.
 func (h *Handler) publish(uri string) Out {
 	return publishDiagnosticsMsg(uri, DiagnosticsTrust(h.docs[uri], nil, h.trust))
+}
+
+// provenanceFromInitialize reads the hover-provenance opt-in out of
+// the initialize params: initializationOptions.aontu.provenance, and
+// only the boolean true turns it on.
+func provenanceFromInitialize(params json.RawMessage) bool {
+	var p struct {
+		InitializationOptions struct {
+			Aontu struct {
+				Provenance bool `json:"provenance"`
+			} `json:"aontu"`
+		} `json:"initializationOptions"`
+	}
+	if err := json.Unmarshal(params, &p); nil != err {
+		return false
+	}
+	return p.InitializationOptions.Aontu.Provenance
 }
 
 // trustFromInitialize reads the trust profile out of the initialize
