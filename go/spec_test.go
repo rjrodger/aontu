@@ -54,6 +54,11 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	             and the hash form must round-trip (G6, hcanon.tsv)
 //	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
 //	             `aon1-...` pin, byte-identical across the ports
+//	mode=query : FIVE columns -- name, query, src, path, expect. The
+//	             report of Get(src, path) must match the expect object
+//	             ({out?, code?, note?}, options riding `opts`), and a
+//	             canon-shaped VIEW must additionally SUBSUME the truth
+//	             it summarises; see test/spec/query.tsv
 //
 // gen vs gens: gen normalises both sides through a JSON decode, which
 // collapses every number to a float64 — so two distinct exact integers
@@ -118,7 +123,7 @@ func TestSpec(t *testing.T) {
 			// is the fifth column; every other mode reads four and
 			// ignores any extra (see test/spec/vet.tsv and
 			// test/spec/subsume.tsv for the encodings).
-			vetRow := "vet" == mode || "subsume" == mode
+			vetRow := "vet" == mode || "subsume" == mode || "query" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -277,6 +282,46 @@ func TestSpec(t *testing.T) {
 					if got := CanonHash(v); got != expect {
 						t.Fatalf("hash mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
 					}
+
+				case "query":
+					// The golden carries the run's options under
+					// `opts`; `out` is the rendered slice, and
+					// `code`/`note` the finding when the answer is a
+					// refusal. `message` is excluded, as every other
+					// verb's goldens exclude it.
+					var golden struct {
+						Code string `json:"code"`
+						Note string `json:"note"`
+						Out  string `json:"out"`
+						Opts struct {
+							Depth int    `json:"depth"`
+							View  string `json:"view"`
+						} `json:"opts"`
+					}
+					if jerr := json.Unmarshal([]byte(expect), &golden); jerr != nil {
+						t.Fatalf("bad query golden: %v\n %s", jerr, expect)
+					}
+					qopts := &QueryOptions{
+						View:  golden.Opts.View,
+						Depth: golden.Opts.Depth,
+					}
+					report := a.Get(src, data, qopts)
+					if report.Out != golden.Out {
+						t.Fatalf("query out mismatch\n src:  %q\n path: %q\n want: %q\n got:  %q",
+							src, data, golden.Out, report.Out)
+					}
+					code, note := "", ""
+					if 0 < len(report.Findings) {
+						code = report.Findings[0].Code
+						if nil != report.Findings[0].Note {
+							note = *report.Findings[0].Note
+						}
+					}
+					if code != golden.Code || note != golden.Note {
+						t.Fatalf("query finding mismatch\n want: %q/%q\n got:  %q/%q",
+							golden.Code, golden.Note, code, note)
+					}
+					assertViewSubsumes(t, name, src, data, report, qopts.View)
 
 				case "trim":
 					// trimCheck(src) must equal the expect object
@@ -471,6 +516,31 @@ func assertCanonConverges(t *testing.T, name, expect string, vars map[string]Val
 	}
 	if c3 := v3.Canon(); c3 != c2 {
 		t.Fatalf("canon does not converge: %s\n c2: %s\n c3: %s", name, c2, c3)
+	}
+}
+
+// assertViewSubsumes pins THE PROJECTION PROPERTY (G7 phase 1): a
+// canon-shaped view is a valid Aontu document that SUBSUMES the truth
+// it summarises -- generalisation, never distortion. G3 made that
+// mechanically checkable, so every projection row asserts it instead of
+// trusting the renderer.
+//
+// Under the `values` profile, deliberately: a shape view ERASES
+// defaults (`*8080|integer` becomes `*integer|integer`), which the
+// `defaults` profile correctly calls a compatibility break. The claim
+// projections make is about the values admitted, not about which one is
+// generated.
+func assertViewSubsumes(
+	t *testing.T, name, src, path string, report QueryReport, view string) {
+	t.Helper()
+	if !report.OK || ("canon" != view && "types" != view) {
+		return
+	}
+	truth := New().Get(src, path, &QueryOptions{View: "canon"})
+	got := Subsume(report.Out, truth.Out, &SubsumeOptions{Profile: "values"})
+	if SubsumeYes != got.Verdict {
+		t.Fatalf("view does not subsume the truth: %s\n view:  %s\n truth: %s\n verdict: %s",
+			name, report.Out, truth.Out, got.Verdict)
 	}
 }
 

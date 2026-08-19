@@ -865,4 +865,29 @@ function capture(fn) {
         Assert.match((0, hcanon_1.canonHash)(single), /^aon1-[A-Za-z0-9_-]{43}$/);
     });
 });
+(0, node_test_1.describe)('coverage3-query', () => {
+    // The projection arm no SOURCE reaches (G7 phase 1): a junction
+    // member that is itself a junction of more than one term. Post-
+    // unification junctions are flattened by norm, so only a constructed
+    // tree still nests one — and the rule has to hold anyway, because a
+    // view is a DOCUMENT: rendering `(1|2)&3` as the differently-parsing
+    // `1|2&3` would be a view that no longer subsumes what it summarises.
+    (0, node_test_1.test)('query-nested-junction-keeps-its-parens', () => {
+        const ctx = new aontu_1.Aontu().ctx({});
+        const root = new MapVal_1.MapVal({ peg: {} }, ctx);
+        root.peg.j = new ConjunctVal_1.ConjunctVal({
+            peg: [
+                new DisjunctVal_1.DisjunctVal({
+                    peg: [new IntegerVal_1.IntegerVal({ peg: 1 }), new IntegerVal_1.IntegerVal({ peg: 2 })],
+                }, ctx),
+                new IntegerVal_1.IntegerVal({ peg: 3 }),
+            ],
+        }, ctx);
+        // Reached through the exported walk rather than the verb, which
+        // would unify the tree and flatten it back.
+        const q = require('../dist/query');
+        Assert.equal(q.projectFor(root, 'canon', Infinity), '{"j":(1|2)&3}');
+        Assert.equal(q.projectFor(root, 'types', Infinity), '{"j":(integer|integer)&integer}');
+    });
+});
 //# sourceMappingURL=coverage3.test.js.map

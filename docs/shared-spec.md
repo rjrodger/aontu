@@ -24,21 +24,23 @@ name <TAB> mode <TAB> src <TAB> expect
 | column   | meaning                                                        |
 |----------|----------------------------------------------------------------|
 | `name`   | short identifier for the case (unique within its file)         |
-| `mode`   | `canon`, `gen`, `gens`, `err`, `errc`, `errcode`, `vet`, `subsume`, `trim`, `hcanon` or `hash` (see below) |
+| `mode`   | `canon`, `gen`, `gens`, `err`, `errc`, `errcode`, `vet`, `subsume`, `query`, `trim`, `hcanon` or `hash` (see below) |
 | `src`    | Aontu source text to evaluate                                  |
 | `expect` | the expected result, interpreted according to `mode`          |
 
-Two modes take a FIFTH column. `vet` validates a data document against a
-schema document and `subsume` compares two documents, so each needs two
-sources: `src` is the schema (or the general document), the fourth
-column is the data (or the specific document), and `expect` moves to
-the fifth. Every other mode reads the first four columns and ignores
+Three modes take a FIFTH column. `vet` validates a data document
+against a schema document, `subsume` compares two documents, and
+`query` selects a path within one, so each carries a second input:
+`src` is the schema (or the general document, or the document), the
+fourth column is the data (or the specific document, or the path), and
+`expect` moves to the fifth. Every other mode reads the first four columns and ignores
 anything after them, which is what makes the extra column additive
 rather than a format change:
 
 ```
 name <TAB> vet <TAB> schema <TAB> data <TAB> expect
 name <TAB> subsume <TAB> general <TAB> specific <TAB> expect
+name <TAB> query <TAB> src <TAB> path <TAB> expect
 ```
 
 ### Modes
@@ -53,6 +55,7 @@ name <TAB> subsume <TAB> general <TAB> specific <TAB> expect
 | `errcode` | registry row: `name` is an error code, `src` its class, `expect` its since-version — asserted against the engine's code→class table |
 | `vet`   | five columns: `vet(schema, data)` must produce the report `expect` describes, MINUS each finding's message |
 | `subsume` | five columns: `subsume(general, specific)` must produce the report `expect` describes (verdict + findings), MINUS each finding's message |
+| `query` | five columns: `get(src, path)` must produce the report `expect` describes (`out`, or `code`/`note`; options ride `opts`), and a canon-shaped VIEW must additionally SUBSUME the truth it summarises |
 | `trim`  | `trimCheck(src)` must produce the report `expect` describes (`{redundant, verdict}`) |
 | `hcanon` | `unify(src)` then its HASH FORM — canon plus the `close()`/`type()`/`hide()` wrappers — must equal `expect`, and that text must round-trip through the engine unchanged |
 | `hash`  | `canonHash(unify(src))` must equal `expect`, the full `aon1-…` pin |

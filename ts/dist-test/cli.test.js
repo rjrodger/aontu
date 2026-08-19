@@ -624,6 +624,60 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', Path.join(f.dir, 'missing.aon')]), 2));
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--help']), 0)).out.includes('aontu trim'), true);
     });
+    // G7 phase 1: the query verb. The views themselves are pinned by
+    // test/spec/query.tsv in both ports; these cases hold the command
+    // line -- flag parsing, the exit classes, and where each answer
+    // goes.
+    (0, node_test_1.test)('get-renders-one-node-per-view', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-get-'));
+        const file = Path.join(dir, 'doc.aon');
+        Fs.writeFileSync(file, 'svc:{auth:{image:"a:v2",replicas:3}}\nport: *8080|integer\n');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.svc.auth.replicas', file]), 0))
+            .out.trim(), '3');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.svc.auth', '--canon', file]), 0)).out.trim(), '{"image":"a:v2","replicas":3}');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.svc.auth', '--types', file]), 0)).out.trim(), '{"image":string,"replicas":integer}');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.svc', '--keys', file]), 0))
+            .out.trim(), 'auth');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$', '--canon', '--depth', '1', file]), 0)).out.trim(), '{"port":top,"svc":top}');
+        const j = JSON.parse(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.svc.auth', '--format', 'json', file]), 0)).out);
+        Assert.equal(j.aontu.verb, 'get');
+        Assert.equal(j.ok, true);
+        Assert.equal(j.findings.length, 0);
+    });
+    // A path that names nothing is the QUESTION's answer -- exit 1, the
+    // "no" class -- while a document that does not stand up is exit 4.
+    (0, node_test_1.test)('get-exit-codes-separate-no-from-broken', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-get-err-'));
+        const file = Path.join(dir, 'doc.aon');
+        Fs.writeFileSync(file, 'svc:{auth:{image:"a"}}');
+        const miss = vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.svc.auht', file]), 1));
+        Assert.equal(miss.out, '');
+        Assert.match(miss.err, /no_path/);
+        Assert.match(miss.err, /did you mean auth\?/);
+        Fs.writeFileSync(file, 'a:1 a:2');
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$', file]), 4));
+        // A value that is not concrete has no JSON, and says so as an
+        // error rather than inventing one.
+        Fs.writeFileSync(file, 'k: integer');
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.k', file]), 4));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.k', '--canon', file]), 0)).out.trim(), 'integer');
+    });
+    (0, node_test_1.test)('get-usage-errors-exit-2', () => {
+        const f = subFiles('a:{b:1}', 'a:1');
+        vetCapture(() => Assert.equal((0, cli_1.runGet)([]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a', f.general, f.specific]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['--bogus', '$.a', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a', '--format', 'yaml', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a', '--depth', 'x', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a', '--depth', '0', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a', '--depth', f.general]), 2));
+        // Eliding below a depth means rendering `top`, which JSON cannot
+        // say -- refused rather than silently switching the view.
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a', '--depth', '1', f.general]), 2)).err.includes('JSON cannot say top'), true);
+        vetCapture(() => Assert.equal((0, cli_1.runGet)(['$.a', Path.join(f.dir, 'missing.aon')]), 2));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runGet)(['--help']), 0)).out.includes('aontu get'), true);
+    });
     // G6 phase 1: the canon-hash verb. The pin is the point, so the
     // cases assert the SHAPE and the invariances -- reformatting,
     // reordering and re-commenting a document leave the hash alone,
@@ -687,6 +741,8 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         Assert.match(t.out, /verdict: clean/);
         const h = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'hash', f.general]));
         Assert.match(h.out, /^aon1-/);
+        const g = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'get', '$.a', '--canon', f.general]));
+        Assert.match(g.out, /integer/);
     });
 });
 //# sourceMappingURL=cli.test.js.map

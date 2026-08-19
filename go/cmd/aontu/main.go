@@ -28,6 +28,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
        aontu hash [options] <file>
+       aontu get <path> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -105,6 +106,16 @@ Hash options:
 
 Hash exit codes: 0 hashed, 2 usage, 4 the document does not stand up
 on its own.
+
+Get options:
+  -c, --canon     Canonical-form fragment (default: generated JSON)
+  --keys          Keys at the node, one per line
+  --types         Shape view: concrete leaves lifted to their kinds
+  --depth <n>     Structure to depth n; deeper nodes render as top
+  --format <f>    text (default) or json
+
+Get exit codes: 0 rendered, 1 the path names nothing, 2 usage, 4 the
+document does not stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -324,6 +335,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 	if 0 < len(args) && "trim" == args[0] {
 		return runTrim(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "get" == args[0] {
+		return runGet(args[1:], stdout, stderr)
 	}
 	if 0 < len(args) && "hash" == args[0] {
 		return runHash(args[1:], stdout, stderr)

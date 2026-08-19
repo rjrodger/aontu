@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	aontu "github.com/rjrodger/aontu/go"
@@ -63,7 +62,7 @@ func runHash(argv []string, stdout, stderr io.Writer) int {
 
 	// The file's own directory is the include base, as every verb
 	// resolves a named file (vet's aontuForPath rule).
-	v, uerr := aontu.NewWithBase(filepath.Dir(files[0])).Unify(string(src))
+	v, uerr := aontuForFile(files[0]).Unify(string(src))
 	if nil != uerr || nil == v || v.Nil() {
 		// A document that does not stand up on its own has no meaning
 		// to pin, and a hash of a broken evaluation would be a pin that

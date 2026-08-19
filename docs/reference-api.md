@@ -39,6 +39,7 @@ Usage: aontu [options] [file]
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
        aontu hash [options] <file>
+       aontu get <path> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -231,6 +232,60 @@ aontu trim --check [--format text|json] <file.aon>
   would be worse than saying so.
 - Exit codes: `0` clean, `1` redundant entries found, `4` the document
   itself does not evaluate, `2` usage.
+
+### `aontu get`
+
+Select one node of an evaluated document by path and render it — the
+task-sized slice, instead of the whole file as one JSON blob.
+
+```
+aontu get <path> [-c|--canon] [--keys] [--types] [--depth <n>]
+          [--format text|json] <file.aon>
+```
+
+- **Evaluation is global.** Unification has no partial mode: the whole
+  document is evaluated and then one node is selected. What `get` buys
+  is the size of the *answer*, not the cost of producing it.
+- The path is what a reference means by `$.a.b` — map keys and
+  canonical-decimal list indices, and nothing else, so `$.a.01` names
+  nothing here exactly as it names nothing there. A key that *contains*
+  a dot is likewise unreachable, as it is to a reference; the escape
+  spelling is [G4](../docs/capability-review/g4-identity-relations.md)'s
+  to settle for both at once.
+- Default output is the fragment's generated JSON; `--canon` is its
+  canonical form, and for the root path that is byte-identical to
+  `aontu --canon`.
+- Exit codes: `0` rendered, `1` the path names nothing (the finding
+  carries a nearest-key suggestion), `2` usage, `4` the document does
+  not stand up on its own — including a node that is not concrete, for
+  which there is no JSON to print.
+
+**The projections are lattice abstractions.** Each view is a valid
+Aontu document that *subsumes the truth* — generalisation, never
+distortion:
+
+| flag | view |
+|------|------|
+| `--types` | every concrete leaf lifted to its own kind: `{"replicas":3}` becomes `{"replicas":integer}` |
+| `--depth n` | structure to depth n; every elided subtree renders as `top` — "no further information at this tier" |
+| `--keys` | the node's own key names (or list indices), one per line |
+
+That claim is checked rather than asserted: every projection row of
+`test/spec/query.tsv` runs
+[`subsume`](#aontu-subsume)`(view, truth)` in both implementations and
+requires `subsumes`. It runs under the **values** profile, deliberately
+— a shape view *erases defaults* (`*8080|integer` becomes
+`*integer|integer`), which the `defaults` profile would rightly call a
+compatibility break. The claim projections make is about the values
+admitted, not about which one is generated.
+
+Kinds are lifted through the lattice's own `superior()`, so the view
+follows the type system rather than a table of the renderer's opinions;
+a value that is *already* an abstraction (a kind marker, a constraint,
+an unresolved reference) is left alone rather than generalised twice.
+Projections are not canonical form and are never fed to
+[`aontu hash`](#aontu-hash) — the flags are distinct from `--canon` to
+keep that unambiguous.
 
 ### `aontu hash`
 
@@ -674,6 +729,9 @@ hcanon         // the HASH FORM of an evaluated Val (see `aontu hash`
                // wrappers; Go: aontu.Hcanon
 canonHash      // the canon-hash pin over that form,
                // "aon1-"+base64url(SHA-256(...)); Go: aontu.CanonHash
+get            // the query surface (see `aontu get` above):
+               // get(src, path, {view?, depth?, path?}) ->
+               // {ok, out, findings}; Go: aontu.New().Get(src, path, opts)
 ```
 
 ---

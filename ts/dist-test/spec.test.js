@@ -70,6 +70,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                and the hash form must round-trip (G6, hcanon.tsv)
  *   mode=hash  : canonHash(unify(src)) must equal expect, the full
  *                `aon1-...` pin, byte-identical across the ports
+ *   mode=query : FIVE columns -- name, query, src, path, expect. The
+ *                report of get(src, path) must match the expect
+ *                object ({out?, code?, note?}, options riding `opts`),
+ *                and a canon-shaped VIEW must additionally SUBSUME the
+ *                truth it summarises; see test/spec/query.tsv
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -142,7 +147,8 @@ function loadRows() {
             // trusts is a number nobody updates honestly. The only count
             // asserted is that the files were found at all
             // (spec-files-present below).
-            const vetRow = 'vet' === parts[1] || 'subsume' === parts[1];
+            const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
+                'query' === parts[1];
             const want = vetRow ? 5 : 4;
             if (parts.length < want) {
                 throw new Error(`malformed spec row: ${file} line ${lineno}: ${want} columns` +
@@ -206,6 +212,24 @@ function assertCanonConverges(row) {
 function assertHcanonRoundTrips(row) {
     const a1 = rowAontu(row);
     Assert.strictEqual((0, aontu_1.hcanon)(a1.unify(row.expect, undefined, makeVarsCtx(a1))), row.expect, `hash form does not round-trip: ${row.name}`);
+}
+// THE PROJECTION PROPERTY (G7 phase 1): a canon-shaped view is a valid
+// Aontu document that SUBSUMES the truth it summarises -- generalisation,
+// never distortion. G3 made that mechanically checkable, so every
+// projection row asserts it instead of trusting the renderer.
+//
+// Under the `values` profile, deliberately: a shape view ERASES
+// defaults (`*8080|integer` becomes `*integer|integer`), which the
+// `defaults` profile correctly calls a compatibility break. The claim
+// projections make is about the values admitted, not about which one
+// is generated.
+function assertViewSubsumes(row, report, opts) {
+    const view = opts.view ?? 'json';
+    if (!report.ok || ('canon' !== view && 'types' !== view)) {
+        return;
+    }
+    const truth = (0, aontu_1.get)(row.src, row.data, { view: 'canon' });
+    Assert.strictEqual((0, aontu_1.subsume)(report.out, truth.out, { profile: 'values' }).verdict, 'subsumes', `view does not subsume the truth: ${row.name}`);
 }
 // The report as a vet golden spells it: the message is EXCLUDED (prose
 // is per-port, codes are not), and the rest goes through the emitter
@@ -304,6 +328,19 @@ function runRow(row) {
     }
     else if ('hash' === row.mode) {
         Assert.strictEqual((0, aontu_1.canonHash)(a0.unify(row.src, undefined, ctx)), row.expect);
+    }
+    else if ('query' === row.mode) {
+        // The golden carries the run's options under `opts`; `out` is the
+        // rendered slice, and `code`/`note` the finding when the answer is
+        // a refusal. `message` is excluded, as every other verb's goldens
+        // exclude it: prose is per-port, codes are not.
+        const golden = JSON.parse(row.expect);
+        const opts = golden.opts ?? {};
+        const report = (0, aontu_1.get)(row.src, row.data, opts);
+        Assert.strictEqual(report.out, golden.out ?? '', `query out mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.code, golden.code, `query code mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.note, golden.note, `query note mismatch: ${row.name}`);
+        assertViewSubsumes(row, report, opts);
     }
     else if ('errcode' === row.mode) {
         // Registry row: name IS the code, src is its class, expect the

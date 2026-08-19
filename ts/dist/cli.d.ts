@@ -14,5 +14,6 @@ declare function deprecatedAt(oldSrc: string, path: string, filePath: string): b
 declare function runBreaking(argv: string[]): number;
 declare function runTrim(argv: string[]): number;
 declare function runHash(argv: string[]): number;
+declare function runGet(argv: string[]): number;
 declare function main(argv: string[]): void;
-export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, watchChange, watchSignature, vetWaiter, deprecatedAt, };
+export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, runGet, watchChange, watchSignature, vetWaiter, deprecatedAt, };

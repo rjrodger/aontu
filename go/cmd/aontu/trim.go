@@ -14,7 +14,6 @@ import (
 	"encoding/json"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	aontu "github.com/rjrodger/aontu/go"
@@ -75,7 +74,7 @@ func runTrim(argv []string, stdout, stderr io.Writer) int {
 
 	// The file's own directory is the include base, as every verb
 	// resolves a named file (vet's aontuForPath rule).
-	report := aontu.NewWithBase(filepath.Dir(files[0])).TrimCheck(string(src))
+	report := aontuForFile(files[0]).TrimCheck(string(src))
 	text := renderTrimText(report)
 	if "json" == format {
 		text = renderTrimJSON(report)

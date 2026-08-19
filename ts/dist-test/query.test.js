@@ -1,0 +1,100 @@
+"use strict";
+/* Copyright (c) 2025 Richard Rodger, MIT License */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+// The query API around the shared rows (G7 phase 1). What the two
+// ports must AGREE on -- every view, every projection, every refusal
+// code -- is pinned by test/spec/query.tsv, and the PROJECTION
+// PROPERTY (a view subsumes the truth) is asserted there for each of
+// those rows. What is left here is the API's own surface: the finding
+// shape a caller destructures, the option defaults, and the walk's
+// answers for inputs no CLI can produce.
+const node_test_1 = require("node:test");
+const Assert = __importStar(require("node:assert"));
+const Fs = __importStar(require("node:fs"));
+const Os = __importStar(require("node:os"));
+const Path = __importStar(require("node:path"));
+const aontu_1 = require("../dist/aontu");
+const query_1 = require("../dist/query");
+(0, node_test_1.describe)('query', () => {
+    (0, node_test_1.test)('defaults-to-the-json-view', () => {
+        // No options at all: the whole document, generated.
+        const r = (0, aontu_1.get)('a:{b:1}', '$.a');
+        Assert.equal(r.ok, true);
+        Assert.equal(r.out, '{\n  "b": 1\n}');
+        Assert.deepEqual(r.findings, []);
+    });
+    (0, node_test_1.test)('a-refusal-is-a-g2-finding', () => {
+        // `get` invents no error format: the refusal is the same finding
+        // object vet and subsume report, so one consumer reads all three.
+        const r = (0, aontu_1.get)('a:{b:1}', '$.a.c');
+        Assert.equal(r.ok, false);
+        Assert.equal(r.out, '');
+        Assert.equal(r.findings.length, 1);
+        const f = r.findings[0];
+        Assert.equal(f.code, 'no_path');
+        Assert.equal(f.class, 'reference');
+        Assert.equal(f.severity, 'error');
+        Assert.equal(f.path, '$.a.c');
+        Assert.deepEqual(f.sites, []);
+        Assert.match(f.message, /names nothing/);
+    });
+    (0, node_test_1.test)('relative-loads-resolve-from-the-documents-own-directory', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-query-'));
+        Fs.writeFileSync(Path.join(dir, 'part.aon'), 'k: 7');
+        const doc = Path.join(dir, 'doc.aon');
+        Fs.writeFileSync(doc, 'a: @"part.aon"');
+        Assert.equal((0, aontu_1.get)('a: @"part.aon"', '$.a.k', { path: doc, view: 'canon' }).out, '7');
+    });
+    // The nearest-key suggestion: close enough to help, or nothing at
+    // all. A wrong suggestion costs more than none, which is why the
+    // cutoff is half the name rather than "the closest sibling wins".
+    (0, node_test_1.test)('nearest-key-suggests-only-when-close', () => {
+        Assert.equal((0, query_1.nearestKey)('imag', ['image', 'ports']), 'image');
+        Assert.equal((0, query_1.nearestKey)('image', []), undefined);
+        Assert.equal((0, query_1.nearestKey)('replicas', ['image']), undefined);
+        // A one-character name still gets its one-character neighbour.
+        Assert.equal((0, query_1.nearestKey)('a', ['b']), 'b');
+    });
+    (0, node_test_1.test)('path-parts-drops-the-root-and-empty-segments', () => {
+        Assert.deepEqual((0, query_1.pathParts)('$'), []);
+        Assert.deepEqual((0, query_1.pathParts)(''), []);
+        Assert.deepEqual((0, query_1.pathParts)('$.'), []);
+        Assert.deepEqual((0, query_1.pathParts)('$.a.b'), ['a', 'b']);
+        // Written without the root marker, as a reference may be.
+        Assert.deepEqual((0, query_1.pathParts)('a.b'), ['a', 'b']);
+    });
+});
+//# sourceMappingURL=query.test.js.map

@@ -18,6 +18,7 @@ import { sarifReport } from './report-sarif'
 import { subsume } from './subsume'
 import { trimCheck } from './trim'
 import { hcanon, canonHash } from './hcanon'
+import { get } from './query'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -374,6 +375,11 @@ export {
   // "aon1-" + base64url(SHA-256(UTF-8(hcanon(v)))).
   hcanon,
   canonHash,
+
+  // G7 -- the machine-facing query surface: select one node by path
+  // and render it, plainly (json/canon) or as a lattice ABSTRACTION
+  // (types/depth/keys) that subsumes the truth it summarises.
+  get,
 }
 
 

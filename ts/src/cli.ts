@@ -16,6 +16,7 @@ import { createInterface } from 'node:readline'
 
 import {
   Aontu, AontuError, exactJSON, vet, subsume, trimCheck, hcanon, canonHash,
+  get,
 } from './aontu'
 import { sarifReport } from './report-sarif'
 import { VET_MAX_ERRORS } from './vet'
@@ -24,6 +25,7 @@ import type {
   SubsumeReport, SubsumeVerdict, SubsumeProfile,
 } from './subsume'
 import type { TrimReport, TrimVerdict } from './trim'
+import type { QueryView } from './query'
 
 
 type Mode = 'json' | 'canon'
@@ -35,6 +37,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu breaking --against <file|git#rev> [options] <file>
        aontu trim --check [options] <file>
        aontu hash [options] <file>
+       aontu get <path> [options] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -112,6 +115,16 @@ Hash options:
 
 Hash exit codes: 0 hashed, 2 usage, 4 the document does not stand up
 on its own.
+
+Get options:
+  -c, --canon     Canonical-form fragment (default: generated JSON)
+  --keys          Keys at the node, one per line
+  --types         Shape view: concrete leaves lifted to their kinds
+  --depth <n>     Structure to depth n; deeper nodes render as top
+  --format <f>    text (default) or json
+
+Get exit codes: 0 rendered, 1 the path names nothing, 2 usage, 4 the
+document does not stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -1290,6 +1303,111 @@ function runHash(argv: string[]): number {
 }
 
 
+// ---------------------------------------------------------------------
+// The query surface (G7 phase 1): one node of an evaluated document,
+// selected by path and rendered. Evaluation is still GLOBAL -- what
+// `get` buys is the size of the ANSWER, not the cost of producing it --
+// and the projections are lattice abstractions, each a valid Aontu
+// document that subsumes the truth it summarises.
+
+const GET_HELP = 'aontu get <path> <file> (try --help)'
+
+function runGet(argv: string[]): number {
+  const rest: string[] = []
+  let view: QueryView = 'json'
+  let depth: number | undefined
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('-c' === arg || '--canon' === arg) {
+      view = 'canon'
+    }
+    else if ('--keys' === arg) {
+      view = 'keys'
+    }
+    else if ('--types' === arg) {
+      view = 'types'
+    }
+    else if ('--depth' === arg) {
+      const n = Number(argv[++i])
+      if (!Number.isInteger(n) || n < 1) {
+        process.stderr.write('aontu: --depth needs a positive integer\n')
+        return 2
+      }
+      depth = n
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown get option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      rest.push(arg)
+    }
+  }
+
+  if (2 !== rest.length) {
+    process.stderr.write(`aontu: get needs a path and one file\n${GET_HELP}\n`)
+    return 2
+  }
+  const [path, file] = rest
+
+  // ELIDING BELOW A DEPTH means rendering `top`, which JSON cannot
+  // say. Rather than switch the view silently -- the choice `trim
+  // --check` refused to make -- the combination is a usage error.
+  if (null != depth && 'canon' !== view && 'types' !== view) {
+    process.stderr.write(
+      'aontu: --depth needs --canon or --types (JSON cannot say top)\n')
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(file, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = get(src, path, { view, depth, path: file })
+  if ('json' === format) {
+    process.stdout.write(exactJSON({
+      aontu: { version: version(), verb: 'get' },
+      findings: report.findings,
+      ok: report.ok,
+      out: report.out,
+    }, 2) + '\n')
+  }
+  else if (report.ok) {
+    process.stdout.write(report.out + '\n')
+  }
+  else {
+    process.stderr.write(report.findings.map(renderFinding).join('\n') + '\n')
+  }
+
+  if (report.ok) {
+    return 0
+  }
+  // A path that names nothing is the QUESTION's answer -- exit 1, the
+  // "no" class -- while a document that does not stand up is exit 4,
+  // as it is for every other verb.
+  return 'no_path' === report.findings[0]?.code ? 1 : 4
+}
+
+
 // Exit without truncating output.
 //
 // process.exit() terminates immediately, discarding anything still
@@ -1351,6 +1469,10 @@ function main(argv: string[]): void {
   if ('breaking' === argv[2]) {
     return finish(runBreaking(argv.slice(3)))
   }
+  if ('get' === argv[2]) {
+    return finish(runGet(argv.slice(3)))
+  }
+
   if ('hash' === argv[2]) {
     return finish(runHash(argv.slice(3)))
   }
@@ -1416,6 +1538,6 @@ function main(argv: string[]): void {
 
 
 export {
-  evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash,
+  evalSource, main, runVet, runSubsume, runBreaking, runTrim, runHash, runGet,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
 }

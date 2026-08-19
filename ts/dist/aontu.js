@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.canonHash = exports.hcanon = exports.trimCheck = exports.subsume = exports.sarifReport = exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
+exports.get = exports.canonHash = exports.hcanon = exports.trimCheck = exports.subsume = exports.sarifReport = exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
 exports.runparse = runparse;
 const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
@@ -28,6 +28,8 @@ Object.defineProperty(exports, "trimCheck", { enumerable: true, get: function ()
 const hcanon_1 = require("./hcanon");
 Object.defineProperty(exports, "hcanon", { enumerable: true, get: function () { return hcanon_1.hcanon; } });
 Object.defineProperty(exports, "canonHash", { enumerable: true, get: function () { return hcanon_1.canonHash; } });
+const query_1 = require("./query");
+Object.defineProperty(exports, "get", { enumerable: true, get: function () { return query_1.get; } });
 // VERSION is the Aontu npm package version, and mirrors
 // go/aontu.go's `Version` (which tracks the Go module version
 // separately — the two version series are independent).

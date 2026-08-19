@@ -89,16 +89,17 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **66 `.tsv` files, 65
-   row-bearing, 2,460 rows**, in eleven modes — `canon` 673, `gen` 539,
-   `errc` 425, `gens` 303, `err` 233, `subsume` 94, `errcode` 82,
-   `vet` 53, `hcanon` 38, `trim` 11, `hash` 9. Reproduce with
+   register's last update the suite is **67 `.tsv` files, 66
+   row-bearing, 2,552 rows**, in twelve modes — `canon` 673, `gen` 539,
+   `errc` 425, `gens` 303, `err` 233, `subsume` 94, `query` 92,
+   `errcode` 82, `vet` 53, `hcanon` 38, `trim` 11, `hash` 9.
+   Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Twenty-nine of forty-nine phases have moved; twenty-seven of those are complete.
+Thirty-one of forty-nine phases have moved; twenty-nine of those are complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
@@ -108,9 +109,9 @@ Twenty-nine of forty-nine phases have moved; twenty-seven of those are complete.
 | [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
-| [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
+| [G7](g7-machine-access.md) | Machine access | B | 2 | 0 | 5 |
 | [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **27** | **2** | **20** |
+| | | **total** | **29** | **2** | **18** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -144,7 +145,12 @@ Against the review's own [sequencing](index.md#sequencing):
   in both ports, `aontu hash` on both command lines, and full
   `aon1-…` strings pinned cross-implementation by the shared suite —
   the review's Phase B "canon-hash pinning" item, useful with no
-  registry behind it. No query surface yet.
+  registry behind it. And the **query surface has opened** (G7.1–2):
+  `aontu get` selects one node by path and renders it plainly or as a
+  lattice abstraction, in both ports, with the "view subsumes truth"
+  property mechanically asserted by every projection row rather than
+  promised. Provenance (`why`), patch (`set`) and the MCP delivery
+  skin are still ahead.
 - **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
 
 One structural note the sequencing table itself makes: G7's query/MCP
@@ -424,24 +430,32 @@ parse-level canon.
 
 | Phase | Size | Status |
 |-------|------|--------|
-| **1** — `get` and projections, TypeScript | M | **NOT STARTED** |
-| **2** — `get`, Go port | M | **NOT STARTED** |
+| **1** — `get` and projections, TypeScript | M | **LANDED** | `ts/src/query.ts` (`get`, exported from `ts/src/aontu.ts`): evaluate the document, select the node at a path, render it as generated JSON (the default), canonical form, a `types` shape view, a `depth`-elided view, or a `keys` listing. Path parsing REUSES `anchorAt` — vet's `--at` walk, already type-directed and already in parity — so a path means exactly what a reference means by `$.a.b`, down to the canonical-decimal index rule. A refusal is a G2 finding (`no_path`, class `reference`) carrying a nearest-key suggestion, so `get` invents no error format. CLI verb `aontu get <path> [-c\|--canon] [--keys] [--types] [--depth n] [--format text\|json] <file>` in `ts/src/cli.ts`, exit classes 0 rendered / 1 the path names nothing / 2 usage / 4 the document does not stand up. `test/spec/query.tsv` — 92 rows in the new fifth-column mode; `ts/test/query.test.ts` (5 cases) and 3 cli cases hold the API and the command line. `docs/reference-api.md` and `docs/shared-spec.md` carry the verb and the mode. **Departures:** (1) THE PROJECTION PROPERTY IS ASSERTED, not claimed: every canon-shaped row additionally runs `subsume(view, truth)` in both runners and requires `subsumes` — G3 landed first, so what the design could only promise is now mechanically checked. It runs under the **values** profile, because a shape view ERASES defaults (`*8080\|integer` → `*integer\|integer`) and the `defaults` profile rightly calls that a break; the claim a projection makes is about admitted values, not about which one is generated. (2) `--types` lifts through the lattice's own `superior()` rather than a kind table, and leaves a value that is ALREADY an abstraction (a kind marker, a constraint, an unresolved reference) alone — lifting `integer` to `number` would generalise a shape view that was already a shape. (3) Junctions and prefs are TRANSPARENT to `--depth`: not a structural tier, so `*8080\|integer` projects its members rather than collapsing to `top` and discarding the alternatives. (4) `--depth` with the JSON view is a USAGE ERROR: eliding renders `top`, which JSON cannot say, and switching the view silently is the choice `trim --check` already refused. (5) The design's `[file]` optionality (stdin) is not taken: every other verb names its file, and an included document's base directory has to come from somewhere. |
+| **2** — `get`, Go port | M | **LANDED** | `go/query.go` (`(*Aontu).Get`, `QueryOptions`, `QueryReport`) and `go/cmd/aontu/get.go`, mirroring the walk, the views, the exit classes and the JSON report; both runners execute every `query.tsv` row with no skip list, expectations parity-probed (87 cases diffed byte-for-byte, then 5 more for the list-spread arm) before any row was written. `go/query_test.go` (7 cases) holds the API and the arms no source reaches. The two CLIs diffed byte-identical over a 17-case corpus — the version series and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. **What the probe cost the engine** (the G2 phase-4 pattern): the canonical side was WRONG about a non-concrete value — `get $.k` on `k: integer` returned the string `null` under `collect`, where the Go port correctly refused; generation failures now read back off the context in TypeScript, and `query-k-json` pins the refusal. Two smaller fixes: the finding's path is now the normalised QUERIED path in both ports (it was the engine error's, which is empty for a parse failure), and the Go CLI's `get`, `hash` and `trim` verbs now build their engine through `aontuForFile`, so an error frame names the file rather than `<no-file>`. **Observed, not fixed:** for an unparseable document the TS error FRAME prints one more trailing source line than Go's. It is pre-existing (identical under the plain `aontu <file>` verb), it is frame prose rather than behaviour, and no row pins it. |
 | **3** — provenance recorder and `why`, TypeScript | L | **NOT STARTED** |
 | **4** — `why`, Go port | L | **NOT STARTED** |
 | **5** — overlay `set` | M | **NOT STARTED** |
 | **6** — delivery: MCP server, grammar, skill, `agentsmd` | M | **NOT STARTED** |
 | **7** — REPL inspection mode and hover-provenance | S | **NOT STARTED** |
 
-Not one named deliverable of any phase exists. The design's
-load-bearing premises were re-verified and all still hold — the
-site-dropping `update()` stub, `maxcc = 9`, the `DisjunctVal.gen` fold
-defect, per-request re-unification in hover, and the `ctx._pathidx`
-trie that the provenance recorder would reuse.
+Phases 3–7 have no artifacts yet: no provenance recorder, no `why`, no
+overlay `set`, no MCP server, no REPL inspection mode. The design's
+load-bearing premises for them were re-verified and all still hold —
+the site-dropping `update()` stub, `maxcc = 9`, the `DisjunctVal.gen`
+fold defect, per-request re-unification in hover, and the
+`ctx._pathidx` trie that the provenance recorder would reuse.
 
-Two smaller corrections: the `no_path` code G7.1 proposes already
-exists (`errcodes.tsv`, landed by G2.1), and `ctx.find`/`explain` —
-which design option A proposes documenting — are already documented in
-`docs/reference-api.md`.
+Two smaller corrections stand: the `no_path` code G7.1 proposed
+already existed (`errcodes.tsv`, landed by G2.1) and is what `get`
+reports, and `ctx.find`/`explain` — which design option A proposes
+documenting — are already documented in `docs/reference-api.md`.
+
+One open question the phases just landed did NOT settle, deliberately:
+the escape spelling for a key containing a dot. `get` splits paths
+exactly as a REFERENCE does, so `$.esc.a.b` names nothing when the key
+is `a.b` — pinned by a row rather than papered over. Inventing a
+spelling for the query surface alone would leave the language's own
+references behind; it is G4's to settle for both at once.
 
 ## G8 — generation, on the total side of the fork
 
