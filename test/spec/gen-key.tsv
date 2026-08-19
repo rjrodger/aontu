@@ -1,0 +1,21 @@
+# key() AT GENERATED PATHS (G8 phase 1). The template is cloned per
+# destination, so `key()` inside it answers for the destination — which
+# is what makes computed names work without string interpolation:
+# `"acme/" + key() + ":1.4.2"`. Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# The rows with key() under an operator or a function are the ones that
+# earn this file. A key() the bag walk reaches directly is re-pathed by
+# its own residuation clone every pass; one nested inside a call is
+# not, and answered for the position the TEMPLATE was written at until
+# this phase (see KeyFuncVal.resolve, and go/func.go's keyFunc, which
+# reach the same answers by different tests — DIVERGENCE.md).
+key-at-generated-path	gens	n:[a,b]\nd:pack($.n,{k:key()})\n	{"d":{"a":{"k":"a"},"b":{"k":"b"}},"n":["a","b"]}
+key-levels	gens	n:[a,b]\nd:pack($.n,{k:key(0),j:key(1),i:key(2)})\n	{"d":{"a":{"i":"d","j":"a","k":"k"},"b":{"i":"d","j":"b","k":"k"}},"n":["a","b"]}
+key-under-nesting	gens	n:[a]\nd:{e:pack($.n,{k:key(),p:key(2)})}\n	{"d":{"e":{"a":{"k":"a","p":"e"}}},"n":["a"]}
+key-inside-child-map	gens	n:[a,b]\nd:pack($.n,{s:{k:key()}})\n	{"d":{"a":{"s":{"k":"s"}},"b":{"s":{"k":"s"}}},"n":["a","b"]}
+key-in-plus-chain	gens	n:[a,b]\nd:pack($.n,{k:"v-"+key()+"-w"})\n	{"d":{"a":{"k":"v-a-w"},"b":{"k":"v-b-w"}},"n":["a","b"]}
+key-in-nested-funcs	gens	n:[a,b]\nd:pack($.n,{k:lower(upper(key()))})\n	{"d":{"a":{"k":"a"},"b":{"k":"b"}},"n":["a","b"]}
+key-in-nested-generation	gens	n:[x,y]\nd:pack($.n,{m:pack([p],{k:key(),up:key(1)})})\n	{"d":{"x":{"m":{"p":{"k":"p","up":"p"}}},"y":{"m":{"p":{"k":"p","up":"p"}}}},"n":["x","y"]}
+each-key-template-conflict	errc	n:[a,b]\no:each($.n,{k:key()})\n	scalar_kind
+key-at-generated-path-canon	canon	n:[a,b]\nd:pack($.n,{k:key()})\n	{"d":{"a":{"k":"a"},"b":{"k":"b"}},"n":["a","b"]}
+ref-reads-generated-key	gens	n:[a]\nd:pack($.n,{k:key()})\ne:$.d.a.k\n	{"d":{"a":{"k":"a"}},"e":"a","n":["a"]}

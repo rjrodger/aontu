@@ -1740,12 +1740,15 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 					}
 				}
 				// A comma group is ONE raw-slice term (writtenArgCount).
-				// deprecate's two arguments are distinct positions (the
-				// value, the record), so the group is expanded back into
-				// them here, while a written list literal — already a
-				// *ListVal — stays one argument. Mirrors ts/src/lang.ts.
+				// For a function whose arguments are distinct POSITIONS
+				// — deprecate's value and record, pack's and each's data
+				// and template — the group is expanded back into them
+				// here, while a written list literal, already a
+				// *ListVal, stays one argument. The constraint atoms are
+				// not in this set: `neq(1,2)` is one argument LIST, not
+				// two positions. Mirrors ts/src/lang.ts.
 				argterms := terms[1:]
-				if "deprecate" == name && 1 == len(argterms) {
+				if positionalArgFuncs[name] && 1 == len(argterms) {
 					if raw, ok := argterms[0].([]any); ok {
 						argterms = raw
 					}

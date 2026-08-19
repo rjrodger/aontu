@@ -1,8 +1,8 @@
 # G8: Generation and abstraction, on the total side of the fork
 
-*Status: design proposal — phase 0 **landed** (its defect-fencing half
-with G1 phase 0, the staging rule with G8 phase 0), phases 1–4
-outstanding. Per-phase status is in
+*Status: design proposal — phases 0 and 1 **landed** (`pack` and
+`each` ship; phase 0's defect-fencing half went with G1 phase 0),
+phases 2–4 outstanding. Per-phase status is in
 the [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -208,7 +208,8 @@ them; and it walks straight into the trap the index names
 surface-area creep toward CUE.
 
 **C. Total generator combinators as builtin functions.** `each`,
-`pack`, `filter`, `match` join the twelve builtins; placeholder `_`
+`pack`, `filter`, `match` join the builtins (twelve when this was
+written, twenty-four when phase 1 landed the first two); placeholder `_`
 gives templates residuated per-child computation; `|>` is optional
 parse-time sugar. Combinators iterate only finite, settled data and
 cannot recurse, so totality is structural; G5's budgets remain a
@@ -535,14 +536,18 @@ the DisjunctVal.gen distribution defect (ts/src/val/DisjunctVal.ts,
 go/disjunct.go) here, with its own rows in disjunct.tsv — **fenced**
 with G1 phase 0.
 
-**Phase 1 — `pack` and `each` (M).** New spec files gen-pack.tsv,
-gen-each.tsv (gen + canon + err rows: list/map data, unfired canon,
-non-bag-data errors, duplicate-key merge), plus composition files
-gen-spread.tsv, gen-close.tsv, gen-key.tsv mirroring the spread-*
-corpus style. Files: ts/src/val/PackFuncVal.ts,
-ts/src/val/EachFuncVal.ts (new), ts/src/lang.ts (`funcMap`),
-ts/src/val/MapVal.ts (generated-children admission and apply-once
-interaction); go/func.go, go/mapval.go, go/lang.go.
+**Phase 1 — `pack` and `each` (M). LANDED.** Spec files gen-pack.tsv,
+gen-each.tsv, gen-spread.tsv, gen-close.tsv, gen-key.tsv, as planned
+(71 rows). Files: ts/src/val/PackFuncVal.ts, ts/src/val/EachFuncVal.ts
+(new), ts/src/lang.ts (`funcMap`, arity, the positional-argument set);
+go/generate.go (new), go/func.go, go/mapval.go, go/lang.go. No
+generated-children admission was needed in MapVal after all: a fired
+generator RESOLVES to an ordinary map or list at the call's position,
+so the destination's spread, `close()` and references reach it through
+the machinery that was already there — which is what gen-spread.tsv
+and gen-close.tsv pin. The departures are in the
+[register](progress.md); the sharpest is that a generator's template
+must be CLONED per destination where a spread may share one.
 
 **Phase 2 — `filter` and `match` (M).** Requires Phase 0's defect
 fix. Spec files gen-filter.tsv, gen-match.tsv, including

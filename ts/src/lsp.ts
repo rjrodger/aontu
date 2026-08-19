@@ -409,17 +409,17 @@ type CompletionItem = {
 const COMPLETION_FUNCTION = 3
 const COMPLETION_KEYWORD = 14
 
-// The twenty-four built-in functions. Kept in sync with the engine by
+// The twenty-six built-in functions. Kept in sync with the engine by
 // `lsp.test.ts`, which asserts each is recognised and no others are.
 // The Go port derives its list from the engine's own name set
 // (`BuiltinFuncNames`, go/func.go), which is why a name added there
 // and forgotten here diverges silently — as `id` and `refer` did
 // between G4 phases 1/2 and G8 phase 1.
 const BUILTIN_FUNCS = [
-  'above', 'below', 'close', 'copy', 'deprecate', 'hide', 'id', 'key',
-  'length', 'lower',
-  'max', 'min', 'move', 'must', 'neq', 'open', 'path', 'pref', 're',
-  'refer', 'super', 'type', 'unique', 'upper',
+  'above', 'below', 'close', 'copy', 'deprecate', 'each', 'hide', 'id',
+  'key', 'length', 'lower',
+  'max', 'min', 'move', 'must', 'neq', 'open', 'pack', 'path', 'pref',
+  're', 'refer', 'super', 'type', 'unique', 'upper',
 ]
 
 // Scalar-kind and literal keywords.

@@ -1,0 +1,44 @@
+# GENERATION: pack(data, tmpl) (G8 phase 1,
+# docs/capability-review/g8-generation.md). One child of the result map
+# per child of `data`, each of them `tmpl` cloned at the destination.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# KEYS ARE DATA, NOT POSITION: for a list the strings themselves are
+# the keys, for a map its keys. A non-string list element is refused
+# (`pack_key`) rather than keyed by its index — Terraform's `count`,
+# keyed by position, churns every downstream child when a list is
+# reordered, which is why keying by data replaced it as best practice.
+#
+# Duplicate generated keys are NOT an error: the colliding children
+# unify, exactly as duplicate source keys already merge (map.tsv).
+#
+# UNFIRED, a generator canons as its CALL, which reparses to the same
+# value — so canon convergence holds for a model that has not finished.
+# Reaching that state takes data that never settles (`1+true` below is
+# the stuck operation budget.tsv uses), because a generator whose data
+# settles fires.
+pack-list	gens	n:[a,b,c]\nd:pack($.n,{x:1})\n	{"d":{"a":{"x":1},"b":{"x":1},"c":{"x":1}},"n":["a","b","c"]}
+pack-list-canon	canon	n:[a,b]\nd:pack($.n,{x:1})\n	{"d":{"a":{"x":1},"b":{"x":1}},"n":["a","b"]}
+pack-map	gens	m:{b:1,a:2}\nd:pack($.m,{x:1})\n	{"d":{"a":{"x":1},"b":{"x":1}},"m":{"a":2,"b":1}}
+pack-map-canon	canon	m:{b:1,a:2}\nd:pack($.m,{x:1})\n	{"d":{"a":{"x":1},"b":{"x":1}},"m":{"a":2,"b":1}}
+pack-duplicate-keys-merge	gens	n:[a,a,b]\nd:pack($.n,{x:1})\n	{"d":{"a":{"x":1},"b":{"x":1}},"n":["a","a","b"]}
+pack-empty-list	gens	n:[]\nd:pack($.n,{x:1})\n	{"d":{},"n":[]}
+pack-empty-map	gens	m:{}\nd:pack($.m,{x:1})\n	{"d":{},"m":{}}
+pack-literal-list	gens	d:pack([a,b],{x:1})\n	{"d":{"a":{"x":1},"b":{"x":1}}}
+pack-ref-template	gens	t:{x:1}\nn:[a,b]\nd:pack($.n,$.t)\n	{"d":{"a":{"x":1},"b":{"x":1}},"n":["a","b"],"t":{"x":1}}
+pack-pref-override	gens	n:[a,b]\nd:pack($.n,{x:*1|integer})\nd:a:x:5\n	{"d":{"a":{"x":5},"b":{"x":1}},"n":["a","b"]}
+pack-override-conflict	errc	n:[a]\nd:pack($.n,{x:1})\nd:a:x:2\n	scalar_value
+pack-ref-into-generated	gens	n:[a,b]\nd:pack($.n,{x:1})\ne:$.d.a.x\n	{"d":{"a":{"x":1},"b":{"x":1}},"e":1,"n":["a","b"]}
+pack-nested	gens	n:[a,b]\nd:pack($.n,{p:pack([q],{z:1})})\n	{"d":{"a":{"p":{"q":{"z":1}}},"b":{"p":{"q":{"z":1}}}},"n":["a","b"]}
+pack-unfired-canon	canon	n:{a:1+true}\nd:pack($.n,{x:1})\n	{"d":pack({"a":1+true},{"x":1}),"n":{"a":1+true}}
+pack-unfired-errc	errc	n:{a:1+true}\nd:pack($.n,{x:1})\n	mapval_no_gen
+pack-literal-key-canon	canon	d:pack([a],{x:key()})\n	{"d":{"a":{"x":"a"}}}
+pack-data-integer	errc	d:pack(1,{x:1})\n	pack_data
+pack-data-string	errc	d:pack("s",{x:1})\n	pack_data
+pack-data-kind	errc	d:pack(string,{x:1})\n	pack_data
+pack-key-integer	errc	d:pack([1],{x:1})\n	pack_key
+pack-key-mixed	errc	d:pack([a,1],{x:1})\n	pack_key
+pack-key-map	errc	d:pack([a,{b:1}],{x:1})\n	pack_key
+pack-arity-one	errc	d:pack($.n)\n	func_arity
+pack-arity-none	errc	d:pack()\n	func_arity
+pack-arity-three	errc	d:pack([a],{x:1},{y:2})\n	func_arity

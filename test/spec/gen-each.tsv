@@ -1,0 +1,30 @@
+# GENERATION: each(data, tmpl?) (G8 phase 1,
+# docs/capability-review/g8-generation.md). One element of the result
+# list per child of `data`, each of them that child met with `tmpl`.
+# Written with one argument, `each(m)` is a map's children as a list.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# ORDER IS FIXED, and fixed the way canon already fixes it: source
+# order for a list, sorted-key order for a map. A generated list whose
+# order depended on insertion history would differ between two runs of
+# one document, and between the two ports.
+each-list	gens	p:[1,2]\no:each($.p)\n	{"o":[1,2],"p":[1,2]}
+each-map-sorted	gens	m:{b:2,a:1}\no:each($.m)\n	{"m":{"a":1,"b":2},"o":[1,2]}
+each-map-sorted-canon	canon	m:{b:2,a:1}\no:each($.m)\n	{"m":{"a":1,"b":2},"o":[1,2]}
+each-list-kind	gens	p:[1,2]\no:each($.p,integer)\n	{"o":[1,2],"p":[1,2]}
+each-map-template	gens	m:{a:{v:1},b:{v:2}}\no:each($.m,{v:integer})\n	{"m":{"a":{"v":1},"b":{"v":2}},"o":[{"v":1},{"v":2}]}
+each-pref-template	gens	o:each([1,2],*3|integer)\n	{"o":[1,2]}
+each-empty-list	gens	o:each([])\n	{"o":[]}
+each-empty-map	gens	o:each({})\n	{"o":[]}
+each-of-pack	gens	n:[a,b]\no:each(pack($.n,{x:1}))\n	{"n":["a","b"],"o":[{"x":1},{"x":1}]}
+each-list-strings	gens	n:[a,b]\no:each($.n)\n	{"n":["a","b"],"o":["a","b"]}
+each-map-kind	gens	m:{a:1,b:2}\no:each($.m,integer)\n	{"m":{"a":1,"b":2},"o":[1,2]}
+each-unfired-canon	canon	n:[1+true]\no:each($.n)\n	{"n":[1+true],"o":each([1+true])}
+each-unfired-template-canon	canon	n:{a:1+true}\no:each($.n,integer)\n	{"n":{"a":1+true},"o":each({"a":1+true},integer)}
+each-literal-canon	canon	o:each([1,2])\n	{"o":[1,2]}
+each-literal-kind-canon	canon	o:each([1,2],integer)\n	{"o":[1,2]}
+each-template-conflict	errc	p:[1,x]\no:each($.p,integer)\n	no_scalar_unify
+each-data-integer	errc	o:each(1)\n	each_data
+each-data-string	errc	o:each("s")\n	each_data
+each-arity-none	errc	o:each()\n	func_arity
+each-arity-three	errc	o:each([1],integer,integer)\n	func_arity

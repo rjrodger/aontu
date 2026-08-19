@@ -51,6 +51,8 @@ const HideFuncVal_1 = require("./val/HideFuncVal");
 const DeprecateFuncVal_1 = require("./val/DeprecateFuncVal");
 const IdFuncVal_1 = require("./val/IdFuncVal");
 const ReferFuncVal_1 = require("./val/ReferFuncVal");
+const PackFuncVal_1 = require("./val/PackFuncVal");
+const EachFuncVal_1 = require("./val/EachFuncVal");
 const MoveFuncVal_1 = require("./val/MoveFuncVal");
 const PathFuncVal_1 = require("./val/PathFuncVal");
 const PrefFuncVal_1 = require("./val/PrefFuncVal");
@@ -354,6 +356,13 @@ help isolate the syntax error.`,
         // address, the address must resolve, and the optional argument
         // flows INTO the target. The field keeps the string.
         refer: ReferFuncVal_1.ReferFuncVal,
+        // G8 phase 1: the generation combinators. `pack` makes one keyed
+        // child per child of its data, `each` one list element; both clone
+        // their template per destination exactly as a spread does, and both
+        // wait for the model to settle before they fire (the staging rule,
+        // G8 phase 0).
+        pack: PackFuncVal_1.PackFuncVal,
+        each: EachFuncVal_1.EachFuncVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -475,13 +484,17 @@ help isolate the syntax error.`,
                 // verdict: a crash reported as a unification result (issue #49).
                 // The Go port has always converted here (asVal in evaluate).
                 // A comma group is ONE raw-array term (see writtenArgCount).
-                // deprecate's two arguments are distinct positions (the value,
-                // the record), so the group is expanded back into them here,
-                // while a written list literal — already a ListVal — stays one
-                // argument. The constraint atoms make the same move in their
-                // own constructor (atomArgs, ConstraintVal.ts).
+                // For a function whose arguments are distinct POSITIONS —
+                // deprecate's value and record, pack's and each's data and
+                // template — the group is expanded back into them here, while a
+                // written list literal, already a ListVal, stays one argument.
+                // The constraint atoms make the same move in their own
+                // constructor (atomArgs, ConstraintVal.ts), which is why they
+                // are not in this set: `neq(1,2)` is one argument LIST, not two
+                // positions, and expanding it here would take the list away
+                // from the code that reads it.
                 let argterms = terms.slice(1);
-                if ('deprecate' === fname && 1 === argterms.length &&
+                if (true === POSITIONAL_ARG_FUNCS[fname] && 1 === argterms.length &&
                     Array.isArray(argterms[0])) {
                     argterms = argterms[0];
                 }
@@ -1142,6 +1155,13 @@ function makeModelResolver(options) {
     };
 }
 // funcArity is the permitted WRITTEN argument count of each built-in, as
+// The functions whose comma-separated arguments are distinct POSITIONS
+// rather than one argument list. See the func-paren handler above: this
+// is the set whose comma group is expanded back into separate `peg`
+// entries.
+const POSITIONAL_ARG_FUNCS = {
+    deprecate: true, pack: true, each: true,
+};
 // [min, max]; a max of -1 is unbounded. Every name in funcMap has an
 // entry, and the arity is a property of the language rather than of
 // either port -- go/func.go carries the same table.
@@ -1165,6 +1185,8 @@ const funcArity = {
     deprecate: [1, 2],
     id: [1, 1],
     refer: [0, 1],
+    pack: [2, 2],
+    each: [1, 2],
 };
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
 //

@@ -89,10 +89,10 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **76 `.tsv` files, 75
-   row-bearing, 2,856 rows**, in eighteen modes — `canon` 688, `gen`
-   539, `errc` 458, `gens` 386, `err` 240, `subsume` 94, `query` 92,
-   `errcode` 90, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
+   register's last update the suite is **81 `.tsv` files, 80
+   row-bearing, 2,933 rows**, in eighteen modes — `canon` 701, `gen`
+   541, `errc` 479, `gens` 424, `err` 240, `subsume` 94, `errcode` 93,
+   `query` 92, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
    `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
    `agentsmd` 7.
    Reproduce with
@@ -101,7 +101,7 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-two of forty-nine phases have moved; forty-one of those are
+Forty-three of forty-nine phases have moved; forty-two of those are
 complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
@@ -113,8 +113,8 @@ complete.
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
-| [G8](g8-generation.md) | Generation | C | 1 | 0 | 4 |
-| | | **total** | **41** | **1** | **7** |
+| [G8](g8-generation.md) | Generation | C | 2 | 0 | 3 |
+| | | **total** | **42** | **1** | **6** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -166,8 +166,10 @@ Against the review's own [sequencing](index.md#sequencing):
   document and answers `:get`, `:keys` and `:why` about it, `--jsonl`
   makes the session machine-drivable, and LSP hover can carry the
   provenance record behind a config gate.
-- **Phase C — scale.** G4 is complete and **G8.0 has landed** — the
-  staging rule that every generation combinator is to share.
+- **Phase C — scale.** G4 is complete, and G8 has begun: **G8.0**, the
+  staging rule every generation combinator shares, and **G8.1**,
+  `pack` and `each` — children made from data that is already in the
+  model, so the list and the children built from it cannot drift.
 
 One structural note the sequencing table itself makes: G7's query/MCP
 surface depends on nothing and could ship at any time.
@@ -689,10 +691,59 @@ references behind; it is G4's to settle for both at once.
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
 | **0** — staging rule | S | **LANDED** | Both deliverables. The `DisjunctVal.gen` distribution defect was **fenced** by probed guard rows in `test/spec/disjunct.tsv` with G1.0. The `KeyFuncVal` `cc < 3` delay is now the settled-position rule: `AontuContext.settle` / `Ctx.settle`, set by the pass loop (`ts/src/unify.ts`, `go/unify.go`) on the first pass whose input model is identical to the previous pass's, and read by `key()` in `ts/src/val/KeyFuncVal.ts` and `go/func.go`. Zero behaviour change across the existing suite in both ports. **Departure from the design**, in two respects. (a) The rule reads MODEL stability, not "the data argument is DONE": `move()` hides its source one pass *after* it copies it, so a value whose own path and arguments have settled can still be moved, and only stability of the whole model rules that out. (b) It is stated in the pass loop rather than in `FuncBaseVal`, because that is where the two consecutive models exist to compare; `FuncBaseVal` reads the flag. Landing it also exposed a real defect: `ListVal` had no apply-once-per-element spread guard (the `_spr` stamp `MapVal` has always had), so a list template that RESIDUATES was met into each element again every pass and its canon doubled — invisible under a three-pass delay, fatal under a rule that waits for stability. Fixed in `ts/src/val/ListVal.ts` and `go/listval.go`; pinned by the four `spread-nested-list-key*` rows in `test/spec/spread.tsv`, which the old rule failed with a spurious `scalar_value` error. |
-| **1** — `pack` and `each` | M | **NOT STARTED** | — |
+| **1** — `pack` and `each` | M | **LANDED** | `ts/src/val/PackFuncVal.ts` and `ts/src/val/EachFuncVal.ts` (new), the `"pack"`/`"each"` arms of `go/func.go` with `go/generate.go` (new); both in both registries (24 → 26 builtins), both arity tables, both LSP completion lists and both published grammars. Codes `pack_data`, `pack_key`, `each_data` in `errcodes.tsv`. Spec: `test/spec/gen-pack.tsv` (25), `gen-each.tsv` (20), `gen-spread.tsv` (9), `gen-close.tsv` (7), `gen-key.tsv` (10) — 71 rows, every expectation from a parity probe run through both engines. Docs: "Generating children" in [`docs/reference-language.md`](../reference-language.md#generating-children-pack-and-each). **Departures and discoveries:** four, all recorded below. |
 | **2** — `filter` and `match` | M | **NOT STARTED** | Depends on phase 0's defect work. |
 | **3** — placeholder `_` (the parser phase) | M/L | **NOT STARTED** | — |
 | **4** — `\|>` sugar | S | **NOT STARTED** | Marked optional and droppable in the plan, so this is a plan-consistent state rather than a slip. |
+
+**Departures and discoveries recorded by G8.1.**
+
+1. **The template is CLONED per destination, never shared.** A spread
+   may share a template that holds nothing path-dependent
+   (`MapVal.spreadClone`), because a spread CONSTRAINS a child that
+   already exists; a generator's template IS the child, and a child is
+   a position. Sharing left every generated child pointing at the
+   template's own parse-time location — visible as the site an error
+   inside a generated child reports (`$.o.NaN` rather than `$.o.0`).
+2. **`key()` under a call needed a rule, and the two ports needed
+   DIFFERENT tests for it.** A `key()` the bag walk reaches directly is
+   re-pathed by its own residuation clone every pass; one nested inside
+   a function or operator ARGUMENT is never reached that way, so it
+   answered for the position the template was WRITTEN at — which is the
+   one position a template is never used at, and which made
+   `"acme/" + key() + ":1.4.2"` (the design's own flagship line) answer
+   the same wrong name for every generated child. Both ports now prefer
+   the DRIVING position, and neither could use the other's test for
+   when to: TypeScript's parse-time path for a function argument
+   carries a segment that is not a key at all, so it asks whether the
+   stored path IS a position; Go's carries the call's own path, so it
+   asks whether the driver is DEEPER than anything the value has been
+   placed at. Same answers, pinned by `gen-key.tsv`; recorded in
+   DIVERGENCE.md.
+3. **The Go port's path-dependence walk was missing operators.**
+   `computePathFunc` (`go/mapval.go`) had no `*PlusOpVal` arm, while
+   the TypeScript getter walks any array peg and therefore sees
+   through one. A template holding `"x" + key()` was classified
+   path-INdependent and shared, so every destination got the FIRST
+   one's key. A generator's template is the first place that
+   difference reaches the OUTPUT rather than a canon, which is how it
+   surfaced.
+4. **The comma group is expanded for a NAMED SET of functions.** Both
+   parsers expanded a multi-argument call's comma group back into
+   separate arguments for `deprecate` alone, by name. `pack` and
+   `each` need the same, and the constraint atoms must NOT have it
+   (`neq(1,2)` is one argument list, not two positions), so the test
+   is now a set — `positionalArgFuncs` / `POSITIONAL_ARG_FUNCS` — in
+   both ports rather than a name comparison.
+
+One thing this phase did NOT fix, found while landing it and left
+recorded rather than silently carried: **`"x" + key()` inside a `&:`
+spread template does not resolve** (`mapval_spread_required`). It
+predates the staging rule — verified against `6ffe37a`, the commit
+before G8 phase 0 — and is a separate defect in how a bag decides it is
+done while an operator inside a spread-applied child still holds a
+residuating argument. `pack` and `each` are unaffected, which is why
+this phase does not carry the fix.
 
 ## Corrections outstanding in the gap documents
 

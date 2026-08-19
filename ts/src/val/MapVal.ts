@@ -316,6 +316,7 @@ class MapVal extends BagVal {
 
         out.peg[key] = oval
 
+
         done = (done && DONE === oval.dc)
       }
 

@@ -47,8 +47,8 @@ func TestHoverMiss(t *testing.T) {
 func TestCompletionsList(t *testing.T) {
 	c := Completions()
 	// 24 functions + 7 kinds + 4 literals.
-	if len(c) != 35 {
-		t.Fatalf("expected 35 completions, got %d", len(c))
+	if len(c) != 37 {
+		t.Fatalf("expected 37 completions, got %d", len(c))
 	}
 	byLabel := map[string]CompletionItem{}
 	for _, it := range c {
@@ -104,7 +104,7 @@ func TestBuiltinFuncNamesParity(t *testing.T) {
 	// The completion function list must match the engine's recognised
 	// functions exactly (guards against drift).
 	got := aontu.BuiltinFuncNames()
-	want := []string{"above", "below", "close", "copy", "deprecate", "hide", "id", "key", "length", "lower", "max", "min", "move", "must", "neq", "open", "path", "pref", "re", "refer", "super", "type", "unique", "upper"}
+	want := []string{"above", "below", "close", "copy", "deprecate", "each", "hide", "id", "key", "length", "lower", "max", "min", "move", "must", "neq", "open", "pack", "path", "pref", "re", "refer", "super", "type", "unique", "upper"}
 	if len(got) != len(want) {
 		t.Fatalf("BuiltinFuncNames = %v, want %v", got, want)
 	}
@@ -149,8 +149,8 @@ func TestHandlerCompletion(t *testing.T) {
 	if err := json.Unmarshal(outs[0].Result, &items); err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 35 {
-		t.Errorf("expected 35 completion items, got %d", len(items))
+	if len(items) != 37 {
+		t.Errorf("expected 37 completion items, got %d", len(items))
 	}
 }
 

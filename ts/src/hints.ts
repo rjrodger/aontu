@@ -162,6 +162,12 @@ const hints: Record<string, string> = {
 
   refer_unresolved: 'A refer() address names no entity in this evaluation. Within one\nevaluation the document-set is fixed, so a link to nothing is an\nerror rather than something to resolve later: check the spelling, or\nadd the id() that was meant to declare it.\n \nExamples:\n  a:id(svc/x)&{} b:refer()&"svc/x"     -> "svc/x"  # Declared, so it resolves;\n  a:id(svc/x)&{p:1} b:refer()&"svc/x.p" -> "svc/x.p"  # ... and so does a node inside it;\n  b:refer()&"svc/nope"                -> nil      # ... but nothing declares this.',
 
+  pack_data: 'The first argument to pack() is not a bag. `pack` makes one child\nper child of its DATA, so the data has to have children: a list of\nnames, or a map whose keys are the names.\n \nExamples:\n  pack([a,b], {x:1})     -> {..}  # A list of names;\n  pack({a:1,b:2}, {x:1}) -> {..}  # ... or a map, keyed by its keys;\n  pack(1, {x:1})         -> nil   # ... but a scalar has no children.',
+
+  pack_key: 'A list packed by pack() holds something that is not a string. The\nelements of a packed list ARE the generated keys, and only a string\nis a key — an element keyed by its position would churn every\ngenerated child the moment the list was reordered.\n \nExamples:\n  pack([a,b], {x:1})   -> {..}  # Names;\n  pack(["a b"], {x:1}) -> {..}  # ... a quoted name is still a name;\n  pack([1,2], {x:1})   -> nil   # ... but a number is not one.',
+
+  each_data: 'The first argument to each() is not a bag. `each` makes one list\nelement per child of its DATA, so the data has to have children: a\nlist, or a map whose values become the elements in sorted-key order.\n \nExamples:\n  each([1,2])       -> [..]  # A list, in source order;\n  each({b:2,a:1})   -> [..]  # ... a map, in sorted-key order;\n  each(1)           -> nil   # ... but a scalar has no children.',
+
   // Unification errors
   'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
   'unify_no_res': 'Unification produced no result. The values could not be unified.',
@@ -347,6 +353,14 @@ const codeClasses: Record<string, string> = {
   // class as `no_path`, because it is the same kind of miss).
   refer_address: 'parse',
   refer_unresolved: 'reference',
+
+  // G8 phase 1 -- the generation combinators. All three are class
+  // `parse`: what is wrong is the CALL as written (data that is not a
+  // bag, a list element that is not a name), not any pair of values a
+  // meet brought together.
+  pack_data: 'parse',
+  pack_key: 'parse',
+  each_data: 'parse',
 
   // G4 phase 5 -- the relation graph checks. Class `conflict`: the
   // model contradicts a property it declared for itself. Report-layer,

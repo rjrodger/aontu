@@ -65,9 +65,11 @@ element ::= spread | value
 func ::= name "(" ws ( value ( ws "," ws value )* ws )? ")"
 
 name ::=
-    "above" | "below" | "close" | "copy" | "deprecate" | "hide" | "id" | "key"
+    "above" | "below" | "close" | "copy" | "deprecate" | "each" | "hide"
+  | "id" | "key"
   | "length" | "lower" | "max" | "min" | "move" | "must" | "neq"
-  | "open" | "path" | "pref" | "refer" | "re" | "same" | "super" | "type"
+  | "open" | "pack" | "path" | "pref" | "refer" | "re" | "same" | "super"
+  | "type"
   | "unique" | "upper"
 
 # A path reference, absolute from the document root.

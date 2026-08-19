@@ -84,6 +84,7 @@ const NumberVal_1 = require("../dist/val/NumberVal");
 const StringVal_1 = require("../dist/val/StringVal");
 const ScalarVal_1 = require("../dist/val/ScalarVal");
 const NilVal_1 = require("../dist/val/NilVal");
+const KeyFuncVal_1 = require("../dist/val/KeyFuncVal");
 const RefVal_1 = require("../dist/val/RefVal");
 const VarVal_1 = require("../dist/val/VarVal");
 const ConjunctVal_1 = require("../dist/val/ConjunctVal");
@@ -1100,6 +1101,22 @@ function capture(fn) {
         const root = new MapVal_1.MapVal({ peg: { raw: 5, gap: undefined } }, ctx);
         root.entity = 'x';
         Assert.deepEqual((0, graph_1.graphOf)(root).entities, [{ id: 'x', paths: ['$'] }]);
+    });
+});
+// G8 phase 0/1 — the staging rule's residuation, at the one arm no
+// document reaches. `unite` absorbs a nil BEFORE it dispatches (the
+// isNil arms in ts/src/unify.ts), so a staged func is never handed one
+// from a document; the arm is the contract for a caller that does, and
+// the Go port pins its twin the same way (coverage3_test.go,
+// TestFuncArmsDirect).
+(0, node_test_1.describe)('coverage3-staging', () => {
+    (0, node_test_1.test)('residuation-answers-a-nil-peer', () => {
+        const a0 = new aontu_1.Aontu();
+        const ctx = a0.ctx({});
+        const key = new KeyFuncVal_1.KeyFuncVal({ peg: [] }, ctx);
+        const nil = new NilVal_1.NilVal({ why: 'test-nil-peer' }, ctx);
+        // ctx.settle is false, so this is the residuation path.
+        Assert.strictEqual(key.unify(nil, ctx), nil);
     });
 });
 //# sourceMappingURL=coverage3.test.js.map

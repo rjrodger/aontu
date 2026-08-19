@@ -14,6 +14,14 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         super(spec, ctx);
         this.isFunc = true;
         this.isGenable = true;
+        // THE STAGING RULE (G8 phase 0, see AontuContext.settle). A func
+        // whose answer depends on WHERE IT IS -- `key()`, whose answer is a
+        // segment of its own path, and the generation combinators, whose
+        // data argument can still be merged into by a sibling -- sets this
+        // and residuates until the model stops moving. Everything else
+        // resolves as soon as its arguments are done, which is the rule that
+        // has always been here.
+        this.staged = false;
         // console.log('FBV', this.id, this.constructor.name, this.peg?.[0]?.canon)
     }
     validateArgs(args, min) {
@@ -26,7 +34,33 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     make(ctx, _spec) {
         return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'make');
     }
+    // The shape a staged func holds while it waits: not done, so the pass
+    // loop keeps going; unchanged against TOP, so nothing reads an answer
+    // it has not given; and collapsed against an identical twin at the
+    // same position, so `key() & key()` does not grow a conjunct per pass.
+    residuate(peer, ctx) {
+        this.notdone();
+        if (peer.isTop || (peer.id === this.id)) {
+            // Cloned rather than returned: a driver that met the same object
+            // twice in one pass would charge the revisit budget and report
+            // `unify_cycle`.
+            return this.clone(ctx);
+        }
+        if (peer.isNil) {
+            return peer;
+        }
+        if (peer.isFunc
+            && peer.funcname() === this.funcname()
+            && peer.path.join('.') === this.path.join('.')
+            && peer.canon === this.canon) {
+            return this;
+        }
+        return new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
+    }
     unify(peer, ctx) {
+        if (this.staged && !ctx.settle) {
+            return this.residuate(peer, ctx);
+        }
         const TOP = (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer);
         // const sc = this.id + '=' + this.canon

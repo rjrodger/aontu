@@ -498,6 +498,59 @@ Other forms:
 - **Lists:** `[&:{x:1}, {y:1}, {y:2}]` → `[{y:1,x:1},{y:2,x:1}]`;
   canon keeps the spread: `[&:{"x":1},{"y":1,"x":1},…]`.
 
+## Generating children: `pack` and `each`
+
+A spread constrains children that already exist. `pack` and `each`
+**make** them, from data that is already in the model — so the list of
+names and the children built from it cannot drift apart:
+
+```
+names: [web, auth, billing]
+
+deploy: close(pack($.names, {
+  image: "acme/" + key() + ":1.4.2"
+  replicas: *2 | integer
+  port: *8080 | integer
+}))
+
+deploy: billing: replicas: 4      # an override composes as usual
+```
+
+`pack(data, tmpl)` makes one **keyed child** per child of `data`. The
+keys are **data, never position**: for a list, the strings themselves
+(a non-string element is an error, `pack_key`); for a map, its keys.
+Each generated child is `tmpl` cloned at that destination, so `key()`
+and relative references inside the template answer for the child
+rather than for the call. Duplicate keys are not an error — the
+colliding children unify, exactly as duplicate source keys merge.
+
+`each(data, tmpl?)` makes one **list element** per child of `data`,
+each of them that child met with `tmpl`. The order is fixed: source
+order for a list, sorted-key order for a map. Written with one
+argument, `each(m)` is a map's children as a list.
+
+```
+ports: {http: 80, https: 443}
+open:  each($.ports, integer)      → {"open":[80,443]}
+names: each({b:2, a:1})            → {"names":[1,2]}
+```
+
+Once fired, generated children are **ordinary children**: a
+destination `&:` spread applies to them, `close()` seals the generated
+shape, references reach into them, and a template may itself contain a
+generator.
+
+Both **wait for the model to settle** before they fire, and fire
+exactly once. A generator's data can still be merged into by a sibling
+statement, an include or a spread after it first looks complete, and
+children generated from a half-merged bag would be missing. Until it
+fires, a generator canons as its own call — `pack({"a":1+true},…)` —
+which reparses to the same value.
+
+Neither can recurse. Both iterate a finite bag that already exists, so
+the number of children either can produce is fixed by the data:
+evaluation still terminates by construction.
+
 ## References and paths
 
 A reference resolves to the value at another location, then unifies in
@@ -659,8 +712,8 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of twenty-four built-in functions. There
-are no user-defined functions. Fifteen are the general-purpose
+Aontu provides a fixed set of twenty-six built-in functions. There
+are no user-defined functions. Seventeen are the general-purpose
 functions tabulated below; the other nine — `min(x)`, `max(x)`,
 `above(x)`, `below(x)`, `neq(x,...)`, `re(p)`, `length(c)`,
 `unique()` and `must(c,msg)` — are the constraint atoms, whose
@@ -683,6 +736,8 @@ meaning is defined in
 | `path(p)`   | resolve a path expression (function form of a reference) | `path(x.a)` (relative), `path($.z.x.a)` (absolute) |
 | `id(name)`  | declare the enclosing value an **entity** called `name`; every node in the evaluation with that name is unified with every other. See [Identity](#identity-idname) | `services: auth: id(svc/auth) & {port:8080}` |
 | `refer(t?)` | constrain a string field to be an **entity address** that resolves; `t`, if given, is unified into the target. The field keeps the address. See [Entity references](#entity-references-refert) | `dependsOn: [&: refer($.std.Service), svc/auth]` |
+| `pack(d, t)` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each) | `deploy: pack($.names, {replicas:*2\|integer})` |
+| `each(d, t?)` | one list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map | `open: each($.ports, integer)` |
 | `deprecate(x, m)` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
 
 `super(x)` lifts its **argument** one step up the lattice, so for a

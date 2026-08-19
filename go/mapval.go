@@ -135,7 +135,8 @@ func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 // across passes.
 func hasPathFunc(v Val) bool {
 	switch v.(type) {
-	case *MapVal, *ListVal, *FuncVal, *ConjunctVal, *DisjunctVal, *PrefVal:
+	case *MapVal, *ListVal, *FuncVal, *ConjunctVal, *DisjunctVal, *PrefVal,
+		*PlusOpVal:
 		if pc, ok := v.(pdepVal); ok {
 			switch pc.getPdep() {
 			case 1:
@@ -207,6 +208,20 @@ func computePathFunc(v Val) bool {
 		}
 		if n.spread != nil && hasPathFunc(n.spread) {
 			return true
+		}
+	case *PlusOpVal:
+		// The TS getter walks any ARRAY peg, and an operator's operands
+		// are one -- so `"acme/" + key()` is path-dependent there, and a
+		// template holding it is CLONED per destination rather than
+		// shared. This arm was missing, so the Go port shared such a
+		// template and every destination got the FIRST one's key. Found
+		// by G8 phase 1: a generator's template is the one place a
+		// wrongly shared op is visible in the output rather than merely
+		// in a canon.
+		for _, t := range n.peg {
+			if hasPathFunc(t) {
+				return true
+			}
 		}
 	case *ConjunctVal:
 		for _, t := range n.peg {

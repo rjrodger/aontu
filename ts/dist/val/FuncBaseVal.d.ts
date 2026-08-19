@@ -4,9 +4,11 @@ import { FeatureVal } from '../val/FeatureVal';
 declare class FuncBaseVal extends FeatureVal {
     isFunc: boolean;
     isGenable: boolean;
+    staged: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
     validateArgs(args: Val[], min: number): void;
     make(ctx: AontuContext, _spec: ValSpec): Val;
+    residuate(peer: Val, ctx: AontuContext): Val;
     unify(peer: Val, ctx: AontuContext): Val;
     get canon(): string;
     funcname(): string;

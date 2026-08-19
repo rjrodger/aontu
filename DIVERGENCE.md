@@ -60,6 +60,19 @@ having been agreed.
 
 Kept because how each was closed is worth remembering.
 
+> **`key()` under a call, in a template** (G8 phase 1). Both ports
+> answer for the position the value is being DRIVEN at when the
+> position it remembers is not one it has been placed at — the case a
+> generator's template creates, where the stored path is the call site
+> and the destination is somewhere else entirely. Neither port can use
+> the other's test for it, because they path a function's ARGUMENTS
+> differently: TypeScript's parser gives an argument a path with a
+> segment that is not a key at all, so `KeyFuncVal.resolve` asks
+> whether the stored path IS a position; Go gives it the enclosing
+> call's own path, so `keyFunc` asks whether the driver is DEEPER than
+> anything the value has been placed at. The answers are identical and
+> pinned by test/spec/gen-key.tsv.
+
 > **The canon of move()-hidden ghost nodes**, including the
 > object-sharing artifacts. The Go port now
 > mirrors TS's clone-graph sharing directly: func clones share their

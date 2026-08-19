@@ -35,6 +35,15 @@ class FuncBaseVal extends FeatureVal {
   isFunc = true
   isGenable = true
 
+  // THE STAGING RULE (G8 phase 0, see AontuContext.settle). A func
+  // whose answer depends on WHERE IT IS -- `key()`, whose answer is a
+  // segment of its own path, and the generation combinators, whose
+  // data argument can still be merged into by a sibling -- sets this
+  // and residuates until the model stops moving. Everything else
+  // resolves as soon as its arguments are done, which is the rule that
+  // has always been here.
+  staged = false
+
   constructor(
     spec: ValSpec,
     ctx?: AontuContext
@@ -58,7 +67,40 @@ class FuncBaseVal extends FeatureVal {
   }
 
 
+  // The shape a staged func holds while it waits: not done, so the pass
+  // loop keeps going; unchanged against TOP, so nothing reads an answer
+  // it has not given; and collapsed against an identical twin at the
+  // same position, so `key() & key()` does not grow a conjunct per pass.
+  residuate(peer: Val, ctx: AontuContext): Val {
+    this.notdone()
+
+    if (peer.isTop || (peer.id === this.id)) {
+      // Cloned rather than returned: a driver that met the same object
+      // twice in one pass would charge the revisit budget and report
+      // `unify_cycle`.
+      return this.clone(ctx)
+    }
+
+    if (peer.isNil) {
+      return peer
+    }
+
+    if (peer.isFunc
+      && (peer as any).funcname() === this.funcname()
+      && peer.path.join('.') === this.path.join('.')
+      && peer.canon === this.canon) {
+      return this
+    }
+
+    return new ConjunctVal({ peg: [this, peer] }, ctx)
+  }
+
+
   unify(peer: Val, ctx: AontuContext): Val {
+    if (this.staged && !ctx.settle) {
+      return this.residuate(peer, ctx)
+    }
+
     const TOP = top()
     const te = ctx.explain && explainOpen(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer)
 

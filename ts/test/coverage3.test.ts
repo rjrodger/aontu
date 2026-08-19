@@ -57,6 +57,7 @@ import { NumberVal } from '../dist/val/NumberVal'
 import { StringVal } from '../dist/val/StringVal'
 import { ScalarVal } from '../dist/val/ScalarVal'
 import { NilVal } from '../dist/val/NilVal'
+import { KeyFuncVal } from '../dist/val/KeyFuncVal'
 import { RefVal } from '../dist/val/RefVal'
 import { VarVal } from '../dist/val/VarVal'
 import { ConjunctVal } from '../dist/val/ConjunctVal'
@@ -1283,6 +1284,27 @@ describe('coverage3-graph', () => {
       { peg: { raw: 5 as any, gap: undefined as any } }, ctx)
     root.entity = 'x'
     Assert.deepEqual(graphOf(root).entities, [{ id: 'x', paths: ['$'] }])
+  })
+
+})
+
+
+// G8 phase 0/1 — the staging rule's residuation, at the one arm no
+// document reaches. `unite` absorbs a nil BEFORE it dispatches (the
+// isNil arms in ts/src/unify.ts), so a staged func is never handed one
+// from a document; the arm is the contract for a caller that does, and
+// the Go port pins its twin the same way (coverage3_test.go,
+// TestFuncArmsDirect).
+describe('coverage3-staging', () => {
+
+  test('residuation-answers-a-nil-peer', () => {
+    const a0 = new Aontu()
+    const ctx: any = a0.ctx({})
+    const key: any = new KeyFuncVal({ peg: [] }, ctx)
+    const nil: any = new NilVal({ why: 'test-nil-peer' }, ctx)
+
+    // ctx.settle is false, so this is the residuation path.
+    Assert.strictEqual(key.unify(nil, ctx), nil)
   })
 
 })

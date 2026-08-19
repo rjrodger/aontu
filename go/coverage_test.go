@@ -340,19 +340,13 @@ func TestRefAppendAndVarPlumbing(t *testing.T) {
 	}
 }
 
-// pathEq and keyArgVal, direct.
+// pathEq, direct. (keyArgVal went with G8 phase 1: the residuation
+// twin check compares canon, which the two ports already agree on,
+// rather than a key()-specific argument comparison.)
 func TestFuncHelpers(t *testing.T) {
 	if pathEq([]string{"a"}, []string{"a", "b"}) || !pathEq([]string{"a"}, []string{"a"}) ||
 		pathEq([]string{"a"}, []string{"b"}) {
 		t.Fatalf("pathEq")
-	}
-	f := newFunc("key", []Val{newString("x")})
-	if _, ok := keyArgVal(f); ok {
-		t.Fatalf("keyArgVal non-integer")
-	}
-	f2 := newFunc("key", []Val{})
-	if _, ok := keyArgVal(f2); ok {
-		t.Fatalf("keyArgVal empty")
 	}
 }
 
@@ -597,14 +591,10 @@ func TestPlusAddArms(t *testing.T) {
 	}
 }
 
-// keyArgVal's integer-arg arm, and resolve's unknown-name fallback
-// (every funcSet name has a resolve case; the fallback guards a
-// registry/resolve drift, reachable only directly).
+// resolve's unknown-name fallback (every funcSet name has a resolve
+// case; the fallback guards a registry/resolve drift, reachable only
+// directly).
 func TestKeyArgAndResolveFallback(t *testing.T) {
-	f := newFunc("key", []Val{newInteger(2)})
-	if lv, ok := keyArgVal(f); !ok || lv != 2 {
-		t.Fatalf("keyArgVal int arm")
-	}
 	bad := newFunc("min", []Val{})
 	ctx := &Ctx{root: newMap()}
 	out := bad.resolve(ctx, nil, nil)
