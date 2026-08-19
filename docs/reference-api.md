@@ -42,6 +42,7 @@ Usage: aontu [options] [file]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu agentsmd [--write <AGENTS.md>] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -377,6 +378,26 @@ wrote: changes.aon
   `1` invalid, `2` usage, `3` incomplete, `4` the entry does not stand
   up on its own.
 
+### `aontu agentsmd`
+
+Generate the AGENTS.md stanza for a definition — the prose entrypoint,
+derived from the formal source so it cannot drift from it.
+
+```
+aontu agentsmd [--write <AGENTS.md>] <file.aon>
+```
+
+The stanza names the document, its [canon-hash](#aontu-hash) pin, its
+root keys and its shape, and spells the `get` / `why` / `vet` / `set`
+commands with a path that actually exists in it. `--write` splices it
+into a file between `<!-- aontu:begin -->` and `<!-- aontu:end -->`,
+appending the markers when they are absent — everything outside them
+is left exactly as it was, so the verb is safe to re-run and safe to
+point at a file someone else writes prose in.
+
+Exit codes: `0` generated, `2` usage, `4` the document does not stand
+up on its own.
+
 ### `aontu hash`
 
 The canon-hash: one string that pins what a document *means*, so a
@@ -456,6 +477,63 @@ aontu> a:1|2|3
 {"a":1|2|3}
 aontu> :quit
 ```
+
+### The MCP server
+
+```
+aontu-mcp
+```
+
+A Model Context Protocol server over stdio (newline-delimited
+JSON-RPC 2.0), shipped as a second binary of the npm package. It
+follows the language server's three-layer split
+([docs/lsp.md](lsp.md)): the tools and the protocol are a
+transport-free library (`ts/src/mcp.ts`), the binary is stdio and
+nothing else.
+
+| Tool | Answers |
+|------|---------|
+| `vet` | the [vet](#aontu-vet) report for a schema and a data document |
+| `get` | the [query](#aontu-get) surface: a path, and a view of it |
+| `why` | the [provenance](#aontu-why) record for a path |
+| `diff` | what changed at which paths between two documents |
+| `canon` | a document's canonical form |
+| `summary` | the pin, the root keys and the top-tier shape — the first tier of progressive disclosure, expanded by calling `get` |
+
+Every tool returns **the same JSON contract the CLI prints**, so a
+report read from one is the report read from the other. A tool that
+*refuses* — an invalid document, a path that names nothing — answers
+with its own report and `isError: false`, because the report is the
+answer; `isError` is reserved for a call that could not be made at
+all.
+
+Served evaluation is **confined to no includes** (G5,
+[docs/trust.md](trust.md)): the source arrives from a caller, and
+`@"..."` is exactly what a server must not run unconfined. The Go port
+ships no separate MCP server — its role is embedding the same library
+calls, and `Get`, `Why`, `Diff` and `AgentsMd` are in the Go API for
+that.
+
+### The published grammar
+
+[`grammar/aontu.gbnf`](../grammar/aontu.gbnf) and
+[`grammar/aontu.lark`](../grammar/aontu.lark) publish the **emission
+surface** for constrained decoding. They are conservative by
+construction — they accept less than the parser does, never more — and
+they deliberately exclude `@"..."` includes, because generated
+documents should describe values rather than reach for files.
+
+The grammar is not a document that drifts: `ts/test/grammar.test.ts`
+reads `aontu.gbnf`, interprets it, and requires it to accept **every
+canonical-form output in the shared spec suite**.
+
+### The skill
+
+[`docs/skill/`](skill/) holds the agent-facing sources: a trigger
+stub, a one-page grammar card, a JSON-first example ladder, and the
+error-code index for repair loops. Every example document in the
+ladder is evaluated by `ts/test/skill.test.ts`, so a skill that
+teaches something the engine no longer does fails the build.
 
 **Getting the command**
 
@@ -828,6 +906,12 @@ why            // provenance (see `aontu why` above):
 patch          // the overlay patch (see `aontu set` above):
                // patch(entry, overlay, ["$.a.b=1"], opts?) ->
                // {overlay, appended, verdict, findings}; Go: aontu.Patch
+diff           // what changed at which paths between two documents:
+               // diff(left, right, {at?}) -> {changes, same, findings};
+               // Go: aontu.Diff
+agentsMd       // the generated AGENTS.md stanza (see `aontu agentsmd`
+               // above): agentsMd(src, {name?}) -> {stanza, ok};
+               // Go: (*Aontu).AgentsMd
 ```
 
 ---

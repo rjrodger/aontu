@@ -21,6 +21,7 @@ import { hcanon, canonHash } from './hcanon'
 import { get, why } from './query'
 import { patch } from './patch'
 import { diff } from './diff'
+import { agentsMd } from './agentsmd'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -385,6 +386,7 @@ export {
   why,
   patch,
   diff,
+  agentsMd,
 }
 
 

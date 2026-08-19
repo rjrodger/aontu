@@ -54,6 +54,10 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	             and the hash form must round-trip (G6, hcanon.tsv)
 //	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
 //	             `aon1-...` pin, byte-identical across the ports
+//	mode=agentsmd : FIVE columns -- name, agentsmd, src,
+//	             document-name, expect. The stanza of AgentsMd(src,
+//	             {Name}) must match BYTE FOR BYTE; see
+//	             test/spec/agentsmd.tsv
 //	mode=diff  : FIVE columns -- name, diff, left, input, expect. The
 //	             report of Diff(left, right) must match the expect
 //	             object ({changes, same} plus `codes`); the input is
@@ -136,7 +140,8 @@ func TestSpec(t *testing.T) {
 			// ignores any extra (see test/spec/vet.tsv and
 			// test/spec/subsume.tsv for the encodings).
 			vetRow := "vet" == mode || "subsume" == mode || "query" == mode ||
-				"why" == mode || "patch" == mode || "diff" == mode
+				"why" == mode || "patch" == mode || "diff" == mode ||
+				"agentsmd" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -294,6 +299,32 @@ func TestSpec(t *testing.T) {
 					}
 					if got := CanonHash(v); got != expect {
 						t.Fatalf("hash mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+
+				case "agentsmd":
+					var agolden struct {
+						Codes  []string `json:"codes"`
+						OK     bool     `json:"ok"`
+						Stanza string   `json:"stanza"`
+					}
+					if jerr := json.Unmarshal([]byte(expect), &agolden); jerr != nil {
+						t.Fatalf("bad agentsmd golden: %v\n %s", jerr, expect)
+					}
+					ar := a.AgentsMd(src, &AgentsMdOptions{Name: data})
+					if ar.OK != agolden.OK || ar.Stanza != agolden.Stanza {
+						t.Fatalf("agentsmd mismatch\n src: %q\n want: %q\n got:  %q",
+							src, agolden.Stanza, ar.Stanza)
+					}
+					acodes := []string{}
+					for _, f := range ar.Findings {
+						acodes = append(acodes, f.Code)
+					}
+					if 0 == len(acodes) {
+						acodes = nil
+					}
+					if specJSON(t, acodes) != specJSON(t, agolden.Codes) {
+						t.Fatalf("agentsmd codes mismatch\n want: %v\n got:  %v",
+							agolden.Codes, acodes)
 					}
 
 				case "diff":

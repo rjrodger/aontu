@@ -13,6 +13,7 @@ exports.runGet = runGet;
 exports.runWhy = runWhy;
 exports.renderWhyText = renderWhyText;
 exports.runSet = runSet;
+exports.runAgentsMd = runAgentsMd;
 exports.watchChange = watchChange;
 exports.watchSignature = watchSignature;
 exports.deprecatedAt = deprecatedAt;
@@ -31,6 +32,7 @@ const node_readline_1 = require("node:readline");
 const aontu_1 = require("./aontu");
 const report_sarif_1 = require("./report-sarif");
 const vet_1 = require("./vet");
+const agentsmd_1 = require("./agentsmd");
 const HELP = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
        aontu subsume [options] <general> <specific>
@@ -40,6 +42,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu agentsmd [--write <AGENTS.md>] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -145,6 +148,14 @@ Set options:
 Set exit codes are vet's verdict classes: 0 valid, 1 invalid (the
 change contradicts a pinned value -- aontu why locates it),
 2 usage, 3 incomplete, 4 the entry does not stand up on its own.
+
+Agentsmd options:
+  --write <file>  Splice the stanza into this file between the
+                  aontu:begin and aontu:end markers, appending them
+                  when they are absent; the rest is left alone
+
+Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
+stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -1417,6 +1428,78 @@ function runSet(argv) {
     }
     return VET_EXIT[report.verdict];
 }
+// ---------------------------------------------------------------------
+// The generated AGENTS.md stanza (G7 phase 6): the prose entrypoint,
+// derived from the definition, so it cannot drift from the formal
+// source it points at.
+const AGENTSMD_HELP = 'aontu agentsmd <file> (try --help)';
+function runAgentsMd(argv) {
+    const files = [];
+    let write;
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        if ('--write' === arg) {
+            write = argv[++i];
+            if (null == write) {
+                process.stderr.write('aontu: --write needs a file\n');
+                return 2;
+            }
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown agentsmd option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            files.push(arg);
+        }
+    }
+    if (1 !== files.length) {
+        process.stderr.write(`aontu: agentsmd needs one file\n${AGENTSMD_HELP}\n`);
+        return 2;
+    }
+    let src;
+    try {
+        src = (0, node_fs_1.readFileSync)(files[0], 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+        return 2;
+    }
+    const report = (0, aontu_1.agentsMd)(src, { name: files[0], path: files[0] });
+    if (!report.ok) {
+        process.stderr.write(report.findings.map(renderFinding).join('\n') + '\n');
+        return 4;
+    }
+    if (null == write) {
+        process.stdout.write(report.stanza);
+        return 0;
+    }
+    // An ABSENT target is an empty one: `--write AGENTS.md` should not
+    // require the author to have made the file first.
+    let existing = '';
+    try {
+        existing = (0, node_fs_1.readFileSync)(write, 'utf8');
+    }
+    catch (err) {
+        if ('ENOENT' !== err?.code) {
+            process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+            return 2;
+        }
+    }
+    try {
+        (0, node_fs_1.writeFileSync)(write, (0, agentsmd_1.agentsMdSplice)(existing, report.stanza), 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot write ${write}: ${err.message}\n`);
+        return 2;
+    }
+    process.stdout.write(`wrote: ${write}\n`);
+    return 0;
+}
 // Exit without truncating output.
 //
 // process.exit() terminates immediately, discarding anything still
@@ -1472,6 +1555,9 @@ function main(argv) {
     }
     if ('breaking' === argv[2]) {
         return finish(runBreaking(argv.slice(3)));
+    }
+    if ('agentsmd' === argv[2]) {
+        return finish(runAgentsMd(argv.slice(3)));
     }
     if ('set' === argv[2]) {
         return finish(runSet(argv.slice(3)));

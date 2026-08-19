@@ -31,6 +31,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu agentsmd [--write <AGENTS.md>] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -136,6 +137,14 @@ Set options:
 Set exit codes are vet's verdict classes: 0 valid, 1 invalid (the
 change contradicts a pinned value -- aontu why locates it),
 2 usage, 3 incomplete, 4 the entry does not stand up on its own.
+
+Agentsmd options:
+  --write <file>  Splice the stanza into this file between the
+                  aontu:begin and aontu:end markers, appending them
+                  when they are absent; the rest is left alone
+
+Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
+stand up on its own.
 
 REPL commands:
   :help           Show REPL help
@@ -355,6 +364,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 	if 0 < len(args) && "trim" == args[0] {
 		return runTrim(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "agentsmd" == args[0] {
+		return runAgentsMd(args[1:], stdout, stderr)
 	}
 	if 0 < len(args) && "set" == args[0] {
 		return runSet(args[1:], stdout, stderr)

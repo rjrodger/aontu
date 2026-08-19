@@ -624,6 +624,58 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--check', Path.join(f.dir, 'missing.aon')]), 2));
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runTrim)(['--help']), 0)).out.includes('aontu trim'), true);
     });
+    // G7 phase 6: the generated AGENTS.md stanza. The stanza itself is
+    // pinned byte for byte by test/spec/agentsmd.tsv in both ports;
+    // these cases hold the command line and the SPLICE.
+    (0, node_test_1.test)('agentsmd-writes-between-its-markers', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-md-'));
+        const entry = Path.join(dir, 'sys.aon');
+        const target = Path.join(dir, 'AGENTS.md');
+        Fs.writeFileSync(entry, 'services: { auth: { owner: string } }');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([entry]), 0));
+        Assert.match(r.out, /<!-- aontu:begin -->/);
+        Assert.match(r.out, /aontu get \$\.services/);
+        Assert.match(r.out, /Pin: `aon1-/);
+        // An ABSENT target is an empty one, and prose already there is
+        // kept: a generator that rewrote the file is one nobody dares run
+        // twice.
+        Fs.writeFileSync(target, 'Intro prose.\n');
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--write', target, entry]), 0));
+        const first = Fs.readFileSync(target, 'utf8');
+        Assert.match(first, /^Intro prose\./);
+        Assert.match(first, /<!-- aontu:end -->/);
+        // And re-running SPLICES rather than appending: the file after
+        // two runs is the file after one.
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--write', target, entry]), 0));
+        Assert.equal(Fs.readFileSync(target, 'utf8'), first);
+        // A target with no trailing newline gets one, so appending never
+        // joins the stanza onto someone's last line.
+        const bare = Path.join(dir, 'BARE.md');
+        Fs.writeFileSync(bare, 'no trailing newline');
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--write', bare, entry]), 0));
+        Assert.match(Fs.readFileSync(bare, 'utf8'), /^no trailing newline\n\n<!-- aontu:begin -->/);
+        // A target that does not exist yet is created.
+        const fresh = Path.join(dir, 'NEW.md');
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--write', fresh, entry]), 0));
+        Assert.match(Fs.readFileSync(fresh, 'utf8'), /<!-- aontu:begin -->/);
+    });
+    (0, node_test_1.test)('agentsmd-usage-errors-exit-2', () => {
+        const f = subFiles('a:1', 'a:1');
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([f.general, f.specific]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--bogus', f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--write']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([Path.join(f.dir, 'missing.aon')]), 2));
+        // A target that cannot be read (a directory) is usage, not empty.
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--write', f.dir, f.general]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--write', Path.join(f.dir, 'no-dir', 'A.md'), f.general]), 2));
+        // A document that does not stand up has no stanza: exit 4.
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-md-err-'));
+        const broken = Path.join(dir, 'doc.aon');
+        Fs.writeFileSync(broken, 'a:1 a:2');
+        vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)([broken]), 4));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runAgentsMd)(['--help']), 0)).out.includes('aontu agentsmd'), true);
+    });
     // G7 phase 5: the overlay patch verb. What the two ports must agree
     // on (the report) is pinned by test/spec/patch.tsv; these cases hold
     // the command line and, above all, WHEN THE FILE IS WRITTEN.
@@ -874,6 +926,8 @@ const VET_SCHEMA = 'service: { name: string, port: integer }';
         const st = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'set', '$.a=1', '--dry-run',
             '--entry', f.general, '--overlay', Path.join(f.dir, 'ov.aon')]));
         Assert.match(st.out, /verdict: valid/);
+        const md = vetCapture(() => (0, cli_1.main)(['node', 'aontu', 'agentsmd', f.general]));
+        Assert.match(md.out, /aontu:begin/);
     });
 });
 //# sourceMappingURL=cli.test.js.map

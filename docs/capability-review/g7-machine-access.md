@@ -1,9 +1,11 @@
 # G7: A machine-facing access surface
 
-*Status: design proposal — phases 1–5 (`get` and its projections,
-`why` with its provenance recorder, and the overlay `set`, both ports)
-are implemented; phases 6 and 7 (delivery, REPL) are not, and neither
-is phase 5's stage 2, the format-preserving in-place edit. Per-phase status and the
+*Status: design proposal — phases 1–6 (`get` and its projections,
+`why` with its provenance recorder, the overlay `set`, and the
+delivery skin: MCP server, `diff`, published grammar, skill,
+`agentsmd`) are implemented; phase 7 (the REPL inspection mode) is
+not, and neither is phase 5's stage 2, the format-preserving in-place
+edit. Per-phase status and the
 corrections this document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the

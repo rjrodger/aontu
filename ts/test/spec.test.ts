@@ -36,6 +36,10 @@
  *                and the hash form must round-trip (G6, hcanon.tsv)
  *   mode=hash  : canonHash(unify(src)) must equal expect, the full
  *                `aon1-...` pin, byte-identical across the ports
+ *   mode=agentsmd : FIVE columns -- name, agentsmd, src,
+ *                document-name, expect. The stanza of agentsMd(src,
+ *                {name}) must match BYTE FOR BYTE; see
+ *                test/spec/agentsmd.tsv
  *   mode=diff  : FIVE columns -- name, diff, left, input, expect. The
  *                report of diff(left, right) must match the expect
  *                object ({changes, same} plus `codes`); the input is
@@ -71,7 +75,7 @@ import * as Path from 'node:path'
 
 import {
   Aontu, exactJSON, vet, subsume, trimCheck, hcanon, canonHash, get, why,
-  patch, diff,
+  patch, diff, agentsMd,
 } from '../dist/aontu'
 import { codeClasses } from '../dist/hints'
 import { IntegerVal } from '../dist/val/IntegerVal'
@@ -152,7 +156,7 @@ function loadRows(): Row[] {
       // (spec-files-present below).
       const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
         'query' === parts[1] || 'why' === parts[1] || 'patch' === parts[1] ||
-        'diff' === parts[1]
+        'diff' === parts[1] || 'agentsmd' === parts[1]
       const want = vetRow ? 5 : 4
       if (parts.length < want) {
         throw new Error(
@@ -394,6 +398,19 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
   }
   else if ('hash' === row.mode) {
     Assert.strictEqual(canonHash(a0.unify(row.src, undefined, ctx)), row.expect)
+  }
+  else if ('agentsmd' === row.mode) {
+    const golden = JSON.parse(row.expect)
+    const report = agentsMd(row.src,
+      '' === row.data ? undefined : { name: row.data as string })
+
+    Assert.strictEqual(report.ok, golden.ok, `agentsmd ok: ${row.name}`)
+    Assert.strictEqual(
+      report.stanza, golden.stanza ?? '', `agentsmd stanza: ${row.name}`)
+    Assert.deepStrictEqual(
+      0 === report.findings.length
+        ? undefined : report.findings.map((f) => f.code),
+      golden.codes, `agentsmd codes: ${row.name}`)
   }
   else if ('diff' === row.mode) {
     const input = JSON.parse(row.data as string)
