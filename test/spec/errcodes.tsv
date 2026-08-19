@@ -239,3 +239,11 @@ relation_inverse_missing	errcode	conflict	0.53.0
 pack_data	errcode	parse	0.53.0
 pack_key	errcode	parse	0.53.0
 each_data	errcode	parse	0.53.0
+# SELECTION (G8 phase 2, `filter` and `match`). `filter_data` is class
+# `parse` for the same reason `pack_data` is: the CALL names something
+# with no children to select from. `match_none` is class `conflict` --
+# the value and every pattern written for it disagreed, which is an
+# ordinary failed meet, reported once for the whole form and naming
+# the patterns that were tried.
+filter_data	errcode	parse	0.53.0
+match_none	errcode	conflict	0.53.0

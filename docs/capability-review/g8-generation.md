@@ -1,8 +1,8 @@
 # G8: Generation and abstraction, on the total side of the fork
 
-*Status: design proposal — phases 0 and 1 **landed** (`pack` and
-`each` ship; phase 0's defect-fencing half went with G1 phase 0),
-phases 2–4 outstanding. Per-phase status is in
+*Status: design proposal — phases 0, 1 and 2 **landed** (`pack`,
+`each`, `filter` and `match` ship; phase 0's defect-fencing half went
+with G1 phase 0), phases 3–4 outstanding. Per-phase status is in
 the [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -290,13 +290,20 @@ JSON marshalling — generated order must be identical across
 implementations and runs). `tmpl` unifies with each element; omitted,
 `each(m)` converts a map's children to a list.
 
-**`filter(data, cond)` — subset by unifiability.** Children of
-`data` that unify with `cond` are kept (keys preserved for maps,
-order preserved for lists); children that fail are dropped, not
+**`filter(data, cond)` — subset by ALREADY SATISFIES.** Children of
+`data` that the condition adds nothing to are kept (keys preserved for
+maps, order preserved for lists); children that fail are dropped, not
 errors — the test runs under trial mode (`ctx._trialMode`,
 ts/src/ctx.ts), the same mechanism disjunction uses. `cond` is any
 Aontu value, so [G1](g1-constraint-algebra.md) atoms compose:
-`filter($.deploy, {replicas: min(3)})` once G1 lands.
+`filter($.deploy, {replicas: min(3)})`.
+
+*This paragraph said "unify with" until phase 2 landed, and the
+example below is why it does not now: a map is OPEN, so a service
+without a `debug` key unifies with `{debug:true}` by GAINING it, and a
+filter that keeps everything that could be made to match keeps
+everything. "Already satisfies" is the meet changing nothing — the
+same question `subsume` asks, answered locally.*
 
 ```aon
 # sidecars for exactly the debug services — no hand-kept list
@@ -311,7 +318,13 @@ directly.)
 **`match(v, p1, r1, p2, r2, ..., d?)` — bounded conditional.**
 Alternating pattern/result arguments, optional trailing default. The
 first pattern (in argument order) that `v` successfully unifies with
-— trial mode again — selects its result, which is `v & p_i & r_i`.
+— trial mode again — selects its result, and **the result is the
+answer**.
+
+*This said the answer was `v & p_i & r_i` until phase 2 landed. Under
+that rule every arm whose result is not itself a `v` is a
+contradiction, the example below among them — a string scrutinee and
+map results. A match MAPS a value to another value.*
 No pattern matching and no default is a located error whose report
 lists the patterns tried (the admissible-alternatives shape,
 reported via the [G2](g2-validation-verb.md) error contract). The
@@ -549,12 +562,15 @@ and gen-close.tsv pin. The departures are in the
 [register](progress.md); the sharpest is that a generator's template
 must be CLONED per destination where a spread may share one.
 
-**Phase 2 — `filter` and `match` (M).** Requires Phase 0's defect
-fix. Spec files gen-filter.tsv, gen-match.tsv, including
-match-no-arm error rows asserting the tried-alternatives report
-substring (format owned by G2). Files: ts/src/val/FilterFuncVal.ts,
-ts/src/val/MatchFuncVal.ts, ts/src/ctx.ts (trial-mode surface);
-go/func.go, go/ctx.go.
+**Phase 2 — `filter` and `match` (M). LANDED.** Spec files
+gen-filter.tsv and gen-match.tsv (32 rows), including the no-arm
+error rows. Files: ts/src/val/FilterFuncVal.ts,
+ts/src/val/MatchFuncVal.ts (new), ts/src/val/FuncBaseVal.ts (the
+shared trial meet); go/generate.go, go/func.go. The trial-mode
+surface needed no change in either ctx: the flag disjunction already
+sets was exactly the one to lend. Two of the semantics as written
+could not be evaluated — see the corrections above and the
+[register](progress.md).
 
 **Phase 3 — placeholder `_` (M/L; the parser phase).** Spec file
 place.tsv: `upper(_) & foo`, `_+2` in spread templates, `_` binding

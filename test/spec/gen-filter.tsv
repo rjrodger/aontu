@@ -1,0 +1,31 @@
+# SELECTION: filter(data, cond) (G8 phase 2,
+# docs/capability-review/g8-generation.md). The children of `data` that
+# ALREADY SATISFY `cond` — keys preserved for a map, order for a list.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# "Already satisfies" is the meet CHANGING NOTHING, not mere
+# unifiability. A map is open, so `{p:2}` unifies with `{debug:true}`
+# by gaining the key, and a filter that kept everything that could be
+# made to match would keep everything — the first row is the case that
+# settles it. The design named unifiability; its own example is
+# unsatisfiable under it (see the register, G8.2 departures).
+#
+# The condition is an ordinary value, so the constraint atoms compose
+# with it for free — `min(2)`, `{x:min(2)}` — and a failing child is an
+# ANSWER (dropped, silently), never an error.
+filter-map-already-satisfies	gens	s:{a:{debug:true,p:1},b:{p:2}}\nd:filter($.s,{debug:true})\n	{"d":{"a":{"debug":true,"p":1}},"s":{"a":{"debug":true,"p":1},"b":{"p":2}}}
+filter-map-canon	canon	s:{a:{debug:true,p:1},b:{p:2}}\nd:filter($.s,{debug:true})\n	{"d":{"a":{"debug":true,"p":1}},"s":{"a":{"debug":true,"p":1},"b":{"p":2}}}
+filter-list-kind	gens	l:[1,2,3,x]\nd:filter($.l,integer)\n	{"d":[1,2,3],"l":[1,2,3,"x"]}
+filter-list-kind-canon	canon	l:[1,2,3,x]\nd:filter($.l,integer)\n	{"d":[1,2,3],"l":[1,2,3,"x"]}
+filter-list-order-closes-up	gens	l:[1,x,2]\nd:filter($.l,integer)\n	{"d":[1,2],"l":[1,"x",2]}
+filter-map-keys-kept	gens	m:{a:1,b:x,c:2}\nd:filter($.m,integer)\n	{"d":{"a":1,"c":2},"m":{"a":1,"b":"x","c":2}}
+filter-atom-condition	gens	d:filter([1,2,3],min(2))\n	{"d":[2,3]}
+filter-nested-condition	gens	m:{a:{x:1},b:{x:2}}\nd:filter($.m,{x:min(2)})\n	{"d":{"b":{"x":2}},"m":{"a":{"x":1},"b":{"x":2}}}
+filter-empty-list	gens	d:filter([],integer)\n	{"d":[]}
+filter-empty-map	gens	d:filter({},integer)\n	{"d":{}}
+filter-keeps-nothing	gens	d:filter([1,2],string)\n	{"d":[]}
+filter-then-pack	gens	p:{x:{k:1},y:{k:2}}\nq:filter($.p,{k:1})\nr:pack(each($.n),{})\nn:[m]\n	{"n":["m"],"p":{"x":{"k":1},"y":{"k":2}},"q":{"x":{"k":1}},"r":{"m":{}}}
+filter-data-integer	errc	d:filter(1,integer)\n	filter_data
+filter-data-string	errc	d:filter("s",string)\n	filter_data
+filter-arity-one	errc	d:filter([1])\n	func_arity
+filter-arity-three	errc	d:filter([1],integer,integer)\n	func_arity

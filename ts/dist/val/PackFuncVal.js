@@ -5,7 +5,6 @@ exports.PackFuncVal = void 0;
 exports.dataKeys = dataKeys;
 const unify_1 = require("../unify");
 const err_1 = require("../err");
-const top_1 = require("./top");
 const MapVal_1 = require("./MapVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 // The keys a data bag names, in the order the result must carry them,
@@ -56,15 +55,11 @@ class PackFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return null;
     }
     unify(peer, ctx) {
-        // The data argument is driven EVERY pass, not only on the settle
-        // pass: it is what the model has to settle, so leaving it standing
-        // until settle would guarantee the model was still moving when
-        // settle arrived.
-        const data = this.peg?.[0];
-        if (null != data && !data.done) {
-            this.peg[0] = (0, unify_1.withDepth)(ctx, data, (0, top_1.top)(), () => data.unify((0, top_1.top)(), ctx));
-        }
-        if (!ctx.settle || true !== this.peg?.[0]?.done) {
+        // ONE argument is driven: the data. The template is not (see
+        // prepare above), and driveStagedArgs answers whether the data has
+        // settled -- the other half of "ready to fire".
+        const ready = this.driveStagedArgs(ctx, 1);
+        if (!ready || !ctx.settle) {
             return this.residuate(peer, ctx);
         }
         return super.unify(peer, ctx);

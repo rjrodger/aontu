@@ -5,7 +5,6 @@ exports.EachFuncVal = void 0;
 exports.dataValues = dataValues;
 const unify_1 = require("../unify");
 const err_1 = require("../err");
-const top_1 = require("./top");
 const ListVal_1 = require("./ListVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const keyorder_1 = require("../keyorder");
@@ -36,11 +35,11 @@ class EachFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return null;
     }
     unify(peer, ctx) {
-        const data = this.peg?.[0];
-        if (null != data && !data.done) {
-            this.peg[0] = (0, unify_1.withDepth)(ctx, data, (0, top_1.top)(), () => data.unify((0, top_1.top)(), ctx));
-        }
-        if (!ctx.settle || true !== this.peg?.[0]?.done) {
+        // ONE argument is driven: the data. The template is not (see
+        // prepare above), and driveStagedArgs answers whether the data has
+        // settled -- the other half of "ready to fire".
+        const ready = this.driveStagedArgs(ctx, 1);
+        if (!ready || !ctx.settle) {
             return this.residuate(peer, ctx);
         }
         return super.unify(peer, ctx);

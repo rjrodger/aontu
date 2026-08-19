@@ -31,6 +31,37 @@ import { ConjunctVal } from '../val/ConjunctVal'
 import { FeatureVal } from '../val/FeatureVal'
 
 
+// A TRIAL meet: does `a` unify with `b`, and if so as what? Failure is
+// an ANSWER here rather than an error, which is exactly what
+// DisjunctVal already needs when it tries each member against a peer —
+// so this is that mechanism (`ctx._trialMode`, which makes makeNilErr
+// return the shared TRIAL_NIL instead of allocating and recording),
+// lent to the combinators that select by unifiability.
+//
+// The error list and the trial flag are saved and restored in a
+// `finally`: a trial that throws must not leave the surrounding
+// evaluation collapsing every later error into the sentinel.
+function trialUnify(ctx: AontuContext, a: Val, b: Val): Val | undefined {
+  const savedErr = ctx.err
+  const savedTrial = ctx._trialMode
+  const trialErr: any[] = []
+
+  ctx.err = trialErr
+  ctx._trialMode = true
+
+  let out: Val
+  try {
+    out = unite(ctx, a, b, 'trial')
+  }
+  finally {
+    ctx.err = savedErr
+    ctx._trialMode = savedTrial
+  }
+
+  return 0 < trialErr.length || out.isNil ? undefined : out
+}
+
+
 class FuncBaseVal extends FeatureVal {
   isFunc = true
   isGenable = true
@@ -64,6 +95,30 @@ class FuncBaseVal extends FeatureVal {
 
   make(ctx: AontuContext, _spec: ValSpec): Val {
     return makeNilErr(ctx, 'func:' + this.funcname(), this, undefined, 'make')
+  }
+
+
+  // Drive the first `count` arguments IN PLACE, every pass — not only
+  // on the settle pass. A staged func waits for the model to settle,
+  // and its own arguments are part of that model: leaving them
+  // standing until settle would guarantee the model was still moving
+  // when settle arrived. Answers whether they are all done, which is
+  // the other half of "ready to fire".
+  driveStagedArgs(ctx: AontuContext, count: number): boolean {
+    const TOP = top()
+    let alldone = true
+
+    for (let i = 0; i < count && i < this.peg.length; i++) {
+      const arg: Val = this.peg[i]
+      if (!arg.done) {
+        // Charged to the depth budget, as FuncBaseVal's own arg loop is:
+        // this recurses without going through `unite`.
+        this.peg[i] = withDepth(ctx, arg, TOP, () => arg.unify(TOP, ctx))
+      }
+      alldone = alldone && true === this.peg[i].done
+    }
+
+    return alldone
   }
 
 
@@ -254,5 +309,6 @@ class FuncBaseVal extends FeatureVal {
 
 
 export {
+  trialUnify,
   FuncBaseVal,
 }

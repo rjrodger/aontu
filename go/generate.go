@@ -2,7 +2,10 @@
 
 package aontu
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // THE GENERATION COMBINATORS (G8 phase 1, the Go side of
 // ts/src/val/PackFuncVal.ts and ts/src/val/EachFuncVal.ts,
@@ -137,4 +140,180 @@ func eachFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	out := newList(elems)
 	out.setvpath(cp(base))
 	return out
+}
+
+// SELECTION (G8 phase 2, the Go side of ts/src/val/FilterFuncVal.ts and
+// ts/src/val/MatchFuncVal.ts).
+//
+//	filter(data, cond)                the children that ALREADY satisfy cond
+//	match(v, p1, r1, …, d?)           the result of the first pattern v matches
+//
+// Both select by trying a meet and reading the outcome, never by a
+// predicate language: a condition and a pattern are ordinary Aontu
+// values, so the constraint atoms compose with them for free.
+
+// trialUnify is a TRIAL meet: does a unify with b, and if so as what?
+// Failure is an ANSWER rather than an error, so the error list is
+// swapped for a throwaway one exactly as DisjunctVal's member trials do
+// (disjunct.go). Mirrors trialUnify in ts/src/val/FuncBaseVal.ts.
+func trialUnify(ctx *Ctx, a, b Val) Val {
+	saved := ctx.err
+	ctx.err = []*NilVal{}
+	out := unite(ctx, a, b)
+	failed := 0 < len(ctx.err) || (nil != out && out.Nil())
+	ctx.err = saved
+	if failed {
+		return nil
+	}
+	return out
+}
+
+func filterFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
+	var data Val = top()
+	if 0 < len(args) {
+		data = args[0]
+	}
+	var cond Val = top()
+	if 1 < len(args) {
+		cond = args[1]
+	}
+
+	// A child is kept when the condition CHANGES NOTHING: the meet
+	// succeeds AND its answer is the child itself, which is to say the
+	// child already satisfies the condition. Mere unifiability is not
+	// the test and cannot be -- a map is open, so `{p:2}` unifies with
+	// `{debug:true}` by GAINING the key, and a filter that keeps
+	// everything that could be made to match keeps everything. Canon is
+	// the comparison because canon is what "the same value" means here.
+	keeps := func(child Val, slot []string) bool {
+		ctx.slot = slot
+		met := trialUnify(ctx, clonePath(child, slot), clonePath(cond, slot))
+		return nil != met && met.Canon() == child.Canon()
+	}
+
+	switch d := data.(type) {
+	case *MapVal:
+		out := newMap()
+		for _, k := range d.keys {
+			kslot := append(cp(base), k)
+			if keeps(d.peg[k], kslot) {
+				out.keys = append(out.keys, k)
+				out.peg[k] = clonePath(d.peg[k], kslot)
+			}
+		}
+		out.setvpath(cp(base))
+		return out
+	case *ListVal:
+		elems := []Val{}
+		for _, e := range d.peg {
+			// The element context is the position it will END UP at,
+			// which is its index in the RESULT: dropping the third of
+			// five moves the fourth up.
+			islot := append(cp(base), itoa(len(elems)))
+			if keeps(e, islot) {
+				elems = append(elems, clonePath(e, islot))
+			}
+		}
+		out := newList(elems)
+		out.setvpath(cp(base))
+		return out
+	}
+
+	return makeNilErr(ctx, "filter_data", f, nil)
+}
+
+// matchHasDefault reports whether the last argument is a trailing
+// default rather than half of a pattern/result pair.
+func matchHasDefault(peg []Val) bool {
+	return 0 == len(peg)%2
+}
+
+func matchFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
+	scrutinee := args[0]
+	last := len(args)
+	if matchHasDefault(args) {
+		last--
+	}
+
+	tried := []string{}
+	for i := 1; i < last; i += 2 {
+		tried = append(tried, args[i].Canon())
+		ctx.slot = base
+		if nil != trialUnify(ctx,
+			clonePath(scrutinee, base), clonePath(args[i], base)) {
+			// The RESULT is the answer: a match MAPS a value to another
+			// value rather than narrowing the scrutinee by the arm (see
+			// the TS MatchFuncVal header for why the design's `v & p & r`
+			// cannot be what a match is for).
+			return clonePath(args[i+1], base)
+		}
+	}
+
+	if matchHasDefault(args) {
+		return clonePath(args[len(args)-1], base)
+	}
+
+	return makeNilErrFull(ctx, "match_none", f, nil, "resolve",
+		map[string]string{
+			"value": scrutinee.Canon(),
+			"tried": strings.Join(tried, " "),
+		})
+}
+
+// stagedArgIdx is the arguments a staged func must have DRIVEN before
+// it can fire: the ones whose value the decision reads. Everything
+// else -- a generator's template, a match arm's result -- is left
+// standing until it is chosen.
+func stagedArgIdx(f *FuncVal) []int {
+	switch f.name {
+	case "pack", "each":
+		return []int{0}
+	case "filter":
+		return []int{0, 1}
+	case "match":
+		out := []int{0}
+		last := len(f.peg)
+		if matchHasDefault(f.peg) {
+			last--
+		}
+		for i := 1; i < last; i += 2 {
+			out = append(out, i)
+		}
+		return out
+	}
+	// key() has nothing to settle but its own position.
+	return nil
+}
+
+// stagedDrive advances a staged func's decision arguments IN PLACE,
+// every pass rather than only on the settle pass: they are part of the
+// model that has to settle. Answers whether they are all done, which is
+// the other half of "ready to fire". Mirrors driveStagedArgs in
+// ts/src/val/FuncBaseVal.ts.
+func stagedDrive(ctx *Ctx, f *FuncVal, base []string) bool {
+	ready := true
+	// Every index stagedArgIdx answers is derived from len(f.peg), and
+	// arity is checked at parse, so there is no bound to test here.
+	for _, i := range stagedArgIdx(f) {
+		if f.peg[i].Dc() != DONE {
+			ctx.slot = base
+			driven := unite(ctx, f.peg[i], top())
+			if driven != f.peg[i] {
+				// COPY ON WRITE. A clone shares its arguments with the
+				// value it was cloned from (clonePath, for the sharing
+				// artifacts the ghost cases depend on), so writing a
+				// driven argument straight back would write it into
+				// every sibling clone too — and a generator's template,
+				// cloned once per destination, is exactly a set of
+				// siblings that must answer differently. Each staged
+				// func takes ownership of its arguments the first time
+				// it advances one.
+				peg := append([]Val{}, f.peg...)
+				peg[i] = driven
+				f.peg = peg
+			}
+		}
+		ready = ready && f.peg[i].Dc() == DONE
+	}
+	return ready
 }

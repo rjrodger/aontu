@@ -38,9 +38,8 @@ import {
   AontuContext,
 } from '../ctx'
 
-import { unite, withDepth } from '../unify'
+import { unite } from '../unify'
 import { makeNilErr } from '../err'
-import { top } from './top'
 import { MapVal } from './MapVal'
 import { FuncBaseVal } from './FuncBaseVal'
 
@@ -110,16 +109,12 @@ class PackFuncVal extends FuncBaseVal {
 
 
   unify(peer: Val, ctx: AontuContext): Val {
-    // The data argument is driven EVERY pass, not only on the settle
-    // pass: it is what the model has to settle, so leaving it standing
-    // until settle would guarantee the model was still moving when
-    // settle arrived.
-    const data = this.peg?.[0]
-    if (null != data && !data.done) {
-      this.peg[0] = withDepth(ctx, data, top(), () => data.unify(top(), ctx))
-    }
+    // ONE argument is driven: the data. The template is not (see
+    // prepare above), and driveStagedArgs answers whether the data has
+    // settled -- the other half of "ready to fire".
+    const ready = this.driveStagedArgs(ctx, 1)
 
-    if (!ctx.settle || true !== this.peg?.[0]?.done) {
+    if (!ready || !ctx.settle) {
       return this.residuate(peer, ctx)
     }
 

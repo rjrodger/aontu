@@ -53,6 +53,8 @@ const IdFuncVal_1 = require("./val/IdFuncVal");
 const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const PackFuncVal_1 = require("./val/PackFuncVal");
 const EachFuncVal_1 = require("./val/EachFuncVal");
+const FilterFuncVal_1 = require("./val/FilterFuncVal");
+const MatchFuncVal_1 = require("./val/MatchFuncVal");
 const MoveFuncVal_1 = require("./val/MoveFuncVal");
 const PathFuncVal_1 = require("./val/PathFuncVal");
 const PrefFuncVal_1 = require("./val/PrefFuncVal");
@@ -363,6 +365,13 @@ help isolate the syntax error.`,
         // G8 phase 0).
         pack: PackFuncVal_1.PackFuncVal,
         each: EachFuncVal_1.EachFuncVal,
+        // G8 phase 2: selection. `filter` keeps the children of a bag that
+        // unify with a condition; `match` picks the first arm whose
+        // pattern the scrutinee unifies with. Both select by
+        // UNIFIABILITY, tried in trial mode, so neither adds a predicate
+        // language to the one the lattice already is.
+        filter: FilterFuncVal_1.FilterFuncVal,
+        match: MatchFuncVal_1.MatchFuncVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -1160,7 +1169,7 @@ function makeModelResolver(options) {
 // is the set whose comma group is expanded back into separate `peg`
 // entries.
 const POSITIONAL_ARG_FUNCS = {
-    deprecate: true, pack: true, each: true,
+    deprecate: true, pack: true, each: true, filter: true, match: true,
 };
 // [min, max]; a max of -1 is unbounded. Every name in funcMap has an
 // entry, and the arity is a property of the language rather than of
@@ -1187,6 +1196,10 @@ const funcArity = {
     refer: [0, 1],
     pack: [2, 2],
     each: [1, 2],
+    filter: [2, 2],
+    // The scrutinee, then pattern/result pairs, then an optional
+    // default: three arguments at least, and any number above that.
+    match: [3, -1],
 };
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
 //

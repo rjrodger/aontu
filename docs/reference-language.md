@@ -551,6 +551,50 @@ Neither can recurse. Both iterate a finite bag that already exists, so
 the number of children either can produce is fixed by the data:
 evaluation still terminates by construction.
 
+## Selecting: `filter` and `match`
+
+`filter(data, cond)` keeps the children of `data` that **already
+satisfy** `cond` — keys preserved for a map, order for a list — and
+drops the rest silently:
+
+```
+services: {web:{debug:true,port:80}, auth:{port:81}}
+debugged: filter($.services, {debug:true})   → {"web":{...}}
+sidecars: pack($.debugged, {image:"acme/debug:1.0"})
+```
+
+"Already satisfies" means the meet **changes nothing**: `cond` adds no
+information the child did not have. Mere unifiability would not do —
+a map is open, so `{port:81}` unifies with `{debug:true}` by *gaining*
+the key, and a filter that kept everything that could be made to match
+would keep everything. The condition is an ordinary value, so the
+constraint atoms compose with it: `filter($.deploy, {replicas:min(3)})`.
+
+`match(v, p1, r1, …, d?)` is a **bounded conditional**. The first
+pattern in argument order that `v` unifies with selects its result,
+which is the answer; a trailing argument — the one that makes the
+argument count even — is the default:
+
+```
+tier: large
+size: match($.tier, small, {cpu:1}, large, {cpu:8}, {cpu:2})
+  → {"size":{"cpu":8}}
+```
+
+Patterns are matched by unifiability, so kinds and atoms work as
+patterns (`match(x, integer, …, string, …)`, `match(n, min(0), …)`).
+There are no guards, no comparisons beyond the atoms, and no
+fallthrough. **No match and no default is an error** naming the
+patterns that were tried, not an empty answer — a default is how a
+document says the rest was meant to be allowed. An unselected result
+is never evaluated, so a broken arm nobody takes is not an error the
+document has to carry.
+
+Both wait for the model to settle before they answer, for the reason
+`pack` and `each` do: a bag that is still being merged into is the
+wrong bag to take a subset of, and a scrutinee that is still being
+narrowed can match an earlier arm than the one it will end up matching.
+
 ## References and paths
 
 A reference resolves to the value at another location, then unifies in
@@ -712,8 +756,8 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of twenty-six built-in functions. There
-are no user-defined functions. Seventeen are the general-purpose
+Aontu provides a fixed set of twenty-eight built-in functions. There
+are no user-defined functions. Nineteen are the general-purpose
 functions tabulated below; the other nine — `min(x)`, `max(x)`,
 `above(x)`, `below(x)`, `neq(x,...)`, `re(p)`, `length(c)`,
 `unique()` and `must(c,msg)` — are the constraint atoms, whose
@@ -738,6 +782,8 @@ meaning is defined in
 | `refer(t?)` | constrain a string field to be an **entity address** that resolves; `t`, if given, is unified into the target. The field keeps the address. See [Entity references](#entity-references-refert) | `dependsOn: [&: refer($.std.Service), svc/auth]` |
 | `pack(d, t)` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each) | `deploy: pack($.names, {replicas:*2\|integer})` |
 | `each(d, t?)` | one list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map | `open: each($.ports, integer)` |
+| `filter(d, c)` | the children of `d` that ALREADY satisfy `c` — the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match) | `debugged: filter($.services, {debug:true})` |
+| `match(v, p, r, …, d?)` | the result of the first pattern `v` unifies with; a trailing argument is the default. No match and no default is an error naming the patterns tried | `size: match($.tier, small, {cpu:1}, {cpu:2})` |
 | `deprecate(x, m)` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
 
 `super(x)` lifts its **argument** one step up the lattice, so for a

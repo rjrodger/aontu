@@ -27,6 +27,8 @@ var funcSet = map[string]bool{
 	"refer":     true,
 	"pack":      true,
 	"each":      true,
+	"filter":    true,
+	"match":     true,
 }
 
 // stagedFuncs take THE STAGING RULE (G8 phase 0, see Ctx.settle): they
@@ -36,7 +38,7 @@ var funcSet = map[string]bool{
 // after it first looks done. Mirrors the `staged` flag on the TS
 // FuncBaseVal subclasses.
 var stagedFuncs = map[string]bool{
-	"key": true, "pack": true, "each": true,
+	"key": true, "pack": true, "each": true, "filter": true, "match": true,
 }
 
 // positionalArgFuncs are the functions whose comma-separated arguments
@@ -44,15 +46,17 @@ var stagedFuncs = map[string]bool{
 // expands their comma group back into separate arguments (lang.go).
 var positionalArgFuncs = map[string]bool{
 	"deprecate": true, "pack": true, "each": true,
+	"filter": true, "match": true,
 }
 
-// generatorFuncs hold a TEMPLATE argument, which must never be driven
-// at the call site: driving it would resolve the template's key() at
-// the one position the template is never used at. Their data argument
-// is driven by hand instead (FuncVal.Unify), and the template is
-// cloned per destination when they fire.
+// generatorFuncs hold arguments that must never be driven at the call
+// site: a TEMPLATE, because driving it would resolve its key() at the
+// one position the template is never used at, and a match RESULT,
+// because an arm nobody takes must not be evaluated (and must not
+// report). What they DO need driven -- the data, the condition, the
+// patterns -- is driven by hand instead (stagedDrive).
 var generatorFuncs = map[string]bool{
-	"pack": true, "each": true,
+	"pack": true, "each": true, "filter": true, "match": true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -86,6 +90,10 @@ var funcArity = map[string][2]int{
 	// children as a list.
 	"pack": {2, 2},
 	"each": {1, 2},
+	// G8 phase 2: the data and the condition; and the scrutinee, then
+	// pattern/result pairs, then an optional default.
+	"filter": {2, 2},
+	"match":  {3, -1},
 	// G4 phase 2: the optional type to flow into the target.
 	"refer": {0, 1},
 }
@@ -212,15 +220,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		// the settle pass: it is what the model has to settle, so
 		// leaving it standing until settle would guarantee the model was
 		// still moving when settle arrived.
-		if generatorFuncs[f.name] && 0 < len(f.peg) && f.peg[0].Dc() != DONE {
-			ctx.slot = base
-			f.peg[0] = unite(ctx, f.peg[0], top())
-		}
-
-		ready := ctx.settle
-		if ready && generatorFuncs[f.name] {
-			ready = 0 < len(f.peg) && f.peg[0].Dc() == DONE
-		}
+		ready := stagedDrive(ctx, f, base) && ctx.settle
 
 		if !ready {
 			f.notdone()
@@ -487,6 +487,10 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		return packFunc(ctx, f, base, args)
 	case "each":
 		return eachFunc(ctx, f, base, args)
+	case "filter":
+		return filterFunc(ctx, f, base, args)
+	case "match":
+		return matchFunc(ctx, f, base, args)
 	case "pref":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)

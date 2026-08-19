@@ -30,9 +30,8 @@ import {
   AontuContext,
 } from '../ctx'
 
-import { unite, withDepth } from '../unify'
+import { unite } from '../unify'
 import { makeNilErr } from '../err'
-import { top } from './top'
 import { ListVal } from './ListVal'
 import { FuncBaseVal } from './FuncBaseVal'
 import { cmpCodePoint } from '../keyorder'
@@ -82,12 +81,12 @@ class EachFuncVal extends FuncBaseVal {
 
 
   unify(peer: Val, ctx: AontuContext): Val {
-    const data = this.peg?.[0]
-    if (null != data && !data.done) {
-      this.peg[0] = withDepth(ctx, data, top(), () => data.unify(top(), ctx))
-    }
+    // ONE argument is driven: the data. The template is not (see
+    // prepare above), and driveStagedArgs answers whether the data has
+    // settled -- the other half of "ready to fire".
+    const ready = this.driveStagedArgs(ctx, 1)
 
-    if (!ctx.settle || true !== this.peg?.[0]?.done) {
+    if (!ready || !ctx.settle) {
       return this.residuate(peer, ctx)
     }
 

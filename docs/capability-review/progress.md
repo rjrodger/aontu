@@ -89,9 +89,9 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **81 `.tsv` files, 80
-   row-bearing, 2,933 rows**, in eighteen modes — `canon` 701, `gen`
-   541, `errc` 479, `gens` 424, `err` 240, `subsume` 94, `errcode` 93,
+   register's last update the suite is **83 `.tsv` files, 82
+   row-bearing, 2,967 rows**, in eighteen modes — `canon` 704, `gen`
+   541, `errc` 487, `gens` 445, `err` 240, `errcode` 95, `subsume` 94,
    `query` 92, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
    `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
    `agentsmd` 7.
@@ -101,7 +101,7 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-three of forty-nine phases have moved; forty-two of those are
+Forty-four of forty-nine phases have moved; forty-three of those are
 complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
@@ -113,8 +113,8 @@ complete.
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
 | [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
-| [G8](g8-generation.md) | Generation | C | 2 | 0 | 3 |
-| | | **total** | **42** | **1** | **6** |
+| [G8](g8-generation.md) | Generation | C | 3 | 0 | 2 |
+| | | **total** | **43** | **1** | **5** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -167,9 +167,11 @@ Against the review's own [sequencing](index.md#sequencing):
   makes the session machine-drivable, and LSP hover can carry the
   provenance record behind a config gate.
 - **Phase C — scale.** G4 is complete, and G8 has begun: **G8.0**, the
-  staging rule every generation combinator shares, and **G8.1**,
-  `pack` and `each` — children made from data that is already in the
-  model, so the list and the children built from it cannot drift.
+  staging rule every generation combinator shares, **G8.1**, `pack`
+  and `each` — children made from data that is already in the model,
+  so the list and the children built from it cannot drift — and
+  **G8.2**, `filter` and `match`, which select by unification rather
+  than by a predicate language of their own.
 
 One structural note the sequencing table itself makes: G7's query/MCP
 surface depends on nothing and could ship at any time.
@@ -692,7 +694,7 @@ references behind; it is G4's to settle for both at once.
 |-------|------|--------|-----|
 | **0** — staging rule | S | **LANDED** | Both deliverables. The `DisjunctVal.gen` distribution defect was **fenced** by probed guard rows in `test/spec/disjunct.tsv` with G1.0. The `KeyFuncVal` `cc < 3` delay is now the settled-position rule: `AontuContext.settle` / `Ctx.settle`, set by the pass loop (`ts/src/unify.ts`, `go/unify.go`) on the first pass whose input model is identical to the previous pass's, and read by `key()` in `ts/src/val/KeyFuncVal.ts` and `go/func.go`. Zero behaviour change across the existing suite in both ports. **Departure from the design**, in two respects. (a) The rule reads MODEL stability, not "the data argument is DONE": `move()` hides its source one pass *after* it copies it, so a value whose own path and arguments have settled can still be moved, and only stability of the whole model rules that out. (b) It is stated in the pass loop rather than in `FuncBaseVal`, because that is where the two consecutive models exist to compare; `FuncBaseVal` reads the flag. Landing it also exposed a real defect: `ListVal` had no apply-once-per-element spread guard (the `_spr` stamp `MapVal` has always had), so a list template that RESIDUATES was met into each element again every pass and its canon doubled — invisible under a three-pass delay, fatal under a rule that waits for stability. Fixed in `ts/src/val/ListVal.ts` and `go/listval.go`; pinned by the four `spread-nested-list-key*` rows in `test/spec/spread.tsv`, which the old rule failed with a spurious `scalar_value` error. |
 | **1** — `pack` and `each` | M | **LANDED** | `ts/src/val/PackFuncVal.ts` and `ts/src/val/EachFuncVal.ts` (new), the `"pack"`/`"each"` arms of `go/func.go` with `go/generate.go` (new); both in both registries (24 → 26 builtins), both arity tables, both LSP completion lists and both published grammars. Codes `pack_data`, `pack_key`, `each_data` in `errcodes.tsv`. Spec: `test/spec/gen-pack.tsv` (25), `gen-each.tsv` (20), `gen-spread.tsv` (9), `gen-close.tsv` (7), `gen-key.tsv` (10) — 71 rows, every expectation from a parity probe run through both engines. Docs: "Generating children" in [`docs/reference-language.md`](../reference-language.md#generating-children-pack-and-each). **Departures and discoveries:** four, all recorded below. |
-| **2** — `filter` and `match` | M | **NOT STARTED** | Depends on phase 0's defect work. |
+| **2** — `filter` and `match` | M | **LANDED** | `ts/src/val/FilterFuncVal.ts` and `ts/src/val/MatchFuncVal.ts` (new), the `"filter"`/`"match"` arms of `go/func.go` with `filterFunc`/`matchFunc` in `go/generate.go`; the trial-meet helper is shared (`trialUnify` in `ts/src/val/FuncBaseVal.ts` and `go/generate.go`), and is the mechanism disjunction already uses. Both in both registries (26 → 28 builtins), arity tables, LSP completion lists and published grammars. Codes `filter_data` and `match_none` in `errcodes.tsv`. Spec: `test/spec/gen-filter.tsv` (16) and `gen-match.tsv` (16) — 32 rows, every expectation from a parity probe run through both engines. Docs: "Selecting" in [`docs/reference-language.md`](../reference-language.md#selecting-filter-and-match). **Departures:** three, recorded below — two of them semantic, and both because the design's own examples cannot be evaluated under the rules it stated. |
 | **3** — placeholder `_` (the parser phase) | M/L | **NOT STARTED** | — |
 | **4** — `\|>` sugar | S | **NOT STARTED** | Marked optional and droppable in the plan, so this is a plan-consistent state rather than a slip. |
 
@@ -744,6 +746,37 @@ before G8 phase 0 — and is a separate defect in how a bag decides it is
 done while an operator inside a spread-applied child still holds a
 residuating argument. `pack` and `each` are unaffected, which is why
 this phase does not carry the fix.
+
+**Departures recorded by G8.2.**
+
+1. **`filter` selects by ALREADY SATISFIES, not by unifiability.** The
+   design says "children of `data` that unify with `cond` are kept",
+   and under that rule its own example — `filter($.services,
+   {debug:true})` — keeps every service: a map is OPEN, so a service
+   with no `debug` key unifies with `{debug:true}` perfectly well by
+   gaining it. A filter that keeps everything that could be made to
+   match keeps everything. What landed keeps a child when the meet
+   CHANGES NOTHING (it succeeds and its answer is the child), which is
+   the same question `subsume` asks, answered locally by canon
+   equality. `gen-filter.tsv`'s first row is the case that settles it.
+2. **`match` answers with the RESULT, not with `v & p & r`.** Under
+   the design's rule every arm whose result is not itself a `v` is a
+   contradiction — including the design's own example, whose scrutinee
+   is a string and whose results are maps, and which therefore cannot
+   be evaluated at all. A match MAPS a value to another value; a
+   document that wants the scrutinee kept can say so, the scrutinee
+   being a value it can name.
+3. **Go's staged arguments are COPY-ON-WRITE.** A clone shares its
+   arguments with the value it was cloned from — deliberately, for the
+   sharing the `move()` ghost cases depend on — so driving an argument
+   in place wrote it into every sibling clone as well. A generator's
+   template, cloned once per destination, is exactly a set of siblings
+   that must answer differently: `pack($.n, {t: match(key(), …)})`
+   gave every child the FIRST child's answer. Each staged func now
+   takes ownership of its argument list the first time it advances
+   one. TypeScript needed no equivalent (its clone hands out a fresh
+   arg array), which is the sort of asymmetry the shared rows exist to
+   catch — `gen-match.tsv:match-inside-pack` is the row that caught it.
 
 ## Corrections outstanding in the gap documents
 

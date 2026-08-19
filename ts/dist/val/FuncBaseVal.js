@@ -2,6 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FuncBaseVal = void 0;
+exports.trialUnify = trialUnify;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
@@ -9,6 +10,32 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const FeatureVal_1 = require("../val/FeatureVal");
+// A TRIAL meet: does `a` unify with `b`, and if so as what? Failure is
+// an ANSWER here rather than an error, which is exactly what
+// DisjunctVal already needs when it tries each member against a peer —
+// so this is that mechanism (`ctx._trialMode`, which makes makeNilErr
+// return the shared TRIAL_NIL instead of allocating and recording),
+// lent to the combinators that select by unifiability.
+//
+// The error list and the trial flag are saved and restored in a
+// `finally`: a trial that throws must not leave the surrounding
+// evaluation collapsing every later error into the sentinel.
+function trialUnify(ctx, a, b) {
+    const savedErr = ctx.err;
+    const savedTrial = ctx._trialMode;
+    const trialErr = [];
+    ctx.err = trialErr;
+    ctx._trialMode = true;
+    let out;
+    try {
+        out = (0, unify_1.unite)(ctx, a, b, 'trial');
+    }
+    finally {
+        ctx.err = savedErr;
+        ctx._trialMode = savedTrial;
+    }
+    return 0 < trialErr.length || out.isNil ? undefined : out;
+}
 class FuncBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -33,6 +60,26 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     }
     make(ctx, _spec) {
         return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'make');
+    }
+    // Drive the first `count` arguments IN PLACE, every pass — not only
+    // on the settle pass. A staged func waits for the model to settle,
+    // and its own arguments are part of that model: leaving them
+    // standing until settle would guarantee the model was still moving
+    // when settle arrived. Answers whether they are all done, which is
+    // the other half of "ready to fire".
+    driveStagedArgs(ctx, count) {
+        const TOP = (0, top_1.top)();
+        let alldone = true;
+        for (let i = 0; i < count && i < this.peg.length; i++) {
+            const arg = this.peg[i];
+            if (!arg.done) {
+                // Charged to the depth budget, as FuncBaseVal's own arg loop is:
+                // this recurses without going through `unite`.
+                this.peg[i] = (0, unify_1.withDepth)(ctx, arg, TOP, () => arg.unify(TOP, ctx));
+            }
+            alldone = alldone && true === this.peg[i].done;
+        }
+        return alldone;
     }
     // The shape a staged func holds while it waits: not done, so the pass
     // loop keeps going; unchanged against TOP, so nothing reads an answer

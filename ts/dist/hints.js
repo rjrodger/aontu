@@ -121,6 +121,8 @@ const hints = {
     pack_data: 'The first argument to pack() is not a bag. `pack` makes one child\nper child of its DATA, so the data has to have children: a list of\nnames, or a map whose keys are the names.\n \nExamples:\n  pack([a,b], {x:1})     -> {..}  # A list of names;\n  pack({a:1,b:2}, {x:1}) -> {..}  # ... or a map, keyed by its keys;\n  pack(1, {x:1})         -> nil   # ... but a scalar has no children.',
     pack_key: 'A list packed by pack() holds something that is not a string. The\nelements of a packed list ARE the generated keys, and only a string\nis a key — an element keyed by its position would churn every\ngenerated child the moment the list was reordered.\n \nExamples:\n  pack([a,b], {x:1})   -> {..}  # Names;\n  pack(["a b"], {x:1}) -> {..}  # ... a quoted name is still a name;\n  pack([1,2], {x:1})   -> nil   # ... but a number is not one.',
     each_data: 'The first argument to each() is not a bag. `each` makes one list\nelement per child of its DATA, so the data has to have children: a\nlist, or a map whose values become the elements in sorted-key order.\n \nExamples:\n  each([1,2])       -> [..]  # A list, in source order;\n  each({b:2,a:1})   -> [..]  # ... a map, in sorted-key order;\n  each(1)           -> nil   # ... but a scalar has no children.',
+    filter_data: 'The first argument to filter() is not a bag. `filter` keeps the\nchildren of its DATA that already satisfy a condition, so the data\nhas to have children: a list, or a map.\n \nExamples:\n  filter([1,x], integer)      -> [..]  # A list;\n  filter({a:1,b:x}, integer)  -> {..}  # ... or a map, keys kept;\n  filter(1, integer)          -> nil   # ... but a scalar has none.',
+    match_none: 'No pattern matched, and there is no default. `match` tries each\npattern in the order written and takes the first the value unifies\nwith; the value {value} unified with none of {tried}. Add a trailing\ndefault — the argument after the last pair — if the rest was meant\nto be allowed.\n \nExamples:\n  match(1, integer, ok)             -> "ok"   # The first pattern matches;\n  match(x, integer, ok, other)      -> "other"  # ... or the default does;\n  match(x, integer, ok)             -> nil    # ... but nothing here does.',
     // Unification errors
     'unify_no_src': 'No source provided for unification. Cannot unify without source values.',
     'unify_no_res': 'Unification produced no result. The values could not be unified.',
@@ -282,6 +284,13 @@ const codeClasses = {
     pack_data: 'parse',
     pack_key: 'parse',
     each_data: 'parse',
+    // G8 phase 2 -- selection. `filter_data` is class `parse` for the
+    // same reason `pack_data` is: the CALL names something with no
+    // children. `match_none` is class `conflict` -- the value and every
+    // pattern written for it disagreed, which is an ordinary failed
+    // meet, reported once for the whole form.
+    filter_data: 'parse',
+    match_none: 'conflict',
     // G4 phase 5 -- the relation graph checks. Class `conflict`: the
     // model contradicts a property it declared for itself. Report-layer,
     // so no NilVal carries either -- both are global and non-monotone,

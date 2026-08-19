@@ -113,6 +113,8 @@ import { IdFuncVal } from './val/IdFuncVal'
 import { ReferFuncVal } from './val/ReferFuncVal'
 import { PackFuncVal } from './val/PackFuncVal'
 import { EachFuncVal } from './val/EachFuncVal'
+import { FilterFuncVal } from './val/FilterFuncVal'
+import { MatchFuncVal } from './val/MatchFuncVal'
 import { MoveFuncVal } from './val/MoveFuncVal'
 import { PathFuncVal } from './val/PathFuncVal'
 import { PrefFuncVal } from './val/PrefFuncVal'
@@ -483,6 +485,14 @@ help isolate the syntax error.`,
     // G8 phase 0).
     pack: PackFuncVal,
     each: EachFuncVal,
+
+    // G8 phase 2: selection. `filter` keeps the children of a bag that
+    // unify with a condition; `match` picks the first arm whose
+    // pattern the scrutinee unifies with. Both select by
+    // UNIFIABILITY, tried in trial mode, so neither adds a predicate
+    // language to the one the lattice already is.
+    filter: FilterFuncVal,
+    match: MatchFuncVal,
   }
 
 
@@ -1427,7 +1437,7 @@ function makeModelResolver(options: any) {
 // is the set whose comma group is expanded back into separate `peg`
 // entries.
 const POSITIONAL_ARG_FUNCS: Record<string, boolean> = {
-  deprecate: true, pack: true, each: true,
+  deprecate: true, pack: true, each: true, filter: true, match: true,
 }
 
 
@@ -1456,6 +1466,10 @@ const funcArity: Record<string, [number, number]> = {
   refer: [0, 1],
   pack: [2, 2],
   each: [1, 2],
+  filter: [2, 2],
+  // The scrutinee, then pattern/result pairs, then an optional
+  // default: three arguments at least, and any number above that.
+  match: [3, -1],
 }
 
 
