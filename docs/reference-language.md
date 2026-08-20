@@ -1317,8 +1317,23 @@ whole source trees, which is what makes a project evaluable with no
 cache and no network at all. It can only find what the lockfile pins —
 the cache is keyed by canon-hash — so `tidy` comes first.
 
-Both are local. Fetching and publishing are the network half of the
-design and are not in this build; see
+A module that publishes itself declares a version too, and the **major
+an import spells lives inside it**: `version: "1.4.2"` publishes as
+`@1`. `aontu mod manifest` prints the OCI artifact a publish would push
+— the config media type, the source tree that is the layer, and the
+annotations carrying path, version and canon-hash — and `--against` a
+prior version's tree runs the
+[breaking](reference-api.md#aontu-breaking) check between them. A
+change that is breaking under an unchanged major refuses; a major bump
+is where breaking is allowed, because a consumer of `@1` never sees
+`@2` unless it asks.
+
+That annotation is what makes "has the truth changed?" cheap: it is the
+same canon-hash the lockfile pins, so a consumer compares one string
+rather than downloading and parsing a module.
+
+All of this is local. Fetching and publishing are the network half of
+the design and are not in this build; see
 [API reference](reference-api.md#aontu-mod).
 
 ## Operator precedence

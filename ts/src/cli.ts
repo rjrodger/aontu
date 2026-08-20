@@ -20,7 +20,10 @@ import {
   get, why, patch, agentsMd,
 } from './aontu'
 import { sarifReport } from './report-sarif'
-import { modTidy, modVendor } from './mod-tool'
+import { modTidy, modVendor, modManifest } from './mod-tool'
+import type {
+  ModTidyReport, ModVendorReport, ModManifestReport,
+} from './mod-tool'
 import { modCacheDir } from './mod'
 import { VET_MAX_ERRORS } from './vet'
 import type { VetReport, VetFinding, VetVerdict } from './vet'
@@ -44,7 +47,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu relations [options] <file>
        aontu hash [options] <file>
-       aontu mod tidy|vendor [options] [dir]
+       aontu mod tidy|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
@@ -72,11 +75,14 @@ Options:
 
 Mod options:
   --format <f>    text (default) or json
+  --against <dir> manifest: a prior version's module tree, to gate on
 
 Mod subcommands:
-  tidy    Resolve the module closure by minimum version selection and
-          rewrite mod-lock.aon in canonical form
-  vendor  Materialise the locked closure into aon_vendor/
+  tidy      Resolve the module closure by minimum version selection and
+            rewrite mod-lock.aon in canonical form
+  vendor    Materialise the locked closure into aon_vendor/
+  manifest  Print the OCI artifact a publish would push, gated on the
+            breaking check against --against
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
@@ -1406,7 +1412,7 @@ const RELATIONS_EXIT: Record<RelationVerdict, number> = {
   error: 4,
 }
 
-const MOD_HELP = 'aontu mod tidy|vendor [dir] (try --help)'
+const MOD_HELP = 'aontu mod tidy|vendor|manifest [dir] (try --help)'
 
 // The module tooling (G6 phase 3, ts/src/mod-tool.ts). Two
 // subcommands, both LOCAL: `tidy` resolves the closure from what is in
@@ -1421,6 +1427,7 @@ const MOD_HELP = 'aontu mod tidy|vendor [dir] (try --help)'
 function runMod(argv: string[]): number {
   const rest: string[] = []
   let format: SubsumeFormat = 'text'
+  let against: string | undefined
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -1435,6 +1442,14 @@ function runMod(argv: string[]): number {
         return 2
       }
       format = f
+    }
+    else if ('--against' === arg) {
+      const a = argv[++i]
+      if (null == a) {
+        process.stderr.write('aontu: --against needs a module directory\n')
+        return 2
+      }
+      against = a
     }
     else if (arg.startsWith('-')) {
       process.stderr.write(`aontu: unknown mod option ${arg} (try --help)\n`)
@@ -1455,20 +1470,50 @@ function runMod(argv: string[]): number {
     return 2
   }
 
-  if (('tidy' !== sub && 'vendor' !== sub) || 2 < rest.length) {
-    process.stderr.write(`aontu: mod needs tidy or vendor\n${MOD_HELP}\n`)
+  if (!MOD_SUBS.includes(sub) || 2 < rest.length) {
+    process.stderr.write(
+      `aontu: mod needs tidy, vendor or manifest\n${MOD_HELP}\n`)
     return 2
   }
 
-  const report = 'tidy' === sub ?
-    modTidy(dir, modToolOptions()) : modVendor(dir, modToolOptions())
+  // `--against` gates a manifest and means nothing to the other two;
+  // accepting it there would say it had been honoured.
+  if (null != against && 'manifest' !== sub) {
+    process.stderr.write('aontu: --against is a manifest option\n')
+    return 2
+  }
+
+  const report =
+    'tidy' === sub ? modTidy(dir, modToolOptions()) :
+      'vendor' === sub ? modVendor(dir, modToolOptions()) :
+        modManifest(dir, modToolOptions(), against)
 
   process.stdout.write(('json' === format ?
     exactJSON({ aontu: { version: version(), verb: 'mod ' + sub }, ...report },
       2) :
     modText(sub, report)) + '\n')
 
-  return 'ok' === report.verdict ? 0 : 1
+  return MOD_EXIT[report.verdict]
+}
+
+
+const MOD_SUBS = ['tidy', 'vendor', 'manifest']
+
+// The verdict classes: `ok` 0, a refused gate 1, an open question 3, a
+// document that does not stand up 4 -- `subsume`'s classes, because a
+// manifest gate IS a subsumption check and a caller reading exit codes
+// should not have to learn a second table.
+type ModVerdict =
+  ModTidyReport['verdict'] |
+  ModVendorReport['verdict'] |
+  ModManifestReport['verdict']
+
+const MOD_EXIT: Record<ModVerdict, number> = {
+  ok: 0,
+  missing: 1,
+  breaking: 1,
+  undecided: 3,
+  error: 4,
 }
 
 
@@ -1494,6 +1539,32 @@ function modToolOptions() {
 
 function modText(sub: string, report: any): string {
   const lines = ['verdict: ' + report.verdict]
+
+  if ('manifest' === sub) {
+    if ('' !== report.mod) {
+      lines.push(report.mod + ' ' + report.version)
+      lines.push('config: ' + report.config)
+    }
+    for (const key of Object.keys(report.annotations).sort()) {
+      lines.push(key + ': ' + report.annotations[key])
+    }
+    for (const file of report.files) {
+      lines.push('layer: ' + file)
+    }
+    for (const f of report.findings) {
+      lines.push(f.path + ': ' + f.message)
+    }
+    // What a manifest lacks is a declaration the module does not make
+    // or an entry file that is not there, and neither is something a
+    // fetch would supply -- so this is not the tail the other two
+    // subcommands share. The name says which kind it is: `mod.version`
+    // is a declaration, `service.aon` is a file.
+    for (const miss of report.missing) {
+      lines.push(miss + ': missing')
+    }
+    return lines.join('\n')
+  }
+
   const done: any[] = 'tidy' === sub ? report.lock : report.vendored
   for (const item of done) {
     lines.push('tidy' === sub ?

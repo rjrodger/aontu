@@ -29,7 +29,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu relations [options] <file>
        aontu hash [options] <file>
-       aontu mod tidy|vendor [options] [dir]
+       aontu mod tidy|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
@@ -54,6 +54,17 @@ Options:
   --trust <t>     Include capability: system (default), none, or
                   root[:dir] to confine @"..." below a directory
   --include-root <dir>  Shorthand for --trust root:<dir>
+
+Mod options:
+  --format <f>    text (default) or json
+  --against <dir> manifest: a prior version's module tree, to gate on
+
+Mod subcommands:
+  tidy      Resolve the module closure by minimum version selection and
+            rewrite mod-lock.aon in canonical form
+  vendor    Materialise the locked closure into aon_vendor/
+  manifest  Print the OCI artifact a publish would push, gated on the
+            breaking check against --against
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)

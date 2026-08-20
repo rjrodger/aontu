@@ -23,6 +23,7 @@ import {
 import { join as pathJoin, dirname as pathDirname } from 'node:path'
 
 import { parseModuleRef, moduleDir, lockJson } from './mod'
+import { subsume } from './subsume'
 import type { ModuleRef } from './mod'
 
 
@@ -340,4 +341,215 @@ function copyTree(from: string, to: string): void {
       copyFileSync(src, dst)
     }
   }
+}
+
+
+// THE PUBLISH BOUNDARY (G6 phase 4,
+// docs/capability-review/g6-distribution.md). A module is an OCI
+// artifact, and what a publish PUSHES is a manifest: a config media
+// type, one layer holding the module's source tree, and annotations
+// carrying the module path, its version and its canon-hash.
+//
+// The push needs a registry, which this build does not have. Everything
+// the push would ASSERT is local, and that is what `aontu mod manifest`
+// answers: the exact artifact description, computed the way the
+// registry would be told it, plus the gate that decides whether it may
+// be minted at all.
+//
+// WHY THE ANNOTATION MATTERS MORE THAN THE BYTES. "Has the truth
+// changed?" is one annotation read and a string compare -- no download,
+// no parse -- because the canon-hash pins MEANING rather than text. A
+// consumer holding `aon1-oQs6…` can ask a registry index whether the
+// module still hashes to it, and a reformat, a comment or a file split
+// will not move it.
+
+// The config media type the design fixes: an Aontu module is not an
+// image, and the type is what tells a registry so.
+export const MODULE_CONFIG_MEDIA_TYPE = 'application/vnd.aontu.module.v1+json'
+
+// The canon-hash annotation. OCI asks a custom key to be the reverse
+// DNS of a domain its author controls, and the project's own home is
+// the only domain it has -- inventing an `aontu.dev` would be a claim
+// it cannot back. The two facts OCI already has keys for use those.
+export const MODULE_ANNOTATION_CANON = 'com.github.rjrodger.aontu.canon'
+export const MODULE_ANNOTATION_MAJOR = 'com.github.rjrodger.aontu.major'
+
+
+export type ModManifestReport = {
+  // `ok` the artifact may be minted; `breaking`, `undecided` or `error`
+  // the gate refused, and no publish should follow.
+  verdict: 'ok' | 'breaking' | 'undecided' | 'error'
+  // The module path with its major, as an import spells it.
+  mod: string
+  version: string
+  // The canon-hash of the module's entry file, evaluated standalone.
+  canon: string
+  config: string
+  // The layer's contents: every file of the source tree, relative,
+  // forward-slashed and sorted, so two implementations on two platforms
+  // describe the same layer.
+  files: string[]
+  annotations: Record<string, string>
+  // What the module does not declare, sorted. A manifest cannot be
+  // minted without them.
+  missing: string[]
+  // The gate's findings, when a prior version was named.
+  findings: any[]
+}
+
+
+// What a module file says about ITSELF. Distinct from `declaredDeps`,
+// which reads what it says about others.
+type ModSelf = { path: string, version: string, main: string }
+
+function modSelf(dir: string, options: ModToolOptions): ModSelf {
+  const file = pathJoin(dir, 'mod.aon')
+  if (!existsSync(file)) {
+    return { path: '', version: '', main: 'main.aon' }
+  }
+  const gen: any = options.eval(readFileSync(file, 'utf8'), file).gen
+  const mod = gen?.mod
+  const str = (k: string): string =>
+    'string' === typeof mod?.[k] ? mod[k] : ''
+  return {
+    path: str('path'),
+    version: str('version'),
+    main: '' === str('main') ? 'main.aon' : str('main'),
+  }
+}
+
+
+// The leading numeric component of a version, which is the major an
+// import spells. Empty when the version does not start with one: a
+// version whose major cannot be read cannot be published under a
+// module path, because the path is where the major lives.
+function majorOf(version: string): string {
+  const m = /^(\d+)/.exec(version)
+  return null == m ? '' : m[1]
+}
+
+
+// Every file of a module's source tree, relative and forward-slashed.
+// `aon_vendor/` is excluded: a published module carries its own
+// sources, not a copy of everyone else's -- a consumer resolves the
+// closure itself, and a nested vendor tree would publish the world.
+function layerFiles(dir: string, prefix = ''): string[] {
+  const out: string[] = []
+  for (const name of readdirSync(dir).sort()) {
+    if ('aon_vendor' === name) {
+      continue
+    }
+    const full = pathJoin(dir, name)
+    const rel = '' === prefix ? name : prefix + '/' + name
+    if (statSync(full).isDirectory()) {
+      out.push(...layerFiles(full, rel))
+    }
+    else {
+      out.push(rel)
+    }
+  }
+  return out
+}
+
+
+// `aontu mod manifest`: the OCI artifact description a publish would
+// push, and the gate that decides whether it may be.
+export function modManifest(
+  root: string, options: ModToolOptions, against?: string,
+): ModManifestReport {
+  const self = modSelf(root, options)
+  const major = majorOf(self.version)
+
+  const missing: string[] = []
+  if ('' === self.path) {
+    missing.push('mod.path')
+  }
+  if ('' === major) {
+    missing.push('mod.version')
+  }
+  const main = pathJoin(root, self.main)
+  if (!existsSync(main)) {
+    missing.push(self.main)
+  }
+
+  const mod = '' === self.path || '' === major ?
+    '' : self.path + '@' + major
+
+  if (0 < missing.length) {
+    return {
+      verdict: 'error',
+      mod,
+      version: self.version,
+      canon: '',
+      config: MODULE_CONFIG_MEDIA_TYPE,
+      files: [],
+      annotations: {},
+      missing: missing.sort(),
+      findings: [],
+    }
+  }
+
+  const newSrc = readFileSync(main, 'utf8')
+  const canon = options.eval(newSrc, main).hash
+
+  const report: ModManifestReport = {
+    verdict: 'ok',
+    mod,
+    version: self.version,
+    canon,
+    config: MODULE_CONFIG_MEDIA_TYPE,
+    files: layerFiles(root),
+    annotations: {
+      [MODULE_ANNOTATION_CANON]: canon,
+      [MODULE_ANNOTATION_MAJOR]: major,
+      'org.opencontainers.image.title': self.path,
+      'org.opencontainers.image.version': self.version,
+    },
+    missing: [],
+    findings: [],
+  }
+
+  if (null == against) {
+    return report
+  }
+
+  // THE PUBLISH-TIME BREAKING GATE. The semantics of "breaking" belong
+  // wholly to G3 (ts/src/subsume.ts); this is the wiring, at the one
+  // place versions are minted.
+  const prior = modSelf(against, options)
+  const priorMain = pathJoin(against, prior.main)
+  if (!existsSync(priorMain)) {
+    report.verdict = 'error'
+    report.missing = [prior.main]
+    return report
+  }
+
+  // A MAJOR BUMP IS WHERE BREAKING IS ALLOWED. The major lives in the
+  // module path, so a consumer of `@1` never sees `@2` unless it asks:
+  // checking compatibility across majors would forbid the one change
+  // the version scheme exists to express.
+  if (majorOf(prior.version) !== major) {
+    return report
+  }
+
+  // Backward compatibility: the NEW version is the general side, so
+  // every instance the old one admitted must still be admitted.
+  const gate = subsume(newSrc, readFileSync(priorMain, 'utf8'), {
+    generalUrl: main,
+    specificUrl: priorMain,
+    generalPath: main,
+    specificPath: priorMain,
+  })
+
+  report.findings = gate.findings
+  report.verdict = MANIFEST_VERDICT[gate.verdict]
+  return report
+}
+
+
+const MANIFEST_VERDICT: Record<string, ModManifestReport['verdict']> = {
+  subsumes: 'ok',
+  does_not_subsume: 'breaking',
+  undecided: 'undecided',
+  error: 'error',
 }

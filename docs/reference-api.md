@@ -40,7 +40,7 @@ Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu relations [options] <file>
        aontu hash [options] <file>
-       aontu mod tidy|vendor [options] [dir]
+       aontu mod tidy|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
@@ -459,13 +459,15 @@ optimisation.
 
 ### `aontu mod`
 
-Module tooling: the two commands that maintain a project's dependency
-closure. Both are **local** — they read and write the project, the
-vendor directory and the user cache, and never reach the network.
+Module tooling: the commands that maintain a project's dependency
+closure and describe what a publish would push. All are **local** —
+they read and write the project, the vendor directory and the user
+cache, and never reach the network.
 
 ```
-aontu mod tidy   [--format text|json] [dir]
-aontu mod vendor [--format text|json] [dir]
+aontu mod tidy     [--format text|json] [dir]
+aontu mod vendor   [--format text|json] [dir]
+aontu mod manifest [--against <dir>] [--format text|json] [dir]
 ```
 
 `dir` is the project root — the directory holding `mod.aon` — and
@@ -519,6 +521,54 @@ nothing to search the cache *by*. `tidy` first, then `vendor`.
   `aontu: {version, verb}` envelope, `verdict` (`ok` or `missing`),
   the resolved list, and `missing`.
 - Exit codes: `0` resolved, `1` something was missing, `2` usage.
+
+**`manifest`** prints the OCI artifact a publish would push, and gates
+it on the breaking check.
+
+- A module publishes itself, so its own `mod.aon` declares a version
+  as well as a path and an entry:
+
+  ```
+  mod: { path: "corp.example/schemas/service", version: "1.4.2",
+         main: "service.aon" }
+  ```
+
+  The **major an import spells lives inside that version** — `1.4.2` is
+  published as `corp.example/schemas/service@1`. A module declaring no
+  version, or one whose entry file is absent, has nothing to mint: that
+  is an `error` verdict, not a missing fetch.
+- The artifact: config media type
+  `application/vnd.aontu.module.v1+json`, one layer holding the module
+  source tree, and four annotations —
+  `org.opencontainers.image.title` and `.version` for the path and
+  version, and `com.github.rjrodger.aontu.canon` and `.major` for the
+  two facts OCI has no predefined key for.
+- The layer is the source tree, relative and forward-slashed so two
+  implementations on two platforms describe the same layer.
+  `aon_vendor/` is excluded: a published module carries its own
+  sources, not a copy of everyone else's.
+- **`--against <dir>` is the publish-time breaking gate.** It names a
+  prior version's module tree, and runs
+  [`breaking`](#aontu-breaking)'s backward check between the two: every
+  instance the old version admitted must still be admitted. The
+  verdict, the findings and the exit class are that check's, unchanged
+  — this is wiring at the boundary where versions are minted, not a
+  second definition of "breaking".
+- **A major bump is where breaking is allowed.** When the prior
+  version's major differs from this one's, the gate does not apply: the
+  major lives in the module path, so a consumer of `@1` never sees `@2`
+  unless it asks, and checking across majors would forbid the one
+  change the version scheme exists to express.
+- Exit codes: `0` may be published, `1` breaking, `2` usage, `3`
+  undecided, `4` nothing to mint — [`subsume`](#aontu-subsume)'s
+  classes, because the gate is a subsumption check.
+
+**"Has the truth changed?" is one annotation read and a string
+compare** — no download, no parse. The canon-hash in the annotation is
+the same string `tidy` locks and [`aontu hash`](#aontu-hash) prints, so
+a consumer holding `aon1-oQs6…` can ask a registry index whether the
+module still means what it meant. A reformat, a comment or a file split
+will not move it.
 
 **`get` and `publish` are not in this build.** They are the network
 half of the design (`docs/capability-review/g6-distribution.md`) and

@@ -227,7 +227,7 @@ func TestModArguments(t *testing.T) {
 	}
 	for _, args := range [][]string{{}, {"nope"}, {"tidy", "a", "b"}} {
 		if _, errw, code := modRun(args...); 2 != code ||
-			!strings.Contains(errw, "needs tidy or vendor") {
+			!strings.Contains(errw, "needs tidy, vendor or manifest") {
 			t.Fatalf("%v = %d: %s", args, code, errw)
 		}
 	}
@@ -242,6 +242,99 @@ func TestModArguments(t *testing.T) {
 	if _, errw, code := modRun("--nope", "tidy"); 2 != code ||
 		!strings.Contains(errw, "unknown mod option") {
 		t.Fatalf("bad option = %d: %s", code, errw)
+	}
+	// `--against` gates a manifest and means nothing to the other two;
+	// accepting it there would say it had been honoured.
+	if _, errw, code := modRun("tidy", "--against", "x"); 2 != code ||
+		!strings.Contains(errw, "--against is a manifest option") {
+		t.Fatalf("against on tidy = %d: %s", code, errw)
+	}
+	if _, errw, code := modRun("manifest", "--against"); 2 != code ||
+		!strings.Contains(errw, "--against needs a module directory") {
+		t.Fatalf("missing against value = %d: %s", code, errw)
+	}
+}
+
+// The command's own manifest surface: the text body, the JSON envelope
+// and the exit classes. What the report SAYS is proved against the
+// package API in go/modtool_test.go, with ts/test/mod.test.ts as the
+// cross-port twin.
+func TestModManifestCommand(t *testing.T) {
+	pub := func(version, src string) string {
+		dir := t.TempDir()
+		decl := "mod: {path: \"corp.example/schemas/service\""
+		if "" != version {
+			decl += ", version: \"" + version + "\""
+		}
+		decl += ", main: \"service.aon\"}\n"
+		modWrite(t, filepath.Join(dir, "mod.aon"), decl)
+		if "" != src {
+			modWrite(t, filepath.Join(dir, "service.aon"), src)
+		}
+		return dir
+	}
+
+	out, _, code := modRun("manifest", pub("1.1.0", modToolSource))
+	if 0 != code {
+		t.Fatalf("manifest = %d:\n%s", code, out)
+	}
+	for _, want := range []string{
+		"verdict: ok",
+		"corp.example/schemas/service@1 1.1.0",
+		"config: " + aontu.ModuleConfigMediaType,
+		aontu.ModuleAnnotationCanon + ": aon1-",
+		"layer: service.aon",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("manifest text lacks %q:\n%s", want, out)
+		}
+	}
+
+	// A module that declares no version has nothing to publish under,
+	// and that is an error class rather than a missing fetch.
+	miss, _, code := modRun("manifest", pub("", modToolSource))
+	if 4 != code || !strings.Contains(miss, "mod.version: missing") {
+		t.Fatalf("no version = %d:\n%s", code, miss)
+	}
+
+	// The gate's exit class is Subsume's, because the gate IS a
+	// subsumption check.
+	prior := pub("1.0.0", modToolSource)
+	next := pub("1.1.0", modToolSource+"region: *\"eu\" | string\n")
+	gated, _, code := modRun("manifest", "--against", prior, next)
+	if 1 != code || !strings.Contains(gated, "verdict: breaking") {
+		t.Fatalf("gate = %d:\n%s", code, gated)
+	}
+
+	// Subsumption is THREE-valued plus error, and every value has its
+	// own exit class: a question the checker cannot decide is not a
+	// pass, and a caller reading exit codes can tell the two apart.
+	undecided, _, code := modRun("manifest",
+		"--against", pub("1.0.0", "a: min(1)\n"),
+		pub("1.1.0", "a: must(min(1), \"m\")\n"))
+	if 3 != code || !strings.Contains(undecided, "verdict: undecided") {
+		t.Fatalf("undecided gate = %d:\n%s", code, undecided)
+	}
+
+	jsonOut, _, code := modRun("manifest", "--format", "json",
+		pub("1.1.0", modToolSource))
+	if 0 != code {
+		t.Fatalf("manifest json = %d:\n%s", code, jsonOut)
+	}
+	var report struct {
+		Aontu struct {
+			Verb string `json:"verb"`
+		} `json:"aontu"`
+		Annotations map[string]string `json:"annotations"`
+		Verdict     string            `json:"verdict"`
+	}
+	if err := json.Unmarshal([]byte(jsonOut), &report); nil != err {
+		t.Fatalf("json: %v\n%s", err, jsonOut)
+	}
+	if "mod manifest" != report.Aontu.Verb || "ok" != report.Verdict ||
+		!strings.HasPrefix(report.Annotations[aontu.ModuleAnnotationCanon],
+			"aon1-") {
+		t.Fatalf("report %+v", report)
 	}
 }
 

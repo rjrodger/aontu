@@ -400,3 +400,233 @@ func copyFile(src, dst string) error {
 	_, err = io.Copy(out, in)
 	return err
 }
+
+// THE PUBLISH BOUNDARY (G6 phase 4, the Go side of modManifest in
+// ts/src/mod-tool.ts). A module is an OCI artifact, and what a publish
+// PUSHES is a manifest: a config media type, one layer holding the
+// module's source tree, and annotations carrying the module path, its
+// version and its canon-hash.
+//
+// The push needs a registry, which this build does not have. Everything
+// the push would ASSERT is local, and that is what `aontu mod manifest`
+// answers: the exact artifact description, computed the way the
+// registry would be told it, plus the gate that decides whether it may
+// be minted at all.
+//
+// WHY THE ANNOTATION MATTERS MORE THAN THE BYTES. "Has the truth
+// changed?" is one annotation read and a string compare — no download,
+// no parse — because the canon-hash pins MEANING rather than text. A
+// consumer holding `aon1-oQs6…` can ask a registry index whether the
+// module still hashes to it, and a reformat, a comment or a file split
+// will not move it.
+
+// ModuleConfigMediaType is the config media type the design fixes: an
+// Aontu module is not an image, and the type is what tells a registry
+// so.
+const ModuleConfigMediaType = "application/vnd.aontu.module.v1+json"
+
+// ModuleAnnotationCanon and ModuleAnnotationMajor are the two facts OCI
+// has no predefined key for. OCI asks a custom key to be the reverse
+// DNS of a domain its author controls, and the project's own home is
+// the only domain it has — inventing an `aontu.dev` would be a claim it
+// cannot back.
+const (
+	ModuleAnnotationCanon = "com.github.rjrodger.aontu.canon"
+	ModuleAnnotationMajor = "com.github.rjrodger.aontu.major"
+)
+
+// ModManifestReport is the OCI artifact description a publish would
+// push, and the gate's verdict on whether it may be.
+type ModManifestReport struct {
+	Annotations map[string]string `json:"annotations"`
+	Canon       string            `json:"canon"`
+	Config      string            `json:"config"`
+	Files       []string          `json:"files"`
+	Findings    []VetFinding      `json:"findings"`
+	Missing     []string          `json:"missing"`
+	Mod         string            `json:"mod"`
+	Verdict     string            `json:"verdict"`
+	Version     string            `json:"version"`
+}
+
+// modSelf is what a module file says about ITSELF. Distinct from
+// declaredDeps, which reads what it says about others.
+type modSelf struct {
+	path    string
+	version string
+	main    string
+}
+
+func readModSelf(dir string) modSelf {
+	self := modSelf{main: "main.aon"}
+	file := filepath.Join(dir, "mod.aon")
+	data, err := os.ReadFile(file)
+	if nil != err {
+		return self
+	}
+	gen, ok := evalMod(toValidSource(string(data)), file).gen.(map[string]any)
+	if !ok {
+		return self
+	}
+	mod, ok := gen["mod"].(map[string]any)
+	if !ok {
+		return self
+	}
+	str := func(k string) string {
+		s, _ := mod[k].(string)
+		return s
+	}
+	self.path = str("path")
+	self.version = str("version")
+	if m := str("main"); "" != m {
+		self.main = m
+	}
+	return self
+}
+
+// majorOf is the leading numeric component of a version, which is the
+// major an import spells. Empty when the version does not start with
+// one: a version whose major cannot be read cannot be published under a
+// module path, because the path is where the major lives.
+func majorOf(version string) string {
+	end := 0
+	for end < len(version) && '0' <= version[end] && version[end] <= '9' {
+		end++
+	}
+	return version[:end]
+}
+
+// layerFiles is every file of a module's source tree, relative and
+// forward-slashed. `aon_vendor/` is excluded: a published module
+// carries its own sources, not a copy of everyone else's — a consumer
+// resolves the closure itself, and a nested vendor tree would publish
+// the world.
+func layerFiles(dir, prefix string) []string {
+	out := []string{}
+	entries, err := os.ReadDir(dir)
+	if nil != err { //coverage:ignore the caller stat'd this directory
+		return out
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Name() < entries[j].Name()
+	})
+	for _, e := range entries {
+		if "aon_vendor" == e.Name() {
+			continue
+		}
+		rel := e.Name()
+		if "" != prefix {
+			rel = prefix + "/" + e.Name()
+		}
+		if e.IsDir() {
+			out = append(out, layerFiles(filepath.Join(dir, e.Name()), rel)...)
+			continue
+		}
+		out = append(out, rel)
+	}
+	return out
+}
+
+// ModManifest is `aontu mod manifest`: the OCI artifact description a
+// publish would push, and the gate that decides whether it may be.
+// against is the prior version's module directory, or empty for no gate.
+func ModManifest(root, against string) ModManifestReport {
+	self := readModSelf(root)
+	major := majorOf(self.version)
+
+	missing := []string{}
+	if "" == self.path {
+		missing = append(missing, "mod.path")
+	}
+	if "" == major {
+		missing = append(missing, "mod.version")
+	}
+	main := filepath.Join(root, self.main)
+	if _, err := os.Stat(main); nil != err {
+		missing = append(missing, self.main)
+	}
+
+	mod := ""
+	if "" != self.path && "" != major {
+		mod = self.path + "@" + major
+	}
+
+	report := ModManifestReport{
+		Verdict:     "ok",
+		Mod:         mod,
+		Version:     self.version,
+		Config:      ModuleConfigMediaType,
+		Annotations: map[string]string{},
+		Files:       []string{},
+		Missing:     []string{},
+		Findings:    []VetFinding{},
+	}
+
+	if 0 < len(missing) {
+		sort.Strings(missing)
+		report.Verdict = "error"
+		report.Missing = missing
+		return report
+	}
+
+	data, err := os.ReadFile(main)
+	if nil != err { //coverage:ignore the missing-entry arm above stat'd this
+		report.Verdict = "error"
+		return report
+	}
+	newSrc := toValidSource(string(data))
+	report.Canon = evalMod(newSrc, main).hash
+	report.Files = layerFiles(root, "")
+	report.Annotations = map[string]string{
+		ModuleAnnotationCanon:              report.Canon,
+		ModuleAnnotationMajor:              major,
+		"org.opencontainers.image.title":   self.path,
+		"org.opencontainers.image.version": self.version,
+	}
+
+	if "" == against {
+		return report
+	}
+
+	// THE PUBLISH-TIME BREAKING GATE. The semantics of "breaking" belong
+	// wholly to G3 (go/subsume.go); this is the wiring, at the one place
+	// versions are minted.
+	prior := readModSelf(against)
+	priorMain := filepath.Join(against, prior.main)
+	priorData, err := os.ReadFile(priorMain)
+	if nil != err {
+		report.Verdict = "error"
+		report.Missing = []string{prior.main}
+		return report
+	}
+
+	// A MAJOR BUMP IS WHERE BREAKING IS ALLOWED. The major lives in the
+	// module path, so a consumer of `@1` never sees `@2` unless it asks:
+	// checking compatibility across majors would forbid the one change
+	// the version scheme exists to express.
+	if majorOf(prior.version) != major {
+		return report
+	}
+
+	// Backward compatibility: the NEW version is the general side, so
+	// every instance the old one admitted must still be admitted.
+	gate := Subsume(newSrc, toValidSource(string(priorData)), &SubsumeOptions{
+		GeneralURL:   main,
+		SpecificURL:  priorMain,
+		GeneralPath:  main,
+		SpecificPath: priorMain,
+	})
+
+	if nil != gate.Findings {
+		report.Findings = gate.Findings
+	}
+	report.Verdict = manifestVerdict[gate.Verdict]
+	return report
+}
+
+var manifestVerdict = map[string]string{
+	SubsumeYes:       "ok",
+	SubsumeNo:        "breaking",
+	SubsumeUndecided: "undecided",
+	SubsumeError:     "error",
+}

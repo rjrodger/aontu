@@ -1,10 +1,12 @@
 "use strict";
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.MODULE_ANNOTATION_MAJOR = exports.MODULE_ANNOTATION_CANON = exports.MODULE_CONFIG_MEDIA_TYPE = void 0;
 exports.versionCompare = versionCompare;
 exports.lockText = lockText;
 exports.modTidy = modTidy;
 exports.modVendor = modVendor;
+exports.modManifest = modManifest;
 // MODULE TOOLING (G6 phase 3, docs/capability-review/g6-distribution.md):
 // the LOCAL half — `aontu mod tidy` and `aontu mod vendor`.
 //
@@ -23,6 +25,7 @@ exports.modVendor = modVendor;
 const node_fs_1 = require("node:fs");
 const node_path_1 = require("node:path");
 const mod_1 = require("./mod");
+const subsume_1 = require("./subsume");
 // The `dep` block a module file declares: import string -> version.
 function declaredDeps(file, options) {
     if (!(0, node_fs_1.existsSync)(file)) {
@@ -249,4 +252,161 @@ function copyTree(from, to) {
         }
     }
 }
+// THE PUBLISH BOUNDARY (G6 phase 4,
+// docs/capability-review/g6-distribution.md). A module is an OCI
+// artifact, and what a publish PUSHES is a manifest: a config media
+// type, one layer holding the module's source tree, and annotations
+// carrying the module path, its version and its canon-hash.
+//
+// The push needs a registry, which this build does not have. Everything
+// the push would ASSERT is local, and that is what `aontu mod manifest`
+// answers: the exact artifact description, computed the way the
+// registry would be told it, plus the gate that decides whether it may
+// be minted at all.
+//
+// WHY THE ANNOTATION MATTERS MORE THAN THE BYTES. "Has the truth
+// changed?" is one annotation read and a string compare -- no download,
+// no parse -- because the canon-hash pins MEANING rather than text. A
+// consumer holding `aon1-oQs6…` can ask a registry index whether the
+// module still hashes to it, and a reformat, a comment or a file split
+// will not move it.
+// The config media type the design fixes: an Aontu module is not an
+// image, and the type is what tells a registry so.
+exports.MODULE_CONFIG_MEDIA_TYPE = 'application/vnd.aontu.module.v1+json';
+// The canon-hash annotation. OCI asks a custom key to be the reverse
+// DNS of a domain its author controls, and the project's own home is
+// the only domain it has -- inventing an `aontu.dev` would be a claim
+// it cannot back. The two facts OCI already has keys for use those.
+exports.MODULE_ANNOTATION_CANON = 'com.github.rjrodger.aontu.canon';
+exports.MODULE_ANNOTATION_MAJOR = 'com.github.rjrodger.aontu.major';
+function modSelf(dir, options) {
+    const file = (0, node_path_1.join)(dir, 'mod.aon');
+    if (!(0, node_fs_1.existsSync)(file)) {
+        return { path: '', version: '', main: 'main.aon' };
+    }
+    const gen = options.eval((0, node_fs_1.readFileSync)(file, 'utf8'), file).gen;
+    const mod = gen?.mod;
+    const str = (k) => 'string' === typeof mod?.[k] ? mod[k] : '';
+    return {
+        path: str('path'),
+        version: str('version'),
+        main: '' === str('main') ? 'main.aon' : str('main'),
+    };
+}
+// The leading numeric component of a version, which is the major an
+// import spells. Empty when the version does not start with one: a
+// version whose major cannot be read cannot be published under a
+// module path, because the path is where the major lives.
+function majorOf(version) {
+    const m = /^(\d+)/.exec(version);
+    return null == m ? '' : m[1];
+}
+// Every file of a module's source tree, relative and forward-slashed.
+// `aon_vendor/` is excluded: a published module carries its own
+// sources, not a copy of everyone else's -- a consumer resolves the
+// closure itself, and a nested vendor tree would publish the world.
+function layerFiles(dir, prefix = '') {
+    const out = [];
+    for (const name of (0, node_fs_1.readdirSync)(dir).sort()) {
+        if ('aon_vendor' === name) {
+            continue;
+        }
+        const full = (0, node_path_1.join)(dir, name);
+        const rel = '' === prefix ? name : prefix + '/' + name;
+        if ((0, node_fs_1.statSync)(full).isDirectory()) {
+            out.push(...layerFiles(full, rel));
+        }
+        else {
+            out.push(rel);
+        }
+    }
+    return out;
+}
+// `aontu mod manifest`: the OCI artifact description a publish would
+// push, and the gate that decides whether it may be.
+function modManifest(root, options, against) {
+    const self = modSelf(root, options);
+    const major = majorOf(self.version);
+    const missing = [];
+    if ('' === self.path) {
+        missing.push('mod.path');
+    }
+    if ('' === major) {
+        missing.push('mod.version');
+    }
+    const main = (0, node_path_1.join)(root, self.main);
+    if (!(0, node_fs_1.existsSync)(main)) {
+        missing.push(self.main);
+    }
+    const mod = '' === self.path || '' === major ?
+        '' : self.path + '@' + major;
+    if (0 < missing.length) {
+        return {
+            verdict: 'error',
+            mod,
+            version: self.version,
+            canon: '',
+            config: exports.MODULE_CONFIG_MEDIA_TYPE,
+            files: [],
+            annotations: {},
+            missing: missing.sort(),
+            findings: [],
+        };
+    }
+    const newSrc = (0, node_fs_1.readFileSync)(main, 'utf8');
+    const canon = options.eval(newSrc, main).hash;
+    const report = {
+        verdict: 'ok',
+        mod,
+        version: self.version,
+        canon,
+        config: exports.MODULE_CONFIG_MEDIA_TYPE,
+        files: layerFiles(root),
+        annotations: {
+            [exports.MODULE_ANNOTATION_CANON]: canon,
+            [exports.MODULE_ANNOTATION_MAJOR]: major,
+            'org.opencontainers.image.title': self.path,
+            'org.opencontainers.image.version': self.version,
+        },
+        missing: [],
+        findings: [],
+    };
+    if (null == against) {
+        return report;
+    }
+    // THE PUBLISH-TIME BREAKING GATE. The semantics of "breaking" belong
+    // wholly to G3 (ts/src/subsume.ts); this is the wiring, at the one
+    // place versions are minted.
+    const prior = modSelf(against, options);
+    const priorMain = (0, node_path_1.join)(against, prior.main);
+    if (!(0, node_fs_1.existsSync)(priorMain)) {
+        report.verdict = 'error';
+        report.missing = [prior.main];
+        return report;
+    }
+    // A MAJOR BUMP IS WHERE BREAKING IS ALLOWED. The major lives in the
+    // module path, so a consumer of `@1` never sees `@2` unless it asks:
+    // checking compatibility across majors would forbid the one change
+    // the version scheme exists to express.
+    if (majorOf(prior.version) !== major) {
+        return report;
+    }
+    // Backward compatibility: the NEW version is the general side, so
+    // every instance the old one admitted must still be admitted.
+    const gate = (0, subsume_1.subsume)(newSrc, (0, node_fs_1.readFileSync)(priorMain, 'utf8'), {
+        generalUrl: main,
+        specificUrl: priorMain,
+        generalPath: main,
+        specificPath: priorMain,
+    });
+    report.findings = gate.findings;
+    report.verdict = MANIFEST_VERDICT[gate.verdict];
+    return report;
+}
+const MANIFEST_VERDICT = {
+    subsumes: 'ok',
+    does_not_subsume: 'breaking',
+    undecided: 'undecided',
+    error: 'error',
+};
 //# sourceMappingURL=mod-tool.js.map

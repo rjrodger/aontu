@@ -337,3 +337,186 @@ func TestModVendorReportsWhatNoStoreHas(t *testing.T) {
 		t.Fatalf("missing %v", r.Missing)
 	}
 }
+
+// THE PUBLISH BOUNDARY (G6 phase 4). What a publish would push is a
+// manifest, and everything it ASSERTS is local: the annotations, the
+// layer's contents, and the gate that decides whether the version may
+// be minted at all. The push itself needs a registry this build does
+// not have; the assertions do not.
+
+// modtoolPublishable is a module in its own right: it declares its
+// path, its version and its entry, which is what a publish needs and a
+// dependency does not.
+func modtoolPublishable(t *testing.T, version, src string) string {
+	t.Helper()
+	dir := t.TempDir()
+	decl := "mod: {path: \"corp.example/schemas/service\""
+	if "" != version {
+		decl += ", version: \"" + version + "\""
+	}
+	decl += ", main: \"service.aon\"}\n"
+	write(t, filepath.Join(dir, "mod.aon"), decl)
+	if "" != src {
+		write(t, filepath.Join(dir, "service.aon"), src)
+	}
+	return dir
+}
+
+func TestModManifestIsWhatAPublishWouldPush(t *testing.T) {
+	dir := modtoolPublishable(t, "1.1.0", modSource)
+	r := ModManifest(dir, "")
+
+	if "ok" != r.Verdict {
+		t.Fatalf("verdict %q missing %v", r.Verdict, r.Missing)
+	}
+	if "corp.example/schemas/service@1" != r.Mod || "1.1.0" != r.Version {
+		t.Fatalf("mod %q version %q", r.Mod, r.Version)
+	}
+	if ModuleConfigMediaType != r.Config {
+		t.Fatalf("config %q", r.Config)
+	}
+	// The canon-hash is THE pin: the same string `mod tidy` locks and
+	// `aontu hash` prints, so "has the truth changed?" is one annotation
+	// read and a string compare.
+	v, _ := New().Unify(modSource)
+	if CanonHash(v) != r.Canon {
+		t.Fatalf("canon %q", r.Canon)
+	}
+	want := map[string]string{
+		ModuleAnnotationCanon:              r.Canon,
+		ModuleAnnotationMajor:              "1",
+		"org.opencontainers.image.title":   "corp.example/schemas/service",
+		"org.opencontainers.image.version": "1.1.0",
+	}
+	if len(want) != len(r.Annotations) {
+		t.Fatalf("annotations %v", r.Annotations)
+	}
+	for k, w := range want {
+		if w != r.Annotations[k] {
+			t.Fatalf("annotation %s = %q, want %q", k, r.Annotations[k], w)
+		}
+	}
+	if 2 != len(r.Files) || "mod.aon" != r.Files[0] || "service.aon" != r.Files[1] {
+		t.Fatalf("files %v", r.Files)
+	}
+}
+
+func TestModManifestLayerExcludesTheVendorCopy(t *testing.T) {
+	// A module is a TREE, so nested directories are in the layer. A
+	// published module carries its own sources and not a copy of
+	// everyone else's, so `aon_vendor/` is not: a consumer resolves the
+	// closure itself, and vendoring it here would publish the world.
+	dir := modtoolPublishable(t, "1.1.0", modSource)
+	if err := os.MkdirAll(filepath.Join(dir, "part"), 0o755); nil != err {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(dir, "part", "extra.aon"), "extra: true\n")
+	modtoolVendor(t, dir, "corp.example/other@1",
+		map[string]string{"mod.aon": "mod: {path: \"x\"}\n"})
+
+	files := ModManifest(dir, "").Files
+	if 3 != len(files) || "mod.aon" != files[0] ||
+		"part/extra.aon" != files[1] || "service.aon" != files[2] {
+		t.Fatalf("files %v", files)
+	}
+}
+
+func TestModManifestNeedsAVersionAndAnEntry(t *testing.T) {
+	// A version is what a publish assigns, and the major an import
+	// spells lives inside it — a module that declares none has nothing
+	// to publish under. An entry file that is not there has no meaning
+	// to pin.
+	noVersion := ModManifest(modtoolPublishable(t, "", modSource), "")
+	if "error" != noVersion.Verdict ||
+		1 != len(noVersion.Missing) || "mod.version" != noVersion.Missing[0] {
+		t.Fatalf("verdict %q missing %v", noVersion.Verdict, noVersion.Missing)
+	}
+
+	noEntry := ModManifest(modtoolPublishable(t, "1.0.0", ""), "")
+	if "error" != noEntry.Verdict ||
+		1 != len(noEntry.Missing) || "service.aon" != noEntry.Missing[0] {
+		t.Fatalf("verdict %q missing %v", noEntry.Verdict, noEntry.Missing)
+	}
+
+	// A directory with no module file at all declares neither.
+	bare := ModManifest(t.TempDir(), "")
+	if "error" != bare.Verdict || 3 != len(bare.Missing) {
+		t.Fatalf("verdict %q missing %v", bare.Verdict, bare.Missing)
+	}
+}
+
+func TestModManifestGateRefusesABreakingVersion(t *testing.T) {
+	// THE PUBLISH-TIME BREAKING GATE. The semantics belong wholly to G3
+	// — this is the wiring, at the one place versions are minted — so
+	// the verdict and the findings are Subsume's, unchanged.
+	prior := modtoolPublishable(t, "1.0.0", modSource)
+	next := modtoolPublishable(t, "1.1.0", modSource+"region: *\"eu\" | string\n")
+
+	r := ModManifest(next, prior)
+	if "breaking" != r.Verdict || 1 > len(r.Findings) {
+		t.Fatalf("verdict %q findings %v", r.Verdict, r.Findings)
+	}
+	if "$.region" != r.Findings[0].Path {
+		t.Fatalf("finding path %q", r.Findings[0].Path)
+	}
+
+	// And a compatible change passes the same gate.
+	ok := ModManifest(modtoolPublishable(t, "1.2.0", "name: string\n"), prior)
+	if "ok" != ok.Verdict || 0 != len(ok.Findings) {
+		t.Fatalf("verdict %q findings %v", ok.Verdict, ok.Findings)
+	}
+}
+
+func TestModManifestMajorBumpIsWhereBreakingIsAllowed(t *testing.T) {
+	// The major lives in the module path, so a consumer of `@1` never
+	// sees `@2` unless it asks. Checking compatibility across majors
+	// would forbid the one change the version scheme exists to express.
+	prior := modtoolPublishable(t, "1.0.0", modSource)
+	next := modtoolPublishable(t, "2.0.0", modSource+"region: string\n")
+
+	r := ModManifest(next, prior)
+	if "ok" != r.Verdict || "corp.example/schemas/service@2" != r.Mod {
+		t.Fatalf("verdict %q mod %q", r.Verdict, r.Mod)
+	}
+}
+
+func TestModManifestPriorWithNoEntryCannotBeGatedAgainst(t *testing.T) {
+	r := ModManifest(modtoolPublishable(t, "1.1.0", modSource),
+		modtoolPublishable(t, "1.0.0", ""))
+	if "error" != r.Verdict ||
+		1 != len(r.Missing) || "service.aon" != r.Missing[0] {
+		t.Fatalf("verdict %q missing %v", r.Verdict, r.Missing)
+	}
+}
+
+func TestModManifestGateCanBeUndecided(t *testing.T) {
+	// Subsumption is THREE-valued plus error, and the gate passes all
+	// four through: a question it cannot decide is not a pass. `must`
+	// carries a message the checker cannot reason about, so the pair
+	// below is undecided rather than compatible.
+	prior := modtoolPublishable(t, "1.0.0", "a: min(1)\n")
+	next := modtoolPublishable(t, "1.1.0", "a: must(min(1), \"m\")\n")
+
+	r := ModManifest(next, prior)
+	if "undecided" != r.Verdict {
+		t.Fatalf("verdict %q findings %v", r.Verdict, r.Findings)
+	}
+}
+
+func TestModSelfIgnoresWhatIsNotAModuleDeclaration(t *testing.T) {
+	// A module file is ordinary Aontu, so it can say anything. What it
+	// does not say about ITSELF leaves the manifest with nothing to
+	// mint, which is the same answer as saying nothing at all.
+	for _, src := range []string{
+		"1\n",       // not a map at all
+		"dep: {}\n", // no mod block
+		"mod: 1\n",  // a mod that is not a map
+	} {
+		dir := t.TempDir()
+		write(t, filepath.Join(dir, "mod.aon"), src)
+		r := ModManifest(dir, "")
+		if "error" != r.Verdict || 3 != len(r.Missing) {
+			t.Fatalf("%q gave verdict %q missing %v", src, r.Verdict, r.Missing)
+		}
+	}
+}

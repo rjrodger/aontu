@@ -526,12 +526,19 @@ two commands over a fixture corpus, streams AND the files they
 leave behind), not shared spec rows. See the
 [register](progress.md) for the three departures.
 
-**Phase 4 — registry hooks and agent integration (M).**
+**Phase 4 — registry hooks and agent integration (M). LANDED.**
 Publish-time canon-hash annotations; the breaking gate invoking
 [G3](g3-subsumption-evolution.md); hash-keyed cache/query
 integration with [G7](g7-machine-access.md)'s surface. Sized M
 here because the semantics are owned elsewhere; this phase is
-wiring at the publish boundary.
+wiring at the publish boundary — and that is exactly what landed,
+as `aontu mod manifest`, which computes and gates everything a
+publish would send and stops before sending it. The annotation set
+and the gate ARE the phase; the push is the one part that carries
+no semantics, and it is the part with no registry to send to. The
+hash-keyed cache integration needed no new code: the cache G6.2
+built is already keyed by the hash the annotation carries. See the
+[register](progress.md) for the three departures.
 
 ## Open questions
 

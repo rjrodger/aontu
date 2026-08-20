@@ -45,7 +45,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu relations [options] <file>
        aontu hash [options] <file>
-       aontu mod tidy|vendor [options] [dir]
+       aontu mod tidy|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
@@ -73,11 +73,14 @@ Options:
 
 Mod options:
   --format <f>    text (default) or json
+  --against <dir> manifest: a prior version's module tree, to gate on
 
 Mod subcommands:
-  tidy    Resolve the module closure by minimum version selection and
-          rewrite mod-lock.aon in canonical form
-  vendor  Materialise the locked closure into aon_vendor/
+  tidy      Resolve the module closure by minimum version selection and
+            rewrite mod-lock.aon in canonical form
+  vendor    Materialise the locked closure into aon_vendor/
+  manifest  Print the OCI artifact a publish would push, gated on the
+            breaking check against --against
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
@@ -1169,7 +1172,7 @@ const RELATIONS_EXIT = {
     fail: 1,
     error: 4,
 };
-const MOD_HELP = 'aontu mod tidy|vendor [dir] (try --help)';
+const MOD_HELP = 'aontu mod tidy|vendor|manifest [dir] (try --help)';
 // The module tooling (G6 phase 3, ts/src/mod-tool.ts). Two
 // subcommands, both LOCAL: `tidy` resolves the closure from what is in
 // the stores and rewrites the lockfile, `vendor` materialises the
@@ -1183,6 +1186,7 @@ const MOD_HELP = 'aontu mod tidy|vendor [dir] (try --help)';
 function runMod(argv) {
     const rest = [];
     let format = 'text';
+    let against;
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         if ('-h' === arg || '--help' === arg) {
@@ -1196,6 +1200,14 @@ function runMod(argv) {
                 return 2;
             }
             format = f;
+        }
+        else if ('--against' === arg) {
+            const a = argv[++i];
+            if (null == a) {
+                process.stderr.write('aontu: --against needs a module directory\n');
+                return 2;
+            }
+            against = a;
         }
         else if (arg.startsWith('-')) {
             process.stderr.write(`aontu: unknown mod option ${arg} (try --help)\n`);
@@ -1212,17 +1224,32 @@ function runMod(argv) {
             'does not ship (docs/capability-review/g6-distribution.md)\n');
         return 2;
     }
-    if (('tidy' !== sub && 'vendor' !== sub) || 2 < rest.length) {
-        process.stderr.write(`aontu: mod needs tidy or vendor\n${MOD_HELP}\n`);
+    if (!MOD_SUBS.includes(sub) || 2 < rest.length) {
+        process.stderr.write(`aontu: mod needs tidy, vendor or manifest\n${MOD_HELP}\n`);
         return 2;
     }
-    const report = 'tidy' === sub ?
-        (0, mod_tool_1.modTidy)(dir, modToolOptions()) : (0, mod_tool_1.modVendor)(dir, modToolOptions());
+    // `--against` gates a manifest and means nothing to the other two;
+    // accepting it there would say it had been honoured.
+    if (null != against && 'manifest' !== sub) {
+        process.stderr.write('aontu: --against is a manifest option\n');
+        return 2;
+    }
+    const report = 'tidy' === sub ? (0, mod_tool_1.modTidy)(dir, modToolOptions()) :
+        'vendor' === sub ? (0, mod_tool_1.modVendor)(dir, modToolOptions()) :
+            (0, mod_tool_1.modManifest)(dir, modToolOptions(), against);
     process.stdout.write(('json' === format ?
         (0, aontu_1.exactJSON)({ aontu: { version: version(), verb: 'mod ' + sub }, ...report }, 2) :
         modText(sub, report)) + '\n');
-    return 'ok' === report.verdict ? 0 : 1;
+    return MOD_EXIT[report.verdict];
 }
+const MOD_SUBS = ['tidy', 'vendor', 'manifest'];
+const MOD_EXIT = {
+    ok: 0,
+    missing: 1,
+    breaking: 1,
+    undecided: 3,
+    error: 4,
+};
 // The tooling's evaluator: the same standalone evaluation the module
 // resolver verifies with (ts/src/mod.ts), and for the same reason —
 // only the engine can say what a module MEANS.
@@ -1243,6 +1270,30 @@ function modToolOptions() {
 }
 function modText(sub, report) {
     const lines = ['verdict: ' + report.verdict];
+    if ('manifest' === sub) {
+        if ('' !== report.mod) {
+            lines.push(report.mod + ' ' + report.version);
+            lines.push('config: ' + report.config);
+        }
+        for (const key of Object.keys(report.annotations).sort()) {
+            lines.push(key + ': ' + report.annotations[key]);
+        }
+        for (const file of report.files) {
+            lines.push('layer: ' + file);
+        }
+        for (const f of report.findings) {
+            lines.push(f.path + ': ' + f.message);
+        }
+        // What a manifest lacks is a declaration the module does not make
+        // or an entry file that is not there, and neither is something a
+        // fetch would supply -- so this is not the tail the other two
+        // subcommands share. The name says which kind it is: `mod.version`
+        // is a declaration, `service.aon` is a file.
+        for (const miss of report.missing) {
+            lines.push(miss + ': missing');
+        }
+        return lines.join('\n');
+    }
     const done = 'tidy' === sub ? report.lock : report.vendored;
     for (const item of done) {
         lines.push('tidy' === sub ?

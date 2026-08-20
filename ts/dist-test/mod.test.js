@@ -494,9 +494,10 @@ function world(store) {
     });
     (0, node_test_1.test)('mod-arguments', () => {
         Assert.equal(cli(['mod', '--help']).code, 0);
-        Assert.ok(cli(['mod']).err.includes('needs tidy or vendor'));
-        Assert.ok(cli(['mod', 'nope']).err.includes('needs tidy or vendor'));
-        Assert.ok(cli(['mod', 'tidy', 'a', 'b']).err.includes('needs tidy or vendor'));
+        Assert.ok(cli(['mod']).err.includes('needs tidy, vendor or manifest'));
+        Assert.ok(cli(['mod', 'nope']).err.includes('needs tidy, vendor or manifest'));
+        Assert.ok(cli(['mod', 'tidy', 'a', 'b']).err
+            .includes('needs tidy, vendor or manifest'));
         Assert.ok(cli(['mod', '--format', 'yaml', 'tidy']).err
             .includes('text or json'));
         Assert.ok(cli(['mod', '--nope', 'tidy']).err.includes('unknown mod option'));
@@ -512,6 +513,162 @@ function world(store) {
         Assert.equal(report.verdict, 'ok');
         Assert.equal(report.lock[0].mod, 'corp.example/schemas/service@1');
         Assert.deepEqual(report.missing, []);
+    });
+    // THE PUBLISH BOUNDARY (G6 phase 4). What a publish would push is a
+    // manifest, and everything it ASSERTS is local: the annotations, the
+    // layer's contents, and the gate that decides whether the version may
+    // be minted at all. The push itself needs a registry this build does
+    // not have; the assertions do not.
+    // A module in its own right: it declares its path, its version and
+    // its entry, which is what a publish needs and a dependency does not.
+    function publishable(version, src, extra) {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-modpub-'));
+        Fs.writeFileSync(Path.join(dir, 'mod.aon'), 'mod: {path: "corp.example/schemas/service"' +
+            ('' === version ? '' : ', version: "' + version + '"') +
+            ', main: "service.aon"}\n');
+        if ('' !== src) {
+            Fs.writeFileSync(Path.join(dir, 'service.aon'), src);
+        }
+        extra?.(dir);
+        return dir;
+    }
+    const manifestOf = (dir, against) => {
+        const args = ['mod', 'manifest', '--format', 'json'];
+        if (null != against) {
+            args.push('--against', against);
+        }
+        const r = cli([...args, dir]);
+        return { code: r.code, report: JSON.parse(r.out) };
+    };
+    (0, node_test_1.test)('manifest-is-what-a-publish-would-push', () => {
+        const dir = publishable('1.1.0', MODULE);
+        const { code, report } = manifestOf(dir);
+        Assert.equal(code, 0);
+        Assert.equal(report.verdict, 'ok');
+        Assert.equal(report.mod, 'corp.example/schemas/service@1');
+        Assert.equal(report.version, '1.1.0');
+        Assert.equal(report.config, 'application/vnd.aontu.module.v1+json');
+        // The canon-hash is THE pin: the same string `mod tidy` locks and
+        // `aontu hash` prints, so "has the truth changed?" is one annotation
+        // read and a string compare.
+        Assert.equal(report.canon, (0, aontu_1.canonHash)(new aontu_1.Aontu().unify(MODULE)));
+        Assert.deepEqual(report.annotations, {
+            'com.github.rjrodger.aontu.canon': report.canon,
+            'com.github.rjrodger.aontu.major': '1',
+            'org.opencontainers.image.title': 'corp.example/schemas/service',
+            'org.opencontainers.image.version': '1.1.0',
+        });
+        Assert.deepEqual(report.files, ['mod.aon', 'service.aon']);
+    });
+    (0, node_test_1.test)('the-layer-is-the-source-tree-without-the-vendor-copy', () => {
+        // A module is a TREE, so nested directories are in the layer. A
+        // published module carries its own sources and not a copy of
+        // everyone else's, so `aon_vendor/` is not: a consumer resolves the
+        // closure itself, and vendoring it here would publish the world.
+        const dir = publishable('1.1.0', MODULE, (d) => {
+            Fs.mkdirSync(Path.join(d, 'part'));
+            Fs.writeFileSync(Path.join(d, 'part', 'extra.aon'), 'extra: true\n');
+            vendor(d, 'corp.example/other@1', { 'mod.aon': 'mod: {path: "x"}\n' });
+        });
+        Assert.deepEqual(manifestOf(dir).report.files, ['mod.aon', 'part/extra.aon', 'service.aon']);
+    });
+    (0, node_test_1.test)('a-manifest-needs-a-version-and-an-entry', () => {
+        // A version is what a publish assigns, and the major an import
+        // spells lives inside it — a module that declares none has nothing
+        // to publish under. An entry file that is not there has no meaning
+        // to pin. Neither is a fetch away, so neither is reported as one.
+        const noVersion = manifestOf(publishable('', MODULE));
+        Assert.equal(noVersion.code, 4);
+        Assert.equal(noVersion.report.verdict, 'error');
+        Assert.deepEqual(noVersion.report.missing, ['mod.version']);
+        const noEntry = manifestOf(publishable('1.0.0', ''));
+        Assert.equal(noEntry.code, 4);
+        Assert.deepEqual(noEntry.report.missing, ['service.aon']);
+        Assert.ok(cli(['mod', 'manifest', publishable('', '')]).out
+            .includes('mod.version: missing'));
+    });
+    (0, node_test_1.test)('the-gate-refuses-a-breaking-version', () => {
+        // THE PUBLISH-TIME BREAKING GATE. The semantics belong wholly to G3
+        // — this is the wiring, at the one place versions are minted — so
+        // the verdict, the findings and the exit class are `aontu
+        // breaking`'s, unchanged.
+        const prior = publishable('1.0.0', MODULE);
+        const next = publishable('1.1.0', MODULE + 'region: *"eu" | string\n');
+        const { code, report } = manifestOf(next, prior);
+        Assert.equal(code, 1);
+        Assert.equal(report.verdict, 'breaking');
+        Assert.equal(report.findings[0].path, '$.region');
+        // And a compatible change passes the same gate.
+        const widened = publishable('1.2.0', 'name: string\n');
+        const ok = manifestOf(widened, prior);
+        Assert.equal(ok.code, 0);
+        Assert.equal(ok.report.verdict, 'ok');
+        Assert.deepEqual(ok.report.findings, []);
+    });
+    (0, node_test_1.test)('a-major-bump-is-where-breaking-is-allowed', () => {
+        // The major lives in the module path, so a consumer of `@1` never
+        // sees `@2` unless it asks. Checking compatibility across majors
+        // would forbid the one change the version scheme exists to express.
+        const prior = publishable('1.0.0', MODULE);
+        const next = publishable('2.0.0', MODULE + 'region: string\n');
+        const { code, report } = manifestOf(next, prior);
+        Assert.equal(code, 0);
+        Assert.equal(report.verdict, 'ok');
+        Assert.equal(report.mod, 'corp.example/schemas/service@2');
+    });
+    (0, node_test_1.test)('a-prior-version-with-no-entry-cannot-be-gated-against', () => {
+        const { code, report } = manifestOf(publishable('1.1.0', MODULE), publishable('1.0.0', ''));
+        Assert.equal(code, 4);
+        Assert.equal(report.verdict, 'error');
+        Assert.deepEqual(report.missing, ['service.aon']);
+    });
+    (0, node_test_1.test)('the-gate-can-be-undecided', () => {
+        // Subsumption is THREE-valued plus error, and the gate passes all
+        // four through: a question it cannot decide is not a pass, and its
+        // own exit class is what tells a caller so. `must` carries a
+        // message the checker cannot reason about.
+        const { code, report } = manifestOf(publishable('1.1.0', 'a: must(min(1), "m")\n'), publishable('1.0.0', 'a: min(1)\n'));
+        Assert.equal(code, 3);
+        Assert.equal(report.verdict, 'undecided');
+    });
+    (0, node_test_1.test)('a-module-file-that-declares-nothing-mints-nothing', () => {
+        // A module file is ordinary Aontu, so it can say anything. What it
+        // does not say about ITSELF leaves the manifest with nothing to
+        // mint, which is the same answer as saying nothing at all.
+        for (const src of ['1\n', 'dep: {}\n', 'mod: 1\n']) {
+            const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-modpub-'));
+            Fs.writeFileSync(Path.join(dir, 'mod.aon'), src);
+            const { code, report } = manifestOf(dir);
+            Assert.equal(code, 4, src);
+            Assert.deepEqual(report.missing, ['main.aon', 'mod.path', 'mod.version']);
+        }
+        // And a directory with no module file at all, which says the same
+        // thing by saying nothing.
+        const bare = manifestOf(Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-modpub-')));
+        Assert.equal(bare.code, 4);
+        Assert.deepEqual(bare.report.missing, ['main.aon', 'mod.path', 'mod.version']);
+    });
+    (0, node_test_1.test)('manifest-text-and-arguments', () => {
+        const out = cli(['mod', 'manifest', publishable('1.1.0', MODULE)]).out;
+        Assert.ok(out.includes('corp.example/schemas/service@1 1.1.0'), out);
+        Assert.ok(out.includes('config: application/vnd.aontu.module.v1+json'), out);
+        Assert.ok(out.includes('layer: service.aon'), out);
+        // A refused gate names what broke, in text as well as in JSON: the
+        // exit code says a publish must not follow, and the body says why.
+        const refused = cli(['mod', 'manifest',
+            '--against', publishable('1.0.0', MODULE),
+            publishable('1.1.0', MODULE + 'region: *"eu" | string\n')]);
+        Assert.equal(refused.code, 1);
+        Assert.ok(refused.out.includes('verdict: breaking'), refused.out);
+        Assert.ok(refused.out.includes('$.region: '), refused.out);
+        // `--against` gates a manifest and means nothing to the other two;
+        // accepting it there would say it had been honoured.
+        Assert.ok(cli(['mod', 'tidy', '--against', 'x', '.']).err
+            .includes('--against is a manifest option'));
+        Assert.ok(cli(['mod', 'manifest', '--against']).err
+            .includes('--against needs a module directory'));
+        Assert.ok(cli(['mod', 'nope']).err
+            .includes('needs tidy, vendor or manifest'));
     });
 });
 //# sourceMappingURL=mod.test.js.map

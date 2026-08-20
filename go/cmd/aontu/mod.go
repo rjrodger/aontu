@@ -1,9 +1,11 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 
 // THE MODULE TOOLING (G6 phase 3, the Go side of ts/src/cli.ts's
-// runMod). Two subcommands, both LOCAL: `tidy` resolves the closure
+// runMod). Three subcommands, all LOCAL: `tidy` resolves the closure
 // from what is in the stores and rewrites the lockfile, `vendor`
-// materialises the locked closure into the project.
+// materialises the locked closure into the project, and `manifest`
+// prints the OCI artifact a publish would push — gated on the breaking
+// check against a prior version.
 //
 // `get` and `publish` are the NETWORK half of the design and are not in
 // this build. They are named here rather than left to fall out as an
@@ -17,16 +19,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"sort"
 	"strings"
 
 	aontu "github.com/rjrodger/aontu/go"
 )
 
-const modHelp = "aontu mod tidy|vendor [dir] (try --help)"
+const modHelp = "aontu mod tidy|vendor|manifest [dir] (try --help)"
 
 func runMod(argv []string, stdout, stderr io.Writer) int {
 	var rest []string
 	format := "text"
+	against := ""
 
 	for i := 0; i < len(argv); i++ {
 		arg := argv[i]
@@ -41,6 +45,13 @@ func runMod(argv []string, stdout, stderr io.Writer) int {
 				return 2
 			}
 			format = argv[i]
+		case "--against" == arg:
+			i++
+			if len(argv) <= i {
+				io.WriteString(stderr, "aontu: --against needs a module directory\n")
+				return 2
+			}
+			against = argv[i]
 		case strings.HasPrefix(arg, "-"):
 			io.WriteString(stderr, "aontu: unknown mod option "+arg+" (try --help)\n")
 			return 2
@@ -65,17 +76,32 @@ func runMod(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	if ("tidy" != sub && "vendor" != sub) || 2 < len(rest) {
-		io.WriteString(stderr, "aontu: mod needs tidy or vendor\n"+modHelp+"\n")
+	if ("tidy" != sub && "vendor" != sub && "manifest" != sub) || 2 < len(rest) {
+		io.WriteString(stderr,
+			"aontu: mod needs tidy, vendor or manifest\n"+modHelp+"\n")
+		return 2
+	}
+
+	// `--against` gates a manifest and means nothing to the other two;
+	// accepting it there would say it had been honoured.
+	if "" != against && "manifest" != sub {
+		io.WriteString(stderr, "aontu: --against is a manifest option\n")
 		return 2
 	}
 
 	cache := aontu.ModCacheDir()
 
-	if "tidy" == sub {
+	switch sub {
+	case "tidy":
 		report := aontu.ModTidy(dir, cache)
 		io.WriteString(stdout, modRender(sub, format, report.Verdict,
 			modTidyLines(report), report.Missing, report)+"\n")
+		return modExit(report.Verdict)
+
+	case "manifest":
+		report := aontu.ModManifest(dir, against)
+		io.WriteString(stdout, modRender(sub, format, report.Verdict,
+			modManifestLines(report), nil, report)+"\n")
 		return modExit(report.Verdict)
 	}
 
@@ -85,11 +111,52 @@ func runMod(argv []string, stdout, stderr io.Writer) int {
 	return modExit(report.Verdict)
 }
 
+// The verdict classes: `ok` 0, a refused gate 1, an open question 3, a
+// document that does not stand up 4 — Subsume's classes, because a
+// manifest gate IS a subsumption check and a caller reading exit codes
+// should not have to learn a second table.
 func modExit(verdict string) int {
-	if "ok" == verdict {
+	switch verdict {
+	case "ok":
 		return 0
+	case "undecided":
+		return 3
+	case "error":
+		return 4
 	}
 	return 1
+}
+
+// The manifest's text body. `missing` is rendered here rather than by
+// modRender's shared tail: what a manifest lacks is a declaration the
+// module does not make or an entry file that is not there, and neither
+// is something a fetch would supply. The name says which — `mod.version`
+// is a declaration, `service.aon` is a file — so the line does not
+// guess.
+func modManifestLines(report aontu.ModManifestReport) []string {
+	out := []string{}
+	if "" != report.Mod {
+		out = append(out, report.Mod+" "+report.Version)
+		out = append(out, "config: "+report.Config)
+	}
+	keys := make([]string, 0, len(report.Annotations))
+	for k := range report.Annotations {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		out = append(out, k+": "+report.Annotations[k])
+	}
+	for _, f := range report.Files {
+		out = append(out, "layer: "+f)
+	}
+	for _, f := range report.Findings {
+		out = append(out, f.Path+": "+f.Message)
+	}
+	for _, m := range report.Missing {
+		out = append(out, m+": missing")
+	}
+	return out
 }
 
 func modTidyLines(report aontu.ModTidyReport) []string {

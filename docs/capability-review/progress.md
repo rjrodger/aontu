@@ -101,8 +101,9 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-eight of forty-nine phases have moved; forty-seven of those are
-complete.
+Forty-nine of forty-nine phases have moved; forty-eight of those are
+complete. The one that is not is G5 phase 6, which is deliberately held
+for the next major release.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
@@ -111,10 +112,10 @@ complete.
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 6 | 0 | 0 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
-| [G6](g6-distribution.md) | Distribution | B/C | 4 | 0 | 1 |
+| [G6](g6-distribution.md) | Distribution | B/C | 5 | 0 | 0 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 5 | 0 | 0 |
-| | | **total** | **47** | **1** | **1** |
+| | | **total** | **48** | **1** | **0** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -166,17 +167,26 @@ Against the review's own [sequencing](index.md#sequencing):
   document and answers `:get`, `:keys` and `:why` about it, `--jsonl`
   makes the session machine-drivable, and LSP hover can carry the
   provenance record behind a config gate.
-- **Phase C — scale.** G4 is complete, and G8 has begun: **G8.0**, the
-  staging rule every generation combinator shares, **G8.1**, `pack`
-  and `each` — children made from data that is already in the model,
-  so the list and the children built from it cannot drift — and
-  **G8.2**, `filter` and `match`, which select by unification rather
-  than by a predicate language of their own, and **G8.3**, the
-  placeholder `_` — the language's first reserved literal since it
-  gained `top`, and its first deliberate breaking change. **G8 is
-  complete**: `pack`, `each`, `filter`, `match`, `_` and `|>` all
-  ship, and the staging rule they share replaced the pass-count hack
-  the review named as the strain.
+- **Phase C — scale.** G4 is complete, and so are G6 and G8. **G8**
+  is the generation combinators: **G8.0**, the staging rule they all
+  share, which replaced the pass-count hack the review named as the
+  strain; **G8.1**, `pack` and `each` — children made from data that
+  is already in the model, so the list and the children built from it
+  cannot drift; **G8.2**, `filter` and `match`, which select by
+  unification rather than by a predicate language of their own;
+  **G8.3**, the placeholder `_`, the language's first reserved literal
+  since it gained `top` and its first deliberate breaking change; and
+  **G8.4**, the pipe. **G6 is the distribution layer**: module
+  identity and local resolution (G6.2), the `tidy`/`vendor` tooling
+  (G6.3), and the publish boundary (G6.4) — so a module has a name, a
+  local closure, a lockfile written in canonical form, and an artifact
+  description gated on the breaking check. Only the two network verbs
+  are absent, and they are the parts that carry no semantics.
+
+**Every phase of the review has now landed but one.** G5.6 — the
+include-capability default flip — is deliberately held: it is a
+release act rather than an engineering one, and its warning window is
+already shipping.
 
 One structural note the sequencing table itself makes: G7's query/MCP
 surface depends on nothing and could ship at any time.
@@ -635,7 +645,7 @@ ADR-001, a deliverable absent from one port's source cannot count.
 | **1** — the hash itself (`canonHash`) | S | **LANDED** | `canonHash` / `aontu.CanonHash`: `"aon1-" + base64url(SHA-256(UTF-8(hcanon(unify(v)))))`, unpadded (RFC 4648 §5), the scheme id there so a semantically stronger normal form is later an upgrade rather than a breakage. CLI verb `aontu hash [--form] [--format text\|json] <file>` in both ports (`ts/src/cli.ts`, `go/cmd/aontu/hash.go`), the document evaluated STANDALONE at its own root — which is what makes the pin transitive — with exit classes 0 hashed, 2 usage, 4 the document does not stand up on its own (a hash of a wreck would agree with every other wreck). 9 `hash` rows pinning full `aon1-…` strings, executed by BOTH runners; 3 cases in `ts/test/cli.test.ts` and 3 in `go/cmd/aontu/hash_test.go` holding each port's argument handling and the invariances (reformat, recomment, reorder keys → same pin; close a map → different pin); the two CLIs diffed byte-identical over a 10-case corpus (text, `--form` and JSON, exit codes included) — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` carries the verb, the hash form's definition and the two exports. **Departure:** `--form` is not in the design. It prints the hashed TEXT instead of the digest, which is the first thing anyone needs the moment a pin moves and the only way to see what the engine actually hashed; without it a flapping pin is undiagnosable from the command line. |
 | **2** — module identity and local resolution | M | **LANDED** | `ts/src/mod.ts` and `go/mod.go` (new): module-path routing (domain-shaped first segment, `@<major>` suffix, optional `#aon1-…` fragment), the project root found by walking up to a `mod.aon`, `aon_vendor/` then the content-addressed user cache, `mod-lock.aon` read as the JSON its canonical form IS, the `mod.main` entry read by EVALUATING the module file, and local integrity verification by recomputing the module's standalone canon-hash. The leg sits where the design put it — memory → MODULE → filesystem → package (`ts/src/lang.ts`, `go/source.go`) — with memory still first, so a sandbox and the spec suite can stub a module path without touching disk. Codes `module_missing`, `module_integrity` and `module_depth` in `errcodes.tsv`. Spec: `test/spec/mod.tsv` (21 rows) over real fixture trees under `test/spec/files/mod*/`, run under the FIXTURES trust root exactly as `file.tsv`'s are; per-port cache, host-filesystem and depth behaviour in `ts/test/mod.test.ts` and `go/mod_test.go`. Docs: "Modules" in [`docs/reference-language.md`](../reference-language.md#modules). **Departures:** two, recorded below. |
 | **3** — module tooling (`tidy`, `vendor`) | L | **LANDED** | `ts/src/mod-tool.ts` and `go/modtool.go` (new): the dependency closure walked breadth-first from the project's own `mod.aon`, resolved by **minimum version selection** — each module taken at the highest of the minima anyone asked for and never higher, which is what makes a resolve reproducible and keeps one added dependency from moving another. It terminates without a cycle check because a module's selected version only ever rises. `tidy` recomputes every `canon` pin by evaluating the module in the store standalone (never carrying the old one forward — that would pin what the module USED to mean) and carries the `oci` digest over (the registry's word about bytes, which nothing local can hear), then writes `mod-lock.aon` in canonical form under a generated-file header; a closure with anything missing writes NOTHING, because a partial lock claims a resolve that never happened. `vendor` copies each locked module into `aon_vendor/` as a whole source tree — a module is more than its entry file — and leaves a module already resolving from there alone. CLI verb `aontu mod tidy|vendor [--format text|json] [dir]` in both ports (`runMod` in `ts/src/cli.ts`, new `go/cmd/aontu/mod.go`), exit classes 0 resolved, 1 missing, 2 usage. The lockfile header forced a comment-stripping reader in every consumer (`lockJson` in `ts/src/mod.ts`, `lockJSON` in `go/mod.go`), and the two G6.2 fixtures that carry a lockfile grew the header so the strip is pinned by the shared suite rather than only by the new tests. "Where the user cache is" was written twice the moment the tooling needed to write into the cache the resolver reads from, so the rule is now one function in each port (`modCacheDir` in `ts/src/mod.ts`, `aontu.ModCacheDir` in `go/aontu.go`), called by both the resolver and the command. **No spec rows**: nothing here is language behaviour — it is what a command does to a directory — so the parity discipline is the one G2.3 set for CLI verbs: 17 cases in `describe('mod-tool')` (`ts/test/mod.test.ts`) against 20 in Go — 11 at the package API in new `go/modtool_test.go`, 9 at the command in `go/cmd/aontu/mod_test.go`, the split the Go port's coverage attribution forces — plus the two CLIs diffed byte-for-byte over 22 invocations across twelve worlds (resolve, MVS at depth, a diamond where two modules bid for one dependency in the same round, a previous lockfile whose pins must be half kept and half recomputed, a module whose entry file is absent, a dependency key that is not a module path, missing, locked-in-cache, a store holding a subtree, an unreadable lockfile, a lockfile naming what no store has, and a bare directory for every argument error), comparing exit code, stdout, stderr, the written lockfile and the whole vendor tree — identical, the version series excepted. Docs: [`aontu mod`](../reference-api.md#aontu-mod) and the tooling paragraph in ["Modules"](../reference-language.md#modules). **Departures:** three, recorded below. |
-| **4** — registry hooks and agent integration | M | **NOT STARTED** |
+| **4** — registry hooks: the publish boundary | M | **LANDED** | `aontu mod manifest [--against <dir>] [--format text|json] [dir]` in both ports (`modManifest` in `ts/src/mod-tool.ts`, `ModManifest` in `go/modtool.go`, the verb in `ts/src/cli.ts` and `go/cmd/aontu/mod.go`): the OCI artifact a publish would push, and the gate that decides whether it may be. **Everything a publish ASSERTS is local**, which is why the phase lands whole without the registry the push needs — config media type `application/vnd.aontu.module.v1+json`, one layer holding the module source tree (relative and forward-slashed so two implementations on two platforms describe the same layer; `aon_vendor/` excluded, because a published module carries its own sources and not a copy of everyone else's), and four annotations: the two OCI already has keys for (`org.opencontainers.image.title`/`.version`) and the two it does not (`com.github.rjrodger.aontu.canon`/`.major`). A module that publishes itself declares `mod.version`, and the **major an import spells lives inside it** — `1.4.2` publishes as `@1` — so the version scheme and the import path cannot disagree. **The publish-time breaking gate** invokes [G3](g3-subsumption-evolution.md) rather than restating it: `--against <prior tree>` runs `subsume(new, old)`, which is exactly `aontu breaking`'s backward check, and the verdict, the findings and the exit classes are that check's unchanged (`0` publishable, `1` breaking, `3` undecided, `4` nothing to mint, `2` usage) — three-valued plus error, so a question the checker cannot decide is not a pass. A prior version at a DIFFERENT major skips the gate: the major is in the path, a consumer of `@1` never sees `@2` unless it asks, and checking across majors would forbid the one change the version scheme exists to express. **"Has the truth changed?" needs no download**: the annotation carries the same canon-hash `tidy` locks and `aontu hash` prints, so a consumer compares one string, and the hash-keyed cache G6.2 already built is the same key. Parity by G2.3's CLI discipline, not spec rows (nothing here is language behaviour): 8 manifest cases in `ts/test/mod.test.ts` against 8 in Go — 6 at the package API in `go/modtool_test.go`, 2 at the command in `go/cmd/aontu/mod_test.go` — plus the `mod` probe grown to 36 invocations across fifteen worlds, every exit class included, diffed byte-for-byte on exit code, stdout, stderr, the written lockfile and the whole vendor tree (identical, the version series excepted). Docs: [`aontu mod`](../reference-api.md#aontu-mod) and ["Modules"](../reference-language.md#modules). **Departures:** three, recorded below. |
 
 **Departures recorded by G6.2.**
 
@@ -690,8 +700,34 @@ ADR-001, a deliverable absent from one port's source cannot count.
    two CLIs over a fixture corpus, extended here to compare the
    written lockfile and the whole vendor tree, not just the streams.
 
-Phase 4 (registry hooks and agent integration) has no artifacts yet;
-it is wiring at a publish boundary this build does not reach.
+**Departures recorded by G6.4.**
+
+1. **The verb is `manifest`, not `publish`.** The design's phase 4 is
+   hooks ON `aontu mod publish`, which needs the registry client phase
+   3 could not ship. So the boundary landed as its own verb: it
+   computes and gates exactly what a publish would send, and stops
+   before sending it. That is not a smaller phase — the annotations and
+   the gate ARE the phase, and the push is the one part that carries no
+   semantics. It also turns out to be the more useful shape: a CI job
+   wants to ask "would this publish be refused?" without publishing.
+2. **The custom annotation keys are under `com.github.rjrodger.aontu`.**
+   OCI asks a custom annotation key to be the reverse DNS of a domain
+   its author controls, and the project's own home is the only domain
+   it has. Inventing an `aontu.dev` would be a claim the project cannot
+   back, and squatting a key nobody owns is worse than an ugly one. The
+   two facts OCI already has predefined keys for use those, so only
+   `canon` and `major` carry the prefix.
+3. **The gate is BACKWARD, always.** `aontu breaking` honours `--mode`
+   and the document's own `aontu_policy.compat`, including `none`. The
+   gate does not: publishing under an unchanged major IS the promise
+   that old documents keep working, and letting a module opt out of the
+   check at the boundary where that promise is minted would make the
+   gate advisory. A module that means to break bumps its major, which
+   the gate already lets through; a module that wants the other modes
+   still has the `breaking` verb.
+
+Both remaining design items beyond this are network: `mod get` and
+`mod publish` themselves (see the G6.3 departures).
 
 G6's own risk row — "G1's new constraint syntax changes canon,
 invalidating all pins" — materialised before the hash existed: G1.1
