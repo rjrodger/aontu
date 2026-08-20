@@ -137,6 +137,55 @@ complete* (3) from *the truth you were given is unusable* (4), and
 `--format json` emits the same report for a program to read. See
 [`aontu vet`](reference-api.md#aontu-vet).
 
+**In CI**, the repository ships a GitHub Action wrapping the verb —
+[`rjrodger/aontu/vet-action`](../vet-action/README.md) — which fails
+the job by verdict class and can emit SARIF
+(`--format sarif`) for GitHub code scanning. As a **pre-commit hook**,
+the verb is one line, and the verdict classes mean a half-finished
+document blocks the commit too:
+
+```sh
+#!/bin/sh
+# .git/hooks/pre-commit
+exec aontu vet service.aon deploy.json
+```
+
+**While editing**, `--watch` re-runs the vet whenever the schema or a
+data file changes, streaming one report per run:
+
+```sh
+$ aontu vet --watch service.aon deploy.json
+```
+
+## Check that a schema change breaks nobody
+
+Evolution is the question vet cannot answer: not "does this document
+hold?" but "does the new truth still honour the old one?". The
+`breaking` verb compares a document against its own earlier versions
+(see [`aontu breaking`](reference-api.md#aontu-breaking)):
+
+```sh
+$ aontu breaking --against git#main service.aon
+verdict: breaking
+
+$.service.owner: compat_required_added [compat]
+  the general value requires this key; the specific value admits instances without it
+  ...
+```
+
+Exit `1` means a v1-valid document is now rejected; `3` means the
+query could not decide (a `sub_*` reason says why), and fails the gate
+unless you pass `--allow-undecided`. In CI, one line gates every pull
+request against the branch it merges into:
+
+```yaml
+- run: aontu breaking --against git#origin/main service.aon
+```
+
+The underlying query is also a verb of its own — `aontu subsume
+general.aon specific.aon` — and a library export (`subsume` /
+`aontu.Subsume`) for programmatic gates.
+
 ## Provide defaults that callers can override
 
 Mark the default with `*` inside a disjunction with its type:

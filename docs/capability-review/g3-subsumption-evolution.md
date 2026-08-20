@@ -1,6 +1,8 @@
 # G3: Subsumption as a first-class query; schema evolution
 
-*Status: design proposal — nothing implemented. Per-phase status and the
+*Status: design proposal — all seven phases (the rules, the recursion,
+the Go port, the CLI verbs, the deprecation mark, the default-validity
+lint, the trim reporter) are implemented. Per-phase status and the
 corrections this document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the

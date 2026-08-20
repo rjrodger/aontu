@@ -37,7 +37,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const lsp_1 = require("../dist/lsp");
-const aontu_1 = require("../dist/aontu");
 const lsp_server_1 = require("../dist/lsp-server");
 (0, node_test_1.describe)('lsp-diagnostics', () => {
     (0, node_test_1.test)('valid-documents-have-no-diagnostics', () => {
@@ -129,7 +128,7 @@ const lsp_server_1 = require("../dist/lsp-server");
 (0, node_test_1.describe)('lsp-completion', () => {
     (0, node_test_1.test)('completion-list', () => {
         const c = (0, lsp_1.computeCompletions)();
-        Assert.equal(c.length, 32); // 21 funcs + 7 kinds + 4 literals
+        Assert.equal(c.length, 40); // 28 funcs + 7 kinds + 5 literals
         const byLabel = new Map(c.map(i => [i.label, i]));
         Assert.equal(byLabel.get('upper')?.kind, lsp_1.COMPLETION_FUNCTION);
         Assert.equal(byLabel.get('string')?.kind, lsp_1.COMPLETION_KEYWORD);
@@ -142,8 +141,7 @@ const lsp_server_1 = require("../dist/lsp-server");
     (0, node_test_1.test)('builtin-funcs-match-engine', () => {
         // Drift guard: every BUILTIN_FUNCS name must be recognised by the
         // parser, and a bogus name must not be.
-        Assert.equal(lsp_1.BUILTIN_FUNCS.length, 21);
-        const a = new aontu_1.Aontu();
+        Assert.equal(lsp_1.BUILTIN_FUNCS.length, 28);
         for (const name of lsp_1.BUILTIN_FUNCS) {
             const errs = (0, lsp_1.computeDiagnostics)('x:' + name + '(1)')
                 .filter(d => d.code === 'unknown_function');
@@ -173,7 +171,7 @@ const lsp_server_1 = require("../dist/lsp-server");
         });
         Assert.match(hov[0].result.contents.value, /8080/);
         const comp = h.handle({ id: 6, method: 'textDocument/completion', params: {} });
-        Assert.equal(comp[0].result.length, 32);
+        Assert.equal(comp[0].result.length, 40);
     });
     (0, node_test_1.test)('initialize-advertises-capabilities', () => {
         const h = new lsp_1.LspHandler();
@@ -322,6 +320,107 @@ const lsp_server_1 = require("../dist/lsp-server");
         // unchanged).
         const ds = (0, lsp_1.computeDiagnostics)('x:1+true');
         Assert.ok(!ds.some((d) => 'budget_passes' === d.code), 'stable residue must not report budget_passes');
+    });
+});
+// G3 phase 4: the deprecation mark's LSP surface — the native
+// Deprecated tag (2) at Hint severity, on the declaration and on every
+// use resolving through the value. The Go twin is in
+// go/lsp/lsp_test.go (TestDiagnosticsDeprecated).
+(0, node_test_1.describe)('lsp-deprecated', () => {
+    (0, node_test_1.test)('deprecated-values-carry-the-tag', () => {
+        const d = (0, lsp_1.computeDiagnostics)('p:deprecate(8080,{msg:"renamed",use:"$.listen",since:"2.0.0"})\nq:$.p');
+        const tagged = d.filter((x) => 'deprecated' === x.code);
+        Assert.equal(tagged.length, 2);
+        for (const t of tagged) {
+            Assert.equal(t.severity, 4);
+            Assert.deepEqual(t.tags, [2]);
+            Assert.match(t.message, /renamed/);
+            Assert.match(t.message, /use \$\.listen/);
+            Assert.match(t.message, /since 2\.0\.0/);
+        }
+    });
+    (0, node_test_1.test)('undeprecated-documents-carry-no-tag', () => {
+        const d = (0, lsp_1.computeDiagnostics)('a:1');
+        Assert.equal(d.filter((x) => 'deprecated' === x.code).length, 0);
+    });
+});
+(0, node_test_1.describe)('lsp-hover-provenance', () => {
+    // HOVER PROVENANCE (G7 phase 7) is config-gated and off by default:
+    // the contributions that met at the hovered path, appended to the
+    // value's own hover. The markdown is byte-identical to the Go
+    // port's, which was diffed before this was written.
+    (0, node_test_1.test)('hover-provenance-is-off-until-asked-for', () => {
+        const src = 'services: {\n  &: { replicas: *1 | integer }\n' +
+            '  auth: { replicas: 3 }\n}';
+        const pos = { line: 2, character: 20 };
+        const off = (0, lsp_1.computeHover)(src, pos);
+        Assert.doesNotMatch(off.contents.value, /Contributions/);
+        const on = (0, lsp_1.computeHover)(src, pos, true);
+        Assert.match(on.contents.value, /Contributions:/);
+        Assert.match(on.contents.value, /`\*1\|integer` — spread \(2:18\)/);
+        Assert.match(on.contents.value, /`3` — literal \(3:21\)/);
+        // A value with NO path — the whole document — has no
+        // contributions to name, and the hover is unchanged rather than
+        // decorated with an empty section.
+        const bare = (0, lsp_1.computeHover)('42', { line: 0, character: 1 }, true);
+        Assert.doesNotMatch(bare.contents.value, /Contributions/);
+        // A document with an error ELSEWHERE still hovers, while `why`
+        // refuses it: the hover keeps its value and gains no section.
+        const broken = (0, lsp_1.computeHover)('a: 1\nb: 2 & "x"', { line: 0, character: 3 }, true);
+        Assert.match(broken.contents.value, /1/);
+        Assert.doesNotMatch(broken.contents.value, /Contributions/);
+    });
+    // The two shapes the record allows and no hover produces: a
+    // contribution with no site, and one whose site names a file.
+    (0, node_test_1.test)('contributions-markdown-renders-every-site-shape', () => {
+        Assert.equal((0, lsp_1.contributionsMarkdown)([]), '');
+        Assert.equal((0, lsp_1.contributionsMarkdown)([
+            { canon: '1', role: 'literal', site: { col: -1, file: '', row: -1 } },
+            { canon: 'integer', role: 'spread', site: { col: 3, file: 'x.aon', row: 2 } },
+        ]), '\n\n---\n\nContributions:\n' +
+            '- `1` — literal\n- `integer` — spread (x.aon:2:3)');
+    });
+    // The opt-in reaches the handler through initialize.
+    (0, node_test_1.test)('the-handler-reads-the-opt-in', () => {
+        const on = new lsp_1.LspHandler();
+        on.handle({
+            jsonrpc: '2.0', id: 1, method: 'initialize',
+            params: { initializationOptions: { aontu: { provenance: true } } },
+        });
+        on.handle({
+            jsonrpc: '2.0', method: 'textDocument/didOpen',
+            params: {
+                textDocument: {
+                    uri: 'file:///p.aon', text: 'a: 1\na: integer', version: 1,
+                },
+            },
+        });
+        const hover = on.handle({
+            jsonrpc: '2.0', id: 2, method: 'textDocument/hover',
+            params: {
+                textDocument: { uri: 'file:///p.aon' },
+                position: { line: 0, character: 3 },
+            },
+        })[0];
+        Assert.match(hover.result.contents.value, /Contributions:/);
+        const off = new lsp_1.LspHandler();
+        off.handle({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} });
+        off.handle({
+            jsonrpc: '2.0', method: 'textDocument/didOpen',
+            params: {
+                textDocument: {
+                    uri: 'file:///p.aon', text: 'a: 1\na: integer', version: 1,
+                },
+            },
+        });
+        const plain = off.handle({
+            jsonrpc: '2.0', id: 2, method: 'textDocument/hover',
+            params: {
+                textDocument: { uri: 'file:///p.aon' },
+                position: { line: 0, character: 3 },
+            },
+        })[0];
+        Assert.doesNotMatch(plain.result.contents.value, /Contributions/);
     });
 });
 //# sourceMappingURL=lsp.test.js.map

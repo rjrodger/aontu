@@ -1,0 +1,58 @@
+# THE PLACEHOLDER `_` (G8 phase 3,
+# docs/capability-review/g8-generation.md): a HOLE in a call, filled by
+# whatever the call is unified with — and, inside a generator's
+# template, by the source child the generated one is made FROM.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# BREAKING CHANGE, pinned here. A bare `_` used to be the string "_";
+# it is a hole now. `"_"` quoted is still that string, a longer bare
+# word containing it is still ordinary text, and `_` as a KEY is still
+# a key — the four rows that say so are the compatibility contract.
+#
+# The peer goes INTO the call and is not also a constraint on the way
+# out: `upper(_) & hello` is "HELLO", not "HELLO" & "hello". Two holes
+# meeting is an error, because neither has a value to fill the other.
+place-func-peer	gens	a:upper(_) & hello\n	{"a":"HELLO"}
+place-nested-funcs	gens	a:upper(lower(_)) & HeLLo\n	{"a":"HELLO"}
+place-op-in-spread	gens	x:{&:{m:_+2}} x:a:m:1\n	{"x":{"a":{"m":3}}}
+place-op-per-child	gens	x:{&:{m:_+2}} x:a:m:1 x:b:m:5\n	{"x":{"a":{"m":3},"b":{"m":7}}}
+place-op-peer-left	gens	a:_+2 & 1\n	{"a":3}
+place-op-peer-right	gens	a:1 & _+2\n	{"a":3}
+place-func-in-spread	gens	x:{&:{m:upper(_)}} x:a:m:hi\n	{"x":{"a":{"m":"HI"}}}
+place-op-string-concat	gens	x:{&:{m:_+2}} x:a:m:s\n	{"x":{"a":{"m":"s2"}}}
+place-alone-filled	gens	a:_ & 5\n	{"a":5}
+place-alone-in-map	gens	m:{k:_}\nm:{k:7}\n	{"m":{"k":7}}
+place-unfilled-func-canon	canon	a:upper(_)\n	{"a":upper(_)}
+place-alone-canon	canon	a:_\n	{"a":_}
+place-op-canon	canon	a:_+2\n	{"a":_+2}
+place-unfilled-func-errc	errc	a:upper(_)\n	mapval_no_gen
+place-alone-errc	errc	a:_\n	mapval_no_gen
+place-two-holes	errc	a:upper(_)&lower(_)\n	place_pair
+place-quoted-stays-string	canon	a:"_"\n	{"a":"_"}
+place-quoted-gens	gens	a:"_"\n	{"a":"_"}
+place-longer-word-stays-text	canon	a:_b\n	{"a":"_b"}
+place-as-key-stays-text	canon	_:1\n	{"_":1}
+place-binds-pack-list	gens	n:[a,b]\nd:pack($.n,{k:_})\n	{"d":{"a":{"k":"a"},"b":{"k":"b"}},"n":["a","b"]}
+place-binds-pack-map	gens	m:{a:1,b:2}\nd:pack($.m,{v:_})\n	{"d":{"a":{"v":1},"b":{"v":2}},"m":{"a":1,"b":2}}
+place-binds-pack-op	gens	m:{a:1,b:2}\nd:pack($.m,{v:_+10})\n	{"d":{"a":{"v":11},"b":{"v":12}},"m":{"a":1,"b":2}}
+place-binds-pack-func	gens	n:[a,b]\nd:pack($.n,{k:upper(_)})\n	{"d":{"a":{"k":"A"},"b":{"k":"B"}},"n":["a","b"]}
+place-with-key-in-pack	gens	p:{a:1,b:2}\nq:pack($.p,{v:_,k:key()})\n	{"p":{"a":1,"b":2},"q":{"a":{"k":"a","v":1},"b":{"k":"b","v":2}}}
+place-binds-filter-cond	gens	l:[1,2,3]\nd:filter($.l,_)\n	{"d":[1,2,3],"l":[1,2,3]}
+place-binds-filter-map	gens	m:{a:{v:1},b:{v:2}}\nd:filter($.m,_)\n	{"d":{"a":{"v":1},"b":{"v":2}},"m":{"a":{"v":1},"b":{"v":2}}}
+place-binds-each	gens	o:each([1,2],_)\n	{"o":[1,2]}
+# A hole under a PREFERENCE: the generated default is the source
+# child, still overridable per child. This is the row that reaches the
+# pref arm of the fill walk, whose peg is a Val rather than a list of
+# them.
+place-under-pref	gens	m:{a:1,b:2}\nd:pack($.m,{v:*_|integer})\n	{"d":{"a":{"v":1},"b":{"v":2}},"m":{"a":1,"b":2}}
+place-under-pref-override	gens	m:{a:1,b:2}\nd:pack($.m,{v:*_|integer})\nd:a:v:9\n	{"d":{"a":{"v":9},"b":{"v":2}},"m":{"a":1,"b":2}}
+place-under-pref-canon	canon	m:{a:1}\nd:pack($.m,{v:*_|integer})\n	{"d":{"a":{"v":*1|integer}},"m":{"a":1}}
+# The fill walk reaches every shape a template can hold: a conjunct, a
+# disjunct, a list, a nested map — and two placeheld OPERATORS meeting
+# is the same refusal two placeheld calls are.
+place-two-op-holes	errc	a:_+2 & _+3\n	place_pair
+place-under-conjunct	gens	m:{a:1,b:2}\nd:pack($.m,{v:_ & integer})\n	{"d":{"a":{"v":1},"b":{"v":2}},"m":{"a":1,"b":2}}
+place-under-disjunct	errc	m:{a:1,b:2}\nd:pack($.m,{v:_ | string})\n	no_scalar_unify
+place-under-list	gens	m:{a:1,b:2}\nd:pack($.m,{v:[_,9]})\n	{"d":{"a":{"v":[1,9]},"b":{"v":[2,9]}},"m":{"a":1,"b":2}}
+place-under-nested-map	gens	m:{a:1}\nd:pack($.m,{v:{w:_}})\n	{"d":{"a":{"v":{"w":1}}},"m":{"a":1}}
+place-conjunct-conflict	errc	m:{a:1}\nd:pack($.m,{v:_ & string})\n	no_scalar_unify

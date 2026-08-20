@@ -384,7 +384,7 @@ describe('lang', function() {
 
 
   it('source', () => {
-    let v0 = P(`
+    P(`
   a: {
   b: {
     c: 1

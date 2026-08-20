@@ -8,8 +8,10 @@ const utility_1 = require("../utility");
 const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("./ConjunctVal");
+const NilVal_1 = require("./NilVal");
 const BagVal_1 = require("./BagVal");
 const keyorder_1 = require("../keyorder");
+const provenance_1 = require("../provenance");
 // Structural snapshots of ref spreads (see MapVal.unify), keyed by the
 // ref's canon + source site rather than object identity: spread
 // application clones templates (and the refs inside them) freely, and a
@@ -76,6 +78,21 @@ class MapVal extends BagVal_1.BagVal {
                             new ConjunctVal_1.ConjunctVal({ peg: spread.v }, ctx) :
                             spread.v[0] :
                         spread.v;
+                // Clearing rule 3 (G4 phase 1): a CONSTANT id in the template
+                // would declare every child to be one entity. The refusal
+                // replaces the template, so it reaches every child and the
+                // bag itself (see the isNil arm where the spread is applied)
+                // as ONE nil identity — made here, once, rather than per
+                // pass, so the report names it once.
+                const idfn = (0, utility_1.constantIdFunc)(this.spread.cj);
+                if (undefined !== idfn) {
+                    const nil = new NilVal_1.NilVal({ why: 'id_spread' }, ctx);
+                    nil.site.row = idfn.site.row;
+                    nil.site.col = idfn.site.col;
+                    nil.site.url = idfn.site.url;
+                    nil.primary = idfn;
+                    this.spread.cj = nil;
+                }
             }
         }
         // console.log('MAPVAL-ctor', this.type, spec)
@@ -144,6 +161,20 @@ class MapVal extends BagVal_1.BagVal {
             out.dc = this.dc + 1;
             // let newtype = this.type || peer.type
             let spread_cj = out.spread.cj ?? TOP;
+            // The template REFUSED at construction (clearing rule 3, G4
+            // phase 1): the bag itself is that refusal. Returning the nil
+            // here rather than only letting it reach the children is what
+            // makes an EMPTY bag with a bad template an error too — there
+            // are no children to carry it.
+            //
+            // Narrow to THIS code on purpose. A nil spread from any other
+            // cause keeps its existing behaviour of driving every key
+            // (coverage3 `nil-spread-drives-every-key`): a template that has
+            // merely not resolved yet must not permanently kill the bag that
+            // holds it.
+            if ('id_spread' === spread_cj.why) {
+                return spread_cj;
+            }
             // Snapshot a path-dependent *ref* spread to its structural target
             // once (while inner key()/path() funcs are still unresolved), so
             // later fixpoint passes don't re-resolve the ref against the mutated
@@ -187,11 +218,24 @@ class MapVal extends BagVal_1.BagVal {
                 }
                 else {
                     const key_spread_cj = spread_cj.spreadClone(keyctx);
+                    // The one place a spread is APPLIED, so the one place that
+                    // knows a contribution came from a template rather than
+                    // from the key itself (G7 phase 3). Only when someone is
+                    // recording: the walk is O(template) per key per pass.
+                    if (undefined !== keyctx.prov) {
+                        (0, provenance_1.markSpread)(key_spread_cj);
+                    }
                     // child is non-nullish: propagateMarks above dereferences it.
                     oval =
                         child.isNil ? child :
                             key_spread_cj.isNil ? key_spread_cj :
-                                key_spread_cj.isTop && child.done ? child :
+                                // The no-op meet is SKIPPED on the normal path (it is the
+                                // identity) but TAKEN while recording: a value written once
+                                // and never met is still a contribution the author wants
+                                // pointed at, and the Go port's unite sees that meet (G7
+                                // phase 4). Instrumented runs pay knowingly.
+                                key_spread_cj.isTop && child.done && undefined === keyctx.prov
+                                    ? child :
                                     child.isTop && key_spread_cj.done ? key_spread_cj :
                                         (0, unify_1.unite)(te ? keyctx.clone({ explain: (0, utility_1.ec)(te, 'KEY:' + key) }) : keyctx, child, key_spread_cj, 'map-own');
                     if (!spread_cj.isTop && !oval.isNil) {
@@ -218,7 +262,19 @@ class MapVal extends BagVal_1.BagVal {
                     let child = out.peg[peerkey];
                     const peerctx = ctx.descend(peerkey);
                     let oval = out.peg[peerkey] =
-                        undefined === child ? this.handleExpectedVal(peerkey, peerchild, this, ctx) :
+                        // A peer-only key is CARRIED, not met — except on an
+                        // instrumented run, where the identity meet is taken so
+                        // the recorder sees where the value came from. The Go port
+                        // unites a genable peer-only child with TOP unconditionally
+                        // (go/mapval.go), and the difference was invisible until
+                        // G4's identity merge brought a peer whose children the
+                        // recorder counts as WRITTEN: `why $.b.k` on two positions
+                        // of one entity named the site in Go and answered "nothing
+                        // met here" in TypeScript.
+                        undefined === child
+                            ? (undefined !== peerctx.prov && peerchild.isGenable
+                                ? (0, unify_1.unite)(peerctx, peerchild, TOP, 'map-peer-only')
+                                : this.handleExpectedVal(peerkey, peerchild, this, ctx)) :
                             child.isTop && peerchild.done ? peerchild :
                                 child.isNil ? child :
                                     peerchild.isNil ? peerchild :
@@ -345,7 +401,13 @@ class MapVal extends BagVal_1.BagVal {
                 JSON.stringify(k) +
                     (this.optionalKeys.includes(k) ? '?' : '') +
                     ':' +
-                    (this.peg[k]?.canon ?? this.peg[k])
+                    // canonRiders, not .canon: a deprecated field renders
+                    // back as its `deprecate(x, m)` call, reparseably (G3). The
+                    // guard is the isVal FLAG, never the canon getter: computing
+                    // canon in the guard and again in the render doubles the
+                    // recursion per level, which is 2^depth on a nested document.
+                    (true === this.peg[k]?.isVal
+                        ? (0, utility_1.canonRiders)(this.peg[k]) : this.peg[k])
             ])
                 .join(',') +
             '}'; // + '<' + (this.mark.hide ? 'H' : '') + '>'

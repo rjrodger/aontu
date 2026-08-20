@@ -42,8 +42,10 @@ class ExpectVal extends FeatureVal_1.FeatureVal {
         return out;
     }
     gen(ctx) {
-        // Unresolved expect cannot be generated, so always an error.
-        let nil = (0, err_1.makeNilErr)(ctx, 'expect', this.peg, this.peer);
+        // Unresolved expect cannot be generated, so always an error. The
+        // CALL is the point -- it records the failure on ctx -- and there
+        // is no value to bind: generation answers nothing.
+        (0, err_1.makeNilErr)(ctx, 'expect', this.peg, this.peer);
         return undefined;
     }
     inspection(d) {

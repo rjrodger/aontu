@@ -6,7 +6,6 @@ import * as Fs from 'node:fs'
 
 import { Resolver } from '@tabnas/multisource'
 
-import { AontuContext } from './ctx'
 import { Val, DONE, SPREAD } from './val/Val'
 import type { ValMark, ValSpec } from './val/Val'
 
@@ -14,6 +13,44 @@ import type { ValMark, ValSpec } from './val/Val'
 type FST = typeof Fs
 
 
+
+// The trust profile (G5, docs/trust.md): what an evaluation may read,
+// and how much work it may do. Trust is a property of the EVALUATION,
+// not the document -- a .aon file cannot request more capability -- and
+// the profile adds zero language syntax.
+//
+// The include capability:
+//   'none'            @"..." is always denied
+//   { mem: {...} }    a virtual file set only; nothing else resolves
+//   { root: '/dir' }  real files, realpath-confined below root;
+//                     no package resolution
+//   'system'          the full memory -> file -> package chain
+//                     (today's default, and the unconfined posture)
+//
+// Budgets are integer counts of engine events -- never wall-clock, which
+// would make identical inputs fail differently across machines (the
+// exact nondeterminism docs/trust.md forbids). The defaults are the
+// shared spec-visible constants pinned by test/spec/budget.tsv.
+type TrustInclude =
+  | 'none'
+  | 'system'
+  | { mem: Record<string, string> }
+  | { root: string }
+
+// Only the budgets BOTH ports can honour are profile surface: passes
+// and depth. The per-pair revisit bound (999) stays a TS-internal
+// constant — the Go dispatcher has no revisit counter (it is
+// depth-guarded), and a knob one port cannot implement would break the
+// parity contract (ADR-001) by construction.
+type TrustBudget = {
+  passes?: number    // fixpoint passes (default 9)
+  depth?: number     // structural recursion depth (default 1000)
+}
+
+type TrustOptions = {
+  include?: TrustInclude
+  budget?: TrustBudget
+}
 
 type AontuOptions = {
   src?: string    // Source text.
@@ -30,6 +67,15 @@ type AontuOptions = {
   collect?: boolean // Collect errors into an errs property, rather than throw them.
   err?: any[]
   explain?: any[]
+  trust?: TrustOptions // Trust profile (G5, docs/trust.md)
+
+  // The staged-flip warning window (G5 phase 6, CLI only): under the
+  // default 'system' capability the CLI supplies these, and the
+  // resolver calls trustWarn for every resolution that escapes
+  // trustWarnRoot or goes through package resolution — naming the flag
+  // a future default will require. Not a stable embedding API.
+  trustWarn?: (kind: 'escape' | 'pkg', path: string) => void
+  trustWarnRoot?: string
 }
 
 
@@ -50,7 +96,7 @@ type ValList = Val[]
 type ErrContext = {
   src?: string,
   fs?: FST
-} /* node:coverage ignore next 20 */
+} /* node:coverage ignore next 24 */
 
 export type {
   Val,
@@ -61,6 +107,9 @@ export type {
   AontuOptions,
   ErrContext,
   FST,
+  TrustInclude,
+  TrustBudget,
+  TrustOptions,
 }
 
 export {

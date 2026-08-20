@@ -63,6 +63,17 @@ const EMPTY_ERR: any[] = Object.freeze([]) as unknown as any[]
 let ID = 1000
 
 
+// A fresh Val id, for the one carrier that cannot take the one its
+// class fixes: TopVal pins `id = 0` (there is only one top), and the
+// identity mark (G4 phase 1) resolves to a top that must NOT collide
+// with it — the fast path in `unite` returns early on two done Vals
+// with the same id, which would drop an identity before the rider
+// could carry it.
+export function nextValId(): number {
+  return ID++
+}
+
+
 abstract class Val {
   // Type-discriminator flags: defaults live on Val.prototype (see
   // bottom of this file). Each subclass overrides only its own
@@ -133,6 +144,37 @@ abstract class Val {
     type: false,
     hide: false,
   }
+
+  // The deprecation record (G3 phase 4, `deprecate(x, m)`): boolean
+  // marks cannot hold a message, a replacement path and a version, so
+  // the Val carries one optional record. Keys are the three the
+  // builtin defines (msg, use, since), all optional, values strings;
+  // `use` is a path spelled as a STRING — a live reference would
+  // resolve and unify, which is not wanted. Propagated through meets
+  // by propagateMarks and carried by clone, exactly as the boolean
+  // marks are.
+  deprecation?: Record<string, string>
+
+  // The IDENTITY (G4 phase 1, `id(name)`): the entity this value IS.
+  // A separate slot for the same reason the deprecation record has
+  // one — a boolean ValMark cannot hold a name — and carried through
+  // meets by the same rider in `unite`. Unlike the marks, canon
+  // RENDERS it: identity is semantic content, and G6's hash must see
+  // it.
+  entity?: string
+
+  // The LINK (G4 phase 2/3): the entity address a `refer` resolved to,
+  // stamped on the string it answers. The string IS the value — a
+  // link, not an embedding — so nothing downstream could otherwise
+  // tell a checked link from a literal that happens to look like one,
+  // and the edge set (ts/src/graph.ts) is exactly the set of these.
+  link?: string
+
+  // The GRAPH of an evaluated document (G4 phase 3): the entity index
+  // and the edge set, stamped on the result by Aontu.unify the way the
+  // include manifest is. Absent on every Val that is not a unify
+  // result.
+  graph?: any
 
   // Actual native value.
   peg: any = undefined
@@ -229,6 +271,20 @@ abstract class Val {
     out.mark = Object.assign({}, this.mark, fullspec.mark ?? {})
     out.mark.type = this.mark.type && (fullspec.mark?.type ?? true)
     out.mark.hide = this.mark.hide && (fullspec.mark?.hide ?? true)
+
+    // The two IDENTITY riders travel together, under one test: the
+    // entity a value IS, and the address a resolved link POINTS AT.
+    // One guard rather than two because the pair is what a clone
+    // either carries or does not — and because a second test for the
+    // link alone would be a branch no document takes, the reference
+    // clone catching the pending residual before it ever resolves.
+    if (null != this.entity || null != this.link) {
+      out.entity = this.entity
+      out.link = this.link
+    }
+    if (null != this.deprecation) {
+      out.deprecation = this.deprecation
+    }
 
     return out
   }

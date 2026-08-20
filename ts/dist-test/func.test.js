@@ -326,7 +326,7 @@ const G = (x) => A.generate(x);
     });
     (0, node_test_1.test)('pref-canon', () => {
         // Test canonical representation shows preference wrapping
-        const N = (x, ctx) => new unify_1.Unify(x, lang)
+        const N = (x) => new unify_1.Unify(x, lang)
             .res.canon;
         (0, expect_1.expect)(N('pref(1)')).equal('*1');
         (0, expect_1.expect)(N('pref(foo)')).equal('*"foo"');
@@ -347,7 +347,7 @@ const G = (x) => A.generate(x);
         (0, expect_1.expect)(G('pref({x:[1,{y:2}]})')).equal({ x: [1, { y: 2 }] });
     });
     (0, node_test_1.test)('pref-double-wrap', () => {
-        const N = (x, ctx) => new unify_1.Unify(x, lang)
+        const N = (x) => new unify_1.Unify(x, lang)
             .res.canon;
         // Test double-wrapping behavior in canon
         (0, expect_1.expect)(N('pref(pref(1))')).equal('**1');

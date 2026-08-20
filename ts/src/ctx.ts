@@ -21,6 +21,11 @@ type AontuContextConfig = {
   cc?: number
   err?: any[] // Omit<NilVal[], "push">
   explain?: any[] | boolean | null
+
+  // The provenance recorder (G7 phase 3), or absent for an
+  // uninstrumented run. Shared by reference down every descend, as the
+  // error list is, so one run has one record.
+  prov?: any
   fs?: any
   path?: string[]
   root?: Val
@@ -41,6 +46,26 @@ class AontuContext {
   path: string[]  // Path to current Val.
   vc: number  // Val counter to create unique val ids.
   cc: number = -1
+
+  // THE STAGING RULE (G8 phase 0,
+  // docs/capability-review/g8-generation.md). A value whose answer
+  // depends on WHERE IT IS -- `key()` today, the generation
+  // combinators next -- must not answer while anything is still
+  // moving it: resolved early it reports the position it was WRITTEN
+  // at rather than the one it ends up at. Such a value RESIDUATES
+  // while this is false, and fires exactly once on the pass where it
+  // is true.
+  //
+  // The pass loop (ts/src/unify.ts) sets it on the first pass whose
+  // input tree is IDENTICAL to the previous pass's: everything that
+  // was going to move has moved, and what is left is the staged
+  // values themselves, which is precisely the moment they may answer.
+  // It replaces a `ctx.cc < 3` pass count in KeyFuncVal -- a magic
+  // number, right for the documents it was tuned on and silently
+  // wrong for anything that took a fourth pass to place a value. The
+  // comment it replaces said as much: "this delay makes keys in
+  // spreads and refs work, but it is a hack - find a better way".
+  settle: boolean = false
   vars: Record<string, Val> = {}
   src?: string
   fs?: FST
@@ -49,6 +74,11 @@ class AontuContext {
   seen: Record<string, number>
 
   collect: boolean
+
+  // The provenance recorder (G7 phase 3), or undefined for an
+  // uninstrumented run. Inherited by every descended and cloned
+  // context through the prototype chain, so one run has one record.
+  prov?: any
 
   // errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
   err: any[]
@@ -71,13 +101,28 @@ class AontuContext {
   _pathTrie: Map<number, Map<string, { idx: number, path: string[] }>>
   _pathidxNext: { n: number }
 
-  // Current `unite` recursion depth, checked against MAXDEPTH
+  // Current `unite` recursion depth, checked against the depth budget
   // (ts/src/unify.ts). Held in a shared mutable box, like _pathidxNext,
   // because clone() uses Object.create: the box is inherited by
   // reference, so a nested clone's increments are visible to the frame
   // that will decrement them. The Go port keeps the same counter
   // directly on its Ctx pointer (go/unify.go, maxUniteDepth).
   _depth: { n: number }
+
+  // The evaluation budgets (G5 trust profile, docs/trust.md): integer
+  // counts of engine events, never wall-clock. Always present, defaults
+  // from the shared spec-visible constants (test/spec/budget.tsv), so
+  // the hot-path reads in unify.ts are plain property loads. Inherited
+  // by clone() through the prototype chain. `revisits` is NOT profile
+  // surface (the Go port has no revisit counter to configure — see
+  // TrustBudget in type.ts); it is carried here so unify.ts reads one
+  // budget object, at its fixed spec constant.
+  budget: { passes: number, revisits: number, depth: number }
+
+  // The include manifest sink (G5, docs/trust.md): every include the
+  // resolver reads is recorded here as { path, capability }, and
+  // Aontu.parse() sorts and dedups it onto the result's `deps`.
+  manifest: { path: string, capability: string }[]
 
   // Trial mode: set by DisjunctVal.unify while each member is tried
   // against the peer. When true, makeNilErr returns the shared
@@ -102,6 +147,7 @@ class AontuContext {
     this.src = cfg.src
 
     this.collect = cfg.collect ?? null != cfg.err
+    this.prov = cfg.prov
 
     this.err = cfg.err ?? []
     this.explain = Array.isArray(cfg.explain) ? cfg.explain : null
@@ -127,8 +173,20 @@ class AontuContext {
     this._depth = { n: 0 }
     this._pathidx = 0
 
+    this.manifest = []
+
     this.opts = DEFAULT_OPTS()
     this.addopts(cfg.opts)
+
+    // Budget defaults are the shared spec-visible constants
+    // (test/spec/budget.tsv pins the boundaries in both ports); the
+    // trust profile may lower or raise them, deterministically.
+    const budget = (this.opts as any).trust?.budget ?? {}
+    this.budget = {
+      passes: budget.passes ?? 9,
+      revisits: 999,
+      depth: budget.depth ?? 1000,
+    }
   }
 
 

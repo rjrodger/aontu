@@ -2,11 +2,14 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VET_MAX_ERRORS = void 0;
+exports.anchorAt = anchorAt;
 exports.vet = vet;
 const aontu_1 = require("./aontu");
 const err_1 = require("./err");
 const ConjunctVal_1 = require("./val/ConjunctVal");
 const walk_1 = require("./walk");
+const utility_1 = require("./utility");
+const subsume_1 = require("./subsume");
 // The default cap, exported because the CLI applies it to the WHOLE
 // report across several data files and must not carry a second copy of
 // the number (ts/src/cli.ts).
@@ -288,6 +291,46 @@ function vet(schemaSrc, dataSrc, opts) {
     }
     stampUrl(anchor, schemaUrl);
     stampUrl(dataVal, dataUrl);
+    // Default-validity lint (G3 phase 5): for every disjunction in the
+    // SCHEMA carrying a preference, the effective default must be
+    // admitted by some remaining alternative — `a:*5|string` ships a
+    // default its own disjunct refuses, and every consumer leaning on it
+    // receives an invalid value from the truth itself. A vet WARNING for
+    // now (code `pref_not_instance`, class compat): today's engine
+    // generates the bad default, existing documents may lean on it, and
+    // promoting the warning to an error is itself a breaking change,
+    // sequenced through the `breaking` gate (the G3 design's own rule).
+    const lintFindings = [];
+    (0, utility_1.walkBagVals)(anchor, (v, path) => {
+        if (true === v.isDisjunct && Array.isArray(v.peg)) {
+            const d = (0, subsume_1.effectiveDefault)(v);
+            if (null != d && 'indeterminate' !== d) {
+                const rest = v.peg.filter((m) => true !== m?.isPref);
+                const state = {
+                    profile: 'values', findings: [],
+                    generalUrl: schemaUrl, specificUrl: schemaUrl,
+                };
+                const admitted = rest.some((m) => 'yes' === (0, subsume_1.subsumeNode)(state, path, m, d));
+                if (!admitted && 0 < rest.length) {
+                    lintFindings.push({
+                        code: 'pref_not_instance',
+                        class: 'compat',
+                        severity: 'warning',
+                        path: pathText(path),
+                        message: 'the default ' + d.canon +
+                            ' is not an instance of any alternative of ' + v.canon,
+                        sites: [{
+                                file: schemaUrl,
+                                row: d.site?.row ?? -1,
+                                col: d.site?.col ?? -1,
+                                role: 'schema',
+                                value: d.canon,
+                            }],
+                    });
+                }
+            }
+        }
+    });
     // `--closed` sets the flag `close()` itself sets, rather than wrapping
     // the anchor in a CloseFuncVal: the anchor is an already-evaluated
     // tree, and a func value would have to resolve again to have any
@@ -338,9 +381,57 @@ function vet(schemaSrc, dataSrc, opts) {
             findings.push(findingOf(err, dataUrl));
         }
     }
+    // 5b. Deprecation warnings (G3 phase 4): a value that carries the
+    //     deprecate() record after the meet was USED — the data met a
+    //     deprecated schema value, or the schema's own default will
+    //     generate one. Severity `warning` (the slot G2 reserved for
+    //     exactly this mark), and warnings never touch the verdict below.
+    const errorFindings = findings.length;
+    findings.push(...lintFindings);
+    for (const { val, path } of (0, utility_1.collectDeprecations)(unified)) {
+        const v = val;
+        // The same file/role projection sitesOf makes: the url as stamped
+        // (empty when the value belongs to neither document), the role by
+        // comparing it to the data document's.
+        const file = v.site.url;
+        findings.push({
+            code: 'deprecated',
+            class: 'compat',
+            severity: 'warning',
+            path: pathText(path),
+            message: (0, utility_1.deprecationMessage)(v.deprecation),
+            sites: [{
+                    file,
+                    row: v.site.row ?? -1,
+                    col: v.site.col ?? -1,
+                    role: (dataUrl === file ? 'data' : 'schema'),
+                    value: v.canon,
+                }],
+        });
+    }
     const keyed = findings.map((f, i) => ({ key: orderKey(f, i), finding: f }));
     keyed.sort((a, b) => a.key < b.key ? -1 : 1);
-    const ordered = keyed.map((k) => k.finding);
+    let ordered = keyed.map((k) => k.finding);
+    // ONE CAUSE, ONE FINDING. A reference resolves by CLONING its target,
+    // so a target that later fails can fail once per referrer — same
+    // code, same two source sites, a different path each time. Multi-pass
+    // collection (G2 phase 6) made this reachable: the pass loop now
+    // continues past the erroring pass, so the clones' own folds run too.
+    // The dedup key is the CODE plus the SITES (file, row, col, value,
+    // role): two findings that name the same meet of the same two source
+    // positions are one contradiction observed from two paths. The key is
+    // NOT (code, path) — the design's sketch — because the paths are
+    // exactly what differ. Sorted order makes the kept finding the first
+    // by data site then path, deterministically in both ports.
+    const causes = new Set();
+    ordered = ordered.filter((f) => {
+        const cause = f.code + '\u0000' + f.sites.map((s) => [s.file, s.row, s.col, s.role, s.value].join('\u0000')).join('\u0000');
+        if (causes.has(cause)) {
+            return false;
+        }
+        causes.add(cause);
+        return true;
+    });
     const truncated = maxErrors < ordered.length;
     const kept = truncated ? ordered.slice(0, maxErrors) : ordered;
     // 6. The verdict derives from finding CLASSES, never from codes, so a
@@ -349,7 +440,7 @@ function vet(schemaSrc, dataSrc, opts) {
     if (0 < conflicts) {
         verdict = 'invalid';
     }
-    else if (findings.length > conflicts && true !== options.partial) {
+    else if (errorFindings > conflicts && true !== options.partial) {
         verdict = 'incomplete';
     }
     return { verdict, truncated, findings: kept };

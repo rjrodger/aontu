@@ -116,7 +116,6 @@ class RefVal extends FeatureVal_1.FeatureVal {
         peer = peer ?? (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Ref', this, peer);
         let out = this;
-        let why = 'id';
         if (this.id !== peer.id) {
             // TODO: not resolved when all Vals in path are done is an error
             // as path cannot be found
@@ -128,27 +127,22 @@ class RefVal extends FeatureVal_1.FeatureVal {
             if (resolved instanceof RefVal) {
                 if (peer.isTop) {
                     out = this;
-                    why = 'pt';
                 }
                 else if (peer.isNil) {
                     out = (0, err_1.makeNilErr)(ctx, 'ref[' + this.peg + ']', this, peer);
-                    why = 'pn';
                 }
                 // same path
                 else if (this.canon === peer.canon) {
                     out = this;
-                    why = 'pp';
                 }
                 else {
                     // Ensure RefVal done is incremented
                     this.dc = type_1.DONE === this.dc ? type_1.DONE : this.dc + 1;
                     out = new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
-                    why = 'cj';
                 }
             }
             else {
                 out = (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'RES') }) : ctx, resolved, peer, 'ref');
-                why = 'u';
             }
             out.dc = type_1.DONE === out.dc ? type_1.DONE : this.dc + 1;
         }
@@ -359,6 +353,19 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     (0, utility_1.walk)(out, (_key, val) => {
                         val.mark.type = false;
                         val.mark.hide = false;
+                        // REFERENCES DO NOT CARRY IDENTITY (G4 phase 1, clearing
+                        // rule 1). The clone is a copy of an entity, not the
+                        // entity: without this, `w:b:$.q.a & {y:2,z:3}` (row
+                        // `ref-and-merge`, test/spec/ref.tsv) would push `y:2`
+                        // back into `q.a` through the identity merge — pinned
+                        // behaviour, silently changed by a mark the author never
+                        // wrote at the reference site.
+                        //
+                        // The LINK is NOT cleared (G4 phase 3): an identity says
+                        // what a value IS, so a copy must not be that entity; a
+                        // link says what a value POINTS AT, and a copy of a link
+                        // points at the same thing.
+                        val.entity = undefined;
                         return val;
                     });
                     //}

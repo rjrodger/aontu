@@ -2,12 +2,48 @@
 
 package aontu
 
+import (
+	"os"
+	"path/filepath"
+	"sort"
+)
+
 // Version is the Aontu Go module version.
 // VERSION is the Aontu Go module version, rewritten by `make publish-go`.
 // Spelled in caps to match ts/src/aontu.ts's exported VERSION, so the two
 // ports name the same thing the same way. Note the two version SERIES are
 // independent: the Go module is 0.1.x, the npm package 0.49.x.
 const VERSION = "0.1.10"
+
+// TrustBudget bounds evaluation work (G5 trust profile, docs/trust.md):
+// integer counts of engine events, never wall-clock. Zero means the
+// default — the shared spec-visible constants test/spec/budget.tsv pins
+// in both ports.
+type TrustBudget struct {
+	Passes int // fixpoint passes (default 9)
+	Depth  int // structural recursion depth (default 1000)
+}
+
+// TrustOptions is the trust profile (G5, docs/trust.md): what an
+// evaluation may read, and how much work it may do. The zero value is
+// the 'system' posture — today's unconfined default. At most one of the
+// Include fields should be set; the mirror of the canonical port's
+// `trust.include` union ('none' | { mem } | { root } | 'system').
+type TrustOptions struct {
+	IncludeNone bool              // @"..." is always denied
+	IncludeMem  map[string]string // a virtual file set only
+	IncludeRoot string            // real files, realpath-confined below this root
+	Budget      TrustBudget
+}
+
+// IncludeDep is one entry of the include manifest: a resolved include's
+// absolute path and the capability that resolved it ("mem" or "file").
+// The manifest is hermeticity clause 1's "file set" made observable
+// (docs/trust.md); content hashing and pinning stay with G6.
+type IncludeDep struct {
+	Path       string
+	Capability string
+}
 
 // Aontu is the top-level entry point, mirroring the TypeScript Aontu
 // class (ts/src/aontu.ts).
@@ -22,6 +58,43 @@ type Aontu struct {
 	// string sources. Set it when evaluating a real file, e.g. from
 	// cmd/aontu.
 	File string
+
+	// Trust is the evaluation's trust profile (G5, docs/trust.md).
+	// Nil means the 'system' posture, today's default.
+	Trust *TrustOptions
+
+	// IncludeDeps is the include MANIFEST of the most recent parse:
+	// the resolved include closure, sorted by path then capability and
+	// deduplicated, so it is deterministic. Reset per parse; empty for
+	// a document with no includes.
+	IncludeDeps []IncludeDep
+
+	// Graph is the DERIVED GRAPH of the most recent unification (G4
+	// phase 3): the entity index and the edge set, both deterministic.
+	// Reset per unification; empty for a document with no identity.
+	// Mirrors `result.graph` in ts/src/aontu.ts, which stamps it on the
+	// returned Val the way that port stamps `deps`.
+	Graph Graph
+
+	// modDepth is how many module VERIFICATIONS deep this evaluation
+	// already is (G6 phase 2, mod.go). A pinned module is checked by
+	// evaluating it, and that evaluation resolves the module's own
+	// imports, so the count has to travel with the evaluation that
+	// carries it. Not a stable embedding API.
+	modDepth int
+
+	// ModCache is the content-addressed user module cache. Empty means
+	// the platform default (`$XDG_CACHE_HOME/aontu/mod`, else
+	// `$HOME/.cache/aontu/mod`); a host that names one uses it, which is
+	// what makes a hermetic test possible. Not a stable embedding API.
+	ModCache string
+
+	// TrustWarn and TrustWarnRoot are the staged-flip warning window
+	// (G5 phase 6, cmd/aontu only): under the 'system' posture every
+	// resolution escaping TrustWarnRoot calls TrustWarn. Not a stable
+	// embedding API.
+	TrustWarn     func(kind, path string)
+	TrustWarnRoot string
 }
 
 // New creates a new Aontu instance. Relative @"file" loads resolve from
@@ -47,7 +120,62 @@ func NewWithBase(base string) *Aontu { return &Aontu{base: base} }
 // Generate entry points re-parse per call, so this only matters if you
 // hold a Parse result yourself; call Parse again for a fresh tree.
 func (a *Aontu) Parse(src string) (Val, error) {
-	return parseBase(src, a.base, a.File)
+	return a.parseEntry(src)
+}
+
+// parseEntry runs the entry parse under this instance's trust profile,
+// and leaves the include manifest on IncludeDeps.
+func (a *Aontu) parseEntry(src string) (Val, error) {
+	sink := a.newTrustSink()
+	v, err := parseWithTrust(src, a.base, a.File, sink)
+	a.IncludeDeps = manifestOf(*sink.deps)
+	return v, err
+}
+
+// newTrustSink builds the per-parse trust sink the resolver reads
+// (source.go): the capability, the warning window, and the manifest
+// accumulator.
+func (a *Aontu) newTrustSink() *trustSink {
+	deps := []IncludeDep{}
+	sink := &trustSink{
+		deps: &deps, warn: a.TrustWarn, warnRoot: a.TrustWarnRoot,
+		modDepth: a.modDepth, modCache: a.modCacheDir(),
+	}
+	if nil != a.Trust {
+		sink.none = a.Trust.IncludeNone
+		sink.mem = a.Trust.IncludeMem
+		if "" != a.Trust.IncludeRoot {
+			root, err := filepath.Abs(a.Trust.IncludeRoot)
+			if err != nil { //coverage:ignore Abs fails only on an unreadable cwd
+				root = a.Trust.IncludeRoot
+			}
+			sink.root = root
+		}
+	}
+	return sink
+}
+
+// manifestOf sorts and deduplicates the raw manifest sink into the
+// deterministic include closure: by path then capability, byte order,
+// one entry per (path, capability) pair. The identical rule to the
+// canonical port (ts/src/aontu.ts manifestOf).
+func manifestOf(deps []IncludeDep) []IncludeDep {
+	seen := map[string]bool{}
+	out := make([]IncludeDep, 0, len(deps))
+	for _, dep := range deps {
+		key := dep.Path + " " + dep.Capability
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, dep)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		ki := out[i].Path + " " + out[i].Capability
+		kj := out[j].Path + " " + out[j].Capability
+		return ki < kj
+	})
+	return out
 }
 
 // Unify parses and fully unifies source, returning the unified Val.
@@ -59,7 +187,7 @@ func (a *Aontu) Unify(src string) (Val, error) {
 
 // UnifyVars is Unify with $name variables resolved from vars.
 func (a *Aontu) UnifyVars(src string, vars map[string]Val) (Val, error) {
-	v, err := parseBase(src, a.base, a.File)
+	v, err := a.parseEntry(src)
 	if err != nil {
 		return v, err
 	}
@@ -73,8 +201,17 @@ func (a *Aontu) UnifyVars(src string, vars map[string]Val) (Val, error) {
 // frame rendering (NilVal.FullMessage).
 func (a *Aontu) unifyCtx(v Val, vars map[string]Val, src string) (Val, *Ctx, error) {
 	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File}
+	if nil != a.Trust {
+		ctx.budgetPasses = a.Trust.Budget.Passes
+		ctx.budgetDepth = a.Trust.Budget.Depth
+	}
 	res := unifyRoot(v, ctx)
 	ctx.root = res
+	// THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
+	// edge set, computed once from the unified tree and left on the
+	// instance exactly as the include manifest is. Cheap on a document
+	// with no identity — one guarded walk.
+	a.Graph = GraphOf(res)
 	if len(ctx.err) > 0 {
 		// Code carries the first collected failure's why-code, mirroring
 		// errs()[0].why on the TS AontuError thrown by handleErrors.
@@ -111,7 +248,7 @@ func (a *Aontu) Generate(src string) (any, error) {
 
 // GenerateVars is Generate with $name variables resolved from vars.
 func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
-	v, perr := parseBase(src, a.base, a.File)
+	v, perr := a.parseEntry(src)
 	if perr != nil {
 		return nil, perr
 	}
@@ -124,4 +261,29 @@ func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
 		return nil, gerr
 	}
 	return out, nil
+}
+
+// ModCacheDir is the content-addressed user module cache (G6 phase 2):
+// `$XDG_CACHE_HOME/aontu/mod`, else `$HOME/.cache/aontu/mod`. A host
+// with no home has no cache, which is a miss rather than a failure. One
+// rule, in one place: the resolver reads this cache during evaluation
+// and `aontu mod` writes into it, and two spellings of "where the cache
+// is" is one bug. Mirrors modCacheDir in ts/src/mod.ts.
+func ModCacheDir() string {
+	if xdg := os.Getenv("XDG_CACHE_HOME"); "" != xdg {
+		return filepath.Join(xdg, "aontu", "mod")
+	}
+	if home := os.Getenv("HOME"); "" != home {
+		return filepath.Join(home, ".cache", "aontu", "mod")
+	}
+	return ""
+}
+
+// modCacheDir is the cache this evaluation reads: whatever the host
+// named, else the platform rule.
+func (a *Aontu) modCacheDir() string {
+	if "" != a.ModCache {
+		return a.ModCache
+	}
+	return ModCacheDir()
 }

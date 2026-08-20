@@ -6,6 +6,16 @@ import { exactJSON } from './exactjson';
 import { formatExplain } from './utility';
 import { AontuError } from './err';
 import { vet } from './vet';
+import { sarifReport } from './report-sarif';
+import { subsume } from './subsume';
+import { trimCheck } from './trim';
+import { hcanon, canonHash } from './hcanon';
+import { get, why } from './query';
+import { patch } from './patch';
+import { diff } from './diff';
+import { agentsMd } from './agentsmd';
+import { graphOf } from './graph';
+import { relationCheck } from './relation';
 declare const VERSION = "0.52.1";
 declare class Aontu {
     opts: AontuOptions;
@@ -20,5 +30,5 @@ declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
     runparse: typeof runparse;
 };
-export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, };
+export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, trimCheck, hcanon, canonHash, get, why, patch, diff, agentsMd, graphOf, relationCheck, };
 export default Aontu;

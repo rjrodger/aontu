@@ -2,6 +2,11 @@
 
 package aontu
 
+import (
+	"strconv"
+	"strings"
+)
+
 // Problem describes a single source problem found by Check: a NilVal
 // (unification conflict, unresolved reference, unknown function, …)
 // present in the unified result tree. It carries the source byte offset
@@ -40,9 +45,17 @@ func (a *Aontu) Check(src string) []Problem {
 
 // CheckVars is Check with $name variables resolved from vars.
 func (a *Aontu) CheckVars(src string, vars map[string]Val) []Problem {
-	v, perr := parseBase(src, a.base, a.File)
+	v, perr := a.parseEntry(src)
 	if perr != nil {
-		return []Problem{{Pos: -1, Len: 1, Why: "parse", Class: codeClass("parse"), Message: perr.Error()}}
+		// The SPECIFIC code, not a generic "parse": the canonical
+		// port's first code for an unparseable source is the inner
+		// nil's (`syntax`, `include_denied`, ...) — the same code errc
+		// rows pin — so the diagnostic a client branches on matches.
+		code := "parse"
+		if ae, ok := perr.(*AontuError); ok && "" != ae.Code {
+			code = ae.Code
+		}
+		return []Problem{{Pos: -1, Len: 1, Why: code, Class: codeClass(code), Message: perr.Error()}}
 	}
 
 	ctx := &Ctx{root: v, vars: vars, src: src}
@@ -93,13 +106,17 @@ type ValueSpan struct {
 	Len   int
 	Canon string
 	Kind  string
+	// Path is where the value sits in the document, for the hover
+	// provenance G7 phase 7 appends. Empty for a value with no path
+	// (the root, or a value the walk reached through a shared clone).
+	Path []string
 }
 
 // Spans parses and unifies src and returns a ValueSpan for every
 // positioned non-container value in the result, so tooling can locate the
 // value under a cursor. Returns nil on a parse error.
 func (a *Aontu) Spans(src string) []ValueSpan {
-	v, perr := parseBase(src, a.base, a.File)
+	v, perr := a.parseEntry(src)
 	if perr != nil {
 		return nil
 	}
@@ -148,7 +165,10 @@ func collectSpans(v Val, out *[]ValueSpan, seen map[Val]bool) {
 	if p := v.pos(); p >= 0 {
 		c := v.Canon()
 		if len(c) > 0 {
-			*out = append(*out, ValueSpan{Pos: p, Len: len(c), Canon: c, Kind: valKind(v)})
+			*out = append(*out, ValueSpan{
+				Pos: p, Len: len(c), Canon: c, Kind: valKind(v),
+				Path: v.vpath(),
+			})
 		}
 	}
 }
@@ -181,4 +201,128 @@ func valKind(v Val) string {
 		return "top"
 	}
 	return "value"
+}
+
+// Deprecation is one value carrying the deprecate() record after
+// evaluation (G3 phase 4): its source position, the byte length of its
+// canonical rendering (for a highlight range), and the record itself.
+type Deprecation struct {
+	Pos    int
+	Len    int
+	Record map[string]string
+}
+
+// deprecatedVal is one record-carrying value found by the shared walk.
+type deprecatedVal struct {
+	v    Val
+	path []string
+}
+
+// collectDeprecatedVals walks an evaluated tree for every value
+// carrying the deprecation record (G3 phase 4) — the one walk behind
+// the Deprecations API and vet's `deprecated` warnings, mirroring
+// collectDeprecations in ts/src/utility.ts. The nil guard is for a
+// bag slot a degenerate construction can leave empty.
+func collectDeprecatedVals(root Val) []deprecatedVal {
+	out := []deprecatedVal{}
+	walkBagVals(root, func(n Val, path []string) {
+		if nil != n.deprecRec() {
+			out = append(out, deprecatedVal{v: n, path: append([]string{}, path...)})
+		}
+	})
+	return out
+}
+
+// walkBagVals visits every Val reachable through bag children, with
+// its path — the walk under collectDeprecatedVals and vet's
+// default-validity lint. The nil guard is for a bag slot a degenerate
+// construction can leave empty (pinned by
+// TestCollectDeprecatedValsNilSlot). Mirrors walkBagVals in
+// ts/src/utility.ts.
+func walkBagVals(root Val, fn func(v Val, path []string)) {
+	var walk func(n Val, path []string)
+	walk = func(n Val, path []string) {
+		if nil == n {
+			return
+		}
+		fn(n, path)
+		switch b := n.(type) {
+		case *MapVal:
+			for _, k := range b.keys {
+				walk(b.peg[k], append(path, k))
+			}
+		case *ListVal:
+			for i, e := range b.peg {
+				walk(e, append(path, itoa(i)))
+			}
+		}
+	}
+	walk(root, nil)
+}
+
+// DeprecationsVars evaluates src (with $name variables from vars, which
+// may be nil) and returns every sited value carrying the deprecation
+// record — the declaration and, because the record rides meets and
+// reference clones, every use resolving through it. A source that does
+// not evaluate answers no deprecations: the diagnostics surface already
+// reports why. Mirrors the walkDep pass in ts/src/lsp.ts
+// computeDiagnostics.
+func (a *Aontu) DeprecationsVars(src string, vars map[string]Val) []Deprecation {
+	v, perr := a.parseEntry(src)
+	if perr != nil {
+		return nil
+	}
+	ctx := &Ctx{root: v, vars: vars, src: src}
+	res := unifyRoot(v, ctx)
+
+	out := []Deprecation{}
+	for _, d := range collectDeprecatedVals(res) {
+		if 0 <= d.v.pos() {
+			out = append(out, Deprecation{
+				Pos: d.v.pos(), Len: len(d.v.Canon()), Record: d.v.deprecRec(),
+			})
+		}
+	}
+	return out
+}
+
+// DeprecatedAt reports whether the evaluated document carries the
+// deprecation record at the given finding path ("$.a.b"). Used by the
+// breaking verb's --allow-deprecated-removal downgrade (G3 phase 4):
+// the verb's package cannot reach the tree's fields itself. A source
+// that does not evaluate answers false.
+func (a *Aontu) DeprecatedAt(src, path string) bool {
+	v, perr := a.parseEntry(src)
+	if perr != nil {
+		return false
+	}
+	ctx := &Ctx{root: v, src: src}
+	res := unifyRoot(v, ctx)
+
+	segs := []string{}
+	trimmed := strings.TrimPrefix(path, "$")
+	for _, p := range strings.Split(trimmed, ".") {
+		if "" != p {
+			segs = append(segs, p)
+		}
+	}
+	node := res
+	for _, seg := range segs {
+		switch b := node.(type) {
+		case *MapVal:
+			node = b.peg[seg]
+		case *ListVal:
+			i, err := strconv.Atoi(seg)
+			if nil != err || i < 0 || len(b.peg) <= i {
+				return false
+			}
+			node = b.peg[i]
+		default:
+			return false
+		}
+		if nil == node {
+			return false
+		}
+	}
+	return nil != node.deprecRec()
 }

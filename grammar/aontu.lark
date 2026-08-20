@@ -1,0 +1,99 @@
+// Aontu — published grammar (lark), for constrained decoding.
+//
+// G7 phase 6, docs/capability-review/g7-machine-access.md. The same
+// rules as grammar/aontu.gbnf, for the other consumer: keep the two in
+// step, and note that ts/test/grammar.test.ts checks that every rule
+// named there is named here.
+//
+// The gbnf file is the one the parity test INTERPRETS against the
+// shared suite's canonical output; this file is its transcription, so
+// a change to the surface starts there.
+//
+// Conservative by construction: it accepts less than the parser does,
+// never more. `@"..."` includes are deliberately absent — constrained
+// decoding must not emit a source-loading directive.
+
+root: value
+
+value: piped
+
+// The pipe is SUGAR: `x |> f(a)` is `f(x, a)`, resolved while reading
+// the source (G8 phase 4). It never reaches a value, so canon never
+// emits it — every canon in the shared suite shows the call.
+piped: disjunct ("|>" disjunct)*
+
+disjunct: conjunct ("|" conjunct)*
+
+conjunct: prefixed ("&" prefixed)*
+
+prefixed: "*" prefixed
+        | sum
+
+sum: atom ("+" atom)*
+
+atom: map
+    | list
+    | func
+    | ref
+    | kind
+    | place
+    | scalar
+    | "(" value ")"
+
+map: "{" [entry ("," entry)*] "}"
+
+entry: spread
+     | pair
+
+spread: "&" ":" value
+
+pair: string ["?"] ":" value
+
+// A list ELEMENT is a value, not a pair — only the template is keyed.
+list: "[" [element ("," element)*] "]"
+
+element: spread
+       | value
+
+func: name "(" [value ("," value)*] ")"
+
+name: "above" | "below" | "close" | "copy" | "deprecate" | "each" | "filter"
+    | "hide"
+    | "id" | "key"
+    | "length" | "lower" | "match" | "max" | "min" | "move" | "must"
+    | "neq"
+    | "open" | "pack" | "path" | "pref" | "refer" | "re" | "same" | "super"
+    | "type"
+    | "unique" | "upper"
+
+ref: "$" ("." segment)*
+
+segment: /[a-zA-Z0-9_-]+/
+
+// placeholder
+place: "_"
+
+kind: "biginteger" | "bigdecimal" | "boolean" | "float" | "integer"
+    | "number" | "string" | "top" | "nil"
+
+scalar: string | exact | number | "true" | "false" | "null"
+
+string: /"([^"\\]|\\(["\\\/bfnrt]|u[0-9a-fA-F]{4}))*"/
+
+char: /[^"\\]/ | "\\" escape
+
+escape: /["\\\/bfnrt]/ | "u" hex hex hex hex
+
+hex: /[0-9a-fA-F]/
+
+exact: /-?0d[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?/
+
+number: /-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?/
+
+exponent: /[eE][-+]?[0-9]+/
+
+digits: /[0-9]+/
+
+ws: /[ \t\n\r]*/
+
+%ignore /[ \t\n\r]+/

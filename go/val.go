@@ -63,6 +63,15 @@ type Val interface {
 	// Marks: type values are constraints, hidden values are excluded
 	// from generation. Both are skipped when generating a containing map.
 	markedType() bool
+	// fromSpread reports the G7 provenance mark (see base.fspr).
+	fromSpread() bool
+	setFromSpread()
+	deprecRec() map[string]string
+	setDeprecRec(rec map[string]string)
+	entityName() string
+	setEntityName(name string)
+	linkAddr() string
+	setLinkAddr(addr string)
 	markedHide() bool
 	setMarkType(v bool)
 	setMarkHide(v bool)
@@ -103,6 +112,31 @@ type base struct {
 	surl  string
 	mtype bool // type mark
 	mhide bool // hide mark
+	// fspr marks a spread template's per-key clone, set at the one
+	// place a spread is applied and only on an INSTRUMENTED run (G7
+	// phase 4). Read by the provenance recorder; nothing else.
+	fspr bool
+	// The deprecation record (G3 phase 4, `deprecate(x, m)`): boolean
+	// marks cannot hold a message, a replacement path and a version, so
+	// the value carries one optional record (keys msg/use/since, values
+	// strings). Propagated through meets by propagateMarks and carried
+	// by clonePath, exactly as the boolean marks are; canon renders it
+	// back reparseably (canonRiders). Mirrors Val.deprecation in
+	// ts/src/val/Val.ts.
+	deprec map[string]string
+	// The IDENTITY (G4 phase 1, `id(name)`): the entity this value IS.
+	// A separate slot for the same reason the deprecation record has one
+	// — a boolean mark cannot hold a name — and carried through meets by
+	// the same rider in unite. Unlike the marks, Canon RENDERS it:
+	// identity is semantic content, and G6's canon-hash must see it.
+	// Empty means anonymous. Mirrors Val.entity in ts/src/val/Val.ts.
+	entity string
+	// The LINK (G4 phase 2/3): the entity address a `refer` resolved
+	// to, stamped on the string it answers. The string IS the value — a
+	// link, not an embedding — so nothing downstream could otherwise
+	// tell a checked link from a literal that happens to look like one,
+	// and the edge set (graph.go) is exactly the set of these.
+	link string
 	// spr records the identity of the spread constraint already merged
 	// into this value (the `_spr` stamp in TS MapVal.unify): the spread
 	// applies ONCE per child, and later passes only self-unify.
@@ -172,10 +206,20 @@ func (b *base) cjo() int            { return 99999 }
 func (b *base) vpath() []string     { return b.path }
 func (b *base) setvpath(p []string) { b.path = p }
 
-func (b *base) markedType() bool   { return b.mtype }
-func (b *base) markedHide() bool   { return b.mhide }
-func (b *base) setMarkType(v bool) { b.mtype = v }
-func (b *base) setMarkHide(v bool) { b.mhide = v }
+func (b *base) markedType() bool                   { return b.mtype }
+func (b *base) deprecRec() map[string]string       { return b.deprec }
+func (b *base) setDeprecRec(rec map[string]string) { b.deprec = rec }
+
+func (b *base) entityName() string        { return b.entity }
+func (b *base) setEntityName(name string) { b.entity = name }
+
+func (b *base) linkAddr() string        { return b.link }
+func (b *base) setLinkAddr(addr string) { b.link = addr }
+func (b *base) markedHide() bool        { return b.mhide }
+func (b *base) fromSpread() bool        { return b.fspr }
+func (b *base) setFromSpread()          { b.fspr = true }
+func (b *base) setMarkType(v bool)      { b.mtype = v }
+func (b *base) setMarkHide(v bool)      { b.mhide = v }
 
 // notdone advances the done-counter without marking DONE.
 func (b *base) notdone() {
@@ -193,6 +237,7 @@ func isPref(v Val) bool     { _, ok := v.(*PrefVal); return ok }
 func isRef(v Val) bool      { _, ok := v.(*RefVal); return ok }
 func isVar(v Val) bool      { _, ok := v.(*VarVal); return ok }
 func isFunc(v Val) bool     { _, ok := v.(*FuncVal); return ok }
+func isRefer(v Val) bool    { _, ok := v.(*ReferVal); return ok }
 
 // TopVal is the unit of the lattice: unifying with TOP yields the
 // other operand. There is conceptually only one TOP.
@@ -250,7 +295,15 @@ type NilVal struct {
 	attempt string
 	// details parameterises hint text ({src}, {left}, {sum}, ...) and
 	// carries the `key` submessage prefix, mirroring TS NilVal.details.
-	details   map[string]string
+	details map[string]string
+	// callterms is the CALL AS WRITTEN, carried by an arity refusal so
+	// a pipe can rebuild it with one more argument on the front (G8
+	// phase 4): `x |> upper()` is `upper(x)`, and the arity this nil
+	// failed on is the arity of a call one argument short of the one
+	// the author actually wrote. Parse-time only; nothing downstream
+	// reads it, and a clone does not carry it. Mirrors the `_callterms`
+	// property ts/src/lang.ts puts on the same nil.
+	callterms []any
 	primary   Val
 	secondary Val
 }

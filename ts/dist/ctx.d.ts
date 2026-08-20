@@ -4,6 +4,7 @@ type AontuContextConfig = {
     cc?: number;
     err?: any[];
     explain?: any[] | boolean | null;
+    prov?: any;
     fs?: any;
     path?: string[];
     root?: Val;
@@ -22,12 +23,14 @@ declare class AontuContext {
     path: string[];
     vc: number;
     cc: number;
+    settle: boolean;
     vars: Record<string, Val>;
     src?: string;
     fs?: FST;
     seenI: number;
     seen: Record<string, number>;
     collect: boolean;
+    prov?: any;
     err: any[];
     explain: any[] | null;
     srcpath?: string;
@@ -46,6 +49,15 @@ declare class AontuContext {
     _depth: {
         n: number;
     };
+    budget: {
+        passes: number;
+        revisits: number;
+        depth: number;
+    };
+    manifest: {
+        path: string;
+        capability: string;
+    }[];
     _trialMode?: boolean;
     _childCache?: Map<string, AontuContext>;
     constructor(cfg: AontuContextConfig);

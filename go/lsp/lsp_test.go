@@ -4,6 +4,9 @@ package lsp
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -200,5 +203,169 @@ func TestHandlerUnknownRequest(t *testing.T) {
 	// Unknown notification (no id) is silently ignored.
 	if outs := h.Handle(Message{Method: "$/setTrace"}); len(outs) != 0 {
 		t.Errorf("unknown notification should be ignored, got %+v", outs)
+	}
+}
+
+// --- trust (G5 phase 3): the workspace confinement -------------------
+
+func trustLspWorld(t *testing.T) (dir, root string) {
+	t.Helper()
+	dir = t.TempDir()
+	root = filepath.Join(dir, "root")
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "in.aon"),
+		[]byte("f: 11"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "secret.aon"),
+		[]byte(`secret: "outside"`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return dir, root
+}
+
+func trustInit(t *testing.T, params string) *Handler {
+	t.Helper()
+	h := NewHandler()
+	h.Handle(Message{JSONRPC: "2.0", ID: json.RawMessage("1"),
+		Method: "initialize", Params: json.RawMessage(params)})
+	return h
+}
+
+func trustDiags(t *testing.T, h *Handler, text string) []Diagnostic {
+	t.Helper()
+	raw, err := json.Marshal(map[string]any{
+		"textDocument": map[string]any{"uri": "file:///d.aon", "text": text},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	outs := h.Handle(Message{JSONRPC: "2.0",
+		Method: "textDocument/didOpen", Params: raw})
+	var pub struct {
+		Diagnostics []Diagnostic `json:"diagnostics"`
+	}
+	if err := json.Unmarshal(outs[0].Params, &pub); err != nil {
+		t.Fatal(err)
+	}
+	return pub.Diagnostics
+}
+
+func hasCode(diags []Diagnostic, code string) bool {
+	for _, d := range diags {
+		if code == d.Code {
+			return true
+		}
+	}
+	return false
+}
+
+func TestTrustLspWorkspaceRootConfines(t *testing.T) {
+	_, root := trustLspWorld(t)
+	h := trustInit(t, `{"rootUri":"file://`+root+`"}`)
+	if !hasCode(trustDiags(t, h, `a:@"`+root+`/../secret.aon"`), "include_denied") {
+		t.Fatal("escape not denied")
+	}
+	if 0 != len(trustDiags(t, h, `a:@"`+root+`/in.aon"`)) {
+		t.Fatal("in-root include should resolve")
+	}
+}
+
+func TestTrustLspWorkspaceFoldersOutrankRootURI(t *testing.T) {
+	_, root := trustLspWorld(t)
+	h := trustInit(t, `{"rootUri":"file:///nowhere",`+
+		`"workspaceFolders":[{"uri":"file://`+root+`"}]}`)
+	if 0 != len(trustDiags(t, h, `a:@"`+root+`/in.aon"`)) {
+		t.Fatal("in-root include should resolve under the folder root")
+	}
+}
+
+func TestTrustLspRootPathFallback(t *testing.T) {
+	_, root := trustLspWorld(t)
+	h := trustInit(t, `{"rootPath":"`+root+`"}`)
+	if !hasCode(trustDiags(t, h, `a:@"`+root+`/../secret.aon"`), "include_denied") {
+		t.Fatal("escape not denied under rootPath")
+	}
+}
+
+func TestTrustLspExplicitOptionWins(t *testing.T) {
+	dir, root := trustLspWorld(t)
+
+	// "system" widens even when a workspace root exists.
+	wide := trustInit(t, `{"rootUri":"file://`+root+`",`+
+		`"initializationOptions":{"aontu":{"trust":{"include":"system"}}}}`)
+	if 0 != len(trustDiags(t, wide, `a:@"`+dir+`/secret.aon"`)) {
+		t.Fatal("explicit system should widen")
+	}
+
+	// "none" narrows to nothing.
+	none := trustInit(t,
+		`{"initializationOptions":{"aontu":{"trust":{"include":"none"}}}}`)
+	if !hasCode(trustDiags(t, none, `a:@"`+root+`/in.aon"`), "include_denied") {
+		t.Fatal("explicit none should deny")
+	}
+
+	// {root} names its own directory.
+	rooted := trustInit(t, `{"initializationOptions":`+
+		`{"aontu":{"trust":{"include":{"root":"`+root+`"}}}}}`)
+	if 0 != len(trustDiags(t, rooted, `a:@"`+root+`/in.aon"`)) {
+		t.Fatal("explicit root should allow in-root")
+	}
+
+	// An unrecognised explicit value confines to NOTHING rather than
+	// silently widening.
+	unknown := trustInit(t, `{"initializationOptions":`+
+		`{"aontu":{"trust":{"include":{"bogus":1}}}}}`)
+	if !hasCode(trustDiags(t, unknown, `a:@"`+root+`/in.aon"`), "include_denied") {
+		t.Fatal("unknown explicit value should deny")
+	}
+}
+
+func TestTrustLspNoRootStaysUnconfined(t *testing.T) {
+	_, root := trustLspWorld(t)
+	h := trustInit(t, `{}`)
+	if 0 != len(trustDiags(t, h, `a:@"`+root+`/in.aon"`)) {
+		t.Fatal("no root, no option: unconfined")
+	}
+}
+
+func TestTrustLspMalformedInitializeParams(t *testing.T) {
+	_, root := trustLspWorld(t)
+	h := trustInit(t, `not json`)
+	if 0 != len(trustDiags(t, h, `a:@"`+root+`/in.aon"`)) {
+		t.Fatal("malformed params fall back to unconfined")
+	}
+}
+
+// G3 phase 4: the deprecation mark's LSP surface — the native
+// Deprecated tag (2) at Hint severity, on the declaration and on every
+// use resolving through the value. The TS twin is lsp-deprecated in
+// ts/test/lsp.test.ts.
+func TestDiagnosticsDeprecated(t *testing.T) {
+	d := Diagnostics("p:deprecate(8080,{msg:\"renamed\",use:\"$.listen\",since:\"2.0.0\"})\nq:$.p")
+	tagged := []Diagnostic{}
+	for _, x := range d {
+		if "deprecated" == x.Code {
+			tagged = append(tagged, x)
+		}
+	}
+	if 2 != len(tagged) {
+		t.Fatalf("expected 2 deprecated diagnostics, got %d: %+v", len(tagged), d)
+	}
+	for _, x := range tagged {
+		if SeverityHint != x.Severity || 1 != len(x.Tags) || 2 != x.Tags[0] {
+			t.Fatalf("expected hint severity and tag 2, got %+v", x)
+		}
+		for _, want := range []string{"renamed", "use $.listen", "since 2.0.0"} {
+			if !strings.Contains(x.Message, want) {
+				t.Fatalf("expected %q in %q", want, x.Message)
+			}
+		}
+	}
+
+	if d2 := Diagnostics("a:1"); 0 != len(d2) {
+		t.Fatalf("expected no diagnostics, got %+v", d2)
 	}
 }

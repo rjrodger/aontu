@@ -58,7 +58,24 @@ const elidedSpreadKey = reservedKeyPrefix + "elidedspread"
 
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
-var theLang = mustMakeLang("")
+//
+// Built LAZILY, on first use, rather than as a package variable: the
+// module leg of the resolver (G6 phase 2, mod.go) evaluates a module to
+// verify it, and evaluation reaches this parser — a package-variable
+// initialiser would be a static initialisation cycle through the very
+// resolver it installs. Once, so the parser is still built exactly one
+// time however many goroutines ask for it first.
+var (
+	theLangOnce sync.Once
+	theLangVal  *jsonic.Jsonic
+)
+
+func theLang() *jsonic.Jsonic {
+	theLangOnce.Do(func() {
+		theLangVal = mustMakeLang("")
+	})
+	return theLangVal
+}
 
 // langCache memoises base -> parser. multisource resolves a top-level
 // load's relative path against opts.Path, which is fixed when the plugin
@@ -79,7 +96,7 @@ const maxLangCache = 256
 // against base. Base "" reuses the shared default parser.
 func langForBase(base string) (*jsonic.Jsonic, error) {
 	if base == "" {
-		return theLang, nil
+		return theLang(), nil
 	}
 	langCacheMu.Lock()
 	defer langCacheMu.Unlock()
@@ -234,7 +251,12 @@ help isolate the syntax error.`,
 						})
 					},
 				},
-				"top":   valDef(func(sp int) Val { t := top(); t.sp = sp; return t }),
+				"top": valDef(func(sp int) Val { t := top(); t.sp = sp; return t }),
+				// G8 phase 3: the placeholder. A BARE `_` is the hole;
+				// `"_"` quoted, and any longer bare word containing it,
+				// stay text. Reserving it is a breaking change, pinned
+				// by place.tsv. Mirrors ts/src/lang.ts.
+				"_":     valDef(func(sp int) Val { p := newPlace(); p.sp = sp; return p }),
 				"nil":   valDef(func(sp int) Val { n := newNil("literal_nil"); n.sp = sp; return n }),
 				"true":  valDef(func(sp int) Val { v := newBoolean(true); v.sp = sp; return v }),
 				"false": valDef(func(sp int) Val { v := newBoolean(false); v.sp = sp; return v }),
@@ -299,8 +321,14 @@ help isolate the syntax error.`,
 
 	if err := j.Use(expr.Expr, map[string]interface{}{
 		"op": map[string]interface{}{
-			"conjunct":      map[string]interface{}{"infix": true, "src": "&", "left": 16000000, "right": 17000000},
-			"disjunct":      map[string]interface{}{"infix": true, "src": "|", "left": 14000000, "right": 15000000},
+			"conjunct": map[string]interface{}{"infix": true, "src": "&", "left": 16000000, "right": 17000000},
+			"disjunct": map[string]interface{}{"infix": true, "src": "|", "left": 14000000, "right": 15000000},
+			// G8 phase 4: the pipe. LOOSEST of all the infix operators,
+			// so `a & b |> f` pipes the whole meet and not just `b` -- a
+			// pipe reads as "and then", which is a statement about
+			// everything to its left. Kept in lock-step with the op
+			// table in ts/src/lang.ts.
+			"pipe-infix":    map[string]interface{}{"infix": true, "src": "|>", "left": 12000000, "right": 13000000},
 			"star":          map[string]interface{}{"prefix": true, "src": "*", "right": 24000000},
 			"dollar-prefix": map[string]interface{}{"prefix": true, "src": "$", "right": 31000000},
 			"dot-infix":     map[string]interface{}{"infix": true, "src": ".", "left": 25000000, "right": 24000000},
@@ -1615,7 +1643,12 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		}
 		inner := asVal(terms[0])
 		pv := newPref(inner)
+		// Sited at the `*` itself, as TS's addsite frames it; the inner
+		// value's position is the fallback for a synthetic rule.
 		pv.sp = inner.pos()
+		if r.ON > 0 {
+			pv.sp = r.O0.SI
+		}
 		return pv
 	case "negative-prefix":
 		if len(terms) < 1 {
@@ -1696,6 +1729,21 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 			ov.sp = r.O0.SI
 		}
 		return ov
+	case "pipe-infix":
+		// THE PIPE `|>` (G8 phase 4): parse-time sugar and nothing else.
+		// `x |> f(a)` IS `f(x, a)` -- the piped value goes in as the
+		// FIRST argument, Elixir-style, because every Aontu call is
+		// data-first already (`close(x)`, `pack(data, tmpl)`) and a pipe
+		// must read the way the calls it replaces read. It never reaches
+		// a Val: by the time the tree exists the call is an ordinary
+		// call, which is why canon can never emit the token and the two
+		// ports' canon stay byte-identical without either knowing about
+		// it. Mirrors ts/src/lang.ts.
+		if len(terms) < 2 {
+			return incompleteNil(r)
+		}
+		return pipeCall(r, terms[0], terms[1])
+
 	case "func-paren":
 		// preval injects the function name as a raw string term[0] for
 		// `name(args)`; plain `(expr)` grouping has the inner Val in
@@ -1704,59 +1752,7 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 		// `unknown_function` NilVal in ts/src/lang.ts func-paren).
 		if len(terms) > 0 {
 			if name, ok := terms[0].(string); ok {
-				if !funcSet[name] {
-					n := newNil("unknown_function")
-					if r.ON > 0 {
-						n.sp = r.O0.SI
-					}
-					return n
-				}
-				// Arity is known for every built-in, so a surplus or
-				// missing argument is a mistake in the SOURCE, refused
-				// here where the author can see it (issue #51). It was
-				// previously left to each function to notice or not: the
-				// two ports disagreed on `upper()` and on `close()`, and
-				// `min(1,2)` noticed nothing at all -- it built a
-				// constraint that merely refused to generate later, with
-				// a message about the map rather than about the call.
-				if ar, known := funcArity[name]; known {
-					got := writtenArgCount(terms[1:])
-					if got < ar[0] || (-1 != ar[1] && got > ar[1]) {
-						n := newNil("func_arity")
-						n.details = map[string]string{
-							"func": name,
-							"want": arityText(ar[0], ar[1]),
-							"got":  itoa(got),
-						}
-						if r.ON > 0 {
-							n.sp = r.O0.SI
-						}
-						return n
-					}
-				}
-				args := make([]Val, 0, len(terms)-1)
-				for _, t := range terms[1:] {
-					args = append(args, asVal(t))
-				}
-				if constraintAtoms[name] {
-					sp := -1
-					if r.ON > 0 {
-						sp = r.O0.SI
-					}
-					return newConstraint(name, args, sp)
-				}
-				fv := newFunc(name, args)
-				// Locate the call, as the constraint-atom branch just
-				// above already does. A FuncVal left at the zero sp --
-				// which is a REAL position, the first byte of the source
-				// -- handed that position to any conjunct built over it
-				// (newConjunct takes its site from its first term), so
-				// `a:super(1)&integer` drew its frame at the key rather
-				// than at the value (issue #41).
-				if r.ON > 0 {
-					fv.sp = r.O0.SI
-				}
-				return fv
+				return buildCall(r, name, terms[1:])
 			}
 			return asVal(terms[len(terms)-1])
 		}
@@ -1944,6 +1940,9 @@ func listOfRawAt(n []any, depth int, sp int) *ListVal {
 		}
 		lv.peg = append(lv.peg, asValDepth(e, depth+1))
 	}
+	// Clearing rule 3 (G4 phase 1, identity.go): a CONSTANT id() in the
+	// template would declare every element to be one entity.
+	lv.spread = refuseSpreadId(lv.spread)
 	return lv
 }
 
@@ -1968,7 +1967,9 @@ func asValDepth(node any, depth int) Val {
 	case map[string]any:
 		mv := newMap()
 		if sp, ok := n[spreadKey]; ok {
-			mv.spread = sp.(Val)
+			// Clearing rule 3 (G4 phase 1, identity.go): a CONSTANT id()
+			// in the template would declare every child to be one entity.
+			mv.spread = refuseSpreadId(sp.(Val))
 		}
 		if opt, ok := n[optionalKey].([]string); ok {
 			mv.optional = opt
@@ -2120,7 +2121,13 @@ func toValidSource(src string) string {
 	return strings.ToValidUTF8(src, "�")
 }
 
-func parseBase(src, base, file string) (Val, error) {
+// parseWithTrust is parseBase under a trust sink (G5, docs/trust.md):
+// the sink carries the include capability, the warning window and the
+// manifest accumulator into the resolver via the parse meta bag, and a
+// recorded denial comes back as the include_denied error -- checked
+// BEFORE not-found, because an escape that also failed to read must
+// report as the refusal it is.
+func parseWithTrust(src, base, file string, trust *trustSink) (Val, error) {
 	src = toValidSource(src)
 
 	// A version-control conflict marker is refused BEFORE the parse
@@ -2159,6 +2166,9 @@ func parseBase(src, base, file string) (Val, error) {
 	// plain value. See notFoundSink.
 	sink := &notFoundSink{}
 	meta := map[string]any{notFoundMetaKey: sink}
+	if nil != trust {
+		meta[trustMetaKey] = trust
+	}
 	// The parser names the source in its own error frames from
 	// meta["fileName"] (TS passes the same through popts.path), and
 	// defaults to "<no-file>" without it. parseBase had no filename to
@@ -2177,6 +2187,19 @@ func parseBase(src, base, file string) (Val, error) {
 	// include can leave the parse failing for a secondary reason, and
 	// "source not found: x" is the diagnosis the user needs -- the cascade
 	// is noise.
+	if nil != trust && "" != trust.denied {
+		return newMap(), &AontuError{Msg: trust.denied, Code: "include_denied"}
+	}
+
+	// A module that is absent, fails its pin, or nests too deep (G6
+	// phase 2) is refused the same way and for the same reason: the
+	// resolution cannot stand, and a bare-member module import would
+	// otherwise vanish in the merge and leave a plausible,
+	// silently-partial document.
+	if nil != trust && "" != trust.modCode {
+		return newMap(), &AontuError{Msg: trust.modMsg, Code: trust.modCode}
+	}
+
 	if "" != sink.msg {
 		return newMap(), &AontuError{Msg: sink.msg, Code: "multisource_not_found"}
 	}
@@ -2233,4 +2256,150 @@ func opCharHint(src string) string {
 		}
 	}
 	return ""
+}
+
+// buildCall builds a call from a NAME and the argument terms as the
+// author wrote them. Shared by the `func(...)` handler and by the pipe,
+// which is the same call with one more argument on the front -- so the
+// arity check, the comma-group rule and the raw-value conversion are
+// stated once and both spellings get all three. Mirrors buildCall in
+// ts/src/lang.ts.
+func buildCall(r *jsonic.Rule, name string, argterms []any) Val {
+	if !funcSet[name] {
+		n := newNil("unknown_function")
+		if r.ON > 0 {
+			n.sp = r.O0.SI
+		}
+		return n
+	}
+
+	// Arity is known for every built-in, so a surplus or missing
+	// argument is a mistake in the SOURCE, refused here where the author
+	// can see it (issue #51). It was previously left to each function to
+	// notice or not: the two ports disagreed on `upper()` and on
+	// `close()`, and `min(1,2)` noticed nothing at all -- it built a
+	// constraint that merely refused to generate later, with a message
+	// about the map rather than about the call.
+	if ar, known := funcArity[name]; known {
+		got := writtenArgCount(argterms)
+		if got < ar[0] || (-1 != ar[1] && got > ar[1]) {
+			n := newNil("func_arity")
+			n.details = map[string]string{
+				"func": name,
+				"want": arityText(ar[0], ar[1]),
+				"got":  itoa(got),
+			}
+			// The call as written rides the refusal, for the pipe (G8
+			// phase 4, see NilVal.callterms).
+			n.callterms = argterms
+			if r.ON > 0 {
+				n.sp = r.O0.SI
+			}
+			return n
+		}
+	}
+
+	// A comma group is ONE raw-slice term (writtenArgCount). For a
+	// function whose arguments are distinct POSITIONS — deprecate's
+	// value and record, pack's and each's data and template — the group
+	// is expanded back into them here, while a written list literal,
+	// already a *ListVal, stays one argument. The constraint atoms are
+	// not in this set: `neq(1,2)` is one argument LIST, not two
+	// positions. Mirrors ts/src/lang.ts.
+	terms := argterms
+	if positionalArgFuncs[name] && 1 == len(terms) {
+		if raw, ok := terms[0].([]any); ok {
+			terms = raw
+		}
+	}
+	args := make([]Val, 0, len(terms))
+	for _, t := range terms {
+		args = append(args, asVal(t))
+	}
+
+	sp := -1
+	if r.ON > 0 {
+		sp = r.O0.SI
+	}
+
+	if constraintAtoms[name] {
+		return newConstraint(name, args, sp)
+	}
+
+	fv := newFunc(name, args)
+	// Locate the call, as the constraint-atom branch just above already
+	// does. A FuncVal left at the zero sp -- which is a REAL position,
+	// the first byte of the source -- handed that position to any
+	// conjunct built over it (newConjunct takes its site from its first
+	// term), so `a:super(1)&integer` drew its frame at the key rather
+	// than at the value (issue #41).
+	if r.ON > 0 {
+		fv.sp = r.O0.SI
+	}
+	return fv
+}
+
+// pipeTerms is the argument terms `f(...)` would have been written with,
+// had the piped value been written into it. A comma group is one
+// raw-slice term: for a POSITIONAL function the group is separate
+// arguments, so the piped value joins them; for a constraint atom the
+// group IS the argument list, so the piped value joins the list instead.
+func pipeTerms(name string, written []any, val any) []any {
+	group := written
+	if 1 == len(written) {
+		if raw, ok := written[0].([]any); ok {
+			group = raw
+		}
+	}
+
+	if 0 == len(group) {
+		return []any{val}
+	}
+
+	if positionalArgFuncs[name] {
+		return append([]any{val}, group...)
+	}
+	return []any{append([]any{val}, group...)}
+}
+
+// pipeCall rebuilds the call on the right of a `|>` with the piped value
+// as its first argument.
+func pipeCall(r *jsonic.Rule, val any, call any) Val {
+	switch c := call.(type) {
+	case *FuncVal:
+		// A built call: its arguments are already Vals, and buildCall
+		// takes them as terms unchanged.
+		written := make([]any, 0, len(c.peg))
+		for _, a := range c.peg {
+			written = append(written, a)
+		}
+		return buildCall(r, c.name, pipeTerms(c.name, written, val))
+	case *NilVal:
+		// ... or one the arity check refused for an arity the pipe is
+		// about to satisfy. Both carry what they were written as.
+		if "func_arity" == c.why {
+			return buildCall(r, c.details["func"], pipeTerms(c.details["func"], c.callterms, val))
+		}
+	case *ScalarVal:
+		// ... or a bare NAME, which is the whole point of the short
+		// spelling: `x |> upper` is `upper(x)`. A bare word has already
+		// become a string VALUE by the time an infix operator sees it,
+		// so this is where a string becomes a call.
+		if KindString == c.kind {
+			if name, ok := c.peg.(string); ok && funcSet[name] {
+				return buildCall(r, name, []any{val})
+			}
+		}
+	}
+
+	// Anything else is not a call, and a pipe into a non-call is a
+	// mistake in the source rather than a value. A constraint atom that
+	// BUILT is one of them: an atom with its argument list complete is a
+	// residual rather than a call waiting for a subject, and `1 |>
+	// neq(2,3)` is asking for `1 & neq(2,3)`, which is what `&` is for.
+	n := newNil("pipe_target")
+	if r.ON > 0 {
+		n.sp = r.O0.SI
+	}
+	return n
 }

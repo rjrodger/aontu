@@ -8,6 +8,9 @@
 import { describe, test } from 'node:test'
 import * as Assert from 'node:assert'
 import { PassThrough } from 'node:stream'
+import * as Fs from 'node:fs'
+import * as Os from 'node:os'
+import * as Path from 'node:path'
 
 import { Aontu } from '../dist/aontu'
 import { AontuContext } from '../dist/ctx'
@@ -96,8 +99,15 @@ describe('coverage2-cli', () => {
     const cap = captureOut()
     try {
       cliMain(['node', 'cli'])
+      // A :load through the LOOP, which reads a real file: the
+      // handler's reader is injected, and this is where the real one
+      // is wired.
+      const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-repl-'))
+      const doc = Path.join(dir, 'doc.aon')
+      Fs.writeFileSync(doc, 'a: 1')
       for (const line of [
-        ':help\n', ':canon\n', ':json\n', ':bogus\n', '\n', 'a:1\n', ':quit\n',
+        ':help\n', ':canon\n', ':json\n', ':bogus\n', '\n',
+        `:load ${doc}\n`, ':get $.a\n', 'a:1\n', ':quit\n',
       ]) {
         fakeIn.write(line)
       }
@@ -110,10 +120,33 @@ describe('coverage2-cli', () => {
     const out = cap.get()
     for (const want of [
       'REPL', 'Usage: aontu', 'canon output', 'json output',
-      'unknown command', '"a": 1',
+      'unknown command', '"a": 1', 'loaded: ',
     ]) {
       Assert.ok(out.includes(want), 'repl output missing ' + want + ':\n' + out)
     }
+  })
+
+  // The REPL's SESSION protocol (G7 phase 7): no banner, no prompt,
+  // one JSON line per answer.
+  test('repl-jsonl-in-process', async () => {
+    const fakeIn: any = new PassThrough()
+    fakeIn.isTTY = true
+    const restoreIn = swapStdin(fakeIn)
+    const cap = captureOut()
+    try {
+      cliMain(['node', 'cli', '--jsonl'])
+      for (const line of ['a:1\n', ':quit\n']) {
+        fakeIn.write(line)
+      }
+      await new Promise((r) => setTimeout(r, 100))
+    }
+    finally {
+      cap.restore()
+      restoreIn()
+    }
+    const out = cap.get()
+    Assert.ok(!out.includes('aontu>'), 'jsonl session printed a prompt:\n' + out)
+    Assert.ok(out.includes('{"ok":true,"out":"{\\n  \\"a\\": 1\\n}"}'), out)
   })
 
   test('stdin-in-process', async () => {

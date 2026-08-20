@@ -30,7 +30,7 @@ import {
   top
 } from './top'
 
-import { NilVal, TRIAL_NIL } from '../val/NilVal'
+import { TRIAL_NIL } from '../val/NilVal'
 import { PrefVal } from '../val/PrefVal'
 import { JunctionVal } from '../val/JunctionVal'
 
@@ -177,7 +177,11 @@ class DisjunctVal extends JunctionVal {
   }
 
 
-  rankPrefs(ctx: AontuContext) {
+  // Answers the sole surviving preference when ranking collapsed the
+  // disjunction to one -- which the RECURSIVE call below consumes to
+  // lift a nested disjunct's winner into this one. Undefined when
+  // more than one alternative survives, so the type says both.
+  rankPrefs(ctx: AontuContext): PrefVal | undefined {
     let lastpref: PrefVal | undefined = undefined
     let lastprefI = -1
 
@@ -214,7 +218,7 @@ class DisjunctVal extends JunctionVal {
         }
       }
       else if (v.isDisjunct) {
-        let subrank: any = v.rankPrefs(ctx)
+        const subrank = (v as DisjunctVal).rankPrefs(ctx)
         if (subrank instanceof PrefVal) {
           this.peg[vI] = subrank
           lastpref = subrank
@@ -231,6 +235,8 @@ class DisjunctVal extends JunctionVal {
     if (1 === this.peg.length && this.peg[0] instanceof PrefVal) {
       return this.peg[0]
     }
+
+    return undefined
   }
 
 

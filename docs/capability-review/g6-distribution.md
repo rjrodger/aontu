@@ -1,9 +1,12 @@
 # G6: A distribution layer — versioned, integrity-hashed, pinnable modules
 
-*Status: design proposal — nothing implemented. Per-phase status and the
-corrections this document needs (one current-state claim is now false)
-are in the [progress register](progress.md), which is authoritative for
-status; this document is authoritative for design. Part of the
+*Status: design proposal — phases 0-2 (the hash form, the canon-hash
+with `aontu hash` on both command lines, and module identity with
+local resolution) are implemented; phases 3-4 (fetch/publish tooling,
+registry hooks) are not. Per-phase status and the corrections this document needs (one
+current-state claim is now false) are in the
+[progress register](progress.md), which is authoritative for status;
+this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
 G6 — growing `@"…"` file inclusion into module identity, versioning,
 registry distribution, and semantic integrity hashing over Aontu's
@@ -493,29 +496,49 @@ runners, new rows in `test/spec/hcanon.tsv` (or a sibling
 `hash.tsv`). This completes the review's Phase B item ("canon-hash
 pinning") and is independently useful with no registry.
 
-**Phase 2 — module identity and local resolution (M).** Module-path
-routing in the resolver chain, `mod.aon`/`mod-lock.aon` reading,
-vendor-dir and cache lookup, integrity verification, the two new
-error shapes. Spec rows stay hermetic by stubbing module paths
-through the memory resolver (as `file.tsv` uses `__FIXTURES__`).
-Touches: `ts/src/lang.ts` (resolver chain), new `ts/src/mod.ts`,
-`go/lang.go`, new `go/mod.go`, new `test/spec/mod.tsv`,
-`docs/reference-language.md`. Existing `file.tsv` rows are the
-guard that non-module paths behave byte-identically.
+**Phase 2 — module identity and local resolution (M). LANDED.**
+Module-path routing in the resolver chain, `mod.aon`/`mod-lock.aon`
+reading, vendor-dir and cache lookup, integrity verification, and the
+error shapes — three rather than two, the third being the depth bound
+verification needs (see the [register](progress.md)). Spec rows stay
+hermetic the way `file.tsv`'s do: real fixture trees under
+`test/spec/files/mod*/`, run under the FIXTURES trust root. (The memory
+resolver still shadows module paths — it is first in the chain — but a
+stub proves routing only, and what needed proving was the store
+lookup.) Touches: `ts/src/lang.ts` (resolver chain), new
+`ts/src/mod.ts`, `go/source.go`, new `go/mod.go`, new
+`test/spec/mod.tsv`, `docs/reference-language.md`. Existing `file.tsv`
+rows are the guard that non-module paths behave byte-identically, and
+`mod.tsv` adds three of its own for the routing predicate.
 
-**Phase 3 — fetch and publish tooling (L).** `aontu mod
-get/tidy/vendor/publish` over OCI; MVS resolution; lockfile
-writing in canonical form. Network code lives outside evaluation
-and outside the shared spec — per-implementation integration tests
-against a local OCI registry. Touches: `ts/src/cli.ts`, a new
-`ts/src/mod-tool.ts`, `go/cmd/aontu/`, `docs/reference-api.md`.
+**Phase 3 — module tooling (L). LANDED, local half.** `aontu mod
+tidy/vendor`; MVS resolution; lockfile writing in canonical form.
+Landed as designed, in `ts/src/mod-tool.ts`, new `go/modtool.go`,
+`ts/src/cli.ts`, new `go/cmd/aontu/mod.go` and
+`docs/reference-api.md`. `get`/`publish` over OCI did NOT land: the
+network code the design puts outside evaluation also sits outside
+what this build can test — there is no registry to integrate
+against — and the CLIs name the two subcommands and say which half
+is missing rather than answering "unknown subcommand". Because
+nothing the phase does is language behaviour, its parity discipline
+is the CLI one (twin per-port tests plus a byte-for-byte diff of the
+two commands over a fixture corpus, streams AND the files they
+leave behind), not shared spec rows. See the
+[register](progress.md) for the three departures.
 
-**Phase 4 — registry hooks and agent integration (M).**
+**Phase 4 — registry hooks and agent integration (M). LANDED.**
 Publish-time canon-hash annotations; the breaking gate invoking
 [G3](g3-subsumption-evolution.md); hash-keyed cache/query
 integration with [G7](g7-machine-access.md)'s surface. Sized M
 here because the semantics are owned elsewhere; this phase is
-wiring at the publish boundary.
+wiring at the publish boundary — and that is exactly what landed,
+as `aontu mod manifest`, which computes and gates everything a
+publish would send and stops before sending it. The annotation set
+and the gate ARE the phase; the push is the one part that carries
+no semantics, and it is the part with no registry to send to. The
+hash-keyed cache integration needed no new code: the cache G6.2
+built is already keyed by the hash the annotation carries. See the
+[register](progress.md) for the three departures.
 
 ## Open questions
 

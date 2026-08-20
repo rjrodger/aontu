@@ -33,3 +33,27 @@ template-pref-copy	gen	z:3 m:{&:{q:*copy($.z)},a:{}}	{"m":{"a":{"q":3}},"z":3}
 # close alts had to be taught to see.
 sibling-bare-newline	gen	&: a:1\n&: b:2\nx:{}\ny:{}	{"x":{"a":1,"b":2},"y":{"a":1,"b":2}}
 sibling-bare-newline-canon	canon	&: a:1\n&: b:2	{&:{"a":1}&{"b":2}}
+# A list spread INSIDE a list spread, with a `key()` in the inner
+# template (G8 phase 0). The staging rule is what makes these answer:
+# under the pass-count delay it replaced, the inner template was met
+# into each element AGAIN on every pass -- ListVal had no
+# apply-once-per-element guard, the one MapVal has always had -- so a
+# `key()` that had already answered "0" was handed a second, still
+# pending copy of itself and the two collided (`scalar_value` at
+# $.a.0.k.k). The map-nested row is the control: it went through
+# MapVal's guard and always worked.
+spread-nested-list-key	gens	a:[&:[&:{k:key()},{}],[{}]]	{"a":[[{"k":"0"}]]}
+spread-nested-list-key-canon	canon	a:[&:[&:{k:key()},{}],[{}]]	{"a":[&:[&:{"k":key()},{}],[&:{"k":key()},{"k":"0"}]]}
+spread-nested-list-key-siblings	gens	a:[&:[&:{k:key()},{}],[{}],[{},{}]]	{"a":[[{"k":"0"}],[{"k":"0"},{"k":"1"}]]}
+spread-nested-list-key-in-map	gens	a:{&:[&:{k:key()},{}], b:[{}], c:[{},{}]}	{"a":{"b":[{"k":"0"}],"c":[{"k":"0"},{"k":"1"}]}}
+# An OPERATOR inside a spread template, holding a reference. The
+# template is path-dependent BECAUSE of what the operand is, which the
+# Go port's path-dependence walk did not see until G8 phase 1 — it had
+# no operator arm, while the TypeScript getter walks any array peg and
+# an operator's operands are one. A template misclassified as
+# path-independent is SHARED between destinations rather than cloned,
+# which is invisible for an absolute reference and wrong the moment the
+# operand is a key() (see gen-key.tsv).
+template-op-ref	gen	b:y\na:{&:{k:"x"+$.b},c:{},d:{}}	{"a":{"c":{"k":"xy"},"d":{"k":"xy"}},"b":"y"}
+template-op-ref-canon	canon	b:y\na:{&:{k:"x"+$.b},c:{},d:{}}	{"a":{&:{"k":"x"+$.b},"c":{"k":"xy"},"d":{"k":"xy"}},"b":"y"}
+template-op-ref-list	gen	a:[&:{k:1+$.b},{},{}]\nb:2	{"a":[{"k":3},{"k":3}],"b":2}

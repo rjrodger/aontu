@@ -96,48 +96,49 @@ func overlayPath(dest, orig []string) []string {
 // tree therefore always reflect the LAST driver, which is exactly the
 // TS behaviour for shared clones.
 //
-// Exception: a key() func whose delay window has closed (cc >= 3) keeps
-// its stored path. In TS paths are only ever written by clones, and
-// key()'s ctx-repathing clone happens exclusively in its cc < 3 delay
-// window — at cc >= 3 it resolves with the LAST delay-clone's path, no
-// matter which driver reaches it first.
-func repathArg(v Val, base []string, cc int) {
-	if fv, ok := v.(*FuncVal); ok && fv.name == "key" && cc >= 3 {
+// Exception: a key() func that has stopped residuating (the settle pass,
+// THE STAGING RULE — see Ctx.settle) keeps its stored path. In TS paths
+// are only ever written by clones, and key()'s ctx-repathing clone
+// happens exclusively while it residuates — on the settle pass it
+// resolves with the LAST residuation clone's path, no matter which
+// driver reaches it first.
+func repathArg(v Val, base []string, settle bool) {
+	if fv, ok := v.(*FuncVal); ok && fv.name == "key" && settle {
 		return
 	}
 	v.setvpath(overlayPath(base, v.vpath()))
 	switch n := v.(type) {
 	case *MapVal:
 		if n.spread != nil {
-			repathArg(n.spread, base, cc)
+			repathArg(n.spread, base, settle)
 		}
 		for _, k := range n.keys {
-			repathArg(n.peg[k], append(cp(base), k), cc)
+			repathArg(n.peg[k], append(cp(base), k), settle)
 		}
 	case *ListVal:
 		if n.spread != nil {
-			repathArg(n.spread, base, cc)
+			repathArg(n.spread, base, settle)
 		}
 		for i, e := range n.peg {
-			repathArg(e, append(cp(base), itoa(i)), cc)
+			repathArg(e, append(cp(base), itoa(i)), settle)
 		}
 	case *ConjunctVal:
 		for _, t := range n.peg {
-			repathArg(t, base, cc)
+			repathArg(t, base, settle)
 		}
 	case *DisjunctVal:
 		for _, t := range n.peg {
-			repathArg(t, base, cc)
+			repathArg(t, base, settle)
 		}
 	case *PrefVal:
-		repathArg(n.peg, base, cc)
+		repathArg(n.peg, base, settle)
 	case *PlusOpVal:
 		for _, t := range n.peg {
-			repathArg(t, base, cc)
+			repathArg(t, base, settle)
 		}
 	case *FuncVal:
 		for _, a := range n.peg {
-			repathArg(a, base, cc)
+			repathArg(a, base, settle)
 		}
 	}
 }
@@ -187,6 +188,15 @@ func clonePathKind(v Val, path []string) Val {
 		c.path = cp(path)
 		return &c
 	case *ScalarKindVal:
+		c := *n
+		c.path = cp(path)
+		return &c
+	case *ReferVal:
+		// The residual's own state — the type to flow, the address it has
+		// met, the constraints it holds — travels with the clone, and the
+		// clone is an INDEPENDENT value: without this arm the fall-through
+		// shared one residual between a reference and its target, so two
+		// positions that later constrained it differently would interfere.
 		c := *n
 		c.path = cp(path)
 		return &c

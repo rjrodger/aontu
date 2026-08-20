@@ -1,0 +1,12 @@
+# GENERATED CHILDREN AND close() (G8 phase 1). `close(pack(...))` seals
+# the GENERATED SHAPE: the keys the data named are the allowed keys, and
+# nothing else may be added — while the generated children themselves
+# stay open to content, which is what makes an override compose.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+close-generated	gens	n:[a,b]\nd:close(pack($.n,{x:1}))\n	{"d":{"a":{"x":1},"b":{"x":1}},"n":["a","b"]}
+close-generated-canon	canon	n:[a,b]\nd:close(pack($.n,{x:1}))\n	{"d":{"a":{"x":1},"b":{"x":1}},"n":["a","b"]}
+close-refuses-extra-key	errc	n:[a]\nd:close(pack($.n,{x:1}))\nd:z:1\n	closed
+close-admits-child-content	gens	n:[a]\nd:close(pack($.n,{x:1}))\nd:a:y:2\n	{"d":{"a":{"x":1,"y":2}},"n":["a"]}
+close-inside-template	gens	n:[a]\nd:pack($.n,close({x:1}))\n	{"d":{"a":{"x":1}},"n":["a"]}
+close-template-refuses-extra	errc	n:[a]\nd:pack($.n,close({x:1}))\nd:a:y:2\n	closed
+open-reopens-generated	gens	n:[a]\nd:open(close(pack($.n,{x:1})))\nd:z:1\n	{"d":{"a":{"x":1},"z":1},"n":["a"]}

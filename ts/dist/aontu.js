@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
+exports.relationCheck = exports.graphOf = exports.agentsMd = exports.diff = exports.patch = exports.why = exports.get = exports.canonHash = exports.hcanon = exports.trimCheck = exports.subsume = exports.sarifReport = exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
 exports.runparse = runparse;
 const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
@@ -19,6 +19,28 @@ const err_1 = require("./err");
 Object.defineProperty(exports, "AontuError", { enumerable: true, get: function () { return err_1.AontuError; } });
 const vet_1 = require("./vet");
 Object.defineProperty(exports, "vet", { enumerable: true, get: function () { return vet_1.vet; } });
+const report_sarif_1 = require("./report-sarif");
+Object.defineProperty(exports, "sarifReport", { enumerable: true, get: function () { return report_sarif_1.sarifReport; } });
+const subsume_1 = require("./subsume");
+Object.defineProperty(exports, "subsume", { enumerable: true, get: function () { return subsume_1.subsume; } });
+const trim_1 = require("./trim");
+Object.defineProperty(exports, "trimCheck", { enumerable: true, get: function () { return trim_1.trimCheck; } });
+const hcanon_1 = require("./hcanon");
+Object.defineProperty(exports, "hcanon", { enumerable: true, get: function () { return hcanon_1.hcanon; } });
+Object.defineProperty(exports, "canonHash", { enumerable: true, get: function () { return hcanon_1.canonHash; } });
+const query_1 = require("./query");
+Object.defineProperty(exports, "get", { enumerable: true, get: function () { return query_1.get; } });
+Object.defineProperty(exports, "why", { enumerable: true, get: function () { return query_1.why; } });
+const patch_1 = require("./patch");
+Object.defineProperty(exports, "patch", { enumerable: true, get: function () { return patch_1.patch; } });
+const diff_1 = require("./diff");
+Object.defineProperty(exports, "diff", { enumerable: true, get: function () { return diff_1.diff; } });
+const agentsmd_1 = require("./agentsmd");
+Object.defineProperty(exports, "agentsMd", { enumerable: true, get: function () { return agentsmd_1.agentsMd; } });
+const graph_1 = require("./graph");
+Object.defineProperty(exports, "graphOf", { enumerable: true, get: function () { return graph_1.graphOf; } });
+const relation_1 = require("./relation");
+Object.defineProperty(exports, "relationCheck", { enumerable: true, get: function () { return relation_1.relationCheck; } });
 // VERSION is the Aontu npm package version, and mirrors
 // go/aontu.go's `Version` (which tracks the Go module version
 // separately — the two version series are independent).
@@ -28,15 +50,50 @@ Object.defineProperty(exports, "vet", { enumerable: true, get: function () { ret
 // fails if the two ever drift.
 const VERSION = '0.52.1';
 exports.VERSION = VERSION;
+// A module file's VALUE, as far as it goes. COLLECTED, not raised: a
+// module file that does not stand up has no `mod.main` to read, and
+// the default entry name is the answer -- the resolution itself fails
+// later, on the file that is not there, rather than here on a metadata
+// read. That is what a collecting context does, so there is nothing to
+// catch: it answers what it could generate and records the rest.
+function genQuiet(val, aontu) {
+    return val.gen(aontu.ctx({ collect: true }));
+}
 class Aontu {
     constructor(popts) {
         this.opts = popts ?? {};
+        this.opts.mod = {
+            ...(this.opts.mod ?? {}),
+            eval: this.opts.mod?.eval ?? ((src, path) => {
+                // One deeper: a module verified from inside a module
+                // verification is one more level of nesting, and the resolver
+                // refuses past its bound (MODULE_MAX_DEPTH in ts/src/mod.ts).
+                const inner = new Aontu({
+                    ...this.opts,
+                    mod: {
+                        // Never absent: the assignment this closure is part of has
+                        // already run by the time it is called.
+                        ...this.opts.mod,
+                        eval: undefined,
+                        depth: (this.opts.mod?.depth ?? 0) + 1,
+                    },
+                });
+                const ctx = inner.ctx({ collect: true });
+                const val = inner.unify(src, { path }, ctx);
+                return { gen: genQuiet(val, inner), hash: (0, hcanon_1.canonHash)(val) };
+            }),
+        };
         this.lang = new lang_1.Lang(this.opts);
     }
     // Create a new context.
     ctx(cfg) {
         cfg = cfg ?? {};
         cfg.fs = cfg.fs ?? this.opts.fs;
+        // The trust profile rides the instance (its resolver is built once,
+        // in the Lang constructor); the context needs it too, for the
+        // budgets (G5, docs/trust.md).
+        cfg.opts = cfg.opts ?? {};
+        cfg.opts.trust = cfg.opts.trust ?? this.opts.trust;
         const ac = new ctx_1.AontuContext(cfg);
         return ac;
     }
@@ -76,7 +133,11 @@ class Aontu {
         }
         if (0 === errs.length) {
             out = runparse(src, this.lang, ac);
-            out.deps = ac.deps;
+            // The include MANIFEST (G5, docs/trust.md): the resolved include
+            // closure as `{ path, capability }`, sorted and deduplicated so
+            // it is deterministic — the "file set" of hermeticity clause 1
+            // made observable. Content hashing and pinning stay with G6.
+            out.deps = manifestOf(ac.manifest);
             ac.root = out;
         }
         handleErrors(errs, out, ac);
@@ -110,6 +171,11 @@ class Aontu {
             // 'internal' NilVal.
             out = uni.res;
             out.deps = pval.deps;
+            // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
+            // edge set, computed once from the unified tree. Cheap on a
+            // document with no identity — one guarded walk — and the thing
+            // impact analysis and the relation checks are traversals over.
+            out.graph = (0, graph_1.graphOf)(out);
             out.err = errs;
             ac.root = out;
         }
@@ -219,12 +285,34 @@ function findConflictMarker(src) {
     }
     return miss;
 }
+// Sort and deduplicate the raw manifest sink into the deterministic
+// include closure: by path then capability, code-point order, one entry
+// per (path, capability) pair.
+function manifestOf(sink) {
+    const seen = new Set();
+    const out = [];
+    for (const dep of sink) {
+        const key = dep.path + ' ' + dep.capability;
+        if (!seen.has(key)) {
+            seen.add(key);
+            out.push({ path: dep.path, capability: dep.capability });
+        }
+    }
+    // No equal case: entries were deduplicated on exactly this key.
+    out.sort((a, b) => {
+        const ka = a.path + ' ' + a.capability;
+        const kb = b.path + ' ' + b.capability;
+        return ka < kb ? -1 : 1;
+    });
+    return out;
+}
 // Perform parse of source code (minor customizations over Lang.parse).
 function runparse(src, lang, ctx) {
     const popts = {
         deps: ctx.deps,
         fs: ctx.fs,
-        path: ctx.opts.path
+        path: ctx.opts.path,
+        manifest: ctx.manifest,
     };
     let val;
     const tsrc = src.trim().replace(/^(\n\s*)+/, '');

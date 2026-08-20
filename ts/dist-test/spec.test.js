@@ -59,6 +59,38 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                object, MINUS each finding's message (prose is not in
  *                parity; see test/spec/vet.tsv for the whole encoding,
  *                including the `opts` key)
+ *   mode=subsume : FIVE columns -- name, subsume, general, specific,
+ *                expect. The report of subsume(general, specific) must
+ *                equal the expect object (verdict + findings), MINUS
+ *                each finding's message; see test/spec/subsume.tsv
+ *   mode=trim  : trimCheck(src) must equal the expect object
+ *                ({redundant, verdict}); see test/spec/trim.tsv
+ *   mode=hcanon : hcanon(unify(src)) -- the HASH FORM, canon plus the
+ *                close()/type()/hide() wrappers -- must equal expect,
+ *                and the hash form must round-trip (G6, hcanon.tsv)
+ *   mode=hash  : canonHash(unify(src)) must equal expect, the full
+ *                `aon1-...` pin, byte-identical across the ports
+ *   mode=agentsmd : FIVE columns -- name, agentsmd, src,
+ *                document-name, expect. The stanza of agentsMd(src,
+ *                {name}) must match BYTE FOR BYTE; see
+ *                test/spec/agentsmd.tsv
+ *   mode=diff  : FIVE columns -- name, diff, left, input, expect. The
+ *                report of diff(left, right) must match the expect
+ *                object ({changes, same} plus `codes`); the input is
+ *                {right, at?}. See test/spec/diff.tsv
+ *   mode=patch : FIVE columns -- name, patch, entry, input, expect.
+ *                The report of patch(entry, overlay, set) must match
+ *                the expect object ({appended, overlay, verdict} plus
+ *                `codes`); see test/spec/patch.tsv
+ *   mode=why   : FIVE columns -- name, why, src, path, expect. The
+ *                record of why(src, path) must match the expect object
+ *                ({value, conjuncts} or {code, note}); see
+ *                test/spec/why.tsv
+ *   mode=query : FIVE columns -- name, query, src, path, expect. The
+ *                report of get(src, path) must match the expect
+ *                object ({out?, code?, note?}, options riding `opts`),
+ *                and a canon-shaped VIEW must additionally SUBSUME the
+ *                truth it summarises; see test/spec/query.tsv
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -131,7 +163,9 @@ function loadRows() {
             // trusts is a number nobody updates honestly. The only count
             // asserted is that the files were found at all
             // (spec-files-present below).
-            const vetRow = 'vet' === parts[1];
+            const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
+                'query' === parts[1] || 'why' === parts[1] || 'patch' === parts[1] ||
+                'diff' === parts[1] || 'agentsmd' === parts[1];
             const want = vetRow ? 5 : 4;
             if (parts.length < want) {
                 throw new Error(`malformed spec row: ${file} line ${lineno}: ${want} columns` +
@@ -181,11 +215,38 @@ function assertCanonConverges(row) {
     if (row.name in CANON_NO_REPARSE) {
         return;
     }
-    const a1 = new aontu_1.Aontu();
+    const a1 = rowAontu(row);
     const c2 = a1.unify(row.expect, undefined, makeVarsCtx(a1)).canon;
-    const a2 = new aontu_1.Aontu();
+    const a2 = rowAontu(row);
     const c3 = a2.unify(c2, undefined, makeVarsCtx(a2)).canon;
     Assert.strictEqual(c3, c2, `canon does not converge: ${row.name}`);
+}
+// The hash form's defining property (G6 phase 0): it is valid Aontu
+// source, and re-evaluating it reproduces itself --
+// hcanon(unify(parse(hcanon(v)))) == hcanon(v). A hash over a rendering
+// that drifted on re-parse would pin nothing, so every hcanon row
+// asserts it, exactly as every canon row asserts convergence.
+function assertHcanonRoundTrips(row) {
+    const a1 = rowAontu(row);
+    Assert.strictEqual((0, aontu_1.hcanon)(a1.unify(row.expect, undefined, makeVarsCtx(a1))), row.expect, `hash form does not round-trip: ${row.name}`);
+}
+// THE PROJECTION PROPERTY (G7 phase 1): a canon-shaped view is a valid
+// Aontu document that SUBSUMES the truth it summarises -- generalisation,
+// never distortion. G3 made that mechanically checkable, so every
+// projection row asserts it instead of trusting the renderer.
+//
+// Under the `values` profile, deliberately: a shape view ERASES
+// defaults (`*8080|integer` becomes `*integer|integer`), which the
+// `defaults` profile correctly calls a compatibility break. The claim
+// projections make is about the values admitted, not about which one
+// is generated.
+function assertViewSubsumes(row, report, opts) {
+    const view = opts.view ?? 'json';
+    if (!report.ok || ('canon' !== view && 'types' !== view)) {
+        return;
+    }
+    const truth = (0, aontu_1.get)(row.src, row.data, { view: 'canon' });
+    Assert.strictEqual((0, aontu_1.subsume)(report.out, truth.out, { profile: 'values' }).verdict, 'subsumes', `view does not subsume the truth: ${row.name}`);
 }
 // The report as a vet golden spells it: the message is EXCLUDED (prose
 // is per-port, codes are not), and the rest goes through the emitter
@@ -198,10 +259,29 @@ function vetGolden(report) {
         findings: report.findings.map(({ message, ...rest }) => rest),
     });
 }
+// Files whose rows evaluate under a fixed trust profile (G5,
+// docs/trust.md): root-confined to the fixtures directory, the
+// var.tsv precedent of runner-side configuration. This is also what
+// makes the shared suite itself HERMETIC: no row may read outside the
+// repository or resolve through installed packages, in either runner
+// (go/spec_test.go applies the same profile to the same files).
+const TRUST_FILES = {
+    'include-trust.tsv': true,
+    'file.tsv': true,
+    // Module resolution reads the filesystem (G6 phase 2), so mod.tsv's
+    // rows run under the same fixture root for the same reason file.tsv's
+    // do: no row may read outside the repository.
+    'mod.tsv': true,
+};
+function rowAontu(row) {
+    return new aontu_1.Aontu(null != row.file && true === TRUST_FILES[row.file]
+        ? { trust: { include: { root: FIXTURES_DIR } } }
+        : {});
+}
 // Execute one spec row. Shared by the TSV-driven tests above and the
 // gens-mode self-test below, so both go through the same comparison.
 function runRow(row) {
-    const a0 = new aontu_1.Aontu();
+    const a0 = rowAontu(row);
     // Fresh context per row carrying the shared $var test variables.
     const ctx = makeVarsCtx(a0);
     if ('canon' === row.mode) {
@@ -217,7 +297,7 @@ function runRow(row) {
         // source under the same bindings must serialise to the same bytes on
         // a fresh engine. Re-running every gens row here pins that over the
         // whole byte-exact corpus rather than a handful of dedicated rows.
-        const a1 = new aontu_1.Aontu();
+        const a1 = rowAontu(row);
         Assert.strictEqual(genJSON(a1.generate(row.src, undefined, makeVarsCtx(a1))), row.expect, `gens is not repeatable: ${row.name}`);
     }
     else if ('err' === row.mode) {
@@ -246,6 +326,121 @@ function runRow(row) {
         const opts = golden.opts;
         delete golden.opts;
         Assert.strictEqual(vetGolden((0, aontu_1.vet)(row.src, row.data, opts)), (0, aontu_1.exactJSON)(golden), `vet report mismatch: ${row.name}`);
+    }
+    else if ('subsume' === row.mode) {
+        // Same golden discipline as vet: `opts` rides the expect object,
+        // messages are per-port prose and excluded from parity.
+        const golden = JSON.parse(row.expect);
+        const opts = golden.opts;
+        delete golden.opts;
+        const report = (0, aontu_1.subsume)(row.src, row.data, opts);
+        Assert.strictEqual((0, aontu_1.exactJSON)({
+            verdict: report.verdict,
+            findings: report.findings.map(({ message, ...rest }) => rest),
+        }), (0, aontu_1.exactJSON)(golden), `subsume report mismatch: ${row.name}`);
+    }
+    else if ('trim' === row.mode) {
+        const report = (0, aontu_1.trimCheck)(row.src);
+        Assert.strictEqual((0, aontu_1.exactJSON)({ redundant: report.redundant, verdict: report.verdict }), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `trim report mismatch: ${row.name}`);
+    }
+    else if ('relation' === row.mode) {
+        // RELATION GRAPH CHECKS (G4 phase 5): acyclicity and inverse
+        // consistency over the edge set, compared as the whole report.
+        // Both are GLOBAL and NON-MONOTONE, which is why they are checked
+        // after unification and never by it — a lattice citizen may not be
+        // falsified by more information, and one more edge is more
+        // information.
+        Assert.strictEqual((0, aontu_1.exactJSON)((0, aontu_1.relationCheck)(row.src)), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `relation report mismatch: ${row.name}`);
+    }
+    else if ('graph' === row.mode) {
+        // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
+        // edge set of the unified document, compared whole. Both are
+        // deterministic by construction — ids and paths in code-point
+        // order, edges by the position they are written at — which is what
+        // makes a byte-comparable golden possible at all, Go map order
+        // being random.
+        const graph = (0, aontu_1.graphOf)(a0.unify(row.src, undefined, ctx));
+        Assert.strictEqual((0, aontu_1.exactJSON)(graph), (0, aontu_1.exactJSON)(JSON.parse(row.expect)), `graph mismatch: ${row.name}`);
+        // ... and DETERMINISTIC is a property, not a claim: a fresh engine
+        // over the same source answers the same bytes.
+        const a1 = rowAontu(row);
+        Assert.strictEqual((0, aontu_1.exactJSON)((0, aontu_1.graphOf)(a1.unify(row.src, undefined, makeVarsCtx(a1)))), (0, aontu_1.exactJSON)(graph), `graph is not repeatable: ${row.name}`);
+    }
+    else if ('hcanon' === row.mode) {
+        Assert.strictEqual((0, aontu_1.hcanon)(a0.unify(row.src, undefined, ctx)), row.expect);
+        assertHcanonRoundTrips(row);
+    }
+    else if ('hash' === row.mode) {
+        Assert.strictEqual((0, aontu_1.canonHash)(a0.unify(row.src, undefined, ctx)), row.expect);
+    }
+    else if ('agentsmd' === row.mode) {
+        const golden = JSON.parse(row.expect);
+        const report = (0, aontu_1.agentsMd)(row.src, '' === row.data ? undefined : { name: row.data });
+        Assert.strictEqual(report.ok, golden.ok, `agentsmd ok: ${row.name}`);
+        Assert.strictEqual(report.stanza, golden.stanza ?? '', `agentsmd stanza: ${row.name}`);
+        Assert.deepStrictEqual(0 === report.findings.length
+            ? undefined : report.findings.map((f) => f.code), golden.codes, `agentsmd codes: ${row.name}`);
+    }
+    else if ('diff' === row.mode) {
+        const input = JSON.parse(row.data);
+        const golden = JSON.parse(row.expect);
+        const report = (0, aontu_1.diff)(row.src, input.right, null == input.at ? undefined : { at: input.at });
+        Assert.strictEqual((0, aontu_1.exactJSON)({
+            changes: report.changes,
+            same: report.same,
+            ...(0 === report.findings.length
+                ? {} : { codes: report.findings.map((f) => f.code) }),
+        }), (0, aontu_1.exactJSON)(golden), `diff report mismatch: ${row.name}`);
+        // A diff is SYMMETRIC in what it detects: swapping the sides
+        // reports the same number of changes at the same paths, with
+        // added and removed exchanged. Asserted for every row that
+        // stands up, which is cheap and catches a one-sided walk.
+        if (report.ok) {
+            const back = (0, aontu_1.diff)(input.right, row.src, null == input.at ? undefined : { at: input.at });
+            Assert.deepStrictEqual(back.changes.map((c) => c.path), report.changes.map((c) => c.path), `diff is not symmetric: ${row.name}`);
+            Assert.deepStrictEqual(back.changes.map((c) => 'added' === c.kind ? 'removed' : 'removed' === c.kind ? 'added'
+                : c.kind), report.changes.map((c) => c.kind), `diff kinds are not symmetric: ${row.name}`);
+        }
+    }
+    else if ('patch' === row.mode) {
+        const input = JSON.parse(row.data);
+        const golden = JSON.parse(row.expect);
+        const report = (0, aontu_1.patch)(row.src, input.overlay, input.set);
+        Assert.strictEqual((0, aontu_1.exactJSON)({
+            appended: report.appended,
+            overlay: report.overlay,
+            verdict: report.verdict,
+            ...(0 === report.findings.length
+                ? {} : { codes: report.findings.map((f) => f.code) }),
+        }), (0, aontu_1.exactJSON)(golden), `patch report mismatch: ${row.name}`);
+        // ORDER-INDEPENDENCE, the property the whole verb rests on: an
+        // overlay entry is just another conjunct, so evaluating the entry
+        // against the overlay is the same as evaluating the overlay
+        // against the entry. Asserted for every row that stands up.
+        if ('error' !== report.verdict) {
+            Assert.strictEqual((0, aontu_1.vet)(report.overlay, row.src).verdict, report.verdict, `patch is not order-independent: ${row.name}`);
+        }
+    }
+    else if ('why' === row.mode) {
+        const golden = JSON.parse(row.expect);
+        const report = (0, aontu_1.why)(row.src, row.data);
+        Assert.strictEqual(report.record?.value, golden.value, `why value mismatch: ${row.name}`);
+        Assert.strictEqual((0, aontu_1.exactJSON)(report.record?.conjuncts ?? null), (0, aontu_1.exactJSON)(golden.conjuncts ?? null), `why conjuncts mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.code, golden.code, `why code mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.note, golden.note, `why note mismatch: ${row.name}`);
+    }
+    else if ('query' === row.mode) {
+        // The golden carries the run's options under `opts`; `out` is the
+        // rendered slice, and `code`/`note` the finding when the answer is
+        // a refusal. `message` is excluded, as every other verb's goldens
+        // exclude it: prose is per-port, codes are not.
+        const golden = JSON.parse(row.expect);
+        const opts = golden.opts ?? {};
+        const report = (0, aontu_1.get)(row.src, row.data, opts);
+        Assert.strictEqual(report.out, golden.out ?? '', `query out mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.code, golden.code, `query code mismatch: ${row.name}`);
+        Assert.strictEqual(report.findings[0]?.note, golden.note, `query note mismatch: ${row.name}`);
+        assertViewSubsumes(row, report, opts);
     }
     else if ('errcode' === row.mode) {
         // Registry row: name IS the code, src is its class, expect the

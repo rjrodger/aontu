@@ -23,6 +23,10 @@ the [Explanation](explanation.md).
 - [Preference / default `*`](#preference--default-)
 - [Optional keys `?`](#optional-keys-)
 - [Spreads `&:`](#spreads-)
+- [Generating children: `pack` and `each`](#generating-children-pack-and-each)
+- [Selecting: `filter` and `match`](#selecting-filter-and-match)
+- [The placeholder `_`](#the-placeholder-_)
+- [The pipe `|>`](#the-pipe-)
 - [References and paths](#references-and-paths)
 - [Variables `$name`](#variables-name)
 - [The `+` operator and grouping](#the--operator-and-grouping)
@@ -33,6 +37,7 @@ the [Explanation](explanation.md).
 - [Operator precedence](#operator-precedence)
 - [Canonical form](#canonical-form)
 - [Generation](#generation)
+- [Subsumption](#subsumption)
 - [Errors](#errors)
 - [The constraint algebra (specified)](#the-constraint-algebra-specified)
 
@@ -497,6 +502,167 @@ Other forms:
 - **Lists:** `[&:{x:1}, {y:1}, {y:2}]` → `[{y:1,x:1},{y:2,x:1}]`;
   canon keeps the spread: `[&:{"x":1},{"y":1,"x":1},…]`.
 
+## Generating children: `pack` and `each`
+
+A spread constrains children that already exist. `pack` and `each`
+**make** them, from data that is already in the model — so the list of
+names and the children built from it cannot drift apart:
+
+```
+names: [web, auth, billing]
+
+deploy: close(pack($.names, {
+  image: "acme/" + key() + ":1.4.2"
+  replicas: *2 | integer
+  port: *8080 | integer
+}))
+
+deploy: billing: replicas: 4      # an override composes as usual
+```
+
+`pack(data, tmpl)` makes one **keyed child** per child of `data`. The
+keys are **data, never position**: for a list, the strings themselves
+(a non-string element is an error, `pack_key`); for a map, its keys.
+Each generated child is `tmpl` cloned at that destination, so `key()`
+and relative references inside the template answer for the child
+rather than for the call. Duplicate keys are not an error — the
+colliding children unify, exactly as duplicate source keys merge.
+
+`each(data, tmpl?)` makes one **list element** per child of `data`,
+each of them that child met with `tmpl`. The order is fixed: source
+order for a list, sorted-key order for a map. Written with one
+argument, `each(m)` is a map's children as a list.
+
+```
+ports: {http: 80, https: 443}
+open:  each($.ports, integer)      → {"open":[80,443]}
+names: each({b:2, a:1})            → {"names":[1,2]}
+```
+
+Once fired, generated children are **ordinary children**: a
+destination `&:` spread applies to them, `close()` seals the generated
+shape, references reach into them, and a template may itself contain a
+generator.
+
+Both **wait for the model to settle** before they fire, and fire
+exactly once. A generator's data can still be merged into by a sibling
+statement, an include or a spread after it first looks complete, and
+children generated from a half-merged bag would be missing. Until it
+fires, a generator canons as its own call — `pack({"a":1+true},…)` —
+which reparses to the same value.
+
+Neither can recurse. Both iterate a finite bag that already exists, so
+the number of children either can produce is fixed by the data:
+evaluation still terminates by construction.
+
+## Selecting: `filter` and `match`
+
+`filter(data, cond)` keeps the children of `data` that **already
+satisfy** `cond` — keys preserved for a map, order for a list — and
+drops the rest silently:
+
+```
+services: {web:{debug:true,port:80}, auth:{port:81}}
+debugged: filter($.services, {debug:true})   → {"web":{...}}
+sidecars: pack($.debugged, {image:"acme/debug:1.0"})
+```
+
+"Already satisfies" means the meet **changes nothing**: `cond` adds no
+information the child did not have. Mere unifiability would not do —
+a map is open, so `{port:81}` unifies with `{debug:true}` by *gaining*
+the key, and a filter that kept everything that could be made to match
+would keep everything. The condition is an ordinary value, so the
+constraint atoms compose with it: `filter($.deploy, {replicas:min(3)})`.
+
+`match(v, p1, r1, …, d?)` is a **bounded conditional**. The first
+pattern in argument order that `v` unifies with selects its result,
+which is the answer; a trailing argument — the one that makes the
+argument count even — is the default:
+
+```
+tier: large
+size: match($.tier, small, {cpu:1}, large, {cpu:8}, {cpu:2})
+  → {"size":{"cpu":8}}
+```
+
+Patterns are matched by unifiability, so kinds and atoms work as
+patterns (`match(x, integer, …, string, …)`, `match(n, min(0), …)`).
+There are no guards, no comparisons beyond the atoms, and no
+fallthrough. **No match and no default is an error** naming the
+patterns that were tried, not an empty answer — a default is how a
+document says the rest was meant to be allowed. An unselected result
+is never evaluated, so a broken arm nobody takes is not an error the
+document has to carry.
+
+Both wait for the model to settle before they answer, for the reason
+`pack` and `each` do: a bag that is still being merged into is the
+wrong bag to take a subset of, and a scrutinee that is still being
+narrowed can match an earlier arm than the one it will end up matching.
+
+## The placeholder `_`
+
+A bare `_` is a **hole**: a call holding one waits, and whatever the
+call is unified with fills it.
+
+```
+greeting: upper(_) & hello         → {"greeting":"HELLO"}
+x: {&: {m: _ + 2}}   x: a: m: 1    → {"x":{"a":{"m":3}}}
+```
+
+The peer goes **into** the call and is not also a constraint on the
+way out: `upper(_) & hello` is `"HELLO"`, not `"HELLO" & "hello"`.
+Two holes meeting is an error — neither has a value to fill the other.
+
+Inside a generator's template, `_` is the **source child** the
+generated one is being made from:
+
+```
+ports: {http: 80, https: 443}
+open:  pack($.ports, {port: _, name: key()})
+  → {"open":{"http":{"name":"http","port":80},
+             "https":{"name":"https","port":443}}}
+```
+
+For a `pack` over a list of names, `_` and `key()` are the same thing
+— the name is the key. Over a map they differ: `key()` is the key, `_`
+is the value. In a `filter` condition, `_` is the child being tested.
+
+A hole is not a function parameter: it cannot be named, passed, or
+partially applied, and there is no way to write one that is not
+already inside a call. Unfilled at generation it is an error, exactly
+as `top` is.
+
+**Compatibility.** A bare `_` used to be the string `"_"`. It is a
+hole now — a breaking change, pinned by `test/spec/place.tsv`. Quoted
+`"_"` is still that string, any longer bare word containing it (`_b`)
+is still ordinary text, and `_` as a **key** is still a key.
+
+## The pipe `|>`
+
+`x |> f(a)` **is** `f(x, a)`: the value on the left goes in as the
+first argument of the call on the right. The right-hand side may also
+be the bare name of a builtin, which is the short spelling:
+
+```
+name:  hello |> upper                 → {"name":"HELLO"}
+open:  $.names |> pack({replicas:2})  → one child per name
+sizes: $.ports |> each |> each        → pipes chain
+```
+
+It is **sugar and nothing else** — resolved while the source is read,
+so no value ever holds a pipe and canon never emits the token. Every
+canon row in `test/spec/pipe.tsv` shows a call.
+
+The pipe binds **loosest** of all the infix operators, so
+`a & b |> f` pipes the whole meet: a pipe reads as "and then", which
+is a statement about everything to its left.
+
+Piping into something that is not a call is an error, and so is piping
+into a **constraint atom that already has its arguments**: an atom with
+a complete argument list is a residual rather than a call waiting for a
+subject, and `1 |> neq(2,3)` is asking for `1 & neq(2,3)` — which is
+what `&` is for.
+
 ## References and paths
 
 A reference resolves to the value at another location, then unifies in
@@ -658,10 +824,11 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-Aontu provides a fixed set of eighteen built-in functions. There are
-no user-defined functions. Twelve are the general-purpose functions
-tabulated below; the other six — `min(x)`, `max(x)`, `above(x)`,
-`below(x)`, `neq(x,...)` and `re(p)` — are the constraint atoms, whose
+Aontu provides a fixed set of twenty-eight built-in functions. There
+are no user-defined functions. Nineteen are the general-purpose
+functions tabulated below; the other nine — `min(x)`, `max(x)`,
+`above(x)`, `below(x)`, `neq(x,...)`, `re(p)`, `length(c)`,
+`unique()` and `must(c,msg)` — are the constraint atoms, whose
 meaning is defined in
 [The constraint algebra](#the-constraint-algebra-specified).
 
@@ -679,6 +846,13 @@ meaning is defined in
 | `open(x)`   | reverse a `close`                             | `open(close({x:1})) & {y:2}`→`{x:1,y:2}` |
 | `move(p)`   | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
 | `path(p)`   | resolve a path expression (function form of a reference) | `path(x.a)` (relative), `path($.z.x.a)` (absolute) |
+| `id(name)`  | declare the enclosing value an **entity** called `name`; every node in the evaluation with that name is unified with every other. See [Identity](#identity-idname) | `services: auth: id(svc/auth) & {port:8080}` |
+| `refer(t?)` | constrain a string field to be an **entity address** that resolves; `t`, if given, is unified into the target. The field keeps the address. See [Entity references](#entity-references-refert) | `dependsOn: [&: refer($.std.Service), svc/auth]` |
+| `pack(d, t)` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each) | `deploy: pack($.names, {replicas:*2\|integer})` |
+| `each(d, t?)` | one list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map | `open: each($.ports, integer)` |
+| `filter(d, c)` | the children of `d` that ALREADY satisfy `c` — the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match) | `debugged: filter($.services, {debug:true})` |
+| `match(v, p, r, …, d?)` | the result of the first pattern `v` unifies with; a trailing argument is the default. No match and no default is an error naming the patterns tried | `size: match($.tier, small, {cpu:1}, {cpu:2})` |
+| `deprecate(x, m)` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
 
 `super(x)` lifts its **argument** one step up the lattice, so for a
 concrete scalar it yields that scalar's kind — and because `number`
@@ -718,6 +892,288 @@ Functions compose with operators and references:
 `upper(a)+b`→`"Ab"`, `lower(1.1)+2`→`3`, `x:foo y:upper($.x)`→`y:"FOO"`,
 `[lower(A),lower(B)]`→`["a","b"]`, and a function may be a preferred
 default: `*upper(foo)`→`"FOO"`.
+
+## Identity: `id(name)`
+
+A document is a tree, and its only names are tree paths. `id(name)`
+adds a second, **location-independent** name: it declares that the
+value it is written on IS the entity called `name`.
+
+```aon
+services: auth: id(svc/auth) & {
+  kind: service
+  port: 8080
+}
+```
+
+**Every node in one evaluation carrying the same id is unified with
+every other.** Declaring two nodes the same entity *means* unifying
+them, so the two descriptions meet and any contradiction between them
+is an ordinary located error:
+
+```aon
+# catalog.aon
+catalog: payments: id(svc/payments) & { owner: "team-pay", tier: 1 }
+
+# deploy.aon
+deploy: eu1: payments: id(svc/payments) & { replicas: 3, tier: 2 }
+```
+
+Without the ids these two files evaluate together in silence —
+unification is path-aligned, so `tier:1` and `tier:2` are never
+brought into contact and a consumer of `catalog.payments.tier` reads
+a "fact" the deploy layout contradicts. With them, the run fails at
+the two `tier` sites. Identity links that cannot fail are how
+`owl:sameAs` produced silent corruption at web scale; unification
+inverts that.
+
+**The tree stays a tree.** After merging, *every* declared position
+holds the merged value, and generation emits it at each path —
+duplication, exactly as references generate today. Nothing is aliased
+or shared, and the output shape is unchanged:
+
+```
+a: id(x) & {k:1}
+b: id(x) & {j:2}
+                    →  {"a":{"j":2,"k":1},"b":{"j":2,"k":1}}
+```
+
+A node with an `id()` is an independent entity; a node without one is
+a component of its nearest identified ancestor, addressable only
+relative to it.
+
+### Names
+
+A name is one or more letters, digits, `_`, `-` or `/`, and **no
+dots** — a dot separates an entity name from a path inside that entity,
+so a dotted name would be ambiguous. `/` parses as bare text and may be
+written unquoted; `-` is not a bare-text character, so a name
+containing one must be quoted:
+
+```
+id(svc/auth)     id(a_1)     id("team-pay")     id("svc.auth") → error
+```
+
+Anything that is not a string — a number, a boolean, a map — is not a
+name (`id_name`). Two *different* names on one node is a contradiction,
+not a merge: one node cannot be two entities (`id_conflict`).
+
+### Canon and the hash
+
+Canon renders the identity back as the conjunct you wrote, so canon
+reparses to the same entity and re-reading is idempotent:
+
+```
+a: id(x) & {k:1}   →  canon  {"a":id("x")&{"k":1}}
+```
+
+This deliberately differs from the `type`/`hide` marks, which canon
+drops: identity is semantic content, not presentation, and the
+[canon-hash](#canonical-form) must see it — two documents that
+disagree about which entity a node is do not mean the same thing.
+
+### What does not carry identity
+
+Three rules keep identity from leaking into values that merely look
+like an entity:
+
+1. **A reference's clone does not carry the id.** `b: $.a & {j:2}`
+   constrains `b`, and does not push `j:2` back into `a`.
+2. **`copy()` clears the id**, as it clears the marks — a copy of an
+   entity is a second value shaped like it.
+3. **A spread template may not stamp a constant id on every child.**
+   `{&: id(svc/thing), a:{}, b:{}}` would declare every child to be one
+   entity; it is refused (`id_spread`). To name each child, use a
+   path-dependent argument — in a map template applied at the child
+   position that is `key(0)`, the child's own key:
+
+   ```aon
+   services: {
+     &: id(key(0))
+     auth:    { port: 8080 }
+     billing: { port: 8081 }
+   }
+   ```
+
+   Plain `key()` reads one level *up*, so in a template it names the
+   bag and every child collides on that one name. That is a defined
+   result rather than a refusal: rule 3 is a syntactic guard on
+   constants, and no parse-time check can know what a computed name
+   will resolve to.
+
+Because every position holds the one merged value, a mark on one
+declaration reaches all of them: `a: hide(id(x) & {k:1})` hides the
+entity, not just that declaration of it.
+
+Identity is scoped to **one evaluated document-set**. There is no
+cross-evaluation registry, and ids do not embed versions.
+
+## Entity references: `refer(t?)`
+
+An [identity](#identity-idname) gives a node a name; `refer` is how one
+part of a document *points at* another by that name and has the
+language check it.
+
+```aon
+services: {
+  auth: id(svc/auth) & { kind: service, port: 8080 }
+  billing: id(svc/billing) & {
+    dependsOn: [&: refer({kind: service}), svc/auth]
+  }
+}
+```
+
+The list spread applies `refer` to every element, so `dependsOn`
+generates `["svc/auth"]` — a list of **names**, checked. Neither of the
+two things you could write before does that: a bare string checks
+nothing, and `dependsOn: [$.services.auth]` embeds a full copy of the
+auth node, because a reference resolves by cloning its target.
+
+`refer(t)` says three things about the string it constrains:
+
+1. It must be an **entity address**.
+2. The address must **resolve** in this evaluation.
+3. If `t` is given, `t` is unified **into** the target.
+
+### Addresses
+
+An address is an entity name, optionally followed by a dot-separated
+path *inside* that entity:
+
+```
+svc/auth              the entity
+svc/auth.ports.http   a node inside it
+```
+
+The two addressing schemes divide cleanly: `$.a.b` answers *where* — a
+tree location — and an address answers *what*. Beneath entity
+granularity the tree is authoritative again. The no-dots rule on ids is
+what makes the split unambiguous. Only a string can be an address, and
+a malformed one is refused at once (`refer_address`): no later pass can
+repair it.
+
+### Existence is decided, not deferred
+
+A `refer` **residuates**: a target may be declared by a later conjunct,
+include or spread, so the constraint retries each pass exactly as a
+forward reference does. But within one evaluation the document-set is
+fixed, so existence *is* decidable — an address that still names
+nothing at the last pass is a located error (`refer_unresolved`), not
+something to check later.
+
+### Constraints flow through links
+
+`refer(t)` does not merely *test* the target against `t`; it unifies
+`t` into it, and into every position of that entity:
+
+```
+a: id(x) & {p:1}
+c: id(x) & {q:2}
+b: refer({r:3}) & "x"
+                        →  a and c both {p:1, q:2, r:3}, b is "x"
+```
+
+Referring to something as a `Service` makes it one — and if it cannot
+be, the conflict is an ordinary located error. Check-only semantics
+would be non-monotone (true, then false as the target grows), and the
+lattice guarantee is that more information never falsifies what has
+already been observed.
+
+Constraints written *alongside* a refer constrain the **link**, not the
+target: `refer() & string & re("^svc/") & "svc/auth"` checks the
+address itself. They are held until the address arrives, and then meet
+it.
+
+### The `std/system` vocabulary
+
+Ports, components and relations need no syntax — they are schemas, and
+one set of them ships with the engine:
+
+```aon
+@"std/system"
+
+services: {
+  auth: id(svc/auth) & $.std.Service & {
+    ports: { http: { protocol: http } }
+  }
+  billing: id(svc/billing) & $.std.Service & {
+    dependsOn: [&: refer(), svc/auth]
+  }
+}
+relations: {
+  dependsOn: $.std.Relation & {
+    target: $.std.Service, inverse: dependedOnBy, acyclic: true
+  }
+}
+```
+
+| Schema | Says |
+|--------|------|
+| `$.std.Port` | one end of a connection: `direction` (default `in`) and an optional `protocol` |
+| `$.std.Component` | a node with `ports`, each of which is a `Port` |
+| `$.std.Service` | a Component whose `kind` is `service` |
+| `$.std.Relation` | a declared relation: what its `target` must satisfy, the `inverse` that mirrors it, and whether it is `acyclic` |
+
+`@"std/system"` is **bundled with the engine** — no filesystem, no
+package resolution — so it resolves under every include capability
+except `'none'`, which denies every include by definition. It is
+**experimental** until the vocabulary can be versioned by canon-hash.
+
+Two things about it are worth knowing, because they are the language
+rather than the vocabulary:
+
+- **A preferred member does not close a disjunction.** `direction:
+  *in | out | inout` supplies a default, and still admits any other
+  string. Closing the set costs the default (`in | out | inout` refuses
+  anything else, and generates nothing on its own). The vocabulary
+  chooses the default.
+- **`Service` is written out rather than as `$.std.Component & {kind:
+  service}`.** A reference from one member of an included file to
+  another does not survive the include, so each schema states itself;
+  `$.std.Component & $.std.Service` still meets exactly as you would
+  expect.
+
+Everything here is ordinary unification, so an author who wants a
+different vocabulary writes one the same way — and nothing in the
+language knows these names.
+
+### Declared relations
+
+`$.std.Relation` says what a relation IS, and two of its fields are
+checked over the whole finished model rather than by unification:
+
+```aon
+@"std/system"
+
+relations: {
+  dependsOn: $.std.Relation & { inverse: usedBy, acyclic: true }
+}
+
+a: id(a) & { dependsOn: [&: refer(), b] }
+b: id(b) & { usedBy:    [&: refer(), a] }
+```
+
+- **`acyclic: true`** — the edges under that relation must have no
+  cycle. The report names the entities the cycle runs through.
+- **`inverse: <name>`** — for each `a --dependsOn--> b`, `b` must carry
+  `a` under `<name>`. The report names the exact missing entry.
+
+`aontu relations <file>` runs them, and the library exposes
+`relationCheck(src)`. **Neither is a lattice constraint, deliberately.**
+Both properties are global and non-monotone: an acyclic graph becomes
+cyclic when one more edge unifies in, and an inverse that is present
+becomes absent when the far side is narrowed. The lattice guarantee is
+that more information never falsifies what has already been observed,
+so a constraint that could be true and then false is not one the
+lattice may hold. These are facts about a finished model, and a verb
+that reports facts about a finished model is where they belong.
+
+Relations are read from the `relations` key of the document root —
+the vocabulary's convention, not the engine's. Nothing in the language
+knows the name; the checking pass does.
+
+Writing the inverse **for** you is generation, not validation, and is
+not done here.
 
 ## Marks: `type` and `hide`
 
@@ -776,6 +1232,110 @@ the filesystem, then package resolution (see
 value and a local one is a normal unification
 error.
 
+### Modules
+
+An import whose path is **domain-shaped and carries a major version**
+is a MODULE import rather than a file path:
+
+```
+service: @"corp.example/schemas/service@1"
+frozen:  @"corp.example/schemas/service@1#aon1-4vJemVYtWFR2mQeN…"
+local:   @"./fragment.aon"        # unchanged — not a module
+```
+
+The routing is by shape alone: the first segment must contain a dot and
+the path must end in `@<integer>`. Anything else falls through the
+resolver chain exactly as before, so no existing include can be routed
+somewhere new.
+
+**Evaluation never touches the network.** A module resolves from local
+stores only — `aon_vendor/` beside the project's `mod.aon`, then a
+content-addressed user cache (`$XDG_CACHE_HOME/aontu/mod`, else
+`~/.cache/aontu/mod`) — and the cache is consulted only when the
+expected hash is known, because that hash is its key. A module in
+neither store is an error that names the step that fixes it:
+
+```
+module not fetched: corp.example/schemas/service@1 (run: aontu mod get)
+```
+
+**The module file and the lockfile are ordinary Aontu.** `mod.aon`
+declares the module's own path and entry file; the entry defaults to
+`main.aon`:
+
+```
+mod: { path: "corp.example/schemas/service", main: "service.aon" }
+```
+
+`mod-lock.aon` is machine-written in **canonical form** — one line,
+sorted keys, diffable, and (its leaves being scalars) valid JSON:
+
+```
+{"lock":{"corp.example/schemas/service@1":{"canon":"aon1-4vJe…","oci":"sha256:6b86…","v":"1.4.2"}}}
+```
+
+Each entry carries two pins with distinct roles: `oci` certifies *these
+are the bytes the registry served*; `canon` certifies *this is the
+meaning that was reviewed*. Only the second can be checked without the
+registry, and it is the one evaluation checks — by unifying the module
+**standalone** and comparing its [canon-hash](#canonical-form):
+
+```
+module integrity: corp.example/schemas/service@1 expected aon1-4vJe… got aon1-9kQz…
+```
+
+The pin survives comments, whitespace, formatting and refactoring; it
+breaks on any semantic change in the module's transitive closure. An
+inline `#aon1-…` fragment is the same check without a lockfile — the
+degenerate mode for single-file and agent-sandbox use.
+
+Under a **root** trust capability (`docs/trust.md`) the user cache is
+not consulted at all: a confined evaluation sees the project's own
+`aon_vendor/` and nothing else, which is what confinement means.
+
+**The lockfile is maintained by tooling, not by hand.** `mod.aon`
+declares what the project wants, under a `dep` map keyed by module
+path:
+
+```
+mod: { path: "corp.example/app", main: "main.aon" }
+dep: { "corp.example/schemas/service@1": { v: "1.4.2" } }
+```
+
+`aontu mod tidy` walks the closure — each module's own `mod.aon`
+contributes its declarations — and resolves it by **minimum version
+selection**: every module is taken at the highest of the minima anyone
+asked for, and never higher. Resolving upgrades nothing, so the answer
+is reproducible and adding one dependency cannot move another. It then
+recomputes each `canon` pin from the module in the store and rewrites
+`mod-lock.aon`; if any module is not in a store the lockfile is left
+alone, because a partial lock claims a closure that was never
+resolved.
+
+`aontu mod vendor` copies the locked closure into `aon_vendor/` as
+whole source trees, which is what makes a project evaluable with no
+cache and no network at all. It can only find what the lockfile pins —
+the cache is keyed by canon-hash — so `tidy` comes first.
+
+A module that publishes itself declares a version too, and the **major
+an import spells lives inside it**: `version: "1.4.2"` publishes as
+`@1`. `aontu mod manifest` prints the OCI artifact a publish would push
+— the config media type, the source tree that is the layer, and the
+annotations carrying path, version and canon-hash — and `--against` a
+prior version's tree runs the
+[breaking](reference-api.md#aontu-breaking) check between them. A
+change that is breaking under an unchanged major refuses; a major bump
+is where breaking is allowed, because a consumer of `@1` never sees
+`@2` unless it asks.
+
+That annotation is what makes "has the truth changed?" cheap: it is the
+same canon-hash the lockfile pins, so a consumer compares one string
+rather than downloading and parsing a module.
+
+All of this is local. Fetching and publishing are the network half of
+the design and are not in this build; see
+[API reference](reference-api.md#aontu-mod).
+
 ## Operator precedence
 
 From tightest to loosest binding (higher binding power binds first):
@@ -788,9 +1348,11 @@ From tightest to loosest binding (higher binding power binds first):
 | `-` / `+` (unary)   | prefix      | `-1 & integer` ≡ `(-1) & integer` |
 | `+` (add/concat)    | infix       |       |
 | `&` (conjunction)   | infix       | binds tighter than `\|` |
-| `\|` (disjunction)  | infix       | loosest |
+| `\|` (disjunction)  | infix       |       |
+| `\|>` (pipe)        | infix       | loosest; sugar, never in canon |
 
-So `c & b | a` ≡ `(c & b) | a`, and `*1 | number` ≡ `(*1) | number`.
+So `c & b | a` ≡ `(c & b) | a`, `*1 | number` ≡ `(*1) | number`, and
+`a & b |> f` ≡ `f(a & b)`.
 Parentheses override precedence and also serve as function-call syntax.
 
 ## Canonical form
@@ -876,7 +1438,104 @@ the plain family neither is numeric kind. Between the exact leaves it
 *is* significant, as the `1000` / `1000.0` pair shows, which is why the
 shared suite pins those cases byte for byte rather than structurally.
 
-## Errors
+## Subsumption
+
+`A ⊒ B` ("A subsumes B") holds when **every instance the specific
+value B admits, the general value A admits too**. It is the lattice's
+own order, asked as a first-class query: `subsume(general, specific)`
+in both engines ([G3](capability-review/g3-subsumption-evolution.md)),
+running after evaluation on finished trees, never mutating them. The
+verdict is three-valued plus `error` — `subsumes`, `does_not_subsume`
+(with the failing path and both sides' canons as the witness),
+`undecided` (always with a `sub_*` reason code, never silently), and
+`error` for a source that does not stand up on its own. Findings reuse
+the validation verb's report object with class `compat`; every code is
+registered in `test/spec/errcodes.tsv`, and the whole behaviour is
+pinned by `test/spec/subsume.tsv` in both engines.
+
+**Soundness before completeness.** Where a rule cannot decide, the
+answer folds toward `does_not_subsume` or `undecided`, never toward
+"compatible": a gate that wrongly reports "breaking" costs a second
+look, one that wrongly reports "compatible" ships the break.
+
+### Profiles
+
+| Profile | Compares |
+|---------|----------|
+| `values` | admitted value sets only |
+| `defaults` (the default) | value sets, plus every effective default the specific side declares must survive into the general side unchanged |
+| `gen` | `defaults`, plus the `type`/`hide` marks on corresponding nodes (they change the output shape) |
+
+An **effective default** is a preference's own value, or, in a
+disjunction holding several preferences, the value of the
+lowest-ranked one (generation picks the lowest rank: `a:**1|*2`
+generates `2`). Equal-rank preferences that disagree make the
+effective default indeterminate (`sub_default_indeterminate`,
+undecided). Adding a default where none existed is compatible;
+changing or removing one is `compat_default_changed` — previously
+generable documents materialise differently or become incomplete.
+
+### Rules, by value former
+
+| A (general) | B (specific) | A ⊒ B |
+|-------------|--------------|-------|
+| `top` | anything | yes |
+| preference `*x` | — | compares as what it admits (its superior type); its default value is the profiles' business, not the value set's |
+| unresolved residue (reference, variable, unreduced conjunct or function) on either side | — | `undecided` (`sub_unresolved`): there is no admitted set to compare |
+| anything | disjunction | every specific alternative must be admitted by A; a concrete failing alternative is a witness (`compat_narrowed`), a non-concrete one is `undecided` (`sub_disjunct_distribution`) |
+| disjunction | non-disjunction | some general alternative must admit B member-wise; failure with concrete B is a witness, otherwise `undecided` (`sub_disjunct_distribution`) — member-wise failure is not proof, the distribution case |
+| scalar kind | scalar kind or scalar | the general kind admits the specific kind (`number ⊒ integer`) or the scalar's kind; distinct leaves are disjoint |
+| scalar kind | constraint residual | the kind covers the residual's domain: `number` admits any numeric residual, a numeric leaf kind admits a residual pinned to that leaf, `string` admits any pattern residual |
+| constraint residual | constraint residual | per the constraint algebra's own [subsumption table](#subsumption-1); a `must` on the general side is `undecided` (`sub_evaluate_only`) |
+| constraint residual | scalar | membership, with `must` again `undecided`; `unique()` and `length` demands admit no scalar |
+| concrete scalar | concrete scalar | identity — a concrete value subsumes only itself (kind included) |
+| map | map | see below; anything else is `compat_narrowed` |
+| list | list | element-wise by position, with the same required/optional shape as maps |
+
+There is no nil rule: an error-free evaluated document carries no nil
+(failing disjunct members are discarded and every other nil collects
+an error), and a source that does not stand alone answers `error`
+before the walk begins.
+
+### Maps, lists, closedness, optionality, spreads
+
+- Every **required** key of the general side must be present and
+  required in the specific side, and subsume; a missing or
+  optional-ised key is `compat_required_added` (instances without it
+  are admitted by the specific side but refused by the general).
+- An **optional** key (`k?:`) of the general side compares only when
+  the specific side has it; the specific side making a general
+  optional key required merely narrows, which is compatible.
+- A **closed** general bag (`close(…)`) requires the specific side to
+  be closed and inside its declared key set; an open specific side, or
+  a surplus key, is `compat_narrowed`.
+- A **spread** template (`&:`) on the general side governs the
+  specific side's surplus keys and its template (a missing specific
+  template compares as `top`, so a general-only template does not
+  subsume an open specific bag). A specific-only template narrows the
+  specific side and refuses nothing. A **path-dependent** template
+  (one whose meaning depends on where it lands — `key()`, a
+  reference) cannot be compared structurally:
+  `sub_path_dependent_spread`, undecided.
+- Under the `gen` profile, `type`/`hide` marks must agree on
+  corresponding nodes (`compat_marks_changed`).
+
+The `at` option anchors both documents at one path before comparing
+(the validation verb's `--at`); a path missing from either side is an
+`error` verdict.
+
+### Default validity
+
+The relation also powers a lint the engine itself cannot express: a
+disjunction's effective default must be an instance of some remaining
+alternative. `level: *wran | info | warn | debug` unifies cleanly and
+GENERATES `{"level":"wran"}` — the schema ships a default its own
+disjunct refuses. The validation verb reports it as a
+`pref_not_instance` finding at severity `warning` (class `compat`).
+A warning, not an error, deliberately: existing documents may lean on
+today's generation behaviour, so promoting the warning to an error is
+itself a breaking change — sequenced through the `breaking` gate like
+any other, not taken silently.
 
 Failures surface as messages (thrown as `AontuError` in TS, returned as
 `error` in Go):
@@ -1048,11 +1707,14 @@ guessed where it is not:
 
 ### Subsumption
 
-*Not yet implemented — this is the specification the
-[G3](capability-review/g3-subsumption-evolution.md) `subsume` query will
-build on. It completes phase 0's three tables (meet, emptiness,
-subsumption); the meet and emptiness rules above are live in both
-engines.*
+*Live in both engines: the
+[G3](capability-review/g3-subsumption-evolution.md) `subsume` query
+implements this table (its per-former rules are in
+[Subsumption](#subsumption) above). It completes phase 0's three
+tables (meet, emptiness, subsumption). One mapping to note: the
+query answers the `must` row's "never" as `undecided` with reason
+`sub_evaluate_only` — the admitted set is opaque, which is honest
+indecision rather than a decided refusal.*
 
 `A ⊒ B` ("A subsumes B", B is an instance of A) holds when **every
 value B admits, A admits too**. It is the lattice's own order, and for

@@ -1,3 +1,4 @@
+import type { Val } from './type';
 export type VetVerdict = 'valid' | 'invalid' | 'incomplete' | 'error';
 export type VetRole = 'data' | 'schema';
 export type VetSite = {
@@ -34,4 +35,5 @@ export type VetOptions = {
     dataPath?: string;
 };
 export declare const VET_MAX_ERRORS = 20;
+export declare function anchorAt(root: any, at: string): Val | undefined;
 export declare function vet(schemaSrc: string, dataSrc: string, opts?: VetOptions): VetReport;

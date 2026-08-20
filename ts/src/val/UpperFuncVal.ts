@@ -13,7 +13,6 @@ import {
 import { makeNilErr } from '../err'
 
 
-import { NilVal } from '../val/NilVal'
 import { ScalarKindVal } from '../val/ScalarKindVal'
 import { makeScalarLike } from '../val/valutil'
 import { Decimal } from '../val/Decimal'

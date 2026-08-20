@@ -75,7 +75,9 @@ func (m *MapVal) Canon() string {
 			b.WriteByte('?')
 		}
 		b.WriteByte(':')
-		b.WriteString(m.peg[k].Canon())
+		// canonRiders, not Canon: a deprecated field renders back
+		// as its `deprecate(x, m)` call, reparseably (G3).
+		b.WriteString(canonRiders(m.peg[k]))
 	}
 	b.WriteByte('}')
 	return b.String()
@@ -133,7 +135,8 @@ func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 // across passes.
 func hasPathFunc(v Val) bool {
 	switch v.(type) {
-	case *MapVal, *ListVal, *FuncVal, *ConjunctVal, *DisjunctVal, *PrefVal:
+	case *MapVal, *ListVal, *FuncVal, *ConjunctVal, *DisjunctVal, *PrefVal,
+		*PlusOpVal:
 		if pc, ok := v.(pdepVal); ok {
 			switch pc.getPdep() {
 			case 1:
@@ -176,6 +179,27 @@ func computePathFunc(v Val) bool {
 		if n.spread != nil && hasPathFunc(n.spread) {
 			return true
 		}
+	case *ConstraintVal:
+		// A residual's unresolved arguments live in pending (an atom
+		// endpoint still waiting on a reference), its predicates in
+		// musts, and the sizing residual in count. TS reaches the same
+		// values through the generic peg walk (ConstraintVal keeps its
+		// arguments as peg).
+		if nil != n.pending {
+			for _, a := range n.pending.args {
+				if hasPathFunc(a) {
+					return true
+				}
+			}
+		}
+		for _, m := range n.musts {
+			if hasPathFunc(m.v) {
+				return true
+			}
+		}
+		if nil != n.count && hasPathFunc(n.count) {
+			return true
+		}
 	case *ListVal:
 		for _, e := range n.peg {
 			if hasPathFunc(e) {
@@ -184,6 +208,20 @@ func computePathFunc(v Val) bool {
 		}
 		if n.spread != nil && hasPathFunc(n.spread) {
 			return true
+		}
+	case *PlusOpVal:
+		// The TS getter walks any ARRAY peg, and an operator's operands
+		// are one -- so `"acme/" + key()` is path-dependent there, and a
+		// template holding it is CLONED per destination rather than
+		// shared. This arm was missing, so the Go port shared such a
+		// template and every destination got the FIRST one's key. Found
+		// by G8 phase 1: a generator's template is the one place a
+		// wrongly shared op is visible in the output rather than merely
+		// in a canon.
+		for _, t := range n.peg {
+			if hasPathFunc(t) {
+				return true
+			}
 		}
 	case *ConjunctVal:
 		for _, t := range n.peg {
@@ -225,6 +263,11 @@ func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	if isTop(s) {
 		return s
 	}
+	// The one place a spread is APPLIED, so the one place that knows a
+	// contribution came from a template rather than from the key
+	// itself (G7 phase 4). Only when someone is recording: the walk is
+	// O(template) per key per pass, which is real money on a large
+	// model and buys nothing when no one is recording.
 	// The share-when-path-independent tier exists only on bags (TS
 	// overrides spreadClone on MapVal/ListVal alone); every other
 	// constraint kind — prefs, funcs, refs, junctions — clones per
@@ -233,10 +276,27 @@ func spreadCloneFor(s Val, path []string, ctx *Ctx) Val {
 	switch s.(type) {
 	case *MapVal, *ListVal:
 		if !hasPathFunc(s) {
+			markSpread(s, ctx)
 			return s
 		}
 	}
-	return clonePath(s, path)
+	out := clonePath(s, path)
+	markSpread(out, ctx)
+	return out
+}
+
+// markSpread marks a spread clone and everything inside it, so a
+// contribution several levels down a template is still known to have
+// come from the template. Instrumented runs only (see spreadCloneFor).
+// Mirrors markSpread in ts/src/provenance.ts.
+func markSpread(v Val, ctx *Ctx) {
+	if nil == ctx.prov || nil == v || v.fromSpread() {
+		return
+	}
+	v.setFromSpread()
+	for _, k := range whyKids(v) {
+		markSpread(k, ctx)
+	}
 }
 
 func (m *MapVal) Gen(ctx *Ctx) (any, error) {
@@ -490,6 +550,21 @@ func (m *MapVal) Unify(peer Val, ctx *Ctx) Val {
 	if out.spread != nil {
 		spreadCj = out.spread
 	}
+
+	// The template REFUSED at parse (clearing rule 3, G4 phase 1): the
+	// bag itself is that refusal. Returning the nil here rather than
+	// only letting it reach the children is what makes an EMPTY bag
+	// with a bad template an error too — there are no children to carry
+	// it. Narrow to THIS code on purpose: a nil spread from any other
+	// cause keeps its existing behaviour of driving every key. Mirrors
+	// the same arm in ts/src/val/MapVal.ts and ts/src/val/ListVal.ts.
+	// NOT added to ctx.err here: a parse-time refusal is a nil IN THE
+	// TREE, and canon renders it (`{"a":nil}`) exactly as it renders a
+	// bad arity or an unknown function; generation is what reports it.
+	if nv, ok := spreadCj.(*NilVal); ok && "id_spread" == nv.why {
+		return nv
+	}
+
 	// Snapshot a path-dependent ref spread to its structural target once
 	// (see snapshotRefSpread), so later passes don't capture the
 	// source's own resolved key()/path() literals.

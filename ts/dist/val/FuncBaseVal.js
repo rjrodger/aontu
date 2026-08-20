@@ -2,6 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FuncBaseVal = void 0;
+exports.trialUnify = trialUnify;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
@@ -9,11 +10,46 @@ const err_1 = require("../err");
 const top_1 = require("./top");
 const ConjunctVal_1 = require("../val/ConjunctVal");
 const FeatureVal_1 = require("../val/FeatureVal");
+const PlaceVal_1 = require("../val/PlaceVal");
+// A TRIAL meet: does `a` unify with `b`, and if so as what? Failure is
+// an ANSWER here rather than an error, which is exactly what
+// DisjunctVal already needs when it tries each member against a peer —
+// so this is that mechanism (`ctx._trialMode`, which makes makeNilErr
+// return the shared TRIAL_NIL instead of allocating and recording),
+// lent to the combinators that select by unifiability.
+//
+// The error list and the trial flag are saved and restored in a
+// `finally`: a trial that throws must not leave the surrounding
+// evaluation collapsing every later error into the sentinel.
+function trialUnify(ctx, a, b) {
+    const savedErr = ctx.err;
+    const savedTrial = ctx._trialMode;
+    const trialErr = [];
+    ctx.err = trialErr;
+    ctx._trialMode = true;
+    let out;
+    try {
+        out = (0, unify_1.unite)(ctx, a, b, 'trial');
+    }
+    finally {
+        ctx.err = savedErr;
+        ctx._trialMode = savedTrial;
+    }
+    return 0 < trialErr.length || out.isNil ? undefined : out;
+}
 class FuncBaseVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
         this.isFunc = true;
         this.isGenable = true;
+        // THE STAGING RULE (G8 phase 0, see AontuContext.settle). A func
+        // whose answer depends on WHERE IT IS -- `key()`, whose answer is a
+        // segment of its own path, and the generation combinators, whose
+        // data argument can still be merged into by a sibling -- sets this
+        // and residuates until the model stops moving. Everything else
+        // resolves as soon as its arguments are done, which is the rule that
+        // has always been here.
+        this.staged = false;
         // console.log('FBV', this.id, this.constructor.name, this.peg?.[0]?.canon)
     }
     validateArgs(args, min) {
@@ -26,7 +62,68 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
     make(ctx, _spec) {
         return (0, err_1.makeNilErr)(ctx, 'func:' + this.funcname(), this, undefined, 'make');
     }
+    // Drive the first `count` arguments IN PLACE, every pass — not only
+    // on the settle pass. A staged func waits for the model to settle,
+    // and its own arguments are part of that model: leaving them
+    // standing until settle would guarantee the model was still moving
+    // when settle arrived. Answers whether they are all done, which is
+    // the other half of "ready to fire".
+    driveStagedArgs(ctx, count) {
+        const TOP = (0, top_1.top)();
+        let alldone = true;
+        for (let i = 0; i < count && i < this.peg.length; i++) {
+            const arg = this.peg[i];
+            if (!arg.done) {
+                // Charged to the depth budget, as FuncBaseVal's own arg loop is:
+                // this recurses without going through `unite`.
+                this.peg[i] = (0, unify_1.withDepth)(ctx, arg, TOP, () => arg.unify(TOP, ctx));
+            }
+            alldone = alldone && true === this.peg[i].done;
+        }
+        return alldone;
+    }
+    // The shape a staged func holds while it waits: not done, so the pass
+    // loop keeps going; unchanged against TOP, so nothing reads an answer
+    // it has not given; and collapsed against an identical twin at the
+    // same position, so `key() & key()` does not grow a conjunct per pass.
+    residuate(peer, ctx) {
+        this.notdone();
+        if (peer.isTop || (peer.id === this.id)) {
+            // Cloned rather than returned: a driver that met the same object
+            // twice in one pass would charge the revisit budget and report
+            // `unify_cycle`.
+            return this.clone(ctx);
+        }
+        if (peer.isNil) {
+            return peer;
+        }
+        if (peer.isFunc
+            && peer.funcname() === this.funcname()
+            && peer.path.join('.') === this.path.join('.')
+            && peer.canon === this.canon) {
+            return this;
+        }
+        return new ConjunctVal_1.ConjunctVal({ peg: [this, peer] }, ctx);
+    }
     unify(peer, ctx) {
+        if (this.staged && !ctx.settle) {
+            return this.residuate(peer, ctx);
+        }
+        // THE PLACEHOLDER (G8 phase 3, see PlaceVal). A call holding a hole
+        // waits for a peer, and the peer is what fills it: the call is
+        // rebuilt with the hole replaced and resolved on the spot, so
+        // `upper(_) & hello` is `"HELLO"` and not `"HELLO" & "hello"` --
+        // the peer went INTO the call, it is not also a constraint on the
+        // way out.
+        if (!peer.isTop && !peer.isNil && this.id !== peer.id && (0, PlaceVal_1.hasPlace)(this)) {
+            // TWO HOLES AND NOTHING TO FILL THEM. `upper(_) & lower(_)` has
+            // no value on either side, and picking one call to be the other's
+            // filling would be inventing an order the language does not have.
+            if ((0, PlaceVal_1.hasPlace)(peer)) {
+                return (0, err_1.makeNilErr)(ctx, 'place_pair', this, peer);
+            }
+            return (0, PlaceVal_1.fillPlace)(this, peer, ctx).unify((0, top_1.top)(), ctx);
+        }
         const TOP = (0, top_1.top)();
         const te = ctx.explain && (0, utility_1.explainOpen)(ctx, ctx.explain, 'Func:' + this.funcname(), this, peer);
         // const sc = this.id + '=' + this.canon
@@ -74,7 +171,12 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
                 if (pegdone) {
                     const resolved = this.resolve(ctx, newpeg);
                     // console.log('FUNC-RESOLVED', ctx.cc, resolved?.canon)
-                    out = resolved.done && peer.isTop ? resolved :
+                    // The TOP peer is DROPPED as the unit it is — unless it
+                    // carries an identity (G4 phase 1), which is content rather
+                    // than the unit: `id(x) & id(y)` resolves both sides to a
+                    // top, and taking this shortcut would silently keep one
+                    // name and lose the other instead of refusing the pair.
+                    out = resolved.done && peer.isTop && null == peer.entity ? resolved :
                         (0, unify_1.unite)(te ? ctx.clone({ explain: (0, utility_1.ec)(te, 'PEG') }) : ctx, resolved, peer, 'func-' + this.funcname() + '/' + this.id);
                     (0, utility_1.propagateMarks)(this, out);
                     // TODO: make should handle this using ctx?

@@ -396,7 +396,7 @@ describe('func', function() {
 
   test('pref-canon', () => {
     // Test canonical representation shows preference wrapping
-    const N = (x: string, ctx?: any) => new Unify(x, lang)
+    const N = (x: string) => new Unify(x, lang)
       .res.canon
 
     expect(N('pref(1)')).equal('*1')
@@ -421,7 +421,7 @@ describe('func', function() {
   })
 
   test('pref-double-wrap', () => {
-    const N = (x: string, ctx?: any) => new Unify(x, lang)
+    const N = (x: string) => new Unify(x, lang)
       .res.canon
 
     // Test double-wrapping behavior in canon

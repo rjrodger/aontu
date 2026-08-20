@@ -255,7 +255,7 @@ let P = lang.parse.bind(lang);
         (0, expect_1.expect)(P(s6).canon).equal('{"a":{&:{"b":{&:{"c":1}}}},"z":2}');
     });
     (0, node_test_1.it)('source', () => {
-        let v0 = P(`
+        P(`
   a: {
   b: {
     c: 1

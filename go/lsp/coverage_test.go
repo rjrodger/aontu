@@ -71,7 +71,7 @@ func TestDiagnosticsPositionless(t *testing.T) {
 
 // Hover on an unparseable document is nil (Spans declines).
 func TestHoverParseError(t *testing.T) {
-	if Hover("a:number > 0", 0, 0) != nil {
+	if Hover("a:number > 0", 0, 0, false) != nil {
 		t.Fatalf("hover on an unparseable document must be nil")
 	}
 }

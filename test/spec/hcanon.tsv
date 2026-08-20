@@ -1,0 +1,82 @@
+# G6 phases 0-1: the HASH FORM and the canon-hash
+# (docs/capability-review/g6-distribution.md). Columns:
+# name<TAB>mode<TAB>src<TAB>expect, in three modes.
+#
+# hcanon -- hcanon(unify(src)): exactly the unify-level canon with the
+# two additions that close its semantic gaps, a closed map or list
+# wrapped as close({...}) / close([...]) and the type/hide marks
+# rendered as type(x) / hide(x). Both reuse parseable syntax, so the
+# hash form is valid Aontu source; every hcanon row additionally
+# asserts the ROUND-TRIP property that makes the hash meaningful,
+# hcanon(unify(parse(hcanon(v)))) == hcanon(v), in both runners.
+#
+# canon -- the same sources under the USER-FACING canon, which G6 does
+# not change. These rows sit beside their hcanon twins so the
+# difference is the readable pin: canon drops closedness and marks,
+# the hash form keeps them.
+#
+# hash -- canonHash(unify(src)), the full "aon1-" + base64url(SHA-256(
+# UTF-8(hcanon(v)))) pin, asserted byte-for-byte in both ports.
+#
+# The marks propagate to every descendant at unification, so a wrapper
+# is emitted only where a mark STARTS (hcanon-hide-leaf-only,
+# hcanon-all-wrappers-one-value). Every expectation was obtained by
+# the parity probe (AGENTS.md): both engines were run over this corpus
+# and diffed byte-for-byte, hashes included, before any row was
+# written.
+
+hcanon-plain	hcanon	a:1	{"a":1}
+hcanon-close-marks-mixed	hcanon	a:hide(close({x:1,y:[1,2]})) b:type(integer) c:*1|2 d:{e?:close([3])}	{"a":hide(close({"x":1,"y":[1,2]})),"b":type(integer),"c":*1|2,"d":{"e"?:close([3])}}
+hcanon-type-map-spread-deprecate	hcanon	t:type({k:integer}) u:{&:type(string)} w:deprecate(close({z:1}))	{"t":type({"k":integer}),"u":{&:type(string)},"w":deprecate(close({"z":1}))}
+hcanon-close-in-disjunct	hcanon	m: close({x:1}) | 2	{"m":close({"x":1})|2}
+hcanon-escape-heavy-string	hcanon	s:"a\\"b\\\\c\\nd\\teé"	{"s":"a\\"b\\\\c\\nd\\teé"}
+hcanon-float-magnitudes	hcanon	n:179769313486231570000.5 m2:-0.000001	{"m2":-0.000001,"n":179769313486231570000.0}
+hcanon-spread-implied	hcanon	q:{&:{r:1}, s:{}}	{"q":{&:{"r":1},"s":{"r":1}}}
+hcanon-optional-key	hcanon	o:{p?:1}	{"o":{"p"?:1}}
+hcanon-pref-disjunct	hcanon	p: *8080|integer	{"p":*8080|integer}
+hcanon-close-at-depth	hcanon	z: close({a:close({b:close([1,{c:2}])})})	{"z":close({"a":close({"b":close([1,{"c":2}])})})}
+hcanon-ref-resolved	hcanon	a:1 b:$.a	{"a":1,"b":1}
+hcanon-deprecate-record	hcanon	d: deprecate(1,{msg:"use e"})	{"d":deprecate(1,{"msg":"use e"})}
+hcanon-deprecate-record-multi	hcanon	d2: deprecate(close({k:1}),{msg:"gone",since:"1.2.3",use:"$.e"})	{"d2":deprecate(close({"k":1}),{"msg":"gone","since":"1.2.3","use":"$.e"})}
+hcanon-hide-scalar	hcanon	h: hide("s")	{"h":hide("s")}
+hcanon-close-under-type-list	hcanon	g: type({k:[close({K:1})]})	{"g":type({"k":[close({"K":1})]})}
+hcanon-map-disjunct	hcanon	j: {a:1}|{b:2}|{c:3}	{"j":{"a":1}|{"b":2}|{"c":3}}
+hcanon-all-wrappers-one-value	hcanon	w: hide(type(close({v:1})))	{"w":hide(type(close({"v":1})))}
+hcanon-close-empty-map	hcanon	e: close({})	{"e":close({})}
+hcanon-close-empty-list	hcanon	f: close([])	{"f":close([])}
+hcanon-exact-integer	hcanon	x: 0d9007199254740993	{"x":0d9007199254740993}
+hcanon-constraint-conjunct	hcanon	c: min(3)&integer	{"c":integer&min(3)}
+hcanon-list-spread	hcanon	l: [&:integer,1,2]	{"l":[&:integer,1,2]}
+hcanon-scalar-literals	hcanon	b1: true b2: false b3: null	{"b1":true,"b2":false,"b3":null}
+hcanon-key-code-point-order	hcanon	k1: {"é":1, "z":2, "A":3, "𝄞":4}	{"k1":{"A":3,"z":2,"é":1,"𝄞":4}}
+hcanon-close-meets-open	hcanon	y: close({a:1}) & {a:integer}	{"y":close({"a":1})}
+hcanon-conjunct-of-disjuncts	hcanon	u2: (1|2)&(2|3)	{"u2":2}
+hcanon-scalar-kind	hcanon	s2: string	{"s2":string}
+hcanon-exact-small-magnitude	hcanon	n2: -0d1.5e-30	{"n2":-0d0.0000000000000000000000000000015}
+hcanon-optional-at-depth	hcanon	o3: {a?:close({b?:[1]})}	{"o3":{"a"?:close({"b"?:[1]})}}
+hcanon-type-over-pref	hcanon	t2: type(*1|2)	{"t2":type(*1|2)}
+hcanon-hide-leaf-only	hcanon	h2: {a:hide(1), b:2}	{"h2":{"a":hide(1),"b":2}}
+hcanon-spread-close-instance	hcanon	w3: {&:close({x:integer}), k:{x:1}}	{"w3":{&:close({"x":integer}),"k":close({"x":1})}}
+hcanon-exact-big-magnitude	hcanon	big: 0d123456789012345678901234567890	{"big":0d123456789012345678901234567890}
+hcanon-ref-into-nested-map	hcanon	r: {a:{b:1}, c:$.r.a.b}	{"r":{"a":{"b":1},"c":1}}
+hcanon-disjunct-of-closes	hcanon	x2: close({a:1})|close({b:2})|3	{"x2":close({"a":1})|close({"b":2})|3}
+hcanon-disjunct-distributes	hcanon	x3: ({a:1}|{b:2})&{c:3}	{"x3":{"a":1,"c":3}|{"b":2,"c":3}}
+hcanon-hide-outermost-only	hcanon	x4: hide({a:{b:close({c:1})}})	{"x4":hide({"a":{"b":close({"c":1})}})}
+hcanon-spread-hide-instance	hcanon	x5: {&:hide(integer), k:1}	{"x5":{&:hide(integer),"k":1}}
+
+canon-close-marks-mixed	canon	a:hide(close({x:1,y:[1,2]})) b:type(integer) c:*1|2 d:{e?:close([3])}	{"a":{"x":1,"y":[1,2]},"b":integer,"c":*1|2,"d":{"e"?:[3]}}
+canon-close-at-depth	canon	z: close({a:close({b:close([1,{c:2}])})})	{"z":{"a":{"b":[1,{"c":2}]}}}
+canon-all-wrappers-one-value	canon	w: hide(type(close({v:1})))	{"w":{"v":1}}
+canon-hide-leaf-only	canon	h2: {a:hide(1), b:2}	{"h2":{"a":1,"b":2}}
+canon-spread-close-instance	canon	w3: {&:close({x:integer}), k:{x:1}}	{"w3":{&:close({"x":integer}),"k":{"x":1}}}
+canon-disjunct-of-closes	canon	x2: close({a:1})|close({b:2})|3	{"x2":{"a":1}|{"b":2}|3}
+
+hash-plain	hash	a:1	aon1-AVq9f1zFei3ZS3WQ8ErYCEJzkF7jPsXOvq5iJ2qX-GI
+hash-close-marks-mixed	hash	a:hide(close({x:1,y:[1,2]})) b:type(integer) c:*1|2 d:{e?:close([3])}	aon1-Oxxyn41hbUdarNvUlt8zi8YQjuly6_x96tZMi7zbe0k
+hash-escape-heavy-string	hash	s:"a\\"b\\\\c\\nd\\teé"	aon1-N0sa8wfXKfEb2RB5MvDr5da6PC_BgUBJMAoTRxxQ1fc
+hash-close-at-depth	hash	z: close({a:close({b:close([1,{c:2}])})})	aon1-N8cZt-WPnVQp5SIbrkD05jzObJKJE-SYjh1kXCfCZW4
+hash-exact-integer	hash	x: 0d9007199254740993	aon1-V9euIepaN_Boj0wTAaCUhqI9kMCvXVsnBI-OPAGRtFg
+hash-scalar-literals	hash	b1: true b2: false b3: null	aon1-0wZFCmFTJ5f1gFAGr0k5M0ZgqTQOPidB4SpgkFSJr5E
+hash-key-code-point-order	hash	k1: {"é":1, "z":2, "A":3, "𝄞":4}	aon1-pbCUPrT2LydjBG5RrpO569NTzLeUYxihDjCt5ttAllE
+hash-disjunct-of-closes	hash	x2: close({a:1})|close({b:2})|3	aon1-hfQQvOevqdorffmuuVBhE10DCtRnOsJAi4xckhr4z0U
+hash-deprecate-record-multi	hash	d2: deprecate(close({k:1}),{msg:"gone",since:"1.2.3",use:"$.e"})	aon1-GHXZeHa_UKDFpMt0iONUR-oQdmlvq3UD31nI7zR7iPQ

@@ -1,0 +1,91 @@
+name: 'Aontu Vet'
+description: >-
+  Validate data documents against an Aontu schema (aontu vet): fails the
+  job by verdict class and can emit a SARIF report for code scanning.
+author: 'rjrodger'
+
+branding:
+  icon: 'check-circle'
+  color: 'green'
+
+inputs:
+  schema:
+    description: 'Path of the schema document.'
+    required: true
+  data:
+    description: >-
+      Paths of the data documents to vet, whitespace-separated. Each is
+      vetted on its own against the schema; the worst verdict wins.
+    required: true
+  format:
+    description: 'Report format: text (default), json or sarif.'
+    required: false
+    default: 'text'
+  output-file:
+    description: >-
+      Write the report here instead of the job log (for example a
+      .sarif file to hand to github/codeql-action/upload-sarif).
+    required: false
+    default: ''
+  args:
+    description: >-
+      Extra aontu vet arguments (for example "--at $.services --closed
+      --partial"), whitespace-separated.
+    required: false
+    default: ''
+  version:
+    description: >-
+      aontu npm package version to run. The default is pinned to the
+      CLI release this Action revision shipped with (kept in step by
+      the repo's version bump), so a workflow pinning the Action by ref
+      cannot silently acquire a newer CLI.
+    required: false
+    default: '0.52.1'
+
+outputs:
+  exit-code:
+    description: >-
+      The verdict class aontu vet exited with: 0 valid, 1 invalid,
+      2 usage, 3 incomplete, 4 schema error.
+    value: ${{ steps.vet.outputs.exit-code }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: vet
+      shell: bash
+      # Inputs reach the script ONLY through the environment, never by
+      # interpolating ${{ }} into the script text: GitHub substitutes
+      # expressions before Bash parses, so an event-controlled value
+      # embedded in the script (a quote-breaking path, shell operators
+      # in args) would execute on the runner. Environment values are
+      # data; the word-splitting below is explicit and quote-free by
+      # declaration (data and args are documented whitespace-separated
+      # lists).
+      env:
+        AONTU_SCHEMA: ${{ inputs.schema }}
+        AONTU_DATA: ${{ inputs.data }}
+        AONTU_FORMAT: ${{ inputs.format }}
+        AONTU_OUTPUT: ${{ inputs.output-file }}
+        AONTU_ARGS: ${{ inputs.args }}
+        AONTU_VERSION: ${{ inputs.version }}
+      # The verdict classes are the contract (docs/reference-api.md):
+      # the job fails on any non-zero class, and the class itself is
+      # surfaced as an output so a workflow can branch on "invalid"
+      # differently from "incomplete".
+      run: |
+        set -o pipefail
+        read -r -a extra_args <<< "$AONTU_ARGS"
+        read -r -a data_files <<< "$AONTU_DATA"
+        code=0
+        if [ -n "$AONTU_OUTPUT" ]; then
+          npx --yes "aontu@$AONTU_VERSION" vet --format "$AONTU_FORMAT" \
+            "${extra_args[@]}" "$AONTU_SCHEMA" "${data_files[@]}" \
+            > "$AONTU_OUTPUT" || code=$?
+        else
+          npx --yes "aontu@$AONTU_VERSION" vet --format "$AONTU_FORMAT" \
+            "${extra_args[@]}" "$AONTU_SCHEMA" "${data_files[@]}" \
+            || code=$?
+        fi
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        exit $code

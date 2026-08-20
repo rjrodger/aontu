@@ -1,0 +1,17 @@
+# GENERATED CHILDREN MEET THE TEMPLATE MACHINERY (G8 phase 1). Once
+# fired, a generated child is an ORDINARY child: the destination map's
+# `&:` spread applies to it, whichever was written first; a generator
+# may itself stand as a spread template; and a template may hold a
+# spread of its own. Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# This file exists for the reason the spread-*.tsv corpus does: this
+# machinery is where behaviour hides.
+spread-over-generated	gens	n:[a,b]\nd:pack($.n,{x:1})\nd:&:{y:2}\n	{"d":{"a":{"x":1,"y":2},"b":{"x":1,"y":2}},"n":["a","b"]}
+spread-over-generated-canon	canon	n:[a,b]\nd:pack($.n,{x:1})\nd:&:{y:2}\n	{"d":{&:{"y":2},"a":{"x":1,"y":2},"b":{"x":1,"y":2}},"n":["a","b"]}
+spread-written-first	gens	n:[a,b]\nd:&:{y:2}\nd:pack($.n,{x:1})\n	{"d":{"a":{"x":1,"y":2},"b":{"x":1,"y":2}},"n":["a","b"]}
+spread-kind-over-generated	gens	n:[a,b]\nd:pack($.n,{x:1})\nd:&:{x:integer}\n	{"d":{"a":{"x":1},"b":{"x":1}},"n":["a","b"]}
+spread-kind-conflict	errc	n:[a,b]\nd:pack($.n,{x:1})\nd:&:{x:string}\n	no_scalar_unify
+spread-on-destination-map	gens	n:[a,b]\nm:{&:{z:9}}\nm:pack($.n,{x:1})\n	{"m":{"a":{"x":1,"z":9},"b":{"x":1,"z":9}},"n":["a","b"]}
+spread-inside-template	gens	n:[a]\nd:pack($.n,{&:{q:1},w:{}})\n	{"d":{"a":{"w":{"q":1}}},"n":["a"]}
+each-empty-template	errc	n:[a,b]\no:each($.n,{})\n	scalar_kind
+pack-as-spread-template	gens	g:{&:pack([p,q],{v:1})}\ng:a:{}\n	{"g":{"a":{"p":{"v":1},"q":{"v":1}}}}

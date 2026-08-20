@@ -1,7 +1,8 @@
 # G8: Generation and abstraction, on the total side of the fork
 
-*Status: design proposal — phase 0 partial (its defect-fencing half
-landed with G1 phase 0), phases 1–4 outstanding. Per-phase status is in
+*Status: design proposal — phases 0–3 **landed** (`pack`, `each`,
+`filter`, `match` and the placeholder `_` ship; phase 0's
+defect-fencing half went with G1 phase 0), phase 4 outstanding. Per-phase status is in
 the [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands gap
@@ -105,10 +106,11 @@ What exists is a solid substrate, and most of it is reusable:
   spread variants. Generated children must flow through exactly this
   machinery.
 - **The strain is visible.** `KeyFuncVal.unify`
-  (ts/src/val/KeyFuncVal.ts) special-cases `ctx.cc < 3` to delay
+  (ts/src/val/KeyFuncVal.ts) special-cased `ctx.cc < 3` to delay
   resolution so keys inside spreads and refs resolve at their
   destination, under a comment: "this delay makes keys in spreads and
-  refs work, but it is a hack - find a better way". Generation will
+  refs work, but it is a hack - find a better way". Phase 0 has since
+  replaced it with the staging rule below. Generation will
   multiply the situations where a value must wait for its
   surroundings; an ad-hoc pass-count check does not scale to them.
 - **Bounded fixpoint.** The unify loop runs at most `maxcc = 9`
@@ -133,8 +135,9 @@ What exists is a solid substrate, and most of it is reusable:
 What structurally blocks the capability: (1) no Val can create map
 keys that were not in some source text — `MapVal.unify` only iterates
 its own and its peer's existing keys; (2) `_` is ordinary text to the
-parser, so placeholders do not parse; (3) evaluation staging is
-ad hoc (the `cc < 3` hack) rather than a rule; (4) the Go port
+parser, so placeholders do not parse; (3) evaluation staging was
+ad hoc (the `cc < 3` hack) rather than a rule — phase 0 has since made
+it one; (4) the Go port
 (go/func.go, go/mapval.go, go/unify.go) mirrors all of the above and
 must move in lockstep.
 
@@ -205,7 +208,8 @@ them; and it walks straight into the trap the index names
 surface-area creep toward CUE.
 
 **C. Total generator combinators as builtin functions.** `each`,
-`pack`, `filter`, `match` join the twelve builtins; placeholder `_`
+`pack`, `filter`, `match` join the builtins (twelve when this was
+written, twenty-four when phase 1 landed the first two); placeholder `_`
 gives templates residuated per-child computation; `|>` is optional
 parse-time sugar. Combinators iterate only finite, settled data and
 cannot recurse, so totality is structural; G5's budgets remain a
@@ -286,13 +290,20 @@ JSON marshalling — generated order must be identical across
 implementations and runs). `tmpl` unifies with each element; omitted,
 `each(m)` converts a map's children to a list.
 
-**`filter(data, cond)` — subset by unifiability.** Children of
-`data` that unify with `cond` are kept (keys preserved for maps,
-order preserved for lists); children that fail are dropped, not
+**`filter(data, cond)` — subset by ALREADY SATISFIES.** Children of
+`data` that the condition adds nothing to are kept (keys preserved for
+maps, order preserved for lists); children that fail are dropped, not
 errors — the test runs under trial mode (`ctx._trialMode`,
 ts/src/ctx.ts), the same mechanism disjunction uses. `cond` is any
 Aontu value, so [G1](g1-constraint-algebra.md) atoms compose:
-`filter($.deploy, {replicas: min(3)})` once G1 lands.
+`filter($.deploy, {replicas: min(3)})`.
+
+*This paragraph said "unify with" until phase 2 landed, and the
+example below is why it does not now: a map is OPEN, so a service
+without a `debug` key unifies with `{debug:true}` by GAINING it, and a
+filter that keeps everything that could be made to match keeps
+everything. "Already satisfies" is the meet changing nothing — the
+same question `subsume` asks, answered locally.*
 
 ```aon
 # sidecars for exactly the debug services — no hand-kept list
@@ -307,7 +318,13 @@ directly.)
 **`match(v, p1, r1, p2, r2, ..., d?)` — bounded conditional.**
 Alternating pattern/result arguments, optional trailing default. The
 first pattern (in argument order) that `v` successfully unifies with
-— trial mode again — selects its result, which is `v & p_i & r_i`.
+— trial mode again — selects its result, and **the result is the
+answer**.
+
+*This said the answer was `v & p_i & r_i` until phase 2 landed. Under
+that rule every arm whose result is not itself a `v` is a
+contradiction, the example below among them — a string scrutinee and
+map results. A match MAPS a value to another value.*
 No pattern matching and no default is a located error whose report
 lists the patterns tried (the admissible-alternatives shape,
 reported via the [G2](g2-validation-verb.md) error contract). The
@@ -345,19 +362,33 @@ second spelling of something the language has — and `+` chains are
 the easier form for constrained generation of Aontu by models.
 
 **The staging rule (replacing the delay hack).** One rule, spec-
-pinned, governs when generation happens: *a generator residuates
-until its data argument is settled (DONE), then fires exactly once,
-and its output replaces it.* "Fires once" reuses the spread's
-apply-once discipline (`_spr` marking in ts/src/val/MapVal.ts).
+pinned, governs when generation happens: *a value whose answer
+depends on where it is residuates until the MODEL has settled, then
+fires exactly once, and its output replaces it.* "Fires once" reuses
+the spread's apply-once discipline (`_spr` marking in
+ts/src/val/MapVal.ts, and — since phase 0 — ts/src/val/ListVal.ts).
 Termination is structural: firing strictly decreases the number of
 unfired generator instances; a template may textually contain further
 generator calls, but clones are one per settled data child and
 nesting depth is fixed by the source text, so total firings are
 bounded by a product of finite, already-settled data sizes — no
-recursion can arise. The same settled-argument rule, stated once in
-ts/src/unify.ts / FuncBaseVal, replaces `KeyFuncVal`'s `cc < 3`
-check; that refactor lands *before* any combinator, as a
-zero-behaviour-change phase gated on the full existing suite.
+recursion can arise.
+
+*Settled how.* The rule as first written said "until its DATA
+ARGUMENT is settled (DONE)". Phase 0 found that too weak to be the
+rule it claimed: `move()` hides its source one pass AFTER it copies
+it, so a value whose own path and whose arguments have all settled
+can still be moved out from under itself, and a `key()` that answered
+on that evidence answered for the ghost. What landed reads stability
+of the WHOLE MODEL — the pass loop compares the canon it enters each
+pass with the previous pass's, and a staged value fires on the first
+pass where they are identical, because nothing moved and so nothing
+will move it again. That also settles where the rule is stated: the
+pass loop (ts/src/unify.ts, go/unify.go), which is where two
+consecutive models exist to compare, rather than FuncBaseVal, which
+reads the flag (`AontuContext.settle` / `Ctx.settle`). This replaced
+`KeyFuncVal`'s `cc < 3` check as a zero-behaviour-change refactor
+gated on the full existing suite, before any combinator.
 Generators consume fixpoint passes; per G5, exhausting the pass
 budget with generators still unfired is a distinct semantic error
 ("budget exhausted", G5's contract), never silent truncation. The
@@ -502,46 +533,66 @@ follows to green on the identical rows. At every phase, all existing
 spec rows and canon convergence must not
 regress; the spread corpus is the regression canary.
 
-**Phase 0 — staging rule (S).** Replace the `KeyFuncVal` `cc < 3`
-delay with the settled-argument residuation rule in the shared
-function base; zero behaviour change, gated on the full 527-row
-suite. Files: ts/src/val/FuncBaseVal.ts, ts/src/val/KeyFuncVal.ts,
-ts/src/unify.ts; go/func.go, go/unify.go. No new spec rows; the
-existing spread-key*.tsv files are the acceptance test. Fix or fence
+**Phase 0 — staging rule (S). LANDED.** The `KeyFuncVal` `cc < 3`
+delay is replaced by the model-settled residuation rule, stated in
+the pass loop (see *Settled how* above); zero behaviour change across
+the whole shared suite ([row counts](progress.md) live in the
+register). Files: ts/src/ctx.ts, ts/src/unify.ts,
+ts/src/val/KeyFuncVal.ts, ts/src/val/ListVal.ts; go/ctx.go,
+go/unify.go, go/func.go, go/listval.go. The acceptance test is the
+existing spread-key corpus, as planned — but the phase did not land
+row-free: it exposed a missing apply-once guard in ListVal (a
+residuating list template was re-applied every pass, doubling its
+canon), and the four `spread-nested-list-key*` rows in
+test/spec/spread.tsv pin the documents that fixed. Fix or fence
 the DisjunctVal.gen distribution defect (ts/src/val/DisjunctVal.ts,
-go/disjunct.go) here, with its own rows in disjunct.tsv.
+go/disjunct.go) here, with its own rows in disjunct.tsv — **fenced**
+with G1 phase 0.
 
-**Phase 1 — `pack` and `each` (M).** New spec files gen-pack.tsv,
-gen-each.tsv (gen + canon + err rows: list/map data, unfired canon,
-non-bag-data errors, duplicate-key merge), plus composition files
-gen-spread.tsv, gen-close.tsv, gen-key.tsv mirroring the spread-*
-corpus style. Files: ts/src/val/PackFuncVal.ts,
-ts/src/val/EachFuncVal.ts (new), ts/src/lang.ts (`funcMap`),
-ts/src/val/MapVal.ts (generated-children admission and apply-once
-interaction); go/func.go, go/mapval.go, go/lang.go.
+**Phase 1 — `pack` and `each` (M). LANDED.** Spec files gen-pack.tsv,
+gen-each.tsv, gen-spread.tsv, gen-close.tsv, gen-key.tsv, as planned
+(71 rows). Files: ts/src/val/PackFuncVal.ts, ts/src/val/EachFuncVal.ts
+(new), ts/src/lang.ts (`funcMap`, arity, the positional-argument set);
+go/generate.go (new), go/func.go, go/mapval.go, go/lang.go. No
+generated-children admission was needed in MapVal after all: a fired
+generator RESOLVES to an ordinary map or list at the call's position,
+so the destination's spread, `close()` and references reach it through
+the machinery that was already there — which is what gen-spread.tsv
+and gen-close.tsv pin. The departures are in the
+[register](progress.md); the sharpest is that a generator's template
+must be CLONED per destination where a spread may share one.
 
-**Phase 2 — `filter` and `match` (M).** Requires Phase 0's defect
-fix. Spec files gen-filter.tsv, gen-match.tsv, including
-match-no-arm error rows asserting the tried-alternatives report
-substring (format owned by G2). Files: ts/src/val/FilterFuncVal.ts,
-ts/src/val/MatchFuncVal.ts, ts/src/ctx.ts (trial-mode surface);
-go/func.go, go/ctx.go.
+**Phase 2 — `filter` and `match` (M). LANDED.** Spec files
+gen-filter.tsv and gen-match.tsv (32 rows), including the no-arm
+error rows. Files: ts/src/val/FilterFuncVal.ts,
+ts/src/val/MatchFuncVal.ts (new), ts/src/val/FuncBaseVal.ts (the
+shared trial meet); go/generate.go, go/func.go. The trial-mode
+surface needed no change in either ctx: the flag disjunction already
+sets was exactly the one to lend. Two of the semantics as written
+could not be evaluated — see the corrections above and the
+[register](progress.md).
 
-**Phase 3 — placeholder `_` (M/L; the parser phase).** Spec file
-place.tsv: `upper(_) & foo`, `_+2` in spread templates, `_` binding
-inside pack/each templates, the `upper(_) & lower(_)` error, canon of
-unfired placeheld forms, and rows pinning that quoted `"_"` stays a
-string. Files: ts/src/val/PlaceVal.ts (new), ts/src/lang.ts
-(expr-plugin operator config), ts/src/val/FuncBaseVal.ts,
-ts/src/val/OpBaseVal.ts (residuation on peer); go/lang.go, go/op.go,
-go/func.go. Sequenced after G1's residuation machinery so the two
-gaps share one implementation.
+**Phase 3 — placeholder `_` (M/L; the parser phase). LANDED.** Spec
+file place.tsv (37 rows), as planned, including the compatibility
+rows. Files: ts/src/val/PlaceVal.ts and go/place.go (new),
+ts/src/lang.ts and go/lang.go (a value keyword — no operator config
+was needed, `_` being a value rather than a token),
+ts/src/val/FuncBaseVal.ts, ts/src/val/OpBaseVal.ts, go/func.go,
+go/op.go (fill on peer), and ts/src/unify.ts / go/unify.go, where a
+placeheld operator has to DRIVE: a scalar asked to unify with `_ + 2`
+sees an operator rather than a hole and refuses it on kind. Both
+published grammars and both LSP literal lists carry it too.
 
-**Phase 4 — `|>` sugar (S, optional).** Parse-time desugaring only;
-spec file pipe.tsv whose canon rows all show desugared call forms,
-proving canon never emits the token. Files: ts/src/lang.ts;
-go/lang.go. May be dropped without loss if Phase 1-3 adoption shows
-call nesting is acceptable.
+**Phase 4 — `|>` sugar (S, optional). LANDED.** Parse-time
+desugaring only; pipe.tsv's canon rows all show call forms, proving
+canon never emits the token. Files: ts/src/lang.ts, go/lang.go. The
+drop clause was not exercised: it asked for adoption evidence that
+call nesting is acceptable, and there is none either way for a
+capability that shipped in the same series. What landing it cost was
+one operator and one shared call builder per port — the `f(...)`
+handler and the pipe now go through the same `buildCall`, so the
+arity check, the comma-group rule and the raw-value conversion are
+stated once instead of twice.
 
 Sequencing within the review: index.md places G8 in Phase C. Phase 0
 here is a pure engine cleanup with independent value (it removes a

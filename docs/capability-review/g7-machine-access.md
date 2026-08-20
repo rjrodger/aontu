@@ -1,6 +1,10 @@
 # G7: A machine-facing access surface
 
-*Status: design proposal — nothing implemented. Per-phase status and the
+*Status: design proposal — all seven phases are implemented (`get` and
+its projections, `why` with its provenance recorder, the overlay
+`set`, the delivery skin, and the REPL inspection mode with hover
+provenance). What remains is phase 5's STAGE 2, the
+format-preserving in-place edit, which the phase itself defers. Per-phase status and the
 corrections this document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the

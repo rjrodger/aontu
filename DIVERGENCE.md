@@ -60,6 +60,19 @@ having been agreed.
 
 Kept because how each was closed is worth remembering.
 
+> **`key()` under a call, in a template** (G8 phase 1). Both ports
+> answer for the position the value is being DRIVEN at when the
+> position it remembers is not one it has been placed at — the case a
+> generator's template creates, where the stored path is the call site
+> and the destination is somewhere else entirely. Neither port can use
+> the other's test for it, because they path a function's ARGUMENTS
+> differently: TypeScript's parser gives an argument a path with a
+> segment that is not a key at all, so `KeyFuncVal.resolve` asks
+> whether the stored path IS a position; Go gives it the enclosing
+> call's own path, so `keyFunc` asks whether the driver is DEEPER than
+> anything the value has been placed at. The answers are identical and
+> pinned by test/spec/gen-key.tsv.
+
 > **The canon of move()-hidden ghost nodes**, including the
 > object-sharing artifacts. The Go port now
 > mirrors TS's clone-graph sharing directly: func clones share their
@@ -68,7 +81,8 @@ Kept because how each was closed is worth remembering.
 > (the `out = peer.isTop ? this : new ...` fast-path), and a driving
 > func re-paths its (possibly shared) args to its own location each
 > pass (`repathArg`, the equivalent of TS's ctx-path re-descent — with
-> key()'s stored path frozen once its cc<3 delay window closes). Hiding
+> key()'s stored path frozen once it stops residuating, on the settle
+> pass of G8 phase 0's staging rule). Hiding
 > is mark-based: move() sets the hide mark on the found source node's
 > ROOT only (TS `_hide_found`), bag unifies ratchet marks down one
 > level per pass, and a marked func freezes against TOP but still

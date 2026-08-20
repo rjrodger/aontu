@@ -38,6 +38,43 @@ var semverRe = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 //	mode=errcode : registry row -- name is a code, src its class,
 //	             expect its since-version; asserted against the engine's
 //	             codeClasses table (go/hints.go)
+//	mode=vet   : FIVE columns -- name, vet, schema, data, expect. The
+//	             report of Vet(schema, data) must equal the expect
+//	             object, MINUS each finding's message (prose is not in
+//	             parity; see test/spec/vet.tsv for the whole encoding,
+//	             including the `opts` key)
+//	mode=subsume : FIVE columns -- name, subsume, general, specific,
+//	             expect. The report of Subsume(general, specific) must
+//	             equal the expect object (verdict + findings), MINUS
+//	             each finding's message; see test/spec/subsume.tsv
+//	mode=trim  : TrimCheck(src) must equal the expect object
+//	             ({redundant, verdict}); see test/spec/trim.tsv
+//	mode=hcanon : Hcanon(Unify(src)) -- the HASH FORM, canon plus the
+//	             close()/type()/hide() wrappers -- must equal expect,
+//	             and the hash form must round-trip (G6, hcanon.tsv)
+//	mode=hash  : CanonHash(Unify(src)) must equal expect, the full
+//	             `aon1-...` pin, byte-identical across the ports
+//	mode=agentsmd : FIVE columns -- name, agentsmd, src,
+//	             document-name, expect. The stanza of AgentsMd(src,
+//	             {Name}) must match BYTE FOR BYTE; see
+//	             test/spec/agentsmd.tsv
+//	mode=diff  : FIVE columns -- name, diff, left, input, expect. The
+//	             report of Diff(left, right) must match the expect
+//	             object ({changes, same} plus `codes`); the input is
+//	             {right, at?}. See test/spec/diff.tsv
+//	mode=patch : FIVE columns -- name, patch, entry, input, expect.
+//	             The report of Patch(entry, overlay, set) must match
+//	             the expect object ({appended, overlay, verdict} plus
+//	             `codes`); see test/spec/patch.tsv
+//	mode=why   : FIVE columns -- name, why, src, path, expect. The
+//	             record of Why(src, path) must match the expect object
+//	             ({value, conjuncts} or {code, note}); see
+//	             test/spec/why.tsv
+//	mode=query : FIVE columns -- name, query, src, path, expect. The
+//	             report of Get(src, path) must match the expect object
+//	             ({out?, code?, note?}, options riding `opts`), and a
+//	             canon-shaped VIEW must additionally SUBSUME the truth
+//	             it summarises; see test/spec/query.tsv
 //
 // gen vs gens: gen normalises both sides through a JSON decode, which
 // collapses every number to a float64 — so two distinct exact integers
@@ -98,10 +135,13 @@ func TestSpec(t *testing.T) {
 			if 1 < len(parts) {
 				mode = parts[1]
 			}
-			// A vet row carries TWO documents, so its expect is the
-			// fifth column; every other mode reads four and ignores any
-			// extra (see test/spec/vet.tsv for the encoding).
-			vetRow := "vet" == mode
+			// A vet or subsume row carries TWO documents, so its expect
+			// is the fifth column; every other mode reads four and
+			// ignores any extra (see test/spec/vet.tsv and
+			// test/spec/subsume.tsv for the encodings).
+			vetRow := "vet" == mode || "subsume" == mode || "query" == mode ||
+				"why" == mode || "patch" == mode || "diff" == mode ||
+				"agentsmd" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -134,6 +174,20 @@ func TestSpec(t *testing.T) {
 
 			t.Run(file+":"+name, func(t *testing.T) {
 				a := New()
+				// Files whose rows evaluate under a fixed trust profile
+				// (G5, docs/trust.md): root-confined to the fixtures
+				// directory, the var.tsv precedent of runner-side
+				// configuration. This is also what makes the shared
+				// suite itself HERMETIC: no row may read outside the
+				// repository, in either runner (ts/test/spec.test.ts
+				// applies the same profile to the same files).
+				// Module resolution reads the filesystem (G6 phase 2),
+				// so mod.tsv's rows run under the same fixture root for
+				// the same reason file.tsv's do.
+				if "include-trust.tsv" == file || "file.tsv" == file ||
+					"mod.tsv" == file {
+					a.Trust = &TrustOptions{IncludeRoot: fixturesDir}
+				}
 				vars := specVars()
 				switch mode {
 				case "canon":
@@ -232,6 +286,304 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("vet report mismatch\n schema: %q\n data:   %q\n want: %s\n got:  %s",
 							src, data, want, got)
 					}
+				case "hcanon":
+					v, err := a.UnifyVars(src, vars)
+					if err != nil {
+						t.Fatalf("unify error: %v\n src: %q", err, src)
+					}
+					if got := Hcanon(v); got != expect {
+						t.Fatalf("hcanon mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+					assertHcanonRoundTrips(t, name, expect, vars)
+
+				case "hash":
+					v, err := a.UnifyVars(src, vars)
+					if err != nil {
+						t.Fatalf("unify error: %v\n src: %q", err, src)
+					}
+					if got := CanonHash(v); got != expect {
+						t.Fatalf("hash mismatch\n src:  %q\n want: %s\n got:  %s", src, expect, got)
+					}
+
+				case "agentsmd":
+					var agolden struct {
+						Codes  []string `json:"codes"`
+						OK     bool     `json:"ok"`
+						Stanza string   `json:"stanza"`
+					}
+					if jerr := json.Unmarshal([]byte(expect), &agolden); jerr != nil {
+						t.Fatalf("bad agentsmd golden: %v\n %s", jerr, expect)
+					}
+					ar := a.AgentsMd(src, &AgentsMdOptions{Name: data})
+					if ar.OK != agolden.OK || ar.Stanza != agolden.Stanza {
+						t.Fatalf("agentsmd mismatch\n src: %q\n want: %q\n got:  %q",
+							src, agolden.Stanza, ar.Stanza)
+					}
+					acodes := []string{}
+					for _, f := range ar.Findings {
+						acodes = append(acodes, f.Code)
+					}
+					if 0 == len(acodes) {
+						acodes = nil
+					}
+					if specJSON(t, acodes) != specJSON(t, agolden.Codes) {
+						t.Fatalf("agentsmd codes mismatch\n want: %v\n got:  %v",
+							agolden.Codes, acodes)
+					}
+
+				case "diff":
+					var dinput struct {
+						At    string `json:"at"`
+						Right string `json:"right"`
+					}
+					if jerr := json.Unmarshal([]byte(data), &dinput); jerr != nil {
+						t.Fatalf("bad diff input: %v\n %s", jerr, data)
+					}
+					dr := Diff(src, dinput.Right, &DiffOptions{At: dinput.At})
+					dgot := map[string]any{
+						"changes": dr.Changes,
+						"same":    dr.Same,
+					}
+					if 0 < len(dr.Findings) {
+						codes := []string{}
+						for _, f := range dr.Findings {
+							codes = append(codes, f.Code)
+						}
+						dgot["codes"] = codes
+					}
+					var dgolden map[string]any
+					if jerr := json.Unmarshal([]byte(expect), &dgolden); jerr != nil {
+						t.Fatalf("bad diff golden: %v\n %s", jerr, expect)
+					}
+					if specJSON(t, dgot) != specJSON(t, dgolden) {
+						t.Fatalf("diff report mismatch\n want: %s\n got:  %s",
+							specJSON(t, dgolden), specJSON(t, dgot))
+					}
+
+					// A diff is SYMMETRIC in what it detects: swapping
+					// the sides reports the same paths with added and
+					// removed exchanged.
+					if dr.OK {
+						back := Diff(dinput.Right, src, &DiffOptions{At: dinput.At})
+						if len(back.Changes) != len(dr.Changes) {
+							t.Fatalf("diff is not symmetric: %s", name)
+						}
+						for i, c := range dr.Changes {
+							b := back.Changes[i]
+							want := c.Kind
+							if DiffAdded == want {
+								want = DiffRemoved
+							} else if DiffRemoved == want {
+								want = DiffAdded
+							}
+							if b.Path != c.Path || b.Kind != want {
+								t.Fatalf("diff is not symmetric: %s\n %v vs %v",
+									name, c, b)
+							}
+						}
+					}
+
+				case "patch":
+					var input struct {
+						Overlay string   `json:"overlay"`
+						Set     []string `json:"set"`
+					}
+					if jerr := json.Unmarshal([]byte(data), &input); jerr != nil {
+						t.Fatalf("bad patch input: %v\n %s", jerr, data)
+					}
+					pr := Patch(src, input.Overlay, input.Set, nil)
+					got := map[string]any{
+						"appended": pr.Appended,
+						"overlay":  pr.Overlay,
+						"verdict":  pr.Verdict,
+					}
+					if 0 < len(pr.Findings) {
+						codes := []string{}
+						for _, f := range pr.Findings {
+							codes = append(codes, f.Code)
+						}
+						got["codes"] = codes
+					}
+					var golden map[string]any
+					if jerr := json.Unmarshal([]byte(expect), &golden); jerr != nil {
+						t.Fatalf("bad patch golden: %v\n %s", jerr, expect)
+					}
+					if specJSON(t, got) != specJSON(t, golden) {
+						t.Fatalf("patch report mismatch\n want: %s\n got:  %s",
+							specJSON(t, golden), specJSON(t, got))
+					}
+
+					// ORDER-INDEPENDENCE, the property the whole verb
+					// rests on: an overlay entry is just another
+					// conjunct, so entry-against-overlay is the same as
+					// overlay-against-entry.
+					if VetError != pr.Verdict {
+						if back := Vet(pr.Overlay, src, nil); back.Verdict != pr.Verdict {
+							t.Fatalf("patch is not order-independent: %s\n %s vs %s",
+								name, pr.Verdict, back.Verdict)
+						}
+					}
+
+				case "why":
+					var golden struct {
+						Code      string        `json:"code"`
+						Conjuncts []WhyConjunct `json:"conjuncts"`
+						Note      string        `json:"note"`
+						Value     string        `json:"value"`
+					}
+					if jerr := json.Unmarshal([]byte(expect), &golden); jerr != nil {
+						t.Fatalf("bad why golden: %v\n %s", jerr, expect)
+					}
+					wr := a.Why(src, data)
+					value := ""
+					var conjuncts []WhyConjunct
+					if nil != wr.Record {
+						value = wr.Record.Value
+						conjuncts = wr.Record.Conjuncts
+					}
+					if value != golden.Value {
+						t.Fatalf("why value mismatch\n src:  %q\n path: %q\n want: %q\n got:  %q",
+							src, data, golden.Value, value)
+					}
+					if specJSON(t, conjuncts) != specJSON(t, golden.Conjuncts) {
+						t.Fatalf("why conjuncts mismatch\n src:  %q\n path: %q\n want: %s\n got:  %s",
+							src, data, specJSON(t, golden.Conjuncts), specJSON(t, conjuncts))
+					}
+					code, note := "", ""
+					if 0 < len(wr.Findings) {
+						code = wr.Findings[0].Code
+						if nil != wr.Findings[0].Note {
+							note = *wr.Findings[0].Note
+						}
+					}
+					if code != golden.Code || note != golden.Note {
+						t.Fatalf("why finding mismatch\n want: %q/%q\n got:  %q/%q",
+							golden.Code, golden.Note, code, note)
+					}
+
+				case "query":
+					// The golden carries the run's options under
+					// `opts`; `out` is the rendered slice, and
+					// `code`/`note` the finding when the answer is a
+					// refusal. `message` is excluded, as every other
+					// verb's goldens exclude it.
+					var golden struct {
+						Code string `json:"code"`
+						Note string `json:"note"`
+						Out  string `json:"out"`
+						Opts struct {
+							Depth int    `json:"depth"`
+							View  string `json:"view"`
+						} `json:"opts"`
+					}
+					if jerr := json.Unmarshal([]byte(expect), &golden); jerr != nil {
+						t.Fatalf("bad query golden: %v\n %s", jerr, expect)
+					}
+					qopts := &QueryOptions{
+						View:  golden.Opts.View,
+						Depth: golden.Opts.Depth,
+					}
+					report := a.Get(src, data, qopts)
+					if report.Out != golden.Out {
+						t.Fatalf("query out mismatch\n src:  %q\n path: %q\n want: %q\n got:  %q",
+							src, data, golden.Out, report.Out)
+					}
+					code, note := "", ""
+					if 0 < len(report.Findings) {
+						code = report.Findings[0].Code
+						if nil != report.Findings[0].Note {
+							note = *report.Findings[0].Note
+						}
+					}
+					if code != golden.Code || note != golden.Note {
+						t.Fatalf("query finding mismatch\n want: %q/%q\n got:  %q/%q",
+							golden.Code, golden.Note, code, note)
+					}
+					assertViewSubsumes(t, name, src, data, report, qopts.View)
+
+				case "trim":
+					// trimCheck(src) must equal the expect object
+					// ({redundant, verdict}); see test/spec/trim.tsv.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					r := New().TrimCheck(src)
+					got := specJSON(t, map[string]any{
+						"redundant": r.Redundant, "verdict": r.Verdict})
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("trim report mismatch\n src: %q\n want: %s\n got:  %s",
+							src, want, got)
+					}
+				case "relation":
+					// RELATION GRAPH CHECKS (G4 phase 5): acyclicity and
+					// inverse consistency over the edge set, compared as
+					// the whole report. Both are GLOBAL and NON-MONOTONE,
+					// which is why they are checked after unification and
+					// never by it — a lattice citizen may not be falsified
+					// by more information, and one more edge is more
+					// information.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					got := specJSON(t, specAsMap(t, New().RelationCheck(src)))
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("relation report mismatch\n src: %q\n want: %s\n got:  %s",
+							src, want, got)
+					}
+				case "graph":
+					// THE DERIVED STRUCTURES (G4 phase 3): the entity index
+					// and the edge set of the unified document, compared
+					// whole. Both are deterministic by construction — ids
+					// and paths in code-point order, edges by the position
+					// they are written at — which is what makes a
+					// byte-comparable golden possible at all, Go map order
+					// being random.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					ga := New()
+					ga.UnifyVars(src, vars)
+					// Through a MAP on both sides: specJSON encodes a
+					// struct in field order and a map in key order, so
+					// comparing one against the other would fail on the
+					// ordering rather than on the graph.
+					got := specJSON(t, specAsMap(t, ga.Graph))
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("graph mismatch\n src: %q\n want: %s\n got:  %s",
+							src, want, got)
+					}
+					// ... and DETERMINISTIC is a property, not a claim: a
+					// fresh engine over the same source answers the same
+					// bytes.
+					gb := New()
+					gb.UnifyVars(src, vars)
+					if again := specJSON(t, specAsMap(t, gb.Graph)); again != got {
+						t.Fatalf("graph is not repeatable\n src: %q\n first: %s\n again: %s",
+							src, got, again)
+					}
+				case "subsume":
+					// Same golden discipline as vet: `opts` rides the
+					// expect object, messages are per-port prose and
+					// excluded from parity.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					opts := specSubsumeOpts(t, golden["opts"])
+					delete(golden, "opts")
+
+					got := specSubsumeGolden(t, Subsume(src, data, opts))
+					want := specJSON(t, golden)
+					if got != want {
+						t.Fatalf("subsume report mismatch\n general:  %q\n specific: %q\n want: %s\n got:  %s",
+							src, data, want, got)
+					}
 				default:
 					t.Fatalf("unknown spec mode %q", mode)
 				}
@@ -249,6 +601,21 @@ func TestSpec(t *testing.T) {
 // and `&` stay literal in both ports), keys sorted -- which Go's
 // encoder does for a map and the canonical emitter does for every
 // object, so a golden cell may be written in any key order.
+// specAsMap round-trips a value through JSON into a plain map, so a
+// struct golden and a literal golden are compared by the same encoding.
+func specAsMap(t *testing.T, v any) map[string]any {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil { //coverage:ignore a report struct is always encodable
+		t.Fatalf("marshal: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil { //coverage:ignore ... and always decodable
+		t.Fatalf("unmarshal: %v", err)
+	}
+	return out
+}
+
 func specJSON(t *testing.T, v any) string {
 	t.Helper()
 	var buf bytes.Buffer
@@ -312,6 +679,53 @@ func specVetOpts(t *testing.T, raw any) *VetOptions {
 	return opts
 }
 
+// specSubsumeGolden mirrors specVetGolden for the subsume mode: the
+// MESSAGE is excluded from each finding, and the rest is round-tripped
+// through the map form so both sides of the comparison serialise
+// through specJSON.
+func specSubsumeGolden(t *testing.T, report SubsumeReport) string {
+	t.Helper()
+	raw, err := json.Marshal(report)
+	if err != nil {
+		t.Fatalf("marshal report: %v", err)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		t.Fatalf("unmarshal report: %v", err)
+	}
+	findings, _ := out["findings"].([]any)
+	for _, f := range findings {
+		if m, ok := f.(map[string]any); ok {
+			delete(m, "message")
+		}
+	}
+	return specJSON(t, out)
+}
+
+// specSubsumeOpts reads the run's options out of the golden's `opts` key.
+func specSubsumeOpts(t *testing.T, raw any) *SubsumeOptions {
+	t.Helper()
+	if nil == raw {
+		return nil
+	}
+	m, ok := raw.(map[string]any)
+	if !ok {
+		t.Fatalf("opts is not an object: %v", raw)
+	}
+	opts := &SubsumeOptions{}
+	for k, v := range m {
+		switch k {
+		case "profile":
+			opts.Profile, _ = v.(string)
+		case "at":
+			opts.At, _ = v.(string)
+		default:
+			t.Fatalf("unknown subsume opt %q", k)
+		}
+	}
+	return opts
+}
+
 // canonNoReparse lists canon rows whose expected canon cannot be
 // reparsed. Each entry needs a reason and an issue; entries are DELETED,
 // not amended, when fixed (AGENTS.md ledger discipline). Currently
@@ -346,6 +760,47 @@ func assertCanonConverges(t *testing.T, name, expect string, vars map[string]Val
 	}
 	if c3 := v3.Canon(); c3 != c2 {
 		t.Fatalf("canon does not converge: %s\n c2: %s\n c3: %s", name, c2, c3)
+	}
+}
+
+// assertViewSubsumes pins THE PROJECTION PROPERTY (G7 phase 1): a
+// canon-shaped view is a valid Aontu document that SUBSUMES the truth
+// it summarises -- generalisation, never distortion. G3 made that
+// mechanically checkable, so every projection row asserts it instead of
+// trusting the renderer.
+//
+// Under the `values` profile, deliberately: a shape view ERASES
+// defaults (`*8080|integer` becomes `*integer|integer`), which the
+// `defaults` profile correctly calls a compatibility break. The claim
+// projections make is about the values admitted, not about which one is
+// generated.
+func assertViewSubsumes(
+	t *testing.T, name, src, path string, report QueryReport, view string) {
+	t.Helper()
+	if !report.OK || ("canon" != view && "types" != view) {
+		return
+	}
+	truth := New().Get(src, path, &QueryOptions{View: "canon"})
+	got := Subsume(report.Out, truth.Out, &SubsumeOptions{Profile: "values"})
+	if SubsumeYes != got.Verdict {
+		t.Fatalf("view does not subsume the truth: %s\n view:  %s\n truth: %s\n verdict: %s",
+			name, report.Out, truth.Out, got.Verdict)
+	}
+}
+
+// assertHcanonRoundTrips pins the hash form's defining property (G6
+// phase 0): it is valid Aontu source, and re-evaluating it reproduces
+// itself -- Hcanon(Unify(Parse(Hcanon(v)))) == Hcanon(v). A hash over a
+// rendering that drifted on re-parse would pin nothing, so every hcanon
+// row asserts it, exactly as every canon row asserts convergence.
+func assertHcanonRoundTrips(t *testing.T, name, expect string, vars map[string]Val) {
+	t.Helper()
+	v2, err := New().UnifyVars(expect, vars)
+	if err != nil {
+		t.Fatalf("hash form does not reparse: %s\n hcanon: %s\n err: %v", name, expect, err)
+	}
+	if h2 := Hcanon(v2); h2 != expect {
+		t.Fatalf("hash form does not round-trip: %s\n want: %s\n got:  %s", name, expect, h2)
 	}
 }
 

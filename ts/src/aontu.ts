@@ -14,6 +14,16 @@ import { exactJSON } from './exactjson'
 import { formatExplain } from './utility'
 import { makeNilErr, descErr, AontuError } from './err'
 import { vet } from './vet'
+import { sarifReport } from './report-sarif'
+import { subsume } from './subsume'
+import { trimCheck } from './trim'
+import { hcanon, canonHash } from './hcanon'
+import { get, why } from './query'
+import { patch } from './patch'
+import { diff } from './diff'
+import { agentsMd } from './agentsmd'
+import { graphOf } from './graph'
+import { relationCheck } from './relation'
 
 
 // VERSION is the Aontu npm package version, and mirrors
@@ -26,6 +36,17 @@ import { vet } from './vet'
 const VERSION = '0.52.1'
 
 
+// A module file's VALUE, as far as it goes. COLLECTED, not raised: a
+// module file that does not stand up has no `mod.main` to read, and
+// the default entry name is the answer -- the resolution itself fails
+// later, on the file that is not there, rather than here on a metadata
+// read. That is what a collecting context does, so there is nothing to
+// catch: it answers what it could generate and records the rest.
+function genQuiet(val: any, aontu: Aontu): any {
+  return val.gen(aontu.ctx({ collect: true }))
+}
+
+
 class Aontu {
   opts: AontuOptions
   lang: Lang
@@ -33,6 +54,42 @@ class Aontu {
 
   constructor(popts?: AontuOptions) {
     this.opts = popts ?? {}
+
+    // THE MODULE EVALUATOR (G6 phase 2, ts/src/mod.ts). Resolving a
+    // module import needs two answers that only evaluation can give:
+    // what a module file SAYS (its `mod.main`), and what a module
+    // MEANS (its canon-hash, for the integrity check). Injected here
+    // rather than imported there, because the resolver runs inside a
+    // parse that this class started, and the file it runs in cannot
+    // import this one without closing a cycle around the language.
+    //
+    // COLLECTED, not raised: a module that leans on consumer context
+    // (a `$.x` its importer supplies) does not stand up alone, and its
+    // hash is still the hash of what it says — that residue is part of
+    // the hashed meaning, which is why `hcanon` keeps it in textual
+    // form (docs/capability-review/g6-distribution.md).
+    ;(this.opts as any).mod = {
+      ...((this.opts as any).mod ?? {}),
+      eval: (this.opts as any).mod?.eval ?? ((src: string, path: string) => {
+        // One deeper: a module verified from inside a module
+        // verification is one more level of nesting, and the resolver
+        // refuses past its bound (MODULE_MAX_DEPTH in ts/src/mod.ts).
+        const inner = new Aontu({
+          ...this.opts,
+          mod: {
+            // Never absent: the assignment this closure is part of has
+            // already run by the time it is called.
+            ...(this.opts as any).mod,
+            eval: undefined,
+            depth: (((this.opts as any).mod?.depth ?? 0) as number) + 1,
+          },
+        } as any)
+        const ctx = inner.ctx({ collect: true })
+        const val = inner.unify(src, { path }, ctx)
+        return { gen: genQuiet(val, inner), hash: canonHash(val) }
+      }),
+    }
+
     this.lang = new Lang(this.opts)
   }
 
@@ -41,6 +98,11 @@ class Aontu {
   ctx(cfg?: AontuContextConfig): AontuContext {
     cfg = cfg ?? {}
     cfg.fs = cfg.fs ?? this.opts.fs
+    // The trust profile rides the instance (its resolver is built once,
+    // in the Lang constructor); the context needs it too, for the
+    // budgets (G5, docs/trust.md).
+    cfg.opts = cfg.opts ?? {}
+    ; (cfg.opts as any).trust = (cfg.opts as any).trust ?? this.opts.trust
     const ac = new AontuContext(cfg)
     return ac
   }
@@ -86,7 +148,11 @@ class Aontu {
 
     if (0 === errs.length) {
       out = runparse(src, this.lang, ac)
-      out.deps = ac.deps
+      // The include MANIFEST (G5, docs/trust.md): the resolved include
+      // closure as `{ path, capability }`, sorted and deduplicated so
+      // it is deterministic — the "file set" of hermeticity clause 1
+      // made observable. Content hashing and pinning stay with G6.
+      out.deps = manifestOf(ac.manifest)
       ac.root = out
     }
 
@@ -131,6 +197,11 @@ class Aontu {
       out = uni.res
 
       out.deps = pval.deps
+      // THE DERIVED STRUCTURES (G4 phase 3): the entity index and the
+      // edge set, computed once from the unified tree. Cheap on a
+      // document with no identity — one guarded walk — and the thing
+      // impact analysis and the relation checks are traversals over.
+      out.graph = graphOf(out)
       out.err = errs
       ac.root = out
     }
@@ -267,12 +338,38 @@ function findConflictMarker(src: string): {
 }
 
 
+// Sort and deduplicate the raw manifest sink into the deterministic
+// include closure: by path then capability, code-point order, one entry
+// per (path, capability) pair.
+function manifestOf(
+  sink: { path: string, capability: string }[]
+): { path: string, capability: string }[] {
+  const seen = new Set<string>()
+  const out: { path: string, capability: string }[] = []
+  for (const dep of sink) {
+    const key = dep.path + ' ' + dep.capability
+    if (!seen.has(key)) {
+      seen.add(key)
+      out.push({ path: dep.path, capability: dep.capability })
+    }
+  }
+  // No equal case: entries were deduplicated on exactly this key.
+  out.sort((a, b) => {
+    const ka = a.path + ' ' + a.capability
+    const kb = b.path + ' ' + b.capability
+    return ka < kb ? -1 : 1
+  })
+  return out
+}
+
+
 // Perform parse of source code (minor customizations over Lang.parse).
 function runparse(src: string, lang: Lang, ctx: AontuContext): Val {
   const popts = {
     deps: ctx.deps,
     fs: ctx.fs,
-    path: ctx.opts.path
+    path: ctx.opts.path,
+    manifest: ctx.manifest,
   }
   let val
 
@@ -317,8 +414,35 @@ export {
   Decimal,
 
   // G2 phase 2 -- the validation verb. The engine only: the CLI verb
-  // and the report renderers are phase 3, the Go port phase 4.
+  // and the text/JSON renderers are phase 3, the Go port phase 4.
+  // `sarifReport` (phase 5) is library API so an embedder can emit the
+  // interchange form without shelling out.
   vet,
+  sarifReport,
+
+  // G3 -- subsumption as a first-class query: does the general value
+  // admit every instance the specific value admits? Three-valued, with
+  // G2-shaped findings (class `compat`).
+  subsume,
+  trimCheck,
+
+  // G6 -- the hash form and the canon-hash pin. `hcanon` is the
+  // unify-level canon plus the close()/type()/hide() wrappers that
+  // close its semantic gaps; `canonHash` is
+  // "aon1-" + base64url(SHA-256(UTF-8(hcanon(v)))).
+  hcanon,
+  canonHash,
+
+  // G7 -- the machine-facing query surface: select one node by path
+  // and render it, plainly (json/canon) or as a lattice ABSTRACTION
+  // (types/depth/keys) that subsumes the truth it summarises.
+  get,
+  why,
+  patch,
+  diff,
+  agentsMd,
+  graphOf,
+  relationCheck,
 }
 
 

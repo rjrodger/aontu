@@ -8,7 +8,13 @@ import * as Os from 'node:os'
 import * as Path from 'node:path'
 
 import { Aontu } from '../dist/aontu'
-import { evalSource, runVet, main as cliMainVet } from '../dist/cli'
+import {
+  evalSource, runVet, runSubsume, runBreaking, runTrim, runRelations,
+  runHash, runGet, runWhy,
+  renderWhyText, runSet, runAgentsMd, replCommand,
+  watchChange, watchSignature, vetWaiter, deprecatedAt,
+  main as cliMainVet,
+} from '../dist/cli'
 
 
 const CLI = Path.join(__dirname, '..', 'bin', 'aontu.js')
@@ -379,4 +385,986 @@ describe('cli-vet', () => {
     Assert.equal(r.code, 1)
     Assert.match(r.out, /verdict: invalid/)
   })
+
+
+  // --- SARIF and watch (G2 phase 5) -----------------------------------
+
+  // The interchange form: level from severity, the data site as the
+  // primary location, the schema site related, the whole native finding
+  // in properties. Shape parity with the Go port is the golden in
+  // test/spec/files/vet-sarif/ (sarif.test.ts); this is the CLI wiring.
+  test('vet-sarif-format-embeds-the-finding', () => {
+    const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: "8080" }')
+    const r = vetCapture(() => runVet(['--format', 'sarif', f.schema, f.data]))
+    const log = JSON.parse(r.out)
+    Assert.equal(log.version, '2.1.0')
+    Assert.match(log.$schema, /sarif-2\.1\.0/)
+    const result = log.runs[0].results[0]
+    Assert.equal(result.ruleId, 'aontu/no_scalar_unify')
+    Assert.equal(result.level, 'error')
+    Assert.equal(result.properties.path, '$.service.port')
+    // DECODED before comparing: the uri percent-encodes URI-significant
+    // bytes, and on Windows the temp path's backslashes are exactly
+    // that (%5C), so the raw string equality only held on POSIX.
+    Assert.equal(
+      decodeURIComponent(
+        result.locations[0].physicalLocation.artifactLocation.uri),
+      f.data)
+    Assert.equal(result.relatedLocations.length, 1)
+    Assert.match(log.runs[0].tool.driver.version, /^\d+\.\d+\.\d+$/)
+  })
+
+
+  // The watch loop: one report per run, one run per change, streaming.
+  // The waiter is injected so the loop is bounded; the report changing
+  // between runs proves the files are re-read each time.
+  test('vet-watch-streams-a-report-per-change', async () => {
+    const f = vetFiles(VET_SCHEMA, 'service: { name: "auth", port: 8080 }')
+    let calls = 0
+    const wait = async (files: string[], before: string) => {
+      Assert.deepEqual(files, [f.schema, f.data])
+      // The baseline is recorded BEFORE the run it follows, so a save
+      // landing during the run still reads as a change.
+      Assert.equal(typeof before, 'string')
+      if (0 === calls++) {
+        Fs.writeFileSync(f.data, 'service: { name: "auth", port: "80" }')
+        return true
+      }
+      return false
+    }
+
+    let code = -1
+    const so = process.stdout.write
+    let out = ''
+    ;(process.stdout as any).write = (s: any) => ((out += s), true)
+    try {
+      code = await (runVet(['--watch', f.schema, f.data], wait) as Promise<number>)
+    }
+    finally {
+      process.stdout.write = so
+    }
+
+    Assert.equal(code, 1)
+    Assert.match(out, /verdict: valid[\s\S]*verdict: invalid/)
+  })
+
+
+  // The real waiter resolves when a watched file's mtime+size signature
+  // moves — including from "gone" to existing, which is what a file
+  // being replaced by an editor looks like mid-save.
+  test('vet-watch-change-resolves-on-touch', async () => {
+    const f = vetFiles(VET_SCHEMA, 'service: {}')
+    const missing = Path.join(f.dir, 'not-yet.json')
+    const files = [f.schema, missing]
+
+    const change = watchChange(files, watchSignature(files), 20)
+    setTimeout(() => Fs.writeFileSync(missing, 'service: {}'), 120)
+    Assert.equal(await change, true)
+  })
+
+
+  // The production waiter itself — the real poll interval, driven by a
+  // real touch, so the composition runVet actually uses is exercised.
+  test('vet-watch-production-waiter', async () => {
+    const f = vetFiles(VET_SCHEMA, 'service: {}')
+    const files = [f.schema, f.data]
+
+    const change = vetWaiter(files, watchSignature(files))
+    setTimeout(() => Fs.writeFileSync(f.data, 'service: { x: 1 }'), 250)
+    Assert.equal(await change, true)
+  })
+})
+
+
+// The subsumption verbs (G3 phase 3). What the two ports must AGREE on
+// (the report itself) is pinned by test/spec/subsume.tsv; what each
+// port owns (argument handling, exit codes, the text rendering, git
+// resolution) is here. The Go twin is go/cmd/aontu/subsume_test.go.
+describe('cli-subsume', () => {
+
+  function subFiles(general: string, specific: string) {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-sub-'))
+    const g = Path.join(dir, 'general.aon')
+    const s = Path.join(dir, 'specific.aon')
+    Fs.writeFileSync(g, general)
+    Fs.writeFileSync(s, specific)
+    return { dir, general: g, specific: s }
+  }
+
+  test('subsume-exit-codes-are-verdict-classes', () => {
+    const yes = subFiles('a:integer', 'a:1')
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runSubsume([yes.general, yes.specific]), 0)
+    ).out.trim(), 'verdict: subsumes')
+
+    const no = subFiles('a:integer', 'a:hello')
+    const r = vetCapture(() =>
+      Assert.equal(runSubsume([no.general, no.specific]), 1))
+    Assert.match(r.out, /verdict: does_not_subsume/)
+    Assert.match(r.out, /\$\.a: compat_narrowed \[compat\]/)
+    Assert.match(r.out, /general: .*general\.aon:1:3 \(integer\)/)
+    Assert.match(r.out, /specific: .*specific\.aon:1:3 \("hello"\)/)
+
+    const und = subFiles('a:{x:1}|{x:2}', 'a:{x:1|2}')
+    vetCapture(() =>
+      Assert.equal(runSubsume([und.general, und.specific]), 3))
+
+    const broken = subFiles('a:1 a:2', 'a:1')
+    vetCapture(() =>
+      Assert.equal(runSubsume([broken.general, broken.specific]), 4))
+  })
+
+  test('subsume-profile-selects-the-comparison', () => {
+    const f = subFiles('a:*2|number', 'a:*1|number')
+    vetCapture(() => Assert.equal(
+      runSubsume(['--profile', 'values', f.general, f.specific]), 0))
+    const r = vetCapture(() => Assert.equal(
+      runSubsume(['--profile', 'defaults', f.general, f.specific]), 1))
+    Assert.match(r.out, /compat_default_changed/)
+  })
+
+  test('subsume-at-anchors-both-documents', () => {
+    const f = subFiles('a:{x:integer} b:2', 'a:{x:1} b:xyz')
+    vetCapture(() => Assert.equal(
+      runSubsume(['--at', '$.a', f.general, f.specific]), 0))
+    // A path missing from either side is an error verdict.
+    vetCapture(() => Assert.equal(
+      runSubsume(['--at', '$.zz', f.general, f.specific]), 4))
+  })
+
+  test('subsume-json-names-the-producer', () => {
+    const f = subFiles('a:integer', 'a:hello')
+    const r = vetCapture(() =>
+      Assert.equal(runSubsume(['--format', 'json', f.general, f.specific]), 1))
+    const report = JSON.parse(r.out)
+    Assert.equal(report.aontu.verb, 'subsume')
+    Assert.equal(report.verdict, 'does_not_subsume')
+    Assert.equal(report.findings[0].code, 'compat_narrowed')
+    Assert.equal(report.aontu.mode, undefined)
+  })
+
+  test('subsume-usage-errors-exit-2', () => {
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runSubsume(['--bogus']), 2)
+    ).err.includes('unknown subsume option'), true)
+    vetCapture(() => Assert.equal(runSubsume(['one.aon']), 2))
+    vetCapture(() => Assert.equal(
+      runSubsume(['--profile', 'bogus', 'a.aon', 'b.aon']), 2))
+    vetCapture(() => Assert.equal(runSubsume(['--at']), 2))
+    vetCapture(() => Assert.equal(
+      runSubsume(['--format', 'sarif', 'a.aon', 'b.aon']), 2))
+    const f = subFiles('a:1', 'a:1')
+    vetCapture(() => Assert.equal(
+      runSubsume([Path.join(f.dir, 'missing.aon'), f.specific]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runSubsume(['--help']), 0)
+    ).out.includes('aontu subsume'), true)
+  })
+
+  // The design's own motivating example: the v2 that renames nothing
+  // but adds a required key and moves a default is BREAKING, with both
+  // witnesses located.
+  test('breaking-detects-the-designs-v1-v2-break', () => {
+    const f = subFiles(
+      'service: close({name:string,port:*9090|integer,owner:string})',
+      'service: close({name:string,port:*8080|integer})')
+    const r = vetCapture(() => Assert.equal(
+      runBreaking(['--against', f.specific, f.general]), 1))
+    Assert.match(r.out, /verdict: breaking/)
+    Assert.match(r.out, /\$\.service\.owner: compat_required_added/)
+    Assert.match(r.out, /\$\.service\.port: compat_default_changed/)
+  })
+
+  test('breaking-modes-choose-the-directions', () => {
+    // Widening (v2 admits more) is fine backward, breaking forward.
+    const f = subFiles('a:number', 'a:integer')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--mode', 'backward', f.general]), 0))
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--mode', 'forward', f.general]), 1))
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--mode', 'full', f.general]), 1))
+  })
+
+  test('breaking-resolves-git-revisions', () => {
+    const { execFileSync } = require('node:child_process')
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-brk-'))
+    const file = Path.join(dir, 'svc.aon')
+    const git = (...args: string[]) => execFileSync('git', [
+      '-c', 'user.email=t@example.com', '-c', 'user.name=t', ...args,
+    ], { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] })
+    git('init', '-q', '.')
+    Fs.writeFileSync(file, 'service: close({name:string,port:*8080|integer})')
+    git('add', 'svc.aon')
+    git('commit', '-q', '-m', 'v1')
+    Fs.writeFileSync(file,
+      'service: close({name:string,port:*9090|integer,owner:string})')
+
+    const r = vetCapture(() => Assert.equal(
+      runBreaking(['--against', 'git#HEAD', file]), 1))
+    Assert.match(r.out, /verdict: breaking/)
+    Assert.match(r.out, /specific: git#HEAD:1:\d+/)
+
+    // The forward direction puts the git source on the general side.
+    const fwd = vetCapture(() => Assert.equal(
+      runBreaking(['--against', 'git#HEAD', '--mode', 'forward', file]), 1))
+    Assert.match(fwd.out, /general: git#HEAD:1:\d+/)
+
+    // An unknown revision is a usage failure naming the spelling.
+    const bad = vetCapture(() => Assert.equal(
+      runBreaking(['--against', 'git#no-such-rev', file]), 2))
+    Assert.match(bad.err, /cannot resolve git#no-such-rev/)
+
+    // No git binary at all: still a located usage failure, using the
+    // spawn error's own message since there is no stderr to quote.
+    const savedPath = process.env.PATH
+    try {
+      process.env.PATH = ''
+      const gone = vetCapture(() => Assert.equal(
+        runBreaking(['--against', 'git#HEAD', file]), 2))
+      Assert.match(gone.err, /cannot resolve git#HEAD/)
+    }
+    finally {
+      process.env.PATH = savedPath
+    }
+  })
+
+  test('breaking-reads-the-documents-own-policy', () => {
+    // The policy declares no compatibility promise: nothing to check,
+    // whatever --against says.
+    const f = subFiles(
+      'aontu_policy: hide({compat: *none|backward|forward|full})\na:1',
+      'a:hello')
+    const r = vetCapture(() => Assert.equal(
+      runBreaking(['--against', f.specific, '--format', 'json', f.general]), 0))
+    const report = JSON.parse(r.out)
+    Assert.equal(report.aontu.mode, 'none')
+    Assert.equal(report.verdict, 'compatible')
+
+    // --mode overrides the declaration.
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--mode', 'backward', f.general]), 1))
+
+    // The none path renders as text too.
+    Assert.equal(vetCapture(() => Assert.equal(
+      runBreaking(['--against', f.specific, f.general]), 0)
+    ).out.trim(), 'verdict: compatible')
+  })
+
+  // The declaration's other spellings: a preference-free disjunction
+  // declares its first alternative; a bare scalar declares itself; a
+  // value that does not spell a mode (or a document that does not stand
+  // alone) falls back to backward.
+  test('breaking-policy-spellings', () => {
+    const noPref = subFiles(
+      'aontu_policy: hide({compat: none|backward})\na:1', 'a:hello')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', noPref.specific, noPref.general]), 0))
+
+    const bare = subFiles(
+      'aontu_policy: hide({compat: none})\na:1', 'a:hello')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', bare.specific, bare.general]), 0))
+
+    const notString = subFiles(
+      'aontu_policy: hide({compat: 1})\na:integer',
+      'aontu_policy: hide({compat: 1})\na:1')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', notString.specific, notString.general]), 0))
+
+    const notMode = subFiles(
+      'aontu_policy: hide({compat: sideways})\na:integer',
+      'aontu_policy: hide({compat: sideways})\na:1')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', notMode.specific, notMode.general]), 0))
+
+    // A document that does not stand alone: the policy read yields
+    // nothing, and the backward check itself reports the error.
+    const broken = subFiles('a:1 a:2', 'a:1')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', broken.specific, broken.general]), 4))
+  })
+
+  test('breaking-allow-undecided-downgrades-the-exit', () => {
+    const f = subFiles('a:{x:1}|{x:2}', 'a:{x:1|2}')
+    const r = vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, f.general]), 3))
+    Assert.match(r.out, /verdict: undecided/)
+    Assert.match(r.out, /sub_disjunct_distribution/)
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--allow-undecided', f.general]), 0))
+
+    const j = vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--format', 'json', f.general]), 3))
+    Assert.equal(JSON.parse(j.out).aontu.mode, 'backward')
+    Assert.equal(JSON.parse(j.out).verdict, 'undecided')
+  })
+
+  test('breaking-usage-errors-exit-2', () => {
+    vetCapture(() => Assert.equal(runBreaking(['file.aon']), 2))
+    vetCapture(() => Assert.equal(runBreaking(['--against']), 2))
+    const gf = subFiles('a:1', 'a:1')
+    Assert.equal(vetCapture(() => Assert.equal(runBreaking(
+      ['--against', 'git#', gf.general]), 2)
+    ).err.includes('git# needs a revision'), true)
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--mode', 'sideways', '--against', 'a.aon', 'b.aon']), 2))
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--format', 'yaml', '--against', 'a.aon', 'b.aon']), 2))
+    vetCapture(() => Assert.equal(runBreaking(['--bogus']), 2))
+    const f = subFiles('a:1', 'a:1')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', Path.join(f.dir, 'missing.aon'), f.general]), 2))
+    vetCapture(() => Assert.equal(runBreaking(
+      [Path.join(f.dir, 'missing.aon'), '--against', f.specific]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runBreaking(['--help']), 0)
+    ).out.includes('aontu breaking'), true)
+  })
+
+  // Deprecate-then-remove is the supported rename path: a finding
+  // about a value the old version already deprecated becomes a warning
+  // under --allow-deprecated-removal, and warnings do not move the
+  // verdict.
+  test('breaking-allow-deprecated-removal', () => {
+    const f = subFiles(
+      'service: close({name:string, listen:integer})',
+      'service: close({name:string, listen:integer,' +
+      ' port:deprecate(integer,{msg:"renamed",use:"$.service.listen"})})')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, f.general]), 1))
+    const r = vetCapture(() => Assert.equal(runBreaking(
+      ['--against', f.specific, '--allow-deprecated-removal', f.general]), 0))
+    Assert.match(r.out, /verdict: compatible/)
+    Assert.match(r.out, /\$\.service\.port: compat_narrowed/)
+
+    // A removal the old version did NOT deprecate stays breaking.
+    const g = subFiles(
+      'service: close({name:string})',
+      'service: close({name:string, port:integer})')
+    vetCapture(() => Assert.equal(runBreaking(
+      ['--against', g.specific, '--allow-deprecated-removal', g.general]), 1))
+  })
+
+  // The old-version reader behind the downgrade, arm by arm — the Go
+  // port exports the same reader (aontu.DeprecatedAt) and pins the same
+  // arms in go/check-adjacent tests.
+  test('breaking-deprecated-at-reader', () => {
+    const src = 'a:[deprecate(1,{msg:"m"})] b:{c:deprecate(2,{msg:"n"})} d:3'
+    Assert.equal(deprecatedAt(src, '$.a.0', 'x.aon'), true)
+    Assert.equal(deprecatedAt(src, '$.b.c', 'x.aon'), true)
+    Assert.equal(deprecatedAt(src, '$.a.5', 'x.aon'), false)
+    Assert.equal(deprecatedAt(src, '$.zz', 'x.aon'), false)
+    Assert.equal(deprecatedAt(src, '$.d.deeper', 'x.aon'), false)
+    Assert.equal(deprecatedAt(src, '$.d', 'x.aon'), false)
+    // A document that does not stand alone answers false: the check
+    // that produced the finding already reported why.
+    Assert.equal(deprecatedAt('a:1 a:2', '$.a', 'x.aon'), false)
+  })
+
+  // The trim reporter (G3 phase 6). Go twin: TestTrimVerb in
+  // go/cmd/aontu/trim_test.go.
+  test('trim-check-reports-redundant-paths', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-trim-'))
+    const file = Path.join(dir, 'doc.aon')
+    Fs.writeFileSync(file, 'a:{&:{deep:1}, b:{deep:1}, c:{other:2}}')
+    const r = vetCapture(() => Assert.equal(runTrim(['--check', file]), 1))
+    Assert.match(r.out, /verdict: redundant/)
+    Assert.match(r.out, /\$\.a\.b\.deep/)
+
+    Fs.writeFileSync(file, 'x:{y:1}')
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runTrim(['--check', file]), 0)
+    ).out.trim(), 'verdict: clean')
+
+    Fs.writeFileSync(file, 'a:1 a:2')
+    vetCapture(() => Assert.equal(runTrim(['--check', file]), 4))
+
+    Fs.writeFileSync(file, 'a:{&:{k:1},m:{k:1}}')
+    const j = vetCapture(() => Assert.equal(
+      runTrim(['--check', '--format', 'json', file]), 1))
+    const report = JSON.parse(j.out)
+    Assert.equal(report.aontu.verb, 'trim')
+    Assert.equal(report.verdict, 'redundant')
+    Assert.deepEqual(report.redundant, ['$.a.m.k'])
+  })
+
+  test('trim-usage-errors-exit-2', () => {
+    const f = subFiles('a:1', 'a:1')
+    // Report-only: rewriting needs a format-preserving editor (G7),
+    // so --check is required rather than silently defaulted.
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runTrim([f.general]), 2)
+    ).err.includes('pass --check'), true)
+    vetCapture(() => Assert.equal(runTrim(['--check']), 2))
+    vetCapture(() => Assert.equal(
+      runTrim(['--check', f.general, f.specific]), 2))
+    vetCapture(() => Assert.equal(runTrim(['--bogus']), 2))
+    vetCapture(() => Assert.equal(
+      runTrim(['--check', '--format', 'yaml', f.general]), 2))
+    vetCapture(() => Assert.equal(
+      runTrim(['--check', Path.join(f.dir, 'missing.aon')]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runTrim(['--help']), 0)
+    ).out.includes('aontu trim'), true)
+  })
+
+  // The relation reporter (G4 phase 5). Go twin: TestRelationsVerb in
+  // go/cmd/aontu/relations_test.go. What the two ports must AGREE on
+  // (the report itself) is test/spec/relation.tsv's; what each port
+  // owns — argument handling, exit codes, the text rendering — is here.
+  test('relations-reports-cycles-and-missing-inverses', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-rel-'))
+    const file = Path.join(dir, 'doc.aon')
+    const decl = '@"std/system"\n' +
+      'relations: {dependsOn: $.std.Relation & {inverse: usedBy, acyclic: true}}\n'
+
+    Fs.writeFileSync(file, decl +
+      'a: id(a) & {dependsOn: [&: refer(), b]}\n' +
+      'b: id(b) & {dependsOn: [&: refer(), a]}\n')
+    const r = vetCapture(() => Assert.equal(runRelations([file]), 1))
+    Assert.match(r.out, /verdict: fail/)
+    Assert.match(r.out, /cycle a -> b -> a/)
+    Assert.match(r.out, /b does not list a under usedBy/)
+
+    // Acyclic AND mirrored: nothing to report.
+    Fs.writeFileSync(file, decl +
+      'a: id(a) & {dependsOn: [&: refer(), b]}\n' +
+      'b: id(b) & {usedBy: [&: refer(), a]}\n')
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runRelations([file]), 0)
+    ).out.trim(), 'verdict: pass')
+
+    // A document that does not stand up is not a document with a bad
+    // graph.
+    Fs.writeFileSync(file, 'a: 1 & 2')
+    vetCapture(() => Assert.equal(runRelations([file]), 4))
+
+    Fs.writeFileSync(file, decl +
+      'a: id(a) & {dependsOn: [&: refer(), b]}\n' +
+      'b: id(b) & {dependsOn: [&: refer(), a]}\n')
+    const j = vetCapture(() => Assert.equal(
+      runRelations(['--format', 'json', file]), 1))
+    const report = JSON.parse(j.out)
+    Assert.equal(report.aontu.verb, 'relations')
+    Assert.equal(report.verdict, 'fail')
+    Assert.equal(report.findings.length, 3)
+    Assert.equal(report.findings[0].code, 'relation_cycle')
+    Assert.deepEqual(report.findings[0].detail, ['a', 'b', 'a'])
+  })
+
+  test('relations-usage-errors-exit-2', () => {
+    const f = subFiles('a:1', 'a:1')
+    vetCapture(() => Assert.equal(runRelations([]), 2))
+    vetCapture(() => Assert.equal(
+      runRelations([f.general, f.specific]), 2))
+    vetCapture(() => Assert.equal(runRelations(['--bogus']), 2))
+    vetCapture(() => Assert.equal(
+      runRelations(['--format', 'yaml', f.general]), 2))
+    vetCapture(() => Assert.equal(
+      runRelations([Path.join(f.dir, 'missing.aon')]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runRelations(['--help']), 0)
+    ).out.includes('aontu relations'), true)
+  })
+
+  // G7 phase 7: the REPL as an inspection tool. The command handler
+  // is a pure function of (state, line), so every answer the session
+  // gives is as checkable as the CLI's.
+  test('repl-loads-a-document-and-answers-about-it', () => {
+    const doc = 'services: {\n  &: { replicas: *1 | integer }\n' +
+      '  auth: { replicas: 3 }\n}'
+    const read = (f: string) => {
+      if ('missing.aon' === f) {
+        throw Object.assign(new Error('no such file'), { code: 'ENOENT' })
+      }
+      return doc
+    }
+    let st: any = { mode: 'json', jsonl: false }
+    const run = (line: string) => {
+      const r = replCommand(st, line, read)
+      st = r.state
+      return r
+    }
+
+    // Nothing loaded yet: the inspection commands say so rather than
+    // guessing.
+    Assert.match(run(':get $.a').out, /nothing loaded/)
+    Assert.match(run(':why $.a').out, /nothing loaded/)
+
+    Assert.match(run(':load sys.aon').out, /^loaded: sys\.aon/)
+    Assert.equal(run(':keys $.services').out, 'auth')
+    Assert.equal(run(':get $.services.auth').out, '{\n  "replicas": 3\n}')
+    Assert.match(run(':why $.services.auth.replicas').out,
+      /\*1\|integer.*\(spread\)/)
+
+    // The `:canon` toggle reaches the query surface too.
+    run(':canon')
+    Assert.equal(run(':get $.services.auth').out, '{"replicas":3}')
+
+    // A path that names nothing is a refusal, not an answer.
+    Assert.match(run(':get $.nope').out, /no_path/)
+    Assert.match(run(':why $.nope').out, /no_path/)
+
+    // And the session's own commands still work.
+    Assert.equal(run('').out, '')
+    Assert.match(run(':help').out, /Usage: aontu/)
+    Assert.match(run(':bogus').out, /unknown command/)
+    Assert.match(run(':load').out, /needs a file/)
+    Assert.match(run(':load missing.aon').out, /cannot read/)
+    // A document that does not stand up is refused at :load, and
+    // nothing is held: the session keeps whatever it had.
+    const broken = replCommand(
+      { mode: 'json', jsonl: false } as any, ':load broken.aon',
+      () => 'a:1 a:2')
+    Assert.equal(broken.state.src, undefined)
+    Assert.match(broken.out, /Cannot unify/)
+    Assert.equal(run('a:1').out, '{"a":1}')
+    Assert.equal(run(':quit').close, true)
+    Assert.equal(run(':exit').close, true)
+  })
+
+  // The SESSION protocol: one JSON line per answer, so a harness can
+  // drive the REPL. Human-readable output stays the default.
+  test('repl-jsonl-answers-in-one-line', () => {
+    const read = () => 'a: 1'
+    let st: any = { mode: 'json', jsonl: true }
+    const run = (line: string) => {
+      const r = replCommand(st, line, read)
+      st = r.state
+      return JSON.parse(r.out)
+    }
+    Assert.deepEqual(run(':load doc.aon'),
+      { ok: true, out: 'loaded: doc.aon\n{\n  "a": 1\n}' })
+    Assert.deepEqual(run(':keys'), { ok: true, out: 'a' })
+    Assert.equal(run(':get $.zz').ok, false)
+    Assert.equal(run('a:1 a:2').ok, false)
+  })
+
+  // G7 phase 6: the generated AGENTS.md stanza. The stanza itself is
+  // pinned byte for byte by test/spec/agentsmd.tsv in both ports;
+  // these cases hold the command line and the SPLICE.
+  test('agentsmd-writes-between-its-markers', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-md-'))
+    const entry = Path.join(dir, 'sys.aon')
+    const target = Path.join(dir, 'AGENTS.md')
+    Fs.writeFileSync(entry, 'services: { auth: { owner: string } }')
+
+    const r = vetCapture(() => Assert.equal(runAgentsMd([entry]), 0))
+    Assert.match(r.out, /<!-- aontu:begin -->/)
+    Assert.match(r.out, /aontu get \$\.services/)
+    Assert.match(r.out, /Pin: `aon1-/)
+
+    // An ABSENT target is an empty one, and prose already there is
+    // kept: a generator that rewrote the file is one nobody dares run
+    // twice.
+    Fs.writeFileSync(target, 'Intro prose.\n')
+    vetCapture(() => Assert.equal(runAgentsMd(['--write', target, entry]), 0))
+    const first = Fs.readFileSync(target, 'utf8')
+    Assert.match(first, /^Intro prose\./)
+    Assert.match(first, /<!-- aontu:end -->/)
+
+    // And re-running SPLICES rather than appending: the file after
+    // two runs is the file after one.
+    vetCapture(() => Assert.equal(runAgentsMd(['--write', target, entry]), 0))
+    Assert.equal(Fs.readFileSync(target, 'utf8'), first)
+
+    // A target with no trailing newline gets one, so appending never
+    // joins the stanza onto someone's last line.
+    const bare = Path.join(dir, 'BARE.md')
+    Fs.writeFileSync(bare, 'no trailing newline')
+    vetCapture(() => Assert.equal(runAgentsMd(['--write', bare, entry]), 0))
+    Assert.match(Fs.readFileSync(bare, 'utf8'),
+      /^no trailing newline\n\n<!-- aontu:begin -->/)
+
+    // A target that does not exist yet is created.
+    const fresh = Path.join(dir, 'NEW.md')
+    vetCapture(() => Assert.equal(runAgentsMd(['--write', fresh, entry]), 0))
+    Assert.match(Fs.readFileSync(fresh, 'utf8'), /<!-- aontu:begin -->/)
+  })
+
+  test('agentsmd-usage-errors-exit-2', () => {
+    const f = subFiles('a:1', 'a:1')
+    vetCapture(() => Assert.equal(runAgentsMd([]), 2))
+    vetCapture(() => Assert.equal(runAgentsMd([f.general, f.specific]), 2))
+    vetCapture(() => Assert.equal(runAgentsMd(['--bogus', f.general]), 2))
+    vetCapture(() => Assert.equal(runAgentsMd(['--write']), 2))
+    vetCapture(() => Assert.equal(
+      runAgentsMd([Path.join(f.dir, 'missing.aon')]), 2))
+    // A target that cannot be read (a directory) is usage, not empty.
+    vetCapture(() => Assert.equal(
+      runAgentsMd(['--write', f.dir, f.general]), 2))
+    vetCapture(() => Assert.equal(
+      runAgentsMd(['--write', Path.join(f.dir, 'no-dir', 'A.md'), f.general]),
+      2))
+
+    // A document that does not stand up has no stanza: exit 4.
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-md-err-'))
+    const broken = Path.join(dir, 'doc.aon')
+    Fs.writeFileSync(broken, 'a:1 a:2')
+    vetCapture(() => Assert.equal(runAgentsMd([broken]), 4))
+
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runAgentsMd(['--help']), 0)
+    ).out.includes('aontu agentsmd'), true)
+  })
+
+  // G7 phase 5: the overlay patch verb. What the two ports must agree
+  // on (the report) is pinned by test/spec/patch.tsv; these cases hold
+  // the command line and, above all, WHEN THE FILE IS WRITTEN.
+  test('set-appends-to-the-overlay-when-the-change-holds', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-set-'))
+    const entry = Path.join(dir, 'sys.aon')
+    const overlay = Path.join(dir, 'ov.aon')
+    Fs.writeFileSync(entry,
+      'services: { auth: { owner: string, replicas: *1 | integer } }')
+
+    // An ABSENT overlay is the empty overlay, and the file is created.
+    const r = vetCapture(() => Assert.equal(runSet(
+      ['$.services.auth.owner="identity-2"',
+        '--entry', entry, '--overlay', overlay]), 0))
+    Assert.match(r.out, /verdict: valid/)
+    Assert.match(r.out, /wrote:/)
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'),
+      '"services": "auth": "owner": "identity-2"\n')
+
+    // A second assignment appends after the first.
+    vetCapture(() => Assert.equal(runSet(
+      ['$.services.auth.replicas=5',
+        '--entry', entry, '--overlay', overlay]), 0))
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'),
+      '"services": "auth": "owner": "identity-2"\n' +
+      '"services": "auth": "replicas": 5\n')
+
+    const j = JSON.parse(vetCapture(() => Assert.equal(runSet(
+      ['$.services.auth.owner="identity-2"', '--format', 'json',
+        '--entry', entry, '--overlay', overlay]), 0)).out)
+    Assert.equal(j.aontu.verb, 'set')
+    Assert.equal(j.verdict, 'valid')
+    Assert.equal(j.written, true)
+    Assert.deepEqual(j.appended, ['"services": "auth": "owner": "identity-2"'])
+  })
+
+  // A change that contradicts a PINNED value is a question for the
+  // author at the pinning site: reported, exit 1, and NOT written —
+  // leaving it in the overlay would leave the configuration broken.
+  test('set-refuses-to-write-a-change-that-does-not-hold', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-set-no-'))
+    const entry = Path.join(dir, 'sys.aon')
+    const overlay = Path.join(dir, 'ov.aon')
+    Fs.writeFileSync(entry, 'port: 3')
+    Fs.writeFileSync(overlay, 'x: 1\n')
+
+    const r = vetCapture(() => Assert.equal(runSet(
+      ['$.port=5', '--entry', entry, '--overlay', overlay]), 1))
+    Assert.match(r.err, /verdict: invalid/)
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'), 'x: 1\n')
+
+    // --dry-run prints the verdict and writes nothing, even when it
+    // would have held.
+    const d = vetCapture(() => Assert.equal(runSet(
+      ['$.port=3', '--dry-run', '--entry', entry, '--overlay', overlay]), 0))
+    Assert.match(d.out, /\(dry run\)/)
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'), 'x: 1\n')
+
+    // An entry that does not stand up is verdict error, exit 4.
+    Fs.writeFileSync(entry, 'a:1 a:2')
+    vetCapture(() => Assert.equal(runSet(
+      ['$.b=1', '--entry', entry, '--overlay', overlay]), 4))
+    Assert.equal(Fs.readFileSync(overlay, 'utf8'), 'x: 1\n')
+  })
+
+  test('set-usage-errors-exit-2', () => {
+    const f = subFiles('a:{b:integer}', 'a:1')
+    const ov = Path.join(f.dir, 'ov.aon')
+    vetCapture(() => Assert.equal(runSet([]), 2))
+    vetCapture(() => Assert.equal(runSet(['$.a.b=1']), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', f.general]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['--entry', f.general, '--overlay', ov]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--bogus', '--entry', f.general, '--overlay', ov]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--format', 'yaml', '--entry', f.general, '--overlay', ov]), 2))
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', Path.join(f.dir, 'missing.aon'),
+        '--overlay', ov]), 2))
+    // An overlay that cannot be READ (a directory, not a missing file)
+    // is a usage error, not an empty overlay.
+    vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', f.general, '--overlay', f.dir]), 2))
+    // An overlay whose DIRECTORY does not exist reads as absent (the
+    // empty overlay) and then fails to write, which is also usage.
+    Assert.equal(vetCapture(() => Assert.equal(runSet(
+      ['$.a.b=1', '--entry', f.general,
+        '--overlay', Path.join(f.dir, 'no-such-dir', 'ov.aon')]), 2)
+    ).err.includes('cannot write'), true)
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runSet(['--help']), 0)
+    ).out.includes('aontu set'), true)
+  })
+
+  // G7 phase 3: provenance. The record itself is pinned by
+  // test/spec/why.tsv in both ports; these cases hold the command
+  // line and the text rendering.
+  test('why-names-every-contribution', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-why-'))
+    const file = Path.join(dir, 'doc.aon')
+    Fs.writeFileSync(file,
+      'services: {\n  &: { replicas: *1 | integer }\n' +
+      '  auth: { replicas: 3 }\n  db: {}\n}\n')
+
+    const r = vetCapture(() =>
+      Assert.equal(runWhy(['$.services.auth.replicas', file]), 0))
+    Assert.match(r.out, /^\$\.services\.auth\.replicas = 3/)
+    Assert.match(r.out, /1\. \*1\|integer.*doc\.aon:2:18  \(spread\)/)
+    Assert.match(r.out, /2\. 3.*doc\.aon:3:21/)
+
+    // A value written once and never met is a fact, not a failure.
+    const q = vetCapture(() =>
+      Assert.equal(runWhy(['$.services.db.replicas', file]), 0))
+    Assert.match(q.out, /no contributions/)
+
+    const j = JSON.parse(vetCapture(() => Assert.equal(
+      runWhy(['$.services.auth.replicas', '--format', 'json', file]), 0)).out)
+    Assert.equal(j.aontu.verb, 'why')
+    Assert.equal(j.ok, true)
+    Assert.equal(j.record.value, '3')
+    Assert.equal(j.record.conjuncts.length, 2)
+    Assert.equal(j.record.conjuncts[0].role, 'spread')
+  })
+
+  test('why-exit-codes-and-usage', () => {
+    const f = subFiles('a:{b:1}', 'a:1')
+    const miss = vetCapture(() => Assert.equal(runWhy(['$.zz', f.general]), 1))
+    Assert.match(miss.err, /no_path/)
+
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-why-err-'))
+    const broken = Path.join(dir, 'doc.aon')
+    Fs.writeFileSync(broken, 'a:1 a:2')
+    vetCapture(() => Assert.equal(runWhy(['$.a', broken]), 4))
+
+    vetCapture(() => Assert.equal(runWhy([]), 2))
+    vetCapture(() => Assert.equal(runWhy(['$.a']), 2))
+    vetCapture(() => Assert.equal(runWhy(['$.a', f.general, f.specific]), 2))
+    vetCapture(() => Assert.equal(runWhy(['--bogus', '$.a', f.general]), 2))
+    vetCapture(() => Assert.equal(
+      runWhy(['$.a', '--format', 'yaml', f.general]), 2))
+    vetCapture(() => Assert.equal(runWhy(['$.a', '--format']), 2))
+    vetCapture(() => Assert.equal(
+      runWhy(['$.a', Path.join(f.dir, 'missing.aon')]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runWhy(['--help']), 0)
+    ).out.includes('aontu why'), true)
+
+    // The JSON form of a refusal carries the findings and no record.
+    const j = JSON.parse(vetCapture(() => Assert.equal(
+      runWhy(['$.zz', '--format', 'json', f.general]), 1)).out)
+    Assert.equal(j.ok, false)
+    Assert.equal(j.record, undefined)
+    Assert.equal(j.findings[0].code, 'no_path')
+  })
+
+  // A SITELESS contribution prints no location rather than a `-1:-1`
+  // that means nothing, and an unnamed source prints row:col alone.
+  // The site shape allows both while no document has yet produced one,
+  // so the renderer is exercised directly (ADR-002).
+  test('why-renders-a-siteless-contribution', () => {
+    Assert.equal(
+      renderWhyText({
+        conjuncts: [
+          { canon: '1', role: 'literal', site: { col: -1, file: '', row: -1 } },
+          { canon: 'integer', role: 'spread', site: { col: 3, file: '', row: 2 } },
+        ],
+        path: '$.a',
+        value: '1',
+      }),
+      '$.a = 1\n  1. 1\n  2. integer  2:3  (spread)')
+  })
+
+  // G7 phase 1: the query verb. The views themselves are pinned by
+  // test/spec/query.tsv in both ports; these cases hold the command
+  // line -- flag parsing, the exit classes, and where each answer
+  // goes.
+  test('get-renders-one-node-per-view', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-get-'))
+    const file = Path.join(dir, 'doc.aon')
+    Fs.writeFileSync(file,
+      'svc:{auth:{image:"a:v2",replicas:3}}\nport: *8080|integer\n')
+
+    Assert.equal(
+      vetCapture(() => Assert.equal(runGet(['$.svc.auth.replicas', file]), 0))
+        .out.trim(), '3')
+    Assert.equal(
+      vetCapture(() => Assert.equal(
+        runGet(['$.svc.auth', '--canon', file]), 0)).out.trim(),
+      '{"image":"a:v2","replicas":3}')
+    Assert.equal(
+      vetCapture(() => Assert.equal(
+        runGet(['$.svc.auth', '--types', file]), 0)).out.trim(),
+      '{"image":string,"replicas":integer}')
+    Assert.equal(
+      vetCapture(() => Assert.equal(runGet(['$.svc', '--keys', file]), 0))
+        .out.trim(), 'auth')
+    Assert.equal(
+      vetCapture(() => Assert.equal(
+        runGet(['$', '--canon', '--depth', '1', file]), 0)).out.trim(),
+      '{"port":top,"svc":top}')
+
+    const j = JSON.parse(vetCapture(() => Assert.equal(
+      runGet(['$.svc.auth', '--format', 'json', file]), 0)).out)
+    Assert.equal(j.aontu.verb, 'get')
+    Assert.equal(j.ok, true)
+    Assert.equal(j.findings.length, 0)
+  })
+
+  // A path that names nothing is the QUESTION's answer -- exit 1, the
+  // "no" class -- while a document that does not stand up is exit 4.
+  test('get-exit-codes-separate-no-from-broken', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-get-err-'))
+    const file = Path.join(dir, 'doc.aon')
+
+    Fs.writeFileSync(file, 'svc:{auth:{image:"a"}}')
+    const miss = vetCapture(() =>
+      Assert.equal(runGet(['$.svc.auht', file]), 1))
+    Assert.equal(miss.out, '')
+    Assert.match(miss.err, /no_path/)
+    Assert.match(miss.err, /did you mean auth\?/)
+
+    Fs.writeFileSync(file, 'a:1 a:2')
+    vetCapture(() => Assert.equal(runGet(['$', file]), 4))
+
+    // A value that is not concrete has no JSON, and says so as an
+    // error rather than inventing one.
+    Fs.writeFileSync(file, 'k: integer')
+    vetCapture(() => Assert.equal(runGet(['$.k', file]), 4))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runGet(['$.k', '--canon', file]), 0)).out.trim(), 'integer')
+  })
+
+  test('get-usage-errors-exit-2', () => {
+    const f = subFiles('a:{b:1}', 'a:1')
+    vetCapture(() => Assert.equal(runGet([]), 2))
+    vetCapture(() => Assert.equal(runGet(['$.a']), 2))
+    vetCapture(() => Assert.equal(runGet(['$.a', f.general, f.specific]), 2))
+    vetCapture(() => Assert.equal(runGet(['--bogus', '$.a', f.general]), 2))
+    vetCapture(() => Assert.equal(
+      runGet(['$.a', '--format', 'yaml', f.general]), 2))
+    vetCapture(() => Assert.equal(runGet(['$.a', '--depth', 'x', f.general]), 2))
+    vetCapture(() => Assert.equal(runGet(['$.a', '--depth', '0', f.general]), 2))
+    vetCapture(() => Assert.equal(runGet(['$.a', '--depth', f.general]), 2))
+    // Eliding below a depth means rendering `top`, which JSON cannot
+    // say -- refused rather than silently switching the view.
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runGet(['$.a', '--depth', '1', f.general]), 2)
+    ).err.includes('JSON cannot say top'), true)
+    vetCapture(() => Assert.equal(
+      runGet(['$.a', Path.join(f.dir, 'missing.aon')]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runGet(['--help']), 0)
+    ).out.includes('aontu get'), true)
+  })
+
+  // G6 phase 1: the canon-hash verb. The pin is the point, so the
+  // cases assert the SHAPE and the invariances -- reformatting,
+  // reordering and re-commenting a document leave the hash alone,
+  // while closing a map moves it -- rather than a literal digest,
+  // which test/spec/hcanon.tsv pins in both ports at once.
+  test('hash-pins-meaning-not-text', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-hash-'))
+    const file = Path.join(dir, 'doc.aon')
+
+    Fs.writeFileSync(file, 'b: 2\na: 1\n')
+    const first = vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim()
+    Assert.match(first, /^aon1-[A-Za-z0-9_-]{43}$/)
+
+    // Same meaning, different bytes: comments, whitespace, key order.
+    Fs.writeFileSync(file, '# the module\n\n   a:1\n   b:2  # trailing\n')
+    Assert.equal(
+      vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim(), first)
+
+    // A semantic change moves it -- closedness is IN the hash form
+    // even though canon drops it.
+    Fs.writeFileSync(file, 'a: 1\nb: 3\n')
+    Assert.notEqual(
+      vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim(), first)
+
+    Fs.writeFileSync(file, 'x: {a:1}')
+    const open = vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim()
+    Fs.writeFileSync(file, 'x: close({a:1})')
+    const closed = vetCapture(() => Assert.equal(runHash([file]), 0)).out.trim()
+    Assert.notEqual(closed, open)
+
+    // --form prints the hashed TEXT, which is what to diff when a pin
+    // moves, and the JSON report carries both.
+    Assert.equal(
+      vetCapture(() => Assert.equal(runHash(['--form', file]), 0)).out.trim(),
+      '{"x":close({"a":1})}')
+    const j = JSON.parse(vetCapture(() =>
+      Assert.equal(runHash(['--format', 'json', file]), 0)).out)
+    Assert.equal(j.aontu.verb, 'hash')
+    Assert.equal(j.hash, closed)
+    Assert.equal(j.form, '{"x":close({"a":1})}')
+  })
+
+  test('hash-usage-errors-exit-2', () => {
+    const f = subFiles('a:1', 'a:1')
+    vetCapture(() => Assert.equal(runHash([]), 2))
+    vetCapture(() => Assert.equal(runHash([f.general, f.specific]), 2))
+    vetCapture(() => Assert.equal(runHash(['--bogus', f.general]), 2))
+    vetCapture(() => Assert.equal(runHash(['--format', 'yaml', f.general]), 2))
+    vetCapture(() => Assert.equal(runHash(['--format']), 2))
+    vetCapture(() => Assert.equal(
+      runHash([Path.join(f.dir, 'missing.aon')]), 2))
+    Assert.equal(vetCapture(() =>
+      Assert.equal(runHash(['--help']), 0)
+    ).out.includes('aontu hash'), true)
+  })
+
+  // A document that does not stand up on its own has no meaning to
+  // pin: exit 4, the verbs' error class, and NOT a hash of the wreck
+  // (which would agree with every other wreck).
+  test('hash-broken-document-exits-4', () => {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-hash-err-'))
+    const file = Path.join(dir, 'doc.aon')
+    Fs.writeFileSync(file, 'a:1 a:2')
+    const r = vetCapture(() => Assert.equal(runHash([file]), 4))
+    Assert.equal(r.out, '')
+    Assert.match(r.err, /does not evaluate on its own/)
+  })
+
+  // The verbs ride the same first-argument dispatch vet does.
+  test('subsume-verbs-dispatch-from-main', () => {
+    const f = subFiles('a:integer', 'a:1')
+    const r = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'subsume', f.general, f.specific]))
+    Assert.match(r.out, /verdict: subsumes/)
+    const b = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'breaking', '--against', f.specific, f.general]))
+    Assert.match(b.out, /verdict: compatible/)
+    const t = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'trim', '--check', f.general]))
+    Assert.match(t.out, /verdict: clean/)
+    const rl = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'relations', f.general]))
+    Assert.match(rl.out, /verdict: pass/)
+    const h = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'hash', f.general]))
+    Assert.match(h.out, /^aon1-/)
+    const g = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'get', '$.a', '--canon', f.general]))
+    Assert.match(g.out, /integer/)
+    const w = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'why', '$.a', f.general]))
+    Assert.match(w.out, /\$\.a = integer/)
+    const st = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'set', '$.a=1', '--dry-run',
+        '--entry', f.general, '--overlay', Path.join(f.dir, 'ov.aon')]))
+    Assert.match(st.out, /verdict: valid/)
+    const md = vetCapture(() => cliMainVet(
+      ['node', 'aontu', 'agentsmd', f.general]))
+    Assert.match(md.out, /aontu:begin/)
+  })
+
 })

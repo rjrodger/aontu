@@ -35,6 +35,16 @@ interactively with no file.
 ```
 Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
+       aontu subsume [options] <general> <specific>
+       aontu breaking --against <file|git#rev> [options] <file>
+       aontu trim --check [options] <file>
+       aontu relations [options] <file>
+       aontu hash [options] <file>
+       aontu mod tidy|vendor|manifest [options] [dir]
+       aontu get <path> [options] <file>
+       aontu why <path> [options] <file>
+       aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu agentsmd [--write <AGENTS.md>] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -81,7 +91,8 @@ aontu vet [options] <schema> <data> [more-data...]
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
-  --format <f>      text (default) or json
+  --format <f>      text (default), json or sarif
+  --watch           Re-run whenever a watched file changes
 ```
 
 **Exit codes are verdict classes**, not a pass/fail bit, because the
@@ -136,14 +147,464 @@ version and verb made it. Where the constraint algebra knows what would
 have unified, the finding carries it as `expected`/`actual`, and a
 `must()` check's author message rides along as `note`.
 
+`--format sarif` emits the report as SARIF 2.1.0, the interchange form
+CI systems ingest (GitHub code scanning upload, PR annotation) — a
+minimal profile: one run, one result per finding, the data site as the
+primary location, the schema site under `relatedLocations`, and the
+whole native finding embedded in `properties`, so a SARIF consumer
+still holds the native contract. Severities map to SARIF levels
+(`info` → `note`). The renderer is library API in both ports
+(`sarifReport(report, version)` from `aontu`; `aontu.SarifReport` in
+Go), and its bytes are held to cross-port parity by the golden in
+[`test/spec/files/vet-sarif/`](../test/spec/files/vet-sarif/README.md).
+A ready-made GitHub Action wrapping the verb ships in this repository:
+[`vet-action/`](../vet-action/README.md).
+
+`--watch` re-runs the whole vet whenever a watched file (the schema or
+any data file) changes, streaming one report per run — honestly
+non-incremental: parsed trees are single-use, so every run is a full
+re-parse and re-unify, bounded by the fixpoint's pass budget. A file
+that is briefly unreadable mid-save reports and keeps watching.
+
+### `aontu subsume`
+
+The subsumption query as a command
+([docs/reference-language.md, "Subsumption"](reference-language.md#subsumption)):
+does the general document admit every instance the specific one admits?
+
+```
+aontu subsume [--profile values|defaults|gen] [--at <path>]
+              [--format text|json] <general.aon> <specific.aon>
+```
+
+The exit code is the verdict class: `0` subsumes, `1` does not subsume
+(the findings carry the witness — path, codes, both sites), `3`
+undecided (always with a `sub_*` reason), `4` a document that does not
+stand up on its own, `2` usage. The report reuses vet's finding object
+and renderers, class `compat`.
+
+### `aontu breaking`
+
+The evolution gate built on the same query: compare a document against
+its own earlier versions.
+
+```
+aontu breaking --against <file|git#rev> [--mode backward|forward|full]
+               [--allow-undecided] [--format text|json] <file.aon>
+```
+
+- `--against` takes a file path or `git#<rev>` (resolved by shelling
+  out to `git show <rev>:./<basename>` from the file's own directory —
+  no embedded git), and is repeatable.
+- Modes: **backward** (the default) checks the new document subsumes
+  the old — documents valid under v1 stay valid; **forward** checks the
+  old subsumes the new; **full** checks both.
+- The document can declare its own promise:
+  `aontu_policy: hide({compat: *backward | forward | full | none})` —
+  `breaking` reads `$.aontu_policy.compat` from the new document, and
+  `--mode` overrides it. `none` declares no promise: nothing is
+  checked.
+- Exit codes mirror `subsume`'s: `0` compatible, `1` breaking, `3`
+  undecided, `4` error, `2` usage. Undecided **fails** the gate by
+  default — a gate that shrugs is not a gate — downgradable with
+  `--allow-undecided`.
+- `--allow-deprecated-removal` downgrades a finding about a value the
+  old version already `deprecate()`d to a warning (still reported, no
+  longer failing): deprecate-then-remove is the supported rename path.
+
+### `aontu trim`
+
+Report redundant map entries — entries whose removal leaves the
+evaluated result unchanged, the spread-implied case included — as
+paths.
+
+```
+aontu trim --check [--format text|json] <file.aon>
+```
+
+- The test is **evaluate-and-compare**: for each candidate entry the
+  source is re-parsed, the entry deleted from the parsed tree, and the
+  canon compared to the baseline. This covers everything the fixpoint
+  can see (spread templates, references, duplicate-key merges), and a
+  removal that *errors* is not redundant — the entry is load-bearing.
+- Candidates are map entries at every depth; **list elements are not
+  candidates** (removing one shifts every later index — a different
+  document, not the same one minus a redundancy). A child of a
+  redundant parent is skipped: removing the parent already covers it.
+- `--check` is **required**: trim only reports for now — rewriting the
+  file in place needs a format-preserving editor (G7) — and
+  `aontu trim f.aon` doing something other than trimming silently
+  would be worse than saying so.
+- Exit codes: `0` clean, `1` redundant entries found, `4` the document
+  itself does not evaluate, `2` usage.
+
+### `aontu get`
+
+Select one node of an evaluated document by path and render it — the
+task-sized slice, instead of the whole file as one JSON blob.
+
+```
+aontu get <path> [-c|--canon] [--keys] [--types] [--depth <n>]
+          [--format text|json] <file.aon>
+```
+
+- **Evaluation is global.** Unification has no partial mode: the whole
+  document is evaluated and then one node is selected. What `get` buys
+  is the size of the *answer*, not the cost of producing it.
+- The path is what a reference means by `$.a.b` — map keys and
+  canonical-decimal list indices, and nothing else, so `$.a.01` names
+  nothing here exactly as it names nothing there. A key that *contains*
+  a dot is likewise unreachable, as it is to a reference; the escape
+  spelling is [G4](../docs/capability-review/g4-identity-relations.md)'s
+  to settle for both at once.
+- Default output is the fragment's generated JSON; `--canon` is its
+  canonical form, and for the root path that is byte-identical to
+  `aontu --canon`.
+- Exit codes: `0` rendered, `1` the path names nothing (the finding
+  carries a nearest-key suggestion), `2` usage, `4` the document does
+  not stand up on its own — including a node that is not concrete, for
+  which there is no JSON to print.
+
+**The projections are lattice abstractions.** Each view is a valid
+Aontu document that *subsumes the truth* — generalisation, never
+distortion:
+
+| flag | view |
+|------|------|
+| `--types` | every concrete leaf lifted to its own kind: `{"replicas":3}` becomes `{"replicas":integer}` |
+| `--depth n` | structure to depth n; every elided subtree renders as `top` — "no further information at this tier" |
+| `--keys` | the node's own key names (or list indices), one per line |
+
+That claim is checked rather than asserted: every projection row of
+`test/spec/query.tsv` runs
+[`subsume`](#aontu-subsume)`(view, truth)` in both implementations and
+requires `subsumes`. It runs under the **values** profile, deliberately
+— a shape view *erases defaults* (`*8080|integer` becomes
+`*integer|integer`), which the `defaults` profile would rightly call a
+compatibility break. The claim projections make is about the values
+admitted, not about which one is generated.
+
+Kinds are lifted through the lattice's own `superior()`, so the view
+follows the type system rather than a table of the renderer's opinions;
+a value that is *already* an abstraction (a kind marker, a constraint,
+an unresolved reference) is left alone rather than generalised twice.
+Projections are not canonical form and are never fed to
+[`aontu hash`](#aontu-hash) — the flags are distinct from `--canon` to
+keep that unambiguous.
+
+### `aontu why`
+
+Provenance: what *contributed* to the value at a path, in order, with
+the site each contribution was written at. The positive twin of
+[`vet`](#aontu-vet)'s report — errors explain what failed to unify,
+`why` explains what did.
+
+```
+aontu why <path> [--format text|json] <file.aon>
+```
+
+```
+$ aontu why $.services.auth.replicas service.aon
+$.services.auth.replicas = 3
+  1. *1|integer  service.aon:2:18  (spread)
+  2. 3  service.aon:3:21
+```
+
+- A **contribution** is a value the author *wrote* that met something
+  at this path. Values the engine mints on the way — a kind lifted
+  from a leaf while a disjunction trials its members, a fold's
+  intermediate — are not contributions, and neither are the members
+  *inside* one written value, which meet at the same path as that
+  value resolves. A **conjunct** is the exception in the other
+  direction: `a & b`, or the merge of two duplicate keys, is the
+  statement that several separately-written values must all hold, so
+  it expands into one contribution each.
+- **Roles**: `literal`, `spread` (a template applied to this key),
+  `ref` (the reference itself, whose canon names its target) and
+  `pref`. A preference *inside* a spread template reports as `spread`,
+  which is the thing the author needs to be told.
+- Contributions are listed in **source order** — file, then row, then
+  column — not in the order the fixpoint happened to meet them, which
+  is an engine detail.
+- A value written once and never met has **no contributions**, and
+  says so. That is a fact about the document, not a failure.
+- `--format json` emits the record: `{path, value, conjuncts:
+  [{canon, role, site}]}`, with sites in the same shape the vet report
+  uses. Exit codes mirror `get`'s: `0` explained, `1` the path names
+  nothing, `2` usage, `4` the document does not stand up.
+- **Cost**: the recorder rides the context and is off by default —
+  uninstrumented evaluation pays one property load per meet. An
+  instrumented run pays site materialisation, one map entry per path
+  met, and the spread walk that marks a template's application.
+
+### `aontu set`
+
+Change a document by **appending to an overlay**, not by rewriting it.
+
+```
+aontu set <path>=<value>... --entry <file> --overlay <file>
+         [--dry-run] [--format text|json]
+```
+
+```
+$ aontu set '$.services.auth.owner="identity-2"' \
+    --entry system.aon --overlay changes.aon
+verdict: valid
+wrote: changes.aon
+```
+
+- The assignment becomes a **path-flattened conjunct** — `$.a.b=1`
+  is appended as `"a": "b": 1`, keys quoted so a segment may be a
+  word the grammar spells otherwise, a number, or hold a space. The
+  text is split at the *first* `=`; everything after it is Aontu
+  source, so a value may contain one.
+- This needs no rewriter, and damages nothing: an overlay entry is
+  just another conjunct, and unification is order-independent, so
+  appending to a second file is the same value as writing into the
+  first. The shared suite asserts that equivalence for every row
+  rather than claiming it.
+- **What it cannot do is change a pinned value.** The lattice refuses
+  `5` against `3`, the verdict is `invalid`, and the finding names the
+  pinning site — which [`aontu why`](#aontu-why) then explains. The
+  loop is *set → conflict → why → edit the pinning site*, with that
+  last step manual until the format-preserving in-place edit lands
+  (stage 2; it needs a comment-preserving CST the parser stack does
+  not have yet).
+- **The overlay is written only when the change holds.** An `invalid`
+  or `error` verdict leaves the file exactly as it was: a change the
+  author still has to think about should not sit in their
+  configuration while they do. `--dry-run` writes nothing either way
+  and prints what would have been written.
+- A missing overlay file is the empty overlay, and is created.
+- Exit codes are [`vet`](#aontu-vet)'s verdict classes: `0` valid,
+  `1` invalid, `2` usage, `3` incomplete, `4` the entry does not stand
+  up on its own.
+
+### `aontu agentsmd`
+
+Generate the AGENTS.md stanza for a definition — the prose entrypoint,
+derived from the formal source so it cannot drift from it.
+
+```
+aontu agentsmd [--write <AGENTS.md>] <file.aon>
+```
+
+The stanza names the document, its [canon-hash](#aontu-hash) pin, its
+root keys and its shape, and spells the `get` / `why` / `vet` / `set`
+commands with a path that actually exists in it. `--write` splices it
+into a file between `<!-- aontu:begin -->` and `<!-- aontu:end -->`,
+appending the markers when they are absent — everything outside them
+is left exactly as it was, so the verb is safe to re-run and safe to
+point at a file someone else writes prose in.
+
+Exit codes: `0` generated, `2` usage, `4` the document does not stand
+up on its own.
+
+### `aontu hash`
+
+The canon-hash: one string that pins what a document *means*, so a
+lockfile, a registry or an agent can say "this module, this meaning"
+and have the claim survive reformatting.
+
+```
+aontu hash [--form] [--format text|json] <file.aon>
+```
+
+- The hash is
+  `"aon1-" + base64url(SHA-256(UTF-8(hcanon(unify(file)))))`, where
+  `hcanon` is the **hash form** — see below. `aon1-` is a scheme id, so
+  a future semantically-stronger normal form is an upgrade rather than
+  a breakage.
+- The document is evaluated **standalone**: its own `@"file"` closure
+  resolved and unified at its own root, before any consumer context.
+  That is what makes the pin transitive — an edit two includes deep
+  changes the unified root, hence the hash.
+- **The pin survives** comments, whitespace, formatting, key
+  reordering, and splitting one file into several includes — any
+  refactor that leaves the unified value identical. **It breaks on**
+  any semantic change in the transitive closure: a default flipped, a
+  field added, a map closed, a constraint tightened.
+- `--form` prints the hashed TEXT instead of the digest, which is what
+  to diff when a pin moves. `--format json` prints both under
+  `hash` and `form`.
+- Exit codes: `0` hashed, `2` usage, `4` the document does not
+  evaluate on its own — a broken document has no meaning to pin, and a
+  hash of the wreck would agree with every other wreck.
+
+**The hash form (`hcanon`)**
+
+Exactly the unify-level [canon](#val-typescript) with the two
+additions that close its semantic gaps:
+
+| | canon | hash form |
+|---|---|---|
+| a closed map or list | `{"a":1}` | `close({"a":1})` |
+| a `type`- or `hide`-marked value | `1` | `type(1)`, `hide(1)` |
+
+Both reuse existing parseable syntax, so the hash form is itself valid
+Aontu source and round-trips —
+`hcanon(unify(parse(hcanon(v)))) == hcanon(v)` is asserted for every
+row of `test/spec/hcanon.tsv`, in both implementations. Marks
+propagate to every descendant at unification, so a wrapper is emitted
+only where a mark *starts*. User-facing `canon` is unchanged.
+
+This is a *canonical-text* hash, not a hash of semantic equivalence
+classes: canon is deterministic syntax, not a unique normal form, so
+`number|integer` and `number` denote the same value set and hash
+differently. The failure direction is the safe one — a false "changed"
+forces a needless re-review, while a false "unchanged" is impossible
+provided the hash form is semantically complete, which is exactly why
+the `close`/mark additions are part of the definition rather than an
+optimisation.
+
+### `aontu mod`
+
+Module tooling: the commands that maintain a project's dependency
+closure and describe what a publish would push. All are **local** —
+they read and write the project, the vendor directory and the user
+cache, and never reach the network.
+
+```
+aontu mod tidy     [--format text|json] [dir]
+aontu mod vendor   [--format text|json] [dir]
+aontu mod manifest [--against <dir>] [--format text|json] [dir]
+```
+
+`dir` is the project root — the directory holding `mod.aon` — and
+defaults to the working directory.
+
+**`tidy`** walks the dependency closure and rewrites `mod-lock.aon`.
+
+- Dependencies are read from each module's own `mod.aon`, under a
+  `dep` map keyed by module path, each entry declaring a version `v`:
+
+  ```
+  dep: { "corp.example/schemas/service@1": { v: "1.4.2" } }
+  ```
+- Selection is **minimum version selection**: each module is taken at
+  the *highest of the minima* anyone in the closure asked for, never
+  higher. Nothing is upgraded by the act of resolving, so a tidy is
+  reproducible and adding a dependency cannot silently move an
+  unrelated one.
+- The closure is walked breadth-first and terminates without a cycle
+  check, because a module's selected version only ever rises.
+- Each entry's `canon` pin is **recomputed** from the module in the
+  store, by unifying its entry file standalone and hashing it (see
+  [`aontu hash`](#aontu-hash)). It is never carried over from the old
+  lockfile, which would pin what the module *used* to mean. The `oci`
+  digest *is* carried over: it is the registry's word about the bytes
+  it served, and nothing local can hear it.
+- The lockfile is written in canonical form under a generated-file
+  header, so it is one diffable line and every reader strips `#`
+  comments before parsing it:
+
+  ```
+  # mod-lock.aon (generated by `aontu mod tidy`; do not edit)
+  {"lock":{"corp.example/schemas/service@1":{"canon":"aon1-oQs6…","oci":"","v":"1.4.2"}}}
+  ```
+
+- A module the stores do not hold is reported as missing and **the
+  lockfile is not written at all**. A partial lock is worse than none:
+  it would claim a closure that was never resolved.
+
+**`vendor`** copies every locked module out of the stores into
+`aon_vendor/`, as a whole source tree — that is what an OCI layer
+holds, and a module is more than its entry file. A module already
+resolving from `aon_vendor/` is left alone rather than copied onto
+itself. Anything the stores do not hold is reported as missing.
+
+Because the user cache is keyed by canon-hash, `vendor` can only find
+what the lockfile already pins: a cold start with no lockfile has
+nothing to search the cache *by*. `tidy` first, then `vendor`.
+
+- `--format json` prints the report as an object with the usual
+  `aontu: {version, verb}` envelope, `verdict` (`ok` or `missing`),
+  the resolved list, and `missing`.
+- Exit codes: `0` resolved, `1` something was missing, `2` usage.
+
+**`manifest`** prints the OCI artifact a publish would push, and gates
+it on the breaking check.
+
+- A module publishes itself, so its own `mod.aon` declares a version
+  as well as a path and an entry:
+
+  ```
+  mod: { path: "corp.example/schemas/service", version: "1.4.2",
+         main: "service.aon" }
+  ```
+
+  The **major an import spells lives inside that version** — `1.4.2` is
+  published as `corp.example/schemas/service@1`. A module declaring no
+  version, or one whose entry file is absent, has nothing to mint: that
+  is an `error` verdict, not a missing fetch.
+- The artifact: config media type
+  `application/vnd.aontu.module.v1+json`, one layer holding the module
+  source tree, and four annotations —
+  `org.opencontainers.image.title` and `.version` for the path and
+  version, and `com.github.rjrodger.aontu.canon` and `.major` for the
+  two facts OCI has no predefined key for.
+- The layer is the source tree, relative and forward-slashed so two
+  implementations on two platforms describe the same layer.
+  `aon_vendor/` is excluded: a published module carries its own
+  sources, not a copy of everyone else's.
+- **`--against <dir>` is the publish-time breaking gate.** It names a
+  prior version's module tree, and runs
+  [`breaking`](#aontu-breaking)'s backward check between the two: every
+  instance the old version admitted must still be admitted. The
+  verdict, the findings and the exit class are that check's, unchanged
+  — this is wiring at the boundary where versions are minted, not a
+  second definition of "breaking".
+- **A major bump is where breaking is allowed.** When the prior
+  version's major differs from this one's, the gate does not apply: the
+  major lives in the module path, so a consumer of `@1` never sees `@2`
+  unless it asks, and checking across majors would forbid the one
+  change the version scheme exists to express.
+- Exit codes: `0` may be published, `1` breaking, `2` usage, `3`
+  undecided, `4` nothing to mint — [`subsume`](#aontu-subsume)'s
+  classes, because the gate is a subsumption check.
+
+**"Has the truth changed?" is one annotation read and a string
+compare** — no download, no parse. The canon-hash in the annotation is
+the same string `tidy` locks and [`aontu hash`](#aontu-hash) prints, so
+a consumer holding `aon1-oQs6…` can ask a registry index whether the
+module still means what it meant. A reformat, a comment or a file split
+will not move it.
+
+**`get` and `publish` are not in this build.** They are the network
+half of the design (`docs/capability-review/g6-distribution.md`) and
+need a registry client. The CLI names them anyway and says which half
+is missing, because a reader of the design will type them and deserves
+a better answer than "unknown subcommand":
+
+```
+$ aontu mod get
+aontu: mod get needs a registry client, which this build does not ship
+(docs/capability-review/g6-distribution.md)
+```
+
 **REPL commands**
 
 | Command | Effect |
 |---------|--------|
 | `:help` | show help |
+| `:load <file>` | evaluate a document and hold it for the commands below |
+| `:get [path]` | what the held document says at a path |
+| `:keys [path]` | the keys at a path of the held document |
+| `:why <path>` | every contribution to the value at a path |
 | `:canon` | switch to canonical-form output |
 | `:json` | switch to JSON output |
 | `:quit`, `:exit` | leave (or press Ctrl-D) |
+
+`:load` holds the document's **source**, not its evaluated tree —
+parsed trees are single-use — so every later question re-evaluates
+from the text. `:get` and `:keys` are the [query](#aontu-get) surface
+and `:why` is the [provenance](#aontu-why) surface, answering about
+the held document.
+
+**`--jsonl` makes the session machine-drivable**: no banner, no
+prompt, and every command answers as one JSON line
+(`{"ok":true,"out":"…"}`), so a harness can drive the REPL the way it
+drives the CLI. Human-readable output stays the default.
 
 ```
 $ aontu
@@ -158,6 +619,78 @@ aontu> a:1|2|3
 {"a":1|2|3}
 aontu> :quit
 ```
+
+### The MCP server
+
+```
+aontu-mcp
+```
+
+A Model Context Protocol server over stdio (newline-delimited
+JSON-RPC 2.0), shipped as a second binary of the npm package. It
+follows the language server's three-layer split
+([docs/lsp.md](lsp.md)): the tools and the protocol are a
+transport-free library (`ts/src/mcp.ts`), the binary is stdio and
+nothing else.
+
+| Tool | Answers |
+|------|---------|
+| `vet` | the [vet](#aontu-vet) report for a schema and a data document |
+| `get` | the [query](#aontu-get) surface: a path, and a view of it |
+| `why` | the [provenance](#aontu-why) record for a path |
+| `diff` | what changed at which paths between two documents |
+| `canon` | a document's canonical form |
+| `summary` | the pin, the root keys and the top-tier shape — the first tier of progressive disclosure, expanded by calling `get` |
+
+Every tool returns **the same JSON contract the CLI prints**, so a
+report read from one is the report read from the other. A tool that
+*refuses* — an invalid document, a path that names nothing — answers
+with its own report and `isError: false`, because the report is the
+answer; `isError` is reserved for a call that could not be made at
+all.
+
+Served evaluation is **confined to no includes** (G5,
+[docs/trust.md](trust.md)): the source arrives from a caller, and
+`@"..."` is exactly what a server must not run unconfined. The Go port
+ships no separate MCP server — its role is embedding the same library
+calls, and `Get`, `Why`, `Diff` and `AgentsMd` are in the Go API for
+that.
+
+### The published grammar
+
+[`grammar/aontu.gbnf`](../grammar/aontu.gbnf) and
+[`grammar/aontu.lark`](../grammar/aontu.lark) publish the **emission
+surface** for constrained decoding. They are conservative by
+construction — they accept less than the parser does, never more — and
+they deliberately exclude `@"..."` includes, because generated
+documents should describe values rather than reach for files.
+
+The grammar is not a document that drifts: `ts/test/grammar.test.ts`
+reads `aontu.gbnf`, interprets it, and requires it to accept **every
+canonical-form output in the shared spec suite**.
+
+### The skill
+
+[`docs/skill/`](skill/) holds the agent-facing sources: a trigger
+stub, a one-page grammar card, a JSON-first example ladder, and the
+error-code index for repair loops. Every example document in the
+ladder is evaluated by `ts/test/skill.test.ts`, so a skill that
+teaches something the engine no longer does fails the build.
+
+### LSP hover provenance
+
+The language server can append a value's **contributions** to its
+hover — what met at that path, in source order, with each site — the
+same record [`aontu why`](#aontu-why) prints. It is off unless an
+editor asks for it:
+
+```json
+{ "initializationOptions": { "aontu": { "provenance": true } } }
+```
+
+Hover already re-unifies the document per request, so an editor that
+asks for this pays a second, instrumented evaluation knowingly, and
+one that does not pays nothing. Diagnostics are unchanged either way.
 
 **Getting the command**
 
@@ -250,17 +783,88 @@ into a context.
 **filesystem**, then **package** resolution, in that order. The chain
 is unconfined by default — a relative include follows any path the
 process can read — so **treat opening an untrusted source as running
-it**. Confinement today means **replacing `resolver` outright** (a
-supplied resolver substitutes for the whole chain; the in-memory
-resolver is such a replacement): `fs` is *not* a sandbox — it supplies
-source text for parsing and error context, and the file and package
-legs read through their own channels — and the **Go API has no
-confinement hook at all** (`NewWithBase` only rebases relative
-paths). The [trust contract](trust.md) states the guarantees and
-their conditions; a first-class `trust` option (include capability
-`'none' | {mem} | {root} | 'system'` plus deterministic budgets) is
-the registered design for making confinement a per-surface default,
-and is not implemented yet — this stub reserves the name.
+it**. Confinement is the **`trust` option** (G5, [the trust
+contract](trust.md)), in both implementations:
+
+```ts
+const aontu = new Aontu({
+  trust: {
+    // include capability, one of:
+    //   'none'              — @"…" always denied
+    //   { mem: {...} }      — a virtual file set only
+    //   { root: '/models' } — real files, realpath-confined below root;
+    //                         no package resolution
+    //   'system'            — the full chain (today's default)
+    include: { root: '/models' },
+    budget: { passes: 9, depth: 1000 },  // integer engine-event counts
+  },
+})
+```
+
+Go mirrors it as `Aontu.Trust` (`TrustOptions`: `IncludeNone`,
+`IncludeMem`, `IncludeRoot`, `Budget`). A denied resolution is the
+parse-stage `include_denied` error, pinned by
+`test/spec/include-trust.tsv` in both runners. Confinement is
+realpath-then-prefix-check on the resolved file, so a symlink inside
+the root pointing outside it is denied. Note `fs` is *not* a sandbox —
+it supplies source text for parsing and error context, and the file
+and package legs read through their own channels; the trust profile is
+the confinement surface.
+
+**The include manifest.** After a parse, the resolved include closure
+is observable as sorted, deduplicated `{ path, capability }` entries —
+`result.deps` in TypeScript, `Aontu.IncludeDeps` in Go — hermeticity's
+"file set" as data (capability is `mem`, `file` or `pkg`). Content
+hashing and pinning belong to the distribution layer (G6).
+
+**The bundled vocabulary.** `@"std/system"` (G4, [the system
+vocabulary](reference-language.md#the-stdsystem-vocabulary)) is served
+from the engine rather than from disk, so it needs neither the
+filesystem nor package resolution and resolves under every include
+capability except `'none'`. It appears in the manifest with capability
+`std`. A host that wants a different vocabulary supplies its own source
+under its own name; the bundled one is engine-owned.
+
+**Relation checks.** `relationCheck(src)` in TypeScript and
+`Aontu.RelationCheck(src)` in Go run the
+[declared-relation](reference-language.md#declared-relations) checks —
+acyclicity and inverse consistency — over the derived edge set, and
+return `{verdict, findings}` with `verdict` one of `pass`, `fail` or
+`error`. `aontu relations <file>` is the same report from the command
+line (`--format json` for the machine-readable form). Findings are
+sorted by the position of the offending edge, so the report diffs
+cleanly.
+
+**The derived graph.** After a unification, an evaluated document's
+identity structure is observable too (G4):
+`result.graph` in TypeScript — also available as the pure function
+`graphOf(val)` — and `Aontu.Graph` in Go. It has two parts:
+
+```ts
+{
+  entities: [ { id: 'svc/auth', paths: ['$.services.auth'] }, … ],
+  edges:    [ { from: 'svc/billing', key: 'dependsOn',
+                to: 'svc/auth', at: '$.services.billing.dependsOn.0' }, … ],
+}
+```
+
+- **`entities`** is the entity index: each `id(name)` and every tree
+  path that holds it. More than one path is the normal case — the
+  merge puts an entity's value at every position that declared it —
+  and it is why moving an entity to a new path breaks `$.path`
+  references but no entity address.
+- **`edges`** is the edge set: one entry per checked
+  [link](reference-language.md#entity-references-refert). `from` is the
+  entity the link sits inside (empty outside every entity), `key` is
+  the nearest map key below that entity — so a link inside a list is
+  an edge under its relation, not under its index — and `at` is where
+  the link is written.
+
+Both are **deterministic**: ids, paths and edges are sorted by
+construction, and both runners re-derive the graph on a fresh engine
+and require the same bytes (`test/spec/graph.tsv`). Impact analysis,
+reachability and entity slices are traversals over these; their
+exposure as verbs and projections is the machine-access layer's.
 
 ### `AontuContext`
 
@@ -486,6 +1090,34 @@ runparse, util // parsing helpers
 formatExplain  // pretty-print an `explain` trace
 exactJSON      // exact JSON emitter — use instead of JSON.stringify
 Decimal        // the type a bigdecimal generates as
+vet            // the validation verb (see `aontu vet` above)
+sarifReport    // a vet report as SARIF 2.1.0
+subsume        // the subsumption query (docs/reference-language.md,
+               // "Subsumption"): subsume(general, specific, {profile?, at?})
+               // -> {verdict, findings}; Go: aontu.Subsume
+trimCheck      // the redundancy reporter (see `aontu trim` above):
+               // trimCheck(src, {path?}) -> {verdict, redundant};
+               // Go: aontu.New().TrimCheck(src)
+hcanon         // the HASH FORM of an evaluated Val (see `aontu hash`
+               // above): canon plus the close()/type()/hide()
+               // wrappers; Go: aontu.Hcanon
+canonHash      // the canon-hash pin over that form,
+               // "aon1-"+base64url(SHA-256(...)); Go: aontu.CanonHash
+get            // the query surface (see `aontu get` above):
+               // get(src, path, {view?, depth?, path?}) ->
+               // {ok, out, findings}; Go: aontu.New().Get(src, path, opts)
+why            // provenance (see `aontu why` above):
+               // why(src, path, {path?}) -> {ok, record, findings},
+               // record = {path, value, conjuncts}; Go: (*Aontu).Why
+patch          // the overlay patch (see `aontu set` above):
+               // patch(entry, overlay, ["$.a.b=1"], opts?) ->
+               // {overlay, appended, verdict, findings}; Go: aontu.Patch
+diff           // what changed at which paths between two documents:
+               // diff(left, right, {at?}) -> {changes, same, findings};
+               // Go: aontu.Diff
+agentsMd       // the generated AGENTS.md stanza (see `aontu agentsmd`
+               // above): agentsMd(src, {name?}) -> {stanza, ok};
+               // Go: (*Aontu).AgentsMd
 ```
 
 ---

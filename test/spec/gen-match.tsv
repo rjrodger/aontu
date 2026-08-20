@@ -1,0 +1,32 @@
+# SELECTION: match(v, p1, r1, …, d?) (G8 phase 2,
+# docs/capability-review/g8-generation.md). A bounded conditional: the
+# first pattern IN ARGUMENT ORDER that `v` unifies with selects its
+# result, and the result is the answer. A trailing argument — the one
+# that makes the count even — is the default.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# What keeps this from becoming a conditional language: patterns are
+# ordinary values matched by unifiability, there are no guards, there
+# is no fallthrough, and no match without a default is an ERROR that
+# names the patterns tried rather than an empty answer.
+#
+# The result is the answer, NOT `v & p & r` as the design wrote it: a
+# match maps a value to another value, and under `v & r` every arm
+# whose result is not already a `v` would be a contradiction — the
+# design's own example among them (see the register, G8.2 departures).
+match-first-arm	gens	t:small\nz:match($.t,small,{cpu:1},large,{cpu:8},{cpu:2})\n	{"t":"small","z":{"cpu":1}}
+match-second-arm	gens	t:large\nz:match($.t,small,{cpu:1},large,{cpu:8},{cpu:2})\n	{"t":"large","z":{"cpu":8}}
+match-default	gens	t:mid\nz:match($.t,small,{cpu:1},large,{cpu:8},{cpu:2})\n	{"t":"mid","z":{"cpu":2}}
+match-kind-patterns	gens	z:match(1,integer,small,string,big)\n	{"z":"small"}
+match-kind-patterns-other	gens	z:match(x,integer,small,string,big)\n	{"z":"big"}
+match-first-wins-order	gens	z:match(1,string,a,integer,b)\n	{"z":"b"}
+match-first-wins-duplicate	gens	z:match(1,integer,a,integer,b)\n	{"z":"a"}
+match-canon	canon	z:match(1,integer,a,string,b)\n	{"z":"a"}
+match-atom-pattern	gens	z:match(1,min(0),ok,integer,no)\n	{"z":"ok"}
+match-map-pattern	gens	z:match({a:1},{a:integer},yes,other)\n	{"z":"yes"}
+match-result-key	gens	z:match(1,integer,{k:key()})\n	{"z":{"k":"z"}}
+match-inside-pack	gens	n:[a,b]\nd:pack($.n,{t:match(key(),a,1,2)})\n	{"d":{"a":{"t":1},"b":{"t":2}},"n":["a","b"]}
+match-none-no-default	errc	t:mid\nz:match($.t,small,{cpu:1},large,{cpu:8})\n	match_none
+match-none-single-arm	errc	z:match(1,string,a)\n	match_none
+match-arity-two	errc	z:match(1,string)\n	func_arity
+match-arity-one	errc	z:match(1)\n	func_arity

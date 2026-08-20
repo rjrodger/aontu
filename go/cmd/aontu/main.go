@@ -24,6 +24,16 @@ import (
 
 const helpText = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
+       aontu subsume [options] <general> <specific>
+       aontu breaking --against <file|git#rev> [options] <file>
+       aontu trim --check [options] <file>
+       aontu relations [options] <file>
+       aontu hash [options] <file>
+       aontu mod tidy|vendor|manifest [options] [dir]
+       aontu get <path> [options] <file>
+       aontu why <path> [options] <file>
+       aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu agentsmd [--write <AGENTS.md>] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -32,17 +42,37 @@ With no file and piped input, read the source from stdin.
 The vet verb validates data documents against a schema document and
 reports what does not hold, as text or as a machine-readable object.
 
+The subsume verb asks whether every instance the specific document
+admits, the general document admits too. The breaking verb runs that
+query between a document and its own earlier versions.
+
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
+  --jsonl         REPL: answer every command as one JSON line
   -v, --version   Print the version and exit
+  --trust <t>     Include capability: system (default), none, or
+                  root[:dir] to confine @"..." below a directory
+  --include-root <dir>  Shorthand for --trust root:<dir>
+
+Mod options:
+  --format <f>    text (default) or json
+  --against <dir> manifest: a prior version's module tree, to gate on
+
+Mod subcommands:
+  tidy      Resolve the module closure by minimum version selection and
+            rewrite mod-lock.aon in canonical form
+  vendor    Materialise the locked closure into aon_vendor/
+  manifest  Print the OCI artifact a publish would push, gated on the
+            breaking check against --against
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
-  --format <f>      text (default) or json
+  --format <f>      text (default), json or sarif
+  --watch           Re-run whenever a watched file changes
 
 Vet exit codes:
   0  valid       data unifies, and is concrete (or --partial)
@@ -51,8 +81,91 @@ Vet exit codes:
   3  incomplete  no contradiction, but the truth is not yet satisfied
   4  error       the schema is unusable on its own
 
+Subsume options:
+  --profile <p>   values, defaults (default) or gen
+  --at <path>     Compare at this path of both documents ($.a.b)
+  --format <f>    text (default) or json
+
+Subsume exit codes:
+  0  subsumes          every specific instance is admitted
+  1  does_not_subsume  a witness exists (see the findings)
+  2  usage             bad option, or a file that cannot be read
+  3  undecided         no rule decides (a sub_* reason is reported)
+  4  error             a document does not stand up on its own
+
+Breaking options:
+  --against <v>       An earlier version: a file path, or git#<rev>
+                      (resolved by 'git show'); repeatable
+  --mode <m>          backward (new admits old, the default), forward
+                      (old admits new), or full (both); overrides the
+                      document's own $.aontu_policy.compat declaration
+  --allow-undecided   Exit 0 on undecided (the report still says so)
+  --allow-deprecated-removal
+                      A finding about a value the old version already
+                      deprecated warns instead of breaking
+  --format <f>        text (default) or json
+
+Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,
+2 usage, 3 undecided, 4 error.
+
+Trim options:
+  --check         Report redundant entries as paths (required: trim
+                  only reports for now; rewriting is a future editor)
+  --format <f>    text (default) or json
+
+Trim exit codes: 0 nothing redundant, 1 redundancies reported,
+2 usage, 4 the document does not stand up on its own.
+
+Hash options:
+  --form          Print the hash FORM (the hashed text) instead of the
+                  hash, which is what to diff when a pin moves
+  --format <f>    text (default) or json
+
+Hash exit codes: 0 hashed, 2 usage, 4 the document does not stand up
+on its own.
+
+Get options:
+  -c, --canon     Canonical-form fragment (default: generated JSON)
+  --keys          Keys at the node, one per line
+  --types         Shape view: concrete leaves lifted to their kinds
+  --depth <n>     Structure to depth n; deeper nodes render as top
+  --format <f>    text (default) or json
+
+Get exit codes: 0 rendered, 1 the path names nothing, 2 usage, 4 the
+document does not stand up on its own.
+
+Why options:
+  --format <f>    text (default) or json
+
+Why exit codes mirror get's: 0 explained, 1 the path names nothing,
+2 usage, 4 the document does not stand up on its own.
+
+Set options:
+  --entry <file>    The document the change is checked against
+  --overlay <file>  The file the change is appended to (created if
+                    absent; not written when the change does not hold)
+  --dry-run         Print the overlay that would be written, write
+                    nothing
+  --format <f>      text (default) or json
+
+Set exit codes are vet's verdict classes: 0 valid, 1 invalid (the
+change contradicts a pinned value -- aontu why locates it),
+2 usage, 3 incomplete, 4 the entry does not stand up on its own.
+
+Agentsmd options:
+  --write <file>  Splice the stanza into this file between the
+                  aontu:begin and aontu:end markers, appending them
+                  when they are absent; the rest is left alone
+
+Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
+stand up on its own.
+
 REPL commands:
   :help           Show REPL help
+  :load <file>    Evaluate a document and hold it for the commands below
+  :get [path]     What the held document says at a path
+  :keys [path]    The keys at a path of the held document
+  :why <path>     Every contribution to the value at a path
   :canon          Switch to canonical-form output
   :json           Switch to JSON output
   :quit, :exit    Exit the REPL (or press Ctrl-D)
@@ -105,6 +218,74 @@ func emit(a *aontu.Aontu, src, mode string, out, errw io.Writer) int {
 	return 0
 }
 
+// trustArg is the include capability the main verb runs with (G5,
+// docs/trust.md). `--trust` and `--include-root` set it explicitly; the
+// default is 'system' WITH the warning window: every resolution that
+// escapes the entry root prints a one-line stderr warning naming the
+// flag a future default will require (phase 6, the staged flip).
+type trustArg struct {
+	kind string // "system-warn", "system", "none", "root"
+	dir  string // root's directory ("" = the entry root)
+}
+
+// parseTrustArg reads a --trust value; ok is false for an unknown
+// spelling, so the caller owns the usage error.
+func parseTrustArg(value string) (trustArg, bool) {
+	switch {
+	case "system" == value:
+		return trustArg{kind: "system"}, true
+	case "none" == value:
+		return trustArg{kind: "none"}, true
+	case "root" == value:
+		return trustArg{kind: "root"}, true
+	case strings.HasPrefix(value, "root:") && len("root:") < len(value):
+		return trustArg{kind: "root", dir: value[len("root:"):]}, true
+	}
+	return trustArg{}, false
+}
+
+// makeTrustWarn is the one-line warning of the staged default flip,
+// once per (kind, path). The identical text to the canonical CLI.
+func makeTrustWarn(stderr io.Writer) func(kind, path string) {
+	warned := map[string]bool{}
+	return func(kind, path string) {
+		key := kind + " " + path
+		if warned[key] {
+			return
+		}
+		warned[key] = true
+		how := "outside the entry root"
+		if "pkg" == kind { //coverage:ignore Go has no package leg to warn about
+			how = "through package resolution"
+		}
+		fmt.Fprintf(stderr,
+			"aontu: warning: include resolved %s: %s"+
+				" (a future release will deny this by default;"+
+				" pass --trust system to keep it, or --include-root to confine)\n",
+			how, path)
+	}
+}
+
+// applyTrust configures a for the parsed trust argument, with entryRoot
+// the entry file's directory (or the working directory for stdin/REPL).
+func applyTrust(a *aontu.Aontu, trust trustArg, entryRoot string, stderr io.Writer) {
+	switch trust.kind {
+	case "none":
+		a.Trust = &aontu.TrustOptions{IncludeNone: true}
+	case "root":
+		dir := trust.dir
+		if "" == dir {
+			dir = entryRoot
+		}
+		a.Trust = &aontu.TrustOptions{IncludeRoot: dir}
+	case "system":
+		// explicit system: unconfined, no warnings
+	default: // system-warn: today's default plus the warning window
+		a.TrustWarn = makeTrustWarn(stderr)
+		a.TrustWarnRoot = entryRoot
+	}
+}
+
 // aontuForFile builds an Aontu whose relative @"file" loads resolve
 // against the directory containing file, so `aontu /path/to/main.aontu`
 // works regardless of the current working directory (matching the
@@ -132,45 +313,34 @@ func stdinIsPipe() bool {
 
 // repl reads source lines from in, evaluating each and writing results
 // to out, until EOF or a :quit/:exit command.
-func repl(a *aontu.Aontu, mode string, in io.Reader, out io.Writer) {
-	fmt.Fprintf(out, "Aontu v%s REPL — :help for commands, :quit to exit\n", aontu.VERSION)
+func repl(mode string, jsonl bool, in io.Reader, out io.Writer) {
+	prompt := "aontu> "
+	if jsonl {
+		prompt = ""
+	} else {
+		fmt.Fprintf(out,
+			"Aontu v%s REPL — :help for commands, :quit to exit\n", aontu.VERSION)
+	}
+	state := replState{Mode: mode, JSONL: jsonl}
 	sc := bufio.NewScanner(in)
 	// Raise the line cap well above bufio's 64KB default so a long
 	// pasted source line is not silently truncated.
 	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
-	fmt.Fprint(out, "aontu> ")
+	fmt.Fprint(out, prompt)
 	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			fmt.Fprint(out, "aontu> ")
-			continue
+		res := replCommand(state, sc.Text(), func(f string) (string, error) {
+			raw, err := os.ReadFile(f)
+			return string(raw), err
+		})
+		state = res.State
+		if res.Close {
+			fmt.Fprintln(out)
+			return
 		}
-		if strings.HasPrefix(line, ":") {
-			switch line {
-			case ":help":
-				fmt.Fprint(out, helpText)
-			case ":canon":
-				mode = "canon"
-				fmt.Fprintln(out, "canon output")
-			case ":json":
-				mode = "json"
-				fmt.Fprintln(out, "json output")
-			case ":quit", ":exit":
-				fmt.Fprintln(out)
-				return
-			default:
-				fmt.Fprintf(out, "unknown command: %s (try :help)\n", line)
-			}
-			fmt.Fprint(out, "aontu> ")
-			continue
+		if "" != res.Out {
+			fmt.Fprintln(out, res.Out)
 		}
-		text, err := render(a, line, mode)
-		if err != nil {
-			fmt.Fprintln(out, err)
-		} else {
-			fmt.Fprintln(out, text)
-		}
-		fmt.Fprint(out, "aontu> ")
+		fmt.Fprint(out, prompt)
 	}
 	if err := sc.Err(); err != nil {
 		fmt.Fprintln(out, "aontu: input error:", err)
@@ -193,11 +363,45 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	if 0 < len(args) && "vet" == args[0] {
 		return runVet(args[1:], stdout, stderr)
 	}
+	if 0 < len(args) && "subsume" == args[0] {
+		return runSubsume(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "breaking" == args[0] {
+		return runBreaking(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "mod" == args[0] {
+		return runMod(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "relations" == args[0] {
+		return runRelations(args[1:], stdout, stderr)
+	}
+
+	if 0 < len(args) && "trim" == args[0] {
+		return runTrim(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "agentsmd" == args[0] {
+		return runAgentsMd(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "set" == args[0] {
+		return runSet(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "why" == args[0] {
+		return runWhy(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "get" == args[0] {
+		return runGet(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "hash" == args[0] {
+		return runHash(args[1:], stdout, stderr)
+	}
 
 	mode := "json"
+	jsonl := false
 	var file string
+	trust := trustArg{kind: "system-warn"}
 
-	for _, arg := range args {
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
 		switch arg {
 		case "-c", "--canon":
 			mode = "canon"
@@ -207,6 +411,24 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 		case "-v", "--version":
 			fmt.Fprintln(stdout, aontu.VERSION)
 			return 0
+		case "--trust":
+			i++
+			parsed, ok := trustArg{}, false
+			if i < len(args) {
+				parsed, ok = parseTrustArg(args[i])
+			}
+			if !ok {
+				fmt.Fprintln(stderr, "aontu: --trust needs system, none, or root[:dir]")
+				return 2
+			}
+			trust = parsed
+		case "--include-root":
+			i++
+			if len(args) <= i {
+				fmt.Fprintln(stderr, "aontu: --include-root needs a directory")
+				return 2
+			}
+			trust = trustArg{kind: "root", dir: args[i]}
 		default:
 			if strings.HasPrefix(arg, "-") {
 				fmt.Fprintf(stderr, "aontu: unknown option %s (try --help)\n", arg)
@@ -223,10 +445,21 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 			return 1
 		}
 		// Resolve relative @"file" loads against the entry file's dir.
-		return emit(aontuForFile(file), string(src), mode, stdout, stderr)
+		a := aontuForFile(file)
+		abs, aerr := filepath.Abs(file)
+		if aerr != nil { //coverage:ignore Abs fails only on a deleted cwd
+			abs = file
+		}
+		applyTrust(a, trust, filepath.Dir(abs), stderr)
+		return emit(a, string(src), mode, stdout, stderr)
 	}
 
 	a := aontu.New()
+	cwd, cwdErr := os.Getwd()
+	if cwdErr != nil { //coverage:ignore Getwd fails only on a deleted cwd
+		cwd = "."
+	}
+	applyTrust(a, trust, cwd, stderr)
 
 	if !tty {
 		src, err := io.ReadAll(stdin)
@@ -237,6 +470,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 		return emit(a, string(src), mode, stdout, stderr)
 	}
 
-	repl(a, mode, stdin, stdout)
+	repl(mode, jsonl, stdin, stdout)
 	return 0
 }

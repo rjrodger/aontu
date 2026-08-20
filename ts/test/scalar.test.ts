@@ -12,7 +12,6 @@ import {
 
 
 import { MapVal } from '../dist/val/MapVal'
-import { NilVal } from '../dist/val/NilVal'
 
 import { expect } from './expect'
 import {
@@ -23,7 +22,6 @@ import {
 
 let lang = new Lang()
 let PL = lang.parse.bind(lang)
-let P = (x: string, ctx?: any) => PL(x, ctx)
 let PA = (x: string[], ctx?: any) => x.map(s => PL(s, ctx))
 
 describe('op', () => {

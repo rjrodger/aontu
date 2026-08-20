@@ -40,8 +40,8 @@ function descErr(err, errctx) {
         if (null == err.msg || '' === err.msg) {
             let v1 = err.primary;
             let v2 = err.secondary;
-            let v1src = resolveSrc(v1, errctx, 'primary');
-            let v2src = resolveSrc(v2, errctx, 'secondary');
+            let v1src = resolveSrc(v1, errctx);
+            let v2src = resolveSrc(v2, errctx);
             // STRICT `!==` against the empty string. The loose `!=` here dropped
             // the list index 0, because `'' != 0` is FALSE in JavaScript ('' and
             // 0 are both coerced to 0): `a:[1]&[2]` reported its conflict at
@@ -118,7 +118,7 @@ function resolveFile(url) {
     out = out === cwd || '' === out ? '<no-file>' : out;
     return out;
 }
-function resolveSrc(v, errctx, position) {
+function resolveSrc(v, errctx) {
     let src = undefined;
     const url = v?.site.url;
     // Cache reads on errctx for the lifetime of the error-formatting pass.

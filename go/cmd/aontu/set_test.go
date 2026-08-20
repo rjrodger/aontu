@@ -1,0 +1,168 @@
+/* Copyright (c) 2025 Richard Rodger, MIT License */
+
+package main
+
+// The Go twin of the cli set cases in ts/test/cli.test.ts. What the
+// two ports must agree on (the report) is pinned by
+// test/spec/patch.tsv; these cases hold the command line and, above
+// all, WHEN THE FILE IS WRITTEN.
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func setRun(args ...string) (string, string, int) {
+	var out, errw bytes.Buffer
+	code := run(append([]string{"set"}, args...), strings.NewReader(""), &out, &errw, false)
+	return out.String(), errw.String(), code
+}
+
+func writeAt(t *testing.T, path, src string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(src), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func readAt(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+func TestSetAppendsWhenTheChangeHolds(t *testing.T) {
+	dir := t.TempDir()
+	entry := filepath.Join(dir, "sys.aon")
+	overlay := filepath.Join(dir, "ov.aon")
+	writeAt(t, entry,
+		"services: { auth: { owner: string, replicas: *1 | integer } }")
+
+	// An ABSENT overlay is the empty overlay, and the file is created.
+	out, _, code := setRun(`$.services.auth.owner="identity-2"`,
+		"--entry", entry, "--overlay", overlay)
+	if 0 != code {
+		t.Fatalf("want 0, got %d: %s", code, out)
+	}
+	vetMatch(t, out, `verdict: valid`)
+	vetMatch(t, out, `wrote:`)
+	if want := "\"services\": \"auth\": \"owner\": \"identity-2\"\n"; want != readAt(t, overlay) {
+		t.Fatalf("overlay: %q", readAt(t, overlay))
+	}
+
+	// A second assignment appends after the first.
+	if _, _, code = setRun("$.services.auth.replicas=5",
+		"--entry", entry, "--overlay", overlay); 0 != code {
+		t.Fatalf("want 0, got %d", code)
+	}
+	want := "\"services\": \"auth\": \"owner\": \"identity-2\"\n" +
+		"\"services\": \"auth\": \"replicas\": 5\n"
+	if want != readAt(t, overlay) {
+		t.Fatalf("overlay: %q", readAt(t, overlay))
+	}
+
+	out, _, code = setRun(`$.services.auth.owner="identity-2"`,
+		"--format", "json", "--entry", entry, "--overlay", overlay)
+	if 0 != code {
+		t.Fatalf("want 0, got %d", code)
+	}
+	var report struct {
+		Aontu struct {
+			Verb string `json:"verb"`
+		} `json:"aontu"`
+		Appended []string `json:"appended"`
+		Verdict  string   `json:"verdict"`
+		Written  bool     `json:"written"`
+	}
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatal(err)
+	}
+	if "set" != report.Aontu.Verb || "valid" != report.Verdict ||
+		!report.Written || 1 != len(report.Appended) {
+		t.Fatalf("bad report: %s", out)
+	}
+}
+
+// A change that contradicts a PINNED value is a question for the
+// author at the pinning site: reported, exit 1, and NOT written.
+func TestSetRefusesToWriteAChangeThatDoesNotHold(t *testing.T) {
+	dir := t.TempDir()
+	entry := filepath.Join(dir, "sys.aon")
+	overlay := filepath.Join(dir, "ov.aon")
+	writeAt(t, entry, "port: 3")
+	writeAt(t, overlay, "x: 1\n")
+
+	_, errw, code := setRun("$.port=5", "--entry", entry, "--overlay", overlay)
+	if 1 != code || !strings.Contains(errw, "verdict: invalid") {
+		t.Fatalf("want 1/invalid, got %d: %s", code, errw)
+	}
+	if "x: 1\n" != readAt(t, overlay) {
+		t.Fatalf("overlay was written: %q", readAt(t, overlay))
+	}
+
+	// --dry-run prints the verdict and writes nothing, even when it
+	// would have held.
+	out, _, code := setRun("$.port=3", "--dry-run",
+		"--entry", entry, "--overlay", overlay)
+	if 0 != code || !strings.Contains(out, "(dry run)") {
+		t.Fatalf("want 0/dry run, got %d: %s", code, out)
+	}
+	if "x: 1\n" != readAt(t, overlay) {
+		t.Fatalf("overlay was written: %q", readAt(t, overlay))
+	}
+
+	// An entry that does not stand up is verdict error, exit 4.
+	writeAt(t, entry, "a:1 a:2")
+	if _, _, code = setRun("$.b=1",
+		"--entry", entry, "--overlay", overlay); 4 != code {
+		t.Fatalf("want 4, got %d", code)
+	}
+	if "x: 1\n" != readAt(t, overlay) {
+		t.Fatalf("overlay was written: %q", readAt(t, overlay))
+	}
+}
+
+func TestSetUsageErrorsExit2(t *testing.T) {
+	dir := t.TempDir()
+	entry := filepath.Join(dir, "sys.aon")
+	overlay := filepath.Join(dir, "ov.aon")
+	writeAt(t, entry, "a:{b:integer}")
+
+	for _, args := range [][]string{
+		{},
+		{"$.a.b=1"},
+		{"$.a.b=1", "--entry", entry},
+		{"--entry", entry, "--overlay", overlay},
+		{"$.a.b=1", "--bogus", "--entry", entry, "--overlay", overlay},
+		{"$.a.b=1", "--format", "yaml", "--entry", entry, "--overlay", overlay},
+		{"$.a.b=1", "--format"},
+		{"$.a.b=1", "--entry", filepath.Join(dir, "missing.aon"),
+			"--overlay", overlay},
+		// An overlay that cannot be READ (a directory, not a missing
+		// file) is a usage error, not an empty overlay.
+		{"$.a.b=1", "--entry", entry, "--overlay", dir},
+		// A --entry or --overlay with no value after it.
+		{"$.a.b=1", "--entry"},
+		// An overlay whose DIRECTORY does not exist reads as absent
+		// (the empty overlay) and then fails to write, which is also
+		// usage.
+		{"$.a.b=1", "--entry", entry,
+			"--overlay", filepath.Join(dir, "no-such-dir", "ov.aon")},
+	} {
+		if _, _, code := setRun(args...); 2 != code {
+			t.Fatalf("%v: want 2, got %d", args, code)
+		}
+	}
+
+	out, _, code := setRun("--help")
+	if 0 != code || !strings.Contains(out, "aontu set") {
+		t.Fatalf("want help, got %d", code)
+	}
+}

@@ -2,7 +2,13 @@
 
 package lsp
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"net/url"
+	"strings"
+
+	aontu "github.com/rjrodger/aontu/go"
+)
 
 // Version is reported to the client in the initialize response.
 const Version = "0.1.0"
@@ -64,6 +70,21 @@ type Handler struct {
 	docs       map[string]string
 	shutdownOK bool
 	exit       bool
+
+	// trust is the profile evaluation runs under (G5, docs/trust.md):
+	// workspace-root confinement by default, set from the initialize
+	// params. An initializationOptions.aontu.trust.include of "system",
+	// "none" or {root: dir} widens or narrows it explicitly. Nil — no
+	// workspace root and no explicit option — falls back to today's
+	// unconfined behaviour, which single-file sessions rely on. The
+	// same rule as the canonical port's LspHandler (ts/src/lsp.ts).
+	trust *aontu.TrustOptions
+
+	// provenance is hover provenance (G7 phase 7): off unless an
+	// editor asks for it with initializationOptions.aontu.provenance.
+	// It costs a second, instrumented evaluation per hover, which is a
+	// cost to opt into. The same rule as the canonical port.
+	provenance bool
 }
 
 // NewHandler returns a ready Handler with no open documents.
@@ -96,6 +117,8 @@ func (h *Handler) Doc(uri string) (string, bool) {
 func (h *Handler) Handle(m Message) []Out {
 	switch m.Method {
 	case "initialize":
+		h.trust = trustFromInitialize(m.Params)
+		h.provenance = provenanceFromInitialize(m.Params)
 		return []Out{newResponse(m.ID, initializeResult())}
 
 	case "initialized":
@@ -168,7 +191,8 @@ func (h *Handler) Handle(m Message) []Out {
 		if !ok {
 			return []Out{newResponse(m.ID, nil)}
 		}
-		return []Out{newResponse(m.ID, Hover(text, p.Position.Line, p.Position.Character))}
+		return []Out{newResponse(m.ID,
+			Hover(text, p.Position.Line, p.Position.Character, h.provenance))}
 
 	case "textDocument/completion":
 		return []Out{newResponse(m.ID, Completions())}
@@ -185,7 +209,97 @@ func (h *Handler) Handle(m Message) []Out {
 
 // publish computes and wraps diagnostics for an open document.
 func (h *Handler) publish(uri string) Out {
-	return publishDiagnosticsMsg(uri, Diagnostics(h.docs[uri]))
+	return publishDiagnosticsMsg(uri, DiagnosticsTrust(h.docs[uri], nil, h.trust))
+}
+
+// provenanceFromInitialize reads the hover-provenance opt-in out of
+// the initialize params: initializationOptions.aontu.provenance, and
+// only the boolean true turns it on.
+func provenanceFromInitialize(params json.RawMessage) bool {
+	var p struct {
+		InitializationOptions struct {
+			Aontu struct {
+				Provenance bool `json:"provenance"`
+			} `json:"aontu"`
+		} `json:"initializationOptions"`
+	}
+	if err := json.Unmarshal(params, &p); nil != err {
+		return false
+	}
+	return p.InitializationOptions.Aontu.Provenance
+}
+
+// trustFromInitialize reads the trust profile out of the initialize
+// params: an explicit initializationOptions.aontu.trust.include wins;
+// otherwise the workspace root (workspaceFolders[0], rootUri, rootPath,
+// in that order) confines evaluation below it; otherwise nil.
+func trustFromInitialize(raw json.RawMessage) *aontu.TrustOptions {
+	var p struct {
+		RootURI  string `json:"rootUri"`
+		RootPath string `json:"rootPath"`
+		Folders  []struct {
+			URI string `json:"uri"`
+		} `json:"workspaceFolders"`
+		InitializationOptions struct {
+			Aontu struct {
+				Trust struct {
+					Include json.RawMessage `json:"include"`
+				} `json:"trust"`
+			} `json:"aontu"`
+		} `json:"initializationOptions"`
+	}
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return nil
+	}
+
+	if explicit := p.InitializationOptions.Aontu.Trust.Include; 0 < len(explicit) {
+		var name string
+		if nil == json.Unmarshal(explicit, &name) {
+			switch name {
+			case "none":
+				return &aontu.TrustOptions{IncludeNone: true}
+			case "system":
+				return nil
+			}
+		}
+		var rooted struct {
+			Root string `json:"root"`
+		}
+		if nil == json.Unmarshal(explicit, &rooted) && "" != rooted.Root {
+			return &aontu.TrustOptions{IncludeRoot: rooted.Root}
+		}
+		// An unrecognised explicit value confines to nothing rather
+		// than silently widening: deny is the safe reading of a
+		// setting the server does not understand.
+		return &aontu.TrustOptions{IncludeNone: true}
+	}
+
+	root := uriToPath(p.RootURI)
+	if 0 < len(p.Folders) {
+		if folder := uriToPath(p.Folders[0].URI); "" != folder {
+			root = folder
+		}
+	}
+	if "" == root && "" != p.RootPath {
+		root = p.RootPath
+	}
+	if "" != root {
+		return &aontu.TrustOptions{IncludeRoot: root}
+	}
+	return nil
+}
+
+// uriToPath is a file:// uri's filesystem path, percent-decoded; a
+// non-file uri (or none) yields "".
+func uriToPath(uri string) string {
+	if !strings.HasPrefix(uri, "file://") {
+		return ""
+	}
+	path := uri[len("file://"):]
+	if decoded, err := url.PathUnescape(path); err == nil {
+		path = decoded
+	}
+	return path
 }
 
 func publishDiagnosticsMsg(uri string, diags []Diagnostic) Out {

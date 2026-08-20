@@ -3,6 +3,17 @@
 
 // import { performance } from 'node:perf_hooks'
 
+// Named imports, not `import * as`: the namespace form makes tsc emit
+// the __importStar downlevel helper, whose branches no supported Node
+// takes (the same rule cli.ts records). Aliased because `Path` is
+// already the @tabnas/path plugin below.
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import {
+  dirname as pathDirname,
+  resolve as pathResolve,
+  sep as pathSep,
+} from 'node:path'
+
 import {
   Jsonic,
   Tabnas,
@@ -33,6 +44,9 @@ import {
 import {
   makeMemResolver
 } from '@tabnas/multisource/resolver/mem'
+
+import { STD_SOURCES } from './std'
+import { parseModuleRef, resolveModule, modCacheDir } from './mod'
 
 import {
   Expr,
@@ -96,6 +110,14 @@ import { CopyFuncVal } from './val/CopyFuncVal'
 import { KeyFuncVal } from './val/KeyFuncVal'
 import { TypeFuncVal } from './val/TypeFuncVal'
 import { HideFuncVal } from './val/HideFuncVal'
+import { DeprecateFuncVal } from './val/DeprecateFuncVal'
+import { IdFuncVal } from './val/IdFuncVal'
+import { ReferFuncVal } from './val/ReferFuncVal'
+import { PackFuncVal } from './val/PackFuncVal'
+import { EachFuncVal } from './val/EachFuncVal'
+import { FilterFuncVal } from './val/FilterFuncVal'
+import { MatchFuncVal } from './val/MatchFuncVal'
+import { PlaceVal } from './val/PlaceVal'
 import { MoveFuncVal } from './val/MoveFuncVal'
 import { PathFuncVal } from './val/PathFuncVal'
 import { PrefFuncVal } from './val/PrefFuncVal'
@@ -365,6 +387,14 @@ help isolate the syntax error.`,
 
         // TODO: FIX: need a TOP instance to hold path
         'top': { val: () => top() },
+
+        // G8 phase 3: the placeholder. A BARE `_` is the hole; `"_"`
+        // quoted, and any longer bare word containing it, stay text.
+        // Reserving it is a breaking change, pinned by place.tsv.
+        '_': {
+          val: (r: Rule, ctx: JsonicContext) =>
+            addsite(new PlaceVal({}), r, ctx)
+        },
       }
     },
 
@@ -441,6 +471,39 @@ help isolate the syntax error.`,
     // reported with the author's own message, never simplified and
     // never consulted for emptiness or subsumption.
     must: MustConstraintVal,
+
+    // G3 phase 4: the deprecation mark. Unification-transparent; the
+    // record rides the result (Val.deprecation) and canon renders the
+    // call back (canonRiders).
+    deprecate: DeprecateFuncVal,
+
+    // G4 phase 1: the identity mark. Written as a conjunct
+    // (`id(svc/auth) & {…}`), it resolves to the unit carrying the
+    // name, and every node in one evaluation with that name is
+    // unified with every other.
+    id: IdFuncVal,
+
+    // G4 phase 2: the checked, typed, LINK-shaped reference. A
+    // constraint on a string field: the string must be an entity
+    // address, the address must resolve, and the optional argument
+    // flows INTO the target. The field keeps the string.
+    refer: ReferFuncVal,
+
+    // G8 phase 1: the generation combinators. `pack` makes one keyed
+    // child per child of its data, `each` one list element; both clone
+    // their template per destination exactly as a spread does, and both
+    // wait for the model to settle before they fire (the staging rule,
+    // G8 phase 0).
+    pack: PackFuncVal,
+    each: EachFuncVal,
+
+    // G8 phase 2: selection. `filter` keeps the children of a bag that
+    // unify with a condition; `match` picks the first arm whose
+    // pattern the scrutinee unifies with. Both select by
+    // UNIFIABILITY, tried in trial mode, so neither adds a predicate
+    // language to the one the lattice already is.
+    filter: FilterFuncVal,
+    match: MatchFuncVal,
   }
 
 
@@ -453,6 +516,117 @@ help isolate the syntax error.`,
 
   const incompleteNil = (r: Rule, ctx: JsonicContext) =>
     addsite(new NilVal({ why: 'incomplete_expression' }), r, ctx)
+
+  // Build a call from a NAME and the argument terms as the author
+  // wrote them. Shared by the `func(...)` handler and by the pipe,
+  // which is the same call with one more argument on the front — so
+  // the arity check, the comma-group rule and the raw-value conversion
+  // are stated once and both spellings get all three.
+  const buildCall = (r: Rule, ctx: JsonicContext,
+    fname: string, argterms: any[]): any => {
+    const funcval = funcMap[fname]
+
+    // Arity is known for every built-in, so a surplus or missing
+    // argument is a mistake in the SOURCE, refused here where the
+    // author can see it (issue #51). It was previously left to each
+    // function to notice or not: the two ports disagreed on `upper()`
+    // and on `close()`, and `min(1,2)` noticed nothing at all -- it
+    // built a constraint that merely refused to generate later, with a
+    // message about the map rather than about the call.
+    //
+    // Counted BEFORE the rawToVal pass below, which is what makes the
+    // count possible: a comma group arrives as a RAW array and a
+    // written list literal as a ListVal, and rawToVal turns the first
+    // into the second.
+    const arity = funcArity[fname]
+    if (null != arity) {
+      const got = writtenArgCount(argterms)
+      if (got < arity[0] || (-1 !== arity[1] && got > arity[1])) {
+        // details is assigned AFTER construction: the NilVal
+        // constructor does not read it from its spec (only NilVal.make
+        // does), so passing it in the spec left the hint's
+        // {func}/{want}/{got} placeholders un-injected and printed
+        // literally.
+        const nil: any = new NilVal({ why: 'func_arity' })
+        nil.details = {
+          func: fname,
+          want: arityText(arity[0], arity[1]),
+          got: '' + got,
+        }
+        // The CALL AS WRITTEN rides the refusal (G8 phase 4): a pipe
+        // rebuilds `x |> upper()` as `upper(x)`, and the arity it fails
+        // on here is the arity of a call one argument short of the one
+        // the author actually wrote.
+        nil._callname = fname
+        nil._callterms = argterms
+        return addsite(nil, r, ctx)
+      }
+    }
+
+    // rawToVal EVERY argument. A degenerate expression can hand this
+    // handler raw parse values rather than Vals -- `pref(1-3)` arrives
+    // as the plain numbers 1 and -3 -- and a func's peg is unified
+    // element by element, so a raw one reached `arg.unify(...)` and
+    // threw. The unifier's catch-all turned that into an `internal`
+    // verdict: a crash reported as a unification result (issue #49).
+    // The Go port has always converted here (asVal in evaluate).
+    // A comma group is ONE raw-array term (see writtenArgCount).
+    // For a function whose arguments are distinct POSITIONS —
+    // deprecate's value and record, pack's and each's data and template
+    // — the group is expanded back into them here, while a written list
+    // literal, already a ListVal, stays one argument. The constraint
+    // atoms make the same move in their own constructor (atomArgs,
+    // ConstraintVal.ts), which is why they are not in this set:
+    // `neq(1,2)` is one argument LIST, not two positions, and expanding
+    // it here would take the list away from the code that reads it.
+    let terms = argterms
+    if (true === POSITIONAL_ARG_FUNCS[fname] && 1 === terms.length &&
+      Array.isArray(terms[0])) {
+      terms = terms[0]
+    }
+    const args = terms.map(rawToVal)
+    const val: any = null == funcval ?
+      new NilVal({ why: 'unknown_function' }) :
+      new funcval({ peg: args })
+
+    // The call as written, for the pipe to rebuild from. Parse-time
+    // only: nothing downstream reads it, and a clone does not carry it.
+    //
+    // NOT on a constraint atom that BUILT: an atom with its argument
+    // list complete is a residual, not a call waiting for a subject,
+    // and `1 |> neq(2,3)` is asking for `1 & neq(2,3)` -- which is
+    // what `&` is for. (An atom the arity check REFUSED still carries
+    // it, on the nil above: `1 |> min()` is `min(1)`, and that is a
+    // call waiting for a subject.) The Go port cannot rebuild a built
+    // atom at all -- its residual keeps no atom name -- so this is
+    // also what keeps the two ports answering the same thing.
+    if (true !== val.isConstraint) {
+      val._callname = fname
+      val._callterms = argterms
+    }
+
+    return val
+  }
+
+
+  // The argument terms `f(...)` would have been written with, had the
+  // piped value been written into it. A comma group is one raw-array
+  // term: for a POSITIONAL function the group is separate arguments,
+  // so the piped value joins them; for a constraint atom the group IS
+  // the argument list, so the piped value joins the list instead.
+  const pipeTerms = (call: any, val: any): any[] => {
+    const written: any[] = call._callterms
+    const group = 1 === written.length && Array.isArray(written[0]) ?
+      written[0] : written
+
+    if (0 === group.length) {
+      return [val]
+    }
+
+    return true === POSITIONAL_ARG_FUNCS[call._callname] ?
+      [val, ...group] : [[val, ...group]]
+  }
+
 
   let opmap: any = {
     'conjunct-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) =>
@@ -533,55 +707,47 @@ help isolate the syntax error.`,
       return addsite(val, r, ctx)
     },
 
+    // THE PIPE `|>` (G8 phase 4): parse-time sugar and nothing else.
+    // `x |> f(a)` IS `f(x, a)` -- the piped value goes in as the FIRST
+    // argument, Elixir-style, because every Aontu call is data-first
+    // already (`close(x)`, `pack(data, tmpl)`) and a pipe must read the
+    // way the calls it replaces read. It never reaches a Val: by the
+    // time the tree exists the call is an ordinary call, which is why
+    // canon can never emit the token and the two ports' canon stay
+    // byte-identical without either knowing about it.
+    'pipe-infix': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
+      const val = terms[0]
+      const call: any = terms[1]
+
+      if (null == val || null == call) return incompleteNil(r, ctx)
+
+      // The right-hand side is a CALL: either one the func handler
+      // already built, or one it refused for an arity the pipe is about
+      // to satisfy. Both carry what they were written as.
+      if (null != call._callname) {
+        return buildCall(r, ctx, call._callname, pipeTerms(call, val))
+      }
+
+      // ... or a bare NAME, which is the whole point of the short
+      // spelling: `x |> upper` is `upper(x)`. A bare word has already
+      // become a string VALUE by the time an infix operator sees it, so
+      // this is where a string becomes a call.
+      if (true === call?.isScalar && 'string' === typeof call.peg &&
+        null != funcMap[call.peg]) {
+        return buildCall(r, ctx, call.peg, [val])
+      }
+
+      // Anything else is not a call, and a pipe into a non-call is a
+      // mistake in the source rather than a value.
+      return addsite(new NilVal({ why: 'pipe_target' }), r, ctx)
+    },
+
     'func-paren': (r: Rule, ctx: JsonicContext, _op: Op, terms: any) => {
       let val = terms[1]
       const fname = terms[0]
 
       if ('' !== fname) {
-        const funcval = funcMap[fname]
-        // Arity is known for every built-in, so a surplus or missing
-        // argument is a mistake in the SOURCE, refused here where the
-        // author can see it (issue #51). It was previously left to each
-        // function to notice or not: the two ports disagreed on `upper()`
-        // and on `close()`, and `min(1,2)` noticed nothing at all -- it
-        // built a constraint that merely refused to generate later, with
-        // a message about the map rather than about the call.
-        //
-        // Counted BEFORE the rawToVal pass below, which is what makes the
-        // count possible: a comma group arrives as a RAW array and a
-        // written list literal as a ListVal, and rawToVal turns the first
-        // into the second.
-        const arity = funcArity[fname]
-        if (null != arity) {
-          const got = writtenArgCount(terms.slice(1))
-          if (got < arity[0] || (-1 !== arity[1] && got > arity[1])) {
-            // details is assigned AFTER construction: the NilVal
-            // constructor does not read it from its spec (only
-            // NilVal.make does), so passing it in the spec left the
-            // hint's {func}/{want}/{got} placeholders un-injected and
-            // printed literally.
-            const nil: any = new NilVal({ why: 'func_arity' })
-            nil.details = {
-              func: fname,
-              want: arityText(arity[0], arity[1]),
-              got: '' + got,
-            }
-            return addsite(nil, r, ctx)
-          }
-        }
-        // rawToVal EVERY argument. A degenerate expression can hand this
-        // handler raw parse values rather than Vals -- `pref(1-3)` arrives
-        // as the plain numbers 1 and -3 -- and a func's peg is unified
-        // element by element, so a raw one reached `arg.unify(...)` and
-        // threw. The unifier's catch-all turned that into an `internal`
-        // verdict: a crash reported as a unification result (issue #49).
-        // The Go port has always converted here (asVal in evaluate).
-        const args = terms.slice(1).map(rawToVal)
-        val = null == funcval ?
-          new NilVal({ why: 'unknown_function' }) :
-          new funcval({
-            peg: args
-          })
+        val = buildCall(r, ctx, fname, terms.slice(1))
       }
       // `a:()` — grouping parens with nothing inside.
       if (null == val) return incompleteNil(r, ctx)
@@ -605,6 +771,14 @@ help isolate the syntax error.`,
 
         'disjunct': {
           infix: true, src: '|', left: 14_000_000, right: 15_000_000
+        },
+
+        // G8 phase 4: the pipe. LOOSEST of all the infix operators, so
+        // `a & b |> f` pipes the whole meet and not just `b` -- a pipe
+        // reads as "and then", which is a statement about everything to
+        // its left. Kept in lock-step with the op table in go/lang.go.
+        'pipe-infix': {
+          infix: true, src: '|>', left: 12_000_000, right: 13_000_000
         },
 
         'plus-infix': {
@@ -1166,19 +1340,41 @@ help isolate the syntax error.`,
 
 
 
-// SECURITY: the default resolver reads any file/package the process can
-// reach — @"path" follows relative paths (`@"../../etc/passwd"`) and
-// symlinks with no containment check, and @"pkg" can require() arbitrary
-// installed modules. This is intentional for the CLI, but it means a
-// `.aon` source can read referenced files; the LSP uses this same
-// resolver, so treat opening an untrusted source as running it. Pass a
-// confined `options.resolver` to restrict reads in less-trusted contexts.
+// SECURITY: under the DEFAULT ('system') include capability this
+// resolver reads any file/package the process can reach — @"path"
+// follows relative paths (`@"../../etc/passwd"`) and symlinks, and
+// @"pkg" can require() arbitrary installed modules — so treat opening
+// an untrusted source as running it. The trust profile (G5,
+// docs/trust.md) is the confinement surface: `trust.include` of
+// 'none', `{ mem }` or `{ root }` restricts what `@"..."` may resolve,
+// and a denied resolution is a deterministic parse-stage
+// `include_denied` error.
 function makeModelResolver(options: any) {
   const useRequire = options.require || require
+  const capability = options.trust?.include ?? 'system'
 
-  let memResolver = makeMemResolver({
-    ...(options.resolver?.mem || {})
-  })
+  const memCapability =
+    'object' === typeof capability && null != (capability as any).mem
+  const rootDir: string | undefined =
+    'object' === typeof capability &&
+      'string' === typeof (capability as any).root
+      ? pathResolve((capability as any).root) : undefined
+
+  // Under the mem capability the CAPABILITY's file set is the whole
+  // world; otherwise the host-injected `options.resolver.mem` entries
+  // remain available under every capability but 'none' — they are
+  // host-provided, not document-requested, so confining them would
+  // confine the host against itself.
+  // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts) rides the
+  // memory leg: served from the engine itself, so it needs neither the
+  // filesystem nor package resolution and is available under every
+  // capability but `none` — which denies every include outright, that
+  // being what `none` means. Host entries and the capability's own set
+  // WIN over it: a caller that supplies its own `std/system` gets the
+  // one it supplied.
+  let memResolver = makeMemResolver(memCapability
+    ? { ...(capability as any).mem }
+    : { ...(options.resolver?.mem || {}) })
 
   // TODO: make this consistent with other resolvers
   let fileResolver = makeFileResolver((spec: any) => {
@@ -1189,6 +1385,88 @@ function makeModelResolver(options: any) {
     require: useRequire,
     ...(options.resolver?.pkg || {})
   })
+
+  // Confinement is realpath-then-prefix-check (docs/trust.md): the
+  // RESOLVED file's real path must sit below the root's real path, so a
+  // symlink inside the root pointing outside it is an escape, not a
+  // loophole. A path realpath cannot resolve falls back to the lexical
+  // form — the comparison is then against what the resolver actually
+  // read.
+  // Real fs, deliberately: `options.fs` is not a sandbox (it feeds
+  // parse text; the file leg reads through its own channel), so the
+  // containment check must see the same filesystem that leg read from.
+  const realpath = (p: string): string => {
+    try {
+      return realpathSync(p)
+    }
+    catch {
+      return pathResolve(p)
+    }
+  }
+
+  const outsideRoot = (root: string, full: string): boolean => {
+    const rootReal = realpath(root)
+    const fullReal = realpath(full)
+    return fullReal !== rootReal && !fullReal.startsWith(rootReal + pathSep)
+  }
+
+  // A denial THROWS with the code; Lang.parse converts it to the
+  // parse-stage `include_denied` nil (the same shape a syntax failure
+  // takes). Raising beats injecting a nil value: a bare-member include
+  // (`@"denied.aon"` at the top of a file) MERGES into the enclosing
+  // map, and a nil contributes no keys, so an injected denial would
+  // vanish and leave a plausible, silently-partial document.
+  const deny = (path: string): never => {
+    // Only 'none' and 'root' can deny: the mem capability's misses are
+    // not-found (its set is the whole world), so there is no third arm.
+    const capname = 'none' === capability ? 'none' : 'root:' + rootDir
+    const err: any = new Error(
+      'include denied: ' + path + ' (capability: ' + capname + ')')
+    err.code = 'include_denied'
+    throw err
+  }
+
+  // The user cache: whatever the host named, else the platform rule
+  // (`modCacheDir`, ts/src/mod.ts) the tooling writes by.
+  const modCache = (opts: any): string | undefined => {
+    const named = opts.mod?.cache
+    return 'string' === typeof named ? named : modCacheDir()
+  }
+
+  // The directory an include is being resolved FROM: the source that
+  // holds it, or the entry path when the source is a string. Same base
+  // the file leg computes (resolvePathSpec in @tabnas/multisource).
+  const dirOf = (p: string | undefined): string =>
+    null == p || '' === p ? pathResolve('.') : pathDirname(pathResolve(p))
+
+  // The module store reader: the host's filesystem when one was
+  // injected, so a sandboxed evaluation stays in the filesystem the
+  // host gave it.
+  const modFs = (ctx: any): any => {
+    const hostfs = ctx?.meta?.fs
+    return null == hostfs ? { existsSync, readFileSync } : {
+      existsSync: (p: string) => {
+        try {
+          hostfs.statSync(p)
+          return true
+        }
+        catch {
+          return false
+        }
+      },
+      readFileSync: (p: string, enc: string) => hostfs.readFileSync(p, enc),
+    }
+  }
+
+  // The manifest sink rides the parse meta (Lang.parse seeds it, the
+  // multisource plugin's child-meta spread carries it to every nested
+  // include), so the recorded closure covers the whole include tree.
+  const record = (ctx: any, path: string, cap: string) => {
+    const manifest = ctx?.meta?.aontu?.manifest
+    if (Array.isArray(manifest)) {
+      manifest.push({ path, capability: cap })
+    }
+  }
 
   return function ModelResolver(
     spec: any,
@@ -1209,10 +1487,64 @@ function makeModelResolver(options: any) {
       return { found: false, path: '' + (path ?? ''), search: [] }
     }
 
+    if ('none' === capability) {
+      deny(path)
+    }
+
+    // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts): served from
+    // the engine itself, so it needs neither the filesystem nor package
+    // resolution and is available under every capability but `none` —
+    // checked just above, that being what `none` means. Matched against
+    // the name the author WROTE, before the memory leg, so the kind is
+    // stated rather than guessed from an extension the bare name does
+    // not have.
+    const std = STD_SOURCES[path]
+    if (null != std) {
+      record(ctx, path, 'std')
+      return { found: true, path, full: path, kind: 'aon', src: std, search: [] }
+    }
+
     let search: any = []
     let res = memResolver(path, popts, rule, ctx, jsonic)
     res.path = path
     if (res.found) {
+      record(ctx, res.full ?? path, 'mem')
+      return res
+    }
+
+    // THE MODULE LEG (G6 phase 2, ts/src/mod.ts): memory -> MODULE ->
+    // filesystem -> package. Memory stays FIRST so a sandbox and the
+    // spec suite can stub a module path without touching disk; a path
+    // that is not module-shaped falls straight through, so no existing
+    // include can be routed somewhere new by this.
+    const modref = memCapability ? undefined : parseModuleRef(path)
+    if (null != modref) {
+      const msmeta = (ctx as any)?.meta?.multisource
+      const from = dirOf(null != msmeta?.path ? msmeta.path : popts?.path)
+      const found = resolveModule(modref, from, modFs(ctx), {
+        // The user cache lives outside any confinement root, so it is
+        // consulted only when nothing confines this evaluation. A
+        // rooted profile sees the project's own `aon_vendor/` and
+        // nothing else, which is what `root` means.
+        ...(null == rootDir ? { cache: modCache(options) } : {}),
+        eval: options.mod?.eval,
+        depth: options.mod?.depth,
+      })
+      if (null != rootDir && outsideRoot(rootDir, found.full)) {
+        deny(path)
+      }
+      record(ctx, found.full, 'mod')
+      return {
+        found: true, path, full: found.full,
+        kind: 'aon', src: found.src, search: [],
+      }
+    }
+
+    if (memCapability) {
+      // A miss in the declared virtual set is NOT-FOUND, not denial:
+      // the allowed mechanism ran and missed. Denial is reserved for a
+      // capability refusing a mechanism outright.
+      res.search = search.concat(res.search)
       return res
     }
 
@@ -1221,14 +1553,42 @@ function makeModelResolver(options: any) {
     res = fileResolver(path, popts, rule, ctx, jsonic)
     res.path = path
     if (res.found) {
+      // `res.full` asserted non-null: a FOUND file resolution always
+      // carries the absolute path it read (and the pkg leg below is the
+      // same), so a runtime fallback arm would be dead code.
+      const full = res.full as string
+      if (null != rootDir && outsideRoot(rootDir, full)) {
+        deny(path)
+      }
+      // The warning window for the staged default flip (G5 phase 6):
+      // under 'system', the CLI supplies trustWarn and the entry root,
+      // and every resolution escaping that root names the flag a future
+      // default will require.
+      if (null == rootDir && null != options.trustWarn &&
+        null != options.trustWarnRoot &&
+        outsideRoot(options.trustWarnRoot, full)) {
+        options.trustWarn('escape', full)
+      }
+      record(ctx, full, 'file')
       return res
     }
 
     search = search.concat(res.search)
 
+    if (null != rootDir) {
+      // Package resolution is not part of the root capability; the
+      // miss stands as not-found with the searched paths listed.
+      res.search = search
+      return res
+    }
+
     res = pkgResolver(path, popts, rule, ctx, jsonic)
     res.path = path
     if (res.found) {
+      if (null != options.trustWarn) {
+        options.trustWarn('pkg', res.full as string)
+      }
+      record(ctx, res.full as string, 'pkg')
       return res
     }
 
@@ -1239,6 +1599,15 @@ function makeModelResolver(options: any) {
 
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
+// The functions whose comma-separated arguments are distinct POSITIONS
+// rather than one argument list. See the func-paren handler above: this
+// is the set whose comma group is expanded back into separate `peg`
+// entries.
+const POSITIONAL_ARG_FUNCS: Record<string, boolean> = {
+  deprecate: true, pack: true, each: true, filter: true, match: true,
+}
+
+
 // [min, max]; a max of -1 is unbounded. Every name in funcMap has an
 // entry, and the arity is a property of the language rather than of
 // either port -- go/func.go carries the same table.
@@ -1259,6 +1628,15 @@ const funcArity: Record<string, [number, number]> = {
   unique: [0, 0],
   neq: [1, -1],
   must: [2, 2],
+  deprecate: [1, 2],
+  id: [1, 1],
+  refer: [0, 1],
+  pack: [2, 2],
+  each: [1, 2],
+  filter: [2, 2],
+  // The scrutinee, then pattern/result pairs, then an optional
+  // default: three arguments at least, and any number above that.
+  match: [3, -1],
 }
 
 
@@ -1293,7 +1671,7 @@ function arityText(lo: number, hi: number): string {
     return 'one or more arguments'
   }
   if (lo !== hi) {
-    return 'no arguments or one'
+    return 0 === lo ? 'no arguments or one' : 'one argument or two'
   }
   if (0 === hi) {
     return 'no arguments'
@@ -1421,7 +1799,13 @@ class Lang {
       multisource: {
         path: opts?.path ?? this.opts.path,
         deps: (opts && opts.deps) || undefined
-      }
+      },
+      // The include-manifest sink (G5, docs/trust.md): the resolver
+      // records every resolved include here, and the plugin's
+      // child-meta spread carries the same array to nested includes.
+      aontu: {
+        manifest: (opts as any)?.manifest,
+      },
     }
 
     if (null != opts?.idcount) {
@@ -1449,7 +1833,28 @@ class Lang {
       }
     }
     catch (e: any) {
-      if (e instanceof JsonicError || 'JsonicError' === e.constructor.name) {
+      if ('include_denied' === e?.code ||
+        'module_missing' === e?.code || 'module_integrity' === e?.code ||
+        'module_depth' === e?.code) {
+        // A denied include (trust profile, G5): the resolver throws so
+        // a bare-member include cannot vanish in the merge, and the
+        // code survives here as the parse-stage nil the registry
+        // pins (errcodes.tsv: include_denied, class parse).
+        // A denied include (G5) and a module that is missing or fails
+        // its pin (G6 phase 2) are refused the same way, for the same
+        // reason: the resolver THROWS so a bare-member include cannot
+        // vanish in the merge, and the code survives here as the
+        // parse-stage nil the registry pins (errcodes.tsv).
+        val = new NilVal({
+          why: 'parse',
+          err: new NilVal({
+            why: e.code,
+            msg: e.message,
+            err: e,
+          })
+        })
+      }
+      else if (e instanceof JsonicError || 'JsonicError' === e.constructor.name) {
         val = new NilVal({
           why: 'parse',
           err: new NilVal({

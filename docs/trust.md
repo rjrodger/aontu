@@ -33,33 +33,43 @@ construct that observes time or entropy will ever be added (see
 instead.
 
 **Where this is conditional.** Input 2 — the include closure — is only
-a well-defined *input* when the resolver is confined. Under the default
-resolver chain (memory → filesystem → package,
-`makeModelResolver` in `ts/src/lang.ts`) the closure is unbounded and
-machine-dependent: a relative include follows any path the process can
-read, and package resolution walks `node_modules` from the working
-directory, so the same file set can resolve differently on two
-machines. The code states the resulting posture and this contract
-repeats it:
+a well-defined *input* when the resolver is confined, and confinement
+is now a first-class option in **both** implementations: the **trust
+profile** (G5 phase 3) —
+`trust: { include: 'none' | {mem} | {root} | 'system' }` on
+`AontuOptions` in TypeScript, `Aontu.Trust` (`TrustOptions`) in Go.
+Under `none`, `{mem}` or `{root}` the closure is explicit and
+hermeticity is TOTAL: `none` denies every `@"…"`, `{mem}` resolves
+only the declared virtual file set, and `{root}` reads real files
+realpath-confined below the root (a symlink inside the root pointing
+outside it is an escape and is denied; package resolution never runs).
+One name is served under every capability but `none`: `@"std/system"`,
+the [system vocabulary](reference-language.md#the-stdsystem-vocabulary),
+which is BUNDLED with the engine. It touches neither the filesystem nor
+package resolution, so it widens nothing a hermetic evaluation cares
+about — a source that never leaves the process is as reproducible as a
+builtin function — and it appears in the manifest under capability
+`std`, so the closure still says it was read. Under `none` it is denied
+with everything else: `none` means no includes at all.
+
+A denied resolution is the located, deterministic parse-stage
+`include_denied` error, pinned by `test/spec/include-trust.tsv` in
+both runners. The resolved closure itself is observable as the
+**include manifest** — sorted, deduplicated `{path, capability}`
+entries on the parse result (`val.deps` in TypeScript,
+`Aontu.IncludeDeps` in Go) — which is this clause's "file set" as
+data.
+
+Under the DEFAULT `'system'` capability the old caveat stands: the
+chain (memory → filesystem → package in TypeScript; filesystem in Go)
+reads anything the process can, the closure is machine-dependent, and
+the code's posture is the operative warning:
 
 > **Treat opening an untrusted source as running it.**
 
-Hermeticity is therefore *total* only when the host **replaces the
-resolver outright**: in TypeScript, a caller-supplied
-`options.resolver` substitutes for the whole default chain
-(`ts/src/lang.ts`), and the documented in-memory resolver is such a
-replacement. Two things do NOT confine, and the contract says so to
-stop hosts assuming a sandbox they do not have: `options.fs` feeds
-source text for parsing and error context — the file and package legs
-still read through their own channels — and the **Go implementation
-has no confinement hook at all today**: `NewWithBase` only rebases
-relative paths, and its file resolver follows `..`, absolute paths,
-and symlinks through `os.ReadFile`. In Go, hermeticity under any
-include is conditional, full stop, until the trust profile ships. The
-graduated `trust` capability profile that makes confinement a
-first-class, per-surface default —
-`include: 'none' | {mem} | {root} | 'system'` — is the registered
-design (G5 phase 3) and is **not implemented yet**.
+`options.fs` still does not confine — it feeds source text for parsing
+and error context, while the file and package legs read through their
+own channels.
 
 **The JSON-superset guarantee, stated precisely.** Every JSON document
 *parses* as Aontu. That is the whole claim. It does not say "behaves
@@ -188,19 +198,38 @@ document: a `.aon` file cannot request more capability, includes take a
 literal string (never a computed expression), and canonical form is
 unaffected by any trust setting.
 
-Today that declaration exists in exactly one form: a TypeScript host
-replacing `options.resolver` outright (clause 1). `options.fs` and
-`base` shape resolution but do not confine it, and a Go host has no
-confinement hook at all. The graduated profile with per-surface
-defaults (LSP: workspace-confined; library: explicit; CLI: entry-file
-root with `--trust system` escape) is registered design, not yet
-behaviour. Until it ships, the default at every surface is the full
-resolver chain, and the posture above — opening an untrusted source is
-running it — is the operative warning, doubly so for Go embedders.
+That declaration is the **trust profile** (clause 1), in both
+implementations, at every surface:
 
-Denied resolution, when confinement ships, is a located, deterministic
-parse-stage error (`include_denied`) like any other — never a silent
-skip.
+- **Library**: `trust.include` on the evaluator options (TypeScript)
+  / `Aontu.Trust` (Go). The default remains `'system'`.
+- **LSP**: confined to the **workspace root** by default, from the
+  `initialize` params (workspaceFolders, rootUri, rootPath, in that
+  order); an explicit `initializationOptions.aontu.trust.include` of
+  `'system'`, `'none'`, `{root}` or `{mem}` widens or narrows it, and
+  an unrecognised value confines to nothing rather than silently
+  widening. A session with no workspace root and no explicit option
+  stays unconfined, which single-file sessions rely on.
+- **CLI**: `--trust <system|none|root[:dir]>` and
+  `--include-root <dir>`. The default remains `'system'` **with the
+  warning window** (G5 phase 6, the staged flip): every resolution
+  that escapes the entry file's directory, or goes through package
+  resolution, prints a one-line stderr warning naming the flag a
+  future release will require. The flip itself — entry-root
+  confinement by default, `--trust system` restoring today's
+  behaviour — is scheduled for the next major version.
+
+Denied resolution is a located, deterministic parse-stage error
+(`include_denied`) like any other — never a silent skip — and is
+raised, not injected as a value, so a bare-member include
+(`@"denied.aon"` at the top of a file) cannot vanish in the merge.
+
+Budgets are part of the same profile: `trust.budget.passes` and
+`trust.budget.depth` (TypeScript) / `TrustOptions.Budget` (Go), integer
+counts of engine events defaulting to the spec constants of clause 2.
+The per-pair revisit bound is NOT profile surface — the Go dispatcher
+has no revisit counter to configure, and a knob one port cannot honour
+would break the parity contract by construction.
 
 ### Rules pre-registered for remote includes
 
@@ -210,8 +239,9 @@ enforced the day any remote resolver exists (G6):
 1. Remote sources may include only remote sources — never local
    files, never `$` bindings, never anything environment-derived.
 2. Include paths are literal strings; computed import paths are
-   prohibited (true today by grammar, to be pinned by a spec row when
-   the capability lands).
+   prohibited (true today by grammar; not yet pinned by a shared row —
+   the two ports currently REFUSE a computed path differently, and the
+   row waits on that alignment).
 3. No credential or header forwarding across origins; anything beyond
    a bare fetch is explicit opt-in.
 4. Remote resolution is only available under an explicit capability;

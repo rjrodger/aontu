@@ -10,6 +10,7 @@ import { DONE } from './type'
 import { makeNilErr } from './err'
 
 import { NilVal } from './val/NilVal'
+import { hasPlace } from './val/PlaceVal'
 
 import {
   Lang
@@ -26,27 +27,27 @@ import {
 } from './val/top'
 
 
-// Per-pass revisit bound: how many times one (Val, path) pair may be
-// re-unified within a single fixpoint pass before the evaluator calls it
-// non-convergence (`unify_cycle`). The old false positive here -- a
-// legal model with more than MAXCYCLE sibling conjunct terms at one
-// path, each re-running the TOP self-unify -- is fixed by the per-pass
-// memo below (_tcc/_tpi); test/spec/budget.tsv drives 1200 sibling
-// terms through both engines as the regression guard.
-const MAXCYCLE = 999
-
-// Structural recursion budget: how deep `unite` may nest before the
-// evaluator reports `unify_cycle`. SHARED LANGUAGE SURFACE -- Go's
-// maxUniteDepth (go/unify.go) carries the same number, and
-// test/spec/budget.tsv pins the boundary in both, so changing it is a
-// spec-visible change in both ports at once.
+// The evaluation budgets live on the context (ctx.budget: passes,
+// revisits, depth), defaulted there to the shared spec-visible
+// constants test/spec/budget.tsv pins in both ports (9 / 999 / 1000)
+// and configurable through the trust profile (G5, docs/trust.md) —
+// deterministically: a budget is an integer count of engine events,
+// never wall-clock.
 //
-// Why 1000: the whole shared suite peaks at 603 (the deliberately
-// extreme 1200-sibling-term fixture; ordinary documents are two orders
-// below), and V8 exhausts its call stack somewhere past depth ~1500 in
-// this evaluator. 1000 sits above every real document and below the
-// host limit, so the budget -- not the host -- decides the verdict.
-const MAXDEPTH = 1000
+// Why the revisit default is 999: how many times one (Val, path) pair
+// may be re-unified within a single fixpoint pass before the evaluator
+// calls it non-convergence (`unify_cycle`). The old false positive here
+// -- a legal model with many sibling conjunct terms at one path, each
+// re-running the TOP self-unify -- is fixed by the per-pass memo below
+// (_tcc/_tpi); test/spec/budget.tsv drives 1200 sibling terms through
+// both engines as the regression guard.
+//
+// Why the depth default is 1000: the whole shared suite peaks at 603
+// (the deliberately extreme 1200-sibling-term fixture; ordinary
+// documents are two orders below), and V8 exhausts its call stack
+// somewhere past depth ~1500 in this evaluator. 1000 sits above every
+// real document and below the host limit, so the budget -- not the
+// host -- decides the verdict.
 
 // Charge a DIRECT `Val.unify` recursion to the same depth budget that
 // `unite` enforces. Function and operator arguments evaluate through
@@ -59,7 +60,7 @@ const MAXDEPTH = 1000
 const withDepth = (
   ctx: AontuContext, a: any, b: any, run: () => any
 ): any => {
-  if (MAXDEPTH <= ctx._depth.n) {
+  if (ctx.budget.depth <= ctx._depth.n) {
     return makeNilErr(ctx, 'unify_cycle', a, b)
   }
   ctx._depth.n++
@@ -89,14 +90,39 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
     if (a === b) {
       if (a.done) return a
     }
-    else if (b !== undefined && b !== null) {
+    // ... and NOT on an instrumented run (G7 provenance). Both arms
+    // below answer with one operand and never reach the recorder at
+    // the tail, so an equal pair — two positions of one entity that
+    // agree, a clone meeting its source — contributed silently and
+    // `why` named one site where the Go port, whose recorder wraps the
+    // whole dispatcher, named both. Instrumented runs pay the slow
+    // path knowingly; uninstrumented ones pay one undefined check.
+    else if (b !== undefined && b !== null && undefined === ctx.prov) {
       if (a.done && b.done) {
-        if (a.id === b.id) return a
+        if (a.id === b.id) {
+          // The deprecation record survives the fast path (G3).
+          if (null == a.deprecation && null != b.deprecation) {
+            a.deprecation = b.deprecation
+          }
+          return a
+        }
         if (a.constructor === b.constructor && a.peg === b.peg
             && !a.isNil && !b.isNil
             && !a.isMap && !a.isList
             && !a.isConjunct && !a.isDisjunct
-            && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect) {
+            && !a.isRef && !a.isPref && !a.isFunc && !a.isExpect
+            // NOT two TOPs (G4 phase 1): every top has the same
+            // (absent) peg, so this path treated any two as the same
+            // value — true of the unit itself, false of a unit
+            // CARRYING AN IDENTITY, and `id(x) & id(y)` is two of
+            // those. The slow path answers the same thing for two
+            // plain tops, and refuses the pair for two named ones.
+            && !a.isTop && !b.isTop) {
+          // The deprecation record survives the fast path too (G3):
+          // `deprecate(5) & 5` short-circuits here.
+          if (null == a.deprecation && null != b.deprecation) {
+            a.deprecation = b.deprecation
+          }
           return a
         }
       }
@@ -119,7 +145,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
   // NOTE: if this error occurs "unreasonably", attemp to avoid unnecesary unification
   // See for example PrefVal peg.id equality inspection.
   const sawCount = ctx.seen[saw] ?? 0
-  if (MAXDEPTH <= ctx._depth.n) {
+  if (ctx.budget.depth <= ctx._depth.n) {
     // Structural recursion budget. Without it, deep nesting exhausts the
     // V8 call stack and the catch-all below reports a RangeError as
     // `internal` — a verdict that depends on the host's stack size
@@ -128,7 +154,7 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
     // makes it a stated budget error, like the pass budget.
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
-  else if (MAXCYCLE < sawCount) {
+  else if (ctx.budget.revisits < sawCount) {
     // console.log('SAW', sawCount, saw, a?.id, a?.canon, b?.id, b?.canon, ctx.cc)
     out = makeNilErr(ctx, 'unify_cycle', a, b)
   }
@@ -184,6 +210,18 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
         || b.isVar
         || b.isFunc
         || b.isExpect
+        // The refer residual (G4 phase 2) DRIVES, like the other
+        // residuals here: its peer is a plain string, which knows
+        // nothing about entity addresses, so letting the string drive
+        // dropped the address and left the constraint standing.
+        || b.isRefer
+        // An operator holding a HOLE (G8 phase 3) drives for the same
+        // reason: its peer is what FILLS it, and a scalar asked to
+        // unify with `_ + 2` sees an operator rather than a hole and
+        // refuses it on kind. Narrow to placeheld operators on
+        // purpose -- every other operator meets its peer the way it
+        // always has, through the conjunct fold that drives it.
+        || (b.isOp && hasPlace(b))
       ) {
         out = b.unify(a, te ? ctx.clone({ explain: ec(te, 'BW') }) : ctx)
         unified = true
@@ -251,6 +289,47 @@ const unite = (ctx: AontuContext, a: any, b: any, whence: string) => {
 
   ctx.explain && explainClose(te, out)
 
+  // The provenance record (G7 phase 3), at the one place every meet
+  // passes through — the same reason the deprecation rider below lives
+  // here. Off by default: an uninstrumented run pays this one property
+  // load, and an instrumented one pays site materialisation knowingly.
+  if (undefined !== ctx.prov) {
+    ctx.prov.record(ctx.path, a, b, out)
+  }
+
+  // The IDENTITY survives every meet (G4 phase 1), by the same
+  // channel and for the same reason as the deprecation record below.
+  // TWO DIFFERENT NAMES on one node is a contradiction, not a merge:
+  // one node cannot be two entities, and the error names both sites.
+  if (null != out && true === (out as any).isVal && !out.isNil) {
+    const ae = null != a ? a.entity : undefined
+    const be = null != b ? b.entity : undefined
+    if (null != ae && null != be && ae !== be) {
+      out = makeNilErr(ctx, 'id_conflict', a, b)
+    }
+    else if (!out.isTop) {
+      const e = ae ?? be
+      if (null != e) {
+        out.entity = e
+      }
+    }
+  }
+
+  // The deprecation record survives EVERY meet (G3 phase 4): the
+  // boolean marks have their own sweeps (ConjunctVal, the bag walks),
+  // but a record lost in one meet shape is a use the tooling never
+  // warns about, so it rides here, at the one place all meets pass
+  // through. First record wins; TOP and nil stay clean (TOP is the
+  // unit, and an error needs no deprecation).
+  if (null != out && true === (out as any).isVal &&
+    !out.isTop && !out.isNil && null == out.deprecation) {
+    const dep = (null != a ? a.deprecation : undefined) ??
+      (null != b ? b.deprecation : undefined)
+    if (null != dep) {
+      out.deprecation = dep
+    }
+  }
+
   return out
 }
 
@@ -282,6 +361,102 @@ function residuePaths(v: Val, max: number): string[] {
   }
   visit(v, true)
   return out
+}
+
+
+// IDENTITY-MERGE (G4 phase 1): every node in one evaluation carrying
+// the same id is unified with every other. Declaring two nodes the
+// same entity MEANS unifying them, so this is not a lookup table —
+// it is a meet, and a contradiction between two declarations is an
+// ordinary conflict naming both sites.
+//
+// Run once per fixpoint pass, after the pass's own unification: a
+// position picks up the representative, the representative picks up
+// the position, and the two converge across passes exactly as chained
+// references do, inside the same `maxcc` bound.
+//
+// The tree stays a TREE. Every declared position holds the merged
+// value and generation emits it at each path — duplication, as
+// references generate today. Identity adds addressing, not a new
+// shape.
+// The ctx DESCENDS with the walk, so the merge's meet happens at the
+// position's own path: a contribution `$.b.k` picked up from `$.a.k`
+// is recorded against `$.b.k`, which is where a reader asking `why`
+// stands. Merging under the root ctx instead filed every contribution
+// at the top and left the positions themselves with an empty record —
+// and the Go port, whose bag loops derive the base from the value's
+// own path, already answered the useful way.
+function mergeEntities(ctx: AontuContext, root: Val): Val {
+  const reg: Map<string, Val> = (ctx as any).entities
+
+  // COLLECT, then APPLY — the same walk twice, not two walks. A single
+  // pass merges each position into the representative as it meets it,
+  // which leaves the positions it already passed holding the pre-merge
+  // value: `a: id(x) & {k:1}` kept `{k:1}` while `b: id(x) & {j:2}`
+  // became `{j:2,k:1}`, and the two sites disagreed about what the one
+  // entity is. The representative is therefore settled over the WHOLE
+  // tree before any position is written.
+  //
+  // `write` is which half is running. One function rather than two
+  // because the two halves differ in three lines and agree in the walk
+  // — and a walk written twice is a walk that drifts.
+  const walk = (node: any, seen: Set<any>, nctx: AontuContext,
+    write: boolean): any => {
+    if (null == node || true !== node.isVal) {
+      return node
+    }
+
+    const name = (node as any).entity
+    if (null != name) {
+      if (write) {
+        // The SUBSTITUTION happens before the seen-guard, not after.
+        // Two positions of one entity hold the SAME object once a pass
+        // has merged them, so a guard that ran first would visit the
+        // first position, replace it with a newer representative, and
+        // then skip the second as already-seen — leaving it on the
+        // older value. That is exactly what a `refer(t)` flow
+        // produces: it writes a new representative mid-pass, and every
+        // position must take it.
+        const rep: any = reg.get(name)
+        if (null != rep && rep !== node) {
+          node = rep
+        }
+      }
+      else {
+        const rep = reg.get(name)
+        reg.set(name, null == rep || rep === node ? node :
+          unite(nctx, node, rep, 'entity'))
+      }
+    }
+
+    // The guard bounds the DESCENT, which is all it was ever for: a
+    // unified tree is a graph, and a subtree is worth walking once.
+    if (seen.has(node)) {
+      return node
+    }
+    seen.add(node)
+
+    if ((true === node.isMap || true === node.isList) && null != node.peg) {
+      for (const k of Object.keys(node.peg)) {
+        const out = walk(node.peg[k], seen, nctx.descend(k), write)
+        if (write) {
+          node.peg[k] = out
+        }
+      }
+    }
+    return node
+  }
+
+  walk(root, new Set(), ctx, false)
+
+  // NOTHING TO APPLY. The collect half is also the "does this document
+  // use identity at all?" answer, so a document that never says `id()`
+  // pays for one walk per pass rather than two — and the writing half
+  // never runs over a tree it cannot change.
+  if (0 === reg.size) {
+    return root
+  }
+  return walk(root, new Set(), ctx, true)
 }
 
 
@@ -339,27 +514,89 @@ class Unify {
       // keyed by ref canon + source site, shared across all passes.
       ; (uctx as any).snapmap = new Map()
 
+      // The identity registry (G4 phase 1): id -> the representative
+      // value every position with that id has been merged into. Same
+      // lifetime and placement as the ref-spread snapshot map above —
+      // one evaluation, one set of entities.
+      ; (uctx as any).entities = new Map()
+
       const explain = null == ctx?.explain ? undefined : ctx?.explain
       const te = explain && explainOpen(uctx, explain, 'root', res)
 
       // NOTE: if true === res.done already, then this loop never needs to run.
-      let maxcc = 9 // 99
+      let maxcc = uctx.budget.passes
       let prevCanon: string | undefined = undefined
+      let lastCanon: string | undefined = undefined
+      let settle = false
       for (; this.cc < maxcc && DONE !== res.dc; this.cc++) {
         // console.log('CC', this.cc, res.canon)
         uctx.cc = this.cc
         uctx.seen = {}
-        res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
 
-        if (0 < uctx.err.length) {
-          break
+        // THE STAGING RULE (G8 phase 0,
+        // docs/capability-review/g8-generation.md), stated once, here,
+        // for every value whose answer depends on WHERE IT IS. Such a
+        // value residuates while the model is still moving and fires on
+        // the first pass whose input is IDENTICAL to the previous
+        // pass's input: nothing moved, so nothing will move it again,
+        // and the position it reports is the position it ends at.
+        //
+        // Why the whole model and not the value's own path. A spread, a
+        // reference or a `move` can place a value under a path it has
+        // already been driven at and THEN change what encloses it --
+        // `move` hides its source one pass AFTER it copies it, and a
+        // `key()` that answered on the strength of its path alone would
+        // answer for the ghost. Stability of the model is the only
+        // signal that says every such rearrangement is finished.
+        uctx.settle = settle
+
+        // Snapshot BEFORE the final pass (the loop condition has
+        // already established the tree is not done), so exhaustion can
+        // tell "still refining" from "stable residue" below. Taken at
+        // the final pass's ENTRY rather than the previous pass's exit
+        // — the same value when the budget allows two passes, and the
+        // only possible value when the trust profile sets passes to 1,
+        // where the old placement (cc === maxcc - 2, never true) made
+        // exhaustion silent, exactly the truncation docs/trust.md
+        // forbids. `lastCanon` IS that entry canon whenever a previous
+        // pass rendered one, so this costs nothing extra.
+        if (this.cc === maxcc - 1) {
+          prevCanon = lastCanon ?? res.canon
         }
 
-        // Snapshot the second-to-last pass's result, so exhaustion can
-        // tell "still refining" from "stable residue" below. Only paid
-        // by models still unresolved this late.
-        if (this.cc === maxcc - 2 && DONE !== res.dc) {
-          prevCanon = res.canon
+        res = unite(te ? uctx.clone({ explain: ec(te, 'run') }) : uctx, res, top(), 'unify')
+
+        // MULTI-ERROR COLLECTION (G2 phase 6): the pass loop CONTINUES
+        // past an erroring pass, so independent failures a later pass
+        // would reach are collected in the same run — the break that
+        // stood here made every multi-error report truncated at the
+        // first erroring pass.
+        //
+        // What controls the cascade the design feared: a nil is
+        // ABSORBING (unite's isNil arms return the existing nil, no new
+        // error), so one failure stays ONE NilVal however many later
+        // meets touch it — a reference resolving to a failed target
+        // takes the same nil identity, which is exactly what lets the
+        // report layer dedup by identity. The probes that established
+        // this (fan-in refs, spread templates, disjunct trials, nested
+        // conjuncts) are pinned as vet.tsv's multi-* rows in both
+        // ports.
+
+        // The identity merge, after the pass's own unification: the
+        // positions this pass produced are what there is to merge.
+        res = mergeEntities(uctx, res)
+
+        // The staging signal for the NEXT pass, rendered here rather
+        // than at the top of the loop so a model that is FINISHED is
+        // never rendered at all: canon walks references, and the only
+        // trees that close a cycle are hand-built ones (the pass loop
+        // is what a test drives them through), which converge in one
+        // pass and must not be walked to decide a question that no
+        // longer arises.
+        if (DONE !== res.dc) {
+          const nowCanon = res.canon
+          settle = undefined !== lastCanon && lastCanon === nowCanon
+          lastCanon = nowCanon
         }
 
         uctx = uctx.clone({ root: res })
@@ -389,7 +626,7 @@ class Unify {
 
     this.res = res
   }
-} /* node:coverage ignore next 9 */
+} /* node:coverage ignore next 10 */
 
 
 
@@ -398,4 +635,5 @@ export {
   Unify,
   unite,
   withDepth,
+  mergeEntities,
 }

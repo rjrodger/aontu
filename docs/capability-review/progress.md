@@ -89,27 +89,33 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **61 `.tsv` files, 60
-   row-bearing, 2,257 rows**, in seven modes — `canon` 656, `gen` 533,
-   `errc` 422, `gens` 302, `err` 232, `errcode` 70, `vet` 42. Reproduce with
+   register's last update the suite is **86 `.tsv` files, 85
+   row-bearing, 3,054 rows**, in eighteen modes — `canon` 715, `gen`
+   541, `errc` 506, `gens` 491, `err` 246, `errcode` 100, `subsume` 94,
+   `query` 92, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
+   `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
+   `agentsmd` 7.
+   Reproduce with
    `ls test/spec/*.tsv | wc -l` and
    `cat test/spec/*.tsv | grep -P '\t' | grep -vc '^#'`.
 
 ## Summary
 
-Sixteen of forty-nine phases have moved; thirteen of those are complete.
+Forty-nine of forty-nine phases have moved; forty-eight of those are
+complete. The one that is not is G5 phase 6, which is deliberately held
+for the next major release.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
 |-----|-----------|--------------|--------|---------|-------------|
 | [G1](g1-constraint-algebra.md) | Constraint algebra | A | 7 | 0 | 0 |
-| [G2](g2-validation-verb.md) | The validation verb | A | 4 | 0 | 2 |
-| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 0 | 0 | 7 |
-| [G4](g4-identity-relations.md) | Identity, relations | C | 0 | 0 | 6 |
-| [G5](g5-trust-contract.md) | Trust contract | A | 2 | 2 | 2 |
-| [G6](g6-distribution.md) | Distribution | B/C | 0 | 0 | 5 |
-| [G7](g7-machine-access.md) | Machine access | B | 0 | 0 | 7 |
-| [G8](g8-generation.md) | Generation | C | 0 | 1 | 4 |
-| | | **total** | **13** | **3** | **33** |
+| [G2](g2-validation-verb.md) | The validation verb | A | 6 | 0 | 0 |
+| [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
+| [G4](g4-identity-relations.md) | Identity, relations | C | 6 | 0 | 0 |
+| [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
+| [G6](g6-distribution.md) | Distribution | B/C | 5 | 0 | 0 |
+| [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
+| [G8](g8-generation.md) | Generation | C | 5 | 0 | 0 |
+| | | **total** | **48** | **1** | **0** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -117,18 +123,70 @@ Against the review's own [sequencing](index.md#sequencing):
   (G5.1–2) and the error-code registry (G2.1) are in, **G1 is
   complete** — all seven phases, both ports, shared rows, and the
   ADR-002 gate back at 100% in both — and so is **`aontu vet`**:
-  engine (G2.2), command (G2.3) and Go port (G2.4), with verdict exit
-  classes an agent loop can branch on and 42 shared rows both runners
-  execute. G1 landed more than the sequencing table's "constraint
-  algebra core (bounds, regex, length/count)" asked for: cross-field
-  residuation and the `must` escape hatch are in too. Outstanding in A:
-  SARIF, the Action and watch (G2.5), and multi-error collection
-  (G2.6) — the last is what would make a report list every
-  contradiction in one pass rather than the ones a single evaluation
-  reaches.
-- **Phase B — differentiate.** Untouched. No subsumption, no canon
-  hash, no query surface.
-- **Phase C — scale.** Untouched, apart from G8.0's defect-fencing half.
+  engine (G2.2), command (G2.3), Go port (G2.4) and the delivery skin
+  (G2.5: SARIF in both ports, the `vet-action/` composite Action, and
+  `--watch`), with verdict exit classes an agent loop can branch on and
+  46 shared rows both runners execute. G1 landed more than the
+  sequencing table's "constraint algebra core (bounds, regex,
+  length/count)" asked for: cross-field residuation and the `must`
+  escape hatch are in too. **G2 is complete**: multi-error collection
+  (G2.6) landed, so a report lists every contradiction the fixpoint can
+  reach, deduplicated to one finding per cause. **G5 is complete but
+  for one release act**: the trust profile (include capability plus
+  deterministic budgets) is in both ports at every surface, the shared
+  suite is hermetic under it, and the include manifest makes the
+  hermeticity file set observable — what remains of A is only G5.6's
+  default FLIP, staged for the next major version with its warning
+  window already shipping.
+- **Phase B — differentiate.** Underway, and **G3 is complete** —
+  subsumption is a query and a gate: the recursion in both ports
+  (G3.1–2), its rules and 94 shared rows (G3.0), the `subsume` and
+  `breaking` CLI verbs with `git#rev` resolution and the
+  `aontu_policy.compat` declaration (G3.3), the `deprecate()` mark
+  with its three point-of-use surfaces (G3.4), the default-validity
+  lint (G3.5) and the `trim --check` redundancy reporter (G3.6). The
+  **canon-hash pins meaning rather than text** (G6.0–1): the hash form
+  in both ports, `aontu hash` on both command lines, and full
+  `aon1-…` strings pinned cross-implementation by the shared suite —
+  the review's Phase B "canon-hash pinning" item, useful with no
+  registry behind it. And the **query surface has opened** (G7.1–2):
+  `aontu get` selects one node by path and renders it plainly or as a
+  lattice abstraction, in both ports, with the "view subsumes truth"
+  property mechanically asserted by every projection row rather than
+  promised. **Provenance is a verb** (G7.3–4): `aontu why` names every
+  contribution to a value with the site it was written at, from a
+  recorder that hooks the one place every meet passes through and is
+  off by default. And **patch is a verb** (G7.5): `aontu set` appends
+  a path-flattened conjunct to an overlay, refuses to write a change
+  that contradicts a pinned value, and rests on an order-independence
+  the suite asserts row by row. **The delivery skin is on** (G7.6):
+  an MCP server over the same contracts the CLI prints, a path-
+  addressed `diff`, a published grammar the suite's own canon corpus
+  is run against, a generated AGENTS.md stanza, and a skill whose
+  examples are executed. **G7 is complete** (G7.7): the REPL loads a
+  document and answers `:get`, `:keys` and `:why` about it, `--jsonl`
+  makes the session machine-drivable, and LSP hover can carry the
+  provenance record behind a config gate.
+- **Phase C — scale.** G4 is complete, and so are G6 and G8. **G8**
+  is the generation combinators: **G8.0**, the staging rule they all
+  share, which replaced the pass-count hack the review named as the
+  strain; **G8.1**, `pack` and `each` — children made from data that
+  is already in the model, so the list and the children built from it
+  cannot drift; **G8.2**, `filter` and `match`, which select by
+  unification rather than by a predicate language of their own;
+  **G8.3**, the placeholder `_`, the language's first reserved literal
+  since it gained `top` and its first deliberate breaking change; and
+  **G8.4**, the pipe. **G6 is the distribution layer**: module
+  identity and local resolution (G6.2), the `tidy`/`vendor` tooling
+  (G6.3), and the publish boundary (G6.4) — so a module has a name, a
+  local closure, a lockfile written in canonical form, and an artifact
+  description gated on the breaking check. Only the two network verbs
+  are absent, and they are the parts that carry no semantics.
+
+**Every phase of the review has now landed but one.** G5.6 — the
+include-capability default flip — is deliberately held: it is a
+release act rather than an engineering one, and its warning window is
+already shipping.
 
 One structural note the sequencing table itself makes: G7's query/MCP
 surface depends on nothing and could ship at any time.
@@ -249,8 +307,8 @@ does not resolve to the default; the disjunct form does. See
 | **2** — vet engine API | M | **LANDED** | `ts/src/vet.ts` and its Go twin `go/vet.go`, exported from `ts/src/aontu.ts` and as `aontu.Vet`: anchor selection (`at`, `closed`), data parsed with the full grammar, unify-with-collect, the residue walk, finding construction with roles by provenance, vet-side sorting, `maxErrors`/`truncated`, and the four verdicts. `test/spec/vet.tsv` — 42 rows, executed by BOTH runners; `ts/test/vet.test.ts` (36 cases) and `go/vet_test.go` (35) hold the per-port API around them. **The PARTIAL that stood here had one cause and phase 4 removed it:** both runners execute every row of every `test/spec/*.tsv` with no skip list, so a `vet` row could not execute until both ports had the verb. The rows were promoted from `test/spec/draft/vet.tsv` with every golden regenerated from the canonical engine and then run against the port. **Departures from the design:** (1) the encoding is FIVE columns — name, mode, schema, data, expect — because vet takes two documents and no separator inside one cell is safe; both runners already tolerated extra columns, so the arm is additive. (2) `message` is excluded from the goldens and asserted per port, because prose is deliberately not in cross-port parity. (3) Options (`at`, `closed`, `partial`, `maxErrors`) have no column: they ride an `opts` key in the expect object. Flagged in the draft as the one unprobed piece of the encoding, it survived the probe unchanged. (4) findings that never reach the tree are collected from the context too — a parent that collapses to a nil takes its subtree with it, so `close({…})` meeting a typo AND a kind conflict left one nil standing and reported the other only on `ctx.err`. The verb's own motivating example was reporting half of what it found. (5) A conflict inside a `&:` template reports the TEMPLATE's path, not the instance's. Both ports now agree on that (they did not at first — see phase 4), and the data site still points at the offending value; naming the instance path remains a report-layer improvement nobody has taken. (6) The finding object ships `expected`, `actual` and `note` but NOT the design's `alternatives`, `allowed` and `nearest`. Each needs something the engine does not hand over yet — the member canons of a failed disjunction without going through the fold defect, the closed bag's key set at the point of refusal, and an edit-distance suggestion over it — and none of the three changes the report's SHAPE when it lands, which is why the omission is a gap rather than a departure from the contract. |
 | **3** — CLI verb and JSON format | M | **LANDED** | `aontu vet <schema> <data> [more-data...]` in `ts/src/cli.ts` and `go/cmd/aontu/vet.go`: subcommand dispatch (first argument only, so a file argument is never shadowed), `--at`, `--closed`, `--partial`, `--max-errors`, `--format text|json`, and verdict exit classes 0/1/2/3/4. Each data file is vetted separately and the worst verdict wins. 16 cases in `ts/test/cli.test.ts`, 15 in `go/cmd/aontu/vet_test.go`; `docs/reference-api.md` "`aontu vet`" and `docs/how-to.md` carry the verb. The two CLIs were diffed on ~90 schema/data pairs and produce BYTE-IDENTICAL reports, text and JSON, exit codes included — everything but the `version` field, whose two series are independent by design, and the host's own wording for an unreadable file. **Departures from the design:** (1) the text renderer does NOT reuse `descErr`. `descErr` renders NilVals with ANSI colour through the TypeScript-only error path, while the report is a plain projection the Go port has to match byte for byte. (2) JSON field order is `exactJSON`'s lexicographic order, not the design's illustrative order, because that is the emitter already held to byte parity with Go — which is why the Go structs declare their fields in sorted order. (3) `--surplus` and `--watch` are not here: the first has no engine support yet and the second is phase 5. |
 | **4** — Go port | L | **LANDED** | `go/vet.go` (the engine), `go/walk.go` (one traversal for Check and vet, the twin of `ts/src/walk.ts`, with provenance stamping), `go/cmd/aontu/vet.go` (the verb). No `go/report.go`: the renderers live beside the command, as they do in `ts/src/cli.ts`, and the report types are the engine's exported API. The port is what made `test/spec/vet.tsv` executable. **What the port cost the ENGINE, and why that is the interesting part.** Byte parity was the acceptance test, and it exposed nine pre-existing divergences no shared row had reached — every one fixed rather than recorded: (1) `rowCol` counted BYTES where the canonical port counts UTF-16 code units, so every column after a multi-byte character was late, in messages and in the LSP-adjacent surface alike; (2) an error frame printed the two lines AFTER the mistake and none of the two before, so every message about row 2 or later differed from TypeScript's; (3) a closed bag RETURNED at its first surplus key instead of recording it and unifying the rest, which is exactly the motivating example above — half the report, from the engine rather than from vet; (4) the disjunct fold dropped the path, so a junction that survived one evaluation and met its peer in a later one (what vet does) reported at the root; (5) junctions were sited at their first member where TypeScript sites them nowhere, so an unsited operand claimed row 1 column 1; (6) a preference's synthesised type yardstick was unplaced, pointing at the start of the document; (7) the operand flip compared positions across the two documents, which are offsets into different texts — fixed by giving every value a source identity (`base.surl`, `srcid`), the same thing TypeScript spells as a site url; (8) a constraint residual dropped that identity, so a data value the schema refined was reported as belonging to neither document; (9) generation under COLLECT recorded nothing — not the bag's first non-generable child, not a root residue — where TypeScript records the reason and carries on, which is the whole point of the mode and the half of the report the incomplete verdict is built from. The first two are now pinned by a twin pair over a multi-row, non-ASCII source (`TestFullMessageTwinFramed`, `full-message-twin-framed`); the one-line twin that stood before could not see either. Two more were fixed in the canonical port: `vet` THREW on a failure with no operands (a lossy integer literal in the data crashed the verb), and half of every report carried an empty `message` because the text is materialised only on the throwing path. **Not fixed here, and now understood:** issue #63's frame ordering is the same operand-flip family — Go marks clone-minted values where TypeScript marks values the parser did NOT site, which is a different set. Dropping the clone mark alone fixes #63 with both suites green; doing it properly means marking parse-sited values instead, and that is its own change. |
-| **5** — SARIF, Action, watch | S | **NOT STARTED** | — |
-| **6** — multi-error collection | L | **NOT STARTED** | The single-error exit in `ts/src/unify.ts` is unchanged. |
+| **5** — SARIF, Action, watch | S | **LANDED** | SARIF: `ts/src/report-sarif.ts` + `go/report_sarif.go` — LIBRARY API in both ports (`sarifReport`/`aontu.SarifReport`), a minimal 2.1.0 profile (one run, one result per finding, data site primary, schema sites related, the native finding embedded in `properties`), byte-identical across ports over the shared golden `test/spec/files/vet-sarif/` with `message` text and `tool.driver.version` redacted — the same carve-outs `vet.tsv` and the JSON report already make. `--format sarif` in both CLIs. Watch: `--watch` in both CLIs, polling mtime+size (`watchChange`/`watchWait`), one full re-run per change, an unreadable mid-save file reports and keeps watching; the waiter is injectable, which is what makes the loop testable to the ADR-002 floor. **Departure:** the Action ships IN THIS REPOSITORY as the composite `vet-action/` (usable as `rjrodger/aontu/vet-action@<ref>`), not as the separate `aontu-vet-action` repo the design named — it versions in lock-step with the CLI it runs, and G2's doc now says so. `docs/how-to.md` carries the CI recipe and the pre-commit hook. |
+| **6** — multi-error collection | L | **LANDED** | The single-error exit is GONE from both pass loops (`ts/src/unify.ts`, `go/unify.go`): the fixpoint continues past an erroring pass, so failures only a later pass can reach are collected in the same run. `test/spec/vet.tsv` `multi-*` rows (42 → 46), executed by both runners: a second-pass conflict now reports as a real two-site conflict where it used to surface as a vague unsited incompleteness; independent conflicts each report; fan-in and cycles collapse to ONE finding. **Two departures from the design.** (1) No nil-localisation surgery was needed: the design scoped this L and sketched "localise `nil` to its subtree" as new engine machinery, but the existing absorption discipline (unite's isNil arms return the existing nil, raising nothing) already IS the localisation — one failure stays one NilVal through every later meet, which the adversarial probe corpus (fan-in refs, spread templates, disjunct trials, nested conjuncts, prefs, `must`) confirmed against both engines before the rows were written. (2) The report dedup key is **(code, sites)**, not the design's (code, path): a reference resolves by CLONING its target, so one failed target can fail once per referrer with a DIFFERENT path each time — the paths are exactly what differ, so keying on them cannot collapse the family; keying on the meet's source positions does, and also fixed a pre-existing double report (a pure cycle reported at two of its three members even under the single-pass loop; `multi-cycle-one-finding` pins the collapse). One behaviour change outside vet: a cycle's members now absorb the one cycle nil instead of surviving as references, so the LSP hover for such a member is gone (the diagnostics still carry the cycle) — `hover-kind-labels` now pins the `reference` label with a budget-stalled chain instead. `truncated` now means only the `--max-errors` cap. |
 
 **What the phase-4 review round changed, and why it is recorded here.**
 An automated review of the port's pull request raised six findings; all
@@ -311,20 +369,15 @@ doc should record it.
 
 ## G3 — subsumption as a query; schema evolution
 
-| Phase | Size | Status |
-|-------|------|--------|
-| **0** — rules on paper | M | **NOT STARTED** |
-| **1** — the recursion, TypeScript | L | **NOT STARTED** |
-| **2** — Go port | L | **NOT STARTED** |
-| **3** — CLI verbs (`subsume`, `breaking`) | M | **NOT STARTED** |
-| **4** — `deprecate()` | M | **NOT STARTED** |
-| **5** — default-validity lint | S | **NOT STARTED** |
-| **6** — trim reporter | M | **NOT STARTED** |
-
-Nothing of G3 has ever existed: no `ts/src/subsume.ts`,
-`go/subsume.go`, `test/spec/subsume.tsv`, `deprecate.tsv` or
-`trim.tsv` in any commit. Phase 3 depends on G2 phases 1–3, of which
-only phase 1 is in.
+| Phase | Size | Status | Pin |
+|-------|------|--------|-----|
+| **0** — rules on paper | M | **LANDED** | `docs/reference-language.md` "Subsumption": the per-former table (all three profiles, with the `*` × `close()` × `&:` × `?` interaction cells), sitting above the constraint algebra's own subsumption table, whose "not yet implemented" note is gone. `test/spec/subsume.tsv` — 97 rows, executed by BOTH runners, covering every probe in the design's Problem section (the v1/v2 `service` break included) and every `undecided` reason. **Departure:** the design named six columns (name, profile, general, specific, verdict, detail); the encoding is instead vet.tsv's exactly — FIVE columns with the report as an expect object, `message` excluded, options (`profile`, `at`) riding the `opts` key — because the two-document shape and its probed carve-outs are the same, and a second five-column precedent beats a third encoding. |
+| **1** — the recursion, TypeScript | L | **LANDED** | `ts/src/subsume.ts`: a dedicated structural walk over evaluated trees (design option B) — never mutates, no fixpoint, three-valued verdict plus `error`; findings reuse G2's object with class `compat`; the nine codes (`compat_narrowed`, `compat_required_added`, `compat_default_changed`, `compat_marks_changed`, five `sub_*` undecided reasons) registered in `test/spec/errcodes.tsv` under the new `compat` class. Constraint rules live beside the compare machinery they reuse (`ts/src/val/ConstraintVal.ts` `constraintSubsumesConstraint`, `constraintAdmitsScalar`). Exported from `ts/src/aontu.ts`. **Departures:** (1) no `rankPrefs` helper existed to reuse — effective-default extraction is the walk's own, and the first draft picked the HIGHEST rank where generation picks the LOWEST (`a:**1|*2` generates `2`, `edge.tsv`); the parity corpus caught it before landing and `default-rank-mixed` pins the direction. (2) The constraint table's `must` row says "never"; the query answers `undecided` (`sub_evaluate_only`) — honest indecision, recorded in the reference. (3) No nil rule: an error-free evaluated tree carries no nil, so the walk's no-rule fold answers a hypothetical one `undecided`, pinned by direct tests in both ports rather than rows no source can produce. |
+| **2** — Go port | L | **LANDED** | `go/subsume.go`, mirroring the dispatch; `go/constraint.go` `constraintStateSubsumes`/`constraintAdmitsScalarQ`; both runners execute every `subsume.tsv` row with no skip list, expectations parity-probed (byte-identical reports, message text excluded) before any row was written. **What the probe cost the engine** (the G2 phase-4 pattern, two more pre-existing divergences fixed rather than recorded): (1) a preference was sited at its inner value where TypeScript sites it at the `*` itself (`go/lang.go` star-prefix); (2) `hasPathFunc` did not see through a `ConstraintVal` — a pending atom endpoint holding `min($.floor)`, a `must` value, the recursive count — so a path-dependent spread template compared structurally instead of refusing (`go/mapval.go`). |
+| **3** — CLI verbs (`subsume`, `breaking`) | M | **LANDED** | `aontu subsume [--profile] [--at] [--format text\|json]` and `aontu breaking --against <file\|git#rev> [--mode backward\|forward\|full] [--allow-undecided]` in `ts/src/cli.ts` and `go/cmd/aontu/subsume.go`: exit classes 0/1/3/4/2 mirroring vet's convention (undecided FAILS by default), `git#rev` by shelling out to `git show <rev>:./<basename>` from the file's own directory, the `$.aontu_policy.compat` declaration read from the new document with `--mode` overriding (reader: `policyCompat` beside the TS verb, exported `aontu.PolicyCompat` in Go — the verb package cannot reach the tree's fields), findings through G2's renderer. `SubsumeOptions` gained `generalPath`/`specificPath` (vet's per-document base precedent) so relative `@"file"` loads resolve from each document's own directory. 11 cases in `ts/test/cli.test.ts`, 12 in `go/cmd/aontu/subsume_test.go`; the two CLIs diffed byte-identical (text and JSON, exit codes included) over a 24-case corpus — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` and `docs/how-to.md` carry the verbs. **Departures:** (1) no `--allow-deprecated-removal`: it gates on `deprecate()`, which is phase 4 — the flag lands there rather than parsing as a no-op lie here. (2) No SARIF format: the SARIF profile is vet's report shape (`truncated`, data/schema roles); mapping compat findings is real design work nothing needs yet. (3) A `git#rev` source's relative includes resolve from the working file's directory (the revision has no directory of its own). |
+| **4** — `deprecate()` | M | **LANDED** | The twenty-second builtin: `deprecate(x, m)` in both ports (`ts/src/val/DeprecateFuncVal.ts`; the resolve arm in `go/func.go`), unification-transparent — the record (keys msg/use/since, all optional strings; other keys DROPPED) rides the Val (`Val.deprecation`, `base.deprec`) through every meet via a rider at the tail of `unite` (the one place all meets pass), through clones, reference resolution and spread application; canon renders the call back reparseably (`canonDeprecation`, wrapped at the bag renderers). `test/spec/deprecate.tsv` — 22 rows (canon round-trip and convergence, transparency, refs, spreads, the record vocabulary, arity, three vet rows), parity-probed. Point of use, three surfaces: a vet finding code `deprecated`, class `compat`, severity `warning` — registered in errcodes.tsv, and warnings never move the verdict; the LSP Deprecated tag (2) at Hint severity in both servers; and `breaking --allow-deprecated-removal`, which downgrades findings about values the `--against` version already deprecated (readers: `deprecatedAt` beside the TS verb, exported `aontu.DeprecatedAt`). **Departures:** (1) the design's "alongside the existing mark propagation" landed as a rider in `unite` instead: the boolean-mark sweeps are order-sensitive by construction, and a record lost in one meet shape is a use the tooling never warns about — the rider also makes a deprecated spread template deprecate every key it governs. (2) A first canon draft computed each child's canon twice (guard + render), which is 2^depth on a nested document — the budget suite's 1200-deep fixture caught it. (3) No `since` checking: free text until G6 defines module versions, as designed. |
+| **5** — default-validity lint | S | **LANDED** | `pref_not_instance` (class compat, severity `warning`, registered in errcodes.tsv): vet walks the SCHEMA anchor for disjunctions carrying a preference and asks the subsumption recursion's own two questions — the effective default (`effectiveDefault` / `subEffectiveDefault`, exported for the lint) and whether some remaining alternative admits it (`subsumeNode`). Four parity-probed vet rows in `test/spec/subsume.tsv` (the design's own `*wran` example included); the shared `walkBagVals` walker now backs this, the deprecation walk and nothing else. The warning-to-error flip is documented as NOT taken (docs/reference-language.md, "Default validity"): today's engine generates the bad default, and promoting the warning is itself a breaking change, sequenced through the `breaking` gate. |
+| **6** — trim reporter | M | **LANDED** | `ts/src/trim.ts` (`trimCheck`, exported from `ts/src/aontu.ts`) and `go/trim.go` (`TrimCheck`): report REDUNDANT map entries — entries whose removal leaves the evaluated result unchanged, the spread-implied case included — as paths, with verdicts `clean`/`redundant`/`error`. The CLI verb `aontu trim --check [--format text\|json]` in both ports (`ts/src/cli.ts`, `go/cmd/aontu/trim.go`), exit classes 0/1/4/2; `--check` is REQUIRED — `aontu trim f.aon` reads as "trim this file", and doing something else silently is worse than refusing. `test/spec/trim.tsv` — 11 rows, parity-probed (the two engines diffed byte-identical over the corpus before any row was written), executed by BOTH runners as the ninth mode. `docs/reference-api.md` carries the verb and the export. **Departures:** (1) the test is EVALUATE-AND-COMPARE — re-parse, delete the entry from the parsed tree, evaluate, compare canons — which *subsumes* the design's "unifies against the spread template to top" test and is honest about everything the fixpoint sees (references, duplicate-key merges), where a structural test would guess; a removal that ERRORS is not redundant (load-bearing). (2) Candidates are map entries at every depth; list ELEMENTS are excluded — removing one shifts every later index, a different document rather than the same one minus a redundancy. A child of a redundant parent is skipped: the parent's removal already covers it. (3) Report-only, and rewriting is DEFERRED to G7 by design: canon discards comments and layout, so an editing trim needs G7's format-preserving patch surface — trim ships as a reporter here and becomes an editor there. |
 
 **Two facts the doc asserts are no longer true.** `super()` is no
 longer "degenerate and unpinned" — `ts/src/val/SuperFuncVal.ts` and
@@ -339,24 +392,228 @@ the doc's one-yardstick text would be wrong.
 
 ## G4 — identity and typed relations
 
-| Phase | Size | Status |
-|-------|------|--------|
-| **0** — semantics on paper | S | **NOT STARTED** |
-| **1** — `id()` | M | **NOT STARTED** |
-| **2** — `refer()` | M | **NOT STARTED** |
-| **3** — derived structures | S | **NOT STARTED** |
-| **4** — `std/system` vocabulary | M | **NOT STARTED** |
-| **5** — relation graph checks | L | **NOT STARTED** |
+| Phase | Size | Status | Pin |
+|-------|------|--------|-----|
+| **0** — semantics on paper | S | **LANDED** | The "Identity: `id(name)`" section of [`docs/reference-language.md`](../reference-language.md#identity-idname) — merge semantics, the name grammar, canon and the hash, the three clearing rules — plus `test/spec/id.tsv` (66 rows) and the three codes in `errcodes.tsv`. The design's phase-0 also called for `test/spec/refer.tsv`; that ships with phase 2, which owns `refer()`. |
+| **1** — `id()` | M | **LANDED** | `ts/src/val/IdFuncVal.ts` and the `"id"` arm of `go/func.go`; the `entity` slot on the carriers (`ts/src/val/Val.ts`, `go/val.go`) with the rider in `unite` in both ports; the registry on the unify root context (`ts/src/unify.ts` `entities`, `go/ctx.go`) and the per-pass `mergeEntities` walk (`go/identity.go`); canon through `canonRiders` (renamed from `canonDeprecation`, now rendering both riders) and the hash form through `hcanon`; clearing rules in `RefVal`/`CopyFuncVal` (TS) and `ref.go`/`func.go` via `walkClearEntity` (Go), and rule 3 at bag construction in both. `id` added to the arity tables, both LSP completion lists, and both published grammars. **Departures:** see below. |
+| **2** — `refer()` | M | **LANDED** | `ts/src/val/ReferFuncVal.ts` (the `ReferFuncVal` call and the `ReferVal` residual it resolves to) and `go/refer.go`; the address grammar shared with the id grammar; the registry lookup, the constraint FLOW into the target and every position of its entity, and the last-pass existence decision; the residual added to `unite`'s driver list in both ports, and to the arity tables, both LSP completion lists and both published grammars (where `refer` must be listed BEFORE `re`, the name set being an ordered choice). **Correction:** the TypeScript completion list was in fact missed by both phases and repaired before G8 phase 1 — Go derives its list from the engine's own name set (`BuiltinFuncNames`), so only the hand-written TypeScript one could drift, and it did, for two builtins. Codes `refer_address` and `refer_unresolved` in `errcodes.tsv`. Spec: `test/spec/refer.tsv` (52 rows). Docs: "Entity references" in [`docs/reference-language.md`](../reference-language.md#entity-references-refert). **Departures:** see below. |
+| **3** — derived structures | S | **LANDED** | `ts/src/graph.ts` and `go/graph.go`: the ENTITY INDEX (id → every tree path that holds it) and the EDGE SET (one entry per checked link: the entity it sits inside, the relation key, the address, and where it is written). Exposed as `result.graph` and the pure `graphOf(val)` in TypeScript and as `Aontu.Graph` in Go — each port following its own `deps` precedent — and documented in [`docs/reference-api.md`](../reference-api.md). A seventeenth spec mode, `graph`, carries the goldens (`test/spec/graph.tsv`, 27 rows); both runners re-derive on a fresh engine and require the same bytes, so DETERMINISM is asserted as a property rather than claimed. **Departures:** see below. |
+| **4** — `std/system` vocabulary | M | **LANDED** | `Port`, `Component`, `Service` and `Relation` as ordinary schemas, BUNDLED with the engine (`ts/src/std.ts`, `go/std.go` — the same bytes, pinned by `vocabulary-canon` and `vocabulary-hash` so the copies cannot drift) and served for `@"std/system"` from a leg ahead of the memory resolver in both ports, under every include capability but `none`. Manifest capability `std`; documented in [`docs/reference-language.md`](../reference-language.md#the-stdsystem-vocabulary), [`docs/reference-api.md`](../reference-api.md) and [`docs/trust.md`](../trust.md) (why a bundled source widens nothing). Spec: `test/spec/std-system.tsv` (23 rows), including the design's worked example and its graph. **Departures:** see below. |
+| **5** — relation graph checks | L | **LANDED** | `ts/src/relation.ts` and `go/relation.go`: `relationCheck(src)` / `Aontu.RelationCheck(src)` run ACYCLICITY and INVERSE CONSISTENCY over the derived edge set, after unification and never by it. `aontu relations <file>` in both CLIs (`--format json`), exit classes 0/1/4 as `trim` has, text and JSON byte-identical between the ports. Codes `relation_cycle` and `relation_inverse_missing` in `errcodes.tsv`, class `conflict`, report-layer — no NilVal carries either. An eighteenth spec mode, `relation`, carries the goldens (`test/spec/relation.tsv`, 21 rows). Documented in [`docs/reference-language.md`](../reference-language.md#declared-relations) and [`docs/reference-api.md`](../reference-api.md). **Departures:** see below. |
 
-No G4 artifact of any kind exists. Phase 5 additionally has no host:
-it is a vet-time pass, and `vet` does not exist.
+Phase 5 has a host now — `vet` exists (G2) — but no G4 artifact
+beyond phases 0 and 1.
 
-**One note for whoever starts G4.1.** The doc says the two new builtins
-"join `funcMap`". G1's atoms did not: they route through a separate
-`constraintAtoms` table (`go/constraint.go`, noted at `go/func.go`), so
-"join funcMap" now has two shapes to choose between. Arity is also a
-parse-time check for all twenty-one builtins since commit `c8b4c54`, so
-a new builtin must add entries to the arity tables in both ports.
+**Departures recorded by G4.1.**
+
+1. **The merge is COLLECT-then-APPLY — the same walk twice per pass,
+   not one walk.**
+   The design's "a position carrying an id unifies with the
+   representative and updates it" reads as a single walk, and a single
+   walk is wrong: it leaves every position it already passed holding
+   the pre-merge value, so `a: id(x) & {k:1}` kept `{k:1}` while
+   `b: id(x) & {j:2}` became `{j:2,k:1}` and the two sites disagreed
+   about what the one entity is. The representative is settled over
+   the whole tree before any position is written. One function with a
+   `write` flag rather than two: the halves differ in three lines and
+   agree in the walk, and a walk written twice is a walk that drifts.
+2. **`id(key(0))`, not `id(key())`, is the per-child spread name.**
+   The design sketched `&: id(svc/ + key())`; there is no string `+`,
+   and more importantly `key()` reads one level UP (`func.tsv`,
+   `key-one`), so in a template applied at the child position it names
+   the BAG and every child collides on that one name. `key(0)` is the
+   child's own key. The collision case is a defined result rather than
+   a refusal — rule 3 is a syntactic guard on CONSTANTS, and no
+   parse-time check can know what a computed name resolves to — and is
+   pinned as such (`spread-key-id-collides`).
+3. **Rule 3's refusal makes the BAG the error, not only its children.**
+   Placing the nil as the template alone would leave an empty bag with
+   a bad template silently fine. The bag returns it, narrowed to this
+   one code so a nil template from any other cause keeps its existing
+   per-key behaviour.
+4. **Marks reach every position of an entity.** `a: hide(id(x) & {k:1})`
+   hides the entity, not just that declaration of it, because every
+   position holds the one merged value. A consequence of the design's
+   own "every declared position holds the merged value", surprising
+   enough to pin (`merge-hide-covers-every-position`).
+5. **Identity is a slot, not a mark, and canon renders it** — as the
+   design says — which required `canonDeprecation` to become
+   `canonRiders` in both ports, rendering identity inside the
+   deprecation wrapper. The order only has to be FIXED (both wrappers
+   are reparseable calls); this one matches the canon the G3 rows
+   already pinned.
+6. **The merge is PROVENANCE-VISIBLE, and aligning that moved the
+   canonical implementation twice.** `why $.b.k`, where `b` picked `k`
+   up from another declaration of the same entity, has to name the
+   site that wrote it. Two long-standing structural differences
+   between the ports surfaced the moment a merge brought a peer whose
+   children the recorder counts as WRITTEN (a reference's clone's do
+   not, which is why nothing had caught them): TypeScript CARRIED a
+   peer-only key where Go unites it with TOP, and TypeScript's
+   equal-pair fast path in `unite` returned before the recorder at the
+   tail of the slow path where Go's recorder wraps the whole
+   dispatcher. Both are now conditional on `ctx.prov` — instrumented
+   runs take the meet, uninstrumented ones are untouched — and the
+   four `why` rows in `id.tsv` pin the result.
+
+**Departures recorded by G4.2.**
+
+1. **Constraints written alongside a refer are HELD on the residual,
+   not parked in a conjunct.** The design does not say where they go,
+   and a conjunct is the obvious answer — but a conjunct rebuilt every
+   pass grows a level every pass. The residual carries them and applies
+   them to the LINK when the address arrives, which is what makes
+   `refer() & string & "x"` the string and `refer() & "x" & "y"` a
+   conflict; both are pinned.
+2. **A value that can never BE a string is refused at once; a kind or
+   constraint is not.** The design says only that the field is
+   string-valued. A number, boolean, map or list conjoined with a refer
+   cannot become an address in any later pass, so that arm refuses
+   (`refer_address`) rather than deferring; `string`, `re(...)` and the
+   like are perfectly good constraints on an address and are held.
+3. **Existence is decided at the LAST pass, not at generation.** The
+   design says "an error at generation, mirroring an unresolved
+   reference". A generation-time refusal would arrive as the bag's
+   generic `*_no_gen`, which names the map rather than the link. A
+   pending refer keeps the tree not-done, so the pass loop always
+   reaches the final pass; the refusal is made there, as a located nil
+   naming the address. A `refer()` that never met an address at all is
+   NOT that error: it is an ordinary unresolved constraint, like a bare
+   `min(1)`.
+4. **The residual has a clone hook but no path-dependence hook.**
+   (Corrected by phase 3 — see its departure 3. The clone hook was
+   briefly removed as dead and is not: a REFERENCE to a value holding
+   a resolved link clones it.) The path-dependence hook is genuinely
+   unnecessary: a spread template holds the FUNCTION, so `&: refer(t)`
+   is cloned per destination as a `refer(...)` call and each clone
+   mints its own residual there. A consequence worth knowing: a
+   path-dependent flow TYPE in a spread (`&: refer({k:key()})`)
+   resolves its `key()` per clone but the flows all land in the
+   entities the addresses name, so two entities can receive the same
+   computed type. Both ports agree byte-for-byte; the shape is pinned
+   at `spread-path-dependent-template` and no more is claimed for it.
+5. **A defect in G4.1's merge, found by G4.2.** The writing half
+   substituted the representative AFTER its cycle guard.
+   Two positions of one entity hold the SAME object once a pass has
+   merged them, so the walk replaced the first and then skipped the
+   second as already-seen — invisible until a `refer(t)` flow wrote a
+   new representative mid-pass and only one position took it. The
+   substitution now happens first and the guard bounds the descent
+   only; `flow-reaches-every-position` is the regression row.
+
+**Departures recorded by G4.3.**
+
+1. **A link is STAMPED, not inferred.** The design says the edge set is
+   "(source entity, relation key, target address) triples for every
+   field whose key matches a declared relation" — but declared
+   relations are phase 5's vocabulary, and a resolved `refer` answers
+   a plain string that no walk could tell from a literal. The
+   resolution stamps the address on the value it answers (`Val.link`,
+   `base.link`), so the edge set is exactly the set of checked links
+   and nothing has to guess. Phase 5 filters this set by declared
+   relation; it does not have to rebuild it.
+2. **A clone KEEPS the link, unlike the identity.** An identity says
+   what a value IS, so a copy must not be that entity (clearing rules
+   1 and 2). A link says what a value POINTS AT, and a copy of a link
+   points at the same thing. It is also the only answer the two ports
+   can agree on: a clone taken before the refer resolves carries a
+   pending residual that resolves — and stamps — on its own.
+3. **A defect in G4.2's residual, found by G4.3.** `ReferVal` had been
+   left without a clone hook (a phase-2 departure said both ports had
+   proved one dead). They had not: a REFERENCE to a value containing a
+   resolved link (`s: $.z`) clones the residual, and without the hook
+   TypeScript rebuilt it from the spec and lost the address — the
+   clone came back a bare `refer()` — while Go fell through to sharing
+   ONE residual between the reference and its target, so two positions
+   that later constrained it differently would interfere. Both ports
+   now clone it as an independent copy carrying its state; the
+   phase-2 departure is corrected above.
+4. **`from` and `key` are relative to the nearest identified
+   ancestor**, which makes the entity/component distinction observable:
+   a node without an id is a component of the entity above it, and a
+   link inside a list is an edge under its relation rather than under
+   its index. A link outside every entity has an empty `from`; a link
+   that IS an entity has an empty `key`. Both are pinned.
+
+**Departures recorded by G4.4.**
+
+1. **No `Connection`.** The design's sketch has
+   `Connection: type({from: refer($.std.Port), …})`, and it is not
+   expressible today: `type(x)` resolves only once `x` is done, and a
+   `refer()` with no address is deliberately NOT done — it exists to
+   check an address and the pass loop must keep offering it the
+   chance. Making it done as a constraint (like `string` or `min(1)`)
+   does make the schema resolve, and was tried: it then lets the whole
+   tree go done before an ADDRESSED refer has settled, so the pass loop
+   exits and the link fails at generation with the bag's generic code
+   instead of `refer_unresolved` — in Go but not TypeScript. A
+   `Connection` needs the pass loop to know the difference between
+   "this constraint is complete" and "this value is settled"; that is
+   real engine work and it is not in this phase.
+2. **`Service` is written out, not `$.std.Component & {kind:
+   service}`.** A reference from one member of an INCLUDED file to
+   another does not survive the include in TypeScript: the referring
+   member comes back marked and silently stops generating. Inline, the
+   same text works in both ports. Each schema therefore states itself,
+   and `service-is-a-component-shape` pins that the two still meet.
+   The underlying include/marks interaction is pre-existing and not
+   G4's.
+3. **`std` generates as an empty map.** The sketch wraps the block in
+   `hide()`. Under `hide`, a func whose arguments are references
+   FREEZES unresolved (the documented marked-func freeze), so every
+   schema mentioning `$.std.Port` stops resolving. The members carry
+   their own `type()` marks and so generate nothing; only the empty
+   container remains.
+4. **`target` is optional and a preferred member does not close a
+   disjunction.** `target: top` as a required field can never generate
+   — `top` is not concrete — so it is `target?: top`. And
+   `direction: *in | out | inout` supplies a default while still
+   admitting any string: closing the set costs the default. Both are
+   the language rather than the vocabulary, both are pinned, and the
+   reference documentation says so where an author will meet them.
+5. **A defect in G4.2's flow, found here.** `refer(t)` unified `t` into
+   its target WITH its marks, so `refer($.std.Service)` made the target
+   a type() — and the target silently stopped generating. The flow is
+   now cleared of type/hide marks, on a COPY (a `t` is shared by every
+   position that refers to the same thing) and only when there are
+   marks to clear, because cloning an unmarked type moved the site an
+   error names.
+
+**Departures recorded by G4.5.**
+
+1. **A verb of its own, not a leg of `vet`.** The design says "the vet
+   pass, delivered with G2's verb". `vet` answers "does this DOCUMENT
+   satisfy that SCHEMA" and takes two documents; these are facts about
+   ONE finished model, with no schema on the other side of the
+   question. `aontu relations` is the shape `trim` already
+   established for exactly that kind of check.
+2. **Relations are read from the `relations` key of the document
+   root.** The design shows them there and never says how the pass
+   finds them. That is now the rule, and it is the VOCABULARY's
+   convention rather than the engine's: nothing in the language knows
+   the name, and the checking pass says so where it uses it.
+3. **`target` is not checked here.** The design lists it beside
+   `inverse` and `acyclic`, but a relation's target constraint is what
+   `refer(t)` already flows into the addressed entity — checked by
+   unification, at the site, with a located error. Re-checking it after
+   the fact would answer the same question later and worse.
+4. **An edge into a node INSIDE an entity is an edge to that entity.**
+   `dependsOn: [&: refer(), "b.ports.p"]` is a dependency on `b`: a
+   relation holds between entities, and the path inside one says which
+   part of it the link reaches. Pinned, because it decides whether a
+   cycle through ports is a cycle.
+5. **One cycle per relation, not all of them.** A report that listed
+   every cycle would list the same edges many times over; the walk
+   visits its roots and successors in sorted order and stops at the
+   first, so the cycle a report names is the same one in both ports and
+   the next one appears when that one is fixed.
+
+**The funcMap note, now answered.** The doc said the two new builtins
+"join `funcMap`"; G1's atoms did not, routing through
+`constraintAtoms` instead. `id()` takes the funcMap road — it is an
+ordinary function that resolves to a value, not a residual constraint
+— and, as the note required, added its entry to the arity tables in
+both ports. The builtin roster is now twenty-four (`refer` took the same road in phase 2).
 
 ## G5 — a specified trust contract
 
@@ -364,10 +621,10 @@ a new builtin must add entries to the arity tables in both ports.
 |-------|------|--------|-----|
 | **1** — write the contract | S | **LANDED** | [`docs/trust.md`](../trust.md), four clauses (hermeticity, termination, determinism, sandboxing) with profiles and budget names; `docs/reference-api.md` single-use-tree rule; `AGENTS.md` points at it. Commit `98fc1bf`. |
 | **2** — budget and cycle taxonomy | M | **LANDED** | `test/spec/budget.tsv` (24 rows) pinning `path_cycle`, `no_path`, `budget_passes`, `unify_cycle` as distinct; the `maxcc` false positive fixed by the per-pass memo with a 1200-sibling fixture as guard. Commits `98fc1bf`, `90f3146`. |
-| **3** — trust profile and confinement, TypeScript | L | **NOT STARTED** | No `trust` option in `ts/src/type.ts`, no `include_denied`, no `test/spec/include-trust.tsv`. |
-| **4** — Go port of profile and budgets | L | **PARTIAL** | The **budget** half landed with phase 2 (`go/unify.go` defaults, `budget.tsv` runs in `go/spec_test.go` with no skip list). The **trust profile** half has nothing, and cannot until phase 3 gives it a canonical side to mirror. |
-| **5** — determinism byte-pinning | M | **PARTIAL** | `gens` documented in `docs/shared-spec.md`; 299 byte-exact rows beside the behaviour they pin; repeatability enforced as a *runner property* — both runners re-run every `gens` row on a fresh engine. Missing: the `deps` manifest, absent from Go entirely and an unpopulated pass-through in TypeScript. |
-| **6** — default flip | S | **NOT STARTED** | Depends on phase 3's warning window. |
+| **3** — trust profile and confinement, TypeScript | L | **LANDED** | `trust` on `AontuOptions` (`ts/src/type.ts`): include capability `'none' \| {mem} \| {root} \| 'system'` plus `budget.{passes,depth}`. `makeModelResolver` (`ts/src/lang.ts`) enforces it — `none` denies outright, `mem` is the whole world (a miss is not-found, denial is reserved for a refused MECHANISM), `root` is realpath-then-prefix-check on the RESOLVED file so a symlink escape is denied, `system` keeps today's chain; a denial is RAISED (never injected as a value, or a bare-member include would vanish in the merge) and lands as the parse-stage `include_denied` nil (`errcodes.tsv`, class parse). Budgets ride `ctx.budget` (`ts/src/ctx.ts`), read by the pass loop and depth guards (`ts/src/unify.ts`); fixing `passes: 1` exposed and fixed a real defect — the still-refining snapshot was taken after pass `maxcc-2`, which never exists when the budget is 1, so exhaustion was SILENT; it is now taken at the final pass's entry, in both ports. CLI: `--trust <system\|none\|root[:dir]>`, `--include-root`, and the phase-6 warning window. LSP: workspace-root confinement from the `initialize` params, `initializationOptions.aontu.trust.include` override, an unrecognised explicit value confining to NOTHING. Spec: `test/spec/include-trust.tsv` (4 rows, both runners, fixtures-root profile — the var.tsv runner-convention precedent) and `file.tsv` re-scoped under the same profile, making the shared suite itself hermetic. **Departures:** (1) `budget.revisits` is NOT profile surface — the Go dispatcher has no revisit counter, and a knob one port cannot honour breaks ADR-001 by construction; the TS revisit bound stays an internal constant. (2) The LSP falls back to UNCONFINED when there is no workspace root and no explicit option (single-file sessions rely on it); the design's per-surface table implied always-confined. (3) `deny-pkg` from the design's sketch rows is unpinnable as a shared row (a package hit depends on the installed environment); package denial under `root` shows as not-found after the file leg misses, and the pkg-leg skip is pinned per port. |
+| **4** — Go port of profile and budgets | L | **LANDED** | The trust profile in Go: `Aontu.Trust` (`TrustOptions{IncludeNone, IncludeMem, IncludeRoot, Budget}`, `go/aontu.go`); enforcement in `go/source.go` (capability + realpath containment + `deniedKind` processor, the twin of the not-found flow) with the capability riding the parse meta bag (`trustSink`, the `notFoundSink` pattern) because the parser is CACHED per base; `parseWithTrust` (`go/lang.go`) returns the denial as `include_denied` BEFORE the not-found check; budgets on `Ctx` (zero = the spec constants, so a bare `&Ctx{}` behaves exactly as before). CLI flags and warning window in `go/cmd/aontu/main.go`; LSP workspace confinement in `go/lsp` (`trustFromInitialize`, `DiagnosticsTrust`). One canonical-side alignment landed with it: `CheckVars` reports a parse failure under its SPECIFIC code (`syntax`, `include_denied`) instead of a generic `parse`, matching the first-code contract errc rows pin. `include-trust.tsv` runs in `go/spec_test.go` under the same fixtures-root profile; per-port twins in `go/trust_test.go`, `go/cmd/aontu/trust_test.go`, `go/lsp/lsp_test.go`. |
+| **5** — determinism byte-pinning | M | **LANDED** | `gens` documented in `docs/shared-spec.md`; the byte-exact rows live beside the behaviour they pin; repeatability enforced as a *runner property* — both runners re-run every `gens` row on a fresh engine. The **`deps` manifest** completed the phase: the resolved include closure as sorted, deduplicated `{path, capability}` entries — `result.deps` in TypeScript (`manifestOf`, `ts/src/aontu.ts`), `Aontu.IncludeDeps` in Go — hermeticity clause 1's "file set" made observable, deterministic by construction (no timestamps; the plugin's raw `wen`-stamped DependencyMap stays internal). Documented in `docs/reference-api.md` and `docs/trust.md`; pinned per port (`ts/test/trust.test.ts`, `go/trust_test.go`). |
+| **6** — default flip | S | **PARTIAL** | The **warning window** is shipped, in both CLIs: under the default `'system'` posture, every resolution escaping the entry root (or resolving through a package) prints one stderr line naming `--trust system` / `--include-root` — once per resolution, pinned per port. `docs/trust.md` states the schedule. **What remains is the flip itself** — CLI entry-root confinement by default and the library's explicit-capability requirement — which the design stages at the NEXT MAJOR VERSION with a migration note; that is a release decision for the repository owner, not more code: the machinery, flags and denial semantics it needs are all landed. |
 
 **Two departures the doc already records**: no `gens.tsv` bucket (rows
 live beside their behaviour), and repeatability as a runner property
@@ -384,17 +641,99 @@ ADR-001, a deliverable absent from one port's source cannot count.
 
 | Phase | Size | Status |
 |-------|------|--------|
-| **0** — the hash form (`hcanon`) | S/M | **NOT STARTED** |
-| **1** — the hash itself (`canonHash`) | S | **NOT STARTED** |
-| **2** — module identity and local resolution | M | **NOT STARTED** |
-| **3** — fetch and publish tooling | L | **NOT STARTED** |
-| **4** — registry hooks and agent integration | M | **NOT STARTED** |
+| **0** — the hash form (`hcanon`) | S/M | **LANDED** | `ts/src/hcanon.ts` (`hcanon`, exported from `ts/src/aontu.ts`) and `go/hcanon.go` (`aontu.Hcanon`): exactly the unify-level canon with the two additions that close its semantic gaps — a closed map or list wrapped as `close({…})` / `close([…])`, and the type/hide marks rendered as `type(x)` / `hide(x)`. Both reuse parseable syntax, so the hash form is valid Aontu source, and every row asserts the property the hash rests on: `hcanon(unify(parse(hcanon(v)))) == hcanon(v)`, in both runners. `test/spec/hcanon.tsv` — 38 `hcanon` rows in the new mode (closedness at depth and under marks, spreads, optional keys, prefs, refs, escape-heavy strings, extreme and exact magnitudes, code-point key order, the deprecation vocabulary), beside 6 `canon` rows over the same sources so the "user-facing canon is UNCHANGED" claim is a pin rather than a promise. `docs/shared-spec.md` carries the new modes (and the `subsume`/`trim` modes it had not caught up with). **Departures:** (1) the marks PROPAGATE to every descendant at unification, so a wrapper is emitted only where a mark STARTS — the walk carries inherited marks down and a child whose mark its parent already carries renders bare; rendering every marked leaf would be correct but never minimal, and not what the source said. (2) The design's "`ts/src/val/Val.ts` (default `hcanon` delegating to `canon`)" landed as a standalone WALK instead of a per-Val method: the rendering has to carry inherited-mark state down the tree, which a no-argument getter on each Val cannot do without adding that state to every Val in the engine. Everything the walk does not need to descend — scalars, kinds, funcs, refs, constraints — still delegates to its own `canon`, which is where the cross-port parity already lives. (3) The junction parenthesisation rule is kept exactly, but post-unification junctions are flattened by `norm`, so no SOURCE reaches its wrapping arm; it is pinned by direct tests over constructed Vals in both ports, because a hash form that could render `(1\|2)&3` as the differently-parsing `1\|2&3` would be a pin that silently agrees with a document it should not. |
+| **1** — the hash itself (`canonHash`) | S | **LANDED** | `canonHash` / `aontu.CanonHash`: `"aon1-" + base64url(SHA-256(UTF-8(hcanon(unify(v)))))`, unpadded (RFC 4648 §5), the scheme id there so a semantically stronger normal form is later an upgrade rather than a breakage. CLI verb `aontu hash [--form] [--format text\|json] <file>` in both ports (`ts/src/cli.ts`, `go/cmd/aontu/hash.go`), the document evaluated STANDALONE at its own root — which is what makes the pin transitive — with exit classes 0 hashed, 2 usage, 4 the document does not stand up on its own (a hash of a wreck would agree with every other wreck). 9 `hash` rows pinning full `aon1-…` strings, executed by BOTH runners; 3 cases in `ts/test/cli.test.ts` and 3 in `go/cmd/aontu/hash_test.go` holding each port's argument handling and the invariances (reformat, recomment, reorder keys → same pin; close a map → different pin); the two CLIs diffed byte-identical over a 10-case corpus (text, `--form` and JSON, exit codes included) — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` carries the verb, the hash form's definition and the two exports. **Departure:** `--form` is not in the design. It prints the hashed TEXT instead of the digest, which is the first thing anyone needs the moment a pin moves and the only way to see what the engine actually hashed; without it a flapping pin is undiagnosable from the command line. |
+| **2** — module identity and local resolution | M | **LANDED** | `ts/src/mod.ts` and `go/mod.go` (new): module-path routing (domain-shaped first segment, `@<major>` suffix, optional `#aon1-…` fragment), the project root found by walking up to a `mod.aon`, `aon_vendor/` then the content-addressed user cache, `mod-lock.aon` read as the JSON its canonical form IS, the `mod.main` entry read by EVALUATING the module file, and local integrity verification by recomputing the module's standalone canon-hash. The leg sits where the design put it — memory → MODULE → filesystem → package (`ts/src/lang.ts`, `go/source.go`) — with memory still first, so a sandbox and the spec suite can stub a module path without touching disk. Codes `module_missing`, `module_integrity` and `module_depth` in `errcodes.tsv`. Spec: `test/spec/mod.tsv` (21 rows) over real fixture trees under `test/spec/files/mod*/`, run under the FIXTURES trust root exactly as `file.tsv`'s are; per-port cache, host-filesystem and depth behaviour in `ts/test/mod.test.ts` and `go/mod_test.go`. Docs: "Modules" in [`docs/reference-language.md`](../reference-language.md#modules). **Departures:** two, recorded below. |
+| **3** — module tooling (`tidy`, `vendor`) | L | **LANDED** | `ts/src/mod-tool.ts` and `go/modtool.go` (new): the dependency closure walked breadth-first from the project's own `mod.aon`, resolved by **minimum version selection** — each module taken at the highest of the minima anyone asked for and never higher, which is what makes a resolve reproducible and keeps one added dependency from moving another. It terminates without a cycle check because a module's selected version only ever rises. `tidy` recomputes every `canon` pin by evaluating the module in the store standalone (never carrying the old one forward — that would pin what the module USED to mean) and carries the `oci` digest over (the registry's word about bytes, which nothing local can hear), then writes `mod-lock.aon` in canonical form under a generated-file header; a closure with anything missing writes NOTHING, because a partial lock claims a resolve that never happened. `vendor` copies each locked module into `aon_vendor/` as a whole source tree — a module is more than its entry file — and leaves a module already resolving from there alone. CLI verb `aontu mod tidy|vendor [--format text|json] [dir]` in both ports (`runMod` in `ts/src/cli.ts`, new `go/cmd/aontu/mod.go`), exit classes 0 resolved, 1 missing, 2 usage. The lockfile header forced a comment-stripping reader in every consumer (`lockJson` in `ts/src/mod.ts`, `lockJSON` in `go/mod.go`), and the two G6.2 fixtures that carry a lockfile grew the header so the strip is pinned by the shared suite rather than only by the new tests. "Where the user cache is" was written twice the moment the tooling needed to write into the cache the resolver reads from, so the rule is now one function in each port (`modCacheDir` in `ts/src/mod.ts`, `aontu.ModCacheDir` in `go/aontu.go`), called by both the resolver and the command. **No spec rows**: nothing here is language behaviour — it is what a command does to a directory — so the parity discipline is the one G2.3 set for CLI verbs: 17 cases in `describe('mod-tool')` (`ts/test/mod.test.ts`) against 20 in Go — 11 at the package API in new `go/modtool_test.go`, 9 at the command in `go/cmd/aontu/mod_test.go`, the split the Go port's coverage attribution forces — plus the two CLIs diffed byte-for-byte over 22 invocations across twelve worlds (resolve, MVS at depth, a diamond where two modules bid for one dependency in the same round, a previous lockfile whose pins must be half kept and half recomputed, a module whose entry file is absent, a dependency key that is not a module path, missing, locked-in-cache, a store holding a subtree, an unreadable lockfile, a lockfile naming what no store has, and a bare directory for every argument error), comparing exit code, stdout, stderr, the written lockfile and the whole vendor tree — identical, the version series excepted. Docs: [`aontu mod`](../reference-api.md#aontu-mod) and the tooling paragraph in ["Modules"](../reference-language.md#modules). **Departures:** three, recorded below. |
+| **4** — registry hooks: the publish boundary | M | **LANDED** | `aontu mod manifest [--against <dir>] [--format text|json] [dir]` in both ports (`modManifest` in `ts/src/mod-tool.ts`, `ModManifest` in `go/modtool.go`, the verb in `ts/src/cli.ts` and `go/cmd/aontu/mod.go`): the OCI artifact a publish would push, and the gate that decides whether it may be. **Everything a publish ASSERTS is local**, which is why the phase lands whole without the registry the push needs — config media type `application/vnd.aontu.module.v1+json`, one layer holding the module source tree (relative and forward-slashed so two implementations on two platforms describe the same layer; `aon_vendor/` excluded, because a published module carries its own sources and not a copy of everyone else's), and four annotations: the two OCI already has keys for (`org.opencontainers.image.title`/`.version`) and the two it does not (`com.github.rjrodger.aontu.canon`/`.major`). A module that publishes itself declares `mod.version`, and the **major an import spells lives inside it** — `1.4.2` publishes as `@1` — so the version scheme and the import path cannot disagree. **The publish-time breaking gate** invokes [G3](g3-subsumption-evolution.md) rather than restating it: `--against <prior tree>` runs `subsume(new, old)`, which is exactly `aontu breaking`'s backward check, and the verdict, the findings and the exit classes are that check's unchanged (`0` publishable, `1` breaking, `3` undecided, `4` nothing to mint, `2` usage) — three-valued plus error, so a question the checker cannot decide is not a pass. A prior version at a DIFFERENT major skips the gate: the major is in the path, a consumer of `@1` never sees `@2` unless it asks, and checking across majors would forbid the one change the version scheme exists to express. **"Has the truth changed?" needs no download**: the annotation carries the same canon-hash `tidy` locks and `aontu hash` prints, so a consumer compares one string, and the hash-keyed cache G6.2 already built is the same key. Parity by G2.3's CLI discipline, not spec rows (nothing here is language behaviour): 8 manifest cases in `ts/test/mod.test.ts` against 8 in Go — 6 at the package API in `go/modtool_test.go`, 2 at the command in `go/cmd/aontu/mod_test.go` — plus the `mod` probe grown to 36 invocations across fifteen worlds, every exit class included, diffed byte-for-byte on exit code, stdout, stderr, the written lockfile and the whole vendor tree (identical, the version series excepted). Docs: [`aontu mod`](../reference-api.md#aontu-mod) and ["Modules"](../reference-language.md#modules). **Departures:** three, recorded below. |
 
-Zero code, zero rows, zero doc sections. G6's own risk row — "G1's new
-constraint syntax changes canon, invalidating all pins" — has already
-begun to materialise: G1.1 added five atoms to canon before G6 wrote a
-line, which vindicates the "hash GA after G1's canon settles"
-mitigation.
+**Departures recorded by G6.2.**
+
+1. **Verification is DEPTH-BOUNDED, and the bound is a stated
+   refusal.** The design says verification recomputes the module's
+   canon-hash locally, which means EVALUATING the module — and that
+   evaluation resolves the module's own imports. A vendor tree that
+   leads back to itself (a symlink is enough) would recurse until the
+   host's stack gave out, and a verdict that depends on the host's
+   stack size is precisely what [G5](g5-trust-contract.md)'s
+   determinism clause forbids. `module_depth` (class `budget`, for the
+   reason `unify_cycle` is) bounds it at sixteen, far above any real
+   vendor nesting.
+2. **The evaluator is INJECTED into the resolver, not imported by
+   it.** Resolution needs two answers only evaluation can give — what
+   a module file SAYS (`mod.main`) and what a module MEANS (its
+   canon-hash) — and the resolver runs inside a parse that the
+   evaluator started. In TypeScript the import would close a cycle
+   around the whole language, so `Aontu`'s constructor hands the
+   resolver a closure over itself; the Go port has no cycle to fear
+   (one package) but takes the same shape, and had to make its default
+   parser lazily initialised, because a package-level one was a static
+   initialisation cycle through the very resolver it installs.
+
+**Departures recorded by G6.3.**
+
+1. **The NETWORK HALF is not in this build, and the CLI says so.**
+   The design's phase 3 is `get`/`tidy`/`vendor`/`publish` over OCI.
+   Fetching and publishing need a registry client and integration
+   tests against a live registry — neither of which this build can
+   have, and untestable network code would breach
+   [ADR-002](../../ADR.md)'s floor rather than sit under a waiver. So
+   the two local commands landed whole and the two network ones are
+   NAMED rather than left to fall out as an unknown subcommand: a
+   reader of the design will type `aontu mod get`, and is told which
+   half is missing and where it is specified. The one place the
+   absent half already shows is `tidy`'s missing report, which prints
+   the step that would fix it.
+2. **`vendor` cannot search the cache from a cold start.** The user
+   cache is content-addressed — keyed by canon-hash, which is what
+   makes a shared cache safe between projects — so a lookup needs the
+   hash it is looking for. Without a lockfile there is nothing to
+   search BY, and `vendor` on an unlocked project reports nothing
+   rather than scanning the cache for a path it might match. `tidy`
+   first, then `vendor`; the same ordering `tidy`'s own lookup
+   already assumes when it reads the previous lock for a hash.
+3. **No shared spec rows.** Every other landed phase added rows to
+   `test/spec/*.tsv`; this one adds none, because nothing it does is
+   language behaviour — the observable is what a command leaves in a
+   directory. The parity discipline is the one G2 phase 3 set for CLI
+   verbs instead: twin per-port tests plus a byte-for-byte diff of the
+   two CLIs over a fixture corpus, extended here to compare the
+   written lockfile and the whole vendor tree, not just the streams.
+
+**Departures recorded by G6.4.**
+
+1. **The verb is `manifest`, not `publish`.** The design's phase 4 is
+   hooks ON `aontu mod publish`, which needs the registry client phase
+   3 could not ship. So the boundary landed as its own verb: it
+   computes and gates exactly what a publish would send, and stops
+   before sending it. That is not a smaller phase — the annotations and
+   the gate ARE the phase, and the push is the one part that carries no
+   semantics. It also turns out to be the more useful shape: a CI job
+   wants to ask "would this publish be refused?" without publishing.
+2. **The custom annotation keys are under `com.github.rjrodger.aontu`.**
+   OCI asks a custom annotation key to be the reverse DNS of a domain
+   its author controls, and the project's own home is the only domain
+   it has. Inventing an `aontu.dev` would be a claim the project cannot
+   back, and squatting a key nobody owns is worse than an ugly one. The
+   two facts OCI already has predefined keys for use those, so only
+   `canon` and `major` carry the prefix.
+3. **The gate is BACKWARD, always.** `aontu breaking` honours `--mode`
+   and the document's own `aontu_policy.compat`, including `none`. The
+   gate does not: publishing under an unchanged major IS the promise
+   that old documents keep working, and letting a module opt out of the
+   check at the boundary where that promise is minted would make the
+   gate advisory. A module that means to break bumps its major, which
+   the gate already lets through; a module that wants the other modes
+   still has the `breaking` verb.
+
+Both remaining design items beyond this are network: `mod get` and
+`mod publish` themselves (see the G6.3 departures).
+
+G6's own risk row — "G1's new constraint syntax changes canon,
+invalidating all pins" — materialised before the hash existed: G1.1
+added five atoms to canon while G6 was still on paper, which is
+exactly why the hash landed AFTER G1 completed rather than beside it,
+and why the scheme id is in the string.
 
 **One current-state claim is now false**: the doc says parse-level
 canon is not in TS/Go parity, citing an AGENTS.md entry. That
@@ -408,34 +747,161 @@ parse-level canon.
 
 | Phase | Size | Status |
 |-------|------|--------|
-| **1** — `get` and projections, TypeScript | M | **NOT STARTED** |
-| **2** — `get`, Go port | M | **NOT STARTED** |
-| **3** — provenance recorder and `why`, TypeScript | L | **NOT STARTED** |
-| **4** — `why`, Go port | L | **NOT STARTED** |
-| **5** — overlay `set` | M | **NOT STARTED** |
-| **6** — delivery: MCP server, grammar, skill, `agentsmd` | M | **NOT STARTED** |
-| **7** — REPL inspection mode and hover-provenance | S | **NOT STARTED** |
+| **1** — `get` and projections, TypeScript | M | **LANDED** | `ts/src/query.ts` (`get`, exported from `ts/src/aontu.ts`): evaluate the document, select the node at a path, render it as generated JSON (the default), canonical form, a `types` shape view, a `depth`-elided view, or a `keys` listing. Path parsing REUSES `anchorAt` — vet's `--at` walk, already type-directed and already in parity — so a path means exactly what a reference means by `$.a.b`, down to the canonical-decimal index rule. A refusal is a G2 finding (`no_path`, class `reference`) carrying a nearest-key suggestion, so `get` invents no error format. CLI verb `aontu get <path> [-c\|--canon] [--keys] [--types] [--depth n] [--format text\|json] <file>` in `ts/src/cli.ts`, exit classes 0 rendered / 1 the path names nothing / 2 usage / 4 the document does not stand up. `test/spec/query.tsv` — 92 rows in the new fifth-column mode; `ts/test/query.test.ts` (5 cases) and 3 cli cases hold the API and the command line. `docs/reference-api.md` and `docs/shared-spec.md` carry the verb and the mode. **Departures:** (1) THE PROJECTION PROPERTY IS ASSERTED, not claimed: every canon-shaped row additionally runs `subsume(view, truth)` in both runners and requires `subsumes` — G3 landed first, so what the design could only promise is now mechanically checked. It runs under the **values** profile, because a shape view ERASES defaults (`*8080\|integer` → `*integer\|integer`) and the `defaults` profile rightly calls that a break; the claim a projection makes is about admitted values, not about which one is generated. (2) `--types` lifts through the lattice's own `superior()` rather than a kind table, and leaves a value that is ALREADY an abstraction (a kind marker, a constraint, an unresolved reference) alone — lifting `integer` to `number` would generalise a shape view that was already a shape. (3) Junctions and prefs are TRANSPARENT to `--depth`: not a structural tier, so `*8080\|integer` projects its members rather than collapsing to `top` and discarding the alternatives. (4) `--depth` with the JSON view is a USAGE ERROR: eliding renders `top`, which JSON cannot say, and switching the view silently is the choice `trim --check` already refused. (5) The design's `[file]` optionality (stdin) is not taken: every other verb names its file, and an included document's base directory has to come from somewhere. |
+| **2** — `get`, Go port | M | **LANDED** | `go/query.go` (`(*Aontu).Get`, `QueryOptions`, `QueryReport`) and `go/cmd/aontu/get.go`, mirroring the walk, the views, the exit classes and the JSON report; both runners execute every `query.tsv` row with no skip list, expectations parity-probed (87 cases diffed byte-for-byte, then 5 more for the list-spread arm) before any row was written. `go/query_test.go` (7 cases) holds the API and the arms no source reaches. The two CLIs diffed byte-identical over a 17-case corpus — the version series and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. **What the probe cost the engine** (the G2 phase-4 pattern): the canonical side was WRONG about a non-concrete value — `get $.k` on `k: integer` returned the string `null` under `collect`, where the Go port correctly refused; generation failures now read back off the context in TypeScript, and `query-k-json` pins the refusal. Two smaller fixes: the finding's path is now the normalised QUERIED path in both ports (it was the engine error's, which is empty for a parse failure), and the Go CLI's `get`, `hash` and `trim` verbs now build their engine through `aontuForFile`, so an error frame names the file rather than `<no-file>`. **Observed, not fixed:** for an unparseable document the TS error FRAME prints one more trailing source line than Go's. It is pre-existing (identical under the plain `aontu <file>` verb), it is frame prose rather than behaviour, and no row pins it. |
+| **3** — provenance recorder and `why`, TypeScript | L | **LANDED** | `ts/src/provenance.ts` (the `Provenance` recorder and the record shape) and `why` in `ts/src/query.ts`, exported from `ts/src/aontu.ts`: what CONTRIBUTED to the value at a path, in order, each with the site it was written at. CLI verb `aontu why <path> [--format text\|json] <file>`, exit classes mirroring `get`'s. `test/spec/why.tsv` — 39 rows in a new five-column mode. **Departures, all of them about what a contribution IS** — the design named five instrumentation points (the `update()` site-drop, the conjunct fold, spread application, pref resolution, ref resolution); one is enough and the rest fall out: (1) the recorder hooks `unite` ALONE, the one place every meet passes through — G3's deprecation rider proved that point exists — plus a mark at the spread clone, which is the only role no operand can tell you about itself. A ref is still a `RefVal` when it meets its peer and a pref is still a `PrefVal`, so those two roles need no hook. (2) A contribution must be a value the author WROTE: the parsed tree is stamped before the fixpoint runs, and anything minted during unification (a kind lifted while a disjunct trials its members, a fold's intermediate) is the engine's own work and is dropped — without that rule the record for the design's own example carried a `number` nobody wrote. (3) Values structurally INSIDE a recorded contribution are dropped for the same reason, but a CONJUNCT expands into its terms: `a & b`, or two duplicate keys merged at parse, is several separately-written values, and the conjunct's own site is nowhere. (4) Contributions are ordered by SITE, not by meet order: the fold order is the fixpoint's business and would not survive the port. (5) Deduplication is by (path, val id) as designed, keyed on the path STRING rather than `ctx._pathidx` — the same rule, and the string is what the report prints. (6) Two evaluations are not needed: the recorder rides the one run the call already makes. **The cost is where the design put it:** off by default, one property load per meet on the uninstrumented path; an instrumented run additionally takes the no-op meets a bag normally skips, so a value written once and never met is still reported. |
+| **4** — `why`, Go port | L | **LANDED** | `go/provenance.go` and `(*Aontu).Why` in `go/query.go`, plus `go/cmd/aontu/why.go`; the recorder hangs off `Ctx.prov` and hooks the `unite` wrapper that already carries G3's deprecation rider. Both runners execute every `why.tsv` row with no skip list, expectations parity-probed (39 cases diffed field by field, records and refusals) before any row was written. `go/provenance_test.go` holds the ordering's last tiebreaks and the entry-file/trust wiring; the two CLIs diffed byte-identical over an 11-case corpus — the version series and the host's file-error wording excepted. **What the probe cost the engine:** three shapes where a value was never met at all (a lone leaf, a nested leaf, a ref target) recorded nothing in TypeScript and one contribution in Go, because the TS bags SKIP the identity meet as an optimisation; the skip now yields while recording, so both ports see the same meets. Go additionally stamps the entry document's file name (`stampURL`, vet's precedent) — the TypeScript side gets it from the parse `path` option — so a site names its file in both. **Observed, not fixed:** Go has no per-Val id, so the recorder keys on pointer identity, which says the same thing. |
+| **5** — overlay `set` | M | **LANDED** | `ts/src/patch.ts` (`patch`, exported from `ts/src/aontu.ts`) and `go/patch.go` (`aontu.Patch`), with `aontu set <path>=<value>... --entry <file> --overlay <file> [--dry-run] [--format text\|json]` in both CLIs: an assignment becomes a path-flattened conjunct (`$.a.b=1` → `"a": "b": 1`, keys quoted so a segment may be a keyword, a number, or hold a space) appended to the overlay, and the verdict is G2's, unchanged — `vet(entry, overlay)` already asks exactly the right question, so the verb adds a writer, not a report. Exit codes are vet's verdict classes. `test/spec/patch.tsv` — 23 rows, parity-probed; `patch_assignment` registered in errcodes.tsv (class `parse`: what is malformed is source text). **The order-independence the whole verb rests on is ASSERTED, not claimed**: every row that stands up additionally runs the vet the other way round in both runners and requires the same verdict. **Departures:** (1) the engine returns the overlay TEXT and the CLI writes it — an engine that touched the filesystem could not be used by a server, and the CLI is the one place that knows about files. (2) The overlay is written ONLY when the change holds: an `invalid` or `error` verdict leaves the file exactly as it was, because a change the author still has to think about should not sit in their configuration while they do (the design said "appends, then re-evaluates"; on a refusal that would leave a broken overlay behind and the exit code is the only thing saying so). `--dry-run` writes nothing either way. (3) A missing overlay file is the empty overlay and is created, so "append to the overlay" does not require having made one first. (4) The entry and overlay file names ride as vet URLs as well as base paths, so a finding names the two files rather than the generic `schema`/`data` labels. **Stage 2 — the format-preserving in-place edit — is NOT started and is what other gap documents defer "applying a fix" to**; it needs a comment-and-layout-preserving CST the parser stack does not have. |
+| **6** — delivery: MCP server, grammar, skill, `agentsmd` | M | **LANDED** | Four deliverables. **The MCP server**: `ts/src/mcp.ts` (tools and protocol, transport-free) and `ts/src/mcp-server.ts` (NDJSON stdio), published as the `aontu-mcp` bin — the LSP's three-layer split. Six tools — `vet`, `get`, `why`, `diff`, `canon`, `summary` — each returning the SAME JSON contract the CLI prints; a tool that REFUSES answers with its own report and `isError: false`, which is reserved for a call that could not be made. Served evaluation is confined to no includes at all (G5). **`diff`**: `ts/src/diff.ts` and `go/diff.go`, path-addressed, with `test/spec/diff.tsv` (28 rows) asserting SYMMETRY in both runners. **The published grammar**: `grammar/aontu.gbnf` and `grammar/aontu.lark`, and `ts/test/grammar.test.ts`, which READS the gbnf file, interprets it as an ordered-choice PEG, and requires it to accept every canonical-form output in the shared suite (673 rows) while refusing the include directive and the over-approximations. **`aontu agentsmd`** in both CLIs, over `agentsMd`/`(*Aontu).AgentsMd`, with `test/spec/agentsmd.tsv` pinning the stanza BYTE FOR BYTE across ports; `--write` splices between markers and leaves the rest of the file alone. **The skill**: `docs/skill/` — trigger stub, grammar card, JSON-first example ladder, error-code index — with `ts/test/skill.test.ts` evaluating every example document, so a skill that teaches what the engine no longer does fails the build. **Departures:** (1) `diff` compares the HASH FORM, not the plain canon: canon drops closedness and the marks, so a canon diff would call `close({a:1})` and `{a:1}` identical, and a bag's own attributes diff at the `&`, `&closed`, `&type` and `&hide` pseudo-keys. G6 landing first is what made that available. (2) MCP RESOURCES are not implemented; the progressive disclosure the design wanted from them is the `summary` TOOL plus `get`, which is the same disclosure without a second protocol surface to keep in parity. (3) `diff` and `agentsMd` are in BOTH ports with shared rows, though only TypeScript serves MCP — behaviour belongs to the spec suite (ADR-001), and the Go API is what a gateway embeds. (4) The grammar's parity test interprets the gbnf file rather than shelling out to lark or llama.cpp: the discipline the design asked for, without a toolchain the CI does not have. |
+| **7** — REPL inspection mode and hover-provenance | S | **LANDED** | The REPL gains `:load`, `:get`, `:keys` and `:why` in BOTH ports, over the query and provenance surfaces, plus a `--jsonl` session mode with no banner, no prompt and one JSON line per answer. The command handler is a PURE FUNCTION of (state, line) in both ports (`replCommand`, `ts/src/cli.ts` and `go/cmd/aontu/repl.go`) with file reading injected: a read loop is untestable, and every answer this REPL gives has to be as checkable as the CLI's. The two handlers were diffed line by line over a 24-line scripted session, in both output modes, before either was tested. **Hover provenance** in both language servers (`ts/src/lsp.ts`, `go/lsp/lsp.go`), config-gated by `initializationOptions.aontu.provenance` and off by default; `ValueSpan` gained the path the record is keyed by, and the markdown was diffed byte for byte. Diagnostics are unchanged. **Departures:** (1) the session flag is `--jsonl`, not the design's `--json`, which would read as the `:json` output mode the REPL already has. (2) `:load` holds the SOURCE, not the rendered document: every later question re-evaluates, which is what single-use trees require, and holding both texts would have made `:get`'s view flags answer from the wrong one. (3) Hover provenance costs a SECOND evaluation rather than instrumenting the hover's own: the recorder needs the parsed tree stamped before the fixpoint, which hover's evaluation has already passed by the time a candidate is chosen. It is gated for exactly that reason. |
 
-Not one named deliverable of any phase exists. The design's
-load-bearing premises were re-verified and all still hold — the
-site-dropping `update()` stub, `maxcc = 9`, the `DisjunctVal.gen` fold
-defect, per-request re-unification in hover, and the `ctx._pathidx`
-trie that the provenance recorder would reuse.
+What remains of G7 is G7.5's STAGE 2, the format-preserving in-place
+edit, which is what [G2](g2-validation-verb.md) and
+[G3](g3-subsumption-evolution.md) defer "applying a fix" to. It is
+not a phase of this plan — phase 5 names it as deferred — and it needs
+a comment-and-layout-preserving CST the parser stack does not have. The design's load-bearing premises for them were
+re-verified and all still hold — `maxcc = 9`, the `DisjunctVal.gen`
+fold defect, and per-request re-unification in hover, which is what
+would make LSP hover-provenance a config-gated increment rather than a
+new cost class. Two premises the recorder settled instead of using:
+the `update()` site-drop needed no surgery (a meet is recorded where
+it happens, so nothing has to survive the drop), and `ctx._pathidx`
+was not the key (the path string is, and it is what the report
+prints).
 
-Two smaller corrections: the `no_path` code G7.1 proposes already
-exists (`errcodes.tsv`, landed by G2.1), and `ctx.find`/`explain` —
-which design option A proposes documenting — are already documented in
-`docs/reference-api.md`.
+Two smaller corrections stand: the `no_path` code G7.1 proposed
+already existed (`errcodes.tsv`, landed by G2.1) and is what `get`
+reports, and `ctx.find`/`explain` — which design option A proposes
+documenting — are already documented in `docs/reference-api.md`.
+
+One open question the phases just landed did NOT settle, deliberately:
+the escape spelling for a key containing a dot. `get` splits paths
+exactly as a REFERENCE does, so `$.esc.a.b` names nothing when the key
+is `a.b` — pinned by a row rather than papered over. Inventing a
+spelling for the query surface alone would leave the language's own
+references behind; it is G4's to settle for both at once.
 
 ## G8 — generation, on the total side of the fork
 
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
-| **0** — staging rule | S | **PARTIAL** | The phase has two deliverables. The `DisjunctVal.gen` distribution defect is **fenced** — probed guard rows landed in `test/spec/disjunct.tsv` with G1.0. The `KeyFuncVal` `cc < 3` delay is **not** replaced by the settled-argument residuation rule; `ts/src/val/KeyFuncVal.ts` and `go/func.go` are unchanged. |
-| **1** — `pack` and `each` | M | **NOT STARTED** | — |
-| **2** — `filter` and `match` | M | **NOT STARTED** | Depends on phase 0's defect work. |
-| **3** — placeholder `_` (the parser phase) | M/L | **NOT STARTED** | — |
-| **4** — `\|>` sugar | S | **NOT STARTED** | Marked optional and droppable in the plan, so this is a plan-consistent state rather than a slip. |
+| **0** — staging rule | S | **LANDED** | Both deliverables. The `DisjunctVal.gen` distribution defect was **fenced** by probed guard rows in `test/spec/disjunct.tsv` with G1.0. The `KeyFuncVal` `cc < 3` delay is now the settled-position rule: `AontuContext.settle` / `Ctx.settle`, set by the pass loop (`ts/src/unify.ts`, `go/unify.go`) on the first pass whose input model is identical to the previous pass's, and read by `key()` in `ts/src/val/KeyFuncVal.ts` and `go/func.go`. Zero behaviour change across the existing suite in both ports. **Departure from the design**, in two respects. (a) The rule reads MODEL stability, not "the data argument is DONE": `move()` hides its source one pass *after* it copies it, so a value whose own path and arguments have settled can still be moved, and only stability of the whole model rules that out. (b) It is stated in the pass loop rather than in `FuncBaseVal`, because that is where the two consecutive models exist to compare; `FuncBaseVal` reads the flag. Landing it also exposed a real defect: `ListVal` had no apply-once-per-element spread guard (the `_spr` stamp `MapVal` has always had), so a list template that RESIDUATES was met into each element again every pass and its canon doubled — invisible under a three-pass delay, fatal under a rule that waits for stability. Fixed in `ts/src/val/ListVal.ts` and `go/listval.go`; pinned by the four `spread-nested-list-key*` rows in `test/spec/spread.tsv`, which the old rule failed with a spurious `scalar_value` error. |
+| **1** — `pack` and `each` | M | **LANDED** | `ts/src/val/PackFuncVal.ts` and `ts/src/val/EachFuncVal.ts` (new), the `"pack"`/`"each"` arms of `go/func.go` with `go/generate.go` (new); both in both registries (24 → 26 builtins), both arity tables, both LSP completion lists and both published grammars. Codes `pack_data`, `pack_key`, `each_data` in `errcodes.tsv`. Spec: `test/spec/gen-pack.tsv` (25), `gen-each.tsv` (20), `gen-spread.tsv` (9), `gen-close.tsv` (7), `gen-key.tsv` (10) — 71 rows, every expectation from a parity probe run through both engines. Docs: "Generating children" in [`docs/reference-language.md`](../reference-language.md#generating-children-pack-and-each). **Departures and discoveries:** four, all recorded below. |
+| **2** — `filter` and `match` | M | **LANDED** | `ts/src/val/FilterFuncVal.ts` and `ts/src/val/MatchFuncVal.ts` (new), the `"filter"`/`"match"` arms of `go/func.go` with `filterFunc`/`matchFunc` in `go/generate.go`; the trial-meet helper is shared (`trialUnify` in `ts/src/val/FuncBaseVal.ts` and `go/generate.go`), and is the mechanism disjunction already uses. Both in both registries (26 → 28 builtins), arity tables, LSP completion lists and published grammars. Codes `filter_data` and `match_none` in `errcodes.tsv`. Spec: `test/spec/gen-filter.tsv` (16) and `gen-match.tsv` (16) — 32 rows, every expectation from a parity probe run through both engines. Docs: "Selecting" in [`docs/reference-language.md`](../reference-language.md#selecting-filter-and-match). **Departures:** three, recorded below — two of them semantic, and both because the design's own examples cannot be evaluated under the rules it stated. |
+| **3** — placeholder `_` (the parser phase) | M/L | **LANDED** | `ts/src/val/PlaceVal.ts` and `go/place.go` (new): the hole, plus the `hasPlace`/`fillPlace` walk both ports share. A bare `_` is a value keyword in both parsers (`ts/src/lang.ts`, `go/lang.go`), in both published grammars and in both LSP literal lists; a call holding a hole waits for a peer and is rebuilt with the peer in it (`FuncBaseVal.unify`/`OpBaseVal.unify`, `go/func.go`/`go/op.go`), and a placeheld operator DRIVES in `unite` because its peer is its filling rather than its constraint. Inside a generator's template `_` binds the source child (`pack`, `each`, `filter` in both ports). Code `place_pair` in `errcodes.tsv`. Spec: `test/spec/place.tsv` (37 rows), including the four that pin the BREAKING CHANGE — quoted `"_"`, a longer bare word, and `_` as a key all stay text. Docs: "The placeholder `_`" in [`docs/reference-language.md`](../reference-language.md#the-placeholder-_). **Departure:** one, recorded below. |
+| **4** — `\|>` sugar | S | **LANDED** | Parse-time only, as designed: `ts/src/lang.ts` and `go/lang.go` gained one infix operator (`\|>`, LOOSEST of them all, so `a & b \|> f` pipes the whole meet) and one shared call builder each — `buildCall`, which both the `f(...)` handler and the pipe go through, so the arity check, the comma-group rule and the raw-value conversion are stated once. Code `pipe_target` in `errcodes.tsv`; the token in both published grammars. Spec: `test/spec/pipe.tsv` (24 rows), whose canon rows all show CALLS — no Val ever holds a pipe, which is what keeps canon and the two ports' agreement about it untouched. The plan allowed dropping this phase if call nesting proved acceptable; there was no adoption evidence either way, so it landed rather than being dropped on a guess. **Departure:** one, recorded below. |
+
+**Departures and discoveries recorded by G8.1.**
+
+1. **The template is CLONED per destination, never shared.** A spread
+   may share a template that holds nothing path-dependent
+   (`MapVal.spreadClone`), because a spread CONSTRAINS a child that
+   already exists; a generator's template IS the child, and a child is
+   a position. Sharing left every generated child pointing at the
+   template's own parse-time location — visible as the site an error
+   inside a generated child reports (`$.o.NaN` rather than `$.o.0`).
+2. **`key()` under a call needed a rule, and the two ports needed
+   DIFFERENT tests for it.** A `key()` the bag walk reaches directly is
+   re-pathed by its own residuation clone every pass; one nested inside
+   a function or operator ARGUMENT is never reached that way, so it
+   answered for the position the template was WRITTEN at — which is the
+   one position a template is never used at, and which made
+   `"acme/" + key() + ":1.4.2"` (the design's own flagship line) answer
+   the same wrong name for every generated child. Both ports now prefer
+   the DRIVING position, and neither could use the other's test for
+   when to: TypeScript's parse-time path for a function argument
+   carries a segment that is not a key at all, so it asks whether the
+   stored path IS a position; Go's carries the call's own path, so it
+   asks whether the driver is DEEPER than anything the value has been
+   placed at. Same answers, pinned by `gen-key.tsv`; recorded in
+   DIVERGENCE.md.
+3. **The Go port's path-dependence walk was missing operators.**
+   `computePathFunc` (`go/mapval.go`) had no `*PlusOpVal` arm, while
+   the TypeScript getter walks any array peg and therefore sees
+   through one. A template holding `"x" + key()` was classified
+   path-INdependent and shared, so every destination got the FIRST
+   one's key. A generator's template is the first place that
+   difference reaches the OUTPUT rather than a canon, which is how it
+   surfaced.
+4. **The comma group is expanded for a NAMED SET of functions.** Both
+   parsers expanded a multi-argument call's comma group back into
+   separate arguments for `deprecate` alone, by name. `pack` and
+   `each` need the same, and the constraint atoms must NOT have it
+   (`neq(1,2)` is one argument list, not two positions), so the test
+   is now a set — `positionalArgFuncs` / `POSITIONAL_ARG_FUNCS` — in
+   both ports rather than a name comparison.
+
+One thing this phase did NOT fix, found while landing it and left
+recorded rather than silently carried: **`"x" + key()` inside a `&:`
+spread template does not resolve** (`mapval_spread_required`). It
+predates the staging rule — verified against `6ffe37a`, the commit
+before G8 phase 0 — and is a separate defect in how a bag decides it is
+done while an operator inside a spread-applied child still holds a
+residuating argument. `pack` and `each` are unaffected, which is why
+this phase does not carry the fix.
+
+**Departures recorded by G8.2.**
+
+1. **`filter` selects by ALREADY SATISFIES, not by unifiability.** The
+   design says "children of `data` that unify with `cond` are kept",
+   and under that rule its own example — `filter($.services,
+   {debug:true})` — keeps every service: a map is OPEN, so a service
+   with no `debug` key unifies with `{debug:true}` perfectly well by
+   gaining it. A filter that keeps everything that could be made to
+   match keeps everything. What landed keeps a child when the meet
+   CHANGES NOTHING (it succeeds and its answer is the child), which is
+   the same question `subsume` asks, answered locally by canon
+   equality. `gen-filter.tsv`'s first row is the case that settles it.
+2. **`match` answers with the RESULT, not with `v & p & r`.** Under
+   the design's rule every arm whose result is not itself a `v` is a
+   contradiction — including the design's own example, whose scrutinee
+   is a string and whose results are maps, and which therefore cannot
+   be evaluated at all. A match MAPS a value to another value; a
+   document that wants the scrutinee kept can say so, the scrutinee
+   being a value it can name.
+3. **Go's staged arguments are COPY-ON-WRITE.** A clone shares its
+   arguments with the value it was cloned from — deliberately, for the
+   sharing the `move()` ghost cases depend on — so driving an argument
+   in place wrote it into every sibling clone as well. A generator's
+   template, cloned once per destination, is exactly a set of siblings
+   that must answer differently: `pack($.n, {t: match(key(), …)})`
+   gave every child the FIRST child's answer. Each staged func now
+   takes ownership of its argument list the first time it advances
+   one. TypeScript needed no equivalent (its clone hands out a fresh
+   arg array), which is the sort of asymmetry the shared rows exist to
+   catch — `gen-match.tsv:match-inside-pack` is the row that caught it.
+
+**Departure recorded by G8.3.**
+
+1. **`filter`'s CONDITION is a template, not a driven argument.** The
+   phase-2 implementation drove both of filter's arguments to done
+   before firing, which is right for the data and wrong for the
+   condition: a condition is tested against each child AT THAT CHILD'S
+   POSITION, so it may hold a `_` (the child it is being tested
+   against) or a relative reference, and neither has an answer at the
+   call site. Driving it there froze both — `filter($.l, _)` could not
+   resolve at all. The condition is now left standing and cloned per
+   child, exactly as `pack`'s and `each`'s templates are. Found by the
+   placeholder: the `_`-in-a-condition binding phase 2 wrote was
+   unreachable until this changed, which is what the coverage floor is
+   for.
+
+**Departure recorded by G8.4.**
+
+1. **A constraint atom that BUILT cannot be piped into.** The design
+   said only that the piped value becomes the first argument. Rebuilding
+   the call from the value the parser produced works for a function and
+   for a call the arity check refused (which carries what it was written
+   as), but not for a constraint atom that succeeded: an atom folds into
+   a RESIDUAL at construction, and the Go port's residual keeps no atom
+   name to rebuild from. Rather than let one port support `1 |>
+   neq(2,3)` and the other not, both refuse it — and the refusal is
+   defensible on its own terms, because an atom with a complete argument
+   list is a residual rather than a call waiting for a subject, and
+   `1 & neq(2,3)` is what that document meant. Pinned as
+   `pipe.tsv:pipe-into-built-atom`.
+
+
 
 ## Corrections outstanding in the gap documents
 

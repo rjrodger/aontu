@@ -22,6 +22,41 @@ var funcSet = map[string]bool{
 	"move": true, "path": true, "close": true, "open": true,
 	"min": true, "max": true, "above": true, "below": true, "neq": true,
 	"re": true, "length": true, "unique": true, "must": true,
+	"deprecate": true,
+	"id":        true,
+	"refer":     true,
+	"pack":      true,
+	"each":      true,
+	"filter":    true,
+	"match":     true,
+}
+
+// stagedFuncs take THE STAGING RULE (G8 phase 0, see Ctx.settle): they
+// residuate until the model stops moving and fire exactly once. key()
+// because its answer is a segment of its own path; pack() and each()
+// because their data argument can still be merged into by a sibling
+// after it first looks done. Mirrors the `staged` flag on the TS
+// FuncBaseVal subclasses.
+var stagedFuncs = map[string]bool{
+	"key": true, "pack": true, "each": true, "filter": true, "match": true,
+}
+
+// positionalArgFuncs are the functions whose comma-separated arguments
+// are distinct POSITIONS rather than one argument list. The parser
+// expands their comma group back into separate arguments (lang.go).
+var positionalArgFuncs = map[string]bool{
+	"deprecate": true, "pack": true, "each": true,
+	"filter": true, "match": true,
+}
+
+// generatorFuncs hold arguments that must never be driven at the call
+// site: a TEMPLATE, because driving it would resolve its key() at the
+// one position the template is never used at, and a match RESULT,
+// because an arm nobody takes must not be evaluated (and must not
+// report). What they DO need driven -- the data, the condition, the
+// patterns -- is driven by hand instead (stagedDrive).
+var generatorFuncs = map[string]bool{
+	"pack": true, "each": true, "filter": true, "match": true,
 }
 
 // funcArity is the permitted WRITTEN argument count of each built-in, as
@@ -46,6 +81,21 @@ var funcArity = map[string][2]int{
 	"unique": {0, 0},
 	"neq":    {1, -1},
 	"must":   {2, 2},
+	// G3 phase 4: the value, and its optional deprecation record.
+	"deprecate": {1, 2},
+	// G4 phase 1: the entity name.
+	"id": {1, 1},
+	// G8 phase 1: the data, and the template to clone per destination.
+	// each() writes the template optionally -- `each(m)` is a map's
+	// children as a list.
+	"pack": {2, 2},
+	"each": {1, 2},
+	// G8 phase 2: the data and the condition; and the scrutinee, then
+	// pattern/result pairs, then an optional default.
+	"filter": {2, 2},
+	"match":  {3, -1},
+	// G4 phase 2: the optional type to flow into the target.
+	"refer": {0, 1},
 }
 
 // writtenArgCount counts the arguments as the AUTHOR wrote them.
@@ -74,7 +124,10 @@ func arityText(lo, hi int) string {
 	case -1 == hi:
 		return "one or more arguments"
 	case lo != hi:
-		return "no arguments or one"
+		if 0 == lo {
+			return "no arguments or one"
+		}
+		return "one argument or two"
 	case 0 == hi:
 		return "no arguments"
 	case 2 == hi:
@@ -155,28 +208,60 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		base = f.path
 	}
 
-	// key() resolves late so that spreads/refs settle the path first
-	// (KeyFuncVal.unify hack).
-	if f.name == "key" && ctx.cc < 3 {
-		f.notdone()
-		switch {
-		case isTop(peer):
-			// The delay clone re-paths via the driving ctx (TS
-			// `this.clone(ctx)` — overlay of the stored path on ctx.path).
-			return clonePath(f, overlayPath(base, f.path))
-		case peer.Nil():
-			return peer
-		default:
-			// Identical key() at the same path collapses (the
-			// peer.isKeyFunc same-path same-arg check in TS
-			// KeyFuncVal.unify): `key()&key()` folds to one pending
-			// key() during the delay window.
-			if pf, ok := peer.(*FuncVal); ok && pf.name == "key" &&
-				pathEq(pf.path, f.path) && keyArgEq(pf, f) {
-				return f
+	// THE STAGING RULE (G8 phase 0, see Ctx.settle). key()'s answer is a
+	// segment of its own path, so it must not answer while a spread, a
+	// reference or a move() can still move it; pack()'s and each()'s
+	// data can still be merged into after it first looks done. All
+	// three residuate until the model stops changing and fire on the
+	// settle pass. Mirrors the `staged` flag and FuncBaseVal.residuate
+	// in ts/src/val/FuncBaseVal.ts.
+	if stagedFuncs[f.name] {
+		// A generator's DATA argument is driven every pass, not only on
+		// the settle pass: it is what the model has to settle, so
+		// leaving it standing until settle would guarantee the model was
+		// still moving when settle arrived.
+		ready := stagedDrive(ctx, f, base) && ctx.settle
+
+		if !ready {
+			f.notdone()
+			switch {
+			case isTop(peer):
+				// The residuation clone re-paths via the driving ctx (TS
+				// `this.clone(ctx)` — overlay of the stored path on
+				// ctx.path).
+				return clonePath(f, overlayPath(base, f.path))
+			case peer.Nil():
+				return peer
+			default:
+				// An identical twin at the same position collapses (the
+				// same-name same-path same-args check in TS
+				// FuncBaseVal.residuate): `key()&key()` folds to one
+				// pending key() while both residuate.
+				if pf, ok := peer.(*FuncVal); ok && pf.name == f.name &&
+					pathEq(pf.path, f.path) && pf.Canon() == f.Canon() {
+					return f
+				}
+				return newConjunct([]Val{f, peer})
 			}
-			return newConjunct([]Val{f, peer})
 		}
+	}
+
+	// THE PLACEHOLDER (G8 phase 3, see place.go). A call holding a hole
+	// waits for a peer, and the peer is what fills it: the call is
+	// rebuilt with the hole replaced and resolved on the spot, so
+	// `upper(_) & hello` is `"HELLO"` and not `"HELLO" & "hello"` --
+	// the peer went INTO the call, it is not also a constraint on the
+	// way out. Mirrors the same arm in ts/src/val/FuncBaseVal.ts.
+	if !isTop(peer) && !peer.Nil() && Val(f) != peer && hasPlace(f) {
+		// TWO HOLES AND NOTHING TO FILL THEM. `upper(_) & lower(_)` has
+		// no value on either side, and picking one call to be the
+		// other's filling would be inventing an order the language does
+		// not have.
+		if hasPlace(peer) {
+			return makeNilErr(ctx, "place_pair", f, peer)
+		}
+		ctx.slot = base
+		return unite(ctx, fillPlace(f, peer), top())
 	}
 
 	// A marked func freezes against TOP instead of resolving (the
@@ -230,8 +315,15 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	// TS. The overlay semantics (see repathArg) preserve path tails
 	// beyond the driving base, exactly like ctx-based Val.clone.
 	if f.name != "move" && f.name != "copy" {
-		for _, arg := range f.peg {
-			repathArg(arg, base, ctx.cc)
+		for i, arg := range f.peg {
+			// A generator's TEMPLATE is not at the call site and must
+			// not be re-pathed to it: it is cloned per destination when
+			// the generator fires, and that clone is what carries a
+			// position. Only the data argument is here.
+			if generatorFuncs[f.name] && 0 < i {
+				continue
+			}
+			repathArg(arg, base, ctx.settle)
 		}
 	}
 
@@ -248,7 +340,11 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	// CopyFuncVal.prepare returning null in TS — copy(expr) clones the
 	// raw expression immediately and the clone resolves at the
 	// destination.
-	if f.name == "move" || f.name == "copy" {
+	if f.name == "move" || f.name == "copy" || generatorFuncs[f.name] {
+		// A generator's arguments reach resolve RAW, for the reason
+		// PackFuncVal.prepare returns null in TS: the template must not
+		// be driven at the call site. Its data argument was driven by
+		// hand above.
 		newpeg = f.peg
 	} else {
 		for _, arg := range f.peg {
@@ -294,7 +390,13 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 			default:
 				out = newConjunct([]Val{f, peer})
 			}
-		} else if result.Dc() == DONE && isTop(peer) {
+		} else if result.Dc() == DONE && isTop(peer) && "" == peer.entityName() {
+			// The TOP peer is DROPPED as the unit it is — unless it
+			// carries an identity (G4 phase 1), which is content rather
+			// than the unit: `id(x) & id(y)` resolves both sides to a
+			// top, and taking this shortcut would silently keep one name
+			// and lose the other instead of refusing the pair. Mirrors
+			// the same guard in ts/src/val/FuncBaseVal.ts.
 			out = result
 		} else {
 			ctx.slot = base
@@ -371,24 +473,6 @@ func pathEq(a, b []string) bool {
 	return true
 }
 
-// keyArgEq reports whether two key() funcs have the same move-count
-// argument (mirrors the `peer.peg?.[0]?.peg === this.peg?.[0]?.peg`
-// check in TS KeyFuncVal.unify).
-func keyArgEq(a, b *FuncVal) bool {
-	av, aok := keyArgVal(a)
-	bv, bok := keyArgVal(b)
-	return aok == bok && av == bv
-}
-
-func keyArgVal(f *FuncVal) (int64, bool) {
-	if len(f.peg) > 0 {
-		if sv, ok := f.peg[0].(*ScalarVal); ok && sv.kind == KindInteger {
-			return sv.peg.(int64), true
-		}
-	}
-	return 0, false
-}
-
 // resolve dispatches to the named function's implementation. base is
 // the location the func is being driven at (see Unify) — resolution
 // clones re-path to it, mirroring the ctx-path clones in TS.
@@ -413,9 +497,18 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		}
 		out := clonePath(args[0], cp(base))
 		walkMark(out, true, false, true, false) // copy clears marks
+		walkClearEntity(out)                    // ... and identity (G4 rule 2)
 		return out
 	case "key":
-		return keyFunc(ctx, f)
+		return keyFunc(ctx, f, base)
+	case "pack":
+		return packFunc(ctx, f, base, args)
+	case "each":
+		return eachFunc(ctx, f, base, args)
+	case "filter":
+		return filterFunc(ctx, f, base, args)
+	case "match":
+		return matchFunc(ctx, f, base, args)
 	case "pref":
 		if len(args) == 0 {
 			return makeNilErr(ctx, "arg", f, nil)
@@ -464,6 +557,59 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 			return makeNilErr(ctx, "arg", f, nil)
 		}
 		return args[0]
+	case "deprecate":
+		// G3 phase 4: unification-transparent — the result IS the
+		// argument, with the record riding it (base.deprec). A nil
+		// argument is returned unchanged (refusal over corruption, D7).
+		if len(args) == 0 {
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		if args[0].Nil() {
+			return args[0]
+		}
+		out := clonePath(args[0], cp(base))
+		rec := map[string]string{}
+		if len(args) > 1 {
+			if m, ok := args[1].(*MapVal); ok {
+				// The record's whole vocabulary; other keys are DROPPED
+				// (see DEPRECATION_KEYS in ts/src/val/DeprecateFuncVal.ts).
+				for _, key := range []string{"msg", "use", "since"} {
+					if sv, ok := m.peg[key].(*ScalarVal); ok && KindString == sv.kind {
+						if str, ok := sv.peg.(string); ok {
+							rec[key] = str
+						}
+					}
+				}
+			}
+		}
+		out.setDeprecRec(rec)
+		return out
+	case "id":
+		// G4 phase 1: the identity mark resolves to the UNIT carrying
+		// the name, so `id(x) & v` is `v` with an identity and the
+		// rider in unite does the stamping. Mirrors IdFuncVal.resolve
+		// in ts/src/val/IdFuncVal.ts.
+		if len(args) == 0 { //coverage:ignore arity is checked at parse
+			return makeNilErr(ctx, "arg", f, nil)
+		}
+		name, ok := idName(args[0])
+		if !ok {
+			return makeNilErrFull(ctx, "id_name", f, nil, "id", nil)
+		}
+		out := newTop()
+		out.setEntityName(name)
+		return out
+	case "refer":
+		// G4 phase 2: the function resolves to the RESIDUAL, which does
+		// the address work when it meets a string. Mirrors
+		// ReferFuncVal.resolve in ts/src/val/ReferFuncVal.ts.
+		out := newRefer(nil)
+		if 0 < len(args) {
+			out.tval = args[0]
+		}
+		out.sp, out.spu, out.surl = f.sp, f.spu, f.surl
+		out.path = cp(base)
+		return out
 	case "super":
 		// super(x) is the lattice-superior of its ARGUMENT, not of the
 		// super() call itself: super(1) -> integer, super(1.5) ->
@@ -628,7 +774,7 @@ func setClosed(ctx *Ctx, f *FuncVal, args []Val, closed bool) Val {
 // `integer` and `biginteger` -- and everything else is refused rather
 // than silently falling back to 1, which is what made a mistyped level
 // undetectable here.
-func keyFunc(ctx *Ctx, f *FuncVal) Val {
+func keyFunc(ctx *Ctx, f *FuncVal, base []string) Val {
 
 	move := 1
 	if len(f.peg) > 0 {
@@ -654,10 +800,30 @@ func keyFunc(ctx *Ctx, f *FuncVal) Val {
 			return makeNilErr(ctx, "key_level", f, nil)
 		}
 	}
-	idx := len(f.path) - (1 + move)
+	// THE PATH IS THE ONE IT IS BEING DRIVEN AT when the driver is
+	// DEEPER than anything this key() has been placed at. A key() the
+	// bag walk reaches directly is re-pathed by its own residuation
+	// clone each pass, and its stored path is right -- and a
+	// TRANSPLANTED one (move(), a shared clone) must answer for where it
+	// was put, which is why the stored path stays authoritative whenever
+	// it reaches as deep as the driver. But a key() nested inside a
+	// function or operator ARGUMENT inside a generator's TEMPLATE has
+	// never been placed at all: it is shared, not cloned, and the
+	// template's own position is the call site, which is the one
+	// position it is never used at. There the driver is deeper, and the
+	// driver is the truth.
+	//
+	// The TypeScript port reaches the same answers by a different test
+	// (KeyFuncVal.resolve, `positioned`), because the two ports path a
+	// function's arguments differently -- see DIVERGENCE.md.
+	here := f.path
+	if len(base) > len(here) {
+		here = base
+	}
+	idx := len(here) - (1 + move)
 	key := ""
-	if idx >= 0 && idx < len(f.path) {
-		key = f.path[idx]
+	if idx >= 0 && idx < len(here) {
+		key = here[idx]
 	}
 	return newString(key)
 }

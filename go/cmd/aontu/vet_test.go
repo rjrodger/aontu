@@ -10,11 +10,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 const vetSchemaSrc = "service: { name: string, port: integer }"
@@ -364,4 +366,135 @@ func TestVetVerbAppearsInHelp(t *testing.T) {
 	run([]string{"--help"}, strings.NewReader(""), &out, &errw, false)
 	vetMatch(t, out.String(), `aontu vet \[options\]`)
 	vetMatch(t, out.String(), `3  incomplete`)
+}
+
+// --- SARIF and watch (G2 phase 5) -----------------------------------
+
+// The interchange form: level from severity, the data site as the
+// primary location, the schema site related, the whole native finding
+// in properties. Shape parity with the canonical port is the golden in
+// test/spec/files/vet-sarif/ (report_sarif_test.go); this is the CLI
+// wiring.
+func TestVetSarifFormatEmbedsTheFinding(t *testing.T) {
+	_, s, d := vetFiles(t, vetSchemaSrc, `service: { name: "auth", port: "8080" }`)
+	out, _, code := vetRun("--format", "sarif", s, d)
+	if 1 != code {
+		t.Fatalf("code: %d", code)
+	}
+
+	var log struct {
+		Schema  string `json:"$schema"`
+		Version string `json:"version"`
+		Runs    []struct {
+			Results []struct {
+				Level     string `json:"level"`
+				RuleID    string `json:"ruleId"`
+				Locations []struct {
+					PhysicalLocation struct {
+						ArtifactLocation struct {
+							URI string `json:"uri"`
+						} `json:"artifactLocation"`
+					} `json:"physicalLocation"`
+				} `json:"locations"`
+				RelatedLocations []any `json:"relatedLocations"`
+				Properties       struct {
+					Path string `json:"path"`
+				} `json:"properties"`
+			} `json:"results"`
+			Tool struct {
+				Driver struct {
+					Version string `json:"version"`
+				} `json:"driver"`
+			} `json:"tool"`
+		} `json:"runs"`
+	}
+	if err := json.Unmarshal([]byte(out), &log); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	if "2.1.0" != log.Version || !strings.Contains(log.Schema, "sarif-2.1.0") {
+		t.Fatalf("log: %s %s", log.Version, log.Schema)
+	}
+	result := log.Runs[0].Results[0]
+	if "aontu/no_scalar_unify" != result.RuleID || "error" != result.Level {
+		t.Fatalf("result: %+v", result)
+	}
+	if "$.service.port" != result.Properties.Path {
+		t.Fatalf("properties: %+v", result.Properties)
+	}
+	// DECODED before comparing: the uri percent-encodes URI-significant
+	// bytes, and on Windows the temp path's backslashes are exactly
+	// that (%5C), so a raw string equality only holds on POSIX.
+	uri, err := url.PathUnescape(
+		result.Locations[0].PhysicalLocation.ArtifactLocation.URI)
+	if err != nil || d != uri {
+		t.Fatalf("uri: %v %+v", err, result.Locations[0])
+	}
+	if 1 != len(result.RelatedLocations) {
+		t.Fatalf("related: %+v", result.RelatedLocations)
+	}
+	if "" == log.Runs[0].Tool.Driver.Version {
+		t.Fatal("driver version missing")
+	}
+}
+
+// The watch loop: one report per run, one run per change, streaming.
+// The waiter is swapped so the loop is bounded; the report changing
+// between runs proves the files are re-read each time.
+func TestVetWatchStreamsAReportPerChange(t *testing.T) {
+	_, s, d := vetFiles(t, vetSchemaSrc, `service: { name: "auth", port: 8080 }`)
+
+	saved := vetWatchWait
+	defer func() { vetWatchWait = saved }()
+	calls := 0
+	vetWatchWait = func(files []string, before string) bool {
+		if s != files[0] || d != files[1] {
+			t.Fatalf("files: %v", files)
+		}
+		// The baseline is recorded BEFORE the run it follows, so a save
+		// landing during the run still reads as a change.
+		if "" == before {
+			t.Fatal("baseline signature missing")
+		}
+		if 0 == calls {
+			calls++
+			if err := os.WriteFile(d,
+				[]byte(`service: { name: "auth", port: "80" }`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			return true
+		}
+		return false
+	}
+
+	out, _, code := vetRun("--watch", s, d)
+	if 1 != code {
+		t.Fatalf("code: %d", code)
+	}
+	if !regexp.MustCompile(`verdict: valid[\s\S]*verdict: invalid`).
+		MatchString(out) {
+		t.Fatalf("out: %s", out)
+	}
+}
+
+// The real waiter returns when a watched file's mtime+size signature
+// moves — including from "gone" to existing, which is what a file
+// being replaced by an editor looks like mid-save.
+func TestVetWatchWaitSeesAChange(t *testing.T) {
+	savedPoll := watchPoll
+	watchPoll = 5 * time.Millisecond
+	defer func() { watchPoll = savedPoll }()
+
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "not-yet.json")
+	files := []string{missing}
+
+	done := make(chan bool)
+	go func() { done <- watchWait(files, watchSignature(files)) }()
+	time.Sleep(60 * time.Millisecond)
+	if err := os.WriteFile(missing, []byte("service: {}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !<-done {
+		t.Fatal("watchWait should report a change")
+	}
 }

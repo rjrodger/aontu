@@ -1,0 +1,116 @@
+# Aontu — published grammar (GBNF), for constrained decoding.
+#
+# G7 phase 6, docs/capability-review/g7-machine-access.md. This
+# grammar covers the DOCUMENTED EMISSION SURFACE: what a model should
+# be allowed to write, which is a superset of JSON plus the operators,
+# constraints and marks the language's own canonical form emits.
+#
+# It is CONSERVATIVE BY CONSTRUCTION: it may accept less than the
+# parser does, never more. Two deliberate exclusions:
+#
+#   - `@"..."` includes. Constrained decoding must not emit a
+#     source-loading directive: a generated document should describe
+#     values, not reach for files.
+#   - Unquoted keys and the other spellings the parser tolerates. Canon
+#     quotes every key, and one spelling is what a grammar is for.
+#
+# The parity discipline (ts/test/grammar.test.ts): every canonical-form
+# output in the shared spec suite must parse under THIS FILE, which is
+# read and interpreted by the test rather than transcribed into it. The
+# same rules, in lark form, are in grammar/aontu.lark.
+
+root ::= ws value ws
+
+value ::= piped
+
+# The pipe is SUGAR: `x |> f(a)` is `f(x, a)`, resolved while reading
+# the source (G8 phase 4). It never reaches a value, so canon never
+# emits it — every canon in the shared suite shows the call.
+piped ::= disjunct ( ws "|>" ws disjunct )*
+
+disjunct ::= conjunct ( ws "|" ws conjunct )*
+
+conjunct ::= prefixed ( ws "&" ws prefixed )*
+
+# A preference marks the alternative a generation picks.
+prefixed ::= "*" ws prefixed | sum
+
+sum ::= atom ( ws "+" ws atom )*
+
+atom ::=
+    map
+  | list
+  | func
+  | ref
+  | kind
+  | place
+  | scalar
+  | "(" ws value ws ")"
+
+map ::= "{" ws ( entry ( ws "," ws entry )* ws )? "}"
+
+entry ::= spread | pair
+
+# The template every key of the bag must also satisfy.
+spread ::= "&" ws ":" ws value
+
+pair ::= string ws "?"? ws ":" ws value
+
+# A list ELEMENT is a value, not a pair — only the template is keyed.
+list ::= "[" ws ( element ( ws "," ws element )* ws )? "]"
+
+element ::= spread | value
+
+# The builtins, applied. The name set is closed on purpose: an unknown
+# function is a parse-time error in the engine, so a grammar that
+# allowed any name would over-approximate.
+#
+# ORDER MATTERS where one name is a prefix of another: this is an
+# ordered choice, so `refer` is listed before `re` or `re` would match
+# the prefix and the `(` check would then fail on `refer(...)`.
+func ::= name "(" ws ( value ( ws "," ws value )* ws )? ")"
+
+name ::=
+    "above" | "below" | "close" | "copy" | "deprecate" | "each" | "filter"
+  | "hide"
+  | "id" | "key"
+  | "length" | "lower" | "match" | "max" | "min" | "move" | "must"
+  | "neq"
+  | "open" | "pack" | "path" | "pref" | "refer" | "re" | "same" | "super"
+  | "type"
+  | "unique" | "upper"
+
+# A path reference, absolute from the document root.
+ref ::= "$" ( "." segment )*
+
+segment ::= ( [a-zA-Z0-9_-] )+
+
+# The placeholder: a hole a call is filled through (G8 phase 3). BARE
+# only -- `"_"` is an ordinary string, and a longer bare word
+# containing it is ordinary text.
+place ::= "_"
+
+kind ::=
+    "biginteger" | "bigdecimal" | "boolean" | "float" | "integer"
+  | "number" | "string" | "top" | "nil"
+
+scalar ::= string | exact | number | "true" | "false" | "null"
+
+string ::= "\"" char* "\""
+
+char ::= [^"\\] | "\\" escape
+
+escape ::= ["\\/bfnrt] | "u" hex hex hex hex
+
+hex ::= [0-9a-fA-F]
+
+# The exact leaves: arbitrary precision, spelled with the 0d marker.
+exact ::= "-"? "0d" digits ( "." digits )? exponent?
+
+number ::= "-"? digits ( "." digits )? exponent?
+
+exponent ::= [eE] [-+]? digits
+
+digits ::= [0-9]+
+
+ws ::= [ \t\n\r]*

@@ -221,8 +221,23 @@ func TestRefInternalsDirect(t *testing.T) {
 	}
 }
 
-// FuncVal: silent Gen, nil peers in the key-delay window and the
+// FuncVal: silent Gen, nil peers while key() residuates and the
 // pending-args defer, and the walkPref conjunct arm.
+// G8 phase 3 — the hole's own contracts, at the arms no document
+// reaches. Gen is silent (the enclosing bag decides that an unfilled
+// hole is an error, exactly as it does for TOP), and superior answers
+// itself because nothing sits above a value that admits everything.
+// The TypeScript twin is coverage3.test.ts, `a-hole-has-nothing-above-it`.
+func TestPlaceArmsDirect(t *testing.T) {
+	p := newPlace()
+	if g, err := p.Gen(&Ctx{}); nil != g || nil != err {
+		t.Fatalf("a hole generates silently: %v %v", g, err)
+	}
+	if Val(p) != p.superior() {
+		t.Fatalf("a hole is its own superior")
+	}
+}
+
 func TestFuncArmsDirect(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	f := newFunc("key", nil)
@@ -447,10 +462,10 @@ func TestCloneVarAndSpreads(t *testing.T) {
 	m := newMap()
 	m.set("k", newInteger(1))
 	m.spread = newFunc("path", nil)
-	repathArg(m, []string{"b"}, 0)
+	repathArg(m, []string{"b"}, false)
 	l := newList([]Val{newInteger(1)})
 	l.spread = newFunc("path", nil)
-	repathArg(l, []string{"b"}, 0)
+	repathArg(l, []string{"b"}, false)
 	if strings.Join(m.spread.vpath(), "/") != "b" || strings.Join(l.spread.vpath(), "/") != "b" {
 		t.Fatalf("spread repath")
 	}

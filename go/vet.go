@@ -437,6 +437,62 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		}
 	}
 
+	// Default-validity lint (G3 phase 5): for every disjunction in the
+	// SCHEMA carrying a preference, the effective default must be
+	// admitted by some remaining alternative — `a:*5|string` ships a
+	// default its own disjunct refuses, and every consumer leaning on
+	// it receives an invalid value from the truth itself. A vet WARNING
+	// for now (code `pref_not_instance`, class compat): today's engine
+	// generates the bad default, existing documents may lean on it, and
+	// promoting the warning to an error is itself a breaking change,
+	// sequenced through the `breaking` gate (the G3 design's own rule).
+	// Mirrors the lintDefaults pass in ts/src/vet.ts.
+	lintFindings := []VetFinding{}
+	walkBagVals(anchor, func(v Val, path []string) {
+		if d, ok := v.(*DisjunctVal); ok {
+			def, has, indet := subEffectiveDefault(d)
+			if has && !indet && nil != def {
+				rest := []Val{}
+				for _, m := range d.peg {
+					if !isPref(m) {
+						rest = append(rest, m)
+					}
+				}
+				st := &subState{
+					profile:     "values",
+					generalURL:  schemaURL,
+					specificURL: schemaURL,
+					generalSrc:  schemaSrc,
+					specificSrc: schemaSrc,
+				}
+				admitted := false
+				for _, m := range rest {
+					if subYes == subsumeNode(st, path, m, def) {
+						admitted = true
+						break
+					}
+				}
+				if !admitted && 0 < len(rest) {
+					row, col := -1, -1
+					if 0 <= def.pos() {
+						row, col = rowCol(schemaSrc, def.pos())
+					}
+					site := &VetSite{Col: col, File: schemaURL,
+						Role: VetRoleSchema, Row: row, Value: def.Canon()}
+					lintFindings = append(lintFindings, VetFinding{
+						Code:     "pref_not_instance",
+						Class:    "compat",
+						Severity: "warning",
+						Path:     subPathText(path),
+						Message: "the default " + def.Canon() +
+							" is not an instance of any alternative of " + d.Canon(),
+						Sites: []VetSite{*site},
+					})
+				}
+			}
+		}
+	})
+
 	// 3. Both documents get their provenance stamped BEFORE they meet,
 	//    so every site in the result knows which document it came from.
 	dataVal, derr := dataA.Parse(dataSrc)
@@ -523,6 +579,37 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 			findings = append(findings, findingOf(e, dataURL, sources))
 		}
 	}
+	errorFindings := len(findings)
+	findings = append(findings, lintFindings...)
+
+	// 5b. Deprecation warnings (G3 phase 4): a value that carries the
+	//     deprecate() record after the meet was USED — the data met a
+	//     deprecated schema value, or the schema's own default will
+	//     generate one. Severity `warning` (the slot G2 reserved for
+	//     exactly this mark), and warnings never touch the verdict
+	//     below. Mirrors the walkDeprecated pass in ts/src/vet.ts.
+	for _, d := range collectDeprecatedVals(unified) {
+		rec := d.v.deprecRec()
+		msg := "deprecated"
+		if m, ok := rec["msg"]; ok {
+			msg += ": " + m
+		}
+		if u, ok := rec["use"]; ok {
+			msg += " (use " + u + ")"
+		}
+		if sv, ok := rec["since"]; ok {
+			msg += " (since " + sv + ")"
+		}
+		site := siteOf(d.v, dataURL, sources)
+		findings = append(findings, VetFinding{
+			Code:     "deprecated",
+			Class:    "compat",
+			Severity: "warning",
+			Path:     subPathText(d.v.vpath()),
+			Message:  msg,
+			Sites:    []VetSite{*site},
+		})
+	}
 
 	keys := make([]string, len(findings))
 	idx := make([]int, len(findings))
@@ -531,10 +618,39 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 		idx[i] = i
 	}
 	sort.Slice(idx, func(a, b int) bool { return keys[idx[a]] < keys[idx[b]] })
-	ordered := make([]VetFinding, len(findings))
-	for i, j := range idx {
-		ordered[i] = findings[j]
+	ordered := make([]VetFinding, 0, len(findings))
+	for _, j := range idx {
+		ordered = append(ordered, findings[j])
 	}
+
+	// ONE CAUSE, ONE FINDING. A reference resolves by CLONING its
+	// target, so a target that later fails can fail once per referrer —
+	// same code, same two source sites, a different path each time.
+	// Multi-pass collection (G2 phase 6) made this reachable: the pass
+	// loop now continues past the erroring pass, so the clones' own
+	// folds run too. The dedup key is the CODE plus the SITES (file,
+	// row, col, role, value): two findings that name the same meet of
+	// the same two source positions are one contradiction observed from
+	// two paths. The key is NOT (code, path) — the design's sketch —
+	// because the paths are exactly what differ. Sorted order makes the
+	// kept finding the first by data site then path, deterministically
+	// in both ports. NUL-joined, like the order key: no field can
+	// contain one, so the key cannot collide across field boundaries.
+	causes := map[string]bool{}
+	deduped := ordered[:0]
+	for _, f := range ordered {
+		cause := f.Code
+		for _, s := range f.Sites {
+			cause += "\x00" + s.File + "\x00" + strconv.Itoa(s.Row) +
+				"\x00" + strconv.Itoa(s.Col) + "\x00" + s.Role + "\x00" + s.Value
+		}
+		if causes[cause] {
+			continue
+		}
+		causes[cause] = true
+		deduped = append(deduped, f)
+	}
+	ordered = deduped
 
 	truncated := maxErrors < len(ordered)
 	kept := ordered
@@ -547,7 +663,7 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	verdict := VetValid
 	if 0 < conflicts {
 		verdict = VetInvalid
-	} else if conflicts < len(findings) && !options.Partial {
+	} else if conflicts < errorFindings && !options.Partial {
 		verdict = VetIncomplete
 	}
 

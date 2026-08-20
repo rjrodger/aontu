@@ -30,6 +30,8 @@ import { Aontu } from './aontu'
 import { descErr } from './err'
 import { ConjunctVal } from './val/ConjunctVal'
 import { walkVals, collectNils } from './walk'
+import { collectDeprecations, walkBagVals, deprecationMessage } from './utility'
+import { subsumeNode, effectiveDefault } from './subsume'
 
 
 export type VetVerdict = 'valid' | 'invalid' | 'incomplete' | 'error'
@@ -279,7 +281,7 @@ function orderKey(f: VetFinding, index: number): string {
 // Walk the evaluated schema to the anchor path. `$` and `$.a.b` are
 // both accepted, as is the bare `a.b` a shell is likely to hand over
 // unquoted.
-function anchorAt(root: any, at: string): Val | undefined {
+export function anchorAt(root: any, at: string): Val | undefined {
   const trimmed = at.startsWith('$') ? at.slice(1) : at
   const parts = trimmed.split('.').filter((p) => '' !== p)
 
@@ -403,6 +405,48 @@ export function vet(
   stampUrl(anchor, schemaUrl)
   stampUrl(dataVal, dataUrl)
 
+  // Default-validity lint (G3 phase 5): for every disjunction in the
+  // SCHEMA carrying a preference, the effective default must be
+  // admitted by some remaining alternative — `a:*5|string` ships a
+  // default its own disjunct refuses, and every consumer leaning on it
+  // receives an invalid value from the truth itself. A vet WARNING for
+  // now (code `pref_not_instance`, class compat): today's engine
+  // generates the bad default, existing documents may lean on it, and
+  // promoting the warning to an error is itself a breaking change,
+  // sequenced through the `breaking` gate (the G3 design's own rule).
+  const lintFindings: VetFinding[] = []
+  walkBagVals(anchor, (v: any, path: string[]): void => {
+    if (true === v.isDisjunct && Array.isArray(v.peg)) {
+      const d = effectiveDefault(v)
+      if (null != d && 'indeterminate' !== d) {
+        const rest = v.peg.filter((m: any) => true !== m?.isPref)
+        const state: any = {
+          profile: 'values', findings: [],
+          generalUrl: schemaUrl, specificUrl: schemaUrl,
+        }
+        const admitted = rest.some(
+          (m: any) => 'yes' === subsumeNode(state, path, m, d))
+        if (!admitted && 0 < rest.length) {
+          lintFindings.push({
+            code: 'pref_not_instance',
+            class: 'compat',
+            severity: 'warning',
+            path: pathText(path),
+            message: 'the default ' + d.canon +
+              ' is not an instance of any alternative of ' + v.canon,
+            sites: [{
+              file: schemaUrl,
+              row: d.site?.row ?? -1,
+              col: d.site?.col ?? -1,
+              role: 'schema',
+              value: d.canon,
+            }],
+          })
+        }
+      }
+    }
+  })
+
   // `--closed` sets the flag `close()` itself sets, rather than wrapping
   // the anchor in a CloseFuncVal: the anchor is an already-evaluated
   // tree, and a func value would have to resolve again to have any
@@ -458,9 +502,60 @@ export function vet(
     }
   }
 
+  // 5b. Deprecation warnings (G3 phase 4): a value that carries the
+  //     deprecate() record after the meet was USED — the data met a
+  //     deprecated schema value, or the schema's own default will
+  //     generate one. Severity `warning` (the slot G2 reserved for
+  //     exactly this mark), and warnings never touch the verdict below.
+  const errorFindings = findings.length
+  findings.push(...lintFindings)
+  for (const { val, path } of collectDeprecations(unified)) {
+    const v: any = val
+    // The same file/role projection sitesOf makes: the url as stamped
+    // (empty when the value belongs to neither document), the role by
+    // comparing it to the data document's.
+    const file = v.site.url
+    findings.push({
+      code: 'deprecated',
+      class: 'compat',
+      severity: 'warning',
+      path: pathText(path),
+      message: deprecationMessage(v.deprecation),
+      sites: [{
+        file,
+        row: v.site.row ?? -1,
+        col: v.site.col ?? -1,
+        role: (dataUrl === file ? 'data' : 'schema') as VetRole,
+        value: v.canon,
+      }],
+    })
+  }
+
   const keyed = findings.map((f, i) => ({ key: orderKey(f, i), finding: f }))
   keyed.sort((a, b) => a.key < b.key ? -1 : 1)
-  const ordered = keyed.map((k) => k.finding)
+  let ordered = keyed.map((k) => k.finding)
+
+  // ONE CAUSE, ONE FINDING. A reference resolves by CLONING its target,
+  // so a target that later fails can fail once per referrer — same
+  // code, same two source sites, a different path each time. Multi-pass
+  // collection (G2 phase 6) made this reachable: the pass loop now
+  // continues past the erroring pass, so the clones' own folds run too.
+  // The dedup key is the CODE plus the SITES (file, row, col, value,
+  // role): two findings that name the same meet of the same two source
+  // positions are one contradiction observed from two paths. The key is
+  // NOT (code, path) — the design's sketch — because the paths are
+  // exactly what differ. Sorted order makes the kept finding the first
+  // by data site then path, deterministically in both ports.
+  const causes = new Set<string>()
+  ordered = ordered.filter((f) => {
+    const cause = f.code + '\u0000' + f.sites.map((s) =>
+      [s.file, s.row, s.col, s.role, s.value].join('\u0000')).join('\u0000')
+    if (causes.has(cause)) {
+      return false
+    }
+    causes.add(cause)
+    return true
+  })
 
   const truncated = maxErrors < ordered.length
   const kept = truncated ? ordered.slice(0, maxErrors) : ordered
@@ -471,7 +566,7 @@ export function vet(
   if (0 < conflicts) {
     verdict = 'invalid'
   }
-  else if (findings.length > conflicts && true !== options.partial) {
+  else if (errorFindings > conflicts && true !== options.partial) {
     verdict = 'incomplete'
   }
 

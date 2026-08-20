@@ -2,12 +2,15 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.COMPLETION_KEYWORD = exports.COMPLETION_FUNCTION = exports.SEVERITY_HINT = exports.SEVERITY_INFORMATION = exports.SEVERITY_WARNING = exports.SEVERITY_ERROR = exports.BUILTIN_FUNCS = exports.LSP_VERSION = exports.LspHandler = void 0;
+exports.contributionsMarkdown = contributionsMarkdown;
 exports.computeDiagnostics = computeDiagnostics;
 exports.computeHover = computeHover;
 exports.computeCompletions = computeCompletions;
 const aontu_1 = require("./aontu");
 const err_1 = require("./err");
 const walk_1 = require("./walk");
+const utility_1 = require("./utility");
+const query_1 = require("./query");
 // LSP DiagnosticSeverity subset.
 const SEVERITY_ERROR = 1;
 exports.SEVERITY_ERROR = SEVERITY_ERROR;
@@ -25,7 +28,11 @@ exports.LSP_VERSION = LSP_VERSION;
 // array; only genuine errors (conflicts, unresolved references, unknown
 // functions, syntax errors) produce diagnostics.
 function computeDiagnostics(src, opts) {
-    const aontu = new aontu_1.Aontu();
+    // The trust profile (G5, docs/trust.md): the LSP is the
+    // highest-exposure surface — merely OPENING a hostile .aon file in an
+    // editor performs its reads — so the handler confines evaluation to
+    // the workspace root and threads the profile through here.
+    const aontu = new aontu_1.Aontu(null == opts?.trust ? {} : { trust: opts.trust });
     let root;
     let ac;
     try {
@@ -56,7 +63,33 @@ function computeDiagnostics(src, opts) {
             nils.push(e);
         }
     }
-    return nils.map(nilToDiagnostic);
+    const out = nils.map(nilToDiagnostic);
+    // Deprecation tags (G3 phase 4): every sited value carrying the
+    // deprecate() record — the declaration and, because the record rides
+    // meets and reference clones, every use resolving through it — gets
+    // the native Deprecated tag (2) at Hint severity, so editors strike
+    // it through without shouting.
+    for (const { val } of (0, utility_1.collectDeprecations)(root)) {
+        const v = val;
+        if (1 > (v.site?.row ?? -1) || 1 > (v.site?.col ?? -1)) {
+            continue;
+        }
+        out.push({
+            range: {
+                start: { line: v.site.row - 1, character: v.site.col - 1 },
+                end: {
+                    line: v.site.row - 1,
+                    character: v.site.col - 1 + String(v.canon).length,
+                },
+            },
+            severity: 4,
+            code: 'deprecated',
+            source: 'aontu',
+            message: (0, utility_1.deprecationMessage)(v.deprecation),
+            tags: [2],
+        });
+    }
+    return out;
 }
 // Convert a NilVal (1-based site row/col) to an LSP diagnostic (0-based
 // line/character).
@@ -149,7 +182,35 @@ function publishDiagnosticsMsg(uri, diagnostics) {
 // the position is not over a value with a known source location. Because
 // hover reads the *unified* tree, a literal shows its resolved value and
 // kind (e.g. a reference target resolves to the value it points at).
-function computeHover(src, position) {
+// HOVER PROVENANCE (G7 phase 7) is CONFIG-GATED and off by default:
+// the contributions that met at the hovered path, appended to the
+// value's own hover. Hover already re-unifies the whole document per
+// request, so an editor that asks for this pays a second instrumented
+// evaluation knowingly, and one that does not pays nothing.
+function provenanceMarkdown(src, path) {
+    if (0 === path.length) {
+        return '';
+    }
+    // A document with an error ELSEWHERE still hovers — the tree the
+    // hover walked is there — while `why` refuses it, so the record may
+    // be absent for a value the cursor is sitting on.
+    const report = (0, query_1.why)(src, '$.' + path.join('.'));
+    return contributionsMarkdown(report.record?.conjuncts ?? []);
+}
+// The contributions as hover markdown. Exported for the direct test
+// (ADR-002): a siteless contribution and a named file are both shapes
+// the record allows and no hover produces, hover evaluating one
+// unnamed document.
+function contributionsMarkdown(conjuncts) {
+    if (0 === conjuncts.length) {
+        return '';
+    }
+    return '\n\n---\n\nContributions:\n' + conjuncts.map((c) => '- `' + c.canon + '` — ' + c.role +
+        (0 > c.site.row ? '' : ' (' +
+            ('' === c.site.file ? '' : c.site.file + ':') +
+            c.site.row + ':' + c.site.col + ')')).join('\n');
+}
+function computeHover(src, position, provenance) {
     let root;
     try {
         root = new aontu_1.Aontu().unify(src, { collect: true });
@@ -171,7 +232,11 @@ function computeHover(src, position) {
     if (null == best)
         return null;
     return {
-        contents: { kind: 'markdown', value: hoverMarkdown(best.val) },
+        contents: {
+            kind: 'markdown',
+            value: hoverMarkdown(best.val) +
+                (true === provenance ? provenanceMarkdown(src, best.val.path) : ''),
+        },
         range: {
             start: { line: best.line, character: best.start },
             end: { line: best.line, character: best.end },
@@ -255,12 +320,17 @@ const COMPLETION_FUNCTION = 3;
 exports.COMPLETION_FUNCTION = COMPLETION_FUNCTION;
 const COMPLETION_KEYWORD = 14;
 exports.COMPLETION_KEYWORD = COMPLETION_KEYWORD;
-// The twenty-one built-in functions. Kept in sync with the engine by
+// The twenty-eight built-in functions. Kept in sync with the engine by
 // `lsp.test.ts`, which asserts each is recognised and no others are.
+// The Go port derives its list from the engine's own name set
+// (`BuiltinFuncNames`, go/func.go), which is why a name added there
+// and forgotten here diverges silently — as `id` and `refer` did
+// between G4 phases 1/2 and G8 phase 1.
 const BUILTIN_FUNCS = [
-    'above', 'below', 'close', 'copy', 'hide', 'key', 'length', 'lower',
-    'max', 'min', 'move', 'must', 'neq', 'open', 'path', 'pref', 're',
-    'super', 'type', 'unique', 'upper',
+    'above', 'below', 'close', 'copy', 'deprecate', 'each', 'filter',
+    'hide', 'id', 'key', 'length', 'lower',
+    'match', 'max', 'min', 'move', 'must', 'neq', 'open', 'pack', 'path',
+    'pref', 're', 'refer', 'super', 'type', 'unique', 'upper',
 ];
 exports.BUILTIN_FUNCS = BUILTIN_FUNCS;
 // Scalar-kind and literal keywords.
@@ -269,7 +339,9 @@ exports.BUILTIN_FUNCS = BUILTIN_FUNCS;
 const KIND_KEYWORDS = [
     'string', 'number', 'integer', 'float', 'biginteger', 'bigdecimal', 'boolean',
 ];
-const LITERAL_KEYWORDS = ['true', 'false', 'null', 'top'];
+// `_` joins these as of G8 phase 3: it is a literal of the language
+// now, not text.
+const LITERAL_KEYWORDS = ['_', 'true', 'false', 'null', 'top'];
 // Context-free completion: the built-in functions, scalar-kind keywords
 // and literals. Clients filter by the typed prefix.
 function computeCompletions() {
@@ -289,11 +361,30 @@ function computeCompletions() {
 // messages and returns the messages to send back, tracking open document
 // text and recomputing diagnostics on open/change/close. Not safe for
 // concurrent use; drive it from a single loop (as the stdio server does).
+// A file:// uri's filesystem path, for the workspace-root confinement.
+// Percent-decoded; a non-file uri (or none) yields undefined.
+function uriToPath(uri) {
+    if ('string' !== typeof uri || !uri.startsWith('file://')) {
+        return undefined;
+    }
+    return decodeURIComponent(uri.slice('file://'.length));
+}
 class LspHandler {
     constructor() {
         this.docs = new Map();
         this.shutdownOK = false;
         this.exited = false;
+        // The trust profile evaluation runs under (G5, docs/trust.md):
+        // workspace-root confinement by default, set from the initialize
+        // params. An `initializationOptions.aontu.trust.include` of 'system',
+        // 'none' or { root } widens or narrows it explicitly. Undefined —
+        // no workspace root and no explicit option — falls back to today's
+        // unconfined behaviour, which single-file sessions rely on.
+        this.trust = undefined;
+        // Hover provenance (G7 phase 7): off unless an editor asks for it
+        // with `initializationOptions.aontu.provenance`. It costs a second,
+        // instrumented evaluation per hover, which is a cost to opt into.
+        this.provenance = false;
     }
     // True once an `exit` notification has been received.
     get shouldExit() { return this.exited; }
@@ -305,8 +396,34 @@ class LspHandler {
     // Process one incoming message, returning zero or more to send.
     handle(msg) {
         switch (msg.method) {
-            case 'initialize':
+            case 'initialize': {
+                const params = msg.params ?? {};
+                this.provenance =
+                    true === params.initializationOptions?.aontu?.provenance;
+                const explicit = params.initializationOptions?.aontu?.trust?.include;
+                if (null != explicit) {
+                    // An explicit setting wins — validated, and an unrecognised
+                    // value confines to NOTHING rather than silently widening:
+                    // deny is the safe reading of a setting the server does not
+                    // understand. The same rule as the Go handler.
+                    this.trust =
+                        'system' === explicit ? undefined :
+                            'none' === explicit ? { include: 'none' } :
+                                ('string' === typeof explicit?.root && '' !== explicit.root)
+                                    ? { include: { root: explicit.root } } :
+                                    (null != explicit?.mem && 'object' === typeof explicit.mem)
+                                        ? { include: { mem: explicit.mem } } :
+                                        { include: 'none' };
+                }
+                else {
+                    const root = uriToPath(params.workspaceFolders?.[0]?.uri)
+                        ?? uriToPath(params.rootUri)
+                        ?? (('string' === typeof params.rootPath && '' !== params.rootPath)
+                            ? params.rootPath : undefined);
+                    this.trust = null != root ? { include: { root } } : undefined;
+                }
                 return [{ jsonrpc: '2.0', id: msg.id, result: initializeResult() }];
+            }
             case 'initialized':
                 return [];
             case 'shutdown':
@@ -343,7 +460,8 @@ class LspHandler {
                 const uri = msg.params?.textDocument?.uri;
                 const pos = msg.params?.position;
                 const text = null != uri ? this.docs.get(uri) : undefined;
-                const hover = (null != text && null != pos) ? computeHover(text, pos) : null;
+                const hover = (null != text && null != pos)
+                    ? computeHover(text, pos, this.provenance) : null;
                 return [{ jsonrpc: '2.0', id: msg.id, result: hover }];
             }
             case 'textDocument/completion':
@@ -362,7 +480,7 @@ class LspHandler {
         }
     }
     publish(uri) {
-        return publishDiagnosticsMsg(uri, computeDiagnostics(this.docs.get(uri) ?? ''));
+        return publishDiagnosticsMsg(uri, computeDiagnostics(this.docs.get(uri) ?? '', { trust: this.trust }));
     }
 } /* node:coverage ignore next 28 */
 exports.LspHandler = LspHandler;

@@ -10,13 +10,31 @@
 
 // Named imports, not `import * as`: the namespace form makes tsc emit the
 // __importStar downlevel helper, whose branches no supported Node takes.
-import { readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { readFileSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { createInterface } from 'node:readline'
 
-import { Aontu, AontuError, exactJSON, vet } from './aontu'
+import {
+  Aontu, AontuError, exactJSON, vet, subsume, trimCheck, relationCheck,
+  hcanon, canonHash,
+  get, why, patch, agentsMd,
+} from './aontu'
+import { sarifReport } from './report-sarif'
+import { modTidy, modVendor, modManifest } from './mod-tool'
+import type {
+  ModTidyReport, ModVendorReport, ModManifestReport,
+} from './mod-tool'
+import { modCacheDir } from './mod'
 import { VET_MAX_ERRORS } from './vet'
 import type { VetReport, VetFinding, VetVerdict } from './vet'
+import type {
+  SubsumeReport, SubsumeVerdict, SubsumeProfile,
+} from './subsume'
+import type { TrimReport, TrimVerdict } from './trim'
+import type { RelationReport, RelationVerdict } from './relation'
+import type { QueryView } from './query'
+import type { WhyRecord } from './provenance'
+import { agentsMdSplice } from './agentsmd'
 
 
 type Mode = 'json' | 'canon'
@@ -24,6 +42,16 @@ type Mode = 'json' | 'canon'
 
 const HELP = `Usage: aontu [options] [file]
        aontu vet [options] <schema> <data> [more-data...]
+       aontu subsume [options] <general> <specific>
+       aontu breaking --against <file|git#rev> [options] <file>
+       aontu trim --check [options] <file>
+       aontu relations [options] <file>
+       aontu hash [options] <file>
+       aontu mod tidy|vendor|manifest [options] [dir]
+       aontu get <path> [options] <file>
+       aontu why <path> [options] <file>
+       aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu agentsmd [--write <AGENTS.md>] <file>
 
 Evaluate an Aontu source file and print the result as JSON.
 With no file on an interactive terminal, start a REPL.
@@ -32,17 +60,37 @@ With no file and piped input, read the source from stdin.
 The vet verb validates data documents against a schema document and
 reports what does not hold, as text or as a machine-readable object.
 
+The subsume verb asks whether every instance the specific document
+admits, the general document admits too. The breaking verb runs that
+query between a document and its own earlier versions.
+
 Options:
   -c, --canon     Print the canonical form instead of generated JSON
   -h, --help      Show this help and exit
+  --jsonl         REPL: answer every command as one JSON line
   -v, --version   Print the version and exit
+  --trust <t>     Include capability: system (default), none, or
+                  root[:dir] to confine @"..." below a directory
+  --include-root <dir>  Shorthand for --trust root:<dir>
+
+Mod options:
+  --format <f>    text (default) or json
+  --against <dir> manifest: a prior version's module tree, to gate on
+
+Mod subcommands:
+  tidy      Resolve the module closure by minimum version selection and
+            rewrite mod-lock.aon in canonical form
+  vendor    Materialise the locked closure into aon_vendor/
+  manifest  Print the OCI artifact a publish would push, gated on the
+            breaking check against --against
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
   --closed          Refuse keys the anchor does not declare
   --partial         Residue is reported but does not fail the run
   --max-errors <n>  Cap the finding list (default 20)
-  --format <f>      text (default) or json
+  --format <f>      text (default), json or sarif
+  --watch           Re-run whenever a watched file changes
 
 Vet exit codes:
   0  valid       data unifies, and is concrete (or --partial)
@@ -51,8 +99,91 @@ Vet exit codes:
   3  incomplete  no contradiction, but the truth is not yet satisfied
   4  error       the schema is unusable on its own
 
+Subsume options:
+  --profile <p>   values, defaults (default) or gen
+  --at <path>     Compare at this path of both documents ($.a.b)
+  --format <f>    text (default) or json
+
+Subsume exit codes:
+  0  subsumes          every specific instance is admitted
+  1  does_not_subsume  a witness exists (see the findings)
+  2  usage             bad option, or a file that cannot be read
+  3  undecided         no rule decides (a sub_* reason is reported)
+  4  error             a document does not stand up on its own
+
+Breaking options:
+  --against <v>       An earlier version: a file path, or git#<rev>
+                      (resolved by 'git show'); repeatable
+  --mode <m>          backward (new admits old, the default), forward
+                      (old admits new), or full (both); overrides the
+                      document's own $.aontu_policy.compat declaration
+  --allow-undecided   Exit 0 on undecided (the report still says so)
+  --allow-deprecated-removal
+                      A finding about a value the old version already
+                      deprecated warns instead of breaking
+  --format <f>        text (default) or json
+
+Breaking exit codes mirror subsume's: 0 compatible, 1 breaking,
+2 usage, 3 undecided, 4 error.
+
+Trim options:
+  --check         Report redundant entries as paths (required: trim
+                  only reports for now; rewriting is a future editor)
+  --format <f>    text (default) or json
+
+Trim exit codes: 0 nothing redundant, 1 redundancies reported,
+2 usage, 4 the document does not stand up on its own.
+
+Hash options:
+  --form          Print the hash FORM (the hashed text) instead of the
+                  hash, which is what to diff when a pin moves
+  --format <f>    text (default) or json
+
+Hash exit codes: 0 hashed, 2 usage, 4 the document does not stand up
+on its own.
+
+Get options:
+  -c, --canon     Canonical-form fragment (default: generated JSON)
+  --keys          Keys at the node, one per line
+  --types         Shape view: concrete leaves lifted to their kinds
+  --depth <n>     Structure to depth n; deeper nodes render as top
+  --format <f>    text (default) or json
+
+Get exit codes: 0 rendered, 1 the path names nothing, 2 usage, 4 the
+document does not stand up on its own.
+
+Why options:
+  --format <f>    text (default) or json
+
+Why exit codes mirror get's: 0 explained, 1 the path names nothing,
+2 usage, 4 the document does not stand up on its own.
+
+Set options:
+  --entry <file>    The document the change is checked against
+  --overlay <file>  The file the change is appended to (created if
+                    absent; not written when the change does not hold)
+  --dry-run         Print the overlay that would be written, write
+                    nothing
+  --format <f>      text (default) or json
+
+Set exit codes are vet's verdict classes: 0 valid, 1 invalid (the
+change contradicts a pinned value -- aontu why locates it),
+2 usage, 3 incomplete, 4 the entry does not stand up on its own.
+
+Agentsmd options:
+  --write <file>  Splice the stanza into this file between the
+                  aontu:begin and aontu:end markers, appending them
+                  when they are absent; the rest is left alone
+
+Agentsmd exit codes: 0 generated, 2 usage, 4 the document does not
+stand up on its own.
+
 REPL commands:
   :help           Show REPL help
+  :load <file>    Evaluate a document and hold it for the commands below
+  :get [path]     What the held document says at a path
+  :keys [path]    The keys at a path of the held document
+  :why <path>     Every contribution to the value at a path
   :canon          Switch to canonical-form output
   :json           Switch to JSON output
   :quit, :exit    Exit the REPL (or press Ctrl-D)
@@ -98,7 +229,59 @@ function evalSource(
 }
 
 
-function runFile(file: string, mode: Mode): number {
+// The include capability the main verb runs with (G5, docs/trust.md).
+// `--trust` and `--include-root` set it explicitly; the default is
+// 'system' WITH the warning window: every resolution that escapes the
+// entry root or goes through package resolution prints a one-line
+// stderr warning naming the flag a future default will require
+// (phase 6, the staged flip).
+type TrustArg =
+  | { kind: 'system-warn' }
+  | { kind: 'system' }
+  | { kind: 'none' }
+  | { kind: 'root', dir?: string }
+
+
+// The one-line warning of the staged default flip. Once per (kind,
+// path): a fixpoint re-resolves nothing (includes load at parse), but
+// several includes may escape and each deserves exactly one line.
+function makeTrustWarn(): (kind: 'escape' | 'pkg', path: string) => void {
+  const warned = new Set<string>()
+  return (kind, path) => {
+    const key = kind + ' ' + path
+    if (warned.has(key)) {
+      return
+    }
+    warned.add(key)
+    const how = 'pkg' === kind
+      ? 'through package resolution'
+      : 'outside the entry root'
+    process.stderr.write(
+      `aontu: warning: include resolved ${how}: ${path}` +
+      ` (a future release will deny this by default;` +
+      ` pass --trust system to keep it, or --include-root to confine)\n`)
+  }
+}
+
+
+// Build the evaluator options a TrustArg means, for an entry rooted at
+// entryRoot (the entry file's directory, or the working directory for
+// stdin/REPL).
+function trustOpts(trust: TrustArg, entryRoot: string): any {
+  switch (trust.kind) {
+    case 'none':
+      return { trust: { include: 'none' } }
+    case 'root':
+      return { trust: { include: { root: trust.dir ?? entryRoot } } }
+    case 'system':
+      return {}
+    default:  // system-warn: today's default plus the warning window
+      return { trustWarn: makeTrustWarn(), trustWarnRoot: entryRoot }
+  }
+}
+
+
+function runFile(file: string, mode: Mode, trust: TrustArg): number {
   let src: string
   try {
     src = readFileSync(file, 'utf8')
@@ -108,20 +291,22 @@ function runFile(file: string, mode: Mode): number {
     return 1
   }
 
-  const aontu = new Aontu({ path: resolve(file) })
+  const path = resolve(file)
+  const aontu = new Aontu({ path, ...trustOpts(trust, dirname(path)) })
   const res = evalSource(aontu, src, mode)
   ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
   return res.ok ? 0 : 1
 }
 
 
-function runStdin(mode: Mode): Promise<number> {
+function runStdin(mode: Mode, trust: TrustArg): Promise<number> {
   return new Promise((resolve) => {
     let src = ''
     process.stdin.setEncoding('utf8')
     process.stdin.on('data', (d) => (src += d))
     process.stdin.on('end', () => {
-      const res = evalSource(new Aontu(), src, mode)
+      const res = evalSource(
+        new Aontu(trustOpts(trust, process.cwd())), src, mode)
       ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
       resolve(res.ok ? 0 : 1)
     })
@@ -129,41 +314,161 @@ function runStdin(mode: Mode): Promise<number> {
 }
 
 
-function runRepl(initialMode: Mode): void {
-  let mode = initialMode
-  const aontu = new Aontu()
+// THE REPL AS AN INSPECTION TOOL (G7 phase 7): `:load` holds a
+// document, and `:get`, `:keys` and `:why` ask the query and
+// provenance surfaces about it, so the session is a place to
+// INTERROGATE a definition rather than only to evaluate snippets.
+//
+// The command handler is a PURE FUNCTION of (state, line): a readline
+// loop is untestable, and every answer this REPL gives has to be as
+// checkable as the CLI's. File reading is injected for the same
+// reason.
+export type ReplState = {
+  // How a value renders: the `:canon` / `:json` toggle.
+  mode: Mode
+  // The SESSION protocol: one JSON line per answer, for a harness
+  // driving the REPL. Human-readable output stays the default.
+  jsonl: boolean
+  name?: string
+  src?: string
+}
+
+export type ReplAnswer = {
+  close: boolean
+  out: string
+  state: ReplState
+}
+
+
+// The loaded document, or the answer to give when there is none.
+function replLoaded(state: ReplState): string | undefined {
+  return state.src
+}
+
+
+export function replCommand(
+  state: ReplState,
+  line: string,
+  read: (file: string) => string,
+): ReplAnswer {
+  const s = line.trim()
+  const answer = (out: string, next?: Partial<ReplState>): ReplAnswer => {
+    const st = { ...state, ...(next ?? {}) }
+    return {
+      close: false,
+      out: st.jsonl ? exactJSON({ ok: true, out }) : out,
+      state: st,
+    }
+  }
+  const refuse = (out: string): ReplAnswer => ({
+    close: false,
+    out: state.jsonl ? exactJSON({ ok: false, out }) : out,
+    state,
+  })
+
+  if ('' === s) {
+    return { close: false, out: '', state }
+  }
+
+  if (!s.startsWith(':')) {
+    const res = evalSource(new Aontu(), s, state.mode)
+    return res.ok ? answer(res.text) : refuse(res.text)
+  }
+
+  const sp = s.indexOf(' ')
+  const cmd = sp < 0 ? s : s.slice(0, sp)
+  const arg = sp < 0 ? '' : s.slice(sp + 1).trim()
+
+  switch (cmd) {
+    case ':help':
+      // Trimmed: the loop adds the newline, and the Go REPL answers
+      // the same string — a help text that differed by a blank line
+      // between the ports would be a parity diff in the one output
+      // every user sees first.
+      return answer(HELP.replace(/\n$/, ''))
+
+    case ':canon':
+      return answer('canon output', { mode: 'canon' })
+
+    case ':json':
+      return answer('json output', { mode: 'json' })
+
+    case ':quit':
+    case ':exit':
+      return { close: true, out: '', state }
+
+    case ':load': {
+      if ('' === arg) {
+        return refuse(':load needs a file')
+      }
+      let src: string
+      try {
+        src = read(arg)
+      }
+      catch (err: any) {
+        return refuse(`cannot read ${arg}: ${err.message}`)
+      }
+      // Evaluated ONCE, and what is held is the source: parsed trees
+      // are single-use, so every later question re-evaluates from the
+      // text rather than reusing a tree that has already been spent.
+      const res = evalSource(new Aontu({ path: arg }), src, state.mode)
+      return res.ok
+        ? answer(`loaded: ${arg}\n${res.text}`, { name: arg, src })
+        : refuse(res.text)
+    }
+
+    case ':get':
+    case ':keys':
+    case ':why': {
+      const src = replLoaded(state)
+      if (null == src) {
+        return refuse('nothing loaded (try :load <file>)')
+      }
+      const path = '' === arg ? '$' : arg
+      if (':why' === cmd) {
+        const report = why(src, path, { path: state.name })
+        return report.ok
+          ? answer(renderWhyText(report.record as WhyRecord))
+          : refuse(report.findings.map(renderFinding).join('\n'))
+      }
+      const view: QueryView = ':keys' === cmd
+        ? 'keys' : 'canon' === state.mode ? 'canon' : 'json'
+      const report = get(src, path, { view, path: state.name })
+      return report.ok
+        ? answer(report.out)
+        : refuse(report.findings.map(renderFinding).join('\n'))
+    }
+
+    default:
+      return refuse(`unknown command: ${s} (try :help)`)
+  }
+}
+
+
+function runRepl(initialMode: Mode, jsonl: boolean): void {
+  let state: ReplState = { mode: initialMode, jsonl }
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: 'aontu> ',
+    prompt: jsonl ? '' : 'aontu> ',
   })
 
-  process.stdout.write(
-    `Aontu v${version()} REPL — :help for commands, :quit to exit\n`)
+  if (!jsonl) {
+    process.stdout.write(
+      `Aontu v${version()} REPL — :help for commands, :quit to exit\n`)
+  }
   rl.prompt()
 
   rl.on('line', (line) => {
-    const s = line.trim()
-
-    if ('' === s) {
-      rl.prompt()
+    const res = replCommand(state, line, (f) => readFileSync(f, 'utf8'))
+    state = res.state
+    if (res.close) {
+      rl.close()
       return
     }
-
-    if (s.startsWith(':')) {
-      switch (s) {
-        case ':help': process.stdout.write(HELP); break
-        case ':canon': mode = 'canon'; process.stdout.write('canon output\n'); break
-        case ':json': mode = 'json'; process.stdout.write('json output\n'); break
-        case ':quit': case ':exit': rl.close(); return
-        default: process.stdout.write(`unknown command: ${s} (try :help)\n`)
-      }
-      rl.prompt()
-      return
+    if ('' !== res.out) {
+      process.stdout.write(res.out + '\n')
     }
-
-    const res = evalSource(aontu, s, mode)
-    process.stdout.write(res.text + '\n')
     rl.prompt()
   })
 
@@ -197,15 +502,18 @@ const VET_EXIT: Record<VetVerdict, number> = {
 const VET_HELP = 'aontu vet <schema> <data> [more-data...] (try --help)'
 
 
+type VetFormat = 'text' | 'json' | 'sarif'
+
 type VetArgs = {
   help?: boolean
   schema: string
   data: string[]
-  format: 'text' | 'json'
+  format: VetFormat
   at?: string
   closed?: boolean
   partial?: boolean
   maxErrors?: number
+  watch?: boolean
 }
 
 
@@ -213,11 +521,12 @@ type VetArgs = {
 // throwing, so the caller owns the exit code.
 function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
   const files: string[] = []
-  let format: 'text' | 'json' = 'text'
+  let format: VetFormat = 'text'
   let at: string | undefined
   let closed = false
   let partial = false
   let maxErrors: number | undefined
+  let watch = false
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -238,8 +547,8 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
     }
     else if ('--format' === arg) {
       const f = argv[++i]
-      if ('text' !== f && 'json' !== f) {
-        return { err: `aontu: --format needs text or json` }
+      if ('text' !== f && 'json' !== f && 'sarif' !== f) {
+        return { err: `aontu: --format needs text, json or sarif` }
       }
       format = f
     }
@@ -264,6 +573,9 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
     else if ('--partial' === arg) {
       partial = true
     }
+    else if ('--watch' === arg) {
+      watch = true
+    }
     else if (arg.startsWith('-')) {
       return { err: `aontu: unknown vet option ${arg} (try --help)` }
     }
@@ -285,6 +597,7 @@ function parseVetArgs(argv: string[]): { args?: VetArgs; err?: string } {
       closed,
       partial,
       maxErrors,
+      watch,
     },
   }
 }
@@ -345,6 +658,14 @@ function renderVetJson(report: VetReport): string {
 }
 
 
+// The machine-interchange form (G2 phase 5): SARIF 2.1.0, rendered by
+// the library (ts/src/report-sarif.ts) so an embedder gets the same
+// bytes the CLI prints.
+function renderVetSarif(report: VetReport): string {
+  return sarifReport(report, version())
+}
+
+
 // The worst verdict wins across data files: a run that is invalid
 // anywhere is invalid, and a schema that cannot stand up makes every
 // file's verdict moot.
@@ -356,19 +677,11 @@ const VET_RANK: Record<VetVerdict, number> = {
 }
 
 
-function runVet(argv: string[]): number {
-  const parsed = parseVetArgs(argv)
-  if (null != parsed.err) {
-    process.stderr.write(parsed.err + '\n')
-    return 2
-  }
-  const args = parsed.args as VetArgs
-
-  if (true === args.help) {
-    process.stdout.write(HELP)
-    return 0
-  }
-
+// One complete vet run: read every file, vet each data document, print
+// one report, return the exit class. Split from runVet so `--watch` can
+// repeat it — the files are re-read on every run, which is the point of
+// watching them.
+function vetOnce(args: VetArgs): number {
   let schemaSrc: string
   const sources: { file: string; src: string }[] = []
   try {
@@ -428,11 +741,1400 @@ function runVet(argv: string[]): number {
     truncated: truncated || cap < findings.length,
     findings: kept,
   }
-  const text = 'json' === args.format
-    ? renderVetJson(report) : renderVetText(report)
+  const text = 'json' === args.format ? renderVetJson(report) :
+    'sarif' === args.format ? renderVetSarif(report) :
+      renderVetText(report)
 
   process.stdout.write(text + '\n')
   return VET_EXIT[verdict]
+}
+
+
+// How often `--watch` polls for a change. Polling by mtime+size rather
+// than fs.watch: the design asks for "re-run on file mtime change", and
+// the native watcher's semantics differ by platform (rename versus
+// change events, editors that replace the inode) in exactly the ways
+// that made every build tool fall back to polling.
+const WATCH_POLL_MS = 100
+
+
+function watchSignature(files: string[]): string {
+  return files.map((f) => {
+    // throwIfNoEntry, not try/catch: a file mid-save can be briefly
+    // absent, and "gone" is a state to notice, not an error to die on.
+    const stat = statSync(f, { throwIfNoEntry: false })
+    return null == stat ? 'gone' : `${stat.mtimeMs}:${stat.size}`
+  }).join('\n')
+}
+
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((done) => setTimeout(done, ms))
+}
+
+
+// Resolve true when any watched file's signature moves off `before`.
+// This is the real waiter: it never resolves false, so a real watch
+// runs until the process is interrupted; tests inject their own waiter
+// to bound the loop, and pass a short pollMs when they drive this one
+// directly. The interval is a required argument (the command passes
+// WATCH_POLL_MS) so there is no defaulting branch a test could never
+// take.
+//
+// The BASELINE is an argument, not a snapshot taken here: the loop
+// records it BEFORE each vet run, so a save landing between the run's
+// reads and the wait still compares as a change. A waiter that
+// snapshotted on entry would adopt that unvetted save as its baseline
+// and wait indefinitely on a stale report.
+async function watchChange(
+  files: string[], before: string, pollMs: number): Promise<boolean> {
+  for (;;) {
+    await sleep(pollMs)
+    if (watchSignature(files) !== before) {
+      return true
+    }
+  }
+}
+
+
+type VetWaiter = (files: string[], before: string) => Promise<boolean>
+
+
+// The waiter the command runs with: the real change-poller at the real
+// interval. Named (rather than inlined at the runVet call) so the
+// production waiter itself is directly testable.
+const vetWaiter: VetWaiter = (files, before) =>
+  watchChange(files, before, WATCH_POLL_MS)
+
+
+// The watch loop: one report per run, one run per change, streaming to
+// stdout. An unreadable file mid-watch reports (exit class 2 from
+// vetOnce) and keeps watching — a file being rewritten is briefly
+// unreadable, and dying on it would make the mode useless for the very
+// moment it exists for.
+async function watchVet(args: VetArgs, wait: VetWaiter): Promise<number> {
+  const files = [args.schema, ...args.data]
+  let before = watchSignature(files)
+  let code = vetOnce(args)
+  while (await wait(files, before)) {
+    before = watchSignature(files)
+    code = vetOnce(args)
+  }
+  return code
+}
+
+
+// The vet verb. Non-watch runs are synchronous and return the exit
+// class directly; `--watch` returns a promise that resolves only when
+// the waiter says stop (never, for the real one).
+function runVet(argv: string[], wait?: VetWaiter): number | Promise<number> {
+  const parsed = parseVetArgs(argv)
+  if (null != parsed.err) {
+    process.stderr.write(parsed.err + '\n')
+    return 2
+  }
+  const args = parsed.args as VetArgs
+
+  if (true === args.help) {
+    process.stdout.write(HELP)
+    return 0
+  }
+
+  if (true === args.watch) {
+    return watchVet(args, wait ?? vetWaiter)
+  }
+
+  return vetOnce(args)
+}
+
+
+// ---------------------------------------------------------------------
+// The subsumption verbs (G3 phase 3): `subsume` asks the query once,
+// `breaking` asks it between a document and its own earlier versions.
+
+const SUBSUME_HELP = 'aontu subsume <general> <specific> (try --help)'
+const BREAKING_HELP =
+  'aontu breaking --against <file|git#rev> <file> (try --help)'
+
+type SubsumeFormat = 'text' | 'json'
+
+// Exit classes mirror vet's convention: 3 is "the truth is not yet
+// settled", which is exactly what undecided means here — and a gate
+// that shrugs is not a gate, so undecided FAILS by default.
+const SUBSUME_EXIT: Record<SubsumeVerdict, number> = {
+  subsumes: 0,
+  does_not_subsume: 1,
+  undecided: 3,
+  error: 4,
+}
+
+type SubsumeArgs = {
+  help?: boolean
+  general: string
+  specific: string
+  profile?: SubsumeProfile
+  at?: string
+  format: SubsumeFormat
+}
+
+function parseSubsumeArgs(argv: string[]): { args?: SubsumeArgs; err?: string } {
+  const files: string[] = []
+  let profile: SubsumeProfile | undefined
+  let at: string | undefined
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      return { args: { help: true, general: '', specific: '', format } }
+    }
+    if ('--profile' === arg) {
+      const p = argv[++i]
+      if ('values' !== p && 'defaults' !== p && 'gen' !== p) {
+        return { err: 'aontu: --profile needs values, defaults or gen' }
+      }
+      profile = p
+    }
+    else if ('--at' === arg) {
+      at = argv[++i]
+      if (null == at) {
+        return { err: 'aontu: --at needs a path' }
+      }
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        return { err: 'aontu: --format needs text or json' }
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      return { err: `aontu: unknown subsume option ${arg} (try --help)` }
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (2 !== files.length) {
+    return {
+      err: 'aontu: subsume needs a general and a specific file\n' +
+        SUBSUME_HELP,
+    }
+  }
+
+  return {
+    args: { general: files[0], specific: files[1], profile, at, format },
+  }
+}
+
+function renderSubsumeText(report: SubsumeReport): string {
+  const head = `verdict: ${report.verdict}`
+  if (0 === report.findings.length) {
+    return head
+  }
+  return [head, ''].concat(report.findings.map(renderFinding)).join('\n')
+}
+
+function renderSubsumeJson(report: SubsumeReport): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'subsume' },
+    verdict: report.verdict,
+    findings: report.findings,
+  }, 2)
+}
+
+function runSubsume(argv: string[]): number {
+  const parsed = parseSubsumeArgs(argv)
+  if (null != parsed.err) {
+    process.stderr.write(parsed.err + '\n')
+    return 2
+  }
+  const args = parsed.args as SubsumeArgs
+
+  if (true === args.help) {
+    process.stdout.write(HELP)
+    return 0
+  }
+
+  let generalSrc: string, specificSrc: string
+  try {
+    generalSrc = readFileSync(args.general, 'utf8')
+    specificSrc = readFileSync(args.specific, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = subsume(generalSrc, specificSrc, {
+    profile: args.profile,
+    at: args.at,
+    generalUrl: args.general,
+    specificUrl: args.specific,
+    generalPath: args.general,
+    specificPath: args.specific,
+  })
+
+  const text = 'json' === args.format
+    ? renderSubsumeJson(report)
+    : renderSubsumeText(report)
+  process.stdout.write(text + '\n')
+  return SUBSUME_EXIT[report.verdict]
+}
+
+
+type BreakingMode = 'backward' | 'forward' | 'full' | 'none'
+
+type BreakingArgs = {
+  help?: boolean
+  file: string
+  against: string[]
+  mode?: BreakingMode
+  allowUndecided: boolean
+  allowDeprecatedRemoval: boolean
+  format: SubsumeFormat
+}
+
+function parseBreakingArgs(
+  argv: string[]): { args?: BreakingArgs; err?: string } {
+  const files: string[] = []
+  const against: string[] = []
+  let mode: BreakingMode | undefined
+  let allowUndecided = false
+  let allowDeprecatedRemoval = false
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      return {
+        args: {
+          help: true, file: '', against: [],
+          allowUndecided, allowDeprecatedRemoval, format,
+        },
+      }
+    }
+    if ('--against' === arg) {
+      const a = argv[++i]
+      if (null == a) {
+        return { err: 'aontu: --against needs a file path or git#<rev>' }
+      }
+      against.push(a)
+    }
+    else if ('--mode' === arg) {
+      const m = argv[++i]
+      if ('backward' !== m && 'forward' !== m && 'full' !== m) {
+        return { err: 'aontu: --mode needs backward, forward or full' }
+      }
+      mode = m
+    }
+    else if ('--allow-undecided' === arg) {
+      allowUndecided = true
+    }
+    else if ('--allow-deprecated-removal' === arg) {
+      allowDeprecatedRemoval = true
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        return { err: 'aontu: --format needs text or json' }
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      return { err: `aontu: unknown breaking option ${arg} (try --help)` }
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length || 0 === against.length) {
+    return {
+      err: 'aontu: breaking needs one file and at least one --against\n' +
+        BREAKING_HELP,
+    }
+  }
+
+  return {
+    args: {
+      file: files[0], against, mode,
+      allowUndecided, allowDeprecatedRemoval, format,
+    },
+  }
+}
+
+// Resolve one --against spelling to source text. `git#<rev>` shells out
+// to `git show <rev>:./<basename>` from the file's own directory — no
+// embedded git, and the `./` prefix makes git resolve the path relative
+// to that directory rather than the repository root. Returns undefined
+// (with the message already printed) on failure.
+function againstSource(spec: string, file: string): string | undefined {
+  if (!spec.startsWith('git#')) {
+    try {
+      return readFileSync(spec, 'utf8')
+    }
+    catch (err: any) {
+      process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+      return undefined
+    }
+  }
+
+  const rev = spec.slice('git#'.length)
+  if ('' === rev) {
+    process.stderr.write('aontu: --against git# needs a revision\n')
+    return undefined
+  }
+  try {
+    // Lazy import: the dependency exists only when a git spelling is
+    // actually used, so plain runs never pay for it.
+    const { execFileSync } = require('node:child_process')
+    const dir = dirname(resolve(file))
+    const rel = './' + resolve(file).slice(dir.length + 1)
+    return execFileSync('git', ['show', `${rev}:${rel}`], {
+      cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    })
+  }
+  catch (err: any) {
+    const detail = String(err.stderr ?? err.message).trim().split('\n')[0]
+    process.stderr.write(`aontu: cannot resolve ${spec}: ${detail}\n`)
+    return undefined
+  }
+}
+
+// The document's own compatibility declaration: `$.aontu_policy.compat`,
+// a disjunction whose default is the declared mode. Undefined when the
+// key is absent or does not spell a mode.
+function policyCompat(newSrc: string, path: string): BreakingMode | undefined {
+  const aontu = new Aontu()
+  const ctx = aontu.ctx({ collect: true })
+  const v: any = aontu.unify(newSrc, { path }, ctx)
+  if (0 < ctx.err.length || true === v?.isNil) {
+    return undefined
+  }
+  let compat: any = v?.peg?.aontu_policy?.peg?.compat
+  if (null == compat) {
+    return undefined
+  }
+  if (true === compat.isDisjunct && Array.isArray(compat.peg)) {
+    compat = compat.peg.find((m: any) => true === m?.isPref) ?? compat.peg[0]
+  }
+  if (true === compat.isPref) {
+    compat = compat.peg
+  }
+  const m = true === compat?.isString ? compat.peg : undefined
+  return 'backward' === m || 'forward' === m || 'full' === m || 'none' === m
+    ? m : undefined
+}
+
+// Is the evaluated old version's value at the finding path deprecated?
+// The --allow-deprecated-removal downgrade (G3 phase 4): removing (or
+// otherwise changing) a value the old version already deprecated warns
+// instead of breaking. The Go port exports the same reader as
+// aontu.DeprecatedAt.
+function deprecatedAt(oldSrc: string, path: string, filePath: string): boolean {
+  const aontu = new Aontu()
+  const ctx = aontu.ctx({ collect: true })
+  const v: any = aontu.unify(oldSrc, { path: filePath }, ctx)
+  if (0 < ctx.err.length || true === v?.isNil) {
+    return false
+  }
+  const segs = path.replace(/^\$/, '').split('.').filter((p) => '' !== p)
+  let node: any = v
+  for (const seg of segs) {
+    if (true === node?.isMap) {
+      node = node.peg?.[seg]
+    }
+    else if (true === node?.isList) {
+      node = node.peg?.[Number(seg)]
+    }
+    else {
+      return false
+    }
+    if (null == node) {
+      return false
+    }
+  }
+  return null != node?.deprecation
+}
+
+
+// Verdict aggregation for breaking: an error anywhere makes the run an
+// error; otherwise a witness anywhere makes it breaking; otherwise an
+// open question anywhere leaves it undecided.
+const BREAKING_RANK: Record<SubsumeVerdict, number> = {
+  subsumes: 0,
+  undecided: 1,
+  does_not_subsume: 2,
+  error: 3,
+}
+
+const BREAKING_EXIT: Record<SubsumeVerdict, number> = SUBSUME_EXIT
+
+const BREAKING_VERDICT: Record<SubsumeVerdict, string> = {
+  subsumes: 'compatible',
+  does_not_subsume: 'breaking',
+  undecided: 'undecided',
+  error: 'error',
+}
+
+function runBreaking(argv: string[]): number {
+  const parsed = parseBreakingArgs(argv)
+  if (null != parsed.err) {
+    process.stderr.write(parsed.err + '\n')
+    return 2
+  }
+  const args = parsed.args as BreakingArgs
+
+  if (true === args.help) {
+    process.stdout.write(HELP)
+    return 0
+  }
+
+  let newSrc: string
+  try {
+    newSrc = readFileSync(args.file, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  // The declared mode: --mode overrides the document's own policy;
+  // neither means backward, the index's framing (v1-valid documents
+  // stay valid).
+  const mode: BreakingMode =
+    args.mode ?? policyCompat(newSrc, args.file) ?? 'backward'
+
+  if ('none' === mode) {
+    // The document declares no compatibility promise: nothing to check.
+    const report: SubsumeReport = { verdict: 'subsumes', findings: [] }
+    const text = 'json' === args.format
+      ? renderBreakingJson(report, mode)
+      : renderBreakingText(report)
+    process.stdout.write(text + '\n')
+    return 0
+  }
+
+  let worst: SubsumeVerdict = 'subsumes'
+  const findings: VetFinding[] = []
+
+  for (const spec of args.against) {
+    const oldSrc = againstSource(spec, args.file)
+    if (null == oldSrc) {
+      return 2
+    }
+
+    // backward: the NEW document is the general side — every old
+    // instance must still be admitted. forward: the old one is.
+    const checks: Array<{ general: [string, string], specific: [string, string] }> = []
+    if ('backward' === mode || 'full' === mode) {
+      checks.push({ general: [newSrc, args.file], specific: [oldSrc, spec] })
+    }
+    if ('forward' === mode || 'full' === mode) {
+      checks.push({ general: [oldSrc, spec], specific: [newSrc, args.file] })
+    }
+
+    const oldPath = spec.startsWith('git#') ? args.file : spec
+
+    for (const check of checks) {
+      const report = subsume(check.general[0], check.specific[0], {
+        generalUrl: check.general[1],
+        specificUrl: check.specific[1],
+        // A git#rev source has no directory of its own; its relative
+        // loads resolve as the working file's do.
+        generalPath: check.general[1].startsWith('git#')
+          ? args.file : check.general[1],
+        specificPath: check.specific[1].startsWith('git#')
+          ? args.file : check.specific[1],
+      })
+
+      // The deprecated-removal downgrade: a finding about a value the
+      // OLD version already deprecated becomes a warning, and warnings
+      // do not move the verdict. Deprecate-then-remove is the
+      // supported rename path (the design's own sequencing).
+      let verdict = report.verdict
+      if (args.allowDeprecatedRemoval) {
+        let liveFindings = 0
+        for (const f of report.findings) {
+          if ('error' === f.severity &&
+            deprecatedAt(oldSrc, f.path, oldPath)) {
+            f.severity = 'warning'
+          }
+          if ('error' === f.severity) {
+            liveFindings++
+          }
+        }
+        if ('does_not_subsume' === verdict && 0 === liveFindings) {
+          verdict = 'subsumes'
+        }
+      }
+
+      if (BREAKING_RANK[worst] < BREAKING_RANK[verdict]) {
+        worst = verdict
+      }
+      findings.push(...report.findings)
+    }
+  }
+
+  const report: SubsumeReport = { verdict: worst, findings }
+  const text = 'json' === args.format
+    ? renderBreakingJson(report, mode)
+    : renderBreakingText(report)
+  process.stdout.write(text + '\n')
+
+  if ('undecided' === worst && args.allowUndecided) {
+    return 0
+  }
+  return BREAKING_EXIT[worst]
+}
+
+function renderBreakingText(report: SubsumeReport): string {
+  const head = `verdict: ${BREAKING_VERDICT[report.verdict]}`
+  if (0 === report.findings.length) {
+    return head
+  }
+  return [head, ''].concat(report.findings.map(renderFinding)).join('\n')
+}
+
+function renderBreakingJson(report: SubsumeReport, mode: string): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'breaking', mode },
+    verdict: BREAKING_VERDICT[report.verdict],
+    findings: report.findings,
+  }, 2)
+}
+
+
+// ---------------------------------------------------------------------
+// The trim reporter (G3 phase 6): report redundant entries as paths.
+// Report-only — REWRITING needs G7's format-preserving patch surface —
+// which is why --check is REQUIRED rather than defaulted: `aontu trim
+// f.aon` reads as "trim this file", and doing something else silently
+// is worse than saying so.
+
+const TRIM_HELP = 'aontu trim --check <file> (try --help)'
+
+const TRIM_EXIT: Record<TrimVerdict, number> = {
+  clean: 0,
+  redundant: 1,
+  error: 4,
+}
+
+function runTrim(argv: string[]): number {
+  const files: string[] = []
+  let check = false
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--check' === arg) {
+      check = true
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown trim option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length) {
+    process.stderr.write(`aontu: trim needs one file\n${TRIM_HELP}\n`)
+    return 2
+  }
+  if (!check) {
+    process.stderr.write(
+      'aontu: trim only reports for now — rewriting needs a format-' +
+      'preserving editor (G7); pass --check\n')
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(files[0], 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = trimCheck(src, { path: files[0] })
+  const text = 'json' === format
+    ? renderTrimJson(report)
+    : renderTrimText(report)
+  process.stdout.write(text + '\n')
+  return TRIM_EXIT[report.verdict]
+}
+
+function renderTrimText(report: TrimReport): string {
+  const head = `verdict: ${report.verdict}`
+  if (0 === report.redundant.length) {
+    return head
+  }
+  return [head, ''].concat(report.redundant).join('\n')
+}
+
+function renderTrimJson(report: TrimReport): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'trim' },
+    verdict: report.verdict,
+    redundant: report.redundant,
+  }, 2)
+}
+
+
+// The relation reporter (G4 phase 5): acyclicity and inverse
+// consistency over the edge set. A verb of its own rather than a leg of
+// `vet`, for the reason `trim` is one: vet answers "does this DOCUMENT
+// satisfy that SCHEMA", and these are facts about one finished model,
+// with no schema on the other side of the question.
+
+const RELATIONS_HELP = 'aontu relations <file> (try --help)'
+
+const RELATIONS_EXIT: Record<RelationVerdict, number> = {
+  pass: 0,
+  fail: 1,
+  error: 4,
+}
+
+const MOD_HELP = 'aontu mod tidy|vendor|manifest [dir] (try --help)'
+
+// The module tooling (G6 phase 3, ts/src/mod-tool.ts). Two
+// subcommands, both LOCAL: `tidy` resolves the closure from what is in
+// the stores and rewrites the lockfile, `vendor` materialises the
+// locked closure into the project.
+//
+// `get` and `publish` are the NETWORK half of the design and are not in
+// this build. They are named here rather than left to fall out as an
+// unknown subcommand, because a reader of the design will type them and
+// deserves to be told which half is missing rather than that the word
+// is wrong.
+function runMod(argv: string[]): number {
+  const rest: string[] = []
+  let format: SubsumeFormat = 'text'
+  let against: string | undefined
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if ('--against' === arg) {
+      const a = argv[++i]
+      if (null == a) {
+        process.stderr.write('aontu: --against needs a module directory\n')
+        return 2
+      }
+      against = a
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown mod option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      rest.push(arg)
+    }
+  }
+
+  const sub = rest[0]
+  const dir = rest[1] ?? '.'
+
+  if ('get' === sub || 'publish' === sub) {
+    process.stderr.write(
+      'aontu: mod ' + sub + ' needs a registry client, which this build ' +
+      'does not ship (docs/capability-review/g6-distribution.md)\n')
+    return 2
+  }
+
+  if (!MOD_SUBS.includes(sub) || 2 < rest.length) {
+    process.stderr.write(
+      `aontu: mod needs tidy, vendor or manifest\n${MOD_HELP}\n`)
+    return 2
+  }
+
+  // `--against` gates a manifest and means nothing to the other two;
+  // accepting it there would say it had been honoured.
+  if (null != against && 'manifest' !== sub) {
+    process.stderr.write('aontu: --against is a manifest option\n')
+    return 2
+  }
+
+  const report =
+    'tidy' === sub ? modTidy(dir, modToolOptions()) :
+      'vendor' === sub ? modVendor(dir, modToolOptions()) :
+        modManifest(dir, modToolOptions(), against)
+
+  process.stdout.write(('json' === format ?
+    exactJSON({ aontu: { version: version(), verb: 'mod ' + sub }, ...report },
+      2) :
+    modText(sub, report)) + '\n')
+
+  return MOD_EXIT[report.verdict]
+}
+
+
+const MOD_SUBS = ['tidy', 'vendor', 'manifest']
+
+// The verdict classes: `ok` 0, a refused gate 1, an open question 3, a
+// document that does not stand up 4 -- `subsume`'s classes, because a
+// manifest gate IS a subsumption check and a caller reading exit codes
+// should not have to learn a second table.
+type ModVerdict =
+  ModTidyReport['verdict'] |
+  ModVendorReport['verdict'] |
+  ModManifestReport['verdict']
+
+const MOD_EXIT: Record<ModVerdict, number> = {
+  ok: 0,
+  missing: 1,
+  breaking: 1,
+  undecided: 3,
+  error: 4,
+}
+
+
+// The tooling's evaluator: the same standalone evaluation the module
+// resolver verifies with (ts/src/mod.ts), and for the same reason —
+// only the engine can say what a module MEANS.
+function modToolOptions() {
+  return {
+    cache: modCacheDir(),
+    eval: (src: string, path: string) => {
+      const a0 = new Aontu()
+      const ctx = a0.ctx({ collect: true })
+      const val = a0.unify(src, { path }, ctx)
+      return {
+        gen: val.gen(a0.ctx({ collect: true })),
+        hash: canonHash(val),
+        canon: val.canon,
+      }
+    },
+  }
+}
+
+
+function modText(sub: string, report: any): string {
+  const lines = ['verdict: ' + report.verdict]
+
+  if ('manifest' === sub) {
+    if ('' !== report.mod) {
+      lines.push(report.mod + ' ' + report.version)
+      lines.push('config: ' + report.config)
+    }
+    for (const key of Object.keys(report.annotations).sort()) {
+      lines.push(key + ': ' + report.annotations[key])
+    }
+    for (const file of report.files) {
+      lines.push('layer: ' + file)
+    }
+    for (const f of report.findings) {
+      lines.push(f.path + ': ' + f.message)
+    }
+    // What a manifest lacks is a declaration the module does not make
+    // or an entry file that is not there, and neither is something a
+    // fetch would supply -- so this is not the tail the other two
+    // subcommands share. The name says which kind it is: `mod.version`
+    // is a declaration, `service.aon` is a file.
+    for (const miss of report.missing) {
+      lines.push(miss + ': missing')
+    }
+    return lines.join('\n')
+  }
+
+  const done: any[] = 'tidy' === sub ? report.lock : report.vendored
+  for (const item of done) {
+    lines.push('tidy' === sub ?
+      item.mod + ' ' + item.v + ' ' + item.canon : '' + item)
+  }
+  for (const miss of report.missing) {
+    lines.push(miss + ': not fetched (run: aontu mod get)')
+  }
+  return lines.join('\n')
+}
+
+
+function runRelations(argv: string[]): number {
+  const files: string[] = []
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown relations option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length) {
+    process.stderr.write(`aontu: relations needs one file\n${RELATIONS_HELP}\n`)
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(files[0], 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = relationCheck(src, { path: files[0] })
+  const text = 'json' === format
+    ? renderRelationsJson(report)
+    : renderRelationsText(report)
+  process.stdout.write(text + '\n')
+  return RELATIONS_EXIT[report.verdict]
+}
+
+function renderRelationsText(report: RelationReport): string {
+  const head = `verdict: ${report.verdict}`
+  if (0 === report.findings.length) {
+    return head
+  }
+  const lines = report.findings.map((f) =>
+    'relation_cycle' === f.code
+      ? `${f.at}  ${f.relation}: cycle ${f.detail.join(' -> ')}`
+      : `${f.at}  ${f.relation}: ${f.detail[1]} does not list ` +
+      `${f.detail[0]} under ${f.detail[2]}`)
+  return [head, ''].concat(lines).join('\n')
+}
+
+function renderRelationsJson(report: RelationReport): string {
+  return exactJSON({
+    aontu: { version: version(), verb: 'relations' },
+    verdict: report.verdict,
+    findings: report.findings,
+  }, 2)
+}
+
+
+// ---------------------------------------------------------------------
+// The canon-hash (G6 phase 1): the pin an agent, a lockfile or a
+// registry stores for "this module, this meaning". The hash covers the
+// module evaluated STANDALONE -- its own include closure resolved and
+// unified at its own root, before any consumer context -- which is what
+// makes the pin transitive: an edit two includes deep changes the
+// unified root, hence the hash.
+
+const HASH_HELP = 'aontu hash <file> (try --help)'
+
+function runHash(argv: string[]): number {
+  const files: string[] = []
+  let form = false
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--form' === arg) {
+      form = true
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown hash option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length) {
+    process.stderr.write(`aontu: hash needs one file\n${HASH_HELP}\n`)
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(files[0], 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  // The file's own directory is the include base, as every verb
+  // resolves a named file (vet's aontuForPath rule).
+  const aontu = new Aontu()
+  const ctx = aontu.ctx({ collect: true })
+  const v: any = aontu.unify(src, { path: files[0] }, ctx)
+  if (0 < ctx.err.length || true === v?.isNil) {
+    // A document that does not stand up on its own has no meaning to
+    // pin, and a hash of a broken evaluation would be a pin that
+    // silently agrees with every other broken evaluation.
+    process.stderr.write(
+      `aontu: ${files[0]} does not evaluate on its own; nothing to hash\n`)
+    return 4
+  }
+
+  const text = 'json' === format
+    ? exactJSON({
+      aontu: { version: version(), verb: 'hash' },
+      hash: canonHash(v),
+      form: hcanon(v),
+    }, 2)
+    : (form ? hcanon(v) : canonHash(v))
+  process.stdout.write(text + '\n')
+  return 0
+}
+
+
+// ---------------------------------------------------------------------
+// The query surface (G7 phase 1): one node of an evaluated document,
+// selected by path and rendered. Evaluation is still GLOBAL -- what
+// `get` buys is the size of the ANSWER, not the cost of producing it --
+// and the projections are lattice abstractions, each a valid Aontu
+// document that subsumes the truth it summarises.
+
+const GET_HELP = 'aontu get <path> <file> (try --help)'
+
+function runGet(argv: string[]): number {
+  const rest: string[] = []
+  let view: QueryView = 'json'
+  let depth: number | undefined
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('-c' === arg || '--canon' === arg) {
+      view = 'canon'
+    }
+    else if ('--keys' === arg) {
+      view = 'keys'
+    }
+    else if ('--types' === arg) {
+      view = 'types'
+    }
+    else if ('--depth' === arg) {
+      const n = Number(argv[++i])
+      if (!Number.isInteger(n) || n < 1) {
+        process.stderr.write('aontu: --depth needs a positive integer\n')
+        return 2
+      }
+      depth = n
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown get option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      rest.push(arg)
+    }
+  }
+
+  if (2 !== rest.length) {
+    process.stderr.write(`aontu: get needs a path and one file\n${GET_HELP}\n`)
+    return 2
+  }
+  const [path, file] = rest
+
+  // ELIDING BELOW A DEPTH means rendering `top`, which JSON cannot
+  // say. Rather than switch the view silently -- the choice `trim
+  // --check` refused to make -- the combination is a usage error.
+  if (null != depth && 'canon' !== view && 'types' !== view) {
+    process.stderr.write(
+      'aontu: --depth needs --canon or --types (JSON cannot say top)\n')
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(file, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = get(src, path, { view, depth, path: file })
+  if ('json' === format) {
+    process.stdout.write(exactJSON({
+      aontu: { version: version(), verb: 'get' },
+      findings: report.findings,
+      ok: report.ok,
+      out: report.out,
+    }, 2) + '\n')
+  }
+  else if (report.ok) {
+    process.stdout.write(report.out + '\n')
+  }
+  else {
+    process.stderr.write(report.findings.map(renderFinding).join('\n') + '\n')
+  }
+
+  if (report.ok) {
+    return 0
+  }
+  // A path that names nothing is the QUESTION's answer -- exit 1, the
+  // "no" class -- while a document that does not stand up is exit 4,
+  // as it is for every other verb.
+  return 'no_path' === report.findings[0]?.code ? 1 : 4
+}
+
+
+// ---------------------------------------------------------------------
+// Provenance (G7 phase 3): WHY the value at a path holds — the ordered
+// contributions that met there, each with the site it was written at.
+// The positive twin of the vet report: errors explain what failed to
+// unify, this explains what did.
+
+const WHY_HELP = 'aontu why <path> <file> (try --help)'
+
+function runWhy(argv: string[]): number {
+  const rest: string[] = []
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown why option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      rest.push(arg)
+    }
+  }
+
+  if (2 !== rest.length) {
+    process.stderr.write(`aontu: why needs a path and one file\n${WHY_HELP}\n`)
+    return 2
+  }
+  const [path, file] = rest
+
+  let src: string
+  try {
+    src = readFileSync(file, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = why(src, path, { path: file })
+  if ('json' === format) {
+    process.stdout.write(exactJSON({
+      aontu: { version: version(), verb: 'why' },
+      findings: report.findings,
+      ok: report.ok,
+      ...(null == report.record ? {} : { record: report.record }),
+    }, 2) + '\n')
+  }
+  else if (report.ok) {
+    process.stdout.write(renderWhyText(report.record as WhyRecord) + '\n')
+  }
+  else {
+    process.stderr.write(report.findings.map(renderFinding).join('\n') + '\n')
+  }
+
+  if (report.ok) {
+    return 0
+  }
+  return 'no_path' === report.findings[0]?.code ? 1 : 4
+}
+
+
+// One contribution per line, numbered in source order, each with what
+// was written, where, and how it got here. A siteless contribution
+// prints no location rather than a `-1:-1` that means nothing —
+// exported for the direct test, because the site SHAPE allows one
+// while no document has yet produced one (ADR-002).
+function renderWhyText(record: WhyRecord): string {
+  const head = `${record.path} = ${record.value}`
+  if (0 === record.conjuncts.length) {
+    // A value written once and never met is a fact, not a failure.
+    return head + '\n  (no contributions: nothing met at this path)'
+  }
+  return [head].concat(record.conjuncts.map((c, i) => {
+    const where = -1 === c.site.row
+      ? ''
+      : `  ${'' === c.site.file ? '' : c.site.file + ':'}` +
+      `${c.site.row}:${c.site.col}`
+    return `  ${i + 1}. ${c.canon}${where}` +
+      ('literal' === c.role ? '' : `  (${c.role})`)
+  })).join('\n')
+}
+
+
+// ---------------------------------------------------------------------
+// The overlay patch verb (G7 phase 5): change a document by APPENDING
+// to an overlay, not by rewriting it. An overlay entry is just another
+// conjunct and unification is order-independent, so this needs no
+// rewriter — the format-preserving in-place edit is stage 2, and needs
+// a comment-preserving CST the parser stack does not have.
+
+const SET_HELP =
+  'aontu set <path>=<value> --entry <file> --overlay <file> (try --help)'
+
+function runSet(argv: string[]): number {
+  const assignments: string[] = []
+  let entry: string | undefined
+  let overlayFile: string | undefined
+  let dryRun = false
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--entry' === arg) {
+      entry = argv[++i]
+    }
+    else if ('--overlay' === arg) {
+      overlayFile = argv[++i]
+    }
+    else if ('--dry-run' === arg) {
+      dryRun = true
+    }
+    else if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown set option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      assignments.push(arg)
+    }
+  }
+
+  if (0 === assignments.length || null == entry || null == overlayFile) {
+    process.stderr.write(
+      `aontu: set needs assignments, --entry and --overlay\n${SET_HELP}\n`)
+    return 2
+  }
+
+  let entrySrc: string
+  try {
+    entrySrc = readFileSync(entry, 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  // An ABSENT overlay is the empty overlay, and the file is created by
+  // the write below: "append to the overlay" should not require the
+  // author to have made one first.
+  let overlaySrc = ''
+  try {
+    overlaySrc = readFileSync(overlayFile, 'utf8')
+  }
+  catch (err: any) {
+    if ('ENOENT' !== err?.code) {
+      process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+      return 2
+    }
+  }
+
+  const report = patch(entrySrc, overlaySrc, assignments, {
+    entryPath: entry,
+    overlayPath: overlayFile,
+  })
+
+  // WRITTEN ONLY WHEN IT HOLDS. A change that contradicts a pinned
+  // value is a question the author has to answer at the pinning site;
+  // leaving it in the overlay would leave the configuration broken
+  // while the exit code says so somewhere they may not be reading.
+  const wrote = !dryRun &&
+    'invalid' !== report.verdict && 'error' !== report.verdict
+  if (wrote) {
+    try {
+      writeFileSync(overlayFile, report.overlay, 'utf8')
+    }
+    catch (err: any) {
+      process.stderr.write(`aontu: cannot write ${overlayFile}: ${err.message}\n`)
+      return 2
+    }
+  }
+
+  if ('json' === format) {
+    process.stdout.write(exactJSON({
+      aontu: { version: version(), verb: 'set' },
+      appended: report.appended,
+      findings: report.findings,
+      overlay: report.overlay,
+      verdict: report.verdict,
+      written: wrote,
+    }, 2) + '\n')
+  }
+  else {
+    const head = `verdict: ${report.verdict}` +
+      (wrote ? `\nwrote: ${overlayFile}` : dryRun ? '\n(dry run)' : '')
+    const body = 0 === report.findings.length
+      ? [head]
+      : [head, ''].concat(report.findings.map(renderFinding))
+    ;(0 === report.findings.length ? process.stdout : process.stderr)
+      .write(body.join('\n') + '\n')
+  }
+
+  return VET_EXIT[report.verdict]
+}
+
+
+// ---------------------------------------------------------------------
+// The generated AGENTS.md stanza (G7 phase 6): the prose entrypoint,
+// derived from the definition, so it cannot drift from the formal
+// source it points at.
+
+const AGENTSMD_HELP = 'aontu agentsmd <file> (try --help)'
+
+function runAgentsMd(argv: string[]): number {
+  const files: string[] = []
+  let write: string | undefined
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--write' === arg) {
+      write = argv[++i]
+      if (null == write) {
+        process.stderr.write('aontu: --write needs a file\n')
+        return 2
+      }
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(
+        `aontu: unknown agentsmd option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length) {
+    process.stderr.write(
+      `aontu: agentsmd needs one file\n${AGENTSMD_HELP}\n`)
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(files[0], 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  const report = agentsMd(src, { name: files[0], path: files[0] })
+  if (!report.ok) {
+    process.stderr.write(
+      report.findings.map(renderFinding).join('\n') + '\n')
+    return 4
+  }
+
+  if (null == write) {
+    process.stdout.write(report.stanza)
+    return 0
+  }
+
+  // An ABSENT target is an empty one: `--write AGENTS.md` should not
+  // require the author to have made the file first.
+  let existing = ''
+  try {
+    existing = readFileSync(write, 'utf8')
+  }
+  catch (err: any) {
+    if ('ENOENT' !== err?.code) {
+      process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+      return 2
+    }
+  }
+
+  try {
+    writeFileSync(write, agentsMdSplice(existing, report.stanza), 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot write ${write}: ${err.message}\n`)
+    return 2
+  }
+  process.stdout.write(`wrote: ${write}\n`)
+  return 0
 }
 
 
@@ -455,19 +2157,88 @@ function finish(code: number): void {
 }
 
 
+// Parse a --trust argument value. Returns undefined for an unknown
+// spelling, so the caller owns the usage error.
+function parseTrustArg(value: string): TrustArg | undefined {
+  if ('system' === value) {
+    return { kind: 'system' }
+  }
+  if ('none' === value) {
+    return { kind: 'none' }
+  }
+  if ('root' === value) {
+    return { kind: 'root' }
+  }
+  if (value.startsWith('root:') && 'root:'.length < value.length) {
+    return { kind: 'root', dir: value.slice('root:'.length) }
+  }
+  return undefined
+}
+
+
 function main(argv: string[]): void {
   let mode: Mode = 'json'
   let file: string | undefined
+  let trust: TrustArg = { kind: 'system-warn' }
+  // The REPL's SESSION protocol (G7 phase 7): one JSON line per
+  // answer, so a harness can drive the session. Named --jsonl rather
+  // than the design's --json, which would read as the `:json` output
+  // mode the REPL already has.
+  let jsonl = false
 
   // Subcommand dispatch, and deliberately only for a FIRST argument:
   // `aontu vet` is the verb, while `aontu somefile vet` keeps meaning
   // what it always did. A file named `vet` is still reachable as
   // `aontu ./vet`.
+  //
+  // Promise.resolve either way: a non-watch run returns its exit class
+  // synchronously (and has already written its report), while `--watch`
+  // resolves only when the watch ends — so one await-shaped line serves
+  // both without a branch to keep covered.
   if ('vet' === argv[2]) {
-    return finish(runVet(argv.slice(3)))
+    return void Promise.resolve(runVet(argv.slice(3))).then(finish)
+  }
+  if ('subsume' === argv[2]) {
+    return finish(runSubsume(argv.slice(3)))
+  }
+  if ('breaking' === argv[2]) {
+    return finish(runBreaking(argv.slice(3)))
+  }
+  if ('agentsmd' === argv[2]) {
+    return finish(runAgentsMd(argv.slice(3)))
   }
 
-  for (const arg of argv.slice(2)) {
+  if ('set' === argv[2]) {
+    return finish(runSet(argv.slice(3)))
+  }
+
+  if ('why' === argv[2]) {
+    return finish(runWhy(argv.slice(3)))
+  }
+
+  if ('get' === argv[2]) {
+    return finish(runGet(argv.slice(3)))
+  }
+
+  if ('hash' === argv[2]) {
+    return finish(runHash(argv.slice(3)))
+  }
+
+  if ('mod' === argv[2]) {
+    return finish(runMod(argv.slice(3)))
+  }
+
+  if ('relations' === argv[2]) {
+    return finish(runRelations(argv.slice(3)))
+  }
+
+  if ('trim' === argv[2]) {
+    return finish(runTrim(argv.slice(3)))
+  }
+
+  const args = argv.slice(2)
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]
     if ('-c' === arg || '--canon' === arg) {
       mode = 'canon'
     }
@@ -479,6 +2250,26 @@ function main(argv: string[]): void {
       process.stdout.write(version() + '\n')
       return finish(0)
     }
+    else if ('--trust' === arg) {
+      const parsed = null == args[i + 1] ? undefined : parseTrustArg(args[++i])
+      if (null == parsed) {
+        process.stderr.write(
+          'aontu: --trust needs system, none, or root[:dir]\n')
+        return finish(2)
+      }
+      trust = parsed
+    }
+    else if ('--jsonl' === arg) {
+      jsonl = true
+    }
+    else if ('--include-root' === arg) {
+      const dir = args[++i]
+      if (null == dir) {
+        process.stderr.write('aontu: --include-root needs a directory\n')
+        return finish(2)
+      }
+      trust = { kind: 'root', dir }
+    }
     else if (arg.startsWith('-')) {
       process.stderr.write(`aontu: unknown option ${arg} (try --help)\n`)
       return finish(2)
@@ -489,19 +2280,25 @@ function main(argv: string[]): void {
   }
 
   if (null != file) {
-    finish(runFile(file, mode))
+    finish(runFile(file, mode, trust))
   }
   else if (process.stdin.isTTY) {
-    runRepl(mode)
+    runRepl(mode, jsonl)
   }
   else {
-    runStdin(mode).then((code) => finish(code))
+    runStdin(mode, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 8 */
+} /* node:coverage ignore next 13 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
 // calls main(process.argv) itself, so this module stays import-only.
 
 
-export { evalSource, main, runVet }
+export {
+  evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations,
+  runMod,
+  runHash, runGet,
+  runWhy, renderWhyText, runSet, runAgentsMd,
+  watchChange, watchSignature, vetWaiter, deprecatedAt,
+}

@@ -1,7 +1,7 @@
 # G4: Identity and typed relations
 
-*Status: design proposal — nothing implemented. Per-phase status and the
-corrections this document needs are in the
+*Status: ALL SIX PHASES have LANDED in both ports. Per-phase status and the corrections this
+document needs are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
 [capability review](index.md) (August 2026). This document expands
@@ -278,7 +278,14 @@ the same lifetime and placement as the ref-spread snapshot map in
 site. Each fixpoint pass, a position carrying an id unifies with
 the representative and updates it; positions converge across passes
 as chained references do today, within the `maxcc = 9` bound
-(`ts/src/unify.ts`). Whether bound exhaustion with an unconverged
+(`ts/src/unify.ts`).
+
+(As built, that is TWO walks per pass, not one — collect the
+representative over the whole tree, then write it back to every
+position. A single walk leaves the positions it already passed
+holding the pre-merge value, so the sites disagree about what the
+one entity is; see the departure note in
+[the register](progress.md#g4--identity-and-typed-relations).) Whether bound exhaustion with an unconverged
 merge is a distinct semantic error is owned by
 [G5](g5-trust-contract.md).
 
@@ -295,9 +302,17 @@ must pass unchanged under them:
 3. **Spread templates may not stamp one id onto every child.** An
    `id()` with a concrete argument inside an `&:` template is a
    located error (all children would merge into one entity). A
-   path-dependent argument is allowed — `&: id(svc/ + key()) & {…}`
-   gives each child a distinct id, resolved per destination by the
-   existing `spreadClone` machinery.
+   path-dependent argument is allowed — `&: id(key(0)) & {…}` gives
+   each child a distinct id, resolved per destination by the existing
+   `spreadClone` machinery.
+
+   (This line originally sketched `id(svc/ + key())`. There is no
+   string `+`, and `key()` reads one level UP — in a template applied
+   at the child position it names the BAG, so every child collides on
+   that one name. `key(0)` is the child's own key. The collision is a
+   defined result rather than a refusal: rule 3 is a syntactic guard
+   on CONSTANTS, and no parse-time check can know what a computed name
+   resolves to.)
 
 The entity/component distinction falls out free: a node with
 `id()` is an independent entity; a node without one is a component
@@ -355,7 +370,9 @@ Semantics:
   reference. Integrity is a unification-time property, per the
   review index — there is no vet-time deferral.
 - **Canon** renders the residual reparseably:
-  `"dependsOn":[refer($.std.Service)&"svc/auth", …]`.
+  `"dependsOn":[refer($.std.Service)&"svc/auth", …]`. (As built, a
+  RESOLVED refer is simply its address string — the link is the value —
+  so it is the *pending* residual that renders as a call.)
 - **Error data.** Failures carry both sites and the machine-facing
   details field established by [G1](g1-constraint-algebra.md);
   rendering into reports and codes is owned by
@@ -379,6 +396,13 @@ relations: dependsOn: $.std.Relation & {
 }
 ```
 
+(As built this is `aontu relations` / `relationCheck`, a verb of its
+own rather than a leg of `vet`: vet answers "does this DOCUMENT
+satisfy that SCHEMA" and these are facts about one finished model.
+`target` is not re-checked here — `refer(t)` already flows it into the
+addressed entity, checked by unification at the site. See
+[the register](progress.md#g4--identity-and-typed-relations).)
+
 The vet pass (delivered with G2's verb, reported via the G2 error
 contract) walks the unified tree before generation: it collects
 the edge set — (source entity, relation key, target address)
@@ -396,6 +420,12 @@ implementations, per [G5](g5-trust-contract.md).
 
 Ports, interfaces, and connections need no syntax — they are schemas
 (abbreviated sketch):
+
+(As built, four of the five schemas ship and the block is NOT wrapped
+in `hide()`; `Connection` waits on engine work, `Service` states
+itself rather than referencing `Component`, and `target` is optional.
+Each is explained in
+[the register](progress.md#g4--identity-and-typed-relations).)
 
 ```aon
 # std/system.aon (sketch)
@@ -434,7 +464,12 @@ entity ids do *not* embed versions.
 ### Downstream: what this buys the graph consumers
 
 The evaluation result gains two derived structures: an entity index
-(id → list of tree paths) and the relation edge set. Impact
+(id → list of tree paths) and the relation edge set. (As built, the
+edge set is the set of checked `refer` LINKS, each stamped at
+resolution so nothing has to guess which strings are addresses; phase
+5 filters it by declared relation rather than rebuilding it. See
+`result.graph` / `Aontu.Graph` in
+[the API reference](../reference-api.md).) Impact
 analysis ("what reaches `svc/auth`?"), reachability, and
 context-window-sized entity slices become traversals over them;
 their exposure — CLI verbs, projections, the MCP tool set — is

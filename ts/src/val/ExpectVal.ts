@@ -16,7 +16,6 @@ import {
 import { unite } from '../unify'
 
 import {
-  propagateMarks,
   explainOpen,
   ec,
   explainClose,
@@ -83,8 +82,10 @@ class ExpectVal extends FeatureVal {
 
 
   gen(ctx: AontuContext) {
-    // Unresolved expect cannot be generated, so always an error.
-    let nil = makeNilErr(
+    // Unresolved expect cannot be generated, so always an error. The
+    // CALL is the point -- it records the failure on ctx -- and there
+    // is no value to bind: generation answers nothing.
+    makeNilErr(
       ctx,
       'expect',
       this.peg,

@@ -17,6 +17,7 @@
 #           and class lookup falls back to the longest registered prefix.
 #   errcode : the spec mode (fixed).
 #   class : one of conflict | incomplete | reference | parse | budget |
+#           compat |
 #           internal (see below). Classes drive report verdicts and exit
 #           classes (docs/capability-review/g2-validation-verb.md), so a
 #           class change is a breaking change.
@@ -34,6 +35,8 @@
 #   parse      : the source text itself is malformed or unusable.
 #   budget     : an evaluation bound was exceeded (cycles, passes,
 #                nesting depth) -- see docs/capability-review/g5.
+#   compat     : the subsumption query's report vocabulary (G3) -- the
+#                compat_* findings and the sub_* undecided reasons.
 #   internal   : the engine reached a state it should not reach.
 #
 # RULINGS the class column encodes (decided at registry inception):
@@ -62,6 +65,12 @@ parse_bad_src	errcode	parse	0.51.0
 # Without it `<<<<<<< HEAD` parsed as ordinary text and the document
 # quietly became a list of strings.
 merge_conflict	errcode	parse	0.53.0
+# An @"..." include refused by the trust profile's include capability
+# (G5 phase 3, docs/trust.md): a path escaping the confinement root, or
+# any include under the 'none' capability. Parse-stage, deterministic,
+# and raised (never injected as a value) so a bare-member include cannot
+# vanish in the merge.
+include_denied	errcode	parse	0.53.0
 # A built-in called with the wrong number of arguments (issue #51).
 # Arity is known for every built-in, so a surplus or missing argument is
 # a mistake in the SOURCE and is refused where the author can see it.
@@ -149,3 +158,118 @@ budget_passes	errcode	budget	0.52.0
 internal	errcode	internal	0.51.0
 unify_no_res	errcode	internal	0.51.0
 unknown_op	errcode	internal	0.51.0
+#
+# compat -- the subsumption query's report vocabulary (G3,
+# docs/capability-review/g3-subsumption-evolution.md). These codes ride
+# G2's finding object from the `subsume` and `breaking` surfaces; the
+# `sub_*` codes are the UNDECIDED reasons, spec-pinned so the taxonomy
+# cannot grow silently.
+compat_narrowed	errcode	compat	0.53.0
+compat_required_added	errcode	compat	0.53.0
+compat_default_changed	errcode	compat	0.53.0
+compat_marks_changed	errcode	compat	0.53.0
+sub_unresolved	errcode	compat	0.53.0
+sub_disjunct_distribution	errcode	compat	0.53.0
+sub_path_dependent_spread	errcode	compat	0.53.0
+sub_evaluate_only	errcode	compat	0.53.0
+sub_default_indeterminate	errcode	compat	0.53.0
+# The deprecation mark's point-of-use warning (G3 phase 4,
+# deprecate(x, m)): vet reports a deprecated value's use at severity
+# `warning`, the slot G2 reserved for this mark; it is the one compat
+# code that can appear in a vet report as well as a subsume/breaking
+# one.
+deprecated	errcode	compat	0.53.0
+# The default-validity lint (G3 phase 5): a disjunction's effective
+# default is not an instance of any remaining alternative. Severity
+# `warning` in vet for now — today's engine generates the bad default
+# and existing documents may lean on it, so promoting the warning to an
+# error is itself a breaking change, sequenced through the `breaking`
+# gate.
+pref_not_instance	errcode	compat	0.53.0
+# The overlay patch verb (G7 phase 5, `aontu set`): the assignment was
+# not <path>=<value>. Class `parse` -- what is malformed is source
+# text -- and report-layer, so no NilVal ever carries it.
+patch_assignment	errcode	parse	0.53.0
+# THE IDENTITY MARK (G4 phase 1, `id(name)`). Three codes, three
+# classes, because three different things go wrong. `id_name` is the
+# argument refused: a name that is not one (a number, a map, a dotted
+# string) — class `parse`, what is wrong is the text. `id_conflict` is
+# two DIFFERENT names on one node — class `conflict`, an ordinary
+# failed meet, because one node cannot be two entities. `id_spread` is
+# clearing rule 3, a constant `id()` inside an `&:` template that
+# would declare every child of the bag to be one entity — class
+# `parse`, what is wrong is the template rather than any pair of
+# values it brought together. A CONTRADICTION between two positions of
+# the same entity is not in this list: it is the ordinary conflict of
+# whatever disagreed (`scalar_value` and friends), which is the whole
+# point of merging by unification.
+id_name	errcode	parse	0.53.0
+id_conflict	errcode	conflict	0.53.0
+id_spread	errcode	parse	0.53.0
+# THE CHECKED LINK (G4 phase 2, `refer(t?)`). Two codes. `refer_address`
+# is the value met being no address at all -- a non-string, or a string
+# that is not one -- class `parse`, because what is wrong is the text
+# and no later pass can repair it. `refer_unresolved` is a well-formed
+# address that names nothing in this evaluation -- class `reference`,
+# the same class as `no_path`, because it is the same kind of miss.
+# Integrity is a UNIFICATION-time property: within one evaluation the
+# document-set is fixed, so the last pass decides, and the refusal is a
+# located nil rather than a vet-time deferral. A `t` that cannot be
+# unified into the target is NOT in this list: that is the ordinary
+# conflict of whatever disagreed, which is what constraint flow means.
+refer_address	errcode	parse	0.53.0
+refer_unresolved	errcode	reference	0.53.0
+# RELATION GRAPH CHECKS (G4 phase 5). Two report-layer codes, class
+# `conflict`: the model contradicts a property it declared for itself.
+# NEITHER is a NilVal code -- both are GLOBAL and NON-MONOTONE (an
+# acyclic graph becomes cyclic when one more edge unifies in), so they
+# are checked after unification and never by it. `aontu relations`
+# reports them; the lattice never sees them.
+relation_cycle	errcode	conflict	0.53.0
+relation_inverse_missing	errcode	conflict	0.53.0
+# THE GENERATION COMBINATORS (G8 phase 1, `pack` and `each`). Three
+# codes, all class `parse`: what is wrong is the CALL as the author
+# wrote it, and no later pass repairs it. `pack_data`/`each_data` is
+# data with no children to generate from — a scalar, a kind, a
+# residual. `pack_key` is a packed list element that is not a string:
+# the elements of a packed list ARE the generated keys, and a key is a
+# name. Keying by position instead would churn every generated child
+# the moment the list was reordered, which is the Terraform `count`
+# lesson the design names.
+pack_data	errcode	parse	0.53.0
+pack_key	errcode	parse	0.53.0
+each_data	errcode	parse	0.53.0
+# SELECTION (G8 phase 2, `filter` and `match`). `filter_data` is class
+# `parse` for the same reason `pack_data` is: the CALL names something
+# with no children to select from. `match_none` is class `conflict` --
+# the value and every pattern written for it disagreed, which is an
+# ordinary failed meet, reported once for the whole form and naming
+# the patterns that were tried.
+filter_data	errcode	parse	0.53.0
+match_none	errcode	conflict	0.53.0
+# THE PLACEHOLDER (G8 phase 3, `_`). One code, class `conflict`: two
+# placeheld calls met and neither has a value to fill the other, so
+# there is nothing to pick between them. A hole with a value on the
+# other side is not an error at all -- it is the whole point.
+place_pair	errcode	conflict	0.53.0
+# THE PIPE (G8 phase 4, `|>`). One code, class `parse`: the pipe is
+# sugar resolved while reading the source -- `x |> f(a)` IS `f(x, a)`
+# before any Val exists -- so a pipe into something that is not a call
+# is wrong in the TEXT, and no later pass can repair it.
+pipe_target	errcode	parse	0.53.0
+# MODULES (G6 phase 2). Two codes, both class `parse`: a module import
+# is resolved while the source is READ. `module_missing` is a module in
+# neither local store -- evaluation never touches the network, so
+# fetching is a separate step and the message names it.
+# `module_integrity` is a module that IS there and does not have the
+# meaning it was pinned to; the pin is a canon-hash, so it survives
+# formatting and breaks on meaning.
+# `module_depth` is class `budget`: verification EVALUATES the module,
+# that evaluation resolves the module's own imports, and a vendor tree
+# that leads back to itself would recurse until the host ran out of
+# stack -- a verdict that depends on the machine, which is what
+# docs/trust.md forbids. The bound makes it a stated refusal, exactly
+# as `unify_cycle` does for the same reason.
+module_missing	errcode	parse	0.53.0
+module_integrity	errcode	parse	0.53.0
+module_depth	errcode	budget	0.53.0

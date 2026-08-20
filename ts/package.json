@@ -6,7 +6,8 @@
   "types": "dist/aontu.d.ts",
   "bin": {
     "aontu": "bin/aontu.js",
-    "aontu-lsp": "bin/aontu-lsp.js"
+    "aontu-lsp": "bin/aontu-lsp.js",
+    "aontu-mcp": "bin/aontu-mcp.js"
   },
   "description": "Unifier.",
   "homepage": "https://github.com/rjrodger/aontu",

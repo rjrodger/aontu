@@ -12,7 +12,6 @@ import {
 } from '../ctx'
 
 import { StringVal } from '../val/StringVal'
-import { ConjunctVal } from '../val/ConjunctVal'
 
 
 
@@ -41,39 +40,13 @@ class KeyFuncVal extends FuncBaseVal {
   }
 
 
-  unify(peer: Val, ctx: AontuContext): Val {
-    // TODO: this delay makes keys in spreads and refs work, but it is a hack - find a better way.
-    let out: Val = this
-
-    if (ctx.cc < 3) {
-      this.notdone()
-
-      if (peer.isTop || (peer.id === this.id)) {
-        // TODO: clone needed to avoid triggering unify_cycle - find a better way
-        out = this.clone(ctx)
-      }
-      else if (peer.isNil) {
-        out = peer
-      }
-      else {
-        if (
-          peer.isKeyFunc
-          && peer.path.join('.') === this.path.join('.')
-          && peer.peg?.[0]?.peg === this.peg?.[0]?.peg
-        ) {
-          out = this
-        }
-        else {
-          out = new ConjunctVal({ peg: [this, peer] }, ctx)
-        }
-      }
-    }
-    else {
-      out = super.unify(peer, ctx)
-    }
-
-    return out
-  }
+  // `key()` is the first value to take THE STAGING RULE (G8 phase 0,
+  // see AontuContext.settle): its answer is a segment of its own path,
+  // so it must not answer while a spread, a reference or a `move` can
+  // still move it. It residuates until the model stops changing, and
+  // fires on the settle pass. The residuation itself is FuncBaseVal's,
+  // shared with the generation combinators.
+  staged = true
 
 
   resolve(ctx: AontuContext, _args: Val[]) {
@@ -113,7 +86,38 @@ class KeyFuncVal extends FuncBaseVal {
       }
     }
 
-    const key = this.path[this.path.length - (1 + move)] ?? ''
+    // THE PATH IS THE ONE IT IS BEING DRIVEN AT, not the one it
+    // remembers. `this.path` is a cache that the residuation clone
+    // refreshes each pass, and it is right for a key() the bag walk
+    // reaches directly -- but a key() nested inside a function or
+    // operator ARGUMENT is never reached that way: it is driven by its
+    // enclosing call, which re-paths nothing, so it kept the position
+    // the SOURCE TEXT put it at. Inside a template that is fatal: the
+    // source position of `&: {k: "x" + key()}` (or of `pack`'s
+    // template) is the template, not any of the destinations, and the
+    // parse-time path of a function argument is not a document
+    // position at all.
+    // A stored path is only usable if it IS one: a path segment that is
+    // not a key is not a position, and the parse-time path of a value
+    // written inside a function ARGUMENT carries exactly that -- the
+    // argument has no key, so its segment is not a string. Those values
+    // are also the ones the bag walk never re-paths (a call re-paths
+    // nothing it holds), which is why the stored path stays wrong
+    // forever rather than being refreshed on the next pass. For them
+    // the driving context is the only truth. For everything else the
+    // stored path stays authoritative, because a TRANSPLANTED value
+    // (move(), a shared clone) must answer for where it was put, not
+    // for whichever driver happened to reach it first.
+    let positioned = true
+    for (const seg of this.path) {
+      if ('string' !== typeof seg) {
+        positioned = false
+        break
+      }
+    }
+
+    const here = positioned ? this.path : ctx.path
+    const key = here[here.length - (1 + move)] ?? ''
     // console.log('KEY', this.path, move, key)
 
     out = new StringVal({ peg: key })

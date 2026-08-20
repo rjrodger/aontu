@@ -27,10 +27,26 @@ import { HideFuncVal } from '../dist/val/HideFuncVal'
 import { MoveFuncVal } from '../dist/val/MoveFuncVal'
 import { PrefFuncVal } from '../dist/val/PrefFuncVal'
 import { TypeFuncVal } from '../dist/val/TypeFuncVal'
-import { Unify } from '../dist/unify'
+import { Unify, mergeEntities } from '../dist/unify'
 import { main as cliMain, evalSource } from '../dist/cli'
 import { main as lspMain } from '../dist/lsp-server'
 import { computeDiagnostics, computeHover, LspHandler } from '../dist/lsp'
+import { subsumeNode } from '../dist/subsume'
+import { DeprecateFuncVal } from '../dist/val/DeprecateFuncVal'
+import { collectDeprecations } from '../dist/utility'
+import { hcanon, canonHash } from '../dist/hcanon'
+import { projectFor } from '../dist/query'
+import { Provenance } from '../dist/provenance'
+import { IdFuncVal, idName } from '../dist/val/IdFuncVal'
+import { ReferVal, parseAddress, findEntity } from '../dist/val/ReferFuncVal'
+import { graphOf } from '../dist/graph'
+import { constantIdFunc, canonRiders } from '../dist/utility'
+import { nextValId } from '../dist/val/Val'
+import {
+  candidates as trimCandidates,
+  deleteAt as trimDeleteAt,
+  evalCanon as trimEvalCanon,
+} from '../dist/trim'
 
 import { Val } from '../dist/val/Val'
 import { top } from '../dist/val/top'
@@ -41,6 +57,8 @@ import { NumberVal } from '../dist/val/NumberVal'
 import { StringVal } from '../dist/val/StringVal'
 import { ScalarVal } from '../dist/val/ScalarVal'
 import { NilVal } from '../dist/val/NilVal'
+import { KeyFuncVal } from '../dist/val/KeyFuncVal'
+import { PlaceVal } from '../dist/val/PlaceVal'
 import { RefVal } from '../dist/val/RefVal'
 import { VarVal } from '../dist/val/VarVal'
 import { ConjunctVal } from '../dist/val/ConjunctVal'
@@ -746,7 +764,14 @@ describe('coverage3-lsp', () => {
       return h.contents.value
     }
     Assert.match(label('a:$.a', 2), /\*error\*/)
-    Assert.match(label('a:$.b b:$.c c:$.a', 8), /\*reference\*/)
+    // A REFERENCE that survives unification: a chain deeper than the
+    // pass budget stalls unresolved without erroring. A cycle no longer
+    // works here — with multi-error collection (G2 phase 6) the pass
+    // loop continues past the erroring pass, and the cycle's members
+    // absorb the one cycle nil rather than staying references.
+    Assert.match(label(
+      'a:$.b b:$.c c:$.d d:$.e e:$.f f:$.g g:$.h h:$.i i:$.j j:$.k k:$.l l:1',
+      2), /\*reference\*/)
     Assert.match(label('n:1.5', 2), /\*float\*/)
     Assert.match(label('x:null|top', 2), /\*scalar\*/)
     Assert.match(label('x:top|top', 2), /\*top\*/)
@@ -849,4 +874,448 @@ describe('coverage3-process', () => {
     Assert.match(Buffer.concat(written).toString('utf8'), /Content-Length/)
     Assert.equal(exited, 0)
   })
+})
+
+
+describe('coverage3-deprecate', () => {
+
+  // The internals no source reaches (G3 phase 4): make() is the
+  // multi-pass rebuild contract every FuncBaseVal keeps; the argless
+  // and nil-argument resolve arms are the defensive shape the
+  // type()/hide() lesson fixed (refusal over corruption, D7).
+  test('deprecate-func-internals', () => {
+    const ctx = new AontuContext({ root: top() } as any)
+    const d = new DeprecateFuncVal({ peg: [] })
+
+    const made = d.make(ctx, { peg: [new IntegerVal({ peg: 1 })] })
+    Assert.equal((made as any).isDeprecateFunc, true)
+
+    const argless: any = d.resolve(ctx, [])
+    Assert.equal(argless.isNil, true)
+    Assert.equal(argless.why, 'arg')
+
+    const nil = new NilVal({ why: 'test' })
+    Assert.equal(d.resolve(ctx, [nil]), nil)
+  })
+
+  // The shared walk behind vet's warnings and the LSP tags: the
+  // non-Val guard is for a bag's raw peg entries, which degenerate
+  // parses can leave behind — pinned directly, with one.
+  test('collect-deprecations-walk', () => {
+    const m = new MapVal({ peg: {} })
+    const dep = new IntegerVal({ peg: 1 })
+    ;(dep as any).deprecation = { msg: 'm' }
+    const plain = new IntegerVal({ peg: 2 })
+    const inner = new ListVal({ peg: [dep] })
+    m.peg.a = inner
+    m.peg.b = plain
+    m.peg.raw = 42
+    const found = collectDeprecations(m)
+    Assert.equal(found.length, 1)
+    Assert.deepEqual(found[0].path, ['a', '0'])
+  })
+
+})
+
+
+describe('coverage3-subsume', () => {
+
+  // The no-rule fold at the walk's tail (ts/src/subsume.ts): total in
+  // practice for every evaluated former, so unreachable through
+  // subsume() — pinned directly, with a nil, which also pins the "a nil
+  // folds to undecided" claim the walk's top comment makes. The Go port
+  // pins the same fold in TestSubsumeNoRuleFold.
+  test('subsume-no-rule-fold', () => {
+    const state: any = {
+      profile: 'values', findings: [],
+      generalUrl: 'general', specificUrl: 'specific',
+    }
+    const r = subsumeNode(
+      state, [], new NilVal({ why: 'test' }), new NilVal({ why: 'test' }))
+    Assert.equal(r, 'undecided')
+    Assert.equal(state.findings.length, 1)
+    Assert.equal(state.findings[0].code, 'sub_unresolved')
+  })
+
+})
+
+
+describe('coverage3-trim', () => {
+
+  // The trim internals no source reaches (G3 phase 6): the candidate
+  // walk's raw-entry guard, and deleteAt's honest answers for paths a
+  // candidate enumeration from an identical parse can never produce.
+  test('trim-internals', () => {
+    const raw = new MapVal({ peg: {} })
+    raw.peg.k = 7
+    const paths: string[][] = []
+    trimCandidates(raw, [], paths)
+    Assert.deepEqual(paths, [['k']])
+
+    const root = new MapVal({ peg: {} })
+    const inner = new MapVal({ peg: {} })
+    inner.optionalKeys = ['x', 'y']
+    inner.peg.x = new IntegerVal({ peg: 1 })
+    root.peg.a = inner
+    root.peg.s = new IntegerVal({ peg: 2 })
+
+    // A mid-path segment that is not a bag proves nothing to delete:
+    // the walk stops inside the loop, before the final-key check.
+    Assert.equal(trimDeleteAt(root, ['s', 'deep', 'deeper']), false)
+    // And when the FINAL parent is not a bag, the last check answers.
+    Assert.equal(trimDeleteAt(root, ['s', 'deep']), false)
+    // A missing key likewise.
+    Assert.equal(trimDeleteAt(root, ['a', 'zz']), false)
+    // A real optional entry deletes, and its optional mark goes too.
+    Assert.equal(trimDeleteAt(root, ['a', 'x']), true)
+    Assert.deepEqual(inner.optionalKeys, ['y'])
+
+    // evalCanon answers undefined for a probe whose deletion cannot
+    // land (the caller's "load-bearing" fold).
+    Assert.equal(trimEvalCanon('a:1', {}, ['zz', 'deep']), undefined)
+  })
+
+})
+
+
+describe('coverage3-hcanon', () => {
+
+  // The hash-form arms no SOURCE reaches (G6 phase 0): a bag's raw peg
+  // entry, which degenerate parses can leave behind, and the junction
+  // parenthesisation rule -- post-unification junctions are flattened
+  // by norm, so only a constructed tree still nests one. The rule has
+  // to hold anyway: a hash form that rendered `(1|2)&3` as the
+  // differently-parsing `1|2&3` would be a pin that silently agrees
+  // with a document it should not.
+  test('hcanon-internals', () => {
+    const ctx = new Aontu().ctx({})
+
+    const raw = new MapVal({ peg: {} }, ctx)
+    raw.peg.k = 7
+    Assert.equal(hcanon(raw as any), '{"k":7}')
+
+    const nested = new ConjunctVal({
+      peg: [
+        new DisjunctVal({
+          peg: [new IntegerVal({ peg: 1 }), new IntegerVal({ peg: 2 })],
+        }, ctx),
+        new IntegerVal({ peg: 3 }),
+      ],
+    }, ctx)
+    Assert.equal(hcanon(nested as any), '(1|2)&3')
+
+    // A junction member with ONE term needs no parens: `1&3`, which is
+    // what the same text reparses to.
+    const single = new ConjunctVal({
+      peg: [
+        new DisjunctVal({ peg: [new IntegerVal({ peg: 1 })] }, ctx),
+        new IntegerVal({ peg: 3 }),
+      ],
+    }, ctx)
+    Assert.equal(hcanon(single as any), '1&3')
+
+    // And the hash is the hash form's digest, whatever the tree.
+    Assert.match(canonHash(single as any), /^aon1-[A-Za-z0-9_-]{43}$/)
+  })
+
+})
+
+
+describe('coverage3-query', () => {
+
+  // The projection arm no SOURCE reaches (G7 phase 1): a junction
+  // member that is itself a junction of more than one term. Post-
+  // unification junctions are flattened by norm, so only a constructed
+  // tree still nests one — and the rule has to hold anyway, because a
+  // view is a DOCUMENT: rendering `(1|2)&3` as the differently-parsing
+  // `1|2&3` would be a view that no longer subsumes what it summarises.
+  test('query-nested-junction-keeps-its-parens', () => {
+    const ctx = new Aontu().ctx({})
+    const root = new MapVal({ peg: {} }, ctx)
+    root.peg.j = new ConjunctVal({
+      peg: [
+        new DisjunctVal({
+          peg: [new IntegerVal({ peg: 1 }), new IntegerVal({ peg: 2 })],
+        }, ctx),
+        new IntegerVal({ peg: 3 }),
+      ],
+    }, ctx)
+
+    // Reached through the exported walk rather than the verb, which
+    // would unify the tree and flatten it back.
+    Assert.equal(
+      projectFor(root, 'canon', Infinity), '{"j":(1|2)&3}')
+    Assert.equal(
+      projectFor(root, 'types', Infinity), '{"j":(integer|integer)&integer}')
+  })
+
+})
+
+
+describe('coverage3-provenance', () => {
+
+  // The last tiebreak of the contribution order (G7 phase 3): two
+  // values written at the SAME file, row and column. No document
+  // produces that — a position holds one value — but the order has to
+  // be TOTAL anyway, because a partial one would leave the record's
+  // tail in meet order, which is the fixpoint's business and differs
+  // between the ports.
+  test('provenance-orders-same-site-contributions-by-canon', () => {
+    const ctx = new Aontu().ctx({})
+    const zed = new StringVal({ peg: 'z' }, ctx)
+    const alf = new StringVal({ peg: 'a' }, ctx)
+    for (const v of [zed, alf]) {
+      v.site.row = 1
+      v.site.col = 1
+      v.site.url = 'one.aon'
+    }
+
+    const prov = new Provenance()
+    prov.writtenFrom(new MapVal({ peg: { z: zed, a: alf } }, ctx))
+    prov.record(['k'], zed, alf, new StringVal({ peg: 'z' }, ctx))
+
+    Assert.deepEqual(prov.at(['k']).map((c: any) => c.canon), ['"a"', '"z"'])
+    // A path nothing met has no record at all.
+    Assert.deepEqual(prov.at(['nowhere']), [])
+  })
+
+})
+
+// G4 phase 1 — the identity internals no source reaches. Language
+// behaviour is pinned in test/spec/id.tsv; what is left here is the
+// engine's own shapes: arguments the parser never hands the function,
+// template containers the grammar cannot build, and the CYCLIC tree a
+// unified result actually is (a resolved reference shares its target),
+// which is what makes the walks' seen-guards load-bearing rather than
+// defensive.
+describe('coverage3-identity', () => {
+
+  test('id-name-argument-kinds', () => {
+    const ctx = new Aontu().ctx({})
+    // What spells a name, and what does not. `undefined` and a
+    // non-Val reach idName only through a direct call: the func
+    // dispatcher resolves every argument to a Val first.
+    for (const ok of ['a', 'svc/auth', 'team-pay', 'a_1', '0', 'A/b-c_1']) {
+      Assert.strictEqual(idName(new StringVal({ peg: ok }, ctx)), ok)
+    }
+    for (const bad of ['', 'svc.auth', 'a b', 'a:b', 'a$b']) {
+      Assert.strictEqual(idName(new StringVal({ peg: bad }, ctx)), undefined)
+    }
+    Assert.strictEqual(idName(new IntegerVal({ peg: 1 }, ctx)), undefined)
+    Assert.strictEqual(idName(new MapVal({ peg: {} }, ctx)), undefined)
+    Assert.strictEqual(idName(undefined), undefined)
+    Assert.strictEqual(idName({ isScalar: true, peg: 1 }), undefined)
+  })
+
+  test('id-func-shape', () => {
+    const ctx = new Aontu().ctx({})
+    const fn = new IdFuncVal({ peg: [new StringVal({ peg: 'x' }, ctx)] }, ctx)
+    Assert.strictEqual(fn.funcname(), 'id')
+    Assert.strictEqual((fn as any).isIdFunc, true)
+    // make() is the clone hook FuncBaseVal calls; it answers another
+    // IdFuncVal rather than the base class.
+    const made: any = fn.make(ctx, { peg: fn.peg })
+    Assert.strictEqual(made.isIdFunc, true)
+    // The unit it resolves to carries the name and a FRESH id: the
+    // pinned TopVal id 0 would collide in unite's done-pair fast path
+    // and drop an identity before the rider could carry it.
+    const out: any = fn.resolve(ctx, fn.peg as any)
+    Assert.strictEqual(out.isTop, true)
+    Assert.strictEqual(out.entity, 'x')
+    Assert.notStrictEqual(out.id, 0)
+    Assert.ok(nextValId() > 0)
+  })
+
+  test('constant-id-in-every-template-container', () => {
+    const ctx = new Aontu().ctx({})
+    const idfn = new IdFuncVal({ peg: [new StringVal({ peg: 'x' }, ctx)] }, ctx)
+    const keyed = new Aontu().unify('a:{&:id(key(0)),b:{}}') as any
+
+    // Every container a template can be. The bag arms are reached
+    // through peg; the spread arm is the off-peg tail.
+    const inMap = new MapVal({ peg: { a: idfn } }, ctx)
+    const inList = new ListVal({ peg: [idfn] }, ctx)
+    const inConjunct = new ConjunctVal({ peg: [idfn] }, ctx)
+    const withSpread: any = new MapVal({ peg: {} }, ctx)
+    withSpread.spread.cj = idfn
+
+    for (const v of [idfn, inMap, inList, inConjunct, withSpread]) {
+      Assert.strictEqual(constantIdFunc(v), idfn)
+    }
+    // ... and what carries no constant id at all.
+    for (const v of [undefined, null, 5, new MapVal({ peg: {} }, ctx),
+      new IntegerVal({ peg: 1 }, ctx), keyed]) {
+      Assert.strictEqual(constantIdFunc(v as any), undefined)
+    }
+
+    // The cycle guard: a unified tree is a graph, so a self-containing
+    // map is a shape the scan must survive rather than recurse into.
+    const cyc: any = new MapVal({ peg: {} }, ctx)
+    cyc.peg.self = cyc
+    Assert.strictEqual(constantIdFunc(cyc), undefined)
+  })
+
+  test('canon-riders-nest-identity-inside-deprecation', () => {
+    const ctx = new Aontu().ctx({})
+    const v: any = new IntegerVal({ peg: 1 }, ctx)
+    Assert.strictEqual(canonRiders(v), '1')
+    v.entity = 'team-pay'
+    Assert.strictEqual(canonRiders(v), 'id("team-pay")&1')
+    v.deprecation = { msg: 'gone' }
+    Assert.strictEqual(canonRiders(v),
+      'deprecate(id("team-pay")&1,{"msg":"gone"})')
+  })
+
+  test('identity-merge-walks-survive-a-cyclic-tree', () => {
+    // Both walks meet the same graph. Driven through Unify so the
+    // registry is the one the pass loop seeds.
+    const a0 = new Aontu()
+    const ctx = a0.ctx({})
+    const root: any = new MapVal({ peg: {} }, ctx)
+    root.peg.self = root
+    root.peg.k = new IntegerVal({ peg: 1 }, ctx)
+    root.entity = 'x'
+    const res: any = new Unify(root, undefined, ctx).res
+    Assert.strictEqual(res.entity, 'x')
+  })
+
+  test('identity-merge-walk-answers-a-non-val-slot', () => {
+    // A bag slot can hold a raw value or nothing at all in a hand-built
+    // tree (the shape `raw-peg-canon-and-clone` builds); the walk
+    // answers it unchanged rather than dereferencing it. No document
+    // produces one — both ports proved that by running their whole
+    // suites — so the guard is pinned here, as its Go twin is in
+    // go/identity_test.go.
+    const a0 = new Aontu()
+    const ctx: any = a0.ctx({})
+    ctx.entities = new Map()
+    const child: any = new MapVal({ peg: {} }, ctx)
+    child.entity = 'x'
+    const root: any = new MapVal(
+      { peg: { a: child, raw: 5 as any, gap: undefined as any } }, ctx)
+    const out: any = mergeEntities(ctx, root)
+    Assert.strictEqual(out.peg.raw, 5)
+    Assert.strictEqual(out.peg.gap, undefined)
+    Assert.strictEqual(out.peg.a.entity, 'x')
+  })
+
+  test('identity-merge-converges-list-positions', () => {
+    // A list element is a POSITION: after the merge both elements hold
+    // the one value, not two equal ones.
+    const v: any = new Aontu().unify('a:[id(x) & {k:1}, id(x) & {j:2}]')
+    const list = v.peg.a
+    Assert.strictEqual(list.peg[0], list.peg[1])
+    Assert.strictEqual(list.peg[0].canon, '{"j":2,"k":1}')
+  })
+
+})
+
+// G4 phase 2 — the refer internals no source reaches. The residual is
+// minted where it is used and answers whole shapes, so its per-arm
+// behaviour is exercised here directly: an address that walks into a
+// scalar, the peers the dispatcher never hands it, and a flow whose
+// TOP-LEVEL meet fails (from source the conflict usually lands on a
+// field, the two maps meeting and one key disagreeing).
+describe('coverage3-refer', () => {
+
+  test('find-entity-walks-into-non-bags', () => {
+    const ctx = new Aontu().ctx({})
+    const m: any = new MapVal({ peg: { p: new IntegerVal({ peg: 1 }, ctx) } }, ctx)
+    const reg = new Map<string, any>([['x', m]])
+
+    Assert.strictEqual(findEntity(reg, parseAddress('x.p.q') as any), undefined)
+    Assert.strictEqual(findEntity(reg, parseAddress('x.nope') as any), undefined)
+    Assert.strictEqual(findEntity(undefined, parseAddress('x') as any), undefined)
+    const found: any = findEntity(reg, parseAddress('x.p') as any)
+    Assert.strictEqual(found.parent, m)
+    Assert.strictEqual(found.key, 'p')
+  })
+
+  test('refer-peers-the-dispatcher-never-hands-it', () => {
+    const ctx = new Aontu().ctx({})
+    const r: any = new ReferVal({}, ctx)
+    // A NIL peer is absorbing, as everywhere else: the residual answers
+    // the existing failure rather than minting a second one.
+    const nil: any = new NilVal({ why: 'test-nil' }, ctx)
+    Assert.strictEqual(r.unify(nil, ctx), nil)
+    // And an absent peer is the self-drive `unite` substitutes TOP for.
+    Assert.strictEqual(r.unify(undefined as any, ctx), r)
+  })
+
+  test('refer-flow-refusal-is-the-nil', () => {
+    const a0 = new Aontu()
+    const ctx: any = a0.ctx({ collect: true })
+    const m: any = new MapVal({ peg: { k: new IntegerVal({ peg: 1 }, ctx) } }, ctx)
+    ctx.entities = new Map([['x', m]])
+
+    const r: any = new ReferVal({}, ctx)
+    r.tval = new IntegerVal({ peg: 1 }, ctx)
+    r.addr = parseAddress('x')
+    r.addrsrc = 'x'
+    Assert.strictEqual(r.settle(ctx, r).isNil, true)
+  })
+
+})
+
+// G4 phase 3 — the graph walk's guards. The walk visits POSITIONS
+// rather than values (two positions of one entity share a value object
+// after the merge), so its termination guard is the ANCESTOR chain,
+// which is what a cycle actually is. No document produces one — a
+// self-prefix reference is refused as `path_cycle` long before — so
+// the guard is pinned here, as its Go twin is in go/graph_test.go.
+describe('coverage3-graph', () => {
+
+  test('graph-of-survives-a-cycle', () => {
+    const ctx = new Aontu().ctx({})
+    const root: any = new MapVal({ peg: {} }, ctx)
+    root.peg.self = root
+    root.entity = 'x'
+    const g = graphOf(root)
+    // Once, at the root: the ancestor guard stops the descent the
+    // moment the cycle closes back onto a node already on the path.
+    Assert.deepEqual(g.entities, [{ id: 'x', paths: ['$'] }])
+    Assert.deepEqual(g.edges, [])
+  })
+
+  test('graph-of-answers-a-non-val-slot', () => {
+    // A bag slot can hold a raw value or nothing at all in a hand-built
+    // tree; the walk answers it rather than descending into it.
+    const ctx = new Aontu().ctx({})
+    const root: any = new MapVal(
+      { peg: { raw: 5 as any, gap: undefined as any } }, ctx)
+    root.entity = 'x'
+    Assert.deepEqual(graphOf(root).entities, [{ id: 'x', paths: ['$'] }])
+  })
+
+})
+
+
+// G8 phase 0/1 — the staging rule's residuation, at the one arm no
+// document reaches. `unite` absorbs a nil BEFORE it dispatches (the
+// isNil arms in ts/src/unify.ts), so a staged func is never handed one
+// from a document; the arm is the contract for a caller that does, and
+// the Go port pins its twin the same way (coverage3_test.go,
+// TestFuncArmsDirect).
+describe('coverage3-staging', () => {
+
+  test('a-hole-has-nothing-above-it', () => {
+    // `superior` is the lattice step UP, asked of a value by the
+    // generalisation machinery (G3). A hole admits everything, so the
+    // answer is itself — the same answer TOP gives. No document asks
+    // it of a hole, because a hole is filled before anything
+    // generalises it, so the contract is pinned here.
+    const place: any = new PlaceVal({})
+    Assert.strictEqual(place.superior(), place)
+  })
+
+  test('residuation-answers-a-nil-peer', () => {
+    const a0 = new Aontu()
+    const ctx: any = a0.ctx({})
+    const key: any = new KeyFuncVal({ peg: [] }, ctx)
+    const nil: any = new NilVal({ why: 'test-nil-peer' }, ctx)
+
+    // ctx.settle is false, so this is the residuation path.
+    Assert.strictEqual(key.unify(nil, ctx), nil)
+  })
+
 })

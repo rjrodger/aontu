@@ -36,7 +36,9 @@ func (l *ListVal) Canon() string {
 		if i > 0 {
 			b.WriteByte(',')
 		}
-		b.WriteString(e.Canon())
+		// canonRiders, not Canon: a deprecated element renders back
+		// as its `deprecate(x, m)` call, reparseably (G3).
+		b.WriteString(canonRiders(e))
 	}
 	b.WriteByte(']')
 	return b.String()
@@ -153,6 +155,20 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 		spreadCj = out.spread
 	}
 
+	// The template REFUSED at parse (clearing rule 3, G4 phase 1): the
+	// bag itself is that refusal. Returning the nil here rather than
+	// only letting it reach the children is what makes an EMPTY bag
+	// with a bad template an error too — there are no children to carry
+	// it. Narrow to THIS code on purpose: a nil spread from any other
+	// cause keeps its existing behaviour of driving every key. Mirrors
+	// the same arm in ts/src/val/MapVal.ts and ts/src/val/ListVal.ts.
+	// NOT added to ctx.err here: a parse-time refusal is a nil IN THE
+	// TREE, and canon renders it (`{"a":nil}`) exactly as it renders a
+	// bad arity or an unknown function; generation is what reports it.
+	if nv, ok := spreadCj.(*NilVal); ok && "id_spread" == nv.why {
+		return nv
+	}
+
 	// Driven base (see the matching comment in MapVal.Unify).
 	dbase := ctx.slot
 	if dbase == nil {
@@ -170,9 +186,36 @@ func (l *ListVal) Unify(peer Val, ctx *Ctx) Val {
 			e.setMarkHide(true)
 		}
 		islot := append(cp(dbase), itoa(i))
-		sc := spreadCloneFor(spreadCj, islot, ctx)
-		ctx.slot = islot
-		ev := unite(ctx, e, sc)
+		// APPLIED ONCE PER ELEMENT, the guard MapVal.Unify has carried
+		// since the spread was written: an element that already holds
+		// this template's contribution is progressed by self-unification
+		// instead of having the template met into it a second time.
+		// Re-applying is the identity for a template that has already
+		// RESOLVED, which is why the missing guard went unnoticed here
+		// — but a template that residuates (`&: id(key(1))`, G8 phase 0)
+		// is not yet a value to be idempotent about, so each pass
+		// conjoined another copy and the element's canon DOUBLED per
+		// pass. The old `ctx.cc < 3` key delay hid it by ending the
+		// growth at three passes; the staging rule waits for the model
+		// to settle, and a model whose canon doubles every pass never
+		// does. Mirrors ts/src/val/ListVal.ts.
+		var ev Val
+		if !isTop(spreadCj) && sprOf(e) == spreadCj {
+			if e.Dc() == DONE {
+				ev = e
+			} else {
+				ctx.slot = islot
+				ev = unite(ctx, e, top())
+			}
+			setSprOn(ev, spreadCj)
+		} else {
+			sc := spreadCloneFor(spreadCj, islot, ctx)
+			ctx.slot = islot
+			ev = unite(ctx, e, sc)
+			if !isTop(spreadCj) && !ev.Nil() {
+				setSprOn(ev, spreadCj)
+			}
+		}
 		if inplace {
 			out.peg[i] = ev
 		} else {

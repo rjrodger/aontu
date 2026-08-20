@@ -12,6 +12,77 @@ import (
 // subset does not need without references). TOP is the unit element;
 // complex Vals (conjunct/disjunct/pref) drive their own unify.
 func unite(ctx *Ctx, a, b Val) Val {
+	// The path this meet happens at, read BEFORE uniteRaw scopes the
+	// slot hint away. The slot is the TS ctx.path equivalent; with no
+	// hint, a value sits at its own stored path (the same fallback
+	// MapVal.Unify makes).
+	var provPath []string
+	if nil != ctx.prov {
+		provPath = ctx.slot
+		if nil == provPath && nil != a {
+			provPath = a.vpath()
+		}
+	}
+
+	out := uniteRaw(ctx, a, b)
+
+	// The provenance record (G7 phase 4), at the one place every meet
+	// passes through — the same reason the deprecation rider below
+	// lives here. Off by default: an uninstrumented run pays one nil
+	// check, and an instrumented one pays site materialisation
+	// knowingly.
+	if nil != ctx.prov {
+		ctx.prov.record(provPath, a, b, out)
+	}
+	// The IDENTITY survives every meet (G4 phase 1), by the same
+	// channel and for the same reason as the deprecation rider below.
+	// TWO DIFFERENT NAMES on one node is a contradiction, not a merge:
+	// one node cannot be two entities, and the error names both sites.
+	// Mirrors the identity rider in ts/src/unify.ts.
+	if nil != out && !out.Nil() {
+		ae, be := "", ""
+		if nil != a {
+			ae = a.entityName()
+		}
+		if nil != b {
+			be = b.entityName()
+		}
+		if "" != ae && "" != be && ae != be {
+			out = makeNilErr(ctx, "id_conflict", a, b)
+		} else if !isTop(out) {
+			e := ae
+			if "" == e {
+				e = be
+			}
+			if "" != e {
+				out.setEntityName(e)
+			}
+		}
+	}
+
+	// The deprecation record survives EVERY meet (G3 phase 4): the
+	// boolean marks have their own sweeps (conjunct, the bag walks),
+	// but a record lost in one meet shape is a use the tooling never
+	// warns about, so it rides here, at the one place all meets pass
+	// through. First record wins; TOP and nil stay clean (TOP is the
+	// unit, and an error needs no deprecation). Mirrors the rider at
+	// the tail of unite in ts/src/unify.ts.
+	if nil != out && !isTop(out) && !out.Nil() && nil == out.deprecRec() {
+		var dep map[string]string
+		if nil != a {
+			dep = a.deprecRec()
+		}
+		if nil == dep && nil != b {
+			dep = b.deprecRec()
+		}
+		if nil != dep {
+			out.setDeprecRec(dep)
+		}
+	}
+	return out
+}
+
+func uniteRaw(ctx *Ctx, a, b Val) Val {
 	// Fast path, ABOVE the depth counter: a value that is already done,
 	// unified with TOP, is itself. The TS unite has the same shape --
 	// its fast paths return before its counter increments -- and the
@@ -24,10 +95,16 @@ func unite(ctx *Ctx, a, b Val) Val {
 	}
 
 	// Bound recursion to break reference cycles (the TS unite uses a
-	// per-path seen-map with MAXCYCLE; a depth guard is sufficient here).
+	// per-path seen-map with its revisit constant; a depth guard is
+	// sufficient here). The bound is the depth budget: the spec constant
+	// unless the trust profile set one (ctx.budgetDepth, zero = default).
+	maxDepth := ctx.budgetDepth
+	if 0 == maxDepth {
+		maxDepth = maxUniteDepth
+	}
 	ctx.depth++
 	defer func() { ctx.depth-- }()
-	if ctx.depth > maxUniteDepth {
+	if ctx.depth > maxDepth {
 		return makeNilErr(ctx, "unify_cycle", a, b)
 	}
 
@@ -65,7 +142,19 @@ func unite(ctx *Ctx, a, b Val) Val {
 	if isConjunct(a) || isExpect(a) {
 		return drive(a, b)
 	}
-	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) {
+	// The refer residual (G4 phase 2) DRIVES, like the other residuals
+	// here: its peer is a plain string, which knows nothing about entity
+	// addresses, so letting the string drive would drop the address and
+	// leave the constraint standing. Mirrors the same arm in
+	// ts/src/unify.ts.
+	// An operator holding a HOLE (G8 phase 3) drives for the same
+	// reason: its peer is what FILLS it, and a scalar asked to unify
+	// with `_ + 2` sees an operator rather than a hole and refuses it
+	// on kind. Narrow to placeheld operators on purpose -- every other
+	// operator meets its peer the way it always has, through the
+	// conjunct fold that drives it.
+	if isConjunct(b) || isDisjunct(b) || isPref(b) || isRef(b) || isVar(b) || isFunc(b) || isExpect(b) || isRefer(b) ||
+		isPlaceheldOp(b) {
 		return drive(b, a)
 	}
 	return drive(a, b)
@@ -93,23 +182,89 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		return root
 	}
 	res := root
-	const maxcc = 9
+	// The pass budget: the spec constant unless the trust profile set
+	// one (ctx.budgetPasses, zero = default).
+	maxcc := ctx.budgetPasses
+	if 0 == maxcc {
+		maxcc = 9
+	}
 	prevCanon := ""
 	sawPrev := false
+	lastCanon := ""
+	sawLast := false
+	settle := false
 	for cc := 0; cc < maxcc && res.Dc() != DONE; cc++ {
 		ctx.root = res
 		ctx.depth = 0
 		ctx.cc = cc
-		res = unite(ctx, res, top())
-		if len(ctx.err) > 0 {
-			break
-		}
-		// Snapshot the second-to-last pass's result, so exhaustion can
-		// tell "still refining" from "stable residue" below. Only paid
-		// by models still unresolved this late.
-		if cc == maxcc-2 && res.Dc() != DONE {
-			prevCanon = res.Canon()
+
+		// THE STAGING RULE (G8 phase 0,
+		// docs/capability-review/g8-generation.md, mirroring
+		// ts/src/unify.ts), stated once, here, for every value whose
+		// answer depends on WHERE IT IS. Such a value residuates while
+		// the model is still moving and fires on the first pass whose
+		// input is IDENTICAL to the previous pass's input: nothing
+		// moved, so nothing will move it again, and the position it
+		// reports is the position it ends at.
+		//
+		// Why the whole model and not the value's own path. A spread, a
+		// reference or a move() can place a value under a path it has
+		// already been driven at and THEN change what encloses it --
+		// move() hides its source one pass AFTER it copies it, and a
+		// key() that answered on the strength of its path alone would
+		// answer for the ghost.
+		ctx.settle = settle
+
+		// Snapshot BEFORE the final pass (the loop condition has already
+		// established the tree is not done), so exhaustion can tell
+		// "still refining" from "stable residue" below. Taken at the
+		// final pass's ENTRY rather than the previous pass's exit — the
+		// same value when the budget allows two passes, and the only
+		// possible value when the trust profile sets passes to 1, where
+		// the old placement (cc == maxcc-2, never true) made exhaustion
+		// silent, exactly the truncation docs/trust.md forbids.
+		// lastCanon IS that entry canon whenever a previous pass
+		// rendered one, so this costs nothing extra. Mirrors
+		// ts/src/unify.ts.
+		if cc == maxcc-1 {
+			if sawLast {
+				prevCanon = lastCanon
+			} else {
+				prevCanon = res.Canon()
+			}
 			sawPrev = true
+		}
+
+		res = unite(ctx, res, top())
+
+		// The identity merge, after the pass's own unification: the
+		// positions this pass produced are what there is to merge
+		// (identity.go, mirroring the mergeEntities call in the TS pass
+		// loop).
+		res = mergeEntities(ctx, res)
+
+		// MULTI-ERROR COLLECTION (G2 phase 6): the pass loop CONTINUES
+		// past an erroring pass, so independent failures a later pass
+		// would reach are collected in the same run — the break that
+		// stood here made every multi-error report truncated at the
+		// first erroring pass. What controls the cascade: a nil is
+		// ABSORBING (unite's Nil arms return the existing nil, no new
+		// error), so one failure stays ONE nil however many later meets
+		// touch it. Mirrors ts/src/unify.ts; pinned by vet.tsv's
+		// multi-* rows.
+
+		// The staging signal for the NEXT pass, rendered here rather
+		// than at the top of the loop so a model that is FINISHED is
+		// never rendered at all: Canon walks references, and the only
+		// trees that close a cycle are hand-built ones (the pass loop is
+		// what a test drives them through), which converge in one pass
+		// and must not be walked to decide a question that no longer
+		// arises.
+		if res.Dc() != DONE {
+			nowCanon := res.Canon()
+			settle = sawLast && lastCanon == nowCanon
+			lastCanon = nowCanon
+			sawLast = true
 		}
 	}
 	// The pass budget is spent AND the final pass still made progress:
@@ -166,4 +321,11 @@ func residuePaths(v Val, max int) []string {
 	}
 	visit(v, true)
 	return out
+}
+
+// isPlaceheldOp reports whether v is an operator holding a placeholder
+// hole (G8 phase 3, see place.go).
+func isPlaceheldOp(v Val) bool {
+	_, ok := v.(*PlusOpVal)
+	return ok && hasPlace(v)
 }
