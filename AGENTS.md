@@ -106,6 +106,20 @@ cd go && go build ./... && go vet ./... && go test ./...
 The TypeScript `dist/` and `dist-test/` outputs are committed (as in
 `voxgig/util`), so **rebuild after changing `ts/src/` or `ts/test/`**.
 
+One consequence worth knowing: a static analyser pointed at the
+repository sees the compiled JS as well as the source, so every finding
+in `ts/src` can be reported twice. For DeepScan this is excluded in the
+**project settings on its dashboard** (Exclusion, gitignore-style, one
+pattern per line: `/ts/dist`, `/ts/dist-test`) — there is no repository
+config file for it, so the setting cannot be made from a pull request.
+
+`ts/src/tsconfig.json` carries `noUnusedLocals`, `noUnusedParameters`,
+`noImplicitReturns` and `noFallthroughCasesInSwitch`: an unused import
+or a routine that answers on only some paths fails the build rather
+than reaching an analyser. The test project is not gated the same way
+(`ts/test/val-pref.test.ts` holds a long commented-out region whose
+helper reads as dead).
+
 ## The shared test suite
 
 `test/spec/*.tsv` is the single source of truth for cross-language
