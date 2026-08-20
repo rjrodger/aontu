@@ -1293,6 +1293,34 @@ Under a **root** trust capability (`docs/trust.md`) the user cache is
 not consulted at all: a confined evaluation sees the project's own
 `aon_vendor/` and nothing else, which is what confinement means.
 
+**The lockfile is maintained by tooling, not by hand.** `mod.aon`
+declares what the project wants, under a `dep` map keyed by module
+path:
+
+```
+mod: { path: "corp.example/app", main: "main.aon" }
+dep: { "corp.example/schemas/service@1": { v: "1.4.2" } }
+```
+
+`aontu mod tidy` walks the closure — each module's own `mod.aon`
+contributes its declarations — and resolves it by **minimum version
+selection**: every module is taken at the highest of the minima anyone
+asked for, and never higher. Resolving upgrades nothing, so the answer
+is reproducible and adding one dependency cannot move another. It then
+recomputes each `canon` pin from the module in the store and rewrites
+`mod-lock.aon`; if any module is not in a store the lockfile is left
+alone, because a partial lock claims a closure that was never
+resolved.
+
+`aontu mod vendor` copies the locked closure into `aon_vendor/` as
+whole source trees, which is what makes a project evaluable with no
+cache and no network at all. It can only find what the lockfile pins —
+the cache is keyed by canon-hash — so `tidy` comes first.
+
+Both are local. Fetching and publishing are the network half of the
+design and are not in this build; see
+[API reference](reference-api.md#aontu-mod).
+
 ## Operator precedence
 
 From tightest to loosest binding (higher binding power binds first):

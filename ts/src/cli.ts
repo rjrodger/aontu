@@ -20,6 +20,8 @@ import {
   get, why, patch, agentsMd,
 } from './aontu'
 import { sarifReport } from './report-sarif'
+import { modTidy, modVendor } from './mod-tool'
+import { modCacheDir } from './mod'
 import { VET_MAX_ERRORS } from './vet'
 import type { VetReport, VetFinding, VetVerdict } from './vet'
 import type {
@@ -42,6 +44,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu relations [options] <file>
        aontu hash [options] <file>
+       aontu mod tidy|vendor [options] [dir]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
@@ -66,6 +69,14 @@ Options:
   --trust <t>     Include capability: system (default), none, or
                   root[:dir] to confine @"..." below a directory
   --include-root <dir>  Shorthand for --trust root:<dir>
+
+Mod options:
+  --format <f>    text (default) or json
+
+Mod subcommands:
+  tidy    Resolve the module closure by minimum version selection and
+          rewrite mod-lock.aon in canonical form
+  vendor  Materialise the locked closure into aon_vendor/
 
 Vet options:
   --at <path>       Validate against this path of the schema ($.a.b)
@@ -1395,6 +1406,106 @@ const RELATIONS_EXIT: Record<RelationVerdict, number> = {
   error: 4,
 }
 
+const MOD_HELP = 'aontu mod tidy|vendor [dir] (try --help)'
+
+// The module tooling (G6 phase 3, ts/src/mod-tool.ts). Two
+// subcommands, both LOCAL: `tidy` resolves the closure from what is in
+// the stores and rewrites the lockfile, `vendor` materialises the
+// locked closure into the project.
+//
+// `get` and `publish` are the NETWORK half of the design and are not in
+// this build. They are named here rather than left to fall out as an
+// unknown subcommand, because a reader of the design will type them and
+// deserves to be told which half is missing rather than that the word
+// is wrong.
+function runMod(argv: string[]): number {
+  const rest: string[] = []
+  let format: SubsumeFormat = 'text'
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(`aontu: unknown mod option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      rest.push(arg)
+    }
+  }
+
+  const sub = rest[0]
+  const dir = rest[1] ?? '.'
+
+  if ('get' === sub || 'publish' === sub) {
+    process.stderr.write(
+      'aontu: mod ' + sub + ' needs a registry client, which this build ' +
+      'does not ship (docs/capability-review/g6-distribution.md)\n')
+    return 2
+  }
+
+  if (('tidy' !== sub && 'vendor' !== sub) || 2 < rest.length) {
+    process.stderr.write(`aontu: mod needs tidy or vendor\n${MOD_HELP}\n`)
+    return 2
+  }
+
+  const report = 'tidy' === sub ?
+    modTidy(dir, modToolOptions()) : modVendor(dir, modToolOptions())
+
+  process.stdout.write(('json' === format ?
+    exactJSON({ aontu: { version: version(), verb: 'mod ' + sub }, ...report },
+      2) :
+    modText(sub, report)) + '\n')
+
+  return 'ok' === report.verdict ? 0 : 1
+}
+
+
+// The tooling's evaluator: the same standalone evaluation the module
+// resolver verifies with (ts/src/mod.ts), and for the same reason —
+// only the engine can say what a module MEANS.
+function modToolOptions() {
+  return {
+    cache: modCacheDir(),
+    eval: (src: string, path: string) => {
+      const a0 = new Aontu()
+      const ctx = a0.ctx({ collect: true })
+      const val = a0.unify(src, { path }, ctx)
+      return {
+        gen: val.gen(a0.ctx({ collect: true })),
+        hash: canonHash(val),
+        canon: val.canon,
+      }
+    },
+  }
+}
+
+
+function modText(sub: string, report: any): string {
+  const lines = ['verdict: ' + report.verdict]
+  const done: any[] = 'tidy' === sub ? report.lock : report.vendored
+  for (const item of done) {
+    lines.push('tidy' === sub ?
+      item.mod + ' ' + item.v + ' ' + item.canon : '' + item)
+  }
+  for (const miss of report.missing) {
+    lines.push(miss + ': not fetched (run: aontu mod get)')
+  }
+  return lines.join('\n')
+}
+
+
 function runRelations(argv: string[]): number {
   const files: string[] = []
   let format: SubsumeFormat = 'text'
@@ -2042,6 +2153,10 @@ function main(argv: string[]): void {
     return finish(runHash(argv.slice(3)))
   }
 
+  if ('mod' === argv[2]) {
+    return finish(runMod(argv.slice(3)))
+  }
+
   if ('relations' === argv[2]) {
     return finish(runRelations(argv.slice(3)))
   }
@@ -2102,7 +2217,7 @@ function main(argv: string[]): void {
   else {
     runStdin(mode, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 12 */
+} /* node:coverage ignore next 13 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
@@ -2111,6 +2226,7 @@ function main(argv: string[]): void {
 
 export {
   evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations,
+  runMod,
   runHash, runGet,
   runWhy, renderWhyText, runSet, runAgentsMd,
   watchChange, watchSignature, vetWaiter, deprecatedAt,

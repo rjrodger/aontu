@@ -101,7 +101,7 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-seven of forty-nine phases have moved; forty-six of those are
+Forty-eight of forty-nine phases have moved; forty-seven of those are
 complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
@@ -111,10 +111,10 @@ complete.
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 6 | 0 | 0 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
-| [G6](g6-distribution.md) | Distribution | B/C | 3 | 0 | 2 |
+| [G6](g6-distribution.md) | Distribution | B/C | 4 | 0 | 1 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 5 | 0 | 0 |
-| | | **total** | **46** | **1** | **2** |
+| | | **total** | **47** | **1** | **1** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -634,7 +634,7 @@ ADR-001, a deliverable absent from one port's source cannot count.
 | **0** — the hash form (`hcanon`) | S/M | **LANDED** | `ts/src/hcanon.ts` (`hcanon`, exported from `ts/src/aontu.ts`) and `go/hcanon.go` (`aontu.Hcanon`): exactly the unify-level canon with the two additions that close its semantic gaps — a closed map or list wrapped as `close({…})` / `close([…])`, and the type/hide marks rendered as `type(x)` / `hide(x)`. Both reuse parseable syntax, so the hash form is valid Aontu source, and every row asserts the property the hash rests on: `hcanon(unify(parse(hcanon(v)))) == hcanon(v)`, in both runners. `test/spec/hcanon.tsv` — 38 `hcanon` rows in the new mode (closedness at depth and under marks, spreads, optional keys, prefs, refs, escape-heavy strings, extreme and exact magnitudes, code-point key order, the deprecation vocabulary), beside 6 `canon` rows over the same sources so the "user-facing canon is UNCHANGED" claim is a pin rather than a promise. `docs/shared-spec.md` carries the new modes (and the `subsume`/`trim` modes it had not caught up with). **Departures:** (1) the marks PROPAGATE to every descendant at unification, so a wrapper is emitted only where a mark STARTS — the walk carries inherited marks down and a child whose mark its parent already carries renders bare; rendering every marked leaf would be correct but never minimal, and not what the source said. (2) The design's "`ts/src/val/Val.ts` (default `hcanon` delegating to `canon`)" landed as a standalone WALK instead of a per-Val method: the rendering has to carry inherited-mark state down the tree, which a no-argument getter on each Val cannot do without adding that state to every Val in the engine. Everything the walk does not need to descend — scalars, kinds, funcs, refs, constraints — still delegates to its own `canon`, which is where the cross-port parity already lives. (3) The junction parenthesisation rule is kept exactly, but post-unification junctions are flattened by `norm`, so no SOURCE reaches its wrapping arm; it is pinned by direct tests over constructed Vals in both ports, because a hash form that could render `(1\|2)&3` as the differently-parsing `1\|2&3` would be a pin that silently agrees with a document it should not. |
 | **1** — the hash itself (`canonHash`) | S | **LANDED** | `canonHash` / `aontu.CanonHash`: `"aon1-" + base64url(SHA-256(UTF-8(hcanon(unify(v)))))`, unpadded (RFC 4648 §5), the scheme id there so a semantically stronger normal form is later an upgrade rather than a breakage. CLI verb `aontu hash [--form] [--format text\|json] <file>` in both ports (`ts/src/cli.ts`, `go/cmd/aontu/hash.go`), the document evaluated STANDALONE at its own root — which is what makes the pin transitive — with exit classes 0 hashed, 2 usage, 4 the document does not stand up on its own (a hash of a wreck would agree with every other wreck). 9 `hash` rows pinning full `aon1-…` strings, executed by BOTH runners; 3 cases in `ts/test/cli.test.ts` and 3 in `go/cmd/aontu/hash_test.go` holding each port's argument handling and the invariances (reformat, recomment, reorder keys → same pin; close a map → different pin); the two CLIs diffed byte-identical over a 10-case corpus (text, `--form` and JSON, exit codes included) — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` carries the verb, the hash form's definition and the two exports. **Departure:** `--form` is not in the design. It prints the hashed TEXT instead of the digest, which is the first thing anyone needs the moment a pin moves and the only way to see what the engine actually hashed; without it a flapping pin is undiagnosable from the command line. |
 | **2** — module identity and local resolution | M | **LANDED** | `ts/src/mod.ts` and `go/mod.go` (new): module-path routing (domain-shaped first segment, `@<major>` suffix, optional `#aon1-…` fragment), the project root found by walking up to a `mod.aon`, `aon_vendor/` then the content-addressed user cache, `mod-lock.aon` read as the JSON its canonical form IS, the `mod.main` entry read by EVALUATING the module file, and local integrity verification by recomputing the module's standalone canon-hash. The leg sits where the design put it — memory → MODULE → filesystem → package (`ts/src/lang.ts`, `go/source.go`) — with memory still first, so a sandbox and the spec suite can stub a module path without touching disk. Codes `module_missing`, `module_integrity` and `module_depth` in `errcodes.tsv`. Spec: `test/spec/mod.tsv` (21 rows) over real fixture trees under `test/spec/files/mod*/`, run under the FIXTURES trust root exactly as `file.tsv`'s are; per-port cache, host-filesystem and depth behaviour in `ts/test/mod.test.ts` and `go/mod_test.go`. Docs: "Modules" in [`docs/reference-language.md`](../reference-language.md#modules). **Departures:** two, recorded below. |
-| **3** — fetch and publish tooling | L | **NOT STARTED** |
+| **3** — module tooling (`tidy`, `vendor`) | L | **LANDED** | `ts/src/mod-tool.ts` and `go/modtool.go` (new): the dependency closure walked breadth-first from the project's own `mod.aon`, resolved by **minimum version selection** — each module taken at the highest of the minima anyone asked for and never higher, which is what makes a resolve reproducible and keeps one added dependency from moving another. It terminates without a cycle check because a module's selected version only ever rises. `tidy` recomputes every `canon` pin by evaluating the module in the store standalone (never carrying the old one forward — that would pin what the module USED to mean) and carries the `oci` digest over (the registry's word about bytes, which nothing local can hear), then writes `mod-lock.aon` in canonical form under a generated-file header; a closure with anything missing writes NOTHING, because a partial lock claims a resolve that never happened. `vendor` copies each locked module into `aon_vendor/` as a whole source tree — a module is more than its entry file — and leaves a module already resolving from there alone. CLI verb `aontu mod tidy|vendor [--format text|json] [dir]` in both ports (`runMod` in `ts/src/cli.ts`, new `go/cmd/aontu/mod.go`), exit classes 0 resolved, 1 missing, 2 usage. The lockfile header forced a comment-stripping reader in every consumer (`lockJson` in `ts/src/mod.ts`, `lockJSON` in `go/mod.go`), and the two G6.2 fixtures that carry a lockfile grew the header so the strip is pinned by the shared suite rather than only by the new tests. "Where the user cache is" was written twice the moment the tooling needed to write into the cache the resolver reads from, so the rule is now one function in each port (`modCacheDir` in `ts/src/mod.ts`, `aontu.ModCacheDir` in `go/aontu.go`), called by both the resolver and the command. **No spec rows**: nothing here is language behaviour — it is what a command does to a directory — so the parity discipline is the one G2.3 set for CLI verbs: 17 cases in `describe('mod-tool')` (`ts/test/mod.test.ts`) against 20 in Go — 11 at the package API in new `go/modtool_test.go`, 9 at the command in `go/cmd/aontu/mod_test.go`, the split the Go port's coverage attribution forces — plus the two CLIs diffed byte-for-byte over 22 invocations across twelve worlds (resolve, MVS at depth, a diamond where two modules bid for one dependency in the same round, a previous lockfile whose pins must be half kept and half recomputed, a module whose entry file is absent, a dependency key that is not a module path, missing, locked-in-cache, a store holding a subtree, an unreadable lockfile, a lockfile naming what no store has, and a bare directory for every argument error), comparing exit code, stdout, stderr, the written lockfile and the whole vendor tree — identical, the version series excepted. Docs: [`aontu mod`](../reference-api.md#aontu-mod) and the tooling paragraph in ["Modules"](../reference-language.md#modules). **Departures:** three, recorded below. |
 | **4** — registry hooks and agent integration | M | **NOT STARTED** |
 
 **Departures recorded by G6.2.**
@@ -660,8 +660,38 @@ ADR-001, a deliverable absent from one port's source cannot count.
    parser lazily initialised, because a package-level one was a static
    initialisation cycle through the very resolver it installs.
 
-Phases 3 and 4 (fetch and publish tooling, registry hooks) have no
-artifacts yet.
+**Departures recorded by G6.3.**
+
+1. **The NETWORK HALF is not in this build, and the CLI says so.**
+   The design's phase 3 is `get`/`tidy`/`vendor`/`publish` over OCI.
+   Fetching and publishing need a registry client and integration
+   tests against a live registry — neither of which this build can
+   have, and untestable network code would breach
+   [ADR-002](../../ADR.md)'s floor rather than sit under a waiver. So
+   the two local commands landed whole and the two network ones are
+   NAMED rather than left to fall out as an unknown subcommand: a
+   reader of the design will type `aontu mod get`, and is told which
+   half is missing and where it is specified. The one place the
+   absent half already shows is `tidy`'s missing report, which prints
+   the step that would fix it.
+2. **`vendor` cannot search the cache from a cold start.** The user
+   cache is content-addressed — keyed by canon-hash, which is what
+   makes a shared cache safe between projects — so a lookup needs the
+   hash it is looking for. Without a lockfile there is nothing to
+   search BY, and `vendor` on an unlocked project reports nothing
+   rather than scanning the cache for a path it might match. `tidy`
+   first, then `vendor`; the same ordering `tidy`'s own lookup
+   already assumes when it reads the previous lock for a hash.
+3. **No shared spec rows.** Every other landed phase added rows to
+   `test/spec/*.tsv`; this one adds none, because nothing it does is
+   language behaviour — the observable is what a command leaves in a
+   directory. The parity discipline is the one G2 phase 3 set for CLI
+   verbs instead: twin per-port tests plus a byte-for-byte diff of the
+   two CLIs over a fixture corpus, extended here to compare the
+   written lockfile and the whole vendor tree, not just the streams.
+
+Phase 4 (registry hooks and agent integration) has no artifacts yet;
+it is wiring at a publish boundary this build does not reach.
 
 G6's own risk row — "G1's new constraint syntax changes canon,
 invalidating all pins" — materialised before the hash existed: G1.1

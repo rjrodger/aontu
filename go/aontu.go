@@ -263,14 +263,13 @@ func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
 	return out, nil
 }
 
-// modCacheDir is the content-addressed user module cache (G6 phase 2):
-// `$XDG_CACHE_HOME/aontu/mod`, else `$HOME/.cache/aontu/mod`, unless
-// the host named one. A host with no home has no cache, which is a miss
-// rather than a failure. Mirrors modCache in ts/src/lang.ts.
-func (a *Aontu) modCacheDir() string {
-	if "" != a.ModCache {
-		return a.ModCache
-	}
+// ModCacheDir is the content-addressed user module cache (G6 phase 2):
+// `$XDG_CACHE_HOME/aontu/mod`, else `$HOME/.cache/aontu/mod`. A host
+// with no home has no cache, which is a miss rather than a failure. One
+// rule, in one place: the resolver reads this cache during evaluation
+// and `aontu mod` writes into it, and two spellings of "where the cache
+// is" is one bug. Mirrors modCacheDir in ts/src/mod.ts.
+func ModCacheDir() string {
 	if xdg := os.Getenv("XDG_CACHE_HOME"); "" != xdg {
 		return filepath.Join(xdg, "aontu", "mod")
 	}
@@ -278,4 +277,13 @@ func (a *Aontu) modCacheDir() string {
 		return filepath.Join(home, ".cache", "aontu", "mod")
 	}
 	return ""
+}
+
+// modCacheDir is the cache this evaluation reads: whatever the host
+// named, else the platform rule.
+func (a *Aontu) modCacheDir() string {
+	if "" != a.ModCache {
+		return a.ModCache
+	}
+	return ModCacheDir()
 }

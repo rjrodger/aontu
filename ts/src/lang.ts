@@ -47,7 +47,7 @@ import {
 } from '@tabnas/multisource/resolver/mem'
 
 import { STD_SOURCES } from './std'
-import { parseModuleRef, resolveModule } from './mod'
+import { parseModuleRef, resolveModule, modCacheDir } from './mod'
 
 import {
   Expr,
@@ -1427,22 +1427,11 @@ function makeModelResolver(options: any) {
     throw err
   }
 
-  // The user cache: `~/.cache/aontu/mod` unless the host names another,
-  // and honouring XDG_CACHE_HOME because that is what a cache directory
-  // on this platform means. A host that gives no home has no cache,
-  // which is a miss rather than a failure.
+  // The user cache: whatever the host named, else the platform rule
+  // (`modCacheDir`, ts/src/mod.ts) the tooling writes by.
   const modCache = (opts: any): string | undefined => {
     const named = opts.mod?.cache
-    if ('string' === typeof named) {
-      return named
-    }
-    const xdg = process.env.XDG_CACHE_HOME
-    if ('string' === typeof xdg && '' !== xdg) {
-      return pathJoin(xdg, 'aontu', 'mod')
-    }
-    const home = process.env.HOME
-    return 'string' === typeof home && '' !== home ?
-      pathJoin(home, '.cache', 'aontu', 'mod') : undefined
+    return 'string' === typeof named ? named : modCacheDir()
   }
 
   // The directory an include is being resolved FROM: the source that

@@ -511,12 +511,20 @@ lookup.) Touches: `ts/src/lang.ts` (resolver chain), new
 rows are the guard that non-module paths behave byte-identically, and
 `mod.tsv` adds three of its own for the routing predicate.
 
-**Phase 3 — fetch and publish tooling (L).** `aontu mod
-get/tidy/vendor/publish` over OCI; MVS resolution; lockfile
-writing in canonical form. Network code lives outside evaluation
-and outside the shared spec — per-implementation integration tests
-against a local OCI registry. Touches: `ts/src/cli.ts`, a new
-`ts/src/mod-tool.ts`, `go/cmd/aontu/`, `docs/reference-api.md`.
+**Phase 3 — module tooling (L). LANDED, local half.** `aontu mod
+tidy/vendor`; MVS resolution; lockfile writing in canonical form.
+Landed as designed, in `ts/src/mod-tool.ts`, new `go/modtool.go`,
+`ts/src/cli.ts`, new `go/cmd/aontu/mod.go` and
+`docs/reference-api.md`. `get`/`publish` over OCI did NOT land: the
+network code the design puts outside evaluation also sits outside
+what this build can test — there is no registry to integrate
+against — and the CLIs name the two subcommands and say which half
+is missing rather than answering "unknown subcommand". Because
+nothing the phase does is language behaviour, its parity discipline
+is the CLI one (twin per-port tests plus a byte-for-byte diff of the
+two commands over a fixture corpus, streams AND the files they
+leave behind), not shared spec rows. See the
+[register](progress.md) for the three departures.
 
 **Phase 4 — registry hooks and agent integration (M).**
 Publish-time canon-hash annotations; the breaking gate invoking

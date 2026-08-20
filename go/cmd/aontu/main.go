@@ -29,6 +29,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu trim --check [options] <file>
        aontu relations [options] <file>
        aontu hash [options] <file>
+       aontu mod tidy|vendor [options] [dir]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
@@ -356,6 +357,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 	if 0 < len(args) && "breaking" == args[0] {
 		return runBreaking(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "mod" == args[0] {
+		return runMod(args[1:], stdout, stderr)
 	}
 	if 0 < len(args) && "relations" == args[0] {
 		return runRelations(args[1:], stdout, stderr)

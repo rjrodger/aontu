@@ -1160,22 +1160,11 @@ function makeModelResolver(options) {
         err.code = 'include_denied';
         throw err;
     };
-    // The user cache: `~/.cache/aontu/mod` unless the host names another,
-    // and honouring XDG_CACHE_HOME because that is what a cache directory
-    // on this platform means. A host that gives no home has no cache,
-    // which is a miss rather than a failure.
+    // The user cache: whatever the host named, else the platform rule
+    // (`modCacheDir`, ts/src/mod.ts) the tooling writes by.
     const modCache = (opts) => {
         const named = opts.mod?.cache;
-        if ('string' === typeof named) {
-            return named;
-        }
-        const xdg = process.env.XDG_CACHE_HOME;
-        if ('string' === typeof xdg && '' !== xdg) {
-            return (0, node_path_1.join)(xdg, 'aontu', 'mod');
-        }
-        const home = process.env.HOME;
-        return 'string' === typeof home && '' !== home ?
-            (0, node_path_1.join)(home, '.cache', 'aontu', 'mod') : undefined;
+        return 'string' === typeof named ? named : (0, mod_1.modCacheDir)();
     };
     // The directory an include is being resolved FROM: the source that
     // holds it, or the entry path when the source is a string. Same base

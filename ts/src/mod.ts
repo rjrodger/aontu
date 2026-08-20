@@ -104,6 +104,37 @@ export function projectRoot(from: string, fs: ModuleFs): string {
 // Aontu whose leaves are scalars IS JSON — which is why reading it here
 // needs no evaluator, and why a hand-edited lockfile that is no longer
 // canonical simply does not parse. It is generated; the file says so.
+// The lockfile's JSON: its canonical line, with the generated-file
+// header stripped. The file is AONTU, so it may carry `#` comments —
+// and the header `aontu mod tidy` writes says not to edit it, which is
+// worth more than the two lines it costs to skip. Everything below the
+// comments is the canonical map, and canonical Aontu whose leaves are
+// scalars is JSON.
+export function lockJson(text: string): string {
+  return text
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('#'))
+    .join('\n')
+}
+
+
+// The user cache: `~/.cache/aontu/mod` unless the host names another,
+// and honouring XDG_CACHE_HOME because that is what a cache directory
+// on this platform means. A host that gives no home has no cache,
+// which is a miss rather than a failure. One rule, in one place: the
+// resolver reads this cache during evaluation and `aontu mod` writes
+// into it, and two spellings of "where the cache is" is one bug.
+export function modCacheDir(): string | undefined {
+  const xdg = process.env.XDG_CACHE_HOME
+  if ('string' === typeof xdg && '' !== xdg) {
+    return pathJoin(xdg, 'aontu', 'mod')
+  }
+  const home = process.env.HOME
+  return 'string' === typeof home && '' !== home ?
+    pathJoin(home, '.cache', 'aontu', 'mod') : undefined
+}
+
+
 export function lockHash(root: string, ref: ModuleRef, fs: ModuleFs):
   string | undefined {
   const file = pathJoin(root, 'mod-lock.aon')
@@ -113,7 +144,7 @@ export function lockHash(root: string, ref: ModuleRef, fs: ModuleFs):
 
   let lock: any
   try {
-    lock = JSON.parse(fs.readFileSync(file, 'utf8'))
+    lock = JSON.parse(lockJson(fs.readFileSync(file, 'utf8')))
   }
   catch {
     return undefined

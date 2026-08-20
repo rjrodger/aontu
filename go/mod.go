@@ -87,6 +87,23 @@ func projectRoot(from string) string {
 	}
 }
 
+// lockJSON is the lockfile's JSON: its canonical line, with the
+// generated-file header stripped. The file is AONTU, so it may carry
+// `#` comments — and the header `aontu mod tidy` writes says not to
+// edit it, which is worth more than the two lines it costs to skip.
+// Everything below the comments is the canonical map, and canonical
+// Aontu whose leaves are scalars is JSON.
+func lockJSON(text string) string {
+	out := []string{}
+	for _, line := range strings.Split(text, "\n") {
+		if strings.HasPrefix(strings.TrimLeft(line, " \t"), "#") {
+			continue
+		}
+		out = append(out, line)
+	}
+	return strings.Join(out, "\n")
+}
+
 // lockHash is the lockfile's pin for one import, or "".
 //
 // `mod-lock.aon` is machine-written CANONICAL Aontu, and canonical
@@ -104,7 +121,7 @@ func lockHash(root string, ref ModuleRef) string {
 			Canon string `json:"canon"`
 		} `json:"lock"`
 	}
-	if err := json.Unmarshal(data, &lock); nil != err {
+	if err := json.Unmarshal([]byte(lockJSON(string(data))), &lock); nil != err {
 		return ""
 	}
 
