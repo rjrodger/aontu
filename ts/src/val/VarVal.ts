@@ -24,7 +24,6 @@ import {
 
 
 import { StringVal } from './StringVal'
-import { NilVal } from './NilVal'
 import { FeatureVal } from './FeatureVal'
 import { NullVal } from './NullVal'
 import { BooleanVal } from './BooleanVal'

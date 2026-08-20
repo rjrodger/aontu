@@ -12,7 +12,6 @@ import {
 
 import { makeNilErr } from '../err'
 
-import { NilVal } from '../val/NilVal'
 import { RefVal } from '../val/RefVal'
 import { FuncBaseVal } from './FuncBaseVal'
 

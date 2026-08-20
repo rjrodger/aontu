@@ -1,6 +1,5 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-import { inspect } from 'node:util'
 
 import type {
   ValSpec,

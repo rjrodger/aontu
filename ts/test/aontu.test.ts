@@ -7,7 +7,7 @@ import { memfs as Memfs } from 'memfs'
 import { expect } from './expect'
 import { MapVal } from '../dist/val/MapVal'
 
-import { Lang, util, Aontu, AontuContext } from '../dist/aontu'
+import { Lang, Aontu, AontuContext } from '../dist/aontu'
 
 type FST = typeof Fs
 
@@ -304,7 +304,6 @@ def: garage: {
   })
 
   test('deep-hierarchy', () => {
-    let ctx = makeCtx()
     let a0 = new Aontu()
 
     // Simple deep nesting
@@ -336,7 +335,6 @@ def: garage: {
 
 
   test('deep-hierarchy-spread', () => {
-    let ctx = makeCtx()
     let a0 = new Aontu()
 
     // Spread at depth

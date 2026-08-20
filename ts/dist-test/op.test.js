@@ -9,7 +9,6 @@ const MapVal_1 = require("../dist/val/MapVal");
 const unify_1 = require("../dist/unify");
 let lang = new lang_1.Lang();
 let PL = lang.parse.bind(lang);
-let P = (x, ctx) => PL(x, ctx);
 let PA = (x, ctx) => x.map(s => PL(s, ctx));
 (0, node_test_1.describe)('op', () => {
     (0, node_test_1.it)('happy', () => {

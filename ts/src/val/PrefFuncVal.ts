@@ -16,7 +16,6 @@ import {
   walk
 } from '../utility'
 
-import { NilVal } from '../val/NilVal'
 import { PrefVal } from '../val/PrefVal'
 import { FuncBaseVal } from './FuncBaseVal'
 

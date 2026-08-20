@@ -213,7 +213,6 @@ def: garage: {
         (0, expect_1.expect)(v1.canon).equal('{"a":{"f":11}}');
     });
     (0, node_test_1.test)('deep-hierarchy', () => {
-        let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         // Simple deep nesting
         (0, expect_1.expect)(a0.generate('a:b:c:d:e:1')).equal({ a: { b: { c: { d: { e: 1 } } } } });
@@ -229,7 +228,6 @@ def: garage: {
         (0, expect_1.expect)(a0.generate('a:b:{c:1,d:2} e:$.a.b')).equal({ a: { b: { c: 1, d: 2 } }, e: { c: 1, d: 2 } });
     });
     (0, node_test_1.test)('deep-hierarchy-spread', () => {
-        let ctx = makeCtx();
         let a0 = new aontu_1.Aontu();
         // Spread at depth
         (0, expect_1.expect)(a0.generate('a:b:{&:string,c:C,d:D}')).equal({ a: { b: { c: 'C', d: 'D' } } });

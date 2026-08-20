@@ -27,7 +27,6 @@
 // a preference INSIDE a spread template is a spread contribution,
 // which is what the author needs to be told.
 
-import type { Val } from './val/Val'
 
 
 export type WhyRole = 'literal' | 'spread' | 'ref' | 'pref'

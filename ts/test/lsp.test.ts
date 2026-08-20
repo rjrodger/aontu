@@ -15,7 +15,6 @@ import {
   COMPLETION_KEYWORD,
 } from '../dist/lsp'
 
-import { Aontu } from '../dist/aontu'
 
 import { FrameCodec } from '../dist/lsp-server'
 
@@ -145,7 +144,6 @@ describe('lsp-completion', () => {
     // Drift guard: every BUILTIN_FUNCS name must be recognised by the
     // parser, and a bogus name must not be.
     Assert.equal(BUILTIN_FUNCS.length, 28)
-    const a = new Aontu()
     for (const name of BUILTIN_FUNCS) {
       const errs = computeDiagnostics('x:' + name + '(1)')
         .filter(d => d.code === 'unknown_function')

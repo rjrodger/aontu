@@ -1,6 +1,5 @@
 import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
-import { NilVal } from '../val/NilVal';
 import { FuncBaseVal } from './FuncBaseVal';
 declare class CopyFuncVal extends FuncBaseVal {
     isCopyFunc: boolean;
@@ -9,6 +8,6 @@ declare class CopyFuncVal extends FuncBaseVal {
     make(_ctx: AontuContext, spec: ValSpec): Val;
     funcname(): string;
     prepare(_ctx: AontuContext, _args: Val[]): null;
-    resolve(ctx: AontuContext, args: Val[]): NilVal | Val;
+    resolve(ctx: AontuContext, args: Val[]): import("./NilVal").NilVal | Val;
 }
 export { CopyFuncVal, };

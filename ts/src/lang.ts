@@ -10,7 +10,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import {
   dirname as pathDirname,
-  join as pathJoin,
   resolve as pathResolve,
   sep as pathSep,
 } from 'node:path'

@@ -6,7 +6,6 @@ import * as Fs from 'node:fs'
 
 import { Resolver } from '@tabnas/multisource'
 
-import { AontuContext } from './ctx'
 import { Val, DONE, SPREAD } from './val/Val'
 import type { ValMark, ValSpec } from './val/Val'
 

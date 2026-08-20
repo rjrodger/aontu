@@ -12,7 +12,6 @@ import {
 
 import { makeNilErr } from '../err'
 
-import { NilVal } from '../val/NilVal'
 
 import {
   walk
@@ -21,7 +20,6 @@ import {
 
 
 import { FuncBaseVal } from './FuncBaseVal'
-import { CopyFuncVal } from './CopyFuncVal'
 import { PrefFuncVal } from './PrefFuncVal'
 
 

@@ -386,11 +386,13 @@ class ConstraintVal extends FeatureVal_1.FeatureVal {
     // so a shape this cannot use is a genuine `invalid-arg`, not a
     // not-yet.
     fromAtom(atom, args) {
-        // Mark the residual invalid and report so (a plain boolean, so no
-        // void value is consumed by the callers' `return` statements).
+        // Mark the residual invalid. It answers NOTHING: every caller
+        // spells its exit `return bad(...)` and none reads a value, so a
+        // return type would be a value nobody consumes -- and a routine
+        // that answers on some paths and not others is the shape a reader
+        // (and a static analyser) has to stop and check.
         const bad = (why) => {
             this.invalid = why;
-            return true;
         };
         // `unique()` takes no argument: it is a property of the container,
         // not a comparison against a value. Arity is checked at parse, so a

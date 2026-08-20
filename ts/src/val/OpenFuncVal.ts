@@ -14,7 +14,6 @@ import { makeNilErr } from '../err'
 
 
 import { FuncBaseVal } from './FuncBaseVal'
-import { NilVal } from '../val/NilVal'
 import { BagVal } from '../val/BagVal'
 
 

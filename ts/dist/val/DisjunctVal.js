@@ -116,6 +116,10 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         (0, utility_1.explainClose)(te, out);
         return out;
     }
+    // Answers the sole surviving preference when ranking collapsed the
+    // disjunction to one -- which the RECURSIVE call below consumes to
+    // lift a nested disjunct's winner into this one. Undefined when
+    // more than one alternative survives, so the type says both.
     rankPrefs(ctx) {
         let lastpref = undefined;
         let lastprefI = -1;
@@ -151,7 +155,7 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
                 }
             }
             else if (v.isDisjunct) {
-                let subrank = v.rankPrefs(ctx);
+                const subrank = v.rankPrefs(ctx);
                 if (subrank instanceof PrefVal_1.PrefVal) {
                     this.peg[vI] = subrank;
                     lastpref = subrank;
@@ -165,6 +169,7 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         if (1 === this.peg.length && this.peg[0] instanceof PrefVal_1.PrefVal) {
             return this.peg[0];
         }
+        return undefined;
     }
     clone(ctx, spec) {
         let out = super.clone(ctx, spec);

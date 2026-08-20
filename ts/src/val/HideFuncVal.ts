@@ -15,8 +15,6 @@ import { makeNilErr } from '../err'
 
 import {
   walk,
-  explainOpen,
-  explainClose,
 } from '../utility'
 
 

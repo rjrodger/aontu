@@ -805,7 +805,7 @@ describe('val-basic', function() {
   `)
 
     let u1a = m1.unify(TOP, new AontuContext({ root: m1 }))
-    let u1b = u1a.unify(TOP, new AontuContext({ root: u1a }))
+    u1a.unify(TOP, new AontuContext({ root: u1a }))
   })
 
 

@@ -580,7 +580,7 @@ const makeIntegerVal = (v, c) => new IntegerVal_1.IntegerVal({ peg: v }, c);
   w: b: .q.a & {y:2, z: 3}
   `);
         let u1a = m1.unify(TOP, new ctx_1.AontuContext({ root: m1 }));
-        let u1b = u1a.unify(TOP, new ctx_1.AontuContext({ root: u1a }));
+        u1a.unify(TOP, new ctx_1.AontuContext({ root: u1a }));
     });
     (0, node_test_1.it)('unify', () => {
         let m0 = P(`

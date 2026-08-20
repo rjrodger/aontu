@@ -21,7 +21,6 @@
 // `compat_marks_changed`, and the `sub_*` undecided reasons — all
 // class `compat`.
 
-import type { Val } from './type'
 
 import { Aontu } from './aontu'
 import { anchorAt } from './vet'

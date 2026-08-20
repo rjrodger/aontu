@@ -37,7 +37,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = require("node:test");
 const Assert = __importStar(require("node:assert"));
 const lsp_1 = require("../dist/lsp");
-const aontu_1 = require("../dist/aontu");
 const lsp_server_1 = require("../dist/lsp-server");
 (0, node_test_1.describe)('lsp-diagnostics', () => {
     (0, node_test_1.test)('valid-documents-have-no-diagnostics', () => {
@@ -143,7 +142,6 @@ const lsp_server_1 = require("../dist/lsp-server");
         // Drift guard: every BUILTIN_FUNCS name must be recognised by the
         // parser, and a bogus name must not be.
         Assert.equal(lsp_1.BUILTIN_FUNCS.length, 28);
-        const a = new aontu_1.Aontu();
         for (const name of lsp_1.BUILTIN_FUNCS) {
             const errs = (0, lsp_1.computeDiagnostics)('x:' + name + '(1)')
                 .filter(d => d.code === 'unknown_function');

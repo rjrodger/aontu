@@ -61,8 +61,8 @@ function descErr<NILS extends NilVal | NilVal[]>(
       let v1: any = err.primary
       let v2: any = err.secondary
 
-      let v1src = resolveSrc(v1, errctx, 'primary')
-      let v2src = resolveSrc(v2, errctx, 'secondary')
+      let v1src = resolveSrc(v1, errctx)
+      let v2src = resolveSrc(v2, errctx)
 
       // STRICT `!==` against the empty string. The loose `!=` here dropped
       // the list index 0, because `'' != 0` is FALSE in JavaScript ('' and
@@ -153,7 +153,7 @@ function resolveFile(url: string | undefined) {
 }
 
 
-function resolveSrc(v: Val, errctx: ErrContext | undefined, position: string) {
+function resolveSrc(v: Val, errctx: ErrContext | undefined) {
   let src: string | undefined = undefined
   const url = v?.site.url
 

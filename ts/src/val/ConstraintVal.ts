@@ -553,12 +553,14 @@ class ConstraintVal extends FeatureVal {
   // SETTLED — the constructor routes an unsettled one to `pending` —
   // so a shape this cannot use is a genuine `invalid-arg`, not a
   // not-yet.
-  private fromAtom(atom: string, args: any[]) {
-    // Mark the residual invalid and report so (a plain boolean, so no
-    // void value is consumed by the callers' `return` statements).
-    const bad = (why: string): boolean => {
+  private fromAtom(atom: string, args: any[]): void {
+    // Mark the residual invalid. It answers NOTHING: every caller
+    // spells its exit `return bad(...)` and none reads a value, so a
+    // return type would be a value nobody consumes -- and a routine
+    // that answers on some paths and not others is the shape a reader
+    // (and a static analyser) has to stop and check.
+    const bad = (why: string): void => {
       this.invalid = why
-      return true
     }
 
     // `unique()` takes no argument: it is a property of the container,
