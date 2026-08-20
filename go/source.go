@@ -73,6 +73,50 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 		return res
 	}
 
+	// THE MODULE LEG (G6 phase 2, mod.go): memory -> MODULE ->
+	// filesystem -> package. Memory stays FIRST so a sandbox and the
+	// spec suite can stub a module path without touching disk; a path
+	// that is not module-shaped falls straight through, so no existing
+	// include can be routed somewhere new by this. Mirrors the same leg
+	// in ts/src/lang.ts.
+	if ref, ok := parseModuleRef(spec.Path); ok {
+		cache := ""
+		depth := 0
+		if nil != sink {
+			depth = sink.modDepth
+			// The user cache lives outside any confinement root, so it
+			// is consulted only when nothing confines this evaluation. A
+			// rooted profile sees the project's own `aon_vendor/` and
+			// nothing else, which is what `root` means.
+			if "" == sink.root {
+				cache = sink.modCache
+			}
+		}
+
+		out := resolveModule(ref, moduleFrom(spec), cache, depth)
+
+		if "" != out.Code {
+			recordModErr(sink, out.Code, out.Msg)
+			res.Kind = deniedKind
+			res.Found = true
+			return res
+		}
+
+		if nil != sink && "" != sink.root && outsideRoot(sink.root, out.Full) {
+			recordDenied(ctx, res.Path, "root:"+sink.root)
+			res.Kind = deniedKind
+			res.Found = true
+			return res
+		}
+
+		res.Full = out.Full
+		res.Kind = "aon"
+		res.Src = out.Src
+		res.Found = true
+		recordDep(sink, out.Full, "mod")
+		return res
+	}
+
 	var potentials []string
 	if spec.Full != "" {
 		full, _ := filepath.Abs(spec.Full)
@@ -176,6 +220,14 @@ type trustSink struct {
 	deps     *[]IncludeDep
 	warn     func(kind, path string)
 	warnRoot string
+	// The module resolver's state and its first refusal (G6 phase 2,
+	// mod.go): how deep module verification already is, where the user
+	// cache lives, and the code and message of the first module that
+	// was absent, failed its pin, or nested too far.
+	modDepth int
+	modCache string
+	modCode  string
+	modMsg   string
 }
 
 func trustSinkOf(ctx *jsonic.Context) *trustSink {
@@ -197,6 +249,34 @@ func recordDenied(ctx *jsonic.Context, path, capability string) {
 	if "" == sink.denied {
 		sink.denied = "include denied: " + path + " (capability: " + capability + ")"
 	}
+}
+
+// moduleFrom is the directory a module import is being resolved FROM:
+// the source that holds it. multisource builds Full as base + "/" +
+// Path, so trimming the path back off is the base — and a module path
+// never looks like a file path, so nothing else can have shortened it.
+func moduleFrom(spec multisource.PathSpec) string {
+	base := strings.TrimSuffix(spec.Full, spec.Path)
+	base = strings.TrimSuffix(base, "/")
+	if "" == base {
+		base = "."
+	}
+	abs, err := filepath.Abs(base)
+	if nil != err { //coverage:ignore Abs fails only on an unreadable cwd
+		return base
+	}
+	return abs
+}
+
+// recordModErr notes a refused module in the parse's shared sink. Only
+// the FIRST refusal is kept, exactly as recordDenied keeps the first
+// denial: the canonical port raises on the first and stops.
+func recordModErr(sink *trustSink, code, msg string) {
+	if nil == sink || "" != sink.modCode {
+		return
+	}
+	sink.modCode = code
+	sink.modMsg = msg
 }
 
 // recordDep appends a resolved include to the manifest sink (G5: the

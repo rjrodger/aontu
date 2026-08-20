@@ -58,7 +58,24 @@ const elidedSpreadKey = reservedKeyPrefix + "elidedspread"
 
 // theLang is the default parser (base ""), resolving relative @"file"
 // loads from the process working directory.
-var theLang = mustMakeLang("")
+//
+// Built LAZILY, on first use, rather than as a package variable: the
+// module leg of the resolver (G6 phase 2, mod.go) evaluates a module to
+// verify it, and evaluation reaches this parser — a package-variable
+// initialiser would be a static initialisation cycle through the very
+// resolver it installs. Once, so the parser is still built exactly one
+// time however many goroutines ask for it first.
+var (
+	theLangOnce sync.Once
+	theLangVal  *jsonic.Jsonic
+)
+
+func theLang() *jsonic.Jsonic {
+	theLangOnce.Do(func() {
+		theLangVal = mustMakeLang("")
+	})
+	return theLangVal
+}
 
 // langCache memoises base -> parser. multisource resolves a top-level
 // load's relative path against opts.Path, which is fixed when the plugin
@@ -79,7 +96,7 @@ const maxLangCache = 256
 // against base. Base "" reuses the shared default parser.
 func langForBase(base string) (*jsonic.Jsonic, error) {
 	if base == "" {
-		return theLang, nil
+		return theLang(), nil
 	}
 	langCacheMu.Lock()
 	defer langCacheMu.Unlock()
@@ -2172,6 +2189,15 @@ func parseWithTrust(src, base, file string, trust *trustSink) (Val, error) {
 	// is noise.
 	if nil != trust && "" != trust.denied {
 		return newMap(), &AontuError{Msg: trust.denied, Code: "include_denied"}
+	}
+
+	// A module that is absent, fails its pin, or nests too deep (G6
+	// phase 2) is refused the same way and for the same reason: the
+	// resolution cannot stand, and a bare-member module import would
+	// otherwise vanish in the merge and leave a plausible,
+	// silently-partial document.
+	if nil != trust && "" != trust.modCode {
+		return newMap(), &AontuError{Msg: trust.modMsg, Code: trust.modCode}
 	}
 
 	if "" != sink.msg {

@@ -3,6 +3,7 @@
 package aontu
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 )
@@ -75,6 +76,19 @@ type Aontu struct {
 	// returned Val the way that port stamps `deps`.
 	Graph Graph
 
+	// modDepth is how many module VERIFICATIONS deep this evaluation
+	// already is (G6 phase 2, mod.go). A pinned module is checked by
+	// evaluating it, and that evaluation resolves the module's own
+	// imports, so the count has to travel with the evaluation that
+	// carries it. Not a stable embedding API.
+	modDepth int
+
+	// ModCache is the content-addressed user module cache. Empty means
+	// the platform default (`$XDG_CACHE_HOME/aontu/mod`, else
+	// `$HOME/.cache/aontu/mod`); a host that names one uses it, which is
+	// what makes a hermetic test possible. Not a stable embedding API.
+	ModCache string
+
 	// TrustWarn and TrustWarnRoot are the staged-flip warning window
 	// (G5 phase 6, cmd/aontu only): under the 'system' posture every
 	// resolution escaping TrustWarnRoot calls TrustWarn. Not a stable
@@ -123,7 +137,10 @@ func (a *Aontu) parseEntry(src string) (Val, error) {
 // accumulator.
 func (a *Aontu) newTrustSink() *trustSink {
 	deps := []IncludeDep{}
-	sink := &trustSink{deps: &deps, warn: a.TrustWarn, warnRoot: a.TrustWarnRoot}
+	sink := &trustSink{
+		deps: &deps, warn: a.TrustWarn, warnRoot: a.TrustWarnRoot,
+		modDepth: a.modDepth, modCache: a.modCacheDir(),
+	}
 	if nil != a.Trust {
 		sink.none = a.Trust.IncludeNone
 		sink.mem = a.Trust.IncludeMem
@@ -244,4 +261,21 @@ func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
 		return nil, gerr
 	}
 	return out, nil
+}
+
+// modCacheDir is the content-addressed user module cache (G6 phase 2):
+// `$XDG_CACHE_HOME/aontu/mod`, else `$HOME/.cache/aontu/mod`, unless
+// the host named one. A host with no home has no cache, which is a miss
+// rather than a failure. Mirrors modCache in ts/src/lang.ts.
+func (a *Aontu) modCacheDir() string {
+	if "" != a.ModCache {
+		return a.ModCache
+	}
+	if xdg := os.Getenv("XDG_CACHE_HOME"); "" != xdg {
+		return filepath.Join(xdg, "aontu", "mod")
+	}
+	if home := os.Getenv("HOME"); "" != home {
+		return filepath.Join(home, ".cache", "aontu", "mod")
+	}
+	return ""
 }

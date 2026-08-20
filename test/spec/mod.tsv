@@ -1,0 +1,56 @@
+# MODULES (G6 phase 2, docs/capability-review/g6-distribution.md). An
+# import is still just `@"…"`; the string's SHAPE routes it, so the
+# grammar is untouched and every existing include keeps its behaviour.
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# These rows run against real fixture trees under
+# `test/spec/files/mod*/`, and under the FIXTURES trust root, exactly as
+# file.tsv's do — a module is resolved from the filesystem, so proving
+# it needs a filesystem.
+#
+# EVALUATION NEVER TOUCHES THE NETWORK: resolution reads `aon_vendor/`
+# beside the project's `mod.aon` and a content-addressed user cache, and
+# nothing else. A module in neither store is an error that names the
+# fetch step; a module whose MEANING disagrees with its pin is an
+# integrity error naming both hashes.
+mod-vendor	gens	x: @"__FIXTURES__/modproj/main.aon"	{"x":{"svc":{"name":"auth","port":8080}}}
+mod-vendor-canon	canon	x: @"__FIXTURES__/modproj/main.aon"	{"x":{"svc":{"name":"auth","port":*8080|integer}}}
+mod-lock-pin	gens	x: @"__FIXTURES__/modlock/main.aon"	{"x":{"svc":{"name":"auth","port":8080}}}
+mod-inline-pin	gens	x: @"__FIXTURES__/modfree/main.aon"	{"x":{"svc":{"name":"auth","port":8080}}}
+mod-file-is-a-document	gens	x: @"__FIXTURES__/modproj/mod.aon"	{"x":{"dep":{"corp.example/schemas/service@1":{"v":"1.4.2"}},"mod":{"main":"main.aon","path":"corp.example/app"}}}
+mod-missing	errc	x: @"__FIXTURES__/modmiss/main.aon"	module_missing
+mod-missing-message	err	x: @"__FIXTURES__/modmiss/main.aon"	module not fetched: corp.example/schemas/absent@1 (run: aontu mod get)
+mod-inline-pin-mismatch	errc	x: @"__FIXTURES__/modpin/main.aon"	module_integrity
+mod-inline-pin-mismatch-message	err	x: @"__FIXTURES__/modpin/main.aon"	module integrity: corp.example/schemas/service@1 expected aon1-wrongwrongwrongwrongwrongwrongwrongwrong got aon1-oQs6Ng6XxP2FHQGTYescREGDrDPfLLW1Liq4OS8Gs2E
+mod-lock-pin-mismatch	errc	x: @"__FIXTURES__/modbad/main.aon"	module_integrity
+# A module resolves from ITS OWN project root, not the importer's: the
+# vendored module here imports itself, finds no vendor tree of its own,
+# and says so rather than reaching back up into the importer's.
+mod-nested-has-its-own-root	errc	x: @"__FIXTURES__/modself/main.aon"	module_missing
+# THE ROUTING GUARD. A path routes to the module resolver only when it
+# is domain-shaped AND carries a major; anything else falls through the
+# chain exactly as it did before this phase existed.
+mod-no-major-is-not-a-module	err	x: @"corp.example/schemas/service"	source not found: corp.example/schemas/service
+mod-no-dot-is-not-a-module	err	x: @"local@1"	source not found: local@1
+mod-shaped-is-a-module	err	x: @"corp.example/schemas/service@1"	module not fetched: corp.example/schemas/service@1 (run: aontu mod get)
+# THE MODULE FILE'S OWN EDGES. A module file with no `main` uses the
+# default entry (`main.aon`); one naming an entry that is not there is
+# the same refusal an absent module is, because the module is not
+# there to be read. A module file that does not stand up has no
+# metadata to read either — the default entry stands rather than the
+# read failing.
+mod-default-entry	gens	x: @"__FIXTURES__/modnomain/main.aon"	{"x":{"svc":{"name":"auth","port":8080}}}
+mod-entry-not-there	errc	x: @"__FIXTURES__/modbadmain/main.aon"	module_missing
+mod-file-unreadable-uses-default	gens	x: @"__FIXTURES__/moduglymod/main.aon"	{"x":{"svc":{"name":"auth","port":8080}}}
+# A LOCKFILE IS GENERATED, and only a generated one is read: canonical
+# Aontu whose leaves are scalars IS JSON, so a hand-edited lockfile
+# that is no longer canonical does not parse — and an entry with no
+# `canon` pin has nothing to check. Neither is an error: what is
+# missing is the PIN, and a module with no pin is simply unpinned.
+mod-lockfile-not-canonical	gens	x: @"__FIXTURES__/modbadlock/main.aon"	{"x":{"svc":{"name":"auth","port":8080}}}
+mod-lock-entry-without-pin	gens	x: @"__FIXTURES__/modlocknoc/main.aon"	{"x":{"svc":{"name":"auth","port":8080}}}
+# TWO MISSING MODULES, ONE REFUSAL: the FIRST is the one reported, as
+# the first denied include is. A refusal is about the document not
+# standing up, and the second miss adds nothing to that.
+mod-first-miss-is-the-one	errc	x: @"a.example/m@1"\ny: @"b.example/m@1"	module_missing
+mod-first-miss-message	err	x: @"a.example/m@1"\ny: @"b.example/m@1"	module not fetched: a.example/m@1 (run: aontu mod get)

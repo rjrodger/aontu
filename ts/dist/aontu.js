@@ -50,9 +50,39 @@ Object.defineProperty(exports, "relationCheck", { enumerable: true, get: functio
 // fails if the two ever drift.
 const VERSION = '0.52.1';
 exports.VERSION = VERSION;
+// A module file's VALUE, as far as it goes. COLLECTED, not raised: a
+// module file that does not stand up has no `mod.main` to read, and
+// the default entry name is the answer -- the resolution itself fails
+// later, on the file that is not there, rather than here on a metadata
+// read. That is what a collecting context does, so there is nothing to
+// catch: it answers what it could generate and records the rest.
+function genQuiet(val, aontu) {
+    return val.gen(aontu.ctx({ collect: true }));
+}
 class Aontu {
     constructor(popts) {
         this.opts = popts ?? {};
+        this.opts.mod = {
+            ...(this.opts.mod ?? {}),
+            eval: this.opts.mod?.eval ?? ((src, path) => {
+                // One deeper: a module verified from inside a module
+                // verification is one more level of nesting, and the resolver
+                // refuses past its bound (MODULE_MAX_DEPTH in ts/src/mod.ts).
+                const inner = new Aontu({
+                    ...this.opts,
+                    mod: {
+                        // Never absent: the assignment this closure is part of has
+                        // already run by the time it is called.
+                        ...this.opts.mod,
+                        eval: undefined,
+                        depth: (this.opts.mod?.depth ?? 0) + 1,
+                    },
+                });
+                const ctx = inner.ctx({ collect: true });
+                const val = inner.unify(src, { path }, ctx);
+                return { gen: genQuiet(val, inner), hash: (0, hcanon_1.canonHash)(val) };
+            }),
+        };
         this.lang = new lang_1.Lang(this.opts);
     }
     // Create a new context.

@@ -181,7 +181,11 @@ func TestSpec(t *testing.T) {
 				// suite itself HERMETIC: no row may read outside the
 				// repository, in either runner (ts/test/spec.test.ts
 				// applies the same profile to the same files).
-				if "include-trust.tsv" == file || "file.tsv" == file {
+				// Module resolution reads the filesystem (G6 phase 2),
+				// so mod.tsv's rows run under the same fixture root for
+				// the same reason file.tsv's do.
+				if "include-trust.tsv" == file || "file.tsv" == file ||
+					"mod.tsv" == file {
 					a.Trust = &TrustOptions{IncludeRoot: fixturesDir}
 				}
 				vars := specVars()

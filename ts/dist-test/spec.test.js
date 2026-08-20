@@ -268,6 +268,10 @@ function vetGolden(report) {
 const TRUST_FILES = {
     'include-trust.tsv': true,
     'file.tsv': true,
+    // Module resolution reads the filesystem (G6 phase 2), so mod.tsv's
+    // rows run under the same fixture root for the same reason file.tsv's
+    // do: no row may read outside the repository.
+    'mod.tsv': true,
 };
 function rowAontu(row) {
     return new aontu_1.Aontu(null != row.file && true === TRUST_FILES[row.file]

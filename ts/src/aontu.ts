@@ -36,6 +36,17 @@ import { relationCheck } from './relation'
 const VERSION = '0.52.1'
 
 
+// A module file's VALUE, as far as it goes. COLLECTED, not raised: a
+// module file that does not stand up has no `mod.main` to read, and
+// the default entry name is the answer -- the resolution itself fails
+// later, on the file that is not there, rather than here on a metadata
+// read. That is what a collecting context does, so there is nothing to
+// catch: it answers what it could generate and records the rest.
+function genQuiet(val: any, aontu: Aontu): any {
+  return val.gen(aontu.ctx({ collect: true }))
+}
+
+
 class Aontu {
   opts: AontuOptions
   lang: Lang
@@ -43,6 +54,42 @@ class Aontu {
 
   constructor(popts?: AontuOptions) {
     this.opts = popts ?? {}
+
+    // THE MODULE EVALUATOR (G6 phase 2, ts/src/mod.ts). Resolving a
+    // module import needs two answers that only evaluation can give:
+    // what a module file SAYS (its `mod.main`), and what a module
+    // MEANS (its canon-hash, for the integrity check). Injected here
+    // rather than imported there, because the resolver runs inside a
+    // parse that this class started, and the file it runs in cannot
+    // import this one without closing a cycle around the language.
+    //
+    // COLLECTED, not raised: a module that leans on consumer context
+    // (a `$.x` its importer supplies) does not stand up alone, and its
+    // hash is still the hash of what it says — that residue is part of
+    // the hashed meaning, which is why `hcanon` keeps it in textual
+    // form (docs/capability-review/g6-distribution.md).
+    ;(this.opts as any).mod = {
+      ...((this.opts as any).mod ?? {}),
+      eval: (this.opts as any).mod?.eval ?? ((src: string, path: string) => {
+        // One deeper: a module verified from inside a module
+        // verification is one more level of nesting, and the resolver
+        // refuses past its bound (MODULE_MAX_DEPTH in ts/src/mod.ts).
+        const inner = new Aontu({
+          ...this.opts,
+          mod: {
+            // Never absent: the assignment this closure is part of has
+            // already run by the time it is called.
+            ...(this.opts as any).mod,
+            eval: undefined,
+            depth: (((this.opts as any).mod?.depth ?? 0) as number) + 1,
+          },
+        } as any)
+        const ctx = inner.ctx({ collect: true })
+        const val = inner.unify(src, { path }, ctx)
+        return { gen: genQuiet(val, inner), hash: canonHash(val) }
+      }),
+    }
+
     this.lang = new Lang(this.opts)
   }
 

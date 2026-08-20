@@ -1232,6 +1232,67 @@ the filesystem, then package resolution (see
 value and a local one is a normal unification
 error.
 
+### Modules
+
+An import whose path is **domain-shaped and carries a major version**
+is a MODULE import rather than a file path:
+
+```
+service: @"corp.example/schemas/service@1"
+frozen:  @"corp.example/schemas/service@1#aon1-4vJemVYtWFR2mQeN…"
+local:   @"./fragment.aon"        # unchanged — not a module
+```
+
+The routing is by shape alone: the first segment must contain a dot and
+the path must end in `@<integer>`. Anything else falls through the
+resolver chain exactly as before, so no existing include can be routed
+somewhere new.
+
+**Evaluation never touches the network.** A module resolves from local
+stores only — `aon_vendor/` beside the project's `mod.aon`, then a
+content-addressed user cache (`$XDG_CACHE_HOME/aontu/mod`, else
+`~/.cache/aontu/mod`) — and the cache is consulted only when the
+expected hash is known, because that hash is its key. A module in
+neither store is an error that names the step that fixes it:
+
+```
+module not fetched: corp.example/schemas/service@1 (run: aontu mod get)
+```
+
+**The module file and the lockfile are ordinary Aontu.** `mod.aon`
+declares the module's own path and entry file; the entry defaults to
+`main.aon`:
+
+```
+mod: { path: "corp.example/schemas/service", main: "service.aon" }
+```
+
+`mod-lock.aon` is machine-written in **canonical form** — one line,
+sorted keys, diffable, and (its leaves being scalars) valid JSON:
+
+```
+{"lock":{"corp.example/schemas/service@1":{"canon":"aon1-4vJe…","oci":"sha256:6b86…","v":"1.4.2"}}}
+```
+
+Each entry carries two pins with distinct roles: `oci` certifies *these
+are the bytes the registry served*; `canon` certifies *this is the
+meaning that was reviewed*. Only the second can be checked without the
+registry, and it is the one evaluation checks — by unifying the module
+**standalone** and comparing its [canon-hash](#canonical-form):
+
+```
+module integrity: corp.example/schemas/service@1 expected aon1-4vJe… got aon1-9kQz…
+```
+
+The pin survives comments, whitespace, formatting and refactoring; it
+breaks on any semantic change in the module's transitive closure. An
+inline `#aon1-…` fragment is the same check without a lockfile — the
+degenerate mode for single-file and agent-sandbox use.
+
+Under a **root** trust capability (`docs/trust.md`) the user cache is
+not consulted at all: a confined evaluation sees the project's own
+`aon_vendor/` and nothing else, which is what confinement means.
+
 ## Operator precedence
 
 From tightest to loosest binding (higher binding power binds first):

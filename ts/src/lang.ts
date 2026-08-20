@@ -7,8 +7,10 @@
 // the __importStar downlevel helper, whose branches no supported Node
 // takes (the same rule cli.ts records). Aliased because `Path` is
 // already the @tabnas/path plugin below.
-import { realpathSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import {
+  dirname as pathDirname,
+  join as pathJoin,
   resolve as pathResolve,
   sep as pathSep,
 } from 'node:path'
@@ -45,6 +47,7 @@ import {
 } from '@tabnas/multisource/resolver/mem'
 
 import { STD_SOURCES } from './std'
+import { parseModuleRef, resolveModule } from './mod'
 
 import {
   Expr,
@@ -1424,6 +1427,49 @@ function makeModelResolver(options: any) {
     throw err
   }
 
+  // The user cache: `~/.cache/aontu/mod` unless the host names another,
+  // and honouring XDG_CACHE_HOME because that is what a cache directory
+  // on this platform means. A host that gives no home has no cache,
+  // which is a miss rather than a failure.
+  const modCache = (opts: any): string | undefined => {
+    const named = opts.mod?.cache
+    if ('string' === typeof named) {
+      return named
+    }
+    const xdg = process.env.XDG_CACHE_HOME
+    if ('string' === typeof xdg && '' !== xdg) {
+      return pathJoin(xdg, 'aontu', 'mod')
+    }
+    const home = process.env.HOME
+    return 'string' === typeof home && '' !== home ?
+      pathJoin(home, '.cache', 'aontu', 'mod') : undefined
+  }
+
+  // The directory an include is being resolved FROM: the source that
+  // holds it, or the entry path when the source is a string. Same base
+  // the file leg computes (resolvePathSpec in @tabnas/multisource).
+  const dirOf = (p: string | undefined): string =>
+    null == p || '' === p ? pathResolve('.') : pathDirname(pathResolve(p))
+
+  // The module store reader: the host's filesystem when one was
+  // injected, so a sandboxed evaluation stays in the filesystem the
+  // host gave it.
+  const modFs = (ctx: any): any => {
+    const hostfs = ctx?.meta?.fs
+    return null == hostfs ? { existsSync, readFileSync } : {
+      existsSync: (p: string) => {
+        try {
+          hostfs.statSync(p)
+          return true
+        }
+        catch {
+          return false
+        }
+      },
+      readFileSync: (p: string, enc: string) => hostfs.readFileSync(p, enc),
+    }
+  }
+
   // The manifest sink rides the parse meta (Lang.parse seeds it, the
   // multisource plugin's child-meta spread carries it to every nested
   // include), so the recorded closure covers the whole include tree.
@@ -1476,6 +1522,34 @@ function makeModelResolver(options: any) {
     if (res.found) {
       record(ctx, res.full ?? path, 'mem')
       return res
+    }
+
+    // THE MODULE LEG (G6 phase 2, ts/src/mod.ts): memory -> MODULE ->
+    // filesystem -> package. Memory stays FIRST so a sandbox and the
+    // spec suite can stub a module path without touching disk; a path
+    // that is not module-shaped falls straight through, so no existing
+    // include can be routed somewhere new by this.
+    const modref = memCapability ? undefined : parseModuleRef(path)
+    if (null != modref) {
+      const msmeta = (ctx as any)?.meta?.multisource
+      const from = dirOf(null != msmeta?.path ? msmeta.path : popts?.path)
+      const found = resolveModule(modref, from, modFs(ctx), {
+        // The user cache lives outside any confinement root, so it is
+        // consulted only when nothing confines this evaluation. A
+        // rooted profile sees the project's own `aon_vendor/` and
+        // nothing else, which is what `root` means.
+        ...(null == rootDir ? { cache: modCache(options) } : {}),
+        eval: options.mod?.eval,
+        depth: options.mod?.depth,
+      })
+      if (null != rootDir && outsideRoot(rootDir, found.full)) {
+        deny(path)
+      }
+      record(ctx, found.full, 'mod')
+      return {
+        found: true, path, full: found.full,
+        kind: 'aon', src: found.src, search: [],
+      }
     }
 
     if (memCapability) {
@@ -1771,15 +1845,22 @@ class Lang {
       }
     }
     catch (e: any) {
-      if ('include_denied' === e?.code) {
+      if ('include_denied' === e?.code ||
+        'module_missing' === e?.code || 'module_integrity' === e?.code ||
+        'module_depth' === e?.code) {
         // A denied include (trust profile, G5): the resolver throws so
         // a bare-member include cannot vanish in the merge, and the
         // code survives here as the parse-stage nil the registry
         // pins (errcodes.tsv: include_denied, class parse).
+        // A denied include (G5) and a module that is missing or fails
+        // its pin (G6 phase 2) are refused the same way, for the same
+        // reason: the resolver THROWS so a bare-member include cannot
+        // vanish in the merge, and the code survives here as the
+        // parse-stage nil the registry pins (errcodes.tsv).
         val = new NilVal({
           why: 'parse',
           err: new NilVal({
-            why: 'include_denied',
+            why: e.code,
             msg: e.message,
             err: e,
           })

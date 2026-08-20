@@ -1,9 +1,9 @@
 # G6: A distribution layer — versioned, integrity-hashed, pinnable modules
 
-*Status: design proposal — phases 0 and 1 (the hash form and the
-canon-hash, with `aontu hash` on both command lines) are implemented;
-phases 2–4 (module identity, fetch/publish tooling, registry hooks)
-are not. Per-phase status and the corrections this document needs (one
+*Status: design proposal — phases 0-2 (the hash form, the canon-hash
+with `aontu hash` on both command lines, and module identity with
+local resolution) are implemented; phases 3-4 (fetch/publish tooling,
+registry hooks) are not. Per-phase status and the corrections this document needs (one
 current-state claim is now false) are in the
 [progress register](progress.md), which is authoritative for status;
 this document is authoritative for design. Part of the
@@ -496,15 +496,20 @@ runners, new rows in `test/spec/hcanon.tsv` (or a sibling
 `hash.tsv`). This completes the review's Phase B item ("canon-hash
 pinning") and is independently useful with no registry.
 
-**Phase 2 — module identity and local resolution (M).** Module-path
-routing in the resolver chain, `mod.aon`/`mod-lock.aon` reading,
-vendor-dir and cache lookup, integrity verification, the two new
-error shapes. Spec rows stay hermetic by stubbing module paths
-through the memory resolver (as `file.tsv` uses `__FIXTURES__`).
-Touches: `ts/src/lang.ts` (resolver chain), new `ts/src/mod.ts`,
-`go/lang.go`, new `go/mod.go`, new `test/spec/mod.tsv`,
-`docs/reference-language.md`. Existing `file.tsv` rows are the
-guard that non-module paths behave byte-identically.
+**Phase 2 — module identity and local resolution (M). LANDED.**
+Module-path routing in the resolver chain, `mod.aon`/`mod-lock.aon`
+reading, vendor-dir and cache lookup, integrity verification, and the
+error shapes — three rather than two, the third being the depth bound
+verification needs (see the [register](progress.md)). Spec rows stay
+hermetic the way `file.tsv`'s do: real fixture trees under
+`test/spec/files/mod*/`, run under the FIXTURES trust root. (The memory
+resolver still shadows module paths — it is first in the chain — but a
+stub proves routing only, and what needed proving was the store
+lookup.) Touches: `ts/src/lang.ts` (resolver chain), new
+`ts/src/mod.ts`, `go/source.go`, new `go/mod.go`, new
+`test/spec/mod.tsv`, `docs/reference-language.md`. Existing `file.tsv`
+rows are the guard that non-module paths behave byte-identically, and
+`mod.tsv` adds three of its own for the routing predicate.
 
 **Phase 3 — fetch and publish tooling (L).** `aontu mod
 get/tidy/vendor/publish` over OCI; MVS resolution; lockfile

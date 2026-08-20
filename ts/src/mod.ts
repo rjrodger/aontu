@@ -1,0 +1,255 @@
+/* Copyright (c) 2025 Richard Rodger, MIT License */
+
+// MODULE IDENTITY AND LOCAL RESOLUTION (G6 phase 2,
+// docs/capability-review/g6-distribution.md).
+//
+// An import is still just `@"…"`; the string's SHAPE routes it, so the
+// grammar is untouched and every existing include keeps its exact
+// behaviour:
+//
+//   service: @"corp.example/schemas/service@1"
+//   frozen:  @"corp.example/schemas/service@1#aon1-4vJemVYtWFR2mQeN…"
+//   local:   @"./fragment.aon"        <- unchanged, not a module
+//
+// EVALUATION NEVER TOUCHES THE NETWORK. Resolution reads local stores
+// only: `aon_vendor/` beside the project's `mod.aon`, then a
+// content-addressed user cache keyed by canon-hash. Fetching is a
+// separate, explicit tool step, and a module that is in neither store
+// is an evaluation error that says so.
+//
+// TWO PINS, TWO ROLES. The lockfile's `oci` digest certifies that these
+// are the bytes the registry served; the `canon` hash certifies that
+// this is the MEANING that was reviewed. Only the second can be checked
+// locally without the registry, and it is the one this file checks: the
+// module is unified standalone and its canon-hash compared with the
+// pin. An inline `#aon1-…` fragment is the same check without a
+// lockfile — the degenerate mode for single-file and agent-sandbox use.
+
+import { join as pathJoin, dirname as pathDirname } from 'node:path'
+
+
+// A module import, as the string spells it.
+export type ModuleRef = {
+  // The module path WITHOUT the major: `corp.example/schemas/service`.
+  path: string
+  // The major version, from the `@N` suffix.
+  major: number
+  // The inline canon-hash pin, if the import froze one.
+  hash?: string
+}
+
+
+// A file store the resolver can read. The engine passes its own `fs`
+// when the host injected one, so a sandboxed evaluation stays in the
+// filesystem the host gave it.
+export type ModuleFs = {
+  existsSync: (p: string) => boolean
+  readFileSync: (p: string, enc: string) => string
+}
+
+
+// A module path is DOMAIN-SHAPED — the first segment carries a dot,
+// which is what tells it apart from `./local.aon`, `pkg-name` and every
+// other spelling already in use — and carries the major version in the
+// path, CUE/Go-style, so two majors are two modules.
+//
+// The pattern is deliberately narrow: anything it does not match falls
+// through to the existing resolver chain unchanged, so no document that
+// worked before this phase can be routed somewhere new by it.
+const MODULE_RE =
+  /^([a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+(?:\/[A-Za-z0-9._-]+)*)@(\d+)(?:#(aon1-[A-Za-z0-9_-]+))?$/
+
+
+export function parseModuleRef(spec: string): ModuleRef | undefined {
+  const m = MODULE_RE.exec(spec)
+  if (null == m) {
+    return undefined
+  }
+  return {
+    path: m[1],
+    major: +m[2],
+    ...(null == m[3] ? {} : { hash: m[3] }),
+  }
+}
+
+
+// The directory a module's files live in, under a store root.
+export function moduleDir(store: string, ref: ModuleRef): string {
+  return pathJoin(store, ...ref.path.split('/')) + '@' + ref.major
+}
+
+
+// The project root: the nearest directory at or above `from` holding a
+// `mod.aon`. A document with no module file of its own still resolves
+// modules — from its own directory — because a single file with an
+// inline pin is a supported mode.
+export function projectRoot(from: string, fs: ModuleFs): string {
+  let dir = from
+  for (; ;) {
+    if (fs.existsSync(pathJoin(dir, 'mod.aon'))) {
+      return dir
+    }
+    const up = pathDirname(dir)
+    if (up === dir) {
+      return from
+    }
+    dir = up
+  }
+}
+
+
+// The lockfile's pin for one import, or undefined.
+//
+// `mod-lock.aon` is machine-written CANONICAL Aontu, and canonical
+// Aontu whose leaves are scalars IS JSON — which is why reading it here
+// needs no evaluator, and why a hand-edited lockfile that is no longer
+// canonical simply does not parse. It is generated; the file says so.
+export function lockHash(root: string, ref: ModuleRef, fs: ModuleFs):
+  string | undefined {
+  const file = pathJoin(root, 'mod-lock.aon')
+  if (!fs.existsSync(file)) {
+    return undefined
+  }
+
+  let lock: any
+  try {
+    lock = JSON.parse(fs.readFileSync(file, 'utf8'))
+  }
+  catch {
+    return undefined
+  }
+
+  const entry = lock?.lock?.[ref.path + '@' + ref.major]
+  return 'string' === typeof entry?.canon ? entry.canon : undefined
+}
+
+
+// What a module resolution needs from the engine: evaluate a source
+// standalone and answer both what it MEANS (the generated value, for
+// reading a module file's own metadata) and what its meaning HASHES to
+// (for the integrity check). Injected rather than imported, because
+// this is EVALUATION — the very thing this file is called from the
+// middle of — and a module resolver that imported the evaluator would
+// close a cycle around the whole language.
+export type ModuleEval =
+  (src: string, path: string) => { gen: any, hash: string }
+
+
+// How deep module verification may nest before it is refused. A module
+// is verified by EVALUATING it, and that evaluation resolves the
+// module's own imports -- so a vendor tree that leads back to itself
+// (a symlink is enough) would recurse until the host's stack gave out,
+// and a verdict that depends on the host's stack size is exactly what
+// the determinism clause forbids (docs/trust.md, and the same argument
+// unify_cycle rests on). Sixteen is far above any real vendor nesting.
+export const MODULE_MAX_DEPTH = 16
+
+
+export type ModuleOptions = {
+  // The content-addressed user cache, keyed by canon-hash. Consulted
+  // only when the expected hash is known, which is what "content
+  // addressed" means: without a pin there is no address.
+  cache?: string
+  // The standalone evaluator, for reading module files and for the
+  // integrity check. Always present: Aontu injects it (ts/src/aontu.ts)
+  // because only the class that evaluates can answer what a module
+  // MEANS, and the resolver runs inside a parse that class started.
+  eval: ModuleEval
+  // How many module verifications deep this evaluation already is.
+  depth?: number
+}
+
+
+export type ModuleFound = {
+  // The module's main file, as an absolute path.
+  full: string
+  src: string
+}
+
+
+// A refusal that carries its code to the parse layer, exactly as a
+// denied include does (makeModelResolver's `deny`): the resolver
+// THROWS, so a bare-member module import cannot vanish in the merge and
+// leave a plausible, silently-partial document.
+function refuse(code: string, message: string): never {
+  const err: any = new Error(message)
+  err.code = code
+  throw err
+}
+
+
+// Resolve one module import against the local stores.
+export function resolveModule(
+  ref: ModuleRef,
+  fromDir: string,
+  fs: ModuleFs,
+  options: ModuleOptions,
+): ModuleFound {
+  if (MODULE_MAX_DEPTH <= (options.depth ?? 0)) {
+    refuse('module_depth',
+      'module depth: ' + ref.path + '@' + ref.major +
+      ' (verification nested past ' + MODULE_MAX_DEPTH + ')')
+  }
+
+  const root = projectRoot(fromDir, fs)
+  const expect = ref.hash ?? lockHash(root, ref, fs)
+
+  const stores: string[] = [moduleDir(pathJoin(root, 'aon_vendor'), ref)]
+  if (null != options.cache && null != expect) {
+    // Content-addressed: the cache is keyed by the hash, so a cache hit
+    // is already the right MEANING before anything is read from it.
+    stores.push(pathJoin(options.cache, expect))
+  }
+
+  const dir = stores.find((d) => fs.existsSync(pathJoin(d, 'mod.aon')))
+  if (undefined === dir) {
+    // The wording is the contract (docs/capability-review/
+    // g6-distribution.md): it names the module AND the step that fixes
+    // it, because an agent reading this error is the audience.
+    refuse('module_missing',
+      'module not fetched: ' + ref.path + '@' + ref.major +
+      ' (run: aontu mod get)')
+  }
+
+  // The module's own `mod.aon` names its entry file. Read with the
+  // evaluator rather than a regexp: a module file is ordinary Aontu,
+  // and the language reading its own metadata is the point.
+  const main = moduleMain(pathJoin(dir, 'mod.aon'), fs, options)
+  const full = pathJoin(dir, main)
+
+  if (!fs.existsSync(full)) {
+    refuse('module_missing',
+      'module not fetched: ' + ref.path + '@' + ref.major +
+      ' (run: aontu mod get)')
+  }
+
+  const src = fs.readFileSync(full, 'utf8')
+
+  if (null != expect) {
+    // VERIFICATION IS ALWAYS LOCAL. The registry's annotation is
+    // advisory; what decides is the hash of the module as it is on this
+    // machine, recomputed now.
+    const got = options.eval(src, full).hash
+    if (got !== expect) {
+      refuse('module_integrity',
+        'module integrity: ' + ref.path + '@' + ref.major +
+        ' expected ' + expect + ' got ' + got)
+    }
+  }
+
+  return { full, src }
+}
+
+
+// The `mod.main` a module file declares, or the default entry name.
+// The module file is ORDINARY AONTU, read by the language itself — the
+// toolchain dogfooding its own evaluator rather than pattern-matching
+// its own syntax with a regexp.
+function moduleMain(file: string, fs: ModuleFs, options: ModuleOptions): string {
+  const gen: any = options.eval(fs.readFileSync(file, 'utf8'), file).gen
+  const main = gen?.mod?.main
+  return 'string' === typeof main && '' !== main ? main : DEFAULT_MAIN
+}
+
+
+const DEFAULT_MAIN = 'main.aon'

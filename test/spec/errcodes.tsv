@@ -257,3 +257,19 @@ place_pair	errcode	conflict	0.53.0
 # before any Val exists -- so a pipe into something that is not a call
 # is wrong in the TEXT, and no later pass can repair it.
 pipe_target	errcode	parse	0.53.0
+# MODULES (G6 phase 2). Two codes, both class `parse`: a module import
+# is resolved while the source is READ. `module_missing` is a module in
+# neither local store -- evaluation never touches the network, so
+# fetching is a separate step and the message names it.
+# `module_integrity` is a module that IS there and does not have the
+# meaning it was pinned to; the pin is a canon-hash, so it survives
+# formatting and breaks on meaning.
+# `module_depth` is class `budget`: verification EVALUATES the module,
+# that evaluation resolves the module's own imports, and a vendor tree
+# that leads back to itself would recurse until the host ran out of
+# stack -- a verdict that depends on the machine, which is what
+# docs/trust.md forbids. The bound makes it a stated refusal, exactly
+# as `unify_cycle` does for the same reason.
+module_missing	errcode	parse	0.53.0
+module_integrity	errcode	parse	0.53.0
+module_depth	errcode	budget	0.53.0

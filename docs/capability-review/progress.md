@@ -89,9 +89,9 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **85 `.tsv` files, 84
-   row-bearing, 3,030 rows**, in eighteen modes — `canon` 714, `gen`
-   541, `errc` 500, `gens` 483, `err` 240, `errcode` 97, `subsume` 94,
+   register's last update the suite is **86 `.tsv` files, 85
+   row-bearing, 3,054 rows**, in eighteen modes — `canon` 715, `gen`
+   541, `errc` 506, `gens` 491, `err` 246, `errcode` 100, `subsume` 94,
    `query` 92, `vet` 53, `why` 43, `hcanon` 43, `graph` 28,
    `diff` 28, `patch` 23, `relation` 21, `hash` 12, `trim` 11,
    `agentsmd` 7.
@@ -101,7 +101,7 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Forty-six of forty-nine phases have moved; forty-five of those are
+Forty-seven of forty-nine phases have moved; forty-six of those are
 complete.
 
 | Gap | Capability | Review phase | Landed | Partial | Not started |
@@ -111,10 +111,10 @@ complete.
 | [G3](g3-subsumption-evolution.md) | Subsumption, evolution | B | 7 | 0 | 0 |
 | [G4](g4-identity-relations.md) | Identity, relations | C | 6 | 0 | 0 |
 | [G5](g5-trust-contract.md) | Trust contract | A | 5 | 1 | 0 |
-| [G6](g6-distribution.md) | Distribution | B/C | 2 | 0 | 3 |
+| [G6](g6-distribution.md) | Distribution | B/C | 3 | 0 | 2 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 5 | 0 | 0 |
-| | | **total** | **45** | **1** | **3** |
+| | | **total** | **46** | **1** | **2** |
 
 Against the review's own [sequencing](index.md#sequencing):
 
@@ -633,13 +633,35 @@ ADR-001, a deliverable absent from one port's source cannot count.
 |-------|------|--------|
 | **0** — the hash form (`hcanon`) | S/M | **LANDED** | `ts/src/hcanon.ts` (`hcanon`, exported from `ts/src/aontu.ts`) and `go/hcanon.go` (`aontu.Hcanon`): exactly the unify-level canon with the two additions that close its semantic gaps — a closed map or list wrapped as `close({…})` / `close([…])`, and the type/hide marks rendered as `type(x)` / `hide(x)`. Both reuse parseable syntax, so the hash form is valid Aontu source, and every row asserts the property the hash rests on: `hcanon(unify(parse(hcanon(v)))) == hcanon(v)`, in both runners. `test/spec/hcanon.tsv` — 38 `hcanon` rows in the new mode (closedness at depth and under marks, spreads, optional keys, prefs, refs, escape-heavy strings, extreme and exact magnitudes, code-point key order, the deprecation vocabulary), beside 6 `canon` rows over the same sources so the "user-facing canon is UNCHANGED" claim is a pin rather than a promise. `docs/shared-spec.md` carries the new modes (and the `subsume`/`trim` modes it had not caught up with). **Departures:** (1) the marks PROPAGATE to every descendant at unification, so a wrapper is emitted only where a mark STARTS — the walk carries inherited marks down and a child whose mark its parent already carries renders bare; rendering every marked leaf would be correct but never minimal, and not what the source said. (2) The design's "`ts/src/val/Val.ts` (default `hcanon` delegating to `canon`)" landed as a standalone WALK instead of a per-Val method: the rendering has to carry inherited-mark state down the tree, which a no-argument getter on each Val cannot do without adding that state to every Val in the engine. Everything the walk does not need to descend — scalars, kinds, funcs, refs, constraints — still delegates to its own `canon`, which is where the cross-port parity already lives. (3) The junction parenthesisation rule is kept exactly, but post-unification junctions are flattened by `norm`, so no SOURCE reaches its wrapping arm; it is pinned by direct tests over constructed Vals in both ports, because a hash form that could render `(1\|2)&3` as the differently-parsing `1\|2&3` would be a pin that silently agrees with a document it should not. |
 | **1** — the hash itself (`canonHash`) | S | **LANDED** | `canonHash` / `aontu.CanonHash`: `"aon1-" + base64url(SHA-256(UTF-8(hcanon(unify(v)))))`, unpadded (RFC 4648 §5), the scheme id there so a semantically stronger normal form is later an upgrade rather than a breakage. CLI verb `aontu hash [--form] [--format text\|json] <file>` in both ports (`ts/src/cli.ts`, `go/cmd/aontu/hash.go`), the document evaluated STANDALONE at its own root — which is what makes the pin transitive — with exit classes 0 hashed, 2 usage, 4 the document does not stand up on its own (a hash of a wreck would agree with every other wreck). 9 `hash` rows pinning full `aon1-…` strings, executed by BOTH runners; 3 cases in `ts/test/cli.test.ts` and 3 in `go/cmd/aontu/hash_test.go` holding each port's argument handling and the invariances (reformat, recomment, reorder keys → same pin; close a map → different pin); the two CLIs diffed byte-identical over a 10-case corpus (text, `--form` and JSON, exit codes included) — the version field and the host's unreadable-file wording excepted, G2 phase 3's same carve-outs. `docs/reference-api.md` carries the verb, the hash form's definition and the two exports. **Departure:** `--form` is not in the design. It prints the hashed TEXT instead of the digest, which is the first thing anyone needs the moment a pin moves and the only way to see what the engine actually hashed; without it a flapping pin is undiagnosable from the command line. |
-| **2** — module identity and local resolution | M | **NOT STARTED** |
+| **2** — module identity and local resolution | M | **LANDED** | `ts/src/mod.ts` and `go/mod.go` (new): module-path routing (domain-shaped first segment, `@<major>` suffix, optional `#aon1-…` fragment), the project root found by walking up to a `mod.aon`, `aon_vendor/` then the content-addressed user cache, `mod-lock.aon` read as the JSON its canonical form IS, the `mod.main` entry read by EVALUATING the module file, and local integrity verification by recomputing the module's standalone canon-hash. The leg sits where the design put it — memory → MODULE → filesystem → package (`ts/src/lang.ts`, `go/source.go`) — with memory still first, so a sandbox and the spec suite can stub a module path without touching disk. Codes `module_missing`, `module_integrity` and `module_depth` in `errcodes.tsv`. Spec: `test/spec/mod.tsv` (21 rows) over real fixture trees under `test/spec/files/mod*/`, run under the FIXTURES trust root exactly as `file.tsv`'s are; per-port cache, host-filesystem and depth behaviour in `ts/test/mod.test.ts` and `go/mod_test.go`. Docs: "Modules" in [`docs/reference-language.md`](../reference-language.md#modules). **Departures:** two, recorded below. |
 | **3** — fetch and publish tooling | L | **NOT STARTED** |
 | **4** — registry hooks and agent integration | M | **NOT STARTED** |
 
-Phases 2–4 (module identity, fetch/publish tooling, registry hooks)
-have no artifacts yet: no module-path resolution, no `mod.aon`, no
-`test/spec/mod.tsv`.
+**Departures recorded by G6.2.**
+
+1. **Verification is DEPTH-BOUNDED, and the bound is a stated
+   refusal.** The design says verification recomputes the module's
+   canon-hash locally, which means EVALUATING the module — and that
+   evaluation resolves the module's own imports. A vendor tree that
+   leads back to itself (a symlink is enough) would recurse until the
+   host's stack gave out, and a verdict that depends on the host's
+   stack size is precisely what [G5](g5-trust-contract.md)'s
+   determinism clause forbids. `module_depth` (class `budget`, for the
+   reason `unify_cycle` is) bounds it at sixteen, far above any real
+   vendor nesting.
+2. **The evaluator is INJECTED into the resolver, not imported by
+   it.** Resolution needs two answers only evaluation can give — what
+   a module file SAYS (`mod.main`) and what a module MEANS (its
+   canon-hash) — and the resolver runs inside a parse that the
+   evaluator started. In TypeScript the import would close a cycle
+   around the whole language, so `Aontu`'s constructor hands the
+   resolver a closure over itself; the Go port has no cycle to fear
+   (one package) but takes the same shape, and had to make its default
+   parser lazily initialised, because a package-level one was a static
+   initialisation cycle through the very resolver it installs.
+
+Phases 3 and 4 (fetch and publish tooling, registry hooks) have no
+artifacts yet.
 
 G6's own risk row — "G1's new constraint syntax changes canon,
 invalidating all pins" — materialised before the hash existed: G1.1
