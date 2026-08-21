@@ -317,7 +317,9 @@ skin, multi-error collection), and the whole of G5's machinery (the
 trust profile in both ports at every surface, deterministic budgets,
 the include manifest), with shared rows for all of it. Outstanding in
 A: only G5.6's default flip, a next-major release act whose warning
-window already ships. **Phases B and C have since landed too** — this
+window already ships. **Phases B and C have since landed too, bar one
+cross-port deliverable** — G7.7's `--jsonl` is unreachable in the Go
+CLI, so G7, and with it Phase B, is complete but for that. This
 paragraph was written before any of the work and is kept only for the
 sequencing rationale above it; the
 [progress register](progress.md#summary) carries the actual state, and
