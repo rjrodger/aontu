@@ -13,7 +13,8 @@ implementation plan.*
 > its status, and the artifact that proves it. This index and the gap
 > documents describe what *should* be built and were written before any
 > of it landed; the register is the only place that says what *has*
-> been. Sixteen of forty-nine phases have moved.
+> been — read the count there, not here: a status number restated in a
+> design document rots, and this one did.
 
 Method: a ten-agent survey — three codebase analysts over this
 repository, six researchers (CUE; Nickel/Dhall/Pkl/KCL/Jsonnet/Starlark;
@@ -316,7 +317,12 @@ skin, multi-error collection), and the whole of G5's machinery (the
 trust profile in both ports at every surface, deterministic budgets,
 the include manifest), with shared rows for all of it. Outstanding in
 A: only G5.6's default flip, a next-major release act whose warning
-window already ships. Phases B and C are untouched.
+window already ships. **Phases B and C have since landed too** — this
+paragraph was written before any of the work and is kept only for the
+sequencing rationale above it; the
+[progress register](progress.md#summary) carries the actual state, and
+[`status-2026-08-21.md`](status-2026-08-21.md) carries what driving the
+delivered surface found.
 
 ## Verified codebase facts referenced by the design documents
 
