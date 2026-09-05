@@ -250,8 +250,13 @@ is where the language questions live, and they are in
 
 ## 7. Open, and owner-level
 
-- Does ADR-001 cover the embedding surface, or only the language?
-  (§2. Nothing currently says.)
+- ~~Does ADR-001 cover the embedding surface, or only the language?
+  (§2. Nothing currently says.)~~ **Answered 2026-09-05 by
+  [ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired):
+  the language and the verbs, not an embedding surface.** The
+  reflection view (§3) is retired unbuilt; forms (a) and (b) stay as
+  §2 found them, and `DIVERGENCE.md` records it. The Jostraca driver
+  (§5) is retired with it.
 - Does the Go root module take the Jostraca dependency, or does the
   driver live in a separate package inside it? A separate package is
   enough — Go's linker drops it from binaries that never import it —

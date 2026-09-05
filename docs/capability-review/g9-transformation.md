@@ -2772,7 +2772,18 @@ change what a reader of this document would otherwise plan against:
 
 The first usable `aontu render` is P0–P4 — the resolver leg, the
 vocabulary with fragments, the `join` mark fix, the fragment fold with
-the `text` profile, and the verb — and it is the release that ends
-the 0.57.0 documentation skew. Acceptance case 1 is met there; the
+the `text` profile, and the verb. Acceptance case 1 is met there; the
 declaration lowering and the two language profiles follow as P5, and
 the template surface as P8.
+
+**Decided 2026-09-05 (the owner), after the plan was read:** phases 5,
+7 and 8 are RETIRED by
+[ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired)
+— the sidecar outright, not kept as its own note — so G9 completes at
+RENDER P8; and the next release is cut only after the plan's validation
+system, `test/system/rb-solar` (RENDER.0.md §10: a Rails 8
+implementation of the solardemo Solar System API and a human UI,
+rendered from a hand-written aontu model and held to the reference
+app's own validation script), passes. The §5 Jostraca seam and §4's
+interpolation design stay in this document as the record of what was
+considered and why it was not built.

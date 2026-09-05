@@ -115,9 +115,10 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Fifty-nine of the sixty-seven phases in the table below have moved;
-fifty-one of those are complete, four are partial, and four were
-landed and then superseded, retired or removed by an ADR. G5 phase 6 is
+Sixty-two of the sixty-eight phases in the table below have moved;
+fifty-one of those are complete, four are partial, four were landed and
+then superseded, retired or removed by an ADR, and three were retired
+by an ADR before they started. G5 phase 6 is
 deliberately held for the next major release, a release act rather
 than an engineering one. **G9 phase 0 became partial on 2026-08-30
 without this register saying so**: #99 fixed two of its four named
@@ -141,14 +142,16 @@ the fix was and why the earlier tests could not see the defect.
 | [G6](g6-distribution.md) | Distribution | B/C | 5 | 0 | 0 | 0 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 6 | 0 | 0 | 1 |
-| [G9](g9-transformation.md) | Declarative transformation | D | 1 | 3 | 5 | 0 |
+| [G9](g9-transformation.md) | Declarative transformation | D | 1 | 3 | 3 | 3 |
 | [G10](g10-transparency.md) | Transparency log | D | 2 | 0 | 3 | 1 |
-| | | **total** | **51** | **4** | **8** | **4** |
+| | | **total** | **51** | **4** | **6** | **7** |
 
 *Retired* counts the rows whose status is SUPERSEDED, RETIRED or
-REMOVED — G4.0 and G4.1 (ADR-014), G8.4 (ADR-018) and G10.5
-(ADR-019). A phase that landed and was then taken out by an ADR is
-neither landed nor not started, and until 2026-09-05 this table
+REMOVED — G4.0 and G4.1 (ADR-014), G8.4 (ADR-018), G10.5 (ADR-019),
+and G9.5, G9.7 and G9.8 (ADR-023, retired before they started). A
+phase that landed and was then taken out by an ADR is neither landed
+nor not started — nor is one an ADR closed before any of it was built
+— and until 2026-09-05 this table
 counted such rows on whichever side kept its total at sixty-five
 while the sections below held sixty-seven rows (G8 alone was listed
 as five where it has seven). The row count is
@@ -1506,9 +1509,11 @@ Opened 2026-08-30, after G1–G8 landed. Design is
 [g9-transformation.md](g9-transformation.md); forms (a) and (b) — the
 host program and the Jostraca path — are
 [docs/design/GENERATION-FORMS.0.md](../design/GENERATION-FORMS.0.md).
-**Phases 0, 4 and 6 are partial and phase 2 has landed; phases 1, 3,
-5, 7, 8 and 9 have not started**, and the rest of the document is a
-design proposal, not a commitment. The corpus the design asks
+**Phases 0, 4 and 6 are partial and phase 2 has landed; phases 1, 3
+and 9 have not started; phases 5, 7 and 8 are RETIRED
+([ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired),
+2026-09-05)**, and the rest of the document is a design proposal, not a
+commitment. The corpus the design asks
 for before its later phases are committed to now exists —
 [use-cases/15-code-generation](../../use-cases/15-code-generation/)
 (#100) — but a corpus is evidence, not a phase, and no row below
@@ -1580,11 +1585,13 @@ mark fix, BUGS §79; the fragment fold with a two-field `text` profile;
 the verb, its MCP tool and the migrated use case 15; the declaration
 lowering with the TypeScript and Go profiles; `replace`/`esc` in `emit`
 and `form`; provenance and coverage), numbers the template surface as
-**phase 9**, and recommends that phases 5, 7 and 8 leave the critical
-path — 5 as its own note behind an ADR-001 decision, 7 and 8 retired by
-ADR. The first usable verb is its P0–P4 and is the release that ends
-the 0.57.0 documentation skew. The rows below keep their statuses: a
-plan changes none of them.
+**phase 9**, and recommended that phases 5, 7 and 8 leave the critical
+path. **The owner decided on 2026-09-05**: all three are retired
+([ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired)),
+and the release is cut only after the plan's validation system —
+`test/system/rb-solar`, a Rails implementation of the solardemo API
+rendered by `aontu render` (RENDER.0.md §10) — passes. G9 therefore
+completes at RENDER P8.
 
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
@@ -1593,10 +1600,10 @@ plan changes none of them.
 | **2** — `join` | S | **LANDED** | `JoinFuncVal` (ts/src/val/AggFuncVal.ts) and `joinBag` (go/agg.go), registered in both tables, both grammars' `name` rule and both LSP lists; `test/spec/gen-join.tsv`, **47 rows executed by both runners**; `errcodes.tsv` +1 (`join_member`, conflict). The design's acceptance case holds: `join([8080,443],"-")` is `"8080-443"` in both ports, an unfired call canons as its call and reparses, and the lark literal check is green after the three missing names were added. **Landed as designed, with three things worth recording.** (1) The `+` fold is not a figure of speech: `plusText` was extracted from `PlusOpVal` and `primStr` was already exported in Go, so the fold and the operator SHARE a renderer and cannot drift into two answers to "how does a number become text". (2) **`join` is the first builtin that is both STAGED and DEFERS its resolution**, and that combination needed a `make` override its `AggFuncVal` siblings do not have — without it TypeScript raised `func:join` where Go residuated, on `join($.m,",")` with `m: [string]`. Found by running both engines, not by either test suite. (3) **The ADR-002 gate found dead code that probing then confirmed**: a nil-member guard, written by analogy with `sum`, is unreachable in `join` and was removed in both ports rather than excused. `sum` folds with `arith`, which MINTS a nil part-way through; `join` folds already-unified values, and a nil among a list's elements collapses the list before the call resolves — `join([least([])],",")` reports `aggregate_empty` at the member's own path and never reaches the fold. (4) The separator is a STRING, refused as `invalid-arg` otherwise, though `+` would render a number perfectly well: it is the parameter naming the text between members rather than a member, `pick`'s key draws the same line, and loosening later breaks no document while tightening would. **Item 4 of phase 0 is NOT a prerequisite and did not land here**: `join` reuses `bagChildren`, so it treats `hide`-marked and unfilled optional children exactly as `each` and `pick` do today, and phase 0 will change all four together rather than leaving `join` alone in a new behaviour. **Downstream:** [use-cases/15-code-generation](../../use-cases/15-code-generation/) changed shape — its transforms now compute the whole FILE rather than its lines, the six-line Python fold in `check.sh` is gone, and the check that proved the gap (the SQL golden REFUSED by a real parser for a trailing comma) is inverted: the SQL now parses and `check.sh` opens it in SQLite and asserts the tables and columns exist. |
 | **3** — `form`, the order-preserving map | S/M | **NOT STARTED** | `each` meets and cannot transform; `pack` keys by data and reorders |
 | **4** — the renderer core and the first two profiles | M | **PARTIAL 2026-09-05** | **The four string builtins landed on 2026-09-04, with phase 6 (#148), in both ports** — `ts/src/val/StrFuncVal.ts` and `ts/src/escape.ts`; the `esc`/`usc`/`rep`/`split` arms of `go/func.go` — declared in `test/spec/signature.tsv` and pinned by `test/spec/str.tsv` (99 rows, executed by both runners; `esc("o'brien")`, `split("x,y",",")` and `rep("abc","b","B")` answer identically from both CLIs). This row still read NOT STARTED a day after they landed: protocol rule 1 failing in the direction the G9.0 note describes, work landing under a heading that does not name the phase it discharges. **Not started:** the `render` verb, the profiles and the fragment entry point. As designed: the `render` verb; the Go and TypeScript profiles; and, per the second amendment, a fragment entry point plus a two-field `aontu:lang/text` profile, which is the executable form of "a new language is data". The fold reads a piece's `at` where the design counted recursion depth. Plus the three string builtins of [TEMPLATE.0.md](../design/TEMPLATE.0.md) — `esc(src, variant?)` (escaping is ON for a `replace` value, with `esc:` an optional key naming the variant), its left inverse `usc`, `rep(src, re, sub)` over `re()`'s own portable subset, and `split(src, sep)` — which have no renderer coupling and may land earlier; without them a hand-spelled literal generates broken code, VERIFIED (`tsc` rejects an unescaped `o'brien` with nine errors, and accepts the escaped form). |
-| **5** — the reflection sidecar | M | **NOT STARTED** | The view forms (a), (b) and (c) share; an ADR-001 question first (GENERATION-FORMS.0.md §2) |
+| **5** — the reflection sidecar | M | **RETIRED 2026-09-05 ([ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired))** | Nothing was built. The view forms (a), (b) and (c) were to share is not needed by `render`, which consumes `generate()` output by design; a transform states its schema facts as data and the vocabulary vets them; ADR-001's parity covers the language and the verbs, not an embedding surface, so forms (a) and (b) stay what [GENERATION-FORMS.0.md §2](../design/GENERATION-FORMS.0.md) found them to be and `DIVERGENCE.md` says so (entry lands with RENDER P4). |
 | **6** — `emit`, the manifest, and the verb | M | **PARTIAL 2026-09-04** | **`emit(select, table)` has landed in both ports**; the manifest and the `aontu render` verb have not, so the phase is partial and acceptance case 1 (a target the declaration vocabulary does not fit) waits on them. `ts/src/val/EmitFuncVal.ts` and `go/generate.go`, registered as a staged generator in both (`ts/src/lang.ts`, `go/func.go`), declared in `test/spec/signature.tsv` as `emit(s: map|list, template t: map|list) : list`. `test/spec/gen-emit.tsv` (45 rows) plus six codes in `errcodes.tsv` — `emit_data`, `emit_table`, `emit_template`, `emit_body`, `emit_none`, `emit_ref` — every expectation obtained by running BOTH engines and diffing, error text included. Reference: [Transforming: `emit`](../reference-language.md#transforming-emit); the outcome is recorded in [EMIT.0.md](../design/EMIT.0.md#what-phase-6-established). **Four things the design could not settle from outside the engine.** (1) **A named table is a PLACEHELD `emit`.** The note's decisive fact — a table reached by reference does not re-root its bodies' relative references — is not repaired by binding at the use site, because the DEFINITION site drives the table first and the references have already missed. Nothing in the language holds a value unevaluated at a document position; what does is a call's template argument, so `%wire = emit(_, T)` is that position with the selection left open. `emit($.listen, %wire)` and `$.listen & %wire` are the same dispatch, and D4's "a mode is a named table" survives exactly as written. (2) **A placeheld generator was never filled** — `["a"] & pack(_, {x:1})` answered `*_no_gen` in both ports while the unstaged `"hello" & upper(_)` filled as documented, because `_` is never `done` and the staged readiness gate held the call residual for ever. Fixed for `pack`, `each`, `filter` and `emit` together (`stagedReady` / `stagedDrive`); rows in each combinator's spec file. (3) **A body's relative reference is BOUND to the node, and a miss is `emit_ref`** reported against the node: binding rather than re-pathing is what makes a computed selection work, since the nodes of `filter(…)` live nowhere and there is no position for a dot count to be taken from. The walk stops at a nested generator's binding argument, which is D5's nesting rule. (4) **A nested dispatch is driven where it is met**, or it resolves a pass later and arrives as a list INSIDE the list; driven through `unite`, so a rule set that walks into itself without descending is refused as a spent depth budget. **Fact 4 did not reproduce**: the pass exhaustion was the INLINED expansion's, and the recursive rule set settles inside the default budget, so no flag is needed. **Acceptance case 2 is met** — `emit-recursive` walks a nested model into nested output, the case fact 3 says no amount of user-space work reaches. **The string builtins landed next**, in the same phase: `esc`, `usc`, `rep` and `split` (`ts/src/escape.ts`, `ts/src/val/StrFuncVal.ts`, `go/escape.go`, `go/strfunc.go`), 99 rows in `test/spec/str.tsv` and five more codes — `esc_variant`, `usc_malformed`, `rep_pattern`, `rep_sub`, `split_sep`. Both ports spell every escape convention and both matching loops out BY HAND rather than borrowing a host library, because the hosts disagree about every part of the job: `JSON.stringify` escapes what Go's `encoding/json` does not, `encodeURIComponent` is not RFC 3986, JavaScript's split INSERTS a pattern's capture groups where Go's does not, and the two read a substitution template differently. Two corrections to [TEMPLATE.0.md](../design/TEMPLATE.0.md) fell out of building it: there is no `$<name>` substitution, because the pattern subset refuses named groups and a spelling for one names something that cannot exist; and the note's own `[:,]` is outside the subset, since a class opening `[:` reads as a POSIX class — `re()` refuses it identically, which is the point. **Still not in this landing**: `replace`/`esc` INSIDE `emit`, the manifest under `@"aontu:code"`, and the `render` verb. |
-| **7** — the Jostraca bridge | M | **NOT STARTED** | Phases 1–5 carry no Jostraca dependency, so this cannot block the language work |
-| **8** — string interpolation | M/L | **NOT STARTED** | The parser phase; deferred behind evidence that `join` did not suffice — and [RENDER.0.md §7](../design/RENDER.0.md) reads the evidence the other way: TEMPLATE.0.md D3 measured `${expr}` breaking on the project's own material and chose `replace`, so the recommendation is to retire this phase by ADR |
+| **7** — the Jostraca bridge | M | **RETIRED 2026-09-05 ([ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired))** | Nothing was built, and no dependency was taken. The write story is `render --out` (all units or nothing, confined below one directory) and `render --check` (the CI form), RENDER.0.md D8; a merge over hand-edited files is a different lifecycle and a downstream tool's. The two asks on the Jostraca repository (lazy `memfs`, `raw: true`) are withdrawn. |
+| **8** — string interpolation | M/L | **RETIRED 2026-09-05 ([ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired))** | Nothing was built. It was deferred behind evidence that `join` did not suffice, and the evidence went the other way: [TEMPLATE.0.md](../design/TEMPLATE.0.md) D3 measured `${expr}` breaking on the project's own material and chose `replace`, whose canonical form has zero concatenations across twelve real handlers. `replace` on a template and `+`/`join` in a body are the two ways a value reaches generated text. |
 | **9** — the template surface | M/L | **NOT STARTED** | [TEMPLATE.0.md](../design/TEMPLATE.0.md) as a verb-reachable surface — a generator file in the target language whose `//-` lines carry aontu, desugared to the canonical `emit` form and rendered, with the resugar as the round-trip test. Numbered here on the 2026-09-05 status note's request; it is the third amendment's "new, after 6", and [RENDER.0.md](../design/RENDER.0.md) P8 carries its deliverables. It cannot precede `render` (phase 4), which it renders through, nor `replace`/`esc` in `emit` (RENDER P6), which it desugars to. |
 
 **Read before starting phase 1.** Every one of the seven parallel

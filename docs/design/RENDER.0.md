@@ -614,11 +614,16 @@ whole of that claim.
 
 ## 6. The first release
 
-P0–P4 together are one release, and it should be **0.58.0 / go
-0.1.16**, which is already owed: the shipped 0.57.0 declares aliases
-with a colon and reads `x=y` as text, and the synced documentation
-describes `=` and `bare_punct`. Cutting 0.58.0 at P4 ends that skew and
-ships `render` in the same breath. P5–P8 follow as 0.59.0 and after.
+**Decided 2026-09-05 (the owner): the next release is cut only after
+the validation system of [§10](#10-the-validation-system-testsystemrb-solar)
+renders and passes.** The note had recommended cutting 0.58.0 / go
+0.1.16 at P4 — the shipped 0.57.0 declares aliases with a colon and
+reads `x=y` as text, while the synced documentation describes `=` and
+`bare_punct` — and the owner chose to carry that skew until `render`
+has produced a working system rather than release a verb that has
+generated nothing real. So 0.58.0 ships the alias operator, the
+bare-text rule, `aontu render` through P8, and the first full system
+built with it, together.
 
 ## 7. The rest of the programme
 
@@ -635,7 +640,21 @@ decisions; the recommendations are argued, not assumed.
 | **G10 phases 3, 4, 6** | Out of this repository; tracked in `aontu-lang/system` | The status note records the register's rows lag that repository's seven design notes; the fix is register hygiene, not engine work. |
 | **Register hygiene** (status note §5: numbering the surface phase, SUPERSEDED/RETIRED/REMOVED defined, ADR-022's entries, counts) | Do with the P0 commit | Cheap, and every later phase's row depends on the section being right. This note gives the surface phase its number and row. |
 
+**Decided 2026-09-05 (the owner).** Phases 5, 7 and 8 are **retired**,
+by [ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired)
+— phase 5 outright rather than kept as its own note: a transform states
+its facts as data, and forms (a) and (b) stay what GENERATION-FORMS.0.md
+§2 found them to be, with DIVERGENCE.md saying so. The release is cut
+only after the validation system passes ([§6](#6-the-first-release)).
+G9 therefore completes at P8, and the table in [§5](#5-what-done-means-for-g9)
+is the whole of what remains.
+
 ## 8. Open questions
+
+*Each recommendation below was adopted on 2026-09-05 as the working
+answer, so that building could start; none was put to the owner as a
+blocking question, and any may be reopened by saying so. A question a
+phase settles by building is marked in that phase's register row.*
 
 - **X-1 — Does `render --out` refuse to overwrite a file it did not
   write?** Recommendation: no. `render` is the repeated run; the
@@ -702,3 +721,45 @@ touches M0.
 10. **The Jostraca ADR is not ADR-012** — that number is
     [taken](../../ADR.md#adr-012--an-includes-extension-decides-what-the-file-is-aontu-source-config-data-or-refused);
     the bridge, if it proceeds, takes the next free number.
+
+## 10. The validation system: `test/system/rb-solar`
+
+**Decided 2026-09-05 (the owner).** The render plan is validated by a
+full system, not by rows alone: `test/system/` holds complete systems
+whose outline and scaffolding `aontu render` generates, and the first
+is **rb-solar**, a Ruby on Rails implementation of
+[voxgig-sdk/voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk)'s
+Solar System API — the same API the reference Fastify app serves (two
+entities, `Planet` and `Moon` nested under it; `list`/`load`/`create`/
+`update`/`remove`; the `terraform` and `forbid` actions; cascade delete;
+a `{error, message}` envelope with `NotFoundError`, `ValidationError` and
+`ConflictError`) — **and a human UI over the same data**. The
+convention for the folder is [`test/system/README.md`](../../test/system/README.md).
+
+The shape, as decided:
+
+| question | decision |
+|---|---|
+| stack | Rails 8, SQLite, server-rendered ERB with Hotwire (Turbo and Stimulus), Propshaft; no Node toolchain |
+| what is generated | **everything the model decides**: routes, migrations, models with validations and the cascade, API controllers with the envelope and the two actions, UI controllers and views, seeds from the solar data, request specs; only framework boilerplate (`Gemfile`, `config/`, `bin/`) is hand-written, once |
+| the model | a hand-written aontu API model in `test/system/rb-solar/model.aon`, written the way a user of aontu would write it; the OpenAPI spec is vendored beside it as the reference it must agree with |
+| the output | the rendered application is **committed** under `test/system/rb-solar/app/`, each generated file carrying a banner; `aontu render --check` holds it, so a change to the model or the generator is a reviewable diff |
+| validation | `check.sh` renders, boots the app, runs the reference repository's `app/validate.ts` against it, runs the Ruby SDK's tests in live mode against it, and fetches the UI pages; a GitHub Actions job with a Ruby toolchain runs it |
+| release | 0.58.0 / go 0.1.16 is cut when this passes ([§6](#6-the-first-release)) |
+
+**What it validates, phase by phase.** P3 and P4 render the fragment
+units the Ruby files are made of (a Rails file is fragments: the
+declaration vocabulary has no Ruby lowering and needs none). P6's
+`replace`/`esc` and `form` are what a controller template with model
+values in it needs, and `form` is what keeps a migration's columns in
+model order. P7's coverage names any entity field no file consumed. P8
+is how the generator is written — Ruby files with `#-` marker lines
+carrying the aontu — which is the surface's second real corpus after the
+twelve handlers. A phase that rb-solar does not exercise is a phase the
+plan has not proved.
+
+**What it deliberately does not claim.** Rails idiom beyond what the
+model states, a formatter (`rubocop -a` is the hand-off, as `gofmt` is),
+and any change to the reference API: rb-solar is held to the reference
+app's validation script, so the API is theirs and only the
+implementation is ours.
