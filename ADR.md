@@ -39,6 +39,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-020](#adr-020--a-module-path-is-domainpath-and-the-domain-is-a-proved-namespace) | A module path is `<domain>/<path>`, and the domain is a proved namespace | Accepted |
 | [ADR-021](#adr-021--the-project-hosts-private-packages-with-authenticated-reads) | The project hosts private packages, with authenticated reads | Accepted |
 | [ADR-022](#adr-022--compatibility-is-computed-so-the-major-leaves-the-name) | Compatibility is computed, so the major leaves the name | Accepted |
+| [ADR-023](#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired) | G9 completes at the renderer: the reflection sidecar, the Jostraca bridge and string interpolation are retired | Accepted |
 
 ---
 
@@ -2414,3 +2415,106 @@ the ingestion threat model and is untouched here.
 
 The design is `CLI.0.md` §3.3 and `REPOSITORY.0.md` §3a in
 `aontu-lang/system`.
+
+---
+
+## ADR-023 — G9 completes at the renderer: the reflection sidecar, the Jostraca bridge and string interpolation are retired
+
+**Date:** 2026-09-05
+**Status:** Accepted
+
+### Context
+
+[G9](docs/capability-review/g9-transformation.md) — declarative
+transformation, one model and many generated artifacts — was planned in
+nine phases. By 2026-09-05 the rule layer had landed (`emit`, the four
+string builtins, `join`) and the plan for what remained was written as
+[RENDER.0.md](docs/design/RENDER.0.md), with `aontu render` as its
+spine. Three of the nine phases were not on that spine, and each had a
+reason of its own to be questioned:
+
+**Phase 5, the reflection sidecar** — a documented view of the
+evaluated tree (kinds, closedness, optionality, defaults, disjunction
+arms, constraint atoms, sites) in both ports, so that a transform could
+*derive* a field's optionality rather than state it, and so that a Go
+host could read a model at all
+([GENERATION-FORMS.0.md §2](docs/design/GENERATION-FORMS.0.md) found that
+a Go embedder can assert `*aontu.MapVal` and then read nothing). The
+renderer does not need it: it consumes `generate()` output by design.
+What it would settle is an ADR-001 question — whether parity covers the
+embedding surface or only the language — and answering it would freeze a
+reflection surface in both ports for a consumer that does not yet exist.
+
+**Phase 7, the Jostraca bridge** — one `Project`, one `generate()`
+call, three-way merge and protected regions for the repeated run over
+hand-edited files. Two of its prerequisites are changes to another
+repository (lazy `memfs`, `raw: true`); its dependency would be the
+eighth this project has ever taken, and an 11× install growth for a
+capability a normal render never uses. And the write story it was for is
+now `render --out` (all units or nothing, confined below one directory)
+and `render --check` (the CI form): a regenerate-everything lifecycle,
+which is a different product from a merge over hand edits.
+
+**Phase 8, string interpolation** — `` `a${$.b}c` `` as a parser
+phase behind a version gate, "deferred behind evidence that `join` did
+not suffice". The evidence went the other way:
+[TEMPLATE.0.md](docs/design/TEMPLATE.0.md) measured `${expr}` breaking
+on the project's own material (a serverless template that must emit
+`${self:provider.stage}` verbatim; a generated file holding a template
+literal) and chose `replace`, whose canonical form has zero
+concatenations across twelve real handlers.
+
+### Decision
+
+**G9 is complete when `aontu render` and the surface over it are
+complete — RENDER.0.md P0–P8 — and the three phases below are retired,
+not deferred.**
+
+1. **Phase 5 is retired.** A transform states its facts as data
+   (`optional`, a default, a kind) and the vocabulary vets them. Forms
+   (a) and (b) of GENERATION-FORMS.0.md stay what that note found them
+   to be — a host program reads the model in TypeScript through
+   documented-as-internal fields, and not at all in Go — and
+   `DIVERGENCE.md` says so in one entry. ADR-001's parity obligation
+   covers the *language* and the verbs; it does not extend to a
+   reflection surface, and this entry is where that is written down.
+2. **Phase 7 is retired.** aontu owns rendering to bytes and the
+   confined, all-or-nothing write of `render --out`; it owns no merge,
+   no protected region and no record of previous runs. A generation
+   over hand-edited files is a workflow for a tool that owns files,
+   and the hand-off to one is a pipeline step the user runs.
+3. **Phase 8 is retired.** `replace` on a template and `+`/`join` in a
+   body are the two ways a value reaches generated text. No
+   interpolation syntax is added to the grammar.
+
+### Consequences
+
+**We accept that a transform restates schema facts.** Worked example 2
+of the G9 design writes `optional: match(key(2), "email", true, …)` by
+hand where a sidecar would have read it from the schema. That is a
+duplication the vocabulary's vet catches when it drifts, and it is the
+price of not freezing a reflection surface in two ports.
+
+**We accept that Go embedding stays evaluate-and-validate.** A Go host
+can unify, generate, vet, subsume, render and hash; it cannot walk the
+tree. GENERATION-FORMS.0.md's first answer — "language only; say so" —
+is the one taken.
+
+**We accept no merge over hand edits.** A generated file is generated;
+a hand edit to one is drift, and `render --check` reports it. A project
+that wants both generated and hand-written regions in one file splits
+the file, or takes a tool built for that job downstream.
+
+**We accept `+` and `replace` as the only text-composition spellings**,
+and the readability cost `join("…", .x, "…")` carries against an
+interpolated literal, because the alternative was measured to break on
+real material and a delimiter that is safe in every target language does
+not exist.
+
+**Enforcement.** The register's rows for G9 phases 5, 7 and 8 read
+RETIRED with this entry's number, in the commit that records the
+decision; the design's [§7](docs/design/RENDER.0.md) and its fourth
+amendment in the gap document point here; `DIVERGENCE.md` carries the
+embedding-surface entry when P4 lands. A future phase that adds a
+reflection surface, a file-merge dependency or an interpolation syntax
+supersedes this entry rather than amending a row.
