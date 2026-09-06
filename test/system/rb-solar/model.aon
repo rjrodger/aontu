@@ -81,6 +81,18 @@ entity: [
       { name:"forbid_reason" json:"forbidReason" kind:"string" pk:false }
     ]
 
+    # THE SEED ROWS FOR THIS ENTITY, each carrying its class. The join
+    # happens here, where `$.seed.planet` is an absolute path and the
+    # class is a literal: a generator could not do it, because a nested
+    # dispatch cannot see the entity the outer one matched.
+    rows: form($.seed.planet, _ & { class:"Planet" })
+
+    # WHAT HANGS OFF THIS ENTITY. Each row carries the association's
+    # name, the class on the other end and the key it joins on, because
+    # that is what the `has_many` line needs and a nested dispatch can
+    # read nothing else.
+    children: [{ name:"moons" class:"Moon" fk:"planet_id" cascade:true }]
+
     # No index of its own: the primary key already has one.
     index: []
 
@@ -150,6 +162,10 @@ entity: [
     # there at all -- silently, as an empty selection
     # ([BUGS.md §89](../../use-cases/BUGS.md)).
     index: [{ table:"moons" column:"planet_id" }]
+
+    rows: form($.seed.moon, _ & { class:"Moon" })
+
+    children: []
 
     field: [
       { name:"id" json:"id" kind:"string" required:true pk:true }
