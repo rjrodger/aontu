@@ -276,9 +276,19 @@ func (f *FuncVal) Canon() string {
 }
 
 func (f *FuncVal) Gen(ctx *Ctx) (any, error) {
-	// Silent (mirrors KeyFuncVal.gen and the FuncBaseVal pattern in
-	// TS): the enclosing bag reports unresolved funcs.
-	return nil, nil
+	// AN UNRESOLVED CALL IS A REFUSAL, not a null. TS reaches this
+	// through FeatureVal.gen, which FuncBaseVal inherits and which
+	// always raises no_gen; the silent return here mirrored
+	// KeyFuncVal.gen, the ONE TS func that overrides it, and applied
+	// its exception to every builtin.
+	//
+	// A call under a BAG never arrives here — `genable` excludes
+	// *FuncVal, and the bag reports mapval_no_gen naming the key —
+	// so this is the ROOT-level call, where returning nil generated
+	// the document `null`: indistinguishable from a document whose
+	// value genuinely is null, which is the wrong-answer severity
+	// docs/trust.md clause 2 exists to refuse (#61).
+	return nil, residueErr(ctx, f, "no_gen")
 }
 
 // captureSpelling is the address a reference SPELLS, or not-ok when

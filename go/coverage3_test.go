@@ -112,7 +112,15 @@ func TestRefInternalsDirect(t *testing.T) {
 		t.Fatalf("ref superior")
 	}
 
-	// append: scalar segments with NO source text render computed.
+	// append: A SCALAR SEGMENT IS ITS SOURCE TEXT AND NOTHING ELSE, so
+	// one with no literal behind it is the EMPTY segment -- matching no
+	// key and no index, which is a miss rather than a wrong location.
+	// These four used to render computed (7, 2/5, 9, 1/5); the integer
+	// arm is how `$.a.-0` addressed element 0, the negation having
+	// consumed the spelling (#67). TS pushes `part.src` with no
+	// fallback (RefVal.append), and the float and bigdecimal arms split
+	// that text on its point, so an empty one splits to one empty
+	// segment.
 	rv := &RefVal{}
 	rv.append(&ScalarVal{kind: KindInteger, peg: int64(7)})
 	rv.append(&ScalarVal{kind: KindFloat, peg: 2.5})
@@ -122,8 +130,23 @@ func TestRefInternalsDirect(t *testing.T) {
 	for i, p := range rv.peg {
 		got[i] = p.(string)
 	}
-	if strings.Join(got, "/") != "7/2/5/9/1/5" {
-		t.Fatalf("computed segments: %v", got)
+	if strings.Join(got, "/") != "///" {
+		t.Fatalf("unspelled segments: %v", got)
+	}
+
+	// The same four WITH source text keep every spelling exactly, which
+	// is what makes `$.x.1e2` one segment and `$.x.1.5` two.
+	rvs := &RefVal{}
+	rvs.append(&ScalarVal{kind: KindInteger, peg: int64(7), src: "0x7"})
+	rvs.append(&ScalarVal{kind: KindFloat, peg: 2.5, src: "2.5"})
+	rvs.append(&ScalarVal{kind: KindBigInteger, peg: big.NewInt(9), src: "0d9"})
+	rvs.append(&ScalarVal{kind: KindBigDecimal, peg: newDecimal(big.NewInt(15), 1), src: "0d1.5"})
+	gots := make([]string, len(rvs.peg))
+	for i, p := range rvs.peg {
+		gots[i] = p.(string)
+	}
+	if strings.Join(gots, "/") != "0x7/2/5/0d9/0d1/5" {
+		t.Fatalf("spelled segments: %v", gots)
 	}
 
 	// append: a prefix child ref onto a non-empty non-prefix ref keeps
@@ -241,8 +264,16 @@ func TestPlaceArmsDirect(t *testing.T) {
 func TestFuncArmsDirect(t *testing.T) {
 	ctx := &Ctx{root: newMap()}
 	f := newFunc("key", nil)
-	if g, err := f.Gen(nil); g != nil || err != nil {
-		t.Fatalf("func Gen must be silent")
+	// AN UNRESOLVED CALL REFUSES AT GENERATION (#61), as TS's
+	// FeatureVal.gen does for every FuncBaseVal: this arm used to
+	// return a silent nil, which at the document root generated
+	// `null` — a value nobody wrote.
+	g, err := f.Gen(nil)
+	if g != nil || err == nil {
+		t.Fatalf("func Gen must refuse an unresolved call: %v %v", g, err)
+	}
+	if ae, ok := err.(*AontuError); !ok || "no_gen" != ae.Code {
+		t.Fatalf("func Gen refuses with no_gen, got %v", err)
 	}
 	if out := f.Unify(nil, ctx); out == nil {
 		t.Fatalf("nil peer")

@@ -57,3 +57,62 @@ type-conjunct-arg-ref	gens	Entry:type({kind:"service"}&{owner:string})\nuse:$.En
 type-conjunct-target-ref	gens	use:$.Entry&{owner:"team-pay"}\nBase:{kind:"service"}\nEntry:type($.Base)&{owner:string}\n	{"Base":{"kind":"service"},"use":{"kind":"service","owner":"team-pay"}}
 type-alias-ref-first	gens	use:$.Entry&{owner:"team-pay"}\nEntry:type($.Base&{owner:string})\nBase:{kind:"service"}\n	{"Base":{"kind":"service"},"use":{"kind":"service","owner":"team-pay"}}
 hide-computed-pack-copy	gens	names:[a]\ntools:pack($.names,{})\ntools:a:{se:readonly,doc_row:hide("|"+.se)}\ndocs:[copy($.tools.a.doc_row)]\n	{"docs":["|readonly"],"names":["a"],"tools":{"a":{"se":"readonly"}}}
+
+# TWO STATEMENTS FOR ONE KEY, BOTH MARKED, WITH A REFERENCE BETWEEN THE
+# DEFINITIONS (issue #164).
+#
+# Duplicate keys MEET, so `T: type({...})` written twice is a CONJUNCT
+# of two pending wrappers -- and one written beside a plain `T: {...}`
+# is a conjunct too. The walk was transparent to a wrapper only when the
+# wrapper was the WHOLE node, so a reference into such a key stopped at
+# the conjunct: the wrapper waited for its argument, the argument waited
+# for the reference, and neither moved. Both ports reported
+# mapval_no_gen at the FIRST referring child of each consumer -- a path
+# naming none of this -- while later children resolved, which is what
+# made it so hard to read.
+#
+# The specification in aontu-lang/system found it with five files, each
+# contributing `T: type({...})` and referring to the others. Every shape
+# below is a real spelling of that: the second statement marked or
+# plain, the reference in the first definition or the second, marks of
+# both kinds, references crossing both ways, and three statements.
+split-type-internal-ref	gens	T: type({ A: 1  A2: $.T.A })\nT: type({ B: 2 })\nout: $.T.A2\n	{"out":1}
+split-type-internal-ref-canon	canon	T: type({ A: 1  A2: $.T.A })\nT: type({ B: 2 })\n	{"T":{"A":1,"A2":1,"B":2}}
+split-type-plain-second	gens	T: type({ A: 1  A2: $.T.A })\nT: { B: 2 }\nout: $.T.A2\n	{"out":1}
+split-type-ref-in-second	canon	T: type({ A: 1 })\nT: type({ A2: $.T.A })\n	{"T":{"A":1,"A2":1}}
+split-hide-internal-ref	gens	T: hide({ A: 1  A2: $.T.A })\nT: hide({ B: 2 })\nout: $.T.A2\n	{"out":1}
+# The segment's answer is the MEET of what every term supplies, not the
+# first term that has one: `A` is `integer` in the marked statement and
+# `5` in the plain one, so `$.T.A` is 5 and not `integer`.
+split-type-meet-of-terms	gens	T: type({ A: integer  A2: $.T.A })\nT: { A: 5 }\nout: $.T.A2\n	{"out":5}
+split-type-cross-refs	gens	T: type({ A: 1  B2: $.T.B })\nT: type({ B: 2  A2: $.T.A })\nout: [$.T.A2, $.T.B2]\n	{"out":[1,2]}
+split-type-three-statements	canon	T: type({ A: 1  A2: $.T.A })\nT: type({ B: 2 })\nT: type({ C: 3 })\n	{"T":{"A":1,"A2":1,"B":2,"C":3}}
+# The reduced form the issue was filed with, whole: two definitions, a
+# reference between them, and two consumers whose FIRST child was the
+# one that never settled.
+split-type-issue-repro	gens	T: type({ A: close({ x: integer })  A2: $.T.A })\nT: type({ B: close({ y: integer }) })\na: { k1: $.T.A2 & { x: 1 }  k2: $.T.A2 & { x: 2 } }\nb: { k1: $.T.B & { y: 1 } }\n	{"a":{"k1":{"x":1},"k2":{"x":2}},"b":{"k1":{"y":1}}}
+# The walk's other shapes, each of which is a different arm of it: a
+# LIST supplying the segment rather than a map (both as a member of a
+# marked map and as the whole marked value), a segment NO term has yet
+# -- which defers rather than missing, because the member may arrive
+# with the fold -- and the same segment once a term supplies it.
+split-type-list-member	gens	T: type({ L: [10,20]  L0: $.T.L.1 })\nT: type({ B: 2 })\nout: $.T.L0\n	{"out":20}
+split-type-list-member-canon	canon	T: type({ L: [10,20]  L0: $.T.L.1 })\nT: type({ B: 2 })\n	{"T":{"B":2,"L":[10,20],"L0":20}}
+split-type-whole-value-is-a-list	gens	T: type([1,2])\nT: type([1,2])\nout: $.T.0\n	{"out":1}
+split-type-segment-no-term-has	canon	T: type({ A: 1  Z: $.T.Q })\nT: type({ B: 2 })\n	{"T":type({"A":1,"Z":$.T.Q})&{"B":2}}
+split-type-segment-the-other-term-has	gens	T: type({ A: 1  Z: $.T.Q })\nT: type({ Q: 9 })\nout: $.T.Z\n	{"out":9}
+# The terms of such a conjunct are not all marked maps, and each shape
+# is a different arm of the walk: a BARE LIST beside a pending wrapper,
+# a wrapper over a LIST, and a term that supplies nothing at all
+# because it is neither -- a reference, here, which answers once it
+# resolves and is skipped until it does.
+split-type-list-term	gens	T: type([$.T.1 5])\nT: [5 5]\nout: $.T.0\n	{"out":5}
+split-type-list-wrapped	gens	T: type([$.T.1 5])\nT: type([5 5])\nout: $.T.0\n	{"out":5}
+split-type-ref-term	gens	U: {A: 1}\nT: type({ A: 1  A2: $.T.A })\nT: $.U\nout: $.T.A2\n	{"U":{"A":1},"out":1}
+# A segment a LIST term cannot supply, both spellings: past the end,
+# and not an index at all. Neither shortens the path to the container,
+# which is the wrong-value failure ref.tsv's numeric-segment rules
+# exist to refuse; the reference simply never resolves, and the
+# conjunct stands unfolded to say so.
+split-type-list-term-past-end	canon	T: type([$.T.5 5])\nT: [5 5]\n	{"T":type([$.T.5,5])&[5,5]}
+split-type-list-term-not-an-index	canon	T: type([$.T.k 5])\nT: [5 5]\n	{"T":type([$.T.k,5])&[5,5]}
