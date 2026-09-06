@@ -752,7 +752,7 @@ function stylePaths() {
         Assert.ok(60 < files.length, `gated set is ${files.length} files`);
         Assert.ok(files.includes('README.md'), 'README.md is gated');
         Assert.ok(files.includes('ts/README.md'), 'ts/README.md is gated');
-        Assert.equal(files.filter((f) => f.startsWith('use-cases/')).length, 16, 'the sixteen published use cases are gated');
+        Assert.equal(files.filter((f) => f.startsWith('use-cases/')).length, 17, 'the sixteen published use cases are gated');
     });
     // Logical lines, for the reason in logical(): the list is mostly
     // MULTIWORD and the pages wrap near 72 columns, so a physical-line

@@ -135,6 +135,17 @@ class Val {
         if (null != this.deprecation) {
             out.deprecation = this.deprecation;
         }
+        // THE RENDER RIDERS TRAVEL WITH THE CLONE (P7), for the reason the
+        // deprecation record does: a clone of a value read at `$.schema`
+        // was read at `$.schema`, and a clone of an emitted piece is still
+        // that dispatch's. Both are absent unless the run is instrumented,
+        // so this is two undefined reads otherwise.
+        if (null != this.origin) {
+            out.origin = this.origin;
+        }
+        if (null != this.emitted) {
+            out.emitted = this.emitted;
+        }
         // THE APPLY-ONCE MARK TRAVELS WITH THE CLONE. `_spr` records which
         // spread template has already been merged into this value, and the
         // bag loops read it to keep a template from being applied twice
@@ -440,5 +451,5 @@ function empty(o) {
     return ((Array.isArray(o) && 0 === o.length)
         || (null != o && 'object' === typeof o && 0 === Object.keys(o).length)
         || false);
-} /* node:coverage ignore next 17 */
+} /* node:coverage ignore next 18 */
 //# sourceMappingURL=Val.js.map

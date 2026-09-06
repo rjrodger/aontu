@@ -926,6 +926,40 @@ Neither can recurse. Both iterate a finite bag that already exists, so
 the number of children either can produce is fixed by the data:
 evaluation still terminates by construction.
 
+### `form`, the order-preserving map
+
+`form(data, tmpl)` makes one **list element** per child of `data`,
+being `tmpl` instantiated at that position with `_` bound to the
+source child. It **replaces** where `each` meets: the element is the
+template and nothing else, which is what makes it a construction
+rather than a bound, and why it sits beside `each` rather than in
+place of it.
+
+```aon
+names: [web auth billing]
+files: form($.names, { path:_ + ".ts" })
+consts: form($.names, upper(_))
+tag: join(form(split("index-build", "-"), upper(_)), "_")
+```
+
+```json
+{"names": ["web", "auth", "billing"],
+ "files": [{"path": "web.ts"}, {"path": "auth.ts"}, {"path": "billing.ts"}],
+ "consts": ["WEB", "AUTH", "BILLING"],
+ "tag": "INDEX_BUILD"}
+```
+
+The order is the data's—source order for a list, sorted-key order for
+a map—through the same rule `each` reads its members by, and a hidden
+child or an unfilled optional is skipped as generation would skip it.
+That order is the reason `form` exists: `pick(pack(d, {f: t}), f)`
+maps too, but through a map, so it re-sorts to code-point order, and
+the fields of a struct, the imports of a file or an index in the
+model's order would come out alphabetised. With `split` and `join` it closes the
+name-derivation chain, as `tag` shows. Like `each`, it waits for the
+model to settle and fires once; a `_` inside its template is its own
+to bind, never an enclosing generator's.
+
 ## Selecting: `filter` and `match`
 
 `filter(data, cond)` keeps the children of `data` that **already
@@ -1174,6 +1208,48 @@ depth budget, like any other runaway descent.
 Like the other combinators, `emit` waits for the model to settle before
 it fires: a selection that is still being merged into is the wrong set
 of nodes to dispatch over. Until it fires it canons as its own call.
+
+### Replacing text in a body: `replace` and `esc`
+
+A body line is target text, and a value reaches it through a
+**`replace`** map rather than a hole: each key is an exact string the
+body already holds as ordinary text, and its value is evaluated
+against the matched node. Every value is **escaped** by the template's
+`esc` convention—the C/JSON escape when the key is absent; `sq` for a
+single-quoted literal; `sql`, `shell`, `xml`, `uri` or `regex` by
+name; and `none` for a value that is not going into a literal at all:
+
+```aon
+services: [{ name:"o'brien" pin:"srv:a" }]
+
+lines: emit($.services, {
+  match: name: string
+  esc: sq
+  replace: { NAME:.name PIN:.pin }
+  body: ["seneca.client({type:'sqs',pin:'PIN'})" "await getSeneca('NAME')"]
+})
+```
+
+```json
+{"services": [{"name": "o'brien", "pin": "srv:a"}],
+ "lines": ["seneca.client({type:'sqs',pin:'srv:a'})", "await getSeneca('o\\'brien')"]}
+```
+
+There is no delimiter to collide with the target's own syntax, so a
+deployment template's `${self:provider.stage}` and a backtick string
+survive untouched. Three rules bound the substitution: a line is
+scanned once, left to right, taking the longest key at each position;
+a substituted value is never scanned again, so no value can introduce
+a key; and a template's replacements touch its own literal lines
+only—a piece spliced in from a nested dispatch carries that template's
+replacements and is finished. A number or a boolean value spells
+itself, as it does after `+`; a map, a list or a null is refused
+(`replace_value`).
+
+Two checks run on the template before any node is visited: a key
+inside another key is ambiguous whatever the order
+(`replace_overlap`), and a key the body's literal lines do not hold
+means the template has drifted from its map (`replace_unused`).
 
 ## References and paths
 

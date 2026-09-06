@@ -284,6 +284,28 @@ grep -q 'Placed \*string `json:"placed,omitempty"`' "$DIR/expected/render/go/dom
   || fail "the Go golden lost the optional pointer"
 ok "the schema renders as TypeScript and Go, held by render --check"
 
+# 15. WHAT THE TRANSFORM DID NOT READ. `render --coverage` measures the
+# model against what the run resolved: the three record bags are the
+# schema's DATA, and a transform that walks the record TYPES consumes
+# none of them, so all three are dead model here. That is the whole
+# claim -- the report names what a reader would otherwise have to
+# notice by eye -- and both ports must name the same three.
+run cover 0 -- render --coverage "$DIR/xf-order.aon"
+has cover 'dead: $.customers'
+has cover 'dead: $.invoices'
+has cover 'dead: $.orders'
+has cover 'coverage: 3 path(s) read, 3 no output consumed'
+grep -q 'dead: \$\.schema' "$WORK/cover.out" \
+  && fail "the schema is read by the transform and must not be dead"
+grep -q 'dead: \$\.code' "$WORK/cover.out" \
+  && fail "the render's own output is not model"
+# Every declaration here is written by pack and pick rather than by a
+# rule set, so the rule layer governs none of this output and the report
+# says so: four records, twice.
+has cover 'unruled: ts/domain.ts $.code.units.0.decls.0'
+has cover 'unruled: go/domain.go $.code.units.1.decls.3'
+ok "coverage names the three bags no output consumed, and the unruled declarations"
+
 if command -v go >/dev/null 2>&1; then
   GOBIN="$WORK/aontu-go"
   (cd "$REPO/go" && go build -o "$GOBIN" ./cmd/aontu) \
@@ -293,8 +315,14 @@ if command -v go >/dev/null 2>&1; then
   "$GOBIN" render --check "$DIR/expected/render" "$DIR/xf-order.aon" 2>/dev/null \
     || fail "the Go port's render of xf-order.aon does not match the goldens (ADR-001)"
   ok "the Go port renders the same bytes for both transforms"
+  "$GOBIN" render --coverage "$DIR/xf-order.aon" 2>/dev/null > "$WORK/cover-go.out" \
+    || fail "the Go port's coverage report did not run"
+  diff -u "$WORK/cover.out" "$WORK/cover-go.out" \
+    || fail "the two ports disagree about coverage (ADR-001)"
+  ok "the Go port reports the same coverage"
 else
   skip "the Go port renders the same bytes for both transforms (no go toolchain)"
+  skip "the Go port reports the same coverage (no go toolchain)"
 fi
 
 echo

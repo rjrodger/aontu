@@ -56,10 +56,17 @@ function errorReport(errors) {
 function render(src, options) {
     const opts = options ?? {};
     const aontu = new aontu_1.Aontu((0, utility_1.includeOpts)(opts));
+    // THE RECORDER (P7), on for a run that was asked for a trace or a
+    // coverage report and off for every other. Its presence is the one
+    // switch: the read set fills as references resolve, and the two
+    // riders that carry a read address and a dispatch stamp are written
+    // only while it is there.
+    const rec = true === opts.trace || true === opts.coverage;
+    const reads = rec ? new Set() : undefined;
     // COLLECT MODE, so a syntax error arrives on the context rather than
     // as a throw (the jsonschema and vet precedent; no try/catch, for
     // the reason those verbs have none).
-    const actx = aontu.ctx({ collect: true });
+    const actx = aontu.ctx({ collect: true, reads });
     const root = aontu.unify(src, { path: opts.path, collect: true }, actx);
     if (0 < actx.err.length || true === root?.isNil) {
         return errorReport([(0, vet_1.failureFinding)(actx, opts.path, root)]);
@@ -91,7 +98,201 @@ function render(src, options) {
     // with no `code` at all is the vocabulary's own empty instance.
     const codeVal = node.peg.code;
     const instance = new aontu_1.Aontu().generate(VOCABULARY + (undefined === codeVal ? '' : '\ncode: ' + (0, hcanon_1.hcanon)(codeVal)));
-    return renderValue(instance, opts);
+    const folded = renderValue(instance, opts);
+    // THE TWO REPORTS ARE JOINED TO THE FOLD BY PATH (P7), which is what
+    // lets the fold stay the pure total function D6 asks for: the
+    // dispatch stamps ride the VALUE, the instance the fold reads is
+    // that value re-sourced through its hash form, and a piece is at the
+    // same path in both. Nothing to report on `error`: there are no
+    // units to attribute pieces to.
+    if (rec && 'error' !== folded.verdict) {
+        const marks = emitted(node);
+        const trace = traceOf(marks, instance, folded.units);
+        // AN EMPTY TRACE IS NO TRACE, in both ports: Go omits an empty
+        // slice, and a report shape that differed by port would be the one
+        // thing the shared rows exist to refuse. A run that emitted no
+        // piece has nothing to attribute, and the coverage report says so
+        // in its own words.
+        if (0 < trace.length) {
+            folded.trace = trace;
+        }
+        if (true === opts.coverage) {
+            const cov = coverOf(root, node, reads, opts, marks, instance, folded.units);
+            if (undefined === cov) {
+                const nil = (0, err_1.makeNilErr)(actx, 'no_path', root, undefined, 'coverageAt');
+                actx.err.push(nil);
+                return errorReport([(0, vet_1.failureFinding)(actx, opts.path, root)]);
+            }
+            folded.coverage = cov;
+        }
+    }
+    return folded;
+}
+// ---------------------------------------------------------------------
+// THE TRACE AND THE COVERAGE REPORT (RENDER.0.md D11, P7).
+// The one walk order both ports walk in: a list by index, a map by key
+// in code-point order. `fn` answers whether to descend.
+function walkVals(root, fn) {
+    const walk = (v, path) => {
+        if (null == v || true !== v.isVal || !fn(v, path)) {
+            return;
+        }
+        if (true === v.isList && null != v.peg) {
+            for (let i = 0; i < v.peg.length; i++) {
+                walk(v.peg[i], [...path, String(i)]);
+            }
+        }
+        else if (true === v.isMap && null != v.peg) {
+            for (const k of Object.keys(v.peg).sort(keyorder_1.cmpCodePoint)) {
+                // AN ALIAS DECLARATION IS NOT A MEMBER, here for the reason
+                // every fold has it (./val/members.ts): `%wire = …` holds a
+                // value the document never generates, so it is neither a piece
+                // to trace nor model that could be called dead.
+                if (!v.aliasKeys.includes(k)) {
+                    walk(v.peg[k], [...path, k]);
+                }
+            }
+        }
+    };
+    walk(root, []);
+}
+// A path as an address: `$`, then a dot before every segment.
+function addr(path) {
+    return '$' + path.map((seg) => '.' + seg).join('');
+}
+// Every piece a dispatch stamped, under the anchored value, in
+// document order. The path is relative to the anchor, which is where
+// the instance the fold reads is rooted too.
+function emitted(node) {
+    const out = [];
+    walkVals(node, (v, path) => {
+        if (null != v.emitted) {
+            out.push({ path: addr(path), mark: v.emitted });
+        }
+        return true;
+    });
+    return out;
+}
+// The trace: one entry per stamped piece that a RENDERED unit holds. A
+// piece is IN the unit whose path prefixes its own, which is the whole
+// of the question -- no path is parsed, and a stamp that lies under no
+// unit at all (a rule set held under a key of its own, and referred to
+// from a unit) simply matches nothing. A unit the run did not render
+// (`--unit` names one) has no bytes for a piece of it to be in, so it
+// is not among the prefixes either.
+function traceOf(marks, instance, units) {
+    const pre = [];
+    unitList(instance).forEach((u, i) => {
+        if (units.some((r) => r.path === u.path)) {
+            pre.push({ at: '$.code.units.' + i, path: u.path });
+        }
+    });
+    const out = [];
+    for (const m of marks) {
+        const hit = pre.find((p) => m.path === p.at || m.path.startsWith(p.at + '.'));
+        if (undefined === hit) {
+            continue;
+        }
+        out.push({ unit: hit.path, piece: m.path, node: m.mark.node, rule: m.mark.rule });
+    }
+    return out;
+}
+// Every proper ancestor of an address, `$` included.
+function ancestors(a) {
+    const parts = a.split('.');
+    const out = [];
+    for (let i = 1; i < parts.length; i++) {
+        out.push(parts.slice(0, i).join('.'));
+    }
+    return out;
+}
+// Is the value at `a` covered by the set -- the address itself in it,
+// or an address above it? An address ABOVE it covers the whole subtree:
+// a reference that read `$.schema` read everything under it, and a rule
+// that emitted a unit emitted every declaration in it.
+function covered(set, a) {
+    if (set.has(a)) {
+        return true;
+    }
+    for (const up of ancestors(a)) {
+        if (set.has(up)) {
+            return true;
+        }
+    }
+    return false;
+}
+// THE COVERAGE REPORT (P7). Dead model is measured over the DOCUMENT
+// ROOT, or under `coverageAt` when a document keeps its model under one
+// key (X-3, decided here): the read set is absolute, so a narrower
+// measure is a narrower walk, not a different origin. The render's own
+// output -- `code` under the anchor -- is not model and is never
+// walked into: nothing reads it, so every document would otherwise
+// report it dead.
+function coverOf(root, node, reads, opts, marks, instance, units) {
+    // THE ANCHOR IS THE ONE render() ALREADY FOUND, so `code` under it is
+    // named without asking a second time: `--at` is resolved before the
+    // vet, and an anchor that named nothing never reached here.
+    const codeAddr = addr(node.path.concat('code'));
+    let from = root;
+    let base = [];
+    if (null != opts.coverageAt && '' !== opts.coverageAt) {
+        const found = (0, vet_1.anchorAt)(root, opts.coverageAt);
+        if (null == found) {
+            return undefined;
+        }
+        from = found;
+        base = found.path;
+    }
+    // The two questions asked of the read set, as sets: is this address
+    // read (or under one that is), and does a read lie BELOW it?
+    const above = new Set(reads);
+    const below = new Set();
+    for (const r of reads) {
+        for (const up of ancestors(r)) {
+            below.add(up);
+        }
+    }
+    const dead = [];
+    walkVals(from, (_v, path) => {
+        const a = addr(base.concat(path));
+        if (a === codeAddr || covered(above, a)) {
+            return false;
+        }
+        // THE ROOT OF THE MEASURE IS NEVER ITSELF DEAD MODEL, and is
+        // descended into whatever the read set holds. A document that is
+        // only a transform reads nothing above its own model, and naming
+        // the root there would report the whole document dead while its
+        // one live subtree sat inside it.
+        if (below.has(a) || 0 === path.length) {
+            return true;
+        }
+        dead.push(a);
+        return false;
+    });
+    // A SILENT HOLE: a declaration of a rendered unit that no stamp
+    // touches -- neither its own, nor one on the unit above it, nor one
+    // on a piece inside it.
+    const stamped = new Set(marks.map((m) => m.path));
+    const inside = new Set();
+    for (const m of marks) {
+        for (const up of ancestors(m.path)) {
+            inside.add(up);
+        }
+    }
+    const unruled = [];
+    unitList(instance).forEach((unit, i) => {
+        if (!units.some((u) => u.path === unit.path)) {
+            return;
+        }
+        const decls = unit.decls;
+        decls.forEach((_d, j) => {
+            const a = '$.code.units.' + i + '.decls.' + j;
+            if (!covered(stamped, a) && !inside.has(a)) {
+                unruled.push({ unit: unit.path, path: a });
+            }
+        });
+    });
+    return { read: [...reads].sort(keyorder_1.cmpCodePoint), dead, unruled };
 }
 // The bundled text profile, evaluated once: the profile of a unit
 // whose declarations are fragments and text escapes only.
@@ -209,6 +410,12 @@ function renderProfile(src, options) {
     const instance = new aontu_1.Aontu().generate(PROFILE_VOCABULARY + '\nprofile: ' + (0, hcanon_1.hcanon)(root.peg.profile));
     return { profile: instance.profile };
 }
+// The instance's unit list, or none: `code` is the vocabulary's own
+// key and is always there, `units` is not. One reader, so the fold,
+// the trace and the coverage report all see the same list.
+function unitList(instance) {
+    return Array.isArray(instance?.code?.units) ? instance.code.units : [];
+}
 // The fold alone, over `generate()` output: the instance is
 // `{code: {units: [...]}}` as the vocabulary shapes it, with its
 // defaults filled -- which is what `render` hands over, and what a
@@ -218,7 +425,7 @@ function renderValue(instance, options) {
     const errors = [];
     const lossy = [];
     const units = [];
-    const list = Array.isArray(instance?.code?.units) ? instance.code.units : [];
+    const list = unitList(instance);
     const seen = [];
     let selected = 0;
     list.forEach((unit, i) => {

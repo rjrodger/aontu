@@ -1,6 +1,10 @@
 import { inspect } from 'node:util';
 import type { AontuContext } from '../ctx';
 import { Site } from '../site';
+type EmitOrigin = {
+    node: string;
+    rule: string;
+};
 type ValMark = {
     type: boolean;
     hide: boolean;
@@ -73,6 +77,8 @@ declare abstract class Val {
     mark: ValMark;
     deprecation?: Record<string, string>;
     link?: string;
+    origin?: string;
+    emitted?: EmitOrigin;
     graph?: any;
     peg: any;
     err: any[];
@@ -102,5 +108,5 @@ declare abstract class Val {
 declare function repathInstance(v: any, path: string[]): void;
 declare function spreadId(cj: any): number;
 declare function empty(o: any): boolean;
-export type { ValMark, ValSpec, };
+export type { EmitOrigin, ValMark, ValSpec, };
 export { spreadId, Val, DONE, SPREAD, EMPTY_ERR, empty, repathInstance, };

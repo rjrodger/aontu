@@ -387,6 +387,31 @@ class RefVal extends FeatureVal_1.FeatureVal {
             }
             else if (pI === refpath.length) {
                 out = node;
+                // THE READ IS RECORDED, AND THE VALUE STAMPED WITH WHERE IT
+                // WAS FOUND (RENDER.0.md P7). A resolved reference clones its
+                // target into the referring position, so without the stamp a
+                // value that arrived by reference knows only where it came to
+                // rest -- and `render --coverage` has nothing to measure the
+                // model against. Off unless the run is instrumented; the first
+                // address wins, and every reference to one node names the same
+                // address anyway.
+                if (undefined !== ctx.reads && null != node) {
+                    // The root's own address is `$`, as the coverage walk spells
+                    // it: a dot with nothing after it would match no path there.
+                    const addr = '$' + refpath.map((seg) => '.' + seg).join('');
+                    // AN ALIAS IS NOT A PATH. `%wire` names a value the document
+                    // holds unevaluated and the tree never carries, so it is an
+                    // address a rule can be reported AT and never a path coverage
+                    // could call dead: it is stamped, and it is not in the set
+                    // the model is measured against.
+                    if (!refpath[0]?.startsWith('%')) {
+                        ctx.reads.add(addr);
+                    }
+                    if (null == node.origin) {
+                        ;
+                        node.origin = addr;
+                    }
+                }
                 // A reference landing on another reference -- or on a FUNCTION,
                 // whose arguments the chase now follows (issue #35) -- may be a
                 // PROVEN mutual cycle (a: $.b, b: $.a; a: $.b, b: upper($.a)).

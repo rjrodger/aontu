@@ -132,6 +132,15 @@ type Ctx struct {
 	// uninstrumented run. One run has one recorder: the Ctx is shared
 	// by reference all the way down, as the error list is.
 	prov *Provenance
+
+	// reads is THE READ SET (RENDER.0.md P7), or nil for an
+	// uninstrumented run: every tree path a reference resolved to, in
+	// one shared map. It is what `render --coverage` measures the model
+	// against -- a path no read reached is model the transform never
+	// consumed -- and its presence is also what switches the two render
+	// riders on (base.origin, base.emitted), so one flag turns the
+	// whole record on. Mirrors AontuContext.reads in ts/src/ctx.ts.
+	reads map[string]bool
 }
 
 func (c *Ctx) adderr(n *NilVal) {

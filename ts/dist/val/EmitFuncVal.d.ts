@@ -1,13 +1,30 @@
 import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
-import { ListVal } from './ListVal';
 import { FuncBaseVal } from './FuncBaseVal';
+import type { EmitOrigin } from './Val';
 type Template = {
     match: Val;
     body: Val;
+    replace?: Val;
+    esc: string;
+    lits: LitSpot[];
+    idx: number;
 };
-type BindFail = {
+type LitSpot = {
+    i: number;
+    of?: number;
+    text?: boolean;
+    s: string;
+};
+type Refusal = {
+    code: string;
+    details?: Record<string, string>;
+};
+type Pair = [string, string];
+type Fail = {
     ref?: string;
+    code?: string;
+    details?: Record<string, string>;
 };
 declare class EmitFuncVal extends FuncBaseVal {
     isEmitFunc: boolean;
@@ -16,8 +33,10 @@ declare class EmitFuncVal extends FuncBaseVal {
     funcname(): string;
     prepare(_ctx: AontuContext, _args: Val[]): null;
     unify(peer: Val, ctx: AontuContext): Val;
-    resolve(ctx: AontuContext, args: Val[]): ListVal | import("./NilVal").NilVal;
+    resolve(ctx: AontuContext, args: Val[]): import("./NilVal").NilVal | Val;
+    refuse(ctx: AontuContext, r: Refusal): Val;
     dispatch(ctx: AontuContext, node: Val, templates: Template[]): Template | string;
-    instantiate(ctx: AontuContext, node: Val, tmpl: Template, out: Val[], fail: BindFail): void;
+    replacements(ctx: AontuContext, node: Val, tmpl: Template, fail: Fail): Pair[] | undefined;
+    instantiate(ctx: AontuContext, node: Val, tmpl: Template, out: Val[], fail: Fail, mark?: EmitOrigin): void;
 }
 export { EmitFuncVal, };

@@ -558,5 +558,44 @@ repeated subtree elided the way `cargo tree` elides one, and a
 dependency-structure matrix. The layered codebase, its refusals, and its
 views: [`use-cases/16-module-deps/`](../use-cases/16-module-deps/).
 
+## 17. Lambda handlers
+
+Twelve services on one message wire, each deployed as its own Lambda
+handler: the same forty lines with three things that vary per
+service. The generator is the handler file itself, as one rule set in
+the canonical form a template file expands into—the body is the
+file, line for line, and a value reaches a line through `replace`
+rather than a hole:
+
+```aon
+%handler = emit(_, {
+  match: name: string
+  esc: sq
+  replace: SERVICE: .name
+  body: [
+    "function complete(seneca: any) {"
+    emit(.listen, {
+      match: pin: string
+      esc: sq
+      replace: PIN: .pin
+      body: ["  seneca.listen({type:'sqs',pin:'PIN'})"]
+    })
+    "}"
+    "  let seneca = await getSeneca('SERVICE', complete)"
+  ]
+})
+```
+
+`SERVICE` and `PIN` are ordinary TypeScript in the body; the map says
+which strings stand for a value, and `esc: sq` escapes each for the
+single-quoted literal it lands in, so a service named `o'brien`
+compiles. A service with no S3 events gets no gateway hook, because a
+dispatch over an empty selection emits nothing, and the two lines of
+two spaces in every handler survive because a line is verbatim. An
+index names the services in the model's order through `form`, with a
+constant spelled by `join(form(split(_, "-"), upper(_)), "_")`. All
+thirteen files are held by `aontu render --check` in both ports:
+[`use-cases/17-lambda-handlers/`](../use-cases/17-lambda-handlers/).
+
 Where a page in these docs and a use case disagree, the case wins (its
 checks run; the page does not). File the docs bug.

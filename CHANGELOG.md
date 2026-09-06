@@ -7,6 +7,50 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `render --coverage`, and the dispatch trace
+
+What a transform read, and what it did not (docs/design/RENDER.0.md
+P7), in both ports. Every dispatch now stamps each piece it emits with
+the model node it matched and the rule it took, and
+`render --format json` carries one trace entry per piece: the piece's
+path in the instance, its unit, the node, and the rule — its table's
+address, then `#`, then its index there, so a rule set reached by name
+reads `$.%wire#0` and one written inline at the call reads `#0`. The
+innermost dispatch owns a piece, so a nested rule set that splices
+into an outer body still names the rule that wrote the line.
+`render --coverage` reports what that leaves over: model paths no
+output consumed — the shallowest ones, measured against every path a
+reference resolved to — and rendered declarations no rule produced.
+`--coverage-at <path>` measures a narrower model than the document
+root. The record is off unless it is asked for, and the render's own
+`code` is output rather than model, so it is never named. Both
+implementations.
+
+### `replace` and `esc` on an `emit` template, and `form`
+
+The rule layer's last two pieces before the renderer's surface
+(docs/design/RENDER.0.md P6), in both ports. A template may carry a
+`replace` map — each key an exact string the body already holds as
+target text, its value evaluated against the matched node — and an
+`esc` naming the convention every value is escaped by (C/JSON when
+absent, `none` the opt-out): one left-to-right scan taking the
+longest key, a substituted value never re-scanned, a spliced result
+never touched; a key inside another key (`replace_overlap`) and a key
+the body does not hold (`replace_unused`) are refused on the template
+before any node, and a value that is not text is `replace_value`.
+`form(data, tmpl)` is the order-preserving map: one list element per
+child, the template instantiated with `_` the source child, replacing
+where `each` meets, in the data's order — which `pick(pack(...))`
+loses — and skipping what generation skips; it closes the
+name-derivation chain, `join(form(split(…), …), "")`. `ts/src/lower.ts`'s
+neighbours `ts/src/val/EmitFuncVal.ts` and the new
+`ts/src/val/FormFuncVal.ts`, and `go/generate.go`; `gen-emit.tsv` +32,
+`gen-form.tsv` (25 rows), `signature.tsv` +1, four codes. The
+acceptance is `use-cases/17-lambda-handlers/`: twelve handlers and
+their index rendered from one model by the canonical form of
+TEMPLATE.0.md's generator, held by `render --check` in both ports.
+Both implementations.
+
 ### The declaration lowering, and the TypeScript and Go profiles
 
 The renderer lowers declarations (docs/design/RENDER.0.md P5), in

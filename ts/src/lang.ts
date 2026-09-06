@@ -143,6 +143,7 @@ import { ReferFuncVal, RelFuncVal } from './val/ReferFuncVal'
 import { AcyclicFuncVal, InverseFuncVal } from './val/GraphAtomVal'
 import { PackFuncVal } from './val/PackFuncVal'
 import { EachFuncVal } from './val/EachFuncVal'
+import { FormFuncVal } from './val/FormFuncVal'
 import { FilterFuncVal } from './val/FilterFuncVal'
 import { MatchFuncVal } from './val/MatchFuncVal'
 import { EmitFuncVal } from './val/EmitFuncVal'
@@ -889,6 +890,14 @@ help isolate the syntax error.`,
     // G8 phase 0).
     pack: PackFuncVal,
     each: EachFuncVal,
+
+    // RENDER P6: the order-preserving map. `form` makes one list
+    // element per child of its data, being the template with `_`
+    // bound to the source child -- a construction, where `each` is a
+    // bound (G9 §4). It exists because `pick(pack(...))` re-sorts to
+    // code-point order, and a struct's fields or a file's imports
+    // are the model's order or they are wrong.
+    form: FormFuncVal,
 
     // G8 phase 2: selection. `filter` keeps the children of a bag that
     // unify with a condition; `match` picks the first arm whose

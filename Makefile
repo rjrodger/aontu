@@ -45,11 +45,22 @@ install-go:
 prose:
 	vale --minAlertLevel=error $$(node ts/scripts/gated-docs.cjs)
 
-# Test coverage (see docs/test-coverage.md)
-cov: cov-ts cov-go
+# Test coverage (see docs/test-coverage.md). The two gates run SIDE BY
+# SIDE: each is a property of its own port, neither reads the other's
+# files, and CI's coverage job has a wall clock -- the TypeScript gate
+# alone re-runs its suite when the runner drops observations
+# (ts/test/covrun.js), so running the Go gate after it rather than
+# beside it is time the job does not have.
+cov:
+	$(MAKE) -j2 cov-ts cov-go
 
+# THE GATE IS covrun, AND IT RUNS THE SUITE ITSELF. `npm run test-cov`
+# ran it once more for the per-file table alone, which is a whole extra
+# pass of the suite -- three passes in the job where two decide
+# anything, and the fifteen-minute wall clock is what that bought.
+# covcheck already names every uncovered item, which is the half a
+# reader acts on; the table is still one command away by hand.
 cov-ts:
-	cd ts && npm run test-cov
 	cd ts && npm run test-cov-check
 
 # Unit-test statement coverage, plus GOCOVERDIR integration runs of the

@@ -13,11 +13,27 @@ export type RenderLoss = {
     construct: string;
     reason: string;
 };
+export type RenderTrace = {
+    unit: string;
+    piece: string;
+    node: string;
+    rule: string;
+};
+export type RenderCoverage = {
+    read: string[];
+    dead: string[];
+    unruled: {
+        unit: string;
+        path: string;
+    }[];
+};
 export type RenderReport = {
     verdict: RenderVerdict;
     units: RenderUnit[];
     lossy: RenderLoss[];
     errors?: VetFinding[];
+    trace?: RenderTrace[];
+    coverage?: RenderCoverage;
 };
 export type RenderOptions = IncludeOptions & {
     at?: string;
@@ -25,6 +41,9 @@ export type RenderOptions = IncludeOptions & {
     profiles?: any[];
     unit?: string;
     strict?: boolean;
+    trace?: boolean;
+    coverage?: boolean;
+    coverageAt?: string;
 };
 export declare function render(src: string, options?: RenderOptions): RenderReport;
 export declare function renderProfile(src: string, options?: RenderOptions): {

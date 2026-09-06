@@ -46,7 +46,8 @@ Usage: aontu [options] [file]
        aontu view --views <path> [--check] [options] <file>
        aontu jsonschema [--at <path>] [--strict] [options] <file>
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
-                    [--stdout | --out <dir> | --check <dir>] [--strict] <file>
+                    [--stdout | --out <dir> | --check <dir> | --coverage]
+                    [--coverage-at <path>] [--strict] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -1301,7 +1302,8 @@ files, and say what the renderer could not check.
 <!-- test: skip the synopsis is not a transcript -->
 ```sh
 aontu render [--at <path>] [--profile <file>]... [--unit <path>]
-             [--stdout | --out <dir> | --check <dir>] [--strict]
+             [--stdout | --out <dir> | --check <dir> | --coverage]
+             [--coverage-at <path>] [--strict]
              [--format text|json] <file>
 ```
 
@@ -1320,6 +1322,7 @@ is refused. Write a `hello.aon`:
 <!-- test: file hello.aon -->
 ```aontu
 greeting: "hello, world"
+notes: "a reminder the transform never reads"
 
 code: units: [
   {
@@ -1402,6 +1405,49 @@ aontu: hello.py differs from the rendered unit
 $ echo $?
 1
 ```
+
+**`--coverage` says what the render read and what it did not.** Two
+questions, and one run answers both. Which model paths did no output
+consume? Those are dead: the document carries them, the transform never
+looked at them, and nothing downstream will notice if they rot. Which
+rendered declarations did no rule produce? Those are the parts of the
+output the rule layer does not govern. The verb writes no files under
+this flag, and `$.code` is the output rather than the model, so it is
+never named:
+
+<!-- test: run -->
+```sh
+$ aontu render --coverage hello.aon
+dead: $.notes
+unruled: hello.py $.code.units.0.decls.0
+coverage: 1 path(s) read, 1 no output consumed, 1 declaration(s) no rule produced
+```
+
+`$.greeting` is read by the line the fragment writes, so it is not
+dead; `$.notes` is read by nothing, so it is. The one declaration is a
+fragment the document wrote by hand rather than a rule set produced, so
+it is a hole: a document whose output comes wholly from
+[`emit`](reference-language.md#dispatching-emit) reports none.
+
+**`--coverage-at <path>` measures a narrower model.** Coverage is taken
+over the whole document by default. A document that keeps its model
+under one key can say so, and then only that subtree is measured:
+
+<!-- test: run -->
+```sh
+$ aontu render --coverage --coverage-at $.greeting hello.aon
+unruled: hello.py $.code.units.0.decls.0
+coverage: 1 path(s) read, 0 no output consumed, 1 declaration(s) no rule produced
+```
+
+**`--format json` carries the trace**, one entry per emitted piece: the
+piece's path in the instance, the unit it landed in, the model node the
+rule matched, and the rule that matched it. A rule's address is its
+table's, then `#`, then its index in that table—`$.%wire#0` for a table
+reached by name, and `#0` for one written inline at the call, which has
+no address of its own. A node the run cannot address, because the
+selection was computed rather than read from a path, is reported empty
+rather than named by where the value came to rest.
 
 **A declaration lowers under a profile that has a lowering.** A unit
 of `typescript` or `go` may hold declarations beside its fragments—a

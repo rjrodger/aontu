@@ -110,4 +110,10 @@ func copyMarks(to, from Val) {
 	to.setMarkHide(from.markedHide())
 	to.setDeprecRec(from.deprecRec())
 	to.setLinkAddr(from.linkAddr())
+	// THE RENDER RIDERS TRAVEL WITH THE CLONE (P7), for the reason the
+	// deprecation record does: a clone of a value read at `$.schema`
+	// was read at `$.schema`, and a clone of an emitted piece is still
+	// that dispatch's. Both are empty unless the run is instrumented.
+	to.setReadAddr(from.readAddr())
+	to.setEmitOrig(from.emitOrig())
 }

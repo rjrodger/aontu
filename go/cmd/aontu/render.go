@@ -23,7 +23,7 @@ import (
 	aontu "github.com/aontu-lang/aontu/go"
 )
 
-const renderHelp = "aontu render [--at <path>] [--profile <file>]... [--unit <path>] [--stdout | --out <dir> | --check <dir>] [--strict] <file> (try --help)"
+const renderHelp = "aontu render [--at <path>] [--profile <file>]... [--unit <path>] [--stdout | --out <dir> | --check <dir> | --coverage] [--coverage-at <path>] [--strict] <file> (try --help)"
 
 func runRender(argv []string, stdout, stderr io.Writer) int {
 	argv, trust, trustOK := takeTrust(argv, stderr)
@@ -34,6 +34,8 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 	format := "text"
 	at, unit, out, check := "", "", "", ""
 	toStdout, strict := false, false
+	coverage := false
+	coverageAt := ""
 
 	for i := 0; i < len(argv); i++ {
 		arg := argv[i]
@@ -85,6 +87,15 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 			check = argv[i]
 		case "--stdout" == arg:
 			toStdout = true
+		case "--coverage" == arg:
+			coverage = true
+		case "--coverage-at" == arg:
+			i++
+			if len(argv) <= i {
+				io.WriteString(stderr, "aontu: --coverage-at needs a path\n")
+				return 2
+			}
+			coverageAt = argv[i]
 		case "--strict" == arg:
 			strict = true
 		case strings.HasPrefix(arg, "-"):
@@ -101,14 +112,21 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	modes := 0
-	for _, on := range []bool{toStdout, "" != out, "" != check} {
+	for _, on := range []bool{toStdout, "" != out, "" != check, coverage} {
 		if on {
 			modes++
 		}
 	}
 	if 1 < modes {
 		io.WriteString(stderr,
-			"aontu: render takes one of --stdout, --out or --check\n")
+			"aontu: render takes one of --stdout, --out, --check or --coverage\n")
+		return 2
+	}
+	// A NARROWER MEASURE NEEDS SOMETHING TO NARROW. --coverage-at
+	// without --coverage asks for a report the run does not compute,
+	// and answering silently would be the wrong half of the request.
+	if "" != coverageAt && !coverage {
+		io.WriteString(stderr, "aontu: --coverage-at needs --coverage\n")
 		return 2
 	}
 
@@ -153,7 +171,12 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 	}
 
 	report := aontuForFileTrust(files[0], trust).Render(string(src),
-		&aontu.RenderOptions{At: at, Unit: unit, Strict: strict, Profiles: profiles})
+		&aontu.RenderOptions{At: at, Unit: unit, Strict: strict,
+			Profiles: profiles, Coverage: coverage, CoverageAt: coverageAt,
+			// THE JSON REPORT CARRIES THE TRACE (D9), which is what the
+			// shape there has always said; a text run computes it only
+			// when the coverage report needs it.
+			Trace: "json" == format})
 
 	if "json" == format {
 		io.WriteString(stdout, renderReportJSON(report)+"\n")
@@ -219,6 +242,21 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 				io.WriteString(stderr, "aontu: "+u.Path+" differs from the rendered unit\n")
 			}
 		}
+	case coverage:
+		// THE COVERAGE REPORT (P7), one line per finding and a count at
+		// the end: dead model first, then the declarations no rule
+		// produced. A clean report is the count line alone.
+		cov := report.Coverage
+		for _, d := range cov.Dead {
+			io.WriteString(stdout, "dead: "+d+"\n")
+		}
+		for _, u := range cov.Unruled {
+			io.WriteString(stdout, "unruled: "+u.Unit+" "+u.Path+"\n")
+		}
+		io.WriteString(stdout, "coverage: "+strconv.Itoa(len(cov.Read))+
+			" path(s) read, "+strconv.Itoa(len(cov.Dead))+
+			" no output consumed, "+strconv.Itoa(len(cov.Unruled))+
+			" declaration(s) no rule produced\n")
 	default:
 		// THE SUMMARY: one line per unit -- its path, its language and
 		// its size -- since several units have no one text to print.
@@ -291,11 +329,13 @@ func realDeep(p string) string {
 // The machine-readable form. Field order is LEXICOGRAPHIC, the
 // canonical emitter's order.
 type renderReportJSONForm struct {
-	Aontu   subsumeProducerJSON `json:"aontu"`
-	Errors  []aontu.VetFinding  `json:"errors,omitempty"`
-	Lossy   []aontu.RenderLoss  `json:"lossy"`
-	Units   []aontu.RenderUnit  `json:"units"`
-	Verdict string              `json:"verdict"`
+	Aontu    subsumeProducerJSON   `json:"aontu"`
+	Coverage *aontu.RenderCoverage `json:"coverage,omitempty"`
+	Errors   []aontu.VetFinding    `json:"errors,omitempty"`
+	Lossy    []aontu.RenderLoss    `json:"lossy"`
+	Trace    []aontu.RenderTrace   `json:"trace,omitempty"`
+	Units    []aontu.RenderUnit    `json:"units"`
+	Verdict  string                `json:"verdict"`
 }
 
 func renderReportJSON(report aontu.RenderReport) string {
@@ -304,11 +344,13 @@ func renderReportJSON(report aontu.RenderReport) string {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(renderReportJSONForm{
-		Aontu:   subsumeProducerJSON{Verb: "render", Version: aontu.VERSION},
-		Errors:  report.Errors,
-		Lossy:   report.Lossy,
-		Units:   report.Units,
-		Verdict: report.Verdict,
+		Aontu:    subsumeProducerJSON{Verb: "render", Version: aontu.VERSION},
+		Coverage: report.Coverage,
+		Errors:   report.Errors,
+		Lossy:    report.Lossy,
+		Trace:    report.Trace,
+		Units:    report.Units,
+		Verdict:  report.Verdict,
 	})
 	return strings.TrimSuffix(buf.String(), "\n")
 }

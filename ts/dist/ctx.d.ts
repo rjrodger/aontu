@@ -5,6 +5,7 @@ type AontuContextConfig = {
     err?: any[];
     explain?: any[] | boolean | null;
     prov?: any;
+    reads?: Set<string>;
     fs?: any;
     path?: string[];
     root?: Val;
@@ -32,6 +33,7 @@ declare class AontuContext {
     collect: boolean;
     probe: boolean;
     prov?: any;
+    reads?: Set<string>;
     err: any[];
     explain: any[] | null;
     srcpath?: string;
