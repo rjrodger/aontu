@@ -157,6 +157,26 @@ func TestFullMessageTwin(t *testing.T) {
 // byte-identical with full-message-bag-twin in ts/test/error.test.ts.
 // Before the parse recorded map/list positions, the MapVal read as
 // position 0: the frame said 1:1 and the operand order flipped.
+// TestFullMessageSpreadTwin is the twin of full-message-spread-twin in
+// ts/test/error.test.ts (issue #63): a spread-applied constraint that
+// the child's value refuses renders its two frames VALUE FIRST, the
+// later term in the source being the primary. This port emitted them
+// reversed, because makeNilErr compared a synthetic source id that put
+// a CLONE -- which every applied spread template is -- in a different
+// bucket from a parsed value, so the two were never ordered by
+// position at all. TS compares the site url, which a clone inherits.
+func TestFullMessageSpreadTwin(t *testing.T) {
+	a := New()
+	_, err := a.Generate("a:&:min(3) a:{x:2}")
+	if nil == err {
+		t.Fatalf("expected error")
+	}
+	want := "[aontu/constraint]: Cannot unify values at path $.a.x\n\nThis value does not satisfy the constraint. A constraint is the\nmeet of bound atoms (min, max, above, below) and exclusions (neq)\nover one domain; the expected form shown is the normalised\nresidual the value must satisfy.\n \nExamples:\n  min(0) & 3                    -> 3    # Admitted (3 >= 0);\n  min(0) & 0d5                  -> 0d5  # Bounds are leaf-agnostic;\n  max(65535) & 99999            -> nil  # Above the bound;\n  min(5) & max(3)               -> nil  # Empty at composition time;\n  integer & above(1) & below(2) -> nil  # No integer in the gap;\n  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.\n  re(\"^a\") & \"abc\"              -> \"abc\" # Patterns are unanchored.\n\n Cannot unify value: 2 with value: min(3)\n  \u001b[34m--> <no-file>:1:17\n\u001b[34m  1 | \u001b[0ma:&:min(3) a:{x:2}\n                      \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: min(3) with value: 2\n  \u001b[34m--> <no-file>:1:5\n\u001b[34m  1 | \u001b[0ma:&:min(3) a:{x:2}\n          \u001b[34m^ value was: min(3)\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n"
+	if err.Error() != want {
+		t.Fatalf("full message twin mismatch:\n got: %q\nwant: %q", err.Error(), want)
+	}
+}
+
 func TestFullMessageBagTwin(t *testing.T) {
 	_, err := New().Generate("a:1 a:{b:1}")
 	if err == nil {

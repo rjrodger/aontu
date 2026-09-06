@@ -214,3 +214,15 @@ path-neg-zero-arg	errc	a:path([-0])	invalid-arg
 path-neg-zero-string	errc	a:path(["-0"])	invalid-arg
 path-neg-zero-double	errc	a:path([-00])	invalid-arg
 path-neg-zero-float	errc	a:path([-0.0])	invalid-arg
+
+# AN UNRESOLVED CALL AT THE DOCUMENT ROOT REFUSES, and does not
+# generate `null` (#61). Under a bag the residue is reported by the
+# bag, naming the key (`mapval_no_gen`); at the root there is no bag,
+# and Go's func generation returned a silent nil that the encoder then
+# wrote as a document indistinguishable from one whose value genuinely
+# is null. TS refuses through FeatureVal.gen, which every FuncBaseVal
+# inherits, and Go now refuses through the same code.
+call-root-residue	errc	upper($.zz)	no_gen
+call-root-residue-msg	err	upper($.zz)	Cannot resolve value
+call-root-residue-lower	errc	lower($.zz)	no_gen
+call-root-residue-bag	errc	a:upper($.zz)	no_path

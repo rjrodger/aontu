@@ -122,25 +122,34 @@ func (rv *RefVal) append(part any) {
 			// address `10` and `$.a.1e2` address `100` -- each of them a
 			// silently WRONG location rather than a miss.
 			//
-			// src is empty for a value with no literal behind it (a
-			// computed segment, an API-built value), and there the numeric
-			// rendering is the only answer available.
-			rv.peg = append(rv.peg, srcOr(p.src,
-				func() string { return strconv.FormatInt(p.peg.(int64), 10) }))
+			// NO FALLBACK RENDERING. src is empty for a value with no
+			// literal behind it, and the value that reaches here that
+			// way is a NEGATION: `$.a.-0` is a minted integer 0, whose
+			// spelling the `negative-prefix` rule consumed. Rendering
+			// it made the segment "0", so `$.a.-0` addressed element 0
+			// -- a silently wrong location, the very thing the note
+			// above refuses for `0x0` and `1_0` (#67).
+			//
+			// TS pushes `part.src` and nothing else (RefVal.append,
+			// IntegerVal arm), so an unspelled segment is the EMPTY
+			// segment there, matching no key and no index. Mirrored:
+			// the reference misses, and the canon (`$.a.`) agrees
+			// byte for byte with the canonical port.
+			rv.peg = append(rv.peg, p.src)
 		case KindFloat:
 			// A float splits on its point, so `$.x.1.5` addresses two
 			// levels -- of the text, which is what makes `$.x.1e2` a
 			// single segment `1e2` rather than the expanded `100`.
-			for _, s := range strings.Split(srcOr(p.src,
-				func() string { return formatNumber(p.peg.(float64)) }), ".") {
+			// Unspelled, it is the empty segment, as the integer arm
+			// above (TS RefVal.append's NumberVal arm splits `part.src`
+			// with no fallback either).
+			for _, s := range strings.Split(p.src, ".") {
 				rv.peg = append(rv.peg, s)
 			}
 		case KindBigInteger:
-			rv.peg = append(rv.peg, srcOr(p.src,
-				func() string { return bigIntDigits(p.peg.(*big.Int)) }))
+			rv.peg = append(rv.peg, p.src)
 		case KindBigDecimal:
-			for _, s := range strings.Split(srcOr(p.src,
-				func() string { return p.peg.(*Decimal).digits() }), ".") {
+			for _, s := range strings.Split(p.src, ".") {
 				rv.peg = append(rv.peg, s)
 			}
 		default:
@@ -915,13 +924,4 @@ func (vv *VarVal) Gen(ctx *Ctx) (any, error) {
 	// Silent (mirrors the TS FeatureVal gen pattern): the enclosing
 	// bag reports unresolved vars.
 	return nil, nil
-}
-
-// srcOr returns a literal's own source text, falling back to a computed
-// rendering when there is no literal behind the value (see ScalarVal.src).
-func srcOr(src string, gen func() string) string {
-	if src != "" {
-		return src
-	}
-	return gen()
 }

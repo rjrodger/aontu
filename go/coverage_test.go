@@ -171,11 +171,6 @@ func TestPlumbingHelpers(t *testing.T) {
 	if v.pos() != 7 {
 		t.Fatalf("setPos")
 	}
-	// srcOr prefers the recorded source text.
-	if srcOr("src", func() string { return "fb" }) != "src" ||
-		srcOr("", func() string { return "fb" }) != "fb" {
-		t.Fatalf("srcOr")
-	}
 	// Decimal String is the 0d-less digits rendering.
 	d := newDecimal(big.NewInt(15), 1)
 	if d.String() != "1.5" {

@@ -43,6 +43,18 @@ count-arg-kind	gen	a:length(integer) a:[1,2]	{"a":[1,2]}
 spread-cross	gen	floor:3 a:&:min($.floor) a:{x:5,y:7}	{"a":{"x":5,"y":7},"floor":3}
 spread-cross-canon	canon	floor:3 a:&:min($.floor) a:{x:5,y:7}	{"a":{&:min($.floor),"x":5,"y":7},"floor":3}
 spread-cross-reject	errc	floor:3 a:&:min($.floor) a:{x:2}	constraint
+# THE FRAME TEXT, not just the code. This was an `errc` row alone
+# because the two ports emitted the conflict's two frames in opposite
+# orders (#63): the spread template is a CLONE, and Go's operand-order
+# rule refused to compare a clone's position with a parsed value's, so
+# the later term never became the primary. Both ports now name the
+# VALUE first, as the direct `a:min(3) a:2` conflict always did, and
+# the full message is held byte-for-byte by the twins
+# (ts/test/error.test.ts full-message-spread-twin,
+# go/hints_test.go TestFullMessageSpreadTwin).
+spread-cross-reject-frame	err	floor:3 a:&:min($.floor) a:{x:2}	Cannot unify value: 2 with value: min(3)
+spread-cross-reject-frame-second	err	floor:3 a:&:min($.floor) a:{x:2}	Cannot unify value: min(3) with value: 2
+spread-cross-reject-direct-frame	err	a:min(3) a:2	Cannot unify value: 2 with value: min(3)
 
 # Constraint-bearing disjuncts: a residual member adds no trial errors
 # and survives symbolically; generation picks the preference. These

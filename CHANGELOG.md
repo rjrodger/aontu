@@ -7,6 +7,56 @@ which implementation each change affects.
 
 ## Unreleased
 
+### Three parity defects in the Go port, and a coverage gate that could pass a gap
+
+**A residual call at the document root refuses** (#61). `upper($.zz)`
+generated `null` in Go and refused with `no_gen` in TypeScript. Under a
+map the residue is reported by the bag, naming the key, and a call never
+reaches its own generation; at the root there is no bag, and the silent
+`nil` became a document indistinguishable from one whose value genuinely
+is null. TypeScript refuses through `FeatureVal.gen`, which every
+`FuncBaseVal` inherits — the Go arm had copied `KeyFuncVal`'s override,
+the one function that is deliberately silent, and applied its exception
+to all of them.
+
+**A spread-applied constraint names its two frames in the same order in
+both ports** (#63). `a:&:min(3) a:{x:2}` put the constraint first in Go
+and the value first in TypeScript, so the caret pointed at a different
+site in each. The rule both ports state — the term later in the source is
+the primary — was not reached in Go, because its operand comparison
+bucketed a CLONE apart from a parsed value, and an applied spread
+template is always a clone. TypeScript compares the site url alone, which
+a clone inherits. Held byte for byte by a new full-message twin in each
+port.
+
+**A signed path segment misses instead of addressing the wrong place**
+(#67). `$.a.-0` resolved to element 0 in Go, and `-00` and `- 0` reached
+it the same way. A segment is its SPELLING — which is why `$.a.0x0`
+addresses the key `0x0` and not `0` — and the negation rule consumes the
+spelling, leaving a value Go rendered back into `"0"`. TypeScript pushes
+the recorded source text with no fallback, so an unspelled segment is
+empty and matches nothing. The key is still addressable, quoted:
+`$.a."-0"`.
+
+Also pinned, with no code change: `a.b.c d:1` misses at `$.0` and canons
+as `.a.b.c` in both ports (#62), and a call juxtaposed on a call
+(#59) and `path()` over a list (#60) refuse in both.
+
+**The ADR-002 coverage gate could report 100 % over a real gap** (#166,
+TypeScript). `test/covcheck.js` unions the passes `test/covrun.js` makes
+by the key `line:block:branch`, on the stated assumption that those three
+identify a branch arm. They do not: Node's lcov reporter writes the arm's
+position in that run's list for the file, and the position moves between
+runs of an unchanged suite — measured at 42 % of keys over two passes,
+with the arms on every one of 8,173 lines identical. An arm untaken in
+one pass was cleared whenever its key landed on a different, taken arm in
+another, which is how `src/lower.ts:240` passed the gate from the commit
+that introduced it until the run that happened not to collide. The union
+is now taken per line: a run vouches for a line when every arm it reports
+there was taken and it reports at least as many arms as any other run.
+The gate reaches 100 % on the first pass with the sound union, and names
+the gap without it.
+
 ### `aontu template`: a generator written in the target's own syntax
 
 The template surface (docs/design/TEMPLATE.0.md; RENDER.0.md P8), in
