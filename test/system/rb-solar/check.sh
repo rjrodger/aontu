@@ -213,8 +213,17 @@ else
       # THE REFERENCE'S OWN SCRIPT, unmodified, over HTTP. It takes a
       # base URL and speaks the API, which is what makes it usable
       # against an implementation in another language entirely.
-      if VALIDATE_BASE_URL="http://127.0.0.1:$PORT" \
-         node "$DIR/ref/validate.ts" >"$WORK/validate.out" 2>&1; then
+      #
+      # IT IS TYPESCRIPT, and it is run by `node` directly rather than
+      # by a toolchain this system would then have to carry. Node
+      # strips types without a flag from 22.18; older ones parse the
+      # first `interface` and die with a stack trace that says nothing
+      # about the version, so the version is checked here instead.
+      node_ok=$(node -e 'const [a,b]=process.versions.node.split(".").map(Number); process.stdout.write(a>22||(a===22&&b>=18)?"yes":"no")' 2>/dev/null)
+      if [ "$node_ok" != yes ]; then
+        skip "the reference's 20 validation tests (node $(node --version 2>/dev/null) strips types from 22.18)"
+      elif VALIDATE_BASE_URL="http://127.0.0.1:$PORT" \
+           node "$DIR/ref/validate.ts" >"$WORK/validate.out" 2>&1; then
         ok "the reference's 20 validation tests pass against the generated app"
       else
         fail "the reference's validation failed (see work/validate.out)"

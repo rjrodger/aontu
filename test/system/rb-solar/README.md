@@ -165,7 +165,16 @@ directory; `check.sh` skips it with a note otherwise.
 
 ## In CI
 
-[`ci-job.yml`](ci-job.yml) is the job, **waiting to be applied by a
+**The render half runs today**, from `use-cases/run-all.sh` — the job
+that already drives the real CLI end to end. Until it did, nothing in
+CI reached `test/system/` at all, and a system can only catch a
+regression it is asked about. That job installs no Ruby bundle, so
+`check.sh` skips the legs that boot the application and runs the seven
+that do not: the generators, the tree they must reproduce, the
+diagrams, the coverage and the form of the model.
+
+The legs that boot it need a job of their own.
+[`ci-job.yml`](ci-job.yml) is that job, **waiting to be applied by a
 maintainer**: the session that wrote this system cannot push workflow
 files (GitHub refuses an OAuth app without the `workflow` scope), so
 the job sits here instead of in `.github/workflows/build.yml`. Paste
