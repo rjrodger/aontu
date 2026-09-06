@@ -325,6 +325,10 @@ func unifyRoot(root Val, ctx *Ctx) Val {
 		makeNilErrFull(ctx, "budget_passes", nil, nil, "resolve",
 			map[string]string{"limit": strconv.Itoa(maxcc), "paths": joined})
 	}
+	// The settled tree's alias references canon as the values they
+	// name (go/alias.go): attached here, once, after the last pass,
+	// from the snapshot store this run kept. Mirrors ts/src/unify.ts.
+	expandAliases(res, ctx.snapmap)
 	ctx.root = res
 	return res
 }

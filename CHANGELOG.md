@@ -7,6 +7,55 @@ which implementation each change affects.
 
 ## Unreleased
 
+### An alias inside a spread template canons as the value it names
+
+A reference inside a spread template is not resolved in place — the
+template applies to children that have not arrived — so it stood in
+canon as the reference, spelled `$.%u`, which is not syntax (the
+grammar refuses `%` in a path segment and the language refuses it as
+`alias_in_path`): the canon of `t: {&: %u}` did not reparse, and its
+hash differed from the hash of `t: {&: integer}`, which is the same
+document. Canon now spells such a reference as the declared value, at
+every depth — a nested template, a child of a template, an alternative,
+a conjunct — so the two spellings are one canon and one hash: the
+erasure the alias design promised, reaching the one place it did not.
+A path-dependent template (`%row = {name: key()}`) expands to the
+template its children saw, not to the declaration's settled value. The
+one reference that keeps its name is a recursive alias's reference to
+itself inside its own template, which no finite text can write out;
+such a canon does not reparse on its own (use-cases/BUGS.md §82). The
+tree is unchanged — the reference still stands and still resolves at
+each destination; the expansion is attached after the last pass and
+read by canon alone. Both implementations; `alias.tsv` gains the rows,
+and the `aontu:code` and `aontu:profile` hash pins moved with it. Found
+by the bundled `aontu:code` vocabulary, whose `units: [&: %unit]` is
+exactly that shape. The same probe found that the published grammars
+have no alias syntax at all (use-cases/BUGS.md §81).
+
+### The `aontu:` models, and the output vocabulary
+
+A name that begins `aontu:` is a language-supplied model, served from
+the engine's own table and nowhere else: the memory, module, file and
+package legs are never asked, so no file can shadow one, and
+`@"aontu:nope"` is refused naming the set — `the language-supplied
+models are aontu:code, aontu:profile` — rather than looked for on
+disk. Denied under `none`, like every include; recorded in the include
+manifest under `std`. This is the resolver leg of MODELS.0.md M0, landed
+alone; the rename of `std/system` and `std/view` to `aontu:` names
+follows on its own.
+
+Two models ship under it. **`aontu:code`** is the output vocabulary of
+declarative transformation (G9 §1 with the fragment algebra of its
+second amendment): `code: { source?, units }`, each unit a path, a
+language and its declarations — `record`, `enum`, `alias`, `const`,
+`func`, a verbatim `text` escape, or a `frag`, a flat list of pieces
+each carrying its own depth, where a bare string is a line at depth 0
+and no inline piece may hold a line terminator. **`aontu:profile`** is
+the schema of a render profile. Both are experimental, `fmt`-clean and
+lint-clean, and pinned by canon and hash rows in both ports
+(`test/spec/aontu-code.tsv`, `test/spec/aontu-profile.tsv`,
+`test/spec/aontu-scheme.tsv`). Both implementations.
+
 ### A bare string is letters, digits, `-` and `_`, and nothing else
 
 Every other punctuation character is either syntax, where the grammar

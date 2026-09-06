@@ -44,6 +44,9 @@ function pendingMarkWrapper(v) {
     }
     return false;
 }
+// An alias name, whole: the sigil and an identifier (the lexer's
+// ALIAS_RE, anchored at both ends, for the canon spelling above).
+const ALIAS_NAME_RE = /^%[A-Za-z_][A-Za-z0-9_]*$/;
 class RefVal extends FeatureVal_1.FeatureVal {
     constructor(spec, ctx) {
         super(spec, ctx);
@@ -51,6 +54,10 @@ class RefVal extends FeatureVal_1.FeatureVal {
         this.isGenable = true;
         this.cjo = 32500;
         this.absolute = false;
+        // The value an alias reference canons as, attached by expandAliases
+        // after unification (see `canon` below). Not a ValSpec field: it is
+        // a rendering of the settled tree, never a parse-time property.
+        this.expansion = undefined;
         this.prefix = false;
         this.peg = [];
         // The field initialiser (absolute = false) has just run, so only
@@ -156,7 +163,8 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     out = (0, err_1.makeNilErr)(ctx, 'ref[' + this.peg + ']', this, peer);
                 }
                 // same path
-                else if (this.canon === peer.canon) {
+                else if (this.spelling ===
+                    (true === peer.isRef ? peer.spelling : peer.canon)) {
                     out = this;
                 }
                 else {
@@ -587,16 +595,52 @@ class RefVal extends FeatureVal_1.FeatureVal {
             absolute: this.absolute,
             ...(spec || {})
         });
+        out.expansion = this.expansion;
         return out;
     }
-    get canon() {
-        let str = (this.absolute ? '$' : '') +
+    // THE NAME OF THE ALIAS THIS REFERENCE NAMES, or undefined for a
+    // path reference. `%u` is spelled internally as the root reference
+    // `$.%u` (docs/design/ALIASES.0.md: the name is a path into the
+    // declaration), so an alias reference is an absolute reference of
+    // one segment that is an alias name.
+    get aliasName() {
+        return this.absolute && 1 === this.peg.length &&
+            'string' === typeof this.peg[0] && ALIAS_NAME_RE.test(this.peg[0]) ?
+            this.peg[0] : undefined;
+    }
+    // THE REFERENCE'S OWN SPELLING: the alias name, or the path. This is
+    // the reference's identity (the snapshot key of a ref spread, the
+    // same-path test in unify), which `canon` below is not once an
+    // expansion is attached.
+    get spelling() {
+        const name = this.aliasName;
+        if (undefined !== name) {
+            return name;
+        }
+        return (this.absolute ? '$' : '') +
             (0 < this.peg.length ? '.' : '') +
             // this.peg.join(this.sep)
             this.peg.map((p) => '.' === p ? '' :
                 (p.isVal ? p.canon : '' + p))
                 .join('.');
-        return str;
+    }
+    get canon() {
+        // AN ALIAS REFERENCE CANONS AS THE VALUE IT NAMES. A reference left
+        // standing after unification is one inside a spread template
+        // (`[&: %u]`, `{&: {a: %u}}`): the template applies to children
+        // that have not arrived, so it is not resolved in place. Canon
+        // erases the declaration (an alias is a name for a value, and
+        // nothing more -- ALIASES.0.md §4), so the name alone would not
+        // reparse, and the hash of `t: {&: %u}` would differ from the hash
+        // of `t: {&: integer}`, which is the same document. The expansion
+        // is attached by expandAliases (ts/src/alias.ts) once the tree has
+        // settled; without one -- a parse-only tree, an unresolved name, or
+        // the KNOT of a recursive alias inside its own template -- the
+        // reference spells its name. Twin of RefVal.Canon in go/ref.go.
+        if (undefined !== this.expansion) {
+            return this.expansion.canon;
+        }
+        return this.spelling;
     }
     gen(ctx) {
         // Unresolved ref cannot be generated, so always an error.

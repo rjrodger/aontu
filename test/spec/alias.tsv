@@ -60,6 +60,35 @@ alias-hash-longhand-twin	hash	listen: integer & min(1) & max(65535)\nlisten: 808
 alias-quoted-string-is-not-a-reference	gens	a: "%foo"	{"a":"%foo"}
 alias-quoted-key-is-an-ordinary-key	gens	"%a": 1	{"%a":1}
 #
+# A REFERENCE INSIDE A SPREAD TEMPLATE CANONS AS THE VALUE IT NAMES.
+# The template is not resolved in place -- it applies to children that
+# have not arrived -- so the reference stands in the settled tree; and
+# canon, which erases the declaration, spells it as the declared
+# value. A document written with an alias template and the same
+# document written longhand are ONE canon and ONE hash, exactly as
+# they are at a key (alias-hash-erases above). Attached after the last
+# pass, at every depth: a nested template, a child of a template, an
+# alternative, a conjunct.
+alias-in-spread-canons-as-the-value	canon	%u = integer\nt: {&: %u}\nl: [&: %u]	{"l":[&:integer],"t":{&:integer}}
+alias-in-spread-hash	hash	%u = integer\nt: {&: %u}\nl: [&: %u]	aon1-_LTA3VD7tuDFkvQ4W3ll0MKWWq6j8wVWW5U01baJlRU
+alias-in-spread-hash-longhand-twin	hash	t: {&: integer}\nl: [&: integer]	aon1-_LTA3VD7tuDFkvQ4W3ll0MKWWq6j8wVWW5U01baJlRU
+alias-in-spread-nested-canons-as-the-value	canon	%u = integer\n%row = {vals: [&: %u]}\nt: {&: %row}\nt: {a: {vals: [1, 2]}}	{"t":{&:{"vals":[&:integer]},"a":{"vals":[&:integer,1,2]}}}
+alias-in-spread-child-canons-as-the-value	canon	%u = integer\nt: {&: {a: %u}}\nt: {x: {a: 1}}	{"t":{&:{"a":integer},"x":{"a":1}}}
+alias-in-spread-alternative-canons-as-the-value	canon	%d = 1\nt: {&: *%d | integer}\nt: {a: 2}	{"t":{&:*1|integer,"a":2}}
+alias-in-spread-conjunct-canons-as-the-value	canon	%a = integer\n%b = min(1)\nt: {&: %a & %b}	{"t":{&:integer&min(1)}}
+# A PATH-DEPENDENT TEMPLATE EXPANDS TO THE TEMPLATE, not to the
+# declaration's settled value: `%row` itself settles to `{name: "%row"}`
+# (key() answering at the declaration), which is not what any child
+# saw. The snapshot the spread took is what canon prints, and it
+# reparses to the same document.
+alias-in-spread-key-template-canons-as-the-template	canon	%row = {name: key()}\nt: {&: %row}\nt: {a: {}, b: {}}	{"t":{&:{"name":key()},"a":{"name":"a"},"b":{"name":"b"}}}
+# THE KNOT. A recursive alias names itself inside its own template
+# (recursion.tsv json-alias): the reference that closes the cycle keeps
+# its name, since canon cannot spell the declaration it erased, and
+# such a canon does not reparse on its own (use-cases/BUGS.md §82). It
+# generates, which recursion.tsv pins; no canon row can pin the knot,
+# because every canon row must reparse.
+#
 # THE DECLARATION OPERATOR. A lone `=` after the name, across horizontal
 # space or none, is the separator of a declaration.
 alias-eq-adjacent	gens	%foo=1\na: %foo	{"a":1}
@@ -112,6 +141,7 @@ alias-cycle-mixed-through-the-tree	errc	%a = $.x\nx: %a	path_cycle
 # AN UNDECLARED ALIAS IS REFUSED, naming the name rather than silently
 # becoming the bare string it used to be.
 alias-undeclared-refused	errc	a: %nosuch	no_path
+alias-undeclared-in-spread-refused	errc	t: {&: %nosuch}	no_path
 #
 # FILE-LOCAL MEANS DECLARED AT FILE LEVEL. A nested declaration is
 # refused rather than accepted, because accepting it is the worse

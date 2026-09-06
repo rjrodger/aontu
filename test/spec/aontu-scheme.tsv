@@ -1,0 +1,22 @@
+# THE aontu: SCHEME (docs/design/MODELS.0.md D1; docs/design/RENDER.0.md
+# P0). A name that begins `aontu:` is a LANGUAGE-SUPPLIED MODEL, served
+# from the engine's own table and nowhere else: the memory, module,
+# file and package legs are never asked, so no file can shadow one, and
+# a name the engine does not serve is refused NAMING THE SET rather
+# than looked for on disk. The scheme is Node's device (`node:fs`): a
+# prefix no relative path, package name or module path can spell.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# The runner evaluates this file root-confined to the fixtures
+# directory (include-trust.tsv's convention); a bundled name resolves
+# under every capability but `none`, which denies every include and is
+# covered by the per-port trust tests.
+#
+# Every expectation was obtained by running BOTH engines and diffing.
+scheme-resolves	gens	@"aontu:code"\nx: 1	{"code":{"units":[]},"x":1}
+scheme-unknown-name-refused	errc	a: @"aontu:nope"	multisource_not_found
+scheme-unknown-name-names-the-set	err	a: @"aontu:nope"	the language-supplied models are aontu:code, aontu:profile
+# The scheme is not a directory: the `.aon` spelling the std/ names
+# accept is not a model name here, and is refused like any other typo.
+scheme-name-is-not-a-file	errc	a: @"aontu:code.aon"	multisource_not_found

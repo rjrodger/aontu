@@ -49,6 +49,29 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 		return res
 	}
 
+	// THE LANGUAGE-SUPPLIED MODELS (docs/design/MODELS.0.md D1): an
+	// aontu: name resolves from the engine's own table and nowhere else
+	// -- the memory, module, file and package legs are never asked, so
+	// nothing on disk can shadow one and a typo is refused here, naming
+	// the set, rather than searched for. Available under every
+	// capability but `none`, checked above, like the std names below.
+	// Mirrors the leg in ts/src/lang.ts.
+	if strings.HasPrefix(spec.Path, aontuScheme) {
+		if src, ok := stdSources[spec.Path]; ok {
+			res.Full = spec.Path
+			res.Kind = "aon"
+			res.Src = toValidSource(src)
+			res.Found = true
+			recordDep(sink, spec.Path, "std")
+			return res
+		}
+		recordNotFoundMsg(ctx, "source not found: "+spec.Path+
+			" (the language-supplied models are "+strings.Join(aontuModels(), ", ")+")")
+		res.Kind = notFoundKind
+		res.Found = true
+		return res
+	}
+
 	// THE BUNDLED VOCABULARY (G4 phase 4, std.go): served from the
 	// engine itself, so it needs neither the filesystem nor package
 	// resolution and is available under every capability but `none` —
@@ -670,6 +693,14 @@ type notFoundSink struct {
 // source and stops, so reporting the first is what keeps the two ports'
 // messages in step when a document has several bad includes.
 func recordNotFound(ctx *jsonic.Context, path string) {
+	recordNotFoundMsg(ctx, "source not found: "+path)
+}
+
+// recordNotFoundMsg is recordNotFound with the message spelled by the
+// caller: the aontu: leg names the set of language-supplied models in
+// its refusal (docs/design/MODELS.0.md D1), where a file that is not
+// there names only itself.
+func recordNotFoundMsg(ctx *jsonic.Context, msg string) {
 	if nil == ctx || nil == ctx.Meta {
 		return
 	}
@@ -678,7 +709,7 @@ func recordNotFound(ctx *jsonic.Context, path string) {
 		return
 	}
 	if "" == sink.msg {
-		sink.msg = "source not found: " + path
+		sink.msg = msg
 		sink.code = "multisource_not_found"
 	}
 }

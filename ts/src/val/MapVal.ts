@@ -46,7 +46,7 @@ import { markSpread } from '../provenance'
 // pass. The map lives on the unify root ctx (see Unify), so it persists
 // across fixpoint passes and is GC'd with the run.
 function spreadSnapKey(cj: any): string {
-  return cj.canon + '~' + cj.site.row + ':' + cj.site.col
+  return cj.spelling + '~' + cj.site.row + ':' + cj.site.col
 }
 
 // Snapshot a path-dependent ref spread to its structural target once,
@@ -605,5 +605,6 @@ class MapVal extends BagVal {
 
 
 export {
-  MapVal
+  MapVal,
+  spreadSnapKey,
 }

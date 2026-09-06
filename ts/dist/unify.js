@@ -8,6 +8,7 @@ const type_1 = require("./type");
 const err_1 = require("./err");
 const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const PlaceVal_1 = require("./val/PlaceVal");
+const alias_1 = require("./alias");
 const lang_1 = require("./lang");
 const utility_1 = require("./utility");
 const top_1 = require("./val/top");
@@ -520,6 +521,10 @@ class Unify {
                     paths: residuePaths(res, 4).join(' ') || '$',
                 });
             }
+            // The settled tree's alias references canon as the values they
+            // name (ts/src/alias.ts): attached here, once, after the last
+            // pass, from the snapshot store this run kept.
+            (0, alias_1.expandAliases)(res, uctx.snapmap);
             uctx.explain && (0, utility_1.explainClose)(te, res);
         }
         this.res = res;

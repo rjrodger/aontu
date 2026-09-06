@@ -159,7 +159,7 @@ func snapshotRefSpread(cj *RefVal, ctx *Ctx) Val {
 	if ctx.snapmap == nil {
 		ctx.snapmap = map[string]Val{}
 	}
-	sk := cj.Canon() + "~" + itoa(cj.sp)
+	sk := refSnapKey(cj)
 	if snap, ok := ctx.snapmap[sk]; ok {
 		return snap
 	}

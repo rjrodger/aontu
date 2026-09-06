@@ -89,14 +89,16 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
    gap documents froze a row count into a "nothing may regress" clause;
    all eight are now wrong, by roughly 1,400 to 1,500 rows. A gap
    document should link this line instead: as of this
-   register's last update the suite is **105 `.tsv` files, 103
-   row-bearing, 4,485 rows**, in twenty-five modes — `canon` 872,
-   `errc` 807, `gens` 755, `gen` 590, `err` 282, `view` 174, `fmt` 154,
-   `errcode` 146, `subsume` 114, `vet` 100, `query` 92, `jsonschema`
+   register's last update the suite is **108 `.tsv` files, 106
+   row-bearing, 4,575 rows**, in twenty-five modes — `canon` 876,
+   `errc` 866, `gens` 756, `gen` 601, `err` 291, `view` 174, `fmt` 154,
+   `errcode` 148, `subsume` 114, `vet` 100, `query` 92, `jsonschema`
    57, `why` 52, `patch` 41, `hcanon` 40, `views` 37, `graph` 37,
-   `fmt-lint` 28, `diff` 28, `relation` 25, `reaches` 19, `hash` 16,
+   `fmt-lint` 28, `diff` 28, `relation` 25, `hash` 20, `reaches` 19,
    `trim` 11, `agentsmd` 7, `fmt-refuse` 1.
-   (Re-derived 2026-09-04, when `gen-emit.tsv` landed the rule layer's
+   (Re-derived 2026-09-06, when the `aontu:` scheme and its two models
+   landed with `aontu-scheme.tsv`, `aontu-code.tsv` and
+   `aontu-profile.tsv`; before that 2026-09-04, when `gen-emit.tsv` landed the rule layer's
    dispatch and `str.tsv` its string builtins; before that, 2026-09-03 for the 0.56.0 release, where
    `aontu fmt` added `fmt.tsv` and `aontu view` added `view.tsv` and
    `views.tsv`, and the line had gone stale in exactly the way it
@@ -115,8 +117,8 @@ the divergence ledger, `Accepted`/`Superseded` in the ADR register).
 
 ## Summary
 
-Sixty-two of the sixty-eight phases in the table below have moved;
-fifty-one of those are complete, four are partial, four were landed and
+Sixty-three of the sixty-eight phases in the table below have moved;
+fifty-two of those are complete, four are partial, four were landed and
 then superseded, retired or removed by an ADR, and three were retired
 by an ADR before they started. G5 phase 6 is
 deliberately held for the next major release, a release act rather
@@ -142,9 +144,9 @@ the fix was and why the earlier tests could not see the defect.
 | [G6](g6-distribution.md) | Distribution | B/C | 5 | 0 | 0 | 0 |
 | [G7](g7-machine-access.md) | Machine access | B | 7 | 0 | 0 | 0 |
 | [G8](g8-generation.md) | Generation | C | 6 | 0 | 0 | 1 |
-| [G9](g9-transformation.md) | Declarative transformation | D | 1 | 3 | 3 | 3 |
+| [G9](g9-transformation.md) | Declarative transformation | D | 2 | 3 | 2 | 3 |
 | [G10](g10-transparency.md) | Transparency log | D | 2 | 0 | 3 | 1 |
-| | | **total** | **51** | **4** | **6** | **7** |
+| | | **total** | **52** | **4** | **5** | **7** |
 
 *Retired* counts the rows whose status is SUPERSEDED, RETIRED or
 REMOVED — G4.0 and G4.1 (ADR-014), G8.4 (ADR-018), G10.5 (ADR-019),
@@ -1509,8 +1511,8 @@ Opened 2026-08-30, after G1–G8 landed. Design is
 [g9-transformation.md](g9-transformation.md); forms (a) and (b) — the
 host program and the Jostraca path — are
 [docs/design/GENERATION-FORMS.0.md](../design/GENERATION-FORMS.0.md).
-**Phases 0, 4 and 6 are partial and phase 2 has landed; phases 1, 3
-and 9 have not started; phases 5, 7 and 8 are RETIRED
+**Phases 0, 4 and 6 are partial and phases 1 and 2 have landed;
+phases 3 and 9 have not started; phases 5, 7 and 8 are RETIRED
 ([ADR-023](../../ADR.md#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired),
 2026-09-05)**, and the rest of the document is a design proposal, not a
 commitment. The corpus the design asks
@@ -1596,7 +1598,7 @@ completes at RENDER P8.
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|
 | **0** — the gating defects | S | **PARTIAL** (re-probed 2026-09-04; see the design's amendment — item 3 is VOID under ADR-014, item 4 is now the plan's first phase) | Six defects found while surveying for this capability and recorded in [use-cases/BUGS.md](../../use-cases/BUGS.md) §57–§62, each with a minimal repro under `use-cases/repros/`. **Four are fixed**, in both ports and pinned by shared rows: §58 `id()` naming its own descendant, which crashed both engines on the host stack (that fix and its `test/spec/id.tsv` pin are since SUPERSEDED by ADR-014: `id()` is removed, and no document can ask for the shape); and the three ADR-001 parity breaks — §59 `vet --at` losing `%alias` references in Go, §61 Go's `trialUnify` never setting `ctx.trial` so `match`/`filter` answered differently, §62 `pick` ordering an astral-keyed map by UTF-16 code units in TypeScript. The last two are in the primitives this design depends on for selection and for line order. **Four remain** — two of them the amendment's own items 2 and 4, [BUGS.md §63](../../use-cases/BUGS.md) (the staged pipeline still diverges between the ports) and §79 (`join` folds a hidden value into its text), which this row omitted until 2026-09-05 — plus: §57, a recursive spread conjoined with a map, non-terminating in both ports — diagnosed to the mechanism, with one fix attempt reverted for holding in TypeScript only; and §60, the canon-hash blind to an alias used as a spread template, a silent pin failure. |
-| **1** — the vocabulary as a bundled schema | S | **NOT STARTED** | `@"aontu:code"`, which **needs [MODELS.0.md](../design/MODELS.0.md)'s M0 first** for the `aontu:` resolver leg, and which grows by the flat fragment nodes of the second amendment. **Re-verified implementable with no edits, 2026-09-04**: the vocabulary text extracted from the design vets a full instance `valid` and a bad `prim`, a bad `%Name` and a nested container `invalid`, in both ports; an includer generates only its own keys; the hash is byte-identical across the ports. |
+| **1** — the vocabulary as a bundled schema | S | **LANDED 2026-09-06** | `@"aontu:code"` and `@"aontu:profile"`, bundled in `ts/src/std.ts` and `go/std.go` (the same bytes, held in `String.raw` and a raw string so the regexes' backslashes reach the parser), served by the `aontu:` resolver leg that landed with them — MODELS.0.md M0's leg, SPLIT from its rename (RENDER.0.md P0): an `aontu:` name resolves from the engine's table and nowhere else, a name it does not serve is refused naming the set (`source not found: aontu:nope (the language-supplied models are aontu:code, aontu:profile)`), denied under `none`, recorded under `std`. `test/spec/aontu-scheme.tsv` (4 rows), `test/spec/aontu-code.tsv` (21 rows: the served root, a hash over a document referencing every alias so the bodies are pinned — a hash and not a canon, because canon spells an alias template as the value it names (alias.tsv `alias-in-spread-*`, landed with this phase) and the vocabulary's canon is the whole schema written out, a unit, the fragment rows the second amendment named — a valid fragment, a line whose piece carries a terminator refused at the node, `at` below and above its bound, a raw at `reindent: false`, a `ref` inline — the declaration kinds, and the five spelling rules), `test/spec/aontu-profile.tsv` (8 rows); every expectation from both engines. **Three departures from the design text, each recorded in RENDER.0.md §9:** the `code` root is NOT `type()`-marked, because `render` reads the instance through `generate()` and a `type()`-marked subtree does not generate (VERIFIED, both ports — `get $.code` answered `null`), so an includer that writes no units generates `code: {units: []}`; a bare string is a piece, a line at depth 0 (RENDER D2); and the profile vocabulary spells `childPrec` and `str` where the design wrote `child_prec` and `string`, the first for `--lint`'s key-case rule and the second because `string` is a kind and cannot be a bare key. Both models are `fmt`-clean and lint-clean, asserted by a test in each port (MODELS.0.md D4, ahead of M1). One divergence found and filed rather than hidden: a refusal two disjunctions deep reports `|:trial-nil` in TypeScript and `empty` in Go ([BUGS.md §80](../../use-cases/BUGS.md)); the row pins the path. |
 | **2** — `join` | S | **LANDED** | `JoinFuncVal` (ts/src/val/AggFuncVal.ts) and `joinBag` (go/agg.go), registered in both tables, both grammars' `name` rule and both LSP lists; `test/spec/gen-join.tsv`, **47 rows executed by both runners**; `errcodes.tsv` +1 (`join_member`, conflict). The design's acceptance case holds: `join([8080,443],"-")` is `"8080-443"` in both ports, an unfired call canons as its call and reparses, and the lark literal check is green after the three missing names were added. **Landed as designed, with three things worth recording.** (1) The `+` fold is not a figure of speech: `plusText` was extracted from `PlusOpVal` and `primStr` was already exported in Go, so the fold and the operator SHARE a renderer and cannot drift into two answers to "how does a number become text". (2) **`join` is the first builtin that is both STAGED and DEFERS its resolution**, and that combination needed a `make` override its `AggFuncVal` siblings do not have — without it TypeScript raised `func:join` where Go residuated, on `join($.m,",")` with `m: [string]`. Found by running both engines, not by either test suite. (3) **The ADR-002 gate found dead code that probing then confirmed**: a nil-member guard, written by analogy with `sum`, is unreachable in `join` and was removed in both ports rather than excused. `sum` folds with `arith`, which MINTS a nil part-way through; `join` folds already-unified values, and a nil among a list's elements collapses the list before the call resolves — `join([least([])],",")` reports `aggregate_empty` at the member's own path and never reaches the fold. (4) The separator is a STRING, refused as `invalid-arg` otherwise, though `+` would render a number perfectly well: it is the parameter naming the text between members rather than a member, `pick`'s key draws the same line, and loosening later breaks no document while tightening would. **Item 4 of phase 0 is NOT a prerequisite and did not land here**: `join` reuses `bagChildren`, so it treats `hide`-marked and unfilled optional children exactly as `each` and `pick` do today, and phase 0 will change all four together rather than leaving `join` alone in a new behaviour. **Downstream:** [use-cases/15-code-generation](../../use-cases/15-code-generation/) changed shape — its transforms now compute the whole FILE rather than its lines, the six-line Python fold in `check.sh` is gone, and the check that proved the gap (the SQL golden REFUSED by a real parser for a trailing comma) is inverted: the SQL now parses and `check.sh` opens it in SQLite and asserts the tables and columns exist. |
 | **3** — `form`, the order-preserving map | S/M | **NOT STARTED** | `each` meets and cannot transform; `pack` keys by data and reorders |
 | **4** — the renderer core and the first two profiles | M | **PARTIAL 2026-09-05** | **The four string builtins landed on 2026-09-04, with phase 6 (#148), in both ports** — `ts/src/val/StrFuncVal.ts` and `ts/src/escape.ts`; the `esc`/`usc`/`rep`/`split` arms of `go/func.go` — declared in `test/spec/signature.tsv` and pinned by `test/spec/str.tsv` (99 rows, executed by both runners; `esc("o'brien")`, `split("x,y",",")` and `rep("abc","b","B")` answer identically from both CLIs). This row still read NOT STARTED a day after they landed: protocol rule 1 failing in the direction the G9.0 note describes, work landing under a heading that does not name the phase it discharges. **Not started:** the `render` verb, the profiles and the fragment entry point. As designed: the `render` verb; the Go and TypeScript profiles; and, per the second amendment, a fragment entry point plus a two-field `aontu:lang/text` profile, which is the executable form of "a new language is data". The fold reads a piece's `at` where the design counted recursion depth. Plus the three string builtins of [TEMPLATE.0.md](../design/TEMPLATE.0.md) — `esc(src, variant?)` (escaping is ON for a `replace` value, with `esc:` an optional key naming the variant), its left inverse `usc`, `rep(src, re, sub)` over `re()`'s own portable subset, and `split(src, sep)` — which have no renderer coupling and may land earlier; without them a hand-spelled literal generates broken code, VERIFIED (`tsc` rejects an unescaped `o'brien` with nine errors, and accepts the escaped form). |

@@ -127,9 +127,259 @@ view: {
 `
 
 
+// THE LANGUAGE-SUPPLIED MODELS (docs/design/MODELS.0.md D1;
+// docs/design/RENDER.0.md P0 and P1). `aontu:NAME` is Node's device --
+// a prefix no relative path, package name or module path can spell --
+// so the resolver routes on it before any other leg and never touches
+// the filesystem for it. Held in String.raw so the backslashes of the
+// regexes reach the parser as written; no backtick, as above.
+//
+// aontu:code is the OUTPUT VOCABULARY: an instance of it is what a
+// transform evaluates to and what `aontu render` folds to bytes.
+// aontu:profile is the schema of a render profile, the data a unit of
+// one language is rendered under. Both are pinned by canon and hash
+// rows (test/spec/aontu-code.tsv, test/spec/aontu-profile.tsv).
+const STD_CODE = String.raw`# aontu:code --- THE OUTPUT VOCABULARY. An aontu transform evaluates to
+# an instance of this schema, and 'aontu render' turns the instance
+# into bytes. Because it is an ordinary schema, a transform's result is
+# checked by unification before anything is rendered.
+#
+#   @"aontu:code"
+#   code: { units: [ { path: "out.py", lang: "python", decls: [
+#     { k: "frag", of: emit($.model, %rules) } ] } ] }
+#
+# TWO ESCAPES, both counted by the render report: {k: "text", lang,
+# text} carries verbatim target syntax, and 'x' is an open per-backend
+# rider. CONTAINER TYPES TAKE LEAVES ONLY: anything deeper is a named
+# alias declaration plus a {k: "ref"}, which keeps this schema's meet
+# linear. A FRAGMENT IS FLAT: each piece carries its own depth ('at'),
+# so the renderer owns every prefix and no piece nests another; a bare
+# string piece is a line at depth 0, and no inline text may hold a line
+# terminator -- that is checked here, before any renderer runs.
+#
+# THE ROOT IS NOT type()-MARKED, on purpose: 'aontu render' reads the
+# instance through generate(), and a type()-marked subtree does not
+# generate. A document that includes this vocabulary and writes no
+# units generates 'code: {units: []}', which is what it said.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+
+%name = string & re("^[A-Za-z_][A-Za-z0-9_]*$") & length(min(1) & max(255))
+
+%text = close({ k:"text" lang:string & length(min(1)) text:string })
+
+%doc = close({
+  text: string
+  deprecated?: close({ msg?:string use?:string since?:string })
+})
+
+%check = close({ c:"min" n:number exclusive:*false | boolean })
+  | close({ c:"max" n:number exclusive:*false | boolean })
+  | close({ c:"re" p:string })
+  | close({ c:"len" min?:integer & min(0) max?:integer & min(0) })
+  | close({ c:"unique" key?:%name })
+  | close({ c:"ne" of:[&: string | number | boolean] })
+  | close({ c:"must" note:string })
+
+%prim = close({
+  k: "prim"
+  prim: "string" | "int" | "bigint" | "float" | "decimal" | "bool" | "null" | "any"
+})
+%ref = close({ k:"ref" name:%name unit?:string })
+%leaf = %prim | %ref | %text
+
+%type = %leaf
+  | close({ k:"list" of:%leaf })
+  | close({ k:"map" key:%leaf of:%leaf })
+  | close({ k:"opt" of:%leaf })
+  | close({ k:"union" of:[&: %leaf] })
+  | close({ k:"lit" of:[&: string | number | boolean | null] })
+
+%field = close({
+  name: %name
+  type: %type
+  optional: *false | boolean
+  doc?: %doc
+  default?: string | number | boolean | null
+  check?: [&: %check]
+  rel?: close({ to:string name?:string })
+  x?: {}
+})
+
+%member = close({ name:%name value?:string | number doc?:%doc x?:{} })
+%param = close({
+  name: %name
+  type: %type
+  default?: string | number | boolean | null
+  x?: {}
+})
+
+# THE FRAGMENT ALGEBRA. A line's inline pieces hold no terminator; a
+# blank is its terminators alone; a raw is the one piece that may carry
+# terminators, re-indented to its depth unless it says not to.
+%inline = string & re("^[^\n\r]*$") | %ref
+%line = close({ k:"line" at:*0 | integer & min(0) & max(64) of:[&: %inline] })
+%blank = close({ k:"blank" n:*1 | integer & min(1) & max(16) })
+%raw = close({
+  k: "raw"
+  at: *0 | integer & min(0) & max(64)
+  text: string
+  reindent: *true | boolean
+})
+%piece = %line | %blank | %raw | string & re("^[^\n\r]*$")
+%frag = close({ k:"frag" of:[&: %piece] })
+%body = %frag | close({ k:"abstract" })
+
+%record = close({
+  k: "record"
+  name: %name
+  doc?: %doc
+  open: *false | boolean
+  fields: [&: %field]
+  entity?: string
+  check?: [&: %check]
+  x?: {}
+})
+%enum = close({ k:"enum" name:%name doc?:%doc members:[&: %member] x?:{} })
+%alias = close({
+  k: "alias"
+  name: %name
+  doc?: %doc
+  type: %type
+  check?: [&: %check]
+  x?: {}
+})
+%const = close({
+  k: "const"
+  name: %name
+  doc?: %doc
+  type?: %type
+  value: string | number | boolean | null
+  x?: {}
+})
+%func = close({
+  k: "func"
+  name: %name
+  doc?: %doc
+  params: [&: %param]
+  returns?: %type
+  body: %body
+  x?: {}
+})
+
+%decl = %record | %enum | %alias | %const | %func | %text | %frag
+
+%import = close({
+  from: string & length(min(1))
+  names?: [&: %name]
+  alias?: %name
+  x?: {}
+})
+
+%unit = close({
+  path: string & length(min(1))
+  lang: string & length(min(1))
+  pkg?: string
+  doc?: %doc
+  imports?: [&: %import]
+  decls: [&: %decl]
+  profile?: {}
+  x?: {}
+})
+
+%source = close({ path?:string hash?:string & re("^aon1-[A-Za-z0-9_-]+$") })
+
+code: close({ source?:%source units:[&: %unit] })
+`
+
+
+const STD_PROFILE = String.raw`# aontu:profile --- THE PROFILE VOCABULARY. A profile is the data
+# 'aontu render' applies to a unit of one language, and it is DATA and
+# only data: a field belongs here only if the renderer applies it
+# without looking at the shape of any node. Anything else is a lowering
+# and lives in the transform.
+#
+#   @"aontu:profile"
+#   profile: { lang: "python", indent: { unit: " ", width: 4 } }
+#
+# Three profiles are bundled with the engine -- aontu:lang/typescript,
+# aontu:lang/go and aontu:lang/text -- and a unit is matched to one by
+# its 'lang'. A fragment-only unit needs nothing beyond 'indent'.
+#
+# THE ROOT IS NOT type()-MARKED, for the reason aontu:code's is not:
+# 'aontu render' reads a profile through generate().
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+
+%name = string & re("^[A-Za-z_][A-Za-z0-9_]*$")
+
+%case = "as-is" | "camel" | "pascal" | "snake" | "screaming" | "kebab"
+
+%comment = close({ open?:string prefix?:string close?:string })
+
+%form = close({
+  open: *"" | string
+  close: *"" | string
+  prec: *9 | integer & min(0) & max(9)
+  childPrec: *0 | integer & min(0) & max(9)
+})
+
+%profile = close({
+  lang: string & length(min(1))
+  lowering?: "typescript" | "go"
+  indent: close({
+    unit: *" " | string & length(min(1))
+    width: *2 | integer & min(0) & max(16)
+  })
+  comment?: close({ line?:%comment block?:%comment doc?:%comment })
+  str?: close({
+    quote: *"\"" | string & length(min(1) & max(1))
+    escape: { &: string }
+  })
+  ident?: close({
+    chars: *"ascii-word" | "ascii-word"
+    reserved?: [&: string]
+    case?: close({
+      record?: %case
+      field?: %case
+      enum?: %case
+      member?: %case
+      const?: %case
+      func?: %case
+      param?: %case
+      alias?: %case
+    })
+    acronyms?: [&: %name]
+  })
+  types?: close({
+    prim?: { &: string }
+    list?: %form
+    map?: %form
+    opt?: %form
+    union?: %form
+    lit?: %form
+  })
+  banner?: string
+})
+
+profile: %profile
+`
+
+
 export const STD_SOURCES: Record<string, string> = {
   'std/system': STD_SYSTEM,
   'std/system.aon': STD_SYSTEM,
   'std/view': STD_VIEW,
   'std/view.aon': STD_VIEW,
+  'aontu:code': STD_CODE,
+  'aontu:profile': STD_PROFILE,
 }
+
+// The scheme of a language-supplied model, and the names it serves --
+// the set the not-found message names, so a typo does not go looking
+// on disk.
+export const AONTU_SCHEME = 'aontu:'
+export const AONTU_MODELS: string[] =
+  Object.keys(STD_SOURCES).filter((k) => k.startsWith(AONTU_SCHEME)).sort()

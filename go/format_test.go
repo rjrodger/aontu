@@ -347,3 +347,31 @@ func TestEveryCorpusDocumentFormatsToAFixedPoint(t *testing.T) {
 		t.Fatalf("too few documents formatted: %d", formatted)
 	}
 }
+
+// THE BUNDLED MODELS ARE HELD TO THE FORM (docs/design/MODELS.0.md D4):
+// Format leaves each of the aontu: models exactly as bundled, and the
+// lint reports nothing on it. Twin of format-bundled-models in
+// ts/test/format.test.ts.
+func TestBundledModelsAreFormatted(t *testing.T) {
+	a := New()
+	names := aontuModels()
+	if 2 != len(names) || "aontu:code" != names[0] || "aontu:profile" != names[1] {
+		t.Fatalf("aontuModels: %v", names)
+	}
+	for _, name := range names {
+		src := stdSources[name]
+		rep := a.FormatWith(src, FormatOptions{Lint: true})
+		if "formatted" != rep.Verdict {
+			t.Fatalf("%s: verdict %s (%v)", name, rep.Verdict, rep.Errors)
+		}
+		if rep.Text != src {
+			t.Fatalf("%s is not in the form aontu fmt writes", name)
+		}
+		if rep.Changed {
+			t.Fatalf("%s: changed", name)
+		}
+		if 0 != len(rep.Findings) {
+			t.Fatalf("%s has lint findings: %v", name, rep.Findings)
+		}
+	}
+}

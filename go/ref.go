@@ -18,6 +18,10 @@ type RefVal struct {
 	prefix    bool
 	hideFound bool // move(): hide the resolution target in place
 	copyFound bool // copy(): clear all marks on the resolved copy
+	// expansion is the value an alias reference canons as, attached by
+	// expandAliases (go/alias.go) after unification (see Canon). Never
+	// read by unification: it is a rendering of the settled tree.
+	expansion Val
 }
 
 // walkOutcome says how a reference walk ended: it landed on a value,
@@ -204,7 +208,7 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 			out = rv
 		case peer.Nil():
 			out = makeNilErr(ctx, "ref", rv, peer)
-		case rv.Canon() == peer.Canon():
+		case rv.spelling() == refSpelling(peer):
 			out = rv
 		default:
 			out = newConjunct([]Val{rv, peer})
@@ -223,7 +227,7 @@ func (rv *RefVal) Unify(peer Val, ctx *Ctx) Val {
 			out = rv
 		case peer.Nil():
 			out = makeNilErr(ctx, "ref", rv, peer)
-		case rv.Canon() == peer.Canon():
+		case rv.spelling() == refSpelling(peer):
 			out = rv
 		default:
 			out = newConjunct([]Val{rv, peer})
@@ -726,7 +730,66 @@ func reduceDots(path []string) []string {
 	return out
 }
 
+// refSpelling is the same-path identity of a peer: a reference's own
+// spelling, any other value's canon (which no spelling can equal).
+func refSpelling(v Val) string {
+	if pr, ok := v.(*RefVal); ok {
+		return pr.spelling()
+	}
+	return v.Canon()
+}
+
+// aliasName is the name of the alias this reference names, and false
+// for a path reference. `%u` is spelled internally as the root
+// reference `$.%u` (docs/design/ALIASES.0.md: the name is a path into
+// the declaration), so an alias reference is an absolute reference of
+// one segment that is an alias name. Twin of RefVal.aliasName in
+// ts/src/val/RefVal.ts.
+func (rv *RefVal) aliasName() (string, bool) {
+	if rv.absolute && 1 == len(rv.peg) {
+		if s, ok := rv.peg[0].(string); ok && aliasRe.FindString(s) == s {
+			return s, true
+		}
+	}
+	return "", false
+}
+
+// refSnapKey is the key a ref spread's structural snapshot is stored
+// under (snapshotRefSpread): the reference's own spelling and its
+// source position, so clones of the reference find the snapshot their
+// parse-origin captured. Twin of spreadSnapKey in ts/src/val/MapVal.ts.
+func refSnapKey(rv *RefVal) string {
+	return rv.spelling() + "~" + itoa(rv.sp)
+}
+
+// Canon renders an alias reference AS THE VALUE IT NAMES. A reference
+// left standing after unification is one inside a spread template
+// (`[&: %u]`, `{&: {a: %u}}`): the template applies to children that
+// have not arrived, so it is not resolved in place. Canon erases the
+// declaration (an alias is a name for a value, and nothing more --
+// ALIASES.0.md §4), so the name alone would not reparse, and the hash
+// of `t: {&: %u}` would differ from the hash of `t: {&: integer}`,
+// which is the same document. The expansion is attached by
+// expandAliases (go/alias.go) once the tree has settled; without one
+// -- a parse-only tree, an unresolved name, or the KNOT of a recursive
+// alias inside its own template -- the reference spells its name.
+// Twin of RefVal.canon in ts/src/val/RefVal.ts.
 func (rv *RefVal) Canon() string {
+	if nil != rv.expansion {
+		return rv.expansion.Canon()
+	}
+	return rv.spelling()
+}
+
+// spelling is the reference's own spelling: the alias name, or the
+// path. This is the reference's identity (the snapshot key of a ref
+// spread, the same-path test in unify), which Canon is not once an
+// expansion is attached. Twin of RefVal.spelling in
+// ts/src/val/RefVal.ts.
+func (rv *RefVal) spelling() string {
+	if name, ok := rv.aliasName(); ok {
+		return name
+	}
 	var b strings.Builder
 	if rv.absolute {
 		b.WriteByte('$')

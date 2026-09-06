@@ -2,6 +2,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MapVal = void 0;
+exports.spreadSnapKey = spreadSnapKey;
 const type_1 = require("../type");
 const unify_1 = require("../unify");
 const utility_1 = require("../utility");
@@ -21,7 +22,7 @@ const provenance_1 = require("../provenance");
 // pass. The map lives on the unify root ctx (see Unify), so it persists
 // across fixpoint passes and is GC'd with the run.
 function spreadSnapKey(cj) {
-    return cj.canon + '~' + cj.site.row + ':' + cj.site.col;
+    return cj.spelling + '~' + cj.site.row + ':' + cj.site.col;
 }
 // Snapshot a path-dependent ref spread to its structural target once,
 // while inner key()/path() funcs in the target are still unresolved (see
