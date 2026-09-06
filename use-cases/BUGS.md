@@ -3572,3 +3572,65 @@ names (`use-cases/15-code-generation/all.aon`). Repro:
 `value-include-plain.aon` as the working twin. Fix: resolve an alias
 reference against the document that declared it, not the including
 root -- an alias is lexically scoped to its file in every other sense.
+
+### 86. A transform over a type-marked schema does not see its optional keys [major, by design]
+
+Found 2026-09-06 while landing the renderer's declaration lowering
+(RENDER.0.md P5), whose acceptance walks
+`use-cases/10-data-model/domain.aon` into `aontu:code` records. Two
+consequences of the membership rule (RENDER P2, `bagMembers` in
+`ts/src/val/members.ts` and `go/members.go`) meet a schema walk. First,
+`pack($.schema, …)` over the schema's `type()`-marked records yields
+nothing, because a marked child of an UNMARKED bag is not a member;
+the bag has to be lifted -- `pack(type($.schema), …)` or
+`pack(hide($.schema), …)` -- to say the marked children are wanted,
+which is documented and works. Second, and not recoverable from the
+transform: an optional key whose value generates nothing -- `email?:
+string & re(…)` in a schema, every optional field of every record --
+is not a member either, so `pick(pack(_, …), f)` over a record's
+fields never sees `email` or `creditLimitCents`, and the rendered
+interface lacks them. Both ports agree (`xf-domain.aon` renders the
+same 492 bytes from each). The rule is right for data, where an
+unfilled optional is absent by definition, and wrong for a schema
+walk, where the key IS the fact. ADR-023's answer -- a transform
+states its schema facts as data -- covers optionality only for keys
+the walk can reach, and these it cannot. Repro:
+`repros/hide/optional-schema-key-is-not-a-member.aon`. Fix, if one is
+wanted: a marked bag lifts its optional keys as it lifts its marked
+children, so `pack(type($.schema), …)` sees `email?` as a member whose
+value is the schema's own -- the walk would then need a way to ask
+"was this key optional", which `key()` does not answer today.
+
+## site-attribution — the text of a schema site that references aliases
+
+One entry from the renderer's declaration lowering (RENDER.0.md P5):
+the two ports agree on a refusal's code, path and sites and differ
+in how the schema site's value is written.
+
+### 87. A refusal site in the `aontu:code` vocabulary spells its nested aliases inline in TypeScript and by name in Go [minor]
+
+Found 2026-09-06 while landing the renderer's declaration lowering
+(RENDER.0.md P5). An ADR-001 divergence in the TEXT of a site both
+ports agree on. A `record` whose `check` list holds a shape no
+`%check` arm admits is refused at `$.code.units.0.decls.0` as `empty`
+in both ports, with the same two sites -- the data at its position,
+and the schema at `aontu:code:130:9`, the `%record` arm of `%decl` --
+but the schema site's `value` differs: TypeScript writes every alias
+the arm references out in full
+(`[&:{"c":"min","exclusive":*false|boolean,"n":number}|{"c":"max",...`,
+some nine kilobytes), and Go writes the names (`[&:%check]`,
+`[&:%field]`, `[&:%member]`, `[&:%leaf]`, `[&:%piece]`, `[&:%param]`).
+The small reproducers agree: a two-level alias (`%a = { k: "r" b: [&:
+%b] } | { k: "e" }`) vetted against a bad `b` spells `[&:%b]` in both
+ports. As with §80 the divergence needs the vocabulary's depth, and it
+shows under `vet` against a file holding `@"aontu:code"` and under
+`render` alike, since `render` vets through the same path.
+Consequence: a `render.tsv` row cannot pin a vet refusal of a
+declaration -- the `render` mode's expectation keeps every site's
+`value` -- so P5's rows reach the lowering through instances the
+vocabulary admits, and the refusals stay pinned in `aontu-code.tsv` as
+`errc` rows, which carry no site text. Repro:
+`repros/site-attribution/nested-alias-site-value.aon`. Fix: one rule
+for the text of a schema site that holds alias references; Go's, the
+name, is the shorter and the one a reader can follow into the
+vocabulary.

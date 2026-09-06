@@ -45,7 +45,8 @@ are BUNDLED with the engine: `@"std/system"` and `@"std/view"`, the
 [system and view vocabularies](reference-language.md#the-bundled-vocabularies),
 and every `@"aontu:…"` name—the
 [language-supplied models](reference-language.md#the-aontu-models),
-`aontu:code`, `aontu:profile` and `aontu:lang/text`. An `aontu:` name resolves from the
+`aontu:code`, `aontu:profile`, `aontu:lang/text`, `aontu:lang/typescript` and
+`aontu:lang/go`. An `aontu:` name resolves from the
 engine's own table and nowhere else: the memory, module, file and
 package legs are never asked, so nothing on disk can shadow one, and a
 name the engine does not serve is refused naming the set rather than

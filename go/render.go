@@ -72,8 +72,10 @@ type RenderOptions struct {
 }
 
 const renderVocabulary = `@"aontu:code"`
-const renderTextProfile = `@"aontu:lang/text"`
 const renderProfileVocabulary = `@"aontu:profile"`
+
+// The bundled profiles, by lang: aontu:lang/<lang>.
+var renderBundledLangs = []string{"go", "text", "typescript"}
 
 func renderFinding(code, class, path, message string) VetFinding {
 	return VetFinding{
@@ -198,16 +200,26 @@ func (a *Aontu) RenderProfile(src string) (map[string]any, []VetFinding) {
 	return profile, nil
 }
 
-// The bundled text profile, evaluated once.
-var renderTextProfileMap map[string]any
+// The bundled profiles, each evaluated once: the meet of
+// aontu:lang/<lang> with the vocabulary, so its defaults are in it.
+var renderBundled = map[string]map[string]any{}
 
-func bundledTextProfile() map[string]any {
-	if nil == renderTextProfileMap {
-		gen, _ := New().Generate(renderTextProfile)
-		m, _ := gen.(map[string]any)
-		renderTextProfileMap, _ = m["profile"].(map[string]any)
+func bundledProfile(lang string) map[string]any {
+	known := false
+	for _, l := range renderBundledLangs {
+		if l == lang {
+			known = true
+		}
 	}
-	return renderTextProfileMap
+	if !known {
+		return nil
+	}
+	if nil == renderBundled[lang] {
+		gen, _ := New().Generate(`@"aontu:lang/` + lang + `"`)
+		m, _ := gen.(map[string]any)
+		renderBundled[lang], _ = m["profile"].(map[string]any)
+	}
+	return renderBundled[lang]
 }
 
 // profileFor is PROFILE SELECTION, per unit (RENDER.0.md D5): a
@@ -221,8 +233,11 @@ func profileFor(lang string, given []map[string]any, fragOnly bool) map[string]a
 			return p
 		}
 	}
-	if "text" == lang || fragOnly {
-		return bundledTextProfile()
+	if own := bundledProfile(lang); nil != own {
+		return own
+	}
+	if fragOnly {
+		return bundledProfile("text")
 	}
 	return nil
 }
@@ -265,10 +280,15 @@ func sortedKeys(m map[string]any) []string {
 // 0 verbatim -- and common leading indentation is never stripped. A
 // reference inline is its name, verbatim (a declaration-capable profile
 // puts it through its identifier rules, P5). Nothing is trimmed (D3).
+// A profile with no indent -- a caller-supplied map the vocabulary
+// never filled -- takes the vocabulary's own default, two spaces.
 func renderPad(profile map[string]any, at int) string {
 	indent, _ := profile["indent"].(map[string]any)
-	unit, _ := indent["unit"].(string)
-	return strings.Repeat(unit, renderInt(indent, "width", 0)*at)
+	unit, ok := indent["unit"].(string)
+	if !ok {
+		unit = " "
+	}
+	return strings.Repeat(unit, renderInt(indent, "width", 2)*at)
 }
 
 func renderLine(profile map[string]any, at int, text string) string {
@@ -278,12 +298,17 @@ func renderLine(profile map[string]any, at int, text string) string {
 	return renderPad(profile, at) + text + "\n"
 }
 
-func renderInline(piece any) string {
+// renderInline: a reference inline is its name, through the profile's
+// identifier rules under a lowering, verbatim under text.
+func renderInline(piece any, ctx *lowerCtx) string {
 	if s, ok := piece.(string); ok {
 		return s
 	}
 	m, _ := piece.(map[string]any)
 	name, _ := m["name"].(string)
+	if nil != ctx {
+		return lowerIdent(name, "record", ctx, "", false)
+	}
 	return name
 }
 
@@ -301,7 +326,7 @@ func renderInt(m map[string]any, key string, dflt int) int {
 }
 
 func renderPiece(piece any, profile map[string]any, unit, path string,
-	lossy *[]RenderLoss) string {
+	lossy *[]RenderLoss, ctx *lowerCtx) string {
 	if s, ok := piece.(string); ok {
 		return renderLine(profile, 0, s)
 	}
@@ -312,7 +337,7 @@ func renderPiece(piece any, profile map[string]any, unit, path string,
 		of, _ := m["of"].([]any)
 		var b strings.Builder
 		for _, p := range of {
-			b.WriteString(renderInline(p))
+			b.WriteString(renderInline(p, ctx))
 		}
 		return renderLine(profile, renderInt(m, "at", 0), b.String())
 	case "blank":
@@ -415,13 +440,34 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 		}
 		plang, _ := profile["lang"].(string)
 
+		// THE LOWERING (D5, P5), when the profile names one: the unit's
+		// header -- banner, package clause, imports -- and each
+		// declaration as pieces the fold takes, a blank line between two
+		// lowered declarations. A fragment or a text escape owns its own
+		// blanks.
+		var ctx *lowerCtx
+		if family, ok := profile["lowering"].(string); ok {
+			ctx = &lowerCtx{profile: profile, family: family, unit: path, lossy: &lossy}
+		}
+
 		var text strings.Builder
+		if nil != ctx {
+			header := lowerHeader(unit, lowerMap(code, "source"), ctx)
+			for _, piece := range header {
+				text.WriteString(renderPiece(piece, profile, path, upath, &lossy, ctx))
+			}
+			if 0 < len(header) && 0 < len(decls) {
+				text.WriteString("\n")
+			}
+		}
+		lowered := false
 		for j, d := range decls {
 			decl, _ := d.(map[string]any)
 			dpath := upath + ".decls." + itoa(j)
 			k, _ := decl["k"].(string)
 			switch k {
 			case "frag":
+				lowered = false
 				lossy = append(lossy, RenderLoss{
 					Unit: path, Path: dpath, Tier: 2, Construct: "frag",
 					Reason: "a fragment says nothing about " + lang + " syntax",
@@ -429,9 +475,10 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 				of, _ := decl["of"].([]any)
 				for n, piece := range of {
 					text.WriteString(renderPiece(piece, profile, path,
-						dpath+".of."+itoa(n), &lossy))
+						dpath+".of."+itoa(n), &lossy, ctx))
 				}
 			case "text":
+				lowered = false
 				dlang, _ := decl["lang"].(string)
 				if dlang != lang {
 					errs = append(errs, renderFinding("render_lang", "conflict", dpath+".lang",
@@ -445,8 +492,18 @@ func RenderValue(instance any, opts *RenderOptions) RenderReport {
 				dtext, _ := decl["text"].(string)
 				text.WriteString(dtext)
 			default:
-				errs = append(errs, renderFinding("render_profile", "parse", dpath+".k",
-					"a "+k+" declaration has no lowering under the "+plang+" profile."))
+				if nil == ctx {
+					errs = append(errs, renderFinding("render_profile", "parse", dpath+".k",
+						"a "+k+" declaration has no lowering under the "+plang+" profile."))
+					continue
+				}
+				if lowered {
+					text.WriteString("\n")
+				}
+				for _, piece := range lowerDecl(decl, dpath, ctx) {
+					text.WriteString(renderPiece(piece, profile, path, dpath, &lossy, ctx))
+				}
+				lowered = true
 			}
 		}
 

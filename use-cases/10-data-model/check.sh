@@ -13,6 +13,7 @@ trap 'rm -rf "$WORK"' EXIT
 pass=0
 fail() { echo "FAIL: $1" >&2; exit 1; }
 ok() { pass=$((pass + 1)); echo "ok $pass - $1"; }
+skip() { pass=$((pass + 1)); echo "ok $pass - $1 # SKIP"; }
 
 # run <name> <expected-exit> -- <cli args...>
 # Captures stdout+stderr in $WORK/<name>.out, asserts the exit code.
@@ -265,6 +266,36 @@ has mconv '"sameNumber":0d10.5'
 has mconv '"scaleZeroRight":0d10.0'
 has mconv '"vatExact":0d759.6561'
 ok "the wire<->exact conversion, its sign, its scale and its VAT all pin"
+
+# 14. THE SCHEMA AS CODE. xf-domain.aon walks the record types into
+# aontu:code records and `aontu render` lowers them under the bundled
+# TypeScript profile; xf-order.aon renders the same walk twice, as
+# TypeScript and as Go, with the two facts a schema walk cannot see
+# (which keys are optional -- README, BUGS.md 86) stated as data. The
+# goldens under expected/render/ are held by --check, and the Go port
+# must render the same bytes (ADR-001).
+run xfdom 0 -- render --check "$DIR/expected/render" "$DIR/xf-domain.aon"
+run xford 0 -- render --check "$DIR/expected/render" "$DIR/xf-order.aon"
+grep -q 'ledgerId: number;' "$DIR/expected/render/ts/domain.ts" \
+  || fail "the TypeScript golden lost ledgerId"
+grep -q 'LedgerID int64 `json:"ledgerId"`' "$DIR/expected/render/go/domain.go" \
+  || fail "the Go golden lost LedgerID"
+grep -q 'Placed \*string `json:"placed,omitempty"`' "$DIR/expected/render/go/domain.go" \
+  || fail "the Go golden lost the optional pointer"
+ok "the schema renders as TypeScript and Go, held by render --check"
+
+if command -v go >/dev/null 2>&1; then
+  GOBIN="$WORK/aontu-go"
+  (cd "$REPO/go" && go build -o "$GOBIN" ./cmd/aontu) \
+    || fail "could not build the Go CLI"
+  "$GOBIN" render --check "$DIR/expected/render" "$DIR/xf-domain.aon" 2>/dev/null \
+    || fail "the Go port's render of xf-domain.aon does not match the goldens (ADR-001)"
+  "$GOBIN" render --check "$DIR/expected/render" "$DIR/xf-order.aon" 2>/dev/null \
+    || fail "the Go port's render of xf-order.aon does not match the goldens (ADR-001)"
+  ok "the Go port renders the same bytes for both transforms"
+else
+  skip "the Go port renders the same bytes for both transforms (no go toolchain)"
+fi
 
 echo
 

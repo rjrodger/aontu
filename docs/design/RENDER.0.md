@@ -575,7 +575,26 @@ golden is edited.
 **After P4, `aontu render` is usable for every language, through
 fragments.** That is the release to cut; see [§7](#7-the-rest-of-the-programme).
 
-### P5 — the declaration lowering, and the TypeScript and Go profiles (M/L)
+### P5 — the declaration lowering, and the TypeScript and Go profiles (M/L) — LANDED 2026-09-06
+
+*Landed as designed, with the departures recorded as §9 items 20–26:
+a schema walk lifts the bag with `type()` and states optionality as
+data, because an optional key is not a member of the walk (BUGS §86);
+the reserved-word rename applies to declarations and parameters and
+not to fields; Go derives no imports from references and prefixes an
+enum member with its type; a literal set in Go takes the primitive its
+members share; the paren rule and the non-ASCII name are pinned by
+unit tests, since the vocabulary keeps a document from reaching them;
+and a supplied profile without an `indent` renders at two spaces.
+`render.tsv` is 87 rows; `aontu-profile.tsv` pins both profiles by
+hash and generated form. Acceptance met: G9's worked examples 1 and 2
+render byte-for-byte from both ports —
+`use-cases/10-data-model/xf-domain.aon` and `xf-order.aon`, held by
+`render --check` in the case's `check.sh` — and every `range` in
+`go/render.go` and `go/lower.go` is over a slice, a sorted key list,
+or a map being copied. Found beside it and filed: BUGS §87, a refusal
+site in the vocabulary whose alias references TypeScript spells out
+and Go names.*
 
 **Deliverable.** The lowering of `%record`, `%enum`, `%alias`,
 `%const`, `%func` and `%import` for the two language families,
@@ -650,7 +669,7 @@ register says so in the same commits:
 |---|---|
 | a target the declaration vocabulary does not fit renders from `emit` (acceptance case 1) | P4's Python/YAML rows and use case 15 |
 | a recursive rule set renders nested output (acceptance case 2) | `emit-recursive` (landed) plus one `render.tsv` row over it |
-| worked examples 1 and 2 byte-for-byte | P5 |
+| worked examples 1 and 2 byte-for-byte | P5 (landed): `use-cases/10-data-model/xf-domain.aon` and `xf-order.aon` under `render --check`, both ports |
 | one model, three units, one run, nothing written on a partial failure | P4 |
 | the twelve handlers byte-identical through `emit` + `render`, and then through the surface | P6, P8 |
 | coverage names dead model and silent holes | P7 |
@@ -846,6 +865,52 @@ touches M0.
     name, each contributes a unit under `units`, and the instance
     lists the three. The SQL column table is spelled inline for §84.
     Both are engine defects with repros, not designs.
+
+20. **A schema walk lifts the bag and states optionality as data**
+    (P5). `pack($.schema, …)` over the schema's `type()`-marked
+    records yields nothing — a marked child of an unmarked bag is not
+    a member (P2) — so the acceptance transforms write
+    `pack(type($.schema), …)`, which lifts the marked children. And
+    an optional key whose value generates nothing is not a member
+    either, so the walk never sees `email?`
+    ([BUGS §86](../../use-cases/BUGS.md)); `xf-order.aon` states
+    `optional` as data, which is what ADR-023 asks of a transform in
+    any case, and the worked examples render byte-for-byte with that
+    one statement added. Deriving optionality from the schema is what
+    the reflection sidecar would have given, and ADR-023 retired it.
+21. **The reserved-word rename applies to declarations and parameters
+    only** (P5 said "reserved words (`type` → `type_`)"). A field is a
+    property, and `type` or `default` is a legal property name in both
+    targets, so a field keeps its name; a declaration or a parameter
+    named for a reserved word is renamed with a trailing underscore
+    and reported as tier 1 (`reserved`).
+22. **Go derives no imports from references** (P5 listed "import
+    derivation from `{k:"ref"}` nodes merged with `%unit.imports`").
+    TypeScript's lowering derives `import { Name } from "./unit"` for
+    every `ref` that names another unit, by relative path; Go's
+    imports are packages, and a `ref` into another unit of the same
+    instance is a name in the same package (`pkg`), so a Go unit's
+    imports are `%unit.imports` alone.
+23. **A Go enum member is prefixed with its type** (`StatusOpen`),
+    since Go constants share the package scope; a TypeScript member is
+    scoped by its enum (`Status.Open`).
+24. **A literal set in Go takes the primitive its members share** —
+    `int` when every number is integral and `float` otherwise,
+    `string`, `bool`, `null`, and `any` when the kinds mix — and a
+    union is `any`, each a tier-1 loss (`lit`, `union`). The lowering
+    reads the generated instance, where `2` and `2.0` are one number,
+    so the rule is over the values and not over the document's kinds.
+25. **The paren rule and the non-ASCII name are pinned by unit tests,
+    not rows** (P5 asked for `render.tsv` rows). The vocabulary keeps
+    a container to leaves, so `(string | null)[]` cannot be written in
+    a document; and `%name` is ASCII, so `naïveName` cannot reach the
+    splitter. `ts/test/lower.test.ts` and `go/lower_test.go` reach both
+    through `renderValue` and the lowering's own functions, with the
+    rows for everything a document can say.
+26. **A supplied profile without an `indent` renders at two spaces**
+    (D5 gave `indent` no default). A profile that names only its
+    `lang` and a lowering is valid, and the fold pads it as the text
+    profile does rather than refusing it.
 
 ## 10. The validation system: `test/system/rb-solar`
 
