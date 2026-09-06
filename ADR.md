@@ -40,6 +40,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-021](#adr-021--the-project-hosts-private-packages-with-authenticated-reads) | The project hosts private packages, with authenticated reads | Accepted |
 | [ADR-022](#adr-022--compatibility-is-computed-so-the-major-leaves-the-name) | Compatibility is computed, so the major leaves the name | Accepted |
 | [ADR-023](#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired) | G9 completes at the renderer: the reflection sidecar, the Jostraca bridge and string interpolation are retired | Accepted |
+| [ADR-024](#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition) | The forge's token authorises a publish, and Sigstore is one provider of the proof, not its definition | Accepted |
 
 ---
 
@@ -1855,6 +1856,11 @@ inherits:
    rotation. This retires key custody, checkpoint signing, witness
    recruitment, and the unanswered objection that a Worker's secrets are
    readable by whatever is deployed to that Worker.
+   *(Qualified 2026-09-06 by [ADR-024](#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition):
+   Sigstore supplies these as a **provider** under a proof contract
+   stated in the project's own terms, and a publish is authorised from
+   the forge's token rather than from a Fulcio certificate. The
+   constraint itself — the project operates no log — is unchanged.)*
 7. **Withdrawal changes selection, not history.** A retracted or
    tombstoned version stops being selected and stops being served, but
    the record of what was published — its pins and its signature bundle
@@ -1983,11 +1989,18 @@ Five parts, each load-bearing:
    durable to record. The allowlist is the output of this rule, not a
    curated list, so admitting a new host is a factual question rather
    than a policy argument.
+   *(Amended 2026-09-06 by [ADR-024](#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition):
+   the claims are verified from the forge's token directly, by the
+   write path. Fulcio's copy of them in a certificate must agree, but
+   it is not what decides admission — so admissibility is bounded by
+   this rule and not by the issuers Fulcio accepts.)*
 
 4. **Ownership is checked per publish, and the signing subject is
    recorded — as an identifier pair, never as a name.** To publish
    `github.com/alice/widgets@1` the signing certificate must carry
-   `repository = alice/widgets`. There is no account, no name
+   `repository = alice/widgets` *(ADR-024: the forge's token must carry
+   it, verified by the write path; a certificate accompanying the upload
+   must agree)*. There is no account, no name
    reservation, and no squatting policy, because a name nobody can prove
    they own is a name nobody can publish. But the namespace check alone
    cannot tell a legitimate transfer from a hostile one — see the
@@ -2518,3 +2531,194 @@ amendment in the gap document point here; `DIVERGENCE.md` carries the
 embedding-surface entry when P4 lands. A future phase that adds a
 reflection surface, a file-merge dependency or an interpolation syntax
 supersedes this entry rather than amending a row.
+
+---
+
+## ADR-024 — The forge's token authorises a publish, and Sigstore is one provider of the proof, not its definition
+
+**Date:** 2026-09-06
+**Status:** Accepted
+
+### Context
+
+[ADR-019](#adr-019--the-project-stores-module-bytes-and-federates-the-log)'s
+constraint 6 federated identity, signing and the log to Sigstore, and
+its consequences adopted Sigstore "for tooling reuse and forensics",
+with no safety claim made on it. The design note's §6 lists six
+components — Fulcio, Rekor v2, the bundle, `cosign`, the TUF trust
+root, the conformance suite — and reads as one dependence. Asked what
+the dependence actually *is*, it separates into four kinds, and they
+are not equally deep.
+
+**Formats.** The log is C2SP `tlog-tiles` with `sumdb/note`
+checkpoints, which is Go's format and modern Certificate Transparency's
+before it is Sigstore's. The client in `aontu-lang/mod` is therefore
+provider-neutral already: it verifies Rekor v2, a self-hosted static
+log or a Sunlight log identically. What is Sigstore's own is the bundle
+envelope and the certificate extensions in which Fulcio relays the
+forge's claims — open specifications, and Sigstore's to change.
+
+**Services, at publish time.** Fulcio mints a certificate and Rekor
+records an entry when a package is published, and a client refreshes
+the Sigstore trust root. A locked build touches none of these
+(ADR-019, constraint 1), and a stored bundle carries its own inclusion
+proof, so a proof already stored verifies offline against an archived
+root.
+
+**Trust.** The forge is the root of identity either way. Fulcio is a
+notary: it turns an OIDC token that lives for minutes into a certificate
+that is durable and publicly logged. What that buys is the property
+`REPOSITORY.0.md` §8.0 rests on — the publisher signs with a key the
+operator never holds, so a compromised bucket, Worker or provider can
+withhold bytes but cannot make wrong bytes verify. What it costs is
+§8.4's: a Fulcio compromise mints a certificate for any identity, with
+no second opinion.
+
+**Tooling.** `cosign` for publishers, `sigstore-js` and `sigstore-go`
+in the two ports, the conformance suite in CI. These are heavy for this
+project, which has taken seven dependencies in its life and declined an
+eighth on install size
+([ADR-023](#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired));
+`sigstore-js` carries a large transitive tree of its own.
+
+Two couplings were in the design and recorded nowhere.
+[ADR-020](#adr-020--a-module-path-is-domainpath-and-the-domain-is-a-proved-namespace)'s
+admission rule was written against the claims Fulcio records in a
+certificate, so tier-A admissibility was silently bounded by the OIDC
+issuers Fulcio accepts and not only by the rule the entry states. And
+the public log excludes private packages by construction (§10.3a),
+while the local registry of §10.7 serves packages that carry no bundle
+at all — so two of the design's three deployment modes already had no
+Sigstore path, and nothing said what verification meant for them.
+
+Underneath both sits one conflation. §3a says "the Sigstore certificate
+accompanying the upload must carry `repository = alice/widgets`": the
+decision to *admit* a publish was being taken from a certificate. npm
+and PyPI trusted publishing take it from the forge's own OIDC token,
+verified directly against the forge's published keys, and use Sigstore
+only for the provenance attestation that travels with the artifact.
+Authorisation and attestation are different acts, and separating them
+removes Fulcio from the admission path at no cost.
+
+Living without Sigstore altogether is possible, and its shape is known:
+the write path verifies the token, the repository signs the manifest
+with a key of its own, and a static `tlog-tiles` log in the bucket
+carries first observation. That is
+[ADR-013](#adr-013--the-project-operates-one-transparency-log-and-nothing-else)'s
+design plus storage — the Go model, operated by us — and it gives up
+exactly what ADR-019 federated to obtain: an integrity root outside the
+operator, and no keys to hold. Reopening that would be the third
+reversal of one axis in a week. The right move is to make the dependence
+one on an interface the project owns, so that Sigstore is a provider of
+it rather than its definition.
+
+### Decision
+
+**A publish is authorised from the forge's own token, verified directly.
+What a client verifies on first acquisition is stated in the project's
+own terms, and a Sigstore bundle is one encoding of it.**
+
+Five parts:
+
+1. **Authorisation is the forge's token.** The write path verifies the
+   OIDC token against the forge's published key set and reads from it
+   the namespace claim, the identifier pair, the trigger and the runner
+   environment. ADR-020's admission rule, the subject pair of
+   `REPOSITORY.0.md` §7.6 and the trusted-trigger requirement of its
+   §8.1 are all decided from the token, never from a certificate. Fulcio
+   is not on the authorisation path, so a host is tier-A admissible
+   under ADR-020's rule alone; which attestation providers can serve it
+   is a separate fact.
+
+2. **A proof is verified under a contract the project owns.** A client
+   accepts a package version on first acquisition when three things
+   hold: the manifest — the archive digest, the file manifest and the
+   canon-hash of each module — is signed; the signer is an identity the
+   proof names, and the client's trust configuration accepts that
+   identity for the package's name; and, where the trust configuration
+   requires it, an inclusion proof places the signed manifest in a
+   `tlog-tiles` log whose checkpoint key the client trusts, checked by
+   the client `aontu-lang/mod` already is. Nothing in the contract names
+   Sigstore, Fulcio or Rekor.
+
+3. **A Sigstore bundle is one encoding of the proof.** For a public
+   tier-A package the default provider is the Sigstore public-good
+   instance: identity from Fulcio, the log Rekor v2, the envelope the
+   bundle, stored verbatim beside the archive as §2 says, and the
+   certificate's claims required to agree with the token's. The provider
+   sits behind the same injected seam the fetch path uses, and its
+   verifier — `sigstore-js` and `sigstore-go`, or something narrower — is
+   held to differential vectors from a pinned reference exactly as the
+   log client is.
+
+4. **The contract admits more than one provider, and a second proves
+   the seam before the first third-party publish.** The second is the
+   minimal one the design already needs: a signature by a named key,
+   with no log, which is what the local registry of §10.7 serves and
+   what a private package under §10.3a can carry. Its trust entry names
+   the key. Whether that provider ever gains a log is §13's
+   private-provenance question; a project-operated log would reverse
+   ADR-019's constraint 6 and needs its own entry, and nothing here
+   decides it.
+
+5. **The exit is a provider swap.** A change in the public instance's
+   terms, formats, issuer list or availability is answered by another
+   provider under the same contract, never by a change to what a client
+   verifies. Publishing over a provider stops when that provider does;
+   builds, and verification of proofs already stored, do not.
+
+### Consequences
+
+**We accept ordinary token hygiene on the write path.** Key-set refresh,
+an audience bound to the repository, expiry and replay checks, clock
+skew. The write path already authenticates publishers under ADR-019;
+this changes what it verifies, not that it does.
+
+**We accept that the operator-independent signature is a property of a
+provider, not of the contract.** Under the Sigstore provider a
+compromised Worker cannot make wrong bytes verify, which is §8.0's
+property intact. Under a key provider whose key the operator holds, it
+can — and any name trusted to such a key is trusted to whoever holds it.
+The trust configuration is where that is visible, which is why §10.7's
+rule that routing and trust are separate lists is load-bearing here
+rather than a tidiness.
+
+**We accept two things the client must carry.** The Sigstore trust root
+for the first provider, refreshed through TUF, and a trust configuration
+that names acceptable signers per name pattern. Its default for a public
+name is the forge identity via Fulcio with inclusion required, and that
+default is what makes first-acquisition verification mandatory (§8.0)
+rather than a signal whose absence means nothing.
+
+**We accept a specification to write, in the public repository.** The
+manifest is an aontu document, under `CLI.0.md` §5's rule that the
+toolchain invents no formats. The proof's fields and the trust
+configuration's shape are specified in `aontu-lang/mod`, beside the leaf
+and checkpoint specification the
+[G10](docs/capability-review/g10-transparency.md) split already places
+there — because they are what a client relies on to verify, and the
+split's one hard rule is that nothing of that kind lives in
+`aontu-lang/system`. The write path's token verification and the roster
+of providers the service offers are operational and stay in `system`.
+The second provider needs no envelope invented for it: a detached
+signature over the manifest is the whole of it.
+
+**What this does not license.** It does not reverse ADR-019's
+constraint 6: the project operates no log. It makes no safety claim on
+any signature — ADR-019's finding that provenance is forensics stands.
+It does not admit network resolution of a module path (ADR-020, part
+1). It does not weaken
+[ADR-002](#adr-002--test-coverage-stays-at-100--in-both-implementations):
+each provider reaches the floor through the seam, or does not land. And
+it does not decide private-package provenance, which stays §13's
+question.
+
+**Enforcement.** ADR-019's constraint 6 and ADR-020's parts 3 and 4
+carry inline notes pointing here. `REPOSITORY.0.md` §3a, §6, §7.6 and
+§8.4 carry dated amendments in `aontu-lang/system`, and its README
+records the change. The G10 boundary gains "no provider-specific
+verification contract"; the G6 boundary's signing bullet is annotated;
+the register's G10 section records this entry without moving a row. A
+phase-3 implementation whose client verifies a bundle outside the
+contract, or whose write path decides admission from a certificate,
+breaches this entry.
