@@ -56,6 +56,11 @@ entity: [
     class: "Planet"
     table: "planets"
     controller: "planets"
+    controller_class: "PlanetsController"
+
+    # ROOT means nothing owns it. Stated on both entities, because a
+    # rule cannot read the absence of a key.
+    root: true
     param: "planet_id"
     title: "Planet"
     plural: "Planets"
@@ -72,13 +77,52 @@ entity: [
     ui_item_helper: "planet"
 
     field: [
-      { name:"id" json:"id" kind:"string" required:true pk:true }
-      { name:"name" json:"name" kind:"string" required:true pk:false }
-      { name:"kind" json:"kind" kind:"string" required:true pk:false }
-      { name:"diameter" json:"diameter" kind:"float" required:true pk:false }
-      { name:"terraform_state" json:"terraformState" kind:"string" pk:false }
-      { name:"forbid_state" json:"forbidState" kind:"string" pk:false }
-      { name:"forbid_reason" json:"forbidReason" kind:"string" pk:false }
+      { name:"id" json:"id" kind:"string" required:true pk:true write:true }
+      {
+        name: "name"
+        json: "name"
+        kind: "string"
+        required: true
+        pk: false
+        write: true
+      }
+      {
+        name: "kind"
+        json: "kind"
+        kind: "string"
+        required: true
+        pk: false
+        write: true
+      }
+      {
+        name: "diameter"
+        json: "diameter"
+        kind: "float"
+        required: true
+        pk: false
+        write: true
+      }
+      {
+        name: "terraform_state"
+        json: "terraformState"
+        kind: "string"
+        pk: false
+        write: false
+      }
+      {
+        name: "forbid_state"
+        json: "forbidState"
+        kind: "string"
+        pk: false
+        write: false
+      }
+      {
+        name: "forbid_reason"
+        json: "forbidReason"
+        kind: "string"
+        pk: false
+        write: false
+      }
     ]
 
     # THE SEED ROWS FOR THIS ENTITY, each carrying its class. The join
@@ -102,29 +146,44 @@ entity: [
     action: [
       {
         name: "terraform"
+        entity_title: "Planet"
+        entity_param: "planet_id"
         path: "/api/planet/:planet_id/terraform"
         controller: "planets"
         state: "terraform_state"
         initial: "idle"
 
-        # KEEP means the current value is the starting point, so an
-        # action with no flag set leaves the record as it was.
-        keep: true
+        # KEEP: the record's current value is the starting point, so an
+        # action with no flag set leaves it as it was. A list rather
+        # than a flag, because the conditional IS the selection: forbid
+        # keeps nothing and writes no line.
+        keep: [field:"terraform_state"]
+        reasons: []
         accept: [{ name:"start" kind:"boolean" } { name:"stop" kind:"boolean" }]
-        rule: [{ when:"start" then:"terraforming" } { when:"stop" then:"idle" }]
+
+        # LOWEST PRIORITY FIRST. The generated form is a sequence of
+        # assignments and the last one wins, so a rule listed later
+        # beats one listed earlier: `{start: true, stop: true}` is
+        # terraforming, as the reference's if/elsif makes it.
+        rule: [{ when:"stop" then:"idle" } { when:"start" then:"terraforming" }]
       }
       {
         name: "forbid"
+        entity_title: "Planet"
+        entity_param: "planet_id"
         path: "/api/planet/:planet_id/forbid"
         controller: "planets"
         state: "forbid_state"
         initial: "allowed"
 
-        # Not KEEP: an unforbidden planet is allowed, whatever it was.
-        keep: false
-        reason: "forbid_reason"
+        # Keeps nothing: an unforbidden planet is allowed, whatever it
+        # was before.
+        keep: []
+
+        # The reason a flag carries with it, and the field it lands in.
+        reasons: [{ field:"forbid_reason" flag:"forbid" from:"why" }]
         accept: [{ name:"forbid" kind:"boolean" } { name:"why" kind:"string" }]
-        rule: [{ when:"forbid" then:"forbidden" from:"why" }]
+        rule: [{ when:"forbid" then:"forbidden" }]
       }
     ]
   }
@@ -134,6 +193,8 @@ entity: [
     class: "Moon"
     table: "moons"
     controller: "moons"
+    controller_class: "MoonsController"
+    root: false
     param: "moon_id"
     title: "Moon"
     plural: "Moons"
@@ -154,6 +215,12 @@ entity: [
     parent_class: "Planet"
     parent_param: "planet_id"
     parent_controller: "planets"
+    parent_title: "Planet"
+
+    # The association on the parent that reaches this entity: a moon is
+    # found in `planet.moons` and nowhere else, which is the cascade
+    # seen from the outside.
+    parent_has: "moons"
 
     # AN INDEX ROW CARRIES ITS OWN TABLE. Everything a generated line
     # needs must be on the node the line's rule matched: a nested
@@ -168,8 +235,15 @@ entity: [
     children: []
 
     field: [
-      { name:"id" json:"id" kind:"string" required:true pk:true }
-      { name:"name" json:"name" kind:"string" required:true pk:false }
+      { name:"id" json:"id" kind:"string" required:true pk:true write:true }
+      {
+        name: "name"
+        json: "name"
+        kind: "string"
+        required: true
+        pk: false
+        write: true
+      }
       {
         name: "planet_id"
         json: "planet_id"
@@ -177,9 +251,24 @@ entity: [
         required: true
         fk: true
         pk: false
+        write: true
       }
-      { name:"kind" json:"kind" kind:"string" required:true pk:false }
-      { name:"diameter" json:"diameter" kind:"float" required:true pk:false }
+      {
+        name: "kind"
+        json: "kind"
+        kind: "string"
+        required: true
+        pk: false
+        write: true
+      }
+      {
+        name: "diameter"
+        json: "diameter"
+        kind: "float"
+        required: true
+        pk: false
+        write: true
+      }
     ]
 
     action: []
@@ -191,12 +280,31 @@ entity: [
 # `{error, message}` with the reference's own wording: test 13 reads
 # the name and looks for "not found" in the message, so the shape and
 # the sentence are both part of the API.
+# THE MESSAGE IS A FORMAT AND ITS ARGUMENTS, not a sentence with the
+# target's interpolation already in it: `%s` is what every language
+# this could generate spells the same way, and `args` names what each
+# hole is FOR. The sentences are the reference's, because its test 13
+# looks for "not found" in the message.
 error: [
-  { name:"NotFoundError" status:404 message:"ENTITY with id 'ID' not found" }
-  { name:"ValidationError" status:400 message:"FIELDS" }
+  {
+    name: "NotFoundError"
+    method: "not_found"
+    status: 404
+    format: "%s with id '%s' not found"
+    args: ["entity" "id"]
+  }
+  {
+    name: "ValidationError"
+    method: "invalid"
+    status: 400
+    format: "%s"
+    args: ["detail"]
+  }
   {
     name: "ConflictError"
+    method: "conflict"
     status: 409
-    message: "ENTITY with id 'ID' already exists"
+    format: "%s with id '%s' already exists"
+    args: ["entity" "id"]
   }
 ]
