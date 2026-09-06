@@ -1602,8 +1602,34 @@ and the release is cut only after the plan's validation system —
 rendered by `aontu render` (RENDER.0.md §10) — passes. G9 therefore
 completes at RENDER P8, **which landed on 2026-09-06**: every phase
 below is LANDED or RETIRED but phase 0, whose three remaining defects
-are recorded against it. What is left before the release is the
-validation system, not a phase of this capability.
+are recorded against it.
+
+**THE VALIDATION SYSTEM PASSES, 2026-09-06.** `test/system/rb-solar/`
+is a Ruby on Rails 8 implementation of the reference Solar System API
+and a human UI over the same data, generated from one `model.aon` by
+eight generators, and `check.sh` is ten checks green — including the
+reference repository's OWN `validate.ts`, unmodified, all twenty of its
+tests, against the booted app. What is hand-written is only what the
+model does not decide. Every render phase is exercised by it: P3 and P4
+render the fragment units a Rails file is made of, P6's `replace`/`esc`
+and `form` are what a controller and a migration need, P7's coverage
+names what the model states and nothing reads, and P8 is how seven of
+the eight generators are written — Ruby files that `ruby -c` parses.
+
+It found four things, which is what it exists for:
+[BUGS.md §88](../../use-cases/BUGS.md) (an `emit` rule's `match` admits
+a node the key is ABSENT from, where `filter` refuses it — twice, as a
+migration with no columns and a diagram marking every column a foreign
+key, neither reported), [§89](../../use-cases/BUGS.md) (a relative
+reference does not resolve inside a call's argument in a body,
+silently), that a placeholder inherits the target's lexical rules
+(`def METHOD(ARGS)` is a Ruby syntax error, so the generator stopped
+being a valid Ruby file), and that **`--coverage` measures one
+document's reads** — a model read by nine generators has no single
+coverage report, and the measure that means anything is the
+intersection. It also retired one of its own planned legs: the Ruby
+SDK's live tests pass with the server turned off, so the SDK leg is the
+SDK's real client with assertions that fail.
 
 | Phase | Size | Status | Pin |
 |-------|------|--------|-----|

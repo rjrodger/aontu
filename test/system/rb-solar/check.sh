@@ -25,7 +25,20 @@ n=0
 fails=0
 server_pid=""
 
+# KILL THE SERVER BY ITS OWN PID FILE. `$!` is the subshell and
+# `bin/rails server` forks puma below it, so killing either can leave
+# the other holding the port -- and the next run then refuses to start,
+# which is how this was found. Rails writes the pid it actually listens
+# on to `tmp/pids/server.pid`; that is the one to send TERM to.
 cleanup() {
+  pidfile="$DIR/app/tmp/pids/server.pid"
+  if [ -f "$pidfile" ]; then
+    kill "$(cat "$pidfile")" 2>/dev/null
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null || break
+      sleep 1
+    done
+  fi
   if [ -n "$server_pid" ]; then
     kill "$server_pid" 2>/dev/null
     wait "$server_pid" 2>/dev/null
@@ -205,6 +218,24 @@ else
         ok "the reference's 20 validation tests pass against the generated app"
       else
         fail "the reference's validation failed (see work/validate.out)"
+      fi
+
+      # --- the reference's own Ruby SDK ------------------------------
+      #
+      # A client generated from the same API description, driving this
+      # implementation. NOT the SDK's own suite: that runs 246 cases
+      # and passes WITH THE SERVER OFF -- its live mode is lenient by
+      # design and two HTTP requests reach the app in a whole run.
+      # `ref/sdk_live.rb` is the same client with assertions that fail.
+      if [ -n "${RB_SOLAR_SDK:-}" ] && [ -f "$RB_SOLAR_SDK/Solardemo_sdk.rb" ]; then
+        if RB_SOLAR_BASE="http://127.0.0.1:$PORT" \
+           ruby "$DIR/ref/sdk_live.rb" >"$WORK/sdk.out" 2>&1; then
+          ok "the reference's Ruby SDK drives the generated app (13 assertions)"
+        else
+          fail "the Ruby SDK check failed (see work/sdk.out)"
+        fi
+      else
+        skip "the reference's Ruby SDK drives the app (set RB_SOLAR_SDK to the reference repo's rb/)"
       fi
 
       # The human side of the same data.
