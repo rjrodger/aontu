@@ -77,7 +77,7 @@ function filled(val: any, ctx: AontuContext): boolean {
 function memberVals(data: any, ctx: AontuContext): Val[] | undefined {
   const members = bagMembers(data, ctx)
   return undefined === members ? undefined : members.map((m) => m.val)
-}
+} /* node:coverage ignore next 6 */
 
 
 export {

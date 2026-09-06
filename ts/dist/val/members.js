@@ -48,5 +48,5 @@ function filled(val, ctx) {
 function memberVals(data, ctx) {
     const members = bagMembers(data, ctx);
     return undefined === members ? undefined : members.map((m) => m.val);
-}
+} /* node:coverage ignore next 6 */
 //# sourceMappingURL=members.js.map
