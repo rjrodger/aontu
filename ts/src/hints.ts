@@ -195,6 +195,11 @@ const hints: Record<string, string> = {
 
   view_kind_unknown: 'The figure kind is not one the verb draws. The kinds are tree, matrix,\ngraph, layer, sets, layers, ladder and poset; the note lists them.',
 
+  render_path: 'A unit path is written below the output directory: relative, with no\n`..` segment, and no two units the same. Rename the unit.',
+  render_lang: 'A text escape carries verbatim syntax of ONE language, and it must be\nthe unit\'s: a text of another language in this unit would be written\nas if it were this one. Move it to a unit of its own language.',
+  render_profile: 'Only fragments and text escapes render without a lowering, under the\ntext profile. A record, enum, alias, const or func needs a profile\nwhose language has one (typescript, go): set the unit\'s lang, or\nwrite the declaration as a fragment.',
+  render_strict: 'Under strict, an opaque escape -- a text declaration or a raw piece,\nwhich the renderer cannot check -- is refused. Write it as lines, or\nrender without strict and read the loss report.',
+  render_unit: 'The unit asked for is not in the instance. The report names the\npath; the units are listed by `--format json`.',
   view_profile_unknown: 'The figure kind does not render into the profile asked for: there is no\ntext form of a node-link drawing and no Mermaid form of a matrix. The\nnote lists the profiles the kind declares; the first is its default.',
 
   format_check: 'The formatted text is not the same document, so nothing was written.\nThis is a formatter defect: please report it, with the source.',
@@ -541,6 +546,15 @@ const codeClasses: Record<string, string> = {
   view_profile_unknown: 'reference',
   view_style_profile: 'reference',
   view_style_unknown: 'reference',
+  // The renderer (docs/design/RENDER.0.md D7, D8): a unit path that is
+  // not a relative descent of its own, a text escape in the wrong
+  // language, a declaration with no lowering, an opaque escape under
+  // strict, a unit filter that names nothing.
+  render_path: 'parse',
+  render_lang: 'conflict',
+  render_profile: 'parse',
+  render_strict: 'conflict',
+  render_unit: 'reference',
   // The formatter's self-check (docs/design/FMT.0.md): a report-layer
   // code, class internal -- the formatter, not the document, is wrong.
   format_check: 'internal',

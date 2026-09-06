@@ -456,6 +456,18 @@ function runRow(row) {
         Assert.strictEqual((0, aontu_1.exactJSON)(null == report.errors
             ? report : { ...report, errors: stripProse(report.errors) }), (0, aontu_1.exactJSON)(golden), `view report mismatch: ${row.name}`);
     }
+    else if ('render' === row.mode) {
+        // THE RENDERER (docs/design/RENDER.0.md D10): every unit's bytes,
+        // the loss report, or the refusal. The options ride `expect.ask`
+        // as view's do, since the same document renders differently under
+        // a profile, a unit filter or strict.
+        const golden = JSON.parse(row.expect);
+        const ask = golden.ask ?? {};
+        delete golden.ask;
+        const report = (0, aontu_2.render)(row.src, ask);
+        Assert.strictEqual((0, aontu_1.exactJSON)(null == report.errors
+            ? report : { ...report, errors: stripProse(report.errors) }), (0, aontu_1.exactJSON)(golden), `render report mismatch: ${row.name}`);
+    }
     else if ('views' === row.mode) {
         // THE VIEW DOCUMENT (VIEWS.0.md, "6. The view document"): N figures
         // of one document, declared as data, compared as one report --

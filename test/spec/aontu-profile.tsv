@@ -25,3 +25,12 @@ profile-indent-width-over-bound	errc	@"aontu:profile"\nprofile: { lang: "python"
 profile-unknown-key-refused	errc	@"aontu:profile"\nprofile: { lang: "python", indent: {}, tabs: true }	closed
 profile-lowering-unknown-refused	errc	@"aontu:profile"\nprofile: { lang: "python", indent: {}, lowering: "ruby" }	empty
 profile-case-unknown-refused	errc	@"aontu:profile"\nprofile: { lang: "python", indent: {}, ident: { case: { field: "shouting" } } }	empty
+#
+# THE TEXT PROFILE (RENDER.0.md D5; RENDER P3): aontu:lang/text, the
+# bundled profile every fragment-only unit falls back to -- indentation
+# and nothing else, since a fold over fragments applies nothing else.
+# It includes the vocabulary and vets under it; the hash pins the bytes
+# in both engines, and the generated form shows the defaults the
+# vocabulary fills in.
+text-profile-hash	hash	@"aontu:lang/text"	aon1-lPF9SwuERQ3MEsYWbXW2x5m9Yt6-TgzTQK5vftKghow
+text-profile-generates	gens	@"aontu:lang/text"	{"profile":{"ident":{"chars":"ascii-word"},"indent":{"unit":" ","width":2},"lang":"text","str":{"escape":{},"quote":"\\""},"types":{"list":{"childPrec":0,"close":"","open":"","prec":9},"lit":{"childPrec":0,"close":"","open":"","prec":9},"map":{"childPrec":0,"close":"","open":"","prec":9},"opt":{"childPrec":0,"close":"","open":"","prec":9},"union":{"childPrec":0,"close":"","open":"","prec":9}}}}

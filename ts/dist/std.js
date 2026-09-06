@@ -361,12 +361,28 @@ const STD_PROFILE = String.raw `# aontu:profile --- THE PROFILE VOCABULARY. A pr
 
 profile: %profile
 `;
+// The text profile (RENDER.0.md D5): the profile of a fragment-only
+// unit, and the fallback of every language without a lowering.
+const STD_LANG_TEXT = String.raw `# aontu:lang/text --- THE TEXT PROFILE. The profile of a unit whose
+# declarations are fragments and text escapes only: indentation, and
+# nothing else, since a fold over fragments applies nothing else. Every
+# language without a lowering renders under it (docs/design/RENDER.0.md
+# D5), and a reference inline renders as its name, verbatim.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+
+@"aontu:profile"
+
+profile: { lang:"text" indent:{ unit:" " width:2 } }
+`;
 exports.STD_SOURCES = {
     'std/system': STD_SYSTEM,
     'std/system.aon': STD_SYSTEM,
     'std/view': STD_VIEW,
     'std/view.aon': STD_VIEW,
     'aontu:code': STD_CODE,
+    'aontu:lang/text': STD_LANG_TEXT,
     'aontu:profile': STD_PROFILE,
 };
 // The scheme of a language-supplied model, and the names it serves --

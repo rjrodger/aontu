@@ -98,7 +98,7 @@ import {
 } from '../dist/aontu'
 import { jsonSchema } from '../dist/jsonschema'
 import { reachCheck } from '../dist/reach'
-import { view, viewSet } from '../dist/aontu'
+import { view, viewSet, render } from '../dist/aontu'
 import { codeClasses } from '../dist/hints'
 import { IntegerVal } from '../dist/val/IntegerVal'
 import { StringVal } from '../dist/val/StringVal'
@@ -527,6 +527,22 @@ function runRow(row: Omit<Row, 'file'> & { file?: string }): void {
         ? report : { ...report, errors: stripProse(report.errors) }),
       exactJSON(golden),
       `view report mismatch: ${row.name}`)
+  }
+  else if ('render' === row.mode) {
+    // THE RENDERER (docs/design/RENDER.0.md D10): every unit's bytes,
+    // the loss report, or the refusal. The options ride `expect.ask`
+    // as view's do, since the same document renders differently under
+    // a profile, a unit filter or strict.
+    const golden = JSON.parse(row.expect)
+    const ask = golden.ask ?? {}
+    delete golden.ask
+
+    const report = render(row.src, ask)
+    Assert.strictEqual(
+      exactJSON(null == report.errors
+        ? report : { ...report, errors: stripProse(report.errors) }),
+      exactJSON(golden),
+      `render report mismatch: ${row.name}`)
   }
   else if ('views' === row.mode) {
     // THE VIEW DOCUMENT (VIEWS.0.md, "6. The view document"): N figures

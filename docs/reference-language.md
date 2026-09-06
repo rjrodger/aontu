@@ -2388,7 +2388,7 @@ the set. Write this as `nope.aon`:
 <!-- test: run -->
 ```sh
 $ aontu nope.aon
-source not found: aontu:nope (the language-supplied models are aontu:code, aontu:profile)
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/text, aontu:profile)
 $ echo $?
 1
 ```
@@ -2414,7 +2414,15 @@ identifier rules and the type forms. A profile is data and only data:
 a field belongs in it only if the renderer applies it without looking
 at the shape of any node.
 
-Both are **experimental** until the vocabulary can be versioned by
+**`aontu:lang/text`** is the one bundled profile: `lang: "text"`, an
+indent of two spaces, and nothing else, since a fold over fragments
+applies nothing else. Every unit whose declarations are fragments and
+text escapes renders under it whatever its `lang` says, so a Python
+module, a YAML manifest or a `Makefile` needs no profile of its own; a
+unit with a declaration needs a profile whose language has a lowering,
+and until one ships is refused (`render_profile`).
+
+All three are **experimental** until the vocabulary can be versioned by
 canon-hash.
 
 ### The `std/system` vocabulary

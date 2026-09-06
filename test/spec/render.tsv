@@ -1,0 +1,77 @@
+# THE RENDERER -- aontu render (docs/design/RENDER.0.md; RENDER P3, the
+# fragment fold). A document is evaluated, the value at `ask.at` (the
+# root by default) is vetted against the bundled aontu:code vocabulary,
+# and code.units is folded into bytes: one string per unit, the loss
+# report, or the refusal.
+# Columns: name<TAB>render<TAB>src<TAB>{"ask": {at?, profiles?, unit?, strict?}, "verdict", "units", "lossy"} -- or "errors" on error
+#
+# The options ride `expect.ask` as view's do: the same document renders
+# differently under a caller-supplied profile, a unit filter, or strict.
+# Newlines in a unit's text are written \n, which the runner's escape
+# pass expands. Every expectation was obtained by running BOTH engines
+# and diffing.
+#
+# THE FOLD (D2, D3, D6). A bare string piece is a line at depth 0; a
+# line is pad(at) + text + LF, and an empty text emits no pad; a blank
+# is its terminators alone; a raw block's lines each get the pad unless
+# reindent is false; nothing is trimmed. The unit is fragment-only, so
+# it renders under aontu:lang/text, whose indent is two spaces.
+render-empty-instance	render	code: { units: [] }	{"verdict":"ok","units":[],"lossy":[]}
+render-no-code-key	render	x: 1	{"verdict":"ok","units":[],"lossy":[]}
+render-empty-unit	render	code: units: [{ path: "a.txt", lang: "text", decls: [] }]	{"verdict":"ok","units":[{"path":"a.txt","lang":"text","text":""}],"lossy":[]}
+render-string-piece	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["hello"] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"hello\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-line-at-depth	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["a:", { k: "line", at: 1, of: ["b:"] }, { k: "line", at: 2, of: ["c"] }] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"a:\\n  b:\\n    c\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-line-joins-its-pieces	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: [{ k: "line", of: ["x = ", "1"] }] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"x = 1\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-ref-inline-is-its-name	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: [{ k: "line", of: ["x: ", { k: "ref", name: "Name" }] }] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"x: Name\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-empty-line-has-no-pad	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: [{ k: "line", at: 2, of: [""] }, { k: "line", at: 2, of: ["x"] }] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"\\n    x\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-blank-run	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["a", { k: "blank" }, "b", { k: "blank", n: 2 }, "c"] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"a\\n\\nb\\n\\n\\nc\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-trailing-whitespace-is-kept	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["a  ", "  "] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"a  \\n  \\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+#
+# RAW (D6): re-indented to its depth line by line, an empty interior
+# line unpadded, a trailing terminator not doubled; reindent false emits
+# at column 0 verbatim. Common leading indentation is never stripped.
+# Tier 3: the renderer checks nothing in it.
+render-raw-reindented	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["a", { k: "raw", at: 1, text: "b\\n\\n  c\\n" }] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"a\\n  b\\n\\n    c\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"},{"unit":"a.txt","path":"$.code.units.0.decls.0.of.1","tier":3,"construct":"raw","reason":"verbatim text: the renderer re-indents it and checks nothing else"}]}
+render-raw-verbatim	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: [{ k: "raw", at: 1, text: "b\\n  c", reindent: false }] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"b\\n  c\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"},{"unit":"a.txt","path":"$.code.units.0.decls.0.of.0","tier":3,"construct":"raw","reason":"verbatim text: the renderer re-indents it and checks nothing else"}]}
+#
+# THE ACCEPTANCE CASE (the second amendment's Python class: two nesting
+# levels, a ref inline, a blank, a raw at reindent false), byte for
+# byte in both ports. Python has no bundled profile: the unit is
+# fragment-only, so it renders under the text profile, with the unit's
+# inline profile widening the indent to four.
+render-python-class	render	code: units: [{ path: "planet.py", lang: "python", profile: { indent: { width: 4 } }, decls: [{ k: "frag", of: ["class Planet:", { k: "line", at: 1, of: ["name = ", { k: "ref", name: "Name" }] }, { k: "blank" }, { k: "raw", at: 1, text: "def f():\\n    pass", reindent: false }] }] }]	{"verdict":"lossy","units":[{"path":"planet.py","lang":"python","text":"class Planet:\\n    name = Name\\n\\ndef f():\\n    pass\\n"}],"lossy":[{"unit":"planet.py","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about python syntax"},{"unit":"planet.py","path":"$.code.units.0.decls.0.of.3","tier":3,"construct":"raw","reason":"verbatim text: the renderer re-indents it and checks nothing else"}]}
+#
+# A LINE ASSEMBLED BY join, AND A UNIT WRITTEN BY emit: the renderer
+# reads generate() output, so the lines a transform computes are the
+# lines it renders.
+render-line-from-join	render	cols: [id, name]\ncode: units: [{ path: "q.sql", lang: "sql", decls: [{ k: "frag", of: ["select " + join($.cols, ", ") + " from t"] }] }]	{"verdict":"lossy","units":[{"path":"q.sql","lang":"sql","text":"select id, name from t\\n"}],"lossy":[{"unit":"q.sql","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about sql syntax"}]}
+render-lines-from-emit	render	svc: hide([{ n: a }, { n: b }])\ncode: units: [{ path: "s.yaml", lang: "yaml", decls: [{ k: "frag", of: emit($.svc, [{ match: { n: string }, body: ["- " + .n] }]) }] }]	{"verdict":"lossy","units":[{"path":"s.yaml","lang":"yaml","text":"- a\\n- b\\n"}],"lossy":[{"unit":"s.yaml","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about yaml syntax"}]}
+#
+# UNITS, IN ORDER; the text escape, tier 3, verbatim.
+render-two-units-in-order	render	code: units: [{ path: "b.txt", lang: "text", decls: [{ k: "frag", of: ["b"] }] }, { path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["a"] }] }]	{"verdict":"lossy","units":[{"path":"b.txt","lang":"text","text":"b\\n"},{"path":"a.txt","lang":"text","text":"a\\n"}],"lossy":[{"unit":"b.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"},{"unit":"a.txt","path":"$.code.units.1.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-text-escape	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "text", lang: "text", text: "verbatim\\n" }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"verbatim\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":3,"construct":"text","reason":"verbatim text: the renderer checks nothing in it"}]}
+#
+# THE OPTIONS. `at` renders the value at a path; `unit` renders one
+# unit; `profiles` supplies a profile by lang, taken before the bundled
+# set; `strict` refuses tier 3 and only tier 3.
+render-at-path	render	gen: { code: { units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x"] }] }] } }	{"ask":{"at":"$.gen"},"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"x\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-unit-filter	render	code: units: [{ path: "a.txt", lang: "text", decls: [] }, { path: "b.txt", lang: "text", decls: [] }]	{"ask":{"unit":"b.txt"},"verdict":"ok","units":[{"path":"b.txt","lang":"text","text":""}],"lossy":[]}
+render-supplied-profile	render	code: units: [{ path: "a.rb", lang: "ruby", decls: [{ k: "frag", of: [{ k: "line", at: 1, of: ["x"] }] }] }]	{"ask":{"profiles":[{"lang":"ruby","indent":{"unit":"\\t","width":1}}]},"verdict":"lossy","units":[{"path":"a.rb","lang":"ruby","text":"\\tx\\n"}],"lossy":[{"unit":"a.rb","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about ruby syntax"}]}
+render-inline-profile-over-supplied	render	code: units: [{ path: "a.rb", lang: "ruby", profile: { indent: { width: 2 }, banner: "x" }, decls: [{ k: "frag", of: [{ k: "line", at: 1, of: ["x"] }] }] }]	{"ask":{"profiles":[{"lang":"ruby","indent":{"unit":"\\t","width":1}}]},"verdict":"lossy","units":[{"path":"a.rb","lang":"ruby","text":"\\t\\tx\\n"}],"lossy":[{"unit":"a.rb","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about ruby syntax"}]}
+render-strict-passes-fragments	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x"] }] }]	{"ask":{"strict":true},"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"x\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-strict-refuses-text	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "text", lang: "text", text: "v\\n" }] }]	{"ask":{"strict":true},"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_strict","class":"conflict","severity":"error","path":"$.code.units.0.decls.0","sites":[]}]}
+#
+# THE REFUSALS (D7, D8). A unit path that is absolute, climbs, or
+# repeats another's; a text escape of another language; a declaration
+# with no lowering -- under a profile, and with no profile to be had; a
+# unit filter that names nothing; a document that does not stand up;
+# an instance the vocabulary refuses; an anchor that names nothing.
+render-path-absolute	render	code: units: [{ path: "/etc/a", lang: "text", decls: [] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_path","class":"parse","severity":"error","path":"$.code.units.0.path","sites":[]}]}
+render-path-climbs	render	code: units: [{ path: "a/../b", lang: "text", decls: [] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_path","class":"parse","severity":"error","path":"$.code.units.0.path","sites":[]}]}
+render-path-repeats	render	code: units: [{ path: "a", lang: "text", decls: [] }, { path: "a", lang: "text", decls: [] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_path","class":"parse","severity":"error","path":"$.code.units.1.path","sites":[]}]}
+render-lang-conflict	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "text", lang: "sql", text: "v" }] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_lang","class":"conflict","severity":"error","path":"$.code.units.0.decls.0.lang","sites":[]}]}
+render-profile-no-lowering	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "const", name: "x", value: 1 }] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_profile","class":"parse","severity":"error","path":"$.code.units.0.decls.0.k","sites":[]}]}
+render-profile-no-profile	render	code: units: [{ path: "a.py", lang: "python", decls: [{ k: "const", name: "x", value: 1 }] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_profile","class":"parse","severity":"error","path":"$.code.units.0.lang","sites":[]}]}
+render-unit-unknown	render	code: units: [{ path: "a.txt", lang: "text", decls: [] }]	{"ask":{"unit":"z.txt"},"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_unit","class":"reference","severity":"error","path":"$.code.units","sites":[]}]}
+render-document-does-not-stand-up	render	code: units: [{ path: "a.txt", lang: "text", decls: [] }]\nx: 1 & "a"	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"scalar_kind","class":"conflict","severity":"error","path":"$.x","sites":[{"col":8,"file":"","len":3,"role":"data","row":2,"src":"\\"a\\"","value":"\\"a\\""},{"col":4,"file":"","len":1,"role":"data","row":2,"src":"1","value":"1"}]}]}
+render-anchor-names-nothing	render	code: units: []	{"ask":{"at":"$.nope"},"verdict":"error","units":[],"lossy":[],"errors":[{"code":"no_path","class":"reference","severity":"error","path":"$","sites":[{"col":1,"file":"","len":4,"role":"data","row":1,"src":"code","value":"{\\"code\\":{\\"units\\":[]}}"}]}]}
