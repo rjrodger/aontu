@@ -46,6 +46,10 @@ import { ListVal } from './ListVal'
 import { FuncBaseVal, trialUnify } from './FuncBaseVal'
 import { repathInstance } from './Val'
 import { fillPlace } from './PlaceVal'
+import { bagMembers } from './members'
+
+
+type Member = { key: string, val: Val }
 
 
 class FilterFuncVal extends FuncBaseVal {
@@ -115,12 +119,15 @@ class FilterFuncVal extends FuncBaseVal {
       return undefined !== met && met.canon === child.canon
     }
 
+    // The candidates are the bag's MEMBERS -- what generation would
+    // emit (./members.ts, BUGS.md §79) -- so a hidden child is never
+    // selected into the result.
     if (true === data?.isMap) {
       const peg: Record<string, Val> = {}
-      for (const key of Object.keys(data.peg)) {
+      for (const { key, val } of bagMembers(data, ctx) as Member[]) {
         const kctx = ctx.descend(key)
-        if (keeps(data.peg[key], kctx)) {
-          peg[key] = data.peg[key].clone(kctx)
+        if (keeps(val, kctx)) {
+          peg[key] = val.clone(kctx)
         }
       }
       return new MapVal({ peg }, ctx)
@@ -128,7 +135,7 @@ class FilterFuncVal extends FuncBaseVal {
 
     if (true === data?.isList) {
       const peg: Val[] = []
-      for (const el of data.peg as Val[]) {
+      for (const { val: el } of bagMembers(data, ctx) as Member[]) {
         // The element context is the position it will END UP at, which
         // is its index in the RESULT: dropping the third of five moves
         // the fourth up, and a kept element must be pathed where it

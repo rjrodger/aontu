@@ -461,20 +461,36 @@ class RefVal extends FeatureVal_1.FeatureVal {
                         out.mark.hide = true;
                     }
                     // console.log('FOUND-B', out)
+                    // A REFERENCE LIFTS: the copy is concrete, its type and hide
+                    // marks cleared to the leaves -- a marked target is what the
+                    // author hid or typed, and a reference to it is the author
+                    // asking for it in the open. EXCEPT the snapshot a staged
+                    // verb takes of its data (`argsnap`: each, emit, filter,
+                    // pack, pick, join, the aggregates), when the target itself
+                    // is not marked: a member marked inside an unmarked bag was
+                    // hidden IN ITS OWN RIGHT, and the verb's enumeration
+                    // (ts/src/val/members.ts, BUGS.md §79) needs to see that
+                    // mark to leave the member out, as generation does. A marked
+                    // target lifts even there, or `each($.schema.entities, _)`
+                    // under `schema: hide({...})` would see every entity as
+                    // hidden, since hide() marks to the leaves.
+                    const lifted = true !== ctx.argsnap
+                        || true === out.mark.type || true === out.mark.hide;
                     out = out.clone(ctx);
-                    // if (this.mark.type || this.mark.hide) {
-                    (0, utility_1.walk)(out, (_key, val) => {
-                        val.mark.type = false;
-                        val.mark.hide = false;
-                        // THE LINK IS NOT CLEARED (G4 phase 3): a link says what a
-                        // value POINTS AT, and a copy of a link points at the same
-                        // thing. An ABSOLUTE address still names the same node from
-                        // the copy; a RELATIVE one is read from the copy's own
-                        // position, which is what makes a referenced model resolve
-                        // its internal links inside the copy (ADR-014).
-                        return val;
-                    });
-                    //}
+                    if (lifted) {
+                        (0, utility_1.walk)(out, (_key, val) => {
+                            val.mark.type = false;
+                            val.mark.hide = false;
+                            // THE LINK IS NOT CLEARED (G4 phase 3): a link says what
+                            // a value POINTS AT, and a copy of a link points at the
+                            // same thing. An ABSOLUTE address still names the same
+                            // node from the copy; a RELATIVE one is read from the
+                            // copy's own position, which is what makes a referenced
+                            // model resolve its internal links inside the copy
+                            // (ADR-014).
+                            return val;
+                        });
+                    }
                     // onsole.log('FOUND-C', out)
                 }
             }

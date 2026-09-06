@@ -59,7 +59,7 @@ import { StringVal } from './StringVal'
 import { FuncBaseVal } from './FuncBaseVal'
 import { arith } from './arith'
 import { cmpNumeric } from './numcmp'
-import { cmpCodePoint } from '../keyorder'
+import { memberVals } from './members'
 import { plusText } from './PlusOpVal'
 
 
@@ -70,21 +70,10 @@ type AggOp = 'sum' | 'least' | 'greatest'
 // order for a list, sorted-key order for a map -- `each`'s order, and
 // for the same reason (a map has no order of its own, so the language
 // picks one and states it).
-function bagChildren(data: any): Val[] | undefined {
-  if (true === data?.isList) {
-    return data.peg as Val[]
-  }
-  if (true === data?.isMap) {
-    // THE ONE MAP-KEY ORDER (../keyorder.ts), not a bare `.sort()`:
-    // JavaScript compares by UTF-16 code unit, so an astral key's
-    // leading surrogate sorts BELOW U+E000-U+FFFF and `pick` answered
-    // in a different order from `each`, from canon, and from Go --
-    // which sorts UTF-8 bytes, i.e. code points. `pick` is the
-    // order-preserving projection, so that was one model producing two
-    // different generated files (BUGS.md 62).
-    return Object.keys(data.peg).sort(cmpCodePoint).map((k: string) => data.peg[k])
-  }
-  return undefined
+// The members of the bag a fold reads: what generation would emit
+// (./members.ts, BUGS.md §79), in the one map-key order (BUGS.md §62).
+function bagChildren(data: any, ctx: AontuContext): Val[] | undefined {
+  return memberVals(data, ctx)
 }
 
 
@@ -140,7 +129,7 @@ class AggFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    const children = bagChildren(args?.[0])
+    const children = bagChildren(args?.[0], ctx)
 
     if (undefined === children) {
       return this.place(makeNilErr(ctx, 'aggregate_data', this, undefined,
@@ -265,7 +254,7 @@ class PickFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    const children = bagChildren(args?.[0])
+    const children = bagChildren(args?.[0], ctx)
     const key: any = args?.[1]
 
     if (undefined === children) {
@@ -455,8 +444,8 @@ class JoinFuncVal extends FuncBaseVal {
   // arguments settled but a member still a kind, the call rides the
   // ordinary args-not-done path and residuates, which is what makes an
   // unresolved member ordinary incompleteness rather than a refusal.
-  deferResolve(_ctx: AontuContext, args?: Val[]): boolean {
-    const children = bagChildren(args?.[0])
+  deferResolve(ctx: AontuContext, args?: Val[]): boolean {
+    const children = bagChildren(args?.[0], ctx)
     if (undefined === children) {
       // Not a bag at all: let `resolve` say so rather than waiting for
       // a settling that has already happened.
@@ -471,7 +460,7 @@ class JoinFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    const children = bagChildren(args?.[0])
+    const children = bagChildren(args?.[0], ctx)
 
     if (undefined === children) {
       return this.place(makeNilErr(ctx, 'aggregate_data', this, undefined,

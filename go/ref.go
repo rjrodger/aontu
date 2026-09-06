@@ -530,12 +530,22 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 	if rv.hideFound {
 		node.setMarkHide(true)
 	}
+	// A REFERENCE LIFTS: the copy is concrete, its type and hide marks
+	// cleared to the leaves (mirrors the mark-clearing walk in TS
+	// RefVal.find; with shared func-clone args this also clears marks
+	// on innards shared with the source — as in TS). EXCEPT the
+	// snapshot a staged verb takes of its data (ctx.argsnap), when the
+	// target itself is not marked: a member marked inside an unmarked
+	// bag was hidden IN ITS OWN RIGHT, and the verb's enumeration
+	// (members.go, BUGS.md §79) needs the mark to leave the member out,
+	// as generation does. A marked target lifts even there, or
+	// each($.schema.entities, _) under schema: hide({...}) would see
+	// every entity as hidden, since hide() marks to the leaves.
+	lifted := !ctx.argsnap || node.markedType() || node.markedHide()
 	out := clonePath(node, cp(rv.path))
-	// A resolved reference's clone is concrete: clear type/hide marks
-	// on the whole clone, root included (mirrors the mark-clearing
-	// walk in TS RefVal.find). With shared func-clone args this also
-	// clears marks on innards shared with the source — as in TS.
-	walkMark(out, true, false, true, false)
+	if lifted {
+		walkMark(out, true, false, true, false)
+	}
 	// THE LINK IS NOT CLEARED (G4 phase 3): a link says what a value
 	// POINTS AT, and a copy of a link points at the same thing. An
 	// ABSOLUTE address still names the same node from the copy; a

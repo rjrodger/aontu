@@ -1867,6 +1867,24 @@ $ echo 'a: join([x, y, z])  b: join([x, y, z], ", ")' | aontu -c
 {"a":"xyz","b":"x, y, z"}
 ```
 
+**A fold sees the members generation emits.** `join`, and with it
+`each`, `emit`, `filter`, `pack`, `pick` and the aggregates, read a
+bag's *members*: a `hide()`- or `type()`-marked child is not one, and
+an optional key whose value generates nothing is not one—so a value
+the document withholds from its output never reaches a string or a
+total the document computes. Canon still shows the whole document; the
+fold does not.
+
+<!-- test: run -->
+```sh
+$ echo 'm: {a: "keep", b: hide("SECRET")}  s: join($.m, "-")' | aontu -c
+{"m":{"a":"keep","b":"SECRET"},"s":"keep"}
+```
+
+A reference still lifts a hidden bag: `each($.schema.entities, _)`
+under `schema: hide({…})` sees every entity, because there the mark
+belongs to the schema, not to any one entity.
+
 **`join` folds with `+`**, exactly as `sum` folds with `add`. The
 number-to-text rule is therefore `+`'s own and not a second one: no
 `0d` marker, no `.0` float suffix, and the exact digits of a big

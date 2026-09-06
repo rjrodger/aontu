@@ -143,3 +143,28 @@ join-data-integer	errc	o:join(1,",")\n	aggregate_data
 join-data-string	errc	o:join("s",",")\n	aggregate_data
 join-arity-zero	errc	o:join()\n	func_arity
 join-arity-three	errc	o:join([a],",","x")\n	func_arity
+#
+# THE MEMBERS A FOLD SEES ARE THE MEMBERS GENERATION EMITS (BUGS.md
+# §79, G9 phase 0 item 4; RENDER.0.md P2). A hide()- or type()-marked
+# child is not a member -- `hide` exists to keep a value out of output,
+# and a string the document hands out is output -- and an optional key
+# whose value generates nothing is not a member either. A filled
+# optional is one. One rule, shared with each, emit, filter, pick and
+# the aggregates (their files pin it too); before it, every verb read
+# the bag through its own enumeration and none of them asked the mark.
+join-skips-a-hidden-member	gens	m: {a: "keep", b: hide("SECRET")}\nleak: join($.m, "\\n")	{"leak":"keep","m":{"a":"keep"}}
+join-skips-a-hidden-element	gens	l: join(["a", hide("b"), "c"], "-")	{"l":"a-c"}
+join-skips-a-type-marked-member	gens	t: join({a: "x", b: type("y")}, "-")	{"t":"x"}
+join-skips-an-unfilled-optional	gens	o: join({x: "one", y?: string}, "-")	{"o":"one"}
+join-keeps-a-filled-optional	gens	o: join({x: "one", y?: "two"}, "-")	{"o":"one-two"}
+join-skips-a-hidden-member-inline	gens	k: join({a: "keep", b: hide("SECRET")}, "-")	{"k":"keep"}
+# A HIDDEN BAG'S MEMBERS ARE WHAT IT HOLDS. Under hide() every child
+# carries the mark, so the mark says nothing about the member: the fold
+# sees them all, exactly as a reference to the bag lifts them -- which
+# is what keeps `each($.schema.entities, _)` working under a hidden
+# schema, the code-generation idiom.
+join-over-a-hidden-bag-folds-its-members	gens	h: join(hide(["a", "b"]), "-")	{"h":"a-b"}
+join-through-a-hidden-schema-folds-its-members	gens	schema: hide({ents: {u: {n: "user"}, s: {n: "sess"}}})\nnames: join(pick($.schema.ents, n), ",")	{"names":"sess,user"}
+# An optional key generating an EMPTY bag is dropped by generation, and
+# so is not a member.
+join-skips-an-optional-empty-map	gens	m: {x: "a", y?: {}}\no: join($.m, "-")	{"m":{"x":"a"},"o":"a"}

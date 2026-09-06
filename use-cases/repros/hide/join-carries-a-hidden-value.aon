@@ -10,6 +10,10 @@
 # expected: `leak` is "keep", the hidden member skipped as it is in `m`
 # actual:   "leak":"keep\nSECRET-not-for-output"   in BOTH ports
 #
+# FIXED 2026-09-06 (RENDER.0.md P2): both ports generate "keep", and
+# `opt` folds the filled optional as generation emits it. Kept as the
+# regression's reproducer.
+#
 # `m` itself generates {"a":"keep"} -- the mark works. `join` reads the
 # same bag through bagChildren, which does not consult the mark, so the
 # fold sees a member generation does not.

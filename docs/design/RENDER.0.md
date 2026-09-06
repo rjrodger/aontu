@@ -478,7 +478,16 @@ byte-identical across ports). **Acceptance:** the instance in G9's
 worked example 2 vets `valid` in both ports through the served name;
 an includer of the vocabulary generates only its own keys.
 
-### P2 — phase 0b: `join` honours the marks (S)
+### P2 — phase 0b: `join` honours the marks (S) — LANDED 2026-09-06
+
+*Landed as designed, in both ports, and wider than written: the one
+enumeration (`bagMembers`, `ts/src/val/members.ts` and
+`go/members.go`) serves `each`, `emit`, `filter`, `pack`, `pick`,
+`join` and the aggregates, and the snapshot a verb takes of a
+referenced bag keeps a member's own mark, a marked target lifting as
+before. `gen-join.tsv` +9 rather than +4, and a row in each verb's
+file. Acceptance met: the §79 reproducer generates `"keep"` in both
+ports.*
 
 **Deliverable.** [BUGS.md §79](../../use-cases/BUGS.md): `join`,
 `each`, `pick` and `filter` consult `hide` and unfilled optionals

@@ -29,7 +29,7 @@ declare class JoinFuncVal extends FuncBaseVal {
     funcname(): string;
     prepare(_ctx: AontuContext, _args: Val[]): null;
     unify(peer: Val, ctx: AontuContext): Val;
-    deferResolve(_ctx: AontuContext, args?: Val[]): boolean;
+    deferResolve(ctx: AontuContext, args?: Val[]): boolean;
     resolve(ctx: AontuContext, args: Val[]): Val;
 }
 declare class SumFuncVal extends AggFuncVal {

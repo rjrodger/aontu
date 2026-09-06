@@ -9,30 +9,34 @@ const MapVal_1 = require("./MapVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const Val_1 = require("./Val");
 const PlaceVal_1 = require("./PlaceVal");
+const members_1 = require("./members");
 // The keys a data bag names, in the order the result must carry them,
 // or a code naming what is wrong with it. Shared with `each`, which
 // asks the same question of the same argument and answers it with the
 // values rather than the keys.
-function dataKeys(data) {
-    const d = data;
-    if (true === d?.isMap) {
-        return Object.keys(d.peg);
+function dataKeys(data, ctx) {
+    // The candidates are the bag's MEMBERS -- what generation would
+    // emit (./members.ts, BUGS.md §79) -- so a hidden key, or a hidden
+    // name in a list of names, packs nothing.
+    const members = (0, members_1.bagMembers)(data, ctx);
+    if (undefined === members) {
+        return 'pack_data';
     }
-    if (true === d?.isList) {
-        const out = [];
-        for (const el of d.peg) {
-            const e = el;
-            // A key is a NAME, and only a string is one. A number would
-            // key by position under another spelling, which is the failure
-            // mode the data-keyed rule exists to refuse.
-            if (true !== e?.isScalar || 'string' !== typeof e.peg) {
-                return 'pack_key';
-            }
-            out.push(e.peg);
+    if (true === data.isMap) {
+        return members.map((m) => m.key);
+    }
+    const out = [];
+    for (const { val } of members) {
+        const e = val;
+        // A key is a NAME, and only a string is one. A number would
+        // key by position under another spelling, which is the failure
+        // mode the data-keyed rule exists to refuse.
+        if (true !== e?.isScalar || 'string' !== typeof e.peg) {
+            return 'pack_key';
         }
-        return out;
+        out.push(e.peg);
     }
-    return 'pack_data';
+    return out;
 }
 class PackFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
@@ -66,7 +70,7 @@ class PackFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return super.unify(peer, ctx);
     }
     resolve(ctx, args) {
-        const keys = dataKeys(args?.[0]);
+        const keys = dataKeys(args?.[0], ctx);
         if ('string' === typeof keys) {
             return (0, err_1.makeNilErr)(ctx, keys, this);
         }
