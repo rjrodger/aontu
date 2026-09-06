@@ -222,7 +222,15 @@ func (a *Aontu) UnifyVars(src string, vars map[string]Val) (Val, error) {
 // generation). src is the entry source text, threaded for error
 // frame rendering (NilVal.FullMessage).
 func (a *Aontu) unifyCtx(v Val, vars map[string]Val, src string) (Val, *Ctx, error) {
-	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File}
+	return a.unifyCtxReads(v, vars, src, nil)
+}
+
+// unifyCtxReads is unifyCtx with THE READ SET (RENDER.0.md P7) on the
+// context: `render --coverage` and the dispatch trace are the only
+// callers that want one, and a nil set is every other run.
+func (a *Aontu) unifyCtxReads(v Val, vars map[string]Val, src string,
+	reads map[string]bool) (Val, *Ctx, error) {
+	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File, reads: reads}
 	if nil != a.Trust {
 		ctx.budgetPasses = a.Trust.Budget.Passes
 		ctx.budgetDepth = a.Trust.Budget.Depth

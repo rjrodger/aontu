@@ -11,6 +11,16 @@ import {
 import { INNER_OF, WRITTEN } from '../provenance'
 
 
+// THE DISPATCH RECORD (RENDER.0.md D11, P7): the address of the node
+// a rule matched, and the address of the rule that matched it -- the
+// table's own address and the rule's index in it, joined by `#`,
+// which no path holds.
+type EmitOrigin = {
+  node: string,
+  rule: string,
+}
+
+
 type ValMark = {
   type: boolean,
   hide: boolean,
@@ -168,6 +178,24 @@ abstract class Val {
   // and the edge set (ts/src/graph.ts) is exactly the set of these.
   link?: string
 
+  // THE READ ADDRESS (RENDER.0.md P7): the tree path a reference
+  // resolved this value AT, stamped where it was found. A resolved
+  // reference CLONES its target into the referring position, so a
+  // value that arrived by reference otherwise knows only where it came
+  // to rest -- and a trace saying a line came from `$.code.units.0`
+  // names the output, not the model. Written only by an instrumented
+  // run (AontuContext.reads), carried by clone and by the meet rider,
+  // exactly as the deprecation record is.
+  origin?: string
+
+  // THE DISPATCH THAT PRODUCED THIS PIECE (RENDER.0.md D11, P7): the
+  // node an `emit` matched and the rule it took, stamped on every
+  // piece the dispatch instantiated. The INNERMOST dispatch wins: a
+  // nested rule set splices its pieces into the outer result, and the
+  // rule that wrote a line is the one that wrote it. Written only by
+  // an instrumented run, and carried like `origin`.
+  emitted?: EmitOrigin
+
   // The GRAPH of an evaluated document (G4 phase 3): the edge set,
   // stamped on the result by Aontu.unify the way the include manifest
   // is. Absent on every Val that is not a unify result.
@@ -299,6 +327,18 @@ abstract class Val {
     }
     if (null != this.deprecation) {
       out.deprecation = this.deprecation
+    }
+
+    // THE RENDER RIDERS TRAVEL WITH THE CLONE (P7), for the reason the
+    // deprecation record does: a clone of a value read at `$.schema`
+    // was read at `$.schema`, and a clone of an emitted piece is still
+    // that dispatch's. Both are absent unless the run is instrumented,
+    // so this is two undefined reads otherwise.
+    if (null != this.origin) {
+      out.origin = this.origin
+    }
+    if (null != this.emitted) {
+      out.emitted = this.emitted
     }
 
     // THE APPLY-ONCE MARK TRAVELS WITH THE CLONE. `_spr` records which
@@ -670,10 +710,11 @@ function empty(o: any) {
     || (null != o && 'object' === typeof o && 0 === Object.keys(o).length)
     || false
   )
-} /* node:coverage ignore next 17 */
+} /* node:coverage ignore next 18 */
 
 
 export type {
+  EmitOrigin,
   ValMark,
   ValSpec,
 }

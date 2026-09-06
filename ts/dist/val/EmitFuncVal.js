@@ -13,7 +13,7 @@ const FuncBaseVal_1 = require("./FuncBaseVal");
 const Val_1 = require("./Val");
 const PlaceVal_1 = require("./PlaceVal");
 const PlusOpVal_1 = require("./PlusOpVal");
-const EachFuncVal_1 = require("./EachFuncVal");
+const members_1 = require("./members");
 function isRefusal(x) {
     return 'string' === typeof x.code;
 }
@@ -35,7 +35,7 @@ function tableTemplates(table) {
         return tableTemplates(t.peg[1]);
     }
     if (true === t?.isMap) {
-        const one = oneTemplate(t);
+        const one = oneTemplate(t, 0);
         return isRefusal(one) ? one : [one];
     }
     if (true === t?.isList) {
@@ -45,7 +45,7 @@ function tableTemplates(table) {
             if (true !== e?.isMap) {
                 return { code: 'emit_template' };
             }
-            const one = oneTemplate(e);
+            const one = oneTemplate(e, out.length);
             if (isRefusal(one)) {
                 return one;
             }
@@ -61,7 +61,7 @@ function tableTemplates(table) {
 // map and an `esc` naming the convention its values are escaped by,
 // `none` the one opt-out -- are the template's shape too, and D3's two
 // static checks run here, on the template alone, before any node.
-function oneTemplate(m) {
+function oneTemplate(m, idx) {
     const match = m.peg.match;
     const body = m.peg.body;
     if (null == match || null == body) {
@@ -90,7 +90,7 @@ function oneTemplate(m) {
             return bad;
         }
     }
-    return { match, body, replace, esc, lits };
+    return { match, body, replace, esc, lits, idx };
 }
 // The string a value carries, or undefined when it is not a string.
 function textOf(v) {
@@ -214,7 +214,21 @@ function bindNode(v, node, ctx, fail) {
             fail.ref = undefined === fail.ref ? v.canon : fail.ref;
             return v;
         }
-        return found.clone(ctx);
+        const out = found.clone(ctx);
+        // A RELATIVE REFERENCE IS A READ TOO (RENDER.0.md P7), and the one
+        // read no reference resolution sees: the binding answers it here,
+        // from the matched node, rather than letting a path resolve at a
+        // position the body never occupies. Without this a nested rule set
+        // whose selection is `.handlers` reported its nodes at the address
+        // they came to rest, which is in the OUTPUT. A node carries an
+        // address only under an instrumented run, which is what makes the
+        // second test the whole guard.
+        if (null == out.origin && null != node.origin) {
+            ;
+            out.origin = node.origin +
+                v.peg.map((seg) => '.' + seg).join('');
+        }
+        return out;
     }
     const peg = v?.peg;
     const bound = (0, PlaceVal_1.boundArgStart)(v);
@@ -274,6 +288,27 @@ function nodeField(ref, node) {
     }
     return cur;
 }
+// The address of one matched node: its own read address when it has
+// one, else the SELECTION's read address and the node's key under it
+// -- a selection is read once and walked, so its members carry no read
+// of their own.
+//
+// A COMPUTED SELECTION HAS NO ADDRESS, AND THE TRACE SAYS SO: an empty
+// node. `filter(...)` builds a bag no path in the document names, and
+// the only other thing to report is where the bag came to REST -- a
+// position inside a template instance, which is not in the document,
+// and which the two ports number differently. Publishing that would
+// have made the trace a parity break as well as a fiction. The rule
+// address answers the same way: `<table>#<index>` for a table a
+// reference reached, and `#<index>` alone for one written inline at the
+// call site, which has no address of its own. `#` is in no path, so a
+// rule's address can never be read as one.
+function nodeAddr(sel, key, node) {
+    if (null != node.origin) {
+        return node.origin;
+    }
+    return undefined === sel ? '' : sel + '.' + key;
+}
 // A body element that is itself a list splices, which is what makes a
 // nested emit compose into one flat sequence.
 function splice(v, out) {
@@ -314,9 +349,14 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return super.unify(peer, ctx);
     }
     resolve(ctx, args) {
-        const nodes = (0, EachFuncVal_1.dataValues)(args?.[0], ctx);
-        if ('string' === typeof nodes) {
-            // dataValues names the each_data code; emit answers for itself.
+        // THE MEMBERS WITH THEIR KEYS, read through the one helper every
+        // fold reads a bag by (./members.ts): source order for a list,
+        // sorted-key order for a map, a hidden child and an unfilled
+        // optional left out. The KEY is what the trace addresses a node by
+        // -- it is the node's key IN THE SELECTION, which is the only
+        // thing a walk of a computed bag knows about where a node sits.
+        const nodes = (0, members_1.bagMembers)(args?.[0], ctx);
+        if (undefined === nodes) {
             return (0, err_1.makeNilErr)(ctx, 'emit_data', this);
         }
         // A NAMED TABLE IS REACHED BY REFERENCE, and the reference -- not
@@ -332,8 +372,16 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         if (isRefusal(templates)) {
             return this.refuse(ctx, templates);
         }
+        // THE TRACE'S TWO ADDRESSES (RENDER.0.md D11, P7), computed once
+        // per dispatch and only when the run is instrumented: the table's
+        // own, which every rule of it is numbered under, and the
+        // selection's, which every node of it is keyed under.
+        const rec = undefined !== ctx.reads;
+        const tableAddr = rec ? (table?.origin ?? '') : '';
+        const selAddr = rec ? args?.[0]?.origin : undefined;
         const peg = [];
-        for (const node of nodes) {
+        for (const member of nodes) {
+            const node = member.val;
             const tmpl = this.dispatch(ctx, node, templates);
             if ('string' === typeof tmpl) {
                 return (0, err_1.makeNilErr)(ctx, 'emit_none', this, undefined, 'resolve', {
@@ -342,7 +390,21 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
                 });
             }
             const fail = {};
-            this.instantiate(ctx, node, tmpl, peg, fail);
+            let mark = undefined;
+            if (rec) {
+                // THE NODE KEEPS ITS ADDRESS (P7). A body passes the node on
+                // through `_`, and a nested rule set dispatching over it can
+                // then say where it came from -- otherwise the node arrives as
+                // an element of a list the body wrote, and the only address
+                // left is where that list came to rest.
+                const naddr = nodeAddr(selAddr, member.key, node);
+                if ('' !== naddr && null == node.origin) {
+                    ;
+                    node.origin = naddr;
+                }
+                mark = { node: naddr, rule: tableAddr + '#' + tmpl.idx };
+            }
+            this.instantiate(ctx, node, tmpl, peg, fail, mark);
             if (undefined !== fail.ref) {
                 return (0, err_1.makeNilErr)(ctx, 'emit_ref', this, undefined, 'resolve', {
                     ref: fail.ref,
@@ -422,7 +484,7 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
     // template's replacements written into the instance's literal text;
     // then the two bindings, relative references and the hole, both to
     // the node.
-    instantiate(ctx, node, tmpl, out, fail) {
+    instantiate(ctx, node, tmpl, out, fail, mark) {
         const pairs = this.replacements(ctx, node, tmpl, fail);
         if (undefined !== fail.code) {
             return;
@@ -447,7 +509,21 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
             if (!piece.done) {
                 piece = (0, unify_1.unite)(elctx, piece, (0, top_1.top)(), 'emit');
             }
+            // THE INNERMOST DISPATCH OWNS THE PIECE (P7). A body element
+            // that is a nested rule set has already stamped what it emitted,
+            // and those pieces are spliced into this result here: the rule
+            // that WROTE a line is the one the trace names, so a stamp is
+            // written only where there is none.
+            const at = out.length;
             splice(piece, out);
+            if (undefined !== mark) {
+                for (let k = at; k < out.length; k++) {
+                    if (null == out[k].emitted) {
+                        ;
+                        out[k].emitted = mark;
+                    }
+                }
+            }
         }
     }
 } /* node:coverage ignore next 6 */

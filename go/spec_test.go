@@ -1304,6 +1304,9 @@ func specRenderOptions(ask map[string]any) *RenderOptions {
 	at, _ := ask["at"].(string)
 	unit, _ := ask["unit"].(string)
 	strict, _ := ask["strict"].(bool)
+	trace, _ := ask["trace"].(bool)
+	coverage, _ := ask["coverage"].(bool)
+	coverageAt, _ := ask["coverageAt"].(string)
 	var profiles []map[string]any
 	if ps, ok := ask["profiles"].([]any); ok {
 		for _, p := range ps {
@@ -1311,7 +1314,9 @@ func specRenderOptions(ask map[string]any) *RenderOptions {
 			profiles = append(profiles, m)
 		}
 	}
-	return &RenderOptions{At: at, Unit: unit, Strict: strict, Profiles: profiles}
+	return &RenderOptions{At: at, Unit: unit, Strict: strict,
+		Profiles: profiles, Trace: trace, Coverage: coverage,
+		CoverageAt: coverageAt}
 }
 
 func specViewOptions(ask map[string]any) *ViewOptions {

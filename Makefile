@@ -54,8 +54,13 @@ prose:
 cov:
 	$(MAKE) -j2 cov-ts cov-go
 
+# THE GATE IS covrun, AND IT RUNS THE SUITE ITSELF. `npm run test-cov`
+# ran it once more for the per-file table alone, which is a whole extra
+# pass of the suite -- three passes in the job where two decide
+# anything, and the fifteen-minute wall clock is what that bought.
+# covcheck already names every uncovered item, which is the half a
+# reader acts on; the table is still one command away by hand.
 cov-ts:
-	cd ts && npm run test-cov
 	cd ts && npm run test-cov-check
 
 # Unit-test statement coverage, plus GOCOVERDIR integration runs of the

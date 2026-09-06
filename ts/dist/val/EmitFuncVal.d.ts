@@ -1,12 +1,14 @@
 import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
 import { FuncBaseVal } from './FuncBaseVal';
+import type { EmitOrigin } from './Val';
 type Template = {
     match: Val;
     body: Val;
     replace?: Val;
     esc: string;
     lits: LitSpot[];
+    idx: number;
 };
 type LitSpot = {
     i: number;
@@ -35,6 +37,6 @@ declare class EmitFuncVal extends FuncBaseVal {
     refuse(ctx: AontuContext, r: Refusal): Val;
     dispatch(ctx: AontuContext, node: Val, templates: Template[]): Template | string;
     replacements(ctx: AontuContext, node: Val, tmpl: Template, fail: Fail): Pair[] | undefined;
-    instantiate(ctx: AontuContext, node: Val, tmpl: Template, out: Val[], fail: Fail): void;
+    instantiate(ctx: AontuContext, node: Val, tmpl: Template, out: Val[], fail: Fail, mark?: EmitOrigin): void;
 }
 export { EmitFuncVal, };

@@ -301,11 +301,94 @@ func TestRenderUsageErrorsExit2(t *testing.T) {
 		{"--stdout", "--out", filepath.Join(dir, "o"), file},
 		{filepath.Join(dir, "missing.aon")},
 		{"--trust", "nonsense", file},
+		// P7: --coverage-at needs a path, --coverage is a mode of its
+		// own, and a narrower measure needs something to narrow.
+		{"--coverage-at"},
+		{"--coverage", "--stdout", file},
+		{"--coverage-at", "$.a", file},
 	} {
 		renderCode(t, 2, args...)
 	}
 	out, _ := renderCode(t, 0, "--help")
 	if !strings.Contains(out, "aontu render") {
 		t.Fatalf("help: %q", out)
+	}
+}
+
+// P7: THE COVERAGE REPORT is its own output mode. It writes no files,
+// names the model paths no output consumed and the declarations no
+// rule produced, and counts both at the end. --coverage-at measures a
+// narrower model, and one that names nothing is the document's own
+// no_path refusal (exit 4), as --at already is. The shared rows pin the
+// report itself (test/spec/render.tsv); the lines and the flags are
+// this port's.
+func TestRenderCoverage(t *testing.T) {
+	const doc = `services: { a: { pin: "p1" } }
+spare: { x: 1 }
+code: units: [
+  { path: "a.txt", lang: "text", decls: [{ k: "frag", of:
+    emit($.services, { match: { pin: string }, body: [.pin] }) }] }
+  { path: "b.txt", lang: "text", decls: [{ k: "frag", of: ["b"] }] }
+]
+`
+	dir := renderDir(t, map[string]string{"doc.aon": doc})
+	file := filepath.Join(dir, "doc.aon")
+
+	out, _ := renderCode(t, 0, "--coverage", file)
+	for _, want := range []string{
+		"dead: $.spare\n",
+		"unruled: b.txt $.code.units.1.decls.0\n",
+		"coverage: 1 path(s) read, 1 no output consumed, " +
+			"1 declaration(s) no rule produced\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("coverage report: %q lacks %q", out, want)
+		}
+	}
+	// The unit the rule set wrote is not a hole, and the render's own
+	// output is not model.
+	for _, unwanted := range []string{"unruled: a.txt", "dead: $.code"} {
+		if strings.Contains(out, unwanted) {
+			t.Fatalf("coverage report: %q holds %q", out, unwanted)
+		}
+	}
+	// Nothing is written under this mode.
+	if _, err := os.Stat(filepath.Join(dir, "a.txt")); nil == err {
+		t.Fatal("--coverage wrote a unit")
+	}
+
+	// A narrower measure: $.spare is outside it, so nothing is dead.
+	out, _ = renderCode(t, 0, "--coverage", "--coverage-at", "$.services", file)
+	if strings.Contains(out, "dead:") {
+		t.Fatalf("--coverage-at $.services: %q", out)
+	}
+
+	// An anchor that names nothing is the document's own refusal.
+	renderCode(t, 4, "--coverage", "--coverage-at", "$.nope", file)
+
+	// The JSON report carries the trace and the coverage object.
+	out, _ = renderCode(t, 0, "--coverage", "--format", "json", file)
+	var report struct {
+		Trace []struct {
+			Unit, Piece, Node, Rule string
+		} `json:"trace"`
+		Coverage struct {
+			Read, Dead []string
+			Unruled    []struct{ Unit, Path string }
+		} `json:"coverage"`
+	}
+	if err := json.Unmarshal([]byte(out), &report); nil != err {
+		t.Fatalf("json: %v\n%s", err, out)
+	}
+	if 1 != len(report.Trace) {
+		t.Fatalf("trace: %+v", report.Trace)
+	}
+	if "a.txt" != report.Trace[0].Unit ||
+		"$.services.a" != report.Trace[0].Node ||
+		"#0" != report.Trace[0].Rule {
+		t.Fatalf("trace entry: %+v", report.Trace[0])
+	}
+	if 1 != len(report.Coverage.Dead) || "$.spare" != report.Coverage.Dead[0] {
+		t.Fatalf("coverage: %+v", report.Coverage)
 	}
 }

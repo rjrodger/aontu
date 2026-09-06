@@ -451,6 +451,18 @@ type emitTemplate struct {
 	replace *MapVal
 	esc     string
 	lits    []emitLit
+	// idx is the rule's index in its table, which with the table's own
+	// address is the address the trace names it by (RENDER.0.md P7).
+	idx int
+}
+
+// emitOrigin is THE DISPATCH RECORD (RENDER.0.md D11, P7): the address
+// of the node a rule matched, and the address of the rule that matched
+// it -- the table's own address and the rule's index in it, joined by
+// `#`, which no path holds. Mirrors EmitOrigin in ts/src/val/Val.ts.
+type emitOrigin struct {
+	node string
+	rule string
 }
 
 // emitLit is one literal string of a body: element i, and within a map
@@ -486,7 +498,7 @@ func emitTemplates(table Val) ([]emitTemplate, *emitRefusal) {
 			return emitTemplates(t.peg[1])
 		}
 	case *MapVal:
-		one, bad := oneEmitTemplate(t)
+		one, bad := oneEmitTemplate(t, 0)
 		if nil != bad {
 			return nil, bad
 		}
@@ -498,7 +510,7 @@ func emitTemplates(table Val) ([]emitTemplate, *emitRefusal) {
 			if !ok {
 				return nil, &emitRefusal{code: "emit_template"}
 			}
-			one, bad := oneEmitTemplate(m)
+			one, bad := oneEmitTemplate(m, len(out))
 			if nil != bad {
 				return nil, bad
 			}
@@ -516,7 +528,7 @@ func emitTemplates(table Val) ([]emitTemplate, *emitRefusal) {
 // escaped by, `none` the one opt-out -- are the template's shape too,
 // and D3's two static checks run here, on the template alone, before
 // any node.
-func oneEmitTemplate(m *MapVal) (emitTemplate, *emitRefusal) {
+func oneEmitTemplate(m *MapVal, idx int) (emitTemplate, *emitRefusal) {
 	match, hasMatch := m.peg["match"]
 	body, hasBody := m.peg["body"]
 	if !hasMatch || !hasBody || nil == match || nil == body {
@@ -526,7 +538,8 @@ func oneEmitTemplate(m *MapVal) (emitTemplate, *emitRefusal) {
 	if !ok {
 		return emitTemplate{}, &emitRefusal{code: "emit_body"}
 	}
-	tmpl := emitTemplate{match: match, body: list, lits: emitLiterals(list)}
+	tmpl := emitTemplate{match: match, body: list, lits: emitLiterals(list),
+		idx: idx}
 	if rv, has := m.peg["replace"]; has && nil != rv {
 		rm, ok := rv.(*MapVal)
 		if !ok {
@@ -737,7 +750,23 @@ func bindNode(v Val, node Val, fail *string) Val {
 			}
 			return v
 		}
-		return clonePath(found, cp(rv.path))
+		out := clonePath(found, cp(rv.path))
+		// A RELATIVE REFERENCE IS A READ TOO (RENDER.0.md P7), and the
+		// one read no reference resolution sees: the binding answers it
+		// here, from the matched node, rather than letting a path
+		// resolve at a position the body never occupies. Without this a
+		// nested rule set whose selection is `.handlers` reported its
+		// nodes at the address they came to rest, which is in the
+		// OUTPUT. A node carries an address only under an instrumented
+		// run, which is what makes the second test the whole guard.
+		if "" == out.readAddr() && "" != node.readAddr() {
+			addr := node.readAddr()
+			for _, seg := range rv.peg {
+				addr += "." + seg.(string)
+			}
+			out.setReadAddr(addr)
+		}
+		return out
 	}
 	if !hasNodeRef(v) {
 		return v
@@ -828,11 +857,16 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	if 0 < len(args) {
 		sel = args[0]
 	}
-	nodes, bad := eachValues(sel, ctx)
-	if "" != bad {
-		// eachValues names each's code; emit answers for itself.
+	// THE MEMBERS WITH THEIR KEYS, read through the one helper every
+	// fold reads a bag by (members.go): source order for a list,
+	// sorted-key order for a map, a hidden child and an unfilled
+	// optional left out. The KEY is what the trace addresses a node by
+	// -- it is the node's key IN THE SELECTION, which is the only thing
+	// a walk of a computed bag knows about where a node sits.
+	if !isBag(sel) {
 		return makeNilErr(ctx, "emit_data", f, nil)
 	}
+	nodes := bagMembers(sel, ctx)
 
 	var table Val
 	if 1 < len(args) {
@@ -853,8 +887,21 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 		return emitRefuse(ctx, f, refused)
 	}
 
+	// THE TRACE'S TWO ADDRESSES (RENDER.0.md D11, P7), computed once
+	// per dispatch and only when the run is instrumented: the table's
+	// own, which every rule of it is numbered under, and the
+	// selection's, which every node of it is keyed under.
+	rec := nil != ctx.reads
+	tableAddr := ""
+	selAddr := ""
+	if rec {
+		tableAddr = table.readAddr()
+		selAddr = sel.readAddr()
+	}
+
 	pieces := []Val{}
-	for _, node := range nodes {
+	for _, member := range nodes {
+		node := member.val
 		tmpl, tried := emitDispatch(ctx, base, node, templates)
 		if nil == tmpl {
 			return makeNilErrFull(ctx, "emit_none", f, nil, "resolve",
@@ -864,9 +911,25 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 				})
 		}
 
+		var mark *emitOrigin
+		if rec {
+			// THE NODE KEEPS ITS ADDRESS (P7). A body passes the node on
+			// through `_`, and a nested rule set dispatching over it can
+			// then say where it came from -- otherwise the node arrives
+			// as an element of a list the body wrote, and the only
+			// address left is where that list came to rest.
+			naddr := emitNodeAddr(selAddr, member.key, node)
+			if "" != naddr && "" == node.readAddr() {
+				node.setReadAddr(naddr)
+			}
+			mark = &emitOrigin{node: naddr, rule: tableAddr + "#" +
+				itoa(tmpl.idx)}
+		}
+
 		fail := ""
 		var refused *emitRefusal
-		pieces, refused = emitInstantiate(ctx, base, node, *tmpl, pieces, &fail)
+		pieces, refused = emitInstantiate(ctx, base, node, *tmpl, pieces, &fail,
+			mark)
 		if "" != fail {
 			return makeNilErrFull(ctx, "emit_ref", f, nil, "resolve",
 				map[string]string{
@@ -925,7 +988,7 @@ func emitDispatch(ctx *Ctx, base []string, node Val,
 // text (TEMPLATE.0.md D3); then the two bindings, relative references
 // and the hole, both to the node.
 func emitInstantiate(ctx *Ctx, base []string, node Val, tmpl emitTemplate,
-	out []Val, fail *string) ([]Val, *emitRefusal) {
+	out []Val, fail *string, mark *emitOrigin) ([]Val, *emitRefusal) {
 	pairs, refused := emitReplacements(ctx, base, node, tmpl, fail)
 	if nil != refused {
 		return out, refused
@@ -952,9 +1015,47 @@ func emitInstantiate(ctx *Ctx, base []string, node Val, tmpl emitTemplate,
 			piece = unite(ctx, piece, top())
 		}
 
+		// THE INNERMOST DISPATCH OWNS THE PIECE (P7). A body element
+		// that is a nested rule set has already stamped what it
+		// emitted, and those pieces are spliced into this result here:
+		// the rule that WROTE a line is the one the trace names, so a
+		// stamp is written only where there is none.
+		at := len(out)
 		out = emitSplice(piece, out)
+		if nil != mark {
+			for k := at; k < len(out); k++ {
+				if nil == out[k].emitOrig() {
+					out[k].setEmitOrig(mark)
+				}
+			}
+		}
 	}
 	return out, nil
+}
+
+// emitNodeAddr is the address of one matched node: its own read address
+// when it has one, else the SELECTION's read address and the node's key
+// under it -- a selection is read once and walked, so its members carry
+// no read of their own.
+//
+// A COMPUTED SELECTION HAS NO ADDRESS, AND THE TRACE SAYS SO: an empty
+// node. filter(...) builds a bag no path in the document names, and the
+// only other thing to report is where the bag came to REST -- a
+// position inside a template instance, which is not in the document,
+// and which the two ports number differently. Publishing that would
+// have made the trace a parity break as well as a fiction. The rule
+// address answers the same way: `<table>#<index>` for a table a
+// reference reached, and `#<index>` alone for one written inline at the
+// call site, which has no address of its own. `#` is in no path, so a
+// rule's address can never be read as one.
+func emitNodeAddr(sel string, key string, node Val) string {
+	if addr := node.readAddr(); "" != addr {
+		return addr
+	}
+	if "" == sel {
+		return ""
+	}
+	return sel + "." + key
 }
 
 // emitReplacements is the replacement pairs for one node: the

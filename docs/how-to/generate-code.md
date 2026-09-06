@@ -177,6 +177,28 @@ Commit the generated files beside the model and run `--check` in CI;
 a hand edit to a generated file is then a red build rather than a
 quiet divergence from the model.
 
+## Ask what the transform read
+
+`--check` says the output still matches the model. It says nothing
+about the parts of the model no output uses, or the parts of the output
+no rule wrote. `--coverage` answers both, and writes nothing:
+
+<!-- test: run -->
+```sh
+$ aontu render --coverage types.aon
+unruled: types.go $.code.units.0.decls.0
+coverage: 1 path(s) read, 0 no output consumed, 1 declaration(s) no rule produced
+```
+
+Nothing here is dead: the rule set reads `$.records`, and the whole
+model is under it. One declaration is a hole—the package clause, which
+the document writes by hand rather than a rule producing it. Add a
+`legacy:` key to `types.aon` that nothing reads and the report names it
+as dead the next run, which is how a field that outlived its generator
+is found before it rots. `--format json` carries the other half, one
+trace entry per emitted piece: which model node the rule matched, and
+which rule.
+
 ## Lower a declaration instead
 
 A struct need not be spelled as lines. The vocabulary has a

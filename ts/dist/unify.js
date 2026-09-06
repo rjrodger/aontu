@@ -298,9 +298,47 @@ const unite = (ctx, a, b, whence) => {
             out.deprecation = dep;
         }
     }
+    // THE RENDER RIDERS SURVIVE EVERY MEET (RENDER.0.md P7), and here
+    // for the deprecation record's reason: a reference resolves by
+    // MEETING its target with the peer at the referring position, and an
+    // emitted piece meets the vocabulary's alternative before the fold
+    // ever sees it, so a record lost in one meet shape is a line the
+    // trace cannot name. Both are absent unless the run is instrumented.
+    if (undefined !== ctx.reads &&
+        null != out && true === out.isVal && !out.isTop && !out.isNil) {
+        riders(a, b, out);
+    }
     return out;
 };
 exports.unite = unite;
+// The two P7 riders, carried from the operands to the result: the read
+// address a value was found at, and the dispatch that emitted it.
+// First record wins, as the deprecation record's does. Reached only
+// from an instrumented run (AontuContext.reads), so an ordinary meet
+// pays the one property load its call site makes and nothing else.
+//
+// AN OPERAND MAY BE ABSENT and reading through it is not a decision:
+// `unite` is called with no peer wherever a bag holds a key its peer
+// does not, and `Object(undefined)` is an empty object, so both riders
+// are read the same way whether the operand is there or not. Written
+// with a test first, that test had an arm no instrumented document
+// reached -- true of the reading, not of the engine.
+function riders(a, b, to) {
+    const av = Object(a);
+    const bv = Object(b);
+    if (null == to.origin) {
+        const org = av.origin ?? bv.origin;
+        if (null != org) {
+            to.origin = org;
+        }
+    }
+    if (null == to.emitted) {
+        const emt = av.emitted ?? bv.emitted;
+        if (null != emt) {
+            to.emitted = emt;
+        }
+    }
+}
 function update(x, _y) {
     // TODO: update x with y.site
     return x;

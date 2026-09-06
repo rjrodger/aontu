@@ -644,7 +644,18 @@ handlers, written as the note's canonical (desugared) form, reproduce
 byte-identically through `emit` and `aontu render --check` in both
 ports; `join(form(split(…), …), "")` closes the name-derivation chain.
 
-### P7 — provenance and coverage (M)
+### P7 — provenance and coverage (M) — LANDED 2026-09-06
+
+*Landed as designed, with the departures recorded as §9 items 31–34:
+coverage is measured against a READ SET rather than the dispatch trace
+alone, because worked example 2 uses no rule at all; an address is
+published only when a reference resolved it, so a computed selection
+reports an empty node rather than a position no document holds; a rule
+is `<table>#<index>`, with the table's address only when a reference
+reached one; and the root of the measure is never itself dead. X-3 is
+decided (below). `render.tsv` +19. Acceptance met: worked example 2's
+report names `$.customers`, `$.invoices` and `$.orders`, from both
+ports, and `use-cases/10-data-model/check.sh` diffs the two reports.*
 
 **Deliverable.** D11's second item: the `(node path, table, rule
 index)` trace per piece, carried in `RenderReport.trace` and printed
@@ -685,7 +696,7 @@ register says so in the same commits:
 | worked examples 1 and 2 byte-for-byte | P5 (landed): `use-cases/10-data-model/xf-domain.aon` and `xf-order.aon` under `render --check`, both ports |
 | one model, three units, one run, nothing written on a partial failure | P4 |
 | the twelve handlers byte-identical through `emit` + `render` (P6, landed: `use-cases/17-lambda-handlers/`), and then through the surface | P6, P8 |
-| coverage names dead model and silent holes | P7 |
+| coverage names dead model and silent holes | P7 (landed): `render --coverage`, pinned by `render.tsv` and by use case 10's report, diffed between the ports |
 | `render` never writes from the engine, the MCP tool or the LSP | P4's isolation tests |
 | both vocabularies and three profiles hash identically across ports | `hash` rows |
 | ADR-002's floor holds with every `render_*` branch reached | `make cov` |
@@ -753,11 +764,16 @@ phase settles by building is marked in that phase's register row.*
   profile served.
 - **X-3 — Where does the coverage report's notion of "the model"
   start?** Everything the transform read, or only under `--at`? With
-  the manifest gone, `at` is not stated anywhere. Recommendation: the
-  trace records what was read, coverage is computed over the document
-  root, and a document that wants a narrower measure puts its model
-  under one key and passes `--coverage-at`. Decided by P7's first real
-  report.
+  the manifest gone, `at` is not stated anywhere. **DECIDED 2026-09-06
+  (P7), as recommended: over the document root, with `--coverage-at`
+  for a narrower measure.** The first real report settled it in one
+  line — worked example 2 anchors nothing, and the three record bags it
+  never reads are exactly what a reader wants named. Two refinements
+  the report itself asked for: the render's own output, `code` under
+  the anchor, is not model and is never walked into, since nothing
+  reads it and every document would otherwise report it dead; and the
+  root of the measure is never itself named, since a document that is
+  only a transform reads nothing above its own model.
 - **X-4 — Could the declaration lowering be a bundled `emit` table
   rather than code?** It would make the declaration path data too, and
   dogfood the rule layer on the renderer itself. It needs builtins the
@@ -951,6 +967,44 @@ touches M0.
     `replace`, `esc: sq`, the three nested dispatches, two lines of
     two spaces — rendering thirteen units byte-identically from both
     ports, each parsing as TypeScript, with the apostrophe pin escaped.
+
+31. **Coverage is measured against a READ SET, not the trace alone**
+    (P7). D11 says coverage "is a set computation over the trace and
+    needs no other machinery", and the acceptance case refutes it:
+    worked example 2 walks its record types with `pack`, `pick` and
+    `match` and uses no rule at all, so a trace-only measure would
+    report every path dead, `$.schema` included. What separates
+    `$.schema` from `$.customers` there is that something RESOLVED it.
+    So the recorder is one set of the tree paths references resolved
+    to, filled where a reference finds its target, and dead model is
+    the shallowest paths no read reached. The trace's half of the
+    report — the declarations no rule produced — is the dispatch stamp,
+    as designed.
+32. **An address is published only when a reference read it** (P7). A
+    resolved reference CLONES its target into the referring position,
+    so a value that arrived by reference knows only where it came to
+    rest — and where a template instance comes to rest is a position no
+    document holds, which the two ports number differently. The read
+    address therefore rides the value (`Val.origin`, carried by clone
+    and by the meet rider, as the deprecation record is), a matched
+    node keeps the address the dispatch gave it so a nested rule set
+    can say where its nodes came from, and a relative reference bound
+    to a node is a read too. A selection nothing read — `filter(...)`
+    builds one — leaves the trace's node EMPTY rather than naming a
+    position inside an instance. Publishing the resting path was
+    written first and was both a fiction and a parity break.
+33. **A rule is `<table>#<index>`** (P7 planned "table, rule index").
+    The table's address is the name a reference reached it through, so
+    a named rule set is `$.%handler#0`; a table written inline at the
+    call site has no address of its own and its rules are `#0`, `#1`.
+    `#` is in no path, so a rule's address can never be read as one.
+34. **The trace is off unless it is asked for** (P7 did not say). The
+    recorder is one option, `trace` or `coverage`, and its presence is
+    what switches the two riders on; the CLI turns it on for
+    `--format json`, which is the shape D9 has always described, and
+    for `--coverage`. An uninstrumented meet pays one property load.
+    An EMPTY trace is no trace in either port, so the two report
+    shapes stay identical.
 
 ## 10. The validation system: `test/system/rb-solar`
 

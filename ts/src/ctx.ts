@@ -26,6 +26,14 @@ type AontuContextConfig = {
   // uninstrumented run. Shared by reference down every descend, as the
   // error list is, so one run has one record.
   prov?: any
+
+  // THE READ SET (RENDER.0.md P7), or absent for an uninstrumented
+  // run: every tree path a reference resolved to, in one shared set.
+  // It is what `render --coverage` measures the model against -- a
+  // path no read reached is model the transform never consumed -- and
+  // its presence is also what switches the two render riders on
+  // (Val.origin, Val.emitted), so one flag turns the whole record on.
+  reads?: Set<string>
   fs?: any
   path?: string[]
   root?: Val
@@ -93,6 +101,10 @@ class AontuContext {
   // uninstrumented run. Inherited by every descended and cloned
   // context through the prototype chain, so one run has one record.
   prov?: any
+
+  // The read set (RENDER.0.md P7), or undefined for an uninstrumented
+  // run. Inherited exactly as `prov` is.
+  reads?: Set<string>
 
   // errlist: Omit<NilVal[], "push">  // Nil error log of current unify.
   err: any[]
@@ -181,6 +193,7 @@ class AontuContext {
 
     this.collect = cfg.collect ?? null != cfg.err
     this.prov = cfg.prov
+    this.reads = cfg.reads
 
     this.err = cfg.err ?? []
     this.explain = Array.isArray(cfg.explain) ? cfg.explain : null

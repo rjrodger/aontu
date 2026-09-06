@@ -100,9 +100,10 @@ import { ListVal } from './ListVal'
 import { StringVal } from './StringVal'
 import { FuncBaseVal, trialUnify } from './FuncBaseVal'
 import { repathInstance } from './Val'
+import type { EmitOrigin } from './Val'
 import { boundArgStart, fillPlace, rebuild } from './PlaceVal'
 import { plusText } from './PlusOpVal'
-import { dataValues } from './EachFuncVal'
+import { bagMembers } from './members'
 
 
 // One entry of the rule table: the pattern to try, the body to
@@ -117,6 +118,9 @@ type Template = {
   replace?: Val,
   esc: string,
   lits: LitSpot[],
+  // The rule's index in its table, which with the table's own address
+  // is the address the trace names it by (RENDER.0.md P7).
+  idx: number,
 }
 
 
@@ -158,7 +162,7 @@ function tableTemplates(table: Val | undefined): Template[] | Refusal {
   }
 
   if (true === t?.isMap) {
-    const one = oneTemplate(t)
+    const one = oneTemplate(t, 0)
     return isRefusal(one) ? one : [one]
   }
 
@@ -169,7 +173,7 @@ function tableTemplates(table: Val | undefined): Template[] | Refusal {
       if (true !== e?.isMap) {
         return { code: 'emit_template' }
       }
-      const one = oneTemplate(e)
+      const one = oneTemplate(e, out.length)
       if (isRefusal(one)) {
         return one
       }
@@ -188,7 +192,7 @@ function tableTemplates(table: Val | undefined): Template[] | Refusal {
 // map and an `esc` naming the convention its values are escaped by,
 // `none` the one opt-out -- are the template's shape too, and D3's two
 // static checks run here, on the template alone, before any node.
-function oneTemplate(m: any): Template | Refusal {
+function oneTemplate(m: any, idx: number): Template | Refusal {
   const match: Val = m.peg.match
   const body: any = m.peg.body
   if (null == match || null == body) {
@@ -221,7 +225,7 @@ function oneTemplate(m: any): Template | Refusal {
     }
   }
 
-  return { match, body, replace, esc, lits }
+  return { match, body, replace, esc, lits, idx }
 }
 
 
@@ -369,7 +373,20 @@ function bindNode(v: any, node: Val, ctx: AontuContext, fail: Fail): Val {
       fail.ref = undefined === fail.ref ? v.canon : fail.ref
       return v
     }
-    return found.clone(ctx)
+    const out = found.clone(ctx)
+    // A RELATIVE REFERENCE IS A READ TOO (RENDER.0.md P7), and the one
+    // read no reference resolution sees: the binding answers it here,
+    // from the matched node, rather than letting a path resolve at a
+    // position the body never occupies. Without this a nested rule set
+    // whose selection is `.handlers` reported its nodes at the address
+    // they came to rest, which is in the OUTPUT. A node carries an
+    // address only under an instrumented run, which is what makes the
+    // second test the whole guard.
+    if (null == (out as any).origin && null != (node as any).origin) {
+      ; (out as any).origin = (node as any).origin +
+        (v.peg as string[]).map((seg: string) => '.' + seg).join('')
+    }
+    return out
   }
 
   const peg: any = v?.peg
@@ -438,6 +455,29 @@ function nodeField(ref: any, node: Val): Val | undefined {
 }
 
 
+// The address of one matched node: its own read address when it has
+// one, else the SELECTION's read address and the node's key under it
+// -- a selection is read once and walked, so its members carry no read
+// of their own.
+//
+// A COMPUTED SELECTION HAS NO ADDRESS, AND THE TRACE SAYS SO: an empty
+// node. `filter(...)` builds a bag no path in the document names, and
+// the only other thing to report is where the bag came to REST -- a
+// position inside a template instance, which is not in the document,
+// and which the two ports number differently. Publishing that would
+// have made the trace a parity break as well as a fiction. The rule
+// address answers the same way: `<table>#<index>` for a table a
+// reference reached, and `#<index>` alone for one written inline at the
+// call site, which has no address of its own. `#` is in no path, so a
+// rule's address can never be read as one.
+function nodeAddr(sel: string | undefined, key: string, node: any): string {
+  if (null != node.origin) {
+    return node.origin
+  }
+  return undefined === sel ? '' : sel + '.' + key
+}
+
+
 // A body element that is itself a list splices, which is what makes a
 // nested emit compose into one flat sequence.
 function splice(v: Val, out: Val[]): void {
@@ -494,9 +534,14 @@ class EmitFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    const nodes = dataValues(args?.[0], ctx)
-    if ('string' === typeof nodes) {
-      // dataValues names the each_data code; emit answers for itself.
+    // THE MEMBERS WITH THEIR KEYS, read through the one helper every
+    // fold reads a bag by (./members.ts): source order for a list,
+    // sorted-key order for a map, a hidden child and an unfilled
+    // optional left out. The KEY is what the trace addresses a node by
+    // -- it is the node's key IN THE SELECTION, which is the only
+    // thing a walk of a computed bag knows about where a node sits.
+    const nodes = bagMembers(args?.[0], ctx)
+    if (undefined === nodes) {
       return makeNilErr(ctx, 'emit_data', this)
     }
 
@@ -515,9 +560,18 @@ class EmitFuncVal extends FuncBaseVal {
       return this.refuse(ctx, templates)
     }
 
+    // THE TRACE'S TWO ADDRESSES (RENDER.0.md D11, P7), computed once
+    // per dispatch and only when the run is instrumented: the table's
+    // own, which every rule of it is numbered under, and the
+    // selection's, which every node of it is keyed under.
+    const rec = undefined !== ctx.reads
+    const tableAddr = rec ? ((table as any)?.origin ?? '') : ''
+    const selAddr = rec ? (args?.[0] as any)?.origin : undefined
+
     const peg: Val[] = []
 
-    for (const node of nodes) {
+    for (const member of nodes) {
+      const node = member.val
       const tmpl = this.dispatch(ctx, node, templates)
       if ('string' === typeof tmpl) {
         return makeNilErr(ctx, 'emit_none', this, undefined, 'resolve', {
@@ -526,7 +580,20 @@ class EmitFuncVal extends FuncBaseVal {
         })
       }
       const fail: Fail = {}
-      this.instantiate(ctx, node, tmpl, peg, fail)
+      let mark: EmitOrigin | undefined = undefined
+      if (rec) {
+        // THE NODE KEEPS ITS ADDRESS (P7). A body passes the node on
+        // through `_`, and a nested rule set dispatching over it can
+        // then say where it came from -- otherwise the node arrives as
+        // an element of a list the body wrote, and the only address
+        // left is where that list came to rest.
+        const naddr = nodeAddr(selAddr, member.key, node)
+        if ('' !== naddr && null == (node as any).origin) {
+          ; (node as any).origin = naddr
+        }
+        mark = { node: naddr, rule: tableAddr + '#' + tmpl.idx }
+      }
+      this.instantiate(ctx, node, tmpl, peg, fail, mark)
       if (undefined !== fail.ref) {
         return makeNilErr(ctx, 'emit_ref', this, undefined, 'resolve', {
           ref: fail.ref,
@@ -617,7 +684,7 @@ class EmitFuncVal extends FuncBaseVal {
   // then the two bindings, relative references and the hole, both to
   // the node.
   instantiate(ctx: AontuContext, node: Val, tmpl: Template,
-    out: Val[], fail: Fail): void {
+    out: Val[], fail: Fail, mark?: EmitOrigin): void {
     const pairs = this.replacements(ctx, node, tmpl, fail)
     if (undefined !== fail.code) {
       return
@@ -646,7 +713,20 @@ class EmitFuncVal extends FuncBaseVal {
         piece = unite(elctx, piece, top(), 'emit')
       }
 
+      // THE INNERMOST DISPATCH OWNS THE PIECE (P7). A body element
+      // that is a nested rule set has already stamped what it emitted,
+      // and those pieces are spliced into this result here: the rule
+      // that WROTE a line is the one the trace names, so a stamp is
+      // written only where there is none.
+      const at = out.length
       splice(piece, out)
+      if (undefined !== mark) {
+        for (let k = at; k < out.length; k++) {
+          if (null == (out[k] as any).emitted) {
+            ; (out[k] as any).emitted = mark
+          }
+        }
+      }
     }
   }
 

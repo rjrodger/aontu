@@ -126,6 +126,12 @@ type Val interface {
 	setInnerOf(v Val)
 	deprecRec() map[string]string
 	setDeprecRec(rec map[string]string)
+	// The two render riders (P7): where a reference read this value,
+	// and the dispatch that emitted it.
+	readAddr() string
+	setReadAddr(addr string)
+	emitOrig() *emitOrigin
+	setEmitOrig(o *emitOrigin)
 	linkAddr() string
 	setLinkAddr(addr string)
 	markedHide() bool
@@ -229,6 +235,23 @@ type base struct {
 	// back reparseably (canonRiders). Mirrors Val.deprecation in
 	// ts/src/val/Val.ts.
 	deprec map[string]string
+	// THE READ ADDRESS (RENDER.0.md P7): the tree path a reference
+	// resolved this value AT, stamped where it was found. A resolved
+	// reference CLONES its target into the referring position, so a
+	// value that arrived by reference otherwise knows only where it
+	// came to rest -- and a trace saying a line came from
+	// `$.code.units.0` names the output, not the model. Written only by
+	// an instrumented run (Ctx.reads), carried by clonePath and by the
+	// meet rider, exactly as the deprecation record is. Mirrors
+	// Val.origin in ts/src/val/Val.ts.
+	origin string
+	// THE DISPATCH THAT PRODUCED THIS PIECE (RENDER.0.md D11, P7): the
+	// node an `emit` matched and the rule it took, stamped on every
+	// piece the dispatch instantiated. The INNERMOST dispatch wins: a
+	// nested rule set splices its pieces into the outer result, and the
+	// rule that wrote a line is the one that wrote it. Mirrors
+	// Val.emitted in ts/src/val/Val.ts.
+	emitted *emitOrigin
 	// The LINK (G4 phase 2/3): the tree address a `refer` resolved
 	// to, stamped on the string it answers. The string IS the value — a
 	// link, not an embedding — so nothing downstream could otherwise
@@ -322,6 +345,11 @@ func (b *base) setvpath(p []string) { b.path = p }
 func (b *base) markedType() bool                   { return b.mtype }
 func (b *base) deprecRec() map[string]string       { return b.deprec }
 func (b *base) setDeprecRec(rec map[string]string) { b.deprec = rec }
+
+func (b *base) readAddr() string          { return b.origin }
+func (b *base) setReadAddr(addr string)   { b.origin = addr }
+func (b *base) emitOrig() *emitOrigin     { return b.emitted }
+func (b *base) setEmitOrig(o *emitOrigin) { b.emitted = o }
 
 func (b *base) linkAddr() string        { return b.link }
 func (b *base) relKey() string          { return b.relkey }

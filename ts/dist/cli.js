@@ -64,7 +64,8 @@ const HELP = `Usage: aontu [options] [file]
        aontu view --views <path> [--check] [options] <file>
        aontu jsonschema [--at <path>] [--strict] [options] <file>
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
-                    [--stdout | --out <dir> | --check <dir>] [--strict] <file>
+                    [--stdout | --out <dir> | --check <dir> | --coverage]
+                    [--coverage-at <path>] [--strict] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -267,9 +268,16 @@ Render options:
                     the instance has several)
   --out <dir>       Write every unit below dir, or nothing; never deletes
   --check <dir>     Compare every unit with dir/<path>; drift is listed
+  --coverage        Report what the render read and what it did not:
+                    model paths no output consumed, and rendered
+                    declarations no rule produced. Writes nothing
+  --coverage-at <p> Measure coverage under this path only, instead of
+                    the document root
   --strict          Refuse the opaque escapes (a text declaration, a raw
                     block)
-  --format <f>      text (default) or json, the whole report
+  --format <f>      text (default) or json, the whole report; json
+                    carries the dispatch trace, one entry per emitted
+                    piece
 
 Render exit codes: 0 rendered, 1 lossy under --strict or drift under
 --check, 2 usage or I/O (a refused unit path included), 4 the document
@@ -2462,7 +2470,8 @@ function runJsonSchema(argv) {
 // --check; 2 usage or I/O, a refused unit path included; 4 the
 // document does not stand up or the instance is not aontu:code.
 const RENDER_HELP = 'aontu render [--at <path>] [--profile <file>]... [--unit <path>] ' +
-    '[--stdout | --out <dir> | --check <dir>] [--strict] <file> (try --help)';
+    '[--stdout | --out <dir> | --check <dir> | --coverage] ' +
+    '[--coverage-at <path>] [--strict] <file> (try --help)';
 function runRender(argv) {
     const trusted = takeTrust(argv);
     if (null == trusted) {
@@ -2479,6 +2488,8 @@ function runRender(argv) {
     let check = undefined;
     let toStdout = false;
     let strict = false;
+    let coverage = false;
+    let coverageAt = undefined;
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         if ('-h' === arg || '--help' === arg) {
@@ -2532,6 +2543,16 @@ function runRender(argv) {
         else if ('--stdout' === arg) {
             toStdout = true;
         }
+        else if ('--coverage' === arg) {
+            coverage = true;
+        }
+        else if ('--coverage-at' === arg) {
+            coverageAt = argv[++i];
+            if (null == coverageAt) {
+                process.stderr.write('aontu: --coverage-at needs a path\n');
+                return 2;
+            }
+        }
         else if ('--strict' === arg) {
             strict = true;
         }
@@ -2547,10 +2568,17 @@ function runRender(argv) {
         process.stderr.write(`aontu: render needs one file\n${RENDER_HELP}\n`);
         return 2;
     }
-    const modes = [toStdout, undefined !== out, undefined !== check]
+    const modes = [toStdout, undefined !== out, undefined !== check, coverage]
         .filter((on) => on).length;
     if (1 < modes) {
-        process.stderr.write('aontu: render takes one of --stdout, --out or --check\n');
+        process.stderr.write('aontu: render takes one of --stdout, --out, --check or --coverage\n');
+        return 2;
+    }
+    // A NARROWER MEASURE NEEDS SOMETHING TO NARROW. `--coverage-at`
+    // without `--coverage` asks for a report the run does not compute,
+    // and answering silently would be the wrong half of the request.
+    if (undefined !== coverageAt && !coverage) {
+        process.stderr.write('aontu: --coverage-at needs --coverage\n');
         return 2;
     }
     let src;
@@ -2593,6 +2621,11 @@ function runRender(argv) {
     }
     const report = (0, aontu_1.render)(src, {
         at, unit, strict, profiles, path: files[0],
+        coverage, coverageAt,
+        // THE JSON REPORT CARRIES THE TRACE (D9), which is what the shape
+        // there has always said; a text run computes it only when the
+        // coverage report needs it.
+        trace: 'json' === format,
         ...verbOpts(trust, entryRootOf(files[0])),
     });
     if ('json' === format) {
@@ -2602,6 +2635,8 @@ function runRender(argv) {
             units: report.units,
             lossy: report.lossy,
             ...(null == report.errors ? {} : { errors: report.errors }),
+            ...(null == report.trace ? {} : { trace: report.trace }),
+            ...(null == report.coverage ? {} : { coverage: report.coverage }),
         }, 2) + '\n');
         return renderExit(report, 0);
     }
@@ -2666,6 +2701,21 @@ function runRender(argv) {
                 process.stderr.write(`aontu: ${u.path} differs from the rendered unit\n`);
             }
         }
+    }
+    else if (coverage) {
+        // THE COVERAGE REPORT (P7), one line per finding and a count at
+        // the end: dead model first, then the declarations no rule
+        // produced. A clean report is the count line alone.
+        const cov = report.coverage;
+        for (const d of cov.dead) {
+            process.stdout.write(`dead: ${d}\n`);
+        }
+        for (const u of cov.unruled) {
+            process.stdout.write(`unruled: ${u.unit} ${u.path}\n`);
+        }
+        process.stdout.write(`coverage: ${cov.read.length} path(s) read, ${cov.dead.length} ` +
+            `no output consumed, ${cov.unruled.length} declaration(s) ` +
+            'no rule produced\n');
     }
     else {
         // THE SUMMARY: one line per unit -- its path, its language and its

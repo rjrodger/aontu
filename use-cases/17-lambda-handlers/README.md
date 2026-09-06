@@ -130,14 +130,21 @@ holds all thirteen files.
    is visited.
 8. `--check` against a copy of the goldens with one handler edited by
    hand is red, exit 1, naming `handlers/chat.ts`.
-9. The Go port renders the same thirteen units byte for byte and
+9. `render --format json` carries a trace entry for every emitted
+   piece: each names a rendered unit and a rule, the `%handler` set is
+   addressed by the name it was read through, and the twelve services
+   are each matched at their own path in the model. `render
+   --coverage` names no dead path and no declaration without a rule:
+   one model, wholly consumed, one output, wholly produced.
+10. The Go port renders the same thirteen units byte for byte and
    refuses the same seeded template (skipped with a note when no Go
    toolchain is present).
-10. The model tree draws and is pinned, text and SVG.
+11. The Go port records the same trace, entry for entry.
+12. The model tree draws and is pinned, text and SVG.
 
 ## Running it
 
-From this directory, `./check.sh` runs all 10 assertions and exits 0.
+From this directory, `./check.sh` runs all 12 assertions and exits 0.
 It drives the TypeScript CLI (`ts/bin/aontu.js`, or the command in
 `$AONTU`) and, when `go` is on the path, the Go CLI built from `go/`.
 The verb by hand:

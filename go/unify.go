@@ -54,6 +54,40 @@ func unite(ctx *Ctx, a, b Val) Val {
 			out.setDeprecRec(dep)
 		}
 	}
+	// THE RENDER RIDERS SURVIVE EVERY MEET (RENDER.0.md P7), and here
+	// for the deprecation record's reason: a reference resolves by
+	// MEETING its target with the peer at the referring position, and
+	// an emitted piece meets the vocabulary's alternative before the
+	// fold ever sees it, so a record lost in one meet shape is a line
+	// the trace cannot name. Both are absent unless the run is
+	// instrumented, which is what the guard reads. Mirrors `riders` in
+	// ts/src/unify.ts.
+	if nil != ctx.reads && nil != out && !isTop(out) && !out.Nil() {
+		if "" == out.readAddr() {
+			org := ""
+			if nil != a {
+				org = a.readAddr()
+			}
+			if "" == org && nil != b {
+				org = b.readAddr()
+			}
+			if "" != org {
+				out.setReadAddr(org)
+			}
+		}
+		if nil == out.emitOrig() {
+			var emt *emitOrigin
+			if nil != a {
+				emt = a.emitOrig()
+			}
+			if nil == emt && nil != b {
+				emt = b.emitOrig()
+			}
+			if nil != emt {
+				out.setEmitOrig(emt)
+			}
+		}
+	}
 	return out
 }
 

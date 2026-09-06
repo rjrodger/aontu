@@ -116,7 +116,36 @@ run drift 1 -- render --check "$WORK/moved" "$DIR/gen.aon"
 has drift 'handlers/chat.ts'
 ok "--check is red when a handler is edited by hand, and names it"
 
-# 9. ADR-001: the Go port renders the same bytes, and refuses the same
+# 9. THE TRACE AND THE COVERAGE REPORT (RENDER P7). Every line of every
+# handler came from a rule, and the trace says which -- the `%handler`
+# rule set by the name it was read through, and the service the
+# dispatch matched, by its path in the model. Nothing here is dead
+# model and no declaration is a hole: one model, wholly consumed, one
+# output, wholly ruled.
+$AONTU render --format json "$DIR/gen.aon" 2>/dev/null > "$WORK/trace.json" \
+  || fail "the JSON report did not render"
+python3 - "$WORK/trace.json" <<'PY_TRACE'
+import json, sys
+r = json.load(open(sys.argv[1]))
+t = r["trace"]
+assert 250 < len(t), len(t)
+# Every entry names a unit that was rendered, and a rule.
+units = set(u["path"] for u in r["units"])
+assert all(e["unit"] in units for e in t)
+assert all("#" in e["rule"] for e in t)
+# The named rule set is addressed by its name; the twelve services are
+# each matched at their own path in the model.
+named = [e for e in t if e["rule"].startswith("$.%handler")]
+assert 12 == len(set(e["node"] for e in named)), sorted(set(e["node"] for e in named))
+assert "$.services.chat" in set(e["node"] for e in named)
+# A table written inline at the call has no address of its own.
+assert any("#0" == e["rule"] for e in t)
+PY_TRACE
+run cover 0 -- render --coverage "$DIR/gen.aon"
+has cover 'coverage: 3 path(s) read, 0 no output consumed, 0 declaration(s)'
+ok "the trace names the rule and the model node behind every piece, and nothing is dead"
+
+# 10. ADR-001: the Go port renders the same bytes, and refuses the same
 # template.
 if command -v go >/dev/null 2>&1; then
   GOBIN="$WORK/aontu-go"
@@ -129,8 +158,18 @@ if command -v go >/dev/null 2>&1; then
   grep -qF '[aontu/replace_overlap]' "$WORK/go-overlap.out" \
     || fail "the Go port did not refuse replace_overlap"
   ok "the Go port renders the same thirteen units and refuses the same template"
+  "$GOBIN" render --format json "$DIR/gen.aon" 2>/dev/null > "$WORK/trace-go.json" \
+    || fail "the Go port's JSON report did not render"
+  python3 - "$WORK/trace.json" "$WORK/trace-go.json" <<'PY_PARITY'
+import json, sys
+a = json.load(open(sys.argv[1]))["trace"]
+b = json.load(open(sys.argv[2]))["trace"]
+assert a == b, "the two ports disagree about the trace (ADR-001)"
+PY_PARITY
+  ok "the Go port records the same trace, entry for entry"
 else
   skip "the Go port renders the same thirteen units (no go toolchain)"
+  skip "the Go port records the same trace (no go toolchain)"
 fi
 
 echo
