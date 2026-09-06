@@ -7,6 +7,47 @@ which implementation each change affects.
 
 ## Unreleased
 
+### A reference walks through a conjunct that still carries a mark wrapper
+
+Both ports. Duplicate keys meet, so `T: type({...})` written twice is a
+CONJUNCT of two pending wrappers, and one written beside a plain
+`T: {...}` is a conjunct too. The reference walk was transparent to a
+`type()` or `hide()` only when the wrapper was the whole node, so a
+reference into such a key stopped at the conjunct: the wrapper waited
+for its argument, the argument waited for the reference, and neither
+moved. Generation then reported `mapval_no_gen` at the FIRST referring
+child of every consumer — a path naming none of this, while later
+children resolved — which is what made it unreadable (#164).
+
+The walk now descends such a conjunct, taking the MEET of what each term
+supplies for the segment. `A: integer` in the marked statement beside
+`A: 5` in the plain one resolves to 5, not to `integer`, which a
+first-term-wins walk would have got wrong. `hide()` has the shape and had
+the defect, which the issue had left open.
+
+Found by `aontu-lang/system`'s package-repository specification, whose
+schema map is contributed by five documents.
+
+### A residual operator keeps the document it was written in
+
+Go. The fixpoint rebuilds an operator whose operands are not all done,
+and the rebuild kept the position while dropping the url — so the value
+came out belonging to no file, and the validation verb, whose site ROLE
+is exactly "which of the two documents is this in", called a data value
+part of the schema at row and column -1. Not the source text: the
+operands have been driven, so the value no longer occupies the span that
+was written.
+
+This closes #76 (Go naming a document for a value NOBODY wrote), which no
+longer reproduced in any shape probed — arithmetic and concatenation
+literals, a call result, `set --entry --overlay --in-place`, `why`, and
+`vet` over real files. Its ledger entry is removed and the behaviour is
+held by rows instead: `vet-minted-arith-operand-unsited` and
+`vet-minted-concat-operand-unsited` say a minted value names no file, and
+`vet-residual-op-keeps-its-document` says a value that WAS written keeps
+its document across the rebuild. The pair reads as one rule — attribution
+follows authorship.
+
 ### Three parity defects in the Go port, and a coverage gate that could pass a gap
 
 **A residual call at the document root refuses** (#61). `upper($.zz)`
