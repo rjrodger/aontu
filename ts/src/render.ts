@@ -56,6 +56,35 @@ export type RenderLoss = {
   reason: string
 }
 
+// ONE PIECE'S PROVENANCE (RENDER.0.md D9, D11; P7). A dispatch stamps
+// every piece it emits with the node it matched and the rule it took,
+// and the fold reads the stamps back off the instance: `piece` is the
+// piece's own path there, `unit` the unit it landed in, `node` the
+// model address the rule matched, and `rule` the rule's address --
+// its table's, then `#`, then its index in that table.
+export type RenderTrace = {
+  unit: string
+  piece: string
+  node: string
+  rule: string
+}
+
+// THE COVERAGE REPORT (P7; G9 §6, "coverage cuts both ways"). Two
+// lists, and both are set computations over what the run recorded.
+export type RenderCoverage = {
+  // Every model path a reference resolved to, in walk order: what the
+  // render READ.
+  read: string[]
+  // Dead model: the SHALLOWEST model paths no read reached. A path
+  // whose subtree holds a read is not named; its unread children are.
+  dead: string[]
+  // A silent hole: a rendered declaration no rule produced. In a
+  // document with no rule table that is every declaration, which is
+  // the true statement about it -- the rule layer governs none of this
+  // output.
+  unruled: { unit: string, path: string }[]
+}
+
 export type RenderReport = {
   verdict: RenderVerdict
   // In `units[]` order. Empty on `error`.
@@ -66,6 +95,13 @@ export type RenderReport = {
   // stand up, the instance is not `aontu:code`, or a unit could not be
   // rendered (`render_*`).
   errors?: VetFinding[]
+  // The dispatch trace, under `trace` or `coverage` (P7), in document
+  // order. Absent when it is empty, on `error`, and from
+  // `renderValue`, which folds an instance the recorder never watched
+  // being built.
+  trace?: RenderTrace[]
+  // The coverage report, under `coverage` (P7).
+  coverage?: RenderCoverage
 }
 
 export type RenderOptions = IncludeOptions & {
@@ -83,6 +119,16 @@ export type RenderOptions = IncludeOptions & {
   unit?: string
   // Refuse tier-3 loss: the opaque escapes.
   strict?: boolean
+  // RECORD THE DISPATCH TRACE (P7). Off by default: an instrumented
+  // run stamps every value a reference resolves and every piece a rule
+  // emits, and an ordinary one pays one property load per meet.
+  trace?: boolean
+  // Compute the coverage report, which needs the trace and turns it on.
+  coverage?: boolean
+  // Measure coverage under this path only, instead of the document
+  // root (RENDER.0.md X-3). The narrower measure a document with its
+  // model under one key wants.
+  coverageAt?: string
 }
 
 
@@ -122,10 +168,18 @@ export function render(src: string, options?: RenderOptions): RenderReport {
   const opts = options ?? {}
   const aontu = new Aontu(includeOpts(opts))
 
+  // THE RECORDER (P7), on for a run that was asked for a trace or a
+  // coverage report and off for every other. Its presence is the one
+  // switch: the read set fills as references resolve, and the two
+  // riders that carry a read address and a dispatch stamp are written
+  // only while it is there.
+  const rec = true === opts.trace || true === opts.coverage
+  const reads = rec ? new Set<string>() : undefined
+
   // COLLECT MODE, so a syntax error arrives on the context rather than
   // as a throw (the jsonschema and vet precedent; no try/catch, for
   // the reason those verbs have none).
-  const actx = aontu.ctx({ collect: true })
+  const actx = aontu.ctx({ collect: true, reads })
   const root: any = aontu.unify(src, { path: opts.path, collect: true }, actx)
   if (0 < actx.err.length || true === root?.isNil) {
     return errorReport([failureFinding(actx, opts.path, root)])
@@ -161,7 +215,227 @@ export function render(src: string, options?: RenderOptions): RenderReport {
   const codeVal: any = node.peg.code
   const instance = new Aontu().generate(
     VOCABULARY + (undefined === codeVal ? '' : '\ncode: ' + hcanon(codeVal)))
-  return renderValue(instance, opts)
+  const folded = renderValue(instance, opts)
+
+  // THE TWO REPORTS ARE JOINED TO THE FOLD BY PATH (P7), which is what
+  // lets the fold stay the pure total function D6 asks for: the
+  // dispatch stamps ride the VALUE, the instance the fold reads is
+  // that value re-sourced through its hash form, and a piece is at the
+  // same path in both. Nothing to report on `error`: there are no
+  // units to attribute pieces to.
+  if (rec && 'error' !== folded.verdict) {
+    const marks = emitted(node)
+    const trace = traceOf(marks, instance, folded.units)
+    // AN EMPTY TRACE IS NO TRACE, in both ports: Go omits an empty
+    // slice, and a report shape that differed by port would be the one
+    // thing the shared rows exist to refuse. A run that emitted no
+    // piece has nothing to attribute, and the coverage report says so
+    // in its own words.
+    if (0 < trace.length) {
+      folded.trace = trace
+    }
+    if (true === opts.coverage) {
+      const cov = coverOf(root, node, reads as Set<string>, opts, marks,
+        instance, folded.units)
+      if (undefined === cov) {
+        const nil: any = makeNilErr(actx, 'no_path', root, undefined,
+          'coverageAt')
+        actx.err.push(nil)
+        return errorReport([failureFinding(actx, opts.path, root)])
+      }
+      folded.coverage = cov
+    }
+  }
+  return folded
+}
+
+
+// ---------------------------------------------------------------------
+// THE TRACE AND THE COVERAGE REPORT (RENDER.0.md D11, P7).
+
+// The one walk order both ports walk in: a list by index, a map by key
+// in code-point order. `fn` answers whether to descend.
+function walkVals(root: any, fn: (v: any, path: string[]) => boolean): void {
+  const walk = (v: any, path: string[]): void => {
+    if (null == v || true !== v.isVal || !fn(v, path)) {
+      return
+    }
+    if (true === v.isList && null != v.peg) {
+      for (let i = 0; i < v.peg.length; i++) {
+        walk(v.peg[i], [...path, String(i)])
+      }
+    }
+    else if (true === v.isMap && null != v.peg) {
+      for (const k of Object.keys(v.peg).sort(cmpCodePoint)) {
+        // AN ALIAS DECLARATION IS NOT A MEMBER, here for the reason
+        // every fold has it (./val/members.ts): `%wire = …` holds a
+        // value the document never generates, so it is neither a piece
+        // to trace nor model that could be called dead.
+        if (!v.aliasKeys.includes(k)) {
+          walk(v.peg[k], [...path, k])
+        }
+      }
+    }
+  }
+  walk(root, [])
+}
+
+
+// A path as an address: `$`, then a dot before every segment.
+function addr(path: string[]): string {
+  return '$' + path.map((seg) => '.' + seg).join('')
+}
+
+
+// Every piece a dispatch stamped, under the anchored value, in
+// document order. The path is relative to the anchor, which is where
+// the instance the fold reads is rooted too.
+function emitted(node: any): { path: string, mark: any }[] {
+  const out: { path: string, mark: any }[] = []
+  walkVals(node, (v: any, path: string[]) => {
+    if (null != v.emitted) {
+      out.push({ path: addr(path), mark: v.emitted })
+    }
+    return true
+  })
+  return out
+}
+
+
+// The trace: one entry per stamped piece that a RENDERED unit holds. A
+// piece is IN the unit whose path prefixes its own, which is the whole
+// of the question -- no path is parsed, and a stamp that lies under no
+// unit at all (a rule set held under a key of its own, and referred to
+// from a unit) simply matches nothing. A unit the run did not render
+// (`--unit` names one) has no bytes for a piece of it to be in, so it
+// is not among the prefixes either.
+function traceOf(marks: { path: string, mark: any }[], instance: any,
+  units: RenderUnit[]): RenderTrace[] {
+  const pre: { at: string, path: string }[] = []
+  unitList(instance).forEach((u: any, i: number) => {
+    if (units.some((r) => r.path === u.path)) {
+      pre.push({ at: '$.code.units.' + i, path: u.path })
+    }
+  })
+  const out: RenderTrace[] = []
+  for (const m of marks) {
+    const hit = pre.find((p) => m.path === p.at || m.path.startsWith(p.at + '.'))
+    if (undefined === hit) {
+      continue
+    }
+    out.push({ unit: hit.path, piece: m.path, node: m.mark.node, rule: m.mark.rule })
+  }
+  return out
+}
+
+
+// Every proper ancestor of an address, `$` included.
+function ancestors(a: string): string[] {
+  const parts = a.split('.')
+  const out: string[] = []
+  for (let i = 1; i < parts.length; i++) {
+    out.push(parts.slice(0, i).join('.'))
+  }
+  return out
+}
+
+
+// Is the value at `a` covered by the set -- the address itself in it,
+// or an address above it? An address ABOVE it covers the whole subtree:
+// a reference that read `$.schema` read everything under it, and a rule
+// that emitted a unit emitted every declaration in it.
+function covered(set: Set<string>, a: string): boolean {
+  if (set.has(a)) {
+    return true
+  }
+  for (const up of ancestors(a)) {
+    if (set.has(up)) {
+      return true
+    }
+  }
+  return false
+}
+
+
+// THE COVERAGE REPORT (P7). Dead model is measured over the DOCUMENT
+// ROOT, or under `coverageAt` when a document keeps its model under one
+// key (X-3, decided here): the read set is absolute, so a narrower
+// measure is a narrower walk, not a different origin. The render's own
+// output -- `code` under the anchor -- is not model and is never
+// walked into: nothing reads it, so every document would otherwise
+// report it dead.
+function coverOf(root: any, node: any, reads: Set<string>,
+  opts: RenderOptions, marks: { path: string, mark: any }[], instance: any,
+  units: RenderUnit[]): RenderCoverage | undefined {
+  // THE ANCHOR IS THE ONE render() ALREADY FOUND, so `code` under it is
+  // named without asking a second time: `--at` is resolved before the
+  // vet, and an anchor that named nothing never reached here.
+  const codeAddr = addr(node.path.concat('code'))
+
+  let from: any = root
+  let base: string[] = []
+  if (null != opts.coverageAt && '' !== opts.coverageAt) {
+    const found: any = anchorAt(root, opts.coverageAt)
+    if (null == found) {
+      return undefined
+    }
+    from = found
+    base = found.path
+  }
+
+  // The two questions asked of the read set, as sets: is this address
+  // read (or under one that is), and does a read lie BELOW it?
+  const above = new Set<string>(reads)
+  const below = new Set<string>()
+  for (const r of reads) {
+    for (const up of ancestors(r)) {
+      below.add(up)
+    }
+  }
+
+  const dead: string[] = []
+  walkVals(from, (_v: any, path: string[]) => {
+    const a = addr(base.concat(path))
+    if (a === codeAddr || covered(above, a)) {
+      return false
+    }
+    // THE ROOT OF THE MEASURE IS NEVER ITSELF DEAD MODEL, and is
+    // descended into whatever the read set holds. A document that is
+    // only a transform reads nothing above its own model, and naming
+    // the root there would report the whole document dead while its
+    // one live subtree sat inside it.
+    if (below.has(a) || 0 === path.length) {
+      return true
+    }
+    dead.push(a)
+    return false
+  })
+
+  // A SILENT HOLE: a declaration of a rendered unit that no stamp
+  // touches -- neither its own, nor one on the unit above it, nor one
+  // on a piece inside it.
+  const stamped = new Set<string>(marks.map((m) => m.path))
+  const inside = new Set<string>()
+  for (const m of marks) {
+    for (const up of ancestors(m.path)) {
+      inside.add(up)
+    }
+  }
+  const unruled: { unit: string, path: string }[] = []
+  unitList(instance).forEach((unit: any, i: number) => {
+    if (!units.some((u) => u.path === unit.path)) {
+      return
+    }
+    const decls: any[] = unit.decls
+    decls.forEach((_d: any, j: number) => {
+      const a = '$.code.units.' + i + '.decls.' + j
+      if (!covered(stamped, a) && !inside.has(a)) {
+        unruled.push({ unit: unit.path, path: a })
+      }
+    })
+  })
+
+  return { read: [...reads].sort(cmpCodePoint), dead, unruled }
 }
 
 
@@ -302,6 +576,14 @@ export function renderProfile(src: string, options?: RenderOptions):
 }
 
 
+// The instance's unit list, or none: `code` is the vocabulary's own
+// key and is always there, `units` is not. One reader, so the fold,
+// the trace and the coverage report all see the same list.
+function unitList(instance: any): any[] {
+  return Array.isArray(instance?.code?.units) ? instance.code.units : []
+}
+
+
 // The fold alone, over `generate()` output: the instance is
 // `{code: {units: [...]}}` as the vocabulary shapes it, with its
 // defaults filled -- which is what `render` hands over, and what a
@@ -311,7 +593,7 @@ export function renderValue(instance: any, options?: RenderOptions): RenderRepor
   const errors: VetFinding[] = []
   const lossy: RenderLoss[] = []
   const units: RenderUnit[] = []
-  const list: any[] = Array.isArray(instance?.code?.units) ? instance.code.units : []
+  const list: any[] = unitList(instance)
 
   const seen: string[] = []
   let selected = 0

@@ -440,6 +440,33 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 		return nil
 	}
 
+	// THE READ IS RECORDED, AND THE VALUE STAMPED WITH WHERE IT WAS
+	// FOUND (RENDER.0.md P7). A resolved reference clones its target
+	// into the referring position, so without the stamp a value that
+	// arrived by reference knows only where it came to rest -- and
+	// `render --coverage` has nothing to measure the model against. Off
+	// unless the run is instrumented; the first address wins, and every
+	// reference to one node names the same address anyway. AN ALIAS IS
+	// NOT A PATH: `%wire` names a value the document holds unevaluated
+	// and the tree never carries, so it is an address a rule can be
+	// reported AT and never a path coverage could call dead -- stamped,
+	// and not in the set the model is measured against. Mirrors the
+	// block in ts/src/val/RefVal.ts find.
+	if nil != ctx.reads && nil != node {
+		// The root's own address is `$`, as the coverage walk spells it:
+		// a dot with nothing after it would match no path there.
+		addr := "$"
+		for _, seg := range refpath {
+			addr += "." + seg
+		}
+		if 0 == len(refpath) || !strings.HasPrefix(refpath[0], "%") {
+			ctx.reads[addr] = true
+		}
+		if "" == node.readAddr() {
+			node.setReadAddr(addr)
+		}
+	}
+
 	// A reference landing on another reference may be a PROVEN mutual
 	// cycle (a: $.b, b: $.a) -- follow the plain-ref chain and, if it
 	// revisits a node, report path_cycle now instead of deferring every

@@ -7,6 +7,25 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `render --coverage`, and the dispatch trace
+
+What a transform read, and what it did not (docs/design/RENDER.0.md
+P7), in both ports. Every dispatch now stamps each piece it emits with
+the model node it matched and the rule it took, and
+`render --format json` carries one trace entry per piece: the piece's
+path in the instance, its unit, the node, and the rule — its table's
+address, then `#`, then its index there, so a rule set reached by name
+reads `$.%wire#0` and one written inline at the call reads `#0`. The
+innermost dispatch owns a piece, so a nested rule set that splices
+into an outer body still names the rule that wrote the line.
+`render --coverage` reports what that leaves over: model paths no
+output consumed — the shallowest ones, measured against every path a
+reference resolved to — and rendered declarations no rule produced.
+`--coverage-at <path>` measures a narrower model than the document
+root. The record is off unless it is asked for, and the render's own
+`code` is output rather than model, so it is never named. Both
+implementations.
+
 ### `replace` and `esc` on an `emit` template, and `form`
 
 The rule layer's last two pieces before the renderer's surface

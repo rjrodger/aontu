@@ -2225,10 +2225,56 @@ function fmtFiles(...srcs) {
             ['--stdout', '--out', Path.join(dir, 'o'), file],
             [Path.join(dir, 'missing.aon')],
             ['--trust', 'nonsense', file],
+            // P7: --coverage-at needs a path, --coverage is a mode of its
+            // own, and a narrower measure needs something to narrow.
+            ['--coverage-at'],
+            ['--coverage', '--stdout', file],
+            ['--coverage-at', '$.a', file],
         ]) {
             renderCode(2, args);
         }
         Assert.equal(renderCode(0, ['--help']).out.includes('aontu render'), true);
+    });
+    // P7: THE COVERAGE REPORT is its own output mode. It writes no files,
+    // names the model paths no output consumed and the declarations no
+    // rule produced, and counts both at the end. --coverage-at measures a
+    // narrower model, and one that names nothing is the document's own
+    // no_path refusal (exit 4), as --at already is. The shared rows pin
+    // the report itself (test/spec/render.tsv); the lines and the flags
+    // are this port's. Twin of TestRenderCoverage in
+    // go/cmd/aontu/render_test.go.
+    (0, node_test_1.test)('render-coverage-names-what-was-not-read', () => {
+        const doc = 'services: { a: { pin: "p1" } }\n' +
+            'spare: { x: 1 }\n' +
+            'code: units: [\n' +
+            '  { path: "a.txt", lang: "text", decls: [{ k: "frag", of:\n' +
+            '    emit($.services, { match: { pin: string }, body: [.pin] }) }] }\n' +
+            '  { path: "b.txt", lang: "text", decls: [{ k: "frag", of: ["b"] }] }\n' +
+            ']\n';
+        const dir = renderDir({ 'doc.aon': doc });
+        const file = Path.join(dir, 'doc.aon');
+        const cov = renderCode(0, ['--coverage', file]);
+        Assert.equal(cov.out, 'dead: $.spare\n' +
+            'unruled: b.txt $.code.units.1.decls.0\n' +
+            'coverage: 1 path(s) read, 1 no output consumed, ' +
+            '1 declaration(s) no rule produced\n');
+        // Nothing is written under this mode.
+        Assert.equal(Fs.existsSync(Path.join(dir, 'a.txt')), false);
+        // A narrower measure: $.spare is outside it, so nothing is dead.
+        Assert.equal(renderCode(0, ['--coverage', '--coverage-at', '$.services', file])
+            .out.includes('dead:'), false);
+        // An anchor that names nothing is the document's own refusal.
+        Assert.match(renderCode(4, ['--coverage', '--coverage-at', '$.nope', file]).err, /no_path/);
+        // The JSON report carries the trace and the coverage object.
+        const report = JSON.parse(renderCode(0, ['--coverage', '--format', 'json', file]).out);
+        Assert.deepEqual(report.trace, [{
+                node: '$.services.a',
+                piece: '$.code.units.0.decls.0.of.0',
+                rule: '#0',
+                unit: 'a.txt',
+            }]);
+        Assert.deepEqual(report.coverage.dead, ['$.spare']);
+        Assert.deepEqual(report.coverage.read, ['$.services']);
     });
 });
 // --- the old module layout ------------------------------------------

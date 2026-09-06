@@ -34,7 +34,8 @@ const helpText = `Usage: aontu [options] [file]
        aontu view --views <path> [--check] [options] <file>
        aontu jsonschema [--at <path>] [--strict] [options] <file>
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
-                    [--stdout | --out <dir> | --check <dir>] [--strict] <file>
+                    [--stdout | --out <dir> | --check <dir> | --coverage]
+                    [--coverage-at <path>] [--strict] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -237,9 +238,16 @@ Render options:
                     the instance has several)
   --out <dir>       Write every unit below dir, or nothing; never deletes
   --check <dir>     Compare every unit with dir/<path>; drift is listed
+  --coverage        Report what the render read and what it did not:
+                    model paths no output consumed, and rendered
+                    declarations no rule produced. Writes nothing
+  --coverage-at <p> Measure coverage under this path only, instead of
+                    the document root
   --strict          Refuse the opaque escapes (a text declaration, a raw
                     block)
-  --format <f>      text (default) or json, the whole report
+  --format <f>      text (default) or json, the whole report; json
+                    carries the dispatch trace, one entry per emitted
+                    piece
 
 Render exit codes: 0 rendered, 1 lossy under --strict or drift under
 --check, 2 usage or I/O (a refused unit path included), 4 the document

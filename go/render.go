@@ -44,6 +44,42 @@ type RenderLoss struct {
 	Reason    string `json:"reason"`
 }
 
+// RenderTrace is ONE PIECE'S PROVENANCE (RENDER.0.md D9, D11; P7). A
+// dispatch stamps every piece it emits with the node it matched and the
+// rule it took, and the fold reads the stamps back off the instance:
+// Piece is the piece's own path there, Unit the unit it landed in, Node
+// the model address the rule matched, and Rule the rule's address --
+// its table's, then `#`, then its index in that table.
+type RenderTrace struct {
+	Unit  string `json:"unit"`
+	Piece string `json:"piece"`
+	Node  string `json:"node"`
+	Rule  string `json:"rule"`
+}
+
+// RenderHole is a rendered declaration no rule produced.
+type RenderHole struct {
+	Unit string `json:"unit"`
+	Path string `json:"path"`
+}
+
+// RenderCoverage is THE COVERAGE REPORT (P7; G9 §6, "coverage cuts both
+// ways"). Two lists, and both are set computations over what the run
+// recorded.
+type RenderCoverage struct {
+	// Every model path a reference resolved to, in walk order: what the
+	// render READ.
+	Read []string `json:"read"`
+	// Dead model: the SHALLOWEST model paths no read reached. A path
+	// whose subtree holds a read is not named; its unread children are.
+	Dead []string `json:"dead"`
+	// A silent hole: a rendered declaration no rule produced. In a
+	// document with no rule table that is every declaration, which is
+	// the true statement about it -- the rule layer governs none of
+	// this output.
+	Unruled []RenderHole `json:"unruled"`
+}
+
 // RenderReport is the verb's answer.
 type RenderReport struct {
 	Verdict string `json:"verdict"`
@@ -53,6 +89,12 @@ type RenderReport struct {
 	Lossy []RenderLoss `json:"lossy"`
 	// On error only, in vet's finding shape.
 	Errors []VetFinding `json:"errors,omitempty"`
+	// The dispatch trace, under Trace or Coverage (P7), in document
+	// order. Absent when it is empty, on error, and from RenderValue,
+	// which folds an instance the recorder never watched being built.
+	Trace []RenderTrace `json:"trace,omitempty"`
+	// The coverage report, under Coverage (P7).
+	Coverage *RenderCoverage `json:"coverage,omitempty"`
 }
 
 // RenderOptions are the fold's options (the twin of RenderOptions in
@@ -69,6 +111,18 @@ type RenderOptions struct {
 	Unit string
 	// Strict refuses tier-3 loss: the opaque escapes.
 	Strict bool
+	// Trace RECORDS THE DISPATCH TRACE (P7). Off by default: an
+	// instrumented run stamps every value a reference resolves and
+	// every piece a rule emits, and an ordinary one pays one nil check
+	// per meet.
+	Trace bool
+	// Coverage computes the coverage report, which needs the trace and
+	// turns it on.
+	Coverage bool
+	// CoverageAt measures coverage under this path only, instead of the
+	// document root (RENDER.0.md X-3). The narrower measure a document
+	// with its model under one key wants.
+	CoverageAt string
 }
 
 const renderVocabulary = `@"aontu:code"`
@@ -107,7 +161,17 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 		return renderErrorReport([]VetFinding{
 			parseFinding(a.File, VetRoleData, perr)})
 	}
-	root, ctx, _ := a.unifyCtx(parsed, nil, src)
+	// THE RECORDER (P7), on for a run that was asked for a trace or a
+	// coverage report and off for every other. Its presence is the one
+	// switch: the read set fills as references resolve, and the two
+	// riders that carry a read address and a dispatch stamp are written
+	// only while it is there.
+	rec := options.Trace || options.Coverage
+	var reads map[string]bool
+	if rec {
+		reads = map[string]bool{}
+	}
+	root, ctx, _ := a.unifyCtxReads(parsed, nil, src, reads)
 	if nil == root || root.Nil() || 0 < len(ctx.err) {
 		return renderErrorReport([]VetFinding{
 			failureFinding(ctx, a.File, src, root)})
@@ -160,7 +224,274 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 		return renderErrorReport([]VetFinding{renderFinding(
 			"render_profile", "parse", "$", gerr.Error())})
 	}
-	return RenderValue(instance, &options)
+	folded := RenderValue(instance, &options)
+
+	// THE TWO REPORTS ARE JOINED TO THE FOLD BY PATH (P7), which is
+	// what lets the fold stay the pure total function D6 asks for: the
+	// dispatch stamps ride the VALUE, the instance the fold reads is
+	// that value re-sourced through its hash form, and a piece is at
+	// the same path in both. Nothing to report on error: there are no
+	// units to attribute pieces to.
+	if rec && "error" != folded.Verdict {
+		marks := renderEmitted(node)
+		folded.Trace = renderTraceOf(marks, instance, folded.Units)
+		if options.Coverage {
+			cov, ok := renderCoverOf(root, node, reads, &options, marks,
+				instance, folded.Units)
+			if !ok {
+				ctx.err = append(ctx.err,
+					makeNilErrFull(ctx, "no_path", root, nil, "coverageAt", nil))
+				return renderErrorReport([]VetFinding{
+					failureFinding(ctx, a.File, src, root)})
+			}
+			folded.Coverage = cov
+		}
+	}
+	return folded
+}
+
+// ---------------------------------------------------------------------
+// THE TRACE AND THE COVERAGE REPORT (RENDER.0.md D11, P7). Twins of the
+// block under the same heading in ts/src/render.ts.
+
+// renderMark is one stamped piece and where it sits.
+type renderMark struct {
+	path string
+	mark *emitOrigin
+}
+
+// renderWalk walks a value tree in the one order both ports walk in: a
+// list by index, a map by key in code-point order. fn answers whether
+// to descend.
+func renderWalk(root Val, fn func(v Val, path []string) bool) {
+	var walk func(v Val, path []string)
+	walk = func(v Val, path []string) {
+		if nil == v || !fn(v, path) {
+			return
+		}
+		switch n := v.(type) {
+		case *ListVal:
+			for i, el := range n.peg {
+				walk(el, append(cp(path), itoa(i)))
+			}
+		case *MapVal:
+			keys := append([]string(nil), n.keys...)
+			sort.Strings(keys)
+			for _, k := range keys {
+				// AN ALIAS DECLARATION IS NOT A MEMBER, here for the
+				// reason every fold has it (members.go): `%wire = …`
+				// holds a value the document never generates, so it is
+				// neither a piece to trace nor model that could be
+				// called dead.
+				if !n.isAliasKey(k) {
+					walk(n.peg[k], append(cp(path), k))
+				}
+			}
+		}
+	}
+	walk(root, []string{})
+}
+
+// renderAddr is a path as an address: `$`, then a dot before every
+// segment.
+func renderAddr(path []string) string {
+	out := "$"
+	for _, seg := range path {
+		out += "." + seg
+	}
+	return out
+}
+
+// renderEmitted is every piece a dispatch stamped, under the anchored
+// value, in document order. The path is relative to the anchor, which
+// is where the instance the fold reads is rooted too.
+func renderEmitted(node Val) []renderMark {
+	out := []renderMark{}
+	renderWalk(node, func(v Val, path []string) bool {
+		if o := v.emitOrig(); nil != o {
+			out = append(out, renderMark{path: renderAddr(path), mark: o})
+		}
+		return true
+	})
+	return out
+}
+
+// renderUnitList is the instance's unit maps, or none. A failed type
+// assertion answers the zero value and a nil map indexes to one, so the
+// three steps need no arms of their own.
+func renderUnitList(instance any) []any {
+	m, _ := instance.(map[string]any)
+	c, _ := m["code"].(map[string]any)
+	units, _ := c["units"].([]any)
+	return units
+}
+
+// renderRendered says whether the unit at this path was rendered:
+// --unit names one, and a unit the run did not render has no bytes for
+// a piece of it to be in.
+func renderRendered(units []RenderUnit, path string) bool {
+	for _, u := range units {
+		if u.Path == path {
+			return true
+		}
+	}
+	return false
+}
+
+// renderPrefix is one rendered unit's path prefix and its unit path.
+type renderPrefix struct {
+	at   string
+	path string
+}
+
+// renderTraceOf is the trace: one entry per stamped piece that a
+// RENDERED unit holds. A piece is IN the unit whose path prefixes its
+// own, which is the whole of the question -- no path is parsed, and a
+// stamp that lies under no unit at all (a rule set held under a key of
+// its own, and referred to from a unit) simply matches nothing. A unit
+// the run did not render is not among the prefixes either.
+func renderTraceOf(marks []renderMark, instance any,
+	units []RenderUnit) []RenderTrace {
+	pre := []renderPrefix{}
+	for i, u := range renderUnitList(instance) {
+		um, _ := u.(map[string]any)
+		upath, _ := um["path"].(string)
+		if renderRendered(units, upath) {
+			pre = append(pre, renderPrefix{
+				at: "$.code.units." + itoa(i), path: upath})
+		}
+	}
+	out := []RenderTrace{}
+	for _, m := range marks {
+		hit := ""
+		for _, p := range pre {
+			if m.path == p.at || strings.HasPrefix(m.path, p.at+".") {
+				hit = p.path
+				break
+			}
+		}
+		if "" == hit {
+			continue
+		}
+		out = append(out, RenderTrace{Unit: hit, Piece: m.path,
+			Node: m.mark.node, Rule: m.mark.rule})
+	}
+	return out
+}
+
+// renderAncestors is every proper ancestor of an address, `$` included.
+func renderAncestors(a string) []string {
+	parts := strings.Split(a, ".")
+	out := make([]string, 0, len(parts))
+	for i := 1; i < len(parts); i++ {
+		out = append(out, strings.Join(parts[:i], "."))
+	}
+	return out
+}
+
+// renderCovered says whether the value at a is covered by the set --
+// the address itself in it, or an address above it. An address ABOVE it
+// covers the whole subtree: a reference that read `$.schema` read
+// everything under it, and a rule that emitted a unit emitted every
+// declaration in it.
+func renderCovered(set map[string]bool, a string) bool {
+	if set[a] {
+		return true
+	}
+	for _, up := range renderAncestors(a) {
+		if set[up] {
+			return true
+		}
+	}
+	return false
+}
+
+// renderCoverOf is THE COVERAGE REPORT (P7). Dead model is measured
+// over the DOCUMENT ROOT, or under CoverageAt when a document keeps its
+// model under one key (X-3, decided here): the read set is absolute, so
+// a narrower measure is a narrower walk, not a different origin. The
+// render's own output -- `code` under the anchor -- is not model and is
+// never walked into: nothing reads it, so every document would
+// otherwise report it dead.
+func renderCoverOf(root Val, node Val, reads map[string]bool,
+	opts *RenderOptions, marks []renderMark, instance any,
+	units []RenderUnit) (*RenderCoverage, bool) {
+	// THE ANCHOR IS THE ONE Render ALREADY FOUND, so `code` under it is
+	// named without asking a second time: At is resolved before the
+	// vet, and an anchor that named nothing never reached here.
+	codeAddr := renderAddr(append(cp(node.vpath()), "code"))
+
+	from := root
+	base := []string{}
+	if "" != opts.CoverageAt {
+		found := anchorAt(root, opts.CoverageAt)
+		if nil == found {
+			return nil, false
+		}
+		from = found
+		base = cp(found.vpath())
+	}
+
+	// The two questions asked of the read set, as sets: is this address
+	// read (or under one that is), and does a read lie BELOW it?
+	below := map[string]bool{}
+	for r := range reads {
+		for _, up := range renderAncestors(r) {
+			below[up] = true
+		}
+	}
+
+	dead := []string{}
+	renderWalk(from, func(_ Val, path []string) bool {
+		a := renderAddr(append(cp(base), path...))
+		if a == codeAddr || renderCovered(reads, a) {
+			return false
+		}
+		// THE ROOT OF THE MEASURE IS NEVER ITSELF DEAD MODEL, and is
+		// descended into whatever the read set holds. A document that
+		// is only a transform reads nothing above its own model, and
+		// naming the root there would report the whole document dead
+		// while its one live subtree sat inside it.
+		if below[a] || 0 == len(path) {
+			return true
+		}
+		dead = append(dead, a)
+		return false
+	})
+
+	// A SILENT HOLE: a declaration of a rendered unit that no stamp
+	// touches -- neither its own, nor one on the unit above it, nor one
+	// on a piece inside it.
+	stamped := map[string]bool{}
+	inside := map[string]bool{}
+	for _, m := range marks {
+		stamped[m.path] = true
+		for _, up := range renderAncestors(m.path) {
+			inside[up] = true
+		}
+	}
+	unruled := []RenderHole{}
+	for i, u := range renderUnitList(instance) {
+		um, _ := u.(map[string]any)
+		upath, _ := um["path"].(string)
+		if !renderRendered(units, upath) {
+			continue
+		}
+		decls, _ := um["decls"].([]any)
+		for j := range decls {
+			a := "$.code.units." + itoa(i) + ".decls." + itoa(j)
+			if !renderCovered(stamped, a) && !inside[a] {
+				unruled = append(unruled, RenderHole{Unit: upath, Path: a})
+			}
+		}
+	}
+
+	read := make([]string, 0, len(reads))
+	for r := range reads {
+		read = append(read, r)
+	}
+	sort.Strings(read)
+	return &RenderCoverage{Read: read, Dead: dead, Unruled: unruled}, true
 }
 
 // RenderProfile evaluates a PROFILE DOCUMENT (RENDER.0.md D5) the way
