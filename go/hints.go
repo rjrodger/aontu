@@ -83,6 +83,11 @@ var hints = map[string]string{
 	"refer_unresolved":         "A refer() address names no node in this evaluation. Within one\nevaluation the document-set is fixed, so a link to nothing is an error\nrather than something to resolve later: check the spelling, or add the\nnode it was meant to reach. A relative address that climbs off the top\nof the tree lands here too.\n \nExamples:\n  a:{p:1} b:refer()&\"$.a\"    -> \"$.a\"    # $.a is a node;\n  a:{p:1} b:refer()&\"$.a.p\"  -> \"$.a.p\"  # ... and so is a node inside it;\n  b:refer()&\"$.nope\"         -> nil      # ... but nothing is here.",
 	"view_relation_unknown":    "The relation named to the view has no edges in this document, so\nthe figure would be empty -- and an empty figure and a misspelled name are\nthe same file on disk. Check the spelling against the relations the\nnote lists, or drop the relation to draw every relation at once.",
 	"view_kind_unknown":        "The figure kind is not one the verb draws. The kinds are tree, matrix,\ngraph, layer, sets, layers, ladder and poset; the note lists them.",
+	"render_path":              "A unit path is written below the output directory: relative, with no\n`..` segment, and no two units the same. Rename the unit.",
+	"render_lang":              "A text escape carries verbatim syntax of ONE language, and it must be\nthe unit's: a text of another language in this unit would be written\nas if it were this one. Move it to a unit of its own language.",
+	"render_profile":           "Only fragments and text escapes render without a lowering, under the\ntext profile. A record, enum, alias, const or func needs a profile\nwhose language has one (typescript, go): set the unit's lang, or\nwrite the declaration as a fragment.",
+	"render_strict":            "Under strict, an opaque escape -- a text declaration or a raw piece,\nwhich the renderer cannot check -- is refused. Write it as lines, or\nrender without strict and read the loss report.",
+	"render_unit":              "The unit asked for is not in the instance. The report names the\npath; the units are listed by `--format json`.",
 	"view_profile_unknown":     "The figure kind does not render into the profile asked for: there is no\ntext form of a node-link drawing and no Mermaid form of a matrix. The\nnote lists the profiles the kind declares; the first is its default.",
 	"view_style_profile":       "Each profile has ONE way to carry the meaning of a figure's marks:\nSGR escapes for text, CSS classes for svg. Asking for the other one is\na usage error rather than a silent no-op. `none` works everywhere.",
 	"view_style_unknown":       "The styles are none, ansi and css, plus `auto` at the command line,\nwhich the command resolves before the library runs: whether the\ndestination is a terminal is not something a library can see.",
@@ -269,11 +274,20 @@ var codeClasses = map[string]string{
 	// The tree view (docs/design/VIEWS.0.md): a relation that draws
 	// nothing is refused rather than drawn empty. Class reference: a
 	// name that does not resolve.
-	"view_relation_unknown":   "reference",
-	"view_kind_unknown":       "reference",
-	"view_profile_unknown":    "reference",
-	"view_style_profile":      "reference",
-	"view_style_unknown":      "reference",
+	"view_relation_unknown": "reference",
+	"view_kind_unknown":     "reference",
+	"view_profile_unknown":  "reference",
+	"view_style_profile":    "reference",
+	"view_style_unknown":    "reference",
+	// The renderer (docs/design/RENDER.0.md D7, D8): a unit path that
+	// is not a relative descent of its own, a text escape in the wrong
+	// language, a declaration with no lowering, an opaque escape under
+	// strict, a unit filter that names nothing.
+	"render_path":             "parse",
+	"render_lang":             "conflict",
+	"render_profile":          "parse",
+	"render_strict":           "conflict",
+	"render_unit":             "reference",
 	"view_rows_exceeded":      "budget",
 	"view_line_break":         "parse",
 	"view_relation_ambiguous": "reference",

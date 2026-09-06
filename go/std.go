@@ -136,12 +136,13 @@ view: {
 // Both the bare name and the `.aon` spelling resolve, because both are
 // what an author reaches for.
 var stdSources = map[string]string{
-	"std/system":     stdSystem,
-	"std/system.aon": stdSystem,
-	"std/view":       stdView,
-	"std/view.aon":   stdView,
-	"aontu:code":     stdCode,
-	"aontu:profile":  stdProfile,
+	"std/system":      stdSystem,
+	"std/system.aon":  stdSystem,
+	"std/view":        stdView,
+	"std/view.aon":    stdView,
+	"aontu:code":      stdCode,
+	"aontu:lang/text": stdLangText,
+	"aontu:profile":   stdProfile,
 }
 
 // aontuScheme is the prefix of a language-supplied model
@@ -398,4 +399,21 @@ const stdProfile = `# aontu:profile --- THE PROFILE VOCABULARY. A profile is the
 })
 
 profile: %profile
+`
+
+// stdLangText is the text profile (RENDER.0.md D5): the profile of a
+// fragment-only unit, and the fallback of every language without a
+// lowering. The same bytes as STD_LANG_TEXT in ts/src/std.ts.
+const stdLangText = `# aontu:lang/text --- THE TEXT PROFILE. The profile of a unit whose
+# declarations are fragments and text escapes only: indentation, and
+# nothing else, since a fold over fragments applies nothing else. Every
+# language without a lowering renders under it (docs/design/RENDER.0.md
+# D5), and a reference inline renders as its name, verbatim.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+
+@"aontu:profile"
+
+profile: { lang:"text" indent:{ unit:" " width:2 } }
 `

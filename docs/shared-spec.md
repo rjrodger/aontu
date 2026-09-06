@@ -24,7 +24,7 @@ name <TAB> mode <TAB> src <TAB> expect
 | column   | meaning                                                        |
 |----------|----------------------------------------------------------------|
 | `name`   | short identifier for the case (unique within its file)         |
-| `mode`   | `canon`, `gen`, `gens`, `err`, `errc`, `errcode`, `vet`, `subsume`, `query`, `why`, `patch`, `diff`, `agentsmd`, `trim`, `hcanon`, `hash`, `fmt`, `fmt-refuse`, `fmt-lint`, `graph`, `relation`, `reaches`, `view` or `views` (see below) |
+| `mode`   | `canon`, `gen`, `gens`, `err`, `errc`, `errcode`, `vet`, `subsume`, `query`, `why`, `patch`, `diff`, `agentsmd`, `trim`, `hcanon`, `hash`, `fmt`, `fmt-refuse`, `fmt-lint`, `graph`, `relation`, `reaches`, `view`, `views` or `render` (see below) |
 | `src`    | aontu source text to evaluate                                  |
 | `expect` | the expected result, interpreted according to `mode`          |
 
@@ -71,6 +71,7 @@ name <TAB> agentsmd <TAB> src <TAB> document-name <TAB> expect
 | `reaches` | `reachCheck(src, from, to, {relation?})`—transitive reachability over the entity graph—must produce the report `expect` describes (`verdict` and, when it reaches, the shortest `path`). The endpoints ride `expect.ask` as `{from, to, relation?}`, since the same document answers differently for different pairs |
 | `view` | `view(src, ask)`—a figure of the document (tree, matrix, graph, layer, sets, layers, ladder or poset) as text, with the loss report—must produce the report `expect` describes (`kind`, `verdict`, the rendered `text` byte for byte and `loss`, or `errors`). The options ride `expect.ask`, the whole ViewOptions object with `kind`, since the same document draws differently under a relation filter, from a named root, in another order or profile; a poset's further documents ride `ask.docs` as `{src, name}` |
 | `views` | `viewSet(src, ask)`—the figures a VIEW DOCUMENT declares (VIEWS.0.md, "6. The view document"), read out of the evaluated document at `ask.views`—must produce the report `expect` describes: the set's `verdict`, and one entry per figure in declaration-key order carrying its `name`, `kind`, `out`, `verdict`, rendered `text` and `loss`, or its `errors`. A fault in the declarations themselves is the set's own `errors` and no figures at all |
+| `render` | `render(src, ask)`—the renderer: the document evaluated, the value at `ask.at` (the root by default) vetted against `aontu:code`, and `code.units` folded into bytes—must produce the report `expect` describes: `verdict`, one entry per unit in `units[]` order carrying its `path`, `lang` and `text` byte for byte, and `lossy` (unit, path, tier, construct, reason), or `errors` with the prose stripped. The options ride `expect.ask` (`at`, `profiles` as inline profile maps, `unit`, `strict`), since the same document renders differently under each; a newline in a unit's text is written `\n` |
 | `graph` | the DERIVED GRAPH of `unify(src)`—the entity index and the edge set—must equal `expect` as JSON, and must be the same bytes again on a fresh engine |
 | `hcanon` | `unify(src)` then its HASH FORM—canon plus the `close()`/`type()`/`hide()` wrappers—must equal `expect`, and that text must round-trip through the engine unchanged |
 | `hash`  | `canonHash(unify(src))` must equal `expect`, the full `aon1-…` pin |

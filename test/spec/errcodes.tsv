@@ -402,3 +402,9 @@ view_sets_required	errcode	reference	0.54.0
 view_at_required	errcode	reference	0.54.0
 view_group_required	errcode	reference	0.54.0
 view_document_shape	errcode	reference	0.54.0
+# The renderer (docs/design/RENDER.0.md D7, D8; RENDER P3).
+render_path	errcode	parse	0.58.0
+render_lang	errcode	conflict	0.58.0
+render_profile	errcode	parse	0.58.0
+render_strict	errcode	conflict	0.58.0
+render_unit	errcode	reference	0.58.0

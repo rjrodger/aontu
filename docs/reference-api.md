@@ -2594,6 +2594,15 @@ format         // the source formatter (see `aontu fmt` above):
                // FormatOptions{Lint: true}) for the findings
 unifiedDiff    // unifiedDiff(name, before, after): the diff `aontu fmt
                // --diff` prints; Go: aontu.UnifiedDiff
+render         // the renderer: evaluate a document, vet the value at
+               // `at` against aontu:code, and fold code.units into
+               // bytes:
+               // render(src, {at?, path?, profiles?, unit?, strict?,
+               // trust?}) -> {verdict, units, lossy, errors?};
+               // Go: aontu.New().Render(src, &RenderOptions{...})
+renderValue    // the fold alone, over generate() output:
+               // renderValue(instance, opts) -> the same report;
+               // Go: aontu.RenderValue(instance, opts)
 ```
 
 #### Evaluating a document you did not write
@@ -2669,6 +2678,7 @@ does exactly this for a file argument.)
 | `UnifyVars`    | `UnifyVars(src string, vars map[string]Val) (Val, error)` | `Unify` with `$name` variables. |
 | `Generate`     | `Generate(src string) (any, error)` | Parse → unify → native Go value. |
 | `GenerateVars` | `GenerateVars(src string, vars map[string]Val) (any, error)` | `Generate` with variables. |
+| `Render`       | `Render(src string, opts *RenderOptions) RenderReport` | The renderer: evaluate, vet the value at `At` against `aontu:code`, fold `code.units` into bytes: `Units` (path, lang, text), `Lossy` (the three tiers) or `Errors`. `aontu.RenderValue(instance any, opts *RenderOptions) RenderReport` is the fold alone, over `Generate` output. |
 | `Format`       | `Format(src string) FormatReport` | The source formatter (see [`aontu fmt`](#aontu-fmt)): the agreed form, or the findings that say why there is none. `FormatWith(src string, opts FormatOptions) FormatReport` is the same with the options: `Lint` fills the report's `Findings`, the style findings of `--lint`. `aontu.UnifiedDiff(name, before, after string) string` is the diff `--diff` prints. |
 
 <!-- test: skip Go API sample; the API surface is pinned by the go/ test suite -->

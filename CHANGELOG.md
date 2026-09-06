@@ -7,6 +7,44 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `render`, the fold: fragments render, under the text profile
+
+The renderer's core (docs/design/RENDER.0.md P3), in both ports:
+`render(src, opts)` evaluates a document, takes the value at `at` (the
+root by default), vets it against `aontu:code` as `aontu vet` would,
+and folds `code.units` into bytes; `renderValue(instance, opts)` is
+the fold alone, over `generate()` output. Both are exported from the
+barrel (Go: `Render` and `RenderValue`). The fold is the fragment
+algebra of G9 §3 as the second amendment made it flat: a line is its
+depth's pad, its inline pieces joined, and a terminator, with no pad
+for an empty text; a bare string is a line at depth 0; a blank is its
+terminators alone; a raw block is re-indented line by line unless it
+says `reindent: false`; a reference inline is its name, verbatim; and
+nothing is trimmed. A `text` escape is verbatim. The vet and the meet
+read the SETTLED value, re-sourced through its hash form, so the lines
+a transform computed — an `emit`, a `join` — are what the vocabulary
+checks and what the fold renders.
+
+Profiles are data that knows its language (D5): a caller-supplied
+profile whose `lang` is the unit's, else the bundled profile of that
+`lang`, else **`aontu:lang/text`** — the one profile bundled so far,
+two spaces of indent and nothing else — if and only if every
+declaration in the unit is a fragment or a text escape; the unit's
+inline `profile` merges over whichever was found. A declaration in a
+language with no lowering is `render_profile`; the TypeScript and Go
+lowerings and their profiles are P5. The report carries the three loss
+tiers (D7): every fragment is tier 2, a `text` escape and a `raw` piece
+tier 3, and `strict` refuses tier 3 (`render_strict`). A unit path
+that is absolute, climbs with `..` or repeats another's is
+`render_path`; a `text` escape of another language is `render_lang`;
+a `unit` filter that names nothing is `render_unit`. The verb, the MCP
+tool and the use case are P4. `test/spec/render.tsv`, a new `render`
+mode (35 rows); `aontu-profile.tsv` pins the text profile by hash and
+generated form; `errcodes.tsv` +5. Both implementations. In Go, a
+bundled model's text is now recorded as an included file's is, so a
+finding sited in `aontu:code` carries the row and column TypeScript
+reports rather than -1:-1.
+
 ### A fold sees the members generation emits
 
 `each`, `emit`, `filter`, `pack`, `pick`, `join` and the aggregates
@@ -58,13 +96,14 @@ A name that begins `aontu:` is a language-supplied model, served from
 the engine's own table and nowhere else: the memory, module, file and
 package legs are never asked, so no file can shadow one, and
 `@"aontu:nope"` is refused naming the set — `the language-supplied
-models are aontu:code, aontu:profile` — rather than looked for on
+models are aontu:code, aontu:lang/text, aontu:profile` — rather than looked for on
 disk. Denied under `none`, like every include; recorded in the include
 manifest under `std`. This is the resolver leg of MODELS.0.md M0, landed
 alone; the rename of `std/system` and `std/view` to `aontu:` names
 follows on its own.
 
-Two models ship under it. **`aontu:code`** is the output vocabulary of
+Two models shipped under it first, joined by `aontu:lang/text` with the
+renderer (below). **`aontu:code`** is the output vocabulary of
 declarative transformation (G9 §1 with the fragment algebra of its
 second amendment): `code: { source?, units }`, each unit a path, a
 language and its declarations — `record`, `enum`, `alias`, `const`,

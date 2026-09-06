@@ -502,7 +502,16 @@ phase-0 item in its own right; §57 and §60 likewise.
 *Spec:* `gen-join.tsv` +4, one row per combinator in its own file.
 **Acceptance:** the §79 reproducer generates `"keep"` in both ports.
 
-### P3 — the renderer core, fragments first (M)
+### P3 — the renderer core, fragments first (M) — LANDED 2026-09-06
+
+*Landed as designed, with the departures recorded as §9 items 14–16:
+the vet and the meet read the settled value through its hash form,
+not the document's text; the per-code-point escaper waits for P5,
+where a declaration first reaches it; and two codes stand beside the
+plan's three, `render_strict` and `render_unit`. `render.tsv` is 32
+rows; `aontu-profile.tsv` pins `aontu:lang/text`. Acceptance met: the
+amendment's Python class renders byte-identically from both ports
+(`render-python-class`).*
 
 **Deliverable.** `ts/src/render.ts` and `go/render.go`, function for
 function: the fragment fold of D6 (`%line`, `%blank`, `%raw`, the
@@ -773,6 +782,31 @@ touches M0.
     shape `std-system.tsv` and `std-view.tsv` set for the bundled
     models: a `vet` row's expectation is the finding JSON with every
     site, which buries the one code a row is about.
+
+14. **The vet and the meet read the settled value, not the source
+    text** (P3). D1 says the verb vets "exactly as `aontu vet code.aon
+    result.aon` would", and the first cut did: it handed vet the
+    document's text. A fragment whose lines are computed — `of:
+    emit(...)`, `"select " + join($.cols, ", ")` — then failed the
+    vet in Go as `empty`: the vocabulary's alternatives were tried
+    against a call still waiting to fire, not against the value it
+    fires to. `render` now re-sources the anchored value through its
+    hash form (valid source that evaluates to the same value) for both
+    the vet and the keyed meet `code: <value>` that fills the
+    vocabulary's defaults. A finding from that vet addresses the
+    instance by path, which is the addressing G9 §3 chose for every
+    render finding; a document that does not stand up at all is still
+    reported with its own sites, before either.
+15. **The per-code-point escaper is P5's** (P3 listed it). Nothing in
+    the fragment fold escapes a string — pieces are verbatim — so an
+    escaper landed in P3 would be code no row reaches, which ADR-002
+    forbids. It lands with the string literal of the declaration
+    lowering, the first construct that needs it.
+16. **Two more codes** (P3 listed three). `render_strict` is the
+    refusal `--strict` makes of a tier-3 escape, and it is a code
+    because the library reports it as a finding rather than an exit
+    status; `render_unit` is a `--unit` filter naming no unit. Both
+    have a row that reaches them, as the phase text asks.
 
 ## 10. The validation system: `test/system/rb-solar`
 

@@ -25,6 +25,7 @@ import { agentsMd } from './agentsmd'
 import { graphOf } from './graph'
 import { relationCheck, relationErrors } from './relation'
 import { view, viewSet, viewTree } from './view'
+import { render, renderValue } from './render'
 import { format, unifiedDiff } from './format'
 export type { LintFinding, FormatReport, FormatOptions } from './format'
 
@@ -477,6 +478,12 @@ export {
   view,
   viewSet,
   viewTree,
+
+  // G9 -- the renderer (docs/design/RENDER.0.md): evaluate, vet and
+  // fold an aontu:code instance into bytes, or the fold alone over
+  // generate() output.
+  render,
+  renderValue,
 
   // The source formatter (docs/design/FMT.0.md): the agreed form of a
   // document, and the unified diff `aontu fmt --diff` prints.

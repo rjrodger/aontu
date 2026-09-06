@@ -268,7 +268,7 @@ function aonFiles(dir, out = []) {
             Assert.equal(report.changed, false, name);
             Assert.deepEqual(report.findings, [], name + ' has lint findings');
         }
-        Assert.deepEqual(std_1.AONTU_MODELS, ['aontu:code', 'aontu:profile']);
+        Assert.deepEqual(std_1.AONTU_MODELS, ['aontu:code', 'aontu:lang/text', 'aontu:profile']);
     });
 });
 //# sourceMappingURL=format.test.js.map
