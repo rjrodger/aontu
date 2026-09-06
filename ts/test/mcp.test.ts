@@ -29,7 +29,7 @@ import { srcPath } from './srcpath'
 
 const ALL_TOOLS = [
   'breaking', 'canon', 'diff', 'get', 'hash', 'jsonschema',
-  'reaches', 'relations',
+  'reaches', 'relations', 'render',
   'set', 'subsume', 'summary', 'trim', 'vet', 'view', 'why',
 ]
 
@@ -664,6 +664,55 @@ describe('mcp', () => {
     Assert.equal(denied.errors[0].code, 'include_denied')
   })
 
+
+
+  test('render-tool-renders-and-never-writes', () => {
+    // The MCP surface of the renderer (RENDER.0.md D8): the units as
+    // text, the loss report beside them, the verb's own flags -- and
+    // no file anywhere, since the caller places the units itself.
+    const r = payload(callTool('render', {
+      source: 'code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", ' +
+        'of: ["x", { k: "line", at: 1, of: ["y"] }] }] }]\n',
+    }))
+    Assert.equal(r.verdict, 'lossy')
+    Assert.deepEqual(r.units, [{ path: 'a.txt', lang: 'text', text: 'x\n  y\n' }])
+    Assert.equal(r.lossy[0].tier, 2)
+    Assert.equal(r.errors, undefined)
+
+    // `at` and `unit` are the verb's own flags, and `strict` refuses
+    // the opaque escapes as an error report.
+    const at = payload(callTool('render', {
+      source: 'gen: { code: units: [{ path: "a.txt", lang: "text", decls: [] }, ' +
+        '{ path: "b.txt", lang: "text", decls: [] }] }\n',
+      at: 'gen', unit: 'b.txt',
+    }))
+    Assert.deepEqual(at.units.map((u: any) => u.path), ['b.txt'])
+    const strict = payload(callTool('render', {
+      source: 'code: units: [{ path: "a.txt", lang: "text", ' +
+        'decls: [{ k: "text", lang: "text", text: "v" }] }]\n',
+      strict: true,
+    }))
+    Assert.equal(strict.verdict, 'error')
+    Assert.equal(strict.errors[0].code, 'render_strict')
+
+    // A document that does not stand up is an error report, not a
+    // throw, with nothing rendered.
+    const broken = payload(callTool('render', { source: 'a: 1 & 2' }))
+    Assert.equal(broken.verdict, 'error')
+    Assert.deepEqual(broken.units, [])
+    Assert.equal(broken.errors[0].code, 'scalar_value')
+
+    // THE TOOL NEVER WRITES: a unit path is text in the answer, and no
+    // file of that name appears -- not under a root, not in the cwd.
+    const root = scratchDir('aontu-mcp-render-root-')
+    const out = payload(callTool('render', {
+      source: 'code: units: [{ path: "canary.txt", lang: "text", ' +
+        'decls: [{ k: "frag", of: ["x"] }] }]\n',
+    }, { root }))
+    Assert.equal(out.units[0].path, 'canary.txt')
+    Assert.equal(Fs.existsSync(Path.join(root, 'canary.txt')), false)
+    Assert.equal(Fs.existsSync(Path.join(process.cwd(), 'canary.txt')), false)
+  })
 
   test('relations-trim-and-hash-answer-their-reports', () => {
     // relations: the pass, the located cycle, and the engine's own

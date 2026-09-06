@@ -1,0 +1,19 @@
+# all.aon --- the instance: one model, three units, one run.
+#
+# Each generator contributes a UNIT under `units` and the rule set that
+# fills it; this document includes the three and lists their units as
+# the aontu:code instance `aontu render` reads. One run renders the
+# whole set, and `--out` writes nothing unless every unit rendered --
+# which check.sh proves by breaking one. `--unit <path>` renders one of
+# them alone.
+#
+# The generators are included at the root rather than as values, and
+# their aliases carry the target's name (`%go_record`, `%ts_record`),
+# because an alias declaration is a key of the document that includes
+# it: two files declaring `%record` would meet, and a document included
+# as a value cannot resolve its own aliases (use-cases/BUGS.md 85).
+@"./gen-go.aon"
+@"./gen-ts.aon"
+@"./gen-sql.aon"
+
+code: units: [$.units.go $.units.ts $.units.sql]

@@ -27,4 +27,8 @@ export type RenderOptions = IncludeOptions & {
     strict?: boolean;
 };
 export declare function render(src: string, options?: RenderOptions): RenderReport;
+export declare function renderProfile(src: string, options?: RenderOptions): {
+    profile?: any;
+    errors?: VetFinding[];
+};
 export declare function renderValue(instance: any, options?: RenderOptions): RenderReport;

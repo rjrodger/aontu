@@ -32,6 +32,7 @@ export type ToolDef = {
 };
 export declare function servedTrust(root?: string): TrustOptions;
 export declare function confinedParseFailure(src: string, trust: TrustOptions, path?: string): VetFinding | undefined;
+export declare function outsideRoot(root: string, full: string): boolean;
 export declare function toolList(root?: string): any[];
 export declare function callTool(name: string, args: any, opts?: {
     root?: string;

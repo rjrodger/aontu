@@ -56,18 +56,19 @@ Three capabilities have doorways of their own:
   [Recursive references](reference-language.md#recursive-references-fixpoints).
 - **Generate code from a model.** The field names, types and
   optionality a Go struct or a TypeScript interface needs are already
-  in the model, and the unifier computes the file: a list spread over
-  the fields, `match` for the type mapping, a backtick string to carry
-  the target text, and `join` to fold the lines into one string. The
-  recipe is [generate code from a model](how-to/generate-code.md); the
-  live version, with three targets and a check that both ports emit
-  identical bytes, is
+  in the model, and the unifier computes the file: a rule set over the
+  records, `match` for the type mapping, a backtick string to carry
+  the target text, and `aontu render` to fold the pieces into bytes and
+  hold the result against its golden. The recipe is
+  [generate code from a model](how-to/generate-code.md); the live
+  version, with three targets in one instance and a check that both
+  ports render identical bytes, is
   [`use-cases/15-code-generation`](../use-cases/15-code-generation/).
 
 Tooling:
 
 - [The `aontu` command](reference-api.md#command-line-interface). One
-  binary, fifteen verbs, both implementations. Each verb has its own
+  binary, sixteen verbs, both implementations. Each verb has its own
   reference section:
   - validate: [`vet`](reference-api.md#aontu-vet), wrapped for CI as a
     [GitHub Action](../vet-action/README.md)

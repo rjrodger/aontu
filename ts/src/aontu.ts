@@ -25,7 +25,7 @@ import { agentsMd } from './agentsmd'
 import { graphOf } from './graph'
 import { relationCheck, relationErrors } from './relation'
 import { view, viewSet, viewTree } from './view'
-import { render, renderValue } from './render'
+import { render, renderValue, renderProfile } from './render'
 import { format, unifiedDiff } from './format'
 export type { LintFinding, FormatReport, FormatOptions } from './format'
 
@@ -484,6 +484,7 @@ export {
   // generate() output.
   render,
   renderValue,
+  renderProfile,
 
   // The source formatter (docs/design/FMT.0.md): the agreed form of a
   // document, and the unified diff `aontu fmt --diff` prints.

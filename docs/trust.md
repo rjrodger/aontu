@@ -251,6 +251,24 @@ The per-pair revisit bound is NOT profile surface—the Go dispatcher
 has no revisit counter to configure, and a knob one port cannot honour
 would break the parity contract by construction.
 
+**Writes are confined by path, and separately.** The trust profile
+governs what an evaluation may *read*. What the `render` verb may
+*write* is governed by its `--out <dir>` argument and by nothing in the
+document: a unit's `path` is a relative descent or the verb refuses
+it—an absolute path, a `..` segment, or a repeat of another unit's
+path is `render_path`, before anything is written—and the resolved
+file must sit below the real path of `<dir>`, so a symlink inside the
+directory that points outside it is an escape, by the rule the include
+resolver applies to reads. Every unit is rendered before any file is
+touched, and one refusal means no file is; `render` never deletes. The
+library (`render`, `renderValue`, `renderProfile`) returns bytes and
+touches no file, the MCP tool `render` returns the same report and
+carries no `--out`, and each port has a test that its renderer source
+reaches neither the filesystem nor a process. The include capability
+does not reach the renderer's own vocabulary: `aontu:code` is the
+engine's, so `--trust none` denies the document every include and
+still renders it.
+
 ## Evaluation consumes the tree
 
 A parsed `Val` tree is **single-use**: `unify`/`generate` refine it in

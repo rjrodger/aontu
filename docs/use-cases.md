@@ -455,16 +455,19 @@ of the bridge (exact, lossy, refused):
 ## 15. Code generation
 
 The model is the source of the code. One catalogue of record types
-feeds a Go emitter, a TypeScript emitter and a SQL emitter, each
-reading a different slice of it, with every emitted line computed by
-the unifier. Names like `Email` and `credit_cents` are written in the
-model rather than derived, because `upper()` uppercases a whole string
-and there is no case conversion—and because what a type is called in
-a target is a fact about the model, not a rule in a template.
+feeds a Go generator, a TypeScript generator and a SQL generator, each
+reading a different slice of it, and one `aontu render` turns the
+three units into files. A generator is a rule set: `emit` walks the
+records in source order and each node contributes *pieces*—a blank
+line, a head, one line per field at depth 1, a tail—which the renderer
+folds into bytes, owning every indent and every terminator. Names like
+`Email` and `credit_cents` are written in the model rather than
+derived, because what a type is called in a target is a fact about the
+model, not a rule in a template.
 
 <!-- test: scenario code-generation -->
 
-Write the model and one emitter as `types.aon`:
+Write the model and one generator as `types.aon`:
 
 <!-- test: file types.aon -->
 ```aontu
@@ -474,46 +477,55 @@ records: [
     fields: [{ n:"id" t:"string" go:"ID" } { n:"email" t:"string" go:"Email" }]
   }
 ]
-units: [
-  &: {
-    head: `type ` + .name + ` struct {`
-    rows: [
-      &: {
-        out: `\t` + .go + ` `
-          + match(.t, "string", `string`, "integer", `int64`)
-          + ` \`json:"` + .n + `"\``
-      }
-    ] & .fields
-    body: pick(.rows, out)
-    tail: `}`
+
+%field = emit(_, {
+  match: n: string
+  body: [
+    {
+      k: "line"
+      at: 1
+      of: [
+        .go + " " + match(.t, "string", "string", "integer", "int64")
+        + ` \`json:"` + .n + `"\``
+      ]
+    }
+  ]
+})
+
+%record = emit(_, {
+  match: name: string
+  body: ["type " + .name + " struct {" emit(.fields, %field) "}"]
+})
+
+code: units: [
+  {
+    path: "types.go"
+    lang: "go"
+    profile: indent: { unit:"\t" width:1 }
+    decls: [{ k:"frag" of:emit($.records, %record) }]
   }
-] & $.records
-```
-
-The struct header and its field lines both come out of the model:
-
-<!-- test: run -->
-```sh
-$ aontu get $.units.0.head types.aon
-"type Customer struct {"
-$ aontu get $.units.0.body types.aon
-[
-  "\tID string `json:\"id\"`",
-  "\tEmail string `json:\"email\"`"
 ]
 ```
 
-A list spread rather than `pack`, because list order is source order
-and map keys sort by code point. The rows are staged into a key of
-their own because `pick` over an inline spread does not settle.
+The struct comes out of the model, and the renderer puts the tab in
+front of every depth-1 line:
 
-`join(coll, sep?)` folds the lines into the file, at two scales: once
-over a record's lines with `\n`, once over the records with a blank
-line between them. The separator falls *between* members, so the
-generated SQL's last column carries no trailing comma. The three
-emitters, their goldens, and a check that both ports emit identical
-bytes: [`use-cases/15-code-generation/`](../use-cases/15-code-generation/).
+<!-- test: run -->
+```sh
+$ aontu render --stdout types.aon
+type Customer struct {
+	ID string `json:"id"`
+	Email string `json:"email"`
+}
+```
 
+A rule set rather than `pack`, because list order is source order and
+map keys sort by code point; a nested `emit` splices its pieces, so the
+fragment reaches the renderer flat. `--out <dir>` writes every unit or
+nothing, and `--check <dir>` holds the goldens in CI. The three
+generators in one instance, their goldens, and a check that both ports
+render identical bytes:
+[`use-cases/15-code-generation/`](../use-cases/15-code-generation/).
 
 ## 16. Module deps
 

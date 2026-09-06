@@ -1,6 +1,10 @@
 package aontu
 
-import "testing"
+import (
+	"os"
+	"strings"
+	"testing"
+)
 
 // The fold alone (docs/design/RENDER.0.md D9): the arms a spec row
 // cannot reach, because Render hands the fold an instance the
@@ -33,5 +37,21 @@ func TestRenderValueSparsePieces(t *testing.T) {
 	}, &RenderOptions{})
 	if "lossy" != report.Verdict || "x\n\ny\n" != report.Units[0].Text {
 		t.Fatalf("sparse pieces: %+v", report)
+	}
+}
+
+// THE RENDERER NEVER WRITES (RENDER.0.md D8; docs/trust.md): the
+// library answers bytes, and only the verb's --out places them. The os
+// package in this file would be the first step of a regression, so the
+// source is read for it. Twin of the scan in ts/test/render.test.ts.
+func TestRenderSourceHasNoFilesystemAccess(t *testing.T) {
+	src, err := os.ReadFile("render.go")
+	if nil != err {
+		t.Fatal(err)
+	}
+	for _, mark := range []string{`"os"`, `"io"`, "os.WriteFile", "os.MkdirAll", "os/exec"} {
+		if strings.Contains(string(src), mark) {
+			t.Fatalf("render.go reaches the filesystem: %s", mark)
+		}
 	}
 }

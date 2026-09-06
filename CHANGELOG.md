@@ -7,6 +7,34 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `aontu render`, the verb and the tool
+
+The renderer's verb (docs/design/RENDER.0.md P4), in both CLIs:
+`aontu render [--at <path>] [--profile <file>]... [--unit <path>]
+[--stdout | --out <dir> | --check <dir>] [--strict] [--format
+text|json] <file>` evaluates a document, vets the value at `--at`
+against `aontu:code` and folds its units into bytes — one unit on
+stdout, every unit below `--out` (all or nothing, realpath-confined,
+never deleting), or compared against `--check` (drift listed by path,
+exit 1) — with the loss report on stderr, and `--format json` the
+whole report. Exit codes mirror `jsonschema`: 0; 1 lossy under
+`--strict` or drift; 2 usage or I/O, a refused unit path included; 4
+the document or the instance. `--profile <file>` is a profile
+document, evaluated under the verb's trust and vetted against
+`aontu:profile` as a settled value — `renderProfile(src, opts)` and
+`RenderProfile(src)`, new in both libraries — and two files claiming
+one language is a usage error. The renderer's own vocabulary is not an
+include the document wrote, so `--trust none` still renders. The MCP
+tool `render` returns the report and never writes; each port has a
+test that its renderer source reaches neither the filesystem nor a
+process. `docs/trust.md` records the write confinement;
+`docs/reference-api.md` has the verb with tested transcripts;
+`docs/how-to/generate-code.md` is rewritten onto `emit` and `render`;
+use case 15 is one three-unit instance held by `render --check` in
+both ports, and surfaced use-cases/BUGS.md §84 (a named table under
+a call) and §85 (a value include that declares an alias).
+`render.tsv` +2. Both implementations.
+
 ### `render`, the fold: fragments render, under the text profile
 
 The renderer's core (docs/design/RENDER.0.md P3), in both ports:

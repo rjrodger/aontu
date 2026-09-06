@@ -17,7 +17,7 @@ import { agentsMd } from './agentsmd';
 import { graphOf } from './graph';
 import { relationCheck } from './relation';
 import { view, viewSet, viewTree } from './view';
-import { render, renderValue } from './render';
+import { render, renderValue, renderProfile } from './render';
 import { format, unifiedDiff } from './format';
 export type { LintFinding, FormatReport, FormatOptions } from './format';
 declare const VERSION = "0.57.0";
@@ -34,5 +34,5 @@ declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
     runparse: typeof runparse;
 };
-export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, setColor, colorActive, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, trimCheck, hcanon, canonHash, get, why, patch, diff, agentsMd, graphOf, relationCheck, view, viewSet, viewTree, render, renderValue, format, unifiedDiff, };
+export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, setColor, colorActive, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, trimCheck, hcanon, canonHash, get, why, patch, diff, agentsMd, graphOf, relationCheck, view, viewSet, viewTree, render, renderValue, renderProfile, format, unifiedDiff, };
 export default Aontu;
