@@ -48,6 +48,7 @@ Usage: aontu [options] [file]
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
                     [--stdout | --out <dir> | --check <dir> | --coverage]
                     [--coverage-at <path>] [--strict] <file>
+       aontu template [--resugar] [--check] [--marker <token>] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -1440,6 +1441,14 @@ unruled: hello.py $.code.units.0.decls.0
 coverage: 1 path(s) read, 0 no output consumed, 1 declaration(s) no rule produced
 ```
 
+**A render entry whose extension is not `.aon` is a template.** A
+generator can be written in the target's own syntax rather than as
+aontu holding target text: a marked line is aontu source, every other
+line is a line of output, and `render` desugars the file before it
+evaluates it. See [`aontu template`](#aontu-template) for the surface
+itself; here it is only the entry spelling, decided by the extension
+exactly as an include's extension decides what the include is.
+
 **`--format json` carries the trace**, one entry per emitted piece: the
 piece's path in the instance, the unit it landed in, the model node the
 rule matched, and the rule that matched it. A rule's address is its
@@ -1923,6 +1932,12 @@ aontu fmt < in.aon > out.aon
   the document.
 - **It reads the file it is given and no other.** An `@"..."` include
   is a token like any other, so the verb takes no `--trust`.
+- **It formats aontu source only**, `.aon` and `.aontu`; any other file
+  argument is refused by name, exit 2. A generator written in the
+  target's own syntax is [`aontu template`](#aontu-template)'s, and it
+  is the reason the rule is by name rather than by what parses: a `#-`
+  template PARSES here, because `#` opens a comment, so formatting one
+  would discard every output line and rewrite the file.
 - **It checks its own work.** Before a byte is returned the formatted
   text is parsed again and compared with the input, tree to tree; a
   disagreement is refused as the formatter's own defect
@@ -1976,6 +1991,107 @@ limits: { rps:100 burst:200 }
 
 The formatted text is the same document: `aontu hash` of the two
 agrees, and formatting the formatted text changes nothing.
+
+### `aontu template`
+
+Read a generator written in the **target's own syntax**, and print the
+aontu it means.
+
+<!-- test: skip the synopsis is not a transcript -->
+```sh
+aontu template [--resugar] [--check] [--marker <token>] <file>
+```
+
+**One rule: a marked line is aontu source, and every other line is a
+line of output.** The marker is the target's comment token plus a
+dash—`//-`, `#-`, `---`, or the block form `/*- … */` where the
+language has no line comment—so the file stays valid in its own
+language, an editor highlights it, and the target's compiler parses it.
+Write a `greet.ts`:
+
+<!-- test: scenario template -->
+<!-- test: file greet.ts -->
+```typescript
+//- who: { world: {}, moon: {} }
+//- svc: $.who & pack($.who, { name: key() })
+//- code: units: emit($.svc, {
+//- match: { name: string }
+//- body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
+//- k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
+export function greet() {
+  console.log(`hello, NAME`)
+}
+//- ]}) }] }]
+//- })
+```
+
+The three unmarked lines are the output. They are ordinary TypeScript,
+indented where they belong, and **a value reaches them through
+`replace` rather than through a hole**: `NAME` is a string the body
+already holds, and there is no delimiter to collide with the target's
+own syntax—the backtick template literal above survives untouched. The
+inner dispatch is what makes `replace` reach those lines: a rule
+substitutes into the body it wrote, so the lines of a file and the map
+that names the file are two rules, not one.
+
+**The verb prints the canonical form**, which is what the marker lines
+mean once the output lines are quoted:
+
+<!-- test: run -->
+```sh
+$ aontu template greet.ts
+who: { world: {}, moon: {} }
+svc: $.who & pack($.who, { name: key() })
+code: units: emit($.svc, {
+match: { name: string }
+body: [{ path: "greet-" + .name + ".ts", lang: "typescript", decls: [{
+k: "frag", of: emit([_], { match: { name: string }, replace: { NAME: .name }, body: [
+`export function greet() {`
+"  console.log(`hello, NAME`)"
+`}`
+]}) }] }]
+})
+```
+
+Each output line is one string, and **the quote is chosen per line**: a
+backtick, which carries `"` and `'` without escaping, unless the line
+holds a backtick itself, in which case the double quote is used and `"`
+is escaped. A backslash is escaped in either.
+
+**`render` reads the template directly**, so the canonical form is
+something to look at rather than something to keep:
+
+<!-- test: run -->
+```sh
+$ aontu render --stdout --unit greet-moon.ts greet.ts
+export function greet() {
+  console.log(`hello, moon`)
+}
+```
+
+**`--resugar` is the other direction**, and `--check` is the round trip
+between them: it holds the file to the spelling the two transforms
+answer, and names the first line that is not it. What that catches is a
+marker line the transform would not have written—one without its space,
+or one whose aontu is indented after the marker rather than before it,
+since the marker keeps its own indentation. **A template's whitespace
+is output**, so its bytes are the artifact: a body line's trailing
+space is caught by `render --check` against the committed files, which
+is where a changed byte shows up as changed output.
+
+<!-- test: run -->
+```sh
+$ aontu template --check greet.ts
+```
+
+The round trip is a **fixpoint**, not a table of escapes: a canonical
+line becomes an output line only when desugaring the rebuilt line
+answers the canonical line back. A line that could not survive—one
+beginning with the marker itself—fails that test and stays aontu, which
+is how a generator emits its own marker with no new syntax.
+
+Exit codes: `0` written, `1` a `--check` file that is not what the
+round trip answers, `2` usage or I/O.
 
 ### `aontu hash`
 
@@ -2908,6 +3024,16 @@ renderProfile  // a profile document -> {profile} or {errors}:
                // against aontu:profile as a settled value and met with
                // it, so the defaults are filled; what --profile <file>
                // hands to render's profiles
+desugarTemplate // a generator in the target's own syntax -> the
+               // canonical aontu it means (see `aontu template`):
+               // desugarTemplate(src, marker?) -> string;
+               // Go: aontu.DesugarTemplate
+resugarTemplate // the other direction, a fixpoint against the first:
+               // resugarTemplate(src, marker?) -> string;
+               // Go: aontu.ResugarTemplate
+markerFor      // the marker a file's extension names, `//-` by
+               // default: markerFor(path) -> string;
+               // Go: aontu.MarkerFor
 ```
 
 #### Evaluating a document you did not write

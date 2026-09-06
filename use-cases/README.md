@@ -44,7 +44,7 @@ different build.
 | [14-jsonschema-export](14-jsonschema-export/) | JSON Schema as the bridge out: MCP inputSchema, OpenAPI, stock validators | `jsonschema --at`/`--strict`/`--format json`, the stderr loss report, exit classes, the money-wire `const` mark |
 | [15-code-generation](15-code-generation/) | The model as the source of the code: Go, TypeScript and SQL from one catalogue, each over a slice | list-spread + `pick` line building, `join` file assembly, backtick target text, `match` type mapping, both-ports byte parity |
 | [16-module-deps](16-module-deps/) | A codebase's own module graph: four layers, no upward dependencies, drawn as a dependency tree and as the architecture layers | `rel(t)` target-shape flow as an architecture rule, `acyclic()`/`inverse(n)`, `reaches`, the tree, matrix and layer views |
-| [17-lambda-handlers](17-lambda-handlers/) | Twelve Lambda handlers and their index from one service model, by a rule set in the canonical form the template surface desugars to | `replace` with no hole syntax, `esc: sq`, verbatim whitespace, the empty-selection conditional, `form` order and the split-form-join chain, both-ports byte parity |
+| [17-lambda-handlers](17-lambda-handlers/) | Twelve Lambda handlers and their index from one service model, by a rule set written twice: as canonical aontu, and as a Lambda handler with its aontu on marked lines | `replace` with no hole syntax, `esc: sq`, verbatim whitespace, the empty-selection conditional, `form` order and the split-form-join chain, the template surface and its round trip, both-ports byte parity |
 
 ## Diagrams
 

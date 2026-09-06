@@ -7,6 +7,40 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `aontu template`: a generator written in the target's own syntax
+
+The template surface (docs/design/TEMPLATE.0.md; RENDER.0.md P8), in
+both ports. One rule: **a marked line is aontu source, and every other
+line is a line of output.** The marker is the target's comment token
+plus a dash — `//-`, `#-`, `---`, or the block form `/*- … */` where
+the language has no line comment — chosen by the file's extension, or
+named with `--marker`. A generator is therefore a file in the language
+it generates: its compiler parses it, an editor highlights it, and the
+output lines sit at the indentation they land on with no delimiter to
+collide with the target's own syntax, since a value still reaches them
+through `replace`.
+
+`aontu render` reads such a file directly when the entry's extension is
+not `.aon`, mirroring the rule that an include's extension decides what
+the include is. The new `aontu template` verb prints the canonical aontu
+a template means, `--resugar` goes the other way, and `--check` holds
+the file to the spelling the two transforms answer — a marker written
+without its space, or aontu indented after the marker rather than
+before it, is named with its line number. The round trip is a fixpoint
+rather than a table of escapes: a canonical
+line becomes an output line only when desugaring the rebuilt line
+answers the canonical line back, so a line that cannot survive — one
+beginning with the marker itself — stays aontu with no new syntax.
+Each output line is one string, quoted with a backtick unless the line
+holds one, in which case the double quote is used; a backslash is
+escaped under either.
+
+**`aontu fmt` now formats aontu source only** (`.aon`, `.aontu`) and
+refuses any other file by name, exit 2. A `#-` template parses as
+aontu, because `#` opens a comment, so `fmt` previously read one,
+discarded every output line as a comment and rewrote the file with exit
+0.
+
 ### `render --coverage`, and the dispatch trace
 
 What a transform read, and what it did not (docs/design/RENDER.0.md

@@ -36,6 +36,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
                     [--stdout | --out <dir> | --check <dir> | --coverage]
                     [--coverage-at <path>] [--strict] <file>
+       aontu template [--resugar] [--check] [--marker <token>] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -252,6 +253,26 @@ Render options:
 Render exit codes: 0 rendered, 1 lossy under --strict or drift under
 --check, 2 usage or I/O (a refused unit path included), 4 the document
 does not stand up or the instance is not aontu:code.
+
+A render entry file whose extension is not .aon is a TEMPLATE: a
+generator in the target's own syntax, whose marker lines carry aontu
+and whose other lines are output. It is desugared before it is
+evaluated, and --marker names the marker for a language the table does
+not know.
+
+Template options:
+  --resugar       The file is the canonical aontu; print the template
+                  form instead of reading one
+  --check         Desugar and resugar, and exit 1 if the file is not
+                  what the round trip answers
+  --marker <t>    The marker, when the extension does not name it
+                  (default //-, and #- --- /*- by extension)
+
+The template verb prints the canonical aontu form of a generator
+written in the target's own syntax: a marked line is aontu source, and
+every other line is a line of output.
+
+Template exit codes: 0 written, 1 --check drift, 2 usage or I/O.
 
 Set options:
   --entry <file>    The document the change is checked against
@@ -701,6 +722,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 	if 0 < len(args) && "render" == args[0] {
 		return runRender(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "template" == args[0] {
+		return runTemplate(args[1:], stdout, stderr)
 	}
 	if 0 < len(args) && "reaches" == args[0] {
 		return runReaches(args[1:], stdout, stderr)

@@ -201,8 +201,14 @@ function form(ctx, name) {
 }
 // An inner expression under a form, in parens when its precedence is
 // below the form's childPrec: TypeScript's `(string | null)[]`.
+//
+// A FORM ALWAYS CARRIES ITS childPrec, so there is nothing to fall back
+// to: the profile vocabulary declares it `*0`, so every type form of a
+// profile met with `aontu:profile` has one, and `form()`'s own fallback
+// spells it. The default lives in the model, which is the point of
+// putting it there.
 function under(inner, f) {
-    return inner.prec < (f.childPrec ?? 0) ? '(' + inner.text + ')' : inner.text;
+    return inner.prec < f.childPrec ? '(' + inner.text + ')' : inner.text;
 }
 function loss(ctx, path, construct, reason) {
     ctx.lossy.push({ unit: ctx.unit, path, tier: 1, construct, reason });

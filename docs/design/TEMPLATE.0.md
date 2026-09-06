@@ -472,12 +472,61 @@ The run is an expansion, because `emit`, `esc` and `usc` do not exist
 yet; [EMIT.0.md](EMIT.0.md) records the four engine facts that make the
 expansion necessary and the builtin unavoidable.
 
+## Landed
+
+**2026-09-06, as RENDER.0.md's P8.** `aontu template` is the verb —
+desugar by default, `--resugar` the other direction, `--check` the
+round trip, `--marker` for a language the table has not met — and
+`render` reads a template entry directly, deciding by the ENTRY'S
+EXTENSION as an include's extension decides what the include is. The
+two transforms are `ts/src/template.ts` and `go/template.go`, held in
+parity by `test/spec/template.tsv` (30 rows: the one rule, each
+marker, the per-line quote, the residual escape, and the whitespace a
+line is). `use-cases/17-lambda-handlers/handler.ts` is the acceptance:
+the same generator as `gen.aon`, written as a Lambda handler, and it
+renders the same thirteen units in both ports.
+
+Three things shipped differently from this note:
+
+- **A backtick string is not raw.** D6 assumed it needed no escaping;
+  `` `C:\path` `` evaluates to `C:path`, so the backtick carries a
+  newline but not a backslash. The per-line choice is unchanged — a
+  backtick unless the line holds one, then the double quote — but a
+  BACKSLASH is escaped under either, and the fixpoint refuses to sugar
+  a canonical line whose escapes the quoting would not have written.
+- **`fmt` does not reach into a template at all.** See below.
+- **The whitespace hazard's guard is `render --check`, not
+  `template --check`.** D8 says a desugar-and-compare check catches a
+  trimmed body line, and that is true of a canonical form kept as an
+  artifact of record. Nothing keeps one: `render` reads the template
+  directly, so the canonical form is something to look at rather than
+  something to commit. `template --check` therefore holds the file to
+  the SPELLING the two transforms answer — a marker without its space,
+  or aontu indented after the marker rather than before it — and a
+  trimmed body line is still a valid template. What names that damage
+  is `render --check` against the committed output, where the changed
+  byte shows up as changed output. The surface still has to say so,
+  which the reference and the how-to now do.
+
 ## Open
 
-- **A body needing two escape conventions** — see D4.
-- **The marker's own escape.** A target line beginning with the marker
-  falls to the fixpoint rule, which works but is not obvious; the
-  surface phase should say so in one line of documentation.
-- **`fmt` over a template file.** The canonical form is aontu and
-  formats today; the template form needs a rule for how far `fmt` may
-  reach into marker lines without touching body lines.
+*All three were closed by what landed; each is kept with its answer,
+because the answer is only legible beside the question.*
+
+- **A body needing two escape conventions** — see D4. CLOSED by not
+  arising: `esc` is per template, and a body needing a second
+  convention is a second dispatch, which the surface already spells
+  since a template is written where its output goes (D7).
+- **The marker's own escape.** CLOSED as designed, and now documented:
+  a target line beginning with the marker falls to the fixpoint rule
+  and stays a marker line carrying its own canonical element. The
+  reference says so in one line, which is what this note asked for.
+- **`fmt` over a template file.** CLOSED, and the answer is that
+  `fmt`'s reach is NIL rather than partial: it formats aontu source,
+  `.aon` and `.aontu`, and refuses any other file by name. The reason
+  is sharper than the question expected. A `#-` template PARSES as
+  aontu, because `#` opens a comment — so `fmt` read one, discarded
+  every body line as a comment, and rewrote the file with exit 0. A
+  rule about which LINES `fmt` may touch could not have caught that; a
+  rule about which FILES it opens does. `aontu template` is where a
+  generator's own canonical form comes from.

@@ -667,7 +667,21 @@ one; a declaration with no rule). **Acceptance:** worked example 2's
 report names `$.customers`, `$.orders` and `$.invoices` as consumed by
 no output, from both ports.
 
-### P8 — the template surface (M/L) — G9's phase 9
+### P8 — the template surface (M/L) — LANDED 2026-09-06
+
+*Landed as designed, with the departures recorded as §9 items 35–38:
+the surface is reachable two ways, as a `template` verb and as a
+`render` entry, and the ENTRY'S EXTENSION decides which a file is;
+`fmt`'s reach into marker lines is nil, because a template is not
+aontu source and is refused by name; and a backtick string is not raw
+in this engine, so a backslash is escaped under either quote. All
+three of that note's open questions are closed by what shipped.
+`template.tsv` +30, and the planned `fmt.tsv` +4 became CLI rows,
+because the rule is about the file rather than about a value.
+Acceptance met: `use-cases/17-lambda-handlers/handler.ts` renders the
+same thirteen units as `gen.aon` under `render --check expected`, in
+both ports, round-trips as a fixpoint under `template --check`, and
+parses as TypeScript.*
 
 **Deliverable.** TEMPLATE.0.md as a verb-reachable surface: a
 generator file in the target language whose `//-` (or the target's
@@ -695,7 +709,7 @@ register says so in the same commits:
 | a recursive rule set renders nested output (acceptance case 2) | `emit-recursive` (landed) plus one `render.tsv` row over it |
 | worked examples 1 and 2 byte-for-byte | P5 (landed): `use-cases/10-data-model/xf-domain.aon` and `xf-order.aon` under `render --check`, both ports |
 | one model, three units, one run, nothing written on a partial failure | P4 |
-| the twelve handlers byte-identical through `emit` + `render` (P6, landed: `use-cases/17-lambda-handlers/`), and then through the surface | P6, P8 |
+| the twelve handlers byte-identical through `emit` + `render` (P6, landed: `use-cases/17-lambda-handlers/`), and then through the surface (P8, landed: `handler.ts` in the same directory) | P6, P8 |
 | coverage names dead model and silent holes | P7 (landed): `render --coverage`, pinned by `render.tsv` and by use case 10's report, diffed between the ports |
 | `render` never writes from the engine, the MCP tool or the LSP | P4's isolation tests |
 | both vocabularies and three profiles hash identically across ports | `hash` rows |
@@ -1005,6 +1019,49 @@ touches M0.
     for `--coverage`. An uninstrumented meet pays one property load.
     An EMPTY trace is no trace in either port, so the two report
     shapes stay identical.
+
+35. **The surface is reachable twice, and the entry's EXTENSION
+    decides** (P8 planned "a verb-reachable surface"). `render` reads a
+    template entry directly, desugaring it before it evaluates it, so a
+    generator in the target's syntax is a first-class entry rather than
+    a preprocessing step; and `aontu template` prints the canonical
+    form, resugars a canonical form, and checks the round trip. What
+    tells the two apart is the extension, exactly as an include's
+    extension decides what the include is (ADR-012): a generator is a
+    file in the target's own language, so it carries the target's
+    extension and never `.aon`. `--marker` names the marker for a
+    language the table has not met.
+36. **`fmt` has no reach into a template at all** (P8 planned "`fmt`'s
+    reach into marker lines decided and pinned"). The decision is that
+    there is none: `fmt` formats aontu source, `.aon` and `.aontu`, and
+    refuses any other file by name. The reason is sharper than the
+    question expected — a `#-` template PARSES as aontu, because `#`
+    opens a comment, so `fmt` previously read one, threw the body lines
+    away as comments and rewrote the file with exit 0. A rule about
+    which LINES `fmt` may touch could not have caught that; a rule
+    about which FILES it reads does. This is why the planned `fmt.tsv`
+    +4 is instead a CLI-level check in both ports: the shared spec
+    holds values, and this is a fact about a file name.
+37. **A backtick string is not raw** (D6 of TEMPLATE.0.md assumed it
+    was). `` `C:\path` `` evaluates to `C:path` in this engine, so the
+    backtick is a newline-carrying quote rather than a raw one. The
+    per-line choice stands as designed — backtick unless the line holds
+    a backtick, then the double quote with `"` escaped — but a
+    BACKSLASH is escaped under either. A body line carrying `\t`
+    survives because the desugar doubles it, and the fixpoint refuses
+    to sugar a canonical line whose escapes the quoting would not have
+    written, so nothing round-trips into a different string.
+38. **A template file is a fixpoint, and `--check` is how that is
+    held** (P8 planned the resugar as a test of the round trip). What
+    it catches is a spelling the transforms would not have written — a
+    marker without its space, or aontu indented after the marker rather
+    than before it, since the marker keeps its own indentation — and it
+    reports the FIRST line that differs rather than a diff, since a
+    whole diff of a generator is the generator again. It does NOT catch
+    a changed body line: a template's whitespace is output, so a
+    trimmed trailing space is still a valid template, and what names it
+    is `render --check` against the committed files. Worth stating
+    because the reverse is the obvious thing to assume.
 
 ## 10. The validation system: `test/system/rb-solar`
 

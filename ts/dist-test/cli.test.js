@@ -2277,6 +2277,113 @@ function fmtFiles(...srcs) {
         Assert.deepEqual(report.coverage.read, ['$.services']);
     });
 });
+// --- the template surface -------------------------------------------
+(0, node_test_1.describe)('cli-template', () => {
+    // A generator in the target's own syntax: two marked lines carrying
+    // aontu, and one line of output between them. `\t` is a tab, which
+    // the round trip has to keep as one.
+    const GEN = '//- of: [\n' +
+        'export const N = 1\n' +
+        '//- ]\n';
+    const CANON = 'of: [\n' +
+        '`export const N = 1`\n' +
+        ']\n';
+    function templateDir(files) {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-template-'));
+        for (const [name, text] of Object.entries(files)) {
+            Fs.writeFileSync(Path.join(dir, name), text);
+        }
+        return dir;
+    }
+    function templateCode(want, args) {
+        return vetCapture(() => Assert.equal((0, cli_1.runTemplate)(args), want, args.join(' ')));
+    }
+    (0, node_test_1.test)('template-prints-the-canonical-form-and-resugars-it', () => {
+        const dir = templateDir({ 'gen.ts': GEN, 'canon.aon': CANON });
+        // THE DEFAULT DIRECTION is desugar: the aontu the marked lines
+        // mean, with every other line quoted as one string.
+        Assert.equal(templateCode(0, [Path.join(dir, 'gen.ts')]).out, CANON);
+        // --resugar is the other one, and the file it reads is aontu.
+        Assert.equal(templateCode(0, ['--resugar', Path.join(dir, 'canon.aon')]).out, GEN);
+        // The marker comes from the extension, and --marker names one the
+        // table does not know.
+        const hash = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' });
+        Assert.equal(templateCode(0, [Path.join(hash, 'gen.rb')]).out, 'of: [\n`puts 1`\n]\n');
+        const odd = templateDir({ 'gen.zz': ';;- of: [\nx\n;;- ]\n' });
+        Assert.equal(templateCode(0, ['--marker', ';;-', Path.join(odd, 'gen.zz')]).out, 'of: [\n`x`\n]\n');
+        // A FILE WITH NO EXTENSION takes the default marker rather than
+        // no marker at all: a generator named `Makefile` or `Dockerfile`
+        // is an ordinary case, and the table is a convenience over a
+        // default rather than the thing that decides a file is a template.
+        const bare = templateDir({ 'gen': GEN });
+        Assert.equal(templateCode(0, [Path.join(bare, 'gen')]).out, CANON);
+        // The dispatch: `aontu template` is the verb.
+        Assert.equal(vetCapture(() => {
+            (0, cli_1.main)(['node', 'aontu', 'template', Path.join(dir, 'gen.ts')]);
+        }).out, CANON);
+    });
+    (0, node_test_1.test)('template-check-is-the-round-trip', () => {
+        const dir = templateDir({ 'gen.ts': GEN });
+        Assert.equal(templateCode(0, ['--check', Path.join(dir, 'gen.ts')]).out, '');
+        // A MARKER LINE THE TRANSFORM WOULD NOT HAVE WRITTEN is what this
+        // catches: the marker keeps its OWN indentation, so aontu indented
+        // after it is moved before it, and a marker written without its
+        // space gains one. The report names the first line that differs
+        // rather than diffing the whole generator.
+        const bad = templateDir({ 'gen.ts': '//- of: [\n//-   {\n//- ]\n' });
+        const r = templateCode(1, ['--check', Path.join(bad, 'gen.ts')]);
+        Assert.match(r.err, /gen\.ts:2 is not what the round trip answers/);
+        Assert.match(r.err, /have: "\/\/- {3}\{"/);
+        Assert.match(r.err, /want: " {2}\/\/- \{"/);
+    });
+    (0, node_test_1.test)('template-usage-errors-exit-2', () => {
+        const dir = templateDir({ 'gen.ts': GEN });
+        const file = Path.join(dir, 'gen.ts');
+        // The two directions are not modes that compose.
+        Assert.match(templateCode(2, ['--resugar', '--check', file]).err, /one of --resugar or --check/);
+        Assert.match(templateCode(2, []).err, /template needs one file/);
+        Assert.match(templateCode(2, [file, file]).err, /template needs one file/);
+        Assert.match(templateCode(2, ['--marker']).err, /--marker needs a token/);
+        Assert.match(templateCode(2, ['--bogus', file]).err, /unknown template option --bogus/);
+        Assert.match(templateCode(2, [Path.join(dir, 'missing.ts')]).err, /cannot read/);
+        Assert.equal(templateCode(0, ['--help']).out.includes('aontu template'), true);
+    });
+    (0, node_test_1.test)('render-reads-a-template-entry-by-its-extension', () => {
+        // The entry's extension decides, so a generator in the target's
+        // own syntax is an entry rather than a preprocessing step.
+        const dir = templateDir({
+            'gen.ts': '//- code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
+                '//- k: "frag", of: [\n' +
+                'hello\n' +
+                '//- ]}] }]\n',
+            'gen.zz': ';;- code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
+                ';;- k: "frag", of: [\n' +
+                'hello\n' +
+                ';;- ]}] }]\n',
+        });
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runRender)(['--stdout', Path.join(dir, 'gen.ts')]), 0)).out, 'hello\n');
+        // --marker reaches render too, for a language the table has not met.
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runRender)(['--stdout', '--marker', ';;-', Path.join(dir, 'gen.zz')]), 0)).out, 'hello\n');
+        Assert.match(vetCapture(() => Assert.equal((0, cli_1.runRender)(['--marker']), 2)).err, /--marker needs a token/);
+    });
+    (0, node_test_1.test)('fmt-formats-aontu-source-only', () => {
+        // A `#-` TEMPLATE PARSES AS AONTU, because `#` opens a comment --
+        // so `fmt` would read one, throw every output line away and
+        // rewrite the file with exit 0. The rule is by name, not by what
+        // parses.
+        const dir = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' });
+        const file = Path.join(dir, 'gen.rb');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runFmt)([file]), 2));
+        Assert.equal(r.out, '');
+        Assert.match(r.err, /is not aontu source \(\.aon, \.aontu\)/);
+        Assert.match(r.err, /aontu template/);
+        // The file is untouched, which is the whole point.
+        Assert.equal(Fs.readFileSync(file, 'utf8'), '#- of: [\nputs 1\n#- ]\n');
+        // `.aontu` is aontu source, and is formatted.
+        const ok = templateDir({ 'd.aontu': 'a:{b:1}\n' });
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)([Path.join(ok.toString(), 'd.aontu')]), 0)).out, 'a: b: 1\n');
+    });
+});
 // --- the old module layout ------------------------------------------
 (0, node_test_1.describe)('cli-mod-layout', () => {
     // A project that still carries the lockfile or the vendor tree at

@@ -8,10 +8,11 @@ A backend of twelve services on one message wire, each deployed as its
 own Lambda handler. Every handler is the same forty lines with three
 things that vary per service: the patterns it listens on, the patterns
 it calls out to, and whether it picks up files from S3. The handlers
-are generated, and the generator is **the handler file itself**, in
-the canonical form a template file expands into: one rule set
-whose body is the file, line for line, with three nested dispatches
-where the file varies.
+are generated, and the generator is **the handler file itself**: one
+rule set whose body is the file, line for line, with three nested
+dispatches where the file varies. It is here twice, in the two forms
+of one generator: `gen.aon`, the canonical aontu, and `handler.ts`, the
+same thing written as a Lambda handler with its aontu on marked lines. Both render the same thirteen files.
 
 Nothing in the mechanism is about handlers. `emit`, `match`, `replace`,
 `body`, `esc` and `form` are the whole vocabulary; what makes this
@@ -108,6 +109,36 @@ upper(_)), "_")`, so `index-build` is `INDEX_BUILD`. `form` keeps the
 order where a `pack` would sort, and `aontu render --check expected`
 holds all thirteen files.
 
+## The same generator, in the target's own syntax
+
+`handler.ts` is `gen.aon` again, as a template: **a marked line is
+aontu source, and every other line is a line of output**. The marker
+is TypeScript's comment token plus a dash, so the file is a Lambda
+handler—`tsc` parses it, an editor highlights it, and the body lines are
+the handler's own text at the indentation they land on.
+
+```typescript
+//- %handler = emit(_, {
+//- match: { name:string }
+//- esc: sq
+//- replace: { SERVICE: .name }
+//- body: [
+import { getSeneca } from '../../env/lambda/lambda'
+
+function complete(seneca: any) {
+  //- emit(.listen, { match:{ pin:string }, esc:sq, replace:{ PIN: .pin }, body: [
+  seneca.listen({type:'sqs',pin:'PIN'})
+  //- ]})
+```
+
+`aontu render --check expected handler.ts` is green against the same
+goldens: the entry's extension decides that it is a template, and it
+is desugared before it is evaluated. `aontu template handler.ts`
+prints the canonical form, which is `gen.aon`'s body with each output
+line quoted, and `aontu template --check handler.ts` holds the file to
+the spelling the round trip answers. Its **whitespace is output**, so
+`render --check` against `expected/` is what holds the bytes.
+
 ## What check.sh proves
 
 1. `aontu render --check expected gen.aon` is green: twelve handlers
@@ -136,15 +167,20 @@ holds all thirteen files.
    are each matched at their own path in the model. `render
    --coverage` names no dead path and no declaration without a rule:
    one model, wholly consumed, one output, wholly produced.
-10. The Go port renders the same thirteen units byte for byte and
+10. `handler.ts`, the template form, renders the same thirteen units
+   against the same goldens, round-trips as a fixpoint under `template
+   --check`, and parses as TypeScript: the generator is a file in the
+   language it generates.
+11. The Go port renders the same thirteen units byte for byte and
    refuses the same seeded template (skipped with a note when no Go
    toolchain is present).
-11. The Go port records the same trace, entry for entry.
-12. The model tree draws and is pinned, text and SVG.
+12. The Go port records the same trace, entry for entry.
+13. The Go port desugars the template form and renders it identically.
+14. The model tree draws and is pinned, text and SVG.
 
 ## Running it
 
-From this directory, `./check.sh` runs all 12 assertions and exits 0.
+From this directory, `./check.sh` runs all 14 assertions and exits 0.
 It drives the TypeScript CLI (`ts/bin/aontu.js`, or the command in
 `$AONTU`) and, when `go` is on the path, the Go CLI built from `go/`.
 The verb by hand:
@@ -152,4 +188,6 @@ The verb by hand:
 ```sh
 aontu render --stdout --unit handlers/chat.ts gen.aon   # one handler
 aontu render --check expected gen.aon                    # hold them all
+aontu template handler.ts                                # the template's meaning
+aontu render --check expected handler.ts                 # and it renders the same
 ```

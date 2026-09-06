@@ -68,7 +68,7 @@ Three capabilities have doorways of their own:
 Tooling:
 
 - [The `aontu` command](reference-api.md#command-line-interface). One
-  binary, sixteen verbs, both implementations. Each verb has its own
+  binary, nineteen verbs, both implementations. Each verb has its own
   reference section:
   - validate: [`vet`](reference-api.md#aontu-vet), wrapped for CI as a
     [GitHub Action](../vet-action/README.md)
@@ -84,6 +84,9 @@ Tooling:
     [`view`](reference-api.md#aontu-view)
   - export and pin: [`jsonschema`](reference-api.md#aontu-jsonschema),
     [`hash`](reference-api.md#aontu-hash)
+  - generate: [`render`](reference-api.md#aontu-render),
+    [`template`](reference-api.md#aontu-template) (the guide:
+    [Generate code from a model](how-to/generate-code.md))
   - distribute and hand over: [`mod`](reference-api.md#aontu-mod),
     [`agentsmd`](reference-api.md#aontu-agentsmd)
   - keep in the agreed form: [`fmt`](reference-api.md#aontu-fmt) (the form: [The formatted form](reference-language.md#the-formatted-form); the guide: [Format a document](how-to/format-a-document.md))

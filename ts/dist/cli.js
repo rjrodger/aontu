@@ -14,6 +14,7 @@ exports.runReaches = runReaches;
 exports.runView = runView;
 exports.runJsonSchema = runJsonSchema;
 exports.runRender = runRender;
+exports.runTemplate = runTemplate;
 exports.runMod = runMod;
 exports.runHash = runHash;
 exports.runGet = runGet;
@@ -40,6 +41,7 @@ const node_path_1 = require("node:path");
 const node_os_1 = require("node:os");
 const node_readline_1 = require("node:readline");
 const aontu_1 = require("./aontu");
+const template_1 = require("./template");
 const mcp_1 = require("./mcp");
 const report_sarif_1 = require("./report-sarif");
 const lsp_server_1 = require("./lsp-server");
@@ -66,6 +68,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu render [--at <path>] [--profile <file>]... [--unit <path>]
                     [--stdout | --out <dir> | --check <dir> | --coverage]
                     [--coverage-at <path>] [--strict] <file>
+       aontu template [--resugar] [--check] [--marker <token>] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -282,6 +285,26 @@ Render options:
 Render exit codes: 0 rendered, 1 lossy under --strict or drift under
 --check, 2 usage or I/O (a refused unit path included), 4 the document
 does not stand up or the instance is not aontu:code.
+
+A render entry file whose extension is not .aon is a TEMPLATE: a
+generator in the target's own syntax, whose marker lines carry aontu
+and whose other lines are output. It is desugared before it is
+evaluated, and --marker names the marker for a language the table does
+not know.
+
+Template options:
+  --resugar       The file is the canonical aontu; print the template
+                  form instead of reading one
+  --check         Desugar and resugar, and exit 1 if the file is not
+                  what the round trip answers
+  --marker <t>    The marker, when the extension does not name it
+                  (default //-, and #- --- /*- by extension)
+
+The template verb prints the canonical aontu form of a generator
+written in the target's own syntax: a marked line is aontu source, and
+every other line is a line of output.
+
+Template exit codes: 0 written, 1 --check drift, 2 usage or I/O.
 
 Set options:
   --entry <file>    The document the change is checked against
@@ -2471,7 +2494,7 @@ function runJsonSchema(argv) {
 // document does not stand up or the instance is not aontu:code.
 const RENDER_HELP = 'aontu render [--at <path>] [--profile <file>]... [--unit <path>] ' +
     '[--stdout | --out <dir> | --check <dir> | --coverage] ' +
-    '[--coverage-at <path>] [--strict] <file> (try --help)';
+    '[--coverage-at <path>] [--strict] [--marker <token>] <file> (try --help)';
 function runRender(argv) {
     const trusted = takeTrust(argv);
     if (null == trusted) {
@@ -2490,6 +2513,7 @@ function runRender(argv) {
     let strict = false;
     let coverage = false;
     let coverageAt = undefined;
+    let marker = undefined;
     for (let i = 0; i < argv.length; i++) {
         const arg = argv[i];
         if ('-h' === arg || '--help' === arg) {
@@ -2546,6 +2570,13 @@ function runRender(argv) {
         else if ('--coverage' === arg) {
             coverage = true;
         }
+        else if ('--marker' === arg) {
+            marker = argv[++i];
+            if (null == marker) {
+                process.stderr.write('aontu: --marker needs a token\n');
+                return 2;
+            }
+        }
         else if ('--coverage-at' === arg) {
             coverageAt = argv[++i];
             if (null == coverageAt) {
@@ -2588,6 +2619,15 @@ function runRender(argv) {
     catch (err) {
         process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
         return 2;
+    }
+    // THE ENTRY MAY BE A TEMPLATE (TEMPLATE.0.md; P8), and its EXTENSION
+    // decides, as an include's extension decides what the include is
+    // (ADR-012): a generator is a file in the target's own syntax, so it
+    // carries the target's extension and never `.aon`. Desugared here
+    // rather than anywhere deeper, because a template is an entry
+    // spelling and not a value: an include is still aontu.
+    if (!files[0].endsWith('.aon')) {
+        src = (0, template_1.desugarTemplate)(src, marker ?? (0, template_1.markerFor)(files[0]));
     }
     // THE PROFILES (D5): each --profile file is a document whose root is
     // `profile: {lang, ...}`, evaluated under the verb's trust and vetted
@@ -2744,6 +2784,102 @@ function renderExit(report, drift) {
         return 4;
     }
     return 0 < drift ? 1 : 0;
+}
+// ---------------------------------------------------------------------
+// THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md; RENDER.0.md P8): the
+// two transforms and the round trip between them. `render` reads a
+// template directly, by its extension; this verb is for seeing the
+// canonical form, for writing one by hand and sugaring it, and for the
+// check that keeps a committed template and its meaning in agreement.
+const TEMPLATE_HELP = 'aontu template [--resugar] [--check] [--marker <token>] <file> (try --help)';
+function runTemplate(argv) {
+    const files = [];
+    let resugar = false;
+    let check = false;
+    let marker = undefined;
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
+        if ('-h' === arg || '--help' === arg) {
+            process.stdout.write(HELP);
+            return 0;
+        }
+        else if ('--resugar' === arg) {
+            resugar = true;
+        }
+        else if ('--check' === arg) {
+            check = true;
+        }
+        else if ('--marker' === arg) {
+            marker = argv[++i];
+            if (null == marker) {
+                process.stderr.write('aontu: --marker needs a token\n');
+                return 2;
+            }
+        }
+        else if (arg.startsWith('-')) {
+            process.stderr.write(`aontu: unknown template option ${arg} (try --help)\n`);
+            return 2;
+        }
+        else {
+            files.push(arg);
+        }
+    }
+    if (1 !== files.length) {
+        process.stderr.write(`aontu: template needs one file\n${TEMPLATE_HELP}\n`);
+        return 2;
+    }
+    // THE TWO ARE DIRECTIONS, NOT MODES THAT COMPOSE: `--check` reads a
+    // template and asks whether the round trip answers it back, and
+    // `--resugar` reads the canonical form instead. A run cannot be both
+    // at once, because the file is one thing or the other.
+    if (resugar && check) {
+        process.stderr.write('aontu: template takes one of --resugar or --check\n');
+        return 2;
+    }
+    let src;
+    try {
+        src = (0, node_fs_1.readFileSync)(files[0], 'utf8');
+    }
+    catch (err) {
+        process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
+        return 2;
+    }
+    const mark = marker ?? (0, template_1.markerFor)(files[0]);
+    if (check) {
+        // THE ROUND TRIP IS THE CHECK (D6): the file held to the spelling
+        // the two transforms answer. What that names is a marker line the
+        // transform would not have written -- one without its space, or one
+        // whose aontu is indented after the marker rather than before it,
+        // since the marker keeps its own indentation. It does NOT name a
+        // changed body line: a template's whitespace is output, so a
+        // trimmed trailing space is still a valid template and it is
+        // `render --check` against the committed files that catches it.
+        // The first line that differs is the report, since a whole diff of
+        // a generator is the file again.
+        const back = (0, template_1.resugarTemplate)((0, template_1.desugarTemplate)(src, mark), mark);
+        if (back === src) {
+            return 0;
+        }
+        const want = back.split('\n');
+        const have = src.split('\n');
+        let n = 0;
+        while (n < want.length && n < have.length && want[n] === have[n]) {
+            n++;
+        }
+        // THE TWO ARE THE SAME LENGTH, always: each transform maps one
+        // line to one line and applies the same trailing-newline rule, so
+        // `back` has as many lines as `src`. The loop above therefore stops
+        // at a real difference rather than by running out of either -- an
+        // equal prefix all the way to the end IS `back === src`, which
+        // returned above. So both indexes are in range here.
+        process.stderr.write(`aontu: ${files[0]}:${n + 1} is not what the round trip answers\n` +
+            `  have: ${JSON.stringify(have[n])}\n` +
+            `  want: ${JSON.stringify(want[n])}\n`);
+        return 1;
+    }
+    process.stdout.write(resugar ?
+        (0, template_1.resugarTemplate)(src, mark) : (0, template_1.desugarTemplate)(src, mark));
+    return 0;
 }
 // ---------------------------------------------------------------------
 // The canon-hash (G6 phase 1): the pin an agent, a lockfile or a
@@ -3336,6 +3472,22 @@ function runFmt(argv) {
     }
     let worst = 0;
     for (const file of files) {
+        // FMT FORMATS AONTU SOURCE, AND THE EXTENSION SAYS WHAT A FILE IS
+        // (ADR-012's rule, and the one `render` reads a template by).
+        // A TEMPLATE FILE IS NOT AONTU (docs/design/TEMPLATE.0.md; P8):
+        // its marker lines are fragments of a document and its other lines
+        // are the target's, so there is nothing here to format that would
+        // not also rewrite the output. Refused rather than attempted, and
+        // refused BY NAME rather than by a parse failure, because a `#-`
+        // template parses: `#` opens a comment, so every marker line
+        // vanishes and what is left is read as a document that was never
+        // written. The verb answered `0` over one, having understood none
+        // of it.
+        if (!/[.](aon|aontu)$/.test(file)) {
+            process.stderr.write(`aontu: ${file} is not aontu source (.aon, .aontu); a generator ` +
+                'written in the target\'s own syntax is aontu template\'s\n');
+            return 2;
+        }
         let src;
         try {
             src = (0, node_fs_1.readFileSync)(file, 'utf8');
@@ -3516,6 +3668,9 @@ function main(argv, servers = SERVERS) {
     if ('render' === argv[2]) {
         return finish(runRender(argv.slice(3)));
     }
+    if ('template' === argv[2]) {
+        return finish(runTemplate(argv.slice(3)));
+    }
     if ('reaches' === argv[2]) {
         return finish(runReaches(argv.slice(3)));
     }
@@ -3613,5 +3768,5 @@ function main(argv, servers = SERVERS) {
     else {
         runStdin(mode, trust).then((code) => finish(code));
     }
-} /* node:coverage ignore next 17 */
+} /* node:coverage ignore next 18 */
 //# sourceMappingURL=cli.js.map

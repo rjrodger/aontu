@@ -127,6 +127,7 @@ const aontu_1 = require("../dist/aontu");
 const jsonschema_1 = require("../dist/jsonschema");
 const reach_1 = require("../dist/reach");
 const aontu_2 = require("../dist/aontu");
+const template_1 = require("../dist/template");
 const hints_1 = require("../dist/hints");
 const IntegerVal_1 = require("../dist/val/IntegerVal");
 const StringVal_1 = require("../dist/val/StringVal");
@@ -467,6 +468,20 @@ function runRow(row) {
         const report = (0, aontu_2.render)(row.src, ask);
         Assert.strictEqual((0, aontu_1.exactJSON)(null == report.errors
             ? report : { ...report, errors: stripProse(report.errors) }), (0, aontu_1.exactJSON)(golden), `render report mismatch: ${row.name}`);
+    }
+    else if ('template' === row.mode) {
+        // THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md; RENDER.0.md P8).
+        // `src` is a generator file in the target's own syntax; `out` is
+        // its canonical aontu form, and `back` the template the round trip
+        // answers -- which is `src` itself wherever the sugar is already
+        // the fixpoint, and the normalised spelling where it is not. Both
+        // directions in one row, because a transform pinned in one
+        // direction only is half a transform.
+        const golden = JSON.parse(row.expect);
+        const marker = golden.ask?.marker;
+        const out = (0, template_1.desugarTemplate)(row.src, marker);
+        Assert.strictEqual(out, golden.out, `desugar mismatch: ${row.name}`);
+        Assert.strictEqual((0, template_1.resugarTemplate)(out, marker), golden.back, `resugar mismatch: ${row.name}`);
     }
     else if ('views' === row.mode) {
         // THE VIEW DOCUMENT (VIEWS.0.md, "6. The view document"): N figures

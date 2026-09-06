@@ -946,7 +946,14 @@ for function, and `test/spec/fmt.tsv` is what they must agree on.
 - **No reordering, renaming, aliasing, or resolving.** §3.13.
 - **No formatting of what is not aontu.** A `.json`, `.yaml` or
   `.toml` include is another language's file; `fmt` formats `.aon` and
-  stdin.
+  stdin. **ENFORCED 2026-09-06**, with RENDER.0.md P8: a file argument
+  whose extension is neither `.aon` nor `.aontu` is refused by name,
+  exit 2. Until then the boundary was a sentence here and nothing in
+  the code, and the surface that found it is the template one — a `#-`
+  template PARSES as aontu, because `#` opens a comment, so `fmt` read
+  a generator, discarded every output line as a comment and rewrote the
+  file with exit 0. The refusal names `aontu template` as the verb for
+  a generator's own canonical form.
 - **No `--fix` for the lint.** §4.3.
 
 

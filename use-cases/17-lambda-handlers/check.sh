@@ -145,7 +145,32 @@ run cover 0 -- render --coverage "$DIR/gen.aon"
 has cover 'coverage: 3 path(s) read, 0 no output consumed, 0 declaration(s)'
 ok "the trace names the rule and the model node behind every piece, and nothing is dead"
 
-# 10. ADR-001: the Go port renders the same bytes, and refuses the same
+# 10. THE TEMPLATE SURFACE (RENDER P8). handler.ts is the SAME
+# generator written in the target's own syntax: the file IS a Lambda
+# handler, and its marked lines are the aontu that turns one into
+# twelve. It renders the same thirteen units against the same goldens,
+# it parses as TypeScript with no syntax diagnostic, and the round trip
+# between the two forms is a fixpoint.
+run tmplrender 0 -- render --check "$DIR/expected" "$DIR/handler.ts"
+run tmplcheck 0 -- template --check "$DIR/handler.ts"
+$AONTU template "$DIR/handler.ts" > "$WORK/handler.aon" 2>/dev/null \
+  || fail "the template did not desugar"
+grep -q 'seneca.listen({type:.sqs.,pin:.PIN.})' "$WORK/handler.aon" \
+  || fail "the canonical form lost a body line"
+# The two lines that are two spaces and nothing else are output, and
+# the canonical form quotes them so an editor that trims on save is
+# caught (TEMPLATE.0.md D8).
+[ "$(grep -c '^`  `$' "$WORK/handler.aon")" = "2" ] \
+  || fail "the canonical form lost the two-space lines"
+"$REPO/ts/node_modules/.bin/tsc" --noEmit --skipLibCheck --target es2020 \
+  --module esnext --moduleResolution bundler "$DIR/handler.ts" 2>&1 \
+  | grep -E 'error TS1[0-9]{3}' > "$WORK/tmpl-tsc.out" && {
+    cat "$WORK/tmpl-tsc.out" >&2
+    fail "the generator file does not parse as TypeScript"
+  }
+ok "the template form renders the same thirteen units, round-trips, and parses"
+
+# 11. ADR-001: the Go port renders the same bytes, and refuses the same
 # template.
 if command -v go >/dev/null 2>&1; then
   GOBIN="$WORK/aontu-go"
@@ -167,9 +192,17 @@ b = json.load(open(sys.argv[2]))["trace"]
 assert a == b, "the two ports disagree about the trace (ADR-001)"
 PY_PARITY
   ok "the Go port records the same trace, entry for entry"
+  "$GOBIN" render --check "$DIR/expected" "$DIR/handler.ts" 2>/dev/null \
+    || fail "the Go port's render of the template form does not match the goldens"
+  "$GOBIN" template --check "$DIR/handler.ts" \
+    || fail "the Go port does not agree the round trip is a fixpoint"
+  diff <("$GOBIN" template "$DIR/handler.ts") "$WORK/handler.aon" \
+    || fail "the two ports desugar the template differently (ADR-001)"
+  ok "the Go port desugars and renders the template form identically"
 else
   skip "the Go port renders the same thirteen units (no go toolchain)"
   skip "the Go port records the same trace (no go toolchain)"
+  skip "the Go port desugars the template form identically (no go toolchain)"
 fi
 
 echo
