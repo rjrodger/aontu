@@ -21,7 +21,7 @@ is edited — see [`ref/README.md`](ref/README.md), which also records
 the one place the OpenAPI description and the executable validation
 disagree, and why the executable one wins.
 
-`check.sh` runs ten checks. The two that matter most are other
+`check.sh` runs eleven checks. The two that matter most are other
 people's code:
 
 - **`ref/validate.ts`**, the reference repository's own script,
@@ -48,7 +48,7 @@ Four things in it are worth reading for the reasons behind them:
   be guessing, and would be wrong three times out of seven here.
 - **Every field answers `pk` and `fk`, including with `false`.**
   Absence is not an answer a rule table can read
-  ([BUGS.md §88](../../use-cases/BUGS.md)).
+  ([BUGS.md §88](../../../use-cases/BUGS.md)).
 - **An action's rules are listed lowest priority first.** The generated
   form is a sequence of assignments and the last one wins, so this
   reproduces the reference's `if`/`elsif`: `{start: true, stop: true}`
@@ -61,9 +61,10 @@ Four things in it are worth reading for the reasons behind them:
 
 ## The generators
 
-Eight of them, in [`gen/`](gen/). Seven are **files in the language
-they generate** — `#-` marks the aontu, and `ruby -c` parses the
-generator itself:
+Nine of them, in [`gen/`](gen/). Eight are **files in the language
+they generate** — a marked line carries the aontu and the target's own
+tools read the rest, so `ruby -c` parses the seven Ruby ones and a
+Mermaid renderer draws the diagram:
 
 | generator | writes |
 |---|---|
@@ -123,12 +124,12 @@ Writing this turned up four things in the engine and one in the plan.
 All five are recorded where they belong; they are listed here because
 finding them is what a system like this is for.
 
-- **[BUGS.md §88](../../use-cases/BUGS.md)** — an `emit` rule's `match`
+- **[BUGS.md §88](../../../use-cases/BUGS.md)** — an `emit` rule's `match`
   admits a node the key is absent from, where `filter` refuses it. It
   bit twice, a day apart: once as a migration with no columns in it,
   once as an ER diagram marking every column a foreign key. Neither
   reported anything.
-- **[BUGS.md §89](../../use-cases/BUGS.md)** — a relative reference
+- **[BUGS.md §89](../../../use-cases/BUGS.md)** — a relative reference
   resolves in a body element but not inside a call's argument there,
   and the miss is silent. The symptom was a migration missing its
   `add_index`, which rendered and would have been committed clean.
@@ -169,21 +170,29 @@ directory; `check.sh` skips it with a note otherwise.
 that already drives the real CLI end to end. Until it did, nothing in
 CI reached `test/system/` at all, and a system can only catch a
 regression it is asked about. That job installs no Ruby bundle, so
-`check.sh` skips the legs that boot the application and runs the seven
+`check.sh` skips the legs that boot the application and runs the eight
 that do not: the generators, the tree they must reproduce, the
 diagrams, the coverage and the form of the model.
 
 The legs that boot it need a job of their own.
-[`ci-job.yml`](ci-job.yml) is that job, **waiting to be applied by a
-maintainer**: the session that wrote this system cannot push workflow
-files (GitHub refuses an OAuth app without the `workflow` scope), so
-the job sits here instead of in `.github/workflows/build.yml`. Paste
-its one block into that file's `jobs:` map and delete it.
+[`ci-job.patch`](ci-job.patch) is that job, **waiting to be applied by
+a maintainer**: the session that wrote this system cannot push workflow
+files (GitHub refuses an OAuth app without the `workflow` scope), so it
+sits here instead of in `.github/workflows/build.yml`.
+
+```sh
+git apply test/system/rb-solar/ci-job.patch
+```
+
+A patch and not a block to paste, because a patch is checkable: `git
+apply --check` answers whether it still fits the workflow file, so a
+job that has gone stale says so rather than being applied by hand into
+something that has moved under it. Delete it once it is in.
 
 It needs Ruby and Node, and it clones the reference repository for the
 SDK leg — the SDK is not vendored here, because a copy of someone
 else's client library in this tree would rot. Without that clone the
-SDK check skips and the other nine still run.
+SDK check skips and the other ten still run.
 
 ## The diagrams
 
