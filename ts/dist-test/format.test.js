@@ -46,6 +46,7 @@ const Assert = __importStar(require("node:assert"));
 const Fs = __importStar(require("node:fs"));
 const Path = __importStar(require("node:path"));
 const aontu_1 = require("../dist/aontu");
+const std_1 = require("../dist/std");
 // The repository root, found from wherever the compiled test runs.
 function repoRoot() {
     let dir = __dirname;
@@ -250,6 +251,24 @@ function aonFiles(dir, out = []) {
         }
         Assert.deepEqual(failures, [], failures.join('\n'));
         Assert.ok(300 < formatted, `too few documents formatted: ${formatted}`);
+    });
+});
+// THE BUNDLED MODELS ARE HELD TO THE FORM (docs/design/MODELS.0.md D4):
+// `fmt` leaves each of the `aontu:` models exactly as bundled, and
+// `--lint` reports nothing on it. The language's own examples pass its
+// formatter, or the formatter is wrong or the examples are. Twin of
+// TestBundledModelsAreFormatted in go/format_test.go.
+(0, node_test_1.describe)('format-bundled-models', () => {
+    (0, node_test_1.test)('aontu-models-are-fmt-clean-and-lint-clean', () => {
+        for (const name of std_1.AONTU_MODELS) {
+            const src = std_1.STD_SOURCES[name];
+            const report = (0, aontu_1.format)(src, { lint: true });
+            Assert.equal(report.verdict, 'formatted', name);
+            Assert.equal(report.text, src, name + ' is not in the form aontu fmt writes');
+            Assert.equal(report.changed, false, name);
+            Assert.deepEqual(report.findings, [], name + ' has lint findings');
+        }
+        Assert.deepEqual(std_1.AONTU_MODELS, ['aontu:code', 'aontu:profile']);
     });
 });
 //# sourceMappingURL=format.test.js.map

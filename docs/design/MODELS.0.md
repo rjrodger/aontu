@@ -280,7 +280,13 @@ surface, and the sooner it happens the fewer documents it breaks.
 leg — an `aontu:` name served from the bundled table before any other
 leg — lands first and alone, because `@"aontu:code"` needs it and
 nothing about the rename; the rename of `std/system` and `std/view`,
-with X-1 decided, follows on its own commit.
+with X-1 decided, follows on its own commit. **The leg LANDED the same
+day**, with `aontu:code` and `aontu:profile` as its first two names
+(register, G9 phase 1): D1's routing and its not-found message are as
+written, `test/spec/aontu-scheme.tsv` pins them, and the two models
+meet D2 (lower-case aliases) and D4 (`fmt`-clean, lint-clean, asserted
+per port) ahead of the rename. D3 and the rename of the two shipped
+models remain M0's outstanding half.
 
 ## 8. Open questions
 

@@ -1,6 +1,7 @@
 import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
 import { BagVal } from './BagVal';
+declare function spreadSnapKey(cj: any): string;
 declare class MapVal extends BagVal {
     isMap: boolean;
     constructor(spec: ValSpec, ctx?: AontuContext);
@@ -11,4 +12,4 @@ declare class MapVal extends BagVal {
     get canon(): string;
     inspection(d?: number): string;
 }
-export { MapVal };
+export { MapVal, spreadSnapKey, };

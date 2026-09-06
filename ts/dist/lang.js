@@ -1919,6 +1919,16 @@ function makeModelResolver(options) {
         err.code = 'include_extension';
         throw err;
     };
+    // A LANGUAGE-SUPPLIED MODEL THAT DOES NOT EXIST THROWS, as a denial
+    // does and for the same bare-member reason, with the not-found code
+    // the include machinery already uses and a message that names the
+    // set: a typo in an `aontu:` name must not go looking on disk.
+    const modelNotFound = (path) => {
+        const err = new Error('source not found: ' + path +
+            ' (the language-supplied models are ' + std_1.AONTU_MODELS.join(', ') + ')');
+        err.code = 'multisource_not_found';
+        throw err;
+    };
     // The gate every leg that RESOLVES A NAME passes through. The std and
     // module legs do not: both state `kind: 'aon'` because what they
     // serve is Aontu source by construction, not by its spelling.
@@ -1976,6 +1986,23 @@ function makeModelResolver(options) {
         }
         if ('none' === capability) {
             deny(path);
+        }
+        // THE LANGUAGE-SUPPLIED MODELS (docs/design/MODELS.0.md D1): an
+        // `aontu:` name resolves from the engine's own table and nowhere
+        // else -- the memory, module, file and package legs are never
+        // asked, so nothing on disk can shadow one and a typo is refused
+        // here, naming the set, rather than searched for. Available under
+        // every capability but `none`, checked just above, like the std
+        // names below. A path that is not a string (`a: @1`) is not a name
+        // at all: it falls through to the legs below and is not found there,
+        // as it always was.
+        if ('string' === typeof path && path.startsWith(std_1.AONTU_SCHEME)) {
+            const model = std_1.STD_SOURCES[path];
+            if (null == model) {
+                modelNotFound(path);
+            }
+            record(ctx, path, 'std');
+            return { found: true, path, full: path, kind: 'aon', src: model, search: [] };
         }
         // THE BUNDLED VOCABULARY (G4 phase 4, ts/src/std.ts): served from
         // the engine itself, so it needs neither the filesystem nor package
@@ -2329,9 +2356,10 @@ class Lang {
         }
         catch (e) {
             if ('include_denied' === e?.code || 'include_extension' === e?.code ||
-                mod_1.MODULE_REFUSAL_CODES.has(e?.code)) {
+                'multisource_not_found' === e?.code || mod_1.MODULE_REFUSAL_CODES.has(e?.code)) {
                 // A denied include (G5), an include whose extension is not read
-                // as Aontu source (ADR-012, INCLUDE_KINDS), and a module that is
+                // as Aontu source (ADR-012, INCLUDE_KINDS), an `aontu:` name the
+                // engine does not serve (MODELS.0.md D1), and a module that is
                 // missing, fails its pin, or names a path that escapes its store
                 // (G6 phase 2) are refused the same way, for the same reason: the
                 // resolver THROWS so a bare-member include cannot vanish in the

@@ -3414,3 +3414,104 @@ peer came from.
 
 Repro:
 [`repros/statement-meet/trim-through-statement.aon`](repros/statement-meet/trim-through-statement.aon).
+
+### 80. A refusal deep in an alias-of-disjunction vocabulary reports `|:trial-nil` in TypeScript and `empty` in Go [major]
+
+Found 2026-09-05 while pinning `@"aontu:code"` (RENDER.0.md P1). An
+ADR-001 divergence in the CODE of a refusal both ports agree on.
+
+```aon
+@"aontu:code"
+code: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T",
+  type: { k: "list", of: { k: "list", of: { k: "prim", prim: "int" } } } }] }]
+```
+
+The vocabulary's container types take leaves only, so the inner
+`{k: "list"}` is not a `%leaf` and the declaration must be refused --
+and it is, in both ports, at `$.code.units.0.decls.0`. TypeScript
+reports it as `[aontu/|:trial-nil]: Cannot resolve value`, an internal
+trial code that names no alternative; Go reports `[aontu/empty]:
+Cannot unify values`, the empty-disjunction code. The small
+reproducers agree (`empty` in both): a two-arm `%leaf` inside a
+one-level `%type`, with or without the alias, refuses as `empty`
+everywhere. The divergence needs the depth of the real vocabulary --
+`%decl` is seven alias arms, one of which (`%alias`) holds `%type`, six
+arms, one of which holds `%leaf`, three arms -- and appears to be the
+diagnostics degradation G9 §1 measured before the container cap
+("`|:trial-nil [internal]` with no sites at all"), surviving the cap in
+TypeScript for a bad instance two disjunctions down.
+
+`test/spec/aontu-code.tsv` `container-nested-refused` pins the path
+with an `err` row, since an `errc` row cannot hold both codes. The fix
+belongs on the TypeScript side: a trial that fails every alternative of
+a nested disjunction should surface `empty` with the alternatives
+tried, as the one-level case does.
+
+## aliases — the name in the grammars and in a recursive canon
+
+Two entries from the same probe: pinning the canon of an alias used as
+a spread template, when the `aontu:code` vocabulary (`units: [&:
+%unit]`) became the first bundled document of that shape.
+
+### 81. The published grammars do not know the alias syntax [major]
+
+Found 2026-09-05. `grammar/aontu.abnf`, `grammar/aontu.lark`,
+`grammar/aontu.gbnf` and `grammar/aontu.tmLanguage.json` have no rule
+for a declaration `%name = value` or a reference `%name`, though both
+landed in 0.57.0 (#151): every published grammar refuses a document
+with an alias in it, the railroad diagrams in the reference do not draw
+one, and the editors highlight `%` as an error. `ts/test/grammar.test.ts`
+did not notice because it checks the CANON corpus, and canon erased
+every alias — until a standing reference inside a spread template
+printed its name, at which point the two canon rows carrying `%u` and
+`%unit` failed both grammar tests. They pass now because canon prints
+the value (see §82 and `alias.tsv`), which closes the symptom and not
+the gap. Fix: a top-level `declaration` rule and an alias alternative
+of `value` in all four files, the diagram regenerated, and the corpus
+test extended with a hand-written alias corpus, since the canon corpus
+can never carry one.
+
+### 82. A recursive alias does not reparse from canon [major]
+
+Found 2026-09-06.
+
+```aon
+%json = null | boolean | number | string | [&: %json] | {&: %json}
+payload: %json
+payload: { user: { id: 1, tags: [admin, [nested, true]] } }
+```
+
+Generates correctly in both ports (`recursion.tsv` `json-alias`). Its
+canon expands the template once at each spread —
+`{"payload":{&:null|boolean|number|string|[&:%json]|{&:%json},"user":…}}`
+— and the reference that closes the cycle keeps its name, because canon
+has erased the declaration it would need and an infinite unrolling is
+not a canon. The text is finite, deterministic and the same in both
+ports, but it does not reparse on its own: `%json` names nothing in
+it, so `no_path` — and the `aon1-` hash is therefore a hash over a
+form the hash design says must re-evaluate to itself. A
+path-referenced recursion (`schema: {Step: {then?: $.schema.Step}}`)
+reparses, because the knot is spelled as a path into the same
+document; an alias's knot has no such spelling, since `$.%json` is
+refused as `alias_in_path`. Two ways out, neither taken: print the
+declarations a canon still needs above the document (the hash-erasure
+principle is vacuous for a recursive alias, which has no longhand
+twin), or give the knot a path spelling. `test/spec/alias.tsv` records
+the knot in prose and pins generation only; no canon row can pin it,
+because every canon row must reparse.
+
+### 83. An include whose path is not a string is an internal error in TypeScript and a nameless refusal in Go [minor]
+
+Found 2026-09-06 while landing the `aontu:` scheme, whose leg tests the
+include path as a string. `a: @1` and `a: @true` -- an `@` followed by
+a number or a boolean rather than a name -- report `unexpected error:
+Cannot read properties of undefined (reading 'path')` in TypeScript, a
+crash inside the resolver rather than a refusal, and `source not found:`
+with nothing after the colon in Go, which refuses without saying what
+it could not find. Both predate the scheme (main reproduces the
+TypeScript text byte for byte); the scheme's leg guards the type so the
+path reaches the legs below as before, and `ts/test/coverage3.test.ts`
+asserts only that the parse throws. Fix: refuse the spelling at the
+parser with its own code and site -- the path of an include is a
+string, and a value of any other kind is a document error, not a
+resolver's business.

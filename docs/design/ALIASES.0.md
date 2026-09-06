@@ -870,6 +870,24 @@ P1 is independently useful and independently shippable: file-local
 aliases with nothing crossing a file boundary is the whole of §2's
 argument, and it can be judged before any of §5–6 is built.
 
+**2026-09-06: the erasure reached the spread template.** §4's rule —
+erased before canon, or the hash stops being a hash of meaning — had
+one place it did not reach: a reference inside a spread template is
+not resolved in place (the template applies to children that have not
+arrived), so it stood in canon as `$.%u`, which is not syntax, and the
+hash of `t: {&: %u}` differed from the hash of `t: {&: integer}`. Canon
+now spells a standing alias reference as the value it names, attached
+by one walk after the last pass (`ts/src/alias.ts`, `go/alias.go`); the
+tree is unchanged and unification never reads the expansion. A
+path-dependent template expands to the snapshot its destinations saw,
+not to the declaration's settled value. The knot of a recursive alias
+— its reference to itself inside its own template — keeps its name,
+and such a canon does not reparse on its own (use-cases/BUGS.md §82):
+the one point where §4's erasure and canon convergence pull apart,
+and the first argument for printing a declaration in canon that this
+design has met. Pinned by `alias.tsv`'s `alias-in-spread-*` rows and
+the hash twin `alias-in-spread-hash-longhand-twin`.
+
 X-1 and T-1 both gated P1 when this note was written, and both were
 answered rather than deferred: X-1 by taking the third option, which
 removed the lexing break the compatibility section was written about,

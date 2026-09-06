@@ -416,7 +416,12 @@ shared rows, or it is PARTIAL. The order is a dependency order: nothing
 in a phase needs a later one, and the first four phases together are
 the first usable `aontu render`.
 
-### P0 — the `aontu:` resolver leg (S)
+### P0 — the `aontu:` resolver leg (S) — LANDED 2026-09-06
+
+*Landed with P1, in one change: a leg with nothing to serve had no row
+to pin it by. As designed, with one refinement: the `.aon` spelling the
+`std/` names accept is not a model name (`aontu:code.aon` is refused
+like any other typo), because the scheme is not a directory.*
 
 **Deliverable.** An include whose path begins `aontu:` is served from
 the bundled table before any other leg runs and never touches the
@@ -436,7 +441,22 @@ under `system`, `root` and `mem`; denied under `none`); a `hash` row is
 P1's. **Acceptance:** `@"aontu:code"` resolves to the P1 text in both
 ports from a document with no filesystem access.
 
-### P1 — the vocabulary, with fragments and the string piece (S)
+### P1 — the vocabulary, with fragments and the string piece (S) — LANDED 2026-09-06
+
+*Landed as designed, with the departures recorded as §9 items 11–13:
+the `code` root is not `type()`-marked; the profile vocabulary spells
+`childPrec` and `str`; a profile document must state a profile.
+`ir-vet.tsv` is `aontu-code.tsv` and the profile rows are
+`aontu-profile.tsv`; the rows are `gens`/`errc` over documents that
+include the model, the shape `std-system.tsv` set, rather than `vet`
+rows, whose finding JSON would bury the code each row is about. The
+bodies are pinned by HASH (`shapes-hash`, `shape-hash`), not by canon:
+pinning them found that an alias used as a spread template — `units:
+[&: %unit]` — stood in canon as its name, which does not reparse, and
+the fix (canon spells such a reference as the value it names; alias.tsv
+`alias-in-spread-*`, ALIASES.0.md's 2026-09-06 note) makes the
+vocabulary's canon the whole schema written out, which a hash pins
+and a canon row would only repeat.*
 
 **Deliverable.** `@"aontu:code"` as G9 §1 wrote it, with the second
 amendment's fragment nodes, D2's string piece, lower-case alias names
@@ -720,7 +740,30 @@ touches M0.
    D7) and the note is named for it.
 10. **The Jostraca ADR is not ADR-012** — that number is
     [taken](../../ADR.md#adr-012--an-includes-extension-decides-what-the-file-is-aontu-source-config-data-or-refused);
-    the bridge, if it proceeds, takes the next free number.
+    the bridge, if it proceeds, takes the next free number. (Moot
+    since ADR-023 retired the bridge.)
+11. **The `code` root is not `type()`-marked** (P1), departing from G9
+    §1's "anchored under a key, and `type()`-marked". The anchoring
+    stays: it is what keeps a root-anchored vocabulary from vetting
+    anything as valid. The mark goes, because `render` reads the
+    instance through `generate()` and a `type()`-marked subtree does
+    not generate — VERIFIED in both ports on the day P1 landed:
+    `aontu get $.code` on a marked instance answers `null`. The cost
+    is the pollution §1 avoided — an includer that writes no units
+    generates `code: {units: []}` — and it is accepted because a
+    document includes this vocabulary for one purpose, and `{units:
+    []}` is a true statement about a document that produced no code.
+    The same holds for `aontu:profile`, whose root a profile document
+    must state (its `lang` has no default, so the vocabulary alone does
+    not generate).
+12. **Two profile keys are respelled** (P1): `childPrec` for the
+    design's `child_prec`, so the bundled model passes `--lint`'s
+    key-case rule, and `str` for the design's `string`, because
+    `string` is a kind and cannot be written as a bare key.
+13. **The vocabulary rows are `gens`/`errc`, not `vet`** (P1), the
+    shape `std-system.tsv` and `std-view.tsv` set for the bundled
+    models: a `vet` row's expectation is the finding JSON with every
+    site, which buries the one code a row is about.
 
 ## 10. The validation system: `test/system/rb-solar`
 

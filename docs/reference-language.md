@@ -1356,13 +1356,20 @@ otherwise become, and which would generate a `"%name"` field and leave
 every `%name` use resolving to nothing, neither of them saying why. The
 refusal points at the name; write `=`.
 
-**Not inside a spread template, yet.** `{&: {a: %D}}` does not resolve
-the reference: the alias survives into canon as `$.%D`—the refused
-path spelling—and the document's [`aon1-` hash](#canonical-form)
-moves, so the two spellings are *not* the same document there. The
-value still generates correctly in both ports, which is what makes it
-easy to miss. Write the constraint out inside a spread template until
-this is fixed.
+**Inside a spread template.** `{&: {a: %D}}` does not resolve the
+reference when it is written—a template applies to children that have
+not arrived—so the reference stands in the evaluated document. Canon
+spells it as the value it names, at any depth: `%u = integer` with
+`t: {&: %u}` canons as `{"t":{&:integer}}`, and the file produces the
+same [`aon1-` hash](#canonical-form) as the file with `integer`
+written in the template. A template that reads its own position, such
+as `%row = {name: key()}`, canons as the template (`{"name":key()}`),
+not as what `key()` answered at the declaration. One reference keeps
+its name: a recursive alias's reference to itself inside its own
+template (`%json = null | boolean | number | string | [&: %json] |
+{&: %json}`), which no finite text can write out. Such a document
+generates and hashes, and its canon is the same in both
+implementations, but the canon does not reparse on its own.
 
 **An alias is not a path segment.** `$.%foo` is refused, at any depth:
 the alias namespace and the path namespace are disjoint, and an alias
@@ -2304,11 +2311,93 @@ same key as an ordinary string.
 
 ### The bundled vocabularies
 
-Two vocabularies ship with the engine and are served from it rather
-than from disk: `std/system` below, and `std/view`—the schema for
-one declaration of a [view document](reference-api.md#aontu-view),
+Four vocabularies ship with the engine and are served from it rather
+than from disk: `std/system` below; `std/view`—the schema for one
+declaration of a [view document](reference-api.md#aontu-view),
 `$.view.Figure`, which types every option the verb reads so a typo is
-refused at evaluation.
+refused at evaluation; and the two `aontu:` models, `aontu:code` and
+`aontu:profile`, described [after it](#the-aontu-models).
+
+### The `aontu:` models
+
+A name that begins `aontu:` is a **language-supplied model**, and it
+resolves from the engine's own table and nowhere else: the memory,
+module, file and package legs are never asked, so no file can shadow
+one, and a name the engine does not serve is refused naming the set
+rather than looked for on disk. Write this as `models.aon`:
+
+<!-- test: scenario aontu-models -->
+<!-- test: file models.aon -->
+```aon
+@"aontu:code"
+
+code: units: [
+  { path:"hello.py" lang:"python" decls:[{ k:"frag" of:["print('hello')"] }] }
+]
+```
+
+<!-- test: run -->
+```sh
+$ aontu models.aon
+{
+  "code": {
+    "units": [
+      {
+        "decls": [
+          {
+            "k": "frag",
+            "of": [
+              "print('hello')"
+            ]
+          }
+        ],
+        "lang": "python",
+        "path": "hello.py"
+      }
+    ]
+  }
+}
+```
+
+A name the engine does not serve is refused, and the refusal names
+the set. Write this as `nope.aon`:
+
+<!-- test: file nope.aon -->
+```aon
+@"aontu:nope"
+```
+
+<!-- test: run -->
+```sh
+$ aontu nope.aon
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:profile)
+$ echo $?
+1
+```
+
+**`aontu:code`** is the output vocabulary: an instance of it is what a
+transform evaluates to, and what `aontu render` turns into bytes. Its
+root is `code: { source?, units }`, each unit a `path`, a `lang` and a
+list of declarations—`record`, `enum`, `alias`, `const`, `func`, a
+verbatim `text` escape, or a `frag`, a flat list of pieces each
+carrying its own depth: a `line` (or a bare string, which is a line at
+depth 0), a `blank`, or a `raw`. No inline piece may hold a line
+terminator; the vocabulary refuses one at the node, before any
+renderer runs. Container types take only leaf types—anything deeper is
+a named `alias` plus a `ref`—which is what keeps the schema's meet
+linear. The root is not `type()`-marked, because `render` reads the
+instance through generation; a document that includes the vocabulary
+and writes no units generates `code: {units: []}`.
+
+**`aontu:profile`** is the schema of a render profile—the data a unit
+of one language is rendered under: its `lang`, an `indent`, and
+optionally the comment forms, the string quote and escape table, the
+identifier rules and the type forms. A profile is data and only data:
+a field belongs in it only if the renderer applies it without looking
+at the shape of any node.
+
+Both are **experimental** until the vocabulary can be versioned by
+canon-hash.
 
 ### The `std/system` vocabulary
 

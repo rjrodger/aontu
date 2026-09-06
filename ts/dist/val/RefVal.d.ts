@@ -7,6 +7,7 @@ declare class RefVal extends FeatureVal {
     isGenable: boolean;
     cjo: number;
     absolute: boolean;
+    expansion: Val | undefined;
     prefix: boolean;
     constructor(spec: {
         peg: any[];
@@ -20,6 +21,8 @@ declare class RefVal extends FeatureVal {
     plainRefPath(): string[] | undefined;
     same(peer: Val): boolean;
     clone(ctx: AontuContext, spec?: ValSpec): Val;
+    get aliasName(): string | undefined;
+    get spelling(): string;
     get canon(): string;
     gen(ctx: AontuContext): undefined;
     inspection(): string;

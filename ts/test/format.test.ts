@@ -14,6 +14,7 @@ import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 
 import { format, unifiedDiff } from '../dist/aontu'
+import { STD_SOURCES, AONTU_MODELS } from '../dist/std'
 
 
 // The repository root, found from wherever the compiled test runs.
@@ -256,5 +257,25 @@ describe('format', () => {
     }
     Assert.deepEqual(failures, [], failures.join('\n'))
     Assert.ok(300 < formatted, `too few documents formatted: ${formatted}`)
+  })
+})
+
+
+// THE BUNDLED MODELS ARE HELD TO THE FORM (docs/design/MODELS.0.md D4):
+// `fmt` leaves each of the `aontu:` models exactly as bundled, and
+// `--lint` reports nothing on it. The language's own examples pass its
+// formatter, or the formatter is wrong or the examples are. Twin of
+// TestBundledModelsAreFormatted in go/format_test.go.
+describe('format-bundled-models', () => {
+  test('aontu-models-are-fmt-clean-and-lint-clean', () => {
+    for (const name of AONTU_MODELS) {
+      const src = STD_SOURCES[name]
+      const report: any = format(src, { lint: true })
+      Assert.equal(report.verdict, 'formatted', name)
+      Assert.equal(report.text, src, name + ' is not in the form aontu fmt writes')
+      Assert.equal(report.changed, false, name)
+      Assert.deepEqual(report.findings, [], name + ' has lint findings')
+    }
+    Assert.deepEqual(AONTU_MODELS, ['aontu:code', 'aontu:profile'])
   })
 })

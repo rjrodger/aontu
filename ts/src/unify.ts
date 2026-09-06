@@ -12,6 +12,7 @@ import { findAt } from './val/ReferFuncVal'
 
 import { NilVal } from './val/NilVal'
 import { hasPlace } from './val/PlaceVal'
+import { expandAliases } from './alias'
 
 import {
   Lang
@@ -597,6 +598,11 @@ class Unify {
           paths: residuePaths(res, 4).join(' ') || '$',
         })
       }
+
+      // The settled tree's alias references canon as the values they
+      // name (ts/src/alias.ts): attached here, once, after the last
+      // pass, from the snapshot store this run kept.
+      expandAliases(res, (uctx as any).snapmap)
 
       uctx.explain && explainClose(te, res)
     }

@@ -1,0 +1,58 @@
+# aontu:code -- THE OUTPUT VOCABULARY (docs/capability-review/
+# g9-transformation.md §1 with the fragment algebra of its second
+# amendment; docs/design/RENDER.0.md D2 and P1). An aontu transform
+# evaluates to an instance of this schema, and `aontu render` turns the
+# instance into bytes; because it is an ordinary schema, a transform's
+# result is checked by unification before anything is rendered.
+#
+# Columns: name<TAB>mode<TAB>src<TAB>expect
+#
+# The source is BUNDLED with the engine (ts/src/std.ts, go/std.go) and
+# served under the aontu: scheme (aontu-scheme.tsv). The two copies are
+# the same bytes: `shapes-hash` below hashes a document that references
+# every alias, so the bodies are pinned in both engines and cannot
+# drift without a red suite. THE ROOT IS NOT type()-MARKED, on purpose:
+# `render` reads the instance through generate(), and a type()-marked
+# subtree does not generate (VERIFIED, both ports) -- so a document that
+# includes the vocabulary and writes no units generates `code: {units:
+# []}`, which is what it said.
+#
+# EXPERIMENTAL until the distribution layer can version it by
+# canon-hash.
+#
+# Every expectation was obtained by running BOTH engines and diffing.
+vocabulary-is-served	gens	@"aontu:code"\nx: 1	{"code":{"units":[]},"x":1}
+shapes-hash	hash	@"aontu:code"\nshapes: { unit: %unit, decl: %decl, type: %type, check: %check, piece: %piece, field: %field, source: %source }	aon1-UQg8d9onWxZfyk5-zUvUtc9RxHRCxcXm1J0do6CqBC4
+#
+# A UNIT: a path, a language, its declarations; an inline profile
+# override rides on it (RENDER.0.md D4, D5).
+unit-minimal	gens	@"aontu:code"\ncode: units: [{ path: "a.txt", lang: "text", decls: [] }]	{"code":{"units":[{"decls":[],"lang":"text","path":"a.txt"}]}}
+unit-profile-inline	gens	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [], profile: { indent: { width: 4 } } }]	{"code":{"units":[{"decls":[],"lang":"text","path":"a","profile":{"indent":{"width":4}}}]}}
+unit-unknown-key-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [], module: "m" }]	closed
+unit-lang-empty-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "", decls: [] }]	constraint
+#
+# THE FRAGMENT ALGEBRA is flat: a line at a depth, a blank, a raw; a
+# bare string is a line at depth 0. No inline piece holds a line
+# terminator -- the renderer's totality invariant, checked HERE, at the
+# node, before any renderer runs.
+frag-valid	gens	@"aontu:code"\ncode: units: [{ path: "a.py", lang: "python", decls: [{ k: "frag", of: ["class Planet:", { k: "line", at: 1, of: ["name = ", { k: "ref", name: "Name" }] }, { k: "blank" }, { k: "raw", at: 1, text: "def f():\\n    pass", reindent: false }] }] }]	{"code":{"units":[{"decls":[{"k":"frag","of":["class Planet:",{"at":1,"k":"line","of":["name = ",{"k":"ref","name":"Name"}]},{"k":"blank","n":1},{"at":1,"k":"raw","reindent":false,"text":"def f():\\n    pass"}]}],"lang":"python","path":"a.py"}]}}
+frag-string-newline-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: ["ok", "bad\\nline"] }] }]	empty
+frag-inline-newline-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "line", of: ["bad\\nline"] }] }] }]	empty
+frag-at-negative-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "line", at: -1, of: ["x"] }] }] }]	empty
+frag-at-over-bound-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "line", at: 65, of: ["x"] }] }] }]	empty
+frag-blank-zero-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "frag", of: [{ k: "blank", n: 0 }] }] }]	empty
+#
+# THE DECLARATIONS, and the spelling rules the design found by probe.
+record-valid	gens	@"aontu:code"\ncode: units: [{ path: "ts/domain.ts", lang: "typescript", decls: [{ k: "record", name: "Customer", fields: [{ name: "id", type: { k: "prim", prim: "string" } }, { name: "email", type: { k: "prim", prim: "string" }, optional: true }] }] }]	{"code":{"units":[{"decls":[{"fields":[{"name":"id","optional":false,"type":{"k":"prim","prim":"string"}},{"name":"email","optional":true,"type":{"k":"prim","prim":"string"}}],"k":"record","name":"Customer","open":false}],"lang":"typescript","path":"ts/domain.ts"}]}}
+text-escape	gens	@"aontu:code"\ncode: units: [{ path: "a.rb", lang: "ruby", decls: [{ k: "text", lang: "ruby", text: "puts 1" }] }]	{"code":{"units":[{"decls":[{"k":"text","lang":"ruby","text":"puts 1"}],"lang":"ruby","path":"a.rb"}]}}
+# Rule 1: an atom kind in an instance must be QUOTED. `prim: string` is
+# the kind, not the string "string", and it cannot generate.
+prim-unquoted-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T", type: { k: "prim", prim: string } }] }]	disjunct_no_gen
+prim-unknown-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T", type: { k: "prim", prim: "int32" } }] }]	empty
+name-not-an-identifier-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "9x", type: { k: "prim", prim: "int" } }] }]	empty
+field-unknown-key-refused	errc	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "record", name: "R", fields: [{ name: "id", type: { k: "prim", prim: "string" }, nullable: true }] }] }]	empty
+source-hash-not-a-pin-refused	errc	@"aontu:code"\ncode: { source: { hash: "sha256-abc" }, units: [] }	constraint
+# CONTAINER TYPES TAKE LEAVES ONLY. Both engines refuse the nested
+# list at the declaration; the CODES differ (TypeScript `|:trial-nil`,
+# Go `empty` -- use-cases/BUGS.md §80), so the row pins the path.
+container-nested-refused	err	@"aontu:code"\ncode: units: [{ path: "a", lang: "text", decls: [{ k: "alias", name: "T", type: { k: "list", of: { k: "list", of: { k: "prim", prim: "int" } } } }] }]	at path $.code.units.0.decls.0
