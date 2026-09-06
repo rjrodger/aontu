@@ -296,6 +296,41 @@ The pin-covers-only-the-entry-file defect above is unchanged and more
 urgent: unpinned files now land in the project's own bucket rather than
 on somebody else's forge.
 
+### The provider is not the contract, 2026-09-06
+
+[ADR-024](../../ADR.md#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition)
+separates two acts the settled design had fused, and it changes this
+document in two places.
+
+**A publish is authorised from the forge's own token.** The write path
+verifies it directly against the forge's published key set and reads
+the namespace claim, the identifier pair, the trigger and the runner
+from it — never from a certificate. Fulcio leaves the admission path,
+so a host is tier-A admissible under ADR-020's rule alone, and not under
+the issuers Fulcio happens to accept, which was a coupling nothing had
+recorded.
+
+**What the client verifies is stated in this project's terms.** A
+signed manifest; a signer the proof names and the client's trust
+configuration accepts for the package's name; and, where the
+configuration requires it, inclusion in a `tlog-tiles` log whose
+checkpoint key the client trusts — checked by the phase-2 client
+unchanged, which is the second time federating has raised that client's
+value rather than moved it. A Sigstore bundle is one encoding of that
+proof and the default for public tier-A packages; it is not the
+definition. The contract admits a second provider, and the minimal one
+— a named key, no log, which the local registry and a private package
+already need — proves the seam before the first third-party publish.
+The exit from Sigstore is a provider swap.
+
+The contract's specification lands in `aontu-lang/mod`, beside the leaf
+and checkpoint specification the split below already places there,
+because it is what a client relies on to verify. The pseudocode under
+"What the client verifies" and the split table's key-custody row are
+left as the record of design D: they describe a fetch, a lookup and a
+custody the settled design replaced, and a rewrite belongs with the
+phase-3 work that supersedes them.
+
 ## Proposed design
 
 ### The leaf
@@ -411,6 +446,12 @@ code is a database with extra steps.
   may require it; building an existing project may not.
 - **No bespoke proof protocol.** C2SP `tlog-tiles` and `tlog-checkpoint`,
   or the auditors and witnesses are ours to write forever.
+- **No provider-specific verification contract.** What a client checks
+  on first acquisition is stated in the project's terms, per
+  [ADR-024](../../ADR.md#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition),
+  and a Sigstore bundle is one encoding of it. A client that verifies a
+  bundle outside the contract, or a write path that decides admission
+  from a certificate rather than the forge's token, breaches that entry.
 - **No clean-room Merkle implementation** — port `sumdb/tlog`, pin the
   upstream version, gate on differential tests.
 - **No witnesses in v1** — but the checkpoint format must be

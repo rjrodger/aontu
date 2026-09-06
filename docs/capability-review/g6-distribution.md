@@ -463,6 +463,15 @@ is required for v1. Two hooks make the registry more than storage:
 - **No signing or provenance attestation in v1** — dual pins give
   tamper-evidence; signatures answer "who", a separable problem
   with mature OCI ecosystem answers (sigstore) to adopt later.
+  *(Amended 2026-09-06 by
+  [ADR-024](../../ADR.md#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition):
+  the "later" arrived with the repository, and what was adopted is a
+  **provider**, not a definition — a client verifies a signed manifest,
+  a named signer its trust configuration accepts for the package's
+  name, and inclusion in a log where required, with a Sigstore bundle
+  as one encoding of that proof. Authorisation to publish is decided
+  from the forge's own token, which is the "who" this bullet said
+  signatures answer, answered without a signature.)*
 - **No version ranges or dependency solver** — MVS only; a
   constraint solver in resolution reintroduces the
   nondeterminism the review's "no SMT solvers" trap exists to keep
