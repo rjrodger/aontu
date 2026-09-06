@@ -30,6 +30,7 @@ var funcSet = map[string]bool{
 	"refer":     true,
 	"pack":      true,
 	"each":      true,
+	"form":      true,
 	"filter":    true,
 	"match":     true,
 	"emit":      true,
@@ -73,7 +74,8 @@ var funcSet = map[string]bool{
 // after it first looks done. Mirrors the `staged` flag on the TS
 // FuncBaseVal subclasses.
 var stagedFuncs = map[string]bool{
-	"key": true, "pack": true, "each": true, "filter": true, "match": true,
+	"key": true, "pack": true, "each": true, "form": true, "filter": true,
+	"match": true,
 	// A dispatch over a selection still being merged into dispatches
 	// over the wrong selection.
 	"emit": true,
@@ -130,7 +132,7 @@ func derivePositional() map[string]bool {
 // report). What they DO need driven -- the data, the condition, the
 // patterns -- is driven by hand instead (stagedDrive).
 var generatorFuncs = map[string]bool{
-	"pack": true, "each": true, "filter": true, "match": true,
+	"pack": true, "each": true, "form": true, "filter": true, "match": true,
 	// emit's TABLE is templates: driving it would resolve a body's
 	// references at the call site, the one position a body is never
 	// used at.
@@ -702,6 +704,8 @@ func (f *FuncVal) resolve(ctx *Ctx, base []string, args []Val) Val {
 		return packFunc(ctx, f, base, args)
 	case "each":
 		return eachFunc(ctx, f, base, args)
+	case "form":
+		return formFunc(ctx, f, base, args)
 	case "filter":
 		return filterFunc(ctx, f, base, args)
 	case "match":

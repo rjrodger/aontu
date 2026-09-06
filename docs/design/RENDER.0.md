@@ -614,7 +614,20 @@ profiles. **Acceptance:** G9's worked examples 1 and 2 render
 byte-for-byte from both ports; `grep -n 'range ' go/render.go` shows
 ranges over slices only.
 
-### P6 — `replace`/`esc` in `emit`, and `form` (M)
+### P6 — `replace`/`esc` in `emit`, and `form` (M) — LANDED 2026-09-06
+
+*Landed as designed, with the departures recorded as §9 items 27–30:
+the substitution applies at the literal spots the template wrote, so
+D3's second and third rules need no guard; a value that is not text is
+a third code, `replace_value`; `form` has one code, since the arity
+gate refuses a call without a template; and the twelve handlers are
+use case 17, rendered from a model of the case's own. `gen-emit.tsv`
++32, `gen-form.tsv` 25 rows, `signature.tsv` +1. Acceptance met: the
+handlers of TEMPLATE.0.md D7, written in the canonical form,
+reproduce byte-identically through `emit` and `aontu render --check`
+in both ports (`use-cases/17-lambda-handlers/check.sh`), and
+`join(form(split(…), …), "")` closes the name-derivation chain
+(`gen-form.tsv` `form-chain`, and the case's `index.ts`).*
 
 **Deliverable.** D11's first and third items. `replace` and `esc` as
 template keys with the three substitution rules and the two static
@@ -671,7 +684,7 @@ register says so in the same commits:
 | a recursive rule set renders nested output (acceptance case 2) | `emit-recursive` (landed) plus one `render.tsv` row over it |
 | worked examples 1 and 2 byte-for-byte | P5 (landed): `use-cases/10-data-model/xf-domain.aon` and `xf-order.aon` under `render --check`, both ports |
 | one model, three units, one run, nothing written on a partial failure | P4 |
-| the twelve handlers byte-identical through `emit` + `render`, and then through the surface | P6, P8 |
+| the twelve handlers byte-identical through `emit` + `render` (P6, landed: `use-cases/17-lambda-handlers/`), and then through the surface | P6, P8 |
 | coverage names dead model and silent holes | P7 |
 | `render` never writes from the engine, the MCP tool or the LSP | P4's isolation tests |
 | both vocabularies and three profiles hash identically across ports | `hash` rows |
@@ -911,6 +924,33 @@ touches M0.
     (D5 gave `indent` no default). A profile that names only its
     `lang` and a lowering is valid, and the fold pads it as the text
     profile does rather than refusing it.
+
+27. **`replace` applies at the literal spots the template wrote** (P6):
+    a string element of the body, and the strings written directly in
+    a map element's `of` list or `text`. A string an expression
+    computes, or a nested dispatch splices in, is not one, so D3's
+    second rule (a substituted value is never re-scanned) and third (a
+    spliced result is finished) follow from where the substitution
+    happens — on the fresh instance, before any binding — rather than
+    from a guard.
+28. **A replacement value that is not text is `replace_value`** (P6
+    planned the two static codes). A number or a boolean spells itself
+    through the one rule `+` and `join` share; a map, a list, a null,
+    or a value still unresolved when the dispatch fires is refused,
+    class `conflict`, naming the key and the value. The key is quoted
+    in the message, so an empty key is visible and both ports print
+    the same line.
+29. **`form` has one code** (P6 said "`form`'s codes by `each`'s
+    precedent"): `form_data`. The signature requires the template, and
+    the arity gate refuses a call without one before `form` runs, so
+    there is no second code to reach.
+30. **The twelve handlers are use case 17**, rendered from a model
+    written for the case: the note's repository is not in scope, and
+    byte-identity with its files is not what the acceptance can
+    assert. What it asserts is the canonical form of D7's generator —
+    `replace`, `esc: sq`, the three nested dispatches, two lines of
+    two spaces — rendering thirteen units byte-identically from both
+    ports, each parsing as TypeScript, with the apostrophe pin escaped.
 
 ## 10. The validation system: `test/system/rb-solar`
 

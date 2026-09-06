@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="av" viewBox="0 0 180 288" width="180" height="288" role="img" aria-label="Document tree at $: 13 keys to depth 2">
+<style>.av{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}.av-t{fill:var(--av-ink,#1f2328)}.av-m{fill:var(--av-muted,#6e7781)}.av-box{fill:var(--av-bg,#f6f8fa);stroke:var(--av-rule,#8c959f);stroke-width:1}.av-cell{fill:var(--av-bg,#f6f8fa);stroke:var(--av-rule-faint,#d0d7de);stroke-width:1}.av-direct{fill:var(--av-ink,#1f2328);stroke:var(--av-rule-faint,#d0d7de);stroke-width:1}.av-closure{fill:var(--av-closure,#9ec5fe);stroke:var(--av-rule-faint,#d0d7de);stroke-width:1}.av-unmirrored{fill:var(--av-warn,#e3b341);stroke:var(--av-rule-faint,#d0d7de);stroke-width:1}.av-line{stroke:var(--av-rule,#8c959f);stroke-width:1;fill:none}.av-up{stroke:var(--av-alert,#d1242f);stroke-width:1.5;fill:none;stroke-dasharray:4 3}.av-dot{fill:var(--av-ink,#1f2328)}.av-hole{fill:var(--av-bg,#f6f8fa);stroke:var(--av-rule-faint,#d0d7de);stroke-width:1}.av-bar{fill:var(--av-bar,#57606a)}</style>
+<text x="4" y="14" class="av-t">$</text>
+<path d="M8 20V30H26" class="av-line"/>
+<text x="28" y="34" class="av-t">services</text>
+<path d="M32 40V50H50" class="av-line"/>
+<text x="52" y="54"><tspan class="av-t">admin</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V70H50" class="av-line"/>
+<text x="52" y="74"><tspan class="av-t">audit</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V90H50" class="av-line"/>
+<text x="52" y="94"><tspan class="av-t">billing</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V110H50" class="av-line"/>
+<text x="52" y="114"><tspan class="av-t">chat</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V130H50" class="av-line"/>
+<text x="52" y="134"><tspan class="av-t">embed</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V150H50" class="av-line"/>
+<text x="52" y="154"><tspan class="av-t">export</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V170H50" class="av-line"/>
+<text x="52" y="174"><tspan class="av-t">index-build</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V190H50" class="av-line"/>
+<text x="52" y="194"><tspan class="av-t">ingest</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V210H50" class="av-line"/>
+<text x="52" y="214"><tspan class="av-t">notify</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V230H50" class="av-line"/>
+<text x="52" y="234"><tspan class="av-t">parse</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V250H50" class="av-line"/>
+<text x="52" y="254"><tspan class="av-t">search</tspan><tspan class="av-m"> (3)</tspan></text>
+<path d="M32 40V270H50" class="av-line"/>
+<text x="52" y="274"><tspan class="av-t">summary</tspan><tspan class="av-m"> (3)</tspan></text>
+</svg>

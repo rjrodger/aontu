@@ -45,8 +45,14 @@ install-go:
 prose:
 	vale --minAlertLevel=error $$(node ts/scripts/gated-docs.cjs)
 
-# Test coverage (see docs/test-coverage.md)
-cov: cov-ts cov-go
+# Test coverage (see docs/test-coverage.md). The two gates run SIDE BY
+# SIDE: each is a property of its own port, neither reads the other's
+# files, and CI's coverage job has a wall clock -- the TypeScript gate
+# alone re-runs its suite when the runner drops observations
+# (ts/test/covrun.js), so running the Go gate after it rather than
+# beside it is time the job does not have.
+cov:
+	$(MAKE) -j2 cov-ts cov-go
 
 cov-ts:
 	cd ts && npm run test-cov

@@ -868,7 +868,7 @@ describe('docs-style', () => {
     Assert.ok(files.includes('README.md'), 'README.md is gated')
     Assert.ok(files.includes('ts/README.md'), 'ts/README.md is gated')
     Assert.equal(
-      files.filter((f) => f.startsWith('use-cases/')).length, 16,
+      files.filter((f) => f.startsWith('use-cases/')).length, 17,
       'the sixteen published use cases are gated')
   })
 

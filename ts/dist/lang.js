@@ -72,6 +72,7 @@ const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
 const PackFuncVal_1 = require("./val/PackFuncVal");
 const EachFuncVal_1 = require("./val/EachFuncVal");
+const FormFuncVal_1 = require("./val/FormFuncVal");
 const FilterFuncVal_1 = require("./val/FilterFuncVal");
 const MatchFuncVal_1 = require("./val/MatchFuncVal");
 const EmitFuncVal_1 = require("./val/EmitFuncVal");
@@ -697,6 +698,13 @@ help isolate the syntax error.`,
         // G8 phase 0).
         pack: PackFuncVal_1.PackFuncVal,
         each: EachFuncVal_1.EachFuncVal,
+        // RENDER P6: the order-preserving map. `form` makes one list
+        // element per child of its data, being the template with `_`
+        // bound to the source child -- a construction, where `each` is a
+        // bound (G9 §4). It exists because `pick(pack(...))` re-sorts to
+        // code-point order, and a struct's fields or a file's imports
+        // are the model's order or they are wrong.
+        form: FormFuncVal_1.FormFuncVal,
         // G8 phase 2: selection. `filter` keeps the children of a bag that
         // unify with a condition; `match` picks the first arm whose
         // pattern the scrutinee unifies with. Both select by
