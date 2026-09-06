@@ -87,6 +87,23 @@ func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	worst := 0
 	for _, file := range files {
+		// FMT FORMATS AONTU SOURCE, AND THE EXTENSION SAYS WHAT A FILE
+		// IS (ADR-012's rule, and the one render reads a template by).
+		// A TEMPLATE FILE IS NOT AONTU (docs/design/TEMPLATE.0.md; P8):
+		// its marker lines are fragments of a document and its other
+		// lines are the target's, so there is nothing here to format
+		// that would not also rewrite the output. Refused rather than
+		// attempted, and refused BY NAME rather than by a parse
+		// failure, because a `#-` template parses: `#` opens a comment,
+		// so every marker line vanishes and what is left is read as a
+		// document that was never written.
+		if !strings.HasSuffix(file, ".aon") &&
+			!strings.HasSuffix(file, ".aontu") {
+			io.WriteString(stderr, "aontu: "+file+
+				" is not aontu source (.aon, .aontu); a generator written"+
+				" in the target's own syntax is aontu template's\n")
+			return 2
+		}
 		src, err := os.ReadFile(file)
 		if nil != err {
 			io.WriteString(stderr, "aontu: cannot read "+file+": "+err.Error()+"\n")

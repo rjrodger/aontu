@@ -88,6 +88,10 @@ deps
 dereference
 dereferenced
 dereferences
+desugar
+desugared
+desugaring
+desugars
 dev
 diffable
 disjunction's
@@ -172,6 +176,10 @@ repos
 residuated
 residuates
 residuation
+resugar
+resugared
+resugaring
+resugars
 rewriter
 rollout
 rootPath

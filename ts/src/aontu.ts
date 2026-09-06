@@ -26,6 +26,7 @@ import { graphOf } from './graph'
 import { relationCheck, relationErrors } from './relation'
 import { view, viewSet, viewTree } from './view'
 import { render, renderValue, renderProfile } from './render'
+import { desugarTemplate, resugarTemplate, markerFor } from './template'
 import { format, unifiedDiff } from './format'
 export type { LintFinding, FormatReport, FormatOptions } from './format'
 
@@ -485,6 +486,14 @@ export {
   render,
   renderValue,
   renderProfile,
+
+  // The template surface (docs/design/TEMPLATE.0.md): the two text
+  // transforms behind `aontu template`, and the marker an extension
+  // names. Neither evaluates anything -- a template is a spelling of
+  // a generator, so the transforms are text in and text out.
+  desugarTemplate,
+  resugarTemplate,
+  markerFor,
 
   // The source formatter (docs/design/FMT.0.md): the agreed form of a
   // document, and the unified diff `aontu fmt --diff` prints.

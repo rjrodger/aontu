@@ -596,6 +596,9 @@ index names the services in the model's order through `form`, with a
 constant spelled by `join(form(split(_, "-"), upper(_)), "_")`. All
 thirteen files are held by `aontu render --check` in both ports:
 [`use-cases/17-lambda-handlers/`](../use-cases/17-lambda-handlers/).
+The same generator is there twice: `gen.aon` is the canonical aontu
+above, and `handler.ts` is that generator written as a Lambda handler,
+with its aontu on marked lines. Both render the same thirteen files.
 
 Where a page in these docs and a use case disagree, the case wins (its
 checks run; the page does not). File the docs bug.

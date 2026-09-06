@@ -733,6 +733,35 @@ func TestSpec(t *testing.T) {
 						t.Fatalf("view report mismatch\n src: %q\n want: %s\n got:  %s",
 							src, want, got)
 					}
+				case "template":
+					// THE TEMPLATE SURFACE (docs/design/TEMPLATE.0.md;
+					// RENDER.0.md P8). src is a generator file in the
+					// target's own syntax; `out` is its canonical aontu
+					// form, and `back` the template the round trip
+					// answers -- which is src itself wherever the sugar
+					// is already the fixpoint, and the normalised
+					// spelling where it is not. Both directions in one
+					// row, because a transform pinned in one direction
+					// only is half a transform.
+					var golden map[string]any
+					if err := json.Unmarshal([]byte(expect), &golden); err != nil {
+						t.Fatalf("expect is not JSON: %v\n expect: %s", err, expect)
+					}
+					marker := ""
+					if ask, ok := golden["ask"].(map[string]any); ok {
+						marker, _ = ask["marker"].(string)
+					}
+					want, _ := golden["out"].(string)
+					back, _ := golden["back"].(string)
+					got := DesugarTemplate(src, marker)
+					if got != want {
+						t.Fatalf("desugar mismatch\n src: %q\n want: %q\n got:  %q",
+							src, want, got)
+					}
+					if again := ResugarTemplate(got, marker); again != back {
+						t.Fatalf("resugar mismatch\n src: %q\n want: %q\n got:  %q",
+							src, back, again)
+					}
 				case "render":
 					// THE RENDERER (docs/design/RENDER.0.md D10): every
 					// unit's bytes, the loss report, or the refusal. The

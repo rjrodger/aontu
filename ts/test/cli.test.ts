@@ -15,7 +15,7 @@ import {
   runReaches,
   runView,
   runHash, runGet, runWhy,
-  renderWhyText, runSet, runAgentsMd, runFmt, replCommand,
+  renderWhyText, runSet, runAgentsMd, runFmt, runTemplate, replCommand,
   watchChange, watchSignature, vetWaiter, deprecatedAt,
   main as cliMainVet, runMod,
 } from '../dist/cli'
@@ -2889,6 +2889,143 @@ describe('cli-render', () => {
     }])
     Assert.deepEqual(report.coverage.dead, ['$.spare'])
     Assert.deepEqual(report.coverage.read, ['$.services'])
+  })
+})
+
+
+// --- the template surface -------------------------------------------
+
+describe('cli-template', () => {
+
+  // A generator in the target's own syntax: two marked lines carrying
+  // aontu, and one line of output between them. `\t` is a tab, which
+  // the round trip has to keep as one.
+  const GEN =
+    '//- of: [\n' +
+    'export const N = 1\n' +
+    '//- ]\n'
+
+  const CANON =
+    'of: [\n' +
+    '`export const N = 1`\n' +
+    ']\n'
+
+  function templateDir(files: Record<string, string>): string {
+    const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-template-'))
+    for (const [name, text] of Object.entries(files)) {
+      Fs.writeFileSync(Path.join(dir, name), text)
+    }
+    return dir
+  }
+
+  function templateCode(want: number, args: string[]): { out: string, err: string } {
+    return vetCapture(() => Assert.equal(runTemplate(args), want, args.join(' ')))
+  }
+
+  test('template-prints-the-canonical-form-and-resugars-it', () => {
+    const dir = templateDir({ 'gen.ts': GEN, 'canon.aon': CANON })
+    // THE DEFAULT DIRECTION is desugar: the aontu the marked lines
+    // mean, with every other line quoted as one string.
+    Assert.equal(templateCode(0, [Path.join(dir, 'gen.ts')]).out, CANON)
+    // --resugar is the other one, and the file it reads is aontu.
+    Assert.equal(
+      templateCode(0, ['--resugar', Path.join(dir, 'canon.aon')]).out, GEN)
+    // The marker comes from the extension, and --marker names one the
+    // table does not know.
+    const hash = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' })
+    Assert.equal(templateCode(0, [Path.join(hash, 'gen.rb')]).out,
+      'of: [\n`puts 1`\n]\n')
+    const odd = templateDir({ 'gen.zz': ';;- of: [\nx\n;;- ]\n' })
+    Assert.equal(
+      templateCode(0, ['--marker', ';;-', Path.join(odd, 'gen.zz')]).out,
+      'of: [\n`x`\n]\n')
+    // The dispatch: `aontu template` is the verb.
+    Assert.equal(vetCapture(() => {
+      cliMainVet(['node', 'aontu', 'template', Path.join(dir, 'gen.ts')])
+    }).out, CANON)
+  })
+
+  test('template-check-is-the-round-trip', () => {
+    const dir = templateDir({ 'gen.ts': GEN })
+    Assert.equal(templateCode(0, ['--check', Path.join(dir, 'gen.ts')]).out, '')
+
+    // A MARKER LINE THE TRANSFORM WOULD NOT HAVE WRITTEN is what this
+    // catches: the marker keeps its OWN indentation, so aontu indented
+    // after it is moved before it, and a marker written without its
+    // space gains one. The report names the first line that differs
+    // rather than diffing the whole generator.
+    const bad = templateDir({ 'gen.ts': '//- of: [\n//-   {\n//- ]\n' })
+    const r = templateCode(1, ['--check', Path.join(bad, 'gen.ts')])
+    Assert.match(r.err, /gen\.ts:2 is not what the round trip answers/)
+    Assert.match(r.err, /have: "\/\/- {3}\{"/)
+    Assert.match(r.err, /want: " {2}\/\/- \{"/)
+  })
+
+  test('template-usage-errors-exit-2', () => {
+    const dir = templateDir({ 'gen.ts': GEN })
+    const file = Path.join(dir, 'gen.ts')
+    // The two directions are not modes that compose.
+    Assert.match(templateCode(2, ['--resugar', '--check', file]).err,
+      /one of --resugar or --check/)
+    Assert.match(templateCode(2, []).err, /template needs one file/)
+    Assert.match(templateCode(2, [file, file]).err, /template needs one file/)
+    Assert.match(templateCode(2, ['--marker']).err, /--marker needs a token/)
+    Assert.match(templateCode(2, ['--bogus', file]).err,
+      /unknown template option --bogus/)
+    Assert.match(templateCode(2, [Path.join(dir, 'missing.ts')]).err,
+      /cannot read/)
+    Assert.equal(
+      templateCode(0, ['--help']).out.includes('aontu template'), true)
+  })
+
+  test('render-reads-a-template-entry-by-its-extension', () => {
+    // The entry's extension decides, so a generator in the target's
+    // own syntax is an entry rather than a preprocessing step.
+    const dir = templateDir({
+      'gen.ts':
+        '//- code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
+        '//- k: "frag", of: [\n' +
+        'hello\n' +
+        '//- ]}] }]\n',
+      'gen.zz':
+        ';;- code: units: [{ path: "a.txt", lang: "text", decls: [{\n' +
+        ';;- k: "frag", of: [\n' +
+        'hello\n' +
+        ';;- ]}] }]\n',
+    })
+    Assert.equal(
+      vetCapture(() => Assert.equal(
+        runRender(['--stdout', Path.join(dir, 'gen.ts')]), 0)).out,
+      'hello\n')
+    // --marker reaches render too, for a language the table has not met.
+    Assert.equal(
+      vetCapture(() => Assert.equal(
+        runRender(['--stdout', '--marker', ';;-', Path.join(dir, 'gen.zz')]),
+        0)).out,
+      'hello\n')
+    Assert.match(
+      vetCapture(() => Assert.equal(runRender(['--marker']), 2)).err,
+      /--marker needs a token/)
+  })
+
+  test('fmt-formats-aontu-source-only', () => {
+    // A `#-` TEMPLATE PARSES AS AONTU, because `#` opens a comment --
+    // so `fmt` would read one, throw every output line away and
+    // rewrite the file with exit 0. The rule is by name, not by what
+    // parses.
+    const dir = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' })
+    const file = Path.join(dir, 'gen.rb')
+    const r = vetCapture(() => Assert.equal(runFmt([file]), 2))
+    Assert.equal(r.out, '')
+    Assert.match(r.err, /is not aontu source \(\.aon, \.aontu\)/)
+    Assert.match(r.err, /aontu template/)
+    // The file is untouched, which is the whole point.
+    Assert.equal(Fs.readFileSync(file, 'utf8'), '#- of: [\nputs 1\n#- ]\n')
+    // `.aontu` is aontu source, and is formatted.
+    const ok = templateDir({ 'd.aontu': 'a:{b:1}\n' })
+    Assert.equal(
+      vetCapture(() => Assert.equal(runFmt([Path.join(ok.toString(), 'd.aontu')]), 0)).out,
+      'a: b: 1\n')
   })
 })
 

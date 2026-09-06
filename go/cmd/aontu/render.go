@@ -23,7 +23,7 @@ import (
 	aontu "github.com/aontu-lang/aontu/go"
 )
 
-const renderHelp = "aontu render [--at <path>] [--profile <file>]... [--unit <path>] [--stdout | --out <dir> | --check <dir> | --coverage] [--coverage-at <path>] [--strict] <file> (try --help)"
+const renderHelp = "aontu render [--at <path>] [--profile <file>]... [--unit <path>] [--stdout | --out <dir> | --check <dir> | --coverage] [--coverage-at <path>] [--strict] [--marker <token>] <file> (try --help)"
 
 func runRender(argv []string, stdout, stderr io.Writer) int {
 	argv, trust, trustOK := takeTrust(argv, stderr)
@@ -36,6 +36,7 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 	toStdout, strict := false, false
 	coverage := false
 	coverageAt := ""
+	marker := ""
 
 	for i := 0; i < len(argv); i++ {
 		arg := argv[i]
@@ -89,6 +90,13 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 			toStdout = true
 		case "--coverage" == arg:
 			coverage = true
+		case "--marker" == arg:
+			i++
+			if len(argv) <= i {
+				io.WriteString(stderr, "aontu: --marker needs a token\n")
+				return 2
+			}
+			marker = argv[i]
 		case "--coverage-at" == arg:
 			i++
 			if len(argv) <= i {
@@ -135,6 +143,20 @@ func runRender(argv []string, stdout, stderr io.Writer) int {
 		io.WriteString(stderr,
 			"aontu: cannot read "+files[0]+": "+err.Error()+"\n")
 		return 2
+	}
+
+	// THE ENTRY MAY BE A TEMPLATE (TEMPLATE.0.md; P8), and its EXTENSION
+	// decides, as an include's extension decides what the include is
+	// (ADR-012): a generator is a file in the target's own syntax, so it
+	// carries the target's extension and never `.aon`. Desugared here
+	// rather than anywhere deeper, because a template is an entry
+	// spelling and not a value: an include is still aontu.
+	if !strings.HasSuffix(files[0], ".aon") {
+		mark := marker
+		if "" == mark {
+			mark = aontu.MarkerFor(files[0])
+		}
+		src = []byte(aontu.DesugarTemplate(string(src), mark))
 	}
 
 	// THE PROFILES (D5): each --profile file is a document whose root is

@@ -199,6 +199,77 @@ is found before it rots. `--format json` carries the other half, one
 trace entry per emitted piece: which model node the rule matched, and
 which rule.
 
+## Write the generator in the target's own syntax
+
+A body of quoted lines is a generator a compiler cannot read. The same
+generator can be written as a file **in the language it generates**:
+one rule, a marked line is aontu source and every other line is a line
+of output. The marker is the target's comment token plus a dash, so
+the file stays valid in its own language. Write the model as
+`model.aon`:
+
+<!-- test: file model.aon -->
+```aontu
+records: [
+  { name:"Customer" note:"one account holder" }
+  { name:"Order" note:"one purchase" }
+]
+```
+
+and the generator as `struct.go`:
+
+<!-- test: file struct.go -->
+```go
+//- @"./model.aon"
+//- code: units: emit($.records, {
+//- match: { name: string }
+//- body: [{ path: .name + ".go", lang: "go", decls: [{ k: "frag", of: emit([_], {
+//- match: { name: string }
+//- replace: { NAME: .name, NOTE: .note }
+//- body: [
+package acme
+
+// NAME is NOTE. Generated: edit the model, not this file.
+type NAME struct{}
+//- ]}) }] }]
+//- })
+```
+
+`render` reads it directly—the entry's extension says it is a
+template—and there is nothing new to learn about generation itself:
+
+<!-- test: run -->
+```sh
+$ aontu render --stdout --unit Order.go struct.go
+package acme
+
+// Order is one purchase. Generated: edit the model, not this file.
+type Order struct{}
+```
+
+Three things follow from writing it this way:
+
+- **The output lines are the target's, at their own indentation.**
+  `gofmt` formats them, an editor highlights them, and `go vet` reads
+  the generator itself. What the target sees is a file with four
+  comments in it.
+- **A value still arrives through `replace`.** `NAME` is a string the
+  body holds, matched exactly, so no delimiter can collide with the
+  target's syntax. That needs an inner dispatch: `replace` reaches the
+  lines a rule wrote, so the file's lines and the map naming the file
+  are two rules rather than one.
+- **The whitespace is the artifact.** A line of two spaces is two
+  spaces of output, so the generator's bytes matter as much as the
+  generated file's. `aontu template --check struct.go` holds the file
+  to the spelling the round trip answers, and `aontu render --check`
+  against the committed output catches a body line whose whitespace
+  changed—an editor set to trim on save, say.
+
+`aontu template struct.go` prints the canonical form, the aontu the
+marked lines mean, for reading rather than for keeping. `aontu fmt`
+refuses a template by extension—it formats `.aon` and `.aontu`—so a
+file whose comment token is `#` is never silently rewritten as aontu.
+
 ## Lower a declaration instead
 
 A struct need not be spelled as lines. The vocabulary has a
@@ -277,6 +348,8 @@ conflict instead of a broken identifier at emit time.
   flags, exit codes and confinement.
 - [Transforming: `emit`](../reference-language.md#transforming-emit).
   Dispatch order, splicing, named tables and recursion.
+- [`aontu template`](../reference-api.md#aontu-template). The two
+  transforms, the markers by extension, and the round trip.
 - [Export JSON Schema](export-json-schema.md). The other bridge out
   of the model.
 - [Keep schema out of output](keep-schema-out-of-output.md). `hide()`
