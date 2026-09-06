@@ -1,0 +1,201 @@
+{
+  "planet": {
+    "mercury": {
+      "id": "mercury",
+      "name": "Mercury",
+      "kind": "rock",
+      "diameter": 4879
+    },
+    "venus": {
+      "id": "venus",
+      "name": "Venus",
+      "kind": "rock",
+      "diameter": 12104
+    },
+    "earth": {
+      "id": "earth",
+      "name": "Earth",
+      "kind": "rock",
+      "diameter": 12756
+    },
+    "mars": {
+      "id": "mars",
+      "name": "Mars",
+      "kind": "rock",
+      "diameter": 6792
+    },
+    "jupiter": {
+      "id": "jupiter",
+      "name": "Jupiter",
+      "kind": "gas",
+      "diameter": 142984
+    },
+    "saturn": {
+      "id": "saturn",
+      "name": "Saturn",
+      "kind": "gas",
+      "diameter": 120536
+    },
+    "uranus": {
+      "id": "uranus",
+      "name": "Uranus",
+      "kind": "gas",
+      "diameter": 51118
+    },
+    "neptune": {
+      "id": "neptune",
+      "name": "Neptune",
+      "kind": "gas",
+      "diameter": 49528
+    }
+  },
+  "moon": {
+    "luna": {
+      "id": "luna",
+      "name": "Luna",
+      "planet_id": "earth",
+      "kind": "rock",
+      "diameter": 3475
+    },
+    "phobos": {
+      "id": "phobos",
+      "name": "Phobos",
+      "planet_id": "mars",
+      "kind": "rock",
+      "diameter": 22
+    },
+    "deimos": {
+      "id": "deimos",
+      "name": "Deimos",
+      "planet_id": "mars",
+      "kind": "rock",
+      "diameter": 12
+    },
+    "io": {
+      "id": "io",
+      "name": "Io",
+      "planet_id": "jupiter",
+      "kind": "rock",
+      "diameter": 3636
+    },
+    "europa": {
+      "id": "europa",
+      "name": "Europa",
+      "planet_id": "jupiter",
+      "kind": "ice",
+      "diameter": 3122
+    },
+    "ganymede": {
+      "id": "ganymede",
+      "name": "Ganymede",
+      "planet_id": "jupiter",
+      "kind": "ice",
+      "diameter": 5270
+    },
+    "callisto": {
+      "id": "callisto",
+      "name": "Callisto",
+      "planet_id": "jupiter",
+      "kind": "ice",
+      "diameter": 4820
+    },
+    "mimas": {
+      "id": "mimas",
+      "name": "Mimas",
+      "planet_id": "saturn",
+      "kind": "ice",
+      "diameter": 397
+    },
+    "enceladus": {
+      "id": "enceladus",
+      "name": "Enceladus",
+      "planet_id": "saturn",
+      "kind": "ice",
+      "diameter": 499
+    },
+    "tethys": {
+      "id": "tethys",
+      "name": "Tethys",
+      "planet_id": "saturn",
+      "kind": "ice",
+      "diameter": 1060
+    },
+    "dione": {
+      "id": "dione",
+      "name": "Dione",
+      "planet_id": "saturn",
+      "kind": "ice",
+      "diameter": 1120
+    },
+    "rhea": {
+      "id": "rhea",
+      "name": "Rhea",
+      "planet_id": "saturn",
+      "kind": "ice",
+      "diameter": 1528
+    },
+    "titan": {
+      "id": "titan",
+      "name": "Titan",
+      "planet_id": "saturn",
+      "kind": "ice",
+      "diameter": 5149
+    },
+    "triton": {
+      "id": "triton",
+      "name": "Triton",
+      "planet_id": "neptune",
+      "kind": "ice",
+      "diameter": 2706
+    },
+    "nereid": {
+      "id": "nereid",
+      "name": "Nereid",
+      "planet_id": "neptune",
+      "kind": "ice",
+      "diameter": 340
+    },
+    "naiad": {
+      "id": "naiad",
+      "name": "Naiad",
+      "planet_id": "neptune",
+      "kind": "rock",
+      "diameter": 66
+    },
+    "thalassa": {
+      "id": "thalassa",
+      "name": "Thalassa",
+      "planet_id": "neptune",
+      "kind": "rock",
+      "diameter": 80
+    },
+    "despina": {
+      "id": "despina",
+      "name": "Despina",
+      "planet_id": "neptune",
+      "kind": "rock",
+      "diameter": 150
+    },
+    "galatea": {
+      "id": "galatea",
+      "name": "Galatea",
+      "planet_id": "neptune",
+      "kind": "rock",
+      "diameter": 180
+    },
+    "larissa": {
+      "id": "larissa",
+      "name": "Larissa",
+      "planet_id": "neptune",
+      "kind": "rock",
+      "diameter": 194
+    },
+    "proteus": {
+      "id": "proteus",
+      "name": "Proteus",
+      "planet_id": "neptune",
+      "kind": "rock",
+      "diameter": 420
+    }
+  }
+}
