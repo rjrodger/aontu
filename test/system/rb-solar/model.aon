@@ -77,10 +77,19 @@ entity: [
     ui_item_helper: "planet"
 
     field: [
-      { name:"id" json:"id" kind:"string" required:true pk:true write:true }
+      {
+        name: "id"
+        json: "id"
+        kind: "string"
+        required: true
+        pk: true
+        write: true
+        fk: false
+      }
       {
         name: "name"
         json: "name"
+        fk: false
         kind: "string"
         required: true
         pk: false
@@ -89,6 +98,7 @@ entity: [
       {
         name: "kind"
         json: "kind"
+        fk: false
         kind: "string"
         required: true
         pk: false
@@ -97,6 +107,7 @@ entity: [
       {
         name: "diameter"
         json: "diameter"
+        fk: false
         kind: "float"
         required: true
         pk: false
@@ -105,6 +116,7 @@ entity: [
       {
         name: "terraform_state"
         json: "terraformState"
+        fk: false
         kind: "string"
         pk: false
         write: false
@@ -112,6 +124,7 @@ entity: [
       {
         name: "forbid_state"
         json: "forbidState"
+        fk: false
         kind: "string"
         pk: false
         write: false
@@ -119,6 +132,7 @@ entity: [
       {
         name: "forbid_reason"
         json: "forbidReason"
+        fk: false
         kind: "string"
         pk: false
         write: false
@@ -235,10 +249,19 @@ entity: [
     children: []
 
     field: [
-      { name:"id" json:"id" kind:"string" required:true pk:true write:true }
+      {
+        name: "id"
+        json: "id"
+        kind: "string"
+        required: true
+        pk: true
+        write: true
+        fk: false
+      }
       {
         name: "name"
         json: "name"
+        fk: false
         kind: "string"
         required: true
         pk: false
@@ -256,6 +279,7 @@ entity: [
       {
         name: "kind"
         json: "kind"
+        fk: false
         kind: "string"
         required: true
         pk: false
@@ -264,6 +288,7 @@ entity: [
       {
         name: "diameter"
         json: "diameter"
+        fk: false
         kind: "float"
         required: true
         pk: false

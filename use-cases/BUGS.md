@@ -3679,6 +3679,13 @@ Consequence: a generator must either state the key on every node
 `rb-solar`'s model does) or discriminate on a key every node has with
 distinct values. Neither is wrong as modelling; both are forced.
 
+**It bit twice.** The second time was the ER-diagram generator, whose
+`{ fk:true }` rule marked every column of both entities as a foreign
+key — a diagram that is wrong in a way a reader would believe, since
+nothing about it looks broken. The model now answers `fk` on every
+field as well as `pk`. Two generators written a day apart, the same
+defect, and neither reported anything: that is the measure of it.
+
 Repro: `repros/emit-match/missing-key-matches.aon`. Fix: `match`
 should ask the question `filter` asks. `filter` is the correct one:
 `trialUnify` there refuses a node the predicate's key is missing from,
