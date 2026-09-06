@@ -63,6 +63,12 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 			res.Src = toValidSource(src)
 			res.Found = true
 			recordDep(sink, spec.Path, "std")
+			// The model's TEXT too, as the file leg records a file's: a
+			// vet against the vocabulary sites its schema operand in the
+			// model, and the row and column of that site are offsets into
+			// this text. Without it the site is -1:-1, which TypeScript
+			// (whose values carry their coordinates) never answers here.
+			recordText(sink, spec.Path, res.Src)
 			return res
 		}
 		recordNotFoundMsg(ctx, "source not found: "+spec.Path+
@@ -86,6 +92,7 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 		res.Src = toValidSource(src)
 		res.Found = true
 		recordDep(sink, spec.Path, "std")
+		recordText(sink, spec.Path, res.Src)
 		return res
 	}
 

@@ -29,16 +29,8 @@ const keyorder_1 = require("./keyorder");
 const utility_1 = require("./utility");
 const VOCABULARY = '@"aontu:code"';
 const TEXT_PROFILE = '@"aontu:lang/text"';
-function finding(code, cls, path, message, note) {
-    return {
-        code,
-        class: cls,
-        severity: 'error',
-        path,
-        message,
-        sites: [],
-        ...(undefined === note ? {} : { note }),
-    };
+function finding(code, cls, path, message) {
+    return { code, class: cls, severity: 'error', path, message, sites: [] };
 }
 function errorReport(errors) {
     return { verdict: 'error', units: [], lossy: [], errors };

@@ -39,8 +39,11 @@ that is absolute, climbs with `..` or repeats another's is
 `render_path`; a `text` escape of another language is `render_lang`;
 a `unit` filter that names nothing is `render_unit`. The verb, the MCP
 tool and the use case are P4. `test/spec/render.tsv`, a new `render`
-mode (32 rows); `aontu-profile.tsv` pins the text profile by hash and
-generated form; `errcodes.tsv` +5. Both implementations.
+mode (34 rows); `aontu-profile.tsv` pins the text profile by hash and
+generated form; `errcodes.tsv` +5. Both implementations. In Go, a
+bundled model's text is now recorded as an included file's is, so a
+finding sited in `aontu:code` carries the row and column TypeScript
+reports rather than -1:-1.
 
 ### A fold sees the members generation emits
 

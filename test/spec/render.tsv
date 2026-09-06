@@ -64,8 +64,9 @@ render-strict-refuses-text	render	code: units: [{ path: "a.txt", lang: "text", d
 # THE REFUSALS (D7, D8). A unit path that is absolute, climbs, or
 # repeats another's; a text escape of another language; a declaration
 # with no lowering -- under a profile, and with no profile to be had; a
-# unit filter that names nothing; a document that does not stand up;
-# an instance the vocabulary refuses; an anchor that names nothing.
+# unit filter that names nothing; a document that does not stand up,
+# or is nil outright; an instance the vocabulary refuses; an anchor
+# that names nothing.
 render-path-absolute	render	code: units: [{ path: "/etc/a", lang: "text", decls: [] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_path","class":"parse","severity":"error","path":"$.code.units.0.path","sites":[]}]}
 render-path-climbs	render	code: units: [{ path: "a/../b", lang: "text", decls: [] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_path","class":"parse","severity":"error","path":"$.code.units.0.path","sites":[]}]}
 render-path-repeats	render	code: units: [{ path: "a", lang: "text", decls: [] }, { path: "a", lang: "text", decls: [] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_path","class":"parse","severity":"error","path":"$.code.units.1.path","sites":[]}]}
@@ -74,4 +75,6 @@ render-profile-no-lowering	render	code: units: [{ path: "a.txt", lang: "text", d
 render-profile-no-profile	render	code: units: [{ path: "a.py", lang: "python", decls: [{ k: "const", name: "x", value: 1 }] }]	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_profile","class":"parse","severity":"error","path":"$.code.units.0.lang","sites":[]}]}
 render-unit-unknown	render	code: units: [{ path: "a.txt", lang: "text", decls: [] }]	{"ask":{"unit":"z.txt"},"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_unit","class":"reference","severity":"error","path":"$.code.units","sites":[]}]}
 render-document-does-not-stand-up	render	code: units: [{ path: "a.txt", lang: "text", decls: [] }]\nx: 1 & "a"	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"scalar_kind","class":"conflict","severity":"error","path":"$.x","sites":[{"col":8,"file":"","len":3,"role":"data","row":2,"src":"\\"a\\"","value":"\\"a\\""},{"col":4,"file":"","len":1,"role":"data","row":2,"src":"1","value":"1"}]}]}
+render-document-is-nil	render	nil	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"literal_nil","class":"conflict","severity":"error","path":"$","sites":[{"col":1,"file":"","len":3,"role":"data","row":1,"src":"nil","value":"nil"}]}]}
+render-vet-refuses-the-shape	render	code: units: 1	{"verdict":"error","units":[],"lossy":[],"errors":[{"code":"list","class":"conflict","severity":"error","path":"$.code.units","sites":[{"col":18,"file":"data","len":1,"role":"data","row":1,"src":"1","value":"1"},{"col":37,"file":"aontu:code","len":1,"role":"schema","row":152,"src":"[","value":"[&:%unit]"}]}]}
 render-anchor-names-nothing	render	code: units: []	{"ask":{"at":"$.nope"},"verdict":"error","units":[],"lossy":[],"errors":[{"code":"no_path","class":"reference","severity":"error","path":"$","sites":[{"col":1,"file":"","len":4,"role":"data","row":1,"src":"code","value":"{\\"code\\":{\\"units\\":[]}}"}]}]}

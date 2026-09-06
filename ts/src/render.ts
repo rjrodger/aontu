@@ -89,17 +89,9 @@ const TEXT_PROFILE = '@"aontu:lang/text"'
 
 
 function finding(
-  code: string, cls: string, path: string, message: string, note?: string
+  code: string, cls: string, path: string, message: string
 ): VetFinding {
-  return {
-    code,
-    class: cls as any,
-    severity: 'error',
-    path,
-    message,
-    sites: [],
-    ...(undefined === note ? {} : { note }),
-  }
+  return { code, class: cls as any, severity: 'error', path, message, sites: [] }
 }
 
 
