@@ -40,27 +40,27 @@ erDiagram
 %%- body: [
   ENTITY {
 %%- emit(form(.field, _ & { mark: "" }), [
-%%-   {
-%%-     match: { pk:true }
-%%-     replace: { TYPE: .kind COLUMN: .name }
-%%-     body: [
+  %%- {
+    %%- match: { pk:true }
+    %%- replace: { TYPE: .kind COLUMN: .name }
+    %%- body: [
     TYPE COLUMN PK
-%%-     ]
-%%-   }
-%%-   {
-%%-     match: { fk:true }
-%%-     replace: { TYPE: .kind COLUMN: .name }
-%%-     body: [
+    %%- ]
+  %%- }
+  %%- {
+    %%- match: { fk:true }
+    %%- replace: { TYPE: .kind COLUMN: .name }
+    %%- body: [
     TYPE COLUMN FK
-%%-     ]
-%%-   }
-%%-   {
-%%-     match: { name:string }
-%%-     replace: { TYPE: .kind COLUMN: .name }
-%%-     body: [
+    %%- ]
+  %%- }
+  %%- {
+    %%- match: { name:string }
+    %%- replace: { TYPE: .kind COLUMN: .name }
+    %%- body: [
     TYPE COLUMN
-%%-     ]
-%%-   }
+    %%- ]
+  %%- }
 %%- ])
   }
 %%- ]}) }
