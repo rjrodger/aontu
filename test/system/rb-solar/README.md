@@ -48,7 +48,7 @@ Four things in it are worth reading for the reasons behind them:
   be guessing, and would be wrong three times out of seven here.
 - **Every field answers `pk` and `fk`, including with `false`.**
   Absence is not an answer a rule table can read
-  ([BUGS.md §88](../../use-cases/BUGS.md)).
+  ([BUGS.md §88](../../../use-cases/BUGS.md)).
 - **An action's rules are listed lowest priority first.** The generated
   form is a sequence of assignments and the last one wins, so this
   reproduces the reference's `if`/`elsif`: `{start: true, stop: true}`
@@ -124,12 +124,12 @@ Writing this turned up four things in the engine and one in the plan.
 All five are recorded where they belong; they are listed here because
 finding them is what a system like this is for.
 
-- **[BUGS.md §88](../../use-cases/BUGS.md)** — an `emit` rule's `match`
+- **[BUGS.md §88](../../../use-cases/BUGS.md)** — an `emit` rule's `match`
   admits a node the key is absent from, where `filter` refuses it. It
   bit twice, a day apart: once as a migration with no columns in it,
   once as an ER diagram marking every column a foreign key. Neither
   reported anything.
-- **[BUGS.md §89](../../use-cases/BUGS.md)** — a relative reference
+- **[BUGS.md §89](../../../use-cases/BUGS.md)** — a relative reference
   resolves in a body element but not inside a call's argument there,
   and the miss is silent. The symptom was a migration missing its
   `add_index`, which rendered and would have been committed clean.
