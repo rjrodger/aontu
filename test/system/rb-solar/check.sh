@@ -167,6 +167,26 @@ $AONTU fmt --check "$DIR/model.aon" >/dev/null 2>&1 \
   && ok "the model is in the agreed form (aontu fmt)" \
   || fail "model.aon is not formatted"
 
+# --- the CI job still fits the workflow it patches -------------------
+#
+# `ci-job.patch` adds this system's boot legs to
+# `.github/workflows/build.yml`, and it is a patch rather than a block
+# to paste precisely so that this question has an answer. A patch that
+# no longer applies is a job nobody can turn on; it fails here rather
+# than in the maintainer's terminal a month from now.
+#
+# It disappears when it is applied, so its absence is not a failure.
+
+if [ ! -f "$DIR/ci-job.patch" ]; then
+  skip "the CI job patch still applies (applied and removed)"
+elif ! command -v git >/dev/null 2>&1 || ! (cd "$ROOT" && git rev-parse --git-dir >/dev/null 2>&1); then
+  skip "the CI job patch still applies (not a git work tree)"
+elif (cd "$ROOT" && git apply --check "$DIR/ci-job.patch" >/dev/null 2>&1); then
+  ok "the CI job patch still applies to .github/workflows/build.yml"
+else
+  fail "ci-job.patch no longer applies -- regenerate it against the workflow"
+fi
+
 # --- the system boots and the reference validates it -----------------
 
 if ! command -v ruby >/dev/null 2>&1; then

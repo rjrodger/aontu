@@ -13,7 +13,7 @@ The first full system in `test/system/`: a Ruby on Rails 8
 implementation of the
 [voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk)
 Solar System API, and a human UI over the same data, generated from one
-`model.aon` by eight generators. `check.sh` runs ten checks, and the
+`model.aon` by nine generators. `check.sh` runs eleven checks, and the
 two that matter most are other people's code: the reference
 repository's own `validate.ts`, unmodified, all twenty of its tests
 against the booted app, and its Ruby SDK driving the app through its
@@ -26,9 +26,11 @@ holds the committed tree to it. What is hand-written is only what the
 model does not decide: the `Gemfile`, `config/`, `bin/`, the three
 Rails base classes and the layout.
 
-Seven of the eight generators are **files in the language they
-generate** — `ruby -c` parses them — and the eighth is a Mermaid
-diagram that renders the ER diagram of the same model.
+Eight of the nine generators are **files in the language they
+generate** — `ruby -c` parses the seven Ruby ones, and the eighth is a
+Mermaid diagram drawing the ER diagram of the same model. The ninth is
+canonical aontu, because no marker an ERB file can carry is one ERB
+itself ignores.
 
 ### `aontu template`: a generator written in the target's own syntax
 

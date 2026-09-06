@@ -1,0 +1,90 @@
+The CI job for this system, WAITING TO BE APPLIED BY A MAINTAINER.
+
+    git apply test/system/rb-solar/ci-job.patch
+    git commit -am 'CI: run the rb-solar system job'
+
+It is a patch here rather than a job in .github/workflows/build.yml
+because the session that wrote rb-solar cannot push workflow files:
+GitHub refuses an OAuth app without the `workflow` scope, with
+
+  ! [remote rejected] ... (refusing to allow an OAuth App to create
+  or update workflow '.github/workflows/build.yml' without 'workflow'
+  scope)
+
+A patch rather than a paste-this block, because a patch is checkable:
+`git apply --check` says whether it still fits the workflow file, and
+this one is regenerated whenever that file moves. Once applied, delete
+it -- nothing else in the repository refers to it.
+
+git apply ignores everything above the first `diff --git` line, so this
+note travels with the change it describes.
+
+diff --git a/.github/workflows/build.yml b/.github/workflows/build.yml
+index 7eb1c1bb..9e61a8b4 100644
+--- a/.github/workflows/build.yml
++++ b/.github/workflows/build.yml
+@@ -162,3 +162,64 @@ jobs:
+         working-directory: ts
+       - run: ./run-all.sh
+         working-directory: use-cases
++
++  # THE SYSTEM THAT BOOTS.
++  #
++  # `use-cases/run-all.sh` above already reaches test/system/rb-solar,
++  # and on a runner with no Ruby bundle it runs the seven checks that do
++  # not need one: the generators, the tree they must reproduce, the
++  # diagrams, the model's coverage and its form. The three it skips are
++  # the ones that make the system a system -- the app boots, the
++  # reference's own twenty validation tests pass against it over HTTP,
++  # its Ruby SDK drives it, and the human pages answer.
++  #
++  # Those need Ruby, a bundle and the reference checkout, which is a
++  # different shape of job from the use-case one and would slow it for
++  # every model it drives. Hence a job of its own; check.sh is the same
++  # script either way and reports which legs it ran.
++  system-rb-solar:
++    name: System (rb-solar)
++    timeout-minutes: 20
++    runs-on: ubuntu-latest
++    steps:
++      - uses: actions/checkout@v4
++
++      # NODE 24 IS NOT INCIDENTAL. The reference's validate.ts is
++      # TypeScript run by node directly; type stripping arrives in
++      # 22.18, and check.sh skips that leg with the version in the note
++      # on anything older rather than dying in the parser.
++      - uses: actions/setup-node@v4
++        with:
++          node-version: 24.x
++
++      - uses: ruby/setup-ruby@v1
++        with:
++          ruby-version: '3.3'
++          bundler-cache: true
++          working-directory: test/system/rb-solar/app
++
++      # The engine the check drives: $AONTU defaults to ts/bin/aontu.js,
++      # which loads the committed ts/dist. Build for the same reason the
++      # use-case job does -- an unbuilt tree grades this branch's model
++      # against the previous branch's engine.
++      - run: npm install
++        working-directory: ts
++      - run: npm run build
++        working-directory: ts
++
++      # The reference repository, for the SDK leg only. Public, shallow,
++      # and read once: ref/ already carries the OpenAPI description, the
++      # validation script and the seed data at a pinned commit. Without
++      # this clone that one leg skips with a note and the other nine
++      # still run.
++      - name: Fetch the reference SDK
++        run: |
++          git clone --depth 1 \
++            https://github.com/voxgig-sdk/voxgig-solardemo-sdk.git \
++            "$RUNNER_TEMP/solardemo"
++
++      - name: rb-solar
++        working-directory: test/system/rb-solar
++        env:
++          RB_SOLAR_SDK: ${{ runner.temp }}/solardemo/rb
++        run: ./check.sh

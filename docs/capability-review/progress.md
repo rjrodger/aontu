@@ -1607,14 +1607,15 @@ are recorded against it.
 **THE VALIDATION SYSTEM PASSES, 2026-09-06.** `test/system/rb-solar/`
 is a Ruby on Rails 8 implementation of the reference Solar System API
 and a human UI over the same data, generated from one `model.aon` by
-eight generators, and `check.sh` is ten checks green — including the
+nine generators, and `check.sh` is eleven checks green — including the
 reference repository's OWN `validate.ts`, unmodified, all twenty of its
 tests, against the booted app. What is hand-written is only what the
 model does not decide. Every render phase is exercised by it: P3 and P4
 render the fragment units a Rails file is made of, P6's `replace`/`esc`
 and `form` are what a controller and a migration need, P7's coverage
-names what the model states and nothing reads, and P8 is how seven of
-the eight generators are written — Ruby files that `ruby -c` parses.
+names what the model states and nothing reads, and P8 is how eight of
+the nine generators are written — seven Ruby files that `ruby -c`
+parses, and a Mermaid diagram.
 
 It found four things, which is what it exists for:
 [BUGS.md §88](../../use-cases/BUGS.md) (an `emit` rule's `match` admits

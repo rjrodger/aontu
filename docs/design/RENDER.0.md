@@ -1100,13 +1100,14 @@ twelve handlers. A phase that rb-solar does not exercise is a phase the
 plan has not proved.
 
 **LANDED 2026-09-06.** `test/system/rb-solar/` is the system, and
-`check.sh` is ten checks: every generator renders the committed tree
-byte for byte, the seven Ruby generators parse as Ruby, every
+`check.sh` is eleven checks: every generator renders the committed
+tree byte for byte, the seven Ruby generators parse as Ruby, every
 template-surface generator round-trips, the four diagrams are pinned,
 no path of the model is dead to all nine generators, the model is
-`fmt`-clean, **the reference's own twenty tests pass against the
-booted app**, its Ruby SDK drives the app through thirteen assertions,
-and the human pages answer. Eight generators, one model, and the only
+`fmt`-clean, the CI job's patch still applies, **the reference's own
+twenty tests pass against the booted app**, its Ruby SDK drives the
+app through thirteen assertions, and the human pages answer. Nine
+generators, one model, and the only
 hand-written files are the ones the model does not decide (`Gemfile`,
 `config/`, `bin/`, and the three Rails base classes plus the layout).
 
