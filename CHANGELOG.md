@@ -5,7 +5,20 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/aontu-lang/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
-## Unreleased
+## Go 0.1.16 — 2026-09-06 · TypeScript 0.58.0
+
+**Two source-level changes are breaking**, and both are below rather
+than here so that they read with their reasoning: an alias is declared
+with `=` and a `%name:` declaration is now refused with a hint, and a
+bare string is letters, digits, `-` and `_` — any other punctuation
+outside its own syntax is an error rather than text. Documents that
+0.57.0 accepted may not evaluate; the refusals name the fix.
+
+The release also carries `aontu render` in full — the code vocabulary,
+the fold, the verb, the declaration lowering with the TypeScript and Go
+profiles, `replace`/`esc`, provenance and coverage, and a generator
+written in the target's own syntax — and the first complete system
+generated with it.
 
 ### `test/system/rb-solar`: a Rails application, generated
 
