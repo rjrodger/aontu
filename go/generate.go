@@ -3,7 +3,6 @@
 package aontu
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -32,14 +31,21 @@ import (
 // wrong with it. For a list the strings themselves are the keys: keys
 // are DATA, never position, or reordering the list would churn every
 // generated child (the Terraform `count` lesson).
-func packKeys(data Val) ([]string, string) {
-	switch d := data.(type) {
+func packKeys(data Val, ctx *Ctx) ([]string, string) {
+	// The candidates are the bag's MEMBERS -- what generation would
+	// emit (members.go, BUGS.md §79) -- so a hidden key, or a hidden
+	// name in a list of names, packs nothing.
+	switch data.(type) {
 	case *MapVal:
-		return append([]string{}, d.keys...), ""
+		out := []string{}
+		for _, m := range bagMembers(data, ctx) {
+			out = append(out, m.key)
+		}
+		return out, ""
 	case *ListVal:
-		out := make([]string, 0, len(d.peg))
-		for _, el := range d.peg {
-			sv, ok := el.(*ScalarVal)
+		out := []string{}
+		for _, m := range bagMembers(data, ctx) {
+			sv, ok := m.val.(*ScalarVal)
 			if !ok || KindString != sv.kind {
 				return nil, "pack_key"
 			}
@@ -51,24 +57,16 @@ func packKeys(data Val) ([]string, string) {
 	return nil, "pack_data"
 }
 
-// eachValues is the children a data bag holds, in the order the result
+// eachValues is the members a data bag holds -- what generation would
+// emit (members.go, BUGS.md §79) -- in the order the result
 // must carry them: source order for a list, sorted-key order for a map.
 // A generated list whose order depended on insertion history would
 // differ between two runs of one document, and between the two ports.
-func eachValues(data Val) ([]Val, string) {
-	switch d := data.(type) {
-	case *MapVal:
-		names := append([]string{}, d.keys...)
-		sort.Strings(names)
-		out := make([]Val, 0, len(names))
-		for _, k := range names {
-			out = append(out, d.peg[k])
-		}
-		return out, ""
-	case *ListVal:
-		return append([]Val{}, d.peg...), ""
+func eachValues(data Val, ctx *Ctx) ([]Val, string) {
+	if !isBag(data) {
+		return nil, "each_data"
 	}
-	return nil, "each_data"
+	return memberVals(data, ctx), ""
 }
 
 func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
@@ -76,7 +74,7 @@ func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	if 0 < len(args) {
 		data = args[0]
 	}
-	keys, bad := packKeys(data)
+	keys, bad := packKeys(data, ctx)
 	if "" != bad {
 		return makeNilErr(ctx, bad, f, nil)
 	}
@@ -128,7 +126,7 @@ func eachFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	if 0 < len(args) {
 		data = args[0]
 	}
-	vals, bad := eachValues(data)
+	vals, bad := eachValues(data, ctx)
 	if "" != bad {
 		return makeNilErr(ctx, bad, f, nil)
 	}
@@ -231,27 +229,30 @@ func filterFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 		return nil != met && met.Canon() == child.Canon()
 	}
 
-	switch d := data.(type) {
+	// The candidates are the bag's MEMBERS -- what generation would
+	// emit (members.go, BUGS.md §79) -- so a hidden child is never
+	// selected into the result.
+	switch data.(type) {
 	case *MapVal:
 		out := newMap()
-		for _, k := range d.keys {
-			kslot := append(cp(base), k)
-			if keeps(d.peg[k], kslot) {
-				out.keys = append(out.keys, k)
-				out.peg[k] = clonePath(d.peg[k], kslot)
+		for _, m := range bagMembers(data, ctx) {
+			kslot := append(cp(base), m.key)
+			if keeps(m.val, kslot) {
+				out.keys = append(out.keys, m.key)
+				out.peg[m.key] = clonePath(m.val, kslot)
 			}
 		}
 		out.setvpath(cp(base))
 		return out
 	case *ListVal:
 		elems := []Val{}
-		for _, e := range d.peg {
+		for _, m := range bagMembers(data, ctx) {
 			// The element context is the position it will END UP at,
 			// which is its index in the RESULT: dropping the third of
 			// five moves the fourth up.
 			islot := append(cp(base), itoa(len(elems)))
-			if keeps(e, islot) {
-				elems = append(elems, clonePath(e, islot))
+			if keeps(m.val, islot) {
+				elems = append(elems, clonePath(m.val, islot))
 			}
 		}
 		out := newList(elems)
@@ -697,7 +698,7 @@ func emitFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	if 0 < len(args) {
 		sel = args[0]
 	}
-	nodes, bad := eachValues(sel)
+	nodes, bad := eachValues(sel, ctx)
 	if "" != bad {
 		// eachValues names each's code; emit answers for itself.
 		return makeNilErr(ctx, "emit_data", f, nil)

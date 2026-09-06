@@ -291,7 +291,7 @@ class EmitFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    const nodes = dataValues(args?.[0])
+    const nodes = dataValues(args?.[0], ctx)
     if ('string' === typeof nodes) {
       // dataValues names the each_data code; emit answers for itself.
       return makeNilErr(ctx, 'emit_data', this)

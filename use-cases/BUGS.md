@@ -2613,7 +2613,7 @@ Repros: the `hide` spelling,
 and the staged-`each` spelling,
 [`repros/hide/staged-each-pick-unresolved-in-go.aon`](repros/hide/staged-each-pick-unresolved-in-go.aon).
 
-### 79. `join` folds a hidden child into the text it returns, in both ports [critical]
+### 79. `join` folds a hidden child into the text it returns, in both ports [FIXED 2026-09-06]
 
 Found 2026-09-04 while re-basing the
 [G9 plan](../docs/capability-review/g9-transformation.md) on what had
@@ -2651,6 +2651,19 @@ did not exist and was deferred on the reasoning that `join` "treats
 `hide`-marked and unfilled optional children exactly as `each` and
 `pick` do today". It does, and that is now the defect rather than the
 justification.
+
+**FIXED 2026-09-06, both ports (RENDER.0.md P2).** One enumeration,
+`bagMembers` (`ts/src/val/members.ts`, `go/members.go`), serves
+`each`, `emit`, `filter`, `pack`, `pick`, `join` and the aggregates: a
+`hide()`- or `type()`-marked child is not a member, nor an optional key
+whose value generates nothing. The snapshot a verb takes of a
+referenced bag keeps a member's own mark — `RefVal.find` under
+`argsnap` no longer clears the marks of an unmarked target, and the Go
+fold verbs now drive their data under `argsnap` as the staged verbs
+do — while a marked target still lifts, so `each($.schema.entities,
+_)` under a hidden schema is untouched. Pinned by `gen-join.tsv`'s
+`join-skips-*` rows and a row in each verb's file; the reproducer
+generates `"keep"` in both ports.
 
 Repro:
 [`repros/hide/join-carries-a-hidden-value.aon`](repros/hide/join-carries-a-hidden-value.aon).

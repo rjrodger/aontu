@@ -9,27 +9,16 @@ const StringVal_1 = require("./StringVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const arith_1 = require("./arith");
 const numcmp_1 = require("./numcmp");
-const keyorder_1 = require("../keyorder");
+const members_1 = require("./members");
 const PlusOpVal_1 = require("./PlusOpVal");
 // The children of a bag, in the order the aggregate sees them: source
 // order for a list, sorted-key order for a map -- `each`'s order, and
 // for the same reason (a map has no order of its own, so the language
 // picks one and states it).
-function bagChildren(data) {
-    if (true === data?.isList) {
-        return data.peg;
-    }
-    if (true === data?.isMap) {
-        // THE ONE MAP-KEY ORDER (../keyorder.ts), not a bare `.sort()`:
-        // JavaScript compares by UTF-16 code unit, so an astral key's
-        // leading surrogate sorts BELOW U+E000-U+FFFF and `pick` answered
-        // in a different order from `each`, from canon, and from Go --
-        // which sorts UTF-8 bytes, i.e. code points. `pick` is the
-        // order-preserving projection, so that was one model producing two
-        // different generated files (BUGS.md 62).
-        return Object.keys(data.peg).sort(keyorder_1.cmpCodePoint).map((k) => data.peg[k]);
-    }
-    return undefined;
+// The members of the bag a fold reads: what generation would emit
+// (./members.ts, BUGS.md §79), in the one map-key order (BUGS.md §62).
+function bagChildren(data, ctx) {
+    return (0, members_1.memberVals)(data, ctx);
 }
 class AggFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx, op) {
@@ -64,7 +53,7 @@ class AggFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return super.unify(peer, ctx);
     }
     resolve(ctx, args) {
-        const children = bagChildren(args?.[0]);
+        const children = bagChildren(args?.[0], ctx);
         if (undefined === children) {
             return this.place((0, err_1.makeNilErr)(ctx, 'aggregate_data', this, undefined, this.op));
         }
@@ -164,7 +153,7 @@ class PickFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return super.unify(peer, ctx);
     }
     resolve(ctx, args) {
-        const children = bagChildren(args?.[0]);
+        const children = bagChildren(args?.[0], ctx);
         const key = args?.[1];
         if (undefined === children) {
             return this.place((0, err_1.makeNilErr)(ctx, 'aggregate_data', this, undefined, 'pick'));
@@ -290,8 +279,8 @@ class JoinFuncVal extends FuncBaseVal_1.FuncBaseVal {
     // arguments settled but a member still a kind, the call rides the
     // ordinary args-not-done path and residuates, which is what makes an
     // unresolved member ordinary incompleteness rather than a refusal.
-    deferResolve(_ctx, args) {
-        const children = bagChildren(args?.[0]);
+    deferResolve(ctx, args) {
+        const children = bagChildren(args?.[0], ctx);
         if (undefined === children) {
             // Not a bag at all: let `resolve` say so rather than waiting for
             // a settling that has already happened.
@@ -304,7 +293,7 @@ class JoinFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return children.some((c) => 'notyet' === memberVerdict(c));
     }
     resolve(ctx, args) {
-        const children = bagChildren(args?.[0]);
+        const children = bagChildren(args?.[0], ctx);
         if (undefined === children) {
             return this.place((0, err_1.makeNilErr)(ctx, 'aggregate_data', this, undefined, 'join'));
         }

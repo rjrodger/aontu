@@ -2136,7 +2136,9 @@ shape no document can write, which is a cheaper thing to justify than
 a defence against one it can.
 
 **2. `join` landed, and phase 0 item 4 changed from a deferred
-tidy-up into the most urgent item in the plan.** Item 4 makes `each`,
+tidy-up into the most urgent item in the plan.** *(LANDED 2026-09-06
+as RENDER.0.md P2, in both ports: one member enumeration for every
+verb that reads a bag; BUGS.md §79 is FIXED.)* Item 4 makes `each`,
 `pick`, `join` and `form` skip `hide`-marked children and unfilled
 optional keys. It was deferred when `join` landed, on the recorded
 reasoning that `join` "treats `hide`-marked and unfilled optional

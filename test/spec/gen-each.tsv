@@ -48,3 +48,14 @@ each-over-spread-augmented	gens	ports:{a:{containerPort:1}}\nports:&:{port:.cont
 # through to the fill. Against TOP there is nothing to fill with, and a
 # placeheld generator waits exactly as the hole itself does.
 each-place-data	gens	o:['a'] & each(_)\n	{"o":["a"]}
+#
+# THE MEMBERS each SEES ARE THE MEMBERS GENERATION EMITS (BUGS.md §79):
+# a hidden child and an unfilled optional key are not members. The rule
+# is gen-join.tsv's, shared.
+each-skips-a-hidden-member	gens	m: {a: "keep", b: hide("SECRET")}\no: each($.m, _)	{"m":{"a":"keep"},"o":["keep"]}
+each-skips-an-unfilled-optional	gens	m: {x: 1, y?: integer}\no: each($.m, _)	{"m":{"x":1},"o":[1]}
+# An optional key is a member exactly when generation emits it: a null
+# is emitted, so it is one; a subtree whose required field never
+# resolved is dropped by generation, so it is not.
+each-keeps-an-optional-null	gens	m: {x: 1, y?: null}\no: each($.m, _)	{"m":{"x":1,"y":null},"o":[1,null]}
+each-skips-an-optional-subtree-that-cannot-generate	gens	m: {x: 1, y?: {z: string}}\no: each($.m, _)	{"m":{"x":1},"o":[1]}

@@ -2,7 +2,7 @@ import type { Val, ValSpec } from '../type';
 import { AontuContext } from '../ctx';
 import { MapVal } from './MapVal';
 import { FuncBaseVal } from './FuncBaseVal';
-declare function dataKeys(data: Val | undefined): string[] | string;
+declare function dataKeys(data: Val | undefined, ctx: AontuContext): string[] | string;
 declare class PackFuncVal extends FuncBaseVal {
     isPackFunc: boolean;
     staged: boolean;

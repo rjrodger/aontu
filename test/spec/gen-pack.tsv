@@ -92,3 +92,9 @@ pack-merge-expr-onto-child	gens	names:[web]\ndeploy:pack($.names,{replicas:2})\n
 # through to the fill. Against TOP there is nothing to fill with, and a
 # placeheld generator waits exactly as the hole itself does.
 pack-place-data	gens	o:['a'] & pack(_,{x:1})\n	{"o":{"a":{"x":1}}}
+#
+# THE KEYS pack GENERATES ARE THE MEMBERS GENERATION EMITS (BUGS.md §79):
+# a hidden key, or a hidden name in a list of names, packs nothing. The
+# rule is gen-join.tsv's, shared.
+pack-skips-a-hidden-key	gens	m: {a: 1, b: hide(2)}\nd: pack($.m, {x: 1})	{"d":{"a":{"x":1}},"m":{"a":1}}
+pack-skips-a-hidden-name	gens	n: [a, hide(b)]\nd: pack($.n, {x: 1})	{"d":{"a":{"x":1}},"n":["a"]}

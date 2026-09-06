@@ -9,18 +9,13 @@ const ListVal_1 = require("./ListVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const Val_1 = require("./Val");
 const PlaceVal_1 = require("./PlaceVal");
-const keyorder_1 = require("../keyorder");
-// The children a data bag holds, in the order the result must carry
-// them, or the code naming what is wrong with the argument.
-function dataValues(data) {
-    const d = data;
-    if (true === d?.isMap) {
-        return Object.keys(d.peg).sort(keyorder_1.cmpCodePoint).map((k) => d.peg[k]);
-    }
-    if (true === d?.isList) {
-        return [...d.peg];
-    }
-    return 'each_data';
+const members_1 = require("./members");
+// The members a data bag holds, in the order the result must carry
+// them -- what generation would emit (./members.ts, BUGS.md §79) --
+// or the code naming what is wrong with the argument.
+function dataValues(data, ctx) {
+    const vals = (0, members_1.memberVals)(data, ctx);
+    return undefined === vals ? 'each_data' : vals;
 }
 class EachFuncVal extends FuncBaseVal_1.FuncBaseVal {
     constructor(spec, ctx) {
@@ -46,7 +41,7 @@ class EachFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return super.unify(peer, ctx);
     }
     resolve(ctx, args) {
-        const vals = dataValues(args?.[0]);
+        const vals = dataValues(args?.[0], ctx);
         if ('string' === typeof vals) {
             return (0, err_1.makeNilErr)(ctx, vals, this);
         }

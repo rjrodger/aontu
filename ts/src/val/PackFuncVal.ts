@@ -44,35 +44,39 @@ import { MapVal } from './MapVal'
 import { FuncBaseVal } from './FuncBaseVal'
 import { repathInstance } from './Val'
 import { fillPlace } from './PlaceVal'
+import { bagMembers } from './members'
 
 
 // The keys a data bag names, in the order the result must carry them,
 // or a code naming what is wrong with it. Shared with `each`, which
 // asks the same question of the same argument and answers it with the
 // values rather than the keys.
-function dataKeys(data: Val | undefined): string[] | string {
-  const d: any = data
+function dataKeys(data: Val | undefined, ctx: AontuContext): string[] | string {
+  // The candidates are the bag's MEMBERS -- what generation would
+  // emit (./members.ts, BUGS.md §79) -- so a hidden key, or a hidden
+  // name in a list of names, packs nothing.
+  const members = bagMembers(data, ctx)
 
-  if (true === d?.isMap) {
-    return Object.keys(d.peg)
+  if (undefined === members) {
+    return 'pack_data'
   }
 
-  if (true === d?.isList) {
-    const out: string[] = []
-    for (const el of d.peg as Val[]) {
-      const e: any = el
-      // A key is a NAME, and only a string is one. A number would
-      // key by position under another spelling, which is the failure
-      // mode the data-keyed rule exists to refuse.
-      if (true !== e?.isScalar || 'string' !== typeof e.peg) {
-        return 'pack_key'
-      }
-      out.push(e.peg)
+  if (true === (data as any).isMap) {
+    return members.map((m) => m.key)
+  }
+
+  const out: string[] = []
+  for (const { val } of members) {
+    const e: any = val
+    // A key is a NAME, and only a string is one. A number would
+    // key by position under another spelling, which is the failure
+    // mode the data-keyed rule exists to refuse.
+    if (true !== e?.isScalar || 'string' !== typeof e.peg) {
+      return 'pack_key'
     }
-    return out
+    out.push(e.peg)
   }
-
-  return 'pack_data'
+  return out
 }
 
 
@@ -123,7 +127,7 @@ class PackFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    const keys = dataKeys(args?.[0])
+    const keys = dataKeys(args?.[0], ctx)
     if ('string' === typeof keys) {
       return makeNilErr(ctx, keys, this)
     }

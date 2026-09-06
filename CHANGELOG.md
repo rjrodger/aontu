@@ -7,6 +7,26 @@ which implementation each change affects.
 
 ## Unreleased
 
+### A fold sees the members generation emits
+
+`each`, `emit`, `filter`, `pack`, `pick`, `join` and the aggregates
+read a bag through one enumeration, and it is generation's: a
+`hide()`- or `type()`-marked child is not a member, an alias
+declaration is not a member, and an optional key whose value generates
+nothing is not one — a filled optional is. Before this each verb had
+its own enumeration and none of them asked the mark, so `join($.m,
+"\n")` over `m: {a: "keep", b: hide("SECRET")}` wrote the hidden value
+into the string the document hands out (use-cases/BUGS.md §79), and an
+unfilled optional made `join` refuse rather than fold without it. The
+snapshot a verb takes of its data keeps a member's own mark: a
+reference still lifts a hidden target — `each($.schema.entities, _)`
+under `schema: hide({…})` sees every entity, as before — but a member
+marked inside an unmarked bag stays marked in the snapshot, which is
+how the fold knows; the Go fold verbs now take that snapshot as the
+staged verbs do. Both implementations; RENDER.0.md P2 and G9 phase 0
+item 4. `gen-join.tsv` +9, `gen-each.tsv` +4, `gen-filter.tsv` +2,
+`gen-pack.tsv` +2, `gen-emit.tsv` +1, `agg.tsv` +2.
+
 ### An alias inside a spread template canons as the value it names
 
 A reference inside a spread template is not resolved in place — the

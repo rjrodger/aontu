@@ -169,7 +169,7 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         return super.unify(peer, ctx);
     }
     resolve(ctx, args) {
-        const nodes = (0, EachFuncVal_1.dataValues)(args?.[0]);
+        const nodes = (0, EachFuncVal_1.dataValues)(args?.[0], ctx);
         if ('string' === typeof nodes) {
             // dataValues names the each_data code; emit answers for itself.
             return (0, err_1.makeNilErr)(ctx, 'emit_data', this);

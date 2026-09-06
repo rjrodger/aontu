@@ -130,3 +130,7 @@ emit-ref-through-scalar	errc	s:[{p:x}]\no:emit($.s,{match:{p:string},body:[.p.q]
 # generator written there arrives as the call it is, and a call is
 # neither a list of rules nor one rule.
 emit-table-call	errc	o:emit([{k:1}],pack([a],{x:1}))\n	emit_table
+#
+# THE NODES emit SELECTS ARE THE MEMBERS GENERATION EMITS (BUGS.md §79):
+# a hidden node is not selected. The rule is gen-join.tsv's, shared.
+emit-skips-a-hidden-node	gens	l: [{p: a}, hide({p: b})]\no: emit($.l, {match: {p: string}, body: ['P:' + .p]})	{"l":[{"p":"a"}],"o":["P:a"]}

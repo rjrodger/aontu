@@ -36,23 +36,15 @@ import { ListVal } from './ListVal'
 import { FuncBaseVal } from './FuncBaseVal'
 import { repathInstance } from './Val'
 import { fillPlace } from './PlaceVal'
-import { cmpCodePoint } from '../keyorder'
+import { memberVals } from './members'
 
 
-// The children a data bag holds, in the order the result must carry
-// them, or the code naming what is wrong with the argument.
-function dataValues(data: Val | undefined): Val[] | string {
-  const d: any = data
-
-  if (true === d?.isMap) {
-    return Object.keys(d.peg).sort(cmpCodePoint).map((k: string) => d.peg[k])
-  }
-
-  if (true === d?.isList) {
-    return [...(d.peg as Val[])]
-  }
-
-  return 'each_data'
+// The members a data bag holds, in the order the result must carry
+// them -- what generation would emit (./members.ts, BUGS.md §79) --
+// or the code naming what is wrong with the argument.
+function dataValues(data: Val | undefined, ctx: AontuContext): Val[] | string {
+  const vals = memberVals(data, ctx)
+  return undefined === vals ? 'each_data' : vals
 }
 
 
@@ -95,7 +87,7 @@ class EachFuncVal extends FuncBaseVal {
 
 
   resolve(ctx: AontuContext, args: Val[]) {
-    const vals = dataValues(args?.[0])
+    const vals = dataValues(args?.[0], ctx)
     if ('string' === typeof vals) {
       return makeNilErr(ctx, vals, this)
     }

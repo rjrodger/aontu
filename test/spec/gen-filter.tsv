@@ -47,3 +47,9 @@ filter-list-top-keeps-both	gens	x:filter([[1],[1,2]],top)	{"x":[[1],[1,2]]}
 # through to the fill. Against TOP there is nothing to fill with, and a
 # placeheld generator waits exactly as the hole itself does.
 filter-place-data	gens	o:[{k:1},{k:2}] & filter(_,{k:1})\n	{"o":[{"k":1}]}
+#
+# THE CANDIDATES filter SEES ARE THE MEMBERS GENERATION EMITS (BUGS.md
+# §79): a hidden child is never selected into the result. The rule is
+# gen-join.tsv's, shared.
+filter-skips-a-hidden-member	gens	m: {a: "keep", b: hide("SECRET")}\nf: filter($.m, string)	{"f":{"a":"keep"},"m":{"a":"keep"}}
+filter-list-skips-a-hidden-element	gens	l: ["a", hide("b"), "c"]\nf: filter($.l, string)	{"f":["a","c"],"l":["a","c"]}

@@ -51,7 +51,7 @@ func aggregate(ctx *Ctx, op string, f *FuncVal, base []string, data Val) Val {
 	if !isBag(data) {
 		return makeNilErrFull(ctx, "aggregate_data", f, nil, op, nil)
 	}
-	children := bagChildren(data)
+	children := memberVals(data, ctx)
 
 	if "sum" == op {
 		// Zero is addition's identity, so an empty bag has an answer and
@@ -192,7 +192,7 @@ func joinSep(v Val) joinVerdict {
 // caller sets pegdone false, so the call rides the ordinary
 // args-not-done path and residuates, mirroring
 // JoinFuncVal.deferResolve in TypeScript.
-func joinPending(args []Val) bool {
+func joinPending(ctx *Ctx, args []Val) bool {
 	if 0 == len(args) || !isBag(args[0]) {
 		// Not a bag at all: let resolve say so rather than waiting for a
 		// settling that has already happened.
@@ -201,7 +201,7 @@ func joinPending(args []Val) bool {
 	if 1 < len(args) && joinNotYet == joinSep(args[1]) {
 		return true
 	}
-	for _, child := range bagChildren(args[0]) {
+	for _, child := range memberVals(args[0], ctx) {
 		if joinNotYet == joinMember(child) {
 			return true
 		}
@@ -239,7 +239,7 @@ func joinBag(ctx *Ctx, f *FuncVal, base []string, data, sep Val) Val {
 	// ADR-002 gate found it unexecuted, and probing confirmed no
 	// spelling reaches it, so it is removed rather than excused.
 	parts := []string{}
-	for _, child := range bagChildren(data) {
+	for _, child := range memberVals(data, ctx) {
 		u := unpref(child)
 		text, ok := joinTextOf(u)
 		if !ok {
@@ -298,7 +298,7 @@ func project(ctx *Ctx, f *FuncVal, base []string, data, key Val) Val {
 	}
 
 	peg := []Val{}
-	for _, child := range bagChildren(data) {
+	for _, child := range memberVals(data, ctx) {
 		var got Val
 		switch c := child.(type) {
 		case *MapVal:

@@ -84,6 +84,16 @@ var stagedFuncs = map[string]bool{
 	"join": true,
 }
 
+// foldFuncs are the verbs that read a bag's MEMBERS through their data
+// argument (members.go, BUGS.md §79) without being staged: their data
+// is driven under argsnap by the ordinary argument loop below, so a
+// member hidden in its own right keeps its mark for the enumeration to
+// leave it out. Mirrors the TS AggFuncVal, which is staged and drives
+// its data through driveStagedArgs.
+var foldFuncs = map[string]bool{
+	"sum": true, "least": true, "greatest": true, "pick": true, "join": true,
+}
+
 // THE SIGNATURE REGISTRY (docs/design/SIGNATURES.0.md). The call
 // surface is DECLARED in test/spec/signature.tsv and parsed by the
 // signature grammar (go/sig.go) from the embedded copy; the arity
@@ -482,13 +492,23 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		// hand above.
 		newpeg = f.peg
 	} else {
-		for _, arg := range f.peg {
+		for i, arg := range f.peg {
 			na := arg
 			if arg.Dc() != DONE {
 				// Args are driven at the func's location (TS drives them
-				// with the func's own ctx, undescended).
+				// with the func's own ctx, undescended). A fold's data
+				// argument is a SNAPSHOT of the document at that path
+				// (foldFuncs above): driven under argsnap, as a staged
+				// verb's data is.
 				ctx.slot = base
-				na = unite(ctx, arg, top())
+				if 0 == i && foldFuncs[f.name] {
+					saved := ctx.argsnap
+					ctx.argsnap = true
+					na = unite(ctx, arg, top())
+					ctx.argsnap = saved
+				} else {
+					na = unite(ctx, arg, top())
+				}
 				// Marks surfacing on resolved args infect the rebuilt
 				// pending func (the newtype/newhide accumulation in TS
 				// FuncBaseVal.unify).
@@ -521,7 +541,7 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 	// as mapval_no_gen -- so the call residuates as any unresolved call
 	// does rather than refusing something that has not finished
 	// arriving. Mirrors JoinFuncVal.deferResolve in TS.
-	if "join" == f.name && joinPending(newpeg) {
+	if "join" == f.name && joinPending(ctx, newpeg) {
 		pegdone = false
 	}
 
