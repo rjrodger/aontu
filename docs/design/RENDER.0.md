@@ -732,6 +732,14 @@ generated nothing real. So 0.58.0 ships the alias operator, the
 bare-text rule, `aontu render` through P8, and the first full system
 built with it, together.
 
+**CUT 2026-09-06.** `test/system/rb-solar` passed — the reference's own
+twenty tests against the generated application — and npm `aontu@0.58.0`
+and `go/v0.1.16` were published from `47d36b8`, the merge of #169, over
+the same OIDC path every release since 0.53.0 has taken. The proxy
+resolves `github.com/aontu-lang/aontu/go@v0.1.16` to that commit. The
+skew the note describes is therefore closed: what the documentation
+says about `=` and `bare_punct` is what the shipped engine does.
+
 ## 7. The rest of the programme
 
 What stands between the last G9 row and "the capability programme is
@@ -1086,7 +1094,7 @@ The shape, as decided:
 | the model | a hand-written aontu API model in `test/system/rb-solar/model.aon`, written the way a user of aontu would write it; the OpenAPI spec is vendored beside it as the reference it must agree with |
 | the output | the rendered application is **committed** under `test/system/rb-solar/app/`, each generated file carrying a banner; `aontu render --check` holds it, so a change to the model or the generator is a reviewable diff |
 | validation | `check.sh` renders, boots the app, runs the reference repository's `app/validate.ts` against it, runs the Ruby SDK's tests in live mode against it, and fetches the UI pages; a GitHub Actions job with a Ruby toolchain runs it |
-| release | 0.58.0 / go 0.1.16 is cut when this passes ([§6](#6-the-first-release)) |
+| release | 0.58.0 / go 0.1.16 is cut when this passes ([§6](#6-the-first-release)) — **CUT 2026-09-06** |
 
 **What it validates, phase by phase.** P3 and P4 render the fragment
 units the Ruby files are made of (a Rails file is fragments: the

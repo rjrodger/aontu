@@ -258,13 +258,22 @@ from commit `2cec558`, over the OIDC trusted-publisher path in
 the MCP server, and all of G3, G4, G6, G7 and G8 are installable for
 the first time. `npm view aontu version` answered `0.53.0` that day, the proxy
 resolves `github.com/aontu-lang/aontu/go@v0.1.11`, and both tags point
-at that one commit. **Four releases have followed** (recorded
-2026-09-05, the first time this paragraph moved since 2026-08-30):
-0.54.0 / go 0.1.12 on 2026-09-02 (tags at `3dbb5ef`), 0.55.0 /
-go 0.1.13 on 2026-09-03 (`69b80b7`), 0.56.0 / go 0.1.14 on
-2026-09-03 (`22a5d31`), and 0.57.0 / go 0.1.15 on 2026-09-05
-(`05a8760`, the merge of #148). `npm view aontu version` answers
-`0.57.0` and the proxy lists `v0.1.15`.
+at that one commit. **Five releases have followed**: 0.54.0 / go 0.1.12
+on 2026-09-02 (tags at `3dbb5ef`), 0.55.0 / go 0.1.13 on 2026-09-03
+(`69b80b7`), 0.56.0 / go 0.1.14 on 2026-09-03 (`22a5d31`), 0.57.0 /
+go 0.1.15 on 2026-09-05 (`05a8760`, the merge of #148), and **0.58.0 /
+go 0.1.16 on 2026-09-06** (`47d36b8`, the merge of #169). `npm view
+aontu version` answers `0.58.0`, the proxy resolves
+`github.com/aontu-lang/aontu/go@v0.1.16` to that commit, and the Go
+release carries its binaries.
+
+**0.58.0 is the release G9 was held for.** RENDER.0.md §6 recorded the
+owner's decision of 2026-09-05 — cut nothing until the validation
+system renders and passes, rather than ship a verb that had generated
+nothing real — and `test/system/rb-solar` passed on 2026-09-06. So
+`aontu render` in full (P0 through P8), the alias operator, the
+bare-text rule and the first complete system built with them are
+installable together, which is the first time any of `render` has been.
 
 What the caveat said before, which was accurate then: **most of the
 work below was not in a released artifact — but not none of it.** The
