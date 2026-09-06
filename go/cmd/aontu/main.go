@@ -605,13 +605,12 @@ func aontuForFile(file string) *aontu.Aontu {
 	return a
 }
 
-// stdinIsPipe reports whether stdin is piped/redirected (not a terminal).
+// stdinIsPipe reports whether stdin is piped/redirected (not a
+// terminal). An unanswerable stdin counts as piped, which is what Node
+// does: `process.stdin.isTTY` is undefined for a descriptor it cannot
+// classify, so TypeScript reads the source rather than opening a REPL.
 func stdinIsPipe() bool {
-	info, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	return (info.Mode() & os.ModeCharDevice) == 0
+	return !isTerminal(os.Stdin)
 }
 
 // repl reads source lines from in, evaluating each and writing results
@@ -671,16 +670,15 @@ func main() { //coverage:ignore run under GOCOVERDIR by `make cov-go`
 }
 
 // colorFor decides the colour override for a destination: nil ("leave
-// it to NO_COLOR") when the writer is a character device, and a forced
-// off for everything else -- a pipe, a file, a test buffer. The
+// it to NO_COLOR") when the writer is a TERMINAL, and a forced off for
+// everything else -- a pipe, a file, /dev/null, a test buffer. The
 // TypeScript twin is `true === process.stderr.isTTY ? undefined :
-// false`, and the *os.File test is how Go asks the same question.
+// false`, and isTerminal is how Go asks that same question. It used to
+// ask a DIFFERENT one, whether the inode is a character device, which
+// is also true of /dev/null.
 func colorFor(w io.Writer) *bool {
-	if f, isFile := w.(*os.File); isFile {
-		if info, err := f.Stat(); nil == err &&
-			0 != (info.Mode()&os.ModeCharDevice) {
-			return nil
-		}
+	if f, isFile := w.(*os.File); isFile && isTerminal(f) {
+		return nil
 	}
 	off := false
 	return &off

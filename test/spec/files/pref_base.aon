@@ -1,0 +1,4 @@
+w: {
+  &: { L: *warn | string }
+  a: L: info
+}

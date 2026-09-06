@@ -38,9 +38,15 @@ type WhySite struct {
 }
 
 type WhyConjunct struct {
-	Canon string  `json:"canon"`
-	Role  string  `json:"role"`
-	Site  WhySite `json:"site"`
+	Canon string `json:"canon"`
+	// Rank is the PREFERENCE RANK, 0-based, when the contribution is
+	// one: `*x` is 0, `**x` is 1. Nil for anything else. The engine's
+	// own number (PrefVal.rank), so a reader arbitrating between ranked
+	// contributions -- the meet ladder -- need not count stars in a
+	// canon string.
+	Rank *int    `json:"rank,omitempty"`
+	Role string  `json:"role"`
+	Site WhySite `json:"site"`
 	// Src is the SOURCE TEXT this contribution was written as.
 	//
 	// Canon is the value; Src is the spelling. They are not the same
@@ -50,15 +56,14 @@ type WhyConjunct struct {
 	// actually written. Empty when the contribution occupies no source
 	// -- a value unification minted rather than a document wrote.
 	//
-	// LEXICOGRAPHIC field order, as everywhere the two emitters must
-	// agree byte for byte: src sorts after site.
+	// LEXICOGRAPHIC FIELD ORDER, as everywhere the two emitters must
+	// agree byte for byte. TypeScript emits every report through one
+	// emitter that sorts keys by code point (ts/src/exactjson.ts); Go
+	// writes struct fields in DECLARATION order, so on this side the
+	// declaration IS the sort. `src` sorts after `site`, and `rank`
+	// before `role` -- a new field goes in its sorted place, never at
+	// the end.
 	Src string `json:"src"`
-	// Rank is the PREFERENCE RANK, 0-based, when the contribution is
-	// one: `*x` is 0, `**x` is 1. Nil for anything else. The engine's
-	// own number (PrefVal.rank), so a reader arbitrating between ranked
-	// contributions -- the meet ladder -- need not count stars in a
-	// canon string.
-	Rank *int `json:"rank,omitempty"`
 }
 
 type WhyRecord struct {

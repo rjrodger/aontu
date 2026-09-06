@@ -18,15 +18,27 @@ import (
 )
 
 func TestColorForDestination(t *testing.T) {
-	// A character device is the one destination that gets to keep the
-	// default: nil means "leave it to NO_COLOR".
+	// A TERMINAL is the one destination that gets to keep the default:
+	// nil means "leave it to NO_COLOR". A pty master answers the
+	// terminal-attributes ioctl, so it is one.
+	if tty := terminalForTest(t); nil != tty {
+		if nil != colorFor(tty) {
+			t.Fatal("a terminal should defer to NO_COLOR")
+		}
+	}
+
+	// /dev/null is a CHARACTER DEVICE AND NOT A TERMINAL, and colour
+	// must be off for it. Asking the inode's type instead of the
+	// terminal-attributes ioctl conflated the two, and that is what
+	// made `aontu view --check ... >/dev/null` compare a plain golden
+	// against coloured bytes in this port only.
 	dev, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer dev.Close()
-	if nil != colorFor(dev) {
-		t.Fatal("a character device should defer to NO_COLOR")
+	if on := colorFor(dev); nil == on || *on {
+		t.Fatal("/dev/null is not a terminal: colour must be forced off")
 	}
 
 	// A redirect to a file is not a terminal, whatever the shell that

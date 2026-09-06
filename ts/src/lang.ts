@@ -807,6 +807,38 @@ help isolate the syntax error.`,
         // Handle defered conjuncts, where MapVal does not yet
         // exist, by creating ConjunctVal later.
         else {
+          // AN INCLUDE UNIFIES IN PLACE. multisource calls this hook at
+          // the `@`'s own source position, so `prev` holds exactly the
+          // pairs written BEFORE it. Folding the loaded map's keys in
+          // here -- host-so-far first, arriving value second -- is what
+          // inlining the loaded bytes at the `@` does, and mirrors
+          // go/lang.go's Map.Merge, which multisource-go drives one key
+          // at a time. A non-map load has no keys to fold and stays a
+          // deferred conjunct arm.
+          if (true === (cval as any)?.isMap) {
+            const lm: any = cval
+            for (const k of Object.keys(lm.peg)) {
+              const own = (prev as any)[k]
+              ;(prev as any)[k] = (null == own) ? lm.peg[k] :
+                (own?.isVal
+                  ? new ConjunctVal({ peg: [own, lm.peg[k]] })
+                  : lm.peg[k])
+            }
+            // The loaded map's spread joins THIS map's spread list at
+            // the `@`'s position: the parse pushes each `&:` onto the
+            // node as it is read, so `prev[SPREAD].v` already holds the
+            // spreads written before the `@` and nothing after it.
+            if (null != lm.spread?.cj) {
+              ;(prev as any)[SPREAD] =
+                ((prev as any)[SPREAD] || { o: '&', v: [] })
+              ;(prev as any)[SPREAD].v.push(lm.spread.cj)
+            }
+            prev.___optional = (prev.___optional || [])
+            for (const k of lm.optionalKeys) { prev.___optional.push(k) }
+            prev.___alias = (prev.___alias || [])
+            for (const k of lm.aliasKeys) { prev.___alias.push(k) }
+            return prev
+          }
           prev.___merge = (prev.___merge || [])
           prev.___merge.push(curr)
           return prev
@@ -1436,7 +1468,8 @@ help isolate the syntax error.`,
         // nested pair, which the val rule does produce -- and neither is
         // a trailing comma.
         for (const k in mo) {
-          if (null == mo[k] && '___merge' !== k) {
+          if (null == mo[k] && '___merge' !== k &&
+            '___optional' !== k && '___alias' !== k) {
             // Pathed at the KEY, not at the enclosing map. addsite takes
             // the rule's path, which here is the map's, so the error
             // would otherwise name the container and leave the reader to
@@ -1495,6 +1528,19 @@ help isolate the syntax error.`,
           }
           en.path = [...(r.k?.path ?? []), key]
           mo[key] = en
+        }
+
+        // Marks carried over from a map include folded in the merge
+        // hook above, applied here where the MapVal is built.
+        if (mo.___optional || mo.___alias) {
+          for (const k of (mo.___optional || [])) {
+            if (!optionalKeys.includes(k)) { optionalKeys.push(k) }
+          }
+          for (const k of (mo.___alias || [])) {
+            if (!aliasKeys.includes(k)) { aliasKeys.push(k) }
+          }
+          delete mo.___optional
+          delete mo.___alias
         }
 
         //  Handle defered conjuncts, e.g. `{x:1 @"foo"}`

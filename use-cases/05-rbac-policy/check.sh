@@ -277,18 +277,38 @@ ok "CLOSED: length(max(2)) refuses 3 data entries under vet"
 # to pass silently, because vet met the SETTLED schema -- the
 # standalone pass had already resolved `$.t.p` to `string` and replaced
 # it. The meet is now built from a fresh parse, so the reference sees
-# the data and the branch is selected by it. Both spellings refuse,
-# with the same code, which is the invariant: vet(S,D) and eval(S u D)
-# answer the same question.
+# the data and the branch is selected by it. BOTH SPELLINGS REFUSE,
+# which is the invariant: vet(S,D) and eval(S u D) answer the same
+# question.
+#
+# THEY DO NOT REPORT IT AT THE SAME DEPTH, and this check used to
+# assert that they did. vet answers at the disjunction -- `empty`, no
+# alternative admits this data -- while an evaluation answers with the
+# conflict that emptied it, `scalar_value` at the plan the two arms
+# disagree about. The check read `empty` for both only because the old
+# TypeScript include path made `@"g3.aon"` mean something the same
+# bytes inlined did not; with an include unifying in place, the
+# composed document and its inlining refuse identically, in both
+# ports, and that equivalence is what the third assertion below now
+# pins.
 printf 'Ent: type( close({ plan: "free", sso: false }) | close({ plan: "pro", sso: boolean }) )\nt: { p: string, e: $.Ent & { plan: $.t.p } }\n' > "$WORK/g3.aon"
 printf '{"t":{"p":"free","e":{"sso":true}}}\n' > "$WORK/g3.json"
 run stale 1 -- vet "$WORK/g3.aon" "$WORK/g3.json"
 has stale out 'verdict: invalid'
 has stale out '[aontu/empty]'
-# The identical composition as one evaluation says the same thing:
+# The identical composition as one evaluation refuses too, naming the
+# conflict rather than the exhausted disjunction:
 printf '@"g3.aon"\nt: { p: "free", e: { sso: true } }\n' > "$WORK/g3e.aon"
 run staleeval 1 -- "$WORK/g3e.aon"
-has staleeval err '[aontu/empty]'
+has staleeval err '[aontu/scalar_value]'
+has staleeval err '$.t.e.plan'
+# AND THE INCLUDE IS ITS OWN INLINING: the same three statements with
+# no `@` at all refuse the same way.
+cat "$WORK/g3.aon" > "$WORK/g3i.aon"
+printf 't: { p: "free", e: { sso: true } }\n' >> "$WORK/g3i.aon"
+run staleinline 1 -- "$WORK/g3i.aon"
+has staleinline err '[aontu/scalar_value]'
+has staleinline err '$.t.e.plan'
 ok "vet catches what eval catches when a branch hangs on a reference"
 
 # 31. CLOSED 2026-08-27 (the review's finding C, BUGS.md sec 17):
