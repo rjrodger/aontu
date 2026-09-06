@@ -85,7 +85,8 @@ class PlaceVal extends ValBase {
 // so it stays visible: a hole there is an outer hole as before.
 function boundArgStart(v: any): number {
   return true === v.isPackFunc || true === v.isEachFunc ||
-    true === v.isFilterFunc || true === v.isEmitFunc ? 1 : Infinity
+    true === v.isFilterFunc || true === v.isEmitFunc ||
+    true === v.isFormFunc ? 1 : Infinity
 }
 
 

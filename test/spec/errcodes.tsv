@@ -408,3 +408,12 @@ render_lang	errcode	conflict	0.58.0
 render_profile	errcode	parse	0.58.0
 render_strict	errcode	conflict	0.58.0
 render_unit	errcode	reference	0.58.0
+# RENDER P6 -- `replace` on an emit template (docs/design/TEMPLATE.0.md
+# D3, D4) and `form`. `replace_overlap` and `replace_unused` are class
+# `parse`: both are checks of the TEMPLATE as written, before any node.
+# `replace_value` is class `conflict`: the node's value and the body
+# that wanted text disagreed. `form_data` is `each_data`'s twin.
+replace_overlap	errcode	parse	0.58.0
+replace_unused	errcode	parse	0.58.0
+replace_value	errcode	conflict	0.58.0
+form_data	errcode	parse	0.58.0

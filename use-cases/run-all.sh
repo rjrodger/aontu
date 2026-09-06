@@ -26,6 +26,7 @@ CASES="
 14-jsonschema-export
 15-code-generation
 16-module-deps
+17-lambda-handlers
 "
 
 fail=0

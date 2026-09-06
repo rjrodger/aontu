@@ -4,12 +4,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EmitFuncVal = void 0;
 const unify_1 = require("../unify");
 const err_1 = require("../err");
+const escape_1 = require("../escape");
+const keyorder_1 = require("../keyorder");
 const top_1 = require("./top");
 const ListVal_1 = require("./ListVal");
+const StringVal_1 = require("./StringVal");
 const FuncBaseVal_1 = require("./FuncBaseVal");
 const Val_1 = require("./Val");
 const PlaceVal_1 = require("./PlaceVal");
+const PlusOpVal_1 = require("./PlusOpVal");
 const EachFuncVal_1 = require("./EachFuncVal");
+function isRefusal(x) {
+    return 'string' === typeof x.code;
+}
 // Read the table. A map is one template; a list is many. The shape is
 // checked here rather than at the call, because a table is ordinary
 // data and may be computed.
@@ -29,38 +36,172 @@ function tableTemplates(table) {
     }
     if (true === t?.isMap) {
         const one = oneTemplate(t);
-        return 'string' === typeof one ? one : [one];
+        return isRefusal(one) ? one : [one];
     }
     if (true === t?.isList) {
         const out = [];
         for (const el of t.peg) {
             const e = el;
             if (true !== e?.isMap) {
-                return 'emit_template';
+                return { code: 'emit_template' };
             }
             const one = oneTemplate(e);
-            if ('string' === typeof one) {
+            if (isRefusal(one)) {
                 return one;
             }
             out.push(one);
         }
         return out;
     }
-    return 'emit_table';
+    return { code: 'emit_table' };
 }
+// One rule. Both keys are required: a template with no pattern would
+// match everything by accident, and one with no body would emit
+// nothing while claiming a node. The two optional keys -- a `replace`
+// map and an `esc` naming the convention its values are escaped by,
+// `none` the one opt-out -- are the template's shape too, and D3's two
+// static checks run here, on the template alone, before any node.
 function oneTemplate(m) {
     const match = m.peg.match;
     const body = m.peg.body;
-    // Both keys are required: a template with no pattern would match
-    // everything by accident, and one with no body would emit nothing
-    // while claiming a node.
     if (null == match || null == body) {
-        return 'emit_template';
+        return { code: 'emit_template' };
     }
     if (true !== body.isList) {
-        return 'emit_body';
+        return { code: 'emit_body' };
     }
-    return { match, body };
+    const replace = m.peg.replace;
+    if (null != replace && true !== replace.isMap) {
+        return { code: 'emit_template' };
+    }
+    const escv = m.peg.esc;
+    let esc = '';
+    if (null != escv) {
+        const name = textOf(escv);
+        if (undefined === name || ('none' !== name && !(0, escape_1.isEscVariant)(name))) {
+            return { code: 'esc_variant' };
+        }
+        esc = name;
+    }
+    const lits = literalSpots(body.peg);
+    if (null != replace) {
+        const bad = checkReplace(Object.keys(replace.peg), lits);
+        if (undefined !== bad) {
+            return bad;
+        }
+    }
+    return { match, body, replace, esc, lits };
+}
+// The string a value carries, or undefined when it is not a string.
+function textOf(v) {
+    return true === v?.isScalar && 'string' === typeof v.peg ? v.peg : undefined;
+}
+// The literal strings of a body -- a string element, and the strings
+// written directly in a map element's `of` list or `text` -- which are
+// the text the template wrote. A string an expression or a nested
+// dispatch computes is not one: D3's third rule (a spliced result is
+// finished) and its second (a substituted value is never re-scanned)
+// both follow from substituting at these spots and nowhere else.
+function literalSpots(elems) {
+    const out = [];
+    elems.forEach((el, i) => {
+        const s = textOf(el);
+        if (undefined !== s) {
+            out.push({ i, s });
+            return;
+        }
+        if (true !== el?.isMap) {
+            return;
+        }
+        const of = el.peg.of;
+        if (true === of?.isList) {
+            of.peg.forEach((p, j) => {
+                const ps = textOf(p);
+                if (undefined !== ps) {
+                    out.push({ i, of: j, s: ps });
+                }
+            });
+        }
+        const ts = textOf(el.peg.text);
+        if (undefined !== ts) {
+            out.push({ i, text: true, s: ts });
+        }
+    });
+    return out;
+}
+// D3's two static checks, on the template alone and before any node:
+// a key inside another is ambiguous whatever the order
+// (replace_overlap), and a key no literal holds means the template
+// drifted from its map (replace_unused). Keys are visited in code
+// point order, so both ports name the same pair.
+function checkReplace(keys, lits) {
+    const sorted = [...keys].sort(keyorder_1.cmpCodePoint);
+    for (const a of sorted) {
+        for (const b of sorted) {
+            if (a !== b && b.includes(a)) {
+                return { code: 'replace_overlap', details: { key: quoted(a), other: quoted(b) } };
+            }
+        }
+    }
+    for (const k of sorted) {
+        if ('' === k || !lits.some((l) => l.s.includes(k))) {
+            return { code: 'replace_unused', details: { key: quoted(k) } };
+        }
+    }
+    return undefined;
+}
+// D3's first two rules as one scan: at each position the longest key
+// that matches is taken and its value written out whole, and the scan
+// moves past the KEY -- the value is never looked at again, so no
+// value can introduce a key.
+function substitute(text, pairs) {
+    let out = '';
+    let i = 0;
+    while (i < text.length) {
+        const hit = pairs.find((p) => text.startsWith(p[0], i));
+        if (undefined === hit) {
+            out += text[i];
+            i += 1;
+        }
+        else {
+            out += hit[1];
+            i += hit[0].length;
+        }
+    }
+    return out;
+}
+// The instance with the template's literal text at element `i`
+// rewritten through the pairs -- on the fresh instance, where the
+// structure is exactly the template's, and before any binding, so a
+// value written in is never scanned again and a spliced result is
+// never touched.
+function substituted(inst, i, lits, pairs, ctx) {
+    for (const l of lits) {
+        if (l.i !== i) {
+            continue;
+        }
+        const sv = new StringVal_1.StringVal({ peg: substitute(l.s, pairs) }, ctx);
+        if (undefined !== l.of) {
+            inst.peg.of.peg[l.of] = sv;
+        }
+        else if (true === l.text) {
+            inst.peg.text = sv;
+        }
+        else {
+            inst = sv;
+        }
+    }
+    return inst;
+}
+// A key as the message writes it, quoted so an empty key is visible.
+function quoted(s) {
+    return '"' + s + '"';
+}
+function unpref(v) {
+    while (true === v.isPref) {
+        v = v.peg;
+    }
+    return v;
 }
 // Every relative reference in `v` replaced by the field of `node` it
 // names. Answers `v` unchanged when it holds none, so a body with no
@@ -98,7 +239,11 @@ function bindNode(v, node, ctx, fail) {
         const out = {};
         for (const k of Object.keys(peg)) {
             const c = peg[k];
-            const b = true === c?.isVal ? bindNode(c, node, ctx, fail) : c;
+            // No isVal guard, for the reason fillPlace gives: a slot holding
+            // something that is not a Val answers itself, because the tests
+            // above -- is it a reference, has it a peg -- are both false for
+            // one.
+            const b = bindNode(c, node, ctx, fail);
             changed = changed || b !== c;
             out[k] = b;
         }
@@ -184,8 +329,8 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
             table = table.unify((0, top_1.top)(), ctx);
         }
         const templates = tableTemplates(table);
-        if ('string' === typeof templates) {
-            return (0, err_1.makeNilErr)(ctx, templates, this);
+        if (isRefusal(templates)) {
+            return this.refuse(ctx, templates);
         }
         const peg = [];
         for (const node of nodes) {
@@ -204,6 +349,9 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
                     value: node.canon,
                 });
             }
+            if (undefined !== fail.code) {
+                return this.refuse(ctx, { code: fail.code, details: fail.details });
+            }
         }
         // THE PIECES ARE PATHED WHERE THEY LAND, once the splicing has
         // settled how many there are. A piece keeps no trace of the body
@@ -213,6 +361,12 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
             (0, Val_1.repathInstance)(peg[i], [...ctx.path, String(i)]);
         }
         return new ListVal_1.ListVal({ peg }, ctx);
+    }
+    // The located error for a refusal, with the message's details when
+    // the refusal carries them.
+    refuse(ctx, r) {
+        return undefined === r.details ? (0, err_1.makeNilErr)(ctx, r.code, this)
+            : (0, err_1.makeNilErr)(ctx, r.code, this, undefined, 'resolve', r.details);
     }
     // First match wins, in table order, by unifiability -- the same
     // question `match` and `filter` ask, answered the same way. Returns
@@ -230,16 +384,56 @@ class EmitFuncVal extends FuncBaseVal_1.FuncBaseVal {
         }
         return tried.join(' ');
     }
+    // The replacement pairs for one node: the template's `replace` map
+    // instantiated at the node -- bound, filled and driven as a body is
+    // -- each value as text by the one number-to-text rule (`plusText`,
+    // the rule `+` and `join` share), escaped by the template's
+    // convention unless that is `none`, and sorted longest key first so
+    // the scan takes the longest match at every position (D3's first
+    // rule). A value that is not text, or has not settled, is
+    // replace_value.
+    replacements(ctx, node, tmpl, fail) {
+        if (undefined === tmpl.replace) {
+            return undefined;
+        }
+        let inst = tmpl.replace.clone(ctx, { dup: true });
+        inst = (0, PlaceVal_1.fillPlace)(bindNode(inst, node, ctx, fail), node, ctx);
+        if (!inst.done) {
+            inst = (0, unify_1.unite)(ctx, inst, (0, top_1.top)(), 'emit');
+        }
+        const pairs = [];
+        for (const key of Object.keys(inst.peg)) {
+            const v = unpref(inst.peg[key]);
+            const text = (0, PlusOpVal_1.plusText)(v);
+            if (undefined === text) {
+                fail.code = 'replace_value';
+                fail.details = { key: quoted(key), value: String(v?.canon) };
+                return undefined;
+            }
+            pairs.push([key, 'none' === tmpl.esc ? text : (0, escape_1.escapeText)(text, tmpl.esc)]);
+        }
+        pairs.sort((a, b) => b[0].length - a[0].length || (0, keyorder_1.cmpCodePoint)(a[0], b[0]));
+        return pairs;
+    }
     // Instantiate one body at the node and SPLICE its pieces into the
     // output. A full instance to the leaves (`dup`, ADR-005), because a
     // bare clone shares the inner structure of any call in the body and
-    // the first node's resolution would answer for every node; then the
-    // two bindings, relative references and the hole, both to the node.
+    // the first node's resolution would answer for every node; the
+    // template's replacements written into the instance's literal text;
+    // then the two bindings, relative references and the hole, both to
+    // the node.
     instantiate(ctx, node, tmpl, out, fail) {
+        const pairs = this.replacements(ctx, node, tmpl, fail);
+        if (undefined !== fail.code) {
+            return;
+        }
         const elems = tmpl.body.peg;
         for (let i = 0; i < elems.length; i++) {
             const elctx = ctx.descend(String(out.length));
-            const inst = elems[i].clone(elctx, { dup: true });
+            let inst = elems[i].clone(elctx, { dup: true });
+            if (undefined !== pairs) {
+                inst = substituted(inst, i, tmpl.lits, pairs, elctx);
+            }
             let piece = (0, PlaceVal_1.fillPlace)(bindNode(inst, node, elctx, fail), node, elctx);
             // A NESTED DISPATCH IS DRIVEN HERE, not left for the next pass.
             // Its selection is bound and the model has settled, so it has

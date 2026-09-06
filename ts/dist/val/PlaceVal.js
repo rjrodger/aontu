@@ -45,7 +45,8 @@ exports.PlaceVal = PlaceVal;
 // so it stays visible: a hole there is an outer hole as before.
 function boundArgStart(v) {
     return true === v.isPackFunc || true === v.isEachFunc ||
-        true === v.isFilterFunc || true === v.isEmitFunc ? 1 : Infinity;
+        true === v.isFilterFunc || true === v.isEmitFunc ||
+        true === v.isFormFunc ? 1 : Infinity;
 }
 // Does this value CONTAIN a hole? Asked of a call before it resolves:
 // a call holding one must wait for a peer to fill it. Holes inside a

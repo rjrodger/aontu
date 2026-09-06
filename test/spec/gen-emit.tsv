@@ -134,3 +134,58 @@ emit-table-call	errc	o:emit([{k:1}],pack([a],{x:1}))\n	emit_table
 # THE NODES emit SELECTS ARE THE MEMBERS GENERATION EMITS (BUGS.md §79):
 # a hidden node is not selected. The rule is gen-join.tsv's, shared.
 emit-skips-a-hidden-node	gens	l: [{p: a}, hide({p: b})]\no: emit($.l, {match: {p: string}, body: ['P:' + .p]})	{"l":[{"p":"a"}],"o":["P:a"]}
+
+# REPLACE AND ESC (docs/design/TEMPLATE.0.md D3 and D4; RENDER P6). A
+# value reaches a body through `replace`, not a delimiter: a key is an
+# exact string the body already holds as ordinary target text, its
+# value is evaluated against the matched node, and every value is
+# escaped by the template's `esc` convention -- C/JSON when the key is
+# absent, `none` the one opt-out. There is no hole syntax, because any
+# inline delimiter is somebody's syntax.
+emit-replace	gens	s:[{pin:'a:1'}]\no:emit($.s,{match:{pin:string},replace:{PIN:.pin},body:["listen('PIN')"]})\n	{"o":["listen('a:1')"],"s":[{"pin":"a:1"}]}
+emit-replace-two-nodes	gens	s:[{p:x},{p:y}]\no:emit($.s,{match:{p:string},replace:{P:.p},body:["<P>"]})\n	{"o":["<x>","<y>"],"s":[{"p":"x"},{"p":"y"}]}
+emit-replace-two-keys	gens	o:emit([{a:1,b:2}],{match:{},replace:{A:.a,B:.b},body:["A+B=A B"]})\n	{"o":["1+2=1 2"]}
+emit-replace-number-and-boolean	gens	o:emit([{port:8080,on:true}],{match:{},replace:{PORT:.port,ON:.on},body:["listen(PORT, ON)"]})\n	{"o":["listen(8080, true)"]}
+emit-replace-computed-value	gens	o:emit([{p:x}],{match:{},replace:{P:upper(.p)},body:["<P>"]})\n	{"o":["<X>"]}
+emit-replace-absolute-ref	gens	z:Z\no:emit([{p:x}],{match:{},replace:{P:$.z},body:["<P>"]})\n	{"o":["<Z>"],"z":"Z"}
+emit-replace-node-as-hole	gens	o:emit([a,b],{match:string,replace:{N:_},body:["<N>"]})\n	{"o":["<a>","<b>"]}
+emit-replace-named-table	gens	%t=emit(_,{match:{p:string},replace:{P:.p},body:["<P>"]})\no:emit([{p:x}],%t)\n	{"o":["<x>"]}
+# ESCAPING IS ON. The C/JSON escape with no `esc`, a named convention
+# otherwise, and `none` for a value that is not going into a literal.
+emit-replace-esc-default	gens	s:[{pin:'it"s'}]\no:emit($.s,{match:{pin:string},replace:{PIN:.pin},body:['x("PIN")']})\n	{"o":["x(\\"it\\\\\\"s\\")"],"s":[{"pin":"it\\"s"}]}
+emit-replace-esc-sq	gens	s:[{pin:"it's"}]\no:emit($.s,{match:{pin:string},esc:sq,replace:{PIN:.pin},body:["x('PIN')"]})\n	{"o":["x('it\\\\'s')"],"s":[{"pin":"it's"}]}
+emit-replace-esc-none	gens	s:[{pin:"it's"}]\no:emit($.s,{match:{pin:string},esc:none,replace:{PIN:.pin},body:["x(PIN)"]})\n	{"o":["x(it's)"],"s":[{"pin":"it's"}]}
+emit-replace-esc-xml	gens	o:emit([{t:'a<b'}],{match:{},esc:xml,replace:{T:.t},body:["<p>T</p>"]})\n	{"o":["<p>a&lt;b</p>"]}
+emit-replace-esc-unknown	errc	o:emit([{p:x}],{match:{},esc:pascal,replace:{P:.p},body:["P"]})\n	esc_variant
+# THE THREE RULES: one left-to-right scan; a substituted value is
+# never re-scanned, so no value can introduce a key; a template's
+# replacements touch its own literal text only, never a result spliced
+# in from a nested dispatch, which carries its own.
+emit-replace-no-rescan	gens	o:emit([{}],{match:{},replace:{A:"B",B:"c"},body:["A B"]})\n	{"o":["B c"]}
+emit-replace-spliced-untouched	gens	o:emit([{x:1,c:[{y:2}]}],{match:{},replace:{X:.x},body:["X",emit(.c,{match:{},body:["X Y"]}),"X"]})\n	{"o":["1","X Y","1"]}
+emit-replace-nested-has-own	gens	o:emit([{x:1,c:[{y:2}]}],{match:{},replace:{X:.x},body:["X",emit(.c,{match:{},replace:{Y:.y},body:["X Y"]})]})\n	{"o":["1","X 2"]}
+emit-replace-in-piece-map	gens	o:emit([{p:z}],{match:{},replace:{P:.p},body:[{k:line,at:1,of:["x P",.p]},{k:raw,text:"P raw"}]})\n	{"o":[{"at":1,"k":"line","of":["x z","z"]},{"k":"raw","text":"z raw"}]}
+emit-replace-expression-untouched	gens	o:emit([{p:z}],{match:{},replace:{P:.p},body:["P","P"+"P"]})\n	{"o":["z","PP"]}
+# THE TWO STATIC CHECKS, on the template alone and before any node: a
+# key inside another (replace_overlap), a key no literal holds
+# (replace_unused). An empty key holds nothing.
+emit-replace-overlap	errc	o:emit([{p:1,pin:2}],{match:{},replace:{P:.p,PIN:.pin},body:["PIN"]})\n	replace_overlap
+emit-replace-unused	errc	o:emit([{pin:2}],{match:{},replace:{NOPE:.pin},body:["PIN"]})\n	replace_unused
+emit-replace-unused-only-in-expression	errc	o:emit([{p:x}],{match:{},replace:{P:.p},body:["a"+"P"]})\n	replace_unused
+emit-replace-empty-key	errc	o:emit([{p:x}],{match:{},replace:{"":.p},body:["P"]})\n	replace_unused
+emit-replace-checked-before-nodes	errc	o:emit([],{match:{},replace:{NOPE:1},body:["P"]})\n	replace_unused
+# A VALUE MUST BE TEXT: a map, a list or a null is replace_value; a
+# missing field is emit_ref, as anywhere in a body; a `replace` that is
+# not a map is not a rule.
+emit-replace-value-map	errc	o:emit([{pin:2}],{match:{},replace:{ALL:_},body:["ALL"]})\n	replace_value
+emit-replace-value-null	errc	o:emit([{}],{match:{},replace:{N:null},body:["N"]})\n	replace_value
+emit-replace-value-list	errc	o:emit([{l:[1]}],{match:{},replace:{L:.l},body:["L"]})\n	replace_value
+emit-replace-missing-ref	errc	o:emit([{p:x}],{match:{},replace:{P:.nope},body:["P"]})\n	emit_ref
+emit-replace-not-a-map	errc	o:emit([{p:x}],{match:{},replace:1,body:["P"]})\n	emit_template
+# A value that is a preference generates its value, as it does anywhere;
+# a piece that is not text is left as it is; a piece with no literal
+# text is left as it is; an `esc` that is not a name is refused.
+emit-replace-value-preference	gens	o:emit([{}],{match:{},replace:{P:*x},body:["<P>"]})\n	{"o":["<x>"]}
+emit-replace-number-piece-untouched	gens	o:emit([{p:z}],{match:{},replace:{P:.p},body:[1,"P"]})\n	{"o":[1,"z"]}
+emit-replace-blank-piece-untouched	gens	o:emit([{p:z}],{match:{},replace:{P:.p},body:[{k:blank},"P"]})\n	{"o":[{"k":"blank"},"z"]}
+emit-replace-esc-not-a-name	errc	o:emit([{p:x}],{match:{},esc:1,replace:{P:.p},body:["P"]})\n	esc_variant

@@ -344,10 +344,23 @@ are now decided:
   divergence in the one direction this pair exists to remove. A valid
   pair combines; a lone one is `usc_malformed`.
 
-The chain D5 closes with — `join(form(split(…), …), "")` — still waits
-on `form`, which is G9 phase 3. `split` is the part of it that landed
-here, and it earns its place on its own: splitting a path, a pin or a
-version string is not a generator-only operation.
+The chain D5 closes with — `join(form(split(…), …), "")` — waited on
+`form`, which was G9 phase 3 and landed with RENDER P6 (below). `split`
+is the part of it that landed here, and it earns its place on its own:
+splitting a path, a pin or a version string is not a generator-only
+operation.
+
+**2026-09-06, RENDER P6.** `replace` and `esc` on a template are in
+both ports as D3 and D4 describe, with one code beside the two static
+checks — `replace_value`, a value that is not text — and `form` landed
+with them, so the chain D5 closes with, `join(form(split(…), …), "")`,
+now runs (`test/spec/gen-form.tsv` `form-chain`). The twelve handlers
+of D7 are [`use-cases/17-lambda-handlers/`](../../use-cases/17-lambda-handlers/):
+the generator in the canonical form, over a model written for the
+case, rendered byte-identically from both ports and held by `aontu
+render --check`. What P8 adds is the surface itself — the `//-`
+marker, the desugar and the resugar.
+
 
 ## D6. The canonical quote is chosen per line
 

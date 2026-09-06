@@ -243,7 +243,15 @@ const hints: Record<string, string> = {
 
   emit_none: 'No template matched a node, and there is no catch-all. `emit`\ntries each template in the order written and takes the first the\nnode unifies with; the node {value} unified with none of {tried}.\nAdd a template whose `match` is `any` — last, since the first match\nwins — if the rest of the selection was meant to be allowed.\n \nExamples:\n  emit([1], [{match:integer,body:[a]}])  -> [..]  # A pattern matches;\n  emit([x], [{match:any,body:[a]}])      -> [..]  # ... or a catch-all;\n  emit([x], [{match:integer,body:[a]}])  -> nil   # ... but nothing here.',
 
-  esc_variant: 'esc() and usc() were given a variant that names no convention.\nA variant names a CONVENTION rather than a language, because several\nlanguages share one and one language has several. The names are `sq`,\n`sql`, `shell`, `xml`, `uri` and `regex`; written with no variant at\nall it is the C escape, JSON canonical, which covers the double-quoted\nliteral of every C-family language.\n \nExamples:\n  esc(text)          -> ...   # C / JSON, the default;\n  esc(text, sq)      -> ...   # ... single-quoted C-family;\n  esc(text, pascal)  -> nil   # ... but that is not a convention.',
+  replace_overlap: "Two keys of a template's `replace` map overlap: {key} is inside\n{other}. A replacement is one left-to-right scan of the body's literal\ntext taking the longest key at each position, and a key inside\nanother is ambiguous whatever the order -- so it is refused on the\ntemplate, before any node is visited.\n \nExamples:\n  replace: {PIN: .pin, MSG: .msg}  # Two keys, neither inside the other;\n  replace: {PIN: .pin}            # ... or one alone;\n  replace: {P: .p, PIN: .pin}     # ... but P is inside PIN.",
+
+  replace_unused: 'A key of a template\'s `replace` map matches nothing: {key} appears\nin none of the body\'s literal lines. A replacement key is an exact\nstring the body already holds as ordinary target text, so a key the\nbody does not hold means the template drifted from its map -- refused\nbefore any node is visited, since the drift is the same for every\nnode.\n \nExamples:\n  {replace: {PIN: .pin}, body: ["listen(PIN)"]}  # The body holds PIN;\n  {replace: {PIN: .pin}, body: ["pin: PIN"]}     # ... anywhere in a line;\n  {replace: {PIN: .pin}, body: ["listen(pin)"]}  # ... but not here.',
+
+  replace_value: 'A replacement value is not text: the `replace` key {key} came to\n{value} at the node. A value reaches the body as a string -- a number\nor a boolean spells itself, as it does after `+` -- and it has to\nhave settled by the time the dispatch fires, so a map, a list, a\nnull or a value still unresolved is refused rather than written into\na file as something else.\n \nExamples:\n  replace: {PIN: .pin}    # A string field;\n  replace: {PORT: .port}  # ... or a number, as digits;\n  replace: {ALL: _}       # ... but the node itself is a map.',
+
+  form_data: 'The first argument to form() is not a bag. `form` makes one list\nelement per child of its DATA, so the data has to have children: a\nlist, or a map whose values are taken in sorted-key order.\n \nExamples:\n  form([a,b], upper(_))  -> [..]  # A list, in source order;\n  form({b:2,a:1}, _)     -> [..]  # ... a map, in sorted-key order;\n  form(1, _)             -> nil   # ... but a scalar has no children.',
+
+  esc_variant: 'esc(), usc() or a template\'s `esc:` key were given a variant that\nnames no convention.\nA variant names a CONVENTION rather than a language, because several\nlanguages share one and one language has several. The names are `sq`,\n`sql`, `shell`, `xml`, `uri` and `regex`; written with no variant at\nall it is the C escape, JSON canonical, which covers the double-quoted\nliteral of every C-family language.\n \nExamples:\n  esc(text)          -> ...   # C / JSON, the default;\n  esc(text, sq)      -> ...   # ... single-quoted C-family;\n  esc(text, pascal)  -> nil   # ... but that is not a convention.',
 
   usc_malformed: 'usc() was given text the convention could not have produced,\nso there is nothing to read back out: a truncated code-point escape, an\nescape the convention does not define, or an escape character standing\nalone where the convention doubles it. `usc` is the LEFT inverse of\n`esc` and it is partial — every escaped value has an original, but not\nevery string is an escaped value.\n \nExamples:\n  usc(esc(text))     -> ...   # Whatever esc() wrote;\n  usc(text, sql)     -> ...   # ... in the same convention;\n  usc(text, shell)   -> nil   # ... but not in another one.',
 
@@ -613,6 +621,16 @@ const codeClasses: Record<string, string> = {
   emit_body: 'parse',
   emit_none: 'conflict',
   emit_ref: 'conflict',
+
+  // RENDER P6 -- `replace` on a template, and `form`. The two
+  // template checks are class `parse`: what is wrong is the TEMPLATE
+  // as written, before any node. `replace_value` is class `conflict`:
+  // the node's value and the body that wanted text disagreed.
+  // `form_data` is `each_data`'s twin.
+  replace_overlap: 'parse',
+  replace_unused: 'parse',
+  replace_value: 'conflict',
+  form_data: 'parse',
 
   // G8 phase 3 -- the placeholder. Class `conflict`: two values met
   // and neither could answer for the other, which is what every
