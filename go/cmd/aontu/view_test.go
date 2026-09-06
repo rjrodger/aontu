@@ -517,11 +517,10 @@ func TestViewStyleAutoReadsStdout(t *testing.T) {
 	// against. A pty master answers the terminal-attributes ioctl, so
 	// it is one; where a test cannot open one, the terminal arm is not
 	// exercised rather than faked.
-	tty, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
-	if nil != err {
-		t.Skipf("no pty available for the terminal arm: %v", err)
+	tty := terminalForTest(t)
+	if nil == tty {
+		return
 	}
-	defer tty.Close()
 	if got := viewStyleFor("auto", "text", tty); "ansi" != got {
 		t.Fatalf("auto on a terminal = %q, want ansi", got)
 	}

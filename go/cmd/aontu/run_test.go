@@ -163,8 +163,7 @@ func TestStdinIsPipe(t *testing.T) {
 	}
 
 	// A terminal is not a pipe, which is the arm that opens the REPL.
-	if tty, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0); nil == err {
-		defer tty.Close()
+	if tty := terminalForTest(t); nil != tty {
 		os.Stdin = tty
 		if stdinIsPipe() {
 			t.Fatalf("a terminal must open the REPL")

@@ -21,9 +21,7 @@ func TestColorForDestination(t *testing.T) {
 	// A TERMINAL is the one destination that gets to keep the default:
 	// nil means "leave it to NO_COLOR". A pty master answers the
 	// terminal-attributes ioctl, so it is one.
-	tty, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
-	if nil == err {
-		defer tty.Close()
+	if tty := terminalForTest(t); nil != tty {
 		if nil != colorFor(tty) {
 			t.Fatal("a terminal should defer to NO_COLOR")
 		}
