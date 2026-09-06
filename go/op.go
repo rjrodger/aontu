@@ -102,7 +102,21 @@ func (o *PlusOpVal) Unify(peer Val, ctx *Ctx) Val {
 		// TS OpBaseVal.unify) so canon shows partial arg resolution.
 		np := newPlusOp(newpeg[0], newpeg[1])
 		np.path = cp(o.path)
-		np.sp = o.sp
+		// THE DOCUMENT TRAVELS WITH THE POSITION. The rebuild kept
+		// `sp` and dropped the url, so a residual operator came out of
+		// the fixpoint belonging to no file -- and a report that asks
+		// WHICH document a site is in (the validation verb's role)
+		// then called a data value part of the schema, at row and
+		// column -1 because it had no text to resolve the offset
+		// against. TS rebuilds through `this.make(ctx, {peg: newpeg})`
+		// and its clone carries the url.
+		//
+		// NOT the source text: the operands have been driven, so this
+		// value no longer occupies the span that was written -- which
+		// is the same reason a wrapper does not push its text onto
+		// what it wraps (see clonePathRec). TS reports no span for a
+		// rebuilt op either.
+		np.sp, np.spu, np.surl = o.sp, o.spu, o.surl
 		out = np
 	} else if peer.Nil() {
 		out = peer
