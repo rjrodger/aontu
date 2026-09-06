@@ -177,11 +177,71 @@ Commit the generated files beside the model and run `--check` in CI;
 a hand edit to a generated file is then a red build rather than a
 quiet divergence from the model.
 
+## Lower a declaration instead
+
+A struct need not be spelled as lines. The vocabulary has a
+declaration for a record, an enum, an alias, a constant and a
+function, and a unit of `typescript` or `go` renders each under the
+bundled profile of that language, which spells the target's syntax
+and its naming: Go's profile splits `ledgerId` into words and writes
+`LedgerID`, and keeps the model's name in the JSON tag. The rule set
+then emits the vocabulary's records and fields rather than pieces.
+Write this as `records.aon`:
+
+<!-- test: file records.aon -->
+```aontu
+records: [
+  { name:"Customer" fields:[{ n:"id" t:"string" } { n:"email" t:"string" }] }
+  { name:"Order" fields:[{ n:"total" t:"integer" }] }
+]
+
+%field = emit(_, {
+  match: n: string
+  body: [
+    {
+      name: .n
+      type: { k:"prim" prim:match(.t, "string", "string", "integer", "int") }
+    }
+  ]
+})
+
+%record = emit(_, {
+  match: name: string
+  body: [{ k:"record" name:.name fields:emit(.fields, %field) }]
+})
+
+code: units: [
+  { path:"types.go" lang:"go" pkg:"acme" decls:emit($.records, %record) }
+]
+```
+
+<!-- test: run -->
+```sh
+$ aontu render --stdout records.aon
+package acme
+
+type Customer struct {
+	ID string `json:"id"`
+	Email string `json:"email"`
+}
+
+type Order struct {
+	Total int64 `json:"total"`
+}
+```
+
+Nothing in the model spells `ID` or `int64`: the field is `id` and
+its type `int`, and the profile's case style for a field, its acronym
+set and its primitive table do the rest. What the target cannot
+enforce—a `check` on a field, an open record, a union in Go—is listed
+on stderr as tier 1, and stays in the model.
+
 ## Put the target's names in the model
 
-`upper()` uppercases a whole string, so it yields `EMAIL`, not
-`Email`. Write the target's spelling as data, as `go: "Email"` does
-above.
+A fragment spells its own names, and `upper()` uppercases a whole
+string, so it yields `EMAIL`, not `Email`. Write the target's spelling
+as data, as `go: "Email"` does above, or hand the name to a
+declaration, whose profile applies a case style per role.
 
 That is also the better design. What a type is called in a target is
 a fact about the model rather than a rule in a template, which is the

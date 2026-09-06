@@ -15,9 +15,13 @@ two ways at once:
    fixture set: defaults fill in, `pack()` derives one receivables
    account per customer, and every constraint has already held over
    the output or there is no output.
+3. **Code source.** `xf-domain.aon` and `xf-order.aon` walk the record
+   types into `aontu:code` declarations, and `aontu render` lowers
+   them to TypeScript interfaces and Go structs, held against their
+   goldens by `--check`.
 
 This is the ground-truth-ontology use: one document that is
-simultaneously the contract, the checker, and the generator. Money is
+simultaneously the contract, the checker, the generator and the code source. Money is
 the stress test (the reason `0d` exact decimals exist), and 64-bit
 ids exercise the number tower's disjoint kinds.
 
@@ -85,6 +89,21 @@ than its value.
   scale absent from the value, the scale-0 point that must still be
   written, and exact VAT both ways. The convention has its own guide,
   [Carry exact money over JSON](../../docs/how-to/carry-exact-money-over-json.md).
+- `xf-domain.aon`—the schema as code: `pack(type($.schema), …)` walks
+  each record type into an `aontu:code` record whose field types come
+  from `match()` over the schema's kinds, and `aontu render` lowers
+  the list under the bundled TypeScript profile to
+  `expected/render/domain.ts`, one exported interface per record. The
+  bag is lifted with `type()` because a transform over an unmarked bag
+  skips its marked children, and the optional keys are absent from the
+  output: an optional key whose value generates nothing is not a
+  member, so a schema walk cannot see `email?` (BUGS.md §86).
+- `xf-order.aon`—one model, two targets: the same walk with the two
+  facts it cannot give stated as data (`optional` for `placed` and
+  `status`, `lines` as a list of `OrderLine`), rendered to
+  `expected/render/ts/domain.ts` and `expected/render/go/domain.go`,
+  where the Go profile spells `ledgerId` as `LedgerID` and an optional
+  field as a pointer with `omitempty`.
 - `reporting.aon`—a wider projection; `subsume` proves it sound.
 - `gaps/`—one-file models, each pinning a single behaviour of the
   arithmetic and constraint families; see below.
@@ -287,15 +306,26 @@ rounds them, and `--canon` keeps the `0d` prefix and the exact value.
     `"refund":-0d12.05`, `"sameNumber":0d10.5`,
     `"scaleZeroRight":0d10.0` and `"vatExact":0d759.6561`: the
     conversion, its sign, its scale and its VAT all pin.
+28. `aontu render --check expected/render xf-domain.aon` is green,
+    exit 0: the schema walked into `aontu:code` records renders as
+    `expected/render/domain.ts`, one exported interface per record,
+    under the bundled TypeScript profile.
+29. `aontu render --check expected/render xf-order.aon` is green: the
+    same walk, with optionality stated as data, renders
+    `ts/domain.ts` and `go/domain.go`, where the Go profile spells
+    `ledgerId` as `LedgerID`, `lines` as `[]OrderLine` and an optional
+    field as `*string` with `omitempty`; the Go port renders the same
+    bytes for both transforms.
 
 ## Running it
 
-From this directory, `./check.sh` runs all 29 assertions and exits 0.
+From this directory, `./check.sh` runs all 32 assertions and exits 0.
 It drives the TypeScript CLI (`ts/bin/aontu.js`, or the command in
 `$AONTU`), and every refusal is asserted by exit code and machine code
-rather than by error prose. The two verbs by hand:
+rather than by error prose. Three verbs by hand:
 
 ```sh
 aontu seed.aon                                                                            # generate the fixture set
 aontu vet seed.aon data/order-batch-1.aon data/order-batch-2.aon data/customer-bigid.aon  # vet a batch
+aontu render --check expected/render xf-order.aon                                         # the schema as TypeScript and Go
 ```

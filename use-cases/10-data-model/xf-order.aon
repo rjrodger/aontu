@@ -1,0 +1,46 @@
+# xf-order.aon --- ONE model, TWO targets, one run (G9 worked example
+# 2, the P5 acceptance): the same walk as xf-domain.aon, plus the two
+# facts a schema walk cannot give a transform -- which fields are
+# optional, and that `lines` holds OrderLine -- stated once, as data.
+# `aontu render` lowers the records twice: under the TypeScript
+# profile, and under the Go profile, whose acronym set spells `id` as
+# `ID` and `ledgerId` as `LedgerID`, and whose optional field is a
+# pointer with omitempty.
+@"./domain.aon"
+
+rec: hide(pack(type($.schema), {
+  d: {
+    k: "record"
+    name: key(2)
+    fields: pick(
+      pack(_, {
+        f: {
+          name: key(2)
+          optional: match(key(2), "placed", true, "status", true, false)
+          type: match(
+            _,
+            integer,
+            { k:"prim" prim:"int" },
+            biginteger,
+            { k:"prim" prim:"bigint" },
+            string,
+            { k:"prim" prim:"string" },
+            boolean,
+            { k:"prim" prim:"bool" },
+            [],
+            { k:"list" of:{ k:"ref" name:"OrderLine" } },
+            { k:"prim" prim:"any" }
+          )
+        }
+      }),
+      f
+    )
+  }
+}))
+
+decls: hide(pick($.rec, d))
+
+code: units: [
+  { path:"ts/domain.ts" lang:"typescript" decls:$.decls }
+  { path:"go/domain.go" lang:"go" pkg:"domain" decls:$.decls }
+]

@@ -315,8 +315,14 @@ $ aontu reconcile.aon
 
 Binary64 arithmetic answers `0.30000000000000004` here; the pinned
 `& 0d0.3` holds because `0d` values are exact, and the case's
-`money-wire.aon` shows how that exactness crosses JSON. The domain and
-its failed attempts, kept executable:
+`money-wire.aon` shows how that exactness crosses JSON. The same
+schema is a code source: the case's `xf-domain.aon` walks its record
+types into `aontu:code` records, and `aontu render` lowers them to one
+exported interface per record under the bundled TypeScript profile;
+`xf-order.aon` renders the same walk as TypeScript and as Go, where
+the profile spells `ledgerId` as `LedgerID` and an optional field as a
+pointer with `omitempty`. Both are held by `render --check`. The
+domain, the transforms and the failed attempts, kept executable:
 [`use-cases/10-data-model/`](../use-cases/10-data-model/).
 
 ## 11. Shared modules

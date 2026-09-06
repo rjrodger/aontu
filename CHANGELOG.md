@@ -7,6 +7,38 @@ which implementation each change affects.
 
 ## Unreleased
 
+### The declaration lowering, and the TypeScript and Go profiles
+
+The renderer lowers declarations (docs/design/RENDER.0.md P5), in
+both ports: a unit whose profile names a `lowering` — the bundled
+`aontu:lang/typescript` and `aontu:lang/go`, or a supplied profile
+that says so — renders a `record` as an exported interface or a
+struct with JSON tags, an `enum` as an enum or a string type with
+typed constants, an `alias` as a type alias, a `const` as an exported
+constant and a `func` as a function whose body is its fragment one
+level deeper; the unit's `pkg` is Go's package clause, its `imports`
+and the references that name another unit are the import lines, and
+`code.source` is the DO NOT EDIT banner. Names take the profile's case
+style per role over an ASCII word split (a code point at or above
+U+0080 rides verbatim), Go's acronym set spells `ledgerId` as
+`LedgerID` where TypeScript keeps it, a converted declaration or
+parameter name that is a reserved word is renamed with a trailing
+underscore and reported, a string literal is escaped by the profile's
+table keyed by decimal code point, a reference inline takes the same
+identifier rules, and a type form parenthesises by `prec` and
+`childPrec` (`(string | null)[]`). Tier 1 in the report is what the
+target's type system leaves on the table: every `check`, a Go union or
+literal set (`any`, or the shared primitive), an open record, a
+default parameter and an abstract function in Go. `ts/src/lower.ts`
+and `go/lower.go`, function for function; the two profiles pinned by
+hash and generated form in `aontu-profile.tsv`; `render.tsv` +50; the
+model set is five. The acceptance transforms are
+`use-cases/10-data-model/xf-domain.aon` and `xf-order.aon`, held by
+`render --check` in both ports; the walk they take surfaced BUGS §86,
+an optional schema key no transform can see, and §87, a refusal
+site in the vocabulary whose alias references the two ports spell
+differently. Both implementations.
+
 ### `aontu render`, the verb and the tool
 
 The renderer's verb (docs/design/RENDER.0.md P4), in both CLIs:

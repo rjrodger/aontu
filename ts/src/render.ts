@@ -28,6 +28,8 @@ import { makeNilErr } from './err'
 import { cmpCodePoint } from './keyorder'
 import { includeOpts } from './utility'
 import type { IncludeOptions } from './utility'
+import { lowerDecl, lowerHeader, ident } from './lower'
+import type { LowerCtx } from './lower'
 
 
 export type RenderVerdict = 'ok' | 'lossy' | 'error'
@@ -85,7 +87,8 @@ export type RenderOptions = IncludeOptions & {
 
 
 const VOCABULARY = '@"aontu:code"'
-const TEXT_PROFILE = '@"aontu:lang/text"'
+// The bundled profiles, by lang: aontu:lang/<lang>.
+const BUNDLED_LANGS = ['go', 'text', 'typescript']
 const PROFILE_VOCABULARY = '@"aontu:profile"'
 
 
@@ -164,13 +167,18 @@ export function render(src: string, options?: RenderOptions): RenderReport {
 
 // The bundled text profile, evaluated once: the profile of a unit
 // whose declarations are fragments and text escapes only.
-let textProfile: any = undefined
+const bundled: Record<string, any> = {}
 
-function bundledText(): any {
-  if (undefined === textProfile) {
-    textProfile = new Aontu().generate(TEXT_PROFILE).profile
+// A bundled profile, evaluated once: the meet of aontu:lang/<lang>
+// with the vocabulary, so its defaults are in it.
+function bundledProfile(lang: string): any {
+  if (!BUNDLED_LANGS.includes(lang)) {
+    return undefined
   }
-  return textProfile
+  if (undefined === bundled[lang]) {
+    bundled[lang] = new Aontu().generate('@"aontu:lang/' + lang + '"').profile
+  }
+  return bundled[lang]
 }
 
 
@@ -185,10 +193,11 @@ function profileFor(lang: string, given: any[] | undefined, fragOnly: boolean): 
   if (undefined !== supplied) {
     return supplied
   }
-  if ('text' === lang || fragOnly) {
-    return bundledText()
+  const own = bundledProfile(lang)
+  if (undefined !== own) {
+    return own
   }
-  return undefined
+  return fragOnly ? bundledProfile('text') : undefined
 }
 
 
@@ -218,26 +227,35 @@ function mergeProfile(base: any, over: any): any {
 // stripped. A reference inline is its name, verbatim (a
 // declaration-capable profile puts it through its identifier rules,
 // P5). Nothing is trimmed (D3): the text is the transform's.
+// A profile with no indent -- a caller-supplied map the vocabulary
+// never filled -- takes the vocabulary's own default, two spaces.
 function pad(profile: any, at: number): string {
-  return profile.indent.unit.repeat(profile.indent.width * at)
+  const indent = profile.indent ?? { unit: ' ', width: 2 }
+  return (indent.unit ?? ' ').repeat((indent.width ?? 2) * at)
 }
 
 function line(profile: any, at: number, text: string): string {
   return ('' === text ? '' : pad(profile, at)) + text + '\n'
 }
 
-function inline(piece: any): string {
-  return 'string' === typeof piece ? piece : piece.name
+// A reference inline is its name: through the profile's identifier
+// rules under a lowering, verbatim under text.
+function inline(piece: any, ctx: LowerCtx | undefined): string {
+  if ('string' === typeof piece) {
+    return piece
+  }
+  return undefined === ctx ? piece.name : ident(piece.name, 'record', ctx, '', false)
 }
 
 function foldPiece(
-  piece: any, profile: any, unit: string, path: string, lossy: RenderLoss[]
+  piece: any, profile: any, unit: string, path: string, lossy: RenderLoss[],
+  ctx?: LowerCtx
 ): string {
   if ('string' === typeof piece) {
     return line(profile, 0, piece)
   }
   if ('line' === piece.k) {
-    return line(profile, piece.at ?? 0, piece.of.map(inline).join(''))
+    return line(profile, piece.at ?? 0, piece.of.map((p: any) => inline(p, ctx)).join(''))
   }
   if ('blank' === piece.k) {
     return '\n'.repeat(piece.n ?? 1)
@@ -338,19 +356,39 @@ export function renderValue(instance: any, options?: RenderOptions): RenderRepor
     }
     const profile = null == unit.profile ? base : mergeProfile(base, unit.profile)
 
+    // THE LOWERING (D5, P5), when the profile names one: the unit's
+    // header -- banner, package clause, imports -- and each declaration
+    // as pieces the fold takes, a blank line between two lowered
+    // declarations. A fragment or a text escape owns its own blanks.
+    const family: string | undefined = profile.lowering
+    const ctx: LowerCtx | undefined = undefined === family ? undefined
+      : { profile, family, unit: path, lossy }
+
     let text = ''
+    if (undefined !== ctx) {
+      const header = lowerHeader(unit, instance?.code?.source, ctx)
+      for (const piece of header) {
+        text += foldPiece(piece, profile, path, upath, lossy, ctx)
+      }
+      if (0 < header.length && 0 < decls.length) {
+        text += '\n'
+      }
+    }
+    let lowered = false
     decls.forEach((decl: any, j: number) => {
       const dpath = upath + '.decls.' + j
       if ('frag' === decl.k) {
+        lowered = false
         lossy.push({
           unit: path, path: dpath, tier: 2, construct: 'frag',
           reason: 'a fragment says nothing about ' + lang + ' syntax',
         })
         decl.of.forEach((piece: any, n: number) => {
-          text += foldPiece(piece, profile, path, dpath + '.of.' + n, lossy)
+          text += foldPiece(piece, profile, path, dpath + '.of.' + n, lossy, ctx)
         })
       }
       else if ('text' === decl.k) {
+        lowered = false
         if (decl.lang !== lang) {
           errors.push(finding('render_lang', 'conflict', dpath + '.lang',
             'the text escape is ' + decl.lang + ' in a ' + lang + ' unit.'))
@@ -361,6 +399,15 @@ export function renderValue(instance: any, options?: RenderOptions): RenderRepor
           reason: 'verbatim ' + lang + ': the renderer checks nothing in it',
         })
         text += decl.text
+      }
+      else if (undefined !== ctx) {
+        if (lowered) {
+          text += '\n'
+        }
+        for (const piece of lowerDecl(decl, dpath, ctx)) {
+          text += foldPiece(piece, profile, path, dpath, lossy, ctx)
+        }
+        lowered = true
       }
       else {
         errors.push(finding('render_profile', 'parse', dpath + '.k',

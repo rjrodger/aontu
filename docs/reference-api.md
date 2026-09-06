@@ -1403,6 +1403,109 @@ $ echo $?
 1
 ```
 
+**A declaration lowers under a profile that has a lowering.** A unit
+of `typescript` or `go` may hold declarations beside its fragments—a
+`record`, an `enum`, an `alias`, a `const`, a `func`—and the bundled
+profile of that language spells each in its target. The renderer
+applies the profile's naming as it does so: the case style per role
+over the words of a name, so `ledgerId` is `LedgerID` under Go's
+acronym set and stays `ledgerId` in TypeScript; a reserved word
+renamed with a trailing underscore and reported; a string literal
+escaped by the profile's table. Write a `types.aon` whose two units
+hold the same two declarations:
+
+<!-- test: file types.aon -->
+```aontu
+code: units: [
+  {
+    path: "types.ts"
+    lang: "typescript"
+    decls: [
+      {
+        k: "enum"
+        name: "status"
+        members: [{ name:"open" value:"open" } { name:"paid" value:"paid" }]
+      }
+      {
+        k: "record"
+        name: "order"
+        fields: [
+          { name:"id" type:{ k:"prim" prim:"string" } }
+          { name:"ledgerId" type:{ k:"prim" prim:"int" } }
+          { name:"status" type:{ k:"ref" name:"status" } }
+          { name:"note" optional:true type:{ k:"prim" prim:"string" } }
+        ]
+      }
+    ]
+  }
+  {
+    path: "types.go"
+    lang: "go"
+    pkg: "orders"
+    decls: [
+      {
+        k: "enum"
+        name: "status"
+        members: [{ name:"open" value:"open" } { name:"paid" value:"paid" }]
+      }
+      {
+        k: "record"
+        name: "order"
+        fields: [
+          { name:"id" type:{ k:"prim" prim:"string" } }
+          { name:"ledgerId" type:{ k:"prim" prim:"int" } }
+          { name:"status" type:{ k:"ref" name:"status" } }
+          { name:"note" optional:true type:{ k:"prim" prim:"string" } }
+        ]
+      }
+    ]
+  }
+]
+```
+
+<!-- test: run -->
+```sh
+$ aontu render --stdout --unit types.ts types.aon
+export enum Status {
+  Open = "open",
+  Paid = "paid",
+}
+
+export interface Order {
+  id: string;
+  ledgerId: number;
+  status: Status;
+  note?: string;
+}
+```
+
+<!-- test: run -->
+```sh
+$ aontu render --stdout --unit types.go types.aon
+package orders
+
+type Status string
+
+const (
+	StatusOpen Status = "open"
+	StatusPaid Status = "paid"
+)
+
+type Order struct {
+	ID string `json:"id"`
+	LedgerID int64 `json:"ledgerId"`
+	Status Status `json:"status"`
+	Note *string `json:"note,omitempty"`
+}
+```
+
+What a target's type system does not enforce is **tier 1** in the
+report: every `check`, and in Go a union or a literal set (rendered
+as `any`, or as the primitive its members share), an open record, a
+parameter default and an abstract function. Layout is the
+formatter's: `gofmt` aligns the columns of a `struct`, and the
+renderer does not try to.
+
 - `--at <path>` names the value to render—the same anchor
   [`vet --at`](#aontu-vet) takes—so a generator can sit beside the
   model it reads.
@@ -1413,9 +1516,12 @@ $ echo $?
   vetted against `aontu:profile`; it applies to the units of its
   language, and a unit's own inline `profile` merges over it. The flag
   repeats, one file per language; two files claiming one language is a
-  usage error. A unit whose language has no profile renders under the
-  bundled text profile (two spaces per depth) when it holds only
-  fragments and text escapes.
+  usage error. A unit with no supplied profile renders under the
+  bundled one of its language—`aontu:lang/typescript`,
+  `aontu:lang/go`—or, for any other language, under the bundled text
+  profile (two spaces per depth) when it holds only fragments and
+  text escapes; a declaration in a unit whose profile has no lowering
+  is `render_profile`.
 - `--strict` refuses the opaque escapes—a `text` declaration, a `raw`
   piece—which the renderer copies verbatim and cannot check (tier 3 in
   the report); every fragment is tier 2 and passes.

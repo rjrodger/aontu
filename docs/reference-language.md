@@ -2333,8 +2333,9 @@ Four vocabularies ship with the engine and are served from it rather
 than from disk: `std/system` below; `std/view`—the schema for one
 declaration of a [view document](reference-api.md#aontu-view),
 `$.view.Figure`, which types every option the verb reads so a typo is
-refused at evaluation; and the two `aontu:` models, `aontu:code` and
-`aontu:profile`, described [after it](#the-aontu-models).
+refused at evaluation; and the `aontu:` models—the vocabularies
+`aontu:code` and `aontu:profile`, and the three profiles bundled beside
+them—described [after it](#the-aontu-models).
 
 ### The `aontu:` models
 
@@ -2388,7 +2389,7 @@ the set. Write this as `nope.aon`:
 <!-- test: run -->
 ```sh
 $ aontu nope.aon
-source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/text, aontu:profile)
+source not found: aontu:nope (the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile)
 $ echo $?
 1
 ```
@@ -2414,15 +2415,27 @@ identifier rules and the type forms. A profile is data and only data:
 a field belongs in it only if the renderer applies it without looking
 at the shape of any node.
 
-**`aontu:lang/text`** is the one bundled profile: `lang: "text"`, an
-indent of two spaces, and nothing else, since a fold over fragments
-applies nothing else. Every unit whose declarations are fragments and
-text escapes renders under it whatever its `lang` says, so a Python
-module, a YAML manifest or a `Makefile` needs no profile of its own; a
-unit with a declaration needs a profile whose language has a lowering,
-and until one ships is refused (`render_profile`).
+**`aontu:lang/typescript`** and **`aontu:lang/go`** are the two
+bundled profiles with a lowering: the data a unit of that language
+renders under—two spaces or a tab, the comment forms, the string
+escapes by decimal code point, the reserved words, the case style per
+role and (Go) the acronym set that spells `ID`, and the type forms with
+the precedences that put the parentheses in `(string | null)[]`. A
+declaration in a unit of either language lowers to its target—an
+exported interface or a struct, an enum, a type alias, a constant, a
+function—and the loss report names what the target's type system does
+not enforce; see [`aontu render`](reference-api.md#aontu-render).
 
-All three are **experimental** until the vocabulary can be versioned by
+**`aontu:lang/text`** is the bundled profile of every other language:
+`lang: "text"`, an indent of two spaces, and nothing else, since a fold
+over fragments applies nothing else. Every unit whose declarations are
+fragments and text escapes renders under it whatever its `lang` says,
+so a Python module, a YAML manifest or a `Makefile` needs no profile of
+its own; a unit with a declaration needs a profile whose language has a
+lowering, and one whose language has none is refused
+(`render_profile`).
+
+All five are **experimental** until the vocabulary can be versioned by
 canon-hash.
 
 ### The `std/system` vocabulary
