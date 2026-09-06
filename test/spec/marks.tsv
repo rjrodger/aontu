@@ -101,3 +101,18 @@ split-type-list-member-canon	canon	T: type({ L: [10,20]  L0: $.T.L.1 })\nT: type
 split-type-whole-value-is-a-list	gens	T: type([1,2])\nT: type([1,2])\nout: $.T.0\n	{"out":1}
 split-type-segment-no-term-has	canon	T: type({ A: 1  Z: $.T.Q })\nT: type({ B: 2 })\n	{"T":type({"A":1,"Z":$.T.Q})&{"B":2}}
 split-type-segment-the-other-term-has	gens	T: type({ A: 1  Z: $.T.Q })\nT: type({ Q: 9 })\nout: $.T.Z\n	{"out":9}
+# The terms of such a conjunct are not all marked maps, and each shape
+# is a different arm of the walk: a BARE LIST beside a pending wrapper,
+# a wrapper over a LIST, and a term that supplies nothing at all
+# because it is neither -- a reference, here, which answers once it
+# resolves and is skipped until it does.
+split-type-list-term	gens	T: type([$.T.1 5])\nT: [5 5]\nout: $.T.0\n	{"out":5}
+split-type-list-wrapped	gens	T: type([$.T.1 5])\nT: type([5 5])\nout: $.T.0\n	{"out":5}
+split-type-ref-term	gens	U: {A: 1}\nT: type({ A: 1  A2: $.T.A })\nT: $.U\nout: $.T.A2\n	{"U":{"A":1},"out":1}
+# A segment a LIST term cannot supply, both spellings: past the end,
+# and not an index at all. Neither shortens the path to the container,
+# which is the wrong-value failure ref.tsv's numeric-segment rules
+# exist to refuse; the reference simply never resolves, and the
+# conjunct stands unfolded to say so.
+split-type-list-term-past-end	canon	T: type([$.T.5 5])\nT: [5 5]\n	{"T":type([$.T.5,5])&[5,5]}
+split-type-list-term-not-an-index	canon	T: type([$.T.k 5])\nT: [5 5]\n	{"T":type([$.T.k,5])&[5,5]}

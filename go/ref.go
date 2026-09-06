@@ -56,45 +56,31 @@ func (rv *RefVal) walkFrom(root Val, refpath []string) (Val, walkOutcome) {
 				node = inner
 			}
 		}
-		switch n := node.(type) {
-		case *MapVal:
-			node = n.peg[part]
-		case *ListVal:
-			idx, ok := listIndex(part)
-			if !ok || idx >= len(n.peg) {
-				node = nil
-			} else {
-				node = n.peg[idx]
-			}
-		case *ConjunctVal:
-			// AND SO IS A CONJUNCT THAT STILL CARRIES ONE (#164).
-			// Two statements for one key MEET, so a key written as
-			// `T: type({...})` twice is a conjunct of two wrappers --
-			// and one written once beside a plain `T: {...}` is a
-			// conjunct too. The arm above sees a wrapper only when it
-			// is the whole node, so a reference into such a key walked
-			// into the conjunct and stopped here: the wrapper waited
-			// for its argument, the argument waited for the reference,
-			// and neither moved. Generation then reported
-			// mapval_no_gen at the first referring child of every
-			// consumer -- a path that names none of this.
-			//
-			// The answer at a segment is the MEET of what each term
-			// supplies, so terms with no such member are skipped and
-			// the rest are conjoined; one term answers as itself, and
-			// the ordinary map arm answers once the fold has happened.
-			// Restricted to a conjunct that still holds a pending
-			// wrapper: every other conjunct folds on its own, and this
-			// walk exists only to break the wrapper's deadlock.
-			// Mirrors the same arm in ts/src/val/RefVal.ts find.
-			if !pendingMarkWrapper(n) {
-				if node.Dc() == DONE {
-					return nil, walkMissed
-				}
-				return nil, walkDefer
-			}
+
+		// AND SO IS A CONJUNCT THAT STILL CARRIES ONE (#164). Two
+		// statements for one key MEET, so a key written as
+		// `T: type({...})` twice is a conjunct of two wrappers -- and
+		// one written once beside a plain `T: {...}` is a conjunct
+		// too. The arm above sees a wrapper only when it is the whole
+		// node, so a reference into such a key stopped at the switch
+		// below: the wrapper waited for its argument, the argument
+		// waited for the reference, and neither moved. Generation then
+		// reported mapval_no_gen at the first referring child of every
+		// consumer -- a path that names none of this.
+		//
+		// The answer at a segment is the MEET of what each term
+		// supplies, so terms with no such member are skipped and the
+		// rest conjoined; one term answers as itself, and the ordinary
+		// map arm answers once the fold has happened.
+		//
+		// HERE rather than as a case in the switch, and it consumes
+		// the segment itself: a conjunct with no pending wrapper must
+		// still reach `default:` below, which is the one place that
+		// decides whether an undescendable node is a miss or a defer.
+		// Mirrors the same arm in ts/src/val/RefVal.ts find.
+		if cj, ok := node.(*ConjunctVal); ok && pendingMarkWrapper(cj) {
 			kids := []Val{}
-			for _, t := range n.peg {
+			for _, t := range cj.peg {
 				if kid := markedChild(t, part); nil != kid {
 					kids = append(kids, kid)
 				}
@@ -108,6 +94,18 @@ func (rv *RefVal) walkFrom(root Val, refpath []string) (Val, walkOutcome) {
 				node = kids[0]
 			} else {
 				node = newConjunct(kids)
+			}
+			continue
+		}
+		switch n := node.(type) {
+		case *MapVal:
+			node = n.peg[part]
+		case *ListVal:
+			idx, ok := listIndex(part)
+			if !ok || idx >= len(n.peg) {
+				node = nil
+			} else {
+				node = n.peg[idx]
 			}
 		default:
 			if node.Dc() == DONE {
