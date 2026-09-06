@@ -841,14 +841,22 @@ func makeNilErrFull(ctx *Ctx, why string, a, b Val, attempt string, details map[
 // per document, walk.go); otherwise the clone-mint flag stands in for
 // it, which is all a single-source run ever needs — one text, so the
 // only distinction left is parsed versus minted.
+// srcid is the document a value is attributed to, and the ONE thing
+// the operand flip below compares: two operands are ordered by position
+// only when they are positions in the same document.
+//
+// THE COMPARISON IS THE URL AND NOTHING ELSE, exactly as TS compares
+// `nil.site.url === bv.site.url` in NilVal.make. This used to bucket a
+// clone separately from a parsed value on the `posu` flag, on the
+// reading that TS's Val.clone blanks a clone's url. It does not:
+// `out.site.url = spec?.url ?? this.site.url` INHERITS the source's
+// url, so a clone and the value it meets stay comparable there. The
+// extra bucket made them incomparable here, and a spread-applied
+// constraint — whose template is a clone — never flipped, so
+// `a:&:min(3) a:{x:2}` emitted its two frames in the opposite order
+// from TS while the direct `a:min(3) a:2` agreed (#63).
 func srcid(v Val) string {
-	if u := v.srcurl(); "" != u {
-		return u
-	}
-	if v.posu() {
-		return "\x00clone"
-	}
-	return "\x00parse"
+	return v.srcurl()
 }
 
 // makeNilErr builds a NilVal error and records it on ctx. The operand

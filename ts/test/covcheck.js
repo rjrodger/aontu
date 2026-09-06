@@ -51,11 +51,18 @@ function parseLcov(text) {
       cur.lines.set(+ln, +count)
     }
     else if (line.startsWith('BRDA:')) {
-      // line, block, branch, taken — the first three identify the arm,
-      // which is what lets two runs be unioned (a run that never reaches
-      // a block omits its arms entirely, so position is not an identity).
+      // line, block, branch, taken. The block number is NOT an identity:
+      // Node's reporter writes an arm's position in the run's list for
+      // the file, and V8 reports a block only when its count differs from
+      // its parent's, so the list, and every later position, differs from
+      // run to run. Arms are kept per line, and unioned per line.
       const p = line.slice(5).split(',')
-      cur.branches.set(`${p[0]}:${p[1]}:${p[2]}`, { line: +p[0], taken: p[3] })
+      const ln = +p[0]
+      let arms = cur.branches.get(ln)
+      if (null == arms) {
+        cur.branches.set(ln, arms = [])
+      }
+      arms.push({ line: ln, taken: p[3] })
     }
     else if (line.startsWith('FN:')) {
       const ix = line.indexOf(',')
@@ -84,10 +91,12 @@ function check(files) {
       else gaps.push(`${f.file}:${ln} line never executed`)
     }
 
-    for (const b of f.branches.values()) {
-      total.branches[1]++
-      if ('0' !== b.taken && '-' !== b.taken) total.branches[0]++
-      else gaps.push(`${f.file}:${b.line} branch arm never taken`)
+    for (const arms of f.branches.values()) {
+      for (const b of arms) {
+        total.branches[1]++
+        if (taken(b)) total.branches[0]++
+        else gaps.push(`${f.file}:${b.line} branch arm never taken`)
+      }
     }
 
     for (const [name, ln] of f.fns) {
@@ -98,6 +107,11 @@ function check(files) {
   }
 
   return { gaps, total }
+}
+
+
+function taken(b) {
+  return '0' !== b.taken && '-' !== b.taken
 }
 
 
@@ -122,15 +136,21 @@ function union(reports) {
       for (const [name, count] of f.fnhits) {
         cur.fnhits.set(name, Math.max(cur.fnhits.get(name) ?? 0, count))
       }
-      // Keep an arm once any run took it; an arm a run never reached
-      // at all is simply absent from that run's report.
-      for (const [key, b] of f.branches) {
-        const cb = cur.branches.get(key)
-        if (null == cb) {
-          cur.branches.set(key, b)
+      // A line's arms come from one run. A run vouches for a line when
+      // every arm it reports there was taken and it reports at least as
+      // many arms there as any other run: a genuine gap has count 0 in
+      // every run in which its function ran, so no run reporting it
+      // vouches for its line, and a run in which an enclosing block went
+      // unobserved folds the gap into that block and reports fewer arms
+      // at the line, so it is not allowed to vouch either.
+      for (const [ln, arms] of f.branches) {
+        const ca = cur.branches.get(ln)
+        if (null == ca) {
+          cur.branches.set(ln, arms)
         }
-        else if ('0' === cb.taken || '-' === cb.taken) {
-          cur.branches.set(key, b.taken === cb.taken ? cb : b)
+        else if (arms.length > ca.length ||
+          (arms.length === ca.length && !ca.every(taken) && arms.every(taken))) {
+          cur.branches.set(ln, arms)
         }
       }
     }

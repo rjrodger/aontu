@@ -287,6 +287,31 @@ describe('error', function() {
   })
 
 
+  // THE SPREAD-CONFLICT TWIN (issue #63): a constraint carried onto a
+  // child by a spread template conflicts with the child's value, and
+  // the two frames come out VALUE FIRST -- the later term in the
+  // source is the primary, exactly as the direct `a:min(3) a:2` twin
+  // above. The Go port emitted them the other way round, because its
+  // makeNilErr bucketed a CLONE (which every applied spread template
+  // is) apart from a parsed value and so never compared their
+  // positions; TS compares the site url alone, and a clone inherits
+  // its source's. TestFullMessageSpreadTwin in go/hints_test.go holds
+  // the same literal.
+  it('full-message-spread-twin', () => {
+    let err: any = undefined
+    try {
+      new Aontu().generate('a:&:min(3) a:{x:2}')
+    }
+    catch (e: any) {
+      err = e
+    }
+    if (undefined === err) {
+      throw new Error('expected error')
+    }
+    expect(err.message).equal("[aontu/constraint]: Cannot unify values at path $.a.x\n\nThis value does not satisfy the constraint. A constraint is the\nmeet of bound atoms (min, max, above, below) and exclusions (neq)\nover one domain; the expected form shown is the normalised\nresidual the value must satisfy.\n \nExamples:\n  min(0) & 3                    -> 3    # Admitted (3 >= 0);\n  min(0) & 0d5                  -> 0d5  # Bounds are leaf-agnostic;\n  max(65535) & 99999            -> nil  # Above the bound;\n  min(5) & max(3)               -> nil  # Empty at composition time;\n  integer & above(1) & below(2) -> nil  # No integer in the gap;\n  neq(1) & 1.0                  -> 1.0  # neq excludes leaf AND value.\n  re(\"^a\") & \"abc\"              -> \"abc\" # Patterns are unanchored.\n\n Cannot unify value: 2 with value: min(3)\n  \u001b[34m--> <no-file>:1:17\n\u001b[34m  1 | \u001b[0ma:&:min(3) a:{x:2}\n                      \u001b[34m^ value was: 2\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n\n Cannot unify value: min(3) with value: 2\n  \u001b[34m--> <no-file>:1:5\n\u001b[34m  1 | \u001b[0ma:&:min(3) a:{x:2}\n          \u001b[34m^ value was: min(3)\u001b[0m\n\u001b[34m  2 | \u001b[0m\n\u001b[34m  3 | \u001b[0m\n")
+  })
+
+
   // The func-residue-frame twin in go/hints_test.go.
   // A function that resolves to a FRESH value (`super(1)` answers a new
   // ScalarKindVal) must hand its own SITE to that value, or the residue --

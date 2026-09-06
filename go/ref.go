@@ -56,6 +56,47 @@ func (rv *RefVal) walkFrom(root Val, refpath []string) (Val, walkOutcome) {
 				node = inner
 			}
 		}
+
+		// AND SO IS A CONJUNCT THAT STILL CARRIES ONE (#164). Two
+		// statements for one key MEET, so a key written as
+		// `T: type({...})` twice is a conjunct of two wrappers -- and
+		// one written once beside a plain `T: {...}` is a conjunct
+		// too. The arm above sees a wrapper only when it is the whole
+		// node, so a reference into such a key stopped at the switch
+		// below: the wrapper waited for its argument, the argument
+		// waited for the reference, and neither moved. Generation then
+		// reported mapval_no_gen at the first referring child of every
+		// consumer -- a path that names none of this.
+		//
+		// The answer at a segment is the MEET of what each term
+		// supplies, so terms with no such member are skipped and the
+		// rest conjoined; one term answers as itself, and the ordinary
+		// map arm answers once the fold has happened.
+		//
+		// HERE rather than as a case in the switch, and it consumes
+		// the segment itself: a conjunct with no pending wrapper must
+		// still reach `default:` below, which is the one place that
+		// decides whether an undescendable node is a miss or a defer.
+		// Mirrors the same arm in ts/src/val/RefVal.ts find.
+		if cj, ok := node.(*ConjunctVal); ok && pendingMarkWrapper(cj) {
+			kids := []Val{}
+			for _, t := range cj.peg {
+				if kid := markedChild(t, part); nil != kid {
+					kids = append(kids, kid)
+				}
+			}
+			// No term has it YET. Not a miss: the conjunct is still
+			// folding, and the member may arrive with the fold.
+			if 0 == len(kids) {
+				return nil, walkDefer
+			}
+			if 1 == len(kids) {
+				node = kids[0]
+			} else {
+				node = newConjunct(kids)
+			}
+			continue
+		}
 		switch n := node.(type) {
 		case *MapVal:
 			node = n.peg[part]
@@ -122,25 +163,34 @@ func (rv *RefVal) append(part any) {
 			// address `10` and `$.a.1e2` address `100` -- each of them a
 			// silently WRONG location rather than a miss.
 			//
-			// src is empty for a value with no literal behind it (a
-			// computed segment, an API-built value), and there the numeric
-			// rendering is the only answer available.
-			rv.peg = append(rv.peg, srcOr(p.src,
-				func() string { return strconv.FormatInt(p.peg.(int64), 10) }))
+			// NO FALLBACK RENDERING. src is empty for a value with no
+			// literal behind it, and the value that reaches here that
+			// way is a NEGATION: `$.a.-0` is a minted integer 0, whose
+			// spelling the `negative-prefix` rule consumed. Rendering
+			// it made the segment "0", so `$.a.-0` addressed element 0
+			// -- a silently wrong location, the very thing the note
+			// above refuses for `0x0` and `1_0` (#67).
+			//
+			// TS pushes `part.src` and nothing else (RefVal.append,
+			// IntegerVal arm), so an unspelled segment is the EMPTY
+			// segment there, matching no key and no index. Mirrored:
+			// the reference misses, and the canon (`$.a.`) agrees
+			// byte for byte with the canonical port.
+			rv.peg = append(rv.peg, p.src)
 		case KindFloat:
 			// A float splits on its point, so `$.x.1.5` addresses two
 			// levels -- of the text, which is what makes `$.x.1e2` a
 			// single segment `1e2` rather than the expanded `100`.
-			for _, s := range strings.Split(srcOr(p.src,
-				func() string { return formatNumber(p.peg.(float64)) }), ".") {
+			// Unspelled, it is the empty segment, as the integer arm
+			// above (TS RefVal.append's NumberVal arm splits `part.src`
+			// with no fallback either).
+			for _, s := range strings.Split(p.src, ".") {
 				rv.peg = append(rv.peg, s)
 			}
 		case KindBigInteger:
-			rv.peg = append(rv.peg, srcOr(p.src,
-				func() string { return bigIntDigits(p.peg.(*big.Int)) }))
+			rv.peg = append(rv.peg, p.src)
 		case KindBigDecimal:
-			for _, s := range strings.Split(srcOr(p.src,
-				func() string { return p.peg.(*Decimal).digits() }), ".") {
+			for _, s := range strings.Split(p.src, ".") {
 				rv.peg = append(rv.peg, s)
 			}
 		default:
@@ -276,6 +326,29 @@ func listIndex(part string) (int, bool) {
 		return 0, false
 	}
 	return idx, true
+}
+
+// markedChild is the child one term of the walk supplies for a path
+// segment, or nil when it has none. A map or a list answers from its
+// own members; a PENDING type()/hide() answers from its argument's,
+// because the wrapper only marks and its argument is the structure the
+// path names. Mirrors markedChild in ts/src/val/RefVal.ts.
+func markedChild(v Val, part string) Val {
+	if fv, ok := v.(*FuncVal); ok && DONE != fv.dc &&
+		("hide" == fv.name || "type" == fv.name) && 0 < len(fv.peg) {
+		v = fv.peg[0]
+	}
+	switch n := v.(type) {
+	case *MapVal:
+		return n.peg[part]
+	case *ListVal:
+		idx, ok := listIndex(part)
+		if !ok || idx >= len(n.peg) {
+			return nil
+		}
+		return n.peg[idx]
+	}
+	return nil
 }
 
 // pendingMarkWrapper: is this value an unresolved type()/hide() call —
@@ -915,13 +988,4 @@ func (vv *VarVal) Gen(ctx *Ctx) (any, error) {
 	// Silent (mirrors the TS FeatureVal gen pattern): the enclosing
 	// bag reports unresolved vars.
 	return nil, nil
-}
-
-// srcOr returns a literal's own source text, falling back to a computed
-// rendering when there is no literal behind the value (see ScalarVal.src).
-func srcOr(src string, gen func() string) string {
-	if src != "" {
-		return src
-	}
-	return gen()
 }
