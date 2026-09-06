@@ -7,6 +7,29 @@ which implementation each change affects.
 
 ## Unreleased
 
+### `test/system/rb-solar`: a Rails application, generated
+
+The first full system in `test/system/`: a Ruby on Rails 8
+implementation of the
+[voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk)
+Solar System API, and a human UI over the same data, generated from one
+`model.aon` by eight generators. `check.sh` runs ten checks, and the
+two that matter most are other people's code: the reference
+repository's own `validate.ts`, unmodified, all twenty of its tests
+against the booted app, and its Ruby SDK driving the app through its
+real client.
+
+The routes, the migrations, the Active Record classes, both sets of
+controllers, the ERB pages, the seeds and the entity-relationship
+diagram are all consequences of the model, and `aontu render --check`
+holds the committed tree to it. What is hand-written is only what the
+model does not decide: the `Gemfile`, `config/`, `bin/`, the three
+Rails base classes and the layout.
+
+Seven of the eight generators are **files in the language they
+generate** — `ruby -c` parses them — and the eighth is a Mermaid
+diagram that renders the ER diagram of the same model.
+
 ### A reference walks through a conjunct that still carries a mark wrapper
 
 Both ports. Duplicate keys meet, so `T: type({...})` written twice is a

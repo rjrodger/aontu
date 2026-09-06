@@ -1099,6 +1099,39 @@ carrying the aontu — which is the surface's second real corpus after the
 twelve handlers. A phase that rb-solar does not exercise is a phase the
 plan has not proved.
 
+**LANDED 2026-09-06.** `test/system/rb-solar/` is the system, and
+`check.sh` is ten checks: every generator renders the committed tree
+byte for byte, the seven Ruby generators parse as Ruby, every
+template-surface generator round-trips, the four diagrams are pinned,
+no path of the model is dead to all nine generators, the model is
+`fmt`-clean, **the reference's own twenty tests pass against the
+booted app**, its Ruby SDK drives the app through thirteen assertions,
+and the human pages answer. Eight generators, one model, and the only
+hand-written files are the ones the model does not decide (`Gemfile`,
+`config/`, `bin/`, and the three Rails base classes plus the layout).
+
+Four departures from what this section assumed, recorded here and in
+the system's own README:
+
+- **The SDK's live tests are not a check.** They pass with the server
+  turned off: 246 cases, 71 skips against a live app and 72 against
+  nothing, two HTTP requests in a whole run. `ref/sdk_live.rb` is the
+  leg instead — the same client, real assertions, exit 1 with no
+  server.
+- **`--coverage` measures ONE document's reads** (P7), and a model read
+  by nine generators has no single coverage report: `$.error` is dead
+  to the controller generator and alive to the base one. The measure
+  that means anything is the intersection, which `check.sh` computes.
+  A `--coverage` that took several entry files would be the fix.
+- **The ERB generator could not be written in the template surface.**
+  The block marker is fixed to the C family (`/*-` … `*/`), and ERB's
+  only comment is `<%# … %>`; no marker an ERB file can carry is one
+  ERB ignores. `views.aon` is canonical aontu. A block marker whose
+  closer is derived from its opener would close this.
+- **Two engine defects, [BUGS.md](../../use-cases/BUGS.md) §88 and
+  §89**, both found by writing generators against a real API and both
+  silent. §88 bit twice in two days. This is what §10 was for.
+
 **What it deliberately does not claim.** Rails idiom beyond what the
 model states, a formatter (`rubocop -a` is the hand-off, as `gofmt` is),
 and any change to the reference API: rb-solar is held to the reference
