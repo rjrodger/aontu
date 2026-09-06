@@ -91,3 +91,13 @@ split-type-three-statements	canon	T: type({ A: 1  A2: $.T.A })\nT: type({ B: 2 }
 # reference between them, and two consumers whose FIRST child was the
 # one that never settled.
 split-type-issue-repro	gens	T: type({ A: close({ x: integer })  A2: $.T.A })\nT: type({ B: close({ y: integer }) })\na: { k1: $.T.A2 & { x: 1 }  k2: $.T.A2 & { x: 2 } }\nb: { k1: $.T.B & { y: 1 } }\n	{"a":{"k1":{"x":1},"k2":{"x":2}},"b":{"k1":{"y":1}}}
+# The walk's other shapes, each of which is a different arm of it: a
+# LIST supplying the segment rather than a map (both as a member of a
+# marked map and as the whole marked value), a segment NO term has yet
+# -- which defers rather than missing, because the member may arrive
+# with the fold -- and the same segment once a term supplies it.
+split-type-list-member	gens	T: type({ L: [10,20]  L0: $.T.L.1 })\nT: type({ B: 2 })\nout: $.T.L0\n	{"out":20}
+split-type-list-member-canon	canon	T: type({ L: [10,20]  L0: $.T.L.1 })\nT: type({ B: 2 })\n	{"T":{"B":2,"L":[10,20],"L0":20}}
+split-type-whole-value-is-a-list	gens	T: type([1,2])\nT: type([1,2])\nout: $.T.0\n	{"out":1}
+split-type-segment-no-term-has	canon	T: type({ A: 1  Z: $.T.Q })\nT: type({ B: 2 })\n	{"T":type({"A":1,"Z":$.T.Q})&{"B":2}}
+split-type-segment-the-other-term-has	gens	T: type({ A: 1  Z: $.T.Q })\nT: type({ Q: 9 })\nout: $.T.Z\n	{"out":9}
