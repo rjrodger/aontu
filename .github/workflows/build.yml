@@ -64,14 +64,15 @@ jobs:
   # platform the suites already cover above.
   coverage:
     name: Coverage gate (ADR-002)
-    # THIRTY, NOT FIFTEEN. `make cov` runs the TypeScript suite under
-    # coverage once in test-cov and then up to three more times in
-    # test/covrun.js (V8's merge drops observations about one run in
-    # six, so the driver retries), and then the Go half. One pass with
-    # the Go half is about thirteen minutes on the hosted runner; each
-    # extra pass is about five. Fifteen minutes therefore cancelled a
-    # job that had reached 100% (#160 on main, and #162 twice) and
-    # would never hold the third pass the driver is written to make.
+    # THIRTY, NOT FIFTEEN. `make cov` runs cov-ts and cov-go side by
+    # side, and cov-ts is test/covrun.js, which runs the TypeScript
+    # suite under coverage up to three times (V8's merge drops
+    # observations about one run in six, so the driver retries). A pass
+    # is about five minutes on the hosted runner. Fifteen minutes held
+    # the first pass and cancelled a job that had reached 100% on its
+    # retry (#160 on main, and #162 twice); the Makefile has since shed
+    # the separate table pass, and this budget holds the third pass the
+    # driver is written to make, with margin.
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
