@@ -2311,6 +2311,12 @@ function fmtFiles(...srcs) {
         Assert.equal(templateCode(0, [Path.join(hash, 'gen.rb')]).out, 'of: [\n`puts 1`\n]\n');
         const odd = templateDir({ 'gen.zz': ';;- of: [\nx\n;;- ]\n' });
         Assert.equal(templateCode(0, ['--marker', ';;-', Path.join(odd, 'gen.zz')]).out, 'of: [\n`x`\n]\n');
+        // A FILE WITH NO EXTENSION takes the default marker rather than
+        // no marker at all: a generator named `Makefile` or `Dockerfile`
+        // is an ordinary case, and the table is a convenience over a
+        // default rather than the thing that decides a file is a template.
+        const bare = templateDir({ 'gen': GEN });
+        Assert.equal(templateCode(0, [Path.join(bare, 'gen')]).out, CANON);
         // The dispatch: `aontu template` is the verb.
         Assert.equal(vetCapture(() => {
             (0, cli_1.main)(['node', 'aontu', 'template', Path.join(dir, 'gen.ts')]);

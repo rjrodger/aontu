@@ -47,7 +47,7 @@ template-a-marker-without-its-space-is-normalised	template	//-a: 1\n	{"back":"//
 template-an-empty-marker-line	template	//-\nx\n	{"back":"//-\\nx\\n","out":"\\n`x`\\n"}
 template-a-line-takes-the-raw-quote	template	const s = "double" + 'single'\n	{"back":"const s = \\"double\\" + 'single'\\n","out":"`const s = \\"double\\" + 'single'`\\n"}
 template-a-line-holding-a-backtick-takes-the-other	template	log(`ready ${n}`)\n	{"back":"log(`ready ${n}`)\\n","out":"\\"log(`ready ${n}`)\\"\\n"}
-template-a-backslash-is-escaped-in-either-quote	template	const re = "a\\\\nb"\nlog(`x`) // a\\\\t\n	{"back":"const re = \\"a\\\\\\\\nb\\"\\nlog(`x`) // a\\\\\\\\t\\n","out":"`const re = \\"a\\\\\\\\\\\\\\\\nb\\"`\\n\\"log(`x`) // a\\\\\\\\\\\\\\\\t\\"\\n"}
+template-a-backslash-is-escaped-in-either-quote	template	const re = "a\\nb"\nlog(`x`) // a\\t\n	{"back":"const re = \\"a\\\\nb\\"\\nlog(`x`) // a\\\\t\\n","out":"`const re = \\"a\\\\\\\\nb\\"`\\n\\"log(`x`) // a\\\\\\\\t\\"\\n"}
 template-a-line-holding-both-quotes	template	const s = `a` + "b"\n	{"back":"const s = `a` + \\"b\\"\\n","out":"\\"const s = `a` + \\\\\\"b\\\\\\"\\"\\n"}
 template-a-blank-line-is-a-blank-line-of-output	template	//- of: [\n\n//- ]\n	{"back":"//- of: [\\n\\n//- ]\\n","out":"of: [\\n``\\n]\\n"}
 template-trailing-whitespace-survives	template	//- of: [\n  \n//- ]\n	{"back":"//- of: [\\n  \\n//- ]\\n","out":"of: [\\n`  `\\n]\\n"}
@@ -57,7 +57,7 @@ template-an-empty-file	template		{"back":"","out":"``"}
 template-the-residual-escape-stays-a-marker-line	template	//- `//- not a marker`\n	{"back":"//- `//- not a marker`\\n","out":"`//- not a marker`\\n"}
 template-an-indented-residual-escape	template	//- `  //- not a marker`\n	{"back":"//- `  //- not a marker`\\n","out":"`  //- not a marker`\\n"}
 template-a-quoted-aontu-value-is-a-body-line	template	//- of: [\n//- "a value"\n//- ]\n	{"back":"//- of: [\\n//- \\"a value\\"\\n//- ]\\n","out":"of: [\\n\\"a value\\"\\n]\\n"}
-template-an-escape-the-quoting-never-writes	template	//- of: [\n//- "a\\\\tb"\n//- ]\n	{"back":"//- of: [\\n//- \\"a\\\\\\\\tb\\"\\n//- ]\\n","out":"of: [\\n\\"a\\\\\\\\tb\\"\\n]\\n"}
+template-an-escape-the-quoting-never-writes	template	//- of: [\n//- "a\\tb"\n//- ]\n	{"back":"//- of: [\\n//- \\"a\\\\tb\\"\\n//- ]\\n","out":"of: [\\n\\"a\\\\tb\\"\\n]\\n"}
 template-a-line-that-is-not-a-lone-string	template	//- of: [\n//- "a" + "b"\n//- ]\n	{"back":"//- of: [\\n//- \\"a\\" + \\"b\\"\\n//- ]\\n","out":"of: [\\n\\"a\\" + \\"b\\"\\n]\\n"}
 template-an-unterminated-string-is-aontu	template	//- of: [\n//- "half\n//- ]\n	{"back":"//- of: [\\n//- \\"half\\n//- ]\\n","out":"of: [\\n\\"half\\n]\\n"}
 template-a-marker-later-in-a-line-is-output	template	const s = "//- not a marker"\n	{"back":"const s = \\"//- not a marker\\"\\n","out":"`const s = \\"//- not a marker\\"`\\n"}

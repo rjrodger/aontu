@@ -253,5 +253,5 @@ function resugarTemplate(src, marker) {
         return '' === text ? open + close : open + ' ' + text + close;
     });
     return out.join('\n') + (tail ? '\n' : '');
-}
+} /* node:coverage ignore next 8 */
 //# sourceMappingURL=template.js.map

@@ -72,6 +72,16 @@ func TestTemplatePrintsTheCanonicalFormAndResugarsIt(t *testing.T) {
 	if 0 != code || "of: [\n`x`\n]\n" != out {
 		t.Fatalf("--marker: code %d out %q", code, out)
 	}
+
+	// A FILE WITH NO EXTENSION takes the default marker rather than no
+	// marker at all: a generator named `Makefile` or `Dockerfile` is an
+	// ordinary case, and the table is a convenience over a default
+	// rather than the thing that decides a file is a template.
+	bare := templateDir(t, map[string]string{"gen": templateGen})
+	out, _, code = templateRun(filepath.Join(bare, "gen"))
+	if 0 != code || templateCanon != out {
+		t.Fatalf("no extension: code %d out %q", code, out)
+	}
 }
 
 func TestTemplateCheckIsTheRoundTrip(t *testing.T) {

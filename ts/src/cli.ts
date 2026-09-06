@@ -4346,7 +4346,7 @@ function main(argv: string[], servers: Servers = SERVERS): void {
   else {
     runStdin(mode, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 17 */
+} /* node:coverage ignore next 18 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
