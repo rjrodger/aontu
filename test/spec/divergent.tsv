@@ -119,7 +119,8 @@
 #   change, so the two ports met rather than one moving to the other.
 #   The fixture below now reports `part.aon:1:7` from BOTH ports,
 #   byte-identical through `--format json`. Kept as a note because the
-#   opposite-direction warning about #76 still holds.
+#   opposite-direction reading it warns against is worth keeping even
+#   now that its twin (#76) has closed too.
 #
 #   What it used to do: The row and column are right; only the file
 #   is wrong, which is the dangerous shape: an agent applying a patch
@@ -146,20 +147,32 @@
 #   as the entry's own spelling reaches it (`displayFile`), which is
 #   what keeps a SARIF upload repo-relative.
 #
-#   SEE ALSO the #76 entry below: the same machinery seen from the other
-#   side. This entry is a value that HAS a document and is attributed to
-#   the wrong one; that one is a value that has NO document and is
-#   attributed to one anyway. Same cause -- Go keeps the entry URL on
-#   the context and stamps it at finding time -- and fixing this one
-#   does not settle that one.
+#   SEE ALSO #76, which had its own entry here until it closed
+#   (2026-09-06): the same machinery seen from the other side. This
+#   entry was a value that HAS a document and was attributed to the
+#   wrong one; that one was a value that has NO document -- one minted
+#   by the fixpoint, `1+2` resolving to 3 -- and was attributed to a
+#   document anyway. Same cause, Go keeping the entry URL on the
+#   context and stamping it at finding time, and fixing this one did
+#   not settle that one.
 #
-#   THE FIXES POINT IN OPPOSITE DIRECTIONS, which is why flattening the
-#   two into "Go names a file TypeScript does not" is worse than not
-#   summarising them at all: THIS entry needs the loaded document's url
-#   CARRIED FURTHER, onto every Val parsed from it, while #76 needs
-#   attribution WITHHELD. A reader who took the flattened form would
-#   fix this one by clearing the file, which is precisely wrong --
-#   TypeScript names part.aon here, and is right to.
+#   THE FIXES POINTED IN OPPOSITE DIRECTIONS, which is why flattening
+#   the two into "Go names a file TypeScript does not" would have been
+#   worse than not summarising them at all: THIS entry needed the
+#   loaded document's url CARRIED FURTHER, onto every Val parsed from
+#   it, while #76 needed attribution WITHHELD. A reader who took the
+#   flattened form would have fixed this one by clearing the file,
+#   which is precisely wrong -- TypeScript names part.aon here, and is
+#   right to.
+#
+#   Both are now pinned as rows rather than described here:
+#   vet-minted-arith-operand-unsited and
+#   vet-minted-concat-operand-unsited say a minted value names no file,
+#   and vet-residual-op-keeps-its-document says a value that WAS
+#   written keeps the document it was written in even after the
+#   fixpoint rebuilds it. The pair reads as one rule -- attribution
+#   follows authorship -- which is the thing the two entries were
+#   circling.
 #
 # ---------------------------------------------------------------------
 #
@@ -290,50 +303,6 @@
 # storage, not chosen. It is pinned per-port instead: ts/test/
 # exactjson.test.ts and go/generate_test.go.
 #
-#
-# ---------------------------------------------------------------------
-#
-# OPEN -- Go names a document for a value NOBODY WROTE.
-#
-#   issue: #76 (2026-08-25). Found by the parity probe for
-#   `aontu set --in-place`. THE INCLUDED-FILE HALF OF THIS IS #66 ABOVE,
-#   recorded a week earlier and rediscovered here -- which is the exact
-#   failure this ledger exists to prevent, and is left visible rather
-#   than tidied away. What follows is the half #66 does not cover.
-#
-#   A value MINTED during unification -- `1+2` resolving to 3 (and,
-#   before ADR-018 removed it, `x |> upper` resolving to "HELLO") --
-#   is unsited in both ports (row, col,
-#   len and src all agree at -1/-1/-1/empty), but Go names the entry
-#   document for it where TypeScript names none.
-#
-#   Divergent input:  entry `x: string`, overlay `x: hello |> upper`
-#                     (a spelling ADR-018 has since removed; `x: 1 + 2`
-#                     over `x: number` mints the same way),
-#                     then `set '$.x="BYE"' --in-place --format json`
-#   TypeScript: site file = ""        (nobody wrote this value)
-#   Go:         site file = <overlay> (the document being stamped)
-#   Everything else about the run agrees byte for byte, the written
-#   file included.
-#
-#   Not simply fixed, and NOT SETTLED BY FIXING #66. TypeScript's
-#   distinction is "stamped BEFORE the fixpoint" -- a parsed value,
-#   which belongs to its document even when it has no position within it
-#   (vet-unsited-junction pins exactly that, and is correct) -- versus
-#   "minted DURING it". Go does not track when a value came into being,
-#   so stampURL cannot draw the line: guarding it on the `unsited`
-#   sentinel was tried and breaks vet-unsited-junction. Knowing WHICH
-#   file a value came from, which is what #66 needs, is not the same as
-#   knowing whether it came from a file AT ALL -- and the two fixes
-#   point in OPPOSITE directions: #66 carries a url further, this one
-#   withholds one. TypeScript names a file for #66's value (the right
-#   one) and no file for this one; only THIS entry is a case of
-#   "TypeScript names none".
-#
-#   Reaches `set --in-place` among other reports, and SAFETY IS
-#   UNAFFECTED there: the overlay-alone evaluation refuses to edit a
-#   document that loads anything, so no attribution question arises
-#   before a write.
 #
 # ---------------------------------------------------------------------
 #

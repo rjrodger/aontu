@@ -47,9 +47,16 @@ Two rules follow from the layout:
 
 | system | target | reference | status |
 |---|---|---|---|
-| [`rb-solar`](rb-solar/) | Ruby on Rails 8, SQLite, Hotwire: the Solar System API (Planet, Moon) and a human UI over the same data | [voxgig-sdk/voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk) — its reference app's OpenAPI spec and `app/validate.ts`, and its Ruby SDK's live tests | planned; lands with RENDER P4–P8 |
+| [`rb-solar`](rb-solar/) | Ruby on Rails 8, SQLite, Hotwire: the Solar System API (Planet, Moon) and a human UI over the same data | [voxgig-sdk/voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk) — its reference app's OpenAPI spec and `app/validate.ts`, and its Ruby SDK | **LANDED 2026-09-06**: 11 checks, the reference's own 20 tests green |
 
 ## Running
+
+**The SDK's own suite was tried and rejected as a check.** The plan
+named the Ruby SDK's live tests; run against `rb-solar` they pass with
+the server turned off — 246 cases, two HTTP requests, lenient by
+design. A system's SDK leg is therefore the SDK's real client with
+assertions that fail, not the SDK's test suite. `rb-solar/README.md`
+records the measurement.
 
 Each `check.sh` is runnable from any cwd and honours `AONTU` (the
 engine command; default the TypeScript CLI in this repository) so the

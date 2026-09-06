@@ -1,0 +1,40 @@
+$.entity.0
+├── action
+│   ├── 0 (11)
+│   └── 1 (11)
+├── api_collection "/api/planet"
+├── api_item "/api/planet/:planet_id"
+├── children
+│   └── 0 (4)
+├── class "Planet"
+├── controller "planets"
+├── controller_class "PlanetsController"
+├── field
+│   ├── 0 (7)
+│   ├── 1 (7)
+│   ├── 2 (7)
+│   ├── 3 (7)
+│   ├── 4 (6)
+│   ├── 5 (6)
+│   └── 6 (6)
+├── id "planet"
+├── index []
+├── label "name"
+├── param "planet_id"
+├── plural "Planets"
+├── root true
+├── rows
+│   ├── 0 (5)
+│   ├── 1 (5)
+│   ├── 2 (5)
+│   ├── 3 (5)
+│   ├── 4 (5)
+│   ├── 5 (5)
+│   ├── 6 (5)
+│   └── 7 (5)
+├── table "planets"
+├── title "Planet"
+├── ui_collection "/planets"
+├── ui_collection_helper "planets"
+├── ui_item "/planets/:planet_id"
+└── ui_item_helper "planet"

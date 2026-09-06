@@ -82,6 +82,48 @@ path-seg-sep-is-text	gens	a:{1_0:7} b:$.a.1_0	{"a":{"1_0":7},"b":7}
 path-seg-sep-not-value-err	err	a:{10:7} b:$.a.1_0	Cannot resolve value
 path-seg-exponent-is-text	gens	a:{1e2:7} b:$.a.1e2	{"a":{"1e2":7},"b":7}
 path-seg-exponent-not-value-err	err	a:{100:7} b:$.a.1e2	Cannot resolve value
+
+# A SIGNED SEGMENT IS NOT A NUMERIC SEGMENT EITHER, and the sign is not
+# part of any key it could address: `$.a.-0` misses whether `a` is a
+# list, a map with the key `0`, or a map with the key `-0`. The minus is
+# consumed by the negation rule, which mints a value with no spelling
+# left, and a segment IS its spelling -- so what reaches the resolver is
+# the empty segment, which matches nothing.
+#
+# Go rendered the unspelled value instead, and negative zero renders
+# "0", so `$.a.-0` addressed element 0 (#67) -- the same silent wrong
+# location the hex and separator rows above exist to refuse, and reached
+# by `-00` and `- 0` as well. `-1` missed in both ports but by different
+# segments, so only the canon showed it.
+#
+# The key IS addressable, just not by a bare signed spelling: quote it.
+path-seg-neg-zero-not-index-err	err	a:[1,2] b:$.a.-0	Cannot resolve value
+path-seg-neg-zero-not-index-code	errc	a:[1,2] b:$.a.-0	no_path
+path-seg-neg-zero-not-zero-key-err	err	a:{0:1} b:$.a.-0	Cannot resolve value
+path-seg-neg-zero-not-own-key-err	err	a:{"-0":1} b:$.a.-0	Cannot resolve value
+path-seg-neg-zero-quoted-is-key	gens	a:{"-0":1} b:$.a."-0"	{"a":{"-0":1},"b":1}
+path-seg-neg-zero-double-err	err	a:[1,2] b:$.a.-00	Cannot resolve value
+path-seg-neg-float-err	err	a:[1,2] b:$.a.-0.5	Cannot resolve value
+path-seg-neg-one-not-own-key-err	err	a:{"-1":1} b:$.a.-1	Cannot resolve value
+# A PLUS is not a sign in this sense: it leaves a plain decimal behind,
+# and both ports have always indexed with it.
+path-seg-plus-is-decimal	gens	a:[10,20,30] b:$.a.+1	{"a":[10,20,30],"b":20}
+
+# A DOT CHAIN WRITTEN AS A STATEMENT is a relative reference, and at the
+# top level with a sibling statement it is ELEMENT 0 of an implicit
+# list -- so an unresolvable one misses at `$.0`, not at `$`.
+#
+# The two ports disagreed on both halves of this (#62): the reported
+# path (`$` in TS, `$.0` in Go), and the reference the chain resolved to
+# (`.b.c` in TS, `.a` in Go) for three segments or more. Both now say
+# `$.0` and `.a.b.c`, so the row pins the path AND the canon: a row for
+# either alone would have passed through the whole divergence.
+ref-chain-implicit-list-path	errc	a.b.c d:1	no_path
+ref-chain-implicit-list-path-msg	err	a.b.c d:1	Cannot resolve value at path $.0
+ref-chain-implicit-list-two-seg	err	a.b d:1	Cannot resolve value at path $.0
+ref-chain-alone-canon	canon	a.b.c	.a.b.c
+ref-chain-alone-two-seg-canon	canon	a.b	.a.b
+ref-chain-in-list-path	err	[a.b.c]	Cannot resolve value at path $.0
 # In a PATH the dot is always the separator, never a decimal point, which
 # is why a float segment splits: `$.a.1.0` is the two plain-decimal
 # segments `1` and `0`, and that is how a nested list index is written.

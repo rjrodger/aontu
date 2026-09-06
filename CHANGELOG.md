@@ -5,7 +5,136 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/aontu-lang/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
-## Unreleased
+## Go 0.1.16 — 2026-09-06 · TypeScript 0.58.0
+
+**Two source-level changes are breaking**, and both are below rather
+than here so that they read with their reasoning: an alias is declared
+with `=` and a `%name:` declaration is now refused with a hint, and a
+bare string is letters, digits, `-` and `_` — any other punctuation
+outside its own syntax is an error rather than text. Documents that
+0.57.0 accepted may not evaluate; the refusals name the fix.
+
+The release also carries `aontu render` in full — the code vocabulary,
+the fold, the verb, the declaration lowering with the TypeScript and Go
+profiles, `replace`/`esc`, provenance and coverage, and a generator
+written in the target's own syntax — and the first complete system
+generated with it.
+
+### `test/system/rb-solar`: a Rails application, generated
+
+The first full system in `test/system/`: a Ruby on Rails 8
+implementation of the
+[voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk)
+Solar System API, and a human UI over the same data, generated from one
+`model.aon` by nine generators. `check.sh` runs eleven checks, and the
+two that matter most are other people's code: the reference
+repository's own `validate.ts`, unmodified, all twenty of its tests
+against the booted app, and its Ruby SDK driving the app through its
+real client.
+
+The routes, the migrations, the Active Record classes, both sets of
+controllers, the ERB pages, the seeds and the entity-relationship
+diagram are all consequences of the model, and `aontu render --check`
+holds the committed tree to it. What is hand-written is only what the
+model does not decide: the `Gemfile`, `config/`, `bin/`, the three
+Rails base classes and the layout.
+
+Eight of the nine generators are **files in the language they
+generate** — `ruby -c` parses the seven Ruby ones, and the eighth is a
+Mermaid diagram drawing the ER diagram of the same model. The ninth is
+canonical aontu, because no marker an ERB file can carry is one ERB
+itself ignores.
+
+### A reference walks through a conjunct that still carries a mark wrapper
+
+Both ports. Duplicate keys meet, so `T: type({...})` written twice is a
+CONJUNCT of two pending wrappers, and one written beside a plain
+`T: {...}` is a conjunct too. The reference walk was transparent to a
+`type()` or `hide()` only when the wrapper was the whole node, so a
+reference into such a key stopped at the conjunct: the wrapper waited
+for its argument, the argument waited for the reference, and neither
+moved. Generation then reported `mapval_no_gen` at the FIRST referring
+child of every consumer — a path naming none of this, while later
+children resolved — which is what made it unreadable (#164).
+
+The walk now descends such a conjunct, taking the MEET of what each term
+supplies for the segment. `A: integer` in the marked statement beside
+`A: 5` in the plain one resolves to 5, not to `integer`, which a
+first-term-wins walk would have got wrong. `hide()` has the shape and had
+the defect, which the issue had left open.
+
+Found by `aontu-lang/system`'s package-repository specification, whose
+schema map is contributed by five documents.
+
+### A residual operator keeps the document it was written in
+
+Go. The fixpoint rebuilds an operator whose operands are not all done,
+and the rebuild kept the position while dropping the url — so the value
+came out belonging to no file, and the validation verb, whose site ROLE
+is exactly "which of the two documents is this in", called a data value
+part of the schema at row and column -1. Not the source text: the
+operands have been driven, so the value no longer occupies the span that
+was written.
+
+This closes #76 (Go naming a document for a value NOBODY wrote), which no
+longer reproduced in any shape probed — arithmetic and concatenation
+literals, a call result, `set --entry --overlay --in-place`, `why`, and
+`vet` over real files. Its ledger entry is removed and the behaviour is
+held by rows instead: `vet-minted-arith-operand-unsited` and
+`vet-minted-concat-operand-unsited` say a minted value names no file, and
+`vet-residual-op-keeps-its-document` says a value that WAS written keeps
+its document across the rebuild. The pair reads as one rule — attribution
+follows authorship.
+
+### Three parity defects in the Go port, and a coverage gate that could pass a gap
+
+**A residual call at the document root refuses** (#61). `upper($.zz)`
+generated `null` in Go and refused with `no_gen` in TypeScript. Under a
+map the residue is reported by the bag, naming the key, and a call never
+reaches its own generation; at the root there is no bag, and the silent
+`nil` became a document indistinguishable from one whose value genuinely
+is null. TypeScript refuses through `FeatureVal.gen`, which every
+`FuncBaseVal` inherits — the Go arm had copied `KeyFuncVal`'s override,
+the one function that is deliberately silent, and applied its exception
+to all of them.
+
+**A spread-applied constraint names its two frames in the same order in
+both ports** (#63). `a:&:min(3) a:{x:2}` put the constraint first in Go
+and the value first in TypeScript, so the caret pointed at a different
+site in each. The rule both ports state — the term later in the source is
+the primary — was not reached in Go, because its operand comparison
+bucketed a CLONE apart from a parsed value, and an applied spread
+template is always a clone. TypeScript compares the site url alone, which
+a clone inherits. Held byte for byte by a new full-message twin in each
+port.
+
+**A signed path segment misses instead of addressing the wrong place**
+(#67). `$.a.-0` resolved to element 0 in Go, and `-00` and `- 0` reached
+it the same way. A segment is its SPELLING — which is why `$.a.0x0`
+addresses the key `0x0` and not `0` — and the negation rule consumes the
+spelling, leaving a value Go rendered back into `"0"`. TypeScript pushes
+the recorded source text with no fallback, so an unspelled segment is
+empty and matches nothing. The key is still addressable, quoted:
+`$.a."-0"`.
+
+Also pinned, with no code change: `a.b.c d:1` misses at `$.0` and canons
+as `.a.b.c` in both ports (#62), and a call juxtaposed on a call
+(#59) and `path()` over a list (#60) refuse in both.
+
+**The ADR-002 coverage gate could report 100 % over a real gap** (#166,
+TypeScript). `test/covcheck.js` unions the passes `test/covrun.js` makes
+by the key `line:block:branch`, on the stated assumption that those three
+identify a branch arm. They do not: Node's lcov reporter writes the arm's
+position in that run's list for the file, and the position moves between
+runs of an unchanged suite — measured at 42 % of keys over two passes,
+with the arms on every one of 8,173 lines identical. An arm untaken in
+one pass was cleared whenever its key landed on a different, taken arm in
+another, which is how `src/lower.ts:240` passed the gate from the commit
+that introduced it until the run that happened not to collide. The union
+is now taken per line: a run vouches for a line when every arm it reports
+there was taken and it reports at least as many arms as any other run.
+The gate reaches 100 % on the first pass with the sound union, and names
+the gap without it.
 
 ### `aontu template`: a generator written in the target's own syntax
 

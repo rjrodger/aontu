@@ -1,13 +1,21 @@
 # aontu fmt — the agreed form of aontu source
 
-**Status:** ACCEPTED for implementation, 2026-09-03. P1 LANDED 2026-09-03 (§7.7); P2 LANDED 2026-09-03 (§7.8); P3 LANDED 2026-09-03 (§7.9); P4 LANDED 2026-09-03 (§7.10). Every phase has landed.
-yet. The open questions of §11 were put to the owner the day the note
-was written: X-1, X-2, X-3, X-5 and X-6 decided as recommended, X-7
-decided *against* the recommendation (a spread-only map keeps its
-braces — §3.3 carries the exception), X-4 stands as recommended. The
-worked examples in §6 are hand-formatted to the rules — they are what
-the formatter *should* print, not what anything printed. P1 begins on
-its own branch once this note is merged.
+**Status:** ACCEPTED for implementation, 2026-09-03. P1 LANDED
+2026-09-03 (§7.7); P2 LANDED 2026-09-03 (§7.8); P3 LANDED 2026-09-03
+(§7.9); P4 LANDED 2026-09-03 (§7.10). Every phase has landed. The open
+questions of §11 were put to the owner the day the note was written:
+X-1, X-2, X-3, X-5 and X-6 decided as recommended, X-7 decided
+*against* the recommendation (a spread-only map keeps its braces —
+§3.3 carries the exception), X-4 stands as recommended.
+
+The worked examples in §6 were hand-formatted to the rules when this
+note was written — what the formatter *should* print rather than what
+anything had printed. They are now what it does print: the shared
+suite's `fmt` rows hold every rule here in both ports, and the
+formatter answers the review that asked whether the verb should exist
+at all (issue #128, opened the day before this note): yes, as a full
+formatter, and the parity budget it named is paid in
+`test/spec/fmt.tsv`.
 
 **Origin:** Richard Rodger, 2026-09-03: *"This is not a pretty printer
 of canonical form. This is a source code formatter in the tradition of

@@ -1,0 +1,291 @@
+openapi: 3.0.0
+info:
+  title: Solar System API
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8901
+
+paths:
+  /api/planet:
+    get:
+      summary: List planets
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Planet'
+    post:
+      summary: Create planet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Planet'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Planet'
+  /api/planet/{planet_id}:
+    get:
+      summary: Get planet
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Planet'
+    put:
+      summary: Update planet
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Planet'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Planet'
+    delete:
+      summary: Delete planet
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+  /api/planet/{planet_id}/terraform:
+    post:
+      summary: Terraform planet
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                start:
+                  type: boolean
+                stop:
+                  type: boolean
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  state:
+                    type: string
+
+  /api/planet/{planet_id}/forbid:
+    post:
+      summary: Make planet forbidden
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                forbid:
+                  type: boolean
+                why:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  state:
+                    type: string
+                                        
+  /api/planet/{planet_id}/moon:
+    get:
+      summary: List moons of planet
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Moon'
+    post:
+      summary: Create moon
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Moon'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Moon'
+  /api/planet/{planet_id}/moon/{moon_id}:
+    get:
+      summary: Get moon
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: moon_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Moon'
+    put:
+      summary: Update moon
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: moon_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Moon'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Moon'
+    delete:
+      summary: Delete moon
+      parameters:
+        - name: planet_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: moon_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No Content
+components:
+  schemas:
+    Planet:
+      type: object
+      required:
+        - id
+        - name
+        - kind
+        - diameter
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+        diameter:
+          type: number
+          format: float
+    Moon:
+      type: object
+      required:
+        - id
+        - name
+        - planet_id
+        - kind
+        - diameter
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        planet_id:
+          type: string
+        kind:
+          type: string
+        diameter:
+          type: number
+          format: float

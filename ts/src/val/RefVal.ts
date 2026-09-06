@@ -73,6 +73,24 @@ function pendingMarkWrapper(v: any): boolean {
 }
 
 
+// The child a term of the walk can supply for one path segment, or
+// undefined when it has none. A map or a list answers from its own
+// members; a PENDING type()/hide() answers from its argument's, because
+// the wrapper only marks and its argument is the structure the path
+// names (see the call sites in `find`).
+function markedChild(v: any, part: any): Val | undefined {
+  if (true === v?.isMap || true === v?.isList) {
+    return v.peg[part]
+  }
+  if (true === v?.isFunc
+    && (true === v.isHideFunc || true === v.isTypeFunc)
+    && (true === v.peg?.[0]?.isMap || true === v.peg?.[0]?.isList)) {
+    return v.peg[0].peg[part]
+  }
+  return undefined
+}
+
+
 // An alias name, whole: the sigil and an identifier (the lexer's
 // ALIAS_RE, anchored at both ends, for the canon spelling above).
 const ALIAS_NAME_RE = /^%[A-Za-z_][A-Za-z0-9_]*$/
@@ -416,6 +434,45 @@ class RefVal extends FeatureVal {
             && (true === (node as any).peg?.[0]?.isMap
               || true === (node as any).peg?.[0]?.isList)) {
             node = (node as any).peg[0].peg[part]
+          }
+
+          // AND SO IS A CONJUNCT THAT STILL CARRIES ONE (issue #164).
+          // Two statements for one key meet, so a key written as
+          // `T: type({...})` twice is a CONJUNCT of two wrappers -- and
+          // one written once beside a plain `T: {...}` is a conjunct
+          // too. The arm above sees a wrapper only when it is the whole
+          // node, so a reference into such a key walked into the
+          // conjunct and stopped: the wrapper waited for its argument,
+          // the argument waited for the reference, and neither moved.
+          // The first referring child of every consumer stayed
+          // unresolved and generation reported mapval_no_gen at a path
+          // that names none of this, which is how a five-file schema
+          // spent its evening being bisected.
+          //
+          // The answer at a segment is the MEET of what each term
+          // supplies, so terms that have no such member are skipped and
+          // the rest are conjoined -- one term answers as itself, and
+          // the ordinary map arm answers once the fold has happened.
+          // Restricted to a conjunct that still holds a pending
+          // wrapper: every other conjunct folds on its own, and this
+          // walk exists only to break the wrapper's deadlock.
+          else if (true === (node as any).isConjunct
+            && Array.isArray((node as any).peg)
+            && pendingMarkWrapper(node)) {
+            const kids: Val[] = []
+            for (const term of (node as any).peg) {
+              const kid = markedChild(term, part)
+              if (undefined !== kid && null !== kid) {
+                kids.push(kid)
+              }
+            }
+            // No term has it YET. Not a miss: the conjunct is still
+            // folding, and the member may arrive with the fold.
+            if (0 === kids.length) {
+              break
+            }
+            node = 1 === kids.length ?
+              kids[0] : new ConjunctVal({ peg: kids }, ctx)
           }
           else if (node.done) {
             nopath = true
