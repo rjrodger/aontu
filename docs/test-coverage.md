@@ -29,7 +29,9 @@ Equivalently, by hand:
 # ts/test/covcheck.js against the lcov report
 cd ts && npm run build && npm run test-cov-check
 
-# the human-readable table (not the gate)
+# the human-readable table (not the gate, and not part of `make cov`:
+# it is a whole extra pass of the suite, and the gate names every
+# uncovered item without it)
 cd ts && npm run test-cov
 
 # Go — statement coverage, unit tests plus the GOCOVERDIR binary runs
