@@ -150,10 +150,12 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 		meetSrc += "\ncode: " + Hcanon(c)
 	}
 	instance, gerr := New().Generate(meetSrc)
-	if nil != gerr {
+	if nil != gerr { //coverage:ignore vet passed, so the meet generates
 		// The meet of a vetted instance and its vocabulary generates;
-		// this arm is the Go signature's, not a reachable outcome.
-		return renderErrorReport([]VetFinding{renderFinding( //coverage:ignore vet passed, so the meet generates
+		// this arm is the Go signature's, not a reachable outcome. The
+		// marker sits on the `if`, so the body is dropped wherever the
+		// toolchain opens the block (scripts/covmerge).
+		return renderErrorReport([]VetFinding{renderFinding(
 			"render_profile", "parse", "$", gerr.Error())})
 	}
 	return RenderValue(instance, &options)
@@ -185,10 +187,10 @@ func (a *Aontu) RenderProfile(src string) (map[string]any, []VetFinding) {
 	m, _ := root.(*MapVal)
 	instance, gerr := New().Generate(
 		renderProfileVocabulary + "\nprofile: " + Hcanon(m.peg["profile"]))
-	if nil != gerr {
+	if nil != gerr { //coverage:ignore vet passed, so the meet generates
 		// A vetted profile document generates; this arm is the Go
 		// signature's, not a reachable outcome.
-		return nil, []VetFinding{renderFinding( //coverage:ignore vet passed, so the meet generates
+		return nil, []VetFinding{renderFinding(
 			"render_profile", "parse", "$", gerr.Error())}
 	}
 	inst, _ := instance.(map[string]any)
