@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Solar System</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; max-width: 60rem; }
+      table { border-collapse: collapse; }
+      th, td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; text-align: left; }
+      dt { font-weight: 600; margin-top: 0.5rem; }
+    </style>
+  </head>
+  <body>
+    <nav><a href="/">Solar System</a></nav>
+    <%= yield %>
+  </body>
+</html>

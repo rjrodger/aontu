@@ -1,0 +1,7 @@
+# Hand-written: what a run of the app makes and no one commits.
+/storage/*
+/db/schema.rb
+/log/*
+/tmp/*
+/.bundle
+/Gemfile.lock

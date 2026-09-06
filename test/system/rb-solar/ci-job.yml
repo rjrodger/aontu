@@ -1,0 +1,57 @@
+# The CI job for this system, WAITING TO BE APPLIED BY A MAINTAINER.
+#
+# It is a file here rather than a job in `.github/workflows/build.yml`
+# because the session that wrote rb-solar cannot push workflow files:
+# GitHub refuses an OAuth app without the `workflow` scope, with
+#
+#   ! [remote rejected] ... (refusing to allow an OAuth App to create
+#   or update workflow '.github/workflows/build.yml' without 'workflow'
+#   scope)
+#
+# To apply it: paste the `system-rb-solar:` block below into the `jobs:`
+# map of `.github/workflows/build.yml`, then delete this file. Nothing
+# else in the repository refers to it.
+#
+# The job needs Ruby and Node, and it clones the reference repository
+# for the SDK leg — the SDK is not vendored here, because a copy of
+# someone else's client library in this tree would rot. Without that
+# clone the SDK check skips with a note and the other nine still run.
+
+system-rb-solar:
+  name: System (rb-solar)
+  timeout-minutes: 20
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 24.x
+
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3'
+
+    # The engine the check drives. `$AONTU` defaults to this build.
+    - run: npm install
+      working-directory: ts
+    - run: npm run build
+      working-directory: ts
+
+    - run: bundle install
+      working-directory: test/system/rb-solar/app
+
+    # The reference repository, for the SDK leg only. Public, shallow,
+    # and read once: `ref/` already carries the OpenAPI description,
+    # the validation script and the seed data at a pinned commit.
+    - name: Fetch the reference SDK
+      run: |
+        git clone --depth 1 \
+          https://github.com/voxgig-sdk/voxgig-solardemo-sdk.git \
+          "$RUNNER_TEMP/solardemo"
+
+    - name: rb-solar
+      working-directory: test/system/rb-solar
+      env:
+        RB_SOLAR_SDK: ${{ runner.temp }}/solardemo/rb
+      run: ./check.sh

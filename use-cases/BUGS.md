@@ -3634,3 +3634,107 @@ vocabulary admits, and the refusals stay pinned in `aontu-code.tsv` as
 for the text of a schema site that holds alias references; Go's, the
 name, is the shorter and the one a reader can follow into the
 vocabulary.
+
+## rule-dispatch — `emit`'s `match` and `filter`'s predicate disagree
+
+One entry, found by the first system in `test/system/` (RENDER.0.md
+§10): the two ways of asking "does this node have this shape" answer
+differently when the key is absent.
+
+### 88. An `emit` rule's `match` admits a node the key is ABSENT from, where `filter` refuses it [major]
+
+Found 2026-09-06 while writing `test/system/rb-solar`'s migration
+generator. Both ports agree with each other, so this is not an
+ADR-001 divergence — it is one feature family answering one question
+two ways.
+
+```
+field: [{ n:"a" pk:true } { n:"b" }]
+rule: emit($.field, [
+  { match: { pk:true } body: ["PK"] }
+  { match: { n:string } body: ["COL"] }
+])
+pick: filter($.field, { pk:true })
+```
+
+`pick` is `[{n:"a",pk:true}]` — `filter`'s predicate requires the key
+to BE there, which is what a reader expects. `rule` is
+`["PK","PK"]`: the first rule was taken for BOTH fields, though `{n:
+"b"}` carries no `pk` at all. The trial unification behind `match`
+treats the absent key as one it may ADD, so `{pk:true}` unifies with
+every open map and the rule matches everything.
+
+**Why it matters more than it looks.** "First rule wins" over a list
+of shapes is the most natural way to write a rule table, and
+discriminating on the PRESENCE of a key is the most natural way to
+write the rules. Both are unavailable: a table whose first rule names
+a key some nodes lack silently takes that rule for all of them. In
+`rb-solar` the symptom was a migration with no columns in it —
+`{ match: { pk:true } body: [] }` was meant to skip the primary key
+and instead swallowed every field — and nothing was reported, because
+emitting nothing is what an empty body is FOR.
+
+Consequence: a generator must either state the key on every node
+(`pk: false` on the ten fields that are not the key, which is what
+`rb-solar`'s model does) or discriminate on a key every node has with
+distinct values. Neither is wrong as modelling; both are forced.
+
+**It bit twice.** The second time was the ER-diagram generator, whose
+`{ fk:true }` rule marked every column of both entities as a foreign
+key — a diagram that is wrong in a way a reader would believe, since
+nothing about it looks broken. The model now answers `fk` on every
+field as well as `pk`. Two generators written a day apart, the same
+defect, and neither reported anything: that is the measure of it.
+
+Repro: `repros/emit-match/missing-key-matches.aon`. Fix: `match`
+should ask the question `filter` asks. `filter` is the correct one:
+`trialUnify` there refuses a node the predicate's key is missing from,
+and `emit`'s rule selection should reach the same answer through the
+same helper rather than through a plain meet.
+
+## bound-arguments — a relative reference inside a call in a body
+
+One entry, found by the first system in `test/system/` beside §88.
+The two ports agree; what they agree on is silence.
+
+### 89. A relative reference resolves in a body element but not inside a call's argument there, and the miss is silent [major]
+
+Found 2026-09-06 while writing `test/system/rb-solar`'s migration
+generator, which wanted the index rows for the table it was writing.
+
+```
+index: [{ table:"moons" column:"planet_id" }]
+entity: [{ table:"moons" }]
+
+bare: emit($.entity, { match: { table:string } body: [.table] })
+lit: emit($.entity, { match: { table:string } body: [filter($.index, { table:"moons" })] })
+rel: emit($.entity, { match: { table:string } body: [filter($.index, { table:.table })] })
+```
+
+`bare` is `["moons"]` — the reference binds to the node, as EMIT.0.md
+D5 says it does. `lit` is the one index row — `filter` works. `rel` is
+**`[]`**: the same `.table`, in the same body, as the value of a
+predicate key. It does not resolve, and nothing says so — no code, no
+path, no site. `emit_ref` is raised for a miss in a body ELEMENT; a
+miss inside a call's ARGUMENT there produces a nil that the call then
+treats as an ordinary predicate, and a predicate of `nil` matches
+nothing.
+
+**Why silence is the defect.** An empty selection is a legitimate
+answer: `rb-solar`'s routes generator relies on it, where a moon
+declares no actions and the dispatch over them writes nothing. So a
+generator cannot tell "this entity has no indexes" from "the reference
+that chooses them did not resolve" — and the symptom is a file that is
+correct except for the lines that are missing from it. In `rb-solar`
+the migration lost its `add_index` and rendered, checked and committed
+clean.
+
+Consequence: an enclosing node's values reach a nested selection only
+by being ON the nodes selected, so `rb-solar` states an entity's
+indexes under the entity rather than filtering a shared list. Repro:
+`repros/emit-arg/relative-in-call-argument.aon`. Fix: bind relative
+references in a call's arguments as they are bound in the body that
+holds the call — the binding walk stops at a nested generator's
+binding argument (EMIT.0.md D5) and should not stop at an ordinary
+argument. Failing that, raise `emit_ref` for the miss: a silent nil is
+the one outcome a generator cannot defend against.
