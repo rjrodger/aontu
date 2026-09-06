@@ -27,13 +27,17 @@ seed: @"./ref/solar.data.json"
 
 # --- what a field is -------------------------------------------------
 #
-# A kind decides three things that must agree: the migration's column
-# type, the Active Record validation, and the input a form shows. Named
-# once, so an entity states a kind rather than three facts that can
-# drift apart.
-kind: string: { column:"string" cast:"to_s" input:"text" }
-kind: float: { column:"float" cast:"to_f" input:"number" }
-kind: boolean: { column:"boolean" cast:"present?" input:"checkbox" }
+# A field's KIND is `string`, `float` or `boolean`. What each becomes
+# in a target -- a migration's column type, a form's input -- is the
+# generator's business and is spelled there with `match()`; the model
+# says what the field IS.
+#
+# EVERY FIELD ANSWERS `pk`, including with `false`. Absence is not an
+# answer a rule table can read: an `emit` rule's `match` admits a node
+# the key is missing from, where `filter` refuses it
+# ([BUGS.md §88](../../use-cases/BUGS.md)), so a generator that asked
+# `{ pk:true }` of a field with no `pk` would take that rule for every
+# field. Stating it is better modelling anyway.
 
 # EVERY FIELD STATES ITS JSON NAME. The wire says `terraformState`
 # where the column says `terraform_state`, and `planet_id` either way;
@@ -69,13 +73,16 @@ entity: [
 
     field: [
       { name:"id" json:"id" kind:"string" required:true pk:true }
-      { name:"name" json:"name" kind:"string" required:true }
-      { name:"kind" json:"kind" kind:"string" required:true }
-      { name:"diameter" json:"diameter" kind:"float" required:true }
-      { name:"terraform_state" json:"terraformState" kind:"string" }
-      { name:"forbid_state" json:"forbidState" kind:"string" }
-      { name:"forbid_reason" json:"forbidReason" kind:"string" }
+      { name:"name" json:"name" kind:"string" required:true pk:false }
+      { name:"kind" json:"kind" kind:"string" required:true pk:false }
+      { name:"diameter" json:"diameter" kind:"float" required:true pk:false }
+      { name:"terraform_state" json:"terraformState" kind:"string" pk:false }
+      { name:"forbid_state" json:"forbidState" kind:"string" pk:false }
+      { name:"forbid_reason" json:"forbidReason" kind:"string" pk:false }
     ]
+
+    # No index of its own: the primary key already has one.
+    index: []
 
     # An action is a POST beside the record that sets one state field
     # from the flags its body carries. The rules are tried in order and
@@ -136,12 +143,27 @@ entity: [
     parent_param: "planet_id"
     parent_controller: "planets"
 
+    # AN INDEX ROW CARRIES ITS OWN TABLE. Everything a generated line
+    # needs must be on the node the line's rule matched: a nested
+    # dispatch cannot see the entity the enclosing one matched, and a
+    # relative reference inside a call's argument does not resolve
+    # there at all -- silently, as an empty selection
+    # ([BUGS.md §89](../../use-cases/BUGS.md)).
+    index: [{ table:"moons" column:"planet_id" }]
+
     field: [
       { name:"id" json:"id" kind:"string" required:true pk:true }
-      { name:"name" json:"name" kind:"string" required:true }
-      { name:"planet_id" json:"planet_id" kind:"string" required:true fk:true }
-      { name:"kind" json:"kind" kind:"string" required:true }
-      { name:"diameter" json:"diameter" kind:"float" required:true }
+      { name:"name" json:"name" kind:"string" required:true pk:false }
+      {
+        name: "planet_id"
+        json: "planet_id"
+        kind: "string"
+        required: true
+        fk: true
+        pk: false
+      }
+      { name:"kind" json:"kind" kind:"string" required:true pk:false }
+      { name:"diameter" json:"diameter" kind:"float" required:true pk:false }
     ]
 
     action: []
