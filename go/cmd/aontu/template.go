@@ -101,11 +101,18 @@ func runTemplate(argv []string, stdout, stderr io.Writer) int {
 		for n < len(want) && n < len(have) && want[n] == have[n] {
 			n++
 		}
+		// THE TWO ARE THE SAME LENGTH, always: each transform maps one
+		// line to one line and applies the same trailing-newline rule,
+		// so `back` has as many lines as the file. The loop above
+		// therefore stops at a real difference rather than by running
+		// out of either -- an equal prefix all the way to the end IS
+		// the file unchanged, which returned above. So both indexes are
+		// in range here.
 		io.WriteString(stderr,
 			"aontu: "+files[0]+":"+strconv.Itoa(n+1)+
 				" is not what the round trip answers\n"+
-				"  have: "+templateJSON(have, n)+"\n"+
-				"  want: "+templateJSON(want, n)+"\n")
+				"  have: "+templateJSON(have[n])+"\n"+
+				"  want: "+templateJSON(want[n])+"\n")
 		return 1
 	}
 
@@ -117,13 +124,8 @@ func runTemplate(argv []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// templateJSON quotes one line of a report, or the empty string where
-// the two files are of different lengths and one has run out.
-func templateJSON(lines []string, n int) string {
-	line := ""
-	if n < len(lines) {
-		line = lines[n]
-	}
+// templateJSON quotes one line of a report.
+func templateJSON(line string) string {
 	out, _ := json.Marshal(line)
 	return string(out)
 }

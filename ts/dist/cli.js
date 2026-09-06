@@ -2866,9 +2866,15 @@ function runTemplate(argv) {
         while (n < want.length && n < have.length && want[n] === have[n]) {
             n++;
         }
+        // THE TWO ARE THE SAME LENGTH, always: each transform maps one
+        // line to one line and applies the same trailing-newline rule, so
+        // `back` has as many lines as `src`. The loop above therefore stops
+        // at a real difference rather than by running out of either -- an
+        // equal prefix all the way to the end IS `back === src`, which
+        // returned above. So both indexes are in range here.
         process.stderr.write(`aontu: ${files[0]}:${n + 1} is not what the round trip answers\n` +
-            `  have: ${JSON.stringify(have[n] ?? '')}\n` +
-            `  want: ${JSON.stringify(want[n] ?? '')}\n`);
+            `  have: ${JSON.stringify(have[n])}\n` +
+            `  want: ${JSON.stringify(want[n])}\n`);
         return 1;
     }
     process.stdout.write(resugar ?
