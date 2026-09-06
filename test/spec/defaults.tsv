@@ -39,6 +39,15 @@ defaults-refuse-other-shape	errc	a:*1\na:{x:2}	empty
 defaults-rank-clash	errc	a:*1\na:*7	pref_rank_clash
 defaults-rank-clash-in-one-disjunct	errc	a:*1|*7	pref_rank_clash
 defaults-rank-clash-at-rank-two	errc	a:**1\na:**7	pref_rank_clash
+# The clash must survive to GENERATION, not just to unification. Two
+# defaults of one rank each written with their own alternative leave
+# the disjunction holding both, and the lowest-rank choice generation
+# makes then has a TIE to break -- which Go broke silently, taking the
+# first arm and answering at exit 0 where TypeScript refused. There is
+# no alternative to fall back to, so the refusal belongs to the whole
+# disjunction (R2), whichever spelling reached it.
+defaults-rank-clash-at-gen	errc	a:*1 | integer\na:*7 | integer	pref_rank_clash
+defaults-rank-clash-at-gen-string	errc	level:*info | string\nlevel:*debug | string	pref_rank_clash
 defaults-rank-same-value-collapses	canon	a:*1\na:*1	{"a":*1}
 defaults-rank-compatible-folds	canon	a:*1\na:*integer	{"a":*1}
 

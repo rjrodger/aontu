@@ -26,9 +26,17 @@ import (
 
 // RenderUnit is one rendered unit: the path the instance gave it, its
 // language, and its bytes, as one string.
+//
+// LEXICOGRAPHIC FIELD ORDER, here and in every report struct below.
+// TypeScript emits every report through one emitter that sorts keys by
+// code point (ts/src/exactjson.ts); Go writes struct fields in
+// DECLARATION order, so on this side the declaration IS the sort. A
+// field added out of order makes the two ports' `--format json` differ
+// by key order alone, which no shared-spec row can see: both runners
+// parse before they compare.
 type RenderUnit struct {
-	Path string `json:"path"`
 	Lang string `json:"lang"`
+	Path string `json:"path"`
 	Text string `json:"text"`
 }
 
@@ -37,11 +45,11 @@ type RenderUnit struct {
 // tier 3 an opaque escape -- a text declaration or a raw piece. Strict
 // refuses tier 3 and only tier 3.
 type RenderLoss struct {
-	Unit      string `json:"unit"`
-	Path      string `json:"path"`
-	Tier      int    `json:"tier"`
 	Construct string `json:"construct"`
+	Path      string `json:"path"`
 	Reason    string `json:"reason"`
+	Tier      int    `json:"tier"`
+	Unit      string `json:"unit"`
 }
 
 // RenderTrace is ONE PIECE'S PROVENANCE (RENDER.0.md D9, D11; P7). A
@@ -51,28 +59,28 @@ type RenderLoss struct {
 // the model address the rule matched, and Rule the rule's address --
 // its table's, then `#`, then its index in that table.
 type RenderTrace struct {
-	Unit  string `json:"unit"`
-	Piece string `json:"piece"`
 	Node  string `json:"node"`
+	Piece string `json:"piece"`
 	Rule  string `json:"rule"`
+	Unit  string `json:"unit"`
 }
 
 // RenderHole is a rendered declaration no rule produced.
 type RenderHole struct {
-	Unit string `json:"unit"`
 	Path string `json:"path"`
+	Unit string `json:"unit"`
 }
 
 // RenderCoverage is THE COVERAGE REPORT (P7; G9 §6, "coverage cuts both
 // ways"). Two lists, and both are set computations over what the run
 // recorded.
 type RenderCoverage struct {
-	// Every model path a reference resolved to, in walk order: what the
-	// render READ.
-	Read []string `json:"read"`
 	// Dead model: the SHALLOWEST model paths no read reached. A path
 	// whose subtree holds a read is not named; its unread children are.
 	Dead []string `json:"dead"`
+	// Every model path a reference resolved to, in walk order: what the
+	// render READ.
+	Read []string `json:"read"`
 	// A silent hole: a rendered declaration no rule produced. In a
 	// document with no rule table that is every declaration, which is
 	// the true statement about it -- the rule layer governs none of

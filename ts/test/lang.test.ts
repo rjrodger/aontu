@@ -181,49 +181,54 @@ describe('lang', function() {
     expect(t00xABs.canon).equal('{"A":11,"B":22,"x":{"a":1}}')
 
 
+    // AN INCLUDE UNIFIES IN PLACE, so the loaded document's keys join
+    // this map where the `@` stands rather than arriving as a trailing
+    // conjunct arm. The parse-level canon is therefore the same shape
+    // inlining the loaded bytes gives, and the `{}&` wrapper these
+    // expectations used to carry is gone.
     let t00v = g0.parse('@"' + srcPath(__dirname) + '/../test/t00.aon"')
-    expect(t00v.canon).equal('{}&{"a":1}')
+    expect(t00v.canon).equal('{"a":1}')
     let t00 = new Unify(t00v)
     expect(t00.res.canon).equal('{"a":1}')
     expect(t00.res.gen(ctx)).equal({ a: 1 })
 
     let t00vX = g0.parse(' X:11 @"' + srcPath(__dirname) + '/../test/t00.aon"')
-    expect(t00vX.canon).equal('{"X":11}&{"a":1}')
+    expect(t00vX.canon).equal('{"X":11,"a":1}')
     let t00X = new Unify(t00vX)
     expect(t00X.res.canon).equal('{"X":11,"a":1}')
     expect(t00X.res.gen(ctx)).equal({ X: 11, a: 1 })
 
     let t00vY = g0.parse('@"' + srcPath(__dirname) + '/../test/t00.aon" Y:22 ')
-    expect(t00vY.canon).equal('{"Y":22}&{"a":1}')
+    expect(t00vY.canon).equal('{"Y":22,"a":1}')
     let t00Y = new Unify(t00vY)
     expect(t00Y.res.canon).equal('{"Y":22,"a":1}')
     expect(t00Y.res.gen(ctx)).equal({ Y: 22, a: 1 })
 
 
     let t00dv = g0.parse('D:{@"' + srcPath(__dirname) + '/../test/t00.aon"}')
-    expect(t00dv.canon).equal('{"D":{}&{"a":1}}')
+    expect(t00dv.canon).equal('{"D":{"a":1}}')
     let t00d = new Unify(t00dv)
     expect(t00d.res.canon).equal('{"D":{"a":1}}')
     expect(t00d.res.gen(ctx)).equal({ D: { a: 1 } })
 
 
     let t01v = g0.parse('@"' + srcPath(__dirname) + '/../test/t01.aontu"')
-    expect(t01v.canon).equal('{}&{"a":1,"b":{"d":2},"c":3}')
+    expect(t01v.canon).equal('{"a":1,"b":{"d":2},"c":3}')
 
     let t02v = g0.parse('@"' + srcPath(__dirname) + '/../test/t02.aon"')
-    expect(t02v.canon).equal('{}&({"x":1}&{"y":2})')
+    expect(t02v.canon).equal('{"x":1,"y":2}')
 
 
     let t00m = g0.parse(`
     @"` + srcPath(__dirname) + `/../test/t00.aon"
     `)
-    expect(t00m.canon).equal('{}&{"a":1}')
+    expect(t00m.canon).equal('{"a":1}')
 
     let t01m = g0.parse(`
     @"` + srcPath(__dirname) + `/../test/t00.aon"
     @"` + srcPath(__dirname) + `/../test/t04.aon"
     `)
-    expect(t01m.canon).equal('{}&{"a":1}&{"b":2}')
+    expect(t01m.canon).equal('{"a":1,"b":2}')
 
     let t02m = g0.parse(`
     x: 11
@@ -232,14 +237,17 @@ describe('lang', function() {
     @"` + srcPath(__dirname) + `/../test/t04.aon"
     z: 33
     `)
-    expect(t02m.canon).equal('{"x":11,"y":22,"z":33}&{"a":1}&{"b":2}')
+    // Two includes and three local pairs fold into ONE map, in the
+    // order the statements are written, which is what inlining the two
+    // loaded files at their `@`s gives.
+    expect(t02m.canon).equal('{"a":1,"b":2,"x":11,"y":22,"z":33}')
 
 
     let t03m = g0.parse(`
     x:y:{}
     @"` + srcPath(__dirname) + `/../test/t00.aon"
     `)
-    expect(t03m.canon).equal('{"x":{"y":{}}}&{"a":1}')
+    expect(t03m.canon).equal('{"a":1,"x":{"y":{}}}')
   })
 
 

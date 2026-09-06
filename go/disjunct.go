@@ -335,8 +335,21 @@ func (d *DisjunctVal) forGen(ctx *Ctx) (Val, bool) {
 	// Ranking may not have run when Gen is reached without a prior
 	// Unify, and it is what guarantees at most one preference stands
 	// here.
+	//
+	// ITS ANSWER IS LOAD-BEARING. rankPrefs folds equal ranks, and a
+	// DISAGREEMENT between two defaults of one rank is the R2 refusal
+	// -- `pref_rank_clash`, which belongs to the whole disjunction
+	// because there is no alternative to fall back to. Discarding that
+	// return let `level: *info | string` meeting `level: *debug |
+	// string` fall through to the lowest-rank loop below, where two
+	// arms tie at rank 0 and the first simply won: Go generated
+	// "debug" at exit 0 where TypeScript refused. The clash is
+	// returned as the value so Gen reports it, in the shape every
+	// other refusal here takes.
 	if !d.prefsRanked {
-		d.rankPrefs(ctx)
+		if clash := d.rankPrefs(ctx); nil != clash && clash.Nil() {
+			return clash, false
+		}
 	}
 	var prefs []Val
 	for _, m := range d.peg {

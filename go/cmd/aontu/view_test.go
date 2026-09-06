@@ -474,8 +474,14 @@ func TestViewStyleAutoReadsStdout(t *testing.T) {
 		t.Fatalf("an explicit style = %q", got)
 	}
 
-	// A character device is a terminal as far as colorFor is concerned,
-	// which is the same test the error frames use.
+	// /dev/null IS NOT A TERMINAL, though it is a character device --
+	// and that distinction is the whole of this test. `auto` here must
+	// resolve to plain text, because the bytes are going somewhere no
+	// escape can reach a reader: `aontu view ... --out golden.txt
+	// --check model.aon >/dev/null` is a CI script, and comparing a
+	// plain golden against coloured bytes made it exit 1 in this port
+	// only. This assertion used to require "ansi", which pinned the
+	// defect rather than the rule.
 	dev, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
 	if nil != err {
 		t.Fatal(err)
@@ -489,23 +495,50 @@ func TestViewStyleAutoReadsStdout(t *testing.T) {
 			os.Setenv("NO_COLOR", no)
 		}
 	}()
-	if got := viewStyleFor("auto", "text", dev); "ansi" != got {
-		t.Fatalf("auto on a terminal = %q", got)
+	if got := viewStyleFor("auto", "text", dev); "" != got {
+		t.Fatalf("auto to /dev/null = %q, want plain text", got)
+	}
+
+	// Neither is a regular file, nor an in-memory writer.
+	reg, err := os.CreateTemp(t.TempDir(), "fig")
+	if nil != err {
+		t.Fatal(err)
+	}
+	defer reg.Close()
+	if got := viewStyleFor("auto", "text", reg); "" != got {
+		t.Fatalf("auto to a regular file = %q, want plain text", got)
+	}
+	if got := viewStyleFor("auto", "text", &bytes.Buffer{}); "" != got {
+		t.Fatalf("auto to a buffer = %q, want plain text", got)
+	}
+
+	// A REAL TERMINAL, which is the only destination that turns colour
+	// on and therefore the only one the NO_COLOR rules can be read
+	// against. A pty master answers the terminal-attributes ioctl, so
+	// it is one; where a test cannot open one, the terminal arm is not
+	// exercised rather than faked.
+	tty, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0)
+	if nil != err {
+		t.Skipf("no pty available for the terminal arm: %v", err)
+	}
+	defer tty.Close()
+	if got := viewStyleFor("auto", "text", tty); "ansi" != got {
+		t.Fatalf("auto on a terminal = %q, want ansi", got)
 	}
 	// SET, TO ANYTHING BUT EMPTY, means no colour (no-color.org); set
 	// but empty is the documented exception and keeps it.
 	os.Setenv("NO_COLOR", "1")
-	if got := viewStyleFor("auto", "text", dev); "" != got {
+	if got := viewStyleFor("auto", "text", tty); "" != got {
 		t.Fatalf("auto under NO_COLOR = %q", got)
 	}
 	os.Setenv("NO_COLOR", "")
-	if got := viewStyleFor("auto", "text", dev); "ansi" != got {
+	if got := viewStyleFor("auto", "text", tty); "ansi" != got {
 		t.Fatalf("auto under an empty NO_COLOR = %q", got)
 	}
 	os.Unsetenv("NO_COLOR")
 	// A profile with no text mechanism has nothing to turn on, however
 	// interactive the destination is.
-	if got := viewStyleFor("auto", "mermaid", dev); "" != got {
+	if got := viewStyleFor("auto", "mermaid", tty); "" != got {
 		t.Fatalf("auto on mermaid = %q", got)
 	}
 }

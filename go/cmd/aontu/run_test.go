@@ -143,8 +143,11 @@ func TestRenderCanonError(t *testing.T) {
 	}
 }
 
-// stdinIsPipe: the live probe, and the stat-failure fallback via a
-// closed file swapped in for stdin.
+// stdinIsPipe: the live probe, and an UNANSWERABLE stdin, which counts
+// as piped. Node reports `process.stdin.isTTY` as undefined for a
+// descriptor it cannot classify, so TypeScript reads the source rather
+// than opening a REPL; this port now does the same. A closed file is
+// the unanswerable case.
 func TestStdinIsPipe(t *testing.T) {
 	_ = stdinIsPipe()
 	f, err := os.Open(os.DevNull)
@@ -155,8 +158,17 @@ func TestStdinIsPipe(t *testing.T) {
 	old := os.Stdin
 	os.Stdin = f
 	defer func() { os.Stdin = old }()
-	if stdinIsPipe() {
-		t.Fatalf("stat failure must report not-a-pipe")
+	if !stdinIsPipe() {
+		t.Fatalf("an unanswerable stdin must read, not open a REPL")
+	}
+
+	// A terminal is not a pipe, which is the arm that opens the REPL.
+	if tty, err := os.OpenFile("/dev/ptmx", os.O_RDWR, 0); nil == err {
+		defer tty.Close()
+		os.Stdin = tty
+		if stdinIsPipe() {
+			t.Fatalf("a terminal must open the REPL")
+		}
 	}
 }
 

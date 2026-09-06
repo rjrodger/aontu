@@ -111,39 +111,44 @@ let P = lang.parse.bind(lang);
         (0, expect_1.expect)(t00xBs.canon).equal('{"B":22,"x":{"a":1}}');
         let t00xABs = g0.parse('A:11 x:@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon" B:22');
         (0, expect_1.expect)(t00xABs.canon).equal('{"A":11,"B":22,"x":{"a":1}}');
+        // AN INCLUDE UNIFIES IN PLACE, so the loaded document's keys join
+        // this map where the `@` stands rather than arriving as a trailing
+        // conjunct arm. The parse-level canon is therefore the same shape
+        // inlining the loaded bytes gives, and the `{}&` wrapper these
+        // expectations used to carry is gone.
         let t00v = g0.parse('@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon"');
-        (0, expect_1.expect)(t00v.canon).equal('{}&{"a":1}');
+        (0, expect_1.expect)(t00v.canon).equal('{"a":1}');
         let t00 = new unify_1.Unify(t00v);
         (0, expect_1.expect)(t00.res.canon).equal('{"a":1}');
         (0, expect_1.expect)(t00.res.gen(ctx)).equal({ a: 1 });
         let t00vX = g0.parse(' X:11 @"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon"');
-        (0, expect_1.expect)(t00vX.canon).equal('{"X":11}&{"a":1}');
+        (0, expect_1.expect)(t00vX.canon).equal('{"X":11,"a":1}');
         let t00X = new unify_1.Unify(t00vX);
         (0, expect_1.expect)(t00X.res.canon).equal('{"X":11,"a":1}');
         (0, expect_1.expect)(t00X.res.gen(ctx)).equal({ X: 11, a: 1 });
         let t00vY = g0.parse('@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon" Y:22 ');
-        (0, expect_1.expect)(t00vY.canon).equal('{"Y":22}&{"a":1}');
+        (0, expect_1.expect)(t00vY.canon).equal('{"Y":22,"a":1}');
         let t00Y = new unify_1.Unify(t00vY);
         (0, expect_1.expect)(t00Y.res.canon).equal('{"Y":22,"a":1}');
         (0, expect_1.expect)(t00Y.res.gen(ctx)).equal({ Y: 22, a: 1 });
         let t00dv = g0.parse('D:{@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t00.aon"}');
-        (0, expect_1.expect)(t00dv.canon).equal('{"D":{}&{"a":1}}');
+        (0, expect_1.expect)(t00dv.canon).equal('{"D":{"a":1}}');
         let t00d = new unify_1.Unify(t00dv);
         (0, expect_1.expect)(t00d.res.canon).equal('{"D":{"a":1}}');
         (0, expect_1.expect)(t00d.res.gen(ctx)).equal({ D: { a: 1 } });
         let t01v = g0.parse('@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t01.aontu"');
-        (0, expect_1.expect)(t01v.canon).equal('{}&{"a":1,"b":{"d":2},"c":3}');
+        (0, expect_1.expect)(t01v.canon).equal('{"a":1,"b":{"d":2},"c":3}');
         let t02v = g0.parse('@"' + (0, srcpath_1.srcPath)(__dirname) + '/../test/t02.aon"');
-        (0, expect_1.expect)(t02v.canon).equal('{}&({"x":1}&{"y":2})');
+        (0, expect_1.expect)(t02v.canon).equal('{"x":1,"y":2}');
         let t00m = g0.parse(`
     @"` + (0, srcpath_1.srcPath)(__dirname) + `/../test/t00.aon"
     `);
-        (0, expect_1.expect)(t00m.canon).equal('{}&{"a":1}');
+        (0, expect_1.expect)(t00m.canon).equal('{"a":1}');
         let t01m = g0.parse(`
     @"` + (0, srcpath_1.srcPath)(__dirname) + `/../test/t00.aon"
     @"` + (0, srcpath_1.srcPath)(__dirname) + `/../test/t04.aon"
     `);
-        (0, expect_1.expect)(t01m.canon).equal('{}&{"a":1}&{"b":2}');
+        (0, expect_1.expect)(t01m.canon).equal('{"a":1,"b":2}');
         let t02m = g0.parse(`
     x: 11
     @"` + (0, srcpath_1.srcPath)(__dirname) + `/../test/t00.aon"
@@ -151,12 +156,15 @@ let P = lang.parse.bind(lang);
     @"` + (0, srcpath_1.srcPath)(__dirname) + `/../test/t04.aon"
     z: 33
     `);
-        (0, expect_1.expect)(t02m.canon).equal('{"x":11,"y":22,"z":33}&{"a":1}&{"b":2}');
+        // Two includes and three local pairs fold into ONE map, in the
+        // order the statements are written, which is what inlining the two
+        // loaded files at their `@`s gives.
+        (0, expect_1.expect)(t02m.canon).equal('{"a":1,"b":2,"x":11,"y":22,"z":33}');
         let t03m = g0.parse(`
     x:y:{}
     @"` + (0, srcpath_1.srcPath)(__dirname) + `/../test/t00.aon"
     `);
-        (0, expect_1.expect)(t03m.canon).equal('{"x":{"y":{}}}&{"a":1}');
+        (0, expect_1.expect)(t03m.canon).equal('{"a":1,"x":{"y":{}}}');
     });
     (0, node_test_1.it)('conjunct', () => {
         (0, expect_1.expect)(P('1&number').canon).equal('1&number');
