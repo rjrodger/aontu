@@ -13,6 +13,13 @@ const node_test_1 = require("node:test");
 const node_assert_1 = __importDefault(require("node:assert"));
 const render_1 = require("../dist/render");
 (0, node_test_1.describe)('render-value', () => {
+    // The options are optional: `render(src)` alone renders the root
+    // under the defaults, which is how an embedder calls it.
+    (0, node_test_1.test)('render-takes-no-options', () => {
+        const report = (0, render_1.render)('code: units: [{ path: "a.txt", lang: "text", decls: [] }]');
+        node_assert_1.default.strictEqual(report.verdict, 'ok');
+        node_assert_1.default.deepStrictEqual(report.units, [{ path: 'a.txt', lang: 'text', text: '' }]);
+    });
     (0, node_test_1.test)('nothing-to-render', () => {
         node_assert_1.default.deepStrictEqual((0, render_1.renderValue)({}), { verdict: 'ok', units: [], lossy: [] });
         node_assert_1.default.deepStrictEqual((0, render_1.renderValue)(undefined), { verdict: 'ok', units: [], lossy: [] });

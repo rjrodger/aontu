@@ -9,10 +9,18 @@
 import { test, describe } from 'node:test'
 import Assert from 'node:assert'
 
-import { renderValue } from '../dist/render'
+import { render, renderValue } from '../dist/render'
 
 
 describe('render-value', () => {
+
+  // The options are optional: `render(src)` alone renders the root
+  // under the defaults, which is how an embedder calls it.
+  test('render-takes-no-options', () => {
+    const report = render('code: units: [{ path: "a.txt", lang: "text", decls: [] }]')
+    Assert.strictEqual(report.verdict, 'ok')
+    Assert.deepStrictEqual(report.units, [{ path: 'a.txt', lang: 'text', text: '' }])
+  })
 
   test('nothing-to-render', () => {
     Assert.deepStrictEqual(renderValue({}), { verdict: 'ok', units: [], lossy: [] })
