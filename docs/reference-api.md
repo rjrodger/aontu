@@ -1298,7 +1298,8 @@ Without `--strict` the same export exits 0.
 Render a document that evaluates to an **`aontu:code`** instance into
 files, and say what the renderer could not check.
 
-```
+<!-- test: skip the synopsis is not a transcript -->
+```sh
 aontu render [--at <path>] [--profile <file>]... [--unit <path>]
              [--stdout | --out <dir> | --check <dir>] [--strict]
              [--format text|json] <file>
