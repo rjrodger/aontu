@@ -59,6 +59,7 @@ template-an-indented-residual-escape	template	//- `  //- not a marker`\n	{"back"
 template-a-quoted-aontu-value-is-a-body-line	template	//- of: [\n//- "a value"\n//- ]\n	{"back":"//- of: [\\n//- \\"a value\\"\\n//- ]\\n","out":"of: [\\n\\"a value\\"\\n]\\n"}
 template-an-escape-the-quoting-never-writes	template	//- of: [\n//- "a\\tb"\n//- ]\n	{"back":"//- of: [\\n//- \\"a\\\\tb\\"\\n//- ]\\n","out":"of: [\\n\\"a\\\\tb\\"\\n]\\n"}
 template-a-line-that-is-not-a-lone-string	template	//- of: [\n//- "a" + "b"\n//- ]\n	{"back":"//- of: [\\n//- \\"a\\" + \\"b\\"\\n//- ]\\n","out":"of: [\\n\\"a\\" + \\"b\\"\\n]\\n"}
+template-a-trailing-lone-backslash-is-not-a-body-line	template	//- of: [\n//- `a\\`\n//- ]\n	{"back":"//- of: [\\n//- `a\\\\`\\n//- ]\\n","out":"of: [\\n`a\\\\`\\n]\\n"}
 template-an-unterminated-string-is-aontu	template	//- of: [\n//- "half\n//- ]\n	{"back":"//- of: [\\n//- \\"half\\n//- ]\\n","out":"of: [\\n\\"half\\n]\\n"}
 template-a-marker-later-in-a-line-is-output	template	const s = "//- not a marker"\n	{"back":"const s = \\"//- not a marker\\"\\n","out":"`const s = \\"//- not a marker\\"`\\n"}
 template-the-marker-token-alone-on-a-line	template	//- of: [\nx //-\n//- ]\n	{"back":"//- of: [\\nx //-\\n//- ]\\n","out":"of: [\\n`x //-`\\n]\\n"}
