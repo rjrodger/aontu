@@ -66,6 +66,49 @@ func (rv *RefVal) walkFrom(root Val, refpath []string) (Val, walkOutcome) {
 			} else {
 				node = n.peg[idx]
 			}
+		case *ConjunctVal:
+			// AND SO IS A CONJUNCT THAT STILL CARRIES ONE (#164).
+			// Two statements for one key MEET, so a key written as
+			// `T: type({...})` twice is a conjunct of two wrappers --
+			// and one written once beside a plain `T: {...}` is a
+			// conjunct too. The arm above sees a wrapper only when it
+			// is the whole node, so a reference into such a key walked
+			// into the conjunct and stopped here: the wrapper waited
+			// for its argument, the argument waited for the reference,
+			// and neither moved. Generation then reported
+			// mapval_no_gen at the first referring child of every
+			// consumer -- a path that names none of this.
+			//
+			// The answer at a segment is the MEET of what each term
+			// supplies, so terms with no such member are skipped and
+			// the rest are conjoined; one term answers as itself, and
+			// the ordinary map arm answers once the fold has happened.
+			// Restricted to a conjunct that still holds a pending
+			// wrapper: every other conjunct folds on its own, and this
+			// walk exists only to break the wrapper's deadlock.
+			// Mirrors the same arm in ts/src/val/RefVal.ts find.
+			if !pendingMarkWrapper(n) {
+				if node.Dc() == DONE {
+					return nil, walkMissed
+				}
+				return nil, walkDefer
+			}
+			kids := []Val{}
+			for _, t := range n.peg {
+				if kid := markedChild(t, part); nil != kid {
+					kids = append(kids, kid)
+				}
+			}
+			// No term has it YET. Not a miss: the conjunct is still
+			// folding, and the member may arrive with the fold.
+			if 0 == len(kids) {
+				return nil, walkDefer
+			}
+			if 1 == len(kids) {
+				node = kids[0]
+			} else {
+				node = newConjunct(kids)
+			}
 		default:
 			if node.Dc() == DONE {
 				return nil, walkMissed
@@ -285,6 +328,29 @@ func listIndex(part string) (int, bool) {
 		return 0, false
 	}
 	return idx, true
+}
+
+// markedChild is the child one term of the walk supplies for a path
+// segment, or nil when it has none. A map or a list answers from its
+// own members; a PENDING type()/hide() answers from its argument's,
+// because the wrapper only marks and its argument is the structure the
+// path names. Mirrors markedChild in ts/src/val/RefVal.ts.
+func markedChild(v Val, part string) Val {
+	if fv, ok := v.(*FuncVal); ok && DONE != fv.dc &&
+		("hide" == fv.name || "type" == fv.name) && 0 < len(fv.peg) {
+		v = fv.peg[0]
+	}
+	switch n := v.(type) {
+	case *MapVal:
+		return n.peg[part]
+	case *ListVal:
+		idx, ok := listIndex(part)
+		if !ok || idx >= len(n.peg) {
+			return nil
+		}
+		return n.peg[idx]
+	}
+	return nil
 }
 
 // pendingMarkWrapper: is this value an unresolved type()/hide() call —

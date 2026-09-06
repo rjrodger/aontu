@@ -57,3 +57,37 @@ type-conjunct-arg-ref	gens	Entry:type({kind:"service"}&{owner:string})\nuse:$.En
 type-conjunct-target-ref	gens	use:$.Entry&{owner:"team-pay"}\nBase:{kind:"service"}\nEntry:type($.Base)&{owner:string}\n	{"Base":{"kind":"service"},"use":{"kind":"service","owner":"team-pay"}}
 type-alias-ref-first	gens	use:$.Entry&{owner:"team-pay"}\nEntry:type($.Base&{owner:string})\nBase:{kind:"service"}\n	{"Base":{"kind":"service"},"use":{"kind":"service","owner":"team-pay"}}
 hide-computed-pack-copy	gens	names:[a]\ntools:pack($.names,{})\ntools:a:{se:readonly,doc_row:hide("|"+.se)}\ndocs:[copy($.tools.a.doc_row)]\n	{"docs":["|readonly"],"names":["a"],"tools":{"a":{"se":"readonly"}}}
+
+# TWO STATEMENTS FOR ONE KEY, BOTH MARKED, WITH A REFERENCE BETWEEN THE
+# DEFINITIONS (issue #164).
+#
+# Duplicate keys MEET, so `T: type({...})` written twice is a CONJUNCT
+# of two pending wrappers -- and one written beside a plain `T: {...}`
+# is a conjunct too. The walk was transparent to a wrapper only when the
+# wrapper was the WHOLE node, so a reference into such a key stopped at
+# the conjunct: the wrapper waited for its argument, the argument waited
+# for the reference, and neither moved. Both ports reported
+# mapval_no_gen at the FIRST referring child of each consumer -- a path
+# naming none of this -- while later children resolved, which is what
+# made it so hard to read.
+#
+# The specification in aontu-lang/system found it with five files, each
+# contributing `T: type({...})` and referring to the others. Every shape
+# below is a real spelling of that: the second statement marked or
+# plain, the reference in the first definition or the second, marks of
+# both kinds, references crossing both ways, and three statements.
+split-type-internal-ref	gens	T: type({ A: 1  A2: $.T.A })\nT: type({ B: 2 })\nout: $.T.A2\n	{"out":1}
+split-type-internal-ref-canon	canon	T: type({ A: 1  A2: $.T.A })\nT: type({ B: 2 })\n	{"T":{"A":1,"A2":1,"B":2}}
+split-type-plain-second	gens	T: type({ A: 1  A2: $.T.A })\nT: { B: 2 }\nout: $.T.A2\n	{"out":1}
+split-type-ref-in-second	canon	T: type({ A: 1 })\nT: type({ A2: $.T.A })\n	{"T":{"A":1,"A2":1}}
+split-hide-internal-ref	gens	T: hide({ A: 1  A2: $.T.A })\nT: hide({ B: 2 })\nout: $.T.A2\n	{"out":1}
+# The segment's answer is the MEET of what every term supplies, not the
+# first term that has one: `A` is `integer` in the marked statement and
+# `5` in the plain one, so `$.T.A` is 5 and not `integer`.
+split-type-meet-of-terms	gens	T: type({ A: integer  A2: $.T.A })\nT: { A: 5 }\nout: $.T.A2\n	{"out":5}
+split-type-cross-refs	gens	T: type({ A: 1  B2: $.T.B })\nT: type({ B: 2  A2: $.T.A })\nout: [$.T.A2, $.T.B2]\n	{"out":[1,2]}
+split-type-three-statements	canon	T: type({ A: 1  A2: $.T.A })\nT: type({ B: 2 })\nT: type({ C: 3 })\n	{"T":{"A":1,"A2":1,"B":2,"C":3}}
+# The reduced form the issue was filed with, whole: two definitions, a
+# reference between them, and two consumers whose FIRST child was the
+# one that never settled.
+split-type-issue-repro	gens	T: type({ A: close({ x: integer })  A2: $.T.A })\nT: type({ B: close({ y: integer }) })\na: { k1: $.T.A2 & { x: 1 }  k2: $.T.A2 & { x: 2 } }\nb: { k1: $.T.B & { y: 1 } }\n	{"a":{"k1":{"x":1},"k2":{"x":2}},"b":{"k1":{"y":1}}}
