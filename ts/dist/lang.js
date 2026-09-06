@@ -1993,8 +1993,10 @@ function makeModelResolver(options) {
         // asked, so nothing on disk can shadow one and a typo is refused
         // here, naming the set, rather than searched for. Available under
         // every capability but `none`, checked just above, like the std
-        // names below.
-        if (path.startsWith(std_1.AONTU_SCHEME)) {
+        // names below. A path that is not a string (`a: @1`) is not a name
+        // at all: it falls through to the legs below and is not found there,
+        // as it always was.
+        if ('string' === typeof path && path.startsWith(std_1.AONTU_SCHEME)) {
             const model = std_1.STD_SOURCES[path];
             if (null == model) {
                 modelNotFound(path);

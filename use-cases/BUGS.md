@@ -3499,3 +3499,19 @@ principle is vacuous for a recursive alias, which has no longhand
 twin), or give the knot a path spelling. `test/spec/alias.tsv` records
 the knot in prose and pins generation only; no canon row can pin it,
 because every canon row must reparse.
+
+### 83. An include whose path is not a string is an internal error in TypeScript and a nameless refusal in Go [minor]
+
+Found 2026-09-06 while landing the `aontu:` scheme, whose leg tests the
+include path as a string. `a: @1` and `a: @true` -- an `@` followed by
+a number or a boolean rather than a name -- report `unexpected error:
+Cannot read properties of undefined (reading 'path')` in TypeScript, a
+crash inside the resolver rather than a refusal, and `source not found:`
+with nothing after the colon in Go, which refuses without saying what
+it could not find. Both predate the scheme (main reproduces the
+TypeScript text byte for byte); the scheme's leg guards the type so the
+path reaches the legs below as before, and `ts/test/coverage3.test.ts`
+asserts only that the parse throws. Fix: refuse the spelling at the
+parser with its own code and site -- the path of an include is a
+string, and a value of any other kind is a document error, not a
+resolver's business.
