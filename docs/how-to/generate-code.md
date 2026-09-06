@@ -1,5 +1,5 @@
 ---
-description: "Generate target-language source from a model: the shape a transform takes, what to watch for, and how `join` assembles the file."
+description: "Generate target-language source from a model: a rule set over the records, the pieces of a file, and `aontu render` to fold them into bytes and hold the result against its golden."
 group: schemas
 order: 80
 ---
@@ -8,11 +8,12 @@ order: 80
 
 A model that holds the field names, the types, and the optionality
 already holds everything a Go struct or a TypeScript interface needs.
-This guide shows how to compute the whole file with the unifier—the
-lines with a spread, and the assembly with `join`.
+This guide computes a Go file from one with a rule set—`emit`—and
+renders it with `aontu render`, which owns every indent and every line
+terminator so the transform spells neither.
 
-For the full worked version—three targets, goldens, and a check that
-both ports emit identical bytes—see
+For the full worked version—three targets in one instance, goldens,
+and a check that both ports render identical bytes—see
 [`use-cases/15-code-generation/`](../../use-cases/15-code-generation/).
 
 ## Hold the target text in a backtick string
@@ -35,11 +36,20 @@ $ aontu -c frag.aon
 {"row":"\tID string","tag":"json:\"id\""}
 ```
 
-## Compute one line per field
+## Write the rules
 
-Three pieces do the work: a **list spread** over the fields, a
-**staged** key holding the computed rows, and `pick` to project them.
-Write this as `types.aon`:
+A generator is a **rule set**: `emit(select, table)` visits every node
+of a selection in source order, takes the first template whose `match`
+the node unifies with, and instantiates its `body` against that
+node—`.name` is that node's `name`. The body is a list of **pieces**: a
+bare string is a line, `{ k:"line" at:1 of:[…] }` is a line one level
+deeper, and `k:"blank"` is a blank line. A nested `emit` splices its
+pieces into the list, so the result is flat and every piece carries its
+own depth.
+
+The pieces fill a **unit** of the bundled `aontu:code` vocabulary: a
+file path, a language, and the declarations that make it up. Write
+this as `types.aon`:
 
 <!-- test: file types.aon -->
 ```aontu
@@ -48,114 +58,124 @@ records: [
     name: "Customer"
     fields: [{ n:"id" t:"string" go:"ID" } { n:"email" t:"string" go:"Email" }]
   }
-]
-units: [
-  &: {
-    head: `type ` + .name + ` struct {`
-    rows: [
-      &: {
-        out: `\t` + .go + ` `
-          + match(.t, "string", `string`, "integer", `int64`)
-          + ` \`json:"` + .n + `"\``
-      }
-    ] & .fields
-    body: pick(.rows, out)
-    tail: `}`
-  }
-] & $.records
-```
-
-<!-- test: run -->
-```sh
-$ aontu get $.units.0.body types.aon
-[
-  "\tID string `json:\"id\"`",
-  "\tEmail string `json:\"email\"`"
-]
-```
-
-Each piece is there for a reason:
-
-- **A list spread, not `pack`.** List order is source order. `pack`
-  keys by data, and map keys sort by code point, so `pack`-then-`pick`
-  would emit the fields alphabetically—silently wrong output for a
-  file.
-- **The rows are staged into a key.** The spread writes its result to
-  a named key, `rows`, and `pick` reads that key to project `out`.
-- **The source keys ride through.** A spread
-  [meets](../unification.md), and the meet is what makes `.name` and
-  `.fields` resolvable inside the template, so `name` and `fields`
-  appear beside `head` and `body` in the result.
-
-## Fold the lines into a file with `join`
-
-`join(coll, sep?)` is the reduction over strings: every member as text,
-`sep` between them. It folds at whatever scale you point it at—once over
-a record's lines, again over the records—and that is the whole of file
-assembly.
-
-Add two keys to the template and one at the top level. Write this as
-`whole.aon`:
-
-<!-- test: file whole.aon -->
-```aontu
-records: [
-  {
-    name: "Customer"
-    fields: [{ n:"id" t:"string" go:"ID" } { n:"email" t:"string" go:"Email" }]
-  }
   { name:"Order" fields:[{ n:"total" t:"integer" go:"Total" }] }
 ]
-units: [
-  &: {
-    head: `type ` + .name + ` struct {`
-    rows: [
-      &: {
-        out: `\t` + .go + ` `
-          + match(.t, "string", `string`, "integer", `int64`)
-      }
-    ] & .fields
-    body: join(pick(.rows, out), `\n`)
-    tail: `}`
-    text: .head + `\n` + .body + `\n` + .tail
+
+%field = emit(_, {
+  match: n: string
+  body: [
+    {
+      k: "line"
+      at: 1
+      of: [
+        .go + " " + match(.t, "string", "string", "integer", "int64")
+        + ` \`json:"` + .n + `"\``
+      ]
+    }
+  ]
+})
+
+%record = emit(_, {
+  match: name: string
+  body: [k:"blank" "type " + .name + " struct {" emit(.fields, %field) "}"]
+})
+
+code: units: [
+  {
+    path: "types.go"
+    lang: "go"
+    profile: indent: { unit:"\t" width:1 }
+    decls: [
+      { k:"frag" of:["package acme"] }
+      { k:"frag" of:emit($.records, %record) }
+    ]
   }
-] & $.records
+]
+```
 
-file: join(pick($.units, text), `\n\n`) + `\n`
+Each piece of that shape is there for a reason:
+
+- **A rule set walks the records in source order.** List order is
+  what a file needs; `pack` would key by data and emit the records
+  alphabetically—silently wrong output for a file.
+- **Pieces, not text.** A record contributes a blank line, a head, its
+  fields and a tail; a field contributes one line *at depth 1*. The
+  tab appears once, in the unit's `profile`; leave the profile out and
+  the unit renders under the bundled text profile, two spaces per
+  depth.
+- **Two fragments make one unit.** The package clause is one fragment,
+  the records another; a unit's declarations render in order, and the
+  blank line each record opens with separates a struct from what came
+  before.
+- **The source keys ride through.** `emit` binds the body to the node,
+  so `.name` and `.fields` resolve inside the template without the
+  node being copied anywhere.
+
+## Render the unit
+
+`--stdout` prints one unit's bytes and nothing else, so the output can
+be piped into `gofmt` or a file:
+
+<!-- test: run -->
+```sh
+$ aontu render --stdout types.aon
+package acme
+
+type Customer struct {
+	ID string `json:"id"`
+	Email string `json:"email"`
+}
+
+type Order struct {
+	Total int64 `json:"total"`
+}
+```
+
+That is the file. No host unwraps a string, decides an ordering, or
+adds a separator: the renderer put a tab in front of every depth-1
+line and a terminator after every line, and the transform said which
+lines exist and where.
+
+Run it without a flag and the verb summarises the units instead, one
+line each. The **loss report** goes to stderr: every fragment is a
+claim about a language the renderer does not parse, and each is
+listed, so a redirect keeps the bytes clean and the reader still sees
+what was not checked. `--strict` refuses the two escapes the renderer
+copies verbatim—a `text` declaration and a `raw` piece—and passes
+fragments.
+
+## Write the files, and hold them
+
+`--out <dir>` writes every unit below `<dir>`, or nothing: the whole
+set is rendered first, and one refused unit means no file is touched.
+`--check <dir>` renders and compares, and is the CI form—drift is
+listed by path and exits 1:
+
+<!-- test: run -->
+```sh
+$ aontu render --out gen types.aon
+$ aontu render --check gen types.aon
+```
+
+Edit `gen/types.go` by hand and the check names it:
+
+<!-- test: file gen/types.go -->
+```go
+package acme
 ```
 
 <!-- test: run -->
 ```sh
-$ aontu get $.file whole.aon
-"type Customer struct {\n\tID string\n\tEmail string\n}\n\ntype Order struct {\n\tTotal int64\n}\n"
+$ aontu render --check gen types.aon
+aontu: types.go differs from the rendered unit
+...
+$ echo $?
+1
 ```
 
-That string **is** the file. `aontu get` answers with JSON, so a host
-still unwraps the string to bytes, but it decides nothing—no
-ordering, no separators, no layout.
-
-Three properties are worth knowing:
-
-- **The separator defaults to `""`**, so `join(coll)` is
-  concatenation. That is why there is no `concat` and no `lines`.
-- **`join([])` is `""`**—concatenation's identity, the parallel of
-  `sum([]) == 0`. An empty record list yields an empty file rather
-  than an error.
-- **It folds with `+`**, so the number-to-text rule is `+`'s own: no
-  `0d` marker, no `.0` float suffix, and a big integer's exact digits.
-
-A member that is settled but not text—a map, a list, a null—is
-`join_member`, refused at the member rather than at generation. A
-member that is merely *unresolved* is not an error at all: the call
-stays residual, so a transform can be written in a schema over data
-that has not arrived.
-
-<!-- test: scenario join-residual -->
-<!-- test: run -->
-```sh
-$ echo 'names: [string]  line: join($.names, ",")' | aontu -c
-{"line":join([string],","),"names":[string]}
-```
+Commit the generated files beside the model and run `--check` in CI;
+a hand edit to a generated file is then a red build rather than a
+quiet divergence from the model.
 
 ## Put the target's names in the model
 
@@ -171,6 +191,10 @@ conflict instead of a broken identifier at emit time.
 
 ## Related
 
+- [`aontu render`](../reference-api.md#aontu-render). The verb's
+  flags, exit codes and confinement.
+- [Transforming: `emit`](../reference-language.md#transforming-emit).
+  Dispatch order, splicing, named tables and recursion.
 - [Export JSON Schema](export-json-schema.md). The other bridge out
   of the model.
 - [Keep schema out of output](keep-schema-out-of-output.md). `hide()`

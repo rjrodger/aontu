@@ -73,6 +73,7 @@ type RenderOptions struct {
 
 const renderVocabulary = `@"aontu:code"`
 const renderTextProfile = `@"aontu:lang/text"`
+const renderProfileVocabulary = `@"aontu:profile"`
 
 func renderFinding(code, class, path, message string) VetFinding {
 	return VetFinding{
@@ -129,8 +130,13 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 	// COMPUTED -- an emit, a join -- and the vocabulary's alternatives
 	// are tried against values, not against calls still waiting to
 	// fire. A finding from that vet addresses the instance by path.
+	// UNDER NO CALLER CAPABILITY, here and in the meet below: the
+	// vocabulary is the engine's own and the instance is a canon, which
+	// includes nothing, so the caller's include capability -- which
+	// governs the DOCUMENT -- has nothing to govern here, and `none`
+	// must not deny the renderer its own schema.
 	value := Hcanon(node)
-	report := Vet(renderVocabulary, value, &VetOptions{Trust: a.Trust})
+	report := Vet(renderVocabulary, value, nil)
 	if "valid" != report.Verdict {
 		return renderErrorReport(report.Findings)
 	}
@@ -143,16 +149,53 @@ func (a *Aontu) Render(src string, opts *RenderOptions) RenderReport {
 	if c, has := m.peg["code"]; has {
 		meetSrc += "\ncode: " + Hcanon(c)
 	}
-	meet := New()
-	meet.Trust = a.Trust
-	instance, gerr := meet.Generate(meetSrc)
-	if nil != gerr {
+	instance, gerr := New().Generate(meetSrc)
+	if nil != gerr { //coverage:ignore vet passed, so the meet generates
 		// The meet of a vetted instance and its vocabulary generates;
-		// this arm is the Go signature's, not a reachable outcome.
-		return renderErrorReport([]VetFinding{renderFinding( //coverage:ignore vet passed, so the meet generates
+		// this arm is the Go signature's, not a reachable outcome. The
+		// marker sits on the `if`, so the body is dropped wherever the
+		// toolchain opens the block (scripts/covmerge).
+		return renderErrorReport([]VetFinding{renderFinding(
 			"render_profile", "parse", "$", gerr.Error())})
 	}
 	return RenderValue(instance, &options)
+}
+
+// RenderProfile evaluates a PROFILE DOCUMENT (RENDER.0.md D5) the way
+// Render evaluates its own: under this instance's include options,
+// then vetted against aontu:profile as a settled value and met with
+// that vocabulary so its defaults (indent.width 2, ...) are in it. The
+// answer is the profile map the fold reads -- what --profile <file>
+// hands to RenderOptions.Profiles -- or the findings that refused the
+// document: one that does not stand up, or one the vocabulary rejects.
+// Twin of renderProfile in ts/src/render.ts.
+func (a *Aontu) RenderProfile(src string) (map[string]any, []VetFinding) {
+	parsed, perr := a.parseEntry(src)
+	if nil != perr {
+		return nil, []VetFinding{parseFinding(a.File, VetRoleData, perr)}
+	}
+	root, ctx, _ := a.unifyCtx(parsed, nil, src)
+	if nil == root || root.Nil() || 0 < len(ctx.err) {
+		return nil, []VetFinding{failureFinding(ctx, a.File, src, root)}
+	}
+	report := Vet(renderProfileVocabulary, Hcanon(root), nil)
+	if "valid" != report.Verdict {
+		return nil, report.Findings
+	}
+	// The meet, keyed as Render's is: the vocabulary requires profile,
+	// so a value the vet admitted has one.
+	m, _ := root.(*MapVal)
+	instance, gerr := New().Generate(
+		renderProfileVocabulary + "\nprofile: " + Hcanon(m.peg["profile"]))
+	if nil != gerr { //coverage:ignore vet passed, so the meet generates
+		// A vetted profile document generates; this arm is the Go
+		// signature's, not a reachable outcome.
+		return nil, []VetFinding{renderFinding(
+			"render_profile", "parse", "$", gerr.Error())}
+	}
+	inst, _ := instance.(map[string]any)
+	profile, _ := inst["profile"].(map[string]any)
+	return profile, nil
 }
 
 // The bundled text profile, evaluated once.

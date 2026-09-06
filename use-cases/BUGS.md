@@ -3528,3 +3528,47 @@ asserts only that the parse throws. Fix: refuse the spelling at the
 parser with its own code and site -- the path of an include is a
 string, and a value of any other kind is a document error, not a
 resolver's business.
+
+### 84. A named table does not resolve as the table of an `emit` nested in another call [major]
+
+Found 2026-09-06 while migrating use case 15 onto `emit` and
+`aontu render`. `%w = emit(_, {...})` is the documented way to name a
+rule table, and it resolves where the language reference shows it: as
+a top-level dispatch (`a: emit($.s, %w)`) and as a body element of
+another table (`emit(.kids, %walk)`). It does not resolve when the
+`emit` that names it is itself an argument of another call:
+`b: join(emit($.s, %w), ",")` is `emit_table` -- `Cannot resolve
+value: emit([...],%w)` -- and then `aggregate_data` for the join of
+that nil, in both ports, while the same table written inline in the
+same position (`c: join(emit($.s, {...}), ",")`) folds to `"a,b"`. The
+alias reaches a nested call's argument in every other case probed
+(`upper(join(%v, ","))`, `join(pick(%q, n), ",")`, `[emit($.s, %w)]`,
+`{x: emit($.s, %w)}`), so the miss is specific to a placeheld `emit`
+alias under a call. Consequence: a column list that is `join`ed from an
+`emit` inside a `raw` piece has to spell its table inline
+(`use-cases/15-code-generation/gen-sql.aon`). Repro:
+`repros/emit/named-table-inside-a-call.aon`. Fix: drive the alias's
+placeheld call where the nested `emit` is met, as the direct and
+body-element cases already are.
+
+### 85. A document included as a value cannot be referenced into when it declares an alias [major]
+
+Found 2026-09-06 while assembling three generators into one
+`aontu:code` instance. `g: @"./file.aon"` includes a document as the
+value of `g`; a path into it (`z: $.g.code.units.0`) resolves when the
+file declares no alias and is `no_path` when it does, in both ports.
+An alias declaration is a key of the document that holds it, so under
+a value include `%x = 1` becomes `$.g.%x`, while the file's own `%x`
+references still look for `$.%x` at the including root, which is not
+there; the subtree does not stand up and every path into it misses.
+The same file included at the root (`@"./file.aon"`) works, because
+the declaration and the references then agree on the root -- which is
+also why two files that declare the same alias name cannot both be
+included: their declarations meet at `$.%x` (`scalar_value` for two
+literals). Consequence: an instance assembled from several generator
+files includes them at the root and gives their aliases distinct
+names (`use-cases/15-code-generation/all.aon`). Repro:
+`repros/includes/value-include-declares-alias.aon`, with
+`value-include-plain.aon` as the working twin. Fix: resolve an alias
+reference against the document that declared it, not the including
+root -- an alias is lexically scoped to its file in every other sense.

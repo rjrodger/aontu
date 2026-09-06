@@ -61,6 +61,13 @@ render-inline-profile-over-supplied	render	code: units: [{ path: "a.rb", lang: "
 render-strict-passes-fragments	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x"] }] }]	{"ask":{"strict":true},"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"x\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
 render-strict-refuses-text	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "text", lang: "text", text: "v\\n" }] }]	{"ask":{"strict":true},"verdict":"error","units":[],"lossy":[],"errors":[{"code":"render_strict","class":"conflict","severity":"error","path":"$.code.units.0.decls.0","sites":[]}]}
 #
+#
+# A UNIT'S DECLARATIONS RENDER IN ORDER, so two fragments concatenate,
+# and a fragment's pieces may be what a rule set emits (P4, use case
+# 15): the nested dispatch splices, so the list reaches the fold flat
+# and each piece carries its own depth.
+render-two-fragments-concatenate	render	code: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x"] }, { k: "frag", of: [{ k: "blank" }, "y"] }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"x\\n\\ny\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"},{"unit":"a.txt","path":"$.code.units.0.decls.1","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
+render-pieces-from-emit	render	s: [{ n: "a", kids: [{ n: "b" }] }]\n%walk = emit(_, { match: { n: string }, body: [.n, emit(.kids, { match: { n: string }, body: [{ k: "line", at: 1, of: [.n] }] })] })\ncode: units: [{ path: "a.txt", lang: "text", decls: [{ k: "frag", of: emit($.s, %walk) }] }]	{"verdict":"lossy","units":[{"path":"a.txt","lang":"text","text":"a\\n  b\\n"}],"lossy":[{"unit":"a.txt","path":"$.code.units.0.decls.0","tier":2,"construct":"frag","reason":"a fragment says nothing about text syntax"}]}
 # THE REFUSALS (D7, D8). A unit path that is absolute, climbs, or
 # repeats another's; a text escape of another language; a declaration
 # with no lowering -- under a profile, and with no profile to be had; a

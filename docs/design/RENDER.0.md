@@ -534,7 +534,19 @@ code with a row that reaches it. **Acceptance:** the amendment's Python
 class (two nesting levels, a `%ref`, a blank, a `raw` at
 `reindent: false`) renders byte-identically from both ports.
 
-### P4 — the verb, and the use case (M)
+### P4 — the verb, and the use case (M) — LANDED 2026-09-06
+
+*Landed as designed, with the departures recorded as §9 items 17–19:
+a profile file is evaluated as the document is, through a third
+library function (`renderProfile`); the caller's include capability
+does not reach the vocabulary; and the use case's three generators
+assemble into one instance at the root rather than as value includes,
+on account of BUGS §84 and §85. Acceptance met: one `aontu render`
+renders the three units in both ports, the SQL unit — a target the
+declaration vocabulary does not fit — from `emit` output (G9
+acceptance case 1); a refused third unit writes nothing (`check.sh`
+8); `--check` against `expected/` is green in both ports and red when
+a golden is edited (`check.sh` 9 and 11). `render.tsv` is 37 rows.*
 
 **Deliverable.** `aontu render` in both CLIs per D8; `render` and
 `renderValue` in both barrels; the `render` MCP tool per D9; the
@@ -807,6 +819,33 @@ touches M0.
     because the library reports it as a finding rather than an exit
     status; `render_unit` is a `--unit` filter naming no unit. Both
     have a row that reaches them, as the phase text asks.
+17. **A profile file is evaluated as the document is** (P4; D5 and
+    D8 said "vetted against `aontu:profile`" and left the how to the
+    verb). `renderProfile(src, opts)` / `RenderProfile(src)` evaluates
+    the file under the caller's include options, vets the SETTLED
+    value against `aontu:profile` through its hash form — D1's rule,
+    for the same reason — and meets it with the vocabulary so the
+    defaults are in it; the verb calls that. A third library function
+    beside D9's two, so the verb does not re-implement D1 for
+    profiles and an embedder loading a profile file gets the same
+    answer the verb does.
+18. **The caller's include capability governs the document, not the
+    vocabulary.** `render` vets and meets under no capability:
+    `aontu:code` and `aontu:profile` are the engine's own and the
+    instance is a canon, which includes nothing, so `--trust none`
+    denies the document every include and still renders it. The
+    first cut passed the verb's trust through and `--trust none` was
+    `include_denied: aontu:code`, which is the CI posture refusing
+    the CI verb. Pinned by the CLI tests of both ports.
+19. **Use case 15 is one instance at the root**, not three standalone
+    instances composed by value includes, which is how P4's text read.
+    A document included as a value cannot resolve its own aliases
+    (BUGS §85) and a named table does not resolve as the table of an
+    `emit` under another call (BUGS §84), so `all.aon` includes the
+    three generators at the root, their aliases carry the target's
+    name, each contributes a unit under `units`, and the instance
+    lists the three. The SQL column table is spelled inline for §84.
+    Both are engine defects with repros, not designs.
 
 ## 10. The validation system: `test/system/rb-solar`
 

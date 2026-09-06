@@ -45,6 +45,8 @@ Usage: aontu [options] [file]
        aontu view <kind> [options] <file>...
        aontu view --views <path> [--check] [options] <file>
        aontu jsonschema [--at <path>] [--strict] [options] <file>
+       aontu render [--at <path>] [--profile <file>]... [--unit <path>]
+                    [--stdout | --out <dir> | --check <dir>] [--strict] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -1291,6 +1293,150 @@ Without `--strict` the same export exits 0.
   `Aontu.JSONSchema(src, at)` in Go, returning the identical
   `{verdict, schema, lossy}` record (plus `errors` on a failed run).
 
+### `aontu render`
+
+Render a document that evaluates to an **`aontu:code`** instance into
+files, and say what the renderer could not check.
+
+```
+aontu render [--at <path>] [--profile <file>]... [--unit <path>]
+             [--stdout | --out <dir> | --check <dir>] [--strict]
+             [--format text|json] <file>
+```
+
+This is the write end of a transform. A generator evaluates to an
+instance of the bundled vocabulary
+[`aontu:code`](reference-language.md#the-aontu-models)—a list of
+**units**, each a file path, a language and the declarations that fill
+it—and the verb turns each unit into bytes: a fragment's pieces
+become lines, a piece's depth becomes the unit's indent, and every
+line gets its terminator, so the transform spells neither. The value
+at `--at` (the root by default) is vetted against the vocabulary as
+[`vet`](#aontu-vet) would, and the vet findings are the report when it
+is refused. Write a `hello.aon`:
+
+<!-- test: scenario render -->
+<!-- test: file hello.aon -->
+```aontu
+greeting: "hello, world"
+
+code: units: [
+  {
+    path: "hello.py"
+    lang: "python"
+    profile: indent: width: 4
+    decls: [
+      {
+        k: "frag"
+        of: [
+          "def hello():"
+          { k:"line" at:1 of:["print(\"" + $.greeting + "\")"] }
+        ]
+      }
+    ]
+  }
+]
+```
+
+**`--stdout` prints one unit's bytes and nothing else**, so the output
+can be piped into a formatter or a file. It needs exactly one unit—a
+one-unit instance, or `--unit <path>` naming one:
+
+<!-- test: run -->
+```sh
+$ aontu render --stdout hello.aon
+def hello():
+    print("hello, world")
+```
+
+**Without a flag the verb summarises**: one line per unit, its path,
+its language and its size, since several units have no one text to
+print. The **loss report goes to stderr**: every fragment is a claim
+about a language the renderer does not parse, and each is listed, so a
+redirect keeps the bytes clean and the reader still sees what was not
+checked.
+
+<!-- test: run -->
+```sh
+$ aontu render hello.aon
+hello.py	python	39 bytes
+```
+
+**`--out <dir>` writes every unit below `<dir>`, or nothing**: every
+unit is rendered first, every finding collected, and no file is
+touched unless all of them rendered. `<dir>` is confined by its real
+path, so a symlink inside it that points outside is an escape, and a unit
+path that is absolute, climbs with `..`, or repeats another unit's is
+`render_path`, refused before anything is written. `render` never
+deletes: a file under `<dir>` that no unit names is left alone. What
+was written is said on stderr.
+
+<!-- test: run -->
+```sh
+$ aontu render --out gen hello.aon
+```
+
+**`--check <dir>` renders and compares**, and is the CI form: a unit
+whose bytes differ from the file at `<dir>/<path>`, or whose file is
+absent, is drift, listed by path, exit 1. Green after `--out`:
+
+<!-- test: run -->
+```sh
+$ aontu render --check gen hello.aon
+```
+
+Edit `gen/hello.py` by hand and the check says which unit moved:
+
+<!-- test: file gen/hello.py -->
+```python
+def hello():
+    print("hello, world")  # edited by hand
+```
+
+<!-- test: run -->
+```sh
+$ aontu render --check gen hello.aon
+aontu: hello.py differs from the rendered unit
+...
+$ echo $?
+1
+```
+
+- `--at <path>` names the value to render—the same anchor
+  [`vet --at`](#aontu-vet) takes—so a generator can sit beside the
+  model it reads.
+- `--unit <path>` renders only the unit with that path; a path no unit
+  has is `render_unit`.
+- `--profile <file>` supplies a render profile: a document whose root
+  is `profile: {lang, indent, …}`, evaluated under the verb's trust and
+  vetted against `aontu:profile`; it applies to the units of its
+  language, and a unit's own inline `profile` merges over it. The flag
+  repeats, one file per language; two files claiming one language is a
+  usage error. A unit whose language has no profile renders under the
+  bundled text profile (two spaces per depth) when it holds only
+  fragments and text escapes.
+- `--strict` refuses the opaque escapes—a `text` declaration, a `raw`
+  piece—which the renderer copies verbatim and cannot check (tier 3 in
+  the report); every fragment is tier 2 and passes.
+- `--format json` prints the whole report—`verdict`, `units` with
+  their text, `lossy`, and `errors` when refused—under the usual
+  `aontu: {version, verb}` envelope. It is the shape the MCP tool
+  returns.
+- Exit codes: `0` rendered, `1` lossy **under `--strict`** or drift
+  under `--check`, `2` usage or I/O, a refused unit path included, `4`
+  the document does not stand up or the instance is not `aontu:code`.
+  Without `--strict` a lossy render is still a render and exits 0.
+
+**The verb is the only writer.** The library returns bytes
+(`render`, `renderValue`, `renderProfile` in TypeScript; `Render`,
+`RenderValue`, `RenderProfile` in Go), the MCP tool `render` returns
+the same report and carries no `--out`, and the trust profile that
+confines what a document may read does not govern writes: those are
+confined below `--out` and nowhere else ([the trust
+contract](trust.md#clause-4-sandboxing)). The renderer's own
+vocabulary is not an include the document wrote, so `--trust none`
+denies the document every include and still renders it.
+
 ### `aontu get`
 
 Select one node of an evaluated document by path and render it—the
@@ -2069,6 +2215,7 @@ tools and the protocol are a transport-free library
 | `reaches` | the [reachability check](#aontu-reaches): the verdict and, when it reaches, a shortest path—the closure question `relations` cannot ask one edge at a time |
 | `view` | a [figure](#aontu-view) of the document as text: the tree, matrix, graph (mermaid, dot, er), layer, sets, layers, ladder, doc or lattice kind, with the loss report; the poset takes several files and is CLI only |
 | `jsonschema` | the [JSON Schema export](#aontu-jsonschema): the schema, and the `lossy` list naming what it could not say—the bridge to a structured-output API, and to an MCP tool's own `inputSchema` |
+| `render` | the [render](#aontu-render) report: the units as text (path, language, bytes), the `lossy` list of what the renderer could not check, or the refusal—and never a file, since the caller places the units itself |
 
 Every tool returns **the same JSON contract the CLI prints**, so a
 report read from one is the report read from the other. A tool that
@@ -2603,6 +2750,11 @@ render         // the renderer: evaluate a document, vet the value at
 renderValue    // the fold alone, over generate() output:
                // renderValue(instance, opts) -> the same report;
                // Go: aontu.RenderValue(instance, opts)
+renderProfile  // a profile document -> {profile} or {errors}:
+               // evaluated under the caller's include options, vetted
+               // against aontu:profile as a settled value and met with
+               // it, so the defaults are filled; what --profile <file>
+               // hands to render's profiles
 ```
 
 #### Evaluating a document you did not write
@@ -2679,6 +2831,7 @@ does exactly this for a file argument.)
 | `Generate`     | `Generate(src string) (any, error)` | Parse → unify → native Go value. |
 | `GenerateVars` | `GenerateVars(src string, vars map[string]Val) (any, error)` | `Generate` with variables. |
 | `Render`       | `Render(src string, opts *RenderOptions) RenderReport` | The renderer: evaluate, vet the value at `At` against `aontu:code`, fold `code.units` into bytes: `Units` (path, lang, text), `Lossy` (the three tiers) or `Errors`. `aontu.RenderValue(instance any, opts *RenderOptions) RenderReport` is the fold alone, over `Generate` output. |
+| `RenderProfile` | `RenderProfile(src string) (map[string]any, []VetFinding)` | A profile document, evaluated under this instance's include options, vetted against `aontu:profile` as a settled value and met with it so the defaults are filled: the `profile` map `RenderOptions.Profiles` takes, or the findings that refused it. |
 | `Format`       | `Format(src string) FormatReport` | The source formatter (see [`aontu fmt`](#aontu-fmt)): the agreed form, or the findings that say why there is none. `FormatWith(src string, opts FormatOptions) FormatReport` is the same with the options: `Lint` fills the report's `Findings`, the style findings of `--lint`. `aontu.UnifiedDiff(name, before, after string) string` is the diff `--diff` prints. |
 
 <!-- test: skip Go API sample; the API surface is pinned by the go/ test suite -->

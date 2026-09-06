@@ -2047,6 +2047,190 @@ function fmtFiles(...srcs) {
         Assert.ok(answer.result, out);
     });
 });
+// --- the render verb --------------------------------------------------
+// The Go twin is go/cmd/aontu/render_test.go. What the two ports must
+// AGREE on -- the bytes, the loss report, the refusals -- is
+// test/spec/render.tsv; what each port owns (argument handling, exit
+// codes, which stream each half goes to, the write confinement) is
+// here.
+(0, node_test_1.describe)('cli-render', () => {
+    const TWO_UNITS = 'code: units: [\n' +
+        '  { path: "a.txt", lang: "text", decls: [{ k: "frag", of: ["x", { k: "line", at: 1, of: ["y"] }] }] }\n' +
+        '  { path: "sub/b.txt", lang: "text", decls: [{ k: "frag", of: ["z"] }] }\n' +
+        ']\n';
+    // The named files below a fresh directory; a name may carry a slash.
+    function renderDir(files) {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-render-'));
+        for (const [name, text] of Object.entries(files)) {
+            const full = Path.join(dir, ...name.split('/'));
+            Fs.mkdirSync(Path.dirname(full), { recursive: true });
+            Fs.writeFileSync(full, text);
+        }
+        return dir;
+    }
+    function renderCode(want, args) {
+        return vetCapture(() => Assert.equal((0, cli_1.runRender)(args), want, args.join(' ')));
+    }
+    (0, node_test_1.test)('render-summarises-every-unit-by-default', () => {
+        // THE SUMMARY: one line per unit -- path, language, size -- since
+        // several units have no one text to print; the loss report on the
+        // other stream, one line per entry.
+        const dir = renderDir({ 'doc.aon': TWO_UNITS });
+        const r = renderCode(0, [Path.join(dir, 'doc.aon')]);
+        Assert.equal(r.out, 'a.txt\ttext\t6 bytes\nsub/b.txt\ttext\t2 bytes\n');
+        Assert.match(r.err, /^lossy: a\.txt \$\.code\.units\.0\.decls\.0 tier 2 frag: a fragment says nothing about text syntax\n/);
+        Assert.match(r.err, /lossy: sub\/b\.txt \$\.code\.units\.1\.decls\.0 tier 2 frag: /);
+        // The verb's own trust flags reach it, and `none` governs the
+        // document alone: the renderer's own vocabulary is not an include
+        // the document wrote.
+        renderCode(0, ['--trust', 'none', Path.join(dir, 'doc.aon')]);
+        // The dispatch: `aontu render` is the verb.
+        Assert.match(vetCapture(() => {
+            (0, cli_1.main)(['node', 'aontu', 'render', Path.join(dir, 'doc.aon')]);
+        }).out, /^a\.txt\ttext\t6 bytes\n/);
+    });
+    (0, node_test_1.test)('render-stdout-is-one-units-bytes', () => {
+        const dir = renderDir({ 'doc.aon': TWO_UNITS });
+        const file = Path.join(dir, 'doc.aon');
+        // Two units have no one text to print: --unit names it.
+        const many = renderCode(2, ['--stdout', file]);
+        Assert.match(many.err, /--stdout needs exactly one unit, and the instance has 2/);
+        Assert.equal(many.out, '');
+        Assert.equal(renderCode(0, ['--stdout', '--unit', 'a.txt', file]).out, 'x\n  y\n');
+        // A unit filter that names nothing is the document's error.
+        Assert.match(renderCode(4, ['--stdout', '--unit', 'nope', file]).err, /render_unit/);
+    });
+    (0, node_test_1.test)('render-at-anchors-the-instance', () => {
+        const dir = renderDir({ 'doc.aon': 'gen: { ' + TWO_UNITS + ' }\nother: 1\n' });
+        const file = Path.join(dir, 'doc.aon');
+        Assert.equal(renderCode(0, ['--at', '$.gen', '--stdout', '--unit', 'a.txt', file]).out, 'x\n  y\n');
+        // The anchor names nothing: 4.
+        Assert.match(renderCode(4, ['--at', '$.nope', file]).err, /no_path/);
+    });
+    (0, node_test_1.test)('render-out-writes-and-check-compares', () => {
+        const dir = renderDir({ 'doc.aon': TWO_UNITS });
+        const file = Path.join(dir, 'doc.aon');
+        const out = Path.join(dir, 'out');
+        // --out writes every unit below the directory, creating what the
+        // paths need, and says so on stderr.
+        const r = renderCode(0, ['--out', out, file]);
+        Assert.equal(r.out, '');
+        Assert.match(r.err, /^wrote a\.txt\nwrote sub\/b\.txt\n/);
+        Assert.equal(Fs.readFileSync(Path.join(out, 'a.txt'), 'utf8'), 'x\n  y\n');
+        Assert.equal(Fs.readFileSync(Path.join(out, 'sub', 'b.txt'), 'utf8'), 'z\n');
+        // --check agrees with what --out wrote, and lists drift by path.
+        renderCode(0, ['--check', out, file]);
+        Fs.writeFileSync(Path.join(out, 'a.txt'), 'changed\n');
+        Fs.unlinkSync(Path.join(out, 'sub', 'b.txt'));
+        const drift = renderCode(1, ['--check', out, file]);
+        Assert.match(drift.err, /a\.txt differs from the rendered unit/);
+        Assert.match(drift.err, /sub\/b\.txt is missing from /);
+        // A unit that cannot be written is I/O: here its path is a
+        // directory.
+        Fs.rmSync(Path.join(out, 'a.txt'));
+        Fs.mkdirSync(Path.join(out, 'a.txt'));
+        Assert.match(renderCode(2, ['--out', out, file]).err, /cannot write a\.txt/);
+    });
+    (0, node_test_1.test)('render-out-is-confined-to-the-directory', () => {
+        // A symlink inside the output directory that points outside it is
+        // an escape: the include resolver's own rule, applied to writes.
+        const dir = renderDir({
+            'doc.aon': 'code: units: [{ path: "link/x.txt", lang: "text", decls: [] }]\n',
+        });
+        const out = Path.join(dir, 'out');
+        const elsewhere = Path.join(dir, 'elsewhere');
+        Fs.mkdirSync(out);
+        Fs.mkdirSync(elsewhere);
+        let symlinked = true;
+        try {
+            Fs.symlinkSync(elsewhere, Path.join(out, 'link'), 'dir');
+        }
+        catch {
+            symlinked = false;
+        }
+        if (symlinked) {
+            const r = renderCode(2, ['--out', out, Path.join(dir, 'doc.aon')]);
+            Assert.match(r.err, /link\/x\.txt escapes /);
+            Assert.equal(Fs.existsSync(Path.join(elsewhere, 'x.txt')), false);
+        }
+    });
+    (0, node_test_1.test)('render-format-json-is-the-whole-report', () => {
+        const dir = renderDir({ 'doc.aon': TWO_UNITS, 'bad.aon': 'x: 1 & "a"\n' });
+        const r = renderCode(0, ['--format', 'json', Path.join(dir, 'doc.aon')]);
+        Assert.equal(r.err, '');
+        const report = JSON.parse(r.out);
+        Assert.equal(report.aontu.verb, 'render');
+        Assert.equal(report.verdict, 'lossy');
+        Assert.equal(report.units.length, 2);
+        Assert.equal(report.units[0].text, 'x\n  y\n');
+        Assert.equal(report.errors, undefined);
+        // An error report carries its findings, and exits as the text form
+        // does.
+        const bad = renderCode(4, ['--format', 'json', Path.join(dir, 'bad.aon')]);
+        Assert.equal(JSON.parse(bad.out).errors[0].code, 'scalar_kind');
+    });
+    (0, node_test_1.test)('render-exit-codes-follow-the-report', () => {
+        const dir = renderDir({
+            'bad.aon': 'x: 1 & "a"\n',
+            'abs.aon': 'code: units: [{ path: "/etc/x", lang: "text", decls: [] }]\n',
+            'text.aon': 'code: units: [{ path: "a.txt", lang: "text", ' +
+                'decls: [{ k: "text", lang: "text", text: "v\\n" }] }]\n',
+            'shape.aon': 'code: units: 1\n',
+        });
+        // The document does not stand up: 4, findings on stderr.
+        const bad = renderCode(4, [Path.join(dir, 'bad.aon')]);
+        Assert.match(bad.err, /scalar_kind/);
+        Assert.equal(bad.out, '');
+        // A refused unit path is usage: 2.
+        Assert.match(renderCode(2, [Path.join(dir, 'abs.aon')]).err, /render_path/);
+        // An opaque escape renders, lossy, and is listed; --strict refuses
+        // it: 1.
+        Assert.match(renderCode(0, [Path.join(dir, 'text.aon')]).err, /^lossy: a\.txt \$\.code\.units\.0\.decls\.0 tier 3 text: /);
+        Assert.match(renderCode(1, ['--strict', Path.join(dir, 'text.aon')]).err, /render_strict/);
+        // An instance the vocabulary refuses is the document's: 4.
+        Assert.match(renderCode(4, [Path.join(dir, 'shape.aon')]).err, /\$\.code\.units: list/);
+    });
+    (0, node_test_1.test)('render-profiles-are-vetted-and-one-per-language', () => {
+        const dir = renderDir({
+            'doc.aon': TWO_UNITS,
+            'four.aon': 'profile: { lang: "text", indent: { unit: " ", width: 4 } }\n',
+            'two.aon': 'profile: { lang: "text", indent: { unit: " ", width: 2 } }\n',
+            'bad.aon': 'profile: { lang: 1 }\n',
+            'broken.aon': 'x: 1 & "a"\n',
+            'nil.aon': 'nil\n',
+        });
+        const file = Path.join(dir, 'doc.aon');
+        // A supplied profile of the unit's language is the one the fold
+        // uses, its defaults filled by the vocabulary.
+        Assert.equal(renderCode(0, ['--profile', Path.join(dir, 'four.aon'),
+            '--stdout', '--unit', 'a.txt', file]).out, 'x\n    y\n');
+        // A profile the vocabulary refuses is reported as the document it
+        // is: 4, with the finding addressed by path.
+        Assert.match(renderCode(4, ['--profile', Path.join(dir, 'bad.aon'), file]).err, /\$\.profile\.lang/);
+        // ... and so is one that does not stand up, or is nil outright.
+        Assert.match(renderCode(4, ['--profile', Path.join(dir, 'broken.aon'), file]).err, /scalar_kind/);
+        Assert.match(renderCode(4, ['--profile', Path.join(dir, 'nil.aon'), file]).err, /literal_nil/);
+        // Two profiles claiming one language: the fold could not choose.
+        Assert.match(renderCode(2, ['--profile', Path.join(dir, 'four.aon'),
+            '--profile', Path.join(dir, 'two.aon'), file]).err, /two profiles claim text/);
+        // An unreadable profile file is I/O.
+        Assert.match(renderCode(2, ['--profile', Path.join(dir, 'missing.aon'), file]).err, /cannot read/);
+    });
+    (0, node_test_1.test)('render-usage-errors-exit-2', () => {
+        const dir = renderDir({ 'doc.aon': TWO_UNITS });
+        const file = Path.join(dir, 'doc.aon');
+        for (const args of [
+            [], [file, file], ['--bogus', file], ['--format', 'yaml', file],
+            ['--format'], ['--at'], ['--unit'], ['--profile'], ['--out'], ['--check'],
+            ['--stdout', '--out', Path.join(dir, 'o'), file],
+            [Path.join(dir, 'missing.aon')],
+            ['--trust', 'nonsense', file],
+        ]) {
+            renderCode(2, args);
+        }
+        Assert.equal(renderCode(0, ['--help']).out.includes('aontu render'), true);
+    });
+});
 // --- the old module layout ------------------------------------------
 (0, node_test_1.describe)('cli-mod-layout', () => {
     // A project that still carries the lockfile or the vendor tree at

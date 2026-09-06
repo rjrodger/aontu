@@ -44,6 +44,7 @@ declare function runRelations(argv: string[]): number;
 declare function runReaches(argv: string[]): number;
 declare function runView(argv: string[]): number;
 declare function runJsonSchema(argv: string[]): number;
+declare function runRender(argv: string[]): number;
 declare function runHash(argv: string[]): number;
 declare function runGet(argv: string[]): number;
 declare function runWhy(argv: string[]): number;
@@ -56,4 +57,4 @@ type Servers = {
     mcp: (argv: string[]) => void;
 };
 declare function main(argv: string[], servers?: Servers): void;
-export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations, runReaches, runView, runJsonSchema, runMod, runHash, runGet, runWhy, renderWhyText, runSet, runAgentsMd, runFmt, watchChange, watchSignature, vetWaiter, deprecatedAt, };
+export { evalSource, main, runVet, runSubsume, runBreaking, runTrim, runRelations, runReaches, runView, runJsonSchema, runRender, runMod, runHash, runGet, runWhy, renderWhyText, runSet, runAgentsMd, runFmt, watchChange, watchSignature, vetWaiter, deprecatedAt, };

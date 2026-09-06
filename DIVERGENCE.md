@@ -83,6 +83,17 @@ having been agreed.
   `.jsc`, `.json`, `.jsonld`) is byte-identical across the ports,
   because both run the same parser.
 
+- **The MCP server is TypeScript-only.** `aontu mcp` in the Go port
+  says so and exits 2; the Go module's role is embedding, and the
+  library calls the server exposes (`Vet`, `Get`, `Why`, `Diff`,
+  `JSONSchema`, `Render`, …) are in the Go API for that. The server is
+  a protocol adapter over the library, so a second one would be a
+  second transport to keep in step rather than a second engine; the
+  shared spec pins the reports the tools return, which is where parity
+  is owed. The `render` tool is the one place the two surfaces differ
+  in what they can do: the TypeScript verb and the tool both return
+  the render report, and only the two verbs write.
+
 ## Previously divergent, now fixed
 
 Kept because how each was closed is worth remembering.

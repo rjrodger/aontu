@@ -2,6 +2,7 @@
 /* Copyright (c) 2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.render = render;
+exports.renderProfile = renderProfile;
 exports.renderValue = renderValue;
 // THE RENDERER (docs/design/RENDER.0.md; docs/capability-review/
 // g9-transformation.md §3). `render` evaluates a document, takes the
@@ -29,6 +30,7 @@ const keyorder_1 = require("./keyorder");
 const utility_1 = require("./utility");
 const VOCABULARY = '@"aontu:code"';
 const TEXT_PROFILE = '@"aontu:lang/text"';
+const PROFILE_VOCABULARY = '@"aontu:profile"';
 function finding(code, cls, path, message) {
     return { code, class: cls, severity: 'error', path, message, sites: [] };
 }
@@ -72,8 +74,13 @@ function render(src, options) {
         }
         node = found;
     }
+    // UNDER NO CALLER CAPABILITY, here and in the meet below: the
+    // vocabulary is the engine's own and the instance is a canon, which
+    // includes nothing, so the caller's include capability -- which
+    // governs the DOCUMENT -- has nothing to govern here, and `none`
+    // must not deny the renderer its own schema.
     const value = (0, hcanon_1.hcanon)(node);
-    const report = (0, vet_1.vet)(VOCABULARY, value, (0, utility_1.includeOpts)(opts));
+    const report = (0, vet_1.vet)(VOCABULARY, value);
     if ('valid' !== report.verdict) {
         return errorReport(report.findings);
     }
@@ -81,7 +88,7 @@ function render(src, options) {
     // the instance's (a value the vet admitted is a map), and a document
     // with no `code` at all is the vocabulary's own empty instance.
     const codeVal = node.peg.code;
-    const instance = new aontu_1.Aontu((0, utility_1.includeOpts)(opts)).generate(VOCABULARY + (undefined === codeVal ? '' : '\ncode: ' + (0, hcanon_1.hcanon)(codeVal)));
+    const instance = new aontu_1.Aontu().generate(VOCABULARY + (undefined === codeVal ? '' : '\ncode: ' + (0, hcanon_1.hcanon)(codeVal)));
     return renderValue(instance, opts);
 }
 // The bundled text profile, evaluated once: the profile of a unit
@@ -161,6 +168,30 @@ function foldPiece(piece, profile, unit, path, lossy) {
         lines.pop();
     }
     return lines.map((l) => reindent ? line(profile, at, l) : l + '\n').join('');
+}
+// A PROFILE DOCUMENT (RENDER.0.md D5), evaluated the way `render`
+// evaluates its own: under the caller's include options, then vetted
+// against aontu:profile as a settled value and met with that vocabulary
+// so its defaults (`indent.width: 2`, ...) are in it. The answer is the
+// `profile` map the fold reads -- what `--profile <file>` hands to
+// RenderOptions.profiles -- or the findings that refused the document:
+// one that does not stand up, or one the vocabulary rejects.
+function renderProfile(src, options) {
+    const opts = options ?? {};
+    const aontu = new aontu_1.Aontu((0, utility_1.includeOpts)(opts));
+    const actx = aontu.ctx({ collect: true });
+    const root = aontu.unify(src, { path: opts.path, collect: true }, actx);
+    if (0 < actx.err.length || true === root?.isNil) {
+        return { errors: [(0, vet_1.failureFinding)(actx, opts.path, root)] };
+    }
+    const report = (0, vet_1.vet)(PROFILE_VOCABULARY, (0, hcanon_1.hcanon)(root));
+    if ('valid' !== report.verdict) {
+        return { errors: report.findings };
+    }
+    // The meet, keyed as render's is: the vocabulary requires `profile`,
+    // so a value the vet admitted has one.
+    const instance = new aontu_1.Aontu().generate(PROFILE_VOCABULARY + '\nprofile: ' + (0, hcanon_1.hcanon)(root.peg.profile));
+    return { profile: instance.profile };
 }
 // The fold alone, over `generate()` output: the instance is
 // `{code: {units: [...]}}` as the vocabulary shapes it, with its

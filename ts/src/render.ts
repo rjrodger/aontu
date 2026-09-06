@@ -86,6 +86,7 @@ export type RenderOptions = IncludeOptions & {
 
 const VOCABULARY = '@"aontu:code"'
 const TEXT_PROFILE = '@"aontu:lang/text"'
+const PROFILE_VOCABULARY = '@"aontu:profile"'
 
 
 function finding(
@@ -140,8 +141,13 @@ export function render(src: string, options?: RenderOptions): RenderReport {
     node = found
   }
 
+  // UNDER NO CALLER CAPABILITY, here and in the meet below: the
+  // vocabulary is the engine's own and the instance is a canon, which
+  // includes nothing, so the caller's include capability -- which
+  // governs the DOCUMENT -- has nothing to govern here, and `none`
+  // must not deny the renderer its own schema.
   const value = hcanon(node)
-  const report = vet(VOCABULARY, value, includeOpts(opts))
+  const report = vet(VOCABULARY, value)
   if ('valid' !== report.verdict) {
     return errorReport(report.findings)
   }
@@ -150,7 +156,7 @@ export function render(src: string, options?: RenderOptions): RenderReport {
   // the instance's (a value the vet admitted is a map), and a document
   // with no `code` at all is the vocabulary's own empty instance.
   const codeVal: any = node.peg.code
-  const instance = new Aontu(includeOpts(opts)).generate(
+  const instance = new Aontu().generate(
     VOCABULARY + (undefined === codeVal ? '' : '\ncode: ' + hcanon(codeVal)))
   return renderValue(instance, opts)
 }
@@ -247,6 +253,34 @@ function foldPiece(
     lines.pop()
   }
   return lines.map((l: string) => reindent ? line(profile, at, l) : l + '\n').join('')
+}
+
+
+// A PROFILE DOCUMENT (RENDER.0.md D5), evaluated the way `render`
+// evaluates its own: under the caller's include options, then vetted
+// against aontu:profile as a settled value and met with that vocabulary
+// so its defaults (`indent.width: 2`, ...) are in it. The answer is the
+// `profile` map the fold reads -- what `--profile <file>` hands to
+// RenderOptions.profiles -- or the findings that refused the document:
+// one that does not stand up, or one the vocabulary rejects.
+export function renderProfile(src: string, options?: RenderOptions):
+  { profile?: any, errors?: VetFinding[] } {
+  const opts = options ?? {}
+  const aontu = new Aontu(includeOpts(opts))
+  const actx = aontu.ctx({ collect: true })
+  const root: any = aontu.unify(src, { path: opts.path, collect: true }, actx)
+  if (0 < actx.err.length || true === root?.isNil) {
+    return { errors: [failureFinding(actx, opts.path, root)] }
+  }
+  const report = vet(PROFILE_VOCABULARY, hcanon(root))
+  if ('valid' !== report.verdict) {
+    return { errors: report.findings }
+  }
+  // The meet, keyed as render's is: the vocabulary requires `profile`,
+  // so a value the vet admitted has one.
+  const instance = new Aontu().generate(
+    PROFILE_VOCABULARY + '\nprofile: ' + hcanon(root.peg.profile))
+  return { profile: instance.profile }
 }
 
 

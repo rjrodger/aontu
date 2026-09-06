@@ -23,7 +23,11 @@ import {
   exactJSON, vet, subsume, trimCheck, relationCheck,
   hcanon, canonHash,
   get, why, patch, agentsMd,
+  render,
+  renderProfile,
 } from './aontu'
+import type { RenderReport } from './render'
+import { outsideRoot } from './mcp'
 import { sarifReport } from './report-sarif'
 import { main as lspMain } from './lsp-server'
 import { main as mcpMain } from './mcp-server'
@@ -68,6 +72,8 @@ const HELP = `Usage: aontu [options] [file]
        aontu view <kind> [options] <file>...
        aontu view --views <path> [--check] [options] <file>
        aontu jsonschema [--at <path>] [--strict] [options] <file>
+       aontu render [--at <path>] [--profile <file>]... [--unit <path>]
+                    [--stdout | --out <dir> | --check <dir>] [--strict] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -259,6 +265,24 @@ View options:
 View exit codes: 0 rendered, 1 --check mismatch or lossy under
 --strict, 2 usage or --max-rows exceeded, 4 the document does not stand
 up on its own, or a relation, root or path that names nothing.
+
+Render options:
+  --at <path>       Render the value at this path ($.a.b); the root by
+                    default
+  --profile <file>  A profile document, profile: {lang, ...}, vetted
+                    against aontu:profile; repeatable, one per language
+  --unit <path>     Render only the unit with this path
+  --stdout          One unit's bytes and nothing else (with --unit when
+                    the instance has several)
+  --out <dir>       Write every unit below dir, or nothing; never deletes
+  --check <dir>     Compare every unit with dir/<path>; drift is listed
+  --strict          Refuse the opaque escapes (a text declaration, a raw
+                    block)
+  --format <f>      text (default) or json, the whole report
+
+Render exit codes: 0 rendered, 1 lossy under --strict or drift under
+--check, 2 usage or I/O (a refused unit path included), 4 the document
+does not stand up or the instance is not aontu:code.
 
 Set options:
   --entry <file>    The document the change is checked against
@@ -2858,6 +2882,268 @@ function runJsonSchema(argv: string[]): number {
 }
 
 // ---------------------------------------------------------------------
+// THE RENDER VERB (docs/design/RENDER.0.md D8): evaluate a document,
+// vet the value at --at against aontu:code, fold code.units into bytes,
+// and put them where the flag says -- one unit on stdout, every unit
+// below --out (all or nothing), or compared against --check. Exit codes
+// mirror jsonschema's: 0 ok; 1 lossy under --strict or drift under
+// --check; 2 usage or I/O, a refused unit path included; 4 the
+// document does not stand up or the instance is not aontu:code.
+
+const RENDER_HELP =
+  'aontu render [--at <path>] [--profile <file>]... [--unit <path>] ' +
+  '[--stdout | --out <dir> | --check <dir>] [--strict] <file> (try --help)'
+
+function runRender(argv: string[]): number {
+  const trusted = takeTrust(argv)
+  if (null == trusted) {
+    return 2
+  }
+  argv = trusted.argv
+  const trust = trusted.trust
+  const files: string[] = []
+  const profileFiles: string[] = []
+  let format: SubsumeFormat = 'text'
+  let at: string | undefined = undefined
+  let unit: string | undefined = undefined
+  let out: string | undefined = undefined
+  let check: string | undefined = undefined
+  let toStdout = false
+  let strict = false
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if ('-h' === arg || '--help' === arg) {
+      process.stdout.write(HELP)
+      return 0
+    }
+    if ('--format' === arg) {
+      const f = argv[++i]
+      if ('text' !== f && 'json' !== f) {
+        process.stderr.write('aontu: --format needs text or json\n')
+        return 2
+      }
+      format = f
+    }
+    else if ('--at' === arg) {
+      at = argv[++i]
+      if (null == at) {
+        process.stderr.write('aontu: --at needs a path\n')
+        return 2
+      }
+    }
+    else if ('--unit' === arg) {
+      unit = argv[++i]
+      if (null == unit) {
+        process.stderr.write('aontu: --unit needs a unit path\n')
+        return 2
+      }
+    }
+    else if ('--profile' === arg) {
+      const pf = argv[++i]
+      if (null == pf) {
+        process.stderr.write('aontu: --profile needs a file\n')
+        return 2
+      }
+      profileFiles.push(pf)
+    }
+    else if ('--out' === arg) {
+      out = argv[++i]
+      if (null == out) {
+        process.stderr.write('aontu: --out needs a directory\n')
+        return 2
+      }
+    }
+    else if ('--check' === arg) {
+      check = argv[++i]
+      if (null == check) {
+        process.stderr.write('aontu: --check needs a directory\n')
+        return 2
+      }
+    }
+    else if ('--stdout' === arg) {
+      toStdout = true
+    }
+    else if ('--strict' === arg) {
+      strict = true
+    }
+    else if (arg.startsWith('-')) {
+      process.stderr.write(
+        `aontu: unknown render option ${arg} (try --help)\n`)
+      return 2
+    }
+    else {
+      files.push(arg)
+    }
+  }
+
+  if (1 !== files.length) {
+    process.stderr.write(`aontu: render needs one file\n${RENDER_HELP}\n`)
+    return 2
+  }
+  const modes = [toStdout, undefined !== out, undefined !== check]
+    .filter((on) => on).length
+  if (1 < modes) {
+    process.stderr.write(
+      'aontu: render takes one of --stdout, --out or --check\n')
+    return 2
+  }
+
+  let src: string
+  try {
+    src = readFileSync(files[0], 'utf8')
+  }
+  catch (err: any) {
+    process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+    return 2
+  }
+
+  // THE PROFILES (D5): each --profile file is a document whose root is
+  // `profile: {lang, ...}`, evaluated under the verb's trust and vetted
+  // against aontu:profile as a settled value before the fold reads it
+  // (renderProfile, which also fills the defaults). Two files claiming
+  // one lang is a usage error: the fold could not choose.
+  const profiles: any[] = []
+  const langs = new Map<string, string>()
+  for (const pf of profileFiles) {
+    let text: string
+    try {
+      text = readFileSync(pf, 'utf8')
+    }
+    catch (err: any) {
+      process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`)
+      return 2
+    }
+    const loaded = renderProfile(text,
+      { path: resolve(pf), ...verbOpts(trust, entryRootOf(pf)) })
+    if (undefined !== loaded.errors) {
+      process.stderr.write(loaded.errors.map(renderFinding).join('\n') + '\n')
+      return 4
+    }
+    const profile = loaded.profile
+    const prev = langs.get(profile.lang)
+    if (undefined !== prev) {
+      process.stderr.write(
+        `aontu: two profiles claim ${profile.lang}: ${prev} and ${pf}\n`)
+      return 2
+    }
+    langs.set(profile.lang, pf)
+    profiles.push(profile)
+  }
+
+  const report = render(src, {
+    at, unit, strict, profiles, path: files[0],
+    ...verbOpts(trust, entryRootOf(files[0])),
+  })
+
+  if ('json' === format) {
+    process.stdout.write(exactJSON({
+      aontu: { version: version(), verb: 'render' },
+      verdict: report.verdict,
+      units: report.units,
+      lossy: report.lossy,
+      ...(null == report.errors ? {} : { errors: report.errors }),
+    }, 2) + '\n')
+    return renderExit(report, 0)
+  }
+  if ('error' === report.verdict) {
+    process.stderr.write(
+      (report.errors as VetFinding[]).map(renderFinding).join('\n') + '\n')
+    return renderExit(report, 0)
+  }
+
+  let drift = 0
+  if (toStdout) {
+    // ONE UNIT'S BYTES AND NOTHING ELSE, so the output can be piped
+    // into a formatter or a file.
+    if (1 !== report.units.length) {
+      process.stderr.write(
+        'aontu: --stdout needs exactly one unit, and the instance has ' +
+        `${report.units.length}; --unit names one\n`)
+      return 2
+    }
+    process.stdout.write(report.units[0].text)
+  }
+  else if (undefined !== out) {
+    // EVERY UNIT BELOW <dir>, OR NOTHING: every unit rendered first
+    // (the report above), and no file touched unless all did. The
+    // directory is realpath-confined; a unit path is already a relative
+    // descent (render_path refuses the rest), and the check here is
+    // against the symlink inside it. render never deletes.
+    for (const u of report.units) {
+      if (outsideRoot(out, resolve(out, u.path))) {
+        process.stderr.write(`aontu: ${u.path} escapes ${out}\n`)
+        return 2
+      }
+    }
+    for (const u of report.units) {
+      const full = resolve(out, u.path)
+      try {
+        mkdirSync(dirname(full), { recursive: true })
+        writeFileSync(full, u.text, 'utf8')
+      }
+      catch (err: any) {
+        process.stderr.write(`aontu: cannot write ${u.path}: ${err.message}\n`)
+        return 2
+      }
+      process.stderr.write(`wrote ${u.path}\n`)
+    }
+  }
+  else if (undefined !== check) {
+    // RENDER AND COMPARE: a unit whose bytes differ from the file at
+    // <dir>/<path>, or whose file is absent, is drift, listed by path.
+    // The CI form.
+    for (const u of report.units) {
+      let have: string | undefined = undefined
+      try {
+        have = readFileSync(resolve(check, u.path), 'utf8')
+      }
+      catch {
+        // Absent is drift, reported below.
+      }
+      if (undefined === have) {
+        drift++
+        process.stderr.write(`aontu: ${u.path} is missing from ${check}\n`)
+      }
+      else if (have !== u.text) {
+        drift++
+        process.stderr.write(`aontu: ${u.path} differs from the rendered unit\n`)
+      }
+    }
+  }
+  else {
+    // THE SUMMARY: one line per unit -- its path, its language and its
+    // size -- since several units have no one text to print.
+    for (const u of report.units) {
+      process.stdout.write(`${u.path}\t${u.lang}\t${u.text.length} bytes\n`)
+    }
+  }
+  for (const l of report.lossy) {
+    process.stderr.write(
+      `lossy: ${l.unit} ${l.path} tier ${l.tier} ${l.construct}: ${l.reason}\n`)
+  }
+  return renderExit(report, drift)
+}
+
+// D8's exit table over a report: a refused unit path is usage (2), a
+// strict refusal is lossy (1), any other error is the document's (4);
+// drift under --check is 1.
+function renderExit(report: RenderReport, drift: number): number {
+  if ('error' === report.verdict) {
+    const errors = report.errors as VetFinding[]
+    if (errors.every((f) => 'render_path' === f.code)) {
+      return 2
+    }
+    if (errors.every((f) => 'render_strict' === f.code)) {
+      return 1
+    }
+    return 4
+  }
+  return 0 < drift ? 1 : 0
+}
+
+
+// ---------------------------------------------------------------------
 // The canon-hash (G6 phase 1): the pin an agent, a lockfile or a
 // registry stores for "this module, this meaning". The hash covers the
 // module evaluated STANDALONE -- its own include closure resolved and
@@ -3734,6 +4020,10 @@ function main(argv: string[], servers: Servers = SERVERS): void {
     return finish(runJsonSchema(argv.slice(3)))
   }
 
+  if ('render' === argv[2]) {
+    return finish(runRender(argv.slice(3)))
+  }
+
   if ('reaches' === argv[2]) {
     return finish(runReaches(argv.slice(3)))
   }
@@ -3840,7 +4130,7 @@ function main(argv: string[], servers: Servers = SERVERS): void {
   else {
     runStdin(mode, trust).then((code) => finish(code))
   }
-} /* node:coverage ignore next 16 */
+} /* node:coverage ignore next 17 */
 
 
 // No require.main guard here: bin/aontu.js is the executable entry and
@@ -3852,6 +4142,7 @@ export {
   runReaches,
   runView,
   runJsonSchema,
+  runRender,
   runMod,
   runHash, runGet,
   runWhy, renderWhyText, runSet, runAgentsMd, runFmt,

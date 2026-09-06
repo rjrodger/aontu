@@ -33,6 +33,8 @@ const helpText = `Usage: aontu [options] [file]
        aontu view <kind> [options] <file>...
        aontu view --views <path> [--check] [options] <file>
        aontu jsonschema [--at <path>] [--strict] [options] <file>
+       aontu render [--at <path>] [--profile <file>]... [--unit <path>]
+                    [--stdout | --out <dir> | --check <dir>] [--strict] <file>
        aontu hash [options] <file>
        aontu mod tidy|verify|vendor|manifest [options] [dir]
        aontu get <path> [options] <file>
@@ -224,6 +226,24 @@ View options:
 View exit codes: 0 rendered, 1 --check mismatch or lossy under
 --strict, 2 usage or --max-rows exceeded, 4 the document does not stand
 up on its own, or a relation, root or path that names nothing.
+
+Render options:
+  --at <path>       Render the value at this path ($.a.b); the root by
+                    default
+  --profile <file>  A profile document, profile: {lang, ...}, vetted
+                    against aontu:profile; repeatable, one per language
+  --unit <path>     Render only the unit with this path
+  --stdout          One unit's bytes and nothing else (with --unit when
+                    the instance has several)
+  --out <dir>       Write every unit below dir, or nothing; never deletes
+  --check <dir>     Compare every unit with dir/<path>; drift is listed
+  --strict          Refuse the opaque escapes (a text declaration, a raw
+                    block)
+  --format <f>      text (default) or json, the whole report
+
+Render exit codes: 0 rendered, 1 lossy under --strict or drift under
+--check, 2 usage or I/O (a refused unit path included), 4 the document
+does not stand up or the instance is not aontu:code.
 
 Set options:
   --entry <file>    The document the change is checked against
@@ -670,6 +690,9 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer, tty bool) int
 	}
 	if 0 < len(args) && "jsonschema" == args[0] {
 		return runJsonSchema(args[1:], stdout, stderr)
+	}
+	if 0 < len(args) && "render" == args[0] {
+		return runRender(args[1:], stdout, stderr)
 	}
 	if 0 < len(args) && "reaches" == args[0] {
 		return runReaches(args[1:], stdout, stderr)

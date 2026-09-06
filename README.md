@@ -64,7 +64,9 @@ appending or in place), `subsume` and `breaking` (schema evolution),
 figures drawn as text: tree, matrix, graph, layers, sets, the meet
 ladder, the subsumption poset, the key document and the value
 lattice), `jsonschema` (export
-the model as JSON Schema), `trim` (find redundant entries), `mod`
+the model as JSON Schema), `render` (fold an `aontu:code` instance
+into files, or check the files it wrote), `trim` (find redundant
+entries), `mod`
 (dependency closures), `agentsmd` (an AGENTS.md stanza), `fmt` (the
 source formatter, in the tradition of `gofmt`: one agreed form), `lsp`
 (the language server) and `mcp` (the MCP server, npm build). The
