@@ -13,6 +13,7 @@ package aontu
 import (
 	"math"
 	"math/big"
+	"os"
 	"strings"
 	"testing"
 
@@ -691,5 +692,37 @@ func TestAsValExprWrappers(t *testing.T) {
 	cyc := &jsonic.ListRef{Val: []any{shared, shared}}
 	if snipExprCycles(cyc) == nil {
 		t.Fatalf("snip shared (non-cycle) must keep")
+	}
+}
+
+// frameFile's two degenerate answers. A frame names a file a reader
+// can open, which means the working directory's own prefix comes off
+// -- and when nothing is left of the path but that prefix, there is no
+// file to name. Both arms are TypeScript's, in resolveFile
+// (ts/src/err.ts): `out === cwd || ” === out ? '<no-file>' : out`.
+func TestFrameFileDegenerate(t *testing.T) {
+	cwd, err := os.Getwd()
+	if nil != err {
+		t.Fatal(err)
+	}
+
+	// The working directory itself: the prefix replace does not fire
+	// (there is no trailing separator to match), so `out` is still the
+	// cwd and there is no file below it to name.
+	if got := frameFile(cwd); "<no-file>" != got {
+		t.Fatalf("frameFile(cwd) = %q, want <no-file>", got)
+	}
+
+	// The working directory with its separator: the replace eats the
+	// whole path.
+	if got := frameFile(cwd + string(os.PathSeparator)); "<no-file>" != got {
+		t.Fatalf("frameFile(cwd+sep) = %q, want <no-file>", got)
+	}
+
+	// And the ordinary case, for contrast: a file below the working
+	// directory keeps its relative spelling.
+	want := "a.aon"
+	if got := frameFile(cwd + string(os.PathSeparator) + want); want != got {
+		t.Fatalf("frameFile(cwd/a.aon) = %q, want %q", got, want)
 	}
 }
