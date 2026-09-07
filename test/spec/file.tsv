@@ -190,3 +190,13 @@ include-in-place-after-gen	gen	w: {a: { L: ***info | string }} @"__FIXTURES__/pr
 include-in-place-inline	gen	w: { &: { L: *warn | string } a: L: info } w: {a: { L: ***info | string }}	{"w":{"a":{"L":"warn"}}}
 # Two includes and three local pairs fold into ONE map in statement order.
 include-in-place-interleaved	gen	x:11 @"__FIXTURES__/foo.aon" y:22 @"__FIXTURES__/car.aon" z:33	{"color":"silver","doors":4,"f":11,"x":11,"y":22,"z":33}
+# A FRAME NAMES THE FILE IT EXCERPTS. A value's position is an offset
+# into the file it was PARSED from, so a frame about a value that came
+# through an include must be rendered against that file's text -- both
+# the row and column in the arrow and the source line under it. Both
+# ports used to fall back to the entry text: TypeScript's CLI passed no
+# `fs` for err.ts to read the site's file with, and Go's frame renderer
+# was handed only the entry pair. The arrow then named one file over
+# another file's coordinates, which docs/reference-api.md forbids in
+# the same words it uses to require the name.
+include-frame-names-its-own-file	err	@"__FIXTURES__/conflict_twelve.aon"\n@"__FIXTURES__/conflict_six.aon"	conflict_six.aon:1:4

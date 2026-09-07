@@ -2735,7 +2735,7 @@ func parseWithTrust(src, base, file string, trust *trustSink) (Val, error) {
 	// overflows first, a documented gap).
 	if valTreeDepth(root) > maxNodeDepth {
 		n := newNil("max_depth")
-		return newMap(), &AontuError{Msg: n.FullMessage(src, file), Code: "max_depth"}
+		return newMap(), &AontuError{Msg: n.FullMessage(src, file, nil), Code: "max_depth"}
 	}
 	setPaths(root, []string{})
 	return root, nil
@@ -2750,7 +2750,7 @@ func conflictError(src, file string, off int) *AontuError {
 	n.sp = off
 	row, col := rowCol(src, off)
 	return &AontuError{
-		Msg:  n.FullMessage(src, file),
+		Msg:  n.FullMessage(src, file, nil),
 		Code: "merge_conflict",
 		Row:  row,
 		Col:  col,

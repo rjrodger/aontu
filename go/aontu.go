@@ -230,7 +230,8 @@ func (a *Aontu) unifyCtx(v Val, vars map[string]Val, src string) (Val, *Ctx, err
 // callers that want one, and a nil set is every other run.
 func (a *Aontu) unifyCtxReads(v Val, vars map[string]Val, src string,
 	reads map[string]bool) (Val, *Ctx, error) {
-	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File, reads: reads}
+	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File, reads: reads,
+		texts: a.IncludeText}
 	if nil != a.Trust {
 		ctx.budgetPasses = a.Trust.Budget.Passes
 		ctx.budgetDepth = a.Trust.Budget.Depth

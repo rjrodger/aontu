@@ -603,7 +603,17 @@ function runFile(file: string, mode: Mode, trust: TrustArg): number {
   }
 
   const path = resolve(file)
-  const aontu = new Aontu({ path, ...trustOpts(trust, dirname(path)) })
+  // `fs` IS WHAT MAKES A FRAME EXCERPT THE FILE IT NAMES. Without it,
+  // err.ts's resolveSrc falls back to the ENTRY text, so a frame whose
+  // arrow says `lib/types.aon:2:6` printed the entry's line 2 under it
+  // -- a real file name over another file's line, which
+  // docs/reference-api.md forbids in the same words it uses to require
+  // the name.
+  const aontu = new Aontu({
+    path,
+    fs: { existsSync, readFileSync, statSync },
+    ...trustOpts(trust, dirname(path)),
+  })
   const res = evalSource(aontu, src, mode)
   ;(res.ok ? process.stdout : process.stderr).write(res.text + '\n')
   return res.ok ? 0 : 1

@@ -96,11 +96,12 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 				break
 			}
 			src, file := "", ""
+			var texts map[string]string
 			if ctx != nil {
-				src, file = ctx.src, ctx.file
+				src, file, texts = ctx.src, ctx.file, ctx.texts
 			}
 			n := makeNilErrFull(nil, code, va, vb, "", details)
-			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
+			return nil, &AontuError{Msg: n.FullMessage(src, file, texts), Code: code}
 		}
 		ev, err := e.Gen(ctx)
 		if err != nil {

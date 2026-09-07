@@ -483,11 +483,12 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			// frame with the `key <k>` caret submessage) via a NilVal,
 			// as TS BagVal.gen raises makeNilErr with details {key}.
 			src, file := "", ""
+			var texts map[string]string
 			if ctx != nil {
-				src, file = ctx.src, ctx.file
+				src, file, texts = ctx.src, ctx.file, ctx.texts
 			}
 			n := makeNilErrFull(nil, code, va, vb, "", details)
-			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
+			return nil, &AontuError{Msg: n.FullMessage(src, file, texts), Code: code}
 		}
 
 		// An optional child generates in an isolated collect context so

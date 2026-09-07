@@ -535,8 +535,8 @@ func TestValMiscArms(t *testing.T) {
 	if n.Message() != m1 {
 		t.Fatalf("message cache")
 	}
-	f1 := n.FullMessage("", "")
-	if n.FullMessage("", "") != f1 {
+	f1 := n.FullMessage("", "", nil)
+	if n.FullMessage("", "", nil) != f1 {
 		t.Fatalf("fullmsg cache")
 	}
 }

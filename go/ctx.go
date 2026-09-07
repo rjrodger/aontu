@@ -22,7 +22,18 @@ type Ctx struct {
 	src string
 	// file is the display name of the entry source for error frames
 	// (Aontu.File); empty renders <no-file>.
-	file  string
+	file string
+	// texts is THE TEXT OF EVERY SOURCE THIS PARSE READ, by full path
+	// (Aontu.IncludeText). A value's position is a byte offset into the
+	// file it was PARSED from, so a frame for a value that came through
+	// an include needs that file's text to turn the offset into a row
+	// and a column, and to excerpt the line. Without it every frame was
+	// rendered against the entry text, which named the entry file over
+	// another file's coordinates -- the case
+	// docs/reference-api.md forbids in the same words it uses to
+	// require the name. TypeScript reads the file through its own `fs`
+	// option; this port already has the text in hand.
+	texts map[string]string
 	err   []*NilVal
 	depth int // unite recursion depth (cycle guard)
 	cc    int // current fixpoint pass (for late-resolving funcs)
@@ -165,7 +176,7 @@ func (c *Ctx) errmsg() string {
 		// The thrown-error surface renders the full TS-style message
 		// (marker, headline, hint, value line, frames); the LSP/Problem
 		// surface keeps the short Message. See NilVal.FullMessage.
-		parts = append(parts, e.FullMessage(c.src, c.file))
+		parts = append(parts, e.FullMessage(c.src, c.file, c.texts))
 	}
 	return strings.Join(parts, "\n------\n")
 }
