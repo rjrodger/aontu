@@ -563,7 +563,31 @@ class RefVal extends FeatureVal_1.FeatureVal {
                     // hidden, since hide() marks to the leaves.
                     const lifted = true !== ctx.argsnap
                         || true === out.mark.type || true === out.mark.hide;
-                    out = out.clone(ctx);
+                    // A REFERENCE'S COPY OWNS ITS ARGUMENTS (ADR-025). The copy
+                    // is a per-destination instance exactly as a spread's or a
+                    // generator's is, so ADR-005's rule holds here too: nothing
+                    // path-dependent may be shared between two destinations, or
+                    // the first destination's resolution answers for them all.
+                    // The shallow clone shared a call's ARGUMENTS -- so
+                    // `items: [&: $.entities.User]` over a `close({...})` target
+                    // gave every element the one inner map, whose path each
+                    // element rebased in turn, and the constraint that failed at
+                    // element 2 reported element 0's path (use-cases GAP 8).
+                    //
+                    // A STAGED CALL IS THE EXCEPTION, because it has not decided
+                    // yet. Its arguments are still being driven AT ITS OWN SITE
+                    // (the staging rule, G8 phase 0), and a copy that owned them
+                    // would drive its own set at the referring position instead:
+                    // the relative `.side_effect` in a `match()` would read the
+                    // referring field's siblings (use-cases/09-agent-tools), and
+                    // an alias naming an `emit` rule table -- a template, which
+                    // is exactly a value copied before it resolves -- would read
+                    // its recursive `%w` as a self-reference. A staged call
+                    // ANYWHERE in the target counts: what is referenced is
+                    // usually the conjunct the call sits in, not the call.
+                    // The copy shares what the source is still settling, and
+                    // owns the rest.
+                    out = out.clone(ctx, { dup: !out.holdsStaged });
                     if (lifted) {
                         (0, utility_1.walk)(out, (_key, val) => {
                             val.mark.type = false;

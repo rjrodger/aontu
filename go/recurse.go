@@ -170,10 +170,11 @@ func (r *RecurseVal) Gen(ctx *Ctx) (any, error) {
 		return nil, nil
 	}
 	src, file := "", ""
+	var texts map[string]string
 	if nil != ctx {
-		src, file = ctx.src, ctx.file
+		src, file, texts = ctx.src, ctx.file, ctx.texts
 	}
-	return nil, &AontuError{Msg: n.FullMessage(src, file), Code: "recursion_unexpanded"}
+	return nil, &AontuError{Msg: n.FullMessage(src, file, texts), Code: "recursion_unexpanded"}
 }
 
 // containsRecurseOf answers whether a definition holds a residual of

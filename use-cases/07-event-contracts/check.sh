@@ -102,20 +102,26 @@ grep -q 'no contributions' "$WORK/why.out" \
   && fail 'why: envelope-supplied field is silent again' || true
 ok "why: envelope-supplied field names the file that wrote it"
 
-# The price of the schema style: the contract never evaluates (and
-# the error snippet quotes the WRONG FILE: header envelope.aon:13,
-# body lines from orders-v1.aon).
-# 2026-08-27 (ADR-007): the refusal is now `disjunct_no_gen` on the
+# The price of the schema style: the contract never evaluates.
+# 2026-08-27 (ADR-007): the refusal is `disjunct_no_gen` on the
 # envelope's `id: (integer | biginteger) & min(1)` -- an unresolved
 # disjunction is incomplete residue rather than a folded conflict -- so
-# evaluation stops at that field instead of a later constraint. The
-# misattribution pin is unchanged and still the point: the frame header
-# names envelope.aon:13 (which IS where `id` is written) while the
-# quoted source lines come from orders-v1.aon.
+# evaluation stops at that field instead of a later constraint.
+#
+# THE MISATTRIBUTION IS FIXED, and this check now pins the fix. The
+# frame used to name envelope.aon:13 and then quote lines from
+# orders-v1.aon under it -- a real file name over another file's text,
+# which docs/reference-api.md forbids in the same words it uses to
+# require the name. It happened because the excerpt came from the ENTRY
+# text whatever the arrow said: TypeScript only reads a site's own file
+# when it is given an `fs`, and its CLI passed none. Both ports now
+# render the frame against the file it names, so the line under the
+# arrow is envelope.aon's line 13 and the caret sits on the value that
+# could not resolve.
 run geneval 1 -- "$V1"
 has geneval err '[aontu/disjunct_no_gen]'
 has geneval err 'envelope.aon:13:7'
-has geneval err 'customer_id'
+has geneval err 'id: (integer | biginteger) & min(1)'
 grep -q 'customer_id' "$DIR/envelope.aon" \
   && fail "envelope.aon now holds customer_id; misattribution pin stale" \
   || true

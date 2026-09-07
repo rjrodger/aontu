@@ -25,6 +25,7 @@ type AontuOptions = {
     debug?: boolean;
     trace?: boolean;
     fs?: FST;
+    errfs?: FST;
     deps?: any;
     log?: any;
     idcount?: number;
@@ -44,6 +45,7 @@ type ValList = Val[];
 type ErrContext = {
     src?: string;
     fs?: FST;
+    errfs?: FST;
 };
 export type { Val, ValMark, ValSpec, ValMap, ValList, AontuOptions, ErrContext, FST, TrustInclude, TrustBudget, TrustOptions, };
 export { DONE, SPREAD, DEFAULT_OPTS, Resolver, };

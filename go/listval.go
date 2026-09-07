@@ -90,17 +90,12 @@ func (l *ListVal) Gen(ctx *Ctx) (any, error) {
 				va = ev.peg
 			}
 			details := map[string]string{"key": strconv.Itoa(i)}
-			// Recorded before the truncating break, as in MapVal.Gen.
-			if ctx != nil && ctx.collect {
-				makeNilErrFull(ctx, code, va, vb, "", details)
-				break
-			}
-			src, file := "", ""
-			if ctx != nil {
-				src, file = ctx.src, ctx.file
-			}
-			n := makeNilErrFull(nil, code, va, vb, "", details)
-			return nil, &AontuError{Msg: n.FullMessage(src, file), Code: code}
+			// Recorded before the truncating break, as in MapVal.Gen --
+			// and in BOTH modes, for the reason given there: the bag
+			// records and walks on so sibling subtrees each contribute
+			// a finding, and the raise belongs to the caller.
+			makeNilErrFull(ctx, code, va, vb, "", details)
+			break
 		}
 		ev, err := e.Gen(ctx)
 		if err != nil {

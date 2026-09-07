@@ -470,10 +470,11 @@ func (n *NilVal) Gen(ctx *Ctx) (any, error) {
 		n.why = "nil_gen"
 	}
 	src, file := "", ""
+	var texts map[string]string
 	if ctx != nil {
-		src, file = ctx.src, ctx.file
+		src, file, texts = ctx.src, ctx.file, ctx.texts
 	}
-	return nil, &AontuError{Msg: n.FullMessage(src, file), Code: n.why}
+	return nil, &AontuError{Msg: n.FullMessage(src, file, texts), Code: n.why}
 }
 
 // attempt names the operation in messages, defaulting from the operand
@@ -563,11 +564,16 @@ func (n *NilVal) messagePath() string {
 // frame per operand — byte-matched to the TS output, ANSI colouring
 // included. Used by the AontuError paths (unify/generate); the
 // LSP/Problem surface keeps the short Message below, mirroring TS's
-// own split (descErr vs the LSP's nilMessage). src is the entry
-// source text for row/col mapping and excerpts (ctx.src); frames for
-// values loaded from includes fall back to it, as TS's resolveSrc
-// falls back when a site's file cannot be read.
-func (n *NilVal) FullMessage(src, file string) string {
+// own split (descErr vs the LSP's nilMessage).
+//
+// src and file are the ENTRY source and its name. texts is the text of
+// every source the parse read, by full path (Ctx.texts): a value that
+// came through an include carries a byte offset into ITS OWN file, so
+// a frame about it is rendered against that file's text and named with
+// that file. Without the map -- a parse-time caller has no context yet
+// -- the entry text is the fallback, which is what TS's resolveSrc
+// does when a site's file cannot be read.
+func (n *NilVal) FullMessage(src, file string, texts map[string]string) string {
 	if n.fullmsg != "" {
 		return n.fullmsg
 	}
@@ -605,21 +611,52 @@ func (n *NilVal) FullMessage(src, file string) string {
 	// written, which is exactly what TS shows for `a:-0x_1` (its nil is
 	// built through addsite, so it carries the `-`).
 	b.WriteString(gap)
-	b.WriteString(n.frame(src, file, attempt, residue, n.secondary))
+	b.WriteString(n.frame(src, file, attempt, residue, n.secondary, texts))
 	if n.secondary != nil {
 		// The second frame swaps the operand order, as descErr does.
 		b.WriteString("\n")
-		b.WriteString(n.frame(src, file, attempt, n.secondary, residue))
+		b.WriteString(n.frame(src, file, attempt, n.secondary, residue, texts))
 	}
 	n.fullmsg = b.String()
 	return n.fullmsg
+}
+
+// frameFile names a frame's file the way a reader can open it: the
+// path with the working directory's prefix taken off, so a document in
+// the current directory prints as `clash.aon` rather than as its
+// absolute path. The twin of resolveFile in ts/src/err.ts, including
+// its two degenerate answers -- the working directory itself, and the
+// empty string, are both <no-file> -- and, like it, this cuts one
+// leading occurrence rather than every one, so a path that repeats the
+// working directory deeper down keeps it.
+func frameFile(url string) string {
+	cwd, err := os.Getwd()
+	if nil != err { //coverage:ignore Getwd fails only if the cwd is gone
+		return url
+	}
+	out := strings.Replace(url, cwd+string(os.PathSeparator), "", 1)
+	if out == cwd || "" == out {
+		return "<no-file>"
+	}
+	return out
 }
 
 // frame renders one located source frame, byte-matched to the jsonic
 // errmsg block TS descErr emits: the value line, the blue `-->`
 // arrow with file:row:col, the source row with a caret naming the
 // value (and the map key when known), and the two following rows.
-func (n *NilVal) frame(src, file, attempt string, v, other Val) string {
+func (n *NilVal) frame(src, file, attempt string, v, other Val,
+	texts map[string]string) string {
+	// PER-OPERAND SOURCE. The frame is about `v`, so it is rendered
+	// against the file `v` was parsed from whenever that text is in
+	// hand: its offset means nothing in any other text. Falling back
+	// keeps the entry pair, which is what shipped before and is still
+	// better than a coordinate computed in the wrong file.
+	if url := v.srcurl(); "" != url {
+		if text, have := texts[url]; have {
+			src, file = text, frameFile(url)
+		}
+	}
 	if file == "" {
 		file = "<no-file>"
 	}
@@ -820,10 +857,11 @@ func residueErr(ctx *Ctx, v Val, code string) error {
 		return nil
 	}
 	src, file := "", ""
+	var texts map[string]string
 	if ctx != nil {
-		src, file = ctx.src, ctx.file
+		src, file, texts = ctx.src, ctx.file, ctx.texts
 	}
-	return &AontuError{Msg: n.FullMessage(src, file), Code: code}
+	return &AontuError{Msg: n.FullMessage(src, file, texts), Code: code}
 }
 
 // makeNilErrFull is makeNilErr with the attempt name and hint details

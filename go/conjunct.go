@@ -74,9 +74,9 @@ func (c *ConjunctVal) Gen(ctx *Ctx) (any, error) {
 					return nil, nil
 				}
 				return nil, &AontuError{
-					Msg: n.FullMessage(ctx.src, ctx.file), Code: n.why}
+					Msg: n.FullMessage(ctx.src, ctx.file, ctx.texts), Code: n.why}
 			}
-			return nil, &AontuError{Msg: n.FullMessage("", ""), Code: n.why}
+			return nil, &AontuError{Msg: n.FullMessage("", "", nil), Code: n.why}
 		}
 		return settled.Gen(ctx)
 	}

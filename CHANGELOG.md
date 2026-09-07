@@ -5,6 +5,151 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/aontu-lang/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
+## Go 0.1.17 — 2026-09-07 · TypeScript 0.59.0
+
+The use-case corpus had never been run under the Go port. Running it
+under both is the whole of this release: ten cross-port divergences,
+fixed rather than recorded, and in three of them the canonical
+TypeScript port was the one that was wrong. CI now runs the corpus
+under both engines, so the class cannot accumulate again.
+
+**One behaviour change to be aware of.** A `match(_)` written outside a
+generator's template — the discriminated-union idiom — no longer fires.
+It never validated anything (see below); the Go port answered
+`verdict: valid` for every document put to it, and the answer is now
+`incomplete` in both ports.
+
+### A `match(_)` used as a schema accepted anything
+
+The placeholder rule puts the peer INTO a call holding a hole and does
+not keep it as a constraint on the way out: `upper(_) & hello` is
+`"HELLO"`, not `"HELLO" & "hello"`. That is right for a transformation.
+Applied to a schema —
+
+```
+Placed: close({ type: "order.placed" total_cents: integer & min(0) })
+Event:  match(_, { type: "order.placed" }, $.Placed)
+```
+
+— the document is consumed selecting the arm and then never checked
+against it, so `vet --at '$.Event'` answered `verdict: valid`, exit 0,
+for `{"type":"order.placed","total_cents":-5}`. And for every other
+document, including one matching no arm at all.
+
+A match now fires on no unfilled hole, in either port: the call
+residuates and the run says `verdict: incomplete` with
+`[aontu/conjunct]`. A hole inside a generator's template is untouched —
+the generator fills it at each destination, so the scrutinee is a value
+by the time the match runs, and `match(_, small, {...}, large, {...})`
+inside a `pack` works exactly as before.
+
+TypeScript never reached the rule here, because `MatchFuncVal.unify`
+gates on its driven arguments alone. That accident was the safe answer,
+and it is now the decided one.
+
+### A reference's copy owns what the source has settled (ADR-025)
+
+`items: [&: $.entities.User]` over a `close({...})` target reported the
+second element's bad email at `$.items.0.email` in TypeScript and at
+`$.items.1.email` in Go. The Go answer had been recorded as the correct
+one and the difference as a TypeScript-only defect. It was neither:
+with two bad elements and a good one between them, TypeScript reported
+both findings at the FIRST element's path and Go both at the LAST. With
+the bad element last, the wrong index and the right one are the same
+number.
+
+ADR-005's rule — nothing path-dependent may be shared between two
+destinations, or the first destination's resolution answers for them
+all — had been applied to spreads, generators and filter conditions and
+deliberately withheld from reference resolution. A reference is a
+destination: all three elements held the one `close()` argument map,
+each rebased its path as it resolved, and the constraint inside carried
+whichever element had touched it.
+
+A reference's copy is now the per-destination instantiation clone,
+**except of a target with a staged call standing anywhere in it**. A
+staged call has not decided: its arguments are still being driven at
+its own site, and a copy that owned them would drive its own set at the
+referring position instead — a relative `.side_effect` inside a
+`match()` would read the referring field's siblings, and an alias
+naming an `emit` rule table would read its recursive `%w` as a
+self-reference. The copy shares what the source is still settling, and
+owns the rest. That exception is also what keeps the `move()`/`copy()`
+ghost rows pinned: every one of them copies a target holding a pending
+`key()`.
+
+### A disjunct trial's sandbox does not outlive the trial
+
+`vet` called an incomplete document invalid, and the extra findings it
+reported were the conflicts of arms the language says drop out.
+
+`DisjunctVal.unify` tries each member with `err` and `_trialMode`
+swapped on the context it was handed, and restores them in a `finally`.
+Contexts are made with `Object.create(parent)` and cached per
+(parent, key), so both are normally INHERITED — and assigning them, the
+restore included, creates own properties that shadow the ancestor for
+every later pass. A child context that had run a trial of its own could
+no longer see the trial its PARENT was running: the refusal landed on
+the meet's real error list, and the losing member was kept as though it
+had survived. The restore now DELETES what it found inherited.
+`FuncBaseVal.trialUnify` carried the same shape and gets the same
+treatment. Go was right here all along.
+
+### A bag records its refusal and walks on
+
+Go's `MapVal.Gen` and `ListVal.Gen` RETURNED at the first child that
+could not generate unless the run was collecting, where TypeScript
+files the refusal and breaks its own key loop so sibling subtrees each
+contribute a finding. The whole walk aborted at the first refusal, so
+the two ports could report different first failures for one document.
+The bags now record and walk on in both modes, and the raise is the
+caller's, out of what the context collected.
+
+### The site-attribution family
+
+- **A frame names the file it excerpts, in both ports.** Go resolved a
+  frame's offsets against the entry document's text whatever file its
+  header named, so a value written in an included file was quoted from
+  the wrong document — a caret under an unrelated line.
+- **A parenthesised group is sited at its paren**, not at its first
+  term, so a refusal in `(a | b) & c` points at the group a reader
+  sees.
+- **The frame's reader is not the resolver's.** Handing the CLI's
+  engine an `fs` gave the error renderer the file it needed and gave
+  the include resolver one too, which changed which resolution leg won
+  for a path that used to miss the file leg. The renderer takes a
+  separate `errfs`; the resolver's answer is unchanged.
+- **A pack hole is a position, not a copy.** `pack(src, {k: _})` fills
+  the hole with the source child, and the filled value's path must be
+  the HOLE's: TypeScript grafted the source's own path on, so `vet`
+  reported findings at a path its own `get` verb answers `no_path` for.
+- **A finding raised on an anchored meet stands at the anchor's own
+  path** in Go, as it already did in TypeScript: `vet --at '$.E'`
+  reports `$.E`, not the lifted root `$`.
+- **A rank clash surfaces at generation**, rather than a disjunction
+  quietly generating one of two equal-rank defaults.
+
+### The corpus should run under both engines in CI
+
+`use-cases/run-all.sh` runs once, against the committed TypeScript
+build. It is the only check that exercises the engines the way a user
+does — through files, includes, data merges and exit codes — and
+running one of them over it is what let this release's whole list
+accumulate unseen. The checks take `AONTU`, so a second run against a
+`go build` of the same tree is the whole difference; the change to the
+`Use cases` job is proposed separately, since it edits a workflow file.
+
+### Also
+
+- `use-cases/BUGS.md` gains §90 and §91, with minimal repros under
+  `use-cases/repros/`; use case 03 drops its gap-8 workaround and use
+  case 07's `match(_)` probe now reports the same gap in both ports.
+- Terminal detection in the Go CLI asks the terminal attributes ioctl
+  rather than guessing from the file kind, with build tags covering
+  every supported GOOS/GOARCH.
+- The Go report's JSON tags are in lexicographic order, asserted by a
+  test rather than by hand.
+
 ## Go 0.1.16 — 2026-09-06 · TypeScript 0.58.0
 
 **Two source-level changes are breaking**, and both are below rather

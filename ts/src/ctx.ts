@@ -35,6 +35,7 @@ type AontuContextConfig = {
   // (Val.origin, Val.emitted), so one flag turns the whole record on.
   reads?: Set<string>
   fs?: any
+  errfs?: any
   path?: string[]
   root?: Val
   seen?: Record<string, number>
@@ -77,6 +78,8 @@ class AontuContext {
   vars: Record<string, Val> = {}
   src?: string
   fs?: FST
+  // The error renderer's own reader; see type.ts's `errfs`.
+  errfs?: FST
 
   seenI: number
   seen: Record<string, number>
@@ -199,6 +202,7 @@ class AontuContext {
     this.explain = Array.isArray(cfg.explain) ? cfg.explain : null
 
     this.fs = cfg.fs ?? null
+    this.errfs = cfg.errfs ?? null
 
     // Multiple unify passes will keep incrementing Val counter.
     this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc
@@ -320,6 +324,7 @@ class AontuContext {
     this.err = this.opts.err ?? this.err
     this.deps = this.opts.deps ?? this.deps
     this.fs = this.opts.fs ?? this.fs
+    this.errfs = (this.opts as any).errfs ?? this.errfs
     this.explain = this.opts.explain ?? this.explain
 
     this.src = ('string' === typeof this.opts.src ? this.opts.src : undefined) ?? this.src

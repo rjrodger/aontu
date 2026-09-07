@@ -174,3 +174,16 @@ ref-unspellable-root-list	errc	**.[1]	no_path
 # .tsv cell cannot carry -- the runners' unescape maps \u to u -- so it
 # lives in a fixture file, as file.tsv does.)
 ref-unspellable-no-collision	errc	@"__FIXTURES__/unspellable-key.aon" b:$.a.true	no_path
+#
+# A REFERENCE'S COPY SHARES WHAT THE SOURCE IS STILL SETTLING
+# (ADR-025). The copy is a per-destination instance and owns the
+# target's structure -- except where a STAGED call stands in it, which
+# has not decided and whose arguments are still being driven at its
+# own site. These three rows are the container shapes that carry such
+# a call to the copy: a list element, an operator operand, and a
+# disjunction member. Each answers at the DESTINATION's key, which is
+# what says the copy resolved as a copy rather than handing back the
+# source's answer.
+ref-copy-staged-in-list	canon	x:[key()]\ny:$.x\n	{"x":["x"],"y":["y"]}
+ref-copy-staged-in-op	canon	x:key(0)+"a"\ny:$.x\n	{"x":"xa","y":"ya"}
+ref-copy-staged-in-disjunct	canon	x:{p:key()|1}\ny:$.x\n	{"x":{"p":"x"|1},"y":{"p":"y"|1}}

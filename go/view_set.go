@@ -299,7 +299,7 @@ func (a *Aontu) ViewSet(src string, opts *ViewOptions) ViewSetReport {
 	// The declarations are part of the document, so reading them
 	// generates it -- and a view document that does not generate has no
 	// figures, exactly as `aontu file.aon` on it has no output.
-	value, gerr := root.Gen(ctx)
+	value, gerr := genCollect(ctx, root)
 	if nil != gerr {
 		return ViewSetReport{Verdict: "error", Views: none,
 			Errors: queryFailed(gerr, "$").Findings}

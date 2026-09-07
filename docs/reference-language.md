@@ -1025,6 +1025,15 @@ Both wait for the model to settle before they answer, for the reason
 wrong bag to take a subset of, and a scrutinee that is still being
 narrowed can match an earlier arm than the one it will end up matching.
 
+**A `match` does not fire on an unfilled hole.** `match(_, …)` outside
+a generator's template never answers: the peer that would fill the hole
+is not also checked against the arm the fill selects (see
+[The placeholder `_`](#the-placeholder-_)), so a `match` written as a
+schema would accept every document it was asked about. The call stands
+unresolved instead, and a `vet` run says so. Inside a generator's
+template the hole is the source child, the scrutinee is a value by the
+time the match runs, and the form works as documented above.
+
 ## The placeholder `_`
 
 A bare `_` is a **hole**: a call holding one waits, and whatever the
@@ -1044,6 +1053,9 @@ x: a: m: 1
 The peer goes **into** the call and is not also a constraint on the
 way out: `upper(_) & hello` is `"HELLO"`, not `"HELLO" & "hello"`.
 Two holes meeting is an error—neither has a value to fill the other.
+`match` is the one call a peer does not fill, because the arm it would
+select is not then checked against that peer—see
+[Selecting](#selecting-filter-and-match).
 
 Inside a generator's template, `_` is the **source child** the
 generated one is being made from:

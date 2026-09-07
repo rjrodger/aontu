@@ -94,6 +94,7 @@ declare abstract class Val {
     spreadClone(ctx: AontuContext): Val;
     _isPathDependent?: boolean;
     get isPathDependent(): boolean;
+    get holdsStaged(): boolean;
     place(v: Val): Val;
     unify(_peer: Val, _ctx: AontuContext): Val;
     abstract get canon(): string;

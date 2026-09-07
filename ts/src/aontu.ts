@@ -38,7 +38,7 @@ export type { LintFinding, FormatReport, FormatOptions } from './format'
 // Kept in step with package.json by the `version` npm lifecycle script,
 // which runs on `npm version` / `npm run repo-bump`. version.test.ts
 // fails if the two ever drift.
-const VERSION = '0.58.0'
+const VERSION = '0.59.0'
 
 
 // A module file's VALUE, as far as it goes. COLLECTED, not raised: a
@@ -103,6 +103,7 @@ class Aontu {
   ctx(cfg?: AontuContextConfig): AontuContext {
     cfg = cfg ?? {}
     cfg.fs = cfg.fs ?? this.opts.fs
+    ;(cfg as any).errfs = (cfg as any).errfs ?? (this.opts as any).errfs
     // The trust profile rides the instance (its resolver is built once,
     // in the Lang constructor); the context needs it too, for the
     // budgets (G5, docs/trust.md).
