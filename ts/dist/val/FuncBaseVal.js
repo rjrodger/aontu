@@ -25,6 +25,13 @@ const PlaceVal_1 = require("../val/PlaceVal");
 function trialUnify(ctx, a, b) {
     const savedErr = ctx.err;
     const savedTrial = ctx._trialMode;
+    // Restored by DELETION where they were inherited, for the reason
+    // DisjunctVal.unify's own sandbox gives at length: contexts are
+    // Object.create(parent) and cached per (parent, key), so writing
+    // these back leaves own properties that shadow the ancestor and make
+    // a later trial invisible to the value running inside it.
+    const ownErr = Object.prototype.hasOwnProperty.call(ctx, 'err');
+    const ownTrial = Object.prototype.hasOwnProperty.call(ctx, '_trialMode');
     const trialErr = [];
     ctx.err = trialErr;
     ctx._trialMode = true;
@@ -33,8 +40,18 @@ function trialUnify(ctx, a, b) {
         out = (0, unify_1.unite)(ctx, a, b, 'trial');
     }
     finally {
-        ctx.err = savedErr;
-        ctx._trialMode = savedTrial;
+        if (ownErr) {
+            ctx.err = savedErr;
+        }
+        else {
+            delete ctx.err;
+        }
+        if (ownTrial) {
+            ctx._trialMode = savedTrial;
+        }
+        else {
+            delete ctx._trialMode;
+        }
     }
     return 0 < trialErr.length || out.isNil ? undefined : out;
 }
@@ -114,22 +131,28 @@ class FuncBaseVal extends FeatureVal_1.FeatureVal {
         return (ready || (!peer.isTop && (0, PlaceVal_1.hasPlace)(this))) && true === ctx.settle;
     }
     // THE PER-DESTINATION INSTANTIATION RULE (ADR-005). The default
-    // clone shares the argument array AND the argument Vals — pinned
-    // sharing for the move()/copy() ghost artifacts (test/spec/func.tsv,
-    // ghost-*-innard-canon) — but a clone that is a template INSTANCE
-    // must own the full inner structure: with the args shared,
-    // `pack($.names, close({name: key()}))` resolved key() once inside
-    // the one shared inner map and stamped the FIRST child's key on
-    // every child (use-cases/BUGS.md §8). The `dup` spec flag asks for
-    // that depth; everything else keeps the sharing it has always had.
+    // clone shares the argument array AND the argument Vals — the
+    // residuation clone, which stays at one position and wants the
+    // sharing, and the reference copy of a target that still holds a
+    // staged call, which pins the move()/copy() ghost artifacts
+    // (test/spec/func.tsv, ghost-*-innard-canon; ADR-025) — but a clone
+    // that is an INSTANCE must own the full inner structure: with the
+    // args shared, `pack($.names, close({name: key()}))` resolved key()
+    // once inside the one shared inner map and stamped the FIRST
+    // child's key on every child (use-cases/BUGS.md §8). The `dup` spec
+    // flag asks for that depth; everything else keeps the sharing it
+    // has always had.
     clone(ctx, spec) {
         const out = super.clone(ctx, spec);
         if (true === spec?.dup && Array.isArray(this.peg)) {
             // Every argument is a Val by construction (the parser builds
             // them; make() rebuilds from driven Vals), as the Go twin's
-            // []Val typing states outright. The instantiation sites then
-            // normalise every path in the clone (repathInstance), so the
-            // argument-shaped parse paths never leak into an instance.
+            // []Val typing states outright. The generator and spread
+            // instantiation sites then normalise every path in the clone
+            // (repathInstance), so the argument-shaped parse paths never
+            // leak into an instance; the reference copy takes the paths
+            // this rebasing gives, which is what an absolute address in a
+            // copied model already expects (ADR-014).
             out.peg = this.peg.map((a) => a.clone(ctx, { dup: true }));
         }
         return out;

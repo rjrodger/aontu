@@ -239,6 +239,33 @@ class Val {
         this._isPathDependent = dep;
         return dep;
     }
+    // A STAGED CALL STANDING ANYWHERE IN THIS VALUE (the `staged` flag,
+    // G8 phase 0). Such a call has not decided: its arguments are still
+    // being driven AT ITS OWN SITE, so a REFERENCE's copy shares it
+    // rather than owning a set of arguments it would drive at the
+    // referring position instead (RefVal.find, ADR-025). Not cached:
+    // unlike isPathDependent this is a fact about the value's current
+    // state, and the whole point is that it stops being true.
+    get holdsStaged() {
+        if (true === this.staged) {
+            return true;
+        }
+        const peg = this.peg;
+        if (Array.isArray(peg)) {
+            for (let i = 0; i < peg.length; i++) {
+                if (true === peg[i]?.isVal && peg[i].holdsStaged)
+                    return true;
+            }
+        }
+        else if (null != peg && 'object' === typeof peg) {
+            for (const k in peg) {
+                if (true === peg[k]?.isVal && peg[k].holdsStaged)
+                    return true;
+            }
+        }
+        const spreadCj = this.spread?.cj;
+        return true === spreadCj?.isVal && spreadCj.holdsStaged;
+    }
     // PUT A MINTED VALUE WHERE THIS ONE STANDS: the site travels, and so
     // does provenance, because the two answer one question. A narrowed
     // disjunction, a lifted kind, a resolved reference -- each is a

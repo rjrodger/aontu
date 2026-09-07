@@ -21,7 +21,7 @@ import { render, renderValue, renderProfile } from './render';
 import { desugarTemplate, resugarTemplate, markerFor } from './template';
 import { format, unifiedDiff } from './format';
 export type { LintFinding, FormatReport, FormatOptions } from './format';
-declare const VERSION = "0.58.0";
+declare const VERSION = "0.59.0";
 declare class Aontu {
     opts: AontuOptions;
     lang: Lang;

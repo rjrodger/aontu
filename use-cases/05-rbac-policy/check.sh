@@ -100,17 +100,21 @@ ok "vet: missing name reported incomplete (exit 3)"
 # `free|pro|enterprise` into a scalar conflict, and vet -- which keeps
 # incomplete-class findings -- filtered it out. It is now
 # `disjunct_no_gen`, class incomplete, and the candidate is refused.
-# The verdict is `invalid` rather than `incomplete` because the same
-# run also reports conflicts: with no plan to select, the cross-field
-# tie `entitlement: $.Entitlement & {plan: $.tenant.plan}` now FIRES
-# under vet (§15 -- the meet is built from a fresh parse, so the
-# reference is no longer spent by the schema-alone pass), and the
-# distributed branch trials surface as scalar_value pairs. Evaluating
-# the same two documents as one reports exactly those conflicts too,
-# which is the point of ADR-007: vet and eval answer the same question.
-run noplan 1 -- vet "$DIR/tenant.aon" "$DIR/data/tenant-no-plan.aon"
+# The verdict is `incomplete`, and the run reports exactly one finding.
+# It used to report three, and be `invalid` for it: the two extra were
+# scalar_value conflicts from the arms of `$.Entitlement` that the
+# data's own plan refuses -- arms that are supposed to DROP OUT
+# (reference-language.md, "unifying a concrete value selects the
+# matching branch"). They leaked because TypeScript's disjunct trial
+# sandbox saved and restored `err` and `_trialMode` by ASSIGNMENT on a
+# context that is created with Object.create and cached, so the
+# restore left own properties shadowing the ancestor and a later trial
+# became invisible to the values running inside it. Go always answered
+# `incomplete` here and was right to.
+run noplan 3 -- vet "$DIR/tenant.aon" "$DIR/data/tenant-no-plan.aon"
+has noplan out 'verdict: incomplete'
 has noplan out '$.tenant.plan: disjunct_no_gen [incomplete]'
-ok "vet: tenant without a plan is refused (disjunct_no_gen)"
+ok "vet: tenant without a plan is incomplete (disjunct_no_gen, exit 3)"
 
 # 10. Machine-readable findings carry the same codes.
 run json 1 -- vet --format json "$DIR/tenant.aon" "$DIR/data/tenant-unknown-role.aon"

@@ -57,6 +57,26 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
         // before return.
         const savedErr = ctx.err;
         const savedTrialMode = ctx._trialMode;
+        // THE SANDBOX MUST NOT OUTLIVE THE TRIAL AS AN OWN PROPERTY.
+        // Contexts are made with Object.create(parent) and CACHED per
+        // (parent, key) by AontuContext.descend, so `err` and `_trialMode`
+        // are normally INHERITED -- and assigning them here, the restore
+        // included, creates own properties that shadow the ancestor on
+        // every later pass. A child that has run a trial of its own then
+        // cannot see the trial its PARENT is running: makeNilErr allocates
+        // a real NilVal instead of TRIAL_NIL, the refusal lands on the
+        // meet's real error list, and the losing member is kept as though
+        // it had survived -- with the nil inside it. A vet run then
+        // reported the conflicts of arms that should have dropped out, and
+        // called the document invalid where it is incomplete.
+        //
+        // So the restore DELETES what was inherited rather than writing it
+        // back. Both arms of both guards are live: the root meet context
+        // has an own `err`, a descended child does not, and `_trialMode`
+        // is own exactly when a disjunction is tried inside another
+        // disjunction's trial on the same context.
+        const ownErr = Object.prototype.hasOwnProperty.call(ctx, 'err');
+        const ownTrialMode = Object.prototype.hasOwnProperty.call(ctx, '_trialMode');
         // A MEMBER'S TYPE FLOW IS PART OF THAT MEMBER. `refer(t)`/`rel(t)`
         // assert `t` on ANOTHER node, and the assertion may only take
         // effect if the member that makes it survives: committing every
@@ -145,8 +165,19 @@ class DisjunctVal extends JunctionVal_1.JunctionVal {
             }
         }
         finally {
-            ctx._trialMode = savedTrialMode;
-            ctx.err = savedErr;
+            if (ownTrialMode) {
+                ctx._trialMode = savedTrialMode;
+            }
+            else {
+                delete ctx._trialMode;
+            }
+            if (ownErr) {
+                ctx.err = savedErr;
+            }
+            else {
+                delete ctx.err;
+            }
+            ;
             ctx.referflows = savedFlows;
         }
         // // // console.log('DISJUNCT-unify-B', this.id, oval.map(v => v.canon))

@@ -2270,7 +2270,7 @@ func (a *Aontu) drawLoaded(root Val, ctx *Ctx, gen *viewGen, prov *Provenance,
 			// GENERATION CAN FAIL WHERE UNIFICATION DID NOT: the panel
 			// reads generated values, so a document that is not concrete
 			// is an error here, exactly as `aontu file.aon` on it is.
-			v, gerr := root.Gen(ctx)
+			v, gerr := genCollect(ctx, root)
 			if nil != gerr {
 				return "", queryFailed(gerr, "$").Findings
 			}

@@ -294,7 +294,7 @@ func (a *Aontu) Get(src, path string, opts *QueryOptions) QueryReport {
 	}
 
 	if QueryJSON == view {
-		gen, gerr := node.Gen(ctx)
+		gen, gerr := genCollect(ctx, node)
 		if nil != gerr {
 			return queryFailed(gerr, queryPathText(path))
 		}

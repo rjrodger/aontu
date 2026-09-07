@@ -14,7 +14,7 @@ import (
 // Spelled in caps to match ts/src/aontu.ts's exported VERSION, so the two
 // ports name the same thing the same way. Note the two version SERIES are
 // independent: the Go module is 0.1.x, the npm package 0.49.x.
-const VERSION = "0.1.16"
+const VERSION = "0.1.17"
 
 // TrustBudget bounds evaluation work (G5 trust profile, docs/trust.md):
 // integer counts of engine events, never wall-clock. Zero means the
@@ -230,7 +230,8 @@ func (a *Aontu) unifyCtx(v Val, vars map[string]Val, src string) (Val, *Ctx, err
 // callers that want one, and a nil set is every other run.
 func (a *Aontu) unifyCtxReads(v Val, vars map[string]Val, src string,
 	reads map[string]bool) (Val, *Ctx, error) {
-	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File, reads: reads}
+	ctx := &Ctx{root: v, vars: vars, src: src, file: a.File, reads: reads,
+		texts: a.IncludeText}
 	if nil != a.Trust {
 		ctx.budgetPasses = a.Trust.Budget.Passes
 		ctx.budgetDepth = a.Trust.Budget.Depth
@@ -287,7 +288,7 @@ func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
 		return nil, err
 	}
 	out, gerr := res.Gen(ctx)
-	if gerr != nil {
+	if gerr = genErr(ctx, gerr); gerr != nil {
 		return nil, gerr
 	}
 	// The relation verdict (RELATIONS P2): declarations the graph
