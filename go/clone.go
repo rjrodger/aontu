@@ -389,6 +389,18 @@ func clonePathKind(v Val, path []string, deep bool) Val {
 			out.peg = append(out.peg, cloneAt(t, path, deep))
 		}
 		return out
+	case *PlaceVal:
+		// A HOLE IS A POSITION. Left uncloned it kept the one path the
+		// parse gave it, and the fill inserted there (fillPlace) then
+		// carried its SOURCE paths into a destination that is somewhere
+		// else, so a finding under the fill named a path that does not
+		// exist.
+		out := newPlace()
+		out.dc = n.dc
+		out.sp = n.sp
+		out.path = overlayPath(path, n.path)
+		copyMarks(out, n)
+		return out
 	case *FuncVal:
 		out := &FuncVal{name: n.name, prepared: n.prepared}
 		out.dc = n.dc

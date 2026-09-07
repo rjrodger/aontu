@@ -126,8 +126,20 @@ func hasPlace(v Val) bool {
 // identity to know whether anything was filled -- and so a tree with no
 // hole is never needlessly rebuilt.
 func fillPlace(v Val, fill Val) Val {
-	if _, ok := v.(*PlaceVal); ok {
-		return fill
+	if p, ok := v.(*PlaceVal); ok {
+		// A FILL IS A POSITION: the hole knows where it sits in the
+		// instance, the datum arriving in it does not. Mirrors
+		// fillPlace in ts/src/val/PlaceVal.ts.
+		out := clonePath(fill, cp(p.path))
+		// THE HOLE'S PATH IS THE WHOLE ANSWER, tail included. cloneAt
+		// OVERLAYS (overlayPath), which keeps the source segments past
+		// the destination's depth -- right for a reference, whose
+		// target may be deeper than the referring site, and wrong for a
+		// hole, whose position is fully known. Without this a fill from
+		// a source deeper than the hole (`pack($.a.b.c, {arg:_})`)
+		// carried `c.t` onto the end of a path that does exist.
+		out.setvpath(cp(p.path))
+		return out
 	}
 	if !hasPlace(v) {
 		return v

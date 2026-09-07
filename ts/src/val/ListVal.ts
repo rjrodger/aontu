@@ -335,7 +335,15 @@ class ListVal extends BagVal {
       { mark: spec?.mark, dup: spec?.dup } : {}
     for (let entry of Object.entries(this.peg)) {
       out.peg[entry[0]] =
-        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, childspec) : entry[1]
+        (entry[1] as any)?.isVal ? (entry[1] as Val).clone(ctx, {
+          ...childspec,
+          // AN ELEMENT IS A POSITION, exactly as a map's child is
+          // (MapVal.clone). Without this an explicitly pathed clone
+          // rebased the list and left every element at its source
+          // path -- the Go twin descends by index (go/clone.go, the
+          // *ListVal arm of clonePathKind).
+          path: [...out.path, entry[0]],
+        }) : entry[1]
     }
     if (this.spread.cj) {
       out.spread.cj = this.spread.cj.clone(ctx, childspec)

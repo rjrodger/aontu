@@ -118,9 +118,16 @@ ok "vet: sunset argument admitted with a deprecation warning (exit 0)"
 # and duplicate labels vetted valid. A sizing verdict is now taken only
 # when more members cannot change it, so the atoms are still on the
 # value when the data arrives -- and the duplicate is caught.
+# THE PATH IS THE HOLE'S, not the source's. `pack($.registry, {tool:
+# key(), arguments: _})` fills `_` with the registry entry's own shape,
+# and the filled value sits at `$.guard.<tool>.arguments.*` -- which is
+# where `get` addresses it and where a repair agent must edit. This
+# check used to expect `$.guard.create_ticket.labels`, a path
+# TypeScript reported and its own `get` verb answers `no_path` for,
+# because the fill grafted the SOURCE's path onto the destination.
 vet_call vdup 1 call-ticket-dup-labels.json
 has vdup out 'verdict: invalid'
-has vdup out '$.guard.create_ticket.labels'
+has vdup out '$.guard.create_ticket.arguments.labels'
 ok "vet: duplicate labels REFUSED -- gap 8's unique() hole is closed"
 
 # The documented hole this layout works around: vetting the same

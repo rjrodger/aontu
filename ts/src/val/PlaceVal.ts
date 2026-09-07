@@ -133,7 +133,11 @@ function hasPlace(v: Val): boolean {
 // generator's to fill with its OWN source children when it fires.
 function fillPlace(v: Val, fill: Val, ctx: AontuContext): Val {
   if (true === (v as any).isPlace) {
-    return fill
+    // A FILL IS A POSITION. The hole knows where it sits in the
+    // instance; the datum arriving in it does not, and inserted as it
+    // stands it keeps the paths it had at its SOURCE, so every finding
+    // under it names a path that does not exist.
+    return fill.clone(ctx, { path: [...(v as any).path] })
   }
 
   const peg: any = (v as any).peg
