@@ -19,6 +19,13 @@ exports.canonHash = canonHash;
 // (test/spec/hcanon.tsv). User-facing canon is UNCHANGED — hcanon is a
 // separate rendering.
 //
+// An ALIAS REFERENCE left standing in a spread template renders its
+// EXPANSION through this same walk rather than through the reference's
+// own canon, so a close() or a mark on the aliased value survives into
+// the hash. Without that the wrappers above are absent exactly where
+// the alias filter has already erased the declaration that carried
+// them (BUGS.md §60).
+//
 // The marks PROPAGATE to every descendant at unification (walkMark), so
 // a wrapper is emitted only where a mark STARTS: the walk carries the
 // inherited marks down and a child whose mark the parent already
@@ -40,10 +47,12 @@ const keyorder_1 = require("./keyorder");
 // One node's rendering, carrying the marks the ANCESTORS already
 // wrapped. Bags and junctions recurse structurally (their canon getters
 // render children through plain canon, which would drop a nested
-// close); everything else — scalars, kinds, funcs, refs, constraints —
-// delegates to its own canon, whose text is already in cross-port
-// parity. The non-Val arm mirrors MapVal.canon's raw-peg fallback and
-// is unreachable through an evaluated tree (direct-tested, ADR-002).
+// close), and so does an expanded alias reference, for the reason its
+// own arm gives. Everything else — scalars, kinds, funcs, constraints,
+// and a reference with nothing to expand — delegates to its own canon,
+// whose text is already in cross-port parity. The non-Val arm mirrors
+// MapVal.canon's raw-peg fallback and is unreachable through an
+// evaluated tree (direct-tested, ADR-002).
 function render(v, inh) {
     if (true !== v?.isVal) {
         return String(v);
@@ -93,6 +102,25 @@ function render(v, inh) {
     }
     else if (true === v.isConjunct || true === v.isDisjunct) {
         s = junctionText(v, true === v.isConjunct ? '&' : '|', inner);
+    }
+    // AN EXPANDED ALIAS REFERENCE IS RENDERED, NOT DELEGATED (BUGS.md
+    // §60). A reference standing after unification is one inside a
+    // spread template, and `RefVal.canon` answers with the EXPANSION's
+    // plain canon -- which drops exactly what this renderer exists to
+    // keep. The declaration carrying `close()` or a mark is erased by
+    // the alias filter above, so a `close()` lost here is lost from the
+    // hash entirely: `%A = close({n:string})` and `%A = {n:string}`,
+    // used as `box: [&: %A]`, hashed to ONE STRING while refusing and
+    // admitting `{n:"x",z:1}` respectively -- a change of meaning the
+    // pin reported as no change, in the unsafe direction. Recursing
+    // through `inner` is what makes the alias form and its longhand
+    // twin agree again, which is ALIASES.0.md §4's own requirement.
+    //
+    // A reference with NO expansion still spells its name: a plain
+    // `$.A` names a key the hash form still carries in full, and the
+    // knot of a recursive alias inside its own template never gets one.
+    else if (true === v.isRef && undefined !== v.expansion) {
+        s = render(v.expansion, inner);
     }
     else {
         s = v.canon;

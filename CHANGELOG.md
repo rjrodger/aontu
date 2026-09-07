@@ -20,6 +20,39 @@ profiles, `replace`/`esc`, provenance and coverage, and a generator
 written in the target's own syntax — and the first complete system
 generated with it.
 
+### The canon-hash was blind to `close()` and the marks at an alias template
+
+**`aontu hash` could report no change for a change of meaning**, which
+is the one direction a pin must not fail in. An alias reference left
+standing in a spread template canons as the value it names — that
+landed on 2026-09-06 — but the HASH FORM was rendering that expansion
+through the reference's plain canon, and plain canon drops exactly the
+two things the hash form exists to add: `close()`, and the `type` and
+`hide` marks. The declaration that carried them is erased by the alias
+filter, so what the wrappers said was lost outright.
+
+`%A = close({n: string})` and `%A = {n: string}`, both used as
+`box: [&: %A]`, hashed to one string while refusing and admitting
+`{n: "x", z: 1}` respectively; and neither matched its own longhand
+twin, which `docs/design/ALIASES.0.md` §4 requires. Both renderers now
+recurse into the expansion carrying the inherited marks, so a wrapper
+is emitted where the alias body starts, exactly as for a value written
+longhand. A reference with no expansion is untouched: a plain `$.A`
+still spells its path, and the key it names is in the hash form in
+full.
+
+What it was hiding, measured: the engine's own bundled `aontu:code`
+vocabulary is built from `close()`-marked aliases used as spread
+templates, and its hash form carried **139** `close()` wrappers before
+the fix and **592** after. The row that exists to stop that vocabulary
+drifting was pinning it with 453 closednesses erased; it is re-derived
+here, and any document whose schema uses this idiom gets a new pin.
+
+Both ports. `use-cases/BUGS.md` §60, pinned by fourteen new rows in
+`test/spec/alias.tsv` — each longhand twin the pin must now match, the
+closed/open pair that must now differ, and the two evaluations that
+show the difference is real.
+
 ### `test/system/rb-solar`: a Rails application, generated
 
 The first full system in `test/system/`: a Ruby on Rails 8

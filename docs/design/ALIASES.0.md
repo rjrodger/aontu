@@ -888,6 +888,26 @@ and the first argument for printing a declaration in canon that this
 design has met. Pinned by `alias.tsv`'s `alias-in-spread-*` rows and
 the hash twin `alias-in-spread-hash-longhand-twin`.
 
+**2026-09-07: and the erasure had to reach the WRAPPERS too.** The
+2026-09-06 expansion above made a standing alias reference canon as
+the value it names, which closed the half of §4 that the hash of
+`t: {&: %u}` measures. It did not close the other half, because the
+hash form is not canon: `hcanon` adds `close()` and the `type`/`hide`
+marks precisely because plain canon drops them, and the expansion was
+being rendered through the reference's own `canon` — plain canon. So
+at every alias spread template the wrappers vanished, and the
+declaration that carried them had already been erased by §4's own
+filter. `%A = close({n: string})` and `%A = {n: string}`, used as
+`box: [&: %A]`, were ONE hash while refusing and admitting
+`{n: "x", z: 1}`; neither matched its own longhand twin. The two
+renderers now recurse into the expansion carrying the inherited marks
+(`ts/src/hcanon.ts`, `go/hcanon.go`), so a wrapper is emitted where
+the alias body starts, exactly as for a value written longhand. §4's
+rule is that an erased declaration must leave nothing unsaid, and the
+lesson is that "nothing" includes what only the hash form says:
+use-cases/BUGS.md §60, pinned by `alias.tsv`'s
+`alias-in-spread-hash-keeps-*` rows and their longhand twins.
+
 X-1 and T-1 both gated P1 when this note was written, and both were
 answered rather than deferred: X-1 by taking the third option, which
 removed the lexing break the compatibility section was written about,

@@ -8,6 +8,13 @@
 // hash form remains valid Aontu source and round-trips
 // (test/spec/hcanon.tsv). User-facing Canon() is UNCHANGED.
 //
+// An ALIAS REFERENCE left standing in a spread template renders its
+// EXPANSION through this same walk rather than through the reference's
+// own Canon, so a close() or a mark on the aliased value survives into
+// the hash. Without that the wrappers above are absent exactly where
+// the alias filter has already erased the declaration that carried
+// them (BUGS.md §60).
+//
 // The marks propagate to every descendant at unification (walkMark),
 // so a wrapper is emitted only where a mark STARTS: the walk carries
 // the inherited marks down and a child whose mark the parent already
@@ -38,9 +45,11 @@ type hcanonMarks struct {
 // hcanonRender is one node's rendering, carrying the marks the
 // ANCESTORS already wrapped. Bags and junctions recurse structurally
 // (their Canon methods render children through plain Canon, which
-// would drop a nested close); everything else — scalars, kinds, funcs,
-// refs, constraints — delegates to its own Canon, whose text is
-// already in cross-port parity.
+// would drop a nested close), and so does an expanded alias reference,
+// for the reason its own arm gives. Everything else — scalars, kinds,
+// funcs, constraints, and a reference with nothing to expand —
+// delegates to its own Canon, whose text is already in cross-port
+// parity.
 func hcanonRender(v Val, inh hcanonMarks) string {
 	if nil == v {
 		return "nil"
@@ -123,6 +132,31 @@ func hcanonRender(v Val, inh hcanonMarks) string {
 		s = hcanonJunction(b.peg, "&", inner)
 	case *DisjunctVal:
 		s = hcanonJunction(b.peg, "|", inner)
+	case *RefVal:
+		// AN EXPANDED ALIAS REFERENCE IS RENDERED, NOT DELEGATED
+		// (BUGS.md §60). A reference standing after unification is one
+		// inside a spread template, and RefVal.Canon answers with the
+		// EXPANSION's plain canon -- which drops exactly what this
+		// renderer exists to keep. The declaration carrying close() or
+		// a mark is erased by the alias filter above, so a close()
+		// lost here is lost from the hash entirely: `%A =
+		// close({n:string})` and `%A = {n:string}`, used as `box: [&:
+		// %A]`, hashed to ONE STRING while refusing and admitting
+		// `{n:"x",z:1}` respectively -- a change of meaning the pin
+		// reported as no change, in the unsafe direction. Recursing
+		// through `inner` is what makes the alias form and its
+		// longhand twin agree again, ALIASES.0.md §4's own
+		// requirement.
+		//
+		// A reference with NO expansion still spells its name: a plain
+		// `$.A` names a key the hash form still carries in full, and
+		// the knot of a recursive alias inside its own template never
+		// gets one. Mirrors the same arm in ts/src/hcanon.ts render.
+		if nil != b.expansion {
+			s = hcanonRender(b.expansion, inner)
+		} else {
+			s = v.Canon()
+		}
 	default:
 		s = v.Canon()
 	}

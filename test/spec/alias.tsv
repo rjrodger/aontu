@@ -76,6 +76,34 @@ alias-in-spread-nested-canons-as-the-value	canon	%u = integer\n%row = {vals: [&:
 alias-in-spread-child-canons-as-the-value	canon	%u = integer\nt: {&: {a: %u}}\nt: {x: {a: 1}}	{"t":{&:{"a":integer},"x":{"a":1}}}
 alias-in-spread-alternative-canons-as-the-value	canon	%d = 1\nt: {&: *%d | integer}\nt: {a: 2}	{"t":{&:*1|integer,"a":2}}
 alias-in-spread-conjunct-canons-as-the-value	canon	%a = integer\n%b = min(1)\nt: {&: %a & %b}	{"t":{&:integer&min(1)}}
+# ...AND THE HASH FORM KEEPS WHAT THE DECLARATION CARRIED (use-cases/
+# BUGS.md §60). The alias filter erases the declaration, so a close()
+# or a mark on the aliased value has exactly one place left to be
+# stated -- the expansion where the reference stands -- and the hash
+# form renders it there. Before this, `%A = close({n:string})` and
+# `%A = {n:string}` used as `box: [&: %A]` were ONE hash while REFUSING
+# and ADMITTING the same document, and neither matched its own longhand
+# twin: a change of meaning the pin reported as no change, which is the
+# unsafe direction and the one the wrappers exist to shut. The last two
+# rows are the meanings, so the pair below them cannot be read as a
+# distinction without a difference.
+alias-in-spread-hash-keeps-close	hash	%A = close({n: string})\nbox: [&: %A]	aon1-p1pejKOs3tEJLbpVHlFa2xXy67X-LwvGI3iK8r0tf74
+alias-in-spread-hash-keeps-close-longhand-twin	hash	box: [&: close({n: string})]	aon1-p1pejKOs3tEJLbpVHlFa2xXy67X-LwvGI3iK8r0tf74
+alias-in-spread-hash-open-is-not-closed	hash	%A = {n: string}\nbox: [&: %A]	aon1-64zxr-utAEwGas1trp5WnqDN76powkUWBKi9Jh1J6C4
+alias-in-spread-hash-keeps-closed-list	hash	%L = close([integer])\nbox: [&: %L]	aon1-dWlHxBW7ieIVC6KDVwG8xGz8FUnGYjFMLfkYVlbwM_I
+alias-in-spread-hash-keeps-closed-list-longhand-twin	hash	box: [&: close([integer])]	aon1-dWlHxBW7ieIVC6KDVwG8xGz8FUnGYjFMLfkYVlbwM_I
+alias-in-spread-hash-keeps-type	hash	%T = type({n: string})\nbox: [&: %T]	aon1-aOUwyrtezeKGj9ERbadfJqsPH2-RH68bFAia52RQ4-4
+alias-in-spread-hash-keeps-type-longhand-twin	hash	box: [&: type({n: string})]	aon1-aOUwyrtezeKGj9ERbadfJqsPH2-RH68bFAia52RQ4-4
+alias-in-spread-hash-keeps-hide	hash	%H = hide({n: string})\nbox: [&: %H]	aon1-GTXFsQF3TmStuEgUUfuO28qI7yJRZcNGD91HW_icSRo
+alias-in-spread-hash-keeps-hide-longhand-twin	hash	box: [&: hide({n: string})]	aon1-GTXFsQF3TmStuEgUUfuO28qI7yJRZcNGD91HW_icSRo
+alias-in-spread-hash-keeps-a-nested-close	hash	%A = close({n: string})\n%R = {vals: [&: %A]}\nt: {&: %R}	aon1-74yzSbCrzF2t9-2RYxb67MGzX6irat8eDJQjLeAc_SI
+alias-in-spread-hash-keeps-a-nested-close-longhand-twin	hash	t: {&: {vals: [&: close({n: string})]}}	aon1-74yzSbCrzF2t9-2RYxb67MGzX6irat8eDJQjLeAc_SI
+alias-in-spread-close-refuses-an-extra-key	errc	%A = close({n: string})\nbox: [&: %A]\nbox: [{n: "x", z: 1}]	closed
+alias-in-spread-open-admits-an-extra-key	gens	%A = {n: string}\nbox: [&: %A]\nbox: [{n: "x", z: 1}]	{"box":[{"n":"x","z":1}]}
+# USER-FACING CANON IS UNCHANGED by the above: the close() lives in the
+# hash form only, which is what makes hcanon a separate rendering
+# rather than a second canon (ts/src/hcanon.ts).
+alias-in-spread-close-canons-bare	canon	%A = close({n: string})\nbox: [&: %A]	{"box":[&:{"n":string}]}
 # A PATH-DEPENDENT TEMPLATE EXPANDS TO THE TEMPLATE, not to the
 # declaration's settled value: `%row` itself settles to `{name: "%row"}`
 # (key() answering at the declaration), which is not what any child

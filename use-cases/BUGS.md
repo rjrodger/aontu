@@ -2333,7 +2333,7 @@ with its `-data` companion.
 
 ## hashing — what `aon1-` can still see
 
-### 60. The canon-hash is blind to an alias used as a spread template [critical]
+### 60. The canon-hash is blind to an alias used as a spread template [FIXED 2026-09-07]
 
 Found 2026-08-30, by an adversarial reviewer checking a
 code-generation vocabulary\'s anti-drift story and finding that the pin
@@ -2396,6 +2396,50 @@ change of meaning reports no change. G6 pins modules by the same
 `subsume` is **not** fooled — `aontu subsume A B` answers
 `does_not_subsume` with `$.%A.n: compat_narrowed` — so the breaking
 check still sees what the pin misses.
+
+**FIXED 2026-09-07, in both ports, by one arm in each renderer.** The
+mechanism moved between the filing and the fix and the second half of
+it is worth stating, because the first half went quietly. The
+expansion the entry asked for LANDED on its own: an alias reference in
+a spread template now canons as the value it names rather than as
+`$.%A` (`alias-in-spread-canons-as-the-value`), so document B stopped
+sharing document A's hash. What survived is the half that expansion
+alone cannot reach — **the hash form rendered the expansion through
+`RefVal.canon`, which is PLAIN canon, and plain canon drops exactly
+the two things the hash form exists to add.** So the hash was blind to
+`close()` and to the `type`/`hide` marks at every alias template, and
+the declaration that carried them had already been erased by the alias
+filter. `%A = close({n: string})` and `%A = {n: string}`, both used as
+`box: [&: %A]`, were ONE hash while refusing and admitting
+`{n:"x",z:1}` respectively; and neither matched its own longhand twin,
+which is ALIASES.0.md §4's sharpest requirement. Both halves of the
+original report, by one cause.
+
+`hcanonRender`/`render` now recurse into the expansion with the
+inherited marks instead of delegating to the reference's canon
+(`ts/src/hcanon.ts`, `go/hcanon.go`), so a wrapper is emitted where the
+alias body starts, exactly as it is for a value written longhand. A
+reference with NO expansion is untouched: a plain `$.A` still spells
+its path, and the key it names is in the hash form in full.
+
+**What it was hiding, measured.** `aontu:code` — the engine's own
+bundled output vocabulary — is built from `close()`-marked aliases used
+as spread templates. Its hash form carried **139** `close()` wrappers
+before the fix and **592** after: 453 closednesses its pin could not
+see. `test/spec/aontu-code.tsv:shapes-hash` exists to stop that
+vocabulary drifting, and an edit from `close({...})` to `{...}`
+anywhere in it would have left the row green. The row is re-derived,
+and its block comment says why it moved.
+
+Pins: `test/spec/alias.tsv` — `alias-in-spread-hash-keeps-close` and
+its `-longhand-twin`, `-open-is-not-closed`, `-keeps-closed-list` and
+twin, `-keeps-type` and twin, `-keeps-hide` and twin,
+`-keeps-a-nested-close` and twin; the two meanings behind the pair,
+`alias-in-spread-close-refuses-an-extra-key` and
+`alias-in-spread-open-admits-an-extra-key`; and
+`alias-in-spread-close-canons-bare`, which holds user-facing canon
+unchanged — the close() is in the hash form only, which is what makes
+hcanon a separate rendering rather than a second canon.
 
 Repro:
 [`repros/hash/alias-spread-hash-blind.aon`](repros/hash/alias-spread-hash-blind.aon)
