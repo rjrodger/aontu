@@ -183,6 +183,7 @@ const STD_CODE = String.raw `# aontu:code --- THE OUTPUT VOCABULARY. An aontu tr
   k: "prim"
   prim: "string" | "int" | "bigint" | "float" | "decimal" | "bool" | "null" | "any"
 })
+
 %ref = close({ k:"ref" name:%name unit?:string })
 %leaf = %prim | %ref | %text
 
@@ -205,6 +206,7 @@ const STD_CODE = String.raw `# aontu:code --- THE OUTPUT VOCABULARY. An aontu tr
 })
 
 %member = close({ name:%name value?:string | number doc?:%doc x?:{} })
+
 %param = close({
   name: %name
   type: %type
@@ -218,12 +220,14 @@ const STD_CODE = String.raw `# aontu:code --- THE OUTPUT VOCABULARY. An aontu tr
 %inline = string & re("^[^\n\r]*$") | %ref
 %line = close({ k:"line" at:*0 | integer & min(0) & max(64) of:[&: %inline] })
 %blank = close({ k:"blank" n:*1 | integer & min(1) & max(16) })
+
 %raw = close({
   k: "raw"
   at: *0 | integer & min(0) & max(64)
   text: string
   reindent: *true | boolean
 })
+
 %piece = %line | %blank | %raw | string & re("^[^\n\r]*$")
 %frag = close({ k:"frag" of:[&: %piece] })
 %body = %frag | close({ k:"abstract" })
@@ -238,7 +242,9 @@ const STD_CODE = String.raw `# aontu:code --- THE OUTPUT VOCABULARY. An aontu tr
   check?: [&: %check]
   x?: {}
 })
+
 %enum = close({ k:"enum" name:%name doc?:%doc members:[&: %member] x?:{} })
+
 %alias = close({
   k: "alias"
   name: %name
@@ -247,6 +253,7 @@ const STD_CODE = String.raw `# aontu:code --- THE OUTPUT VOCABULARY. An aontu tr
   check?: [&: %check]
   x?: {}
 })
+
 %const = close({
   k: "const"
   name: %name
@@ -255,6 +262,7 @@ const STD_CODE = String.raw `# aontu:code --- THE OUTPUT VOCABULARY. An aontu tr
   value: string | number | boolean | null
   x?: {}
 })
+
 %func = close({
   k: "func"
   name: %name

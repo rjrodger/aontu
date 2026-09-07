@@ -154,7 +154,8 @@ func TestSpec(t *testing.T) {
 			// test/spec/subsume.tsv for the encodings).
 			vetRow := "vet" == mode || "subsume" == mode || "query" == mode ||
 				"why" == mode || "patch" == mode || "diff" == mode ||
-				"agentsmd" == mode
+				"agentsmd" == mode || "fmt-template" == mode ||
+				"fmt-template-lint" == mode
 			// MALFORMED IS LOUD, not skipped. A row short by a column --
 			// a vet row whose expected report was left off, say -- would
 			// otherwise be dropped in silence, and a suite that quietly
@@ -344,6 +345,50 @@ func TestSpec(t *testing.T) {
 						if CanonHash(v1) != CanonHash(v2) {
 							t.Fatalf("formatting moved the hash\n src:  %q\n text: %q", src, expect)
 						}
+					}
+
+				case "fmt-template":
+					// THE FORMATTER OVER A GENERATOR (FMT.0.md §3.14):
+					// the source is a template, `data` is its marker,
+					// and what comes back is a template. Not the
+					// canon-hash leg of `fmt`, which unifies the row's
+					// two sides -- a template is not a document until
+					// it is desugared, and the surface's own rows
+					// (template.tsv) hold that transform. Mirrors the
+					// fmt-template mode of ts/test/spec.test.ts.
+					report := a.FormatWith(src, FormatOptions{Template: data})
+					if "formatted" != report.Verdict {
+						t.Fatalf("does not format: %v\n src: %q", report.Errors, src)
+					}
+					if report.Text != expect {
+						t.Fatalf("fmt-template mismatch\n src:  %q\n want: %q\n got:  %q",
+							src, expect, report.Text)
+					}
+					again := a.FormatWith(expect, FormatOptions{Template: data})
+					if "formatted" != again.Verdict || again.Text != expect {
+						t.Fatalf("not a fixed point\n want: %q\n got:  %q", expect, again.Text)
+					}
+
+				case "fmt-template-lint":
+					// THE LINT OVER A GENERATOR (§3.14): the findings
+					// of --lint, in the shape the fmt-lint rows pin
+					// them, over a template whose marker is `data`.
+					// What this row is here for is the COLUMN: a site
+					// is in the template, not in the document it
+					// carries. Mirrors the fmt-template-lint mode of
+					// ts/test/spec.test.ts.
+					report := a.FormatWith(src, FormatOptions{Template: data, Lint: true})
+					if "formatted" != report.Verdict {
+						t.Fatalf("does not format: %v\n src: %q", report.Errors, src)
+					}
+					lines := make([]string, 0, len(report.Findings))
+					for _, f := range report.Findings {
+						lines = append(lines, strconv.Itoa(f.Line)+":"+strconv.Itoa(f.Col)+
+							": "+f.Rule+": "+f.Message)
+					}
+					if got := strings.Join(lines, "\n"); got != expect {
+						t.Fatalf("fmt-template lint\n src:  %q\n want: %q\n got:  %q",
+							src, expect, got)
 					}
 
 				case "fmt-refuse":

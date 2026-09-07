@@ -20,9 +20,14 @@ import "strings"
 // an unmarked line contributes one quoted string, which is a body
 // element where the marker lines left a list open.
 //
-// A MARKER IS RECOGNISED AFTER LEADING WHITESPACE AND KEEPS ITS OWN
-// INDENTATION (D2), which is what lets a template be written exactly
-// where its output appears (D7).
+// A MARKER IS RECOGNISED AFTER LEADING WHITESPACE, AND THE INDENTATION
+// THE RESUGARING WRITES IS THE AONTU'S (D2, amended 2026-09-07). An
+// output line is verbatim, which is what lets a template be written
+// exactly where its output appears (D7); the marker stands at the left
+// margin with the aontu indented AFTER it, so the tree the marker lines
+// carry has a shape on the page. Reading is unchanged: a marker after
+// leading whitespace is a marker, and its own indentation counts toward
+// the aontu it carries.
 //
 // THE SUGAR IS THE FIXPOINT OF THE TWO TRANSFORMS (D6): a canonical
 // line that looks like a body element is rebuilt as a target line, the
@@ -107,14 +112,20 @@ func templateIndent(line string) int {
 	return i
 }
 
-// templateTrim is the line without its indentation or its trailing
-// spaces and tabs.
-func templateTrim(line string) string {
+// templateTrimEnd is the line without its trailing spaces and tabs.
+func templateTrimEnd(line string) string {
 	end := len(line)
 	for 0 < end && (' ' == line[end-1] || '\t' == line[end-1]) {
 		end--
 	}
-	return line[templateIndent(line):end]
+	return line[:end]
+}
+
+// templateTrim is the line without its indentation or its trailing
+// spaces and tabs.
+func templateTrim(line string) string {
+	trimmed := templateTrimEnd(line)
+	return trimmed[templateIndent(trimmed):]
 }
 
 // templateLine is one line of a template, read: its indentation,
@@ -135,12 +146,15 @@ func templateRead(line string, marker string) templateLine {
 	// The block form's closer is part of the marker, not of the aontu.
 	// A block marker line that never closes is not a marker line: the
 	// language's own parser would not read it as a comment either.
+	// Only the TRAILING space goes: what stands between the opener and
+	// the aontu is the aontu's indentation, exactly as it is for a line
+	// marker, and the one-space rule below takes the marker's own.
 	if templateIsBlock(marker) {
 		end := strings.LastIndex(body, templateBlockClose)
 		if 0 > end {
 			return templateLine{marker: false, indent: "", text: line}
 		}
-		body = templateTrim(body[:end])
+		body = templateTrimEnd(body[:end])
 	}
 	// ONE SPACE AFTER THE MARKER IS THE MARKER'S, so `//- x: 1` carries
 	// `x: 1` and the resugaring writes the space back. A marker written
@@ -270,17 +284,40 @@ func ResugarTemplate(src string, marker string) string {
 			out = append(out, target)
 			continue
 		}
-		text := line[templateIndent(line):]
-		open := line[:templateIndent(line)] + marker
+		// THE MARKER STANDS AT THE LEFT MARGIN and the line's
+		// indentation is written after it, so the aontu's own shape is
+		// on the page. The one space is the marker's, which the reading
+		// takes back.
+		text := templateTrimEnd(line)
 		closer := ""
 		if templateIsBlock(marker) {
 			closer = " " + templateBlockClose
 		}
 		if "" == text {
-			out = append(out, open+closer)
+			out = append(out, marker+closer)
 		} else {
-			out = append(out, open+" "+text+closer)
+			out = append(out, marker+" "+text+closer)
 		}
 	}
 	return templateJoin(out, tail)
+}
+
+// TemplateOutputs is WHICH LINES OF THE DESUGARED DOCUMENT ARE THE
+// TARGET'S. The desugaring is line for line, so this is one flag per
+// line of what DesugarTemplate returns: true where the template's line
+// was not a marker, and so where the document's line is one quoted line
+// of the generated file.
+//
+// `aontu fmt` reads it (FMT.0.md §3.14) to hold those lines on lines of
+// their own. A body element is a string like any other, and the packing
+// budget would put three of them on one line -- which is aontu where
+// three lines of output were, and a generator that writes them as one.
+// Twin of templateOutputs in ts/src/template.ts.
+func TemplateOutputs(src string, marker string) []bool {
+	lines, _ := templateSplit(src)
+	out := make([]bool, len(lines))
+	for k, line := range lines {
+		out[k] = !templateRead(line, marker).marker
+	}
+	return out
 }

@@ -43,7 +43,7 @@ const helpText = `Usage: aontu [options] [file]
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu agentsmd [--write <AGENTS.md>] <file>
-       aontu fmt [-w|-l|--check|-d|--lint] <file>...
+       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu lsp
        aontu mcp [--root <dir>]
 
@@ -311,9 +311,17 @@ Fmt options:
   --lint          Report the style findings, key case and repeated
                   shapes, on standard error, and print nothing else
   --strict        With --lint, and exit 1 when there is a finding
+  --marker <t>    The file is a generator, and this is its marker
+                  (default //-, and #- --- /*- by extension)
 
 The fmt verb prints one document in the agreed form; with no file it
 reads standard input. Several files need one of the options above.
+
+A file whose extension is not .aon is a GENERATOR, as it is for render:
+the aontu its marker lines carry is formatted, the marker stands at the
+left margin with the aontu indented after it, and every line of output
+is held on a line of its own. A file with no marker line in it is
+another language's, and is refused.
 
 Fmt exit codes: 0 formatted or clean, 1 a --check file would change or
 a --strict finding, 2 usage, 4 a document does not parse.

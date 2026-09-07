@@ -2,6 +2,7 @@ import type { VetFinding } from './vet';
 export type FormatOptions = {
     path?: string;
     lint?: boolean;
+    template?: string;
 };
 export type LintFinding = {
     rule: 'style/key-case' | 'style/repeat';

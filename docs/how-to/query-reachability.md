@@ -35,6 +35,7 @@ to two consumers:
 <!-- test: file pipeline.aon -->
 ```aontu
 @"./spec.aon"
+
 jobs: { &: $.spec.Job }
 jobs: extract: feeds: [path($.jobs.transform)]
 jobs: transform: fedBy: [path($.jobs.extract)]

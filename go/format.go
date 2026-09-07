@@ -67,6 +67,12 @@ type FormatReport struct {
 // acts on them. Mirrors FormatOptions in ts/src/format.ts.
 type FormatOptions struct {
 	Lint bool
+	// Template: THE SOURCE IS A GENERATOR, and this is its marker
+	// (docs/design/TEMPLATE.0.md; FMT.0.md §3.14). The file is
+	// desugared, formatted and resugared, so Text is a template again
+	// -- the aontu in the agreed form, indented after the marker, and
+	// every line of output exactly where it was.
+	Template string
 }
 
 // LintFinding is a style finding: what the formatter points at and
@@ -211,6 +217,10 @@ type fmtNode struct {
 
 	// The source index of the node's first token: the lint's positions.
 	at int
+
+	// The node begins a line of the target's own file (§3.14), so it
+	// has no one-line form and every container holding it opens.
+	held bool
 }
 
 var (
@@ -668,7 +678,7 @@ func fmtPairHead(node *fmtNode, tight bool) string {
 // lines. `tight` is the inline form of a pair, `a:1`, used inside a
 // container; a statement's pair is `a: 1`.
 func fmtInline(node *fmtNode, tight bool) (string, bool) {
-	if "" != node.trail {
+	if "" != node.trail || node.held {
 		return "", false
 	}
 	switch node.t {
@@ -828,6 +838,15 @@ func (w *fmtWriter) since(mark int) string {
 	return strings.Join(out, "\n") + "\n"
 }
 
+// A blank line above the line at an index: the gap of §3.8, opened
+// once the statement below it turns out to be a tree. Never at the top
+// of the page, and never a second time.
+func (w *fmtWriter) gap(at int) {
+	if 0 < at && "" != w.lines[at-1] {
+		w.lines = append(w.lines[:at], append([]string{""}, w.lines[at:]...)...)
+	}
+}
+
 // The lines since a mark replaced by a text: the spelling before,
 // where a rewrite did not pass its check.
 func (w *fmtWriter) replace(mark int, text string) {
@@ -857,29 +876,56 @@ func fmtRtrim(s string) string {
 // body of a plain map that is itself the value of a statement) a pair
 // is laid out by §3.4, which may repeat its key; anywhere else -- a
 // list, an operand, an argument -- by §3.5 alone.
-func fmtEmitBody(w *fmtWriter, body []*fmtNode, indent int, stmt *fmtStmt) {
+func fmtEmitBody(w *fmtWriter, body []*fmtNode, indent int, stmt *fmtStmt, root bool) {
 	pending := false
 	count := 0
+	// Where the run being written begins: a statement, with the
+	// comments standing directly above it, so that the gap below opens
+	// ABOVE the comments rather than between them and what they
+	// describe. A blank line ends a run -- comments across a gap belong
+	// to what is above.
+	head := 0
+	noted := false
 	for _, node := range body {
 		if "blank" == node.t {
 			pending = 0 < count
 			continue
 		}
+		gapped := pending
 		w.open(indent, pending)
+		if gapped || !noted {
+			head = w.mark()
+		}
 		pending = false
 		count++
 		if "comment" == node.t {
+			noted = true
 			w.text(node.text)
 			continue
 		}
+		noted = false
+		from := w.mark()
 		if nil != stmt && "pair" == node.t {
 			fmtEmitStatement(w, node, indent, stmt, "")
-			continue
+		} else {
+			e := fmtChain(node)
+			fmtEmitValue(w, e, indent)
+			if "" != e.trail {
+				w.text(" " + e.trail)
+			}
 		}
-		e := fmtChain(node)
-		fmtEmitValue(w, e, indent)
-		if "" != e.trail {
-			w.text(" " + e.trail)
+		// A TOP-LEVEL STATEMENT WRITTEN AS A TREE STANDS APART (§3.8).
+		// A document states several things -- a service, then its
+		// entities, then its errors -- and where one of them is a tree
+		// rather than a line, the eye finds it by the space around it.
+		// What counts as a tree is measured rather than guessed: the
+		// statement took more than one line to write. So `a: 1` beside
+		// `b: 2` is left alone, and this rule cannot fire below the
+		// root, where a blank line is the author's (§3.8) and nothing
+		// else.
+		if root && from < w.mark() {
+			w.gap(head)
+			pending = true
 		}
 	}
 }
@@ -1048,7 +1094,7 @@ func fmtEmitBlock(w *fmtWriter, open, close string, node *fmtNode, indent int, s
 	if "" != node.open {
 		w.text(" " + node.open)
 	}
-	fmtEmitBody(w, node.body, indent+2, stmt)
+	fmtEmitBody(w, node.body, indent+2, stmt, false)
 	w.open(indent, false)
 	w.text(close)
 }
@@ -1428,7 +1474,7 @@ func fmtEmitStatement(w *fmtWriter, p *fmtNode, indent int, stmt *fmtStmt, prefi
 // a rewrite's spelling before.
 func fmtEmitAt(nodes []*fmtNode, indent int) string {
 	w := &fmtWriter{}
-	fmtEmitBody(w, nodes, indent, nil)
+	fmtEmitBody(w, nodes, indent, nil, false)
 	return w.finish()
 }
 
@@ -1437,9 +1483,9 @@ func fmtEmitAt(nodes []*fmtNode, indent int) string {
 func fmtEmit(root []*fmtNode, meet fmtMeet) string {
 	w := &fmtWriter{}
 	if nil == meet {
-		fmtEmitBody(w, root, 0, nil)
+		fmtEmitBody(w, root, 0, nil, true)
 	} else {
-		fmtEmitBody(w, fmtMergeRuns(root), 0, &fmtStmt{meet: meet})
+		fmtEmitBody(w, fmtMergeRuns(root), 0, &fmtStmt{meet: meet}, true)
 	}
 	return w.finish()
 }
@@ -1792,8 +1838,17 @@ func (a *Aontu) FormatWith(src string, opts FormatOptions) FormatReport {
 	// Invalid UTF-8 becomes U+FFFD, as it does when the canonical port
 	// reads the file: the two CLIs then print the same bytes.
 	text := strings.ReplaceAll(toValidSource(src), "\r\n", "\n")
+	// A GENERATOR IS FORMATTED AS THE DOCUMENT IT CARRIES (§3.14): the
+	// template surface's two transforms stand either side of the
+	// formatter, and between them is what happens to any other
+	// document.
+	mark := opts.Template
+	doc := text
+	if "" != mark {
+		doc = DesugarTemplate(text, mark)
+	}
 	toks := []fmtTok{}
-	root, perr := formatParse(text, a.File, &toks)
+	root, perr := formatParse(doc, a.File, &toks)
 	if nil != perr {
 		return FormatReport{
 			Verdict: "error",
@@ -1805,9 +1860,12 @@ func (a *Aontu) FormatWith(src string, opts FormatOptions) FormatReport {
 	if rd.deep {
 		return FormatReport{Verdict: "error", Errors: []VetFinding{formatDepthFinding()}}
 	}
+	tree := fmtUnwrap(body)
+	if "" != mark {
+		fmtHoldOutput(tree, fmtOutputAt(doc, TemplateOutputs(text, mark)))
+	}
 	// The syntactic tier first, checked against the parse tree; then
 	// the lawful tier over it, each rewrite checked by the meet.
-	tree := fmtUnwrap(body)
 	plain := fmtEmit(tree, nil)
 	if !formatSame(root, plain) {
 		return FormatReport{
@@ -1816,13 +1874,68 @@ func (a *Aontu) FormatWith(src string, opts FormatOptions) FormatReport {
 		}
 	}
 	out := fmtEmit(tree, formatMeet)
+	done := out
+	if "" != mark {
+		done = ResugarTemplate(out, mark)
+	}
 	report := FormatReport{
-		Verdict: "formatted", Text: out, Changed: out != src, Findings: []LintFinding{},
+		Verdict: "formatted", Text: done, Changed: done != src, Findings: []LintFinding{},
 	}
 	if opts.Lint {
-		report.Findings = fmtLintOf(tree, text)
+		report.Findings = fmtShiftFindings(fmtLintOf(tree, doc), mark)
 	}
 	return report
+}
+
+// THE TARGET'S OWN LINES ARE HELD ON LINES OF THEIR OWN (§3.14). The
+// desugaring is line for line, so a line of output is known by the
+// offset it begins at, and the node beginning there -- the quoted
+// string the desugaring wrote -- is marked. From there on it has no
+// one-line form, so every container holding it opens, and no two lines
+// of the generated file are ever packed onto one.
+func fmtHoldOutput(nodes []*fmtNode, at map[int]bool) {
+	for _, node := range nodes {
+		if at[node.at] {
+			node.held = true
+		}
+		fmtHoldOutput(node.body, at)
+		fmtHoldOutput(node.args, at)
+		fmtHoldOutput(node.inner, at)
+		fmtHoldOutput(node.items, at)
+		if nil != node.value {
+			fmtHoldOutput([]*fmtNode{node.value}, at)
+		}
+	}
+}
+
+// The offsets the flagged lines of a document begin at.
+func fmtOutputAt(doc string, flags []bool) map[int]bool {
+	at := map[int]bool{}
+	off := 0
+	for k, line := range strings.Split(doc, "\n") {
+		if k < len(flags) && flags[k] {
+			at[off] = true
+		}
+		off += len(line) + 1
+	}
+	return at
+}
+
+// A finding's column in the TEMPLATE rather than in the document it
+// carries (§3.14): the marker and its one space stand before the aontu
+// on every line the resugaring writes. Every finding is on such a line
+// -- the two rules point at a key or at a container, and a line of
+// output is a bare string, which is neither.
+func fmtShiftFindings(findings []LintFinding, mark string) []LintFinding {
+	if "" == mark {
+		return findings
+	}
+	out := make([]LintFinding, 0, len(findings))
+	for _, f := range findings {
+		f.Col += len(mark) + 1
+		out = append(out, f)
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------

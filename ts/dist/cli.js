@@ -75,7 +75,7 @@ const HELP = `Usage: aontu [options] [file]
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu agentsmd [--write <AGENTS.md>] <file>
-       aontu fmt [-w|-l|--check|-d|--lint] <file>...
+       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu lsp
        aontu mcp [--root <dir>]
 
@@ -343,9 +343,17 @@ Fmt options:
   --lint          Report the style findings, key case and repeated
                   shapes, on standard error, and print nothing else
   --strict        With --lint, and exit 1 when there is a finding
+  --marker <t>    The file is a generator, and this is its marker
+                  (default //-, and #- --- /*- by extension)
 
 The fmt verb prints one document in the agreed form; with no file it
 reads standard input. Several files need one of the options above.
+
+A file whose extension is not .aon is a GENERATOR, as it is for render:
+the aontu its marker lines carry is formatted, the marker stands at the
+left margin with the aontu indented after it, and every line of output
+is held on a line of its own. A file with no marker line in it is
+another language's, and is refused.
 
 Fmt exit codes: 0 formatted or clean, 1 a --check file would change or
 a --strict finding, 2 usage, 4 a document does not parse.
@@ -3419,13 +3427,15 @@ function runAgentsMd(argv) {
 // tradition of gofmt. The verb prints, lists, checks, diffs or rewrites;
 // the form itself is the library's (ts/src/format.ts), and the two
 // ports agree on it row by row in test/spec/fmt.tsv.
-const FMT_HELP = 'aontu fmt [-w|-l|--check|-d|--lint] <file>... (try --help)';
+const FMT_HELP = 'aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>... (try --help)';
 function runFmt(argv) {
     const files = [];
+    let marker = undefined;
     const flags = {
         write: false, list: false, check: false, diff: false, lint: false, strict: false,
     };
-    for (const arg of argv) {
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
         if ('-h' === arg || '--help' === arg) {
             process.stdout.write(HELP);
             return 0;
@@ -3449,6 +3459,16 @@ function runFmt(argv) {
             flags.lint = true;
             flags.strict = true;
         }
+        else if ('--marker' === arg) {
+            // THE MARKER SAYS THE FILE IS A GENERATOR, whatever its
+            // extension: `render` and `template` take the same option for
+            // the same reason, a language the table has never seen.
+            marker = argv[++i];
+            if (null == marker) {
+                process.stderr.write('aontu: --marker needs a token\n');
+                return 2;
+            }
+        }
         else if (arg.startsWith('-')) {
             process.stderr.write(`aontu: unknown fmt option ${arg} (try --help)\n`);
             return 2;
@@ -3469,7 +3489,7 @@ function runFmt(argv) {
             let src = '';
             process.stdin.setEncoding('utf8');
             process.stdin.on('data', (d) => (src += d));
-            process.stdin.on('end', () => resolve(fmtOne('<stdin>', src, flags)));
+            process.stdin.on('end', () => resolve(fmtOne('<stdin>', src, flags, marker)));
         });
     }
     // Several files onto standard output would be one stream nobody can
@@ -3482,22 +3502,6 @@ function runFmt(argv) {
     }
     let worst = 0;
     for (const file of files) {
-        // FMT FORMATS AONTU SOURCE, AND THE EXTENSION SAYS WHAT A FILE IS
-        // (ADR-012's rule, and the one `render` reads a template by).
-        // A TEMPLATE FILE IS NOT AONTU (docs/design/TEMPLATE.0.md; P8):
-        // its marker lines are fragments of a document and its other lines
-        // are the target's, so there is nothing here to format that would
-        // not also rewrite the output. Refused rather than attempted, and
-        // refused BY NAME rather than by a parse failure, because a `#-`
-        // template parses: `#` opens a comment, so every marker line
-        // vanishes and what is left is read as a document that was never
-        // written. The verb answered `0` over one, having understood none
-        // of it.
-        if (!/[.](aon|aontu)$/.test(file)) {
-            process.stderr.write(`aontu: ${file} is not aontu source (.aon, .aontu); a generator ` +
-                'written in the target\'s own syntax is aontu template\'s\n');
-            return 2;
-        }
         let src;
         try {
             src = (0, node_fs_1.readFileSync)(file, 'utf8');
@@ -3506,9 +3510,41 @@ function runFmt(argv) {
             process.stderr.write(`aontu: cannot read ${err.path}: ${err.message}\n`);
             return 2;
         }
-        worst = Math.max(worst, fmtOne(file, src, flags));
+        const mark = fmtMarker(file, src, marker);
+        if (false === mark) {
+            process.stderr.write(`aontu: ${file} is not aontu source (.aon, .aontu) and carries no ` +
+                `${(0, template_1.markerFor)(file)} marker line, so there is no aontu in it to ` +
+                'format; --marker names the marker for a language the table does ' +
+                'not know\n');
+            return 2;
+        }
+        worst = Math.max(worst, fmtOne(file, src, flags, mark));
     }
     return worst;
+}
+// WHAT A FILE IS, BY ITS EXTENSION (ADR-012's rule, and the one
+// `render` reads an entry by): `.aon` and `.aontu` are aontu source,
+// and anything else is a GENERATOR written in the target's own syntax
+// (docs/design/TEMPLATE.0.md), whose marker lines carry the document
+// this formats and whose other lines are output. `undefined` is aontu,
+// a string is the generator's marker, and `false` is neither.
+//
+// A FILE WITH NO MARKER LINE IN IT IS NEITHER, and that is what keeps
+// FMT.0.md §9's boundary where it stood: a `.json`, `.yaml` or `.toml`
+// include is another language's file, and reading one as a generator
+// would answer it back unchanged having understood none of it. The
+// marker is the evidence that a file was written to carry aontu at
+// all. `--marker` says so outright, and then the file is a generator
+// whatever it is called.
+function fmtMarker(file, src, marker) {
+    if (undefined !== marker) {
+        return marker;
+    }
+    if (/[.](aon|aontu)$/.test(file)) {
+        return undefined;
+    }
+    const mark = (0, template_1.markerFor)(file);
+    return (0, template_1.templateOutputs)(src, mark).some((out) => !out) ? mark : false;
 }
 // An option that says what to do with a file, in place of printing
 // it: what to do when its form would change, or the lint.
@@ -3520,8 +3556,8 @@ function fmtQuiet(flags) {
 // document that does not format, with the finding that says why. The
 // style findings go to standard error, one line each, in the shape
 // every linter prints: `file:line:col: rule: message`.
-function fmtOne(name, src, flags) {
-    const report = (0, format_1.format)(src, { path: name, lint: flags.lint });
+function fmtOne(name, src, flags, marker) {
+    const report = (0, format_1.format)(src, { path: name, lint: flags.lint, template: marker });
     if ('error' === report.verdict) {
         process.stderr.write(`aontu: ${name} was not formatted\n` +
             report.errors.map(renderFinding).join('\n') + '\n');

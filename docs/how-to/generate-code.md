@@ -252,7 +252,10 @@ Three things follow from writing it this way:
 - **The output lines are the target's, at their own indentation.**
   `gofmt` formats them, an editor highlights them, and `go vet` reads
   the generator itself. What the target sees is a file with four
-  comments in it.
+  comments in it. The MARKER lines are aontu's half, and `aontu fmt`
+  formats them: the marker stands at the left margin with the aontu
+  indented after it, so the tree the generator carries has a shape on
+  the page without any of the target's lines moving.
 - **A value still arrives through `replace`.** `NAME` is a string the
   body holds, matched exactly, so no delimiter can collide with the
   target's syntax. That needs an inner dispatch: `replace` reaches the
@@ -266,9 +269,11 @@ Three things follow from writing it this way:
   changed—an editor set to trim on save, say.
 
 `aontu template struct.go` prints the canonical form, the aontu the
-marked lines mean, for reading rather than for keeping. `aontu fmt`
-refuses a template by extension—it formats `.aon` and `.aontu`—so a
-file whose comment token is `#` is never silently rewritten as aontu.
+marked lines mean, for reading rather than for keeping. `aontu fmt
+struct.go` formats the generator ITSELF: it desugars, formats the
+document the marker lines carry, and resugars, so what comes back is a
+generator with every output line where it was. A file with no marker
+line in it is another language's, and is refused by name.
 
 ## Lower a declaration instead
 

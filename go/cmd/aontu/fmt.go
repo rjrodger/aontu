@@ -18,7 +18,7 @@ import (
 	aontu "github.com/aontu-lang/aontu/go"
 )
 
-const fmtHelp = "aontu fmt [-w|-l|--check|-d|--lint] <file>... (try --help)"
+const fmtHelp = "aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>... (try --help)"
 
 type fmtFlags struct {
 	write, list, check, diff, lint, strict bool
@@ -31,9 +31,12 @@ var fmtWriteFile = os.WriteFile
 
 func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	var files []string
+	marker := ""
+	marked := false
 	flags := fmtFlags{}
 
-	for _, arg := range argv {
+	for i := 0; i < len(argv); i++ {
+		arg := argv[i]
 		switch {
 		case "-h" == arg, "--help" == arg:
 			io.WriteString(stdout, helpText)
@@ -51,6 +54,17 @@ func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		case "--strict" == arg:
 			flags.lint = true
 			flags.strict = true
+		case "--marker" == arg:
+			// THE MARKER SAYS THE FILE IS A GENERATOR, whatever its
+			// extension: render and template take the same option for
+			// the same reason, a language the table has never seen.
+			i++
+			if i >= len(argv) {
+				io.WriteString(stderr, "aontu: --marker needs a token\n")
+				return 2
+			}
+			marker = argv[i]
+			marked = true
 		case strings.HasPrefix(arg, "-"):
 			io.WriteString(stderr, "aontu: unknown fmt option "+arg+" (try --help)\n")
 			return 2
@@ -72,7 +86,7 @@ func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			io.WriteString(stderr, "aontu: cannot read standard input: "+err.Error()+"\n")
 			return 2
 		}
-		return fmtOne("<stdin>", string(src), flags, stdout, stderr)
+		return fmtOne("<stdin>", string(src), flags, marker, stdout, stderr)
 	}
 
 	// Several files onto standard output would be one stream nobody can
@@ -87,33 +101,55 @@ func runFmt(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	worst := 0
 	for _, file := range files {
-		// FMT FORMATS AONTU SOURCE, AND THE EXTENSION SAYS WHAT A FILE
-		// IS (ADR-012's rule, and the one render reads a template by).
-		// A TEMPLATE FILE IS NOT AONTU (docs/design/TEMPLATE.0.md; P8):
-		// its marker lines are fragments of a document and its other
-		// lines are the target's, so there is nothing here to format
-		// that would not also rewrite the output. Refused rather than
-		// attempted, and refused BY NAME rather than by a parse
-		// failure, because a `#-` template parses: `#` opens a comment,
-		// so every marker line vanishes and what is left is read as a
-		// document that was never written.
-		if !strings.HasSuffix(file, ".aon") &&
-			!strings.HasSuffix(file, ".aontu") {
-			io.WriteString(stderr, "aontu: "+file+
-				" is not aontu source (.aon, .aontu); a generator written"+
-				" in the target's own syntax is aontu template's\n")
-			return 2
-		}
 		src, err := os.ReadFile(file)
 		if nil != err {
 			io.WriteString(stderr, "aontu: cannot read "+file+": "+err.Error()+"\n")
 			return 2
 		}
-		if code := fmtOne(file, string(src), flags, stdout, stderr); worst < code {
+		mark, ok := fmtMarker(file, string(src), marker, marked)
+		if !ok {
+			io.WriteString(stderr, "aontu: "+file+
+				" is not aontu source (.aon, .aontu) and carries no "+
+				aontu.MarkerFor(file)+" marker line, so there is no aontu in"+
+				" it to format; --marker names the marker for a language the"+
+				" table does not know\n")
+			return 2
+		}
+		if code := fmtOne(file, string(src), flags, mark, stdout, stderr); worst < code {
 			worst = code
 		}
 	}
 	return worst
+}
+
+// WHAT A FILE IS, BY ITS EXTENSION (ADR-012's rule, and the one render
+// reads an entry by): `.aon` and `.aontu` are aontu source, and
+// anything else is a GENERATOR written in the target's own syntax
+// (docs/design/TEMPLATE.0.md), whose marker lines carry the document
+// this formats and whose other lines are output. An empty string is
+// aontu, a marker is the generator's, and false is neither.
+//
+// A FILE WITH NO MARKER LINE IN IT IS NEITHER, and that is what keeps
+// FMT.0.md §9's boundary where it stood: a `.json`, `.yaml` or `.toml`
+// include is another language's file, and reading one as a generator
+// would answer it back unchanged having understood none of it. The
+// marker is the evidence that a file was written to carry aontu at
+// all. --marker says so outright, and then the file is a generator
+// whatever it is called.
+func fmtMarker(file, src, marker string, marked bool) (string, bool) {
+	if marked {
+		return marker, true
+	}
+	if strings.HasSuffix(file, ".aon") || strings.HasSuffix(file, ".aontu") {
+		return "", true
+	}
+	mark := aontu.MarkerFor(file)
+	for _, out := range aontu.TemplateOutputs(src, mark) {
+		if !out {
+			return mark, true
+		}
+	}
+	return "", false
 }
 
 // An option that says what to do with a file, in place of printing
@@ -127,10 +163,10 @@ func fmtQuiet(flags fmtFlags) bool {
 // document that does not format, with the finding that says why. The
 // style findings go to standard error, one line each, in the shape
 // every linter prints: `file:line:col: rule: message`.
-func fmtOne(name, src string, flags fmtFlags, stdout, stderr io.Writer) int {
+func fmtOne(name, src string, flags fmtFlags, marker string, stdout, stderr io.Writer) int {
 	a := aontu.New()
 	a.File = name
-	report := a.FormatWith(src, aontu.FormatOptions{Lint: flags.lint})
+	report := a.FormatWith(src, aontu.FormatOptions{Lint: flags.lint, Template: marker})
 	if "error" == report.Verdict {
 		lines := make([]string, 0, len(report.Errors))
 		for _, f := range report.Errors {

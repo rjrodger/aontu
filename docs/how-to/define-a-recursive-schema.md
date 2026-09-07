@@ -19,6 +19,7 @@ spec: hide({
     then?: $.spec.Step
   }
 })
+
 policy: $.spec.Step & {
   approver: "lead@acme.example"
   decision: approved
@@ -80,6 +81,7 @@ comment thread types its replies:
 spec: hide({
   Comment: { author:string text:string replies?:[&: $.spec.Comment] }
 })
+
 thread: $.spec.Comment & {
   author: "alix"
   text: "ship it"
@@ -119,6 +121,7 @@ evaluates, but no finite document can satisfy it. Write this as
 <!-- test: file chain.aon -->
 ```aontu
 spec: hide({ Step:{ approver:string then:$.spec.Step } })
+
 doc: $.spec.Step & {
   approver: "lead@acme.example"
   then: approver: "cfo@acme.example"

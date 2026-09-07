@@ -1145,6 +1145,7 @@ nothing:
 
 ```aon
 services: [{ name:web logs:[] }]
+
 lines: emit($.services, {
   match: name: string
   body: [
@@ -4063,6 +4064,7 @@ change results.
 scaling: floor: 2
 scaling: ceiling: 10
 scaling: target: integer & min($.scaling.floor) & max($.scaling.ceiling)
+
 # target normalises to integer&min(2)&max(10) once floor/ceiling resolve
 ```
 
@@ -4104,6 +4106,7 @@ constraint just as a `type()` field can:
 
 ```aon
 type: type({})
+
 type: {
   uint8: integer & min(0) & max(255)
   int8: integer & min(-128) & max(127)
