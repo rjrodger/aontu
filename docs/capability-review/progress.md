@@ -1020,7 +1020,25 @@ findings would erase why the phase looked sound.)*
    reaches the final pass; the refusal is made there, as a located nil
    naming the address. A `refer()` that never met an address at all is
    NOT that error: it is an ordinary unresolved constraint, like a bare
-   `min(1)`.
+   `min(1)`. **2026-09-07: and it now SETTLES like one**, in both
+   ports. It was left not-done, which read as "keep offering it the
+   chance" but bought nothing — an address-less refer has no address
+   to resolve — and cost the SCHEMA idiom outright: a `type()` body
+   holding a link never settled, so its mark never transferred, so
+   generation could not skip the marked subtree and raised
+   `mapval_no_gen` naming the DEFINITION, a path mentioning neither
+   the link nor the field. `type({p: integer})`, `type({p: path()})`
+   and `type({p: min(1)})` all settled; only a link did not, and
+   `rel()` had already been given the settling treatment for exactly
+   this reason (see `RelVal`'s constructor, which names refer as the
+   one lacking it). So `type({from: refer($.std.Port)})` — the shape
+   phase 4 recorded as not expressible — is expressible, and the type
+   still flows into the target. Go needed a second line with it: its
+   pending branch called `notdone()`, which is a NO-OP on a value
+   already DONE, so an address whose target was missing inherited DONE
+   through `reshape()` and never reached the deciding pass; it now
+   assigns, as TypeScript always has. aontu-lang/aontu#172, pinned by
+   seven `schema-*` and `unmet-link-*` rows in `test/spec/refer.tsv`.
 4. **The residual has a clone hook but no path-dependence hook.**
    (Corrected by phase 3 — see its departure 3. The clone hook was
    briefly removed as dead and is not: a REFERENCE to a value holding

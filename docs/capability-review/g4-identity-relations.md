@@ -383,7 +383,15 @@ Semantics:
   refer keeps the tree not-done until the final pass, where the
   refusal is a located nil naming the address. A `refer()` that
   never met an address at all is an ordinary unresolved constraint,
-  like a bare `min(1)`. The register's G4.2 departure records it.)*
+  like a bare `min(1)`. The register's G4.2 departure records it.
+  **2026-09-07:** and it now SETTLES while address-less, as `min(1)`
+  does, which is what makes a schema mentioning a link expressible:
+  `type({from: refer($.std.Port)})` used to leave the definition
+  unsettled, so its mark never transferred, so generation raised
+  `mapval_no_gen` naming the DEFINITION rather than the link. Not-done
+  still governs the other pending state -- an address whose target has
+  not appeared -- which is what reaches the deciding pass.
+  aontu-lang/aontu#172, pinned by `refer.tsv`'s `schema-*` rows.)*
   Integrity is a unification-time property, per the
   review index — there is no vet-time deferral.
 - **Canon** renders the residual reparseably:

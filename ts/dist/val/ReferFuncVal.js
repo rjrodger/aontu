@@ -213,13 +213,25 @@ class ReferVal extends FeatureVal_1.FeatureVal {
     // resolved string should take.
     settle(ctx, site) {
         if (undefined === this.addr) {
-            // NOT DONE, unlike `string` or `min(1)`. A refer without an
-            // address has not done its work — it exists to check one — and
-            // the pass loop must keep offering it the chance. The cost is
-            // that a SCHEMA mentioning a link never resolves either, so
-            // `type({from: refer($.std.Port)})` is not expressible today;
-            // G4 phase 4 records why, and what it would take.
-            this.dc = 0;
+            // DONE while unmet, as `string` and `min(1)` are, and as RelVal
+            // has been since it was written (see its constructor). An
+            // ADDRESS-LESS refer has nothing to check yet and nothing to
+            // refuse: it is its own settled residual, and the meet
+            // re-activates it the moment a value arrives, because map
+            // merges build the conjunct regardless.
+            //
+            // NOT-DONE here used to be justified as keeping the pass loop
+            // offering the refer a chance -- but that is the job of the
+            // OTHER pending branch below, where an address exists and its
+            // target has not appeared. This branch has no address to
+            // resolve, so staying not-done bought nothing and cost the
+            // schema idiom: a `type()` body holding a link never settled,
+            // so its mark never transferred, so generation could not skip
+            // the marked subtree and raised `mapval_no_gen` naming the
+            // definition. `type({p: integer})`, `type({p: path()})` and
+            // `type({p: min(1)})` all settled; only a link did not
+            // (aontu-lang/aontu#172, G4 phase 4's recorded cost).
+            this.dc = type_1.DONE;
             return this;
         }
         // The address is a TREE PATH, resolved from the link's own
@@ -383,11 +395,13 @@ class RelVal extends FeatureVal_1.FeatureVal {
         this.cjo = 45000;
         this.tval = spec.tval ?? (0, top_1.top)();
         this.held = spec.held;
-        // DONE while unmet, deliberately -- the property refer() lacks and
-        // G4 phase 4 records the cost of: a type() body holding a rel()
+        // DONE while unmet, deliberately: a type() body holding a rel()
         // must SETTLE, or the schema idiom (`dependsOn?: rel($.T)` inside
         // a vocabulary) leaves the type unresolved and every reference to
-        // it deferring forever. An unmet rel is its own settled residual,
+        // it deferring forever. This was the property refer() lacked --
+        // G4 phase 4 recorded the cost -- until 2026-09-07, when an
+        // address-less refer was given it too (#172); the two now settle
+        // by the same rule, which is what the shared reasoning below is. An unmet rel is its own settled residual,
         // like `min(1)`; the meet re-activates it whenever a value
         // arrives, because map merges build the conjunct regardless.
         this.dc = type_1.DONE;

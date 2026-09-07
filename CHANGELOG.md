@@ -20,6 +20,35 @@ profiles, `replace`/`esc`, provenance and coverage, and a generator
 written in the target's own syntax — and the first complete system
 generated with it.
 
+### A schema may now mention a link
+
+`type({from: refer($.std.Port)})` — a vocabulary that says a field is a
+checked reference — did not evaluate. It raised `mapval_no_gen` naming
+the DEFINITION, a path mentioning neither the link nor the field, and
+the same shape written with `integer`, `path()` or `min(1)` in place of
+the link worked. G4 phase 4 recorded the cost; this pays it.
+
+An ADDRESS-LESS `refer()` is now DONE, as `string` and `min(1)` are,
+and as `rel()` has been since it was written. It has nothing to check
+yet and nothing to refuse, and the meet re-activates it the moment a
+value arrives, because map merges build the conjunct regardless.
+Leaving it not-done read as "keep offering it the chance", but that is
+the job of the OTHER pending state — an address whose target has not
+appeared — which is unchanged and still what reaches the pass where
+existence is decided. Not-done here bought nothing and cost the schema
+idiom: the definition never settled, so its `type()` mark never
+transferred, so generation could not skip the marked subtree.
+
+The type still flows into the target, and an unmet link is still an
+unfulfilled requirement its enclosing map cannot generate.
+
+Both ports. The Go port needed a second line with it: its pending
+branch called `notdone()`, which is a no-op on a value already DONE, so
+an address whose target was missing inherited DONE through `reshape()`
+and never reached the deciding pass — it now assigns, as TypeScript
+always has. aontu-lang/aontu#172, pinned by seven new rows in
+`test/spec/refer.tsv`.
+
 ### The canon-hash was blind to `close()` and the marks at an alias template
 
 **`aontu hash` could report no change for a change of meaning**, which
