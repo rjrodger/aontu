@@ -93,3 +93,13 @@ errm-frame-ref-clone-map-pos	err	x:{m:1} y:$.x y:2	--> <no-file>:1:3
 frame-gutter-one-digit	err	\n\nbad: 1 & true\n	  3 |
 frame-gutter-two-digits	err	\n\n\n\n\n\n\n\n\nbad: 1 & true\n	  10 |
 frame-gutter-three-digits	err	\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nbad: 1 & true\n	   98 |
+#
+# A GROUP IS SITED AT ITS PAREN. `(expr)` evaluates to the inner
+# value, and a reader looking for that value looks at the `(` -- so
+# the group takes the OUTERMOST open paren's position, whatever the
+# spacing or nesting inside it. Go kept the inner term's own site, so
+# a caret under a parenthesised disjunction sat one column right of
+# the value it named, and two with a space after the paren.
+errm-paren-group-site	err	a:(integer | biginteger)\na:"x"	--> <no-file>:1:3
+errm-paren-group-site-spaced	err	a:(  integer | biginteger  )\na:"x"	--> <no-file>:1:3
+errm-paren-group-site-nested	err	a:((integer | biginteger))\na:"x"	--> <no-file>:1:3

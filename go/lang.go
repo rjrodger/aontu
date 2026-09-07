@@ -2256,7 +2256,19 @@ func evaluate(r *jsonic.Rule, ctx *jsonic.Context, op *expr.Op, terms []interfac
 				stampSrc(n, r)
 				return n
 			}
-			return asVal(terms[0])
+			// PLAIN `(expr)` GROUPING. The group's value is the inner
+			// value, but its SITE is the paren: a reader looking for
+			// `(integer | biginteger)` looks at the `(`, and that is
+			// where the canonical port points -- at the OUTERMOST open
+			// paren, whatever the spacing or the nesting inside it.
+			// Keeping the inner term's own position put the caret one
+			// column right of the value it named, and two columns right
+			// with a space after the paren.
+			gv := asVal(terms[0])
+			if r.ON > 0 {
+				gv.setPos(r.O0.SI)
+			}
+			return gv
 		}
 		// `a:()` — grouping parens with nothing inside.
 		return incompleteNil(r)
