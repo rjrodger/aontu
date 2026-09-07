@@ -13,6 +13,7 @@ everything else and emits nothing:
 
 ```aontu
 type: type({})
+
 type: {
   uint8: integer & min(0) & max(255)
   int8: integer & min(-128) & max(127)
@@ -38,6 +39,7 @@ the same document with `listen: 70000` as `types.aon`:
 <!-- test: file types.aon -->
 ```aontu
 type: type({})
+
 type: {
   uint8: integer & min(0) & max(255)
   int8: integer & min(-128) & max(127)

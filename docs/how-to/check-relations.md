@@ -40,6 +40,7 @@ plain lists of names. Write the topology as `pipeline.aon`:
 <!-- test: file pipeline.aon -->
 ```aontu
 @"./spec.aon"
+
 jobs: { &: $.spec.Job }
 jobs: extract: feeds: [path($.jobs.transform)]
 jobs: transform: { fedBy:[path($.jobs.extract)] feeds:[path($.jobs.load)] }
@@ -111,6 +112,7 @@ record the feeder on its `fedBy`. Write it as `metrics.aon`:
 <!-- test: file metrics.aon -->
 ```aontu
 @"./pipeline.aon"
+
 jobs: metrics: fedBy: []
 jobs: transform: feeds: [path($.jobs.load) path($.jobs.metrics)]
 ```

@@ -161,11 +161,28 @@ else
   fail "the model states what nothing reads: $(tr "\n" " " < "$WORK/dead.everywhere")"
 fi
 
-# --- the model is in the agreed form ---------------------------------
+# --- the model and the generators are in the agreed form -------------
+#
+# A GENERATOR IS FORMATTED TOO (FMT.0.md §3.14): `fmt` desugars it,
+# formats the document its marker lines carry and resugars, so the
+# aontu is indented after the marker and every line of output stays
+# exactly where it was. Nothing here can move a line of the generated
+# app -- check 1 above renders it byte for byte -- so this gate is
+# about the generator being readable as the tree it is.
 
-$AONTU fmt --check "$DIR/model.aon" >/dev/null 2>&1 \
-  && ok "the model is in the agreed form (aontu fmt)" \
-  || fail "model.aon is not formatted"
+bad=""
+$AONTU fmt --check "$DIR/model.aon" >/dev/null 2>&1 || bad="$bad model.aon"
+$AONTU fmt --check "$DIR/gen/views.aon" >/dev/null 2>&1 || bad="$bad views.aon"
+for g in $RUBY_GENS; do
+  $AONTU fmt --check "$DIR/gen/$g.rb" >/dev/null 2>&1 || bad="$bad $g.rb"
+done
+$AONTU fmt --check --marker '%%-' "$DIR/gen/erd.mmd" >/dev/null 2>&1 \
+  || bad="$bad erd.mmd"
+if [ -z "$bad" ]; then
+  ok "the model and all nine generators are in the agreed form (aontu fmt)"
+else
+  fail "not formatted:$bad"
+fi
 
 # --- the CI job still fits the workflow it patches -------------------
 #

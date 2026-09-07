@@ -30,9 +30,33 @@ table has never seen, and quieter on the page than a colon — which
 matters, because a generator file is mostly marker lines and mostly
 read rather than written.
 
-A marker is recognised **after leading whitespace and keeps its own
-indentation** through the round trip, which is what lets a template be
-written where its output appears (D7).
+A marker is recognised **after leading whitespace**, and its own
+indentation counts toward the aontu it carries.
+
+**AMENDED 2026-09-07.** The round trip used to write that indentation
+back **before** the marker, so a marker line sat where its output would.
+That serves a reader of the target, and it costs the reader of the
+DOCUMENT the one thing the surface took away: the tree the marker lines
+carry had no shape on the page at all. The resugaring now writes the
+marker at the **left margin** with the aontu indented **after** it,
+which is what `aontu fmt` (FMT.0.md §3.14) produces:
+
+```rb
+#- code: units: [
+#-   {
+#-     path: "config/routes.rb"
+#-     decls: [
+#-       { k: "frag", of: [
+Rails.application.routes.draw do
+#-       ]}
+```
+
+The half of D7 this rests on is untouched: an **output** line is
+verbatim, at its own indentation, so a template is still written exactly
+where its output appears. Reading is unchanged and stays generous — a
+template written the other way desugars to the same document — so what
+changed is the spelling the round trip answers, and `template --check`
+names the difference as the drift it is.
 
 ## D3. A value reaches the output through `replace`, not a delimiter
 
@@ -387,7 +411,11 @@ simply one the fixpoint leaves alone.
 
 `emit`'s table argument is an expression, so it can be a literal at the
 call site — which means a template is written **exactly where its
-output appears**, indented to match, with no new mechanism:
+output appears**, indented to match, with no new mechanism. (The
+example below predates D2's 2026-09-07 amendment: `aontu fmt` now
+writes the marker lines at the left margin with the aontu indented after
+them. The output lines are where they were, which is what this decision
+is about.)
 
 ```ts
 //- @"./model.aon"

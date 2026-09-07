@@ -12,6 +12,17 @@
 # Nothing is written on a refusal, so the file is intact either way --
 # what the row holds is that both ports refuse the same sources.
 #
+# Mode `fmt-template` pins the formatter over a GENERATOR (FMT.0.md
+# §3.14; TEMPLATE.0.md): FIVE columns -- name, fmt-template, src, the
+# marker, expect. The file is desugared, formatted and resugared, so
+# `expect` is a template again: the marker at the left margin, the aontu
+# indented after it, and every line of output where it was.
+#
+# Mode `fmt-template-lint` is `fmt-lint` over a generator, and pins the
+# COLUMN: FIVE columns -- name, fmt-template-lint, src, the marker,
+# expect. A finding's site is in the template, not in the document it
+# carries, so the marker and its one space stand before the aontu.
+#
 # Mode `fmt-lint` pins the style findings of `--lint` (FMT.0.md §4):
 # `expect` is one `line:col: rule: message` per finding -- the CLI's
 # line without the file name -- joined by newlines, empty when there
@@ -119,7 +130,7 @@ fmt-order-kept	fmt	b: 1\na: 2\n	b: 1\na: 2\n
 fmt-bare-strings-kept	fmt	a: Mercury\nb: "Mercury"\n	a: Mercury\nb: "Mercury"\n
 fmt-text-with-angle	fmt	a: <1\n	a: <1\n
 fmt-spread-wide	fmt	a: { &: { xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1 } b: 2 }\n	a: {\n  &: {\n    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1\n  }\n  b: 2\n}\n
-fmt-comment-only-block	fmt	a: { # only\n}\nb: [ # only\n]\n	a: { # only\n}\nb: [ # only\n]\n
+fmt-comment-only-block	fmt	a: { # only\n}\nb: [ # only\n]\n	a: { # only\n}\n\nb: [ # only\n]\n
 fmt-comment-first-argument	fmt	a: f( # c\n  1)\n	a: f( # c\n  1\n)\n
 fmt-comment-lines-in-arguments	fmt	a: f( # a\n  # b\n  1 # c\n  # d\n  , 2)\n	a: f( # a\n  # b\n  1, # c\n  # d\n  2\n)\n
 fmt-blank-lines-around-comma	fmt	a: [1\n\n,\n\n2]\n	a: [\n  1\n\n  2\n]\n
@@ -138,7 +149,7 @@ fmt-merge-not-optional-mismatch	fmt	s: a: 1\ns?: b: 2\n	s: a: 1\ns?: b: 2\n
 fmt-merge-optional	fmt	s?: a: 1\ns?: b: 2\n	s?: { a:1 b:2 }\n
 fmt-merge-not-operands	fmt	s: { a: 1 } & { b: 2 }\ns: { c: 3 }\n	s: { a:1 } & { b:2 }\ns: c: 3\n
 fmt-merge-not-include	fmt	s: { @"x.aon" a: 1 }\ns: b: 2\n	s: { @"x.aon" a:1 }\ns: b: 2\n
-fmt-merge-not-opener-comment	fmt	s: { # open\n  a: 1\n}\ns: b: 2\n	s: { # open\n  a: 1\n}\ns: b: 2\n
+fmt-merge-not-opener-comment	fmt	s: { # open\n  a: 1\n}\ns: b: 2\n	s: { # open\n  a: 1\n}\n\ns: b: 2\n
 fmt-merge-empty-maps	fmt	s: {}\ns: {}\n	s: {}\n
 fmt-merge-spread-and-pair	fmt	s: { &: integer }\ns: a: 1\n	s: { &: integer a:1 }\n
 fmt-merge-not-two-spreads	fmt	s: { &: integer }\ns: { &: string }\n	s: { &: integer }\ns: { &: string }\n
@@ -148,7 +159,7 @@ fmt-merge-blank-between	fmt	s: a: 1\n\ns: b: 2\n	s: a: 1\n\ns: b: 2\n
 fmt-merge-trailing-comments	fmt	s: a: 1 # x\ns: b: 2 # y\n	s: a: 1 # x\ns: b: 2 # y\n
 fmt-merge-trail-sinks	fmt	s: { a: 1 } # x\ns: b: 2\n	s: a: 1 # x\ns: b: 2\n
 fmt-merge-not-trail-without-entry	fmt	s: {} # x\ns: b: 2\n	s: {} # x\ns: b: 2\n
-fmt-merge-not-trail-on-comment	fmt	s: {\n  a: 1\n  # end\n} # x\ns: b: 2\n	s: {\n  a: 1\n  # end\n} # x\ns: b: 2\n
+fmt-merge-not-trail-on-comment	fmt	s: {\n  a: 1\n  # end\n} # x\ns: b: 2\n	s: {\n  a: 1\n  # end\n} # x\n\ns: b: 2\n
 fmt-merge-trails-join	fmt	s: { a: 1 # y\n} # x\ns: b: 2\n	s: a: 1 # y # x\ns: b: 2\n
 fmt-repeat-nested-trail	fmt	a: {\n  b: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1, c: 2 } # t\n  d: 3\n}\n	a: b: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\na: b: c: 2 # t\na: d: 3\n
 fmt-call-no-hug-empty-call	fmt	a: f({ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 }, g())\n	a: f(\n  { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:1 },\n  g()\n)\n
@@ -212,3 +223,34 @@ fmt-lint-repeat-notes-ignored	fmt-lint	x: { f: close(# c\n{ a: "yyyyyyyyyyyyyyyy
 fmt-lint-repeat-with-prefix-and-include	fmt-lint	x: [-1 @"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy" $.a.b]\ny: [-1 @"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy" $.a.b]\n	1:4: style/repeat: this list is written 2 times (again at 2:4); an alias would name it once
 fmt-lint-both-rules-sorted	fmt-lint	x: { a: "yyyyyyyyyyyyyyyyyyyy" b: "yyyyyyyyyyyyyyyyyyyy" }\ny: { a: "yyyyyyyyyyyyyyyyyyyy" b: "yyyyyyyyyyyyyyyyyyyy" }\nz_z: 1\n	1:4: style/repeat: this map is written 2 times (again at 2:4); an alias would name it once\n3:1: style/key-case: key z_z holds an underscore; zZ would follow the form
 fmt-lint-key-then-repeat-same-site	fmt-lint	a: b_c: { a: "yyyyyyyyyyyyyyyyyyyy" b: "yyyyyyyyyyyyyyyyyyyy" }\nd: { b_c: { a: "yyyyyyyyyyyyyyyyyyyy" b: "yyyyyyyyyyyyyyyyyyyy" } }\n	1:4: style/key-case: key b_c holds an underscore; bC would follow the form\n1:4: style/repeat: this map is written 2 times (again at 2:4); an alias would name it once\n2:6: style/key-case: key b_c holds an underscore; bC would follow the form
+
+
+# THE GAP OF §3.8: a top-level statement that takes more than one line
+# to write stands apart -- above its own comments, and below whatever
+# came before. The rule is the root's alone; below it a blank line is
+# the author's, and one-line statements are left where they are.
+fmt-tree-apart	fmt	a: {\n  # why\n  b: 1\n}\nc: 2\n	# why\na: b: 1\n\nc: 2\n
+fmt-tree-apart-both-sides	fmt	a: 1\nb: {\n  # why\n  c: 2\n}\nd: 3\n	a: 1\n\n# why\nb: c: 2\n\nd: 3\n
+fmt-tree-gap-above-the-comment	fmt	a: {\n  # why\n  b: 1\n}\n# c is next\nc: 2\n	# why\na: b: 1\n\n# c is next\nc: 2\n
+fmt-tree-gap-not-doubled	fmt	a: {\n  # why\n  b: 1\n}\n\nc: 2\n	# why\na: b: 1\n\nc: 2\n
+fmt-tree-no-gap-above-the-first	fmt	a: {\n  # why\n  b: 1\n}\n	# why\na: b: 1\n
+fmt-tree-lines-stay-together	fmt	a: 1\nb: 2\nc: 3\n	a: 1\nb: 2\nc: 3\n
+fmt-tree-repeat-is-one-tree	fmt	aaa: { bbbbbbbbbbbbbbbb: 1 cccccccccccccccc: 2 dddddddddddddddd: 3 eeeeeeeeeeeeeeee: 4 }\nz: 9\n	aaa: bbbbbbbbbbbbbbbb: 1\naaa: cccccccccccccccc: 2\naaa: dddddddddddddddd: 3\naaa: eeeeeeeeeeeeeeee: 4\n\nz: 9\n
+fmt-tree-not-below-the-root	fmt	x: {\n  a: { # k\n    b: 1\n  }\n  c: { # k2\n    d: 2\n  }\n}\n	x: {\n  a: { # k\n    b: 1\n  }\n  c: { # k2\n    d: 2\n  }\n}\n
+fmt-tree-comment-across-a-gap-stays	fmt	a: {\n  # x\n  b: 1\n}\n# tail\n\n# head\nc: 2\n	# x\na: b: 1\n\n# tail\n\n# head\nc: 2\n
+
+
+# THE FORMATTER OVER A GENERATOR (§3.14): the aontu the marker lines
+# carry, in the agreed form, indented AFTER the marker; every line of
+# output held on a line of its own, whatever the packing budget would
+# rather do with three strings in a row.
+fmt-template-indents-the-aontu	fmt-template	#- code: units: [{\n#- path: "x.rb"\n#- decls: [\n#- { k:"frag" of:[\nputs 1\n#- ]}\n#- ]\n#- }]\n	#-	#- code: units: [\n#-   {\n#-     path: "x.rb"\n#-     decls: [\n#-       {\n#-         k: "frag"\n#-         of: [\nputs 1\n#-         ]\n#-       }\n#-     ]\n#-   }\n#- ]\n
+fmt-template-holds-output-lines	fmt-template	#- a: [\nx\ny\nz\n#- ]\n	#-	#- a: [\nx\ny\nz\n#- ]\n
+fmt-template-marker-to-the-margin	fmt-template	  #- a: [\n  line\n  #- ]\n	#-	#- a: [\n  line\n#- ]\n
+fmt-template-blank-output-line	fmt-template	#- a: [\n\nx\n#- ]\n	#-	#- a: [\n\nx\n#- ]\n
+fmt-template-block-marker	fmt-template	/*- a: [ */\n/*- { b: [ */\n  .x { }\n/*- ] } */\n/*- ] */\n	/*-	/*- a: [ */\n/*-   b: [ */\n  .x { }\n/*-   ] */\n/*- ] */\n
+fmt-template-no-marker-line	fmt-template	just a line\n	#-	just a line\n
+fmt-template-holds-inside-a-call	fmt-template	#- a: emit($.x & $.y, {\n#- body: [\nline\n#- ]})\n	#-	#- a: emit($.x & $.y, {\n#-   body: [\nline\n#-   ]\n#- })\n
+fmt-template-lint-column-is-the-templates	fmt-template-lint	#- a_b: [\nline\n#- ]\n	#-	1:4: style/key-case: key a_b holds an underscore; aB would follow the form
+fmt-template-lint-block-marker-column	fmt-template-lint	/*- a_b: [ */\n.x { }\n/*- ] */\n	/*-	1:5: style/key-case: key a_b holds an underscore; aB would follow the form
+fmt-template-lint-nothing-to-say	fmt-template-lint	#- a: [\nline\n#- ]\n	#-	

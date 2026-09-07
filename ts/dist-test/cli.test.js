@@ -2326,15 +2326,16 @@ function fmtFiles(...srcs) {
         const dir = templateDir({ 'gen.ts': GEN });
         Assert.equal(templateCode(0, ['--check', Path.join(dir, 'gen.ts')]).out, '');
         // A MARKER LINE THE TRANSFORM WOULD NOT HAVE WRITTEN is what this
-        // catches: the marker keeps its OWN indentation, so aontu indented
-        // after it is moved before it, and a marker written without its
-        // space gains one. The report names the first line that differs
-        // rather than diffing the whole generator.
-        const bad = templateDir({ 'gen.ts': '//- of: [\n//-   {\n//- ]\n' });
+        // catches: the marker stands at the left margin with the aontu
+        // indented after it, so a marker indented to match the code around
+        // it is moved back, and a marker written without its space gains
+        // one. The report names the first line that differs rather than
+        // diffing the whole generator.
+        const bad = templateDir({ 'gen.ts': '//- of: [\n  //- {\n//- ]\n' });
         const r = templateCode(1, ['--check', Path.join(bad, 'gen.ts')]);
         Assert.match(r.err, /gen\.ts:2 is not what the round trip answers/);
-        Assert.match(r.err, /have: "\/\/- {3}\{"/);
-        Assert.match(r.err, /want: " {2}\/\/- \{"/);
+        Assert.match(r.err, /have: " {2}\/\/- \{"/);
+        Assert.match(r.err, /want: "\/\/- {3}\{"/);
     });
     (0, node_test_1.test)('template-usage-errors-exit-2', () => {
         const dir = templateDir({ 'gen.ts': GEN });
@@ -2366,20 +2367,35 @@ function fmtFiles(...srcs) {
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runRender)(['--stdout', '--marker', ';;-', Path.join(dir, 'gen.zz')]), 0)).out, 'hello\n');
         Assert.match(vetCapture(() => Assert.equal((0, cli_1.runRender)(['--marker']), 2)).err, /--marker needs a token/);
     });
-    (0, node_test_1.test)('fmt-formats-aontu-source-only', () => {
-        // A `#-` TEMPLATE PARSES AS AONTU, because `#` opens a comment --
-        // so `fmt` would read one, throw every output line away and
-        // rewrite the file with exit 0. The rule is by name, not by what
-        // parses.
+    (0, node_test_1.test)('fmt-formats-a-generator-through-the-template-surface', () => {
+        // A FILE THAT IS NOT `.aon` IS A GENERATOR, as it is for render:
+        // the aontu its marker lines carry is formatted, the marker stands
+        // at the left margin with the aontu indented after it, and every
+        // line of output is held on a line of its own -- `puts 1` here,
+        // which the packing budget would otherwise put inside the list.
         const dir = templateDir({ 'gen.rb': '#- of: [\nputs 1\n#- ]\n' });
         const file = Path.join(dir, 'gen.rb');
-        const r = vetCapture(() => Assert.equal((0, cli_1.runFmt)([file]), 2));
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)([file]), 0)).out, '#- of: [\nputs 1\n#- ]\n');
+        // The aontu is indented AFTER the marker, and -w writes it back.
+        const deep = templateDir({ 'g.rb': '#- a: [\n#- { b: [\nx\n#- ] }\n#- ]\n' });
+        const dfile = Path.join(deep, 'g.rb');
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)(['-w', dfile]), 0)).out, '');
+        Assert.equal(Fs.readFileSync(dfile, 'utf8'), '#- a: [\n#-   b: [\nx\n#-   ]\n#- ]\n');
+        // `--marker` reaches fmt too, for a language the table has not met.
+        const zz = templateDir({ 'g.zz': ';;- a: [\nx\n;;- ]\n' });
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)(['--marker', ';;-', Path.join(zz, 'g.zz')]), 0)).out, ';;- a: [\nx\n;;- ]\n');
+        Assert.match(vetCapture(() => Assert.equal((0, cli_1.runFmt)(['--marker']), 2)).err, /--marker needs a token/);
+        // A FILE WITH NO MARKER LINE IS ANOTHER LANGUAGE'S, and is refused
+        // by name: FMT.0.md §9's boundary, which the marker is the
+        // evidence for.
+        const data = templateDir({ 'd.json': '{"a":1}\n' });
+        const dj = Path.join(data, 'd.json');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runFmt)([dj]), 2));
         Assert.equal(r.out, '');
         Assert.match(r.err, /is not aontu source \(\.aon, \.aontu\)/);
-        Assert.match(r.err, /aontu template/);
-        // The file is untouched, which is the whole point.
-        Assert.equal(Fs.readFileSync(file, 'utf8'), '#- of: [\nputs 1\n#- ]\n');
-        // `.aontu` is aontu source, and is formatted.
+        Assert.match(r.err, /carries no \/\/- marker line/);
+        Assert.equal(Fs.readFileSync(dj, 'utf8'), '{"a":1}\n');
+        // `.aontu` is aontu source, and is formatted as one.
         const ok = templateDir({ 'd.aontu': 'a:{b:1}\n' });
         Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runFmt)([Path.join(ok.toString(), 'd.aontu')]), 0)).out, 'a: b: 1\n');
     });

@@ -5,6 +5,75 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/aontu-lang/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
+## Unreleased
+
+### `aontu fmt` formats a generator
+
+**A generator was the one place aontu was hardest to read and the one
+place the formatter would not go.** `fmt` refused any file that was not
+`.aon` or `.aontu`, by name — the right call when the alternative was
+reading a `#-` template as a document and discarding every output line
+as a comment — and the cost was a template surface whose marker lines
+carried a tree nobody could see the shape of. `rb-solar`'s nine
+generators were nine hundred lines of aontu at column zero.
+
+A file whose extension is not `.aon` is now a GENERATOR, as it already
+is for `render`: `fmt` desugars it, formats the document its marker
+lines carry, and resugars, so what comes back is a generator. It cannot
+discard an output line, because the resugaring writes every one of them
+back. `--marker` names the marker for a language the table does not
+know, exactly as it does for `render` and `template`.
+
+Two rules are this surface's own (FMT.0.md §3.14):
+
+- **The marker stands at the left margin, and the aontu is indented
+  after it.** The round trip used to write the indentation before the
+  marker, so a marker line sat where its output would
+  (TEMPLATE.0.md D2, amended). Reading is unchanged and stays generous —
+  a marker after leading whitespace is still a marker — so a template
+  written the old way desugars to the same document; what moves is the
+  spelling the round trip answers, and `template --check` names the
+  difference. **Every committed generator is reformatted in this
+  release**, and a generator held to `template --check` elsewhere will
+  report drift until `aontu fmt -w` has run over it.
+- **Every line of output is held on a line of its own.** In the document
+  a line of the target's file is a quoted string like any other, and the
+  packing budget would fold three of them into one `[...]` — three lines
+  of output written as one.
+
+**A file with no marker line in it is still refused by name** (FMT.0.md
+§9's boundary, unmoved): a `.json`, `.yaml` or `.toml` include is
+another language's file, and the marker is the evidence that a file was
+written to carry aontu at all.
+
+### A new tree at the top level stands apart
+
+`fmt` now puts one blank line above a top-level statement that takes
+more than one line to write, and one below it. A document states several
+things — a service, then its entities, then its errors — and where one
+of them is a tree rather than a line, the eye finds it by the space
+around it.
+
+What counts as a tree is measured rather than guessed: the statement did
+not fit on one line. So `a: 1` beside `b: 2` is left where it is. The
+gap opens above the statement's own comments, so a note travels with
+what it describes, and the rule is the root's alone — below it a blank
+line is the author's and nothing else.
+
+**Documents already in the agreed form may change on this release**: the
+formatter's own corpus of 442 documents moved by this rule alone, and
+`fmt --check` in CI will report them until `fmt -w` has run.
+
+### Both ports, and the shared suite
+
+`ts/src/format.ts` and `go/format.go` function for function, as
+`ts/src/template.ts` and `go/template.go` already were. Two new modes in
+`test/spec/fmt.tsv` — `fmt-template` and `fmt-template-lint` — and rows
+for the gap rule, every expectation obtained from both engines. The
+bundled `aontu:code` model is reformatted by the gap rule and stays
+`fmt`-clean and lint-clean in both ports.
+
+
 ## Go 0.1.18 — 2026-09-07 · TypeScript 0.60.0
 
 **A pin that could miss a change of meaning is the headline.** `aontu

@@ -8,26 +8,41 @@
 //- svc: $.services & pack($.services, { name:key() })
 //-
 //- %handler = emit(_, {
-//- match: { name:string }
-//- esc: sq
-//- replace: { SERVICE: .name }
-//- body: [
+//-   match: name: string
+//-   esc: sq
+//-   replace: SERVICE: .name
+//-   body: [
 import { getSeneca } from '../../env/lambda/lambda'
 
 function complete(seneca: any) {
-  //- emit(.listen, { match:{ pin:string }, esc:sq, replace:{ PIN: .pin }, body: [
+//-     emit(.listen, {
+//-       match: pin: string
+//-       esc: sq
+//-       replace: PIN: .pin
+//-       body: [
   seneca.listen({type:'sqs',pin:'PIN'})
-  //- ]})
-  //- emit(.client, { match:{ pin:string }, esc:sq, replace:{ PIN: .pin }, body: [
+//-       ]
+//-     })
+//-     emit(.client, {
+//-       match: pin: string
+//-       esc: sq
+//-       replace: PIN: .pin
+//-       body: [
   seneca.client({type:'sqs',pin:'PIN'})
-  //- ]})
-  //- emit(filter(.on.file.events, { source:s3 }), { match:{ source:s3 msg:string }, esc:sq, replace:{ MSG: .msg }, body: [
+//-       ]
+//-     })
+//-     emit(filter(.on.file.events, { source:s3 }), {
+//-       match: { source:s3 msg:string }
+//-       esc: sq
+//-       replace: MSG: .msg
+//-       body: [
 
   const makeGatewayHandler = seneca.export('s3-store/makeGatewayHandler')
   seneca
     .act('sys:gateway,kind:lambda,add:hook,hook:handler', {
        handler: makeGatewayHandler('MSG') })
-  //- ]})
+//-       ]
+//-     })
 }
 
 exports.handler = async (
@@ -41,7 +56,8 @@ exports.handler = async (
   let res = await handler(event, context)
   return res
 }
-//- ]})
+//-   ]
+//- })
 //-
 //- # One unit per service, and an index that names them all in the
 //- # model's order. The unit list is one dispatch over two parts, the
@@ -49,34 +65,34 @@ exports.handler = async (
 //- parts: { handlers:$.svc index:true }
 //-
 //- code: units: emit($.parts, [
-  //- {
-    //- match: map()
-    //- body: [
-      //- emit(_, {
-        //- match: { name:string }
-        //- body: [
-          //- {
-            //- path: "handlers/" + .name + ".ts"
-            //- lang: "typescript"
-            //- decls: [{ k:"frag" of:emit([_], %handler) }]
-          //- }
-        //- ]
-      //- })
-    //- ]
-  //- }
-  //- {
-    //- match: true
-    //- body: [
-      //- {
-        //- path: "index.ts"
-        //- lang: "typescript"
-        //- decls: [
-          //- {
-            //- k: "frag"
-            //- of: form(pick($.svc, name), "export const " + join(form(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
-          //- }
-        //- ]
-      //- }
-    //- ]
-  //- }
+//-   {
+//-     match: map()
+//-     body: [
+//-       emit(_, {
+//-         match: name: string
+//-         body: [
+//-           {
+//-             path: "handlers/" + .name + ".ts"
+//-             lang: "typescript"
+//-             decls: [{ k:"frag" of:emit([_], %handler) }]
+//-           }
+//-         ]
+//-       })
+//-     ]
+//-   }
+//-   {
+//-     match: true
+//-     body: [
+//-       {
+//-         path: "index.ts"
+//-         lang: "typescript"
+//-         decls: [
+//-           {
+//-             k: "frag"
+//-             of: form(pick($.svc, name), "export const " + join(form(split(_, "-"), upper(_)), "_") + " = '" + _ + "'")
+//-           }
+//-         ]
+//-       }
+//-     ]
+//-   }
 //- ])

@@ -33,6 +33,7 @@ one document:
 
 ```aontu
 catalog: payments: { owner:"team-payments" tier:1 }
+
 deploy: eu1: payments: $.catalog.payments & {
   image: "acme/payments:2.14.1"
   replicas: 6
@@ -452,6 +453,7 @@ no finite chain can satisfy it. Try it, as `strict.aon`:
 <!-- test: file strict.aon -->
 ```aontu
 strict: hide({ Step:{ approver:string then:$.strict.Step } })
+
 doc: $.strict.Step & {
   approver: "lead@acme.example"
   then: approver: "cfo@acme.example"

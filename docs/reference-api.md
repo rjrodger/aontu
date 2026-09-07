@@ -55,7 +55,7 @@ Usage: aontu [options] [file]
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
        aontu agentsmd [--write <AGENTS.md>] <file>
-       aontu fmt [-w|-l|--check|-d|--lint] <file>...
+       aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu lsp
        aontu mcp [--root <dir>]
 
@@ -591,6 +591,7 @@ A model whose edges hold, `system.aon`, passes:
 <!-- test: file system.aon -->
 ```aontu
 @"./spec.aon"
+
 services: { &: $.spec.Service }
 services: web: dependsOn: [path($.services.billing)]
 services: billing: dependsOn: [path($.services.ledger)]
@@ -610,6 +611,7 @@ neither inverse written out, fails on every count at once:
 <!-- test: file bad-system.aon -->
 ```aontu
 @"./spec.aon"
+
 services: { &: $.spec.Service }
 services: auth: dependsOn: [path($.services.billing)]
 services: billing: dependsOn: [path($.services.auth)]
@@ -1896,7 +1898,7 @@ aontu source, so that layout is never argued about and a diff shows
 only what changed.
 
 ```
-aontu fmt [-w|-l|--check|-d|--lint] <file>...
+aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
 aontu fmt < in.aon > out.aon
 ```
 
@@ -1909,6 +1911,7 @@ aontu fmt < in.aon > out.aon
 | `-d`, `--diff` | print a unified diff for each file whose form would change |
 | `--lint` | report the style findings, key case and repeated shapes, on standard error, and print nothing else |
 | `--strict` | `--lint`, and exit 1 when there is a finding |
+| `--marker <t>` | the file is a generator, and this is its marker (default `//-`, and `#-` `---` `/*-` by extension) |
 
 - **The form.** Two-space indentation. `key: value`, the colon tight
   to the key. No commas between entries (a call's argument list keeps
@@ -1932,12 +1935,24 @@ aontu fmt < in.aon > out.aon
   the document.
 - **It reads the file it is given and no other.** An `@"..."` include
   is a token like any other, so the verb takes no `--trust`.
-- **It formats aontu source only**, `.aon` and `.aontu`; any other file
-  argument is refused by name, exit 2. A generator written in the
-  target's own syntax is [`aontu template`](#aontu-template)'s, and it
-  is the reason the rule is by name rather than by what parses: a `#-`
-  template PARSES here, because `#` opens a comment, so formatting one
-  would discard every output line and rewrite the file.
+- **A new tree at the top level stands apart.** One blank line above a
+  top-level statement that takes more than one line to write, and one
+  below it, above its own comments so that a note travels with what it
+  describes. What counts as a tree is measured rather than guessed: the
+  statement did not fit on one line. `a: 1` beside `b: 2` is left where
+  it is, and the rule is the root's alone; below it a blank line is the
+  author's.
+- **A generator is formatted as the document it carries.** A file whose
+  extension is not `.aon` is a generator written in the target's own
+  syntax ([`aontu template`](#aontu-template)), as it is for `render`:
+  it is desugared, formatted and resugared, so what comes back is a
+  generator. The marker stands at the left margin with the aontu
+  indented **after** it, so the tree the marker lines carry has a shape
+  on the page, and every line of output is held on a line of its own,
+  which the packing budget would otherwise fold three strings into.
+  `--marker` names the marker for a language the table does not know.
+  A file with no marker line in it is another language's, a `.json`,
+  `.yaml` or `.toml` include, and is refused by name, exit 2.
 - **It checks its own work.** Before a byte is returned the formatted
   text is parsed again and compared with the input, tree to tree; a
   disagreement is refused as the formatter's own defect
@@ -1985,6 +2000,7 @@ $ aontu fmt config.aon
 server: host: "0.0.0.0"
 server: port: 8080
 server: tls: { enabled:true cert:"/etc/tls/cert.pem" }
+
 features: ["auth" "metrics"]
 limits: { rps:100 burst:200 }
 ```
@@ -2073,11 +2089,14 @@ export function greet() {
 between them: it holds the file to the spelling the two transforms
 answer, and names the first line that is not it. What that catches is a
 marker line the transform would not have written—one without its space,
-or one whose aontu is indented after the marker rather than before it,
-since the marker keeps its own indentation. **A template's whitespace
-is output**, so its bytes are the artifact: a body line's trailing
-space is caught by `render --check` against the committed files, which
-is where a changed byte shows up as changed output.
+or one indented to match the code around it, since the marker stands at
+the left margin with the aontu indented after it. **A template's
+whitespace is output**, so its bytes are the artifact: a body line's
+trailing space is caught by `render --check` against the committed
+files, which is where a changed byte shows up as changed output.
+
+[`aontu fmt`](#aontu-fmt) writes that spelling, and formats the aontu
+the marker lines carry while it is there.
 
 <!-- test: run -->
 ```sh

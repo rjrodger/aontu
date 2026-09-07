@@ -83,6 +83,7 @@ recurs. `--lint` reports them and touches nothing. Write `deploy.aon`:
 ```aontu
 services: web: limits: { cpu:"500m" memory:"256Mi" restart:"always" }
 services: auth: limits: { cpu:"500m" memory:"256Mi" restart:"always" }
+
 max_replicas: 4
 ```
 
@@ -90,7 +91,7 @@ max_replicas: 4
 ```sh
 $ aontu fmt --strict deploy.aon
 deploy.aon:1:16: style/repeat: this map is written 2 times (again at 2:17); an alias would name it once
-deploy.aon:3:1: style/key-case: key max_replicas holds an underscore; maxReplicas would follow the form
+deploy.aon:4:1: style/key-case: key max_replicas holds an underscore; maxReplicas would follow the form
 $ echo $?
 1
 ```

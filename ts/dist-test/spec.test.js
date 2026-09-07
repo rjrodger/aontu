@@ -109,6 +109,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *                where src evaluates, the canon-hash of src and of
  *                expect must agree -- the same document (FMT.0.md,
  *                docs/design). See test/spec/fmt.tsv
+ *   mode=fmt-template : FIVE columns -- name, fmt-template, src, the
+ *                marker, expect. format(src, {template: marker}) must
+ *                write expect BYTE FOR BYTE, and expect must be a
+ *                fixed point. The source is a GENERATOR, so the two
+ *                transforms of the template surface stand either side
+ *                of the formatter and expect is a generator too.
+ *   mode=fmt-template-lint : FIVE columns -- name,
+ *                fmt-template-lint, src, the marker, expect. The
+ *                findings of --lint over a generator, in the shape
+ *                fmt-lint pins them: a site is in the TEMPLATE, so the
+ *                marker and its space stand before the aontu.
  * Escapes in src/expect: \n -> newline, \t -> tab, \\ -> backslash.
  *
  * gen vs gens: `gen` compares through a JSON decode, so both sides land
@@ -192,7 +203,8 @@ function loadRows() {
             // (spec-files-present below).
             const vetRow = 'vet' === parts[1] || 'subsume' === parts[1] ||
                 'query' === parts[1] || 'why' === parts[1] || 'patch' === parts[1] ||
-                'diff' === parts[1] || 'agentsmd' === parts[1];
+                'diff' === parts[1] || 'agentsmd' === parts[1] ||
+                'fmt-template' === parts[1] || 'fmt-template-lint' === parts[1];
             const want = vetRow ? 5 : 4;
             if (parts.length < want) {
                 throw new Error(`malformed spec row: ${file} line ${lineno}: ${want} columns` +
@@ -539,6 +551,26 @@ function runRow(row) {
         // nothing, or there would be two agreed forms.
         Assert.strictEqual((0, aontu_1.format)(row.expect).text, row.expect, `not a fixed point: ${row.name}`);
         assertFormatSameDocument(row);
+    }
+    else if ('fmt-template' === row.mode) {
+        // THE FORMATTER OVER A GENERATOR (FMT.0.md §3.14): the source is a
+        // template, `data` is its marker, and what comes back is a
+        // template. Not `assertFormatSameDocument`, which unifies the row's
+        // two sides -- a template is not a document until it is desugared,
+        // and the surface's own rows (template.tsv) hold that transform.
+        const report = (0, aontu_1.format)(row.src, { template: row.data });
+        Assert.strictEqual(report.verdict, 'formatted', `does not format: ${row.name}: ${JSON.stringify(report.errors)}`);
+        Assert.strictEqual(report.text, row.expect);
+        Assert.strictEqual((0, aontu_1.format)(row.expect, { template: row.data }).text, row.expect, `not a fixed point: ${row.name}`);
+    }
+    else if ('fmt-template-lint' === row.mode) {
+        // THE LINT OVER A GENERATOR (§3.14): the findings of --lint, in
+        // the shape the fmt-lint rows pin them, over a template whose
+        // marker is `data`. What this row is here for is the COLUMN: a
+        // site is in the template, not in the document it carries.
+        const report = (0, aontu_1.format)(row.src, { template: row.data, lint: true });
+        Assert.strictEqual(report.verdict, 'formatted', `does not format: ${row.name}: ${JSON.stringify(report.errors)}`);
+        Assert.strictEqual(report.findings.map((f) => `${f.line}:${f.col}: ${f.rule}: ${f.message}`).join('\n'), row.expect, `fmt lint: ${row.name}`);
     }
     else if ('fmt-refuse' === row.mode) {
         // A SOURCE THE FORMATTER REFUSES, pinned so the refusal is the

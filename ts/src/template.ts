@@ -24,12 +24,22 @@
 // comment, and derives for a language this table has never seen: the
 // caller passes the token.
 //
-// A MARKER IS RECOGNISED AFTER LEADING WHITESPACE AND KEEPS ITS OWN
-// INDENTATION (D2). That is what lets a template be written exactly
-// where its output appears (D7): a body line is verbatim, so a line
-// indented two spaces in the template is indented two spaces in the
-// generated file, and the marker lines around it are indented to match
-// the code they sit in rather than to the aontu they carry.
+// A MARKER IS RECOGNISED AFTER LEADING WHITESPACE, AND THE INDENTATION
+// THE RESUGARING WRITES IS THE AONTU'S (D2, amended 2026-09-07). An
+// output line is verbatim -- a line indented two spaces in the template
+// is indented two spaces in the generated file (D7) -- and that is the
+// half a reader of the TARGET needs. The other half is the document:
+// the marker lines carry a tree, and a tree nobody can see the shape of
+// is the one thing this surface took away. So the marker stands at the
+// left margin and the aontu is indented AFTER it, which `aontu fmt`
+// (FMT.0.md M-BM-'3.14) is what writes.
+//
+// Reading is unchanged and stays generous: a marker after leading
+// whitespace is a marker, and its own indentation still counts toward
+// the aontu it carries, so a template written the other way desugars to
+// the same document. What changes is the spelling the round trip
+// answers, and `template --check` names the difference as the drift it
+// is.
 //
 // THE SUGAR IS THE FIXPOINT OF THE TWO TRANSFORMS (D6), and that is
 // the whole of the resugaring's safety. A canonical line that looks
@@ -128,13 +138,19 @@ function indentOf(line: string): number {
 }
 
 
-// The line without its indentation or its trailing spaces and tabs.
-function trimLine(line: string): string {
+// The line without its trailing spaces and tabs.
+function trimEnd(line: string): string {
   let end = line.length
   while (0 < end && (' ' === line[end - 1] || '\t' === line[end - 1])) {
     end--
   }
-  return line.slice(indentOf(line), end)
+  return line.slice(0, end)
+}
+
+
+// The line without its indentation or its trailing spaces and tabs.
+function trimLine(line: string): string {
+  return trimEnd(line).slice(indentOf(line))
 }
 
 
@@ -159,12 +175,15 @@ function readLine(line: string, marker: string): Line {
   // The block form's closer is part of the marker, not of the aontu.
   // A block marker line that never closes is not a marker line: the
   // language's own parser would not read it as a comment either.
+  // Only the TRAILING space goes: what stands between the opener and
+  // the aontu is the aontu's indentation, exactly as it is for a line
+  // marker, and the one-space rule below takes the marker's own.
   if (isBlock(marker)) {
     const end = body.lastIndexOf(BLOCK_CLOSE)
     if (end < 0) {
       return { marker: false, indent: '', text: line }
     }
-    body = trimLine(body.slice(0, end))
+    body = trimEnd(body.slice(0, end))
   }
   // ONE SPACE AFTER THE MARKER IS THE MARKER'S, so `//- x: 1` carries
   // `x: 1` and the resugaring writes the space back. A marker written
@@ -273,19 +292,40 @@ function resugarTemplate(src: string, marker?: string): string {
     if (undefined !== target && desugarTemplate(target, mark) === trimLine(line)) {
       return target
     }
-    const cut = indentOf(line)
-    const text = line.slice(cut)
-    const open = line.slice(0, cut) + mark
+    // THE MARKER STANDS AT THE LEFT MARGIN and the line's indentation
+    // is written after it, so the aontu's own shape is on the page.
+    // The one space is the marker's, which the reading takes back.
+    const text = trimEnd(line)
     const close = isBlock(mark) ? ' ' + BLOCK_CLOSE : ''
-    return '' === text ? open + close : open + ' ' + text + close
+    return '' === text ? mark + close : mark + ' ' + text + close
   })
   return out.join('\n') + (tail ? '\n' : '')
-} /* node:coverage ignore next 8 */
+}
+
+
+// WHICH LINES OF THE DESUGARED DOCUMENT ARE THE TARGET'S. The
+// desugaring is line for line, so this is one flag per line of what
+// `desugarTemplate` returns: true where the template's line was not a
+// marker, and so where the document's line is one quoted line of the
+// generated file.
+//
+// `aontu fmt` reads it (FMT.0.md M-BM-'3.14) to hold those lines on lines of
+// their own. A body element is a string like any other, and the packing
+// budget would put three of them on one line -- which is aontu where
+// three lines of output were, and a generator that writes them as one.
+function templateOutputs(src: string, marker: string): boolean[] {
+  const lines = src.split('\n')
+  if (1 < lines.length && '' === lines[lines.length - 1]) {
+    lines.pop()
+  }
+  return lines.map((line) => !readLine(line, marker).marker)
+} /* node:coverage ignore next 9 */
 
 
 export {
   desugarTemplate,
   resugarTemplate,
+  templateOutputs,
   markerFor,
   DEFAULT_MARKER,
 }

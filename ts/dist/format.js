@@ -26,6 +26,7 @@ exports.unifiedDiff = unifiedDiff;
 // behaviour is test/spec/fmt.tsv, executed by both spec runners.
 const aontu_1 = require("./aontu");
 const vet_1 = require("./vet");
+const template_1 = require("./template");
 // The packing budget (§3.1). It decides which of two legal spellings
 // to use, one line or several, and nothing else: the formatter never
 // breaks a line, so a value wider than this stays as wide as it is.
@@ -479,7 +480,7 @@ function pairHead(node, tight) {
 // lines. `tight` is the inline form of a pair, `a:1`, used inside a
 // container; a statement's pair is `a: 1`.
 function inline(node, tight) {
-    if (undefined !== node.trail) {
+    if (undefined !== node.trail || node.held) {
         return undefined;
     }
     switch (node.t) {
@@ -605,6 +606,14 @@ class Writer {
     since(mark) {
         return this.lines.slice(mark).concat([this.line]).map(rtrim).join('\n') + '\n';
     }
+    // A blank line above the line at an index: the gap of §3.8, opened
+    // once the statement below it turns out to be a tree. Never at the
+    // top of the page, and never a second time.
+    gap(at) {
+        if (0 < at && '' !== this.lines[at - 1]) {
+            this.lines.splice(at, 0, '');
+        }
+    }
     // The lines since a mark replaced by a text: the spelling before,
     // where a rewrite did not pass its check.
     replace(mark, text) {
@@ -633,29 +642,55 @@ function rtrim(s) {
 // body of a plain map that is itself the value of a statement) a pair
 // is laid out by §3.4, which may repeat its key; anywhere else -- a
 // list, an operand, an argument -- by §3.5 alone.
-function emitBody(w, body, indent, stmt) {
+function emitBody(w, body, indent, stmt, root) {
     let pending = false;
     let count = 0;
+    // Where the run being written begins: a statement, with the comments
+    // standing directly above it, so that the gap below opens ABOVE the
+    // comments rather than between them and what they describe. A blank
+    // line ends a run -- comments across a gap belong to what is above.
+    let head = 0;
+    let noted = false;
     for (const node of body) {
         if ('blank' === node.t) {
             pending = 0 < count;
             continue;
         }
+        const gapped = pending;
         w.open(indent, pending);
+        if (gapped || !noted) {
+            head = w.mark();
+        }
         pending = false;
         count++;
         if ('comment' === node.t) {
+            noted = true;
             w.text(node.text);
             continue;
         }
+        noted = false;
+        const from = w.mark();
         if (undefined !== stmt && 'pair' === node.t) {
             emitStatement(w, node, indent, stmt, '');
-            continue;
         }
-        const e = chain(node);
-        emitValue(w, e, indent);
-        if (undefined !== e.trail) {
-            w.text(' ' + e.trail);
+        else {
+            const e = chain(node);
+            emitValue(w, e, indent);
+            if (undefined !== e.trail) {
+                w.text(' ' + e.trail);
+            }
+        }
+        // A TOP-LEVEL STATEMENT WRITTEN AS A TREE STANDS APART (§3.8). A
+        // document states several things -- a service, then its entities,
+        // then its errors -- and where one of them is a tree rather than a
+        // line, the eye finds it by the space around it. What counts as a
+        // tree is measured rather than guessed: the statement took more
+        // than one line to write. So `a: 1` beside `b: 2` is left alone,
+        // and this rule cannot fire below the root, where a blank line is
+        // the author's (§3.8) and nothing else.
+        if (root && from < w.mark()) {
+            w.gap(head);
+            pending = true;
         }
     }
 }
@@ -1083,7 +1118,7 @@ function emitAt(nodes, indent) {
 // over it when given its check.
 function emit(root, meet) {
     const w = new Writer();
-    emitBody(w, undefined === meet ? root : mergeRuns(root), 0, undefined === meet ? undefined : { meet, covered: false });
+    emitBody(w, undefined === meet ? root : mergeRuns(root), 0, undefined === meet ? undefined : { meet, covered: false }, true);
     return w.finish();
 }
 // ---------------------------------------------------------------------
@@ -1295,13 +1330,60 @@ function checkFinding(path, expected, actual) {
         actual,
     };
 }
+// THE TARGET'S OWN LINES ARE HELD ON LINES OF THEIR OWN (§3.14). The
+// desugaring is line for line, so a line of output is known by the
+// offset it begins at, and the node beginning there -- the quoted
+// string the desugaring wrote -- is marked. From there on it has no
+// one-line form, so every container holding it opens, and no two lines
+// of the generated file are ever packed onto one.
+function holdOutput(nodes, at) {
+    for (const node of nodes) {
+        if (undefined !== node.at && at.has(node.at)) {
+            node.held = true;
+        }
+        holdOutput(node.body ?? [], at);
+        holdOutput(node.args ?? [], at);
+        holdOutput(node.inner ?? [], at);
+        holdOutput(node.items ?? [], at);
+        if (undefined !== node.value) {
+            holdOutput([node.value], at);
+        }
+    }
+}
+// The offsets the flagged lines of a document begin at.
+function outputAt(doc, flags) {
+    const at = new Set();
+    let off = 0;
+    const lines = doc.split('\n');
+    for (let k = 0; k < lines.length; k++) {
+        if (flags[k]) {
+            at.add(off);
+        }
+        off += lines[k].length + 1;
+    }
+    return at;
+}
+// A finding's column in the TEMPLATE rather than in the document it
+// carries (§3.14): the marker and its one space stand before the aontu
+// on every line the resugaring writes. Every finding is on such a
+// line -- the two rules point at a key or at a container, and a line of
+// output is a bare string, which is neither.
+function shiftFindings(findings, mark) {
+    return undefined === mark ? findings :
+        findings.map((f) => ({ ...f, col: f.col + mark.length + 1 }));
+}
 // Format one document. The text is the agreed form of the source;
 // `changed` says whether it differs from what was given, which is
 // what `--check` and `--list` report.
 function format(src, opts, hooks) {
     const text = lf(src);
+    // A GENERATOR IS FORMATTED AS THE DOCUMENT IT CARRIES (§3.14): the
+    // template surface's two transforms stand either side of the
+    // formatter, and between them is what happens to any other document.
+    const mark = opts?.template;
+    const doc = undefined === mark ? text : (0, template_1.desugarTemplate)(text, mark);
     const toks = [];
-    const parsed = parseDoc(text, opts?.path, toks);
+    const parsed = parseDoc(doc, opts?.path, toks);
     if (undefined !== parsed.errors) {
         return { verdict: 'error', errors: parsed.errors };
     }
@@ -1309,6 +1391,9 @@ function format(src, opts, hooks) {
     const root = unwrap(reader.body('', false).body);
     if (reader.deep) {
         return { verdict: 'error', errors: [depthFinding()] };
+    }
+    if (undefined !== mark) {
+        holdOutput(root, outputAt(doc, (0, template_1.templateOutputs)(text, mark)));
     }
     // The syntactic tier first, checked against the parse tree; then the
     // lawful tier over it, each rewrite checked by the meet.
@@ -1321,9 +1406,10 @@ function format(src, opts, hooks) {
         };
     }
     const out = emit(root, hooks?.meet ?? sameByMeet);
+    const done = undefined === mark ? out : (0, template_1.resugarTemplate)(out, mark);
     return {
-        verdict: 'formatted', text: out, changed: out !== src,
-        findings: opts?.lint ? lintOf(root, text) : [],
+        verdict: 'formatted', text: done, changed: done !== src,
+        findings: opts?.lint ? shiftFindings(lintOf(root, doc), mark) : [],
     };
 }
 // The lines of a text, with a marker on the last when the text does

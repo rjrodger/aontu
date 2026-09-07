@@ -375,6 +375,33 @@ start or end of a block, none between a comment and the statement it
 attaches to, none at the start of the file; one at the end, which is
 the final newline.
 
+**A NEW TREE AT THE TOP LEVEL STANDS APART** (landed 2026-09-07). One
+blank line above a top-level statement that takes more than one line to
+write, and one below it. A document states several things — a service,
+then its entities, then its errors — and where one of them is a tree
+rather than a line, the eye finds it by the space around it; a
+generator, where the marker lines carry the tree and the output lines
+break it up, needs that more than most.
+
+Three things make the rule safe to apply to every document there is:
+
+- **What counts as a tree is MEASURED, not guessed.** The statement is
+  written, and if it took more than one line it is a tree. So a
+  document of one-line statements is left exactly as it was — `a: 1`
+  beside `b: 2` gains nothing — and a rule about the size of a value,
+  which §3.5's budget already owns, is not invented here.
+- **The gap opens above the statement's own comments.** A note stands
+  with what it describes, so the blank line goes above the run of
+  comments directly over the statement, not between them and it. A
+  blank line already there ends the run, and the comments above it
+  belong to what came before.
+- **It is the root's alone.** Below the root a blank line is the
+  author's and nothing else (above), because a nested body is one
+  value's shape rather than a document's sections.
+
+A gap already on the page is not doubled, and no gap opens above the
+first statement in the file.
+
 ### 3.9 Keys and strings
 
 - **A key is bare when it can be.** A quoted key whose text is a legal
@@ -434,6 +461,39 @@ this form — the author's order is the narrative); renames a key
 resolves an include or reads any file it was not given; evaluates the
 document, beyond the local checks P5 needs; changes a number, a string's
 content, or a parenthesis; breaks a line.
+
+### 3.14 A generator is formatted as the document it carries
+
+A file whose extension is not `.aon` is a GENERATOR written in the
+target's own syntax (docs/design/TEMPLATE.0.md), as it is for `render`:
+the marker lines carry aontu and every other line is output. `fmt`
+desugars it, formats the document, and resugars, so what comes back is a
+generator — and what happens in between is what happens to any other
+document.
+
+Two things belong to this surface and nothing else:
+
+- **THE MARKER STANDS AT THE LEFT MARGIN, and the aontu is indented
+  after it.** The template surface used to write the indentation before
+  the marker, so a marker line sat where its output would (TEMPLATE.0.md
+  D2/D7). That serves a reader of the TARGET, and it costs the reader of
+  the DOCUMENT the one thing a formatter is for: the tree the marker
+  lines carry had no shape on the page at all. Output lines are still
+  verbatim, at their own indentation, which is the half D7 was actually
+  about. Reading is unchanged and stays generous — a marker after
+  leading whitespace is still a marker — so this changes the spelling
+  the round trip answers, and nothing about what a generator means.
+- **EVERY LINE OF OUTPUT IS HELD ON A LINE OF ITS OWN.** In the
+  document a line of the target's file is a quoted string like any
+  other, and §3.5's packing budget would happily put three of them
+  inside one `[...]` — which is aontu where three lines of output were,
+  and a generator that writes them as one. The desugaring is line for
+  line, so the formatter is told which offsets begin an output line and
+  the node beginning one has no one-line form: every container holding
+  it opens. Nothing else in §3 changes.
+
+A file with no marker line in it is neither aontu nor a generator, and
+is refused by name (§9).
 
 ## 4. Style beyond the formatter
 
@@ -953,15 +1013,24 @@ for function, and `test/spec/fmt.tsv` is what they must agree on.
 - **No line breaking.** §3.1.
 - **No reordering, renaming, aliasing, or resolving.** §3.13.
 - **No formatting of what is not aontu.** A `.json`, `.yaml` or
-  `.toml` include is another language's file; `fmt` formats `.aon` and
-  stdin. **ENFORCED 2026-09-06**, with RENDER.0.md P8: a file argument
-  whose extension is neither `.aon` nor `.aontu` is refused by name,
-  exit 2. Until then the boundary was a sentence here and nothing in
-  the code, and the surface that found it is the template one — a `#-`
-  template PARSES as aontu, because `#` opens a comment, so `fmt` read
-  a generator, discarded every output line as a comment and rewrote the
-  file with exit 0. The refusal names `aontu template` as the verb for
-  a generator's own canonical form.
+  `.toml` include is another language's file. **ENFORCED 2026-09-06**,
+  with RENDER.0.md P8: a file argument whose extension was neither
+  `.aon` nor `.aontu` was refused by name, exit 2. Until then the
+  boundary was a sentence here and nothing in the code, and the surface
+  that found it is the template one — a `#-` template PARSES as aontu,
+  because `#` opens a comment, so `fmt` read a generator, discarded
+  every output line as a comment and rewrote the file with exit 0.
+
+  **AMENDED 2026-09-07**: a generator is not "not aontu" — it is aontu
+  with the target's lines between the statements, and refusing it left
+  the one place aontu is hardest to read as the one place the formatter
+  would not go. §3.14 formats it through the template surface, which
+  cannot discard an output line because the resugaring writes every one
+  of them back. The boundary itself is unmoved, and now rests on
+  evidence rather than on a name: a file that is not `.aon` and carries
+  **no marker line** has no aontu in it to format, and is refused by
+  name, exit 2. `.json`, `.yaml` and `.toml` data are refused exactly as
+  before; a `.yaml` GENERATOR, which has `#-` lines, is not.
 - **No `--fix` for the lint.** §4.3.
 
 
