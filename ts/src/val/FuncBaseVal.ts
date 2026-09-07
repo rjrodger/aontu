@@ -46,6 +46,13 @@ import { hasPlace, fillPlace } from '../val/PlaceVal'
 function trialUnify(ctx: AontuContext, a: Val, b: Val): Val | undefined {
   const savedErr = ctx.err
   const savedTrial = ctx._trialMode
+  // Restored by DELETION where they were inherited, for the reason
+  // DisjunctVal.unify's own sandbox gives at length: contexts are
+  // Object.create(parent) and cached per (parent, key), so writing
+  // these back leaves own properties that shadow the ancestor and make
+  // a later trial invisible to the value running inside it.
+  const ownErr = Object.prototype.hasOwnProperty.call(ctx, 'err')
+  const ownTrial = Object.prototype.hasOwnProperty.call(ctx, '_trialMode')
   const trialErr: any[] = []
 
   ctx.err = trialErr
@@ -56,8 +63,18 @@ function trialUnify(ctx: AontuContext, a: Val, b: Val): Val | undefined {
     out = unite(ctx, a, b, 'trial')
   }
   finally {
-    ctx.err = savedErr
-    ctx._trialMode = savedTrial
+    if (ownErr) {
+      ctx.err = savedErr
+    }
+    else {
+      delete (ctx as any).err
+    }
+    if (ownTrial) {
+      ctx._trialMode = savedTrial
+    }
+    else {
+      delete (ctx as any)._trialMode
+    }
   }
 
   return 0 < trialErr.length || out.isNil ? undefined : out

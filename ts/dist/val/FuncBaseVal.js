@@ -25,6 +25,13 @@ const PlaceVal_1 = require("../val/PlaceVal");
 function trialUnify(ctx, a, b) {
     const savedErr = ctx.err;
     const savedTrial = ctx._trialMode;
+    // Restored by DELETION where they were inherited, for the reason
+    // DisjunctVal.unify's own sandbox gives at length: contexts are
+    // Object.create(parent) and cached per (parent, key), so writing
+    // these back leaves own properties that shadow the ancestor and make
+    // a later trial invisible to the value running inside it.
+    const ownErr = Object.prototype.hasOwnProperty.call(ctx, 'err');
+    const ownTrial = Object.prototype.hasOwnProperty.call(ctx, '_trialMode');
     const trialErr = [];
     ctx.err = trialErr;
     ctx._trialMode = true;
@@ -33,8 +40,18 @@ function trialUnify(ctx, a, b) {
         out = (0, unify_1.unite)(ctx, a, b, 'trial');
     }
     finally {
-        ctx.err = savedErr;
-        ctx._trialMode = savedTrial;
+        if (ownErr) {
+            ctx.err = savedErr;
+        }
+        else {
+            delete ctx.err;
+        }
+        if (ownTrial) {
+            ctx._trialMode = savedTrial;
+        }
+        else {
+            delete ctx._trialMode;
+        }
     }
     return 0 < trialErr.length || out.isNil ? undefined : out;
 }
