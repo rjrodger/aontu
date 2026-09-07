@@ -474,6 +474,47 @@ user-facing rules are in
 
 ## Conventions
 
+### A document describes the thing, not the session that built it
+
+**Findings, to-do items and CI plumbing do not belong in a README.**
+They are issue-shaped: they have an owner, a resolution and an end,
+and a document that carries them is stale from the day it is written.
+
+The rb-solar system README carried two such sections and they are the
+worked example. *"What the exercise found"* listed five engine defects
+turned up while building it, prefaced with "they are listed here
+because finding them is what a system like this is for" — a sentence
+about the exercise, in a page a reader opens to learn what the system
+*is*. *"In CI"* described a patch "waiting to be applied by a
+maintainer", which is a task, and which stops being true the moment
+someone applies it. Both moved to
+[#176](https://github.com/aontu-lang/aontu/issues/176) and
+[#177](https://github.com/aontu-lang/aontu/issues/177), where they can
+be closed.
+
+So, when writing or revising a document:
+
+- **A defect goes to `use-cases/BUGS.md` or an issue**, never into the
+  prose of a page about something else. Cite it from the page if the
+  page's argument needs it — as the rb-solar model notes still cite
+  §88 — but the record lives where records live.
+- **A task goes to an issue.** "Waiting to be applied", "the next step
+  is", "someone should" — if it can be *done*, it is not documentation.
+- **A narrative of how the work went goes nowhere**, or into the commit
+  message that did it. "The plan called for", "a first attempt", "this
+  was found when" — the reader wants the conclusion, and the reasoning
+  only where it stops them undoing it.
+- **What stays** is what remains true once the work is finished: what
+  the thing is, how it is built, what holds it, and the reasons a
+  reader needs in order not to break it.
+
+The same rule governs `docs/` through
+[docs/STYLE-GUIDE.md](docs/STYLE-GUIDE.md); this section extends it to
+the READMEs under `test/system/` and `use-cases/`, which are published
+to the website by `aontu-lang/web` and are read by people who were not
+here.
+
+
 ### Module and package are different words
 
 **A module is imported. A package is published.** They are not
