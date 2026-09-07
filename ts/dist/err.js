@@ -168,9 +168,12 @@ function resolveSrc(v, errctx) {
         }
         else {
             try {
-                const fileExists = errctx?.fs?.existsSync(url);
+                // errfs first: the CLI gives the renderer a reader without
+                // giving the resolver one (type.ts, `errfs`).
+                const reader = errctx?.errfs ?? errctx?.fs;
+                const fileExists = reader?.existsSync(url);
                 if (fileExists) {
-                    src = errctx?.fs?.readFileSync(url, 'utf8') ?? undefined;
+                    src = reader?.readFileSync(url, 'utf8') ?? undefined;
                 }
             }
             catch (fe) {
@@ -187,7 +190,7 @@ function resolveSrc(v, errctx) {
         }
         else if (errctx) {
             src = 'SOURCE-NOT-FOUND:' + (null != url ? (' ' + url) : '') +
-                (null == errctx?.fs ? ' (NO-FS)' : '');
+                (null == (errctx?.errfs ?? errctx?.fs) ? ' (NO-FS)' : '');
         }
     }
     return src;

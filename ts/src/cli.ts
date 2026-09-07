@@ -611,7 +611,7 @@ function runFile(file: string, mode: Mode, trust: TrustArg): number {
   // the name.
   const aontu = new Aontu({
     path,
-    fs: { existsSync, readFileSync, statSync },
+    errfs: { existsSync, readFileSync },
     ...trustOpts(trust, dirname(path)),
   })
   const res = evalSource(aontu, src, mode)

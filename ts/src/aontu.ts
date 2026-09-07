@@ -103,6 +103,7 @@ class Aontu {
   ctx(cfg?: AontuContextConfig): AontuContext {
     cfg = cfg ?? {}
     cfg.fs = cfg.fs ?? this.opts.fs
+    ;(cfg as any).errfs = (cfg as any).errfs ?? (this.opts as any).errfs
     // The trust profile rides the instance (its resolver is built once,
     // in the Lang constructor); the context needs it too, for the
     // budgets (G5, docs/trust.md).

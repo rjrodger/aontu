@@ -61,6 +61,14 @@ type AontuOptions = {
   debug?: boolean
   trace?: boolean
   fs?: FST
+  // errfs READS FOR THE ERROR RENDERER ONLY, never for resolution.
+  // A frame excerpts the file its arrow names, which means reading
+  // that file -- but handing the same reader to `fs` would change
+  // which leg the include RESOLVER takes (its file leg reads through
+  // the host filesystem when one is given, so a package hit can
+  // become a file hit), and a diagnostic must not move the boundary
+  // it is describing.
+  errfs?: FST
   deps?: any
   log?: any
   idcount?: number
@@ -103,7 +111,8 @@ type ValList = Val[]
 
 type ErrContext = {
   src?: string,
-  fs?: FST
+  fs?: FST,
+  errfs?: FST
 } /* node:coverage ignore next 24 */
 
 export type {

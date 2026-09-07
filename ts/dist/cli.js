@@ -552,7 +552,7 @@ function runFile(file, mode, trust) {
     // the name.
     const aontu = new aontu_1.Aontu({
         path,
-        fs: { existsSync: node_fs_1.existsSync, readFileSync: node_fs_1.readFileSync, statSync: node_fs_1.statSync },
+        errfs: { existsSync: node_fs_1.existsSync, readFileSync: node_fs_1.readFileSync },
         ...trustOpts(trust, (0, node_path_1.dirname)(path)),
     });
     const res = evalSource(aontu, src, mode);

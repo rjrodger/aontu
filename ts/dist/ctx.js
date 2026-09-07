@@ -51,6 +51,7 @@ class AontuContext {
         this.err = cfg.err ?? [];
         this.explain = Array.isArray(cfg.explain) ? cfg.explain : null;
         this.fs = cfg.fs ?? null;
+        this.errfs = cfg.errfs ?? null;
         // Multiple unify passes will keep incrementing Val counter.
         this.vc = null == cfg.vc ? 1_000_000_000 : cfg.vc;
         this.cc = null == cfg.cc ? this.cc : cfg.cc;
@@ -146,6 +147,7 @@ class AontuContext {
         this.err = this.opts.err ?? this.err;
         this.deps = this.opts.deps ?? this.deps;
         this.fs = this.opts.fs ?? this.fs;
+        this.errfs = this.opts.errfs ?? this.errfs;
         this.explain = this.opts.explain ?? this.explain;
         this.src = ('string' === typeof this.opts.src ? this.opts.src : undefined) ?? this.src;
         // TODO: rename srcpath to file
