@@ -116,3 +116,29 @@ split-type-ref-term	gens	U: {A: 1}\nT: type({ A: 1  A2: $.T.A })\nT: $.U\nout: $
 # conjunct stands unfolded to say so.
 split-type-list-term-past-end	canon	T: type([$.T.5 5])\nT: [5 5]\n	{"T":type([$.T.5,5])&[5,5]}
 split-type-list-term-not-an-index	canon	T: type([$.T.k 5])\nT: [5 5]\n	{"T":type([$.T.k,5])&[5,5]}
+
+# --- A LIST ARGUMENT IS TRANSPARENT TO THE WALK TOO ------------------
+#
+# A pending hide()/type() wrapper is walked THROUGH -- the wrapper only
+# marks, and its argument is the structure the path names. The Go arm
+# admitted a MAP argument only, so `hide([{n: "a", o: .n}])` deadlocked
+# where `hide({n: "a", o: .n})` did not: `.n` walks [rows, 0, n], the
+# walk reached the wrapper at `rows`, could not take `0` through it,
+# and the reference never resolved -- so the list never settled, the
+# wrapper never settled, and the element kept an unresolved `.n` for
+# ever (use-cases/BUGS.md §63). TypeScript admitted both and evaluated
+# the same document, so a staged pipeline under hide() GENERATED in one
+# port and REFUSED in the other, with opposite exit codes and neither
+# port reporting the document as wrong.
+#
+# The last two rows are the shape the defect was found by: a staged
+# intermediate hidden and then projected, which is how a transform
+# keeps its scaffolding out of the output.
+hide-over-a-list-resolves-a-relative-ref	canon	rows: hide([{n: "a", o: .n}])	{"rows":[{"n":"a","o":"a"}]}
+hide-over-a-list-generates-nothing	gens	rows: hide([{n: "a", o: .n}])\nk: 1	{"k":1}
+type-over-a-list-resolves-a-relative-ref	canon	rows: type([{n: "a", o: .n}])	{"rows":[{"n":"a","o":"a"}]}
+hide-over-a-map-resolves-a-relative-ref	canon	rows: hide({n: "a", o: .n})	{"rows":{"n":"a","o":"a"}}
+hide-over-a-list-missing-target	errc	rows: hide([.nope])	no_path
+hide-over-a-spread-template	canon	src: [{n: "a"}]\nu: {rows: hide([&: {o: .n}] & $.src)}	{"src":[{"n":"a"}],"u":{"rows":[&:{"o":.n},{"n":"a","o":"a"}]}}
+hide-over-a-spread-template-generates	gens	src: [{n: "a"}]\nu: {rows: hide([&: {o: .n}] & $.src)}	{"src":[{"n":"a"}],"u":{}}
+hide-staged-then-picked	gens	d: {x: {n: "a"}}\ns: hide(each($.d, {o: .n}))\nr: pick($.s, o)	{"d":{"x":{"n":"a"}},"r":["a"]}

@@ -20,6 +20,34 @@ profiles, `replace`/`esc`, provenance and coverage, and a generator
 written in the target's own syntax — and the first complete system
 generated with it.
 
+### Go: a mark wrapper is transparent to the reference walk — for a list too
+
+A pending `hide()` or `type()` is walked *through* when a reference
+path passes its position: the wrapper only marks, and its argument is
+the structure the path names. The Go arm implementing that admitted a
+**map** argument only.
+
+```aon
+rows: hide([{n: "a", o: .n}])
+```
+
+TypeScript answers `{"rows":[{"n":"a","o":"a"}]}`. Go answered
+`{"rows":hide([{"n":"a","o":.n}])}` and refused to generate — opposite
+exit codes on a document neither port reports as wrong. `.n` walks
+`[rows, 0, n]`; the walk reached the wrapper at `rows` and could not
+take the `0` through it, so the reference never resolved, so the list
+never settled, so the wrapper never settled: the deadlock this arm
+exists to break. TypeScript's twin has always tested
+`peg[0].isMap || peg[0].isList`, and `markedChild` beside it has taken
+both since it was written.
+
+This closes `use-cases/BUGS.md` §63, whose account named `hide`, the
+spread and a staged producer — none of which is involved: the minimal
+repro has no spread and no staging in it, and every entry in that
+entry's boundary table follows from the one gap. A staged transform can
+keep its scaffolding in a hidden key again, which is the spelling use
+case 15 had to drop.
+
 ### The recursion design's second termination bound is live
 
 `RecurseVal.xc` — the per-expansion count `RECURSION.0.md`'s

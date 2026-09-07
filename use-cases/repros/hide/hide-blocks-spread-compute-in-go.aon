@@ -2,6 +2,14 @@
 # template computation; TypeScript does. An ADR-001 parity break with
 # OPPOSITE EXIT CODES on a document neither port reports as wrong.
 #
+# FIXED 2026-09-07. Both ports now answer the TypeScript line above,
+# and generate `{"src":[{"n":"a"}],"u":{}}` with exit 0. The cause was
+# not hide, the spread, or staging: a pending mark wrapper is
+# transparent to the reference walk, and Go's arm admitted a MAP
+# argument only, so `.n` could not take the list INDEX through the
+# wrapper at `rows`. See BUGS.md 63; pinned by test/spec/marks.tsv's
+# hide-over-a-list-* rows.
+#
 # run: node ../../../ts/bin/aontu.js -c hide-blocks-spread-compute-in-go.aon
 # run: aontu-go -c hide-blocks-spread-compute-in-go.aon
 #

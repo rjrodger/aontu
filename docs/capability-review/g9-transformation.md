@@ -2189,6 +2189,21 @@ Beside the two in [BUGS.md §63](../../use-cases/BUGS.md), VERIFIED:
 `j: join($.v, ", ")` generates in TypeScript and refuses
 `mapval_no_gen` in Go. Three spellings, one root cause, one fix.
 
+> **2026-09-07: item 2 has LANDED, and all three spellings agree.**
+> One root cause, as this paragraph predicted, and not the one §63's
+> account named: a pending mark wrapper is transparent to the
+> reference walk, and Go's arm implementing that admitted a MAP
+> argument only, so a relative reference could not take a list INDEX
+> through it. The minimal repro has neither a spread nor a staged
+> producer in it — `rows: hide([{n: "a", o: .n}])` — and the
+> `each`/`pick` spelling closed earlier, on its own, with the RENDER
+> P2 member enumeration. The third spelling above now generates
+> identically in both ports. Pinned by `test/spec/marks.tsv`'s
+> `hide-over-a-list-*` rows, including the staged-then-picked
+> pipeline. Correction (i) below is UNCHANGED and still right: the
+> composed `pick(pack(...))` refuses in both ports, identically,
+> which is the structural limit it describes and not a divergence.
+
 **The traps the design names are all still live**, VERIFIED at 0.56.0
 in both ports: `pack` re-sorts a map keyed with the service
 catalogue's own `payments, ledger, risk` into `ledger, payments,
@@ -2212,7 +2227,10 @@ design was not drawn: **the recommended idiom needs the staged
 two-statement repair, and the staged repair is exactly what item 2
 diverges on.** So until item 2 lands, the design's own recommended
 idiom is a TypeScript-only capability. That is the second reason
-phase 0 comes before everything.
+phase 0 comes before everything. *(Item 2 landed 2026-09-07; the
+staged repair now works in both ports, so the recommended idiom is no
+longer TypeScript-only. The composition limit this correction
+describes is unchanged.)*
 
 **(ii) The idiom that works today is not the idiom this document
 teaches.** The corpus computes its files with a list spread and a

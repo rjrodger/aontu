@@ -2619,7 +2619,7 @@ Repro:
 
 ## marks — what `hide()` stops resolving
 
-### 63. Inside `hide()`, Go does not resolve a spread template's reference [critical]
+### 63. Inside `hide()`, Go does not resolve a spread template's reference [FIXED 2026-09-07]
 
 Found 2026-08-30 by building
 [use case 15](15-code-generation/README.md), whose first draft used the
@@ -2681,6 +2681,47 @@ staged producer, not in `hide` or in `pick`. One fix in
 `go/func.go`/`go/generate.go` should close both;
 [G9 phase 0](../docs/capability-review/g9-transformation.md#phase-0--the-four-gating-defects-s)
 is the plan for it.
+
+**FIXED 2026-09-07, and the diagnosis above was wrong in an
+instructive way.** It is not `hide`, not the spread, not a staged
+producer, and not Go's snapshot of one. The `each`/`pick` half closed
+on its own with the RENDER P2 member enumeration and now agrees. What
+remained is one arm, and the minimal repro is two lines with no spread
+and no staging in it at all:
+
+```aon
+rows: hide([{n: "a", o: .n}])
+```
+
+TypeScript answers `{"rows":[{"n":"a","o":"a"}]}`; Go answered
+`{"rows":hide([{"n":"a","o":.n}])}` and refused to generate. The map
+spelling of the same thing, `hide({n: "a", o: .n})`, agreed in both.
+
+**A PENDING MARK WRAPPER IS TRANSPARENT TO THE REFERENCE WALK** -- the
+wrapper only marks, and its argument is the structure the path names --
+and the Go arm implementing that admitted a **map argument only**. So
+`.n` at `[rows, 0, o]` walks `[rows, 0, n]`, the walk reached the
+wrapper at `rows`, could not take the `0` through it, and the reference
+never resolved. The list therefore never settled, so the wrapper never
+settled, so the element kept an unresolved `.n` for ever: a deadlock
+between the two, in exactly the shape the arm was written to break.
+TypeScript's twin has always tested `peg[0].isMap || peg[0].isList`,
+and `markedChild` -- the conjunct helper added beside this arm for
+issue #164 -- has taken both since it was written. The Go arm now takes
+both.
+
+Everything the boundary table shows follows from that one gap: a
+constant template agrees because it needs no reference; an absolute
+reference agrees because it does not walk through the wrapper's
+position; `key()` agrees because it reads its own path; and a map
+spread agrees because the map arm was there. The spread was never the
+subject -- it only made the reference relative.
+
+Pins: `test/spec/marks.tsv` -- `hide-over-a-list-resolves-a-relative-ref`
+and its `-generates-nothing` companion, `type-over-a-list-*`, the map
+control, the missing-target refusal, the entry's own spread spelling
+in canon and generated, and `hide-staged-then-picked`, which is the
+pipeline the defect was found by.
 
 Repros: the `hide` spelling,
 [`repros/hide/hide-blocks-spread-compute-in-go.aon`](repros/hide/hide-blocks-spread-compute-in-go.aon),
