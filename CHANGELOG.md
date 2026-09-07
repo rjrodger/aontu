@@ -165,6 +165,120 @@ profiles, `replace`/`esc`, provenance and coverage, and a generator
 written in the target's own syntax — and the first complete system
 generated with it.
 
+### Go: a mark wrapper is transparent to the reference walk — for a list too
+
+A pending `hide()` or `type()` is walked *through* when a reference
+path passes its position: the wrapper only marks, and its argument is
+the structure the path names. The Go arm implementing that admitted a
+**map** argument only.
+
+```aon
+rows: hide([{n: "a", o: .n}])
+```
+
+TypeScript answers `{"rows":[{"n":"a","o":"a"}]}`. Go answered
+`{"rows":hide([{"n":"a","o":.n}])}` and refused to generate — opposite
+exit codes on a document neither port reports as wrong. `.n` walks
+`[rows, 0, n]`; the walk reached the wrapper at `rows` and could not
+take the `0` through it, so the reference never resolved, so the list
+never settled, so the wrapper never settled: the deadlock this arm
+exists to break. TypeScript's twin has always tested
+`peg[0].isMap || peg[0].isList`, and `markedChild` beside it has taken
+both since it was written.
+
+This closes `use-cases/BUGS.md` §63, whose account named `hide`, the
+spread and a staged producer — none of which is involved: the minimal
+repro has no spread and no staging in it, and every entry in that
+entry's boundary table follows from the one gap. A staged transform can
+keep its scaffolding in a hidden key again, which is the spelling use
+case 15 had to drop.
+
+### The recursion design's second termination bound is live
+
+`RecurseVal.xc` — the per-expansion count `RECURSION.0.md`'s
+termination argument rests on — read **0 at every expansion**, in
+healthy documents as much as pathological ones, so `recursion_budget`
+could never fire. `bumpRecurse` stamps the count onto every residual
+inside a freshly cloned level, and a freshly cloned level holds the
+definition's references *unresolved*: there was nothing to stamp.
+`containsRecurseOf`, two functions away, already takes the right
+reading in its own words — "a raw reference to the target IS the
+recursion, minted or not". `bumpRecurse` now takes it too, seeding the
+reference; the mint sites read the seed and the clone carries it. A
+healthy recursive document now charges 0, 1, 2 — one per data level,
+which is the invariant.
+
+This does not close `use-cases/BUGS.md` §57. The bound is live and
+still inoperative, for a reason now measured rather than guessed: it
+gates on `ctx.budget.depth`, the same constant `unify_cycle` uses for
+the unify call stack, and the stack necessarily goes deeper — so
+`unify_cycle` fires first at every budget tried. Giving bound 2 a
+constant of its own is a change to a spec-visible trust number, not a
+defect fix, and would make the runaway *refuse* rather than converge.
+Both ports, pinned by a direct assertion in each.
+
+### A schema may now mention a link
+
+`type({from: refer($.std.Port)})` — a vocabulary that says a field is a
+checked reference — did not evaluate. It raised `mapval_no_gen` naming
+the DEFINITION, a path mentioning neither the link nor the field, and
+the same shape written with `integer`, `path()` or `min(1)` in place of
+the link worked. G4 phase 4 recorded the cost; this pays it.
+
+An ADDRESS-LESS `refer()` is now DONE, as `string` and `min(1)` are,
+and as `rel()` has been since it was written. It has nothing to check
+yet and nothing to refuse, and the meet re-activates it the moment a
+value arrives, because map merges build the conjunct regardless.
+Leaving it not-done read as "keep offering it the chance", but that is
+the job of the OTHER pending state — an address whose target has not
+appeared — which is unchanged and still what reaches the pass where
+existence is decided. Not-done here bought nothing and cost the schema
+idiom: the definition never settled, so its `type()` mark never
+transferred, so generation could not skip the marked subtree.
+
+The type still flows into the target, and an unmet link is still an
+unfulfilled requirement its enclosing map cannot generate.
+
+Both ports. The Go port needed a second line with it: its pending
+branch called `notdone()`, which is a no-op on a value already DONE, so
+an address whose target was missing inherited DONE through `reshape()`
+and never reached the deciding pass — it now assigns, as TypeScript
+always has. aontu-lang/aontu#172, pinned by seven new rows in
+`test/spec/refer.tsv`.
+
+### The canon-hash was blind to `close()` and the marks at an alias template
+
+**`aontu hash` could report no change for a change of meaning**, which
+is the one direction a pin must not fail in. An alias reference left
+standing in a spread template canons as the value it names — that
+landed on 2026-09-06 — but the HASH FORM was rendering that expansion
+through the reference's plain canon, and plain canon drops exactly the
+two things the hash form exists to add: `close()`, and the `type` and
+`hide` marks. The declaration that carried them is erased by the alias
+filter, so what the wrappers said was lost outright.
+
+`%A = close({n: string})` and `%A = {n: string}`, both used as
+`box: [&: %A]`, hashed to one string while refusing and admitting
+`{n: "x", z: 1}` respectively; and neither matched its own longhand
+twin, which `docs/design/ALIASES.0.md` §4 requires. Both renderers now
+recurse into the expansion carrying the inherited marks, so a wrapper
+is emitted where the alias body starts, exactly as for a value written
+longhand. A reference with no expansion is untouched: a plain `$.A`
+still spells its path, and the key it names is in the hash form in
+full.
+
+What it was hiding, measured: the engine's own bundled `aontu:code`
+vocabulary is built from `close()`-marked aliases used as spread
+templates, and its hash form carried **139** `close()` wrappers before
+the fix and **592** after. The row that exists to stop that vocabulary
+drifting was pinning it with 453 closednesses erased; it is re-derived
+here, and any document whose schema uses this idiom gets a new pin.
+
+Both ports. `use-cases/BUGS.md` §60, pinned by fourteen new rows in
+`test/spec/alias.tsv` — each longhand twin the pin must now match, the
+closed/open pair that must now differ, and the two evaluations that
+show the difference is real.
+
 ### `test/system/rb-solar`: a Rails application, generated
 
 The first full system in `test/system/`: a Ruby on Rails 8

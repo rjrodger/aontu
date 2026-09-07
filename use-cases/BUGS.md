@@ -2070,6 +2070,36 @@ HEALTHY form too. `recursion_budget` can therefore never fire on this
 path. The healthy case does not need it, because structural descent
 bounds it; that is why nobody noticed.
 
+> **2026-09-07: the cause, and the fix, in both ports.** `bumpRecurse`
+> stamps the count onto every RESIDUAL inside a freshly cloned level
+> -- and a freshly cloned level holds the definition's references
+> **unresolved**, so there was no residual to stamp. `containsRecurseOf`
+> two functions away already takes the right reading, in its own
+> words: "A RAW REFERENCE to the target IS the recursion, minted or
+> not". `bumpRecurse` now takes it too, seeding `RefVal.rxc`, which
+> the two mint sites in `RefVal.find` read when they build the
+> residual, and which the clone carries. The count now advances: the
+> healthy document charges **0, 1, 2** -- exactly one per data level,
+> which is the invariant -- and the runaway climbs monotonically.
+> Pinned by a direct assertion in each port
+> (`ts/test/coverage3.test.ts`, `go/refer_test.go`), since `xc` has no
+> observable behaviour at the CLI to write a shared row against, for
+> the reason the next paragraph gives.
+>
+> **AND THE BOUND IS STILL SHADOWED.** With the count live, the gate
+> is `ctx.budget.depth <= this.xc` -- the SAME constant `unify_cycle`
+> uses for the unify call stack. The stack necessarily goes deeper
+> than the expansion count, so `unify_cycle` always fires first and
+> `recursion_budget` is unreachable from any document, measured at
+> depth budgets 3, 6, 20 and the 1000 default. So bound 2 is live but
+> inoperative, and giving it a bound of its own is a change to a
+> spec-visible trust constant (`test/spec/budget.tsv`,
+> `docs/trust.md`) rather than a defect fix -- the maintainer's call.
+> Even with its own bound the runaway would only be REFUSED, not made
+> to converge: the cost is exponential in the count, so a bound low
+> enough to fire quickly would refuse documents that should evaluate.
+> **Convergence still needs the structural rule below.**
+
 **THE MECHANISM.** Instrumenting each expansion with its path and its
 peer, on `%T & {}` over depth-2 data:
 
@@ -2337,7 +2367,7 @@ with its `-data` companion.
 
 ## hashing — what `aon1-` can still see
 
-### 60. The canon-hash is blind to an alias used as a spread template [critical]
+### 60. The canon-hash is blind to an alias used as a spread template [FIXED 2026-09-07]
 
 Found 2026-08-30, by an adversarial reviewer checking a
 code-generation vocabulary\'s anti-drift story and finding that the pin
@@ -2400,6 +2430,50 @@ change of meaning reports no change. G6 pins modules by the same
 `subsume` is **not** fooled — `aontu subsume A B` answers
 `does_not_subsume` with `$.%A.n: compat_narrowed` — so the breaking
 check still sees what the pin misses.
+
+**FIXED 2026-09-07, in both ports, by one arm in each renderer.** The
+mechanism moved between the filing and the fix and the second half of
+it is worth stating, because the first half went quietly. The
+expansion the entry asked for LANDED on its own: an alias reference in
+a spread template now canons as the value it names rather than as
+`$.%A` (`alias-in-spread-canons-as-the-value`), so document B stopped
+sharing document A's hash. What survived is the half that expansion
+alone cannot reach — **the hash form rendered the expansion through
+`RefVal.canon`, which is PLAIN canon, and plain canon drops exactly
+the two things the hash form exists to add.** So the hash was blind to
+`close()` and to the `type`/`hide` marks at every alias template, and
+the declaration that carried them had already been erased by the alias
+filter. `%A = close({n: string})` and `%A = {n: string}`, both used as
+`box: [&: %A]`, were ONE hash while refusing and admitting
+`{n:"x",z:1}` respectively; and neither matched its own longhand twin,
+which is ALIASES.0.md §4's sharpest requirement. Both halves of the
+original report, by one cause.
+
+`hcanonRender`/`render` now recurse into the expansion with the
+inherited marks instead of delegating to the reference's canon
+(`ts/src/hcanon.ts`, `go/hcanon.go`), so a wrapper is emitted where the
+alias body starts, exactly as it is for a value written longhand. A
+reference with NO expansion is untouched: a plain `$.A` still spells
+its path, and the key it names is in the hash form in full.
+
+**What it was hiding, measured.** `aontu:code` — the engine's own
+bundled output vocabulary — is built from `close()`-marked aliases used
+as spread templates. Its hash form carried **139** `close()` wrappers
+before the fix and **592** after: 453 closednesses its pin could not
+see. `test/spec/aontu-code.tsv:shapes-hash` exists to stop that
+vocabulary drifting, and an edit from `close({...})` to `{...}`
+anywhere in it would have left the row green. The row is re-derived,
+and its block comment says why it moved.
+
+Pins: `test/spec/alias.tsv` — `alias-in-spread-hash-keeps-close` and
+its `-longhand-twin`, `-open-is-not-closed`, `-keeps-closed-list` and
+twin, `-keeps-type` and twin, `-keeps-hide` and twin,
+`-keeps-a-nested-close` and twin; the two meanings behind the pair,
+`alias-in-spread-close-refuses-an-extra-key` and
+`alias-in-spread-open-admits-an-extra-key`; and
+`alias-in-spread-close-canons-bare`, which holds user-facing canon
+unchanged — the close() is in the hash form only, which is what makes
+hcanon a separate rendering rather than a second canon.
 
 Repro:
 [`repros/hash/alias-spread-hash-blind.aon`](repros/hash/alias-spread-hash-blind.aon)
@@ -2549,7 +2623,7 @@ Repro:
 
 ## marks — what `hide()` stops resolving
 
-### 63. Inside `hide()`, Go does not resolve a spread template's reference [critical]
+### 63. Inside `hide()`, Go does not resolve a spread template's reference [FIXED 2026-09-07]
 
 Found 2026-08-30 by building
 [use case 15](15-code-generation/README.md), whose first draft used the
@@ -2611,6 +2685,47 @@ staged producer, not in `hide` or in `pick`. One fix in
 `go/func.go`/`go/generate.go` should close both;
 [G9 phase 0](../docs/capability-review/g9-transformation.md#phase-0--the-four-gating-defects-s)
 is the plan for it.
+
+**FIXED 2026-09-07, and the diagnosis above was wrong in an
+instructive way.** It is not `hide`, not the spread, not a staged
+producer, and not Go's snapshot of one. The `each`/`pick` half closed
+on its own with the RENDER P2 member enumeration and now agrees. What
+remained is one arm, and the minimal repro is two lines with no spread
+and no staging in it at all:
+
+```aon
+rows: hide([{n: "a", o: .n}])
+```
+
+TypeScript answers `{"rows":[{"n":"a","o":"a"}]}`; Go answered
+`{"rows":hide([{"n":"a","o":.n}])}` and refused to generate. The map
+spelling of the same thing, `hide({n: "a", o: .n})`, agreed in both.
+
+**A PENDING MARK WRAPPER IS TRANSPARENT TO THE REFERENCE WALK** -- the
+wrapper only marks, and its argument is the structure the path names --
+and the Go arm implementing that admitted a **map argument only**. So
+`.n` at `[rows, 0, o]` walks `[rows, 0, n]`, the walk reached the
+wrapper at `rows`, could not take the `0` through it, and the reference
+never resolved. The list therefore never settled, so the wrapper never
+settled, so the element kept an unresolved `.n` for ever: a deadlock
+between the two, in exactly the shape the arm was written to break.
+TypeScript's twin has always tested `peg[0].isMap || peg[0].isList`,
+and `markedChild` -- the conjunct helper added beside this arm for
+issue #164 -- has taken both since it was written. The Go arm now takes
+both.
+
+Everything the boundary table shows follows from that one gap: a
+constant template agrees because it needs no reference; an absolute
+reference agrees because it does not walk through the wrapper's
+position; `key()` agrees because it reads its own path; and a map
+spread agrees because the map arm was there. The spread was never the
+subject -- it only made the reference relative.
+
+Pins: `test/spec/marks.tsv` -- `hide-over-a-list-resolves-a-relative-ref`
+and its `-generates-nothing` companion, `type-over-a-list-*`, the map
+control, the missing-target refusal, the entry's own spread spelling
+in canon and generated, and `hide-staged-then-picked`, which is the
+pipeline the defect was found by.
 
 Repros: the `hide` spelling,
 [`repros/hide/hide-blocks-spread-compute-in-go.aon`](repros/hide/hide-blocks-spread-compute-in-go.aon),

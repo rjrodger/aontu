@@ -119,6 +119,33 @@ unresolved-node-msg	err	a: {port:8080}\nb: refer() & path($.nope)	Cannot refer v
 unresolved-inside-a-node	errc	a: {port:8080}\nb: refer() & path($.a.nope)	refer_unresolved
 unresolved-empty-document	errc	b: refer() & path($.nope)	refer_unresolved
 
+# --- A SCHEMA MAY MENTION A LINK -------------------------------------
+#
+# An ADDRESS-LESS refer is DONE, as `string` and `min(1)` are, and as
+# `rel()` has been since it was written. It has nothing to check yet
+# and nothing to refuse; the meet re-activates it the moment a value
+# arrives, because map merges build the conjunct regardless.
+#
+# It used to be not-done, which cost the whole SCHEMA idiom
+# (aontu-lang/aontu#172): a type() body holding a link never settled,
+# so its mark never transferred, so generation could not skip the
+# marked subtree and raised `mapval_no_gen` naming the DEFINITION -- a
+# path that mentions neither the link nor the field. `type({p:
+# integer})`, `type({p: path()})` and `type({p: min(1)})` all settled;
+# only a link did not. G4 phase 4 recorded the cost against
+# `type({from: refer($.std.Port)})`, which the last three rows here are.
+#
+# Not-done still governs the OTHER pending state -- an address whose
+# target has not appeared -- which the Existence rows above pin, and
+# which is what keeps the pass loop reaching the pass that decides.
+schema-type-body-holds-a-link	gens	T: type({ p: refer() })\nb: 1	{"b":1}
+schema-type-body-link-canons	canon	T: type({ p: refer() })\nb: 1	{"T":{"p":refer()},"b":1}
+schema-closed-type-body-holds-a-link	gens	T: type({ S: close({ p: refer() & path() }) })\nx: $.T.S & { p: path($.b) }\nb: 1	{"b":1,"x":{"p":"$.b"}}
+unmet-link-is-still-not-generable	errc	p: refer()\nb: 1	mapval_no_gen
+schema-type-body-holds-a-typed-link	gens	K: type({k: integer})\nT: type({ p: refer($.K) })\nb: 1	{"b":1}
+schema-link-flows-into-the-target	gens	K: type({k: integer})\nT: type({ p: refer($.K) })\nsvc: {k: 1}\nx: $.T & { p: path($.svc) }	{"svc":{"k":1},"x":{"p":"$.svc"}}
+schema-link-flow-refuses-a-bad-target	errc	K: type({k: integer})\nT: type({ p: refer($.K) })\nsvc: {k: "no"}\nx: $.T & { p: path($.svc) }	no_scalar_unify
+
 # --- The address grammar ---------------------------------------------
 #
 # An address is a path: `$.` then dot-separated segments, or a leading

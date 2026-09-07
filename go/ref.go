@@ -22,6 +22,14 @@ type RefVal struct {
 	// expandAliases (go/alias.go) after unification (see Canon). Never
 	// read by unification: it is a rendering of the settled tree.
 	expansion Val
+	// rxc is THE RECURSION SEED (use-cases/BUGS.md §57). A reference
+	// that names a recursive definition IS the fixpoint reference; it
+	// mints a RecurseVal when it resolves. bumpRecurse stamps the
+	// expansion depth here, because a freshly cloned level holds the
+	// definition's references UNRESOLVED and so has no residual to
+	// stamp -- which is why the design's second termination bound read
+	// 0 at every expansion. The minted residual starts from this.
+	rxc int
 }
 
 // walkOutcome says how a reference walk ended: it landed on a value,
@@ -50,9 +58,24 @@ func (rv *RefVal) walkFrom(root Val, refpath []string) (Val, walkOutcome) {
 		// the unresolved wrapper (BUGS.md §53's family; the recursive
 		// Policy/Step pair found it again). Mirrors the walk arm in
 		// ts/src/val/RefVal.ts find.
+		//
+		// A LIST ARGUMENT IS TRANSPARENT TOO (BUGS.md §63). This arm
+		// admitted a map only, so `hide([{n: "a", o: .n}])` deadlocked
+		// where `hide({n: "a", o: .n})` did not: `.n` walks
+		// [rows, 0, n], the walk reached the wrapper at `rows`, could
+		// not take `0` through it, and the reference never resolved --
+		// so the list never settled, so the wrapper never settled, and
+		// the element's `o` stayed `.n` for ever. TypeScript admits
+		// both (`peg[0].isMap || peg[0].isList` in its twin) and
+		// resolved the same document, which is how a staged pipeline
+		// under hide() generated in one port and refused in the other.
+		// markedChild below has taken both since it was written.
 		if fv, ok := node.(*FuncVal); ok && DONE != fv.dc &&
 			("hide" == fv.name || "type" == fv.name) && 0 < len(fv.peg) {
-			if inner, ok := fv.peg[0].(*MapVal); ok {
+			switch inner := fv.peg[0].(type) {
+			case *MapVal:
+				node = inner
+			case *ListVal:
 				node = inner
 			}
 		}
@@ -397,7 +420,7 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 		if degenerate {
 			return makeNilErr(ctx, "path_cycle", rv, nil)
 		}
-		rec := newRecurse(target, 0)
+		rec := newRecurse(target, rv.rxc)
 		rec.sp, rec.spu, rec.surl = rv.sp, rv.spu, rv.surl
 		// The source excerpt travels too, so reports frame the `$`
 		// exactly as TS's residual site does.
@@ -606,7 +629,7 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 			target = append(target, seg)
 		}
 		if alls && containsRecurseOf(node, target, 0) {
-			rec := newRecurse(target, 0)
+			rec := newRecurse(target, rv.rxc)
 			rec.sp, rec.spu, rec.surl = rv.sp, rv.spu, rv.surl
 			// The source excerpt travels too, so reports frame the `$`
 			// exactly as TS's residual site does.

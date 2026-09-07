@@ -448,6 +448,25 @@ func TestRecurseResidualShape(t *testing.T) {
 		t.Fatal("bumpRecurse must reach a conjunct member")
 	}
 
+	// A RAW REFERENCE IS SEEDED TOO, and this is the arm that makes the
+	// design's second termination bound live at all (use-cases/BUGS.md
+	// §57). A freshly cloned level holds the definition's references
+	// UNRESOLVED, so a walk looking only for residuals found nothing to
+	// stamp and xc read 0 at EVERY expansion, in the healthy form as
+	// much as the runaway one. The seed rides on the reference;
+	// RefVal.find mints its residual from it. Twin of the same
+	// assertion in ts/test/coverage3.test.ts.
+	ref := &RefVal{absolute: true, peg: []any{"n"}}
+	bumpRecurse(ref, 7)
+	if 7 != ref.rxc {
+		t.Fatal("bumpRecurse must seed a raw reference to the target")
+	}
+	// Monotone, like the residual arm beside it.
+	bumpRecurse(ref, 3)
+	if 7 != ref.rxc {
+		t.Fatal("the seed only ever grows")
+	}
+
 	// containsRecurseOf: the depth guard, and a target of a different
 	// length is not the fixpoint.
 	if containsRecurseOf(mk("n"), []string{"n"}, 9) {

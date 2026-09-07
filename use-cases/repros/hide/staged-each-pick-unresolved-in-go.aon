@@ -3,6 +3,10 @@
 # over a staged `each` rather than `hide` over a staged spread. Go
 # snapshots the staged producer before its template resolves.
 #
+# FIXED. The each/pick half closed on its own with the RENDER P2
+# member enumeration and both ports now agree; the hide half is closed
+# 2026-09-07 by the reference-walk arm. See BUGS.md 63.
+#
 # run: node ../../../ts/bin/aontu.js staged-each-pick-unresolved-in-go.aon
 # run: aontu-go staged-each-pick-unresolved-in-go.aon
 #

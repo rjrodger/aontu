@@ -367,8 +367,11 @@ func clonePathKind(v Val, path []string, deep bool) Val {
 		copyMarks(out, n)
 		return out
 	case *RefVal:
+		// rxc travels with the clone: a spread template is cloned per
+		// destination, and each clone's residual must start where the
+		// level it came from left off (BUGS.md §57).
 		out := &RefVal{absolute: n.absolute, prefix: n.prefix, hideFound: n.hideFound, copyFound: n.copyFound,
-			expansion: n.expansion}
+			expansion: n.expansion, rxc: n.rxc}
 		out.dc = n.dc
 		out.sp = n.sp
 		out.path = overlayPath(path, n.path)

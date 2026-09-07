@@ -20,9 +20,17 @@
 # EXPERIMENTAL until the distribution layer can version it by
 # canon-hash.
 #
+# THE PIN MOVED ON 2026-09-07, and what moved it is the point of it.
+# Every shape here is a close()-marked alias used as a SPREAD TEMPLATE,
+# and the hash form was dropping the close() at every one of them
+# (use-cases/BUGS.md §60): 139 close() wrappers where the fixed form
+# has 592. So this row pinned the shapes with their CLOSEDNESS ERASED
+# -- a vocabulary edited from close({...}) to {...} anywhere would have
+# left it green, which is the one thing it exists to catch.
+#
 # Every expectation was obtained by running BOTH engines and diffing.
 vocabulary-is-served	gens	@"aontu:code"\nx: 1	{"code":{"units":[]},"x":1}
-shapes-hash	hash	@"aontu:code"\nshapes: { unit: %unit, decl: %decl, type: %type, check: %check, piece: %piece, field: %field, source: %source }	aon1-UQg8d9onWxZfyk5-zUvUtc9RxHRCxcXm1J0do6CqBC4
+shapes-hash	hash	@"aontu:code"\nshapes: { unit: %unit, decl: %decl, type: %type, check: %check, piece: %piece, field: %field, source: %source }	aon1-FDLuB7kYlDirsaK05wTacp-rqpL9g6WmJH06Nnk80PA
 #
 # A UNIT: a path, a language, its declarations; an inline profile
 # override rides on it (RENDER.0.md D4, D5).

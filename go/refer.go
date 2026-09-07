@@ -370,13 +370,25 @@ func (r *ReferVal) reshape() *ReferVal {
 // string should take.
 func (r *ReferVal) settle(ctx *Ctx, site Val) Val {
 	if nil == r.addr {
-		// NOT DONE, unlike `string` or `min(1)`. A refer without an
-		// address has not done its work — it exists to check one — and
-		// the pass loop must keep offering it the chance. The cost is
-		// that a SCHEMA mentioning a link never resolves either, so
-		// `type({from: refer($.std.Port)})` is not expressible today;
-		// G4 phase 4 records why, and what it would take.
-		r.notdone()
+		// DONE while unmet, as `string` and `min(1)` are, and as
+		// RelVal has been since it was written (see newRel). An
+		// ADDRESS-LESS refer has nothing to check yet and nothing to
+		// refuse: it is its own settled residual, and the meet
+		// re-activates it the moment a value arrives, because map
+		// merges build the conjunct regardless.
+		//
+		// NOT-DONE here used to be justified as keeping the pass loop
+		// offering the refer a chance -- but that is the job of the
+		// OTHER pending branch below, where an address exists and its
+		// target has not appeared. This branch has no address to
+		// resolve, so staying not-done bought nothing and cost the
+		// schema idiom: a type() body holding a link never settled, so
+		// its mark never transferred, so generation could not skip the
+		// marked subtree and raised mapval_no_gen naming the
+		// definition. type({p: integer}), type({p: path()}) and
+		// type({p: min(1)}) all settled; only a link did not
+		// (aontu-lang/aontu#172, G4 phase 4's recorded cost).
+		r.dc = DONE
 		return r
 	}
 
@@ -403,7 +415,16 @@ func (r *ReferVal) settle(ctx *Ctx, site Val) Val {
 			return makeNilErrFull(ctx, r.unresolvedCode, r, nil, "refer",
 				map[string]string{"addr": r.addrsrc})
 		}
-		r.notdone()
+		// ASSIGNED, not incremented, and that is load-bearing: notdone()
+		// is a no-op on a value already DONE, and an address-less refer
+		// settles DONE (above) and carries that through reshape() when
+		// the address arrives. So an address whose target is missing
+		// would have stayed DONE, the pass loop would never reach the
+		// pass that decides, and `refer() & path($.nope)` would
+		// generate rather than refuse. Mirrors `this.dc = 0` in
+		// ts/src/val/ReferFuncVal.ts settle, which has always assigned
+		// here; the pass counter that bounds this is ctx.cc, not dc.
+		r.dc = 0
 		return r
 	}
 
@@ -550,10 +571,12 @@ type RelVal struct {
 func newRel(tval Val) *RelVal {
 	r := &RelVal{tval: tval}
 	r.sp = unsited
-	// DONE while unmet, deliberately -- the property refer() lacks and
-	// G4 phase 4 records the cost of: a type() body holding a rel()
+	// DONE while unmet, deliberately: a type() body holding a rel()
 	// must SETTLE, or the schema idiom leaves the type unresolved and
-	// every reference to it deferring forever. An unmet rel is its own
+	// every reference to it deferring forever. This was the property
+	// refer() lacked -- G4 phase 4 recorded the cost -- until
+	// 2026-09-07, when an address-less refer was given it too (#172);
+	// the two now settle by the same rule. An unmet rel is its own
 	// settled residual, like `min(1)`; the meet re-activates it
 	// whenever a value arrives, because map merges build the conjunct
 	// regardless.
