@@ -38,7 +38,7 @@ export type { LintFinding, FormatReport, FormatOptions } from './format'
 // Kept in step with package.json by the `version` npm lifecycle script,
 // which runs on `npm version` / `npm run repo-bump`. version.test.ts
 // fails if the two ever drift.
-const VERSION = '0.60.0'
+const VERSION = '0.61.0'
 
 
 // A module file's VALUE, as far as it goes. COLLECTED, not raised: a
