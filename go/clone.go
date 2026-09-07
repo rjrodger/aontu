@@ -144,9 +144,9 @@ func repathArg(v Val, base []string, settle bool) {
 }
 
 // clonePath deep-clones a Val, rebasing the subtree at the given path
-// (mirrors Val.clone in ts/src/val/Val.ts, used when a reference
-// resolves to a target). Done-state is preserved. The TOP of the clone
-// is marked clone-minted (posu; TS Val.clone's `url ?? ”`), which
+// (mirrors Val.clone in ts/src/val/Val.ts, used by residuation and by
+// a reference resolving to a target that still holds a staged call).
+// Done-state is preserved. The TOP of the clone is marked clone-minted (posu; TS Val.clone's `url ?? ”`), which
 // gates the error-operand position flip in makeNilErr; children keep
 // their source marks, as TS's shallow clone shares the originals.
 func clonePath(v Val, path []string) Val {
@@ -155,11 +155,13 @@ func clonePath(v Val, path []string) Val {
 
 // instanceClone is THE PER-DESTINATION INSTANTIATION clone (ADR-005;
 // TS `clone(ctx, {dup: true})`): a template cloned per destination —
-// pack/each templates, filter conditions, applied spread constraints —
-// must own its FULL inner structure, so a FuncVal's args and a
-// PrefVal's peg are cloned too instead of shared. Everything else
-// (residuation clones, ref resolution, move/copy) keeps clonePath's
-// sharing, which the ghost rows in test/spec/func.tsv pin.
+// pack/each templates, filter conditions, applied spread constraints,
+// and a REFERENCE's copy of a target holding no staged call (ADR-025)
+// — must own its FULL inner structure, so a FuncVal's args and a
+// PrefVal's peg are cloned too instead of shared. The residuation
+// clone, which stays at one position, keeps clonePath's sharing, and
+// so does the copy of something still being settled at its own site,
+// which is what the ghost rows in test/spec/func.tsv pin.
 func instanceClone(v Val, path []string) Val {
 	return cloneAt(v, path, true)
 }

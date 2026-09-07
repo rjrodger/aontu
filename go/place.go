@@ -214,3 +214,60 @@ func fillPlaceArgs(vals []Val, fill Val, bound int) []Val {
 	}
 	return out
 }
+
+// holdsStaged reports whether a STAGED call (the staging rule, G8
+// phase 0) stands anywhere in v. Such a call has not decided: its
+// arguments are still being driven AT ITS OWN SITE, so a REFERENCE's
+// copy shares it rather than owning a set of arguments it would drive
+// at the referring position instead (ref.go, ADR-025). A staged call
+// ANYWHERE counts, because what a document references is usually the
+// conjunct the call sits in rather than the call. Twin: the
+// `holdsStaged` getter in ts/src/val/Val.ts.
+func holdsStaged(v Val) bool {
+	switch n := v.(type) {
+	case *FuncVal:
+		if stagedFuncs[n.name] {
+			return true
+		}
+		for _, a := range n.peg {
+			if holdsStaged(a) {
+				return true
+			}
+		}
+	case *ConjunctVal:
+		for _, t := range n.peg {
+			if holdsStaged(t) {
+				return true
+			}
+		}
+	case *DisjunctVal:
+		for _, t := range n.peg {
+			if holdsStaged(t) {
+				return true
+			}
+		}
+	case *PrefVal:
+		return holdsStaged(n.peg)
+	case *MapVal:
+		for _, k := range n.keys {
+			if holdsStaged(n.peg[k]) {
+				return true
+			}
+		}
+		return holdsStaged(n.spread)
+	case *ListVal:
+		for _, e := range n.peg {
+			if holdsStaged(e) {
+				return true
+			}
+		}
+		return holdsStaged(n.spread)
+	case *PlusOpVal:
+		for _, a := range n.peg {
+			if holdsStaged(a) {
+				return true
+			}
+		}
+	}
+	return false
+}

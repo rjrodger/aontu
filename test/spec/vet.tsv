@@ -376,3 +376,29 @@ vet-pack-hole-fill-bare-template	vet	a:{t:{u:string}}\ng:pack($.a,{arguments:_})
 vet-pack-two-holes-are-two-positions	vet	a:{t:{u:string}}\ng:pack($.a,{x:_,y:{z:_}})\n	y:{z:{u:1}}\n	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.g.t.y.z.u","severity":"error","sites":[{"col":9,"file":"data","len":1,"role":"data","row":1,"src":"1","value":"1"},{"col":9,"file":"schema","len":6,"role":"schema","row":1,"src":"string","value":"string"}]},{"class":"incomplete","code":"mapval_no_gen","path":"$.g.t.x.u","severity":"error","sites":[{"col":9,"file":"schema","len":6,"role":"schema","row":1,"src":"string","value":"string"}]}],"opts":{"at":"$.g.t"},"truncated":false,"verdict":"invalid"}
 vet-pack-hole-fill-list-is-a-position	vet	a:{t:[string]}\ng:pack($.a,{arguments:_})\n	arguments:[1]\n	{"findings":[{"class":"conflict","code":"no_scalar_unify","path":"$.g.t.arguments.0","severity":"error","sites":[{"col":12,"file":"data","len":1,"role":"data","row":1,"src":"1","value":"1"},{"col":7,"file":"schema","len":6,"role":"schema","row":1,"src":"string","value":"string"}]}],"opts":{"at":"$.g.t"},"truncated":false,"verdict":"invalid"}
 vet-pack-hole-fill-from-deeper-source	vet	deep:{a:{b:{c:{t:{u:string}}}}}\ng:pack($.deep.a.b.c,{arg:_})\n	arg:1\n	{"findings":[{"class":"conflict","code":"map","path":"$.g.t.arg","severity":"error","sites":[{"col":5,"file":"data","len":1,"role":"data","row":1,"src":"1","value":"1"},{"col":18,"file":"schema","len":1,"role":"schema","row":1,"src":"{","value":"{\\"u\\":string}"}]}],"opts":{"at":"$.g.t"},"truncated":false,"verdict":"invalid"}
+#
+# A REFERENCE'S COPY OWNS ITS ARGUMENTS (ADR-025). The list spread
+# resolves `$.ent.U` once per element, and the target is a close()
+# CALL, whose argument the shallow ref clone used to share: every
+# element then held the one inner map, each rebased its path in turn,
+# and the constraint that failed reported whichever element had
+# rebased it last (Go) or first (TypeScript) instead of its own.
+# Two bad elements with a good one between them is what tells the
+# three apart -- one finding at each end, at its OWN index.
+vet-list-spread-ref-owns-its-args	vet	E:hide(re("^g$"))\nent:{U:close({e:$.E})}\nent:hide({})\nl:[&:$.ent.U]\n	l:[{e:b1},{e:g},{e:b2}]\n	{"findings":[{"actual":"\\"b1\\"","class":"conflict","code":"constraint","expected":"re(\\"^g$\\")","path":"$.l.0.e","severity":"error","sites":[{"col":7,"file":"data","len":2,"role":"data","row":1,"src":"b1","value":"\\"b1\\""},{"col":3,"file":"schema","len":4,"role":"schema","row":1,"src":"hide","value":"re(\\"^g$\\")"}]},{"actual":"\\"b2\\"","class":"conflict","code":"constraint","expected":"re(\\"^g$\\")","path":"$.l.2.e","severity":"error","sites":[{"col":20,"file":"data","len":2,"role":"data","row":1,"src":"b2","value":"\\"b2\\""},{"col":3,"file":"schema","len":4,"role":"schema","row":1,"src":"hide","value":"re(\\"^g$\\")"}]}],"truncated":false,"verdict":"invalid"}
+#
+# A MATCH DOES NOT FIRE ON AN UNFILLED HOLE. The hole-fill rule puts
+# the peer INTO the call and does not keep it as a constraint on the
+# way out, which is right for a transformation (`upper(_) & "hello"`
+# is "HELLO") and wrong for a match written as a discriminated-union
+# schema: filling would answer the selected arm having CONSUMED the
+# document, so vet reported `valid` over data the arm itself refuses.
+# The call residuates instead, and the run says so. A hole inside a
+# GENERATOR template is untouched -- the generator fills it at each
+# destination, and the scrutinee is a value by the time match runs
+# (gen-match.tsv match-inside-pack, use-cases/06-k8s-golden-path).
+#
+# The finding sits at the ANCHOR's own path, not at the lifted root:
+# a meet raised on the anchor itself is still a finding about
+# `$.E`, which is the address a reader and a repair agent have.
+vet-match-hole-scrutinee-does-not-settle	vet	P:{t:x}\nE:match(_,{t:x},$.P)\n	t:x\n	{"opts":{"at":"$.E"},"findings":[{"class":"incomplete","code":"conjunct","path":"$.E","severity":"error","sites":[{"col":-1,"file":"","len":-1,"role":"schema","row":-1,"src":"","value":"match(_,{\\"t\\":\\"x\\"},$.P)&{\\"t\\":\\"x\\"}"}]}],"truncated":false,"verdict":"incomplete"}

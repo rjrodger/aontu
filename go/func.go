@@ -363,8 +363,24 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 		// is nothing to fill with, so a placeheld generator waits
 		// exactly as the hole itself does. Twin: stagedReady in
 		// ts/src/val/FuncBaseVal.ts.
+		// A MATCH DOES NOT FIRE ON AN UNFILLED HOLE. The hole-fill rule
+		// says the peer goes INTO the call and is not also a constraint
+		// on the way out, which is right for a transformation
+		// (`upper(_) & "hello"` is "HELLO") and wrong for a match used
+		// as a schema: `match(_, {type:"a"}, $.A, ...)` met with a
+		// document would answer $.A having CONSUMED the document, so
+		// vet reported `valid` over data the selected arm refuses --
+		// a silent accept, where the canonical port answers
+		// `incomplete` and says the call never settled
+		// (use-cases/07-event-contracts, the match-dispatch probe).
+		// A hole inside a GENERATOR template is untouched: the
+		// generator fills it at each destination, and the scrutinee is
+		// a value by the time this runs. Twin: MatchFuncVal.unify in
+		// ts/src/val/MatchFuncVal.ts, which gates on the driven
+		// arguments alone and so never reaches FuncBaseVal's fill arm.
 		driven := stagedDrive(ctx, f, base)
-		ready := (driven || (!isTop(peer) && hasPlace(f))) && ctx.settle
+		fillable := !isTop(peer) && hasPlace(f) && "match" != f.name
+		ready := (driven || fillable) && ctx.settle
 
 		if !ready {
 			f.notdone()
@@ -385,7 +401,18 @@ func (f *FuncVal) Unify(peer Val, ctx *Ctx) Val {
 					pathEq(pf.path, f.path) && pf.Canon() == f.Canon() {
 					return f
 				}
-				return newConjunct([]Val{f, peer})
+				// THE RESIDUAL STANDS WHERE THE CALL STANDS. Without
+				// the path a finding raised on this conjunct named the
+				// meet's root (`$`) rather than the field, so a vet
+				// --at run reported "cannot resolve value at path $"
+				// over a value the schema names. The same two lines as
+				// the deferred-resolution branch below, and the same
+				// TS twin: FuncBaseVal.residuate builds its conjunct
+				// with the driving ctx, which carries the path.
+				cj := newConjunct([]Val{f, peer})
+				cj.path = cp(f.path)
+				cj.sp, cj.spu, cj.surl = f.sp, f.spu, f.surl
+				return cj
 			}
 		}
 	}

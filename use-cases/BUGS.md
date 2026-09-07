@@ -23,7 +23,8 @@ verdict, or nontermination; **major** = a documented capability fails;
 Cross-cutting root causes, visible across families:
 
 1. **Template state is shared between destinations that need
-   independent instances.** **FIXED 2026-08-26, both halves.** The
+   independent instances.** **FIXED 2026-08-26, both halves; the
+   REFERENCE half 2026-09-07 (ADR-025, §90).** The
    clone half by template-clone isolation (ADR-005): per-child
    template clones no longer share inner nodes — pack/each templates,
    filter conditions and applied spread constraints are FULL
@@ -36,6 +37,9 @@ Cross-cutting root causes, visible across families:
    accumulating each sibling's data and meeting it into the next;
    `ExpectVal.unify` is now pure, so each child meets each template
    independently and children never meet each other's data.
+   The third destination the rule had not reached is a REFERENCE:
+   `$.T` resolved to a copy that still shared a call's arguments with
+   the source and with every other copy, which is §90.
    Families: sibling-crosswire (fixed), generator-seal (fixed).
 2. **Vet's incompleteness check is generation-based and filters to
    incomplete-class errors**, so unresolved disjunctions vanished
@@ -3738,3 +3742,75 @@ holds the call — the binding walk stops at a nested generator's
 binding argument (EMIT.0.md D5) and should not stop at an ordinary
 argument. Failing that, raise `emit_ref` for the miss: a silent nil is
 the one outcome a generator cannot defend against.
+
+
+## reference-instances — a copy that still shares what it copied
+
+Two entries, both found by running the use-case corpus under the Go
+port after the ports were brought back into parity. Neither is
+Go-only: the first differs only in WHICH wrong answer each port gives,
+and the second is a soundness defect the canonical port happens not to
+reach.
+
+### 90. A finding under a list spread names the wrong element [major]
+
+`items: [&: $.entities.User]` over a `close({...})` target: the second
+element's bad email was reported at `$.items.0.email` by TypeScript
+and at `$.items.1.email` by Go. The Go answer looked right, and was
+not — with the bad element last, the wrong index and the right one are
+the same number.
+
+```
+E: hide(re("^g$"))
+ent: { U: close({ e: $.E }) }
+ent: hide({})
+l: [&: $.ent.U]
+```
+
+against `{"l":[{"e":"b1"},{"e":"g"},{"e":"b2"}]}`, TypeScript reported
+BOTH findings at `$.l.0.e` and Go reported both at `$.l.2.e`.
+
+**Why.** A reference's copy is a per-destination instance — ADR-005's
+rule, which the spread and the generators already obey — but the
+ref-resolution clone was the shallow one, which shares a call's
+ARGUMENTS. So all three elements held the one `close()` argument map,
+each rebased its path as it resolved, and the constraint inside
+carried whichever element had touched it first (TypeScript, whose
+resolution set the path once) or last (Go). Repro:
+`repros/site-attribution/refarg-list-index.aon`.
+
+Status: FIXED 2026-09-07 (ADR-025) — a reference's copy owns its
+arguments, unless the target holds a STAGED call, which has not
+decided and whose arguments are still being driven at its own site.
+`use-cases/03-api-contract` drops the gap-8 workaround and pins
+`$.items.1.email`; pinned in the shared suite by
+`vet-list-spread-ref-owns-its-args`. The `move()`/`copy()` "ghost"
+canon rows are unchanged: each copies a target holding a pending
+`key()`, so each takes the exception.
+
+### 91. `match(_)` as a schema vets VALID over data its own arm refuses [critical]
+
+`Event: match(_, {type:"order.placed"}, $.Placed)` with
+`Placed: close({type:"order.placed", total_cents: integer & min(0)})`.
+Under `vet --at '$.Event'` the Go port answered `verdict: valid`,
+exit 0, for `{"type":"order.placed","total_cents":-5}` — and for every
+other document, including one that matches no arm at all.
+
+**Why.** The hole-fill rule puts the peer INTO the call and does not
+keep it as a constraint on the way out, which is what makes
+`upper(_) & "hello"` be `"HELLO"` rather than a contradiction. Applied
+to a match, the document is consumed selecting the arm and then never
+checked against it. TypeScript never reached the rule here, because
+`MatchFuncVal.unify` gates on its driven arguments alone; the two
+ports therefore disagreed, one of them unsoundly. Repro:
+`repros/vet-soundness/match-hole-scrutinee.aon`.
+
+Status: FIXED 2026-09-07 — a match does not fire on an unfilled hole
+in either port: the call residuates and the run says
+`verdict: incomplete` with `[aontu/conjunct]`. A hole inside a
+GENERATOR template is untouched, because the generator fills it at
+each destination and the scrutinee is a value by the time the match
+runs (`use-cases/06-k8s-golden-path`). Pinned by
+`vet-match-hole-scrutinee-does-not-settle`, which also pins the
+finding at the ANCHOR's path (`$.E`) rather than at the lifted root —
+the Go meet stood at `$` and reported findings raised on itself there.

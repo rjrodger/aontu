@@ -280,16 +280,21 @@ has vpage out 'verdict: valid'
 run vpagebad 1 -- vet "$DIR/user-page.aon" "$DIR/data/user-page-bad.json"
 has vpagebad out '[aontu/constraint]'
 has vpagebad out '"grace.hopper@"'
-# GAP 8: the finding's path says items.0 but the broken element is
-# items[1] (the data site's row is correct; the path index is not).
-# 2026-08-26: unchanged by the template-clone isolation change
-# (ADR-005) — this is a TS-only attribution defect (the Go port
-# answers items.1), site-attribution family, still open.
-has vpagebad out '$.items.0.email'
+# GAP 8, FIXED 2026-09-07 by ADR-025: the finding names the element
+# it is about. The path used to say items.0 while the broken element
+# was items[1] (the data site's row was right; the index was not).
+# It was never TS-only: a reference's copy shared the close() call's
+# inner map with every other element, each rebased its path in turn,
+# and the finding reported whichever element had rebased it first
+# (TypeScript) or last (Go) -- with one bad element at the end, the
+# Go port's answer was accidentally the right one. A reference's copy
+# now owns its arguments (a target still holding a staged call
+# excepted), so each element carries its own path.
+has vpagebad out '$.items.1.email'
 run vpagemiss 3 -- vet "$DIR/user-page.aon" \
   "$DIR/data/user-page-missing-total.json"
 has vpagemiss out 'verdict: incomplete'
-ok "root-anchored page schema: valid/invalid/incomplete all work (gap 8 pinned)"
+ok "root-anchored page schema: valid/invalid/incomplete all work (gap 8 fixed)"
 
 # --- 5. The contract polices itself and its own evolution. ---
 

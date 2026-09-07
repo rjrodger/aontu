@@ -632,9 +632,10 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 	}
 	// A REFERENCE LIFTS: the copy is concrete, its type and hide marks
 	// cleared to the leaves (mirrors the mark-clearing walk in TS
-	// RefVal.find; with shared func-clone args this also clears marks
-	// on innards shared with the source — as in TS). EXCEPT the
-	// snapshot a staged verb takes of its data (ctx.argsnap), when the
+	// RefVal.find; where the copy shares a call's args with the source
+	// -- the staged exception below -- the clearing reaches those
+	// innards too, as in TS). EXCEPT the snapshot a staged verb takes
+	// of its data (ctx.argsnap), when the
 	// target itself is not marked: a member marked inside an unmarked
 	// bag was hidden IN ITS OWN RIGHT, and the verb's enumeration
 	// (members.go, BUGS.md §79) needs the mark to leave the member out,
@@ -642,7 +643,32 @@ func (rv *RefVal) find(ctx *Ctx, snap bool) Val {
 	// each($.schema.entities, _) under schema: hide({...}) would see
 	// every entity as hidden, since hide() marks to the leaves.
 	lifted := !ctx.argsnap || node.markedType() || node.markedHide()
-	out := clonePath(node, cp(rv.path))
+	// A REFERENCE'S COPY OWNS ITS ARGUMENTS (ADR-025): the copy is a
+	// per-destination instance exactly as a spread's or a generator's
+	// is, so ADR-005's rule holds here too. The shallow clone shared a
+	// call's ARGUMENTS, so `items: [&: $.entities.User]` over a
+	// `close({...})` target gave every element the one inner map, whose
+	// path each element rebased in turn, and the constraint that failed
+	// at element 2 reported element 0's path (use-cases GAP 8).
+	//
+	// A STAGED CALL IS THE EXCEPTION, because it has not decided yet.
+	// Its arguments are still being driven AT ITS OWN SITE (the
+	// staging rule, G8 phase 0), and a copy that owned them would
+	// drive its own set at the referring position instead: the
+	// relative `.side_effect` in a `match()` would read the referring
+	// field's siblings (use-cases/09-agent-tools), and an alias naming
+	// an `emit` rule table -- a template, which is exactly a value
+	// copied before it resolves -- would read its recursive `%w` as a
+	// self-reference. A staged call ANYWHERE in the target counts:
+	// what is referenced is usually the conjunct the call sits in,
+	// not the call. The copy shares what the source is still
+	// settling, and owns the rest.
+	var out Val
+	if holdsStaged(node) {
+		out = clonePath(node, cp(rv.path))
+	} else {
+		out = instanceClone(node, cp(rv.path))
+	}
 	if lifted {
 		walkMark(out, true, false, true, false)
 	}

@@ -44,9 +44,12 @@ type ValSpec = {
   // depth explicitly: `dup: true` makes FuncBaseVal, PrefVal and
   // OpBaseVal clone their inner Vals too, and the bag/junction clones
   // carry the flag down. Set by pack/each template instantiation,
-  // filter condition testing, and spread application (MapVal/
-  // ListVal.spreadClone) — never by the residuation or ref-resolution
-  // clones, whose sharing is pinned behaviour.
+  // filter condition testing, spread application (MapVal/
+  // ListVal.spreadClone), and REFERENCE RESOLUTION of a target that
+  // holds no staged call, whose copy is a per-destination instance
+  // too (ADR-025) — never by the residuation clone, whose sharing is
+  // pinned behaviour, and never by a copy of something still being
+  // settled at its own site, which is what keeps the ghost rows.
   dup?: boolean,
 
 
@@ -437,6 +440,33 @@ abstract class Val {
     }
     this._isPathDependent = dep
     return dep
+  }
+
+
+  // A STAGED CALL STANDING ANYWHERE IN THIS VALUE (the `staged` flag,
+  // G8 phase 0). Such a call has not decided: its arguments are still
+  // being driven AT ITS OWN SITE, so a REFERENCE's copy shares it
+  // rather than owning a set of arguments it would drive at the
+  // referring position instead (RefVal.find, ADR-025). Not cached:
+  // unlike isPathDependent this is a fact about the value's current
+  // state, and the whole point is that it stops being true.
+  get holdsStaged(): boolean {
+    if (true === (this as any).staged) {
+      return true
+    }
+    const peg: any = this.peg
+    if (Array.isArray(peg)) {
+      for (let i = 0; i < peg.length; i++) {
+        if (true === peg[i]?.isVal && peg[i].holdsStaged) return true
+      }
+    }
+    else if (null != peg && 'object' === typeof peg) {
+      for (const k in peg) {
+        if (true === peg[k]?.isVal && peg[k].holdsStaged) return true
+      }
+    }
+    const spreadCj = (this as any).spread?.cj as Val | undefined
+    return true === spreadCj?.isVal && (spreadCj as any).holdsStaged
   }
 
 

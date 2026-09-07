@@ -41,6 +41,7 @@ ADR-NNN**, so the reasoning that led there stays readable.
 | [ADR-022](#adr-022--compatibility-is-computed-so-the-major-leaves-the-name) | Compatibility is computed, so the major leaves the name | Accepted |
 | [ADR-023](#adr-023--g9-completes-at-the-renderer-the-reflection-sidecar-the-jostraca-bridge-and-string-interpolation-are-retired) | G9 completes at the renderer: the reflection sidecar, the Jostraca bridge and string interpolation are retired | Accepted |
 | [ADR-024](#adr-024--the-forges-token-authorises-a-publish-and-sigstore-is-one-provider-of-the-proof-not-its-definition) | The forge's token authorises a publish, and Sigstore is one provider of the proof, not its definition | Accepted |
+| [ADR-025](#adr-025--a-references-copy-is-an-instance-and-a-match-does-not-fire-on-an-unfilled-hole) | A reference's copy is an instance, and a match does not fire on an unfilled hole | Accepted |
 
 ---
 
@@ -463,7 +464,12 @@ destination, fully.** Concretely, three rules:
    would assign there (`repathInstance` in TS mirrors the Go
    `setPaths`). Nothing else changes its sharing: residuation,
    reference-resolution and move()/copy() clones keep the pinned
-   ghost semantics.
+   ghost semantics. *(Amended 2026-09-07 by
+   [ADR-025](#adr-025--a-references-copy-is-an-instance-and-a-match-does-not-fire-on-an-unfilled-hole):
+   a reference's copy IS a destination and instantiates fully —
+   EXCEPT of a target holding a staged call, which has not decided
+   yet and whose arguments the copy still shares. That exception is
+   what keeps the ghost rows pinned.)*
 2. **A hole belongs to its nearest enclosing generator.** Neither the
    hole test (`hasPlace`) nor the fill walk crosses into a
    generator's template or condition argument from outside; a hole in
@@ -2722,3 +2728,99 @@ the register's G10 section records this entry without moving a row. A
 phase-3 implementation whose client verifies a bundle outside the
 contract, or whose write path decides admission from a certificate,
 breaches this entry.
+
+---
+
+## ADR-025 — A reference's copy is an instance, and a match does not fire on an unfilled hole
+
+**Date:** 2026-09-07
+**Status:** Accepted
+
+### Context
+
+Running the whole use-case corpus under BOTH ports — the Go leg had
+never been run over it — turned up two divergences that the shared
+spec did not reach, and neither port was simply right.
+
+**A finding under a list spread named the wrong element.**
+`items: [&: $.entities.User]` over a `close({...})` target reported
+the second element's bad email at `$.items.0.email` in TypeScript and
+at `$.items.1.email` in Go. The Go answer had been recorded in
+`use-cases/03-api-contract` as the correct one and a TypeScript-only
+defect. It was neither: with two bad elements and a good one between
+them, TypeScript reported both findings at the FIRST element's path
+and Go both at the LAST. [ADR-005](#adr-005--template-instantiation-is-per-destination)'s
+rule — *nothing path-dependent may be shared between two
+destinations, or the first destination's resolution answers for them
+all* — had been applied to spreads, generators and filter conditions
+and deliberately withheld from reference resolution, whose sharing the
+move()/copy() "ghost" canon rows pinned. A reference is a
+destination. Sharing a call's argument map across three list elements
+is that exact failure, arriving by a different road.
+
+**A `match(_)` written as a schema vetted VALID over data its own arm
+refuses.** The placeholder rule (ADR-005 rule 2, G8 phase 3) puts the
+peer INTO a call holding a hole and does not keep it as a constraint
+on the way out: `upper(_) & "hello"` is `"HELLO"`, not
+`"HELLO" & "hello"`. That is right for a transformation. Applied to
+`Event: match(_, {type:"order.placed"}, $.Placed)`, the document is
+consumed selecting the arm and then never checked against it, so Go
+answered `verdict: valid`, exit 0, for a payload violating the
+`min(0)` printed in the arm beside it. TypeScript never reached the
+rule, because `MatchFuncVal.unify` gates on its driven arguments
+alone — an accident that happened to be the safe answer.
+
+### Decision
+
+1. **A reference's copy owns its arguments, unless what it copies has
+   not decided yet.** Reference resolution uses the per-destination
+   instantiation clone (`clone(ctx, {dup: true})` in TypeScript,
+   `instanceClone` in Go), the same one a spread or a generator uses.
+   The exception is a target with a STAGED call standing anywhere in
+   it (`holdsStaged`): a staged call's arguments are still being
+   driven at its own site under the staging rule, and a copy that
+   owned them would drive its own set at the referring position
+   instead — the relative `.side_effect` in a `match()` would read
+   the referring field's siblings, and an alias naming an `emit` rule
+   table (a template, which is exactly a value copied before it
+   resolves) would read its recursive `%w` as a self-reference. The
+   copy shares what the source is still settling, and owns the rest.
+   The default shallow clone also remains for residuation, which
+   stays at one position and wants the sharing.
+2. **A match does not fire on an unfilled hole.** A `match` whose
+   scrutinee is still `_` residuates rather than taking the fill
+   path, in both ports, and the run reports `incomplete` with
+   `[aontu/conjunct]` rather than a verdict it did not earn. A hole
+   inside a GENERATOR template is untouched: the generator fills it
+   at each destination, so the scrutinee is a value by the time the
+   match runs.
+3. **A finding raised on an anchored meet stands at the anchor's own
+   path.** `vet --at '$.E'` reports `$.E`, not the lifted root `$` —
+   the address a reader, `get` and a repair agent can use. TypeScript
+   already did this by driving the meet at the anchor's path; the Go
+   meet now carries it too.
+
+### Consequences
+
+- Each element of a list spread carries its own path, so a finding
+  names the element it is about. `use-cases/03-api-contract` drops
+  its gap-8 workaround and pins `$.items.1.email`. Shared row:
+  `vet-list-spread-ref-owns-its-args`.
+- **No canon row changes.** The `move()`/`copy()` "ghost" rows
+  (`func.tsv` ghost-\*-innard, move-chain, move-shallower-dest,
+  `spread.tsv` spread-hidden-key-resolves) all copy a target holding
+  a pending `key()` — a staged call — so they take the exception and
+  keep the sharing they pin. The change reaches only what a copy is
+  free to own, which is what the corpus divergence was about.
+- `vet` no longer answers `valid` for a `match(_)` anchor. The form
+  stays a documented gap — a discriminated union is still written as
+  a union — but the gap now reports itself. Shared row:
+  `vet-match-hole-scrutinee-does-not-settle`.
+- Instantiation costs a deep clone per reference resolution of a
+  call-bearing target. Scoped the same way ADR-005's cost is: a
+  target with no path-dependent structure is unaffected, and the full
+  suite and corpus timings are unchanged.
+- Enforced by the shared spec (ADR-001 discipline) and by both ports
+  changing together. The ledger entries are
+  [use-cases/BUGS.md](use-cases/BUGS.md) §90 and §91, with repros
+  under `use-cases/repros/`.

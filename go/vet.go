@@ -583,6 +583,19 @@ func anchorAt(root Val, at string) Val {
 	return node
 }
 
+// anchorSegs is the `--at` spelling as path segments: `$.a.b` and the
+// bare `a.b` both give [a b], and the whole-schema anchor (empty, or
+// `$`) gives none. The walk above accepts the same three spellings.
+func anchorSegs(at string) []string {
+	out := []string{}
+	for _, part := range strings.Split(strings.TrimPrefix(at, "$"), ".") {
+		if "" != part {
+			out = append(out, part)
+		}
+	}
+	return out
+}
+
 // throughResidue is the container inside a settled sizing residue, or
 // the value itself.
 func throughResidue(v Val) Val {
@@ -928,6 +941,12 @@ func Vet(schemaSrc, dataSrc string, opts *VetOptions) VetReport {
 	}
 
 	pair := newConjunct([]Val{meetAnchor, dataVal})
+	// AND THE MEET STANDS AT THE ANCHOR'S OWN PATH, so a finding minted
+	// on the meet itself sits in the schema's namespace ($.Event)
+	// rather than at the lifted root ($) -- the findings carried on
+	// the settled anchor's stored paths already do. Mirrors the
+	// `ctx.path = options.at...` assignment in ts/src/vet.ts.
+	pair.path = anchorSegs(options.At)
 	ctx := &Ctx{root: pair, src: dataSrc, collect: true}
 	if "" != options.At {
 		// A RECURSIVE residual inside the lifted anchor still names its
