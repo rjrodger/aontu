@@ -74,6 +74,14 @@ class RefVal extends FeatureVal_1.FeatureVal {
         // after unification (see `canon` below). Not a ValSpec field: it is
         // a rendering of the settled tree, never a parse-time property.
         this.expansion = undefined;
+        // THE RECURSION SEED (use-cases/BUGS.md §57). A reference that names
+        // a recursive definition IS the fixpoint reference; it mints a
+        // RecurseVal when it resolves. bumpRecurse stamps the expansion
+        // depth here, because a freshly cloned level holds the definition's
+        // references UNRESOLVED and so has no residual to stamp -- which is
+        // why the design's second termination bound read 0 at every
+        // expansion. The minted residual starts from this.
+        this.rxc = 0;
         this.prefix = false;
         this.peg = [];
         // The field initialiser (absolute = false) has just run, so only
@@ -254,7 +262,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 out = (0, err_1.makeNilErr)(ctx, 'path_cycle', this);
             }
             else {
-                const rec = new RecurseVal_1.RecurseVal({ target }, ctx);
+                const rec = new RecurseVal_1.RecurseVal({ target, xc: this.rxc }, ctx);
                 rec.site = this.site;
                 rec.path = [...this.path];
                 out = rec;
@@ -519,7 +527,7 @@ class RefVal extends FeatureVal_1.FeatureVal {
                 // residual is the resolved form, exactly as at the prefix
                 // positions inside the definition.
                 else if (null != out && !snap && (0, RecurseVal_1.containsRecurseOf)(out, this.peg)) {
-                    const rec = new RecurseVal_1.RecurseVal({ target: [...this.peg] }, ctx);
+                    const rec = new RecurseVal_1.RecurseVal({ target: [...this.peg], xc: this.rxc }, ctx);
                     rec.site = this.site;
                     rec.path = [...this.path];
                     out = rec;
@@ -691,6 +699,10 @@ class RefVal extends FeatureVal_1.FeatureVal {
             ...(spec || {})
         });
         out.expansion = this.expansion;
+        // The recursion seed travels with the clone: a spread template is
+        // cloned per destination, and each clone's residual must start
+        // where the level it came from left off.
+        out.rxc = this.rxc;
         return out;
     }
     // THE NAME OF THE ALIAS THIS REFERENCE NAMES, or undefined for a

@@ -263,6 +263,19 @@ func bumpRecurse(v Val, xc int) {
 		if n.xc < xc {
 			n.xc = xc
 		}
+	case *RefVal:
+		// A RAW REFERENCE TO A RECURSIVE TARGET IS THE RECURSION,
+		// minted or not -- the same reading containsRecurseOf already
+		// takes, and the reason bound 2 was inert. A freshly cloned
+		// level holds the definition's references UNRESOLVED, so this
+		// walk found no residual to stamp and xc read 0 at every
+		// expansion, in the healthy form too. The seed rides on the
+		// reference and the residual minted from it starts there
+		// (go/ref.go). Mirrors the same arm in
+		// ts/src/val/RecurseVal.ts bumpRecurse.
+		if n.rxc < xc {
+			n.rxc = xc
+		}
 	case *MapVal:
 		for _, k := range n.keys {
 			bumpRecurse(n.peg[k], xc)

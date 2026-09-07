@@ -8,6 +8,7 @@ declare class RefVal extends FeatureVal {
     cjo: number;
     absolute: boolean;
     expansion: Val | undefined;
+    rxc: number;
     prefix: boolean;
     constructor(spec: {
         peg: any[];

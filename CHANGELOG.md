@@ -20,6 +20,30 @@ profiles, `replace`/`esc`, provenance and coverage, and a generator
 written in the target's own syntax — and the first complete system
 generated with it.
 
+### The recursion design's second termination bound is live
+
+`RecurseVal.xc` — the per-expansion count `RECURSION.0.md`'s
+termination argument rests on — read **0 at every expansion**, in
+healthy documents as much as pathological ones, so `recursion_budget`
+could never fire. `bumpRecurse` stamps the count onto every residual
+inside a freshly cloned level, and a freshly cloned level holds the
+definition's references *unresolved*: there was nothing to stamp.
+`containsRecurseOf`, two functions away, already takes the right
+reading in its own words — "a raw reference to the target IS the
+recursion, minted or not". `bumpRecurse` now takes it too, seeding the
+reference; the mint sites read the seed and the clone carries it. A
+healthy recursive document now charges 0, 1, 2 — one per data level,
+which is the invariant.
+
+This does not close `use-cases/BUGS.md` §57. The bound is live and
+still inoperative, for a reason now measured rather than guessed: it
+gates on `ctx.budget.depth`, the same constant `unify_cycle` uses for
+the unify call stack, and the stack necessarily goes deeper — so
+`unify_cycle` fires first at every budget tried. Giving bound 2 a
+constant of its own is a change to a spec-visible trust number, not a
+defect fix, and would make the runaway *refuse* rather than converge.
+Both ports, pinned by a direct assertion in each.
+
 ### A schema may now mention a link
 
 `type({from: refer($.std.Port)})` — a vocabulary that says a field is a

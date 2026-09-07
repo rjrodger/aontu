@@ -2066,6 +2066,36 @@ HEALTHY form too. `recursion_budget` can therefore never fire on this
 path. The healthy case does not need it, because structural descent
 bounds it; that is why nobody noticed.
 
+> **2026-09-07: the cause, and the fix, in both ports.** `bumpRecurse`
+> stamps the count onto every RESIDUAL inside a freshly cloned level
+> -- and a freshly cloned level holds the definition's references
+> **unresolved**, so there was no residual to stamp. `containsRecurseOf`
+> two functions away already takes the right reading, in its own
+> words: "A RAW REFERENCE to the target IS the recursion, minted or
+> not". `bumpRecurse` now takes it too, seeding `RefVal.rxc`, which
+> the two mint sites in `RefVal.find` read when they build the
+> residual, and which the clone carries. The count now advances: the
+> healthy document charges **0, 1, 2** -- exactly one per data level,
+> which is the invariant -- and the runaway climbs monotonically.
+> Pinned by a direct assertion in each port
+> (`ts/test/coverage3.test.ts`, `go/refer_test.go`), since `xc` has no
+> observable behaviour at the CLI to write a shared row against, for
+> the reason the next paragraph gives.
+>
+> **AND THE BOUND IS STILL SHADOWED.** With the count live, the gate
+> is `ctx.budget.depth <= this.xc` -- the SAME constant `unify_cycle`
+> uses for the unify call stack. The stack necessarily goes deeper
+> than the expansion count, so `unify_cycle` always fires first and
+> `recursion_budget` is unreachable from any document, measured at
+> depth budgets 3, 6, 20 and the 1000 default. So bound 2 is live but
+> inoperative, and giving it a bound of its own is a change to a
+> spec-visible trust constant (`test/spec/budget.tsv`,
+> `docs/trust.md`) rather than a defect fix -- the maintainer's call.
+> Even with its own bound the runaway would only be REFUSED, not made
+> to converge: the cost is exponential in the count, so a bound low
+> enough to fire quickly would refuse documents that should evaluate.
+> **Convergence still needs the structural rule below.**
+
 **THE MECHANISM.** Instrumenting each expansion with its path and its
 peer, on `%T & {}` over depth-2 data:
 

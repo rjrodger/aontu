@@ -107,6 +107,15 @@ class RefVal extends FeatureVal {
   // after unification (see `canon` below). Not a ValSpec field: it is
   // a rendering of the settled tree, never a parse-time property.
   expansion: Val | undefined = undefined
+
+  // THE RECURSION SEED (use-cases/BUGS.md §57). A reference that names
+  // a recursive definition IS the fixpoint reference; it mints a
+  // RecurseVal when it resolves. bumpRecurse stamps the expansion
+  // depth here, because a freshly cloned level holds the definition's
+  // references UNRESOLVED and so has no residual to stamp -- which is
+  // why the design's second termination bound read 0 at every
+  // expansion. The minted residual starts from this.
+  rxc: number = 0
   prefix: boolean = false
 
   constructor(
@@ -329,7 +338,7 @@ class RefVal extends FeatureVal {
         out = makeNilErr(ctx, 'path_cycle', this)
       }
       else {
-        const rec: any = new RecurseVal({ target } as any, ctx)
+        const rec: any = new RecurseVal({ target, xc: this.rxc } as any, ctx)
         rec.site = this.site
         rec.path = [...this.path]
         out = rec
@@ -610,7 +619,8 @@ class RefVal extends FeatureVal {
         // residual is the resolved form, exactly as at the prefix
         // positions inside the definition.
         else if (null != out && !snap && containsRecurseOf(out, this.peg as any)) {
-          const rec: any = new RecurseVal({ target: [...this.peg] } as any, ctx)
+          const rec: any = new RecurseVal(
+            { target: [...this.peg], xc: this.rxc } as any, ctx)
           rec.site = this.site
           rec.path = [...this.path]
           out = rec
@@ -805,6 +815,10 @@ class RefVal extends FeatureVal {
       ...(spec || {})
     }) as RefVal)
     out.expansion = this.expansion
+    // The recursion seed travels with the clone: a spread template is
+    // cloned per destination, and each clone's residual must start
+    // where the level it came from left off.
+    out.rxc = this.rxc
     return out
   }
 

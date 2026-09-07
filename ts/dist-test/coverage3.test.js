@@ -1375,6 +1375,19 @@ function capture(fn) {
         spreadMap.spread.cj = mk(['n']);
         (0, RecurseVal_1.bumpRecurse)(spreadMap, 4);
         Assert.strictEqual(spreadMap.spread.cj.xc, 4);
+        // A RAW REFERENCE IS SEEDED TOO, and this is the arm that makes
+        // the design's second termination bound live at all (use-cases/
+        // BUGS.md §57). A freshly cloned level holds the definition's
+        // references UNRESOLVED, so a walk looking only for residuals
+        // found nothing to stamp and `xc` read 0 at EVERY expansion, in
+        // the healthy form as much as the runaway one. The seed rides on
+        // the reference; RefVal mints its residual from it.
+        const ref = new RefVal_1.RefVal({ peg: ['n'], absolute: true }, ctx);
+        (0, RecurseVal_1.bumpRecurse)(ref, 7);
+        Assert.strictEqual(ref.rxc, 7);
+        // Monotone, like the residual arm beside it.
+        (0, RecurseVal_1.bumpRecurse)(ref, 3);
+        Assert.strictEqual(ref.rxc, 7);
         // containsRecurseOf: the depth guard, and a raw reference of a
         // DIFFERENT length is not the target.
         Assert.strictEqual((0, RecurseVal_1.containsRecurseOf)(mk(['n']), ['n'], 9), false);
