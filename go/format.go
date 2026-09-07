@@ -1724,7 +1724,7 @@ func formatMeetOf(text string) string {
 	case res.Nil():
 		outcome = res.(*NilVal).why
 	default:
-		if _, gerr := res.Gen(ctx); nil != gerr {
+		if _, gerr := genCollect(ctx, res); nil != gerr {
 			outcome = gerr.(*AontuError).Code
 		} else if rerr := relationErrors(ctx, res); nil != rerr {
 			outcome = rerr.(*AontuError).Code

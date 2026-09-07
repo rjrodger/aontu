@@ -97,7 +97,11 @@ func TestListSpreadRequiredBranch(t *testing.T) {
 	parent.sp = 3
 	ev := &ExpectVal{peg: newScalarKind(KindString), parent: parent, key: "0"}
 	l := &ListVal{peg: []Val{ev}}
-	_, err := l.Gen(&Ctx{src: "a:b", file: ""})
+	ctx := &Ctx{src: "a:b", file: ""}
+	if _, gerr := l.Gen(ctx); gerr != nil {
+		t.Fatalf("the bag RECORDS rather than returns: %v", gerr)
+	}
+	err := genErr(ctx, nil)
 	if err == nil {
 		t.Fatalf("expected listval_spread_required")
 	}

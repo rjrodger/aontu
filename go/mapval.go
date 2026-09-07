@@ -475,20 +475,17 @@ func (m *MapVal) Gen(ctx *Ctx) (any, error) {
 			// verb reads these off an isolated context to tell "the data
 			// has not yet satisfied the truth" from "the data
 			// contradicts it" (vet.go).
-			if ctx != nil && ctx.collect {
-				makeNilErrFull(ctx, code, va, vb, "", details)
-				break
-			}
-			// Render the full TS-style message (marker, headline, hint,
-			// frame with the `key <k>` caret submessage) via a NilVal,
-			// as TS BagVal.gen raises makeNilErr with details {key}.
-			src, file := "", ""
-			var texts map[string]string
-			if ctx != nil {
-				src, file, texts = ctx.src, ctx.file, ctx.texts
-			}
-			n := makeNilErrFull(nil, code, va, vb, "", details)
-			return nil, &AontuError{Msg: n.FullMessage(src, file, texts), Code: code}
+			// RECORD AND WALK ON, in both modes. TypeScript's
+			// BagVal.gen files the refusal on the context and `break`s
+			// its OWN key loop; the parent bag then carries on to its
+			// next key, so sibling subtrees each contribute a finding
+			// and the report names every one. Returning here instead
+			// aborted the whole walk at the first refusal, which is why
+			// the two ports could report DIFFERENT first failures for
+			// one document. The raise is now the caller's, out of what
+			// the context collected (Ctx.genErr).
+			makeNilErrFull(ctx, code, va, vb, "", details)
+			break
 		}
 
 		// An optional child generates in an isolated collect context so

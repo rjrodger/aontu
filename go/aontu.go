@@ -288,7 +288,7 @@ func (a *Aontu) GenerateVars(src string, vars map[string]Val) (any, error) {
 		return nil, err
 	}
 	out, gerr := res.Gen(ctx)
-	if gerr != nil {
+	if gerr = genErr(ctx, gerr); gerr != nil {
 		return nil, gerr
 	}
 	// The relation verdict (RELATIONS P2): declarations the graph

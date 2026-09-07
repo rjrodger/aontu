@@ -170,6 +170,49 @@ func (c *Ctx) adderr(n *NilVal) {
 	c.err = append(c.err, n)
 }
 
+// genErr is the RAISING shape: the failure GenerateVars reports. A
+// refusal that stopped the walk (a disjunct's, which TypeScript throws
+// from DisjunctVal.gen) leads; otherwise the refusals the bags
+// RECORDED and walked past are raised together, first one first.
+// Mirrors the `0 < ac.err.length` raise in ts/src/aontu.ts.
+func genErr(ctx *Ctx, gerr error) error {
+	if nil != gerr {
+		return gerr
+	}
+	if nil != ctx && 0 < len(ctx.err) {
+		return &AontuError{Msg: ctx.errmsg(), Code: ctx.err[0].why}
+	}
+	return nil
+}
+
+// genCollect generates and answers the FIRST refusal that generation
+// RECORDED, falling back to one it returned. The bags record and walk
+// on (BagVal.gen files a nil and breaks its own loop, in
+// ts/src/val/BagVal.ts), so the report-building callers read the
+// context rather than the return value, exactly as their twins do in
+// ts/src/query.ts, ts/src/view.ts and ts/src/format.ts. The fallback
+// covers a refusal that was already on the context before this
+// generation and so records nothing new -- a nil member the parse left
+// in the tree.
+func genCollect(ctx *Ctx, v Val) (any, error) {
+	before := 0
+	if nil != ctx {
+		before = len(ctx.err)
+	}
+	out, gerr := v.Gen(ctx)
+	if nil != ctx && before < len(ctx.err) {
+		n := ctx.err[before]
+		return nil, &AontuError{
+			Msg:  n.FullMessage(ctx.src, ctx.file, ctx.texts),
+			Code: n.why,
+		}
+	}
+	if nil != gerr {
+		return out, gerr
+	}
+	return out, nil
+}
+
 func (c *Ctx) errmsg() string {
 	parts := make([]string, 0, len(c.err))
 	for _, e := range c.err {
