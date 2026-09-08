@@ -46,6 +46,25 @@ seed: @"./ref/solar.data.json"
 # derived one from the other would be guessing, and would be wrong
 # three times out of seven here.
 
+# THE FIELDS ARE A MAP, KEYED BY THE COLUMN NAME, for the reason the
+# entities are one -- the note below states it once. So are an entity's
+# actions and the error envelope at the foot of this file: none of the
+# four has an order anything reads. A field is addressed by name,
+# `$.entity.planet.field.diameter`; an action is an endpoint; an error
+# is a method.
+#
+# A MAP IS WALKED IN SORTED-KEY ORDER, so the migration's columns, the
+# serialiser's keys and a page's rows come out alphabetically. Nothing
+# depends on that -- the wire names its keys, and the reference's
+# twenty tests pass either way. Where an order IS load-bearing this
+# file states it: `sequence` below for the entities, `rule` inside an
+# action. The one place the order was doing work nobody had written
+# down was an index table, whose header row and body row are two walks
+# over these fields that have to agree; `views.aon` now asks for the
+# key column first in both.
+#
+# `name` REPEATS THE KEY, for the same reason an entity's `id` does.
+
 # --- the entities ----------------------------------------------------
 #
 # A MAP, KEYED BY THE ENTITY'S OWN NAME. These are named things, not a
@@ -86,68 +105,52 @@ entity: {
     ui_collection_helper: "planets"
     ui_item_helper: "planet"
 
-    field: [
-      {
-        name: "id"
-        json: "id"
-        kind: "string"
-        required: true
-        pk: true
-        write: true
-        fk: false
-      }
-      {
-        name: "name"
-        json: "name"
-        fk: false
-        kind: "string"
-        required: true
-        pk: false
-        write: true
-      }
-      {
-        name: "kind"
-        json: "kind"
-        fk: false
-        kind: "string"
-        required: true
-        pk: false
-        write: true
-      }
-      {
-        name: "diameter"
-        json: "diameter"
-        fk: false
-        kind: "float"
-        required: true
-        pk: false
-        write: true
-      }
-      {
-        name: "terraform_state"
-        json: "terraformState"
-        fk: false
-        kind: "string"
-        pk: false
-        write: false
-      }
-      {
-        name: "forbid_state"
-        json: "forbidState"
-        fk: false
-        kind: "string"
-        pk: false
-        write: false
-      }
-      {
-        name: "forbid_reason"
-        json: "forbidReason"
-        fk: false
-        kind: "string"
-        pk: false
-        write: false
-      }
-    ]
+    field: id: name: "id"
+    field: id: json: "id"
+    field: id: kind: "string"
+    field: id: required: true
+    field: id: pk: true
+    field: id: write: true
+    field: id: fk: false
+    field: name: name: "name"
+    field: name: json: "name"
+    field: name: fk: false
+    field: name: kind: "string"
+    field: name: required: true
+    field: name: pk: false
+    field: name: write: true
+    field: kind: name: "kind"
+    field: kind: json: "kind"
+    field: kind: fk: false
+    field: kind: kind: "string"
+    field: kind: required: true
+    field: kind: pk: false
+    field: kind: write: true
+    field: diameter: name: "diameter"
+    field: diameter: json: "diameter"
+    field: diameter: fk: false
+    field: diameter: kind: "float"
+    field: diameter: required: true
+    field: diameter: pk: false
+    field: diameter: write: true
+    field: terraform_state: name: "terraform_state"
+    field: terraform_state: json: "terraformState"
+    field: terraform_state: fk: false
+    field: terraform_state: kind: "string"
+    field: terraform_state: pk: false
+    field: terraform_state: write: false
+    field: forbid_state: name: "forbid_state"
+    field: forbid_state: json: "forbidState"
+    field: forbid_state: fk: false
+    field: forbid_state: kind: "string"
+    field: forbid_state: pk: false
+    field: forbid_state: write: false
+    field: forbid_reason: name: "forbid_reason"
+    field: forbid_reason: json: "forbidReason"
+    field: forbid_reason: fk: false
+    field: forbid_reason: kind: "string"
+    field: forbid_reason: pk: false
+    field: forbid_reason: write: false
 
     # THE SEED ROWS FOR THIS ENTITY, each carrying its class. The join
     # happens here, where `$.seed.planet` is an absolute path and the
@@ -165,10 +168,14 @@ entity: {
     index: []
 
     # An action is a POST beside the record that sets one state field
-    # from the flags its body carries. The rules are tried in order and
-    # the first that fires wins, which is why they are a list.
-    action: [
-      {
+    # from the flags its body carries. A MAP, keyed by the action's own
+    # name: `terraform` and `forbid` are two named endpoints, not a
+    # first and a second.
+    #
+    # Its `rule` IS a list, and that one is an order the generated code
+    # depends on -- see the note on it below.
+    action: {
+      terraform: {
         name: "terraform"
         entity_title: "Planet"
         entity_param: "planet_id"
@@ -191,7 +198,7 @@ entity: {
         # terraforming, as the reference's if/elsif makes it.
         rule: [{ when:"stop" then:"idle" } { when:"start" then:"terraforming" }]
       }
-      {
+      forbid: {
         name: "forbid"
         entity_title: "Planet"
         entity_param: "planet_id"
@@ -209,105 +216,91 @@ entity: {
         accept: [{ name:"forbid" kind:"boolean" } { name:"why" kind:"string" }]
         rule: [{ when:"forbid" then:"forbidden" }]
       }
-    ]
+    }
   }
 
-  moon: {
-    id: "moon"
-    class: "Moon"
-    table: "moons"
-    controller: "moons"
-    controller_class: "MoonsController"
-    root: false
-    param: "moon_id"
-    title: "Moon"
-    plural: "Moons"
-    label: "name"
+  moon: id: "moon"
+  moon: class: "Moon"
+  moon: table: "moons"
+  moon: controller: "moons"
+  moon: controller_class: "MoonsController"
+  moon: root: false
+  moon: param: "moon_id"
+  moon: title: "Moon"
+  moon: plural: "Moons"
+  moon: label: "name"
 
-    api_collection: "/api/planet/:planet_id/moon"
-    api_item: "/api/planet/:planet_id/moon/:moon_id"
-    ui_collection: "/planets/:planet_id/moons"
-    ui_item: "/planets/:planet_id/moons/:moon_id"
-    ui_collection_helper: "planet_moons"
-    ui_item_helper: "planet_moon"
+  moon: api_collection: "/api/planet/:planet_id/moon"
+  moon: api_item: "/api/planet/:planet_id/moon/:moon_id"
+  moon: ui_collection: "/planets/:planet_id/moons"
+  moon: ui_item: "/planets/:planet_id/moons/:moon_id"
+  moon: ui_collection_helper: "planet_moons"
+  moon: ui_item_helper: "planet_moon"
 
-    # NESTED UNDER ITS PARENT, and the parent's delete takes it with
-    # it: one word here is the route shape, the foreign key, the scope
-    # every lookup runs in, and the `dependent: :destroy` that makes
-    # test 18 pass.
-    parent: "planet"
-    parent_class: "Planet"
-    parent_param: "planet_id"
-    parent_controller: "planets"
-    parent_title: "Planet"
+  # NESTED UNDER ITS PARENT, and the parent's delete takes it with
+  # it: one word here is the route shape, the foreign key, the scope
+  # every lookup runs in, and the `dependent: :destroy` that makes
+  # test 18 pass.
+  moon: parent: "planet"
+  moon: parent_class: "Planet"
+  moon: parent_param: "planet_id"
+  moon: parent_controller: "planets"
+  moon: parent_title: "Planet"
 
-    # The association on the parent that reaches this entity: a moon is
-    # found in `planet.moons` and nowhere else, which is the cascade
-    # seen from the outside.
-    parent_has: "moons"
+  # The association on the parent that reaches this entity: a moon is
+  # found in `planet.moons` and nowhere else, which is the cascade
+  # seen from the outside.
+  moon: parent_has: "moons"
 
-    # AN INDEX ROW CARRIES ITS OWN TABLE. Everything a generated line
-    # needs must be on the node the line's rule matched: a nested
-    # dispatch cannot see the entity the enclosing one matched, and a
-    # relative reference inside a call's argument does not resolve
-    # there at all -- silently, as an empty selection
-    # ([BUGS.md §89](../../use-cases/BUGS.md)).
-    index: [{ table:"moons" column:"planet_id" }]
+  # AN INDEX ROW CARRIES ITS OWN TABLE. Everything a generated line
+  # needs must be on the node the line's rule matched: a nested
+  # dispatch cannot see the entity the enclosing one matched, and a
+  # relative reference inside a call's argument does not resolve
+  # there at all -- silently, as an empty selection
+  # ([BUGS.md §89](../../use-cases/BUGS.md)).
+  moon: index: [{ table:"moons" column:"planet_id" }]
 
-    rows: form($.seed.moon, _ & { class:"Moon" })
+  moon: rows: form($.seed.moon, _ & { class:"Moon" })
 
-    children: []
+  moon: children: []
 
-    field: [
-      {
-        name: "id"
-        json: "id"
-        kind: "string"
-        required: true
-        pk: true
-        write: true
-        fk: false
-      }
-      {
-        name: "name"
-        json: "name"
-        fk: false
-        kind: "string"
-        required: true
-        pk: false
-        write: true
-      }
-      {
-        name: "planet_id"
-        json: "planet_id"
-        kind: "string"
-        required: true
-        fk: true
-        pk: false
-        write: true
-      }
-      {
-        name: "kind"
-        json: "kind"
-        fk: false
-        kind: "string"
-        required: true
-        pk: false
-        write: true
-      }
-      {
-        name: "diameter"
-        json: "diameter"
-        fk: false
-        kind: "float"
-        required: true
-        pk: false
-        write: true
-      }
-    ]
+  moon: field: id: name: "id"
+  moon: field: id: json: "id"
+  moon: field: id: kind: "string"
+  moon: field: id: required: true
+  moon: field: id: pk: true
+  moon: field: id: write: true
+  moon: field: id: fk: false
+  moon: field: name: name: "name"
+  moon: field: name: json: "name"
+  moon: field: name: fk: false
+  moon: field: name: kind: "string"
+  moon: field: name: required: true
+  moon: field: name: pk: false
+  moon: field: name: write: true
+  moon: field: planet_id: name: "planet_id"
+  moon: field: planet_id: json: "planet_id"
+  moon: field: planet_id: kind: "string"
+  moon: field: planet_id: required: true
+  moon: field: planet_id: fk: true
+  moon: field: planet_id: pk: false
+  moon: field: planet_id: write: true
+  moon: field: kind: name: "kind"
+  moon: field: kind: json: "kind"
+  moon: field: kind: fk: false
+  moon: field: kind: kind: "string"
+  moon: field: kind: required: true
+  moon: field: kind: pk: false
+  moon: field: kind: write: true
+  moon: field: diameter: name: "diameter"
+  moon: field: diameter: json: "diameter"
+  moon: field: diameter: fk: false
+  moon: field: diameter: kind: "float"
+  moon: field: diameter: required: true
+  moon: field: diameter: pk: false
+  moon: field: diameter: write: true
 
-    action: []
-  }
+  moon: action: {}
 }
 
 # --- the order, where the order is visible ---------------------------
@@ -334,31 +327,28 @@ sequence: [$.entity.planet $.entity.moon]
 # `{error, message}` with the reference's own wording: test 13 reads
 # the name and looks for "not found" in the message, so the shape and
 # the sentence are both part of the API.
+#
+# A MAP, keyed by the method each one becomes. `api_base.rb` walks it
+# with `emit` and writes one method per entry, so the only thing the
+# key orders is where the method lands on the page.
+#
 # THE MESSAGE IS A FORMAT AND ITS ARGUMENTS, not a sentence with the
 # target's interpolation already in it: `%s` is what every language
 # this could generate spells the same way, and `args` names what each
 # hole is FOR. The sentences are the reference's, because its test 13
 # looks for "not found" in the message.
-error: [
-  {
-    name: "NotFoundError"
-    method: "not_found"
-    status: 404
-    format: "%s with id '%s' not found"
-    args: ["entity" "id"]
-  }
-  {
-    name: "ValidationError"
-    method: "invalid"
-    status: 400
-    format: "%s"
-    args: ["detail"]
-  }
-  {
-    name: "ConflictError"
-    method: "conflict"
-    status: 409
-    format: "%s with id '%s' already exists"
-    args: ["entity" "id"]
-  }
-]
+error: not_found: name: "NotFoundError"
+error: not_found: method: "not_found"
+error: not_found: status: 404
+error: not_found: format: "%s with id '%s' not found"
+error: not_found: args: ["entity" "id"]
+error: invalid: name: "ValidationError"
+error: invalid: method: "invalid"
+error: invalid: status: 400
+error: invalid: format: "%s"
+error: invalid: args: ["detail"]
+error: conflict: name: "ConflictError"
+error: conflict: method: "conflict"
+error: conflict: status: 409
+error: conflict: format: "%s with id '%s' already exists"
+error: conflict: args: ["entity" "id"]

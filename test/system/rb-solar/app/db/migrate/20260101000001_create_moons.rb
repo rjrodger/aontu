@@ -6,10 +6,10 @@ class CreateMoons < ActiveRecord::Migration[8.0]
     # client chose -- `earth`, `luna` -- so the primary key is a string
     # the caller sets rather than a counter this table keeps.
     create_table :moons, id: :string do |t|
+      t.float :diameter
+      t.string :kind
       t.string :name
       t.string :planet_id
-      t.string :kind
-      t.float :diameter
       t.timestamps
     end
     add_index :moons, :planet_id

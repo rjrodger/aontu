@@ -7,9 +7,9 @@ class Moon < ApplicationRecord
   self.primary_key = "id"
 
   belongs_to :planet, class_name: "Planet", foreign_key: "planet_id"
+  validates :diameter, presence: true
   validates :id, presence: true
+  validates :kind, presence: true
   validates :name, presence: true
   validates :planet_id, presence: true
-  validates :kind, presence: true
-  validates :diameter, presence: true
 end

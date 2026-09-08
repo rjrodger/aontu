@@ -10,11 +10,11 @@
 <path d="M8 20V90H26" class="av-line"/>
 <text x="28" y="94" class="av-t">error</text>
 <path d="M32 100V110H50" class="av-line"/>
-<text x="52" y="114"><tspan class="av-t">0</tspan><tspan class="av-m"> (5)</tspan></text>
+<text x="52" y="114"><tspan class="av-t">conflict</tspan><tspan class="av-m"> (5)</tspan></text>
 <path d="M32 100V130H50" class="av-line"/>
-<text x="52" y="134"><tspan class="av-t">1</tspan><tspan class="av-m"> (5)</tspan></text>
+<text x="52" y="134"><tspan class="av-t">invalid</tspan><tspan class="av-m"> (5)</tspan></text>
 <path d="M32 100V150H50" class="av-line"/>
-<text x="52" y="154"><tspan class="av-t">2</tspan><tspan class="av-m"> (5)</tspan></text>
+<text x="52" y="154"><tspan class="av-t">not_found</tspan><tspan class="av-m"> (5)</tspan></text>
 <path d="M8 20V170H26" class="av-line"/>
 <text x="28" y="174" class="av-t">seed</text>
 <path d="M32 180V190H50" class="av-line"/>

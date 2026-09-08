@@ -22,8 +22,8 @@ Rails.application.routes.draw do
   get "/api/planet/:planet_id", to: "api/planets#show"
   put "/api/planet/:planet_id", to: "api/planets#update"
   delete "/api/planet/:planet_id", to: "api/planets#destroy"
-  post "/api/planet/:planet_id/terraform", to: "api/planets#terraform"
   post "/api/planet/:planet_id/forbid", to: "api/planets#forbid"
+  post "/api/planet/:planet_id/terraform", to: "api/planets#terraform"
 
   # Moons, the API
   get "/api/planet/:planet_id/moon", to: "api/moons#index"

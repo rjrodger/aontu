@@ -4,24 +4,24 @@
   <thead>
     <tr>
       <th>id</th>
-      <th>name</th>
-      <th>kind</th>
       <th>diameter</th>
-      <th>terraform_state</th>
-      <th>forbid_state</th>
       <th>forbid_reason</th>
+      <th>forbid_state</th>
+      <th>kind</th>
+      <th>name</th>
+      <th>terraform_state</th>
     </tr>
   </thead>
   <tbody>
     <% @records.each do |record| %>
       <tr>
         <td><%= link_to record.id, planet_path(record.id) %></td>
-        <td><%= record.name %></td>
-        <td><%= record.kind %></td>
         <td><%= record.diameter %></td>
-        <td><%= record.terraform_state %></td>
-        <td><%= record.forbid_state %></td>
         <td><%= record.forbid_reason %></td>
+        <td><%= record.forbid_state %></td>
+        <td><%= record.kind %></td>
+        <td><%= record.name %></td>
+        <td><%= record.terraform_state %></td>
       </tr>
     <% end %>
   </tbody>

@@ -3,18 +3,18 @@
 erDiagram
   PLANET ||--o{ MOON : "moons"
   PLANET {
-    string id PK
-    string name
-    string kind
     float diameter
-    string terraform_state
-    string forbid_state
     string forbid_reason
+    string forbid_state
+    string id PK
+    string kind
+    string name
+    string terraform_state
   }
   MOON {
+    float diameter
     string id PK
+    string kind
     string name
     string planet_id FK
-    string kind
-    float diameter
   }

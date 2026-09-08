@@ -6,12 +6,12 @@ class CreatePlanets < ActiveRecord::Migration[8.0]
     # client chose -- `earth`, `luna` -- so the primary key is a string
     # the caller sets rather than a counter this table keeps.
     create_table :planets, id: :string do |t|
-      t.string :name
-      t.string :kind
       t.float :diameter
-      t.string :terraform_state
-      t.string :forbid_state
       t.string :forbid_reason
+      t.string :forbid_state
+      t.string :kind
+      t.string :name
+      t.string :terraform_state
       t.timestamps
     end
   end

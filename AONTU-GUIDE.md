@@ -108,11 +108,14 @@ decision it never needed to make.
 ### The worked example
 
 [`test/system/rb-solar`](test/system/rb-solar) is a Rails application
-generated from one model, and its entities are a map for exactly these
-reasons. Its `sequence` exists because a moon keys into a planet: the
-migrations must create `planets` first, and the seeds must insert a
-planet before the moon that belongs to it. Five of its nine generators
-write one file per entity, never see an order, and read the map.
+generated from one model, and every named collection in it is a map for
+exactly these reasons: its entities, each entity's fields, an entity's
+actions, and the error envelope. Its `sequence` exists because a moon
+keys into a planet: the migrations must create `planets` first, and the
+seeds must insert a planet before the moon that belongs to it. Five of
+its nine generators write one file per entity, never see an order, and
+read the map. The one list that stayed a list inside all of it is an
+action's `rule`, which is a rule table tried in order.
 
 The pinned tree in
 [`doc/model-tree.txt`](test/system/rb-solar/doc/model-tree.txt) is the
@@ -133,3 +136,32 @@ and now reads:
 ```
 
 The second one tells you what the model contains.
+
+### What a conversion moves
+
+Converting a list to a map moves the walk from source order to
+sorted-key order, and everything downstream moves with it — quietly,
+because nothing is broken, it is just somewhere else.
+
+Most of that does not matter, and it is worth being clear about why:
+the order of a migration's columns is not the schema, the order of a
+serialiser's keys is not the JSON object, and a list of validations is a
+set. Converting `rb-solar`'s fields, actions and errors reordered a
+migration's columns, a model's `validates` lines, a serialiser's keys,
+two controller methods and three error methods, and the reference's
+twenty tests did not notice any of it.
+
+**One thing did.** An index page's header row and its body row are
+written by two separate loops over the fields, because the key's cell is
+a link and the others are not. While the fields were a list with `id`
+written first, one loop over them put the key column first in both rows
+— by luck, and nobody had written the luck down. As a map, `diameter`
+sorts first, so every planet's diameter came out under a header reading
+`id`, on a page that still answered 200 and still said Earth.
+
+So the question to ask before converting is not "does it still work". It
+is **which two walks over this collection have to agree with each
+other**. Those are the only places the source order was doing work that
+nobody stated, and each one is a line to write down: in `rb-solar` the
+header row now asks for the key column first, exactly as the body row
+always did.
