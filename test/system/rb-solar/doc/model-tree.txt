@@ -1,7 +1,7 @@
 $
 ├── entity
-│   ├── 0 (21)
-│   └── 1 (27)
+│   ├── moon (27)
+│   └── planet (21)
 ├── error
 │   ├── 0 (5)
 │   ├── 1 (5)
@@ -9,6 +9,9 @@ $
 ├── seed
 │   ├── moon (21)
 │   └── planet (8)
+├── sequence
+│   ├── 0 (21)
+│   └── 1 (27)
 └── service
     ├── api "/api"
     ├── name "solar"

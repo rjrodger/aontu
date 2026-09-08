@@ -41,8 +41,16 @@ the error envelope, and it **includes the reference's seed data as
 data** rather than copying it, so the rows this app serves and the
 rows the reference serves cannot drift apart.
 
-Four things in it are worth reading for the reasons behind them:
+Five things in it are worth reading for the reasons behind them:
 
+- **The entities are a map, keyed by their own names.** `$.entity.planet`
+  addresses one, `parent: "planet"` on the moon names a key that exists,
+  and a third entity is an insertion rather than a position. A map is
+  walked in sorted-key order, so where the order is on the page the
+  model states it: `sequence` lists the two in the order the migrations
+  create them and the seeds insert them, because a moon keys into a
+  planet. Five of the nine generators write one file per entity and
+  never see an order at all.
 - **Every field states its JSON name.** The wire says `terraformState`
   where the column says `terraform_state`, and `planet_id` either way.
   What a field is called in a target is a fact about the model, not a
