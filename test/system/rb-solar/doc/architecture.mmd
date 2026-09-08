@@ -1,0 +1,19 @@
+flowchart TB
+  browser["Browser"]
+  client["API client or Ruby SDK"]
+  routes["Rails router<br/>config/routes.rb"]
+  ui["PlanetsController<br/>MoonsController"]
+  api["Api::PlanetsController<br/>Api::MoonsController<br/>Api::BaseController"]
+  views["ERB pages<br/>application layout"]
+  json["JSON records<br/>or error responses"]
+  models["Planet and Moon<br/>Active Record"]
+  db[("SQLite<br/>planets and moons")]
+  browser -->|"HTML request"| routes
+  client -->|"API request"| routes
+  routes --> ui
+  routes --> api
+  ui -->|"records"| models
+  api -->|"read or write"| models
+  ui -->|"render HTML"| views
+  api -->|"serialise"| json
+  models --> db

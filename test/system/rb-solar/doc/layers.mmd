@@ -1,0 +1,8 @@
+flowchart TB
+  http["HTTP entry<br/>Puma and Rack: handwritten setup<br/>Rails routes: generated"]
+  presentation["Request and presentation layer<br/>UI and API controllers: generated<br/>ERB pages: generated<br/>controller base and layout: handwritten"]
+  domain["Domain and persistence layer<br/>Planet and Moon: generated<br/>validation and associations<br/>ApplicationRecord: handwritten"]
+  storage[("Storage<br/>SQLite database<br/>migrations and seeds: generated<br/>database configuration: handwritten")]
+  http --> presentation
+  presentation --> domain
+  domain --> storage
