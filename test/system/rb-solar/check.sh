@@ -117,8 +117,8 @@ $AONTU render --marker '%%-' --check "$DIR/doc" "$DIR/gen/erd.mmd" >/dev/null 2>
 pinned=1
 $AONTU view doc --depth 2 --out "$DIR/doc/model-tree.txt" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
 $AONTU view doc --depth 2 --as svg --out "$DIR/doc/model-tree.svg" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
-$AONTU view doc --depth 2 --at '$.entity.0' --out "$DIR/doc/planet-tree.txt" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
-$AONTU view doc --depth 2 --at '$.entity.0' --as svg --out "$DIR/doc/planet-tree.svg" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
+$AONTU view doc --depth 2 --at '$.entity.planet' --out "$DIR/doc/planet-tree.txt" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
+$AONTU view doc --depth 2 --at '$.entity.planet' --as svg --out "$DIR/doc/planet-tree.svg" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
 $AONTU view lattice --out "$DIR/doc/value-lattice.txt" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
 $AONTU view lattice --as svg --out "$DIR/doc/value-lattice.svg" --check "$DIR/model.aon" >/dev/null 2>&1 || pinned=0
 [ "$pinned" = 1 ] \

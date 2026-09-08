@@ -2,6 +2,11 @@
 #- #
 #- # The rows are the reference's `solar.data.json`, joined to their
 #- # entity in the model so each row carries the class that inserts it.
+#- #
+#- # READS `$.sequence`, NOT `$.entity`, for the reason migrate.rb does:
+#- # a map is walked in sorted-key order, and a moon whose planet has not
+#- # been inserted yet fails `belongs_to`. The planets go in first
+#- # because the model says they do.
 #- @"../model.aon"
 #-
 #- code: units: [
@@ -30,7 +35,7 @@ Planet.delete_all
 #-       # refuses it. One fragment per thing that produces lines.
 #-       {
 #-         k: "frag"
-#-         of: emit($.entity, {
+#-         of: emit($.sequence, {
 #-           match: class: string
 #-           replace: TITLE: .plural
 #-           body: [

@@ -1,10 +1,10 @@
                                             top
                                              │
        ┌────────────────────────────────┬────┴─────────────────────────┬──────────┐
- string (372)                        number                      boolean (48)   null
+ string (618)                        number                      boolean (96)   null
        │                                │                              │          │
        ├──────────────┬───────────┬─────┴───┬────────────┐             │          │
-    path()      integer (62)    float  biginteger   bigdecimal         │          │
+    path()      integer (91)    float  biginteger   bigdecimal         │          │
        │              │           │         │            │             │          │
        └──────────────┴───────────┴─────────┴┬───────────┴─────────────┴──────────┘
                                             nil

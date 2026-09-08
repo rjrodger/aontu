@@ -48,10 +48,20 @@ seed: @"./ref/solar.data.json"
 
 # --- the entities ----------------------------------------------------
 #
-# A list, not a map: the order is the order the migrations run in, and
-# a parent's table must exist before the child's foreign key.
-entity: [
-  {
+# A MAP, KEYED BY THE ENTITY'S OWN NAME. These are named things, not a
+# sequence: `$.entity.planet` addresses one, `parent: "planet"` below
+# names a key that exists, and a third entity is an insertion rather
+# than a position. A list would have given every one of them a number
+# nobody chose and nothing reads.
+#
+# `id` REPEATS THE KEY INSIDE THE NODE, because a child cannot read its
+# own key: `emit` and `filter` dispatch on what the node holds, and
+# `form` over a map hands its template the POSITION rather than the
+# name. `model.rb` needs it for a filename and `seeds.rb` for a class,
+# so it is written down, which is what this file does with every other
+# fact a generator reads.
+entity: {
+  planet: {
     id: "planet"
     class: "Planet"
     table: "planets"
@@ -202,7 +212,7 @@ entity: [
     ]
   }
 
-  {
+  moon: {
     id: "moon"
     class: "Moon"
     table: "moons"
@@ -298,7 +308,26 @@ entity: [
 
     action: []
   }
-]
+}
+
+# --- the order, where the order is visible ---------------------------
+#
+# A map is walked in sorted-key order, so `$.entity` gives moon before
+# planet. Five of the nine generators write one file per entity, and
+# for those the order is invisible: a controller is a controller
+# whichever was rendered first, and they read `$.entity`.
+#
+# FOUR GENERATORS PUT THE ENTITIES IN ONE FILE, and there the order is
+# on the page. Two of them need this one: a moon keys into a planet, so
+# the migrations must create `planets` first and the seeds must insert
+# a planet before the moon that belongs to it. The other two only read
+# better for it -- routes and a diagram that name the parent before the
+# child.
+#
+# So the order is stated, once, rather than smuggled in as the order
+# somebody happened to type the entities in. Adding a third entity is
+# an insertion in the map and a decision here.
+sequence: [$.entity.planet $.entity.moon]
 
 # --- the error envelope ----------------------------------------------
 #

@@ -1,13 +1,15 @@
 #- # migrate.rb --- one migration per entity, columns in model order.
 #- #
-#- # The entity list's ORDER is the order the migrations run in, so a
-#- # parent's table exists before the child that keys into it. `form`
-#- # makes one element per entity IN THE DATA'S ORDER, where `pack`
-#- # would sort by key and lose exactly that; `key()` at the element is
-#- # its position, and the position is the migration's version.
+#- # READS `$.sequence`, NOT `$.entity`. The entities are a map and a map
+#- # is walked in sorted-key order, which would create `moons` before
+#- # `planets` and leave the child's foreign key pointing at a table that
+#- # does not exist yet. `$.sequence` is the model's list of the two in
+#- # the order they must be created; `form` makes one element per entry
+#- # IN THAT ORDER, and `key()` at the element is its position, which is
+#- # the migration's version.
 #- @"../model.aon"
 #-
-#- ordered: form($.entity, _ & { seq:key() })
+#- ordered: form($.sequence, _ & { seq:key() })
 #-
 #- code: units: emit($.ordered, {
 #-   match: table: string

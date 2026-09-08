@@ -41,7 +41,7 @@ Rails.application.routes.draw do
 #-       # --- the human pages -----------------------------------------------
 #-       {
 #-         k: "frag"
-#-         of: emit($.entity, {
+#-         of: emit($.sequence, {
 #-           match: controller: string
 #-           # NO KEY IS A SUBSTRING OF ANOTHER, which `replace` checks before it
 #-           # visits a node: `COLLECTION` inside `COLLECTION_HELPER` is refused
@@ -70,7 +70,7 @@ Rails.application.routes.draw do
 #-       # the selection.
 #-       {
 #-         k: "frag"
-#-         of: emit($.entity, {
+#-         of: emit($.sequence, {
 #-           match: controller: string
 #-           replace: {
 #-             API_LIST: .api_collection
