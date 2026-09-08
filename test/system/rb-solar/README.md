@@ -24,6 +24,9 @@ The ERD uses database column names. JSON responses use `terraformState`,
 `forbidState`, and `forbidReason` for the corresponding planet fields;
 `planet_id` keeps the same name in the database and API.
 
+Learn [how aontu generates this ERD](doc/erd.md), from the parent
+relationship and field flags to the Mermaid output.
+
 ## The Rails application
 
 The browser pages list planets, show a planet, list its moons, and show a
@@ -227,6 +230,9 @@ Seven things in it are worth reading for the reasons behind them:
   see the node the enclosing one matched.
 
 
+Follow the [model guide](doc/model.md) to inspect these values
+and see how generators select them.
+
 ## The generators
 
 Nine of them, in [`gen/`](gen/). Eight are **files in the language
@@ -275,6 +281,9 @@ Nothing in this moves a line of the generated app: `render --check`
 compares byte for byte, and the first check in `check.sh` is that one.
 
 
+The [Rails template guide](doc/rails-code.md) follows a service
+value into a route and required fields into Active Record validations.
+
 ## How the app is generated
 
 One model, nine generators, one tree. `render --check` compares what
@@ -310,6 +319,9 @@ flowchart LR
 Choose where to make a change according to who owns the file. Generated
 files come from the model and generators. Handwritten files are maintained
 as ordinary Rails code.
+
+Follow [change and check the generated app](doc/change-and-check.md)
+to add a field, regenerate the outputs, and check the resulting diff.
 
 ### Where to edit
 
@@ -382,3 +394,10 @@ the Rails models. The model tree, planet tree, and value lattice are
 produced by `aontu view` and checked against committed text and SVG files.
 The [application architecture](doc/architecture.mmd) and
 [layer diagram](doc/layers.mmd) describe the committed Rails source.
+
+## Learn to use aontu with this example
+
+- [Read the application model](doc/model.md). Set up the CLI and inspect fields, associations, ordering, and seed data.
+- [Generate Rails code](doc/rails-code.md). Follow template markers, selections, replacements, and output paths.
+- [Generate the ERD](doc/erd.md). Trace entity relationships and field flags into Mermaid source and the displayed diagram.
+- [Change and check the app](doc/change-and-check.md). Add an optional field, regenerate the targets, and verify the application.

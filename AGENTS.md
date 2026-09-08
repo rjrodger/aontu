@@ -515,6 +515,12 @@ to the website by `aontu-lang/web` and are read by people who were not
 here.
 
 
+The Rails example's detail guides are published from
+`test/system/rb-solar/doc/*.md`. After editing them, run
+`node --test test/system/rb-solar/doc/guides.test.mjs`: it checks source
+excerpts and executes the render and field-change recipes in a temporary
+copy. The runtime application checks remain in the example's `check.sh`.
+
 ### Module and package are different words
 
 **A module is imported. A package is published.** They are not
