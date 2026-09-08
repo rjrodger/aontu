@@ -4,9 +4,9 @@
 <path d="M8 20V30H26" class="av-line"/>
 <text x="28" y="34" class="av-t">action</text>
 <path d="M32 40V50H50" class="av-line"/>
-<text x="52" y="54"><tspan class="av-t">0</tspan><tspan class="av-m"> (11)</tspan></text>
+<text x="52" y="54"><tspan class="av-t">forbid</tspan><tspan class="av-m"> (11)</tspan></text>
 <path d="M32 40V70H50" class="av-line"/>
-<text x="52" y="74"><tspan class="av-t">1</tspan><tspan class="av-m"> (11)</tspan></text>
+<text x="52" y="74"><tspan class="av-t">terraform</tspan><tspan class="av-m"> (11)</tspan></text>
 <path d="M8 20V90H26" class="av-line"/>
 <text x="28" y="94"><tspan class="av-t">api_collection</tspan><tspan class="av-m"> &quot;/api/planet&quot;</tspan></text>
 <path d="M8 20V110H26" class="av-line"/>
@@ -24,19 +24,19 @@
 <path d="M8 20V230H26" class="av-line"/>
 <text x="28" y="234" class="av-t">field</text>
 <path d="M32 240V250H50" class="av-line"/>
-<text x="52" y="254"><tspan class="av-t">0</tspan><tspan class="av-m"> (7)</tspan></text>
+<text x="52" y="254"><tspan class="av-t">diameter</tspan><tspan class="av-m"> (7)</tspan></text>
 <path d="M32 240V270H50" class="av-line"/>
-<text x="52" y="274"><tspan class="av-t">1</tspan><tspan class="av-m"> (7)</tspan></text>
+<text x="52" y="274"><tspan class="av-t">forbid_reason</tspan><tspan class="av-m"> (6)</tspan></text>
 <path d="M32 240V290H50" class="av-line"/>
-<text x="52" y="294"><tspan class="av-t">2</tspan><tspan class="av-m"> (7)</tspan></text>
+<text x="52" y="294"><tspan class="av-t">forbid_state</tspan><tspan class="av-m"> (6)</tspan></text>
 <path d="M32 240V310H50" class="av-line"/>
-<text x="52" y="314"><tspan class="av-t">3</tspan><tspan class="av-m"> (7)</tspan></text>
+<text x="52" y="314"><tspan class="av-t">id</tspan><tspan class="av-m"> (7)</tspan></text>
 <path d="M32 240V330H50" class="av-line"/>
-<text x="52" y="334"><tspan class="av-t">4</tspan><tspan class="av-m"> (6)</tspan></text>
+<text x="52" y="334"><tspan class="av-t">kind</tspan><tspan class="av-m"> (7)</tspan></text>
 <path d="M32 240V350H50" class="av-line"/>
-<text x="52" y="354"><tspan class="av-t">5</tspan><tspan class="av-m"> (6)</tspan></text>
+<text x="52" y="354"><tspan class="av-t">name</tspan><tspan class="av-m"> (7)</tspan></text>
 <path d="M32 240V370H50" class="av-line"/>
-<text x="52" y="374"><tspan class="av-t">6</tspan><tspan class="av-m"> (6)</tspan></text>
+<text x="52" y="374"><tspan class="av-t">terraform_state</tspan><tspan class="av-m"> (6)</tspan></text>
 <path d="M8 20V390H26" class="av-line"/>
 <text x="28" y="394"><tspan class="av-t">id</tspan><tspan class="av-m"> &quot;planet&quot;</tspan></text>
 <path d="M8 20V410H26" class="av-line"/>

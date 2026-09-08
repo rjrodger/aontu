@@ -12,16 +12,16 @@ module Api
       render json: { error: name, message: message }, status: status
     end
 
-    def not_found(entity, id)
-      render_error("NotFoundError", 404, format("%s with id '%s' not found", entity, id))
+    def conflict(entity, id)
+      render_error("ConflictError", 409, format("%s with id '%s' already exists", entity, id))
     end
 
     def invalid(detail)
       render_error("ValidationError", 400, format("%s", detail))
     end
 
-    def conflict(entity, id)
-      render_error("ConflictError", 409, format("%s with id '%s' already exists", entity, id))
+    def not_found(entity, id)
+      render_error("NotFoundError", 404, format("%s with id '%s' not found", entity, id))
     end
   end
 end

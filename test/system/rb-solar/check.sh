@@ -292,8 +292,42 @@ else
       done
       curl -s "http://127.0.0.1:$PORT/planets/earth" | grep -q "<h1>Earth</h1>" || pages=0
       curl -s "http://127.0.0.1:$PORT/planets/earth" | grep -q "moons/luna" || pages=0
+
+      # AND THE COLUMNS LINE UP. An index table's header row and its
+      # body row are written by two dispatches, and two loops over one
+      # collection can drift apart in silence -- they did: `field`
+      # became a map, a map walks in sorted-key order, the body kept
+      # writing the key's link cell first, and every planet's
+      # `diameter` came out under a header reading `id`. The page still
+      # answered 200 and still said Earth, so nothing above saw it.
+      #
+      # This reads the header row and Earth's row and asks what is
+      # actually under `name`.
+      aligned="$(curl -s "http://127.0.0.1:$PORT/planets" | node -e '
+        let page = ""
+        process.stdin.on("data", (d) => (page += d)).on("end", () => {
+          const head = [...page.matchAll(/<th>([^<]*)<\/th>/g)].map((m) => m[1])
+          const row = page.split("<tr>").find((r) => r.includes(">Earth<"))
+          const cell = row
+            ? [...row.matchAll(/<td>([\s\S]*?)<\/td>/g)].map((m) => m[1])
+            : []
+          const under = (name) => cell[head.indexOf(name)] || ""
+          process.stdout.write(
+            head.length === cell.length &&
+              under("id").includes("earth") &&
+              under("name").includes("Earth") &&
+              under("diameter").includes("12756")
+              ? "yes"
+              : "no"
+          )
+        })' 2>/dev/null)"
+      [ "$aligned" = yes ] || {
+        pages=0
+        echo "#   /planets: the header row and Earth's row do not line up"
+      }
+
       [ "$pages" = 1 ] \
-        && ok "the human pages answer, and a planet's page links to its moons" \
+        && ok "the human pages answer, the columns line up, and a planet links to its moons" \
         || fail "a human page did not answer as expected"
     fi
   fi

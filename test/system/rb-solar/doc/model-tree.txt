@@ -3,9 +3,9 @@ $
 │   ├── moon (27)
 │   └── planet (21)
 ├── error
-│   ├── 0 (5)
-│   ├── 1 (5)
-│   └── 2 (5)
+│   ├── conflict (5)
+│   ├── invalid (5)
+│   └── not_found (5)
 ├── seed
 │   ├── moon (21)
 │   └── planet (8)

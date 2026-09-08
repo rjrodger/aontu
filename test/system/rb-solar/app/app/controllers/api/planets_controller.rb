@@ -48,6 +48,18 @@ module Api
       head :no_content
     end
 
+    def forbid
+      record = find_one
+      return not_found("Planet", params[:planet_id]) if record.nil?
+
+      state = "allowed"
+      state = "forbidden" if params[:forbid]
+      record.forbid_reason = params[:forbid] ? params[:why] : nil
+      record.forbid_state = state
+      record.save!
+      render json: { ok: true, state: state }
+    end
+
     def terraform
       record = find_one
       return not_found("Planet", params[:planet_id]) if record.nil?
@@ -57,18 +69,6 @@ module Api
       state = "idle" if params[:stop]
       state = "terraforming" if params[:start]
       record.terraform_state = state
-      record.save!
-      render json: { ok: true, state: state }
-    end
-
-    def forbid
-      record = find_one
-      return not_found("Planet", params[:planet_id]) if record.nil?
-
-      state = "allowed"
-      state = "forbidden" if params[:forbid]
-      record.forbid_reason = params[:forbid] ? params[:why] : nil
-      record.forbid_state = state
       record.save!
       render json: { ok: true, state: state }
     end
@@ -96,20 +96,20 @@ module Api
     end
 
     def permitted
-      params.permit(:id, :name, :kind, :diameter)
+      params.permit(:diameter, :id, :kind, :name)
     end
 
     # THE WIRE NAME IS THE MODEL'S, not the column's: `terraformState`
     # over `terraform_state`, and `planet_id` either way.
     def serialize(record)
       {
-        "id" => record.id,
-        "name" => record.name,
-        "kind" => record.kind,
         "diameter" => record.diameter,
-        "terraformState" => record.terraform_state,
-        "forbidState" => record.forbid_state,
         "forbidReason" => record.forbid_reason,
+        "forbidState" => record.forbid_state,
+        "id" => record.id,
+        "kind" => record.kind,
+        "name" => record.name,
+        "terraformState" => record.terraform_state,
       }
     end
   end

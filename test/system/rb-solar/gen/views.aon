@@ -37,7 +37,26 @@ code: units: emit($.entity, [
                 `<table>`
                 `  <thead>`
                 `    <tr>`
-                emit(.field, {
+
+                # THE KEY COLUMN FIRST, THEN THE REST, in two dispatches
+                # rather than one over `.field`. The body below writes
+                # the key's cell itself, because that cell is a link and
+                # the others are not -- so the header has to be built the
+                # same way round or the two rows do not line up.
+                #
+                # It used to line up by luck: `field` was a list, `id`
+                # was written first in it, and one loop over the fields
+                # put the key column first in both rows. `field` is a map
+                # now and a map walks in sorted-key order, which put
+                # `diameter` under a header reading `id`. Stating the
+                # order the page wants is the fix; the model is not the
+                # place for it, because this is a fact about a TABLE.
+                emit(filter(.field, { pk:true }), {
+                  match: name: string
+                  replace: COLUMN: .name
+                  body: [`      <th>COLUMN</th>`]
+                })
+                emit(filter(.field, { pk:false }), {
                   match: name: string
                   replace: COLUMN: .name
                   body: [`      <th>COLUMN</th>`]
@@ -128,7 +147,14 @@ code: units: emit($.entity, [
                 `<table>`
                 `  <thead>`
                 `    <tr>`
-                emit(.field, {
+
+                # The key column first, then the rest, as above.
+                emit(filter(.field, { pk:true }), {
+                  match: name: string
+                  replace: COLUMN: .name
+                  body: [`      <th>COLUMN</th>`]
+                })
+                emit(filter(.field, { pk:false }), {
                   match: name: string
                   replace: COLUMN: .name
                   body: [`      <th>COLUMN</th>`]

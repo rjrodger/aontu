@@ -41,16 +41,22 @@ the error envelope, and it **includes the reference's seed data as
 data** rather than copying it, so the rows this app serves and the
 rows the reference serves cannot drift apart.
 
-Five things in it are worth reading for the reasons behind them:
+Seven things in it are worth reading for the reasons behind them:
 
-- **The entities are a map, keyed by their own names.** `$.entity.planet`
-  addresses one, `parent: "planet"` on the moon names a key that exists,
-  and a third entity is an insertion rather than a position. A map is
-  walked in sorted-key order, so where the order is on the page the
-  model states it: `sequence` lists the two in the order the migrations
-  create them and the seeds insert them, because a moon keys into a
-  planet. Five of the nine generators write one file per entity and
-  never see an order at all.
+- **The named collections are maps, keyed by their own names.** The
+  entities, an entity's fields, its actions and the error envelope are
+  all maps: `$.entity.planet.field.diameter` addresses a field,
+  `parent: "planet"` on the moon names a key that exists, and a new one
+  anywhere is an insertion rather than a position. A list would have
+  given each of them a number nobody chose, that a reader has to count
+  to and that moves when something is inserted in front of it.
+- **Where an order is load-bearing, the model says so.** A map is
+  walked in sorted-key order, so the order that is on the page is
+  stated rather than smuggled in: `sequence` lists the two entities in
+  the order the migrations create them and the seeds insert them,
+  because a moon keys into a planet, and an action's `rule` stays a
+  list for the reason set out below. Five of the nine generators
+  write one file per entity and never see an order at all.
 - **Every field states its JSON name.** The wire says `terraformState`
   where the column says `terraform_state`, and `planet_id` either way.
   What a field is called in a target is a fact about the model, not a
@@ -59,6 +65,14 @@ Five things in it are worth reading for the reasons behind them:
 - **Every field answers `pk` and `fk`, including with `false`.**
   Absence is not an answer a rule table can read
   ([BUGS.md §88](../../../use-cases/BUGS.md)).
+- **An index page's key column is asked for, not assumed.** A table's
+  header row and its body row are two dispatches over the same fields,
+  and the body writes the key's cell itself because that one is a link.
+  While `field` was a list with `id` written first, one loop over the
+  fields put the key column first in both rows by luck; a map sorts,
+  and every planet's `diameter` came out under a header reading `id`.
+  Both rows now name the key first, and `check.sh` reads the live page
+  and asks what is under `name`.
 - **An action's rules are listed lowest priority first.** The generated
   form is a sequence of assignments and the last one wins, so this
   reproduces the reference's `if`/`elsif`: `{start: true, stop: true}`

@@ -78,18 +78,18 @@ module Api
     end
 
     def permitted
-      params.permit(:id, :name, :planet_id, :kind, :diameter)
+      params.permit(:diameter, :id, :kind, :name, :planet_id)
     end
 
     # THE WIRE NAME IS THE MODEL'S, not the column's: `terraformState`
     # over `terraform_state`, and `planet_id` either way.
     def serialize(record)
       {
+        "diameter" => record.diameter,
         "id" => record.id,
+        "kind" => record.kind,
         "name" => record.name,
         "planet_id" => record.planet_id,
-        "kind" => record.kind,
-        "diameter" => record.diameter,
       }
     end
   end
