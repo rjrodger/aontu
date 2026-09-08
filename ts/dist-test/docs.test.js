@@ -539,17 +539,15 @@ function runStep(file, dir, step) {
     // The prose channel names scenario files too: a file directive's
     // name must appear in a code span in the three lines above it, so
     // the human channel and the machine channel cannot drift.
-    (0, node_test_1.test)('functions-table-signatures-match-the-registry', () => {
+    (0, node_test_1.test)('function-signatures-match-the-registry', () => {
         // THE DRIFT GATE (docs/design/SIGNATURES.0.md): the reference's
-        // functions table renders its signature column from the same
-        // registry the engine parses -- a row whose first cell names a
-        // builtin must BE that builtin's rendered signature (pipes
-        // markdown-escaped). Nobody writes a signature by hand.
+        // function headings and constraint table use the same signatures
+        // the engine parses. Table signatures escape their pipe characters.
         const { funcSig, renderSig } = require('../dist/sig');
         const text = Fs.readFileSync(Path.join(DOCS_DIR, 'reference-language.md'), 'utf8');
         let rows = 0;
         for (const line of text.split('\n')) {
-            const m = line.match(/^\| `([a-z]+)\(([^`]*)\)([^`]*)` \|/);
+            const m = line.match(/^(?:\| |### )`([a-z]+)\(([^`]*)\)([^`]*)`(?: \||$)/);
             if (null == m || undefined === funcSig[m[1]]) {
                 continue;
             }
@@ -560,12 +558,11 @@ function runStep(file, dir, step) {
                 continue;
             }
             const cell = (m[1] + '(' + m[2] + ')' + m[3]).replace(/\\[|]/g, '|');
-            Assert.equal(cell, renderSig(funcSig[m[1]]), 'functions-table row for ' + m[1]);
+            Assert.equal(cell, renderSig(funcSig[m[1]]), 'reference signature for ' + m[1]);
             rows++;
         }
-        // The main functions table holds these rows today; a table edit
-        // that drops below this floor is a removal, not drift.
-        Assert.ok(20 <= rows, 'functions-table rows found: ' + rows);
+        // The separate index check also requires every declared function.
+        Assert.ok(Object.keys(funcSig).length <= rows, 'reference signatures found: ' + rows);
     });
     (0, node_test_1.test)('scenario-files-are-named-in-prose', () => {
         for (const page of pages()) {
@@ -1043,7 +1040,7 @@ function stylePaths() {
     const section = source.split('## Functions\n')[1].split('\n## ')[0];
     const declared = Fs.readFileSync(Path.join(DOCS_DIR, '..', 'test', 'spec', 'signature.tsv'), 'utf8');
     const names = Array.from(declared.matchAll(/^([a-z]+)\(/gm), (m) => m[1]).sort();
-    const listed = Array.from(section.matchAll(/^\| `([a-z]+)\(/gm), (m) => m[1]);
-    Assert.deepStrictEqual(listed, names, 'the alphabetical Functions table must list each declared built-in exactly once');
+    const listed = Array.from(section.matchAll(/^### `([a-z]+)\(/gm), (m) => m[1]);
+    Assert.deepStrictEqual(listed, names, 'the alphabetical Functions index must list each declared built-in exactly once');
 });
 //# sourceMappingURL=docs.test.js.map

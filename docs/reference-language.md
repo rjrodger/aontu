@@ -1677,57 +1677,302 @@ For collection operations, compare [pack and each](#generating-children-pack-and
 `pack`, `each`, and `form` construct collections; `filter` selects members;
 `pick` projects a field; `emit` applies a rule table and flattens its output.
 
-| Function | Effect | Example |
-|---|---|---|
-| `above(n: number\|string) : constraint` | Constrain a numeric or string value to be strictly greater than a bound. See [bounds](#the-constraint-algebra). | `integer & above(0)` |
-| `acyclic() : constraint` | Require the edges of a declared relation to contain no cycle. See [declared relations](#declared-relations). | `rel() & acyclic()` |
-| `add(a: number, b: number) : number` | Add two numbers under the [number-tower rules](#arithmetic-add-sub-mul-div-mod-rem). | `add(2, 3)` → `5` |
-| `below(n: number\|string) : constraint` | Constrain a numeric or string value to be strictly less than a bound. See [bounds](#the-constraint-algebra). | `integer & below(10)` |
-| `close(m: any) : any` | seal a map/list against extra keys            | see [closed values](#closed-values-close--open) |
-| `copy(v: any) : any` | deep copy of a value or referenced node; clears `type`/`hide` marks | `copy({a:1,b:2})`→`{a:1,b:2}`; `copy($.x)` |
-| `deprecate(v: any, r?: map) : any` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
-| `div(a: number, b: number) : number` | Divide two numbers; integer division truncates towards zero. See [arithmetic and refusals](#arithmetic-add-sub-mul-div-mod-rem). | `div(7, 2)` → `3` |
-| `each(d: map\|list, template t?: any) : list` | one list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map | `open: each($.ports, integer)` |
-| `emit(s: map\|list, template t: map\|list) : list` | one flat list of pieces from a selection and a rule table: for each node, the first template whose `match` it unifies with, its `body` instantiated at that node. See [Transforming](#transforming-emit) | `lines: emit($.services, {match:{pin:string}, body:[.pin]})` |
-| `esc(s: string, variant?: string) : string` | Escape a string using a named convention; the default is JSON-style double-quoted text. See [escaping](#escs-variant-and-uscs-variant). | `esc("<a>", xml)` |
-| `filter(d: map\|list, trial c: any) : map\|list` | the children of `d` that ALREADY satisfy `c`: the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match) | `debugged: filter($.services, {debug:true})` |
-| `form(d: map\|list, template t: any) : list` | Construct one list element per source child by instantiating a template with `_` bound to that child. See [form](#form-the-order-preserving-map). | `form([a, b], upper(_))` → `["A", "B"]` |
-| `greatest(d: map\|list) : number` | Return the greatest numeric member, preserving its kind. An empty collection is refused. See [aggregates](#aggregating-sum-least-greatest). | `greatest([2, 7, 4])` → `7` |
-| `hide(v: any) : any` | mark `x` as hidden                            | `hide(world) & string`→`"world"` |
-| `inverse(projector k: string) : constraint` | Require every edge of a declared relation to have a corresponding edge under the named inverse. See [declared relations](#declared-relations). | `rel() & inverse(usedBy)` |
-| `join(d: map\|list, sep?: string) : string` | Join collection members as text, with an optional separator. See [join](#folding-to-a-string-join). | `join([a, b], ", ")` → `"a, b"` |
-| `key(up?: integer\|biginteger) : string` | the ancestor key `n` levels up (`0` = own key, default `1` = parent). `n` must be an **integer** (`integer` or `biginteger`); anything else is an error. A level beyond the top of the path yields `""`. | at `a:b:c`: `key()`→`"b"`, `key(0)`→`"c"`, `key(2)`→`"a"`, `key(2.0)`→error |
-| `least(d: map\|list) : number` | Return the least numeric member, preserving its kind. An empty collection is refused. See [aggregates](#aggregating-sum-least-greatest). | `least([2, 7, 4])` → `2` |
-| `length(n: number\|constraint) : constraint` | Constrain a string length or collection size. See [length semantics](#length-semantics). | `list() & length(min(1))` |
-| `list() : list` | the list **kind**: admits any list, defaults to nothing | `y: list() & [1]`→`[1]` |
-| `lower(s: string\|number) : string` | lowercase a string; **floor** of a number, keeping the argument's kind   | `lower(ABC)`→`"abc"`, `lower(2)`→ integer `2`, `lower(1.9)`→ float `1`, `lower(0d1.9)`→ bigdecimal `0d1.0` |
-| `map() : map` | the map **kind**: admits any map, defaults to nothing. See [Container kinds](#container-kinds-map-and-list) | `y: map() & {a:1}`→`{a:1}`; `y: map()`→ error |
-| `match(s: any, ...pr: (trial any, any), dflt?: any) : any` | the result of the first pattern `v` unifies with; a trailing argument is the default. No match and no default is an error naming the patterns tried | `size: match($.tier, small, {cpu:1}, {cpu:2})` |
-| `max(n: number\|string) : constraint` | Constrain a numeric or string value to be at most the bound. See [bounds](#the-constraint-algebra). | `integer & max(10)` |
-| `min(n: number\|string) : constraint` | Constrain a numeric or string value to be at least the bound. See [bounds](#the-constraint-algebra). | `integer & min(0)` |
-| `mod(a: number, b: number) : number` | Compute a modulo whose nonzero result follows the divisor's sign. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem). | `mod(-7, 3)` → `2` |
-| `move(v: any) : any` | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
-| `mul(a: number, b: number) : number` | Multiply two numbers under the [number-tower rules](#arithmetic-add-sub-mul-div-mod-rem). | `mul(2, 3)` → `6` |
-| `must(trial c: any, text msg: string) : constraint` | Apply an evaluation-time condition with an author-supplied failure message. See [must](#band-b-must). | `must(min(1), "must be positive")` |
-| `neq(...vals: number\|string) : constraint` | Exclude the listed numeric or string values. See [constraint atoms](#the-constraint-algebra). | `string & neq("reserved")` |
-| `open(m: any) : any` | reverse a `close`                             | `open(close({x:1})) & {y:2}`→`{x:1,y:2}` |
-| `pack(d: map\|list, template t: any) : map` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each) | `deploy: pack($.names, {replicas:*2\|integer})` |
-| `path(capture p?: path) : path` | **capture** `p` as a path value: the spelling, never the resolution; with no argument, the path **kind**. See [First-class paths](#first-class-paths-pathp) | `dep: path(.auth)` generates `".auth"`; `host: path()` |
-| `pick(d: map\|list, projector k: string\|integer) : any` | Project one field or index from every collection member into a list. See [pick](#projecting-fields-pick). | `pick([{n:a}, {n:b}], n)` → `["a", "b"]` |
-| `pref(v: any) : any` | mark `x` as preferred (same as `*x`)          | `pref(1)` canon `*1`; `pref(2),x:3`→`3` |
-| `re(text p: string) : constraint` | Constrain a string to match a portable regular expression. See [patterns](#re-and-the-portable-pattern-subset). | `string & re("^[a-z]+$")` |
-| `refer(template t?: any) : constraint` | constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert) | `dependsOn: [&: refer($.std.Service), path($.services.auth)]` |
-| `rel(template t?: any) : constraint` | Declare a field as a relation and optionally constrain its targets. See [declared relations](#declared-relations). | `dependsOn: rel() & [path($.auth)]` |
-| `rem(a: number, b: number) : number` | Compute the remainder of truncating division. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem). | `rem(-7, 3)` → `-1` |
-| `rep(s: string, text p: string, text sub: string) : string` | Replace every pattern match in a string. See [replacement syntax](#reps-pattern-sub). | `rep("a1b2", "[0-9]", "_")` |
-| `split(s: string, sep: string\|constraint) : list` | Split a string using a literal separator or a pattern constraint. See [split](#splits-sep). | `split("a,b", ",")` → `["a", "b"]` |
-| `sub(a: number, b: number) : number` | Subtract the second number from the first. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem). | `sub(7, 2)` → `5` |
-| `sum(d: map\|list) : number` | Add the numeric members of a collection; an empty collection sums to zero. See [aggregates](#aggregating-sum-least-greatest). | `sum([2, 3])` → `5` |
-| `super(t: any) : any` | the immediate parent type of `x`, structurally: a scalar's kind, a kind's parent, a container of its children's parents | `super(1)` → `integer`, `super(integer)` → `number`, `super({a:1})` → `{a:integer}` |
-| `type(t: any) : any` | mark `x` as a type/schema value               | `type(1) & number`→`1` |
-| `unique(projector k?: string) : constraint` | Require distinct members, optionally comparing a named field. See [unique semantics](#unique-semantics). | `list() & unique(id)` |
-| `upper(s: string\|number) : string` | uppercase a string; **ceiling** of a number, keeping the argument's kind | `upper(abc)`→`"ABC"`, `upper(2)`→ integer `2`, `upper(1.1)`→ float `2`, `upper(0d1.1)`→ bigdecimal `0d2.0` |
-| `usc(s: string, variant?: string) : string` | Decode text escaped with the named convention, refusing malformed input. See [escaping](#escs-variant-and-uscs-variant). | `usc(esc("<a>", xml), xml)` → `"<a>"` |
+### `above(n: number|string) : constraint`
+
+Constrain a numeric or string value to be strictly greater than a bound. See [bounds](#the-constraint-algebra).
+
+Example: `integer & above(0)`
+
+### `acyclic() : constraint`
+
+Require the edges of a declared relation to contain no cycle. See [declared relations](#declared-relations).
+
+Example: `rel() & acyclic()`
+
+### `add(a: number, b: number) : number`
+
+Add two numbers under the [number-tower rules](#arithmetic-add-sub-mul-div-mod-rem).
+
+Example: `add(2, 3)` → `5`
+
+### `below(n: number|string) : constraint`
+
+Constrain a numeric or string value to be strictly less than a bound. See [bounds](#the-constraint-algebra).
+
+Example: `integer & below(10)`
+
+### `close(m: any) : any`
+
+Seal a map/list against extra keys.
+
+Example: see [closed values](#closed-values-close--open)
+
+### `copy(v: any) : any`
+
+Deep copy of a value or referenced node; clears `type`/`hide` marks.
+
+Example: `copy({a:1,b:2})`→`{a:1,b:2}`; `copy($.x)`
+
+### `deprecate(v: any, r?: map) : any`
+
+Mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal`.
+
+Example: `port: deprecate(*8080|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})`
+
+### `div(a: number, b: number) : number`
+
+Divide two numbers; integer division truncates towards zero. See [arithmetic and refusals](#arithmetic-add-sub-mul-div-mod-rem).
+
+Example: `div(7, 2)` → `3`
+
+### `each(d: map|list, template t?: any) : list`
+
+One list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map.
+
+Example: `open: each($.ports, integer)`
+
+### `emit(s: map|list, template t: map|list) : list`
+
+One flat list of pieces from a selection and a rule table: for each node, the first template whose `match` it unifies with, its `body` instantiated at that node. See [Transforming](#transforming-emit).
+
+Example: `lines: emit($.services, {match:{pin:string}, body:[.pin]})`
+
+### `esc(s: string, variant?: string) : string`
+
+Escape a string using a named convention; the default is JSON-style double-quoted text. See [escaping](#escs-variant-and-uscs-variant).
+
+Example: `esc("<a>", xml)`
+
+### `filter(d: map|list, trial c: any) : map|list`
+
+The children of `d` that ALREADY satisfy `c`: the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match).
+
+Example: `debugged: filter($.services, {debug:true})`
+
+### `form(d: map|list, template t: any) : list`
+
+Construct one list element per source child by instantiating a template with `_` bound to that child. See [form](#form-the-order-preserving-map).
+
+Example: `form([a, b], upper(_))` → `["A", "B"]`
+
+### `greatest(d: map|list) : number`
+
+Return the greatest numeric member, preserving its kind. An empty collection is refused. See [aggregates](#aggregating-sum-least-greatest).
+
+Example: `greatest([2, 7, 4])` → `7`
+
+### `hide(v: any) : any`
+
+Mark `x` as hidden.
+
+Example: `hide(world) & string`→`"world"`
+
+### `inverse(projector k: string) : constraint`
+
+Require every edge of a declared relation to have a corresponding edge under the named inverse. See [declared relations](#declared-relations).
+
+Example: `rel() & inverse(usedBy)`
+
+### `join(d: map|list, sep?: string) : string`
+
+Join collection members as text, with an optional separator. See [join](#folding-to-a-string-join).
+
+Example: `join([a, b], ", ")` → `"a, b"`
+
+### `key(up?: integer|biginteger) : string`
+
+The ancestor key `n` levels up (`0` = own key, default `1` = parent). `n` must be an **integer** (`integer` or `biginteger`); anything else is an error. A level beyond the top of the path yields `""`.
+
+Example: at `a:b:c`: `key()`→`"b"`, `key(0)`→`"c"`, `key(2)`→`"a"`, `key(2.0)`→error
+
+### `least(d: map|list) : number`
+
+Return the least numeric member, preserving its kind. An empty collection is refused. See [aggregates](#aggregating-sum-least-greatest).
+
+Example: `least([2, 7, 4])` → `2`
+
+### `length(n: number|constraint) : constraint`
+
+Constrain a string length or collection size. See [length semantics](#length-semantics).
+
+Example: `list() & length(min(1))`
+
+### `list() : list`
+
+The list **kind**: admits any list, defaults to nothing.
+
+Example: `y: list() & [1]`→`[1]`
+
+### `lower(s: string|number) : string`
+
+Lowercase a string; **floor** of a number, keeping the argument's kind.
+
+Example: `lower(ABC)`→`"abc"`, `lower(2)`→ integer `2`, `lower(1.9)`→ float `1`, `lower(0d1.9)`→ bigdecimal `0d1.0`
+
+### `map() : map`
+
+The map **kind**: admits any map, defaults to nothing. See [Container kinds](#container-kinds-map-and-list).
+
+Example: `y: map() & {a:1}`→`{a:1}`; `y: map()`→ error
+
+### `match(s: any, ...pr: (trial any, any), dflt?: any) : any`
+
+The result of the first pattern `v` unifies with; a trailing argument is the default. No match and no default is an error naming the patterns tried.
+
+Example: `size: match($.tier, small, {cpu:1}, {cpu:2})`
+
+### `max(n: number|string) : constraint`
+
+Constrain a numeric or string value to be at most the bound. See [bounds](#the-constraint-algebra).
+
+Example: `integer & max(10)`
+
+### `min(n: number|string) : constraint`
+
+Constrain a numeric or string value to be at least the bound. See [bounds](#the-constraint-algebra).
+
+Example: `integer & min(0)`
+
+### `mod(a: number, b: number) : number`
+
+Compute a modulo whose nonzero result follows the divisor's sign. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem).
+
+Example: `mod(-7, 3)` → `2`
+
+### `move(v: any) : any`
+
+Resolve reference `p`, dropping unresolved optional keys.
+
+Example: `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}`
+
+### `mul(a: number, b: number) : number`
+
+Multiply two numbers under the [number-tower rules](#arithmetic-add-sub-mul-div-mod-rem).
+
+Example: `mul(2, 3)` → `6`
+
+### `must(trial c: any, text msg: string) : constraint`
+
+Apply an evaluation-time condition with an author-supplied failure message. See [must](#band-b-must).
+
+Example: `must(min(1), "must be positive")`
+
+### `neq(...vals: number|string) : constraint`
+
+Exclude the listed numeric or string values. See [constraint atoms](#the-constraint-algebra).
+
+Example: `string & neq("reserved")`
+
+### `open(m: any) : any`
+
+Reverse a `close`.
+
+Example: `open(close({x:1})) & {y:2}`→`{x:1,y:2}`
+
+### `pack(d: map|list, template t: any) : map`
+
+One keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each).
+
+Example: `deploy: pack($.names, {replicas:*2|integer})`
+
+### `path(capture p?: path) : path`
+
+**capture** `p` as a path value: the spelling, never the resolution; with no argument, the path **kind**. See [First-class paths](#first-class-paths-pathp).
+
+Example: `dep: path(.auth)` generates `".auth"`; `host: path()`
+
+### `pick(d: map|list, projector k: string|integer) : any`
+
+Project one field or index from every collection member into a list. See [pick](#projecting-fields-pick).
+
+Example: `pick([{n:a}, {n:b}], n)` → `["a", "b"]`
+
+### `pref(v: any) : any`
+
+Mark `x` as preferred (same as `*x`).
+
+Example: `pref(1)` canon `*1`; `pref(2),x:3`→`3`
+
+### `re(text p: string) : constraint`
+
+Constrain a string to match a portable regular expression. See [patterns](#re-and-the-portable-pattern-subset).
+
+Example: `string & re("^[a-z]+$")`
+
+### `refer(template t?: any) : constraint`
+
+Constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert).
+
+Example: `dependsOn: [&: refer($.std.Service), path($.services.auth)]`
+
+### `rel(template t?: any) : constraint`
+
+Declare a field as a relation and optionally constrain its targets. See [declared relations](#declared-relations).
+
+Example: `dependsOn: rel() & [path($.auth)]`
+
+### `rem(a: number, b: number) : number`
+
+Compute the remainder of truncating division. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem).
+
+Example: `rem(-7, 3)` → `-1`
+
+### `rep(s: string, text p: string, text sub: string) : string`
+
+Replace every pattern match in a string. See [replacement syntax](#reps-pattern-sub).
+
+Example: `rep("a1b2", "[0-9]", "_")`
+
+### `split(s: string, sep: string|constraint) : list`
+
+Split a string using a literal separator or a pattern constraint. See [split](#splits-sep).
+
+Example: `split("a,b", ",")` → `["a", "b"]`
+
+### `sub(a: number, b: number) : number`
+
+Subtract the second number from the first. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem).
+
+Example: `sub(7, 2)` → `5`
+
+### `sum(d: map|list) : number`
+
+Add the numeric members of a collection; an empty collection sums to zero. See [aggregates](#aggregating-sum-least-greatest).
+
+Example: `sum([2, 3])` → `5`
+
+### `super(t: any) : any`
+
+The immediate parent type of `x`, structurally: a scalar's kind, a kind's parent, a container of its children's parents.
+
+Example: `super(1)` → `integer`, `super(integer)` → `number`, `super({a:1})` → `{a:integer}`
+
+### `type(t: any) : any`
+
+Mark `x` as a type/schema value.
+
+Example: `type(1) & number`→`1`
+
+### `unique(projector k?: string) : constraint`
+
+Require distinct members, optionally comparing a named field. See [unique semantics](#unique-semantics).
+
+Example: `list() & unique(id)`
+
+### `upper(s: string|number) : string`
+
+Uppercase a string; **ceiling** of a number, keeping the argument's kind.
+
+Example: `upper(abc)`→`"ABC"`, `upper(2)`→ integer `2`, `upper(1.1)`→ float `2`, `upper(0d1.1)`→ bigdecimal `0d2.0`
+
+### `usc(s: string, variant?: string) : string`
+
+Decode text escaped with the named convention, refusing malformed input. See [escaping](#escs-variant-and-uscs-variant).
+
+Example: `usc(esc("<a>", xml), xml)` → `"<a>"`
+
+
+### Parent types
 
 `super(x)` answers the immediate parent type of its **argument**. For
 a concrete scalar that is the scalar's kind, and for a kind it is the
@@ -1782,6 +2027,8 @@ spelling of a lift that is itself recursive) which generation
 refuses like any unresolved call, and `super(null)` answers the null
 kind, which canon prints as `null`, the same spelling as the value.
 
+### Rounding numbers
+
 `upper()` and `lower()` round a number without narrowing it: the result
 carries the *argument's* kind, so `upper(2)` is an integer `2` (and
 unifies with `integer`) while `upper(1.1)` is a float `2` (and does
@@ -1798,6 +2045,8 @@ x:upper(0d1.1) & biginteger → error   (rounding does not change the leaf)
 
 A bigdecimal result is still a bigdecimal, so it keeps the one decimal
 place its leaf always renders, even when the value is whole.
+
+### Composing calls
 
 Functions compose with operators, references, list elements, and the
 preference mark:
