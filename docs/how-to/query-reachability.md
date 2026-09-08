@@ -65,7 +65,7 @@ the first in code-point order, so both engines print the same one.
 
 ## Direction matters
 
-Along `feeds`, the DAG answers directionally—downstream yes,
+Along `feeds`, the DAG answers directionally: downstream yes,
 upstream no:
 
 <!-- test: run -->
@@ -80,7 +80,7 @@ $ echo $?
 
 An unreachable pair is a failed check, and carries no path: there is
 no evidence for a negative answer. Exit `1` (rather than `4`) says
-the question was answered, and the answer was no—which is exactly
+the question was answered, and the answer was no, which is exactly
 what a containment policy wants to assert in CI ("nothing in the
 public tier may reach the ledger").
 
@@ -105,7 +105,7 @@ $ echo $?
 ```
 
 That is the difference between "are these connected at all" and "can
-this reach that *this way*"—and in a model that writes out its
+this reach that *this way*", and in a model that writes out its
 inverses, the unrestricted graph connects nearly everything, so
 `--relation` is what makes direction mean anything. The query is
 transitive but never reflexive for free: `reaches $.jobs.extract

@@ -2,8 +2,8 @@
 
 Documentation examples are small on purpose. Systems are not. The
 sixteen models in [`use-cases/`](../use-cases/) close that gap: each
-one is an enterprise-shaped system built as real aontu documents—a
-service catalog, a schema registry, an RBAC model—and each carries a
+one is an enterprise-shaped system built as real aontu documents (a
+service catalog, a schema registry, an RBAC model) and each carries a
 `check.sh` that drives the actual CLI and asserts every outcome, with
 golden diffs for expected output and error-code greps for expected
 refusals. When a page in these docs shows a shape, this is where that
@@ -93,7 +93,7 @@ rung with the file and line that wrote it. The full six-file layering:
 
 A REST contract for a project-management SaaS: entities, endpoints,
 request bodies keyed by status code, one error envelope. It is the
-document an agent codes against and is corrected by—the agent emits
+document an agent codes against and is corrected by: the agent emits
 a candidate body, `aontu vet` reports what fails and where, and the
 case's `repair.py` repairs it mechanically from the `--format json`
 findings. Exit codes are verdict classes (0 valid, 1 invalid, 3
@@ -123,7 +123,7 @@ governance gate a schema registry needs: additive changes pass, a
 narrowed constraint or an added required key exits 1 with a witness
 naming both files, and a `must()` on the new side answers *undecided*
 (exit 3) rather than guessing. The centrepiece is the two-release
-rename—deprecate in v2, remove in v3. The v2 mark, from
+rename: deprecate in v2, remove in v3. The v2 mark, from
 `profile-v2.aon`:
 
 ```aon
@@ -147,7 +147,7 @@ engine checks: a permission catalog, an exhaustive role registry,
 tenant plans, and agent-emitted candidates vetted against all of it. Every grant is a `refer()`-checked address, so a
 hallucinated permission is a located refusal, and the registry is
 `close()`d, so an invented role dies at review. The security rule "no
-role holds the wildcard unless flagged privileged" is structural—a
+role holds the wildcard unless flagged privileged" is structural: a
 role is a disjunction of two closed shapes:
 
 ```aon
@@ -242,7 +242,7 @@ files never absorb. Ten sets of the same path collapse to a single
 overlay line under `--in-place`, `why` attributes the served value to
 the overlay with rank annotations, and a hostile overlay is confined by
 `--trust`. The kill switch is a concrete pin in the catalog, so no
-overlay of any rank can flip it—`set` vets before writing and refuses
+overlay of any rank can flip it: `set` vets before writing and refuses
 with the pinning site named:
 
 ```
@@ -291,7 +291,7 @@ could not produce output at all.
 
 <!-- test: scenario exact-money -->
 
-The smallest such theorem, lifted from the case's `seed.aon`—write
+The smallest such theorem, lifted from the case's `seed.aon`: write
 it as `reconcile.aon`:
 
 <!-- test: file reconcile.aon -->
@@ -333,7 +333,7 @@ vendored into a consumer repo and held by `mod tidy` / `verify` /
 pins. The pin survives a byte-different, meaning-identical module
 refactor (a byte-hash lockfile breaks on exactly this), and a flipped
 default in the vendored tree fails evaluation with both hashes named. A single file can freeze the hash in the import string, with no
-`mod.aon` and no lockfile—the agent-sandbox mode:
+`mod.aon` and no lockfile: the agent-sandbox mode:
 
 <!-- test: skip a fragment of 11-shared-modules, which resolves against that case's module store; the case's own check.sh runs it -->
 ```aon
@@ -377,7 +377,7 @@ DAG, its refusals, and the append proposal:
 
 An approval chain: a `Step` is an approver, a decision, and optionally
 the step that follows it. Writing `then?: $.spec.Step` inside `Step`
-means the fixpoint, with no marker and no unrolled copies—the schema
+means the fixpoint, with no marker and no unrolled copies: the schema
 applies at every depth, expanding one level per [meet](unification.md)
 with concrete data, so `vet` descends exactly as far as the data does.
 Canon and the `aon1-` hash stay symbolic: one finite string pins an
@@ -454,7 +454,7 @@ $ aontu jsonschema --at '$.argschemas.read_file' registry.aon
 
 The two `re()` calls cross as an `allOf` of patterns, the closed map
 becomes `additionalProperties: false`, and the optional key stays out
-of `required`—with stderr empty, nothing was lost. The three moods
+of `required`, with stderr empty, nothing was lost. The three moods
 of the bridge (exact, lossy, refused):
 [`use-cases/14-jsonschema-export/`](../use-cases/14-jsonschema-export/).
 
@@ -464,8 +464,8 @@ The model is the source of the code. One catalogue of record types
 feeds a Go generator, a TypeScript generator and a SQL generator, each
 reading a different slice of it, and one `aontu render` turns the
 three units into files. A generator is a rule set: `emit` walks the
-records in source order and each node contributes *pieces*—a blank
-line, a head, one line per field at depth 1, a tail—which the renderer
+records in source order and each node contributes *pieces* (a blank
+line, a head, one line per field at depth 1, a tail) which the renderer
 folds into bytes, owning every indent and every terminator. Names like
 `Email` and `credit_cents` are written in the model rather than
 derived, because what a type is called in a target is a fact about the
@@ -549,8 +549,8 @@ CoreDep: { kind:mod layer:"core" | "util" }
 ```
 
 An upward edge then refuses at generation as an ordinary conflict naming
-both sides, and a loop between two modules of the *same* layer—which the
-layering allows—refuses under `acyclic()`. The case pins the refusal in
+both sides, and a loop between two modules of the *same* layer (which the
+layering allows) refuses under `acyclic()`. The case pins the refusal in
 both declaration orders. The same edges are drawn two ways and pinned as
 goldens: a dependency tree, drawn by [`aontu view
 tree`](reference-api.md#aontu-view) with derived roots and every
@@ -563,7 +563,7 @@ views: [`use-cases/16-module-deps/`](../use-cases/16-module-deps/).
 Twelve services on one message wire, each deployed as its own Lambda
 handler: the same forty lines with three things that vary per
 service. The generator is the handler file itself, as one rule set in
-the canonical form a template file expands into—the body is the
+the canonical form a template file expands into: the body is the
 file, line for line, and a value reaches a line through `replace`
 rather than a hole:
 

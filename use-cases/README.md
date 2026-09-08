@@ -51,8 +51,8 @@ different build.
 **Every case opens with its model tree**, drawn by [`aontu view
 doc`](../docs/reference-api.md#aontu-view) and pinned as a golden by
 its own `check.sh`, text and SVG. It is the one figure every document
-can carry: the other kinds read a report — the edge set, the
-provenance record, the subsumption order — and so need the model to
+can carry: the other kinds read a report (the edge set, the
+provenance record, the subsumption order) and so need the model to
 HAVE links, contributions or peers, while this reads the shape itself.
 The README's second section explains it, so a reader meets the model's
 arrangement before any of its values.

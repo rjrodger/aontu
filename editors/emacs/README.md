@@ -1,6 +1,6 @@
 # Aontu for Emacs
 
-`aontu-mode` — a major mode for Aontu source files (`.aon`, `.aontu`) with
+`aontu-mode`: a major mode for Aontu source files (`.aon`, `.aontu`) with
 syntax highlighting and language-server integration (diagnostics, hover,
 completion) for both **Eglot** and **lsp-mode**.
 

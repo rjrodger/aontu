@@ -50,7 +50,7 @@ invention.
 ## The model tree
 
 `model.aon` is the vocabulary plus the topology. `spec` generates
-empty—it is `hide()`-marked, being schema rather than data—and
+empty (it is `hide()`-marked, being schema rather than data) and
 `pipeline` holds the four jobs, each with its `feeds` and `fedBy`
 address lists.
 
@@ -95,7 +95,7 @@ feeds?: %JobEdge & acyclic() & inverse(fedBy)
 fedBy?: %JobEdge
 ```
 
-`%JobEdge` is an **alias**—`%name = value` at the top level declares one and
+`%JobEdge` is an **alias**: `%name = value` at the top level declares one and
 `%name` in value position uses it. It does not generate and does not
 appear in canon, so `spec.aon` with the name and `spec.aon` with
 `rel($.spec.JobShape)` written out at both ends are the same document
@@ -105,10 +105,10 @@ is a mistake nothing else here would catch: `inverse()` checks that
 every edge is mirrored, not that the two ends agree about what they
 point at.
 
-- `rel(t)`—the field's strings are checked entity addresses, and
+- `rel(t)`: the field's strings are checked entity addresses, and
   `t` flows into every target. Here `t` is `JobShape`, a thin sibling
   shape (`kind: job`) naming what the far end of every edge must be.
-- `acyclic()`, `inverse(fedBy)`—the graph atoms: lattice-inert
+- `acyclic()`, `inverse(fedBy)`: the graph atoms: lattice-inert
   declarations, registered during unification and decided at
   generation, where every edge is known.
 

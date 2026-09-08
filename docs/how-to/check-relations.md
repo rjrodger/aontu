@@ -33,7 +33,7 @@ spec: hide({
 One conjunction on `feeds` declares the whole contract. `rel(t)`
 makes the field's strings checked entity addresses and flows the
 endpoint type `t` into every target; `acyclic()` and `inverse(fedBy)`
-are the graph atoms—declarations that unification carries along
+are the graph atoms: declarations that unification carries along
 inert, whose verdict lands at generation. Data documents then stay
 plain lists of names. Write the topology as `pipeline.aon`:
 

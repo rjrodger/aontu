@@ -8,12 +8,12 @@ order: 80
 
 A model that holds the field names, the types, and the optionality
 already holds everything a Go struct or a TypeScript interface needs.
-This guide computes a Go file from one with a rule set—`emit`—and
+This guide computes a Go file from one with a rule set (`emit`) and
 renders it with `aontu render`, which owns every indent and every line
 terminator so the transform spells neither.
 
-For the full worked version—three targets in one instance, goldens,
-and a check that both ports render identical bytes—see
+For the full worked version (three targets in one instance, goldens,
+and a check that both ports render identical bytes) see
 [`use-cases/15-code-generation/`](../../use-cases/15-code-generation/).
 
 ## Hold the target text in a backtick string
@@ -41,7 +41,7 @@ $ aontu -c frag.aon
 A generator is a **rule set**: `emit(select, table)` visits every node
 of a selection in source order, takes the first template whose `match`
 the node unifies with, and instantiates its `body` against that
-node—`.name` is that node's `name`. The body is a list of **pieces**: a
+node: `.name` is that node's `name`. The body is a list of **pieces**: a
 bare string is a line, `{ k:"line" at:1 of:[…] }` is a line one level
 deeper, and `k:"blank"` is a blank line. A nested `emit` splices its
 pieces into the list, so the result is flat and every piece carries its
@@ -97,7 +97,7 @@ Each piece of that shape is there for a reason:
 
 - **A rule set walks the records in source order.** List order is
   what a file needs; `pack` would key by data and emit the records
-  alphabetically—silently wrong output for a file.
+  alphabetically: silently wrong output for a file.
 - **Pieces, not text.** A record contributes a blank line, a head, its
   fields and a tail; a field contributes one line *at depth 1*. The
   tab appears once, in the unit's `profile`; leave the profile out and
@@ -141,14 +141,14 @@ line each. The **loss report** goes to stderr: every fragment is a
 claim about a language the renderer does not parse, and each is
 listed, so a redirect keeps the bytes clean and the reader still sees
 what was not checked. `--strict` refuses the two escapes the renderer
-copies verbatim—a `text` declaration and a `raw` piece—and passes
+copies verbatim (a `text` declaration and a `raw` piece) and passes
 fragments.
 
 ## Write the files, and hold them
 
 `--out <dir>` writes every unit below `<dir>`, or nothing: the whole
 set is rendered first, and one refused unit means no file is touched.
-`--check <dir>` renders and compares, and is the CI form—drift is
+`--check <dir>` renders and compares, and is the CI form: drift is
 listed by path and exits 1:
 
 <!-- test: run -->
@@ -191,7 +191,7 @@ coverage: 1 path(s) read, 0 no output consumed, 1 declaration(s) no rule produce
 ```
 
 Nothing here is dead: the rule set reads `$.records`, and the whole
-model is under it. One declaration is a hole—the package clause, which
+model is under it. One declaration is a hole: the package clause, which
 the document writes by hand rather than a rule producing it. Add a
 `legacy:` key to `types.aon` that nothing reads and the report names it
 as dead the next run, which is how a field that outlived its generator
@@ -235,8 +235,8 @@ type NAME struct{}
 //- })
 ```
 
-`render` reads it directly—the entry's extension says it is a
-template—and there is nothing new to learn about generation itself:
+`render` reads it directly (the entry's extension says it is a
+template) and there is nothing new to learn about generation itself:
 
 <!-- test: run -->
 ```sh
@@ -266,7 +266,7 @@ Three things follow from writing it this way:
   generated file's. `aontu template --check struct.go` holds the file
   to the spelling the round trip answers, and `aontu render --check`
   against the committed output catches a body line whose whitespace
-  changed—an editor set to trim on save, say.
+  changed: an editor set to trim on save, say.
 
 `aontu template struct.go` prints the canonical form, the aontu the
 marked lines mean, for reading rather than for keeping. `aontu fmt
@@ -331,7 +331,7 @@ type Order struct {
 Nothing in the model spells `ID` or `int64`: the field is `id` and
 its type `int`, and the profile's case style for a field, its acronym
 set and its primitive table do the rest. What the target cannot
-enforce—a `check` on a field, an open record, a union in Go—is listed
+enforce (a `check` on a field, an open record, a union in Go) is listed
 on stderr as tier 1, and stays in the model.
 
 ## Put the target's names in the model

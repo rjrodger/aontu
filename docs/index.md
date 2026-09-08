@@ -4,14 +4,14 @@ aontu is a JSON structure **unifier**: a small language (a
 purpose-specific dialect inspired by [CUE](https://cuelang.org/)) and an
 engine that merges partial structures into one consistent result, or
 reports exactly where they conflict. The same source can describe data,
-the schema that constrains it, and the defaults that fill it in—all in
+the schema that constrains it, and the defaults that fill it in: all in
 one notation, all combined by a single operation: *unification*.
 
 This repository ships **two implementations kept in parity**:
 
-- **TypeScript** in [`../ts/`](../ts/)—the canonical implementation,
+- **TypeScript** in [`../ts/`](../ts/): the canonical implementation,
   published to npm as [`aontu`](https://npmjs.com/package/aontu).
-- **Go** in [`../go/`](../go/)—a port
+- **Go** in [`../go/`](../go/): a port
   (`github.com/aontu-lang/aontu/go`) that mirrors the core semantics.
 
 Both are checked against one language-agnostic test suite in
@@ -30,7 +30,7 @@ open it. Reach for the part that matches your need:
 | **Learn** the graph layer (identity, relations, reachability) | [Graph tutorial](tutorial-graph.md) |
 | **Accomplish a specific task** you already have in mind       | [How-to guides](how-to/) |
 | **Look up** exact syntax, semantics, options, or API surface  | [Language reference](reference-language.md) · [API reference](reference-api.md) |
-| **Understand unification itself**—meet, top, bottom, the lattice | [Unification](unification.md) |
+| **Understand unification itself**: meet, top, bottom, the lattice | [Unification](unification.md) |
 | **Understand** how and why the engine works the way it does   | [Explanation](explanation.md) |
 | **See whole systems defined**, each with its checks runnable  | [Use cases](use-cases.md) |
 
@@ -106,7 +106,7 @@ For agents:
   [worked example ladder](skill/examples.md) whose documents the test
   suite executes, and the [error-code index](skill/error-codes.md).
 -  [The published
-  grammar](reference-language.md#the-published-grammar)—[`grammar/aontu.abnf`](../grammar/aontu.abnf)
+  grammar](reference-language.md#the-published-grammar): [`grammar/aontu.abnf`](../grammar/aontu.abnf)
   to read, with railroad diagrams; [`aontu.gbnf`](../grammar/aontu.gbnf)
   and [`aontu.lark`](../grammar/aontu.lark) for constrained decoding.
 
@@ -164,7 +164,7 @@ with a precise error rather than silently resolved: the preferred
 branch keeps the kind it names, which is
 [argued in the explanation](explanation.md#a-preference-is-gated-by-kind-not-by-family).
 
-Try it without writing a file—both implementations ship an `aontu`
+Try it without writing a file: both implementations ship an `aontu`
 command that evaluates a file, reads stdin, or starts a REPL:
 
 <!-- test: run -->

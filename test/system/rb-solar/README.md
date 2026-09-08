@@ -1,4 +1,4 @@
-# rb-solar — a Rails application, generated
+# rb-solar: a Rails application, generated
 
 ![The model's key tree](doc/model-tree.svg)
 
@@ -17,7 +17,7 @@ and the entity-relationship diagram are all consequences of it, and
 ## What it is held to
 
 `ref/` carries the reference verbatim at one commit and nothing there
-is edited — see [`ref/README.md`](ref/README.md), which also records
+is edited: see [`ref/README.md`](ref/README.md), which also records
 the one place the OpenAPI description and the executable validation
 disagree, and why the executable one wins.
 
@@ -29,7 +29,7 @@ people's code:
   or care that the thing answering is Rails rather than Fastify. All
   twenty of its tests pass, cascade delete and error envelope included.
 - **the reference's Ruby SDK**, driving the app through its real
-  client, in [`ref/sdk_live.rb`](ref/sdk_live.rb) — thirteen assertions
+  client, in [`ref/sdk_live.rb`](ref/sdk_live.rb): thirteen assertions
   that fail, and that exit 1 with no server. Not the SDK's own suite,
   which passes with the server turned off ([#177](https://github.com/aontu-lang/aontu/issues/177)).
 
@@ -50,7 +50,7 @@ Seven things in it are worth reading for the reasons behind them:
   anywhere is an insertion rather than a position. A list would have
   given each of them a number nobody chose, that a reader has to count
   to and that moves when something is inserted in front of it.
-- **Where an order is load-bearing, the model says so.** A map is
+- **Declare any required order in the model.** A map is
   walked in sorted-key order, so the order that is on the page is
   stated rather than smuggled in: `sequence` lists the two entities in
   the order the migrations create them and the seeds insert them,
@@ -76,7 +76,7 @@ Seven things in it are worth reading for the reasons behind them:
 - **An action's rules are listed lowest priority first.** The generated
   form is a sequence of assignments and the last one wins, so this
   reproduces the reference's `if`/`elsif`: `{start: true, stop: true}`
-  is terraforming, not idle — a case the reference's own validation
+  is terraforming, not idle: a case the reference's own validation
   never exercises.
 - **Everything a generated line needs is on the node its rule matched.**
   An entity's indexes and seed rows are stated under the entity, each
@@ -86,7 +86,7 @@ Seven things in it are worth reading for the reasons behind them:
 ## The generators
 
 Nine of them, in [`gen/`](gen/). Eight are **files in the language
-they generate** — a marked line carries the aontu and the target's own
+they generate**: a marked line carries the aontu and the target's own
 tools read the rest, so `ruby -c` parses the seven Ruby ones and a
 Mermaid renderer draws the diagram:
 
@@ -99,7 +99,7 @@ Mermaid renderer draws the diagram:
 | `api_base.rb` | the `{error, message}` envelope, one method per error |
 | `api_controller.rb` | the five verbs, the actions, the serialiser, the parent scope |
 | `ui_controller.rb` | the page controllers |
-| `erd.mmd` | the ER diagram — a Mermaid file whose marker is `%%-` |
+| `erd.mmd` | the ER diagram: a Mermaid file whose marker is `%%-` |
 | `views.aon` | the four ERB pages, in canonical aontu |
 
 `views.aon` is the exception, and the reason is a limit worth knowing:
@@ -107,14 +107,14 @@ ERB's only comment is `<%# … %>`, a delimited form closing `%>`, and
 the template surface's block marker is fixed to the C family (`/*-` …
 `*/`). No marker an ERB file can carry is one ERB itself ignores, so a
 generator written as an `.html.erb` file could not stay valid in its
-own language — which is the whole promise.
+own language, which is the whole promise.
 
 `erd.mmd` shows the other side of that: Mermaid is not in the marker
 table, and one `--marker '%%-'` is all it costs.
 
 All nine are in the form `aontu fmt` writes, and `check.sh` says so.
-A generator is two documents on one page — the target's, in its own
-lines, and aontu's, in the marker lines — and only the first one used to
+A generator is two documents on one page (the target's, in its own
+lines, and aontu's, in the marker lines) and only the first one used to
 have a shape you could read. The marker now stands at the left margin
 with the aontu indented after it, so the tree is visible as a tree:
 
@@ -210,7 +210,7 @@ consequence of `model.aon`.
 Only what the model does not decide: `Gemfile`, `config/`, `bin/`,
 `ApplicationController`, `ApplicationRecord`, `ApplicationHelper` and
 the layout. Nothing hand-written carries the generated banner, and
-nothing generated is edited — `render --check` reports a hand edit as
+nothing generated is edited: `render --check` reports a hand edit as
 drift.
 
 ## How development actually works
@@ -219,15 +219,15 @@ A generated scaffold that may only ever be regenerated is a demo. A
 real system is edited for years, by people and increasingly by agents,
 and most of that editing is not something a model should decide. So the
 question this system exists to answer is not "can a generator write
-Rails" — it is **where does hand work go, and what stops it drifting.**
+Rails": it is **where does hand work go, and what stops it drifting.**
 
 ### Three places work happens, and they are not interchangeable
 
 | you are changing | edit | what holds it |
 |---|---|---|
-| a **fact about the system** — a field, an entity, a route shape, an action's rules, a seed row | `model.aon` | the model is the only statement of it; every target follows |
-| **how a fact becomes code** — the shape of a controller, the columns a migration writes | the generator in `gen/` | it stays a valid file in its own language, so `ruby -c` still parses it |
-| **anything the model does not decide** — a Gemfile, an initializer, a background job, a service object, a bespoke query | the hand-written set | nothing; it is ordinary Ruby, reviewed like ordinary Ruby |
+| a **fact about the system**: a field, an entity, a route shape, an action's rules, a seed row | `model.aon` | the model is the only statement of it; every target follows |
+| **how a fact becomes code**: the shape of a controller, the columns a migration writes | the generator in `gen/` | it stays a valid file in its own language, so `ruby -c` still parses it |
+| **anything the model does not decide**: a Gemfile, an initialiser, a background job, a service object, a bespoke query | the hand-written set | nothing; it is ordinary Ruby, reviewed like ordinary Ruby |
 
 The boundary is not a convention anyone has to remember. Every
 generated file opens with
@@ -244,8 +244,7 @@ the check names the file.
 
 The interesting case is not the one the rules cover. It is the day
 someone needs a generated file to do something the model has no way to
-say. There are three honest answers, and choosing between them is the
-design work:
+say. Choose how to extend the generated application:
 
 1. **Lift it into the model.** The change is a fact about the system,
    so state it once and let every target that cares consume it. This is
@@ -255,12 +254,12 @@ design work:
    code, not about the system. The model does not move; one rule does.
 3. **Move the file out.** Delete its rule, drop the banner, and it
    becomes an ordinary hand-written file. This is a real option and
-   sometimes the right one — a controller that has grown genuinely
+   sometimes the right one: a controller that has grown genuinely
    bespoke logic is no longer a consequence of the model, and
    pretending otherwise makes the generator worse for everything else.
 
 What is **not** an answer is editing the generated file and leaving it.
-That is the state the check exists to make impossible to reach quietly.
+That is the state the check exists to make visible in the next check.
 
 ### Why this is the shape an agent needs
 
@@ -273,7 +272,7 @@ what makes it recoverable:
   whole tree, in under a second. No reviewer has to hold the generated
   set in their head.
 - **The fix is mechanical.** Drift on a generated file means one of the
-  three answers above, and the diff shows which — a hand edit that the
+  three answers above, and the diff shows which: a hand edit that the
   generator would also have written is a model change waiting to be
   named; one it would not is a bespoke change that has to move out.
 - **The reference is still the judge.** The eleven checks end with
@@ -283,7 +282,7 @@ what makes it recoverable:
 
 The generated half and the hand-written half are reviewed differently
 on purpose. A diff to `app/` under a generated banner should be read as
-a diff to `model.aon` or to `gen/` — because that is what caused it, and
+a diff to `model.aon` or to `gen/`, because that is what caused it, and
 the check will not let it be anything else.
 
 ## Running it

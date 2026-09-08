@@ -1,6 +1,6 @@
 <a name="top"></a>
 
-# aontu: JSON Structure unifier
+# aontu: JSON structure unifier
 
 [![npm version](https://img.shields.io/npm/v/aontu.svg)](https://npmjs.com/package/aontu)
 [![build](https://github.com/aontu-lang/aontu/actions/workflows/build.yml/badge.svg)](https://github.com/aontu-lang/aontu/actions/workflows/build.yml)
@@ -9,8 +9,9 @@
 |---|---|
 
 
-This unifier is heavily inspired by [Cue Lang](https://cuelang.org/)
-and may be regarded as a purpose-specific dialect.
+aontu combines data, schemas, and defaults into one consistent result,
+or reports where they conflict. It is a purpose-specific dialect
+inspired by [CUE](https://cuelang.org/).
 
 
 ## Implementations
@@ -18,9 +19,9 @@ and may be regarded as a purpose-specific dialect.
 aontu ships two implementations, kept in parity (structure inspired by
 [`voxgig/util`](https://github.com/voxgig/util)):
 
-- **TypeScript** in [`ts/`](ts/)—the canonical implementation
+- **TypeScript** in [`ts/`](ts/): the canonical implementation
   (published to npm as `aontu`).
-- **Go** in [`go/`](go/)—a port (`github.com/aontu-lang/aontu/go`) that
+- **Go** in [`go/`](go/): a port (`github.com/aontu-lang/aontu/go`) that
   mirrors the core unification semantics.
 
 Both are checked against a single, language-agnostic test suite in
@@ -107,7 +108,7 @@ asserts every outcome.
 ## Security and contributing
 
 - **Security**: the evaluator's trust contract
-  ([docs/trust.md](docs/trust.md)) is the security surface—see
+  ([docs/trust.md](docs/trust.md)) is the security surface: see
   [SECURITY.md](SECURITY.md) for scope and how to report privately.
 - **Contributing**: start at [CONTRIBUTING.md](CONTRIBUTING.md), which
   points at [AGENTS.md](AGENTS.md), the full contributor and agent

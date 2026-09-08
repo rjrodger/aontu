@@ -27,7 +27,7 @@ it.
 Ensure `aontu` is on your `PATH` (`npm install -g aontu`, or any install
 channel); the server is its `lsp` verb. On Windows the npm entry point
 is the shim `aontu.cmd`, and an LSP client that spawns without a shell
-cannot execute it — name `aontu.cmd` explicitly, or point the command
+cannot execute it: name `aontu.cmd` explicitly, or point the command
 at `node` with the server script as its argument, as the examples
 below do. On opening a
 `.aon` file the plugin starts the server via Neovim's built-in LSP client.

@@ -127,8 +127,8 @@ The band order is not declared to the verb: it is the partition order
 of the layer-level graph (a layer depends on the layers its modules
 depend on), reversed so the layer nothing depends on is on top, which
 is why it agrees with `spec.aon` without reading it. The footer is the
-layering rule, counted -- `auth -> http` and `store -> log` are the two
-sideways edges the rule allows -- and an upward edge, were the model
+layering rule, counted (`auth -> http` and `store -> log` are the two
+sideways edges the rule allows) and an upward edge, were the model
 to admit one, would be named under it. A model with an upward edge has
 a cyclic layer graph and no derivable order; `--layers
 app,feature,core,util` names it then.
@@ -235,8 +235,8 @@ views: {
 
 `aontu view --views '$.views' --check views.aon` draws all eight from
 one evaluation and gates them together, which is what `check.sh` runs.
-A declaration's keys are the view options -- the command-line flags
-without the dashes -- so the file says exactly what the verb would have
+A declaration's keys are the view options (the command-line flags
+without the dashes) so the file says exactly what the verb would have
 been asked, in a form the review reads and CI enforces. `views` is this
 document's own key: the engine is told where to look and knows nothing
 about the name.
@@ -250,10 +250,10 @@ its field:
     dependsOn?: rel($.spec.ModShape) & acyclic() & inverse(usedBy)
     usedBy?: rel($.spec.ModShape)
 
-- `rel(t)`—the field's entries are checked tree addresses, and `t`
+- `rel(t)`: the field's entries are checked tree addresses, and `t`
   flows into every target. Addresses are written `path($.mods.store)`:
   a bare string is never an address.
-- `acyclic()`, `inverse(usedBy)`—the graph atoms: lattice-inert
+- `acyclic()`, `inverse(usedBy)`: the graph atoms: lattice-inert
   declarations, registered during unification and decided at
   generation, where every edge is known.
 

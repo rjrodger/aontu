@@ -878,8 +878,7 @@ describe('docs-style', () => {
   // scan misses any phrase a wrap happens to split.
   //
   // The tests below stay on physical lines on purpose: `we` and `I` are
-  // single tokens no wrap can split, and the em-dash rules are defined
-  // per line rather than per paragraph.
+  // single tokens no wrap can split.
   test('no-banned-phrases-in-prose', () => {
     const hits: string[] = []
     for (const { file, abs } of stylePaths()) {
@@ -903,47 +902,21 @@ describe('docs-style', () => {
   })
 
 
-  // Google's dash ruling: no space on either side. Vale's own
-  // `Google.EmDash` is a warning because it cannot reliably tell a
-  // fence from prose on these pages, and because it reads a dash
-  // written tight against an inline code span as spaced. This one runs
-  // over the same stripper the rest of the gate uses.
-  test('em-dashes-are-spaced', () => {
-    const hits: string[] = []
-    for (const { file, abs } of stylePaths()) {
-      fenceless(Fs.readFileSync(abs, 'utf8'))
-        .split('\n')
-        .forEach((line, i) => {
-          if (/\s—|—\s|—$|^—/.test(line)) {
-            hits.push(`${file}:${i + 1}: ${line.trim()}`)
-          }
-        })
-    }
-    Assert.deepEqual(hits, [],
-      'an em dash takes no space on either side, and none at a line ' +
-      `break (docs/STYLE-GUIDE.md):\n${hits.join('\n')}`)
-  })
-
-
-  // One em-dash ASIDE per line: a single trailing dash, or one matched
-  // pair around a parenthetical. The guide allows the dash and rations
-  // it, which is the half a reviewer forgets; three on a line is the
-  // stacking the ration exists to stop.
-  test('em-dashes-are-rationed', () => {
+  // Literal code and quoted output keep their punctuation. The rule applies
+  // to prose, using the same stripper as the phrase and first-person gates.
+  test('no-em-dashes-in-prose', () => {
     const hits: string[] = []
     for (const { file, abs } of stylePaths()) {
       prose(Fs.readFileSync(abs, 'utf8'))
         .split('\n')
         .forEach((line, i) => {
-          const n = (line.match(/—/g) || []).length
-          if (2 < n) {
-            hits.push(`${file}:${i + 1} ${n} em dashes: ${line.trim()}`)
+          if (line.includes('—')) {
+            hits.push(`${file}:${i + 1}: ${line.trim()}`)
           }
         })
     }
     Assert.deepEqual(hits, [],
-      'more than one em-dash aside on a line (docs/STYLE-GUIDE.md):\n' +
-      hits.join('\n'))
+      `em dashes in prose (docs/STYLE-GUIDE.md):\n${hits.join('\n')}`)
   })
 
 

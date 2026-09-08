@@ -228,5 +228,18 @@ uri's
 util
 validators
 vendored
-Voxgig
+[Vv]oxgig
 workspaceFolders
+
+# Website tools, example terminology, and metadata identifiers.
+Astro
+Fastify
+Gemfile
+Hotwire
+inputSchema
+validator
+terraforming
+uninstrumented
+greppable
+downgradable
+initialiser

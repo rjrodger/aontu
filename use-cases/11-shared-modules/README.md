@@ -52,8 +52,8 @@ that way (`probes/nested-ref/` shows the refusal).
 
 `consumer/main.aon` is a consumer repository's entry: it imports the
 platform team's module and writes its own services against it. `lib` is
-what the module brought—the deployment spec, with its defaults and
-bounds—and `srv` is what this repository owns.
+what the module brought (the deployment spec, with its defaults and
+bounds) and `srv` is what this repository owns.
 
 ```
 $
@@ -107,7 +107,7 @@ and writes no lockfile rather than a partial one.
 **2. Distribution is a copy.** This build ships no registry client
 (`mod get` and `mod publish` refuse with exit 2), so the platform tree
 is copied by hand into the store layout the resolver expects:
-`consumer/aontu_meta/vendor/corp.example/schemas/service@1/`—path segments
+`consumer/aontu_meta/vendor/corp.example/schemas/service@1/`: path segments
 as directories, `@<major>` suffixed to the last one. The layout is
 documented in
 [`how-to/vendor-by-hand.md`](../../docs/how-to/vendor-by-hand.md) and

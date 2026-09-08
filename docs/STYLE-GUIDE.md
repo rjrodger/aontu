@@ -1,7 +1,9 @@
 # Documentation style guide
 
-How the aontu documentation is written. This guide is normative for
-`docs/*.md`, `docs/how-to/*.md`, the sixteen use-case READMEs, the two
+How the aontu documentation is written. Adapted from Jostraca's
+`docs/STYLE-GUIDE.md`, with aontu's terminology, file layout, and
+executable-example conventions. This guide is normative for
+`docs/*.md`, `docs/how-to/*.md`, the published use-case READMEs, the two
 package READMEs, and the prose on [aontu.dev](https://aontu.dev) (whose
 authored pages cite this file from `aontu-lang/web`'s AGENTS.md). It
 exists so that a page written next year sounds like a page written this
@@ -23,7 +25,7 @@ reason:
    guide](https://developers.google.com/style) for everything this file
    does not cover: second person, present tense, active voice,
    sentence-style capitalisation in headings, serial commas, one idea
-   per sentence, dash spacing.
+   per sentence.
 3. [Vale](https://vale.sh) defaults, which mostly means spelling.
 
 ## How this guide is enforced
@@ -36,11 +38,11 @@ drift from the other:
 | Gate | Runs | Checks |
 |---|---|---|
 | `make prose` (Vale) | `.github/workflows/docs.yml` | spelling, Google's conventions, and the banned list, at the levels set in `.vale.ini` |
-| `ts/test/docs.test.ts` | `make test` | the banned list again, em-dash spacing and the ration, the first-person rules, the exclamation ration, no emoji, no internal-document citations, and that every code snippet executes |
+| `ts/test/docs.test.ts` | `make test` | the banned list again, the no-em-dash rule, the first-person rules, the exclamation ration, no emoji, no internal-document citations, and that every code snippet executes |
 
 The gated set is the reader-facing one: the Diátaxis pages, the how-to
 guides, the three contributor references that ship under `docs/`, the
-sixteen published use cases, and `README.md` and `ts/README.md`. Design
+published use cases, and `README.md` and `ts/README.md`. Design
 notes, the capability review, the defect ledgers and the repro corpus are
 working documents, and they are out.
 
@@ -49,12 +51,9 @@ found wrong for these pages.** `.vale.ini` records what each produced on
 a clean run. Two of them are worth knowing about, because the reason is
 not taste:
 
-- `Google.EmDash` reported 11 findings and all 11 were false. Vale stops
-  skipping fenced blocks part-way through several of these pages, so four
-  were inside code fences; the other seven were dashes correctly written
-  tight against an inline code span, which Vale reads as spaced once it
-  strips the span. Dash spacing is enforced by `docs.test.ts` instead,
-  over the project's own fence stripper.
+- `Google.EmDash` is disabled because its spacing rule is redundant
+  under the house ban. The local documentation gate checks prose
+  after stripping code and quoted output.
 - `Google.OxfordComma` reported 30, of which 16 were real three-item
   lists and were fixed. The other 14 are two-item lists sitting after a
   comma clause, which the rule cannot tell from a list.
@@ -71,9 +70,9 @@ page may do:
 | Reference | `reference-language.md`, `reference-api.md`, `trust.md`, `lsp.md`, `shared-spec.md`, `test-coverage.md` | state facts exhaustively and dryly, pin claims to tests | narrate, persuade, teach |
 | Explanation | `explanation.md` | argue, compare, admit trade-offs, tell the design's story | be the only place a fact lives |
 
-One fact appears in all four kinds at different altitudes—met in the
+One fact appears in all four kinds at different altitudes (met in the
 tutorial, used in a how-to, specified in the reference, argued in the
-explanation—but the normative statement lives in the reference and
+explanation) but the normative statement lives in the reference and
 everything else links to it.
 
 `release-and-tag.md` is a deliberate exception: an operator document
@@ -98,14 +97,14 @@ already made, and the rule it decided is what the page is for. State
 the rule and stop.
 
 This runs both ways. A published page may not carry the project's own
-history either—what a figure used to say, which release moved it,
+history either: what a figure used to say, which release moved it,
 which bug report prompted the wording. That belongs in the commit
 message, the changelog or the register. A reader wants the language as
 it is today.
 
 **The engine's own output is published text.** A refusal that names a
 design document sends a user somewhere they cannot go, in place of
-telling them what to do—`aontu mod get` did exactly that. A message
+telling them what to do: `aontu mod get` did exactly that. A message
 names the repair, not the reasoning; the reasoning stays in the source
 comment beside it, where a contributor reads it.
 
@@ -119,7 +118,7 @@ documentation freely, because a decision record that does not show its
 working is not a decision record. Only the direction out of the published
 set is closed.
 
-Two documents in the gated set are exempt, because their reader is a
+The contributor documents in the gated set are exempt, because their reader is a
 contributor: `shared-spec.md`, `test-coverage.md` and
 `release-and-tag.md`, which ship under `docs/`, and the **root
 `README.md`**, which is the repository's front page and whose job
@@ -139,7 +138,7 @@ its stock phrases. Ten habits, with the register they apply in:
 1. **Open with a concrete fact or a plainly stated problem, then a
    short dry beat.** Tutorials and how-tos. Reference pages open by
    stating what the thing is.
-2.  **Introduce code with a short colon-terminated sentence**—"Write
+2.  **Introduce code with a short colon-terminated sentence**: "Write
    this as `schema.aon`:", "Now vet it:". Never "The following code
    snippet demonstrates". Everywhere.
 3. **After a code block, point at the one interesting thing.** Do not
@@ -147,8 +146,8 @@ its stock phrases. Ten habits, with the register they apply in:
 4. **Parentheses carry definitions, caveats, and at most one dry
    aside per page.** Tutorials and how-tos. In reference pages,
    parentheses carry facts only.
-5. **A trade-off gets bolted on with a dash, and the dash earns its
-   place.** One per paragraph at most, never two in a sentence.
+5. **State a trade-off in a separate clause or sentence.** Use a comma,
+   parentheses, or a new sentence; punctuation should not supply drama.
 6. **Alternate one long explanatory sentence with one short verdict
    sentence.** The short sentence is the payoff. Everywhere.
 7. **Talk to the reader as "you", and route them** ("If you already
@@ -282,17 +281,17 @@ as Vale rather than deferring to it.
 - A list of `**Bold term**: explanation` pairs, which is the single most
   recognisable machine-written list. Write sentences, or a table.
 
+Avoid vague metaphors such as "the engine" for value, "shape" for an
+argument, or "carry" for an idea. Use literal terms for the technical
+subject: an API surface, a test harness, and a schema shape are valid.
+Do not announce value with "real" or "useful"; state what the reader can do.
+Do not invent claims about how much code agents produce or what teams know.
+State the input, the check, the result, and any limit on that result.
+
 **Punctuation rulings**:
 
-- Em dashes are allowed, and take **no space on either side**:
-  `a dash—like this`. That is Google's ruling
-  ([dashes](https://developers.google.com/style/dashes)), adopted in the
-  commit that converted 1,180 spaced dashes across the gated set. They
-  stay **rationed to one aside per line**: either a single dash before a
-  trailing clause, or one matched pair around a parenthetical, never
-  both and never two asides. `docs.test.ts` enforces both halves, for the
-  reason given under "How this guide is enforced". Prefer a comma or
-  parentheses when the aside is mild.
+- Do not use em dashes in prose. Use a comma, parentheses, a colon, or
+  another sentence. Preserve punctuation in literal code and quoted output.
 - In a link list, separate the link from its gloss with a full stop, not
   a dash: `- [Draw a model](how-to/draw-a-model.md). Renders the tree...`.
 - A dash between a heading's number or label and its subject is a
@@ -314,7 +313,7 @@ as Vale rather than deferring to it.
 
 A fenced snippet in a Diátaxis page is either executed by
 `ts/test/docs.test.ts` or carries a visible, reasoned skip. The
-directive vocabulary—an HTML comment on its own line immediately
+directive vocabulary: an HTML comment on its own line immediately
 before the fence:
 
 ```markdown
@@ -375,7 +374,7 @@ Two rules of taste:
 
 A picture of how aontu works is a claim about aontu, and a claim drawn
 by hand goes stale silently. **Every figure in a published page is
-generated** — declared in `ts/scripts/figures.cjs`, written to
+generated**: declared in `ts/scripts/figures.cjs`, written to
 `docs/figures/`, rebuilt by `make build-ts`, and held to the engine by
 `ts/test/docs.test.ts`.
 
@@ -384,7 +383,7 @@ generated** — declared in `ts/scripts/figures.cjs`, written to
   reader who cannot see it gets the same information.
 - To add one, add an entry to `FIGURES` and run `make build-ts`. The
   gate refuses a figure a page names but the table does not have.
-- Box-drawing pictures are still fine where they are *output* — a
+- Box-drawing pictures are still fine where they are *output*: a
   transcript of a `view` figure under a `test: run` directive is the
   engine's own bytes, checked like any other transcript. What is
   banned is the hand-drawn one, which is a second source of truth for
@@ -393,7 +392,7 @@ generated** — declared in `ts/scripts/figures.cjs`, written to
 ## Terminology
 
 - The language and project are **aontu**: lowercase, no fada, in prose
-  and in headings alike. Not "Aontu", not "Aontú" — that is the Irish
+  and in headings alike. Not "Aontu", not "Aontú": that is the Irish
   word the name comes from, and it is not the name. It is spelled the
   way you type it, because a project whose claim is that one definition
   is spelled one way should manage it for its own name. Enforced by
@@ -405,7 +404,7 @@ generated** — declared in `ts/scripts/figures.cjs`, written to
   style and vocabulary directory `.vale/styles/…/Aontu`, which is a
   Vale style name. Renaming either would break code rather than change
   prose.
-- **module / package**—these are not synonyms and must never be
+- **module / package**: these are not synonyms and must never be
   swapped. A **module** is a language element: what `@"…"` names, what
   an import resolves, what the canon-hash pins, what unifies into a
   document. A **package** is a unit of publication: a versioned,
@@ -415,25 +414,25 @@ generated** — declared in `ts/scripts/figures.cjs`, written to
   covers. Write "package repository", "publish a package", "the
   package's dependencies"; never "module registry" or "publish a
   module". **Go uses the two words the other way round**, so a
-  sentence that reads naturally to a Go user may be wrong here — check
+  sentence that reads naturally to a Go user may be wrong here: check
   which side of the import/publish line the thing sits on rather than
   trusting the ear.
-- **unification / unify**—the operation. Not "merging" except when
+- **unification / unify**: the operation. Not "merging" except when
   introducing the idea to newcomers, and then once.
-- **meet**—the operation named as order theory names it. It is a
+- **meet**: the operation named as order theory names it. It is a
   term of art, so its **first use on any page links to
   [`unification.md`](unification.md)**; later uses on that page are
   plain. The same rule covers *top*, *bottom*, *lattice* and
   *residual*, which that page also defines. A page using "meet" in the
   ordinary English sense ("the truth is not met yet") links nothing.
-- **refuse / refusal**—what the engine does with bad input. Not
+- **refuse / refusal**: what the engine does with bad input. Not
   "reject", not "throw" (except in API contexts where an exception is
   literally thrown).
-- **verdict**—vet's answer (valid / invalid / incomplete / error).
-- **residual**—a value still waiting for information. Define it on
+- **verdict**: vet's answer (valid / invalid / incomplete / error).
+- **residual**: a value still waiting for information. Define it on
   first use in any page that needs it; the definition of record is in
   the explanation.
-- **entity, identity, relation, edge, predicate**—per the language
+- **entity, identity, relation, edge, predicate**: per the language
   reference's Identity and Declared relations sections.
 - Spell error codes as they render: `[aontu/relation_cycle]`.
 
@@ -479,3 +478,14 @@ in the same directory, one stem at a time. Never add a suffix pattern:
 the file exists to make usable. Write a case pair as one regular
 expression (`[Aa]ontu`), because two plain lines make Vale enforce one
 spelling over the other.
+
+## Website guidance
+
+The website's [STYLE-GUIDE.md](https://github.com/aontu-lang/web/blob/main/STYLE-GUIDE.md)
+adapts these rules for authored pages, metadata, and accessibility labels.
+It also adopts the concrete problem statements, imperative steps, observable
+results, and scoped comparisons from `metsitaba/voxgig-web01`'s how-to guide.
+Keep aontu's British spelling and tutorial conventions. Its reference pages
+do not use Voxgig's comparison-page template or mandatory word quotas.
+The website syncs the shared Vale vocabulary and word-choice rule from this
+repository; change them here and regenerate the website copies.

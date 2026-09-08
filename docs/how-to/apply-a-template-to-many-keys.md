@@ -7,7 +7,7 @@ order: 20
 # Apply a template to many keys
 
 Ten endpoints, one policy, and the policy written ten times: that is
-how drift starts. Write it once as a `&:` spread entry—it is
+how drift starts. Write it once as a `&:` spread entry: it is
 unified into every other key of the map:
 
 ```aontu
@@ -65,9 +65,9 @@ payments: services: ledger: { tier:1 description:"Ledger of record." }
 } } }
 ```
 
-`CatalogEntry` itself never appears in the output—the mark keeps
+`CatalogEntry` itself never appears in the output (the mark keeps
 it for unification only, per [keep schema out of the
-output](keep-schema-out-of-output.md)—and no service repeats its
+output](keep-schema-out-of-output.md)) and no service repeats its
 `owner`. The stamped constraints are enforced per child. Change
 `ledger` to `tier: 4` and run it as `catalog.aon`:
 
@@ -97,7 +97,7 @@ $ echo $?
 ```
 
 The refusal lands on the child that broke the rule, not on the
-template—the reader of a CI log gets the offending service by
+template: the reader of a CI log gets the offending service by
 name.
 
 One thing to watch: a spread constrains the children it

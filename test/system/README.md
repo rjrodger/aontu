@@ -1,8 +1,8 @@
-# test/system — full systems generated with `aontu render`
+# test/system: full systems generated with `aontu render`
 
 `test/spec/` pins the language row by row. This directory pins the
 other end of the claim: that a model written in aontu, run through
-`aontu render`, produces a **complete working system** — not a file
+`aontu render`, produces a **complete working system**: not a file
 that looks right, but an application that boots, serves its API,
 passes an external validation written against a reference
 implementation, and shows a human a page.
@@ -10,7 +10,7 @@ implementation, and shows a human a page.
 Every system here is the validation of a design decision recorded in
 [`docs/design/RENDER.0.md`](../../docs/design/RENDER.0.md) §10, and a
 system that stops passing is a defect in the renderer, the model or
-the generator — never a test to relax.
+the generator: never a test to relax.
 
 ## Layout
 
@@ -47,13 +47,13 @@ Two rules follow from the layout:
 
 | system | target | reference | status |
 |---|---|---|---|
-| [`rb-solar`](rb-solar/) | Ruby on Rails 8, SQLite, Hotwire: the Solar System API (Planet, Moon) and a human UI over the same data | [voxgig-sdk/voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk) — its reference app's OpenAPI spec and `app/validate.ts`, and its Ruby SDK | **LANDED 2026-09-06**: 11 checks, the reference's own 20 tests green |
+| [`rb-solar`](rb-solar/) | Ruby on Rails 8, SQLite, Hotwire: the Solar System API (Planet, Moon) and a human UI over the same data | [voxgig-sdk/voxgig-solardemo-sdk](https://github.com/voxgig-sdk/voxgig-solardemo-sdk): its reference app's OpenAPI spec and `app/validate.ts`, and its Ruby SDK | **LANDED 2026-09-06**: 11 checks, the reference's own 20 tests green |
 
 ## Running
 
 **The SDK's own suite was tried and rejected as a check.** The plan
 named the Ruby SDK's live tests; run against `rb-solar` they pass with
-the server turned off — 246 cases, two HTTP requests, lenient by
+the server turned off: 246 cases, two HTTP requests, lenient by
 design. A system's SDK leg is therefore the SDK's real client with
 assertions that fail, not the SDK's test suite. `rb-solar/README.md`
 records the measurement.

@@ -25,7 +25,7 @@ record: { id: 1 }
 }
 ```
 
-Dropped means absent—no `note`, not `note: null`. Supplying a value
+Dropped means absent: no `note`, not `note: null`. Supplying a value
 keeps the field, checked against its constraint as usual:
 
 <!-- fmt: keep a schema and its data as separate statements -->
@@ -87,4 +87,4 @@ The full rules, including how optionality survives references, are in
 [Optional keys `?`](../reference-language.md#optional-keys-). For
 defaults on their own, see [provide defaults](provide-defaults.md);
 on a JSON Schema export an optional key is simply absent from
-`required`—see [export JSON Schema](export-json-schema.md).
+`required`: see [export JSON Schema](export-json-schema.md).

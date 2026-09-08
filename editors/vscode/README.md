@@ -1,7 +1,7 @@
 # Aontu for VS Code
 
-Language support for [Aontu](../../README.md) — diagnostics, hover and
-completion — by launching the language server, `aontu lsp`, and connecting
+Language support for [Aontu](../../README.md) (diagnostics, hover and
+completion) by launching the language server, `aontu lsp`, and connecting
 it to `.aon` and `.aontu` files.
 
 ## Prerequisites

@@ -2,7 +2,7 @@
 
 Editor plugins that connect to the Aontu language server (`aontu lsp`) for
 diagnostics, hover and completion on `.aon` (preferred) and `.aontu`
-files. All language intelligence lives in the server — see
+files. All language intelligence lives in the server: see
 [`docs/lsp.md`](../docs/lsp.md); these plugins are thin clients.
 
 | Editor | Directory | LSP | Syntax |
@@ -13,7 +13,7 @@ files. All language intelligence lives in the server — see
 
 Syntax highlighting for VS Code comes from
 [`grammar/aontu.tmLanguage.json`](../grammar/aontu.tmLanguage.json), the
-published TextMate grammar — the same file aontu.dev loads into Shiki, so
+published TextMate grammar: the same file aontu.dev loads into Shiki, so
 the docs and the editor colour a source identically. The extension carries
 a copy of it (`syntaxes/`, written by `npm run sync-grammar`) because a VS
 Code grammar path cannot leave the extension root; `ts/test/grammar.test.ts`

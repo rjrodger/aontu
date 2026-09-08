@@ -3,7 +3,7 @@
 One task per guide. Each assumes you know the basics (the
 [tutorial](../tutorial.md) teaches those), solves one job, and links
 the reference for depth. Every example is executed by
-`ts/test/docs.test.ts`—what a guide shows is what the engine did.
+`ts/test/docs.test.ts`: what a guide shows is what the engine did.
 
 <!-- Generated from the guides' own frontmatter; regenerate by
      re-running the snippet in the docs rewrite PR, or edit by hand
@@ -14,9 +14,9 @@ the reference for depth. Every example is executed by
 Getting aontu into your process or pipeline, and its answers out.
 
 - [Run a file or start a REPL](run-cli-and-repl.md). Evaluate a file, read from stdin, or question a document interactively with the `aontu` command.
-- [Call aontu from TypeScript](call-from-typescript.md). Embed the engine in Node with the `Aontu` class—parse, unify and generate from your own code.
-- [Call aontu from Go](call-from-go.md). Embed the engine with the Go port—the same three calls, with errors returned instead of thrown.
-- [See the canonical form](see-canonical-form.md). Print what a document means—defaults, disjunctions and all—instead of what it resolves to.
+- [Call aontu from TypeScript](call-from-typescript.md). Embed the engine in Node with the `Aontu` class: parse, unify and generate from your own code.
+- [Call aontu from Go](call-from-go.md). Embed the engine with the Go port: the same three calls, with errors returned instead of thrown.
+- [See the canonical form](see-canonical-form.md). Print what a document means (defaults, disjunctions and all) instead of what it resolves to.
 - [Inject values from the host program](inject-host-values.md). Fill `$name` variables from the calling program to parameterise a model from code.
 - [Give an agent an entrypoint to a definition](give-an-agent-an-entrypoint.md). Generate a ground-truth stanza with `aontu agentsmd` and serve the verbs over MCP with `aontu mcp`.
 - [Collect errors instead of throwing](collect-errors.md). Gather every problem in one pass with `collect: true` (TypeScript) or `Check` (Go) instead of stopping at the first.
@@ -51,7 +51,7 @@ Saying what data must look like, from optional keys to recursive shapes.
 The get, why, set and trim loop over a live document.
 
 - [Query a path](query-a-path.md). Print one node of the evaluated document by path, or a keys, types, or depth-limited view of it.
-- [Explain a value](explain-a-value.md). List every contribution that met at a path—which file, which line, which layer—with aontu why.
+- [Explain a value](explain-a-value.md). List every contribution that met at a path (which file, which line, which layer) with aontu why.
 - [Change a value with an overlay](change-a-value-with-an-overlay.md). Append a change to an overlay file with aontu set, so the original document keeps its bytes and a bad change is refused before it lands.
 - [Change a pinned value](change-a-pinned-value.md). Rewrite a pinned literal where the author wrote it with aontu set --in-place, and know the cases where the verb appends instead.
 - [Find dead entries](find-dead-entries.md). Report map entries whose removal changes nothing, so layered files do not silt up with lines a template already implies.

@@ -114,7 +114,7 @@ holds all thirteen files.
 `handler.ts` is `gen.aon` again, as a template: **a marked line is
 aontu source, and every other line is a line of output**. The marker
 is TypeScript's comment token plus a dash, so the file is a Lambda
-handler—`tsc` parses it, an editor highlights it, and the body lines are
+handler: `tsc` parses it, an editor highlights it, and the body lines are
 the handler's own text at the indentation they land on.
 
 ```typescript
