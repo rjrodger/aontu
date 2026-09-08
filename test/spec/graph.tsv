@@ -125,3 +125,18 @@ link-under-a-graph-atom-inside-a-disjunct	graph	a: {x: (rel($.b) & [&: refer(), 
 link-under-a-map-inside-a-disjunct	graph	a: {x: {y: [&: refer(), path($.b)]} | 1}\nb: {}	{"disjunct":["$.a.x.y.0"],"edges":[]}
 link-under-a-disjunct-inside-a-disjunct	graph	a: {x: {y: [&: refer(), path($.b)] | 1} | 2}\nb: {}	{"disjunct":["$.a.x.y.0"],"edges":[]}
 links-in-two-arms-are-one-position	graph	a: {x: [&: refer(), path($.b)] | [&: refer(), path($.c)]}\nb: {}\nc: {}	{"disjunct":["$.a.x.0"],"edges":[]}
+
+# A GENERATED ELEMENT IS A NODE LIKE ANY OTHER, and the two spellings
+# of the same generation derive the SAME graph. `each`'s element is the
+# source child cloned, `form`'s is the template with `_` filled, and a
+# link inside either lands at the destination path -- which is the
+# whole of what identity means here, the graph being path-native
+# (ADR-014). So the copied link is reported from `$.o.0`, not from the
+# source it was cloned out of, under both spellings.
+#
+# The pair is the graph half of gen-each.tsv's `each(d, t)` ==
+# `form(d, _ & t)` rows: a value equivalence that did not carry the
+# derived structure with it would be the more dangerous kind of
+# almost-true.
+each-generated-element-edge	graph	z: {}\nn: [{uses: refer() & path($.z)}]\no: each($.n, _)	{"edges":[{"from":"$.n.0","key":"uses","to":"$.z","at":"$.n.0.uses"},{"from":"$.o.0","key":"uses","to":"$.z","at":"$.o.0.uses"}]}
+form-as-each-generated-element-edge	graph	z: {}\nn: [{uses: refer() & path($.z)}]\no: form($.n, _ & _)	{"edges":[{"from":"$.n.0","key":"uses","to":"$.z","at":"$.n.0.uses"},{"from":"$.o.0","key":"uses","to":"$.z","at":"$.o.0.uses"}]}
