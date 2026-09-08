@@ -97,7 +97,7 @@ than its value.
   bag is lifted with `type()` because a transform over an unmarked bag
   skips its marked children, and the optional keys are absent from the
   output: an optional key whose value generates nothing is not a
-  member, so a schema walk cannot see `email?` (BUGS.md §86).
+  member, so a schema walk cannot see `email?`.
 - `xf-order.aon`: one model, two targets: the same walk with the two
   facts it cannot give stated as data (`optional` for `placed` and
   `status`, `lines` as a list of `OrderLine`), rendered to

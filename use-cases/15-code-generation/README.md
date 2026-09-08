@@ -108,8 +108,8 @@ Each line of that shape is a decision:
   unification conflict rather than a broken identifier at emit time.
 - **The aliases carry the target's name** (`%go_record`,
   `%ts_record`), because an alias declaration is a key of the
-  document that includes the file, and `all.aon` includes all three
-  ([BUGS.md](../BUGS.md) §85).
+  document that includes the file, and `all.aon` includes all three.
+  Distinct names prevent the declarations from conflicting.
 
 `gen-sql.aon` folds its column lines with `join` and `,\n`, so the
 separator falls between them and the last column carries no trailing
@@ -126,8 +126,7 @@ CREATE TABLE "customer" (
 ```
 
 The column table is written inline rather than named, because a named
-table does not resolve as the argument of a call inside a body
-([BUGS.md](../BUGS.md) §84).
+table does not resolve as the argument of a call inside a body.
 
 ## What check.sh proves
 

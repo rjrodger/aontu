@@ -8,11 +8,10 @@ Solar System API, and a human UI over the same data, **generated from
 one model** by `aontu render` and held to the reference's own
 validation.
 
-The point is not that a generator can write Rails. It is that the
-model is the only thing anyone edits: the routes, the migrations, the
-Active Record classes, both sets of controllers, the pages, the seeds
-and the entity-relationship diagram are all consequences of it, and
-`aontu render --check` says so on every run.
+The model defines the routes, migrations, Active Record classes,
+controllers, pages, seeds and entity-relationship diagram. Edit the model
+or its generators to change those files. `aontu render --check` compares
+them against the generated output on every run.
 
 ## What it is held to
 
@@ -63,8 +62,7 @@ Seven things in it are worth reading for the reasons behind them:
   rule in a template; a generator that derived one from the other would
   be guessing, and would be wrong three times out of seven here.
 - **Every field answers `pk` and `fk`, including with `false`.**
-  Absence is not an answer a rule table can read
-  ([BUGS.md §88](../../../use-cases/BUGS.md)).
+  Rule tables need an explicit boolean to select fields by these flags.
 - **An index page's key column is asked for, not assumed.** A table's
   header row and its body row are two dispatches over the same fields,
   and the body writes the key's cell itself because that one is a link.
@@ -263,19 +261,18 @@ That is the state the check exists to make visible in the next check.
 
 ### Why this is the shape an agent needs
 
-An agent asked to add a feature will edit whatever file is nearest the
-symptom. That is the failure mode; it is also unavoidable. The gate is
-what makes it recoverable:
+An agent can edit a generated file without updating its model or
+generator. Run the checks to detect that mismatch:
 
-- **The blast radius is stated, not guessed.** `render --check` answers
+- **Changed generated files are identified.** `render --check` answers
   "did anything I touched belong to the model" in one command, over the
-  whole tree, in under a second. No reviewer has to hold the generated
+  whole tree. No reviewer has to hold the generated
   set in their head.
 - **The fix is mechanical.** Drift on a generated file means one of the
   three answers above, and the diff shows which: a hand edit that the
   generator would also have written is a model change waiting to be
   named; one it would not is a bespoke change that has to move out.
-- **The reference is still the judge.** The eleven checks end with
+- **The API behaviour is tested.** The eleven checks end with
   other people's code: the reference's twenty validation tests and its
   own SDK, driving the running app. A change can satisfy every
   structural check and still be wrong, and those legs are what say so.

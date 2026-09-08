@@ -193,7 +193,7 @@ TypeScript and Go implementations. This is pinned, not promised:
   full-message twin tests), while spec rows continue to bind only
   their asserted substrings and codes.
 - Expected values are **parity-probed**: obtained from both engines
-  before a row is written, never copied from one (AGENTS.md).
+  before a row is written, never copied from one.
 -  Known disagreements live in exactly one place (the parity ledger) and
   its normal state is empty of open entries.
 
