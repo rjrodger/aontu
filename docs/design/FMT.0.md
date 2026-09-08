@@ -8,6 +8,12 @@ X-1, X-2, X-3, X-5 and X-6 decided as recommended, X-7 decided
 *against* the recommendation (a spread-only map keeps its braces —
 §3.3 carries the exception), X-4 stands as recommended.
 
+**AMENDED 2026-09-08 — §3.4's repeat now ends at a record.** The
+descent through nested maps was unbounded and put a four-key prefix in
+front of each of a field's seven one-word facts. A map holding only
+values is written as a braced block under the prefix instead. §3.4
+carries the rule and the argument, X-2 the evidence that moved it.
+
 The worked examples in §6 were hand-formatted to the rules when this
 note was written — what the formatter *should* print rather than what
 anything had printed. They are now what it does print: the shared
@@ -243,18 +249,72 @@ literal in statement position, in this order:
    budget and holds no comment and no multi-line value.
 2. **Repeat**, if every entry, written with the prefix in front of it,
    is itself a one-liner by rule 1 — recursively, so a nested map that
-   fits stays inline on its line and one that does not repeats further.
+   fits stays inline on its line and one that does not is descended
+   into under the longer prefix, *until the descent reaches a record*.
 3. **A braced block**, otherwise: `key: {` on the pair's line, each
    entry a statement at one more level of indentation, `}` alone on its
    line. A block is what is left for a map some entry of which cannot
    be a single line — a long list, a map with a comment inside it, a
    value that is a multi-line string.
 
+**A descent ends at a record.** *(Amended 2026-09-08; the rule as first
+written descended without end.)* A **record** is a braced map of
+several entries, every one of them a value rather than another map: a
+field, an error, a rule row — something whose keys are what it IS. A
+map that holds a map is not one; nor is a one-entry map, which is D1's
+chain at every width; nor is a map holding a spread, which says
+something about the map's members and which D1's exception already
+spells its own way inside a repeat.
+
+Where the descent reaches a record, the record is written as a braced
+BLOCK under the prefix rather than dissolved into it:
+
+```
+# without the amendment              # with it
+entity: planet: field: id: name: "id"    entity: planet: field: id: {
+entity: planet: field: id: json: "id"      name: "id"
+entity: planet: field: id: kind: "string"  json: "id"
+entity: planet: field: id: pk: true        kind: "string"
+…                                          pk: true
+                                         }
+```
+
+Both spellings are the same document, so the choice is about the page,
+and the argument that makes the repeat good is the argument that stops
+it here. A repeated prefix earns its width by being a PATH: `entity:`,
+`planet:` and `field:` each name a level of the tree, and a line
+carrying all of them says where in the tree it is. `id`'s own keys are
+not a path — they are what a field is — so the prefix in front of each
+of them is the same prefix again, seven times, and it has stopped
+saying anything. The block puts the path on one line and the fields
+under it.
+
+**The block replaces a descent; it never rescues one.** The deeper
+repeat is asked for first, and the block is written only where that
+repeat would have WORKED. So the rule can shorten a spelling and never
+lengthen one: a record holding something a repeat cannot carry — a list
+too wide for the longer prefix, a multi-line expression — fails as it
+always did, and its statement is a braced block by rule 3, laid out
+exactly as before the amendment. Without this, a repeat that rule 2
+had rightly given up on would come back through the record escape, and
+five entries that fitted one line each inside a block would each become
+a block of their own.
+
+**The statement's own map is not an entry of anything**, so this does
+not reach it: a flat `service: host: …` / `service: port: …` is the
+rewrite D2 exists for, however many facts it states, and a chain head
+does not change that — `a: b: { c:1 d:2 }` too wide is still `a: b: c: 1`
+and `a: b: d: 2`, because `b`'s map is what the statement `a: b:`
+states. What the amendment stops is the rewrite RECURSING: turning one
+statement's facts into its facts' facts.
+
 There is no numeric cap on repetition: a map of forty short pairs is
 forty statements. That is what the suggestion asks for, the
 greppability argument holds at forty as it does at four, and a cap
 would be a second magic number after the budget. X-2 in §11 records
-the doubt.
+the doubt. The record rule is not a cap — it is a question about what
+the keys on a line MEAN, and it is answered from the tree rather than
+from a number.
 
 **Merging goes the other way too.** Adjacent statements at one level
 that name the same key — `s: a: 1` directly followed by `s: b: 2` —
@@ -1042,6 +1102,11 @@ for function, and `test/spec/fmt.tsv` is what they must agree on.
   legal because of the meet, the published explanation of the form
   says so, and the inline rule (§3.5) means short maps never repeat.
   If it turns out to read badly at scale, X-2's cap is the dial.
+  **It did read badly, in 2026-09, and in DEPTH rather than in count:
+  `entity: planet: field: id:` in front of each of a field's seven
+  facts.** The dial that fixed it was not the cap — §3.4's descent now
+  ends at a record, which asks what the keys on a line mean rather
+  than how many there are.
 - **Two spellings of a pair** (`a: 1` at statement level, `a:1` inline)
   is the kind of thing that generates a bug report a month. X-1.
 - **The lawful tier is a real transformation**, and its correctness
@@ -1064,7 +1129,12 @@ for function, and `test/spec/fmt.tsv` is what they must agree on.
   tight.**
 - **X-2 — A cap on repetition.** None, per §3.4, or repeat only up to
   *n* entries and block beyond? Recommendation: none; add a cap only
-  from evidence. **Decided 2026-09-03: no cap.**
+  from evidence. **Decided 2026-09-03: no cap.** **Amended 2026-09-08,
+  and still no cap:** the evidence arrived — `test/system/rb-solar`'s
+  fields, keyed by name, put `entity: planet: field: id:` in front of
+  seven one-word facts — and it was a question about DEPTH, which a
+  count could not have answered. §3.4's descent now ends at a record.
+  The number of entries a statement may repeat over is still unbounded.
 - **X-3 — Commas in calls.** Keep them (§3.6) or drop them for
   consistency with maps and lists? Recommendation: keep. **Decided
   2026-09-03: keep.** P2 narrowed it: a comma the author wrote is

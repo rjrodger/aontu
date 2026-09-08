@@ -993,6 +993,34 @@ function mergeDeep(p) {
     }
     return { ...p, value: 'pair' === v.t ? body[0] : { ...v, body }, orig: [p] };
 }
+// Whether a value is a RECORD: a braced map of several entries, every
+// one of them a VALUE rather than another map. A field, an error, a
+// rule row -- something whose keys are what it IS, as against a level
+// of the tree, whose keys are a way through to something else.
+//
+// A CHAIN IS NOT ONE, whatever it holds: a one-entry map is D1's, and
+// D1 writes it as a chain at every width. Nor is a map holding a
+// spread, which says something about the map's MEMBERS and which D1's
+// exception already gives a spelling of its own inside a repeat.
+function record(v, entries) {
+    if ('map' !== v.t) {
+        return false;
+    }
+    let pairs = 0;
+    for (const e of entries) {
+        if ('spread' === e.t) {
+            return false;
+        }
+        if ('pair' !== e.t) {
+            continue;
+        }
+        if (undefined !== plainEntries(e.value)) {
+            return false;
+        }
+        pairs++;
+    }
+    return 1 < pairs;
+}
 function repeatLines(entries, prefix, indent) {
     if (0 === entries.length || 'comment' === entries[entries.length - 1].t ||
         1 < entries.filter((e) => 'spread' === e.t).length) {
@@ -1033,8 +1061,27 @@ function repeatLines(entries, prefix, indent) {
         if (undefined === lines) {
             return undefined;
         }
+        // THE DESCENT COULD GO ON, AND WHAT IT REACHES IS A RECORD: it
+        // stops, and the record is a block under the prefix instead. The
+        // deeper repeat is asked for first and thrown away deliberately --
+        // the block REPLACES a descent that would have worked, and never
+        // rescues one that would not, so a map this rule cannot reach two
+        // ways round is laid out exactly as it was before the amendment.
+        if (record(e.value, sub)) {
+            out.push({ t: 'block', text: head, node: e.value, trail });
+            continue;
+        }
         if ('' !== trail) {
-            lines[lines.length - 1].text += trail;
+            // Onto the last line written for this entry -- and after the
+            // CLOSER where that line is a block, which is where the trailing
+            // comment of the entry the block came from also stands.
+            const last = lines[lines.length - 1];
+            if ('block' === last.t) {
+                last.trail = (last.trail ?? '') + trail;
+            }
+            else {
+                last.text += trail;
+            }
         }
         out.push(...lines);
     }
@@ -1088,6 +1135,15 @@ function emitStatement(w, p, indent, stmt, prefix) {
                 pending = false;
                 count++;
                 w.text(line.text);
+                if ('block' === line.t) {
+                    // The record the descent stopped at: its entries are
+                    // statements in turn, and the whole statement this repeat
+                    // belongs to is what carries the check, so they are covered.
+                    emitBlock(w, '{', '}', line.node, indent, { meet: stmt.meet, covered: true });
+                    if (undefined !== line.trail) {
+                        w.text(line.trail);
+                    }
+                }
             }
             rewritten = true;
         }

@@ -1190,15 +1190,59 @@ function mergeDeep(p: Node): Node {
   return { ...p, value: 'pair' === v.t ? body[0] : { ...v, body }, orig: [p] }
 }
 
+// Whether a value is a RECORD: a braced map of several entries, every
+// one of them a VALUE rather than another map. A field, an error, a
+// rule row -- something whose keys are what it IS, as against a level
+// of the tree, whose keys are a way through to something else.
+//
+// A CHAIN IS NOT ONE, whatever it holds: a one-entry map is D1's, and
+// D1 writes it as a chain at every width. Nor is a map holding a
+// spread, which says something about the map's MEMBERS and which D1's
+// exception already gives a spelling of its own inside a repeat.
+function record(v: Node, entries: Node[]): boolean {
+  if ('map' !== v.t) {
+    return false
+  }
+  let pairs = 0
+  for (const e of entries) {
+    if ('spread' === e.t) {
+      return false
+    }
+    if ('pair' !== e.t) {
+      continue
+    }
+    if (undefined !== plainEntries(e.value!)) {
+      return false
+    }
+    pairs++
+  }
+  return 1 < pairs
+}
+
 // The lines of a map repeated under a prefix (§3.4, rule 2): every
 // entry written with the prefix in front of it as one line, or --
-// where an entry's value is a map that does not fit -- repeated further
+// where an entry's value is a map that does not fit -- descended into
 // under the longer prefix. Comments and blank lines are kept where
 // they stood. Undefined where an entry cannot be one line: a list that
 // does not fit, a value that spans lines, a comment closing the map
 // (which a repeat could not keep in the map) -- and where the map holds
 // two spreads, which repeated would be two maps, and a different meet.
-type Line = { t: 'text' | 'comment' | 'blank', text?: string }
+//
+// A DESCENT ENDS AT A RECORD (§3.4, D2's amendment). The prefix reaches
+// through maps that hold maps, because those keys are a path and a line
+// carrying the whole path says where it is. It stops at a map that
+// holds only values: there the keys are the thing's own fields, the
+// prefix in front of each of them is the same prefix again, and the
+// map is written as a braced BLOCK under the prefix instead --
+// `entity: planet: field: id: {` and its seven facts indented once.
+// The statement's own map is not an entry of anything and is
+// unaffected, so a flat `service: host: …` is still one repeat.
+type Line = {
+  t: 'text' | 'comment' | 'blank' | 'block'
+  text?: string
+  node?: Node
+  trail?: string
+}
 
 function repeatLines(entries: Node[], prefix: string, indent: number): Line[] | undefined {
   if (0 === entries.length || 'comment' === entries[entries.length - 1].t ||
@@ -1240,8 +1284,27 @@ function repeatLines(entries: Node[], prefix: string, indent: number): Line[] | 
     if (undefined === lines) {
       return undefined
     }
+    // THE DESCENT COULD GO ON, AND WHAT IT REACHES IS A RECORD: it
+    // stops, and the record is a block under the prefix instead. The
+    // deeper repeat is asked for first and thrown away deliberately --
+    // the block REPLACES a descent that would have worked, and never
+    // rescues one that would not, so a map this rule cannot reach two
+    // ways round is laid out exactly as it was before the amendment.
+    if (record(e.value!, sub)) {
+      out.push({ t: 'block', text: head, node: e.value!, trail })
+      continue
+    }
     if ('' !== trail) {
-      lines[lines.length - 1].text += trail
+      // Onto the last line written for this entry -- and after the
+      // CLOSER where that line is a block, which is where the trailing
+      // comment of the entry the block came from also stands.
+      const last = lines[lines.length - 1]
+      if ('block' === last.t) {
+        last.trail = (last.trail ?? '') + trail
+      }
+      else {
+        last.text += trail
+      }
     }
     out.push(...lines)
   }
@@ -1297,6 +1360,15 @@ function emitStatement(w: Writer, p: Node, indent: number, stmt: Stmt, prefix: s
         pending = false
         count++
         w.text(line.text!)
+        if ('block' === line.t) {
+          // The record the descent stopped at: its entries are
+          // statements in turn, and the whole statement this repeat
+          // belongs to is what carries the check, so they are covered.
+          emitBlock(w, '{', '}', line.node!, indent, { meet: stmt.meet, covered: true })
+          if (undefined !== line.trail) {
+            w.text(line.trail)
+          }
+        }
       }
       rewritten = true
     }

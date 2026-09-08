@@ -3175,9 +3175,42 @@ is legal because a key written twice is a meet, and the meet of two
 maps with disjoint keys is their union: the three statements above and
 `server: { host: "0.0.0.0", port: 8080, tls: { ... } }` are one document,
 with one canon-hash. It applies recursively, so a nested map that fits
-stays on its line and one that does not repeats further under the
+stays on its line and one that does not is descended into under the
 longer prefix, `a: b: c: 1` / `a: b: d: 2`; there is no cap on how many
-statements a map becomes. Merging goes the other way too: adjacent
+statements a map becomes.
+
+**The descent stops at a record.** A record is a map of several
+entries, every one of them a value rather than another map—a field, an
+error, a row. The prefix reaches through a map that holds maps, because
+those keys are a path and a line carrying all of them says where it is;
+where the descent reaches a record instead, that map is written as a
+braced block under the prefix rather than dissolved into it, because
+its keys are what the thing IS and repeating the prefix in front of
+each of them says nothing:
+
+```aon
+entity: planet: table: "planets"
+entity: planet: field: id: {
+  name: "id"
+  json: "id"
+  kind: "string"
+  required: true
+  pk: true
+  write: true
+  fk: false
+}
+```
+
+A one-entry map is a chain at every width and is not a record; nor is
+a map holding a spread. The block replaces a descent and never rescues
+one: where the deeper repeat could not have been written anyway—a list
+too wide under the longer prefix, a value spanning lines—the statement
+is a braced block by the rule above, exactly as it was before this. And
+the statement's own map is not reached by a descent, so a flat
+`server: host:` / `server: port:` is written as the repeat it has
+always been, and so is a record a chain leads to and nothing else does.
+
+Merging goes the other way too: adjacent
 statements naming one key are one map to the formatter, which then
 lays that map out by the same procedure, so `s: a: 1` / `s: b: 2` is
 written `s: { a:1 b:2 }`. Only adjacent statements merge; a `server:`

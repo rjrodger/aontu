@@ -5,6 +5,68 @@ package (`ts/`, npm `aontu`) and the Go module (`go/`,
 `github.com/aontu-lang/aontu/go`) are versioned independently; entries note
 which implementation each change affects.
 
+## Unreleased
+
+### `aontu fmt`: the repeat stops at a record
+
+**A four-key prefix in front of a one-word fact says nothing, and the
+formatter was writing seven of them in a row.** `field` in
+`test/system/rb-solar/model.aon` became a map keyed by column name, and
+`fmt`'s repeat-the-prefix rule descended into it without end:
+
+```
+entity: planet: field: id: name: "id"
+entity: planet: field: id: json: "id"
+entity: planet: field: id: kind: "string"
+entity: planet: field: id: required: true
+entity: planet: field: id: pk: true
+…
+```
+
+**The descent now ends at a record** (FMT.0.md §3.4, amended). A record
+is a braced map of several entries, every one of them a value rather
+than another map — a field, an error, a row. The prefix still reaches
+through a map that HOLDS maps, because those keys are a path and a line
+carrying all of them says where in the tree it is; where the descent
+reaches a record instead, the record is written as a braced block under
+the prefix:
+
+```
+entity: planet: field: id: {
+  name: "id"
+  json: "id"
+  kind: "string"
+  required: true
+  pk: true
+}
+```
+
+Three things bound the change:
+
+- **A one-entry map is a chain at every width** (D1) and is not a
+  record; nor is a map holding a spread, which D1's exception already
+  spells its own way.
+- **The block replaces a descent and never rescues one.** The deeper
+  repeat is asked for first, and the block is written only where that
+  repeat would have worked — so a record holding a list too wide for the
+  longer prefix, or a value that spans lines, fails as it always did and
+  its statement is a braced block by the existing rule. The rule can
+  shorten a spelling and never lengthen one.
+- **The statement's own map is not reached by a descent.** A flat
+  `server: host:` / `server: port:` is the rewrite the repeat exists
+  for, however many facts it states, and a chain head does not change
+  that: `a: b: { c:1 d:2 }` too wide is still `a: b: c: 1` and
+  `a: b: d: 2`.
+
+Both ports, one behaviour: `test/spec/fmt.tsv` gains seven rows, and the
+bundled `aontu:lang/go` and `aontu:lang/typescript` profiles are
+reformatted — their escape and primitive tables are records, and read as
+tables now rather than as nine repetitions of `str: escape:`. **Four
+committed documents and four doc fences move with it**; anything else
+held to `fmt --check` will report drift until `aontu fmt -w` has run
+over it. X-2 in FMT.0.md §11 records the evidence, and is still decided
+the same way: no cap on the NUMBER of entries a statement repeats over.
+
 ## Go 0.1.19 — 2026-09-07 · TypeScript 0.61.0
 
 ### `aontu fmt` formats a generator

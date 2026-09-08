@@ -105,52 +105,66 @@ entity: {
     ui_collection_helper: "planets"
     ui_item_helper: "planet"
 
-    field: id: name: "id"
-    field: id: json: "id"
-    field: id: kind: "string"
-    field: id: required: true
-    field: id: pk: true
-    field: id: write: true
-    field: id: fk: false
-    field: name: name: "name"
-    field: name: json: "name"
-    field: name: fk: false
-    field: name: kind: "string"
-    field: name: required: true
-    field: name: pk: false
-    field: name: write: true
-    field: kind: name: "kind"
-    field: kind: json: "kind"
-    field: kind: fk: false
-    field: kind: kind: "string"
-    field: kind: required: true
-    field: kind: pk: false
-    field: kind: write: true
-    field: diameter: name: "diameter"
-    field: diameter: json: "diameter"
-    field: diameter: fk: false
-    field: diameter: kind: "float"
-    field: diameter: required: true
-    field: diameter: pk: false
-    field: diameter: write: true
-    field: terraform_state: name: "terraform_state"
-    field: terraform_state: json: "terraformState"
-    field: terraform_state: fk: false
-    field: terraform_state: kind: "string"
-    field: terraform_state: pk: false
-    field: terraform_state: write: false
-    field: forbid_state: name: "forbid_state"
-    field: forbid_state: json: "forbidState"
-    field: forbid_state: fk: false
-    field: forbid_state: kind: "string"
-    field: forbid_state: pk: false
-    field: forbid_state: write: false
-    field: forbid_reason: name: "forbid_reason"
-    field: forbid_reason: json: "forbidReason"
-    field: forbid_reason: fk: false
-    field: forbid_reason: kind: "string"
-    field: forbid_reason: pk: false
-    field: forbid_reason: write: false
+    field: id: {
+      name: "id"
+      json: "id"
+      kind: "string"
+      required: true
+      pk: true
+      write: true
+      fk: false
+    }
+    field: name: {
+      name: "name"
+      json: "name"
+      fk: false
+      kind: "string"
+      required: true
+      pk: false
+      write: true
+    }
+    field: kind: {
+      name: "kind"
+      json: "kind"
+      fk: false
+      kind: "string"
+      required: true
+      pk: false
+      write: true
+    }
+    field: diameter: {
+      name: "diameter"
+      json: "diameter"
+      fk: false
+      kind: "float"
+      required: true
+      pk: false
+      write: true
+    }
+    field: terraform_state: {
+      name: "terraform_state"
+      json: "terraformState"
+      fk: false
+      kind: "string"
+      pk: false
+      write: false
+    }
+    field: forbid_state: {
+      name: "forbid_state"
+      json: "forbidState"
+      fk: false
+      kind: "string"
+      pk: false
+      write: false
+    }
+    field: forbid_reason: {
+      name: "forbid_reason"
+      json: "forbidReason"
+      fk: false
+      kind: "string"
+      pk: false
+      write: false
+    }
 
     # THE SEED ROWS FOR THIS ENTITY, each carrying its class. The join
     # happens here, where `$.seed.planet` is an absolute path and the
@@ -264,41 +278,51 @@ entity: {
 
   moon: children: []
 
-  moon: field: id: name: "id"
-  moon: field: id: json: "id"
-  moon: field: id: kind: "string"
-  moon: field: id: required: true
-  moon: field: id: pk: true
-  moon: field: id: write: true
-  moon: field: id: fk: false
-  moon: field: name: name: "name"
-  moon: field: name: json: "name"
-  moon: field: name: fk: false
-  moon: field: name: kind: "string"
-  moon: field: name: required: true
-  moon: field: name: pk: false
-  moon: field: name: write: true
-  moon: field: planet_id: name: "planet_id"
-  moon: field: planet_id: json: "planet_id"
-  moon: field: planet_id: kind: "string"
-  moon: field: planet_id: required: true
-  moon: field: planet_id: fk: true
-  moon: field: planet_id: pk: false
-  moon: field: planet_id: write: true
-  moon: field: kind: name: "kind"
-  moon: field: kind: json: "kind"
-  moon: field: kind: fk: false
-  moon: field: kind: kind: "string"
-  moon: field: kind: required: true
-  moon: field: kind: pk: false
-  moon: field: kind: write: true
-  moon: field: diameter: name: "diameter"
-  moon: field: diameter: json: "diameter"
-  moon: field: diameter: fk: false
-  moon: field: diameter: kind: "float"
-  moon: field: diameter: required: true
-  moon: field: diameter: pk: false
-  moon: field: diameter: write: true
+  moon: field: id: {
+    name: "id"
+    json: "id"
+    kind: "string"
+    required: true
+    pk: true
+    write: true
+    fk: false
+  }
+  moon: field: name: {
+    name: "name"
+    json: "name"
+    fk: false
+    kind: "string"
+    required: true
+    pk: false
+    write: true
+  }
+  moon: field: planet_id: {
+    name: "planet_id"
+    json: "planet_id"
+    kind: "string"
+    required: true
+    fk: true
+    pk: false
+    write: true
+  }
+  moon: field: kind: {
+    name: "kind"
+    json: "kind"
+    fk: false
+    kind: "string"
+    required: true
+    pk: false
+    write: true
+  }
+  moon: field: diameter: {
+    name: "diameter"
+    json: "diameter"
+    fk: false
+    kind: "float"
+    required: true
+    pk: false
+    write: true
+  }
 
   moon: action: {}
 }
@@ -337,18 +361,24 @@ sequence: [$.entity.planet $.entity.moon]
 # this could generate spells the same way, and `args` names what each
 # hole is FOR. The sentences are the reference's, because its test 13
 # looks for "not found" in the message.
-error: not_found: name: "NotFoundError"
-error: not_found: method: "not_found"
-error: not_found: status: 404
-error: not_found: format: "%s with id '%s' not found"
-error: not_found: args: ["entity" "id"]
-error: invalid: name: "ValidationError"
-error: invalid: method: "invalid"
-error: invalid: status: 400
-error: invalid: format: "%s"
-error: invalid: args: ["detail"]
-error: conflict: name: "ConflictError"
-error: conflict: method: "conflict"
-error: conflict: status: 409
-error: conflict: format: "%s with id '%s' already exists"
-error: conflict: args: ["entity" "id"]
+error: not_found: {
+  name: "NotFoundError"
+  method: "not_found"
+  status: 404
+  format: "%s with id '%s' not found"
+  args: ["entity" "id"]
+}
+error: invalid: {
+  name: "ValidationError"
+  method: "invalid"
+  status: 400
+  format: "%s"
+  args: ["detail"]
+}
+error: conflict: {
+  name: "ConflictError"
+  method: "conflict"
+  status: 409
+  format: "%s with id '%s' already exists"
+  args: ["entity" "id"]
+}

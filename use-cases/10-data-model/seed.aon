@@ -38,16 +38,20 @@ pricing: {
 # --- Customers --------------------------------------------------------
 # 2^53+1: the first whole number binary64 cannot hold. Only the
 # 0d spelling stores it exactly (README, gap 2).
-customers: "cust-1001": ledgerId: 0d9007199254740993
-customers: "cust-1001": name: "Acme Flow GmbH"
-customers: "cust-1001": country: "DE"
-customers: "cust-1001": currency: "EUR"
-customers: "cust-1001": email: "ap@acmeflow.example"
-customers: "cust-1001": creditLimitCents: 5000000
-customers: "cust-1002": ledgerId: 4503599627370496 # 2^52: safely inside plain integer
-customers: "cust-1002": name: "Nordwind Logistics AB"
-customers: "cust-1002": country: "SE"
-customers: "cust-1002": currency: "SEK"
+customers: "cust-1001": {
+  ledgerId: 0d9007199254740993
+  name: "Acme Flow GmbH"
+  country: "DE"
+  currency: "EUR"
+  email: "ap@acmeflow.example"
+  creditLimitCents: 5000000
+}
+customers: "cust-1002": {
+  ledgerId: 4503599627370496 # 2^52: safely inside plain integer
+  name: "Nordwind Logistics AB"
+  country: "SE"
+  currency: "SEK"
+}
 
 # --- Orders -----------------------------------------------------------
 orders: {
