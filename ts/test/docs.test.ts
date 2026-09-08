@@ -1198,3 +1198,16 @@ describe('docs-style', () => {
   })
 
 })
+
+
+// A function added to the language must remain discoverable in its reference.
+test('the-functions-index-lists-every-declared-builtin-once', () => {
+  const source = Fs.readFileSync(Path.join(DOCS_DIR, 'reference-language.md'), 'utf8')
+  const section = source.split('## Functions\n')[1].split('\n## ')[0]
+  const declared = Fs.readFileSync(
+    Path.join(DOCS_DIR, '..', 'test', 'spec', 'signature.tsv'), 'utf8')
+  const names = Array.from(declared.matchAll(/^([a-z]+)\(/gm), (m) => m[1]).sort()
+  const listed = Array.from(section.matchAll(/^\| `([a-z]+)\(/gm), (m) => m[1])
+  Assert.deepStrictEqual(listed, names,
+    'the alphabetical Functions table must list each declared built-in exactly once')
+})

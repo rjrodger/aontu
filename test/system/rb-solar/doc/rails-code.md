@@ -83,7 +83,8 @@ The root-route rule selects the service's root value:
 #-         })
 ```
 
-`emit` visits the selected values and uses the first matching rule.
+[`emit`](../../../../docs/reference-language.md#transforming-emit) visits
+the selected values and uses the first matching rule.
 Here the selection is a one-item list containing `"planets#index"`.
 `match: string` admits that value, `_` refers to it, and `replace`
 substitutes it for `ROOT` in the output line.

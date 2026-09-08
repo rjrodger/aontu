@@ -25,6 +25,7 @@ the [Explanation](explanation.md).
 - [Optional keys `?`](#optional-keys-)
 - [Spreads `&:`](#spreads-)
 - [Generating children: `pack` and `each`](#generating-children-pack-and-each)
+  - [Constructing elements: `form`](#form-the-order-preserving-map)
 - [Selecting: `filter` and `match`](#selecting-filter-and-match)
 - [The placeholder `_`](#the-placeholder-_)
 - [Transforming: `emit`](#transforming-emit)
@@ -35,6 +36,7 @@ the [Explanation](explanation.md).
 - [The `+` operator and grouping](#the--operator-and-grouping)
 - [Functions](#functions)
 - [Arithmetic: `add` `sub` `mul` `div` `mod` `rem`](#arithmetic-add-sub-mul-div-mod-rem)
+- [Projecting fields: `pick`](#projecting-fields-pick)
 - [Aggregating: `sum` `least` `greatest`](#aggregating-sum-least-greatest)
 - [Folding to a string: `join`](#folding-to-a-string-join)
 - [Text: `esc` `usc` `rep` `split`](#text-esc-usc-rep-split)
@@ -1660,43 +1662,72 @@ never narrows the kind and never yields `-0`.
 
 ## Functions
 
-aontu provides a fixed set of forty-three built-in functions. There
-are no user-defined functions. The count breaks down so that it can be
-checked rather than trusted:
+aontu provides a fixed set of built-in functions. There are no
+user-defined functions. This alphabetical index lists every built-in;
+the links lead to its detailed behaviour and examples.
 
-| group | how many | which |
+The argument modes describe how a call uses its arguments: `template`
+is instantiated for a selected value, `trial` supplies a condition,
+`projector` names a field or index, `capture` preserves a path's spelling,
+and `text` supplies literal text. An unmarked argument supplies a value.
+
+For collection operations, compare [pack and each](#generating-children-pack-and-each),
+[form](#form-the-order-preserving-map), [filter and match](#selecting-filter-and-match),
+[pick](#projecting-fields-pick), and [emit](#transforming-emit).
+`pack`, `each`, and `form` construct collections; `filter` selects members;
+`pick` projects a field; `emit` applies a rule table and flattens its output.
+
+| Function | Effect | Example |
 |---|---|---|
-| general-purpose | 20 | tabulated below |
-| [arithmetic](#arithmetic-add-sub-mul-div-mod-rem) | 6 | `add` `sub` `mul` `div` `mod` `rem` |
-| [aggregates](#aggregating-sum-least-greatest) | 3 | `sum` `least` `greatest` |
-| [projection](#aggregating-sum-least-greatest) | 1 | `pick` |
-| [the string fold](#folding-to-a-string-join) | 1 | `join` |
-| [declared relations](#declared-relations) | 3 | `rel` `acyclic` `inverse` |
-| [constraint atoms](#the-constraint-algebra-specified) | 9 | `min` `max` `above` `below` `neq` `re` `length` `unique` `must` |
-
-| Function    | Effect | Example |
-|-------------|--------|---------|
-| `upper(s: string\|number) : string` | uppercase a string; **ceiling** of a number, keeping the argument's kind | `upper(abc)`→`"ABC"`, `upper(2)`→ integer `2`, `upper(1.1)`→ float `2`, `upper(0d1.1)`→ bigdecimal `0d2.0` |
-| `lower(s: string\|number) : string` | lowercase a string; **floor** of a number, keeping the argument's kind   | `lower(ABC)`→`"abc"`, `lower(2)`→ integer `2`, `lower(1.9)`→ float `1`, `lower(0d1.9)`→ bigdecimal `0d1.0` |
+| `above(n: number\|string) : constraint` | Constrain a numeric or string value to be strictly greater than a bound. See [bounds](#the-constraint-algebra). | `integer & above(0)` |
+| `acyclic() : constraint` | Require the edges of a declared relation to contain no cycle. See [declared relations](#declared-relations). | `rel() & acyclic()` |
+| `add(a: number, b: number) : number` | Add two numbers under the [number-tower rules](#arithmetic-add-sub-mul-div-mod-rem). | `add(2, 3)` → `5` |
+| `below(n: number\|string) : constraint` | Constrain a numeric or string value to be strictly less than a bound. See [bounds](#the-constraint-algebra). | `integer & below(10)` |
+| `close(m: any) : any` | seal a map/list against extra keys            | see [closed values](#closed-values-close--open) |
 | `copy(v: any) : any` | deep copy of a value or referenced node; clears `type`/`hide` marks | `copy({a:1,b:2})`→`{a:1,b:2}`; `copy($.x)` |
+| `deprecate(v: any, r?: map) : any` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
+| `div(a: number, b: number) : number` | Divide two numbers; integer division truncates towards zero. See [arithmetic and refusals](#arithmetic-add-sub-mul-div-mod-rem). | `div(7, 2)` → `3` |
+| `each(d: map\|list, template t?: any) : list` | one list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map | `open: each($.ports, integer)` |
+| `emit(s: map\|list, template t: map\|list) : list` | one flat list of pieces from a selection and a rule table: for each node, the first template whose `match` it unifies with, its `body` instantiated at that node. See [Transforming](#transforming-emit) | `lines: emit($.services, {match:{pin:string}, body:[.pin]})` |
+| `esc(s: string, variant?: string) : string` | Escape a string using a named convention; the default is JSON-style double-quoted text. See [escaping](#escs-variant-and-uscs-variant). | `esc("<a>", xml)` |
+| `filter(d: map\|list, trial c: any) : map\|list` | the children of `d` that ALREADY satisfy `c`: the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match) | `debugged: filter($.services, {debug:true})` |
+| `form(d: map\|list, template t: any) : list` | Construct one list element per source child by instantiating a template with `_` bound to that child. See [form](#form-the-order-preserving-map). | `form([a, b], upper(_))` → `["A", "B"]` |
+| `greatest(d: map\|list) : number` | Return the greatest numeric member, preserving its kind. An empty collection is refused. See [aggregates](#aggregating-sum-least-greatest). | `greatest([2, 7, 4])` → `7` |
+| `hide(v: any) : any` | mark `x` as hidden                            | `hide(world) & string`→`"world"` |
+| `inverse(projector k: string) : constraint` | Require every edge of a declared relation to have a corresponding edge under the named inverse. See [declared relations](#declared-relations). | `rel() & inverse(usedBy)` |
+| `join(d: map\|list, sep?: string) : string` | Join collection members as text, with an optional separator. See [join](#folding-to-a-string-join). | `join([a, b], ", ")` → `"a, b"` |
 | `key(up?: integer\|biginteger) : string` | the ancestor key `n` levels up (`0` = own key, default `1` = parent). `n` must be an **integer** (`integer` or `biginteger`); anything else is an error. A level beyond the top of the path yields `""`. | at `a:b:c`: `key()`→`"b"`, `key(0)`→`"c"`, `key(2)`→`"a"`, `key(2.0)`→error |
+| `least(d: map\|list) : number` | Return the least numeric member, preserving its kind. An empty collection is refused. See [aggregates](#aggregating-sum-least-greatest). | `least([2, 7, 4])` → `2` |
+| `length(n: number\|constraint) : constraint` | Constrain a string length or collection size. See [length semantics](#length-semantics). | `list() & length(min(1))` |
+| `list() : list` | the list **kind**: admits any list, defaults to nothing | `y: list() & [1]`→`[1]` |
+| `lower(s: string\|number) : string` | lowercase a string; **floor** of a number, keeping the argument's kind   | `lower(ABC)`→`"abc"`, `lower(2)`→ integer `2`, `lower(1.9)`→ float `1`, `lower(0d1.9)`→ bigdecimal `0d1.0` |
+| `map() : map` | the map **kind**: admits any map, defaults to nothing. See [Container kinds](#container-kinds-map-and-list) | `y: map() & {a:1}`→`{a:1}`; `y: map()`→ error |
+| `match(s: any, ...pr: (trial any, any), dflt?: any) : any` | the result of the first pattern `v` unifies with; a trailing argument is the default. No match and no default is an error naming the patterns tried | `size: match($.tier, small, {cpu:1}, {cpu:2})` |
+| `max(n: number\|string) : constraint` | Constrain a numeric or string value to be at most the bound. See [bounds](#the-constraint-algebra). | `integer & max(10)` |
+| `min(n: number\|string) : constraint` | Constrain a numeric or string value to be at least the bound. See [bounds](#the-constraint-algebra). | `integer & min(0)` |
+| `mod(a: number, b: number) : number` | Compute a modulo whose nonzero result follows the divisor's sign. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem). | `mod(-7, 3)` → `2` |
+| `move(v: any) : any` | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
+| `mul(a: number, b: number) : number` | Multiply two numbers under the [number-tower rules](#arithmetic-add-sub-mul-div-mod-rem). | `mul(2, 3)` → `6` |
+| `must(trial c: any, text msg: string) : constraint` | Apply an evaluation-time condition with an author-supplied failure message. See [must](#band-b-must). | `must(min(1), "must be positive")` |
+| `neq(...vals: number\|string) : constraint` | Exclude the listed numeric or string values. See [constraint atoms](#the-constraint-algebra). | `string & neq("reserved")` |
+| `open(m: any) : any` | reverse a `close`                             | `open(close({x:1})) & {y:2}`→`{x:1,y:2}` |
+| `pack(d: map\|list, template t: any) : map` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each) | `deploy: pack($.names, {replicas:*2\|integer})` |
+| `path(capture p?: path) : path` | **capture** `p` as a path value: the spelling, never the resolution; with no argument, the path **kind**. See [First-class paths](#first-class-paths-pathp) | `dep: path(.auth)` generates `".auth"`; `host: path()` |
+| `pick(d: map\|list, projector k: string\|integer) : any` | Project one field or index from every collection member into a list. See [pick](#projecting-fields-pick). | `pick([{n:a}, {n:b}], n)` → `["a", "b"]` |
 | `pref(v: any) : any` | mark `x` as preferred (same as `*x`)          | `pref(1)` canon `*1`; `pref(2),x:3`→`3` |
+| `re(text p: string) : constraint` | Constrain a string to match a portable regular expression. See [patterns](#re-and-the-portable-pattern-subset). | `string & re("^[a-z]+$")` |
+| `refer(template t?: any) : constraint` | constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert) | `dependsOn: [&: refer($.std.Service), path($.services.auth)]` |
+| `rel(template t?: any) : constraint` | Declare a field as a relation and optionally constrain its targets. See [declared relations](#declared-relations). | `dependsOn: rel() & [path($.auth)]` |
+| `rem(a: number, b: number) : number` | Compute the remainder of truncating division. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem). | `rem(-7, 3)` → `-1` |
+| `rep(s: string, text p: string, text sub: string) : string` | Replace every pattern match in a string. See [replacement syntax](#reps-pattern-sub). | `rep("a1b2", "[0-9]", "_")` |
+| `split(s: string, sep: string\|constraint) : list` | Split a string using a literal separator or a pattern constraint. See [split](#splits-sep). | `split("a,b", ",")` → `["a", "b"]` |
+| `sub(a: number, b: number) : number` | Subtract the second number from the first. See [arithmetic](#arithmetic-add-sub-mul-div-mod-rem). | `sub(7, 2)` → `5` |
+| `sum(d: map\|list) : number` | Add the numeric members of a collection; an empty collection sums to zero. See [aggregates](#aggregating-sum-least-greatest). | `sum([2, 3])` → `5` |
 | `super(t: any) : any` | the immediate parent type of `x`, structurally: a scalar's kind, a kind's parent, a container of its children's parents | `super(1)` → `integer`, `super(integer)` → `number`, `super({a:1})` → `{a:integer}` |
 | `type(t: any) : any` | mark `x` as a type/schema value               | `type(1) & number`→`1` |
-| `hide(v: any) : any` | mark `x` as hidden                            | `hide(world) & string`→`"world"` |
-| `close(m: any) : any` | seal a map/list against extra keys            | see [closed values](#closed-values-close--open) |
-| `open(m: any) : any` | reverse a `close`                             | `open(close({x:1})) & {y:2}`→`{x:1,y:2}` |
-| `move(v: any) : any` | resolve reference `p`, dropping unresolved optional keys | `m:{x?:number,y:Y} n:move($.m)`→`n:{y:"Y"}` |
-| `path(capture p?: path) : path` | **capture** `p` as a path value: the spelling, never the resolution; with no argument, the path **kind**. See [First-class paths](#first-class-paths-pathp) | `dep: path(.auth)` generates `".auth"`; `host: path()` |
-| `map() : map` | the map **kind**: admits any map, defaults to nothing. See [Container kinds](#container-kinds-map-and-list) | `y: map() & {a:1}`→`{a:1}`; `y: map()`→ error |
-| `list() : list` | the list **kind**: admits any list, defaults to nothing | `y: list() & [1]`→`[1]` |
-| `refer(template t?: any) : constraint` | constrain a field to a **path value whose address resolves**; `t`, if given, is unified into the target. The field keeps the address. See [Checked links](#checked-links-refert) | `dependsOn: [&: refer($.std.Service), path($.services.auth)]` |
-| `pack(d: map\|list, template t: any) : map` | one keyed child per child of `d`, each of them `t` cloned at that destination. Keys are the strings of a list, or the keys of a map. See [Generating children](#generating-children-pack-and-each) | `deploy: pack($.names, {replicas:*2\|integer})` |
-| `each(d: map\|list, template t?: any) : list` | one list element per child of `d`, each met with `t`. Source order for a list, sorted-key order for a map | `open: each($.ports, integer)` |
-| `filter(d: map\|list, trial c: any) : map\|list` | the children of `d` that ALREADY satisfy `c`: the meet with `c` changes nothing. Keys kept for a map, order for a list; the rest are dropped, not refused. See [Selecting](#selecting-filter-and-match) | `debugged: filter($.services, {debug:true})` |
-| `match(s: any, ...pr: (trial any, any), dflt?: any) : any` | the result of the first pattern `v` unifies with; a trailing argument is the default. No match and no default is an error naming the patterns tried | `size: match($.tier, small, {cpu:1}, {cpu:2})` |
-| `emit(s: map\|list, template t: map\|list) : list` | one flat list of pieces from a selection and a rule table: for each node, the first template whose `match` it unifies with, its `body` instantiated at that node. See [Transforming](#transforming-emit) | `lines: emit($.services, {match:{pin:string}, body:[.pin]})` |
-| `deprecate(v: any, r?: map) : any` | mark `x` deprecated; unifies exactly as `x`, and the record `m` (`{msg?, use?, since?}`, all strings; `use` is a path spelled as a string) rides the result through meets, reference clones and spread applications. Canon renders the call back; generation is unchanged. The point-of-use surfaces: a vet `deprecated` warning, the LSP Deprecated tag, and `aontu breaking --allow-deprecated-removal` | `port: deprecate(*8080\|integer, {msg:"renamed", use:"$.listen", since:"2.0.0"})` |
+| `unique(projector k?: string) : constraint` | Require distinct members, optionally comparing a named field. See [unique semantics](#unique-semantics). | `list() & unique(id)` |
+| `upper(s: string\|number) : string` | uppercase a string; **ceiling** of a number, keeping the argument's kind | `upper(abc)`→`"ABC"`, `upper(2)`→ integer `2`, `upper(1.1)`→ float `2`, `upper(0d1.1)`→ bigdecimal `0d2.0` |
+| `usc(s: string, variant?: string) : string` | Decode text escaped with the named convention, refusing malformed input. See [escaping](#escs-variant-and-uscs-variant). | `usc(esc("<a>", xml), xml)` → `"<a>"` |
 
 `super(x)` answers the immediate parent type of its **argument**. For
 a concrete scalar that is the scalar's kind, and for a kind it is the
@@ -1868,6 +1899,91 @@ An exact result that will not store is refused too, exactly as a sum is
 (`inexact_integer_sum`): `mul(4503599627370496,4503599627370496)` is an
 error rather than a rounded answer, and `0d` operands compute it
 exactly.
+
+## Projecting fields: `pick`
+
+`pick(data, key)` returns a list containing the named field from each
+member of a map or list. Use it to turn records into the values that
+an aggregate or a string join needs:
+
+```aon
+lines: [amountCents:1200 amountCents:450]
+amounts: pick($.lines, amountCents)
+total: sum($.amounts)
+```
+
+```json
+{"amounts":[1200,450],"lines":[{"amountCents":1200},{"amountCents":450}],"total":1650}
+```
+
+`amountCents` is a field name supplied to the projector argument.
+The bare word and the quoted string `"amountCents"` name the same key.
+The result preserves each selected value's kind and structure; picking
+a map-valued field returns that map as one element, without flattening it.
+
+### Order and list indexes
+
+A list is visited in source order. A map is visited in sorted-key order,
+and its keys do not appear in the resulting list. For members that are
+lists, supply a zero-based integer index:
+
+```aon
+records: { z:name:last a:name:first }
+names: pick($.records, name)
+first: pick([[9 8] [7 6]], 0)
+empty: pick([], name)
+```
+
+```json
+{"empty":[],"first":[9,7],"names":["first","last"],"records":{"a":{"name":"first"},"z":{"name":"last"}}}
+```
+
+The empty collection returns an empty list. As with `each`, hidden or
+type-marked collection members and unfilled optional members are skipped.
+This selection happens before `pick` reads the requested field.
+
+### Missing fields and invalid arguments
+
+Every selected member must contain the requested field or index.
+A missing key, an out-of-range index, or a scalar member is `pick_key`.
+The call refuses the projection instead of returning a shorter list:
+
+<!-- test: scenario pick-missing-field -->
+<!-- test: run -->
+```sh
+$ echo 'x: pick([{a:1}, {b:2}], a)' | aontu
+[aontu/pick_key]: Cannot pick value at path $.x
+...
+$ echo $?
+1
+```
+
+A non-collection input is `aggregate_data`. The key must be a string
+name or an `integer` index; a float such as `0.0`, a kind, or a list is
+`invalid-arg`. A missing argument is `func_arity`.
+
+A projector names one key, not a dotted path expression. Project twice
+to select through two levels:
+
+```aon
+records: [address:city:Dublin address:city:Cork]
+cities: pick(pick($.records, address), city)
+```
+
+```json
+{"cities":["Dublin","Cork"],"records":[{"address":{"city":"Dublin"}},{"address":{"city":"Cork"}}]}
+```
+
+### Choose projection or construction
+
+Use `pick(records, name)` to extract a field. Use
+[`form`](#form-the-order-preserving-map) when each output element needs
+an expression or a new structure. [`each`](#generating-children-pack-and-each)
+unifies each source member with a template; it preserves that member's
+information rather than extracting one field from it.
+
+Compose the resulting list with [sum](#aggregating-sum-least-greatest)
+for a total or [join](#folding-to-a-string-join) for a line of text.
 
 ## Aggregating: `sum` `least` `greatest`
 
