@@ -38,8 +38,10 @@ to two consumers:
 
 jobs: { &: $.spec.Job }
 jobs: extract: feeds: [path($.jobs.transform)]
-jobs: transform: fedBy: [path($.jobs.extract)]
-jobs: transform: feeds: [path($.jobs.load) path($.jobs.audit)]
+jobs: transform: {
+  fedBy: [path($.jobs.extract)]
+  feeds: [path($.jobs.load) path($.jobs.audit)]
+}
 jobs: load: fedBy: [path($.jobs.transform)]
 jobs: audit: fedBy: [path($.jobs.transform)]
 ```

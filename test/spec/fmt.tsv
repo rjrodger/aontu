@@ -161,7 +161,7 @@ fmt-merge-trail-sinks	fmt	s: { a: 1 } # x\ns: b: 2\n	s: a: 1 # x\ns: b: 2\n
 fmt-merge-not-trail-without-entry	fmt	s: {} # x\ns: b: 2\n	s: {} # x\ns: b: 2\n
 fmt-merge-not-trail-on-comment	fmt	s: {\n  a: 1\n  # end\n} # x\ns: b: 2\n	s: {\n  a: 1\n  # end\n} # x\n\ns: b: 2\n
 fmt-merge-trails-join	fmt	s: { a: 1 # y\n} # x\ns: b: 2\n	s: a: 1 # y # x\ns: b: 2\n
-fmt-repeat-nested-trail	fmt	a: {\n  b: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1, c: 2 } # t\n  d: 3\n}\n	a: b: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\na: b: c: 2 # t\na: d: 3\n
+fmt-repeat-nested-trail	fmt	a: {\n  b: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1, c: 2 } # t\n  d: 3\n}\n	a: b: {\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\n  c: 2\n} # t\na: d: 3\n
 fmt-call-no-hug-empty-call	fmt	a: f({ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 }, g())\n	a: f(\n  { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:1 },\n  g()\n)\n
 fmt-call-argument-paren	fmt	a: f(({ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 }))\n	a: f(\n  ({ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:1 })\n)\n
 fmt-call-comment-before-container-argument	fmt	a: f( # c\n  { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 })\n	a: f( # c\n  { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:1 }\n)\n
@@ -173,6 +173,24 @@ fmt-repeat-optional	fmt	a?: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 fmt-repeat-spread	fmt	s: { &: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: integer } a: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" }\n	s: { &: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:integer } }\ns: a: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"\n
 fmt-repeat-not-two-spreads	fmt	s: { &: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 } &: { yyyyyyyyyyyyyyyyyyyy: 2 } }\n	s: {\n  &: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy:1 }\n  &: { yyyyyyyyyyyyyyyyyyyy:2 }\n}\n
 fmt-repeat-keeps-trails	fmt	s: {\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1 # x\n  b: 2 # y\n}\n	s: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1 # x\ns: b: 2 # y\n
+
+# A DESCENT ENDS AT A RECORD (§3.4, D2's amendment). A repeat reaches
+# through a map that HOLDS MAPS -- those keys are a path, and a line
+# carrying the whole path says where it is -- and stops at one holding
+# only values, which is written as a braced block under the prefix
+# rather than dissolved into it. The statement's own map is not an
+# entry of anything, so a flat statement still repeats however many
+# facts it states, chain heads included.
+fmt-repeat-stops-at-a-record	fmt	a: { b: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 c: 2 } d: 3 }\n	a: b: {\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\n  c: 2\n}\na: d: 3\n
+fmt-repeat-record-keeps-comments	fmt	a: { b: {\n  # why\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\n  c: 2\n} d: 3 }\n	a: b: {\n  # why\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\n  c: 2\n}\na: d: 3\n
+fmt-repeat-record-holds-a-list	fmt	a: { b: { c: [1 2] yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 3 } d: 4 }\n	a: b: {\n  c: [1 2]\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 3\n}\na: d: 4\n
+fmt-repeat-descends-through-a-map	fmt	a: { b: { c: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 } yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyd: 2 } e: 3 }\n	a: b: c: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\na: b: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyd: 2\na: e: 3\n
+fmt-repeat-record-that-is-the-statement	fmt	a: b: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1, c: 2 }\n	a: b: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\na: b: c: 2\n
+fmt-repeat-record-with-a-spread	fmt	a: { b: { &: integer yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 c: 2 } d: 3 }\n	a: b: { &: integer }\na: b: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\na: b: c: 2\na: d: 3\n
+fmt-repeat-record-no-rescue	fmt	a: { b: { c: 1 d: [yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy] } e: 2 }\n	a: {\n  b: c: 1\n  b: d: [yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy]\n  e: 2\n}\n
+fmt-repeat-chain-is-not-a-record	fmt	a: { b: c: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 d: 2 } e: 3 }\n	a: b: c: {\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\n  d: 2\n}\na: e: 3\n
+fmt-repeat-descent-trail-on-text	fmt	a: {\n  b: { c: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1 } yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyd: 2 } # t\n  e: 3\n}\n	a: b: c: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 1\na: b: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyd: 2 # t\na: e: 3\n
+fmt-repeat-descent-trail-on-block	fmt	a: {\n  b: { c: 1 d: { yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 2 f: 3 } } # t\n  g: 4\n}\n	a: b: c: 1\na: b: d: {\n  yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: 2\n  f: 3\n} # t\na: g: 4\n
 fmt-repeat-keeps-blank	fmt	s: {\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1\n\n  b: 2\n}\n	s: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1\n\ns: b: 2\n
 fmt-repeat-not-end-comment	fmt	s: {\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1\n  b: 2\n  # end\n}\n	s: {\n  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx: 1\n  b: 2\n  # end\n}\n
 fmt-repeat-not-long-list	fmt	s: { a: 1, b: [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx] }\n	s: {\n  a: 1\n  b: [\n    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n    xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n  ]\n}\n

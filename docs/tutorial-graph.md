@@ -240,8 +240,10 @@ you, so the data states both directions, in `pipeline.aon`:
 pipeline: jobs: { &: $.spec.Job }
 
 pipeline: jobs: extract: feeds: [path($.pipeline.jobs.transform)]
-pipeline: jobs: transform: fedBy: [path($.pipeline.jobs.extract)]
-pipeline: jobs: transform: feeds: [path($.pipeline.jobs.load)]
+pipeline: jobs: transform: {
+  fedBy: [path($.pipeline.jobs.extract)]
+  feeds: [path($.pipeline.jobs.load)]
+}
 pipeline: jobs: load: fedBy: [path($.pipeline.jobs.transform)]
 ```
 

@@ -594,8 +594,10 @@ A model whose edges hold, `system.aon`, passes:
 
 services: { &: $.spec.Service }
 services: web: dependsOn: [path($.services.billing)]
-services: billing: dependsOn: [path($.services.ledger)]
-services: billing: usedBy: [path($.services.web)]
+services: billing: {
+  dependsOn: [path($.services.ledger)]
+  usedBy: [path($.services.web)]
+}
 services: ledger: usedBy: [path($.services.billing)]
 ```
 
@@ -1052,16 +1054,20 @@ the name, which is why the path is given. Write a `views.aon` beside the
 ```aon
 @"./system.aon"
 
-views: arch: kind: matrix
-views: arch: relation: dependsOn
-views: arch: order: partition
-views: arch: closure: true
-views: arch: out: "arch.dsm.txt"
-views: map: kind: graph
-views: map: relation: dependsOn
-views: map: groupBy: owner
-views: map: as: mermaid
-views: map: out: "arch.mmd"
+views: arch: {
+  kind: matrix
+  relation: dependsOn
+  order: partition
+  closure: true
+  out: "arch.dsm.txt"
+}
+views: map: {
+  kind: graph
+  relation: dependsOn
+  groupBy: owner
+  as: mermaid
+  out: "arch.mmd"
+}
 ```
 
 <!-- test: run -->
@@ -1927,7 +1933,10 @@ aontu fmt < in.aon > out.aon
 - **The prefix is repeated.** A map that does not fit on one line is
   written as one statement per entry, each carrying its key again:
   `server: host: "0.0.0.0"` / `server: port: 8080`. A key written
-  twice is a meet, so the two spellings are one document.
+  twice is a meet, so the two spellings are one document. The prefix
+  reaches through nested maps and stops at a RECORD -- a map of several
+  entries, all of them values -- which is written as a braced block
+  under the prefix instead, `field: id: {` and its facts one level in.
   Adjacent statements naming one key are the same map to the
   formatter, and are written as one line when that fits. Only a plain
   map in statement position: a map that is an argument, an operand or

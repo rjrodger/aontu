@@ -418,13 +418,15 @@ profile: {
   comment: block: { open:"/*" prefix:" * " close:" */" }
   comment: doc: { open:"/**" prefix:" * " close:" */" }
   str: quote: "\""
-  str: escape: "8": "\\b"
-  str: escape: "9": "\\t"
-  str: escape: "10": "\\n"
-  str: escape: "12": "\\f"
-  str: escape: "13": "\\r"
-  str: escape: "34": "\\\""
-  str: escape: "92": "\\\\"
+  str: escape: {
+    "8": "\\b"
+    "9": "\\t"
+    "10": "\\n"
+    "12": "\\f"
+    "13": "\\r"
+    "34": "\\\""
+    "92": "\\\\"
+  }
   ident: {
     chars: "ascii-word"
     reserved: [
@@ -485,14 +487,16 @@ profile: {
     case: alias: "pascal"
     acronyms: []
   }
-  types: prim: string: "string"
-  types: prim: int: "number"
-  types: prim: bigint: "bigint"
-  types: prim: float: "number"
-  types: prim: decimal: "string"
-  types: prim: bool: "boolean"
-  types: prim: null: "null"
-  types: prim: any: "unknown"
+  types: prim: {
+    string: "string"
+    int: "number"
+    bigint: "bigint"
+    float: "number"
+    decimal: "string"
+    bool: "boolean"
+    null: "null"
+    any: "unknown"
+  }
   types: list: { close:"[]" childPrec:2 }
   types: map: { open:"Record<" close:">" }
   types: opt: { close:" | null" prec:1 childPrec:2 }
@@ -526,15 +530,17 @@ profile: {
   indent: { unit:"\t" width:1 }
   comment: { line:prefix:"// " block:{ open:"/*" close:"*/" } doc:prefix:"// " }
   str: quote: "\""
-  str: escape: "7": "\\a"
-  str: escape: "8": "\\b"
-  str: escape: "9": "\\t"
-  str: escape: "10": "\\n"
-  str: escape: "11": "\\v"
-  str: escape: "12": "\\f"
-  str: escape: "13": "\\r"
-  str: escape: "34": "\\\""
-  str: escape: "92": "\\\\"
+  str: escape: {
+    "7": "\\a"
+    "8": "\\b"
+    "9": "\\t"
+    "10": "\\n"
+    "11": "\\v"
+    "12": "\\f"
+    "13": "\\r"
+    "34": "\\\""
+    "92": "\\\\"
+  }
   ident: {
     chars: "ascii-word"
     reserved: [
@@ -613,14 +619,16 @@ profile: {
       "XSS"
     ]
   }
-  types: prim: string: "string"
-  types: prim: int: "int64"
-  types: prim: bigint: "string"
-  types: prim: float: "float64"
-  types: prim: decimal: "string"
-  types: prim: bool: "bool"
-  types: prim: null: "any"
-  types: prim: any: "any"
+  types: prim: {
+    string: "string"
+    int: "int64"
+    bigint: "string"
+    float: "float64"
+    decimal: "string"
+    bool: "bool"
+    null: "any"
+    any: "any"
+  }
   types: list: open: "[]"
   types: map: open: "map["
   types: opt: open: "*"
