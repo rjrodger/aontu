@@ -54,6 +54,7 @@ Usage: aontu [options] [file]
        aontu get <path> [options] <file>
        aontu why <path> [options] <file>
        aontu set <path>=<value>... --entry <file> --overlay <file>
+       aontu allow --role <role> [--at <path>] <roles-file> <path>...
        aontu agentsmd [--write <AGENTS.md>] <file>
        aontu fmt [-w|-l|--check|-d|--lint] [--marker <token>] <file>...
        aontu lsp

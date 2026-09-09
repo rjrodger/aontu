@@ -14,6 +14,8 @@ import { get, why } from './query';
 import { patch } from './patch';
 import { diff } from './diff';
 import { agentsMd } from './agentsmd';
+import { allow } from './allow';
+export type { AllowDecision, AllowOptions, AllowReason, AllowReport, AllowVerdict, } from './allow';
 import { graphOf } from './graph';
 import { relationCheck } from './relation';
 import { view, viewSet, viewTree } from './view';
@@ -35,5 +37,5 @@ declare function runparse(src: string, lang: Lang, ctx: AontuContext): Val;
 declare const util: {
     runparse: typeof runparse;
 };
-export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, setColor, colorActive, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, trimCheck, hcanon, canonHash, get, why, patch, diff, agentsMd, graphOf, relationCheck, view, viewSet, viewTree, render, renderValue, renderProfile, desugarTemplate, resugarTemplate, markerFor, format, unifiedDiff, };
+export { VERSION, Aontu, AontuOptions, AontuContext, AontuError, setColor, colorActive, Val, Lang, runparse, util, formatExplain, exactJSON, Decimal, vet, sarifReport, subsume, trimCheck, hcanon, canonHash, get, why, patch, diff, agentsMd, allow, graphOf, relationCheck, view, viewSet, viewTree, render, renderValue, renderProfile, desugarTemplate, resugarTemplate, markerFor, format, unifiedDiff, };
 export default Aontu;

@@ -2422,4 +2422,117 @@ function fmtFiles(...srcs) {
         Assert.doesNotMatch(vetCapture(() => (0, cli_1.runMod)(['verify', dir3])).err, /aontu_meta\//);
     });
 });
+// --- the allow verb (docs/design/ALLOW.0.md) --------------------------
+//
+// The gate's answers are held by allow.test.ts; these cases hold the
+// command line -- flag parsing, the exit classes, the two formats, and
+// the assignment spelling a skill hands straight through from `set`.
+(0, node_test_1.describe)('cli-allow', () => {
+    const ROLES = [
+        'roles: {',
+        '  admin: { allow: ["$"] }',
+        '  dev: { allow: ["$.services"] deny: ["$.services.*.tier"] }',
+        '  qa: { allow: ["$.tests"] }',
+        '}',
+        '',
+    ].join('\n');
+    function rolesFile(src = ROLES) {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-allow-cli-'));
+        const file = Path.join(dir, 'roles.aon');
+        Fs.writeFileSync(file, src);
+        return file;
+    }
+    (0, node_test_1.test)('allow-answers-every-path-and-names-the-rule', () => {
+        const file = rolesFile();
+        const yes = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.services.auth.replicas']), 0));
+        Assert.equal(yes.out, [
+            'verdict: allowed',
+            'role: dev',
+            '$.services.auth.replicas: allowed by $.roles.dev.allow.0 ($.services)',
+            '',
+        ].join('\n'));
+        Assert.equal(yes.err, '');
+        // Every reason has its line: deny names the rule, uncovered says
+        // no rule reached, and the verdict is the exit code.
+        const no = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.services.auth', '$.tests']), 1));
+        Assert.equal(no.out, [
+            'verdict: refused',
+            'role: dev',
+            '$.services.auth: refused by $.roles.dev.deny.0 ($.services.*.tier)',
+            '$.tests: refused (no allow entry of dev covers it)',
+            '',
+        ].join('\n'));
+    });
+    (0, node_test_1.test)('allow-takes-the-assignment-spelling', () => {
+        const file = rolesFile();
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'qa', file, '$.tests.smoke="on"', '$.tests.x=a=b']), 0));
+        Assert.match(r.out, /^\$\.tests\.smoke: allowed/m);
+        Assert.match(r.out, /^\$\.tests\.x: allowed/m);
+    });
+    (0, node_test_1.test)('allow-undeclared-role-is-refused-with-a-finding', () => {
+        const file = rolesFile();
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'ops', file, '$.a']), 1));
+        Assert.equal(r.out, [
+            'verdict: refused',
+            'role: ops',
+            '$.a: refused (role ops is not declared)',
+            '',
+            '$.roles.ops: no_path [reference]',
+            '  The path $.roles.ops names nothing in this document.',
+            '',
+        ].join('\n'));
+    });
+    (0, node_test_1.test)('allow-broken-model-is-exit-4-with-the-engines-finding', () => {
+        const file = rolesFile('roles: dev: { allow: "$.a" }\n');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.a']), 4));
+        Assert.match(r.out, /^verdict: error\nrole: dev\n\n\$: scalar_kind \[reference\]/);
+    });
+    (0, node_test_1.test)('allow-json-names-the-producer', () => {
+        const file = rolesFile();
+        const j = JSON.parse(vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--format', 'json', '--role', 'dev', file, '$.services.x.replicas']), 0)).out);
+        Assert.equal(j.aontu.verb, 'allow');
+        Assert.equal(j.verdict, 'allowed');
+        Assert.equal(j.role, 'dev');
+        Assert.deepEqual(j.findings, []);
+        Assert.deepEqual(j.paths, [{
+                allowed: true, by: '$.roles.dev.allow.0', path: '$.services.x.replicas',
+                pattern: '$.services', reason: 'allow',
+            }]);
+    });
+    (0, node_test_1.test)('allow-at-moves-the-roles-map', () => {
+        const file = rolesFile('policy: roles: dev: { allow: ["$.a"] }\n');
+        const r = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--at', '$.policy.roles', file, '$.a.b']), 0));
+        Assert.match(r.out, /allowed by \$\.policy\.roles\.dev\.allow\.0/);
+    });
+    (0, node_test_1.test)('allow-trust-reaches-the-engine', () => {
+        const dir = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'aontu-allow-trust-'));
+        Fs.writeFileSync(Path.join(dir, 'dev.aon'), 'roles: dev: { allow: ["$"] }');
+        const file = Path.join(dir, 'roles.aon');
+        Fs.writeFileSync(file, '@"dev.aon"\n');
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file, '$.a']), 0));
+        const denied = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--trust', 'none', '--role', 'dev', file, '$.a']), 4));
+        Assert.match(denied.out, /include_denied/);
+    });
+    (0, node_test_1.test)('allow-usage-errors-exit-2', () => {
+        const file = rolesFile();
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)([]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)([file, '$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', file]), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--at']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--format', 'yaml', file, '$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', '--bogus', file, '$.a']), 2));
+        vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--trust', 'bogus', '--role', 'dev', file, '$.a']), 2));
+        const missing = vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--role', 'dev', Path.join(Path.dirname(file), 'no.aon'), '$.a']), 2));
+        Assert.match(missing.err, /cannot read/);
+        Assert.equal(vetCapture(() => Assert.equal((0, cli_1.runAllow)(['--help']), 0)).out.includes('aontu allow --role'), true);
+    });
+    (0, node_test_1.test)('allow-dispatches-through-main', () => {
+        const file = rolesFile();
+        const r = vetCapture(() => (0, cli_1.main)(['node', 'cli', 'allow', '--role', 'admin', file, '$']));
+        Assert.match(r.out, /verdict: allowed/);
+        Assert.match(run(['--help']).out, /aontu allow --role <role>/);
+        Assert.match(run(['--help']).out, /Allow exit codes/);
+    });
+});
 //# sourceMappingURL=cli.test.js.map
