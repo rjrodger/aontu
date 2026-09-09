@@ -66,7 +66,7 @@ join-pref-member	gens	o:join([pref(1),pref(2)],"-")\n	{"o":"1-2"}
 
 # ---- composition ----
 join-of-pick	gens	r:[{n:a},{n:b}]\no:join(pick($.r,n),",")\n	{"o":"a,b","r":[{"n":"a"},{"n":"b"}]}
-join-of-each	gens	m:{x:1,y:2}\no:join(each($.m,integer),"+")\n	{"m":{"x":1,"y":2},"o":"1+2"}
+join-of-each	gens	m:{x:1,y:2}\no:join(each($.m,_ & integer),"+")\n	{"m":{"x":1,"y":2},"o":"1+2"}
 join-of-pack	gens	n:[a,b]\no:join(pick(pack($.n,{v:1}),v),"-")\n	{"n":["a","b"],"o":"1-1"}
 join-feeds-plus	gens	o:join([a,b],",")+"!"\n	{"o":"a,b!"}
 join-nested	gens	o:join([join([a,b],"-"),c],"+")\n	{"o":"a-b+c"}

@@ -185,7 +185,7 @@ pins as frozen, and a compatibility statement per release ("documents
 valid under L1 remain valid under L2, except…") — the language has a
 `breaking` verb; its own releases should be held to the standard it
 sells. The dogfooding opportunity is free marketing: run
-`aontu breaking` over `std/system` and the spec corpus between
+`aontu breaking` over `aontu:system` and the spec corpus between
 releases and publish the reports.
 
 ## 8. Sequenced

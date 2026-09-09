@@ -84,7 +84,7 @@ func TestSignatureHelp(t *testing.T) {
 	// multi-line document counts earlier lines into the offset.
 	multi := "a: 1\nb: each($.a,\nc: 2"
 	r = SignatureHelp(multi, 1, 99)
-	if nil == r || "each(d: map|list, template t?: any) : list" != r.Signatures[0].Label ||
+	if nil == r || "each(d: map|list, template t: any) : list" != r.Signatures[0].Label ||
 		1 != r.ActiveParameter {
 		t.Fatalf("multi-line clamp: %+v", r)
 	}

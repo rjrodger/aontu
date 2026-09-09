@@ -144,7 +144,7 @@ func TestLowerParenRule(t *testing.T) {
 	// TypeScript forms say (string | null)[] and not string | null[].
 	profile := bundledProfile("typescript")
 	report := RenderValue(map[string]any{
-		"code": map[string]any{
+		"aontu": map[string]any{"Code": map[string]any{
 			"units": []any{map[string]any{
 				"path": "a.ts", "lang": "typescript",
 				"decls": []any{map[string]any{
@@ -157,7 +157,7 @@ func TestLowerParenRule(t *testing.T) {
 					}},
 				}},
 			}},
-		},
+		}},
 	}, &RenderOptions{Profiles: []map[string]any{profile}})
 	if "ok" != report.Verdict {
 		t.Fatalf("verdict: %+v", report)
@@ -173,7 +173,7 @@ func TestLowerBodyPieceWithoutDepth(t *testing.T) {
 	// with no `at` in a function body nests as a line at depth 0 does.
 	profile := bundledProfile("typescript")
 	unit := func(piece any) map[string]any {
-		return map[string]any{"code": map[string]any{"units": []any{map[string]any{
+		return map[string]any{"aontu": map[string]any{"Code": map[string]any{"units": []any{map[string]any{
 			"path": "a.ts", "lang": "typescript",
 			"decls": []any{map[string]any{
 				"k": "func", "name": "f", "params": []any{},
@@ -181,7 +181,7 @@ func TestLowerBodyPieceWithoutDepth(t *testing.T) {
 					piece, map[string]any{"k": "blank"}, "done()",
 				}},
 			}},
-		}}}}
+		}}}}}
 	}
 	opts := &RenderOptions{Profiles: []map[string]any{profile}}
 	bare := RenderValue(unit(map[string]any{"k": "line", "of": []any{"go()"}}), opts)

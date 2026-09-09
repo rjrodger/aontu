@@ -13,7 +13,7 @@ import (
 // docs/capability-review/g8-generation.md).
 //
 //	pack(data, tmpl)  one KEYED child per child of data
-//	each(data, tmpl?) one LIST ELEMENT per child of data
+//	each(data, tmpl)  one LIST ELEMENT per child of data
 //
 // Both clone their template per destination -- an independent copy for
 // each generated child, because a generator's template IS the child and
@@ -58,16 +58,17 @@ func packKeys(data Val, ctx *Ctx) ([]string, string) {
 	return nil, "pack_data"
 }
 
-// eachValues is the members a data bag holds -- what generation would
+// bagValues is the members a data bag holds -- what generation would
 // emit (members.go, BUGS.md §79) -- in the order the result
 // must carry them: source order for a list, sorted-key order for a map.
 // A generated list whose order depended on insertion history would
 // differ between two runs of one document, and between the two ports.
-func eachValues(data Val, ctx *Ctx) ([]Val, string) {
+// The caller names the refusal, there being one list generator (form).
+func bagValues(data Val, ctx *Ctx) ([]Val, bool) {
 	if !isBag(data) {
-		return nil, "each_data"
+		return nil, false
 	}
-	return memberVals(data, ctx), ""
+	return memberVals(data, ctx), true
 }
 
 func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
@@ -118,44 +119,6 @@ func packFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 		out.keys = append(out.keys, key)
 		out.peg[key] = child
 	}
-	out.setvpath(cp(base))
-	return out
-}
-
-func eachFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
-	var data Val = top()
-	if 0 < len(args) {
-		data = args[0]
-	}
-	vals, bad := eachValues(data, ctx)
-	if "" != bad {
-		return makeNilErr(ctx, bad, f, nil)
-	}
-
-	var tmpl Val
-	if 1 < len(args) {
-		tmpl = args[1]
-	}
-
-	elems := make([]Val, 0, len(vals))
-	for i, v := range vals {
-		islot := append(cp(base), itoa(i))
-		// The element is the source child CLONED, not shared: it is a
-		// second position holding that value, and a position is where
-		// path-dependent content resolves. The clone keeps the identity
-		// if the child carries one (G4 phase 1) -- a listed entity is
-		// still that entity.
-		el := clonePath(v, islot)
-		if nil != tmpl {
-			ctx.slot = islot
-			// `_` inside the template binds the source child (G8 phase
-			// 3), which for each() is the element itself.
-			// A full instance per element (instanceClone, ADR-005).
-			el = unite(ctx, el, fillPlace(instanceClone(tmpl, islot), v))
-		}
-		elems = append(elems, el)
-	}
-	out := newList(elems)
 	out.setvpath(cp(base))
 	return out
 }
@@ -339,7 +302,7 @@ func matchFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 // standing until it is chosen.
 func stagedArgIdx(f *FuncVal) []int {
 	switch f.name {
-	case "pack", "each", "form":
+	case "pack", "each":
 		return []int{0}
 	case "emit":
 		// The SELECTION only. The table is templates, instantiated at
@@ -1152,22 +1115,22 @@ func emitSubstitute(text string, pairs []emitPair) string {
 	return b.String()
 }
 
-// formFunc is form(data, tmpl) (G9 §4; docs/design/RENDER.0.md D11 and
-// P6): one list element per child of data, being tmpl instantiated at
-// that position with `_` bound to the source child. It REPLACES; it
-// does not meet -- the construction where each is the bound (see the
-// TS FormFuncVal comment). The members come through eachValues, so
-// form and each can never disagree about order, and a hidden child or
-// an unfilled optional is skipped as generation would skip it.
-func formFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
+// eachFunc is each(data, tmpl) (G9 §4 as form; docs/design/RENDER.0.md
+// D11 and P6; renamed by ADR-027): one list element per child of data,
+// being tmpl instantiated at that position with `_` bound to the source
+// child. It REPLACES; it does not meet -- and each(d, _ & t) is how a
+// meet is spelled, which is what the retired meet-only each(d, t) meant
+// (ADR-026; see the TS EachFuncVal comment). The members come through
+// bagValues, so every bag reader agrees about order, and a hidden child
+// or an unfilled optional is skipped as generation would skip it.
+func eachFunc(ctx *Ctx, f *FuncVal, base []string, args []Val) Val {
 	var data Val = top()
 	if 0 < len(args) {
 		data = args[0]
 	}
-	vals, bad := eachValues(data, ctx)
-	if "" != bad {
-		// eachValues names each's code; form answers for itself.
-		return makeNilErr(ctx, "form_data", f, nil)
+	vals, ok := bagValues(data, ctx)
+	if !ok {
+		return makeNilErr(ctx, "each_data", f, nil)
 	}
 
 	var tmpl Val = top()

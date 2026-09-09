@@ -4,14 +4,14 @@
 #- # is walked in sorted-key order, which would create `moons` before
 #- # `planets` and leave the child's foreign key pointing at a table that
 #- # does not exist yet. `$.sequence` is the model's list of the two in
-#- # the order they must be created; `form` makes one element per entry
+#- # the order they must be created; `each` makes one element per entry
 #- # IN THAT ORDER, and `key()` at the element is its position, which is
 #- # the migration's version.
 #- @"../model.aon"
 #-
-#- ordered: form($.sequence, _ & { seq:key() })
+#- ordered: each($.sequence, _ & { seq:key() })
 #-
-#- code: units: emit($.ordered, {
+#- aontu: Code: units: emit($.ordered, {
 #-   match: table: string
 #-   body: [
 #-     {

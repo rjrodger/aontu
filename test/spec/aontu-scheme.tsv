@@ -14,9 +14,9 @@
 # covered by the per-port trust tests.
 #
 # Every expectation was obtained by running BOTH engines and diffing.
-scheme-resolves	gens	@"aontu:code"\nx: 1	{"code":{"units":[]},"x":1}
+scheme-resolves	gens	@"aontu:code"\nx: 1	{"aontu":{"Code":{"units":[]}},"x":1}
 scheme-unknown-name-refused	errc	a: @"aontu:nope"	multisource_not_found
-scheme-unknown-name-names-the-set	err	a: @"aontu:nope"	the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile
+scheme-unknown-name-names-the-set	err	a: @"aontu:nope"	the language-supplied models are aontu:code, aontu:lang/go, aontu:lang/text, aontu:lang/typescript, aontu:profile, aontu:system, aontu:view
 # The scheme is not a directory: the `.aon` spelling the std/ names
 # accept is not a model name here, and is refused like any other typo.
 scheme-name-is-not-a-file	errc	a: @"aontu:code.aon"	multisource_not_found

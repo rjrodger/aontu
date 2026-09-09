@@ -1,7 +1,7 @@
 # FIXED 2026-08-26 (the spread application rework: pure ExpectVal).
 # Same crosswire WITHOUT id(): one view, one entity, the two unequal
 # ports templates meet by plain conjunction of referenced schemas
-# (exactly how $.spec.Workload = $.std.Service & {ports:{&: ...}}
+# (exactly how $.spec.Workload = $.aontu.System.Service & {ports:{&: ...}}
 # brought them together in use-case 01 -- id-merge is not required).
 # Pinned in the shared spec: spread-interleave.tsv
 # spread-unequal-map-ref-{2,3}.

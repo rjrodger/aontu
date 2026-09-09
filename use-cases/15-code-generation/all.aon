@@ -16,4 +16,4 @@
 @"./gen-ts.aon"
 @"./gen-sql.aon"
 
-code: units: [$.units.go $.units.ts $.units.sql]
+aontu: Code: units: [$.units.go $.units.ts $.units.sql]

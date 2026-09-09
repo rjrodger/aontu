@@ -7,6 +7,244 @@ which implementation each change affects.
 
 ## Unreleased
 
+> **RELEASE SEQUENCING.** The two `each` entries below (the removal and
+> the rename) must not ship in one release. Between them, `each`
+> changes meaning from a meet to a replacement. Cut a release after the
+> removal, with `each` simply absent, and release the rename after
+> that. Together they are silent for a record template; apart, every
+> affected call errors. See
+> [ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
+> No other entry in this section carries the hazard: each of the rest
+> fails loudly on an old document.
+
+### BREAKING: a bundled key that names a type is CamelCase
+
+Every bundled model's landing key is capitalised, so the case of a path
+part tells a reader what it names:
+
+```
+@"aontu:system"   ->  $.aontu.System.Port, .Component, .Service, .Semver
+@"aontu:view"     ->  $.aontu.View.Figure
+@"aontu:code"     ->  $.aontu.Code.units
+@"aontu:profile"  ->  $.aontu.Profile
+```
+
+**The scheme name is unchanged.** `@"aontu:system"` still loads the
+model; only the key its content lands under moved. A source name and a
+path are different things.
+
+**To migrate:** capitalise the landing key — `$.aontu.System.Service`
+where you wrote `$.aontu.system.Service`, and `aontu: Code: units: [...]`
+where you wrote `aontu: code: units: [...]`. Both fail loudly.
+
+It is a **convention and only a convention**: a user's own schemas are
+neither checked nor warned about, and `aontu vet` gains no finding for a
+lowercase `type()`. Rationale in
+[ADR-031](ADR.md#adr-031--a-path-part-that-names-a-type-is-camelcase).
+
+### FIX: the path of a conflict is the field to edit
+
+A conflict reported through an **included** schema named the wrong path,
+and a different wrong path in each port:
+
+```
+@"aontu:system"
+p: $.aontu.System.Port & { direction: 1 }
+
+TypeScript was:  $.p.system.Port.direction
+Go was:          $.p.direction.Port.direction
+both now:        $.p.direction
+```
+
+A value reaching the meet by reference carries a path re-based onto the
+referring field. Both ports already agreed that a meet belongs at the
+slot it was driven at, but applied that only when the operand's path was
+a strict PREFIX of it — and the corrupt path is not shorter than the
+right answer, so the guard never fired. A meet of two operands now takes
+the slot; a single-operand nil (a residue, a closed key, an `--at`
+finding) keeps its own path, as before.
+
+**A conflict inside a spread template now names the instance.**
+`services:&:{port:integer}` against `services:{auth:{port:"80"}}`
+reported `$.services.port` — the template's position, which is not a
+path in the document — and now reports `$.services.auth.port`, the field
+a repair loop edits.
+
+Five `err`-mode rows in `test/spec/error.tsv` pin the path itself, which
+no row did before: `errc` rows compare the error code, and the codes
+always agreed. Rationale in
+[ADR-030](ADR.md#adr-030--the-path-of-a-meet-is-the-slot-it-was-driven-at).
+
+### BREAKING: a bundled model lands under `$.aontu`
+
+**Including a vocabulary used to take a root key you probably wanted.**
+`aontu:system` defined `system:`, `aontu:code` defined `code:`,
+`aontu:profile` defined `profile:` — all ordinary names a document has
+its own use for, and the collision was silent, since the two would
+simply unify.
+
+Everything an `aontu:` model defines now lands under one key:
+
+```
+@"aontu:system"   ->  $.aontu.System.Port, .Component, .Service, .Semver
+@"aontu:view"     ->  $.aontu.View.Figure
+@"aontu:code"     ->  $.aontu.Code.units
+@"aontu:profile"  ->  $.aontu.Profile
+```
+
+One reserved key instead of seven, named for the language rather than
+for a domain, and `$.aontu` anywhere tells a reader at once that it is
+not the document's own.
+
+**To migrate:** write `aontu: Code: units: [...]` where you wrote
+`code: units: [...]`, and `$.aontu.System.Service` where you wrote
+`$.system.Service`. Both fail loudly — a reference that no longer
+resolves, and a renderer that finds no units.
+
+**Coverage got a better rule with it.** The dead-path walk excluded
+exactly the `code` node, so a document including a *vocabulary* had its
+`$.system` or `$.profile` reported as dead model. The exclusion is now
+the whole `aontu` namespace: nothing under it is the user's model.
+
+Rationale in
+[ADR-029](ADR.md#adr-029--a-bundled-model-lands-under-aontu-not-at-the-document-root).
+
+### `aontu:system` gains `Semver`
+
+A version (semver.org 2.0.0) as an **ordered tuple** — major, minor,
+patch, pre-release — **with the tail defaulted**:
+
+```
+v: $.aontu.System.Semver & [1]   ->  [1, 0, 0, ""]
+v: $.aontu.System.Semver & [1 2 3 "alpha.1"]
+```
+
+A list, not a dotted string and not a map. A version is compared
+rather than read, and the comparison runs component by component from
+the left: `"1.10.0"` sorts below `"1.9.0"` as text, and a map has no
+order of its own to compare along.
+
+**Leading zeroes need no rule**: the numeric parts are integers, and
+`01` is not a distinct integer literal, so the spec's "MUST NOT contain
+leading zeroes" is impossible to write rather than merely forbidden.
+
+**The pre-release check is the alphabet, not the structure**, and the
+vocabulary says so. The spec's grammar is dot-separated identifiers,
+which as a regex is a quantified group containing a quantifier — a
+shape `re()` refuses outright (`constraint_pattern`) for backtracking
+exponentially. So `"beta_1"` is refused and `"alpha..1"` is not.
+Carrying the pre-release as a list of identifiers would check it in
+full, and is the change to make if that matters more than `[1]` does.
+
+**Build metadata is not carried.** The spec has it, and also says it
+MUST be ignored when determining precedence — so a type whose purpose
+is comparison is the wrong place for it.
+
+Additive: the vocabulary's canon-hash moves, as it does for any change
+to a bundled model.
+
+### BREAKING: `std/system` and `std/view` are `aontu:system` and `aontu:view`
+
+**The engine bundled seven schemas under two naming schemes; now there
+is one.** Every language-supplied schema is named under `aontu:`, and
+`std` is retired:
+
+```
+std/system, std/system.aon  ->  aontu:system
+std/view,   std/view.aon    ->  aontu:view
+```
+
+The prefix is not decoration: it is a spelling no relative path,
+package name or module path can produce, which is what makes such a
+name unshadowable. `std/system` was an ordinary relative path, and the
+engine carried a second resolution leg to match it. That leg is gone.
+
+**`std` retires as a root key too.** Retiring the prefix but keeping
+the key would leave the word in every document that used the
+vocabulary. The key every bundled model lands under is `aontu`, per the
+entry above, so `$.std.Port` is now `$.aontu.System.Port`.
+
+The `.aon` spellings go with it: the scheme is not a directory, as was
+already true of the other five models.
+
+**To migrate:** rewrite `@"std/system"` as `@"aontu:system"`,
+`@"std/view"` as `@"aontu:view"`, and `$.std.*` as `$.aontu.System.*`
+(or `$.aontu.View.*`). Both are loud — an unknown source, then an
+unresolvable path.
+
+Both vocabularies are now held to the formatter, having joined the set
+that check iterates, and are reformatted; their canon-hash pins move
+with the root key. Rationale in
+[ADR-028](ADR.md#adr-028--every-language-supplied-schema-is-named-under-aontu).
+
+### BREAKING: the list generator is named `each` again, and `_ & t` is its bound
+
+**`form` was a coinage for a function whose natural name had just been
+freed.** With the meet-only `each` retired (below), the one list
+generator is now called `each`, and the template says which job it is
+doing:
+
+```
+each(d, t)      the element IS t                     construction
+each(d, _ & t)  the element is the child MET with t  bound
+each(d, _)      the element is the child             members as a list
+```
+
+`_` was already the language's word for "the value here"; mentioning
+it keeps the source child, leaving it out replaces it. The idiom is
+documented under "The `_ & …` idiom" in
+[`docs/reference-language.md`](docs/reference-language.md).
+
+Both ports refuse `form` with `unknown_function`.
+
+**To migrate:** rewrite `form(...)` as `each(...)`. Nothing else
+changes: the semantics, the order rule, the member rule, staging and
+the hole's owner are all the function's own and are untouched.
+
+`each_data` returns to service and `form_data` retires; its released
+meaning is unchanged, and the registry keeps both rows, being
+append-only. Rationale in
+[ADR-027](ADR.md#adr-027--the-list-generator-is-named-each-and-_--t-is-its-bound).
+
+### BREAKING: `each` is removed, `form` carries the bound
+
+**`form`'s hole already spelled the meet, so the language had two list
+generators for one operation.** `form(data, tmpl)` binds `_` to the
+source member and replaces it; putting that member back into the
+template recovers exactly what `each` did:
+
+```
+each(d)     ->  form(d, _)
+each(d, t)  ->  form(d, _ & t)
+```
+
+Both ports now refuse `each` with `unknown_function`. The count of
+built-ins falls from forty-three to forty-two.
+
+This was probed before it was decided, not after: `each`'s whole
+surface — both arities, kind, map, preference and constraint
+templates, empty bags, generation over a generator, the
+spread-augmented snapshot, a hole as the data argument, the member
+rule, code-point key order, staged canon, composition under `sum` and
+`join`, and every refusal — was run in both spellings, through both
+engines, in both modes, and the derived graph with it. Every value
+agreed. `test/spec/gen-each.tsv` is gone; its rows are now
+`test/spec/gen-form.tsv`'s "THE BOUND SPELLING" section, with their
+expectations unchanged, which is what makes this a spelling change
+rather than a behaviour change.
+
+**To migrate:** rewrite `each(d, t)` as `form(d, _ & t)` and `each(d)`
+as `form(d, _)`. The refusal is loud — an unknown function, at the
+call — which is why the removal was taken on its own rather than
+alongside any renaming of `form`: moving the name `each` onto `form`
+would leave existing calls parsing and silently changing from a meet
+to a replacement.
+
+`each_data` is retired but stays registered in
+`test/spec/errcodes.tsv`, which is append-only; a non-bag argument now
+answers `form_data`. Rationale in
+[ADR-026](ADR.md#adr-026--each-is-retired-form-carries-the-bound).
+
 ### `aontu fmt`: the repeat stops at a record
 
 **A four-key prefix in front of a one-word fact says nothing, and the

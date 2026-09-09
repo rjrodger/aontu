@@ -40,7 +40,7 @@ rec: hide(pack(type($.schema), {
 
 decls: hide(pick($.rec, d))
 
-code: units: [
+aontu: Code: units: [
   { path:"ts/domain.ts" lang:"typescript" decls:$.decls }
   { path:"go/domain.go" lang:"go" pkg:"domain" decls:$.decls }
 ]

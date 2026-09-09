@@ -302,7 +302,7 @@ func gitOut(dir string, args ...string) (string, error) {
 // from THERE.
 //
 // Sources outside the revision -- package includes under node_modules,
-// the bundled std/system -- still resolve as they do today: they are
+// the bundled aontu:system -- still resolve as they do today: they are
 // not in the tree, and their versions travel with the lockfile rather
 // than with this comparison.
 func resolveAgainst(spec, file string, stderr io.Writer) (oldVersion, bool) {

@@ -932,20 +932,35 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 	// prefix of the slot, so a nil minted away from the descent keeps
 	// the path its operand carries. Mirrors NilVal.make in
 	// ts/src/val/NilVal.ts.
-	if ctx != nil && 0 < len(ctx.slot) {
-		base := n.pathSegments()
-		if len(base) < len(ctx.slot) {
-			prefix := true
-			for i, p := range base {
-				if p != ctx.slot[i] {
-					prefix = false
-					break
-				}
-			}
-			if prefix {
-				n.path = cp(ctx.slot)
-			}
-		}
+	//
+	// A MEET OF TWO OPERANDS HAPPENS AT THE SLOT, always. A value that
+	// arrives by REFERENCE carries a path re-based onto the referring
+	// field, and the two ports corrupt it DIFFERENTLY -- this port's
+	// fallback is the slot plus the schema's own tail, TS's is the
+	// referring field plus that tail -- so neither operand path is
+	// trustworthy once a reference is in play. The prefix test below
+	// cannot tell the corrupt case from a legitimately deeper one,
+	// because the corrupt path here EXTENDS the right answer. The slot
+	// is the one thing both ports know exactly, so a real meet takes it.
+	//
+	// A SINGLE-OPERAND nil is left alone: a residue, a closed key and a
+	// generation failure are not meets, they are facts about one value.
+	// The ONE exception is an operand that was MINTED -- a preference's
+	// yardstick, an arithmetic or concat result -- which carries no path
+	// at all, so a conflict at `$.a` reported `$`, the whole document
+	// rather than the key to edit.
+	//
+	// This used to ask whether the operand's path was a PREFIX of the
+	// slot, and extend it when so. Once a meet takes the slot outright
+	// the question is vacuous: every nil still reaching here carries
+	// either no path or one at least as long as the slot, so the prefix
+	// walk never ran a single comparison across the whole suite. ADR-002
+	// closes unreachable code by deleting it rather than by covering it,
+	// and the emptiness test below is what the walk actually decided.
+	// Mirrors NilVal.make in ts/src/val/NilVal.ts.
+	if ctx != nil && 0 < len(ctx.slot) &&
+		(b != nil || 0 == len(n.pathSegments())) {
+		n.path = cp(ctx.slot)
 	}
 
 	if ctx != nil {

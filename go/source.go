@@ -54,8 +54,12 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 	// -- the memory, module, file and package legs are never asked, so
 	// nothing on disk can shadow one and a typo is refused here, naming
 	// the set, rather than searched for. Available under every
-	// capability but `none`, checked above, like the std names below.
-	// Mirrors the leg in ts/src/lang.ts.
+	// capability but `none`, checked above. Mirrors the leg in
+	// ts/src/lang.ts.
+	//
+	// This is the ONLY leg that serves a bundled model (ADR-028): the
+	// prefix is the whole spelling of a language-supplied schema, so
+	// the bare-name leg that once sat below is gone.
 	if strings.HasPrefix(spec.Path, aontuScheme) {
 		if src, ok := stdSources[spec.Path]; ok {
 			res.Full = spec.Path
@@ -75,24 +79,6 @@ func fileResolver(spec multisource.PathSpec, opts *multisource.MultiSourceOption
 			" (the language-supplied models are "+strings.Join(aontuModels(), ", ")+")")
 		res.Kind = notFoundKind
 		res.Found = true
-		return res
-	}
-
-	// THE BUNDLED VOCABULARY (G4 phase 4, std.go): served from the
-	// engine itself, so it needs neither the filesystem nor package
-	// resolution and is available under every capability but `none` —
-	// which is checked above, because `none` means no includes at all.
-	// A document's OWN `std/system` file, reached through a capability
-	// that allows it, is not shadowed: the bundled name is matched
-	// against what the author WROTE, so a relative path resolving to a
-	// real file never reaches here.
-	if src, ok := stdSources[spec.Path]; ok {
-		res.Full = spec.Path
-		res.Kind = "aon"
-		res.Src = toValidSource(src)
-		res.Found = true
-		recordDep(sink, spec.Path, "std")
-		recordText(sink, spec.Path, res.Src)
 		return res
 	}
 

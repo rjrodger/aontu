@@ -325,9 +325,12 @@ func TestVetRootConflictReportsTheRootPath(t *testing.T) {
 }
 
 // The spread constraint lives off-peg, so this is only reachable by
-// following it — and the path is the TEMPLATE's, because the conflict
-// nil is created against the template node. The data site still points
-// at the offending value, which is what a repair loop needs.
+// following it. The finding lands on the INSTANCE — $.services.auth.port,
+// the field a repair loop has to edit — and not on the template the
+// conflict nil was created against. It named the template until the
+// meet-path fix (ADR-030): a meet of two operands is attributed to the
+// slot it was driven at, which for a spread is the instance position.
+// Twin of conflict-inside-a-spread-template-is-found in ts/test/vet.test.ts.
 func TestVetConflictInsideASpreadTemplateIsFound(t *testing.T) {
 	r := vetRun("services: &: { port: integer }",
 		`services: { auth: { port: "80" } }`, nil)
@@ -335,7 +338,7 @@ func TestVetConflictInsideASpreadTemplateIsFound(t *testing.T) {
 		t.Fatalf("verdict: %s", r.Verdict)
 	}
 	f := r.Findings[0]
-	if "$.services.port" != f.Path || VetRoleData != f.Sites[0].Role ||
+	if "$.services.auth.port" != f.Path || VetRoleData != f.Sites[0].Role ||
 		`"80"` != f.Sites[0].Value {
 		t.Fatalf("finding: %+v", f)
 	}

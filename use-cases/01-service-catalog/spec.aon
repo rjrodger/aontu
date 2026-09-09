@@ -1,4 +1,4 @@
-# spec.aon --- Acme's service vocabulary, layered over @"std/system".
+# spec.aon --- Acme's service vocabulary, layered over @"aontu:system".
 #
 # THE ADDRESS SHAPE HAS A NAME. `%CatalogAddr` is an alias: `%name = value` at
 # the top level declares one, `%name` in value position uses it, and
@@ -15,7 +15,7 @@
 # the declaration would be at the root of its own file and not of the
 # document that reads it.
 # Not wrapped in type(): historically a type()-marked schema
-# referencing $.std.* failed with [aontu/mapval_no_gen] once included
+# referencing $.aontu.System.* failed with [aontu/mapval_no_gen] once included
 # (README, gap 1).  2026-08-26: fixed by the template-clone isolation
 # change (ADR-005), so type() would work here now; hide() is kept as
 # an equally-correct arrangement that also keeps the bag out of
@@ -46,13 +46,13 @@ spec: hide({
   # rework (BUGS.md sec 6) -- unequal by-reference templates now meet
   # each child independently; the single shared template is kept as
   # good style, no longer a required workaround.
-  PortSpec: $.std.Port & { number:integer & min(1) & max(65535) }
+  PortSpec: $.aontu.System.Port & { number:integer & min(1) & max(65535) }
 
   # One catalog entry: what the org promises about a service,
   # independent of where it runs. The default lifecycle is repeated as
   # a member because *production|experimental|... makes `aontu vet`
   # warn pref_not_instance (README, gap 6).
-  CatalogEntry: $.std.Service & {
+  CatalogEntry: $.aontu.System.Service & {
     ports?: { &: $.spec.PortSpec }
     owner: %Owner
     tier: 1 | 2 | 3
@@ -68,18 +68,18 @@ spec: hide({
     # An address is a TREE PATH (ADR-014), so the held re() says where
     # a dependency may live rather than how it must be named: a service
     # may only depend on a catalog entry, never on a workload.
-    # (Gap 8's history -- refer($.std.Service) dying of unify_cycle,
+    # (Gap 8's history -- refer($.aontu.System.Service) dying of unify_cycle,
     # both ends typed dying twice -- is why the flow goes through the
     # refer machinery per leaf; both ends carry the real schema.)
-    dependsOn?: rel($.std.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
-    dependedOnBy?: rel($.std.Service) & %CatalogAddr
+    dependsOn?: rel($.aontu.System.Service) & %CatalogAddr & acyclic() & inverse(dependedOnBy)
+    dependedOnBy?: rel($.aontu.System.Service) & %CatalogAddr
   }
 
-  # One workload: what a cluster actually runs. Names $.std.Service
+  # One workload: what a cluster actually runs. Names $.aontu.System.Service
   # and $.spec.PortSpec exactly as CatalogEntry does, so both
   # id-merged views carry the SAME template set (gap 7 -- fixed
   # 2026-08-26, kept as style; see the PortSpec note above).
-  Workload: $.std.Service & {
+  Workload: $.aontu.System.Service & {
     replicas: *2 | integer & min(1) & max(48)
     image: string & re("^registry[.]acme[.]internal/")
     ports?: { &: $.spec.PortSpec }

@@ -11,7 +11,7 @@
 %%- # change to the engine.
 %%- @"../model.aon"
 %%-
-%%- code: units: [
+%%- aontu: Code: units: [
 %%-   {
 %%-     path: "erd.mmd"
 %%-     lang: "mermaid"
@@ -45,7 +45,7 @@ erDiagram
 %%-
 %%-       # ONE BLOCK PER ENTITY, its fields in the model's order, with the
 %%-       # kind Mermaid shows and the key marker the model's `pk` and `fk`
-%%-       # decide. `form` keeps the order a `pack` would sort away.
+%%-       # decide. `each` keeps the order a `pack` would sort away.
 %%-       {
 %%-         k: "frag"
 %%-         of: emit($.sequence, {
@@ -53,7 +53,7 @@ erDiagram
 %%-           replace: ENTITY: upper(.class)
 %%-           body: [
   ENTITY {
-%%-             emit(form(.field, _ & { mark:"" }), [
+%%-             emit(each(.field, _ & { mark:"" }), [
 %%-               {
 %%-                 match: pk: true
 %%-                 replace: { TYPE:.kind COLUMN:.name }

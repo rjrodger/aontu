@@ -451,7 +451,7 @@ exports.COMPLETION_KEYWORD = COMPLETION_KEYWORD;
 const BUILTIN_FUNCS = [
     'above', 'acyclic', 'add', 'below', 'close', 'copy', 'deprecate', 'div',
     'each', 'emit', 'esc',
-    'filter', 'form', 'greatest',
+    'filter', 'greatest',
     'hide', 'inverse', 'join', 'key', 'least', 'length', 'list', 'lower',
     'map', 'match', 'max', 'min', 'mod', 'move', 'mul', 'must', 'neq', 'open',
     'pack', 'path', 'pick',
