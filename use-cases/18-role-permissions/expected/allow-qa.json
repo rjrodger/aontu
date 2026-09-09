@@ -1,0 +1,23 @@
+{
+  "aontu": {
+    "verb": "allow",
+    "version": "0.61.0"
+  },
+  "findings": [],
+  "paths": [
+    {
+      "allowed": true,
+      "by": "$.roles.qa.allow.0",
+      "path": "$.tests.smoke",
+      "pattern": "$.tests",
+      "reason": "allow"
+    },
+    {
+      "allowed": false,
+      "path": "$.services",
+      "reason": "uncovered"
+    }
+  ],
+  "role": "qa",
+  "verdict": "refused"
+}

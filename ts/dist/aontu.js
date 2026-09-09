@@ -1,7 +1,7 @@
 "use strict";
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unifiedDiff = exports.format = exports.markerFor = exports.resugarTemplate = exports.desugarTemplate = exports.renderProfile = exports.renderValue = exports.render = exports.viewTree = exports.viewSet = exports.view = exports.relationCheck = exports.graphOf = exports.agentsMd = exports.diff = exports.patch = exports.why = exports.get = exports.canonHash = exports.hcanon = exports.trimCheck = exports.subsume = exports.sarifReport = exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.colorActive = exports.setColor = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
+exports.unifiedDiff = exports.format = exports.markerFor = exports.resugarTemplate = exports.desugarTemplate = exports.renderProfile = exports.renderValue = exports.render = exports.viewTree = exports.viewSet = exports.view = exports.relationCheck = exports.graphOf = exports.allow = exports.agentsMd = exports.diff = exports.patch = exports.why = exports.get = exports.canonHash = exports.hcanon = exports.trimCheck = exports.subsume = exports.sarifReport = exports.vet = exports.Decimal = exports.exactJSON = exports.formatExplain = exports.util = exports.Lang = exports.colorActive = exports.setColor = exports.AontuError = exports.AontuContext = exports.Aontu = exports.VERSION = void 0;
 exports.runparse = runparse;
 const lang_1 = require("./lang");
 Object.defineProperty(exports, "Lang", { enumerable: true, get: function () { return lang_1.Lang; } });
@@ -39,6 +39,8 @@ const diff_1 = require("./diff");
 Object.defineProperty(exports, "diff", { enumerable: true, get: function () { return diff_1.diff; } });
 const agentsmd_1 = require("./agentsmd");
 Object.defineProperty(exports, "agentsMd", { enumerable: true, get: function () { return agentsmd_1.agentsMd; } });
+const allow_1 = require("./allow");
+Object.defineProperty(exports, "allow", { enumerable: true, get: function () { return allow_1.allow; } });
 const graph_1 = require("./graph");
 Object.defineProperty(exports, "graphOf", { enumerable: true, get: function () { return graph_1.graphOf; } });
 const relation_1 = require("./relation");
