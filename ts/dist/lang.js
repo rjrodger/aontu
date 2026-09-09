@@ -72,6 +72,7 @@ const ReferFuncVal_1 = require("./val/ReferFuncVal");
 const GraphAtomVal_1 = require("./val/GraphAtomVal");
 const PackFuncVal_1 = require("./val/PackFuncVal");
 const CmpFuncVal_1 = require("./val/CmpFuncVal");
+const NamerFuncVal_1 = require("./val/NamerFuncVal");
 const EachFuncVal_1 = require("./val/EachFuncVal");
 const FormFuncVal_1 = require("./val/FormFuncVal");
 const FilterFuncVal_1 = require("./val/FilterFuncVal");
@@ -811,6 +812,13 @@ help isolate the syntax error.`,
         Folder: CmpFuncVal_1.FolderFuncVal,
         File: CmpFuncVal_1.FileFuncVal,
         Content: CmpFuncVal_1.ContentFuncVal,
+        // NAME TRANSFORMATION -- SPIKE (ts/src/val/NamerFuncVal.ts).
+        // Generated code is mostly names, and no two targets spell them
+        // the same way. Splits a name into words whatever format it is
+        // written in, then renders it in the target's. TypeScript only,
+        // and out of the parity-pinned registries for the reason the
+        // component primitives are.
+        namer: NamerFuncVal_1.NamerFuncVal,
     };
     // A dangling operator (`a:1|`, `a:$`, `a:*` at end of input) leaves
     // null/undefined unfilled terms. Junction ops drop them (so `a:1&`
@@ -2224,6 +2232,7 @@ for (const name in sig_1.funcSig) {
 POSITIONAL_ARG_FUNCS['Folder'] = true;
 POSITIONAL_ARG_FUNCS['File'] = true;
 POSITIONAL_ARG_FUNCS['Content'] = true;
+POSITIONAL_ARG_FUNCS['namer'] = true;
 // [min, max]; a max of -1 is unbounded. Every DECLARED name has an
 // entry, and the arity is a property of the language rather than of
 // either port -- go/func.go derives the same table. The spike's

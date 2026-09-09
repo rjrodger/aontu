@@ -8,13 +8,18 @@
 #
 # Asserted by ts/test/cmp.test.ts, so the note and this file cannot
 # drift from what the engine does.
+#
+# EVERY NAME IS DERIVED. The interface name, the file name and each
+# field are one model name in three spellings, which is what `namer`
+# is for (ts/src/val/NamerFuncVal.ts): before it, this file wrote
+# `Planet` out by hand, because `upper("planet")` is `PLANET`.
 
-model: { name:planet fields:[id name mass] }
+model: { name:planet_body fields:[id surface_gravity mean_radius] }
 
 out: Folder("src", [
-  File($.model.name + ".ts", [
-    Content("export interface Planet {\n")
-    form($.model.fields, Content("  " + _ + ": string\n"))
+  File(namer($.model.name, kebab) + ".ts", [
+    Content("export interface " + namer($.model.name, pascal) + " {\n")
+    form($.model.fields, Content("  " + namer(_, camel) + ": number\n"))
     Content("}\n")
   ])
 ])

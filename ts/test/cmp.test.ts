@@ -288,7 +288,13 @@ describe('cmp', () => {
 
     const file = out.children[0]
     expect(file.cmp).equal('File')
-    expect(file.props).equal({ name: 'planet.ts' })
+
+    // EVERY NAME IS DERIVED from the one model name, `planet_body`:
+    // the file in kebab, the interface in pascal, the fields in camel.
+    // That is what `namer` is for -- `upper("planet_body")` is
+    // `PLANET_BODY`, which is the gap this fixture used to paper over
+    // by writing `Planet` out by hand.
+    expect(file.props).equal({ name: 'planet-body.ts' })
 
     // The file's body, in the order the model gave it: the header, one
     // line per field, the close. Each span carries its own newline:
@@ -296,17 +302,14 @@ describe('cmp', () => {
     // and the spike has no `Line` primitive -- one of the gaps the
     // design note records.
     expect(file.children.map((c: any) => c.props.src)).equal([
-      'export interface Planet {\n',
-      '  id: string\n',
-      '  name: string\n',
-      '  mass: string\n',
+      'export interface PlanetBody {\n',
+      '  id: number\n',
+      '  surfaceGravity: number\n',
+      '  meanRadius: number\n',
       '}\n',
     ])
 
-    // The header is written out because aontu has whole-string
-    // `upper`/`lower` and no title case: `upper($.model.name)` is
-    // `PLANET`, not `Planet`. Also a recorded gap.
-    Assert.equal(G('x: upper("planet")').x, 'PLANET')
+    Assert.equal(G('x: upper("planet_body")').x, 'PLANET_BODY')
   })
 
 })

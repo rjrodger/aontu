@@ -147,6 +147,7 @@ import {
   FileFuncVal,
   ContentFuncVal,
 } from './val/CmpFuncVal'
+import { NamerFuncVal } from './val/NamerFuncVal'
 import { EachFuncVal } from './val/EachFuncVal'
 import { FormFuncVal } from './val/FormFuncVal'
 import { FilterFuncVal } from './val/FilterFuncVal'
@@ -1011,6 +1012,14 @@ help isolate the syntax error.`,
     Folder: FolderFuncVal,
     File: FileFuncVal,
     Content: ContentFuncVal,
+
+    // NAME TRANSFORMATION -- SPIKE (ts/src/val/NamerFuncVal.ts).
+    // Generated code is mostly names, and no two targets spell them
+    // the same way. Splits a name into words whatever format it is
+    // written in, then renders it in the target's. TypeScript only,
+    // and out of the parity-pinned registries for the reason the
+    // component primitives are.
+    namer: NamerFuncVal,
   }
 
 
@@ -2614,6 +2623,7 @@ for (const name in funcSig) {
 POSITIONAL_ARG_FUNCS['Folder'] = true
 POSITIONAL_ARG_FUNCS['File'] = true
 POSITIONAL_ARG_FUNCS['Content'] = true
+POSITIONAL_ARG_FUNCS['namer'] = true
 
 
 // [min, max]; a max of -1 is unbounded. Every DECLARED name has an
