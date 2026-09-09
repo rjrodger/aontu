@@ -945,23 +945,22 @@ func makeNilErr(ctx *Ctx, why string, a, b Val) *NilVal {
 	//
 	// A SINGLE-OPERAND nil is left alone: a residue, a closed key and a
 	// generation failure are not meets, they are facts about one value.
+	// The ONE exception is an operand that was MINTED -- a preference's
+	// yardstick, an arithmetic or concat result -- which carries no path
+	// at all, so a conflict at `$.a` reported `$`, the whole document
+	// rather than the key to edit.
+	//
+	// This used to ask whether the operand's path was a PREFIX of the
+	// slot, and extend it when so. Once a meet takes the slot outright
+	// the question is vacuous: every nil still reaching here carries
+	// either no path or one at least as long as the slot, so the prefix
+	// walk never ran a single comparison across the whole suite. ADR-002
+	// closes unreachable code by deleting it rather than by covering it,
+	// and the emptiness test below is what the walk actually decided.
 	// Mirrors NilVal.make in ts/src/val/NilVal.ts.
-	if ctx != nil && 0 < len(ctx.slot) && b != nil {
+	if ctx != nil && 0 < len(ctx.slot) &&
+		(b != nil || 0 == len(n.pathSegments())) {
 		n.path = cp(ctx.slot)
-	} else if ctx != nil && 0 < len(ctx.slot) {
-		base := n.pathSegments()
-		if len(base) < len(ctx.slot) {
-			// Written branchless to mirror the canonical port's
-			// `nil.path.every((p, i) => p === ctx.path[i])`, which is one
-			// expression there and must not become an extra arm here.
-			prefix := true
-			for i, p := range base {
-				prefix = prefix && p == ctx.slot[i]
-			}
-			if prefix {
-				n.path = cp(ctx.slot)
-			}
-		}
 	}
 
 	if ctx != nil {

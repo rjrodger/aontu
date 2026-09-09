@@ -130,13 +130,21 @@ NilVal.make = (ctx, why, av, bv, attempt, details) => {
     // A SINGLE-OPERAND nil is left alone: a residue, a closed key, a
     // generation failure and an `--at` finding are not meets, they are
     // facts about one value, and taking the driving location for those
-    // is what the unconditional version got wrong.
-    if (null != ctx?.path && 0 < ctx.path.length && null != bv) {
-        nil.path = [...ctx.path];
-    }
-    else if (null != ctx?.path && null != nil.path &&
-        nil.path.length < ctx.path.length &&
-        nil.path.every((p, i) => p === ctx.path[i])) {
+    // is what the unconditional version got wrong. The ONE exception is
+    // an operand that was MINTED -- a preference's yardstick, an
+    // arithmetic or concat result -- which carries no path at all, so a
+    // conflict at `$.a` reported `$`, the whole document rather than the
+    // key to edit.
+    //
+    // This used to ask whether the operand's path was a PREFIX of the
+    // slot, and extend it when so. Once a meet takes the slot outright
+    // the question is vacuous: every nil still reaching here carries
+    // either no path or one at least as long as the slot, so the prefix
+    // walk never ran a single comparison across the whole suite. ADR-002
+    // closes unreachable code by deleting it rather than by covering it,
+    // and the emptiness test below is what the walk actually decided.
+    if (null != ctx?.path && 0 < ctx.path.length &&
+        (null != bv || null == nil.path || 0 === nil.path.length)) {
         nil.path = [...ctx.path];
     }
     if (ctx) {
